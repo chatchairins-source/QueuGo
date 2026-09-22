@@ -1352,25 +1352,39 @@ function tileLayer(map){
   }).addTo(map);
 }
 function initLocationPicker(containerId, lat, lng, onChange){
-  if(lat==null || lng==null) return null;
-  const map = L.map(containerId).setView([lat,lng], 15);
+  /* No fabricated coordinates: when no saved location exists, open a neutral map
+     and wait for GPS or an explicit map click before creating a delivery point. */
+  const hasInitial = Number.isFinite(Number(lat)) && Number.isFinite(Number(lng));
+  const initial = hasInitial ? [Number(lat), Number(lng)] : [20, 0];
+  const initialZoom = hasInitial ? 15 : 2;
+  const map = L.map(containerId).setView(initial, initialZoom);
   tileLayer(map);
-  const marker = L.marker([lat,lng], {draggable:true}).addTo(map);
-  marker.on('dragend', ()=>{ const p=marker.getLatLng(); onChange(p.lat,p.lng); });
-  map.on('click', (e)=>{ marker.setLatLng(e.latlng); onChange(e.latlng.lat,e.latlng.lng); });
-  onChange(lat,lng);
+  let marker = null;
+  function setPoint(newLat,newLng){
+    const la=Number(newLat), ln=Number(newLng);
+    if(!Number.isFinite(la)||!Number.isFinite(ln)) return;
+    if(!marker){
+      marker=L.marker([la,ln], {draggable:true}).addTo(map);
+      marker.on('dragend', ()=>{ const p=marker.getLatLng(); onChange(p.lat,p.lng); });
+    }else{
+      marker.setLatLng([la,ln]);
+    }
+    onChange(la,ln);
+  }
+  map.on('click', (e)=>{ setPoint(e.latlng.lat,e.latlng.lng); });
+  if(hasInitial) setPoint(lat,lng);
   registerMap(map);
   return {
-    map, marker,
+    map,
+    get marker(){ return marker; },
     locate(){
       if(!navigator.geolocation){ toast('เบราว์เซอร์ไม่รองรับ GPS'); return; }
       navigator.geolocation.getCurrentPosition(pos=>{
         const {latitude, longitude} = pos.coords;
         map.setView([latitude,longitude], 16);
-        marker.setLatLng([latitude,longitude]);
-        onChange(latitude,longitude);
+        setPoint(latitude,longitude);
         toast('ใช้ตำแหน่ง GPS ปัจจุบันแล้ว');
-      }, err=> toast('ไม่สามารถขอตำแหน่ง GPS ได้: '+err.message));
+      }, err=> toast('ไม่สามารถขอตำแหน่ง GPS ได้: '+err.message), {enableHighAccuracy:true, timeout:12000, maximumAge:30000});
     }
   };
 }
@@ -3304,7 +3318,16 @@ function renderCheckout(){
   window.__checkoutSubtotal = subtotal;
   window.__checkoutShop = shop;
   function refreshFee(lat,lng){
-    const dist = distanceKm(shop.lat, shop.lng, lat, lng);
+    const la=Number(lat), ln=Number(lng);
+    if(!Number.isFinite(la)||!Number.isFinite(ln)){
+      window.__checkoutFee = null;
+      const feeEl = document.getElementById('delivery-fee-display');
+      const totalEl = document.getElementById('checkout-total-display');
+      if(feeEl) feeEl.textContent = 'กรุณาเลือกตำแหน่งจัดส่ง';
+      if(totalEl) totalEl.textContent = subtotal;
+      return;
+    }
+    const dist = distanceKm(shop.lat, shop.lng, la, ln);
     const fee = computeDeliveryFee(dist);
     window.__checkoutFee = fee;
     const feeEl = document.getElementById('delivery-fee-display');
@@ -3356,11 +3379,16 @@ async function confirmOrder(){
   if(!cart.items.length){toast('ตะกร้าว่างเปล่า');navigate('cart');return;}
   const shop=dbGet('qt_users',[]).find(u=>u.id===cart.shopId);
   if(!shop){toast('ไม่พบข้อมูลร้านค้า กรุณากลับไปเลือกสินค้าใหม่');return;}
-  const loc=window.__pickedLoc?window.__pickedLoc():{lat:shop.lat,lng:shop.lng};
+  const loc=window.__pickedLoc?window.__pickedLoc():{lat:null,lng:null};
+  const locLat=Number(loc?.lat), locLng=Number(loc?.lng);
+  if(!Number.isFinite(locLat)||!Number.isFinite(locLng)){
+    toast('กรุณาเลือกตำแหน่งจัดส่งหรือกด “ใช้ตำแหน่งปัจจุบัน” ก่อนยืนยันคำสั่งซื้อ');
+    return;
+  }
   const addressEl=document.getElementById('delivery-address');
   const address=addressEl?addressEl.value.trim():'';
   const subtotal=cart.items.reduce((s,i)=>s+Number(i.price||0)*Number(i.qty||0),0);
-  const deliveryFee=computeDeliveryFee(distanceKm(shop.lat,shop.lng,loc.lat,loc.lng));
+  const deliveryFee=computeDeliveryFee(distanceKm(shop.lat,shop.lng,locLat,locLng));
   const gp=gpAmount(subtotal),total=subtotal+deliveryFee;
   const order={
     id:uid(),orderNumber: qtGenerateOrderNumber(),orderDate:qtLocalDateKey(),
@@ -3368,7 +3396,7 @@ async function confirmOrder(){
     shopId:shop.id,shopName:shop.shopName,riderId:null,riderName:null,
     items:cart.items.map(i=>Object.assign({},i)),subtotal,deliveryFee,gpAmount:gp,total,
     pickup:{lat:shop.lat,lng:shop.lng,address:shop.address},
-    delivery:{lat:loc.lat,lng:loc.lng,address},
+    delivery:{lat:locLat,lng:locLng,address},
     status:'pending_shop',statusLog:[{status:'pending_shop',time:Date.now()}],createdAt:Date.now()
   };
   const orders=dbGet('qt_orders',[]);
