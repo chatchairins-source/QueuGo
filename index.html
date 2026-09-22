@@ -1005,7 +1005,9 @@ function qtRerenderAfterHydrate(tries){
   tries=tries||0;
   if(!currentUser()) return;
   const name=(location.hash.replace('#','')||'home').split('/')[0];
-  if(['login','register','rider-register'].includes(name)) return; /* these pages do not depend on loaded data */
+  /* Checkout owns transient UI state (map, GPS, address and slider).
+     Background Supabase hydration must never rebuild this DOM. */
+  if(['login','register','rider-register','checkout'].includes(name)) return;
   const a=document.activeElement;
   const typing=(a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)) ||
     [].slice.call(document.querySelectorAll('#app textarea, #app input:not([type=checkbox]):not([type=radio]):not([type=file]):not([type=hidden])')).some(el=>String(el.value||'').trim());
@@ -3481,10 +3483,11 @@ function renderOrders(){
   else if(user.type==='rider') orders = orders.filter(o=>o.riderId===user.id || o.status==='waiting_rider');
   orders.sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
   const title=user.type==='shop'?'ติดตามออเดอร์ของร้าน':user.type==='rider'?'งานจัดส่ง':'รายการคำสั่งซื้อ';
+  const waitingForInitialData=!QT_DB_READY.value && !orders.length;
   layout(title, `
     <h2>${user.type==='shop'?'📋 ติดตามออเดอร์':user.type==='rider'?'🛵 งานจัดส่ง':'📦 รายการคำสั่งซื้อ'}</h2>
     ${user.type==='shop'?'<div class="qt-shop-order-note">ดูสถานะของออเดอร์แต่ละรายการได้จากหน้านี้ และกดเข้าออเดอร์เพื่อดำเนินการขั้นถัดไป</div>':''}
-    ${orders.length ? orders.map(o=>orderListCard(o,user)).join('') : '<p>ยังไม่มีคำสั่งซื้อ</p>'}
+    ${waitingForInitialData ? '<p>กำลังโหลดคำสั่งซื้อ...</p>' : (orders.length ? orders.map(o=>orderListCard(o,user)).join('') : '<p>ยังไม่มีคำสั่งซื้อ</p>')}
   `);
 }
 function orderListCard(o,user){
@@ -5241,7 +5244,9 @@ body{margin:0;padding-left:0;padding-right:0}
     loading=true;
     try{
       if(typeof qtHydrateDatabase==='function') await qtHydrateDatabase({light:false});
-      if(typeof router==='function' && currentPageNeedsRender()){
+      const page=(location.hash||'').replace(/^#/,'').split('/')[0];
+      /* Realtime may refresh the cache, but must not rebuild Checkout. */
+      if(page!=='checkout' && typeof router==='function' && currentPageNeedsRender()){
         const y=window.scrollY;
         router();
         requestAnimationFrame(()=>window.scrollTo(0,y));
