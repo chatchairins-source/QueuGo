@@ -3463,9 +3463,16 @@ async function qtEnsurePublicShopsLoaded(){
     const rows=await qtSupabaseTable('shop_profiles?select=*',{accessToken:token});
     if(!Array.isArray(rows)) return false;
     const current=dbGet('qt_users',[]).filter(u=>u.type!=='shop');
-    const shops=rows.filter(x=>x && String(x.status||'').toLowerCase()==='active').map(x=>{
+    const shops=rows.filter(x=>x && String(x.status||'').toLowerCase()==='active' && x.id && x.user_id).map(x=>{
       const meta=(x.metadata&&typeof x.metadata==='object')?x.metadata:{};
-      return Object.assign({},meta,{id:x.user_id,type:'shop',status:'approved',shopName:x.shop_name,name:meta.name||x.shop_name,phone:x.phone,address:x.address,lat:x.latitude,lng:x.longitude,supabase:true,_profileOnly:true});
+      return Object.assign({},meta,{
+        id:x.user_id,
+        userId:x.user_id,
+        shopProfileId:x.id,
+        type:'shop',status:'approved',
+        shopName:x.shop_name,name:meta.name||x.shop_name,phone:x.phone,address:x.address,
+        lat:x.latitude,lng:x.longitude,supabase:true,_profileOnly:true
+      });
     });
     QT_DB_CACHE.qt_users=current.concat(shops);
     return shops.length>0;
@@ -3558,7 +3565,7 @@ function productCardCustomer(p){
 function qtNormalizeCart(raw){
   const cart = (raw && typeof raw==='object' && !Array.isArray(raw)) ? raw : {};
   const items = Array.isArray(cart.items) ? cart.items.filter(i=>i && typeof i==='object') : [];
-  return {shopId:cart.shopId||null, items};
+  return {shopId:cart.shopId||null, shopProfileId:cart.shopProfileId||null, items};
 }
 function cartCount(){
   const user=currentUser();if(!user)return 0;
@@ -3577,12 +3584,23 @@ function addToCart(productId){
   const user = currentUser();
   if(!user || user.type!=='customer'){ toast('กรุณาเข้าสู่ระบบด้วยบัญชีลูกค้าก่อน'); navigate('login'); return; }
   const product = dbGet('qt_products',[]).find(p=>p.id===productId);
-  let cart = dbGet('qt_cart_'+user.id, {shopId:null, items:[]});
-  if(cart.shopId && cart.shopId!==product.shopId){
-    if(!confirm('ตะกร้าปัจจุบันเป็นของร้านอื่น ต้องการล้างตะกร้าและเริ่มใหม่หรือไม่?')) return;
-    cart = {shopId:product.shopId, items:[]};
+  if(!product){ toast('ไม่พบสินค้า'); return; }
+  /* Canonical identity: the cart MUST carry shop_profiles.id from the product.
+     public.users.id is kept only as the owner/UI identity. */
+  const productShopProfileId=product.shopProfileId||null;
+  const productShopUserId=product.shopId||null;
+  if(!productShopProfileId){
+    console.error('[QueueTech] addToCart blocked: product.shopProfileId missing',product);
+    toast('ไม่พบโปรไฟล์ร้านของสินค้านี้ กรุณาโหลดร้านใหม่');
+    return;
   }
-  cart.shopId = product.shopId;
+  let cart = qtNormalizeCart(dbGet('qt_cart_'+user.id, {shopId:null,shopProfileId:null,items:[]}));
+  if(cart.shopProfileId && String(cart.shopProfileId)!==String(productShopProfileId)){
+    if(!confirm('ตะกร้าปัจจุบันเป็นของร้านอื่น ต้องการล้างตะกร้าและเริ่มใหม่หรือไม่?')) return;
+    cart = {shopId:productShopUserId,shopProfileId:productShopProfileId,items:[]};
+  }
+  cart.shopId = productShopUserId;
+  cart.shopProfileId = productShopProfileId;
   const existing = cart.items.find(i=>i.productId===productId);
   if(existing) existing.qty++;
   else cart.items.push({productId, name:product.name, price:product.price, image:product.image, qty:1});
@@ -3596,23 +3614,28 @@ function qtResolveShopFromCartId(cartShopId){
   const id=String(cartShopId||'');
   if(!id) return null;
   const users=Array.isArray(dbGet('qt_users',[]))?dbGet('qt_users',[]):[];
-  let shop=users.find(u=>String(u.id)===id && u.type==='shop')||null;
-  if(shop) return shop;
-  const map=QT_SYNC.profileMaps?.shopById;
-  if(map && typeof map.get==='function'){
-    const userId=map.get(cartShopId);
-    if(userId) shop=users.find(u=>String(u.id)===String(userId) && u.type==='shop')||null;
-  }
-  return shop;
+  return users.find(u=>String(u.id)===id && u.type==='shop')||null;
 }
-function qtResolveShopProfileId(shop){
-  if(!shop) return null;
-  if(shop.shopProfileId) return shop.shopProfileId;
-  const map=QT_SYNC.profileMaps?.shopByUserId;
-  if(map && typeof map.get==='function'){
-    const profileId=map.get(shop.id);
-    if(profileId) return profileId;
-  }
+
+/* Canonical shop profile resolver. The cart/order path uses shop_profiles.id as the
+   authoritative database key. It can recover the profile from the cart directly,
+   or verify it against the shop owner's public.users.id. */
+async function qtResolveAuthoritativeShopProfileId(shop, cartShopProfileId){
+  const candidate=cartShopProfileId||shop?.shopProfileId||null;
+  if(!candidate) return null;
+  const token=await qtGetAccessToken();
+  if(!token) return null;
+  try{
+    const rows=await qtSupabaseTable('shop_profiles?select=id,user_id,status& id=eq.'+encodeURIComponent(candidate)+'&limit=1'.replace(' ',''),{accessToken:token});
+    if(Array.isArray(rows)&&rows[0]?.id){
+      if(shop?.id && rows[0].user_id && String(rows[0].user_id)!==String(shop.id)){
+        console.error('[QueueTech] shop profile owner mismatch',{candidate,shopUserId:shop.id,profileUserId:rows[0].user_id});
+        return null;
+      }
+      if(String(rows[0].status||'').toLowerCase()!=='active') return null;
+      return rows[0].id;
+    }
+  }catch(e){ console.warn('[QueueTech] shop profile verification failed:',e); }
   return null;
 }
 
@@ -3800,23 +3823,8 @@ async function confirmOrder(){
   const shop=qtResolveShopFromCartId(cart.shopId);
   if(!shop){toast('ไม่พบข้อมูลร้านค้าของตะกร้านี้ กรุณากลับไปเลือกสินค้าใหม่');return;}
 
-  /* V5.40 FIX — resolve the authoritative shop_profiles.id from the
-     public.users.id before creating the order. */
-  let shopProfileId=qtResolveShopProfileId(shop);
-  if(!shopProfileId){
-    try{
-      const token=await qtGetAccessToken();
-      const rows=token ? await qtSupabaseTable('shop_profiles?select=id,user_id&user_id=eq.'+encodeURIComponent(shop.id)+'&limit=1',{accessToken:token}) : [];
-      if(Array.isArray(rows) && rows[0]?.id){
-        shopProfileId=rows[0].id;
-        QT_SYNC.profileMaps=QT_SYNC.profileMaps||{};
-        QT_SYNC.profileMaps.shopByUserId=QT_SYNC.profileMaps.shopByUserId||new Map();
-        QT_SYNC.profileMaps.shopByUserId.set(shop.id,shopProfileId);
-      }
-    }catch(e){
-      console.warn('[QueueTech] resolve shop profile failed:',e);
-    }
-  }
+  /* Canonical order key: use the shop_profiles.id already captured in the cart. */
+  const shopProfileId=await qtResolveAuthoritativeShopProfileId(shop,cart.shopProfileId);
   if(!shopProfileId){
     toast('ไม่พบข้อมูลโปรไฟล์ร้านค้าในฐานข้อมูล กรุณาบันทึกข้อมูลร้านใหม่ก่อนสั่งซื้อ');
     console.error('[QueueTech] Order blocked: shop_profiles.id missing for user',shop.id);
