@@ -3208,22 +3208,76 @@ async function handleShopSetup(e){
   try{
     const token=await qtGetAccessToken();
     if(!token) throw new Error('ยังไม่ได้เข้าสู่ระบบ');
-    const userRow=qtUserToRow(users[idx], true);
-    await qtSupabaseTable('users?id=eq.'+encodeURIComponent(users[idx].id),{method:'PATCH',accessToken:token,body:userRow});
+    /*
+     * IMPORTANT: this page must follow the real identity chain:
+     * Auth user -> public.users(auth_user_id) -> public.users.id -> shop_profiles.user_id -> shop_profiles.id
+     * Never assume the browser cache's users[idx].id is the shop profile id, and never update a shop by name.
+     */
+    const authUserId=users[idx].authUserId || getSession()?.authUserId;
+    if(!authUserId) throw new Error('ไม่พบ Auth User ID ของบัญชีร้าน');
 
-    const profileRows=await qtSupabaseTable('shop_profiles?select=id&user_id=eq.'+encodeURIComponent(users[idx].id)+'&limit=1',{accessToken:token});
-    const profileBody={shop_name:users[idx].shopName||users[idx].name||'ร้านค้า',phone:users[idx].phone||null,address:users[idx].address||null,latitude:users[idx].lat??null,longitude:users[idx].lng??null,status:users[idx].status==='suspended'?'suspended':'active',metadata:qtUserMetadata(users[idx])};
-    if(Array.isArray(profileRows) && profileRows[0]?.id){
-      await qtSupabaseTable('shop_profiles?id=eq.'+encodeURIComponent(profileRows[0].id),{method:'PATCH',accessToken:token,body:profileBody});
+    const publicUserRows=await qtSupabaseTable(
+      'users?select=id,auth_user_id,role,name,phone,status&auth_user_id=eq.'+encodeURIComponent(authUserId)+'&limit=1',
+      {accessToken:token}
+    );
+    const publicUser=Array.isArray(publicUserRows)?publicUserRows[0]:null;
+    if(!publicUser?.id) throw new Error('ไม่พบข้อมูลบัญชีร้านใน public.users');
+    if(String(publicUser.auth_user_id)!==String(authUserId)) throw new Error('users.auth_user_id ไม่ตรงกับบัญชีที่เข้าสู่ระบบ');
+    if(String(publicUser.role)!=='shop') throw new Error('บัญชีที่เข้าสู่ระบบไม่ใช่บัญชีร้านค้า');
+
+    /* Keep the local cache identity synchronized with the authoritative DB identity. */
+    users[idx].id=publicUser.id;
+    users[idx].authUserId=publicUser.auth_user_id;
+
+    const userRow=qtUserToRow(users[idx], true);
+    await qtSupabaseTable('users?id=eq.'+encodeURIComponent(publicUser.id),{method:'PATCH',accessToken:token,body:userRow});
+
+    const profileRows=await qtSupabaseTable(
+      'shop_profiles?select=id,user_id,shop_name,status,latitude,longitude&user_id=eq.'+encodeURIComponent(publicUser.id)+'&limit=1',
+      {accessToken:token}
+    );
+    const existingShop=Array.isArray(profileRows)?profileRows[0]:null;
+    const profileBody={
+      shop_name:users[idx].shopName||users[idx].name||'ร้านค้า',
+      phone:users[idx].phone||null,
+      address:users[idx].address||null,
+      latitude:Number(users[idx].lat),
+      longitude:Number(users[idx].lng),
+      status:users[idx].status==='suspended'?'suspended':'active',
+      metadata:qtUserMetadata(users[idx])
+    };
+
+    let savedAfterWrite=null;
+    if(existingShop?.id){
+      if(String(existingShop.user_id)!==String(publicUser.id)) throw new Error('shop_profiles.user_id ไม่ตรงกับ public.users.id');
+      const updated=await qtSupabaseTable(
+        'shop_profiles?id=eq.'+encodeURIComponent(existingShop.id)+'&user_id=eq.'+encodeURIComponent(publicUser.id)+'&select=id,user_id,shop_name,status,latitude,longitude',
+        {method:'PATCH',accessToken:token,body:profileBody}
+      );
+      savedAfterWrite=Array.isArray(updated)?updated[0]:updated;
+      if(!savedAfterWrite?.id) throw new Error('ฐานข้อมูลไม่ยืนยันการอัปเดตข้อมูลร้าน (อาจเป็น RLS)');
     }else{
-      await qtSupabaseTable('shop_profiles?on_conflict=user_id',{method:'POST',accessToken:token,body:{user_id:users[idx].id,...profileBody}});
+      const created=await qtSupabaseTable(
+        'shop_profiles?select=id,user_id,shop_name,status,latitude,longitude&on_conflict=user_id',
+        {method:'POST',accessToken:token,body:{user_id:publicUser.id,...profileBody}}
+      );
+      savedAfterWrite=Array.isArray(created)?created[0]:created;
+      if(!savedAfterWrite?.id) throw new Error('สร้างข้อมูล shop_profiles ไม่สำเร็จ');
     }
 
-    /* Verify the coordinates actually landed in the database before saying success. */
-    const verify=await qtSupabaseTable('shop_profiles?select=id,shop_name,status,latitude,longitude&user_id=eq.'+encodeURIComponent(users[idx].id)+'&limit=1',{accessToken:token});
+    /* Read back the SAME shop_profiles.id that was written. */
+    const verify=await qtSupabaseTable(
+      'shop_profiles?select=id,user_id,shop_name,status,latitude,longitude&id=eq.'+encodeURIComponent(savedAfterWrite.id)+'&user_id=eq.'+encodeURIComponent(publicUser.id)+'&limit=1',
+      {accessToken:token}
+    );
     const saved=Array.isArray(verify)?verify[0]:null;
-    if(!saved) throw new Error('ไม่พบข้อมูลร้านในฐานข้อมูลหลังบันทึก');
-    if(Number(saved.latitude)!==Number(users[idx].lat) || Number(saved.longitude)!==Number(users[idx].lng)){
+    if(!saved) throw new Error('ไม่พบข้อมูลร้านตัวเดิมในฐานข้อมูลหลังบันทึก');
+
+    const savedLat=Number(saved.latitude), savedLng=Number(saved.longitude);
+    const targetLat=Number(users[idx].lat), targetLng=Number(users[idx].lng);
+    const sameLat=Number.isFinite(savedLat)&&Number.isFinite(targetLat)&&Math.abs(savedLat-targetLat)<0.000001;
+    const sameLng=Number.isFinite(savedLng)&&Number.isFinite(targetLng)&&Math.abs(savedLng-targetLng)<0.000001;
+    if(!sameLat || !sameLng){
       throw new Error('พิกัดร้านในฐานข้อมูลไม่ตรงกับพิกัดที่บันทึก');
     }
 
