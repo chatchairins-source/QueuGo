@@ -1338,6 +1338,10 @@ async function qtHydrateDatabase(opts){
 
 
 function toast(msg){
+  /* Customer UI: transient black Toast is intentionally hidden.
+     Business logic still calls toast() as before, so nothing is deleted. */
+  const u=currentUser();
+  if(u && u.type==='customer') return;
   const t = document.createElement('div');
   t.className = 'qt-toast';
   t.textContent = msg;
@@ -1513,6 +1517,10 @@ function pushNotification(userId, title, body, link, type, referenceId){
   return n;
 }
 function showLiveToast(text, link){
+  /* Customer UI: notification popup/toast is temporarily disabled.
+     Notifications remain stored and the notification page/badge logic is untouched. */
+  const u=currentUser();
+  if(u && u.type==='customer') return;
   const box = document.getElementById('notif-toast-box');
   if(!box) return;
   const el = document.createElement('div');
@@ -2331,8 +2339,12 @@ function qtRouteRender(){
     case 'orders': renderOrders(); break;
     case 'order': renderOrderDetail(param); break;
     case 'notifications': renderNotifications(); break;
-    case 'emergency': renderEmergency(); break;
-    case 'call-technician': renderTechnicianClosed(); break;
+    /* QueueGo customer UI: technician service is temporarily disabled.
+       Keep the technician business logic in this file; only customer access is blocked. */
+    case 'emergency':
+    case 'call-technician':
+      if(user && user.type==='customer') { navigate('home'); return; }
+      renderHome(); break;
     default: renderHome();
   }
   window.scrollTo(0,0);
@@ -2396,7 +2408,6 @@ function renderHome(){
       </div>
     </section>
     <section class="qg-section"><div class="qg-section-head"><h2>ร้านแนะนำใกล้คุณ</h2><button onclick="navigate('search')">ดูทั้งหมด ›</button></div><div id="home-promote" class="qg-shop-strip"></div></section>
-    <section class="qg-disabled-service"><div class="qg-disabled-icon">🔧</div><div><b>เรียกช่าง</b><p>บริการนี้จะเปิดให้ใช้งานในเวอร์ชันถัดไป</p></div><span>เร็วๆ นี้</span></section>
   `);
   renderHomePromoteWidget();
 }
@@ -2923,7 +2934,6 @@ function renderCustomerProfile(user=currentUser(), orders=null, active=null){
       <button onclick="navigate('orders')"><span>📦</span><div><b>คำสั่งซื้อของฉัน</b><small>ดูประวัติและติดตามสถานะ</small></div><strong>›</strong></button>
       <button onclick="navigate('notifications')"><span>🔔</span><div><b>การแจ้งเตือน</b><small>ข่าวสารและสถานะออเดอร์</small></div><strong>›</strong></button>
       <button onclick="navigate('search')"><span>❤️</span><div><b>ร้านค้าและรายการโปรด</b><small>ค้นหาร้านใกล้คุณ</small></div><strong>›</strong></button>
-      <button onclick="navigate('call-technician')"><span>🔧</span><div><b>เรียกช่าง</b><small>บริการกำลังพัฒนา</small></div><strong>เร็วๆ นี้</strong></button>
       <button onclick="logout()" class="qg-menu-danger"><span>↪</span><div><b>ออกจากระบบ</b><small>ออกจากบัญชี QueueGo</small></div><strong>›</strong></button>
     </section>
   `);
