@@ -498,9 +498,6 @@ html, body {
 .qt-order-parties{display:flex;gap:7px;align-items:center;flex-wrap:wrap;margin-top:10px;font-size:13px}.qt-order-summary{margin-top:7px;color:#475569;font-size:13px}
 .qt-order-progress{margin-top:12px;padding:12px;background:#f8fafc;border-radius:14px}.qt-order-progress-title{font-weight:800;font-size:13px;margin-bottom:8px}.qt-order-progress-list{display:grid;gap:6px}.qt-order-step{display:flex;gap:9px;align-items:center;min-height:34px;opacity:.45}.qt-order-step.done,.qt-order-step.active{opacity:1}.qt-order-step-icon{width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:#e2e8f0;font-size:13px;flex:none}.qt-order-step.done .qt-order-step-icon{background:#dcfce7;color:#15803d}.qt-order-step.active .qt-order-step-icon{background:var(--primary,#2563eb);color:#fff}.qt-order-step-text{display:flex;gap:7px;align-items:center;flex-wrap:wrap;font-size:12px}.qt-order-step-text small{color:#94a3b8}.qt-order-now{font-size:10px;padding:2px 6px;border-radius:999px;background:#dbeafe;color:#1d4ed8}.qt-order-cancelled{margin-top:8px;padding:9px;border-radius:10px;background:#fee2e2;color:#b91c1c;font-size:12px}.qt-order-card-actions{margin-top:10px}.qt-order-card-actions .btn-block{margin-top:6px}
 </style>
-<style id="qt-db-first-loading-style">
-.qt-page-loading{min-height:60vh;display:flex;align-items:center;justify-content:center;padding:32px 16px;box-sizing:border-box}.qt-page-loading-card{text-align:center;max-width:360px;width:100%;padding:28px 20px;border-radius:24px;background:#fff;box-shadow:0 12px 40px rgba(0,0,0,.08)}.qt-page-loading-card h2{margin:12px 0 8px}.qt-page-loading-card p{margin:0;color:#64748b}.qt-spinner{width:34px;height:34px;margin:0 auto;border:4px solid #dbe4ff;border-top-color:#3159d9;border-radius:50%;animation:qtspin .8s linear infinite}@keyframes qtspin{to{transform:rotate(360deg)}}
-</style>
 </head>
 <body>
 
@@ -636,119 +633,41 @@ function qtAuthEmailFromPhone(phone){
 }
 async function qtCreateSupabaseUser({type,name,phone,password,email}){
   const cleanEmail=String(email||'').trim().toLowerCase();
-  const cleanPhone=String(phone||'').trim().replace(/[-\s]/g,'');
+  const cleanPhone=String(phone||'').trim();
   const authEmail=cleanEmail || qtAuthEmailFromPhone(cleanPhone);
-  if(!authEmail) throw new Error('ไม่พบข้อมูลสำหรับสร้างบัญชี');
-
-  /*
-   * V5.40 ACCOUNT CREATION — single source of truth
-   * 1) Create Supabase Auth user first.
-   * 2) Require a valid Auth session.
-   * 3) Create exactly one public.users row linked by auth_user_id.
-   * 4) Verify that the row really belongs to the Auth user.
-   * 5) For shops, create/verify shop_profiles using public.users.id.
-   *
-   * Login NEVER creates public.users. Only registration creates it.
-   * This prevents orphan public.users rows with no Supabase Auth account.
-   */
   const auth=await qtSupabaseAuth('signup',{
     email:authEmail,
     password,
     data:{name,phone:cleanPhone||null,role:type}
   });
-  if(!auth.user || !auth.user.id) throw new Error('สร้างบัญชี Supabase Authentication ไม่สำเร็จ');
-
   let session=auth.session;
+  if(!auth.user) throw new Error('สร้างบัญชี Auth ไม่สำเร็จ');
   if(!session || !session.access_token){
-    /* Phone accounts use the internal login email. If email confirmation is enabled,
-       there is no safe client-side way to finish account creation without confirmation. */
+    if(cleanEmail){
+      return {auth,session:null,profile:null,needsEmailConfirmation:true,authEmail};
+    }
     try{
       session=await qtSupabaseAuth('token?grant_type=password',{email:authEmail,password});
     }catch(loginErr){
-      throw new Error(cleanEmail
-        ? 'บัญชีถูกสร้างแล้ว แต่ยังไม่ได้ยืนยันอีเมลใน Supabase'
-        : 'บัญชี Auth ถูกสร้างแล้ว แต่ Supabase ยังไม่อนุญาตให้เข้าสู่ระบบทันที กรุณาปิด Email Confirmation ใน Supabase Authentication Settings แล้วสมัครใหม่');
+      throw new Error('AUTH_CONFIRMATION_REQUIRED');
     }
   }
-  if(!session || !session.access_token) throw new Error('ไม่สามารถสร้าง Session ของบัญชีได้');
-
-  const token=session.access_token;
-  const authUserId=auth.user.id;
+  /* V5.37 FIX:
+     The users table flow already uses auth_user_id as the conflict identity
+     elsewhere in QueueTech. Use that same database-backed identity here.
+     Do not use phone as the conflict target because the earlier V5.32 target
+     was not backed by a matching UNIQUE/EXCLUSION constraint. */
   const row={
-    auth_user_id:authUserId,
+    auth_user_id:auth.user.id,
     role:type,
     name,
     phone:cleanPhone||null,
     status:type==='customer'?'active':'pending'
   };
-
-  /* Never use an upsert here. First check by auth_user_id, then insert only if absent. */
-  const existingRows=await qtSupabaseTable(
-    'users?select=id,auth_user_id,role,name,phone,status,created_at&auth_user_id=eq.'+encodeURIComponent(authUserId)+'&limit=1',
-    {accessToken:token}
-  );
-  let profile=Array.isArray(existingRows)&&existingRows[0]?existingRows[0]:null;
-
-  if(!profile){
-    const createdRows=await qtSupabaseTable('users?select=id,auth_user_id,role,name,phone,status,created_at',{
-      method:'POST',accessToken:token,body:row
-    });
-    profile=Array.isArray(createdRows)&&createdRows[0]?createdRows[0]:createdRows;
-  }
-
-  if(!profile || !profile.id) throw new Error('สร้างข้อมูลสมาชิกใน public.users ไม่สำเร็จ');
-  if(String(profile.auth_user_id)!==String(authUserId)){
-    /* Do not continue with a mismatched account. */
-    throw new Error('ข้อมูล users.auth_user_id ไม่ตรงกับ Supabase Authentication');
-  }
-
-  /* Shop registration owns its shop profile from the start. */
-  if(type==='shop'){
-    const shopRows=await qtSupabaseTable(
-      'shop_profiles?select=id,user_id,shop_name,phone,address,status,latitude,longitude&user_id=eq.'+encodeURIComponent(profile.id)+'&limit=1',
-      {accessToken:token}
-    );
-    let shopProfile=Array.isArray(shopRows)&&shopRows[0]?shopRows[0]:null;
-    if(!shopProfile){
-      const shopBody={
-        user_id:profile.id,
-        shop_name:name||'ร้านค้า',
-        phone:cleanPhone||null,
-        address:null,
-        status:'pending',
-        latitude:null,
-        longitude:null,
-        metadata:{source:'registration',auth_user_id:authUserId}
-      };
-      const createdShopRows=await qtSupabaseTable('shop_profiles?select=id,user_id,shop_name,phone,address,status,latitude,longitude',{
-        method:'POST',accessToken:token,body:shopBody
-      });
-      shopProfile=Array.isArray(createdShopRows)&&createdShopRows[0]?createdShopRows[0]:createdShopRows;
-    }
-    if(!shopProfile || !shopProfile.id) throw new Error('สร้างโปรไฟล์ร้านค้าใน shop_profiles ไม่สำเร็จ');
-    if(String(shopProfile.user_id)!==String(profile.id)) throw new Error('shop_profiles.user_id ไม่ตรงกับ public.users.id');
-  }
-
-  /* Final verification: Auth session -> users -> shop profile (when applicable). */
-  const verified=await qtSupabaseTable(
-    'users?select=id,auth_user_id,role,name,phone,status,created_at&auth_user_id=eq.'+encodeURIComponent(authUserId)+'&limit=1',
-    {accessToken:token}
-  );
-  const verifiedUser=Array.isArray(verified)&&verified[0]?verified[0]:null;
-  if(!verifiedUser || String(verifiedUser.auth_user_id)!==String(authUserId)){
-    throw new Error('ตรวจสอบบัญชีไม่ผ่าน: ไม่พบ public.users ที่ผูกกับ Auth');
-  }
-  if(type==='shop'){
-    const verifiedShop=await qtSupabaseTable(
-      'shop_profiles?select=id,user_id,status&user_id=eq.'+encodeURIComponent(verifiedUser.id)+'&limit=1',
-      {accessToken:token}
-    );
-    if(!Array.isArray(verifiedShop)||!verifiedShop[0]||String(verifiedShop[0].user_id)!==String(verifiedUser.id)){
-      throw new Error('ตรวจสอบโปรไฟล์ร้านไม่ผ่าน: ไม่พบ shop_profiles ที่ผูกกับ users.id');
-    }
-  }
-
-  return {auth,session,profile:verifiedUser,needsEmailConfirmation:false,authEmail};
+  const rows=await qtSupabaseTable('users?select=id,auth_user_id,role,name,phone,status,created_at&on_conflict=auth_user_id',{method:'POST',accessToken:session.access_token,body:row});
+  const profile=Array.isArray(rows)?rows[0]:rows;
+  if(!profile) throw new Error('สร้างข้อมูลผู้ใช้ในฐานข้อมูลไม่สำเร็จ');
+  return {auth,session,profile,needsEmailConfirmation:false,authEmail};
 }
 async function qtLoadOwnSupabaseUser(accessToken, authUserId){
   const rows=await qtSupabaseTable('users?select=*&auth_user_id=eq.'+encodeURIComponent(authUserId),{accessToken});
@@ -1155,13 +1074,11 @@ function qtUserFromRow(r){
 function qtOrderToRow(o){
   const pickup=o.pickup||{};
   const delivery=o.delivery||{};
-  const cleanNote=String(o.note||'').replace(/__QT_ORDER_STATUS__=[^\n]*\n?/g,'').trim();
   return {id:qtUuidLike(o.id)?o.id:undefined,order_number:String(o.orderNumber||o.orderNo||o.id||uid()),customer_id:o.customerId||null,shop_id:o.shopProfileId||null,technician_id:o.technicianProfileId||null,rider_id:o.riderProfileId||null,order_type:o.orderType==='service'?'service':'shopping',status:qtOrderStatusToDb(o.status),subtotal:Number(o.subtotal||0),delivery_fee:Number(o.deliveryFee||0),total_amount:Number(o.total||o.totalAmount||0),pickup_address:o.pickupAddress??pickup.address??null,pickup_latitude:o.pickupLat??pickup.lat??null,pickup_longitude:o.pickupLng??pickup.lng??null,delivery_address:o.deliveryAddress??delivery.address??null,delivery_latitude:o.deliveryLat??delivery.lat??null,delivery_longitude:o.deliveryLng??delivery.lng??null,note:(`__QT_ORDER_STATUS__=${o.status}
-`+cleanNote).trim()||null,created_at:qtIso(o.createdAt),updated_at:qtIso(Date.now())};
+`+(o.note||'')).trim()||null,created_at:qtIso(o.createdAt),updated_at:qtIso(Date.now())};
 }
 function qtOrderFromRow(r){
-  const cleanNote=(r.note||'').replace(/__QT_ORDER_STATUS__=[^\n]*\n?/g,'').trim();
-  return {id:r.id,orderNumber:r.order_number,customerId:r.customer_id,shopProfileId:r.shop_id,technicianProfileId:r.technician_id,riderProfileId:r.rider_id,status:qtOrderStatusFromDb(r.status,r.note),orderType:r.order_type,subtotal:Number(r.subtotal||0),deliveryFee:Number(r.delivery_fee||0),total:Number(r.total_amount||0),pickupAddress:r.pickup_address||'',pickupLat:r.pickup_latitude,pickupLng:r.pickup_longitude,deliveryAddress:r.delivery_address||'',deliveryLat:r.delivery_latitude,deliveryLng:r.delivery_longitude,note:cleanNote,createdAt:new Date(r.created_at).getTime(),updatedAt:new Date(r.updated_at||r.created_at).getTime(),items:[]};
+  return {id:r.id,orderNumber:r.order_number,customerId:r.customer_id,shopProfileId:r.shop_id,technicianProfileId:r.technician_id,riderProfileId:r.rider_id,status:qtOrderStatusFromDb(r.status,r.note),orderType:r.order_type,subtotal:Number(r.subtotal||0),deliveryFee:Number(r.delivery_fee||0),total:Number(r.total_amount||0),pickupAddress:r.pickup_address||'',pickupLat:r.pickup_latitude,pickupLng:r.pickup_longitude,deliveryAddress:r.delivery_address||'',deliveryLat:r.delivery_latitude,deliveryLng:r.delivery_longitude,note:r.note||'',createdAt:new Date(r.created_at).getTime(),updatedAt:new Date(r.updated_at||r.created_at).getTime(),items:[]};
 }
 function qtTechJobToRow(j){
   const note='__QT_TECH_STATUS__='+j.status+'\n'+(j.description||'');
@@ -1404,12 +1321,7 @@ async function qtHydrateDatabase(opts){
     try{const ns=await qtSupabaseTable('notifications?select=*',{accessToken:token}); QT_DB_CACHE.qt_notifications=(Array.isArray(ns)?ns:[]).map(n=>({id:n.id,userId:n.user_id,title:n.title||'การแจ้งเตือน',message:n.message||'',body:n.message||'',link:qtNotifLinkFromRow(n),type:n.type||'system',referenceId:n.reference_id||null,read:n.is_read===true,readAt:n.is_read?new Date(n.created_at).getTime():null,createdAt:new Date(n.created_at).getTime()}));}catch(e){ if(!Array.isArray(QT_DB_CACHE.qt_notifications)) QT_DB_CACHE.qt_notifications=[]; }
     qtMarkClean('qt_orders'); qtMarkClean('qt_techjobs'); qtMarkClean('qt_notifications');
     if(!light){
-    QT_DB_CACHE.qt_audit_log=[]; QT_DB_CACHE.qt_finance_ledger=[];    try{const ps=await qtSupabaseTable('products?select=*',{accessToken:token}); QT_DB_CACHE.qt_products=(Array.isArray(ps)?ps:[]).map(p=>{
-        const meta=(p.metadata&&typeof p.metadata==='object')?p.metadata:{};
-        const profileShopId=p.shop_id||meta.shopProfileId||null;
-        const mappedUserId=profileShopId && profileMaps.shopById ? profileMaps.shopById.get(profileShopId) : null;
-        return Object.assign({id:p.id,shopId:mappedUserId||meta.shopId||profileShopId,shopProfileId:profileShopId,name:p.name,description:p.description,price:Number(p.price||0),image:p.image||'',available:p.available!==false,createdAt:new Date(p.created_at).getTime()},meta);
-      });}catch(e){QT_DB_CACHE.qt_products=[];}
+    QT_DB_CACHE.qt_audit_log=[]; QT_DB_CACHE.qt_finance_ledger=[];    try{const ps=await qtSupabaseTable('products?select=*',{accessToken:token}); QT_DB_CACHE.qt_products=(Array.isArray(ps)?ps:[]).map(p=>Object.assign({id:p.id,shopId:p.shop_id,name:p.name,description:p.description,price:Number(p.price||0),image:p.image||'',available:p.available!==false,createdAt:new Date(p.created_at).getTime()},p.metadata||{}));}catch(e){QT_DB_CACHE.qt_products=[];}
     try{const pr=await qtSupabaseTable('promotions?select=*',{accessToken:token}); QT_DB_CACHE.qt_promotions=(Array.isArray(pr)?pr:[]).map(p=>Object.assign({id:p.id,shopId:p.shop_id,shopName:p.shop_name,category:p.category,area:p.area,bidPrice:Number(p.bid_price||0),maxBudget:Number(p.max_budget||0),periodDays:Number(p.period_days||0),status:p.status,approvedBy:p.approved_by,approvedAt:p.approved_at?new Date(p.approved_at).getTime():null,paymentStatus:p.payment_status,activatedAt:p.activated_at?new Date(p.activated_at).getTime():null,createdAt:new Date(p.created_at).getTime()},p.metadata||{}));}catch(e){QT_DB_CACHE.qt_promotions=[];}
     try{const st=await qtSupabaseTable('settlements?select=*',{accessToken:token}); QT_DB_CACHE.qt_settlements=(Array.isArray(st)?st:[]).map(x=>Object.assign({id:x.id,shopId:x.shop_id,dateKey:x.date_key,status:x.status,amount:Number(x.amount||0),createdAt:new Date(x.created_at).getTime()},x.metadata||{}));}catch(e){QT_DB_CACHE.qt_settlements=[];}
     try{const oa=await qtSupabaseTable('order_audit?select=*',{accessToken:token}); QT_DB_CACHE.qt_order_audit=(Array.isArray(oa)?oa:[]).map(x=>Object.assign({id:x.id,orderId:x.order_id,adminId:x.admin_id,action:x.action,at:new Date(x.created_at).getTime()},x.metadata||{}));}catch(e){QT_DB_CACHE.qt_order_audit=[];}
@@ -2380,20 +2292,12 @@ function qtStartSyncLoop(){
   document.addEventListener('visibilitychange',()=>{ if(!document.hidden) qtSyncTick(); });
 }
 window.addEventListener('DOMContentLoaded', async ()=>{
-  /* QueueTech loading rule: data-dependent pages must NOT render before the first
-     authoritative Supabase load has finished. Auth-only pages may render immediately. */
+  /* V5.33: show the page first, load Supabase data in the background */
   const hadSession=!!qtAccessToken();
-  if(hadSession) await qtRestoreOwnUser();
-  const page=(location.hash.replace('#','')||'home').split('/')[0];
-  const authOnly=['login','register','rider-register','approval-pending'];
-  if(hadSession && !authOnly.includes(page)){
-    try{ await qtBackgroundHydrate({light:false}); }
-    catch(e){ console.error('Initial Supabase load failed:',e); }
-  }
+  if(hadSession) await qtRestoreOwnUser(); /* one small request (own account row) so a refresh keeps the signed-in user */
   router();
-  qtStartSyncLoop();
-  /* Notifications use Realtime; business pages do not wait on Realtime. */
-  setTimeout(()=>{ if(!QT_DB_READY.value && qtAccessToken()) qtBackgroundHydrate({light:false}); },0);
+  qtStartSyncLoop(); /* does not block the UI */
+  setTimeout(()=>{ qtBackgroundHydrate({light:false}); },0);
 });
 
 /* V5.33: a page that throws while rendering used to leave the previous screen frozen with dead buttons and no clue why. Now the error is logged and shown. */
@@ -2402,21 +2306,10 @@ function router(){
   catch(err){ console.error('router error',err); try{ toast('แสดงหน้านี้ไม่สำเร็จ: '+String((err&&err.message)||err).slice(0,90)); }catch(e){} }
 }
 function qtRouteRender(){
+  destroyMaps();
   const hash = location.hash.replace('#','') || 'home';
   const [page, param] = hash.split('/');
   const user = currentUser();
-
-  /* Hard loading gate: never paint a business page from stale/incomplete cache
-     before the authoritative Supabase load is finished. */
-  const dataFreePages=['login','register','rider-register'];
-  if(user && !dataFreePages.includes(page) && !QT_DB_READY.value){
-    const app=document.getElementById('app');
-    if(app) app.innerHTML='<div class="qt-page-loading"><div class="qt-page-loading-card"><div class="qt-spinner"></div><h2>กำลังโหลดข้อมูล</h2><p>กำลังตรวจสอบข้อมูลจากฐานข้อมูล กรุณารอสักครู่…</p></div></div>';
-    if(!QT_DB_HYDRATING) qtBackgroundHydrate({light:false});
-    return;
-  }
-
-  destroyMaps();
 
   /* V5.39 BATCH 1 — Rider registration/approval route guard.
      A pending/rejected/suspended rider must never be sent back to rider-setup.
@@ -2953,15 +2846,21 @@ async function handleLogin(e){
     // รองรับทั้งบัญชีที่ใช้เบอร์โทรเป็นตัวระบุ และบัญชี Supabase Auth ที่มีอีเมลจริง เช่นบัญชี Admin
     const authEmail = loginValue.includes('@') ? loginValue : qtAuthEmailFromPhone(loginValue);
     const auth=await qtSupabaseAuth('token?grant_type=password',{email:authEmail,password});
-    const p=await qtLoadOwnSupabaseUser(auth.access_token,auth.user.id);
+    let p=await qtLoadOwnSupabaseUser(auth.access_token,auth.user.id);
     if(!p){
-      /* Login is read-only for public.users. Never create a profile here.
-         A missing row means the account was created outside QueueTech registration
-         or the database relationship is broken, and must be repaired explicitly. */
-      throw new Error('พบบัญชี Supabase Authentication แต่ไม่พบ public.users ที่เชื่อมกับบัญชีนี้ กรุณาสมัครใหม่หรือให้ Admin ตรวจสอบข้อมูล');
-    }
-    if(String(p.auth_user_id)!==String(auth.user.id)){
-      throw new Error('ข้อมูลบัญชีไม่ตรงกัน: users.auth_user_id ไม่ตรงกับ Supabase Authentication');
+      const meta=auth.user?.user_metadata||{};
+      const role=['customer','shop','technician','rider','admin'].includes(meta.role)?meta.role:'customer';
+      const name=qtCleanText(meta.name||'ผู้ใช้');
+      const phone=String(meta.phone||'').trim()||null;
+      try{
+        const rows=await qtSupabaseTable('users?select=id,auth_user_id,role,name,phone,status,created_at&on_conflict=auth_user_id',{
+          method:'POST',accessToken:auth.access_token,
+          body:{auth_user_id:auth.user.id,role,name,phone,status:role==='customer'?'active':'pending'}
+        });
+        p=Array.isArray(rows)?rows[0]:rows;
+      }catch(createErr){
+        throw new Error('เข้าสู่ระบบสำเร็จ แต่ยังสร้างข้อมูลสมาชิกในฐานข้อมูลไม่ได้: '+createErr.message);
+      }
     }
     /* V5.32: status is derived from the real row (column + admin-approved metadata), not guessed from the role */
     const user=qtUserFromRow(p);
@@ -3237,76 +3136,22 @@ async function handleShopSetup(e){
   try{
     const token=await qtGetAccessToken();
     if(!token) throw new Error('ยังไม่ได้เข้าสู่ระบบ');
-    /*
-     * IMPORTANT: this page must follow the real identity chain:
-     * Auth user -> public.users(auth_user_id) -> public.users.id -> shop_profiles.user_id -> shop_profiles.id
-     * Never assume the browser cache's users[idx].id is the shop profile id, and never update a shop by name.
-     */
-    const authUserId=users[idx].authUserId || getSession()?.authUserId;
-    if(!authUserId) throw new Error('ไม่พบ Auth User ID ของบัญชีร้าน');
-
-    const publicUserRows=await qtSupabaseTable(
-      'users?select=id,auth_user_id,role,name,phone,status&auth_user_id=eq.'+encodeURIComponent(authUserId)+'&limit=1',
-      {accessToken:token}
-    );
-    const publicUser=Array.isArray(publicUserRows)?publicUserRows[0]:null;
-    if(!publicUser?.id) throw new Error('ไม่พบข้อมูลบัญชีร้านใน public.users');
-    if(String(publicUser.auth_user_id)!==String(authUserId)) throw new Error('users.auth_user_id ไม่ตรงกับบัญชีที่เข้าสู่ระบบ');
-    if(String(publicUser.role)!=='shop') throw new Error('บัญชีที่เข้าสู่ระบบไม่ใช่บัญชีร้านค้า');
-
-    /* Keep the local cache identity synchronized with the authoritative DB identity. */
-    users[idx].id=publicUser.id;
-    users[idx].authUserId=publicUser.auth_user_id;
-
     const userRow=qtUserToRow(users[idx], true);
-    await qtSupabaseTable('users?id=eq.'+encodeURIComponent(publicUser.id),{method:'PATCH',accessToken:token,body:userRow});
+    await qtSupabaseTable('users?id=eq.'+encodeURIComponent(users[idx].id),{method:'PATCH',accessToken:token,body:userRow});
 
-    const profileRows=await qtSupabaseTable(
-      'shop_profiles?select=id,user_id,shop_name,status,latitude,longitude&user_id=eq.'+encodeURIComponent(publicUser.id)+'&limit=1',
-      {accessToken:token}
-    );
-    const existingShop=Array.isArray(profileRows)?profileRows[0]:null;
-    const profileBody={
-      shop_name:users[idx].shopName||users[idx].name||'ร้านค้า',
-      phone:users[idx].phone||null,
-      address:users[idx].address||null,
-      latitude:Number(users[idx].lat),
-      longitude:Number(users[idx].lng),
-      status:users[idx].status==='suspended'?'suspended':'active',
-      metadata:qtUserMetadata(users[idx])
-    };
-
-    let savedAfterWrite=null;
-    if(existingShop?.id){
-      if(String(existingShop.user_id)!==String(publicUser.id)) throw new Error('shop_profiles.user_id ไม่ตรงกับ public.users.id');
-      const updated=await qtSupabaseTable(
-        'shop_profiles?id=eq.'+encodeURIComponent(existingShop.id)+'&user_id=eq.'+encodeURIComponent(publicUser.id)+'&select=id,user_id,shop_name,status,latitude,longitude',
-        {method:'PATCH',accessToken:token,body:profileBody}
-      );
-      savedAfterWrite=Array.isArray(updated)?updated[0]:updated;
-      if(!savedAfterWrite?.id) throw new Error('ฐานข้อมูลไม่ยืนยันการอัปเดตข้อมูลร้าน (อาจเป็น RLS)');
+    const profileRows=await qtSupabaseTable('shop_profiles?select=id&user_id=eq.'+encodeURIComponent(users[idx].id)+'&limit=1',{accessToken:token});
+    const profileBody={shop_name:users[idx].shopName||users[idx].name||'ร้านค้า',phone:users[idx].phone||null,address:users[idx].address||null,latitude:users[idx].lat??null,longitude:users[idx].lng??null,status:users[idx].status==='suspended'?'suspended':'active',metadata:qtUserMetadata(users[idx])};
+    if(Array.isArray(profileRows) && profileRows[0]?.id){
+      await qtSupabaseTable('shop_profiles?id=eq.'+encodeURIComponent(profileRows[0].id),{method:'PATCH',accessToken:token,body:profileBody});
     }else{
-      const created=await qtSupabaseTable(
-        'shop_profiles?select=id,user_id,shop_name,status,latitude,longitude&on_conflict=user_id',
-        {method:'POST',accessToken:token,body:{user_id:publicUser.id,...profileBody}}
-      );
-      savedAfterWrite=Array.isArray(created)?created[0]:created;
-      if(!savedAfterWrite?.id) throw new Error('สร้างข้อมูล shop_profiles ไม่สำเร็จ');
+      await qtSupabaseTable('shop_profiles?on_conflict=user_id',{method:'POST',accessToken:token,body:{user_id:users[idx].id,...profileBody}});
     }
 
-    /* Read back the SAME shop_profiles.id that was written. */
-    const verify=await qtSupabaseTable(
-      'shop_profiles?select=id,user_id,shop_name,status,latitude,longitude&id=eq.'+encodeURIComponent(savedAfterWrite.id)+'&user_id=eq.'+encodeURIComponent(publicUser.id)+'&limit=1',
-      {accessToken:token}
-    );
+    /* Verify the coordinates actually landed in the database before saying success. */
+    const verify=await qtSupabaseTable('shop_profiles?select=id,shop_name,status,latitude,longitude&user_id=eq.'+encodeURIComponent(users[idx].id)+'&limit=1',{accessToken:token});
     const saved=Array.isArray(verify)?verify[0]:null;
-    if(!saved) throw new Error('ไม่พบข้อมูลร้านตัวเดิมในฐานข้อมูลหลังบันทึก');
-
-    const savedLat=Number(saved.latitude), savedLng=Number(saved.longitude);
-    const targetLat=Number(users[idx].lat), targetLng=Number(users[idx].lng);
-    const sameLat=Number.isFinite(savedLat)&&Number.isFinite(targetLat)&&Math.abs(savedLat-targetLat)<0.000001;
-    const sameLng=Number.isFinite(savedLng)&&Number.isFinite(targetLng)&&Math.abs(savedLng-targetLng)<0.000001;
-    if(!sameLat || !sameLng){
+    if(!saved) throw new Error('ไม่พบข้อมูลร้านในฐานข้อมูลหลังบันทึก');
+    if(Number(saved.latitude)!==Number(users[idx].lat) || Number(saved.longitude)!==Number(users[idx].lng)){
       throw new Error('พิกัดร้านในฐานข้อมูลไม่ตรงกับพิกัดที่บันทึก');
     }
 
@@ -3487,16 +3332,9 @@ async function qtEnsurePublicShopsLoaded(){
     const rows=await qtSupabaseTable('shop_profiles?select=*',{accessToken:token});
     if(!Array.isArray(rows)) return false;
     const current=dbGet('qt_users',[]).filter(u=>u.type!=='shop');
-    const shops=rows.filter(x=>x && String(x.status||'').toLowerCase()==='active' && x.id && x.user_id).map(x=>{
+    const shops=rows.filter(x=>x && String(x.status||'').toLowerCase()==='active').map(x=>{
       const meta=(x.metadata&&typeof x.metadata==='object')?x.metadata:{};
-      return Object.assign({},meta,{
-        id:x.user_id,
-        userId:x.user_id,
-        shopProfileId:x.id,
-        type:'shop',status:'approved',
-        shopName:x.shop_name,name:meta.name||x.shop_name,phone:x.phone,address:x.address,
-        lat:x.latitude,lng:x.longitude,supabase:true,_profileOnly:true
-      });
+      return Object.assign({},meta,{id:x.user_id,type:'shop',status:'approved',shopName:x.shop_name,name:meta.name||x.shop_name,phone:x.phone,address:x.address,lat:x.latitude,lng:x.longitude,supabase:true,_profileOnly:true});
     });
     QT_DB_CACHE.qt_users=current.concat(shops);
     return shops.length>0;
@@ -3586,15 +3424,10 @@ function productCardCustomer(p){
     </div>
   </div>`;
 }
-function qtNormalizeCart(raw){
-  const cart = (raw && typeof raw==='object' && !Array.isArray(raw)) ? raw : {};
-  const items = Array.isArray(cart.items) ? cart.items.filter(i=>i && typeof i==='object') : [];
-  return {shopId:cart.shopId||null, shopProfileId:cart.shopProfileId||null, items};
-}
 function cartCount(){
   const user=currentUser();if(!user)return 0;
-  const cart=qtNormalizeCart(dbGet('qt_cart_'+user.id,{shopId:null,items:[]}));
-  return cart.items.reduce((s,i)=>s+Number(i.qty||0),0);
+  const cart=dbGet('qt_cart_'+user.id,{items:[]});
+  return (cart.items||[]).reduce((s,i)=>s+Number(i.qty||0),0);
 }
 function updateCartCountUI(){
   const count=cartCount();
@@ -3608,116 +3441,43 @@ function addToCart(productId){
   const user = currentUser();
   if(!user || user.type!=='customer'){ toast('กรุณาเข้าสู่ระบบด้วยบัญชีลูกค้าก่อน'); navigate('login'); return; }
   const product = dbGet('qt_products',[]).find(p=>p.id===productId);
-  if(!product){ toast('ไม่พบสินค้า'); return; }
-  /* Canonical identity: the cart MUST carry shop_profiles.id from the product.
-     public.users.id is kept only as the owner/UI identity. */
-  const productShopProfileId=product.shopProfileId||null;
-  const productShopUserId=product.shopId||null;
-  if(!productShopProfileId){
-    console.error('[QueueTech] addToCart blocked: product.shopProfileId missing',product);
-    toast('ไม่พบโปรไฟล์ร้านของสินค้านี้ กรุณาโหลดร้านใหม่');
-    return;
-  }
-  let cart = qtNormalizeCart(dbGet('qt_cart_'+user.id, {shopId:null,shopProfileId:null,items:[]}));
-  if(cart.shopProfileId && String(cart.shopProfileId)!==String(productShopProfileId)){
+  let cart = dbGet('qt_cart_'+user.id, {shopId:null, items:[]});
+  if(cart.shopId && cart.shopId!==product.shopId){
     if(!confirm('ตะกร้าปัจจุบันเป็นของร้านอื่น ต้องการล้างตะกร้าและเริ่มใหม่หรือไม่?')) return;
-    cart = {shopId:productShopUserId,shopProfileId:productShopProfileId,items:[]};
+    cart = {shopId:product.shopId, items:[]};
   }
-  cart.shopId = productShopUserId;
-  cart.shopProfileId = productShopProfileId;
+  cart.shopId = product.shopId;
   const existing = cart.items.find(i=>i.productId===productId);
   if(existing) existing.qty++;
   else cart.items.push({productId, name:product.name, price:product.price, image:product.image, qty:1});
   dbSet('qt_cart_'+user.id, cart);
   toast('เพิ่มลงตะกร้าแล้ว');
 }
-/* V5.40 FIX — Cart/Checkout shop identity resolver.
-   UI uses public.users.id, while Supabase products/orders use shop_profiles.id.
-   Always resolve both directions before reading the shop or creating an order. */
-function qtResolveShopFromCartId(cartShopId){
-  const id=String(cartShopId||'');
-  if(!id) return null;
-  const users=Array.isArray(dbGet('qt_users',[]))?dbGet('qt_users',[]):[];
-  return users.find(u=>String(u.id)===id && u.type==='shop')||null;
-}
-
-/* Canonical shop profile resolver. The cart/order path uses shop_profiles.id as the
-   authoritative database key. It can recover the profile from the cart directly,
-   or verify it against the shop owner's public.users.id. */
-async function qtResolveAuthoritativeShopProfileId(shop, cartShopProfileId){
-  /* V5.41 DB-FIRST FIX:
-     Do not depend on the cart's cached shopProfileId being fresh. The shop owner's
-     public.users.id is stable enough to locate the authoritative active profile in
-     Supabase. Try the cart/profile id first for speed, then fall back to user_id.
-     The diagnostic toast remains unchanged when the DB truly has no active profile. */
-  const token=await qtGetAccessToken();
-  if(!token || !shop?.id) return null;
-  const candidates=[];
-  const first=cartShopProfileId||shop?.shopProfileId||null;
-  if(first) candidates.push({type:'id',value:String(first)});
-  candidates.push({type:'user_id',value:String(shop.id)});
-  try{
-    for(const candidate of candidates){
-      const query = candidate.type==='id'
-        ? 'shop_profiles?select=id,user_id,status&id=eq.'+encodeURIComponent(candidate.value)+'&limit=1'
-        : 'shop_profiles?select=id,user_id,status&user_id=eq.'+encodeURIComponent(candidate.value)+'&status=eq.active&limit=1';
-      const rows=await qtSupabaseTable(query,{accessToken:token});
-      if(Array.isArray(rows)&&rows[0]?.id){
-        const row=rows[0];
-        if(row.user_id && String(row.user_id)!==String(shop.id)){
-          console.error('[QueueTech] shop profile owner mismatch',{candidate,shopUserId:shop.id,profileUserId:row.user_id});
-          continue;
-        }
-        if(String(row.status||'').toLowerCase()!=='active') continue;
-        return row.id;
-      }
-    }
-  }catch(e){ console.warn('[QueueTech] shop profile verification failed:',e); }
-  return null;
-}
-
 function renderCart(){
-  const user = currentUser();
-  if(!user||user.type!=='customer'){ navigate('login'); return; }
-
-  /* V5.40 FIX — cart data is session-only and may contain an older/malformed
-     shape after an update. Never let one bad cart item crash the whole router. */
-  const cart = qtNormalizeCart(dbGet('qt_cart_'+user.id,{shopId:null,items:[]}));
-  const shop = qtResolveShopFromCartId(cart.shopId);
-
-  const total = cart.items.reduce((sum,item)=>{
-    const price=Number(item.price||0);
-    const qty=Number(item.qty||0);
-    return sum + (Number.isFinite(price)&&Number.isFinite(qty) ? price*qty : 0);
-  },0);
-
+  const user = currentUser(); if(!user||user.type!=='customer'){ navigate('login'); return; }
+  const cart = dbGet('qt_cart_'+user.id, {shopId:null, items:[]});
+  const shop = cart.shopId ? dbGet('qt_users',[]).find(u=>u.id===cart.shopId) : null;
+  const total = cart.items.reduce((s,i)=>s+i.price*i.qty,0);
   layout('ตะกร้าสินค้า', `
     <h2>🛒 ตะกร้าสินค้า</h2>
-    ${shop?`<p>ร้าน: <b>${escapeHtml(shop.shopName||shop.name||'')}</b></p>`:''}
-    ${cart.items.length ? cart.items.map(i=>{
-      const productId=escapeHtml(i.productId||'');
-      const price=Number(i.price||0);
-      const qty=Math.max(1,Number(i.qty||1));
-      return `
+    ${shop?`<p>ร้าน: <b>${escapeHtml(shop.shopName)}</b></p>`:''}
+    ${cart.items.length ? cart.items.map(i=>`
       <div class="cart-item">
         <img src="${escapeHtml(i.image||placeholderImg())}" class="cart-item-img">
         <div class="cart-item-info">
-          <b>${escapeHtml(i.name||'สินค้า')}</b>
-          <div>${escapeHtml(price)} บาท x <button onclick="changeQty('${productId}',-1)">-</button> ${escapeHtml(qty)} <button onclick="changeQty('${productId}',1)">+</button></div>
+          <b>${escapeHtml(i.name)}</b>
+          <div>${escapeHtml(i.price)} บาท x <button onclick="changeQty('${i.productId}',-1)">-</button> ${escapeHtml(i.qty)} <button onclick="changeQty('${i.productId}',1)">+</button></div>
         </div>
-        <button class="btn-danger" onclick="removeFromCart('${productId}')">ลบ</button>
-      </div>`;
-    }).join('') : '<p>ตะกร้าว่างเปล่า</p>'}
+        <button class="btn-danger" onclick="removeFromCart('${i.productId}')">ลบ</button>
+      </div>`).join('') : '<p>ตะกร้าว่างเปล่า</p>'}
     ${cart.items.length ? `<div class="cart-total">รวม: ${total} บาท</div>
       <button class="btn-primary btn-block" onclick="navigate('checkout')">ดำเนินการสั่งซื้อ →</button>` : ''}
   `);
 }
 function changeQty(productId, delta){
   const user = currentUser();
-  if(!user) return;
-  let cart = qtNormalizeCart(dbGet('qt_cart_'+user.id, {items:[]}));
+  let cart = dbGet('qt_cart_'+user.id, {items:[]});
   const item = cart.items.find(i=>i.productId===productId);
-  if(!item) return; /* item already removed elsewhere (e.g. another tab) — nothing to change */
   item.qty += delta;
   if(item.qty<=0) cart.items = cart.items.filter(i=>i.productId!==productId);
   dbSet('qt_cart_'+user.id, cart);
@@ -3726,8 +3486,7 @@ function changeQty(productId, delta){
 }
 function removeFromCart(productId){
   const user = currentUser();
-  if(!user) return;
-  let cart = qtNormalizeCart(dbGet('qt_cart_'+user.id, {items:[]}));
+  let cart = dbGet('qt_cart_'+user.id, {items:[]});
   cart.items = cart.items.filter(i=>i.productId!==productId);
   dbSet('qt_cart_'+user.id, cart);
   updateCartCountUI();
@@ -3777,38 +3536,7 @@ function ordersFallbackNumber(order){
 }
 
 /* ---------- 8. CHECKOUT / ORDER FLOW ---------- */
-async function qtLoadCheckoutShopProfile(shop, cartShopProfileId){
-  const fallback = Object.assign({}, shop || {});
-  const token = await qtGetAccessToken();
-  if(!token || !fallback.id) return fallback;
-  try{
-    /* DB-first: prefer the cart profile id, but recover by shop owner id when
-       the cart was built before the latest DB sync. */
-    const queries=[];
-    const profileId = cartShopProfileId || fallback.shopProfileId || null;
-    if(profileId){
-      queries.push('shop_profiles?select=id,user_id,shop_name,phone,address,latitude,longitude,status&id=eq.'+encodeURIComponent(profileId)+'&limit=1');
-    }
-    queries.push('shop_profiles?select=id,user_id,shop_name,phone,address,latitude,longitude,status&user_id=eq.'+encodeURIComponent(fallback.id)+'&status=eq.active&limit=1');
-    for(const query of queries){
-      const rows = await qtSupabaseTable(query,{accessToken:token});
-      const profile = Array.isArray(rows) ? rows[0] : null;
-      if(profile && String(profile.user_id||'')===String(fallback.id||'') && String(profile.status||'').toLowerCase()==='active'){
-        return Object.assign({}, fallback, {
-          shopProfileId: profile.id,
-          shopName: profile.shop_name || fallback.shopName,
-          phone: profile.phone || fallback.phone,
-          address: profile.address || fallback.address || '',
-          lat: Number(profile.latitude),
-          lng: Number(profile.longitude)
-        });
-      }
-    }
-  }catch(e){ console.warn('[QueueTech] checkout shop profile load failed:',e); }
-  return fallback;
-}
-
-async function renderCheckout(){
+function renderCheckout(){
   const user = currentUser();
   if(!user){ navigate('login'); return; } /* V5.31 fix: renderCheckout used to crash reading user.id when the session was missing */
   const activeOrder = getCustomerActiveOrder(user.id);
@@ -3817,25 +3545,12 @@ async function renderCheckout(){
     navigate('order/'+activeOrder.id);
     return;
   }
-  const cart = qtNormalizeCart(dbGet('qt_cart_'+user.id, {items:[]}));
+  const cart = dbGet('qt_cart_'+user.id, {items:[]});
   if(!cart.items.length){ toast('ตะกร้าว่างเปล่า'); navigate('cart'); return; }
-  const baseShop = qtResolveShopFromCartId(cart.shopId);
-  if(!baseShop){ toast('ไม่พบข้อมูลร้านค้าของตะกร้านี้ กรุณากลับไปเลือกสินค้าใหม่'); navigate('cart'); return; }
-  /* Checkout source of truth: shop_profiles.
-     The shop owner id remains only for UI/cart identity; pickup coordinates/address
-     used by the delivery selector and fee calculation come from shop_profiles.id. */
-  const shop = await qtLoadCheckoutShopProfile(baseShop, cart.shopProfileId);
-  if(!Number.isFinite(Number(shop.lat)) || !Number.isFinite(Number(shop.lng))){
-    toast('โปรไฟล์ร้านยังไม่มีพิกัด กรุณาให้ร้านบันทึกตำแหน่งร้านก่อนสั่งซื้อ');
-    return;
-  }
-  const subtotal = cart.items.reduce((s,i)=>s+Number(i.price||0)*Number(i.qty||0),0);
+  const shop = dbGet('qt_users',[]).find(u=>u.id===cart.shopId);
+  const subtotal = cart.items.reduce((s,i)=>s+i.price*i.qty,0);
   layout('ยืนยันคำสั่งซื้อ', `
     <h2>ยืนยันคำสั่งซื้อ - ${escapeHtml(shop.shopName)}</h2>
-    <div style="padding:10px 12px;border-radius:12px;background:#f5f7fa;margin:8px 0 12px">
-      <b>📍 จุดรับอาหารจากร้าน</b><br>
-      <span>${escapeHtml(shop.address || 'ใช้พิกัดจากโปรไฟล์ร้าน')}</span>
-    </div>
     <h3>เลือกตำแหน่งจัดส่ง</h3>
     <div id="pin-map" class="map-box"></div>
     <button type="button" class="btn-secondary" onclick="locatePicker()">📍 ใช้ตำแหน่งปัจจุบัน</button>
@@ -3849,9 +3564,7 @@ async function renderCheckout(){
     </div>
     ${qtSlideConfirm('checkout-confirm-slide', '➡️ เลื่อนเพื่อยืนยันสั่งซื้อ', 'confirmOrder()')}
   `);
-  /* Delivery pin is still the customer's destination. The shop pin/source is
-     loaded from shop_profiles above and is used as the distance origin. */
-  let picked = {lat:shop.lat, lng:shop.lng};
+  let picked = {lat:13.7563, lng:100.5018};
   window.__checkoutSubtotal = subtotal;
   window.__checkoutShop = shop;
   function refreshFee(lat,lng){
@@ -3903,13 +3616,28 @@ async function confirmOrder(){
   if(!user){navigate('login');return;}
   const existingActive=getCustomerActiveOrder(user.id);
   if(existingActive){toast('มีออเดอร์ที่กำลังดำเนินการอยู่ ไม่สามารถสั่งซ้ำได้');navigate('order/'+existingActive.id);return;}
-  const cart=qtNormalizeCart(dbGet('qt_cart_'+user.id,{items:[]}));
+  const cart=dbGet('qt_cart_'+user.id,{items:[]});
   if(!cart.items.length){toast('ตะกร้าว่างเปล่า');navigate('cart');return;}
-  const shop=qtResolveShopFromCartId(cart.shopId);
-  if(!shop){toast('ไม่พบข้อมูลร้านค้าของตะกร้านี้ กรุณากลับไปเลือกสินค้าใหม่');return;}
+  const shop=dbGet('qt_users',[]).find(u=>u.id===cart.shopId);
+  if(!shop){toast('ไม่พบข้อมูลร้านค้า กรุณากลับไปเลือกสินค้าใหม่');return;}
 
-  /* Canonical order key: use the shop_profiles.id already captured in the cart. */
-  const shopProfileId=await qtResolveAuthoritativeShopProfileId(shop,cart.shopProfileId);
+  /* V5.31 FIX — ร้านต้องมี shop_profiles.id ที่แน่นอนก่อนสร้าง Order.
+     ห้ามสร้าง Order ด้วย users.id แล้วหวังว่า mapping จะพร้อมภายหลัง. */
+  let shopProfileId=shop.shopProfileId || QT_SYNC.profileMaps?.shopByUserId?.get(shop.id) || null;
+  if(!shopProfileId){
+    try{
+      const token=await qtGetAccessToken();
+      const rows=token ? await qtSupabaseTable('shop_profiles?select=id,user_id&user_id=eq.'+encodeURIComponent(shop.id)+'&limit=1',{accessToken:token}) : [];
+      if(Array.isArray(rows) && rows[0]?.id){
+        shopProfileId=rows[0].id;
+        QT_SYNC.profileMaps=QT_SYNC.profileMaps||{};
+        QT_SYNC.profileMaps.shopByUserId=QT_SYNC.profileMaps.shopByUserId||new Map();
+        QT_SYNC.profileMaps.shopByUserId.set(shop.id,shopProfileId);
+      }
+    }catch(e){
+      console.warn('[QueueTech] resolve shop profile failed:',e);
+    }
+  }
   if(!shopProfileId){
     toast('ไม่พบข้อมูลโปรไฟล์ร้านค้าในฐานข้อมูล กรุณาบันทึกข้อมูลร้านใหม่ก่อนสั่งซื้อ');
     console.error('[QueueTech] Order blocked: shop_profiles.id missing for user',shop.id);
@@ -4644,7 +4372,7 @@ function riderDispatchEligible(rider){
 function dispatchDistanceKm(order, rider){
   if(!order || !order.pickup || !Number.isFinite(Number(order.pickup.lat)) ||
      !Number.isFinite(Number(order.pickup.lng))) return Infinity;
-  return distanceKm(
+  return calculateDistance(
     Number(order.pickup.lat), Number(order.pickup.lng),
     Number(rider.lat), Number(rider.lng)
   );
@@ -5925,86 +5653,88 @@ body{margin:0;padding-left:0;padding-right:0}
 
 
 <script id="qt-real-time-v1">
-/* QueueTech Realtime — notifications only.
-   Realtime must NOT hydrate/re-render business pages. Orders, shops, products,
-   riders and other business data are loaded from Supabase before a page renders,
-   then refreshed by the normal sync cycle. Realtime is reserved for notification
-   delivery so a status change can alert the user without making the whole page
-   jump or reload. */
+/* QueueTech Real-time v1
+   - Uses Supabase Realtime (WebSocket) instead of page refresh/polling.
+   - Rehydrates only after database events; the page itself is never refreshed.
+   - If Realtime is unavailable, the existing background sync remains as fallback.
+   - FIX: previously this called qtHydrateDatabase() directly, with no coordination
+     with the 8s poll loop (qtSyncTick) or qtBackgroundHydrate. Since any change to
+     any of 16 tables (including notifications, which are created on almost every
+     status update by anyone) fired this immediately, it could run a second full
+     hydrate WHILE the poll loop's hydrate was still in flight, racing writes into
+     QT_DB_CACHE, and it always force-re-rendered the page even when nothing the
+     viewer cared about had changed — this is what looked like the page "loading
+     back and forth". It now shares QT_SYNC's busy flag with the poll loop (so only
+     one hydrate ever runs at a time), debounces bursts of events into one hydrate,
+     and only re-renders when the signature actually changed, same as qtSyncTick.
+*/
 (function(){
-  let client=null, channel=null, retry=0;
+  let client=null, channel=null, retry=0, debounceTimer=null, pendingReason=null;
+  const TABLES=['users','shop_profiles','technician_profiles','rider_profiles','products','orders','order_items','deliveries','payments','notifications','order_chat_messages','quotations','promotions','settlements','audit_logs','order_audit'];
 
-  async function refreshNotificationsOnly(){
-    const token=await qtGetAccessToken();
-    const me=currentUser();
-    if(!token || !me?.id) return;
+  function scheduleRefresh(reason){
+    pendingReason=reason;
+    if(debounceTimer) return; /* a refresh is already queued for the current burst of events */
+    debounceTimer=setTimeout(()=>{ debounceTimer=null; refreshFromRealtime(pendingReason); },600);
+  }
+
+  async function refreshFromRealtime(reason){
+    if(QT_SYNC.busy || QT_DB_HYDRATING){ scheduleRefresh(reason); return; } /* poll loop or another hydrate is mid-flight: don't run a second one, try again shortly */
+    QT_SYNC.busy=true; QT_SYNC.dirty={};
     try{
-      const rows=await qtSupabaseTable('notifications?select=*&user_id=eq.'+encodeURIComponent(me.id)+'&order=created_at.desc',{accessToken:token});
-      const next=(Array.isArray(rows)?rows:[]).map(n=>({
-        id:n.id,userId:n.user_id,title:n.title||'การแจ้งเตือน',message:n.message||'',
-        body:n.message||'',link:qtNotifLinkFromRow(n),type:n.type||'system',
-        referenceId:n.reference_id||null,read:n.is_read===true,
-        readAt:n.is_read?new Date(n.created_at).getTime():null,
-        createdAt:new Date(n.created_at).getTime()
-      }));
-      const old=Array.isArray(QT_DB_CACHE.qt_notifications)?QT_DB_CACHE.qt_notifications:[];
-      const oldIds=new Set(old.map(x=>x.id));
-      QT_DB_CACHE.qt_notifications=next;
-      qtMarkClean('qt_notifications');
-      next.filter(n=>!n.read&&!oldIds.has(n.id)).forEach(n=>{
-        try{ if(typeof qtShouldHandleNotification==='function' && !qtShouldHandleNotification(n)) return; }catch(e){}
-        try{ qtHandleNewNotification(n); }catch(e){}
-      });
-      /* Update only notification UI/badge if the current page exposes it. */
-      try{ updateNotificationBadge(); }catch(e){}
-      try{ renderNotificationsIfVisible(); }catch(e){}
-    }catch(e){ console.warn('[QueueTech Realtime] notification refresh failed:',e); }
+      const before=qtSyncSignature();
+      if(typeof qtHydrateDatabase==='function') await qtHydrateDatabase({light:false});
+      Object.keys(QT_SYNC.dirty).forEach(k=>{ QT_DB_CACHE[k]=QT_SYNC.dirty[k]; });
+      const after=qtSyncSignature();
+      if(typeof qtSyncRerender==='function') qtSyncRerender(before,after); /* only re-renders the page if data actually changed */
+      window.dispatchEvent(new CustomEvent('qt:realtime-update',{detail:{reason}}));
+    }catch(e){ console.warn('[QueueTech Realtime] hydrate failed:',e); }
+    finally{ QT_SYNC.dirty={}; QT_SYNC.busy=false; }
   }
 
   function subscribe(){
     if(!client) return;
     if(channel){ try{client.removeChannel(channel);}catch(e){} }
-    const me=currentUser();
-    if(!me?.id) return;
-    channel=client.channel('qt-notifications-'+String(me.id));
-    channel.on('postgres_changes',{event:'*',schema:'public',table:'notifications',filter:'user_id=eq.'+String(me.id)},()=>{
-      refreshNotificationsOnly();
+    channel=client.channel('qt-live-data-v1');
+    TABLES.forEach(table=>{
+      channel.on('postgres_changes',{event:'*',schema:'public',table},payload=>{
+        scheduleRefresh(table+':'+payload.eventType);
+      });
     });
     channel.subscribe(status=>{
       window.QT_REALTIME_STATUS=status;
       document.documentElement.dataset.qtRealtime=String(status||'').toLowerCase();
       if(status==='SUBSCRIBED'){
         retry=0;
+        window.dispatchEvent(new CustomEvent('qt:realtime-status',{detail:{status:'SUBSCRIBED'}}));
       }else if(status==='CHANNEL_ERROR' || status==='TIMED_OUT'){
+        window.dispatchEvent(new CustomEvent('qt:realtime-status',{detail:{status}}));
         retry=Math.min(retry+1,6);
-        setTimeout(()=>{ try{subscribe();}catch(e){} },Math.min(30000,1000*Math.pow(2,retry)));
+        setTimeout(()=>{ try{subscribe();}catch(e){} }, Math.min(30000,1000*Math.pow(2,retry)));
       }
     });
   }
 
   function loadClient(){
-    if(!qtAccessToken()) return;
     if(window.supabase?.createClient){
-      try{ client=window.supabase.createClient(QT_SUPABASE_CONFIG.URL,QT_SUPABASE_CONFIG.KEY,{realtime:{params:{eventsPerSecond:10}}}); subscribe(); return; }
-      catch(e){ console.warn('[QueueTech Realtime] init failed',e); }
+      try{ client=window.supabase.createClient(QT_SUPABASE_CONFIG.URL,QT_SUPABASE_CONFIG.KEY,{realtime:{params:{eventsPerSecond:20}}}); subscribe(); return; }catch(e){console.warn('[QueueTech Realtime] init failed',e);}
     }
     const sc=document.createElement('script');
     sc.src='https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
     sc.async=true;
     sc.onload=()=>{
       try{
-        client=window.supabase.createClient(QT_SUPABASE_CONFIG.URL,QT_SUPABASE_CONFIG.KEY,{realtime:{params:{eventsPerSecond:10}}});
+        client=window.supabase.createClient(QT_SUPABASE_CONFIG.URL,QT_SUPABASE_CONFIG.KEY,{realtime:{params:{eventsPerSecond:20}}});
         subscribe();
-      }catch(e){ console.warn('[QueueTech Realtime] client init failed',e); }
+      }catch(e){console.warn('[QueueTech Realtime] client init failed',e);}
     };
-    sc.onerror=()=>console.warn('[QueueTech Realtime] CDN unavailable; notification fallback remains active');
+    sc.onerror=()=>console.warn('[QueueTech Realtime] CDN unavailable; fallback sync remains active');
     document.head.appendChild(sc);
   }
 
-  window.addEventListener('online',()=>{ if(client) subscribe(); else loadClient(); });
-  window.addEventListener('hashchange',()=>{ if(client) subscribe(); else if(qtAccessToken()) loadClient(); });
-  window.addEventListener('qt:auth-changed',()=>{ if(client) subscribe(); else loadClient(); });
-  window.QT_REALTIME_FORCE_REFRESH=()=>refreshNotificationsOnly();
+  window.addEventListener('online',()=>{ if(client) subscribe(); });
+  window.addEventListener('hashchange',()=>{ if(client && window.QT_REALTIME_STATUS!=='SUBSCRIBED') subscribe(); });
+  window.QT_REALTIME_FORCE_REFRESH=()=>refreshFromRealtime('manual');
   setTimeout(loadClient,800);
 })();
 </script>
