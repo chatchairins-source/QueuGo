@@ -1299,7 +1299,7 @@ async function qtHydrateDatabase(opts){
           if(!x||known.has(x.user_id)) return;
           const meta=(x.metadata&&typeof x.metadata==='object')?x.metadata:{};
           if(String(x.status||'').toLowerCase()!=='active') return;
-          const su=Object.assign({},meta,{id:x.user_id,type:'shop',status:'approved',shopName:x.shop_name,name:meta.name||x.shop_name,phone:x.phone,address:x.address,lat:x.latitude,lng:x.longitude,supabase:true,_profileOnly:true});
+          const su=Object.assign({},meta,{id:x.user_id,shopProfileId:x.id,type:'shop',status:'approved',shopName:x.shop_name,name:meta.name||x.shop_name,phone:x.phone,address:x.address,lat:x.latitude,lng:x.longitude,supabase:true,_profileOnly:true});
           delete su.password; delete su.authUserId; QT_DB_CACHE.qt_users.push(su);
         });
       }catch(e){ console.warn('profile hydrate failed',e); }
@@ -3620,6 +3620,30 @@ async function confirmOrder(){
   if(!cart.items.length){toast('ตะกร้าว่างเปล่า');navigate('cart');return;}
   const shop=dbGet('qt_users',[]).find(u=>u.id===cart.shopId);
   if(!shop){toast('ไม่พบข้อมูลร้านค้า กรุณากลับไปเลือกสินค้าใหม่');return;}
+
+  /* V5.31 FIX — ร้านต้องมี shop_profiles.id ที่แน่นอนก่อนสร้าง Order.
+     ห้ามสร้าง Order ด้วย users.id แล้วหวังว่า mapping จะพร้อมภายหลัง. */
+  let shopProfileId=shop.shopProfileId || QT_SYNC.profileMaps?.shopByUserId?.get(shop.id) || null;
+  if(!shopProfileId){
+    try{
+      const token=await qtGetAccessToken();
+      const rows=token ? await qtSupabaseTable('shop_profiles?select=id,user_id&user_id=eq.'+encodeURIComponent(shop.id)+'&limit=1',{accessToken:token}) : [];
+      if(Array.isArray(rows) && rows[0]?.id){
+        shopProfileId=rows[0].id;
+        QT_SYNC.profileMaps=QT_SYNC.profileMaps||{};
+        QT_SYNC.profileMaps.shopByUserId=QT_SYNC.profileMaps.shopByUserId||new Map();
+        QT_SYNC.profileMaps.shopByUserId.set(shop.id,shopProfileId);
+      }
+    }catch(e){
+      console.warn('[QueueTech] resolve shop profile failed:',e);
+    }
+  }
+  if(!shopProfileId){
+    toast('ไม่พบข้อมูลโปรไฟล์ร้านค้าในฐานข้อมูล กรุณาบันทึกข้อมูลร้านใหม่ก่อนสั่งซื้อ');
+    console.error('[QueueTech] Order blocked: shop_profiles.id missing for user',shop.id);
+    return;
+  }
+
   const loc=window.__pickedLoc?window.__pickedLoc():{lat:shop.lat,lng:shop.lng};
   const addressEl=document.getElementById('delivery-address');
   const address=addressEl?addressEl.value.trim():'';
@@ -3629,7 +3653,7 @@ async function confirmOrder(){
   const order={
     id:uid(),orderNumber: qtGenerateOrderNumber(),orderDate:qtLocalDateKey(),
     customerId:user.id,customerName:user.name,customerPhone:user.phone,
-    shopId:shop.id,shopProfileId:QT_SYNC.profileMaps?.shopByUserId?.get(shop.id)||null,shopName:shop.shopName,riderId:null,riderName:null,
+    shopId:shop.id,shopProfileId:shopProfileId,shopName:shop.shopName,riderId:null,riderName:null,
     items:cart.items.map(i=>Object.assign({},i)),subtotal,deliveryFee,gpAmount:gp,total,
     pickup:{lat:shop.lat,lng:shop.lng,address:shop.address},
     delivery:{lat:loc.lat,lng:loc.lng,address},
