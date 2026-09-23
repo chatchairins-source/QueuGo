@@ -3619,25 +3619,55 @@ function qtResolveShopFromCartId(cartShopId){
   return users.find(u=>String(u.id)===id && u.type==='shop')||null;
 }
 
-/* Canonical shop profile resolver. The cart/order path uses shop_profiles.id as the
-   authoritative database key. It can recover the profile from the cart directly,
-   or verify it against the shop owner's public.users.id. */
+/* Canonical shop profile resolver.
+   V5.40 TEST FIX — checkout validates the shop directly against Supabase.
+   The cart/cache may still be used for UI speed, but it is NOT authoritative
+   for deciding whether the shop profile exists or is active. */
 async function qtResolveAuthoritativeShopProfileId(shop, cartShopProfileId){
-  const candidate=cartShopProfileId||shop?.shopProfileId||null;
-  if(!candidate) return null;
   const token=await qtGetAccessToken();
-  if(!token) return null;
+  if(!token || !shop?.id) return null;
+
   try{
-    const rows=await qtSupabaseTable('shop_profiles?select=id,user_id,status&id=eq.'+encodeURIComponent(candidate)+'&limit=1',{accessToken:token});
-    if(Array.isArray(rows)&&rows[0]?.id){
-      if(shop?.id && rows[0].user_id && String(rows[0].user_id)!==String(shop.id)){
-        console.error('[QueueTech] shop profile owner mismatch',{candidate,shopUserId:shop.id,profileUserId:rows[0].user_id});
-        return null;
-      }
-      if(String(rows[0].status||'').toLowerCase()!=='active') return null;
-      return rows[0].id;
+    /* Primary lookup: the shop owner's public.users.id -> shop_profiles.user_id.
+       This deliberately bypasses any stale shopProfileId held by the cart/cache. */
+    const ownerRows=await qtSupabaseTable(
+      'shop_profiles?select=id,user_id,status&user_id=eq.'+
+      encodeURIComponent(shop.id)+'&limit=1',
+      {accessToken:token}
+    );
+
+    if(Array.isArray(ownerRows)&&ownerRows[0]?.id){
+      const row=ownerRows[0];
+      if(String(row.status||'').toLowerCase()==='active') return row.id;
+      console.warn('[QueueTech] Direct DB shop profile found but is not active', row);
+      return null;
     }
-  }catch(e){ console.warn('[QueueTech] shop profile verification failed:',e); }
+
+    /* Diagnostic fallback: if the owner lookup found nothing, verify the
+       profile id captured in the cart directly in Supabase. This preserves
+       the existing diagnostic path without trusting the cache. */
+    const candidate=cartShopProfileId||null;
+    if(candidate){
+      const rows=await qtSupabaseTable(
+        'shop_profiles?select=id,user_id,status&id=eq.'+
+        encodeURIComponent(candidate)+'&limit=1',
+        {accessToken:token}
+      );
+      if(Array.isArray(rows)&&rows[0]?.id){
+        const row=rows[0];
+        if(row.user_id && String(row.user_id)!==String(shop.id)){
+          console.error('[QueueTech] shop profile owner mismatch',{
+            candidate,shopUserId:shop.id,profileUserId:row.user_id
+          });
+          return null;
+        }
+        if(String(row.status||'').toLowerCase()==='active') return row.id;
+        console.warn('[QueueTech] Direct DB candidate shop profile is not active', row);
+      }
+    }
+  }catch(e){
+    console.warn('[QueueTech] Direct DB shop profile verification failed:',e);
+  }
   return null;
 }
 
@@ -3889,21 +3919,20 @@ async function confirmOrder(){
     delivery:{lat:loc.lat,lng:loc.lng,address},
     status:'pending_shop',statusLog:[{status:'pending_shop',time:Date.now()}],createdAt:Date.now()
   };
-  const orders=dbGet('qt_orders',[]);
-  orders.push(order);
-  QT_DB_CACHE.qt_orders=orders;
-
+  /* V5.40 TEST FIX — write THIS new order directly to Supabase.
+     Do not use the cached qt_orders array as the source for the database write.
+     The cache is updated only after the authoritative DB write succeeds. */
   let saved=false,lastErr=null;
   for(let attempt=1;attempt<=5&&!saved;attempt++){
     try{
-      await qtTrackPersist(qtPersistKey('qt_orders',orders));
+      await qtTrackPersist(qtPersistKeyRaw('qt_orders',[order]));
       saved=true;
     }catch(err){
       lastErr=err;
       const errMsg=String((err&&err.message)||'');
       /* root cause ของ "duplicate key value violates unique constraint orders_order_number_key":
-         เลขออเดอร์ที่สุ่มไว้ชนกับ order_number ที่มีอยู่แล้วในฐานข้อมูล (เช่น ของลูกค้า/ร้านอื่นที่
-         เครื่องนี้มองไม่เห็นในแคชท้องถิ่น) ห้ามปิด/ลบ constraint — ให้สุ่มเลขออเดอร์ใหม่แล้วลองบันทึกซ้ำแทน */
+         เลขออเดอร์ที่สุ่มไว้ชนกับ order_number ที่มีอยู่แล้วในฐานข้อมูล
+         ห้ามปิด/ลบ constraint — ให้สุ่มเลขออเดอร์ใหม่แล้วลองบันทึกซ้ำ */
       if(/order_number|orders_order_number_key/i.test(errMsg)){
         order.orderNumber=qtGenerateOrderNumber();
       }
@@ -3917,6 +3946,10 @@ async function confirmOrder(){
     toast('บันทึกออเดอร์ไม่สำเร็จ: '+msg.slice(0,120));
     return;
   }
+  /* Only now update the local in-memory order cache, after Supabase accepted it. */
+  const cachedOrders=Array.isArray(dbGet('qt_orders',[]))?dbGet('qt_orders',[]):[];
+  cachedOrders.push(order);
+  QT_DB_CACHE.qt_orders=cachedOrders;
   dbSet('qt_cart_'+user.id,{shopId:null,items:[]});
   pushNotification(shop.id,'📦 มีคำสั่งซื้อใหม่',`กรุณากด “รับงาน” เพื่อเริ่มดำเนินการ • จาก ${user.name} ยอด ฿${total}`,'order/'+order.id);
   toast('สั่งซื้อสำเร็จ! บันทึกออเดอร์แล้ว');
