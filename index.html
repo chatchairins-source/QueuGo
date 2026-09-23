@@ -1399,7 +1399,12 @@ async function qtHydrateDatabase(opts){
     try{const ns=await qtSupabaseTable('notifications?select=*',{accessToken:token}); QT_DB_CACHE.qt_notifications=(Array.isArray(ns)?ns:[]).map(n=>({id:n.id,userId:n.user_id,title:n.title||'การแจ้งเตือน',message:n.message||'',body:n.message||'',link:qtNotifLinkFromRow(n),type:n.type||'system',referenceId:n.reference_id||null,read:n.is_read===true,readAt:n.is_read?new Date(n.created_at).getTime():null,createdAt:new Date(n.created_at).getTime()}));}catch(e){ if(!Array.isArray(QT_DB_CACHE.qt_notifications)) QT_DB_CACHE.qt_notifications=[]; }
     qtMarkClean('qt_orders'); qtMarkClean('qt_techjobs'); qtMarkClean('qt_notifications');
     if(!light){
-    QT_DB_CACHE.qt_audit_log=[]; QT_DB_CACHE.qt_finance_ledger=[];    try{const ps=await qtSupabaseTable('products?select=*',{accessToken:token}); QT_DB_CACHE.qt_products=(Array.isArray(ps)?ps:[]).map(p=>Object.assign({id:p.id,shopId:p.shop_id,name:p.name,description:p.description,price:Number(p.price||0),image:p.image||'',available:p.available!==false,createdAt:new Date(p.created_at).getTime()},p.metadata||{}));}catch(e){QT_DB_CACHE.qt_products=[];}
+    QT_DB_CACHE.qt_audit_log=[]; QT_DB_CACHE.qt_finance_ledger=[];    try{const ps=await qtSupabaseTable('products?select=*',{accessToken:token}); QT_DB_CACHE.qt_products=(Array.isArray(ps)?ps:[]).map(p=>{
+        const meta=(p.metadata&&typeof p.metadata==='object')?p.metadata:{};
+        const profileShopId=p.shop_id||meta.shopProfileId||null;
+        const mappedUserId=profileShopId && profileMaps.shopById ? profileMaps.shopById.get(profileShopId) : null;
+        return Object.assign({id:p.id,shopId:mappedUserId||meta.shopId||profileShopId,shopProfileId:profileShopId,name:p.name,description:p.description,price:Number(p.price||0),image:p.image||'',available:p.available!==false,createdAt:new Date(p.created_at).getTime()},meta);
+      });}catch(e){QT_DB_CACHE.qt_products=[];}
     try{const pr=await qtSupabaseTable('promotions?select=*',{accessToken:token}); QT_DB_CACHE.qt_promotions=(Array.isArray(pr)?pr:[]).map(p=>Object.assign({id:p.id,shopId:p.shop_id,shopName:p.shop_name,category:p.category,area:p.area,bidPrice:Number(p.bid_price||0),maxBudget:Number(p.max_budget||0),periodDays:Number(p.period_days||0),status:p.status,approvedBy:p.approved_by,approvedAt:p.approved_at?new Date(p.approved_at).getTime():null,paymentStatus:p.payment_status,activatedAt:p.activated_at?new Date(p.activated_at).getTime():null,createdAt:new Date(p.created_at).getTime()},p.metadata||{}));}catch(e){QT_DB_CACHE.qt_promotions=[];}
     try{const st=await qtSupabaseTable('settlements?select=*',{accessToken:token}); QT_DB_CACHE.qt_settlements=(Array.isArray(st)?st:[]).map(x=>Object.assign({id:x.id,shopId:x.shop_id,dateKey:x.date_key,status:x.status,amount:Number(x.amount||0),createdAt:new Date(x.created_at).getTime()},x.metadata||{}));}catch(e){QT_DB_CACHE.qt_settlements=[];}
     try{const oa=await qtSupabaseTable('order_audit?select=*',{accessToken:token}); QT_DB_CACHE.qt_order_audit=(Array.isArray(oa)?oa:[]).map(x=>Object.assign({id:x.id,orderId:x.order_id,adminId:x.admin_id,action:x.action,at:new Date(x.created_at).getTime()},x.metadata||{}));}catch(e){QT_DB_CACHE.qt_order_audit=[];}
@@ -3550,10 +3555,15 @@ function productCardCustomer(p){
     </div>
   </div>`;
 }
+function qtNormalizeCart(raw){
+  const cart = (raw && typeof raw==='object' && !Array.isArray(raw)) ? raw : {};
+  const items = Array.isArray(cart.items) ? cart.items.filter(i=>i && typeof i==='object') : [];
+  return {shopId:cart.shopId||null, items};
+}
 function cartCount(){
   const user=currentUser();if(!user)return 0;
-  const cart=dbGet('qt_cart_'+user.id,{items:[]});
-  return (cart.items||[]).reduce((s,i)=>s+Number(i.qty||0),0);
+  const cart=qtNormalizeCart(dbGet('qt_cart_'+user.id,{shopId:null,items:[]}));
+  return cart.items.reduce((s,i)=>s+Number(i.qty||0),0);
 }
 function updateCartCountUI(){
   const count=cartCount();
@@ -3579,23 +3589,65 @@ function addToCart(productId){
   dbSet('qt_cart_'+user.id, cart);
   toast('เพิ่มลงตะกร้าแล้ว');
 }
+/* V5.40 FIX — Cart/Checkout shop identity resolver.
+   UI uses public.users.id, while Supabase products/orders use shop_profiles.id.
+   Always resolve both directions before reading the shop or creating an order. */
+function qtResolveShopFromCartId(cartShopId){
+  const id=String(cartShopId||'');
+  if(!id) return null;
+  const users=Array.isArray(dbGet('qt_users',[]))?dbGet('qt_users',[]):[];
+  let shop=users.find(u=>String(u.id)===id && u.type==='shop')||null;
+  if(shop) return shop;
+  const map=QT_SYNC.profileMaps?.shopById;
+  if(map && typeof map.get==='function'){
+    const userId=map.get(cartShopId);
+    if(userId) shop=users.find(u=>String(u.id)===String(userId) && u.type==='shop')||null;
+  }
+  return shop;
+}
+function qtResolveShopProfileId(shop){
+  if(!shop) return null;
+  if(shop.shopProfileId) return shop.shopProfileId;
+  const map=QT_SYNC.profileMaps?.shopByUserId;
+  if(map && typeof map.get==='function'){
+    const profileId=map.get(shop.id);
+    if(profileId) return profileId;
+  }
+  return null;
+}
+
 function renderCart(){
-  const user = currentUser(); if(!user||user.type!=='customer'){ navigate('login'); return; }
-  const cart = dbGet('qt_cart_'+user.id, {shopId:null, items:[]});
-  const shop = cart.shopId ? dbGet('qt_users',[]).find(u=>u.id===cart.shopId) : null;
-  const total = cart.items.reduce((s,i)=>s+i.price*i.qty,0);
+  const user = currentUser();
+  if(!user||user.type!=='customer'){ navigate('login'); return; }
+
+  /* V5.40 FIX — cart data is session-only and may contain an older/malformed
+     shape after an update. Never let one bad cart item crash the whole router. */
+  const cart = qtNormalizeCart(dbGet('qt_cart_'+user.id,{shopId:null,items:[]}));
+  const shop = qtResolveShopFromCartId(cart.shopId);
+
+  const total = cart.items.reduce((sum,item)=>{
+    const price=Number(item.price||0);
+    const qty=Number(item.qty||0);
+    return sum + (Number.isFinite(price)&&Number.isFinite(qty) ? price*qty : 0);
+  },0);
+
   layout('ตะกร้าสินค้า', `
     <h2>🛒 ตะกร้าสินค้า</h2>
-    ${shop?`<p>ร้าน: <b>${escapeHtml(shop.shopName)}</b></p>`:''}
-    ${cart.items.length ? cart.items.map(i=>`
+    ${shop?`<p>ร้าน: <b>${escapeHtml(shop.shopName||shop.name||'')}</b></p>`:''}
+    ${cart.items.length ? cart.items.map(i=>{
+      const productId=escapeHtml(i.productId||'');
+      const price=Number(i.price||0);
+      const qty=Math.max(1,Number(i.qty||1));
+      return `
       <div class="cart-item">
         <img src="${escapeHtml(i.image||placeholderImg())}" class="cart-item-img">
         <div class="cart-item-info">
-          <b>${escapeHtml(i.name)}</b>
-          <div>${escapeHtml(i.price)} บาท x <button onclick="changeQty('${i.productId}',-1)">-</button> ${escapeHtml(i.qty)} <button onclick="changeQty('${i.productId}',1)">+</button></div>
+          <b>${escapeHtml(i.name||'สินค้า')}</b>
+          <div>${escapeHtml(price)} บาท x <button onclick="changeQty('${productId}',-1)">-</button> ${escapeHtml(qty)} <button onclick="changeQty('${productId}',1)">+</button></div>
         </div>
-        <button class="btn-danger" onclick="removeFromCart('${i.productId}')">ลบ</button>
-      </div>`).join('') : '<p>ตะกร้าว่างเปล่า</p>'}
+        <button class="btn-danger" onclick="removeFromCart('${productId}')">ลบ</button>
+      </div>`;
+    }).join('') : '<p>ตะกร้าว่างเปล่า</p>'}
     ${cart.items.length ? `<div class="cart-total">รวม: ${total} บาท</div>
       <button class="btn-primary btn-block" onclick="navigate('checkout')">ดำเนินการสั่งซื้อ →</button>` : ''}
   `);
@@ -3671,10 +3723,11 @@ function renderCheckout(){
     navigate('order/'+activeOrder.id);
     return;
   }
-  const cart = dbGet('qt_cart_'+user.id, {items:[]});
+  const cart = qtNormalizeCart(dbGet('qt_cart_'+user.id, {items:[]}));
   if(!cart.items.length){ toast('ตะกร้าว่างเปล่า'); navigate('cart'); return; }
-  const shop = dbGet('qt_users',[]).find(u=>u.id===cart.shopId);
-  const subtotal = cart.items.reduce((s,i)=>s+i.price*i.qty,0);
+  const shop = qtResolveShopFromCartId(cart.shopId);
+  if(!shop){ toast('ไม่พบข้อมูลร้านค้าของตะกร้านี้ กรุณากลับไปเลือกสินค้าใหม่'); navigate('cart'); return; }
+  const subtotal = cart.items.reduce((s,i)=>s+Number(i.price||0)*Number(i.qty||0),0);
   layout('ยืนยันคำสั่งซื้อ', `
     <h2>ยืนยันคำสั่งซื้อ - ${escapeHtml(shop.shopName)}</h2>
     <h3>เลือกตำแหน่งจัดส่ง</h3>
@@ -3742,14 +3795,14 @@ async function confirmOrder(){
   if(!user){navigate('login');return;}
   const existingActive=getCustomerActiveOrder(user.id);
   if(existingActive){toast('มีออเดอร์ที่กำลังดำเนินการอยู่ ไม่สามารถสั่งซ้ำได้');navigate('order/'+existingActive.id);return;}
-  const cart=dbGet('qt_cart_'+user.id,{items:[]});
+  const cart=qtNormalizeCart(dbGet('qt_cart_'+user.id,{items:[]}));
   if(!cart.items.length){toast('ตะกร้าว่างเปล่า');navigate('cart');return;}
-  const shop=dbGet('qt_users',[]).find(u=>u.id===cart.shopId);
-  if(!shop){toast('ไม่พบข้อมูลร้านค้า กรุณากลับไปเลือกสินค้าใหม่');return;}
+  const shop=qtResolveShopFromCartId(cart.shopId);
+  if(!shop){toast('ไม่พบข้อมูลร้านค้าของตะกร้านี้ กรุณากลับไปเลือกสินค้าใหม่');return;}
 
-  /* V5.31 FIX — ร้านต้องมี shop_profiles.id ที่แน่นอนก่อนสร้าง Order.
-     ห้ามสร้าง Order ด้วย users.id แล้วหวังว่า mapping จะพร้อมภายหลัง. */
-  let shopProfileId=shop.shopProfileId || QT_SYNC.profileMaps?.shopByUserId?.get(shop.id) || null;
+  /* V5.40 FIX — resolve the authoritative shop_profiles.id from the
+     public.users.id before creating the order. */
+  let shopProfileId=qtResolveShopProfileId(shop);
   if(!shopProfileId){
     try{
       const token=await qtGetAccessToken();
