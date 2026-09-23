@@ -959,6 +959,7 @@ function dbSet(key, val){
   if(QT_SYNC.busy) QT_SYNC.dirty[key]=val; /* a poll is in flight: re-apply this local write after it finishes */
   if(QT_DB_KEYS.has(key)) qtTrackPersist(qtPersistKey(key,val)).catch(err=>qtSyncFailed(key,err));
   else if(String(key).startsWith('qt_order_chat_') && !String(key).endsWith('_deleteAt')) qtTrackPersist(qtPersistChat(String(key).replace('qt_order_chat_',''),val)).catch(err=>qtSyncFailed(key,err));
+  else if(!String(key).endsWith('_deleteAt')) console.warn('[QueueTech] dbSet("'+key+'") is not in QT_DB_KEYS and has no sync handler — this write stays local-only and will NOT sync to Supabase or other devices. Add "'+key+'" to QT_DB_KEYS in the code if this data should be shared.');
 }
 
 async function qtPersistChat(orderId,messages){
@@ -1270,6 +1271,14 @@ async function qtHydrateDatabase(opts){
 
         const sm=new Map((shops||[]).filter(x=>x&&x.user_id).map(x=>[x.user_id,x])),tm=new Map((techs||[]).filter(x=>x&&x.user_id).map(x=>[x.user_id,x])),rm=new Map((riders||[]).filter(x=>x&&x.user_id).map(x=>[x.user_id,x]));
         profileMaps={shopById:new Map((shops||[]).map(x=>[x.id,x.user_id])),techById:new Map((techs||[]).map(x=>[x.id,x.user_id])),riderById:new Map((riders||[]).map(x=>[x.id,x.user_id]))};
+        /* Reverse of the maps above (user id -> profile id). qtOrderToRow/qtTechJobToRow write
+           shop_id/technician_id/rider_id from o.shopProfileId/o.technicianProfileId/o.riderProfileId
+           — NOT from the plain user id. Order/job creation code only ever had the user id on
+           hand, so those columns were being saved as null and the order/job was invisible to the
+           shop/technician/rider once loaded from Supabase on another device. */
+        profileMaps.shopByUserId=new Map([...sm.entries()].map(([uid,x])=>[uid,x.id]));
+        profileMaps.techByUserId=new Map([...tm.entries()].map(([uid,x])=>[uid,x.id]));
+        profileMaps.riderByUserId=new Map([...rm.entries()].map(([uid,x])=>[uid,x.id]));
         QT_SYNC.profileMaps=profileMaps;
         QT_DB_CACHE.qt_users=QT_DB_CACHE.qt_users.map(u=>{
           const x=u.type==='shop'?sm.get(u.id):u.type==='technician'?tm.get(u.id):u.type==='rider'?rm.get(u.id):null; if(!x) return u;
@@ -3620,7 +3629,7 @@ async function confirmOrder(){
   const order={
     id:uid(),orderNumber: qtGenerateOrderNumber(),orderDate:qtLocalDateKey(),
     customerId:user.id,customerName:user.name,customerPhone:user.phone,
-    shopId:shop.id,shopName:shop.shopName,riderId:null,riderName:null,
+    shopId:shop.id,shopProfileId:QT_SYNC.profileMaps?.shopByUserId?.get(shop.id)||null,shopName:shop.shopName,riderId:null,riderName:null,
     items:cart.items.map(i=>Object.assign({},i)),subtotal,deliveryFee,gpAmount:gp,total,
     pickup:{lat:shop.lat,lng:shop.lng,address:shop.address},
     delivery:{lat:loc.lat,lng:loc.lng,address},
@@ -3976,6 +3985,7 @@ function acceptRiderJob(orderId){
   }
 
   order.riderId = user.id;
+  order.riderProfileId = QT_SYNC.profileMaps?.riderByUserId?.get(user.id)||null;
   order.riderName = user.name;
   order.status = 'rider_to_shop';
   order.statusLog.push({status:'rider_to_shop', time:Date.now()});
@@ -4740,8 +4750,8 @@ function findTechniciansByType(){
         พื้นที่บริการ: ${escapeHtml(t.serviceArea||'-')}
         <div class="row-btns">
           <a class="btn-primary" href="tel:${escapeHtml(t.phone)}">📞 โทรหาช่าง</a>
-          <button onclick="requestTechJob('${t.id}','${type}')">ส่งงานผ่าน QueueTech</button>
         </div>
+        ${qtSlideConfirm('slide-request-'+t.id, '➡️ เลื่อนเพื่อส่งงานผ่าน QueueTech', `requestTechJob('${t.id}','${type}')`)}
       </div>`).join('') : '<p>ไม่พบช่างที่รับงานประเภทนี้ในขณะนี้</p>';
   }, ()=> toast('ไม่สามารถขอตำแหน่ง GPS ได้'));
 }
@@ -4759,7 +4769,7 @@ function requestTechJob(techId, type){
   }
   const job = {
     id: uid(), customerId:user.id, customerName:user.name, customerPhone:user.phone,
-    technicianId:techId, technicianName:tech.name,
+    technicianId:techId, technicianProfileId:QT_SYNC.profileMaps?.techByUserId?.get(techId)||null, technicianName:tech.name,
     serviceType, location:{lat:loc.lat, lng:loc.lng, address: address || 'ตำแหน่ง GPS ปัจจุบัน'},
     status:'requested', createdAt:Date.now(), isEmergency:false,
   };
@@ -4868,6 +4878,7 @@ function selectTechQuote(jobId, quoteId){
   const quote = (job.quotes||[]).find(q=>q.id===quoteId);
   if(!quote){ toast('ไม่พบใบเสนอราคานี้'); return; }
   job.technicianId = quote.technicianId;
+  job.technicianProfileId = QT_SYNC.profileMaps?.techByUserId?.get(quote.technicianId)||null;
   job.technicianName = quote.technicianName;
   job.agreedPrice = quote.price;
   job.selectedQuoteId = quote.id;
@@ -4919,8 +4930,8 @@ function renderEmergencyResults(type, loc){
         พื้นที่บริการ: ${escapeHtml(t.serviceArea||'-')}
         <div class="row-btns">
           <a class="btn-primary" href="tel:${escapeHtml(t.phone)}">📞 โทรหาช่าง</a>
-          <button onclick="sendEmergencyJob('${t.id}','${type}')">ส่งงานผ่าน QueueTech</button>
         </div>
+        ${qtSlideConfirm('slide-emergency-'+t.id, '➡️ เลื่อนเพื่อส่งงานผ่าน QueueTech', `sendEmergencyJob('${t.id}','${type}')`, true)}
       </div>`).join('') : '<p>ไม่พบช่างที่พร้อมให้บริการในขณะนี้</p>'}
   `;
   const map = L.map('emergency-map').setView([loc.lat,loc.lng], 13);
@@ -4937,7 +4948,7 @@ function sendEmergencyJob(techId, type){
   const address = addressEl ? addressEl.value.trim() : '';
   const job = {
     id: uid(), customerId:user.id, customerName:user.name, customerPhone:user.phone,
-    technicianId:techId, technicianName:tech.name,
+    technicianId:techId, technicianProfileId:QT_SYNC.profileMaps?.techByUserId?.get(techId)||null, technicianName:tech.name,
     serviceType:type, location:{lat:loc.lat, lng:loc.lng, address: address || 'ตำแหน่ง GPS ปัจจุบัน'},
     status:'requested', createdAt:Date.now(), isEmergency:true,
   };
@@ -5062,53 +5073,28 @@ function cycleModule(moduleKey){
   renderShopModules();
 }
 
-(function qtArrivalBoot(){
+/* Consolidated boot/poll loop — replaces 4 previously separate IIFEs (qtArrivalBoot,
+   qtNotificationBadgeBoot, qtArrivalRobustMonitor, qtRiderJobAlertMonitor, qtRiderJobAlertBoot)
+   that duplicated work: several ran the same checks twice on page load, and each kept its
+   own separate setInterval (three timers firing every 1000-1500ms instead of one). Behavior
+   is unchanged; this just runs the same checks once each, on one shared timer/listener. */
+(function qtBackgroundChecksBoot(){
+  function runAll(){
+    try{ checkCustomerRiderArrivalAlertRobust(); }catch(e){}
+    try{ checkRiderPendingOffer(); }catch(e){}
+    try{ syncNotificationBadge(); }catch(e){}
+  }
   function boot(){
     qtArrivalAlertHTML();
-    checkCustomerRiderArrivalAlertRobust();
+    qtRiderJobAlertHTML();
+    runAll();
   }
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',boot);
   else boot();
-})();
-
-
-(function qtNotificationBadgeBoot(){
-  function sync(){try{syncNotificationBadge();}catch(e){}}
-  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',sync);
-  else sync();
   window.addEventListener('storage',ev=>{
-    if(ev.key==='qt_notifications') setTimeout(sync,50);
+    if(ev.key==='qt_orders' || ev.key==='qt_notifications') setTimeout(runAll,50);
   });
-  setInterval(sync,1500);
-})();
-
-
-(function qtArrivalRobustMonitor(){
-  function run(){try{checkCustomerRiderArrivalAlertRobust();}catch(e){}}
-  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',run);
-  else run();
-  window.addEventListener('storage',ev=>{
-    if(ev.key==='qt_orders' || ev.key==='qt_notifications') setTimeout(run,50);
-  });
-  setInterval(run,1000);
-})();
-
-
-(function qtRiderJobAlertMonitor(){
-  function run(){try{checkRiderPendingOffer();}catch(e){}}
-  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',run);
-  else run();
-  window.addEventListener('storage',ev=>{
-    if(ev.key==='qt_orders' || ev.key==='qt_notifications') setTimeout(run,50);
-  });
-  setInterval(run,1000);
-})();
-
-
-(function qtRiderJobAlertBoot(){
-  function boot(){try{qtRiderJobAlertHTML();checkRiderPendingOffer();}catch(e){}}
-  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',boot);
-  else boot();
+  setInterval(runAll,1000);
 })();
 </script>
 
@@ -5647,34 +5633,39 @@ body{margin:0;padding-left:0;padding-right:0}
    - Uses Supabase Realtime (WebSocket) instead of page refresh/polling.
    - Rehydrates only after database events; the page itself is never refreshed.
    - If Realtime is unavailable, the existing background sync remains as fallback.
+   - FIX: previously this called qtHydrateDatabase() directly, with no coordination
+     with the 8s poll loop (qtSyncTick) or qtBackgroundHydrate. Since any change to
+     any of 16 tables (including notifications, which are created on almost every
+     status update by anyone) fired this immediately, it could run a second full
+     hydrate WHILE the poll loop's hydrate was still in flight, racing writes into
+     QT_DB_CACHE, and it always force-re-rendered the page even when nothing the
+     viewer cared about had changed — this is what looked like the page "loading
+     back and forth". It now shares QT_SYNC's busy flag with the poll loop (so only
+     one hydrate ever runs at a time), debounces bursts of events into one hydrate,
+     and only re-renders when the signature actually changed, same as qtSyncTick.
 */
 (function(){
-  let client=null, channel=null, loading=false, queued=false, retry=0;
+  let client=null, channel=null, retry=0, debounceTimer=null, pendingReason=null;
   const TABLES=['users','shop_profiles','technician_profiles','rider_profiles','products','orders','order_items','deliveries','payments','notifications','order_chat_messages','quotations','promotions','settlements','audit_logs','order_audit'];
 
-  function currentPageNeedsRender(){
-    try{
-      const p=(location.hash||'').replace(/^#/, '').split('/')[0];
-      return ['home','search','shop-view','cart','checkout','orders','order','shop-orders','shop-products','dashboard','admin','admin-orders','admin-gp','shop-settlement','rider-jobs','technician-jobs','technician-job','notifications'].includes(p);
-    }catch(e){ return true; }
+  function scheduleRefresh(reason){
+    pendingReason=reason;
+    if(debounceTimer) return; /* a refresh is already queued for the current burst of events */
+    debounceTimer=setTimeout(()=>{ debounceTimer=null; refreshFromRealtime(pendingReason); },600);
   }
 
   async function refreshFromRealtime(reason){
-    if(loading){ queued=true; return; }
-    loading=true;
+    if(QT_SYNC.busy || QT_DB_HYDRATING){ scheduleRefresh(reason); return; } /* poll loop or another hydrate is mid-flight: don't run a second one, try again shortly */
+    QT_SYNC.busy=true; QT_SYNC.dirty={};
     try{
+      const before=qtSyncSignature();
       if(typeof qtHydrateDatabase==='function') await qtHydrateDatabase({light:false});
-      if(typeof router==='function' && currentPageNeedsRender()){
-        const y=window.scrollY;
-        router();
-        requestAnimationFrame(()=>window.scrollTo(0,y));
-      }
+      Object.keys(QT_SYNC.dirty).forEach(k=>{ QT_DB_CACHE[k]=QT_SYNC.dirty[k]; });
+      const after=qtSyncSignature();
+      if(typeof qtSyncRerender==='function') qtSyncRerender(before,after); /* only re-renders the page if data actually changed */
       window.dispatchEvent(new CustomEvent('qt:realtime-update',{detail:{reason}}));
     }catch(e){ console.warn('[QueueTech Realtime] hydrate failed:',e); }
-    finally{
-      loading=false;
-      if(queued){ queued=false; setTimeout(()=>refreshFromRealtime('queued'),300); }
-    }
+    finally{ QT_SYNC.dirty={}; QT_SYNC.busy=false; }
   }
 
   function subscribe(){
@@ -5683,7 +5674,7 @@ body{margin:0;padding-left:0;padding-right:0}
     channel=client.channel('qt-live-data-v1');
     TABLES.forEach(table=>{
       channel.on('postgres_changes',{event:'*',schema:'public',table},payload=>{
-        refreshFromRealtime(table+':'+payload.eventType);
+        scheduleRefresh(table+':'+payload.eventType);
       });
     });
     channel.subscribe(status=>{
