@@ -498,6 +498,9 @@ html, body {
 .qt-order-parties{display:flex;gap:7px;align-items:center;flex-wrap:wrap;margin-top:10px;font-size:13px}.qt-order-summary{margin-top:7px;color:#475569;font-size:13px}
 .qt-order-progress{margin-top:12px;padding:12px;background:#f8fafc;border-radius:14px}.qt-order-progress-title{font-weight:800;font-size:13px;margin-bottom:8px}.qt-order-progress-list{display:grid;gap:6px}.qt-order-step{display:flex;gap:9px;align-items:center;min-height:34px;opacity:.45}.qt-order-step.done,.qt-order-step.active{opacity:1}.qt-order-step-icon{width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:#e2e8f0;font-size:13px;flex:none}.qt-order-step.done .qt-order-step-icon{background:#dcfce7;color:#15803d}.qt-order-step.active .qt-order-step-icon{background:var(--primary,#2563eb);color:#fff}.qt-order-step-text{display:flex;gap:7px;align-items:center;flex-wrap:wrap;font-size:12px}.qt-order-step-text small{color:#94a3b8}.qt-order-now{font-size:10px;padding:2px 6px;border-radius:999px;background:#dbeafe;color:#1d4ed8}.qt-order-cancelled{margin-top:8px;padding:9px;border-radius:10px;background:#fee2e2;color:#b91c1c;font-size:12px}.qt-order-card-actions{margin-top:10px}.qt-order-card-actions .btn-block{margin-top:6px}
 </style>
+<style id="qt-db-first-loading-style">
+.qt-page-loading{min-height:60vh;display:flex;align-items:center;justify-content:center;padding:32px 16px;box-sizing:border-box}.qt-page-loading-card{text-align:center;max-width:360px;width:100%;padding:28px 20px;border-radius:24px;background:#fff;box-shadow:0 12px 40px rgba(0,0,0,.08)}.qt-page-loading-card h2{margin:12px 0 8px}.qt-page-loading-card p{margin:0;color:#64748b}.qt-spinner{width:34px;height:34px;margin:0 auto;border:4px solid #dbe4ff;border-top-color:#3159d9;border-radius:50%;animation:qtspin .8s linear infinite}@keyframes qtspin{to{transform:rotate(360deg)}}
+</style>
 </head>
 <body>
 
@@ -2377,12 +2380,20 @@ function qtStartSyncLoop(){
   document.addEventListener('visibilitychange',()=>{ if(!document.hidden) qtSyncTick(); });
 }
 window.addEventListener('DOMContentLoaded', async ()=>{
-  /* V5.33: show the page first, load Supabase data in the background */
+  /* QueueTech loading rule: data-dependent pages must NOT render before the first
+     authoritative Supabase load has finished. Auth-only pages may render immediately. */
   const hadSession=!!qtAccessToken();
-  if(hadSession) await qtRestoreOwnUser(); /* one small request (own account row) so a refresh keeps the signed-in user */
+  if(hadSession) await qtRestoreOwnUser();
+  const page=(location.hash.replace('#','')||'home').split('/')[0];
+  const authOnly=['login','register','rider-register','approval-pending'];
+  if(hadSession && !authOnly.includes(page)){
+    try{ await qtBackgroundHydrate({light:false}); }
+    catch(e){ console.error('Initial Supabase load failed:',e); }
+  }
   router();
-  qtStartSyncLoop(); /* does not block the UI */
-  setTimeout(()=>{ qtBackgroundHydrate({light:false}); },0);
+  qtStartSyncLoop();
+  /* Notifications use Realtime; business pages do not wait on Realtime. */
+  setTimeout(()=>{ if(!QT_DB_READY.value && qtAccessToken()) qtBackgroundHydrate({light:false}); },0);
 });
 
 /* V5.33: a page that throws while rendering used to leave the previous screen frozen with dead buttons and no clue why. Now the error is logged and shown. */
@@ -2391,10 +2402,21 @@ function router(){
   catch(err){ console.error('router error',err); try{ toast('แสดงหน้านี้ไม่สำเร็จ: '+String((err&&err.message)||err).slice(0,90)); }catch(e){} }
 }
 function qtRouteRender(){
-  destroyMaps();
   const hash = location.hash.replace('#','') || 'home';
   const [page, param] = hash.split('/');
   const user = currentUser();
+
+  /* Hard loading gate: never paint a business page from stale/incomplete cache
+     before the authoritative Supabase load is finished. */
+  const dataFreePages=['login','register','rider-register'];
+  if(user && !dataFreePages.includes(page) && !QT_DB_READY.value){
+    const app=document.getElementById('app');
+    if(app) app.innerHTML='<div class="qt-page-loading"><div class="qt-page-loading-card"><div class="qt-spinner"></div><h2>กำลังโหลดข้อมูล</h2><p>กำลังตรวจสอบข้อมูลจากฐานข้อมูล กรุณารอสักครู่…</p></div></div>';
+    if(!QT_DB_HYDRATING) qtBackgroundHydrate({light:false});
+    return;
+  }
+
+  destroyMaps();
 
   /* V5.39 BATCH 1 — Rider registration/approval route guard.
      A pending/rejected/suspended rider must never be sent back to rider-setup.
@@ -3619,55 +3641,38 @@ function qtResolveShopFromCartId(cartShopId){
   return users.find(u=>String(u.id)===id && u.type==='shop')||null;
 }
 
-/* Canonical shop profile resolver.
-   V5.40 TEST FIX — checkout validates the shop directly against Supabase.
-   The cart/cache may still be used for UI speed, but it is NOT authoritative
-   for deciding whether the shop profile exists or is active. */
+/* Canonical shop profile resolver. The cart/order path uses shop_profiles.id as the
+   authoritative database key. It can recover the profile from the cart directly,
+   or verify it against the shop owner's public.users.id. */
 async function qtResolveAuthoritativeShopProfileId(shop, cartShopProfileId){
+  /* V5.41 DB-FIRST FIX:
+     Do not depend on the cart's cached shopProfileId being fresh. The shop owner's
+     public.users.id is stable enough to locate the authoritative active profile in
+     Supabase. Try the cart/profile id first for speed, then fall back to user_id.
+     The diagnostic toast remains unchanged when the DB truly has no active profile. */
   const token=await qtGetAccessToken();
   if(!token || !shop?.id) return null;
-
+  const candidates=[];
+  const first=cartShopProfileId||shop?.shopProfileId||null;
+  if(first) candidates.push({type:'id',value:String(first)});
+  candidates.push({type:'user_id',value:String(shop.id)});
   try{
-    /* Primary lookup: the shop owner's public.users.id -> shop_profiles.user_id.
-       This deliberately bypasses any stale shopProfileId held by the cart/cache. */
-    const ownerRows=await qtSupabaseTable(
-      'shop_profiles?select=id,user_id,status&user_id=eq.'+
-      encodeURIComponent(shop.id)+'&limit=1',
-      {accessToken:token}
-    );
-
-    if(Array.isArray(ownerRows)&&ownerRows[0]?.id){
-      const row=ownerRows[0];
-      if(String(row.status||'').toLowerCase()==='active') return row.id;
-      console.warn('[QueueTech] Direct DB shop profile found but is not active', row);
-      return null;
-    }
-
-    /* Diagnostic fallback: if the owner lookup found nothing, verify the
-       profile id captured in the cart directly in Supabase. This preserves
-       the existing diagnostic path without trusting the cache. */
-    const candidate=cartShopProfileId||null;
-    if(candidate){
-      const rows=await qtSupabaseTable(
-        'shop_profiles?select=id,user_id,status&id=eq.'+
-        encodeURIComponent(candidate)+'&limit=1',
-        {accessToken:token}
-      );
+    for(const candidate of candidates){
+      const query = candidate.type==='id'
+        ? 'shop_profiles?select=id,user_id,status&id=eq.'+encodeURIComponent(candidate.value)+'&limit=1'
+        : 'shop_profiles?select=id,user_id,status&user_id=eq.'+encodeURIComponent(candidate.value)+'&status=eq.active&limit=1';
+      const rows=await qtSupabaseTable(query,{accessToken:token});
       if(Array.isArray(rows)&&rows[0]?.id){
         const row=rows[0];
         if(row.user_id && String(row.user_id)!==String(shop.id)){
-          console.error('[QueueTech] shop profile owner mismatch',{
-            candidate,shopUserId:shop.id,profileUserId:row.user_id
-          });
-          return null;
+          console.error('[QueueTech] shop profile owner mismatch',{candidate,shopUserId:shop.id,profileUserId:row.user_id});
+          continue;
         }
-        if(String(row.status||'').toLowerCase()==='active') return row.id;
-        console.warn('[QueueTech] Direct DB candidate shop profile is not active', row);
+        if(String(row.status||'').toLowerCase()!=='active') continue;
+        return row.id;
       }
     }
-  }catch(e){
-    console.warn('[QueueTech] Direct DB shop profile verification failed:',e);
-  }
+  }catch(e){ console.warn('[QueueTech] shop profile verification failed:',e); }
   return null;
 }
 
@@ -3774,12 +3779,19 @@ function ordersFallbackNumber(order){
 /* ---------- 8. CHECKOUT / ORDER FLOW ---------- */
 async function qtLoadCheckoutShopProfile(shop, cartShopProfileId){
   const fallback = Object.assign({}, shop || {});
-  const profileId = cartShopProfileId || fallback.shopProfileId || null;
-  if(!profileId) return fallback;
+  const token = await qtGetAccessToken();
+  if(!token || !fallback.id) return fallback;
   try{
-    const token = await qtGetAccessToken();
-    if(token){
-      const rows = await qtSupabaseTable('shop_profiles?select=id,user_id,shop_name,phone,address,latitude,longitude,status&id=eq.'+encodeURIComponent(profileId)+'&limit=1',{accessToken:token});
+    /* DB-first: prefer the cart profile id, but recover by shop owner id when
+       the cart was built before the latest DB sync. */
+    const queries=[];
+    const profileId = cartShopProfileId || fallback.shopProfileId || null;
+    if(profileId){
+      queries.push('shop_profiles?select=id,user_id,shop_name,phone,address,latitude,longitude,status&id=eq.'+encodeURIComponent(profileId)+'&limit=1');
+    }
+    queries.push('shop_profiles?select=id,user_id,shop_name,phone,address,latitude,longitude,status&user_id=eq.'+encodeURIComponent(fallback.id)+'&status=eq.active&limit=1');
+    for(const query of queries){
+      const rows = await qtSupabaseTable(query,{accessToken:token});
       const profile = Array.isArray(rows) ? rows[0] : null;
       if(profile && String(profile.user_id||'')===String(fallback.id||'') && String(profile.status||'').toLowerCase()==='active'){
         return Object.assign({}, fallback, {
@@ -3919,20 +3931,21 @@ async function confirmOrder(){
     delivery:{lat:loc.lat,lng:loc.lng,address},
     status:'pending_shop',statusLog:[{status:'pending_shop',time:Date.now()}],createdAt:Date.now()
   };
-  /* V5.40 TEST FIX — write THIS new order directly to Supabase.
-     Do not use the cached qt_orders array as the source for the database write.
-     The cache is updated only after the authoritative DB write succeeds. */
+  const orders=dbGet('qt_orders',[]);
+  orders.push(order);
+  QT_DB_CACHE.qt_orders=orders;
+
   let saved=false,lastErr=null;
   for(let attempt=1;attempt<=5&&!saved;attempt++){
     try{
-      await qtTrackPersist(qtPersistKeyRaw('qt_orders',[order]));
+      await qtTrackPersist(qtPersistKey('qt_orders',orders));
       saved=true;
     }catch(err){
       lastErr=err;
       const errMsg=String((err&&err.message)||'');
       /* root cause ของ "duplicate key value violates unique constraint orders_order_number_key":
-         เลขออเดอร์ที่สุ่มไว้ชนกับ order_number ที่มีอยู่แล้วในฐานข้อมูล
-         ห้ามปิด/ลบ constraint — ให้สุ่มเลขออเดอร์ใหม่แล้วลองบันทึกซ้ำ */
+         เลขออเดอร์ที่สุ่มไว้ชนกับ order_number ที่มีอยู่แล้วในฐานข้อมูล (เช่น ของลูกค้า/ร้านอื่นที่
+         เครื่องนี้มองไม่เห็นในแคชท้องถิ่น) ห้ามปิด/ลบ constraint — ให้สุ่มเลขออเดอร์ใหม่แล้วลองบันทึกซ้ำแทน */
       if(/order_number|orders_order_number_key/i.test(errMsg)){
         order.orderNumber=qtGenerateOrderNumber();
       }
@@ -3946,10 +3959,6 @@ async function confirmOrder(){
     toast('บันทึกออเดอร์ไม่สำเร็จ: '+msg.slice(0,120));
     return;
   }
-  /* Only now update the local in-memory order cache, after Supabase accepted it. */
-  const cachedOrders=Array.isArray(dbGet('qt_orders',[]))?dbGet('qt_orders',[]):[];
-  cachedOrders.push(order);
-  QT_DB_CACHE.qt_orders=cachedOrders;
   dbSet('qt_cart_'+user.id,{shopId:null,items:[]});
   pushNotification(shop.id,'📦 มีคำสั่งซื้อใหม่',`กรุณากด “รับงาน” เพื่อเริ่มดำเนินการ • จาก ${user.name} ยอด ฿${total}`,'order/'+order.id);
   toast('สั่งซื้อสำเร็จ! บันทึกออเดอร์แล้ว');
@@ -5916,88 +5925,86 @@ body{margin:0;padding-left:0;padding-right:0}
 
 
 <script id="qt-real-time-v1">
-/* QueueTech Real-time v1
-   - Uses Supabase Realtime (WebSocket) instead of page refresh/polling.
-   - Rehydrates only after database events; the page itself is never refreshed.
-   - If Realtime is unavailable, the existing background sync remains as fallback.
-   - FIX: previously this called qtHydrateDatabase() directly, with no coordination
-     with the 8s poll loop (qtSyncTick) or qtBackgroundHydrate. Since any change to
-     any of 16 tables (including notifications, which are created on almost every
-     status update by anyone) fired this immediately, it could run a second full
-     hydrate WHILE the poll loop's hydrate was still in flight, racing writes into
-     QT_DB_CACHE, and it always force-re-rendered the page even when nothing the
-     viewer cared about had changed — this is what looked like the page "loading
-     back and forth". It now shares QT_SYNC's busy flag with the poll loop (so only
-     one hydrate ever runs at a time), debounces bursts of events into one hydrate,
-     and only re-renders when the signature actually changed, same as qtSyncTick.
-*/
+/* QueueTech Realtime — notifications only.
+   Realtime must NOT hydrate/re-render business pages. Orders, shops, products,
+   riders and other business data are loaded from Supabase before a page renders,
+   then refreshed by the normal sync cycle. Realtime is reserved for notification
+   delivery so a status change can alert the user without making the whole page
+   jump or reload. */
 (function(){
-  let client=null, channel=null, retry=0, debounceTimer=null, pendingReason=null;
-  const TABLES=['users','shop_profiles','technician_profiles','rider_profiles','products','orders','order_items','deliveries','payments','notifications','order_chat_messages','quotations','promotions','settlements','audit_logs','order_audit'];
+  let client=null, channel=null, retry=0;
 
-  function scheduleRefresh(reason){
-    pendingReason=reason;
-    if(debounceTimer) return; /* a refresh is already queued for the current burst of events */
-    debounceTimer=setTimeout(()=>{ debounceTimer=null; refreshFromRealtime(pendingReason); },600);
-  }
-
-  async function refreshFromRealtime(reason){
-    if(QT_SYNC.busy || QT_DB_HYDRATING){ scheduleRefresh(reason); return; } /* poll loop or another hydrate is mid-flight: don't run a second one, try again shortly */
-    QT_SYNC.busy=true; QT_SYNC.dirty={};
+  async function refreshNotificationsOnly(){
+    const token=await qtGetAccessToken();
+    const me=currentUser();
+    if(!token || !me?.id) return;
     try{
-      const before=qtSyncSignature();
-      if(typeof qtHydrateDatabase==='function') await qtHydrateDatabase({light:false});
-      Object.keys(QT_SYNC.dirty).forEach(k=>{ QT_DB_CACHE[k]=QT_SYNC.dirty[k]; });
-      const after=qtSyncSignature();
-      if(typeof qtSyncRerender==='function') qtSyncRerender(before,after); /* only re-renders the page if data actually changed */
-      window.dispatchEvent(new CustomEvent('qt:realtime-update',{detail:{reason}}));
-    }catch(e){ console.warn('[QueueTech Realtime] hydrate failed:',e); }
-    finally{ QT_SYNC.dirty={}; QT_SYNC.busy=false; }
+      const rows=await qtSupabaseTable('notifications?select=*&user_id=eq.'+encodeURIComponent(me.id)+'&order=created_at.desc',{accessToken:token});
+      const next=(Array.isArray(rows)?rows:[]).map(n=>({
+        id:n.id,userId:n.user_id,title:n.title||'การแจ้งเตือน',message:n.message||'',
+        body:n.message||'',link:qtNotifLinkFromRow(n),type:n.type||'system',
+        referenceId:n.reference_id||null,read:n.is_read===true,
+        readAt:n.is_read?new Date(n.created_at).getTime():null,
+        createdAt:new Date(n.created_at).getTime()
+      }));
+      const old=Array.isArray(QT_DB_CACHE.qt_notifications)?QT_DB_CACHE.qt_notifications:[];
+      const oldIds=new Set(old.map(x=>x.id));
+      QT_DB_CACHE.qt_notifications=next;
+      qtMarkClean('qt_notifications');
+      next.filter(n=>!n.read&&!oldIds.has(n.id)).forEach(n=>{
+        try{ if(typeof qtShouldHandleNotification==='function' && !qtShouldHandleNotification(n)) return; }catch(e){}
+        try{ qtHandleNewNotification(n); }catch(e){}
+      });
+      /* Update only notification UI/badge if the current page exposes it. */
+      try{ updateNotificationBadge(); }catch(e){}
+      try{ renderNotificationsIfVisible(); }catch(e){}
+    }catch(e){ console.warn('[QueueTech Realtime] notification refresh failed:',e); }
   }
 
   function subscribe(){
     if(!client) return;
     if(channel){ try{client.removeChannel(channel);}catch(e){} }
-    channel=client.channel('qt-live-data-v1');
-    TABLES.forEach(table=>{
-      channel.on('postgres_changes',{event:'*',schema:'public',table},payload=>{
-        scheduleRefresh(table+':'+payload.eventType);
-      });
+    const me=currentUser();
+    if(!me?.id) return;
+    channel=client.channel('qt-notifications-'+String(me.id));
+    channel.on('postgres_changes',{event:'*',schema:'public',table:'notifications',filter:'user_id=eq.'+String(me.id)},()=>{
+      refreshNotificationsOnly();
     });
     channel.subscribe(status=>{
       window.QT_REALTIME_STATUS=status;
       document.documentElement.dataset.qtRealtime=String(status||'').toLowerCase();
       if(status==='SUBSCRIBED'){
         retry=0;
-        window.dispatchEvent(new CustomEvent('qt:realtime-status',{detail:{status:'SUBSCRIBED'}}));
       }else if(status==='CHANNEL_ERROR' || status==='TIMED_OUT'){
-        window.dispatchEvent(new CustomEvent('qt:realtime-status',{detail:{status}}));
         retry=Math.min(retry+1,6);
-        setTimeout(()=>{ try{subscribe();}catch(e){} }, Math.min(30000,1000*Math.pow(2,retry)));
+        setTimeout(()=>{ try{subscribe();}catch(e){} },Math.min(30000,1000*Math.pow(2,retry)));
       }
     });
   }
 
   function loadClient(){
+    if(!qtAccessToken()) return;
     if(window.supabase?.createClient){
-      try{ client=window.supabase.createClient(QT_SUPABASE_CONFIG.URL,QT_SUPABASE_CONFIG.KEY,{realtime:{params:{eventsPerSecond:20}}}); subscribe(); return; }catch(e){console.warn('[QueueTech Realtime] init failed',e);}
+      try{ client=window.supabase.createClient(QT_SUPABASE_CONFIG.URL,QT_SUPABASE_CONFIG.KEY,{realtime:{params:{eventsPerSecond:10}}}); subscribe(); return; }
+      catch(e){ console.warn('[QueueTech Realtime] init failed',e); }
     }
     const sc=document.createElement('script');
     sc.src='https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
     sc.async=true;
     sc.onload=()=>{
       try{
-        client=window.supabase.createClient(QT_SUPABASE_CONFIG.URL,QT_SUPABASE_CONFIG.KEY,{realtime:{params:{eventsPerSecond:20}}});
+        client=window.supabase.createClient(QT_SUPABASE_CONFIG.URL,QT_SUPABASE_CONFIG.KEY,{realtime:{params:{eventsPerSecond:10}}});
         subscribe();
-      }catch(e){console.warn('[QueueTech Realtime] client init failed',e);}
+      }catch(e){ console.warn('[QueueTech Realtime] client init failed',e); }
     };
-    sc.onerror=()=>console.warn('[QueueTech Realtime] CDN unavailable; fallback sync remains active');
+    sc.onerror=()=>console.warn('[QueueTech Realtime] CDN unavailable; notification fallback remains active');
     document.head.appendChild(sc);
   }
 
-  window.addEventListener('online',()=>{ if(client) subscribe(); });
-  window.addEventListener('hashchange',()=>{ if(client && window.QT_REALTIME_STATUS!=='SUBSCRIBED') subscribe(); });
-  window.QT_REALTIME_FORCE_REFRESH=()=>refreshFromRealtime('manual');
+  window.addEventListener('online',()=>{ if(client) subscribe(); else loadClient(); });
+  window.addEventListener('hashchange',()=>{ if(client) subscribe(); else if(qtAccessToken()) loadClient(); });
+  window.addEventListener('qt:auth-changed',()=>{ if(client) subscribe(); else loadClient(); });
+  window.QT_REALTIME_FORCE_REFRESH=()=>refreshNotificationsOnly();
   setTimeout(loadClient,800);
 })();
 </script>
