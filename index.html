@@ -407,7 +407,14 @@ async function renderAdmin(){
  <div class="section-title">ร้านค้า</div><div class="card">${s.length?s.map(x=>`<div class="item"><div class="item-main"><b>${esc(x.shop_name)}</b><span class="muted">${esc(x.status)}</span></div>${x.status==='pending'?`<button class="btn small" onclick="approveShop('${esc(x.id)}')">อนุมัติ</button>`:''}</div>`).join(''):'<div class="empty">ไม่มีข้อมูล</div>'}</div>
  <div class="section-title">คำสั่งซื้อล่าสุด</div><div class="card">${o.slice(0,20).map(orderCard).join('')||'<div class="empty">ไม่มีคำสั่งซื้อ</div>'}</div>`;
 }
-async function approveShop(id){const {error}=await sb.from('shop_profiles').update({status:'active'}).eq('id',id);if(error)return toast(error.message);const s=await sb.from('shop_profiles').select('user_id').eq('id',id).single();if(s.data?.user_id)await sb.from('users').update({status:'active'}).eq('id',s.data.user_id);toast('อนุมัติร้านแล้ว');renderAdmin()}
+async function approveShop(id){
+  if(!qtAdminGuard())return;
+  const {error}=await sb.from('shop_profiles').update({status:'active'}).eq('id',id);
+  if(error)return toast(error.message);
+  const s=await sb.from('shop_profiles').select('user_id').eq('id',id).single();
+  if(s.data?.user_id)await sb.from('users').update({status:'active'}).eq('id',s.data.user_id);
+  toast('อนุมัติร้านแล้ว');renderAdmin();
+}
 
 
 /* QueueTech Food System — current-base extension. Uses only tables already referenced by this file. */
@@ -560,12 +567,73 @@ async function renderAdmin(){
  <div class="section-title">ตรวจสอบระบบ</div><div class="card"><p class="muted" style="margin-top:0">ตรวจว่าตาราง/คอลัมน์ที่ฟีเจอร์ใหม่ต้องใช้มีอยู่ในฐานข้อมูลจริงหรือยัง ถ้ายังไม่มี ระบบจะให้คำสั่ง SQL ไปรันเพิ่มเองได้</p><button class="btn secondary" onclick="runSystemCheck()">ตรวจสอบระบบอีกครั้ง</button><div id="sysCheckBox" style="margin-top:12px"><div class="empty">กำลังตรวจสอบ…</div></div></div>`;
  runSystemCheck();
 }
-async function approveUser(id){const {error}=await sb.from('users').update({status:'active'}).eq('id',id).neq('role','admin');if(error)console.error(error);await renderAdmin()}
-async function approveRider(id){const {error}=await sb.from('rider_profiles').update({status:'active'}).eq('id',id);if(error)return toast(error.message);const rr=await sb.from('rider_profiles').select('user_id').eq('id',id).single();if(rr.data?.user_id)await sb.from('users').update({status:'active'}).eq('id',rr.data.user_id);toast('อนุมัติไรเดอร์แล้ว');renderAdmin()}
-async function approveTechnician(id){try{const {error}=await sb.from('technician_profiles').update({status:'active'}).eq('id',id);if(error)throw error;const tt=await sb.from('technician_profiles').select('user_id').eq('id',id).single();if(tt.data?.user_id)await sb.from('users').update({status:'active'}).eq('id',tt.data.user_id);toast('อนุมัติช่างแล้ว')}catch(e){toast('ไม่สามารถอนุมัติได้')}renderAdmin()}
+/* Client-side defense-in-depth guard for Admin-only actions.
+   Supabase RLS remains the real authority; this just avoids obviously-wrong
+   client calls (wrong role, session lost) before hitting the network. */
+function qtAdminGuard(){
+  if(!me || roleOf()!=='admin'){ toast('ไม่มีสิทธิ์ดำเนินการนี้'); return false; }
+  return true;
+}
+async function approveUser(id){
+  if(!qtAdminGuard())return;
+  const {error}=await sb.from('users').update({status:'active'}).eq('id',id).neq('role','admin');
+  if(error)console.error(error);
+  await renderAdmin();
+}
+async function approveRider(id){
+  if(!qtAdminGuard())return;
+  const {error}=await sb.from('rider_profiles').update({status:'active'}).eq('id',id);
+  if(error)return toast(error.message);
+  const rr=await sb.from('rider_profiles').select('user_id').eq('id',id).single();
+  if(rr.data?.user_id)await sb.from('users').update({status:'active'}).eq('id',rr.data.user_id);
+  toast('อนุมัติไรเดอร์แล้ว');renderAdmin();
+}
+async function approveTechnician(id){
+  if(!qtAdminGuard())return;
+  try{
+    const {error}=await sb.from('technician_profiles').update({status:'active'}).eq('id',id);
+    if(error)throw error;
+    const tt=await sb.from('technician_profiles').select('user_id').eq('id',id).single();
+    if(tt.data?.user_id)await sb.from('users').update({status:'active'}).eq('id',tt.data.user_id);
+    toast('อนุมัติช่างแล้ว');
+  }catch(e){toast('ไม่สามารถอนุมัติได้')}
+  renderAdmin();
+}
+
+/* Real-time sync: debounced + single-flight refresh (adapted idea from an
+   external prototype's "qt-real-time-v1", rewritten for this file's own
+   Supabase/render functions — no external cache/state layer added).
+   Bursts of DB events within 500ms collapse into one refresh, and a refresh
+   already in flight is never run twice in parallel; a follow-up refresh is
+   queued instead of overlapping. */
+let __qtRtBusy=false, __qtRtQueued=false, __qtRtTimer=null;
+async function qtRealtimeRefresh(){
+  if(!me)return;
+  const r=roleOf();
+  if(r==='customer')await renderOrders();
+  else if(r==='shop')await renderShop();
+  else if(r==='rider')await renderRider();
+  else if(r==='admin')await renderAdmin();
+}
+function qtScheduleRealtimeRefresh(){
+  if(__qtRtTimer)return;
+  __qtRtTimer=setTimeout(async()=>{
+    __qtRtTimer=null;
+    if(__qtRtBusy){__qtRtQueued=true;return}
+    __qtRtBusy=true;
+    try{await qtRealtimeRefresh()}catch(e){console.error(e)}
+    __qtRtBusy=false;
+    if(__qtRtQueued){__qtRtQueued=false;qtScheduleRealtimeRefresh()}
+  },500);
+}
 function startRealtime(){
  if(window.__qtRealtime)return; window.__qtRealtime=true;
- try{sb.channel('qt-food-live').on('postgres_changes',{event:'*',schema:'public',table:'orders'},()=>{if(!me)return;const r=roleOf();if(r==='customer')renderOrders();else if(r==='shop')renderShop();else if(r==='rider')renderRider();else if(r==='admin')renderAdmin()}).subscribe()}catch(e){console.error(e)}
+ try{
+  const tables=['orders','order_items','shop_profiles','products','rider_profiles','technician_profiles','users'];
+  const ch=sb.channel('qt-food-live');
+  tables.forEach(t=>ch.on('postgres_changes',{event:'*',schema:'public',table:t},()=>qtScheduleRealtimeRefresh()));
+  ch.subscribe();
+ }catch(e){console.error(e)}
 }
 
 sb.auth.onAuthStateChange((_event,_session)=>{if(_event==='SIGNED_OUT'){location.reload()}});
