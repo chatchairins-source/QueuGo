@@ -633,41 +633,119 @@ function qtAuthEmailFromPhone(phone){
 }
 async function qtCreateSupabaseUser({type,name,phone,password,email}){
   const cleanEmail=String(email||'').trim().toLowerCase();
-  const cleanPhone=String(phone||'').trim();
+  const cleanPhone=String(phone||'').trim().replace(/[-\s]/g,'');
   const authEmail=cleanEmail || qtAuthEmailFromPhone(cleanPhone);
+  if(!authEmail) throw new Error('ไม่พบข้อมูลสำหรับสร้างบัญชี');
+
+  /*
+   * V5.40 ACCOUNT CREATION — single source of truth
+   * 1) Create Supabase Auth user first.
+   * 2) Require a valid Auth session.
+   * 3) Create exactly one public.users row linked by auth_user_id.
+   * 4) Verify that the row really belongs to the Auth user.
+   * 5) For shops, create/verify shop_profiles using public.users.id.
+   *
+   * Login NEVER creates public.users. Only registration creates it.
+   * This prevents orphan public.users rows with no Supabase Auth account.
+   */
   const auth=await qtSupabaseAuth('signup',{
     email:authEmail,
     password,
     data:{name,phone:cleanPhone||null,role:type}
   });
+  if(!auth.user || !auth.user.id) throw new Error('สร้างบัญชี Supabase Authentication ไม่สำเร็จ');
+
   let session=auth.session;
-  if(!auth.user) throw new Error('สร้างบัญชี Auth ไม่สำเร็จ');
   if(!session || !session.access_token){
-    if(cleanEmail){
-      return {auth,session:null,profile:null,needsEmailConfirmation:true,authEmail};
-    }
+    /* Phone accounts use the internal login email. If email confirmation is enabled,
+       there is no safe client-side way to finish account creation without confirmation. */
     try{
       session=await qtSupabaseAuth('token?grant_type=password',{email:authEmail,password});
     }catch(loginErr){
-      throw new Error('AUTH_CONFIRMATION_REQUIRED');
+      throw new Error(cleanEmail
+        ? 'บัญชีถูกสร้างแล้ว แต่ยังไม่ได้ยืนยันอีเมลใน Supabase'
+        : 'บัญชี Auth ถูกสร้างแล้ว แต่ Supabase ยังไม่อนุญาตให้เข้าสู่ระบบทันที กรุณาปิด Email Confirmation ใน Supabase Authentication Settings แล้วสมัครใหม่');
     }
   }
-  /* V5.37 FIX:
-     The users table flow already uses auth_user_id as the conflict identity
-     elsewhere in QueueTech. Use that same database-backed identity here.
-     Do not use phone as the conflict target because the earlier V5.32 target
-     was not backed by a matching UNIQUE/EXCLUSION constraint. */
+  if(!session || !session.access_token) throw new Error('ไม่สามารถสร้าง Session ของบัญชีได้');
+
+  const token=session.access_token;
+  const authUserId=auth.user.id;
   const row={
-    auth_user_id:auth.user.id,
+    auth_user_id:authUserId,
     role:type,
     name,
     phone:cleanPhone||null,
     status:type==='customer'?'active':'pending'
   };
-  const rows=await qtSupabaseTable('users?select=id,auth_user_id,role,name,phone,status,created_at&on_conflict=auth_user_id',{method:'POST',accessToken:session.access_token,body:row});
-  const profile=Array.isArray(rows)?rows[0]:rows;
-  if(!profile) throw new Error('สร้างข้อมูลผู้ใช้ในฐานข้อมูลไม่สำเร็จ');
-  return {auth,session,profile,needsEmailConfirmation:false,authEmail};
+
+  /* Never use an upsert here. First check by auth_user_id, then insert only if absent. */
+  const existingRows=await qtSupabaseTable(
+    'users?select=id,auth_user_id,role,name,phone,status,created_at&auth_user_id=eq.'+encodeURIComponent(authUserId)+'&limit=1',
+    {accessToken:token}
+  );
+  let profile=Array.isArray(existingRows)&&existingRows[0]?existingRows[0]:null;
+
+  if(!profile){
+    const createdRows=await qtSupabaseTable('users?select=id,auth_user_id,role,name,phone,status,created_at',{
+      method:'POST',accessToken:token,body:row
+    });
+    profile=Array.isArray(createdRows)&&createdRows[0]?createdRows[0]:createdRows;
+  }
+
+  if(!profile || !profile.id) throw new Error('สร้างข้อมูลสมาชิกใน public.users ไม่สำเร็จ');
+  if(String(profile.auth_user_id)!==String(authUserId)){
+    /* Do not continue with a mismatched account. */
+    throw new Error('ข้อมูล users.auth_user_id ไม่ตรงกับ Supabase Authentication');
+  }
+
+  /* Shop registration owns its shop profile from the start. */
+  if(type==='shop'){
+    const shopRows=await qtSupabaseTable(
+      'shop_profiles?select=id,user_id,shop_name,phone,address,status,latitude,longitude&user_id=eq.'+encodeURIComponent(profile.id)+'&limit=1',
+      {accessToken:token}
+    );
+    let shopProfile=Array.isArray(shopRows)&&shopRows[0]?shopRows[0]:null;
+    if(!shopProfile){
+      const shopBody={
+        user_id:profile.id,
+        shop_name:name||'ร้านค้า',
+        phone:cleanPhone||null,
+        address:null,
+        status:'pending',
+        latitude:null,
+        longitude:null,
+        metadata:{source:'registration',auth_user_id:authUserId}
+      };
+      const createdShopRows=await qtSupabaseTable('shop_profiles?select=id,user_id,shop_name,phone,address,status,latitude,longitude',{
+        method:'POST',accessToken:token,body:shopBody
+      });
+      shopProfile=Array.isArray(createdShopRows)&&createdShopRows[0]?createdShopRows[0]:createdShopRows;
+    }
+    if(!shopProfile || !shopProfile.id) throw new Error('สร้างโปรไฟล์ร้านค้าใน shop_profiles ไม่สำเร็จ');
+    if(String(shopProfile.user_id)!==String(profile.id)) throw new Error('shop_profiles.user_id ไม่ตรงกับ public.users.id');
+  }
+
+  /* Final verification: Auth session -> users -> shop profile (when applicable). */
+  const verified=await qtSupabaseTable(
+    'users?select=id,auth_user_id,role,name,phone,status,created_at&auth_user_id=eq.'+encodeURIComponent(authUserId)+'&limit=1',
+    {accessToken:token}
+  );
+  const verifiedUser=Array.isArray(verified)&&verified[0]?verified[0]:null;
+  if(!verifiedUser || String(verifiedUser.auth_user_id)!==String(authUserId)){
+    throw new Error('ตรวจสอบบัญชีไม่ผ่าน: ไม่พบ public.users ที่ผูกกับ Auth');
+  }
+  if(type==='shop'){
+    const verifiedShop=await qtSupabaseTable(
+      'shop_profiles?select=id,user_id,status&user_id=eq.'+encodeURIComponent(verifiedUser.id)+'&limit=1',
+      {accessToken:token}
+    );
+    if(!Array.isArray(verifiedShop)||!verifiedShop[0]||String(verifiedShop[0].user_id)!==String(verifiedUser.id)){
+      throw new Error('ตรวจสอบโปรไฟล์ร้านไม่ผ่าน: ไม่พบ shop_profiles ที่ผูกกับ users.id');
+    }
+  }
+
+  return {auth,session,profile:verifiedUser,needsEmailConfirmation:false,authEmail};
 }
 async function qtLoadOwnSupabaseUser(accessToken, authUserId){
   const rows=await qtSupabaseTable('users?select=*&auth_user_id=eq.'+encodeURIComponent(authUserId),{accessToken});
@@ -2846,21 +2924,15 @@ async function handleLogin(e){
     // รองรับทั้งบัญชีที่ใช้เบอร์โทรเป็นตัวระบุ และบัญชี Supabase Auth ที่มีอีเมลจริง เช่นบัญชี Admin
     const authEmail = loginValue.includes('@') ? loginValue : qtAuthEmailFromPhone(loginValue);
     const auth=await qtSupabaseAuth('token?grant_type=password',{email:authEmail,password});
-    let p=await qtLoadOwnSupabaseUser(auth.access_token,auth.user.id);
+    const p=await qtLoadOwnSupabaseUser(auth.access_token,auth.user.id);
     if(!p){
-      const meta=auth.user?.user_metadata||{};
-      const role=['customer','shop','technician','rider','admin'].includes(meta.role)?meta.role:'customer';
-      const name=qtCleanText(meta.name||'ผู้ใช้');
-      const phone=String(meta.phone||'').trim()||null;
-      try{
-        const rows=await qtSupabaseTable('users?select=id,auth_user_id,role,name,phone,status,created_at&on_conflict=auth_user_id',{
-          method:'POST',accessToken:auth.access_token,
-          body:{auth_user_id:auth.user.id,role,name,phone,status:role==='customer'?'active':'pending'}
-        });
-        p=Array.isArray(rows)?rows[0]:rows;
-      }catch(createErr){
-        throw new Error('เข้าสู่ระบบสำเร็จ แต่ยังสร้างข้อมูลสมาชิกในฐานข้อมูลไม่ได้: '+createErr.message);
-      }
+      /* Login is read-only for public.users. Never create a profile here.
+         A missing row means the account was created outside QueueTech registration
+         or the database relationship is broken, and must be repaired explicitly. */
+      throw new Error('พบบัญชี Supabase Authentication แต่ไม่พบ public.users ที่เชื่อมกับบัญชีนี้ กรุณาสมัครใหม่หรือให้ Admin ตรวจสอบข้อมูล');
+    }
+    if(String(p.auth_user_id)!==String(auth.user.id)){
+      throw new Error('ข้อมูลบัญชีไม่ตรงกัน: users.auth_user_id ไม่ตรงกับ Supabase Authentication');
     }
     /* V5.32: status is derived from the real row (column + admin-approved metadata), not guessed from the role */
     const user=qtUserFromRow(p);
