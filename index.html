@@ -8,39 +8,61 @@
 <link rel="preconnect" href="https://cdn.jsdelivr.net">
 <style>
 :root{
-  --bg:#f6f7f9;--card:#fff;--text:#17181b;--muted:#747982;--line:#e8e9ed;
-  --accent:#111318;--soft:#f0f1f4;--ok:#159447;--warn:#d98a00;--danger:#d83232;
-  --radius:22px;--shadow:0 8px 30px rgba(20,22,28,.07);
+  --bg:#f2f5f0;--card:#fff;--text:#12160f;--muted:#6d756a;--line:#e3e8e0;
+  --accent:#0d3b2c;--accent2:#ff6a3d;--soft:#eaefe6;--ok:#127a41;--warn:#b8720a;--danger:#c92e2e;--star:#dd9c1c;
+  --radius:20px;--shadow:0 10px 28px rgba(14,24,17,.08);
+  padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0e120e;--card:#171b16;--text:#eef1ec;--muted:#9aa398;--line:#262b24;
+  --accent:#5fd8a0;--accent2:#ff8f68;--soft:#1d221c;--ok:#43c17e;--warn:#e3a940;--danger:#ef6a6a;--star:#f0bd4a;
+  --shadow:0 10px 28px rgba(0,0,0,.45);
+}}
+:root[data-theme="dark"]{
+  --bg:#0e120e;--card:#171b16;--text:#eef1ec;--muted:#9aa398;--line:#262b24;
+  --accent:#5fd8a0;--accent2:#ff8f68;--soft:#1d221c;--ok:#43c17e;--warn:#e3a940;--danger:#ef6a6a;--star:#f0bd4a;
+  --shadow:0 10px 28px rgba(0,0,0,.45);
 }
 *{box-sizing:border-box}html,body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Noto Sans Thai",sans-serif}
 body{min-height:100vh}button,input,select,textarea{font:inherit}button{border:0;cursor:pointer}
 #app{max-width:620px;margin:auto;min-height:100vh;padding-bottom:88px}
-.top{position:sticky;top:0;z-index:20;background:rgba(246,247,249,.9);backdrop-filter:blur(18px);padding:14px 16px 10px;display:flex;align-items:center;justify-content:space-between}
+.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(18px);padding:14px 16px 10px;display:flex;align-items:center;justify-content:space-between}
+body{background:var(--bg)}
 .brand{font-weight:800;font-size:20px;letter-spacing:-.5px}.top-actions{display:flex;gap:8px}
-.icon-btn{width:42px;height:42px;border-radius:15px;background:#fff;box-shadow:var(--shadow);font-size:18px}
+.icon-btn{width:42px;height:42px;border-radius:15px;background:var(--card);color:var(--text);box-shadow:var(--shadow);font-size:18px}
 main{padding:8px 16px}.view{display:none}.view.active{display:block}
 .hero{padding:14px 2px 8px}.hero h1{margin:0 0 5px;font-size:30px;letter-spacing:-1px}.hero p{margin:0;color:var(--muted)}
 .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:18px;margin:12px 0}
 .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
-.field{margin:10px 0}.field label{display:block;font-size:13px;color:var(--muted);margin:0 0 6px}.field input,.field select,.field textarea{width:100%;padding:14px;border:1px solid var(--line);border-radius:15px;background:#fff;outline:none}.field input:focus,.field select:focus,.field textarea:focus{border-color:#aaa}
+.field{margin:10px 0}.field label{display:block;font-size:13px;color:var(--muted);margin:0 0 6px}.field input,.field select,.field textarea{width:100%;padding:14px;border:1px solid var(--line);border-radius:15px;background:var(--card);color:var(--text);outline:none}.field input:focus,.field select:focus,.field textarea:focus{border-color:#aaa}
 .btn{width:100%;padding:14px 16px;border-radius:16px;background:var(--accent);color:#fff;font-weight:750}.btn.secondary{background:var(--soft);color:var(--text)}.btn.danger{background:#fff0f0;color:var(--danger)}.btn.small{padding:10px 12px;width:auto;font-size:13px}
 .row{display:flex;align-items:center;justify-content:space-between;gap:12px}.stack{display:grid;gap:10px}
 .badge{display:inline-flex;align-items:center;padding:6px 10px;border-radius:999px;background:var(--soft);font-size:12px;font-weight:700}.badge.ok{background:#eaf8ef;color:var(--ok)}.badge.warn{background:#fff5df;color:#9b6500}.badge.danger{background:#fff0f0;color:var(--danger)}
 .item{display:flex;gap:12px;align-items:center;padding:12px 0;border-bottom:1px solid var(--line)}.item:last-child{border-bottom:0}.thumb{width:58px;height:58px;border-radius:17px;background:#eef0f3;object-fit:cover;flex:none}.item-main{min-width:0;flex:1}.item-main b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.muted{color:var(--muted);font-size:13px}
 .price{font-weight:800}.qty{display:flex;align-items:center;gap:8px}.qty button{width:32px;height:32px;border-radius:11px;background:var(--soft)}
-.bottom{position:fixed;bottom:0;left:0;right:0;z-index:30;background:rgba(255,255,255,.94);backdrop-filter:blur(18px);border-top:1px solid var(--line)}.bottom-inner{max-width:620px;margin:auto;display:grid;grid-template-columns:repeat(4,1fr);padding:7px 8px calc(7px + env(safe-area-inset-bottom))}
-.nav{background:transparent;padding:7px 4px;color:#777;font-size:11px}.nav.active{color:#111;font-weight:800}.nav .ico{font-size:20px;display:block;margin-bottom:2px}
-.search{display:flex;gap:8px;margin:12px 0}.search input{flex:1;padding:13px 15px;border:1px solid var(--line);border-radius:16px;background:#fff}
+.bottom{position:fixed;bottom:0;left:0;right:0;z-index:30;background:color-mix(in srgb,var(--card) 92%,transparent);backdrop-filter:blur(18px);border-top:1px solid var(--line)}.bottom-inner{max-width:620px;margin:auto;display:grid;grid-template-columns:repeat(4,1fr);padding:7px 8px calc(7px + env(safe-area-inset-bottom))}
+.nav{background:transparent;padding:7px 4px;color:var(--muted);font-size:11px}.nav.active{color:var(--accent);font-weight:800}.nav .ico{font-size:20px;display:block;margin-bottom:2px}
+.search{display:flex;gap:8px;margin:12px 0}.search input{flex:1;padding:13px 15px;border:1px solid var(--line);border-radius:16px;background:var(--card);color:var(--text)}
 .shop-card{padding:0;overflow:hidden}.shop-cover{height:112px;background:#e9ebef;object-fit:cover;width:100%}.shop-body{padding:15px}.shop-title{font-size:18px;font-weight:800}
 .product-card{display:flex;gap:12px;align-items:center;padding:13px 0;border-bottom:1px solid var(--line)}.product-card:last-child{border:0}.product-card img{width:72px;height:72px;border-radius:18px;object-fit:cover;background:#eef0f3}
-.modal{position:fixed;inset:0;background:rgba(0,0,0,.38);z-index:50;display:none;align-items:flex-end}.modal.open{display:flex}.sheet{width:100%;max-width:620px;margin:auto;background:#fff;border-radius:28px 28px 0 0;padding:18px;max-height:88vh;overflow:auto}.handle{width:42px;height:5px;border-radius:10px;background:#ddd;margin:0 auto 15px}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.38);z-index:50;display:none;align-items:flex-end}.modal.open{display:flex}.sheet{width:100%;max-width:620px;margin:auto;background:var(--card);color:var(--text);border-radius:28px 28px 0 0;padding:18px;max-height:88vh;overflow:auto}.handle{width:42px;height:5px;border-radius:10px;background:#ddd;margin:0 auto 15px}
 .toast{position:fixed;left:50%;bottom:92px;transform:translateX(-50%) translateY(20px);opacity:0;z-index:80;background:#111;color:#fff;padding:12px 16px;border-radius:15px;transition:.22s;pointer-events:none;max-width:90%;font-size:13px}.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 .kpi{padding:15px;border-radius:18px;background:var(--soft)}.kpi strong{font-size:24px;display:block}.section-title{font-weight:850;font-size:18px;margin:20px 2px 8px}
 .empty{text-align:center;padding:38px 12px;color:var(--muted)}
-.auth-wrap{min-height:100vh;display:flex;align-items:center;padding:22px}.auth-card{width:100%;background:#fff;border-radius:28px;padding:24px;box-shadow:var(--shadow);border:1px solid var(--line)}
-.logo{width:58px;height:58px;border-radius:19px;background:#111;color:#fff;display:grid;place-items:center;font-weight:900;font-size:23px;margin-bottom:18px}
-.link{color:#111;text-decoration:underline;cursor:pointer}.hidden{display:none!important}
+.auth-wrap{min-height:100vh;display:flex;align-items:center;padding:22px}.auth-card{width:100%;background:var(--card);border-radius:28px;padding:24px;box-shadow:var(--shadow);border:1px solid var(--line)}
+.logo{width:58px;height:58px;border-radius:19px;background:var(--accent);color:#fff;display:grid;place-items:center;font-weight:900;font-size:23px;margin-bottom:18px}
+.link{color:var(--accent);text-decoration:underline;cursor:pointer}.hidden{display:none!important}
 .order-status{padding:14px;border-radius:17px;background:#f5f6f8;margin-top:10px}.timeline{display:grid;gap:9px}.step{display:flex;gap:10px;align-items:center}.dot{width:10px;height:10px;border-radius:50%;background:#d7d9de}.dot.on{background:#111}
+.chips{display:flex;gap:8px;overflow-x:auto;padding:2px 2px 10px;scrollbar-width:none}.chips::-webkit-scrollbar{display:none}
+.chip{flex:none;padding:9px 15px;border-radius:999px;background:var(--soft);color:var(--text);font-size:13px;font-weight:700;white-space:nowrap}.chip.on{background:var(--accent);color:#fff}
+.stars{color:var(--star);font-size:12px;letter-spacing:1px}
+.fav{position:absolute;top:10px;right:10px;width:36px;height:36px;border-radius:12px;background:rgba(255,255,255,.92);display:grid;place-items:center;font-size:16px;box-shadow:var(--shadow)}.fav.on{color:var(--accent2)}
+.shop-cover{position:relative}
+.price-strike{text-decoration:line-through;color:var(--muted);font-weight:600;font-size:12px;margin-right:6px}
+.tag-promo{background:#fff1eb;color:var(--accent2);font-weight:800}
+.toggle{display:inline-flex;border-radius:999px;background:var(--soft);padding:4px}.toggle button{padding:8px 16px;border-radius:999px;background:transparent;font-weight:750;font-size:13px;color:var(--muted)}.toggle button.on{background:var(--accent);color:#fff}
+.rate-row{display:flex;gap:6px;font-size:26px;justify-content:center;margin:14px 0}.rate-row span{cursor:pointer;color:var(--line)}.rate-row span.on{color:var(--star)}
 @media(min-width:700px){body{padding:18px 0}.top{border-radius:20px}.bottom{left:50%;right:auto;transform:translateX(-50%);width:620px;border-radius:22px 22px 0 0}}
 </style>
 </head>
@@ -107,7 +129,15 @@ const QT = {
   key:'sb_publishable_Vn2Il4jp-iBtzNsGRNY8Lg_Tpvk2Vre'
 };
 const sb = window.supabase.createClient(QT.url,QT.key);
-let me=null, cart={shopProfileId:null,items:[]}, currentShop=null, currentOrder=null;
+let me=null, cart={shopProfileId:null,items:[]}, currentShop=null, currentOrder=null, shopRatings={}, activeCategory='';
+function getFavs(){try{return new Set(JSON.parse(localStorage.getItem('qt_favs')||'[]'))}catch(e){return new Set()}}
+function toggleFav(id){const f=getFavs();f.has(id)?f.delete(id):f.add(id);try{localStorage.setItem('qt_favs',JSON.stringify([...f]))}catch(e){}return f}
+async function loadRatings(){
+  try{const rows=await db('reviews','shop_id,rating');const m={};rows.forEach(r=>{const k=String(r.shop_id);(m[k]=m[k]||[]).push(Number(r.rating)||0)});
+    shopRatings={};Object.keys(m).forEach(k=>shopRatings[k]={avg:(m[k].reduce((a,b)=>a+b,0)/m[k].length),n:m[k].length})
+  }catch(e){shopRatings={}}
+}
+function starsHtml(avg){const full=Math.round(avg||0);return '★★★★★☆☆☆☆☆'.slice(5-full,10-full)}
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function money(n){return '฿'+Number(n||0).toLocaleString('th-TH',{maximumFractionDigits:2})}
@@ -193,19 +223,36 @@ async function navigate(page){
   else {await renderCustomer();$('customerHome').classList.add('active');navButtons('home')}
 }
 
+let allShops=[];
 async function renderCustomer(){
-  const shops=await db('shop_profiles','id,user_id,shop_name,phone,address,latitude,longitude,status');
-  const active=shops.filter(s=>s.status==='active'||s.status==='approved');
-  $('customerHome').innerHTML=`<div class="hero"><h1>สวัสดี ${esc(me.name||'ลูกค้า')}</h1><p>เลือกร้านค้าและสั่งอาหาร</p></div>
-  <div class="search"><input id="shopSearch" placeholder="ค้นหาร้านค้า…" oninput="filterShops()"></div>
-  <div id="shopList">${active.length?active.map(shopCard).join(''):`<div class="empty">ยังไม่มีร้านค้าที่เปิดให้บริการ</div>`}</div>`;
+  const [shops,products]=await Promise.all([db('shop_profiles','id,user_id,shop_name,phone,address,latitude,longitude,status,category'),db('products','id,shop_id,category')]);
+  await loadRatings();
+  allShops=shops.filter(s=>s.status==='active'||s.status==='approved');
+  const cats=[...new Set(allShops.map(s=>s.category).filter(Boolean))];
+  $('customerHome').innerHTML=`<div class="hero"><h1>สวัสดี ${esc(me.name||'ลูกค้า')}</h1><p>หิวไหม? เลือกร้านที่ใช่แล้วสั่งได้เลย</p></div>
+  <div class="search"><input id="shopSearch" placeholder="ค้นหาร้านหรือเมนู…" oninput="filterShops()"></div>
+  ${cats.length?`<div class="chips">${['ทั้งหมด',...cats].map(c=>`<button class="chip ${((c==='ทั้งหมด'&&!activeCategory)||c===activeCategory)?'on':''}" onclick="setCategory('${esc(c==='ทั้งหมด'?'':c)}')">${esc(c)}</button>`).join('')}</div>`:''}
+  <div id="shopList"></div>`;
+  renderShopList();
+}
+function setCategory(c){activeCategory=c;renderCustomer()}
+function renderShopList(){
+  const q=($('shopSearch')?.value||'').toLowerCase();
+  const favs=getFavs();
+  let list=allShops.filter(s=>(s.shop_name||'').toLowerCase().includes(q));
+  if(activeCategory)list=list.filter(s=>s.category===activeCategory);
+  list=list.slice().sort((a,b)=>(favs.has(String(b.id))?1:0)-(favs.has(String(a.id))?1:0));
+  $('shopList').innerHTML=list.length?list.map(shopCard).join(''):`<div class="empty">ไม่พบร้านที่ตรงกับคำค้นหา ลองคำอื่นดูนะ</div>`;
 }
 function shopCard(s){
- return `<article class="card shop-card" data-name="${esc((s.shop_name||'').toLowerCase())}">
-   <div class="shop-cover"></div><div class="shop-body"><div class="row"><div><div class="shop-title">${esc(s.shop_name||'ร้านค้า')}</div><div class="muted">${esc(s.address||'')}</div></div><span class="badge ok">เปิด</span></div>
+ const r=shopRatings[String(s.id)];const fav=getFavs().has(String(s.id));
+ return `<article class="card shop-card">
+   <div class="shop-cover"><button class="fav ${fav?'on':''}" onclick="event.stopPropagation();onFav('${esc(s.id)}')">${fav?'♥':'♡'}</button></div>
+   <div class="shop-body"><div class="row"><div><div class="shop-title">${esc(s.shop_name||'ร้านค้า')}</div><div class="muted">${esc(s.address||'ไม่ระบุที่อยู่')}</div>${r?`<div class="stars" style="margin-top:5px">${starsHtml(r.avg)} <span class="muted">(${r.n})</span></div>`:''}</div><span class="badge ok">เปิด</span></div>
    <button class="btn" style="margin-top:13px" onclick="openShop('${esc(s.id)}')">ดูเมนู</button></div></article>`
 }
-function filterShops(){const q=$('shopSearch').value.toLowerCase();document.querySelectorAll('#shopList [data-name]').forEach(x=>x.style.display=x.dataset.name.includes(q)?'':'none')}
+function onFav(id){toggleFav(id);renderShopList()}
+function filterShops(){renderShopList()}
 async function openShop(id){
   const shops=await db('shop_profiles',`id, user_id, shop_name, phone, address, latitude, longitude, status`);
   currentShop=shops.find(x=>String(x.id)===String(id));
@@ -244,45 +291,85 @@ async function renderCart(){
 }
 function cartItem(i){return `<div class="item"><img class="thumb" src="${esc(i.image)}" onerror="this.style.visibility='hidden'"><div class="item-main"><b>${esc(i.name)}</b><div class="price">${money(i.price)}</div></div><div class="qty"><button onclick="changeQty('${esc(i.productId)}',-1)">−</button><b>${i.qty}</b><button onclick="changeQty('${esc(i.productId)}',1)">+</button></div></div>`}
 function changeQty(id,d){const i=cart.items.find(x=>String(x.productId)===String(id));if(!i)return;i.qty+=d;if(i.qty<=0)cart.items=cart.items.filter(x=>x!==i);renderCart()}
+let appliedPromo=null;
 async function checkout(){
   if(!cart.items.length)return;
   const [products,shops]=await Promise.all([db('products','id,shop_id,name,price,is_available'),db('shop_profiles','id,shop_name,status,address,latitude,longitude')]);
   const shop=shops.find(s=>String(s.id)===String(cart.shopProfileId));
-  if(!shop||!['active','approved'].includes(shop.status))return toast('ร้านไม่พร้อมรับออเดอร์');
+  if(!shop||!['active','approved'].includes(shop.status))return toast('ร้านนี้ยังไม่พร้อมรับออเดอร์ตอนนี้');
   const verified=cart.items.map(i=>{const p=products.find(x=>String(x.id)===String(i.productId));return p?{...i,name:p.name,price:Number(p.price),shop_id:p.shop_id}:null});
-  if(verified.some(x=>!x||String(x.shop_id)!==String(shop.id)))return toast('ข้อมูลสินค้าเปลี่ยนแปลง กรุณาตรวจสอบตะกร้าใหม่');
+  if(verified.some(x=>!x||String(x.shop_id)!==String(shop.id)))return toast('เมนูบางรายการเปลี่ยนไป กรุณาตรวจสอบตะกร้าอีกครั้ง');
+  appliedPromo=null;
   const total=verified.reduce((s,x)=>s+x.price*x.qty,0);
   $('cartView').innerHTML=`<div class="hero"><h1>ยืนยันคำสั่งซื้อ</h1><p>${esc(shop.shop_name)}</p></div>
   <div class="card"><div class="section-title">รายการ</div>${verified.map(x=>`<div class="item"><div class="item-main"><b>${esc(x.name)}</b><span class="muted">จำนวน ${x.qty}</span></div><strong>${money(x.price*x.qty)}</strong></div>`).join('')}
-  <div class="row" style="margin-top:14px"><b>รวม</b><strong>${money(total)}</strong></div></div>
-  <div class="card"><div class="field"><label>ที่อยู่จัดส่ง</label><textarea id="deliveryAddress" rows="3" placeholder="กรอกที่อยู่จัดส่ง"></textarea></div><div class="field"><label>หมายเหตุ</label><textarea id="orderNote" rows="2"></textarea></div><button class="btn" onclick="placeOrder()">ส่งคำสั่งซื้อ</button></div>`;
+  <div class="row" style="margin-top:14px"><b>รวมค่าอาหาร</b><strong id="ckSubtotal">${money(total)}</strong></div>
+  <div class="row" id="ckPromoRow" style="display:none;color:var(--accent2)"><b>ส่วนลด</b><strong id="ckDiscount">-฿0</strong></div>
+  <div class="row" style="margin-top:6px;padding-top:10px;border-top:1px solid var(--line)"><b>ยอดชำระ</b><strong id="ckTotal">${money(total)}</strong></div></div>
+  <div class="card"><div class="field"><label>โค้ดส่วนลด (ถ้ามี)</label><div class="row" style="gap:8px"><input id="promoCode" placeholder="เช่น SAVE20" style="flex:1"><button class="btn secondary small" onclick="applyPromo(${total})">ใช้โค้ด</button></div><div id="promoMsg" class="muted" style="margin-top:6px"></div></div></div>
+  <div class="card"><div class="field"><label>ที่อยู่จัดส่ง</label><textarea id="deliveryAddress" rows="3" placeholder="บ้านเลขที่ ถนน แขวง/ตำบล เขต/อำเภอ"></textarea></div><div class="field"><label>หมายเหตุถึงร้าน (ถ้ามี)</label><textarea id="orderNote" rows="2"></textarea></div><button class="btn" onclick="placeOrder(${total})">สั่งเลย · ${money(total)}</button></div>`;
 }
-async function placeOrder(){
-  const address=$('deliveryAddress').value.trim();if(!address)return toast('กรอกที่อยู่จัดส่ง');
+async function applyPromo(subtotal){
+  const code=($('promoCode').value||'').trim().toUpperCase();
+  if(!code)return;
+  try{
+    const rows=await db('promotions','*');
+    const p=rows.find(x=>String(x.code||x.promo_code||'').toUpperCase()===code&&x.active!==false&&x.is_active!==false);
+    if(!p){$('promoMsg').textContent='โค้ดนี้ใช้ไม่ได้หรือหมดอายุแล้ว';appliedPromo=null;$('ckPromoRow').style.display='none';$('ckTotal').textContent=money(subtotal);return}
+    const dtype=p.discount_type||p.type||'amount', dval=Number(p.discount_value??p.value??p.percent??p.amount??0);
+    const discount=(dtype==='percent'||dtype==='percentage')?Math.round(subtotal*dval/100):dval;
+    appliedPromo={code:p.code,discount};
+    $('ckPromoRow').style.display='flex';$('ckDiscount').textContent='-'+money(discount);$('ckTotal').textContent=money(Math.max(0,subtotal-discount));
+    $('promoMsg').textContent='ใช้โค้ด '+esc(p.code)+' สำเร็จ';
+    document.querySelector('#cartView .btn:last-child').textContent='สั่งเลย · '+money(Math.max(0,subtotal-discount));
+  }catch(e){$('promoMsg').textContent='ยังไม่รองรับโค้ดส่วนลดในระบบนี้'}
+}
+async function placeOrder(subtotal){
+  const address=$('deliveryAddress').value.trim();if(!address)return toast('กรอกที่อยู่จัดส่งก่อนนะ');
   const [products,shops]=await Promise.all([db('products','id,shop_id,name,price,is_available'),db('shop_profiles','id,shop_name,status')]);
   const shop=shops.find(s=>String(s.id)===String(cart.shopProfileId));
-  if(!shop||!['active','approved'].includes(shop.status))return toast('ร้านไม่พร้อมรับออเดอร์');
+  if(!shop||!['active','approved'].includes(shop.status))return toast('ร้านนี้ยังไม่พร้อมรับออเดอร์ตอนนี้');
   const items=cart.items.map(i=>{const p=products.find(x=>String(x.id)===String(i.productId));return p&&p.is_available!==false&&String(p.shop_id)===String(shop.id)?{productId:p.id,name:p.name,price:Number(p.price),qty:i.qty}:null});
-  if(items.some(x=>!x))return toast('รายการอาหารเปลี่ยนแปลง กรุณากลับไปตรวจสอบ');
-  const total=items.reduce((s,x)=>s+x.price*x.qty,0);
+  if(items.some(x=>!x))return toast('เมนูบางรายการเปลี่ยนไป กรุณากลับไปตรวจสอบตะกร้า');
+  const total=Math.max(0,items.reduce((s,x)=>s+x.price*x.qty,0)-(appliedPromo?.discount||0));
   const orderId='QT-'+Math.floor(1000+Math.random()*9000);
-  const {data:o,error}=await sb.from('orders').insert({
-    order_number:orderId,customer_id:me.id,shop_id:shop.id,status:'pending_shop',
-    total_amount:total,delivery_address:address,note:$('orderNote').value.trim()||null
-  }).select('*').single();
-  if(error) return toast(error.message);
-  // Write order items only after the order itself is confirmed by the database.
+  const base={order_number:orderId,customer_id:me.id,shop_id:shop.id,status:'pending_shop',total_amount:total,delivery_address:address,note:$('orderNote').value.trim()||null};
+  let ins=await sb.from('orders').insert(appliedPromo?{...base,promo_code:appliedPromo.code}:base).select('*').single();
+  if(ins.error&&appliedPromo) ins=await sb.from('orders').insert(base).select('*').single();
+  if(ins.error) return toast(ins.error.message);
+  const o=ins.data;
   const rows=items.map(i=>({order_id:o.id,product_id:i.productId,quantity:i.qty,unit_price:i.price}));
   const {error:ie}=await sb.from('order_items').insert(rows);
-  if(ie){toast('สร้างคำสั่งซื้อแล้ว');console.error(ie);cart={shopProfileId:null,items:[]};await navigate('orders');return}
-  cart={shopProfileId:null,items:[]};toast('ส่งคำสั่งซื้อแล้ว');await navigate('orders')
+  if(ie){toast('สร้างคำสั่งซื้อแล้ว');console.error(ie);cart={shopProfileId:null,items:[]};appliedPromo=null;await navigate('orders');return}
+  cart={shopProfileId:null,items:[]};appliedPromo=null;toast('ส่งคำสั่งซื้อแล้ว ร้านกำลังจะรับออเดอร์');await navigate('orders')
+}
+async function cancelOrder(id){
+  if(!confirm('ยกเลิกคำสั่งซื้อนี้?'))return;
+  const {error}=await sb.from('orders').update({status:'cancelled'}).eq('id',id).eq('customer_id',me.id).eq('status','pending_shop');
+  if(error)return toast(error.message);
+  toast('ยกเลิกคำสั่งซื้อแล้ว');await renderOrders();
 }
 async function renderOrders(){
   const orders=await db('orders','id,order_number,shop_id,status,total_amount,delivery_address,created_at,customer_id');
   const mine=orders.filter(o=>String(o.customer_id)===String(me.id)).sort((a,b)=>String(b.created_at).localeCompare(String(a.created_at)));
   $('ordersView').innerHTML=`<div class="hero"><h1>คำสั่งซื้อ</h1><p>สถานะจากฐานข้อมูลล่าสุด</p></div>${mine.length?mine.map(orderCard).join(''):`<div class="empty">ยังไม่มีคำสั่งซื้อ</div>`}`
 }
-function orderCard(o){return `<div class="card"><div class="row"><b>${esc(o.order_number||o.id)}</b><span class="badge ${o.status==='delivered'||o.status==='completed'?'ok':o.status==='cancelled'?'danger':'warn'}">${esc(statusTH(o.status))}</span></div><div class="muted" style="margin-top:8px">${esc(o.delivery_address||'')}</div><div class="row" style="margin-top:12px"><strong>${money(o.total_amount)}</strong><button class="btn small" onclick="viewOrder('${esc(o.id)}')">ดูรายละเอียด</button></div></div>`}
+function orderCard(o){
+ const done=['delivered','completed'].includes(o.status);
+ return `<div class="card"><div class="row"><b>${esc(o.order_number||o.id)}</b><span class="badge ${done?'ok':o.status==='cancelled'?'danger':'warn'}">${esc(statusTH(o.status))}</span></div><div class="muted" style="margin-top:8px">${esc(o.delivery_address||'')}</div><div class="row" style="margin-top:12px"><strong>${money(o.total_amount)}</strong><div class="stack" style="grid-auto-flow:column;gap:8px">${o.status==='pending_shop'?`<button class="btn small secondary" onclick="cancelOrder('${esc(o.id)}')">ยกเลิก</button>`:''}${done?`<button class="btn small secondary" onclick="openRate('${esc(o.id)}','${esc(o.shop_id)}')">ให้คะแนน</button>`:''}<button class="btn small" onclick="viewOrder('${esc(o.id)}')">ดูรายละเอียด</button></div></div></div>`}
+async function openRate(orderId,shopId){
+ $('cartModalBody').innerHTML=`<h2 style="margin-top:0">ร้านนี้เป็นอย่างไรบ้าง?</h2><div class="rate-row" id="rateStars">${[1,2,3,4,5].map(n=>`<span data-n="${n}" onclick="pickStar(${n})">★</span>`).join('')}</div><textarea id="rateComment" rows="3" placeholder="เขียนรีวิว (ถ้ามี)" style="width:100%;padding:14px;border:1px solid var(--line);border-radius:15px"></textarea><button class="btn" style="margin-top:12px" onclick="submitRate('${esc(orderId)}','${esc(shopId)}')">ส่งรีวิว</button>`;
+ window.__rateN=5;pickStar(5);openModal('cartModal');
+}
+function pickStar(n){window.__rateN=n;document.querySelectorAll('#rateStars span').forEach(el=>el.classList.toggle('on',Number(el.dataset.n)<=n))}
+async function submitRate(orderId,shopId){
+ const rating=window.__rateN||5,comment=$('rateComment').value.trim();
+ try{
+   const {error}=await sb.from('reviews').insert({order_id:orderId,shop_id:shopId,customer_id:me.id,rating,comment:comment||null});
+   if(error)throw error;
+   toast('ขอบคุณสำหรับรีวิว!');closeModal('cartModal');
+ }catch(e){toast('ระบบรีวิวยังไม่พร้อมใช้งาน');closeModal('cartModal')}
+}
 function statusTH(s){return ({pending_shop:'รอร้านรับออเดอร์',shop_accepted:'ร้านรับออเดอร์แล้ว',preparing:'กำลังเตรียมอาหาร',ready_for_pickup:'พร้อมรับอาหาร',rider_assigned:'กำลังหาไรเดอร์',rider_to_shop:'ไรเดอร์กำลังไปร้าน',picked_up:'รับอาหารแล้ว',delivering:'กำลังจัดส่ง',delivered:'ส่งถึงแล้ว',completed:'เสร็จสิ้น',cancelled:'ยกเลิก'})[s]||s||'ไม่ทราบสถานะ'}
 async function viewOrder(id){
  const rows=await db('orders','*');const o=rows.find(x=>String(x.id)===String(id));if(!o)return;
@@ -340,40 +427,142 @@ async function toggleProduct(id,on){
   const {error}=await sb.from('products').update({is_available:on}).eq('id',id);
   if(error)console.error(error); else await renderShop();
 }
+function isToday(d){const t=new Date(),x=new Date(d);return x.toDateString()===t.toDateString()}
 async function renderShop(){
  const [profiles,products,orders]=await Promise.all([db('shop_profiles','*'),db('products','*'),db('orders','*')]);
  const sp=profiles.find(x=>String(x.user_id)===String(me.id));
- if(!sp){$('shopView').innerHTML='<div class="empty">ไม่พบข้อมูลร้าน</div>';return}
+ if(!sp){$('shopView').innerHTML='<div class="empty">ยังไม่พบข้อมูลร้านของคุณในระบบ</div>';return}
  const ps=products.filter(x=>String(x.shop_id)===String(sp.id)),os=orders.filter(x=>String(x.shop_id)===String(sp.id)).sort((a,b)=>String(b.created_at).localeCompare(String(a.created_at)));
  const pending=os.filter(x=>x.status==='pending_shop').length;
- $('shopView').innerHTML=`<div class="hero"><h1>${esc(sp.shop_name||me.name)}</h1><p>จัดการร้าน</p></div>
- <div class="grid3"><div class="kpi"><strong>${ps.length}</strong><span class="muted">เมนู</span></div><div class="kpi"><strong>${pending}</strong><span class="muted">รอรับ</span></div><div class="kpi"><strong>${os.length}</strong><span class="muted">ออเดอร์</span></div></div>
- <button class="btn" onclick="addProduct()">เพิ่มเมนู</button>
- <div class="section-title">เมนูอาหาร</div><div class="card">${ps.length?ps.map(p=>`<div class="item"><div class="item-main"><b>${esc(p.name)}</b><span class="muted">${money(p.price)}</span></div><button class="btn small ${p.is_available===false?'secondary':''}" onclick="toggleProduct('${esc(p.id)}',${p.is_available===false?'true':'false'})">${p.is_available===false?'เปิดขาย':'ปิดขาย'}</button></div>`).join(''):'<div class="empty">ยังไม่มีเมนู</div>'}</div>
- <div class="section-title">คำสั่งซื้อ</div><div class="card">${os.length?os.slice(0,30).map(o=>`<div class="item"><div class="item-main"><b>${esc(o.order_number||o.id)}</b><span class="muted">${esc(statusTH(o.status))}</span><span class="muted">${money(o.total_amount)}</span></div><div class="stack">${o.status==='pending_shop'?`<button class="btn small" onclick="updateShopOrder('${esc(o.id)}','shop_accepted')">รับ</button>`:''}${o.status==='shop_accepted'?`<button class="btn small" onclick="updateShopOrder('${esc(o.id)}','preparing')">เริ่มทำ</button>`:''}${o.status==='preparing'?`<button class="btn small" onclick="updateShopOrder('${esc(o.id)}','ready_for_pickup')">พร้อมรับ</button>`:''}</div></div>`).join(''):'<div class="empty">ยังไม่มีคำสั่งซื้อ</div>'}</div>`;
+ const todayRevenue=os.filter(x=>['delivered','completed'].includes(x.status)&&isToday(x.created_at)).reduce((s,x)=>s+Number(x.total_amount||0),0);
+ $('shopView').innerHTML=`<div class="hero"><h1>${esc(sp.shop_name||me.name)}</h1><p>จัดการร้านของคุณ</p></div>
+ <div class="grid3"><div class="kpi"><strong>${ps.length}</strong><span class="muted">เมนู</span></div><div class="kpi"><strong>${pending}</strong><span class="muted">รอรับ</span></div><div class="kpi"><strong>${money(todayRevenue)}</strong><span class="muted">ยอดวันนี้</span></div></div>
+ <button class="btn" onclick="addProduct()">+ เพิ่มเมนูใหม่</button>
+ <div class="section-title">เมนูอาหาร</div><div class="card">${ps.length?ps.map(p=>`<div class="item"><div class="item-main"><b>${esc(p.name)}</b><span class="muted">${money(p.price)}</span></div><button class="btn small ${p.is_available===false?'secondary':''}" onclick="toggleProduct('${esc(p.id)}',${p.is_available===false?'true':'false'})">${p.is_available===false?'เปิดขาย':'ปิดขาย'}</button></div>`).join(''):'<div class="empty">ยังไม่มีเมนู เพิ่มเมนูแรกของร้านได้เลย</div>'}</div>
+ <div class="section-title">คำสั่งซื้อ</div><div class="card">${os.length?os.slice(0,30).map(o=>`<div class="item"><div class="item-main"><b>${esc(o.order_number||o.id)}</b><span class="muted">${esc(statusTH(o.status))}</span><span class="muted">${money(o.total_amount)}</span></div><div class="stack">${o.status==='pending_shop'?`<button class="btn small" onclick="updateShopOrder('${esc(o.id)}','shop_accepted')">รับออเดอร์</button>`:''}${o.status==='shop_accepted'?`<button class="btn small" onclick="updateShopOrder('${esc(o.id)}','preparing')">เริ่มทำ</button>`:''}${o.status==='preparing'?`<button class="btn small" onclick="updateShopOrder('${esc(o.id)}','ready_for_pickup')">พร้อมให้ไรเดอร์รับ</button>`:''}</div></div>`).join(''):'<div class="empty">ยังไม่มีคำสั่งซื้อเข้ามา</div>'}</div>`;
 }
 async function renderTechnician(){
   let jobs=[]; try{jobs=await db('technician_jobs','*')}catch(e){try{jobs=await db('service_orders','*')}catch(_){jobs=[]}}
   jobs=jobs.filter(j=>String(j.technician_id||j.user_id||j.assigned_to||'')===String(me.id)||!j.technician_id&&!j.assigned_to);
-  $('technicianView').innerHTML=`<div class="hero"><h1>งานช่าง</h1><p>${esc(me.name||'ช่าง')}</p></div><div class="card"><div class="row"><b>สถานะบัญชี</b><span class="badge warn">${esc(me.status||'active')}</span></div></div><div class="section-title">งาน</div>${jobs.length?jobs.map(j=>`<div class="card"><div class="row"><b>${esc(j.title||j.job_number||j.id||'งาน')}</b><span class="badge warn">${esc(j.status||'รอดำเนินการ')}</span></div><div class="muted" style="margin-top:8px">${esc(j.description||j.address||'')}</div></div>`).join(''):'<div class="empty">ยังไม่มีงาน</div>'}`;
+  $('technicianView').innerHTML=`<div class="hero"><h1>งานช่าง</h1><p>${esc(me.name||'ช่าง')}</p></div><div class="card"><div class="row"><b>สถานะบัญชี</b><span class="badge warn">${esc(me.status||'active')}</span></div></div><div class="section-title">งาน</div>${jobs.length?jobs.map(j=>`<div class="card"><div class="row"><b>${esc(j.title||j.job_number||j.id||'งาน')}</b><span class="badge warn">${esc(j.status||'รอดำเนินการ')}</span></div><div class="muted" style="margin-top:8px">${esc(j.description||j.address||'')}</div></div>`).join(''):'<div class="empty">ยังไม่มีงานเข้ามา</div>'}`;
+}
+async function setRiderOnline(rpId,on){
+  try{const {error}=await sb.from('rider_profiles').update({is_online:on}).eq('id',rpId);if(error)throw error}
+  catch(e){toast('ระบบยังไม่มีคอลัมน์ is_online ในตาราง rider_profiles — แจ้งแอดมินให้เพิ่ม (ดูหน้าตรวจสอบระบบ)')}
+  await renderRider();
+}
+async function shareLocation(rpId){
+  if(!navigator.geolocation)return toast('อุปกรณ์นี้ไม่รองรับตำแหน่ง GPS');
+  navigator.geolocation.getCurrentPosition(async pos=>{
+    const {error}=await sb.from('rider_profiles').update({latitude:pos.coords.latitude,longitude:pos.coords.longitude}).eq('id',rpId);
+    toast(error?'ไม่สามารถอัปเดตตำแหน่งได้':'อัปเดตตำแหน่งแล้ว');
+  },()=>toast('ไม่สามารถเข้าถึงตำแหน่งได้'));
 }
 async function renderRider(){
- const rp=(await db('rider_profiles','*')).find(x=>String(x.user_id)===String(me.id));
  const orders=await db('orders','*');
- const jobs=orders.filter(o=>['rider_assigned','ready_for_pickup'].includes(o.status));
- $('riderView').innerHTML=`<div class="hero"><h1>งานไรเดอร์</h1><p>${esc(rp?.rider_name||me.name||'ไรเดอร์')}</p></div><div class="card"><div class="row"><b>สถานะ</b><span class="badge ${rp?.status==='active'?'ok':'warn'}">${rp?.status==='active'?'พร้อมรับงาน':'รออนุมัติ'}</span></div></div><div class="section-title">งานที่พร้อมรับ</div>${jobs.length?jobs.map(o=>`<div class="card"><div class="row"><b>${esc(o.order_number||o.id)}</b><span class="badge warn">${esc(statusTH(o.status))}</span></div><div class="muted" style="margin-top:8px">${esc(o.delivery_address||'')}</div><button class="btn" style="margin-top:12px" onclick="riderAccept('${esc(o.id)}')">รับงาน</button></div>`).join(''):'<div class="empty">ยังไม่มีงาน</div>'}`
+ const rp=(await db('rider_profiles','*')).find(x=>String(x.user_id)===String(me.id));
+ if(!rp){$('riderView').innerHTML='<div class="empty">ยังไม่พบข้อมูลไรเดอร์ของคุณ</div>';return}
+ const approved=rp.status==='active';
+ const online=rp.is_online!==false;
+ const myJobs=orders.filter(o=>String(o.rider_id||'')===String(rp.id)&&['rider_to_shop','picked_up','delivering'].includes(o.status));
+ const openJobs=orders.filter(o=>!o.rider_id&&['rider_assigned','ready_for_pickup'].includes(o.status));
+ const earnings=orders.filter(o=>String(o.rider_id||'')===String(rp.id)&&['delivered','completed'].includes(o.status)).reduce((s,o)=>s+Math.round(Number(o.total_amount||0)*0.12),0);
+ $('riderView').innerHTML=`<div class="hero"><h1>สวัสดี ${esc(rp.rider_name||me.name||'ไรเดอร์')}</h1><p>${approved?'พร้อมรับงานส่งอาหาร':'บัญชีกำลังรอการอนุมัติ'}</p></div>
+ <div class="grid3"><div class="kpi"><strong>${money(earnings)}</strong><span class="muted">รายได้สะสม</span></div><div class="kpi"><strong>${myJobs.length}</strong><span class="muted">งานปัจจุบัน</span></div><div class="kpi"><strong>${openJobs.length}</strong><span class="muted">งานว่าง</span></div></div>
+ ${approved?`<div class="card row"><div><b>สถานะออนไลน์</b><div class="muted" style="margin-top:3px">${online?'กำลังรับงานอยู่':'ไม่รับงานตอนนี้'}</div></div><div class="toggle"><button class="${online?'on':''}" onclick="setRiderOnline('${esc(rp.id)}',true)">ออนไลน์</button><button class="${!online?'on':''}" onclick="setRiderOnline('${esc(rp.id)}',false)">ออฟไลน์</button></div></div>
+ <button class="btn secondary" onclick="shareLocation('${esc(rp.id)}')">📍 แชร์ตำแหน่งปัจจุบัน</button>`:''}
+ ${myJobs.length?`<div class="section-title">งานที่กำลังทำ</div>${myJobs.map(o=>`<div class="card"><div class="row"><b>${esc(o.order_number||o.id)}</b><span class="badge warn">${esc(statusTH(o.status))}</span></div><div class="muted" style="margin-top:8px">${esc(o.delivery_address||'')}</div><div class="stack" style="margin-top:12px">${o.status==='rider_to_shop'?`<button class="btn small" onclick="riderUpdate('${esc(o.id)}','picked_up')">รับอาหารจากร้านแล้ว</button>`:''}${o.status==='picked_up'?`<button class="btn small" onclick="riderUpdate('${esc(o.id)}','delivering')">กำลังนำส่ง</button>`:''}${o.status==='delivering'?`<button class="btn small" onclick="riderUpdate('${esc(o.id)}','delivered')">ส่งสำเร็จ</button>`:''}</div></div>`).join('')}`:''}
+ <div class="section-title">งานที่พร้อมรับ</div>${online?(openJobs.length?openJobs.map(o=>`<div class="card"><div class="row"><b>${esc(o.order_number||o.id)}</b><span class="badge warn">${esc(statusTH(o.status))}</span></div><div class="muted" style="margin-top:8px">${esc(o.delivery_address||'')}</div><div class="row" style="margin-top:12px"><strong>${money(Math.round(Number(o.total_amount||0)*0.12))}</strong><button class="btn small" onclick="riderAccept('${esc(o.id)}')">รับงาน</button></div></div>`).join(''):'<div class="empty">ยังไม่มีงานว่างตอนนี้ รอสักครู่นะ</div>'):'<div class="empty">เปิดสถานะออนไลน์เพื่อดูงานที่พร้อมรับ</div>'}`
 }
-async function riderAccept(id){const {error}=await sb.from('orders').update({status:'rider_to_shop'}).eq('id',id);if(error)console.error(error);await renderRider()}
+async function riderAccept(id){
+ const rp=(await db('rider_profiles','*')).find(x=>String(x.user_id)===String(me.id));if(!rp)return;
+ let r=await sb.from('orders').update({status:'rider_to_shop',rider_id:rp.id}).eq('id',id).is('rider_id',null);
+ if(r.error) r=await sb.from('orders').update({status:'rider_to_shop'}).eq('id',id);
+ if(r.error)return toast(r.error.message);
+ toast('รับงานแล้ว มุ่งหน้าไปที่ร้านได้เลย');await renderRider();
+}
+async function riderUpdate(id,status){const {error}=await sb.from('orders').update({status}).eq('id',id);if(error)return toast(error.message);await renderRider()}
+// Table list confirmed from the real Supabase project (Table Editor screenshot, 23 Sep 2026):
+// audit_logs, deliveries, notifications, order_audit, order_chat_messages, order_items, orders,
+// payments, products, promotions, quotations, rider_profiles, settlements, shop_profiles,
+// technician_profiles, users. No 'reviews', 'promo_codes' or 'technician_jobs' table exists.
+const SYSTEM_CHECKS=[
+ {id:'deliveries',label:'ตาราง deliveries (มอบหมาย/ติดตามงานไรเดอร์)',table:'deliveries',exists:true},
+ {id:'payments',label:'ตาราง payments (การชำระเงิน)',table:'payments',exists:true},
+ {id:'notifications',label:'ตาราง notifications (แจ้งเตือนในแอป)',table:'notifications',exists:true},
+ {id:'order_chat_messages',label:'ตาราง order_chat_messages (แชทในออเดอร์)',table:'order_chat_messages',exists:true},
+ {id:'promotions',label:'ตาราง promotions (โปรโมชัน/ส่วนลด)',table:'promotions',exists:true},
+ {id:'settlements',label:'ตาราง settlements (สรุปยอดจ่ายร้าน/ไรเดอร์)',table:'settlements',exists:true},
+ {id:'quotations',label:'ตาราง quotations (ใบเสนอราคางานช่าง)',table:'quotations',exists:true},
+ {id:'audit_logs',label:'ตาราง audit_logs / order_audit (ประวัติการเปลี่ยนแปลง)',table:'audit_logs',exists:true},
+ {id:'reviews_table',label:'ตารางรีวิว/ให้คะแนนร้าน (reviews) — ยังไม่มีในฐานข้อมูล',table:'reviews',exists:false,
+  sql:`create table if not exists reviews (
+  id uuid primary key default gen_random_uuid(),
+  order_id uuid references orders(id),
+  shop_id uuid references shop_profiles(id),
+  customer_id uuid references users(id),
+  rating int not null check (rating between 1 and 5),
+  comment text,
+  created_at timestamptz default now()
+);
+alter table reviews enable row level security;
+create policy "reviews_select_all" on reviews for select using (true);
+create policy "reviews_insert_own" on reviews for insert with check (true);
+-- ปรับชนิดข้อมูล id ให้ตรงกับ orders/shop_profiles/users ของคุณ (uuid หรือ bigint) ก่อนรัน`},
+ {id:'rider_online',label:'คอลัมน์ rider_profiles.is_online (สถานะออนไลน์/ออฟไลน์)',table:'rider_profiles',column:'is_online',exists:null,
+  sql:`alter table rider_profiles add column if not exists is_online boolean default true;`},
+ {id:'shop_category',label:'คอลัมน์ shop_profiles.category (หมวดหมู่ร้าน)',table:'shop_profiles',column:'category',exists:null,
+  sql:`alter table shop_profiles add column if not exists category text;`},
+ {id:'product_category',label:'คอลัมน์ products.category (หมวดหมู่เมนู)',table:'products',column:'category',exists:null,
+  sql:`alter table products add column if not exists category text;`},
+];
+let lastCheckResults=[];
+async function runSystemCheck(){
+  const box=$('sysCheckBox'); if(box) box.innerHTML='<div class="empty">กำลังตรวจสอบ…</div>';
+  const results=[];
+  for(const c of SYSTEM_CHECKS){
+    let ok=false, cols=null;
+    try{
+      const sel = c.column ? c.column : '*';
+      const {data,error}=await sb.from(c.table).select(sel).limit(1);
+      ok = !error;
+      if(ok && !c.column && data && data[0]) cols = Object.keys(data[0]);
+    }catch(e){ok=false}
+    results.push({...c,ok,cols});
+  }
+  lastCheckResults=results;
+  renderSystemCheck();
+}
+function renderSystemCheck(){
+  const box=$('sysCheckBox'); if(!box)return;
+  const missing=lastCheckResults.filter(x=>!x.ok);
+  box.innerHTML=`<div class="row"><b>ผลตรวจสอบ</b><span class="badge ${missing.length?'danger':'ok'}">${missing.length?`ขาด/ต้องตรวจ ${missing.length} รายการ`:'ครบทุกระบบ'}</span></div>
+  <div class="stack" style="margin-top:10px">${lastCheckResults.map(c=>`<div class="item"><div class="item-main"><b>${esc(c.label)}</b>${c.ok&&c.cols?`<div class="muted" style="margin-top:4px">คอลัมน์: ${esc(c.cols.join(', '))}</div>`:''}${c.ok&&!c.cols&&!c.column?`<div class="muted" style="margin-top:4px">มีตารางอยู่ แต่ยังไม่มีข้อมูลตัวอย่างให้อ่านคอลัมน์ — เพิ่มข้อมูล 1 แถวแล้วตรวจอีกครั้ง</div>`:''}</div><span class="badge ${c.ok?'ok':'danger'}">${c.ok?'พร้อมใช้งาน':'ยังไม่มี'}</span></div>${!c.ok&&c.sql?`<div class="muted" style="margin:4px 0 10px">กดคัดลอกคำสั่ง SQL แล้วไปรันที่ Supabase → SQL Editor</div><button class="btn small secondary" onclick="copySql('${c.id}')">คัดลอก SQL</button>`:''}`).join('')}</div>
+  ${missing.filter(x=>x.sql).length?`<button class="btn" style="margin-top:14px" onclick="copySql('__all')">คัดลอก SQL ทั้งหมดที่ขาด</button>`:''}
+  <p class="muted" style="margin-top:14px">ตารางที่มีอยู่แล้วในระบบของคุณ (deliveries, payments, notifications, order_chat_messages, promotions, settlements, quotations, audit_logs) ยังไม่ได้ต่อเข้ากับหน้าตาแอปนี้ — ส่งรายชื่อคอลัมน์ที่เห็นด้านบนกลับมาในแชท แล้วผมจะเชื่อมฟีเจอร์จริง (แชท, การแจ้งเตือน, การชำระเงิน, มอบหมายไรเดอร์ผ่าน deliveries) ให้ตรงกับโครงสร้างจริงในรอบถัดไป</p>`;
+}
+function copySql(id){
+  const text = id==='__all' ? lastCheckResults.filter(x=>!x.ok&&x.sql).map(x=>'-- '+x.label+'\n'+x.sql).join('\n\n') : (lastCheckResults.find(x=>x.id===id)?.sql||'');
+  try{ navigator.clipboard.writeText(text); toast('คัดลอก SQL แล้ว วางใน Supabase SQL Editor ได้เลย'); }
+  catch(e){ toast('คัดลอกไม่สำเร็จ ลองคัดลอกด้วยตนเอง'); }
+}
 async function renderAdmin(){
  const [u,o,s,r]=await Promise.all([db('users','*'),db('orders','*'),db('shop_profiles','*'),db('rider_profiles','*')]);
  let t=[];try{t=await db('technician_profiles','*')}catch(e){}
  const pendingUsers=u.filter(x=>x.status==='pending').length;
- $('adminView').innerHTML=`<div class="hero"><h1>ผู้ดูแลระบบ</h1><p>ภาพรวมระบบ</p></div><div class="grid3"><div class="kpi"><strong>${u.length}</strong><span class="muted">สมาชิก</span></div><div class="kpi"><strong>${o.length}</strong><span class="muted">ออเดอร์</span></div><div class="kpi"><strong>${pendingUsers+s.filter(x=>x.status==='pending').length+r.filter(x=>x.status==='pending').length+t.filter(x=>x.status==='pending').length}</strong><span class="muted">รออนุมัติ</span></div></div>
- <div class="section-title">ผู้ใช้</div><div class="card">${u.length?u.map(x=>`<div class="item"><div class="item-main"><b>${esc(x.name||x.id)}</b><span class="muted">${esc(x.role||'')} · ${esc(x.status||'')}</span></div>${x.role!=='admin'&&x.status==='pending'?`<button class="btn small" onclick="approveUser('${esc(x.id)}')">อนุมัติ</button>`:''}</div>`).join(''):'<div class="empty">ไม่มีข้อมูล</div>'}</div>
+ const revenue=o.filter(x=>['delivered','completed'].includes(x.status)).reduce((s,x)=>s+Number(x.total_amount||0),0);
+ $('adminView').innerHTML=`<div class="hero"><h1>ผู้ดูแลระบบ</h1><p>ภาพรวมทั้งแพลตฟอร์ม</p></div><div class="grid3"><div class="kpi"><strong>${u.length}</strong><span class="muted">สมาชิก</span></div><div class="kpi"><strong>${o.length}</strong><span class="muted">ออเดอร์</span></div><div class="kpi"><strong>${money(revenue)}</strong><span class="muted">ยอดขายรวม</span></div></div>
+ <div class="section-title">ผู้ใช้ที่รออนุมัติ</div><div class="card">${u.filter(x=>x.status==='pending').length?u.filter(x=>x.status==='pending').map(x=>`<div class="item"><div class="item-main"><b>${esc(x.name||x.id)}</b><span class="muted">${esc(x.role||'')}</span></div><button class="btn small" onclick="approveUser('${esc(x.id)}')">อนุมัติ</button></div>`).join(''):'<div class="empty">ไม่มีคำขอค้างอยู่</div>'}</div>
  <div class="section-title">ร้านค้า</div><div class="card">${s.length?s.map(x=>`<div class="item"><div class="item-main"><b>${esc(x.shop_name||x.id)}</b><span class="muted">${esc(x.status||'')}</span></div>${x.status==='pending'?`<button class="btn small" onclick="approveShop('${esc(x.id)}')">อนุมัติ</button>`:''}</div>`).join(''):'<div class="empty">ไม่มีข้อมูล</div>'}</div>
- <div class="section-title">คำสั่งซื้อล่าสุด</div><div class="card">${o.slice().sort((a,b)=>String(b.created_at).localeCompare(String(a.created_at))).slice(0,30).map(orderCard).join('')||'<div class="empty">ไม่มีคำสั่งซื้อ</div>'}</div>`;
+ <div class="section-title">ไรเดอร์</div><div class="card">${r.length?r.map(x=>`<div class="item"><div class="item-main"><b>${esc(x.rider_name||x.id)}</b><span class="muted">${esc(x.status||'')}</span></div>${x.status==='pending'?`<button class="btn small" onclick="approveRider('${esc(x.id)}')">อนุมัติ</button>`:''}</div>`).join(''):'<div class="empty">ไม่มีข้อมูล</div>'}</div>
+ ${t.length?`<div class="section-title">ช่างบริการ</div><div class="card">${t.map(x=>`<div class="item"><div class="item-main"><b>${esc(x.technician_name||x.id)}</b><span class="muted">${esc(x.status||'')}</span></div>${x.status==='pending'?`<button class="btn small" onclick="approveTechnician('${esc(x.id)}')">อนุมัติ</button>`:''}</div>`).join('')}</div>`:''}
+ <div class="section-title">คำสั่งซื้อล่าสุด</div><div class="card">${o.slice().sort((a,b)=>String(b.created_at).localeCompare(String(a.created_at))).slice(0,30).map(orderCard).join('')||'<div class="empty">ไม่มีคำสั่งซื้อ</div>'}</div>
+ <div class="section-title">ตรวจสอบระบบ</div><div class="card"><p class="muted" style="margin-top:0">ตรวจว่าตาราง/คอลัมน์ที่ฟีเจอร์ใหม่ต้องใช้มีอยู่ในฐานข้อมูลจริงหรือยัง ถ้ายังไม่มี ระบบจะให้คำสั่ง SQL ไปรันเพิ่มเองได้</p><button class="btn secondary" onclick="runSystemCheck()">ตรวจสอบระบบอีกครั้ง</button><div id="sysCheckBox" style="margin-top:12px"><div class="empty">กำลังตรวจสอบ…</div></div></div>`;
+ runSystemCheck();
 }
 async function approveUser(id){const {error}=await sb.from('users').update({status:'active'}).eq('id',id).neq('role','admin');if(error)console.error(error);await renderAdmin()}
+async function approveRider(id){const {error}=await sb.from('rider_profiles').update({status:'active'}).eq('id',id);if(error)return toast(error.message);const rr=await sb.from('rider_profiles').select('user_id').eq('id',id).single();if(rr.data?.user_id)await sb.from('users').update({status:'active'}).eq('id',rr.data.user_id);toast('อนุมัติไรเดอร์แล้ว');renderAdmin()}
+async function approveTechnician(id){try{const {error}=await sb.from('technician_profiles').update({status:'active'}).eq('id',id);if(error)throw error;const tt=await sb.from('technician_profiles').select('user_id').eq('id',id).single();if(tt.data?.user_id)await sb.from('users').update({status:'active'}).eq('id',tt.data.user_id);toast('อนุมัติช่างแล้ว')}catch(e){toast('ไม่สามารถอนุมัติได้')}renderAdmin()}
 function startRealtime(){
  if(window.__qtRealtime)return; window.__qtRealtime=true;
  try{sb.channel('qt-food-live').on('postgres_changes',{event:'*',schema:'public',table:'orders'},()=>{if(!me)return;const r=roleOf();if(r==='customer')renderOrders();else if(r==='shop')renderShop();else if(r==='rider')renderRider();else if(r==='admin')renderAdmin()}).subscribe()}catch(e){console.error(e)}
