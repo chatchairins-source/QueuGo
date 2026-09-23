@@ -3737,7 +3737,31 @@ function ordersFallbackNumber(order){
 }
 
 /* ---------- 8. CHECKOUT / ORDER FLOW ---------- */
-function renderCheckout(){
+async function qtLoadCheckoutShopProfile(shop, cartShopProfileId){
+  const fallback = Object.assign({}, shop || {});
+  const profileId = cartShopProfileId || fallback.shopProfileId || null;
+  if(!profileId) return fallback;
+  try{
+    const token = await qtGetAccessToken();
+    if(token){
+      const rows = await qtSupabaseTable('shop_profiles?select=id,user_id,shop_name,phone,address,latitude,longitude,status&id=eq.'+encodeURIComponent(profileId)+'&limit=1',{accessToken:token});
+      const profile = Array.isArray(rows) ? rows[0] : null;
+      if(profile && String(profile.user_id||'')===String(fallback.id||'') && String(profile.status||'').toLowerCase()==='active'){
+        return Object.assign({}, fallback, {
+          shopProfileId: profile.id,
+          shopName: profile.shop_name || fallback.shopName,
+          phone: profile.phone || fallback.phone,
+          address: profile.address || fallback.address || '',
+          lat: Number(profile.latitude),
+          lng: Number(profile.longitude)
+        });
+      }
+    }
+  }catch(e){ console.warn('[QueueTech] checkout shop profile load failed:',e); }
+  return fallback;
+}
+
+async function renderCheckout(){
   const user = currentUser();
   if(!user){ navigate('login'); return; } /* V5.31 fix: renderCheckout used to crash reading user.id when the session was missing */
   const activeOrder = getCustomerActiveOrder(user.id);
@@ -3748,11 +3772,23 @@ function renderCheckout(){
   }
   const cart = qtNormalizeCart(dbGet('qt_cart_'+user.id, {items:[]}));
   if(!cart.items.length){ toast('ตะกร้าว่างเปล่า'); navigate('cart'); return; }
-  const shop = qtResolveShopFromCartId(cart.shopId);
-  if(!shop){ toast('ไม่พบข้อมูลร้านค้าของตะกร้านี้ กรุณากลับไปเลือกสินค้าใหม่'); navigate('cart'); return; }
+  const baseShop = qtResolveShopFromCartId(cart.shopId);
+  if(!baseShop){ toast('ไม่พบข้อมูลร้านค้าของตะกร้านี้ กรุณากลับไปเลือกสินค้าใหม่'); navigate('cart'); return; }
+  /* Checkout source of truth: shop_profiles.
+     The shop owner id remains only for UI/cart identity; pickup coordinates/address
+     used by the delivery selector and fee calculation come from shop_profiles.id. */
+  const shop = await qtLoadCheckoutShopProfile(baseShop, cart.shopProfileId);
+  if(!Number.isFinite(Number(shop.lat)) || !Number.isFinite(Number(shop.lng))){
+    toast('โปรไฟล์ร้านยังไม่มีพิกัด กรุณาให้ร้านบันทึกตำแหน่งร้านก่อนสั่งซื้อ');
+    return;
+  }
   const subtotal = cart.items.reduce((s,i)=>s+Number(i.price||0)*Number(i.qty||0),0);
   layout('ยืนยันคำสั่งซื้อ', `
     <h2>ยืนยันคำสั่งซื้อ - ${escapeHtml(shop.shopName)}</h2>
+    <div style="padding:10px 12px;border-radius:12px;background:#f5f7fa;margin:8px 0 12px">
+      <b>📍 จุดรับอาหารจากร้าน</b><br>
+      <span>${escapeHtml(shop.address || 'ใช้พิกัดจากโปรไฟล์ร้าน')}</span>
+    </div>
     <h3>เลือกตำแหน่งจัดส่ง</h3>
     <div id="pin-map" class="map-box"></div>
     <button type="button" class="btn-secondary" onclick="locatePicker()">📍 ใช้ตำแหน่งปัจจุบัน</button>
@@ -3766,7 +3802,9 @@ function renderCheckout(){
     </div>
     ${qtSlideConfirm('checkout-confirm-slide', '➡️ เลื่อนเพื่อยืนยันสั่งซื้อ', 'confirmOrder()')}
   `);
-  let picked = {lat:13.7563, lng:100.5018};
+  /* Delivery pin is still the customer's destination. The shop pin/source is
+     loaded from shop_profiles above and is used as the distance origin. */
+  let picked = {lat:shop.lat, lng:shop.lng};
   window.__checkoutSubtotal = subtotal;
   window.__checkoutShop = shop;
   function refreshFee(lat,lng){
