@@ -102,6 +102,36 @@ form input, form select, form textarea{width:100%;padding:10px;border:1px solid 
 .notif-item small{display:block;color:#94a3b8;font-weight:400;margin-top:2px;}
 @media(min-width:700px){.qt-main{padding:24px;}}
 
+
+/* Customer order tracking UI */
+.qt-track-hero{background:#fff;border-radius:20px;padding:18px;margin:10px 0 12px;box-shadow:0 4px 16px rgba(15,23,42,.07);border:1px solid var(--line)}
+.qt-track-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.qt-track-number{font-size:18px;font-weight:700;color:var(--text)}
+.qt-track-sub{font-size:12px;color:var(--muted);margin-top:3px}
+.qt-track-status{font-size:12px;font-weight:700;background:#eff6ff;color:#1d4ed8;padding:7px 10px;border-radius:999px;white-space:nowrap}
+.qt-track-progress{display:grid;grid-template-columns:repeat(5,1fr);gap:4px;margin:18px 0 4px}
+.qt-track-progress-item{text-align:center;position:relative;font-size:10px;color:#94a3b8}
+.qt-track-progress-item:before{content:'';display:block;width:18px;height:18px;border-radius:50%;background:#e2e8f0;margin:0 auto 5px;border:3px solid #fff;box-shadow:0 0 0 1px #cbd5e1}
+.qt-track-progress-item.done{color:#047857;font-weight:600}
+.qt-track-progress-item.done:before{background:#10b981;box-shadow:0 0 0 1px #10b981}
+.qt-track-progress-item.current{color:#1d4ed8;font-weight:700}
+.qt-track-progress-item.current:before{background:#2563eb;box-shadow:0 0 0 3px #dbeafe}
+.qt-track-map-card{background:#fff;border-radius:20px;padding:12px;margin:12px 0;box-shadow:0 4px 16px rgba(15,23,42,.07);border:1px solid var(--line)}
+.qt-track-map-card h3{margin:2px 4px 8px;font-size:15px}
+.qt-track-map-card .map-box{height:300px;margin:0;border-radius:14px}
+.qt-track-rider{background:#fff;border-radius:20px;padding:14px;margin:12px 0;box-shadow:0 4px 16px rgba(15,23,42,.07);border:1px solid var(--line)}
+.qt-track-rider-head{display:flex;align-items:center;gap:12px}
+.qt-track-rider .rider-profile-photo{width:58px;height:58px;border-radius:50%}
+.qt-track-rider-info{flex:1;min-width:0}
+.qt-track-rider-info b{font-size:16px}
+.qt-track-rider-meta{font-size:12px;color:var(--muted);margin-top:2px}
+.qt-track-section{background:#fff;border-radius:20px;padding:15px;margin:12px 0;box-shadow:0 4px 16px rgba(15,23,42,.07);border:1px solid var(--line)}
+.qt-track-section h3{font-size:15px;margin:0 0 10px}
+.qt-track-row{display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid #f1f5f9;font-size:13px}
+.qt-track-row:last-child{border-bottom:0}
+.qt-track-row span:first-child{color:var(--muted)}
+@media(max-width:380px){.qt-track-progress-item{font-size:9px}.qt-track-status{font-size:11px;padding:6px 8px}}
+
 /* ===== QueueTech Modern UI Refresh v2 ===== */
 :root{
   --primary:#1d4ed8;--primary-dark:#1e40af;--accent:#0ea5e9;
@@ -292,6 +322,7 @@ input, select, textarea, button {
 }
 
 /* ---------- Order chat ---------- */
+.qt-chat-page-head{background:#fff;border:1px solid #e5e7eb;border-radius:18px;padding:14px;box-shadow:0 8px 24px rgba(15,23,42,.06);margin-bottom:12px}.qt-chat-page-head .btn-secondary{width:auto!important}
 .order-chat{margin-top:18px;background:#fff;border:1px solid #e5e7eb;border-radius:18px;padding:14px;box-shadow:0 8px 24px rgba(15,23,42,.06)}
 .order-chat h3{margin:0 0 10px}
 .chat-messages{height:280px;overflow-y:auto;background:#f8fafc;border-radius:14px;padding:10px;display:flex;flex-direction:column;gap:8px}
@@ -1078,7 +1109,7 @@ function qtOrderToRow(o){
 `+(o.note||'')).trim()||null,created_at:qtIso(o.createdAt),updated_at:qtIso(Date.now())};
 }
 function qtOrderFromRow(r){
-  return {id:r.id,orderNumber:r.order_number,customerId:r.customer_id,shopProfileId:r.shop_id,technicianProfileId:r.technician_id,riderProfileId:r.rider_id,status:qtOrderStatusFromDb(r.status,r.note),orderType:r.order_type,subtotal:Number(r.subtotal||0),deliveryFee:Number(r.delivery_fee||0),total:Number(r.total_amount||0),pickupAddress:r.pickup_address||'',pickupLat:r.pickup_latitude,pickupLng:r.pickup_longitude,deliveryAddress:r.delivery_address||'',deliveryLat:r.delivery_latitude,deliveryLng:r.delivery_longitude,note:r.note||'',createdAt:new Date(r.created_at).getTime(),updatedAt:new Date(r.updated_at||r.created_at).getTime(),items:[]};
+  return {id:r.id,orderNumber:r.order_number,customerId:r.customer_id,shopProfileId:r.shop_id,technicianProfileId:r.technician_id,riderProfileId:r.rider_id,status:qtOrderStatusFromDb(r.status,r.note),orderType:r.order_type,subtotal:Number(r.subtotal||0),deliveryFee:Number(r.delivery_fee||0),total:Number(r.total_amount||0),pickupAddress:r.pickup_address||'',pickupLat:r.pickup_latitude,pickupLng:r.pickup_longitude,pickup:{lat:r.pickup_latitude,lng:r.pickup_longitude,address:r.pickup_address||''},deliveryAddress:r.delivery_address||'',deliveryLat:r.delivery_latitude,deliveryLng:r.delivery_longitude,delivery:{lat:r.delivery_latitude,lng:r.delivery_longitude,address:r.delivery_address||''},note:r.note||'',createdAt:new Date(r.created_at).getTime(),updatedAt:new Date(r.updated_at||r.created_at).getTime(),items:[]};
 }
 function qtTechJobToRow(j){
   const note='__QT_TECH_STATUS__='+j.status+'\n'+(j.description||'');
@@ -1314,7 +1345,7 @@ async function qtHydrateDatabase(opts){
       Object.keys(QT_DB_CACHE).forEach(k=>{ if(k.startsWith('qt_order_chat_') && !k.endsWith('_deleteAt')) delete QT_DB_CACHE[k]; });
       chatRows.forEach(m=>{const k='qt_order_chat_'+m.order_id; QT_DB_CACHE[k]=QT_DB_CACHE[k]||[]; QT_DB_CACHE[k].push({id:m.id,senderId:m.sender_id,text:m.message,createdAt:new Date(m.created_at).getTime()});});
     }
-    QT_DB_CACHE.qt_orders=(Array.isArray(orders)?orders:[]).map(r=>{const o=qtOrderFromRow(r);o.shopId=profileMaps.shopById.get(r.shop_id)||o.shopId;o.technicianId=profileMaps.techById.get(r.technician_id)||o.technicianId;o.riderId=profileMaps.riderById.get(r.rider_id)||o.riderId;o.items=(orderItems||[]).filter(i=>i.order_id===r.id).map(i=>({id:i.id,name:i.item_name,description:i.description,qty:Number(i.quantity||1),quantity:Number(i.quantity||1),price:Number(i.unit_price||0),unitPrice:Number(i.unit_price||0),totalPrice:Number(i.total_price||0),itemType:i.item_type}));const d=(deliveries||[]).find(x=>x.order_id===r.id);if(d)o.delivery={id:d.id,status:d.status,riderProfileId:d.rider_id,distanceKm:Number(d.distance_km||0),deliveryFee:Number(d.delivery_fee||0),pickedUpAt:d.picked_up_at?new Date(d.picked_up_at).getTime():null,deliveredAt:d.delivered_at?new Date(d.delivered_at).getTime():null,note:d.note||''};const pay=(payments||[]).find(x=>x.order_id===r.id);if(pay)o.payment={id:pay.id,amount:Number(pay.amount||0),method:pay.payment_method,status:pay.status,reference:pay.transaction_reference,paidAt:pay.paid_at?new Date(pay.paid_at).getTime():null,note:pay.note||''};return o;});
+    QT_DB_CACHE.qt_orders=(Array.isArray(orders)?orders:[]).map(r=>{const o=qtOrderFromRow(r);o.shopId=profileMaps.shopById.get(r.shop_id)||o.shopId;o.technicianId=profileMaps.techById.get(r.technician_id)||o.technicianId;o.riderId=profileMaps.riderById.get(r.rider_id)||o.riderId;o.items=(orderItems||[]).filter(i=>i.order_id===r.id).map(i=>({id:i.id,name:i.item_name,description:i.description,qty:Number(i.quantity||1),quantity:Number(i.quantity||1),price:Number(i.unit_price||0),unitPrice:Number(i.unit_price||0),totalPrice:Number(i.total_price||0),itemType:i.item_type}));const d=(deliveries||[]).find(x=>x.order_id===r.id);if(d){o.delivery={id:d.id,status:d.status,riderProfileId:d.rider_id,distanceKm:Number(d.distance_km||0),deliveryFee:Number(d.delivery_fee||0),pickedUpAt:d.picked_up_at?new Date(d.picked_up_at).getTime():null,deliveredAt:d.delivered_at?new Date(d.delivered_at).getTime():null,note:d.note||'',lat:o.deliveryLat,lng:o.deliveryLng,address:o.deliveryAddress||''};}const pay=(payments||[]).find(x=>x.order_id===r.id);if(pay)o.payment={id:pay.id,amount:Number(pay.amount||0),method:pay.payment_method,status:pay.status,reference:pay.transaction_reference,paidAt:pay.paid_at?new Date(pay.paid_at).getTime():null,note:pay.note||''};return o;});
     const serviceRows=(Array.isArray(orders)?orders:[]).filter(r=>r.order_type==='service');
     let quotes=[]; try{quotes=await qtSupabaseTable('quotations?select=*',{accessToken:token});}catch(e){}
     QT_DB_CACHE.qt_techjobs=serviceRows.map(r=>{ const quoteRows=(Array.isArray(quotes)?quotes:[]).filter(q=>q.order_id===r.id); const mappedQuotes=quoteRows.map(q=>({id:q.id,technicianId:profileMaps.techById.get(q.technician_id)||q.technician_id,technicianName:'',price:Number(q.total_amount||0),note:q.note||'',createdAt:new Date(q.created_at).getTime()})); const j=qtTechJobFromRow(r,mappedQuotes); j.technicianId=profileMaps.techById.get(r.technician_id)||j.technicianId; return j; });
@@ -1338,6 +1369,10 @@ async function qtHydrateDatabase(opts){
 
 
 function toast(msg){
+  /* Customer UI: transient black Toast is intentionally hidden.
+     Business logic still calls toast() as before, so nothing is deleted. */
+  const u=currentUser();
+  if(u && u.type==='customer') return;
   const t = document.createElement('div');
   t.className = 'qt-toast';
   t.textContent = msg;
@@ -1513,6 +1548,10 @@ function pushNotification(userId, title, body, link, type, referenceId){
   return n;
 }
 function showLiveToast(text, link){
+  /* Customer UI: notification popup/toast is temporarily disabled.
+     Notifications remain stored and the notification page/badge logic is untouched. */
+  const u=currentUser();
+  if(u && u.type==='customer') return;
   const box = document.getElementById('notif-toast-box');
   if(!box) return;
   const el = document.createElement('div');
@@ -1547,14 +1586,51 @@ const LiveTracking = {
   sendLocation(orderId, lat, lng){
     let orders = dbGet('qt_orders',[]);
     const o = orders.find(x=>x.id===orderId);
-    if(o){ o.riderLiveLat=lat; o.riderLiveLng=lng; o.riderLiveAt=Date.now(); dbSet('qt_orders', orders); }
-    // Production: ส่งตำแหน่งจริงผ่าน Realtime/API; ห้ามสร้างตำแหน่งจำลอง
+    if(o){ o.riderLiveLat=lat; o.riderLiveLng=lng; o.riderLiveAt=Date.now(); }
+    /* Also publish to the rider profile so other devices can receive the
+       latest GPS position through Supabase Realtime without inventing movement. */
+    const riderId = o?.riderId;
+    const rider = riderId ? dbGet('qt_users',[]).find(u=>u.id===riderId) : null;
+    const profileId = o?.riderProfileId || QT_SYNC.profileMaps?.riderByUserId?.get(riderId||'');
+    const token = qtAccessToken();
+    if(profileId && token){
+      qtSupabaseTable('rider_profiles?id=eq.'+encodeURIComponent(profileId),{
+        method:'PATCH', accessToken:token,
+        body:{latitude:Number(lat),longitude:Number(lng),updated_at:new Date().toISOString()}
+      }).catch(e=>console.warn('[QueueTech LiveTracking] GPS sync failed',e));
+    }
+    if(rider){
+      rider.lat=Number(lat); rider.lng=Number(lng); rider.riderLiveLat=Number(lat); rider.riderLiveLng=Number(lng); rider.riderLiveAt=Date.now();
+    }
   },
   getLatestLocation(orderId){
     const o = dbGet('qt_orders',[]).find(x=>x.id===orderId);
-    return (o && o.riderLiveLat) ? {lat:o.riderLiveLat, lng:o.riderLiveLng, at:o.riderLiveAt} : null;
+    if(o && Number.isFinite(Number(o.riderLiveLat)) && Number.isFinite(Number(o.riderLiveLng))) return {lat:Number(o.riderLiveLat),lng:Number(o.riderLiveLng),at:o.riderLiveAt};
+    const riderId=o?.riderId;
+    const rider=riderId?dbGet('qt_users',[]).find(u=>u.id===riderId):null;
+    return (rider && Number.isFinite(Number(rider.lat)) && Number.isFinite(Number(rider.lng))) ? {lat:Number(rider.lat),lng:Number(rider.lng),at:rider.riderLiveAt||Date.now()} : null;
   }
 };
+let qtRiderGpsWatchId=null;
+let qtRiderGpsOrderId=null;
+function stopRiderLiveTracking(){
+  if(qtRiderGpsWatchId!==null && navigator.geolocation){ try{navigator.geolocation.clearWatch(qtRiderGpsWatchId);}catch(e){} }
+  qtRiderGpsWatchId=null; qtRiderGpsOrderId=null;
+}
+function startRiderLiveTracking(order){
+  const user=currentUser();
+  if(!order || !user || user.type!=='rider' || user.id!==order.riderId || !['picked_up','delivering','arrived'].includes(order.status)){
+    stopRiderLiveTracking(); return;
+  }
+  if(!navigator.geolocation) return;
+  if(qtRiderGpsOrderId===order.id && qtRiderGpsWatchId!==null) return;
+  stopRiderLiveTracking();
+  qtRiderGpsOrderId=order.id;
+  qtRiderGpsWatchId=navigator.geolocation.watchPosition(pos=>{
+    LiveTracking.sendLocation(order.id,pos.coords.latitude,pos.coords.longitude);
+  },err=>console.warn('[QueueTech LiveTracking] GPS watch failed',err),{enableHighAccuracy:true,maximumAge:5000,timeout:15000});
+}
+
 
 /* ---------- Map helpers ---------- */
 let activeMaps = [];
@@ -1627,7 +1703,7 @@ function customerOrderLockRoute(user, page, param){
 
   // While an order is active, the customer is locked to the current
   // order status/chat screen. No new shopping/cart/checkout is allowed.
-  if(page !== 'order' || param !== active.id){
+  if(!((page === 'order' || page === 'order-chat') && param === active.id)){
     navigate('order/'+active.id);
     return true;
   }
@@ -2286,10 +2362,63 @@ async function qtSyncTick(force){
   }catch(e){ console.warn('sync tick failed',e); }
   finally{ QT_SYNC.dirty={}; QT_SYNC.busy=false; }
 }
+async function qtRefreshActiveOrderFast(){
+  /* Active customer tracking gets a short fallback refresh so the page does not
+     depend on the normal 8s/60s sync cycle. Supabase Realtime remains primary. */
+  if(document.hidden || QT_SYNC.busy || QT_DB_HYDRATING || !qtAccessToken()) return;
+  const parts=(location.hash.replace('#','')||'').split('/');
+  if(!['order','order-chat'].includes(parts[0]) || !parts[1]) return;
+  const user=currentUser();
+  if(!user || user.type!=='customer') return;
+  try{
+    const token=await qtGetAccessToken();
+    if(!token) return;
+    const rows=await qtSupabaseTable('orders?select=*&id=eq.'+encodeURIComponent(parts[1])+'&limit=1',{accessToken:token});
+    if(!Array.isArray(rows)||!rows[0]) return;
+    const row=rows[0];
+    if(row.customer_id!==user.id) return;
+    const incoming=qtOrderFromRow(row);
+    const map=QT_SYNC.profileMaps||{};
+    incoming.shopId=map.shopById?.get(row.shop_id)||incoming.shopId;
+    incoming.riderId=map.riderById?.get(row.rider_id)||incoming.riderId;
+    incoming.technicianId=map.techById?.get(row.technician_id)||incoming.technicianId;
+    const old=dbGet('qt_orders',[]).find(o=>o.id===incoming.id);
+    const changed=!old || JSON.stringify([
+      old.status,old.riderId,old.shopId,old.deliveryLat,old.deliveryLng,
+      old.updatedAt,old.total,old.deliveryFee
+    ])!==JSON.stringify([
+      incoming.status,incoming.riderId,incoming.shopId,incoming.deliveryLat,incoming.deliveryLng,
+      incoming.updatedAt,incoming.total,incoming.deliveryFee
+    ]);
+    if(!changed) return;
+    const orders=dbGet('qt_orders',[]).slice();
+    const idx=orders.findIndex(o=>o.id===incoming.id);
+    if(idx>=0){
+      incoming.items=orders[idx].items||[];
+      incoming.shopName=orders[idx].shopName;
+      incoming.customerName=orders[idx].customerName;
+      incoming.riderName=orders[idx].riderName;
+      incoming.riderProfileId=incoming.riderProfileId||orders[idx].riderProfileId;
+      incoming.pickup=Object.assign({},orders[idx].pickup||{},incoming.pickup||{});
+      incoming.delivery=Object.assign({},orders[idx].delivery||{},incoming.delivery||{});
+      orders[idx]=Object.assign({},orders[idx],incoming);
+    }else orders.push(incoming);
+    QT_DB_CACHE.qt_orders=orders;
+    qtSyncRerender(
+      {main:'active-order-before',chat:'active-order-chat'},
+      {main:'active-order-'+Date.now(),chat:'active-order-chat'}
+    );
+  }catch(e){ console.warn('[QueueTech Active Tracking] refresh failed:',e); }
+}
 function qtStartSyncLoop(){
   if(QT_SYNC.timer) return;
   QT_SYNC.timer=setInterval(()=>qtSyncTick(),8000);
-  document.addEventListener('visibilitychange',()=>{ if(!document.hidden) qtSyncTick(); });
+  /* Customer order tracking fallback: check the current order every 3 seconds.
+     This is only a lightweight single-order query; it does not replace Realtime. */
+  if(!window.QT_ACTIVE_ORDER_TIMER){
+    window.QT_ACTIVE_ORDER_TIMER=setInterval(qtRefreshActiveOrderFast,3000);
+  }
+  document.addEventListener('visibilitychange',()=>{ if(!document.hidden){ qtSyncTick(); qtRefreshActiveOrderFast(); } });
 }
 window.addEventListener('DOMContentLoaded', async ()=>{
   /* V5.33: show the page first, load Supabase data in the background */
@@ -2330,9 +2459,14 @@ function qtRouteRender(){
     case 'checkout': renderCheckout(); break;
     case 'orders': renderOrders(); break;
     case 'order': renderOrderDetail(param); break;
+    case 'order-chat': renderOrderChatPage(param); break;
     case 'notifications': renderNotifications(); break;
-    case 'emergency': renderEmergency(); break;
-    case 'call-technician': renderTechnicianClosed(); break;
+    /* QueueGo customer UI: technician service is temporarily disabled.
+       Keep the technician business logic in this file; only customer access is blocked. */
+    case 'emergency':
+    case 'call-technician':
+      if(user && user.type==='customer') { navigate('home'); return; }
+      renderHome(); break;
     default: renderHome();
   }
   window.scrollTo(0,0);
@@ -2396,7 +2530,6 @@ function renderHome(){
       </div>
     </section>
     <section class="qg-section"><div class="qg-section-head"><h2>ร้านแนะนำใกล้คุณ</h2><button onclick="navigate('search')">ดูทั้งหมด ›</button></div><div id="home-promote" class="qg-shop-strip"></div></section>
-    <section class="qg-disabled-service"><div class="qg-disabled-icon">🔧</div><div><b>เรียกช่าง</b><p>บริการนี้จะเปิดให้ใช้งานในเวอร์ชันถัดไป</p></div><span>เร็วๆ นี้</span></section>
   `);
   renderHomePromoteWidget();
 }
@@ -2923,7 +3056,6 @@ function renderCustomerProfile(user=currentUser(), orders=null, active=null){
       <button onclick="navigate('orders')"><span>📦</span><div><b>คำสั่งซื้อของฉัน</b><small>ดูประวัติและติดตามสถานะ</small></div><strong>›</strong></button>
       <button onclick="navigate('notifications')"><span>🔔</span><div><b>การแจ้งเตือน</b><small>ข่าวสารและสถานะออเดอร์</small></div><strong>›</strong></button>
       <button onclick="navigate('search')"><span>❤️</span><div><b>ร้านค้าและรายการโปรด</b><small>ค้นหาร้านใกล้คุณ</small></div><strong>›</strong></button>
-      <button onclick="navigate('call-technician')"><span>🔧</span><div><b>เรียกช่าง</b><small>บริการกำลังพัฒนา</small></div><strong>เร็วๆ นี้</strong></button>
       <button onclick="logout()" class="qg-menu-danger"><span>↪</span><div><b>ออกจากระบบ</b><small>ออกจากบัญชี QueueGo</small></div><strong>›</strong></button>
     </section>
   `);
@@ -3740,6 +3872,21 @@ function renderOrderChatArea(orderId){ const order=dbGet('qt_orders',[]).find(o=
 function markChatForDeletion(order){ if(!['completed','cancelled'].includes(order.status))return; const key=chatKey(order.id), messages=getOrderChat(order); if(!messages.length)return; dbSet(key,messages); QT_DB_CACHE[key+'_deleteAt']=Date.now()+20*60*1000; }
 setInterval(cleanupExpiredChats,30000);
 
+function renderOrderChatPage(orderId){
+  const user=currentUser();
+  const order=dbGet('qt_orders',[]).find(o=>o.id===orderId);
+  if(!user||user.type!=='customer'){ navigate('login'); return; }
+  if(!order||order.customerId!==user.id){ toast('ไม่พบคำสั่งซื้อ'); navigate('orders'); return; }
+  if(!order.riderId){ toast('แชทยังเปิดเมื่อไรเดอร์รับงานแล้ว'); navigate('order/'+orderId); return; }
+  layout('แชทกับไรเดอร์', `
+    <div class="qt-chat-page-head">
+      <button class="btn-secondary" onclick="navigate('order/${order.id}')">← กลับหน้าติดตาม</button>
+      <div style="margin-top:10px"><b>💬 แชทกับไรเดอร์</b><div style="font-size:12px;color:#64748b">คำสั่งซื้อ ${displayOrderNumber(order)}</div></div>
+    </div>
+    ${renderOrderChat(order,user)}
+  `);
+}
+
 function renderOrderDetail(id){
   const order = dbGet('qt_orders',[]).find(o=>o.id===id);
   if(!order){ toast('ไม่พบคำสั่งซื้อ'); navigate('orders'); return; }
@@ -3747,57 +3894,83 @@ function renderOrderDetail(id){
   const shopUser = dbGet('qt_users',[]).find(u=>u.id===order.shopId);
   const riderUser = order.riderId ? dbGet('qt_users',[]).find(u=>u.id===order.riderId) : null;
   const canSeeTracking = user && (user.type==='admin' || user.id===order.customerId || user.id===order.riderId || user.id===order.shopId);
+
+  /* Customer tracking view: visual tracking page only uses data already supported by the system. */
+  if(user && user.type==='customer' && user.id===order.customerId){
+    const si=statusIndex(order.status);
+    const progress=[
+      {key:'pending_shop',label:'รอร้าน'},
+      {key:'preparing',label:'เตรียมสินค้า'},
+      {key:'waiting_rider',label:'หาไรเดอร์'},
+      {key:'delivering',label:'กำลังจัดส่ง'},
+      {key:'completed',label:'ส่งสำเร็จ'}
+    ];
+    const progressIndex = order.status==='cancelled' ? -1 :
+      order.status==='rider_to_shop'||order.status==='picked_up'||order.status==='arrived' ? 3 :
+      order.status==='shop_accepted'||order.status==='preparing' ? 1 :
+      order.status==='waiting_rider' ? 2 :
+      order.status==='completed' ? 4 : 0;
+    const mapAvailable=canSeeTracking && order.pickup && order.delivery && order.pickup.lat!=null && order.pickup.lng!=null && order.delivery.lat!=null && order.delivery.lng!=null;
+    const itemCount=Array.isArray(order.items)?order.items.reduce((n,i)=>n+Number(i.qty||0),0):0;
+    layout('ติดตามคำสั่งซื้อ', `
+      <div class="qt-track-hero">
+        <div class="qt-track-head">
+          <div><div class="qt-track-number">คำสั่งซื้อ ${displayOrderNumber(order)}</div><div class="qt-track-sub">${order.createdAt?new Date(order.createdAt).toLocaleString('th-TH',{dateStyle:'medium',timeStyle:'short'}):''}</div></div>
+          <div class="qt-track-status">${statusLabel(order.status)}</div>
+        </div>
+        ${order.status==='cancelled' ? '<div class="badge badge-red" style="margin-top:12px">❌ คำสั่งซื้อถูกยกเลิก</div>' : `
+        <div class="qt-track-progress">
+          ${progress.map((p,i)=>`<div class="qt-track-progress-item ${progressIndex>=i?'done':''} ${progressIndex===i?'current':''}">${p.label}</div>`).join('')}
+        </div>`}
+      </div>
+
+
+
+      ${riderUser ? `<section class="qt-track-rider">
+        <div class="qt-track-rider-head">
+          <img class="rider-profile-photo" src="${escapeHtml(riderUser.profileImage||'')}" onerror="this.style.display='none'" alt="รูปไรเดอร์">
+          <div class="qt-track-rider-info"><div style="font-size:11px;color:#64748b">ไรเดอร์ผู้จัดส่ง</div><b>${escapeHtml(riderUser.name||order.riderName||'-')}</b><div class="qt-track-rider-meta">${riderUser.vehicleType==='motorcycle'?'มอเตอร์ไซค์':riderUser.vehicleType==='car'?'รถยนต์':riderUser.vehicleType==='bicycle'?'จักรยาน':'ยานพาหนะ'} • ทะเบียน ${escapeHtml(riderUser.vehiclePlate||'-')}</div></div>
+          ${riderUser.phone?`<a class="btn-primary" style="padding:9px 12px;text-decoration:none;font-size:12px" href="tel:${escapeHtml(riderUser.phone)}">📞 โทร</a>`:''}
+        </div>
+      </section>` : ''}
+
+      <section class="qt-track-section">
+        <h3>🏪 รายละเอียดคำสั่งซื้อ</h3>
+        <div class="qt-track-row"><span>ร้าน</span><b>${escapeHtml(order.shopName||'-')}</b></div>
+        <div class="qt-track-row"><span>สินค้า</span><b>${itemCount} รายการ</b></div>
+        <div class="qt-track-row"><span>ยอดรวม</span><b>${escapeHtml(order.total||0)} บาท</b></div>
+        <div class="qt-track-row"><span>จัดส่งที่</span><b style="text-align:right;max-width:65%">${escapeHtml((order.delivery&&order.delivery.address)||order.deliveryAddress||'-')}</b></div>
+      </section>
+
+      ${order.status==='pending_shop' && shopUser ? `<div class="row-btns" style="margin:10px 0">${shopUser.phone?`<a class="btn-primary" href="tel:${escapeHtml(shopUser.phone)}">📞 โทรหาร้าน</a>`:''}</div>` : ''}
+      <div id="action-buttons">${orderActionButtons(order,user)}</div>
+      ${mapAvailable ? `<section class="qt-track-map-card" style="margin-top:14px"><h3>📍 ติดตามการจัดส่ง</h3><div id="tracking-map" class="map-box"></div>${!['picked_up','delivering','arrived'].includes(order.status) ? '<div class="search-location-hint" style="margin-top:8px">🛵 ตำแหน่งไรเดอร์จะแสดงบนแผนที่เมื่อไรเดอร์รับของจากร้านแล้ว</div>' : '<div class="search-location-status" style="margin-top:8px">🔴 ติดตามตำแหน่งไรเดอร์แบบ Real-time</div>'}</section>` : ''}
+      ${order.riderId && !['completed','cancelled'].includes(order.status) ? `<button class="btn-primary btn-block" style="margin-top:12px" onclick="navigate('order-chat/${order.id}')">💬 เปิดแชทกับไรเดอร์</button>` : ''}
+    `);
+    if(mapAvailable) initTrackingMap(order);
+    return;
+  }
+
+  startRiderLiveTracking(order);
   layout('รายละเอียดคำสั่งซื้อ', `
     <h2>คำสั่งซื้อ ${displayOrderNumber(order)}</h2>
     <div class="order-detail-card">
       <div><b>ร้าน:</b> ${escapeHtml(order.shopName)}</div>
       <div><b>ลูกค้า:</b> ${escapeHtml(order.customerName)}</div>
-      ${user&&user.type==='customer'&&order.customerId===user.id&&shopUser?`
-        <div class="row-btns" style="margin-top:10px">
-          ${shopUser.phone?`<a class="btn-primary" href="tel:${escapeHtml(shopUser.phone)}">📞 โทรหาร้าน</a>`:''}
-          <a class="btn-secondary" target="_blank" rel="noopener" href="${escapeHtml(qtGoogleMapsDirections(shopUser.lat,shopUser.lng,shopUser.address))}">📍 นำทางไปร้าน</a>
-        </div>`:''}
-      ${user&&user.type==='rider'&&order.riderId===user.id?`
-        <div class="row-btns" style="margin-top:10px">
-          ${order.customerPhone?`<a class="btn-primary" href="tel:${escapeHtml(order.customerPhone)}">📞 โทรหาลูกค้า</a>`:''}
-          <a class="btn-secondary" target="_blank" rel="noopener" href="${escapeHtml(qtGoogleMapsDirections(order.delivery?.lat,order.delivery?.lng,order.delivery?.address))}">📍 นำทางไปบ้านลูกค้า</a>
-        </div>`:''}
       <div><b>รายการ:</b> ${order.items.map(i=>`${escapeHtml(i.name)} x${escapeHtml(i.qty)}`).join(', ')}</div>
       <div><b>รวม:</b> ${escapeHtml(order.total)} บาท</div>
       <div><b>ที่อยู่จัดส่ง:</b> ${escapeHtml((order.delivery&&order.delivery.address)||order.deliveryAddress||'-')}</div>
-      <div><b>เลขออเดอร์:</b> ${displayOrderNumber(order)}</div>
       <div><b>สถานะปัจจุบัน:</b> ${statusLabel(order.status)}</div>
     </div>
-    ${order.riderId && riderUser ? `
-      <div class="rider-profile-card">
-        <img class="rider-profile-photo" src="${escapeHtml(riderUser.profileImage||'')}" onerror="this.style.display='none'" alt="รูปไรเดอร์">
-        <div class="rider-profile-meta">
-          <div style="font-size:12px;color:#64748b">🛵 ไรเดอร์ผู้รับงาน</div>
-          <b>${escapeHtml(riderUser.name||order.riderName||'-')}</b>
-          <div>ทะเบียนรถ: <strong>${escapeHtml(riderUser.vehiclePlate||'-')}</strong></div>
-          <div>ประเภทรถ: ${riderUser.vehicleType==='motorcycle'?'มอเตอร์ไซค์':riderUser.vehicleType==='car'?'รถยนต์':riderUser.vehicleType==='bicycle'?'จักรยาน':'-'}</div>
-          ${riderUser.phone?`<a class="btn-primary" style="display:inline-block;margin-top:8px;text-decoration:none" href="tel:${escapeHtml(riderUser.phone)}">📞 โทรหาไรเดอร์</a>`:''}
-        </div>
-      </div>` : ''}
-    <div class="status-timeline">
-      ${ORDER_STATUSES.filter(s=>s.key!=='cancelled').map((s,i)=>`
-        <div class="timeline-step ${statusIndex(order.status)>=i && order.status!=='cancelled' ?'done':''} ${order.status===s.key?'current':''}">${s.icon} ${s.label}</div>`).join('')}
-    </div>
-    ${order.status==='cancelled' ? '<div class="badge badge-red">❌ คำสั่งซื้อถูกยกเลิก</div>' : ''}
+    <div class="status-timeline">${ORDER_STATUSES.filter(s=>s.key!=='cancelled').map((s,i)=>`<div class="timeline-step ${statusIndex(order.status)>=i&&order.status!=='cancelled'?'done':''} ${order.status===s.key?'current':''}">${s.icon} ${s.label}</div>`).join('')}</div>
+    ${order.status==='cancelled'?'<div class="badge badge-red">❌ คำสั่งซื้อถูกยกเลิก</div>':''}
     <div id="action-buttons">${orderActionButtons(order,user)}</div>
-    ${(user && (user.type==='rider' || user.type==='admin')) && order.status==='waiting_rider' ? `
-      <div class="card" style="margin-top:12px">
-        <b>⚙️ Auto Dispatch</b>
-        <div>กติกา: รัศมี ≤ 1 กม. • งานน้อยกว่าได้ก่อน • งานเท่ากันใช้ระยะทาง</div>
-        ${order.dispatchRiderId ? `<div>สถานะ: จ่ายงานให้ Rider เฉพาะรายแล้ว</div>` : `<div>สถานะ: กำลังค้นหาไรเดอร์ที่เข้าเงื่อนไข</div>`}
-      </div>` : ''}
     ${renderOrderChat(order,user)}
-    ${canSeeTracking && !['completed','cancelled','pending_shop'].includes(order.status) ? '<h3>📍 ติดตามตำแหน่งไรเดอร์ (จำลอง Real-time)</h3><div id="tracking-map" class="map-box"></div>' : ''}
+    ${canSeeTracking&&!['completed','cancelled','pending_shop'].includes(order.status)?'<h3>📍 ติดตามตำแหน่งไรเดอร์</h3><div id="tracking-map" class="map-box"></div>':''}
   `);
-  if(canSeeTracking && !['completed','cancelled','pending_shop'].includes(order.status)){
-    initTrackingMap(order);
-  }
+  if(canSeeTracking&&!['completed','cancelled','pending_shop'].includes(order.status)) initTrackingMap(order);
 }
+
 function requestOrderRefund(orderId){
   const user=currentUser(); if(!user||user.type!=='customer'){toast('เฉพาะลูกค้า');return;}
   let orders=dbGet('qt_orders',[]); const o=orders.find(x=>x.id===orderId);
@@ -3920,6 +4093,10 @@ function updateOrderStatus(orderId, newStatus){
     }
   }
   dbSet('qt_orders', orders);
+  if(actor && actor.type==='rider'){
+    if(['picked_up','delivering','arrived'].includes(newStatus)) startRiderLiveTracking(order);
+    else stopRiderLiveTracking();
+  }
   pushNotification(order.customerId, 'อัปเดตสถานะคำสั่งซื้อ', statusLabel(newStatus), 'order/'+orderId);
   if(newStatus === 'waiting_rider'){
     dispatchOrder(orderId);
@@ -4003,39 +4180,36 @@ function initTrackingMap(order){
   tileLayer(map);
   registerMap(map);
 
-  L.marker([order.pickup.lat, order.pickup.lng])
-    .addTo(map).bindPopup('🏪 ร้านค้า: '+escapeHtml(order.shopName||'ร้านค้า'));
-  L.marker([order.delivery.lat, order.delivery.lng])
-    .addTo(map).bindPopup('👤 ลูกค้า: '+escapeHtml(order.customerName||'ลูกค้า'));
+  L.marker([order.pickup.lat, order.pickup.lng]).addTo(map).bindPopup('🏪 ร้านค้า: '+escapeHtml(order.shopName||'ร้านค้า'));
+  L.marker([order.delivery.lat, order.delivery.lng]).addTo(map).bindPopup('👤 จุดส่ง: '+escapeHtml(order.customerName||'ลูกค้า'));
 
   const riderIcon = L.divIcon({html:'🛵', className:'emoji-icon'});
-  const latest = LiveTracking.getLatestLocation(order.id);
   let riderMarker = null;
-
-  if(latest && Number.isFinite(Number(latest.lat)) && Number.isFinite(Number(latest.lng))){
-    riderMarker = L.marker([Number(latest.lat),Number(latest.lng)], {icon:riderIcon})
-      .addTo(map).bindPopup('🛵 ตำแหน่งล่าสุดของไรเดอร์');
+  const riderCanBeShown = ['picked_up','delivering','arrived'].includes(order.status);
+  if(riderCanBeShown){
+    const latest=LiveTracking.getLatestLocation(order.id);
+    if(latest && Number.isFinite(Number(latest.lat)) && Number.isFinite(Number(latest.lng))){
+      riderMarker=L.marker([latest.lat,latest.lng],{icon:riderIcon}).addTo(map).bindPopup('🛵 ไรเดอร์ — ตำแหน่งล่าสุด');
+    }
   }
 
-  map.fitBounds([
-    [order.pickup.lat,order.pickup.lng],
-    [order.delivery.lat,order.delivery.lng]
-  ], {padding:[30,30]});
+  map.fitBounds([[order.pickup.lat,order.pickup.lng],[order.delivery.lat,order.delivery.lng]],{padding:[30,30]});
 
-  /*
-    Refresh only from the current application's stored last-known location.
-    No artificial movement is generated. When Realtime/API is enabled later,
-    LiveTracking.getLatestLocation() can read the server-synced position.
-  */
-  const refresh = setInterval(()=>{
-    const current = LiveTracking.getLatestLocation(order.id);
-    if(!current || !Number.isFinite(Number(current.lat)) || !Number.isFinite(Number(current.lng))) return;
-    const point=[Number(current.lat),Number(current.lng)];
+  const refresh=setInterval(()=>{
+    const current=dbGet('qt_orders',[]).find(x=>x.id===order.id) || order;
+    if(!['picked_up','delivering','arrived'].includes(current.status)){
+      if(riderMarker){ try{map.removeLayer(riderMarker);}catch(e){} riderMarker=null; }
+      return;
+    }
+    const latest=LiveTracking.getLatestLocation(order.id);
+    if(!latest || !Number.isFinite(Number(latest.lat)) || !Number.isFinite(Number(latest.lng))) return;
+    const point=[Number(latest.lat),Number(latest.lng)];
     if(riderMarker) riderMarker.setLatLng(point);
-    else riderMarker=L.marker(point,{icon:riderIcon}).addTo(map).bindPopup('🛵 ตำแหน่งล่าสุดของไรเดอร์');
-  },5000);
+    else riderMarker=L.marker(point,{icon:riderIcon}).addTo(map).bindPopup('🛵 ไรเดอร์ — ตำแหน่งล่าสุด');
+  },3000);
   activeIntervals.push(refresh);
 }
+
 
 /* ---------- 9. RIDER SYSTEM ---------- */
 function riderFileData(id){ const el=document.getElementById(id); return el&&el.files&&el.files[0] ? readFileAsDataURL(el.files[0]) : Promise.resolve(''); }
