@@ -2440,9 +2440,10 @@ function qtRouteRender(){
   const [page, param] = hash.split('/');
   const user = currentUser();
 
-  // QueueGo is the customer-facing application. Other account types continue
-  // to use the same Supabase authentication/database but are not rendered here.
-  if(user && user.type!=='customer' && page!=='login' && page!=='register'){
+  // QueueGo is customer-facing, but the existing Admin console remains
+  // accessible in this same file so a separate Admin HTML is not required.
+  // Other provider roles continue to use their own app and are blocked here.
+  if(user && user.type!=='customer' && user.type!=='admin' && page!=='login' && page!=='register'){
     renderQueueGoRoleNotice(user);
     return;
   }
@@ -2452,6 +2453,10 @@ function qtRouteRender(){
     case 'register': renderRegister(); break;
     case 'login': renderLogin(); break;
     case 'dashboard': renderDashboard(); break;
+    case 'admin': renderAdminDashboard(user); break;
+    case 'admin-governance': renderAdminGovernance(); break;
+    case 'admin-orders': renderAdminOrderCenter(user); break;
+    case 'admin-gp': renderAdminGpSettlement(); break;
     case 'profile': renderCustomerProfile(); break;
     case 'search': renderSearch(); break;
     case 'shop-view': renderShopView(param); break;
