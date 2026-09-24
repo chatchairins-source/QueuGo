@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<!-- QueueTech V5.37: security + sync fixes (XSS escaping, rider registration via Supabase Auth, approval status mapping, polling sync, real deletes) -->
+<!-- QueueGo Customer UI V1.0 — based on QueueTech V5.37 security/sync/auth logic (XSS escaping, rider registration via Supabase Auth, approval status mapping, polling sync, real deletes) -->
 <html lang="th">
 <head>
 <meta charset="UTF-8">
-<title>QueueTech Shop - QueueTech</title>
+<title>QueueGo - ผู้ใช้บริการ</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
 <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;600;700&display=swap" rel="stylesheet">
@@ -101,6 +101,36 @@ form input, form select, form textarea{width:100%;padding:10px;border:1px solid 
 .notif-item.unread{background:#f0f9ff;font-weight:600;}
 .notif-item small{display:block;color:#94a3b8;font-weight:400;margin-top:2px;}
 @media(min-width:700px){.qt-main{padding:24px;}}
+
+
+/* Customer order tracking UI */
+.qt-track-hero{background:#fff;border-radius:20px;padding:18px;margin:10px 0 12px;box-shadow:0 4px 16px rgba(15,23,42,.07);border:1px solid var(--line)}
+.qt-track-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.qt-track-number{font-size:18px;font-weight:700;color:var(--text)}
+.qt-track-sub{font-size:12px;color:var(--muted);margin-top:3px}
+.qt-track-status{font-size:12px;font-weight:700;background:#eff6ff;color:#1d4ed8;padding:7px 10px;border-radius:999px;white-space:nowrap}
+.qt-track-progress{display:grid;grid-template-columns:repeat(5,1fr);gap:4px;margin:18px 0 4px}
+.qt-track-progress-item{text-align:center;position:relative;font-size:10px;color:#94a3b8}
+.qt-track-progress-item:before{content:'';display:block;width:18px;height:18px;border-radius:50%;background:#e2e8f0;margin:0 auto 5px;border:3px solid #fff;box-shadow:0 0 0 1px #cbd5e1}
+.qt-track-progress-item.done{color:#047857;font-weight:600}
+.qt-track-progress-item.done:before{background:#10b981;box-shadow:0 0 0 1px #10b981}
+.qt-track-progress-item.current{color:#1d4ed8;font-weight:700}
+.qt-track-progress-item.current:before{background:#2563eb;box-shadow:0 0 0 3px #dbeafe}
+.qt-track-map-card{background:#fff;border-radius:20px;padding:12px;margin:12px 0;box-shadow:0 4px 16px rgba(15,23,42,.07);border:1px solid var(--line)}
+.qt-track-map-card h3{margin:2px 4px 8px;font-size:15px}
+.qt-track-map-card .map-box{height:300px;margin:0;border-radius:14px}
+.qt-track-rider{background:#fff;border-radius:20px;padding:14px;margin:12px 0;box-shadow:0 4px 16px rgba(15,23,42,.07);border:1px solid var(--line)}
+.qt-track-rider-head{display:flex;align-items:center;gap:12px}
+.qt-track-rider .rider-profile-photo{width:58px;height:58px;border-radius:50%}
+.qt-track-rider-info{flex:1;min-width:0}
+.qt-track-rider-info b{font-size:16px}
+.qt-track-rider-meta{font-size:12px;color:var(--muted);margin-top:2px}
+.qt-track-section{background:#fff;border-radius:20px;padding:15px;margin:12px 0;box-shadow:0 4px 16px rgba(15,23,42,.07);border:1px solid var(--line)}
+.qt-track-section h3{font-size:15px;margin:0 0 10px}
+.qt-track-row{display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid #f1f5f9;font-size:13px}
+.qt-track-row:last-child{border-bottom:0}
+.qt-track-row span:first-child{color:var(--muted)}
+@media(max-width:380px){.qt-track-progress-item{font-size:9px}.qt-track-status{font-size:11px;padding:6px 8px}}
 
 /* ===== QueueTech Modern UI Refresh v2 ===== */
 :root{
@@ -292,6 +322,7 @@ input, select, textarea, button {
 }
 
 /* ---------- Order chat ---------- */
+.qt-chat-page-head{background:#fff;border:1px solid #e5e7eb;border-radius:18px;padding:14px;box-shadow:0 8px 24px rgba(15,23,42,.06);margin-bottom:12px}.qt-chat-page-head .btn-secondary{width:auto!important}
 .order-chat{margin-top:18px;background:#fff;border:1px solid #e5e7eb;border-radius:18px;padding:14px;box-shadow:0 8px 24px rgba(15,23,42,.06)}
 .order-chat h3{margin:0 0 10px}
 .chat-messages{height:280px;overflow-y:auto;background:#f8fafc;border-radius:14px;padding:10px;display:flex;flex-direction:column;gap:8px}
@@ -498,140 +529,6 @@ html, body {
 .qt-order-parties{display:flex;gap:7px;align-items:center;flex-wrap:wrap;margin-top:10px;font-size:13px}.qt-order-summary{margin-top:7px;color:#475569;font-size:13px}
 .qt-order-progress{margin-top:12px;padding:12px;background:#f8fafc;border-radius:14px}.qt-order-progress-title{font-weight:800;font-size:13px;margin-bottom:8px}.qt-order-progress-list{display:grid;gap:6px}.qt-order-step{display:flex;gap:9px;align-items:center;min-height:34px;opacity:.45}.qt-order-step.done,.qt-order-step.active{opacity:1}.qt-order-step-icon{width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:#e2e8f0;font-size:13px;flex:none}.qt-order-step.done .qt-order-step-icon{background:#dcfce7;color:#15803d}.qt-order-step.active .qt-order-step-icon{background:var(--primary,#2563eb);color:#fff}.qt-order-step-text{display:flex;gap:7px;align-items:center;flex-wrap:wrap;font-size:12px}.qt-order-step-text small{color:#94a3b8}.qt-order-now{font-size:10px;padding:2px 6px;border-radius:999px;background:#dbeafe;color:#1d4ed8}.qt-order-cancelled{margin-top:8px;padding:9px;border-radius:10px;background:#fee2e2;color:#b91c1c;font-size:12px}.qt-order-card-actions{margin-top:10px}.qt-order-card-actions .btn-block{margin-top:6px}
 </style>
-
-<style id="qt-shop-responsive-final">
-/* ================================================================
-   QueueTech Shop — final responsive / no-zoom layout
-   Keeps the existing UI and database logic unchanged.
-   ================================================================ */
-html, body, #app {
-  width:100%;
-  max-width:100%;
-  min-width:0;
-  margin:0;
-  overflow-x:hidden;
-}
-html {
-  -webkit-text-size-adjust:100%;
-  text-size-adjust:100%;
-  touch-action:manipulation;
-}
-body {
-  overscroll-behavior-x:none;
-}
-
-/* Login: full-screen, proportional and edge-to-edge.
-   The page itself fills the device; only the form content is kept readable. */
-.qt-shop-login {
-  width:100vw;
-  max-width:100vw;
-  min-height:100dvh;
-  min-height:100vh;
-  display:flex;
-  align-items:stretch;
-  justify-content:stretch;
-  padding:0;
-  margin:0;
-  overflow-x:hidden;
-  overflow-y:auto;
-  background:#f7f9fb;
-}
-.qt-shop-login-photo {
-  position:fixed;
-  inset:0;
-  width:100vw;
-  height:100vh;
-}
-.qt-shop-login-card {
-  position:relative;
-  z-index:2;
-  width:100%;
-  max-width:none;
-  min-height:100dvh;
-  min-height:100vh;
-  margin:0;
-  padding:clamp(28px,6vw,72px) clamp(18px,8vw,120px) calc(28px + env(safe-area-inset-bottom));
-  border-radius:0;
-  background:rgba(255,255,255,.98);
-  overflow:auto;
-  -webkit-overflow-scrolling:touch;
-  display:flex;
-  flex-direction:column;
-  justify-content:center;
-}
-.qt-shop-login-card > * {
-  width:100%;
-  max-width:560px;
-  margin-left:auto;
-  margin-right:auto;
-}
-
-/* Main Shop pages always size from the viewport, never from a fixed desktop width. */
-.qt-shop-app {
-  width:100%;
-  min-width:0;
-}
-.qt-shop-app .qt-header,
-.qt-shop-app .qt-main,
-.qt-shop-bottom {
-  width:100%;
-  max-width:100%;
-}
-.qt-shop-app .qt-main {
-  min-width:0;
-}
-.qt-shop-dashboard-head,
-.qt-shop-order-top,
-.qt-shop-order-mid,
-.qt-shop-product-foot,
-.qt-shop-profile,
-.qt-shop-section-title,
-.qt-shop-switch-card {
-  min-width:0;
-}
-.qt-shop-head-info,
-.qt-shop-order-items,
-.qt-shop-setting-main {
-  min-width:0;
-  overflow-wrap:anywhere;
-}
-
-/* Very narrow phones: prevent cards/forms from becoming wider than the screen. */
-@media (max-width:520px) {
-  .qt-shop-login-card {
-    min-height:100dvh;
-    padding:30px 18px calc(22px + env(safe-area-inset-bottom));
-  }
-  .qt-shop-login-title { font-size:28px; }
-  .qt-shop-login-sub { font-size:13px; }
-  .qt-shop-app .qt-main {
-    padding-left:12px;
-    padding-right:12px;
-  }
-  .qt-shop-quick { grid-template-columns:repeat(4,minmax(0,1fr)); }
-  .qt-shop-quick-card { padding-left:2px; padding-right:2px; }
-  .qt-shop-product-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
-}
-
-/* Wider phones / tablets / desktop: page remains full-screen while the
-   readable content stays centered at a comfortable width. */
-@media (min-width:521px) {
-  .qt-shop-login-card {
-    padding-left:clamp(28px,9vw,140px);
-    padding-right:clamp(28px,9vw,140px);
-  }
-}
-
-/* Disable browser gesture zoom where supported; the viewport meta also locks
-   pinch zoom on supported mobile browsers. */
-body, #app, .qt-shop-login, .qt-shop-app {
-  touch-action:pan-y;
-}
-button, a, input, select, textarea, label {
-  touch-action:manipulation;
-}
-</style>
-
 </head>
 <body>
 
@@ -1212,7 +1109,7 @@ function qtOrderToRow(o){
 `+(o.note||'')).trim()||null,created_at:qtIso(o.createdAt),updated_at:qtIso(Date.now())};
 }
 function qtOrderFromRow(r){
-  return {id:r.id,orderNumber:r.order_number,customerId:r.customer_id,shopProfileId:r.shop_id,technicianProfileId:r.technician_id,riderProfileId:r.rider_id,status:qtOrderStatusFromDb(r.status,r.note),orderType:r.order_type,subtotal:Number(r.subtotal||0),deliveryFee:Number(r.delivery_fee||0),total:Number(r.total_amount||0),pickupAddress:r.pickup_address||'',pickupLat:r.pickup_latitude,pickupLng:r.pickup_longitude,deliveryAddress:r.delivery_address||'',deliveryLat:r.delivery_latitude,deliveryLng:r.delivery_longitude,note:r.note||'',createdAt:new Date(r.created_at).getTime(),updatedAt:new Date(r.updated_at||r.created_at).getTime(),items:[]};
+  return {id:r.id,orderNumber:r.order_number,customerId:r.customer_id,shopProfileId:r.shop_id,technicianProfileId:r.technician_id,riderProfileId:r.rider_id,status:qtOrderStatusFromDb(r.status,r.note),orderType:r.order_type,subtotal:Number(r.subtotal||0),deliveryFee:Number(r.delivery_fee||0),total:Number(r.total_amount||0),pickupAddress:r.pickup_address||'',pickupLat:r.pickup_latitude,pickupLng:r.pickup_longitude,pickup:{lat:r.pickup_latitude,lng:r.pickup_longitude,address:r.pickup_address||''},deliveryAddress:r.delivery_address||'',deliveryLat:r.delivery_latitude,deliveryLng:r.delivery_longitude,delivery:{lat:r.delivery_latitude,lng:r.delivery_longitude,address:r.delivery_address||''},note:r.note||'',createdAt:new Date(r.created_at).getTime(),updatedAt:new Date(r.updated_at||r.created_at).getTime(),items:[]};
 }
 function qtTechJobToRow(j){
   const note='__QT_TECH_STATUS__='+j.status+'\n'+(j.description||'');
@@ -1448,7 +1345,7 @@ async function qtHydrateDatabase(opts){
       Object.keys(QT_DB_CACHE).forEach(k=>{ if(k.startsWith('qt_order_chat_') && !k.endsWith('_deleteAt')) delete QT_DB_CACHE[k]; });
       chatRows.forEach(m=>{const k='qt_order_chat_'+m.order_id; QT_DB_CACHE[k]=QT_DB_CACHE[k]||[]; QT_DB_CACHE[k].push({id:m.id,senderId:m.sender_id,text:m.message,createdAt:new Date(m.created_at).getTime()});});
     }
-    QT_DB_CACHE.qt_orders=(Array.isArray(orders)?orders:[]).map(r=>{const o=qtOrderFromRow(r);o.shopId=profileMaps.shopById.get(r.shop_id)||o.shopId;o.technicianId=profileMaps.techById.get(r.technician_id)||o.technicianId;o.riderId=profileMaps.riderById.get(r.rider_id)||o.riderId;o.items=(orderItems||[]).filter(i=>i.order_id===r.id).map(i=>({id:i.id,name:i.item_name,description:i.description,qty:Number(i.quantity||1),quantity:Number(i.quantity||1),price:Number(i.unit_price||0),unitPrice:Number(i.unit_price||0),totalPrice:Number(i.total_price||0),itemType:i.item_type}));const d=(deliveries||[]).find(x=>x.order_id===r.id);if(d)o.delivery={id:d.id,status:d.status,riderProfileId:d.rider_id,distanceKm:Number(d.distance_km||0),deliveryFee:Number(d.delivery_fee||0),pickedUpAt:d.picked_up_at?new Date(d.picked_up_at).getTime():null,deliveredAt:d.delivered_at?new Date(d.delivered_at).getTime():null,note:d.note||''};const pay=(payments||[]).find(x=>x.order_id===r.id);if(pay)o.payment={id:pay.id,amount:Number(pay.amount||0),method:pay.payment_method,status:pay.status,reference:pay.transaction_reference,paidAt:pay.paid_at?new Date(pay.paid_at).getTime():null,note:pay.note||''};return o;});
+    QT_DB_CACHE.qt_orders=(Array.isArray(orders)?orders:[]).map(r=>{const o=qtOrderFromRow(r);o.shopId=profileMaps.shopById.get(r.shop_id)||o.shopId;o.technicianId=profileMaps.techById.get(r.technician_id)||o.technicianId;o.riderId=profileMaps.riderById.get(r.rider_id)||o.riderId;o.items=(orderItems||[]).filter(i=>i.order_id===r.id).map(i=>({id:i.id,name:i.item_name,description:i.description,qty:Number(i.quantity||1),quantity:Number(i.quantity||1),price:Number(i.unit_price||0),unitPrice:Number(i.unit_price||0),totalPrice:Number(i.total_price||0),itemType:i.item_type}));const d=(deliveries||[]).find(x=>x.order_id===r.id);if(d){o.delivery={id:d.id,status:d.status,riderProfileId:d.rider_id,distanceKm:Number(d.distance_km||0),deliveryFee:Number(d.delivery_fee||0),pickedUpAt:d.picked_up_at?new Date(d.picked_up_at).getTime():null,deliveredAt:d.delivered_at?new Date(d.delivered_at).getTime():null,note:d.note||'',lat:o.deliveryLat,lng:o.deliveryLng,address:o.deliveryAddress||''};}const pay=(payments||[]).find(x=>x.order_id===r.id);if(pay)o.payment={id:pay.id,amount:Number(pay.amount||0),method:pay.payment_method,status:pay.status,reference:pay.transaction_reference,paidAt:pay.paid_at?new Date(pay.paid_at).getTime():null,note:pay.note||''};return o;});
     const serviceRows=(Array.isArray(orders)?orders:[]).filter(r=>r.order_type==='service');
     let quotes=[]; try{quotes=await qtSupabaseTable('quotations?select=*',{accessToken:token});}catch(e){}
     QT_DB_CACHE.qt_techjobs=serviceRows.map(r=>{ const quoteRows=(Array.isArray(quotes)?quotes:[]).filter(q=>q.order_id===r.id); const mappedQuotes=quoteRows.map(q=>({id:q.id,technicianId:profileMaps.techById.get(q.technician_id)||q.technician_id,technicianName:'',price:Number(q.total_amount||0),note:q.note||'',createdAt:new Date(q.created_at).getTime()})); const j=qtTechJobFromRow(r,mappedQuotes); j.technicianId=profileMaps.techById.get(r.technician_id)||j.technicianId; return j; });
@@ -1472,6 +1369,10 @@ async function qtHydrateDatabase(opts){
 
 
 function toast(msg){
+  /* Customer UI: transient black Toast is intentionally hidden.
+     Business logic still calls toast() as before, so nothing is deleted. */
+  const u=currentUser();
+  if(u && u.type==='customer') return;
   const t = document.createElement('div');
   t.className = 'qt-toast';
   t.textContent = msg;
@@ -1647,6 +1548,10 @@ function pushNotification(userId, title, body, link, type, referenceId){
   return n;
 }
 function showLiveToast(text, link){
+  /* Customer UI: notification popup/toast is temporarily disabled.
+     Notifications remain stored and the notification page/badge logic is untouched. */
+  const u=currentUser();
+  if(u && u.type==='customer') return;
   const box = document.getElementById('notif-toast-box');
   if(!box) return;
   const el = document.createElement('div');
@@ -1681,14 +1586,51 @@ const LiveTracking = {
   sendLocation(orderId, lat, lng){
     let orders = dbGet('qt_orders',[]);
     const o = orders.find(x=>x.id===orderId);
-    if(o){ o.riderLiveLat=lat; o.riderLiveLng=lng; o.riderLiveAt=Date.now(); dbSet('qt_orders', orders); }
-    // Production: ส่งตำแหน่งจริงผ่าน Realtime/API; ห้ามสร้างตำแหน่งจำลอง
+    if(o){ o.riderLiveLat=lat; o.riderLiveLng=lng; o.riderLiveAt=Date.now(); }
+    /* Also publish to the rider profile so other devices can receive the
+       latest GPS position through Supabase Realtime without inventing movement. */
+    const riderId = o?.riderId;
+    const rider = riderId ? dbGet('qt_users',[]).find(u=>u.id===riderId) : null;
+    const profileId = o?.riderProfileId || QT_SYNC.profileMaps?.riderByUserId?.get(riderId||'');
+    const token = qtAccessToken();
+    if(profileId && token){
+      qtSupabaseTable('rider_profiles?id=eq.'+encodeURIComponent(profileId),{
+        method:'PATCH', accessToken:token,
+        body:{latitude:Number(lat),longitude:Number(lng),updated_at:new Date().toISOString()}
+      }).catch(e=>console.warn('[QueueTech LiveTracking] GPS sync failed',e));
+    }
+    if(rider){
+      rider.lat=Number(lat); rider.lng=Number(lng); rider.riderLiveLat=Number(lat); rider.riderLiveLng=Number(lng); rider.riderLiveAt=Date.now();
+    }
   },
   getLatestLocation(orderId){
     const o = dbGet('qt_orders',[]).find(x=>x.id===orderId);
-    return (o && o.riderLiveLat) ? {lat:o.riderLiveLat, lng:o.riderLiveLng, at:o.riderLiveAt} : null;
+    if(o && Number.isFinite(Number(o.riderLiveLat)) && Number.isFinite(Number(o.riderLiveLng))) return {lat:Number(o.riderLiveLat),lng:Number(o.riderLiveLng),at:o.riderLiveAt};
+    const riderId=o?.riderId;
+    const rider=riderId?dbGet('qt_users',[]).find(u=>u.id===riderId):null;
+    return (rider && Number.isFinite(Number(rider.lat)) && Number.isFinite(Number(rider.lng))) ? {lat:Number(rider.lat),lng:Number(rider.lng),at:rider.riderLiveAt||Date.now()} : null;
   }
 };
+let qtRiderGpsWatchId=null;
+let qtRiderGpsOrderId=null;
+function stopRiderLiveTracking(){
+  if(qtRiderGpsWatchId!==null && navigator.geolocation){ try{navigator.geolocation.clearWatch(qtRiderGpsWatchId);}catch(e){} }
+  qtRiderGpsWatchId=null; qtRiderGpsOrderId=null;
+}
+function startRiderLiveTracking(order){
+  const user=currentUser();
+  if(!order || !user || user.type!=='rider' || user.id!==order.riderId || !['picked_up','delivering','arrived'].includes(order.status)){
+    stopRiderLiveTracking(); return;
+  }
+  if(!navigator.geolocation) return;
+  if(qtRiderGpsOrderId===order.id && qtRiderGpsWatchId!==null) return;
+  stopRiderLiveTracking();
+  qtRiderGpsOrderId=order.id;
+  qtRiderGpsWatchId=navigator.geolocation.watchPosition(pos=>{
+    LiveTracking.sendLocation(order.id,pos.coords.latitude,pos.coords.longitude);
+  },err=>console.warn('[QueueTech LiveTracking] GPS watch failed',err),{enableHighAccuracy:true,maximumAge:5000,timeout:15000});
+}
+
 
 /* ---------- Map helpers ---------- */
 let activeMaps = [];
@@ -1761,7 +1703,7 @@ function customerOrderLockRoute(user, page, param){
 
   // While an order is active, the customer is locked to the current
   // order status/chat screen. No new shopping/cart/checkout is allowed.
-  if(page !== 'order' || param !== active.id){
+  if(!((page === 'order' || page === 'order-chat') && param === active.id)){
     navigate('order/'+active.id);
     return true;
   }
@@ -2445,57 +2387,33 @@ function qtRouteRender(){
   const [page, param] = hash.split('/');
   const user = currentUser();
 
-  /* V5.39 BATCH 1 — Rider registration/approval route guard.
-     A pending/rejected/suspended rider must never be sent back to rider-setup.
-     rider-setup is reserved for an approved rider's profile management.
-     This also protects against a stale browser hash such as #rider-setup
-     after a successful registration or after a background Supabase hydrate. */
-  if(user && user.type==='rider' && page==='rider-setup' && user.status!=='approved'){
-    navigate('approval-pending');
+  // QueueGo is the customer-facing application. Other account types continue
+  // to use the same Supabase authentication/database but are not rendered here.
+  if(user && user.type!=='customer' && page!=='login' && page!=='register'){
+    renderQueueGoRoleNotice(user);
     return;
   }
-
-  if(riderOfferRouteLock(user,page,param)) return;
-
-
-  // Customer rule: after placing an order, the customer is automatically
-  // kept on that order's status/chat page until the order is completed
-  // (or cancelled). This prevents starting another order while one is active.
-  /* V5.33: customers are no longer locked onto the order status page; they can browse freely while an order is active */
 
   switch(page){
     case 'home': renderHome(); break;
     case 'register': renderRegister(); break;
-    case 'rider-register': renderRiderRegistration(); break;
     case 'login': renderLogin(); break;
     case 'dashboard': renderDashboard(); break;
-    case 'admin': renderAdminDashboard(currentUser()); break;
-    case 'admin-governance': renderAdminGovernance(); break;
-    case 'admin-orders': renderAdminOrderCenter(currentUser()); break;
-    case 'admin-gp': renderAdminGpSettlement(); break; /* V5.31 addition */
-    case 'shop-settlement': renderShopSettlement(); break; /* V5.31 addition */
-    case 'approval-pending': renderApprovalPending(currentUser()); break;
-    case 'shop-setup': renderShopSetup(); break;
-    case 'shop-products': renderShopProducts(); break;
-    case 'shop-orders': renderOrders(); break;
-    case 'shop-modules': renderShopModules(); break;
-    case 'shop-promote': renderShopPromote(); break;
-    case 'promote-board': renderPromoteBoard(); break;
+    case 'profile': renderCustomerProfile(); break;
     case 'search': renderSearch(); break;
     case 'shop-view': renderShopView(param); break;
     case 'cart': renderCart(); break;
     case 'checkout': renderCheckout(); break;
     case 'orders': renderOrders(); break;
     case 'order': renderOrderDetail(param); break;
-    case 'rider-setup': renderRiderSetup(); break;
-    case 'rider-jobs': renderRiderJobs(); break;
-    case 'technician-setup': renderTechnicianSetup(); break;
-    case 'technician-jobs': renderTechnicianJobs(); break;
-    case 'technician-job': renderTechnicianJobDetail(param); break;
-    case 'call-technician': renderCallTechnician(); break;
-    case 'request-quote': renderRequestQuote(); break;
-    case 'emergency': renderEmergency(); break;
+    case 'order-chat': renderOrderChatPage(param); break;
     case 'notifications': renderNotifications(); break;
+    /* QueueGo customer UI: technician service is temporarily disabled.
+       Keep the technician business logic in this file; only customer access is blocked. */
+    case 'emergency':
+    case 'call-technician':
+      if(user && user.type==='customer') { navigate('home'); return; }
+      renderHome(); break;
     default: renderHome();
   }
   window.scrollTo(0,0);
@@ -2503,16 +2421,16 @@ function qtRouteRender(){
 
 /* ---------- Layout ---------- */
 function layout(title, content){
-  document.title = title + ' - QueueTech V5.30';
+  document.title = title + ' - QueueGo';
   const user = currentUser();
   document.getElementById('app').innerHTML = `
-    <header class="qt-header">
-      <div class="qt-logo" onclick="navigate('home')">🧭 QueueTech</div>
-      ${user
-        ? `<div style="display:flex;align-items:center;gap:6px;"><div class="qt-user-chip" onclick="navigate('dashboard')">👤 ${escapeHtml(user.name)} (${roleLabel(user.type)})</div><button type="button" class="btn-danger" style="min-height:38px;padding:7px 10px;font-size:12px;" onclick="logout();return false;">ออกจากระบบ</button></div>`
-        : `<div class="qt-auth-links"><a href="#login">เข้าสู่ระบบ</a> | <a href="#register">สมัครสมาชิก</a></div>`}
+    <header class="qg-header">
+      <div class="qg-brand" onclick="navigate('home')"><span class="qg-brand-mark">Q</span><span>QueueGo</span></div>
+      ${user && user.type==='customer'
+        ? `<div class="qg-header-actions"><button class="qg-icon-btn" aria-label="แจ้งเตือน" onclick="navigate('notifications')">🔔${notificationBadgeHTML(user.id)}</button><button class="qg-avatar" onclick="navigate('profile')">${escapeHtml((user.name||'ผู้ใช้').slice(0,1))}</button></div>`
+        : `<div class="qg-auth-links"><a href="#login">เข้าสู่ระบบ</a><a class="qg-auth-primary" href="#register">สมัครสมาชิก</a></div>`}
     </header>
-    <main class="qt-main">${content}</main>
+    <main class="qt-main qg-main"><div class="qg-page">${content}</div></main>
     ${bottomNav()}
     <div id="notif-toast-box"></div>
   `;
@@ -2521,67 +2439,44 @@ function bottomNav(){
   const user = currentUser();
   const hash = location.hash || '#home';
   const isActive = h => hash===('#'+h) ? 'active' : '';
-  if(!user){
-    return `<nav class="qt-bottomnav">
-      <a href="#home" class="${isActive('home')}">🏠<span>หน้าแรก</span></a>
-      <a href="#search" class="${isActive('search')}">🔎<span>ค้นหา</span></a>
-      <a href="#emergency" class="${isActive('emergency')}">🚨<span>ด่วนพิเศษ</span></a>
-      <a href="#login" class="${isActive('login')}">👤<span>เข้าสู่ระบบ</span></a>
+  if(!user || user.type!=='customer'){
+    return `<nav class="qt-bottomnav qg-bottomnav">
+      <a href="#home" class="${isActive('home')}">⌂<span>หน้าแรก</span></a>
+      <a href="#search" class="${isActive('search')}">⌕<span>ค้นหา</span></a>
+      <a href="#login" class="${isActive('login')}">◯<span>บัญชี</span></a>
     </nav>`;
   }
-  const badge = unreadNotifCount(user.id);
   const bnBadge = notificationBadgeHTML(user.id);
-  if(user.type==='admin') return `<nav class="qt-bottomnav">
-      <a href="#admin" class="${isActive('admin')}">🛡️<span>แอดมิน</span></a>
-      <a href="#notifications" class="${isActive('notifications')}">🔔${bnBadge}<span>แจ้งเตือน</span></a>
-      <a href="#home" class="${isActive('home')}">🏠<span>หน้าแรก</span></a>
-    </nav>`;
-  if(user.type==='customer'){
-    /* V5.33: same navigation whether or not an order is active (no more lock) */
-    return `<nav class="qt-bottomnav">
-      <a href="#home" class="${isActive('home')}">🏠<span>หน้าแรก</span></a>
-      <a href="#search" class="${isActive('search')}">🔎<span>ค้นหา</span></a>
-      <a href="#cart" class="${isActive('cart')}">🛒<b class="cart-count-badge" style="${cartCount()>0?'':'display:none'}">${cartCount()>99?'99+':cartCount()}</b><span>ตะกร้า</span></a>
-      <a href="#orders" class="${isActive('orders')}">📦<span>คำสั่งซื้อ</span></a>
-      <a href="#notifications" class="${isActive('notifications')}">🔔${bnBadge}<span>แจ้งเตือน</span></a>
-      <a href="#dashboard" class="${isActive('dashboard')}">👤<span>โปรไฟล์</span></a>
-    </nav>`;
-  }
-  if(user.type==='shop') return `<nav class="qt-bottomnav">
-      <a href="#dashboard" class="${isActive('dashboard')}">🏪<span>แดชบอร์ด</span></a>
-      <a href="#shop-products" class="${isActive('shop-products')}">📦<span>สินค้า</span></a>
-      <a href="#shop-orders" class="${isActive('shop-orders')}">🧾<span>ออเดอร์</span></a>
-      <a href="#shop-promote" class="${isActive('shop-promote')}">⭐<span>โปรโมต</span></a>
-      <a href="#notifications" class="${isActive('notifications')}">🔔${bnBadge}<span>แจ้งเตือน</span></a>
-      <a href="#shop-modules" class="${isActive('shop-modules')}">⚙️<span>แพ็กเกจ</span></a>
-    </nav>`;
-  if(user.type==='rider') return `<nav class="qt-bottomnav">
-      <a href="#dashboard" class="${isActive('dashboard')}">👤<span>แดชบอร์ด</span></a>
-      <a href="#rider-jobs" class="${isActive('rider-jobs')}">🛵<span>งานจัดส่ง</span></a>
-      <a href="#notifications" class="${isActive('notifications')}">🔔${bnBadge}<span>แจ้งเตือน</span></a>
-      <a href="#home" class="${isActive('home')}">🏠<span>หน้าแรก</span></a>
-    </nav>`;
-  if(user.type==='technician') return `<nav class="qt-bottomnav">
-      <a href="#dashboard" class="${isActive('dashboard')}">👤<span>แดชบอร์ด</span></a>
-      <a href="#technician-jobs" class="${isActive('technician-jobs')}">🧰<span>งานซ่อม</span></a>
-      <a href="#notifications" class="${isActive('notifications')}">🔔${bnBadge}<span>แจ้งเตือน</span></a>
-      <a href="#home" class="${isActive('home')}">🏠<span>หน้าแรก</span></a>
-    </nav>`;
+  return `<nav class="qt-bottomnav qg-bottomnav">
+    <a href="#home" class="${isActive('home')}">⌂<span>หน้าแรก</span></a>
+    <a href="#search" class="${isActive('search')}">⌕<span>ค้นหา</span></a>
+    <a href="#cart" class="${isActive('cart')}">🛒<b class="cart-count-badge" style="${cartCount()>0?'':'display:none'}">${cartCount()>99?'99+':cartCount()}</b><span>ตะกร้า</span></a>
+    <a href="#orders" class="${isActive('orders')}">▣<span>คำสั่งซื้อ</span></a>
+    <a href="#profile" class="${isActive('profile')||isActive('dashboard')}">${escapeHtml((user.name||'ผู้ใช้').slice(0,1))}<span>โปรไฟล์</span></a>
+  </nav>`;
 }
 
 /* ---------- 1. HOME ---------- */
 function renderHome(){
+  const user=currentUser();
+  const greeting=user&&user.type==='customer' ? `สวัสดี ${escapeHtml(user.name||'คุณ')}` : 'สั่งง่าย ได้ไว ใกล้คุณ';
   layout('หน้าแรก', `
-    <div class="hero"><h1>ยินดีต้อนรับสู่ QueueTech</h1><p>แพลตฟอร์มรวมบริการใกล้คุณ</p></div>
-    <div class="grid-menu">
-      <div class="menu-card" onclick="navigate('search')">🔎<div>ค้นหาร้าน/บริการ</div></div>
-      <div class="menu-card" onclick="navigate('search')">🏪<div>ร้านค้าใกล้ฉัน</div></div>
-      <div class="menu-card" onclick="navigate('search')">🛍️<div>ฝากซื้อ</div></div>
-      <div class="menu-card" onclick="navigate('call-technician')">👨‍🔧<div>เรียกช่าง</div></div>
-      <div class="menu-card danger" onclick="navigate('emergency')">🚨<div>ด่วนพิเศษ</div></div>
-      <div class="menu-card" onclick="navigate('orders')">🛵<div>ติดตามงาน</div></div>
-    </div>
-    <div id="home-promote"></div>
+    <section class="qg-hero">
+      <div class="qg-hero-copy"><div class="qg-eyebrow">QUEUEGO</div><h1>${greeting}</h1><p>ค้นหาร้านใกล้คุณ สั่งสินค้า และติดตามออเดอร์ได้ในที่เดียว</p></div>
+      <div class="qg-hero-art">Q</div>
+    </section>
+    <section class="qg-search-card" onclick="navigate('search')"><span>⌕</span><span>ค้นหาร้าน สินค้า หรือบริการ...</span><b>›</b></section>
+    <section class="qg-section"><div class="qg-section-head"><h2>บริการของ QueueGo</h2><button onclick="navigate('search')">ดูทั้งหมด ›</button></div>
+      <div class="qg-category-grid">
+        <button onclick="navigate('search')"><span>🍜</span><b>อาหาร</b></button>
+        <button onclick="navigate('search')"><span>🥤</span><b>เครื่องดื่ม</b></button>
+        <button onclick="navigate('search')"><span>🛒</span><b>ของใช้</b></button>
+        <button onclick="navigate('search')"><span>💊</span><b>ยา/สุขภาพ</b></button>
+        <button onclick="navigate('search')"><span>🧰</span><b>บริการ</b></button>
+        <button onclick="navigate('search')"><span>•••</span><b>อื่นๆ</b></button>
+      </div>
+    </section>
+    <section class="qg-section"><div class="qg-section-head"><h2>ร้านแนะนำใกล้คุณ</h2><button onclick="navigate('search')">ดูทั้งหมด ›</button></div><div id="home-promote" class="qg-shop-strip"></div></section>
   `);
   renderHomePromoteWidget();
 }
@@ -2599,36 +2494,18 @@ function renderHomePromoteWidget(){
 /* ---------- 2. REGISTER / LOGIN ---------- */
 function renderRegister(){
   layout('สมัครสมาชิก', `
-    <h2>สมัครสมาชิก QueueTech</h2>
-    <p class="warn-text">⚠️ Prototype: รหัสผ่านจัดการโดย Supabase Auth — ระบบจะไม่เก็บรหัสผ่านจริงไว้ใน LocalStorage</p>
-    <div class="role-picker" aria-label="เลือกประเภทบัญชี">
-      <button type="button" class="role-card active" onclick="switchRegisterTab('customer', this)"><span class="role-icon">👤</span><b>ลูกค้า</b><small>สั่งซื้อ / เรียกช่าง</small></button>
-      <button type="button" class="role-card" onclick="switchRegisterTab('shop', this)"><span class="role-icon">🏪</span><b>ร้านค้า</b><small>ขายสินค้า / รับออเดอร์</small></button>
-      <button type="button" class="role-card" onclick="switchRegisterTab('technician', this)"><span class="role-icon">🔧</span><b>ช่าง</b><small>รับงาน / เสนอราคา</small></button>
-      <button type="button" class="role-card" onclick="switchRegisterTab('rider', this)"><span class="role-icon">🛵</span><b>ไรเดอร์</b><small>รับงานจัดส่ง</small></button>
-    </div>
-    <form onsubmit="return handleRegister(event)">
-      <input type="hidden" id="reg-type" value="customer">
-      <input type="hidden" id="reg-contact-mode" value="phone">
-      <label>ช่องทางเข้าสู่ระบบ</label>
-      <div class="tabs" style="margin:6px 0 12px">
-        <button type="button" id="reg-mode-phone" class="tab active" onclick="switchRegisterContact('phone')">📱 เบอร์โทรศัพท์</button>
-        <button type="button" id="reg-mode-email" class="tab" onclick="switchRegisterContact('email')">✉️ อีเมล</button>
-      </div>
-      <label>ชื่อ-นามสกุล / ชื่อผู้ติดต่อ</label>
-      <input required id="reg-name" placeholder="ชื่อของคุณ">
-      <label id="reg-phone-label">เบอร์โทรศัพท์ (ใช้เป็นชื่อผู้ใช้)</label>
-      <input id="reg-phone" inputmode="tel" placeholder="08xxxxxxxx">
-      <label id="reg-email-label" style="display:none">อีเมล (ใช้เป็นชื่อผู้ใช้)</label>
-      <input id="reg-email" type="email" style="display:none" placeholder="example@email.com">
-      <label>รหัสผ่าน</label>
-      <input required type="password" id="reg-password" minlength="6" autocomplete="new-password" placeholder="อย่างน้อย 6 ตัวอักษร">
-      <label>ยืนยันรหัสผ่าน</label>
-      <input required type="password" id="reg-password-confirm" minlength="6" autocomplete="new-password" placeholder="กรอกรหัสผ่านอีกครั้ง">
-      <button class="btn-primary btn-block" type="submit">สมัครสมาชิก</button>
-    </form>
-    <p>มีบัญชีอยู่แล้ว? <a href="#login">เข้าสู่ระบบ</a></p>
-  `);
+    <section class="qg-auth-page"><div class="qg-auth-brand"><span class="qg-brand-mark">Q</span><b>QueueGo</b></div><h1>สร้างบัญชีผู้ใช้</h1><p>เริ่มใช้งาน QueueGo เพื่อค้นหาร้าน สั่งสินค้า และติดตามออเดอร์</p>
+      <form onsubmit="return handleRegister(event)" class="qg-auth-form">
+        <input type="hidden" id="reg-type" value="customer"><input type="hidden" id="reg-contact-mode" value="phone">
+        <label>ช่องทางเข้าสู่ระบบ</label><div class="tabs qg-auth-tabs"><button type="button" id="reg-mode-phone" class="tab active" onclick="switchRegisterContact('phone')">📱 เบอร์โทรศัพท์</button><button type="button" id="reg-mode-email" class="tab" onclick="switchRegisterContact('email')">✉️ อีเมล</button></div>
+        <label>ชื่อของคุณ</label><input required id="reg-name" placeholder="ชื่อ-นามสกุล">
+        <label id="reg-phone-label">เบอร์โทรศัพท์</label><input id="reg-phone" inputmode="tel" placeholder="08xxxxxxxx">
+        <label id="reg-email-label" style="display:none">อีเมล</label><input id="reg-email" type="email" style="display:none" placeholder="example@email.com">
+        <label>รหัสผ่าน</label><input required type="password" id="reg-password" minlength="6" autocomplete="new-password" placeholder="อย่างน้อย 6 ตัวอักษร">
+        <label>ยืนยันรหัสผ่าน</label><input required type="password" id="reg-password-confirm" minlength="6" autocomplete="new-password" placeholder="กรอกรหัสผ่านอีกครั้ง">
+        <button class="btn-primary btn-block qg-main-btn" type="submit">สร้างบัญชี</button>
+      </form><p class="qg-auth-foot">มีบัญชีอยู่แล้ว? <a href="#login">เข้าสู่ระบบ</a></p>
+    </section>`);
 }
 function switchRegisterTab(type, el){
   if(type==='rider'){ navigate('rider-register'); return; }
@@ -2954,18 +2831,19 @@ async function handleRegister(e){
   }finally{if(submitBtn)submitBtn.disabled=false;}
   return false;
 }
+function renderQueueGoRoleNotice(user){
+  layout('QueueGo', `<section class="qg-role-blocked"><div>🚫</div><h1>QueueGo สำหรับผู้ใช้บริการ</h1><p>บัญชีประเภท ${escapeHtml(roleLabel(user.type))} ใช้งานผ่านแอปส่วนของตนเอง</p><button class="btn-primary btn-block" onclick="logout()">ออกจากระบบ</button></section>`);
+}
+function renderTechnicianClosed(){
+  layout('เรียกช่าง', `<section class="qg-role-blocked"><div class="qg-disabled-icon">🔧</div><h1>เรียกช่าง</h1><p>บริการเรียกช่างถูกปิดไว้ชั่วคราว และจะเปิดใช้งานในเวอร์ชันถัดไป</p><button class="btn-secondary btn-block" onclick="navigate('home')">กลับหน้าแรก</button></section>`);
+}
+
 function renderLogin(){
   layout('เข้าสู่ระบบ', `
-    <h2>เข้าสู่ระบบ</h2>
-    <form onsubmit="return handleLogin(event)">
-      <label>เบอร์โทรศัพท์ หรืออีเมล</label>
-      <input required id="login-phone" autocomplete="username" placeholder="เช่น 0899999999 หรือ non2528@gmail.com">
-      <label>รหัสผ่าน</label>
-      <input required type="password" id="login-password">
-      <button class="btn-primary btn-block" type="submit">เข้าสู่ระบบ</button>
-    </form>
-    <p>ยังไม่มีบัญชี? <a href="#register">สมัครสมาชิก</a></p>
-  `);
+    <section class="qg-auth-page"><div class="qg-auth-brand"><span class="qg-brand-mark">Q</span><b>QueueGo</b></div><h1>ยินดีต้อนรับกลับ</h1><p>เข้าสู่ระบบเพื่อสั่งสินค้าและติดตามออเดอร์</p>
+      <form onsubmit="return handleLogin(event)" class="qg-auth-form"><label>เบอร์โทรศัพท์ หรืออีเมล</label><input required id="login-phone" autocomplete="username" placeholder="08xxxxxxxx หรืออีเมล"><label>รหัสผ่าน</label><input required type="password" id="login-password" autocomplete="current-password" placeholder="รหัสผ่าน"><button class="btn-primary btn-block qg-main-btn" type="submit">เข้าสู่ระบบ</button></form>
+      <p class="qg-auth-foot">ยังไม่มีบัญชี? <a href="#register">สมัครสมาชิก</a></p>
+    </section>`);
 }
 async function handleLogin(e){
   e.preventDefault();
@@ -3109,15 +2987,24 @@ function renderDashboard(){
   if(user.type==='rider') return renderRiderDashboard(user);
 }
 function renderCustomerDashboard(user){
-  const orders = dbGet('qt_orders',[]).filter(o=>o.customerId===user.id);
-  layout('แดชบอร์ดลูกค้า', `
-    <h2>👤 สวัสดี, ${escapeHtml(user.name)}</h2>
-    <div class="stat-cards"><div class="stat-card">คำสั่งซื้อทั้งหมด: <b>${orders.length}</b></div></div>
-    <button class="btn-primary btn-block" onclick="navigate('search')">🔎 ค้นหาร้าน</button>
-    <button class="btn-primary btn-block" onclick="navigate('call-technician')">👨‍🔧 เรียกช่าง</button>
-    <button class="btn-primary btn-block" onclick="navigate('emergency')">🚨 บริการด่วนพิเศษ</button>
-    <button class="btn-secondary btn-block" onclick="navigate('orders')">📦 คำสั่งซื้อของฉัน</button>
-    <button class="btn-danger btn-block" onclick="logout()">ออกจากระบบ</button>
+  const orders = dbGet('qt_orders',[]).filter(o=>o.customerId===user.id).sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
+  const active=orders.find(o=>!['completed','cancelled'].includes(o.status));
+  renderCustomerProfile(user, orders, active);
+}
+function renderCustomerProfile(user=currentUser(), orders=null, active=null){
+  if(!user || user.type!=='customer'){ navigate('login'); return; }
+  orders = orders || dbGet('qt_orders',[]).filter(o=>o.customerId===user.id).sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
+  active = active || orders.find(o=>!['completed','cancelled'].includes(o.status));
+  layout('โปรไฟล์', `
+    <section class="qg-profile-head"><div class="qg-profile-avatar">${escapeHtml((user.name||'ผู้ใช้').slice(0,1))}</div><div><div class="qg-eyebrow">บัญชี QueueGo</div><h1>${escapeHtml(user.name||'ผู้ใช้')}</h1><p>${escapeHtml(user.phone||user.email||'')}</p></div></section>
+    ${active ? `<section class="qg-active-order" onclick="navigate('order/${active.id}')"><div><small>กำลังดำเนินการ</small><b>${displayOrderNumber(active)}</b><span>${statusLabel(active.status)}</span></div><strong>›</strong></section>`:''}
+    <div class="qg-stat-row"><div><b>${orders.length}</b><span>คำสั่งซื้อทั้งหมด</span></div><div><b>${orders.filter(o=>o.status==='completed').length}</b><span>สำเร็จแล้ว</span></div><div><b>${unreadNotifCount(user.id)}</b><span>แจ้งเตือน</span></div></div>
+    <section class="qg-menu-list">
+      <button onclick="navigate('orders')"><span>📦</span><div><b>คำสั่งซื้อของฉัน</b><small>ดูประวัติและติดตามสถานะ</small></div><strong>›</strong></button>
+      <button onclick="navigate('notifications')"><span>🔔</span><div><b>การแจ้งเตือน</b><small>ข่าวสารและสถานะออเดอร์</small></div><strong>›</strong></button>
+      <button onclick="navigate('search')"><span>❤️</span><div><b>ร้านค้าและรายการโปรด</b><small>ค้นหาร้านใกล้คุณ</small></div><strong>›</strong></button>
+      <button onclick="logout()" class="qg-menu-danger"><span>↪</span><div><b>ออกจากระบบ</b><small>ออกจากบัญชี QueueGo</small></div><strong>›</strong></button>
+    </section>
   `);
 }
 function renderShopDashboard(user){
@@ -3932,6 +3819,21 @@ function renderOrderChatArea(orderId){ const order=dbGet('qt_orders',[]).find(o=
 function markChatForDeletion(order){ if(!['completed','cancelled'].includes(order.status))return; const key=chatKey(order.id), messages=getOrderChat(order); if(!messages.length)return; dbSet(key,messages); QT_DB_CACHE[key+'_deleteAt']=Date.now()+20*60*1000; }
 setInterval(cleanupExpiredChats,30000);
 
+function renderOrderChatPage(orderId){
+  const user=currentUser();
+  const order=dbGet('qt_orders',[]).find(o=>o.id===orderId);
+  if(!user||user.type!=='customer'){ navigate('login'); return; }
+  if(!order||order.customerId!==user.id){ toast('ไม่พบคำสั่งซื้อ'); navigate('orders'); return; }
+  if(!order.riderId){ toast('แชทยังเปิดเมื่อไรเดอร์รับงานแล้ว'); navigate('order/'+orderId); return; }
+  layout('แชทกับไรเดอร์', `
+    <div class="qt-chat-page-head">
+      <button class="btn-secondary" onclick="navigate('order/${order.id}')">← กลับหน้าติดตาม</button>
+      <div style="margin-top:10px"><b>💬 แชทกับไรเดอร์</b><div style="font-size:12px;color:#64748b">คำสั่งซื้อ ${displayOrderNumber(order)}</div></div>
+    </div>
+    ${renderOrderChat(order,user)}
+  `);
+}
+
 function renderOrderDetail(id){
   const order = dbGet('qt_orders',[]).find(o=>o.id===id);
   if(!order){ toast('ไม่พบคำสั่งซื้อ'); navigate('orders'); return; }
@@ -3939,57 +3841,83 @@ function renderOrderDetail(id){
   const shopUser = dbGet('qt_users',[]).find(u=>u.id===order.shopId);
   const riderUser = order.riderId ? dbGet('qt_users',[]).find(u=>u.id===order.riderId) : null;
   const canSeeTracking = user && (user.type==='admin' || user.id===order.customerId || user.id===order.riderId || user.id===order.shopId);
+
+  /* Customer tracking view: visual tracking page only uses data already supported by the system. */
+  if(user && user.type==='customer' && user.id===order.customerId){
+    const si=statusIndex(order.status);
+    const progress=[
+      {key:'pending_shop',label:'รอร้าน'},
+      {key:'preparing',label:'เตรียมสินค้า'},
+      {key:'waiting_rider',label:'หาไรเดอร์'},
+      {key:'delivering',label:'กำลังจัดส่ง'},
+      {key:'completed',label:'ส่งสำเร็จ'}
+    ];
+    const progressIndex = order.status==='cancelled' ? -1 :
+      order.status==='rider_to_shop'||order.status==='picked_up'||order.status==='arrived' ? 3 :
+      order.status==='shop_accepted'||order.status==='preparing' ? 1 :
+      order.status==='waiting_rider' ? 2 :
+      order.status==='completed' ? 4 : 0;
+    const mapAvailable=canSeeTracking && order.pickup && order.delivery && order.pickup.lat!=null && order.pickup.lng!=null && order.delivery.lat!=null && order.delivery.lng!=null;
+    const itemCount=Array.isArray(order.items)?order.items.reduce((n,i)=>n+Number(i.qty||0),0):0;
+    layout('ติดตามคำสั่งซื้อ', `
+      <div class="qt-track-hero">
+        <div class="qt-track-head">
+          <div><div class="qt-track-number">คำสั่งซื้อ ${displayOrderNumber(order)}</div><div class="qt-track-sub">${order.createdAt?new Date(order.createdAt).toLocaleString('th-TH',{dateStyle:'medium',timeStyle:'short'}):''}</div></div>
+          <div class="qt-track-status">${statusLabel(order.status)}</div>
+        </div>
+        ${order.status==='cancelled' ? '<div class="badge badge-red" style="margin-top:12px">❌ คำสั่งซื้อถูกยกเลิก</div>' : `
+        <div class="qt-track-progress">
+          ${progress.map((p,i)=>`<div class="qt-track-progress-item ${progressIndex>=i?'done':''} ${progressIndex===i?'current':''}">${p.label}</div>`).join('')}
+        </div>`}
+      </div>
+
+
+
+      ${riderUser ? `<section class="qt-track-rider">
+        <div class="qt-track-rider-head">
+          <img class="rider-profile-photo" src="${escapeHtml(riderUser.profileImage||'')}" onerror="this.style.display='none'" alt="รูปไรเดอร์">
+          <div class="qt-track-rider-info"><div style="font-size:11px;color:#64748b">ไรเดอร์ผู้จัดส่ง</div><b>${escapeHtml(riderUser.name||order.riderName||'-')}</b><div class="qt-track-rider-meta">${riderUser.vehicleType==='motorcycle'?'มอเตอร์ไซค์':riderUser.vehicleType==='car'?'รถยนต์':riderUser.vehicleType==='bicycle'?'จักรยาน':'ยานพาหนะ'} • ทะเบียน ${escapeHtml(riderUser.vehiclePlate||'-')}</div></div>
+          ${riderUser.phone?`<a class="btn-primary" style="padding:9px 12px;text-decoration:none;font-size:12px" href="tel:${escapeHtml(riderUser.phone)}">📞 โทร</a>`:''}
+        </div>
+      </section>` : ''}
+
+      <section class="qt-track-section">
+        <h3>🏪 รายละเอียดคำสั่งซื้อ</h3>
+        <div class="qt-track-row"><span>ร้าน</span><b>${escapeHtml(order.shopName||'-')}</b></div>
+        <div class="qt-track-row"><span>สินค้า</span><b>${itemCount} รายการ</b></div>
+        <div class="qt-track-row"><span>ยอดรวม</span><b>${escapeHtml(order.total||0)} บาท</b></div>
+        <div class="qt-track-row"><span>จัดส่งที่</span><b style="text-align:right;max-width:65%">${escapeHtml((order.delivery&&order.delivery.address)||order.deliveryAddress||'-')}</b></div>
+      </section>
+
+      ${order.status==='pending_shop' && shopUser ? `<div class="row-btns" style="margin:10px 0">${shopUser.phone?`<a class="btn-primary" href="tel:${escapeHtml(shopUser.phone)}">📞 โทรหาร้าน</a>`:''}</div>` : ''}
+      <div id="action-buttons">${orderActionButtons(order,user)}</div>
+      ${mapAvailable ? `<section class="qt-track-map-card" style="margin-top:14px"><h3>📍 ติดตามการจัดส่ง</h3><div id="tracking-map" class="map-box"></div>${!['picked_up','delivering','arrived'].includes(order.status) ? '<div class="search-location-hint" style="margin-top:8px">🛵 ตำแหน่งไรเดอร์จะแสดงบนแผนที่เมื่อไรเดอร์รับของจากร้านแล้ว</div>' : '<div class="search-location-status" style="margin-top:8px">🔴 ติดตามตำแหน่งไรเดอร์แบบ Real-time</div>'}</section>` : ''}
+      ${order.riderId && !['completed','cancelled'].includes(order.status) ? `<button class="btn-primary btn-block" style="margin-top:12px" onclick="navigate('order-chat/${order.id}')">💬 เปิดแชทกับไรเดอร์</button>` : ''}
+    `);
+    if(mapAvailable) initTrackingMap(order);
+    return;
+  }
+
+  startRiderLiveTracking(order);
   layout('รายละเอียดคำสั่งซื้อ', `
     <h2>คำสั่งซื้อ ${displayOrderNumber(order)}</h2>
     <div class="order-detail-card">
       <div><b>ร้าน:</b> ${escapeHtml(order.shopName)}</div>
       <div><b>ลูกค้า:</b> ${escapeHtml(order.customerName)}</div>
-      ${user&&user.type==='customer'&&order.customerId===user.id&&shopUser?`
-        <div class="row-btns" style="margin-top:10px">
-          ${shopUser.phone?`<a class="btn-primary" href="tel:${escapeHtml(shopUser.phone)}">📞 โทรหาร้าน</a>`:''}
-          <a class="btn-secondary" target="_blank" rel="noopener" href="${escapeHtml(qtGoogleMapsDirections(shopUser.lat,shopUser.lng,shopUser.address))}">📍 นำทางไปร้าน</a>
-        </div>`:''}
-      ${user&&user.type==='rider'&&order.riderId===user.id?`
-        <div class="row-btns" style="margin-top:10px">
-          ${order.customerPhone?`<a class="btn-primary" href="tel:${escapeHtml(order.customerPhone)}">📞 โทรหาลูกค้า</a>`:''}
-          <a class="btn-secondary" target="_blank" rel="noopener" href="${escapeHtml(qtGoogleMapsDirections(order.delivery?.lat,order.delivery?.lng,order.delivery?.address))}">📍 นำทางไปบ้านลูกค้า</a>
-        </div>`:''}
       <div><b>รายการ:</b> ${order.items.map(i=>`${escapeHtml(i.name)} x${escapeHtml(i.qty)}`).join(', ')}</div>
       <div><b>รวม:</b> ${escapeHtml(order.total)} บาท</div>
       <div><b>ที่อยู่จัดส่ง:</b> ${escapeHtml((order.delivery&&order.delivery.address)||order.deliveryAddress||'-')}</div>
-      <div><b>เลขออเดอร์:</b> ${displayOrderNumber(order)}</div>
       <div><b>สถานะปัจจุบัน:</b> ${statusLabel(order.status)}</div>
     </div>
-    ${order.riderId && riderUser ? `
-      <div class="rider-profile-card">
-        <img class="rider-profile-photo" src="${escapeHtml(riderUser.profileImage||'')}" onerror="this.style.display='none'" alt="รูปไรเดอร์">
-        <div class="rider-profile-meta">
-          <div style="font-size:12px;color:#64748b">🛵 ไรเดอร์ผู้รับงาน</div>
-          <b>${escapeHtml(riderUser.name||order.riderName||'-')}</b>
-          <div>ทะเบียนรถ: <strong>${escapeHtml(riderUser.vehiclePlate||'-')}</strong></div>
-          <div>ประเภทรถ: ${riderUser.vehicleType==='motorcycle'?'มอเตอร์ไซค์':riderUser.vehicleType==='car'?'รถยนต์':riderUser.vehicleType==='bicycle'?'จักรยาน':'-'}</div>
-          ${riderUser.phone?`<a class="btn-primary" style="display:inline-block;margin-top:8px;text-decoration:none" href="tel:${escapeHtml(riderUser.phone)}">📞 โทรหาไรเดอร์</a>`:''}
-        </div>
-      </div>` : ''}
-    <div class="status-timeline">
-      ${ORDER_STATUSES.filter(s=>s.key!=='cancelled').map((s,i)=>`
-        <div class="timeline-step ${statusIndex(order.status)>=i && order.status!=='cancelled' ?'done':''} ${order.status===s.key?'current':''}">${s.icon} ${s.label}</div>`).join('')}
-    </div>
-    ${order.status==='cancelled' ? '<div class="badge badge-red">❌ คำสั่งซื้อถูกยกเลิก</div>' : ''}
+    <div class="status-timeline">${ORDER_STATUSES.filter(s=>s.key!=='cancelled').map((s,i)=>`<div class="timeline-step ${statusIndex(order.status)>=i&&order.status!=='cancelled'?'done':''} ${order.status===s.key?'current':''}">${s.icon} ${s.label}</div>`).join('')}</div>
+    ${order.status==='cancelled'?'<div class="badge badge-red">❌ คำสั่งซื้อถูกยกเลิก</div>':''}
     <div id="action-buttons">${orderActionButtons(order,user)}</div>
-    ${(user && (user.type==='rider' || user.type==='admin')) && order.status==='waiting_rider' ? `
-      <div class="card" style="margin-top:12px">
-        <b>⚙️ Auto Dispatch</b>
-        <div>กติกา: รัศมี ≤ 1 กม. • งานน้อยกว่าได้ก่อน • งานเท่ากันใช้ระยะทาง</div>
-        ${order.dispatchRiderId ? `<div>สถานะ: จ่ายงานให้ Rider เฉพาะรายแล้ว</div>` : `<div>สถานะ: กำลังค้นหาไรเดอร์ที่เข้าเงื่อนไข</div>`}
-      </div>` : ''}
     ${renderOrderChat(order,user)}
-    ${canSeeTracking && !['completed','cancelled','pending_shop'].includes(order.status) ? '<h3>📍 ติดตามตำแหน่งไรเดอร์ (จำลอง Real-time)</h3><div id="tracking-map" class="map-box"></div>' : ''}
+    ${canSeeTracking&&!['completed','cancelled','pending_shop'].includes(order.status)?'<h3>📍 ติดตามตำแหน่งไรเดอร์</h3><div id="tracking-map" class="map-box"></div>':''}
   `);
-  if(canSeeTracking && !['completed','cancelled','pending_shop'].includes(order.status)){
-    initTrackingMap(order);
-  }
+  if(canSeeTracking&&!['completed','cancelled','pending_shop'].includes(order.status)) initTrackingMap(order);
 }
+
 function requestOrderRefund(orderId){
   const user=currentUser(); if(!user||user.type!=='customer'){toast('เฉพาะลูกค้า');return;}
   let orders=dbGet('qt_orders',[]); const o=orders.find(x=>x.id===orderId);
@@ -4112,6 +4040,10 @@ function updateOrderStatus(orderId, newStatus){
     }
   }
   dbSet('qt_orders', orders);
+  if(actor && actor.type==='rider'){
+    if(['picked_up','delivering','arrived'].includes(newStatus)) startRiderLiveTracking(order);
+    else stopRiderLiveTracking();
+  }
   pushNotification(order.customerId, 'อัปเดตสถานะคำสั่งซื้อ', statusLabel(newStatus), 'order/'+orderId);
   if(newStatus === 'waiting_rider'){
     dispatchOrder(orderId);
@@ -4195,39 +4127,36 @@ function initTrackingMap(order){
   tileLayer(map);
   registerMap(map);
 
-  L.marker([order.pickup.lat, order.pickup.lng])
-    .addTo(map).bindPopup('🏪 ร้านค้า: '+escapeHtml(order.shopName||'ร้านค้า'));
-  L.marker([order.delivery.lat, order.delivery.lng])
-    .addTo(map).bindPopup('👤 ลูกค้า: '+escapeHtml(order.customerName||'ลูกค้า'));
+  L.marker([order.pickup.lat, order.pickup.lng]).addTo(map).bindPopup('🏪 ร้านค้า: '+escapeHtml(order.shopName||'ร้านค้า'));
+  L.marker([order.delivery.lat, order.delivery.lng]).addTo(map).bindPopup('👤 จุดส่ง: '+escapeHtml(order.customerName||'ลูกค้า'));
 
   const riderIcon = L.divIcon({html:'🛵', className:'emoji-icon'});
-  const latest = LiveTracking.getLatestLocation(order.id);
   let riderMarker = null;
-
-  if(latest && Number.isFinite(Number(latest.lat)) && Number.isFinite(Number(latest.lng))){
-    riderMarker = L.marker([Number(latest.lat),Number(latest.lng)], {icon:riderIcon})
-      .addTo(map).bindPopup('🛵 ตำแหน่งล่าสุดของไรเดอร์');
+  const riderCanBeShown = ['picked_up','delivering','arrived'].includes(order.status);
+  if(riderCanBeShown){
+    const latest=LiveTracking.getLatestLocation(order.id);
+    if(latest && Number.isFinite(Number(latest.lat)) && Number.isFinite(Number(latest.lng))){
+      riderMarker=L.marker([latest.lat,latest.lng],{icon:riderIcon}).addTo(map).bindPopup('🛵 ไรเดอร์ — ตำแหน่งล่าสุด');
+    }
   }
 
-  map.fitBounds([
-    [order.pickup.lat,order.pickup.lng],
-    [order.delivery.lat,order.delivery.lng]
-  ], {padding:[30,30]});
+  map.fitBounds([[order.pickup.lat,order.pickup.lng],[order.delivery.lat,order.delivery.lng]],{padding:[30,30]});
 
-  /*
-    Refresh only from the current application's stored last-known location.
-    No artificial movement is generated. When Realtime/API is enabled later,
-    LiveTracking.getLatestLocation() can read the server-synced position.
-  */
-  const refresh = setInterval(()=>{
-    const current = LiveTracking.getLatestLocation(order.id);
-    if(!current || !Number.isFinite(Number(current.lat)) || !Number.isFinite(Number(current.lng))) return;
-    const point=[Number(current.lat),Number(current.lng)];
+  const refresh=setInterval(()=>{
+    const current=dbGet('qt_orders',[]).find(x=>x.id===order.id) || order;
+    if(!['picked_up','delivering','arrived'].includes(current.status)){
+      if(riderMarker){ try{map.removeLayer(riderMarker);}catch(e){} riderMarker=null; }
+      return;
+    }
+    const latest=LiveTracking.getLatestLocation(order.id);
+    if(!latest || !Number.isFinite(Number(latest.lat)) || !Number.isFinite(Number(latest.lng))) return;
+    const point=[Number(latest.lat),Number(latest.lng)];
     if(riderMarker) riderMarker.setLatLng(point);
-    else riderMarker=L.marker(point,{icon:riderIcon}).addTo(map).bindPopup('🛵 ตำแหน่งล่าสุดของไรเดอร์');
-  },5000);
+    else riderMarker=L.marker(point,{icon:riderIcon}).addTo(map).bindPopup('🛵 ไรเดอร์ — ตำแหน่งล่าสุด');
+  },3000);
   activeIntervals.push(refresh);
 }
+
 
 /* ---------- 9. RIDER SYSTEM ---------- */
 function riderFileData(id){ const el=document.getElementById(id); return el&&el.files&&el.files[0] ? readFileAsDataURL(el.files[0]) : Promise.resolve(''); }
@@ -5540,6 +5469,32 @@ body{margin:0;padding-left:0;padding-right:0}
 .qt-slide-confirm.qt-sliding .qt-slide-thumb{transition:none;}
 .qt-slide-confirm.qt-slide-done .qt-slide-track{background:#d1fae5;}
 .qt-slide-confirm.qt-slide-done .qt-slide-label{color:#047857;}
+
+/* ===== QueueGo customer UI ===== */
+html,body{width:100%;min-width:0;max-width:none;overflow-x:hidden;background:#f6faf8;color:#14201a;}
+body{padding-bottom:calc(78px + env(safe-area-inset-bottom));}
+#app{width:100%;min-height:100dvh;background:#f6faf8;}
+.qt-main.qg-main{width:100%;max-width:none;margin:0;padding:0 0 24px;background:#f6faf8;}
+.qg-page{width:100%;min-height:calc(100dvh - 64px);margin:0;padding:20px clamp(16px,4vw,56px) 32px;}
+.qg-header{position:sticky;top:0;z-index:120;width:100%;height:64px;display:flex;align-items:center;justify-content:space-between;padding:0 clamp(16px,4vw,56px);background:#fff;border-bottom:1px solid #e8eee9;box-shadow:0 2px 12px rgba(17,54,35,.04);}
+.qg-brand{display:flex;align-items:center;gap:9px;font-size:22px;font-weight:800;letter-spacing:-.5px;color:#13251b;cursor:pointer}.qg-brand-mark{display:grid;place-items:center;width:35px;height:35px;border-radius:10px;background:#10b981;color:#fff;font-weight:900;box-shadow:0 5px 14px rgba(16,185,129,.2)}
+.qg-header-actions{display:flex;align-items:center;gap:9px}.qg-icon-btn,.qg-avatar{border:1px solid #e1ebe5;background:#fff;cursor:pointer}.qg-icon-btn{position:relative;width:42px;height:42px;border-radius:12px;font-size:18px}.qg-avatar{width:40px;height:40px;border-radius:50%;background:#e8faf2;color:#078b5a;font-weight:800}.qg-auth-links{display:flex;align-items:center;gap:16px}.qg-auth-links a{color:#067f52;text-decoration:none;font-weight:700}.qg-auth-primary{padding:9px 15px;border-radius:10px;background:#10b981;color:#fff!important}
+.qg-bottomnav{height:70px;padding-bottom:env(safe-area-inset-bottom);background:rgba(255,255,255,.98);backdrop-filter:blur(14px);border-top:1px solid #e1ebe5;box-shadow:0 -4px 18px rgba(20,60,40,.06)}
+.qg-bottomnav a{color:#748078;padding:8px 2px 6px;font-size:10px;font-weight:600}.qg-bottomnav a span{font-size:11px;margin-top:2px}.qg-bottomnav a.active{color:#08a968}.qg-bottomnav a:first-letter{font-size:22px}.qg-bottomnav .cart-count-badge{right:24%;background:#10b981}
+.qg-hero{width:100%;min-height:190px;border-radius:24px;padding:26px clamp(20px,5vw,52px);display:flex;align-items:center;justify-content:space-between;gap:20px;background:linear-gradient(135deg,#0b9f61,#10b981 58%,#36c98d);color:#fff;overflow:hidden;position:relative;box-shadow:0 12px 30px rgba(16,185,129,.14)}
+.qg-hero:after{content:"";position:absolute;width:280px;height:280px;border-radius:50%;right:-80px;bottom:-150px;background:rgba(255,255,255,.12)}.qg-hero-copy{position:relative;z-index:1}.qg-eyebrow{font-size:11px;letter-spacing:1.5px;font-weight:800;opacity:.85}.qg-hero h1{margin:5px 0 6px;color:#fff;font-size:clamp(24px,4vw,36px);line-height:1.15}.qg-hero p{margin:0;opacity:.9;font-size:14px;max-width:600px}.qg-hero-art{position:relative;z-index:1;width:110px;height:110px;border-radius:32px;background:#fff;color:#0aa568;display:grid;place-items:center;font-size:58px;font-weight:900;box-shadow:0 12px 30px rgba(0,0,0,.1);transform:rotate(5deg)}
+.qg-search-card{width:100%;height:56px;margin:16px 0;background:#fff;border:1px solid #e3ece6;border-radius:16px;display:flex;align-items:center;gap:12px;padding:0 16px;color:#8a968e;cursor:pointer;box-shadow:0 5px 18px rgba(16,60,38,.04)}.qg-search-card span:first-child{font-size:24px;color:#10b981}.qg-search-card b{margin-left:auto;color:#10b981;font-size:22px}.qg-section{margin-top:24px}.qg-section-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}.qg-section-head h2{font-size:18px;margin:0;color:#17251c}.qg-section-head button{border:0;background:none;color:#08a968;font-weight:700;cursor:pointer}.qg-category-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:10px}.qg-category-grid button{border:1px solid #e3ece6;background:#fff;border-radius:16px;padding:15px 8px;display:flex;flex-direction:column;align-items:center;gap:7px;color:#23352b;cursor:pointer;box-shadow:0 4px 14px rgba(20,60,40,.035)}.qg-category-grid span{width:44px;height:44px;border-radius:14px;background:#eafaf2;display:grid;place-items:center;font-size:23px}.qg-category-grid b{font-size:12px}.qg-shop-strip{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.qg-shop-strip .shop-card{min-height:88px;margin:0;border-radius:16px}.qg-disabled-service{margin-top:22px;padding:15px 17px;border:1px dashed #cdd9d2;background:#f9fbfa;border-radius:16px;display:flex;align-items:center;gap:12px;color:#7c8881}.qg-disabled-service b{color:#425149}.qg-disabled-service p{margin:3px 0 0;font-size:12px}.qg-disabled-service>span{margin-left:auto;font-size:11px;background:#edf1ee;padding:6px 9px;border-radius:999px}
+.qg-profile-head{display:flex;align-items:center;gap:16px;padding:22px 0}.qg-profile-avatar{width:72px;height:72px;border-radius:22px;background:#dff8eb;color:#07935d;display:grid;place-items:center;font-size:30px;font-weight:800}.qg-profile-head h1{margin:2px 0;font-size:26px}.qg-profile-head p{margin:0;color:#718078}.qg-active-order{display:flex;justify-content:space-between;align-items:center;padding:16px 18px;background:#ecfbf3;border:1px solid #bcefd5;border-radius:16px;color:#147b51;cursor:pointer}.qg-active-order div{display:flex;flex-direction:column;gap:3px}.qg-active-order small{color:#6b7d73}.qg-active-order span{font-size:12px}.qg-stat-row{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:16px 0}.qg-stat-row>div{background:#fff;border:1px solid #e3ece6;border-radius:15px;padding:14px;text-align:center}.qg-stat-row b{display:block;font-size:22px;color:#0a9c61}.qg-stat-row span{display:block;font-size:11px;color:#758279;margin-top:2px}.qg-menu-list{display:flex;flex-direction:column;gap:8px}.qg-menu-list button{width:100%;border:1px solid #e4ebe6;background:#fff;border-radius:15px;padding:14px;display:flex;align-items:center;gap:13px;text-align:left;cursor:pointer}.qg-menu-list button>span{width:40px;height:40px;border-radius:12px;background:#effaf4;display:grid;place-items:center;font-size:20px}.qg-menu-list button div{flex:1}.qg-menu-list button b{display:block;color:#24352c}.qg-menu-list button small{display:block;color:#849089;margin-top:3px}.qg-menu-list button>strong{color:#0aa568}.qg-menu-list .qg-menu-danger{color:#dc2626}.qg-menu-list .qg-menu-danger>span{background:#fff1f1}.qg-menu-list .qg-menu-danger b{color:#dc2626}
+.qg-auth-page{width:100%;min-height:calc(100dvh - 88px);display:flex;flex-direction:column;justify-content:center;align-items:center;padding:20px 0 36px}.qg-auth-brand{display:flex;align-items:center;gap:9px;color:#12231a;font-size:25px;margin-bottom:14px}.qg-auth-page>h1{margin:0;color:#17251c;font-size:clamp(27px,5vw,40px);text-align:center}.qg-auth-page>p{color:#7a8780;text-align:center;margin:8px 0 22px}.qg-auth-form{width:min(100%,520px);background:#fff;padding:clamp(20px,4vw,34px);border:1px solid #e2ebe5;border-radius:0;box-shadow:0 10px 30px rgba(22,60,42,.05)}.qg-auth-form input{height:52px;border-radius:12px;border:1px solid #dce7e0;background:#fff;padding:0 15px;font-size:15px}.qg-auth-form label{margin-top:14px;color:#32443a}.qg-main-btn{height:54px;border-radius:12px!important;margin-top:18px!important;background:#10b981!important;box-shadow:0 8px 20px rgba(16,185,129,.18)!important}.qg-auth-tabs{margin:7px 0 4px!important}.qg-auth-tabs .tab{flex:1}.qg-auth-foot{margin-top:18px!important}.qg-auth-foot a{color:#07985e;font-weight:700;text-decoration:none}.qg-role-blocked{min-height:calc(100dvh - 110px);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:30px}.qg-role-blocked>div:first-child{font-size:54px}.qg-role-blocked h1{margin:10px 0}.qg-role-blocked p{color:#748078;max-width:480px}.qg-role-blocked .btn-block{width:min(100%,420px)}
+/* Full-width consumer grids: only the content inside cards is constrained, never the application shell. */
+.product-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.product-card{border:1px solid #e4ebe6;border-radius:16px}.product-img{height:150px}.shop-header{border-radius:0;margin:0 -1px;height:240px}.shop-logo-lg{border-radius:16px}.order-card,.order-detail-card,.cart-item,.order-summary,.notif-panel,.card{border-radius:16px}
+/* Remove any dark/green side panels or old desktop background treatments from the source UI. */
+body:before,body:after,#app:before,#app:after{content:none!important;display:none!important}.qt-banner{display:none!important}.qt-main{background:transparent!important}.qg-main .qt-main{max-width:none!important}.rider-wizard,.rider-setup-hero{background:#fff!important}
+@media(min-width:700px){.qg-page{padding-left:clamp(24px,4vw,64px);padding-right:clamp(24px,4vw,64px)}.product-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.qg-auth-form{width:min(520px,100%)} }
+@media(min-width:1100px){.product-grid{grid-template-columns:repeat(4,minmax(0,1fr))}.qg-page{padding-left:clamp(40px,5vw,80px);padding-right:clamp(40px,5vw,80px)}.qg-category-grid{max-width:none}.qg-shop-strip{grid-template-columns:repeat(4,1fr)}}
+@media(max-width:699px){.qg-hero{min-height:165px;border-radius:0;margin:0 -16px;width:calc(100% + 32px);padding:24px 20px}.qg-hero-art{width:76px;height:76px;border-radius:22px;font-size:40px}.qg-category-grid{grid-template-columns:repeat(3,1fr)}.qg-shop-strip{grid-template-columns:1fr 1fr}.qg-shop-strip .shop-card{flex-direction:column;align-items:stretch}.qg-auth-page{min-height:calc(100dvh - 88px);justify-content:flex-start;padding-top:35px}.qg-auth-form{box-shadow:none;border-left:0;border-right:0;padding-left:0;padding-right:0;background:transparent}.qg-auth-brand{margin-top:8px}.qg-page{padding-top:0}}
+@media(max-width:380px){.qg-category-grid{gap:7px}.qg-category-grid button{padding:12px 5px}.qg-category-grid span{width:38px;height:38px}.qg-shop-strip{grid-template-columns:1fr}.qg-bottomnav a{font-size:9px}}
+
 </style>
 
 <script id="qt-v547-batch7-security-hardening">
@@ -5870,926 +5825,6 @@ body{margin:0;padding-left:0;padding-right:0}
   window.addEventListener('hashchange',()=>{ if(client && window.QT_REALTIME_STATUS!=='SUBSCRIBED') subscribe(); });
   window.QT_REALTIME_FORCE_REFRESH=()=>refreshFromRealtime('manual');
   setTimeout(loadClient,800);
-})();
-</script>
-
-
-<!-- ================================================================
-     QueueTech Shop App — separated Shop experience
-     UI-only separation: reuses the same Supabase connection, tables,
-     authentication and existing QueueTech shop business logic.
-     ================================================================ -->
-<style id="qt-shop-modern-ui">
-:root{
-  --shop-primary:#16b978;--shop-primary-dark:#0f9f68;--shop-soft:#e9fbf3;
-  --shop-bg:#f7f9fb;--shop-text:#172033;--shop-muted:#718096;--shop-line:#e5eaf0;
-  --shop-card:#fff;--shop-warn:#fff7df;--shop-danger:#dc3b45;--shop-radius:20px;
-}
-html,body{background:var(--shop-bg)!important;color:var(--shop-text)!important;overflow-x:hidden}
-body{font-family:'Prompt',system-ui,sans-serif;padding-bottom:84px}
-.qt-shop-app .qt-main{max-width:620px;margin:0 auto;padding:14px 14px 96px}
-.qt-shop-app .qt-header{display:flex;justify-content:space-between;align-items:center;padding:12px 15px;background:rgba(255,255,255,.94);backdrop-filter:blur(18px);border-bottom:1px solid var(--shop-line);position:sticky;top:0;z-index:50}
-.qt-shop-app .qt-logo{font-size:20px;font-weight:800;color:var(--shop-text)}
-.qt-shop-app .qt-logo span{color:var(--shop-primary)}
-.qt-shop-brand{display:flex;align-items:center;gap:9px}
-.qt-shop-brand-mark{width:36px;height:36px;border-radius:12px;background:var(--shop-primary);color:#fff;display:grid;place-items:center;font-size:20px;box-shadow:0 6px 15px rgba(22,185,120,.22)}
-.qt-shop-brand-name{font-weight:800;line-height:1.05}.qt-shop-brand-name small{display:block;font-size:10px;color:var(--shop-muted);font-weight:500;margin-top:2px}
-.qt-shop-login{min-height:100vh;background:#0f1715;display:flex;align-items:flex-end;padding:0;position:relative;overflow:hidden}
-.qt-shop-login:before{content:'';position:absolute;inset:0;background:radial-gradient(circle at 80% 20%,rgba(22,185,120,.42),transparent 32%),linear-gradient(180deg,rgba(0,0,0,.05),rgba(0,0,0,.82));}
-.qt-shop-login-photo{position:absolute;inset:0;background:linear-gradient(135deg,#17352a,#0c1512 58%,#10251c);opacity:.9}
-.qt-shop-login-card{position:relative;z-index:2;width:100%;padding:34px 22px 28px;border-radius:30px 30px 0 0;background:rgba(255,255,255,.97);box-shadow:0 -20px 70px rgba(0,0,0,.28)}
-.qt-shop-login-title{font-size:30px;font-weight:800;margin:4px 0}.qt-shop-login-sub{color:var(--shop-muted);font-size:14px;margin-bottom:20px}
-.qt-shop-field{margin:11px 0}.qt-shop-field label{display:block;font-size:13px;font-weight:700;margin-bottom:6px}.qt-shop-field input,.qt-shop-field select,.qt-shop-field textarea{width:100%;border:1px solid #dbe3ea;background:#fbfdff;border-radius:13px;padding:13px 14px;font-family:inherit;font-size:16px;outline:none}.qt-shop-field input:focus,.qt-shop-field select:focus,.qt-shop-field textarea:focus{border-color:var(--shop-primary);box-shadow:0 0 0 3px rgba(22,185,120,.12)}
-.qt-shop-btn{width:100%;border:0;border-radius:14px;padding:13px 16px;font-family:inherit;font-weight:800;font-size:15px;cursor:pointer}.qt-shop-btn-primary{background:var(--shop-primary);color:#fff;box-shadow:0 8px 18px rgba(22,185,120,.2)}.qt-shop-btn-soft{background:var(--shop-soft);color:#087b4c}.qt-shop-btn-danger{background:#fff0f1;color:#bd2630;border:1px solid #ffd4d7}
-.qt-shop-dashboard-head{display:flex;align-items:center;gap:12px;margin:4px 2px 13px}.qt-shop-avatar{width:52px;height:52px;border-radius:16px;object-fit:cover;background:#dfeee7;border:1px solid #d7e9df}.qt-shop-head-info{flex:1}.qt-shop-head-info b{font-size:17px}.qt-shop-head-info small{display:block;color:var(--shop-muted);font-size:11px;margin-top:2px}
-.qt-shop-icon-btn{width:42px;height:42px;border-radius:14px;border:1px solid var(--shop-line);background:#fff;display:grid;place-items:center;font-size:18px;cursor:pointer}
-.qt-shop-switch-card{display:flex;align-items:center;justify-content:space-between;gap:10px;background:linear-gradient(135deg,#effcf6,#e8faf2);border:1px solid #c9efdc;border-radius:18px;padding:13px 14px;margin:12px 0}.qt-shop-switch-copy b{font-size:14px}.qt-shop-switch-copy small{display:block;color:#5f806f;font-size:11px;margin-top:2px}
-.qt-shop-switch{appearance:none;width:52px;height:30px;border-radius:30px;background:#cbd5d1;position:relative;cursor:pointer;outline:0}.qt-shop-switch:after{content:'';position:absolute;top:3px;left:3px;width:24px;height:24px;border-radius:50%;background:#fff;box-shadow:0 2px 5px rgba(0,0,0,.15);transition:.2s}.qt-shop-switch:checked{background:var(--shop-primary)}.qt-shop-switch:checked:after{left:25px}
-.qt-shop-stats{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:12px 0}.qt-shop-stat{background:#fff;border:1px solid var(--shop-line);border-radius:18px;padding:13px;box-shadow:0 6px 18px rgba(15,23,42,.035)}.qt-shop-stat .ico{font-size:20px}.qt-shop-stat small{display:block;color:var(--shop-muted);font-size:11px;margin-top:7px}.qt-shop-stat b{font-size:22px;display:block;margin-top:1px}
-.qt-shop-section-title{display:flex;align-items:center;justify-content:space-between;margin:20px 2px 10px}.qt-shop-section-title h3{margin:0;font-size:17px}.qt-shop-section-title a{font-size:12px;color:var(--shop-primary-dark);font-weight:700;text-decoration:none}
-.qt-shop-quick{display:grid;grid-template-columns:repeat(4,1fr);gap:9px}.qt-shop-quick-card{background:#fff;border:1px solid var(--shop-line);border-radius:17px;padding:12px 5px;text-align:center;cursor:pointer;box-shadow:0 5px 16px rgba(15,23,42,.035)}.qt-shop-quick-card .qico{font-size:23px}.qt-shop-quick-card small{display:block;font-size:10px;color:#475569;font-weight:700;margin-top:5px}
-.qt-shop-promo{margin:15px 0;background:linear-gradient(135deg,#ecfff6,#f8fffb);border:1px solid #cbeede;border-radius:20px;padding:16px;display:flex;align-items:center;justify-content:space-between;gap:12px;overflow:hidden}.qt-shop-promo b{font-size:15px}.qt-shop-promo p{font-size:11px;color:#628072;margin:4px 0 9px}.qt-shop-promo button{width:auto;padding:9px 13px;font-size:12px}
-.qt-shop-card{background:#fff;border:1px solid var(--shop-line);border-radius:19px;padding:14px;margin:10px 0;box-shadow:0 7px 20px rgba(15,23,42,.035)}
-.qt-shop-order{cursor:pointer}.qt-shop-order-top{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}.qt-shop-order-no{font-size:16px;font-weight:800}.qt-shop-order-time{font-size:10px;color:#94a3b8;margin-top:2px}.qt-shop-status{padding:6px 9px;border-radius:999px;background:#fff4d6;color:#8b6300;font-size:10px;font-weight:800;white-space:nowrap}.qt-shop-status.green{background:#e7f9ef;color:#168050}.qt-shop-status.blue{background:#eaf2ff;color:#2563eb}.qt-shop-order-mid{display:flex;justify-content:space-between;gap:8px;margin-top:12px;font-size:12px}.qt-shop-order-items{color:#64748b}.qt-shop-order-total{font-weight:800}.qt-shop-order-actions{display:flex;gap:7px;margin-top:11px}.qt-shop-order-actions button{flex:1;border-radius:11px;border:1px solid var(--shop-line);background:#fff;padding:9px;font-family:inherit;font-weight:700;cursor:pointer}.qt-shop-order-actions .accept{background:var(--shop-primary);color:#fff;border-color:var(--shop-primary)}
-.qt-shop-product-grid{display:grid;grid-template-columns:1fr 1fr;gap:11px}.qt-shop-product{overflow:hidden;padding:0}.qt-shop-product img{width:100%;height:125px;object-fit:cover;background:#f0f4f2}.qt-shop-product-body{padding:11px}.qt-shop-product-body b{font-size:13px}.qt-shop-price{font-weight:800;margin-top:4px}.qt-shop-product-foot{display:flex;align-items:center;justify-content:space-between;margin-top:8px;gap:5px}.qt-shop-available{font-size:9px;padding:4px 7px;border-radius:999px;background:#e7f9ef;color:#168050;font-weight:800}.qt-shop-available.off{background:#eef1f2;color:#64748b}.qt-shop-mini-btn{border:1px solid var(--shop-line);background:#fff;border-radius:9px;padding:6px 8px;font-family:inherit;font-size:11px;font-weight:700;cursor:pointer}
-.qt-shop-profile{display:flex;align-items:center;gap:13px;margin-bottom:15px}.qt-shop-profile img{width:68px;height:68px;border-radius:19px;object-fit:cover;background:#e9f5ef}.qt-shop-profile b{font-size:18px}.qt-shop-profile small{display:block;color:var(--shop-muted);margin-top:2px}.qt-shop-setting{display:flex;align-items:center;gap:12px;padding:14px 4px;border-bottom:1px solid #eef1f3;cursor:pointer}.qt-shop-setting:last-child{border-bottom:0}.qt-shop-setting .sico{width:40px;height:40px;border-radius:13px;background:#f3f6f5;display:grid;place-items:center;font-size:19px}.qt-shop-setting-main{flex:1}.qt-shop-setting-main b{font-size:13px}.qt-shop-setting-main small{display:block;color:var(--shop-muted);font-size:10px;margin-top:2px}.qt-shop-setting .arrow{color:#94a3b8}
-.qt-shop-bottom{position:fixed;bottom:0;left:0;right:0;z-index:300;background:rgba(255,255,255,.94);backdrop-filter:blur(18px);border-top:1px solid var(--shop-line);padding:6px 6px calc(6px + env(safe-area-inset-bottom));display:grid;grid-template-columns:repeat(4,1fr);box-shadow:0 -8px 25px rgba(15,23,42,.06)}.qt-shop-bottom a{text-decoration:none;color:#87929d;text-align:center;font-size:10px;font-weight:600;padding:4px 0}.qt-shop-bottom a .bi{display:block;font-size:19px;line-height:22px}.qt-shop-bottom a.active{color:var(--shop-primary-dark);font-weight:800}.qt-shop-badge{position:absolute;margin:-2px 0 0 -8px;background:#ef4444;color:#fff;border-radius:99px;font-size:8px;padding:1px 5px}
-.qt-shop-page-title{display:flex;align-items:center;gap:9px;margin:5px 0 14px}.qt-shop-page-title h2{margin:0;font-size:23px}.qt-shop-back{width:38px;height:38px;border-radius:13px;border:1px solid var(--shop-line);background:#fff;cursor:pointer}
-.qt-shop-empty{text-align:center;padding:45px 15px;color:#94a3b8}.qt-shop-empty .eico{font-size:44px;margin-bottom:8px}
-.qt-shop-timeline{display:flex;gap:5px;margin:14px 0}.qt-shop-timeline span{height:5px;flex:1;border-radius:99px;background:#e8ecea}.qt-shop-timeline span.done{background:var(--shop-primary)}
-.qt-shop-login .qt-toast{z-index:99999}
-.qt-shop-login-card form{background:transparent!important;border:0!important;box-shadow:none!important;border-radius:0!important;padding:0!important;margin-top:4px}
-.qt-shop-login-card .qt-shop-btn{max-width:560px}
-@media(max-width:420px){.qt-shop-quick{gap:6px}.qt-shop-quick-card{padding:11px 3px}.qt-shop-product img{height:110px}}
-/* ================================================================
-   QueueTech Shop — true edge-to-edge responsive layout
-   Full viewport on every device. No dark side panels, no rounded
-   login sheet, no fixed desktop-width shell. Database/business logic
-   unchanged.
-   ================================================================ */
-html, body, #app{
-  width:100%;
-  max-width:none;
-  min-width:0;
-  margin:0;
-  overflow-x:hidden;
-}
-body.qt-shop-app{
-  width:100%;
-  min-height:100dvh;
-  min-height:100vh;
-  padding-bottom:calc(82px + env(safe-area-inset-bottom));
-  background:var(--shop-bg)!important;
-}
-body.qt-shop-app .qt-header{
-  width:100%;
-  max-width:none;
-  padding:clamp(10px,2vw,16px) clamp(12px,3vw,28px);
-}
-body.qt-shop-app .qt-main{
-  width:100%;
-  max-width:none;
-  margin:0;
-  padding:clamp(14px,3vw,30px) clamp(12px,4vw,48px) calc(100px + env(safe-area-inset-bottom));
-}
-body.qt-shop-app .qt-shop-bottom{
-  width:100%;
-  max-width:none;
-  left:0;
-  right:0;
-}
-
-/* Login: the entire viewport is the page. The old dark background/image
-   and bottom sheet are completely removed. */
-body.qt-shop-login{
-  width:100%;
-  min-height:100dvh;
-  min-height:100vh;
-  padding:0!important;
-  margin:0;
-  background:#fff!important;
-  color:var(--shop-text)!important;
-  overflow-x:hidden;
-}
-body.qt-shop-login .qt-shop-login{
-  width:100%;
-  min-width:100%;
-  min-height:100dvh;
-  min-height:100vh;
-  height:auto;
-  margin:0;
-  padding:0;
-  display:flex;
-  align-items:stretch;
-  justify-content:center;
-  background:#fff!important;
-  position:relative;
-  overflow-x:hidden;
-  overflow-y:auto;
-}
-body.qt-shop-login .qt-shop-login:before{
-  display:none!important;
-  content:none!important;
-}
-body.qt-shop-login .qt-shop-login-photo{
-  display:none!important;
-}
-body.qt-shop-login .qt-shop-login-card{
-  position:relative;
-  z-index:1;
-  width:100%;
-  max-width:none;
-  min-height:100dvh;
-  min-height:100vh;
-  margin:0;
-  padding:clamp(28px,7vw,72px) clamp(16px,6vw,80px) calc(28px + env(safe-area-inset-bottom));
-  border-radius:0!important;
-  background:#fff!important;
-  box-shadow:none!important;
-  display:flex;
-  flex-direction:column;
-  justify-content:center;
-  overflow:visible;
-}
-body.qt-shop-login .qt-shop-login-card > *{
-  width:100%;
-  max-width:680px;
-  margin-left:auto;
-  margin-right:auto;
-}
-body.qt-shop-login .qt-shop-login-title{
-  font-size:clamp(30px,6vw,46px);
-  line-height:1.15;
-}
-body.qt-shop-login .qt-shop-login-sub{
-  font-size:clamp(13px,2vw,16px);
-  margin-bottom:clamp(18px,3vw,28px);
-}
-body.qt-shop-login .qt-shop-login-card form{
-  width:100%;
-  max-width:680px;
-}
-body.qt-shop-login .qt-shop-field{
-  margin:14px 0;
-}
-body.qt-shop-login .qt-shop-field input,
-body.qt-shop-login .qt-shop-field select,
-body.qt-shop-login .qt-shop-field textarea{
-  min-height:52px;
-}
-body.qt-shop-login .qt-shop-btn{
-  min-height:52px;
-}
-
-/* Responsive content grids: use the available viewport instead of a
-   narrow phone-sized column on tablets/desktops. */
-body.qt-shop-app .qt-shop-product-grid{
-  grid-template-columns:repeat(2,minmax(0,1fr));
-  width:100%;
-}
-body.qt-shop-app .qt-shop-stats{
-  grid-template-columns:repeat(4,minmax(0,1fr));
-}
-body.qt-shop-app .qt-shop-quick{
-  grid-template-columns:repeat(4,minmax(0,1fr));
-}
-body.qt-shop-app .qt-shop-card,
-body.qt-shop-app .qt-shop-switch-card,
-body.qt-shop-app .qt-shop-promo,
-body.qt-shop-app .qt-shop-profile{
-  width:100%;
-  min-width:0;
-}
-body.qt-shop-app img{
-  max-width:100%;
-}
-
-@media (min-width:900px){
-  body.qt-shop-app .qt-shop-product-grid{grid-template-columns:repeat(4,minmax(0,1fr));}
-  body.qt-shop-app .qt-shop-main-grid{grid-template-columns:repeat(2,minmax(0,1fr));}
-}
-@media (min-width:600px) and (max-width:899px){
-  body.qt-shop-app .qt-shop-product-grid{grid-template-columns:repeat(3,minmax(0,1fr));}
-  body.qt-shop-app .qt-shop-stats{grid-template-columns:repeat(4,minmax(0,1fr));}
-}
-@media (max-width:599px){
-  body.qt-shop-app .qt-main{padding-left:12px;padding-right:12px;}
-  body.qt-shop-app .qt-shop-stats{grid-template-columns:1fr 1fr;}
-  body.qt-shop-app .qt-shop-quick{grid-template-columns:repeat(4,minmax(0,1fr));}
-  body.qt-shop-app .qt-shop-product-grid{grid-template-columns:repeat(2,minmax(0,1fr));}
-}
-@media (max-width:380px){
-  body.qt-shop-app .qt-main{padding-left:8px;padding-right:8px;}
-  body.qt-shop-app .qt-shop-product-grid{gap:8px;}
-  body.qt-shop-app .qt-shop-quick{gap:5px;}
-}
-</style>
-<script id="qt-shop-app-mode">
-(function(){
-  const SHOP_APP=true;
-  window.QT_SHOP_APP=true;
-  function shopUser(){const u=currentUser(); return u&&u.type==='shop'?u:null;}
-  function shopProfileId(u){ return u && (u.shopProfileId || QT_SYNC.profileMaps?.shopByUserId?.get(u.id) || null); }
-  function shopOrders(u){
-    const pid=shopProfileId(u);
-    return dbGet('qt_orders',[]).filter(o=>String(o.shopId)===String(u.id)|| (pid&&String(o.shopProfileId)===String(pid))).sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
-  }
-  function shopProducts(u){
-    const pid=shopProfileId(u);
-    return dbGet('qt_products',[]).filter(p=>String(p.shopId)===String(u.id)|| (pid&&String(p.shopProfileId)===String(pid)));
-  }
-  function shopBadgeStatus(s){
-    if(['shop_accepted','preparing'].includes(s)) return ['green','กำลังดำเนินการ'];
-    if(s==='waiting_rider') return ['blue','รอไรเดอร์'];
-    if(s==='completed') return ['green','ส่งสำเร็จ'];
-    if(s==='cancelled') return ['','ยกเลิก'];
-    return ['','ใหม่'];
-  }
-  function shopNav(active){
-    const u=shopUser(); if(!u)return '';
-    const unread=typeof unreadNotifCount==='function'?unreadNotifCount(u.id):0;
-    const item=(href,icon,label,key)=>`<a href="#${href}" class="${active===key?'active':''}"><span class="bi">${icon}${key==='orders'&&unread?`<span class="qt-shop-badge">${unread>9?'9+':unread}</span>`:''}</span>${label}</a>`;
-    return `<nav class="qt-shop-bottom">${item('dashboard','⌂','หน้าหลัก','home')}${item('shop-orders','▤','ออเดอร์','orders')}${item('shop-products','▣','สินค้า','products')}${item('shop-profile','♙','โปรไฟล์','profile')}</nav>`;
-  }
-  function shopLayout(title,content,active){
-    document.title=title+' - QueueTech Shop';
-    document.body.classList.add('qt-shop-app');
-    const u=shopUser();
-    document.getElementById('app').innerHTML=`<header class="qt-header"><div class="qt-shop-brand"><div class="qt-shop-brand-mark">⌂</div><div class="qt-shop-brand-name">QueueTech Shop<small>ระบบจัดการร้านค้า</small></div></div>${u?`<button class="qt-shop-icon-btn" onclick="navigate('notifications')">🔔</button>`:''}</header><main class="qt-main">${content}</main>${u?shopNav(active):''}<div id="notif-toast-box"></div>`;
-  }
-  window.qtShopLayout=shopLayout;
-
-  function renderShopLogin(){
-    document.body.className=''; document.body.classList.add('qt-shop-login');
-    document.getElementById('app').innerHTML=`
-      <div class="qt-shop-login-photo"></div>
-      <section class="qt-shop-login-card">
-        <div style="font-size:12px;color:#149d69;font-weight:800">QUEUE TECH</div>
-        <div class="qt-shop-login-title">QueueTech Shop</div>
-        <div class="qt-shop-login-sub">จัดการออเดอร์ง่าย ๆ • เพิ่มยอดขายให้ร้านคุณ</div>
-        <form onsubmit="return qtShopDoLogin(event)">
-          <div class="qt-shop-field"><label>เบอร์โทรศัพท์ หรืออีเมล</label><input required id="qt-shop-login" autocomplete="username" placeholder="08xxxxxxxx หรืออีเมล"></div>
-          <div class="qt-shop-field"><label>รหัสผ่าน</label><input required type="password" id="qt-shop-password" autocomplete="current-password"></div>
-          <button class="qt-shop-btn qt-shop-btn-primary" type="submit">เข้าสู่ระบบ</button>
-        </form>
-        <button class="qt-shop-btn qt-shop-btn-soft" style="margin-top:9px" onclick="navigate('shop-register')">สมัครร้านค้าใหม่</button>
-        <div style="text-align:center;margin-top:13px;font-size:11px;color:#94a3b8">ใช้บัญชีร้านค้า QueueTech เดิม • ฐานข้อมูลเดิม</div>
-      </section>`;
-  }
-  window.renderShopLogin=renderShopLogin;
-
-  async function qtShopDoLogin(e){
-    e.preventDefault();
-    const v=document.getElementById('qt-shop-login').value.trim(), password=document.getElementById('qt-shop-password').value;
-    const btn=e.submitter; if(btn)btn.disabled=true;
-    try{
-      const authEmail=v.includes('@')?v:qtAuthEmailFromPhone(v);
-      const auth=await qtSupabaseAuth('token?grant_type=password',{email:authEmail,password});
-      let p=await qtLoadOwnSupabaseUser(auth.access_token,auth.user.id);
-      if(!p) throw new Error('ไม่พบข้อมูลบัญชีใน QueueTech');
-      const u=qtUserFromRow(p);
-      if(u.type!=='shop'){ try{qtSessionClear();}catch(_){} throw new Error('บัญชีนี้ไม่ใช่บัญชีร้านค้า'); }
-      if(u.status==='suspended') throw new Error('บัญชีร้านค้านี้ถูกระงับการใช้งาน');
-      QT_DB_CACHE.qt_users=[u]; qtMarkClean('qt_users');
-      setSession({userId:u.id,authUserId:p.auth_user_id,accessToken:auth.access_token,refreshToken:auth.refresh_token||null,expiresAt:auth.expires_at||Math.floor(qtJwtExpiryMs(auth.access_token)/1000)||null,role:p.role});
-      toast('เข้าสู่ระบบสำเร็จ'); navigate('dashboard');
-      setTimeout(()=>qtBackgroundHydrate({light:false}),0);
-    }catch(err){toast(err?.message||'เข้าสู่ระบบไม่สำเร็จ');}
-    finally{if(btn)btn.disabled=false;}
-    return false;
-  }
-  window.qtShopDoLogin=qtShopDoLogin;
-
-  function renderShopRegister(){
-    document.body.className=''; document.body.classList.add('qt-shop-app');
-    document.getElementById('app').innerHTML=`<main class="qt-main" style="padding-top:24px">
-      <div class="qt-shop-page-title"><button class="qt-shop-back" onclick="navigate('login')">←</button><h2>สมัครร้านค้า</h2></div>
-      <div class="qt-shop-card"><div style="font-size:12px;color:#168050;font-weight:800">QUEUE TECH SHOP</div><p style="color:#718096;font-size:12px;margin-top:5px">สร้างบัญชีร้านค้าใหม่ ระบบจะใช้ฐานข้อมูล QueueTech เดิม และรอ Admin อนุมัติก่อนเปิดใช้งาน</p>
-      <form onsubmit="return handleRegister(event)"><input type="hidden" id="reg-type" value="shop"><input type="hidden" id="reg-contact-mode" value="phone">
-        <div class="qt-shop-field"><label>ชื่อร้าน / ชื่อผู้ติดต่อ</label><input required id="reg-name" placeholder="เช่น ร้านข้าวไว้ดี"></div>
-        <div class="qt-shop-field"><label>เบอร์โทรศัพท์</label><input required id="reg-phone" inputmode="tel" placeholder="08xxxxxxxx"></div>
-        <input type="hidden" id="reg-email"><div class="qt-shop-field"><label>รหัสผ่าน</label><input required type="password" minlength="6" id="reg-password" autocomplete="new-password"></div>
-        <div class="qt-shop-field"><label>ยืนยันรหัสผ่าน</label><input required type="password" minlength="6" id="reg-password-confirm" autocomplete="new-password"></div>
-        <button class="qt-shop-btn qt-shop-btn-primary" type="submit">สมัครร้านค้า</button>
-      </form></div>
-      <button class="qt-shop-btn qt-shop-btn-soft" onclick="navigate('login')">กลับเข้าสู่ระบบ</button>
-    </main>`;
-  }
-  window.renderShopRegister=renderShopRegister;
-
-  function renderShopDashboardModern(u){
-    const products=shopProducts(u), orders=shopOrders(u);
-    const pending=orders.filter(o=>o.status==='pending_shop').length;
-    const preparing=orders.filter(o=>['shop_accepted','preparing'].includes(o.status)).length;
-    const today=qtLocalDateKey();
-    const todaySales=orders.filter(o=>(o.orderDate||qtLocalDateKey(o.createdAt))===today&&!['cancelled'].includes(o.status)).reduce((n,o)=>n+Number(o.subtotal||o.total||0),0);
-    const accepting=u.acceptingOrders!==false;
-    const recent=orders.slice(0,3);
-    shopLayout('หน้าหลักร้านค้า',`
-      <div class="qt-shop-dashboard-head"><img class="qt-shop-avatar" src="${escapeHtml(u.logo||placeholderImg())}"><div class="qt-shop-head-info"><b>${escapeHtml(u.shopName||u.name||'ร้านค้าของคุณ')} ✓</b><small>${escapeHtml(categoryLabel(u.category)||'ร้านค้า')} • ${escapeHtml(u.openTime||'09:00')}–${escapeHtml(u.closeTime||'20:00')}</small></div><button class="qt-shop-icon-btn" onclick="navigate('shop-profile')">⚙</button></div>
-      <div class="qt-shop-switch-card"><div class="qt-shop-switch-copy"><b>เปิดรับออเดอร์</b><small>${accepting?'ลูกค้าสามารถสั่งซื้อจากร้านได้':'พักรับออเดอร์ชั่วคราว'}</small></div><input class="qt-shop-switch" type="checkbox" ${accepting?'checked':''} onchange="qtShopToggleAccepting(this.checked)"></div>
-      <div class="qt-shop-stats"><div class="qt-shop-stat"><span class="ico">♟</span><small>ออเดอร์วันนี้</small><b>${orders.filter(o=>(o.orderDate||qtLocalDateKey(o.createdAt))===today).length}</b></div><div class="qt-shop-stat"><span class="ico">◷</span><small>กำลังเตรียม</small><b>${preparing}</b></div><div class="qt-shop-stat"><span class="ico">♢</span><small>รอไรเดอร์</small><b>${orders.filter(o=>o.status==='waiting_rider').length}</b></div><div class="qt-shop-stat"><span class="ico">฿</span><small>ยอดขายวันนี้</small><b>฿${todaySales.toLocaleString('th-TH')}</b></div></div>
-      <div class="qt-shop-section-title"><h3>เมนูด่วน</h3></div>
-      <div class="qt-shop-quick"><div class="qt-shop-quick-card" onclick="navigate('shop-orders')"><div class="qico">▤</div><small>ออเดอร์ใหม่ ${pending?`(${pending})`:''}</small></div><div class="qt-shop-quick-card" onclick="navigate('shop-products')"><div class="qico">▣</div><small>เมนูสินค้า</small></div><div class="qt-shop-quick-card" onclick="navigate('shop-settlement')"><div class="qico">฿</div><small>รายงานยอด</small></div><div class="qt-shop-quick-card" onclick="navigate('shop-profile')"><div class="qico">♙</div><small>ข้อมูลร้าน</small></div></div>
-      <div class="qt-shop-promo"><div><b>เพิ่มยอดขายด้วย Promote</b><p>โปรโมตร้านให้ลูกค้าเห็นมากขึ้น</p><button class="qt-shop-btn qt-shop-btn-primary" onclick="navigate('shop-promote')">ดู Promote</button></div><div style="font-size:55px;opacity:.22">★</div></div>
-      <div class="qt-shop-section-title"><h3>ออเดอร์ล่าสุด</h3><a href="#shop-orders">ดูทั้งหมด</a></div>
-      ${recent.length?recent.map(o=>shopOrderCard(o,u,true)).join(''):`<div class="qt-shop-empty"><div class="eico">▤</div><div>ยังไม่มีออเดอร์</div><small>เมื่อมีออเดอร์ใหม่จะแสดงที่นี่</small></div>`}
-    `,'home');
-  }
-  window.renderShopDashboardModern=renderShopDashboardModern;
-
-  function qtShopToggleAccepting(v){
-    const u=shopUser(); if(!u)return;
-    const users=dbGet('qt_users',[]), idx=users.findIndex(x=>String(x.id)===String(u.id));
-    if(idx<0)return;
-    users[idx].acceptingOrders=!!v; dbSet('qt_users',users); toast(v?'🟢 เปิดรับออเดอร์แล้ว':'⚪ พักรับออเดอร์แล้ว');
-  }
-  window.qtShopToggleAccepting=qtShopToggleAccepting;
-
-  function shopOrderCard(o,u,compact){
-    const [cls,label]=shopBadgeStatus(o.status); const itemCount=(o.items||[]).reduce((n,i)=>n+Number(i.qty||i.quantity||0),0);
-    let action='';
-    if(o.status==='pending_shop') action=`<button class="accept" onclick="event.stopPropagation();updateOrderStatus('${o.id}','shop_accepted')">รับออเดอร์</button>`;
-    else if(o.status==='shop_accepted') action=`<button class="accept" onclick="event.stopPropagation();updateOrderStatus('${o.id}','preparing')">เริ่มเตรียม</button>`;
-    else if(o.status==='preparing') action=`<button class="accept" onclick="event.stopPropagation();updateOrderStatus('${o.id}','waiting_rider')">พร้อมส่ง</button>`;
-    return `<div class="qt-shop-card qt-shop-order" onclick="navigate('shop-order/${o.id}')"><div class="qt-shop-order-top"><div><div class="qt-shop-order-no">${escapeHtml(displayOrderNumber(o))}</div><div class="qt-shop-order-time">${o.createdAt?new Date(o.createdAt).toLocaleString('th-TH',{dateStyle:'short',timeStyle:'short'}):''}</div></div><span class="qt-shop-status ${cls}">${label}</span></div><div class="qt-shop-order-mid"><span class="qt-shop-order-items">${itemCount} รายการ • ${escapeHtml(o.customerName||'ลูกค้า')}</span><span class="qt-shop-order-total">฿${Number(o.total||0).toLocaleString('th-TH')}</span></div>${action?`<div class="qt-shop-order-actions">${action}<button onclick="event.stopPropagation();navigate('shop-order/${o.id}')">รายละเอียด</button></div>`:''}</div>`;
-  }
-
-  function renderShopOrdersModern(){
-    const u=shopUser(); if(!u){navigate('login');return;} const orders=shopOrders(u);
-    shopLayout('ออเดอร์ร้านค้า',`<div class="qt-shop-page-title"><button class="qt-shop-back" onclick="navigate('dashboard')">←</button><h2>ออเดอร์</h2></div><div class="tabs" style="margin-bottom:12px"><button class="tab active">ทั้งหมด ${orders.length}</button><button class="tab">ใหม่ ${orders.filter(o=>o.status==='pending_shop').length}</button><button class="tab">กำลังทำ ${orders.filter(o=>['shop_accepted','preparing'].includes(o.status)).length}</button></div>${orders.length?orders.map(o=>shopOrderCard(o,u,false)).join(''):`<div class="qt-shop-empty"><div class="eico">▤</div><b>ยังไม่มีออเดอร์</b><div>ออเดอร์จากลูกค้าจะแสดงที่นี่</div></div>`}`,'orders');
-  }
-  window.renderShopOrdersModern=renderShopOrdersModern;
-
-  function renderShopOrderModern(id){
-    const u=shopUser(); const o=shopOrders(u).find(x=>String(x.id)===String(id)); if(!o){toast('ไม่พบออเดอร์');navigate('shop-orders');return;}
-    const idx=statusIndex(o.status); const steps=ORDER_STATUSES.filter(s=>s.key!=='cancelled');
-    const action=orderActionButtons(o,u);
-    shopLayout('รายละเอียดออเดอร์',`<div class="qt-shop-page-title"><button class="qt-shop-back" onclick="navigate('shop-orders')">←</button><h2>${escapeHtml(displayOrderNumber(o))}</h2></div><div class="qt-shop-card"><div class="qt-shop-order-top"><div><b>รายละเอียดออเดอร์</b><div class="qt-shop-order-time">${o.createdAt?new Date(o.createdAt).toLocaleString('th-TH',{dateStyle:'medium',timeStyle:'short'}):''}</div></div><span class="qt-shop-status">${escapeHtml(statusLabel(o.status))}</span></div><div style="margin-top:15px;line-height:1.8;font-size:13px"><b>ลูกค้า</b><br>${escapeHtml(o.customerName||'-')} • ${escapeHtml(o.customerPhone||'-')}<br><b>ที่อยู่จัดส่ง</b><br>${escapeHtml(o.deliveryAddress||o.delivery?.address||'-')}</div></div><div class="qt-shop-card"><b>รายการสินค้า</b>${(o.items||[]).map(i=>`<div style="display:flex;justify-content:space-between;gap:8px;padding:11px 0;border-bottom:1px solid #eef1f3;font-size:13px"><span>${escapeHtml(i.name||i.itemName||'รายการ')} × ${escapeHtml(i.qty||i.quantity||1)}</span><b>฿${Number(i.totalPrice||((i.price||i.unitPrice||0)*(i.qty||i.quantity||1))).toLocaleString('th-TH')}</b></div>`).join('')}<div style="display:flex;justify-content:space-between;padding-top:12px;font-weight:800">รวมทั้งหมด <span>฿${Number(o.total||0).toLocaleString('th-TH')}</span></div></div><div class="qt-shop-card"><b>สถานะออเดอร์</b><div class="qt-shop-timeline">${steps.map((s,i)=>`<span class="${idx>=i?'done':''}"></span>`).join('')}</div><div style="font-size:12px;color:#64748b">${escapeHtml(statusLabel(o.status))}</div></div><div style="margin:10px 0">${action}</div>`,'orders');
-  }
-  window.renderShopOrderModern=renderShopOrderModern;
-
-  function renderShopProductsModern(){
-    const u=shopUser(); if(!u){navigate('login');return;} const products=shopProducts(u);
-    shopLayout('สินค้า',`<div class="qt-shop-page-title"><button class="qt-shop-back" onclick="navigate('dashboard')">←</button><h2>เมนูสินค้า</h2><button class="qt-shop-icon-btn" style="margin-left:auto" onclick="openProductForm()">＋</button></div><div id="product-form-area"></div>${products.length?`<div class="qt-shop-product-grid">${products.map(p=>`<div class="qt-shop-card qt-shop-product"><img src="${escapeHtml(p.image||placeholderImg())}"><div class="qt-shop-product-body"><b>${escapeHtml(p.name)}</b><div class="qt-shop-price">฿${Number(p.price||0).toLocaleString('th-TH')}</div><div class="qt-shop-product-foot"><span class="qt-shop-available ${p.available?'':'off'}">${p.available?'พร้อมขาย':'ปิดขาย'}</span><button class="qt-shop-mini-btn" onclick="openProductForm('${p.id}')">แก้ไข</button></div></div></div>`).join('')}</div>`:`<div class="qt-shop-empty"><div class="eico">▣</div><b>ยังไม่มีสินค้า</b><div>กด ＋ เพื่อเพิ่มสินค้าแรกของร้าน</div></div>`}`,'products');
-  }
-  window.renderShopProductsModern=renderShopProductsModern;
-
-  function renderShopProfileModern(){
-    const u=shopUser(); if(!u){navigate('login');return;}
-    shopLayout('โปรไฟล์ร้าน',`<div class="qt-shop-page-title"><h2>โปรไฟล์ร้าน</h2></div><div class="qt-shop-profile"><img src="${escapeHtml(u.logo||placeholderImg())}"><div><b>${escapeHtml(u.shopName||u.name||'ร้านค้า')}</b><small>${escapeHtml(categoryLabel(u.category)||'ร้านค้า')}</small></div></div><div class="qt-shop-card" style="padding:5px 14px"><div class="qt-shop-setting" onclick="navigate('shop-setup')"><div class="sico">▣</div><div class="qt-shop-setting-main"><b>ข้อมูลร้านค้า</b><small>ชื่อร้าน รูปภาพ ที่อยู่ เวลาเปิด-ปิด</small></div><div class="arrow">›</div></div><div class="qt-shop-setting" onclick="navigate('shop-products')"><div class="sico">▤</div><div class="qt-shop-setting-main"><b>เมนูสินค้า</b><small>จัดการสินค้า ราคา และสถานะพร้อมขาย</small></div><div class="arrow">›</div></div><div class="qt-shop-setting" onclick="navigate('shop-settlement')"><div class="sico">฿</div><div class="qt-shop-setting-main"><b>รายงานยอดขาย</b><small>ยอดขายรายวันและสถานะ GP</small></div><div class="arrow">›</div></div><div class="qt-shop-setting" onclick="navigate('shop-promote')"><div class="sico">★</div><div class="qt-shop-setting-main"><b>Promote</b><small>โปรโมตร้านและติดตามคำขอ</small></div><div class="arrow">›</div></div><div class="qt-shop-setting" onclick="navigate('shop-modules')"><div class="sico">⚙</div><div class="qt-shop-setting-main"><b>แพ็กเกจและโมดูล</b><small>จัดการความสามารถของร้าน</small></div><div class="arrow">›</div></div></div><button class="qt-shop-btn qt-shop-btn-danger" style="margin-top:14px" onclick="logout()">ออกจากระบบ</button>`,'profile');
-  }
-  window.renderShopProfileModern=renderShopProfileModern;
-
-  function renderShopPending(){
-    shopLayout('รออนุมัติ',`<div class="qt-shop-card" style="text-align:center;padding:35px 18px"><div style="font-size:50px">⏳</div><h2 style="margin:10px 0">รอ Admin อนุมัติร้านค้า</h2><p style="color:#718096;font-size:13px;line-height:1.7">บัญชีร้านค้าของคุณสร้างในฐานข้อมูล QueueTech แล้ว แต่ยังไม่สามารถรับออเดอร์จนกว่า Admin จะอนุมัติ</p><button class="qt-shop-btn qt-shop-btn-danger" onclick="logout()">ออกจากระบบ</button></div>`,'profile');
-  }
-  window.renderShopPending=renderShopPending;
-
-  function qtShopRoute(){
-    const hash=location.hash.replace('#','')||'home', [page,param]=hash.split('/'); const u=currentUser();
-    if(page==='login' || !u){ if(page==='shop-register'){renderShopRegister();return;} renderShopLogin(); return; }
-    if(u.type!=='shop'){ renderShopLogin(); toast('แอปนี้สำหรับบัญชีร้านค้าเท่านั้น'); try{qtSessionClear();}catch(_){} return; }
-    if(u.status!=='approved' && !['approval-pending','shop-setup'].includes(page)){renderShopPending();return;}
-    switch(page){
-      case 'home': case 'dashboard': renderShopDashboardModern(u); break;
-      case 'shop-orders': renderShopOrdersModern(); break;
-      case 'shop-order': renderShopOrderModern(param); break;
-      case 'shop-products': renderShopProductsModern(); break;
-      case 'shop-profile': renderShopProfileModern(); break;
-      case 'shop-setup': renderShopSetup(); break;
-      case 'shop-promote': renderShopPromote(); break;
-      case 'shop-modules': renderShopModules(); break;
-      case 'shop-settlement': renderShopSettlement(); break;
-      case 'notifications': renderNotifications(); break;
-      case 'approval-pending': renderShopPending(); break;
-      default: renderShopDashboardModern(u);
-    }
-    window.scrollTo(0,0);
-  }
-  window.qtShopRoute=qtShopRoute;
-
-  /* Replace the generic router only in this separated Shop build. */
-  window.qtRouteRender=function(){ destroyMaps(); qtShopRoute(); };
-  window.router=function(){try{qtRouteRender();}catch(err){console.error(err);try{toast('แสดงหน้าร้านค้าไม่สำเร็จ: '+String(err?.message||err).slice(0,90));}catch(_){} }};
-  window.bottomNav=function(){return '';};
-  window.layout=function(title,content){ const u=shopUser(); if(u) shopLayout(title,content,'profile'); };
-  window.renderShopProducts=renderShopProductsModern;
-  window.renderOrderDetail=function(id){ if(shopUser()) return renderShopOrderModern(id); };
-  window.renderShopOrders=renderShopOrdersModern;
-
-  /* The original product/order functions already persist to the same DB tables.
-     Re-render with the new UI after their successful actions. */
-  const _handleSaveProduct=window.handleSaveProduct;
-  window.handleSaveProduct=async function(e,id){ const r=await _handleSaveProduct(e,id); return r; };
-
-  /* Make the existing shop setup page use the same modern shell while retaining its
-     original GPS + Supabase save handler. */
-  const _renderShopSetup=window.renderShopSetup;
-  window.renderShopSetup=function(){
-    const u=shopUser(); if(!u){navigate('login');return;}
-    shopLayout(u.shopName?'แก้ไขข้อมูลร้าน':'ตั้งค่าร้านค้า',`<div class="qt-shop-page-title"><button class="qt-shop-back" onclick="navigate('shop-profile')">←</button><h2>${u.shopName?'ข้อมูลร้าน':'ตั้งค่าร้าน'}</h2></div><div class="qt-shop-card"><form id="shop-form" onsubmit="return handleShopSetup(event)"><div class="qt-shop-field"><label>ชื่อร้าน</label><input required id="s-name" value="${escapeHtml(u.shopName||'')}"></div><div class="qt-shop-field"><label>ชื่อผู้ติดต่อ</label><input required id="s-contact" value="${escapeHtml(u.name||'')}"></div><div class="qt-shop-field"><label>เบอร์โทร</label><input required id="s-phone" value="${escapeHtml(u.phone||'')}"></div><div class="qt-shop-field"><label>หมวดหมู่</label><select id="s-category"><option value="food" ${u.category==='food'?'selected':''}>🍜 ร้านอาหาร</option><option value="grocery" ${u.category==='grocery'?'selected':''}>🛒 ของชำ</option><option value="cafe" ${u.category==='cafe'?'selected':''}>☕ คาเฟ่</option><option value="other" ${u.category==='other'?'selected':''}>📦 อื่นๆ</option></select></div><div class="qt-shop-field"><label>ที่อยู่</label><textarea id="s-address" rows="3">${escapeHtml(u.address||'')}</textarea></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><div class="qt-shop-field"><label>เวลาเปิด</label><input type="time" id="s-open" value="${escapeHtml(u.openTime||'09:00')}"></div><div class="qt-shop-field"><label>เวลาปิด</label><input type="time" id="s-close" value="${escapeHtml(u.closeTime||'20:00')}"></div></div><div class="qt-shop-field"><label>รายละเอียดร้าน</label><textarea id="s-desc" rows="3">${escapeHtml(u.description||'')}</textarea></div><div class="qt-shop-field"><label>โลโก้ร้าน</label><input type="file" id="s-logo" accept="image/*"></div><div class="qt-shop-field"><label>รูปหน้าร้าน</label><input type="file" id="s-cover" accept="image/*"></div><label style="font-size:13px;font-weight:700">ตำแหน่งร้าน</label><div id="pin-map" class="map-box"></div><button type="button" class="qt-shop-btn qt-shop-btn-soft" onclick="locatePicker()">📍 ใช้ตำแหน่งปัจจุบัน</button><div class="coord-display">Lat: <span id="disp-lat">${u.lat||'-'}</span>, Lng: <span id="disp-lng">${u.lng||'-'}</span></div><button class="qt-shop-btn qt-shop-btn-primary" type="submit">บันทึกข้อมูลร้าน</button></form></div>`,'profile');
-    let picked={lat:u.lat||13.7563,lng:u.lng||100.5018}; const picker=initLocationPicker('pin-map',picked.lat,picked.lng,(lat,lng)=>{picked={lat,lng};document.getElementById('disp-lat').textContent=lat.toFixed(6);document.getElementById('disp-lng').textContent=lng.toFixed(6);}); window.__currentPicker=picker; window.__pickedLoc=()=>picked;
-  };
-
-  /* Ensure product form is styled by the new cards without changing its persistence path. */
-  window.addEventListener('hashchange',()=>{try{qtShopRoute();}catch(e){console.error(e);}});
-})();
-</script>
-
-
-<!-- QueueTech Shop New Order Alert + 1 Minute Order Refresh -->
-<style id="qt-shop-new-order-alert">
-  .qt-shop-new-order-overlay{
-    position:fixed;inset:0;z-index:120000;display:none;
-    align-items:center;justify-content:center;
-    background:rgba(15,23,42,.78);backdrop-filter:blur(5px);
-    padding:18px;box-sizing:border-box;
-  }
-  .qt-shop-new-order-overlay.show{display:flex}
-  .qt-shop-new-order-card{
-    width:min(520px,100%);background:#fff;border-radius:24px;
-    box-shadow:0 24px 70px rgba(0,0,0,.35);padding:24px;text-align:center;
-    border:3px solid #16b978;animation:qtOrderPulse 1s ease-in-out infinite alternate;
-  }
-  .qt-shop-new-order-icon{font-size:64px;line-height:1;margin-bottom:10px}
-  .qt-shop-new-order-card h2{margin:0 0 8px;font-size:27px;color:#0f172a}
-  .qt-shop-new-order-card p{margin:6px 0;color:#475569}
-  .qt-shop-new-order-number{
-    margin:14px 0;padding:13px;border-radius:14px;background:#e9fbf3;
-    color:#0f9f68;font-size:25px;font-weight:800;
-  }
-  .qt-shop-new-order-total{font-size:20px;font-weight:800;margin:8px 0 18px}
-  .qt-shop-new-order-ack{
-    width:100%;border:0;border-radius:14px;padding:15px 18px;
-    background:#16b978;color:#fff;font-size:18px;font-weight:800;cursor:pointer;
-  }
-  .qt-shop-new-order-ack:active{transform:scale(.98)}
-  @keyframes qtOrderPulse{
-    from{transform:scale(1)}
-    to{transform:scale(1.015)}
-  }
-  .qt-shop-live-status{
-    display:inline-flex;align-items:center;gap:6px;font-size:11px;
-    color:#64748b;margin-top:5px;
-  }
-  .qt-shop-live-dot{
-    width:8px;height:8px;border-radius:50%;background:#16b978;
-    box-shadow:0 0 0 4px #e9fbf3;
-  }
-</style>
-
-<script id="qt-shop-new-order-realtime-v1">
-(function(){
-  const SEEN_KEY='qt_shop_seen_pending_orders_v1';
-  const ACK_KEY='qt_shop_new_order_ack_v1';
-  const CHECK_MS=60000; // ตรวจหน้ารับออเดอร์ทุก 1 นาที
-  let audioCtx=null;
-  let activeOrderId=null;
-  let soundTimer=null;
-  let initialized=false;
-  let checkBusy=false;
-
-  function shopUserSafe(){
-    try{
-      const u=typeof shopUser==='function'?shopUser():null;
-      if(u && u.type==='shop') return u;
-    }catch(e){}
-    try{
-      const u=typeof currentUser==='function'?currentUser():null;
-      if(u && u.type==='shop') return u;
-    }catch(e){}
-    return null;
-  }
-
-  function readSeen(){
-    try{
-      const x=JSON.parse(sessionStorage.getItem(SEEN_KEY)||'[]');
-      return new Set(Array.isArray(x)?x.map(String):[]);
-    }catch(e){ return new Set(); }
-  }
-  function saveSeen(set){
-    try{
-      const a=[...set].slice(-300);
-      sessionStorage.setItem(SEEN_KEY,JSON.stringify(a));
-    }catch(e){}
-  }
-
-  function unlockShopAudio(){
-    try{
-      const AC=window.AudioContext||window.webkitAudioContext;
-      if(AC){
-        if(!audioCtx) audioCtx=new AC();
-        if(audioCtx.state==='suspended') audioCtx.resume();
-      }
-    }catch(e){}
-  }
-  document.addEventListener('click',unlockShopAudio,{passive:true});
-  document.addEventListener('touchend',unlockShopAudio,{passive:true});
-  document.addEventListener('pointerup',unlockShopAudio,{passive:true});
-
-  function beep(){
-    try{
-      unlockShopAudio();
-      if(!audioCtx) return;
-      const now=audioCtx.currentTime;
-      [0,0.22,0.44].forEach((offset,i)=>{
-        const osc=audioCtx.createOscillator();
-        const gain=audioCtx.createGain();
-        osc.type='sine';
-        osc.frequency.value=i===1?1046:880;
-        gain.gain.setValueAtTime(0.0001,now+offset);
-        gain.gain.exponentialRampToValueAtTime(0.28,now+offset+0.02);
-        gain.gain.exponentialRampToValueAtTime(0.0001,now+offset+0.18);
-        osc.connect(gain);gain.connect(audioCtx.destination);
-        osc.start(now+offset);osc.stop(now+offset+0.2);
-      });
-    }catch(e){}
-  }
-
-  function speak(){
-    try{
-      if(!('speechSynthesis' in window)) return;
-      window.speechSynthesis.cancel();
-      const u=new SpeechSynthesisUtterance('มีออเดอร์ใหม่เข้ามาค่ะ กรุณาตรวจสอบออเดอร์ใหม่');
-      u.lang='th-TH';u.rate=.95;u.pitch=1;u.volume=1;
-      window.speechSynthesis.speak(u);
-    }catch(e){}
-  }
-
-  function stopSound(){
-    clearInterval(soundTimer);soundTimer=null;
-    try{window.speechSynthesis.cancel();}catch(e){}
-  }
-
-  function ensureOverlay(){
-    if(document.getElementById('qtShopNewOrderOverlay')) return;
-    const el=document.createElement('div');
-    el.id='qtShopNewOrderOverlay';
-    el.className='qt-shop-new-order-overlay';
-    el.innerHTML=`
-      <div class="qt-shop-new-order-card" role="alertdialog" aria-modal="true">
-        <div class="qt-shop-new-order-icon">🔔📦</div>
-        <h2>มีออเดอร์ใหม่เข้ามา!</h2>
-        <p>กรุณาตรวจสอบและกดรับออเดอร์</p>
-        <div id="qtShopNewOrderNumber" class="qt-shop-new-order-number">ออเดอร์ใหม่</div>
-        <div id="qtShopNewOrderTotal" class="qt-shop-new-order-total"></div>
-        <button class="qt-shop-new-order-ack" onclick="qtAcknowledgeShopNewOrder()">
-          รับทราบและดูออเดอร์
-        </button>
-      </div>`;
-    document.body.appendChild(el);
-  }
-
-  function showAlert(order){
-    ensureOverlay();
-    activeOrderId=order.id;
-    const n=document.getElementById('qtShopNewOrderNumber');
-    const t=document.getElementById('qtShopNewOrderTotal');
-    if(n) n.textContent=(typeof displayOrderNumber==='function' ? displayOrderNumber(order) : (order.orderNumber||'ออเดอร์ใหม่'));
-    if(t) t.textContent='ยอดรวม ฿'+Number(order.total||0).toLocaleString('th-TH');
-    document.getElementById('qtShopNewOrderOverlay')?.classList.add('show');
-    try{sessionStorage.setItem(ACK_KEY,String(order.id));}catch(e){}
-    stopSound();
-    beep();speak();
-    soundTimer=setInterval(()=>{ beep(); speak(); },3500);
-  }
-
-  window.qtAcknowledgeShopNewOrder=function(){
-    const id=activeOrderId;
-    stopSound();
-    document.getElementById('qtShopNewOrderOverlay')?.classList.remove('show');
-    activeOrderId=null;
-    if(id){
-      try{sessionStorage.removeItem(ACK_KEY);}catch(e){}
-      if(typeof navigate==='function') navigate('shop-order/'+id);
-    }
-  };
-
-  function pendingShopOrders(u){
-    try{
-      const all=typeof dbGet==='function'?dbGet('qt_orders',[]):[];
-      return (Array.isArray(all)?all:[])
-        .filter(o=>String(o.shopId)===String(u.id) && o.status==='pending_shop')
-        .sort((a,b)=>(Number(a.createdAt)||0)-(Number(b.createdAt)||0));
-    }catch(e){return [];}
-  }
-
-  async function refreshEveryMinute(){
-    const u=shopUserSafe();
-    if(!u || checkBusy) return;
-    checkBusy=true;
-    try{
-      // ใช้ Supabase Realtime ที่มีอยู่ก่อน; ถ้าข้อมูลยังไม่เปลี่ยน
-      // ให้ hydrate ใหม่ทุก 1 นาทีเป็น fallback/heartbeat ของหน้ารับออเดอร์
-      if(typeof window.QT_REALTIME_FORCE_REFRESH==='function'){
-        await window.QT_REALTIME_FORCE_REFRESH();
-      }else if(typeof window.qtBackgroundHydrate==='function'){
-        await window.qtBackgroundHydrate({light:false});
-      }else if(typeof window.qtHydrateDatabase==='function'){
-        await window.qtHydrateDatabase({light:false});
-      }
-      checkForNewOrders();
-    }catch(e){
-      console.warn('[QueueTech Shop Order Monitor]',e);
-    }finally{
-      checkBusy=false;
-    }
-  }
-
-  function checkForNewOrders(){
-    const u=shopUserSafe();
-    if(!u) return;
-    const orders=pendingShopOrders(u);
-    const seen=readSeen();
-
-    // ครั้งแรก: จำออเดอร์ที่มีอยู่แล้ว ไม่ยิงเสียงย้อนหลัง
-    if(!initialized){
-      orders.forEach(o=>seen.add(String(o.id)));
-      saveSeen(seen);
-      initialized=true;
-      return;
-    }
-
-    for(const order of orders){
-      if(!seen.has(String(order.id))){
-        seen.add(String(order.id));
-        saveSeen(seen);
-        showAlert(order);
-        break;
-      }
-    }
-  }
-
-  function boot(){
-    ensureOverlay();
-    setTimeout(()=>{
-      checkForNewOrders();
-      // หน้ารับออเดอร์ตรวจสอบ/ซิงก์ทุก 1 นาที
-      setInterval(refreshEveryMinute,CHECK_MS);
-    },1200);
-  }
-
-  window.addEventListener('qt:realtime-update',()=>{
-    // Supabase Realtime เข้ามาก่อน 1 นาทีได้ทันที
-    checkForNewOrders();
-  });
-  window.addEventListener('hashchange',()=>{
-    setTimeout(checkForNewOrders,250);
-  });
-  window.addEventListener('storage',ev=>{
-    if(ev.key==='qt_orders') setTimeout(checkForNewOrders,50);
-  });
-
-  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',boot);
-  else boot();
-})();
-</script>
-
-
-<!-- QueueTech Food Menu Options + GP 10% -->
-<style id="qt-food-menu-options-gp10-v1">
-  .qt-menu-option-box{margin-top:10px;padding:12px;border:1px solid #e2e8f0;border-radius:14px;background:#f8fafc}
-  .qt-menu-option-row{display:flex;gap:7px;align-items:center;margin:7px 0}
-  .qt-menu-option-row input{margin:0}
-  .qt-menu-option-row .qt-opt-name{flex:1}
-  .qt-menu-option-row .qt-opt-price{width:105px}
-  .qt-menu-option-actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:8px}
-  .qt-menu-note{font-size:12px;color:#64748b;line-height:1.5;margin:7px 0}
-  .qt-menu-gp-note{padding:10px;border-radius:12px;background:#ecfdf5;color:#166534;font-size:12px;line-height:1.5}
-  .qt-customer-option-box{margin-top:8px;padding:9px;border:1px solid #e2e8f0;border-radius:12px;background:#fff}
-  .qt-customer-option-box label{display:block;margin:5px 0;font-size:13px}
-  .qt-customer-option-box select{width:100%;padding:8px;border-radius:9px;border:1px solid #cbd5e1}
-  .qt-option-summary{font-size:12px;color:#475569;margin-top:6px}
-</style>
-<script id="qt-food-menu-options-gp10-v1">
-(function(){
-  const GP_RATE = 0.10;
-
-  function money(n){
-    return Number(n||0).toLocaleString('th-TH',{minimumFractionDigits:2,maximumFractionDigits:2});
-  }
-  function esc(v){ return typeof escapeHtml==='function' ? escapeHtml(v==null?'':String(v)) : String(v==null?'':v).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
-
-  window.qtFoodSalePrice = function(netPrice){
-    const n=Number(netPrice)||0;
-    // ร้านต้องการได้รับ netPrice หลังหัก GP 10%
-    return Math.ceil((n/(1-GP_RATE))*100)/100;
-  };
-  window.qtFoodGp = function(salePrice){
-    return Math.round((Number(salePrice)||0)*GP_RATE*100)/100;
-  };
-
-  function optionEditor(options){
-    options=Array.isArray(options)?options:[];
-    return `
-      <div class="qt-menu-option-box">
-        <b>🍽️ ตัวเลือกเมนู</b>
-        <div class="qt-menu-note">ตั้งได้ทั้ง <b>ธรรมดา</b>, <b>พิเศษ</b> และตัวเลือกอื่น ๆ เอง เช่น เพิ่มไข่, เพิ่มชีส, เพิ่มเนื้อ ระบบจะบวกราคาตามตัวเลือกให้ลูกค้าอัตโนมัติ</div>
-        <div id="qt-menu-options-list">
-          ${options.map((o,i)=>`
-            <div class="qt-menu-option-row" data-index="${i}">
-              <input class="qt-opt-name" placeholder="ชื่อตัวเลือก เช่น พิเศษ" value="${esc(o.name||'')}">
-              <input class="qt-opt-price" type="number" step="0.01" placeholder="+ ราคา" value="${Number(o.price||0)}">
-              <button type="button" onclick="this.parentElement.remove()">ลบ</button>
-            </div>`).join('')}
-        </div>
-        <div class="qt-menu-option-actions">
-          <button type="button" class="btn-secondary" onclick="qtAddMenuOption('ธรรมดา',0)">＋ ธรรมดา</button>
-          <button type="button" class="btn-secondary" onclick="qtAddMenuOption('พิเศษ',10)">＋ พิเศษ</button>
-          <button type="button" class="btn-secondary" onclick="qtAddMenuOption('',0)">＋ เพิ่มตัวเลือกเอง</button>
-        </div>
-      </div>`;
-  }
-
-  window.qtAddMenuOption=function(name,price){
-    const box=document.getElementById('qt-menu-options-list');
-    if(!box)return;
-    const row=document.createElement('div');
-    row.className='qt-menu-option-row';
-    row.innerHTML=`<input class="qt-opt-name" placeholder="ชื่อตัวเลือก เช่น เพิ่มไข่" value="${esc(name)}">
-      <input class="qt-opt-price" type="number" step="0.01" placeholder="+ ราคา" value="${Number(price)||0}">
-      <button type="button" onclick="this.parentElement.remove()">ลบ</button>`;
-    box.appendChild(row);
-  };
-
-  window.qtReadMenuOptions=function(){
-    return [...document.querySelectorAll('#qt-menu-options-list .qt-menu-option-row')].map(r=>({
-      name:(r.querySelector('.qt-opt-name')?.value||'').trim(),
-      price:Number(r.querySelector('.qt-opt-price')?.value||0)
-    })).filter(o=>o.name);
-  };
-
-  window.qtCalcFoodPrice=function(){
-    const net=Number(document.getElementById('p-net-price')?.value||0);
-    const sale=qtFoodSalePrice(net);
-    const gp=qtFoodGp(sale);
-    const out=document.getElementById('qt-food-gp-preview');
-    const price=document.getElementById('p-price');
-    if(price)price.value=sale.toFixed(2);
-    if(out)out.innerHTML=`ร้านต้องการได้รับ <b>฿${money(net)}</b> → ราคาหน้าลูกค้า <b>฿${money(sale)}</b><br>GP 10% = <b>฿${money(gp)}</b> → ร้านได้รับสุทธิประมาณ <b>฿${money(sale-gp)}</b>`;
-  };
-
-  // Replace the existing shop product form with the food-specific form.
-  window.openProductForm=function(id){
-    const products=dbGet('qt_products',[]);
-    const p=id?products.find(x=>x.id===id):null;
-    const area=document.getElementById('product-form-area');
-    if(!area)return;
-    const sale=Number(p?.price||0);
-    const net=p?.netPrice!=null?Number(p.netPrice):(sale?Math.round(sale*(1-GP_RATE)*100)/100:0);
-    area.innerHTML=`
-      <form id="prod-form" onsubmit="return handleSaveProduct(event,'${esc(id||'')}')" class="inline-form">
-        <label>ชื่อเมนู</label>
-        <input required id="p-name" value="${esc(p?.name||'')}" placeholder="เช่น ข้าวกะเพราหมู">
-        <label>ราคาที่ร้านต้องการได้รับสุทธิ (บาท)</label>
-        <input required type="number" step="0.01" id="p-net-price" value="${net||''}" placeholder="เช่น 50">
-        <button type="button" class="btn-secondary btn-block" onclick="qtCalcFoodPrice()">คำนวณราคาขาย + GP 10%</button>
-        <label>ราคาขายหน้าลูกค้า (บาท)</label>
-        <input required type="number" step="0.01" id="p-price" value="${sale||''}" readonly>
-        <div id="qt-food-gp-preview" class="qt-menu-gp-note">
-          ระบบคิด GP <b>10%</b> อัตโนมัติ ราคาที่ลูกค้าเห็นจะถูกคำนวณเพื่อให้ร้านได้รับสุทธิตามราคาที่ตั้งไว้
-        </div>
-        ${optionEditor(p?.options||[])}
-        <label>รายละเอียด</label>
-        <textarea id="p-desc" placeholder="รายละเอียดเมนู">${esc(p?.description||'')}</textarea>
-        <label>รูปภาพ</label>
-        <input type="file" id="p-image" accept="image/*">
-        <label><input type="checkbox" id="p-available" style="width:auto" ${(!p||p.available)?'checked':''}> มีเมนูพร้อมขาย</label>
-        <div class="row-btns">
-          <button class="btn-primary" type="submit">บันทึกเมนู</button>
-          <button type="button" onclick="document.getElementById('product-form-area').innerHTML=''">ยกเลิก</button>
-        </div>
-      </form>`;
-    qtCalcFoodPrice();
-  };
-
-  window.handleSaveProduct=async function(e,id){
-    e.preventDefault();
-    const user=currentUser();
-    if(!user||user.type!=='shop'){toast('เฉพาะร้านค้าเท่านั้น');return false;}
-    let products=dbGet('qt_products',[]);
-    const old=id?products.find(x=>x.id===id):null;
-    const file=document.getElementById('p-image')?.files?.[0];
-    const image=file?await readFileAsDataURL(file):(old?.image||'');
-    const netPrice=Number(document.getElementById('p-net-price')?.value||0);
-    const salePrice=qtFoodSalePrice(netPrice);
-    const data={
-      name:document.getElementById('p-name').value.trim(),
-      price:salePrice,
-      netPrice,
-      gpRate:GP_RATE,
-      gpAmount:qtFoodGp(salePrice),
-      options:qtReadMenuOptions(),
-      description:document.getElementById('p-desc').value.trim(),
-      available:document.getElementById('p-available').checked,
-      image
-    };
-    if(!data.name||netPrice<=0){toast('กรุณากรอกชื่อเมนูและราคาที่ร้านต้องการได้รับ');return false;}
-    if(id)Object.assign(old,data);
-    else products.push({id:uid(),shopId:user.id,...data});
-    dbSet('qt_products',products);
-    toast('บันทึกเมนูแล้ว • ระบบคิด GP 10% อัตโนมัติ');
-    if(typeof renderShopProducts==='function')renderShopProducts();
-    else if(typeof renderShopProductsModern==='function')renderShopProductsModern();
-    return false;
-  };
-
-  function optionControls(p){
-    const opts=Array.isArray(p.options)?p.options:[];
-    if(!opts.length)return '';
-    return `<div class="qt-customer-option-box">
-      <b>เลือกแบบ/เพิ่มเติม</b>
-      <select id="qt-opt-${esc(p.id)}">
-        ${opts.map((o,i)=>`<option value="${i}">${esc(o.name)}${Number(o.price)?` +฿${money(o.price)}`:''}</option>`).join('')}
-      </select>
-    </div>`;
-  }
-
-  window.productCardCustomer=function(p){
-    return `<div class="product-card">
-      <img src="${esc(p.image||placeholderImg())}" class="product-img">
-      <div class="product-info">
-        <b>${esc(p.name)}</b>
-        <div>฿${money(p.price)}</div>
-        <div>${esc(p.description||'')}</div>
-        ${optionControls(p)}
-        <button onclick="addToCart('${esc(p.id)}')">+ เพิ่มลงตะกร้า</button>
-      </div>
-    </div>`;
-  };
-
-  window.addToCart=function(productId){
-    const user=currentUser();
-    if(!user||user.type!=='customer'){toast('กรุณาเข้าสู่ระบบด้วยบัญชีลูกค้าก่อน');navigate('login');return;}
-    const product=dbGet('qt_products',[]).find(p=>p.id===productId);
-    if(!product)return;
-    let cart=dbGet('qt_cart_'+user.id,{shopId:null,items:[]});
-    if(cart.shopId&&cart.shopId!==product.shopId){
-      if(!confirm('ตะกร้าปัจจุบันเป็นของร้านอื่น ต้องการล้างตะกร้าและเริ่มใหม่หรือไม่?'))return;
-      cart={shopId:product.shopId,items:[]};
-    }
-    cart.shopId=product.shopId;
-    const sel=document.getElementById('qt-opt-'+productId);
-    const idx=sel?Number(sel.value):0;
-    const opt=(product.options||[])[idx]||null;
-    const unitPrice=Number(product.price||0)+Number(opt?.price||0);
-    const optionName=opt?.name||'';
-    const key=productId+'|'+optionName+'|'+Number(opt?.price||0);
-    const existing=cart.items.find(i=>i.cartKey===key);
-    if(existing)existing.qty++;
-    else cart.items.push({
-      cartKey:key,productId,name:product.name,price:unitPrice,basePrice:product.price,
-      option:optionName,optionPrice:Number(opt?.price||0),image:product.image,qty:1
-    });
-    dbSet('qt_cart_'+user.id,cart);
-    updateCartCountUI();
-    toast(optionName?`เพิ่ม ${product.name} (${optionName}) ลงตะกร้าแล้ว`:'เพิ่มลงตะกร้าแล้ว');
-  };
-
-  window.renderCart=function(){
-    const user=currentUser();if(!user||user.type!=='customer'){navigate('login');return;}
-    const cart=dbGet('qt_cart_'+user.id,{shopId:null,items:[]});
-    const shop=cart.shopId?dbGet('qt_users',[]).find(u=>u.id===cart.shopId):null;
-    const total=(cart.items||[]).reduce((s,i)=>s+Number(i.price||0)*Number(i.qty||0),0);
-    layout('ตะกร้าสินค้า',`
-      <h2>🛒 ตะกร้าสินค้า</h2>${shop?`<p>ร้าน: <b>${esc(shop.shopName)}</b></p>`:''}
-      ${(cart.items||[]).length?cart.items.map(i=>`
-        <div class="cart-item">
-          <img src="${esc(i.image||placeholderImg())}" class="cart-item-img">
-          <div class="cart-item-info"><b>${esc(i.name)}</b>
-            ${i.option?`<div style="font-size:12px;color:#64748b">• ${esc(i.option)}${Number(i.optionPrice)?` +฿${money(i.optionPrice)}`:''}</div>`:''}
-            <div>฿${money(i.price)} x <button onclick="changeQty('${esc(i.cartKey||i.productId)}',-1)">-</button> ${i.qty} <button onclick="changeQty('${esc(i.cartKey||i.productId)}',1)">+</button></div>
-          </div>
-          <button class="btn-danger" onclick="removeFromCart('${esc(i.cartKey||i.productId)}')">ลบ</button>
-        </div>`).join(''):'<p>ตะกร้าว่างเปล่า</p>'}
-      ${(cart.items||[]).length?`<div class="cart-total">รวม: ฿${money(total)}</div><button class="btn-primary btn-block" onclick="navigate('checkout')">ดำเนินการสั่งซื้อ →</button>`:''}
-    `);
-  };
-
-  window.changeQty=function(key,delta){
-    const user=currentUser();let cart=dbGet('qt_cart_'+user.id,{items:[]});
-    const item=cart.items.find(i=>(i.cartKey||i.productId)===key);if(!item)return;
-    item.qty+=delta;
-    if(item.qty<=0)cart.items=cart.items.filter(i=>(i.cartKey||i.productId)!==key);
-    dbSet('qt_cart_'+user.id,cart);updateCartCountUI();renderCart();
-  };
-  window.removeFromCart=function(key){
-    const user=currentUser();let cart=dbGet('qt_cart_'+user.id,{items:[]});
-    cart.items=cart.items.filter(i=>(i.cartKey||i.productId)!==key);
-    dbSet('qt_cart_'+user.id,cart);updateCartCountUI();renderCart();
-  };
-
-  // แสดงข้อความแจ้งให้ร้านทราบเมื่อเปิดระบบครั้งแรก
-  function showFoodGPNotice(){
-    if(!currentUser||currentUser()?.type!=='shop')return;
-    const key='qt_food_gp10_notice_seen';
-    if(sessionStorage.getItem(key))return;
-    sessionStorage.setItem(key,'1');
-    setTimeout(()=>toast('ℹ️ ร้านอาหาร: ระบบคิด GP 10% อัตโนมัติ และสามารถตั้งธรรมดา/พิเศษ/ตัวเลือกเพิ่มเติมพร้อมราคาบวกได้'),900);
-  }
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',showFoodGPNotice);
-  else setTimeout(showFoodGPNotice,1000);
 })();
 </script>
 
