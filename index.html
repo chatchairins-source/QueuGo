@@ -416,7 +416,14 @@ input, select, textarea, button {
 
 /* Rider application wizard */
 .rider-wizard{margin:-16px -12px 40px;background:#fff}.rider-topbar{background:#0b69d1;color:#fff;text-align:center;padding:18px 16px 20px}.rider-brand{font-size:30px;font-weight:800}.rider-title{font-size:28px;font-weight:800}.rider-steps{display:flex;align-items:flex-start;justify-content:center;gap:0;padding:18px 12px 12px;background:#fff}.rider-step{display:flex;flex-direction:column;align-items:center;gap:6px;min-width:90px;text-align:center;color:#738095;font-size:12px}.rider-step b{width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:#e6ebf2;font-size:18px}.rider-step.active{color:#1769c2;font-weight:700}.rider-step.active b{background:#1769c2;color:#fff}.rider-steps i{height:2px;background:#d9dee7;flex:1;max-width:90px;margin-top:19px}.rider-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;padding:14px}.rider-panel{border:1px solid #dce5ef;border-radius:14px;background:#fff;overflow:hidden;box-shadow:0 2px 8px rgba(20,50,90,.05)}.rider-panel h3{margin:0;padding:12px 16px;background:#edf5ff;color:#173c69;font-size:18px}.rider-panel label{display:block;margin:12px 16px 6px;font-weight:700;color:#33445d}.rider-panel input,.rider-panel select{margin:0 16px;width:calc(100% - 32px);box-sizing:border-box}.req{color:#d33;font-weight:600}.rider-face-upload{text-align:center;padding:16px}.rider-face-upload img{width:230px;height:230px;object-fit:cover;border-radius:12px;margin:0 auto 12px;background:#eef2f7}.rider-face-upload label{display:block;margin:0 auto 8px;width:max-content}.rider-face-upload input{display:none}
-.rider-file-btn{display:inline-block;margin:0 auto 8px;width:auto;cursor:pointer}.rider-file-input{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}.rider-face-upload small{display:block;color:#77839a;line-height:1.6}.rider-note{margin:12px 16px;padding:10px;border-radius:10px;background:#eef6ff;color:#426080;font-size:13px}.rider-docs{grid-column:1 / -1}.rider-upload-item{padding:0 0 12px}.rider-upload-item input{padding:8px}.rider-doc-preview{max-width:180px;max-height:110px;object-fit:contain;margin:8px 16px;border-radius:8px;border:1px solid #d7e0eb}.rider-confirm{grid-column:1 / -1}.rider-confirm label{font-weight:500;display:flex;gap:8px;align-items:flex-start}.rider-confirm label input{width:auto;margin:2px 0}.rider-confirm p{margin:10px 16px 16px;padding:12px;background:#fff7df;border-radius:10px;color:#765b00}.rider-submit{margin:0 14px 24px;width:calc(100% - 28px);font-size:20px;padding:15px}@media(max-width:760px){.rider-grid{grid-template-columns:1fr}.rider-docs,.rider-confirm{grid-column:auto}.rider-step{min-width:70px;font-size:10px}.rider-step b{width:34px;height:34px}.rider-steps i{margin-top:16px}.rider-face-upload img{width:200px;height:200px}}
+.rider-file-btn{display:inline-block;margin:0 auto 8px;width:auto;cursor:pointer}.rider-file-input{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}.rider-face-upload small{display:block;color:#77839a;line-height:1.6}
+.qt-cam-overlay{display:none;position:fixed;inset:0;background:rgba(10,15,25,.92);z-index:9999;align-items:center;justify-content:center;padding:16px}
+.qt-cam-box{width:100%;max-width:420px;background:#111827;border-radius:16px;overflow:hidden;padding:14px;text-align:center}
+.qt-cam-box video,.qt-cam-box img#qt-cam-shot{width:100%;aspect-ratio:1/1;object-fit:cover;border-radius:12px;background:#000}
+.qt-cam-box video{transform:scaleX(-1)}
+.qt-cam-hint{color:#cbd5e1;font-size:12px;margin:10px 4px;line-height:1.5}
+.qt-cam-actions{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+.qt-cam-actions button{flex:1;min-width:100px;padding:12px 8px;border-radius:10px;border:none;font-size:14px;cursor:pointer;font-family:inherit}.rider-note{margin:12px 16px;padding:10px;border-radius:10px;background:#eef6ff;color:#426080;font-size:13px}.rider-docs{grid-column:1 / -1}.rider-upload-item{padding:0 0 12px}.rider-upload-item input{padding:8px}.rider-doc-preview{max-width:180px;max-height:110px;object-fit:contain;margin:8px 16px;border-radius:8px;border:1px solid #d7e0eb}.rider-confirm{grid-column:1 / -1}.rider-confirm label{font-weight:500;display:flex;gap:8px;align-items:flex-start}.rider-confirm label input{width:auto;margin:2px 0}.rider-confirm p{margin:10px 16px 16px;padding:12px;background:#fff7df;border-radius:10px;color:#765b00}.rider-submit{margin:0 14px 24px;width:calc(100% - 28px);font-size:20px;padding:15px}@media(max-width:760px){.rider-grid{grid-template-columns:1fr}.rider-docs,.rider-confirm{grid-column:auto}.rider-step{min-width:70px;font-size:10px}.rider-step b{width:34px;height:34px}.rider-steps i{margin-top:16px}.rider-face-upload img{width:200px;height:200px}}
 
 .qt-admin-wrap{background:#fff;border:1px solid #e5e7eb;border-radius:18px;padding:14px}.qt-admin-head{display:flex;justify-content:space-between;gap:12px;align-items:center}.qt-admin-tabs{display:flex;gap:7px;flex-wrap:wrap;margin:14px 0;border-bottom:1px solid #e5e7eb;padding-bottom:10px}.qt-admin-tab{border:1px solid #e2e8f0;background:#fff;border-radius:10px;padding:9px 11px;cursor:pointer;font-weight:700}.qt-admin-tab.active{background:#0f172a;color:#fff;border-color:#0f172a}.qt-admin-tab-badge{display:inline-block;border-radius:999px;padding:1px 6px;background:#fee2e2;color:#b91c1c;font-size:11px}.qt-admin-panel{display:none}.qt-admin-panel.active{display:block}.qt-admin-note{font-size:12px;color:#64748b}.qt-admin-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.qt-admin-status{display:inline-block;padding:3px 8px;border-radius:999px;font-size:11px;font-weight:800}.qt-admin-status.pending{background:#fef3c7;color:#92400e}.qt-admin-log{padding:8px 0;border-bottom:1px solid #e5e7eb;font-size:12px}.qt-admin-table{width:100%;border-collapse:collapse}.qt-admin-table th,.qt-admin-table td{padding:9px 7px;border-bottom:1px solid #e5e7eb;text-align:left;vertical-align:top;font-size:13px}.qt-admin-table th{font-size:11px;color:#64748b;background:#f8fafc}@media(max-width:700px){.qt-admin-head{align-items:flex-start;flex-direction:column}.qt-admin-grid{grid-template-columns:1fr}.qt-admin-tabs{overflow-x:auto;flex-wrap:nowrap}.qt-admin-tab{white-space:nowrap}.qt-admin-table{display:block;overflow-x:auto}}
 /* ---------- V5.29 THAI ADMIN USER CATEGORIES ---------- */
@@ -626,6 +633,10 @@ window.QT_SUPABASE_CONFIG = {
   URL: 'https://pkypiqhlrmzocysgeqew.supabase.co',
   KEY: 'sb_publishable_Vn2Il4jp-iBtzNsGRNY8Lg_Tpvk2Vre'
 };
+/* Flip this to true only AFTER running the migration below in Supabase, otherwise every
+   order insert will fail with "column customer_verification_photo does not exist":
+   ALTER TABLE public.orders ADD COLUMN customer_verification_photo text; */
+window.QT_HAS_VERIFICATION_PHOTO_COLUMN = false;
 function qtSupabaseHeaders(accessToken){
   const h={apikey:QT_SUPABASE_CONFIG.KEY,'Content-Type':'application/json'};
   if(accessToken) h.Authorization='Bearer '+accessToken;
@@ -1105,11 +1116,18 @@ function qtUserFromRow(r){
 function qtOrderToRow(o){
   const pickup=o.pickup||{};
   const delivery=o.delivery||{};
-  return {id:qtUuidLike(o.id)?o.id:undefined,order_number:String(o.orderNumber||o.orderNo||o.id||uid()),customer_id:o.customerId||null,shop_id:o.shopProfileId||null,technician_id:o.technicianProfileId||null,rider_id:o.riderProfileId||null,order_type:o.orderType==='service'?'service':'shopping',status:qtOrderStatusToDb(o.status),subtotal:Number(o.subtotal||0),delivery_fee:Number(o.deliveryFee||0),total_amount:Number(o.total||o.totalAmount||0),pickup_address:o.pickupAddress??pickup.address??null,pickup_latitude:o.pickupLat??pickup.lat??null,pickup_longitude:o.pickupLng??pickup.lng??null,delivery_address:o.deliveryAddress??delivery.address??null,delivery_latitude:o.deliveryLat??delivery.lat??null,delivery_longitude:o.deliveryLng??delivery.lng??null,note:(`__QT_ORDER_STATUS__=${o.status}
+  const row={id:qtUuidLike(o.id)?o.id:undefined,order_number:String(o.orderNumber||o.orderNo||o.id||uid()),customer_id:o.customerId||null,shop_id:o.shopProfileId||null,technician_id:o.technicianProfileId||null,rider_id:o.riderProfileId||null,order_type:o.orderType==='service'?'service':'shopping',status:qtOrderStatusToDb(o.status),subtotal:Number(o.subtotal||0),delivery_fee:Number(o.deliveryFee||0),total_amount:Number(o.total||o.totalAmount||0),pickup_address:o.pickupAddress??pickup.address??null,pickup_latitude:o.pickupLat??pickup.lat??null,pickup_longitude:o.pickupLng??pickup.lng??null,delivery_address:o.deliveryAddress??delivery.address??null,delivery_latitude:o.deliveryLat??delivery.lat??null,delivery_longitude:o.deliveryLng??delivery.lng??null,note:(`__QT_ORDER_STATUS__=${o.status}
 `+(o.note||'')).trim()||null,created_at:qtIso(o.createdAt),updated_at:qtIso(Date.now())};
+  /* QT_HAS_VERIFICATION_PHOTO_COLUMN: set to true only after adding a
+     "customer_verification_photo text" column to the orders table in Supabase.
+     Until then this is intentionally left out of the row so failed inserts
+     (unknown column) don't block order placement; the photo still lives in
+     the in-memory order object and QT_CAM_CAPTURES for the current session. */
+  if(window.QT_HAS_VERIFICATION_PHOTO_COLUMN && o.customerVerificationPhoto) row.customer_verification_photo=o.customerVerificationPhoto;
+  return row;
 }
 function qtOrderFromRow(r){
-  return {id:r.id,orderNumber:r.order_number,customerId:r.customer_id,shopProfileId:r.shop_id,technicianProfileId:r.technician_id,riderProfileId:r.rider_id,status:qtOrderStatusFromDb(r.status,r.note),orderType:r.order_type,subtotal:Number(r.subtotal||0),deliveryFee:Number(r.delivery_fee||0),total:Number(r.total_amount||0),pickupAddress:r.pickup_address||'',pickupLat:r.pickup_latitude,pickupLng:r.pickup_longitude,pickup:{lat:r.pickup_latitude,lng:r.pickup_longitude,address:r.pickup_address||''},deliveryAddress:r.delivery_address||'',deliveryLat:r.delivery_latitude,deliveryLng:r.delivery_longitude,delivery:{lat:r.delivery_latitude,lng:r.delivery_longitude,address:r.delivery_address||''},note:r.note||'',createdAt:new Date(r.created_at).getTime(),updatedAt:new Date(r.updated_at||r.created_at).getTime(),items:[]};
+  return {id:r.id,orderNumber:r.order_number,customerId:r.customer_id,shopProfileId:r.shop_id,technicianProfileId:r.technician_id,riderProfileId:r.rider_id,status:qtOrderStatusFromDb(r.status,r.note),orderType:r.order_type,subtotal:Number(r.subtotal||0),deliveryFee:Number(r.delivery_fee||0),total:Number(r.total_amount||0),pickupAddress:r.pickup_address||'',pickupLat:r.pickup_latitude,pickupLng:r.pickup_longitude,pickup:{lat:r.pickup_latitude,lng:r.pickup_longitude,address:r.pickup_address||''},deliveryAddress:r.delivery_address||'',deliveryLat:r.delivery_latitude,deliveryLng:r.delivery_longitude,delivery:{lat:r.delivery_latitude,lng:r.delivery_longitude,address:r.delivery_address||''},customerVerificationPhoto:r.customer_verification_photo||null,note:r.note||'',createdAt:new Date(r.created_at).getTime(),updatedAt:new Date(r.updated_at||r.created_at).getTime(),items:[]};
 }
 function qtTechJobToRow(j){
   const note='__QT_TECH_STATUS__='+j.status+'\n'+(j.description||'');
@@ -2588,6 +2606,101 @@ function openRiderFilePicker(inputId){
   sessionStorage.setItem('qt_rider_register_hash', location.hash || '#rider-register');
   input.click();
 }
+
+/* Live in-page camera capture (getUserMedia). Used for the "รูปถ่ายหน้าตรง" step so applicants
+   must take a real-time selfie instead of choosing an existing file from their photo library. */
+let qtCamStream=null;
+function qtBuildCamOverlay(){
+  let overlay=document.getElementById('qt-cam-overlay');
+  if(overlay) return overlay;
+  overlay=document.createElement('div');
+  overlay.id='qt-cam-overlay';
+  overlay.className='qt-cam-overlay';
+  overlay.innerHTML=`<div class="qt-cam-box">
+    <video id="qt-cam-video" autoplay playsinline muted></video>
+    <img id="qt-cam-shot" style="display:none">
+    <canvas id="qt-cam-canvas" style="display:none"></canvas>
+    <div class="qt-cam-hint">จัดใบหน้าให้อยู่กึ่งกลางเฟรม แสงเพียงพอ แล้วกดถ่ายภาพ</div>
+    <div class="qt-cam-actions">
+      <button type="button" class="btn-secondary" id="qt-cam-cancel">ยกเลิก</button>
+      <button type="button" class="btn-primary" id="qt-cam-shutter">📸 ถ่ายภาพ</button>
+      <button type="button" class="btn-secondary" id="qt-cam-retake" style="display:none">🔄 ถ่ายใหม่</button>
+      <button type="button" class="btn-primary" id="qt-cam-confirm" style="display:none">✅ ใช้รูปนี้</button>
+    </div>
+  </div>`;
+  document.body.appendChild(overlay);
+  return overlay;
+}
+async function openRiderCamera(previewId, nameId, draftId){
+  if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
+    toast('อุปกรณ์นี้ไม่รองรับการเปิดกล้องผ่านเบราว์เซอร์');
+    return;
+  }
+  const overlay=qtBuildCamOverlay();
+  const video=document.getElementById('qt-cam-video');
+  const shot=document.getElementById('qt-cam-shot');
+  const canvas=document.getElementById('qt-cam-canvas');
+  const shutterBtn=document.getElementById('qt-cam-shutter');
+  const retakeBtn=document.getElementById('qt-cam-retake');
+  const confirmBtn=document.getElementById('qt-cam-confirm');
+  const cancelBtn=document.getElementById('qt-cam-cancel');
+
+  overlay.style.display='flex';
+  video.style.display='block'; shot.style.display='none';
+  shutterBtn.style.display='inline-block'; retakeBtn.style.display='none'; confirmBtn.style.display='none';
+
+  function closeCam(){
+    overlay.style.display='none';
+    if(qtCamStream){ qtCamStream.getTracks().forEach(t=>t.stop()); qtCamStream=null; }
+    video.srcObject=null;
+  }
+
+  try{
+    qtCamStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'user'},audio:false});
+    video.srcObject=qtCamStream;
+  }catch(err){
+    console.error('[QueueTech] camera access failed:',err);
+    toast('ไม่สามารถเข้าถึงกล้องได้ กรุณาอนุญาตการใช้กล้องในเบราว์เซอร์แล้วลองใหม่');
+    closeCam();
+    return;
+  }
+
+  let capturedData=null;
+  shutterBtn.onclick=()=>{
+    const w=video.videoWidth||720, h=video.videoHeight||720;
+    const size=Math.min(w,h); // crop to a centered square to match the preview
+    const sx=(w-size)/2, sy=(h-size)/2;
+    const maxOut=900;
+    canvas.width=maxOut; canvas.height=maxOut;
+    const ctx=canvas.getContext('2d');
+    ctx.drawImage(video, sx, sy, size, size, 0, 0, maxOut, maxOut);
+    capturedData=canvas.toDataURL('image/jpeg',0.85);
+    shot.src=capturedData; shot.style.display='block'; video.style.display='none';
+    shutterBtn.style.display='none'; retakeBtn.style.display='inline-block'; confirmBtn.style.display='inline-block';
+  };
+  retakeBtn.onclick=()=>{
+    capturedData=null;
+    shot.style.display='none'; video.style.display='block';
+    shutterBtn.style.display='inline-block'; retakeBtn.style.display='none'; confirmBtn.style.display='none';
+  };
+  confirmBtn.onclick=async ()=>{
+    if(!capturedData) return;
+    const preview=document.getElementById(previewId);
+    if(preview){ preview.src=capturedData; preview.style.display='block'; }
+    const nameEl=document.getElementById(nameId);
+    if(nameEl) nameEl.textContent='ถ่ายภาพแล้ว เมื่อ '+new Date().toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'});
+    /* Generic in-memory store so any screen (rider registration, customer checkout, etc.)
+       can read back the live capture by its draftId without re-plumbing IndexedDB per use case. */
+    window.QT_CAM_CAPTURES=window.QT_CAM_CAPTURES||{};
+    window.QT_CAM_CAPTURES[draftId]=capturedData;
+    try{ await saveRiderDraftFile(draftId, capturedData, 'live-selfie.jpg'); }catch(err){ console.warn('draft save failed',err); }
+    if(draftId==='rr-photo'){
+      try{ sessionStorage.setItem('qt_rider_profile_draft',JSON.stringify({data:capturedData,name:'live-selfie.jpg',at:Date.now()})); }catch(err){}
+    }
+    closeCam();
+  };
+  cancelBtn.onclick=closeCam;
+}
 async function compressRiderImage(file, maxSize=1400, quality=0.78){
   return new Promise((resolve,reject)=>{
     const reader=new FileReader();
@@ -2735,7 +2848,7 @@ function renderRiderRegistration(){
         <div class="rider-grid">
           <section class="rider-panel">
             <h3>📷 รูปถ่ายหน้าตรง <span class="req">(บังคับ)</span></h3>
-            <div class="rider-face-upload"><img id="rr-photo-preview" style="display:none"><button type="button" class="btn-primary rider-file-btn" onclick="openRiderFilePicker('rr-photo')">📷 อัปโหลดรูปภาพ</button><input id="rr-photo" class="rider-file-input" type="file" accept="image/*" data-required="1" onchange="riderFilePreview('rr-photo','rr-photo-preview'); event.stopPropagation();"><div id="rr-photo-name" style="font-size:12px;color:#68758a;margin-bottom:6px">ยังไม่ได้เลือกรูป</div><small>ไฟล์ JPG, PNG ขนาดไม่เกิน 5 MB<br>รูปต้องเป็นหน้าตรง ชัดเจน เห็นใบหน้าเต็ม</small></div>
+            <div class="rider-face-upload"><img id="rr-photo-preview" style="display:none"><button type="button" class="btn-primary rider-file-btn" onclick="openRiderCamera('rr-photo-preview','rr-photo-name','rr-photo')">📸 เปิดกล้องถ่ายรูป</button><div id="rr-photo-name" style="font-size:12px;color:#68758a;margin-bottom:6px" data-required="1">ยังไม่ได้ถ่ายรูป</div><small>ต้องถ่ายรูปสดผ่านกล้องเท่านั้น (ไม่รองรับการเลือกรูปจากคลังภาพ)<br>รูปต้องเป็นหน้าตรง ชัดเจน เห็นใบหน้าเต็ม แสงเพียงพอ</small></div>
           </section>
           <section class="rider-panel"><h3>👤 ข้อมูลส่วนตัว</h3>
             <label>ชื่อ - นามสกุล <span class="req">*</span></label><input required id="rr-name" placeholder="เช่น นายสมชาย ใจดี">
@@ -3623,6 +3736,8 @@ function renderCheckout(){
   if(!cart.items.length){ toast('ตะกร้าว่างเปล่า'); navigate('cart'); return; }
   const shop = dbGet('qt_users',[]).find(u=>u.id===cart.shopId);
   const subtotal = cart.items.reduce((s,i)=>s+i.price*i.qty,0);
+  /* ล้างรูปยืนยันตัวตนของออเดอร์ก่อนหน้า เพื่อไม่ให้ค้างมาใช้กับออเดอร์ใหม่โดยไม่ได้ตั้งใจ */
+  if(window.QT_CAM_CAPTURES) delete window.QT_CAM_CAPTURES['co-verify-photo'];
   layout('ยืนยันคำสั่งซื้อ', `
     <h2>ยืนยันคำสั่งซื้อ - ${escapeHtml(shop.shopName)}</h2>
     <h3>เลือกตำแหน่งจัดส่ง</h3>
@@ -3635,6 +3750,13 @@ function renderCheckout(){
       ${cart.items.map(i=>`<div>${escapeHtml(i.name)} x${escapeHtml(i.qty)} = ${i.price*i.qty} บาท</div>`).join('')}
       <div>ค่าจัดส่ง: <span id="delivery-fee-display">คำนวณจากตำแหน่งที่ปักหมุด</span></div>
       <div class="cart-total">รวมทั้งหมด: <span id="checkout-total-display">${subtotal}</span> บาท</div>
+    </div>
+    <div class="rider-face-upload" style="background:#fff;border-radius:12px;padding:16px;margin:10px 0;box-shadow:0 1px 4px rgba(0,0,0,.06)">
+      <h3 style="margin:0 0 10px;font-size:15px;color:#111827">📸 ถ่ายรูปยืนยันตัวตนก่อนสั่งซื้อ <span class="req">(บังคับ)</span></h3>
+      <img id="co-verify-preview" style="display:none">
+      <button type="button" class="btn-primary rider-file-btn" onclick="openRiderCamera('co-verify-preview','co-verify-name','co-verify-photo')">📸 เปิดกล้องถ่ายรูป</button>
+      <div id="co-verify-name" style="font-size:12px;color:#68758a;margin-bottom:6px">ยังไม่ได้ถ่ายรูป</div>
+      <small>ใช้เพื่อยืนยันว่าเป็นการสั่งซื้อจริงและป้องกัน Order ปลอม (Order ผี) ต้องถ่ายรูปสดผ่านกล้องเท่านั้น</small>
     </div>
     ${qtSlideConfirm('checkout-confirm-slide', '➡️ เลื่อนเพื่อยืนยันสั่งซื้อ', 'confirmOrder()')}
   `);
@@ -3694,6 +3816,9 @@ async function confirmOrder(){
   if(!cart.items.length){toast('ตะกร้าว่างเปล่า');navigate('cart');return;}
   const shop=dbGet('qt_users',[]).find(u=>u.id===cart.shopId);
   if(!shop){toast('ไม่พบข้อมูลร้านค้า กรุณากลับไปเลือกสินค้าใหม่');return;}
+  /* บังคับถ่ายรูปยืนยันตัวตนสดผ่านกล้องก่อนบันทึกออเดอร์ เพื่อป้องกัน Order ผี/ออเดอร์ปลอม */
+  const verifyPhoto=(window.QT_CAM_CAPTURES&&window.QT_CAM_CAPTURES['co-verify-photo'])||null;
+  if(!verifyPhoto){ toast('กรุณาถ่ายรูปยืนยันตัวตนก่อนสั่งซื้อ'); return; }
 
   /* V5.31 FIX — ร้านต้องมี shop_profiles.id ที่แน่นอนก่อนสร้าง Order.
      ห้ามสร้าง Order ด้วย users.id แล้วหวังว่า mapping จะพร้อมภายหลัง. */
@@ -3731,6 +3856,7 @@ async function confirmOrder(){
     items:cart.items.map(i=>Object.assign({},i)),subtotal,deliveryFee,gpAmount:gp,total,
     pickup:{lat:shop.lat,lng:shop.lng,address:shop.address},
     delivery:{lat:loc.lat,lng:loc.lng,address},
+    customerVerificationPhoto:verifyPhoto,
     status:'pending_shop',statusLog:[{status:'pending_shop',time:Date.now()}],createdAt:Date.now()
   };
   const orders=dbGet('qt_orders',[]);
@@ -3762,6 +3888,7 @@ async function confirmOrder(){
     return;
   }
   dbSet('qt_cart_'+user.id,{shopId:null,items:[]});
+  if(window.QT_CAM_CAPTURES) delete window.QT_CAM_CAPTURES['co-verify-photo'];
   pushNotification(shop.id,'📦 มีคำสั่งซื้อใหม่',`กรุณากด “รับงาน” เพื่อเริ่มดำเนินการ • จาก ${user.name} ยอด ฿${total}`,'order/'+order.id);
   toast('สั่งซื้อสำเร็จ! บันทึกออเดอร์แล้ว');
   navigate('order/'+order.id);
@@ -3961,6 +4088,7 @@ function renderOrderDetail(id){
       <div><b>รวม:</b> ${escapeHtml(order.total)} บาท</div>
       <div><b>ที่อยู่จัดส่ง:</b> ${escapeHtml((order.delivery&&order.delivery.address)||order.deliveryAddress||'-')}</div>
       <div><b>สถานะปัจจุบัน:</b> ${statusLabel(order.status)}</div>
+      ${order.customerVerificationPhoto && (typeof qtIsSafeRiderDocument!=='function' || qtIsSafeRiderDocument(order.customerVerificationPhoto)) ? `<div style="margin-top:8px"><b>📸 รูปยืนยันตัวตนลูกค้า (กันออเดอร์ปลอม):</b><br><img src="${order.customerVerificationPhoto}" style="width:120px;height:120px;object-fit:cover;border-radius:10px;margin-top:6px;border:1px solid #d1d5db"></div>` : ''}
     </div>
     <div class="status-timeline">${ORDER_STATUSES.filter(s=>s.key!=='cancelled').map((s,i)=>`<div class="timeline-step ${statusIndex(order.status)>=i&&order.status!=='cancelled'?'done':''} ${order.status===s.key?'current':''}">${s.icon} ${s.label}</div>`).join('')}</div>
     ${order.status==='cancelled'?'<div class="badge badge-red">❌ คำสั่งซื้อถูกยกเลิก</div>':''}
