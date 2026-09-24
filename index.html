@@ -536,6 +536,60 @@ html, body {
 .qt-order-parties{display:flex;gap:7px;align-items:center;flex-wrap:wrap;margin-top:10px;font-size:13px}.qt-order-summary{margin-top:7px;color:#475569;font-size:13px}
 .qt-order-progress{margin-top:12px;padding:12px;background:#f8fafc;border-radius:14px}.qt-order-progress-title{font-weight:800;font-size:13px;margin-bottom:8px}.qt-order-progress-list{display:grid;gap:6px}.qt-order-step{display:flex;gap:9px;align-items:center;min-height:34px;opacity:.45}.qt-order-step.done,.qt-order-step.active{opacity:1}.qt-order-step-icon{width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:#e2e8f0;font-size:13px;flex:none}.qt-order-step.done .qt-order-step-icon{background:#dcfce7;color:#15803d}.qt-order-step.active .qt-order-step-icon{background:var(--primary,#2563eb);color:#fff}.qt-order-step-text{display:flex;gap:7px;align-items:center;flex-wrap:wrap;font-size:12px}.qt-order-step-text small{color:#94a3b8}.qt-order-now{font-size:10px;padding:2px 6px;border-radius:999px;background:#dbeafe;color:#1d4ed8}.qt-order-cancelled{margin-top:8px;padding:9px;border-radius:10px;background:#fee2e2;color:#b91c1c;font-size:12px}.qt-order-card-actions{margin-top:10px}.qt-order-card-actions .btn-block{margin-top:6px}
 </style>
+
+<style id="queuego-master-theme-v1">
+/* QueueGo Master Theme — final design layer. Existing functional CSS is preserved. */
+:root{
+  --qg-green:#10b981;
+  --qg-green-dark:#078b5a;
+  --qg-green-soft:#eafaf2;
+  --qg-green-line:#d8eee3;
+  --qg-bg:#f6faf8;
+  --qg-text:#17251c;
+  --qg-muted:#718078;
+  --qg-danger:#dc2626;
+  --primary:var(--qg-green);
+  --primary-dark:var(--qg-green-dark);
+  --accent:#34c98d;
+  --bg:var(--qg-bg);
+  --surface:#fff;
+  --text:var(--qg-text);
+  --muted:var(--qg-muted);
+  --line:var(--qg-green-line);
+}
+html,body{max-width:100%;overflow-x:hidden;-webkit-text-size-adjust:100%;text-size-adjust:100%;}
+body{background:var(--qg-bg);color:var(--qg-text);}
+button,input,select,textarea{font-family:inherit;}
+button{touch-action:manipulation;}
+/* One button language across the product */
+.btn-primary{background:linear-gradient(135deg,#0b9f61 0%,#10b981 100%)!important;color:#fff!important;border:1px solid #0b9f61!important;box-shadow:0 7px 16px rgba(16,185,129,.16)!important;}
+.btn-primary:hover{filter:brightness(1.02);}
+.btn-secondary{background:#fff!important;color:#087d53!important;border:1px solid #bfe7d3!important;box-shadow:none!important;}
+.btn-danger{background:#fff!important;color:#c62828!important;border:1px solid #fecaca!important;box-shadow:none!important;}
+.btn-primary:active,.btn-secondary:active,.btn-danger:active{transform:scale(.985);}
+.tab.active{background:var(--qg-green)!important;border-color:var(--qg-green)!important;color:#fff!important;box-shadow:0 5px 12px rgba(16,185,129,.14)!important;}
+.tab{color:#53645b;border-color:#dcebe3;background:#fff;}
+form input:focus,form select:focus,form textarea:focus{border-color:var(--qg-green)!important;box-shadow:0 0 0 3px rgba(16,185,129,.12)!important;}
+/* Compact services: retain shortcuts but return most of the screen to shops. */
+.qg-service-compact{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px;margin:12px 0 4px;padding:2px 0;}
+.qg-service-compact button{min-width:0;border:0;background:transparent;padding:5px 2px;display:flex;flex-direction:column;align-items:center;gap:4px;color:#53645b;cursor:pointer;}
+.qg-service-compact button span{width:34px;height:34px;border-radius:11px;background:#eafaf2;border:1px solid #d8eee3;display:grid;place-items:center;font-size:16px;line-height:1;}
+.qg-service-compact button b{font-size:10px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;}
+.qg-service-compact button:active span{transform:scale(.94);}
+/* Shops become the main visual area. */
+.qg-section.qg-shops-main{margin-top:18px;}
+.qg-shop-strip{grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;}
+.qg-shop-strip .shop-card{min-height:150px;border-radius:18px!important;background:#fff;border:1px solid #e1eee7;box-shadow:0 6px 18px rgba(20,60,40,.055);overflow:hidden;}
+.qg-shop-strip .shop-card .shop-info{padding:14px;}
+.qg-shop-strip .shop-card .shop-info b{display:block;font-size:15px;color:#1d3026;margin-bottom:5px;}
+.qg-shop-strip .shop-card .shop-info div{font-size:12px;color:#748078;line-height:1.45;}
+.qg-shop-strip + *{margin-top:0;}
+/* Responsive: never force a fixed desktop width. */
+@media(max-width:900px){.qg-page{padding-left:clamp(12px,4vw,28px);padding-right:clamp(12px,4vw,28px);}.qg-shop-strip{grid-template-columns:repeat(2,minmax(0,1fr));}}
+@media(max-width:600px){.qg-service-compact{grid-template-columns:repeat(6,1fr);gap:2px;margin-top:8px;}.qg-service-compact button span{width:30px;height:30px;border-radius:9px;font-size:14px;}.qg-service-compact button b{font-size:9px;}.qg-shop-strip{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;}.qg-shop-strip .shop-card{min-height:138px;border-radius:16px!important;}.qg-shop-strip .shop-card .shop-info{padding:11px;}.qg-shop-strip .shop-card .shop-info b{font-size:14px;}}
+@media(max-width:390px){.qg-service-compact{gap:0;}.qg-service-compact button span{width:27px;height:27px;font-size:13px;}.qg-service-compact button b{font-size:8.5px;}.qg-shop-strip{grid-template-columns:1fr 1fr;gap:8px;}}
+@media(min-width:1100px){.qg-shop-strip{grid-template-columns:repeat(4,minmax(0,1fr));}.qg-shop-strip .shop-card{min-height:170px;}}
+</style>
 </head>
 <body>
 
@@ -2537,17 +2591,15 @@ function renderHome(){
       <div class="qg-hero-art">Q</div>
     </section>
     <section class="qg-search-card" onclick="navigate('search')"><span>⌕</span><span>ค้นหาร้าน สินค้า หรือบริการ...</span><b>›</b></section>
-    <section class="qg-section"><div class="qg-section-head"><h2>บริการของ QueueGo</h2><button onclick="navigate('search')">ดูทั้งหมด ›</button></div>
-      <div class="qg-category-grid">
-        <button onclick="navigate('search')"><span>🍜</span><b>อาหาร</b></button>
-        <button onclick="navigate('search')"><span>🥤</span><b>เครื่องดื่ม</b></button>
-        <button onclick="navigate('search')"><span>🛒</span><b>ของใช้</b></button>
-        <button onclick="navigate('search')"><span>💊</span><b>ยา/สุขภาพ</b></button>
-        <button onclick="navigate('search')"><span>🧰</span><b>บริการ</b></button>
-        <button onclick="navigate('search')"><span>•••</span><b>อื่นๆ</b></button>
-      </div>
+    <section class="qg-service-compact" aria-label="บริการลัด">
+      <button onclick="navigate('search')"><span>🍜</span><b>อาหาร</b></button>
+      <button onclick="navigate('search')"><span>🥤</span><b>เครื่องดื่ม</b></button>
+      <button onclick="navigate('search')"><span>🛒</span><b>ของใช้</b></button>
+      <button onclick="navigate('search')"><span>💊</span><b>สุขภาพ</b></button>
+      <button onclick="navigate('search')"><span>🧰</span><b>บริการ</b></button>
+      <button onclick="navigate('search')"><span>•••</span><b>อื่นๆ</b></button>
     </section>
-    <section class="qg-section"><div class="qg-section-head"><h2>ร้านแนะนำใกล้คุณ</h2><button onclick="navigate('search')">ดูทั้งหมด ›</button></div><div id="home-promote" class="qg-shop-strip"></div></section>
+    <section class="qg-section qg-shops-main"><div class="qg-section-head"><h2>ร้านแนะนำใกล้คุณ</h2><button onclick="navigate('search')">ดูทั้งหมด ›</button></div><div id="home-promote" class="qg-shop-strip"></div></section>
   `);
   renderHomePromoteWidget();
 }
