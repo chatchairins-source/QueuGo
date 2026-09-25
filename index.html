@@ -929,7 +929,11 @@ async function qtPersistKey(key,val){
   marks.forEach(([id,h])=>{ bucket[id]=h; });
 }
 async function qtPersistKeyRaw(key,val){
-  const token=await qtGetAccessToken(); if(!token || !window.QT_SUPABASE_CONFIG) return;
+  const token=await qtGetAccessToken();
+  if(!token || !window.QT_SUPABASE_CONFIG){
+    if(key==='qt_orders') throw new Error('ไม่มีการเชื่อมต่อฐานข้อมูล กรุณาเข้าสู่ระบบใหม่');
+    return;
+  }
   const me=qtSessionRead()||{};
   try{
     if(key==='qt_users'){
@@ -1039,7 +1043,7 @@ function qtRerenderAfterHydrate(tries){
   tries=tries||0;
   if(!currentUser()) return;
   const name=(location.hash.replace('#','')||'home').split('/')[0];
-  if(['login','register'].includes(name)) return; /* these pages do not depend on loaded data */
+  if(['login','register','checkout'].includes(name)) return; /* checkout must keep its live camera and form state */
   const a=document.activeElement;
   const typing=(a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)) ||
     [].slice.call(document.querySelectorAll('#app textarea, #app input:not([type=checkbox]):not([type=radio]):not([type=file]):not([type=hidden])')).some(el=>String(el.value||'').trim());
@@ -1194,6 +1198,8 @@ async function qtHydrateDatabase(opts){
       if(pay) o.payment={id:pay.id,amount:Number(pay.amount||0),method:pay.payment_method,status:pay.status,reference:pay.transaction_reference,paidAt:pay.paid_at?new Date(pay.paid_at).getTime():null,note:pay.note||''};
       return o;
     });
+    QT_DB_CACHE.qt_orders.filter(o=>['completed','cancelled'].includes(o.status) && o.customerVerificationPhoto)
+      .forEach(o=>{ qtPurgeVerificationPhotoOnClosed(o).catch(e=>console.warn('Verification photo cleanup failed:',e)); });
     try{
       const ns=await qtSupabaseTable('notifications?select=*&user_id=eq.'+encodeURIComponent(s.userId||'') ,{accessToken:token});
       QT_DB_CACHE.qt_notifications=(Array.isArray(ns)?ns:[]).map(n=>({id:n.id,userId:n.user_id,title:n.title||'การแจ้งเตือน',message:n.message||'',body:n.message||'',link:qtNotifLinkFromRow(n),type:n.type||'system',referenceId:n.reference_id||null,read:n.is_read===true,readAt:n.is_read?new Date(n.created_at).getTime():null,createdAt:new Date(n.created_at).getTime()}));
@@ -1223,10 +1229,7 @@ async function qtHydrateDatabase(opts){
 
 
 function toast(msg){
-  /* Customer UI: transient black Toast is intentionally hidden.
-     Business logic still calls toast() as before, so nothing is deleted. */
-  const u=currentUser();
-  if(u && u.type==='customer') return;
+  /* Customers need to see validation and server errors as well as success messages. */
   const t = document.createElement('div');
   t.className = 'qt-toast';
   t.textContent = msg;
@@ -1822,7 +1825,7 @@ function qtSyncRerender(before,after){
   if(a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)) return;
   if(name==='order' && before.main===after.main && after.chat!==before.chat){ try{renderOrderChatArea(param);}catch(e){} return; }
   if(before.main===after.main) return;
-  const safe=['home','dashboard','profile','search','shop-view','cart','checkout','orders','order','order-chat','notifications'];
+  const safe=['home','dashboard','profile','search','shop-view','cart','orders','order','order-chat','notifications'];
   if(!safe.includes(name)) return;
   const typed=[].slice.call(document.querySelectorAll('#app textarea,#app input:not([type=checkbox]):not([type=radio]):not([type=file]):not([type=hidden])')).some(el=>String(el.value||'').trim());
   if(typed) return;
@@ -2127,6 +2130,8 @@ function renderHomePromoteWidget(){
   const promos = dbGet('qt_promotions',[]).filter(p=>p.status==='active').sort((a,b)=>b.bidPrice-a.bidPrice).slice(0,3);
   const el = document.getElementById('home-promote');
   if(!el) return;
+  const section=el.closest('.qg-section.qg-shops-main');
+  if(section) section.style.display=promos.length?'':'none';
   el.innerHTML = promos.length ? `
     <h3>⭐ ร้านแนะนำ <span class="ad-tag-sm">โฆษณา/โปรโมต</span></h3>
     <div class="shop-list">
@@ -2236,9 +2241,32 @@ function switchRegisterContact(mode){
 
 
 
-/* กล้องยืนยันตัวตนหน้า Checkout: เปิดค้างไว้ ตรวจจับใบหน้าแล้วบันทึกภาพอัตโนมัติ
-   ปุ่มเลื่อนยืนยันจะถูกล็อกจนกว่าจะพบใบหน้าอย่างน้อยหนึ่งครั้ง */
+/* Checkout camera: capture once before enabling the order button. */
 let qtCheckoutCamStream=null, qtCheckoutCamTimer=null;
+function qtCheckoutError(message){
+  const el=document.getElementById('checkout-error');
+  if(el){ el.textContent=message; el.hidden=false; }
+  toast(message);
+}
+let qtCheckoutSubmitting=false;
+async function qtSubmitCheckoutOrder(){
+  const btn=document.getElementById('checkout-confirm-btn');
+  if(qtCheckoutSubmitting || !btn || btn.disabled) return;
+  qtCheckoutSubmitting=true;
+  btn.disabled=true;
+  btn.textContent='กำลังบันทึกคำสั่งซื้อ...';
+  const error=document.getElementById('checkout-error');
+  if(error){ error.hidden=true; error.textContent=''; }
+  try{ await confirmOrder(); }
+  catch(err){ console.error('Checkout failed:',err); qtCheckoutError('สั่งซื้อไม่สำเร็จ กรุณาลองอีกครั้ง'); }
+  finally{
+    qtCheckoutSubmitting=false;
+    if(document.getElementById('checkout-confirm-btn')===btn){
+      btn.disabled=!!window.QT_CHECKOUT_UNCERTAIN || !(window.QT_CAM_CAPTURES&&window.QT_CAM_CAPTURES['co-verify-photo']);
+      btn.textContent='ยืนยันคำสั่งซื้อ';
+    }
+  }
+}
 async function qtStartCheckoutFaceCam(){
   const video=document.getElementById('co-verify-video');
   const canvas=document.getElementById('co-verify-canvas');
@@ -2249,10 +2277,14 @@ async function qtStartCheckoutFaceCam(){
     return;
   }
   try{
-    qtCheckoutCamStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'user'},audio:false});
-    video.srcObject=qtCheckoutCamStream;
+    const stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'user'},audio:false});
+    if(document.getElementById('co-verify-video')!==video){ stream.getTracks().forEach(track=>track.stop()); return; }
+    qtCheckoutCamStream=stream;
+    video.srcObject=stream;
+    await video.play();
   }catch(err){
     console.error('[QueueTech] checkout camera failed:',err);
+    qtStopCheckoutFaceCam();
     if(statusEl) statusEl.textContent='ไม่สามารถเข้าถึงกล้องได้ กรุณาอนุญาตการใช้กล้องแล้วลองใหม่';
     return;
   }
@@ -2274,8 +2306,9 @@ async function qtStartCheckoutFaceCam(){
       if(r>90 && g>40 && b>20 && (max-min)>15 && Math.abs(r-g)>12 && r>g && r>b) skin++;
     }
     const faceLike = total>0 && (skin/total) > 0.14;
-    const slide=document.getElementById('checkout-confirm-slide');
-    if(faceLike){
+    const button=document.getElementById('checkout-confirm-btn');
+    const frame=document.getElementById('co-verify-guide');
+    if(faceLike && !confirmedOnce){
       const maxOut=900;
       const outCanvas=document.createElement('canvas');
       outCanvas.width=maxOut; outCanvas.height=maxOut;
@@ -2283,11 +2316,12 @@ async function qtStartCheckoutFaceCam(){
       window.QT_CAM_CAPTURES=window.QT_CAM_CAPTURES||{};
       window.QT_CAM_CAPTURES['co-verify-photo']=outCanvas.toDataURL('image/jpeg',0.85);
       confirmedOnce=true;
-      if(statusEl){ statusEl.textContent='✅ พบใบหน้า — บันทึกภาพยืนยันแล้ว'; statusEl.classList.add('qt-livecam-ok'); }
-      if(slide) slide.classList.remove('qt-slide-locked');
+      if(statusEl){ statusEl.textContent='✅ เราบันทึกข้อมูลใบหน้าของคุณไว้แล้ว ไฟล์รูปจะถูกลบเมื่อจัดส่งออเดอร์เรียบร้อย'; statusEl.classList.add('qt-livecam-ok'); }
+      if(frame) frame.classList.add('qt-livecam-guide-ok');
+      if(button && !qtCheckoutSubmitting) button.disabled=false;
     } else if(!confirmedOnce){
       if(statusEl){ statusEl.textContent='🔍 กรุณาหันหน้าเข้ากล้องให้อยู่ในกรอบ'; statusEl.classList.remove('qt-livecam-ok'); }
-      if(slide) slide.classList.add('qt-slide-locked');
+      if(button) button.disabled=true;
     }
   }, 500);
 }
@@ -2582,16 +2616,23 @@ async function runSearch(){
 
   document.getElementById('search-results').innerHTML = shops.length ? shops.map(s=>shopCard(s)).join('') : '<p>ไม่พบร้านค้า</p>';
 }
+function qtEmptyShopLogo(img){
+  const frame=document.createElement('div');
+  frame.className=img.className+' qt-shop-logo-empty';
+  frame.setAttribute('aria-hidden','true');
+  img.replaceWith(frame);
+}
 function qgShopLogoHtml(s){
   const photo = s.logo || s.profileImage || s.profile_image || s.profilePhoto || s.avatarUrl || '';
-  if(!photo) return '';
-  return `<img src="${escapeHtml(photo)}" class="shop-logo" alt="${escapeHtml(s.shopName||'ร้านค้า')}" onerror="this.remove()">`;
+  if(!photo) return '<div class="shop-logo qt-shop-logo-empty" aria-hidden="true"></div>';
+  return `<img src="${escapeHtml(photo)}" class="shop-logo" alt="${escapeHtml(s.shopName||'ร้านค้า')}" onerror="qtEmptyShopLogo(this)">`;
 }
 function shopCard(s){
   const rs=qtShopRatingSummary(s.id);
   const hours=`⏰ ${escapeHtml(s.openTime||'09:00')}-${escapeHtml(s.closeTime||'20:00')}`;
   const distanceLine = Number.isFinite(s.distance) ? `📍 ${s.distance.toFixed(1)} กม. • ${hours}` : hours;
-  return `<div class="shop-card" onclick="navigate('shop-view/${s.id}')">
+  const hasPhoto=!!(s.logo||s.profileImage||s.profile_image||s.profilePhoto||s.avatarUrl);
+  return `<div class="shop-card${hasPhoto?'':' qt-shop-no-image'}" onclick="navigate('shop-view/${s.id}')">
     ${qgShopLogoHtml(s)}
     <div class="shop-info">
       <b>${escapeHtml(s.shopName)}</b> ${isPromoted(s.id)?'<span class="ad-tag-sm">โปรโมต</span>':''}
@@ -2724,6 +2765,7 @@ function changeQty(productId, delta){
   const user = currentUser();
   let cart = qtGetCart();
   const item = cart.items.find(i=>i.productId===productId);
+  if(!item){ toast('สินค้านี้ไม่อยู่ในตะกร้าแล้ว'); renderCart(); return; }
   item.qty += delta;
   if(item.qty<=0) cart.items = cart.items.filter(i=>i.productId!==productId);
   qtSetCart(cart);
@@ -2800,9 +2842,11 @@ function renderCheckout(){
   const cart = dbGet('qt_cart_'+user.id, {items:[]});
   if(!cart.items.length){ toast('ตะกร้าว่างเปล่า'); navigate('cart'); return; }
   const shop = dbGet('qt_users',[]).find(u=>u.id===cart.shopId);
+  if(!shop){ toast('ไม่พบข้อมูลร้านค้า กรุณาเลือกสินค้าใหม่'); navigate('cart'); return; }
   const subtotal = cart.items.reduce((s,i)=>s+i.price*i.qty,0);
   /* ล้างรูปยืนยันตัวตนของออเดอร์ก่อนหน้า เพื่อไม่ให้ค้างมาใช้กับออเดอร์ใหม่โดยไม่ได้ตั้งใจ */
   if(window.QT_CAM_CAPTURES) delete window.QT_CAM_CAPTURES['co-verify-photo'];
+  window.QT_CHECKOUT_UNCERTAIN=false;
   layout('ยืนยันคำสั่งซื้อ', `
     <h2>ยืนยันคำสั่งซื้อ - ${escapeHtml(shop.shopName)}</h2>
     <h3>เลือกตำแหน่งจัดส่ง</h3>
@@ -2818,14 +2862,13 @@ function renderCheckout(){
     </div>
     <div class="rider-face-upload" style="background:#fff;border-radius:12px;padding:16px;margin:10px 0;box-shadow:0 1px 4px rgba(0,0,0,.06)">
       <h3 style="margin:0 0 10px;font-size:15px;color:#111827">📸 ยืนยันตัวตนก่อนสั่งซื้อ <span class="req">(บังคับ)</span></h3>
-      <div class="qt-livecam-box"><video id="co-verify-video" autoplay playsinline muted></video></div>
+      <div class="qt-livecam-box qt-checkout-camera"><video id="co-verify-video" autoplay playsinline muted></video><div id="co-verify-guide" class="qt-livecam-guide" aria-hidden="true"></div></div>
       <canvas id="co-verify-canvas" style="display:none"></canvas>
-      <div id="co-verify-status" class="qt-livecam-status">🔍 กำลังเปิดกล้อง...</div>
-      <small>ระบบได้บันทึกภาพของคุณไว้แล้ว เพื่อป้องกันออเดอร์ปลอม (Order ผี) — กล้องจะจับภาพให้อัตโนมัติเมื่อพบใบหน้า ไม่ต้องกดถ่ายเอง หากออเดอร์นี้ไม่มีไรเดอร์รับงานเลย ระบบจะลบภาพนี้ทิ้งเมื่อออเดอร์ปิด</small>
+      <div id="co-verify-status" class="qt-livecam-status" role="status">🔍 กำลังเปิดกล้อง... กรุณาหันหน้าให้อยู่ในกรอบ</div>
     </div>
-    ${qtSlideConfirm('checkout-confirm-slide', '➡️ เลื่อนเพื่อยืนยันสั่งซื้อ', 'confirmOrder()')}
+    <div id="checkout-error" class="qt-checkout-error" role="alert" hidden></div>
+    <button id="checkout-confirm-btn" class="btn-primary btn-block qt-checkout-button" type="button" onclick="qtSubmitCheckoutOrder()" disabled>ยืนยันคำสั่งซื้อ</button>
   `);
-  document.getElementById('checkout-confirm-slide')?.classList.add('qt-slide-locked');
   qtStartCheckoutFaceCam();
   let picked = {lat:13.7563, lng:100.5018};
   window.__checkoutSubtotal = subtotal;
@@ -2882,10 +2925,10 @@ async function confirmOrder(){
   const cart=dbGet('qt_cart_'+user.id,{items:[]});
   if(!cart.items.length){toast('ตะกร้าว่างเปล่า');navigate('cart');return;}
   const shop=dbGet('qt_users',[]).find(u=>u.id===cart.shopId);
-  if(!shop){toast('ไม่พบข้อมูลร้านค้า กรุณากลับไปเลือกสินค้าใหม่');return;}
+  if(!shop){qtCheckoutError('ไม่พบข้อมูลร้านค้า กรุณากลับไปเลือกสินค้าใหม่');return;}
   /* บังคับถ่ายรูปยืนยันตัวตนสดผ่านกล้องก่อนบันทึกออเดอร์ เพื่อป้องกัน Order ผี/ออเดอร์ปลอม */
   const verifyPhoto=(window.QT_CAM_CAPTURES&&window.QT_CAM_CAPTURES['co-verify-photo'])||null;
-  if(!verifyPhoto){ toast('กรุณาถ่ายรูปยืนยันตัวตนก่อนสั่งซื้อ'); return; }
+  if(!verifyPhoto){ qtCheckoutError('กรุณาหันหน้าเข้ากล้องเพื่อยืนยันก่อนสั่งซื้อ'); return; }
 
   /* V5.31 FIX — ร้านต้องมี shop_profiles.id ที่แน่นอนก่อนสร้าง Order.
      ห้ามสร้าง Order ด้วย users.id แล้วหวังว่า mapping จะพร้อมภายหลัง. */
@@ -2905,7 +2948,7 @@ async function confirmOrder(){
     }
   }
   if(!shopProfileId){
-    toast('ไม่พบข้อมูลโปรไฟล์ร้านค้าในฐานข้อมูล กรุณาบันทึกข้อมูลร้านใหม่ก่อนสั่งซื้อ');
+    qtCheckoutError('ไม่พบข้อมูลโปรไฟล์ร้านค้าในฐานข้อมูล กรุณาติดต่อร้านค้า');
     console.error('[QueueTech] Order blocked: shop_profiles.id missing for user',shop.id);
     return;
   }
@@ -2947,11 +2990,33 @@ async function confirmOrder(){
       if(attempt<5)await new Promise(r=>setTimeout(r,500*attempt));
     }
   }
+  /* A network timeout may happen after Supabase accepted the insert. Check the
+     order ID before offering a retry so one tap cannot create two orders. */
+  let verificationUncertain=false;
   if(!saved){
+    try{
+      const token=await qtGetAccessToken();
+      if(token){
+        const rows=await qtSupabaseTable('orders?select=id&id=eq.'+encodeURIComponent(order.id)+'&limit=1',{accessToken:token});
+        if(Array.isArray(rows)&&rows.some(row=>row.id===order.id)){
+          const items=await qtSupabaseTable('order_items?select=id&order_id=eq.'+encodeURIComponent(order.id),{accessToken:token});
+          saved=Array.isArray(items) && items.length>=order.items.length;
+          if(!saved) verificationUncertain=true; /* partial write; do not start a second order */
+        }
+      }else verificationUncertain=true;
+    }catch(e){ verificationUncertain=true; console.warn('Could not verify checkout after save failure:',e); }
+  }
+  if(!saved){
+    const idx=orders.findIndex(o=>o.id===order.id);
+    if(idx>=0) orders.splice(idx,1);
+    QT_DB_CACHE.qt_orders=orders;
     const msg=String((lastErr&&lastErr.message)||'ไม่ทราบสาเหตุ');
     qtSyncFailed('qt_orders',lastErr||new Error('บันทึกออเดอร์ไม่สำเร็จ'));
     console.error('QueueTech confirmOrder save failed:',lastErr);
-    toast('บันทึกออเดอร์ไม่สำเร็จ: '+msg.slice(0,120));
+    window.QT_CHECKOUT_UNCERTAIN=verificationUncertain;
+    qtCheckoutError(verificationUncertain
+      ? 'ยังตรวจสอบไม่ได้ว่าออเดอร์ถูกบันทึกหรือไม่ กรุณาเช็กรายการคำสั่งซื้อก่อนลองใหม่'
+      : 'บันทึกออเดอร์ไม่สำเร็จ: '+msg.slice(0,120));
     return;
   }
   dbSet('qt_cart_'+user.id,{shopId:null,items:[]});
@@ -3251,10 +3316,9 @@ function orderActionButtons(order,user){
 
 
 
-/* ออเดอร์ที่ไม่มีไรเดอร์รับงานเลยแล้วปิดไป (เสร็จ/ยกเลิก) ไม่มีเหตุผลต้องเก็บภาพยืนยันตัวตนต่อ — ลบทิ้งเพื่อความเป็นส่วนตัว
-   ออเดอร์ที่มีไรเดอร์รับงานแล้วยังคงเก็บภาพไว้ เผื่อใช้ตรวจสอบข้อพิพาทภายหลัง */
-async function qtPurgeVerificationPhotoIfUnclaimed(order){
-  if(!order || !order.customerVerificationPhoto || order.riderId) return;
+/* Clear the image on completed or cancelled orders, including those with a rider. */
+async function qtPurgeVerificationPhotoOnClosed(order){
+  if(!order || !['completed','cancelled'].includes(order.status) || !order.customerVerificationPhoto) return;
   order.customerVerificationPhoto=null;
   if(window.QT_HAS_VERIFICATION_PHOTO_COLUMN){
     try{
@@ -3272,6 +3336,7 @@ function updateOrderStatus(orderId,newStatus){
   if(order.status!=='pending_shop'){toast('ร้านรับออเดอร์แล้ว ไม่สามารถยกเลิกได้');renderOrderDetail(orderId);return;}
   if(!confirm('ยืนยันยกเลิกออเดอร์นี้?')) return;
   order.status='cancelled';
+  qtPurgeVerificationPhotoOnClosed(order).catch(e=>console.warn('Verification photo cleanup failed:',e));
   order.statusLog=Array.isArray(order.statusLog)?order.statusLog:[];
   order.statusLog.push({status:'cancelled',time:Date.now()});
   if(chatKey){QT_DB_CACHE[chatKey(order.id)+'_deleteAt']=Date.now()+20*60*1000;}
@@ -3344,18 +3409,9 @@ function initTrackingMap(order){
    is unchanged; this just runs the same checks once each, on one shared timer/listener. */
 
 /* ---------- QueueGo Customer App bootstrap ---------- */
-window.addEventListener('hashchange',router);
-window.addEventListener('pageshow',()=>{ try{router();}catch(e){} });
-window.addEventListener('DOMContentLoaded',async()=>{
-  const hadSession=!!qtAccessToken();
-  if(hadSession) await qtRestoreOwnUser();
-  router();
-  qtStartSyncLoop();
-  setTimeout(async()=>{
-    if(hadSession){ await qtBackgroundHydrate({light:false}); }
-    else { const ok=await qtHydratePublicStorefront(); if(ok) qtRerenderAfterPublicHydrate(); }
-  },0);
-});
+/* A second boot/hashchange listener re-rendered checkout while the camera was
+   capturing, resetting the confirmation control. Only restore on bfcache. */
+window.addEventListener('pageshow',event=>{ if(event.persisted) router(); });
 </script>
 
 <script>
@@ -3782,6 +3838,33 @@ body{padding-bottom:calc(64px + env(safe-area-inset-bottom))}
   .qt-products-heading+.product-grid .product-img{height:98px}
   #search-results.qg-shop-strip{grid-template-columns:repeat(3,minmax(0,1fr))!important}
 }
+</style>
+
+<style id="qt-empty-shop-photo-and-name-fit">
+/* Reserve a quiet photo frame until a shop adds its image. */
+.qg-shop-strip .shop-card .shop-logo.qt-shop-logo-empty,
+#search-results.qg-shop-strip .shop-card .shop-logo.qt-shop-logo-empty,
+.shop-header .shop-logo-lg.qt-shop-logo-empty{
+  display:block!important;flex:none;background:#f3f7f4!important;
+  border:1px solid #dce8df!important;box-shadow:none!important;
+}
+.qg-shop-strip .shop-card .shop-info,
+#search-results.qg-shop-strip .shop-card .shop-info{min-width:0;max-width:100%;width:100%;overflow:hidden}
+.qg-shop-strip .shop-card .shop-info b,
+#search-results.qg-shop-strip .shop-card .shop-info b{
+  display:-webkit-box!important;-webkit-box-orient:vertical;-webkit-line-clamp:2;
+  white-space:normal!important;overflow:hidden;overflow-wrap:anywhere;
+  max-width:100%;line-height:1.25;
+}
+</style>
+<style id="qt-checkout-tap-confirm">
+.qt-checkout-camera{position:relative}
+.qt-livecam-guide{position:absolute;inset:12%;border:3px solid rgba(255,255,255,.8);border-radius:22px;pointer-events:none;box-shadow:0 0 0 999px rgba(0,0,0,.1) inset;transition:border-color .2s,box-shadow .2s}
+.qt-livecam-guide.qt-livecam-guide-ok{border-color:#22c55e;box-shadow:0 0 0 2px rgba(34,197,94,.32),0 0 16px rgba(34,197,94,.65)}
+.qt-checkout-button{min-height:52px;font-size:16px;font-weight:700;margin:12px 0 24px}
+.qt-checkout-button:disabled{opacity:.52;cursor:not-allowed}
+.qt-checkout-error{padding:10px 12px;border:1px solid #fecaca;border-radius:9px;background:#fff1f2;color:#a61b1b;font-size:13px;line-height:1.4}
+.qt-checkout-error[hidden]{display:none}
 </style>
 
 </body>
