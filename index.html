@@ -712,83 +712,6 @@ form input:focus,form select:focus,form textarea:focus{border-color:var(--qg-gre
  .qg-service-compact button b{font-size:9px!important;}
 }
 </style>
-<style id="queuego-home-polish-v8">
-/* V8 — layout balance: prevent header/location clipping and keep the customer home visually unified */
-.qg-main{position:relative!important;z-index:1!important;}
-.qg-header{position:relative!important;z-index:20!important;}
-.qg-page{position:relative!important;z-index:1!important;padding-top:10px!important;}
-
-/* Delivery address: fixed internal rhythm so label can never sit behind the top edge */
-.qg-location-showcase{
-  position:relative!important;
-  box-sizing:border-box!important;
-  min-height:98px!important;
-  height:98px!important;
-  margin:0 0 14px!important;
-  padding:12px 14px 12px 14px!important;
-  display:flex!important;
-  align-items:center!important;
-  overflow:hidden!important;
-}
-.qg-location-showcase .qg-location-copy{
-  min-width:0!important;
-  min-height:54px!important;
-  display:flex!important;
-  flex:1 1 auto!important;
-  flex-direction:column!important;
-  justify-content:center!important;
-  overflow:hidden!important;
-}
-.qg-location-showcase .qg-location-label{
-  display:block!important;
-  margin:0 0 5px!important;
-  padding:0!important;
-  line-height:1.2!important;
-  height:auto!important;
-}
-.qg-location-showcase .qg-location-address{
-  display:block!important;
-  margin:0!important;
-  padding:0!important;
-  line-height:1.25!important;
-  height:auto!important;
-  max-width:none!important;
-}
-.qg-location-showcase .qg-location-icon{flex:0 0 50px!important;width:50px!important;height:50px!important;}
-.qg-location-showcase .qg-location-arrow{flex:0 0 auto!important;margin-left:5px!important;}
-.qg-location-showcase .qg-location-cart{flex:0 0 32px!important;width:32px!important;}
-
-/* Hero: keep a clean visual separation instead of two green blocks visually colliding */
-.qg-hero-reference{
-  margin-top:0!important;
-  margin-bottom:14px!important;
-  box-sizing:border-box!important;
-  overflow:hidden!important;
-}
-
-@media(max-width:600px){
-  .qg-page{padding-top:8px!important;}
-  .qg-location-showcase{
-    height:92px!important;
-    min-height:92px!important;
-    margin:0 0 13px!important;
-    padding:10px 11px!important;
-    border-radius:25px!important;
-  }
-  .qg-location-showcase .qg-location-icon{width:48px!important;height:48px!important;flex-basis:48px!important;}
-  .qg-location-showcase .qg-location-copy{min-height:52px!important;}
-  .qg-location-showcase .qg-location-label{font-size:11px!important;line-height:1.2!important;margin-bottom:4px!important;}
-  .qg-location-showcase .qg-location-address{font-size:15px!important;line-height:1.2!important;}
-  .qg-location-showcase .qg-location-arrow{font-size:35px!important;margin-left:2px!important;}
-  .qg-location-showcase .qg-location-cart{font-size:25px!important;flex-basis:29px!important;width:29px!important;}
-  .qg-hero-reference{margin-top:0!important;margin-bottom:13px!important;}
-}
-@media(max-width:390px){
-  .qg-location-showcase{height:90px!important;min-height:90px!important;}
-  .qg-location-showcase .qg-location-address{font-size:14px!important;}
-}
-</style>
-
 </head>
 <body>
 
@@ -6602,4 +6525,3 @@ body:before,body:after,#app:before,#app:after{content:none!important;display:non
 
 </body>
 </html>
-
