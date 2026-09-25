@@ -2727,7 +2727,22 @@ function renderHome(){
     ${user&&user.type==='customer' ? renderCustomerLocationBar(user) : ''}
     <section class="qg-hero qg-hero-compact">
       <div class="qg-hero-copy"><div class="qg-eyebrow">QUEUEGO</div><h1>${greeting}</h1><p>ค้นหาร้านใกล้คุณ สั่งสินค้า และติดตามออเดอร์ได้ในที่เดียว</p></div>
-      <div class="qg-hero-art">Q</div>
+      <div class="qg-hero-scene">
+        <svg class="qg-hero-illust" viewBox="0 0 160 130" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <path d="M14 66 C 34 26, 96 22, 118 50" fill="none" stroke="#fff" stroke-opacity=".55" stroke-width="2.5" stroke-dasharray="6 7" stroke-linecap="round"/>
+          <g transform="translate(4,4)">
+            <path d="M14 0C6.3 0 0 6.3 0 14c0 10.5 14 25 14 25s14-14.5 14-25C28 6.3 21.7 0 14 0z" fill="#fff"/>
+            <circle cx="14" cy="14" r="5.5" fill="#0aa568"/>
+          </g>
+          <g transform="translate(2,70)">
+            <circle cx="10" cy="34" r="8" fill="none" stroke="#fff" stroke-width="3"/>
+            <circle cx="42" cy="34" r="8" fill="none" stroke="#fff" stroke-width="3"/>
+            <path d="M6 34 h8 l7-18h16l5 9h9 M22 16 l5-7 h9" stroke="#fff" stroke-width="3.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+            <circle cx="33" cy="6" r="5" fill="#fff"/>
+          </g>
+        </svg>
+        <div class="qg-hero-art">Q</div>
+      </div>
     </section>
     <section class="qg-search-card" onclick="navigate('search')"><span>⌕</span><span>ค้นหาร้าน สินค้า หรือบริการ...</span><b>›</b></section>
     <section class="qg-service-compact" aria-label="บริการลัด">
@@ -6154,6 +6169,8 @@ body{padding-bottom:calc(78px + env(safe-area-inset-bottom));}
 .qg-bottomnav a{color:#748078;padding:8px 2px 6px;font-size:10px;font-weight:600}.qg-bottomnav a span{font-size:11px;margin-top:2px}.qg-bottomnav a.active{color:#08a968}.qg-bottomnav a:first-letter{font-size:22px}.qg-bottomnav .cart-count-badge{right:24%;background:#10b981}
 .qg-hero{width:100%;min-height:190px;border-radius:24px;padding:26px clamp(20px,5vw,52px);display:flex;align-items:center;justify-content:space-between;gap:20px;background:linear-gradient(135deg,#0b9f61,#10b981 58%,#36c98d);color:#fff;overflow:hidden;position:relative;box-shadow:0 12px 30px rgba(16,185,129,.14)}
 .qg-hero:after{content:"";position:absolute;width:280px;height:280px;border-radius:50%;right:-80px;bottom:-150px;background:rgba(255,255,255,.12)}.qg-hero-copy{position:relative;z-index:1}.qg-eyebrow{font-size:11px;letter-spacing:1.5px;font-weight:800;opacity:.85}.qg-hero h1{margin:5px 0 6px;color:#fff;font-size:clamp(24px,4vw,36px);line-height:1.15}.qg-hero p{margin:0;opacity:.9;font-size:14px;max-width:600px}.qg-hero-art{position:relative;z-index:1;width:110px;height:110px;border-radius:32px;background:#fff;color:#0aa568;display:grid;place-items:center;font-size:58px;font-weight:900;box-shadow:0 12px 30px rgba(0,0,0,.1);transform:rotate(5deg)}
+.qg-hero-scene{position:relative;z-index:1;display:flex;align-items:flex-end;gap:6px;flex:none}
+.qg-hero-illust{width:82px;height:68px;flex:none}
 .qg-search-card{width:100%;height:56px;margin:16px 0;background:#fff;border:1px solid #e3ece6;border-radius:16px;display:flex;align-items:center;gap:12px;padding:0 16px;color:#8a968e;cursor:pointer;box-shadow:0 5px 18px rgba(16,60,38,.04)}.qg-search-card span:first-child{font-size:24px;color:#10b981}.qg-search-card b{margin-left:auto;color:#10b981;font-size:22px}.qg-section{margin-top:24px}.qg-section-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}.qg-section-head h2{font-size:18px;margin:0;color:#17251c}.qg-section-head button{border:0;background:none;color:#08a968;font-weight:700;cursor:pointer}.qg-category-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:10px}.qg-category-grid button{border:1px solid #e3ece6;background:#fff;border-radius:16px;padding:15px 8px;display:flex;flex-direction:column;align-items:center;gap:7px;color:#23352b;cursor:pointer;box-shadow:0 4px 14px rgba(20,60,40,.035)}.qg-category-grid span{width:44px;height:44px;border-radius:14px;background:#eafaf2;display:grid;place-items:center;font-size:23px}.qg-category-grid b{font-size:12px}.qg-shop-strip{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
 .qg-shop-strip .shop-card{
   min-height:104px;margin:0;padding:7px;border-radius:12px!important;
@@ -6182,6 +6199,7 @@ body:before,body:after,#app:before,#app:after{content:none!important;display:non
 @media(max-width:699px){
   .qg-hero{min-height:165px;border-radius:0;margin:0 -16px;width:calc(100% + 32px);padding:24px 20px}
   .qg-hero-art{width:76px;height:76px;border-radius:22px;font-size:40px}
+  .qg-hero-illust{width:56px;height:46px}
   .qg-category-grid{grid-template-columns:repeat(3,1fr)}
   .qg-shop-strip{grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
   .qg-shop-strip .shop-card{min-height:96px;padding:6px;border-radius:11px!important;flex-direction:row;align-items:center;gap:7px}
