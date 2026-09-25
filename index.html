@@ -225,9 +225,21 @@ form input:focus,form select:focus,form textarea:focus{
 .stat-card{border-radius:16px;padding:14px;background:linear-gradient(145deg,#fff,#f8fafc)}
 .stat-card b{display:block;font-size:24px;color:#1d4ed8;margin-top:4px}
 .status-toggle{border-radius:16px;padding:14px}
-.shop-header{height:190px;border-radius:20px;box-shadow:none;background:transparent!important;padding:0;display:flex;align-items:center;justify-content:center}
-.shop-logo-lg{width:76px;height:76px;min-width:76px;max-width:76px;aspect-ratio:1/1;border-radius:10px;object-fit:cover;display:block;background:transparent;border:0;padding:0;box-shadow:none}
-.shop-summary{padding:8px 0}
+.shop-header{height:110px;border-radius:20px;box-shadow:0 10px 24px rgba(15,23,42,.08);background-size:cover;background-position:center;background-color:#e7ebee;padding:0;position:relative}
+.shop-header-avatar{position:absolute;left:50%;bottom:-28px;transform:translateX(-50%);line-height:0}
+.shop-logo-lg{width:60px;height:60px;min-width:60px;max-width:60px;aspect-ratio:1/1;border-radius:50%;object-fit:cover;display:block;border:3px solid #fff;background:#f1f5f9;box-shadow:0 4px 12px rgba(15,23,42,.16)}
+.shop-summary{padding:0;text-align:center;margin-top:34px}
+.shop-summary p{margin:4px 0}
+.menu-list{display:flex;flex-direction:column;gap:10px;margin:10px 0 20px}
+.menu-row{display:flex;align-items:center;gap:12px;background:#fff;border:1px solid #eef1ee;border-radius:16px;padding:10px;box-shadow:0 4px 14px rgba(15,23,42,.04)}
+.menu-row.disabled{opacity:.55}
+.menu-row-img{width:64px;height:64px;min-width:64px;border-radius:12px;object-fit:cover;background:#f1f5f9}
+.menu-row-info{flex:1;min-width:0}
+.menu-row-info b{display:block;font-size:14px;color:#1d3026;margin-bottom:2px}
+.menu-row-desc{font-size:12px;color:#7a8780;line-height:1.35;margin-bottom:4px;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.menu-row-price{font-size:13px;font-weight:700;color:#0aa568}
+.menu-row-add{width:34px;height:34px;min-width:34px;border-radius:50%;border:none;background:var(--primary,#2563eb);color:#fff;font-size:18px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.menu-list-recommended .menu-row{border:1px solid #fde68a;background:linear-gradient(180deg,#fffbeb,#fff)}
 .promo-banner,.promo-card{border-radius:16px;border:1px solid #fde68a;box-shadow:0 5px 14px rgba(245,158,11,.06)}
 .warn-text{border:1px solid #fecaca;border-radius:12px}
 .qt-bottomnav{
@@ -2591,23 +2603,36 @@ function renderShopView(shopId){
   if(!shop){ toast('ไม่พบร้านค้า'); navigate('search'); return; }
   const products = dbGet('qt_products',[]).filter(p=>p.shopId===shopId);
   const {count:reviewCount,avg:reviewAvg}=qtShopRatingSummary(shopId);
+  const available = products.filter(p=>p.available);
+  const unavailable = products.filter(p=>!p.available);
+  const pickedRecommended = available.filter(qtIsRecommended);
+  const recommended = (pickedRecommended.length?pickedRecommended:available).slice(0,3);
+  const recommendedIds = new Set(recommended.map(p=>p.id));
+  const rest = available.filter(p=>!recommendedIds.has(p.id));
   layout(shop.shopName, `
-    <div class="shop-header" style="background-image:url('${escapeHtml(qtCssUrl(shop.cover||''))}');background-color:#f6faf8;display:flex;align-items:center;justify-content:center;box-shadow:none;">
-      ${qgShopLogoHtml(shop).replace('class="shop-logo"','class="shop-logo-lg"')}
+    <div class="shop-header" style="background-image:url('${escapeHtml(qtCssUrl(shop.cover||shop.profileImage||''))}')">
+      <div class="shop-header-avatar">${qgShopLogoHtml(shop).replace('class="shop-logo"','class="shop-logo-lg"')}</div>
     </div>
-    <h2>${escapeHtml(shop.shopName)}</h2>
-    <p>${categoryLabel(shop.category)} • ⏰ ${escapeHtml(shop.openTime)}-${escapeHtml(shop.closeTime)}</p>
-    ${reviewCount ? `<p class="qg-review-summary"><span class="qg-review-stars">${qtStarsHtml(reviewAvg)}</span> <b>${reviewAvg.toFixed(1)}</b> <span style="color:var(--muted);font-size:13px">(${reviewCount} รีวิว)</span></p>` : ''}
-    <p>${escapeHtml(shop.description||'')}</p>
-    <p>📍 ${escapeHtml(shop.address||'')}</p>
+    <div class="shop-summary">
+      <h2>${escapeHtml(shop.shopName)}</h2>
+      <p>${categoryLabel(shop.category)} • ⏰ ${escapeHtml(shop.openTime)}-${escapeHtml(shop.closeTime)}</p>
+      ${reviewCount ? `<p class="qg-review-summary"><span class="qg-review-stars">${qtStarsHtml(reviewAvg)}</span> <b>${reviewAvg.toFixed(1)}</b> <span style="color:var(--muted);font-size:13px">(${reviewCount} รีวิว)</span></p>` : ''}
+      ${shop.description?`<p>${escapeHtml(shop.description)}</p>`:''}
+      <p>📍 ${escapeHtml(shop.address||'')}</p>
+    </div>
     <div class="row-btns">
       ${shop.phone?`<a class="btn-primary" href="tel:${escapeHtml(shop.phone)}">📞 โทรหาร้าน</a>`:''}
       <a class="btn-secondary" target="_blank" rel="noopener" href="${escapeHtml(qtGoogleMapsDirections(shop.lat,shop.lng,shop.address))}">📍 นำทางไปร้าน</a>
     </div>
-    <h3>สินค้า</h3>
-    <div class="product-grid">
-      ${products.filter(p=>p.available).map(p=>productCardCustomer(p)).join('')}
-      ${products.filter(p=>!p.available).map(p=>`<div class="product-card disabled"><img src="${escapeHtml(p.image||placeholderImg())}" class="product-img"><div class="product-info"><b>${escapeHtml(p.name)}</b><div>${escapeHtml(p.price)} บาท</div><div class="badge badge-gray">สินค้าหมด</div></div></div>`).join('')}
+    ${recommended.length ? `
+    <h3>⭐ เมนูแนะนำ</h3>
+    <div class="menu-list menu-list-recommended">
+      ${recommended.map(p=>productRowCustomer(p)).join('')}
+    </div>` : ''}
+    <h3>สินค้าทั้งหมด</h3>
+    <div class="menu-list">
+      ${rest.map(p=>productRowCustomer(p)).join('')}
+      ${unavailable.map(p=>productRowDisabled(p)).join('')}
       ${!products.length ? '<p>ยังไม่มีสินค้า</p>' : ''}
     </div>
     <button class="btn-primary btn-block" onclick="navigate('cart')">🛒 ดูตะกร้า <span id="qt-cart-count">${cartCount()?`(${cartCount()})`:''}</span></button>
@@ -2616,16 +2641,44 @@ function renderShopView(shopId){
   renderShopReviewsBox(shopId);
   qtEnsureShopReviewsLoaded(shopId).then(()=>renderShopReviewsBox(shopId));
 }
-function productCardCustomer(p){
-  return `<div class="product-card">
-    <img src="${escapeHtml(p.image||placeholderImg())}" class="product-img">
-    <div class="product-info">
+/* ---------- Shop-set "recommended menu" flag ----------
+   Contract for the shop-side app (built later): to mark a product as
+   recommended, write `recommended: true` inside that product row's
+   existing `metadata` JSONB column (table: public.products). No new
+   column or migration is needed — `metadata` already round-trips to
+   every product object here as extra fields (see the `p.metadata||{}`
+   spreads above). Example PATCH body when the shop toggles a product:
+     { "metadata": { ...existingMetadata, "recommended": true } }
+   Up to 3 recommended products are shown at the top of the customer's
+   shop page; if none are marked, the first 3 available products are
+   shown there instead as a fallback. */
+function qtIsRecommended(p){
+  const v=p&&p.recommended;
+  return v===true || v==='true' || v===1 || v==='1';
+}
+function productRowCustomer(p){
+  return `<div class="menu-row">
+    <img src="${escapeHtml(p.image||placeholderImg())}" class="menu-row-img">
+    <div class="menu-row-info">
       <b>${escapeHtml(p.name)}</b>
-      <div>${escapeHtml(p.price)} บาท</div>
-      <div>${escapeHtml(p.description||'')}</div>
-      <button onclick="addToCart('${p.id}')">+ เพิ่มลงตะกร้า</button>
+      ${p.description?`<div class="menu-row-desc">${escapeHtml(p.description)}</div>`:''}
+      <div class="menu-row-price">${escapeHtml(p.price)} บาท</div>
+    </div>
+    <button class="menu-row-add" onclick="addToCart('${p.id}')" aria-label="เพิ่มลงตะกร้า">+</button>
+  </div>`;
+}
+function productRowDisabled(p){
+  return `<div class="menu-row disabled">
+    <img src="${escapeHtml(p.image||placeholderImg())}" class="menu-row-img">
+    <div class="menu-row-info">
+      <b>${escapeHtml(p.name)}</b>
+      <div class="menu-row-price">${escapeHtml(p.price)} บาท</div>
+      <span class="badge badge-gray">สินค้าหมด</span>
     </div>
   </div>`;
+}
+function productCardCustomer(p){
+  return productRowCustomer(p);
 }
 function qtCartOwnerKey(){
   const user=currentUser();
@@ -3410,26 +3463,28 @@ body{padding-bottom:calc(78px + env(safe-area-inset-bottom));}
 
 .qg-search-card{width:100%;height:38px;margin:7px 0 0;background:#fff;border:1px solid #e3ece6;border-radius:12px;display:flex;align-items:center;gap:8px;padding:0 12px;color:#8a968e;cursor:pointer;box-shadow:0 5px 18px rgba(16,60,38,.04);font-size:13px}.qg-search-card span:first-child{font-size:16px;color:#10b981}.qg-search-card b{margin-left:auto;color:#10b981;font-size:15px}.qg-section{margin-top:24px}.qg-section-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}.qg-section-head h2{font-size:18px;margin:0;color:#17251c}.qg-section-head button{border:0;background:none;color:#08a968;font-weight:700;cursor:pointer}.qg-category-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:10px}.qg-category-grid button{border:1px solid #e3ece6;background:#fff;border-radius:16px;padding:15px 8px;display:flex;flex-direction:column;align-items:center;gap:7px;color:#23352b;cursor:pointer;box-shadow:0 4px 14px rgba(20,60,40,.035)}.qg-category-grid span{width:44px;height:44px;border-radius:14px;background:#eafaf2;display:grid;place-items:center;font-size:23px}.qg-category-grid b{font-size:12px}.qg-shop-strip{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
 .qg-shop-strip .shop-card{
-  min-height:104px;margin:0;padding:7px;border-radius:12px!important;
-  display:flex;flex-direction:row;align-items:center;gap:8px;
-  border:0;box-shadow:none;background:transparent;
+  min-height:0;margin:0;padding:0;border-radius:0!important;
+  display:flex;flex-direction:column;align-items:center;text-align:center;gap:8px;
+  border:0;box-shadow:none;background:transparent;cursor:pointer;overflow:hidden;
+  transition:transform .15s ease;
 }
-.qg-shop-strip .shop-card .shop-logo{width:56px;height:56px;min-width:56px;max-width:56px;aspect-ratio:1/1;border-radius:8px;object-fit:cover;display:block;background:transparent;border:0;padding:0;box-shadow:none}
-.qg-shop-strip .shop-card .shop-info{min-width:0;flex:1;padding:0!important}
+.qg-shop-strip .shop-card:active{transform:scale(.97)}
+.qg-shop-strip .shop-card .shop-logo{width:60px;height:60px;min-width:60px;max-width:60px;aspect-ratio:1/1;border-radius:50%;object-fit:cover;display:block;border:2px solid #fff;background:#f1f5f9;box-shadow:0 3px 10px rgba(15,23,42,.10)}
+.qg-shop-strip .shop-card .shop-info{width:100%;min-width:0;flex:none;padding:0!important;overflow:hidden}
 .qg-shop-strip .shop-card .shop-info b{
-  display:block;font-size:13px;line-height:1.25;margin:0 0 3px;
+  display:block;font-size:13px;line-height:1.25;margin:0;
   color:#1d3026;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
 }
 .qg-shop-strip .shop-card .shop-info div{
-  font-size:10px;line-height:1.35;color:#748078;
+  font-size:10.5px;line-height:1.3;color:#748078;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
 }
-.qg-shop-strip .shop-card .ad-tag-sm{font-size:8px;padding:1px 4px;margin-left:2px}
+.qg-shop-strip .shop-card .ad-tag-sm{font-size:8px;padding:1px 4px;margin-left:2px;vertical-align:1px}
 .qg-disabled-service{margin-top:22px;padding:15px 17px;border:1px dashed #cdd9d2;background:#f9fbfa;border-radius:16px;display:flex;align-items:center;gap:12px;color:#7c8881}.qg-disabled-service b{color:#425149}.qg-disabled-service p{margin:3px 0 0;font-size:12px}.qg-disabled-service>span{margin-left:auto;font-size:11px;background:#edf1ee;padding:6px 9px;border-radius:999px}
 .qg-profile-head{display:flex;align-items:center;gap:16px;padding:22px 0}.qg-profile-avatar{width:72px;height:72px;border-radius:22px;background:#dff8eb;color:#07935d;display:grid;place-items:center;font-size:30px;font-weight:800}.qg-profile-head h1{margin:2px 0;font-size:26px}.qg-profile-head p{margin:0;color:#718078}.qg-active-order{display:flex;justify-content:space-between;align-items:center;padding:16px 18px;background:#ecfbf3;border:1px solid #bcefd5;border-radius:16px;color:#147b51;cursor:pointer}.qg-active-order div{display:flex;flex-direction:column;gap:3px}.qg-active-order small{color:#6b7d73}.qg-active-order span{font-size:12px}.qg-stat-row{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:16px 0}.qg-stat-row>div{background:#fff;border:1px solid #e3ece6;border-radius:15px;padding:14px;text-align:center}.qg-stat-row b{display:block;font-size:22px;color:#0a9c61}.qg-stat-row span{display:block;font-size:11px;color:#758279;margin-top:2px}.qg-menu-list{display:flex;flex-direction:column;gap:8px}.qg-menu-list button{width:100%;border:1px solid #e4ebe6;background:#fff;border-radius:15px;padding:14px;display:flex;align-items:center;gap:13px;text-align:left;cursor:pointer}.qg-menu-list button>span{width:40px;height:40px;border-radius:12px;background:#effaf4;display:grid;place-items:center;font-size:20px}.qg-menu-list button div{flex:1}.qg-menu-list button b{display:block;color:#24352c}.qg-menu-list button small{display:block;color:#849089;margin-top:3px}.qg-menu-list button>strong{color:#0aa568}.qg-menu-list .qg-menu-danger{color:#dc2626}.qg-menu-list .qg-menu-danger>span{background:#fff1f1}.qg-menu-list .qg-menu-danger b{color:#dc2626}
 .qg-auth-page{width:100%;min-height:calc(100dvh - 88px);display:flex;flex-direction:column;justify-content:center;align-items:center;padding:20px 0 36px}.qg-auth-brand{display:flex;align-items:center;gap:9px;color:#12231a;font-size:25px;margin-bottom:14px}.qg-auth-page>h1{margin:0;color:#17251c;font-size:clamp(27px,5vw,40px);text-align:center}.qg-auth-page>p{color:#7a8780;text-align:center;margin:8px 0 22px}.qg-auth-form{width:min(100%,520px);background:#fff;padding:clamp(20px,4vw,34px);border:1px solid #e2ebe5;border-radius:0;box-shadow:0 10px 30px rgba(22,60,42,.05)}.qg-auth-form input{height:52px;border-radius:12px;border:1px solid #dce7e0;background:#fff;padding:0 15px;font-size:15px}.qg-auth-form label{margin-top:14px;color:#32443a}.qg-main-btn{height:54px;border-radius:12px!important;margin-top:18px!important;background:#10b981!important;box-shadow:0 8px 20px rgba(16,185,129,.18)!important}.qg-auth-tabs{margin:7px 0 4px!important}.qg-auth-tabs .tab{flex:1}.qg-auth-foot{margin-top:18px!important}.qg-auth-foot a{color:#07985e;font-weight:700;text-decoration:none}.qg-role-blocked{min-height:calc(100dvh - 110px);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:30px}.qg-role-blocked>div:first-child{font-size:54px}.qg-role-blocked h1{margin:10px 0}.qg-role-blocked p{color:#748078;max-width:480px}.qg-role-blocked .btn-block{width:min(100%,420px)}
 /* Full-width consumer grids: only the content inside cards is constrained, never the application shell. */
-.product-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.product-card{border:1px solid #e4ebe6;border-radius:16px}.product-img{height:150px}.shop-header{border-radius:0;margin:0 -1px;height:240px}.shop-logo-lg{border-radius:16px}.order-card,.order-detail-card,.cart-item,.order-summary,.notif-panel,.card{border-radius:16px}
+.product-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.product-card{border:1px solid #e4ebe6;border-radius:16px}.product-img{height:150px}.order-card,.order-detail-card,.cart-item,.order-summary,.notif-panel,.card{border-radius:16px}
 /* Remove any dark/green side panels or old desktop background treatments from the source UI. */
 body:before,body:after,#app:before,#app:after{content:none!important;display:none!important}.qt-banner{display:none!important}.qt-main{background:transparent!important}.qg-main .qt-main{max-width:none!important}
 @media(min-width:700px){.qg-page{padding-left:clamp(24px,4vw,64px);padding-right:clamp(24px,4vw,64px)}.product-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.qg-auth-form{width:min(520px,100%)} }
@@ -3441,9 +3496,9 @@ body:before,body:after,#app:before,#app:after{content:none!important;display:non
   .qg-hero-art{width:76px;height:76px;border-radius:22px;font-size:40px}
   .qg-hero-illust{width:44px;height:58px}
   .qg-category-grid{grid-template-columns:repeat(3,1fr)}
-  .qg-shop-strip{grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
-  .qg-shop-strip .shop-card{min-height:96px;padding:6px;border-radius:11px!important;flex-direction:row;align-items:center;gap:7px}
-  .qg-shop-strip .shop-card .shop-logo{width:52px;height:52px;min-width:52px;max-width:52px;aspect-ratio:1/1;border-radius:8px;background:transparent;border:0;padding:0;box-shadow:none}
+  .qg-shop-strip{grid-template-columns:repeat(2,minmax(0,1fr));gap:14px 7px}
+  .qg-shop-strip .shop-card{min-height:0;padding:0;border-radius:0!important;flex-direction:column;align-items:center;gap:7px}
+  .qg-shop-strip .shop-card .shop-logo{width:54px;height:54px;min-width:54px;max-width:54px;aspect-ratio:1/1;border-radius:50%;background:#f1f5f9;border:2px solid #fff;box-shadow:0 3px 10px rgba(15,23,42,.10)}
   .qg-shop-strip .shop-card .shop-info b{font-size:12px;line-height:1.2}
   .qg-shop-strip .shop-card .shop-info div{font-size:9px;line-height:1.3}
   .qg-auth-page{min-height:calc(100dvh - 88px);justify-content:flex-start;padding-top:35px}
@@ -3452,9 +3507,9 @@ body:before,body:after,#app:before,#app:after{content:none!important;display:non
 }
 @media(max-width:380px){
   .qg-category-grid{gap:7px}.qg-category-grid button{padding:12px 5px}.qg-category-grid span{width:38px;height:38px}
-  .qg-shop-strip{grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
-  .qg-shop-strip .shop-card{min-height:90px;padding:5px;gap:6px}
-  .qg-shop-strip .shop-card .shop-logo{width:48px;height:48px;min-width:48px;max-width:48px;aspect-ratio:1/1;border-radius:8px;background:transparent;border:0;padding:0;box-shadow:none}
+  .qg-shop-strip{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 6px}
+  .qg-shop-strip .shop-card{min-height:0;padding:0;gap:6px}
+  .qg-shop-strip .shop-card .shop-logo{width:46px;height:46px;min-width:46px;max-width:46px;aspect-ratio:1/1;border-radius:50%;background:#f1f5f9;border:2px solid #fff;box-shadow:0 3px 8px rgba(15,23,42,.10)}
   .qg-shop-strip .shop-card .shop-info b{font-size:11px}
   .qg-shop-strip .shop-card .shop-info div{font-size:8.5px}
   .qg-bottomnav a{font-size:9px}
@@ -3581,136 +3636,12 @@ body:before,body:after,#app:before,#app:after{content:none!important;display:non
 </script>
 
 
-<style id="qt-customer-final-image-override-v2">
-/* Final customer storefront image rules: profile photo only, square, same size, no white frame. */
-.qg-shop-strip .shop-card .shop-logo,
-#search-results.qg-shop-strip .shop-card .shop-logo{
-  width:56px!important;height:56px!important;min-width:56px!important;max-width:56px!important;
-  aspect-ratio:1/1!important;border-radius:8px!important;object-fit:cover!important;
-  display:block!important;border:0!important;background:transparent!important;
-  box-shadow:none!important;padding:0!important;
-}
-#search-results.qg-shop-strip .shop-card .shop-logo{border:0!important;box-shadow:none!important;border-radius:8px!important}
-.shop-header .shop-logo-lg{
-  width:76px!important;height:76px!important;min-width:76px!important;max-width:76px!important;
-  aspect-ratio:1/1!important;border-radius:10px!important;object-fit:cover!important;
-  display:block!important;border:0!important;background:transparent!important;
-  box-shadow:none!important;padding:0!important;
-}
-</style>
-</body>
-</html>
-
-<style id="qg-shop-minimal-v3">
-/* ร้านค้าแบบมินิมอล: ตัดกรอบ/พื้นขาว/เงาออก เหลือเฉพาะรูป + ข้อความ และใช้พื้นที่ให้คุ้มที่สุด */
-.qg-shop-strip{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px 14px;align-items:start}
-.qg-shop-strip .shop-card{
-  min-height:0!important;margin:0!important;padding:5px 2px!important;
-  display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:6px;
-  background:transparent!important;border:0!important;box-shadow:none!important;border-radius:0!important;
-  overflow:hidden;cursor:pointer;transition:transform .15s ease;
-}
-.qg-shop-strip .shop-card:hover{transform:none!important;box-shadow:none!important}
-.qg-shop-strip .shop-card:active{transform:scale(.97)!important}
-.qg-shop-strip .shop-card .shop-logo{
-  width:58px;height:58px;min-width:58px;display:block;
-  border-radius:50%;object-fit:cover;border:1px solid #e3ece7;
-  box-shadow:0 2px 7px rgba(20,60,40,.07);
-}
-
-.qg-shop-strip .shop-card .shop-info{
-  width:100%;min-width:0;flex:none!important;padding:0!important;overflow:hidden;text-align:center;
-}
-.qg-shop-strip .shop-card .shop-info b{
-  display:block;font-size:12.5px;line-height:1.25;margin:0;
-  color:#1d3026;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
-}
-.qg-shop-strip .shop-card .shop-info div{
-  font-size:9.5px;line-height:1.3;color:#7a8780;
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
-}
-.qg-shop-strip .shop-card .ad-tag-sm{font-size:7.5px;padding:1px 4px;margin-left:2px;vertical-align:1px}
-@media(max-width:900px){
-  .qg-shop-strip{grid-template-columns:repeat(3,minmax(0,1fr));gap:12px 8px}
-}
-@media(max-width:520px){
-  .qg-shop-strip{grid-template-columns:repeat(3,minmax(0,1fr));gap:10px 5px}
-  .qg-shop-strip .shop-card{padding:3px 1px!important;gap:5px}
-  .qg-shop-strip .shop-card .shop-logo{width:50px;height:50px;min-width:50px}
-  .qg-shop-strip .shop-card .shop-info b{font-size:11.5px}
-  .qg-shop-strip .shop-card .shop-info div{font-size:8.5px}
-}
-@media(max-width:380px){
-  .qg-shop-strip{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px 5px}
-  .qg-shop-strip .shop-card .shop-logo{width:48px;height:48px;min-width:48px}
-}
-@media(min-width:1100px){
-  .qg-shop-strip{grid-template-columns:repeat(5,minmax(0,1fr));gap:16px 14px}
-  .qg-shop-strip .shop-card .shop-logo{width:62px;height:62px;min-width:62px}
-}
-</style>
-
-<style id="qg-search-iphone-grid-v1">
-/* Search: iPhone-style app icon grid, compact and card-free. */
-.qg-search-tools{display:flex;flex-direction:column;gap:7px;margin-bottom:10px}
-.qg-search-location-auto{margin:0!important;padding:5px 2px!important;font-size:11px!important;background:transparent!important;border:0!important;color:#6f7d75!important;text-align:left}
-#search-results.qg-shop-strip{display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr));gap:15px 7px!important;align-items:start}
-#search-results.qg-shop-strip .shop-card{min-height:0!important;margin:0!important;padding:2px 1px!important;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:5px;background:transparent!important;border:0!important;box-shadow:none!important;border-radius:0!important;overflow:hidden;cursor:pointer;transition:transform .12s ease}
-#search-results.qg-shop-strip .shop-card:hover{transform:none!important;box-shadow:none!important}
-#search-results.qg-shop-strip .shop-card:active{transform:scale(.94)!important}
-#search-results.qg-shop-strip .shop-card .shop-logo{width:58px;height:58px;min-width:58px;display:block;border-radius:50%;object-fit:cover;border:1px solid #e4ebe7;box-shadow:0 2px 7px rgba(20,60,40,.08)}
-#search-results.qg-shop-strip .shop-card .shop-info{width:100%;min-width:0;flex:none!important;padding:0!important;overflow:hidden;text-align:center}
-#search-results.qg-shop-strip .shop-card .shop-info b{display:block;font-size:11.5px;line-height:1.25;margin:0;color:#1d3026;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-#search-results.qg-shop-strip .shop-card .shop-info div{font-size:8.5px;line-height:1.25;color:#7a8780;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-#search-results.qg-shop-strip .shop-card .ad-tag-sm{font-size:7px;padding:1px 3px;margin-left:2px;vertical-align:1px}
-@media(max-width:600px){
-  #search-results.qg-shop-strip{grid-template-columns:repeat(4,minmax(0,1fr));gap:14px 4px!important}
-  #search-results.qg-shop-strip .shop-card .shop-logo{width:52px;height:52px;min-width:52px}
-  #search-results.qg-shop-strip .shop-card .shop-info b{font-size:10.5px}
-  #search-results.qg-shop-strip .shop-card .shop-info div{font-size:7.8px}
-}
-@media(max-width:380px){
-  #search-results.qg-shop-strip{grid-template-columns:repeat(4,minmax(0,1fr));gap:12px 2px!important}
-  #search-results.qg-shop-strip .shop-card .shop-logo{width:48px;height:48px;min-width:48px}
-  #search-results.qg-shop-strip .shop-card .shop-info b{font-size:10px}
-}
-@media(min-width:900px){#search-results.qg-shop-strip{grid-template-columns:repeat(6,minmax(0,1fr));gap:18px 10px!important}}
-</style>
-<style id="qt-customer-final-shop-image-css">
-/* Customer shop photos: profile photo only, same square size, no white frame/fill. */
-.qg-shop-strip .shop-card{background:transparent!important;border:0!important;box-shadow:none!important;padding-left:0;padding-right:0;}
-.qg-shop-strip .shop-card .shop-logo{width:56px!important;height:56px!important;min-width:56px!important;max-width:56px!important;aspect-ratio:1/1!important;border-radius:8px!important;object-fit:cover!important;border:0!important;box-shadow:none!important;padding:0!important;}
-.qg-shop-strip .shop-card .shop-logo{display:block;background:transparent!important;}
-
-.shop-header .shop-logo-lg{width:96px!important;height:96px!important;min-width:96px!important;max-width:96px!important;aspect-ratio:1/1!important;border-radius:12px!important;object-fit:cover!important;border:0!important;background:transparent!important;box-shadow:none!important;padding:0!important;}
-</style>
-
-<style id="qt-customer-final-image-override-v2">
-/* Final customer storefront image rules: profile photo only, square, same size, no white frame. */
-.qg-shop-strip .shop-card .shop-logo,
-#search-results.qg-shop-strip .shop-card .shop-logo{
-  width:56px!important;height:56px!important;min-width:56px!important;max-width:56px!important;
-  aspect-ratio:1/1!important;border-radius:8px!important;object-fit:cover!important;
-  display:block!important;border:0!important;background:transparent!important;
-  box-shadow:none!important;padding:0!important;
-}
-#search-results.qg-shop-strip .shop-card .shop-logo{border:0!important;box-shadow:none!important;border-radius:8px!important}
-.shop-header .shop-logo-lg{
-  width:76px!important;height:76px!important;min-width:76px!important;max-width:76px!important;
-  aspect-ratio:1/1!important;border-radius:10px!important;object-fit:cover!important;
-  display:block!important;border:0!important;background:transparent!important;
-  box-shadow:none!important;padding:0!important;
-}
-
+<style id="qg-bottomnav-compact">
 /* QueueGo: reduce bottom navigation height by 50% while keeping all actions usable */
 .qg-bottomnav{height:35px !important;min-height:35px !important;padding-top:0 !important;padding-bottom:env(safe-area-inset-bottom) !important;}
 .qg-bottomnav a{padding:3px 1px 2px !important;font-size:8px !important;line-height:1 !important;}
 .qg-bottomnav a span{font-size:9px !important;margin-top:0 !important;line-height:1 !important;}
 .qg-bottomnav a:first-letter{font-size:16px !important;}
 </style>
-<style id="qt-customer-shop-profile-image-only">
-/* ร้านค้าเป็นผู้จัดการรูปโปรไฟล์เอง: ลูกค้าเห็นเฉพาะรูปที่บันทึกใน shop_profiles.profile_image */
-.qg-shop-strip .shop-card .shop-logo,.shop-header .shop-logo-lg{display:block;background:transparent!important;border:0!important;box-shadow:none!important;object-fit:cover!important;}
-</style>
-
 </body>
+</html>
