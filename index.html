@@ -217,7 +217,7 @@ form input:focus,form select:focus,form textarea:focus{
 .product-card{border-radius:16px;background:#fff}
 .product-img{height:135px;background:#f1f5f9}
 .product-info{padding:12px}
-.product-info button{border-radius:10px;padding:9px;background:#1d4ed8;font-weight:700}
+.product-info button{border-radius:10px;padding:9px;background:var(--primary);color:#fff;font-weight:700}
 .row-btns{gap:8px}
 .row-btns button,.row-btns a{border-radius:10px;padding:9px;font-weight:600}
 .badge{padding:5px 9px;font-weight:600}
@@ -422,6 +422,19 @@ input, select, textarea, button {
 .qt-cam-box video,.qt-cam-box img#qt-cam-shot{width:100%;aspect-ratio:1/1;object-fit:cover;border-radius:12px;background:#000}
 .qt-cam-box video{transform:scaleX(-1)}
 .qt-cam-hint{color:#cbd5e1;font-size:12px;margin:10px 4px;line-height:1.5}
+.qg-empty-hint{grid-column:1/-1;color:#8a968e;font-size:13px;text-align:center;padding:14px 0}
+.qt-livecam-box{width:100%;max-width:280px;margin:6px auto 10px;border-radius:14px;overflow:hidden;background:#111827}
+.qt-livecam-box video{width:100%;aspect-ratio:1/1;object-fit:cover;transform:scaleX(-1);display:block}
+.qt-livecam-status{text-align:center;font-weight:700;font-size:13px;padding:6px 0;color:#8a6200}
+.qt-livecam-status.qt-livecam-ok{color:#0b9f61}
+.qt-slide-locked{opacity:.5;pointer-events:none}
+.qg-review-stars{color:#f5a623;letter-spacing:1px}
+.qg-review-card{border-bottom:1px solid var(--line);padding:10px 0}
+.qg-review-card:last-child{border-bottom:none}
+.qg-review-head{display:flex;justify-content:space-between;font-size:13px;color:var(--muted)}
+.qg-review-summary{display:flex;align-items:center;gap:8px;margin:6px 0 10px}
+.qg-star-input span{font-size:26px;cursor:pointer;color:#d1d5db}
+.qg-star-input span.on{color:#f5a623}
 .qt-cam-actions{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
 .qt-cam-actions button{flex:1;min-width:100px;padding:12px 8px;border-radius:10px;border:none;font-size:14px;cursor:pointer;font-family:inherit}.rider-note{margin:12px 16px;padding:10px;border-radius:10px;background:#eef6ff;color:#426080;font-size:13px}.rider-docs{grid-column:1 / -1}.rider-upload-item{padding:0 0 12px}.rider-upload-item input{padding:8px}.rider-doc-preview{max-width:180px;max-height:110px;object-fit:contain;margin:8px 16px;border-radius:8px;border:1px solid #d7e0eb}.rider-confirm{grid-column:1 / -1}.rider-confirm label{font-weight:500;display:flex;gap:8px;align-items:flex-start}.rider-confirm label input{width:auto;margin:2px 0}.rider-confirm p{margin:10px 16px 16px;padding:12px;background:#fff7df;border-radius:10px;color:#765b00}.rider-submit{margin:0 14px 24px;width:calc(100% - 28px);font-size:20px;padding:15px}@media(max-width:760px){.rider-grid{grid-template-columns:1fr}.rider-docs,.rider-confirm{grid-column:auto}.rider-step{min-width:70px;font-size:10px}.rider-step b{width:34px;height:34px}.rider-steps i{margin-top:16px}.rider-face-upload img{width:200px;height:200px}}
 
@@ -691,6 +704,23 @@ window.QT_SUPABASE_CONFIG = {
    order insert will fail with "column customer_verification_photo does not exist":
    ALTER TABLE public.orders ADD COLUMN customer_verification_photo text; */
 window.QT_HAS_VERIFICATION_PHOTO_COLUMN = false;
+/* Flip this to true only AFTER creating the "reviews" table below in Supabase, otherwise every
+   review save will fail with "relation \"public.reviews\" does not exist":
+   CREATE TABLE public.reviews (
+     id uuid PRIMARY KEY,
+     order_id uuid REFERENCES public.orders(id) UNIQUE,
+     shop_id uuid REFERENCES public.shop_profiles(id),
+     customer_id uuid REFERENCES auth.users(id),
+     customer_name text,
+     rating smallint NOT NULL CHECK (rating BETWEEN 1 AND 5),
+     comment text,
+     created_at timestamptz DEFAULT now(),
+     updated_at timestamptz DEFAULT now()
+   );
+   -- order_id is UNIQUE to enforce "1 review per order" at the database level too.
+   Until this table exists, reviews are kept in-memory for the current session only
+   (they still work end-to-end in this browser tab, they just won't sync/persist). */
+window.QT_HAS_REVIEWS_TABLE = false;
 function qtSupabaseHeaders(accessToken){
   const h={apikey:QT_SUPABASE_CONFIG.KEY,'Content-Type':'application/json'};
   if(accessToken) h.Authorization='Bearer '+accessToken;
@@ -1029,7 +1059,7 @@ setTimeout(qtRiderPresenceHeartbeat, 1000);
    LocalStorage is NOT used for users/orders/technician jobs/quotes/notifications/audit/finance.
    sessionStorage is used only for the current browser session token. */
 const QT_DB_CACHE = Object.create(null);
-const QT_DB_KEYS = new Set(['qt_users','qt_orders','qt_techjobs','qt_notifications','qt_audit_log','qt_finance_ledger','qt_promotions','qt_products','qt_settlements','qt_order_audit']);
+const QT_DB_KEYS = new Set(['qt_users','qt_orders','qt_techjobs','qt_notifications','qt_audit_log','qt_finance_ledger','qt_promotions','qt_products','qt_settlements','qt_order_audit','qt_reviews']);
 const QT_DB_READY = {value:false};
 function dbGet(key, def){
   if(Object.prototype.hasOwnProperty.call(QT_DB_CACHE,key)) return QT_DB_CACHE[key];
@@ -1270,6 +1300,15 @@ async function qtPersistKeyRaw(key,val){
     if(key==='qt_promotions'){ for(const p of (val||[])){ if(!qtUuidLike(p.id)) continue; await qtSupabaseTable('promotions?on_conflict=id',{method:'POST',accessToken:token,body:{id:p.id,shop_id:p.shopId,shop_name:p.shopName||null,category:p.category||null,area:p.area||null,bid_price:Number(p.bidPrice||0),max_budget:Number(p.maxBudget||0),period_days:Number(p.periodDays||0),status:p.status||'pending',approved_by:p.approvedBy||null,approved_at:p.approvedAt?qtIso(p.approvedAt):null,payment_status:p.paymentStatus||'pending',activated_at:p.activatedAt?qtIso(p.activatedAt):null,metadata:p,created_at:qtIso(p.createdAt),updated_at:qtIso(Date.now())}}); } return; }
     if(key==='qt_settlements'){ for(const x of (val||[])){ if(!qtUuidLike(x.id)) continue; await qtSupabaseTable('settlements?on_conflict=id',{method:'POST',accessToken:token,body:{id:x.id,shop_id:x.shopId,date_key:x.dateKey,status:x.status||'pending_payment',amount:Number(x.amount||x.gp||0),metadata:x,created_at:qtIso(x.createdAt),updated_at:qtIso(Date.now())}}); } return; }
     if(key==='qt_order_audit'){ for(const x of (val||[])){ if(!qtUuidLike(x.id)||!qtUuidLike(x.orderId)) continue; await qtSupabaseTable('order_audit?on_conflict=id',{method:'POST',accessToken:token,body:{id:x.id,order_id:x.orderId,admin_id:x.adminId,action:x.action||'system',metadata:x,created_at:qtIso(x.at)}}); } return; }
+    if(key==='qt_reviews'){
+      if(!window.QT_HAS_REVIEWS_TABLE) return;
+      for(const x of (val||[])){
+        if(!qtUuidLike(x.id)||!qtUuidLike(x.orderId)) continue;
+        let shopProfileId=null;
+        if(qtUuidLike(x.shopId)){ const rows=await qtSupabaseTable('shop_profiles?select=id&user_id=eq.'+encodeURIComponent(x.shopId)+'&limit=1',{accessToken:token}); shopProfileId=Array.isArray(rows)&&rows[0]?rows[0].id:null; }
+        await qtSupabaseTable('reviews?on_conflict=id',{method:'POST',accessToken:token,body:{id:x.id,order_id:x.orderId,shop_id:shopProfileId,customer_id:x.customerId,customer_name:x.customerName||null,rating:Number(x.rating||0),comment:x.comment||null,created_at:qtIso(x.createdAt),updated_at:qtIso(Date.now())}});
+      } return;
+    }
   }catch(e){ console.warn('qtPersistKey',key,e); throw e; }
 }
 async function qtDeleteRows(table,filter){ const token=await qtGetAccessToken(); if(!token) throw new Error('ยังไม่ได้เข้าสู่ระบบ'); return qtSupabaseTable(table+'?'+filter,{method:'DELETE',accessToken:token}); }
@@ -1426,6 +1465,9 @@ async function qtHydrateDatabase(opts){
     if(!light){
     QT_DB_CACHE.qt_audit_log=[]; QT_DB_CACHE.qt_finance_ledger=[];    try{const ps=await qtSupabaseTable('products?select=*',{accessToken:token}); QT_DB_CACHE.qt_products=(Array.isArray(ps)?ps:[]).map(p=>Object.assign({id:p.id,shopId:p.shop_id,name:p.name,description:p.description,price:Number(p.price||0),image:p.image||'',available:p.available!==false,createdAt:new Date(p.created_at).getTime()},p.metadata||{}));}catch(e){QT_DB_CACHE.qt_products=[];}
     try{const pr=await qtSupabaseTable('promotions?select=*',{accessToken:token}); QT_DB_CACHE.qt_promotions=(Array.isArray(pr)?pr:[]).map(p=>Object.assign({id:p.id,shopId:p.shop_id,shopName:p.shop_name,category:p.category,area:p.area,bidPrice:Number(p.bid_price||0),maxBudget:Number(p.max_budget||0),periodDays:Number(p.period_days||0),status:p.status,approvedBy:p.approved_by,approvedAt:p.approved_at?new Date(p.approved_at).getTime():null,paymentStatus:p.payment_status,activatedAt:p.activated_at?new Date(p.activated_at).getTime():null,createdAt:new Date(p.created_at).getTime()},p.metadata||{}));}catch(e){QT_DB_CACHE.qt_promotions=[];}
+    if(window.QT_HAS_REVIEWS_TABLE){
+      try{const rv=await qtSupabaseTable('reviews?select=*',{accessToken:token}); QT_DB_CACHE.qt_reviews=(Array.isArray(rv)?rv:[]).map(r=>({id:r.id,orderId:r.order_id,shopId:profileMaps.shopById.get(r.shop_id)||r.shop_id,customerId:r.customer_id,customerName:r.customer_name||'ลูกค้า',rating:Number(r.rating||0),comment:r.comment||'',createdAt:new Date(r.created_at).getTime(),updatedAt:r.updated_at?new Date(r.updated_at).getTime():new Date(r.created_at).getTime()}));}catch(e){ if(!Array.isArray(QT_DB_CACHE.qt_reviews)) QT_DB_CACHE.qt_reviews=[]; }
+    } else if(!Array.isArray(QT_DB_CACHE.qt_reviews)){ QT_DB_CACHE.qt_reviews=[]; }
     try{const st=await qtSupabaseTable('settlements?select=*',{accessToken:token}); QT_DB_CACHE.qt_settlements=(Array.isArray(st)?st:[]).map(x=>Object.assign({id:x.id,shopId:x.shop_id,dateKey:x.date_key,status:x.status,amount:Number(x.amount||0),createdAt:new Date(x.created_at).getTime()},x.metadata||{}));}catch(e){QT_DB_CACHE.qt_settlements=[];}
     try{const oa=await qtSupabaseTable('order_audit?select=*',{accessToken:token}); QT_DB_CACHE.qt_order_audit=(Array.isArray(oa)?oa:[]).map(x=>Object.assign({id:x.id,orderId:x.order_id,adminId:x.admin_id,action:x.action,at:new Date(x.created_at).getTime()},x.metadata||{}));}catch(e){QT_DB_CACHE.qt_order_audit=[];}
 
@@ -2508,6 +2550,7 @@ function router(){
 }
 function qtRouteRender(){
   destroyMaps();
+  qtStopCheckoutFaceCam();
   const hash = location.hash.replace('#','') || 'home';
   const [page, param] = hash.split('/');
   const user = currentUser();
@@ -2525,7 +2568,7 @@ function qtRouteRender(){
     case 'login': renderLogin(); break;
     case 'dashboard': renderDashboard(); break;
     case 'profile': renderCustomerProfile(); break;
-    case 'search': renderSearch(); break;
+    case 'search': renderSearch(param); break;
     case 'shop-view': renderShopView(param); break;
     case 'cart': renderCart(); break;
     case 'checkout': renderCheckout(); break;
@@ -2537,8 +2580,7 @@ function qtRouteRender(){
        Keep the technician business logic in this file; only customer access is blocked. */
     case 'emergency':
     case 'call-technician':
-      if(user && user.type==='customer') { navigate('home'); return; }
-      renderHome(); break;
+      renderTechnicianClosed(); break;
     default: renderHome();
   }
   window.scrollTo(0,0);
@@ -2592,16 +2634,22 @@ function renderHome(){
     </section>
     <section class="qg-search-card" onclick="navigate('search')"><span>⌕</span><span>ค้นหาร้าน สินค้า หรือบริการ...</span><b>›</b></section>
     <section class="qg-service-compact" aria-label="บริการลัด">
-      <button onclick="navigate('search')"><span>🍜</span><b>อาหาร</b></button>
-      <button onclick="navigate('search')"><span>🥤</span><b>เครื่องดื่ม</b></button>
-      <button onclick="navigate('search')"><span>🛒</span><b>ของใช้</b></button>
-      <button onclick="navigate('search')"><span>💊</span><b>สุขภาพ</b></button>
-      <button onclick="navigate('search')"><span>🧰</span><b>บริการ</b></button>
-      <button onclick="navigate('search')"><span>•••</span><b>อื่นๆ</b></button>
+      <button onclick="navigate('search/food')"><span>🍜</span><b>อาหาร</b></button>
+      <button onclick="navigate('search/cafe')"><span>🥤</span><b>เครื่องดื่ม</b></button>
+      <button onclick="navigate('search/grocery')"><span>🛒</span><b>ของใช้</b></button>
+      <button onclick="navigate('search/other')"><span>📦</span><b>อื่นๆ</b></button>
+      <button onclick="navigate('call-technician')"><span>🧰</span><b>บริการ</b></button>
+      <button onclick="navigate('search')"><span>⌕</span><b>ดูทั้งหมด</b></button>
     </section>
-    <section class="qg-section qg-shops-main"><div class="qg-section-head"><h2>ร้านแนะนำใกล้คุณ</h2><button onclick="navigate('search')">ดูทั้งหมด ›</button></div><div id="home-promote" class="qg-shop-strip"></div></section>
+    <section class="qg-section qg-shops-main"><div id="home-promote" class="qg-shop-strip"></div></section>
+    <section class="qg-section"><div class="qg-section-head"><h2>⭐ ร้านแนะนำสำหรับคุณ</h2><button onclick="navigate('search')">ดูทั้งหมด ›</button></div><div id="home-recommended" class="qg-shop-strip"><div class="qg-empty-hint">กำลังโหลด...</div></div></section>
+    <section class="qg-section"><div class="qg-section-head"><h2>🔥 ร้านยอดนิยม</h2><button onclick="navigate('search')">ดูทั้งหมด ›</button></div><div id="home-popular" class="qg-shop-strip"></div></section>
+    <section class="qg-section" id="home-sec-open"><div class="qg-section-head"><h2>🟢 เปิดอยู่ตอนนี้</h2><button onclick="navigate('search')">ดูทั้งหมด ›</button></div><div id="home-open" class="qg-shop-strip"></div></section>
+    <section class="qg-section"><div class="qg-section-head"><h2>✨ ร้านน่าสนใจ</h2><button onclick="navigate('search')">ดูทั้งหมด ›</button></div><div id="home-discovery" class="qg-shop-strip"></div></section>
+    <div id="home-categories"></div>
   `);
   renderHomePromoteWidget();
+  renderHomeShopSections();
 }
 function renderHomePromoteWidget(){
   const promos = dbGet('qt_promotions',[]).filter(p=>p.status==='active').sort((a,b)=>b.bidPrice-a.bidPrice).slice(0,3);
@@ -2612,6 +2660,69 @@ function renderHomePromoteWidget(){
     <div class="shop-list">
       ${promos.map(p=>`<div class="shop-card" onclick="navigate('shop-view/${p.shopId}')"><div class="shop-info"><b>${escapeHtml(p.shopName)}</b><div>พื้นที่: ${escapeHtml(p.area)}</div></div></div>`).join('')}
     </div>` : '';
+}
+/* ---------- หน้าแรก: ดึงร้านจริงจาก DB มาขึ้นหน้าแรกตามหมวดต่าง ๆ (ร้านใหม่ขึ้นอัตโนมัติ ไม่ต้องแก้ HTML) ---------- */
+function qtShopOrderCounts(){
+  const orders=dbGet('qt_orders',[]);
+  const map={};
+  (Array.isArray(orders)?orders:[]).forEach(o=>{ if(o&&o.shopId) map[o.shopId]=(map[o.shopId]||0)+1; });
+  return map;
+}
+function isShopOpenNow(s){
+  if(!s.openTime || !s.closeTime) return true; // ไม่ได้ตั้งเวลาไว้ ถือว่าเปิดรับออเดอร์ได้เสมอ
+  const now=new Date(); const cur=now.getHours()*60+now.getMinutes();
+  const om=String(s.openTime).split(':').map(Number), cm=String(s.closeTime).split(':').map(Number);
+  if(om.some(Number.isNaN)||cm.some(Number.isNaN)) return true;
+  const open=om[0]*60+om[1], close=cm[0]*60+cm[1];
+  return close>open ? (cur>=open&&cur<close) : (cur>=open||cur<close);
+}
+function shuffleArray(arr){
+  for(let i=arr.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [arr[i],arr[j]]=[arr[j],arr[i]]; }
+  return arr;
+}
+function qgShopStrip(id, list){
+  const el=document.getElementById(id);
+  if(!el) return;
+  el.innerHTML = list.length ? list.map(shopCard).join('') : '<div class="qg-empty-hint">ยังไม่มีร้านในหมวดนี้</div>';
+}
+async function renderHomeShopSections(){
+  let shops = dbGet('qt_users',[]).filter(u=>u.type==='shop' && u.shopName);
+  if(!shops.length){ await qtEnsurePublicShopsLoaded(); shops = dbGet('qt_users',[]).filter(u=>u.type==='shop' && u.shopName); }
+  const openSec=document.getElementById('home-sec-open');
+  const catBox=document.getElementById('home-categories');
+  if(!shops.length){
+    qgShopStrip('home-recommended', []);
+    qgShopStrip('home-popular', []);
+    qgShopStrip('home-discovery', []);
+    if(openSec) openSec.style.display='none';
+    if(catBox) catBox.innerHTML='';
+    return;
+  }
+  const orderCounts=qtShopOrderCounts();
+  const withMeta=shops.map(s=>Object.assign({},s,{_orders:orderCounts[s.id]||0,_open:isShopOpenNow(s)}));
+
+  const complete=withMeta.filter(s=>s.logo && s.address);
+  const recommended=(complete.length?complete:withMeta).slice().sort((a,b)=>(b._open-a._open)||(b._orders-a._orders)).slice(0,8);
+  qgShopStrip('home-recommended', recommended);
+
+  const withOrders=withMeta.filter(s=>s._orders>0);
+  const popular=(withOrders.length?withOrders:withMeta).slice().sort((a,b)=>b._orders-a._orders).slice(0,8);
+  qgShopStrip('home-popular', popular);
+
+  const openNow=withMeta.filter(s=>s._open).slice(0,8);
+  if(openSec) openSec.style.display = openNow.length ? '' : 'none';
+  qgShopStrip('home-open', openNow);
+
+  qgShopStrip('home-discovery', shuffleArray(withMeta.slice()).slice(0,8));
+
+  const cats=['food','cafe','grocery','other'];
+  if(catBox){
+    catBox.innerHTML = cats.map(c=>{
+      const list=withMeta.filter(s=>s.category===c).slice(0,6);
+      if(!list.length) return '';
+      return `<section class="qg-section"><div class="qg-section-head"><h2>${categoryLabel(c)}</h2><button onclick="navigate('search/${c}')">ดูทั้งหมด ›</button></div><div class="qg-shop-strip">${list.map(shopCard).join('')}</div></section>`;
+    }).join('');
+  }
 }
 
 /* ---------- 2. REGISTER / LOGIN ---------- */
@@ -2752,6 +2863,67 @@ async function openRiderCamera(previewId, nameId, draftId){
     closeCam();
   };
   cancelBtn.onclick=closeCam;
+}
+/* ---------- กล้องยืนยันตัวตนหน้า Checkout: เปิดค้างไว้ ตรวจจับใบหน้าแล้วบันทึกภาพให้อัตโนมัติ ไม่ต้องกดถ่าย ----------
+   ต่างจาก openRiderCamera() (สมัครไรเดอร์) ตรงที่ไม่มีปุ่มกดถ่าย/ยืนยัน และไม่มีขั้นตอนตรวจสอบซ้ำ:
+   ระบบสแกนเฟรมทุกครึ่งวินาทีเพื่อหาสัดส่วนสีผิวในกรอบกึ่งกลาง ถ้าเข้าเกณฑ์ถือว่า "พบใบหน้า" แล้วบันทึกภาพนั้น
+   ลงหน่วยความจำทันที ปุ่มเลื่อนยืนยันสั่งซื้อจะถูกล็อกไว้จนกว่าจะพบใบหน้าอย่างน้อยหนึ่งครั้ง */
+let qtCheckoutCamStream=null, qtCheckoutCamTimer=null;
+async function qtStartCheckoutFaceCam(){
+  const video=document.getElementById('co-verify-video');
+  const canvas=document.getElementById('co-verify-canvas');
+  const statusEl=document.getElementById('co-verify-status');
+  if(!video) return;
+  if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
+    if(statusEl) statusEl.textContent='อุปกรณ์นี้ไม่รองรับการเปิดกล้องผ่านเบราว์เซอร์';
+    return;
+  }
+  try{
+    qtCheckoutCamStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'user'},audio:false});
+    video.srcObject=qtCheckoutCamStream;
+  }catch(err){
+    console.error('[QueueTech] checkout camera failed:',err);
+    if(statusEl) statusEl.textContent='ไม่สามารถเข้าถึงกล้องได้ กรุณาอนุญาตการใช้กล้องแล้วลองใหม่';
+    return;
+  }
+  const ctx=canvas.getContext('2d');
+  let confirmedOnce=false;
+  qtCheckoutCamTimer=setInterval(()=>{
+    if(!video.videoWidth) return;
+    const w=video.videoWidth, h=video.videoHeight, size=Math.min(w,h);
+    const sx=(w-size)/2, sy=(h-size)/2;
+    canvas.width=64; canvas.height=64;
+    ctx.drawImage(video, sx, sy, size, size, 0, 0, 64, 64);
+    let skin=0, total=0;
+    let sample;
+    try{ sample=ctx.getImageData(12,8,40,48).data; }catch(e){ return; }
+    for(let i=0;i<sample.length;i+=4){
+      const r=sample[i], g=sample[i+1], b=sample[i+2];
+      total++;
+      const max=Math.max(r,g,b), min=Math.min(r,g,b);
+      if(r>90 && g>40 && b>20 && (max-min)>15 && Math.abs(r-g)>12 && r>g && r>b) skin++;
+    }
+    const faceLike = total>0 && (skin/total) > 0.14;
+    const slide=document.getElementById('checkout-confirm-slide');
+    if(faceLike){
+      const maxOut=900;
+      const outCanvas=document.createElement('canvas');
+      outCanvas.width=maxOut; outCanvas.height=maxOut;
+      outCanvas.getContext('2d').drawImage(video, sx, sy, size, size, 0, 0, maxOut, maxOut);
+      window.QT_CAM_CAPTURES=window.QT_CAM_CAPTURES||{};
+      window.QT_CAM_CAPTURES['co-verify-photo']=outCanvas.toDataURL('image/jpeg',0.85);
+      confirmedOnce=true;
+      if(statusEl){ statusEl.textContent='✅ พบใบหน้า — บันทึกภาพยืนยันแล้ว'; statusEl.classList.add('qt-livecam-ok'); }
+      if(slide) slide.classList.remove('qt-slide-locked');
+    } else if(!confirmedOnce){
+      if(statusEl){ statusEl.textContent='🔍 กรุณาหันหน้าเข้ากล้องให้อยู่ในกรอบ'; statusEl.classList.remove('qt-livecam-ok'); }
+      if(slide) slide.classList.add('qt-slide-locked');
+    }
+  }, 500);
+}
+function qtStopCheckoutFaceCam(){
+  if(qtCheckoutCamTimer){ clearInterval(qtCheckoutCamTimer); qtCheckoutCamTimer=null; }
+  if(qtCheckoutCamStream){ qtCheckoutCamStream.getTracks().forEach(t=>t.stop()); qtCheckoutCamStream=null; }
 }
 async function compressRiderImage(file, maxSize=1400, quality=0.78){
   return new Promise((resolve,reject)=>{
@@ -3489,7 +3661,7 @@ async function deleteProduct(id){
 }
 
 /* ---------- 6/7. SEARCH NEARBY SHOPS + MAP ---------- */
-function renderSearch(){
+function renderSearch(presetCategory){
   layout('ค้นหาร้าน/บริการ', `
     <h2>🔎 ค้นหาร้านใกล้ฉัน</h2>
     <div>
@@ -3527,6 +3699,10 @@ function renderSearch(){
     map.panTo(e.latlng);
   });
 
+  const validCats=['food','grocery','cafe','other'];
+  if(presetCategory && validCats.includes(presetCategory)){
+    document.getElementById('search-category').value = presetCategory;
+  }
   document.getElementById('search-keyword').addEventListener('input', runSearch);
   document.getElementById('search-category').addEventListener('change', runSearch);
   runSearch().catch(e=>console.warn('[QueueTech] initial shop search failed:',e));
@@ -3616,11 +3792,12 @@ async function runSearch(){
   document.getElementById('search-results').innerHTML = shops.length ? shops.map(s=>shopCard(s)).join('') : '<p>ไม่พบร้านค้า</p>';
 }
 function shopCard(s){
+  const rs=qtShopRatingSummary(s.id);
   return `<div class="shop-card" onclick="navigate('shop-view/${s.id}')">
     <img src="${escapeHtml(s.logo||placeholderImg())}" class="shop-logo">
     <div class="shop-info">
       <b>${escapeHtml(s.shopName)}</b> ${isPromoted(s.id)?'<span class="ad-tag-sm">โปรโมต</span>':''}
-      <div>${categoryLabel(s.category)}</div>
+      <div>${categoryLabel(s.category)}${rs.count?` • ⭐ ${rs.avg.toFixed(1)} (${rs.count})`:''}</div>
       <div>📍 ${Number.isFinite(s.distance)?s.distance.toFixed(2):'ไม่ระบุ'} กม. • ⏰ ${escapeHtml(s.openTime||'09:00')}-${escapeHtml(s.closeTime||'20:00')}</div>
     </div>
   </div>`;
@@ -3631,12 +3808,14 @@ function renderShopView(shopId){
   const shop = dbGet('qt_users',[]).find(u=>u.id===shopId);
   if(!shop){ toast('ไม่พบร้านค้า'); navigate('search'); return; }
   const products = dbGet('qt_products',[]).filter(p=>p.shopId===shopId);
+  const {count:reviewCount,avg:reviewAvg}=qtShopRatingSummary(shopId);
   layout(shop.shopName, `
     <div class="shop-header" style="background-image:url('${escapeHtml(qtCssUrl(shop.cover))}')">
       <img src="${escapeHtml(shop.logo||placeholderImg())}" class="shop-logo-lg">
     </div>
     <h2>${escapeHtml(shop.shopName)}</h2>
     <p>${categoryLabel(shop.category)} • ⏰ ${escapeHtml(shop.openTime)}-${escapeHtml(shop.closeTime)}</p>
+    ${reviewCount ? `<p class="qg-review-summary"><span class="qg-review-stars">${qtStarsHtml(reviewAvg)}</span> <b>${reviewAvg.toFixed(1)}</b> <span style="color:var(--muted);font-size:13px">(${reviewCount} รีวิว)</span></p>` : ''}
     <p>${escapeHtml(shop.description||'')}</p>
     <p>📍 ${escapeHtml(shop.address||'')}</p>
     <div class="row-btns">
@@ -3650,7 +3829,10 @@ function renderShopView(shopId){
       ${!products.length ? '<p>ยังไม่มีสินค้า</p>' : ''}
     </div>
     <button class="btn-primary btn-block" onclick="navigate('cart')">🛒 ดูตะกร้า (<span id="qt-cart-count">${cartCount()}</span>)</button>
+    <div id="shop-reviews-box" style="margin-top:14px"></div>
   `);
+  renderShopReviewsBox(shopId);
+  qtEnsureShopReviewsLoaded(shopId).then(()=>renderShopReviewsBox(shopId));
 }
 function productCardCustomer(p){
   return `<div class="product-card">
@@ -3804,14 +3986,16 @@ function renderCheckout(){
       <div class="cart-total">รวมทั้งหมด: <span id="checkout-total-display">${subtotal}</span> บาท</div>
     </div>
     <div class="rider-face-upload" style="background:#fff;border-radius:12px;padding:16px;margin:10px 0;box-shadow:0 1px 4px rgba(0,0,0,.06)">
-      <h3 style="margin:0 0 10px;font-size:15px;color:#111827">📸 ถ่ายรูปยืนยันตัวตนก่อนสั่งซื้อ <span class="req">(บังคับ)</span></h3>
-      <img id="co-verify-preview" style="display:none">
-      <button type="button" class="btn-primary rider-file-btn" onclick="openRiderCamera('co-verify-preview','co-verify-name','co-verify-photo')">📸 เปิดกล้องถ่ายรูป</button>
-      <div id="co-verify-name" style="font-size:12px;color:#68758a;margin-bottom:6px">ยังไม่ได้ถ่ายรูป</div>
-      <small>ใช้เพื่อยืนยันว่าเป็นการสั่งซื้อจริงและป้องกัน Order ปลอม (Order ผี) ต้องถ่ายรูปสดผ่านกล้องเท่านั้น</small>
+      <h3 style="margin:0 0 10px;font-size:15px;color:#111827">📸 ยืนยันตัวตนก่อนสั่งซื้อ <span class="req">(บังคับ)</span></h3>
+      <div class="qt-livecam-box"><video id="co-verify-video" autoplay playsinline muted></video></div>
+      <canvas id="co-verify-canvas" style="display:none"></canvas>
+      <div id="co-verify-status" class="qt-livecam-status">🔍 กำลังเปิดกล้อง...</div>
+      <small>ระบบได้บันทึกภาพของคุณไว้แล้ว เพื่อป้องกันออเดอร์ปลอม (Order ผี) — กล้องจะจับภาพให้อัตโนมัติเมื่อพบใบหน้า ไม่ต้องกดถ่ายเอง หากออเดอร์นี้ไม่มีไรเดอร์รับงานเลย ระบบจะลบภาพนี้ทิ้งเมื่อออเดอร์ปิด</small>
     </div>
     ${qtSlideConfirm('checkout-confirm-slide', '➡️ เลื่อนเพื่อยืนยันสั่งซื้อ', 'confirmOrder()')}
   `);
+  document.getElementById('checkout-confirm-slide')?.classList.add('qt-slide-locked');
+  qtStartCheckoutFaceCam();
   let picked = {lat:13.7563, lng:100.5018};
   window.__checkoutSubtotal = subtotal;
   window.__checkoutShop = shop;
@@ -4066,6 +4250,128 @@ function renderOrderChatPage(orderId){
   `);
 }
 
+/* ---------- รีวิว/ให้ดาวร้านค้า ----------
+   เงื่อนไข: รีวิวได้เฉพาะออเดอร์ของตัวเองที่สถานะ "completed" เท่านั้น (1 รีวิว/ออเดอร์),
+   แก้ไข/ลบรีวิวของตัวเองได้ตลอดเวลา, แสดงชื่อผู้รีวิวแบบย่อ (เช่น "สมชาย ค.") */
+function qtAbbrevName(name){
+  const parts=String(name||'').trim().split(/\s+/).filter(Boolean);
+  if(!parts.length) return 'ลูกค้า';
+  if(parts.length===1) return parts[0];
+  return parts[0]+' '+parts[1].charAt(0)+'.';
+}
+function qtMyReviewForOrder(orderId,userId){
+  return dbGet('qt_reviews',[]).find(r=>r.orderId===orderId && r.customerId===userId);
+}
+function qtShopReviews(shopId){
+  return dbGet('qt_reviews',[]).filter(r=>r.shopId===shopId).sort((a,b)=>b.updatedAt-a.updatedAt);
+}
+function qtShopRatingSummary(shopId){
+  const list=qtShopReviews(shopId);
+  if(!list.length) return {count:0,avg:0};
+  const avg=list.reduce((s,r)=>s+Number(r.rating||0),0)/list.length;
+  return {count:list.length,avg};
+}
+function qtStarsHtml(rating){
+  const full=Math.round(rating);
+  return '★'.repeat(full)+'☆'.repeat(Math.max(0,5-full));
+}
+window.__qtReviewDraftRating = window.__qtReviewDraftRating || {};
+function qtReviewFormHtml(orderId, rating, comment){
+  return `<div class="qg-star-input" id="star-input-${orderId}">${[1,2,3,4,5].map(n=>`<span data-n="${n}" class="${n<=rating?'on':''}" onclick="setReviewStars('${orderId}',${n})">★</span>`).join('')}</div>
+    <textarea id="review-comment-${orderId}" placeholder="เล่าประสบการณ์การสั่งซื้อ (ไม่บังคับ)">${escapeHtml(comment||'')}</textarea>
+    <button class="btn-primary btn-block" onclick="submitReview('${orderId}')">ส่งรีวิว</button>`;
+}
+function setReviewStars(orderId, n){
+  window.__qtReviewDraftRating[orderId]=n;
+  const box=document.getElementById('star-input-'+orderId);
+  if(box) Array.from(box.children).forEach(s=>s.classList.toggle('on', Number(s.dataset.n)<=n));
+}
+function openReviewForm(orderId){
+  const user=currentUser();
+  const mine=qtMyReviewForOrder(orderId,user?.id);
+  const holder=document.getElementById('review-form-'+orderId);
+  if(!holder) return;
+  window.__qtReviewDraftRating[orderId]=mine?mine.rating:0;
+  holder.innerHTML=qtReviewFormHtml(orderId, mine?mine.rating:0, mine?mine.comment:'');
+}
+function renderOrderReviewBox(order){
+  const user=currentUser();
+  const box=document.getElementById('order-review-box');
+  if(!box || !user) return;
+  const mine=qtMyReviewForOrder(order.id,user.id);
+  if(mine){
+    box.innerHTML=`<section class="qt-track-section">
+      <h3>⭐ รีวิวของคุณ</h3>
+      <div class="qg-review-stars">${qtStarsHtml(mine.rating)}</div>
+      ${mine.comment?`<p style="margin:6px 0;color:#374151">${escapeHtml(mine.comment)}</p>`:''}
+      <div class="row-btns"><button class="btn-secondary" onclick="openReviewForm('${order.id}')">✏️ แก้ไขรีวิว</button><button class="btn-danger" onclick="deleteMyReview('${mine.id}','${order.id}')">🗑️ ลบรีวิว</button></div>
+      <div id="review-form-${order.id}"></div>
+    </section>`;
+  }else{
+    box.innerHTML=`<section class="qt-track-section">
+      <h3>⭐ ให้คะแนนร้านนี้</h3>
+      <div id="review-form-${order.id}">${qtReviewFormHtml(order.id,0,'')}</div>
+    </section>`;
+  }
+}
+async function submitReview(orderId){
+  const user=currentUser();
+  const order=dbGet('qt_orders',[]).find(o=>o.id===orderId);
+  if(!user||!order){ toast('ไม่พบคำสั่งซื้อ'); return; }
+  if(order.customerId!==user.id){ toast('ไม่มีสิทธิ์รีวิวออเดอร์นี้'); return; }
+  if(order.status!=='completed'){ toast('รีวิวได้เฉพาะออเดอร์ที่จัดส่งสำเร็จแล้วเท่านั้น'); return; }
+  const rating=window.__qtReviewDraftRating[orderId]||0;
+  if(!rating){ toast('กรุณาให้คะแนนดาวก่อนส่งรีวิว'); return; }
+  const comment=(document.getElementById('review-comment-'+orderId)?.value||'').trim();
+  const reviews=dbGet('qt_reviews',[]);
+  let mine=reviews.find(r=>r.orderId===orderId && r.customerId===user.id);
+  if(mine){ mine.rating=rating; mine.comment=comment; mine.updatedAt=Date.now(); }
+  else{ mine={id:uid(),orderId,shopId:order.shopId,customerId:user.id,customerName:user.name||'ลูกค้า',rating,comment,createdAt:Date.now(),updatedAt:Date.now()}; reviews.push(mine); }
+  dbSet('qt_reviews',reviews);
+  toast('บันทึกรีวิวแล้ว ขอบคุณค่ะ');
+  renderOrderReviewBox(order);
+}
+async function deleteMyReview(reviewId, orderId){
+  if(!confirm('ยืนยันลบรีวิวนี้?')) return;
+  const user=currentUser();
+  let reviews=dbGet('qt_reviews',[]);
+  const mine=reviews.find(r=>r.id===reviewId);
+  if(!mine || mine.customerId!==user.id){ toast('ไม่มีสิทธิ์ลบรีวิวนี้'); return; }
+  reviews=reviews.filter(r=>r.id!==reviewId);
+  dbSet('qt_reviews',reviews);
+  if(qtUuidLike(reviewId) && window.QT_HAS_REVIEWS_TABLE){
+    try{ await qtDeleteRows('reviews','id=eq.'+encodeURIComponent(reviewId)); }catch(e){ console.warn('[QueueTech] delete review failed:',e); }
+  }
+  toast('ลบรีวิวแล้ว');
+  const order=dbGet('qt_orders',[]).find(o=>o.id===orderId);
+  if(order) renderOrderReviewBox(order);
+}
+async function qtEnsureShopReviewsLoaded(shopId){
+  const token=await qtGetAccessToken();
+  if(!token || !window.QT_HAS_REVIEWS_TABLE) return;
+  try{
+    const rows=await qtSupabaseTable('reviews?select=*',{accessToken:token});
+    if(!Array.isArray(rows)) return;
+    const shopRows=await qtSupabaseTable('shop_profiles?select=id,user_id',{accessToken:token}).catch(()=>[]);
+    const byProfile=new Map((Array.isArray(shopRows)?shopRows:[]).map(x=>[x.id,x.user_id]));
+    QT_DB_CACHE.qt_reviews=rows.map(r=>({id:r.id,orderId:r.order_id,shopId:byProfile.get(r.shop_id)||r.shop_id,customerId:r.customer_id,customerName:r.customer_name||'ลูกค้า',rating:Number(r.rating||0),comment:r.comment||'',createdAt:new Date(r.created_at).getTime(),updatedAt:r.updated_at?new Date(r.updated_at).getTime():new Date(r.created_at).getTime()}));
+  }catch(e){ console.warn('[QueueTech] load shop reviews failed:',e); }
+}
+function renderShopReviewsBox(shopId){
+  const box=document.getElementById('shop-reviews-box');
+  if(!box) return;
+  const {count,avg}=qtShopRatingSummary(shopId);
+  const list=qtShopReviews(shopId);
+  box.innerHTML=`<section class="qt-track-section">
+    <h3>⭐ รีวิวจากลูกค้า</h3>
+    ${count ? `<div class="qg-review-summary"><span class="qg-review-stars" style="font-size:20px">${qtStarsHtml(avg)}</span><b>${avg.toFixed(1)}</b><span style="color:var(--muted);font-size:13px">(${count} รีวิว)</span></div>` : '<p style="color:var(--muted);font-size:13px">ยังไม่มีรีวิวสำหรับร้านนี้</p>'}
+    ${list.slice(0,20).map(r=>`<div class="qg-review-card">
+      <div class="qg-review-head"><b>${escapeHtml(qtAbbrevName(r.customerName))}</b><span>${new Date(r.updatedAt).toLocaleDateString('th-TH',{dateStyle:'medium'})}</span></div>
+      <div class="qg-review-stars">${qtStarsHtml(r.rating)}</div>
+      ${r.comment?`<p style="margin:4px 0 0;color:#374151;font-size:14px">${escapeHtml(r.comment)}</p>`:''}
+    </div>`).join('')}
+  </section>`;
+}
 function renderOrderDetail(id){
   const order = dbGet('qt_orders',[]).find(o=>o.id===id);
   if(!order){ toast('ไม่พบคำสั่งซื้อ'); navigate('orders'); return; }
@@ -4125,8 +4431,10 @@ function renderOrderDetail(id){
       <div id="action-buttons">${orderActionButtons(order,user)}</div>
       ${mapAvailable ? `<section class="qt-track-map-card" style="margin-top:14px"><h3>📍 ติดตามการจัดส่ง</h3><div id="tracking-map" class="map-box"></div>${!['picked_up','delivering','arrived'].includes(order.status) ? '<div class="search-location-hint" style="margin-top:8px">🛵 ตำแหน่งไรเดอร์จะแสดงบนแผนที่เมื่อไรเดอร์รับของจากร้านแล้ว</div>' : '<div class="search-location-status" style="margin-top:8px">🔴 ติดตามตำแหน่งไรเดอร์แบบ Real-time</div>'}</section>` : ''}
       ${order.riderId && !['completed','cancelled'].includes(order.status) ? `<button class="btn-primary btn-block" style="margin-top:12px" onclick="navigate('order-chat/${order.id}')">💬 เปิดแชทกับไรเดอร์</button>` : ''}
+      ${order.status==='completed' ? '<div id="order-review-box" style="margin-top:12px"></div>' : ''}
     `);
     if(mapAvailable) initTrackingMap(order);
+    if(order.status==='completed') renderOrderReviewBox(order);
     return;
   }
 
@@ -4216,6 +4524,7 @@ function adminCancelOrder(orderId){
   o.cancelledAt=Date.now(); o.cancelledBy=admin.id; o.cancelledByRole='admin'; o.cancelReason=reason.trim();
   o.statusLog=Array.isArray(o.statusLog)?o.statusLog:[];
   o.statusLog.push({status:'cancelled',time:Date.now(),by:admin.id,byRole:'admin',reason:reason.trim()});
+  qtPurgeVerificationPhotoIfUnclaimed(o);
   dbSet('qt_orders',orders);
   adminOrderAudit(orderId,'cancel',admin.id,{reason:reason.trim()});
   [o.customerId,o.shopId,o.riderId].filter(Boolean).forEach(id=>pushNotification(id,'❌ ออเดอร์ถูกยกเลิกโดย Admin',`เลขออเดอร์ ${displayOrderNumber(o)} • ${reason.trim()}`,'order/'+orderId));
@@ -4248,6 +4557,18 @@ function renderAdminOrderCenter(user){
     <button class="btn-secondary btn-block" onclick="navigate('admin')">← กลับ Admin Dashboard</button>`);
 }
 
+/* ออเดอร์ที่ไม่มีไรเดอร์รับงานเลยแล้วปิดไป (เสร็จ/ยกเลิก) ไม่มีเหตุผลต้องเก็บภาพยืนยันตัวตนต่อ — ลบทิ้งเพื่อความเป็นส่วนตัว
+   ออเดอร์ที่มีไรเดอร์รับงานแล้วยังคงเก็บภาพไว้ เผื่อใช้ตรวจสอบข้อพิพาทภายหลัง */
+async function qtPurgeVerificationPhotoIfUnclaimed(order){
+  if(!order || !order.customerVerificationPhoto || order.riderId) return;
+  order.customerVerificationPhoto=null;
+  if(window.QT_HAS_VERIFICATION_PHOTO_COLUMN){
+    try{
+      const token=await qtGetAccessToken();
+      if(token) await qtSupabaseTable('orders?id=eq.'+encodeURIComponent(order.id),{method:'PATCH',accessToken:token,body:{customer_verification_photo:null}});
+    }catch(e){ console.warn('[QueueTech] purge verification photo failed:',e); }
+  }
+}
 function updateOrderStatus(orderId, newStatus){
   let orders = dbGet('qt_orders',[]);
   const order = orders.find(o=>o.id===orderId);
@@ -4271,6 +4592,7 @@ function updateOrderStatus(orderId, newStatus){
     if(order.customerId===currentUser()?.id){
       order.customerUnlockedAt = Date.now();
     }
+    qtPurgeVerificationPhotoIfUnclaimed(order);
   }
   dbSet('qt_orders', orders);
   if(actor && actor.type==='rider'){
