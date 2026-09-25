@@ -1079,7 +1079,7 @@ async function qtHydratePublicStorefront(){
         shopProfileId:x.id,
         type:'shop',status:'approved',shopName:x.shop_name||meta.shopName||'ร้านค้า',
         name:meta.name||x.shop_name||'ร้านค้า',phone:x.phone||meta.phone||'',address:x.address||meta.address||'',
-        profileImage:x.profile_image||'',
+        profileImage:x.profile_image||x.profile_photo||x.avatar_url||x.photo_url||x.image||meta.profileImage||meta.profile_image||meta.avatarUrl||meta.avatar_url||meta.cover||meta.logo||'',
         lat:x.latitude??meta.lat??null,lng:x.longitude??meta.lng??null,supabase:true,_profileOnly:true
       });
     }).filter(x=>x.id);
@@ -1138,7 +1138,7 @@ async function qtHydrateDatabase(opts){
       if(x.user_id && x.id) profileMaps.shopByUserId.set(String(x.user_id),String(x.id));
       if(String(x.status||'').toLowerCase()!=='active') return;
       const meta=(x.metadata&&typeof x.metadata==='object'&&!Array.isArray(x.metadata))?x.metadata:{};
-      const su=Object.assign({},meta,{id:x.user_id||x.id,shopProfileId:x.id,type:'shop',status:'approved',shopName:x.shop_name||meta.shopName||'ร้านค้า',name:meta.name||x.shop_name||'ร้านค้า',phone:x.phone||meta.phone||'',address:x.address||meta.address||'',profileImage:x.profile_image||'',lat:x.latitude??meta.lat??null,lng:x.longitude??meta.lng??null,supabase:true,_profileOnly:true});
+      const su=Object.assign({},meta,{id:x.user_id||x.id,shopProfileId:x.id,type:'shop',status:'approved',shopName:x.shop_name||meta.shopName||'ร้านค้า',name:meta.name||x.shop_name||'ร้านค้า',phone:x.phone||meta.phone||'',address:x.address||meta.address||'',profileImage:x.profile_image||x.profile_photo||x.avatar_url||x.photo_url||x.image||meta.profileImage||meta.profile_image||meta.avatarUrl||meta.avatar_url||meta.cover||meta.logo||'',lat:x.latitude??meta.lat??null,lng:x.longitude??meta.lng??null,supabase:true,_profileOnly:true});
       delete su.password; delete su.authUserId;
       QT_DB_CACHE.qt_users.push(su);
     });
@@ -2157,7 +2157,7 @@ async function renderHomeShopSections(){
   const orderCounts=qtShopOrderCounts();
   const withMeta=shops.map(s=>Object.assign({},s,{_orders:orderCounts[s.id]||0,_open:isShopOpenNow(s)}));
 
-  const complete=withMeta.filter(s=>(s.profileImage||s.profile_image||s.profilePhoto||s.avatarUrl) && s.address);
+  const complete=withMeta.filter(s=>(s.profileImage||s.profile_image||s.profilePhoto||s.avatarUrl||s.cover||s.logo) && s.address);
   const recommended=(complete.length?complete:withMeta).slice().sort((a,b)=>(b._open-a._open)||(b._orders-a._orders)).slice(0,8);
   qgShopStrip('home-recommended', recommended);
 
@@ -2526,7 +2526,7 @@ async function qtEnsurePublicShopsLoaded(){
     const current=dbGet('qt_users',[]).filter(u=>u.type!=='shop');
     const shops=rows.filter(x=>x && String(x.status||'').toLowerCase()==='active').map(x=>{
       const meta=(x.metadata&&typeof x.metadata==='object')?x.metadata:{};
-      return Object.assign({},meta,{id:x.user_id,type:'shop',status:'approved',shopName:x.shop_name,name:meta.name||x.shop_name,phone:x.phone,address:x.address,profileImage:x.profile_image||'',lat:x.latitude,lng:x.longitude,supabase:true,_profileOnly:true});
+      return Object.assign({},meta,{id:x.user_id,type:'shop',status:'approved',shopName:x.shop_name,name:meta.name||x.shop_name,phone:x.phone,address:x.address,profileImage:x.profile_image||x.profile_photo||x.avatar_url||x.photo_url||x.image||meta.profileImage||meta.profile_image||meta.avatarUrl||meta.avatar_url||meta.cover||meta.logo||'',lat:x.latitude,lng:x.longitude,supabase:true,_profileOnly:true});
     });
     QT_DB_CACHE.qt_users=current.concat(shops);
     return shops.length>0;
@@ -2564,9 +2564,10 @@ async function runSearch(){
   document.getElementById('search-results').innerHTML = shops.length ? shops.map(s=>shopCard(s)).join('') : '<p>ไม่พบร้านค้า</p>';
 }
 function qgShopLogoHtml(s){
-  /* Customer storefront: show ONLY the profile image uploaded by the shop.
-     Never generate initials, avatars, logos, covers, or placeholder images. */
-  const photo = s.profileImage || s.profile_image || '';
+  /* QueueGo: display the actual image uploaded by the shop.
+     Keep all existing image fields from the original shop profile data;
+     never generate initials, avatars, or placeholder images. */
+  const photo = s.profileImage || s.profile_image || s.profilePhoto || s.avatarUrl || s.cover || s.logo || '';
   if(!photo) return '';
   return `<img src="${escapeHtml(photo)}" class="shop-logo" alt="${escapeHtml(s.shopName||'ร้านค้า')}" onerror="this.remove()">`;
 }
@@ -2591,7 +2592,7 @@ function renderShopView(shopId){
   const products = dbGet('qt_products',[]).filter(p=>p.shopId===shopId);
   const {count:reviewCount,avg:reviewAvg}=qtShopRatingSummary(shopId);
   layout(shop.shopName, `
-    <div class="shop-header" style="background-image:none;background:#f6faf8;display:flex;align-items:center;justify-content:center;box-shadow:none;">
+    <div class="shop-header" style="background-image:url('${escapeHtml(qtCssUrl(shop.cover||''))}');background-color:#f6faf8;display:flex;align-items:center;justify-content:center;box-shadow:none;">
       ${qgShopLogoHtml(shop).replace('class="shop-logo"','class="shop-logo-lg"')}
     </div>
     <h2>${escapeHtml(shop.shopName)}</h2>
