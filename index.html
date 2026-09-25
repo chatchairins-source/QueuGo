@@ -43,7 +43,7 @@ form input, form select, form textarea{width:100%;padding:10px;border:1px solid 
 .demo-accounts{background:#eff6ff;padding:10px;border-radius:8px;font-size:12px;margin-top:12px;color:#1e3a8a;line-height:1.6;}
 .shop-list{display:flex;flex-direction:column;gap:10px;}
 .shop-card{background:#fff;display:flex;gap:10px;padding:10px;border-radius:12px;box-shadow:0 1px 4px rgba(0,0,0,.06);cursor:pointer;align-items:center;}
-.shop-logo{width:56px;height:56px;border-radius:10px;object-fit:cover;}
+.shop-logo{width:56px;height:56px;min-width:56px;max-width:56px;aspect-ratio:1/1;border-radius:8px;object-fit:cover;display:block;background:transparent;border:0;padding:0;box-shadow:none;}
 .shop-info{flex:1;font-size:13px;}
 .product-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin:10px 0;}
 .product-card{background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.06);}
@@ -87,7 +87,7 @@ form input, form select, form textarea{width:100%;padding:10px;border:1px solid 
 .bid-table tr.top-bid{background:#fffbeb;font-weight:700;}
 .module-card{background:#fff;padding:10px;border-radius:10px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;gap:6px;font-size:14px;flex-wrap:wrap;}
 .shop-header{height:140px;background-size:cover;background-position:center;background-color:#ddd;border-radius:12px;display:flex;align-items:flex-end;padding:8px;}
-.shop-logo-lg{width:64px;height:64px;border-radius:12px;object-fit:cover;border:3px solid #fff;background:#fff;}
+.shop-logo-lg{width:76px;height:76px;min-width:76px;max-width:76px;aspect-ratio:1/1;border-radius:10px;object-fit:cover;display:block;border:0;background:transparent;padding:0;box-shadow:none;}
 .shop-summary{text-align:center;}
 .warn-text{color:#b91c1c;font-size:12px;background:#fef2f2;padding:8px;border-radius:8px;}
 .inline-form{background:#fff;padding:12px;border-radius:10px;margin:10px 0;}
@@ -210,7 +210,7 @@ form input:focus,form select:focus,form textarea:focus{
 }
 .shop-card{padding:13px;border-radius:16px;transition:transform .18s,box-shadow .18s}
 .shop-card:hover,.order-card:hover{transform:translateY(-2px);box-shadow:0 12px 24px rgba(15,23,42,.09)}
-.shop-logo{width:64px;height:64px;border-radius:14px}
+.shop-logo{width:64px;height:64px;min-width:64px;max-width:64px;aspect-ratio:1/1;border-radius:10px;object-fit:cover;display:block;background:transparent;border:0;padding:0;box-shadow:none}
 .shop-info{color:#64748b}
 .shop-info b,.product-info b{color:var(--text);font-size:14px}
 .product-grid{gap:14px}
@@ -225,8 +225,8 @@ form input:focus,form select:focus,form textarea:focus{
 .stat-card{border-radius:16px;padding:14px;background:linear-gradient(145deg,#fff,#f8fafc)}
 .stat-card b{display:block;font-size:24px;color:#1d4ed8;margin-top:4px}
 .status-toggle{border-radius:16px;padding:14px}
-.shop-header{height:190px;border-radius:20px;box-shadow:0 8px 20px rgba(15,23,42,.08)}
-.shop-logo-lg{width:76px;height:76px;border-radius:18px}
+.shop-header{height:190px;border-radius:20px;box-shadow:none;background:transparent!important;padding:0;display:flex;align-items:center;justify-content:center}
+.shop-logo-lg{width:76px;height:76px;min-width:76px;max-width:76px;aspect-ratio:1/1;border-radius:10px;object-fit:cover;display:block;background:transparent;border:0;padding:0;box-shadow:none}
 .shop-summary{padding:8px 0}
 .promo-banner,.promo-card{border-radius:16px;border:1px solid #fde68a;box-shadow:0 5px 14px rgba(245,158,11,.06)}
 .warn-text{border:1px solid #fecaca;border-radius:12px}
@@ -769,7 +769,7 @@ async function qtLoadOwnSupabaseUser(accessToken, authUserId){
 /* ---------- Supabase-backed application data layer ----------
    Business data is kept in memory and persisted to Supabase.
    LocalStorage is NOT used for users/orders/technician jobs/quotes/notifications/audit/finance.
-   sessionStorage is used only for the current browser session token. */
+   The authentication session is persisted in localStorage (sessionStorage is fallback only). */
 const QT_DB_CACHE = Object.create(null);
 const QT_DB_KEYS = new Set(['qt_users','qt_orders','qt_notifications','qt_promotions','qt_products','qt_reviews']);
 const QT_DB_READY = {value:false};
@@ -777,7 +777,7 @@ function dbGet(key, def){
   if(Object.prototype.hasOwnProperty.call(QT_DB_CACHE,key)) return QT_DB_CACHE[key];
   if(String(key).startsWith('qt_cart_')){
     try{
-      const raw=sessionStorage.getItem(key);
+      const raw=localStorage.getItem(key) || sessionStorage.getItem(key);
       if(raw!==null){
         const parsed=JSON.parse(raw);
         QT_DB_CACHE[key]=parsed;
@@ -790,7 +790,7 @@ function dbGet(key, def){
 function dbSet(key, val){
   QT_DB_CACHE[key]=val;
   if(String(key).startsWith('qt_cart_')){
-    try{ sessionStorage.setItem(key,JSON.stringify(val)); }catch(e){}
+    try{ localStorage.setItem(key,JSON.stringify(val)); }catch(e){ try{ sessionStorage.setItem(key,JSON.stringify(val)); }catch(_){} }
     try{ updateCartCountUI(); }catch(e){}
     return;
   }
@@ -1079,6 +1079,7 @@ async function qtHydratePublicStorefront(){
         shopProfileId:x.id,
         type:'shop',status:'approved',shopName:x.shop_name||meta.shopName||'ร้านค้า',
         name:meta.name||x.shop_name||'ร้านค้า',phone:x.phone||meta.phone||'',address:x.address||meta.address||'',
+        profileImage:x.profile_image||x.profile_photo||x.avatar_url||x.photo_url||x.image||meta.profileImage||meta.profile_image||meta.avatarUrl||meta.avatar_url||'',
         lat:x.latitude??meta.lat??null,lng:x.longitude??meta.lng??null,supabase:true,_profileOnly:true
       });
     }).filter(x=>x.id);
@@ -1137,7 +1138,7 @@ async function qtHydrateDatabase(opts){
       if(x.user_id && x.id) profileMaps.shopByUserId.set(String(x.user_id),String(x.id));
       if(String(x.status||'').toLowerCase()!=='active') return;
       const meta=(x.metadata&&typeof x.metadata==='object'&&!Array.isArray(x.metadata))?x.metadata:{};
-      const su=Object.assign({},meta,{id:x.user_id||x.id,shopProfileId:x.id,type:'shop',status:'approved',shopName:x.shop_name||meta.shopName||'ร้านค้า',name:meta.name||x.shop_name||'ร้านค้า',phone:x.phone||meta.phone||'',address:x.address||meta.address||'',lat:x.latitude??meta.lat??null,lng:x.longitude??meta.lng??null,supabase:true,_profileOnly:true});
+      const su=Object.assign({},meta,{id:x.user_id||x.id,shopProfileId:x.id,type:'shop',status:'approved',shopName:x.shop_name||meta.shopName||'ร้านค้า',name:meta.name||x.shop_name||'ร้านค้า',phone:x.phone||meta.phone||'',address:x.address||meta.address||'',profileImage:x.profile_image||x.profile_photo||x.avatar_url||x.photo_url||x.image||meta.profileImage||meta.profile_image||meta.avatarUrl||meta.avatar_url||'',lat:x.latitude??meta.lat??null,lng:x.longitude??meta.lng??null,supabase:true,_profileOnly:true});
       delete su.password; delete su.authUserId;
       QT_DB_CACHE.qt_users.push(su);
     });
@@ -2156,7 +2157,7 @@ async function renderHomeShopSections(){
   const orderCounts=qtShopOrderCounts();
   const withMeta=shops.map(s=>Object.assign({},s,{_orders:orderCounts[s.id]||0,_open:isShopOpenNow(s)}));
 
-  const complete=withMeta.filter(s=>s.logo && s.address);
+  const complete=withMeta.filter(s=>(s.profileImage||s.profile_image||s.profilePhoto||s.avatarUrl) && s.address);
   const recommended=(complete.length?complete:withMeta).slice().sort((a,b)=>(b._open-a._open)||(b._orders-a._orders)).slice(0,8);
   qgShopStrip('home-recommended', recommended);
 
@@ -2389,10 +2390,12 @@ async function handleLogin(e){
     }
     const user=qtUserFromRow(p);
     QT_DB_CACHE.qt_users=[user];qtMarkClean('qt_users');
+    qtMigrateGuestCartToUser(user.id);
     setSession({userId:user.id,authUserId:p.auth_user_id,accessToken:auth.access_token,refreshToken:auth.refresh_token||null,expiresAt:auth.expires_at||Math.floor(qtJwtExpiryMs(auth.access_token)/1000)||null,role:'customer'});
     if(user.status==='suspended'){toast('บัญชีนี้ถูกระงับการใช้งาน กรุณาติดต่อ QueueGo');clearSession();qtResetCache();return false;}
     try{sessionStorage.removeItem('qg_customer_gps_captured');}catch(e){}
-    navigate('home');
+    let afterLogin=''; try{afterLogin=sessionStorage.getItem('qg_after_login')||'';sessionStorage.removeItem('qg_after_login');}catch(e){}
+    navigate(afterLogin==='checkout'?'checkout':'home');
     setTimeout(()=>qtBackgroundHydrate({light:false}),0);
   }catch(err){
     console.error('QueueGo Customer login failed',err);
@@ -2514,15 +2517,16 @@ function getMyLocationForSearch(){
 }
 function isPromoted(shopId){ return dbGet('qt_promotions',[]).some(p=>p.shopId===shopId && p.status==='active'); }
 async function qtEnsurePublicShopsLoaded(){
-  const token=await qtGetAccessToken();
-  if(!token) return false;
+  /* Guests use the same public Supabase read path; no auth token is required. */
   try{
-    const rows=await qtSupabaseTable('shop_profiles?select=*',{accessToken:token});
+    const token=await qtGetAccessToken();
+    const authOpts=token?{accessToken:token}:{};
+    const rows=await qtSupabaseTable('shop_profiles?select=*',authOpts);
     if(!Array.isArray(rows)) return false;
     const current=dbGet('qt_users',[]).filter(u=>u.type!=='shop');
     const shops=rows.filter(x=>x && String(x.status||'').toLowerCase()==='active').map(x=>{
       const meta=(x.metadata&&typeof x.metadata==='object')?x.metadata:{};
-      return Object.assign({},meta,{id:x.user_id,type:'shop',status:'approved',shopName:x.shop_name,name:meta.name||x.shop_name,phone:x.phone,address:x.address,lat:x.latitude,lng:x.longitude,supabase:true,_profileOnly:true});
+      return Object.assign({},meta,{id:x.user_id,type:'shop',status:'approved',shopName:x.shop_name,name:meta.name||x.shop_name,phone:x.phone,address:x.address,profileImage:x.profile_image||x.profile_photo||x.avatar_url||x.photo_url||x.image||meta.profileImage||meta.profile_image||meta.avatarUrl||meta.avatar_url||'',lat:x.latitude,lng:x.longitude,supabase:true,_profileOnly:true});
     });
     QT_DB_CACHE.qt_users=current.concat(shops);
     return shops.length>0;
@@ -2560,8 +2564,10 @@ async function runSearch(){
   document.getElementById('search-results').innerHTML = shops.length ? shops.map(s=>shopCard(s)).join('') : '<p>ไม่พบร้านค้า</p>';
 }
 function qgShopLogoHtml(s){
-  const photo = s.cover || s.logo;
-  if(photo) return `<img src="${escapeHtml(photo)}" class="shop-logo" alt="${escapeHtml(s.shopName||'ร้านค้า')}">`;
+  /* Customer storefront uses the shop's PROFILE PHOTO only.
+     Do not fall back to cover/logo fields. */
+  const photo = s.profileImage || s.profile_image || s.profilePhoto || s.avatarUrl || '';
+  if(photo) return `<img src="${escapeHtml(photo)}" class="shop-logo" alt="${escapeHtml(s.shopName||'ร้านค้า')}" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'shop-logo qg-shop-logo-fallback',textContent:'${escapeHtml((s.shopName||'?').trim().charAt(0)||'?')}'}))">`;
   return `<div class="shop-logo qg-shop-logo-fallback">${escapeHtml((s.shopName||'?').trim().charAt(0)||'?')}</div>`;
 }
 function shopCard(s){
@@ -2585,8 +2591,8 @@ function renderShopView(shopId){
   const products = dbGet('qt_products',[]).filter(p=>p.shopId===shopId);
   const {count:reviewCount,avg:reviewAvg}=qtShopRatingSummary(shopId);
   layout(shop.shopName, `
-    <div class="shop-header" style="background-image:url('${escapeHtml(qtCssUrl(shop.cover))}')">
-      <img src="${escapeHtml(shop.logo||placeholderImg())}" class="shop-logo-lg">
+    <div class="shop-header" style="background-image:none;background:#f6faf8;display:flex;align-items:center;justify-content:center;box-shadow:none;">
+      ${qgShopLogoHtml(shop).replace('class="shop-logo"','class="shop-logo-lg"')}
     </div>
     <h2>${escapeHtml(shop.shopName)}</h2>
     <p>${categoryLabel(shop.category)} • ⏰ ${escapeHtml(shop.openTime)}-${escapeHtml(shop.closeTime)}</p>
@@ -2603,7 +2609,7 @@ function renderShopView(shopId){
       ${products.filter(p=>!p.available).map(p=>`<div class="product-card disabled"><img src="${escapeHtml(p.image||placeholderImg())}" class="product-img"><div class="product-info"><b>${escapeHtml(p.name)}</b><div>${escapeHtml(p.price)} บาท</div><div class="badge badge-gray">สินค้าหมด</div></div></div>`).join('')}
       ${!products.length ? '<p>ยังไม่มีสินค้า</p>' : ''}
     </div>
-    <button class="btn-primary btn-block" onclick="${currentUser()?'navigate(\'cart\')':'navigate(\'login\')'}">🛒 ${currentUser()?'ดูตะกร้า':'เข้าสู่ระบบเพื่อสั่งซื้อ'} <span id="qt-cart-count">${currentUser()?`(${cartCount()})`:''}</span></button>
+    <button class="btn-primary btn-block" onclick="navigate('cart')">🛒 ดูตะกร้า <span id="qt-cart-count">${cartCount()?`(${cartCount()})`:''}</span></button>
     <div id="shop-reviews-box" style="margin-top:14px"></div>
   `);
   renderShopReviewsBox(shopId);
@@ -2620,9 +2626,33 @@ function productCardCustomer(p){
     </div>
   </div>`;
 }
+function qtCartOwnerKey(){
+  const user=currentUser();
+  return user&&user.type==='customer' ? user.id : 'guest';
+}
+function qtCartKey(){ return 'qt_cart_'+qtCartOwnerKey(); }
+function qtGetCart(){ return dbGet(qtCartKey(),{shopId:null,items:[]}); }
+function qtSetCart(cart){ dbSet(qtCartKey(),cart); }
+function qtMigrateGuestCartToUser(userId){
+  if(!userId) return;
+  const guest=dbGet('qt_cart_guest',{shopId:null,items:[]});
+  if(!guest?.items?.length) return;
+  const mine=dbGet('qt_cart_'+userId,{shopId:guest.shopId||null,items:[]});
+  if(!mine.items?.length){ dbSet('qt_cart_'+userId,guest); }
+  else if(guest.shopId===mine.shopId){
+    for(const gi of guest.items){
+      const mi=mine.items.find(x=>x.productId===gi.productId);
+      if(mi) mi.qty=Number(mi.qty||0)+Number(gi.qty||0); else mine.items.push(gi);
+    }
+    dbSet('qt_cart_'+userId,mine);
+  }
+  try{localStorage.removeItem('qt_cart_guest');}catch(e){} try{sessionStorage.removeItem('qt_cart_guest');}catch(e){}
+  delete QT_DB_CACHE.qt_cart_guest;
+}
+
 function cartCount(){
-  const user=currentUser();if(!user)return 0;
-  const cart=dbGet('qt_cart_'+user.id,{items:[]});
+  const key=qtCartKey();
+  const cart=dbGet(key,{items:[]});
   return (cart.items||[]).reduce((s,i)=>s+Number(i.qty||0),0);
 }
 function updateCartCountUI(){
@@ -2634,10 +2664,10 @@ function updateCartCountUI(){
   });
 }
 function addToCart(productId){
-  const user = currentUser();
-  if(!user || user.type!=='customer'){ toast('กรุณาเข้าสู่ระบบด้วยบัญชีลูกค้าก่อน'); navigate('login'); return; }
+  // Guest users may build a cart. Login is required only when proceeding to checkout.
   const product = dbGet('qt_products',[]).find(p=>p.id===productId);
-  let cart = dbGet('qt_cart_'+user.id, {shopId:null, items:[]});
+  if(!product){ toast('ไม่พบสินค้า'); return; }
+  let cart = qtGetCart();
   if(cart.shopId && cart.shopId!==product.shopId){
     if(!confirm('ตะกร้าปัจจุบันเป็นของร้านอื่น ต้องการล้างตะกร้าและเริ่มใหม่หรือไม่?')) return;
     cart = {shopId:product.shopId, items:[]};
@@ -2646,12 +2676,11 @@ function addToCart(productId){
   const existing = cart.items.find(i=>i.productId===productId);
   if(existing) existing.qty++;
   else cart.items.push({productId, name:product.name, price:product.price, image:product.image, qty:1});
-  dbSet('qt_cart_'+user.id, cart);
+  qtSetCart(cart);
   toast('เพิ่มลงตะกร้าแล้ว');
 }
 function renderCart(){
-  const user = currentUser(); if(!user||user.type!=='customer'){ navigate('login'); return; }
-  const cart = dbGet('qt_cart_'+user.id, {shopId:null, items:[]});
+  const cart = qtGetCart();
   const shop = cart.shopId ? dbGet('qt_users',[]).find(u=>u.id===cart.shopId) : null;
   const total = cart.items.reduce((s,i)=>s+i.price*i.qty,0);
   layout('ตะกร้าสินค้า', `
@@ -2667,24 +2696,23 @@ function renderCart(){
         <button class="btn-danger" onclick="removeFromCart('${i.productId}')">ลบ</button>
       </div>`).join('') : '<p>ตะกร้าว่างเปล่า</p>'}
     ${cart.items.length ? `<div class="cart-total">รวม: ${total} บาท</div>
-      <button class="btn-primary btn-block" onclick="navigate('checkout')">ดำเนินการสั่งซื้อ →</button>` : ''}
+      <button class="btn-primary btn-block" onclick="qtRequireLoginForCheckout()">ดำเนินการสั่งซื้อ →</button>` : ''}
   `);
 }
 function changeQty(productId, delta){
   const user = currentUser();
-  let cart = dbGet('qt_cart_'+user.id, {items:[]});
+  let cart = qtGetCart();
   const item = cart.items.find(i=>i.productId===productId);
   item.qty += delta;
   if(item.qty<=0) cart.items = cart.items.filter(i=>i.productId!==productId);
-  dbSet('qt_cart_'+user.id, cart);
+  qtSetCart(cart);
   updateCartCountUI();
   renderCart();
 }
 function removeFromCart(productId){
-  const user = currentUser();
-  let cart = dbGet('qt_cart_'+user.id, {items:[]});
+  let cart = qtGetCart();
   cart.items = cart.items.filter(i=>i.productId!==productId);
-  dbSet('qt_cart_'+user.id, cart);
+  qtSetCart(cart);
   updateCartCountUI();
   renderCart();
 }
@@ -2732,6 +2760,13 @@ function ordersFallbackNumber(order){
 }
 
 /* ---------- 8. CHECKOUT / ORDER FLOW ---------- */
+function qtRequireLoginForCheckout(){
+  const user=currentUser();
+  if(user&&user.type==='customer'){ navigate('checkout'); return; }
+  try{sessionStorage.setItem('qg_after_login','checkout');}catch(e){}
+  navigate('login');
+}
+
 function renderCheckout(){
   const user = currentUser();
   if(!user){ navigate('login'); return; } /* V5.31 fix: renderCheckout used to crash reading user.id when the session was missing */
@@ -3376,9 +3411,9 @@ body{padding-bottom:calc(78px + env(safe-area-inset-bottom));}
 .qg-shop-strip .shop-card{
   min-height:104px;margin:0;padding:7px;border-radius:12px!important;
   display:flex;flex-direction:row;align-items:center;gap:8px;
-  border:1px solid #dfeae4;box-shadow:0 3px 10px rgba(20,60,40,.045);
+  border:0;box-shadow:none;background:transparent;
 }
-.qg-shop-strip .shop-card .shop-logo{width:52px;height:52px;min-width:52px;border-radius:10px;object-fit:cover}
+.qg-shop-strip .shop-card .shop-logo{width:56px;height:56px;min-width:56px;max-width:56px;aspect-ratio:1/1;border-radius:8px;object-fit:cover;display:block;background:transparent;border:0;padding:0;box-shadow:none}
 .qg-shop-strip .shop-card .shop-info{min-width:0;flex:1;padding:0!important}
 .qg-shop-strip .shop-card .shop-info b{
   display:block;font-size:13px;line-height:1.25;margin:0 0 3px;
@@ -3389,7 +3424,7 @@ body{padding-bottom:calc(78px + env(safe-area-inset-bottom));}
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
 }
 .qg-shop-strip .shop-card .ad-tag-sm{font-size:8px;padding:1px 4px;margin-left:2px}
-.qg-shop-logo-fallback{display:grid;place-items:center;background:#eafaf2;color:#0aa568;font-weight:800;font-size:20px}.qg-disabled-service{margin-top:22px;padding:15px 17px;border:1px dashed #cdd9d2;background:#f9fbfa;border-radius:16px;display:flex;align-items:center;gap:12px;color:#7c8881}.qg-disabled-service b{color:#425149}.qg-disabled-service p{margin:3px 0 0;font-size:12px}.qg-disabled-service>span{margin-left:auto;font-size:11px;background:#edf1ee;padding:6px 9px;border-radius:999px}
+.qg-shop-logo-fallback{display:grid;place-items:center;background:#eafaf2;color:#0aa568;font-weight:800;font-size:20px;border:0;box-shadow:none}.qg-disabled-service{margin-top:22px;padding:15px 17px;border:1px dashed #cdd9d2;background:#f9fbfa;border-radius:16px;display:flex;align-items:center;gap:12px;color:#7c8881}.qg-disabled-service b{color:#425149}.qg-disabled-service p{margin:3px 0 0;font-size:12px}.qg-disabled-service>span{margin-left:auto;font-size:11px;background:#edf1ee;padding:6px 9px;border-radius:999px}
 .qg-profile-head{display:flex;align-items:center;gap:16px;padding:22px 0}.qg-profile-avatar{width:72px;height:72px;border-radius:22px;background:#dff8eb;color:#07935d;display:grid;place-items:center;font-size:30px;font-weight:800}.qg-profile-head h1{margin:2px 0;font-size:26px}.qg-profile-head p{margin:0;color:#718078}.qg-active-order{display:flex;justify-content:space-between;align-items:center;padding:16px 18px;background:#ecfbf3;border:1px solid #bcefd5;border-radius:16px;color:#147b51;cursor:pointer}.qg-active-order div{display:flex;flex-direction:column;gap:3px}.qg-active-order small{color:#6b7d73}.qg-active-order span{font-size:12px}.qg-stat-row{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:16px 0}.qg-stat-row>div{background:#fff;border:1px solid #e3ece6;border-radius:15px;padding:14px;text-align:center}.qg-stat-row b{display:block;font-size:22px;color:#0a9c61}.qg-stat-row span{display:block;font-size:11px;color:#758279;margin-top:2px}.qg-menu-list{display:flex;flex-direction:column;gap:8px}.qg-menu-list button{width:100%;border:1px solid #e4ebe6;background:#fff;border-radius:15px;padding:14px;display:flex;align-items:center;gap:13px;text-align:left;cursor:pointer}.qg-menu-list button>span{width:40px;height:40px;border-radius:12px;background:#effaf4;display:grid;place-items:center;font-size:20px}.qg-menu-list button div{flex:1}.qg-menu-list button b{display:block;color:#24352c}.qg-menu-list button small{display:block;color:#849089;margin-top:3px}.qg-menu-list button>strong{color:#0aa568}.qg-menu-list .qg-menu-danger{color:#dc2626}.qg-menu-list .qg-menu-danger>span{background:#fff1f1}.qg-menu-list .qg-menu-danger b{color:#dc2626}
 .qg-auth-page{width:100%;min-height:calc(100dvh - 88px);display:flex;flex-direction:column;justify-content:center;align-items:center;padding:20px 0 36px}.qg-auth-brand{display:flex;align-items:center;gap:9px;color:#12231a;font-size:25px;margin-bottom:14px}.qg-auth-page>h1{margin:0;color:#17251c;font-size:clamp(27px,5vw,40px);text-align:center}.qg-auth-page>p{color:#7a8780;text-align:center;margin:8px 0 22px}.qg-auth-form{width:min(100%,520px);background:#fff;padding:clamp(20px,4vw,34px);border:1px solid #e2ebe5;border-radius:0;box-shadow:0 10px 30px rgba(22,60,42,.05)}.qg-auth-form input{height:52px;border-radius:12px;border:1px solid #dce7e0;background:#fff;padding:0 15px;font-size:15px}.qg-auth-form label{margin-top:14px;color:#32443a}.qg-main-btn{height:54px;border-radius:12px!important;margin-top:18px!important;background:#10b981!important;box-shadow:0 8px 20px rgba(16,185,129,.18)!important}.qg-auth-tabs{margin:7px 0 4px!important}.qg-auth-tabs .tab{flex:1}.qg-auth-foot{margin-top:18px!important}.qg-auth-foot a{color:#07985e;font-weight:700;text-decoration:none}.qg-role-blocked{min-height:calc(100dvh - 110px);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:30px}.qg-role-blocked>div:first-child{font-size:54px}.qg-role-blocked h1{margin:10px 0}.qg-role-blocked p{color:#748078;max-width:480px}.qg-role-blocked .btn-block{width:min(100%,420px)}
 /* Full-width consumer grids: only the content inside cards is constrained, never the application shell. */
@@ -3407,7 +3442,7 @@ body:before,body:after,#app:before,#app:after{content:none!important;display:non
   .qg-category-grid{grid-template-columns:repeat(3,1fr)}
   .qg-shop-strip{grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
   .qg-shop-strip .shop-card{min-height:96px;padding:6px;border-radius:11px!important;flex-direction:row;align-items:center;gap:7px}
-  .qg-shop-strip .shop-card .shop-logo{width:46px;height:46px;min-width:46px;border-radius:9px}
+  .qg-shop-strip .shop-card .shop-logo{width:52px;height:52px;min-width:52px;max-width:52px;aspect-ratio:1/1;border-radius:8px;background:transparent;border:0;padding:0;box-shadow:none}
   .qg-shop-strip .shop-card .shop-info b{font-size:12px;line-height:1.2}
   .qg-shop-strip .shop-card .shop-info div{font-size:9px;line-height:1.3}
   .qg-auth-page{min-height:calc(100dvh - 88px);justify-content:flex-start;padding-top:35px}
@@ -3418,7 +3453,7 @@ body:before,body:after,#app:before,#app:after{content:none!important;display:non
   .qg-category-grid{gap:7px}.qg-category-grid button{padding:12px 5px}.qg-category-grid span{width:38px;height:38px}
   .qg-shop-strip{grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
   .qg-shop-strip .shop-card{min-height:90px;padding:5px;gap:6px}
-  .qg-shop-strip .shop-card .shop-logo{width:42px;height:42px;min-width:42px}
+  .qg-shop-strip .shop-card .shop-logo{width:48px;height:48px;min-width:48px;max-width:48px;aspect-ratio:1/1;border-radius:8px;background:transparent;border:0;padding:0;box-shadow:none}
   .qg-shop-strip .shop-card .shop-info b{font-size:11px}
   .qg-shop-strip .shop-card .shop-info div{font-size:8.5px}
   .qg-bottomnav a{font-size:9px}
@@ -3544,6 +3579,25 @@ body:before,body:after,#app:before,#app:after{content:none!important;display:non
 })();
 </script>
 
+
+<style id="qt-customer-final-image-override-v2">
+/* Final customer storefront image rules: profile photo only, square, same size, no white frame. */
+.qg-shop-strip .shop-card .shop-logo,
+#search-results.qg-shop-strip .shop-card .shop-logo,
+.qg-shop-strip .shop-card .qg-shop-logo-fallback{
+  width:56px!important;height:56px!important;min-width:56px!important;max-width:56px!important;
+  aspect-ratio:1/1!important;border-radius:8px!important;object-fit:cover!important;
+  display:block!important;border:0!important;background:transparent!important;
+  box-shadow:none!important;padding:0!important;
+}
+#search-results.qg-shop-strip .shop-card .shop-logo{border:0!important;box-shadow:none!important;border-radius:8px!important}
+.shop-header .shop-logo-lg{
+  width:76px!important;height:76px!important;min-width:76px!important;max-width:76px!important;
+  aspect-ratio:1/1!important;border-radius:10px!important;object-fit:cover!important;
+  display:block!important;border:0!important;background:transparent!important;
+  box-shadow:none!important;padding:0!important;
+}
+</style>
 </body>
 </html>
 
@@ -3623,3 +3677,31 @@ body:before,body:after,#app:before,#app:after{content:none!important;display:non
 }
 @media(min-width:900px){#search-results.qg-shop-strip{grid-template-columns:repeat(6,minmax(0,1fr));gap:18px 10px!important}}
 </style>
+<style id="qt-customer-final-shop-image-css">
+/* Customer shop photos: profile photo only, same square size, no white frame/fill. */
+.qg-shop-strip .shop-card{background:transparent!important;border:0!important;box-shadow:none!important;padding-left:0;padding-right:0;}
+.qg-shop-strip .shop-card .shop-logo,.qg-shop-strip .shop-card .qg-shop-logo-fallback{width:56px!important;height:56px!important;min-width:56px!important;max-width:56px!important;aspect-ratio:1/1!important;border-radius:8px!important;object-fit:cover!important;border:0!important;box-shadow:none!important;padding:0!important;}
+.qg-shop-strip .shop-card .shop-logo{display:block;background:transparent!important;}
+.qg-shop-strip .shop-card .qg-shop-logo-fallback{display:grid;background:#eafaf2!important;}
+.shop-header .shop-logo-lg{width:96px!important;height:96px!important;min-width:96px!important;max-width:96px!important;aspect-ratio:1/1!important;border-radius:12px!important;object-fit:cover!important;border:0!important;background:transparent!important;box-shadow:none!important;padding:0!important;}
+</style>
+
+<style id="qt-customer-final-image-override-v2">
+/* Final customer storefront image rules: profile photo only, square, same size, no white frame. */
+.qg-shop-strip .shop-card .shop-logo,
+#search-results.qg-shop-strip .shop-card .shop-logo,
+.qg-shop-strip .shop-card .qg-shop-logo-fallback{
+  width:56px!important;height:56px!important;min-width:56px!important;max-width:56px!important;
+  aspect-ratio:1/1!important;border-radius:8px!important;object-fit:cover!important;
+  display:block!important;border:0!important;background:transparent!important;
+  box-shadow:none!important;padding:0!important;
+}
+#search-results.qg-shop-strip .shop-card .shop-logo{border:0!important;box-shadow:none!important;border-radius:8px!important}
+.shop-header .shop-logo-lg{
+  width:76px!important;height:76px!important;min-width:76px!important;max-width:76px!important;
+  aspect-ratio:1/1!important;border-radius:10px!important;object-fit:cover!important;
+  display:block!important;border:0!important;background:transparent!important;
+  box-shadow:none!important;padding:0!important;
+}
+</style>
+</body>
