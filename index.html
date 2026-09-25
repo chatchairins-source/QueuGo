@@ -2635,7 +2635,7 @@ function shopCard(s){
   return `<div class="shop-card${hasPhoto?'':' qt-shop-no-image'}" onclick="navigate('shop-view/${s.id}')">
     ${qgShopLogoHtml(s)}
     <div class="shop-info">
-      <b>${escapeHtml(s.shopName)}</b> ${isPromoted(s.id)?'<span class="ad-tag-sm">โปรโมต</span>':''}
+      <b title="${escapeHtml(s.shopName)}">${escapeHtml(s.shopName)}</b> ${isPromoted(s.id)?'<span class="ad-tag-sm">โปรโมต</span>':''}
       <div>${categoryLabel(s.category)}${rs.count?` • ⭐ ${rs.avg.toFixed(1)}`:''}</div>
       <div>${distanceLine}</div>
     </div>
@@ -3855,6 +3855,7 @@ body{padding-bottom:calc(64px + env(safe-area-inset-bottom))}
   display:-webkit-box!important;-webkit-box-orient:vertical;-webkit-line-clamp:2;
   white-space:normal!important;overflow:hidden;overflow-wrap:anywhere;
   max-width:100%;line-height:1.25;
+  height:2.5em;max-height:2.5em;text-overflow:ellipsis;
 }
 </style>
 <style id="qt-checkout-tap-confirm">
