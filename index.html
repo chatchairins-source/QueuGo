@@ -1094,7 +1094,7 @@ async function qtHydratePublicStorefront(){
         shopProfileId:x.id,
         type:'shop',status:'approved',shopName:x.shop_name||meta.shopName||'ร้านค้า',
         name:meta.name||x.shop_name||'ร้านค้า',phone:x.phone||meta.phone||'',address:x.address||meta.address||'',
-        profileImage:meta.logo||meta.profileImage||meta.profile_image||x.profile_image||x.profile_photo||x.avatar_url||x.photo_url||x.image||meta.avatarUrl||meta.avatar_url||meta.cover||'',
+        profileImage:meta.logo||meta.profileImage||meta.profile_image||x.profile_image||x.profile_photo||x.avatar_url||x.photo_url||x.image||meta.avatarUrl||meta.avatar_url||'',
         lat:x.latitude??meta.lat??null,lng:x.longitude??meta.lng??null,supabase:true,_profileOnly:true
       });
     }).filter(x=>x.id);
@@ -1154,7 +1154,7 @@ async function qtHydrateDatabase(opts){
       if(x.user_id && x.id) profileMaps.shopByUserId.set(String(x.user_id),String(x.id));
       if(String(x.status||'').toLowerCase()!=='active') return;
       const meta=(x.metadata&&typeof x.metadata==='object'&&!Array.isArray(x.metadata))?x.metadata:{};
-      const su=Object.assign({},meta,{id:x.user_id||x.id,shopProfileId:x.id,type:'shop',status:'approved',shopName:x.shop_name||meta.shopName||'ร้านค้า',name:meta.name||x.shop_name||'ร้านค้า',phone:x.phone||meta.phone||'',address:x.address||meta.address||'',profileImage:meta.logo||meta.profileImage||meta.profile_image||x.profile_image||x.profile_photo||x.avatar_url||x.photo_url||x.image||meta.avatarUrl||meta.avatar_url||meta.cover||'',lat:x.latitude??meta.lat??null,lng:x.longitude??meta.lng??null,supabase:true,_profileOnly:true});
+      const su=Object.assign({},meta,{id:x.user_id||x.id,shopProfileId:x.id,type:'shop',status:'approved',shopName:x.shop_name||meta.shopName||'ร้านค้า',name:meta.name||x.shop_name||'ร้านค้า',phone:x.phone||meta.phone||'',address:x.address||meta.address||'',profileImage:meta.logo||meta.profileImage||meta.profile_image||x.profile_image||x.profile_photo||x.avatar_url||x.photo_url||x.image||meta.avatarUrl||meta.avatar_url||'',lat:x.latitude??meta.lat??null,lng:x.longitude??meta.lng??null,supabase:true,_profileOnly:true});
       delete su.password; delete su.authUserId;
       QT_DB_CACHE.qt_users.push(su);
     });
@@ -2545,7 +2545,7 @@ async function qtEnsurePublicShopsLoaded(){
     const current=dbGet('qt_users',[]).filter(u=>u.type!=='shop');
     const shops=rows.filter(x=>x && String(x.status||'').toLowerCase()==='active').map(x=>{
       const meta=(x.metadata&&typeof x.metadata==='object')?x.metadata:{};
-      return Object.assign({},meta,{id:x.user_id||x.id,type:'shop',status:'approved',shopName:x.shop_name,name:meta.name||x.shop_name,phone:x.phone,address:x.address,profileImage:meta.logo||meta.profileImage||meta.profile_image||x.profile_image||x.profile_photo||x.avatar_url||x.photo_url||x.image||meta.avatarUrl||meta.avatar_url||meta.cover||'',lat:x.latitude,lng:x.longitude,supabase:true,_profileOnly:true});
+      return Object.assign({},meta,{id:x.user_id||x.id,type:'shop',status:'approved',shopName:x.shop_name,name:meta.name||x.shop_name,phone:x.phone,address:x.address,profileImage:meta.logo||meta.profileImage||meta.profile_image||x.profile_image||x.profile_photo||x.avatar_url||x.photo_url||x.image||meta.avatarUrl||meta.avatar_url||'',lat:x.latitude,lng:x.longitude,supabase:true,_profileOnly:true});
     });
     QT_DB_CACHE.qt_users=current.concat(shops);
     return shops.length>0;
@@ -2583,10 +2583,7 @@ async function runSearch(){
   document.getElementById('search-results').innerHTML = shops.length ? shops.map(s=>shopCard(s)).join('') : '<p>ไม่พบร้านค้า</p>';
 }
 function qgShopLogoHtml(s){
-  /* QueueGo: display the actual image uploaded by the shop.
-     Keep all existing image fields from the original shop profile data;
-     never generate initials, avatars, or placeholder images. */
-  const photo = s.logo || s.profileImage || s.profile_image || s.profilePhoto || s.avatarUrl || s.cover || '';
+  const photo = s.logo || s.profileImage || s.profile_image || s.profilePhoto || s.avatarUrl || '';
   if(!photo) return '';
   return `<img src="${escapeHtml(photo)}" class="shop-logo" alt="${escapeHtml(s.shopName||'ร้านค้า')}" onerror="this.remove()">`;
 }
@@ -2611,19 +2608,23 @@ function renderShopView(shopId){
   const products = dbGet('qt_products',[]).filter(p=>p.shopId===shopId);
   const {count:reviewCount,avg:reviewAvg}=qtShopRatingSummary(shopId);
   layout(shop.shopName, `
-    <div class="shop-header" style="background-image:url('${escapeHtml(qtCssUrl(shop.cover||''))}');background-color:#f6faf8;display:flex;align-items:center;justify-content:center;box-shadow:none;">
-      ${qgShopLogoHtml(shop).replace('class="shop-logo"','class="shop-logo-lg"')}
-    </div>
-    <h2>${escapeHtml(shop.shopName)}</h2>
-    <p>${categoryLabel(shop.category)} • ⏰ ${escapeHtml(shop.openTime)}-${escapeHtml(shop.closeTime)}</p>
-    ${reviewCount ? `<p class="qg-review-summary"><span class="qg-review-stars">${qtStarsHtml(reviewAvg)}</span> <b>${reviewAvg.toFixed(1)}</b> <span style="color:var(--muted);font-size:13px">(${reviewCount} รีวิว)</span></p>` : ''}
-    <p>${escapeHtml(shop.description||'')}</p>
-    <p>📍 ${escapeHtml(shop.address||'')}</p>
-    <div class="row-btns">
-      ${shop.phone?`<a class="btn-primary" href="tel:${escapeHtml(shop.phone)}">📞 โทรหาร้าน</a>`:''}
-      <a class="btn-secondary" target="_blank" rel="noopener" href="${escapeHtml(qtGoogleMapsDirections(shop.lat,shop.lng,shop.address))}">📍 นำทางไปร้าน</a>
-    </div>
-    <h3>สินค้า</h3>
+    <section class="qt-shop-profile">
+      <div class="shop-header">
+        ${shop.cover?`<img class="shop-cover-image" src="${escapeHtml(shop.cover)}" alt="" onerror="this.remove()">`:''}
+        ${qgShopLogoHtml(shop).replace('class="shop-logo"','class="shop-logo-lg"')}
+      </div>
+      <div class="qt-shop-details">
+        <div class="qt-shop-title-row"><h1>${escapeHtml(shop.shopName)}</h1>${reviewCount?`<span class="qg-review-summary">⭐ ${reviewAvg.toFixed(1)} <small>(${reviewCount})</small></span>`:''}</div>
+        <p class="qt-shop-meta">${categoryLabel(shop.category)} • ⏰ ${escapeHtml(shop.openTime||'09:00')}-${escapeHtml(shop.closeTime||'20:00')}</p>
+        ${shop.address?`<p class="qt-shop-address" title="${escapeHtml(shop.address)}">📍 ${escapeHtml(shop.address)}</p>`:''}
+        ${shop.description?`<details class="qt-shop-description"><summary>เกี่ยวกับร้าน</summary><p>${escapeHtml(shop.description)}</p></details>`:''}
+        <div class="row-btns qt-shop-actions">
+          ${shop.phone?`<a class="btn-primary" href="tel:${escapeHtml(shop.phone)}">📞 โทรหาร้าน</a>`:''}
+          <a class="btn-secondary" target="_blank" rel="noopener" href="${escapeHtml(qtGoogleMapsDirections(shop.lat,shop.lng,shop.address))}">📍 นำทาง</a>
+        </div>
+      </div>
+    </section>
+    <h2 class="qt-products-heading">สินค้า</h2>
     <div class="product-grid">
       ${products.filter(p=>p.available).map(p=>productCardCustomer(p)).join('')}
       ${products.filter(p=>!p.available).map(p=>`<div class="product-card disabled"><img src="${escapeHtml(p.image||placeholderImg())}" class="product-img"><div class="product-info"><b>${escapeHtml(p.name)}</b><div>${escapeHtml(p.price)} บาท</div><div class="badge badge-gray">สินค้าหมด</div></div></div>`).join('')}
@@ -3730,6 +3731,57 @@ body:before,body:after,#app:before,#app:after{content:none!important;display:non
 <style id="qt-customer-shop-profile-image-only">
 /* ร้านค้าเป็นผู้จัดการรูปโปรไฟล์เอง: ลูกค้าเห็นเฉพาะรูปที่บันทึกใน shop_profiles.profile_image */
 .qg-shop-strip .shop-card .shop-logo,.shop-header .shop-logo-lg{display:block;background:transparent!important;border:0!important;box-shadow:none!important;object-fit:cover!important;}
+</style>
+<style id="qt-shop-cover-image">
+.qt-shop-profile{margin:0 0 10px;min-width:0}
+.qt-shop-profile .shop-header{position:relative;overflow:hidden;height:132px;margin:0;border-radius:12px;background:#f6faf8!important;display:flex;align-items:flex-end;justify-content:flex-start;padding:8px}
+.shop-header .shop-cover-image{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
+.qt-shop-profile .shop-logo-lg{position:relative;z-index:1;width:64px!important;height:64px!important;min-width:64px!important;max-width:64px!important;border-radius:10px!important;box-shadow:0 2px 12px rgba(0,0,0,.18)!important}
+.qt-shop-details{min-width:0;padding:8px 2px 0}
+.qt-shop-title-row{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.qt-shop-title-row h1{font-size:20px;line-height:1.25;margin:0;min-width:0;overflow-wrap:anywhere}
+.qt-shop-title-row .qg-review-summary{font-size:12px;white-space:nowrap}
+.qt-shop-title-row .qg-review-summary small{color:#64748b}
+.qt-shop-meta,.qt-shop-address{margin:4px 0 0;font-size:12px;line-height:1.35;color:#52645a}
+.qt-shop-address{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.qt-shop-description{font-size:12px;color:#52645a;margin-top:4px}
+.qt-shop-description summary{cursor:pointer;color:#078b5a;font-weight:700}
+.qt-shop-description p{margin:5px 0;line-height:1.4;overflow-wrap:anywhere}
+.qt-shop-actions{display:flex;flex-wrap:wrap;gap:6px;margin-top:7px}
+.qt-shop-actions a{font-size:12px;padding:7px 10px;text-decoration:none;white-space:nowrap}
+.qt-products-heading{margin:12px 0 8px;font-size:18px}
+.qt-products-heading+.product-grid{margin-top:0}
+.qt-products-heading+.product-grid .product-card{min-width:0}
+.qt-products-heading+.product-grid .product-info{overflow-wrap:anywhere}
+.qt-products-heading+.product-grid .product-info>div:last-of-type{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.qg-page,.qg-page .cart-item,.qg-page .order-card,.qg-page .qg-menu-list button div{min-width:0}
+.qg-page .row-btns{flex-wrap:wrap}
+.qg-page h1,.qg-page h2,.qg-page h3,.qg-page .cart-item-info{overflow-wrap:anywhere}
+.qg-search-tools input,.qg-search-tools select{width:100%;min-width:0;max-width:100%}
+.cart-item .cart-item-info,.qt-order-card-head>div:first-child{min-width:0}
+.notif-item,.qt-order-parties{overflow-wrap:anywhere}
+.qt-current-status{max-width:55%;white-space:normal;text-align:center}
+.qt-main.qg-main{padding:0 0 24px!important}
+.qg-bottomnav{height:56px!important;min-height:56px!important}
+.qg-bottomnav a{min-height:52px;padding:7px 2px 5px!important;font-size:12px!important;line-height:1.1!important}
+.qg-bottomnav a span{font-size:11px!important;margin-top:3px!important}
+.qg-bottomnav a:first-letter{font-size:19px!important}
+body{padding-bottom:calc(64px + env(safe-area-inset-bottom))}
+@media(max-width:699px){
+  .qt-shop-profile .shop-header{height:94px;border-radius:9px;padding:7px}
+  .qt-shop-profile .shop-logo-lg{width:48px!important;height:48px!important;min-width:48px!important;max-width:48px!important;border-radius:8px!important}
+  .qt-shop-details{padding-top:6px}
+  .qt-shop-title-row h1{font-size:17px}
+  .qt-products-heading+.product-grid{gap:9px}
+  .qt-products-heading+.product-grid .product-img{height:112px}
+  .qt-products-heading+.product-grid .product-info{padding:8px}
+}
+@media(max-width:380px){
+  .qt-shop-profile .shop-header{height:86px}
+  .qt-shop-actions a{font-size:11px;padding:6px 8px}
+  .qt-products-heading+.product-grid .product-img{height:98px}
+  #search-results.qg-shop-strip{grid-template-columns:repeat(3,minmax(0,1fr))!important}
+}
 </style>
 
 </body>
