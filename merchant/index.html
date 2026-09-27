@@ -2021,6 +2021,41 @@ function layout(title,body,active,opts={}){document.title=title+' - QueueGo';doc
 window.qtShopLayout=(title,body,active)=>layout(title,body,active);
 
 window.renderShopLogin=function(){document.body.className='qgm-login';document.querySelectorAll('body>.qgm-bottom').forEach(n=>n.remove());document.getElementById('app').innerHTML=`<main class="qgm-login"><section class="qgm-login-hero"><div class="qgm-login-copy"><div class="qgm-login-brand"><svg viewBox="0 0 48 48" aria-hidden="true"><circle cx="23" cy="23" r="16" fill="none" stroke="#ec092e" stroke-width="8"/><path d="M26 27l12 12" fill="none" stroke="#ec092e" stroke-width="8" stroke-linecap="round"/></svg><span>Queue<span class="brand-go">Go</span></span></div><h1>เข้าสู่ระบบร้านค้า</h1><p>จัดการคิวร้านของคุณ<br>ให้ง่ายขึ้น ในทุก ๆ วัน</p></div></section><section class="qgm-login-panel"><form onsubmit="qtShopDoLogin(event);return false"><label class="qgm-login-input">${svg('user')}<input id="qt-shop-login" autocomplete="username" required placeholder="เบอร์โทรศัพท์ / อีเมล" aria-label="เบอร์โทรศัพท์หรืออีเมล"></label><label class="qgm-login-input">${svg('lock')}<input id="qt-shop-password" type="password" autocomplete="current-password" required placeholder="รหัสผ่าน" aria-label="รหัสผ่าน"><button class="qgm-password-toggle" type="button" aria-label="แสดงรหัสผ่าน" onclick="qtToggleLoginPassword(this)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3l18 18M10.6 10.7a2 2 0 002.7 2.7"/><path d="M8.4 5.5A10.5 10.5 0 0112 5c5 0 8.5 4.5 9 7a10 10 0 01-2.3 4.2M6.1 6.1C4.5 7.3 3.4 9 3 12c.5 2.5 4 7 9 7 1.2 0 2.4-.3 3.4-.7"/></svg></button></label><button class="qgm-primary" type="submit">เข้าสู่ระบบ</button></form><button class="qgm-link" type="button" onclick="qtShopForgotPassword()">ลืมรหัสผ่าน?</button><div class="qgm-login-divider">หรือ</div><button class="qgm-outline qgm-signup" type="button" onclick="navigate('shop-register')">สมัครร้านค้าใหม่</button></section></main>`};
+
+
+/* QueueGo Merchant signup page — live route fix 2026-09-27.
+   The login button already navigated to #shop-register, but the renderer
+   had been removed during the Merchant UI refactor, so the router fell
+   back to the login screen. */
+window.renderShopRegister=function(){
+  document.title='สมัครร้านค้า - QueueGo';
+  document.body.className='qgm-login';
+  document.querySelectorAll('body>.qgm-bottom').forEach(n=>n.remove());
+  document.getElementById('app').innerHTML=`<main class="qgm-login">
+    <section class="qgm-login-hero">
+      <div class="qgm-login-copy">
+        <div class="qgm-login-brand">
+          <svg viewBox="0 0 48 48" aria-hidden="true"><circle cx="23" cy="23" r="16" fill="none" stroke="#ec092e" stroke-width="8"/><path d="M26 27l12 12" fill="none" stroke="#ec092e" stroke-width="8" stroke-linecap="round"/></svg>
+          <span>Queue<span class="brand-go">Go</span></span>
+        </div>
+        <h1>สมัครร้านค้ากับ QueueGo</h1>
+        <p>ลงทะเบียนร้านไว้ล่วงหน้า<br>เพื่อเตรียมสินค้าให้พร้อมก่อนเปิดบริการ</p>
+      </div>
+    </section>
+    <section class="qgm-login-panel">
+      <form onsubmit="handleRegister(event);return false">
+        <label class="qgm-login-input">${svg('user')}<input id="reg-name" autocomplete="name" required maxlength="120" placeholder="ชื่อผู้ติดต่อ" aria-label="ชื่อผู้ติดต่อ"></label>
+        <label class="qgm-login-input">${svg('phone')}<input id="reg-phone" type="tel" inputmode="numeric" autocomplete="tel" required maxlength="12" placeholder="เบอร์โทรศัพท์ 10 หลัก" aria-label="เบอร์โทรศัพท์"></label>
+        <label class="qgm-login-input">${svg('lock')}<input id="reg-password" type="password" autocomplete="new-password" required minlength="6" placeholder="รหัสผ่านอย่างน้อย 6 ตัว" aria-label="รหัสผ่าน"></label>
+        <label class="qgm-login-input">${svg('lock')}<input id="reg-password-confirm" type="password" autocomplete="new-password" required minlength="6" placeholder="ยืนยันรหัสผ่าน" aria-label="ยืนยันรหัสผ่าน"></label>
+        <button class="qgm-primary" type="submit">สมัครร้านค้า</button>
+      </form>
+      <div class="qgm-login-divider">มีบัญชีแล้ว</div>
+      <button class="qgm-outline qgm-signup" type="button" onclick="navigate('login')">กลับไปเข้าสู่ระบบ</button>
+    </section>
+  </main>`;
+};
+
 window.qtToggleLoginPassword=function(button){const input=document.getElementById('qt-shop-password');if(!input)return;input.type=input.type==='password'?'text':'password';button.setAttribute('aria-label',input.type==='password'?'แสดงรหัสผ่าน':'ซ่อนรหัสผ่าน')};
 
 window.qtShopForgotPassword=async function(){const email=prompt('กรอกอีเมลบัญชีร้านค้า');if(!email)return;try{await qtSupabaseAuth('recover',{email:email.trim()});toast('ส่งลิงก์ตั้งรหัสผ่านใหม่แล้ว')}catch(e){toast(e.message||'ส่งลิงก์ไม่สำเร็จ')}};
