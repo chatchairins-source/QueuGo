@@ -19,5 +19,5 @@
 ## Live browser checks
 
 - GitHub Pages Admin `/QueuGo/admin/` loaded the styled login form with username/email, password, and login button; the previous access-denied screen did not appear in a clean browser session.
-- GitHub Pages Rider `/QueuGo/rider/` loaded the phone/password login and Rider signup action. The original illustration contained QueueTech branding; it was removed from the published file after this visual check.
+- GitHub Pages Rider `/QueuGo/rider/` loaded the phone/password login and Rider signup action. A fresh browser load after the follow-up commit displayed the replacement green background with no QueueTech branding.
 - Actual Admin password login, active Rider session, order workflow, and mobile device interaction remain unverified because no account credentials or authenticated browser session were available. The isolated Auth route test above uses a mock response and does not replace a real login test.
