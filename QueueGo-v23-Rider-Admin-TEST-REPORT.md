@@ -6,6 +6,7 @@
 
 - Admin: fixed the UI mapping (`users.status=active` becomes `approved` in the existing UI model), corrected seconds/milliseconds handling for session expiry, added a visible switch-to-Admin-login action for another role's session, and made the login page fit mobile width.
 - Rider: if Leaflet fails to load, the rest of the app remains usable and shows a clear map fallback; online refresh no longer relies on `window.S` for a lexical `const S`; database errors appear to the user; missing GPS is explained; dates sent to the ledger RPC are YYYY-MM-DD even on Safari; job card route metrics attach to the actual DOM markup.
+- Rider: replaced the login illustration that displayed the legacy QueueTech brand with a CSS background.
 - Existing Customer root `index.html` was preserved. Database RLS, constraints, and finance RPCs were not relaxed.
 
 ## Checked
@@ -17,4 +18,6 @@
 
 ## Live browser checks
 
-- To be recorded after GitHub Pages deployment. Actual Admin password login and active Rider session cannot be exercised without the user's credentials. No claim of real-user login verification is made.
+- GitHub Pages Admin `/QueuGo/admin/` loaded the styled login form with username/email, password, and login button; the previous access-denied screen did not appear in a clean browser session.
+- GitHub Pages Rider `/QueuGo/rider/` loaded the phone/password login and Rider signup action. The original illustration contained QueueTech branding; it was removed from the published file after this visual check.
+- Actual Admin password login, active Rider session, order workflow, and mobile device interaction remain unverified because no account credentials or authenticated browser session were available. The isolated Auth route test above uses a mock response and does not replace a real login test.
