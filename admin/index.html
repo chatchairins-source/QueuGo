@@ -916,9 +916,28 @@ function qtAdminRiderPresenceHTML(riders){
     </div>`;
   }).join('');
 }
-function qtRenderAdminRiderPresence(riders){
-  const el=document.getElementById('qt-admin-rider-presence-list');
-  if(el) el.innerHTML=qtAdminRiderPresenceHTML(riders);
+async function qtRenderAdminRiderPresence(){
+  const el=document.getElementById('qt-admin-rider-online-panel');
+  if(!el)return;
+  el.textContent='กำลังโหลดสถานะไรเดอร์…';
+  try{
+    const token=await qtGetAccessToken();
+    if(!token)throw Error('กรุณาเข้าสู่ระบบ Admin');
+    const [users,profiles]=await Promise.all([
+      qtSupabaseTable('users?select=id,name,role,status&role=eq.rider',{accessToken:token}),
+      qtSupabaseTable('rider_profiles?select=user_id,status,metadata,updated_at',{accessToken:token})
+    ]);
+    if(!Array.isArray(users)||!Array.isArray(profiles))throw Error('ข้อมูลไรเดอร์ไม่ครบ');
+    const byUser=new Map(profiles.map(p=>[String(p.user_id),p]));
+    if(!el.isConnected)return;
+    el.innerHTML=users.length?users.map(u=>{
+      const p=byUser.get(String(u.id));
+      const fresh=p?.updated_at&&Date.now()-new Date(p.updated_at).getTime()<180000;
+      const online=u.status==='active'&&p?.status==='active'&&p?.metadata?.online===true&&fresh;
+      const state=u.status==='suspended'?'พักสิทธิ์':u.status!=='active'?'รออนุมัติ':online?'ออนไลน์':'ออฟไลน์';
+      return '<div class="qt-rider-online-card"><strong>'+escapeHtml(u.name||'ไรเดอร์')+'</strong><span style="float:right">'+state+'</span></div>';
+    }).join(''):'<div class="qt-rider-online-card">ยังไม่มีข้อมูลไรเดอร์</div>';
+  }catch(err){if(el.isConnected)el.textContent='โหลดสถานะไรเดอร์ไม่สำเร็จ: '+err.message;}
 }
 function qtSyncRiderPresenceToUser(riderId, status){
   /* Batch 4: keep the legacy rider online/available fields synchronized with
