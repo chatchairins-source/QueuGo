@@ -2249,18 +2249,56 @@ async function qtSaveCustomerLocation(lat,lng,address){
     return false;
   }
 }
+function qtCustomerLocationNoticeKey(userId){
+  return 'qg_customer_location_notice_v1_'+String(userId||'guest');
+}
+function qtShowCustomerLocationNotice(address,lat,lng){
+  const user=currentUser();
+  if(!user || user.type!=='customer') return;
+  const key=qtCustomerLocationNoticeKey(user.id);
+  if(localStorage.getItem(key)==='1') return;
+  let overlay=document.getElementById('qg-location-auto-notice');
+  if(overlay) overlay.remove();
+  overlay=document.createElement('div');
+  overlay.id='qg-location-auto-notice';
+  overlay.style.cssText='position:fixed;inset:0;z-index:99999;background:rgba(15,23,42,.46);display:flex;align-items:flex-end;justify-content:center;padding:18px;padding-bottom:max(18px,env(safe-area-inset-bottom));';
+  overlay.innerHTML=`<div style="width:min(100%,520px);background:#fff;border-radius:24px;padding:20px;box-shadow:0 18px 60px rgba(15,23,42,.24);font-family:inherit">
+    <div style="font-size:34px;margin-bottom:8px">📍</div>
+    <h2 style="margin:0 0 8px;font-size:21px;color:#172033">ระบบปักหมุดตำแหน่งให้แล้ว</h2>
+    <p style="margin:0 0 10px;line-height:1.65;color:#475569;font-size:14px">QueueGo ใช้ GPS ปักหมุดตำแหน่งจัดส่งอัตโนมัติในการเข้าใช้งานครั้งแรก โปรดตรวจสอบให้แน่ใจว่าหมุดตรงกับจุดรับสินค้าจริง เพราะตำแหน่งนี้มีผลต่อการค้นหาร้าน ค่าส่ง และการนำทางของไรเดอร์</p>
+    <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:14px;padding:12px;margin:0 0 14px;color:#334155;font-size:13px;line-height:1.55"><b>ตำแหน่งที่ระบบบันทึก</b><br>${escapeHtml(address||('พิกัด '+Number(lat).toFixed(5)+', '+Number(lng).toFixed(5)))}</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <button type="button" id="qg-location-ok" style="min-height:48px;border:0;border-radius:14px;background:#e2e8f0;color:#172033;font-weight:700;font-size:15px">ตำแหน่งถูกต้อง</button>
+      <button type="button" id="qg-location-edit" style="min-height:48px;border:0;border-radius:14px;background:#ef1234;color:#fff;font-weight:700;font-size:15px">แก้ไขหมุด</button>
+    </div>
+  </div>`;
+  document.body.appendChild(overlay);
+  const done=()=>{ localStorage.setItem(key,'1'); overlay.remove(); };
+  document.getElementById('qg-location-ok').onclick=done;
+  document.getElementById('qg-location-edit').onclick=()=>{ done(); openCustomerLocationPicker(); };
+}
 function qtAutoCaptureCustomerLocation(){
   const user=currentUser();
-  if(!user || user.type!=='customer' || !navigator.geolocation) return;
+  if(!user || user.type!=='customer') return;
   if(sessionStorage.getItem('qg_customer_gps_captured')==='1') return;
+  if(!navigator.geolocation){
+    toast('อุปกรณ์นี้ไม่รองรับ GPS กรุณาแก้ไขหมุดที่อยู่จัดส่งด้วยตนเอง');
+    return;
+  }
   navigator.geolocation.getCurrentPosition(async pos=>{
     const lat=pos.coords.latitude,lng=pos.coords.longitude;
     const address=await qtReverseGeocodeCustomer(lat,lng);
-    await qtSaveCustomerLocation(lat,lng,address||'');
+    const saved=await qtSaveCustomerLocation(lat,lng,address||'');
     sessionStorage.setItem('qg_customer_gps_captured','1');
     const el=document.getElementById('qg-customer-location-text');
     if(el) el.textContent=address || `พิกัด ${lat.toFixed(5)}, ${lng.toFixed(5)}`;
-  },()=>{ sessionStorage.setItem('qg_customer_gps_captured','1'); }, {enableHighAccuracy:true,timeout:10000,maximumAge:300000});
+    if(saved) setTimeout(()=>qtShowCustomerLocationNotice(address,lat,lng),180);
+    else toast('ระบบพบตำแหน่งแล้วแต่บันทึกไม่สำเร็จ กรุณาแก้ไขหมุดที่อยู่จัดส่ง');
+  },err=>{
+    sessionStorage.setItem('qg_customer_gps_captured','1');
+    toast('ไม่สามารถปักหมุดอัตโนมัติได้ กรุณาอนุญาตตำแหน่งหรือเลือกหมุดที่อยู่จัดส่งด้วยตนเอง');
+    setTimeout(()=>{ try{ openCustomerLocationPicker(); }catch(e){} },500);
+  }, {enableHighAccuracy:true,timeout:10000,maximumAge:60000});
 }
 function openCustomerLocationPicker(){
   const user=currentUser(); if(!user || user.type!=='customer') return;
