@@ -465,9 +465,32 @@ function riderStepGo(step){
   const submit=document.querySelector('.rider-submit');if(submit)submit.textContent=target===3?'ส่งใบสมัคร  →':'ถัดไป  →';
   const wizard=document.querySelector('.rider-wizard');if(wizard)wizard.scrollIntoView({behavior:'smooth',block:'start'});
 }
-function riderStepNext(){
-  const s=window.__qtRiderStep||0;
-  if(s<3){riderStepGo(s+1);}else{document.querySelector('.rider-submit')?.click();}
+async function riderStepNext(){
+  if(window.__qtRiderAdvancing)return;
+  window.__qtRiderAdvancing=true;
+  try{
+    const s=window.__qtRiderStep||0;
+    const f=id=>document.getElementById(id);
+    const hasFile=async id=>!!(f(id)?.files?.[0] || (await loadRiderDraftFile(id))?.data);
+    if(s===0){
+      if(!f('rr-name').value.trim()||!f('rr-phone').value.trim()||!f('rr-password').value){toast('กรุณากรอกข้อมูลส่วนตัวให้ครบ');return;}
+      if(!/^0[0-9]{9}$/.test(f('rr-phone').value.replace(/[-\s]/g,''))){toast('กรุณากรอกเบอร์โทรศัพท์ 10 หลัก');return;}
+      if(f('rr-password').value.length<6){toast('รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร');return;}
+      if(f('rr-email').value&&!f('rr-email').checkValidity()){toast('กรุณากรอกอีเมลให้ถูกต้อง');return;}
+      if(!(await hasFile('rr-photo'))){toast('กรุณาอัปโหลดรูปถ่ายหน้าตรง');return;}
+    }
+    if(s===1&&(!f('rr-plate').value.trim()||!f('rr-province').value||!f('rr-district').value.trim())){
+      toast('กรุณากรอกทะเบียนรถ จังหวัด และอำเภอ/เขต');return;
+    }
+    if(s===2){
+      for(const id of ['rr-id-front','rr-id-back','rr-license','rr-prb','rr-vehicle-photo']){
+        if(!(await hasFile(id))){toast('กรุณาอัปโหลดเอกสารบังคับให้ครบ');return;}
+      }
+    }
+    if(s<3)riderStepGo(s+1);
+    else document.querySelector('form[onsubmit*=handleRiderRegistration]')?.requestSubmit();
+  }catch(err){toast('ตรวจข้อมูลสมัครไม่สำเร็จ: '+err.message)}
+  finally{window.__qtRiderAdvancing=false;}
 }
 function riderStepBack(){const s=window.__qtRiderStep||0;if(s>0)riderStepGo(s-1);else renderLogin();}
 async function handleRiderRegistration(e){
@@ -552,7 +575,7 @@ function renderRiderRegistration(){
   window.__qtRiderStep=0;
   riderStepGo(0);
   const submit=document.querySelector('.rider-submit');
-  if(submit){submit.type='button';submit.onclick=()=>{if((window.__qtRiderStep||0)<3)riderStepNext();else document.querySelector('form[onsubmit*=handleRiderRegistration]').requestSubmit();};submit.textContent='ถัดไป  →';}
+  if(submit){submit.type='button';submit.onclick=()=>riderStepNext();submit.textContent='ถัดไป  →';}
   const back=document.getElementById('rr-back-login');
   if(back){back.textContent='← ย้อนกลับ';back.onclick=()=>riderStepBack();}
 
