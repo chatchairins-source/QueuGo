@@ -1,0 +1,1441 @@
+<!doctype html><html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no"><meta name="theme-color" content="#f5faf7">
+<title>QueueGo Rider Future</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>:root{--login:linear-gradient(145deg,#7f111e,#d81b32 55%,#4b0b16)}
+:root{--mint:#e6002d;--mint2:#ff4d67;--ink:#241d20;--muted:#797177;--line:#eee3e6;--glass:rgba(255,255,255,.92);--safeT:env(safe-area-inset-top,0px);--safeB:env(safe-area-inset-bottom,0px)}
+*{box-sizing:border-box}html,body,#app{margin:0;width:100%;height:100%;overflow:hidden;background:#fcf8f9;color:var(--ink)}
+body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro Text","Noto Sans Thai",sans-serif;-webkit-font-smoothing:antialiased}
+button,input{font:inherit}button{cursor:pointer}.toast{position:fixed;z-index:99999;left:50%;bottom:calc(76px + var(--safeB));transform:translate(-50%,20px);opacity:0;background:#14231f;color:white;padding:10px 14px;border-radius:14px;font-size:12px;transition:.22s;pointer-events:none}.toast.show{opacity:1;transform:translate(-50%,0)}
+svg{display:block}.ico{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+
+/* Auth — completely new composition */
+.screen-center{height:100dvh;overflow:auto;background:#fdf9fa}.auth-shell{min-height:100dvh;display:grid;grid-template-columns:minmax(0,1.05fr) minmax(360px,.95fr)}
+.auth-side{position:relative;min-height:100%;padding:calc(32px + var(--safeT)) 34px 34px;background:linear-gradient(180deg,rgba(58,7,18,.05),rgba(58,7,18,.50)),var(--login) center/cover no-repeat;color:white;display:flex;flex-direction:column;justify-content:space-between}
+.auth-mark{display:flex;gap:9px;align-items:center;font-size:12px;letter-spacing:.12em}.auth-mark .dot{width:9px;height:9px;border-radius:50%;background:#ffb2c0}.auth-side-copy h2{font-size:clamp(30px,4vw,54px);line-height:1.02;max-width:580px;margin:0 0 14px}.auth-side-copy p{max-width:500px;opacity:.85;line-height:1.6}.auth-stats{display:flex;gap:28px}.auth-stats div{display:grid}.auth-stats b{font-size:18px}.auth-stats span{font-size:11px;opacity:.7}
+.auth-main{display:grid;place-items:center;padding:28px;background:radial-gradient(circle at 20% 10%,#ffebef,transparent 35%),#fffafb}.auth-card{width:min(420px,100%);padding:28px;border:1px solid var(--line);border-radius:30px;background:rgba(255,255,255,.86);box-shadow:0 24px 70px rgba(93,15,28,.10);backdrop-filter:blur(30px)}.auth-card h1{font-size:29px;line-height:1.08;margin:0 0 10px}.sub{color:var(--muted);font-size:13px;line-height:1.55}.field{margin:15px 0}.field label{display:block;font-size:11px;font-weight:750;margin:0 0 7px}.field input{width:100%;height:50px;border:1px solid var(--line);border-radius:16px;padding:0 15px;background:#fffafb;outline:none}.field input:focus{border-color:#e96a80;box-shadow:0 0 0 4px #fff0f2}.btn{border:0;border-radius:16px;height:48px;padding:0 16px;font-weight:800}.btn-brand{width:100%;background:linear-gradient(135deg,var(--mint),var(--mint2));color:white}.btn-signup{width:100%;background:#fff0f2;color:#b60c29}.auth-divider{text-align:center;color:#91a09b;font-size:10px;margin:14px}.auth-err{display:none;color:#c62828;font-size:11px;margin-top:8px}.auth-err.show{display:block}.auth-foot,.v4-version{font-size:9px;text-align:center;color:#9aa7a2;margin-top:10px}
+@media(max-width:760px){.auth-shell{grid-template-columns:1fr}.auth-side{min-height:32dvh;padding:calc(18px + var(--safeT)) 20px 18px}.auth-side-copy h2{font-size:28px}.auth-side-copy p,.auth-stats{display:none}.auth-main{padding:14px 14px calc(18px + var(--safeB))}.auth-card{padding:22px;border-radius:26px}}
+
+/* Main operating shell */
+.stage{position:relative;height:100dvh;overflow:hidden;background:#f4e9eb}.map{position:absolute;inset:0}.leaflet-container{background:#f3e8ea}
+.qt-top{position:absolute;z-index:700;top:calc(10px + var(--safeT));left:12px;right:12px;display:flex;justify-content:space-between;align-items:center;pointer-events:none}.qt-brand,.qt-status{pointer-events:auto;height:42px;border:1px solid rgba(255,255,255,.7);border-radius:22px;background:rgba(255,255,255,.88);box-shadow:0 10px 28px rgba(93,15,28,.10);backdrop-filter:blur(22px);display:flex;align-items:center}.qt-brand{padding:0 13px;gap:8px;font-size:12px;font-weight:900}.qt-brand i{width:8px;height:8px;border-radius:50%;background:var(--mint)}.qt-status{padding:4px 5px 4px 12px;gap:9px;border:0}.qt-status span{font-size:11px;font-weight:850}.qt-switch{width:34px;height:24px;border:0;border-radius:13px;background:#ece0e3;padding:3px}.qt-switch:after{content:"";display:block;width:18px;height:18px;border-radius:50%;background:white;box-shadow:0 2px 7px #0002;transition:.2s}.qt-status.on .qt-switch{background:var(--mint)}.qt-status.on .qt-switch:after{transform:translateX(10px)}
+.qt-route{position:absolute;z-index:650;left:12px;top:calc(62px + var(--safeT));max-width:calc(100% - 78px);display:none;align-items:center;gap:10px;padding:9px 12px;border-radius:18px;background:rgba(16,30,26,.92);color:white;box-shadow:0 12px 32px #0002;backdrop-filter:blur(18px)}.qt-route strong{font-size:13px}.qt-route small{display:block;font-size:9px;opacity:.7;margin-top:2px}
+.qt-fabs{position:absolute;z-index:650;right:12px;top:calc(64px + var(--safeT));display:grid;gap:8px}.qt-fab{width:42px;height:42px;border:1px solid #fff;border-radius:21px;background:rgba(255,255,255,.92);display:grid;place-items:center;color:#b60c29;box-shadow:0 8px 22px #1233}
+.qt-sheet{position:absolute;z-index:650;left:9px;right:9px;bottom:calc(64px + var(--safeB));max-height:38dvh;overflow:auto;padding:11px;border:1px solid rgba(230,239,235,.95);border-radius:25px;background:rgba(255,255,255,.95);box-shadow:0 -6px 34px rgba(93,15,28,.10);backdrop-filter:blur(28px)}.qt-handle{width:32px;height:4px;border-radius:2px;background:#dbe5e1;margin:0 auto 8px}.qt-title{font-size:17px;font-weight:900;letter-spacing:-.3px}.qt-sub{font-size:10.5px;color:var(--muted);line-height:1.45;margin-top:3px}
+.qt-ready{display:flex;align-items:center;justify-content:space-between;gap:10px}.qt-ready .qt-copy{min-width:0}.qt-online{flex:0 0 auto;height:44px;border:0;border-radius:15px;padding:0 16px;background:linear-gradient(135deg,var(--mint),var(--mint2));color:white;font-weight:850}
+.qt-jobhead{display:flex;justify-content:space-between;gap:12px;align-items:start}.qt-shop{font-size:17px;font-weight:900}.qt-order{font-size:9.5px;color:var(--muted);margin-top:2px}.qt-fee{text-align:right;color:#b60c29;font-size:18px;font-weight:950}.qt-fee small{display:block;font-size:8px;color:var(--muted);font-weight:700}.qt-metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:9px 0}.qt-metric{padding:8px;border-radius:13px;background:#f9f2f3}.qt-metric span{display:block;font-size:8.5px;color:var(--muted)}.qt-metric b{display:block;font-size:12px;margin-top:2px}.qt-address{font-size:10px;line-height:1.45;color:#566761;padding:7px 0;border-top:1px solid #eef3f1}.qt-actions{display:grid;grid-template-columns:44px 44px minmax(0,1fr);gap:7px;margin-top:8px}.qt-actions button,.qt-actions a{height:46px;border:0;border-radius:14px;display:grid;place-items:center;text-decoration:none}.qt-ghost{background:#fff0f2;color:#b60c29}.qt-primary{background:linear-gradient(135deg,var(--mint),var(--mint2));color:white;font-weight:900;font-size:13px;box-shadow:0 8px 18px #e6002d30}
+.qt-nav{position:absolute;z-index:800;left:7px;right:7px;bottom:calc(5px + var(--safeB));height:54px;padding:3px;display:grid;grid-template-columns:repeat(5,1fr);border:1px solid #f0e1e5;border-radius:18px;background:rgba(255,255,255,.95);box-shadow:0 10px 30px #1232;backdrop-filter:blur(25px)}.qt-tab{position:relative;border:0;border-radius:13px;background:transparent;color:#83908b;display:grid;place-items:center;align-content:center;gap:1px;font-size:8px;font-weight:750}.qt-tab.active{background:#fff0f2;color:#b60c29}.qt-tab .ico{width:17px;height:17px}.qt-badge{position:absolute;top:1px;left:calc(50% + 7px);min-width:15px;height:15px;border-radius:8px;background:#ff3b30;color:#fff;font-size:8px;line-height:15px;font-style:normal;display:none;box-shadow:0 0 0 2px #fff}
+.qt-panel{position:absolute;z-index:620;inset:0;background:linear-gradient(180deg,#fffafb,#fcf5f6);padding:calc(18px + var(--safeT)) 13px calc(68px + var(--safeB));overflow:auto;display:none}.qt-panel.show{display:block}.qt-panelhead{display:flex;align-items:center;justify-content:space-between;margin-bottom:15px}.qt-panelhead h1{font-size:26px;letter-spacing:-.7px;margin:0}.qt-list{display:grid;gap:9px}.qt-row{padding:13px;border:1px solid var(--line);border-radius:19px;background:white;box-shadow:0 8px 24px rgba(93,15,28,.05)}.qt-rowtop{display:flex;justify-content:space-between;gap:12px}.qt-row b{font-size:13px}.qt-row small{font-size:9.5px;color:var(--muted)}.qt-empty{text-align:center;padding:55px 18px;color:var(--muted);font-size:12px}
+.qt-profilehero{padding:18px;border-radius:25px;background:linear-gradient(135deg,#681622,#a81c32);color:white}.qt-avatar{width:58px;height:58px;border-radius:50%;background:#fff2;display:grid;place-items:center;font-size:22px;font-weight:900}.qt-profilehero h2{margin:10px 0 2px}.qt-profilehero p{margin:0;font-size:11px;opacity:.7}.qt-settings{margin-top:12px;border-radius:21px;background:white;border:1px solid var(--line);overflow:hidden}.qt-setting{width:100%;height:52px;padding:0 14px;border:0;border-bottom:1px solid var(--line);background:white;display:flex;align-items:center;justify-content:space-between}.qt-setting:last-child{border-bottom:0}.qt-setting.danger{color:#d43a32}
+
+/* Chat is a true page with a guaranteed back button */
+.qt-chatpage,.qt-summary{position:fixed;z-index:5000;inset:0;background:#fcf7f8;display:none;grid-template-rows:auto minmax(0,1fr) auto auto}.qt-chatpage.show{display:grid}.qt-subhead{min-height:58px;padding:calc(8px + var(--safeT)) 10px 8px;display:grid;grid-template-columns:42px minmax(0,1fr) 42px;align-items:center;border-bottom:1px solid var(--line);background:rgba(255,255,255,.95);backdrop-filter:blur(22px)}.qt-back{width:38px;height:38px;border:0;border-radius:13px;background:#fff0f2;color:#b60c29;display:grid;place-items:center}.qt-subtitle{min-width:0;text-align:center}.qt-subtitle b{display:block;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.qt-subtitle small{display:block;font-size:9px;color:var(--muted);margin-top:2px}.chat-box{min-height:0;overflow:auto;padding:12px;display:flex;flex-direction:column;gap:7px}.chat-bubble{max-width:78%;padding:9px 11px;border-radius:17px;background:white;box-shadow:0 4px 16px #1231;font-size:11.5px;line-height:1.45}.chat-bubble.mine{align-self:flex-end;background:#ffe8ed}.chat-bubble.theirs{align-self:flex-start}.chat-time{font-size:8px;color:#87958f;margin-top:4px}.chat-image{max-width:100%;border-radius:12px}.empty-note{font-size:11px;color:var(--muted);text-align:center;margin:auto}.quick-wrap{padding:5px 9px;background:#fcf7f8;overflow:hidden}.quick-title{display:flex;justify-content:space-between;align-items:center;font-size:9px;color:var(--muted);margin-bottom:5px}.quick-manage{border:0;background:transparent;color:#b60c29;font-size:9px}.quick-list{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none}.quick-list::-webkit-scrollbar{display:none}.quick-chip{flex:0 0 auto;border:1px solid #ecdee1;border-radius:14px;background:white;padding:7px 9px;font-size:9.5px;color:#476159}.chat-compose-rider{display:grid;grid-template-columns:40px minmax(0,1fr) 44px;gap:6px;padding:7px 9px calc(7px + var(--safeB));background:white;border-top:1px solid var(--line)}.chat-compose-rider input{min-width:0;height:42px;border:1px solid var(--line);border-radius:14px;padding:0 12px;outline:none;font-size:16px}.chat-compose-rider button{border:0;border-radius:14px;background:#fff0f2;color:#b60c29}.chat-compose-rider button[type=submit]{background:var(--mint);color:white}.photo-btn{font-size:0}.photo-btn:after{content:"＋";font-size:21px}
+.qt-summary.show{display:grid;place-items:center;padding:calc(18px + var(--safeT)) 14px calc(18px + var(--safeB));overflow:auto}.qt-summarycard{width:min(430px,100%);border:1px solid var(--line);border-radius:30px;background:white;padding:22px;box-shadow:0 24px 70px #1232;text-align:center}.qt-check{width:64px;height:64px;margin:0 auto 12px;border-radius:50%;background:#fff0f2;color:#b60c29;display:grid;place-items:center}.qt-total{font-size:36px;font-weight:950;margin:15px}.qt-summarycard .qt-primary{width:100%;height:48px;border:0;border-radius:15px}.qt-summaryback{position:absolute;left:12px;top:calc(12px + var(--safeT))}
+.qt-message{position:fixed;z-index:9000;left:12px;right:12px;top:calc(8px + var(--safeT));transform:translateY(-140%);opacity:0;transition:.25s;padding:10px 12px;border-radius:17px;background:rgba(17,31,27,.95);color:white;box-shadow:0 14px 40px #0004;display:flex;align-items:center;gap:9px}.qt-message.show{transform:none;opacity:1}.qt-message i{width:30px;height:30px;border-radius:10px;background:var(--mint);display:grid;place-items:center;font-style:normal}.qt-message b{font-size:11px}.qt-message small{display:block;max-width:72vw;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#cbd8d3;font-size:9px;margin-top:2px}
+@media(max-height:650px){.qt-sheet{max-height:34dvh}.qt-actions button,.qt-actions a{height:42px}.qt-top{top:calc(6px + var(--safeT))}}
+@media(orientation:landscape) and (max-height:500px){.qt-nav{left:auto;right:5px;top:50%;bottom:auto;transform:translateY(-50%);width:54px;height:270px;grid-template-columns:1fr;grid-template-rows:repeat(5,1fr)}.qt-sheet{right:68px;bottom:7px;max-height:58dvh}.qt-top{right:68px}.qt-panel{padding-right:68px;padding-bottom:10px}}
+
+/* v11 — same card/content, proportionally smaller so the full card fits */
+.qt-sheet{
+  padding:8px 9px!important;
+  max-height:36dvh!important;
+}
+.qt-handle{
+  width:28px!important;height:3px!important;
+  margin:0 auto 5px!important;
+}
+.qt-jobhead{gap:8px!important}
+.qt-shop{font-size:14.5px!important;line-height:1.2!important}
+.qt-order{font-size:8px!important;margin-top:1px!important;line-height:1.2!important}
+.qt-fee{font-size:15px!important;line-height:1.1!important}
+.qt-fee small{font-size:7px!important;margin-top:2px!important}
+.qt-metrics{gap:4px!important;margin:5px 0!important}
+.qt-metric{
+  padding:5px 6px!important;
+  border-radius:11px!important;
+  min-height:0!important;
+}
+.qt-metric span{font-size:7.5px!important;line-height:1.1!important}
+.qt-metric b{font-size:10.5px!important;line-height:1.15!important;margin-top:2px!important}
+.qt-address{
+  font-size:8.8px!important;
+  line-height:1.25!important;
+  padding:4px 0!important;
+}
+.qt-actions{gap:5px!important;margin-top:5px!important;grid-template-columns:39px 39px minmax(0,1fr)!important}
+.qt-actions button,.qt-actions a{
+  height:39px!important;
+  border-radius:12px!important;
+}
+.qt-actions .ico{width:17px!important;height:17px!important}
+.qt-primary{font-size:11.5px!important}
+
+
+/* v12 — clear header + unobstructed scrolling + daily dashboard */
+.qt-top{left:auto!important;right:12px!important;justify-content:flex-end!important}
+.qt-brand{display:none!important}
+.qt-status{width:46px!important;height:30px!important;padding:0!important;border:0!important;border-radius:16px!important;background:#e5484d!important;display:grid!important;place-items:center!important}
+.qt-status.on{background:#18b875!important}
+.qt-status span{display:none!important}
+.qt-switch{width:16px!important;height:16px!important;padding:0!important;border:0!important;border-radius:50%!important;background:#fff!important}
+.qt-switch:after{display:none!important}
+.qt-panel{padding-bottom:calc(96px + var(--safeB))!important;scroll-padding-bottom:calc(96px + var(--safeB))!important;-webkit-overflow-scrolling:touch!important}
+.qt-list{padding-bottom:16px!important}
+.qt-panelhead{padding-right:52px!important}
+.qt-todaygrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin:10px 0 13px}
+.qt-todaystat{padding:10px 8px;border:1px solid var(--line);border-radius:16px;background:#fff;min-width:0}
+.qt-todaystat span{display:block;font-size:8px;color:var(--muted)}
+.qt-todaystat b{display:block;margin-top:3px;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.qt-daycard{padding:13px;border:1px solid var(--line);border-radius:19px;background:#fff;box-shadow:0 8px 24px rgba(93,15,28,.05)}
+.qt-dayhead{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+.qt-dayhead b{font-size:13px}.qt-dayhead strong{font-size:16px;color:#b60c29}
+.qt-daymeta{display:flex;gap:12px;flex-wrap:wrap;margin-top:6px;font-size:9px;color:var(--muted)}
+.qt-dayorders{display:grid;gap:5px;margin-top:9px;padding-top:8px;border-top:1px solid var(--line)}
+.qt-dayorder{display:flex;justify-content:space-between;gap:8px;font-size:9.5px}.qt-dayorder span:last-child{font-weight:800}
+
+</style>
+<style id="qg-v24-rider-ui">
+html,body,#app{min-width:0;max-width:100%;overflow-x:hidden}
+.screen-center{height:100dvh;min-height:100dvh;overflow-y:auto;background:#f6f6f8}
+.auth-shell{display:flex;flex-direction:column;width:min(100%,430px);min-height:100dvh;margin:auto;background:#fff;box-shadow:0 18px 55px #18202d16}
+.auth-side{display:block;position:relative;flex:none;height:clamp(245px,43dvh,390px);min-height:0;overflow:hidden;padding:calc(18px + var(--safeT)) 23px 0;background:radial-gradient(circle at 10% 2%,#fff 0,#fff7f8 42%,#f6e9ed 100%);color:#151923}
+.auth-mark{position:relative;z-index:2;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:5px;letter-spacing:-.04em;text-align:center}
+.auth-mark .auth-logo{display:grid;place-items:center;width:49px;height:49px;border-radius:13px;background:#e6002d;color:#fff;font-size:34px;font-weight:950;line-height:1;box-shadow:0 7px 18px #d9123233}
+.auth-mark b{font-size:25px;line-height:1;font-weight:900}.auth-mark b span{color:#e6002d}.auth-mark small{display:block;margin-top:2px;font-size:14px;font-weight:700;letter-spacing:0}
+.auth-side-copy{position:relative;z-index:2;text-align:center}.auth-side-copy h2{max-width:none;margin:9px 0 0;font-size:14px;line-height:1.25;font-weight:750}.auth-side-copy p,.auth-stats{display:none}
+.auth-illustration{position:absolute;left:0;right:0;bottom:0;height:65%;overflow:hidden;pointer-events:none}.auth-illustration svg{display:block;width:100%;height:100%}
+.auth-main{position:relative;z-index:3;display:block;flex:1;margin-top:-18px;padding:22px 22px calc(20px + var(--safeB));border-radius:22px 22px 0 0;background:#fff}
+.auth-card{width:100%;padding:0;border:0;border-radius:0;background:#fff;box-shadow:none;backdrop-filter:none}.auth-card h1{font-size:21px;line-height:1.25;margin:0 0 3px}.auth-card .sub{font-size:11px;color:#68707b;margin:0 0 15px}
+.auth-card .field{margin:10px 0}.auth-card .field label{font-size:11px;font-weight:750;margin-bottom:6px}.auth-card .field input{height:46px;border:1px solid #e2e3e8;border-radius:13px;background:#fafafb;font-size:16px}
+.auth-card .btn{height:46px;border-radius:13px}.auth-card .btn-brand{background:#e6002d}.auth-card .btn-signup{background:#fff0f2;color:#bd1434}
+.auth-divider{margin:10px 0;font-size:10px;color:#888b94}.auth-foot{display:none}.v4-version{margin-top:11px;color:#9b9da5}
+@media(max-width:760px){.auth-side{height:clamp(245px,43dvh,390px);padding:calc(18px + var(--safeT)) 23px 0}.auth-side-copy h2{font-size:14px}.auth-main{margin-top:-18px;padding:22px 22px calc(20px + var(--safeB))}.auth-card{padding:0;border-radius:0}}
+@media(max-height:700px){.auth-side{height:clamp(205px,34dvh,260px)}.auth-mark .auth-logo{width:40px;height:40px;font-size:27px}.auth-mark b{font-size:21px}.auth-mark small{font-size:12px}.auth-side-copy h2{margin-top:4px}.auth-main{padding-top:16px}.auth-card .sub{margin-bottom:8px}.auth-card .field{margin:7px 0}.auth-card .field input,.auth-card .btn{height:42px}}
+.qg-inbox{background:#fcf7f8}.qg-inbox h2,.qg-inbox-item{color:#241d20}.qg-v22-dialog form button{background:#e6002d}.qg-v22-period button{border-color:#f0d2d9;background:#fff0f2;color:#b60c29}.qg-v22-job-metrics,.qg-v22-photo-label{color:#b60c29}.qg-v23-map-fallback{color:#8f1730;background:#fff0f2}
+</style></head><body>
+<div id="app"></div><div id="toast" class="toast"></div>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>/* =========================================================================
+   QueueGo Rider — Supabase-connected rider interface.
+   Includes registration, delivery workflow, messages and earnings.
+   ========================================================================= */
+const SB = {
+  URL: 'https://pkypiqhlrmzocysgeqew.supabase.co',
+  KEY: 'sb_publishable_Vn2Il4jp-iBtzNsGRNY8Lg_Tpvk2Vre'
+};
+const SESSION_KEY = 'qtr_session_v1';
+const NEARBY_RADIUS_KM = 2;
+const APP_VERSION='4.0.0';
+const POLL_MS = 60000;
+
+/* ---------- full-screen lock + responsive resize (all screens, incl. rider page) ---------- */
+(function(){
+  function setVH(){
+    const vh = (window.visualViewport ? window.visualViewport.height : window.innerHeight) * 0.01;
+    document.documentElement.style.setProperty('--vh', vh + 'px');
+  }
+  let resizeRaf = null;
+  function onViewportChange(){
+    setVH();
+    if(resizeRaf) cancelAnimationFrame(resizeRaf);
+    resizeRaf = requestAnimationFrame(()=>{
+      if(S.map){ try{ S.map.invalidateSize({animate:false}); }catch(e){} }
+    });
+  }
+  setVH();
+  window.addEventListener('resize', onViewportChange);
+  window.addEventListener('orientationchange', onViewportChange);
+  if(window.visualViewport){
+    window.visualViewport.addEventListener('resize', onViewportChange);
+    window.visualViewport.addEventListener('scroll', onViewportChange);
+  }
+  document.addEventListener('DOMContentLoaded', setVH);
+
+  /* hard-stop page drag/bounce: fully lock touch movement unless inside an approved
+     scroll box AND that box actually has overflow content to scroll — and even then,
+     stop the drag dead at the top/bottom edge instead of letting it rubber-band. */
+  const SCROLLABLE_SEL = '.screen-center,.sheet,.chat-box,.chat-screen,.summary-screen,.panel-screen,.rider-steps,.qt-alert-card,.rider-doc-preview,#map';
+  let touchStartX = 0, touchStartY = 0, touchEl = null;
+  document.addEventListener('touchstart', function(e){
+    if(e.touches.length !== 1) return;
+    touchStartX = e.touches[0].clientX;
+    touchStartY = e.touches[0].clientY;
+    touchEl = e.target.closest(SCROLLABLE_SEL);
+  }, {passive:true});
+  document.addEventListener('touchmove', function(e){
+    if(e.touches.length !== 1) return;
+    if(e.target.closest('.slide-wrap')) return; // let the "slide to confirm delivery" drag control work
+    const el = touchEl;
+    if(!el){ e.preventDefault(); return; } // not inside any scroll box at all -> fully locked
+    if(el.id === 'map') return; // let Leaflet handle its own pan/zoom
+    const dx = e.touches[0].clientX - touchStartX;
+    const dy = e.touches[0].clientY - touchStartY;
+    const canScrollY = el.scrollHeight > el.clientHeight + 1;
+    const canScrollX = el.scrollWidth > el.clientWidth + 1;
+    if(canScrollY){
+      const atTop = el.scrollTop <= 0;
+      const atBottom = Math.ceil(el.scrollTop + el.clientHeight) >= el.scrollHeight;
+      if((atTop && dy > 0) || (atBottom && dy < 0)) e.preventDefault();
+    } else if(canScrollX){
+      const atLeft = el.scrollLeft <= 0;
+      const atRight = Math.ceil(el.scrollLeft + el.clientWidth) >= el.scrollWidth;
+      if((atLeft && dx > 0) || (atRight && dx < 0)) e.preventDefault();
+    } else {
+      e.preventDefault(); // nothing to scroll here -> lock it completely, no bounce
+    }
+  }, {passive:false});
+})();
+
+function sbHeaders(token){
+  const h = {apikey:SB.KEY, 'Content-Type':'application/json'};
+  if(token) h.Authorization = 'Bearer '+token;
+  return h;
+}
+async function sbAuth(path, body){
+  const r = await fetch(SB.URL+'/auth/v1/'+path, {method:'POST', headers:sbHeaders(), body:JSON.stringify(body)});
+  const data = await r.json().catch(()=>({}));
+  if(!r.ok) throw new Error(data.error_description || data.msg || data.message || 'AUTH_ERROR');
+  return data;
+}
+async function sbTable(path, options={}){
+  const headers = sbHeaders(options.token);
+  if(options.method && options.method!=='GET') headers.Prefer = 'return=representation';
+  const r = await fetch(SB.URL+'/rest/v1/'+path, {
+    method: options.method||'GET', headers, body: options.body?JSON.stringify(options.body):undefined
+  });
+  const data = await r.json().catch(()=>null);
+  if(!r.ok) throw new Error((data&&data.message) || 'DB_ERROR_'+r.status);
+  return data;
+}
+function authEmailFromPhone(phone){ return String(phone||'').replace(/\D/g,'')+'@auth.queuetech.local'; }
+function jwtExpiryMs(token){
+  try{
+    const part = String(token||'').split('.')[1];
+    const b64 = part.replace(/-/g,'+').replace(/_/g,'/') + '==='.slice((part.length+3)%4);
+    return Number(JSON.parse(atob(b64)).exp||0)*1000;
+  }catch(e){ return 0; }
+}
+function readSession(){ try{ return JSON.parse(localStorage.getItem(SESSION_KEY)||'null'); }catch(e){ return null; } }
+function writeSession(s){ try{ localStorage.setItem(SESSION_KEY, JSON.stringify(s)); }catch(e){} }
+function clearSession(){ try{ localStorage.removeItem(SESSION_KEY); }catch(e){} }
+async function getAccessToken(){
+  const s = readSession(); if(!s) return '';
+  const exp = Number(s.expiresAt||0) || jwtExpiryMs(s.accessToken);
+  if(exp - Date.now() > 60000) return s.accessToken;
+  if(!s.refreshToken) return s.accessToken;
+  try{
+    const r = await fetch(SB.URL+'/auth/v1/token?grant_type=refresh_token', {
+      method:'POST', headers:sbHeaders(), body:JSON.stringify({refresh_token:s.refreshToken})
+    });
+    const data = await r.json().catch(()=>({}));
+    if(!r.ok || !data.access_token) return s.accessToken;
+    const next = {...s, accessToken:data.access_token, refreshToken:data.refresh_token||s.refreshToken, expiresAt:(data.expires_at?data.expires_at*1000:0)};
+    writeSession(next);
+    return next.accessToken;
+  }catch(e){ return s.accessToken; }
+}
+function esc(v){ return String(v??'').replace(/[&<>"']/g, ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[ch])); }
+function toast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(toast._t); toast._t = setTimeout(()=>t.classList.remove('show'), 2400);
+}
+function haversineKm(lat1,lon1,lat2,lon2){
+  if([lat1,lon1,lat2,lon2].some(v=>!Number.isFinite(Number(v)))) return Infinity;
+  const R=6371, dLat=(lat2-lat1)*Math.PI/180, dLon=(lon2-lon1)*Math.PI/180;
+  const a=Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)**2;
+  return R*2*Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+function mapsLink(lat,lng,address){
+  if(Number.isFinite(Number(lat)) && Number.isFinite(Number(lng))) return 'https://www.google.com/maps/dir/?api=1&destination='+encodeURIComponent(lat+','+lng);
+  return address ? 'https://www.google.com/maps/dir/?api=1&destination='+encodeURIComponent(address) : 'https://www.google.com/maps/';
+}
+
+/* order status <-> db column + note tag, matching the main QueueGo app */
+function statusToDb(s){
+  return {ready:'ready', assigned:'assigned', picked_up:'picked_up', delivering:'in_progress', arrived:'in_progress', completed:'completed'}[s] || s;
+}
+function statusFromRow(row){
+  const m = (row.note||'').match(/__QT_ORDER_STATUS__=([^\n]+)/);
+  if(m) return m[1];
+  return {ready:'ready', assigned:'assigned', picked_up:'picked_up', in_progress:'delivering', completed:'completed'}[row.status] || row.status;
+}
+function noteWithTag(row, tag){
+  const body = (row.note||'').replace(/__QT_ORDER_STATUS__=[^\n]+\n?/,'');
+  return ('__QT_ORDER_STATUS__='+tag+'\n'+body).trim();
+}
+const STEP_LABEL = {
+  assigned:'ไปรับสินค้าที่ร้าน', picked_up:'รับสินค้าแล้ว — ไปส่งลูกค้า',
+  delivering:'กำลังจัดส่ง', arrived:'ถึงลูกค้าแล้ว', completed:'ส่งสำเร็จ'
+};
+const STEP_NEXT = { assigned:{to:'picked_up', label:'ถึงร้านแล้ว / รับสินค้า'},
+  picked_up:{to:'delivering', label:'เริ่มจัดส่ง'},
+  delivering:{to:'arrived', label:'ถึงลูกค้าแล้ว'},
+  arrived:{to:'completed', label:'ยืนยันส่งสำเร็จ'} };
+
+/* ---------- app state ---------- */
+const S = {
+  session:null, user:null, riderProfile:null,
+  online:false, pos:null, map:null, riderMarker:null, jobMarkers:[],
+  activeOrder:null, openJobs:[], history:[], activeTab:'home', pollTimer:null, chatOrder:null, chatTimer:null, newJobAlert:null, routeLine:null
+};
+
+function el(html){ const t=document.createElement('template'); t.innerHTML=html.trim(); return t.content.firstElementChild; }
+
+/* ---------- ONE ACCOUNT / ONE ACTIVE DEVICE ---------- */
+const DEVICE_ID_KEY='qtr_device_id_v1';
+const SESSION_GUARD_MS=25000;
+let sessionGuardTimer=null;
+function getDeviceId(){
+  try{let id=localStorage.getItem(DEVICE_ID_KEY);if(!id){id=crypto.randomUUID();localStorage.setItem(DEVICE_ID_KEY,id);}return id;}catch(e){return crypto.randomUUID();}
+}
+async function sbRpc(fn,body,token){
+  const r=await fetch(SB.URL+'/rest/v1/rpc/'+fn,{method:'POST',headers:sbHeaders(token),body:JSON.stringify(body)});
+  const data=await r.json().catch(()=>null);
+  if(!r.ok)throw new Error((data&&data.message)||'RPC_ERROR_'+r.status);
+  return data;
+}
+async function claimActiveSession(sessionId,authUserId,token){
+  if(!sessionId||!authUserId||!token)throw new Error('ไม่สามารถยืนยันอุปกรณ์ที่ใช้งานได้');
+  const result=await sbRpc('claim_active_session',{p_session_id:sessionId,p_device_id:getDeviceId()},token);
+  if(Array.isArray(result)&&result[0]&&result[0].success===false)throw new Error('ไม่สามารถเปิด Session นี้ได้');
+  return result;
+}
+async function checkActiveSession(){
+  const s=readSession();
+  if(!s||!s.sessionId||!s.accessToken||!s.authUserId)return true;
+  try{
+    const token=await getAccessToken();
+    const latest=readSession();
+    const result=await sbRpc('check_active_session',{p_session_id:latest.sessionId},token);
+    const ok=result===true || (Array.isArray(result)&&result[0]===true) || (result&&result.check_active_session===true);
+    if(!ok){forceSessionLogout('บัญชีนี้ถูกเข้าสู่ระบบจากอุปกรณ์อื่น');return false;}
+    await sbRpc('touch_active_session',{p_session_id:latest.sessionId},token);
+    return true;
+  }catch(e){
+    console.warn('active session check failed',e);
+    return true;
+  }
+}
+function startSessionGuard(){
+  stopSessionGuard();
+  sessionGuardTimer=setInterval(()=>{if(S.session&&S.session.sessionId)checkActiveSession();},SESSION_GUARD_MS);
+}
+function stopSessionGuard(){if(sessionGuardTimer){clearInterval(sessionGuardTimer);sessionGuardTimer=null;}}
+function forceSessionLogout(msg){
+  stopSessionGuard();stopPolling();
+  try{if(S.watchId)navigator.geolocation.clearWatch(S.watchId);}catch(e){}
+  clearSession();
+  Object.assign(S,{session:null,user:null,riderProfile:null,online:false,activeOrder:null,openJobs:[],history:[]});
+  renderLogin(msg||'เซสชันนี้ถูกยกเลิก');
+}
+window.addEventListener('focus',()=>{if(S.session&&S.session.sessionId)checkActiveSession();});
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&S.session&&S.session.sessionId)checkActiveSession();});
+
+/* ---------- boot ---------- */
+function boot(){
+  const s = readSession();
+  if(s){ S.session = s; startSessionGuard(); resumeSession(); }
+  else renderLogin();
+}
+async function resumeSession(){
+  try{
+    if(S.session&&S.session.sessionId){
+      const ok=await checkActiveSession();
+      if(!ok)return;
+    }
+    const token = await getAccessToken();
+    const rows = await sbTable('users?select=*&auth_user_id=eq.'+encodeURIComponent(S.session.authUserId), {token});
+    const u = Array.isArray(rows) ? rows[0] : null;
+    if(!u || u.role!=='rider'){ clearSession(); renderLogin('บัญชีนี้ไม่ใช่บัญชีไรเดอร์'); return; }
+    S.user = u;
+    if(u.status==='suspended'){ renderPending(u,'บัญชีถูกระงับการใช้งาน กรุณาติดต่อผู้ดูแลระบบ'); return; }
+    if(u.status!=='active'){ renderPending(u,'ใบสมัครของคุณอยู่ระหว่างตรวจสอบ'); return; }
+    await loadRiderProfile();
+    renderStage();
+  }catch(e){ console.error(e); clearSession(); renderLogin('เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่'); }
+}
+async function loadRiderProfile(){
+  const token = await getAccessToken();
+  const rows = await sbTable('rider_profiles?select=*&user_id=eq.'+encodeURIComponent(S.user.id), {token});
+  S.riderProfile = Array.isArray(rows) && rows[0] ? rows[0] : null;
+  S.online = !!(S.riderProfile && S.riderProfile.metadata && S.riderProfile.metadata.online);
+}
+
+/* ---------- LOGIN ---------- */
+function renderLogin(err){
+  const app=document.getElementById('app'); app.innerHTML='';
+  app.appendChild(el(`
+    <div class="screen-center">
+      <div class="auth-shell">
+        <div class="auth-side">
+          <div class="auth-mark"><span class="auth-logo">Q</span><b>Queue<span>Go</span><small>Rider</small></b></div>
+          <div class="auth-side-copy">
+            <h2>วิ่งงาน ส่งไว รายได้มั่นคง</h2>
+          </div>
+          <div class="auth-illustration" aria-hidden="true"><svg viewBox="0 0 420 245" role="presentation" preserveAspectRatio="xMidYMax meet">
+            <path d="M0 200h420v45H0z" fill="#e6e8ec"/><path d="M0 214h420" stroke="#cbd0d8" stroke-width="3" stroke-dasharray="23 18"/>
+            <path d="M5 188V95h54v93M48 188V66h53v122M97 188V110h48v78M313 188V84h62v104M366 188V119h54v69" fill="#e5e8ee" stroke="#d9dde5" stroke-width="2"/>
+            <path d="M17 112h9m13 0h9m12-29h9m13 0h9m-67 37h9m13 0h9m250-48h9m14 0h9m-28 24h9m14 0h9m12 31h9" stroke="#fff" stroke-width="5"/>
+            <ellipse cx="213" cy="211" rx="158" ry="11" fill="#adb4c0" opacity=".35"/>
+            <circle cx="125" cy="197" r="30" fill="#1e293b"/><circle cx="125" cy="197" r="15" fill="#e6e8ec"/>
+            <circle cx="315" cy="197" r="30" fill="#1e293b"/><circle cx="315" cy="197" r="15" fill="#e6e8ec"/>
+            <path d="M88 160h50l29 23h92l19-31h34l31 26-8 19h-29l-23-27-29 35H151l-27-27H88z" fill="#e3002b" stroke="#aa1230" stroke-width="4"/>
+            <path d="M91 164h62m137-30h29m-29 0 7 24" stroke="#263044" stroke-width="7" stroke-linecap="round"/>
+            <path d="M174 118c18-19 46-14 57 5l19 32-30 21-26-24-35 19-17-18z" fill="#e50936" stroke="#a70c2c" stroke-width="4"/>
+            <path d="M206 120c14 2 25 13 28 29l29 7" fill="none" stroke="#222c40" stroke-width="11" stroke-linecap="round"/>
+            <path d="M174 73c1-33 46-44 64-17 8 10 9 23 5 35l-51 12z" fill="#ed002f" stroke="#a80d2b" stroke-width="4"/>
+            <path d="M197 88h47l-8 16-32 2z" fill="#253149"/><path d="M188 102c8 14 29 22 42 7" fill="none" stroke="#f4b19b" stroke-width="9" stroke-linecap="round"/>
+            <path d="M244 109h55v58h-55z" fill="#e6002d" stroke="#a90b2b" stroke-width="4"/><text x="271" y="150" text-anchor="middle" font-size="38" font-weight="900" fill="#fff" font-family="system-ui">Q</text>
+          </svg></div>
+          <div class="auth-stats">
+            <div><b>${NEARBY_RADIUS_KM} กม.</b><span>รัศมีงานใกล้ตัว</span></div>
+            <div><b>24 ชม.</b><span>รับงานได้ทุกเมื่อ</span></div>
+          </div>
+        </div>
+        <div class="auth-main">
+          <div class="auth-card">
+            <h1>เข้าสู่ระบบ Rider</h1>
+            <p class="sub">ดูงานใกล้ตัว รับงาน และติดตามรายได้ของคุณ</p>
+            <div class="field"><label>อีเมลที่สมัคร หรือเบอร์โทรศัพท์</label><input id="li-phone" autocomplete="username" placeholder="อีเมลที่สมัคร / 08x xxx xxxx"></div>
+            <div class="field"><label>รหัสผ่าน</label><input id="li-pass" type="password" autocomplete="current-password" placeholder="รหัสผ่านของคุณ"></div>
+            <button class="btn btn-brand" id="li-btn">เข้าสู่ระบบ</button>
+            <div class="auth-err" id="li-err"></div>
+            <div class="auth-divider"><span>ยังไม่มีบัญชี</span></div>
+            <button class="btn btn-signup" id="li-signup">สมัครเป็นไรเดอร์</button>
+            <div class="v4-version">QueueGo Rider • v4.0</div><div class="auth-foot">QueueGo Rider ปลอดภัย เรียบง่าย พร้อมใช้งานทุกวัน</div>
+          </div>
+        </div>
+      </div>
+    </div>`));
+  const errBox=document.getElementById('li-err');
+  if(err){errBox.textContent=err;errBox.classList.add('show');}
+  document.getElementById('li-btn').onclick=doLogin;
+  document.getElementById('li-signup').onclick=renderSignup;
+  document.getElementById('li-pass').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();});
+}
+function renderSignup(){
+  renderRiderRegistration();
+}
+
+function openRiderFilePicker(inputId){
+  const input=document.getElementById(inputId);
+  if(!input) return;
+  try{ sessionStorage.setItem('qt_rider_register_hash', location.hash || '#rider-register'); }catch(e){}
+  input.click();
+}
+async function compressRiderImage(file,maxSize=1400,quality=0.78){
+  return new Promise((resolve,reject)=>{
+    const reader=new FileReader();
+    reader.onload=()=>{
+      const im=new Image();
+      im.onload=()=>{
+        const scale=Math.min(1,maxSize/Math.max(im.width,im.height));
+        const w=Math.max(1,Math.round(im.width*scale)),h=Math.max(1,Math.round(im.height*scale));
+        const c=document.createElement('canvas'); c.width=w; c.height=h;
+        const ctx=c.getContext('2d'); ctx.drawImage(im,0,0,w,h);
+        resolve(c.toDataURL('image/jpeg',quality));
+      };
+      im.onerror=reject; im.src=reader.result;
+    };
+    reader.onerror=reject; reader.readAsDataURL(file);
+  });
+}
+const RIDER_DRAFT_DB='qt_rider_draft_v1';
+function riderDraftOpen(){return new Promise((resolve,reject)=>{const r=indexedDB.open(RIDER_DRAFT_DB,1);r.onupgradeneeded=()=>r.result.createObjectStore('files');r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);});}
+async function saveRiderDraftFile(id,data,name){try{const db=await riderDraftOpen();await new Promise((res,rej)=>{const tx=db.transaction('files','readwrite');tx.objectStore('files').put({data,name,at:Date.now()},id);tx.oncomplete=res;tx.onerror=()=>rej(tx.error);});db.close();}catch(e){console.warn('draft save failed',e);}}
+async function loadRiderDraftFile(id){try{const db=await riderDraftOpen();const v=await new Promise((res,rej)=>{const tx=db.transaction('files','readonly');const r=tx.objectStore('files').get(id);r.onsuccess=()=>res(r.result||null);r.onerror=()=>rej(r.error);});db.close();return v;}catch(e){return null;}}
+async function clearRiderDraft(){try{const db=await riderDraftOpen();await new Promise((res,rej)=>{const tx=db.transaction('files','readwrite');tx.objectStore('files').clear();tx.oncomplete=res;tx.onerror=()=>rej(tx.error);});db.close();}catch(e){}}
+async function riderFilePreview(inputId,previewId){
+  const input=document.getElementById(inputId),img=document.getElementById(previewId);
+  if(!input||!input.files[0]) return;
+  const file=input.files[0];
+  if(file.size>8*1024*1024){input.value='';toast('ไฟล์ต้องมีขนาดไม่เกิน 8 MB');return;}
+  const nameEl=document.getElementById(inputId+'-name');
+  if(nameEl) nameEl.textContent=file.name||'เลือกไฟล์แล้ว';
+  try{
+    let data='';
+    if(file.type.startsWith('image/')){data=await compressRiderImage(file);if(img){img.src=data;img.style.display='block';}}
+    else data=await readFileAsDataURL(file);
+    await saveRiderDraftFile(inputId,data,file.name||inputId);
+    if(inputId==='rr-photo') try{sessionStorage.setItem('qt_rider_profile_draft',JSON.stringify({data,name:file.name||'profile.jpg',at:Date.now()}));}catch(e){}
+  }catch(err){console.error(err);toast('ไม่สามารถอ่านไฟล์ได้ กรุณาเลือกไฟล์ใหม่');}
+}
+function readFileAsDataURL(file){return new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result);r.onerror=rej;r.readAsDataURL(file);});}
+function riderUploadCard(id,label,required=true,accept='image/*'){
+  return `<div class="rider-upload-item"><label>${label} ${required?'<span class="req">(บังคับ)</span>':''}</label><button type="button" class="btn btn-brand rider-file-btn" onclick="openRiderFilePicker('${id}')">📎 เลือกไฟล์</button><input id="${id}" class="rider-file-input" type="file" accept="${accept}" data-required="${required?'1':'0'}" onchange="riderFilePreview('${id}','${id}-preview'); event.stopPropagation();"><div id="${id}-name" style="font-size:12px;color:var(--night-text-dim);margin:0 16px 4px">ยังไม่ได้เลือกไฟล์</div><img id="${id}-preview" class="rider-doc-preview" style="display:none"></div>`;
+}
+function riderRegistrationMetadata(user,data,form){
+  return {
+    source:'rider-registration',
+    email:form.email||null,
+    serviceArea:form.area||null,
+    serviceProvince:form.province||null,
+    serviceDistrict:form.district||null,
+    vehicleType:form.vehicle||null,
+    vehiclePlate:form.plate||null,
+    vehicleMake:form.make||null,
+    vehicleModel:form.model||null,
+    profileImage:data['rr-photo']||null,
+    idCardFrontImage:data['rr-id-front']||null,
+    idCardBackImage:data['rr-id-back']||null,
+    driverLicenseImage:data['rr-license']||null,
+    compulsoryInsuranceImage:data['rr-prb']||null,
+    vehiclePhoto:data['rr-vehicle-photo']||null,
+    applicationStatus:'pending',
+    applicationSubmittedAt:Date.now(),
+    available:false,
+    online:false
+  };
+}
+function riderStepGo(step){
+  const all=[...document.querySelectorAll('.rider-panel')];
+  const target=Math.max(0,Math.min(3,step));
+  const groups=[[all[0],all[1]],[all[2],all[3]],[all[4]],[all[5]]];
+  all.forEach(p=>p.style.display='none');
+  (groups[target]||groups[0]).forEach(p=>{if(p)p.style.display='block';});
+  const steps=document.querySelectorAll('.rider-step');steps.forEach((x,i)=>{x.classList.toggle('active',i===target);x.classList.toggle('done',i<target);});
+  window.__qtRiderStep=target;
+  const submit=document.querySelector('.rider-submit');if(submit)submit.textContent=target===3?'ส่งใบสมัคร  →':'ถัดไป  →';
+  const wizard=document.querySelector('.rider-wizard');if(wizard)wizard.scrollIntoView({behavior:'smooth',block:'start'});
+}
+async function riderStepNext(){
+  if(window.__qtRiderAdvancing)return;
+  window.__qtRiderAdvancing=true;
+  try{
+    const s=window.__qtRiderStep||0;
+    const f=id=>document.getElementById(id);
+    const hasFile=async id=>!!(f(id)?.files?.[0] || (await loadRiderDraftFile(id))?.data);
+    if(s===0){
+      if(!f('rr-name').value.trim()||!f('rr-phone').value.trim()||!f('rr-password').value){toast('กรุณากรอกข้อมูลส่วนตัวให้ครบ');return;}
+      if(!/^0[0-9]{9}$/.test(f('rr-phone').value.replace(/[-\s]/g,''))){toast('กรุณากรอกเบอร์โทรศัพท์ 10 หลัก');return;}
+      if(f('rr-password').value.length<6){toast('รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร');return;}
+      if(f('rr-email').value&&!f('rr-email').checkValidity()){toast('กรุณากรอกอีเมลให้ถูกต้อง');return;}
+      if(!(await hasFile('rr-photo'))){toast('กรุณาอัปโหลดรูปถ่ายหน้าตรง');return;}
+    }
+    if(s===1&&(!f('rr-plate').value.trim()||!f('rr-province').value||!f('rr-district').value.trim())){
+      toast('กรุณากรอกทะเบียนรถ จังหวัด และอำเภอ/เขต');return;
+    }
+    if(s===2){
+      for(const id of ['rr-id-front','rr-id-back','rr-license','rr-prb','rr-vehicle-photo']){
+        if(!(await hasFile(id))){toast('กรุณาอัปโหลดเอกสารบังคับให้ครบ');return;}
+      }
+    }
+    if(s<3)riderStepGo(s+1);
+    else document.querySelector('form[onsubmit*=handleRiderRegistration]')?.requestSubmit();
+  }catch(err){toast('ตรวจข้อมูลสมัครไม่สำเร็จ: '+err.message)}
+  finally{window.__qtRiderAdvancing=false;}
+}
+function riderStepBack(){const s=window.__qtRiderStep||0;if(s>0)riderStepGo(s-1);else renderLogin();}
+async function handleRiderRegistration(e){
+  e.preventDefault();
+  const f=id=>document.getElementById(id);
+  const name=String(f('rr-name').value||'').trim(),phone=f('rr-phone').value.trim().replace(/[-\s]/g,''),password=f('rr-password').value;
+  const email=String(f('rr-email').value||'').trim().toLowerCase();
+  const form={email,area:String(f('rr-area').value||'').trim(),province:f('rr-province').value,district:String(f('rr-district').value||'').trim(),vehicle:f('rr-vehicle').value,plate:String(f('rr-plate').value||'').trim(),make:String(f('rr-make').value||'').trim(),model:String(f('rr-model').value||'').trim()};
+  if(!name||!phone||!password){toast('กรุณากรอกข้อมูลส่วนตัวให้ครบ');return false;}
+  if(!/^0[0-9]{9}$/.test(phone)){toast('กรุณากรอกเบอร์โทรศัพท์ 10 หลัก เช่น 0812345678');return false;}
+  if(password.length<6){toast('รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร');return false;}
+  if(!f('rr-province').value||!f('rr-district').value){toast('กรุณาเลือกจังหวัดและอำเภอ/เขต');return false;}
+  if(!form.plate){toast('กรุณากรอกทะเบียนรถ');riderStepGo(1);return false;}
+  const agree=document.querySelector('.rider-confirm input[type=checkbox]');
+  if(!agree||!agree.checked){toast('กรุณายืนยันข้อมูลและข้อตกลงก่อนส่งใบสมัคร');riderStepGo(3);return false;}
+  const files=['rr-photo','rr-id-front','rr-id-back','rr-license','rr-prb','rr-vehicle-photo'];const data={};
+  for(const id of files){const input=f(id);if(input&&input.files&&input.files[0]){const file=input.files[0];data[id]=file.type.startsWith('image/')?await compressRiderImage(file):await readFileAsDataURL(file);}else{const draft=await loadRiderDraftFile(id);if(draft&&draft.data)data[id]=draft.data;}}
+  const requiredDocs=files;const labels={'rr-photo':'รูปถ่ายหน้าตรง','rr-id-front':'บัตรประชาชนด้านหน้า','rr-id-back':'บัตรประชาชนด้านหลัง','rr-license':'ใบขับขี่','rr-prb':'พ.ร.บ. รถ','rr-vehicle-photo':'รูปถ่ายคู่กับรถ'};const missing=requiredDocs.filter(id=>!data[id]);
+  if(missing.length){toast('กรุณาอัปโหลด: '+missing.map(x=>labels[x]).join(', '));return false;}
+  const submitBtn=e.submitter||document.querySelector('.rider-submit');if(submitBtn)submitBtn.disabled=true;
+  try{
+    toast('กำลังสร้างบัญชีและส่งใบสมัคร...');
+    const authEmail=email||authEmailFromPhone(phone);
+    const auth=await sbAuth('signup',{email:authEmail,password,data:{name,phone,role:'rider'}});
+    if(!auth.user||!auth.user.id)throw new Error('สร้างบัญชี Supabase Authentication ไม่สำเร็จ');
+    let session=auth.session;
+    if(!session||!session.access_token){
+      try{session=await sbAuth('token?grant_type=password',{email:authEmail,password});}
+      catch(err){throw new Error(email?'บัญชีถูกสร้างแล้ว แต่ยังไม่ได้ยืนยันอีเมลใน Supabase':'บัญชี Auth ถูกสร้างแล้ว แต่ Supabase ยังไม่อนุญาตให้เข้าสู่ระบบทันที กรุณาปิด Email Confirmation ใน Supabase Authentication Settings แล้วสมัครใหม่');}
+    }
+    if(!session||!session.access_token)throw new Error('ไม่สามารถสร้าง Session ของบัญชีได้');
+    const existing=await sbTable('users?select=id,auth_user_id,role,name,phone,status,created_at&auth_user_id=eq.'+encodeURIComponent(auth.user.id)+'&limit=1',{token:session.access_token});
+    let profile=Array.isArray(existing)&&existing[0]?existing[0]:null;
+    if(!profile){
+      const created=await sbTable('users?select=id,auth_user_id,role,name,phone,status,created_at',{method:'POST',token:session.access_token,body:{auth_user_id:auth.user.id,role:'rider',name,phone,status:'pending'}});
+      profile=Array.isArray(created)&&created[0]?created[0]:created;
+    }
+    if(!profile||!profile.id||String(profile.auth_user_id)!==String(auth.user.id))throw new Error('สร้างข้อมูลสมาชิกใน public.users ไม่สำเร็จ');
+    const metadata=riderRegistrationMetadata(profile,data,form);
+    const riderBody={user_id:profile.id,rider_name:name,phone,vehicle_type:form.vehicle,vehicle_plate:form.plate,address:form.area||null,latitude:null,longitude:null,status:'pending',metadata};
+    const riderRows=await sbTable('rider_profiles?on_conflict=user_id',{method:'POST',token:session.access_token,body:riderBody});
+    if(!riderRows) throw new Error('สร้างโปรไฟล์ไรเดอร์ไม่สำเร็จ');
+    const sessionId=crypto.randomUUID();
+    await claimActiveSession(sessionId,auth.user.id,session.access_token);
+    S.session={authUserId:auth.user.id,accessToken:session.access_token,refreshToken:session.refresh_token||null,expiresAt:auth.expires_at?auth.expires_at*1000:(session.expires_at?session.expires_at*1000:jwtExpiryMs(session.access_token)),sessionId};
+    writeSession(S.session);S.user=profile;S.riderProfile=Array.isArray(riderRows)?riderRows[0]:riderRows;S.online=false;
+    startSessionGuard();
+    await clearRiderDraft();try{sessionStorage.removeItem('qt_rider_profile_draft');sessionStorage.removeItem('qt_rider_register_hash');}catch(err){}
+    toast('ส่งใบสมัครสำเร็จ รอ Admin ตรวจสอบ');
+    renderPending(profile,'ใบสมัครของคุณอยู่ระหว่างตรวจสอบ');
+  }catch(err){
+    console.error('QueueGo rider registration error',err);
+    const m=String(err&&err.message||'');
+    toast(/already registered|User already registered|duplicate key/i.test(m)?'สมัครไม่สำเร็จ: เบอร์หรืออีเมลนี้ถูกใช้สมัครแล้ว':m||'สมัครสมาชิกไม่สำเร็จ');
+  }finally{if(submitBtn)submitBtn.disabled=false;}
+  return false;
+}
+function renderRiderRegistration(){
+  const existing=S.user;
+  if(existing){renderPending(existing,'คุณมีบัญชีไรเดอร์อยู่แล้ว');return;}
+  const app=document.getElementById('app');app.innerHTML='';
+  app.appendChild(el(`
+    <div class="screen-center" style="align-items:flex-start;justify-content:center;padding:16px 12px 30px;">
+      <div class="rider-wizard">
+        <div class="rider-topbar"><div class="rider-brand">QueueGo</div><div class="rider-title">สมัครเป็นไรเดอร์</div></div>
+        <div class="rider-steps"><div class="rider-step active"><b>1</b><span>ข้อมูลส่วนตัว</span></div><i></i><div class="rider-step"><b>2</b><span>ยานพาหนะ</span></div><i></i><div class="rider-step"><b>3</b><span>เอกสาร</span></div><i></i><div class="rider-step"><b>4</b><span>ยืนยัน</span></div></div>
+        <form novalidate onsubmit="return handleRiderRegistration(event)">
+          <div class="rider-grid">
+            <section class="rider-panel"><h3>📷 รูปถ่ายหน้าตรง <span class="req">(บังคับ)</span></h3><div class="rider-face-upload"><img id="rr-photo-preview" style="display:none"><button type="button" class="btn btn-brand rider-file-btn" onclick="openRiderFilePicker('rr-photo')">📷 อัปโหลดรูปภาพ</button><div id="rr-photo-name" style="font-size:12px;color:var(--night-text-dim);margin-bottom:6px">ยังไม่ได้เลือกรูป</div><input id="rr-photo" class="rider-file-input" type="file" accept="image/*" data-required="1" onchange="riderFilePreview('rr-photo','rr-photo-preview'); event.stopPropagation();"><small>ไฟล์ JPG, PNG ขนาดไม่เกิน 8 MB<br>รูปต้องเป็นหน้าตรง ชัดเจน เห็นใบหน้าเต็ม</small></div></section>
+            <section class="rider-panel"><h3>👤 ข้อมูลส่วนตัว</h3><label>ชื่อ - นามสกุล <span class="req">*</span></label><input required id="rr-name" placeholder="เช่น นายสมชาย ใจดี"><label>เบอร์โทรศัพท์ <span class="req">*</span></label><input required id="rr-phone" inputmode="tel" placeholder="เช่น 081-234-5678"><label>รหัสผ่าน <span class="req">*</span></label><input required id="rr-password" type="password" minlength="6" placeholder="อย่างน้อย 6 ตัวอักษร"><label>อีเมล (ถ้ามี)</label><input id="rr-email" type="email" placeholder="เช่น rider@example.com"></section>
+            <section class="rider-panel"><h3>🚗 ข้อมูลยานพาหนะ</h3><label>ประเภทพาหนะ <span class="req">*</span></label><select required id="rr-vehicle"><option value="motorcycle">🛵 รถจักรยานยนต์</option><option value="car">🚗 รถยนต์</option><option value="bicycle">🚲 จักรยาน</option></select><label>ทะเบียนรถ <span class="req">*</span></label><input required id="rr-plate" placeholder="เช่น กข 1234 นครราชสีมา"><label>ยี่ห้อ (ถ้ามี)</label><input id="rr-make" placeholder="เช่น Honda, Yamaha"><label>รุ่น (ถ้ามี)</label><input id="rr-model" placeholder="เช่น Wave, Click"><div class="rider-note">ระบบไม่บังคับให้ระบุยี่ห้อและรุ่น แต่ต้องระบุทะเบียนรถเพื่อความปลอดภัย</div></section>
+            <section class="rider-panel"><h3>พื้นที่ให้บริการ</h3><label>เลือกจังหวัด <span class="req">*</span></label><select required id="rr-province"><option value="">-- เลือกจังหวัด --</option><option>กรุงเทพมหานคร</option><option>บุรีรัมย์</option><option>นครราชสีมา</option><option>ขอนแก่น</option><option>เชียงใหม่</option><option>ชลบุรี</option><option>อุบลราชธานี</option><option>สุรินทร์</option><option>ศรีสะเกษ</option><option>มหาสารคาม</option><option>ร้อยเอ็ด</option><option>สระบุรี</option><option>ปทุมธานี</option><option>นนทบุรี</option><option>สมุทรปราการ</option><option>ภูเก็ต</option></select><label>เขต/อำเภอ <span class="req">*</span></label><input required id="rr-district" placeholder="เช่น เมืองนครราชสีมา"><label>พื้นที่เพิ่มเติม (ถ้ามี)</label><input id="rr-area" placeholder="เช่น ปากช่อง, โพธิ์กลาง"></section>
+            <section class="rider-panel rider-docs"><h3>📄 เอกสารประกอบการสมัคร</h3>${riderUploadCard('rr-id-front','บัตรประชาชน (ด้านหน้า)',true,'image/*,.pdf')}${riderUploadCard('rr-id-back','บัตรประชาชน (ด้านหลัง)',true,'image/*,.pdf')}${riderUploadCard('rr-license','ใบขับขี่',true,'image/*,.pdf')}${riderUploadCard('rr-prb','พ.ร.บ. รถ',true,'image/*,.pdf')}${riderUploadCard('rr-vehicle-photo','รูปถ่ายคู่กับรถ (ปัจจุบัน)',true,'image/*')}</section>
+            <section class="rider-panel rider-confirm"><h3>☑️ ยืนยันข้อมูลการสมัคร</h3><label><input type="checkbox" required> <span>ข้าพเจ้าขอรับรองว่าข้อมูลที่ให้เป็นความจริง และยินยอมให้ QueueGo ตรวจสอบข้อมูลและเอกสารประกอบการสมัคร</span></label><p>หลังส่งใบสมัคร สถานะจะเป็น <b>รอ Admin ตรวจสอบ</b> และยังไม่สามารถรับงานได้จนกว่าจะได้รับอนุมัติ</p></section>
+          </div>
+          <button class="btn btn-brand rider-submit" type="submit">ส่งใบสมัคร</button>
+          <button class="btn btn-signup" type="button" id="rr-back-login">กลับไปเข้าสู่ระบบ</button>
+        </form>
+      </div>
+    </div>`));
+  document.getElementById('rr-back-login').onclick=()=>renderLogin();
+  window.__qtRiderStep=0;
+  riderStepGo(0);
+  const submit=document.querySelector('.rider-submit');
+  if(submit){submit.type='button';submit.onclick=()=>riderStepNext();submit.textContent='ถัดไป  →';}
+  const back=document.getElementById('rr-back-login');
+  if(back){back.textContent='← ย้อนกลับ';back.onclick=()=>riderStepBack();}
+
+  try{const draft=JSON.parse(sessionStorage.getItem('qt_rider_profile_draft')||'null');if(draft&&draft.data){const img=document.getElementById('rr-photo-preview'),nameEl=document.getElementById('rr-photo-name');if(img){img.src=draft.data;img.style.display='block';}if(nameEl)nameEl.textContent=draft.name||'เลือกไฟล์แล้ว';}}catch(err){}
+}
+
+
+async function doLogin(){
+  const btn = document.getElementById('li-btn');
+  const errBox = document.getElementById('li-err');
+  const phone = document.getElementById('li-phone').value.trim();
+  const pass = document.getElementById('li-pass').value;
+  errBox.classList.remove('show');
+  if(!phone || !pass){ errBox.textContent='กรุณากรอกอีเมลหรือเบอร์โทรและรหัสผ่าน'; errBox.classList.add('show'); return; }
+  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>';
+  try{
+    const email = phone.includes('@') ? phone : authEmailFromPhone(phone);
+    const auth = await sbAuth('token?grant_type=password', {email, password:pass});
+    const rows = await sbTable('users?select=*&auth_user_id=eq.'+encodeURIComponent(auth.user.id), {token:auth.access_token});
+    const u = Array.isArray(rows) ? rows[0] : null;
+    if(!u || u.role!=='rider'){ throw new Error('บัญชีนี้ไม่ใช่บัญชีไรเดอร์'); }
+    const sessionId=crypto.randomUUID();
+    await claimActiveSession(sessionId,auth.user.id,auth.access_token);
+    S.session = {authUserId:auth.user.id, accessToken:auth.access_token, refreshToken:auth.refresh_token||null, expiresAt:auth.expires_at?auth.expires_at*1000:jwtExpiryMs(auth.access_token), sessionId};
+    writeSession(S.session);
+    startSessionGuard();
+    S.user = u;
+    if(u.status==='suspended'){ renderPending(u,'บัญชีถูกระงับการใช้งาน กรุณาติดต่อผู้ดูแลระบบ'); return; }
+    if(u.status!=='active'){ renderPending(u,'ใบสมัครของคุณอยู่ระหว่างตรวจสอบ'); return; }
+    await loadRiderProfile();
+    renderStage();
+  }catch(e){
+    console.error(e);
+    errBox.textContent = /invalid/i.test(e.message) ? 'อีเมลหรือรหัสผ่านไม่ถูกต้อง หากสมัครด้วยอีเมลให้ใช้อีเมลนั้นเข้าสู่ระบบ' : e.message;
+    errBox.classList.add('show');
+  }finally{ btn.disabled=false; btn.textContent='เข้าสู่ระบบ'; }
+}
+
+/* ---------- PENDING ---------- */
+function renderPending(u, msg){
+  const app = document.getElementById('app');
+  app.innerHTML = '';
+  app.appendChild(el(`
+    <div class="screen-center">
+      <div class="pending-card">
+        <div class="pending-icon" style="font-size:28px">•••</div>
+        <div class="pending-pill">${esc(msg||'รออนุมัติ')}</div>
+        <h1>สวัสดี ${esc(u.name||'ไรเดอร์')}</h1>
+        <p>เมื่อบัญชีของคุณพร้อมใช้งานแล้ว กลับมาเปิดหน้านี้แล้วเข้าสู่ระบบอีกครั้งได้เลย</p>
+        <button class="btn btn-brand" id="pd-logout" style="background:#1b2431;box-shadow:none;">ออกจากระบบ</button>
+      </div>
+    </div>`));
+  document.getElementById('pd-logout').onclick = doLogout;
+}
+async function doLogout(){
+  const s=readSession();
+  stopSessionGuard();
+  try{if(s&&s.sessionId&&s.accessToken)await sbRpc('revoke_active_session',{p_session_id:s.sessionId},s.accessToken);}catch(e){console.warn('revoke active session failed',e);}
+  clearSession();stopPolling();
+  if(S.watchId) navigator.geolocation.clearWatch(S.watchId);
+  Object.assign(S,{session:null,user:null,riderProfile:null,online:false,activeOrder:null,openJobs:[],history:[]});
+  renderLogin();
+}
+
+/* ---------- MAIN STAGE ---------- */
+/* QueueGo v21: superseded renderStage presentation removed. */
+/* QueueGo v21: superseded switchTab presentation removed. */
+function initMap(){
+  if(typeof L==='undefined'){ S.map=null; const map=document.getElementById('map'); if(map)map.innerHTML='<div class="qg-v23-map-fallback">แผนที่โหลดไม่ได้ในขณะนี้<br><small>รับงานและเปิดนำทางภายนอกได้ตามปกติ</small></div>'; return; }
+  S.map = L.map('map', {zoomControl:false, attributionControl:false}).setView([13.7563,100.5018], 13);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom:19}).addTo(S.map);
+  requestAnimationFrame(()=>{ try{ S.map.invalidateSize({animate:false}); }catch(e){} });
+}
+function startGeolocation(){
+  if(!navigator.geolocation){ toast('อุปกรณ์นี้ไม่รองรับ GPS'); return; }
+  S.watchId = navigator.geolocation.watchPosition(pos=>{
+    S.pos = {lat:pos.coords.latitude, lng:pos.coords.longitude};
+    placeRiderMarker();
+    if(!S._centeredOnce&&S.map){ S.map.setView([S.pos.lat,S.pos.lng], 15); S._centeredOnce = true; }
+    if(S.online) pushLocation();
+    if(S.activeTab==='home') renderSheet();
+  }, ()=>toast('ไม่สามารถขอตำแหน่ง GPS ได้'), {enableHighAccuracy:true, maximumAge:5000, timeout:12000});
+}
+/* QueueGo v21: superseded placeRiderMarker presentation removed. */
+function recenterMap(){
+  if(!S.map){toast('แผนที่ยังไม่พร้อม เปิดนำทางภายนอกจากงานได้');return}
+  if(!S.pos){ toast('ยังไม่ได้ตำแหน่ง GPS'); return; }
+  S.map.setView([S.pos.lat,S.pos.lng], 15);
+}
+
+/* ---------- online toggle ---------- */
+async function toggleOnline(){
+  const next = !S.online;
+  S.online = next;
+  updateStatusUI();
+  try{
+    const token = await getAccessToken();
+    const meta = Object.assign({}, (S.riderProfile&&S.riderProfile.metadata)||{}, {online:next});
+    const body = {user_id:S.user.id, rider_name:S.user.name||'ไรเดอร์', phone:S.user.phone||null,
+      vehicle_type:(S.riderProfile&&S.riderProfile.vehicle_type)||null, vehicle_plate:(S.riderProfile&&S.riderProfile.vehicle_plate)||null,
+      latitude:S.pos?S.pos.lat:null, longitude:S.pos?S.pos.lng:null, metadata:meta};
+    let rows;
+    if(S.riderProfile && S.riderProfile.user_id){
+      rows = await sbTable('rider_profiles?user_id=eq.'+encodeURIComponent(S.user.id), {method:'PATCH', token, body});
+    }else{
+      rows = await sbTable('rider_profiles', {method:'POST', token, body:{...body,status:'active'}});
+    }
+    S.riderProfile = Array.isArray(rows)?rows[0]:rows;
+    toast(next ? '🟢 เปิดรับงานแล้ว' : '⚪ ปิดรับงานแล้ว');
+    refreshData();
+  }catch(e){
+    console.error(e); S.online = !next; updateStatusUI();
+    toast('เปลี่ยนสถานะไม่สำเร็จ: '+e.message);
+  }
+}
+async function pushLocation(){
+  if(!S.pos || !S.riderProfile) return;
+  try{
+    const token = await getAccessToken();
+    await sbTable('rider_profiles?user_id=eq.'+encodeURIComponent(S.user.id), {method:'PATCH', token, body:{latitude:S.pos.lat, longitude:S.pos.lng}});
+  }catch(e){ /* best-effort */ }
+}
+/* QueueGo v21: superseded updateStatusUI presentation removed. */
+async function refreshData(){
+  try{
+    const token = await getAccessToken();
+    const mine = await sbTable('orders?select=*&order_type=eq.shopping&rider_id=eq.'+encodeURIComponent(S.riderProfile.id)+'&status=in.(assigned,picked_up,in_progress)&order=created_at.desc&limit=1', {token});
+    S.activeOrder = Array.isArray(mine) && mine[0] ? mine[0] : null;
+
+    const previousOpenJobIds = new Set((S.openJobs||[]).map(x=>x&&x.order&&x.order.id ? String(x.order.id) : null).filter(Boolean));
+    if(S.activeOrder){
+      await enrichOrder(S.activeOrder);
+      S.openJobs = [];
+    } else if(S.online){
+      const open = await sbTable('orders?select=*&order_type=eq.shopping&status=eq.ready&rider_id=is.null&order=created_at.asc&limit=25', {token});
+      const list = Array.isArray(open) ? open : [];
+      for(const o of list) await enrichOrder(o);
+      const candidates = list
+        .map(o=>({order:o, distanceKm: haversineKm(S.pos&&S.pos.lat, S.pos&&S.pos.lng, o.pickup_latitude, o.pickup_longitude)}))
+        .filter(x=>Number.isFinite(x.distanceKm))
+        .sort((a,b)=>a.distanceKm-b.distanceKm);
+      const nearby = candidates.filter(x=>x.distanceKm <= NEARBY_RADIUS_KM);
+      // Rider-side fallback: if there is no job within 2 km, keep the nearest open job visible.
+      // Final nearest-Rider assignment must be enforced server-side/RPC to prevent two riders claiming the same fallback job.
+      S.openJobs = nearby.length ? nearby : (candidates.length ? [{...candidates[0], fallback:true}] : []);
+    } else {
+      S.openJobs = [];
+    }
+    if(window.qtCheckNewJobs){
+      const currentOpenOrders = S.openJobs.map(x=>x.order).filter(Boolean);
+      window.qtCheckNewJobs(previousOpenJobIds, currentOpenOrders);
+    }
+    if(S.activeTab==='home') renderSheet();
+    placeJobMarkers();
+
+    const hist = await sbTable('orders?select=*&order_type=eq.shopping&rider_id=eq.'+encodeURIComponent(S.riderProfile.id)+'&status=eq.completed&order=updated_at.desc&limit=200', {token});
+    S.history = Array.isArray(hist) ? hist : [];
+    if(S.activeTab==='jobs') renderHistoryPanel();
+  }catch(e){ console.error('refreshData failed', e);const now=Date.now();if(!refreshData.lastErrorAt||now-refreshData.lastErrorAt>30000){refreshData.lastErrorAt=now;toast('โหลดงานจากฐานข้อมูลไม่สำเร็จ: '+(e.message||e));} }
+}
+async function enrichOrder(o){
+  const token = await getAccessToken();
+  if(o.shop_id && !o._shop){
+    try{ const rows = await sbTable('shop_profiles?select=shop_name,phone,address&id=eq.'+encodeURIComponent(o.shop_id), {token}); o._shop = Array.isArray(rows)&&rows[0] ? rows[0] : null; }
+    catch(e){ o._shop = null; }
+  }
+  if(o.customer_id && !o._customer){
+    try{ const rows = await sbTable('users?select=name,phone&id=eq.'+encodeURIComponent(o.customer_id), {token}); o._customer = Array.isArray(rows)&&rows[0] ? rows[0] : null; }
+    catch(e){ o._customer = null; }
+  }
+}
+function placeJobMarkers(){
+  if(!S.map)return;
+  S.jobMarkers.forEach(m=>S.map.removeLayer(m)); S.jobMarkers = [];
+  const list = S.activeOrder ? [S.activeOrder] : S.openJobs.map(x=>x.order);
+  const bounds = [];
+  list.forEach(o=>{
+    const plat=Number(o.pickup_latitude), plng=Number(o.pickup_longitude);
+    const dlat=Number(o.delivery_latitude), dlng=Number(o.delivery_longitude);
+    if(Number.isFinite(plat)&&Number.isFinite(plng)){
+      const m=L.marker([plat,plng],{icon:L.divIcon({html:'<div style="width:18px;height:18px;border-radius:50%;background:#16a34a;border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.3)"></div>',className:'',iconSize:[24,24],iconAnchor:[12,12]})}).addTo(S.map);
+      m.bindPopup('<b style="color:#15803d">จุดรับ</b><br>'+esc(o.pickup_address||'ร้านค้า'));
+      S.jobMarkers.push(m); bounds.push([plat,plng]);
+    }
+    if(Number.isFinite(dlat)&&Number.isFinite(dlng)){
+      const m=L.marker([dlat,dlng],{icon:L.divIcon({html:'<div style="width:18px;height:18px;border-radius:50%;background:#dc2626;border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.3)"></div>',className:'',iconSize:[24,24],iconAnchor:[12,12]})}).addTo(S.map);
+      m.bindPopup('<b style="color:#b91c1c">จุดส่ง</b><br>'+esc(o.delivery_address||'บ้านลูกค้า'));
+      S.jobMarkers.push(m); bounds.push([dlat,dlng]);
+    }
+  });
+  if(bounds.length && S.activeTab==='home' && !S.pos){
+    try{ S.map.fitBounds(bounds,{padding:[45,45],maxZoom:16}); }catch(e){}
+  }
+  drawActiveRoute();
+}
+function drawActiveRoute(){
+  if(!S.map)return; if(S.routeLine){try{S.map.removeLayer(S.routeLine)}catch(e){} S.routeLine=null;}
+  const badge=document.getElementById('route-badge'),txt=document.getElementById('route-text');
+  if(!S.activeOrder||!S.pos){if(badge)badge.style.display='none';return;}
+  const o=S.activeOrder, st=statusFromRow(o); const toShop=st==='assigned';
+  const lat=Number(toShop?o.pickup_latitude:o.delivery_latitude),lng=Number(toShop?o.pickup_longitude:o.delivery_longitude);
+  if(!Number.isFinite(lat)||!Number.isFinite(lng)){if(badge)badge.style.display='none';return;}
+  S.routeLine=L.polyline([[S.pos.lat,S.pos.lng],[lat,lng]],{color:'#08b887',weight:6,opacity:.9,dashArray:'12 8'}).addTo(S.map);
+  const km=haversineKm(S.pos.lat,S.pos.lng,lat,lng); if(badge){badge.style.display='block';if(txt)txt.textContent=(toShop?'ไปร้าน • ':'ไปหาลูกค้า • ')+(Number.isFinite(km)?km.toFixed(1)+' กม.':'');}
+}
+
+
+/* ---------- sheet (home) ---------- */
+/* QueueGo v21: superseded renderSheet presentation removed. */
+function jobRowHTML(x){
+  const o = x.order;
+  const shopName = o._shop ? o._shop.shop_name : 'ร้านค้า';
+  const pickupKm = Number.isFinite(Number(x.distanceKm)) ? Number(x.distanceKm) : haversineKm(S.pos&&S.pos.lat,S.pos&&S.pos.lng,o.pickup_latitude,o.pickup_longitude);
+  const deliveryKm = haversineKm(o.pickup_latitude,o.pickup_longitude,o.delivery_latitude,o.delivery_longitude);
+  return `<div class="job-row">
+    <div class="top">
+      <div><div class="shop">${esc(shopName)}</div><div class="meta">งานรอรับ</div></div>
+      <div class="fee">฿${Number(o.delivery_fee||0)}</div>
+    </div>
+    <div class="job-distances">
+      <div class="job-distance pickup">จุดรับ<b>${Number.isFinite(pickupKm)?pickupKm.toFixed(1)+' กม.':'ไม่มีพิกัด'}</b></div>
+      <div class="job-distance delivery">ระยะส่ง<b>${Number.isFinite(deliveryKm)?deliveryKm.toFixed(1)+' กม.':'ไม่มีพิกัด'}</b></div>
+    </div>
+    <div class="meta">${esc(o.pickup_address||'ไม่มีที่อยู่จุดรับ')}<br>${esc(o.delivery_address||'ไม่มีที่อยู่จุดส่ง')}</div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap">
+      <a class="accept" style="text-decoration:none;display:inline-block" href="${esc(mapsLink(o.pickup_latitude,o.pickup_longitude,o.pickup_address))}" target="_blank" rel="noopener">นำทาง</a>
+      <button class="accept" id="accept-${o.id}">รับงานนี้</button>
+    </div>
+  </div>`;
+}
+
+/* QueueGo v21: superseded jobCardHTML presentation removed. */
+function slideConfirmHTML(){
+  return `<div class="slide-wrap" id="delivery-slide" aria-label="เลื่อนเพื่อยืนยันส่งสำเร็จ">
+    <div class="slide-label">เลื่อนเพื่อยืนยันส่งสำเร็จ</div>
+    <button class="slide-thumb" id="delivery-slide-thumb" type="button">›</button>
+  </div>`;
+}
+
+/* QueueGo v21: superseded bindJobCardEvents presentation removed. */
+function bindDeliverySlide(track,thumb,onDone){
+  let startX=0,current=0,drag=false,finished=false;
+  const max=()=>Math.max(0,track.clientWidth-thumb.offsetWidth-6);
+  const move=x=>{ current=Math.max(0,Math.min(max(),x-startX)); thumb.style.transform=`translateX(${current}px)`; };
+  const end=()=>{ if(!drag||finished)return; drag=false; if(current>=max()*0.82){ finished=true; current=max(); thumb.style.transform=`translateX(${current}px)`; track.classList.add('done'); thumb.textContent='✓'; onDone(); } else { current=0; thumb.style.transform='translateX(0)'; } };
+  thumb.addEventListener('pointerdown',e=>{ if(finished)return; drag=true; startX=e.clientX-current; thumb.setPointerCapture?.(e.pointerId); });
+  thumb.addEventListener('pointermove',e=>{ if(drag)move(e.clientX); });
+  thumb.addEventListener('pointerup',end);
+  thumb.addEventListener('pointercancel',end);
+}
+
+async function showPaymentBeforeFinish(o){
+  try{
+    stopPolling();
+    const token=await getAccessToken();
+    const rows=await sbTable('orders?id=eq.'+encodeURIComponent(o.id)+'&select=*',{token});
+    const current=Array.isArray(rows)&&rows[0]?rows[0]:o;
+    renderPaymentSummary(current,false);
+  }catch(e){
+    console.error(e);
+    startPolling();
+    toast('ไม่สามารถแสดงยอดเงินได้: '+e.message);
+  }
+}
+
+async function finishOrder(o){
+  const btn=document.getElementById('finish-order-btn');
+  if(btn){btn.disabled=true;btn.textContent='กำลังจบงาน...';}
+  try{
+    const token=await getAccessToken();
+    const updated=await sbTable('orders?id=eq.'+encodeURIComponent(o.id),{method:'PATCH',token,body:{status:'completed',note:noteWithTag(o,'completed'),updated_at:new Date().toISOString()}});
+    let finalOrder=Array.isArray(updated)&&updated[0]?updated[0]:null;
+    if(!finalOrder){
+      const rows=await sbTable('orders?id=eq.'+encodeURIComponent(o.id)+'&select=*',{token});
+      finalOrder=Array.isArray(rows)?rows[0]:null;
+    }
+    if(!finalOrder) finalOrder=o;
+    renderPaymentSummary(finalOrder,true);
+  }catch(e){
+    console.error(e);
+    if(btn){btn.disabled=false;btn.textContent='จบงาน';}
+    toast('จบงานไม่สำเร็จ: '+e.message);
+  }
+}
+
+/* QueueGo v21: superseded renderPaymentSummary presentation removed. */
+/* QueueGo v21: superseded closeChat presentation removed. */
+async function loadChatMessages(orderId){
+  try{
+    const token=await getAccessToken();
+    const rows=await sbTable('order_chat_messages?select=*&order_id=eq.'+encodeURIComponent(orderId)+'&order=created_at.asc',{token});
+    return Array.isArray(rows)?rows:[];
+  }catch(e){ console.error('chat load failed',e); return []; }
+}
+
+function riderQuickMessages(){try{return JSON.parse(localStorage.getItem('qtr_quick_messages')||'null')||['กำลังเดินทางไปครับ','ถึงหน้าร้านแล้วครับ','ได้รับสินค้าแล้ว กำลังไปส่งครับ','ใกล้ถึงแล้วครับ อีกประมาณ 5 นาที','ถึงจุดส่งแล้วครับ'];}catch(e){return[];}}
+function saveRiderQuickMessages(a){localStorage.setItem('qtr_quick_messages',JSON.stringify(a.slice(0,5)));}
+function quickMessagesHTML(){return `<div class="quick-wrap"><div class="quick-title"><span>ข้อความใช้บ่อย (สูงสุด 5)</span><button class="quick-manage" type="button" id="quick-add">+ เพิ่ม</button></div><div class="quick-list">${riderQuickMessages().map((q,i)=>`<button type="button" class="quick-chip" data-q="${i}">${esc(q)}</button>`).join('')}</div></div>`;}
+function bindQuickMessages(o){document.querySelectorAll('.quick-chip').forEach(b=>{b.onclick=()=>{const q=riderQuickMessages()[Number(b.dataset.q)];const input=document.getElementById('chat-input');if(input){input.value=q;input.focus();}};b.oncontextmenu=e=>{e.preventDefault();const a=riderQuickMessages(),i=Number(b.dataset.q);if(confirm('ลบข้อความนี้?')){a.splice(i,1);saveRiderQuickMessages(a);openChat(o);}}});const add=document.getElementById('quick-add');if(add)add.onclick=()=>{const a=riderQuickMessages();if(a.length>=5){toast('บันทึกได้สูงสุด 5 ข้อความ');return;}const q=prompt('เพิ่มข้อความที่ใช้บ่อย');if(q&&q.trim()){a.push(q.trim().slice(0,100));saveRiderQuickMessages(a);openChat(o);}};}
+function renderChatMessages(rows){
+  const box=document.getElementById('chat-box'); if(!box)return;
+  box.innerHTML=rows.length?rows.map(m=>{const raw=String(m.message||'');const isImg=raw.startsWith('__IMG__');return `<div class="chat-bubble ${String(m.sender_id)===String(S.user.id)?'mine':'theirs'}"><div>${isImg?`<img class="chat-image" src="${esc(raw.slice(7))}" alt="รูปที่ส่งในแชต">`:esc(raw)}</div><div class="chat-time">${new Date(m.created_at).toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'})}</div></div>`}).join(''):'<div class="empty-note">ยังไม่มีข้อความ เริ่มแชทกับลูกค้าได้เลย</div>';
+  box.scrollTop=box.scrollHeight;
+}
+/* QueueGo v21: superseded openChat presentation removed. */
+async function sendRiderChat(o,override){const input=document.getElementById('chat-input');const message=override||(input?.value||'').trim();if(!message)return;try{const token=await getAccessToken();await sbTable('order_chat_messages',{method:'POST',token,body:{order_id:o.id,sender_id:S.user.id,message}});if(input&&!override)input.value='';renderChatMessages(await loadChatMessages(o.id));}catch(e){console.error(e);toast('ส่งข้อความไม่สำเร็จ: '+e.message);}}
+
+async function acceptJob(orderId){
+  const btn=document.getElementById('accept-'+orderId);
+  if(btn){ btn.disabled=true; btn.textContent='กำลังรับงาน...'; }
+  try{
+    const token = await getAccessToken();
+    if(!token) throw new Error('ไม่พบเซสชันเข้าสู่ระบบ');
+    if(!S.riderProfile || !S.riderProfile.id) throw new Error('ไม่พบ rider_profiles.id ของไรเดอร์');
+    const currentRows = await sbTable('orders?id=eq.'+encodeURIComponent(orderId), {token});
+    const current = Array.isArray(currentRows) ? currentRows[0] : null;
+    if(!current){ throw new Error('ไม่พบออเดอร์ในฐานข้อมูล'); }
+    if(current.rider_id){ toast('งานนี้มีไรเดอร์รับไปแล้ว'); refreshData(); return; }
+    const updated = await sbTable('orders?id=eq.'+encodeURIComponent(orderId)+'&rider_id=is.null', {method:'PATCH', token, body:{
+      rider_id:S.riderProfile.id, status:statusToDb('assigned'), note:noteWithTag(current,'assigned'), updated_at:new Date().toISOString()
+    }});
+    if(!Array.isArray(updated) || !updated.length){
+      const verify=await sbTable('orders?id=eq.'+encodeURIComponent(orderId)+'&select=id,rider_id,status,order_number', {token});
+      const row=Array.isArray(verify)?verify[0]:null;
+      if(!row || row.rider_id!==S.riderProfile.id) throw new Error('เซิร์ฟเวอร์ไม่ยืนยันการรับงาน');
+    }
+    toast('รับงานสำเร็จ');
+    await refreshData();
+  }catch(e){
+    console.error('acceptJob failed',e);
+    toast('รับงานไม่สำเร็จ: '+String(e.message||e));
+    if(btn){ btn.disabled=false; btn.textContent='รับงานนี้'; }
+  }
+}
+
+async function advanceOrder(o){
+  const status = statusFromRow(o);
+  const next = STEP_NEXT[status];
+  if(!next) return;
+  try{
+    const token = await getAccessToken();
+    await sbTable('orders?id=eq.'+encodeURIComponent(o.id), {method:'PATCH', token, body:{
+      status:statusToDb(next.to), note:noteWithTag(o,next.to), updated_at:new Date().toISOString()
+    }});
+    toast(next.to==='completed' ? 'ส่งสำเร็จ' : 'อัปเดตสถานะแล้ว');
+    refreshData();
+  }catch(e){ console.error(e); toast('อัปเดตสถานะไม่สำเร็จ: '+e.message); }
+}
+
+/* ---------- job history panel (rider earnings, grouped day by day) ---------- */
+function riderEarning(o){
+  // Rider income = delivery fee only, never the product/order total (that cash is collected
+  // from the customer and handed over — it is not the rider's earning).
+  return Number(o.delivery_fee ?? o.rider_fee ?? 0) || 0;
+}
+function dayKey(d){ return d.toLocaleDateString('th-TH',{year:'numeric',month:'long',day:'numeric'}); }
+/* QueueGo v21: superseded renderHistoryPanel presentation removed. */
+function renderAIPanel(){
+  const p=document.getElementById('panel-ai'); if(!p)return;
+  const o=S.activeOrder, status=o?statusFromRow(o):'';
+  const hint=o?(status==='assigned'?'ตอนนี้มีงานอยู่: มุ่งหน้าไปร้านและตรวจสอบออเดอร์ก่อนรับสินค้า':status==='picked_up'||status==='delivering'?'รับสินค้าแล้ว ตรวจสอบรายการและเดินทางไปหาลูกค้า':'ผมช่วยสรุปขั้นตอนของงานปัจจุบันให้ได้'):'ตอนนี้ยังไม่มีงานที่กำลังส่ง เปิดออนไลน์เมื่อพร้อมรับออเดอร์';
+  p.innerHTML=`<div class="ai-shell">
+    <div class="ai-head"><h2>AI ผู้ช่วยไรเดอร์</h2><span class="ai-badge">QueueGo Assistant</span></div>
+    <div class="ai-hero"><div class="ai-orb">✦</div><h3>สวัสดี ${esc(S.user.name||'ไรเดอร์')}</h3><p>${esc(hint)}</p></div>
+    <div class="ai-quick">
+      <button type="button" data-aiq="สรุปงานปัจจุบันให้หน่อย">สรุปงานปัจจุบัน<br><small>ดูขั้นตอนต่อไป</small></button>
+      <button type="button" data-aiq="ช่วยร่างข้อความสุภาพแจ้งลูกค้าว่ากำลังเดินทาง">ร่างข้อความลูกค้า<br><small>พร้อมส่งได้ทันที</small></button>
+      <button type="button" data-aiq="สรุปรายได้และจำนวนงานของฉัน">สรุปรายได้<br><small>${S.history.length} งานล่าสุด</small></button>
+      <button type="button" id="ai-map-btn">ดูเส้นทาง<br><small>กลับไปยังแผนที่</small></button>
+    </div>
+    <div class="ai-chat">
+      <div class="ai-messages" id="ai-messages"><div class="ai-msg bot">ถามผมเรื่องงาน เส้นทาง การคุยกับลูกค้า หรือขั้นตอนการจัดส่งได้ครับ</div></div>
+      <form class="ai-compose" id="ai-form"><input id="ai-input" maxlength="600" autocomplete="off" placeholder="ถาม AI ผู้ช่วยไรเดอร์..."><button type="submit">➜</button></form>
+      <div class="ai-connect">โหมดช่วยงานในเครื่อง • รองรับการเชื่อมต่อ <b>OpenAI ผ่าน Edge Function</b> โดยไม่เปิดเผยคีย์</div>
+    </div>
+  </div>`;
+  document.querySelectorAll('[data-aiq]').forEach(b=>b.onclick=()=>qtAIAsk(b.dataset.aiq));
+  document.getElementById('ai-map-btn').onclick=()=>switchTab('home');
+  document.getElementById('ai-form').onsubmit=e=>{e.preventDefault();const i=document.getElementById('ai-input');const q=(i.value||'').trim();if(q){i.value='';qtAIAsk(q);}};
+}
+function qtAIAdd(role,text){
+  const box=document.getElementById('ai-messages');if(!box)return;
+  const d=document.createElement('div');d.className='ai-msg '+(role==='me'?'me':'bot');d.textContent=text;box.appendChild(d);box.scrollTop=box.scrollHeight;
+}
+async function qtAIAsk(q){
+  qtAIAdd('me',q);
+  const o=S.activeOrder;
+  let local='';
+  if(/รายได้|กี่งาน/.test(q)){const total=S.history.reduce((a,x)=>a+riderEarning(x),0);local=`งานที่ส่งสำเร็จล่าสุด ${S.history.length} งาน รายได้รวมจากค่าจัดส่ง ฿${total.toLocaleString('th-TH')}`;}
+  else if(/เส้นทาง|แผนที่/.test(q)){local=o?'เปิดหน้าแรกเพื่อดูเส้นทางของงานปัจจุบันได้เลยครับ':'ตอนนี้ยังไม่มีงานปัจจุบัน เปิดออนไลน์เพื่อค้นหางานก่อนครับ';}
+  else if(/ข้อความ|ลูกค้า|ร่าง/.test(q)){local='ตัวอย่างข้อความ: “สวัสดีครับ ไรเดอร์กำลังเดินทางไปส่งออเดอร์ให้ครับ หากมีจุดสังเกตเพิ่มเติมแจ้งได้เลยครับ”';}
+  else if(/งาน|ขั้นตอน|สรุป/.test(q)){local=o?`ออเดอร์ ${o.order_number||String(o.id).slice(0,8)} อยู่ในสถานะ ${statusFromRow(o)} ครับ`:'ตอนนี้ยังไม่มีงานที่กำลังจัดส่งครับ';}
+  else local='ตอนนี้ AI ในไฟล์นี้ทำงานแบบผู้ช่วยในเครื่องก่อนครับ เมื่อต่อ Backend แล้วจะสามารถส่งคำถามไปยัง OpenAI และตอบแบบ ChatGPT ได้ โดยไม่เปิดเผย API key ในหน้าเว็บ';
+  qtAIAdd('bot',local);
+}
+
+/* ---------- profile panel ---------- */
+/* QueueGo v21: superseded renderProfilePanel presentation removed. */
+function startPolling(){ stopPolling(); S.pollTimer = setInterval(refreshData, POLL_MS); }
+function stopPolling(){ if(S.pollTimer) clearInterval(S.pollTimer); S.pollTimer=null; }
+
+
+/* ===== v4 runtime resilience ===== */
+(function(){
+  const bar=document.createElement('div');bar.id='qt-netbar';bar.textContent='ออฟไลน์ — ระบบจะเชื่อมต่อใหม่อัตโนมัติ';document.body.appendChild(bar);
+  function sync(){bar.classList.toggle('show',!navigator.onLine);if(navigator.onLine && S.user){try{refreshData();}catch(e){}}}
+  addEventListener('online',sync);addEventListener('offline',sync);sync();
+  document.addEventListener('visibilitychange',()=>{if(!document.hidden && navigator.onLine && S.user){try{refreshData();}catch(e){}}});
+})();
+
+
+(function(){
+  function driveClass(){
+    try{document.body.classList.toggle('qt-driving',!!S.activeOrder);}catch(e){}
+  }
+  const mo=new MutationObserver(driveClass);
+  mo.observe(document.getElementById('app'),{childList:true,subtree:true});
+  driveClass();
+  window.addEventListener('resize',()=>{document.documentElement.style.setProperty('--qt-vh',(window.innerHeight*.01)+'px')});
+})();
+
+
+/* v6 dynamic viewport lock for iOS Safari / Android browser chrome / keyboard */
+(function(){
+  const root=document.documentElement;
+  function lockViewport(){
+    const vv=window.visualViewport;
+    const h=vv?vv.height:window.innerHeight;
+    const w=vv?vv.width:window.innerWidth;
+    root.style.setProperty('--qt-real-h',h+'px');
+    root.style.setProperty('--qt-real-w',w+'px');
+    root.style.height=h+'px';
+    document.body.style.height=h+'px';
+  }
+  lockViewport();
+  addEventListener('resize',lockViewport,{passive:true});
+  addEventListener('orientationchange',()=>setTimeout(lockViewport,120),{passive:true});
+  if(window.visualViewport){
+    visualViewport.addEventListener('resize',lockViewport,{passive:true});
+    visualViewport.addEventListener('scroll',lockViewport,{passive:true});
+  }
+})();
+
+boot();
+
+/* ===== QueueGo Rider: new-order alert ===== */
+(function(){
+  let audioCtx=null, repeatTimer=null, alertJobId=null, alertJob=null, alertBusy=false;
+  function ctx(){try{if(!audioCtx){const AC=window.AudioContext||window.webkitAudioContext;if(!AC)return null;audioCtx=new AC();}return audioCtx;}catch(e){return null;}}
+  function unlockAudio(){try{const c=ctx();if(c&&c.state==='suspended')c.resume().catch(()=>{});}catch(e){}}
+  function beep(){try{const c=ctx();if(!c)return;if(c.state==='suspended')c.resume().catch(()=>{});const now=c.currentTime;[880,1175].forEach((freq,i)=>{const o=c.createOscillator(),g=c.createGain();o.type='sine';o.frequency.value=freq;g.gain.setValueAtTime(.0001,now+i*.13);g.gain.exponentialRampToValueAtTime(.20,now+i*.13+.025);g.gain.exponentialRampToValueAtTime(.0001,now+i*.13+.30);o.connect(g);g.connect(c.destination);o.start(now+i*.13);o.stop(now+i*.13+.31);});}catch(e){}}
+  function speak(){try{if(!('speechSynthesis'in window))return;window.speechSynthesis.cancel();const u=new SpeechSynthesisUtterance('มีออเดอร์ใหม่เข้ามา กรุณาตรวจสอบและรับออเดอร์');u.lang='th-TH';u.rate=.92;u.pitch=1;u.volume=1;window.speechSynthesis.speak(u);}catch(e){}}
+  function vibrate(){try{if(navigator.vibrate)navigator.vibrate([450,180,450,180,750]);}catch(e){}}
+  function ensureUI(){
+    let el=document.getElementById('qt-new-order-alert');if(el)return el;
+    el=document.createElement('div');el.id='qt-new-order-alert';el.className='qt-alert-backdrop';el.setAttribute('role','alertdialog');el.setAttribute('aria-modal','true');
+    el.innerHTML='<div class="qt-alert-card"><div class="qt-alert-icon">🔔</div><div class="qt-alert-title">มีออเดอร์ใหม่</div><div class="qt-alert-sub">มีงานใหม่เข้ามาสำหรับไรเดอร์</div><div class="qt-alert-order"><b id="qt-alert-order-no">ออเดอร์ใหม่</b><span id="qt-alert-order-detail">กรุณากดรับทราบเพื่อดูรายละเอียดออเดอร์</span></div><button type="button" class="qt-alert-btn" id="qt-alert-ack">รับทราบ</button></div>';
+    document.body.appendChild(el);document.getElementById('qt-alert-ack').addEventListener('click',acknowledge);return el;
+  }
+  function show(job){
+    if(!job||!job.id)return;const id=String(job.id);if(alertJobId===id)return;alertJobId=id;alertJob=job;const el=ensureUI();
+    const no=document.getElementById('qt-alert-order-no'),detail=document.getElementById('qt-alert-order-detail');
+    if(no)no.textContent='ออเดอร์ '+(job.order_number||id.slice(0,8));
+    if(detail){const shop=(job._shop&&job._shop.shop_name)||'ร้านค้า';detail.textContent=shop+' • '+(job.pickup_address||'จุดรับสินค้า');}
+    el.classList.add('show');document.body.style.overflow='hidden';unlockAudio();beep();speak();vibrate();
+    clearInterval(repeatTimer);repeatTimer=setInterval(()=>{if(alertJobId){beep();speak();vibrate();}},7000);S.newJobAlert={active:true,jobId:id};
+  }
+  function acknowledge(){
+    if(alertBusy)return;alertBusy=true;clearInterval(repeatTimer);repeatTimer=null;try{if(navigator.vibrate)navigator.vibrate(0);}catch(e){}try{if('speechSynthesis'in window)window.speechSynthesis.cancel();}catch(e){}
+    alertJobId=null;alertJob=null;S.newJobAlert={active:false,jobId:null};const el=document.getElementById('qt-new-order-alert');if(el)el.classList.remove('show');document.body.style.overflow='';alertBusy=false;
+  }
+  function checkNewJobs(previousIds,jobs){if(!S.online||S.activeOrder)return;const fresh=jobs.find(o=>o&&o.id&&!previousIds.has(String(o.id)));if(fresh)show(fresh);}
+  ['click','touchstart','pointerdown'].forEach(ev=>document.addEventListener(ev,unlockAudio,{passive:true}));
+  window.qtStartNewJobAlert=show;window.qtCheckNewJobs=checkNewJobs;window.qtStopNewJobAlert=function(){clearInterval(repeatTimer);repeatTimer=null;try{if(navigator.vibrate)navigator.vibrate(0);}catch(e){}try{if('speechSynthesis'in window)window.speechSynthesis.cancel();}catch(e){}alertJobId=null;alertJob=null;const el=document.getElementById('qt-new-order-alert');if(el)el.classList.remove('show');document.body.style.overflow='';S.newJobAlert={active:false,jobId:null};};
+})();
+
+
+function qtShortOrder(o){
+  const raw=String((o&&o.order_number)||(o&&o.id)||'')
+    .replace(/^QT[-_\s]*/i,'')
+    .replace(/[^A-Za-z0-9]/g,'');
+  return 'QT-' + (raw.slice(-4)||'----').toUpperCase();
+}
+
+const QTICON={'home': '<svg class="ico" viewBox="0 0 24 24"><path d="M3.5 11 12 4l8.5 7v8a1.5 1.5 0 0 1-1.5 1.5H5A1.5 1.5 0 0 1 3.5 19Z"/><path d="M9 20v-6h6v6"/></svg>', 'jobs': '<svg class="ico" viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="3"/><path d="M8 3v4M16 3v4M8 11h8M8 15h5"/></svg>', 'chat': '<svg class="ico" viewBox="0 0 24 24"><path d="M5 5h14a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-9l-5 3v-3a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2Z"/><path d="M8 11h.01M12 11h.01M16 11h.01"/></svg>', 'earn': '<svg class="ico" viewBox="0 0 24 24"><path d="M4 18V9M10 18V5M16 18v-7M22 18H2"/></svg>', 'user': '<svg class="ico" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4.5 21a7.5 7.5 0 0 1 15 0"/></svg>', 'loc': '<svg class="ico" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>', 'phone': '<svg class="ico" viewBox="0 0 24 24"><path d="M7 3 4.5 5.5c0 7.7 6.3 14 14 14L21 17l-4-3-2 2c-3.1-1.2-5.8-3.9-7-7l2-2Z"/></svg>', 'arrow': '<svg class="ico" viewBox="0 0 24 24"><path d="m9 5 7 7-7 7"/></svg>', 'back': '<svg class="ico" viewBox="0 0 24 24"><path d="m15 5-7 7 7 7"/></svg>'};
+let qtUnread=0,qtLastMsg=null,qtMsgTimer=null;
+function qtNavHTML(){
+ return `<nav class="qt-nav">
+ <button class="qt-tab active" data-tab="home">${QTICON.home}<span>หน้าแรก</span></button>
+ <button class="qt-tab" data-tab="chat">${QTICON.chat}<i class="qt-badge" id="qt-badge"></i><span>ข้อความ</span></button>
+ <button class="qt-tab" data-tab="earn">${QTICON.earn}<span>รายได้</span></button>
+ <button class="qt-tab" data-tab="profile">${QTICON.user}<span>โปรไฟล์</span></button>
+ </nav>`;
+}
+function renderStage(){
+ stopPolling();
+ document.getElementById('app').innerHTML=`<div class="stage">
+   <div id="map" class="map"></div>
+   <header class="qt-top"><div class="qt-brand"><i></i>QueueGo Rider</div><div class="qt-status" id="status-pill"><span id="status-text">ออฟไลน์</span><button class="qt-switch" id="status-switch" aria-label="เปลี่ยนสถานะ"></button></div></header>
+   <div class="qt-route" id="route-badge"><div>${QTICON.loc}</div><div><strong id="route-text">กำลังคำนวณเส้นทาง</strong><small>แตะนำทางเพื่อเปิดเส้นทางแบบ turn-by-turn</small></div></div>
+   <div class="qt-fabs"><button class="qt-fab" id="recenter">${QTICON.loc}</button></div>
+   <section class="qt-sheet" id="sheet"></section>
+   <section class="qt-panel" id="panel-jobs"></section><section class="qt-panel" id="panel-earn"></section><section class="qt-panel" id="panel-profile"></section>
+   ${qtNavHTML()}
+ </div><div class="qt-message" id="qt-message"><i>●</i><div><b>ข้อความใหม่</b><small id="qt-message-text"></small></div></div>`;
+ document.getElementById('status-switch').onclick=toggleOnline;
+ document.getElementById('recenter').onclick=recenterMap;
+ document.querySelectorAll('.qt-tab').forEach(b=>b.onclick=()=>switchTab(b.dataset.tab));
+ initMap(); updateStatusUI(); renderSheet(); startGeolocation(); refreshData(); startPolling(); qtStartMessageWatch();
+}
+function switchTab(tab){
+ S.activeTab=tab;
+ document.querySelectorAll('.qt-tab').forEach(b=>b.classList.toggle('active',b.dataset.tab===tab));
+ document.querySelectorAll('.qt-panel').forEach(p=>p.classList.remove('show'));
+ const map=document.getElementById('map'),sheet=document.getElementById('sheet'),fabs=document.querySelector('.qt-fabs'),route=document.getElementById('route-badge');
+ const home=tab==='home'; if(map)map.style.display=home?'':'none'; if(sheet)sheet.style.display=home?'':'none'; if(fabs)fabs.style.display=home?'':'none'; if(route&&!home)route.style.display='none';
+ if(tab==='jobs'){document.getElementById('panel-jobs').classList.add('show');renderHistoryPanel();}
+ if(tab==='earn'){document.getElementById('panel-earn').classList.add('show');qtRenderEarnings();}
+ if(tab==='profile'){document.getElementById('panel-profile').classList.add('show');renderProfilePanel();}
+ if(tab==='chat'){qtUnread=0;qtBadge();const o=S.activeOrder||(S.history&&S.history[0]);if(o)openChat(o);else toast('ยังไม่มีออเดอร์สำหรับแชต');}
+ if(home&&S.map)requestAnimationFrame(()=>S.map.invalidateSize({animate:false}));
+}
+function updateStatusUI(){
+ const pill=document.getElementById('status-pill'),label=document.getElementById('status-text');if(!pill)return;
+ pill.classList.toggle('on',S.online);if(label)label.textContent=S.online?'ออนไลน์':'ออฟไลน์';
+}
+function placeRiderMarker(){
+ if(!S.pos||!S.map)return;
+ const icon=L.divIcon({html:'<div style="width:26px;height:26px;border-radius:50%;background:#08bd78;border:5px solid white;box-shadow:0 5px 16px #0003"></div>',className:'',iconSize:[30,30],iconAnchor:[15,15]});
+ if(S.riderMarker)S.riderMarker.setLatLng([S.pos.lat,S.pos.lng]);else S.riderMarker=L.marker([S.pos.lat,S.pos.lng],{icon}).addTo(S.map);
+}
+function renderSheet(){
+ const s=document.getElementById('sheet');if(!s)return;
+ if(S.activeOrder){s.innerHTML=jobCardHTML(S.activeOrder);bindJobCardEvents(S.activeOrder);return}
+ if(!S.online){s.innerHTML=`<div class="qt-handle"></div><div class="qt-ready"><div class="qt-copy"><div class="qt-title">พร้อมรับงาน</div><div class="qt-sub">เปิดสถานะเพื่อรับออเดอร์ที่อยู่ใกล้คุณ</div></div><button class="qt-online" id="go-online">ออนไลน์</button></div>`;document.getElementById('go-online').onclick=toggleOnline;return}
+ if(!S.openJobs.length){s.innerHTML=S.pos?`<div class="qt-handle"></div><div class="qt-title">กำลังค้นหางานใกล้คุณ</div><div class="qt-sub">คุณออนไลน์อยู่ ระบบจะอัปเดตงานให้อัตโนมัติ</div>`:`<div class="qt-handle"></div><div class="qt-title">รอตำแหน่ง GPS</div><div class="qt-sub">กรุณาอนุญาตตำแหน่งใน Safari เพื่อค้นหางานใกล้คุณ</div>`;return}
+ const x=S.openJobs[0];s.innerHTML=jobCardHTML(x.order,x);bindJobCardEvents(x.order);
+}
+function jobCardHTML(o,x){
+ const st=statusFromRow(o),shop=o._shop||{},cust=o._customer||{};
+ const km=x&&Number.isFinite(x.distanceKm)?x.distanceKm:haversineKm(S.pos&&S.pos.lat,S.pos&&S.pos.lng,o.pickup_latitude,o.pickup_longitude);
+ const delivery=haversineKm(o.pickup_latitude,o.pickup_longitude,o.delivery_latitude,o.delivery_longitude);
+ const fee=riderEarning(o);const active=!!S.activeOrder;
+ const targetShop=st==='assigned';const nav=mapsLink(targetShop?o.pickup_latitude:o.delivery_latitude,targetShop?o.pickup_longitude:o.delivery_longitude,targetShop?o.pickup_address:o.delivery_address);
+ const next=STEP_NEXT[st];
+ return `<div class="qt-handle"></div><div class="qt-jobhead"><div><div class="qt-shop">${esc(shop.shop_name||'งานจัดส่ง')}</div><div class="qt-order">${active?esc(STEP_LABEL[st]||'งานที่กำลังทำ'):'งานใหม่'} · #${esc(qtShortOrder(o))}</div></div><div class="qt-fee">฿${Number(fee||0).toLocaleString('th-TH')}<small>รายได้งานนี้</small></div></div>
+ <div class="qt-metrics"><div class="qt-metric"><span>ถึงร้าน</span><b>${Number.isFinite(km)?km.toFixed(1):'-'} กม.</b></div><div class="qt-metric"><span>ระยะส่ง</span><b>${Number.isFinite(delivery)?delivery.toFixed(1):'-'} กม.</b></div><div class="qt-metric"><span>ยอดออเดอร์</span><b>฿${Number(o.total_amount||0).toLocaleString('th-TH')}</b></div></div>
+ <div class="qt-address">${esc(targetShop?(o.pickup_address||shop.address||'จุดรับสินค้า'):(o.delivery_address||'จุดส่งสินค้า'))}</div>
+ <div class="qt-actions"><a class="qt-ghost" href="${nav}" target="_blank" rel="noopener" aria-label="นำทาง">${QTICON.loc}</a><button class="qt-ghost" id="chat-${o.id}" aria-label="แชต">${QTICON.chat}</button>${active?`<button class="qt-primary" id="next-${o.id}">${next?esc(next.label):'ตรวจสอบงาน'}</button>`:`<button class="qt-primary" id="accept-${o.id}">รับงานนี้</button>`}</div>`;
+}
+function bindJobCardEvents(o){
+ const c=document.getElementById('chat-'+o.id);if(c)c.onclick=()=>openChat(o);
+ const a=document.getElementById('accept-'+o.id);if(a)a.onclick=()=>acceptJob(o.id);
+ const n=document.getElementById('next-'+o.id);if(n)n.onclick=()=>advanceOrder(o);
+}
+function renderHistoryPanel(){
+ const p=document.getElementById('panel-jobs');if(!p)return;
+ p.innerHTML=`<div class="qt-panelhead"><h1>งานของฉัน</h1><small>${S.history.length} งาน</small></div><div class="qt-list">${S.history.length?S.history.map(o=>`<div class="qt-row"><div class="qt-rowtop"><div><b>#${esc(qtShortOrder(o))}</b><br><small>${new Date(o.updated_at||o.created_at).toLocaleString('th-TH')}</small></div><b>฿${Number(riderEarning(o)||0).toLocaleString('th-TH')}</b></div></div>`).join(''):'<div class="qt-empty">ยังไม่มีประวัติงาน</div>'}</div>`;
+}
+
+function qtDateKey(v){
+ const d=new Date(v);if(!Number.isFinite(d.getTime()))return '';
+ return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+function qtDayName(key){
+ const d=new Date(key+'T12:00:00'),now=new Date();
+ if(key===qtDateKey(now))return 'วันนี้';
+ const y=new Date();y.setDate(y.getDate()-1);if(key===qtDateKey(y))return 'เมื่อวาน';
+ return d.toLocaleDateString('th-TH',{weekday:'short',day:'numeric',month:'short',year:'numeric'});
+}
+function qtWorkDuration(rows){
+ let mins=0;
+ for(const o of rows){
+  const a=new Date(o.created_at),b=new Date(o.updated_at||o.created_at);
+  if(Number.isFinite(a.getTime())&&Number.isFinite(b.getTime())&&b>=a)mins+=(b-a)/60000;
+ }
+ const h=Math.floor(mins/60),m=Math.round(mins%60);
+ return h?`${h} ชม. ${m} นาที`:`${m} นาที`;
+}
+function qtGroups(){
+ const g={};for(const o of (S.history||[])){const k=qtDateKey(o.updated_at||o.created_at);if(k)(g[k]||(g[k]=[])).push(o)}
+ return Object.entries(g).sort((a,b)=>b[0].localeCompare(a[0]));
+}
+
+function qtRenderEarnings(){
+ const p=document.getElementById('panel-earn');if(!p)return;
+ const groups=qtGroups(),todayKey=qtDateKey(new Date()),today=(groups.find(([k])=>k===todayKey)||['',[]])[1];
+ const todayIncome=today.reduce((a,o)=>a+Number(riderEarning(o)||0),0);
+ const total=(S.history||[]).reduce((a,o)=>a+Number(riderEarning(o)||0),0);
+ p.innerHTML=`<div class="qt-panelhead"><h1>รายได้</h1></div>
+ <div class="qt-profilehero"><small>รายได้วันนี้</small><h2 style="font-size:38px;margin:8px 0">฿${todayIncome.toLocaleString('th-TH')}</h2><p>${today.length} งานวันนี้ · รายได้สะสม ฿${total.toLocaleString('th-TH')}</p></div>
+ <div class="qt-todaygrid">
+  <div class="qt-todaystat"><span>จำนวนงาน</span><b>${today.length} งาน</b></div>
+  <div class="qt-todaystat"><span>เวลาทำงาน</span><b>${qtWorkDuration(today)}</b></div>
+  <div class="qt-todaystat"><span>รายได้วันนี้</span><b>฿${todayIncome.toLocaleString('th-TH')}</b></div>
+ </div>
+ <div class="qt-list">${groups.length?groups.map(([key,rows])=>{
+  const income=rows.reduce((a,o)=>a+Number(riderEarning(o)||0),0);
+  return `<div class="qt-daycard"><div class="qt-dayhead"><div><b>${qtDayName(key)}</b><div class="qt-daymeta"><span>${rows.length} งาน</span><span>ทำงาน ${qtWorkDuration(rows)}</span></div></div><strong>฿${income.toLocaleString('th-TH')}</strong></div><div class="qt-dayorders">${rows.map(o=>`<div class="qt-dayorder"><span>${esc(qtShortOrder(o))}</span><span>+฿${Number(riderEarning(o)||0).toLocaleString('th-TH')}</span></div>`).join('')}</div></div>`;
+ }).join(''):'<div class="qt-empty">ยังไม่มีรายได้</div>'}</div>`;
+}
+function renderProfilePanel(){
+ const p=document.getElementById('panel-profile');if(!p)return;const name=S.user?.name||'Rider',phone=S.user?.phone||'';
+ p.innerHTML=`<div class="qt-panelhead"><h1>โปรไฟล์</h1></div><div class="qt-profilehero"><div class="qt-avatar">${esc(name.slice(0,1).toUpperCase())}</div><h2>${esc(name)}</h2><p>${esc(phone)} · ${esc(S.riderProfile?.vehicle_plate||'QueueGo Rider')}</p></div><div class="qt-settings"><button class="qt-setting" onclick="toggleOnline()"><span>สถานะรับงาน</span><b>${S.online?'ออนไลน์':'ออฟไลน์'}</b></button><button class="qt-setting danger" id="qt-logout"><span>ออกจากระบบ</span><span>›</span></button></div>`;
+ document.getElementById('qt-logout').onclick=doLogout;
+}
+function closeChat(){
+ if(S.chatTimer)clearInterval(S.chatTimer);S.chatTimer=null;S.chatOrder=null;
+ const screen=document.getElementById('chat-screen');if(screen)screen.remove();
+ const stage=document.querySelector('.stage');if(stage)stage.style.display='block';
+ // Back always returns to the exact tab the rider came from, never traps the user.
+ if(S.activeTab==='chat'){S.activeTab='home';document.querySelectorAll('.qt-tab').forEach(b=>b.classList.toggle('active',b.dataset.tab==='home'));}
+ renderSheet();
+}
+async function openChat(o){
+ S.chatOrder=o;const stage=document.querySelector('.stage');if(stage)stage.style.display='none';
+ let screen=document.createElement('section');screen.id='chat-screen';screen.className='qt-chatpage show';document.getElementById('app').appendChild(screen);
+ const cust=o._customer||{};screen.innerHTML=`<header class="qt-subhead"><button class="qt-back" id="chat-back" aria-label="ย้อนกลับ">${QTICON.back}</button><div class="qt-subtitle"><b>${esc(cust.name||'ลูกค้า')}</b><small>ออเดอร์ #${esc(qtShortOrder(o))}</small></div><div></div></header><div class="chat-box" id="chat-box"><div class="empty-note">กำลังโหลดข้อความ...</div></div>${quickMessagesHTML()}<form class="chat-compose-rider" id="chat-form"><button class="photo-btn" type="button" id="chat-photo" aria-label="ส่งรูป"></button><input type="file" id="chat-photo-input" accept="image/*" hidden><input id="chat-input" maxlength="500" autocomplete="off" placeholder="ข้อความ..." required><button type="submit" aria-label="ส่ง">↑</button></form>`;
+ document.getElementById('chat-back').onclick=closeChat;
+ document.getElementById('chat-form').onsubmit=async e=>{e.preventDefault();await sendRiderChat(o)};
+ document.getElementById('chat-photo').onclick=()=>document.getElementById('chat-photo-input').click();
+ document.getElementById('chat-photo-input').onchange=async e=>{const f=e.target.files[0];if(!f)return;if(f.size>5*1024*1024){toast('รูปต้องไม่เกิน 5 MB');return}try{const data=await compressRiderImage(f,1000,.7);await sendRiderChat(o,'__IMG__'+data)}catch(err){toast('ส่งรูปไม่สำเร็จ')}};
+ bindQuickMessages(o);renderChatMessages(await loadChatMessages(o.id));if(S.chatTimer)clearInterval(S.chatTimer);S.chatTimer=setInterval(async()=>{if(S.chatOrder?.id===o.id)renderChatMessages(await loadChatMessages(o.id))},4000);
+ qtUnread=0;qtBadge();
+}
+function renderPaymentSummary(o,completed=false){
+ const stage=document.querySelector('.stage');if(stage)stage.style.display='none';
+ let s=document.getElementById('summary-screen');if(s)s.remove();s=document.createElement('section');s.id='summary-screen';s.className='qt-summary show';document.getElementById('app').appendChild(s);
+ s.innerHTML=`<button class="qt-back qt-summaryback" id="summary-back">${QTICON.back}</button><div class="qt-summarycard"><div class="qt-check">${completed?'✓':'฿'}</div><h2>${completed?'ส่งสำเร็จ':'ตรวจสอบยอดก่อนจบงาน'}</h2><p class="qt-sub">#${esc(qtShortOrder(o))}</p><div class="qt-total">฿${Number(o.total_amount||0).toLocaleString('th-TH')}</div><p class="qt-sub">${completed?'งานนี้ถูกปิดเรียบร้อยแล้ว':'ตรวจสอบยอดกับลูกค้าก่อนยืนยันจบงาน'}</p>${completed?'<button class="qt-primary" id="summary-home">กลับหน้าหลัก</button>':'<button class="qt-primary" id="finish-order-btn">ยืนยันส่งสำเร็จ</button>'}</div>`;
+ const back=()=>{s.remove();if(stage)stage.style.display='block';renderSheet();startPolling()};
+ document.getElementById('summary-back').onclick=back;
+ if(completed)document.getElementById('summary-home').onclick=()=>{S.activeOrder=null;back();refreshData()};
+ else document.getElementById('finish-order-btn').onclick=()=>finishOrder(o);
+}
+function qtBadge(){const b=document.getElementById('qt-badge');if(!b)return;b.textContent=qtUnread>9?'9+':qtUnread;b.style.display=qtUnread?'block':'none'}
+function qtShowMessage(t){const box=document.getElementById('qt-message'),tx=document.getElementById('qt-message-text');if(!box)return;if(tx)tx.textContent=t||'ลูกค้าส่งข้อความถึงคุณ';box.classList.add('show');clearTimeout(qtMsgTimer);qtMsgTimer=setTimeout(()=>box.classList.remove('show'),3800)}
+function qtStartMessageWatch(){
+ if(window.qtMessagePoll)clearInterval(window.qtMessagePoll);qtLastMsg=null;
+ window.qtMessagePoll=setInterval(async()=>{try{const o=S.activeOrder;if(!o||!S.user)return;const rows=await loadChatMessages(o.id),m=rows[rows.length-1];if(!m)return;if(qtLastMsg===null){qtLastMsg=m.id;return}if(m.id!==qtLastMsg){qtLastMsg=m.id;if(String(m.sender_id)!==String(S.user.id)&&S.chatOrder?.id!==o.id){qtUnread++;qtBadge();qtShowMessage(String(m.message||'ข้อความใหม่').startsWith('__IMG__')?'ส่งรูปภาพ':m.message)}}}catch(e){}},5000);
+}
+
+boot();
+</script><script id="qg-rider-cash-rpc-v1">
+/* Cash order transitions use server transactions so the merchant receipt and COD payment stay consistent. */
+window.statusFromRow=function(row){
+  if(row.status==='in_progress') return /^__QT_ORDER_STATUS__=arrived(?:\n|$)/.test(row.note||'')?'arrived':'delivering';
+  return {ready:'ready',assigned:'assigned',picked_up:'picked_up',completed:'completed'}[row.status]||row.status;
+};
+STEP_NEXT.assigned.label='จ่ายเงินสดให้ร้านและรับสินค้า';
+window.acceptJob=async function(orderId){
+  const btn=document.getElementById('accept-'+orderId);if(btn)btn.disabled=true;
+  try{const token=await getAccessToken();if(!token)throw Error('กรุณาเข้าสู่ระบบใหม่');
+    await sbTable('rpc/rider_claim_order',{method:'POST',token,body:{p_order_id:orderId}});
+    toast('รับงานสำเร็จ');await refreshData();
+  }catch(e){toast('รับงานไม่สำเร็จ: '+e.message);if(btn)btn.disabled=false;}
+};
+window.advanceOrder=async function(o){
+  const st=statusFromRow(o),action={assigned:'pickup_cash',picked_up:'deliver',delivering:'arrive'}[st];
+  if(!action)return;
+  try{
+    const token=await getAccessToken();if(!token)throw Error('กรุณาเข้าสู่ระบบใหม่');
+    if(action==='pickup_cash'){
+      const rows=await sbTable('orders?select=subtotal,status&id=eq.'+encodeURIComponent(o.id)+'&limit=1',{token});
+      if(rows?.[0]?.status!=='assigned')throw Error('สถานะงานเปลี่ยนแล้ว กรุณาโหลดใหม่');
+      if(!confirm('ยืนยันว่าจ่ายเงินสดให้ร้าน ฿'+Number(rows[0].subtotal).toLocaleString('th-TH')+' และรับสินค้าแล้ว?'))return;
+    }
+    await sbTable('rpc/rider_order_action',{method:'POST',token,body:{p_order_id:o.id,p_action:action}});
+    toast(action==='pickup_cash'?'บันทึกเงินสดที่จ่ายให้ร้านแล้ว':'อัปเดตสถานะแล้ว');await refreshData();
+  }catch(e){toast('อัปเดตไม่สำเร็จ: '+e.message);}
+};
+window.finishOrder=async function(o){
+  const btn=document.getElementById('finish-order-btn');if(btn)btn.disabled=true;
+  try{const token=await getAccessToken();if(!token)throw Error('กรุณาเข้าสู่ระบบใหม่');
+    await sbTable('rpc/rider_order_action',{method:'POST',token,body:{p_order_id:o.id,p_action:'complete'}});
+    const rows=await sbTable('orders?select=*&id=eq.'+encodeURIComponent(o.id)+'&limit=1',{token});
+    renderPaymentSummary(rows?.[0]||{...o,status:'completed'},true);
+  }catch(e){toast('จบงานไม่สำเร็จ: '+e.message);if(btn)btn.disabled=false;}
+};
+</script>
+<style id="qg-rider-v21-inbox-style">
+.qg-inbox{position:absolute;inset:58px 0 64px;background:#f7faf8;overflow:auto;padding:16px;z-index:15}.qg-inbox h2{margin:4px 0 14px;font-size:20px;color:#183d32}
+.qg-inbox-item{display:block;width:100%;border:1px solid #ddece5;background:#fff;text-align:left;border-radius:14px;padding:13px;margin:9px 0;color:#183d32}.qg-inbox-item strong,.qg-inbox-item small{display:block}.qg-inbox-item small{color:#718579;margin-top:5px}.qg-inbox-empty{padding:28px 14px;text-align:center;color:#718579;background:#fff;border-radius:14px}
+</style>
+<script id="qg-rider-v21-integration">
+(function(){
+ const key=()=>S.user?.id?'qg-rider-history-v21:'+S.user.id:null;
+ const seenKey=()=>S.user?.id?'qg-rider-chat-seen-v21:'+S.user.id:null;
+ let completedUnread=0;
+ const badge=window.qtBadge;
+ window.qtBadge=function(){badge();const el=document.getElementById('qt-badge');if(el&&completedUnread){el.textContent=String(Math.min(9,qtUnread+completedUnread))+(qtUnread+completedUnread>9?'+':'');el.style.display='block'}};
+ function markInboxSeen(){const k=seenKey();if(k)try{localStorage.setItem(k,String(Date.now()))}catch(e){}completedUnread=0;qtBadge()}
+ async function watchCompletedChat(){
+   if(!S.user||!S.history?.length)return;
+   try{const orders=S.history.slice(0,100),ids=orders.map(o=>o.id).filter(Boolean);if(!ids.length)return;
+     const token=await getAccessToken(),[messages,deliveries]=await Promise.all([
+       sbTable('order_chat_messages?select=order_id,sender_id,created_at&order_id=in.('+ids.join(',')+')&order=created_at.desc&limit=500',{token}),
+       sbTable('deliveries?select=order_id,delivered_at&order_id=in.('+ids.join(',')+')',{token})]);
+     const byOrder=new Map(orders.map(o=>[String(o.id),o]));
+     const delivered=new Map((deliveries||[]).map(d=>[String(d.order_id),Date.parse(d.delivered_at)]));
+     const seen=Number(localStorage.getItem(seenKey())||0);
+     completedUnread=(messages||[]).filter(m=>{const o=byOrder.get(String(m.order_id)),time=Date.parse(m.created_at),at=delivered.get(String(m.order_id));return o&&String(m.sender_id)===String(o.customer_id)&&Number.isFinite(at)&&time>at&&time>seen}).length;
+     if(S.activeTab==='chat')markInboxSeen();else qtBadge();
+   }catch(e){console.warn('completed chat badge refresh failed',e)}
+ }
+ const profile=window.loadRiderProfile;
+ window.loadRiderProfile=async function(){await profile();try{const c=JSON.parse(localStorage.getItem(key())||'null');if(c&&Date.now()-c.at<7*86400000&&Array.isArray(c.history))S.history=c.history}catch(e){}};
+ const refresh=window.refreshData;
+ window.refreshData=async function(){await refresh();try{const k=key(),history=(S.history||[]).slice(0,100);if(k){const json=JSON.stringify({at:Date.now(),history});if(json.length<800000)localStorage.setItem(k,json)}}catch(e){}if(S.activeTab==='chat'&&!S.chatOrder)qgRenderMessageInbox();watchCompletedChat()};
+ const send=window.sendRiderChat;
+ window.sendRiderChat=async function(order,message){
+   if(order?.status==='completed'){try{
+     const token=await getAccessToken(),d=await sbTable('deliveries?select=delivered_at&order_id=eq.'+encodeURIComponent(order.id)+'&limit=1',{token});
+     const at=d?.[0]?.delivered_at,rows=await loadChatMessages(order.id);
+     if(!at||!rows.some(m=>String(m.sender_id)===String(order.customer_id)&&new Date(m.created_at)>new Date(at))){toast('หลังจบงาน รอลูกค้าส่งข้อความมาก่อน');return}
+   }catch(e){toast('ตรวจสอบข้อความลูกค้าไม่สำเร็จ');return}}
+   return send(order,message);
+ };
+ const switchOld=window.switchTab;
+ window.switchTab=function(tab){
+   document.getElementById('qg-rider-inbox')?.remove();
+   if(tab!=='chat')return switchOld(tab);
+   markInboxSeen();
+   S.activeTab='chat';document.querySelectorAll('.qt-tab').forEach(b=>b.classList.toggle('active',b.dataset.tab==='chat'));
+   document.querySelectorAll('.qt-panel').forEach(p=>p.classList.remove('show'));
+   for(const sel of ['#map','#sheet','.qt-fabs','#route-badge']){const el=document.querySelector(sel);if(el)el.style.display='none'}
+   qgRenderMessageInbox();
+ };
+ const closeOld=window.closeChat;
+ window.closeChat=function(){closeOld();if(S.user)window.switchTab('chat')};
+ window.qgOpenInboxChat=function(id){const o=[S.activeOrder,...(S.history||[])].filter(Boolean).find(x=>String(x.id)===String(id));if(o){document.getElementById('qg-rider-inbox')?.remove();openChat(o)}};
+ window.qgRenderMessageInbox=async function(){
+   if(S.activeTab!=='chat'||S.chatOrder||!S.user)return;
+   const stage=document.querySelector('.stage');if(!stage)return;
+   let box=document.getElementById('qg-rider-inbox');if(!box){box=document.createElement('section');box.id='qg-rider-inbox';box.className='qg-inbox';stage.appendChild(box)}
+   box.innerHTML='<h2>ข้อความ</h2><div class="qg-inbox-empty">กำลังโหลดข้อความ...</div>';
+   try{const token=await getAccessToken(),orders=[S.activeOrder,...(S.history||[])].filter(Boolean).slice(0,100);
+     if(!orders.length){box.innerHTML='<h2>ข้อความ</h2><div class="qg-inbox-empty">ยังไม่มีการสนทนา</div>';return}
+     const ids=orders.map(o=>o.id).filter(Boolean);
+     const [msgs,deliveries]=await Promise.all([
+       sbTable('order_chat_messages?select=order_id,sender_id,message,created_at&order_id=in.('+ids.join(',')+')&order=created_at.desc&limit=500',{token}),
+       sbTable('deliveries?select=order_id,delivered_at&order_id=in.('+ids.join(',')+')',{token})]);
+     if(!box.isConnected||S.activeTab!=='chat'||S.chatOrder)return;
+     const delivered=new Map((deliveries||[]).map(x=>[String(x.order_id),x.delivered_at]));
+     const rows=orders.map(o=>{const messages=(msgs||[]).filter(m=>String(m.order_id)===String(o.id)),at=delivered.get(String(o.id));return{o,last:messages[0],initiated:o.status!=='completed'||Boolean(at&&messages.some(m=>String(m.sender_id)===String(o.customer_id)&&new Date(m.created_at)>new Date(at)))}}).filter(x=>x.initiated).sort((a,b)=>new Date(b.last?.created_at||b.o.updated_at)-new Date(a.last?.created_at||a.o.updated_at));
+     box.innerHTML='<h2>ข้อความ</h2>'+(rows.length?rows.map(({o,last})=>'<button class="qg-inbox-item" type="button" onclick="qgOpenInboxChat(\''+esc(o.id)+'\')"><strong>ออเดอร์ '+esc(qtShortOrder(o))+'</strong><small>'+esc(last?(String(last.message).startsWith('__IMG__')?'รูปภาพ':String(last.message).slice(0,85)):'เปิดแชตระหว่างจัดส่ง')+'</small></button>').join(''):'<div class="qg-inbox-empty">ยังไม่มีข้อความจากลูกค้าหลังจบงาน</div>');
+   }catch(e){if(box.isConnected)box.innerHTML='<h2>ข้อความ</h2><div class="qg-inbox-empty">โหลดข้อความไม่สำเร็จ กรุณาลองอีกครั้ง</div>'}
+ };
+ setInterval(()=>{if(S.activeTab==='chat'&&!S.chatOrder)qgRenderMessageInbox()},15000);
+ setInterval(watchCompletedChat,30000);
+})();
+</script>
+<script id="qg-v22-ticket-client">
+(function(){
+ const rider=typeof S!=='undefined'&&typeof sbTable==='function';
+ const escText=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+ const token=()=>rider?getAccessToken():qtGetAccessToken();
+ const request=async(path,method='GET',body=null)=>{const t=await token();if(!t)throw Error('กรุณาเข้าสู่ระบบ');return rider?sbTable(path,{method,token:t,body}):qtSupabaseTable(path,{method,accessToken:t,body})};
+ const config=()=>rider?{url:SB.URL,key:SB.KEY}:{url:QT_SUPABASE_CONFIG.URL,key:QT_SUPABASE_CONFIG.KEY};
+ const authSub=t=>{try{return JSON.parse(atob(t.split('.')[1].replace(/-/g,'+').replace(/_/g,'/'))).sub}catch(e){return null}};
+ const names={missing_item:'สินค้าไม่ครบ',wrong_item:'สินค้าไม่ตรง',damaged_food:'อาหารเสียหาย',rider:'ปัญหาไรเดอร์',merchant:'ปัญหาร้านค้า',payment:'การชำระเงิน',cash:'เงินสด',gp:'GP',other:'อื่น ๆ'};
+ async function upload(file){if(!file)return null;
+   if(!['image/jpeg','image/png','image/webp'].includes(file.type)||file.size>5*1024*1024)throw Error('หลักฐานต้องเป็น JPG, PNG หรือ WebP ขนาดไม่เกิน 5 MB');
+   const t=await token(),uid=authSub(t),c=config();if(!uid)throw Error('เซสชันไม่ถูกต้อง');
+   const ext={'image/jpeg':'jpg','image/png':'png','image/webp':'webp'}[file.type],path=uid+'/'+crypto.randomUUID()+'.'+ext;
+   const response=await fetch(c.url+'/storage/v1/object/qg-evidence/'+path,{method:'POST',headers:{apikey:c.key,Authorization:'Bearer '+t,'Content-Type':file.type,'x-upsert':'false'},body:file});
+   if(!response.ok){const data=await response.json().catch(()=>({}));throw Error(data.message||'อัปโหลดหลักฐานไม่สำเร็จ')}
+   return path;
+ }
+ window.qgUploadEvidence=upload;
+ window.qgOpenEvidence=async function(path){try{const t=await token(),c=config();const response=await fetch(c.url+'/storage/v1/object/sign/qg-evidence/'+path,{method:'POST',headers:{apikey:c.key,Authorization:'Bearer '+t,'Content-Type':'application/json'},body:JSON.stringify({expiresIn:300})});const data=await response.json();if(!response.ok)throw Error(data.message||'เปิดหลักฐานไม่สำเร็จ');window.open(c.url+'/storage/v1'+data.signedURL,'_blank','noopener')}catch(e){alert(e.message)}};
+ window.qgOpenTicketPanel=function(orderId=''){
+   if(!(rider?S.user:currentUser())){if(!rider)navigate('login');else alert('กรุณาเข้าสู่ระบบ');return}
+   document.getElementById('qg-v22-ticket')?.remove();const panel=document.createElement('section');panel.id='qg-v22-ticket';panel.className='qg-v22-overlay';
+   panel.innerHTML='<div class="qg-v22-dialog"><header><b>ติดต่อฝ่ายดูแล</b><button type="button" id="qg-ticket-close" aria-label="ปิด">✕</button></header><p>แจ้งปัญหาและติดตามสถานะจากระบบ</p><form id="qg-ticket-form"><label>ออเดอร์ที่เกี่ยวข้อง (ถ้ามี)<select name="order"><option value="">ไม่ระบุออเดอร์</option></select></label><label>ประเภทปัญหา<select name="category"></select></label><label>รายละเอียด<textarea name="details" minlength="10" maxlength="2000" required placeholder="อธิบายปัญหาอย่างน้อย 10 ตัวอักษร"></textarea></label><label>รูปหลักฐาน (ถ้ามี)<input name="evidence" type="file" accept="image/jpeg,image/png,image/webp"></label><button type="submit">ส่งเรื่อง</button></form><h3>เรื่องที่แจ้งไว้</h3><div id="qg-ticket-list">กำลังโหลด...</div></div>';
+   document.body.appendChild(panel);panel.querySelector('#qg-ticket-close').onclick=()=>panel.remove();panel.onclick=e=>{if(e.target===panel)panel.remove()};
+   panel.querySelector('[name=category]').innerHTML=Object.entries(names).map(([key,label])=>'<option value="'+key+'">'+label+'</option>').join('');
+   request('orders?select=id,order_number&order_type=eq.shopping&order=created_at.desc&limit=50').then(rows=>{if(!panel.isConnected)return;const select=panel.querySelector('[name=order]');select.insertAdjacentHTML('beforeend',(rows||[]).map(o=>'<option value="'+escText(o.id)+'">'+escText(o.order_number||o.id)+'</option>').join(''));if(orderId)select.value=orderId}).catch(e=>{panel.querySelector('#qg-ticket-list').textContent='โหลดออเดอร์ไม่สำเร็จ: '+e.message});
+   qgLoadTickets();
+   panel.querySelector('#qg-ticket-form').onsubmit=async e=>{e.preventDefault();const form=e.currentTarget,button=form.querySelector('button[type=submit]');button.disabled=true;try{const path=await upload(form.evidence.files[0]),details=form.details.value.trim();await request('rpc/qg_create_ticket','POST',{p_ticket_id:crypto.randomUUID(),p_order_id:form.order.value||null,p_category:form.category.value,p_details:details,p_evidence_path:path});form.reset();await qgLoadTickets();alert('ส่งเรื่องให้ฝ่ายดูแลแล้ว')}catch(err){alert('ส่งเรื่องไม่สำเร็จ: '+err.message)}finally{button.disabled=false}};
+ };
+ window.qgLoadTickets=async function(){const box=document.getElementById('qg-ticket-list');if(!box)return;try{const rows=await request('qg_support_tickets?select=id,category,details,status,order_id,created_at,admin_note,evidence_path&order=created_at.desc&limit=50');if(!box.isConnected)return;box.innerHTML=rows?.length?rows.map(t=>'<article><b>'+escText(names[t.category]||t.category)+'</b><span>'+escText(t.status)+'</span><p>'+escText(t.details)+'</p><small>'+new Date(t.created_at).toLocaleString('th-TH')+(t.admin_note?' · ฝ่ายดูแล: '+escText(t.admin_note):'')+'</small>'+(t.evidence_path?'<button type="button" data-path="'+escText(t.evidence_path)+'" onclick="qgOpenEvidence(this.dataset.path)">ดูหลักฐาน</button>':'')+'</article>').join(''):'ยังไม่มีเรื่องที่แจ้ง'}catch(e){box.textContent='โหลดเรื่องที่แจ้งไม่สำเร็จ: '+e.message}};
+})();
+</script>
+<style id="qg-v22-ticket-style">
+.qg-v22-overlay{position:fixed;inset:0;z-index:100000;background:#0b24239c;display:grid;place-items:center;padding:16px;font-family:-apple-system,BlinkMacSystemFont,system-ui,sans-serif}.qg-v22-dialog{width:min(100%,520px);max-height:92dvh;overflow:auto;background:white;border-radius:20px;padding:18px;color:#193b32;box-shadow:0 22px 60px #0b262842}.qg-v22-dialog header{display:flex;justify-content:space-between;align-items:center;font-size:19px}.qg-v22-dialog header button{border:0;background:#eef6f1;border-radius:10px;padding:8px 12px}.qg-v22-dialog p{line-height:1.5}.qg-v22-dialog form{display:grid;gap:11px}.qg-v22-dialog label{display:grid;gap:5px;font-size:13px;font-weight:650}.qg-v22-dialog select,.qg-v22-dialog textarea,.qg-v22-dialog input{box-sizing:border-box;width:100%;padding:11px;border:1px solid #cee6d9;border-radius:11px;background:#fff;font:inherit;color:#193b32}.qg-v22-dialog textarea{min-height:95px;resize:vertical}.qg-v22-dialog form button{border:0;border-radius:12px;background:#0d9f73;color:white;padding:13px;font-weight:750}.qg-v22-dialog article{border:1px solid #dcebe3;border-radius:12px;padding:11px;margin:8px 0;overflow-wrap:anywhere}.qg-v22-dialog article span{float:right;color:#0b9269}.qg-v22-dialog article small{color:#73887c}.qg-v22-dialog article button{display:block;margin-top:7px;border:0;background:#e5f7ee;color:#087556;border-radius:9px;padding:8px}
+</style>
+
+<script id="qg-v22-rider-operations">
+(function(){
+ const paymentSummary=window.renderPaymentSummary;
+ window.renderPaymentSummary=function(o,completed=false){paymentSummary(o,completed);if(completed)return;const card=document.querySelector('#summary-screen .qt-summarycard');if(card&&!card.querySelector('#qg-v22-delivery-photo')){const label=document.createElement('label');label.className='qg-v22-photo-label';label.textContent='รูปหลักฐานการส่งมอบ (ถ้ามี)';const input=document.createElement('input');input.id='qg-v22-delivery-photo';input.type='file';input.accept='image/jpeg,image/png,image/webp';label.appendChild(input);card.insertBefore(label,card.querySelector('#finish-order-btn'))}};
+ const profile=window.renderProfilePanel;
+ window.renderProfilePanel=function(){profile();const host=document.querySelector('#panel-profile .qt-settings');if(host&&!host.querySelector('#qg-v22-rider-support')){const b=document.createElement('button');b.id='qg-v22-rider-support';b.className='qt-setting';b.innerHTML='<span>แจ้งปัญหา / ติดตามเรื่อง</span><span>›</span>';b.onclick=()=>qgOpenTicketPanel();host.appendChild(b)}};
+ const finish=window.finishOrder;
+ window.finishOrder=async function(o){
+   try{const t=await getAccessToken(),rows=await sbTable('orders?select=total_amount,status&id=eq.'+encodeURIComponent(o.id)+'&limit=1',{token:t});
+     if(rows?.[0]?.status!=='in_progress')throw Error('สถานะออเดอร์เปลี่ยนแล้ว กรุณาโหลดใหม่');
+     if(!confirm('ยืนยันว่าได้รับเงินสดจากลูกค้า ฿'+Number(rows[0].total_amount).toLocaleString('th-TH')+' แล้ว?'))return;
+   }catch(e){toast('ตรวจยอดรับเงินไม่สำเร็จ: '+e.message);return}
+   const pin=prompt('กรอกรหัส PIN 6 หลักจากลูกค้าเพื่อยืนยันการส่งมอบ');if(pin===null)return;
+   if(!/^\d{6}$/.test(pin.trim())){toast('PIN ต้องเป็นตัวเลข 6 หลัก');return}
+   const button=document.getElementById('finish-order-btn');if(button)button.disabled=true;
+   let lat=null,lng=null;
+   if(navigator.geolocation)try{const p=await new Promise((resolve,reject)=>navigator.geolocation.getCurrentPosition(resolve,reject,{enableHighAccuracy:true,timeout:5000,maximumAge:10000}));lat=p.coords.latitude;lng=p.coords.longitude}catch(e){}
+   try{const token=await getAccessToken(),file=document.getElementById('qg-v22-delivery-photo')?.files?.[0],photoPath=file?await qgUploadEvidence(file):null;await sbTable('rpc/qg_complete_with_proof',{method:'POST',token,body:{p_order_id:o.id,p_pin:pin.trim(),p_lat:lat,p_lng:lng,p_photo_path:photoPath}});
+     const rows=await sbTable('orders?select=*&id=eq.'+encodeURIComponent(o.id)+'&limit=1',{token});renderPaymentSummary(rows?.[0]||{...o,status:'completed'},true);
+   }catch(e){toast('จบงานไม่สำเร็จ: '+e.message);if(button)button.disabled=false}
+ };
+ window.qtRenderEarnings=function(){const panel=document.getElementById('panel-earn');if(!panel)return;panel.innerHTML='<div class="qt-panelhead"><h1>รายได้</h1></div>';let box=document.getElementById('qg-v22-cash-ledger');if(!box){box=document.createElement('section');box.id='qg-v22-cash-ledger';box.className='qg-v22-ledger';panel.appendChild(box)}
+   box.innerHTML='<h2>สรุปงานและบัญชีเงินสด</h2><div class="qg-v22-period"><button data-days="1">วันนี้</button><button data-days="7">7 วัน</button><button data-days="30">30 วัน</button></div><div id="qg-v22-period-summary">กำลังโหลดสรุปงาน...</div><div id="qg-v22-ledger-body">กำลังโหลดจากฐานข้อมูล...</div>';
+   box.querySelectorAll('[data-days]').forEach(b=>b.onclick=()=>{const days=Number(b.dataset.days);qgLoadRiderLedger(days);qgLoadRiderPeriod(days)});qgLoadRiderLedger(1);qgLoadRiderPeriod(1);
+ };
+ const day=d=>{const x=Object.fromEntries(new Intl.DateTimeFormat('en-US',{timeZone:'Asia/Bangkok',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(d).map(p=>[p.type,p.value]));return x.year+'-'+x.month+'-'+x.day};
+ const baht=n=>'฿'+Number(n||0).toLocaleString('th-TH',{minimumFractionDigits:2,maximumFractionDigits:2});
+ window.qgLoadRiderPeriod=async function(days){const box=document.getElementById('qg-v22-period-summary');if(!box)return;box.textContent='กำลังโหลดสรุปงาน...';try{const token=await getAccessToken(),s=await sbTable('rpc/qg_rider_period_summary',{method:'POST',token,body:{p_days:days}});if(!box.isConnected)return;box.innerHTML='<div class="qg-v22-ledger-grid"><div>งานสำเร็จ<b>'+Number(s.jobs||0)+' งาน</b></div><div>รายได้จากค่าส่ง<b>'+baht(s.income)+'</b></div><div>ชั่วโมงออนไลน์ที่บันทึก<b>'+Number(s.online_hours||0)+' ชม.</b></div><div>เฉลี่ยต่อชั่วโมง<b>'+(s.income_per_hour===null?'ยังไม่มีข้อมูล':baht(s.income_per_hour))+'</b></div></div><small>บันทึกเวลาออนไลน์ตั้งแต่ '+(s.tracked_since?new Date(s.tracked_since).toLocaleString('th-TH'):'เริ่มใช้ระบบครั้งแรก')+'</small>'}catch(e){box.textContent='โหลดสรุปงานไม่สำเร็จ: '+e.message}};
+ window.qgLoadRiderLedger=async function(days){const box=document.getElementById('qg-v22-ledger-body');if(!box)return;box.textContent='กำลังโหลดจากฐานข้อมูล...';try{
+   const to=new Date(),from=new Date(to.getTime()-(days-1)*86400000),token=await getAccessToken();const rows=await sbTable('rpc/qg_rider_cash_ledger',{method:'POST',token,body:{p_from:day(from),p_to:day(to)}});
+   if(!box.isConnected)return;const sum=k=>(rows||[]).reduce((a,o)=>a+Number(o[k]||0),0),paid=sum('cash_paid_merchant'),collected=sum('cash_collected_customer'),fees=(rows||[]).filter(o=>o.payment_status==='paid').reduce((a,o)=>a+Number(o.delivery_fee||0),0),outstanding=(rows||[]).filter(o=>o.cash_paid_merchant&&!o.cash_collected_customer).reduce((a,o)=>a+Number(o.total||0),0);
+   box.innerHTML='<div class="qg-v22-ledger-grid"><div>จ่ายร้าน<b>'+baht(paid)+'</b></div><div>เก็บลูกค้า<b>'+baht(collected)+'</b></div><div>ค่าส่งที่ได้รับ<b>'+baht(fees)+'</b></div><div>รอเก็บลูกค้า<b>'+baht(outstanding)+'</b></div><div>สุทธิรับ-จ่าย<b>'+baht(collected-paid)+'</b></div><div>งานสำเร็จ<b>'+(rows||[]).filter(o=>o.status==='completed').length+'</b></div></div>'+
+     (rows||[]).map(o=>'<article><b>'+String(o.order_number||o.order_id)+'</b><small>'+String(o.status)+' · '+(o.merchant_confirmed?'ร้านยืนยันรับเงิน':'ร้านยังไม่ยืนยัน')+' · '+String(o.payment_status||'รอชำระ')+'</small><span>จ่าย '+baht(o.cash_paid_merchant)+' / เก็บ '+baht(o.cash_collected_customer)+'</span></article>').join('');
+ }catch(e){box.textContent='โหลดบัญชีเงินสดไม่สำเร็จ: '+e.message}};
+ const card=window.jobCardHTML;
+ window.jobCardHTML=function(o,x){const html=card(o,x),toShop=x?.distanceKm??haversineKm(S.pos?.lat,S.pos?.lng,o.pickup_latitude,o.pickup_longitude),toCustomer=haversineKm(o.pickup_latitude,o.pickup_longitude,o.delivery_latitude,o.delivery_longitude),all=toShop+toCustomer;
+   if(!Number.isFinite(all))return html;return html.replace(/(<div class="qt-metrics">)/,'<div class="qg-v22-job-metrics">ไปร้าน '+toShop.toFixed(1)+' กม. · ไปหาลูกค้า '+toCustomer.toFixed(1)+' กม. · รวม '+all.toFixed(1)+' กม. · ประมาณ '+Math.ceil(all/25*60)+' นาที · ค่าส่งประมาณ '+baht(o.delivery_fee)+'</div>$1')};
+})();
+</script>
+<style id="qg-v22-rider-operations-style">.qg-v22-ledger{padding:14px;border-radius:16px;background:white;margin:12px 0 60px}.qg-v22-ledger h2{font-size:17px}.qg-v22-period{display:flex;gap:6px}.qg-v22-period button{flex:1;border:1px solid #d1e8dc;border-radius:10px;padding:8px;background:#edfaf2;color:#12694f}.qg-v22-ledger-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:12px 0}.qg-v22-ledger-grid>div{padding:9px;border:1px solid #d9eadf;border-radius:11px;font-size:11px}.qg-v22-ledger-grid b{display:block;font-size:16px;margin-top:4px}.qg-v22-ledger article{padding:10px;border-top:1px solid #e5f0e9;font-size:11px}.qg-v22-ledger article small{display:block;color:#789082;margin:4px 0}.qg-v22-job-metrics{color:#136a50;font-weight:700;padding:8px 0;font-size:11px}</style>
+
+<style id="qg-v22-pod-photo-style">.qg-v22-photo-label{display:block;text-align:left;font-size:13px;color:#315d4c;margin:12px 0}.qg-v22-photo-label input{display:block;width:100%;margin-top:6px;font:inherit}</style>
+<style id="qg-v23-map-fallback-style">.qg-v23-map-fallback{padding:28px 18px;color:#1b644f;background:#e9f8ef;text-align:center;font:600 14px/1.5 system-ui,sans-serif}.qg-v23-map-fallback small{font-weight:400}</style></body></html>
