@@ -92,6 +92,25 @@ svg{display:block}.ico{width:20px;height:20px;fill:none;stroke:currentColor;stro
 .qt-dayorders{display:grid;gap:5px;margin-top:9px;padding-top:8px;border-top:1px solid var(--line)}
 .qt-dayorder{display:flex;justify-content:space-between;gap:8px;font-size:9.5px}.qt-dayorder span:last-child{font-weight:800}
 
+</style>
+<style id="qg-v24-rider-ui">
+html,body,#app{min-width:0;max-width:100%;overflow-x:hidden}
+.screen-center{height:100dvh;min-height:100dvh;overflow-y:auto;background:#f6f6f8}
+.auth-shell{display:flex;flex-direction:column;width:min(100%,430px);min-height:100dvh;margin:auto;background:#fff;box-shadow:0 18px 55px #18202d16}
+.auth-side{display:block;position:relative;flex:none;height:clamp(245px,43dvh,390px);min-height:0;overflow:hidden;padding:calc(18px + var(--safeT)) 23px 0;background:radial-gradient(circle at 10% 2%,#fff 0,#fff7f8 42%,#f6e9ed 100%);color:#151923}
+.auth-mark{position:relative;z-index:2;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:5px;letter-spacing:-.04em;text-align:center}
+.auth-mark .auth-logo{display:grid;place-items:center;width:49px;height:49px;border-radius:13px;background:#e6002d;color:#fff;font-size:34px;font-weight:950;line-height:1;box-shadow:0 7px 18px #d9123233}
+.auth-mark b{font-size:25px;line-height:1;font-weight:900}.auth-mark b span{color:#e6002d}.auth-mark small{display:block;margin-top:2px;font-size:14px;font-weight:700;letter-spacing:0}
+.auth-side-copy{position:relative;z-index:2;text-align:center}.auth-side-copy h2{max-width:none;margin:9px 0 0;font-size:14px;line-height:1.25;font-weight:750}.auth-side-copy p,.auth-stats{display:none}
+.auth-illustration{position:absolute;left:0;right:0;bottom:0;height:65%;overflow:hidden;pointer-events:none}.auth-illustration svg{display:block;width:100%;height:100%}
+.auth-main{position:relative;z-index:3;display:block;flex:1;margin-top:-18px;padding:22px 22px calc(20px + var(--safeB));border-radius:22px 22px 0 0;background:#fff}
+.auth-card{width:100%;padding:0;border:0;border-radius:0;background:#fff;box-shadow:none;backdrop-filter:none}.auth-card h1{font-size:21px;line-height:1.25;margin:0 0 3px}.auth-card .sub{font-size:11px;color:#68707b;margin:0 0 15px}
+.auth-card .field{margin:10px 0}.auth-card .field label{font-size:11px;font-weight:750;margin-bottom:6px}.auth-card .field input{height:46px;border:1px solid #e2e3e8;border-radius:13px;background:#fafafb;font-size:16px}
+.auth-card .btn{height:46px;border-radius:13px}.auth-card .btn-brand{background:#e6002d}.auth-card .btn-signup{background:#fff0f2;color:#bd1434}
+.auth-divider{margin:10px 0;font-size:10px;color:#888b94}.auth-foot{display:none}.v4-version{margin-top:11px;color:#9b9da5}
+@media(max-width:760px){.auth-side{height:clamp(245px,43dvh,390px);padding:calc(18px + var(--safeT)) 23px 0}.auth-side-copy h2{font-size:14px}.auth-main{margin-top:-18px;padding:22px 22px calc(20px + var(--safeB))}.auth-card{padding:0;border-radius:0}}
+@media(max-height:700px){.auth-side{height:clamp(205px,34dvh,260px)}.auth-mark .auth-logo{width:40px;height:40px;font-size:27px}.auth-mark b{font-size:21px}.auth-mark small{font-size:12px}.auth-side-copy h2{margin-top:4px}.auth-main{padding-top:16px}.auth-card .sub{margin-bottom:8px}.auth-card .field{margin:7px 0}.auth-card .field input,.auth-card .btn{height:42px}}
+.qg-inbox{background:#fcf7f8}.qg-inbox h2,.qg-inbox-item{color:#241d20}.qg-v22-dialog form button{background:#e6002d}.qg-v22-period button{border-color:#f0d2d9;background:#fff0f2;color:#b60c29}.qg-v22-job-metrics,.qg-v22-photo-label{color:#b60c29}.qg-v23-map-fallback{color:#8f1730;background:#fff0f2}
 </style></head><body>
 <div id="app"></div><div id="toast" class="toast"></div>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -349,11 +368,25 @@ function renderLogin(err){
     <div class="screen-center">
       <div class="auth-shell">
         <div class="auth-side">
-          <div class="auth-mark"><span class="dot"></span><b>QUEUEGO RIDER</b></div>
+          <div class="auth-mark"><span class="auth-logo">Q</span><b>Queue<span>Go</span><small>Rider</small></b></div>
           <div class="auth-side-copy">
-            <h2>งานใกล้ตัวคุณ รับได้ทันที</h2>
-            <p>เข้าสู่ระบบเพื่อดูงานรอบตัว รับงาน และจัดการสถานะออนไลน์ของคุณแบบเรียลไทม์</p>
+            <h2>วิ่งงาน ส่งไว รายได้มั่นคง</h2>
           </div>
+          <div class="auth-illustration" aria-hidden="true"><svg viewBox="0 0 420 245" role="presentation" preserveAspectRatio="xMidYMax meet">
+            <path d="M0 200h420v45H0z" fill="#e6e8ec"/><path d="M0 214h420" stroke="#cbd0d8" stroke-width="3" stroke-dasharray="23 18"/>
+            <path d="M5 188V95h54v93M48 188V66h53v122M97 188V110h48v78M313 188V84h62v104M366 188V119h54v69" fill="#e5e8ee" stroke="#d9dde5" stroke-width="2"/>
+            <path d="M17 112h9m13 0h9m12-29h9m13 0h9m-67 37h9m13 0h9m250-48h9m14 0h9m-28 24h9m14 0h9m12 31h9" stroke="#fff" stroke-width="5"/>
+            <ellipse cx="213" cy="211" rx="158" ry="11" fill="#adb4c0" opacity=".35"/>
+            <circle cx="125" cy="197" r="30" fill="#1e293b"/><circle cx="125" cy="197" r="15" fill="#e6e8ec"/>
+            <circle cx="315" cy="197" r="30" fill="#1e293b"/><circle cx="315" cy="197" r="15" fill="#e6e8ec"/>
+            <path d="M88 160h50l29 23h92l19-31h34l31 26-8 19h-29l-23-27-29 35H151l-27-27H88z" fill="#e3002b" stroke="#aa1230" stroke-width="4"/>
+            <path d="M91 164h62m137-30h29m-29 0 7 24" stroke="#263044" stroke-width="7" stroke-linecap="round"/>
+            <path d="M174 118c18-19 46-14 57 5l19 32-30 21-26-24-35 19-17-18z" fill="#e50936" stroke="#a70c2c" stroke-width="4"/>
+            <path d="M206 120c14 2 25 13 28 29l29 7" fill="none" stroke="#222c40" stroke-width="11" stroke-linecap="round"/>
+            <path d="M174 73c1-33 46-44 64-17 8 10 9 23 5 35l-51 12z" fill="#ed002f" stroke="#a80d2b" stroke-width="4"/>
+            <path d="M197 88h47l-8 16-32 2z" fill="#253149"/><path d="M188 102c8 14 29 22 42 7" fill="none" stroke="#f4b19b" stroke-width="9" stroke-linecap="round"/>
+            <path d="M244 109h55v58h-55z" fill="#e6002d" stroke="#a90b2b" stroke-width="4"/><text x="271" y="150" text-anchor="middle" font-size="38" font-weight="900" fill="#fff" font-family="system-ui">Q</text>
+          </svg></div>
           <div class="auth-stats">
             <div><b>${NEARBY_RADIUS_KM} กม.</b><span>รัศมีงานใกล้ตัว</span></div>
             <div><b>24 ชม.</b><span>รับงานได้ทุกเมื่อ</span></div>
@@ -361,8 +394,8 @@ function renderLogin(err){
         </div>
         <div class="auth-main">
           <div class="auth-card">
-            <h1>พร้อมออกไปส่งความสุขแล้วหรือยัง?</h1>
-            <p class="sub">เข้าสู่ระบบเพื่อรับงาน ดูเส้นทาง และจัดการรายได้ของคุณ</p>
+            <h1>เข้าสู่ระบบ Rider</h1>
+            <p class="sub">ดูงานใกล้ตัว รับงาน และติดตามรายได้ของคุณ</p>
             <div class="field"><label>อีเมลที่สมัคร หรือเบอร์โทรศัพท์</label><input id="li-phone" autocomplete="username" placeholder="อีเมลที่สมัคร / 08x xxx xxxx"></div>
             <div class="field"><label>รหัสผ่าน</label><input id="li-pass" type="password" autocomplete="current-password" placeholder="รหัสผ่านของคุณ"></div>
             <button class="btn btn-brand" id="li-btn">เข้าสู่ระบบ</button>
