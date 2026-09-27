@@ -363,7 +363,7 @@ function renderLogin(err){
           <div class="auth-card">
             <h1>พร้อมออกไปส่งความสุขแล้วหรือยัง?</h1>
             <p class="sub">เข้าสู่ระบบเพื่อรับงาน ดูเส้นทาง และจัดการรายได้ของคุณ</p>
-            <div class="field"><label>เบอร์โทรศัพท์</label><input id="li-phone" inputmode="tel" autocomplete="username" placeholder="08x xxx xxxx"></div>
+            <div class="field"><label>อีเมลที่สมัคร หรือเบอร์โทรศัพท์</label><input id="li-phone" autocomplete="username" placeholder="อีเมลที่สมัคร / 08x xxx xxxx"></div>
             <div class="field"><label>รหัสผ่าน</label><input id="li-pass" type="password" autocomplete="current-password" placeholder="รหัสผ่านของคุณ"></div>
             <button class="btn btn-brand" id="li-btn">เข้าสู่ระบบ</button>
             <div class="auth-err" id="li-err"></div>
@@ -589,7 +589,7 @@ async function doLogin(){
   const phone = document.getElementById('li-phone').value.trim();
   const pass = document.getElementById('li-pass').value;
   errBox.classList.remove('show');
-  if(!phone || !pass){ errBox.textContent='กรุณากรอกเบอร์โทรและรหัสผ่าน'; errBox.classList.add('show'); return; }
+  if(!phone || !pass){ errBox.textContent='กรุณากรอกอีเมลหรือเบอร์โทรและรหัสผ่าน'; errBox.classList.add('show'); return; }
   btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>';
   try{
     const email = phone.includes('@') ? phone : authEmailFromPhone(phone);
@@ -609,7 +609,7 @@ async function doLogin(){
     renderStage();
   }catch(e){
     console.error(e);
-    errBox.textContent = /invalid/i.test(e.message) ? 'เบอร์โทรหรือรหัสผ่านไม่ถูกต้อง' : e.message;
+    errBox.textContent = /invalid/i.test(e.message) ? 'อีเมลหรือรหัสผ่านไม่ถูกต้อง หากสมัครด้วยอีเมลให้ใช้อีเมลนั้นเข้าสู่ระบบ' : e.message;
     errBox.classList.add('show');
   }finally{ btn.disabled=false; btn.textContent='เข้าสู่ระบบ'; }
 }
