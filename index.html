@@ -905,14 +905,17 @@ function qtAuthEmailFromPhone(phone){
   const digits=String(phone||'').replace(/\D/g,'');
   return digits+'@auth.queuetech.local';
 }
-async function qtCreateSupabaseUser({name,phone,password,email}){
+async function qtCreateSupabaseUser({name,phone,password,email,latitude,longitude}){
   const cleanEmail=String(email||'').trim().toLowerCase();
   const cleanPhone=String(phone||'').trim();
+  const locationProblem=qgCoordinateProblem(latitude,longitude,true);
+  if(locationProblem) throw new Error('CUSTOMER_LOCATION_REQUIRED');
+  const lat=Number(latitude),lng=Number(longitude);
   const authEmail=cleanEmail || qtAuthEmailFromPhone(cleanPhone);
   const auth=await qtSupabaseAuth('signup',{
     email:authEmail,
     password,
-    data:{name,phone:cleanPhone||null,role:'customer'}
+    data:{name,phone:cleanPhone||null,role:'customer',latitude:lat,longitude:lng}
   });
   let session=auth.session;
   if(!auth.user) throw new Error('สร้างบัญชี Auth ไม่สำเร็จ');
@@ -936,9 +939,10 @@ async function qtCreateSupabaseUser({name,phone,password,email}){
     role:'customer',
     name,
     phone:cleanPhone||null,
-    status:'active'
+    status:'active',
+    metadata:{lat,lng,locationSource:'gps',locationUpdatedAt:new Date().toISOString()}
   };
-  const rows=await qtSupabaseTable('users?select=id,auth_user_id,role,name,phone,status,created_at&on_conflict=auth_user_id',{method:'POST',accessToken:session.access_token,body:row});
+  const rows=await qtSupabaseTable('users?select=id,auth_user_id,role,name,phone,status,metadata,created_at&on_conflict=auth_user_id',{method:'POST',accessToken:session.access_token,body:row});
   const profile=Array.isArray(rows)?rows[0]:rows;
   if(!profile) throw new Error('สร้างข้อมูลผู้ใช้ในฐานข้อมูลไม่สำเร็จ');
   return {auth,session,profile,needsEmailConfirmation:false,authEmail};
@@ -1459,10 +1463,94 @@ function qtGoogleMapsDirections(lat,lng,address=''){
   const q=String(address||'').trim();
   return q?'https://www.google.com/maps/dir/?api=1&destination='+encodeURIComponent(q):'https://www.google.com/maps/';
 }
-function distanceKm(lat1,lon1,lat2,lon2){
+const QT_LOCATION_STATE={
+  LOADING:'LOCATION_LOADING',
+  GRANTED:'LOCATION_GRANTED',
+  DENIED:'LOCATION_DENIED',
+  UNAVAILABLE:'LOCATION_UNAVAILABLE',
+  MANUAL:'LOCATION_MANUAL'
+};
+function qgIsValidCoordinate(latitude,longitude,thailandOnly=false){
+  if(latitude===null||latitude===undefined||longitude===null||longitude===undefined) return false;
+  if(latitude===''||longitude==='') return false;
+  const lat=Number(latitude),lng=Number(longitude);
+  if(!Number.isFinite(lat)||!Number.isFinite(lng)) return false;
+  if(lat===0&&lng===0) return false;
+  if(lat < -90 || lat > 90 || lng < -180 || lng > 180) return false;
+  if(thailandOnly && !(lat>=5 && lat<=21 && lng>=97 && lng<=106)) return false;
+  return true;
+}
+function qgCoordinateProblem(latitude,longitude,thailandOnly=false){
+  if(latitude===null||latitude===undefined||longitude===null||longitude===undefined||latitude===''||longitude==='') return 'missing';
+  const lat=Number(latitude),lng=Number(longitude);
+  if(!Number.isFinite(lat)||!Number.isFinite(lng)) return 'not_finite';
+  if(lat===0&&lng===0) return 'zero';
+  if(lat < -90 || lat > 90 || lng < -180 || lng > 180) return 'out_of_range';
+  if(thailandOnly && lat>=97 && lat<=106 && lng>=5 && lng<=21) return 'swapped';
+  if(thailandOnly && !(lat>=5 && lat<=21 && lng>=97 && lng<=106)) return 'outside_thailand';
+  return '';
+}
+function calculateDistanceKm(customerLat,customerLng,shopLat,shopLng){
+  if(!qgIsValidCoordinate(customerLat,customerLng,true) || !qgIsValidCoordinate(shopLat,shopLng,true)) return NaN;
+  const lat1=Number(customerLat),lon1=Number(customerLng),lat2=Number(shopLat),lon2=Number(shopLng);
   const R=6371, dLat=(lat2-lat1)*Math.PI/180, dLon=(lon2-lon1)*Math.PI/180;
   const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)**2;
-  return R*2*Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  const km=R*2*Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  return Number.isFinite(km) && km>=0 && km<=2500 ? km : NaN;
+}
+function distanceKm(lat1,lon1,lat2,lon2){ return calculateDistanceKm(lat1,lon1,lat2,lon2); }
+
+function qgLocationErrorMessage(reason){
+  if(reason==='denied') return '📍 กรุณาเปิดการเข้าถึงตำแหน่ง';
+  if(reason==='timeout') return '📍 ไม่สามารถรับตำแหน่งได้ภายในเวลาที่กำหนด';
+  if(reason==='unsupported') return '📍 เบราว์เซอร์นี้ไม่รองรับการระบุตำแหน่ง';
+  if(reason==='swapped'||reason==='invalid') return '📍 พิกัดที่ได้รับไม่ถูกต้อง กรุณาลองใหม่';
+  return '📍 ไม่สามารถรับตำแหน่งปัจจุบันได้ กรุณาลองใหม่';
+}
+function qgShowRegistrationLocationGate(reason){
+  document.getElementById('qg-registration-location-gate')?.remove();
+  const overlay=document.createElement('div');
+  overlay.id='qg-registration-location-gate';
+  overlay.style.cssText='position:fixed;inset:0;z-index:100000;background:rgba(15,23,42,.52);display:flex;align-items:flex-end;justify-content:center;padding:18px;padding-bottom:max(18px,env(safe-area-inset-bottom));';
+  overlay.innerHTML=`<div style="width:min(100%,520px);background:#fff;border-radius:24px;padding:20px;box-shadow:0 18px 60px rgba(15,23,42,.28);font-family:inherit">
+    <div style="font-size:34px;margin-bottom:8px">📍</div>
+    <h2 style="margin:0 0 8px;font-size:21px;color:#172033">${escapeHtml(qgLocationErrorMessage(reason))}</h2>
+    <p style="margin:0 0 14px;line-height:1.65;color:#475569;font-size:14px">QueueGo จำเป็นต้องใช้ตำแหน่งของคุณเพื่อค้นหาร้านใกล้คุณและคำนวณระยะทางและค่าจัดส่ง ระบบจะไม่สร้างบัญชีจนกว่าจะได้รับพิกัดจริงที่ถูกต้อง</p>
+    <div id="qg-location-help-text" style="display:none;background:#f8fafc;border:1px solid #e2e8f0;border-radius:14px;padding:12px;margin-bottom:12px;color:#334155;font-size:13px;line-height:1.6">โปรดเปิดสิทธิ์ Location/ตำแหน่งให้เว็บไซต์ QueueGo จากการตั้งค่าเว็บไซต์ของเบราว์เซอร์ หรือ Settings ของโทรศัพท์ แล้วกลับมากด “ลองอีกครั้ง” ระบบไม่สามารถเปิดสิทธิ์ของ iOS/Android แทนคุณได้โดยตรง</div>
+    <div style="display:grid;gap:10px">
+      <button type="button" id="qg-location-settings" style="min-height:48px;border:1px solid #d6dee8;border-radius:14px;background:#fff;color:#172033;font-weight:700;font-size:15px">เปิดการตั้งค่าตำแหน่ง</button>
+      <button type="button" id="qg-location-retry" style="min-height:48px;border:0;border-radius:14px;background:#ef1234;color:#fff;font-weight:700;font-size:15px">ลองอีกครั้ง</button>
+      <button type="button" id="qg-location-close" style="min-height:44px;border:0;background:transparent;color:#64748b;font-weight:650">ยกเลิก</button>
+    </div>
+  </div>`;
+  document.body.appendChild(overlay);
+  document.getElementById('qg-location-settings').onclick=()=>{const el=document.getElementById('qg-location-help-text');if(el)el.style.display='block';};
+  document.getElementById('qg-location-retry').onclick=()=>{overlay.remove();document.querySelector('.qg-auth-form, form[onsubmit*="handleRegister"]')?.requestSubmit?.();};
+  document.getElementById('qg-location-close').onclick=()=>overlay.remove();
+}
+async function validateCustomerLocation(){
+  window.QT_CUSTOMER_LOCATION_STATE=QT_LOCATION_STATE.LOADING;
+  if(!navigator.geolocation){
+    window.QT_CUSTOMER_LOCATION_STATE=QT_LOCATION_STATE.UNAVAILABLE;
+    return {success:false,reason:'unsupported'};
+  }
+  return await new Promise(resolve=>{
+    navigator.geolocation.getCurrentPosition(pos=>{
+      const latitude=pos?.coords?.latitude,longitude=pos?.coords?.longitude;
+      const problem=qgCoordinateProblem(latitude,longitude,true);
+      if(problem){
+        window.QT_CUSTOMER_LOCATION_STATE=QT_LOCATION_STATE.UNAVAILABLE;
+        resolve({success:false,reason:problem==='swapped'?'swapped':'invalid'});
+        return;
+      }
+      window.QT_CUSTOMER_LOCATION_STATE=QT_LOCATION_STATE.GRANTED;
+      resolve({success:true,latitude:Number(latitude),longitude:Number(longitude),accuracy:Number(pos.coords.accuracy)||null,source:'gps'});
+    },err=>{
+      const reason=err?.code===1?'denied':err?.code===3?'timeout':'unavailable';
+      window.QT_CUSTOMER_LOCATION_STATE=reason==='denied'?QT_LOCATION_STATE.DENIED:QT_LOCATION_STATE.UNAVAILABLE;
+      resolve({success:false,reason});
+    },{enableHighAccuracy:true,timeout:12000,maximumAge:30000});
+  });
 }
 function placeholderImg(){ return window.QueueGoAssets.FOOD_PLACEHOLDER; }
 function readFileAsDataURL(file){
@@ -2207,9 +2295,9 @@ function bottomNav(){
 /* ---------- 1. HOME ---------- */
 function qtCustomerLocationText(user){
   const a=qtCleanText(user?.address||'');
-  if(a) return a;
-  if(Number.isFinite(Number(user?.lat)) && Number.isFinite(Number(user?.lng))) return `พิกัด ${Number(user.lat).toFixed(5)}, ${Number(user.lng).toFixed(5)}`;
-  return 'กำลังค้นหาตำแหน่งของคุณ...';
+  if(a && qgIsValidCoordinate(user?.lat,user?.lng,true)) return a;
+  if(qgIsValidCoordinate(user?.lat,user?.lng,true)) return `พิกัด ${Number(user.lat).toFixed(5)}, ${Number(user.lng).toFixed(5)}`;
+  return 'ยังไม่ได้ระบุตำแหน่ง';
 }
 function renderCustomerLocationBar(user){
   return `<section class="qg-location-bar" id="qg-customer-location-bar" onclick="openCustomerLocationPicker()" role="button" tabindex="0">
@@ -2233,6 +2321,7 @@ async function qtReverseGeocodeCustomer(lat,lng){
 async function qtSaveCustomerLocation(lat,lng,address){
   const users=dbGet('qt_users',[]); const user=currentUser();
   if(!user || user.type!=='customer') return false;
+  if(!qgIsValidCoordinate(lat,lng,true)) return false;
   const idx=users.findIndex(u=>u.id===user.id); if(idx<0) return false;
   users[idx].lat=Number(lat); users[idx].lng=Number(lng);
   if(address) users[idx].address=qtCleanText(address);
@@ -2590,6 +2679,7 @@ function qtStopCheckoutFaceCam(){
   if(qtCheckoutCamStream){ qtCheckoutCamStream.getTracks().forEach(t=>t.stop()); qtCheckoutCamStream=null; }
 }
 function qtRegisterErrorToast(err){
+  if(String(err?.message||'').includes('CUSTOMER_LOCATION_REQUIRED')){ qgShowRegistrationLocationGate('invalid'); return; }
   if(err&&err.message==='AUTH_CONFIRMATION_REQUIRED') toast('สมัครไม่สำเร็จ: Supabase ยังเปิดการยืนยันอีเมล ทำให้ยังไม่มี Session สำหรับสร้างข้อมูลสมาชิก');
   else if(/already registered|User already registered|duplicate key|users_phone_key|users_auth_user_id_key/i.test((err&&err.message)||'')) toast('สมัครไม่สำเร็จ: เบอร์นี้ถูกใช้สมัครแล้ว หรือมีข้อมูลซ้ำในฐานข้อมูล');
   else if(/^DB_ERROR_/.test((err&&err.message)||'') || /row-level security|permission denied|violates row-level security/i.test((err&&err.message)||'')) toast('สมัครไม่สำเร็จ: Supabase ปฏิเสธการบันทึกข้อมูล (RLS/สิทธิ์ตาราง users)');
@@ -2640,10 +2730,15 @@ async function handleRegister(e){
   if(mode==='email'&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){toast('กรุณากรอกอีเมลให้ถูกต้อง');return false;}
   const submitBtn=e.submitter||null;if(submitBtn)submitBtn.disabled=true;
   try{
-    const result=await qtCreateSupabaseUser({name,phone:mode==='phone'?phone:'',password,email:mode==='email'?email:''});
+    const location=await validateCustomerLocation();
+    if(!location.success){
+      qgShowRegistrationLocationGate(location.reason);
+      return false;
+    }
+    const result=await qtCreateSupabaseUser({name,phone:mode==='phone'?phone:'',password,email:mode==='email'?email:'',latitude:location.latitude,longitude:location.longitude});
     if(result.needsEmailConfirmation){ await renderRegistrationSuccess(null,{needsEmailConfirmation:true,email}); return false; }
     const p=result.profile;
-    const user={id:p.id,authUserId:p.auth_user_id,type:'customer',name:p.name||name,phone:p.phone||phone,email:mode==='email'?email:'',status:p.status==='suspended'?'suspended':'approved',createdAt:new Date(p.created_at||Date.now()).getTime(),supabase:true};
+    const user={id:p.id,authUserId:p.auth_user_id,type:'customer',name:p.name||name,phone:p.phone||phone,email:mode==='email'?email:'',status:p.status==='suspended'?'suspended':'approved',lat:Number(p.metadata?.lat??location.latitude),lng:Number(p.metadata?.lng??location.longitude),locationSource:'gps',createdAt:new Date(p.created_at||Date.now()).getTime(),supabase:true};
     QT_DB_CACHE.qt_users=[user]; qtMarkClean('qt_users');
     setSession({userId:user.id,authUserId:p.auth_user_id,accessToken:result.session.access_token,refreshToken:result.session.refresh_token||null,expiresAt:result.session.expires_at||Math.floor(qtJwtExpiryMs(result.session.access_token)/1000)||null,role:'customer'});
     await renderRegistrationSuccess(user);
@@ -2689,7 +2784,9 @@ async function handleLogin(e){
         return false;
       }
       try{
-        const rows=await qtSupabaseTable('users?select=id,auth_user_id,role,name,phone,status,created_at&on_conflict=auth_user_id',{method:'POST',accessToken:auth.access_token,body:{auth_user_id:auth.user.id,role:'customer',name:qtCleanText(meta.name||'ผู้ใช้'),phone:String(meta.phone||'').trim()||null,status:'active'}});
+        const metaLat=Number(meta.latitude),metaLng=Number(meta.longitude);
+        const locationMeta=qgIsValidCoordinate(metaLat,metaLng,true)?{lat:metaLat,lng:metaLng,locationSource:'gps',locationUpdatedAt:new Date().toISOString()}:{};
+        const rows=await qtSupabaseTable('users?select=id,auth_user_id,role,name,phone,status,metadata,created_at&on_conflict=auth_user_id',{method:'POST',accessToken:auth.access_token,body:{auth_user_id:auth.user.id,role:'customer',name:qtCleanText(meta.name||'ผู้ใช้'),phone:String(meta.phone||'').trim()||null,status:'active',metadata:locationMeta}});
         p=Array.isArray(rows)?rows[0]:rows;
       }catch(createErr){ throw new Error('เข้าสู่ระบบสำเร็จ แต่ยังสร้างข้อมูลสมาชิกในฐานข้อมูลไม่ได้: '+createErr.message); }
     }
@@ -2793,12 +2890,12 @@ function renderSearch(presetCategory){
       updateSearchLocationStatus(true);
       runSearch();
     },()=>{
-      window.__searchLoc=window.__searchLoc||{lat:13.7563,lng:100.5018};
+      window.__searchLoc=null;
       updateSearchLocationStatus(false);
       runSearch();
     },{enableHighAccuracy:true,maximumAge:30000,timeout:10000});
   }else{
-    window.__searchLoc=window.__searchLoc||{lat:13.7563,lng:100.5018};
+    window.__searchLoc=null;
     updateSearchLocationStatus(false);
   }
 
@@ -2815,7 +2912,7 @@ function updateSearchLocationStatus(isGps){
   if(!el) return;
   el.innerHTML=isGps
     ? '📍 <b>ใช้ตำแหน่งลูกค้าอัตโนมัติ</b> • เปลี่ยนได้ที่อยู่จัดส่ง'
-    : '📍 <b>ใช้ตำแหน่งเริ่มต้น</b> • เปลี่ยนได้ที่อยู่จัดส่ง';
+    : '📍 <b>ยังไม่ได้ระบุตำแหน่ง</b> • เปิดตำแหน่งเพื่อคำนวณระยะทางและค่าส่ง';
 }
 function getMyLocationForSearch(){
   if(!navigator.geolocation){toast('ไม่รองรับ GPS');return;}
@@ -2851,18 +2948,23 @@ async function qtEnsurePublicShopsLoaded(){
 async function runSearch(){
   const kw = (document.getElementById('search-keyword')?.value||'').toLowerCase();
   const cat = document.getElementById('search-category')?.value||'';
-  const loc = window.__searchLoc || {lat:13.7563,lng:100.5018};
+  const me=currentUser();
+  const loc = qgIsValidCoordinate(window.__searchLoc?.lat,window.__searchLoc?.lng,true)
+    ? window.__searchLoc
+    : (qgIsValidCoordinate(me?.lat,me?.lng,true)?{lat:Number(me.lat),lng:Number(me.lng)}:null);
   let shops = dbGet('qt_users',[]).filter(u=>u.type==='shop' && u.shopName)
     .map(s=>{
-      const hasCoords=Number.isFinite(Number(s.lat))&&Number.isFinite(Number(s.lng));
-      return {...s, distance:hasCoords ? distanceKm(Number(loc.lat),Number(loc.lng),Number(s.lat),Number(s.lng)) : Infinity, _hasCoords:hasCoords};
+      const shopOk=qgIsValidCoordinate(s.lat,s.lng,true);
+      const distance=loc&&shopOk?calculateDistanceKm(loc.lat,loc.lng,s.lat,s.lng):NaN;
+      return {...s,distance,_hasCoords:shopOk,_distanceReason:!loc?'customer':(!shopOk?'shop':'')};
     });
   if(!shops.length){
     const loaded=await qtEnsurePublicShopsLoaded();
     if(loaded){
       shops=dbGet('qt_users',[]).filter(u=>u.type==='shop' && u.shopName).map(s=>{
-        const hasCoords=Number.isFinite(Number(s.lat))&&Number.isFinite(Number(s.lng));
-        return {...s,distance:hasCoords?distanceKm(Number(loc.lat),Number(loc.lng),Number(s.lat),Number(s.lng)):Infinity,_hasCoords:hasCoords};
+        const shopOk=qgIsValidCoordinate(s.lat,s.lng,true);
+        const distance=loc&&shopOk?calculateDistanceKm(loc.lat,loc.lng,s.lat,s.lng):NaN;
+        return {...s,distance,_hasCoords:shopOk,_distanceReason:!loc?'customer':(!shopOk?'shop':'')};
       });
     }
   }
@@ -4429,7 +4531,9 @@ button,a,input,textarea,select{font:inherit}
   function shopOpen(s){return typeof isShopOpenNow==='function'?isShopOpenNow(s):true}
   function shopCardV2(s){
     const rs=qtShopRatingSummary(s.id);
-    const dist=Number.isFinite(Number(s.distance))?`${Number(s.distance).toFixed(1)} กม.`:'ใกล้คุณ';
+    const dist=Number.isFinite(Number(s.distance))
+      ? `${Number(s.distance).toFixed(1)} กม.`
+      : (s._distanceReason==='shop'?'ร้านยังไม่มีพิกัด':'ยังไม่ได้ระบุตำแหน่ง');
     const open=shopOpen(s);
     const delivery=s.deliveryFee!=null?`ค่าส่ง ${s.deliveryFee} บาท`:'ค่าส่งเริ่มต้น 30 บาท';
     return `<article class="qg-shop-card-new" onclick="navigate('shop-view/${esc(s.id)}')">
@@ -4464,9 +4568,13 @@ button,a,input,textarea,select{font:inherit}
     const render=async()=>{
       let ss=dbGet('qt_users',[]).filter(x=>x.type==='shop'&&x.shopName);
       if(!ss.length){await qtEnsurePublicShopsLoaded();ss=dbGet('qt_users',[]).filter(x=>x.type==='shop'&&x.shopName);}
-      const loc={lat:Number(u?.lat)||13.7563,lng:Number(u?.lng)||100.5018};
-      ss=ss.map(s=>({...s,distance:(Number.isFinite(Number(s.lat))&&Number.isFinite(Number(s.lng)))?distanceKm(loc.lat,loc.lng,Number(s.lat),Number(s.lng)):Infinity}));
-      ss.sort((a,b)=>a.distance-b.distance);
+      const loc=qgIsValidCoordinate(u?.lat,u?.lng,true)?{lat:Number(u.lat),lng:Number(u.lng)}:null;
+      ss=ss.map(s=>{
+        const shopOk=qgIsValidCoordinate(s.lat,s.lng,true);
+        const distance=loc&&shopOk?calculateDistanceKm(loc.lat,loc.lng,s.lat,s.lng):NaN;
+        return {...s,distance,_distanceReason:!loc?'customer':(!shopOk?'shop':'')};
+      });
+      ss.sort((a,b)=>(Number.isFinite(a.distance)?a.distance:Number.POSITIVE_INFINITY)-(Number.isFinite(b.distance)?b.distance:Number.POSITIVE_INFINITY));
       const el=document.getElementById('qg-nearby'); if(el) el.innerHTML=ss.length?ss.slice(0,12).map(shopCardV2).join(''):'<div class="qg-empty-new">ยังไม่มีร้านที่เปิดให้บริการ</div>';
     };
     render().catch(()=>{});
@@ -4486,12 +4594,16 @@ button,a,input,textarea,select{font:inherit}
     const run=async()=>{
       let ss=dbGet('qt_users',[]).filter(s=>s.type==='shop'&&s.shopName);
       if(!ss.length){await qtEnsurePublicShopsLoaded();ss=dbGet('qt_users',[]).filter(s=>s.type==='shop'&&s.shopName);}
-      const u=currentUser(),loc={lat:Number(u?.lat)||13.7563,lng:Number(u?.lng)||100.5018};
+      const u=currentUser(),loc=qgIsValidCoordinate(u?.lat,u?.lng,true)?{lat:Number(u.lat),lng:Number(u.lng)}:null;
       const kw=(input?.value||'').trim().toLowerCase();
       if(preset&&!kw) ss=ss.filter(s=>!preset||s.category===preset);
-      ss=ss.map(s=>({...s,distance:(Number.isFinite(Number(s.lat))&&Number.isFinite(Number(s.lng)))?distanceKm(loc.lat,loc.lng,Number(s.lat),Number(s.lng)):Infinity}));
+      ss=ss.map(s=>{
+        const shopOk=qgIsValidCoordinate(s.lat,s.lng,true);
+        const distance=loc&&shopOk?calculateDistanceKm(loc.lat,loc.lng,s.lat,s.lng):NaN;
+        return {...s,distance,_distanceReason:!loc?'customer':(!shopOk?'shop':'')};
+      });
       if(kw) ss=ss.filter(s=>s.shopName.toLowerCase().includes(kw)||String(s.description||'').toLowerCase().includes(kw));
-      if(filter==='near') ss.sort((a,b)=>a.distance-b.distance);
+      if(filter==='near') ss.sort((a,b)=>(Number.isFinite(a.distance)?a.distance:Number.POSITIVE_INFINITY)-(Number.isFinite(b.distance)?b.distance:Number.POSITIVE_INFINITY));
       const products=dbGet('qt_products',[]).filter(p=>p.available!==false);
       let menu=[];
       if(kw||filter==='menu') menu=products.filter(p=>String(p.name||'').toLowerCase().includes(kw)).slice(0,20);
@@ -4731,7 +4843,9 @@ button,a,input,textarea,select{font:inherit}
     const lines=items.map(i=>({product_id:i.productId,qty:Number(i.qty)}));
     if(lines.some(i=>!i.product_id||!Number.isInteger(i.qty)||i.qty<1)){qtCheckoutError('ข้อมูลสินค้าในตะกร้าไม่ถูกต้อง');return;}
     const subtotal=items.reduce((sum,i)=>sum+Number(i.price||0)*Number(i.qty||0),0);
-    const fee=computeDeliveryFee(distanceKm(Number(shop.lat),Number(shop.lng),Number(loc.lat),Number(loc.lng)));
+    const checkoutDistance=calculateDistanceKm(Number(loc.lat),Number(loc.lng),Number(shop.lat),Number(shop.lng));
+    if(!Number.isFinite(checkoutDistance)){qtCheckoutError('ไม่สามารถคำนวณระยะทางได้ กรุณาตรวจสอบพิกัดลูกค้าและร้านค้า');return;}
+    const fee=computeDeliveryFee(checkoutDistance);
     const fingerprint=JSON.stringify([shopId,lines,Number(loc.lat),Number(loc.lng),address,subtotal,fee]);
     let state=pending(user);
     if(state&&state.fingerprint!==fingerprint){
