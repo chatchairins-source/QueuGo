@@ -2816,5 +2816,87 @@ window.qgmExportRevenue=async function(button){
 <script defer src="pos-qr-v1.js?v=table-qr-1"></script>
 <link rel="stylesheet" href="market.css?v=20260928">
 <script defer src="market.js?v=20260928"></script>
+
+<!-- QueueGo Table QR Manager v1 -->
+<style id="qg-table-manager-module-v1">
+#qgTableMgrBtn{position:fixed;right:14px;bottom:82px;z-index:9800;border:0;border-radius:18px;padding:12px 16px;background:#e6002d;color:#fff;font-weight:850;box-shadow:0 10px 28px #e6002d33;display:none}
+#qgTableMgr{position:fixed;inset:0;z-index:9900;background:#f7f7f9;display:none;overflow:auto;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Noto Sans Thai",sans-serif;color:#1e1f22}
+#qgTableMgr.show{display:block}.qgtm-head{position:sticky;top:0;z-index:2;display:flex;align-items:center;gap:10px;padding:calc(10px + env(safe-area-inset-top)) 14px 10px;background:rgba(255,255,255,.94);backdrop-filter:blur(18px);border-bottom:1px solid #ececf0}
+.qgtm-back{width:40px;height:40px;border:0;border-radius:14px;background:#f1f1f4;font-size:22px}.qgtm-head h1{font-size:20px;margin:0}.qgtm-main{max-width:720px;margin:0 auto;padding:16px 14px calc(40px + env(safe-area-inset-bottom))}
+.qgtm-card{background:#fff;border:1px solid #ececf0;border-radius:20px;padding:14px;margin-bottom:12px;box-shadow:0 8px 24px #00000008}.qgtm-row{display:flex;gap:9px;align-items:center}.qgtm-input{flex:1;min-width:0;height:46px;border:1px solid #dedee5;border-radius:14px;padding:0 13px;font-size:16px}
+.qgtm-primary,.qgtm-secondary{height:44px;border:0;border-radius:14px;padding:0 14px;font-weight:800}.qgtm-primary{background:#e6002d;color:#fff}.qgtm-secondary{background:#f2f2f5;color:#26272b}
+.qgtm-title{font-size:16px;font-weight:900}.qgtm-sub{font-size:12px;color:#7b7d86;margin-top:3px}.qgtm-table{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:center;padding:12px 0;border-top:1px solid #f0f0f3}.qgtm-table:first-child{border-top:0}
+.qgtm-actions{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}.qgtm-mini{border:0;border-radius:11px;padding:8px 10px;background:#f2f2f5;font-size:12px;font-weight:750}.qgtm-mini.red{background:#fff0f3;color:#d9002a}
+#qgQrSheet{position:fixed;inset:0;z-index:9950;background:#fff;display:none;overflow:auto}.qgtm-qrwrap{min-height:100%;display:grid;place-items:center;padding:22px}.qgtm-printcard{width:min(380px,92vw);text-align:center;border:1px solid #e6e6eb;border-radius:26px;padding:24px;background:#fff}.qgtm-brand{font-size:14px;font-weight:900;color:#e6002d;letter-spacing:.06em}.qgtm-shop{font-size:24px;font-weight:950;margin-top:8px}.qgtm-tablename{font-size:19px;font-weight:850;margin-top:4px}.qgtm-qrbox{display:grid;place-items:center;margin:18px auto;width:260px;height:260px}.qgtm-caption{font-size:14px;color:#555861}.qgtm-bigactions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:18px}.qgtm-bigactions button{height:46px;border:0;border-radius:14px;font-weight:850}.qgtm-close{background:#f2f2f5}.qgtm-save{background:#e6002d;color:#fff}.qgtm-status{font-size:12px;color:#7b7d86;margin:10px 0}
+@media(max-width:520px){#qgTableMgrBtn{right:10px;bottom:76px}.qgtm-table{grid-template-columns:1fr}.qgtm-actions{justify-content:flex-start}}
+</style>
+<button id="qgTableMgrBtn" type="button">QR โต๊ะ</button>
+<section id="qgTableMgr" aria-hidden="true">
+  <div class="qgtm-head"><button class="qgtm-back" id="qgTableMgrClose" type="button">‹</button><div><h1>โต๊ะและ QR Code</h1><div class="qgtm-sub" id="qgTmShopName">QueueGo</div></div></div>
+  <main class="qgtm-main">
+    <div class="qgtm-card">
+      <div class="qgtm-title">สร้างโต๊ะ</div><div class="qgtm-sub">สร้างโต๊ะแล้วระบบจะผูก QR Code กับร้านนี้ทันที</div>
+      <div class="qgtm-row" style="margin-top:12px"><input id="qgTmLabel" class="qgtm-input" maxlength="40" placeholder="เช่น โต๊ะ 1"><button id="qgTmAdd" class="qgtm-primary" type="button">สร้างโต๊ะ</button></div>
+    </div>
+    <div class="qgtm-card"><div class="qgtm-title">โต๊ะของร้าน</div><div id="qgTmStatus" class="qgtm-status">กำลังโหลด…</div><div id="qgTmList"></div></div>
+  </main>
+</section>
+<section id="qgQrSheet" aria-hidden="true"><div class="qgtm-qrwrap"><div class="qgtm-printcard" id="qgQrPrintCard"><div class="qgtm-brand">QueueGo</div><div class="qgtm-shop" id="qgQrShop"></div><div class="qgtm-tablename" id="qgQrTable"></div><div id="qgQrBox" class="qgtm-qrbox"></div><div class="qgtm-caption">สแกนเพื่อดูเมนูและสั่งอาหาร</div><div class="qgtm-bigactions"><button class="qgtm-close" id="qgQrClose" type="button">ปิด</button><button class="qgtm-save" id="qgQrDownload" type="button">บันทึก QR</button><button class="qgtm-close" id="qgQrPrint" type="button">พิมพ์</button><button class="qgtm-close" id="qgQrRotate" type="button">สร้าง QR ใหม่</button></div></div></div></section>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" integrity="sha512-CNgIRecGo7nphbeZ04Sc13ka07Zl4HliMEmPaM9U8KRMHPniVog9IfLhL/EnK5g8evd5L54cE1A4cN5H2z8c0g==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script>
+(function(){
+ const btn=document.getElementById('qgTableMgrBtn'),panel=document.getElementById('qgTableMgr'),list=document.getElementById('qgTmList'),status=document.getElementById('qgTmStatus');
+ const qrSheet=document.getElementById('qgQrSheet'),qrBox=document.getElementById('qgQrBox'); let ctx={shopId:null,shopName:'',tables:[],selected:null};
+ function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+ async function rpc(name,body){
+   const token=await qtGetAccessToken(); if(!token) throw new Error('กรุณาเข้าสู่ระบบร้านค้า');
+   return qtSupabaseTable('rpc/'+name,{method:'POST',accessToken:token,body:body||{}});
+ }
+ async function load(){
+   status.textContent='กำลังโหลด…'; list.innerHTML='';
+   const shopId=await rpc('pos_my_shop',{}); ctx.shopId=typeof shopId==='string'?shopId:(Array.isArray(shopId)?shopId[0]:shopId);
+   if(!ctx.shopId) throw new Error('ไม่พบร้านค้าของบัญชีนี้');
+   const token=await qtGetAccessToken();
+   const shops=await qtSupabaseTable('shop_profiles?select=id,shop_name&id=eq.'+encodeURIComponent(ctx.shopId),{accessToken:token});
+   ctx.shopName=(shops&&shops[0]&&shops[0].shop_name)||'ร้านค้า'; document.getElementById('qgTmShopName').textContent=ctx.shopName;
+   ctx.tables=await qtSupabaseTable('pos_tables?select=id,label,active,qr_token&shop_id=eq.'+encodeURIComponent(ctx.shopId)+'&order=created_at.asc',{accessToken:token})||[];
+   render(); status.textContent=ctx.tables.length?'ทั้งหมด '+ctx.tables.length+' โต๊ะ':'ยังไม่มีโต๊ะ';
+ }
+ function render(){
+   list.innerHTML=ctx.tables.map(t=>'<div class="qgtm-table"><div><b>'+esc(t.label)+'</b><div class="qgtm-sub">'+(t.active?'พร้อมใช้งาน':'ปิดใช้งาน')+'</div></div><div class="qgtm-actions"><button class="qgtm-mini" data-qr="'+t.id+'">ดู QR</button><button class="qgtm-mini" data-toggle="'+t.id+'">'+(t.active?'ปิดโต๊ะ':'เปิดโต๊ะ')+'</button></div></div>').join('');
+ }
+ function publicTableUrl(t){return new URL('../table/?q='+encodeURIComponent(t.qr_token),location.href).href}
+ function showQr(t){
+   ctx.selected=t; document.getElementById('qgQrShop').textContent=ctx.shopName;document.getElementById('qgQrTable').textContent=t.label;
+   qrBox.innerHTML=''; new QRCode(qrBox,{text:publicTableUrl(t),width:250,height:250,correctLevel:QRCode.CorrectLevel.H});
+   qrSheet.style.display='block';qrSheet.setAttribute('aria-hidden','false');
+ }
+ document.getElementById('qgTableMgrClose').onclick=()=>{panel.classList.remove('show');panel.setAttribute('aria-hidden','true')};
+ btn.onclick=async()=>{panel.classList.add('show');panel.setAttribute('aria-hidden','false');try{await load()}catch(e){status.textContent=e.message||String(e)}};
+ document.getElementById('qgTmAdd').onclick=async()=>{
+   const el=document.getElementById('qgTmLabel'),label=el.value.trim();if(!label)return;
+   try{document.getElementById('qgTmAdd').disabled=true;await rpc('pos_save_table',{p_id:null,p_label:label,p_active:true});el.value='';await load()}catch(e){alert(e.message||e)}finally{document.getElementById('qgTmAdd').disabled=false}
+ };
+ list.onclick=async e=>{
+   const q=e.target.closest('[data-qr]'),tog=e.target.closest('[data-toggle]');
+   if(q){const t=ctx.tables.find(x=>x.id===q.dataset.qr);if(t)showQr(t)}
+   if(tog){const t=ctx.tables.find(x=>x.id===tog.dataset.toggle);if(!t)return;try{await rpc('pos_save_table',{p_id:t.id,p_label:t.label,p_active:!t.active});await load()}catch(err){alert(err.message||err)}}
+ };
+ document.getElementById('qgQrClose').onclick=()=>{qrSheet.style.display='none';qrSheet.setAttribute('aria-hidden','true')};
+ document.getElementById('qgQrDownload').onclick=()=>{
+   const c=qrBox.querySelector('canvas'),img=qrBox.querySelector('img'); const url=c?c.toDataURL('image/png'):(img?img.src:null); if(!url)return;
+   const a=document.createElement('a');a.href=url;a.download=(ctx.shopName+'-'+(ctx.selected?.label||'โต๊ะ')+'-QR.png').replace(/[\\/:*?"<>|]/g,'-');document.body.appendChild(a);a.click();a.remove();
+ };
+ document.getElementById('qgQrPrint').onclick=()=>{
+   const c=qrBox.querySelector('canvas'),img=qrBox.querySelector('img'),url=c?c.toDataURL('image/png'):(img?img.src:'');if(!url)return;
+   const w=window.open('','_blank');w.document.write('<!doctype html><meta charset="utf-8"><title>QueueGo QR</title><style>body{font-family:-apple-system,BlinkMacSystemFont,"Noto Sans Thai",sans-serif;text-align:center;padding:30px}.card{display:inline-block;border:1px solid #ddd;border-radius:24px;padding:28px;min-width:320px}.brand{color:#e6002d;font-weight:900}.shop{font-size:26px;font-weight:900;margin-top:8px}.table{font-size:20px;font-weight:800;margin:5px 0 18px}img{width:260px;height:260px}.cap{margin-top:16px}</style><div class="card"><div class="brand">QueueGo</div><div class="shop">'+esc(ctx.shopName)+'</div><div class="table">'+esc(ctx.selected?.label||'')+'</div><img src="'+url+'"><div class="cap">สแกนเพื่อดูเมนูและสั่งอาหาร</div></div><script>onload=()=>print()<\/script>');w.document.close();
+ };
+ document.getElementById('qgQrRotate').onclick=async()=>{
+   if(!ctx.selected||!confirm('สร้าง QR ใหม่? QR เดิมของโต๊ะนี้จะใช้ไม่ได้'))return;
+   try{const token=await rpc('qg_table_rotate_qr',{p_table:ctx.selected.id});ctx.selected.qr_token=typeof token==='string'?token:(Array.isArray(token)?token[0]:token);showQr(ctx.selected);await load()}catch(e){alert(e.message||e)}
+ };
+ setInterval(()=>{try{const s=qtSessionRead();btn.style.display=(s&&(s.role==='shop'||s.type==='shop'))?'block':'none'}catch(e){btn.style.display='none'}},1000);
+})();
+</script>
 </body>
 </html>
