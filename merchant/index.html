@@ -2166,12 +2166,12 @@ window.renderShopModules=async function(){
   if(typeof window.qtShopLayout!=='function'){toast('ไม่สามารถเปิดหน้าตั้งค่าได้');return;}
   window.qtShopLayout('ตั้งค่า',
     '<div class="qgm-page-title-row">'+
-      '<button type="button" class="qgm-iconbtn" aria-label="กลับ" onclick="navigate(\\'dashboard\\')">←</button>'+
+      '<button type="button" class="qgm-iconbtn" aria-label="กลับ" onclick="navigate(\'dashboard\')">←</button>'+
       '<div><h2 style="margin:0">ตั้งค่าร้านค้า</h2><small style="color:#8b9098">จัดการโมดูลและทางลัดการตั้งค่าร้าน</small></div>'+
     '</div>'+
     '<section class="qgm-card qgm-settings-links">'+
-      '<button type="button" class="qgm-settings-link" onclick="navigate(\\'shop-setup\\')"><span>ข้อมูลและตำแหน่งร้าน</span><b>›</b></button>'+
-      '<button type="button" class="qgm-settings-link" onclick="navigate(\\'shop-hours\\')"><span>เวลาทำการและวันหยุด</span><b>›</b></button>'+
+      '<button type="button" class="qgm-settings-link" onclick="navigate(\'shop-setup\')"><span>ข้อมูลและตำแหน่งร้าน</span><b>›</b></button>'+
+      '<button type="button" class="qgm-settings-link" onclick="navigate(\'shop-hours\')"><span>เวลาทำการและวันหยุด</span><b>›</b></button>'+
     '</section>'+
     '<div class="qgm-section-heading"><h2>โมดูลร้านค้า</h2></div>'+
     '<section id="qt-shop-modules-list" class="qgm-settings-modules"><div class="qgm-card" style="padding:16px">กำลังโหลดข้อมูล...</div></section>',
@@ -2187,7 +2187,7 @@ window.renderShopModules=async function(){
       const r=byKey.get(m.key),status=r?.status||'disabled';
       const label=status==='enabled'?'เปิดใช้งาน':status==='trial'?'ทดลองใช้':'ปิดใช้งาน';
       const nextLabel=status==='enabled'?'ปิดใช้งาน':status==='trial'?'เปิดใช้งานเต็มรูปแบบ':'เปิดใช้งาน';
-      return '<div class="qgm-card qgm-setting-module"><div><b>'+escapeHtml(m.label)+'</b><small>'+escapeHtml(label)+'</small></div><button type="button" class="qgm-outline" onclick="cycleModule(\\''+m.key+'\\')">'+escapeHtml(nextLabel)+'</button></div>';
+      return '<div class="qgm-card qgm-setting-module"><div><b>'+escapeHtml(m.label)+'</b><small>'+escapeHtml(label)+'</small></div><button type="button" class="qgm-outline" onclick="cycleModule(\''+m.key+'\')">'+escapeHtml(nextLabel)+'</button></div>';
     }).join('');
   }catch(err){
     console.error('shop settings load failed',err);
