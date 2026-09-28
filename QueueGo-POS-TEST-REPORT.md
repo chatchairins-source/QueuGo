@@ -3,10 +3,10 @@
 ## Implemented
 
 - Merchant POS uses the existing `orders`, `order_items`, `products` and `payments` tables. DINE_IN and TAKEAWAY have zero QueueGo GP at the database layer. Existing Delivery transitions remain in their current role apps.
-- Mobile counter offers quick order entry, optional tables, product image grid, quantity and notes. Kitchen and bill lists update through Supabase Realtime. Paid bills store tendered cash, change, payment method, PAID payment status and CLOSED bill status.
+- Mobile counter offers quick order entry, optional tables, product image grid, quantity and notes. Kitchen and bill lists update through Supabase Realtime. Paid bills store tendered cash, change, payment method, PAID payment status and CLOSED bill status. An identical retry returns the paid bill without inserting another payment.
 - Owner can invite separate WAITER, CASHIER and KITCHEN accounts. Their default action rights are enforced in server RPCs. Owner-only report covers POS and Delivery, and history filters by date and channel.
 - Delivery setup checklist reads the shop's real address, coordinates, menu, hours, approval and open state. New shops must explicitly enable Delivery through a server RPC that rechecks readiness. Existing active shops retain their Delivery state. POS works while Delivery is closed.
-- The workflow, kitchen batch and Delivery opt-in refinements are in the four incremental POS migrations after the original POS migration. No table was dropped and no permanent test data was inserted.
+- The workflow, kitchen batch and Delivery opt-in refinements are in the five incremental POS migrations after the original POS migration. No table was dropped and no permanent test data was inserted.
 
 ## Verification
 
@@ -20,6 +20,7 @@
 | POS GP is zero; cash change matches server amount | Passed in that transaction |
 | Add a second kitchen batch after serving the first; original lines remain served | Passed in a rollback transaction with a real existing product |
 | Delivery opt-in readiness and open state for existing shop | Passed inside rollback, restored original state |
+| Retry the same cash payment after the first completion | Passed in rollback: one payment row and the same closed bill |
 | JavaScript syntax and UI controls | Node syntax passed; unauthenticated live login UI checked previously; post-deployment browser inspection stopped by the automated usage limit |
 
 ## Not yet verified on devices
