@@ -3050,7 +3050,7 @@ function renderAdminDashboard(user){
       <button onclick="qgAdminOpenControl('qt-sec-approval','rider')"><span>อนุมัติไรเดอร์</span><small>ตรวจใบสมัครและเอกสาร <b id="qg-home-pending-riders">…</b></small></button>
       <button onclick="qgAdminOpenControl('qt-sec-security','customer')"><span>ศูนย์ความปลอดภัย</span><small>ค้นหา ระงับ และปลดระงับบัญชี</small></button>
       <button onclick="qgAdminOpenControl('qt-sec-delivery')"><span>ควบคุมไรเดอร์</span><small>ออนไลน์ ออฟไลน์ และพักสิทธิ์</small></button>
-      <button onclick="navigate('admin-governance')"><span>ศูนย์ควบคุม</span><small>ผู้ใช้ • อนุมัติ • ตั้งค่า</small></button>
+      <button onclick="qgAdminOpenControl('qt-sec-overview')"><span>ศูนย์ควบคุม</span><small>ผู้ใช้ • อนุมัติ • ตั้งค่า</small></button>
       <button onclick="navigate('admin-orders')"><span>จัดการออเดอร์</span><small>ติดตามและจัดการรายการ</small></button>
       <button onclick="navigate('admin-cash')"><span>เส้นทางเงินสด</span><small>ไรเดอร์ • ร้านค้า • ลูกค้า</small></button>
       <button onclick="navigate('admin-gp')"><span>สรุปยอด GP</span><small>รายได้และยอดร้านค้า</small></button>
@@ -6458,11 +6458,12 @@ body:has(.qg-v23-admin-login),body:has(.qg-v23-admin-denied){padding:0}
 <style id="qg-admin-control-restore-style">
 .qg-approval-tabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:12px 0}.qg-approval-tabs button{min-height:42px;border:1px solid #f0c9d2;border-radius:12px;background:#fff;color:#a90f2e;font:inherit;font-weight:700}.qg-approval-tabs button.active{background:#df1235;color:#fff;border-color:#df1235}.qg-approval-card[hidden],#qg-approval-filter-empty[hidden]{display:none!important}
 .qt-admin-home-actions button:nth-child(-n+4){border-color:#f0d3da;background:#fff9fa}.qt-admin-home-actions button:nth-child(-n+4) span{color:#a7092b}.qt-admin-home-actions b{color:#d00e32}
+#qg-admin-refresh-note{margin:6px 0 12px;padding:8px 11px;border-radius:10px;background:#fff7f8;color:#8c263b;font-size:12px;line-height:1.5}
 @media(max-width:520px){.qt-admin-home-actions button{min-height:77px}.qg-approval-tabs button{font-size:13px}}
 </style>
 <script id="qg-admin-control-restore">
 (function(){
-  const allowed=new Set(['qt-sec-approval','qt-sec-security','qt-sec-delivery','qt-sec-shops']);
+  const allowed=new Set(['qt-sec-overview','qt-sec-approval','qt-sec-security','qt-sec-delivery','qt-sec-shops']);
   window.qgAdminApprovalRole=function(role){
     if(!['shop','rider','all'].includes(role))role='all';
     window.QG_ADMIN_APPROVAL_ROLE=role;
@@ -6471,16 +6472,32 @@ body:has(.qg-v23-admin-login),body:has(.qg-v23-admin-denied){padding:0}
     document.querySelectorAll('.qg-approval-card').forEach(card=>{const show=role==='all'||card.dataset.approvalRole===role;card.hidden=!show;if(show)count++});
     const empty=document.getElementById('qg-approval-filter-empty');if(empty)empty.hidden=count>0;
   };
-  window.qgAdminOpenControl=async function(section,role){
+  let controlRefresh=null;
+  function refreshControls(){
+    if(controlRefresh)return controlRefresh;
+    const note=document.getElementById('qg-admin-refresh-note');if(note)note.textContent='กำลังอัปเดตข้อมูลจากฐานข้อมูล…';
+    controlRefresh=qtHydrateDatabase({light:false}).then(()=>{
+      if(location.hash!=='#admin-governance')return;
+      const field=document.activeElement;
+      if(field&&/^(INPUT|TEXTAREA|SELECT)$/.test(field.tagName)){const n=document.getElementById('qg-admin-refresh-note');if(n)n.textContent='ข้อมูลใหม่พร้อมแล้ว กดรีเฟรชเมื่อกรอกข้อมูลเสร็จ';return}
+      const section=sessionStorage.getItem('qt_admin_active_tab')||'qt-sec-overview';
+      renderAdminGovernance();qtAdminTab(section);
+      if(section==='qt-sec-approval')qgAdminApprovalRole(window.QG_ADMIN_APPROVAL_ROLE||'all');
+      const updated=document.getElementById('qg-admin-refresh-note');if(updated)updated.textContent='อัปเดตข้อมูลล่าสุดจากฐานข้อมูลแล้ว';
+    }).catch(e=>{const n=document.getElementById('qg-admin-refresh-note');if(n)n.textContent='อัปเดตข้อมูลไม่สำเร็จ: '+e.message;else toast('อัปเดตข้อมูลไม่สำเร็จ: '+e.message)}).finally(()=>{controlRefresh=null});
+    return controlRefresh;
+  }
+  window.qgAdminOpenControl=function(section,role){
     if(!allowed.has(section)||currentUser()?.type!=='admin')return;
-    try{await qtHydrateDatabase({light:false})}catch(e){toast('โหลดสมาชิกจากฐานข้อมูลไม่สำเร็จ: '+e.message);return}
     try{sessionStorage.setItem('qt_admin_active_tab',section)}catch(e){}
+    if(section==='qt-sec-approval')window.QG_ADMIN_APPROVAL_ROLE=role||'all';
     if(location.hash!=='#admin-governance')navigate('admin-governance');else renderAdminGovernance();
     setTimeout(()=>{
       qtAdminTab(section);
       if(section==='qt-sec-approval')qgAdminApprovalRole(role||window.QG_ADMIN_APPROVAL_ROLE||'all');
       if(section==='qt-sec-security'&&role)qtSecurityRole(role);
-    },50);
+      refreshControls();
+    },0);
   };
   const oldDashboard=window.renderAdminDashboard;
   window.renderAdminDashboard=function(...args){
@@ -6493,7 +6510,13 @@ body:has(.qg-v23-admin-login),body:has(.qg-v23-admin-denied){padding:0}
       .catch(e=>{if(shop.isConnected)shop.textContent='โหลดไม่สำเร็จ';if(rider.isConnected)rider.textContent='โหลดไม่สำเร็จ';console.warn('Admin pending accounts:',e)});
   };
   const oldGovernance=window.renderAdminGovernance;
-  window.renderAdminGovernance=function(...args){const result=oldGovernance.apply(this,args);qgAdminApprovalRole(window.QG_ADMIN_APPROVAL_ROLE||'all');return result};
+  window.renderAdminGovernance=function(...args){
+    const result=oldGovernance.apply(this,args);
+    qgAdminApprovalRole(window.QG_ADMIN_APPROVAL_ROLE||'all');
+    const title=document.querySelector('.qt-admin-head');
+    if(title&&!document.getElementById('qg-admin-refresh-note'))title.insertAdjacentHTML('afterend','<p id="qg-admin-refresh-note" role="status">ข้อมูลที่แสดงอยู่ · กำลังตรวจข้อมูลล่าสุด</p>');
+    return result;
+  };
   const busy=new Set();
   async function accountAction(action,id){
     const admin=currentUser();if(!admin||admin.type!=='admin'||busy.has(id))return;
