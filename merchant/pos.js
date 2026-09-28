@@ -84,5 +84,6 @@
   window.qgPosInvite=async()=>{if(!can('manage_staff'))return;const bytes=crypto.getRandomValues(new Uint8Array(32));const secret=Array.from(bytes,b=>b.toString(16).padStart(2,'0')).join('');try{const role=document.getElementById('qg-pos-invite-role')?.value||'WAITER';await rpc('pos_create_role_invite',{p_secret:secret,p_staff_role:role});document.getElementById('qg-pos-invite').textContent='รหัสเชิญ: '+secret+' (คัดลอกส่งให้พนักงาน เก็บไว้ตอนนี้เท่านั้น)'}catch(e){message(e)}};
   window.qgPosStaffEdit=async id=>{if(!can('manage_staff'))return;try{const rows=await request('pos_staff?select=user_id,display_name,staff_role,active,permissions&user_id=eq.'+id),s=rows?.[0];if(!s)return;const role=prompt('หน้าที่ WAITER / CASHIER / KITCHEN',s.staff_role);if(!role)return;const active=confirm('เปิดใช้งานบัญชี '+s.display_name+'?');await rpc('pos_set_staff_role',{p_user:id,p_role:role.trim().toUpperCase(),p_active:active});await load()}catch(e){message(e)}};
   window.addEventListener('visibilitychange',()=>{if(!document.hidden&&root()==='pos')window.qgPosReload()});
-  window.addEventListener('hashchange',()=>{if(root()!=='pos')disconnect()});
+  window.addEventListener('hashchange',()=>{if(root()==='pos'||root()==='pos-staff-join')queueMicrotask(()=>window.qtShopRoute());else disconnect()});
+  if(root()==='pos'||root()==='pos-staff-join')queueMicrotask(()=>window.qtShopRoute());
 })();
