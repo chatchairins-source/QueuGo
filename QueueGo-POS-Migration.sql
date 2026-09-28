@@ -113,6 +113,7 @@ create policy pos_staff_read on public.pos_staff for select to authenticated usi
 create policy pos_staff_manager_read on public.pos_staff for select to authenticated using(shop_id=public.pos_my_shop() and public.pos_allowed('manage_staff'));
 create policy pos_invites_owner_read on public.pos_invites for select to authenticated using(shop_id=public.pos_my_shop() and public.pos_is_owner());
 create policy pos_events_owner_read on public.pos_events for select to authenticated using(shop_id=public.pos_my_shop() and public.pos_is_owner());
+create policy pos_events_admin_read on public.pos_events for select to authenticated using(public.is_active_admin());
 create policy pos_orders_read on public.orders for select to authenticated using(sales_channel='POS' and shop_id=public.pos_my_shop());
 create policy pos_items_read on public.order_items for select to authenticated using(exists(select 1 from public.orders o where o.id=order_id and o.sales_channel='POS' and o.shop_id=public.pos_my_shop()));
 create policy pos_payments_read on public.payments for select to authenticated using(exists(select 1 from public.orders o where o.id=order_id and o.sales_channel='POS' and o.shop_id=public.pos_my_shop()));
@@ -328,12 +329,17 @@ end $$;
 
 -- POS activity stays out of Delivery GP settlements.
 create or replace function public.pos_sales_report(p_days integer default 1)
-returns jsonb language sql stable security definer set search_path=public,pg_temp as $$
+returns jsonb language plpgsql stable security definer set search_path=public,pg_temp as $$
+declare v_report jsonb;
+begin
+ if not public.pos_allowed('view_sales') then raise exception 'sales report permission denied'; end if;
  select jsonb_build_object('DINE_IN',coalesce(sum(total_amount) filter(where order_type='DINE_IN'),0),
  'TAKEAWAY',coalesce(sum(total_amount) filter(where order_type='TAKEAWAY'),0),
- 'orders',count(*),'gp',0) from public.orders where shop_id=public.pos_my_shop()
+ 'orders',count(*),'gp',0) into v_report from public.orders where shop_id=public.pos_my_shop()
  and sales_channel='POS' and payment_status='PAID' and status='completed'
- and created_at>=(((now() at time zone 'Asia/Bangkok')::date-(least(greatest(p_days,1),30)-1))::timestamp at time zone 'Asia/Bangkok')
+ and created_at>=(((now() at time zone 'Asia/Bangkok')::date-(least(greatest(p_days,1),30)-1))::timestamp at time zone 'Asia/Bangkok');
+ return v_report;
+end
 $$;
 
 create or replace function public.pos_apply_discount(p_order uuid,p_amount numeric)
