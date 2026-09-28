@@ -18,6 +18,7 @@
 | POS tables have RLS; POS RPCs unavailable to anon | Passed by SQL inspection |
 | Active shop owner can resolve own shop and read POS report | Passed using a read-only transaction with an existing active shop identity |
 | Authenticated role without a user session cannot resolve a shop or create a POS bill | Passed |
+| Authenticated role without POS sales permission cannot call the sales-report RPC | Passed; owner access checked separately |
 | POS and GP columns, trigger, Delivery price function and Realtime publication present | Passed by SQL inspection |
 | Customer and Merchant inline JavaScript plus POS module syntax | Passed with Node parser |
 
