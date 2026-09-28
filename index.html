@@ -1485,8 +1485,8 @@ function qgCoordinateProblem(latitude,longitude,thailandOnly=false){
   const lat=Number(latitude),lng=Number(longitude);
   if(!Number.isFinite(lat)||!Number.isFinite(lng)) return 'not_finite';
   if(lat===0&&lng===0) return 'zero';
-  if(lat < -90 || lat > 90 || lng < -180 || lng > 180) return 'out_of_range';
   if(thailandOnly && lat>=97 && lat<=106 && lng>=5 && lng<=21) return 'swapped';
+  if(lat < -90 || lat > 90 || lng < -180 || lng > 180) return 'out_of_range';
   if(thailandOnly && !(lat>=5 && lat<=21 && lng>=97 && lng<=106)) return 'outside_thailand';
   return '';
 }
