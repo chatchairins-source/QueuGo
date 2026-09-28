@@ -1,7 +1,7 @@
 /* QueueGo counter sales — Supabase is the only source of order and payment data. */
 (()=>{
   'use strict';
-  const state={shop:null,owner:false,staff:null,staffRows:[],tables:[],products:[],orders:[],items:[],deliveryOrders:[],deliveryItems:[],selected:null,mode:'DINE_IN',table:null,noTable:false,view:'counter',channel:null,client:null,loading:false,pendingCreate:null};
+  const state={shop:null,shopName:'',owner:false,staff:null,staffRows:[],tables:[],products:[],orders:[],items:[],deliveryOrders:[],deliveryItems:[],selected:null,mode:'DINE_IN',table:null,noTable:false,view:'counter',channel:null,client:null,loading:false,pendingCreate:null};
   const requestStore='queuego-pos-pending-create';
   try{state.pendingCreate=JSON.parse(sessionStorage.getItem(requestStore)||'null')}catch(_){sessionStorage.removeItem(requestStore)}
   const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -24,6 +24,8 @@
     const noteDraft=document.getElementById('qg-pos-note')?.value||'';
     const searchDraft=document.getElementById('qg-pos-search')?.value||'';
     const shop=await rpc('pos_my_shop',{});if(!shop)throw Error('บัญชีนี้ยังไม่มีสิทธิ์ POS ของร้าน');state.shop=shop;
+    const profileRows=await request('shop_profiles?select=shop_name&id=eq.'+encodeURIComponent(shop));
+    state.shopName=profileRows?.[0]?.shop_name||'ร้านค้า';
     state.owner=await rpc('pos_is_owner',{});
     const [tables,products,orders,staff,deliveryOrders,openBills]=await Promise.all([
       request('pos_tables?select=id,label,active,qr_token&shop_id=eq.'+shop+'&order=label.asc'),
@@ -139,8 +141,8 @@
     const t=state.tables.find(x=>x.id===id);if(!t?.qr_token)return message('ยังไม่มี QR สำหรับโต๊ะนี้ กรุณาโหลดหน้าใหม่');
     document.querySelector('.qg-pos-qr-overlay')?.remove();
     const url=new URL('../table-order.html',location.href);url.hash='scan/'+t.qr_token;
-    const div=document.createElement('section');div.className='qg-pos-qr-overlay qg-pos-table-overlay';
-    div.innerHTML=`<div class="qg-pos-qr-card"><h2>QueueGo · ${esc(t.label)}</h2><p>ติด QR นี้ที่โต๊ะ ลูกค้าสแกนเพื่อสั่งอาหาร</p><div class="qg-pos-qr-image" id="qg-pos-qr-image"></div><p class="qg-pos-qr-link">${esc(url.href)}</p><div class="qg-pos-qr-buttons"><button onclick="qgPosQRPrint()">พิมพ์</button><button onclick="qgPosQRDownload()">ดาวน์โหลด</button><button onclick="qgPosQRRotate('${t.id}')">สร้าง QR ใหม่</button><button onclick="this.closest('.qg-pos-qr-overlay').remove()">ปิด</button></div><small>สร้าง QR ใหม่จะยกเลิก QR เดิมและ session ที่ยังไม่หมดอายุ</small></div>`;
+    const div=document.createElement('section');div.className='qg-pos-qr-overlay qg-pos-table-overlay';div.dataset.tableId=t.id;
+    div.innerHTML=`<div class="qg-pos-qr-card"><div style="font-size:13px;font-weight:900;color:#ed0a31;letter-spacing:.06em">QueueGo</div><h2 style="margin:7px 0 2px">${esc(state.shopName)}</h2><h3 style="margin:0 0 8px;font-size:18px">${esc(t.label)}</h3><p>สแกนเพื่อดูเมนูและสั่งอาหาร</p><div class="qg-pos-qr-image" id="qg-pos-qr-image"></div><p class="qg-pos-qr-link">${esc(url.href)}</p><div class="qg-pos-qr-buttons"><button onclick="qgPosQRPrint()">พิมพ์</button><button onclick="qgPosQRDownload()">บันทึก QR</button><button onclick="qgPosQRRotate('${t.id}')">สร้าง QR ใหม่</button><button onclick="this.closest('.qg-pos-qr-overlay').remove()">ปิด</button></div><small>QR นี้ผูกกับ ${esc(state.shopName)} · ${esc(t.label)} โดยตรง</small></div>`;
     document.body.append(div);
     try{
       if(!window.QRCode)await new Promise((resolve,reject)=>{const script=document.createElement('script');script.src='https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js';script.onload=resolve;script.onerror=()=>reject(Error('โหลดตัวสร้าง QR ไม่สำเร็จ'));document.head.append(script)});
@@ -148,7 +150,7 @@
     }catch(e){div.querySelector('#qg-pos-qr-image').textContent=e.message}
   };
   window.qgPosQRPrint=()=>window.print();
-  window.qgPosQRDownload=()=>{const img=document.querySelector('.qg-pos-qr-image img'),canvas=document.querySelector('.qg-pos-qr-image canvas');const src=img?.src||canvas?.toDataURL('image/png');if(!src)return message('ยังสร้าง QR ไม่สำเร็จ');const a=document.createElement('a');a.href=src;a.download='QueueGo-table-QR.png';a.click()};
+  window.qgPosQRDownload=()=>{const img=document.querySelector('.qg-pos-qr-image img'),canvas=document.querySelector('.qg-pos-qr-image canvas');const src=img?.src||canvas?.toDataURL('image/png');if(!src)return message('ยังสร้าง QR ไม่สำเร็จ');const t=state.tables.find(x=>x.id===document.querySelector('.qg-pos-qr-overlay')?.dataset?.tableId)||null;const safe=(state.shopName+'-'+(t?.label||'โต๊ะ')+'-QR').replace(/[\\/:*?\"<>|]/g,'-');const a=document.createElement('a');a.href=src;a.download=safe+'.png';a.click()};
   window.qgPosQRRotate=async id=>{if(!confirm('สร้าง QR ใหม่? QR เดิมและสิทธิ์สั่งอาหารที่ยังไม่หมดอายุจะใช้ไม่ได้'))return;try{await rpc('qg_table_rotate_qr',{p_table:id});document.querySelector('.qg-pos-qr-overlay')?.remove();await load();window.qgPosQR(id)}catch(e){message(e)}};
   window.qgPosEditTable=id=>{
     if(!can('manage_staff')||state.loading)return message('บัญชีนี้ไม่มีสิทธิ์จัดการโต๊ะ');
