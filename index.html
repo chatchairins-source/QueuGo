@@ -1324,13 +1324,13 @@ async function qtHydratePublicStorefront(){
     qtMarkClean('qt_users');
 
     try{
-      const ps=await qtSupabaseTable('products?select=id,shop_id,name,description,price,image,available');
+      const ps=await qtSupabaseTable('products?select=id,shop_id,name,description,price,delivery_price,image,available,delivery_available');
       const profileToUser=new Map(activeShops.map(x=>[String(x.id),String(x.user_id||x.id)]));
       QT_DB_CACHE.qt_products=(Array.isArray(ps)?ps:[]).map(p=>Object.assign({
         id:p.id,shopId:profileToUser.get(String(p.shop_id))||p.shop_id,name:p.name,
         description:p.description,price:Number(p.price||0),image:p.image||p.image_url||'',image_url:p.image_url||p.image||'',available:p.available!==false,
         createdAt:p.created_at?new Date(p.created_at).getTime():Date.now()
-      },p.metadata||{}));
+      },p.metadata||{},{price:Number(p.delivery_price??p.price??0),available:p.available!==false&&p.delivery_available!==false}));
       qtMarkClean('qt_products');
     }catch(e){
       console.warn('[QueueGo] public products read failed:',e);
@@ -1422,7 +1422,7 @@ async function qtHydrateDatabase(opts){
     }catch(e){ if(!Array.isArray(QT_DB_CACHE.qt_notifications)) QT_DB_CACHE.qt_notifications=[]; }
     try{
       const ps=await qtSupabaseTable('products?select=*',{accessToken:token});
-      QT_DB_CACHE.qt_products=(Array.isArray(ps)?ps:[]).map(p=>Object.assign({id:p.id,shopId:profileMaps.shopById.get(String(p.shop_id))||p.shop_id,shopProfileId:p.shop_id,name:p.name,description:p.description,price:Number(p.price||0),image:p.image||p.image_url||'',image_url:p.image_url||p.image||'',available:p.available!==false,createdAt:p.created_at?new Date(p.created_at).getTime():Date.now()},p.metadata||{}));
+      QT_DB_CACHE.qt_products=(Array.isArray(ps)?ps:[]).map(p=>Object.assign({id:p.id,shopId:profileMaps.shopById.get(String(p.shop_id))||p.shop_id,shopProfileId:p.shop_id,name:p.name,description:p.description,price:Number(p.price||0),image:p.image||p.image_url||'',image_url:p.image_url||p.image||'',available:p.available!==false&&p.delivery_available!==false,createdAt:p.created_at?new Date(p.created_at).getTime():Date.now()},p.metadata||{},{price:Number(p.delivery_price??p.price??0),available:p.available!==false&&p.delivery_available!==false}));
     }catch(e){ if(!Array.isArray(QT_DB_CACHE.qt_products)) QT_DB_CACHE.qt_products=[]; }
     try{
       const pr=await qtSupabaseTable('promotions?select=*',{accessToken:token});
