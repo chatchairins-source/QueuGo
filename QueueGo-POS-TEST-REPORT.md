@@ -2,32 +2,27 @@
 
 ## Implemented
 
-- Merchant POS entry, tables, counter bill, kitchen queue, payment, receipt, staff invitation and channel-specific product settings.
-- Supabase Auth staff signup/signin and one-use invitation; staff membership belongs to one shop. Staff rights are stored on the server.
-- POS orders use the existing `orders`, `order_items`, `products`, and `payments` tables. `pos_tables`, `pos_staff`, `pos_invites`, and `pos_events` are new.
-- DINE_IN and TAKEAWAY GP is forced to zero by the database trigger and integrity constraint. Legacy Delivery `shopping` orders remain unchanged; new Delivery orders carry `sales_channel=QUEUEGO_DELIVERY`.
-- Server RPCs lock bill rows, read current product prices, enforce transitions and permissions, and calculate the final amount. POS financial records cannot be written directly by shop or staff via the Data API.
-- PostgreSQL Realtime is enabled for orders, tables, staff and order items. The POS page subscribes to the current shop's changes and fetches the latest database state.
+- Merchant POS uses the existing `orders`, `order_items`, `products` and `payments` tables. DINE_IN and TAKEAWAY have zero QueueGo GP at the database layer. Existing Delivery transitions remain in their current role apps.
+- Mobile counter offers quick order entry, optional tables, product image grid, quantity and notes. Kitchen and bill lists update through Supabase Realtime. Paid bills store tendered cash, change, payment method, PAID payment status and CLOSED bill status.
+- Owner can invite separate WAITER, CASHIER and KITCHEN accounts. Their default action rights are enforced in server RPCs. Owner-only report covers POS and Delivery, and history filters by date and channel.
+- Delivery setup checklist reads the shop's real address, coordinates, menu, hours, approval and open state. POS works while Delivery is closed.
+- The POS workflow refinement is in `QueueGo-POS-Workflow-Migration.sql`, after the original POS migration. No table was dropped and no permanent test data was inserted.
 
-## Checks performed
+## Verification
 
 | Check | Result |
 | --- | --- |
-| Existing schema, constraints, policies and triggers inspected before migration | Passed |
-| Migration applied to the connected QueueGo Supabase project | Passed |
-| POS tables have RLS; POS RPCs unavailable to anon | Passed by SQL inspection |
-| Active shop owner can resolve own shop and read POS report | Passed using a read-only transaction with an existing active shop identity |
-| Authenticated role without a user session cannot resolve a shop or create a POS bill | Passed |
-| Authenticated role without POS sales permission cannot call the sales-report RPC | Passed; owner access checked separately |
-| POS and GP columns, trigger, Delivery price function and Realtime publication present | Passed by SQL inspection |
-| Customer and Merchant inline JavaScript plus POS module syntax | Passed with Node parser |
+| Live schema, ownership, RLS, Realtime publication and function signatures reviewed | Passed |
+| Both POS migrations applied to connected Supabase project | Passed |
+| Anonymous role denied execution of critical POS RPCs | Passed, SQL privilege query |
+| Existing active owner resolves only own shop and reads server report | Passed, authenticated-role transaction |
+| Existing real product: create DINE_IN without table → send → cook → ready → serve → pay cash → CLOSED | Passed inside a rollback transaction; no order persisted |
+| POS GP is zero; cash change matches server amount | Passed in that transaction |
+| JavaScript syntax and UI controls | Node syntax passed; unauthenticated live login UI checked previously |
 
-## Not yet exercised with a real transaction
+## Not yet verified on devices
 
-- No POS tables, staff accounts, or POS orders existed at verification time. No sample orders or staff were added to the live database. A real owner and staff still need to configure their tables and run a complete order to verify invite, simultaneous screens, kitchen transitions, payment and receipt in their own devices.
-- Realtime cross-device delivery and the iPhone payment UI were not verified with two authenticated devices.
-- Legacy Delivery orders still use `order_type=shopping` to preserve Rider, proof, and cash transitions. They are identified as QueueGo Delivery by the existing type and `sales_channel` for new orders. Converting the legacy order type to the literal `DELIVERY` requires a separate coordinated migration of Rider and Admin checks.
-
-## Operational note
-
-Open an approved merchant account, choose **หน้าร้าน POS**, add actual tables under **พนักงาน**, and add actual products in **สินค้า**. Create a one-use staff invitation and register each employee through the merchant login page. Staff have order and kitchen access by default; the owner enables other permissions individually. The POS report counts paid bills only and never includes GP.
+- There are currently no POS staff accounts or persistent POS orders. Staff invitation, role-specific screens and multiple-device Realtime have not been exercised by real signed-in people.
+- Payment dialog, table turnover, printing and Delivery checklist need an authenticated mobile/tablet check. The database transaction did not test a real device or payment provider; cash is recorded as a cashier confirmation.
+- New order additions after a kitchen batch is sent still show the full bill in the kitchen card. Per-line kitchen batches are not implemented, so a busy kitchen must check item notes and quantities before preparing a repeat order.
+- Delivery retains the legacy `order_type=shopping` because Rider/Admin rely on that value; new Delivery orders also carry `sales_channel=QUEUEGO_DELIVERY`. Coordinating a literal `DELIVERY` type requires a separate cross-role migration.
