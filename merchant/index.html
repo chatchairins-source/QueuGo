@@ -229,9 +229,10 @@ async function qtPersistChat(orderId,messages){
 
 function uid(){ return (window.crypto&&crypto.randomUUID) ? crypto.randomUUID() : ('00000000-0000-4000-8000-'+Math.random().toString(16).slice(2,14).padEnd(12,'0')); }
 
-function qtSessionRead(){ try{return JSON.parse(localStorage.getItem('qt_session')||sessionStorage.getItem('qt_session')||'null')}catch(e){return null} }
-function qtSessionWrite(s){ try{localStorage.setItem('qt_session',JSON.stringify(s));sessionStorage.removeItem('qt_session')}catch(e){try{sessionStorage.setItem('qt_session',JSON.stringify(s))}catch(_){}} }
-function qtSessionClear(){ try{localStorage.removeItem('qt_session');sessionStorage.removeItem('qt_session')}catch(e){} }
+const QT_SHOP_SESSION_KEY='qg_merchant_session_v1';
+function qtSessionRead(){ try{let raw=localStorage.getItem(QT_SHOP_SESSION_KEY)||sessionStorage.getItem(QT_SHOP_SESSION_KEY);if(!raw){const legacy=localStorage.getItem('qt_session')||sessionStorage.getItem('qt_session');if(legacy){const old=JSON.parse(legacy);if(old?.role==='shop'||old?.role==='admin'){raw=legacy;localStorage.setItem(QT_SHOP_SESSION_KEY,legacy);localStorage.removeItem('qt_session');sessionStorage.removeItem('qt_session')}}}return JSON.parse(raw||'null')}catch(e){return null} }
+function qtSessionWrite(s){ try{localStorage.setItem(QT_SHOP_SESSION_KEY,JSON.stringify(s));sessionStorage.removeItem(QT_SHOP_SESSION_KEY)}catch(e){try{sessionStorage.setItem(QT_SHOP_SESSION_KEY,JSON.stringify(s))}catch(_){}} }
+function qtSessionClear(){ try{localStorage.removeItem(QT_SHOP_SESSION_KEY);sessionStorage.removeItem(QT_SHOP_SESSION_KEY)}catch(e){} }
 function qtAccessToken(){ return qtSessionRead()?.accessToken || ''; }
 function qtJwtExpiryMs(token){
   try{

@@ -1058,9 +1058,10 @@ async function qtPersistChat(orderId,messages){
 }
 function uid(){ return (window.crypto&&crypto.randomUUID) ? crypto.randomUUID() : ('00000000-0000-4000-8000-'+Math.random().toString(16).slice(2,14).padEnd(12,'0')); }
 
-function qtSessionRead(){ try{return JSON.parse(sessionStorage.getItem('qt_session')||'null')}catch(e){return null} }
-function qtSessionWrite(s){ try{sessionStorage.setItem('qt_session',JSON.stringify(s));}catch(e){} }
-function qtSessionClear(){ try{sessionStorage.removeItem('qt_session');}catch(e){} }
+const QT_ADMIN_SESSION_KEY='qg_admin_session_v1';
+function qtSessionRead(){ try{let raw=localStorage.getItem(QT_ADMIN_SESSION_KEY)||sessionStorage.getItem(QT_ADMIN_SESSION_KEY);if(!raw){const legacy=sessionStorage.getItem('qt_session');if(legacy){const old=JSON.parse(legacy);if(old?.role==='admin'){raw=legacy;localStorage.setItem(QT_ADMIN_SESSION_KEY,legacy);sessionStorage.removeItem('qt_session')}}}return JSON.parse(raw||'null')}catch(e){return null} }
+function qtSessionWrite(s){ try{localStorage.setItem(QT_ADMIN_SESSION_KEY,JSON.stringify(s));sessionStorage.removeItem(QT_ADMIN_SESSION_KEY)}catch(e){try{sessionStorage.setItem(QT_ADMIN_SESSION_KEY,JSON.stringify(s))}catch(_){}} }
+function qtSessionClear(){ try{localStorage.removeItem(QT_ADMIN_SESSION_KEY);sessionStorage.removeItem(QT_ADMIN_SESSION_KEY)}catch(e){} }
 function qtAccessToken(){ return qtSessionRead()?.accessToken || ''; }
 function qtJwtExpiryMs(token){
   try{
@@ -1088,7 +1089,7 @@ async function qtGetAccessToken(forceRefresh=false){
       });
       const data=await r.json().catch(()=>({}));
       if(!r.ok || !data.access_token) throw new Error(data.error_description||data.msg||data.message||'SESSION_REFRESH_FAILED');
-      const next={...s,accessToken:data.access_token,refreshToken:data.refresh_token||s.refreshToken,expiresAt:data.expires_at||Math.floor(qtJwtExpiryMs(data.access_token)/1000)||null};
+      const next={...s,accessToken:data.access_token,refreshToken:data.refresh_token||s.refreshToken,expiresAt:data.expires_at ? Number(data.expires_at)*1000 : (qtJwtExpiryMs(data.access_token)||null)};
       qtSessionWrite(next);
       return next.accessToken;
     }finally{ QT_AUTH_REFRESH_PROMISE=null; }

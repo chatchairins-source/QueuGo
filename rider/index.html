@@ -219,7 +219,8 @@ function writeSession(s){ try{ localStorage.setItem(SESSION_KEY, JSON.stringify(
 function clearSession(){ try{ localStorage.removeItem(SESSION_KEY); }catch(e){} }
 async function getAccessToken(){
   const s = readSession(); if(!s) return '';
-  const exp = Number(s.expiresAt||0) || jwtExpiryMs(s.accessToken);
+  const rawExp=Number(s.expiresAt||0);
+  const exp = rawExp ? (rawExp<1e12 ? rawExp*1000 : rawExp) : jwtExpiryMs(s.accessToken);
   if(exp - Date.now() > 60000) return s.accessToken;
   if(!s.refreshToken) return s.accessToken;
   try{
@@ -227,11 +228,11 @@ async function getAccessToken(){
       method:'POST', headers:sbHeaders(), body:JSON.stringify({refresh_token:s.refreshToken})
     });
     const data = await r.json().catch(()=>({}));
-    if(!r.ok || !data.access_token) return s.accessToken;
+    if(!r.ok || !data.access_token) throw new Error(data.error_description||data.message||'SESSION_REFRESH_FAILED');
     const next = {...s, accessToken:data.access_token, refreshToken:data.refresh_token||s.refreshToken, expiresAt:(data.expires_at?data.expires_at*1000:0)};
     writeSession(next);
     return next.accessToken;
-  }catch(e){ return s.accessToken; }
+  }catch(e){ if(exp>Date.now())return s.accessToken; throw e; }
 }
 function esc(v){ return String(v??'').replace(/[&<>"']/g, ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[ch])); }
 function toast(msg){
@@ -352,7 +353,12 @@ async function resumeSession(){
     if(u.status!=='active'){ renderPending(u,'ใบสมัครของคุณอยู่ระหว่างตรวจสอบ'); return; }
     await loadRiderProfile();
     renderStage();
-  }catch(e){ console.error(e); clearSession(); renderLogin('เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่'); }
+  }catch(e){
+    console.error('Rider session restore failed',e);
+    /* A lost connection must not delete a still valid refresh token. */
+    document.getElementById('app').innerHTML='<div class="screen-center"><div class="pending-card"><h1>เชื่อมต่อไม่ได้</h1><p>บัญชียังอยู่ในเครื่อง กรุณาต่ออินเทอร์เน็ตแล้วลองใหม่</p><button type="button" class="btn btn-brand" id="qg-rider-retry">ลองใหม่</button></div></div>';
+    document.getElementById('qg-rider-retry').onclick=()=>resumeSession();
+  }
 }
 async function loadRiderProfile(){
   const token = await getAccessToken();
