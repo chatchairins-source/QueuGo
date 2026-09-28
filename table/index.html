@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#ffffff">
+<title>QueueGo — สั่งอาหารที่โต๊ะ</title>
+<style>
+:root{--red:#e6002d;--ink:#202124;--muted:#757780;--line:#ececf0;--bg:#f7f7f9;--safeB:env(safe-area-inset-bottom,0px)}
+*{box-sizing:border-box}html,body{margin:0;min-height:100%;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Noto Sans Thai",sans-serif;background:var(--bg);color:var(--ink)}
+button,input,textarea{font:inherit}.app{max-width:720px;margin:0 auto;min-height:100dvh;padding-bottom:calc(104px + var(--safeB))}
+.head{position:sticky;top:0;z-index:10;background:rgba(255,255,255,.95);backdrop-filter:blur(18px);padding:calc(12px + env(safe-area-inset-top)) 16px 12px;border-bottom:1px solid var(--line)}
+.brand{font-size:12px;font-weight:900;color:var(--red);letter-spacing:.05em}.shop{font-size:22px;font-weight:950;margin-top:2px}.table{font-size:13px;color:var(--muted);margin-top:2px}
+.state{margin:14px;background:#fff;border:1px solid var(--line);border-radius:22px;padding:20px;text-align:center}.state h2{font-size:20px;margin:0 0 8px}.state p{font-size:13px;line-height:1.6;color:var(--muted);margin:0}.state button{margin-top:14px;height:46px;border:0;border-radius:14px;padding:0 18px;background:var(--red);color:#fff;font-weight:850}
+.menu{padding:8px 14px 20px}.item{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;background:#fff;border:1px solid var(--line);border-radius:18px;padding:14px;margin-bottom:10px}
+.item h3{font-size:16px;margin:0}.desc{font-size:12px;color:var(--muted);margin-top:4px;line-height:1.45}.price{font-weight:900;margin-top:8px}.add{align-self:center;width:42px;height:42px;border:0;border-radius:14px;background:#fff0f3;color:var(--red);font-size:25px}
+.cartbar{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(10px + var(--safeB));z-index:20;width:min(692px,calc(100% - 20px));background:#1f2024;color:white;border-radius:20px;padding:10px 12px;display:none;align-items:center;gap:10px;box-shadow:0 12px 34px #0003}
+.cartbar.show{display:flex}.cartcopy{min-width:0;flex:1}.cartcopy b{display:block;font-size:14px}.cartcopy small{font-size:11px;color:#c8c9ce}.checkout{height:46px;border:0;border-radius:14px;padding:0 16px;background:var(--red);color:#fff;font-weight:900}
+.sheet{position:fixed;inset:0;z-index:30;background:rgba(0,0,0,.28);display:none;align-items:flex-end}.sheet.show{display:flex}.sheetbox{width:100%;max-height:82dvh;overflow:auto;background:#fff;border-radius:24px 24px 0 0;padding:18px 14px calc(18px + var(--safeB))}
+.sheethead{display:flex;justify-content:space-between;align-items:center}.sheethead h2{margin:0}.close{width:38px;height:38px;border:0;border-radius:12px;background:#f1f1f4}.cartrow{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;padding:12px 0;border-bottom:1px solid var(--line)}
+.qty{display:flex;align-items:center;gap:8px}.qty button{width:32px;height:32px;border:0;border-radius:10px;background:#f1f1f4}.total{display:flex;justify-content:space-between;font-size:18px;font-weight:900;padding:16px 0}.confirm{width:100%;height:50px;border:0;border-radius:15px;background:var(--red);color:#fff;font-weight:900}
+.note{width:100%;min-height:72px;border:1px solid var(--line);border-radius:14px;padding:10px;margin:10px 0;resize:vertical}
+.toast{position:fixed;left:50%;bottom:92px;transform:translate(-50%,20px);opacity:0;pointer-events:none;background:#1f2024;color:#fff;border-radius:14px;padding:10px 14px;font-size:12px;transition:.2s;z-index:50}.toast.show{opacity:1;transform:translate(-50%,0)}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="head"><div class="brand">QueueGo</div><div class="shop" id="shopName">กำลังเปิดเมนู…</div><div class="table" id="tableName"></div></header>
+  <section id="state" class="state"><h2>กำลังตรวจสอบโต๊ะ</h2><p>กรุณาอนุญาตตำแหน่งที่ตั้ง เพื่อยืนยันว่าคุณอยู่บริเวณร้าน</p></section>
+  <main id="menu" class="menu" hidden></main>
+</div>
+<div id="cartBar" class="cartbar"><div class="cartcopy"><b id="cartCount">0 รายการ</b><small id="cartTotal">0 บาท</small></div><button id="openCart" class="checkout">ดูตะกร้า</button></div>
+<div id="sheet" class="sheet"><div class="sheetbox"><div class="sheethead"><h2>รายการสั่งอาหาร</h2><button id="closeSheet" class="close">×</button></div><div id="cartRows"></div><textarea id="orderNote" class="note" maxlength="500" placeholder="หมายเหตุถึงร้าน (ถ้ามี)"></textarea><div class="total"><span>รวม</span><span id="sheetTotal">0 บาท</span></div><button id="confirmOrder" class="confirm">ส่งออเดอร์</button></div></div>
+<div id="toast" class="toast"></div>
+<script>
+const SUPABASE_URL='https://pkypiqhlrmzocysgeqew.supabase.co';
+const SUPABASE_KEY='sb_publishable_Vn2Il4jp-iBtzNsGRNY8Lg_Tpvk2Vre';
+const qs=new URLSearchParams(location.search), qr=qs.get('q');
+const stateEl=document.getElementById('state'),menuEl=document.getElementById('menu');
+let sessionId=null,deviceKey=null,catalog=[],cart=new Map(),shopName='',tableName='';
+function toast(t){const e=document.getElementById('toast');e.textContent=t;e.classList.add('show');setTimeout(()=>e.classList.remove('show'),1800)}
+function money(n){return Number(n||0).toLocaleString('th-TH',{minimumFractionDigits:0,maximumFractionDigits:2})+' บาท'}
+function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+async function rpc(name,body){
+ const r=await fetch(SUPABASE_URL+'/rest/v1/rpc/'+name,{method:'POST',headers:{apikey:SUPABASE_KEY,'Content-Type':'application/json'},body:JSON.stringify(body||{})});
+ const data=await r.json().catch(()=>null); if(!r.ok) throw new Error(data?.message||'ไม่สามารถเชื่อมต่อระบบได้'); return data;
+}
+function getDeviceKey(){
+ const k='qg_table_device_key_v1';let v=localStorage.getItem(k);
+ if(!v){v=crypto.randomUUID();localStorage.setItem(k,v)} return v;
+}
+function locate(){return new Promise((res,rej)=>navigator.geolocation?navigator.geolocation.getCurrentPosition(p=>res({lat:p.coords.latitude,lng:p.coords.longitude}),()=>rej(new Error('กรุณาอนุญาตตำแหน่งที่ตั้งเพื่อสั่งอาหาร')), {enableHighAccuracy:true,timeout:12000,maximumAge:15000}):rej(new Error('อุปกรณ์นี้ไม่รองรับการระบุตำแหน่ง')))}
+function showError(msg){
+ menuEl.hidden=true;document.getElementById('cartBar').classList.remove('show');
+ stateEl.hidden=false;stateEl.innerHTML='<h2>ยังไม่สามารถสั่งอาหารได้</h2><p>'+esc(msg)+'</p><button onclick="location.reload()">ลองอีกครั้ง</button>';
+}
+async function boot(){
+ if(!qr){showError('QR Code ไม่ถูกต้อง กรุณาสแกน QR ที่โต๊ะอีกครั้ง');return}
+ try{
+   deviceKey=getDeviceKey(); const pos=await locate();
+   const scan=await rpc('qg_table_scan',{p_qr_token:qr,p_device_key:deviceKey,p_lat:pos.lat,p_lng:pos.lng});
+   sessionId=scan.session_id;shopName=scan.shop_name||'ร้านค้า';tableName=scan.table_name||'';
+   document.getElementById('shopName').textContent=shopName;document.getElementById('tableName').textContent=tableName;
+   catalog=await rpc('qg_table_catalog',{p_session:sessionId,p_device_key:deviceKey});
+   stateEl.hidden=true;menuEl.hidden=false;renderMenu();
+ }catch(e){showError(e.message||String(e))}
+}
+function renderMenu(){
+ if(!Array.isArray(catalog)||!catalog.length){menuEl.innerHTML='<div class="state"><h2>ยังไม่มีเมนู</h2><p>ร้านยังไม่ได้เปิดสินค้าให้สั่งผ่านโต๊ะ</p></div>';return}
+ menuEl.innerHTML=catalog.map(p=>'<article class="item"><div><h3>'+esc(p.name)+'</h3>'+(p.description?'<div class="desc">'+esc(p.description)+'</div>':'')+'<div class="price">'+money(p.price)+'</div></div><button class="add" data-add="'+p.id+'">+</button></article>').join('');
+}
+menuEl.onclick=e=>{const b=e.target.closest('[data-add]');if(!b)return;const p=catalog.find(x=>x.id===b.dataset.add);if(!p)return;const row=cart.get(p.id)||{p,qty:0};row.qty++;cart.set(p.id,row);renderCart();toast('เพิ่ม '+p.name)}
+function renderCart(){
+ let qty=0,total=0;for(const x of cart.values()){qty+=x.qty;total+=Number(x.p.price||0)*x.qty}
+ const bar=document.getElementById('cartBar');bar.classList.toggle('show',qty>0);document.getElementById('cartCount').textContent=qty+' รายการ';document.getElementById('cartTotal').textContent=money(total);
+ document.getElementById('sheetTotal').textContent=money(total);
+ document.getElementById('cartRows').innerHTML=[...cart.values()].map(x=>'<div class="cartrow"><div><b>'+esc(x.p.name)+'</b><div class="desc">'+money(x.p.price)+'</div></div><div class="qty"><button data-dec="'+x.p.id+'">−</button><b>'+x.qty+'</b><button data-inc="'+x.p.id+'">+</button></div></div>').join('');
+}
+document.getElementById('openCart').onclick=()=>document.getElementById('sheet').classList.add('show');
+document.getElementById('closeSheet').onclick=()=>document.getElementById('sheet').classList.remove('show');
+document.getElementById('cartRows').onclick=e=>{
+ const inc=e.target.closest('[data-inc]'),dec=e.target.closest('[data-dec]'),id=inc?.dataset.inc||dec?.dataset.dec;if(!id)return;const x=cart.get(id);if(!x)return;
+ x.qty+=(inc?1:-1);if(x.qty<=0)cart.delete(id);else cart.set(id,x);renderCart();
+};
+document.getElementById('confirmOrder').onclick=async()=>{
+ if(!cart.size)return;const btn=document.getElementById('confirmOrder');btn.disabled=true;btn.textContent='กำลังส่งออเดอร์…';
+ try{
+   const pos=await locate(); const request=crypto.randomUUID(); const note=document.getElementById('orderNote').value.trim();
+   const items=[...cart.values()].map(x=>({id:x.p.id,quantity:x.qty,note:note}));
+   const out=await rpc('qg_table_checkout',{p_session:sessionId,p_device_key:deviceKey,p_request:request,p_items:items,p_lat:pos.lat,p_lng:pos.lng});
+   cart.clear();renderCart();document.getElementById('sheet').classList.remove('show');
+   stateEl.hidden=false;stateEl.innerHTML='<h2>ส่งออเดอร์แล้ว</h2><p>'+esc(tableName)+' • ยอดรวม '+money(out.total||0)+'</p><button id="moreBtn">สั่งเพิ่ม</button>';menuEl.hidden=true;
+   setTimeout(()=>{const b=document.getElementById('moreBtn');if(b)b.onclick=()=>{stateEl.hidden=true;menuEl.hidden=false}},0);
+ }catch(e){alert(e.message||e)}finally{btn.disabled=false;btn.textContent='ส่งออเดอร์'}
+};
+boot();
+</script>
+</body>
+</html>
