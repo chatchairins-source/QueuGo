@@ -1458,7 +1458,7 @@ function toast(msg){
   setTimeout(()=>{ t.classList.remove('show'); setTimeout(()=>t.remove(),300); }, 2200);
 }
 function qtGoogleMapsDirections(lat,lng,address=''){
-  const hasCoords=Number.isFinite(Number(lat))&&Number.isFinite(Number(lng));
+  const hasCoords=qgIsValidCoordinate(lat,lng,true);
   if(hasCoords)return 'https://www.google.com/maps/dir/?api=1&destination='+encodeURIComponent(Number(lat)+','+Number(lng));
   const q=String(address||'').trim();
   return q?'https://www.google.com/maps/dir/?api=1&destination='+encodeURIComponent(q):'https://www.google.com/maps/';
@@ -1734,25 +1734,38 @@ function tileLayer(map){
   }).addTo(map);
 }
 function initLocationPicker(containerId, lat, lng, onChange){
-  lat = lat || 13.7563; lng = lng || 100.5018;
-  const map = L.map(containerId).setView([lat,lng], 15);
+  const hasInitial=qgIsValidCoordinate(lat,lng,true);
+  const viewLat=hasInitial?Number(lat):15.0, viewLng=hasInitial?Number(lng):101.0;
+  const map = L.map(containerId).setView([viewLat,viewLng], hasInitial?15:6);
   tileLayer(map);
-  const marker = L.marker([lat,lng], {draggable:true}).addTo(map);
-  marker.on('dragend', ()=>{ const p=marker.getLatLng(); onChange(p.lat,p.lng); });
-  map.on('click', (e)=>{ marker.setLatLng(e.latlng); onChange(e.latlng.lat,e.latlng.lng); });
-  onChange(lat,lng);
+  let marker=hasInitial?L.marker([viewLat,viewLng], {draggable:true}).addTo(map):null;
+  const ensureMarker=(point)=>{
+    if(marker) marker.setLatLng(point);
+    else{
+      marker=L.marker(point,{draggable:true}).addTo(map);
+      marker.on('dragend', ()=>{ const p=marker.getLatLng(); if(qgIsValidCoordinate(p.lat,p.lng,true)) onChange(p.lat,p.lng); });
+    }
+  };
+  if(marker) marker.on('dragend', ()=>{ const p=marker.getLatLng(); if(qgIsValidCoordinate(p.lat,p.lng,true)) onChange(p.lat,p.lng); });
+  map.on('click', (e)=>{
+    if(!qgIsValidCoordinate(e.latlng.lat,e.latlng.lng,true)){toast('กรุณาเลือกพิกัดที่อยู่ในประเทศไทย');return;}
+    ensureMarker(e.latlng); onChange(e.latlng.lat,e.latlng.lng);
+  });
+  if(hasInitial) onChange(viewLat,viewLng);
   registerMap(map);
   return {
-    map, marker,
+    map,
+    get marker(){return marker;},
     locate(){
       if(!navigator.geolocation){ toast('เบราว์เซอร์ไม่รองรับ GPS'); return; }
       navigator.geolocation.getCurrentPosition(pos=>{
         const {latitude, longitude} = pos.coords;
+        if(!qgIsValidCoordinate(latitude,longitude,true)){toast('พิกัด GPS ไม่ถูกต้อง กรุณาลองใหม่');return;}
         map.setView([latitude,longitude], 16);
-        marker.setLatLng([latitude,longitude]);
+        ensureMarker([latitude,longitude]);
         onChange(latitude,longitude);
         toast('ใช้ตำแหน่ง GPS ปัจจุบันแล้ว');
-      }, err=> toast('ไม่สามารถขอตำแหน่ง GPS ได้: '+err.message));
+      }, err=> toast(err?.code===1?'กรุณาเปิดการเข้าถึงตำแหน่ง':err?.code===3?'รับตำแหน่งไม่ทันเวลา กรุณาลองใหม่':'ไม่สามารถรับตำแหน่ง GPS ได้'),{enableHighAccuracy:true,timeout:12000,maximumAge:30000});
     }
   };
 }
@@ -2321,6 +2334,7 @@ async function qtReverseGeocodeCustomer(lat,lng){
 async function qtSaveCustomerLocation(lat,lng,address){
   const users=dbGet('qt_users',[]); const user=currentUser();
   if(!user || user.type!=='customer') return false;
+  if(!qgIsValidCoordinate(lat,lng,true)){ console.warn('[QueueGo] rejected invalid customer location',qgCoordinateProblem(lat,lng,true)); return false; }
   if(!qgIsValidCoordinate(lat,lng,true)) return false;
   const idx=users.findIndex(u=>u.id===user.id); if(idx<0) return false;
   users[idx].lat=Number(lat); users[idx].lng=Number(lng);
@@ -2376,6 +2390,7 @@ function qtAutoCaptureCustomerLocation(){
   }
   navigator.geolocation.getCurrentPosition(async pos=>{
     const lat=pos.coords.latitude,lng=pos.coords.longitude;
+    if(!qgIsValidCoordinate(lat,lng,true)){toast('พิกัด GPS ไม่ถูกต้อง กรุณาลองใหม่');return;}
     const address=await qtReverseGeocodeCustomer(lat,lng);
     const saved=await qtSaveCustomerLocation(lat,lng,address||'');
     sessionStorage.setItem('qg_customer_gps_captured','1');
@@ -2391,17 +2406,17 @@ function qtAutoCaptureCustomerLocation(){
 }
 function openCustomerLocationPicker(){
   const user=currentUser(); if(!user || user.type!=='customer') return;
-  const lat=Number(user.lat)||13.7563, lng=Number(user.lng)||100.5018;
+  const hasSaved=qgIsValidCoordinate(user.lat,user.lng,true); const lat=hasSaved?Number(user.lat):null, lng=hasSaved?Number(user.lng):null;
   layout('เลือกที่อยู่จัดส่ง', `
     <section class="qg-location-editor">
       <div class="qg-location-editor-head"><button class="btn-secondary" onclick="navigate('home')">←</button><div><h2>เลือกที่อยู่จัดส่ง</h2><p>GPS จะใช้เป็นตำแหน่งเริ่มต้น และคุณเปลี่ยนได้ตลอดเวลา</p></div></div>
       <div id="customer-location-map" class="map-box qg-location-map"></div>
       <button type="button" class="btn-secondary btn-block" onclick="locateCustomerLocationPicker()">📍 ใช้ตำแหน่ง GPS ปัจจุบัน</button>
-      <div class="coord-display">Lat: <span id="customer-lat">${lat.toFixed(6)}</span>, Lng: <span id="customer-lng">${lng.toFixed(6)}</span></div>
+      <div class="coord-display">Lat: <span id="customer-lat">${hasSaved?lat.toFixed(6):'--'}</span>, Lng: <span id="customer-lng">${hasSaved?lng.toFixed(6):'--'}</span></div>
       <label>ที่อยู่จัดส่ง</label><textarea id="customer-address-input" class="qg-location-address" placeholder="บ้านเลขที่ ถนน หมู่บ้าน จุดสังเกต...">${escapeHtml(user.address||'')}</textarea>
       <button class="btn-primary btn-block" onclick="saveCustomerLocationPicker()">บันทึกที่อยู่นี้</button>
     </section>`);
-  let picked={lat,lng};
+  let picked=hasSaved?{lat,lng}:null;
   const picker=initLocationPicker('customer-location-map',lat,lng,async(a,b)=>{
     picked={lat:a,lng:b};
     const la=document.getElementById('customer-lat'),lo=document.getElementById('customer-lng');
@@ -3237,19 +3252,25 @@ function renderCheckout(){
     <button id="checkout-confirm-btn" class="btn-primary btn-block qt-checkout-button" type="button" onclick="qtSubmitCheckoutOrder()" disabled>ยืนยันคำสั่งซื้อ</button>
   `);
   qtStartCheckoutFaceCam();
-  let picked = {lat:13.7563, lng:100.5018};
+  let picked = qgIsValidCoordinate(user.lat,user.lng,true)?{lat:Number(user.lat),lng:Number(user.lng)}:null;
   window.__checkoutSubtotal = subtotal;
   window.__checkoutShop = shop;
   function refreshFee(lat,lng){
     const dist = distanceKm(shop.lat, shop.lng, lat, lng);
-    const fee = computeDeliveryFee(dist);
-    window.__checkoutFee = fee;
     const feeEl = document.getElementById('delivery-fee-display');
     const totalEl = document.getElementById('checkout-total-display');
+    if(!Number.isFinite(dist)){
+      window.__checkoutFee = null;
+      if(feeEl) feeEl.textContent = 'กรุณาระบุตำแหน่งที่ถูกต้อง';
+      if(totalEl) totalEl.textContent = subtotal;
+      return;
+    }
+    const fee = computeDeliveryFee(dist);
+    window.__checkoutFee = fee;
     if(feeEl) feeEl.textContent = fee + ' บาท (ระยะทาง ' + dist.toFixed(1) + ' กม.)';
     if(totalEl) totalEl.textContent = subtotal + fee;
   }
-  const picker = initLocationPicker('pin-map', picked.lat, picked.lng, (lat,lng)=>{
+  const picker = initLocationPicker('pin-map', picked?.lat, picked?.lng, (lat,lng)=>{
     picked = {lat,lng};
     document.getElementById('disp-lat').textContent = lat.toFixed(6);
     document.getElementById('disp-lng').textContent = lng.toFixed(6);
@@ -3257,7 +3278,7 @@ function renderCheckout(){
   });
   window.__currentPicker = picker;
   window.__pickedLoc = ()=>picked;
-  refreshFee(picked.lat, picked.lng);
+  if(picked) refreshFee(picked.lat, picked.lng);
   /* เลือกตำแหน่ง GPS ปัจจุบันทันทีเมื่อเบราว์เซอร์อนุญาต */
   setTimeout(()=>{ try{ picker.locate(); }catch(e){} },120);
 }
@@ -4696,11 +4717,11 @@ button,a,input,textarea,select{font:inherit}
     window.QT_CHECKOUT_UNCERTAIN=false;
     const oldSet=window.QT_CAM_CAPTURES;
     qtStartCheckoutFaceCam();
-    let picked={lat:Number(u.lat)||13.7563,lng:Number(u.lng)||100.5018};
+    let picked=qgIsValidCoordinate(u.lat,u.lng,true)?{lat:Number(u.lat),lng:Number(u.lng)}:null;
     window.__checkoutSubtotal=subtotal;window.__checkoutShop=shop;
-    const refresh=(lat,lng)=>{const d=distanceKm(shop.lat,shop.lng,lat,lng),fee=computeDeliveryFee(d);window.__checkoutFee=fee;const f=document.getElementById('delivery-fee-display'),t=document.getElementById('checkout-total-display');if(f)f.textContent=`฿${fee} • ${d.toFixed(1)} กม.`;if(t)t.textContent=`฿${subtotal+fee}`;};
-    const picker=initLocationPicker('pin-map',picked.lat,picked.lng,(lat,lng)=>{picked={lat,lng};document.getElementById('disp-lat').textContent=lat.toFixed(6);document.getElementById('disp-lng').textContent=lng.toFixed(6);refresh(lat,lng);});
-    window.__currentPicker=picker;window.__pickedLoc=()=>picked;refresh(picked.lat,picked.lng);
+    const refresh=(lat,lng)=>{const d=distanceKm(shop.lat,shop.lng,lat,lng),f=document.getElementById('delivery-fee-display'),t=document.getElementById('checkout-total-display');if(!Number.isFinite(d)){window.__checkoutFee=null;if(f)f.textContent='กรุณาระบุตำแหน่งที่ถูกต้อง';if(t)t.textContent=`฿${subtotal}`;return;}const fee=computeDeliveryFee(d);window.__checkoutFee=fee;if(f)f.textContent=`฿${fee} • ${d.toFixed(1)} กม.`;if(t)t.textContent=`฿${subtotal+fee}`;};
+    const picker=initLocationPicker('pin-map',picked?.lat,picked?.lng,(lat,lng)=>{picked={lat,lng};document.getElementById('disp-lat').textContent=lat.toFixed(6);document.getElementById('disp-lng').textContent=lng.toFixed(6);refresh(lat,lng);});
+    window.__currentPicker=picker;window.__pickedLoc=()=>picked;if(picked)refresh(picked.lat,picked.lng);
     setTimeout(()=>{try{picker.locate()}catch(e){}},120);
     const timer=setInterval(()=>{update();if(!document.getElementById('checkout-confirm-slide'))clearInterval(timer)},250);
   };
