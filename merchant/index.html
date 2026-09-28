@@ -132,14 +132,14 @@ function qtAuthEmailFromPhone(phone){
   const digits=String(phone||'').replace(/\D/g,'');
   return digits+'@auth.queuetech.local';
 }
-async function qtCreateSupabaseUser({type,name,phone,password,email}){
+async function qtCreateSupabaseUser({type,name,phone,password,email,shopName,category}){
   const cleanEmail=String(email||'').trim().toLowerCase();
   const cleanPhone=String(phone||'').trim();
   const authEmail=cleanEmail || qtAuthEmailFromPhone(cleanPhone);
   const auth=await qtSupabaseAuth('signup',{
     email:authEmail,
     password,
-    data:{name,phone:cleanPhone||null,role:'shop'}
+    data:{name,phone:cleanPhone||null,role:'shop',shop_name:shopName,category}
   });
   let session=auth.session;
   if(!auth.user) throw new Error('สร้างบัญชี Auth ไม่สำเร็จ');
@@ -163,11 +163,19 @@ async function qtCreateSupabaseUser({type,name,phone,password,email}){
     role:'shop',
     name,
     phone:cleanPhone||null,
-    status:'pending'
+    status:'pending',
+    metadata:{shopName,category}
   };
-  const rows=await qtSupabaseTable('users?select=id,auth_user_id,role,name,phone,status,created_at&on_conflict=auth_user_id',{method:'POST',accessToken:session.access_token,body:row});
+  const rows=await qtSupabaseTable('users?select=*&on_conflict=auth_user_id',{method:'POST',accessToken:session.access_token,body:row});
   const profile=Array.isArray(rows)?rows[0]:rows;
   if(!profile) throw new Error('สร้างข้อมูลผู้ใช้ในฐานข้อมูลไม่สำเร็จ');
+  const shops=await qtSupabaseTable('shop_profiles?select=id,shop_name,public_category,status&on_conflict=user_id',{
+    method:'POST',accessToken:session.access_token,
+    body:{user_id:profile.id,shop_name:shopName,public_category:category,status:'pending',metadata:{shopName,category}}
+  });
+  if(!Array.isArray(shops)||shops.length!==1||shops[0].shop_name!==shopName||shops[0].public_category!==category||shops[0].status!=='pending'){
+    throw new Error('สร้างบัญชีแล้ว แต่บันทึกข้อมูลร้านไม่สำเร็จ กรุณาเข้าสู่ระบบและแก้ข้อมูลร้าน');
+  }
   return {auth,session,profile,needsEmailConfirmation:false,authEmail};
 }
 async function qtLoadOwnSupabaseUser(accessToken, authUserId){
@@ -296,6 +304,7 @@ function qtUserFromRow(r){
   if(r.status==='suspended'||r.status==='deleted') status=r.status;
   else if(r.role==='admin') status='approved';
   else if(r.status==='active') status='approved';
+  else if(r.status==='rejected') status='rejected';
   else status='pending';
 
   /* identity/role/status always come from real columns, never metadata */
@@ -357,7 +366,7 @@ async function qtPersistKeyRaw(key,val){
              existing profile by its user_id and only send coordinate fields when the
              local profile actually has numeric coordinates. */
           const shopRows=await qtSupabaseTable('shop_profiles?select=id&user_id=eq.'+encodeURIComponent(u.id)+'&limit=1',{accessToken:token});
-          const shopBody={shop_name:u.shopName||u.name||'ร้านค้า',phone:u.phone||null,address:u.address||null,status:u.status==='suspended'?'suspended':'active',metadata:qtUserMetadata(u)};
+          const shopBody={shop_name:u.shopName||u.name||'ร้านค้า',phone:u.phone||null,address:u.address||null,public_category:u.category||null,status:u.status==='approved'?'active':u.status==='suspended'?'suspended':u.status==='rejected'?'rejected':'pending',metadata:qtUserMetadata(u)};
           if(Number.isFinite(Number(u.lat)) && Number.isFinite(Number(u.lng))){shopBody.latitude=Number(u.lat);shopBody.longitude=Number(u.lng);}
           if(Array.isArray(shopRows)&&shopRows[0]?.id){
             await qtSupabaseTable('shop_profiles?id=eq.'+encodeURIComponent(shopRows[0].id),{method:'PATCH',accessToken:token,body:shopBody});
@@ -920,15 +929,17 @@ function router(){
 async function handleRegister(e){
   e.preventDefault();
   const name=qtCleanText(document.getElementById('reg-name')?.value);
+  const shopName=qtCleanText(document.getElementById('reg-shop-name')?.value);
+  const category=document.getElementById('reg-category')?.value||'';
   const phone=String(document.getElementById('reg-phone')?.value||'').replace(/[-\s]/g,'');
   const password=document.getElementById('reg-password')?.value||'';
   const confirmation=document.getElementById('reg-password-confirm')?.value||'';
-  if(!name||!/^0[0-9]{9}$/.test(phone)||password.length<6||password!==confirmation){
-    toast('กรุณาตรวจชื่อ เบอร์โทรศัพท์ และรหัสผ่านให้ถูกต้อง');return false;
+  if(!name||shopName.length<2||shopName.length>100||!['food','grocery','cafe','other'].includes(category)||!/^0[0-9]{9}$/.test(phone)||password.length<6||password!==confirmation){
+    toast('กรุณากรอกชื่อร้าน เลือกประเภทร้าน และตรวจข้อมูลสมัครให้ครบ');return false;
   }
   const button=e.submitter;if(button)button.disabled=true;
   try{
-    const result=await qtCreateSupabaseUser({type:'shop',name,phone,password,email:''});
+    const result=await qtCreateSupabaseUser({type:'shop',name,phone,password,email:'',shopName,category});
     if(result.needsEmailConfirmation){toast('กรุณายืนยันบัญชีทางอีเมลก่อนเข้าสู่ระบบ');navigate('login');return false;}
     const p=result.profile;
     if(p?.role!=='shop'||!result.session?.access_token)throw new Error('สร้างบัญชีร้านค้าไม่สำเร็จ');
@@ -997,7 +1008,7 @@ async function handleShopSetup(e){
     await qtSupabaseTable('users?id=eq.'+encodeURIComponent(users[idx].id),{method:'PATCH',accessToken:token,body:userRow});
 
     const profileRows=await qtSupabaseTable('shop_profiles?select=id&user_id=eq.'+encodeURIComponent(users[idx].id)+'&limit=1',{accessToken:token});
-    const profileBody={shop_name:users[idx].shopName||users[idx].name||'ร้านค้า',phone:users[idx].phone||null,address:users[idx].address||null,latitude:users[idx].lat??null,longitude:users[idx].lng??null,status:users[idx].status==='suspended'?'suspended':'active',metadata:qtUserMetadata(users[idx])};
+    const profileBody={shop_name:users[idx].shopName||users[idx].name||'ร้านค้า',phone:users[idx].phone||null,address:users[idx].address||null,latitude:users[idx].lat??null,longitude:users[idx].lng??null,public_category:users[idx].category||null,status:users[idx].status==='approved'?'active':users[idx].status==='suspended'?'suspended':users[idx].status==='rejected'?'rejected':'pending',metadata:qtUserMetadata(users[idx])};
     if(Array.isArray(profileRows) && profileRows[0]?.id){
       await qtSupabaseTable('shop_profiles?id=eq.'+encodeURIComponent(profileRows[0].id),{method:'PATCH',accessToken:token,body:profileBody});
     }else{
@@ -2044,6 +2055,8 @@ window.renderShopRegister=function(){
     </section>
     <section class="qgm-login-panel">
       <form onsubmit="handleRegister(event);return false">
+        <label class="qgm-register-field">ชื่อร้าน <span>*</span><input id="reg-shop-name" autocomplete="organization" required minlength="2" maxlength="100" placeholder="ชื่อร้านที่ลูกค้าจะเห็น"></label>
+        <label class="qgm-register-field">ประเภทร้านค้า <span>*</span><select id="reg-category" required><option value="" selected disabled>เลือกประเภทร้านค้า</option><option value="food">ร้านอาหาร</option><option value="grocery">ของชำ / สะดวกซื้อ</option><option value="cafe">คาเฟ่ / เครื่องดื่ม</option><option value="other">อื่น ๆ</option></select></label>
         <label class="qgm-login-input">${svg('user')}<input id="reg-name" autocomplete="name" required maxlength="120" placeholder="ชื่อผู้ติดต่อ" aria-label="ชื่อผู้ติดต่อ"></label>
         <label class="qgm-login-input">${svg('phone')}<input id="reg-phone" type="tel" inputmode="numeric" autocomplete="tel" required maxlength="12" placeholder="เบอร์โทรศัพท์ 10 หลัก" aria-label="เบอร์โทรศัพท์"></label>
         <label class="qgm-login-input">${svg('lock')}<input id="reg-password" type="password" autocomplete="new-password" required minlength="6" placeholder="รหัสผ่านอย่างน้อย 6 ตัว" aria-label="รหัสผ่าน"></label>
@@ -2056,6 +2069,11 @@ window.renderShopRegister=function(){
   </main>`;
 };
 
+window.renderShopPending=function(){
+  const u=currentUser();if(!u)return navigate('login');
+  const rejected=u.status==='rejected',suspended=u.status==='suspended';
+  layout('สถานะร้านค้า',`<section class="qgm-card qgm-pending"><div class="qgm-register-mark">Q</div><h1>${suspended?'บัญชีร้านค้าถูกระงับ':rejected?'ใบสมัครยังไม่ผ่านการอนุมัติ':'รอผู้ดูแลอนุมัติร้านค้า'}</h1><p><b>${escapeHtml(u.shopName||'ร้านค้า')}</b> · ${categoryLabel(u.category||'other')}</p><p>${suspended?'กรุณาติดต่อผู้ดูแลเพื่อสอบถามสถานะบัญชี':rejected?'ตรวจสอบข้อมูลร้านและติดต่อผู้ดูแลก่อนส่งข้อมูลใหม่':'ระบบบันทึกใบสมัครแล้ว คุณสามารถกรอกที่อยู่และปักพิกัดร้านไว้ระหว่างรอการตรวจสอบ'}</p><button type="button" class="qgm-primary" onclick="navigate('shop-setup')">แก้ไขข้อมูลร้านและพิกัด</button><button type="button" class="qgm-outline" onclick="qgmRefreshApplication()">ตรวจสอบสถานะอีกครั้ง</button><button type="button" class="qgm-link" onclick="qtMerchantLogout()">ออกจากระบบ</button></section>`,'dashboard');
+};
 window.qtToggleLoginPassword=function(button){const input=document.getElementById('qt-shop-password');if(!input)return;input.type=input.type==='password'?'text':'password';button.setAttribute('aria-label',input.type==='password'?'แสดงรหัสผ่าน':'ซ่อนรหัสผ่าน')};
 
 window.qtShopForgotPassword=async function(){const email=prompt('กรอกอีเมลบัญชีร้านค้า');if(!email)return;try{await qtSupabaseAuth('recover',{email:email.trim()});toast('ส่งลิงก์ตั้งรหัสผ่านใหม่แล้ว')}catch(e){toast(e.message||'ส่งลิงก์ไม่สำเร็จ')}};
@@ -2103,7 +2121,8 @@ window.qgmSavePromo=async function(e){e.preventDefault();const u=shopUser(),pid=
 window.renderShopProfileModern=function(){const u=shopUser();if(!u)return navigate('login');const cover=u.cover||u.coverImage,logo=u.logo||u.avatar,hasCover=cover&&cover!==logo;layout('ข้อมูลร้านค้า',`<div class="qgm-profile-cover ${hasCover?'has-photo':''}">${hasCover?`<img src="${esc(img(cover))}" alt="ภาพหน้าร้าน">`:''}<button class="qgm-camera" type="button" aria-label="เปลี่ยนภาพร้าน" onclick="navigate('shop-setup')">${svg('camera')}</button></div><div class="qgm-profile-name"><div class="qgm-profile-identity"><img src="${esc(img(logo))}" alt=""><div><h2>${esc(u.shopName||u.name||'ร้านค้า')}</h2><small>${esc(categoryLabel(u.category)||'ร้านค้า')}</small></div></div><span class="qgm-status" id="qgm-profile-open-state">● กำลังตรวจสอบสถานะร้าน</span></div><section class="qgm-card qgm-info"><div class="qgm-detail-row">${svg('box')}<span>${esc(categoryLabel(u.category)||'ร้านค้า')}</span></div><div class="qgm-detail-row">${svg('phone')}<span>${esc(u.phone||'-')}</span></div><div class="qgm-detail-row">${svg('pin')}<span>${esc(u.address||'-')}</span></div><div class="qgm-detail-row">${svg('clock')}<span>เปิดบริการ ${esc(u.openTime||'06:00')} - ${esc(u.closeTime||'22:00')} น.</span></div></section><button class="qgm-outline" type="button" onclick="navigate('shop-setup')">แก้ไขข้อมูลร้าน</button><button class="qgm-primary" type="button" onclick="navigate('shop-products')">จัดการเมนูสินค้า</button><button class="qgm-logout" type="button" onclick="qtMerchantLogout()">ออกจากระบบ</button>`,'shop-profile',{back:true})};
 window.qtMerchantLogout=function(){logout();location.hash='#login';window.qtShopRoute()};
 
-function route(){const hash=location.hash.replace('#','')||'dashboard',[page,param]=hash.split('/'),u=currentUser();if(page==='login'||!u){if(page==='shop-register'&&typeof renderShopRegister==='function')return renderShopRegister();return renderShopLogin()}if(u.type==='admin'&&typeof renderAdminSupport==='function')return renderAdminSupport();if(u.type!=='shop'){clearSession();return renderShopLogin()}if(u.status!=='approved'&&!['shop-setup','approval-pending'].includes(page)&&typeof renderShopPending==='function')return renderShopPending();switch(page){case'home':case'dashboard':return renderShopDashboardModern(u);case'shop-orders':return renderShopOrdersModern();case'shop-order':return renderShopOrderModern(param);case'shop-products':return renderShopProductsModern();case'shop-catalog':return renderShopCatalog();case'shop-product':return renderShopProductEditor(param||'new');case'shop-promote':return renderShopPromote();case'shop-promote-create':return renderShopPromoteCreate();case'shop-profile':return renderShopProfileModern();case'shop-setup':return renderShopSetup();case'shop-settlement':return renderShopSettlement();case'shop-revenue':return qgmRenderRevenue();case'shop-hours':return qgmRenderHours();case'shop-modules':return renderShopModules();case'shop-media':return renderMerchantMedia();case'shop-support':return renderShopSupport();case'notifications':return renderNotifications();default:return renderShopDashboardModern(u)}}
+function route(){const hash=location.hash.replace('#','')||'dashboard',[page,param]=hash.split('/'),u=currentUser();if(page==='login'||!u){if(page==='shop-register'&&typeof renderShopRegister==='function')return renderShopRegister();return renderShopLogin()}if(u.type==='admin'&&typeof renderAdminSupport==='function')return renderAdminSupport();if(u.type!=='shop'){clearSession();return renderShopLogin()}if(u.status!=='approved'&&!['shop-setup','approval-pending'].includes(page)&&typeof renderShopPending==='function')return renderShopPending();switch(page){case'approval-pending':return renderShopPending();case'home':case'dashboard':return renderShopDashboardModern(u);case'shop-orders':return renderShopOrdersModern();case'shop-order':return renderShopOrderModern(param);case'shop-products':return renderShopProductsModern();case'shop-catalog':return renderShopCatalog();case'shop-product':return renderShopProductEditor(param||'new');case'shop-promote':return renderShopPromote();case'shop-promote-create':return renderShopPromoteCreate();case'shop-profile':return renderShopProfileModern();case'shop-setup':return renderShopSetup();case'shop-settlement':return renderShopSettlement();case'shop-revenue':return qgmRenderRevenue();case'shop-hours':return qgmRenderHours();case'shop-modules':return renderShopModules();case'shop-media':return renderMerchantMedia();case'shop-support':return renderShopSupport();case'notifications':return renderNotifications();default:return renderShopDashboardModern(u)}}
+window.qgmRefreshApplication=async function(){try{await qtHydrateDatabase({light:false});route();toast('อัปเดตสถานะล่าสุดแล้ว')}catch(e){toast('ตรวจสอบสถานะไม่สำเร็จ: '+e.message)}};
 window.qtShopRoute=route;window.router=route;
 })();
 </script>
@@ -2255,7 +2274,7 @@ window.qgmSaveShopSetup=async function(e){e.preventDefault();const button=e.subm
   if(!Number.isFinite(selected.lat)||!Number.isFinite(selected.lng)||Math.abs(selected.lat)>90||Math.abs(selected.lng)>180)throw Error('พิกัดร้านไม่ถูกต้อง');
   next.lat=selected.lat;next.lng=selected.lng;
  }
- const body={shop_name:next.shopName,phone:next.phone,address:next.address,metadata:qtUserMetadata(next)};
+  const body={shop_name:next.shopName,phone:next.phone,address:next.address,public_category:next.category,metadata:qtUserMetadata(next)};
  if(selected){body.latitude=next.lat;body.longitude=next.lng;}
  const savedProfile=profile?.[0]?.id?await qtSupabaseTable('shop_profiles?id=eq.'+encodeURIComponent(profile[0].id),{method:'PATCH',accessToken:token,body}):await qtSupabaseTable('shop_profiles',{method:'POST',accessToken:token,body:{...body,user_id:u.id,status:'pending'}});
  if(!Array.isArray(savedProfile)||!savedProfile.length)throw Error('ฐานข้อมูลไม่ยืนยันข้อมูลร้าน');
@@ -2723,5 +2742,7 @@ window.qgmExportRevenue=async function(button){
 </script>
 
 <style id="qg-v22-merchant-operations-style">#qg-v22-kitchen-list article{border:1px solid #dcece2;border-radius:13px;padding:12px;margin:9px 0;overflow-wrap:anywhere}#qg-v22-kitchen-list article span{float:right;color:#078057;font-weight:800}#qg-v22-kitchen-list article small{display:block;color:#75877e}#qg-v22-kitchen-list article button,#qg-v22-kitchen .qg-v22-dialog>button{border:0;background:#dcf8e9;border-radius:9px;padding:9px;color:#066d4d}.qg-v22-period{display:flex;gap:7px;margin:11px 0}.qg-v22-period button{flex:1;padding:9px;background:#e6f8ed;border:1px solid #ceead8;border-radius:10px;color:#146e51}.qg-v22-analytics-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.qg-v22-analytics-grid div{padding:10px;border:1px solid #d9eee3;border-radius:10px}.qg-v22-analytics-grid b{display:block;font-size:17px}</style>
+<style id="qg-merchant-register-fields">.qgm-login-panel .qgm-register-field{display:grid;gap:6px;margin:0 0 12px;font-size:13px;font-weight:700;color:#24272d}.qgm-register-field span{color:#ed0a31}.qgm-register-field input,.qgm-register-field select{width:100%;height:48px;min-width:0;border:1px solid #dde0e5;border-radius:12px;padding:0 13px;background:#fff;color:#20242b;font:inherit;font-size:16px}.qgm-register-field select:invalid{color:#858b94}body:has(#reg-shop-name){overflow-x:hidden}.qgm-pending{max-width:460px;margin:12px auto;padding:22px}.qgm-pending .qgm-register-mark{width:46px;height:46px;display:grid;place-items:center;border-radius:13px;background:#ed0a31;color:#fff;font-size:28px;font-weight:900}.qgm-pending h1{font-size:23px;line-height:1.3}.qgm-pending p{color:#5e6772;line-height:1.6}</style>
 </body>
 </html>
+
