@@ -461,6 +461,7 @@ function riderRegistrationMetadata(user,data,form){
     vehiclePlate:form.plate||null,
     vehicleMake:form.make||null,
     vehicleModel:form.model||null,
+    requestedCapacityKg:form.capacity||null,
     profileImage:data['rr-photo']||null,
     idCardFrontImage:data['rr-id-front']||null,
     idCardBackImage:data['rr-id-back']||null,
@@ -517,11 +518,12 @@ async function handleRiderRegistration(e){
   const f=id=>document.getElementById(id);
   const name=String(f('rr-name').value||'').trim(),phone=f('rr-phone').value.trim().replace(/[-\s]/g,''),password=f('rr-password').value;
   const email=String(f('rr-email').value||'').trim().toLowerCase();
-  const form={email,area:String(f('rr-area').value||'').trim(),province:f('rr-province').value,district:String(f('rr-district').value||'').trim(),vehicle:f('rr-vehicle').value,plate:String(f('rr-plate').value||'').trim(),make:String(f('rr-make').value||'').trim(),model:String(f('rr-model').value||'').trim()};
+  const form={email,area:String(f('rr-area').value||'').trim(),province:f('rr-province').value,district:String(f('rr-district').value||'').trim(),vehicle:f('rr-vehicle').value,plate:String(f('rr-plate').value||'').trim(),make:String(f('rr-make').value||'').trim(),model:String(f('rr-model').value||'').trim(),capacity:Number(f('rr-capacity').value||0)};
   if(!name||!phone||!password){toast('กรุณากรอกข้อมูลส่วนตัวให้ครบ');return false;}
   if(!/^0[0-9]{9}$/.test(phone)){toast('กรุณากรอกเบอร์โทรศัพท์ 10 หลัก เช่น 0812345678');return false;}
   if(password.length<6){toast('รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร');return false;}
   if(!f('rr-province').value||!f('rr-district').value){toast('กรุณาเลือกจังหวัดและอำเภอ/เขต');return false;}
+  if(form.capacity<0||form.capacity>1000){toast('ความจุรถไม่ถูกต้อง');riderStepGo(1);return false;}
   if(!form.plate){toast('กรุณากรอกทะเบียนรถ');riderStepGo(1);return false;}
   const agree=document.querySelector('.rider-confirm input[type=checkbox]');
   if(!agree||!agree.checked){toast('กรุณายืนยันข้อมูลและข้อตกลงก่อนส่งใบสมัคร');riderStepGo(3);return false;}
@@ -580,7 +582,7 @@ function renderRiderRegistration(){
           <div class="rider-grid">
             <section class="rider-panel"><h3>📷 รูปถ่ายหน้าตรง <span class="req">(บังคับ)</span></h3><div class="rider-face-upload"><img id="rr-photo-preview" style="display:none"><button type="button" class="btn btn-brand rider-file-btn" onclick="openRiderFilePicker('rr-photo')">📷 อัปโหลดรูปภาพ</button><div id="rr-photo-name" style="font-size:12px;color:var(--night-text-dim);margin-bottom:6px">ยังไม่ได้เลือกรูป</div><input id="rr-photo" class="rider-file-input" type="file" accept="image/*" data-required="1" onchange="riderFilePreview('rr-photo','rr-photo-preview'); event.stopPropagation();"><small>ไฟล์ JPG, PNG ขนาดไม่เกิน 8 MB<br>รูปต้องเป็นหน้าตรง ชัดเจน เห็นใบหน้าเต็ม</small></div></section>
             <section class="rider-panel"><h3>👤 ข้อมูลส่วนตัว</h3><label>ชื่อ - นามสกุล <span class="req">*</span></label><input required id="rr-name" placeholder="เช่น นายสมชาย ใจดี"><label>เบอร์โทรศัพท์ <span class="req">*</span></label><input required id="rr-phone" inputmode="tel" placeholder="เช่น 081-234-5678"><label>รหัสผ่าน <span class="req">*</span></label><input required id="rr-password" type="password" minlength="6" placeholder="อย่างน้อย 6 ตัวอักษร"><label>อีเมล (ถ้ามี)</label><input id="rr-email" type="email" placeholder="เช่น rider@example.com"></section>
-            <section class="rider-panel"><h3>🚗 ข้อมูลยานพาหนะ</h3><label>ประเภทพาหนะ <span class="req">*</span></label><select required id="rr-vehicle"><option value="motorcycle">🛵 รถจักรยานยนต์</option><option value="car">🚗 รถยนต์</option><option value="bicycle">🚲 จักรยาน</option></select><label>ทะเบียนรถ <span class="req">*</span></label><input required id="rr-plate" placeholder="เช่น กข 1234 นครราชสีมา"><label>ยี่ห้อ (ถ้ามี)</label><input id="rr-make" placeholder="เช่น Honda, Yamaha"><label>รุ่น (ถ้ามี)</label><input id="rr-model" placeholder="เช่น Wave, Click"><div class="rider-note">ระบบไม่บังคับให้ระบุยี่ห้อและรุ่น แต่ต้องระบุทะเบียนรถเพื่อความปลอดภัย</div></section>
+            <section class="rider-panel"><h3>🚗 ข้อมูลยานพาหนะ</h3><label>ประเภทพาหนะ <span class="req">*</span></label><select required id="rr-vehicle"><option value="motorcycle">🛵 รถจักรยานยนต์</option><option value="car">🚗 รถยนต์</option><option value="bicycle">🚲 จักรยาน</option><option value="saleng">🛺 รถซาเล้ง</option></select><label>ความจุที่ขอรับงานตลาด (กก.)</label><input id="rr-capacity" type="number" min="1" max="1000" step="0.1" inputmode="decimal" placeholder="แอดมินจะตรวจและยืนยัน"><label>ทะเบียนรถ <span class="req">*</span></label><input required id="rr-plate" placeholder="เช่น กข 1234 นครราชสีมา"><label>ยี่ห้อ (ถ้ามี)</label><input id="rr-make" placeholder="เช่น Honda, Yamaha"><label>รุ่น (ถ้ามี)</label><input id="rr-model" placeholder="เช่น Wave, Click"><div class="rider-note">ระบบไม่บังคับให้ระบุยี่ห้อและรุ่น แต่ต้องระบุทะเบียนรถเพื่อความปลอดภัย</div></section>
             <section class="rider-panel"><h3>พื้นที่ให้บริการ</h3><label>เลือกจังหวัด <span class="req">*</span></label><select required id="rr-province"><option value="">-- เลือกจังหวัด --</option><option>กรุงเทพมหานคร</option><option>บุรีรัมย์</option><option>นครราชสีมา</option><option>ขอนแก่น</option><option>เชียงใหม่</option><option>ชลบุรี</option><option>อุบลราชธานี</option><option>สุรินทร์</option><option>ศรีสะเกษ</option><option>มหาสารคาม</option><option>ร้อยเอ็ด</option><option>สระบุรี</option><option>ปทุมธานี</option><option>นนทบุรี</option><option>สมุทรปราการ</option><option>ภูเก็ต</option></select><label>เขต/อำเภอ <span class="req">*</span></label><input required id="rr-district" placeholder="เช่น เมืองนครราชสีมา"><label>พื้นที่เพิ่มเติม (ถ้ามี)</label><input id="rr-area" placeholder="เช่น ปากช่อง, โพธิ์กลาง"></section>
             <section class="rider-panel rider-docs"><h3>📄 เอกสารประกอบการสมัคร</h3>${riderUploadCard('rr-id-front','บัตรประชาชน (ด้านหน้า)',true,'image/*,.pdf')}${riderUploadCard('rr-id-back','บัตรประชาชน (ด้านหลัง)',true,'image/*,.pdf')}${riderUploadCard('rr-license','ใบขับขี่',true,'image/*,.pdf')}${riderUploadCard('rr-prb','พ.ร.บ. รถ',true,'image/*,.pdf')}${riderUploadCard('rr-vehicle-photo','รูปถ่ายคู่กับรถ (ปัจจุบัน)',true,'image/*')}</section>
             <section class="rider-panel rider-confirm"><h3>☑️ ยืนยันข้อมูลการสมัคร</h3><label><input type="checkbox" required> <span>ข้าพเจ้าขอรับรองว่าข้อมูลที่ให้เป็นความจริง และยินยอมให้ QueueGo ตรวจสอบข้อมูลและเอกสารประกอบการสมัคร</span></label><p>หลังส่งใบสมัคร สถานะจะเป็น <b>รอ Admin ตรวจสอบ</b> และยังไม่สามารถรับงานได้จนกว่าจะได้รับอนุมัติ</p></section>
@@ -726,11 +728,22 @@ async function refreshData(){
 
     const previousOpenJobIds = new Set((S.openJobs||[]).map(x=>x&&x.order&&x.order.id ? String(x.order.id) : null).filter(Boolean));
     if(S.activeOrder){
+      if(S.activeOrder.fulfillment_vertical==='market'||S.activeOrder.fulfillment_vertical==='grocery'){
+        const weights=await sbRpc('market_rider_job_weights',{},token);
+        S.activeOrder._marketWeight=(weights||[]).find(x=>x.order_id===S.activeOrder.id)?.weight_kg;
+      }
       await enrichOrder(S.activeOrder);
       S.openJobs = [];
     } else if(S.online){
-      const open = await sbTable('orders?select=*&order_type=eq.shopping&status=eq.ready&rider_id=is.null&order=created_at.asc&limit=25', {token});
+      // Eligibility and Market vehicle capacity are decided on the server.
+      const eligible = await sbRpc('get_rider_delivery_pool',{},token);
+      const ids = (Array.isArray(eligible)?eligible:[]).map(x=>x.order_id).filter(Boolean);
+      const open = ids.length ? await sbTable('orders?select=*&id=in.('+ids.join(',')+')&order=created_at.asc&limit=25', {token}) : [];
       const list = Array.isArray(open) ? open : [];
+      if(list.some(o=>o.fulfillment_vertical==='market'||o.fulfillment_vertical==='grocery')){
+        const weights=await sbRpc('market_rider_job_weights',{},token);
+        for(const o of list)o._marketWeight=(weights||[]).find(x=>x.order_id===o.id)?.weight_kg;
+      }
       for(const o of list) await enrichOrder(o);
       const candidates = list
         .map(o=>({order:o, distanceKm: haversineKm(S.pos&&S.pos.lat, S.pos&&S.pos.lng, o.pickup_latitude, o.pickup_longitude)}))
@@ -811,7 +824,7 @@ function jobRowHTML(x){
   const deliveryKm = haversineKm(o.pickup_latitude,o.pickup_longitude,o.delivery_latitude,o.delivery_longitude);
   return `<div class="job-row">
     <div class="top">
-      <div><div class="shop">${esc(shopName)}</div><div class="meta">งานรอรับ</div></div>
+      <div><div class="shop">${esc(shopName)}</div><div class="meta">${o.fulfillment_vertical==='market'||o.fulfillment_vertical==='grocery'?'ตลาดสด · '+Number(o._marketWeight||0).toLocaleString('th-TH')+' กก.':'งานรอรับ'}</div></div>
       <div class="fee">฿${Number(o.delivery_fee||0)}</div>
     </div>
     <div class="job-distances">
@@ -1140,7 +1153,7 @@ function jobCardHTML(o,x){
  const fee=riderEarning(o);const active=!!S.activeOrder;
  const targetShop=st==='assigned';const nav=mapsLink(targetShop?o.pickup_latitude:o.delivery_latitude,targetShop?o.pickup_longitude:o.delivery_longitude,targetShop?o.pickup_address:o.delivery_address);
  const next=STEP_NEXT[st];
- return `<div class="qt-handle"></div><div class="qt-jobhead"><div><div class="qt-shop">${esc(shop.shop_name||'งานจัดส่ง')}</div><div class="qt-order">${active?esc(STEP_LABEL[st]||'งานที่กำลังทำ'):'งานใหม่'} · #${esc(qtShortOrder(o))}</div></div><div class="qt-fee">฿${Number(fee||0).toLocaleString('th-TH')}<small>รายได้งานนี้</small></div></div>
+ return `<div class="qt-handle"></div><div class="qt-jobhead"><div><div class="qt-shop">${esc(shop.shop_name||'งานจัดส่ง')}</div><div class="qt-order">${active?esc(STEP_LABEL[st]||'งานที่กำลังทำ'):'งานใหม่'} · #${esc(qtShortOrder(o))}${['market','grocery'].includes(o.fulfillment_vertical)?' · ตลาดสด '+Number(o._marketWeight||0).toLocaleString('th-TH')+' กก.':''}</div></div><div class="qt-fee">฿${Number(fee||0).toLocaleString('th-TH')}<small>รายได้งานนี้</small></div></div>
  <div class="qt-metrics"><div class="qt-metric"><span>ถึงร้าน</span><b>${Number.isFinite(km)?km.toFixed(1):'-'} กม.</b></div><div class="qt-metric"><span>ระยะส่ง</span><b>${Number.isFinite(delivery)?delivery.toFixed(1):'-'} กม.</b></div><div class="qt-metric"><span>ยอดออเดอร์</span><b>฿${Number(o.total_amount||0).toLocaleString('th-TH')}</b></div></div>
  <div class="qt-address">${esc(targetShop?(o.pickup_address||shop.address||'จุดรับสินค้า'):(o.delivery_address||'จุดส่งสินค้า'))}</div>
  <div class="qt-actions"><a class="qt-ghost" href="${nav}" target="_blank" rel="noopener" aria-label="นำทาง">${QTICON.loc}</a><button class="qt-ghost" id="chat-${o.id}" aria-label="แชต">${QTICON.chat}</button>${active?`<button class="qt-primary" id="next-${o.id}">${next?esc(next.label):'ตรวจสอบงาน'}</button>`:`<button class="qt-primary" id="accept-${o.id}">รับงานนี้</button>`}</div>`;
