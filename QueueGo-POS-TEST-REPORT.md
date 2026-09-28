@@ -21,7 +21,7 @@
 | Add a second kitchen batch after serving the first; original lines remain served | Passed in a rollback transaction with a real existing product |
 | Delivery opt-in readiness and open state for existing shop | Passed inside rollback, restored original state |
 | Retry the same cash payment after the first completion | Passed in rollback: one payment row and the same closed bill |
-| JavaScript syntax and UI controls | Node syntax passed; unauthenticated live login UI checked previously; post-deployment browser inspection stopped by the automated usage limit |
+| JavaScript syntax and POS entry routes | Node syntax passed; runtime route test verified unauthenticated POS and staff join rendering. Browser automation later stopped by its usage limit |
 
 ## Not yet verified on devices
 
