@@ -30,3 +30,5 @@
 .qg-pos-counter-table{display:grid;grid-template-rows:1fr auto;min-width:0;border:1px solid #e4e6ec;border-radius:13px;background:#fff;overflow:hidden}.qg-pos-counter-table>button:first-child{border:0;border-radius:0!important;background:#fff;min-height:70px;padding:14px 8px;text-align:left}.qg-pos-counter-table>button:first-child.selected{background:#fff6f7;box-shadow:inset 0 0 0 2px #ed0a31}.qg-pos-counter-table .qg-pos-table-qr-direct{min-height:38px;border:0;border-top:1px solid #eceef1;background:#fff0f3;color:#c90027;font-size:12px;font-weight:850;text-align:center}
 
 .qg-pos-table-edit{white-space:nowrap;min-width:96px}
+
+.qg-pos-table-card{display:grid!important;grid-template-columns:minmax(0,1fr) auto!important;grid-template-areas:"table edit" "qr qr"!important}.qg-pos-table-card>button:first-child{grid-area:table}.qg-pos-table-card>.qg-pos-table-edit{grid-area:edit}.qg-pos-table-qr-main{grid-area:qr;width:100%;min-height:44px;border:0;border-top:1px solid #f0d9df;background:#ed0a31;color:#fff;font-weight:900;font-size:14px}.qg-pos-table-qr-main:active{transform:scale(.99)}
