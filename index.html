@@ -1299,12 +1299,12 @@ async function qtHydratePublicStorefront(){
      RLS on Supabase remains the authority for what is actually public. */
   try{
     let shops=[];
-    try{ shops=await qtSupabaseTable('shop_profiles?select=id,shop_name,status,public_category,public_logo,public_cover,public_open_time,public_close_time,public_description,address,latitude,longitude'); }catch(e){
+    try{ shops=await qtSupabaseTable('shop_profiles?select=id,shop_name,status,public_category,public_logo,public_cover,public_open_time,public_close_time,public_description,address,latitude,longitude,delivery_enabled'); }catch(e){
       console.warn('[QueueGo] public shop_profiles read failed:',e);
     }
     if(!Array.isArray(shops) || !shops.length) shops=await qtLegacyPublicShopProfiles();
     if(!Array.isArray(shops)) shops=[];
-    const activeShops=shops.filter(x=>x && String(x.status||'').toLowerCase()==='active');
+    const activeShops=shops.filter(x=>x && String(x.status||'').toLowerCase()==='active' && x.delivery_enabled!==false);
     const publicUsers=activeShops.map(x=>{
       const meta=(x.metadata&&typeof x.metadata==='object'&&!Array.isArray(x.metadata))?x.metadata:{};
       return Object.assign({},meta,{
@@ -1372,7 +1372,7 @@ async function qtHydrateDatabase(opts){
       if(!x) return;
       if(x.id) profileMaps.shopById.set(String(x.id),x.user_id);
       if(x.user_id && x.id) profileMaps.shopByUserId.set(String(x.user_id),String(x.id));
-      if(String(x.status||'').toLowerCase()!=='active') return;
+      if(String(x.status||'').toLowerCase()!=='active'||x.delivery_enabled===false) return;
       const meta=(x.metadata&&typeof x.metadata==='object'&&!Array.isArray(x.metadata))?x.metadata:{};
       const su=Object.assign({},meta,{id:x.user_id||x.id,shopProfileId:x.id,type:'shop',status:'approved',shopName:x.shop_name||meta.shopName||'ร้านค้า',name:meta.name||x.shop_name||'ร้านค้า',phone:x.phone||meta.phone||'',address:x.address||meta.address||'',profileImage:meta.logo||meta.profileImage||meta.profile_image||x.profile_image||x.profile_photo||x.avatar_url||x.photo_url||x.image_url||x.image||x.public_logo||meta.avatarUrl||meta.avatar_url||'',lat:x.latitude??meta.lat??null,lng:x.longitude??meta.lng??null,supabase:true,_profileOnly:true});
       delete su.password; delete su.authUserId;
@@ -2832,12 +2832,12 @@ async function qtEnsurePublicShopsLoaded(){
     const token=await qtGetAccessToken();
     const authOpts=token?{accessToken:token}:{};
     let rows=[];
-    try{ rows=await qtSupabaseTable(token?'shop_profiles?select=*':'shop_profiles?select=id,shop_name,status,public_category,public_logo,public_cover,public_open_time,public_close_time,public_description,address,latitude,longitude',authOpts); }
+    try{ rows=await qtSupabaseTable(token?'shop_profiles?select=*':'shop_profiles?select=id,shop_name,status,public_category,public_logo,public_cover,public_open_time,public_close_time,public_description,address,latitude,longitude,delivery_enabled',authOpts); }
     catch(e){ console.warn('[QueueGo] shop_profiles read failed:',e); }
     if(!Array.isArray(rows) || !rows.length) rows=await qtLegacyPublicShopProfiles(authOpts);
     if(!Array.isArray(rows)) return false;
     const current=dbGet('qt_users',[]).filter(u=>u.type!=='shop');
-    const shops=rows.filter(x=>x && String(x.status||'').toLowerCase()==='active').map(x=>{
+    const shops=rows.filter(x=>x && String(x.status||'').toLowerCase()==='active' && x.delivery_enabled!==false).map(x=>{
       const meta=(x.metadata&&typeof x.metadata==='object')?x.metadata:{};
       return Object.assign({},meta,{id:x.user_id||x.id,shopProfileId:x.id,type:'shop',status:'approved',shopName:x.shop_name,name:meta.name||x.shop_name,phone:x.phone,address:x.address,profileImage:meta.logo||meta.profileImage||meta.profile_image||x.profile_image||x.profile_photo||x.avatar_url||x.photo_url||x.image_url||x.image||meta.avatarUrl||meta.avatar_url||'',lat:x.latitude,lng:x.longitude,supabase:true,_profileOnly:true});
     });
