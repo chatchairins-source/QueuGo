@@ -171,7 +171,7 @@ async function qtCreateSupabaseUser({type,name,phone,password,email,shopName,cat
   if(!profile) throw new Error('สร้างข้อมูลผู้ใช้ในฐานข้อมูลไม่สำเร็จ');
   const shops=await qtSupabaseTable('shop_profiles?select=id,shop_name,public_category,status&on_conflict=user_id',{
     method:'POST',accessToken:session.access_token,
-    body:{user_id:profile.id,shop_name:shopName,public_category:category,status:'pending',metadata:{shopName,category}}
+    body:{user_id:profile.id,shop_name:shopName,status:'pending',metadata:{shopName,category}}
   });
   if(!Array.isArray(shops)||shops.length!==1||shops[0].shop_name!==shopName||shops[0].public_category!==category||shops[0].status!=='pending'){
     throw new Error('สร้างบัญชีแล้ว แต่บันทึกข้อมูลร้านไม่สำเร็จ กรุณาเข้าสู่ระบบและแก้ข้อมูลร้าน');
@@ -366,7 +366,7 @@ async function qtPersistKeyRaw(key,val){
              existing profile by its user_id and only send coordinate fields when the
              local profile actually has numeric coordinates. */
           const shopRows=await qtSupabaseTable('shop_profiles?select=id&user_id=eq.'+encodeURIComponent(u.id)+'&limit=1',{accessToken:token});
-          const shopBody={shop_name:u.shopName||u.name||'ร้านค้า',phone:u.phone||null,address:u.address||null,public_category:u.category||null,status:u.status==='approved'?'active':u.status==='suspended'?'suspended':u.status==='rejected'?'rejected':'pending',metadata:qtUserMetadata(u)};
+          const shopBody={shop_name:u.shopName||u.name||'ร้านค้า',phone:u.phone||null,address:u.address||null,status:u.status==='approved'?'active':u.status==='suspended'?'suspended':u.status==='rejected'?'rejected':'pending',metadata:qtUserMetadata(u)};
           if(Number.isFinite(Number(u.lat)) && Number.isFinite(Number(u.lng))){shopBody.latitude=Number(u.lat);shopBody.longitude=Number(u.lng);}
           if(Array.isArray(shopRows)&&shopRows[0]?.id){
             await qtSupabaseTable('shop_profiles?id=eq.'+encodeURIComponent(shopRows[0].id),{method:'PATCH',accessToken:token,body:shopBody});
@@ -1008,7 +1008,7 @@ async function handleShopSetup(e){
     await qtSupabaseTable('users?id=eq.'+encodeURIComponent(users[idx].id),{method:'PATCH',accessToken:token,body:userRow});
 
     const profileRows=await qtSupabaseTable('shop_profiles?select=id&user_id=eq.'+encodeURIComponent(users[idx].id)+'&limit=1',{accessToken:token});
-    const profileBody={shop_name:users[idx].shopName||users[idx].name||'ร้านค้า',phone:users[idx].phone||null,address:users[idx].address||null,latitude:users[idx].lat??null,longitude:users[idx].lng??null,public_category:users[idx].category||null,status:users[idx].status==='approved'?'active':users[idx].status==='suspended'?'suspended':users[idx].status==='rejected'?'rejected':'pending',metadata:qtUserMetadata(users[idx])};
+    const profileBody={shop_name:users[idx].shopName||users[idx].name||'ร้านค้า',phone:users[idx].phone||null,address:users[idx].address||null,latitude:users[idx].lat??null,longitude:users[idx].lng??null,status:users[idx].status==='approved'?'active':users[idx].status==='suspended'?'suspended':users[idx].status==='rejected'?'rejected':'pending',metadata:qtUserMetadata(users[idx])};
     if(Array.isArray(profileRows) && profileRows[0]?.id){
       await qtSupabaseTable('shop_profiles?id=eq.'+encodeURIComponent(profileRows[0].id),{method:'PATCH',accessToken:token,body:profileBody});
     }else{
@@ -2274,7 +2274,7 @@ window.qgmSaveShopSetup=async function(e){e.preventDefault();const button=e.subm
   if(!Number.isFinite(selected.lat)||!Number.isFinite(selected.lng)||Math.abs(selected.lat)>90||Math.abs(selected.lng)>180)throw Error('พิกัดร้านไม่ถูกต้อง');
   next.lat=selected.lat;next.lng=selected.lng;
  }
-  const body={shop_name:next.shopName,phone:next.phone,address:next.address,public_category:next.category,metadata:qtUserMetadata(next)};
+  const body={shop_name:next.shopName,phone:next.phone,address:next.address,metadata:qtUserMetadata(next)};
  if(selected){body.latitude=next.lat;body.longitude=next.lng;}
  const savedProfile=profile?.[0]?.id?await qtSupabaseTable('shop_profiles?id=eq.'+encodeURIComponent(profile[0].id),{method:'PATCH',accessToken:token,body}):await qtSupabaseTable('shop_profiles',{method:'POST',accessToken:token,body:{...body,user_id:u.id,status:'pending'}});
  if(!Array.isArray(savedProfile)||!savedProfile.length)throw Error('ฐานข้อมูลไม่ยืนยันข้อมูลร้าน');

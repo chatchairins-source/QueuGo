@@ -21,6 +21,7 @@
 | Add a second kitchen batch after serving the first; original lines remain served | Passed in a rollback transaction with a real existing product |
 | Delivery opt-in readiness and open state for existing shop | Passed inside rollback, restored original state |
 | Retry the same cash payment after the first completion | Passed in rollback: one payment row and the same closed bill |
+| Merchant profile save writes only base columns and metadata, leaving generated `public_category` to PostgreSQL | Passed with an existing shop identity inside rollback; all 25 inline Merchant scripts pass syntax checking |
 | JavaScript syntax and POS entry routes | Node syntax passed; runtime route test verified unauthenticated POS and staff join rendering. Browser automation later stopped by its usage limit |
 
 ## Not yet verified on devices
