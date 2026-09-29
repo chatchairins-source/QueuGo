@@ -1443,4 +1443,17 @@ window.finishOrder=async function(o){
 <style id="qg-v22-rider-operations-style">.qg-v22-ledger{padding:14px;border-radius:16px;background:white;margin:12px 0 60px}.qg-v22-ledger h2{font-size:17px}.qg-v22-period{display:flex;gap:6px}.qg-v22-period button{flex:1;border:1px solid #d1e8dc;border-radius:10px;padding:8px;background:#edfaf2;color:#12694f}.qg-v22-ledger-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:12px 0}.qg-v22-ledger-grid>div{padding:9px;border:1px solid #d9eadf;border-radius:11px;font-size:11px}.qg-v22-ledger-grid b{display:block;font-size:16px;margin-top:4px}.qg-v22-ledger article{padding:10px;border-top:1px solid #e5f0e9;font-size:11px}.qg-v22-ledger article small{display:block;color:#789082;margin:4px 0}.qg-v22-job-metrics{color:#136a50;font-weight:700;padding:8px 0;font-size:11px}</style>
 
 <style id="qg-v22-pod-photo-style">.qg-v22-photo-label{display:block;text-align:left;font-size:13px;color:#315d4c;margin:12px 0}.qg-v22-photo-label input{display:block;width:100%;margin-top:6px;font:inherit}</style>
-<style id="qg-v23-map-fallback-style">.qg-v23-map-fallback{padding:28px 18px;color:#1b644f;background:#e9f8ef;text-align:center;font:600 14px/1.5 system-ui,sans-serif}.qg-v23-map-fallback small{font-weight:400}</style></body></html>
+<style id="qg-v23-map-fallback-style">.qg-v23-map-fallback{padding:28px 18px;color:#1b644f;background:#e9f8ef;text-align:center;font:600 14px/1.5 system-ui,sans-serif}.qg-v23-map-fallback small{font-weight:400}</style>
+<style id="qg-viewport-gesture-lock-20260929">
+/* Permit native page scrolling while excluding viewport pinch zoom. */
+html,body,#app{touch-action:pan-x pan-y}
+</style>
+<script id="qg-viewport-gesture-lock-script-20260929">
+(function(){
+  function stopZoom(event){if(event.cancelable)event.preventDefault()}
+  document.addEventListener('touchmove',function(event){if(event.touches.length>1)stopZoom(event)},{passive:false});
+  document.addEventListener('gesturestart',stopZoom,{passive:false});
+  document.addEventListener('gesturechange',stopZoom,{passive:false});
+})();
+</script>
+</body></html>
