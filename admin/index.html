@@ -621,7 +621,7 @@ button,input,select,textarea{max-width:100%;box-sizing:border-box}
   .qg-admin-support .btn-primary{appearance:none!important;-webkit-appearance:none!important;width:100%!important;margin-top:8px!important;border:0!important;border-radius:12px!important;background:#0d9f73!important;color:#fff!important;min-height:46px!important;font:700 15px/1.3 inherit!important}
 }
 </style>
-</head>
+<style id="qg-q-only-topbar">.qt-header .qt-logo.qt-q-only{width:36px;height:36px;display:grid;place-items:center;color:#ed0a31}.qt-header .qt-logo.qt-q-only svg{width:30px;height:30px}</style></head>
 <body>
 
 <div id="app"></div>
@@ -2531,7 +2531,7 @@ function layout(title, content){
     <header class="qt-header qt-appbar">
       <div class="qt-appbar-left">
         ${location.hash && location.hash.replace('#','')!==qtLandingPage(user) ? `<button type="button" class="qt-back-btn" onclick="qtGoBack()" aria-label="ย้อนกลับ">‹</button>` : ''}
-        <div class="qt-logo" onclick="navigate(qtLandingPage(user))">🧭 ${user?.type==='admin'?'QueueGo':'QueueGo'}</div>
+        <div class="qt-logo qt-q-only" onclick="navigate(qtLandingPage(user))"><svg viewBox="0 0 48 48" aria-label="QueueGo" role="img"><circle cx="23" cy="23" r="16" fill="none" stroke="currentColor" stroke-width="8"/><path d="M26 27l12 12" fill="none" stroke="currentColor" stroke-width="8" stroke-linecap="round"/></svg></div>
       </div>
       ${user
         ? `<div class="qt-appbar-user"><div class="qt-user-chip" onclick="navigate('${user.type==='customer'?'dashboard':qtLandingPage(user)}')">👤 ${escapeHtml(user.name)}</div><button type="button" class="qt-logout-btn" onclick="logout();return false;" aria-label="ออกจากระบบ">↪</button></div>`
