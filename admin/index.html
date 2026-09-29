@@ -6603,5 +6603,18 @@ body:has(.qg-v23-admin-login),body:has(.qg-v23-admin-denied){padding:0}
  #qg-support-form .btn-primary{display:block!important;width:100%!important;min-height:46px!important;margin:8px 0 0!important;border-radius:12px!important;background:#0d9f73!important;color:#fff!important}
 }
 </style>
+
+<style id="qg-viewport-gesture-lock-20260929">
+/* Permit native page scrolling while excluding viewport pinch zoom. */
+html,body,#app{touch-action:pan-x pan-y}
+</style>
+<script id="qg-viewport-gesture-lock-script-20260929">
+(function(){
+  function stopZoom(event){if(event.cancelable)event.preventDefault()}
+  document.addEventListener('touchmove',function(event){if(event.touches.length>1)stopZoom(event)},{passive:false});
+  document.addEventListener('gesturestart',stopZoom,{passive:false});
+  document.addEventListener('gesturechange',stopZoom,{passive:false});
+})();
+</script>
 </body>
 </html>
