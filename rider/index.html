@@ -111,7 +111,7 @@ html,body,#app{min-width:0;max-width:100%;overflow-x:hidden}
 @media(max-width:760px){.auth-side{height:clamp(245px,43dvh,390px);padding:calc(18px + var(--safeT)) 23px 0}.auth-side-copy h2{font-size:14px}.auth-main{margin-top:-18px;padding:22px 22px calc(20px + var(--safeB))}.auth-card{padding:0;border-radius:0}}
 @media(max-height:700px){.auth-side{height:clamp(205px,34dvh,260px)}.auth-mark .auth-logo{width:40px;height:40px;font-size:27px}.auth-mark b{font-size:21px}.auth-mark small{font-size:12px}.auth-side-copy h2{margin-top:4px}.auth-main{padding-top:16px}.auth-card .sub{margin-bottom:8px}.auth-card .field{margin:7px 0}.auth-card .field input,.auth-card .btn{height:42px}}
 .qg-inbox{background:#fcf7f8}.qg-inbox h2,.qg-inbox-item{color:#241d20}.qg-v22-dialog form button{background:#e6002d}.qg-v22-period button{border-color:#f0d2d9;background:#fff0f2;color:#b60c29}.qg-v22-job-metrics,.qg-v22-photo-label{color:#b60c29}.qg-v23-map-fallback{color:#8f1730;background:#fff0f2}
-</style></head><body>
+</style><style id="qg-q-only-topbar">.qt-top .qt-brand.qt-q-only{display:grid!important;place-items:center!important;width:42px!important;height:42px!important;padding:0!important;color:#ed0a31!important;background:rgba(255,255,255,.92)!important}.qt-top .qt-brand.qt-q-only svg{width:29px;height:29px}.rider-topbar .rider-brand.qt-q-only{display:grid;place-items:center}.rider-topbar .rider-brand.qt-q-only svg{width:42px;height:42px;color:#fff}</style></head><body>
 <div id="app"></div><div id="toast" class="toast"></div>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>/* =========================================================================
@@ -582,7 +582,7 @@ function renderRiderRegistration(){
   app.appendChild(el(`
     <div class="screen-center" style="align-items:flex-start;justify-content:center;padding:16px 12px 30px;">
       <div class="rider-wizard">
-        <div class="rider-topbar"><div class="rider-brand">QueueGo</div><div class="rider-title">สมัครเป็นไรเดอร์</div></div>
+        <div class="rider-topbar"><div class="rider-brand qt-q-only"><svg viewBox="0 0 48 48" aria-label="QueueGo" role="img"><circle cx="23" cy="23" r="16" fill="none" stroke="currentColor" stroke-width="8"/><path d="M26 27l12 12" fill="none" stroke="currentColor" stroke-width="8" stroke-linecap="round"/></svg></div><div class="rider-title">สมัครเป็นไรเดอร์</div></div>
         <div class="rider-steps"><div class="rider-step active"><b>1</b><span>ข้อมูลส่วนตัว</span></div><i></i><div class="rider-step"><b>2</b><span>ยานพาหนะ</span></div><i></i><div class="rider-step"><b>3</b><span>เอกสาร</span></div><i></i><div class="rider-step"><b>4</b><span>ยืนยัน</span></div></div>
         <form novalidate onsubmit="return handleRiderRegistration(event)">
           <div class="rider-grid">
@@ -1112,7 +1112,7 @@ function renderStage(){
  stopPolling();
  document.getElementById('app').innerHTML=`<div class="stage">
    <div id="map" class="map"></div>
-   <header class="qt-top"><div class="qt-brand"><i></i>QueueGo Rider</div><div class="qt-status" id="status-pill"><span id="status-text">ออฟไลน์</span><button class="qt-switch" id="status-switch" aria-label="เปลี่ยนสถานะ"></button></div></header>
+   <header class="qt-top"><div class="qt-brand qt-q-only"><svg viewBox="0 0 48 48" aria-label="QueueGo" role="img"><circle cx="23" cy="23" r="16" fill="none" stroke="currentColor" stroke-width="8"/><path d="M26 27l12 12" fill="none" stroke="currentColor" stroke-width="8" stroke-linecap="round"/></svg></div><div class="qt-status" id="status-pill"><span id="status-text">ออฟไลน์</span><button class="qt-switch" id="status-switch" aria-label="เปลี่ยนสถานะ"></button></div></header>
    <div class="qt-route" id="route-badge"><div>${QTICON.loc}</div><div><strong id="route-text">กำลังคำนวณเส้นทาง</strong><small>แตะนำทางเพื่อเปิดเส้นทางแบบ turn-by-turn</small></div></div>
    <div class="qt-fabs"><button class="qt-fab" id="recenter">${QTICON.loc}</button></div>
    <section class="qt-sheet" id="sheet"></section>
