@@ -828,7 +828,7 @@ async function qtApi(path, options={}){
   if(!QT_ONLINE_CONFIG.ONLINE_MODE || !QT_ONLINE_CONFIG.API_BASE_URL) throw new Error('ONLINE_DISABLED');
   const ctrl=new AbortController(), timer=setTimeout(()=>ctrl.abort(),options.timeout||12000);
   try{
-    const headers=Object.assign({'Content-Type':'application/json','X-QueueTech-App':QT_ONLINE_CONFIG.APP_VERSION},options.headers||{});
+    const headers=Object.assign({'Content-Type':'application/json','X-QueueGo-App':QT_ONLINE_CONFIG.APP_VERSION},options.headers||{});
     const s=qtSession(); if(s && s.token) headers.Authorization='Bearer '+s.token;
     const r=await fetch(QT_ONLINE_CONFIG.API_BASE_URL.replace(/\/$/,'')+path,
       Object.assign({},options,{headers,signal:ctrl.signal}));
