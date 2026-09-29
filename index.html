@@ -5079,5 +5079,18 @@ button,a,input,textarea,select{font:inherit}
 <style id="qg-v22-customer-operations-style">.qg-menu-item-new{position:relative}.qg-v22-favorite{position:absolute;right:10px;top:9px;width:30px;height:30px;border:1px solid #dce8df;border-radius:50%;background:#fff;color:#dc3246;font-size:23px;line-height:1}.qg-v22-favorite[aria-pressed="true"]{background:#fff0f2}</style>
 <link rel="stylesheet" href="market.css?v=20260928">
 <script defer src="market.js?v=20260928"></script>
+
+<style id="qg-viewport-gesture-lock-20260929">
+/* Permit native page scrolling while excluding viewport pinch zoom. */
+html,body,#app{touch-action:pan-x pan-y}
+</style>
+<script id="qg-viewport-gesture-lock-script-20260929">
+(function(){
+  function stopZoom(event){if(event.cancelable)event.preventDefault()}
+  document.addEventListener('touchmove',function(event){if(event.touches.length>1)stopZoom(event)},{passive:false});
+  document.addEventListener('gesturestart',stopZoom,{passive:false});
+  document.addEventListener('gesturechange',stopZoom,{passive:false});
+})();
+</script>
 </body>
 </html>
