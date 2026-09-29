@@ -1258,6 +1258,7 @@ function qtRerenderAfterHydrate(tries){
   const typing=(a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)) ||
     [].slice.call(document.querySelectorAll('#app textarea, #app input:not([type=checkbox]):not([type=radio]):not([type=file]):not([type=hidden])')).some(el=>String(el.value||'').trim());
   if(typing){ if(tries<6) setTimeout(()=>qtRerenderAfterHydrate(tries+1),1500); return; }
+  if(name==='home'&&typeof window.qgRefreshHomeInPlace==='function'){window.qgRefreshHomeInPlace().catch(console.warn);return;}
   const y=window.scrollY; try{ router(); }catch(e){ console.warn(e); } window.scrollTo(0,y);
 }
 /* Returning visitor (session still in this tab): fetch only the person's own account row so the first render knows who they are. */
@@ -1372,6 +1373,7 @@ async function qtHydratePublicStorefront(){
 function qtRerenderAfterPublicHydrate(){
   const page=(location.hash.replace('#','')||'home').split('/')[0];
   if(['login','register'].includes(page)) return;
+  if(page==='home'&&typeof window.qgRefreshHomeInPlace==='function'){window.qgRefreshHomeInPlace().catch(console.warn);return;}
   const y=window.scrollY;
   try{ router(); }catch(e){ console.warn('[QueueGo] public rerender failed',e); }
   window.scrollTo(0,y);
@@ -2169,6 +2171,7 @@ function qtSyncRerender(before,after){
   if(!safe.includes(name)) return;
   const typed=[].slice.call(document.querySelectorAll('#app textarea,#app input:not([type=checkbox]):not([type=radio]):not([type=file]):not([type=hidden])')).some(el=>String(el.value||'').trim());
   if(typed) return;
+  if(name==='home'&&typeof window.qgRefreshHomeInPlace==='function'){window.qgRefreshHomeInPlace().catch(console.warn);return;}
   const y=window.scrollY; try{router();}catch(e){console.warn(e);} window.scrollTo(0,y);
 }
 
@@ -4628,8 +4631,20 @@ button,a,input,textarea,select{font:inherit}
         return {...s,distance,_distanceReason:!loc?'customer':(!shopOk?'shop':'')};
       });
       ss.sort((a,b)=>(Number.isFinite(a.distance)?a.distance:Number.POSITIVE_INFINITY)-(Number.isFinite(b.distance)?b.distance:Number.POSITIVE_INFINITY));
-      const el=document.getElementById('qg-nearby'); if(el) el.innerHTML=ss.length?ss.slice(0,12).map(shopCardV2).join(''):'<div class="qg-empty-new">ยังไม่มีร้านที่เปิดให้บริการ</div>';
+      const el=document.getElementById('qg-nearby');
+      const html=ss.length?ss.slice(0,12).map(shopCardV2).join(''):'<div class="qg-empty-new">ยังไม่มีร้านที่เปิดให้บริการ</div>';
+      if(el&&el.innerHTML!==html)el.innerHTML=html;
+      const catBox=document.getElementById('qg-categories');
+      const list=[...new Set(ss.map(s=>s.category).filter(Boolean))].slice(0,8);
+      const categories=list.length?list:['food','cafe','grocery','other'];
+      const key=categories.join('|');
+      if(catBox&&catBox.dataset.categoryKey!==key){
+        catBox.querySelectorAll('.qg-cat:not(.market-home-link)').forEach(node=>node.remove());
+        catBox.insertAdjacentHTML('afterbegin',categories.map(c=>`<button class="qg-cat" onclick="navigate('search/${esc(c)}')"><span class="qg-cat-icon">${qgIcon(catIcon(c))}</span><b>${esc(catLabel(c))}</b></button>`).join(''));
+        catBox.dataset.categoryKey=key;
+      }
     };
+    window.qgRefreshHomeInPlace=render;
     render().catch(()=>{});
     if(u&&customer(u))setTimeout(qtAutoCaptureCustomerLocation,250);
   };
@@ -4972,9 +4987,13 @@ button,a,input,textarea,select{font:inherit}
   };
   async function loadStates(){
     try{const rows=await qtSupabaseTable('shop_open_states?select=shop_id,is_open,resume_at');
+      const before=JSON.stringify([...states]);
       states.clear();for(const r of rows||[])states.set(String(r.shop_id),r);
-      if(['home','shop-view'].includes(location.hash.replace('#','').split('/')[0])&&!document.activeElement?.matches('input,textarea,select')){
-        const y=window.scrollY;router();window.scrollTo(0,y);
+      if(before===JSON.stringify([...states]))return;
+      const page=location.hash.replace('#','').split('/')[0];
+      if(page==='home'){window.qgRefreshHomeInPlace?.().catch(console.warn)}
+      else if(page==='shop-view'&&!document.activeElement?.matches('input,textarea,select')){
+        const y=window.scrollY;router();requestAnimationFrame(()=>window.scrollTo(0,y));
       }
     }catch(e){console.warn('shop availability refresh failed',e)}
   }
