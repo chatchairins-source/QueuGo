@@ -4619,22 +4619,15 @@ button,a,input,textarea,select{font:inherit}
   window.renderHome=function(){
     const u=currentUser();
     const addr=u&&customer(u)?qtCustomerLocationText(u):'เลือกที่อยู่จัดส่ง';
-    const shops=dbGet('qt_users',[]).filter(x=>x.type==='shop'&&x.shopName);
     layout('หน้าหลัก',`
       <section class="qg-location-new" onclick="${customer(u)?'openCustomerLocationPicker()':''}">
         <div class="qg-location-pin">${qgIcon('pin',18)}</div><div class="qg-location-copy"><small>จัดส่งที่</small><b id="qg-customer-location-text">${esc(addr)}</b></div>${qgIcon('chevron',19)}
       </section>
       <section class="qg-search-new" onclick="navigate('search')">${qgIcon('search')}<span>ค้นหาร้านหรือเมนูที่ต้องการ</span></section>
       <section class="qg-promo-banner qg-home-service-banner"><img src="${window.HOME_BANNER || window.QueueGoAssets.PROMO_BANNER_01}" alt="บริการจัดส่ง QueueGo"></section>
-      <section class="qg-section-new"><div class="qg-section-title"><h2>หมวดหมู่</h2></div><div id="qg-categories" class="qg-cat-row"></div></section>
+      <section class="qg-section-new"><div class="qg-section-title"><h2>หมวดหมู่</h2></div><div id="qg-categories" class="qg-cat-row"><button class="qg-cat" onclick="navigate('search/food')"><span class="qg-cat-icon">${qgIcon('utensils')}</span><b>อาหาร</b></button><button class="qg-cat" onclick="navigate('search/cafe')"><span class="qg-cat-icon">${qgIcon('drink')}</span><b>เครื่องดื่ม</b></button><button class="qg-cat" onclick="navigate('search/grocery')"><span class="qg-cat-icon">${qgIcon('bag')}</span><b>ของใช้</b></button><button type="button" class="qg-cat market-home-link" aria-label="ตลาดสด QueueGo" onclick="navigate('market')"><span class="qg-cat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9h18l-2 11H5L3 9Z"/><path d="m7 9 5-6 5 6M9 13v4m6-4v4"/></svg></span><b>ตลาดสด</b></button><button class="qg-cat" onclick="navigate('search/other')"><span class="qg-cat-icon">${qgIcon('grid')}</span><b>อื่นๆ</b></button></div></section>
       <section class="qg-section-new"><div class="qg-section-title"><h2>ร้านใกล้คุณ</h2><button class="qg-link-btn" onclick="navigate('search')">ดูทั้งหมด</button></div><div id="qg-nearby" class="qg-shop-list-new"><div class="qg-empty-new">กำลังโหลดร้าน...</div></div></section>
     `);
-    const cats=[...new Set(shops.map(s=>s.category).filter(Boolean))];
-    const catBox=document.getElementById('qg-categories');
-    if(catBox){
-      const list=cats.length?cats.slice(0,8):['food','cafe','grocery','other'];
-      catBox.innerHTML=list.map(c=>`<button class="qg-cat" onclick="navigate('search/${esc(c)}')"><span class="qg-cat-icon">${qgIcon(catIcon(c))}</span><b>${esc(catLabel(c))}</b></button>`).join('');
-    }
     const render=async()=>{
       let ss=dbGet('qt_users',[]).filter(x=>x.type==='shop'&&x.shopName);
       if(!ss.length){await qtEnsurePublicShopsLoaded();ss=dbGet('qt_users',[]).filter(x=>x.type==='shop'&&x.shopName);}
@@ -4648,15 +4641,7 @@ button,a,input,textarea,select{font:inherit}
       const el=document.getElementById('qg-nearby');
       const html=ss.length?ss.slice(0,12).map(shopCardV2).join(''):'<div class="qg-empty-new">ยังไม่มีร้านที่เปิดให้บริการ</div>';
       if(el&&el.innerHTML!==html)el.innerHTML=html;
-      const catBox=document.getElementById('qg-categories');
-      const list=[...new Set(ss.map(s=>s.category).filter(Boolean))].slice(0,8);
-      const categories=list.length?list:['food','cafe','grocery','other'];
-      const key=categories.join('|');
-      if(catBox&&catBox.dataset.categoryKey!==key){
-        catBox.querySelectorAll('.qg-cat:not(.market-home-link)').forEach(node=>node.remove());
-        catBox.insertAdjacentHTML('afterbegin',categories.map(c=>`<button class="qg-cat" onclick="navigate('search/${esc(c)}')"><span class="qg-cat-icon">${qgIcon(catIcon(c))}</span><b>${esc(catLabel(c))}</b></button>`).join(''));
-        catBox.dataset.categoryKey=key;
-      }
+
     };
     window.qgRefreshHomeInPlace=render;
     render().catch(()=>{});
