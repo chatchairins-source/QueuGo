@@ -6578,5 +6578,30 @@ body:has(.qg-v23-admin-login),body:has(.qg-v23-admin-denied){padding:0}
 </script>
 <link rel="stylesheet" href="market.css?v=20260928">
 <script defer src="market.js?v=20260928"></script>
+<style id="qg-admin-tablet-final-override-20260929">
+/* FINAL tablet override: intentionally last in document so legacy Admin CSS cannot override it. */
+@media (min-width:600px) and (max-width:1400px){
+ html,body{width:100%!important;max-width:100%!important;overflow-x:hidden!important;-webkit-text-size-adjust:100%!important}
+ body{margin:0!important;background:#f5faf7!important}
+ #app{width:100%!important;max-width:none!important;min-height:100dvh!important}
+ .qt-header.qt-appbar{width:100%!important;max-width:none!important;min-height:62px!important;padding:10px 18px!important;display:flex!important;align-items:center!important;justify-content:space-between!important;background:#fff!important;position:sticky!important;top:0!important;z-index:999!important}
+ .qt-main{width:100%!important;max-width:960px!important;margin:0 auto!important;padding:20px 24px 96px!important;box-sizing:border-box!important}
+ .qg-admin-support{display:block!important;width:100%!important;max-width:900px!important;margin:0 auto!important;padding:0!important;box-sizing:border-box!important}
+ .qg-admin-support h2{font-size:26px!important;line-height:1.25!important;margin:6px 0 14px!important}
+ .qg-admin-support>.btn-secondary{display:inline-flex!important;width:auto!important;min-height:42px!important;align-items:center!important;border:1px solid #cde7d8!important;border-radius:12px!important;background:#fff!important;color:#087755!important;padding:9px 14px!important}
+ .qg-admin-support .card{display:block!important;float:none!important;position:static!important;width:100%!important;max-width:none!important;min-width:0!important;height:auto!important;box-sizing:border-box!important;margin:14px 0!important;padding:16px!important;border:1px solid #dceae3!important;border-radius:16px!important;background:#fff!important;box-shadow:0 5px 18px rgba(15,23,42,.05)!important}
+ .qg-admin-support .card h3{display:block!important;width:100%!important;font-size:18px!important;margin:0 0 12px!important}
+ #qg-support-shops.qg-support-list{display:grid!important;grid-template-columns:minmax(0,1fr)!important;width:100%!important;max-width:none!important;gap:8px!important}
+ #qg-support-shops.qg-support-list button{display:block!important;position:static!important;width:100%!important;max-width:none!important;min-height:46px!important;margin:0!important;padding:12px 14px!important;text-align:left!important;white-space:normal!important;border:1px solid #dceae3!important;border-radius:12px!important;background:#f8fcfa!important;color:#183d32!important}
+ #qg-support-shops.qg-support-list button.active{border-color:#0d9f73!important;background:#e6f8ef!important}
+ #qg-support-messages.qg-support-messages{display:block!important;width:100%!important;max-width:none!important;min-height:80px!important;max-height:52dvh!important;overflow-y:auto!important;overflow-x:hidden!important}
+ .qg-admin-support .qg-support-bubble{display:block!important;width:fit-content!important;max-width:82%!important;margin:8px 0!important;padding:10px 12px!important;border-radius:14px!important;background:#f2f7f4!important;white-space:pre-wrap!important;overflow-wrap:anywhere!important}
+ .qg-admin-support .qg-support-bubble.mine{margin-left:auto!important;background:#e3f7eb!important}
+ #qg-support-form{display:block;width:100%!important;max-width:none!important;box-sizing:border-box!important;margin:12px 0 0!important;padding:0!important;border:0!important;background:transparent!important;box-shadow:none!important}
+ #qg-support-form[hidden]{display:none!important}
+ #qg-support-reply{display:block!important;width:100%!important;max-width:none!important;min-height:86px!important;box-sizing:border-box!important;padding:12px!important;border:1px solid #cde7d8!important;border-radius:12px!important}
+ #qg-support-form .btn-primary{display:block!important;width:100%!important;min-height:46px!important;margin:8px 0 0!important;border-radius:12px!important;background:#0d9f73!important;color:#fff!important}
+}
+</style>
 </body>
 </html>
