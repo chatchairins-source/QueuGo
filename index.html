@@ -679,6 +679,9 @@ html,body,#app{max-width:100%;overflow-x:hidden;}
 .qg-auth-lockup .qg-logo-lockup img{width:42px;height:42px}
 .qg-auth-brand .qg-logo-lockup{font-size:26px}
 .qg-auth-brand .qg-logo-lockup img{width:38px;height:38px}
+.qg-home-service-banner .qg-hero-brand{position:absolute;top:clamp(10px,2.3vw,18px);left:clamp(10px,2.3vw,18px);display:inline-flex;align-items:center;pointer-events:none}
+.qg-home-service-banner .qg-logo-lockup{font-size:clamp(18px,3.5vw,29px);gap:5px;text-shadow:0 1px 4px rgba(255,255,255,.85)}
+.qg-home-service-banner .qg-logo-lockup img{width:clamp(30px,5vw,43px);height:clamp(30px,5vw,43px);min-height:0;object-fit:contain}
 </style>
 </head>
 <body>
@@ -4625,7 +4628,7 @@ button,a,input,textarea,select{font:inherit}
         <div class="qg-location-pin">${qgIcon('pin',18)}</div><div class="qg-location-copy"><small>จัดส่งที่</small><b id="qg-customer-location-text">${esc(addr)}</b></div>${qgIcon('chevron',19)}
       </section>
       <section class="qg-search-new" onclick="navigate('search')">${qgIcon('search')}<span>ค้นหาร้านหรือเมนูที่ต้องการ</span></section>
-      <section class="qg-promo-banner qg-home-service-banner"><img src="${window.HOME_BANNER || window.QueueGoAssets.PROMO_BANNER_01}" alt="บริการจัดส่ง QueueGo"></section>
+      <section class="qg-promo-banner qg-home-service-banner"><img src="${window.HOME_BANNER || window.QueueGoAssets.PROMO_BANNER_01}" alt="บริการจัดส่ง QueueGo"><span class="qg-hero-brand" aria-label="QueueGo"><span class="qg-logo-lockup"><img src="${window.QueueGoAssets.APP_MARK}" alt=""><span>Queue<span>Go</span></span></span></span></section>
       <section class="qg-section-new"><div class="qg-section-title"><h2>หมวดหมู่</h2></div><div id="qg-categories" class="qg-cat-row"></div></section>
       <section class="qg-section-new"><div class="qg-section-title"><h2>ร้านใกล้คุณ</h2><button class="qg-link-btn" onclick="navigate('search')">ดูทั้งหมด</button></div><div id="qg-nearby" class="qg-shop-list-new"><div class="qg-empty-new">กำลังโหลดร้าน...</div></div></section>
     `);
