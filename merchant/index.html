@@ -1881,7 +1881,7 @@ setInterval(()=>{if(['#shop-profile','#shop-support','#admin-support'].includes(
 body.qt-admin-support-page{
   margin:0;background:#f6f7f9;color:#193d32;
   font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Noto Sans Thai","Thonburi",sans-serif;
-  -webkit-text-size-adjust:100%;text-size-adjust:100%;overflow-x:hidden
+  -webkit-text-size-adjust:100%;text-size-adjust:100%;overflow-x:clip
 }
 body.qt-admin-support-page #app{width:100%;min-height:100dvh}
 body.qt-admin-support-page .qt-header{
@@ -1936,10 +1936,10 @@ body.qt-admin-support-page .qt-support-compose button{
   --qg-bg:#f7f8fa;--qg-card:#fff;--qg-radius:16px;--qg-nav-h:68px;
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-html,body{margin:0;width:100%;min-height:100%;background:var(--qg-bg);overscroll-behavior-y:none}
+html,body{margin:0;width:100%;min-height:100%;background:var(--qg-bg);overscroll-behavior-y:auto}
 body.qgm-app,body.qgm-login{
   font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","SF Pro Display","Noto Sans Thai","Thonburi",sans-serif;
-  color:var(--qg-text);font-size:14px;overflow-x:hidden
+  color:var(--qg-text);font-size:14px;overflow-x:clip
 }
 button,input,select,textarea{font:inherit} input,select,textarea{font-size:16px}
 button{cursor:pointer}.qgm-shell{width:100%;min-height:100dvh;background:var(--qg-bg)}
@@ -2022,7 +2022,7 @@ button{cursor:pointer}.qgm-shell{width:100%;min-height:100dvh;background:var(--q
 .qgm-profile-cover{height:160px;border-radius:14px;overflow:hidden;position:relative;background:#eee}.qgm-profile-cover img{width:100%;height:100%;object-fit:cover}.qgm-camera{position:absolute;right:10px;bottom:10px;width:38px;height:38px;border:0;border-radius:50%;background:#fff;color:#555;display:grid;place-items:center}
 .qgm-profile-name{display:flex;align-items:center;justify-content:space-between;margin:13px 2px 5px}.qgm-profile-name h2{font-size:18px;margin:0}.qgm-detail-row{display:flex;gap:10px;align-items:flex-start;padding:12px 0;border-bottom:1px solid var(--qg-line)}
 .qgm-detail-row svg{width:18px;height:18px;color:var(--qg-red);fill:none;stroke:currentColor;stroke-width:1.8;flex:none}.qgm-detail-row span{font-size:11px;line-height:1.5}
-.qgm-login{min-height:100dvh;background:#111;position:relative;overflow:hidden}.qgm-login-hero{height:53dvh;min-height:330px;position:relative;background:radial-gradient(circle at 70% 30%,#6f2f1f 0,#2b1711 34%,#111 70%);overflow:hidden}
+.qgm-login{min-height:100dvh;background:#111;position:relative;overflow-x:clip}.qgm-login-hero{height:53dvh;min-height:330px;position:relative;background:radial-gradient(circle at 70% 30%,#6f2f1f 0,#2b1711 34%,#111 70%);overflow:hidden}
 .qgm-login-hero:before{content:"";position:absolute;inset:0;background:linear-gradient(180deg,transparent 25%,rgba(0,0,0,.66))}
 .qgm-login-copy{position:absolute;left:22px;right:22px;bottom:34px;color:#fff;z-index:2}.qgm-login-copy .qgm-logo{width:70px;height:70px;background:var(--qg-red);color:#fff;margin-bottom:15px}.qgm-login-copy .qgm-logo svg{width:39px;height:39px}
 .qgm-login-copy h1{font-size:27px;margin:0 0 4px}.qgm-login-copy p{font-size:13px;margin:0;line-height:1.55}
@@ -2034,7 +2034,7 @@ button{cursor:pointer}.qgm-shell{width:100%;min-height:100dvh;background:var(--q
 @media(max-width:360px){.qgm-content{padding-left:10px;padding-right:10px}.qgm-menu-grid{gap:6px}.qgm-menu{padding-left:2px;padding-right:2px}.qgm-stats{gap:6px}}
 </style><style id="qg-login-v08">
 /* QueueGo v08: approved merchant login, one-column mobile layout. */
-html:has(body.qgm-login),body.qgm-login{width:100%;max-width:100%;overflow-x:hidden}
+html:has(body.qgm-login),body.qgm-login{width:100%;max-width:100%;overflow-x:clip}
 body.qgm-login{background:#fff}
 body.qgm-login #app{width:100%;min-width:0}
 body.qgm-login main.qgm-login{width:100%;max-width:520px;margin:0 auto;min-height:100svh;min-height:100dvh;display:grid;grid-template-rows:minmax(175px,1fr) auto;overflow-x:clip;background:#fff}
@@ -2262,7 +2262,7 @@ window.renderShopModules=async function(){
   --qg-line:#e8eaee;
   --qg-radius:18px;
 }
-html,body{max-width:100%;overflow-x:hidden}
+html,body{max-width:100%;overflow-x:clip}
 body.qt-shop-app{background:var(--qg-bg);color:var(--qg-text)}
 .qt-main,.qgm-main{width:100%;max-width:560px;margin:0 auto;box-sizing:border-box}
 .qgm-card{border-radius:var(--qg-radius);border:1px solid var(--qg-line);box-shadow:0 5px 18px rgba(20,24,32,.045)}
@@ -2284,7 +2284,7 @@ input,select,textarea{font-size:16px}
 
 /* QueueGo v09 approved merchant screen system */
 body.qgm-app{background:#f8f9fb}
-.qgm-shell{max-width:620px;margin:0 auto;overflow:clip}
+.qgm-shell{max-width:620px;margin:0 auto;overflow-x:clip}
 .qgm-top{background:#fff!important;color:#17191d!important;border-bottom:1px solid #eef0f2;padding:calc(10px + env(safe-area-inset-top)) 16px 10px;min-height:58px}
 .qgm-brand{display:flex;align-items:center;gap:6px;font-size:21px;font-weight:800;color:#17191d}
 .qgm-brand-mark{width:30px;height:30px;color:#e7092b;display:block}.qgm-brand-mark svg{width:100%;height:100%}.qgm-wordmark span{color:#e7092b}
