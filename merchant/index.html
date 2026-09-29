@@ -1875,6 +1875,55 @@ setInterval(()=>{if(['#shop-profile','#shop-support','#admin-support'].includes(
 .qt-support-bubble{max-width:85%;align-self:flex-start;background:#fff;border:1px solid #e2eee8;border-radius:11px 11px 11px 3px;padding:9px 10px;font-size:12px;line-height:1.5;overflow-wrap:anywhere;white-space:pre-wrap}.qt-support-bubble.mine{align-self:flex-end;background:#ddf8ec;border-color:#c6efdc;border-radius:11px 11px 3px 11px}.qt-support-bubble small{display:block;margin-top:5px;color:#73877d;font-size:9px}
 .qt-support-compose{border-top:1px solid #e4f0e9;padding:10px;display:flex;align-items:end;gap:7px}.qt-support-compose[hidden]{display:none}.qt-support-compose textarea{font:inherit;font-size:12px;min-width:0;flex:1;resize:vertical;max-height:130px;border:1px solid #d7e9df;border-radius:7px;padding:8px;outline:0}.qt-support-compose textarea:focus{border-color:#1ab686}.qt-support-compose button{background:#20bc8b;color:#fff;border:0;border-radius:7px;padding:10px 12px;white-space:nowrap;font:inherit;font-size:11px;font-weight:700}.qt-support-compose button:disabled{opacity:.55}
 .qt-support-inbox{display:flex;gap:7px;overflow-x:auto;margin:8px 0 12px}.qt-support-inbox button{display:flex;align-items:center;gap:5px;white-space:nowrap;border:1px solid #dceee5;background:white;border-radius:8px;padding:8px;color:#42675a}.qt-support-inbox button.active{border-color:#1bb98a;background:#e7fbf2}.qt-support-inbox b{font-size:11px}.qt-support-inbox small{font-size:9px;color:#7b9085}
+
+/* The embedded Admin support route uses the legacy qt-* markup, while the
+   merchant shell uses qgm-* styles. Give that route its own complete layout. */
+body.qt-admin-support-page{
+  margin:0;background:#f6f7f9;color:#193d32;
+  font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Noto Sans Thai","Thonburi",sans-serif;
+  -webkit-text-size-adjust:100%;text-size-adjust:100%;overflow-x:hidden
+}
+body.qt-admin-support-page #app{width:100%;min-height:100dvh}
+body.qt-admin-support-page .qt-header{
+  width:100%;min-height:58px;padding:10px max(16px,env(safe-area-inset-left));
+  background:#fff;border-bottom:1px solid #e3eee8;gap:12px
+}
+body.qt-admin-support-page .qt-shop-brand{display:flex;align-items:center;gap:9px;min-width:0}
+body.qt-admin-support-page .qt-shop-brand-mark{
+  display:grid;place-items:center;width:34px;height:34px;flex:none;
+  border-radius:10px;background:#ed0a31;color:#fff;font-size:20px
+}
+body.qt-admin-support-page .qt-shop-brand-name{font-size:17px;font-weight:750;white-space:nowrap}
+body.qt-admin-support-page .qt-shop-brand-name small{font-size:11px;font-weight:500;color:#6b7b72}
+body.qt-admin-support-page .qt-shop-icon-btn{
+  flex:none;min-height:38px;padding:7px 12px;border:1px solid #dce8e1;
+  border-radius:10px;background:#fff;color:#315d4a;font:inherit;cursor:pointer
+}
+body.qt-admin-support-page .qt-main{
+  width:100%;max-width:800px;min-width:0;margin:0 auto;
+  padding:18px 16px max(32px,env(safe-area-inset-bottom))
+}
+body.qt-admin-support-page .qt-shop-page-title{
+  display:flex;align-items:center;gap:10px;min-width:0;margin:0 0 12px
+}
+body.qt-admin-support-page .qt-shop-page-title h2{
+  min-width:0;margin:0;font-size:clamp(19px,3vw,26px);line-height:1.3
+}
+body.qt-admin-support-page .qt-support-inbox,
+body.qt-admin-support-page .qt-support-panel{min-width:0;max-width:100%}
+body.qt-admin-support-page .qt-support-top{overflow-wrap:anywhere}
+body.qt-admin-support-page .qt-support-messages{max-width:100%;overflow-x:hidden}
+body.qt-admin-support-page .qt-support-compose textarea{
+  width:100%;font-size:16px;min-height:48px;background:#fff
+}
+body.qt-admin-support-page .qt-support-compose button{
+  min-height:44px;font-size:14px;cursor:pointer
+}
+@media(max-width:599px){
+  body.qt-admin-support-page .qt-main{padding:14px 12px max(24px,env(safe-area-inset-bottom))}
+  body.qt-admin-support-page .qt-support-compose{flex-wrap:wrap}
+  body.qt-admin-support-page .qt-support-compose button{margin-left:auto}
+}
 </style>
 <style>.qt-support-profile-box{margin:14px 0}.qt-support-profile-box .qt-support-messages{height:150px;min-height:150px}.qt-support-top a{margin-left:auto;text-decoration:none;color:#149a72;font-size:10px}</style>
 
