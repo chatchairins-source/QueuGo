@@ -592,6 +592,35 @@ button,input,select,textarea{max-width:100%;box-sizing:border-box}
 @media(max-width:520px){.qt-main{padding-left:12px!important;padding-right:12px!important}.qt-admin-tabs{grid-template-columns:repeat(2,minmax(0,1fr))!important}.qt-admin-mobile-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.qt-admin-table th,.qt-admin-table td{font-size:11px!important}.qt-gp-hero{border-radius:16px;padding:16px 14px}.qt-gp-tabs button{font-size:11px}.qt-gp-card{padding:13px}.qt-gp-card-head{flex-direction:column}.qt-gp-ratebox{grid-template-columns:44px minmax(0,1fr) 28px 44px}}
 @media(max-width:360px){.qt-admin-tabs,.qt-admin-mobile-stats{grid-template-columns:1fr!important}.qt-gp-tabs{grid-template-columns:1fr}.row-btns{grid-template-columns:1fr!important}}
 </style>
+<style id="qg-android-tablet-admin-fix-20260929">
+/* QueueGo Android tablet rendering fix — scoped to Admin only.
+   Does not change auth, Supabase, routing or phone/desktop layouts. */
+@media (min-width:600px) and (max-width:1280px) and (pointer:coarse){
+  html,body{width:100%;max-width:100%;overflow-x:hidden;-webkit-text-size-adjust:100%;text-size-adjust:100%}
+  body{margin:0!important;padding-bottom:76px!important;background:#f5faf7!important;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Prompt",system-ui,sans-serif!important}
+  #app{width:100%;max-width:100%;min-height:100dvh}
+  .qt-header.qt-appbar{display:flex!important;align-items:center!important;justify-content:space-between!important;width:100%!important;min-height:64px!important;padding:10px 18px!important;background:#fff!important;border-bottom:1px solid #e5eee9!important;box-shadow:0 2px 12px rgba(15,23,42,.06)!important;position:sticky!important;top:0!important;z-index:100!important}
+  .qt-appbar-left,.qt-appbar-user{display:flex!important;align-items:center!important;gap:10px!important;min-width:0}
+  .qt-logo{font-size:20px!important;font-weight:800!important;color:#087755!important;white-space:nowrap}
+  .qt-user-chip{max-width:42vw!important;overflow:hidden!important;text-overflow:ellipsis!important;white-space:nowrap!important;background:#edf9f3!important;color:#087755!important;border:1px solid #cde7d8!important;border-radius:999px!important;padding:8px 12px!important}
+  .qt-back-btn,.qt-logout-btn{appearance:none!important;-webkit-appearance:none!important;border:0!important;border-radius:12px!important;background:#edf9f3!important;color:#087755!important;min-width:42px!important;min-height:42px!important;font:700 18px/1 system-ui!important}
+  .qt-main{box-sizing:border-box!important;width:100%!important;max-width:900px!important;margin:0 auto!important;padding:22px 24px 96px!important}
+  .qg-admin-support{box-sizing:border-box!important;width:100%!important;max-width:860px!important;margin:0 auto!important}
+  .qg-admin-support h2{font-size:26px!important;line-height:1.25!important;margin:4px 0 14px!important}
+  .qg-admin-support>.btn-secondary{appearance:none!important;-webkit-appearance:none!important;border:1px solid #cde7d8!important;background:#fff!important;color:#087755!important;border-radius:12px!important;padding:10px 14px!important;font:700 14px/1.3 inherit!important}
+  .qg-admin-support .card{display:block!important;width:100%!important;max-width:100%!important;box-sizing:border-box!important;border:1px solid #dceae3!important;border-radius:16px!important;background:#fff!important;padding:16px!important;margin:14px 0!important;box-shadow:0 5px 18px rgba(15,23,42,.04)!important}
+  .qg-admin-support .card h3{font-size:18px!important;margin:0 0 12px!important}
+  .qg-admin-support .qg-support-list{display:grid!important;grid-template-columns:minmax(0,1fr)!important;gap:8px!important;width:100%!important}
+  .qg-admin-support .qg-support-list button{appearance:none!important;-webkit-appearance:none!important;display:block!important;width:100%!important;text-align:left!important;border:1px solid #dceae3!important;background:#f8fcfa!important;color:#183d32!important;padding:13px 14px!important;border-radius:12px!important;font:600 14px/1.4 inherit!important}
+  .qg-admin-support .qg-support-list button.active{border-color:#0d9f73!important;background:#e6f8ef!important}
+  .qg-admin-support .qg-support-messages{width:100%!important;max-height:50dvh!important;overflow:auto!important;overscroll-behavior:contain!important}
+  .qg-admin-support .qg-support-bubble{max-width:82%!important;padding:10px 12px!important;margin:8px 0!important;background:#f2f7f4!important;border-radius:14px!important;white-space:pre-wrap!important;overflow-wrap:anywhere!important;font-size:14px!important}
+  .qg-admin-support .qg-support-bubble.mine{margin-left:auto!important;background:#e3f7eb!important}
+  .qg-admin-support form{width:100%!important;box-sizing:border-box!important;margin-top:12px!important;padding:0!important;background:transparent!important;border:0!important;box-shadow:none!important}
+  .qg-admin-support textarea{display:block!important;width:100%!important;min-height:84px!important;resize:vertical!important;border:1px solid #cde7d8!important;border-radius:12px!important;padding:12px!important;font:14px/1.5 inherit!important}
+  .qg-admin-support .btn-primary{appearance:none!important;-webkit-appearance:none!important;width:100%!important;margin-top:8px!important;border:0!important;border-radius:12px!important;background:#0d9f73!important;color:#fff!important;min-height:46px!important;font:700 15px/1.3 inherit!important}
+}
+</style>
 </head>
 <body>
 
