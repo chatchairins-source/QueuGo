@@ -2094,6 +2094,7 @@ const svg=(name)=>{const p={
 function shopUser(){const u=currentUser();return u&&u.type==='shop'?u:null}
 function profileId(u){return u&&(u.shopProfileId||QT_SYNC.profileMaps?.shopByUserId?.get(u.id)||null)}
 function shopOrders(u){const pid=profileId(u);return dbGet('qt_orders',[]).filter(o=>(!['DINE_IN','TAKEAWAY'].includes(o.orderType))&&(String(o.shopId)===String(u.id)||(pid&&String(o.shopProfileId)===String(pid)))).sort((a,b)=>(b.createdAt||0)-(a.createdAt||0))}
+window.shopOrders=shopOrders;
 function shopProducts(u){const pid=profileId(u);return dbGet('qt_products',[]).filter(p=>String(p.shopId)===String(u.id)||(pid&&(String(p.shopProfileId)===String(pid)||String(p.shopId)===String(pid))))}
 function img(v){
   const s=String(v||'').trim();
@@ -2612,7 +2613,7 @@ window.shopCancelOrder=shopCancelOrder=async function(orderId){
 const oldDetail=window.renderShopOrderModern;
 window.renderShopOrderModern=function(id){
  oldDetail(id);
- const u=currentUser(),o=shopOrders(u).find(x=>String(x.id)===String(id)),main=document.querySelector('.qgm-content');if(!o||!main)return;
+ const u=currentUser(),o=(typeof window.shopOrders==='function'?window.shopOrders(u):[]).find(x=>String(x.id)===String(id)),main=document.querySelector('.qgm-content');if(!o||!main)return;
  const extra=document.createElement('section');extra.className='qgm-order-extra';
  if(['shop_accepted','preparing','waiting_rider','rider_to_shop','accepted','ready','assigned'].includes(o.status)){
   const b=document.createElement('button');b.className='qgm-outline';b.textContent='ยกเลิกออเดอร์';b.onclick=()=>shopCancelOrder(id);extra.appendChild(b);
