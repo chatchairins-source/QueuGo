@@ -277,7 +277,7 @@ function qtOrderStatusToDb(s){
   const m={pending_shop:'pending',shop_accepted:'accepted',preparing:'preparing',waiting_rider:'ready',rider_to_shop:'assigned',picked_up:'picked_up',delivering:'in_progress',arrived:'in_progress',delivered:'completed',completed:'completed',cancelled:'cancelled'};
   return m[s]||(['pending','accepted','preparing','ready','assigned','picked_up','in_progress','completed','cancelled'].includes(s)?s:'pending');
 }
-function qtOrderStatusFromDb(s, note=''){ const m=(note||'').match(/__QT_ORDER_STATUS__=([^\n]+)/)?.[1]; if(m) return m; const map={ready:'waiting_rider',assigned:'rider_to_shop',picked_up:'picked_up',in_progress:'delivering',completed:'completed'}; return map[s]||s; }
+function qtOrderStatusFromDb(s, note=''){ const m=(note||'').match(/__QT_ORDER_STATUS__=([^\n]+)/)?.[1]; if(m) return m; const map={pending:'pending_shop',accepted:'shop_accepted',ready:'waiting_rider',assigned:'rider_to_shop',picked_up:'picked_up',in_progress:'delivering',completed:'completed'}; return map[s]||s; }
 
 
 function qtUserToRow(u, includeStatus=true){
