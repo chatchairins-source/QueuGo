@@ -7,7 +7,7 @@ async function openLaundry(){
  try{if(session.accessToken&&session.refreshToken)await db.auth.setSession({access_token:session.accessToken,refresh_token:session.refreshToken})}catch(e){}
  const {data:hubs,error}=await db.from('laundry_hubs').select('id,name,shop_id').eq('active',true);
  if(error||!hubs?.length)return alert('ยังไม่มีร้านซักที่เปิดให้บริการ');
- const address=u.address||u.deliveryAddress||u.locationAddress||'';
+ const address=u.address||u.deliveryAddress||u.locationAddress||u.addressText||u.savedAddress||'';
  const lat=Number(u.lat??u.latitude),lng=Number(u.lng??u.longitude);
  const name=u.name||u.customerName||u.fullName||'ลูกค้า QueueGo';
  const phone=u.phone||u.phoneNumber||'';
