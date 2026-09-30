@@ -729,7 +729,7 @@ async function pushLocation(){
 async function refreshData(){
   try{
     const token = await getAccessToken();
-    const mine = await sbTable('orders?select=*&order_type=eq.shopping&rider_id=eq.'+encodeURIComponent(S.riderProfile.id)+'&status=in.(assigned,picked_up,in_progress)&order=created_at.desc&limit=1', {token});
+    const mine = await sbTable('orders?select=*&order_type=eq.shopping&rider_id=eq.'+encodeURIComponent(S.riderProfile.id)+'&status=in.(rider_assigned,preparing,ready,picked_up,in_progress)&order=created_at.desc&limit=1', {token});
     S.activeOrder = Array.isArray(mine) && mine[0] ? mine[0] : null;
 
     const previousOpenJobIds = new Set((S.openJobs||[]).map(x=>x&&x.order&&x.order.id ? String(x.order.id) : null).filter(Boolean));
@@ -1260,9 +1260,9 @@ boot();
 /* Cash order transitions use server transactions so the merchant receipt and COD payment stay consistent. */
 window.statusFromRow=function(row){
   if(row.status==='in_progress') return /^__QT_ORDER_STATUS__=arrived(?:\n|$)/.test(row.note||'')?'arrived':'delivering';
-  return {ready:'ready',assigned:'assigned',picked_up:'picked_up',completed:'completed'}[row.status]||row.status;
+  return {searching_rider:'searching_rider',rider_assigned:'rider_assigned',preparing:'preparing',ready:'ready',assigned:'rider_assigned',picked_up:'picked_up',completed:'completed'}[row.status]||row.status;
 };
-STEP_NEXT.assigned.label='จ่ายเงินสดให้ร้านและรับสินค้า';
+STEP_NEXT.rider_assigned={to:'rider_assigned',label:'รอร้านเตรียมสินค้า'}; STEP_NEXT.preparing={to:'preparing',label:'ร้านกำลังเตรียมสินค้า'}; STEP_NEXT.ready={to:'picked_up',label:'จ่ายเงินสดให้ร้านและรับสินค้า'};
 window.acceptJob=async function(orderId){
   const btn=document.getElementById('accept-'+orderId);if(btn)btn.disabled=true;
   try{const token=await getAccessToken();if(!token)throw Error('กรุณาเข้าสู่ระบบใหม่');
@@ -1271,13 +1271,13 @@ window.acceptJob=async function(orderId){
   }catch(e){toast('รับงานไม่สำเร็จ: '+e.message);if(btn)btn.disabled=false;}
 };
 window.advanceOrder=async function(o){
-  const st=statusFromRow(o),action={assigned:'pickup_cash',picked_up:'deliver',delivering:'arrive'}[st];
+  const st=statusFromRow(o),action={ready:'pickup_cash',picked_up:'deliver',delivering:'arrive'}[st];
   if(!action)return;
   try{
     const token=await getAccessToken();if(!token)throw Error('กรุณาเข้าสู่ระบบใหม่');
     if(action==='pickup_cash'){
       const rows=await sbTable('orders?select=subtotal,status&id=eq.'+encodeURIComponent(o.id)+'&limit=1',{token});
-      if(rows?.[0]?.status!=='assigned')throw Error('สถานะงานเปลี่ยนแล้ว กรุณาโหลดใหม่');
+      if(rows?.[0]?.status!=='ready')throw Error('ร้านยังเตรียมสินค้าไม่เสร็จ กรุณารอสถานะพร้อมรับสินค้า');
       if(!confirm('ยืนยันว่าจ่ายเงินสดให้ร้าน ฿'+Number(rows[0].subtotal).toLocaleString('th-TH')+' และรับสินค้าแล้ว?'))return;
     }
     await sbTable('rpc/rider_order_action',{method:'POST',token,body:{p_order_id:o.id,p_action:action}});
