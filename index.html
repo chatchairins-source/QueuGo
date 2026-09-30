@@ -2675,7 +2675,7 @@ async function qtSubmitCheckoutOrder(){
   finally{
     qtCheckoutSubmitting=false;
     if(document.getElementById('checkout-confirm-btn')===btn){
-      btn.disabled=!!window.QT_CHECKOUT_UNCERTAIN || !(window.QT_CAM_CAPTURES&&window.QT_CAM_CAPTURES['co-verify-photo']);
+      btn.disabled=!!window.QT_CHECKOUT_UNCERTAIN;
       btn.textContent='ยืนยันคำสั่งซื้อ';
     }
   }
@@ -3170,7 +3170,6 @@ function addToCart(productId){
   if(existing) existing.qty++;
   else cart.items.push({productId, name:product.name, price:product.price, image:product.image, qty:1});
   qtSetCart(cart);
-  toast('เพิ่มลงตะกร้าแล้ว');
 }
 function renderCart(){
   const cart = qtGetCart();
@@ -3298,9 +3297,8 @@ function renderCheckout(){
       <div id="co-verify-status" class="qt-livecam-status" role="status">🔍 กำลังเปิดกล้อง... กรุณาหันหน้าให้อยู่ในกรอบ</div>
     </div>
     <div id="checkout-error" class="qt-checkout-error" role="alert" hidden></div>
-    <button id="checkout-confirm-btn" class="btn-primary btn-block qt-checkout-button" type="button" onclick="qtSubmitCheckoutOrder()" disabled>ยืนยันคำสั่งซื้อ</button>
+    <button id="checkout-confirm-btn" class="btn-primary btn-block qt-checkout-button" type="button" onclick="qtSubmitCheckoutOrder()">ยืนยันคำสั่งซื้อ</button>
   `);
-  qtStartCheckoutFaceCam();
   let picked = qgIsValidCoordinate(user.lat,user.lng,true)?{lat:Number(user.lat),lng:Number(user.lng)}:null;
   window.__checkoutSubtotal = subtotal;
   window.__checkoutShop = shop;
@@ -3363,9 +3361,6 @@ async function confirmOrder(){
   if(!cart.items.length){toast('ตะกร้าว่างเปล่า');navigate('cart');return;}
   const shop=dbGet('qt_users',[]).find(u=>u.id===cart.shopId);
   if(!shop){qtCheckoutError('ไม่พบข้อมูลร้านค้า กรุณากลับไปเลือกสินค้าใหม่');return;}
-  /* บังคับถ่ายรูปยืนยันตัวตนสดผ่านกล้องก่อนบันทึกออเดอร์ เพื่อป้องกัน Order ผี/ออเดอร์ปลอม */
-  const verifyPhoto=(window.QT_CAM_CAPTURES&&window.QT_CAM_CAPTURES['co-verify-photo'])||null;
-  if(!verifyPhoto){ qtCheckoutError('กรุณาหันหน้าเข้ากล้องเพื่อยืนยันก่อนสั่งซื้อ'); return; }
 
   /* V5.31 FIX — ร้านต้องมี shop_profiles.id ที่แน่นอนก่อนสร้าง Order.
      ห้ามสร้าง Order ด้วย users.id แล้วหวังว่า mapping จะพร้อมภายหลัง. */
@@ -4711,10 +4706,6 @@ button,a,input,textarea,select{font:inherit}
       </article>`).join(''):'<div class="qg-empty-new">ร้านยังไม่มีเมนู</div>';
       updateCartCountUI();
       let fc=document.getElementById('qg-floating-cart'); if(fc)fc.remove();
-      if(cartCount()>0){
-        const c=qtGetCart(), total=(c.items||[]).reduce((s,i)=>s+Number(i.price||0)*Number(i.qty||0),0);
-        document.body.insertAdjacentHTML('beforeend',`<div id="qg-floating-cart" class="qg-floating-cart" onclick="navigate('cart')"><span>ตะกร้า (${cartCount()})</span><b>฿${total}</b></div>`);
-      }
     };
     document.querySelectorAll('.qg-menu-tab').forEach(b=>b.onclick=()=>{document.querySelectorAll('.qg-menu-tab').forEach(x=>x.classList.remove('active'));b.classList.add('active');renderMenu(b.dataset.cat||'');});
     renderMenu('');
@@ -4752,24 +4743,17 @@ button,a,input,textarea,select{font:inherit}
       <section class="qg-checkout-card"><div class="qg-checkout-head"><b>รายการอาหาร</b></div>${cart.items.map(i=>`<div style="display:flex;justify-content:space-between;font-size:12px;padding:6px 0"><span>${esc(i.name)} × ${esc(i.qty)}</span><b>฿${Number(i.price||0)*Number(i.qty||0)}</b></div>`).join('')}</section>
       <section class="qg-checkout-card"><div class="qg-checkout-head"><b>วิธีชำระเงิน</b></div><div class="qg-payment-row"><span>เก็บเงินปลายทาง (COD)</span>${qgIcon('chevron',18)}</div></section>
       <section class="qg-summary"><div class="qg-summary-row"><span>รวมราคาอาหาร</span><b>฿${subtotal}</b></div><div class="qg-summary-row"><span>ค่าส่ง</span><span id="delivery-fee-display">กำลังคำนวณ...</span></div><div class="qg-summary-total"><span>ยอดรวมทั้งหมด</span><span id="checkout-total-display">฿${subtotal}</span></div></section>
-      <details class="qg-camera-mini"><summary>ยืนยันตัวตนก่อนสั่งซื้อ</summary><div class="qg-camera-inner"><div class="qt-livecam-box"><video id="co-verify-video" autoplay playsinline muted></video><div id="co-verify-guide" class="qt-livecam-guide"></div></div><canvas id="co-verify-canvas" style="display:none"></canvas><div id="co-verify-status" class="qt-livecam-status">กำลังเปิดกล้อง...</div></div></details>
       <div id="checkout-error" class="qt-checkout-error" role="alert" hidden></div>
-      <button id="checkout-confirm-btn" type="button" hidden disabled onclick="qtSubmitCheckoutOrder()">ยืนยัน</button>
-      <div id="checkout-confirm-slide" class="qg-slide-wrap">${qtSlideConfirm('checkout-confirm-slide-inner','เลื่อนเพื่อยืนยันการสั่งซื้อ','qtSubmitCheckoutOrder()')}</div>
+      <button id="checkout-confirm-btn" type="button" class="qg-primary" style="margin-top:14px" onclick="qtSubmitCheckoutOrder()">ยืนยันคำสั่งซื้อ</button>
     </section>`);
-    const hidden=document.getElementById('checkout-confirm-btn');
-    const slide=document.getElementById('checkout-confirm-slide');
-    const update=()=>{if(!hidden||!slide)return;const inner=slide.querySelector('.qt-slide-confirm');if(!inner)return;inner.classList.toggle('qt-slide-locked',hidden.disabled||qtCheckoutSubmitting||!!window.QT_CHECKOUT_UNCERTAIN);};
     window.QT_CHECKOUT_UNCERTAIN=false;
     const oldSet=window.QT_CAM_CAPTURES;
-    qtStartCheckoutFaceCam();
     let picked=qgIsValidCoordinate(u.lat,u.lng,true)?{lat:Number(u.lat),lng:Number(u.lng)}:null;
     window.__checkoutSubtotal=subtotal;window.__checkoutShop=shop;
     const refresh=(lat,lng)=>{const d=distanceKm(shop.lat,shop.lng,lat,lng),f=document.getElementById('delivery-fee-display'),t=document.getElementById('checkout-total-display');if(!Number.isFinite(d)){window.__checkoutFee=null;if(f)f.textContent='กรุณาระบุตำแหน่งที่ถูกต้อง';if(t)t.textContent=`฿${subtotal}`;return;}const fee=computeDeliveryFee(d);window.__checkoutFee=fee;if(f)f.textContent=`฿${fee} • ${d.toFixed(1)} กม.`;if(t)t.textContent=`฿${subtotal+fee}`;};
     const picker=initLocationPicker('pin-map',picked?.lat,picked?.lng,(lat,lng)=>{picked={lat,lng};document.getElementById('disp-lat').textContent=lat.toFixed(6);document.getElementById('disp-lng').textContent=lng.toFixed(6);refresh(lat,lng);});
     window.__currentPicker=picker;window.__pickedLoc=()=>picked;if(picked)refresh(picked.lat,picked.lng);
     setTimeout(()=>{try{picker.locate()}catch(e){}},120);
-    const timer=setInterval(()=>{update();if(!document.getElementById('checkout-confirm-slide'))clearInterval(timer)},250);
   };
 
   window.renderOrders=function(){
@@ -4897,7 +4881,6 @@ button,a,input,textarea,select{font:inherit}
     const shop=dbGet('qt_users',[]).find(x=>String(x.id)===String(cart.shopId)||String(x.shopProfileId)===String(cart.shopId));
     if(!shop){qtCheckoutError('ไม่พบข้อมูลร้าน');return;}
     if(!validPoint(shop.lat,shop.lng)){qtCheckoutError('ร้านยังไม่ได้ปักพิกัดรับสินค้า');return;}
-    if(!window.QT_CAM_CAPTURES?.['co-verify-photo']){qtCheckoutError('กรุณายืนยันตัวตนด้วยกล้องก่อนสั่งซื้อ');return;}
     const loc=window.__pickedLoc?.(),address=document.getElementById('delivery-address')?.value.trim()||'';
     if(!loc||!validPoint(loc.lat,loc.lng)||address.length<3){qtCheckoutError('กรุณาปักหมุดและระบุที่อยู่จัดส่ง');return;}
     const token=await qtGetAccessToken();if(!token){qtCheckoutError('กรุณาเข้าสู่ระบบอีกครั้ง');return;}
@@ -4947,7 +4930,7 @@ button,a,input,textarea,select{font:inherit}
     const orders=dbGet('qt_orders',[]);if(!orders.some(o=>String(o.id)===String(created.id)))QT_DB_CACHE.qt_orders=[created,...orders];
     save(user,null);window.QT_CHECKOUT_UNCERTAIN=false;
     dbSet('qt_cart_'+user.id,{shopId:null,items:[]});
-    delete window.QT_CAM_CAPTURES['co-verify-photo'];
+    if(window.QT_CAM_CAPTURES) delete window.QT_CAM_CAPTURES['co-verify-photo'];
     try{await qtHydrateDatabase({light:false});}catch(e){console.warn('Order committed; refreshing cache failed',e);}
     toast('สั่งซื้อสำเร็จ ยอดรวม ฿'+Number(result.total_amount).toLocaleString('th-TH'));
     navigate('order-success/'+created.id);
