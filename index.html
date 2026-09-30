@@ -4580,7 +4580,7 @@ button,a,input,textarea,select{font:inherit}
     document.getElementById('app').innerHTML=`<div class="qg-new-shell">
       <header class="qg-new-topbar"><div class="qg-new-topbar-inner">
         <button class="qg-new-brand" style="border:0;background:none;padding:0;cursor:pointer" onclick="navigate('home')"><span class="qg-logo-lockup"><img src="${window.QueueGoAssets.APP_MARK}" alt=""><span>Queue<span>Go</span></span></span></button>
-        <div class="qg-new-top-actions">${customer(u)?`<button class="qg-icon" aria-label="แจ้งเตือน" onclick="navigate('notifications')">${qgIcon('bag')}</button><button class="qg-icon" aria-label="บัญชี" onclick="navigate('profile')">${qgIcon('user')}</button>`:`<button class="qg-link-btn" onclick="navigate('login')">เข้าสู่ระบบ</button>`}</div>
+        <div class="qg-new-top-actions">${customer(u)?`<button class="qg-icon" aria-label="ตะกร้าสินค้า" onclick="navigate('cart')" style="position:relative">${qgIcon('bag')}${cartCount()>0?`<b class="cart-count-badge" style="top:-4px;right:-4px">${cartCount()>99?'99+':cartCount()}</b>`:''}</button><button class="qg-icon" aria-label="แจ้งเตือน" onclick="navigate('notifications')">${qgIcon('bell')}</button><button class="qg-icon" aria-label="บัญชี" onclick="navigate('profile')">${qgIcon('user')}</button>`:`<button class="qg-link-btn" onclick="navigate('login')">เข้าสู่ระบบ</button>`}</div>
       </div></header>
       <main class="qg-new-content">${content}</main>${bottomNav()}<div id="notif-toast-box"></div>
     </div>`;
