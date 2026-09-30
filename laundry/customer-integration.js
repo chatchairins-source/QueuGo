@@ -9,7 +9,7 @@ function mount(){
       const wrap=market.parentElement;if(!wrap||wrap.querySelector('.qg-laundry-main'))return;
       const b=market.cloneNode(true);b.classList.add('qg-laundry-main');b.removeAttribute('aria-label');b.onclick=openLaundry;
       const label=b.querySelector('b');if(label)label.textContent='ฝากซัก';
-      const icon=b.querySelector('span');if(icon)icon.innerHTML='🧺';
+      const icon=b.querySelector('span');if(icon)icon.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="2.5" width="16" height="19" rx="2.5"/><path d="M4 7.5h16"/><circle cx="12" cy="14.5" r="4.5"/><circle cx="8" cy="5" r=".65" fill="currentColor" stroke="none"/><circle cx="11" cy="5" r=".65" fill="currentColor" stroke="none"/></svg>';
       market.insertAdjacentElement('beforebegin',b);
     });
   };
