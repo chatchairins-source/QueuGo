@@ -1,24 +1,28 @@
 (()=>{const S=()=>{try{return window.supabase?.createClient&&window.QT_SUPABASE_CONFIG?window.supabase.createClient(window.QT_SUPABASE_CONFIG.URL,window.QT_SUPABASE_CONFIG.KEY):null}catch(e){return null}};
 async function openLaundry(){
- const s=typeof window.qtSessionRead==='function'?window.qtSessionRead():null;
- const localUser=typeof window.currentUser==='function'?window.currentUser():null;
- if(!s||!localUser)return alert('กรุณาเข้าสู่ระบบก่อนใช้บริการฝากซัก');
+ const session=typeof window.qtSessionRead==='function'?window.qtSessionRead():null;
+ const u=typeof window.currentUser==='function'?window.currentUser():null;
+ if(!session||!u){ if(typeof window.navigate==='function')return window.navigate('login'); return; }
  const db=S();if(!db)return alert('ระบบกำลังเชื่อมต่อ กรุณาลองใหม่');
- try{
-   if(s.accessToken&&s.refreshToken)await db.auth.setSession({access_token:s.accessToken,refresh_token:s.refreshToken});
- }catch(e){}
- const customerId=localUser.id||s.userId;
- if(!customerId)return alert('ไม่พบข้อมูลบัญชี QueueGo');
- const {data:h}=await db.from('laundry_hubs').select('id,name').eq('active',true).limit(1).maybeSingle();
- if(!h)return alert('ยังไม่มีร้านซักที่เปิดให้บริการ');
- let a=prompt('ระบุที่อยู่รับผ้า');if(!a)return;
- let n=prompt('หมายเหตุ (ถ้ามี)')||'';
- const {data:o,error}=await db.from('laundry_orders').insert({customer_id:customerId,hub_id:h.id,pickup_address:a,note:n,service_type:'wash'}).select('order_number').single();
- if(error){
-   if(/jwt|auth|policy|row-level/i.test(error.message||''))return alert('เซสชัน QueueGo หมดอายุ กรุณาเข้าสู่ระบบอีกครั้ง');
-   return alert('สร้างรายการไม่สำเร็จ: '+error.message);
- }
- alert('เรียก Rider รับผ้าแล้ว\\n'+o.order_number)
+ try{if(session.accessToken&&session.refreshToken)await db.auth.setSession({access_token:session.accessToken,refresh_token:session.refreshToken})}catch(e){}
+ const {data:hubs,error}=await db.from('laundry_hubs').select('id,name,shop_id').eq('active',true);
+ if(error||!hubs?.length)return alert('ยังไม่มีร้านซักที่เปิดให้บริการ');
+ const address=u.address||u.deliveryAddress||u.locationAddress||'';
+ const lat=Number(u.lat??u.latitude),lng=Number(u.lng??u.longitude);
+ const name=u.name||u.customerName||u.fullName||'ลูกค้า QueueGo';
+ const phone=u.phone||u.phoneNumber||'';
+ const old=document.getElementById('qgLaundrySheet');if(old)old.remove();
+ const box=document.createElement('div');box.id='qgLaundrySheet';
+ box.innerHTML='<div class="qg-laundry-backdrop"></div><section class="qg-laundry-sheet"><button class="qg-laundry-close" type="button">×</button><h2>ฝากซัก</h2><div class="qg-laundry-customer"><b>'+esc(name)+'</b><span>'+esc(phone)+'</span></div><label>ร้านซัก</label><select id="qgLaundryHub">'+hubs.map(h=>'<option value="'+h.id+'">'+esc(h.name)+'</option>').join('')+'</select><label>จุดรับผ้า</label><div class="qg-laundry-address">'+esc(address||'ยังไม่ได้ระบุที่อยู่จัดส่ง')+'</div><button type="button" id="qgLaundryPin">เลือก/แก้ไขพิกัดรับผ้า</button><button type="button" id="qgLaundryConfirm" class="primary">ยืนยันเรียก Rider รับผ้า</button></section>';
+ const st=document.createElement('style');st.textContent='#qgLaundrySheet{position:fixed;inset:0;z-index:10050;font-family:inherit}.qg-laundry-backdrop{position:absolute;inset:0;background:#0006}.qg-laundry-sheet{position:absolute;left:0;right:0;bottom:0;background:#fff;border-radius:24px 24px 0 0;padding:24px 20px calc(24px + env(safe-area-inset-bottom));display:grid;gap:12px}.qg-laundry-close{position:absolute;right:18px;top:14px;border:0;background:#f2f2f2;border-radius:50%;width:34px;height:34px;font-size:24px}.qg-laundry-customer{display:flex;justify-content:space-between;background:#f7f7f8;padding:14px;border-radius:14px}.qg-laundry-sheet select,.qg-laundry-address,.qg-laundry-sheet button{font:inherit}.qg-laundry-sheet select,.qg-laundry-address{border:1px solid #e5e5e5;border-radius:14px;padding:14px;background:#fff}.qg-laundry-sheet button{padding:14px;border-radius:14px;border:1px solid #ddd;background:#fff;font-weight:700}.qg-laundry-sheet .primary{background:#e6002d;color:#fff;border-color:#e6002d}';box.appendChild(st);document.body.appendChild(box);
+ box.querySelector('.qg-laundry-close').onclick=()=>box.remove();box.querySelector('.qg-laundry-backdrop').onclick=()=>box.remove();
+ box.querySelector('#qgLaundryPin').onclick=()=>{box.remove();if(typeof window.navigate==='function')window.navigate('profile')};
+ box.querySelector('#qgLaundryConfirm').onclick=async()=>{
+   const hubId=box.querySelector('#qgLaundryHub').value;
+   if(!address||!Number.isFinite(lat)||!Number.isFinite(lng)){box.remove();if(typeof window.navigate==='function')window.navigate('profile');return alert('กรุณาปักพิกัดจัดส่งก่อนเรียก Rider');}
+   const {data:o,error:oe}=await db.from('laundry_orders').insert({customer_id:u.id,hub_id:hubId,pickup_address:address,pickup_latitude:lat,pickup_longitude:lng,service_type:'wash'}).select('order_number').single();
+   if(oe)return alert('สร้างรายการไม่สำเร็จ: '+oe.message);box.remove();alert('เรียก Rider รับผ้าแล้ว\\n'+o.order_number);
+ };
 }
 function mount(){
  const washer='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="2.5" width="16" height="19" rx="2.5"/><path d="M4 7.5h16"/><circle cx="12" cy="14.5" r="4.5"/><circle cx="8" cy="5" r=".65" fill="currentColor" stroke="none"/><circle cx="11" cy="5" r=".65" fill="currentColor" stroke="none"/></svg>';
