@@ -2304,8 +2304,6 @@ function qtRouteRender(){
     case 'dashboard':renderDashboard();break;
     case 'profile':renderCustomerProfile();break;
     case 'search':renderSearch(param);break;
-    case 'laundry':renderLaundryShops();break;
-    case 'laundry-shop':renderLaundryShop(param);break;
     case 'shop-view':renderShopView(param);break;
     case 'cart':renderCart();break;
     case 'checkout':renderCheckout();break;
@@ -2926,21 +2924,6 @@ function renderCustomerProfile(user=currentUser(), orders=null, active=null){
 
 
 /* ---------- Search nearby shops ---------- */
-async function qgLaundryClient(){
-  const token=await qtGetAccessToken();return {token,headers:{apikey:QT_SUPABASE_CONFIG.KEY,Authorization:'Bearer '+(token||QT_SUPABASE_CONFIG.KEY),'Content-Type':'application/json'}};
-}
-async function qgLaundryFetch(path,opts={}){
- const x=await qgLaundryClient();const r=await fetch(QT_SUPABASE_CONFIG.URL+'/rest/v1/'+path,{...opts,headers:{...x.headers,...(opts.headers||{})}});if(!r.ok)throw new Error(await r.text());return r.status===204?null:r.json();
-}
-async function renderLaundryShops(){
- layout('ฝากซัก',`<section class="qg-section-new"><div class="qg-section-title"><h2>ฝากซัก</h2></div><p>เลือกร้านซักที่ต้องการให้ Rider ไปรับผ้า</p><div id="qg-laundry-shops" class="qg-shop-list-new"><div class="qg-empty-new">กำลังโหลดร้านซัก...</div></div></section>`);
- try{const hubs=await qgLaundryFetch('laundry_hubs?select=id,name,shop_id&active=eq.true');const el=document.getElementById('qg-laundry-shops');el.innerHTML=(hubs||[]).map(h=>`<article class="qg-shop-card-new" onclick="navigate('laundry-shop/${h.id}')"><div class="qg-shop-info-new"><div class="qg-shop-name-new">${escapeHtml(h.name)}</div><div class="qg-shop-meta-new"><span>บริการรับ-ส่งผ้าถึงที่</span></div></div><span>›</span></article>`).join('')||'<div class="qg-empty-new">ยังไม่มีร้านซักเปิดให้บริการ</div>'}catch(e){toast('โหลดร้านซักไม่สำเร็จ')}
-}
-async function renderLaundryShop(hubId){
- const u=currentUser();if(!u){navigate('login');return}
- layout('ฝากซัก',`<section class="qg-section-new"><div class="qg-section-title"><h2 id="qg-laundry-name">ร้านซัก</h2></div><div id="qg-laundry-services">กำลังโหลดบริการ...</div><section class="qg-location-bar" onclick="openCustomerLocationPicker()"><div class="qg-location-copy"><div class="qg-location-label">จุดรับผ้า</div><div class="qg-location-value">${escapeHtml(qtCustomerLocationText(u))}</div></div><div class="qg-location-edit">›</div></section><button class="btn-primary btn-block" id="qg-laundry-order">ยืนยันเรียก Rider รับผ้า</button></section>`);
- try{const hubs=await qgLaundryFetch('laundry_hubs?select=id,name&id=eq.'+encodeURIComponent(hubId));const h=hubs?.[0];if(!h)throw 0;document.getElementById('qg-laundry-name').textContent=h.name;const ss=await qgLaundryFetch('laundry_services?select=code,name,pricing_type,price&hub_id=eq.'+encodeURIComponent(hubId)+'&active=eq.true&order=sort_order');let selected=ss?.[0]?.code||'wash';document.getElementById('qg-laundry-services').innerHTML=(ss||[]).map((s,i)=>`<label class="qg-laundry-service"><input type="radio" name="laundryService" value="${escapeHtml(s.code)}" ${i===0?'checked':''}><b>${escapeHtml(s.name)}</b><span>${Number(s.price)>0?Number(s.price)+' บาท':''}</span></label>`).join('');document.querySelectorAll('[name=laundryService]').forEach(x=>x.onchange=()=>selected=x.value);document.getElementById('qg-laundry-order').onclick=async()=>{const me=currentUser();if(!qgIsValidCoordinate(me?.lat,me?.lng,true)){openCustomerLocationPicker();return}try{const rows=await qgLaundryFetch('laundry_orders?select=order_number',{method:'POST',headers:{Prefer:'return=representation'},body:JSON.stringify({customer_id:me.id,hub_id:hubId,service_type:selected,pickup_address:me.address||qtCustomerLocationText(me),pickup_latitude:Number(me.lat),pickup_longitude:Number(me.lng)})});toast('เรียก Rider รับผ้าแล้ว '+(rows?.[0]?.order_number||''));navigate('orders')}catch(e){toast('สร้างรายการฝากซักไม่สำเร็จ')}}}catch(e){toast('โหลดข้อมูลร้านซักไม่สำเร็จ')}
-}
 function renderSearch(presetCategory){
   layout('ค้นหาร้าน/บริการ', `
     <h2>🔎 ค้นหาร้าน/บริการ</h2>
