@@ -2158,8 +2158,6 @@ function checkCustomerRiderArrivalAlertRobust(){
 
 /* ---------- Router ---------- */
 function navigate(hash){ location.hash = hash; }
-window.qgLaundryCustomerContext=function(){return {session:qtSessionRead(),user:currentUser()};};
-window.qgLaundryNavigate=function(hash){navigate(hash);};
 function qgRememberCustomerPage(){
   const s=qtSessionRead(),hash=location.hash.slice(1),page=hash.split('/')[0];
   if(!s?.authUserId || !['home','market','shop-view','orders','order','favorites','profile'].includes(page))return;
@@ -5095,6 +5093,5 @@ html,body,#app{touch-action:pan-x pan-y}
   document.addEventListener('gesturechange',stopZoom,{passive:false});
 })();
 </script>
-<script src="./laundry/customer-integration.js"></script>
 </body>
 </html>
