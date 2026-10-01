@@ -974,7 +974,7 @@ function dayKey(d){ return d.toLocaleDateString('th-TH',{year:'numeric',month:'l
 function renderAIPanel(){
   const p=document.getElementById('panel-ai'); if(!p)return;
   const o=S.activeOrder, status=o?statusFromRow(o):'';
-  const hint=o?(status==='assigned'?'ตอนนี้มีงานอยู่: มุ่งหน้าไปร้านและตรวจสอบออเดอร์ก่อนรับสินค้า':status==='picked_up'||status==='delivering'?'รับสินค้าแล้ว ตรวจสอบรายการและเดินทางไปหาลูกค้า':'ผมช่วยสรุปขั้นตอนของงานปัจจุบันให้ได้'):'ตอนนี้ยังไม่มีงานที่กำลังส่ง เปิดออนไลน์เมื่อพร้อมรับออเดอร์';
+  const hint=o?(['assigned','rider_assigned','preparing','ready'].includes(status)?'ตอนนี้มีงานอยู่: มุ่งหน้าไปร้านและตรวจสอบออเดอร์ก่อนรับสินค้า':status==='picked_up'||status==='delivering'?'รับสินค้าแล้ว ตรวจสอบรายการและเดินทางไปหาลูกค้า':'ผมช่วยสรุปขั้นตอนของงานปัจจุบันให้ได้'):'ตอนนี้ยังไม่มีงานที่กำลังส่ง เปิดออนไลน์เมื่อพร้อมรับออเดอร์';
   p.innerHTML=`<div class="ai-shell">
     <div class="ai-head"><h2>AI ผู้ช่วยไรเดอร์</h2><span class="ai-badge">QueueGo Assistant</span></div>
     <div class="ai-hero"><div class="ai-orb">✦</div><h3>สวัสดี ${esc(S.user.name||'ไรเดอร์')}</h3><p>${esc(hint)}</p></div>
