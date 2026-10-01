@@ -1,0 +1,8 @@
+{
+  "appId": "com.queuego.customer",
+  "appName": "QueueGo Customer",
+  "webDir": "www",
+  "android": {
+    "allowMixedContent": false
+  }
+}
