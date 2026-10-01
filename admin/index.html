@@ -2046,12 +2046,7 @@ let qtRiderJobAlertActive=false;
 let qtRiderJobAlertOrderId=null;
 let qtRiderJobSpeechTimer=null;
 
-function getRiderPendingOffer(userId){
-  if(!userId) return null;
-  return dbGet('qt_orders',[])
-    .filter(o=>o.status==='waiting_rider' && !o.riderId && o.dispatchRiderId===userId)
-    .sort((a,b)=>(b.dispatchOfferedAt||b.createdAt||0)-(a.dispatchOfferedAt||a.createdAt||0))[0] || null;
-}
+function getRiderPendingOffer(userId){ return null; /* Rider-first jobs are claimed in QueueGo Rider via server pool */ }
 
 function qtRiderJobAlertHTML(){
   if(document.getElementById('qtRiderJobAlert')) return;
@@ -3221,7 +3216,7 @@ function renderShopDashboard(user){
 function renderRiderDashboard(user){
   const orders = dbGet('qt_orders',[]);
   const myJobs = orders.filter(o=>o.riderId===user.id && !['completed','cancelled'].includes(o.status));
-  const pool = orders.filter(o=>o.status==='waiting_rider' && !o.riderId);
+  const pool = orders.filter(o=>o.status==='searching_rider' && !o.riderId);
   layout('แดชบอร์ดไรเดอร์', `
     <h2>🛵 สวัสดี, ${escapeHtml(user.name)}</h2>
     <div class="status-toggle">
@@ -3918,7 +3913,7 @@ function renderOrders(){
     if(map && typeof map.forEach==='function') map.forEach((uid, profileId)=>{ if(String(uid)===String(user.id)) shopProfileUserId.add(String(profileId)); });
     orders = orders.filter(o => String(o.shopId)===String(user.id) || (o.shopProfileId && shopProfileUserId.has(String(o.shopProfileId))));
   }
-  else if(user.type==='rider') orders = orders.filter(o=>o.riderId===user.id || o.status==='waiting_rider');
+  else if(user.type==='rider') orders = orders.filter(o=>o.riderId===user.id);
   orders.sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
   const title=user.type==='shop'?'ติดตามออเดอร์ของร้าน':user.type==='rider'?'งานจัดส่ง':'รายการคำสั่งซื้อ';
   layout(title, `
@@ -4023,12 +4018,7 @@ function renderOrderDetail(id){
     </div>
     ${order.status==='cancelled' ? '<div class="badge badge-red">❌ คำสั่งซื้อถูกยกเลิก</div>' : ''}
     ${(user&&user.type==='rider'&&!['completed','cancelled'].includes(order.status))?qtRouteCardHTML(order,user):''}<div id="action-buttons">${orderActionButtons(order,user)}</div>
-    ${(user && (user.type==='rider' || user.type==='admin')) && order.status==='waiting_rider' ? `
-      <div class="card" style="margin-top:12px">
-        <b>⚙️ Auto Dispatch</b>
-        <div>กติกา: รัศมี ≤ 1 กม. • งานน้อยกว่าได้ก่อน • งานเท่ากันใช้ระยะทาง</div>
-        ${order.dispatchRiderId ? `<div>สถานะ: จ่ายงานให้ Rider เฉพาะรายแล้ว</div>` : `<div>สถานะ: กำลังค้นหาไรเดอร์ที่เข้าเงื่อนไข</div>`}
-      </div>` : ''}
+    
     ${renderOrderChat(order,user)}
     ${canSeeTracking && !['completed','cancelled','pending_shop'].includes(order.status) ? '<h3>📍 ติดตามตำแหน่งไรเดอร์ (จำลอง Real-time)</h3><div id="tracking-map" class="map-box"></div>' : ''}
   `);
@@ -4063,9 +4053,7 @@ function orderActionButtons(order, user){
     }
   }
   if(user.type==='rider'){
-    if(order.status==='waiting_rider' && !order.riderId && order.dispatchRiderId===user.id){
-      btns.push(`<button class="btn-block" style="background:var(--primary);color:#fff;border:none;padding:12px;border-radius:10px;cursor:pointer;" onclick="acceptRiderJob('${order.id}')">🛵 รับงานนี้</button>`);
-    }
+    
     if(order.riderId===user.id){
       if(order.status==='rider_to_shop') btns.push(b('ถึงร้านแล้ว/รับสินค้า','picked_up'));
       if(order.status==='picked_up') btns.push(b('เริ่มจัดส่ง','delivering'));
@@ -4078,7 +4066,7 @@ function orderActionButtons(order, user){
   }
   if(user.type==='admin'){
     if(order.status!=='cancelled' && order.status!=='completed') btns.push(`<button class="btn-block" style="background:var(--danger);color:#fff;border:none;padding:12px;border-radius:10px;cursor:pointer;" onclick="adminCancelOrder('${order.id}')">❌ ยกเลิกออเดอร์โดย Admin</button>`);
-    if(order.status==='waiting_rider' && !order.riderId) btns.push(`<button class="btn-block" style="background:#6b46c1;color:#fff;border:none;padding:12px;border-radius:10px;cursor:pointer;" onclick="adminRedispatchOrder('${order.id}')">⚙️ จ่ายงานไรเดอร์ใหม่</button>`);
+    
     btns.push(`<button class="btn-block" style="background:#475569;color:#fff;border:none;padding:12px;border-radius:10px;cursor:pointer;" onclick="adminDeleteOrder('${order.id}')">🗑️ ลบออเดอร์</button>`);
   }
   return btns.join('') || '<p>รอการดำเนินการ...</p>';
@@ -4641,7 +4629,7 @@ function renderRiderJobs(){
     .filter(o=>o.riderId===user.id || o.dispatchRiderId===user.id)
     .sort((a,b)=>b.createdAt-a.createdAt);
 
-  const offered = mine.filter(o=>o.status==='waiting_rider' && !o.riderId && o.dispatchRiderId===user.id);
+  const offered = [];
   const active = mine.filter(o=>o.riderId===user.id);
 
   layout('งานจัดส่ง', `
