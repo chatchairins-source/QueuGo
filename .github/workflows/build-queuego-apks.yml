@@ -115,7 +115,7 @@ jobs:
           cd android-build/android
           chmod +x gradlew
           ./gradlew assembleDebug --no-daemon
-          cp app/build/outputs/apk/debug/app-debug.apk "../../../QueueGo-${{ matrix.role }}-debug.apk"
+          cp app/build/outputs/apk/debug/app-debug.apk "../../QueueGo-${{ matrix.role }}-debug.apk"
       - uses: actions/upload-artifact@v4
         with:
           name: QueueGo-${{ matrix.role }}-debug-apk
