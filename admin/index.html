@@ -4049,7 +4049,7 @@ function orderActionButtons(order, user){
       if(order.status==='pending_shop'){ btns.push(b('รับออเดอร์','searching_rider')); }
       else if(order.status==='searching_rider'){ btns.push('<p>กำลังค้นหาไรเดอร์ · ยังไม่ต้องเริ่มเตรียมสินค้า</p>'); }
       else if(order.status==='rider_assigned'){ btns.push(b('เริ่มเตรียมสินค้า','preparing')); }
-      else if(order.status==='preparing'){ btns.push(b('สินค้าพร้อม รอไรเดอร์','waiting_rider')); }
+      else if(order.status==='preparing'){ btns.push(b('สินค้าพร้อม รอไรเดอร์','ready')); }
     }
   }
   if(user.type==='rider'){
@@ -4129,7 +4129,7 @@ async function updateOrderStatus(orderId,newStatus){
   try{
     const token=await qtGetAccessToken(); if(!token)throw new Error('กรุณาเข้าสู่ระบบใหม่');
     if(actor.type==='shop'){
-      const action={searching_rider:'accepted',preparing:'preparing',waiting_rider:'ready'}[newStatus];
+      const action={searching_rider:'accepted',preparing:'preparing',ready:'ready'}[newStatus];
       if(!action)throw new Error('ขั้นตอนร้านค้าไม่ถูกต้อง');
       await qtSupabaseTable('rpc/merchant_order_action',{method:'POST',accessToken:token,body:{p_order_id:orderId,p_action:action,p_reason:null}});
     }else if(actor.type==='customer'&&newStatus==='cancelled'){
@@ -4502,92 +4502,9 @@ function getDispatchCandidates(order){
     );
 }
 
-function dispatchOrder(orderId){
-  let orders = dbGet('qt_orders',[]);
-  const order = orders.find(o=>o.id===orderId);
-  if(!order || order.status!=='waiting_rider' || order.riderId) return null;
-
-  const candidates = getDispatchCandidates(order);
-  if(!candidates.length){
-    order.dispatchState = 'no_candidate';
-    order.dispatchLastAt = Date.now();
-    dbSet('qt_orders',orders);
-    pushNotification(order.shopId, '⚠️ ยังหาไรเดอร์ไม่ได้',
-      'ยังไม่มีไรเดอร์ที่พร้อมรับงานในรัศมี 1 กม.', 'order/'+orderId);
-    return null;
-  }
-
-  const chosen = candidates[0];
-  order.dispatchState = 'offered';
-  order.dispatchRiderId = chosen.rider.id;
-  order.dispatchDistanceKm = Number(chosen.distanceKm.toFixed(3));
-  order.dispatchOfferedAt = Date.now();
-  order.dispatchExpiresAt = Date.now() + DISPATCH_CONFIG.responseTimeoutMs;
-  order.dispatchAttempts = (order.dispatchAttempts||0) + 1;
-  dbSet('qt_orders',orders);
-
-  pushNotification(chosen.rider.id, '🛵 มีงานจัดส่งใหม่',
-    `${order.shopName} • ระยะ ${chosen.distanceKm.toFixed(2)} กม.`, 'order/'+orderId);
-
-  return chosen;
-}
-
-function dispatchNextRider(orderId){
-  let orders = dbGet('qt_orders',[]);
-  const order = orders.find(o=>o.id===orderId);
-  if(!order || order.status!=='waiting_rider' || order.riderId) return null;
-
-  // Exclude riders already offered this order.
-  const tried = new Set(order.dispatchTriedRiderIds || []);
-  if(order.dispatchRiderId) tried.add(order.dispatchRiderId);
-
-  const candidates = getDispatchCandidates(order)
-    .filter(x => !tried.has(x.rider.id));
-
-  if(!candidates.length){
-    order.dispatchState = 'no_candidate';
-    order.dispatchRiderId = null;
-    order.dispatchExpiresAt = null;
-    dbSet('qt_orders',orders);
-    pushNotification(order.shopId, '⚠️ ยังไม่มีไรเดอร์รับงาน',
-      'ระบบลองส่งงานให้ไรเดอร์ที่เข้าเงื่อนไขครบแล้ว', 'order/'+orderId);
-    return null;
-  }
-
-  order.dispatchTriedRiderIds = [...tried];
-  order.dispatchRiderId = null;
-  order.dispatchState = 'queued';
-  order.dispatchExpiresAt = null;
-  dbSet('qt_orders',orders);
-  return dispatchOrder(orderId);
-}
-
-function expireDispatchOffers(){
-  let orders = dbGet('qt_orders',[]);
-  let changed = false;
-  orders.forEach(order=>{
-    if(order.status==='waiting_rider' &&
-       order.dispatchState==='offered' &&
-       order.dispatchExpiresAt &&
-       Date.now() > order.dispatchExpiresAt){
-      order.dispatchTriedRiderIds = [
-        ...(order.dispatchTriedRiderIds||[]),
-        order.dispatchRiderId
-      ].filter(Boolean);
-      order.dispatchRiderId = null;
-      order.dispatchState = 'expired';
-      order.dispatchExpiresAt = null;
-      changed = true;
-    }
-  });
-  if(changed) dbSet('qt_orders',orders);
-
-  // Dispatch expired offers one-by-one after releasing them.
-  orders.filter(o=>o.status==='waiting_rider' && o.dispatchState==='expired')
-    .forEach(o=>dispatchNextRider(o.id));
-}
-
-setInterval(expireDispatchOffers, 5000);
+function dispatchOrder(orderId){ return null; /* retired: Rider-first uses get_rider_delivery_pool + rider_claim_order */ }
+function dispatchNextRider(orderId){ return null; }
+function expireDispatchOffers(){ return; }
 
 
 /* ---- Rider route/distance ---- */
