@@ -1,0 +1,39 @@
+name: QueueGo-Customer-RC-debug-apk
+on:
+  workflow_dispatch:
+  push:
+    branches: [pre-apk-hardening-rc]
+    paths: ['android-rc/**', '.github/workflows/customer-android-rc.yml']
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: android-rc
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Prepare web asset
+        run: mkdir -p www && cp ../index.html www/index.html
+      - name: Create Android project
+        run: npx cap add android
+      - name: Sync Android project
+        run: npx cap sync android
+      - name: Build debug APK
+        run: cd android && chmod +x gradlew && ./gradlew assembleDebug
+      - name: Upload debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: QueueGo-Customer-RC-debug-apk
+          path: android-rc/android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
