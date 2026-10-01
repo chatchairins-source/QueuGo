@@ -2675,7 +2675,7 @@ async function qtSubmitCheckoutOrder(){
   finally{
     qtCheckoutSubmitting=false;
     if(document.getElementById('checkout-confirm-btn')===btn){
-      btn.disabled=!!window.QT_CHECKOUT_UNCERTAIN;
+      btn.disabled=!!window.QT_CHECKOUT_UNCERTAIN || !window.__checkoutLocationConfirmed;
       btn.textContent='ยืนยันคำสั่งซื้อ';
     }
   }
