@@ -2680,68 +2680,8 @@ async function qtSubmitCheckoutOrder(){
     }
   }
 }
-async function qtStartCheckoutFaceCam(){
-  const video=document.getElementById('co-verify-video');
-  const canvas=document.getElementById('co-verify-canvas');
-  const statusEl=document.getElementById('co-verify-status');
-  if(!video) return;
-  if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
-    if(statusEl) statusEl.textContent='อุปกรณ์นี้ไม่รองรับการเปิดกล้องผ่านเบราว์เซอร์';
-    return;
-  }
-  try{
-    const stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'user'},audio:false});
-    if(document.getElementById('co-verify-video')!==video){ stream.getTracks().forEach(track=>track.stop()); return; }
-    qtCheckoutCamStream=stream;
-    video.srcObject=stream;
-    await video.play();
-  }catch(err){
-    console.error('[QueueGo] checkout camera failed:',err);
-    qtStopCheckoutFaceCam();
-    if(statusEl) statusEl.textContent='ไม่สามารถเข้าถึงกล้องได้ กรุณาอนุญาตการใช้กล้องแล้วลองใหม่';
-    return;
-  }
-  const ctx=canvas.getContext('2d');
-  let confirmedOnce=false;
-  qtCheckoutCamTimer=setInterval(()=>{
-    if(!video.videoWidth) return;
-    const w=video.videoWidth, h=video.videoHeight, size=Math.min(w,h);
-    const sx=(w-size)/2, sy=(h-size)/2;
-    canvas.width=64; canvas.height=64;
-    ctx.drawImage(video, sx, sy, size, size, 0, 0, 64, 64);
-    let skin=0, total=0;
-    let sample;
-    try{ sample=ctx.getImageData(12,8,40,48).data; }catch(e){ return; }
-    for(let i=0;i<sample.length;i+=4){
-      const r=sample[i], g=sample[i+1], b=sample[i+2];
-      total++;
-      const max=Math.max(r,g,b), min=Math.min(r,g,b);
-      if(r>90 && g>40 && b>20 && (max-min)>15 && Math.abs(r-g)>12 && r>g && r>b) skin++;
-    }
-    const faceLike = total>0 && (skin/total) > 0.14;
-    const button=document.getElementById('checkout-confirm-btn');
-    const frame=document.getElementById('co-verify-guide');
-    if(faceLike && !confirmedOnce){
-      const maxOut=900;
-      const outCanvas=document.createElement('canvas');
-      outCanvas.width=maxOut; outCanvas.height=maxOut;
-      outCanvas.getContext('2d').drawImage(video, sx, sy, size, size, 0, 0, maxOut, maxOut);
-      window.QT_CAM_CAPTURES=window.QT_CAM_CAPTURES||{};
-      window.QT_CAM_CAPTURES['co-verify-photo']=outCanvas.toDataURL('image/jpeg',0.85);
-      confirmedOnce=true;
-      if(statusEl){ statusEl.textContent='✅ เราบันทึกข้อมูลใบหน้าของคุณไว้แล้ว ไฟล์รูปจะถูกลบเมื่อจัดส่งออเดอร์เรียบร้อย'; statusEl.classList.add('qt-livecam-ok'); }
-      if(frame) frame.classList.add('qt-livecam-guide-ok');
-      if(button && !qtCheckoutSubmitting) button.disabled=false;
-    } else if(!confirmedOnce){
-      if(statusEl){ statusEl.textContent='🔍 กรุณาหันหน้าเข้ากล้องให้อยู่ในกรอบ'; statusEl.classList.remove('qt-livecam-ok'); }
-      if(button) button.disabled=true;
-    }
-  }, 500);
-}
-function qtStopCheckoutFaceCam(){
-  if(qtCheckoutCamTimer){ clearInterval(qtCheckoutCamTimer); qtCheckoutCamTimer=null; }
-  if(qtCheckoutCamStream){ qtCheckoutCamStream.getTracks().forEach(t=>t.stop()); qtCheckoutCamStream=null; }
-}
+function qtStartCheckoutFaceCam(){ return; }
+function qtStopCheckoutFaceCam(){ return; }
 function qtRegisterErrorToast(err){
   if(String(err?.message||'').includes('CUSTOMER_LOCATION_REQUIRED')){ qgShowRegistrationLocationGate('invalid'); return; }
   if(err&&err.message==='AUTH_CONFIRMATION_REQUIRED') toast('สมัครไม่สำเร็จ: Supabase ยังเปิดการยืนยันอีเมล ทำให้ยังไม่มี Session สำหรับสร้างข้อมูลสมาชิก');
@@ -3289,12 +3229,6 @@ function renderCheckout(){
       ${cart.items.map(i=>`<div>${escapeHtml(i.name)} x${escapeHtml(i.qty)} = ${i.price*i.qty} บาท</div>`).join('')}
       <div>ค่าจัดส่ง: <span id="delivery-fee-display">คำนวณจากตำแหน่งที่ปักหมุด</span></div>
       <div class="cart-total">รวมทั้งหมด: <span id="checkout-total-display">${subtotal}</span> บาท</div>
-    </div>
-    <div class="rider-face-upload" style="background:#fff;border-radius:12px;padding:16px;margin:10px 0;box-shadow:0 1px 4px rgba(0,0,0,.06)">
-      <h3 style="margin:0 0 10px;font-size:15px;color:#111827">📸 ยืนยันตัวตนก่อนสั่งซื้อ <span class="req">(บังคับ)</span></h3>
-      <div class="qt-livecam-box qt-checkout-camera"><video id="co-verify-video" autoplay playsinline muted></video><div id="co-verify-guide" class="qt-livecam-guide" aria-hidden="true"></div></div>
-      <canvas id="co-verify-canvas" style="display:none"></canvas>
-      <div id="co-verify-status" class="qt-livecam-status" role="status">🔍 กำลังเปิดกล้อง... กรุณาหันหน้าให้อยู่ในกรอบ</div>
     </div>
     <div id="checkout-error" class="qt-checkout-error" role="alert" hidden></div>
     <button id="checkout-confirm-btn" class="btn-primary btn-block qt-checkout-button" type="button" onclick="qtSubmitCheckoutOrder()">ยืนยันคำสั่งซื้อ</button>
