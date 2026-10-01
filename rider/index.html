@@ -813,7 +813,7 @@ function drawActiveRoute(){
   if(!S.map)return; if(S.routeLine){try{S.map.removeLayer(S.routeLine)}catch(e){} S.routeLine=null;}
   const badge=document.getElementById('route-badge'),txt=document.getElementById('route-text');
   if(!S.activeOrder||!S.pos){if(badge)badge.style.display='none';return;}
-  const o=S.activeOrder, st=statusFromRow(o); const toShop=st==='assigned';
+  const o=S.activeOrder, st=statusFromRow(o); const toShop=['assigned','rider_assigned','preparing','ready'].includes(st);
   const lat=Number(toShop?o.pickup_latitude:o.delivery_latitude),lng=Number(toShop?o.pickup_longitude:o.delivery_longitude);
   if(!Number.isFinite(lat)||!Number.isFinite(lng)){if(badge)badge.style.display='none';return;}
   S.routeLine=L.polyline([[S.pos.lat,S.pos.lng],[lat,lng]],{color:'#08b887',weight:6,opacity:.9,dashArray:'12 8'}).addTo(S.map);
