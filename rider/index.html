@@ -950,17 +950,10 @@ async function acceptJob(orderId){
 }
 
 async function advanceOrder(o){
-  const status = statusFromRow(o);
-  const next = STEP_NEXT[status];
-  if(!next) return;
-  try{
-    const token = await getAccessToken();
-    await sbTable('orders?id=eq.'+encodeURIComponent(o.id), {method:'PATCH', token, body:{
-      status:statusToDb(next.to), note:noteWithTag(o,next.to), updated_at:new Date().toISOString()
-    }});
-    toast(next.to==='completed' ? 'ส่งสำเร็จ' : 'อัปเดตสถานะแล้ว');
-    refreshData();
-  }catch(e){ console.error(e); toast('อัปเดตสถานะไม่สำเร็จ: '+e.message); }
+  // Single authoritative transition path: the final window.advanceOrder implementation
+  // calls the server-side rider_order_action RPC. Never PATCH critical order state here.
+  if(typeof window.advanceOrder==='function' && window.advanceOrder!==advanceOrder) return window.advanceOrder(o);
+  throw new Error('Rider transition RPC is not ready');
 }
 
 /* ---------- job history panel (rider earnings, grouped day by day) ---------- */
