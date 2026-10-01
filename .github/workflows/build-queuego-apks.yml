@@ -1,0 +1,123 @@
+name: QueueGo Android APKs
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - role: customer
+            appid: com.queuego.customer
+            appname: QueueGo
+            source: .
+          - role: merchant
+            appid: com.queuego.merchant
+            appname: QueueGo Merchant
+            source: merchant
+          - role: rider
+            appid: com.queuego.rider
+            appname: QueueGo Rider
+            source: rider
+          - role: admin
+            appid: com.queuego.admin
+            appname: QueueGo Admin
+            source: admin
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: android-build/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Prepare web bundle
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd android-build
+          npm install --no-audit --no-fund
+          rm -rf www android
+          mkdir -p www
+          if [ "${{ matrix.role }}" = "customer" ]; then
+            cp ../index.html www/index.html
+            cp ../market.css ../market.js ../table-order.css ../table-order.js ../table-order.html www/ 2>/dev/null || true
+          elif [ "${{ matrix.role }}" = "merchant" ]; then
+            cp ../merchant/* www/
+          elif [ "${{ matrix.role }}" = "admin" ]; then
+            cp ../admin/* www/
+          else
+            cp ../rider/index.html www/index.html
+          fi
+          node -e "let c=require('./capacitor.config.json');c.appId='${{ matrix.appid }}';c.appName='${{ matrix.appname }}';require('fs').writeFileSync('capacitor.config.json',JSON.stringify(c,null,2))"
+          npx cap add android
+          npx cap sync android
+      - name: Add Android permissions
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('android-build/android/app/src/main/AndroidManifest.xml')
+          s=p.read_text()
+          perms=[
+            'android.permission.INTERNET',
+            'android.permission.ACCESS_NETWORK_STATE',
+            'android.permission.ACCESS_WIFI_STATE',
+            'android.permission.ACCESS_COARSE_LOCATION',
+            'android.permission.ACCESS_FINE_LOCATION',
+            'android.permission.CAMERA',
+            'android.permission.RECORD_AUDIO',
+            'android.permission.POST_NOTIFICATIONS',
+            'android.permission.READ_MEDIA_IMAGES',
+            'android.permission.READ_MEDIA_VIDEO',
+            'android.permission.VIBRATE',
+            'android.permission.WAKE_LOCK',
+            'android.permission.FOREGROUND_SERVICE',
+            'android.permission.FOREGROUND_SERVICE_LOCATION',
+            'android.permission.BLUETOOTH',
+            'android.permission.BLUETOOTH_CONNECT',
+            'android.permission.BLUETOOTH_SCAN'
+          ]
+          block='\n'.join(f'    <uses-permission android:name="{x}" />' for x in perms)
+          s=s.replace('<application',block+'\n    <application',1)
+          p.write_text(s)
+          PY
+      - name: Create QueueGo Q launcher icon
+        shell: bash
+        run: |
+          python3 -m pip install pillow --quiet
+          python3 - <<'PY'
+          from PIL import Image,ImageDraw,ImageFont
+          from pathlib import Path
+          sizes={'mipmap-mdpi':48,'mipmap-hdpi':72,'mipmap-xhdpi':96,'mipmap-xxhdpi':144,'mipmap-xxxhdpi':192}
+          base=Path('android-build/android/app/src/main/res')
+          for folder,n in sizes.items():
+              d=base/folder; d.mkdir(parents=True,exist_ok=True)
+              im=Image.new('RGBA',(n,n),(255,255,255,255))
+              dr=ImageDraw.Draw(im)
+              try: font=ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf',int(n*.72))
+              except: font=ImageFont.load_default()
+              box=dr.textbbox((0,0),'Q',font=font)
+              x=(n-(box[2]-box[0]))/2; y=(n-(box[3]-box[1]))/2-box[1]
+              dr.text((x,y),'Q',font=font,fill=(230,0,45,255))
+              im.save(d/'ic_launcher.png')
+              im.save(d/'ic_launcher_round.png')
+          PY
+      - name: Build debug APK
+        shell: bash
+        run: |
+          cd android-build/android
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon
+          cp app/build/outputs/apk/debug/app-debug.apk "../../../QueueGo-${{ matrix.role }}-debug.apk"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: QueueGo-${{ matrix.role }}-debug-apk
+          path: QueueGo-${{ matrix.role }}-debug.apk
+          if-no-files-found: error
