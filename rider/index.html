@@ -884,13 +884,10 @@ async function finishOrder(o){
   if(btn){btn.disabled=true;btn.textContent='กำลังจบงาน...';}
   try{
     const token=await getAccessToken();
-    const updated=await sbTable('orders?id=eq.'+encodeURIComponent(o.id),{method:'PATCH',token,body:{status:'completed',note:noteWithTag(o,'completed'),updated_at:new Date().toISOString()}});
-    let finalOrder=Array.isArray(updated)&&updated[0]?updated[0]:null;
-    if(!finalOrder){
-      const rows=await sbTable('orders?id=eq.'+encodeURIComponent(o.id)+'&select=*',{token});
-      finalOrder=Array.isArray(rows)?rows[0]:null;
-    }
-    if(!finalOrder) finalOrder=o;
+    if(!token)throw new Error('ไม่พบเซสชันเข้าสู่ระบบ');
+    await sbTable('rpc/rider_order_action',{method:'POST',token,body:{p_order_id:o.id,p_action:'complete'}});
+    const rows=await sbTable('orders?id=eq.'+encodeURIComponent(o.id)+'&select=*',{token});
+    const finalOrder=Array.isArray(rows)&&rows[0]?rows[0]:o;
     renderPaymentSummary(finalOrder,true);
   }catch(e){
     console.error(e);
@@ -898,6 +895,7 @@ async function finishOrder(o){
     toast('จบงานไม่สำเร็จ: '+e.message);
   }
 }
+
 
 /* QueueGo v21: superseded renderPaymentSummary presentation removed. */
 /* QueueGo v21: superseded closeChat presentation removed. */
