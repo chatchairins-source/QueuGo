@@ -1129,10 +1129,10 @@ function qtIso(ts){ return new Date(ts||Date.now()).toISOString(); }
 function qtUuidLike(id){ return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(id||'')); }
 
 function qtOrderStatusToDb(s){
-  const m={pending_shop:'pending',shop_accepted:'accepted',preparing:'preparing',waiting_rider:'ready',rider_to_shop:'assigned',picked_up:'picked_up',delivering:'in_progress',arrived:'in_progress',delivered:'completed',completed:'completed',cancelled:'cancelled'};
-  return m[s]||(['pending','accepted','preparing','ready','assigned','picked_up','in_progress','completed','cancelled'].includes(s)?s:'pending');
+  const m={pending_shop:'pending',shop_accepted:'accepted',searching_rider:'searching_rider',rider_assigned:'rider_assigned',preparing:'preparing',waiting_rider:'ready',rider_to_shop:'assigned',picked_up:'picked_up',delivering:'in_progress',arrived:'in_progress',delivered:'completed',completed:'completed',cancelled:'cancelled',no_rider_available:'no_rider_available'};
+  return m[s]||(['pending','accepted','searching_rider','rider_assigned','preparing','ready','assigned','picked_up','in_progress','completed','cancelled','no_rider_available'].includes(s)?s:'pending');
 }
-function qtOrderStatusFromDb(s,note=''){ if(s==='in_progress')return /^__QT_ORDER_STATUS__=arrived(?:\n|$)/.test(note)?'arrived':'delivering';const map={pending:'pending_shop',accepted:'shop_accepted',ready:'waiting_rider',assigned:'rider_to_shop',picked_up:'picked_up',completed:'completed',cancelled:'cancelled'};return map[s]||s; }
+function qtOrderStatusFromDb(s,note=''){ if(s==='in_progress')return /^__QT_ORDER_STATUS__=arrived(?:\n|$)/.test(note)?'arrived':'delivering';const map={pending:'pending_shop',accepted:'shop_accepted',searching_rider:'searching_rider',rider_assigned:'rider_assigned',ready:'waiting_rider',assigned:'rider_to_shop',picked_up:'picked_up',completed:'completed',cancelled:'cancelled',no_rider_available:'no_rider_available'};return map[s]||s; }
 function qtServiceStatusToDb(s){
   const m={open_for_quotes:'pending',requested:'requested',quote_selected:'accepted',technician_confirmed:'accepted',accepted:'accepted',heading:'in_progress',arrived:'in_progress',working:'in_progress',completed:'completed',rejected:'cancelled',cancelled:'cancelled'};
   return m[s]||'pending';
@@ -3872,14 +3872,17 @@ async function confirmOrder(){
 
 const ORDER_STATUSES = [
   {key:'pending_shop', label:'รอร้านรับงาน', icon:'⏳'},
-  {key:'shop_accepted', label:'ร้านรับงานแล้ว', icon:'✅'},
+  {key:'shop_accepted', label:'ร้านรับงานแล้ว (สถานะเดิม)', icon:'✅'},
+  {key:'searching_rider', label:'กำลังค้นหาไรเดอร์', icon:'🔍'},
+  {key:'rider_assigned', label:'พบไรเดอร์แล้ว', icon:'🔵'},
   {key:'preparing', label:'กำลังเตรียมสินค้า', icon:'👨‍🍳'},
-  {key:'waiting_rider', label:'รอไรเดอร์รับงาน', icon:'🔍'},
-  {key:'rider_to_shop', label:'ไรเดอร์กำลังไปร้าน', icon:'🔵'},
+  {key:'waiting_rider', label:'พร้อมให้ไรเดอร์รับ', icon:'📦'},
+  {key:'rider_to_shop', label:'ไรเดอร์กำลังไปร้าน (สถานะเดิม)', icon:'🔵'},
   {key:'picked_up', label:'รับสินค้าแล้ว', icon:'📦'},
   {key:'delivering', label:'กำลังไปหาลูกค้า', icon:'🟠'},
   {key:'arrived', label:'ถึงลูกค้าแล้ว', icon:'🟡'},
   {key:'completed', label:'ส่งสำเร็จ', icon:'⚫'},
+  {key:'no_rider_available', label:'ไม่พบไรเดอร์', icon:'⚠️'},
   {key:'cancelled', label:'ยกเลิก', icon:'❌'},
 ];
 function statusLabel(key){ const s = ORDER_STATUSES.find(x=>x.key===key); return s ? s.icon+' '+s.label : key; }
