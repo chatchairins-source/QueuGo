@@ -1,0 +1,11 @@
+{
+  "appId": "com.queuego.customer",
+  "appName": "QueueGo",
+  "webDir": "www",
+  "server": {
+    "androidScheme": "https",
+    "allowNavigation": [
+      "*"
+    ]
+  }
+}
