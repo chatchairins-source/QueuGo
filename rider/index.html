@@ -923,29 +923,20 @@ async function sendRiderChat(o,override){const input=document.getElementById('ch
 
 async function acceptJob(orderId){
   const btn=document.getElementById('accept-'+orderId);
-  if(btn){ btn.disabled=true; btn.textContent='กำลังรับงาน...'; }
+  if(btn){btn.disabled=true;btn.textContent='กำลังรับงาน...';}
   try{
-    const token = await getAccessToken();
-    if(!token) throw new Error('ไม่พบเซสชันเข้าสู่ระบบ');
-    if(!S.riderProfile || !S.riderProfile.id) throw new Error('ไม่พบ rider_profiles.id ของไรเดอร์');
-    const currentRows = await sbTable('orders?id=eq.'+encodeURIComponent(orderId), {token});
-    const current = Array.isArray(currentRows) ? currentRows[0] : null;
-    if(!current){ throw new Error('ไม่พบออเดอร์ในฐานข้อมูล'); }
-    if(current.rider_id){ toast('งานนี้มีไรเดอร์รับไปแล้ว'); refreshData(); return; }
-    const updated = await sbTable('orders?id=eq.'+encodeURIComponent(orderId)+'&rider_id=is.null', {method:'PATCH', token, body:{
-      rider_id:S.riderProfile.id, status:statusToDb('assigned'), note:noteWithTag(current,'assigned'), updated_at:new Date().toISOString()
-    }});
-    if(!Array.isArray(updated) || !updated.length){
-      const verify=await sbTable('orders?id=eq.'+encodeURIComponent(orderId)+'&select=id,rider_id,status,order_number', {token});
-      const row=Array.isArray(verify)?verify[0]:null;
-      if(!row || row.rider_id!==S.riderProfile.id) throw new Error('เซิร์ฟเวอร์ไม่ยืนยันการรับงาน');
-    }
+    const token=await getAccessToken();
+    if(!token)throw new Error('ไม่พบเซสชันเข้าสู่ระบบ');
+    if(!S.riderProfile?.id)throw new Error('ไม่พบ rider_profiles.id ของไรเดอร์');
+    const result=await sbTable('rpc/rider_claim_order',{method:'POST',token,body:{p_order_id:orderId}});
+    if(result===false||result==null)throw new Error('เซิร์ฟเวอร์ไม่ยืนยันการรับงาน');
     toast('รับงานสำเร็จ');
     await refreshData();
   }catch(e){
     console.error('acceptJob failed',e);
     toast('รับงานไม่สำเร็จ: '+String(e.message||e));
-    if(btn){ btn.disabled=false; btn.textContent='รับงานนี้'; }
+    if(btn){btn.disabled=false;btn.textContent='รับงานนี้';}
+    await refreshData();
   }
 }
 
