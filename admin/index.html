@@ -4056,8 +4056,9 @@ function orderActionButtons(order, user){
     const mappedShopUserId = order.shopProfileId && QT_SYNC.profileMaps?.shopById?.get(order.shopProfileId);
     const isThisShopOrder = String(user.id)===String(order.shopId) || String(user.id)===String(mappedShopUserId);
     if(isThisShopOrder){
-      if(order.status==='pending_shop'){ btns.push(b('รับออเดอร์','shop_accepted')); }
-      else if(order.status==='shop_accepted'){ btns.push(b('เริ่มเตรียมสินค้า','preparing')); }
+      if(order.status==='pending_shop'){ btns.push(b('รับออเดอร์','searching_rider')); }
+      else if(order.status==='searching_rider'){ btns.push('<p>กำลังค้นหาไรเดอร์ · ยังไม่ต้องเริ่มเตรียมสินค้า</p>'); }
+      else if(order.status==='rider_assigned'){ btns.push(b('เริ่มเตรียมสินค้า','preparing')); }
       else if(order.status==='preparing'){ btns.push(b('สินค้าพร้อม รอไรเดอร์','waiting_rider')); }
     }
   }
@@ -4133,94 +4134,35 @@ function renderAdminOrderCenter(user){
     <button class="btn-secondary btn-block" onclick="navigate('admin')">← กลับ Admin Dashboard</button>`);
 }
 
-function updateOrderStatus(orderId, newStatus){
-  let orders = dbGet('qt_orders',[]);
-  const order = orders.find(o=>o.id===orderId);
-  if(!order){ toast('ไม่พบออเดอร์'); return; }
+async function updateOrderStatus(orderId,newStatus){
   const actor=currentUser();
-  /* V5.33: a customer may only cancel while the shop has not accepted yet (the button is hidden afterwards, but the screen can be stale) */
-  if(newStatus==='cancelled' && actor && actor.type==='customer'){
-    if(order.customerId!==actor.id){ toast('ไม่มีสิทธิ์ยกเลิกออเดอร์นี้'); return; }
-    if(order.status!=='pending_shop'){ toast('ร้านรับออเดอร์แล้ว ไม่สามารถยกเลิกได้'); renderOrderDetail(orderId); return; }
-    if(!confirm('ยืนยันยกเลิกออเดอร์นี้?')) return;
-  }
-  const previousStatus=order.status;
-  order.status = newStatus;
-  /* orders loaded from Supabase have no statusLog yet — without this the status buttons (incl. cancel) threw and did nothing */
-  order.statusLog = Array.isArray(order.statusLog) ? order.statusLog : [];
-  order.statusLog.push({status:newStatus, time:Date.now()});
-  qtAudit('order_status_change',{orderId:order.id,orderNumber:displayOrderNumber(order),from:previousStatus,to:newStatus});
-  if(newStatus==='completed' && order.settlementStatus!=='recorded'){ qtFinanceEntry('order_settlement',{orderId:order.id,orderNumber:displayOrderNumber(order),customerId:order.customerId,shopId:order.shopId,riderId:order.riderId,amount:Number(order.total||0),status:'recorded'}); order.settlementStatus='recorded'; }
-  if(['completed','cancelled'].includes(newStatus)){
-    QT_DB_CACHE[chatKey(order.id)+'_deleteAt']=Date.now()+20*60*1000;
-    if(order.customerId===currentUser()?.id){
-      order.customerUnlockedAt = Date.now();
+  const order=dbGet('qt_orders',[]).find(o=>String(o.id)===String(orderId));
+  if(!actor||!order){toast('ไม่พบออเดอร์หรือผู้ใช้งาน');return;}
+  try{
+    const token=await qtGetAccessToken(); if(!token)throw new Error('กรุณาเข้าสู่ระบบใหม่');
+    if(actor.type==='shop'){
+      const action={searching_rider:'accepted',preparing:'preparing',waiting_rider:'ready'}[newStatus];
+      if(!action)throw new Error('ขั้นตอนร้านค้าไม่ถูกต้อง');
+      await qtSupabaseTable('rpc/merchant_order_action',{method:'POST',accessToken:token,body:{p_order_id:orderId,p_action:action,p_reason:null}});
+    }else if(actor.type==='customer'&&newStatus==='cancelled'){
+      await qtSupabaseTable('rpc/qg_customer_cancel_order',{method:'POST',accessToken:token,body:{p_order_id:orderId}});
+    }else{
+      throw new Error('การเปลี่ยนสถานะนี้ต้องทำจากระบบเจ้าของบทบาทที่ได้รับอนุญาต');
     }
-  }
-  dbSet('qt_orders', orders);
-  pushNotification(order.customerId, 'อัปเดตสถานะคำสั่งซื้อ', statusLabel(newStatus), 'order/'+orderId);
-  if(newStatus === 'waiting_rider'){
-    dispatchOrder(orderId);
-  }
-  toast('อัปเดตสถานะ: '+statusLabel(newStatus));
-  renderOrderDetail(orderId);
+    await qtHydrateDatabase({light:false});toast('อัปเดตสถานะแล้ว');renderOrderDetail(orderId);
+  }catch(e){console.error(e);toast('อัปเดตสถานะไม่สำเร็จ: '+(e.message||e));}
 }
+
 function acceptRiderJob(orderId){
-  if(qtRiderJobAlertOrderId===orderId) stopRiderJobAlert();
-
-  const user = currentUser();
-  if(!user || user.type!=='rider' || user.status!=='approved'){
-    toast('บัญชีไรเดอร์นี้ยังไม่พร้อมรับงาน');
-    return;
-  }
-
-  let orders = dbGet('qt_orders',[]);
-  const order = orders.find(o=>o.id===orderId);
-  if(!order){ toast('ไม่พบออร์เดอร์'); return; }
-
-  // IMPORTANT: A rider can only accept an order specifically dispatched to them.
-  if(order.status!=='waiting_rider' || order.riderId){
-    toast('งานนี้ไม่อยู่ในสถานะที่รับได้');
-    renderOrderDetail(orderId); return;
-  }
-  if(order.dispatchRiderId !== user.id){
-    toast('งานนี้ไม่ได้ถูกระบบจ่ายให้คุณ');
-    renderRiderJobs(); return;
-  }
-
-  order.riderId = user.id;
-  order.riderName = user.name;
-  order.status = 'rider_to_shop';
-  order.statusLog.push({status:'rider_to_shop', time:Date.now()});
-  order.dispatchState = 'accepted';
-  order.dispatchAcceptedAt = Date.now();
-  order.dispatchExpiresAt = null;
-
-  dbSet('qt_orders', orders);
-  pushNotification(order.customerId, '🛵 ไรเดอร์รับงานแล้ว',
-    user.name+' กำลังไปที่ร้าน', 'order/'+orderId);
-  toast('รับงานสำเร็จ! กำลังไปที่ร้าน');
-  renderOrderDetail(orderId);
+  toast('กรุณารับงานจาก QueueGo Rider เพื่อยืนยันสิทธิ์กับเซิร์ฟเวอร์');
 }
 
 
 
 function adminRedispatchOrder(orderId){
-  const user = currentUser();
-  if(!user || user.type!=='admin'){ toast('เฉพาะ Admin เท่านั้น'); return; }
-  let orders = dbGet('qt_orders',[]);
-  const o = orders.find(x=>x.id===orderId);
-  if(!o){ toast('ไม่พบออร์เดอร์'); return; }
-  if(o.status!=='waiting_rider' || o.riderId){ toast('ออร์เดอร์นี้ไม่พร้อมจ่ายงาน'); return; }
-  o.dispatchRiderId = null;
-  o.dispatchState = 'queued';
-  o.dispatchTriedRiderIds = [];
-  o.dispatchExpiresAt = null;
-  dbSet('qt_orders',orders);
-  const result = dispatchOrder(orderId);
-  toast(result ? 'ส่งงานให้ไรเดอร์ที่เข้าเงื่อนไขแล้ว' : 'ยังหาไรเดอร์ในรัศมี 1 กม. ไม่ได้');
-  renderOrderDetail(orderId);
+  toast('ระบบ Rider-first ใช้ Rider Pool จากเซิร์ฟเวอร์ ไม่ใช้ Auto Dispatch แบบเดิม');
 }
+
 
 /* ---------- 10. LIVE TRACKING ---------- */
 /*
