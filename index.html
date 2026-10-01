@@ -4673,20 +4673,20 @@ button,a,input,textarea,select{font:inherit}
     const subtotal=cart.items.reduce((s,i)=>s+Number(i.price||0)*Number(i.qty||0),0);
     layout('ยืนยันคำสั่งซื้อ',`<section>
       <div class="qg-page-title"><button class="qg-back" onclick="navigate('cart')">${qgIcon('back')}</button><h1>ยืนยันคำสั่งซื้อ</h1></div>
-      <section class="qg-checkout-card"><div class="qg-checkout-head"><b>ที่อยู่จัดส่ง</b><button class="qg-link-btn" onclick="openCustomerLocationPicker()">เปลี่ยน</button></div><div style="font-size:12px;margin-bottom:9px">${esc(qtCustomerLocationText(u))}</div><div id="pin-map" class="map-box qg-checkout-map"></div><div class="coord-display" style="display:none">Lat: <span id="disp-lat">-</span>, Lng: <span id="disp-lng">-</span></div><textarea id="delivery-address" style="width:100%;min-height:58px;margin-top:9px;border:1px solid var(--qg-line);border-radius:13px;padding:10px" placeholder="รายละเอียดที่อยู่">${esc(u.address||'')}</textarea></section>
+      <section class="qg-checkout-card"><div class="qg-checkout-head"><b>ที่อยู่จัดส่ง</b><button class="qg-link-btn" onclick="openCustomerLocationPicker()">เปลี่ยน</button></div><div style="font-size:12px;margin-bottom:9px">${esc(qtCustomerLocationText(u))}</div><div id="pin-map" class="map-box qg-checkout-map"></div><div class="coord-display" style="display:none">Lat: <span id="disp-lat">-</span>, Lng: <span id="disp-lng">-</span></div><textarea id="delivery-address" style="width:100%;min-height:58px;margin-top:9px;border:1px solid var(--qg-line);border-radius:13px;padding:10px" placeholder="รายละเอียดที่อยู่">${esc(u.address||'')}</textarea><label style="display:flex;gap:9px;align-items:flex-start;margin-top:10px;font-size:12px"><input id="checkout-location-confirm" type="checkbox" style="margin-top:2px" onchange="window.__checkoutLocationConfirmed=this.checked;document.getElementById('checkout-confirm-btn').disabled=!this.checked||!!window.QT_CHECKOUT_UNCERTAIN"><span>ตำแหน่งจัดส่งนี้ถูกต้อง และฉันตรวจสอบหมุดกับที่อยู่แล้ว</span></label></section>
       <section class="qg-checkout-card"><div class="qg-checkout-head"><b>รายการอาหาร</b></div>${cart.items.map(i=>`<div style="display:flex;justify-content:space-between;font-size:12px;padding:6px 0"><span>${esc(i.name)} × ${esc(i.qty)}</span><b>฿${Number(i.price||0)*Number(i.qty||0)}</b></div>`).join('')}</section>
       <section class="qg-checkout-card"><div class="qg-checkout-head"><b>วิธีชำระเงิน</b></div><div class="qg-payment-row"><span>เก็บเงินปลายทาง (COD)</span>${qgIcon('chevron',18)}</div></section>
       <section class="qg-summary"><div class="qg-summary-row"><span>รวมราคาอาหาร</span><b>฿${subtotal}</b></div><div class="qg-summary-row"><span>ค่าส่ง</span><span id="delivery-fee-display">กำลังคำนวณ...</span></div><div class="qg-summary-total"><span>ยอดรวมทั้งหมด</span><span id="checkout-total-display">฿${subtotal}</span></div></section>
       <div id="checkout-error" class="qt-checkout-error" role="alert" hidden></div>
-      <button id="checkout-confirm-btn" type="button" class="qg-primary" style="margin-top:14px" onclick="qtSubmitCheckoutOrder()">ยืนยันคำสั่งซื้อ</button>
+      <button id="checkout-confirm-btn" type="button" class="qg-primary" style="margin-top:14px" onclick="qtSubmitCheckoutOrder()" disabled>ยืนยันคำสั่งซื้อ</button>
     </section>`);
     window.QT_CHECKOUT_UNCERTAIN=false;
-    const oldSet=window.QT_CAM_CAPTURES;
+    window.__checkoutLocationConfirmed=false;
     let picked=qgIsValidCoordinate(u.lat,u.lng,true)?{lat:Number(u.lat),lng:Number(u.lng)}:null;
     window.__checkoutSubtotal=subtotal;window.__checkoutShop=shop;
     const refresh=(lat,lng)=>{const d=distanceKm(shop.lat,shop.lng,lat,lng),f=document.getElementById('delivery-fee-display'),t=document.getElementById('checkout-total-display');if(!Number.isFinite(d)){window.__checkoutFee=null;if(f)f.textContent='กรุณาระบุตำแหน่งที่ถูกต้อง';if(t)t.textContent=`฿${subtotal}`;return;}const fee=computeDeliveryFee(d);window.__checkoutFee=fee;if(f)f.textContent=`฿${fee} • ${d.toFixed(1)} กม.`;if(t)t.textContent=`฿${subtotal+fee}`;};
-    const picker=initLocationPicker('pin-map',picked?.lat,picked?.lng,(lat,lng)=>{picked={lat,lng};document.getElementById('disp-lat').textContent=lat.toFixed(6);document.getElementById('disp-lng').textContent=lng.toFixed(6);refresh(lat,lng);});
-    window.__currentPicker=picker;window.__pickedLoc=()=>picked;if(picked)refresh(picked.lat,picked.lng);
+    const picker=initLocationPicker('pin-map',picked?.lat,picked?.lng,(lat,lng)=>{picked={lat,lng};window.__checkoutLocationConfirmed=false;const c=document.getElementById('checkout-location-confirm');if(c)c.checked=false;const b=document.getElementById('checkout-confirm-btn');if(b)b.disabled=true;document.getElementById('disp-lat').textContent=lat.toFixed(6);document.getElementById('disp-lng').textContent=lng.toFixed(6);refresh(lat,lng);});
+    window.__currentPicker=picker;window.__pickedLoc=()=>picked;if(picked)refresh(picked.lat,picked.lng);const addr=document.getElementById('delivery-address');if(addr)addr.addEventListener('input',()=>{window.__checkoutLocationConfirmed=false;const c=document.getElementById('checkout-location-confirm');if(c)c.checked=false;const b=document.getElementById('checkout-confirm-btn');if(b)b.disabled=true;});
     setTimeout(()=>{try{picker.locate()}catch(e){}},120);
   };
 
@@ -4816,6 +4816,7 @@ button,a,input,textarea,select{font:inherit}
     if(!shop){qtCheckoutError('ไม่พบข้อมูลร้าน');return;}
     if(!validPoint(shop.lat,shop.lng)){qtCheckoutError('ร้านยังไม่ได้ปักพิกัดรับสินค้า');return;}
     const loc=window.__pickedLoc?.(),address=document.getElementById('delivery-address')?.value.trim()||'';
+    if(!window.__checkoutLocationConfirmed){qtCheckoutError('กรุณายืนยันว่าตำแหน่งจัดส่งและที่อยู่ถูกต้อง');return;}
     if(!loc||!validPoint(loc.lat,loc.lng)||address.length<3){qtCheckoutError('กรุณาปักหมุดและระบุที่อยู่จัดส่ง');return;}
     const token=await qtGetAccessToken();if(!token){qtCheckoutError('กรุณาเข้าสู่ระบบอีกครั้ง');return;}
     let shopId=shop.shopProfileId||QT_SYNC.profileMaps?.shopByUserId?.get(shop.id)||null;
