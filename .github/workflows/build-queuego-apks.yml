@@ -154,11 +154,11 @@ public class MainActivity extends BridgeActivity {{
               d=base/folder; d.mkdir(parents=True,exist_ok=True)
               im=Image.new('RGBA',(n,n),(255,255,255,255))
               dr=ImageDraw.Draw(im)
-              try: font=ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf',int(n*.72))
-              except: font=ImageFont.load_default()
-              box=dr.textbbox((0,0),'Q',font=font)
-              x=(n-(box[2]-box[0]))/2; y=(n-(box[3]-box[1]))/2-box[1]
-              dr.text((x,y),'Q',font=font,fill=(230,0,45,255))
+              red=(231,9,43,255)
+              w=max(4,round(n*0.14))
+              box=(round(n*0.20),round(n*0.17),round(n*0.72),round(n*0.69))
+              dr.ellipse(box,outline=red,width=w)
+              dr.line((round(n*0.56),round(n*0.56),round(n*0.80),round(n*0.80)),fill=red,width=w)
               im.save(d/'ic_launcher.png')
               im.save(d/'ic_launcher_round.png')
           PY
