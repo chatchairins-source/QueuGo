@@ -4694,7 +4694,7 @@ button,a,input,textarea,select{font:inherit}
     const u=currentUser();if(!customer(u)){navigate('login');return;}
     const orders=dbGet('qt_orders',[]).filter(o=>String(o.customerId)===String(u.id)).sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
     layout('ออเดอร์',`<div class="qg-page-title"><h1>ออเดอร์ของฉัน</h1></div><div class="qg-orders-list">${orders.length?orders.map(o=>{
-      const steps=['pending_shop','shop_accepted','preparing','waiting_rider','delivering','completed'];const idx=Math.max(0,steps.indexOf(o.status));
+      const steps=['pending_shop','searching_rider','rider_assigned','preparing','waiting_rider','picked_up','delivering','completed'];const idx=Math.max(0,steps.indexOf(o.status));
       return `<article class="qg-order-card-new" onclick="navigate('order/${esc(o.id)}')"><div class="qg-order-head-new"><div><div class="qg-order-no">${esc(displayOrderNumber(o))}</div><div style="font-size:11px;color:var(--qg-muted)">${esc(o.shopName||'ร้านค้า')}</div></div><span class="qg-status-pill">${esc(statusLabel(o.status).replace(/^\\S+\\s*/,''))}</span></div><p>${Array.isArray(o.items)?o.items.reduce((n,i)=>n+Number(i.qty||0),0):0} รายการ • ฿${esc(o.total||0)}</p><div class="qg-mini-progress">${steps.map((s,i)=>`<i class="${idx>=i?'done':''}"></i>`).join('')}</div></article>`;
     }).join(''):'<div class="qg-empty-new">ยังไม่มีคำสั่งซื้อ</div>'}</div>`);
   };
@@ -4704,7 +4704,7 @@ button,a,input,textarea,select{font:inherit}
     if(!o||!customer(u)||String(o.customerId)!==String(u.id)){toast('ไม่พบออเดอร์');navigate('orders');return;}
     const shop=dbGet('qt_users',[]).find(x=>String(x.id)===String(o.shopId));
     const rider=o.riderId?dbGet('qt_users',[]).find(x=>String(x.id)===String(o.riderId)):null;
-    const steps=[['pending_shop','รับออเดอร์'],['preparing','ร้านกำลังทำอาหาร'],['rider_to_shop','ไรเดอร์รับงาน'],['delivering','กำลังจัดส่ง'],['completed','ส่งสำเร็จ']];
+    const steps=[['pending_shop','รอร้านรับออเดอร์'],['searching_rider','ร้านรับแล้ว กำลังค้นหาไรเดอร์'],['rider_assigned','พบไรเดอร์แล้ว'],['preparing','ร้านกำลังเตรียมสินค้า'],['waiting_rider','พร้อมให้ไรเดอร์รับ'],['picked_up','ไรเดอร์รับสินค้าแล้ว'],['delivering','กำลังจัดส่ง'],['completed','ส่งสำเร็จ']];
     const mapAvailable=o.pickup&&o.delivery&&o.pickup.lat!=null&&o.delivery.lat!=null;
     const idx=steps.findIndex(x=>x[0]===o.status);
     layout('ติดตามออเดอร์',`<div class="qg-page-title"><button class="qg-back" onclick="navigate('orders')">${qgIcon('back')}</button><h1>ติดตามออเดอร์</h1></div>
