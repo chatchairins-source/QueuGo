@@ -63,52 +63,53 @@ jobs:
         run: |
           python3 - <<'PY'
           from pathlib import Path
-          import json
+          import json, textwrap
           cfg=json.loads(Path('android-build/capacitor.config.json').read_text())
           pkg=cfg['appId']
           java_dir=Path('android-build/android/app/src/main/java')/Path(*pkg.split('.'))
           java_dir.mkdir(parents=True,exist_ok=True)
-          src=f'''package {pkg};
+          src=textwrap.dedent(f"""\
+          package {pkg};
 
-import android.Manifest;
-import android.content.pm.PackageManager;
-import android.os.Build;
-import android.os.Bundle;
-import com.getcapacitor.BridgeActivity;
-import java.util.ArrayList;
-import java.util.List;
+          import android.Manifest;
+          import android.content.pm.PackageManager;
+          import android.os.Build;
+          import android.os.Bundle;
+          import com.getcapacitor.BridgeActivity;
+          import java.util.ArrayList;
+          import java.util.List;
 
-public class MainActivity extends BridgeActivity {{
-  private static final int QG_PERMISSION_REQUEST = 4201;
-  @Override
-  public void onCreate(Bundle savedInstanceState) {{
-    super.onCreate(savedInstanceState);
-    if (bridge != null && bridge.getWebView() != null) {{
-      bridge.getWebView().getSettings().setGeolocationEnabled(true);
-    }}
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {{
-      List<String> wanted = new ArrayList<>();
-      addIfMissing(wanted, Manifest.permission.ACCESS_COARSE_LOCATION);
-      addIfMissing(wanted, Manifest.permission.ACCESS_FINE_LOCATION);
-      addIfMissing(wanted, Manifest.permission.CAMERA);
-      addIfMissing(wanted, Manifest.permission.RECORD_AUDIO);
-      if (Build.VERSION.SDK_INT >= 33) {{
-        addIfMissing(wanted, Manifest.permission.POST_NOTIFICATIONS);
-        addIfMissing(wanted, Manifest.permission.READ_MEDIA_IMAGES);
-        addIfMissing(wanted, Manifest.permission.READ_MEDIA_VIDEO);
-      }}
-      if (Build.VERSION.SDK_INT >= 31) {{
-        addIfMissing(wanted, Manifest.permission.BLUETOOTH_SCAN);
-        addIfMissing(wanted, Manifest.permission.BLUETOOTH_CONNECT);
-      }}
-      if (!wanted.isEmpty()) requestPermissions(wanted.toArray(new String[0]), QG_PERMISSION_REQUEST);
-    }}
-  }}
-  private void addIfMissing(List<String> list, String permission) {{
-    if (checkSelfPermission(permission) != PackageManager.PERMISSION_GRANTED) list.add(permission);
-  }}
-}}
-'''
+          public class MainActivity extends BridgeActivity {{
+            private static final int QG_PERMISSION_REQUEST = 4201;
+            @Override
+            public void onCreate(Bundle savedInstanceState) {{
+              super.onCreate(savedInstanceState);
+              if (bridge != null && bridge.getWebView() != null) {{
+                bridge.getWebView().getSettings().setGeolocationEnabled(true);
+              }}
+              if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {{
+                List<String> wanted = new ArrayList<>();
+                addIfMissing(wanted, Manifest.permission.ACCESS_COARSE_LOCATION);
+                addIfMissing(wanted, Manifest.permission.ACCESS_FINE_LOCATION);
+                addIfMissing(wanted, Manifest.permission.CAMERA);
+                addIfMissing(wanted, Manifest.permission.RECORD_AUDIO);
+                if (Build.VERSION.SDK_INT >= 33) {{
+                  addIfMissing(wanted, Manifest.permission.POST_NOTIFICATIONS);
+                  addIfMissing(wanted, Manifest.permission.READ_MEDIA_IMAGES);
+                  addIfMissing(wanted, Manifest.permission.READ_MEDIA_VIDEO);
+                }}
+                if (Build.VERSION.SDK_INT >= 31) {{
+                  addIfMissing(wanted, Manifest.permission.BLUETOOTH_SCAN);
+                  addIfMissing(wanted, Manifest.permission.BLUETOOTH_CONNECT);
+                }}
+                if (!wanted.isEmpty()) requestPermissions(wanted.toArray(new String[0]), QG_PERMISSION_REQUEST);
+              }}
+            }}
+            private void addIfMissing(List<String> list, String permission) {{
+              if (checkSelfPermission(permission) != PackageManager.PERMISSION_GRANTED) list.add(permission);
+            }}
+          }}
+          """)
           (java_dir/'MainActivity.java').write_text(src)
           PY
       - name: Add Android permissions
