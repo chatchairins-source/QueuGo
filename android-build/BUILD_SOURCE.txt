@@ -1,0 +1,5 @@
+QueueGo Android build source: main
+Customer: index.html
+Merchant: merchant/index.html
+Rider: rider/index.html
+Admin: admin/index.html
