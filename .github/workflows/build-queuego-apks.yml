@@ -74,8 +74,7 @@ jobs:
           import android.os.Build;
           import android.os.Bundle;
           import android.webkit.GeolocationPermissions;
-          import android.webkit.PermissionRequest;
-          import android.webkit.WebChromeClient;
+                    import android.webkit.WebChromeClient;
           import com.getcapacitor.BridgeActivity;
           import java.util.ArrayList;
           import java.util.List;
@@ -92,26 +91,14 @@ jobs:
                   public void onGeolocationPermissionsShowPrompt(String origin, GeolocationPermissions.Callback callback) {
                     callback.invoke(origin, true, false);
                   }
-                  @Override
-                  public void onPermissionRequest(PermissionRequest request) {
-                    runOnUiThread(() -> request.grant(request.getResources()));
-                  }
                 });
               }
               if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                 List<String> wanted = new ArrayList<>();
                 addIfMissing(wanted, Manifest.permission.ACCESS_COARSE_LOCATION);
                 addIfMissing(wanted, Manifest.permission.ACCESS_FINE_LOCATION);
-                addIfMissing(wanted, Manifest.permission.CAMERA);
-                addIfMissing(wanted, Manifest.permission.RECORD_AUDIO);
                 if (Build.VERSION.SDK_INT >= 33) {
                   addIfMissing(wanted, Manifest.permission.POST_NOTIFICATIONS);
-                  addIfMissing(wanted, Manifest.permission.READ_MEDIA_IMAGES);
-                  addIfMissing(wanted, Manifest.permission.READ_MEDIA_VIDEO);
-                }
-                if (Build.VERSION.SDK_INT >= 31) {
-                  addIfMissing(wanted, Manifest.permission.BLUETOOTH_SCAN);
-                  addIfMissing(wanted, Manifest.permission.BLUETOOTH_CONNECT);
                 }
                 if (!wanted.isEmpty()) requestPermissions(wanted.toArray(new String[0]), QG_PERMISSION_REQUEST);
               }
