@@ -915,13 +915,21 @@ function qtStartSyncLoop(){
   QT_SYNC.timer=setInterval(()=>qtSyncTick(),8000);
   document.addEventListener('visibilitychange',()=>{ if(!document.hidden) qtSyncTick(); });
 }
-window.addEventListener('DOMContentLoaded', async ()=>{
-  /* V5.33: show the page first, load Supabase data in the background */
+window.addEventListener('DOMContentLoaded', ()=>{
+  /* Merchant boot must NEVER wait for network/session refresh before first paint.
+     Render immediately; restore the signed-in shop asynchronously afterwards. */
   const hadSession=!!qtAccessToken();
-  if(hadSession) await qtRestoreOwnUser(); /* one small request (own account row) so a refresh keeps the signed-in user */
   router();
-  qtStartSyncLoop(); /* does not block the UI */
-  setTimeout(()=>{ qtBackgroundHydrate({light:false}); },0);
+  qtStartSyncLoop();
+  if(hadSession){
+    setTimeout(async ()=>{
+      await qtRestoreOwnUser();
+      try{ router(); }catch(e){ console.warn('merchant restore rerender failed',e); }
+      qtBackgroundHydrate({light:false});
+    },0);
+  }else{
+    setTimeout(()=>{ qtBackgroundHydrate({light:false}); },0);
+  }
 });
 
 /* V5.33: a page that throws while rendering used to leave the previous screen frozen with dead buttons and no clue why. Now the error is logged and shown. */
