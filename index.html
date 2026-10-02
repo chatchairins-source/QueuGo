@@ -4872,6 +4872,61 @@ button,a,input,textarea,select{font:inherit}
   };
 })();
 </script>
+<script id="qg-market-atomic-checkout-v1">
+(function(){
+ const baseRenderCart=window.renderCart,baseRenderCheckout=window.renderCheckout,baseConfirm=window.confirmOrder;
+ const valid=(a,b)=>Number.isFinite(Number(a))&&Number.isFinite(Number(b))&&Math.abs(Number(a))<=90&&Math.abs(Number(b))<=180&&!(Number(a)===0&&Number(b)===0);
+ function isMarket(){const c=qtGetCart();return !!(c&&c.marketCart&&c.marketId&&c.items&&c.items.length)}
+ function groups(c){const m=new Map();for(const i of c.items||[]){const k=String(i.shopProfileId||i.shopId||'');if(!m.has(k))m.set(k,[]);m.get(k).push(i)}return [...m.values()]}
+ window.renderCart=function(){
+   baseRenderCart();
+   if(!isMarket())return;
+   const c=qtGetCart(),gs=groups(c),page=document.querySelector('.qg-cart-page');if(!page)return;
+   const summary=page.querySelector('.qg-summary');
+   if(summary){const x=document.createElement('div');x.className='qg-checkout-card';x.innerHTML='<b>ตลาดสด · '+gs.length+' ร้าน</b><div style="font-size:12px;margin-top:6px">ชำระครั้งเดียว · ไรเดอร์รับของตามร้าน</div>';summary.before(x)}
+ };
+ window.renderCheckout=function(){
+   if(!isMarket())return baseRenderCheckout();
+   const u=currentUser();if(!u){navigate('login');return}
+   const active=getCustomerActiveOrder(u.id);if(active){toast('มีออเดอร์ที่กำลังดำเนินการอยู่');navigate('order/'+active.id);return}
+   const c=qtGetCart(),gs=groups(c),subtotal=c.items.reduce((n,i)=>n+Number(i.price||0)*Number(i.qty||0),0),extra=gs.length>=2?10:0;
+   const shopRows=gs.map((items,n)=>'<div style="padding:8px 0;border-bottom:1px solid var(--qg-line)"><b>จุดรับ '+(n+1)+'</b>'+items.map(i=>'<div style="display:flex;justify-content:space-between;font-size:12px;padding:4px 0"><span>'+escapeHtml(i.name)+' × '+Number(i.qty)+'</span><b>฿'+(Number(i.price)*Number(i.qty))+'</b></div>').join('')+'</div>').join('');
+   layout('ยืนยันคำสั่งซื้อ',`<section><div class="qg-page-title"><button class="qg-back" onclick="navigate('cart')">${typeof qgIcon==='function'?qgIcon('back'):''}</button><h1>ยืนยันคำสั่งซื้อจากตลาด</h1></div>
+   <section class="qg-checkout-card"><b>ที่อยู่จัดส่ง</b><div id="pin-map" class="map-box qg-checkout-map" style="margin-top:9px"></div><textarea id="delivery-address" style="width:100%;min-height:58px;margin-top:9px;border:1px solid var(--qg-line);border-radius:13px;padding:10px" placeholder="รายละเอียดที่อยู่">${escapeHtml(u.address||'')}</textarea></section>
+   <section class="qg-checkout-card"><b>${gs.length} ร้านในตลาดเดียวกัน</b>${shopRows}</section>
+   <section class="qg-summary"><div class="qg-summary-row"><span>รวมสินค้า</span><b>฿${subtotal}</b></div><div class="qg-summary-row"><span>ค่าส่ง</span><span id="delivery-fee-display">คำนวณจากตำแหน่ง</span></div>${extra?'<div class="qg-summary-row"><span>รับของหลายร้าน</span><b>฿10</b></div>':''}<div class="qg-summary-total"><span>ยอดรวม</span><span id="checkout-total-display">฿${subtotal+extra}</span></div></section>
+   <div id="checkout-error" class="qt-checkout-error" role="alert" hidden></div><button id="checkout-confirm-btn" class="qg-primary" type="button" onclick="qtSubmitCheckoutOrder()">ยืนยันคำสั่งซื้อ</button></section>`);
+   let picked=valid(u.lat,u.lng)?{lat:Number(u.lat),lng:Number(u.lng)}:null;window.__pickedLoc=()=>picked;window.__checkoutSubtotal=subtotal;
+   const first=c.items[0],p=dbGet('qt_products',[]).find(x=>String(x.id)===String(first.productId));
+   const shop=dbGet('qt_users',[]).find(x=>String(x.id)===String(p?.shopId||first.shopId));
+   function fee(lat,lng){if(!shop||!valid(shop.lat,shop.lng))return;const d=calculateDistanceKm(Number(lat),Number(lng),Number(shop.lat),Number(shop.lng)),f=computeDeliveryFee(d);window.__checkoutFee=f;document.getElementById('delivery-fee-display').textContent='฿'+f+' ('+d.toFixed(1)+' กม.)';document.getElementById('checkout-total-display').textContent='฿'+(subtotal+f+extra)}
+   const picker=initLocationPicker('pin-map',picked?.lat,picked?.lng,(lat,lng)=>{picked={lat,lng};fee(lat,lng)});window.__currentPicker=picker;if(picked)fee(picked.lat,picked.lng);setTimeout(()=>{try{picker.locate()}catch(e){}},120);
+ };
+ window.confirmOrder=async function(){
+   if(!isMarket())return baseConfirm();
+   const u=currentUser(),c=qtGetCart(),loc=window.__pickedLoc?.(),address=document.getElementById('delivery-address')?.value.trim()||'';
+   if(!u||u.type!=='customer'){navigate('login');return}if(!loc||!valid(loc.lat,loc.lng)||address.length<3){qtCheckoutError('กรุณาปักหมุดและระบุที่อยู่จัดส่ง');return}
+   const lines=c.items.map(i=>({product_id:i.productId,qty:Number(i.qty)}));if(lines.some(i=>!i.product_id||!Number.isInteger(i.qty)||i.qty<1)){qtCheckoutError('ข้อมูลสินค้าไม่ถูกต้อง');return}
+   const token=await qtGetAccessToken();if(!token){qtCheckoutError('กรุณาเข้าสู่ระบบอีกครั้ง');return}
+   const k='qg_market_order_pending_v1_'+u.id,fp=JSON.stringify([c.marketId,lines,Number(loc.lat),Number(loc.lng),address]),old=JSON.parse(sessionStorage.getItem(k)||'null');
+   if(old&&old.fp!==fp){qtCheckoutError('มีคำสั่งตลาดก่อนหน้าที่ยังตรวจสอบไม่เสร็จ กรุณาดูรายการคำสั่งซื้อ');return}
+   const state=old||{id:crypto.randomUUID(),fp};sessionStorage.setItem(k,JSON.stringify(state));
+   let result;
+   try{result=await qtSupabaseTable('rpc/queuego_place_market_order',{method:'POST',accessToken:token,body:{p_market_order_id:state.id,p_items:lines,p_delivery_lat:Number(loc.lat),p_delivery_lng:Number(loc.lng),p_delivery_address:address,p_note:String(c.note||'').slice(0,500)}})}
+   catch(e){qtCheckoutError('สั่งซื้อจากตลาดไม่สำเร็จ: '+String(e?.message||e).slice(0,150));return}
+   sessionStorage.removeItem(k);dbSet('qt_cart_'+u.id,{shopId:null,marketId:null,marketCart:false,items:[]});window.QT_CHECKOUT_UNCERTAIN=false;
+   try{await qtHydrateDatabase({light:false})}catch(e){console.warn(e)}
+   toast('สั่งซื้อสำเร็จ ฿'+Number(result.total_amount||0).toLocaleString('th-TH'));navigate('market-order/'+state.id);
+ };
+ const oldRoute=window.qtRouteRender;
+ window.renderMarketOrder=async function(id){
+   layout('คำสั่งซื้อจากตลาด','<section class="qg-cart-page"><div class="qg-page-title"><button class="qg-back" onclick="navigate(\'orders\')">‹</button><h1>คำสั่งซื้อจากตลาด</h1></div><div id="qg-market-track" class="qg-checkout-card">กำลังโหลด...</div></section>');
+   try{const t=await qtGetAccessToken(),m=(await qtSupabaseTable('market_orders?select=*&id=eq.'+encodeURIComponent(id)+'&limit=1',{accessToken:t}))?.[0],os=await qtSupabaseTable('orders?select=id,order_number,status,subtotal,shop_id&market_order_id=eq.'+encodeURIComponent(id)+'&order=created_at.asc',{accessToken:t});const box=document.getElementById('qg-market-track');if(!box)return;if(!m)throw Error('ไม่พบคำสั่งซื้อ');box.innerHTML='<b>ตลาด · '+Number(m.shop_count)+' ร้าน</b><div style="margin:8px 0">ยอดรวม ฿'+Number(m.total_amount).toLocaleString('th-TH')+'</div>'+(os||[]).map((o,n)=>'<div style="padding:8px 0;border-top:1px solid var(--qg-line)">จุดรับ '+(n+1)+' · '+escapeHtml(o.order_number||'')+' <b style="float:right">'+escapeHtml(o.status)+'</b></div>').join('')}
+   catch(e){const b=document.getElementById('qg-market-track');if(b)b.textContent='โหลดคำสั่งซื้อไม่สำเร็จ: '+e.message}
+ };
+ window.qtRouteRender=function(){const hash=location.hash.replace('#','')||'home',[page,param]=hash.split('/');if(page==='market-order'){destroyMaps?.();renderMarketOrder(param);return}return oldRoute.apply(this,arguments)};
+})();
+</script>
 <style id="qg-customer-v21-chat-style">
 .qg-chat-image{display:block;max-width:min(220px,65vw);max-height:260px;object-fit:contain;border-radius:12px}
 </style>
