@@ -2719,6 +2719,8 @@ async function renderRegistrationSuccess(user, opts={}){
 
 async function handleRegister(e){
   e.preventDefault();
+  const betaTruth=document.getElementById('qg-beta-truth'),betaAccept=document.getElementById('qg-beta-accept');
+  if(!betaTruth||!betaAccept||!betaTruth.checked||!betaAccept.checked){toast('กรุณาอ่านและยอมรับข้อตกลงการทดสอบ QueueGo ก่อนสมัคร');return false;}
   const type='customer';
   const mode=document.getElementById('reg-contact-mode')?.value||'phone';
   const name=qtCleanText(document.getElementById('reg-name').value);
