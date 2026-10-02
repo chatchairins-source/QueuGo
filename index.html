@@ -339,7 +339,6 @@ input, select, textarea, button {
 
 .admin-pill{display:inline-block;padding:4px 9px;border-radius:999px;background:#eef2ff;font-size:12px}.card{background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:14px;box-shadow:0 2px 8px rgba(0,0,0,.04)}
 
-<style>
 .dispatch-note{padding:10px;border-radius:10px;background:#f5f3ff;margin:10px 0;font-size:14px}
 
 /* ---------- Rider arrival voice alert ---------- */
@@ -2313,7 +2312,7 @@ function qtRouteRender(){
     case 'call-technician':renderTechnicianClosed();break;
     default:renderHome();
   }
-  window.scrollTo(0,0);
+  /* Preserve document scroll across background/router rerenders. */
 }
 
 
@@ -4782,7 +4781,7 @@ button,a,input,textarea,select{font:inherit}
       case 'order-chat':renderOrderChatPage(param);break;case 'notifications':renderNotifications();break;case 'promotion':renderPromotionPage();break;
       case 'emergency':case 'call-technician':renderTechnicianClosed();break;default:renderHome();
     }
-    window.scrollTo(0,0);
+    /* Preserve document scroll across background/router rerenders. */
   };
 
   // Modernize authentication screens without touching auth handlers.
@@ -5015,17 +5014,11 @@ button,a,input,textarea,select{font:inherit}
 <link rel="stylesheet" href="market.css?v=20260929-home">
 <script defer src="market.js?v=20260929-home"></script>
 
-<style id="qg-viewport-gesture-lock-20260929">
-/* Permit native page scrolling while excluding viewport pinch zoom. */
-html,body,#app{touch-action:pan-x pan-y}
+<style id="qg-viewport-scroll-baseline-20261002">
+/* QueueGo mobile baseline: one vertical document scroller; zoom is controlled by viewport metadata, not global touch cancellation. */
+html,body{width:100%;max-width:100%;height:auto;min-height:100%;overflow-x:hidden}
+body{overflow-y:auto;-webkit-overflow-scrolling:touch;touch-action:pan-y}
+#app{width:100%;max-width:100%;min-height:100dvh;overflow:visible;touch-action:auto}
 </style>
-<script id="qg-viewport-gesture-lock-script-20260929">
-(function(){
-  function stopZoom(event){if(event.cancelable)event.preventDefault()}
-  document.addEventListener('touchmove',function(event){if(event.touches.length>1)stopZoom(event)},{passive:false});
-  document.addEventListener('gesturestart',stopZoom,{passive:false});
-  document.addEventListener('gesturechange',stopZoom,{passive:false});
-})();
-</script>
 </body>
 </html>
