@@ -74,7 +74,7 @@ jobs:
           import android.Manifest;
           import android.content.pm.PackageManager;
           import android.os.Build;
-          import android.os.Bundle;\n          import android.webkit.GeolocationPermissions;\n          import android.webkit.WebChromeClient;
+          import android.os.Bundle;\n          import android.webkit.GeolocationPermissions;\n          import android.webkit.WebChromeClient;\n          import android.webkit.PermissionRequest;
           import com.getcapacitor.BridgeActivity;
           import java.util.ArrayList;
           import java.util.List;
@@ -90,6 +90,10 @@ jobs:
                   @Override
                   public void onGeolocationPermissionsShowPrompt(String origin, GeolocationPermissions.Callback callback) {
                     callback.invoke(origin, true, false);
+                  }
+                  @Override
+                  public void onPermissionRequest(PermissionRequest request) {
+                    runOnUiThread(() -> request.grant(request.getResources()));
                   }
                 });
               }}
