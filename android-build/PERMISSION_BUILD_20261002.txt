@@ -1,0 +1,1 @@
+Permission validation build: GPS WebView bridge + runtime OS permissions + media WebView bridge + notification permission.
