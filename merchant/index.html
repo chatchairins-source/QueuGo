@@ -455,7 +455,7 @@ function qtRerenderAfterHydrate(tries){
   const y=window.scrollY; try{ router(); }catch(e){ console.warn(e); } window.scrollTo(0,y);
 }
 /* Returning visitor (session still in this tab): fetch only the person's own account row so the first render knows who they are. */
-async function qtRestoreOwnUser(){
+async async function qtRestoreOwnUser(){
   const s=qtSessionRead(); if(!s||!s.accessToken||!s.authUserId) return;
   try{
     const token=await qtGetAccessToken();
