@@ -1421,4 +1421,31 @@ body{overflow-y:auto;-webkit-overflow-scrolling:touch;touch-action:pan-y}
 #app{width:100%;max-width:100%;min-height:100dvh;overflow:visible;touch-action:auto}
 </style>
 <script src="../laundry/rider-integration.js"></script>
-</body></html>
+<style id="qg-market-multipickup-v1">
+.qg-mp{margin:12px 0;padding:12px;border:1px solid #dce9e2;border-radius:16px;background:#fff}.qg-mp-head{display:flex;justify-content:space-between;gap:8px;align-items:end;margin-bottom:8px}.qg-mp-head b{font-size:16px}.qg-mp-head small{color:#667b70}.qg-mp-row{padding:11px 0;border-top:1px solid #edf3ef}.qg-mp-row:first-of-type{border-top:0}.qg-mp-top{display:flex;justify-content:space-between;gap:12px}.qg-mp-top strong{font-size:17px}.qg-mp-paid{color:#15803d}.qg-mp-btn{width:100%;margin-top:8px;border:0;border-radius:12px;padding:12px;background:#111827;color:#fff;font-weight:800}.qg-mp-btn:disabled{background:#d1d5db;color:#667085}.qg-mp-total{display:flex;justify-content:space-between;padding-top:10px;border-top:1px solid #dce9e2;font-weight:800}
+</style>
+<script id="qg-market-multipickup-v1">
+(function(){
+ async function loadPickups(o){
+  if(!o||!o.market_order_id)return [];
+  try{const token=await getAccessToken();const x=await sbTable('rpc/market_pickup_cash_summary',{method:'POST',token,body:{p_market_order_id:o.market_order_id}});return Array.isArray(x)?x:[]}catch(e){console.warn('market pickups',e);return []}
+ }
+ function html(rows){
+  if(!rows.length)return '';
+  const paid=rows.filter(x=>x.status==='PICKED_UP'||Number(x.cash_paid_amount)>0).length,total=rows.reduce((a,x)=>a+Number(x.shop_amount||0),0);
+  return '<section class="qg-mp"><div class="qg-mp-head"><b>รับของหลายร้าน</b><small>รับแล้ว '+paid+'/'+rows.length+' จุด</small></div>'+rows.map((x,i)=>{const done=x.status==='PICKED_UP';return '<div class="qg-mp-row"><div class="qg-mp-top"><div><b>จุดรับ '+(i+1)+'</b><br><small>'+esc(x.shop_name||'ร้านค้า')+'</small></div><strong class="'+(done?'qg-mp-paid':'')+'">฿'+Number(x.shop_amount||0).toLocaleString('th-TH')+'</strong></div><button class="qg-mp-btn" data-pickup="'+esc(x.pickup_id)+'" data-amount="'+Number(x.shop_amount||0)+'" '+(done?'disabled':'')+'>'+(done?'✓ จ่ายและรับของแล้ว':'จ่าย ฿'+Number(x.shop_amount||0).toLocaleString('th-TH')+' และรับของ')+'</button></div>'}).join('')+'<div class="qg-mp-total"><span>เงินที่ต้องจ่ายร้านรวม</span><span>฿'+total.toLocaleString('th-TH')+'</span></div></section>';
+ }
+ async function mount(o){
+  if(!o||!o.market_order_id)return;
+  const sheet=document.getElementById('sheet');if(!sheet)return;
+  const rows=await loadPickups(o);if(!rows.length)return;
+  sheet.querySelector('.qg-mp')?.remove();
+  const actions=sheet.querySelector('.qt-actions'),box=document.createElement('div');box.innerHTML=html(rows);const node=box.firstElementChild;
+  if(actions)sheet.insertBefore(node,actions);else sheet.appendChild(node);
+  sheet.querySelectorAll('[data-pickup]').forEach(b=>b.onclick=async()=>{if(b.disabled)return;const amount=Number(b.dataset.amount||0);if(!confirm('ยืนยันว่าจ่ายเงินให้ร้าน ฿'+amount.toLocaleString('th-TH')+' และรับของแล้ว?'))return;b.disabled=true;try{const token=await getAccessToken();const r=await sbTable('rpc/market_rider_confirm_pickup_cash',{method:'POST',token,body:{p_pickup_id:b.dataset.pickup,p_amount:amount}});toast(r?.all_picked_up?'รับของครบทุกจุดแล้ว — ไปส่งลูกค้าได้':'บันทึกจุดรับแล้ว');await refreshData();}catch(e){toast('บันทึกจุดรับไม่สำเร็จ: '+e.message);b.disabled=false;}});
+  const next=document.getElementById('next-'+o.id);if(next){const all=rows.every(x=>x.status==='PICKED_UP'||x.status==='CANCELLED');if(!all){next.disabled=true;next.textContent='รับของให้ครบทุกจุดก่อน';}}
+ }
+ const old=window.renderSheet;
+ window.renderSheet=function(){const r=old.apply(this,arguments);if(S.activeOrder&&S.activeOrder.market_order_id)setTimeout(()=>mount(S.activeOrder),0);return r};
+})();
+</script></body></html>
