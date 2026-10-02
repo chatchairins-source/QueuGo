@@ -35,3 +35,9 @@
  .market-shop-side>small{font-size:11px!important;padding:4px 7px!important}
  .market-shop-meta{gap:5px!important;white-space:normal!important}
 }
+
+/* Market hero: show AI photo unobstructed */
+.market-hero-photo:after{display:none!important;background:none!important}
+.market-hero-photo>img{filter:none!important;opacity:1!important}
+.market-hero-copy{background:transparent!important}
+.market-hero-photo small,.market-hero-photo h1,.market-hero-photo p{text-shadow:0 1px 4px rgba(0,0,0,.55)}
