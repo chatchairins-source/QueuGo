@@ -2,6 +2,10 @@ name: QueueGo Android APKs
 
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'android-build/RELEASE_BUILD.txt'
 
 jobs:
   build:
