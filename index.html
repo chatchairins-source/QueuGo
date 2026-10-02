@@ -1085,10 +1085,10 @@ function qtIso(ts){ return new Date(ts||Date.now()).toISOString(); }
 function qtUuidLike(id){ return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(id||'')); }
 
 function qtOrderStatusToDb(s){
-  const m={pending_shop:'pending',shop_accepted:'accepted',preparing:'preparing',waiting_rider:'ready',rider_to_shop:'assigned',picked_up:'picked_up',delivering:'in_progress',arrived:'in_progress',delivered:'completed',completed:'completed',cancelled:'cancelled'};
-  return m[s]||(['pending','accepted','preparing','ready','assigned','picked_up','in_progress','completed','cancelled'].includes(s)?s:'pending');
+  const m={pending_shop:'pending',searching_rider:'searching_rider',rider_assigned:'rider_assigned',preparing:'preparing',waiting_rider:'ready',rider_to_shop:'rider_assigned',picked_up:'picked_up',delivering:'in_progress',arrived:'in_progress',delivered:'completed',completed:'completed',cancelled:'cancelled'};
+  return m[s]||(['pending','searching_rider','rider_assigned','preparing','ready','picked_up','in_progress','completed','cancelled','no_rider_available'].includes(s)?s:'pending');
 }
-function qtOrderStatusFromDb(s,note=''){ if(s==='in_progress')return /^__QT_ORDER_STATUS__=arrived(?:\n|$)/.test(note)?'arrived':'delivering';const map={pending:'pending_shop',accepted:'shop_accepted',ready:'waiting_rider',assigned:'rider_to_shop',picked_up:'picked_up',completed:'completed',cancelled:'cancelled'};return map[s]||s; }
+function qtOrderStatusFromDb(s,note=''){ if(s==='in_progress')return /^__QT_ORDER_STATUS__=arrived(?:\n|$)/.test(note)?'arrived':'delivering';const map={pending:'pending_shop',searching_rider:'searching_rider',rider_assigned:'rider_assigned',preparing:'preparing',ready:'waiting_rider',assigned:'rider_assigned',picked_up:'picked_up',completed:'completed',cancelled:'cancelled',no_rider_available:'no_rider_available'};return map[s]||s; }
 
 
 function qtUserToRow(u, includeStatus=true){
@@ -3395,10 +3395,10 @@ async function confirmOrder(){
 
 const ORDER_STATUSES = [
   {key:'pending_shop', label:'รอร้านรับงาน', icon:'⏳'},
-  {key:'shop_accepted', label:'ร้านรับงานแล้ว', icon:'✅'},
-  {key:'preparing', label:'กำลังเตรียมสินค้า', icon:'👨‍🍳'},
-  {key:'waiting_rider', label:'รอไรเดอร์รับงาน', icon:'🔍'},
-  {key:'rider_to_shop', label:'ไรเดอร์กำลังไปร้าน', icon:'🔵'},
+  {key:'searching_rider', label:'ร้านรับออเดอร์แล้ว กำลังค้นหาไรเดอร์', icon:'🔍'},
+  {key:'rider_assigned', label:'พบไรเดอร์แล้ว ร้านกำลังเตรียมสินค้า', icon:'🔵'},
+  {key:'preparing', label:'ร้านกำลังเตรียมสินค้า', icon:'👨‍🍳'},
+  {key:'waiting_rider', label:'สินค้าเตรียมเสร็จ รอไรเดอร์รับ', icon:'📍'},
   {key:'picked_up', label:'รับสินค้าแล้ว', icon:'📦'},
   {key:'delivering', label:'กำลังไปหาลูกค้า', icon:'🟠'},
   {key:'arrived', label:'ถึงลูกค้าแล้ว', icon:'🟡'},
