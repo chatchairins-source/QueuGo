@@ -3,9 +3,6 @@
   "appName": "QueueGo",
   "webDir": "www",
   "server": {
-    "androidScheme": "https",
-    "allowNavigation": [
-      "*"
-    ]
+    "androidScheme": "https"
   }
 }
