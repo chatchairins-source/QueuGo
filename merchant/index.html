@@ -962,6 +962,7 @@ function router(){
 
 async function handleRegister(e){
   e.preventDefault();
+  if(typeof qgRequireBetaTerms!=='function'||!qgRequireBetaTerms()) return false;
   const name=qtCleanText(document.getElementById('reg-name')?.value);
   const shopName=qtCleanText(document.getElementById('reg-shop-name')?.value);
   const category=document.getElementById('reg-category')?.value||'';
