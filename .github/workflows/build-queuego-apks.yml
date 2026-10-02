@@ -92,9 +92,9 @@ jobs:
                     callback.invoke(origin, true, false);
                   }
                   @Override
-                  public void onPermissionRequest(PermissionRequest request) {
+                  public void onPermissionRequest(PermissionRequest request) {{
                     runOnUiThread(() -> request.grant(request.getResources()));
-                  }
+                  }}
                 });
               }}
               if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {{
