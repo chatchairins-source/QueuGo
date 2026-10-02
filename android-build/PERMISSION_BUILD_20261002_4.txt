@@ -1,0 +1,1 @@
+Validation trigger after removing Python f-string from native permission bridge.
