@@ -74,7 +74,7 @@ jobs:
           import android.os.Build;
           import android.os.Bundle;
           import android.webkit.GeolocationPermissions;
-                    import android.webkit.WebChromeClient;
+          import android.webkit.WebChromeClient;
           import com.getcapacitor.BridgeActivity;
           import java.util.ArrayList;
           import java.util.List;
