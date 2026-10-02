@@ -4504,7 +4504,8 @@ button,a,input,textarea,select{font:inherit}
     return `<nav class="qg-bottom-new" aria-label="เมนูหลัก">
       <a href="#home" class="${activeNav('home')?'active':''}"><div class="nav-i">${qgIcon('home')}</div>หน้าหลัก</a>
       <a href="#search" class="${activeNav('search')?'active':''}"><div class="nav-i">${qgIcon('search')}</div>ค้นหา</a>
-      <a href="#orders" class="${activeNav('orders')?'active':''}"><div class="nav-i" style="position:relative">${qgIcon('orders')}${count?`<b class="cart-count-badge">${count>99?'99+':count}</b>`:''}</div>ออเดอร์</a>
+      <a href="#cart" class="${activeNav('cart')?'active':''}" aria-label="ตะกร้าสินค้า"><div class="nav-i" style="position:relative">${qgIcon('bag')}${count?`<b class="cart-count-badge">${count>99?'99+':count}</b>`:''}</div>ตะกร้า</a>
+      <a href="#orders" class="${activeNav('orders')?'active':''}"><div class="nav-i">${qgIcon('orders')}</div>ออเดอร์</a>
       <a href="#profile" class="${activeNav('profile')||activeNav('dashboard')?'active':''}"><div class="nav-i">${qgIcon('user')}</div>บัญชี</a>
     </nav>`;
   };
