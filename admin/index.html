@@ -6604,17 +6604,11 @@ body:has(.qg-v23-admin-login),body:has(.qg-v23-admin-denied){padding:0}
 }
 </style>
 
-<style id="qg-viewport-gesture-lock-20260929">
-/* Permit native page scrolling while excluding viewport pinch zoom. */
-html,body,#app{touch-action:pan-x pan-y}
+<style id="qg-viewport-scroll-baseline-20261002">
+/* QueueGo mobile baseline: one vertical document scroller; zoom is controlled by viewport metadata, not global touch cancellation. */
+html,body{width:100%;max-width:100%;height:auto;min-height:100%;overflow-x:hidden}
+body{overflow-y:auto;-webkit-overflow-scrolling:touch;touch-action:pan-y}
+#app{width:100%;max-width:100%;min-height:100dvh;overflow:visible;touch-action:auto}
 </style>
-<script id="qg-viewport-gesture-lock-script-20260929">
-(function(){
-  function stopZoom(event){if(event.cancelable)event.preventDefault()}
-  document.addEventListener('touchmove',function(event){if(event.touches.length>1)stopZoom(event)},{passive:false});
-  document.addEventListener('gesturestart',stopZoom,{passive:false});
-  document.addEventListener('gesturechange',stopZoom,{passive:false});
-})();
-</script>
 </body>
 </html>
