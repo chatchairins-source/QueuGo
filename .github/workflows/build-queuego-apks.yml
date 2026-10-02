@@ -86,11 +86,11 @@ jobs:
               super.onCreate(savedInstanceState);
               if (bridge != null && bridge.getWebView() != null) {{
                 bridge.getWebView().getSettings().setGeolocationEnabled(true);
-                bridge.getWebView().setWebChromeClient(new WebChromeClient() {
+                bridge.getWebView().setWebChromeClient(new WebChromeClient() {{
                   @Override
-                  public void onGeolocationPermissionsShowPrompt(String origin, GeolocationPermissions.Callback callback) {
+                  public void onGeolocationPermissionsShowPrompt(String origin, GeolocationPermissions.Callback callback) {{
                     callback.invoke(origin, true, false);
-                  }
+                  }}
                   @Override
                   public void onPermissionRequest(PermissionRequest request) {{
                     runOnUiThread(() -> request.grant(request.getResources()));
