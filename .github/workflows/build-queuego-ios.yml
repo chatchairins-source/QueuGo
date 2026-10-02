@@ -1,0 +1,102 @@
+name: QueueGo iOS Developer Builds
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'index.html'
+      - 'merchant/**'
+      - 'rider/**'
+      - 'admin/**'
+      - 'android-build/package.json'
+      - '.github/workflows/build-queuego-ios.yml'
+
+jobs:
+  build:
+    runs-on: macos-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - role: customer
+            appid: com.queuego.customer
+            appname: QueueGo
+          - role: merchant
+            appid: com.queuego.merchant
+            appname: QueueGo Merchant
+          - role: rider
+            appid: com.queuego.rider
+            appname: QueueGo Rider
+          - role: admin
+            appid: com.queuego.admin
+            appname: QueueGo Admin
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Prepare web bundle
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd android-build
+          npm install --no-audit --no-fund
+          rm -rf www ios
+          mkdir -p www
+          if [ "${{ matrix.role }}" = "customer" ]; then
+            cp ../index.html www/index.html
+            cp ../market.css ../market.js ../table-order.css ../table-order.js ../table-order.html www/ 2>/dev/null || true
+          elif [ "${{ matrix.role }}" = "merchant" ]; then
+            cp ../merchant/* www/
+          elif [ "${{ matrix.role }}" = "admin" ]; then
+            cp ../admin/* www/
+          else
+            cp ../rider/index.html www/index.html
+          fi
+          node -e "let c=require('./capacitor.config.json');c.appId='${{ matrix.appid }}';c.appName='${{ matrix.appname }}';require('fs').writeFileSync('capacitor.config.json',JSON.stringify(c,null,2))"
+          npx cap add ios
+          npx cap sync ios
+      - name: Configure iOS permissions and QueueGo icon
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import plistlib, json
+          plist=Path('android-build/ios/App/App/Info.plist')
+          d=plistlib.loads(plist.read_bytes())
+          d['NSLocationWhenInUseUsageDescription']='QueueGo uses your location for delivery, shop and rider location features.'
+          d['NSLocationAlwaysAndWhenInUseUsageDescription']='QueueGo uses location to support active delivery features.'
+          d['NSCameraUsageDescription']='QueueGo uses the camera only when you choose to take or upload a photo.'
+          d['NSMicrophoneUsageDescription']='QueueGo uses the microphone only for features that require audio.'
+          d['NSPhotoLibraryUsageDescription']='QueueGo uses your photo library when you choose an image to upload.'
+          d['NSPhotoLibraryAddUsageDescription']='QueueGo can save images when you choose to save them.'
+          plist.write_bytes(plistlib.dumps(d))
+          PY
+          python3 -m pip install pillow --quiet
+          python3 - <<'PY'
+          from PIL import Image,ImageDraw
+          from pathlib import Path
+          p=Path('android-build/ios/App/App/Assets.xcassets/AppIcon.appiconset/AppIcon-512@2x.png')
+          p.parent.mkdir(parents=True,exist_ok=True)
+          n=1024; im=Image.new('RGB',(n,n),'white'); d=ImageDraw.Draw(im); red=(231,9,43); w=145
+          d.ellipse((205,175,735,705),outline=red,width=w)
+          d.line((570,570,815,815),fill=red,width=w)
+          im.save(p)
+          PY
+      - name: Compile unsigned iOS app
+        shell: bash
+        run: |
+          cd android-build/ios/App
+          xcodebuild -project App.xcodeproj -scheme App -configuration Debug -sdk iphoneos CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO build
+          APP=$(find ~/Library/Developer/Xcode/DerivedData -path '*/Build/Products/Debug-iphoneos/App.app' | head -1)
+          test -n "$APP"
+          mkdir -p "../../../QueueGo-${{ matrix.role }}-unsigned/Payload"
+          cp -R "$APP" "../../../QueueGo-${{ matrix.role }}-unsigned/Payload/QueueGo-${{ matrix.role }}.app"
+          cd "../../../QueueGo-${{ matrix.role }}-unsigned"
+          zip -qry "../QueueGo-${{ matrix.role }}-unsigned.ipa" Payload
+      - uses: actions/upload-artifact@v4
+        with:
+          name: QueueGo-${{ matrix.role }}-unsigned-ios
+          path: QueueGo-${{ matrix.role }}-unsigned.ipa
+          if-no-files-found: error
