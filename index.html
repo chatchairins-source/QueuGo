@@ -2939,7 +2939,7 @@ async function qtEnsurePublicShopsLoaded(){
     if(!Array.isArray(rows) || !rows.length) rows=await qtLegacyPublicShopProfiles(authOpts);
     if(!Array.isArray(rows)) return false;
     const current=dbGet('qt_users',[]).filter(u=>u.type!=='shop');
-    const shops=rows.filter(x=>x && String(x.status||'').toLowerCase()==='active' && x.delivery_enabled!==false).map(x=>{
+    const shops=rows.filter(x=>x && String(x.status||'').toLowerCase()==='active').map(x=>{
       const meta=(x.metadata&&typeof x.metadata==='object')?x.metadata:{};
       return Object.assign({},meta,{id:x.user_id||x.id,shopProfileId:x.id,type:'shop',status:'approved',shopName:x.shop_name,name:meta.name||x.shop_name,phone:x.phone,address:x.address,profileImage:meta.logo||meta.profileImage||meta.profile_image||x.profile_image||x.profile_photo||x.avatar_url||x.photo_url||x.image_url||x.image||meta.avatarUrl||meta.avatar_url||'',lat:x.latitude,lng:x.longitude,supabase:true,_profileOnly:true});
     });
