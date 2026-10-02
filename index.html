@@ -5089,5 +5089,19 @@ html,body{width:100%;max-width:100%;height:auto;min-height:100%;overflow-x:hidde
 body{overflow-y:auto;-webkit-overflow-scrolling:touch;touch-action:pan-y}
 #app{width:100%;max-width:100%;min-height:100dvh;overflow:visible;touch-action:auto}
 </style>
+<script id="qg-market-tracking-pin-v1">
+(function(){
+ const old=window.renderMarketOrder;if(typeof old!=='function')return;
+ window.renderMarketOrder=async function(id){
+   await old(id);const box=document.getElementById('qg-market-track');if(!box)return;
+   try{const t=await qtGetAccessToken(),os=await qtSupabaseTable('orders?select=id,status&market_order_id=eq.'+encodeURIComponent(id)+'&status=neq.cancelled&order=created_at.asc&limit=1',{accessToken:t}),lead=os?.[0];
+     if(!lead)return;if(['rider_assigned','preparing','ready','picked_up','in_progress'].includes(lead.status)){
+       const pin=await qtSupabaseTable('rpc/qg_customer_delivery_pin',{method:'POST',accessToken:t,body:{p_order_id:lead.id}});
+       box.insertAdjacentHTML('beforeend','<div style="margin-top:12px;padding:12px;border-radius:12px;background:#fff3f5"><b>PIN รับสินค้า</b><div style="font-size:28px;font-weight:900;letter-spacing:5px;margin-top:5px">'+escapeHtml(String(pin))+'</div><small>แจ้งให้ไรเดอร์เมื่อได้รับสินค้าครบทุกถุงแล้ว</small></div>');
+     }
+   }catch(e){console.warn('market delivery PIN unavailable',e)}
+ };
+})();
+</script>
 </body>
 </html>
