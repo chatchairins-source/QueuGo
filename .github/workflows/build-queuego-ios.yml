@@ -73,8 +73,9 @@ jobs:
           d['NSPhotoLibraryAddUsageDescription']='QueueGo can save images when you choose to save them.'
           plist.write_bytes(plistlib.dumps(d))
           PY
-          python3 -m pip install pillow --quiet
-          python3 - <<'PY'
+          python3 -m venv /tmp/qgiconvenv
+          /tmp/qgiconvenv/bin/pip install pillow --quiet
+          /tmp/qgiconvenv/bin/python - <<'PY'
           from PIL import Image,ImageDraw
           from pathlib import Path
           p=Path('android-build/ios/App/App/Assets.xcassets/AppIcon.appiconset/AppIcon-512@2x.png')
