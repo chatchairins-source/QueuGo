@@ -5016,6 +5016,13 @@ button,a,input,textarea,select{font:inherit}
 <link rel="stylesheet" href="market.css?v=20261002-shopfirst">
 <script defer src="market.js?v=20261002-shopfirst"></script>
 
+<style id="qg-customer-content-height-fix-20261002">
+/* Customer pages should size to their content; the fixed bottom nav overlays the viewport without forcing an empty full-screen content block. */
+.qg-new-shell{min-height:0!important}
+.qg-page{min-height:0!important}
+.qg-new-content{min-height:0!important}
+.qg-bottom-new{grid-template-columns:repeat(4,minmax(0,1fr))!important}
+</style>
 <style id="qg-viewport-scroll-baseline-20261002">
 /* QueueGo mobile baseline: one vertical document scroller; zoom is controlled by viewport metadata, not global touch cancellation. */
 html,body{width:100%;max-width:100%;height:auto;min-height:100%;overflow-x:hidden}
