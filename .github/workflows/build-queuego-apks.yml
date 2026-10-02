@@ -152,13 +152,58 @@ jobs:
               im.save(d/'ic_launcher.png')
               im.save(d/'ic_launcher_round.png')
           PY
-      - name: Build release AAB
+      - name: Configure release signing
+        shell: bash
+        env:
+          QG_KEYSTORE_B64: ${{ secrets.QG_ANDROID_KEYSTORE_B64 }}
+          QG_STORE_PASSWORD: ${{ secrets.QG_ANDROID_STORE_PASSWORD }}
+          QG_KEY_ALIAS: ${{ secrets.QG_ANDROID_KEY_ALIAS }}
+          QG_KEY_PASSWORD: ${{ secrets.QG_ANDROID_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          test -n "$QG_KEYSTORE_B64"
+          test -n "$QG_STORE_PASSWORD"
+          test -n "$QG_KEY_ALIAS"
+          test -n "$QG_KEY_PASSWORD"
+          echo "$QG_KEYSTORE_B64" | base64 --decode > android-build/android/queuego-release.jks
+          cat >> android-build/android/gradle.properties <<EOF
+          QG_STORE_FILE=../queuego-release.jks
+          QG_STORE_PASSWORD=$QG_STORE_PASSWORD
+          QG_KEY_ALIAS=$QG_KEY_ALIAS
+          QG_KEY_PASSWORD=$QG_KEY_PASSWORD
+          EOF
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('android-build/android/app/build.gradle')
+          s=p.read_text()
+          marker='android {'
+          signing="""android {
+              signingConfigs {
+                  release {
+                      storeFile file(project.property("QG_STORE_FILE"))
+                      storePassword project.property("QG_STORE_PASSWORD")
+                      keyAlias project.property("QG_KEY_ALIAS")
+                      keyPassword project.property("QG_KEY_PASSWORD")
+                  }
+              }
+          """
+          s=s.replace(marker,signing,1)
+          s=s.replace('buildTypes {','buildTypes {',1)
+          s=s.replace('release {','release {\n            signingConfig signingConfigs.release',1)
+          p.write_text(s)
+          PY
+      - name: Build signed release AAB
         shell: bash
         run: |
           cd android-build/android
           chmod +x gradlew
           ./gradlew bundleRelease --no-daemon
-          cp app/build/outputs/bundle/release/app-release.aab "../../QueueGo-${{ matrix.role }}-release-unsigned.aab"
+          cp app/build/outputs/bundle/release/app-release.aab "../../QueueGo-${{ matrix.role }}-release.aab"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: QueueGo-${{ matrix.role }}-release-aab
+          path: QueueGo-${{ matrix.role }}-release.aab
+          if-no-files-found: error
       - uses: actions/upload-artifact@v4
         with:
           name: QueueGo-${{ matrix.role }}-release-aab
