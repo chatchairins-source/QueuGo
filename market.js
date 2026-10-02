@@ -1,7 +1,7 @@
 /* QueueGo Market — shop-first storefront. Products are shown only after a shop is selected. */
 (()=>{
 'use strict';
-let rows=[],query='';
+let rows=[],marketShops=[],query='';
 const h=v=>escapeHtml(String(v??''));
 const available=r=>Math.max(0,Math.floor(Number(r.available_packs||0)));
 function intoExistingCatalog(){
@@ -9,15 +9,7 @@ function intoExistingCatalog(){
   for(const r of rows) byId.set(String(r.product_id),{...byId.get(String(r.product_id)),id:r.product_id,shopId:r.shop_user_id,shopProfileId:r.shop_id,name:r.name,category:r.category,description:r.description||'',image:r.image||'',price:Number(r.price),available:available(r)>0,marketUnit:r.unit,marketPackSize:Number(r.pack_size)});
   QT_DB_CACHE.qt_products=[...byId.values()];
 }
-function shops(){
-  const map=new Map();
-  for(const r of rows){
-    const id=String(r.shop_id||''); if(!id)continue;
-    if(!map.has(id))map.set(id,{id,userId:r.shop_user_id,name:r.shop_name||'ร้านตลาดสด',category:r.shop_category||'market',logo:r.shop_logo||'',count:0,available:0,categories:new Set()});
-    const s=map.get(id);s.count++;if(available(r)>0)s.available++;if(r.category)s.categories.add(r.category);
-  }
-  return [...map.values()];
-}
+function shops(){const p=new Map();for(const r of rows){const id=String(r.shop_id||'');if(!id)continue;if(!p.has(id))p.set(id,{count:0,available:0,categories:new Set()});const x=p.get(id);x.count++;if(available(r)>0)x.available++;if(r.category)x.categories.add(r.category)}return marketShops.map(s=>{const x=p.get(String(s.shop_id))||{count:0,available:0,categories:new Set()};return{id:s.shop_id,userId:s.shop_user_id,name:s.shop_name||'ร้านตลาดสด',category:s.shop_category||'market',logo:s.shop_logo||'',count:x.count,available:x.available,categories:x.categories}})}
 function shopCard(s){
   const cats=[...s.categories].slice(0,3).map(h).join(' · ');
   return `<button type="button" class="market-shop-card" onclick="navigate('market-shop/${h(s.id)}')"><div class="market-shop-photo">${s.logo?`<img src="${h(s.logo)}" alt="${h(s.name)}" loading="lazy">`:'<span>🏪</span>'}</div><div class="market-shop-detail"><small>ร้านตลาดสด</small><h3>${h(s.name)}</h3><p>${cats||'สินค้าในตลาดสด'}</p><span>${s.available} รายการพร้อมขาย</span></div><b aria-hidden="true">›</b></button>`;
@@ -31,8 +23,8 @@ function paintShops(){
 window.qgMarketSearch=value=>{query=String(value||'').trim();paintShops()};
 window.qgMarketAdd=id=>{const r=rows.find(x=>String(x.product_id)===String(id));if(!r||!available(r))return toast('สินค้าหมด');intoExistingCatalog();addToCart(id);updateCartCountUI?.()};
 window.renderMarket=function(){
-  layout('ตลาดสด',`<section class="market-hero"><small>QueueGo Market</small><h1>ตลาดสดใกล้คุณ</h1><p>เลือกร้านก่อน แล้วค่อยเลือกสินค้าจากร้านนั้น</p></section><label class="market-search"><span>ค้นหาร้านตลาดสด</span><input type="search" placeholder="ค้นหาชื่อร้าน" oninput="qgMarketSearch(this.value)"></label><h2 class="market-heading">ร้านค้า</h2><div id="market-results" class="market-shop-list"><p>กำลังโหลดร้านตลาดสด...</p></div>`);
-  qtSupabaseTable('rpc/market_public_catalog',{method:'POST',body:{}}).then(data=>{if(!document.getElementById('market-results'))return;rows=Array.isArray(data)?data:[];intoExistingCatalog();paintShops()}).catch(err=>{const box=document.getElementById('market-results');if(box)box.textContent='โหลดร้านไม่สำเร็จ: '+(err.message||err)});
+  layout('ตลาดสด',`<section class="market-hero market-hero-photo"><img src="queuego-market-ai-banner.jpg" alt="ตลาดสด QueueGo"><div class="market-hero-copy"><small>QueueGo Market</small><h1>ตลาดสดใกล้คุณ</h1><p>ของสดใหม่ ส่งถึงบ้านในพื้นที่</p></div></section><label class="market-search"><span>ค้นหาร้านตลาดสด</span><input type="search" placeholder="ค้นหาชื่อร้าน" oninput="qgMarketSearch(this.value)"></label><h2 class="market-heading">ร้านค้า</h2><div id="market-results" class="market-shop-list"><p>กำลังโหลดร้านตลาดสด...</p></div>`);
+  Promise.all([qtSupabaseTable('rpc/market_public_shops',{method:'POST',body:{}}),qtSupabaseTable('rpc/market_public_catalog',{method:'POST',body:{}}).catch(()=>[])]).then(([sd,pd])=>{if(!document.getElementById('market-results'))return;marketShops=Array.isArray(sd)?sd:[];rows=Array.isArray(pd)?pd:[];intoExistingCatalog();paintShops()}).catch(err=>{const box=document.getElementById('market-results');if(box)box.textContent='โหลดร้านไม่สำเร็จ: '+(err.message||err)});
 };
 window.renderMarketShop=function(id){
   const render=()=>{
