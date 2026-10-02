@@ -1,4 +1,4 @@
-name: QueueGo Android APKs
+name: QueueGo Android Release Bundles
 
 on:
   workflow_dispatch:
@@ -26,10 +26,6 @@ jobs:
             appid: com.queuego.rider
             appname: QueueGo Rider
             source: rider
-          - role: admin
-            appid: com.queuego.admin
-            appname: QueueGo Admin
-            source: admin
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -52,8 +48,6 @@ jobs:
             cp ../market.css ../market.js ../table-order.css ../table-order.js ../table-order.html www/ 2>/dev/null || true
           elif [ "${{ matrix.role }}" = "merchant" ]; then
             cp ../merchant/* www/
-          elif [ "${{ matrix.role }}" = "admin" ]; then
-            cp ../admin/* www/
           else
             cp ../rider/index.html www/index.html
           fi
@@ -158,15 +152,15 @@ jobs:
               im.save(d/'ic_launcher.png')
               im.save(d/'ic_launcher_round.png')
           PY
-      - name: Build debug APK
+      - name: Build release AAB
         shell: bash
         run: |
           cd android-build/android
           chmod +x gradlew
-          ./gradlew assembleDebug --no-daemon
-          cp app/build/outputs/apk/debug/app-debug.apk "../../QueueGo-${{ matrix.role }}-debug.apk"
+          ./gradlew bundleRelease --no-daemon
+          cp app/build/outputs/bundle/release/app-release.aab "../../QueueGo-${{ matrix.role }}-release-unsigned.aab"
       - uses: actions/upload-artifact@v4
         with:
-          name: QueueGo-${{ matrix.role }}-debug-apk
-          path: QueueGo-${{ matrix.role }}-debug.apk
+          name: QueueGo-${{ matrix.role }}-release-aab
+          path: QueueGo-${{ matrix.role }}-release-unsigned.aab
           if-no-files-found: error
