@@ -1,0 +1,5 @@
+QueueGo Android Release Candidate
+Audit: complete
+Static regression: passed
+Build policy: explicit release gate only
+Date: 2026-10-02
