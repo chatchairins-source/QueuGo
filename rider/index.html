@@ -1467,10 +1467,15 @@ body{overflow-y:auto;-webkit-overflow-scrolling:touch;touch-action:pan-y}
  };
  window.finishOrder=async function(o){
    if(!o?.market_order_id)return oldFinish(o);
-   const pin=(document.getElementById('delivery-pin')?.value||document.getElementById('qg-delivery-pin')?.value||prompt('กรอกรหัส PIN 6 หลักจากลูกค้า')||'').trim();
-   if(!/^\d{6}$/.test(pin)){toast('กรุณากรอก PIN 6 หลัก');return}
-   try{const token=await getAccessToken(),loc=S.lastLocation||{};
-     await sbTable('rpc/qg_complete_market_with_proof',{method:'POST',token,body:{p_market_order_id:o.market_order_id,p_pin:pin,p_lat:Number.isFinite(Number(loc.lat))?Number(loc.lat):null,p_lng:Number.isFinite(Number(loc.lng))?Number(loc.lng):null,p_photo_path:null}});
+   try{
+     const token=await getAccessToken(),m=await sbTable('market_orders?select=total_amount,status&id=eq.'+encodeURIComponent(o.market_order_id)+'&limit=1',{token});
+     if(!m?.[0])throw Error('ไม่พบยอด Market Order');
+     if(!confirm('ยืนยันว่าได้รับเงินสดจากลูกค้า ฿'+Number(m[0].total_amount).toLocaleString('th-TH')+' แล้ว?'))return;
+     const pin=(document.getElementById('delivery-pin')?.value||document.getElementById('qg-delivery-pin')?.value||prompt('กรอกรหัส PIN 6 หลักจากลูกค้า')||'').trim();
+     if(!/^\d{6}$/.test(pin)){toast('กรุณากรอก PIN 6 หลัก');return}
+     let lat=null,lng=null;if(navigator.geolocation)try{const p=await new Promise((resolve,reject)=>navigator.geolocation.getCurrentPosition(resolve,reject,{enableHighAccuracy:true,timeout:5000,maximumAge:10000}));lat=p.coords.latitude;lng=p.coords.longitude}catch(e){}
+     const file=document.getElementById('qg-v22-delivery-photo')?.files?.[0],photoPath=file&&typeof qgUploadEvidence==='function'?await qgUploadEvidence(file):null;
+     await sbTable('rpc/qg_complete_market_with_proof',{method:'POST',token,body:{p_market_order_id:o.market_order_id,p_pin:pin,p_lat:lat,p_lng:lng,p_photo_path:photoPath}});
      toast('ส่งออเดอร์ตลาดสำเร็จ');await refreshData();
    }catch(e){toast('จบงานไม่สำเร็จ: '+e.message)}
  };
