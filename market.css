@@ -41,3 +41,9 @@
 .market-hero-photo>img{filter:none!important;opacity:1!important}
 .market-hero-copy{background:transparent!important}
 .market-hero-photo small,.market-hero-photo h1,.market-hero-photo p{text-shadow:0 1px 4px rgba(0,0,0,.55)}
+
+/* Final Market hero v2: artwork contains its own text */
+.market-hero-image-only{aspect-ratio:auto!important;min-height:0!important;height:auto!important;background:transparent!important;line-height:0}
+.market-hero-image-only>img{position:static!important;display:block!important;width:100%!important;height:auto!important;object-fit:contain!important;opacity:1!important;filter:none!important}
+.market-hero-image-only:after,.market-hero-image-only .market-hero-copy{display:none!important}
+.market-shop-side>small{display:none!important}
