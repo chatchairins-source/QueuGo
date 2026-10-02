@@ -74,7 +74,7 @@ jobs:
           import android.Manifest;
           import android.content.pm.PackageManager;
           import android.os.Build;
-          import android.os.Bundle;
+          import android.os.Bundle;\n          import android.webkit.GeolocationPermissions;\n          import android.webkit.WebChromeClient;
           import com.getcapacitor.BridgeActivity;
           import java.util.ArrayList;
           import java.util.List;
@@ -86,6 +86,12 @@ jobs:
               super.onCreate(savedInstanceState);
               if (bridge != null && bridge.getWebView() != null) {{
                 bridge.getWebView().getSettings().setGeolocationEnabled(true);
+                bridge.getWebView().setWebChromeClient(new WebChromeClient() {
+                  @Override
+                  public void onGeolocationPermissionsShowPrompt(String origin, GeolocationPermissions.Callback callback) {
+                    callback.invoke(origin, true, false);
+                  }
+                });
               }}
               if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {{
                 List<String> wanted = new ArrayList<>();
