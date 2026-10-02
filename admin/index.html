@@ -2520,7 +2520,7 @@ function qtRouteRender(){
     case 'notifications': renderNotifications(); break;
     default: renderHome();
   }
-  window.scrollTo(0,0);
+  /* Route rendering must not reset scroll. Navigation owns deliberate scroll-to-top behavior. */
 }
 
 /* ---------- Layout ---------- */
