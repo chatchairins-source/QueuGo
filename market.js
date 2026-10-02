@@ -1,7 +1,7 @@
 /* QueueGo Market — shop-first storefront. Products are shown only after a shop is selected. */
 (()=>{
 'use strict';
-let rows=[],marketShops=[],query='';
+let rows=[],marketShops=[],query='',category='all';
 const h=v=>escapeHtml(String(v??''));
 const available=r=>Math.max(0,Math.floor(Number(r.available_packs||0)));
 function intoExistingCatalog(){
@@ -9,23 +9,14 @@ function intoExistingCatalog(){
   for(const r of rows) byId.set(String(r.product_id),{...byId.get(String(r.product_id)),id:r.product_id,shopId:r.shop_user_id,shopProfileId:r.shop_id,name:r.name,category:r.category,description:r.description||'',image:r.image||'',price:Number(r.price),available:available(r)>0,marketUnit:r.unit,marketPackSize:Number(r.pack_size)});
   QT_DB_CACHE.qt_products=[...byId.values()];
 }
-function shops(){const p=new Map();for(const r of rows){const id=String(r.shop_id||'');if(!id)continue;if(!p.has(id))p.set(id,{count:0,available:0,categories:new Set()});const x=p.get(id);x.count++;if(available(r)>0)x.available++;if(r.category)x.categories.add(r.category)}return marketShops.map(s=>{const x=p.get(String(s.shop_id))||{count:0,available:0,categories:new Set()};return{id:s.shop_id,userId:s.shop_user_id,name:s.shop_name||'ร้านตลาดสด',category:s.shop_category||'market',logo:s.shop_logo||'',count:x.count,available:x.available,categories:x.categories}})}
-function shopCard(s){
-  const cats=[...s.categories].slice(0,3).map(h).join(' · ');
-  return `<button type="button" class="market-shop-card" onclick="navigate('market-shop/${h(s.id)}')"><div class="market-shop-photo">${s.logo?`<img src="${h(s.logo)}" alt="${h(s.name)}" loading="lazy">`:'<span>🏪</span>'}</div><div class="market-shop-detail"><small>ร้านตลาดสด</small><h3>${h(s.name)}</h3><p>${cats||'สินค้าในตลาดสด'}</p><span>${s.available} รายการพร้อมขาย</span></div><b aria-hidden="true">›</b></button>`;
-}
-function paintShops(){
-  const box=document.getElementById('market-results');if(!box)return;
-  const q=query.toLocaleLowerCase('th-TH');
-  const list=shops().filter(s=>!q||(s.name+' '+[...s.categories].join(' ')).toLocaleLowerCase('th-TH').includes(q));
-  box.innerHTML=list.length?list.map(shopCard).join(''):'<p class="market-empty">ยังไม่มีร้านตลาดสดที่ตรงกับการค้นหา</p>';
-}
-window.qgMarketSearch=value=>{query=String(value||'').trim();paintShops()};
+function categoryLabel(v){return ({vegetable:'ผักสด',fruit:'ผลไม้',meat:'เนื้อสัตว์',fish:'อาหารทะเล',grocery:'ของชำ',market:'ตลาดสด'})[v]||'ตลาดสด'}
+function shops(){const p=new Map();for(const r of rows){const id=String(r.shop_id||'');if(!id)continue;if(!p.has(id))p.set(id,{count:0,available:0,categories:new Set()});const x=p.get(id);x.count++;if(available(r)>0)x.available++;if(r.category)x.categories.add(r.category)}return marketShops.map(s=>{const x=p.get(String(s.shop_id))||{count:0,available:0,categories:new Set()};return{id:s.shop_id,userId:s.shop_user_id,name:s.shop_name||'ร้านตลาดสด',category:s.shop_category||'market',logo:s.shop_logo||'',cover:s.shop_cover||'',delivery:s.delivery_enabled!==false,count:x.count,available:x.available,categories:x.categories}})}
+function shopCard(s){const tags=[categoryLabel(s.category),...[...s.categories].slice(0,2)].filter((x,i,a)=>x&&a.indexOf(x)===i).slice(0,3),photo=s.cover||s.logo;return `<button type="button" class="market-shop-card market-shop-card-rich" onclick="navigate('market-shop/${h(s.id)}')"><div class="market-shop-photo">${photo?`<img src="${h(photo)}" alt="${h(s.name)}" loading="lazy">`:'<span>🏪</span>'}<em>เปิด</em></div><div class="market-shop-detail"><h3>${h(s.name)}</h3><p class="market-shop-meta"><span>★ -</span><span>⌖ ใกล้คุณ</span><span>◷ 30–45 นาที</span></p><div class="market-tags">${tags.map(x=>`<span>${h(x)}</span>`).join('')}</div></div><div class="market-shop-side"><b>›</b><small>${s.delivery?'เริ่มต้น 30 บาท':'รับที่ร้าน'}</small></div></button>`}
+function paintShops(){const box=document.getElementById('market-results');if(!box)return;const q=query.toLocaleLowerCase('th-TH');const list=shops().filter(s=>(category==='all'||s.category===category)&&(!q||(s.name+' '+s.category+' '+[...s.categories].join(' ')).toLocaleLowerCase('th-TH').includes(q)));box.innerHTML=list.length?list.map(shopCard).join(''):'<p class="market-empty">ยังไม่มีร้านตลาดสดที่ตรงกับการค้นหา</p>'}
+window.qgMarketSearch=v=>{query=String(v||'').trim();paintShops()};
+window.qgMarketCategory=v=>{category=v;document.querySelectorAll('.market-filter').forEach(b=>b.classList.toggle('active',b.dataset.cat===v));paintShops()};
 window.qgMarketAdd=id=>{const r=rows.find(x=>String(x.product_id)===String(id));if(!r||!available(r))return toast('สินค้าหมด');intoExistingCatalog();addToCart(id);updateCartCountUI?.()};
-window.renderMarket=function(){
-  layout('ตลาดสด',`<section class="market-hero market-hero-photo"><img src="queuego-market-ai-banner.jpg" alt="ตลาดสด QueueGo"><div class="market-hero-copy"><small>QueueGo Market</small><h1>ตลาดสดใกล้คุณ</h1><p>ของสดใหม่ ส่งถึงบ้านในพื้นที่</p></div></section><label class="market-search"><span>ค้นหาร้านตลาดสด</span><input type="search" placeholder="ค้นหาชื่อร้าน" oninput="qgMarketSearch(this.value)"></label><h2 class="market-heading">ร้านค้า</h2><div id="market-results" class="market-shop-list"><p>กำลังโหลดร้านตลาดสด...</p></div>`);
-  Promise.all([qtSupabaseTable('rpc/market_public_shops',{method:'POST',body:{}}),qtSupabaseTable('rpc/market_public_catalog',{method:'POST',body:{}}).catch(()=>[])]).then(([sd,pd])=>{if(!document.getElementById('market-results'))return;marketShops=Array.isArray(sd)?sd:[];rows=Array.isArray(pd)?pd:[];intoExistingCatalog();paintShops()}).catch(err=>{const box=document.getElementById('market-results');if(box)box.textContent='โหลดร้านไม่สำเร็จ: '+(err.message||err)});
-};
+window.renderMarket=function(){layout('ตลาดสด',`<section class="market-hero market-hero-photo"><img src="queuego-market-ai-banner.jpg" alt="ตลาดสด QueueGo"><div class="market-hero-copy"><small>QueueGo Market</small><h1>ตลาดสดใกล้คุณ</h1><p>ของสดใหม่ ส่งถึงบ้านในพื้นที่</p></div></section><label class="market-search"><span>ค้นหาร้านตลาดสด</span><input type="search" placeholder="ค้นหาชื่อร้าน เช่น ผักสด หมู ไก่ อาหารทะเล" oninput="qgMarketSearch(this.value)"></label><div class="market-filters"><button class="market-filter active" data-cat="all" onclick="qgMarketCategory('all')">▣ ทั้งหมด</button><button class="market-filter" data-cat="vegetable" onclick="qgMarketCategory('vegetable')">🌿 ผักสด</button><button class="market-filter" data-cat="fruit" onclick="qgMarketCategory('fruit')">🍎 ผลไม้</button><button class="market-filter" data-cat="meat" onclick="qgMarketCategory('meat')">🥩 เนื้อสัตว์</button><button class="market-filter" data-cat="fish" onclick="qgMarketCategory('fish')">🐟 อาหารทะเล</button></div><div class="market-heading-row"><h2 class="market-heading">ร้านค้า</h2><span>⌖ ใกล้คุณที่สุด⌄</span></div><div id="market-results" class="market-shop-list"><p>กำลังโหลดร้านตลาดสด...</p></div>`);Promise.all([qtSupabaseTable('rpc/market_public_shops',{method:'POST',body:{}}),qtSupabaseTable('rpc/market_public_catalog',{method:'POST',body:{}}).catch(()=>[])]).then(([sd,pd])=>{if(!document.getElementById('market-results'))return;marketShops=Array.isArray(sd)?sd:[];rows=Array.isArray(pd)?pd:[];intoExistingCatalog();paintShops()}).catch(err=>{const box=document.getElementById('market-results');if(box)box.textContent='โหลดร้านไม่สำเร็จ: '+(err.message||err)})};
 window.renderMarketShop=function(id){
   const render=()=>{
     const list=rows.filter(r=>String(r.shop_id)===String(id)),first=list[0];
