@@ -1,5 +1,6 @@
-QueueGo Android Release Candidate
-Audit: complete
-Static regression: passed
-Build policy: explicit release gate only
+QueueGo Android Test RC
+Audit: scroll/viewport + Android wrapper hardening
+Static regression: customer/merchant/rider/admin passed
+Release gate: explicit marker only
 Date: 2026-10-02
+RC: 2
