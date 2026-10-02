@@ -150,39 +150,9 @@ const POLL_MS = 60000;
   }
   document.addEventListener('DOMContentLoaded', setVH);
 
-  /* hard-stop page drag/bounce: fully lock touch movement unless inside an approved
-     scroll box AND that box actually has overflow content to scroll — and even then,
-     stop the drag dead at the top/bottom edge instead of letting it rubber-band. */
-  const SCROLLABLE_SEL = '.screen-center,.sheet,.chat-box,.chat-screen,.summary-screen,.panel-screen,.rider-steps,.qt-alert-card,.rider-doc-preview,#map';
-  let touchStartX = 0, touchStartY = 0, touchEl = null;
-  document.addEventListener('touchstart', function(e){
-    if(e.touches.length !== 1) return;
-    touchStartX = e.touches[0].clientX;
-    touchStartY = e.touches[0].clientY;
-    touchEl = e.target.closest(SCROLLABLE_SEL);
-  }, {passive:true});
-  document.addEventListener('touchmove', function(e){
-    if(e.touches.length !== 1) return;
-    if(e.target.closest('.slide-wrap')) return; // let the "slide to confirm delivery" drag control work
-    const el = touchEl;
-    if(!el){ e.preventDefault(); return; } // not inside any scroll box at all -> fully locked
-    if(el.id === 'map') return; // let Leaflet handle its own pan/zoom
-    const dx = e.touches[0].clientX - touchStartX;
-    const dy = e.touches[0].clientY - touchStartY;
-    const canScrollY = el.scrollHeight > el.clientHeight + 1;
-    const canScrollX = el.scrollWidth > el.clientWidth + 1;
-    if(canScrollY){
-      const atTop = el.scrollTop <= 0;
-      const atBottom = Math.ceil(el.scrollTop + el.clientHeight) >= el.scrollHeight;
-      if((atTop && dy > 0) || (atBottom && dy < 0)) e.preventDefault();
-    } else if(canScrollX){
-      const atLeft = el.scrollLeft <= 0;
-      const atRight = Math.ceil(el.scrollLeft + el.clientWidth) >= el.scrollWidth;
-      if((atLeft && dx > 0) || (atRight && dx < 0)) e.preventDefault();
-    } else {
-      e.preventDefault(); // nothing to scroll here -> lock it completely, no bounce
-    }
-  }, {passive:false});
+  /* QueueGo 2026-10-02: native document scrolling is the default.
+     Do not cancel global touchmove events; interactive controls and the map
+     keep their own local gesture handling. */
 })();
 
 function sbHeaders(token){
