@@ -2146,7 +2146,7 @@ window.renderShopRegister=function(){
         <label class="qgm-login-input">${svg('phone')}<input id="reg-phone" type="tel" inputmode="numeric" autocomplete="tel" required maxlength="12" placeholder="เบอร์โทรศัพท์ 10 หลัก" aria-label="เบอร์โทรศัพท์"></label>
         <label class="qgm-login-input">${svg('lock')}<input id="reg-password" type="password" autocomplete="new-password" required minlength="6" placeholder="รหัสผ่านอย่างน้อย 6 ตัว" aria-label="รหัสผ่าน"></label>
         <label class="qgm-login-input">${svg('lock')}<input id="reg-password-confirm" type="password" autocomplete="new-password" required minlength="6" placeholder="ยืนยันรหัสผ่าน" aria-label="ยืนยันรหัสผ่าน"></label>
-        <button class="qgm-primary" type="submit">สมัครร้านค้า</button>
+        ${qgBetaTermsHtml("shop")}<button class="qgm-primary" type="submit">สมัครร้านค้า</button>
       </form>
       <div class="qgm-login-divider">มีบัญชีแล้ว</div>
       <button class="qgm-outline qgm-signup" type="button" onclick="navigate('login')">กลับไปเข้าสู่ระบบ</button>
@@ -2885,5 +2885,13 @@ body{overflow-y:auto;-webkit-overflow-scrolling:touch;touch-action:pan-y}
 #app{width:100%;max-width:100%;min-height:100dvh;overflow:visible;touch-action:auto}
 </style>
 <!-- Laundry/Hub floating merchant button removed 2026-10-01. Laundry module files preserved. -->
+
+<style id="qg-beta-terms-v1-style">.qg-beta-terms{margin:14px 0;padding:13px;border:1px solid #e2e5e8;border-radius:12px;background:#fff8f9;font-size:12px;line-height:1.55}.qg-beta-terms b{color:#d5092b}.qg-beta-terms label{display:flex;gap:9px;align-items:flex-start;margin-top:9px}.qg-beta-terms input{margin-top:3px;flex:0 0 auto}</style>
+<script id="qg-beta-terms-v1">
+window.QG_BETA_TERMS_VERSION='beta-2026-10-02-v1';
+window.qgBetaTermsHtml=function(role){return '<section class="qg-beta-terms"><b>QueueGo อยู่ในช่วงทดสอบระบบ (Beta)</b><div>ระบบอาจมีข้อผิดพลาด ข้อมูลล่าช้า ออเดอร์หรือยอดเงินผิดปกติ หรือหยุดให้บริการชั่วคราว ผู้ใช้ต้องตรวจสอบข้อมูลสำคัญก่อนยืนยันทุกครั้ง ภายใต้ขอบเขตที่กฎหมายอนุญาต QueueGo ไม่รับประกันว่าระบบ Beta จะทำงานโดยปราศจากข้อผิดพลาด และไม่มีการรับประกันรายได้หรือจำนวนงาน</div><label><input id="qg-beta-truth" type="checkbox" required><span>ข้าพเจ้ายืนยันว่าข้อมูลที่ให้เป็นความจริงและมีสิทธิ์ใช้ข้อมูล/รูปภาพที่ส่งให้ QueueGo</span></label><label><input id="qg-beta-accept" type="checkbox" required><span>ข้าพเจ้าได้อ่านและยอมรับข้อตกลงการใช้บริการและการเข้าร่วมทดสอบ QueueGo และรับทราบว่ายังเป็นระบบ Beta</span></label></section>'};
+window.qgRequireBetaTerms=function(){const a=document.getElementById('qg-beta-truth'),b=document.getElementById('qg-beta-accept');if(!a||!b||!a.checked||!b.checked){toast('กรุณาอ่านและยอมรับข้อตกลงการทดสอบ QueueGo ก่อนสมัคร');return false}return true};
+window.qgBetaConsent=function(role){return {terms_version:QG_BETA_TERMS_VERSION,terms_type:'beta_service',role:role,accepted_at:new Date().toISOString(),truth_confirmed:true,beta_acknowledged:true}};
+</script>
 </body>
 </html>
