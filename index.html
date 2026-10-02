@@ -5103,5 +5103,15 @@ body{overflow-y:auto;-webkit-overflow-scrolling:touch;touch-action:pan-y}
  };
 })();
 </script>
+<script id="qg-market-cancel-ui-v1">
+(function(){
+ const old=window.renderMarketOrder;if(typeof old!=='function')return;
+ window.renderMarketOrder=async function(id){await old(id);const box=document.getElementById('qg-market-track');if(!box)return;
+  try{const t=await qtGetAccessToken(),m=(await qtSupabaseTable('market_orders?select=status&id=eq.'+encodeURIComponent(id)+'&limit=1',{accessToken:t}))?.[0];
+   if(m&&['PENDING','SEARCHING_RIDER'].includes(m.status)){const b=document.createElement('button');b.className='qg-secondary';b.style.cssText='width:100%;margin-top:12px';b.textContent='ยกเลิกคำสั่งซื้อจากตลาด';b.onclick=async()=>{if(!confirm('ยกเลิกคำสั่งซื้อจากตลาดทั้งหมดที่ยังไม่ถูกรับโดยไรเดอร์?'))return;b.disabled=true;try{await qtSupabaseTable('rpc/qg_customer_cancel_market_order',{method:'POST',accessToken:t,body:{p_market_order_id:id}});toast('ยกเลิกคำสั่งซื้อแล้ว');await renderMarketOrder(id)}catch(e){toast('ยกเลิกไม่สำเร็จ: '+e.message);b.disabled=false}};box.appendChild(b)}
+  }catch(e){console.warn('market cancel status unavailable',e)}
+ };
+})();
+</script>
 </body>
 </html>
