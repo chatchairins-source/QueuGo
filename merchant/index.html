@@ -1220,7 +1220,7 @@ function updateOrderStatus(orderId,newStatus){
   if(!order){toast('ไม่พบออเดอร์');return;}
   const ownerId=order.shopId||QT_SYNC.profileMaps?.shopById?.get(order.shopProfileId);
   if(String(ownerId)!==String(shop.id)){toast('ไม่มีสิทธิ์จัดการออเดอร์นี้');return;}
-  const next={pending_shop:'shop_accepted',shop_accepted:'preparing',preparing:'waiting_rider'};
+  const next={pending_shop:'shop_accepted',shop_accepted:'preparing',preparing:'waiting_rider'}; // DB: pending -> accepted -> preparing -> ready/searching rider
   if(next[order.status]!==newStatus){toast('สถานะออเดอร์ไม่ตรงกับขั้นตอนที่ทำได้');return;}
   const previousStatus=order.status;
   order.status=newStatus;
