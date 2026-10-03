@@ -98,68 +98,6 @@ html, body {
 .qt-order-progress{margin-top:12px;padding:12px;background:#f8fafc;border-radius:14px}.qt-order-progress-title{font-weight:800;font-size:13px;margin-bottom:8px}.qt-order-progress-list{display:grid;gap:6px}.qt-order-step{display:flex;gap:9px;align-items:center;min-height:34px;opacity:.45}.qt-order-step.done,.qt-order-step.active{opacity:1}.qt-order-step-icon{width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:#e2e8f0;font-size:13px;flex:none}.qt-order-step.done .qt-order-step-icon{background:#dcfce7;color:#15803d}.qt-order-step.active .qt-order-step-icon{background:var(--primary,#2563eb);color:#fff}.qt-order-step-text{display:flex;gap:7px;align-items:center;flex-wrap:wrap;font-size:12px}.qt-order-step-text small{color:#94a3b8}.qt-order-now{font-size:10px;padding:2px 6px;border-radius:999px;background:#dbeafe;color:#1d4ed8}.qt-order-cancelled{margin-top:8px;padding:9px;border-radius:10px;background:#fee2e2;color:#b91c1c;font-size:12px}.qt-order-card-actions{margin-top:10px}.qt-order-card-actions .btn-block{margin-top:6px}
 </style>
 
-<style id="queuego-master-theme-v1">
-/* QueueGo Master Theme — final design layer. Existing functional CSS is preserved. */
-:root{
-  --qg-green:#10b981;
-  --qg-green-dark:#078b5a;
-  --qg-green-soft:#eafaf2;
-  --qg-green-line:#d8eee3;
-  --qg-bg:#f6faf8;
-  --qg-text:#17251c;
-  --qg-muted:#718078;
-  --qg-danger:#dc2626;
-  --primary:var(--qg-green);
-  --primary-dark:var(--qg-green-dark);
-  --accent:#34c98d;
-  --bg:var(--qg-bg);
-  --surface:#fff;
-  --text:var(--qg-text);
-  --muted:var(--qg-muted);
-  --line:var(--qg-green-line);
-}
-html,body{max-width:100%;overflow-x:hidden;-webkit-text-size-adjust:100%;text-size-adjust:100%;}
-body{background:var(--qg-bg);color:var(--qg-text);}
-button,input,select,textarea{font-family:inherit;}
-button{touch-action:manipulation;}
-/* One button language across the product */
-.btn-primary{background:linear-gradient(135deg,#0b9f61 0%,#10b981 100%)!important;color:#fff!important;border:1px solid #0b9f61!important;box-shadow:0 7px 16px rgba(16,185,129,.16)!important;}
-.btn-primary:hover{filter:brightness(1.02);}
-.btn-secondary{background:#fff!important;color:#087d53!important;border:1px solid #bfe7d3!important;box-shadow:none!important;}
-.btn-danger{background:#fff!important;color:#c62828!important;border:1px solid #fecaca!important;box-shadow:none!important;}
-.btn-primary:active,.btn-secondary:active,.btn-danger:active{transform:scale(.985);}
-.tab.active{background:var(--qg-green)!important;border-color:var(--qg-green)!important;color:#fff!important;box-shadow:0 5px 12px rgba(16,185,129,.14)!important;}
-.tab{color:#53645b;border-color:#dcebe3;background:#fff;}
-form input:focus,form select:focus,form textarea:focus{border-color:var(--qg-green)!important;box-shadow:0 0 0 3px rgba(16,185,129,.12)!important;}
-/* Compact services: retain shortcuts but return most of the screen to shops. */
-.qg-service-compact{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px;margin:12px 0 4px;padding:2px 0;}
-.qg-service-compact button{min-width:0;border:0;background:transparent;padding:5px 2px;display:flex;flex-direction:column;align-items:center;gap:4px;color:#53645b;cursor:pointer;}
-.qg-service-compact button span{width:34px;height:34px;border-radius:11px;background:#eafaf2;border:1px solid #d8eee3;display:grid;place-items:center;font-size:16px;line-height:1;}
-.qg-service-compact button b{font-size:10px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;}
-.qg-service-compact button:active span{transform:scale(.94);}
-/* Shops become the main visual area. */
-.qg-section.qg-shops-main{margin-top:18px;}
-.qg-shop-strip{grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;}
-.qg-shop-strip .shop-card{min-height:150px;border-radius:18px!important;background:#fff;border:1px solid #e1eee7;box-shadow:0 6px 18px rgba(20,60,40,.055);overflow:hidden;}
-.qg-shop-strip .shop-card .shop-info{padding:14px;}
-.qg-shop-strip .shop-card .shop-info b{display:block;font-size:15px;color:#1d3026;margin-bottom:5px;}
-.qg-shop-strip .shop-card .shop-info div{font-size:12px;color:#748078;line-height:1.45;}
-.qg-shop-strip + *{margin-top:0;}
-/* Responsive: never force a fixed desktop width. */
-@media(max-width:900px){.qg-page{padding-left:clamp(12px,4vw,28px);padding-right:clamp(12px,4vw,28px);}.qg-shop-strip{grid-template-columns:repeat(2,minmax(0,1fr));}}
-@media(max-width:600px){.qg-service-compact{grid-template-columns:repeat(6,1fr);gap:2px;margin-top:8px;}.qg-service-compact button span{width:30px;height:30px;border-radius:9px;font-size:14px;}.qg-service-compact button b{font-size:9px;}.qg-shop-strip{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;}.qg-shop-strip .shop-card{min-height:138px;border-radius:16px!important;}.qg-shop-strip .shop-card .shop-info{padding:11px;}.qg-shop-strip .shop-card .shop-info b{font-size:14px;}}
-@media(max-width:390px){.qg-service-compact{gap:0;}.qg-service-compact button span{width:27px;height:27px;font-size:13px;}.qg-service-compact button b{font-size:8.5px;}.qg-shop-strip{grid-template-columns:1fr 1fr;gap:8px;}}
-@media(min-width:1100px){.qg-shop-strip{grid-template-columns:repeat(4,minmax(0,1fr));}.qg-shop-strip .shop-card{min-height:170px;}}
-</style>
-
-<style id="qg-customer-location-v2">
-.qg-location-bar{position:relative;display:flex;align-items:center;gap:12px;margin:-4px 0 0;padding:12px 14px;border-radius:0;background:linear-gradient(135deg,#0b9f61,#10b981);color:#fff;box-shadow:0 8px 20px rgba(16,185,129,.16);cursor:pointer;min-height:64px;}
-.qg-location-arrow{font-size:34px;line-height:1;font-weight:300;flex:none}.qg-location-copy{min-width:0;flex:1}.qg-location-label{font-size:12px;opacity:.9;margin-bottom:3px}.qg-location-value{display:flex;align-items:center;gap:7px;font-size:16px;font-weight:800;min-width:0}.qg-location-value span:last-child{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.qg-location-pin{font-size:17px;flex:none}.qg-location-edit{font-size:32px;line-height:1;flex:none}.qg-location-cart{font-size:28px;line-height:1;position:relative;flex:none;padding-left:5px}.qg-location-cart .cart-count-badge{position:absolute;top:-7px;right:-7px;background:#ef4444;color:#fff;border-radius:999px;font-size:10px;padding:2px 5px;line-height:1.2}
-.qg-location-editor{background:#fff;border:1px solid #dcebe3;border-radius:20px;padding:14px;box-shadow:0 8px 24px rgba(20,60,40,.05)}.qg-location-editor-head{display:flex;gap:10px;align-items:flex-start;margin-bottom:10px}.qg-location-editor-head h2{margin:2px 0 3px;font-size:20px}.qg-location-editor-head p{margin:0;color:#718078;font-size:12px}.qg-location-map{height:300px!important;min-height:300px!important;border-radius:16px;overflow:hidden;margin:10px 0}.qg-location-address{width:100%;min-height:74px;box-sizing:border-box;resize:vertical}
-@media(max-width:600px){.qg-location-bar{margin:-4px -2px 0;padding:10px 11px;min-height:58px;border-radius:0}.qg-location-arrow{font-size:30px}.qg-location-value{font-size:14px}.qg-location-cart{font-size:25px}.qg-location-map{height:240px!important;min-height:240px!important}}
-.qg-hero-compact{border-radius:0 0 24px 24px;margin-top:0}
-</style>
-
 <style id="queuego-v27-unified-card-image-system">
 :root{--qg-card-radius:16px;--qg-card-gap:12px;--qg-shop-size:96px;--qg-category-size:64px;}
 img{max-width:100%;box-sizing:border-box;}
@@ -2087,21 +2025,7 @@ async function renderHomeShopSections(){
 }
 
 /* ---------- 2. REGISTER / LOGIN ---------- */
-function renderRegister(){
-  layout('สมัครสมาชิก', `
-    <section class="qg-auth-page"><div class="qg-auth-brand"><span class="qg-logo-lockup"><img src="${window.QueueGoAssets.APP_MARK}" alt=""><span>Queue<span>Go</span></span></span></div><h1>สร้างบัญชีผู้ใช้</h1><p>เริ่มใช้งาน QueueGo เพื่อค้นหาร้าน สั่งสินค้า และติดตามออเดอร์</p>
-      <form onsubmit="return handleRegister(event)" class="qg-auth-form">
-        <input type="hidden" id="reg-type" value="customer"><input type="hidden" id="reg-contact-mode" value="phone">
-        <label>ช่องทางเข้าสู่ระบบ</label><div class="tabs qg-auth-tabs"><button type="button" id="reg-mode-phone" class="tab active" onclick="switchRegisterContact('phone')">📱 เบอร์โทรศัพท์</button><button type="button" id="reg-mode-email" class="tab" onclick="switchRegisterContact('email')">✉️ อีเมล</button></div>
-        <label>ชื่อของคุณ</label><input required id="reg-name" placeholder="ชื่อ-นามสกุล">
-        <label id="reg-phone-label">เบอร์โทรศัพท์</label><input id="reg-phone" inputmode="tel" placeholder="08xxxxxxxx">
-        <label id="reg-email-label" style="display:none">อีเมล</label><input id="reg-email" type="email" style="display:none" placeholder="example@email.com">
-        <label>รหัสผ่าน</label><input required type="password" id="reg-password" minlength="6" autocomplete="new-password" placeholder="อย่างน้อย 6 ตัวอักษร">
-        <label>ยืนยันรหัสผ่าน</label><input required type="password" id="reg-password-confirm" minlength="6" autocomplete="new-password" placeholder="กรอกรหัสผ่านอีกครั้ง">
-        <section class="qg-beta-terms" style="margin:14px 0;padding:13px;border:1px solid #e2e5e8;border-radius:12px;background:#fff8f9;font-size:12px;line-height:1.55"><b style="color:#d5092b">QueueGo อยู่ในช่วงทดสอบระบบ (Beta)</b><div>ระบบอาจมีข้อผิดพลาด ข้อมูลล่าช้า ออเดอร์หรือยอดเงินผิดปกติ หรือหยุดให้บริการชั่วคราว กรุณาตรวจสอบข้อมูลสำคัญก่อนยืนยันทุกครั้ง ภายใต้ขอบเขตที่กฎหมายอนุญาต QueueGo ไม่รับประกันว่าระบบ Beta จะทำงานโดยปราศจากข้อผิดพลาด</div><label style="display:flex;gap:9px;align-items:flex-start;margin-top:9px"><input id="qg-beta-truth" type="checkbox" required><span>ข้าพเจ้ายืนยันว่าข้อมูลที่ให้เป็นความจริง</span></label><label style="display:flex;gap:9px;align-items:flex-start;margin-top:9px"><input id="qg-beta-accept" type="checkbox" required><span>ข้าพเจ้าได้อ่านและยอมรับข้อตกลงการใช้บริการและการเข้าร่วมทดสอบ QueueGo</span></label><small>ข้อตกลงเวอร์ชัน beta-2026-10-02-v1</small></section><button class="btn-primary btn-block qg-main-btn" type="submit">สร้างบัญชี</button>
-      </form><p class="qg-auth-foot">มีบัญชีอยู่แล้ว? <a href="#login">เข้าสู่ระบบ</a></p>
-    </section>`);
-}
+
 function switchRegisterTab(type, el){
   const target=document.getElementById('reg-type');
   if(target) target.value='customer';
@@ -2233,13 +2157,7 @@ function renderTechnicianClosed(){
   layout('เรียกช่าง', `<section class="qg-role-blocked"><div class="qg-disabled-icon">🔧</div><h1>เรียกช่าง</h1><p>บริการเรียกช่างถูกปิดไว้ชั่วคราว และจะเปิดใช้งานในเวอร์ชันถัดไป</p><button class="btn-secondary btn-block" onclick="navigate('home')">กลับหน้าแรก</button></section>`);
 }
 
-function renderLogin(){
-  layout('เข้าสู่ระบบ', `
-    <section class="qg-auth-page"><div class="qg-auth-brand"><span class="qg-logo-lockup"><img src="${window.QueueGoAssets.APP_MARK}" alt=""><span>Queue<span>Go</span></span></span></div><h1>ยินดีต้อนรับกลับ</h1><p>เข้าสู่ระบบเพื่อสั่งสินค้าและติดตามออเดอร์</p>
-      <form onsubmit="return handleLogin(event)" class="qg-auth-form"><label>เบอร์โทรศัพท์ หรืออีเมล</label><input required id="login-phone" autocomplete="username" placeholder="08xxxxxxxx หรืออีเมล"><label>รหัสผ่าน</label><input required type="password" id="login-password" autocomplete="current-password" placeholder="รหัสผ่าน"><button class="btn-primary btn-block qg-main-btn" type="submit">เข้าสู่ระบบ</button></form>
-      <p class="qg-auth-foot">ยังไม่มีบัญชี? <a href="#register">สมัครสมาชิก</a></p>
-    </section>`);
-}
+
 async function handleLogin(e){
   e.preventDefault();
   const loginValue=document.getElementById('login-phone').value.trim();
@@ -2396,209 +2314,6 @@ function renderCustomerDashboard(user){
 </script>
 
 
-<style id="qg-shop-minimal-v3">
-/* ร้านค้าแบบมินิมอล: ตัดกรอบ/พื้นขาว/เงาออก เหลือเฉพาะรูป + ข้อความ และใช้พื้นที่ให้คุ้มที่สุด */
-.qg-shop-strip{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px 14px;align-items:start}
-.qg-shop-strip .shop-card{
-  min-height:0!important;margin:0!important;padding:5px 2px!important;
-  display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:6px;
-  background:transparent!important;border:0!important;box-shadow:none!important;border-radius:0!important;
-  overflow:hidden;cursor:pointer;transition:transform .15s ease;
-}
-.qg-shop-strip .shop-card:hover{transform:none!important;box-shadow:none!important}
-.qg-shop-strip .shop-card:active{transform:scale(.97)!important}
-.qg-shop-strip .shop-card .shop-logo{
-  width:58px;height:58px;min-width:58px;display:block;
-  border-radius:50%;object-fit:cover;border:1px solid #e3ece7;
-  box-shadow:0 2px 7px rgba(20,60,40,.07);
-}
-
-.qg-shop-strip .shop-card .shop-info{
-  width:100%;min-width:0;flex:none!important;padding:0!important;overflow:hidden;text-align:center;
-}
-.qg-shop-strip .shop-card .shop-info b{
-  display:block;font-size:12.5px;line-height:1.25;margin:0;
-  color:#1d3026;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
-}
-.qg-shop-strip .shop-card .shop-info div{
-  font-size:9.5px;line-height:1.3;color:#7a8780;
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
-}
-.qg-shop-strip .shop-card .ad-tag-sm{font-size:7.5px;padding:1px 4px;margin-left:2px;vertical-align:1px}
-@media(max-width:900px){
-  .qg-shop-strip{grid-template-columns:repeat(3,minmax(0,1fr));gap:12px 8px}
-}
-@media(max-width:520px){
-  .qg-shop-strip{grid-template-columns:repeat(3,minmax(0,1fr));gap:10px 5px}
-  .qg-shop-strip .shop-card{padding:3px 1px!important;gap:5px}
-  .qg-shop-strip .shop-card .shop-logo{width:50px;height:50px;min-width:50px}
-  .qg-shop-strip .shop-card .shop-info b{font-size:11.5px}
-  .qg-shop-strip .shop-card .shop-info div{font-size:8.5px}
-}
-@media(max-width:380px){
-  .qg-shop-strip{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px 5px}
-  .qg-shop-strip .shop-card .shop-logo{width:48px;height:48px;min-width:48px}
-}
-@media(min-width:1100px){
-  .qg-shop-strip{grid-template-columns:repeat(5,minmax(0,1fr));gap:16px 14px}
-  .qg-shop-strip .shop-card .shop-logo{width:62px;height:62px;min-width:62px}
-}
-</style>
-
-<style id="qg-search-iphone-grid-v1">
-/* Search: iPhone-style app icon grid, compact and card-free. */
-.qg-search-tools{display:flex;flex-direction:column;gap:7px;margin-bottom:10px}
-.qg-search-location-auto{margin:0!important;padding:5px 2px!important;font-size:11px!important;background:transparent!important;border:0!important;color:#6f7d75!important;text-align:left}
-#search-results.qg-shop-strip{display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr));gap:15px 7px!important;align-items:start}
-#search-results.qg-shop-strip .shop-card{min-height:0!important;margin:0!important;padding:2px 1px!important;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:5px;background:transparent!important;border:0!important;box-shadow:none!important;border-radius:0!important;overflow:hidden;cursor:pointer;transition:transform .12s ease}
-#search-results.qg-shop-strip .shop-card:hover{transform:none!important;box-shadow:none!important}
-#search-results.qg-shop-strip .shop-card:active{transform:scale(.94)!important}
-#search-results.qg-shop-strip .shop-card .shop-logo{width:58px;height:58px;min-width:58px;display:block;border-radius:50%;object-fit:cover;border:1px solid #e4ebe7;box-shadow:0 2px 7px rgba(20,60,40,.08)}
-#search-results.qg-shop-strip .shop-card .shop-info{width:100%;min-width:0;flex:none!important;padding:0!important;overflow:hidden;text-align:center}
-#search-results.qg-shop-strip .shop-card .shop-info b{display:block;font-size:11.5px;line-height:1.25;margin:0;color:#1d3026;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-#search-results.qg-shop-strip .shop-card .shop-info div{font-size:8.5px;line-height:1.25;color:#7a8780;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-#search-results.qg-shop-strip .shop-card .ad-tag-sm{font-size:7px;padding:1px 3px;margin-left:2px;vertical-align:1px}
-@media(max-width:600px){
-  #search-results.qg-shop-strip{grid-template-columns:repeat(4,minmax(0,1fr));gap:14px 4px!important}
-  #search-results.qg-shop-strip .shop-card .shop-logo{width:52px;height:52px;min-width:52px}
-  #search-results.qg-shop-strip .shop-card .shop-info b{font-size:10.5px}
-  #search-results.qg-shop-strip .shop-card .shop-info div{font-size:7.8px}
-}
-@media(max-width:380px){
-  #search-results.qg-shop-strip{grid-template-columns:repeat(4,minmax(0,1fr));gap:12px 2px!important}
-  #search-results.qg-shop-strip .shop-card .shop-logo{width:48px;height:48px;min-width:48px}
-  #search-results.qg-shop-strip .shop-card .shop-info b{font-size:10px}
-}
-@media(min-width:900px){#search-results.qg-shop-strip{grid-template-columns:repeat(6,minmax(0,1fr));gap:18px 10px!important}}
-</style>
-<style id="qt-customer-final-shop-image-css">
-/* Customer shop photos: profile photo only, same square size, no white frame/fill. */
-.qg-shop-strip .shop-card{background:transparent!important;border:0!important;box-shadow:none!important;padding-left:0;padding-right:0;}
-.qg-shop-strip .shop-card .shop-logo{width:56px!important;height:56px!important;min-width:56px!important;max-width:56px!important;aspect-ratio:1/1!important;border-radius:8px!important;object-fit:cover!important;border:0!important;box-shadow:none!important;padding:0!important;}
-.qg-shop-strip .shop-card .shop-logo{display:block;background:transparent!important;}
-
-.shop-header .shop-logo-lg{width:96px!important;height:96px!important;min-width:96px!important;max-width:96px!important;aspect-ratio:1/1!important;border-radius:12px!important;object-fit:cover!important;border:0!important;background:transparent!important;box-shadow:none!important;padding:0!important;}
-</style>
-
-<style id="qt-customer-final-image-override-v2">
-/* Final customer storefront image rules: profile photo only, square, same size, no white frame. */
-.qg-shop-strip .shop-card .shop-logo,
-#search-results.qg-shop-strip .shop-card .shop-logo{
-  width:56px!important;height:56px!important;min-width:56px!important;max-width:56px!important;
-  aspect-ratio:1/1!important;border-radius:8px!important;object-fit:cover!important;
-  display:block!important;border:0!important;background:transparent!important;
-  box-shadow:none!important;padding:0!important;
-}
-#search-results.qg-shop-strip .shop-card .shop-logo{border:0!important;box-shadow:none!important;border-radius:8px!important}
-.shop-header .shop-logo-lg{
-  width:76px!important;height:76px!important;min-width:76px!important;max-width:76px!important;
-  aspect-ratio:1/1!important;border-radius:10px!important;object-fit:cover!important;
-  display:block!important;border:0!important;background:transparent!important;
-  box-shadow:none!important;padding:0!important;
-}
-
-/* QueueGo: reduce bottom navigation height by 50% while keeping all actions usable */
-.qg-bottomnav{height:35px !important;min-height:35px !important;padding-top:0 !important;padding-bottom:env(safe-area-inset-bottom) !important;}
-.qg-bottomnav a{padding:3px 1px 2px !important;font-size:8px !important;line-height:1 !important;}
-.qg-bottomnav a span{font-size:9px !important;margin-top:0 !important;line-height:1 !important;}
-.qg-bottomnav a:first-letter{font-size:16px !important;}
-</style>
-<style id="qt-customer-shop-profile-image-only">
-/* ร้านค้าเป็นผู้จัดการรูปโปรไฟล์เอง: ลูกค้าเห็นเฉพาะรูปที่บันทึกใน shop_profiles.profile_image */
-.qg-shop-strip .shop-card .shop-logo,.shop-header .shop-logo-lg{display:block;background:transparent!important;border:0!important;box-shadow:none!important;object-fit:cover!important;}
-</style>
-<style id="qt-shop-cover-image">
-.qt-shop-profile{margin:0 0 10px;min-width:0}
-.qt-shop-profile .shop-header{position:relative;overflow:hidden;height:132px;margin:0;border-radius:12px;background:#f6faf8!important;display:flex;align-items:flex-end;justify-content:flex-start;padding:8px}
-.shop-header .shop-cover-image{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
-.qt-shop-profile .shop-logo-lg{position:relative;z-index:1;width:64px!important;height:64px!important;min-width:64px!important;max-width:64px!important;border-radius:10px!important;box-shadow:0 2px 12px rgba(0,0,0,.18)!important}
-.qt-shop-details{min-width:0;padding:8px 2px 0}
-.qt-shop-title-row{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
-.qt-shop-title-row h1{font-size:20px;line-height:1.25;margin:0;min-width:0;overflow-wrap:anywhere}
-.qt-shop-title-row .qg-review-summary{font-size:12px;white-space:nowrap}
-.qt-shop-title-row .qg-review-summary small{color:#64748b}
-.qt-shop-meta,.qt-shop-address{margin:4px 0 0;font-size:12px;line-height:1.35;color:#52645a}
-.qt-shop-address{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.qt-shop-description{font-size:12px;color:#52645a;margin-top:4px}
-.qt-shop-description summary{cursor:pointer;color:#078b5a;font-weight:700}
-.qt-shop-description p{margin:5px 0;line-height:1.4;overflow-wrap:anywhere}
-.qt-shop-actions{display:flex;flex-wrap:wrap;gap:6px;margin-top:7px}
-.qt-shop-actions a{font-size:12px;padding:7px 10px;text-decoration:none;white-space:nowrap}
-.qt-products-heading{margin:12px 0 8px;font-size:18px}
-.qt-products-heading+.product-grid{margin-top:0}
-.qt-products-heading+.product-grid .product-card{min-width:0}
-.qt-products-heading+.product-grid .product-info{overflow-wrap:anywhere}
-.qt-products-heading+.product-grid .product-info>div:last-of-type{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-.qg-page,.qg-page .cart-item,.qg-page .order-card,.qg-page .qg-menu-list button div{min-width:0}
-.qg-page .row-btns{flex-wrap:wrap}
-.qg-page h1,.qg-page h2,.qg-page h3,.qg-page .cart-item-info{overflow-wrap:anywhere}
-.qg-search-tools input,.qg-search-tools select{width:100%;min-width:0;max-width:100%}
-.cart-item .cart-item-info,.qt-order-card-head>div:first-child{min-width:0}
-.notif-item,.qt-order-parties{overflow-wrap:anywhere}
-.qt-current-status{max-width:55%;white-space:normal;text-align:center}
-.qt-main.qg-main{padding:0 0 24px!important}
-.qg-bottomnav{height:56px!important;min-height:56px!important}
-.qg-bottomnav a{min-height:52px;padding:7px 2px 5px!important;font-size:12px!important;line-height:1.1!important}
-.qg-bottomnav a span{font-size:11px!important;margin-top:3px!important}
-.qg-bottomnav a:first-letter{font-size:19px!important}
-body{padding-bottom:calc(64px + env(safe-area-inset-bottom))}
-@media(max-width:699px){
-  .qt-shop-profile .shop-header{height:94px;border-radius:9px;padding:7px}
-  .qt-shop-profile .shop-logo-lg{width:48px!important;height:48px!important;min-width:48px!important;max-width:48px!important;border-radius:8px!important}
-  .qt-shop-details{padding-top:6px}
-  .qt-shop-title-row h1{font-size:17px}
-  .qt-products-heading+.product-grid{gap:9px}
-  .qt-products-heading+.product-grid .product-img{height:112px}
-  .qt-products-heading+.product-grid .product-info{padding:8px}
-}
-@media(max-width:380px){
-  .qt-shop-profile .shop-header{height:86px}
-  .qt-shop-actions a{font-size:11px;padding:6px 8px}
-  .qt-products-heading+.product-grid .product-img{height:98px}
-  #search-results.qg-shop-strip{grid-template-columns:repeat(3,minmax(0,1fr))!important}
-}
-</style>
-
-<style id="qt-empty-shop-photo-and-name-fit">
-/* Reserve a quiet photo frame until a shop adds its image. */
-.qg-shop-strip .shop-card .shop-logo.qt-shop-logo-empty,
-#search-results.qg-shop-strip .shop-card .shop-logo.qt-shop-logo-empty,
-.shop-header .shop-logo-lg.qt-shop-logo-empty{
-  display:block!important;flex:none;background:#f3f7f4!important;
-  border:1px solid #dce8df!important;box-shadow:none!important;
-}
-.qg-shop-strip .shop-card .shop-info,
-#search-results.qg-shop-strip .shop-card .shop-info{min-width:0;max-width:100%;width:100%;overflow:hidden}
-.qg-shop-strip .shop-card .shop-info b,
-#search-results.qg-shop-strip .shop-card .shop-info b{
-  display:block!important;white-space:nowrap!important;overflow:hidden;
-  max-width:100%;line-height:1.25;height:1.25em;text-overflow:ellipsis;
-}
-</style>
-<style id="qg-home-swipe-rails">
-/* Independent touch rails keep the customer page vertically scrollable. */
-.qg-shop-strip.qg-home-rail{
-  display:flex!important;flex-wrap:nowrap;align-items:stretch;gap:12px!important;
-  overflow-x:auto;overflow-y:hidden;scroll-snap-type:x proximity;
-  -webkit-overflow-scrolling:touch;overscroll-behavior-inline:contain;
-  scrollbar-width:none;padding:2px 2px 10px;
-}
-.qg-shop-strip.qg-home-rail::-webkit-scrollbar{display:none}
-.qg-shop-strip.qg-home-rail .shop-card{
-  flex:0 0 clamp(148px,42vw,208px);width:clamp(148px,42vw,208px);
-  scroll-snap-align:start;min-width:0;min-height:0!important;
-}
-.qg-shop-strip.qg-home-rail .shop-card .shop-logo{
-  width:92px!important;height:92px!important;min-width:92px!important;max-width:92px!important;
-}
-.qg-shop-strip.qg-home-rail .shop-info b{white-space:nowrap!important;text-overflow:ellipsis}
-.qg-shop-strip.qg-home-rail .qg-empty-hint{flex:0 0 100%}
-@media(max-width:380px){
-  .qg-shop-strip.qg-home-rail .shop-card{flex-basis:43vw;width:43vw}
-  .qg-shop-strip.qg-home-rail .shop-card .shop-logo{width:84px!important;height:84px!important;min-width:84px!important;max-width:84px!important}
-}
-@media(prefers-reduced-motion:reduce){.qg-shop-strip.qg-home-rail{scroll-behavior:auto}}
-</style>
 <style id="qt-checkout-tap-confirm">
 .qt-checkout-camera{position:relative}
 .qt-livecam-guide{position:absolute;inset:12%;border:3px solid rgba(255,255,255,.8);border-radius:22px;pointer-events:none;box-shadow:0 0 0 999px rgba(0,0,0,.1) inset;transition:border-color .2s,box-shadow .2s}
@@ -2997,7 +2712,7 @@ button,a,input,textarea,select{font:inherit}
     qtEnsureShopReviewsLoaded(shopId).then(()=>renderShopReviewsBox(shopId));
   };
 
-  window.renderCart=function(){
+  function qgRenderCartCurrent(){
     const cart=qtGetCart(),shop=cart.shopId?dbGet('qt_users',[]).find(s=>s.id===cart.shopId):null;
     const subtotal=(cart.items||[]).reduce((s,i)=>s+Number(i.price||0)*Number(i.qty||0),0);
     layout('ตะกร้า',`<section class="qg-cart-page">
@@ -3015,7 +2730,7 @@ button,a,input,textarea,select{font:inherit}
     qtRequireLoginForCheckout();
   };
 
-  window.renderCheckout=function(){
+  function qgRenderCheckoutCurrent(){
     const u=currentUser();if(!u){navigate('login');return;}
     const active=getCustomerActiveOrder(u.id);if(active){toast('มีออเดอร์ที่กำลังดำเนินการอยู่');navigate('order/'+active.id);return;}
     const cart=qtGetCart();const shop=cart.shopId?dbGet('qt_users',[]).find(s=>s.id===cart.shopId):null;
@@ -3049,7 +2764,7 @@ button,a,input,textarea,select{font:inherit}
     }).join(''):'<div class="qg-empty-new">ยังไม่มีคำสั่งซื้อ</div>'}</div>`);
   };
 
-  window.renderOrderDetail=function(id){
+  function qgRenderOrderDetailCurrent(id){
     const o=dbGet('qt_orders',[]).find(x=>x.id===id),u=currentUser();
     if(!o||!customer(u)||String(o.customerId)!==String(u.id)){toast('ไม่พบออเดอร์');navigate('orders');return;}
     const shop=dbGet('qt_users',[]).find(x=>String(x.id)===String(o.shopId));
@@ -3214,7 +2929,7 @@ button,a,input,textarea,select{font:inherit}
 </script>
 <script id="qg-market-atomic-checkout-v1">
 (function(){
- const baseRenderCart=window.renderCart,baseRenderCheckout=window.renderCheckout,baseConfirm=window.confirmOrder;
+ const baseRenderCart=qgRenderCartCurrent,baseRenderCheckout=qgRenderCheckoutCurrent,baseConfirm=window.confirmOrder;
  const valid=(a,b)=>Number.isFinite(Number(a))&&Number.isFinite(Number(b))&&Math.abs(Number(a))<=90&&Math.abs(Number(b))<=180&&!(Number(a)===0&&Number(b)===0);
  function isMarket(){const c=qtGetCart();return !!(c&&c.marketCart&&c.marketId&&c.items&&c.items.length)}
  function groups(c){const m=new Map();for(const i of c.items||[]){const k=String(i.shopProfileId||i.shopId||'');if(!m.has(k))m.set(k,[]);m.get(k).push(i)}return [...m.values()]}
@@ -3386,7 +3101,7 @@ button,a,input,textarea,select{font:inherit}
  function paintFavorites(){document.querySelectorAll('[data-qg-fav-kind]').forEach(b=>{const yes=favoriteRows.some(x=>String(x[b.dataset.qgFavKind+'_id'])===String(b.dataset.qgFavId));b.textContent=yes?'♥':'♡';b.setAttribute('aria-pressed',String(yes))})}
  window.qgToggleFavorite=async function(kind,id,button){const user=currentUser();if(!user){navigate('login');return}button.disabled=true;try{const token=await qtGetAccessToken(),found=favoriteRows.find(x=>String(x[kind+'_id'])===String(id));if(found)await qtSupabaseTable('qg_customer_favorites?id=eq.'+encodeURIComponent(found.id),{method:'DELETE',accessToken:token});else await qtSupabaseTable('qg_customer_favorites',{method:'POST',accessToken:token,body:{user_id:user.id,[kind+'_id']:id}});await loadFavorites();paintFavorites()}catch(e){toast('บันทึกรายการโปรดไม่สำเร็จ: '+e.message)}finally{button.disabled=false}};
 
- const detail=window.renderOrderDetail;
+ const detail=qgRenderOrderDetailCurrent;
  window.renderOrderDetail=function(id){detail(id);const user=currentUser(),o=dbGet('qt_orders',[]).find(x=>String(x.id)===String(id));if(!o||!user||String(o.customerId)!==String(user.id))return;
    const host=document.querySelector('.qg-page');if(!host)return;
    const support=document.createElement('button');support.className='qg-secondary';support.type='button';support.textContent='แจ้งปัญหาออเดอร์นี้';support.onclick=()=>qgOpenTicketPanel(id);host.appendChild(support);
