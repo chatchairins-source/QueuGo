@@ -698,7 +698,7 @@ async function qtHydratePublicStorefront(){
       console.warn('[QueueGo] public shop_profiles read failed:',e);
     }
     if(!Array.isArray(shops)) shops=[];
-    const activeShops=shops.filter(x=>x && String(x.status||'').toLowerCase()==='active' && x.delivery_enabled!==false);
+    const activeShops=shops.filter(x=>x && String(x.status||'').toLowerCase()==='active');
     const publicUsers=activeShops.map(x=>{
       const meta=(x.metadata&&typeof x.metadata==='object'&&!Array.isArray(x.metadata))?x.metadata:{};
       return Object.assign({},meta,{
@@ -721,7 +721,7 @@ async function qtHydratePublicStorefront(){
       const ps=await qtSupabaseTable('products?select=id,shop_id,name,description,price,delivery_price,image,available,delivery_available');
       const profileToUser=new Map(activeShops.map(x=>[String(x.id),String(x.user_id||x.id)]));
       QT_DB_CACHE.qt_products=(Array.isArray(ps)?ps:[]).map(p=>Object.assign({
-        id:p.id,shopId:profileToUser.get(String(p.shop_id))||p.shop_id,name:p.name,
+        id:p.id,shopId:profileToUser.get(String(p.shop_id))||p.shop_id,shopProfileId:p.shop_id,name:p.name,
         description:p.description,price:Number(p.price||0),image:p.image||p.image_url||'',image_url:p.image_url||p.image||'',available:p.available!==false,
         createdAt:p.created_at?new Date(p.created_at).getTime():Date.now()
       },p.metadata||{},{price:Number(p.delivery_price??p.price??0),available:p.available!==false&&p.delivery_available!==false}));
@@ -772,7 +772,7 @@ async function qtHydrateDatabase(opts){
       if(!x) return;
       if(x.id) profileMaps.shopById.set(String(x.id),x.user_id);
       if(x.user_id && x.id) profileMaps.shopByUserId.set(String(x.user_id),String(x.id));
-      if(String(x.status||'').toLowerCase()!=='active'||x.delivery_enabled===false) return;
+      if(String(x.status||'').toLowerCase()!=='active') return;
       const meta=(x.metadata&&typeof x.metadata==='object'&&!Array.isArray(x.metadata))?x.metadata:{};
       const su=Object.assign({},meta,{id:x.user_id||x.id,shopProfileId:x.id,type:'shop',status:'approved',shopName:x.shop_name||meta.shopName||'ร้านค้า',name:meta.name||x.shop_name||'ร้านค้า',phone:x.phone||meta.phone||'',address:x.address||meta.address||'',profileImage:meta.logo||meta.profileImage||meta.profile_image||x.profile_image||x.profile_photo||x.avatar_url||x.photo_url||x.image_url||x.image||x.public_logo||meta.avatarUrl||meta.avatar_url||'',lat:x.latitude??meta.lat??null,lng:x.longitude??meta.lng??null,supabase:true,_profileOnly:true});
       delete su.password; delete su.authUserId;
