@@ -2315,7 +2315,10 @@ function qtRouteRender(){
   const hash=location.hash.replace('#','')||'home'; const [page,param]=hash.split('/'); const user=currentUser();
   if(user && user.type!=='customer' && page!=='login' && page!=='register'){ renderQueueGoRoleNotice(user); return; }
   switch(page){
-    case 'home':renderHome();break;
+    case 'home':
+      renderHome();
+      if(user && user.type==='customer') setTimeout(()=>{ try{ qtAutoCaptureCustomerLocation(); }catch(e){ console.warn('auto GPS capture failed',e); } },0);
+      break;
     case 'register':renderRegister();break;
     case 'login':renderLogin();break;
     case 'dashboard':renderDashboard();break;
