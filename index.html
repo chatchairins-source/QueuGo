@@ -2902,7 +2902,7 @@ button,a,input,textarea,select{font:inherit}
     }
   }catch(e){}
   const restore=window.qtRestoreOwnUser;
-  window.qtRestoreOwnUser=async function(){
+  window.qtRestoreOwnUser=async function qgRestoreOwnUserWithPublicCache(){
     await restore();
     try{const c=JSON.parse(localStorage.getItem(cacheName)||'null');
       if(c&&Date.now()-c.at<300000){
@@ -2913,7 +2913,7 @@ button,a,input,textarea,select{font:inherit}
     }catch(e){}
   };
   const shopOpen=window.isShopOpenNow;
-  window.isShopOpenNow=function(shop){
+  window.isShopOpenNow=function qgShopOpenWithRealtimeState(shop){
     const id=shop?.shopProfileId||QT_SYNC.profileMaps?.shopByUserId?.get(shop?.id);
     const state=states.get(String(id||''));if(state&&state.is_open===false&&(!state.resume_at||new Date(state.resume_at)>new Date()))return false;
     return shopOpen(shop);
@@ -2931,7 +2931,7 @@ button,a,input,textarea,select{font:inherit}
     }catch(e){console.warn('shop availability refresh failed',e)}
   }
   const hydrate=window.qtHydrateDatabase;
-  window.qtHydrateDatabase=async function(options){
+  window.qtHydrateDatabase=async function qgHydrateDatabaseWithPublicCache(options){
     const result=await hydrate(options);
     try{const shops=dbGet('qt_users',[]).filter(u=>u.type==='shop'&&u.status==='approved').map(({id,shopProfileId,type,status,shopName,name,address,profileImage,coverImage,lat,lng})=>({id,shopProfileId,type,status,shopName,name,address,profileImage,coverImage,lat,lng}));
       const products=dbGet('qt_products',[]).filter(p=>p.available!==false).map(({id,shopId,name,description,price,image,image_url,available,createdAt})=>({id,shopId,name,description,price,image,image_url,available,createdAt}));
