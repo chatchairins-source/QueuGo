@@ -2159,51 +2159,6 @@ function renderCustomerDashboard(user){
 /* ---------- Search nearby shops ---------- */
 
 
-  function subscribe(){
-    if(!client) return;
-    if(channel){ try{client.removeChannel(channel);}catch(e){} }
-    channel=client.channel('qt-live-data-v1');
-    TABLES.forEach(table=>{
-      channel.on('postgres_changes',{event:'*',schema:'public',table},payload=>{
-        scheduleRefresh(table+':'+payload.eventType);
-      });
-    });
-    channel.subscribe(status=>{
-      window.QT_REALTIME_STATUS=status;
-      document.documentElement.dataset.qtRealtime=String(status||'').toLowerCase();
-      if(status==='SUBSCRIBED'){
-        retry=0;
-        window.dispatchEvent(new CustomEvent('qt:realtime-status',{detail:{status:'SUBSCRIBED'}}));
-      }else if(status==='CHANNEL_ERROR' || status==='TIMED_OUT'){
-        window.dispatchEvent(new CustomEvent('qt:realtime-status',{detail:{status}}));
-        retry=Math.min(retry+1,6);
-        setTimeout(()=>{ try{subscribe();}catch(e){} }, Math.min(30000,1000*Math.pow(2,retry)));
-      }
-    });
-  }
-
-  function loadClient(){
-    if(window.supabase?.createClient){
-      try{ client=window.supabase.createClient(QT_SUPABASE_CONFIG.URL,QT_SUPABASE_CONFIG.KEY,{realtime:{params:{eventsPerSecond:20}}}); subscribe(); return; }catch(e){console.warn('[QueueGo Realtime] init failed',e);}
-    }
-    const sc=document.createElement('script');
-    sc.src='https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
-    sc.async=true;
-    sc.onload=()=>{
-      try{
-        client=window.supabase.createClient(QT_SUPABASE_CONFIG.URL,QT_SUPABASE_CONFIG.KEY,{realtime:{params:{eventsPerSecond:20}}});
-        subscribe();
-      }catch(e){console.warn('[QueueGo Realtime] client init failed',e);}
-    };
-    sc.onerror=()=>console.warn('[QueueGo Realtime] CDN unavailable; fallback sync remains active');
-    document.head.appendChild(sc);
-  }
-
-  window.addEventListener('online',()=>{ if(client) subscribe(); });
-  window.addEventListener('hashchange',()=>{ if(client && window.QT_REALTIME_STATUS!=='SUBSCRIBED') subscribe(); });
-  window.QT_REALTIME_FORCE_REFRESH=()=>refreshFromRealtime('manual');
-  setTimeout(loadClient,800);
-})();
 </script>
 
 
