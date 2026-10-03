@@ -2470,9 +2470,13 @@ function qtAutoCaptureCustomerLocation(){
     setTimeout(()=>{ try{ openCustomerLocationPicker(); }catch(e){} },500);
   }, {enableHighAccuracy:true,timeout:10000,maximumAge:60000});
 }
-function customerLocationBack(){
+function customerLocationBack(ev){
+  if(ev){ ev.preventDefault(); ev.stopPropagation(); }
   try{ sessionStorage.removeItem('qg_customer_location_return'); }catch(e){}
-  navigate('home');
+  if(location.hash==='#home' || location.hash==='home'){ router(); window.scrollTo(0,0); return false; }
+  location.hash='#home';
+  setTimeout(()=>{ if((location.hash||'')==='#home'){ try{router();}catch(e){} window.scrollTo(0,0); } },0);
+  return false;
 }
 function openCustomerLocationPicker(){
   const user=currentUser(); if(!user || user.type!=='customer') return;
@@ -2480,7 +2484,7 @@ function openCustomerLocationPicker(){
   const hasSaved=qgIsValidCoordinate(user.lat,user.lng,true); const lat=hasSaved?Number(user.lat):null, lng=hasSaved?Number(user.lng):null;
   layout('เลือกที่อยู่จัดส่ง', `
     <section class="qg-location-editor">
-      <div class="qg-location-editor-head"><button type="button" class="qg-location-back" aria-label="ย้อนกลับ" onclick="customerLocationBack()">←</button><div><h2>เลือกที่อยู่จัดส่ง</h2><p>ปักหมุดตำแหน่งรับสินค้า แล้วระบุรายละเอียดที่อยู่ด้านล่าง</p></div></div>
+      <div class="qg-location-editor-head"><button type="button" class="qg-location-back" aria-label="ย้อนกลับ" onclick="return customerLocationBack(event)">←</button><div><h2>เลือกที่อยู่จัดส่ง</h2><p>ปักหมุดตำแหน่งรับสินค้า แล้วระบุรายละเอียดที่อยู่ด้านล่าง</p></div></div>
       <div id="customer-location-map" class="map-box qg-location-map"></div>
       <button type="button" class="btn-secondary btn-block" onclick="locateCustomerLocationPicker()">📍 ใช้ตำแหน่ง GPS ปัจจุบัน</button>
       <div class="coord-display">Lat: <span id="customer-lat">${hasSaved?lat.toFixed(6):'--'}</span>, Lng: <span id="customer-lng">${hasSaved?lng.toFixed(6):'--'}</span></div>
