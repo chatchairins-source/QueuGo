@@ -2451,6 +2451,19 @@ button,a,input,textarea,select{font:inherit}
     </article>`;
   }
 
+  async function qgEnsureCustomerData(scope){
+    const signed=customer(currentUser()) && !!qtAccessToken();
+    if(signed){
+      try{ await qtHydrateDatabase({light:scope==='home'}); }catch(e){ console.warn('[QueueGo] customer data hydrate failed',e); }
+    }
+    let shops=dbGet('qt_users',[]).filter(x=>x.type==='shop'&&x.shopName);
+    if(!shops.length){
+      try{ await qtHydratePublicStorefront(); }catch(e){ console.warn('[QueueGo] public storefront hydrate failed',e); }
+      shops=dbGet('qt_users',[]).filter(x=>x.type==='shop'&&x.shopName);
+    }
+    return {shops,orders:dbGet('qt_orders',[])};
+  }
+
   window.renderHome=function(){
     const u=currentUser();
     const addr=u&&customer(u)?qtCustomerLocationText(u):'เลือกที่อยู่จัดส่ง';
@@ -2464,8 +2477,8 @@ button,a,input,textarea,select{font:inherit}
       <section class="qg-section-new"><div class="qg-section-title"><h2>ร้านใกล้คุณ</h2><button class="qg-link-btn" onclick="navigate('search')">ดูทั้งหมด</button></div><div id="qg-nearby" class="qg-shop-list-new"><div class="qg-empty-new">กำลังโหลดร้าน...</div></div></section>
     `);
     const render=async()=>{
-      let ss=dbGet('qt_users',[]).filter(x=>x.type==='shop'&&x.shopName);
-      if(!ss.length){await qtHydratePublicStorefront();ss=dbGet('qt_users',[]).filter(x=>x.type==='shop'&&x.shopName);}
+      const data=await qgEnsureCustomerData('home');
+      let ss=data.shops;
       const loc=qgIsValidCoordinate(u?.lat,u?.lng,true)?{lat:Number(u.lat),lng:Number(u.lng)}:null;
       ss=ss.map(s=>{
         const shopOk=qgIsValidCoordinate(s.lat,s.lng,true);
@@ -2600,11 +2613,16 @@ button,a,input,textarea,select{font:inherit}
 
   window.renderOrders=function(){
     const u=currentUser();if(!customer(u)){navigate('login');return;}
-    const orders=dbGet('qt_orders',[]).filter(o=>String(o.customerId)===String(u.id)).sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
-    layout('ออเดอร์',`<div class="qg-page-title"><h1>ออเดอร์ของฉัน</h1></div><div class="qg-orders-list">${orders.length?orders.map(o=>{
+    layout('ออเดอร์',`<div class="qg-page-title"><h1>ออเดอร์ของฉัน</h1></div><div id="qg-orders-live" class="qg-orders-list"><div class="qg-empty-new">กำลังโหลดออเดอร์...</div></div>`);
+    qgEnsureCustomerData('orders').then(data=>{
+      if((location.hash.replace('#','')||'').split('/')[0]!=='orders')return;
+      const orders=data.orders.filter(o=>String(o.customerId)===String(u.id)).sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
+      const el=document.getElementById('qg-orders-live');if(!el)return;
+      el.innerHTML=orders.length?orders.map(o=>{
       const steps=['pending_shop','shop_accepted','preparing','waiting_rider','delivering','completed'];const idx=Math.max(0,steps.indexOf(o.status));
       return `<article class="qg-order-card-new" onclick="navigate('order/${esc(o.id)}')"><div class="qg-order-head-new"><div><div class="qg-order-no">${esc(displayOrderNumber(o))}</div><div style="font-size:11px;color:var(--qg-muted)">${esc(o.shopName||'ร้านค้า')}</div></div><span class="qg-status-pill">${esc(statusLabel(o.status).replace(/^\\S+\\s*/,''))}</span></div><p>${Array.isArray(o.items)?o.items.reduce((n,i)=>n+Number(i.qty||0),0):0} รายการ • ฿${esc(o.total||0)}</p><div class="qg-mini-progress">${steps.map((s,i)=>`<i class="${idx>=i?'done':''}"></i>`).join('')}</div></article>`;
-    }).join(''):'<div class="qg-empty-new">ยังไม่มีคำสั่งซื้อ</div>'}</div>`);
+    }).join(''):'<div class="qg-empty-new">ยังไม่มีคำสั่งซื้อ</div>';
+    }).catch(e=>{console.warn('[QueueGo] orders render failed',e);const el=document.getElementById('qg-orders-live');if(el)el.innerHTML='<div class="qg-empty-new">โหลดออเดอร์ไม่สำเร็จ กรุณาลองใหม่</div>';});
   };
 
   window.renderOrderDetail=function(id){
