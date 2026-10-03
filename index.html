@@ -1749,12 +1749,7 @@ function qtCustomerLocationText(user){
   return 'ยังไม่ได้ระบุตำแหน่ง';
 }
 function renderCustomerLocationBar(user){
-  return `<section class="qg-location-bar" id="qg-customer-location-bar" onclick="openCustomerLocationPicker()" role="button" tabindex="0">
-    <div class="qg-location-arrow" aria-hidden="true">←</div>
-    <div class="qg-location-copy"><div class="qg-location-label">ที่อยู่จัดส่ง :</div><div class="qg-location-value"><span class="qg-location-pin">●</span><span id="qg-customer-location-text">${escapeHtml(qtCustomerLocationText(user))}</span></div></div>
-    <div class="qg-location-edit">›</div>
-    <div class="qg-location-cart" onclick="event.stopPropagation();navigate('cart')">🛒<b class="cart-count-badge" style="${cartCount()>0?'':'display:none'}">${cartCount()>99?'99+':cartCount()}</b></div>
-  </section>`;
+  return ``;
 }
 async function qtReverseGeocodeCustomer(lat,lng){
   try{
