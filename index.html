@@ -9,59 +9,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;600;700&display=swap" rel="stylesheet">
 
 
-<style id="queuego-master-theme-v1">
-/* QueueGo Master Theme — final design layer. Existing functional CSS is preserved. */
-:root{
-  --qg-green:#10b981;
-  --qg-green-dark:#078b5a;
-  --qg-green-soft:#eafaf2;
-  --qg-green-line:#d8eee3;
-  --qg-bg:#f6faf8;
-  --qg-text:#17251c;
-  --qg-muted:#718078;
-  --qg-danger:#dc2626;
-  --primary:var(--qg-green);
-  --primary-dark:var(--qg-green-dark);
-  --accent:#34c98d;
-  --bg:var(--qg-bg);
-  --surface:#fff;
-  --text:var(--qg-text);
-  --muted:var(--qg-muted);
-  --line:var(--qg-green-line);
-}
-html,body{max-width:100%;overflow-x:hidden;-webkit-text-size-adjust:100%;text-size-adjust:100%;}
-body{background:var(--qg-bg);color:var(--qg-text);}
-button,input,select,textarea{font-family:inherit;}
-button{touch-action:manipulation;}
-/* One button language across the product */
-.btn-primary{background:linear-gradient(135deg,#0b9f61 0%,#10b981 100%)!important;color:#fff!important;border:1px solid #0b9f61!important;box-shadow:0 7px 16px rgba(16,185,129,.16)!important;}
-.btn-primary:hover{filter:brightness(1.02);}
-.btn-secondary{background:#fff!important;color:#087d53!important;border:1px solid #bfe7d3!important;box-shadow:none!important;}
-.btn-danger{background:#fff!important;color:#c62828!important;border:1px solid #fecaca!important;box-shadow:none!important;}
-.btn-primary:active,.btn-secondary:active,.btn-danger:active{transform:scale(.985);}
-.tab.active{background:var(--qg-green)!important;border-color:var(--qg-green)!important;color:#fff!important;box-shadow:0 5px 12px rgba(16,185,129,.14)!important;}
-.tab{color:#53645b;border-color:#dcebe3;background:#fff;}
-form input:focus,form select:focus,form textarea:focus{border-color:var(--qg-green)!important;box-shadow:0 0 0 3px rgba(16,185,129,.12)!important;}
-/* Compact services: retain shortcuts but return most of the screen to shops. */
-.qg-service-compact{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px;margin:12px 0 4px;padding:2px 0;}
-.qg-service-compact button{min-width:0;border:0;background:transparent;padding:5px 2px;display:flex;flex-direction:column;align-items:center;gap:4px;color:#53645b;cursor:pointer;}
-.qg-service-compact button span{width:34px;height:34px;border-radius:11px;background:#eafaf2;border:1px solid #d8eee3;display:grid;place-items:center;font-size:16px;line-height:1;}
-.qg-service-compact button b{font-size:10px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;}
-.qg-service-compact button:active span{transform:scale(.94);}
-/* Shops become the main visual area. */
-.qg-section.qg-shops-main{margin-top:18px;}
-.qg-shop-strip{grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;}
-.qg-shop-strip .shop-card{min-height:150px;border-radius:18px!important;background:#fff;border:1px solid #e1eee7;box-shadow:0 6px 18px rgba(20,60,40,.055);overflow:hidden;}
-.qg-shop-strip .shop-card .shop-info{padding:14px;}
-.qg-shop-strip .shop-card .shop-info b{display:block;font-size:15px;color:#1d3026;margin-bottom:5px;}
-.qg-shop-strip .shop-card .shop-info div{font-size:12px;color:#748078;line-height:1.45;}
-.qg-shop-strip + *{margin-top:0;}
-/* Responsive: never force a fixed desktop width. */
-@media(max-width:900px){.qg-page{padding-left:clamp(12px,4vw,28px);padding-right:clamp(12px,4vw,28px);}.qg-shop-strip{grid-template-columns:repeat(2,minmax(0,1fr));}}
-@media(max-width:600px){.qg-service-compact{grid-template-columns:repeat(6,1fr);gap:2px;margin-top:8px;}.qg-service-compact button span{width:30px;height:30px;border-radius:9px;font-size:14px;}.qg-service-compact button b{font-size:9px;}.qg-shop-strip{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;}.qg-shop-strip .shop-card{min-height:138px;border-radius:16px!important;}.qg-shop-strip .shop-card .shop-info{padding:11px;}.qg-shop-strip .shop-card .shop-info b{font-size:14px;}}
-@media(max-width:390px){.qg-service-compact{gap:0;}.qg-service-compact button span{width:27px;height:27px;font-size:13px;}.qg-service-compact button b{font-size:8.5px;}.qg-shop-strip{grid-template-columns:1fr 1fr;gap:8px;}}
-@media(min-width:1100px){.qg-shop-strip{grid-template-columns:repeat(4,minmax(0,1fr));}.qg-shop-strip .shop-card{min-height:170px;}}
-</style>
+
 
 <style id="queuego-v27-unified-card-image-system">
 :root{--qg-card-radius:16px;--qg-card-gap:12px;--qg-shop-size:96px;--qg-category-size:64px;}
@@ -100,19 +48,7 @@ html,body,#app{max-width:100%;overflow-x:hidden;}
 @media(min-width:601px) and (max-width:1100px){.product-card .product-img{height:150px!important;min-height:150px!important;max-height:150px!important;flex-basis:150px!important}}
 @media(min-width:1101px){.product-grid{grid-template-columns:repeat(3,minmax(0,1fr))!important}.product-card .product-img{height:180px!important;min-height:180px!important;max-height:180px!important;flex-basis:180px!important}}
 </style>
-<style id="qg-current-ui-foundation">
-.qg-logo-lockup{display:inline-flex;align-items:center;gap:7px;white-space:nowrap;font-family:'Prompt',system-ui,sans-serif;font-weight:800;line-height:1;color:#17191d}
-.qg-logo-lockup>img{display:block;width:34px!important;height:34px!important;max-width:34px!important;max-height:34px!important;object-fit:contain;flex:0 0 34px}
-.qg-logo-lockup>span{font-size:18px;letter-spacing:-.5px}.qg-logo-lockup>span>span{color:#ef233c}
-.qg-auth-lockup .qg-logo-lockup{flex-direction:column;gap:8px;margin-bottom:16px}.qg-auth-lockup .qg-logo-lockup>img{width:72px!important;height:72px!important;max-width:72px!important;max-height:72px!important;flex-basis:72px}.qg-auth-lockup .qg-logo-lockup>span{font-size:20px}
-.qg-new-topbar{min-height:60px}.qg-new-brand{display:flex!important;align-items:center!important;min-width:0}.qg-new-brand .qg-logo-lockup{overflow:hidden}
-.qg-location-editor{width:100%;max-width:720px;margin:0 auto;padding:12px 0 28px}
-.qg-location-editor-head{display:flex;align-items:flex-start;gap:12px;margin:2px 0 14px}.qg-location-editor-head>div{min-width:0;flex:1}.qg-location-editor-head h2{margin:0 0 4px;font-size:24px;line-height:1.25}.qg-location-editor-head p{margin:0;color:#777d86;font-size:13px;line-height:1.5}
-.qg-location-back{flex:0 0 40px;width:40px;height:40px;border:0;border-radius:12px;background:#f3f4f6;display:grid;place-items:center;color:#222}
-.qg-location-map{width:100%;height:280px!important;min-height:280px!important;max-height:280px!important;border-radius:18px!important;overflow:hidden;margin:0 0 12px;background:#eef1f3}
-.qg-location-editor .btn-block{width:100%;min-height:48px;border-radius:14px;margin:10px 0}.qg-location-editor .coord-display{font-size:12px;color:#69707a;margin:8px 2px}.qg-location-editor label{display:block;font-size:13px;font-weight:700;margin:12px 2px 6px}.qg-location-address{display:block;width:100%;min-height:92px;resize:vertical;border:1px solid #dfe2e6;border-radius:14px;padding:12px;font:inherit;box-sizing:border-box;background:#fff}
-@media(max-width:600px){.qg-new-topbar{padding:8px 12px}.qg-new-content{padding-left:12px;padding-right:12px}.qg-logo-lockup>img{width:30px!important;height:30px!important;max-width:30px!important;max-height:30px!important;flex-basis:30px}.qg-logo-lockup>span{font-size:17px}.qg-auth-lockup .qg-logo-lockup>img{width:68px!important;height:68px!important;max-width:68px!important;max-height:68px!important;flex-basis:68px}.qg-location-map{height:250px!important;min-height:250px!important;max-height:250px!important}}
-</style></head>
+</head>
 <body>
 
 <div id="app"></div>
@@ -2200,7 +2136,16 @@ function renderCustomerDashboard(user){
 </script>
 
 
-<style id="queuego-ui-rebuild-v1">
+<style id="queuego-current-customer-ui-v3">
+:root{--qg-red:#ef3340;--qg-green:#18b77a;--qg-ink:#17191d;--qg-muted:#73777f;--qg-line:#eceef1;--qg-bg:#f7f7f8;--qg-card:#fff;--qg-radius:18px;--qg-shadow:0 8px 28px rgba(20,24,30,.07)}
+html,body,#app{width:100%;max-width:100%;min-height:100%;margin:0;background:var(--qg-bg);color:var(--qg-ink);overflow-x:hidden}
+body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro Text","Prompt",system-ui,sans-serif;overflow-y:auto;-webkit-overflow-scrolling:touch;touch-action:pan-y}
+.qg-new-shell{min-height:100dvh;background:var(--qg-bg)}.qg-new-topbar{position:sticky;top:0;z-index:300;background:rgba(255,255,255,.96);backdrop-filter:blur(18px);border-bottom:1px solid rgba(0,0,0,.05);padding:10px 16px}.qg-new-topbar-inner{max-width:720px;margin:auto;display:flex;align-items:center;justify-content:space-between;gap:12px}.qg-new-brand{display:flex;align-items:center;min-width:0}.qg-logo-lockup{display:inline-flex;align-items:center;gap:7px;font-weight:800;white-space:nowrap}.qg-logo-lockup img{width:34px!important;height:34px!important;max-width:34px!important;object-fit:contain}.qg-logo-lockup>span{font-size:18px}.qg-logo-lockup>span>span{color:var(--qg-red)}.qg-new-top-actions{display:flex;gap:8px;align-items:center}.qg-icon{width:40px;height:40px;border:0;border-radius:13px;background:#f3f4f6;color:#24272d;display:grid;place-items:center}.qg-icon svg{width:20px;height:20px;stroke:currentColor}.qg-new-content{width:100%;max-width:720px;margin:auto;box-sizing:border-box;padding:0 14px 110px;min-height:0}.qg-page-title{display:flex;align-items:center;gap:10px;margin:20px 0 14px}.qg-page-title h1,.qg-page-title h2{margin:0;font-size:24px;line-height:1.25}.qg-back{width:40px;height:40px;border:0;border-radius:12px;background:#f3f4f6;display:grid;place-items:center}.qg-bottom-new{position:fixed;left:0;right:0;bottom:0;z-index:280;display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;padding:6px 8px calc(6px + env(safe-area-inset-bottom));background:rgba(255,255,255,.96);backdrop-filter:blur(18px);border-top:1px solid #e9eaec}.qg-bottom-new a{text-align:center;text-decoration:none;color:#8a8d93;font-size:10px;font-weight:700}.qg-bottom-new a.active{color:var(--qg-red)}
+.qg-search-page,.qg-profile-new,.qg-orders-list,.qg-checkout,.qg-cart-new,.qg-location-editor,.notif-panel{width:100%;box-sizing:border-box}.qg-search-input,input,textarea,select{box-sizing:border-box;max-width:100%}.qg-search-input{width:100%;min-height:50px;border:1px solid var(--qg-line);border-radius:15px;background:#fff;padding:0 14px}.qg-filter-row{display:flex;gap:8px;overflow:auto;padding:12px 0}.qg-filter{border:1px solid var(--qg-line);background:#fff;border-radius:999px;padding:9px 14px;white-space:nowrap}.qg-filter.active{border-color:#ffc6cb;background:#fff2f3;color:var(--qg-red)}
+.qg-location-editor{padding:12px 0 28px}.qg-location-editor-head{display:flex;gap:12px;align-items:flex-start;margin:2px 0 14px}.qg-location-editor-head h2{margin:0 0 4px;font-size:24px}.qg-location-editor-head p{margin:0;color:var(--qg-muted);font-size:13px}.qg-location-back{width:40px;height:40px;flex:0 0 40px;border:0;border-radius:12px;background:#f3f4f6;display:grid;place-items:center}.qg-location-map{width:100%;height:280px!important;min-height:280px!important;max-height:280px!important;border-radius:18px!important;overflow:hidden;background:#eef1f3}.qg-location-address{width:100%;min-height:92px;border:1px solid var(--qg-line);border-radius:14px;padding:12px;background:#fff}.qg-location-editor .btn-block{width:100%;min-height:48px;border-radius:14px}
+.qg-auth-lockup .qg-logo-lockup{flex-direction:column;gap:8px}.qg-auth-lockup .qg-logo-lockup img{width:72px!important;height:72px!important;max-width:72px!important}.qg-chat-image{display:block;max-width:min(220px,65vw);max-height:260px;object-fit:contain;border-radius:12px}.qg-v22-overlay{position:fixed;inset:0;z-index:100000;background:#0b24239c;display:grid;place-items:center;padding:16px}.qg-v22-dialog{width:min(100%,520px);max-height:92dvh;overflow:auto;background:#fff;border-radius:20px;padding:18px;color:var(--qg-ink);box-shadow:var(--qg-shadow)}.qg-v22-dialog form{display:grid;gap:11px}.qg-v22-dialog select,.qg-v22-dialog textarea,.qg-v22-dialog input{width:100%;padding:11px;border:1px solid var(--qg-line);border-radius:11px;background:#fff}.qg-v22-dialog form button{border:0;border-radius:12px;background:var(--qg-red);color:#fff;padding:13px;font-weight:750}.qg-menu-item-new{position:relative}.qg-v22-favorite{position:absolute;left:62px;top:18px;z-index:2;width:30px;height:30px;border:1px solid var(--qg-line);border-radius:50%;background:#fff;color:var(--qg-red);font-size:23px;display:grid;place-items:center;padding:0}
+@media(max-width:420px){.qg-new-topbar{padding:8px 12px}.qg-new-content{padding-left:12px;padding-right:12px}.qg-logo-lockup img{width:30px!important;height:30px!important;max-width:30px!important}.qg-location-map{height:250px!important;min-height:250px!important;max-height:250px!important}}
+</style><style id="queuego-ui-rebuild-v1">
 :root{
   --qg-red:#ef3340;
   --qg-red-dark:#d91f2d;
@@ -2846,9 +2791,7 @@ function qtRequireLoginForCheckout(){const user=currentUser();if(user&&user.type
  window.qgMarketRoute=function(page,param){if(page!=='market-order')return false;try{destroyMaps?.()}catch(e){}renderMarketOrder(param);return true};
 })();
 </script>
-<style id="qg-customer-v21-chat-style">
-.qg-chat-image{display:block;max-width:min(220px,65vw);max-height:260px;object-fit:contain;border-radius:12px}
-</style>
+
 <script id="qg-customer-v21-integration">
 (function(){
   const cacheName='qg-customer-public-fast-v22';
@@ -2938,9 +2881,7 @@ function qtRequireLoginForCheckout(){const user=currentUser();if(user&&user.type
  window.qgLoadTickets=async function(){const box=document.getElementById('qg-ticket-list');if(!box)return;try{const rows=await request('qg_support_tickets?select=id,category,details,status,order_id,created_at,admin_note,evidence_path&order=created_at.desc&limit=50');if(!box.isConnected)return;box.innerHTML=rows?.length?rows.map(t=>'<article><b>'+escText(names[t.category]||t.category)+'</b><span>'+escText(t.status)+'</span><p>'+escText(t.details)+'</p><small>'+new Date(t.created_at).toLocaleString('th-TH')+(t.admin_note?' · ฝ่ายดูแล: '+escText(t.admin_note):'')+'</small>'+(t.evidence_path?'<button type="button" data-path="'+escText(t.evidence_path)+'" onclick="qgOpenEvidence(this.dataset.path)">ดูหลักฐาน</button>':'')+'</article>').join(''):'ยังไม่มีเรื่องที่แจ้ง'}catch(e){box.textContent='โหลดเรื่องที่แจ้งไม่สำเร็จ: '+e.message}};
 })();
 </script>
-<style id="qg-v22-ticket-style">
-.qg-v22-overlay{position:fixed;inset:0;z-index:100000;background:#0b24239c;display:grid;place-items:center;padding:16px;font-family:-apple-system,BlinkMacSystemFont,system-ui,sans-serif}.qg-v22-dialog{width:min(100%,520px);max-height:92dvh;overflow:auto;background:white;border-radius:20px;padding:18px;color:#193b32;box-shadow:0 22px 60px #0b262842}.qg-v22-dialog header{display:flex;justify-content:space-between;align-items:center;font-size:19px}.qg-v22-dialog header button{border:0;background:#eef6f1;border-radius:10px;padding:8px 12px}.qg-v22-dialog p{line-height:1.5}.qg-v22-dialog form{display:grid;gap:11px}.qg-v22-dialog label{display:grid;gap:5px;font-size:13px;font-weight:650}.qg-v22-dialog select,.qg-v22-dialog textarea,.qg-v22-dialog input{box-sizing:border-box;width:100%;padding:11px;border:1px solid #cee6d9;border-radius:11px;background:#fff;font:inherit;color:#193b32}.qg-v22-dialog textarea{min-height:95px;resize:vertical}.qg-v22-dialog form button{border:0;border-radius:12px;background:#0d9f73;color:white;padding:13px;font-weight:750}.qg-v22-dialog article{border:1px solid #dcebe3;border-radius:12px;padding:11px;margin:8px 0;overflow-wrap:anywhere}.qg-v22-dialog article span{float:right;color:#0b9269}.qg-v22-dialog article small{color:#73887c}.qg-v22-dialog article button{display:block;margin-top:7px;border:0;background:#e5f7ee;color:#087556;border-radius:9px;padding:8px}
-</style>
+
 
 <script id="qg-v22-customer-operations">
 (function(){
@@ -2973,28 +2914,12 @@ function qtRequireLoginForCheckout(){const user=currentUser();if(user&&user.type
 })();
 </script>
 
-<style id="qg-v22-customer-operations-style">
-.qg-menu-item-new{position:relative}
-.qg-v22-favorite{position:absolute;left:62px;top:18px;right:auto;z-index:2;width:30px;height:30px;border:1px solid #dce8df;border-radius:50%;background:rgba(255,255,255,.94);color:#dc3246;font-size:23px;line-height:1;display:grid;place-items:center;padding:0;box-shadow:0 2px 7px rgba(0,0,0,.08)}
-.qg-v22-favorite[aria-pressed="true"]{background:#fff0f2}
-@media(max-width:699px){.qg-v22-favorite{left:56px;top:17px}}
-</style>
+
 <link rel="stylesheet" href="market.css?v=20261002-herofix6">
 <script defer src="market.js?v=20261002-multishop1"></script>
 
-<style id="qg-customer-content-height-fix-20261002">
-/* Customer pages should size to their content; the fixed bottom nav overlays the viewport without forcing an empty full-screen content block. */
-.qg-new-shell{min-height:0!important}
-.qg-page{min-height:0!important}
-.qg-new-content{min-height:0!important}
-.qg-bottom-new{grid-template-columns:repeat(4,minmax(0,1fr))!important}
-</style>
-<style id="qg-viewport-scroll-baseline-20261002">
-/* QueueGo mobile baseline: one vertical document scroller; zoom is controlled by viewport metadata, not global touch cancellation. */
-html,body{width:100%;max-width:100%;height:auto;min-height:100%;overflow-x:hidden}
-body{overflow-y:auto;-webkit-overflow-scrolling:touch;touch-action:pan-y}
-#app{width:100%;max-width:100%;min-height:100dvh;overflow:visible;touch-action:auto}
-</style>
+
+
 
 </body>
 </html>
