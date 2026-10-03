@@ -2733,6 +2733,7 @@ button,a,input,textarea,select{font:inherit}
       ${o.status==='completed'?'<div id="order-review-box" style="margin-top:12px"></div>':''}`);
     if(mapAvailable)initTrackingMap(o);
     if(o.status==='completed')renderOrderReviewBox(o);
+    try{window.qgEnhanceOrderDetail?.(id)}catch(e){console.warn(e)}
   };
 
   window.renderCustomerProfile=function(user=currentUser()){
@@ -3019,15 +3020,14 @@ button,a,input,textarea,select{font:inherit}
  async function loadFavorites(){const user=currentUser();if(!user)return [];const token=await qtGetAccessToken();favoriteRows=await qtSupabaseTable('qg_customer_favorites?select=id,shop_id,product_id,created_at&order=created_at.desc',{accessToken:token});return favoriteRows}
  function paintFavorites(){document.querySelectorAll('[data-qg-fav-kind]').forEach(b=>{const yes=favoriteRows.some(x=>String(x[b.dataset.qgFavKind+'_id'])===String(b.dataset.qgFavId));b.textContent=yes?'♥':'♡';b.setAttribute('aria-pressed',String(yes))})}
  window.qgToggleFavorite=async function(kind,id,button){const user=currentUser();if(!user){navigate('login');return}button.disabled=true;try{const token=await qtGetAccessToken(),found=favoriteRows.find(x=>String(x[kind+'_id'])===String(id));if(found)await qtSupabaseTable('qg_customer_favorites?id=eq.'+encodeURIComponent(found.id),{method:'DELETE',accessToken:token});else await qtSupabaseTable('qg_customer_favorites',{method:'POST',accessToken:token,body:{user_id:user.id,[kind+'_id']:id}});await loadFavorites();paintFavorites()}catch(e){toast('บันทึกรายการโปรดไม่สำเร็จ: '+e.message)}finally{button.disabled=false}};
-
- const detail=window.renderOrderDetail;
- window.renderOrderDetail=function(id){detail(id);const user=currentUser(),o=dbGet('qt_orders',[]).find(x=>String(x.id)===String(id));if(!o||!user||String(o.customerId)!==String(user.id))return;
+ window.qgEnhanceOrderDetail=function(id){const user=currentUser(),o=dbGet('qt_orders',[]).find(x=>String(x.id)===String(id));if(!o||!user||String(o.customerId)!==String(user.id))return;
    const host=document.querySelector('.qg-page');if(!host)return;
    const support=document.createElement('button');support.className='qg-secondary';support.type='button';support.textContent='แจ้งปัญหาออเดอร์นี้';support.onclick=()=>qgOpenTicketPanel(id);host.appendChild(support);
    if(!['rider_to_shop','picked_up','delivering','arrived','assigned','in_progress'].includes(o.status))return;
    const pin=document.createElement('section');pin.className='qt-track-section';pin.innerHTML='<h3>รหัสยืนยันการส่งมอบ</h3><p id="qg-customer-pin">กำลังโหลด PIN จากระบบ...</p><small>แจ้งรหัส 6 หลักให้ไรเดอร์เมื่อได้รับสินค้าครบแล้ว</small>';host.insertBefore(pin,support);
    qtGetAccessToken().then(t=>qtSupabaseTable('rpc/qg_customer_delivery_pin',{method:'POST',accessToken:t,body:{p_order_id:id}})).then(code=>{if(pin.isConnected)pin.querySelector('#qg-customer-pin').textContent=String(code)}).catch(e=>{if(pin.isConnected)pin.querySelector('#qg-customer-pin').textContent='ยังไม่สามารถแสดง PIN: '+e.message});
  };
+
  const add=window.addToCart;
  window.addToCart=function(id){if(!currentUser()){try{sessionStorage.setItem('qg_after_login','shop-view')}catch(e){}navigate('login');return}return add(id)};
 })();
