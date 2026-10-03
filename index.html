@@ -483,6 +483,8 @@ input, select, textarea, button {
 .qg-ai-category{flex:0 0 70px;border:0;background:transparent;padding:0;text-align:center;color:#30343b;cursor:pointer}.qg-ai-category img{width:64px;height:64px;object-fit:cover;border-radius:18px;display:block;margin:auto;box-shadow:0 5px 14px rgba(15,23,42,.08)}.qg-ai-category b{display:block;font-size:11px;margin-top:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .qg-service-ai-icon{width:42px!important;height:42px!important;display:block!important;margin:0 auto 5px!important}.qg-service-ai-icon img{width:42px;height:42px;object-fit:cover;border-radius:13px;display:block}.qg-service-compact button>span.qg-service-ai-icon{font-size:0}
 .qg-success-image-wrap{display:flex;justify-content:center;margin:4px 0 12px}.qg-success-image{width:min(230px,70vw);height:180px;object-fit:cover;border-radius:22px;box-shadow:0 10px 24px rgba(15,23,42,.08)}
+
+.qg-page-title{display:flex;align-items:center;gap:10px;margin:4px 0 18px}.qg-page-title h2{margin:0}.qg-page-title-icon{width:28px;height:28px;display:grid;place-items:center;color:#111827}.qg-page-title-icon svg{width:26px;height:26px;display:block}
 </style>
 
 <style id="thai-rider-address-style">
@@ -1754,7 +1756,7 @@ function renderNotifications(){
   const list = getNotifications(user.id);
   markAllNotifRead(user.id);
   layout('การแจ้งเตือน', `
-    <h2>🔔 การแจ้งเตือน</h2>
+    <div class="qg-page-title"><span class="qg-page-title-icon" aria-hidden="true">${qgIcon('bell')}</span><h2>การแจ้งเตือน</h2></div>
     <div class="notif-panel">
       ${list.length ? list.map(n=>`
         <div class="notif-item" onclick="${n.link&&/^[\w\-\/]+$/.test(String(n.link))?`navigate('${n.link}')`:''}">
