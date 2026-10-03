@@ -2683,6 +2683,19 @@ button,a,input,textarea,select{font:inherit}
 </script>
 
 
+<script id="qg-current-cart-business">
+function qtCartOwnerKey(){const user=currentUser();return user&&user.type==='customer'?user.id:'guest'}
+function qtCartKey(){return 'qt_cart_'+qtCartOwnerKey()}
+function qtGetCart(){return dbGet(qtCartKey(),{shopId:null,items:[]})}
+function qtSetCart(cart){dbSet(qtCartKey(),cart)}
+function qtMigrateGuestCartToUser(userId){if(!userId)return;const guest=dbGet('qt_cart_guest',{shopId:null,items:[]});if(!guest?.items?.length)return;const mine=dbGet('qt_cart_'+userId,{shopId:guest.shopId||null,items:[]});if(!mine.items?.length)dbSet('qt_cart_'+userId,guest);else if(guest.shopId===mine.shopId){for(const gi of guest.items){const mi=mine.items.find(x=>x.productId===gi.productId);if(mi)mi.qty=Number(mi.qty||0)+Number(gi.qty||0);else mine.items.push(gi)}dbSet('qt_cart_'+userId,mine)}try{localStorage.removeItem('qt_cart_guest')}catch(e){}try{sessionStorage.removeItem('qt_cart_guest')}catch(e){}delete QT_DB_CACHE.qt_cart_guest}
+function cartCount(){return (qtGetCart().items||[]).reduce((s,i)=>s+Number(i.qty||0),0)}
+function updateCartCountUI(){const count=cartCount();document.querySelectorAll('#qt-cart-count').forEach(el=>el.textContent=String(count));document.querySelectorAll('.cart-count-badge').forEach(el=>{if(count>0){el.textContent=count>99?'99+':String(count);el.style.display=''}else el.style.display='none'})}
+function addToCart(productId){const product=dbGet('qt_products',[]).find(p=>String(p.id)===String(productId));if(!product){toast('ไม่พบสินค้า');return}let cart=qtGetCart();if(cart.shopId&&String(cart.shopId)!==String(product.shopId)){if(!confirm('ตะกร้าปัจจุบันเป็นของร้านอื่น ต้องการล้างตะกร้าและเริ่มใหม่หรือไม่?'))return;cart={shopId:product.shopId,items:[]}}cart.shopId=product.shopId;const existing=cart.items.find(i=>String(i.productId)===String(productId));if(existing)existing.qty=Number(existing.qty||0)+1;else cart.items.push({productId:product.id,shopId:product.shopId,name:product.name,price:Number(product.price||0),image:product.image,qty:1});qtSetCart(cart);updateCartCountUI();toast('เพิ่มลงตะกร้าแล้ว')}
+function changeQty(productId,delta){const cart=qtGetCart(),item=(cart.items||[]).find(i=>String(i.productId)===String(productId));if(!item){toast('สินค้านี้ไม่อยู่ในตะกร้าแล้ว');renderCart();return}item.qty=Number(item.qty||0)+Number(delta||0);if(item.qty<=0)cart.items=cart.items.filter(i=>String(i.productId)!==String(productId));if(!cart.items.length)cart.shopId=null;qtSetCart(cart);updateCartCountUI();renderCart()}
+function removeFromCart(productId){const cart=qtGetCart();cart.items=(cart.items||[]).filter(i=>String(i.productId)!==String(productId));if(!cart.items.length)cart.shopId=null;qtSetCart(cart);updateCartCountUI();renderCart()}
+function qtRequireLoginForCheckout(){const user=currentUser();if(user&&user.type==='customer'){navigate('checkout');return}try{sessionStorage.setItem('qg_after_login','checkout')}catch(e){}navigate('login')}
+</script>
 <script id="qg-atomic-cash-checkout-v1">
 (function(){
   // The same order ID is reused after a network timeout. The server owns prices and all ledger rows.
