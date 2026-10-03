@@ -2780,6 +2780,7 @@ button,a,input,textarea,select{font:inherit}
     destroyMaps();qtStopCheckoutFaceCam();
     const hash=location.hash.replace('#','')||'home';const [page,param]=hash.split('/');const u=currentUser();
     if(u&&u.type!=='customer'&&page!=='login'&&page!=='register'){renderQueueGoRoleNotice(u);return;}
+    if(window.qgMarketRoute?.(page,param)) return;
     switch(page){
       case 'home':renderHome();break;case 'register':renderRegister();break;case 'login':renderLogin();break;
       case 'dashboard':renderCustomerProfile();break;case 'profile':renderCustomerProfile();break;case 'search':renderSearch(param);break;
@@ -2923,13 +2924,13 @@ button,a,input,textarea,select{font:inherit}
    try{await qtHydrateDatabase({light:false})}catch(e){console.warn(e)}
    toast('สั่งซื้อสำเร็จ ฿'+Number(result.total_amount||0).toLocaleString('th-TH'));navigate('market-order/'+state.id);
  };
- const oldRoute=window.qtRouteRender;
+
  window.renderMarketOrder=async function(id){
    layout('คำสั่งซื้อจากตลาด','<section class="qg-cart-page"><div class="qg-page-title"><button class="qg-back" onclick="navigate(\'orders\')">‹</button><h1>คำสั่งซื้อจากตลาด</h1></div><div id="qg-market-track" class="qg-checkout-card">กำลังโหลด...</div></section>');
    try{const t=await qtGetAccessToken(),m=(await qtSupabaseTable('market_orders?select=*&id=eq.'+encodeURIComponent(id)+'&limit=1',{accessToken:t}))?.[0],os=await qtSupabaseTable('orders?select=id,order_number,status,subtotal,shop_id&market_order_id=eq.'+encodeURIComponent(id)+'&order=created_at.asc',{accessToken:t});const box=document.getElementById('qg-market-track');if(!box)return;if(!m)throw Error('ไม่พบคำสั่งซื้อ');box.innerHTML='<b>ตลาด · '+Number(m.shop_count)+' ร้าน</b><div style="margin:8px 0">ยอดรวม ฿'+Number(m.total_amount).toLocaleString('th-TH')+'</div>'+(os||[]).map((o,n)=>'<div style="padding:8px 0;border-top:1px solid var(--qg-line)">จุดรับ '+(n+1)+' · '+escapeHtml(o.order_number||'')+' <b style="float:right">'+escapeHtml(o.status)+'</b></div>').join('')}
    catch(e){const b=document.getElementById('qg-market-track');if(b)b.textContent='โหลดคำสั่งซื้อไม่สำเร็จ: '+e.message}
  };
- window.qtRouteRender=function(){const hash=location.hash.replace('#','')||'home',[page,param]=hash.split('/');if(page==='market-order'){destroyMaps?.();renderMarketOrder(param);return}return oldRoute.apply(this,arguments)};
+ window.qgMarketRoute=function(page,param){if(page!=='market-order')return false;try{destroyMaps?.()}catch(e){}renderMarketOrder(param);return true};
 })();
 </script>
 <style id="qg-customer-v21-chat-style">
