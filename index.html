@@ -2471,11 +2471,7 @@ function qtAutoCaptureCustomerLocation(){
   }, {enableHighAccuracy:true,timeout:10000,maximumAge:60000});
 }
 function customerLocationBack(){
-  try{
-    const previous=sessionStorage.getItem('qg_customer_location_return');
-    if(previous){ sessionStorage.removeItem('qg_customer_location_return'); navigate(previous); return; }
-  }catch(e){}
-  if(history.length>1){ history.back(); return; }
+  try{ sessionStorage.removeItem('qg_customer_location_return'); }catch(e){}
   navigate('home');
 }
 function openCustomerLocationPicker(){
