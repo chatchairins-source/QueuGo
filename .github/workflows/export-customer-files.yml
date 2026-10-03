@@ -1,0 +1,17 @@
+name: Export Customer Files
+on:
+  push:
+    branches: [export-customer-files-20261003]
+  workflow_dispatch:
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/upload-artifact@v4
+        with:
+          name: queuego-customer-latest
+          path: |
+            index.html
+            market.js
+          if-no-files-found: error
