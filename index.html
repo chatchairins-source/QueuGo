@@ -48,7 +48,15 @@ html,body,#app{max-width:100%;overflow-x:hidden;}
 @media(min-width:601px) and (max-width:1100px){.product-card .product-img{height:150px!important;min-height:150px!important;max-height:150px!important;flex-basis:150px!important}}
 @media(min-width:1101px){.product-grid{grid-template-columns:repeat(3,minmax(0,1fr))!important}.product-card .product-img{height:180px!important;min-height:180px!important;max-height:180px!important;flex-basis:180px!important}}
 </style>
-</head>
+<style id="qg-current-polish-20261003">
+.qg-new-content{padding-top:10px}.qg-page-title{margin:10px 0 14px;padding:0!important}.qg-page-title h1{font-size:24px!important;letter-spacing:-.4px}.qg-back{background:#fff!important;box-shadow:0 1px 0 rgba(0,0,0,.03)}
+.qg-search-page{padding-top:8px}.qg-search-input{height:52px!important;font-size:16px!important;box-shadow:0 2px 10px rgba(20,24,30,.035)}.qg-filter-row{padding:10px 0 18px!important}.qg-filter{font-size:13px;font-weight:700}
+.qg-search-result,.qg-shop-list-new{display:flex;flex-direction:column;gap:10px}.qg-shop-card-new{padding:10px!important;border:1px solid #eceef1!important;border-radius:18px!important;box-shadow:0 4px 18px rgba(20,24,30,.04)!important}.qg-shop-card-new>img{width:92px!important;height:82px!important;border-radius:14px!important;object-fit:cover}
+.qg-empty-new{min-height:160px;display:grid;place-items:center;color:#8a8d93;font-size:14px}
+.qg-cart-page{padding-top:8px}.qg-cart-page>.qg-empty-new{background:#fff;border:1px solid #eceef1;border-radius:18px;margin-top:8px}
+.qg-location-editor{background:#fff;border-radius:22px;padding:18px 14px 20px!important;box-shadow:0 8px 28px rgba(20,24,30,.05)}.qg-location-map{border-radius:18px!important}.qg-location-editor .btn-block{background:#18b77a!important;color:#fff!important;border:0!important;font-weight:800}.qg-location-address{font-size:16px}
+@media(max-width:420px){.qg-new-content{padding-top:6px}.qg-page-title{margin-top:8px}.qg-location-editor{margin-top:0}}
+</style></head>
 <body>
 
 <div id="app"></div>
@@ -686,7 +694,7 @@ async function qtHydratePublicStorefront(){
       }
     }catch(e){}
     let shops=[];
-    try{ shops=await qtSupabaseTable('shop_profiles?select=id,shop_name,status,public_category,public_logo,public_cover,public_open_time,public_close_time,public_description,address,latitude,longitude,delivery_enabled'); }catch(e){
+    try{ shops=await qtSupabaseTable('shop_profiles?select=id,user_id,shop_name,status,public_category,public_logo,public_cover,public_open_time,public_close_time,public_description,address,latitude,longitude,delivery_enabled'); }catch(e){
       console.warn('[QueueGo] public shop_profiles read failed:',e);
     }
     if(!Array.isArray(shops)) shops=[];
@@ -1854,7 +1862,7 @@ function qgShopStrip(id, list){
 }
 async function renderHomeShopSections(){
   let shops = dbGet('qt_users',[]).filter(u=>u.type==='shop' && u.shopName);
-  if(!shops.length){ await qtEnsurePublicShopsLoaded(); shops = dbGet('qt_users',[]).filter(u=>u.type==='shop' && u.shopName); }
+  if(!shops.length){ await qtHydratePublicStorefront(); shops = dbGet('qt_users',[]).filter(u=>u.type==='shop' && u.shopName); }
   const openSec=document.getElementById('home-sec-open');
   const catBox=document.getElementById('home-categories');
   if(!shops.length){
@@ -2444,7 +2452,7 @@ button,a,input,textarea,select{font:inherit}
     `);
     const render=async()=>{
       let ss=dbGet('qt_users',[]).filter(x=>x.type==='shop'&&x.shopName);
-      if(!ss.length){await qtEnsurePublicShopsLoaded();ss=dbGet('qt_users',[]).filter(x=>x.type==='shop'&&x.shopName);}
+      if(!ss.length){await qtHydratePublicStorefront();ss=dbGet('qt_users',[]).filter(x=>x.type==='shop'&&x.shopName);}
       const loc=qgIsValidCoordinate(u?.lat,u?.lng,true)?{lat:Number(u.lat),lng:Number(u.lng)}:null;
       ss=ss.map(s=>{
         const shopOk=qgIsValidCoordinate(s.lat,s.lng,true);
@@ -2474,7 +2482,7 @@ button,a,input,textarea,select{font:inherit}
     let filter='';
     const run=async()=>{
       let ss=dbGet('qt_users',[]).filter(s=>s.type==='shop'&&s.shopName);
-      if(!ss.length){await qtEnsurePublicShopsLoaded();ss=dbGet('qt_users',[]).filter(s=>s.type==='shop'&&s.shopName);}
+      if(!ss.length){await qtHydratePublicStorefront();ss=dbGet('qt_users',[]).filter(s=>s.type==='shop'&&s.shopName);}
       const u=currentUser(),loc=qgIsValidCoordinate(u?.lat,u?.lng,true)?{lat:Number(u.lat),lng:Number(u.lng)}:null;
       const kw=(input?.value||'').trim().toLowerCase();
       if(preset&&!kw) ss=ss.filter(s=>!preset||s.category===preset);
