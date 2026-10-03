@@ -452,12 +452,7 @@ function uid(){ return (window.crypto&&crypto.randomUUID) ? crypto.randomUUID() 
 const QT_SESSION_STORAGE_KEY='qg_customer_session_v1';
 function qtSessionRead(){
   try{
-    let raw=localStorage.getItem(QT_SESSION_STORAGE_KEY) || sessionStorage.getItem(QT_SESSION_STORAGE_KEY);
-    if(!raw){
-      const legacy=localStorage.getItem('qt_session') || sessionStorage.getItem('qt_session');
-      if(legacy){const old=JSON.parse(legacy);if(old?.role==='customer'){raw=legacy;localStorage.setItem(QT_SESSION_STORAGE_KEY,legacy);localStorage.removeItem('qt_session');sessionStorage.removeItem('qt_session');}}
-    }
-    return raw ? JSON.parse(raw) : null;
+    let raw=localStorage.getItem(QT_SESSION_STORAGE_KEY) || sessionStorage.getItem(QT_SESSION_STORAGE_KEY); return raw ? JSON.parse(raw) : null;
   }catch(e){ return null; }
 }
 function qtSessionWrite(s){
@@ -714,17 +709,7 @@ async function qtRestoreOwnUser(){
 /* Older shop app saves its logo inside users.metadata and shop_profiles.metadata.
    Retain its users-table fallback when profile rows cannot be read. RLS still
    controls which account rows the customer is allowed to see. */
-async function qtLegacyPublicShopProfiles(options={}){
-  try{
-    const users=await qtSupabaseTable('users?select=id,name,phone,status,metadata&role=eq.shop&status=eq.active',options);
-    return (Array.isArray(users)?users:[]).map(u=>{
-      const meta=u.metadata&&typeof u.metadata==='object'&&!Array.isArray(u.metadata)?u.metadata:{};
-      return {id:u.id,user_id:u.id,shop_name:meta.shopName||u.name||'ร้านค้า',phone:u.phone,
-        address:meta.address||null,latitude:meta.lat??null,longitude:meta.lng??null,
-        status:'active',metadata:meta};
-    });
-  }catch(e){ console.warn('[QueueGo] public shop account fallback failed:',e); return []; }
-}
+
 async function qtHydrateHomeServiceBanner(){
   if(window.HOME_BANNER_READY) return;
   window.HOME_BANNER_READY=true;
@@ -756,7 +741,6 @@ async function qtHydratePublicStorefront(){
     try{ shops=await qtSupabaseTable('shop_profiles?select=id,shop_name,status,public_category,public_logo,public_cover,public_open_time,public_close_time,public_description,address,latitude,longitude,delivery_enabled'); }catch(e){
       console.warn('[QueueGo] public shop_profiles read failed:',e);
     }
-    if(!Array.isArray(shops) || !shops.length) shops=await qtLegacyPublicShopProfiles();
     if(!Array.isArray(shops)) shops=[];
     const activeShops=shops.filter(x=>x && String(x.status||'').toLowerCase()==='active' && x.delivery_enabled!==false);
     const publicUsers=activeShops.map(x=>{
@@ -826,7 +810,6 @@ async function qtHydrateDatabase(opts){
 
     let shops=[]; let riders=[];
     try{ shops=await qtSupabaseTable('shop_profiles?select=*',{accessToken:token}); }catch(e){ console.warn('[QueueGo] shop_profiles read failed:',e); }
-    if(!Array.isArray(shops) || !shops.length) shops=await qtLegacyPublicShopProfiles({accessToken:token});
     try{ riders=await qtSupabaseTable('rider_profiles?select=*',{accessToken:token}); }catch(e){ console.warn('[QueueGo] rider_profiles read failed:',e); }
 
     (Array.isArray(shops)?shops:[]).forEach(x=>{
@@ -958,11 +941,11 @@ function calculateDistanceKm(customerLat,customerLng,shopLat,shopLng){
 function distanceKm(lat1,lon1,lat2,lon2){ return calculateDistanceKm(lat1,lon1,lat2,lon2); }
 
 function qgLocationErrorMessage(reason){
-  if(reason==='denied') return '📍 กรุณาเปิดการเข้าถึงตำแหน่ง';
-  if(reason==='timeout') return '📍 ไม่สามารถรับตำแหน่งได้ภายในเวลาที่กำหนด';
-  if(reason==='unsupported') return '📍 เบราว์เซอร์นี้ไม่รองรับการระบุตำแหน่ง';
-  if(reason==='swapped'||reason==='invalid') return '📍 พิกัดที่ได้รับไม่ถูกต้อง กรุณาลองใหม่';
-  return '📍 ไม่สามารถรับตำแหน่งปัจจุบันได้ กรุณาลองใหม่';
+  if(reason==='denied') return 'กรุณาเปิดการเข้าถึงตำแหน่ง';
+  if(reason==='timeout') return 'ไม่สามารถรับตำแหน่งได้ภายในเวลาที่กำหนด';
+  if(reason==='unsupported') return 'เบราว์เซอร์นี้ไม่รองรับการระบุตำแหน่ง';
+  if(reason==='swapped'||reason==='invalid') return 'พิกัดที่ได้รับไม่ถูกต้อง กรุณาลองใหม่';
+  return 'ไม่สามารถรับตำแหน่งปัจจุบันได้ กรุณาลองใหม่';
 }
 function qgShowRegistrationLocationGate(reason){
   document.getElementById('qg-registration-location-gate')?.remove();
@@ -970,7 +953,7 @@ function qgShowRegistrationLocationGate(reason){
   overlay.id='qg-registration-location-gate';
   overlay.style.cssText='position:fixed;inset:0;z-index:100000;background:rgba(15,23,42,.52);display:flex;align-items:flex-end;justify-content:center;padding:18px;padding-bottom:max(18px,env(safe-area-inset-bottom));';
   overlay.innerHTML=`<div style="width:min(100%,520px);background:#fff;border-radius:24px;padding:20px;box-shadow:0 18px 60px rgba(15,23,42,.28);font-family:inherit">
-    <div style="font-size:34px;margin-bottom:8px">📍</div>
+    
     <h2 style="margin:0 0 8px;font-size:21px;color:#172033">${escapeHtml(qgLocationErrorMessage(reason))}</h2>
     <p style="margin:0 0 14px;line-height:1.65;color:#475569;font-size:14px">QueueGo จำเป็นต้องใช้ตำแหน่งของคุณเพื่อค้นหาร้านใกล้คุณและคำนวณระยะทางและค่าจัดส่ง ระบบจะไม่สร้างบัญชีจนกว่าจะได้รับพิกัดจริงที่ถูกต้อง</p>
     <div id="qg-location-help-text" style="display:none;background:#f8fafc;border:1px solid #e2e8f0;border-radius:14px;padding:12px;margin-bottom:12px;color:#334155;font-size:13px;line-height:1.6">โปรดเปิดสิทธิ์ Location/ตำแหน่งให้เว็บไซต์ QueueGo จากการตั้งค่าเว็บไซต์ของเบราว์เซอร์ หรือ Settings ของโทรศัพท์ แล้วกลับมากด “ลองอีกครั้ง” ระบบไม่สามารถเปิดสิทธิ์ของ iOS/Android แทนคุณได้โดยตรง</div>
@@ -1142,7 +1125,7 @@ function showLiveToast(text, link){
   if(!box) return;
   const el = document.createElement('div');
   el.className = 'notif-toast';
-  el.textContent = '🔔 ' + text;
+  el.textContent = '' + text;
   if(link) el.onclick = ()=>navigate(link);
   box.appendChild(el);
   setTimeout(()=>el.remove(), 5000);
@@ -1797,7 +1780,7 @@ function qtShowCustomerLocationNotice(address,lat,lng){
   overlay.id='qg-location-auto-notice';
   overlay.style.cssText='position:fixed;inset:0;z-index:99999;background:rgba(15,23,42,.46);display:flex;align-items:flex-end;justify-content:center;padding:18px;padding-bottom:max(18px,env(safe-area-inset-bottom));';
   overlay.innerHTML=`<div style="width:min(100%,520px);background:#fff;border-radius:24px;padding:20px;box-shadow:0 18px 60px rgba(15,23,42,.24);font-family:inherit">
-    <div style="font-size:34px;margin-bottom:8px">📍</div>
+    
     <h2 style="margin:0 0 8px;font-size:21px;color:#172033">ระบบปักหมุดตำแหน่งให้แล้ว</h2>
     <p style="margin:0 0 10px;line-height:1.65;color:#475569;font-size:14px">QueueGo ใช้ GPS ปักหมุดตำแหน่งจัดส่งอัตโนมัติในการเข้าใช้งานครั้งแรก โปรดตรวจสอบให้แน่ใจว่าหมุดตรงกับจุดรับสินค้าจริง เพราะตำแหน่งนี้มีผลต่อการค้นหาร้าน ค่าส่ง และการนำทางของไรเดอร์</p>
     <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:14px;padding:12px;margin:0 0 14px;color:#334155;font-size:13px;line-height:1.55"><b>ตำแหน่งที่ระบบบันทึก</b><br>${escapeHtml(address||('พิกัด '+Number(lat).toFixed(5)+', '+Number(lng).toFixed(5)))}</div>
@@ -1851,7 +1834,7 @@ function openCustomerLocationPicker(){
     <section class="qg-location-editor">
       <div class="qg-location-editor-head"><button type="button" class="qg-back qg-location-back" aria-label="ย้อนกลับ" onclick="return customerLocationBack(event)">${qgIcon('back')}</button><div><h2>เลือกที่อยู่จัดส่ง</h2><p>ปักหมุดตำแหน่งรับสินค้า แล้วระบุรายละเอียดที่อยู่ด้านล่าง</p></div></div>
       <div id="customer-location-map" class="map-box qg-location-map"></div>
-      <button type="button" class="btn-secondary btn-block" onclick="locateCustomerLocationPicker()">📍 ใช้ตำแหน่ง GPS ปัจจุบัน</button>
+      <button type="button" class="btn-secondary btn-block" onclick="locateCustomerLocationPicker()">ใช้ตำแหน่ง GPS ปัจจุบัน</button>
       <div class="coord-display">Lat: <span id="customer-lat">${hasSaved?lat.toFixed(6):'--'}</span>, Lng: <span id="customer-lng">${hasSaved?lng.toFixed(6):'--'}</span></div>
       <label>ที่อยู่จัดส่ง</label><textarea id="customer-address-input" class="qg-location-address" placeholder="บ้านเลขที่ ถนน หมู่บ้าน จุดสังเกต...">${escapeHtml(user.address||'')}</textarea>
       <button class="btn-primary btn-block" onclick="saveCustomerLocationPicker()">บันทึกที่อยู่นี้</button>
