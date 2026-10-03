@@ -698,7 +698,7 @@ async function qtHydratePublicStorefront(){
     const cacheKey='qg-customer-public-fast-v22';
     try{
       const saved=JSON.parse(localStorage.getItem(cacheKey)||'null');
-      if(saved && Date.now()-saved.at<300000 && Array.isArray(saved.shops) && Array.isArray(saved.products)){
+      if(saved && Date.now()-saved.at<300000 && Array.isArray(saved.shops) && saved.shops.length>0 && Array.isArray(saved.products)){
         const own=currentUser();
         QT_DB_CACHE.qt_users=own?.type==='customer'?[own,...saved.shops.filter(x=>x.id!==own.id)]:saved.shops;
         QT_DB_CACHE.qt_products=saved.products;
@@ -2453,11 +2453,11 @@ button,a,input,textarea,select{font:inherit}
 
   async function qgEnsureCustomerData(scope){
     const signed=customer(currentUser()) && !!qtAccessToken();
-    if(signed){
-      try{ await qtHydrateDatabase({light:scope==='home'}); }catch(e){ console.warn('[QueueGo] customer data hydrate failed',e); }
+    if(scope==='orders' && signed){
+      try{ await qtHydrateDatabase({light:false}); }catch(e){ console.warn('[QueueGo] customer order hydrate failed',e); }
     }
     let shops=dbGet('qt_users',[]).filter(x=>x.type==='shop'&&x.shopName);
-    if(!shops.length){
+    if(scope!=='orders' && !shops.length){
       try{ await qtHydratePublicStorefront(); }catch(e){ console.warn('[QueueGo] public storefront hydrate failed',e); }
       shops=dbGet('qt_users',[]).filter(x=>x.type==='shop'&&x.shopName);
     }
