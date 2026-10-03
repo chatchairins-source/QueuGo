@@ -9,7 +9,7 @@
 *{box-sizing:border-box;margin:0;-webkit-tap-highlight-color:transparent}
 html,body{background:var(--bg);color:var(--ink);overflow-x:hidden}
 body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Prompt",system-ui,sans-serif}
-button,input{font:inherit}
+button,input,textarea{font:inherit}
 svg{stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 .top{position:sticky;top:0;z-index:300;background:rgba(255,255,255,.94);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);border-bottom:1px solid rgba(0,0,0,.05);padding:calc(env(safe-area-inset-top,0px) + 10px) 16px 10px}
 .top>div{max-width:720px;margin:auto;display:flex;align-items:center;justify-content:space-between;gap:12px}
@@ -80,6 +80,9 @@ main{width:100%;max-width:720px;margin:auto;padding:0 14px 118px}
 .in{width:100%;height:52px;border:1px solid var(--ln);border-radius:16px;background:#fff;padding:0 15px;outline:none;margin-bottom:10px}
 .in:focus{border-color:var(--red)}
 .card{background:#fff;border:1px solid var(--ln);border-radius:18px;padding:18px;margin-top:18px}
+.ta{width:100%;min-height:86px;border:1px solid var(--ln);border-radius:16px;background:#fff;padding:13px 15px;outline:none;resize:vertical;margin-top:10px}
+.ta:focus{border-color:var(--red)}
+.statusflow{display:flex;gap:7px;overflow-x:auto;padding:8px 0 2px;scrollbar-width:none}.statusflow::-webkit-scrollbar{display:none}.statusflow span{flex:none;padding:6px 9px;border-radius:99px;background:#f1f2f4;color:#777;font-size:10px;font-weight:700}.statusflow span.on{background:var(--gs);color:#0a9660}
 .empty{text-align:center;color:var(--mu);padding:35px 15px}
 .nav{position:fixed;left:0;right:0;bottom:0;z-index:280;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));padding:6px 8px calc(6px + env(safe-area-inset-bottom,0px));background:rgba(255,255,255,.95);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);border-top:1px solid #e9eaec}
 .nav a{color:#8a8d93;text-decoration:none;text-align:center;font-size:10px;font-weight:700;padding:3px 0}.nav a.on{color:var(--red)}
@@ -171,6 +174,33 @@ async function loadShops(){
   return shops;
 }
 const loadMenu=id=>db('products?select=id,shop_id,name,description,price,delivery_price,image,available,delivery_available&shop_id=eq.'+encodeURIComponent(id));
+const uuid=()=>crypto.randomUUID();
+const STATUS_LABEL={pending:'รอร้านรับ',accepted:'ร้านรับแล้ว',preparing:'กำลังเตรียม',ready:'ค้นหาไรเดอร์',assigned:'ไรเดอร์รับงาน',picked_up:'รับสินค้าแล้ว',in_progress:'กำลังจัดส่ง',completed:'ส่งสำเร็จ',cancelled:'ยกเลิก'};
+async function loadShopProfile(id){const rows=await db('shop_profiles?select=*&id=eq.'+encodeURIComponent(id)+'&limit=1');return Array.isArray(rows)?rows[0]:null}
+async function loadOrderItems(id){return await db('order_items?select=*&order_id=eq.'+encodeURIComponent(id)+'&order=created_at.asc').catch(()=>[])}
+async function activeOrder(){
+  const u=S.get();if(!u)return null;
+  const rows=await db('orders?select=*&customer_id=eq.'+encodeURIComponent(u.userId)+'&status=in.(pending,accepted,preparing,ready,assigned,picked_up,in_progress)&order=created_at.desc&limit=1');
+  return Array.isArray(rows)&&rows[0]||null;
+}
+function orderNo(){const d=new Date(),y=d.getFullYear(),m=String(d.getMonth()+1).padStart(2,'0'),day=String(d.getDate()).padStart(2,'0');return 'QT-'+y+m+day+'-'+Math.floor(Math.random()*10000).toString().padStart(4,'0')}
+async function placeOrder(){
+  const u=S.get();if(!u)return go('login');
+  if(!cart.items.length)return toast('ตะกร้าว่าง');
+  const old=await activeOrder();if(old){toast('มีออเดอร์ที่กำลังดำเนินการอยู่');return go('order/'+old.id)}
+  const shop=await loadShopProfile(cart.shopId);if(!shop)return toast('ไม่พบข้อมูลร้านค้า');
+  const address=($('delivery-address')?.value||'').trim();if(!address)return toast('กรุณาระบุที่อยู่จัดส่ง');
+  const id=uuid(),subtotal=cartTotal(),deliveryFee=Number(shop.delivery_fee||0),total=subtotal+deliveryFee;
+  const order={id,order_number:orderNo(),customer_id:u.userId,shop_id:shop.id,order_type:'shopping',status:'pending',subtotal,delivery_fee:deliveryFee,total_amount:total,pickup_address:shop.address||null,pickup_latitude:shop.latitude??null,pickup_longitude:shop.longitude??null,delivery_address:address,note:'__QT_ORDER_STATUS__=pending_shop',created_at:new Date().toISOString(),updated_at:new Date().toISOString()};
+  try{
+    await db('orders',{method:'POST',body:order});
+    for(const i of cart.items)await db('order_items',{method:'POST',body:{id:uuid(),order_id:id,item_type:'product',item_name:i.name,quantity:i.qty,unit_price:i.price,total_price:i.qty*i.price,created_at:new Date().toISOString()}});
+    cart={shopId:null,items:[]};toast('สั่งซื้อสำเร็จ');go('order/'+id);
+  }catch(e){
+    try{await db('orders?id=eq.'+encodeURIComponent(id),{method:'DELETE'})}catch(_){}
+    toast('สร้างออเดอร์ไม่สำเร็จ: '+String(e.message||e).slice(0,100));
+  }
+}
 /* ===== 5) Layout ===== */
 const authed=()=>!!S.get();
 function layout(inner,tab){
@@ -234,12 +264,14 @@ V.cart=()=>{
   (cart.items.length?cart.items.map((i,x)=>`<div class="ci">${photo(i.image,i.name)}<div class="mc"><b>${esc(i.name)}</b><div class="pr" style="margin-top:3px">${baht(i.price)}</div>
 <div class="qty"><button onclick="chg(${x},-1)">−</button><strong>${i.qty}</strong><button onclick="chg(${x},1)">+</button></div></div></div>`).join('')+
   `<div class="sum"><div class="sr"><span>ค่าอาหาร</span><span>${baht(cartTotal())}</span></div><div class="tot"><span>รวม</span><span>${baht(cartTotal())}</span></div></div>
-<button class="prim" onclick="toast('หน้าชำระเงินจะเพิ่มในเฟสถัดไป')">ไปชำระเงิน</button>`:'<p class="empty">ตะกร้าว่าง</p>'),'cart');
+<button class="prim" onclick="go('checkout')">ไปชำระเงิน</button>`:'<p class="empty">ตะกร้าว่าง</p>'),'cart');
 };
+V.checkout=async()=>{if(!cart.items.length)return go('cart');const s=await loadShopProfile(cart.shopId);layout(`<div class="pt"><button class="back" onclick="history.back()">${ico('back')}</button><h1>ยืนยันคำสั่งซื้อ</h1></div><div class="card" style="margin-top:0"><b>${esc(s?.shop_name||'ร้านค้า')}</b><p class="sm">ชำระเงินสด • ระบบเดลิเวอรี่ QueueGo</p><textarea class="ta" id="delivery-address" placeholder="ที่อยู่/จุดสังเกตสำหรับจัดส่ง"></textarea></div><div class="sum"><div class="sr"><span>ค่าสินค้า</span><span>${baht(cartTotal())}</span></div><div class="sr"><span>ค่าจัดส่ง</span><span>คำนวณตามร้าน/ระบบ</span></div><div class="tot"><span>ยอดสินค้า</span><span>${baht(cartTotal())}</span></div></div><button class="prim" id="place-order-btn" onclick="this.disabled=true;placeOrder().finally(()=>this.disabled=false)">ยืนยันสั่งซื้อ</button>`,'cart')};
+V.order=async id=>{const rows=await db('orders?select=*&id=eq.'+encodeURIComponent(id)+'&limit=1'),o=Array.isArray(rows)&&rows[0];if(!o)return layout('<p class="empty">ไม่พบออเดอร์</p>','orders');const items=await loadOrderItems(id);const flow=['pending','accepted','preparing','ready','assigned','picked_up','in_progress','completed'],idx=flow.indexOf(o.status);layout(`<div class="pt"><button class="back" onclick="go('orders')">${ico('back')}</button><h1>#${esc(o.order_number||String(o.id).slice(0,8))}</h1></div><div class="card" style="margin-top:0"><b>${esc(STATUS_LABEL[o.status]||o.status)}</b><div class="statusflow">${flow.map((x,i)=>`<span class="${i<=idx?'on':''}">${esc(STATUS_LABEL[x])}</span>`).join('')}</div><p class="sm">${esc(o.delivery_address||'')}</p></div><div class="card"><b>รายการสินค้า</b>${(items||[]).map(i=>`<div class="sr"><span>${esc(i.item_name)} × ${i.quantity}</span><span>${baht(i.total_price)}</span></div>`).join('')}<div class="tot"><span>รวม</span><span>${baht(o.total_amount)}</span></div></div>`,'orders')};
 V.orders=async()=>{
   const u=S.get();layout('<p class="empty">กำลังโหลด...</p>','orders');
   const rows=await db('orders?select=*&customer_id=eq.'+encodeURIComponent(u.userId)+'&order=created_at.desc&limit=30');
-  layout(`<div class="pt"><h1>ออเดอร์ของฉัน</h1></div><div class="list">${(rows||[]).length?rows.map(o=>`<div class="oc"><div class="oh"><span class="on">#${esc(o.order_number||String(o.id).slice(0,6))}</span><span class="sp">${esc(o.status||'')}</span></div>
+  layout(`<div class="pt"><h1>ออเดอร์ของฉัน</h1></div><div class="list">${(rows||[]).length?rows.map(o=>`<div class="oc" onclick="go('order/${esc(o.id)}')"><div class="oh"><span class="on">#${esc(o.order_number||String(o.id).slice(0,6))}</span><span class="sp">${esc(o.status||'')}</span></div>
 <p>${new Date(o.created_at).toLocaleString('th-TH')}</p><b>${baht(o.total??o.total_amount??o.subtotal)}</b></div>`).join(''):'<p class="empty">ยังไม่มีออเดอร์</p>'}</div>`,'orders');
 };
 V.profile=()=>{
