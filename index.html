@@ -340,7 +340,7 @@ ${cart.shopId==id&&cartN()?`<div class="fcart" onclick="go('cart')"><b>ดูต
 V.market=async()=>{
   const list=await loadShops();
   const market=list.filter(s=>{const k=String(s.public_category||'').toLowerCase(),n=String(s.shop_name||'').toLowerCase();return ['grocery','market','fresh','fresh_market'].includes(k)||n.includes('ตลาด')});
-  layout(`<div class="marketHero"><h1>ร้านขายของชำ</h1><p>ตลาดสดใกล้คุณ — เลือกร้านแล้วสั่งจากร้านโดยตรง</p><div class="marketActions"><button onclick="go('map')">ดูแผนที่</button><button onclick="go('search')">ค้นหาร้าน</button></div></div><section class="sec"><div class="st"><h2>ร้านในตลาด</h2></div><div class="list">${market.length?market.map(shopCard).join(''):'<p class="empty">ยังไม่มีร้านตลาดที่เปิดให้บริการ</p>'}</div></section>`,'home');
+  layout(`<div class="marketHero marketHeroClean"><h1>ตลาดสด</h1><p>สดใหม่ใกล้คุณ</p></div><section class="sec"><div class="st"><h2>ร้านในตลาด</h2></div><div class="list">${market.length?market.map(shopCard).join(''):'<p class="empty">ยังไม่มีร้านตลาดที่เปิดให้บริการ</p>'}</div></section>`,'home');
 };
 V.map=()=>openCustomerLocationPicker();
 V.cart=()=>{
