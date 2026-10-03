@@ -56,6 +56,19 @@ html,body,#app{max-width:100%;overflow-x:hidden;}
 .qg-cart-page{padding-top:8px}.qg-cart-page>.qg-empty-new{background:#fff;border:1px solid #eceef1;border-radius:18px;margin-top:8px}
 .qg-location-editor{background:#fff;border-radius:22px;padding:18px 14px 20px!important;box-shadow:0 8px 28px rgba(20,24,30,.05)}.qg-location-map{border-radius:18px!important}.qg-location-editor .btn-block{background:#18b77a!important;color:#fff!important;border:0!important;font-weight:800}.qg-location-address{font-size:16px}
 @media(max-width:420px){.qg-new-content{padding-top:6px}.qg-page-title{margin-top:8px}.qg-location-editor{margin-top:0}}
+</style><style id="qg-location-v4-design">
+.qg-location-v4{background:transparent;border:0;border-radius:0;box-shadow:none;padding:8px 0 24px;margin:0}
+.qg-location-v4 .qg-location-editor-head{display:flex;align-items:flex-start;gap:12px;margin:4px 2px 16px}
+.qg-location-v4 .qg-location-editor-head>div{min-width:0;padding-top:2px}.qg-location-v4 .qg-location-editor-head h2{margin:0 0 5px;font-size:25px;line-height:1.18;letter-spacing:-.55px;color:#17191d}.qg-location-v4 .qg-location-editor-head p{margin:0;color:#7b7f87;font-size:13px;line-height:1.45}
+.qg-location-v4 .qg-location-back{width:40px;height:40px;flex:0 0 40px;border:1px solid #eceef1;border-radius:14px;background:#fff;color:#17191d;box-shadow:0 2px 10px rgba(20,24,30,.035)}
+.qg-location-v4 .qg-location-map{width:100%;height:300px;min-height:300px;max-height:300px;border-radius:20px;overflow:hidden;background:#eef1f3;box-shadow:0 1px 0 rgba(20,24,30,.03)}
+.qg-location-v4 .leaflet-control-attribution{max-width:78%;font-size:9px;white-space:normal;line-height:1.15}
+.qg-location-gps{width:100%;min-height:50px;margin:12px 0 0;border:1px solid #e7e9ed;border-radius:15px;background:#fff;color:#17191d;display:flex;align-items:center;justify-content:center;gap:8px;font-weight:750;font-size:15px}.qg-location-gps svg{width:19px;height:19px;stroke:#ef3340}
+.qg-location-coordinates{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px 2px 10px;color:#858991;font-size:12px}.qg-location-coordinates strong{color:#4b4f56;font-size:12px;font-weight:650;text-align:right}
+.qg-location-field{margin-top:3px}.qg-location-field label{display:block;margin:0 0 7px 2px;color:#25282d;font-size:14px;font-weight:750}.qg-location-v4 .qg-location-address{display:block;width:100%;min-height:86px;max-height:126px;resize:vertical;border:1px solid #e4e6ea;border-radius:16px;background:#fff;padding:13px 14px;color:#17191d;font-size:15px;line-height:1.5;outline:none}.qg-location-v4 .qg-location-address:focus{border-color:#ef3340;box-shadow:0 0 0 3px rgba(239,51,64,.08)}.qg-location-v4 .qg-location-address::placeholder{color:#a3a6ac}
+.qg-location-save{width:100%;min-height:52px;margin-top:14px;border:0;border-radius:16px;background:#ef3340;color:#fff;font-size:16px;font-weight:800;box-shadow:0 8px 20px rgba(239,51,64,.18)}.qg-location-save:active{transform:translateY(1px)}
+@media(max-width:420px){.qg-location-v4{padding-top:4px}.qg-location-v4 .qg-location-editor-head h2{font-size:23px}.qg-location-v4 .qg-location-map{height:275px;min-height:275px;max-height:275px}.qg-location-coordinates{padding-top:11px}.qg-location-save{min-height:50px}}
+@media(min-width:700px){.qg-location-v4 .qg-location-map{height:360px;min-height:360px;max-height:360px}}
 </style></head>
 <body>
 
@@ -1787,13 +1800,13 @@ function openCustomerLocationPicker(){
   try{ const h=(location.hash||'#home').slice(1); if(h && h!=='location') sessionStorage.setItem('qg_customer_location_return',h); }catch(e){}
   const hasSaved=qgIsValidCoordinate(user.lat,user.lng,true); const lat=hasSaved?Number(user.lat):null, lng=hasSaved?Number(user.lng):null;
   layout('เลือกที่อยู่จัดส่ง', `
-    <section class="qg-location-editor">
-      <div class="qg-location-editor-head"><button type="button" class="qg-back qg-location-back" aria-label="ย้อนกลับ" onclick="return customerLocationBack(event)">${qgIcon('back')}</button><div><h2>เลือกที่อยู่จัดส่ง</h2><p>ปักหมุดตำแหน่งรับสินค้า แล้วระบุรายละเอียดที่อยู่ด้านล่าง</p></div></div>
-      <div id="customer-location-map" class="map-box qg-location-map"></div>
-      <button type="button" class="btn-secondary btn-block" onclick="locateCustomerLocationPicker()">ใช้ตำแหน่ง GPS ปัจจุบัน</button>
-      <div class="coord-display">Lat: <span id="customer-lat">${hasSaved?lat.toFixed(6):'--'}</span>, Lng: <span id="customer-lng">${hasSaved?lng.toFixed(6):'--'}</span></div>
-      <label>ที่อยู่จัดส่ง</label><textarea id="customer-address-input" class="qg-location-address" placeholder="บ้านเลขที่ ถนน หมู่บ้าน จุดสังเกต...">${escapeHtml(user.address||'')}</textarea>
-      <button class="btn-primary btn-block" onclick="saveCustomerLocationPicker()">บันทึกที่อยู่นี้</button>
+    <section class="qg-location-editor qg-location-v4">
+      <header class="qg-location-editor-head"><button type="button" class="qg-back qg-location-back" aria-label="ย้อนกลับ" onclick="return customerLocationBack(event)">${qgIcon('back')}</button><div><h2>เลือกที่อยู่จัดส่ง</h2><p>ปักหมุดตำแหน่งรับสินค้า แล้วระบุรายละเอียดที่อยู่ด้านล่าง</p></div></header>
+      <div id="customer-location-map" class="qg-location-map"></div>
+      <button type="button" class="qg-location-gps" onclick="locateCustomerLocationPicker()">${qgIcon('location')}<span>ใช้ตำแหน่ง GPS ปัจจุบัน</span></button>
+      <div class="qg-location-coordinates"><span>ตำแหน่งที่เลือก</span><strong><span id="customer-lat">${hasSaved?lat.toFixed(6):'--'}</span>, <span id="customer-lng">${hasSaved?lng.toFixed(6):'--'}</span></strong></div>
+      <div class="qg-location-field"><label for="customer-address-input">รายละเอียดที่อยู่</label><textarea id="customer-address-input" class="qg-location-address" placeholder="บ้านเลขที่ หมู่บ้าน ซอย ถนน หรือจุดสังเกต">${escapeHtml(user.address||'')}</textarea></div>
+      <button type="button" class="qg-location-save" onclick="saveCustomerLocationPicker()">บันทึกที่อยู่นี้</button>
     </section>`);
   let picked=hasSaved?{lat,lng}:null;
   const picker=initLocationPicker('customer-location-map',lat,lng,async(a,b)=>{
