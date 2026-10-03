@@ -53,3 +53,25 @@ const route=window.qtRouteRender;window.qtRouteRender=function(){
 };
 const home=window.renderHome;window.renderHome=function(){home();const target=document.getElementById('qg-categories');if(target&&!target.querySelector('.market-home-link')){const b=document.createElement('button');b.type='button';b.className='qg-cat market-home-link';b.innerHTML='<span class="qg-cat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9h18l-2 11H5L3 9Z"/><path d="m7 9 5-6 5 6M9 13v4m6-4v4"/></svg></span><b>ตลาดสด</b>';b.setAttribute('aria-label','ตลาดสด QueueGo');b.onclick=()=>navigate('market');target.append(b)}};
 })();
+
+/* QueueGo Customer address UI modernization — 2026-10-03
+   Presentation only: keeps Leaflet/GPS/address-save logic untouched. */
+(()=>{
+  function modernizeAddressUI(){
+    const maps=[...document.querySelectorAll('.leaflet-container')];
+    for(const map of maps){
+      let node=map;
+      for(let depth=0; node && depth<8; depth++, node=node.parentElement){
+        const t=(node.textContent||'').replace(/\s+/g,' ');
+        if(t.includes('ที่อยู่จัดส่ง') && (t.includes('GPS') || t.includes('ตำแหน่ง'))){
+          node.classList.add('qg-address-modern');
+          map.classList.add('qg-address-map-compact');
+          break;
+        }
+      }
+    }
+  }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',modernizeAddressUI,{once:true});
+  else modernizeAddressUI();
+  new MutationObserver(modernizeAddressUI).observe(document.documentElement,{subtree:true,childList:true});
+})();
