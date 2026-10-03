@@ -2709,7 +2709,7 @@ button,a,input,textarea,select{font:inherit}
       <div style="margin-top:10px">${orderActionButtons(o,u)}</div>
       ${o.status==='completed'?'<div id="order-review-box" style="margin-top:12px"></div>':''}`);
     if(mapAvailable)initTrackingMap(o);
-    if(o.status==='completed')renderOrderReviewBox(o);
+    if(o.status==='completed'){renderOrderReviewBox(o);window.qgEnhanceReviewForm?.(o);} window.qgEnhanceOrderDetail?.(id);
     try{window.qgEnhanceOrderDetail?.(id)}catch(e){console.warn(e)}
   };
 
@@ -2982,10 +2982,8 @@ button,a,input,textarea,select{font:inherit}
 <script id="qg-v22-customer-operations">
 (function(){
  window.QT_HAS_REVIEWS_TABLE=true;
- const reviewBox=window.renderOrderReviewBox;
- window.renderOrderReviewBox=function(order){reviewBox(order);const form=document.getElementById('review-form-'+order.id);if(!form||form.querySelector('[data-qg-v22-ratings]'))return;
-   const extra=document.createElement('div');extra.dataset.qgV22Ratings='1';extra.innerHTML='<label style="display:block;margin:10px 0">คะแนนอาหาร <select id="qg-food-rating" style="width:100%;padding:10px"><option value="">ไม่ระบุ</option><option value="5">5 ดาว</option><option value="4">4 ดาว</option><option value="3">3 ดาว</option><option value="2">2 ดาว</option><option value="1">1 ดาว</option></select></label><label style="display:block;margin:10px 0">คะแนนไรเดอร์ <select id="qg-rider-rating" style="width:100%;padding:10px"><option value="">ไม่ระบุ</option><option value="5">5 ดาว</option><option value="4">4 ดาว</option><option value="3">3 ดาว</option><option value="2">2 ดาว</option><option value="1">1 ดาว</option></select></label>';
-   form.appendChild(extra);
+ window.qgEnhanceReviewForm=function(order){const form=document.getElementById('review-form-'+order.id);if(!form||form.querySelector('[data-qg-v22-ratings]'))return;
+   const extra=document.createElement('div');extra.dataset.qgV22Ratings='1';extra.innerHTML='<label style="display:block;margin:10px 0">คะแนนอาหาร <select id="qg-food-rating" style="width:100%;padding:10px"><option value="">ไม่ระบุ</option><option value="5">5 ดาว</option><option value="4">4 ดาว</option><option value="3">3 ดาว</option><option value="2">2 ดาว</option><option value="1">1 ดาว</option></select></label><label style="display:block;margin:10px 0">คะแนนไรเดอร์ <select id="qg-rider-rating" style="width:100%;padding:10px"><option value="">ไม่ระบุ</option><option value="5">5 ดาว</option><option value="4">4 ดาว</option><option value="3">3 ดาว</option><option value="2">2 ดาว</option><option value="1">1 ดาว</option></select></label>';form.appendChild(extra);
  };
  window.submitReview=async function(orderId){const u=currentUser(),order=dbGet('qt_orders',[]).find(o=>String(o.id)===String(orderId));if(!u||!order||String(order.customerId)!==String(u.id)||order.status!=='completed'){toast('รีวิวได้หลังส่งสำเร็จเท่านั้น');return}
    const rating=Number(window.__qtReviewDraftRating?.[orderId]||0),comment=document.getElementById('review-comment-'+orderId)?.value.trim()||'';if(rating<1||rating>5){toast('กรุณาให้คะแนนร้าน');return}
@@ -3009,8 +3007,6 @@ button,a,input,textarea,select{font:inherit}
    qtGetAccessToken().then(t=>qtSupabaseTable('rpc/qg_customer_delivery_pin',{method:'POST',accessToken:t,body:{p_order_id:id}})).then(code=>{if(pin.isConnected)pin.querySelector('#qg-customer-pin').textContent=String(code)}).catch(e=>{if(pin.isConnected)pin.querySelector('#qg-customer-pin').textContent='ยังไม่สามารถแสดง PIN: '+e.message});
  };
 
- const add=window.addToCart;
- window.addToCart=function(id){if(!currentUser()){try{sessionStorage.setItem('qg_after_login','shop-view')}catch(e){}navigate('login');return}return add(id)};
 })();
 </script>
 
