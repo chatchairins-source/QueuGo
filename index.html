@@ -46,7 +46,14 @@ form input, form select, form textarea{width:100%;padding:10px;border:1px solid 
 .qg-location-editor>label{display:block;margin:12px 0 6px;font-size:13px;font-weight:700;color:#374151}
 .qg-location-address{width:100%;min-height:82px;padding:12px 14px;border:1px solid #e5e7eb!important;border-radius:14px!important;background:#f8fafc;font:inherit;resize:vertical}
 .qg-location-editor .btn-block{min-height:46px;border-radius:15px;margin-top:10px}
-@media(max-width:390px){.qg-location-editor{padding:14px;border-radius:20px}.qg-location-map{height:210px!important;min-height:210px!important;max-height:210px!important}}
+.qg-location-editor{padding:14px!important;box-shadow:none!important;border:1px solid #eef1f4!important}
+.qg-location-editor-head{margin-bottom:10px!important}
+.qg-location-back{flex:0 0 40px;width:40px;height:40px;border:0;border-radius:12px;background:#f5f6f8;color:#111827;font-size:24px;line-height:1;cursor:pointer}
+.qg-location-map{height:180px!important;min-height:180px!important;max-height:180px!important;margin:6px 0 10px!important}
+.qg-location-editor .coord-display{margin:4px 0!important;padding:4px 2px!important}
+.qg-location-address{min-height:68px!important}
+.qg-location-editor .btn-primary{background:#e91d3f!important}
+@media(max-width:390px){.qg-location-editor{padding:12px!important;border-radius:18px}.qg-location-map{height:165px!important;min-height:165px!important;max-height:165px!important}}
 .coord-display{font-size:13px;color:#374151;margin:6px 0;}
 .tabs{display:flex;gap:6px;margin:10px 0;flex-wrap:wrap;}
 .tab{padding:8px 12px;border-radius:20px;border:1px solid #d1d5db;background:#fff;cursor:pointer;font-size:13px;}
@@ -2463,12 +2470,21 @@ function qtAutoCaptureCustomerLocation(){
     setTimeout(()=>{ try{ openCustomerLocationPicker(); }catch(e){} },500);
   }, {enableHighAccuracy:true,timeout:10000,maximumAge:60000});
 }
+function customerLocationBack(){
+  try{
+    const previous=sessionStorage.getItem('qg_customer_location_return');
+    if(previous){ sessionStorage.removeItem('qg_customer_location_return'); navigate(previous); return; }
+  }catch(e){}
+  if(history.length>1){ history.back(); return; }
+  navigate('home');
+}
 function openCustomerLocationPicker(){
   const user=currentUser(); if(!user || user.type!=='customer') return;
+  try{ const h=(location.hash||'#home').slice(1); if(h && h!=='location') sessionStorage.setItem('qg_customer_location_return',h); }catch(e){}
   const hasSaved=qgIsValidCoordinate(user.lat,user.lng,true); const lat=hasSaved?Number(user.lat):null, lng=hasSaved?Number(user.lng):null;
   layout('เลือกที่อยู่จัดส่ง', `
     <section class="qg-location-editor">
-      <div class="qg-location-editor-head"><button class="btn-secondary" onclick="navigate('home')">←</button><div><h2>เลือกที่อยู่จัดส่ง</h2><p>GPS จะใช้เป็นตำแหน่งเริ่มต้น และคุณเปลี่ยนได้ตลอดเวลา</p></div></div>
+      <div class="qg-location-editor-head"><button type="button" class="qg-location-back" aria-label="ย้อนกลับ" onclick="customerLocationBack()">←</button><div><h2>เลือกที่อยู่จัดส่ง</h2><p>ปักหมุดตำแหน่งรับสินค้า แล้วระบุรายละเอียดที่อยู่ด้านล่าง</p></div></div>
       <div id="customer-location-map" class="map-box qg-location-map"></div>
       <button type="button" class="btn-secondary btn-block" onclick="locateCustomerLocationPicker()">📍 ใช้ตำแหน่ง GPS ปัจจุบัน</button>
       <div class="coord-display">Lat: <span id="customer-lat">${hasSaved?lat.toFixed(6):'--'}</span>, Lng: <span id="customer-lng">${hasSaved?lng.toFixed(6):'--'}</span></div>
