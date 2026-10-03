@@ -1966,21 +1966,7 @@ async function renderHomeShopSections(){
 }
 
 /* ---------- 2. REGISTER / LOGIN ---------- */
-function renderRegister(){
-  layout('สมัครสมาชิก', `
-    <section class="qg-auth-page"><div class="qg-auth-brand"><span class="qg-logo-lockup"><img src="${window.QueueGoAssets.APP_MARK}" alt=""><span>Queue<span>Go</span></span></span></div><h1>สร้างบัญชีผู้ใช้</h1><p>เริ่มใช้งาน QueueGo เพื่อค้นหาร้าน สั่งสินค้า และติดตามออเดอร์</p>
-      <form onsubmit="return handleRegister(event)" class="qg-auth-form">
-        <input type="hidden" id="reg-type" value="customer"><input type="hidden" id="reg-contact-mode" value="phone">
-        <label>ช่องทางเข้าสู่ระบบ</label><div class="tabs qg-auth-tabs"><button type="button" id="reg-mode-phone" class="tab active" onclick="switchRegisterContact('phone')">📱 เบอร์โทรศัพท์</button><button type="button" id="reg-mode-email" class="tab" onclick="switchRegisterContact('email')">✉️ อีเมล</button></div>
-        <label>ชื่อของคุณ</label><input required id="reg-name" placeholder="ชื่อ-นามสกุล">
-        <label id="reg-phone-label">เบอร์โทรศัพท์</label><input id="reg-phone" inputmode="tel" placeholder="08xxxxxxxx">
-        <label id="reg-email-label" style="display:none">อีเมล</label><input id="reg-email" type="email" style="display:none" placeholder="example@email.com">
-        <label>รหัสผ่าน</label><input required type="password" id="reg-password" minlength="6" autocomplete="new-password" placeholder="อย่างน้อย 6 ตัวอักษร">
-        <label>ยืนยันรหัสผ่าน</label><input required type="password" id="reg-password-confirm" minlength="6" autocomplete="new-password" placeholder="กรอกรหัสผ่านอีกครั้ง">
-        <section class="qg-beta-terms" style="margin:14px 0;padding:13px;border:1px solid #e2e5e8;border-radius:12px;background:#fff8f9;font-size:12px;line-height:1.55"><b style="color:#d5092b">QueueGo อยู่ในช่วงทดสอบระบบ (Beta)</b><div>ระบบอาจมีข้อผิดพลาด ข้อมูลล่าช้า ออเดอร์หรือยอดเงินผิดปกติ หรือหยุดให้บริการชั่วคราว กรุณาตรวจสอบข้อมูลสำคัญก่อนยืนยันทุกครั้ง ภายใต้ขอบเขตที่กฎหมายอนุญาต QueueGo ไม่รับประกันว่าระบบ Beta จะทำงานโดยปราศจากข้อผิดพลาด</div><label style="display:flex;gap:9px;align-items:flex-start;margin-top:9px"><input id="qg-beta-truth" type="checkbox" required><span>ข้าพเจ้ายืนยันว่าข้อมูลที่ให้เป็นความจริง</span></label><label style="display:flex;gap:9px;align-items:flex-start;margin-top:9px"><input id="qg-beta-accept" type="checkbox" required><span>ข้าพเจ้าได้อ่านและยอมรับข้อตกลงการใช้บริการและการเข้าร่วมทดสอบ QueueGo</span></label><small>ข้อตกลงเวอร์ชัน beta-2026-10-02-v1</small></section><button class="btn-primary btn-block qg-main-btn" type="submit">สร้างบัญชี</button>
-      </form><p class="qg-auth-foot">มีบัญชีอยู่แล้ว? <a href="#login">เข้าสู่ระบบ</a></p>
-    </section>`);
-}
+
 function switchRegisterTab(type, el){
   const target=document.getElementById('reg-type');
   if(target) target.value='customer';
@@ -2112,13 +2098,7 @@ function renderTechnicianClosed(){
   layout('เรียกช่าง', `<section class="qg-role-blocked"><div class="qg-disabled-icon">🔧</div><h1>เรียกช่าง</h1><p>บริการเรียกช่างถูกปิดไว้ชั่วคราว และจะเปิดใช้งานในเวอร์ชันถัดไป</p><button class="btn-secondary btn-block" onclick="navigate('home')">กลับหน้าแรก</button></section>`);
 }
 
-function renderLogin(){
-  layout('เข้าสู่ระบบ', `
-    <section class="qg-auth-page"><div class="qg-auth-brand"><span class="qg-logo-lockup"><img src="${window.QueueGoAssets.APP_MARK}" alt=""><span>Queue<span>Go</span></span></span></div><h1>ยินดีต้อนรับกลับ</h1><p>เข้าสู่ระบบเพื่อสั่งสินค้าและติดตามออเดอร์</p>
-      <form onsubmit="return handleLogin(event)" class="qg-auth-form"><label>เบอร์โทรศัพท์ หรืออีเมล</label><input required id="login-phone" autocomplete="username" placeholder="08xxxxxxxx หรืออีเมล"><label>รหัสผ่าน</label><input required type="password" id="login-password" autocomplete="current-password" placeholder="รหัสผ่าน"><button class="btn-primary btn-block qg-main-btn" type="submit">เข้าสู่ระบบ</button></form>
-      <p class="qg-auth-foot">ยังไม่มีบัญชี? <a href="#register">สมัครสมาชิก</a></p>
-    </section>`);
-}
+
 async function handleLogin(e){
   e.preventDefault();
   const loginValue=document.getElementById('login-phone').value.trim();
@@ -2899,6 +2879,11 @@ button,a,input,textarea,select{font:inherit}
    layout('คำสั่งซื้อจากตลาด','<section class="qg-cart-page"><div class="qg-page-title"><button class="qg-back" onclick="navigate(\'orders\')">‹</button><h1>คำสั่งซื้อจากตลาด</h1></div><div id="qg-market-track" class="qg-checkout-card">กำลังโหลด...</div></section>');
    try{const t=await qtGetAccessToken(),m=(await qtSupabaseTable('market_orders?select=*&id=eq.'+encodeURIComponent(id)+'&limit=1',{accessToken:t}))?.[0],os=await qtSupabaseTable('orders?select=id,order_number,status,subtotal,shop_id&market_order_id=eq.'+encodeURIComponent(id)+'&order=created_at.asc',{accessToken:t});const box=document.getElementById('qg-market-track');if(!box)return;if(!m)throw Error('ไม่พบคำสั่งซื้อ');box.innerHTML='<b>ตลาด · '+Number(m.shop_count)+' ร้าน</b><div style="margin:8px 0">ยอดรวม ฿'+Number(m.total_amount).toLocaleString('th-TH')+'</div>'+(os||[]).map((o,n)=>'<div style="padding:8px 0;border-top:1px solid var(--qg-line)">จุดรับ '+(n+1)+' · '+escapeHtml(o.order_number||'')+' <b style="float:right">'+escapeHtml(o.status)+'</b></div>').join('')}
    catch(e){const b=document.getElementById('qg-market-track');if(b)b.textContent='โหลดคำสั่งซื้อไม่สำเร็จ: '+e.message}
+   const box=document.getElementById('qg-market-track');
+   if(box){
+    try{const t=await qtGetAccessToken(),os=await qtSupabaseTable('orders?select=id,status,delivery_pin,delivery_pin_verified_at&market_order_id=eq.'+encodeURIComponent(id),{accessToken:t});const active=(os||[]).find(o=>!['completed','cancelled'].includes(o.status));if(active?.delivery_pin&&!active.delivery_pin_verified_at)box.insertAdjacentHTML('beforeend','<div class="qg-checkout-card"><b>PIN ส่งมอบ</b><div style="font-size:24px;font-weight:900;letter-spacing:5px;margin-top:6px">'+escapeHtml(active.delivery_pin)+'</div><small>แจ้ง PIN ให้ไรเดอร์เมื่อได้รับสินค้าครบแล้ว</small></div>')}catch(e){}
+    try{const t=await qtGetAccessToken(),m=(await qtSupabaseTable('market_orders?select=id,status&id=eq.'+encodeURIComponent(id)+'&limit=1',{accessToken:t}))?.[0];if(m&&['pending','pending_shop','searching_rider'].includes(m.status)){const btn=document.createElement('button');btn.className='qg-secondary';btn.style='width:100%;margin-top:10px';btn.textContent='ยกเลิกคำสั่งซื้อ';btn.onclick=async()=>{if(!confirm('ยืนยันยกเลิกคำสั่งซื้อ?'))return;btn.disabled=true;try{await qtSupabaseRpc('queuego_cancel_market_order',{p_market_order_id:id},{accessToken:t});toast('ยกเลิกคำสั่งซื้อแล้ว');navigate('orders')}catch(e){toast('ยกเลิกไม่สำเร็จ: '+e.message);btn.disabled=false}};box.appendChild(btn)}}catch(e){}
+   }
  };
  window.qgMarketRoute=function(page,param){if(page!=='market-order')return false;try{destroyMaps?.()}catch(e){}renderMarketOrder(param);return true};
 })();
@@ -3056,29 +3041,6 @@ html,body{width:100%;max-width:100%;height:auto;min-height:100%;overflow-x:hidde
 body{overflow-y:auto;-webkit-overflow-scrolling:touch;touch-action:pan-y}
 #app{width:100%;max-width:100%;min-height:100dvh;overflow:visible;touch-action:auto}
 </style>
-<script id="qg-market-tracking-pin-v1">
-(function(){
- const old=window.renderMarketOrder;if(typeof old!=='function')return;
- window.renderMarketOrder=async function(id){
-   await old(id);const box=document.getElementById('qg-market-track');if(!box)return;
-   try{const t=await qtGetAccessToken(),os=await qtSupabaseTable('orders?select=id,status&market_order_id=eq.'+encodeURIComponent(id)+'&status=neq.cancelled&order=created_at.asc&limit=1',{accessToken:t}),lead=os?.[0];
-     if(!lead)return;if(['rider_assigned','preparing','ready','picked_up','in_progress'].includes(lead.status)){
-       const pin=await qtSupabaseTable('rpc/qg_customer_delivery_pin',{method:'POST',accessToken:t,body:{p_order_id:lead.id}});
-       box.insertAdjacentHTML('beforeend','<div style="margin-top:12px;padding:12px;border-radius:12px;background:#fff3f5"><b>PIN รับสินค้า</b><div style="font-size:28px;font-weight:900;letter-spacing:5px;margin-top:5px">'+escapeHtml(String(pin))+'</div><small>แจ้งให้ไรเดอร์เมื่อได้รับสินค้าครบทุกถุงแล้ว</small></div>');
-     }
-   }catch(e){console.warn('market delivery PIN unavailable',e)}
- };
-})();
-</script>
-<script id="qg-market-cancel-ui-v1">
-(function(){
- const old=window.renderMarketOrder;if(typeof old!=='function')return;
- window.renderMarketOrder=async function(id){await old(id);const box=document.getElementById('qg-market-track');if(!box)return;
-  try{const t=await qtGetAccessToken(),m=(await qtSupabaseTable('market_orders?select=status&id=eq.'+encodeURIComponent(id)+'&limit=1',{accessToken:t}))?.[0];
-   if(m&&['PENDING','SEARCHING_RIDER'].includes(m.status)){const b=document.createElement('button');b.className='qg-secondary';b.style.cssText='width:100%;margin-top:12px';b.textContent='ยกเลิกคำสั่งซื้อจากตลาด';b.onclick=async()=>{if(!confirm('ยกเลิกคำสั่งซื้อจากตลาดทั้งหมดที่ยังไม่ถูกรับโดยไรเดอร์?'))return;b.disabled=true;try{await qtSupabaseTable('rpc/qg_customer_cancel_market_order',{method:'POST',accessToken:t,body:{p_market_order_id:id}});toast('ยกเลิกคำสั่งซื้อแล้ว');await renderMarketOrder(id)}catch(e){toast('ยกเลิกไม่สำเร็จ: '+e.message);b.disabled=false}};box.appendChild(b)}
-  }catch(e){console.warn('market cancel status unavailable',e)}
- };
-})();
-</script>
+
 </body>
 </html>
