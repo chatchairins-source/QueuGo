@@ -261,6 +261,17 @@ async function saveCustomerLocationPicker(){
   }catch(e){toast('บันทึกที่อยู่ไม่สำเร็จ: '+String(e.message||e).slice(0,90))}
 }
 try{const saved=JSON.parse(localStorage.getItem('qg_customer_delivery_location')||'null');if(saved&&qgIsValidCoordinate(saved.lat,saved.lng,true))currentPos=saved}catch(e){}
+function autoLocateOnAppOpen(){
+  if(!navigator.geolocation)return;
+  navigator.geolocation.getCurrentPosition(async pos=>{
+    const lat=Number(pos.coords.latitude),lng=Number(pos.coords.longitude);
+    if(!qgIsValidCoordinate(lat,lng,true))return;
+    const address=await qtReverseGeocodeCustomer(lat,lng);
+    currentPos={lat,lng,address:address||'ตำแหน่งปัจจุบัน'};
+    try{localStorage.setItem('qg_customer_delivery_location',JSON.stringify(currentPos))}catch(e){}
+    if((location.hash.slice(1)||'home').split('/')[0]==='home')route();
+  },()=>{},{enableHighAccuracy:true,timeout:12000,maximumAge:0});
+}
 /* ===== 5) Layout ===== */
 const authed=()=>!!S.get();
 function layout(inner,tab){
@@ -391,6 +402,7 @@ function bind(pg){
 }
 addEventListener('hashchange',route);
 route();
+autoLocateOnAppOpen();
 </script>
 </body>
 </html>
