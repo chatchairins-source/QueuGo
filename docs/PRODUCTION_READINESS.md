@@ -1,0 +1,143 @@
+# QueueGo production readiness — current engineering batch
+
+Date: 2026-10-04 (Asia/Bangkok). Source base: `main` at `6b3a07e4176c874e32f30fb51c9b7afe635445fc`. Only `main` was checked out. No old branch was merged or used as a code source. Recovery uses Git history.
+
+**NOT READY — BLOCKERS REMAIN**
+
+A failed gate includes a required test that has not been executed. Isolated browser or SQL tests do not certify real accounts, payments, hardware, RLS, realtime or release packages.
+
+| Full acceptance gate | Status | Evidence / remaining proof |
+|---|---|---|
+| ZERO LEGACY | FAIL | Proven dead files and superseded renderers deleted; all repository code paths/CSS still require final exhaustive certification; 16 remote branches remain |
+| CUSTOMER | FAIL | Checkout/guest/cart/state fixes tested in isolation; complete support, account deletion, notifications, options and live order journey remain |
+| MERCHANT | FAIL | Current renderer/router preserved; POS/Market/printer dependencies retained; live order acceptance and alert E2E not certified |
+| RIDER | FAIL | Current state and pickup action fixed; actual claim, lifecycle, chat and route E2E not certified |
+| ADMIN | FAIL | Old other-role implementations removed; current approval/security/order/support screens preserved in isolated regression; authenticated destructive/negative tests not run |
+| POS | FAIL | Current Table POS is the active implementation; isolated view regression passed; multi-device transactions, kitchen, payment and printer hardware not certified |
+| QR TABLE | FAIL | Current QR/session/server geofence dependency retained; physical scan/expiry/location and malicious request tests not run |
+| MARKET | FAIL | Current Customer banner preserved and shop-first renderer retained; live stock/multi-shop handoff and current checkout semantics require verification |
+| SECURITY | FAIL | Server guards and current RPC definitions inspected; authenticated attacks across roles not run; leaked-password protection advisor warning remains |
+| RLS | FAIL | All 55 public tables inspected have RLS enabled; role privilege trigger exists; actual cross-user/cross-shop requests not certified |
+| REALTIME | FAIL | Current publication and reconnect code traced; stale callback/retry guard added; real socket disconnect/reconnect tests not run |
+| PERFORMANCE | FAIL | Source transfer reduced; no measured INP/60fps or mid-range device certification |
+| NETWORK RECOVERY | FAIL | Checkout request timeout/replay contract tested; all roles/background/foreground recovery not certified |
+| E2E | FAIL | No real authenticated Customer→Merchant→Rider→Completed test was run |
+| CONCURRENCY | FAIL | Claim RPC uses server row/group locks, but actual simultaneous multi-connection race tests not run; same rider claiming different orders needs explicit proof |
+| ANDROID | FAIL | Existing workflow fixes only; no APK/AAB, signing verification or device lifecycle test |
+| PLAY STORE READINESS | FAIL | No release artifacts/listing/privacy/Data Safety/account deletion acceptance. Current new-app target requirement is API 36; generated release build must verify it |
+
+## Deleted files
+
+- `QueueGo-Market-TEST-REPORT.md`
+- `QueueGo-POS-MVP-Integration-TEST-REPORT.md`
+- `QueueGo-POS-TEST-REPORT.md`
+- `QueueGo-POS-Tables-TEST-REPORT.md`
+- `QueueGo-Table-QR-v1-CHANGELOG.md`
+- `QueueGo-Table-QR-v1-TEST-REPORT.md`
+- `QueueGo-v23-Rider-Admin-TEST-REPORT.md`
+- `android-build/BUILD_SOURCE.txt`
+- `android-build/BUILD_TRIGGER_2.txt`
+- `android-build/BUILD_TRIGGER_HARDENED.txt`
+- `android-build/BUILD_TRIGGER_HARDENED_2.txt`
+- `android-build/PERMISSION_BUILD_20261002.txt`
+- `android-build/PERMISSION_BUILD_20261002_2.txt`
+- `android-build/PERMISSION_BUILD_20261002_3.txt`
+- `android-build/PERMISSION_BUILD_20261002_4.txt`
+- `laundry/customer-integration.js`
+- `laundry/merchant-integration.js`
+- `merchant/pos-qr-v1.css`
+- `merchant/pos-qr-v1.js`
+- `merchant/pos.css`
+- `merchant/pos.js`
+
+## Dependency proof and retained modules
+
+- `merchant/pos.js` and `merchant/pos-qr-v1.js` and their CSS had no HTML, dynamic, handler, native-copy or workflow caller before deletion. They contained older bill/QR implementations superseded by the actively loaded `merchant/pos-table-v2.js`.
+- `merchant/pos-table-v2.js/.css` implement actual POS, staff, table, kitchen, payment/history and QR actions. Version suffixes are not evidence of disuse.
+- `merchant/printer-v1.js/.css` are loaded and provide actual receipt/printer actions; kept.
+- `merchant/market.js/.css` and `admin/market.js/.css` are loaded and dispatch actual stock and platform Market operations; kept. Their route/dashboard wrappers were folded into each current router/renderer.
+- `table-order.html/.js/.css` remain the QR customer entry and server RPC/session/geofence path.
+- `laundry/rider-integration.js` has an actual Rider script reference; retained and packaged in native Rider bundles. The standalone `/laundry/` entry is retained. Customer/Merchant integration files had no production entry, dynamic reference or native build caller; deleted.
+- SQL migrations are retained as ordered database history and dependencies. No table, RLS policy, Supabase project or schema was removed based on an old filename.
+- Existing session-storage key migrations still serve returning users; they are not retired UI implementations and were retained.
+- Realtime outage polling and missing-map recovery are current operational recovery paths, not fallbacks to a retired UI. Responsive CSS for current screens is still active. Historical SQL definitions are migration history.
+
+## Implementations removed or consolidated
+
+- Merchant: old product/editor, promotion package, shop setup/module/settlement implementations, overwritten login, old detail/product fallbacks and copied Admin support/GP code. Current dashboard/order/list/profile/revenue behavior was consolidated into single renderers.
+- Merchant: POS route, staff login and navigation join the primary router. Duplicate dashboard/login/route wrapper and hashchange paths were deleted. General order hydration pauses in POS; POS owns its current view subscription.
+- Merchant: duplicate minute-level order fetching was removed; the current sync loop and realtime events feed a single new-order monitor. Reconnect callbacks are scoped to the current subscription and use one retry timer.
+- Admin: unused Customer, Merchant, technician and Rider UI/handlers, old login/router/order center/GP/delete implementations and old client dispatch timer were deleted. The server rider pool/claim RPCs are the active dispatch authority.
+- Admin: current dashboard/governance/GP/Market additions were moved into primary renderers; duplicate privilege guard wrappers were removed while the original guard remains.
+- Rider: old direct order PATCH/claim/completion and old earnings renderers were deleted. Current ordinary and Market actions share one dispatch function per action; history cache/chat/support/payment/map dependencies were migrated into primary functions.
+- Obsolete markup-specific and identical CSS rules were removed conservatively. A repeated Merchant login photo payload was replaced with a reference to its already-existing CSS variable; the image pixels and appearance are unchanged.
+- Root Customer `market.js`, `market.css`, `queuego-market-ai-banner.jpg`, `marketHeroClean` and the old hero text were not restored.
+
+## Core fixes
+
+- Customer order/items are created by existing atomic `queuego_place_cash_order`, not individual browser inserts/deletes. A request ID and snapshot persist before transmission; retry after uncertain outcome reuses the same ID. No compensating DELETE remains.
+- Tap lock, bounded request timeout, persistence-before-write, success validation and cart preservation on failure were added. Cart edits pause while an uncertain checkout needs resolution.
+- Delivery prices match product delivery prices; checkout shows the existing server fee policy before confirmation. Server price and ownership validation remains authoritative.
+- Customer active-order states and labels now include searching/rider-assigned/ready. The existing customer-owned delivery PIN RPC is displayed for delivery handoff.
+- Guest discovery is allowed through existing anonymous read policies. Guest cart migrates only when the signed-in cart is empty. Automatic location permission on app launch was removed; explicit pin/GPS controls remain.
+- Async Customer views have route generation guards so an older request cannot paint over a newer route. Merchant delayed map mounting is guarded by the original element's connected state.
+- Rider active-job queries include the current rider-first states. Pickup only dispatches from server-required `ready`; preparing states keep pickup disabled and navigation points to the shop.
+
+## Financial instruction
+
+`QueueGo-Rider-Completion-Migration.sql` replaces three current completion RPC definitions. It removes merchant acknowledgement as a delivery-completion gate, retains rider assignment/cash advance/PIN/evidence validation, completes cash payment and delivery together, and makes successful completion replay safe. It does not invent a merchant receipt or change GP, fees or rider income.
+
+At this report's source checkpoint the migration is prepared and tested in isolation; database activation and verification must be recorded in the final delivery report.
+
+## Verification evidence
+
+- `npm test`: 54 JS blocks parsed, 17 static local file references checked, 18 isolated critical-client checks, 20 isolated SQL checks. The SQL fixture tests wrong PIN, wrong rider, invalid GPS/evidence, missing advance, rollback, no merchant receipt, multi-shop completion and replay.
+- Initial cleanup-only DOM regression: 40 route/boot cases matched the original source with no extra errors.
+- Chromium regression: 144 route/boot cases at 390, 768 and 1280px before further hardening; subsequent expected Customer guest/nav/status behavior differs from baseline. Fixtures intercept all external operations; no production order or test user is created.
+- Workflow YAML and embedded Python parse checks passed. Native role packaging now includes referenced QR/laundry files. The permission bridge that bypassed Capacitor and requested permissions on startup was deleted; Capacitor 8's actual `BridgeWebChromeClient` handles geolocation on use and file selection. Release signing is attached to `buildTypes.release`.
+- Customer embedded banner/image payloads match original `main` exactly.
+- No source-integrity test, SQL fixture, or browser fixture is loaded by application HTML or native packaging. Tests are development-only.
+
+## Source transfer changes
+
+Sizes are source bytes and zlib-compressed bytes, not device INP measurements.
+
+| Entry | Before bytes | After bytes | Removed bytes | Compressed before → after |
+|---|---:|---:|---:|---:|
+| `index.html` | 172,341 | 175,032 | -2,691 | 113,646 → 114,500 |
+| `merchant/index.html` | 471,336 | 328,691 | 142,645 | 229,879 → 141,922 |
+| `admin/index.html` | 515,014 | 256,477 | 258,537 | 125,581 → 68,079 |
+| `rider/index.html` | 257,099 | 238,825 | 18,274 | 124,196 → 119,986 |
+
+## Remote operations and release blockers
+
+- No remote branch has been deleted in this checkpoint. Git transport has no push credential; the connected GitHub API can update `main` but exposes no branch-delete operation. Browser fallback requires explicit approval under the tool-use instructions. No backup/archive/new branch was created.
+- Previous live Customer HTML matched the original `main` byte-for-byte, and the latest inspected Pages run was `pages build and deployment` on `main`. Final updated live bytes and deployment SHA still need verification after publication. Pages settings API is not supported by the connector.
+- Real E2E/negative E2E/concurrency needs an isolated test deployment/database and four-role test identities; it must not run against real production orders. The Supabase branch listing contains only production `main`; no billable staging branch was created.
+- Full Android lifecycle, physical printer/QR, Samsung tablet/iPhone Safari, field INP, fresh install and user acceptance tests remain.
+- Do not release or call this batch closed-beta ready. No store submission or old artifact deployment was performed.
+
+The 16 remote branches still requiring deletion are:
+
+- `android-apk-build-20261001`
+- `backup/before-customer-restore-20261003-1615`
+- `backup/customer-before-checkout-button-20260930`
+- `backup/pre-current-ui-all-pages-20261003`
+- `backup/pre-location-pixel-rebuild-20261003`
+- `backup/pre-rider-first-20260930`
+- `backup/pre-shop-restoration-20261003`
+- `backup-2026-09-29-pre-fix`
+- `backup-2026-09-29-pre-production-hardening`
+- `customer-legacy-removal-clean-rebuild`
+- `customer-owner-legacy-removal-restart`
+- `export-customer-files-20261003`
+- `fix-pos-table-qr-2026-09-29`
+- `hardening-2026-09-29`
+- `pre-apk-hardening-rc`
+- `rider-first-order-flow-rc`
+
+## References
+
+- [Feature matrix](FEATURE_MATRIX.md)
+- [Supabase leaked-password protection](https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection)
+- [Google Play current target requirements](https://support.google.com/googleplay/android-developer/answer/11926878)

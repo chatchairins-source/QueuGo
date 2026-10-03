@@ -1,5 +1,0 @@
-(()=>{
-const washer='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2.5" width="16" height="19" rx="2.5"/><path d="M4 7.5h16"/><circle cx="12" cy="14.5" r="4.5"/><circle cx="8" cy="5" r=".65" fill="currentColor" stroke="none"/><circle cx="11" cy="5" r=".65" fill="currentColor" stroke="none"/></svg>';
-function install(){document.querySelectorAll('.qg-laundry-category').forEach(x=>x.remove());const market=[...document.querySelectorAll('button.qg-cat')].find(x=>(x.textContent||'').trim()==='ตลาดสด');if(!market)return;const b=document.createElement('button');b.type='button';b.className='qg-cat qg-laundry-category';b.onclick=()=>location.href='./laundry/';b.innerHTML='<span class="qg-cat-icon">'+washer+'</span><b>ฝากซัก</b>';market.before(b)}
-install();new MutationObserver(install).observe(document.body,{childList:true,subtree:true});
-})();

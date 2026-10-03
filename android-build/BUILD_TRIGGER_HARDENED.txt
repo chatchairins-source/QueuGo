@@ -1,5 +1,0 @@
-Regression-hardened Android validation build.
-Merchant scroll fix.
-Customer checkout camera removed.
-Native runtime permissions enabled.
-QueueGo Q launcher icon enabled.

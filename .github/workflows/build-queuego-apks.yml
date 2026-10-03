@@ -9,6 +9,7 @@ on:
 
 jobs:
   build:
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -45,69 +46,18 @@ jobs:
           mkdir -p www
           if [ "${{ matrix.role }}" = "customer" ]; then
             cp ../index.html www/index.html
-            cp ../market.css ../market.js ../table-order.css ../table-order.js ../table-order.html www/ 2>/dev/null || true
+            cp ../table-order.css ../table-order.js ../table-order.html www/
           elif [ "${{ matrix.role }}" = "merchant" ]; then
             cp ../merchant/* www/
+            cp ../table-order.html ../table-order.css ../table-order.js www/
           else
             cp ../rider/index.html www/index.html
+            mkdir -p www/laundry
+            cp ../laundry/rider-integration.js www/laundry/
           fi
           node -e "let c=require('./capacitor.config.json');c.appId='${{ matrix.appid }}';c.appName='${{ matrix.appname }}';require('fs').writeFileSync('capacitor.config.json',JSON.stringify(c,null,2))"
           npx cap add android
           npx cap sync android
-      - name: Add native runtime permission bridge
-        shell: bash
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          import json, textwrap
-          cfg=json.loads(Path('android-build/capacitor.config.json').read_text())
-          pkg=cfg['appId']
-          java_dir=Path('android-build/android/app/src/main/java')/Path(*pkg.split('.'))
-          java_dir.mkdir(parents=True,exist_ok=True)
-          template=textwrap.dedent("""\
-          package __PKG__;
-
-          import android.Manifest;
-          import android.content.pm.PackageManager;
-          import android.os.Build;
-          import android.os.Bundle;
-          import android.webkit.GeolocationPermissions;
-          import android.webkit.WebChromeClient;
-          import com.getcapacitor.BridgeActivity;
-          import java.util.ArrayList;
-          import java.util.List;
-
-          public class MainActivity extends BridgeActivity {
-            private static final int QG_PERMISSION_REQUEST = 4201;
-            @Override
-            public void onCreate(Bundle savedInstanceState) {
-              super.onCreate(savedInstanceState);
-              if (bridge != null && bridge.getWebView() != null) {
-                bridge.getWebView().getSettings().setGeolocationEnabled(true);
-                bridge.getWebView().setWebChromeClient(new WebChromeClient() {
-                  @Override
-                  public void onGeolocationPermissionsShowPrompt(String origin, GeolocationPermissions.Callback callback) {
-                    callback.invoke(origin, true, false);
-                  }
-                });
-              }
-              if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                List<String> wanted = new ArrayList<>();
-                addIfMissing(wanted, Manifest.permission.ACCESS_COARSE_LOCATION);
-                addIfMissing(wanted, Manifest.permission.ACCESS_FINE_LOCATION);
-                if (Build.VERSION.SDK_INT >= 33) {
-                  addIfMissing(wanted, Manifest.permission.POST_NOTIFICATIONS);
-                }
-                if (!wanted.isEmpty()) requestPermissions(wanted.toArray(new String[0]), QG_PERMISSION_REQUEST);
-              }
-            }
-            private void addIfMissing(List<String> list, String permission) {
-              if (checkSelfPermission(permission) != PackageManager.PERMISSION_GRANTED) list.add(permission);
-            }
-          }
-          """)
-          (java_dir/'MainActivity.java').write_text(template.replace('__PKG__',pkg))
-          PY
       - name: Add Android permissions
         shell: bash
         run: |
@@ -118,14 +68,9 @@ jobs:
           perms=[
             'android.permission.INTERNET',
             'android.permission.ACCESS_NETWORK_STATE',
-            'android.permission.ACCESS_WIFI_STATE',
             'android.permission.ACCESS_COARSE_LOCATION',
             'android.permission.ACCESS_FINE_LOCATION',
-            'android.permission.POST_NOTIFICATIONS',
             'android.permission.VIBRATE',
-            'android.permission.WAKE_LOCK',
-            'android.permission.FOREGROUND_SERVICE',
-            'android.permission.FOREGROUND_SERVICE_LOCATION',
           ]
           block='\n'.join(f'    <uses-permission android:name="{x}" />' for x in perms)
           s=s.replace('<application',block+'\n    <application',1)
@@ -174,6 +119,7 @@ jobs:
           EOF
           python3 - <<'PY'
           from pathlib import Path
+          import re
           p=Path('android-build/android/app/build.gradle')
           s=p.read_text()
           marker='android {'
@@ -188,8 +134,8 @@ jobs:
               }
           """
           s=s.replace(marker,signing,1)
-          s=s.replace('buildTypes {','buildTypes {',1)
-          s=s.replace('release {','release {\n            signingConfig signingConfigs.release',1)
+          s,count=re.subn(r'(buildTypes\s*\{\s*release\s*\{)',r'\1\n            signingConfig signingConfigs.release',s,count=1)
+          if count!=1: raise RuntimeError('Release build type not found')
           p.write_text(s)
           PY
       - name: Build signed release AAB

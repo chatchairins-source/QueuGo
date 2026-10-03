@@ -81,16 +81,6 @@ svg{display:block}.ico{width:20px;height:20px;fill:none;stroke:currentColor;stro
 .qt-panel{padding-bottom:calc(96px + var(--safeB))!important;scroll-padding-bottom:calc(96px + var(--safeB))!important;-webkit-overflow-scrolling:touch!important}
 .qt-list{padding-bottom:16px!important}
 .qt-panelhead{padding-right:52px!important}
-.qt-todaygrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin:10px 0 13px}
-.qt-todaystat{padding:10px 8px;border:1px solid var(--line);border-radius:16px;background:#fff;min-width:0}
-.qt-todaystat span{display:block;font-size:8px;color:var(--muted)}
-.qt-todaystat b{display:block;margin-top:3px;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.qt-daycard{padding:13px;border:1px solid var(--line);border-radius:19px;background:#fff;box-shadow:0 8px 24px rgba(93,15,28,.05)}
-.qt-dayhead{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
-.qt-dayhead b{font-size:13px}.qt-dayhead strong{font-size:16px;color:#b60c29}
-.qt-daymeta{display:flex;gap:12px;flex-wrap:wrap;margin-top:6px;font-size:9px;color:var(--muted)}
-.qt-dayorders{display:grid;gap:5px;margin-top:9px;padding-top:8px;border-top:1px solid var(--line)}
-.qt-dayorder{display:flex;justify-content:space-between;gap:8px;font-size:9.5px}.qt-dayorder span:last-child{font-weight:800}
 
 </style>
 <style id="qg-v24-rider-ui">
@@ -111,9 +101,9 @@ html,body,#app{min-width:0;max-width:100%;overflow-x:hidden}
 @media(max-width:760px){.auth-side{height:clamp(245px,43dvh,390px);padding:calc(18px + var(--safeT)) 23px 0}.auth-side-copy h2{font-size:14px}.auth-main{margin-top:-18px;padding:22px 22px calc(20px + var(--safeB))}.auth-card{padding:0;border-radius:0}}
 @media(max-height:700px){.auth-side{height:clamp(205px,34dvh,260px)}.auth-mark .auth-logo{width:40px;height:40px;font-size:27px}.auth-mark b{font-size:21px}.auth-mark small{font-size:12px}.auth-side-copy h2{margin-top:4px}.auth-main{padding-top:16px}.auth-card .sub{margin-bottom:8px}.auth-card .field{margin:7px 0}.auth-card .field input,.auth-card .btn{height:42px}}
 .qg-inbox{background:#fcf7f8}.qg-inbox h2,.qg-inbox-item{color:#241d20}.qg-v22-dialog form button{background:#e6002d}.qg-v22-period button{border-color:#f0d2d9;background:#fff0f2;color:#b60c29}.qg-v22-job-metrics,.qg-v22-photo-label{color:#b60c29}.qg-v23-map-fallback{color:#8f1730;background:#fff0f2}
-</style><style id="qg-q-only-topbar">.qt-top .qt-brand.qt-q-only{display:grid!important;place-items:center!important;width:42px!important;height:42px!important;padding:0!important;color:#ed0a31!important;background:rgba(255,255,255,.92)!important}.qt-top .qt-brand.qt-q-only svg{width:29px;height:29px}.rider-topbar .rider-brand.qt-q-only{display:grid;place-items:center}.rider-topbar .rider-brand.qt-q-only svg{width:42px;height:42px;color:#fff}</style></head><body>
+</style><style id="qg-q-only-topbar">.qt-top .qt-brand.qt-q-only{display:grid!important;place-items:center!important;width:42px!important;height:42px!important;padding:0!important;color:#ed0a31!important;background:rgba(255,255,255,.92)!important}.qt-top .qt-brand.qt-q-only svg{width:29px;height:29px}.rider-topbar .rider-brand.qt-q-only{display:grid;place-items:center}.rider-topbar .rider-brand.qt-q-only svg{width:42px;height:42px;color:#fff}</style><script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+</head><body>
 <div id="app"></div><div id="toast" class="toast"></div>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>/* =========================================================================
    QueueGo Rider — Supabase-connected rider interface.
    Includes registration, delivery workflow, messages and earnings.
@@ -222,23 +212,14 @@ function mapsLink(lat,lng,address){
 }
 
 /* order status <-> db column + note tag, matching the main QueueGo app */
-function statusToDb(s){
-  return {ready:'ready', assigned:'assigned', picked_up:'picked_up', delivering:'in_progress', arrived:'in_progress', completed:'completed'}[s] || s;
-}
-function statusFromRow(row){
-  const m = (row.note||'').match(/__QT_ORDER_STATUS__=([^\n]+)/);
-  if(m) return m[1];
-  return {ready:'ready', assigned:'assigned', picked_up:'picked_up', in_progress:'delivering', completed:'completed'}[row.status] || row.status;
-}
-function noteWithTag(row, tag){
-  const body = (row.note||'').replace(/__QT_ORDER_STATUS__=[^\n]+\n?/,'');
-  return ('__QT_ORDER_STATUS__='+tag+'\n'+body).trim();
-}
+
+
+
 const STEP_LABEL = {
-  assigned:'ไปรับสินค้าที่ร้าน', picked_up:'รับสินค้าแล้ว — ไปส่งลูกค้า',
+  rider_assigned:'ไปรับสินค้าที่ร้าน',preparing:'ร้านกำลังเตรียมสินค้า',ready:'พร้อมรับสินค้า',assigned:'ไปรับสินค้าที่ร้าน', picked_up:'รับสินค้าแล้ว — ไปส่งลูกค้า',
   delivering:'กำลังจัดส่ง', arrived:'ถึงลูกค้าแล้ว', completed:'ส่งสำเร็จ'
 };
-const STEP_NEXT = { assigned:{to:'picked_up', label:'ถึงร้านแล้ว / รับสินค้า'},
+const STEP_NEXT = { ready:{to:'picked_up', label:'จ่ายเงินสดให้ร้านและรับสินค้า'},
   picked_up:{to:'delivering', label:'เริ่มจัดส่ง'},
   delivering:{to:'arrived', label:'ถึงลูกค้าแล้ว'},
   arrived:{to:'completed', label:'ยืนยันส่งสำเร็จ'} };
@@ -335,6 +316,8 @@ async function loadRiderProfile(){
   const rows = await sbTable('rider_profiles?select=*&user_id=eq.'+encodeURIComponent(S.user.id), {token});
   S.riderProfile = Array.isArray(rows) && rows[0] ? rows[0] : null;
   S.online = !!(S.riderProfile && S.riderProfile.metadata && S.riderProfile.metadata.online);
+
+try{const c=JSON.parse(localStorage.getItem(qgRiderHistoryKey())||'null');if(c&&Date.now()-c.at<7*86400000&&Array.isArray(c.history))S.history=c.history}catch(e){}
 }
 
 /* ---------- LOGIN ---------- */
@@ -699,7 +682,7 @@ async function pushLocation(){
 async function refreshData(){
   try{
     const token = await getAccessToken();
-    const mine = await sbTable('orders?select=*&order_type=eq.shopping&rider_id=eq.'+encodeURIComponent(S.riderProfile.id)+'&status=in.(assigned,picked_up,in_progress)&order=created_at.desc&limit=1', {token});
+    const mine = await sbTable('orders?select=*&order_type=eq.shopping&rider_id=eq.'+encodeURIComponent(S.riderProfile.id)+'&status=in.(rider_assigned,preparing,ready,assigned,picked_up,in_progress)&order=created_at.desc&limit=1', {token});
     S.activeOrder = Array.isArray(mine) && mine[0] ? mine[0] : null;
 
     const previousOpenJobIds = new Set((S.openJobs||[]).map(x=>x&&x.order&&x.order.id ? String(x.order.id) : null).filter(Boolean));
@@ -743,6 +726,8 @@ async function refreshData(){
     S.history = Array.isArray(hist) ? hist : [];
     if(S.activeTab==='jobs') renderHistoryPanel();
   }catch(e){ console.error('refreshData failed', e);const now=Date.now();if(!refreshData.lastErrorAt||now-refreshData.lastErrorAt>30000){refreshData.lastErrorAt=now;toast('โหลดงานจากฐานข้อมูลไม่สำเร็จ: '+(e.message||e));} }
+
+try{const k=qgRiderHistoryKey(),history=(S.history||[]).slice(0,100);if(k){const json=JSON.stringify({at:Date.now(),history});if(json.length<800000)localStorage.setItem(k,json)}}catch(e){}if(S.activeTab==='chat'&&!S.chatOrder)qgRenderMessageInbox();qgWatchCompletedChat()
 }
 async function enrichOrder(o){
   const token = await getAccessToken();
@@ -793,81 +778,17 @@ function drawActiveRoute(){
 
 /* ---------- sheet (home) ---------- */
 /* QueueGo v21: superseded renderSheet presentation removed. */
-function jobRowHTML(x){
-  const o = x.order;
-  const shopName = o._shop ? o._shop.shop_name : 'ร้านค้า';
-  const pickupKm = Number.isFinite(Number(x.distanceKm)) ? Number(x.distanceKm) : haversineKm(S.pos&&S.pos.lat,S.pos&&S.pos.lng,o.pickup_latitude,o.pickup_longitude);
-  const deliveryKm = haversineKm(o.pickup_latitude,o.pickup_longitude,o.delivery_latitude,o.delivery_longitude);
-  return `<div class="job-row">
-    <div class="top">
-      <div><div class="shop">${esc(shopName)}</div><div class="meta">${o.fulfillment_vertical==='market'||o.fulfillment_vertical==='grocery'?'ตลาดสด · '+Number(o._marketWeight||0).toLocaleString('th-TH')+' กก.':'งานรอรับ'}</div></div>
-      <div class="fee">฿${Number(o.delivery_fee||0)}</div>
-    </div>
-    <div class="job-distances">
-      <div class="job-distance pickup">จุดรับ<b>${Number.isFinite(pickupKm)?pickupKm.toFixed(1)+' กม.':'ไม่มีพิกัด'}</b></div>
-      <div class="job-distance delivery">ระยะส่ง<b>${Number.isFinite(deliveryKm)?deliveryKm.toFixed(1)+' กม.':'ไม่มีพิกัด'}</b></div>
-    </div>
-    <div class="meta">${esc(o.pickup_address||'ไม่มีที่อยู่จุดรับ')}<br>${esc(o.delivery_address||'ไม่มีที่อยู่จุดส่ง')}</div>
-    <div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap">
-      <a class="accept" style="text-decoration:none;display:inline-block" href="${esc(mapsLink(o.pickup_latitude,o.pickup_longitude,o.pickup_address))}" target="_blank" rel="noopener">นำทาง</a>
-      <button class="accept" id="accept-${o.id}">รับงานนี้</button>
-    </div>
-  </div>`;
-}
+
 
 /* QueueGo v21: superseded jobCardHTML presentation removed. */
-function slideConfirmHTML(){
-  return `<div class="slide-wrap" id="delivery-slide" aria-label="เลื่อนเพื่อยืนยันส่งสำเร็จ">
-    <div class="slide-label">เลื่อนเพื่อยืนยันส่งสำเร็จ</div>
-    <button class="slide-thumb" id="delivery-slide-thumb" type="button">›</button>
-  </div>`;
-}
+
 
 /* QueueGo v21: superseded bindJobCardEvents presentation removed. */
-function bindDeliverySlide(track,thumb,onDone){
-  let startX=0,current=0,drag=false,finished=false;
-  const max=()=>Math.max(0,track.clientWidth-thumb.offsetWidth-6);
-  const move=x=>{ current=Math.max(0,Math.min(max(),x-startX)); thumb.style.transform=`translateX(${current}px)`; };
-  const end=()=>{ if(!drag||finished)return; drag=false; if(current>=max()*0.82){ finished=true; current=max(); thumb.style.transform=`translateX(${current}px)`; track.classList.add('done'); thumb.textContent='✓'; onDone(); } else { current=0; thumb.style.transform='translateX(0)'; } };
-  thumb.addEventListener('pointerdown',e=>{ if(finished)return; drag=true; startX=e.clientX-current; thumb.setPointerCapture?.(e.pointerId); });
-  thumb.addEventListener('pointermove',e=>{ if(drag)move(e.clientX); });
-  thumb.addEventListener('pointerup',end);
-  thumb.addEventListener('pointercancel',end);
-}
 
-async function showPaymentBeforeFinish(o){
-  try{
-    stopPolling();
-    const token=await getAccessToken();
-    const rows=await sbTable('orders?id=eq.'+encodeURIComponent(o.id)+'&select=*',{token});
-    const current=Array.isArray(rows)&&rows[0]?rows[0]:o;
-    renderPaymentSummary(current,false);
-  }catch(e){
-    console.error(e);
-    startPolling();
-    toast('ไม่สามารถแสดงยอดเงินได้: '+e.message);
-  }
-}
 
-async function finishOrder(o){
-  const btn=document.getElementById('finish-order-btn');
-  if(btn){btn.disabled=true;btn.textContent='กำลังจบงาน...';}
-  try{
-    const token=await getAccessToken();
-    const updated=await sbTable('orders?id=eq.'+encodeURIComponent(o.id),{method:'PATCH',token,body:{status:'completed',note:noteWithTag(o,'completed'),updated_at:new Date().toISOString()}});
-    let finalOrder=Array.isArray(updated)&&updated[0]?updated[0]:null;
-    if(!finalOrder){
-      const rows=await sbTable('orders?id=eq.'+encodeURIComponent(o.id)+'&select=*',{token});
-      finalOrder=Array.isArray(rows)?rows[0]:null;
-    }
-    if(!finalOrder) finalOrder=o;
-    renderPaymentSummary(finalOrder,true);
-  }catch(e){
-    console.error(e);
-    if(btn){btn.disabled=false;btn.textContent='จบงาน';}
-    toast('จบงานไม่สำเร็จ: '+e.message);
-  }
-}
+
+
+
 
 /* QueueGo v21: superseded renderPaymentSummary presentation removed. */
 /* QueueGo v21: superseded closeChat presentation removed. */
@@ -889,49 +810,19 @@ function renderChatMessages(rows){
   box.scrollTop=box.scrollHeight;
 }
 /* QueueGo v21: superseded openChat presentation removed. */
-async function sendRiderChat(o,override){const input=document.getElementById('chat-input');const message=override||(input?.value||'').trim();if(!message)return;try{const token=await getAccessToken();await sbTable('order_chat_messages',{method:'POST',token,body:{order_id:o.id,sender_id:S.user.id,message}});if(input&&!override)input.value='';renderChatMessages(await loadChatMessages(o.id));}catch(e){console.error(e);toast('ส่งข้อความไม่สำเร็จ: '+e.message);}}
+async function sendRiderChat(o,override){
+   if(o?.status==='completed'){try{
+     const token=await getAccessToken(),d=await sbTable('deliveries?select=delivered_at&order_id=eq.'+encodeURIComponent(o.id)+'&limit=1',{token});
+     const at=d?.[0]?.delivered_at,rows=await loadChatMessages(o.id);
+     if(!at||!rows.some(m=>String(m.sender_id)===String(order.customer_id)&&new Date(m.created_at)>new Date(at))){toast('หลังจบงาน รอลูกค้าส่งข้อความมาก่อน');return}
+   }catch(e){toast('ตรวจสอบข้อความลูกค้าไม่สำเร็จ');return}}
 
-async function acceptJob(orderId){
-  const btn=document.getElementById('accept-'+orderId);
-  if(btn){ btn.disabled=true; btn.textContent='กำลังรับงาน...'; }
-  try{
-    const token = await getAccessToken();
-    if(!token) throw new Error('ไม่พบเซสชันเข้าสู่ระบบ');
-    if(!S.riderProfile || !S.riderProfile.id) throw new Error('ไม่พบ rider_profiles.id ของไรเดอร์');
-    const currentRows = await sbTable('orders?id=eq.'+encodeURIComponent(orderId), {token});
-    const current = Array.isArray(currentRows) ? currentRows[0] : null;
-    if(!current){ throw new Error('ไม่พบออเดอร์ในฐานข้อมูล'); }
-    if(current.rider_id){ toast('งานนี้มีไรเดอร์รับไปแล้ว'); refreshData(); return; }
-    const updated = await sbTable('orders?id=eq.'+encodeURIComponent(orderId)+'&rider_id=is.null', {method:'PATCH', token, body:{
-      rider_id:S.riderProfile.id, status:statusToDb('assigned'), note:noteWithTag(current,'assigned'), updated_at:new Date().toISOString()
-    }});
-    if(!Array.isArray(updated) || !updated.length){
-      const verify=await sbTable('orders?id=eq.'+encodeURIComponent(orderId)+'&select=id,rider_id,status,order_number', {token});
-      const row=Array.isArray(verify)?verify[0]:null;
-      if(!row || row.rider_id!==S.riderProfile.id) throw new Error('เซิร์ฟเวอร์ไม่ยืนยันการรับงาน');
-    }
-    toast('รับงานสำเร็จ');
-    await refreshData();
-  }catch(e){
-    console.error('acceptJob failed',e);
-    toast('รับงานไม่สำเร็จ: '+String(e.message||e));
-    if(btn){ btn.disabled=false; btn.textContent='รับงานนี้'; }
-  }
-}
 
-async function advanceOrder(o){
-  const status = statusFromRow(o);
-  const next = STEP_NEXT[status];
-  if(!next) return;
-  try{
-    const token = await getAccessToken();
-    await sbTable('orders?id=eq.'+encodeURIComponent(o.id), {method:'PATCH', token, body:{
-      status:statusToDb(next.to), note:noteWithTag(o,next.to), updated_at:new Date().toISOString()
-    }});
-    toast(next.to==='completed' ? 'ส่งสำเร็จ' : 'อัปเดตสถานะแล้ว');
-    refreshData();
-  }catch(e){ console.error(e); toast('อัปเดตสถานะไม่สำเร็จ: '+e.message); }
-}
+const input=document.getElementById('chat-input');const message=override||(input?.value||'').trim();if(!message)return;try{const token=await getAccessToken();await sbTable('order_chat_messages',{method:'POST',token,body:{order_id:o.id,sender_id:S.user.id,message}});if(input&&!override)input.value='';renderChatMessages(await loadChatMessages(o.id));}catch(e){console.error(e);toast('ส่งข้อความไม่สำเร็จ: '+e.message);}}
+
+
+
+
 
 /* ---------- job history panel (rider earnings, grouped day by day) ---------- */
 function riderEarning(o){
@@ -939,46 +830,11 @@ function riderEarning(o){
   // from the customer and handed over — it is not the rider's earning).
   return Number(o.delivery_fee ?? o.rider_fee ?? 0) || 0;
 }
-function dayKey(d){ return d.toLocaleDateString('th-TH',{year:'numeric',month:'long',day:'numeric'}); }
+
 /* QueueGo v21: superseded renderHistoryPanel presentation removed. */
-function renderAIPanel(){
-  const p=document.getElementById('panel-ai'); if(!p)return;
-  const o=S.activeOrder, status=o?statusFromRow(o):'';
-  const hint=o?(status==='assigned'?'ตอนนี้มีงานอยู่: มุ่งหน้าไปร้านและตรวจสอบออเดอร์ก่อนรับสินค้า':status==='picked_up'||status==='delivering'?'รับสินค้าแล้ว ตรวจสอบรายการและเดินทางไปหาลูกค้า':'ผมช่วยสรุปขั้นตอนของงานปัจจุบันให้ได้'):'ตอนนี้ยังไม่มีงานที่กำลังส่ง เปิดออนไลน์เมื่อพร้อมรับออเดอร์';
-  p.innerHTML=`<div class="ai-shell">
-    <div class="ai-head"><h2>AI ผู้ช่วยไรเดอร์</h2><span class="ai-badge">QueueGo Assistant</span></div>
-    <div class="ai-hero"><div class="ai-orb">✦</div><h3>สวัสดี ${esc(S.user.name||'ไรเดอร์')}</h3><p>${esc(hint)}</p></div>
-    <div class="ai-quick">
-      <button type="button" data-aiq="สรุปงานปัจจุบันให้หน่อย">สรุปงานปัจจุบัน<br><small>ดูขั้นตอนต่อไป</small></button>
-      <button type="button" data-aiq="ช่วยร่างข้อความสุภาพแจ้งลูกค้าว่ากำลังเดินทาง">ร่างข้อความลูกค้า<br><small>พร้อมส่งได้ทันที</small></button>
-      <button type="button" data-aiq="สรุปรายได้และจำนวนงานของฉัน">สรุปรายได้<br><small>${S.history.length} งานล่าสุด</small></button>
-      <button type="button" id="ai-map-btn">ดูเส้นทาง<br><small>กลับไปยังแผนที่</small></button>
-    </div>
-    <div class="ai-chat">
-      <div class="ai-messages" id="ai-messages"><div class="ai-msg bot">ถามผมเรื่องงาน เส้นทาง การคุยกับลูกค้า หรือขั้นตอนการจัดส่งได้ครับ</div></div>
-      <form class="ai-compose" id="ai-form"><input id="ai-input" maxlength="600" autocomplete="off" placeholder="ถาม AI ผู้ช่วยไรเดอร์..."><button type="submit">➜</button></form>
-      <div class="ai-connect">โหมดช่วยงานในเครื่อง • รองรับการเชื่อมต่อ <b>OpenAI ผ่าน Edge Function</b> โดยไม่เปิดเผยคีย์</div>
-    </div>
-  </div>`;
-  document.querySelectorAll('[data-aiq]').forEach(b=>b.onclick=()=>qtAIAsk(b.dataset.aiq));
-  document.getElementById('ai-map-btn').onclick=()=>switchTab('home');
-  document.getElementById('ai-form').onsubmit=e=>{e.preventDefault();const i=document.getElementById('ai-input');const q=(i.value||'').trim();if(q){i.value='';qtAIAsk(q);}};
-}
-function qtAIAdd(role,text){
-  const box=document.getElementById('ai-messages');if(!box)return;
-  const d=document.createElement('div');d.className='ai-msg '+(role==='me'?'me':'bot');d.textContent=text;box.appendChild(d);box.scrollTop=box.scrollHeight;
-}
-async function qtAIAsk(q){
-  qtAIAdd('me',q);
-  const o=S.activeOrder;
-  let local='';
-  if(/รายได้|กี่งาน/.test(q)){const total=S.history.reduce((a,x)=>a+riderEarning(x),0);local=`งานที่ส่งสำเร็จล่าสุด ${S.history.length} งาน รายได้รวมจากค่าจัดส่ง ฿${total.toLocaleString('th-TH')}`;}
-  else if(/เส้นทาง|แผนที่/.test(q)){local=o?'เปิดหน้าแรกเพื่อดูเส้นทางของงานปัจจุบันได้เลยครับ':'ตอนนี้ยังไม่มีงานปัจจุบัน เปิดออนไลน์เพื่อค้นหางานก่อนครับ';}
-  else if(/ข้อความ|ลูกค้า|ร่าง/.test(q)){local='ตัวอย่างข้อความ: “สวัสดีครับ ไรเดอร์กำลังเดินทางไปส่งออเดอร์ให้ครับ หากมีจุดสังเกตเพิ่มเติมแจ้งได้เลยครับ”';}
-  else if(/งาน|ขั้นตอน|สรุป/.test(q)){local=o?`ออเดอร์ ${o.order_number||String(o.id).slice(0,8)} อยู่ในสถานะ ${statusFromRow(o)} ครับ`:'ตอนนี้ยังไม่มีงานที่กำลังจัดส่งครับ';}
-  else local='ตอนนี้ AI ในไฟล์นี้ทำงานแบบผู้ช่วยในเครื่องก่อนครับ เมื่อต่อ Backend แล้วจะสามารถส่งคำถามไปยัง OpenAI และตอบแบบ ChatGPT ได้ โดยไม่เปิดเผย API key ในหน้าเว็บ';
-  qtAIAdd('bot',local);
-}
+
+
+
 
 /* ---------- profile panel ---------- */
 /* QueueGo v21: superseded renderProfilePanel presentation removed. */
@@ -1095,6 +951,16 @@ function renderStage(){
  initMap(); updateStatusUI(); renderSheet(); startGeolocation(); refreshData(); startPolling(); qtStartMessageWatch();
 }
 function switchTab(tab){
+
+   document.getElementById('qg-rider-inbox')?.remove();
+   if(tab==='chat'){
+   qgMarkInboxSeen();
+   S.activeTab='chat';document.querySelectorAll('.qt-tab').forEach(b=>b.classList.toggle('active',b.dataset.tab==='chat'));
+   document.querySelectorAll('.qt-panel').forEach(p=>p.classList.remove('show'));
+   for(const sel of ['#map','#sheet','.qt-fabs','#route-badge']){const el=document.querySelector(sel);if(el)el.style.display='none'}
+   qgRenderMessageInbox();
+ return;}
+
  S.activeTab=tab;
  document.querySelectorAll('.qt-tab').forEach(b=>b.classList.toggle('active',b.dataset.tab===tab));
  document.querySelectorAll('.qt-panel').forEach(p=>p.classList.remove('show'));
@@ -1117,7 +983,7 @@ function placeRiderMarker(){
 }
 function renderSheet(){
  const s=document.getElementById('sheet');if(!s)return;
- if(S.activeOrder){s.innerHTML=jobCardHTML(S.activeOrder);bindJobCardEvents(S.activeOrder);return}
+ if(S.activeOrder){s.innerHTML=jobCardHTML(S.activeOrder);bindJobCardEvents(S.activeOrder);if(S.activeOrder.market_order_id)setTimeout(()=>qgMountMarketPickups(S.activeOrder),0);return}
  if(!S.online){s.innerHTML=`<div class="qt-handle"></div><div class="qt-ready"><div class="qt-copy"><div class="qt-title">พร้อมรับงาน</div><div class="qt-sub">เปิดสถานะเพื่อรับออเดอร์ที่อยู่ใกล้คุณ</div></div><button class="qt-online" id="go-online">ออนไลน์</button></div>`;document.getElementById('go-online').onclick=toggleOnline;return}
  if(!S.openJobs.length){s.innerHTML=S.pos?`<div class="qt-handle"></div><div class="qt-title">กำลังค้นหางานใกล้คุณ</div><div class="qt-sub">คุณออนไลน์อยู่ ระบบจะอัปเดตงานให้อัตโนมัติ</div>`:`<div class="qt-handle"></div><div class="qt-title">รอตำแหน่ง GPS</div><div class="qt-sub">กรุณาอนุญาตตำแหน่งใน Safari เพื่อค้นหางานใกล้คุณ</div>`;return}
  const x=S.openJobs[0];s.innerHTML=jobCardHTML(x.order,x);bindJobCardEvents(x.order);
@@ -1127,12 +993,14 @@ function jobCardHTML(o,x){
  const km=x&&Number.isFinite(x.distanceKm)?x.distanceKm:haversineKm(S.pos&&S.pos.lat,S.pos&&S.pos.lng,o.pickup_latitude,o.pickup_longitude);
  const delivery=haversineKm(o.pickup_latitude,o.pickup_longitude,o.delivery_latitude,o.delivery_longitude);
  const fee=riderEarning(o);const active=!!S.activeOrder;
- const targetShop=st==='assigned';const nav=mapsLink(targetShop?o.pickup_latitude:o.delivery_latitude,targetShop?o.pickup_longitude:o.delivery_longitude,targetShop?o.pickup_address:o.delivery_address);
+ const targetShop=['rider_assigned','preparing','ready','assigned'].includes(st);const nav=mapsLink(targetShop?o.pickup_latitude:o.delivery_latitude,targetShop?o.pickup_longitude:o.delivery_longitude,targetShop?o.pickup_address:o.delivery_address);
  const next=STEP_NEXT[st];
- return `<div class="qt-handle"></div><div class="qt-jobhead"><div><div class="qt-shop">${esc(shop.shop_name||'งานจัดส่ง')}</div><div class="qt-order">${active?esc(STEP_LABEL[st]||'งานที่กำลังทำ'):'งานใหม่'} · #${esc(qtShortOrder(o))}${['market','grocery'].includes(o.fulfillment_vertical)?' · ตลาดสด '+Number(o._marketWeight||0).toLocaleString('th-TH')+' กก.':''}</div></div><div class="qt-fee">฿${Number(fee||0).toLocaleString('th-TH')}<small>รายได้งานนี้</small></div></div>
+ const html = `<div class="qt-handle"></div><div class="qt-jobhead"><div><div class="qt-shop">${esc(shop.shop_name||'งานจัดส่ง')}</div><div class="qt-order">${active?esc(STEP_LABEL[st]||'งานที่กำลังทำ'):'งานใหม่'} · #${esc(qtShortOrder(o))}${['market','grocery'].includes(o.fulfillment_vertical)?' · ตลาดสด '+Number(o._marketWeight||0).toLocaleString('th-TH')+' กก.':''}</div></div><div class="qt-fee">฿${Number(fee||0).toLocaleString('th-TH')}<small>รายได้งานนี้</small></div></div>
  <div class="qt-metrics"><div class="qt-metric"><span>ถึงร้าน</span><b>${Number.isFinite(km)?km.toFixed(1):'-'} กม.</b></div><div class="qt-metric"><span>ระยะส่ง</span><b>${Number.isFinite(delivery)?delivery.toFixed(1):'-'} กม.</b></div><div class="qt-metric"><span>ยอดออเดอร์</span><b>฿${Number(o.total_amount||0).toLocaleString('th-TH')}</b></div></div>
  <div class="qt-address">${esc(targetShop?(o.pickup_address||shop.address||'จุดรับสินค้า'):(o.delivery_address||'จุดส่งสินค้า'))}</div>
- <div class="qt-actions"><a class="qt-ghost" href="${nav}" target="_blank" rel="noopener" aria-label="นำทาง">${QTICON.loc}</a><button class="qt-ghost" id="chat-${o.id}" aria-label="แชต">${QTICON.chat}</button>${active?`<button class="qt-primary" id="next-${o.id}">${next?esc(next.label):'ตรวจสอบงาน'}</button>`:`<button class="qt-primary" id="accept-${o.id}">รับงานนี้</button>`}</div>`;
+ <div class="qt-actions"><a class="qt-ghost" href="${nav}" target="_blank" rel="noopener" aria-label="นำทาง">${QTICON.loc}</a><button class="qt-ghost" id="chat-${o.id}" aria-label="แชต">${QTICON.chat}</button>${active?`<button class="qt-primary" id="next-${o.id}" ${next?'':'disabled'}>${next?esc(next.label):'รอร้านเตรียมสินค้า'}</button>`:`<button class="qt-primary" id="accept-${o.id}">รับงานนี้</button>`}</div>`;
+const toShop=x?.distanceKm??haversineKm(S.pos?.lat,S.pos?.lng,o.pickup_latitude,o.pickup_longitude),toCustomer=haversineKm(o.pickup_latitude,o.pickup_longitude,o.delivery_latitude,o.delivery_longitude),all=toShop+toCustomer;
+   if(!Number.isFinite(all))return html;return html.replace(/(<div class="qt-metrics">)/,'<div class="qg-v22-job-metrics">ไปร้าน '+toShop.toFixed(1)+' กม. · ไปหาลูกค้า '+toCustomer.toFixed(1)+' กม. · รวม '+all.toFixed(1)+' กม. · ประมาณ '+Math.ceil(all/25*60)+' นาที · ค่าส่งประมาณ '+('฿'+Number(o.delivery_fee||0).toLocaleString('th-TH',{minimumFractionDigits:2,maximumFractionDigits:2}))+'</div>$1')
 }
 function bindJobCardEvents(o){
  const c=document.getElementById('chat-'+o.id);if(c)c.onclick=()=>openChat(o);
@@ -1144,51 +1012,18 @@ function renderHistoryPanel(){
  p.innerHTML=`<div class="qt-panelhead"><h1>งานของฉัน</h1><small>${S.history.length} งาน</small></div><div class="qt-list">${S.history.length?S.history.map(o=>`<div class="qt-row"><div class="qt-rowtop"><div><b>#${esc(qtShortOrder(o))}</b><br><small>${new Date(o.updated_at||o.created_at).toLocaleString('th-TH')}</small></div><b>฿${Number(riderEarning(o)||0).toLocaleString('th-TH')}</b></div></div>`).join(''):'<div class="qt-empty">ยังไม่มีประวัติงาน</div>'}</div>`;
 }
 
-function qtDateKey(v){
- const d=new Date(v);if(!Number.isFinite(d.getTime()))return '';
- return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-}
-function qtDayName(key){
- const d=new Date(key+'T12:00:00'),now=new Date();
- if(key===qtDateKey(now))return 'วันนี้';
- const y=new Date();y.setDate(y.getDate()-1);if(key===qtDateKey(y))return 'เมื่อวาน';
- return d.toLocaleDateString('th-TH',{weekday:'short',day:'numeric',month:'short',year:'numeric'});
-}
-function qtWorkDuration(rows){
- let mins=0;
- for(const o of rows){
-  const a=new Date(o.created_at),b=new Date(o.updated_at||o.created_at);
-  if(Number.isFinite(a.getTime())&&Number.isFinite(b.getTime())&&b>=a)mins+=(b-a)/60000;
- }
- const h=Math.floor(mins/60),m=Math.round(mins%60);
- return h?`${h} ชม. ${m} นาที`:`${m} นาที`;
-}
-function qtGroups(){
- const g={};for(const o of (S.history||[])){const k=qtDateKey(o.updated_at||o.created_at);if(k)(g[k]||(g[k]=[])).push(o)}
- return Object.entries(g).sort((a,b)=>b[0].localeCompare(a[0]));
-}
 
-function qtRenderEarnings(){
- const p=document.getElementById('panel-earn');if(!p)return;
- const groups=qtGroups(),todayKey=qtDateKey(new Date()),today=(groups.find(([k])=>k===todayKey)||['',[]])[1];
- const todayIncome=today.reduce((a,o)=>a+Number(riderEarning(o)||0),0);
- const total=(S.history||[]).reduce((a,o)=>a+Number(riderEarning(o)||0),0);
- p.innerHTML=`<div class="qt-panelhead"><h1>รายได้</h1></div>
- <div class="qt-profilehero"><small>รายได้วันนี้</small><h2 style="font-size:38px;margin:8px 0">฿${todayIncome.toLocaleString('th-TH')}</h2><p>${today.length} งานวันนี้ · รายได้สะสม ฿${total.toLocaleString('th-TH')}</p></div>
- <div class="qt-todaygrid">
-  <div class="qt-todaystat"><span>จำนวนงาน</span><b>${today.length} งาน</b></div>
-  <div class="qt-todaystat"><span>เวลาทำงาน</span><b>${qtWorkDuration(today)}</b></div>
-  <div class="qt-todaystat"><span>รายได้วันนี้</span><b>฿${todayIncome.toLocaleString('th-TH')}</b></div>
- </div>
- <div class="qt-list">${groups.length?groups.map(([key,rows])=>{
-  const income=rows.reduce((a,o)=>a+Number(riderEarning(o)||0),0);
-  return `<div class="qt-daycard"><div class="qt-dayhead"><div><b>${qtDayName(key)}</b><div class="qt-daymeta"><span>${rows.length} งาน</span><span>ทำงาน ${qtWorkDuration(rows)}</span></div></div><strong>฿${income.toLocaleString('th-TH')}</strong></div><div class="qt-dayorders">${rows.map(o=>`<div class="qt-dayorder"><span>${esc(qtShortOrder(o))}</span><span>+฿${Number(riderEarning(o)||0).toLocaleString('th-TH')}</span></div>`).join('')}</div></div>`;
- }).join(''):'<div class="qt-empty">ยังไม่มีรายได้</div>'}</div>`;
-}
+
+
+
+
+
 function renderProfilePanel(){
  const p=document.getElementById('panel-profile');if(!p)return;const name=S.user?.name||'Rider',phone=S.user?.phone||'';
  p.innerHTML=`<div class="qt-panelhead"><h1>โปรไฟล์</h1></div><div class="qt-profilehero"><div class="qt-avatar">${esc(name.slice(0,1).toUpperCase())}</div><h2>${esc(name)}</h2><p>${esc(phone)} · ${esc(S.riderProfile?.vehicle_plate||'QueueGo Rider')}</p></div><div class="qt-settings"><button class="qt-setting" onclick="toggleOnline()"><span>สถานะรับงาน</span><b>${S.online?'ออนไลน์':'ออฟไลน์'}</b></button><button class="qt-setting danger" id="qt-logout"><span>ออกจากระบบ</span><span>›</span></button></div>`;
  document.getElementById('qt-logout').onclick=doLogout;
+
+const host=document.querySelector('#panel-profile .qt-settings');if(host&&!host.querySelector('#qg-v22-rider-support')){const b=document.createElement('button');b.id='qg-v22-rider-support';b.className='qt-setting';b.innerHTML='<span>แจ้งปัญหา / ติดตามเรื่อง</span><span>›</span>';b.onclick=()=>qgOpenTicketPanel();host.appendChild(b)}
 }
 function closeChat(){
  if(S.chatTimer)clearInterval(S.chatTimer);S.chatTimer=null;S.chatOrder=null;
@@ -1197,6 +1032,8 @@ function closeChat(){
  // Back always returns to the exact tab the rider came from, never traps the user.
  if(S.activeTab==='chat'){S.activeTab='home';document.querySelectorAll('.qt-tab').forEach(b=>b.classList.toggle('active',b.dataset.tab==='home'));}
  renderSheet();
+
+if(S.user)window.switchTab('chat')
 }
 async function openChat(o){
  S.chatOrder=o;const stage=document.querySelector('.stage');if(stage)stage.style.display='none';
@@ -1217,8 +1054,12 @@ function renderPaymentSummary(o,completed=false){
  document.getElementById('summary-back').onclick=back;
  if(completed)document.getElementById('summary-home').onclick=()=>{S.activeOrder=null;back();refreshData()};
  else document.getElementById('finish-order-btn').onclick=()=>finishOrder(o);
+
+if(completed)return;const card=document.querySelector('#summary-screen .qt-summarycard');if(card&&!card.querySelector('#qg-v22-delivery-photo')){const label=document.createElement('label');label.className='qg-v22-photo-label';label.textContent='รูปหลักฐานการส่งมอบ (ถ้ามี)';const input=document.createElement('input');input.id='qg-v22-delivery-photo';input.type='file';input.accept='image/jpeg,image/png,image/webp';label.appendChild(input);card.insertBefore(label,card.querySelector('#finish-order-btn'))}
 }
-function qtBadge(){const b=document.getElementById('qt-badge');if(!b)return;b.textContent=qtUnread>9?'9+':qtUnread;b.style.display=qtUnread?'block':'none'}
+function qtBadge(){const b=document.getElementById('qt-badge');if(!b)return;b.textContent=qtUnread>9?'9+':qtUnread;b.style.display=qtUnread?'block':'none'
+const el=document.getElementById('qt-badge');if(el&&qgCompletedUnread()){el.textContent=String(Math.min(9,qtUnread+qgCompletedUnread()))+(qtUnread+qgCompletedUnread()>9?'+':'');el.style.display='block'}
+}
 function qtShowMessage(t){const box=document.getElementById('qt-message'),tx=document.getElementById('qt-message-text');if(!box)return;if(tx)tx.textContent=t||'ลูกค้าส่งข้อความถึงคุณ';box.classList.add('show');clearTimeout(qtMsgTimer);qtMsgTimer=setTimeout(()=>box.classList.remove('show'),3800)}
 function qtStartMessageWatch(){
  if(window.qtMessagePoll)clearInterval(window.qtMessagePoll);qtLastMsg=null;
@@ -1232,8 +1073,14 @@ window.statusFromRow=function(row){
   if(row.status==='in_progress') return /^__QT_ORDER_STATUS__=arrived(?:\n|$)/.test(row.note||'')?'arrived':'delivering';
   return {ready:'ready',assigned:'assigned',picked_up:'picked_up',completed:'completed'}[row.status]||row.status;
 };
-STEP_NEXT.assigned.label='จ่ายเงินสดให้ร้านและรับสินค้า';
+
 window.acceptJob=async function(orderId){
+   let token,rows;try{token=await getAccessToken();rows=await sbTable('orders?select=id,market_order_id&order_type=eq.shopping&id=eq.'+encodeURIComponent(orderId)+'&limit=1',{token})}catch(e){toast('ตรวจสอบงานไม่สำเร็จ: '+e.message);return}
+   const o=rows?.[0];if(o?.market_order_id){
+   const btn=document.getElementById('accept-'+orderId);if(btn)btn.disabled=true;
+   try{await sbTable('rpc/market_rider_claim_group',{method:'POST',token,body:{p_order_id:orderId}});toast('รับงานตลาดหลายร้านสำเร็จ');await refreshData()}catch(e){toast('รับงานไม่สำเร็จ: '+e.message);if(btn)btn.disabled=false}
+ return;}
+
   const btn=document.getElementById('accept-'+orderId);if(btn)btn.disabled=true;
   try{const token=await getAccessToken();if(!token)throw Error('กรุณาเข้าสู่ระบบใหม่');
     await sbTable('rpc/rider_claim_order',{method:'POST',token,body:{p_order_id:orderId}});
@@ -1241,27 +1088,28 @@ window.acceptJob=async function(orderId){
   }catch(e){toast('รับงานไม่สำเร็จ: '+e.message);if(btn)btn.disabled=false;}
 };
 window.advanceOrder=async function(o){
-  const st=statusFromRow(o),action={assigned:'pickup_cash',picked_up:'deliver',delivering:'arrive'}[st];
+   if(o?.market_order_id){
+   const st=statusFromRow(o);try{const token=await getAccessToken();
+     if(st==='assigned'||st==='ready'){toast('กรุณารับของและยืนยันยอดเงินให้ครบทุกจุด');return}
+     if(st==='picked_up'){await sbTable('rpc/market_rider_group_action',{method:'POST',token,body:{p_market_order_id:o.market_order_id,p_action:'deliver'}});toast('รับของครบแล้ว กำลังไปส่งลูกค้า');await refreshData();return}
+     if(st==='delivering'){await sbTable('rpc/market_rider_group_action',{method:'POST',token,body:{p_market_order_id:o.market_order_id,p_action:'arrive'}});toast('ถึงจุดส่งแล้ว');await refreshData();return}
+   }catch(e){toast('อัปเดตงานตลาดไม่สำเร็จ: '+e.message)}
+ return;}
+
+  const st=statusFromRow(o),action={ready:'pickup_cash',picked_up:'deliver',delivering:'arrive'}[st];
   if(!action)return;
   try{
     const token=await getAccessToken();if(!token)throw Error('กรุณาเข้าสู่ระบบใหม่');
     if(action==='pickup_cash'){
       const rows=await sbTable('orders?select=subtotal,status&id=eq.'+encodeURIComponent(o.id)+'&limit=1',{token});
-      if(rows?.[0]?.status!=='assigned')throw Error('สถานะงานเปลี่ยนแล้ว กรุณาโหลดใหม่');
+      if(rows?.[0]?.status!=='ready')throw Error('สถานะงานเปลี่ยนแล้ว กรุณาโหลดใหม่');
       if(!confirm('ยืนยันว่าจ่ายเงินสดให้ร้าน ฿'+Number(rows[0].subtotal).toLocaleString('th-TH')+' และรับสินค้าแล้ว?'))return;
     }
     await sbTable('rpc/rider_order_action',{method:'POST',token,body:{p_order_id:o.id,p_action:action}});
     toast(action==='pickup_cash'?'บันทึกเงินสดที่จ่ายให้ร้านแล้ว':'อัปเดตสถานะแล้ว');await refreshData();
   }catch(e){toast('อัปเดตไม่สำเร็จ: '+e.message);}
 };
-window.finishOrder=async function(o){
-  const btn=document.getElementById('finish-order-btn');if(btn)btn.disabled=true;
-  try{const token=await getAccessToken();if(!token)throw Error('กรุณาเข้าสู่ระบบใหม่');
-    await sbTable('rpc/rider_order_action',{method:'POST',token,body:{p_order_id:o.id,p_action:'complete'}});
-    const rows=await sbTable('orders?select=*&id=eq.'+encodeURIComponent(o.id)+'&limit=1',{token});
-    renderPaymentSummary(rows?.[0]||{...o,status:'completed'},true);
-  }catch(e){toast('จบงานไม่สำเร็จ: '+e.message);if(btn)btn.disabled=false;}
-};
+
 </script>
 <style id="qg-rider-v21-inbox-style">
 .qg-inbox{position:absolute;inset:58px 0 64px;background:#f7faf8;overflow:auto;padding:16px;z-index:15}.qg-inbox h2{margin:4px 0 14px;font-size:20px;color:#183d32}
@@ -1272,8 +1120,12 @@ window.finishOrder=async function(o){
  const key=()=>S.user?.id?'qg-rider-history-v21:'+S.user.id:null;
  const seenKey=()=>S.user?.id?'qg-rider-chat-seen-v21:'+S.user.id:null;
  let completedUnread=0;
- const badge=window.qtBadge;
- window.qtBadge=function(){badge();const el=document.getElementById('qt-badge');if(el&&completedUnread){el.textContent=String(Math.min(9,qtUnread+completedUnread))+(qtUnread+completedUnread>9?'+':'');el.style.display='block'}};
+
+
+ window.qgRiderHistoryKey=key;
+ window.qgCompletedUnread=()=>completedUnread;
+ window.qgMarkInboxSeen=markInboxSeen;
+ window.qgWatchCompletedChat=watchCompletedChat;
  function markInboxSeen(){const k=seenKey();if(k)try{localStorage.setItem(k,String(Date.now()))}catch(e){}completedUnread=0;qtBadge()}
  async function watchCompletedChat(){
    if(!S.user||!S.history?.length)return;
@@ -1288,31 +1140,16 @@ window.finishOrder=async function(o){
      if(S.activeTab==='chat')markInboxSeen();else qtBadge();
    }catch(e){console.warn('completed chat badge refresh failed',e)}
  }
- const profile=window.loadRiderProfile;
- window.loadRiderProfile=async function(){await profile();try{const c=JSON.parse(localStorage.getItem(key())||'null');if(c&&Date.now()-c.at<7*86400000&&Array.isArray(c.history))S.history=c.history}catch(e){}};
- const refresh=window.refreshData;
- window.refreshData=async function(){await refresh();try{const k=key(),history=(S.history||[]).slice(0,100);if(k){const json=JSON.stringify({at:Date.now(),history});if(json.length<800000)localStorage.setItem(k,json)}}catch(e){}if(S.activeTab==='chat'&&!S.chatOrder)qgRenderMessageInbox();watchCompletedChat()};
- const send=window.sendRiderChat;
- window.sendRiderChat=async function(order,message){
-   if(order?.status==='completed'){try{
-     const token=await getAccessToken(),d=await sbTable('deliveries?select=delivered_at&order_id=eq.'+encodeURIComponent(order.id)+'&limit=1',{token});
-     const at=d?.[0]?.delivered_at,rows=await loadChatMessages(order.id);
-     if(!at||!rows.some(m=>String(m.sender_id)===String(order.customer_id)&&new Date(m.created_at)>new Date(at))){toast('หลังจบงาน รอลูกค้าส่งข้อความมาก่อน');return}
-   }catch(e){toast('ตรวจสอบข้อความลูกค้าไม่สำเร็จ');return}}
-   return send(order,message);
- };
- const switchOld=window.switchTab;
- window.switchTab=function(tab){
-   document.getElementById('qg-rider-inbox')?.remove();
-   if(tab!=='chat')return switchOld(tab);
-   markInboxSeen();
-   S.activeTab='chat';document.querySelectorAll('.qt-tab').forEach(b=>b.classList.toggle('active',b.dataset.tab==='chat'));
-   document.querySelectorAll('.qt-panel').forEach(p=>p.classList.remove('show'));
-   for(const sel of ['#map','#sheet','.qt-fabs','#route-badge']){const el=document.querySelector(sel);if(el)el.style.display='none'}
-   qgRenderMessageInbox();
- };
- const closeOld=window.closeChat;
- window.closeChat=function(){closeOld();if(S.user)window.switchTab('chat')};
+
+
+
+
+
+
+
+
+
+
  window.qgOpenInboxChat=function(id){const o=[S.activeOrder,...(S.history||[])].filter(Boolean).find(x=>String(x.id)===String(id));if(o){document.getElementById('qg-rider-inbox')?.remove();openChat(o)}};
  window.qgRenderMessageInbox=async function(){
    if(S.activeTab!=='chat'||S.chatOrder||!S.user)return;
@@ -1373,12 +1210,25 @@ window.finishOrder=async function(o){
 
 <script id="qg-v22-rider-operations">
 (function(){
- const paymentSummary=window.renderPaymentSummary;
- window.renderPaymentSummary=function(o,completed=false){paymentSummary(o,completed);if(completed)return;const card=document.querySelector('#summary-screen .qt-summarycard');if(card&&!card.querySelector('#qg-v22-delivery-photo')){const label=document.createElement('label');label.className='qg-v22-photo-label';label.textContent='รูปหลักฐานการส่งมอบ (ถ้ามี)';const input=document.createElement('input');input.id='qg-v22-delivery-photo';input.type='file';input.accept='image/jpeg,image/png,image/webp';label.appendChild(input);card.insertBefore(label,card.querySelector('#finish-order-btn'))}};
- const profile=window.renderProfilePanel;
- window.renderProfilePanel=function(){profile();const host=document.querySelector('#panel-profile .qt-settings');if(host&&!host.querySelector('#qg-v22-rider-support')){const b=document.createElement('button');b.id='qg-v22-rider-support';b.className='qt-setting';b.innerHTML='<span>แจ้งปัญหา / ติดตามเรื่อง</span><span>›</span>';b.onclick=()=>qgOpenTicketPanel();host.appendChild(b)}};
- const finish=window.finishOrder;
+
+
+
+
  window.finishOrder=async function(o){
+   if(o?.market_order_id){
+   try{
+     const token=await getAccessToken(),m=await sbTable('market_orders?select=total_amount,status&id=eq.'+encodeURIComponent(o.market_order_id)+'&limit=1',{token});
+     if(!m?.[0])throw Error('ไม่พบยอด Market Order');
+     if(!confirm('ยืนยันว่าได้รับเงินสดจากลูกค้า ฿'+Number(m[0].total_amount).toLocaleString('th-TH')+' แล้ว?'))return;
+     const pin=(document.getElementById('delivery-pin')?.value||document.getElementById('qg-delivery-pin')?.value||prompt('กรอกรหัส PIN 6 หลักจากลูกค้า')||'').trim();
+     if(!/^\d{6}$/.test(pin)){toast('กรุณากรอก PIN 6 หลัก');return}
+     let lat=null,lng=null;if(navigator.geolocation)try{const p=await new Promise((resolve,reject)=>navigator.geolocation.getCurrentPosition(resolve,reject,{enableHighAccuracy:true,timeout:5000,maximumAge:10000}));lat=p.coords.latitude;lng=p.coords.longitude}catch(e){}
+     const file=document.getElementById('qg-v22-delivery-photo')?.files?.[0],photoPath=file&&typeof qgUploadEvidence==='function'?await qgUploadEvidence(file):null;
+     await sbTable('rpc/qg_complete_market_with_proof',{method:'POST',token,body:{p_market_order_id:o.market_order_id,p_pin:pin,p_lat:lat,p_lng:lng,p_photo_path:photoPath}});
+     toast('ส่งออเดอร์ตลาดสำเร็จ');await refreshData();
+   }catch(e){toast('จบงานไม่สำเร็จ: '+e.message)}
+ return;}
+
    try{const t=await getAccessToken(),rows=await sbTable('orders?select=total_amount,status&id=eq.'+encodeURIComponent(o.id)+'&limit=1',{token:t});
      if(rows?.[0]?.status!=='in_progress')throw Error('สถานะออเดอร์เปลี่ยนแล้ว กรุณาโหลดใหม่');
      if(!confirm('ยืนยันว่าได้รับเงินสดจากลูกค้า ฿'+Number(rows[0].total_amount).toLocaleString('th-TH')+' แล้ว?'))return;
@@ -1405,9 +1255,8 @@ window.finishOrder=async function(o){
    box.innerHTML='<div class="qg-v22-ledger-grid"><div>จ่ายร้าน<b>'+baht(paid)+'</b></div><div>เก็บลูกค้า<b>'+baht(collected)+'</b></div><div>ค่าส่งที่ได้รับ<b>'+baht(fees)+'</b></div><div>รอเก็บลูกค้า<b>'+baht(outstanding)+'</b></div><div>สุทธิรับ-จ่าย<b>'+baht(collected-paid)+'</b></div><div>งานสำเร็จ<b>'+(rows||[]).filter(o=>o.status==='completed').length+'</b></div></div>'+
      (rows||[]).map(o=>'<article><b>'+String(o.order_number||o.order_id)+'</b><small>'+String(o.status)+' · '+(o.merchant_confirmed?'ร้านยืนยันรับเงิน':'ร้านยังไม่ยืนยัน')+' · '+String(o.payment_status||'รอชำระ')+'</small><span>จ่าย '+baht(o.cash_paid_merchant)+' / เก็บ '+baht(o.cash_collected_customer)+'</span></article>').join('');
  }catch(e){box.textContent='โหลดบัญชีเงินสดไม่สำเร็จ: '+e.message}};
- const card=window.jobCardHTML;
- window.jobCardHTML=function(o,x){const html=card(o,x),toShop=x?.distanceKm??haversineKm(S.pos?.lat,S.pos?.lng,o.pickup_latitude,o.pickup_longitude),toCustomer=haversineKm(o.pickup_latitude,o.pickup_longitude,o.delivery_latitude,o.delivery_longitude),all=toShop+toCustomer;
-   if(!Number.isFinite(all))return html;return html.replace(/(<div class="qt-metrics">)/,'<div class="qg-v22-job-metrics">ไปร้าน '+toShop.toFixed(1)+' กม. · ไปหาลูกค้า '+toCustomer.toFixed(1)+' กม. · รวม '+all.toFixed(1)+' กม. · ประมาณ '+Math.ceil(all/25*60)+' นาที · ค่าส่งประมาณ '+baht(o.delivery_fee)+'</div>$1')};
+
+
 })();
 </script>
 <style id="qg-v22-rider-operations-style">.qg-v22-ledger{padding:14px;border-radius:16px;background:white;margin:12px 0 60px}.qg-v22-ledger h2{font-size:17px}.qg-v22-period{display:flex;gap:6px}.qg-v22-period button{flex:1;border:1px solid #d1e8dc;border-radius:10px;padding:8px;background:#edfaf2;color:#12694f}.qg-v22-ledger-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:12px 0}.qg-v22-ledger-grid>div{padding:9px;border:1px solid #d9eadf;border-radius:11px;font-size:11px}.qg-v22-ledger-grid b{display:block;font-size:16px;margin-top:4px}.qg-v22-ledger article{padding:10px;border-top:1px solid #e5f0e9;font-size:11px}.qg-v22-ledger article small{display:block;color:#789082;margin:4px 0}.qg-v22-job-metrics{color:#136a50;font-weight:700;padding:8px 0;font-size:11px}</style>
@@ -1435,6 +1284,7 @@ body{overflow-y:auto;-webkit-overflow-scrolling:touch;touch-action:pan-y}
   const paid=rows.filter(x=>x.status==='PICKED_UP'||Number(x.cash_paid_amount)>0).length,total=rows.reduce((a,x)=>a+Number(x.shop_amount||0),0);
   return '<section class="qg-mp"><div class="qg-mp-head"><b>รับของหลายร้าน</b><small>รับแล้ว '+paid+'/'+rows.length+' จุด</small></div>'+rows.map((x,i)=>{const done=x.status==='PICKED_UP';return '<div class="qg-mp-row"><div class="qg-mp-top"><div><b>จุดรับ '+(i+1)+'</b><br><small>'+esc(x.shop_name||'ร้านค้า')+'</small></div><strong class="'+(done?'qg-mp-paid':'')+'">฿'+Number(x.shop_amount||0).toLocaleString('th-TH')+'</strong></div><button class="qg-mp-btn" data-pickup="'+esc(x.pickup_id)+'" data-amount="'+Number(x.shop_amount||0)+'" '+(done?'disabled':'')+'>'+(done?'✓ จ่ายและรับของแล้ว':'จ่าย ฿'+Number(x.shop_amount||0).toLocaleString('th-TH')+' และรับของ')+'</button></div>'}).join('')+'<div class="qg-mp-total"><span>เงินที่ต้องจ่ายร้านรวม</span><span>฿'+total.toLocaleString('th-TH')+'</span></div></section>';
  }
+ window.qgMountMarketPickups=mount;
  async function mount(o){
   if(!o||!o.market_order_id)return;
   const sheet=document.getElementById('sheet');if(!sheet)return;
@@ -1445,42 +1295,16 @@ body{overflow-y:auto;-webkit-overflow-scrolling:touch;touch-action:pan-y}
   sheet.querySelectorAll('[data-pickup]').forEach(b=>b.onclick=async()=>{if(b.disabled)return;const amount=Number(b.dataset.amount||0);if(!confirm('ยืนยันว่าจ่ายเงินให้ร้าน ฿'+amount.toLocaleString('th-TH')+' และรับของแล้ว?'))return;b.disabled=true;try{const token=await getAccessToken();const r=await sbTable('rpc/market_rider_confirm_pickup_cash',{method:'POST',token,body:{p_pickup_id:b.dataset.pickup,p_amount:amount}});toast(r?.all_picked_up?'รับของครบทุกจุดแล้ว — ไปส่งลูกค้าได้':'บันทึกจุดรับแล้ว');await refreshData();}catch(e){toast('บันทึกจุดรับไม่สำเร็จ: '+e.message);b.disabled=false;}});
   const next=document.getElementById('next-'+o.id);if(next){const all=rows.every(x=>x.status==='PICKED_UP'||x.status==='CANCELLED');if(!all){next.disabled=true;next.textContent='รับของให้ครบทุกจุดก่อน';}}
  }
- const old=window.renderSheet;
- window.renderSheet=function(){const r=old.apply(this,arguments);if(S.activeOrder&&S.activeOrder.market_order_id)setTimeout(()=>mount(S.activeOrder),0);return r};
+
+
 })();
 </script><script id="qg-market-group-lifecycle-v1">
 (function(){
- const oldAccept=window.acceptJob,oldAdvance=window.advanceOrder,oldFinish=window.finishOrder;
- window.acceptJob=async function(orderId){
-   let token,rows;try{token=await getAccessToken();rows=await sbTable('orders?select=id,market_order_id&order_type=eq.shopping&id=eq.'+encodeURIComponent(orderId)+'&limit=1',{token})}catch(e){return oldAccept(orderId)}
-   const o=rows?.[0];if(!o?.market_order_id)return oldAccept(orderId);
-   const btn=document.getElementById('accept-'+orderId);if(btn)btn.disabled=true;
-   try{await sbTable('rpc/market_rider_claim_group',{method:'POST',token,body:{p_order_id:orderId}});toast('รับงานตลาดหลายร้านสำเร็จ');await refreshData()}catch(e){toast('รับงานไม่สำเร็จ: '+e.message);if(btn)btn.disabled=false}
- };
- window.advanceOrder=async function(o){
-   if(!o?.market_order_id)return oldAdvance(o);
-   const st=statusFromRow(o);try{const token=await getAccessToken();
-     if(st==='assigned'||st==='ready'){toast('กรุณารับของและยืนยันยอดเงินให้ครบทุกจุด');return}
-     if(st==='picked_up'){await sbTable('rpc/market_rider_group_action',{method:'POST',token,body:{p_market_order_id:o.market_order_id,p_action:'deliver'}});toast('รับของครบแล้ว กำลังไปส่งลูกค้า');await refreshData();return}
-     if(st==='delivering'){await sbTable('rpc/market_rider_group_action',{method:'POST',token,body:{p_market_order_id:o.market_order_id,p_action:'arrive'}});toast('ถึงจุดส่งแล้ว');await refreshData();return}
-   }catch(e){toast('อัปเดตงานตลาดไม่สำเร็จ: '+e.message)}
- };
- window.finishOrder=async function(o){
-   if(!o?.market_order_id)return oldFinish(o);
-   try{
-     const token=await getAccessToken(),m=await sbTable('market_orders?select=total_amount,status&id=eq.'+encodeURIComponent(o.market_order_id)+'&limit=1',{token});
-     if(!m?.[0])throw Error('ไม่พบยอด Market Order');
-     if(!confirm('ยืนยันว่าได้รับเงินสดจากลูกค้า ฿'+Number(m[0].total_amount).toLocaleString('th-TH')+' แล้ว?'))return;
-     const pin=(document.getElementById('delivery-pin')?.value||document.getElementById('qg-delivery-pin')?.value||prompt('กรอกรหัส PIN 6 หลักจากลูกค้า')||'').trim();
-     if(!/^\d{6}$/.test(pin)){toast('กรุณากรอก PIN 6 หลัก');return}
-     let lat=null,lng=null;if(navigator.geolocation)try{const p=await new Promise((resolve,reject)=>navigator.geolocation.getCurrentPosition(resolve,reject,{enableHighAccuracy:true,timeout:5000,maximumAge:10000}));lat=p.coords.latitude;lng=p.coords.longitude}catch(e){}
-     const file=document.getElementById('qg-v22-delivery-photo')?.files?.[0],photoPath=file&&typeof qgUploadEvidence==='function'?await qgUploadEvidence(file):null;
-     await sbTable('rpc/qg_complete_market_with_proof',{method:'POST',token,body:{p_market_order_id:o.market_order_id,p_pin:pin,p_lat:lat,p_lng:lng,p_photo_path:photoPath}});
-     toast('ส่งออเดอร์ตลาดสำเร็จ');await refreshData();
-   }catch(e){toast('จบงานไม่สำเร็จ: '+e.message)}
- };
- const oldEarning=window.riderEarning;
- window.qgMarketRiderEarning=o=>Number(o?.delivery_fee||0)+Number(o?.rider_multi_shop_bonus||0);
+
+
+
+
+
 })();
 </script>
 </body></html>
