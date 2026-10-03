@@ -22,7 +22,7 @@ foodpanda ended Thailand platform operations on 23 May 2025 according to its [of
 |---|---|---|
 | A | Atomic, idempotent checkout | Replaced direct client order/item writes with existing `queuego_place_cash_order`; durable retry request and tap lock added. Live authenticated test still required |
 | A | Rider state consistency | Active-job query includes `rider_assigned`, `preparing`, `ready`; pickup action uses server-required `ready` |
-| A | Delivery completion independent of merchant acknowledgement | Migration and isolated SQL tests prepared; retain rider advance, assignment, PIN and evidence checks |
+| A | Delivery completion independent of merchant acknowledgement | Migration applied and isolated SQL tests passed; actual authenticated E2E still required; retain rider advance, assignment, PIN and evidence checks |
 | A | Guest discovery / cart continuity | Guest routes enabled using existing anonymous read policies; guest cart migrates only into an empty signed-in cart |
 | A | Role isolation and malicious direct requests | Existing RLS and user privilege trigger inspected; authenticated negative tests still required |
 | A | Realtime and network recovery across all roles | Reconnect generation/timer guard added; Merchant POS pauses general hydration. Actual socket recovery and sound dedup tests still required |

@@ -87,15 +87,16 @@ A failed gate includes a required test that has not been executed. Isolated brow
 
 `QueueGo-Rider-Completion-Migration.sql` replaces three current completion RPC definitions. It removes merchant acknowledgement as a delivery-completion gate, retains rider assignment/cash advance/PIN/evidence validation, completes cash payment and delivery together, and makes successful completion replay safe. It does not invent a merchant receipt or change GP, fees or rider income.
 
-At this report's source checkpoint the migration is prepared and tested in isolation; database activation and verification must be recorded in the final delivery report.
+Applied successfully to the existing Supabase project as migration `20261003174753` (`rider_completion_without_merchant_acknowledgement`) after publishing source commit `e5348ad956787781605879269b6d4e182d9cd497`. Post-deployment introspection confirms all three RPCs have no merchant-receipt gate and retain verified delivery proof checks. No production order was created, completed or modified as a test. Actual authenticated financial E2E remains unverified.
 
 ## Verification evidence
 
 - `npm test`: 54 JS blocks parsed, 17 static local file references checked, 18 isolated critical-client checks, 20 isolated SQL checks. The SQL fixture tests wrong PIN, wrong rider, invalid GPS/evidence, missing advance, rollback, no merchant receipt, multi-shop completion and replay.
 - Initial cleanup-only DOM regression: 40 route/boot cases matched the original source with no extra errors.
-- Chromium regression: 144 route/boot cases at 390, 768 and 1280px before further hardening; subsequent expected Customer guest/nav/status behavior differs from baseline. Fixtures intercept all external operations; no production order or test user is created.
+- Final Chromium regression: 144 route/boot cases at 390, 768 and 1280px, zero additional JavaScript errors and zero unplanned screen differences. Customer guest/navigation behavior intentionally differs from baseline. A later identical-image CSS-variable deduplication changes no pixels. Fixtures intercept all external operations; no production order or test user is created. Public browser smoke could not run because Chromium network navigation returned `ERR_EMPTY_RESPONSE`; live console/authenticated network behavior is not certified.
 - Workflow YAML and embedded Python parse checks passed. Native role packaging now includes referenced QR/laundry files. The permission bridge that bypassed Capacitor and requested permissions on startup was deleted; Capacitor 8's actual `BridgeWebChromeClient` handles geolocation on use and file selection. Release signing is attached to `buildTypes.release`.
-- Customer embedded banner/image payloads match original `main` exactly.
+- Customer embedded banner/image payloads match original `main` exactly. Anonymous production reads for shop profiles, available products and shop open states returned HTTP 200. All four deleted POS/QR generation URLs and the three previously deleted root Market assets return HTTP 404. No authenticated transaction was performed by these checks.
+- Actual query indexes were inspected: customer/time, shop/status/time, rider/status/time, order-item/order and delivery/order indexes already exist. No speculative index or RLS change was applied.
 - No source-integrity test, SQL fixture, or browser fixture is loaded by application HTML or native packaging. Tests are development-only.
 
 ## Source transfer changes
@@ -112,7 +113,7 @@ Sizes are source bytes and zlib-compressed bytes, not device INP measurements.
 ## Remote operations and release blockers
 
 - No remote branch has been deleted in this checkpoint. Git transport has no push credential; the connected GitHub API can update `main` but exposes no branch-delete operation. Browser fallback requires explicit approval under the tool-use instructions. No backup/archive/new branch was created.
-- Previous live Customer HTML matched the original `main` byte-for-byte, and the latest inspected Pages run was `pages build and deployment` on `main`. Final updated live bytes and deployment SHA still need verification after publication. Pages settings API is not supported by the connector.
+- GitHub Pages deployment run `37141760482` succeeded on `main` at `e5348ad956787781605879269b6d4e182d9cd497`. All 16 checked live HTML/JS/CSS entry/dependency files match the published source byte-for-byte, including Customer, Merchant, Rider, Admin, Market, POS, printer, laundry Rider integration and table-order. Customer live SHA-256 is `aeb1ff570cdfdf1e3ef1783320dadca605f086c6c048c3eab532221baeaa9c80`. This proves served-source parity; it does not certify authenticated flows or access to Pages settings (the settings API is unsupported).
 - Real E2E/negative E2E/concurrency needs an isolated test deployment/database and four-role test identities; it must not run against real production orders. The Supabase branch listing contains only production `main`; no billable staging branch was created.
 - Full Android lifecycle, physical printer/QR, Samsung tablet/iPhone Safari, field INP, fresh install and user acceptance tests remain.
 - Do not release or call this batch closed-beta ready. No store submission or old artifact deployment was performed.
