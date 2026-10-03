@@ -94,6 +94,8 @@ main{width:100%;max-width:720px;margin:auto;padding:0 14px 118px}
 .marketHero h1{font-size:23px;line-height:1.1}.marketHero p{font-size:12px;opacity:.9;margin-top:6px}.marketActions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}.marketActions button{min-height:44px;border:0;border-radius:14px;background:#fff;color:#137b55;font-weight:800;cursor:pointer}
 .mapbox{position:relative;height:390px;border-radius:20px;overflow:hidden;background:linear-gradient(145deg,#eef5ee,#e7eef4);border:1px solid var(--ln);margin-top:10px}.mapgrid{position:absolute;inset:0;background-image:linear-gradient(rgba(0,0,0,.045) 1px,transparent 1px),linear-gradient(90deg,rgba(0,0,0,.045) 1px,transparent 1px);background-size:32px 32px}.mapcenter{position:absolute;inset:0;display:grid;place-items:center;text-align:center;padding:25px}.mapcenter .pin{margin:auto;width:48px;height:48px;border-radius:16px}.mapcenter b{display:block;margin-top:10px}.mapcenter p{font-size:12px;color:var(--mu);margin-top:5px}.dist{font-size:11px;color:var(--mu);margin:5px 3px 10px}
 </style>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
 </head>
 <body>
 <div id="root"></div>
@@ -206,11 +208,18 @@ async function placeOrder(){
     toast('สร้างออเดอร์ไม่สำเร็จ: '+String(e.message||e).slice(0,100));
   }
 }
-/* ===== Clean location/map core ===== */
-let currentPos=null;
+/* ===== Map core restored from the previous QueueGo map system ===== */
+let currentPos=null,customerMap=null,customerMarker=null;
 const rad=x=>x*Math.PI/180;
-function distanceKm(a,b,c,d){if([a,b,c,d].some(v=>v==null||!Number.isFinite(Number(v))))return null;const R=6371,dLat=rad(Number(c)-Number(a)),dLng=rad(Number(d)-Number(b));const q=Math.sin(dLat/2)**2+Math.cos(rad(Number(a)))*Math.cos(rad(Number(c)))*Math.sin(dLng/2)**2;return 2*R*Math.asin(Math.sqrt(q))}
-async function locate(){return new Promise((ok,no)=>{if(!navigator.geolocation)return no(new Error('อุปกรณ์ไม่รองรับตำแหน่ง'));navigator.geolocation.getCurrentPosition(p=>{currentPos={lat:p.coords.latitude,lng:p.coords.longitude,accuracy:p.coords.accuracy};ok(currentPos)},()=>no(new Error('ไม่สามารถอ่านตำแหน่งได้')),{enableHighAccuracy:true,timeout:12000,maximumAge:60000})})}
+function qgIsValidCoordinate(lat,lng,thailandOnly=false){lat=Number(lat);lng=Number(lng);if(!Number.isFinite(lat)||!Number.isFinite(lng)||(lat===0&&lng===0)||lat< -90||lat>90||lng< -180||lng>180)return false;return !thailandOnly||(lat>=5&&lat<=21&&lng>=97&&lng<=106)}
+function distanceKm(a,b,c,d){if(!qgIsValidCoordinate(a,b)||!qgIsValidCoordinate(c,d))return null;const R=6371,dLat=rad(Number(c)-Number(a)),dLng=rad(Number(d)-Number(b));const q=Math.sin(dLat/2)**2+Math.cos(rad(Number(a)))*Math.cos(rad(Number(c)))*Math.sin(dLng/2)**2;return 2*R*Math.asin(Math.sqrt(q))}
+function tileLayer(map){L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap contributors'}).addTo(map)}
+async function reverseGeocode(lat,lng){try{const r=await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lng)}&zoom=18&addressdetails=1&accept-language=th`,{headers:{Accept:'application/json'}});if(!r.ok)return '';const j=await r.json(),a=j.address||{};return [a.house_number,a.road,a.suburb||a.neighbourhood,a.village||a.town||a.city,a.state].filter(Boolean).join(' ')||j.display_name||''}catch(e){return ''}}
+async function locate(){return new Promise((ok,no)=>{if(!navigator.geolocation)return no(new Error('อุปกรณ์ไม่รองรับตำแหน่ง'));navigator.geolocation.getCurrentPosition(p=>{currentPos={lat:p.coords.latitude,lng:p.coords.longitude,accuracy:p.coords.accuracy};ok(currentPos)},e=>no(new Error(e?.code===1?'กรุณาเปิดการเข้าถึงตำแหน่ง':e?.code===3?'รับตำแหน่งไม่ทันเวลา':'ไม่สามารถรับตำแหน่ง GPS ได้')),{enableHighAccuracy:true,timeout:12000,maximumAge:30000})})}
+function setMapPoint(lat,lng,zoom=16){if(!customerMap||!qgIsValidCoordinate(lat,lng,true))return;const p=[Number(lat),Number(lng)];customerMap.setView(p,zoom);if(customerMarker)customerMarker.setLatLng(p);else{customerMarker=L.marker(p,{draggable:true}).addTo(customerMap);customerMarker.on('dragend',async()=>{const p=customerMarker.getLatLng();currentPos={lat:p.lat,lng:p.lng};const el=$('map-address');if(el)el.textContent=await reverseGeocode(p.lat,p.lng)||'ตำแหน่งที่เลือก';renderMapShopList()})}currentPos={lat:Number(lat),lng:Number(lng)}}
+async function useCurrentMapLocation(){try{const p=await locate();setMapPoint(p.lat,p.lng);const el=$('map-address');if(el)el.textContent=await reverseGeocode(p.lat,p.lng)||'ตำแหน่งปัจจุบัน';renderMapShopList()}catch(e){toast(e.message)}}
+async function initCustomerMap(){const el=$('customer-map');if(!el||typeof L==='undefined')return;customerMap=L.map(el,{zoomControl:true});tileLayer(customerMap);const p=currentPos;if(p&&qgIsValidCoordinate(p.lat,p.lng,true))setMapPoint(p.lat,p.lng);else customerMap.setView([15,101],6);customerMap.on('click',async e=>{if(!qgIsValidCoordinate(e.latlng.lat,e.latlng.lng,true))return toast('กรุณาเลือกพิกัดที่อยู่ในประเทศไทย');setMapPoint(e.latlng.lat,e.latlng.lng);const a=$('map-address');if(a)a.textContent=await reverseGeocode(e.latlng.lat,e.latlng.lng)||'ตำแหน่งที่เลือก';renderMapShopList()});setTimeout(()=>customerMap.invalidateSize(),80)}
+async function renderMapShopList(){const box=$('map-shop-list');if(!box)return;const list=await loadShops();const ranked=list.map(s=>({...s,_d:currentPos?distanceKm(currentPos.lat,currentPos.lng,s.latitude,s.longitude):null})).sort((a,b)=>(a._d??1e9)-(b._d??1e9));box.innerHTML=ranked.map(s=>`<div>${shopCard(s)}${s._d!=null?`<div class="dist">ประมาณ ${s._d<1?Math.round(s._d*1000)+' ม.':s._d.toFixed(1)+' กม.'} จากคุณ</div>`:''}</div>`).join('')||'<p class="empty">ยังไม่มีร้านค้า</p>'}
 /* ===== 5) Layout ===== */
 const authed=()=>!!S.get();
 function layout(inner,tab){
@@ -276,10 +285,8 @@ V.market=async()=>{
   layout(`<div class="marketHero"><h1>QueueGo Market</h1><p>ตลาดสดใกล้คุณ — เลือกร้านแล้วสั่งจากร้านโดยตรง</p><div class="marketActions"><button onclick="go('map')">ดูแผนที่</button><button onclick="go('search')">ค้นหาร้าน</button></div></div><section class="sec"><div class="st"><h2>ร้านในตลาด</h2></div><div class="list">${market.length?market.map(shopCard).join(''):'<p class="empty">ยังไม่มีร้านตลาดที่เปิดให้บริการ</p>'}</div></section>`,'home');
 };
 V.map=async()=>{
-  const list=await loadShops();
-  try{if(!currentPos)await locate()}catch(e){}
-  const ranked=list.map(s=>({...s,_d:currentPos?distanceKm(currentPos.lat,currentPos.lng,s.latitude,s.longitude):null})).sort((a,b)=>(a._d??1e9)-(b._d??1e9));
-  layout(`<div class="pt"><button class="back" onclick="history.back()">${ico('back')}</button><h1>แผนที่ร้านค้า</h1></div><div class="mapbox"><div class="mapgrid"></div><div class="mapcenter"><div><span class="pin">${ico('pin',24)}</span><b>${currentPos?'ตำแหน่งปัจจุบันพร้อมใช้งาน':'ยังไม่ได้ตำแหน่งปัจจุบัน'}</b><p>${currentPos?'เรียงร้านตามระยะทางจากพิกัดของคุณ':'อนุญาตตำแหน่งเพื่อดูร้านใกล้คุณ'}</p><button class="prim" style="width:auto;padding:0 18px" onclick="currentPos=null;V.map()">${currentPos?'อัปเดตตำแหน่ง':'ใช้ตำแหน่งของฉัน'}</button></div></div></div><section class="sec"><div class="st"><h2>ร้านใกล้คุณ</h2></div><div class="list">${ranked.map(s=>`<div>${shopCard(s)}${s._d!=null?`<div class="dist">ประมาณ ${s._d<1?Math.round(s._d*1000)+' ม.':s._d.toFixed(1)+' กม.'} จากคุณ</div>`:''}</div>`).join('')||'<p class="empty">ยังไม่มีร้านค้า</p>'}</div></section>`,'home');
+  layout(`<div class="pt"><button class="back" onclick="history.back()">${ico('back')}</button><h1>แผนที่ร้านค้า</h1></div><div id="customer-map" class="mapbox" style="height:390px"></div><div class="card" style="margin-top:10px"><b id="map-address">เลือกหมุดบนแผนที่ หรือใช้ GPS ปัจจุบัน</b><button class="prim" onclick="useCurrentMapLocation()">ใช้ตำแหน่ง GPS ปัจจุบัน</button></div><section class="sec"><div class="st"><h2>ร้านใกล้คุณ</h2></div><div class="list" id="map-shop-list"><p class="empty">กำลังโหลด...</p></div></section>`,'home');
+  await initCustomerMap();await renderMapShopList();
 };
 V.cart=()=>{
   layout(`<div class="pt"><button class="back" onclick="history.back()">${ico('back')}</button><h1>ตะกร้าสินค้า</h1></div>`+
