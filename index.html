@@ -2497,7 +2497,16 @@ function openCustomerLocationPicker(){
     const la=document.getElementById('customer-lat'),lo=document.getElementById('customer-lng');
     if(la) la.textContent=a.toFixed(6); if(lo) lo.textContent=b.toFixed(6);
     const addr=document.getElementById('customer-address-input');
-    if(addr && !addr.value.trim()) { const text=await qtReverseGeocodeCustomer(a,b); if(text) addr.value=text; }
+    if(addr){
+      const seq=(window.__qgCustomerGeocodeSeq=(window.__qgCustomerGeocodeSeq||0)+1);
+      addr.dataset.geocoding='1';
+      const text=await qtReverseGeocodeCustomer(a,b);
+      if(seq===window.__qgCustomerGeocodeSeq && text){
+        addr.value=text;
+        addr.dataset.autoAddress=text;
+      }
+      delete addr.dataset.geocoding;
+    }
   });
   window.__customerLocationPicker=picker; window.__customerPickedLocation=()=>picked;
 }
