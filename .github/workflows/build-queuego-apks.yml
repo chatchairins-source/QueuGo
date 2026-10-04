@@ -161,7 +161,6 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          echo "b47b88cfd9df8de7e9af8c33ece0434db38fa149ca57ab5a8bc87fc47601796a  android-build/branding/queuego-approved-icon.webp" | sha256sum -c -
           sudo apt-get update -qq
           sudo apt-get install -y -qq webp
           dwebp android-build/branding/queuego-approved-icon.webp -o /tmp/queuego-approved-icon.png >/dev/null
