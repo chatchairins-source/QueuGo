@@ -256,7 +256,7 @@ async function placeOrder(){
     if(result?.id!==pending.body.p_order_id)throw Error('ยังไม่ได้รับผลยืนยันคำขอเดิม กรุณาลองอีกครั้ง');
     localStorage.removeItem(requestKey);
     const storedCart=localStorage.getItem(ownerCartKey);
-    if(sameOrderCart(storedCart,pending.cart))localStorage.removeItem(ownerCartKey);
+    if(sameOrderCart(storedCart,pending.cart))localStorage.setItem(ownerCartKey,JSON.stringify({shopId:null,items:[]}));
     if(!sameActor())return;
     if(sameOrderCart(cart,pending.cart)){
       cart={shopId:null,items:[]};
