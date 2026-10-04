@@ -652,11 +652,62 @@ V.checkout=async(_,ticket=routeVersion)=>{
   const picker=checkoutPicker;setTimeout(()=>{if(checkoutPicker===picker)picker.map?.resize()},80);
 };
 V.order=async(id,ticket=routeVersion)=>{const rows=await db('orders?select=*&id=eq.'+encodeURIComponent(id)+'&limit=1'),o=Array.isArray(rows)&&rows[0];if(ticket!==routeVersion)return;if(!o)return layout('<p class="empty">ไม่พบออเดอร์</p>','orders');const items=await loadOrderItems(id);let pin=null;if(!['completed','cancelled'].includes(o.status))try{pin=await db('rpc/qg_customer_delivery_pin',{method:'POST',body:{p_order_id:id}})}catch(e){}if(ticket!==routeVersion)return;const flow=['pending','accepted','searching_rider','rider_assigned','preparing','ready','picked_up','in_progress','completed'],idx=flow.indexOf(o.status);layout(`<div class="pt"><button class="back" onclick="go('orders')">${ico('back')}</button><h1>#${esc(o.order_number||String(o.id).slice(0,8))}</h1></div><div class="card" style="margin-top:0"><b>${esc(STATUS_LABEL[o.status]||o.status)}</b><div class="statusflow">${flow.map((x,i)=>`<span class="${i<=idx?'on':''}">${esc(STATUS_LABEL[x])}</span>`).join('')}</div><p class="sm">${esc(o.delivery_address||'')}</p><button class="lk" onclick="go('support/${esc(o.id)}')">ติดต่อฝ่ายช่วยเหลือเกี่ยวกับออเดอร์นี้</button>${!['completed','cancelled'].includes(o.status)?`<p><b>รหัสยืนยันรับสินค้า: ${/^\d{6}$/.test(String(pin))?esc(pin):'ยังโหลดรหัสไม่ได้'}</b></p><small>แจ้งรหัสให้ไรเดอร์เมื่อได้รับสินค้าแล้ว</small>${!/^\d{6}$/.test(String(pin))?'<button class="lk" onclick="route()">ลองโหลดรหัสอีกครั้ง</button>':''}`:''}</div><div class="card"><b>รายการสินค้า</b>${(items||[]).map(i=>`<div class="sr"><span>${esc(i.item_name)} × ${i.quantity}</span><span>${baht(i.total_price)}</span></div>`).join('')}<div class="tot"><span>รวม</span><span>${baht(o.total_amount)}</span></div></div>`,'orders')};
+const MARKET_TRIP_STATUS={
+  PENDING:'รอร้านยืนยัน',WAITING_SHOPS:'รอร้านยืนยัน',READY_FOR_RIDER:'พร้อมหาไรเดอร์',
+  RIDER_ASSIGNED:'ไรเดอร์รับงานแล้ว',SHOPPING_IN_MARKET:'กำลังรับของในตลาด',
+  MARKET_COMPLETE:'รับของครบแล้ว',IN_PROGRESS:'กำลังนำไปส่ง',COMPLETED:'ส่งสำเร็จ',CANCELLED:'ยกเลิก'
+};
+V['market-order']=async(id,ticket=routeVersion)=>{
+  const u=S.get();if(!u)return go('login');
+  const parents=await db('market_orders?select=*&id=eq.'+encodeURIComponent(id)+'&customer_id=eq.'+encodeURIComponent(u.userId)+'&limit=1');
+  const trip=Array.isArray(parents)&&parents[0];if(ticket!==routeVersion)return;
+  if(!trip)return layout('<p class="empty">ไม่พบ Market Trip</p>','orders');
+  const [children,shops]=await Promise.all([
+    db('orders?select=id,order_number,shop_id,status,subtotal,total_amount,created_at&market_order_id=eq.'+encodeURIComponent(id)+'&order=created_at.asc'),
+    loadShops()
+  ]);if(ticket!==routeVersion)return;
+  const shopById=new Map((shops||[]).map(s=>[String(s.id),s]));
+  const activeChild=(children||[]).find(o=>!['completed','cancelled'].includes(String(o.status||'').toLowerCase()));
+  let pin=null;
+  if(activeChild)try{pin=await db('rpc/qg_customer_delivery_pin',{method:'POST',body:{p_order_id:activeChild.id}})}catch(e){}
+  if(ticket!==routeVersion)return;
+  const status=String(trip.status||'PENDING').toUpperCase();
+  const locked=['IN_PROGRESS','COMPLETED','CANCELLED'].includes(status);
+  layout(`<div class="pt"><button class="back" onclick="go('orders')">${ico('back')}</button><h1>Market Trip</h1></div>
+  <section class="card" style="margin-top:0">
+    <div class="sr"><b>${esc(MARKET_TRIP_STATUS[status]||status)}</b><span>${Number(trip.shop_count||0)} ร้าน</span></div>
+    <p class="sm">${esc(trip.delivery_address||'')}</p>
+    <p class="sm">${locked?'ล็อกการเพิ่มร้านแล้ว':'ยังเพิ่มร้านใหม่ได้จนกว่า Rider จะออกจากตลาด'}</p>
+    ${!locked?'<button class="lk" onclick="go(\'market\')">ซื้อเพิ่มจากตลาดเดิม</button>':''}
+    ${activeChild?`<p><b>รหัสยืนยันรับสินค้า: ${/^\d{6}$/.test(String(pin))?esc(pin):'ยังโหลดรหัสไม่ได้'}</b></p><small>แจ้งรหัสให้ Rider เมื่อได้รับสินค้าครบแล้ว</small>`:''}
+  </section>
+  <section class="card"><b>ร้านในทริป</b>
+    ${(children||[]).map(o=>{const s=shopById.get(String(o.shop_id));return `<div class="sr" style="align-items:flex-start;margin-top:10px"><span><b>${esc(s?.shop_name||'ร้านค้า')}</b><br><small>#${esc(o.order_number||String(o.id).slice(0,8))} · ${esc(STATUS_LABEL[o.status]||o.status)}</small></span><span>${baht(o.total_amount??o.subtotal)}</span></div>`}).join('')||'<p class="empty">ยังไม่มีรายการร้าน</p>'}
+  </section>
+  <section class="card"><b>สรุปค่าใช้จ่าย</b>
+    <div class="sr"><span>ค่าสินค้า</span><span>${baht(trip.subtotal)}</span></div>
+    <div class="sr"><span>ค่ารอบ/จัดส่ง</span><span>${baht(trip.delivery_fee)}</span></div>
+    <div class="sr"><span>ค่ารับหลายร้าน</span><span>${baht(trip.multi_shop_service_fee)}</span></div>
+    <div class="tot"><span>รวม</span><span>${baht(trip.total_amount)}</span></div>
+  </section>`,'orders');
+};
 V.orders=async(_,ticket=routeVersion)=>{
-  const u=S.get();
-  const rows=await db('orders?select=*&customer_id=eq.'+encodeURIComponent(u.userId)+'&order=created_at.desc&limit=30');if(ticket!==routeVersion)return;
-  layout(`<div class="pt"><h1>ออเดอร์ของฉัน</h1></div><div class="list">${(rows||[]).length?rows.map(o=>`<div class="oc" onclick="go('order/${esc(o.id)}')"><div class="oh"><span class="on">#${esc(o.order_number||String(o.id).slice(0,6))}</span><span class="sp">${esc(STATUS_LABEL[o.status]||'กำลังดำเนินการ')}</span></div>
-<p>${new Date(o.created_at).toLocaleString('th-TH')}</p><b>${baht(o.total??o.total_amount??o.subtotal)}</b></div>`).join(''):'<p class="empty">ยังไม่มีออเดอร์</p>'}</div>`,'orders');
+  const u=S.get();if(!u)return go('login');
+  const [rows,trips]=await Promise.all([
+    db('orders?select=*&customer_id=eq.'+encodeURIComponent(u.userId)+'&order=created_at.desc&limit=50'),
+    db('market_orders?select=id,status,shop_count,total_amount,delivery_address,created_at&customer_id=eq.'+encodeURIComponent(u.userId)+'&order=created_at.desc&limit=30').catch(()=>[])
+  ]);if(ticket!==routeVersion)return;
+  const normal=(rows||[]).filter(o=>!o.market_order_id).map(o=>({kind:'order',created_at:o.created_at,data:o}));
+  const market=(trips||[]).map(t=>({kind:'market',created_at:t.created_at,data:t}));
+  const all=[...normal,...market].sort((a,b)=>new Date(b.created_at)-new Date(a.created_at));
+  layout(`<div class="pt"><h1>ออเดอร์ของฉัน</h1></div><div class="list">${all.length?all.map(entry=>{
+    if(entry.kind==='market'){
+      const t=entry.data,status=String(t.status||'PENDING').toUpperCase();
+      return `<div class="oc" onclick="go('market-order/${esc(t.id)}')"><div class="oh"><span class="on">ตลาดสด · ${Number(t.shop_count||0)} ร้าน</span><span class="sp">${esc(MARKET_TRIP_STATUS[status]||status)}</span></div><p>${new Date(t.created_at).toLocaleString('th-TH')}</p><b>${baht(t.total_amount)}</b></div>`;
+    }
+    const o=entry.data;
+    return `<div class="oc" onclick="go('order/${esc(o.id)}')"><div class="oh"><span class="on">#${esc(o.order_number||String(o.id).slice(0,6))}</span><span class="sp">${esc(STATUS_LABEL[o.status]||'กำลังดำเนินการ')}</span></div><p>${new Date(o.created_at).toLocaleString('th-TH')}</p><b>${baht(o.total??o.total_amount??o.subtotal)}</b></div>`;
+  }).join(''):'<p class="empty">ยังไม่มีออเดอร์</p>'}</div>`,'orders');
 };
 const SUPPORT_CATEGORIES={missing_item:'สินค้าไม่ครบ',wrong_item:'สินค้าไม่ตรงรายการ',damaged_food:'สินค้ามีปัญหา',rider:'ติดต่อเกี่ยวกับไรเดอร์',merchant:'ติดต่อเกี่ยวกับร้าน',payment:'การชำระเงิน',other:'เรื่องอื่น ๆ'};
 const SUPPORT_STATUS={OPEN:'รับเรื่องแล้ว',IN_REVIEW:'กำลังตรวจสอบ',WAITING_USER:'รอข้อมูลเพิ่มเติม',RESOLVED:'ดำเนินการแล้ว',REJECTED:'ไม่สามารถดำเนินการได้',CLOSED:'ปิดเรื่องแล้ว'};
