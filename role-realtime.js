@@ -1,7 +1,7 @@
 /* Role Realtime shares the existing hydration queue and application session. */
 (()=>{
   const admin=typeof QT_ADMIN_SESSION_KEY!=='undefined',role=admin?'admin':'shop',sessionKey=admin?QT_ADMIN_SESSION_KEY:QT_SHOP_SESSION_KEY;
-  const tables=admin?['users','shop_profiles','technician_profiles','rider_profiles','products','orders','order_items','deliveries','payments','notifications','order_chat_messages','quotations','promotions','settlements','audit_logs','order_audit']:['orders','order_items','deliveries','notifications','order_chat_messages','rider_profiles'];
+  const tables=admin?['users','shop_profiles','technician_profiles','rider_profiles','products','orders','order_items','deliveries','payments','notifications','order_chat_messages','quotations','promotions','settlements','audit_logs','order_audit']:['orders','order_items','deliveries','notifications','order_chat_messages'];
   let owner=null,version=0,client=null,channel=null,attachTask=null,retryTimer=null,refreshTimer=null,refreshing=false,queued=false,cancelSdk=null,pageActive=true;
   const desired=()=>{const s=qtSessionRead();const paused=!admin&&['pos','pos-staff-join'].includes(location.hash.slice(1).split('/')[0]);return !paused&&pageActive&&!document.hidden&&navigator.onLine&&s?.role===role&&s.authUserId&&s.userId?s.authUserId+':'+s.userId:null};
   const current=(epoch,actor)=>epoch===version&&actor===owner&&actor===desired();
