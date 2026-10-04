@@ -1,79 +1,170 @@
-<!doctype html><html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"><title>ฝากซัก | QueueGo</title><style>
-*{box-sizing:border-box}body{margin:0;background:#f6f7f9;color:#17181a;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Noto Sans Thai",sans-serif}.top{position:sticky;top:0;z-index:5;background:#fff;padding:18px 18px 14px;border-bottom:1px solid #eee;display:flex;align-items:center;gap:14px}.back{border:0;background:#f2f3f5;width:42px;height:42px;border-radius:14px;font-size:25px}.title{font-size:23px;font-weight:800}.wrap{padding:18px;max-width:680px;margin:auto}.hero{background:#e6002d;color:#fff;border-radius:24px;padding:22px;margin-bottom:18px}.hero h1{margin:0 0 6px;font-size:25px}.hero p{margin:0;opacity:.9}.card{background:#fff;border-radius:20px;padding:17px;margin:12px 0;box-shadow:0 5px 22px #0000000b}.shop{display:flex;align-items:center;gap:14px;cursor:pointer}.washer{width:54px;height:54px;border-radius:17px;background:#fff0f2;color:#e6002d;padding:12px}.washer svg{width:100%;height:100%}.shop .name{font-weight:800;font-size:18px}.muted{color:#777;font-size:14px;margin-top:4px;line-height:1.45}.arrow{margin-left:auto;font-size:27px;color:#999}.empty{text-align:center;color:#777;padding:35px 10px}.services label{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:10px;border:1px solid #eee;padding:15px;border-radius:15px;margin:9px 0}.services span{color:#555}.location{border:1px solid #eee;border-radius:16px;padding:15px;margin:14px 0}.primary{width:100%;border:0;border-radius:16px;background:#e6002d;color:#fff;padding:16px;font-size:17px;font-weight:800}.primary:disabled{opacity:.55}.in{width:100%;border:1px solid #e5e7eb;border-radius:14px;padding:13px;font:inherit;resize:vertical}.fee{display:flex;justify-content:space-between;gap:12px;border-top:1px solid #eee;padding:10px 0;font-size:14px}.hidden{display:none}.notice{background:#fff8e6;border:1px solid #ffe1a6;border-radius:16px;padding:14px;color:#744b00;line-height:1.5}
-</style></head><body>
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>ฝากซัก | QueueGo</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#f6f7f9;color:#17181a;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Noto Sans Thai",sans-serif}
+button,input,textarea{font:inherit}.top{position:sticky;top:0;z-index:10;background:#fff;padding:15px 18px;border-bottom:1px solid #eee;display:flex;align-items:center;gap:14px}
+.back{border:0;background:#f2f3f5;width:42px;height:42px;border-radius:14px;font-size:25px}.title{font-size:22px;font-weight:850}.wrap{padding:18px;max-width:720px;margin:auto}
+.hero{background:#e6002d;color:#fff;border-radius:24px;padding:22px;margin-bottom:18px}.hero h1{margin:0 0 6px;font-size:25px}.hero p{margin:0;opacity:.9}
+.card{background:#fff;border-radius:20px;padding:17px;margin:12px 0;border:1px solid #eceef1;box-shadow:0 5px 22px #0000000b}.shop{display:flex;align-items:center;gap:14px;cursor:pointer;width:100%;text-align:left;border:0}
+.washer{width:54px;height:54px;border-radius:17px;background:#fff0f2;color:#e6002d;padding:12px;flex:0 0 auto}.washer svg{width:100%;height:100%}.name{font-weight:850;font-size:18px}.muted{color:#777;font-size:13px;margin-top:4px}.arrow{margin-left:auto;font-size:27px;color:#999}
+.empty{text-align:center;color:#777;padding:28px 10px}.services label{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:start;border:1px solid #eee;padding:14px;border-radius:15px;margin:9px 0}.services label:has(input:checked){border-color:#e6002d;background:#fff8f9}.services small{display:block;color:#777;margin-top:4px}.location,.summary{border:1px solid #eee;border-radius:16px;padding:15px;margin:14px 0}
+.field{display:grid;gap:6px;margin:12px 0}.field input,.field textarea{width:100%;border:1px solid #ddd;border-radius:13px;padding:12px;background:#fff}.field textarea{min-height:76px;resize:vertical}
+.primary{width:100%;border:0;border-radius:16px;background:#e6002d;color:#fff;padding:16px;font-size:16px;font-weight:850}.secondary{width:100%;border:1px solid #ddd;border-radius:14px;background:#fff;color:#17181a;padding:12px;font-weight:750}
+.hidden{display:none!important}.row{display:flex;justify-content:space-between;gap:10px;padding:5px 0}.row.total{border-top:1px solid #eee;margin-top:7px;padding-top:11px;font-weight:850;font-size:17px}.green{color:#087556}.warn{background:#fff8e5;border:1px solid #ffe0a8;color:#704600;border-radius:15px;padding:13px;margin:12px 0}
+.status{font-weight:850}.orders article{border-top:1px solid #eee;padding:12px 0}.orders article:first-child{border-top:0}.orders b,.orders small{display:block}.orders small{color:#777;margin-top:4px}.headrow{display:flex;align-items:center;justify-content:space-between;gap:10px}.link{border:0;background:none;color:#e6002d;font-weight:800;padding:6px}
+</style>
+</head>
+<body>
 <header class="top"><button class="back" onclick="history.length>1?history.back():location.href='../'">‹</button><div class="title">ฝากซัก</div></header>
 <main class="wrap">
-<section id="list"><div class="hero"><h1>ฝากซัก</h1><p>ส่งคำขอให้ร้านก่อน แล้วระบบจะเปิดงานให้ Rider ที่ผูกกับร้านไปรับผ้า</p></div><div id="shops" class="empty">กำลังโหลดร้านซัก...</div></section>
-<section id="order" class="hidden"><div class="card"><h2 id="shopName">ร้านซัก</h2><div id="services" class="services"></div><div id="fees"></div><h3>จุดรับผ้า</h3><div id="location" class="location">ใช้ที่อยู่จัดส่งของบัญชี QueueGo</div><label for="note"><b>หมายเหตุ</b></label><textarea id="note" class="in" maxlength="500" rows="3" placeholder="เช่น โทรก่อนถึง / มีผ้าสีตก"></textarea><button id="confirm" class="primary">ส่งคำขอฝากซัก</button><p class="muted">ร้านต้องกดรับคำขอก่อน ระบบจึงจะเปิดงานรับผ้าให้ Rider</p></div></section>
+  <section id="list">
+    <div class="hero"><h1>ฝากซัก</h1><p>เลือกร้านและบริการ แล้วให้ Rider ไปรับผ้าถึงที่และส่งคืน</p></div>
+    <div id="feature-note"></div>
+    <div id="shops" class="empty">กำลังโหลดร้านซัก...</div>
+    <section class="card orders"><div class="headrow"><h3 style="margin:0">งานฝากซักของฉัน</h3><button class="link" type="button" onclick="loadMyOrders()">รีเฟรช</button></div><div id="my-orders" class="empty">กำลังโหลด...</div></section>
+  </section>
+  <section id="order" class="hidden">
+    <div class="card">
+      <div class="headrow"><h2 id="shopName" style="margin:0">ร้านซัก</h2><button class="link" type="button" onclick="closeShop()">เปลี่ยนร้าน</button></div>
+      <div id="services" class="services"></div>
+      <div id="quantity-wrap" class="field"><label id="quantity-label" for="quantity">จำนวนโดยประมาณ</label><input id="quantity" type="number" min="0.1" max="1000" step="0.1" oninput="renderQuote()"><small class="muted" id="quantity-help"></small></div>
+      <h3>จุดรับผ้า</h3>
+      <div class="location"><div id="location-text">กำลังโหลดตำแหน่ง...</div><button type="button" class="secondary" style="margin-top:10px" onclick="useCurrentGps()">ใช้ GPS ปัจจุบัน</button></div>
+      <label class="field">ที่อยู่/จุดสังเกต<textarea id="pickup-address" maxlength="500" oninput="syncAddress()"></textarea></label>
+      <label class="field">หมายเหตุ<textarea id="note" maxlength="500" placeholder="เช่น โทรก่อนถึง / มีผ้าสีแยกถุง"></textarea></label>
+      <div class="summary" id="quote"></div>
+      <button id="confirm" class="primary" type="button">ยืนยันเรียก Rider รับผ้า</button>
+      <p class="muted">ราคาบริการแบบต่อกก./ชิ้น/ชุดเป็นประมาณการจากจำนวนที่กรอก ร้านจะยืนยันจำนวนจริงก่อนส่งคืน ส่วนค่ารับ-ส่งจะถูก snapshot ตอนสร้างงานและไม่เปลี่ยนย้อนหลัง</p>
+    </div>
+  </section>
 </main>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
 const URL='https://pkypiqhlrmzocysgeqew.supabase.co';
-const KEY='sb_publishable_Ty2Hs1PRYrm5R2g-WbscEw_5TM1N3YR';
+const KEY='sb_publishable_Vn2Il4jp-iBtzNsGRNY8Lg_Tpvk2Vre';
 const db=supabase.createClient(URL,KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
 const washer='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="2.5" width="16" height="19" rx="2.5"/><path d="M4 7.5h16"/><circle cx="12" cy="14.5" r="4.5"/><circle cx="8" cy="5" r=".65" fill="currentColor" stroke="none"/><circle cx="11" cy="5" r=".65" fill="currentColor" stroke="none"/></svg>';
-let hub=null,service=null,customer=null,settingsByHub=new Map(),sending=false;
+const UNIT={per_kg:'กก.',per_item:'ชิ้น',per_set:'ชุด',fixed:'งาน'};
+const STATUS={pending:'รอร้านรับ',accepted:'กำลังหา Rider รับผ้า',pickup_assigned:'Rider กำลังไปรับผ้า',picked_up:'Rider รับผ้าแล้ว',at_hub:'ผ้าถึงร้านแล้ว',washing:'ร้านกำลังดำเนินการ',ready_return:'พร้อมส่งคืน',return_assigned:'Rider กำลังไปรับจากร้าน',out_for_return:'Rider กำลังส่งคืน',completed:'เสร็จสมบูรณ์',cancelled:'ยกเลิก'};
+let catalog=[],hub=null,service=null,customer=null,loc={lat:null,lng:null,address:''},busy=false;
 const pendingKey=()=>customer?.id?'qg_laundry_pending_'+customer.id:null;
-function safe(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
-function uuid(){return crypto.randomUUID()}
-function feeText(n){const v=Number(n||0);return v>0?v.toLocaleString('th-TH')+' บาท':'0 บาท'}
+const safe=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const money=v=>Number(v||0).toLocaleString('th-TH',{minimumFractionDigits:0,maximumFractionDigits:2});
 async function boot(){
-  const {data:{session}}=await db.auth.getSession();if(!session){location.href='../#login';return}
-  const {data:u,error:uerr}=await db.from('users').select('id,name,phone,metadata,role,status').eq('auth_user_id',session.user.id).maybeSingle();
-  if(uerr||!u||u.role!=='customer'||u.status!=='active'){location.href='../#login';return}
+  const {data:{session}}=await db.auth.getSession();
+  if(!session){location.href='../#login';return}
+  const {data:u,error:ue}=await db.from('users').select('id,name,phone,metadata').eq('auth_user_id',session.user.id).eq('role','customer').maybeSingle();
+  if(ue||!u){location.href='../#login';return}
   customer=u;
-  const {data:enabled,error:ferr}=await db.rpc('queuego_feature_enabled',{p_feature:'laundry'});
+  const m=u.metadata||{};
+  const lat=Number(m.lat??m.latitude),lng=Number(m.lng??m.longitude);
+  if(Number.isFinite(lat)&&Number.isFinite(lng)){loc.lat=lat;loc.lng=lng}
+  loc.address=m.address||m.delivery_address||m.location_address||'';
+  const {data,error}=await db.rpc('queuego_laundry_customer_catalog');
+  if(error){document.getElementById('shops').innerHTML='โหลดร้านฝากซักไม่สำเร็จ';return}
+  if(data?.enabled===false){
+    document.getElementById('feature-note').innerHTML='<div class="warn">บริการฝากซักยังไม่เปิดให้ลูกค้าใช้งานในช่วงทดสอบ ร้านสามารถตั้งค่าระบบรอไว้ก่อนได้</div>';
+    document.getElementById('shops').innerHTML='บริการยังไม่เปิดใช้งาน';
+  }else{
+    catalog=Array.isArray(data?.hubs)?data.hubs:[];
+    renderShops();
+  }
+  await loadMyOrders();
+}
+function renderShops(){
   const el=document.getElementById('shops');
-  if(ferr){el.innerHTML='<div class="notice">โหลดสถานะฝากซักไม่สำเร็จ กรุณาลองใหม่</div>';return}
-  if(enabled!==true){el.innerHTML='<div class="notice"><b>ฝากซักอยู่ในโหมดปิดทดสอบ</b><br>ระบบจะเปิดใช้งานเมื่อผ่านการทดสอบ Closed Beta และผู้ดูแลเปิดสวิตช์จาก Admin</div>';return}
-  const [{data:h,error:he},{data:st,error:se}]=await Promise.all([
-    db.from('laundry_hubs').select('id,name,shop_id').eq('active',true),
-    db.from('laundry_shop_settings').select('hub_id,enabled,accepts_pickup,accepts_return,minimum_order,base_pickup_fee,return_fee,round_trip_fee,delivery_fee_mode,currency').eq('enabled',true).eq('accepts_pickup',true)
-  ]);
-  if(he||se){el.innerHTML='โหลดร้านซักไม่สำเร็จ';return}
-  (st||[]).forEach(x=>settingsByHub.set(String(x.hub_id),x));
-  const hubs=(h||[]).filter(x=>settingsByHub.has(String(x.id)));
-  if(!hubs.length){el.innerHTML='ยังไม่มีร้านซักเปิดให้บริการ';return}
-  el.className='';el.innerHTML=hubs.map(x=>'<button type="button" class="card shop" data-id="'+safe(x.id)+'" style="width:100%;border:0;text-align:left"><div class="washer">'+washer+'</div><div><div class="name">'+safe(x.name)+'</div><div class="muted">ร้านยืนยันก่อน แล้ว Rider ของ Hub ไปรับผ้า</div></div><div class="arrow">›</div></button>').join('');
-  el.querySelectorAll('.shop').forEach(b=>b.onclick=()=>openShop(hubs.find(x=>String(x.id)===String(b.dataset.id))));
+  if(!catalog.length){el.className='empty';el.innerHTML='ยังไม่มีร้านฝากซักที่พร้อมรับงานและมี Rider รับ-ส่ง';return}
+  el.className='';
+  el.innerHTML=catalog.map(x=>'<button class="card shop" type="button" data-id="'+safe(x.id)+'"><div class="washer">'+washer+'</div><div><div class="name">'+safe(x.shop_name||x.name)+'</div><div class="muted">'+safe(x.address||'บริการรับ-ส่งผ้าถึงที่')+' · '+(x.services?.length||0)+' บริการ</div></div><div class="arrow">›</div></button>').join('');
+  el.querySelectorAll('.shop').forEach(b=>b.onclick=()=>openShop(catalog.find(x=>String(x.id)===String(b.dataset.id))));
 }
-async function openShop(h){
-  hub=h;service=null;
-  document.getElementById('list').classList.add('hidden');document.getElementById('order').classList.remove('hidden');document.getElementById('shopName').textContent=h.name;
-  const {data:s,error}=await db.from('laundry_services').select('id,code,name,price,pricing_type,description,estimated_minutes').eq('hub_id',h.id).eq('active',true).order('sort_order');
-  const box=document.getElementById('services');
-  if(error||!s?.length){box.innerHTML='<div class="notice">ร้านนี้ยังไม่มีบริการที่เปิดขาย</div>';document.getElementById('confirm').disabled=true;return}
-  service=s[0];
-  box.innerHTML=s.map((x,i)=>'<label><input type="radio" name="svc" value="'+safe(x.id)+'" '+(i===0?'checked':'')+'><span><b>'+safe(x.name)+'</b><small class="muted" style="display:block">'+safe(x.description||'')+'</small></span><span>'+(Number(x.price)>0?feeText(x.price)+(x.pricing_type==='per_kg'?' / กก.':''):'ร้านชั่ง/สรุปราคา')+'</span></label>').join('');
-  document.querySelectorAll('[name=svc]').forEach(x=>x.onchange=()=>{service=s.find(v=>String(v.id)===String(x.value))||s[0]});
-  const cfg=settingsByHub.get(String(h.id))||{};
-  document.getElementById('fees').innerHTML='<div class="fee"><span>ค่ารับผ้า</span><b>'+feeText(cfg.base_pickup_fee)+'</b></div><div class="fee"><span>ค่าส่งคืน</span><b>'+feeText(cfg.return_fee)+'</b></div>';
-  const m=customer.metadata||{};document.getElementById('location').textContent=m.address||m.delivery_address||m.location_address||'ยังไม่มีพิกัดจัดส่งที่บันทึกไว้';
+function openShop(h){
+  hub=h;service=h.services?.[0]||null;
+  document.getElementById('list').classList.add('hidden');document.getElementById('order').classList.remove('hidden');
+  document.getElementById('shopName').textContent=h.shop_name||h.name;
+  document.getElementById('pickup-address').value=loc.address||'';
+  renderServices();renderLocation();renderQuote();
 }
+function closeShop(){hub=null;service=null;document.getElementById('order').classList.add('hidden');document.getElementById('list').classList.remove('hidden')}
+function renderServices(){
+  const rows=hub?.services||[],el=document.getElementById('services');
+  el.innerHTML=rows.map((x,i)=>'<label><input type="radio" name="svc" value="'+safe(x.id)+'" '+(String(service?.id)===String(x.id)?'checked':'')+'><span><b>'+safe(x.name)+'</b><small>'+safe(x.description||'')+(x.estimated_minutes?' · ประมาณ '+Number(x.estimated_minutes)+' นาที':'')+'</small></span><strong>฿'+money(x.price)+'/'+(UNIT[x.pricing_type]||'งาน')+'</strong></label>').join('');
+  el.querySelectorAll('[name=svc]').forEach(x=>x.onchange=()=>{service=rows.find(s=>String(s.id)===String(x.value));document.getElementById('quantity').value='';renderQuote()});
+}
+function renderLocation(){
+  const text=document.getElementById('location-text');
+  text.textContent=Number.isFinite(loc.lat)&&Number.isFinite(loc.lng)?'พิกัด '+loc.lat.toFixed(6)+', '+loc.lng.toFixed(6):'ยังไม่มีพิกัด กรุณาใช้ GPS ปัจจุบัน';
+}
+function syncAddress(){loc.address=document.getElementById('pickup-address').value.trim()}
+function useCurrentGps(){
+  if(!navigator.geolocation)return alert('อุปกรณ์นี้ไม่รองรับ GPS');
+  const b=event?.currentTarget;if(b)b.disabled=true;
+  navigator.geolocation.getCurrentPosition(p=>{
+    loc.lat=Number(p.coords.latitude);loc.lng=Number(p.coords.longitude);renderLocation();if(b)b.disabled=false;
+  },e=>{alert(e.code===1?'กรุณาอนุญาตตำแหน่ง':'อ่าน GPS ไม่สำเร็จ');if(b)b.disabled=false},{enableHighAccuracy:true,timeout:15000,maximumAge:30000});
+}
+function quantity(){
+  const type=service?.pricing_type;
+  if(type==='fixed')return 1;
+  const n=Number(document.getElementById('quantity').value);
+  return Number.isFinite(n)&&n>0?n:null;
+}
+function feeInfo(){
+  const s=hub?.settings||{};
+  if(s.delivery_fee_mode==='round_trip')return {pickup:Number(s.round_trip_fee||0)/2,back:Number(s.round_trip_fee||0)/2,total:Number(s.round_trip_fee||0),label:'ค่ารับ-ส่งรวม'};
+  const pickup=Number(s.pickup_fee||0),back=Number(s.return_fee||0);return {pickup,back,total:pickup+back,label:'ค่ารับ + ส่งคืน'};
+}
+function renderQuote(){
+  if(!service||!hub)return;
+  const qWrap=document.getElementById('quantity-wrap'),type=service.pricing_type,q=quantity();
+  qWrap.classList.toggle('hidden',type==='fixed');
+  document.getElementById('quantity-label').textContent=type==='per_kg'?'น้ำหนักโดยประมาณ (กก.)':type==='per_item'?'จำนวนชิ้นโดยประมาณ':'จำนวนชุดโดยประมาณ';
+  document.getElementById('quantity-help').textContent='ใช้คำนวณราคาโดยประมาณ ร้านจะยืนยันจำนวนจริงก่อนส่งคืน';
+  const min=Number(hub.settings?.minimum_order||0);
+  const serviceAmount=type==='fixed'?Math.max(Number(service.price||0),min):(q?Math.max(Number(service.price||0)*q,min):null);
+  const f=feeInfo(),total=serviceAmount==null?null:serviceAmount+f.total;
+  document.getElementById('quote').innerHTML=
+    '<div class="row"><span>'+safe(service.name)+' · ฿'+money(service.price)+'/'+(UNIT[type]||'งาน')+'</span><span>'+(serviceAmount==null?'กรอกจำนวน':'฿'+money(serviceAmount))+'</span></div>'+
+    '<div class="row"><span>ค่ารับผ้า</span><span>฿'+money(f.pickup)+'</span></div>'+
+    '<div class="row"><span>ค่าส่งคืน</span><span>฿'+money(f.back)+'</span></div>'+
+    '<div class="row total"><span>ยอดประมาณ</span><span>'+(total==null?'รอจำนวน':'฿'+money(total))+'</span></div>';
+}
+function readPending(){try{return JSON.parse(localStorage.getItem(pendingKey())||'null')}catch(e){return null}}
 document.getElementById('confirm').onclick=async()=>{
-  if(sending)return;
-  const {data:{session}}=await db.auth.getSession();if(!session)return location.href='../#login';
+  if(busy)return;
+  syncAddress();
   if(!hub||!service)return alert('กรุณาเลือกบริการ');
-  const m=customer.metadata||{},lat=Number(m.lat??m.latitude),lng=Number(m.lng??m.longitude),addr=String(m.address||m.delivery_address||m.location_address||'').trim();
-  if(!Number.isFinite(lat)||!Number.isFinite(lng)||!addr){alert('กรุณาปักพิกัดจัดส่งใน QueueGo ก่อน');location.href='../#profile';return}
-  const key=pendingKey();let req=null;try{req=JSON.parse(localStorage.getItem(key)||'null')}catch(e){}
-  if(!req||req.hub_id!==hub.id||req.service_id!==service.id){req={request_id:uuid(),hub_id:hub.id,service_id:service.id};localStorage.setItem(key,JSON.stringify(req))}
-  sending=true;const btn=document.getElementById('confirm');btn.disabled=true;btn.textContent='กำลังส่งคำขอ...';
+  if(!Number.isFinite(loc.lat)||!Number.isFinite(loc.lng))return alert('กรุณาระบุ GPS จุดรับผ้า');
+  if(loc.address.length<3)return alert('กรุณาระบุที่อยู่/จุดสังเกต');
+  const q=quantity();if(service.pricing_type!=='fixed'&&!q)return alert('กรุณาระบุจำนวนโดยประมาณ');
+  busy=true;const button=document.getElementById('confirm');button.disabled=true;button.textContent='กำลังยืนยัน...';
   try{
-    const {data,error}=await db.rpc('queuego_place_laundry_order',{
-      p_request_id:req.request_id,p_hub_id:hub.id,p_service_id:service.id,
-      p_pickup_address:addr,p_pickup_latitude:lat,p_pickup_longitude:lng,
-      p_note:String(document.getElementById('note').value||'').trim().slice(0,500)||null
-    });
+    let pending=readPending();
+    if(!pending){
+      pending={p_request_id:crypto.randomUUID(),p_hub_id:hub.id,p_service_id:service.id,p_pickup_address:loc.address,p_pickup_latitude:loc.lat,p_pickup_longitude:loc.lng,p_estimated_quantity:q,p_note:document.getElementById('note').value.trim()||null};
+      localStorage.setItem(pendingKey(),JSON.stringify(pending));
+    }
+    const {data,error}=await db.rpc('queuego_place_laundry_order_v2',pending);
     if(error)throw error;
-    localStorage.removeItem(key);
-    const orderNo=data?.order_number||'';
-    alert('ส่งคำขอฝากซักแล้ว '+orderNo+' รอร้านกดรับคำขอ');
-    location.href='../#orders';
-  }catch(e){
-    const msg=String(e?.message||e);
-    if(/disabled|unavailable|invalid|active customer/i.test(msg))try{localStorage.removeItem(key)}catch(_){}
-    alert('ส่งคำขอไม่สำเร็จ: '+msg.slice(0,120));
-  }finally{sending=false;if(btn.isConnected){btn.disabled=false;btn.textContent='ส่งคำขอฝากซัก'}}
+    if(!data?.id)throw Error('ยังไม่ได้รับผลยืนยันจากระบบ');
+    localStorage.removeItem(pendingKey());alert('สร้างงานฝากซักแล้ว '+data.order_number);closeShop();await loadMyOrders();
+  }catch(e){alert('สร้างงานไม่สำเร็จ: '+String(e.message||e).slice(0,180))}
+  finally{busy=false;button.disabled=false;button.textContent=readPending()?'ตรวจผลคำขอเดิม':'ยืนยันเรียก Rider รับผ้า'}
 };
+async function loadMyOrders(){
+  if(!customer)return;
+  const el=document.getElementById('my-orders');
+  const {data,error}=await db.from('laundry_orders').select('id,order_number,status,service_name_snapshot,estimated_total_amount,final_total_amount,created_at').eq('customer_id',customer.id).order('created_at',{ascending:false}).limit(30);
+  if(error){el.innerHTML='โหลดงานไม่สำเร็จ';return}
+  const rows=data||[];
+  el.className='';
+  el.innerHTML=rows.length?rows.map(o=>'<article><div class="headrow"><div><b>#'+safe(o.order_number)+'</b><small>'+safe(o.service_name_snapshot||'ฝากซัก')+' · '+safe(STATUS[o.status]||o.status)+'</small></div><strong>'+(o.final_total_amount!=null?'฿'+money(o.final_total_amount):o.estimated_total_amount!=null?'≈ ฿'+money(o.estimated_total_amount):'รอสรุปราคา')+'</strong></div></article>').join(''):'<div class="empty">ยังไม่มีงานฝากซัก</div>';
+}
 boot();
-</script></body></html>
+</script>
+</body>
+</html>
