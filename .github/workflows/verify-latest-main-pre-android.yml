@@ -1,0 +1,71 @@
+name: Verify Latest Main Pre Android
+
+on:
+  push:
+    branches:
+      - verify/pre-android-main-20261004
+
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: npm test
+
+  android-debug:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - role: customer
+            appid: com.queuego.customer
+            appname: QueueGo
+          - role: merchant
+            appid: com.queuego.merchant
+            appname: QueueGo Merchant
+          - role: rider
+            appid: com.queuego.rider
+            appname: QueueGo Rider
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Prepare Android web bundle
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd android-build
+          npm install --no-audit --no-fund
+          rm -rf www android
+          mkdir -p www
+          if [ "${{ matrix.role }}" = "customer" ]; then
+            cp ../index.html www/index.html
+            cp ../table-order.css ../table-order.js ../table-order.html www/
+          elif [ "${{ matrix.role }}" = "merchant" ]; then
+            cp ../merchant/* www/
+            cp ../role-realtime.js www/
+            python3 -c "from pathlib import Path; p=Path('www/index.html'); p.write_text(p.read_text().replace('../role-realtime.js','role-realtime.js'))"
+            cp ../table-order.html ../table-order.css ../table-order.js www/
+          else
+            cp ../rider/index.html www/index.html
+          fi
+          node -e "let c=require('./capacitor.config.json');c.appId='${{ matrix.appid }}';c.appName='${{ matrix.appname }}';require('fs').writeFileSync('capacitor.config.json',JSON.stringify(c,null,2))"
+          npx cap add android
+          npx cap sync android
+      - name: Build debug APK
+        shell: bash
+        run: |
+          cd android-build/android
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon
