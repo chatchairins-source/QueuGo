@@ -749,8 +749,8 @@ function placeJobMarkers(){
   const list=S.activeOrder?[S.activeOrder]:S.openJobs.map(x=>x.order);
   list.forEach(o=>{
     const plat=Number(o.pickup_latitude),plng=Number(o.pickup_longitude),dlat=Number(o.delivery_latitude),dlng=Number(o.delivery_longitude);
-    if(Number.isFinite(plat)&&Number.isFinite(plng)){const m=qgMarker({lat:plat,lon:plng},'<div style="width:20px;height:20px;border-radius:50%;background:#16a34a;border:4px solid #fff;box-shadow:0 2px 8px #0004"></div>','จุดรับ · '+(o.pickup_address||'ร้านค้า'));S.map.Overlays.add(m);S.jobMarkers.push(m)}
-    if(Number.isFinite(dlat)&&Number.isFinite(dlng)){const m=qgMarker({lat:dlat,lon:dlng},'<div style="width:20px;height:20px;border-radius:50%;background:#e6002d;border:4px solid #fff;box-shadow:0 2px 8px #0004"></div>','จุดส่ง · '+(o.delivery_address||'บ้านลูกค้า'));S.map.Overlays.add(m);S.jobMarkers.push(m)}
+    if(Number.isFinite(plat)&&Number.isFinite(plng)){const m=qgMarker({lat:plat,lon:plng},'<div style="width:20px;height:20px;border-radius:50%;background:#16a34a;border:3px solid #fff;box-shadow:0 2px 8px #0004"></div>','จุดรับ · '+(o.pickup_address||'ร้านค้า'));S.map.Overlays.add(m);S.jobMarkers.push(m)}
+    if(Number.isFinite(dlat)&&Number.isFinite(dlng)){const m=qgMarker({lat:dlat,lon:dlng},'<div style="width:20px;height:20px;border-radius:50%;background:#e6002d;border:3px solid #fff;box-shadow:0 2px 8px #0004"></div>','จุดส่ง · '+(o.delivery_address||'บ้านลูกค้า'));S.map.Overlays.add(m);S.jobMarkers.push(m)}
   });
   drawActiveRoute();
 }
