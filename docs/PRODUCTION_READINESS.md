@@ -91,7 +91,7 @@ Applied successfully to the existing Supabase project as migration `202610031747
 
 ## Verification evidence
 
-- `npm test`: 52 JS blocks parsed, 17 static local file references checked, 18 isolated critical-client checks, 20 completion SQL checks, 21 claim SQL checks. The SQL fixture tests wrong PIN, wrong rider, invalid GPS/evidence, missing advance, rollback, no merchant receipt, multi-shop completion and replay.
+- `npm test`: 52 JS blocks parsed, 17 static local file references checked, 18 isolated critical-client checks, 20 completion SQL checks, 21 claim SQL checks, 21 transport interruption checks. The SQL fixture tests wrong PIN, wrong rider, invalid GPS/evidence, missing advance, rollback, no merchant receipt, multi-shop completion and replay.
 - Initial cleanup-only DOM regression: 40 route/boot cases matched the original source with no extra errors.
 - Final Chromium regression: 144 route/boot cases at 390, 768 and 1280px, zero additional JavaScript errors and zero unplanned screen differences. Customer guest/navigation behavior intentionally differs from baseline. A later identical-image CSS-variable deduplication changes no pixels. Fixtures intercept all external operations; no production order or test user is created. Public browser smoke could not run because Chromium network navigation returned `ERR_EMPTY_RESPONSE`; live console/authenticated network behavior is not certified.
 - Workflow YAML and embedded Python parse checks passed. Native role packaging now includes referenced QR/laundry files. The permission bridge that bypassed Capacitor and requested permissions on startup was deleted; Capacitor 8's actual `BridgeWebChromeClient` handles geolocation on use and file selection. Release signing is attached to `buildTypes.release`.
@@ -106,9 +106,9 @@ Sizes are source bytes and zlib-compressed bytes, not device INP measurements.
 | Entry | Before bytes | After bytes | Removed bytes | Compressed before → after |
 |---|---:|---:|---:|---:|
 | `index.html` | 172,341 | 175,032 | -2,691 | 113,646 → 114,500 |
-| `merchant/index.html` | 471,336 | 328,691 | 142,645 | 229,879 → 141,922 |
-| `admin/index.html` | 515,014 | 256,477 | 258,537 | 125,581 → 68,079 |
-| `rider/index.html` | 257,099 | 238,825 | 18,274 | 124,196 → 119,986 |
+| `merchant/index.html` | 471,336 | 328,891 | 142,445 | 229,879 → 141,966 |
+| `admin/index.html` | 515,014 | 234,214 | 280,800 | 125,581 → 61,847 |
+| `rider/index.html` | 257,099 | 239,125 | 17,974 | 124,196 → 120,050 |
 
 ## Remote operations and release blockers
 
@@ -140,14 +140,16 @@ The 16 remote branches still requiring deletion are:
 
 ## Follow-up cleanup and claim hardening
 
+Source commit: `6c3425de551ad7e21560cb791160244d512eaa01`. Claim serialization applied to the existing Supabase project as migration `20261004000119` (`rider_claim_profile_serialization`). Post-deployment introspection verifies both RPCs lock the Rider profile before the active-job check. No production order was claimed or altered for testing. Pages run `37163579710` succeeded on `main` at this source commit; all 16 checked live entry/dependency files matched that published code byte-for-byte.
+
 - Deleted the disabled Admin online-ready `/api/sync/events` outbox/API prototype, session-only Rider presence writers, Rider heartbeat/exit/storage listeners, stale presence cleanup timer, unused online diagnostics/notification wrapper and their dead CSS. The current Admin Rider panel still reads `users` and `rider_profiles` from Supabase; its current monitoring refresh remains.
 - Deleted Admin's unreachable Merchant promotion renderer/form/bid board/demo payment and unused category helper. The Admin promotion stop action now has only its Admin caller/renderer.
 - Deleted the reachable `ADMIN-DEMO-*` promotion activation/payment fabrication and its button. Approval/rejection/end states remain. Promotion activation requires a real server-verified paid path before reintroduction; no replacement payment or pricing model was added. This is an explicit remaining feature blocker.
-- Added 15-second cancellation to the existing Merchant/Admin/Rider Auth, table and core RPC request implementations. No automatic mutation replay or second request layer was added. Full lifecycle/recovery verification is still required.
+- Added 15-second cancellation to the existing Merchant/Admin/Rider Auth, table and core RPC request implementations. Abort/timeout while reading a response body is propagated, preventing a cancelled mutation from being reported as successful `null`. No automatic mutation replay or second request layer was added. Full lifecycle/recovery verification is still required.
 - `QueueGo-Rider-Claim-Serialization-Migration.sql` preserves existing ordinary/Market claim definitions and locks the caller's Rider profile before checking existing active work. Both paths take the same profile row lock; existing order/group locks still arbitrate competing Riders. No price, fee, GP or state semantics changed. This closes the identified same-Rider/different-order precheck race by serialization; simultaneous-connection certification is still pending.
 - Added 21 isolated claim checks for roles, online eligibility, competing ownership, notifications, current-job exclusivity, Market capacity, atomic group assignment and rollback. Local multi-process PostgreSQL could not start because the execution environment forbids switching to a non-root OS user; PGlite cannot certify simultaneous connections. No production race/load test was performed.
 - Repeated Chromium regression across 144 cases: no additional JavaScript errors or unplanned non-Customer screen changes. Customer differences are the previously approved guest/navigation changes. The subsequent demo-activation removal affects only approved promotion rows; source tests pass and the missing production payment path is reported above.
-- No additional file was deleted in this follow-up; obsolete code was deleted directly from Admin's production entry. No backup branch or fallback renderer was created.
+- Deleted `android-build/RELEASE_BUILD.txt` after removing its only caller, the push-triggered Android release build. Both native workflows are now main-only, manually dispatched builds so core cleanup commits do not automatically build native packages before the release gates pass. No backup branch or fallback renderer was created.
 
 ## References
 

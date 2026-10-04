@@ -2,14 +2,6 @@ name: QueueGo iOS Developer Builds
 
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
-    paths:
-      - 'index.html'
-      - 'merchant/**'
-      - 'rider/**'
-      - 'android-build/package.json'
-      - '.github/workflows/build-queuego-ios.yml'
 
 jobs:
   build:

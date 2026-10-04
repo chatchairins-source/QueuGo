@@ -471,7 +471,7 @@ function qtSupabaseHeaders(accessToken){
 }
 async function qtSupabaseAuth(path, body){
   const r=await fetch(QT_SUPABASE_CONFIG.URL+'/auth/v1/'+path,{method:'POST',headers:qtSupabaseHeaders(),body:JSON.stringify(body),signal:AbortSignal.timeout(15000)});
-  const data=await r.json().catch(()=>({}));
+  const data=await r.json().catch(e=>{if(e.name==='AbortError'||e.name==='TimeoutError')throw e;return ({})});
   if(!r.ok) throw new Error(data.error_description||data.msg||data.message||'AUTH_ERROR');
   return data;
 }
@@ -479,7 +479,7 @@ async function qtSupabaseRpc(fn,args={}){
   const token=await qtGetAccessToken();
   const headers=qtSupabaseHeaders(token);
   const r=await fetch(QT_SUPABASE_CONFIG.URL+'/rest/v1/rpc/'+fn,{method:'POST',headers,body:JSON.stringify(args),signal:AbortSignal.timeout(15000)});
-  const data=await r.json().catch(()=>null);
+  const data=await r.json().catch(e=>{if(e.name==='AbortError'||e.name==='TimeoutError')throw e;return null});
   if(!r.ok) throw new Error((data&&data.message)||'RPC_ERROR_'+r.status);
   return data;
 }
@@ -492,7 +492,7 @@ async function qtSupabaseTable(path, options={}){
       ? rep+',resolution=merge-duplicates' : rep;
   }
   const r=await fetch(QT_SUPABASE_CONFIG.URL+'/rest/v1/'+path,{method:options.method||'GET',headers,body:options.body?JSON.stringify(options.body):undefined,signal:AbortSignal.timeout(15000)});
-  const data=await r.json().catch(()=>null);
+  const data=await r.json().catch(e=>{if(e.name==='AbortError'||e.name==='TimeoutError')throw e;return null});
   if(!r.ok) throw new Error((data&&data.message)||((data&&data.hint)?data.hint:'DB_ERROR_'+r.status));
   return data;
 }
