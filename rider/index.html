@@ -815,17 +815,25 @@ function drawActiveRoute(){
   const st=statusFromRow(order);
   const pickups=order.market_order_id&&Array.isArray(order._marketPickups)?order._marketPickups:[];
   const nextPickup=pickups.find(x=>!['PICKED_UP','CANCELLED'].includes(String(x.status||'').toUpperCase()))||null;
-  const usePickup=!!nextPickup&&!['picked_up','delivering','arrived','completed'].includes(st);
-  const lat=usePickup?nextPickup.latitude:order.delivery_latitude;
-  const lon=usePickup?nextPickup.longitude:order.delivery_longitude;
-  const targetKey=usePickup?String(nextPickup.pickup_id||nextPickup.pickup_sequence):'customer';
-  const label=usePickup?'ไปร้าน '+Number(nextPickup.pickup_sequence||1)+' · '+String(nextPickup.shop_name||'ร้านค้า'):'ไปหาลูกค้า';
+  const useMarketPickup=!!nextPickup&&!['picked_up','delivering','arrived','completed'].includes(st);
+  const useNormalPickup=!order.market_order_id&&['rider_assigned','preparing','ready','assigned'].includes(st);
+  const lat=useMarketPickup?nextPickup.latitude:(useNormalPickup?order.pickup_latitude:order.delivery_latitude);
+  const lon=useMarketPickup?nextPickup.longitude:(useNormalPickup?order.pickup_longitude:order.delivery_longitude);
+  const targetKey=useMarketPickup?String(nextPickup.pickup_id||nextPickup.pickup_sequence):(useNormalPickup?'shop':'customer');
+  const label=useMarketPickup?'ไปร้าน '+Number(nextPickup.pickup_sequence||1)+' · '+String(nextPickup.shop_name||'ร้านค้า'):(useNormalPickup?'ไปร้าน':'ไปหาลูกค้า');
   if(!validRiderCoordinate(pos.lat,pos.lng)||!validRiderCoordinate(lat,lon)){clearRiderRoute();return Promise.resolve()}
   const scope=JSON.stringify([userId,session?.sessionId,order.market_order_id||order.id,targetKey,Number(lat),Number(lon)]);
   const current=()=>{
     if(!(S.map===map&&S.user?.id===userId&&riderSessionMatches(session)&&S.activeOrder?.id===order.id))return false;
-    if(!usePickup)return !(['rider_assigned','preparing','ready','assigned'].includes(statusFromRow(S.activeOrder))&&Array.isArray(S.activeOrder?._marketPickups)&&S.activeOrder._marketPickups.some(x=>!['PICKED_UP','CANCELLED'].includes(String(x.status||'').toUpperCase())));
-    const cur=(S.activeOrder?._marketPickups||[]).find(x=>!['PICKED_UP','CANCELLED'].includes(String(x.status||'').toUpperCase()));
+    const live=S.activeOrder,liveSt=statusFromRow(live);
+    if(!order.market_order_id){
+      const liveToShop=['rider_assigned','preparing','ready','assigned'].includes(liveSt);
+      return liveToShop===useNormalPickup;
+    }
+    if(!useMarketPickup){
+      return !(['rider_assigned','preparing','ready','assigned'].includes(liveSt)&&Array.isArray(live?._marketPickups)&&live._marketPickups.some(x=>!['PICKED_UP','CANCELLED'].includes(String(x.status||'').toUpperCase())));
+    }
+    const cur=(live?._marketPickups||[]).find(x=>!['PICKED_UP','CANCELLED'].includes(String(x.status||'').toUpperCase()));
     return String(cur?.pickup_id||cur?.pickup_sequence||'')===targetKey;
   };
   if(riderRouteRequest?.scope===scope&&riderRouteRequest.map===map)return riderRouteRequest.task;
