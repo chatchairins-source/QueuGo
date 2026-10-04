@@ -196,3 +196,11 @@ Full release gates above remain FAIL where live/device proof is missing. No remo
 - Bursts share one read with one trailing refresh. Connected clients reauthorize once per minute without fetching orders; disconnected clients use one 15-second recovery timer. Reconnection refreshes the authoritative view. No old renderer or duplicate polling path was added. Deployed orders publication was verified read-only; actual authenticated socket/network recovery remains an acceptance blocker.
 - Route changes render immediate accessible loading feedback; background order updates keep the current content until its replacement is ready. Removed the separate Orders loading render.
 - 263 isolated behavioral checks pass, including 31 new scoped subscription, coalescing and lifecycle checks. Physical-device INP, real reconnect and full authenticated E2E are not certified by these tests.
+
+## Customer cart integrity and notes
+
+- Removed five unused map-grid/map-center CSS rules after tracing HTML, JavaScript, globals and repository references; current Leaflet and map container styles remain.
+- Validated persisted cart shape, item quantity/price and shop ownership before rendering. Corrupted storage no longer causes the initial screen to throw. Quantity controls now enforce the existing server limit of 99; unrelated-shop replacement clears the prior shop note after confirmation.
+- Added persisted order notes to existing checkout, using the current server `p_note` field and its 500-character limit. Ambiguous retries use the original durable note; pending requests disable note editing. This does not introduce a new order flow, pricing rule or business model.
+- Storage events for account/cart/pending changes reload only the current actor's cart; in-flight checkout remains bound to its original request. Added 24 cart corruption, quantity, note replay and account/cart storage checks. Total isolated behavioral checks: 287.
+- Pages run `37167760486` succeeded from main `62d2d277d8c6eb3198ecf158ff95a4e1bf7415e7`; all four live entry files matched that source. Supabase security advisors still flag exposed SECURITY DEFINER API groups and leaked-password protection; existing privileged entry points retain explicit actor/role checks. These warnings and live authentication/security acceptance are not claimed resolved.

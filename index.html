@@ -92,7 +92,7 @@ main{width:100%;max-width:720px;margin:auto;padding:0 14px 118px}
 /* Clean Market + Map modules */
 .marketBanner{margin-top:12px;border-radius:20px;overflow:hidden;aspect-ratio:2/1;box-shadow:var(--sh)}
 .marketBanner img{display:block;width:100%;height:100%;object-fit:cover;object-position:center}
-.mapbox{position:relative;height:390px;border-radius:20px;overflow:hidden;background:linear-gradient(145deg,#eef5ee,#e7eef4);border:1px solid var(--ln);margin-top:10px}.mapgrid{position:absolute;inset:0;background-image:linear-gradient(rgba(0,0,0,.045) 1px,transparent 1px),linear-gradient(90deg,rgba(0,0,0,.045) 1px,transparent 1px);background-size:32px 32px}.mapcenter{position:absolute;inset:0;display:grid;place-items:center;text-align:center;padding:25px}.mapcenter .pin{margin:auto;width:48px;height:48px;border-radius:16px}.mapcenter b{display:block;margin-top:10px}.mapcenter p{font-size:12px;color:var(--mu);margin-top:5px}.dist{font-size:11px;color:var(--mu);margin:5px 3px 10px}
+.mapbox{position:relative;height:390px;border-radius:20px;overflow:hidden;background:linear-gradient(145deg,#eef5ee,#e7eef4);border:1px solid var(--ln);margin-top:10px}.dist{font-size:11px;color:var(--mu);margin:5px 3px 10px}
 </style>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
@@ -171,7 +171,13 @@ const CATS={food:'อาหาร',cafe:'เครื่องดื่ม',groc
 const CICON={food:'utensils',cafe:'drink',grocery:'bottle',market:'bottle',fresh:'basket',fresh_market:'basket',other:'grid'};
 /* cart persistence restored from the previous working Customer flow */
 const cartKey=()=>S.get()?.userId?'qt_cart_'+S.get().userId:'qt_cart_guest';
-function readCart(){try{return JSON.parse(localStorage.getItem(cartKey())||'null')||{shopId:null,items:[]}}catch(e){return {shopId:null,items:[]}}}
+function readCart(){
+  const empty=()=>({shopId:null,items:[]});
+  try{const saved=JSON.parse(localStorage.getItem(cartKey())||'null');if(!saved||typeof saved.shopId!=='string'||!saved.shopId||!Array.isArray(saved.items))return empty();
+    const items=saved.items.filter(i=>i&&typeof i.id==='string'&&i.id&&Number.isInteger(i.qty)&&i.qty>0&&i.qty<=99&&typeof i.price==='number'&&Number.isFinite(i.price)&&i.price>=0).map(i=>({id:i.id,name:typeof i.name==='string'?i.name:'สินค้า',price:i.price,image:typeof i.image==='string'?i.image:'',qty:i.qty}));
+    return items.length?{shopId:saved.shopId,items,...(typeof saved.note==='string'?{note:saved.note.slice(0,500)}:{})}:empty();
+  }catch(e){return empty()}
+}
 function saveCart(){try{localStorage.setItem(cartKey(),JSON.stringify(cart))}catch(e){}}
 let cart=readCart(),shops=null,q='',cat='all';
 const cartN=()=>cart.items.reduce((a,i)=>a+i.qty,0);
@@ -221,7 +227,7 @@ async function placeOrder(){
       const shop=await loadShopProfile(cart.shopId);if(!sameActor())return;if(!shop)throw Error('ไม่พบข้อมูลร้านค้า');
       const loc=window.__checkoutPickedLocation?.()||currentPos,address=($('delivery-address')?.value||'').trim();
       if(!loc||!qgIsValidCoordinate(loc.lat,loc.lng,true)||!address)throw Error('กรุณาปักหมุดและระบุที่อยู่จัดส่ง');
-      pending={cart:JSON.stringify(cart),body:{p_order_id:uuid(),p_shop_id:shop.id,p_items:cart.items.map(i=>({product_id:i.id,qty:i.qty})),p_delivery_lat:Number(loc.lat),p_delivery_lng:Number(loc.lng),p_delivery_address:address,p_expected_subtotal:cartTotal(),p_expected_delivery_fee:deliveryFeeFor(shop,loc),p_note:null}};
+      pending={cart:JSON.stringify(cart),body:{p_order_id:uuid(),p_shop_id:shop.id,p_items:cart.items.map(i=>({product_id:i.id,qty:i.qty})),p_delivery_lat:Number(loc.lat),p_delivery_lng:Number(loc.lng),p_delivery_address:address,p_expected_subtotal:cartTotal(),p_expected_delivery_fee:deliveryFeeFor(shop,loc),p_note:cart.note?.trim()||null}};
       localStorage.setItem(requestKey,JSON.stringify(pending));
     }
     const accessToken=await token();if(!sameActor())return;
@@ -238,7 +244,7 @@ async function placeOrder(){
     toast(e.status?'ยืนยันไม่สำเร็จ กรุณาตรวจตะกร้า ราคา และตำแหน่งแล้วลองอีกครั้ง':'ยังยืนยันผลไม่ได้ กรุณาลองอีกครั้ง ระบบจะใช้รายการเดิมเพื่อป้องกันออเดอร์ซ้ำ');
   }finally{checkoutBusy=false;if(button){button.disabled=false;button.textContent='ยืนยันสั่งซื้อ'}}
 }
-/* ===== Proven QueueGo location-picker core (legacy behavior, clean UI) ===== */
+/* ===== Customer location picker ===== */
 let currentPos=null,customerLocationPicker=null,checkoutPicker=null;
 function qgIsValidCoordinate(latitude,longitude,thailandOnly=false){
   if(latitude===null||latitude===undefined||longitude===null||longitude===undefined||latitude===''||longitude==='') return false;
@@ -377,7 +383,7 @@ V.cart=()=>{
 <button class="prim" onclick="go('checkout')">ไปชำระเงิน</button>`:'<p class="empty">ตะกร้าว่าง</p>'),'cart');
 };
 V.checkout=async(_,ticket=routeVersion)=>{if(!cart.items.length)return go('cart');const s=await loadShopProfile(cart.shopId);if(ticket!==routeVersion)return;
-  layout(`<div class="pt"><button class="back" onclick="history.back()">${ico('back')}</button><h1>ยืนยันคำสั่งซื้อ</h1></div><div class="card" style="margin-top:0"><b>${esc(s?.shop_name||'ร้านค้า')}</b><p class="sm">ชำระเงินสด • ระบบเดลิเวอรี่ QueueGo</p><div id="checkout-pin-map" class="mapbox" style="height:115px;margin-top:10px"></div><button style="margin-top:10px;padding:7px 11px;width:auto;border:1px solid #d1d5db;border-radius:9px;background:transparent;color:inherit;font-size:12px;font-weight:600" onclick="checkoutPicker&&checkoutPicker.locate()">ใช้ตำแหน่ง GPS ปัจจุบัน</button><div class="dist">Lat: <span id="co-lat">--</span> · Lng: <span id="co-lng">--</span></div><textarea class="ta" id="delivery-address" placeholder="ที่อยู่/จุดสังเกตสำหรับจัดส่ง">${esc(currentPos?.address||'')}</textarea></div><div class="sum"><div class="sr"><span>ค่าสินค้า</span><span>${baht(cartTotal())}</span></div><div class="sr"><span>ค่าจัดส่ง</span><span id="checkout-delivery-fee">เลือกตำแหน่งจัดส่ง</span></div><div class="tot"><span>ยอดรวม</span><span id="checkout-total">${baht(cartTotal())}</span></div></div><button class="prim" id="place-order-btn" onclick="placeOrder()">ยืนยันสั่งซื้อ</button>`,'cart');
+  layout(`<div class="pt"><button class="back" onclick="history.back()">${ico('back')}</button><h1>ยืนยันคำสั่งซื้อ</h1></div><div class="card" style="margin-top:0"><b>${esc(s?.shop_name||'ร้านค้า')}</b><p class="sm">ชำระเงินสด • ระบบเดลิเวอรี่ QueueGo</p><div id="checkout-pin-map" class="mapbox" style="height:115px;margin-top:10px"></div><button style="margin-top:10px;padding:7px 11px;width:auto;border:1px solid #d1d5db;border-radius:9px;background:transparent;color:inherit;font-size:12px;font-weight:600" onclick="checkoutPicker&&checkoutPicker.locate()">ใช้ตำแหน่ง GPS ปัจจุบัน</button><div class="dist">Lat: <span id="co-lat">--</span> · Lng: <span id="co-lng">--</span></div><textarea class="ta" id="delivery-address" placeholder="ที่อยู่/จุดสังเกตสำหรับจัดส่ง">${esc(currentPos?.address||'')}</textarea><label for="checkout-note">หมายเหตุสำหรับร้าน</label><textarea class="ta" id="checkout-note" maxlength="500" placeholder="รายละเอียดเพิ่มเติมสำหรับร้าน (ถ้ามี)" oninput="setCheckoutNote(this.value)" ${readPendingCheckout()?'disabled':''}>${esc(readPendingCheckout()?.body?.p_note??cart.note??'')}</textarea></div><div class="sum"><div class="sr"><span>ค่าสินค้า</span><span>${baht(cartTotal())}</span></div><div class="sr"><span>ค่าจัดส่ง</span><span id="checkout-delivery-fee">เลือกตำแหน่งจัดส่ง</span></div><div class="tot"><span>ยอดรวม</span><span id="checkout-total">${baht(cartTotal())}</span></div></div><button class="prim" id="place-order-btn" onclick="placeOrder()">ยืนยันสั่งซื้อ</button>`,'cart');
   let picked=currentPos&&qgIsValidCoordinate(currentPos.lat,currentPos.lng,true)?{lat:currentPos.lat,lng:currentPos.lng}:null;
   const showTotal=loc=>{if(!loc||!s)return;const fee=deliveryFeeFor(s,loc);$('checkout-delivery-fee').textContent=baht(fee);$('checkout-total').textContent=baht(cartTotal()+fee)};showTotal(picked);
   let locationVersion=0;
@@ -401,12 +407,14 @@ V.profile=()=>{
 window.add=(sid,pid)=>{
   if(checkoutBusy||readPendingCheckout())return toast('กรุณายืนยันผลคำสั่งซื้อเดิมในหน้าชำระเงินก่อนแก้ตะกร้า');
   const p=(window._menu||[]).find(x=>String(x.id)===String(pid));if(!p)return;
-  if(cart.items.length&&String(cart.shopId)!==String(sid)){if(!confirm('ตะกร้ามีสินค้าจากร้านอื่น ล้างตะกร้าเพื่อสั่งร้านนี้?'))return;cart.items=[]}
+  if(cart.items.length&&String(cart.shopId)!==String(sid)){if(!confirm('ตะกร้ามีสินค้าจากร้านอื่น ล้างตะกร้าเพื่อสั่งร้านนี้?'))return;cart={shopId:sid,items:[]}}
   cart.shopId=sid;const f=cart.items.find(i=>i.id===p.id);
+  if(f?.qty>=99)return toast('เพิ่มได้สูงสุด 99 ชิ้นต่อรายการ');
   f?f.qty++:cart.items.push({id:p.id,name:p.name,price:Number(p.delivery_price??p.price),image:p.image||'',qty:1});
   saveCart();toast('เพิ่มลงตะกร้าแล้ว');route();
 };
-window.chg=(x,d)=>{if(checkoutBusy||readPendingCheckout())return toast('กรุณายืนยันผลคำสั่งซื้อเดิมก่อนแก้ตะกร้า');cart.items[x].qty+=d;if(cart.items[x].qty<1)cart.items.splice(x,1);if(!cart.items.length)cart.shopId=null;saveCart();route()};
+window.chg=(x,d)=>{if(checkoutBusy||readPendingCheckout())return toast('กรุณายืนยันผลคำสั่งซื้อเดิมก่อนแก้ตะกร้า');if(!Number.isInteger(x)||!cart.items[x]||![1,-1].includes(d))return;if(cart.items[x].qty+d>99)return toast('เพิ่มได้สูงสุด 99 ชิ้นต่อรายการ');cart.items[x].qty+=d;if(cart.items[x].qty<1)cart.items.splice(x,1);if(!cart.items.length)cart.shopId=null;saveCart();route()};
+window.setCheckoutNote=value=>{if(checkoutBusy||readPendingCheckout())return;cart.note=String(value).slice(0,500);saveCart()};
 /* ===== 8) Router ===== */
 let routeVersion=0,lastRouteView='';
 /* Customer orders: one scoped connection and one coalesced refresh path. */
@@ -422,7 +430,7 @@ const customerOrdersLive=(()=>{
   function attach(){if(attaching||channel||!scope)return attaching;const key=scope,g=generation;const work=(async()=>{await loadSDK();if(!valid(key,g))return;const accessToken=await token();if(!valid(key,g)||!accessToken)return;const next=window.supabase.createClient(CFG.URL,CFG.KEY,{auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false}});await next.realtime.setAuth(accessToken);if(!valid(key,g)){next.realtime.disconnect();return}client=next;const customer=S.get().userId;channel=next.channel('customer-orders:'+customer+':'+g);for(const event of ['INSERT','UPDATE'])channel.on('postgres_changes',{event,schema:'public',table:'orders',filter:'customer_id=eq.'+customer},()=>{if(valid(key,g))refresh()});channel.subscribe(status=>{if(!valid(key,g))return;connected=status==='SUBSCRIBED';if(status==='CLOSED'){const closed=channel;channel=null;Promise.resolve(next.removeChannel(closed)).catch(()=>{});next.realtime.disconnect();if(client===next)client=null}if(connected)refresh();schedule()})})().catch(()=>{if(valid(key,g))schedule()}).finally(()=>{if(attaching===work)attaching=null});attaching=work;return work}
   function sync(){const key=desired();if(key!==scope){stop();scope=key}if(!key)return;attach();if(!timer)schedule()}
   function resume(){sync();if(scope)refresh()}
-  document.addEventListener('visibilitychange',resume);addEventListener('online',resume);addEventListener('offline',sync);addEventListener('pagehide',stop);addEventListener('pageshow',resume);addEventListener('storage',()=>{route();resume()});
+  document.addEventListener('visibilitychange',resume);addEventListener('online',resume);addEventListener('offline',sync);addEventListener('pagehide',stop);addEventListener('pageshow',resume);addEventListener('storage',event=>{if(event.key===SKEY){cart=readCart();route();resume()}else if(!checkoutBusy&&(event.key===cartKey()||event.key===pendingCheckoutKey())){cart=readCart();route()}});
   return {sync,refresh,stop};
 })();
 
