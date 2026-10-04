@@ -236,3 +236,9 @@ Full release gates above remain FAIL where live/device proof is missing. No remo
 - Realtime SDK loading has a 10-second timeout and removes failed script/task state. Recovery refresh retries after 15 seconds while POS is online and visible; route exit removes the timer/channel. No old POS renderer or extra connected polling was added.
 - Added 21 isolated POS checks for closed sockets, stale callbacks, one retry timer, token refresh, SDK timeout and exit cleanup. Total isolated behavioral checks: 423. The 48-case Chromium fixture regression adds no errors, overflow or unplanned non-Customer changes. Real socket reconnect and physical printers still require actual test evidence.
 - Pages run `37170422689` succeeded from main `b994f1188dad4603f3062433ecf3aac7b3d6005b`; all four live entries matched main. Native release and authenticated role/concurrency gates remain unpassed.
+
+## POS SDK exit cancellation
+
+- POS exit now cancels an unfinished SDK download immediately, removes its script and clears its timeout. A late SDK callback cannot create a channel or schedule recovery for an exited view. The loader uses one completion path for success, error, timeout and cancellation.
+- Four additional isolated exit-during-SDK-load checks pass. Total isolated behavioral checks: 427; physical devices and actual Realtime remain unverified.
+- Pages run `37170704780` succeeded from main `70234cbc495f02446a6b68e4ba3a0aa97cb688cb`; the deployed POS JS matched source after completion. GitHub branch browser still shows Sign in, so no branch deletion is claimed.

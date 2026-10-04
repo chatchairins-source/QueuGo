@@ -2,7 +2,7 @@
 (()=>{
   'use strict';
   const state={shop:null,shopName:'',owner:false,staff:null,staffRows:[],tables:[],products:[],orders:[],items:[],deliveryOrders:[],deliveryItems:[],selected:null,mode:'DINE_IN',table:null,noTable:false,view:'counter',channel:null,client:null,loading:false,pendingCreate:null};
-  let generation=0,loadTask=null,reloadRequested=false,subscribeTask=null,reconnectTimer=null;
+  let generation=0,loadTask=null,reloadRequested=false,subscribeTask=null,reconnectTimer=null,cancelSdkLoad=null;
   const requestStore='queuego-pos-pending-create';
   try{state.pendingCreate=JSON.parse(sessionStorage.getItem(requestStore)||'null')}catch(_){sessionStorage.removeItem(requestStore)}
   const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -115,7 +115,13 @@
     const current=()=>epoch===generation&&root()==='pos'&&shop===state.shop&&actor===qtSessionRead()?.authUserId;
     const task=(async()=>{
       if(state.channel){const channel=state.channel,client=state.client,accessToken=await token();if(current()&&state.channel===channel&&state.client===client)await client.realtime.setAuth(accessToken);return}
-      if(!window.supabase?.createClient)await new Promise((resolve,reject)=>{const sc=document.createElement('script');const finish=error=>{clearTimeout(timer);sc.onload=sc.onerror=null;if(error){sc.remove();reject(error)}else resolve()};const timer=setTimeout(()=>finish(Error('โหลด Realtime เกินเวลา กรุณาลองใหม่')),10000);sc.src='https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.10/dist/umd/supabase.min.js';sc.onload=()=>finish();sc.onerror=()=>finish(Error('โหลด Realtime ไม่สำเร็จ กรุณาลองใหม่'));document.head.append(sc)});
+      if(!window.supabase?.createClient)await new Promise((resolve,reject)=>{
+        const sc=document.createElement('script');let finished=false;
+        const finish=error=>{if(finished)return;finished=true;clearTimeout(timer);sc.onload=sc.onerror=null;if(cancelSdkLoad===cancel)cancelSdkLoad=null;if(error){sc.remove();reject(error)}else resolve()};
+        const cancel=()=>finish(Error('ออกจากหน้าร้านแล้ว'));cancelSdkLoad=cancel;
+        const timer=setTimeout(()=>finish(Error('โหลด Realtime เกินเวลา กรุณาลองใหม่')),10000);
+        sc.src='https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.10/dist/umd/supabase.min.js';sc.onload=()=>finish();sc.onerror=()=>finish(Error('โหลด Realtime ไม่สำเร็จ กรุณาลองใหม่'));document.head.append(sc);
+      });
       if(!current())return;
       const client=window.supabase.createClient(QT_SUPABASE_CONFIG.URL,QT_SUPABASE_CONFIG.KEY,{auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false}});
       await client.realtime.setAuth(await token());
@@ -131,7 +137,7 @@
     subscribeTask=task;
   }
   function scheduleReconnect(){if(reconnectTimer!==null||root()!=='pos'||document.hidden||!navigator.onLine)return;const epoch=generation;reconnectTimer=setTimeout(()=>{reconnectTimer=null;if(epoch===generation&&root()==='pos'&&!document.hidden&&navigator.onLine)window.qgPosReload()},15000)}
-  function disconnect(){generation++;clearTimeout(reconnectTimer);reconnectTimer=null;reloadRequested=false;loadTask=null;subscribeTask=null;if(state.channel)state.client?.removeChannel(state.channel);state.channel=null;state.client=null;state.shop=null;state.selected=null;window.qgPrinterDisconnect?.()}
+  function disconnect(){generation++;cancelSdkLoad?.();clearTimeout(reconnectTimer);reconnectTimer=null;reloadRequested=false;loadTask=null;subscribeTask=null;if(state.channel)state.client?.removeChannel(state.channel);state.channel=null;state.client=null;state.shop=null;state.selected=null;window.qgPrinterDisconnect?.()}
   window.qgPosDisconnect=disconnect;
   window.qgPosRoute=function(){if(root()==='pos-staff-join')return joinView();if(root()==='pos'){if(!qtSessionRead()?.accessToken)return window.renderShopLogin();shell('หน้าร้าน','<p>กำลังโหลดหน้าร้าน...</p>');load().catch(e=>{if(root()!=='pos')return;shell('หน้าร้าน',`<div id="qg-pos-error" role="alert"></div><button onclick="qgPosExit()">กลับ</button>`);message(e)});return}if(qtSessionRead()?.role==='pos_staff'){location.hash='#pos';return}disconnect();return};
 
