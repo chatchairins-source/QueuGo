@@ -2,7 +2,7 @@
   "name": "queuego-verification",
   "private": true,
   "scripts": {
-    "test": "node tests/source-integrity.cjs && node tests/critical-client.cjs && node tests/rider-completion.cjs"
+    "test": "node tests/source-integrity.cjs && node tests/critical-client.cjs && node tests/rider-completion.cjs && node tests/rider-claim.cjs"
   },
   "devDependencies": {
     "@electric-sql/pglite": "0.5.8",

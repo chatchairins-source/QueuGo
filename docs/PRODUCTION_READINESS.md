@@ -22,7 +22,7 @@ A failed gate includes a required test that has not been executed. Isolated brow
 | PERFORMANCE | FAIL | Source transfer reduced; no measured INP/60fps or mid-range device certification |
 | NETWORK RECOVERY | FAIL | Checkout request timeout/replay contract tested; all roles/background/foreground recovery not certified |
 | E2E | FAIL | No real authenticated Customer→Merchant→Rider→Completed test was run |
-| CONCURRENCY | FAIL | Claim RPC uses server row/group locks, but actual simultaneous multi-connection race tests not run; same rider claiming different orders needs explicit proof |
+| CONCURRENCY | FAIL | Claim RPC uses server row/group locks, but actual simultaneous multi-connection race tests not run; same-rider cross-order claim serialization fixed in migration; real multi-connection proof still required |
 | ANDROID | FAIL | Existing workflow fixes only; no APK/AAB, signing verification or device lifecycle test |
 | PLAY STORE READINESS | FAIL | No release artifacts/listing/privacy/Data Safety/account deletion acceptance. Current new-app target requirement is API 36; generated release build must verify it |
 
@@ -91,7 +91,7 @@ Applied successfully to the existing Supabase project as migration `202610031747
 
 ## Verification evidence
 
-- `npm test`: 54 JS blocks parsed, 17 static local file references checked, 18 isolated critical-client checks, 20 isolated SQL checks. The SQL fixture tests wrong PIN, wrong rider, invalid GPS/evidence, missing advance, rollback, no merchant receipt, multi-shop completion and replay.
+- `npm test`: 52 JS blocks parsed, 17 static local file references checked, 18 isolated critical-client checks, 20 completion SQL checks, 21 claim SQL checks. The SQL fixture tests wrong PIN, wrong rider, invalid GPS/evidence, missing advance, rollback, no merchant receipt, multi-shop completion and replay.
 - Initial cleanup-only DOM regression: 40 route/boot cases matched the original source with no extra errors.
 - Final Chromium regression: 144 route/boot cases at 390, 768 and 1280px, zero additional JavaScript errors and zero unplanned screen differences. Customer guest/navigation behavior intentionally differs from baseline. A later identical-image CSS-variable deduplication changes no pixels. Fixtures intercept all external operations; no production order or test user is created. Public browser smoke could not run because Chromium network navigation returned `ERR_EMPTY_RESPONSE`; live console/authenticated network behavior is not certified.
 - Workflow YAML and embedded Python parse checks passed. Native role packaging now includes referenced QR/laundry files. The permission bridge that bypassed Capacitor and requested permissions on startup was deleted; Capacitor 8's actual `BridgeWebChromeClient` handles geolocation on use and file selection. Release signing is attached to `buildTypes.release`.
@@ -112,7 +112,7 @@ Sizes are source bytes and zlib-compressed bytes, not device INP measurements.
 
 ## Remote operations and release blockers
 
-- No remote branch has been deleted in this checkpoint. Git transport has no push credential; the connected GitHub API can update `main` but exposes no branch-delete operation. Browser fallback requires explicit approval under the tool-use instructions. No backup/archive/new branch was created.
+- No remote branch has been deleted in this checkpoint. Git transport has no push credential; the connected GitHub API can update `main` but exposes no branch-delete operation. Browser fallback was authorized. The observed GitHub browser is signed out; secure sign-in timed out and no successful login was verified. No backup/archive/new branch was created.
 - GitHub Pages deployment run `37141760482` succeeded on `main` at `e5348ad956787781605879269b6d4e182d9cd497`. All 16 checked live HTML/JS/CSS entry/dependency files match the published source byte-for-byte, including Customer, Merchant, Rider, Admin, Market, POS, printer, laundry Rider integration and table-order. Customer live SHA-256 is `aeb1ff570cdfdf1e3ef1783320dadca605f086c6c048c3eab532221baeaa9c80`. This proves served-source parity; it does not certify authenticated flows or access to Pages settings (the settings API is unsupported).
 - Real E2E/negative E2E/concurrency needs an isolated test deployment/database and four-role test identities; it must not run against real production orders. The Supabase branch listing contains only production `main`; no billable staging branch was created.
 - Full Android lifecycle, physical printer/QR, Samsung tablet/iPhone Safari, field INP, fresh install and user acceptance tests remain.
@@ -136,6 +136,18 @@ The 16 remote branches still requiring deletion are:
 - `hardening-2026-09-29`
 - `pre-apk-hardening-rc`
 - `rider-first-order-flow-rc`
+
+
+## Follow-up cleanup and claim hardening
+
+- Deleted the disabled Admin online-ready `/api/sync/events` outbox/API prototype, session-only Rider presence writers, Rider heartbeat/exit/storage listeners, stale presence cleanup timer, unused online diagnostics/notification wrapper and their dead CSS. The current Admin Rider panel still reads `users` and `rider_profiles` from Supabase; its current monitoring refresh remains.
+- Deleted Admin's unreachable Merchant promotion renderer/form/bid board/demo payment and unused category helper. The Admin promotion stop action now has only its Admin caller/renderer.
+- Deleted the reachable `ADMIN-DEMO-*` promotion activation/payment fabrication and its button. Approval/rejection/end states remain. Promotion activation requires a real server-verified paid path before reintroduction; no replacement payment or pricing model was added. This is an explicit remaining feature blocker.
+- Added 15-second cancellation to the existing Merchant/Admin/Rider Auth, table and core RPC request implementations. No automatic mutation replay or second request layer was added. Full lifecycle/recovery verification is still required.
+- `QueueGo-Rider-Claim-Serialization-Migration.sql` preserves existing ordinary/Market claim definitions and locks the caller's Rider profile before checking existing active work. Both paths take the same profile row lock; existing order/group locks still arbitrate competing Riders. No price, fee, GP or state semantics changed. This closes the identified same-Rider/different-order precheck race by serialization; simultaneous-connection certification is still pending.
+- Added 21 isolated claim checks for roles, online eligibility, competing ownership, notifications, current-job exclusivity, Market capacity, atomic group assignment and rollback. Local multi-process PostgreSQL could not start because the execution environment forbids switching to a non-root OS user; PGlite cannot certify simultaneous connections. No production race/load test was performed.
+- Repeated Chromium regression across 144 cases: no additional JavaScript errors or unplanned non-Customer screen changes. Customer differences are the previously approved guest/navigation changes. The subsequent demo-activation removal affects only approved promotion rows; source tests pass and the missing production payment path is reported above.
+- No additional file was deleted in this follow-up; obsolete code was deleted directly from Admin's production entry. No backup branch or fallback renderer was created.
 
 ## References
 
