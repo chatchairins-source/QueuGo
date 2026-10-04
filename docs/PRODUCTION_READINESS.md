@@ -223,3 +223,9 @@ Full release gates above remain FAIL where live/device proof is missing. No remo
 - Removed unreachable Customer shop `approved`/missing-status branches after confirming the deployed non-null status constraint only permits pending/active/suspended/deleted/rejected. Actual active-shop behavior remains.
 - Added 19 Support Ticket, 30 checkout quote/address/decimal/replay, and 33 isolated current server wrapper/core checks. Together with six malformed-pending checks, total isolated behavioral checks: 396. These do not certify actual JWT/RLS, triggers, simultaneous connections, hardware or physical devices.
 - Pages run `37168399248` succeeded from main `513d0287e9a8b35ac0a92dd7cedb62c8864273de`; all four live entries matched that source. Current batch deployment is verified after its commit. The full release gates remain unpassed where authentic E2E/device/legal/signing evidence is absent.
+
+## Checkout response identity gate
+
+- Checkout now requires the response order ID to equal the original persisted request ID before clearing the request/cart or navigating. A mismatched response retains the original request and cart for safe replay. Repeated taps during an in-flight request give immediate wait feedback while preserving the single-flight guard.
+- Six additional isolated checks exercise a mismatched response and subsequent successful replay. Total isolated behavioral checks: 402; authentic JWT/RLS and simultaneous server connections remain unverified.
+- Pages run `37170235612` succeeded from main `3ffb3dc6414d7158516da34bbf42c34b025f0b37`; byte comparison confirms all four live entries match. Public Chromium navigation again returned `ERR_EMPTY_RESPONSE`, so live console/network behavior is not certified by the isolated browser fixture.

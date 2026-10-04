@@ -224,7 +224,7 @@ function deliveryFeeFor(shop,loc){
   return km<=5?30:km<=6?40:km<=7?50:50+Math.ceil(km-7)*10;
 }
 async function placeOrder(){
-  if(checkoutBusy)return;
+  if(checkoutBusy)return toast('กำลังตรวจผลคำสั่งซื้อ กรุณารอสักครู่');
   const u=S.get();if(!u)return go('login');
   const requestKey=pendingCheckoutKey(),ownerCartKey=cartKey();
   const sameActor=()=>S.get()?.userId===u.userId&&S.get()?.authUserId===u.authUserId;
@@ -242,7 +242,7 @@ async function placeOrder(){
     }
     const accessToken=await token();if(!sameActor())return;
     const result=await db('rpc/queuego_place_cash_order',{method:'POST',token:accessToken,body:pending.body});
-    if(!result?.id)throw Error('ยังไม่ได้รับผลยืนยัน กรุณาลองอีกครั้ง');
+    if(result?.id!==pending.body.p_order_id)throw Error('ยังไม่ได้รับผลยืนยันคำขอเดิม กรุณาลองอีกครั้ง');
     localStorage.removeItem(requestKey);
     if(localStorage.getItem(ownerCartKey)===pending.cart)localStorage.setItem(ownerCartKey,JSON.stringify({shopId:null,items:[]}));
     if(!sameActor())return;
