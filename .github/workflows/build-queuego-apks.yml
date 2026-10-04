@@ -1,10 +1,23 @@
-name: QueueGo Android Release Bundles
+name: QueueGo Android Release
 
 on:
   workflow_dispatch:
 
 jobs:
+  validate:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: npm test
+
   build:
+    needs: validate
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     strategy:
@@ -32,6 +45,7 @@ jobs:
         with:
           distribution: temurin
           java-version: '21'
+
       - name: Prepare web bundle
         shell: bash
         run: |
@@ -54,13 +68,20 @@ jobs:
           node -e "let c=require('./capacitor.config.json');c.appId='${{ matrix.appid }}';c.appName='${{ matrix.appname }}';require('fs').writeFileSync('capacitor.config.json',JSON.stringify(c,null,2))"
           npx cap add android
           npx cap sync android
-      - name: Add Android permissions
+
+      - name: Configure Android runtime
         shell: bash
+        env:
+          QG_ROLE: ${{ matrix.role }}
         run: |
+          set -euo pipefail
           python3 - <<'PY'
           from pathlib import Path
-          p=Path('android-build/android/app/src/main/AndroidManifest.xml')
-          s=p.read_text()
+          import os,re
+
+          root=Path('android-build/android')
+          manifest=root/'app/src/main/AndroidManifest.xml'
+          s=manifest.read_text()
           perms=[
             'android.permission.INTERNET',
             'android.permission.ACCESS_NETWORK_STATE',
@@ -68,16 +89,86 @@ jobs:
             'android.permission.ACCESS_FINE_LOCATION',
             'android.permission.VIBRATE',
           ]
-          block='\n'.join(f'    <uses-permission android:name="{x}" />' for x in perms)
-          s=s.replace('<application',block+'\n    <application',1)
-          p.write_text(s)
+          missing=[p for p in perms if p not in s]
+          if missing:
+            block='\n'.join(f'    <uses-permission android:name="{p}" />' for p in missing)
+            s=s.replace('<application',block+'\n    <application',1)
+          # File/image selection uses the Android system picker. Do not request camera,
+          # broad storage, media-library, microphone, contacts, or background location.
+          forbidden=[
+            'android.permission.CAMERA','android.permission.RECORD_AUDIO',
+            'android.permission.READ_EXTERNAL_STORAGE','android.permission.WRITE_EXTERNAL_STORAGE',
+            'android.permission.READ_MEDIA_IMAGES','android.permission.ACCESS_BACKGROUND_LOCATION'
+          ]
+          if any(p in s for p in forbidden):
+            raise RuntimeError('Unexpected sensitive Android permission found')
+          if os.environ['QG_ROLE']=='merchant' and 'usesCleartextTraffic=' not in s:
+            # Only Merchant may call a user-configured RFC1918/local HTTP print bridge.
+            s=s.replace('<application','<application android:usesCleartextTraffic="true"',1)
+          manifest.write_text(s)
+
+          # Google Play requires API 36 for new/updated phone apps after 2026-08-31.
+          variables=root/'variables.gradle'
+          v=variables.read_text()
+          for key in ('compileSdkVersion','targetSdkVersion'):
+            v,n=re.subn(rf'({key}\s*=\s*)\d+',rf'\g<1>36',v,count=1)
+            if n!=1: raise RuntimeError(f'{key} not found')
+          variables.write_text(v)
+
+          # Native Android Back: follow WebView/history first; exit only at the root.
+          activity=next((root/'app/src/main/java').rglob('MainActivity.java'))
+          old=activity.read_text()
+          package=re.search(r'package\s+([^;]+);',old)
+          if not package: raise RuntimeError('MainActivity package not found')
+          mixed=''
+          if os.environ['QG_ROLE']=='merchant':
+            mixed='''\n        // Local print bridge compatibility. JS restricts cleartext URLs to private/local hosts.\n        getBridge().getWebView().getSettings().setMixedContentMode(android.webkit.WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE);'''
+          activity.write_text(f'''package {package.group(1)};
+
+          import android.os.Bundle;
+          import androidx.activity.OnBackPressedCallback;
+          import com.getcapacitor.BridgeActivity;
+
+          public class MainActivity extends BridgeActivity {{
+              @Override
+              public void onCreate(Bundle savedInstanceState) {{
+                  super.onCreate(savedInstanceState);{mixed}
+                  getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {{
+                      @Override
+                      public void handleOnBackPressed() {{
+                          if (getBridge() != null && getBridge().getWebView().canGoBack()) {{
+                              getBridge().getWebView().goBack();
+                          }} else {{
+                              setEnabled(false);
+                              getOnBackPressedDispatcher().onBackPressed();
+                          }}
+                      }}
+                  }});
+              }}
+          }}
+          ''')
           PY
+
+      - name: Verify Android release config
+        shell: bash
+        env:
+          QG_ROLE: ${{ matrix.role }}
+        run: |
+          set -euo pipefail
+          grep -q 'targetSdkVersion = 36' android-build/android/variables.gradle
+          grep -q 'compileSdkVersion = 36' android-build/android/variables.gradle
+          grep -q 'ACCESS_FINE_LOCATION' android-build/android/app/src/main/AndroidManifest.xml
+          ! grep -Eq 'CAMERA|RECORD_AUDIO|READ_EXTERNAL_STORAGE|WRITE_EXTERNAL_STORAGE|READ_MEDIA_IMAGES|ACCESS_BACKGROUND_LOCATION' android-build/android/app/src/main/AndroidManifest.xml
+          if [ "$QG_ROLE" != "merchant" ]; then
+            ! grep -q 'usesCleartextTraffic="true"' android-build/android/app/src/main/AndroidManifest.xml
+          fi
+
       - name: Create QueueGo Q launcher icon
         shell: bash
         run: |
           python3 -m pip install pillow --quiet
           python3 - <<'PY'
-          from PIL import Image,ImageDraw,ImageFont
+          from PIL import Image,ImageDraw
           from pathlib import Path
           sizes={'mipmap-mdpi':48,'mipmap-hdpi':72,'mipmap-xhdpi':96,'mipmap-xxhdpi':144,'mipmap-xxxhdpi':192}
           base=Path('android-build/android/app/src/main/res')
@@ -93,6 +184,7 @@ jobs:
               im.save(d/'ic_launcher.png')
               im.save(d/'ic_launcher_round.png')
           PY
+
       - name: Configure release signing
         shell: bash
         env:
@@ -134,37 +226,24 @@ jobs:
           if count!=1: raise RuntimeError('Release build type not found')
           p.write_text(s)
           PY
-      - name: Audit Android release manifest
+
+      - name: Build signed AAB and APK
         shell: bash
         run: |
           set -euo pipefail
-          MANIFEST=android-build/android/app/src/main/AndroidManifest.xml
-          grep -q 'android.permission.INTERNET' "$MANIFEST"
-          grep -q 'android.permission.ACCESS_NETWORK_STATE' "$MANIFEST"
-          grep -q 'android.permission.ACCESS_COARSE_LOCATION' "$MANIFEST"
-          grep -q 'android.permission.ACCESS_FINE_LOCATION' "$MANIFEST"
-          grep -q 'android.permission.VIBRATE' "$MANIFEST"
-          if grep -Eq 'android.permission.(CAMERA|READ_EXTERNAL_STORAGE|WRITE_EXTERNAL_STORAGE|READ_MEDIA_IMAGES|ACCESS_BACKGROUND_LOCATION)' "$MANIFEST"; then
-            echo "Unexpected sensitive Android permission found"
-            cat "$MANIFEST"
-            exit 1
-          fi
-          grep -Rqs 'targetSdkVersion = 36' android-build/android || {
-            echo "Android targetSdkVersion 36 not found"
-            exit 1
-          }
-      - name: Build signed release AAB and APK
-        shell: bash
-        run: |
           cd android-build/android
           chmod +x gradlew
           ./gradlew bundleRelease assembleRelease --no-daemon
           cp app/build/outputs/bundle/release/app-release.aab "../../QueueGo-${{ matrix.role }}-release.aab"
           cp app/build/outputs/apk/release/app-release.apk "../../QueueGo-${{ matrix.role }}-release.apk"
+          cd ../..
+          sha256sum "QueueGo-${{ matrix.role }}-release.aab" "QueueGo-${{ matrix.role }}-release.apk" > "QueueGo-${{ matrix.role }}-SHA256.txt"
+
       - uses: actions/upload-artifact@v4
         with:
-          name: QueueGo-${{ matrix.role }}-release
+          name: QueueGo-${{ matrix.role }}-android-release
           path: |
             QueueGo-${{ matrix.role }}-release.aab
             QueueGo-${{ matrix.role }}-release.apk
+            QueueGo-${{ matrix.role }}-SHA256.txt
           if-no-files-found: error
