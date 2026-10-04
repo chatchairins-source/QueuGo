@@ -15,11 +15,12 @@ async function loadState(){
   const data=await rpc('queuego_laundry_merchant_state',{});
   let orders=[];
   if(data?.hub?.id){
-    orders=await request('laundry_orders?select=id,order_number,status,service_name_snapshot,pricing_type_snapshot,unit_price_snapshot,estimated_quantity,actual_quantity,estimated_amount,final_amount,delivery_fee_total_snapshot,estimated_total_amount,final_total_amount,pickup_address,note,created_at,updated_at&hub_id=eq.'+encodeURIComponent(data.hub.id)+'&order=created_at.desc&limit=100');
+    orders=await request('laundry_orders?select=id,order_number,status,service_id,service_type,service_name_snapshot,pricing_type_snapshot,unit_price_snapshot,estimated_quantity,actual_quantity,estimated_amount,final_amount,delivery_fee_total_snapshot,estimated_total_amount,final_total_amount,pickup_address,note,created_at,updated_at&hub_id=eq.'+encodeURIComponent(data.hub.id)+'&order=created_at.desc&limit=100');
   }
   state.data=data||{};state.orders=Array.isArray(orders)?orders:[];state.feature=await feature();
 }
 function actionHtml(o){
+  if(o.status==='pending'&&!o.service_id)return '<button data-lo-legacy="'+esc(o.id)+'">ผูกบริการ/ราคาก่อนรับ</button><button class="danger" data-lo-act="cancel" data-id="'+esc(o.id)+'">ปฏิเสธ</button>';
   if(o.status==='pending')return '<button data-lo-act="accept" data-id="'+esc(o.id)+'">รับคำขอ</button><button class="danger" data-lo-act="cancel" data-id="'+esc(o.id)+'">ปฏิเสธ</button>';
   if(o.status==='accepted')return '<button class="danger" data-lo-act="cancel" data-id="'+esc(o.id)+'">ยกเลิกก่อน Rider รับ</button>';
   if(o.status==='at_hub')return '<button data-lo-act="start_washing" data-id="'+esc(o.id)+'">เริ่มซัก/ทำความสะอาด</button>';
@@ -86,6 +87,7 @@ function bind(){
   document.getElementById('qgl-invite-rider')?.addEventListener('click',inviteRider);
   document.querySelectorAll('[data-edit-service]').forEach(b=>b.onclick=()=>showService((state.data.services||[]).find(s=>String(s.id)===String(b.dataset.editService))));
   document.querySelectorAll('[data-lo-act]').forEach(b=>b.onclick=()=>shopAction(b.dataset.id,b.dataset.loAct));
+  document.querySelectorAll('[data-lo-legacy]').forEach(b=>b.onclick=()=>reconcileLegacy(b.dataset.loLegacy));
 }
 async function reload(){await loadState();render()}
 async function setup(){
@@ -132,6 +134,26 @@ async function saveService(){
 async function inviteRider(){
   if(state.busy)return;const phone=String(document.getElementById('qgl-rider-phone')?.value||'').trim();if(phone.length<9)return toast('กรุณากรอกเบอร์ Rider');
   state.busy=true;try{const r=await rpc('queuego_laundry_invite_rider',{p_phone:phone});toast('ส่งคำเชิญให้ '+String(r?.rider_name||'Rider')+' แล้ว');await reload()}catch(e){toast('เชิญ Rider ไม่สำเร็จ: '+String(e.message||e).slice(0,120))}finally{state.busy=false}
+}
+async function reconcileLegacy(id){
+  if(state.busy)return;
+  const services=(state.data?.services||[]).filter(s=>s.active);
+  if(!services.length)return toast('กรุณาตั้งค่าบริการฝากซักและราคาให้พร้อมก่อน');
+  const menu=services.map((s,i)=>(i+1)+'. '+s.name+' · '+unit(s.pricing_type)+' · ฿'+money(s.price)).join('\n');
+  const raw=prompt('ออเดอร์นี้เป็นข้อมูลเก่า กรุณาเลือกบริการจริงก่อนรับงาน\n\n'+menu+'\n\nกรอกหมายเลขบริการ');
+  if(raw===null)return;
+  const service=services[Number(raw)-1];if(!service)return toast('เลือกบริการไม่ถูกต้อง');
+  let qty=1;
+  if(service.pricing_type!=='fixed'){
+    const q=prompt(service.pricing_type==='per_kg'?'น้ำหนักโดยประมาณ (กก.)':service.pricing_type==='per_item'?'จำนวนชิ้นโดยประมาณ':'จำนวนชุดโดยประมาณ');
+    if(q===null)return;qty=Number(q);if(!Number.isFinite(qty)||qty<=0)return toast('จำนวนไม่ถูกต้อง');
+  }
+  state.busy=true;
+  try{
+    await rpc('queuego_laundry_adopt_legacy_order',{p_order_id:id,p_service_id:service.id,p_estimated_quantity:qty});
+    toast('ผูกบริการและ snapshot ราคาแล้ว กรุณาตรวจยอดก่อนกดรับงาน');await reload();
+  }catch(e){toast('ผูกบริการเดิมไม่สำเร็จ: '+String(e.message||e).slice(0,130))}
+  finally{state.busy=false}
 }
 async function shopAction(id,action){
   if(state.busy)return;let qty=null,note=null;
