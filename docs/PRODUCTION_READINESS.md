@@ -229,3 +229,10 @@ Full release gates above remain FAIL where live/device proof is missing. No remo
 - Checkout now requires the response order ID to equal the original persisted request ID before clearing the request/cart or navigating. A mismatched response retains the original request and cart for safe replay. Repeated taps during an in-flight request give immediate wait feedback while preserving the single-flight guard.
 - Six additional isolated checks exercise a mismatched response and subsequent successful replay. Total isolated behavioral checks: 402; authentic JWT/RLS and simultaneous server connections remain unverified.
 - Pages run `37170235612` succeeded from main `3ffb3dc6414d7158516da34bbf42c34b025f0b37`; byte comparison confirms all four live entries match. Public Chromium navigation again returned `ERR_EMPTY_RESPONSE`, so live console/network behavior is not certified by the isolated browser fixture.
+
+## POS socket and SDK recovery
+
+- Replaced POS's retained failed-channel path with one scoped reconnect timer. CLOSED/error/timeout retires the channel; old channel callbacks cannot refresh or attach duplicate listeners. Connected refreshes update the current channel's token without creating another client/channel. The client uses the existing application session rather than a second persisted Supabase Auth session.
+- Realtime SDK loading has a 10-second timeout and removes failed script/task state. Recovery refresh retries after 15 seconds while POS is online and visible; route exit removes the timer/channel. No old POS renderer or extra connected polling was added.
+- Added 21 isolated POS checks for closed sockets, stale callbacks, one retry timer, token refresh, SDK timeout and exit cleanup. Total isolated behavioral checks: 423. The 48-case Chromium fixture regression adds no errors, overflow or unplanned non-Customer changes. Real socket reconnect and physical printers still require actual test evidence.
+- Pages run `37170422689` succeeded from main `b994f1188dad4603f3062433ecf3aac7b3d6005b`; all four live entries matched main. Native release and authenticated role/concurrency gates remain unpassed.
