@@ -1,0 +1,72 @@
+name: Publish Approved QueueGo APK Links
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/publish-approved-apks.yml
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download approved Customer APK artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: QueueGo-customer-approved-icon-android-rc
+          path: release-files
+          github-token: ${{ github.token }}
+          repository: chatchairins-source/QueuGo
+          run-id: 37208849243
+
+      - name: Download approved Merchant APK artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: QueueGo-merchant-approved-icon-android-rc
+          path: release-files
+          github-token: ${{ github.token }}
+          repository: chatchairins-source/QueuGo
+          run-id: 37208849243
+
+      - name: Download approved Rider APK artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: QueueGo-rider-approved-icon-android-rc
+          path: release-files
+          github-token: ${{ github.token }}
+          repository: chatchairins-source/QueuGo
+          run-id: 37208849243
+
+      - name: Verify APKs
+        shell: bash
+        run: |
+          set -euo pipefail
+          ls -lh release-files
+          test -s release-files/QueueGo-customer-approved-icon-RC.apk
+          test -s release-files/QueueGo-merchant-approved-icon-RC.apk
+          test -s release-files/QueueGo-rider-approved-icon-RC.apk
+          sha256sum release-files/*.apk > release-files/QueueGo-approved-icon-RC-SHA256.txt
+
+      - name: Publish permanent GitHub Release links
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: queuego-approved-icon-rc-20261004
+        shell: bash
+        run: |
+          set -euo pipefail
+          if gh release view "$TAG" --repo "${{ github.repository }}" >/dev/null 2>&1; then
+            gh release upload "$TAG" release-files/*.apk release-files/QueueGo-approved-icon-RC-SHA256.txt --clobber --repo "${{ github.repository }}"
+          else
+            gh release create "$TAG" \
+              release-files/*.apk release-files/QueueGo-approved-icon-RC-SHA256.txt \
+              --repo "${{ github.repository }}" \
+              --target f5be813bd8089be059ef095b1a1d469cc4d696aa \
+              --title "QueueGo Android RC — Approved Icon" \
+              --notes "RC test APKs for Customer, Merchant and Rider using the approved QueueGo dark-background red-Q launcher icon. These APKs are for Android device testing; Play Store production signing is handled separately." \
+              --prerelease
+          fi
