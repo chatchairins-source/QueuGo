@@ -246,7 +246,7 @@ alter table public.market_orders
 
 create or replace function public.queuego_market_multi_shop_fee(
   p_shop_count integer,
-  p_at timestamptz
+  p_at timestamptz default now()
 ) returns numeric
 language sql stable
 security invoker
@@ -274,17 +274,6 @@ as $$
       * public.queuego_rule_numeric('pricing.market_distance_step_fee',10,p_at)
   ,2);
 $$;
-
-create or replace function public.queuego_market_multi_shop_fee(
-  p_shop_count integer
-) returns numeric
-language sql stable
-security invoker
-set search_path to 'public','pg_temp'
-as 'select public.queuego_market_multi_shop_fee(p_shop_count,now());';
-
-revoke all on function public.queuego_market_multi_shop_fee(integer) from public;
-grant execute on function public.queuego_market_multi_shop_fee(integer) to anon,authenticated,service_role;
 
 revoke all on function public.queuego_market_multi_shop_fee(integer,timestamptz) from public;
 revoke all on function public.queuego_market_delivery_fee(numeric,timestamptz) from public;
