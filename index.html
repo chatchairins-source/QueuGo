@@ -178,6 +178,18 @@ function readCart(){
   }catch(e){return empty()}
 }
 function saveCart(){try{localStorage.setItem(cartKey(),JSON.stringify(cart))}catch(e){}}
+function cartOrderSignature(value){
+  try{
+    const source=typeof value==='string'?JSON.parse(value):value;
+    if(!source||!source.shopId||!Array.isArray(source.items))return '';
+    const items=source.items.map(i=>({id:String(i.id||''),qty:Number(i.qty)}))
+      .filter(i=>i.id&&Number.isInteger(i.qty)&&i.qty>0)
+      .sort((a,b)=>a.id.localeCompare(b.id)||a.qty-b.qty);
+    if(items.length!==source.items.length)return '';
+    return JSON.stringify({shopId:String(source.shopId),items});
+  }catch(e){return ''}
+}
+function sameOrderCart(a,b){const sa=cartOrderSignature(a),sb=cartOrderSignature(b);return !!sa&&sa===sb}
 let cart=readCart(),shops=null,q='',cat='all';
 const cartN=()=>cart.items.reduce((a,i)=>a+i.qty,0);
 function cartTotal(){
@@ -243,9 +255,15 @@ async function placeOrder(){
     const result=await db('rpc/queuego_place_cash_order',{method:'POST',token:accessToken,body:pending.body});
     if(result?.id!==pending.body.p_order_id)throw Error('ยังไม่ได้รับผลยืนยันคำขอเดิม กรุณาลองอีกครั้ง');
     localStorage.removeItem(requestKey);
-    if(localStorage.getItem(ownerCartKey)===pending.cart)localStorage.setItem(ownerCartKey,JSON.stringify({shopId:null,items:[]}));
+    const storedCart=localStorage.getItem(ownerCartKey);
+    if(sameOrderCart(storedCart,pending.cart))localStorage.removeItem(ownerCartKey);
     if(!sameActor())return;
-    if(JSON.stringify(cart)===pending.cart){cart={shopId:null,items:[]};saveCart()}
+    if(sameOrderCart(cart,pending.cart)){
+      cart={shopId:null,items:[]};
+      saveCart();
+    }else{
+      cart=readCart();
+    }
     toast('สั่งซื้อสำเร็จ');go('order/'+result.id);
   }catch(e){
     if(e.status>=400&&e.status<500&&![408,429].includes(e.status))localStorage.removeItem(requestKey);
