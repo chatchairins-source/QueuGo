@@ -634,9 +634,7 @@ function markAllNotifRead(userId){
 
 
 /* ---------- Map helpers ---------- */
-let activeMaps = [];
-let activeIntervals = [];
-function registerMap(m){ activeMaps.push(m); }
+let merchantPicker=null,merchantPickerMap=null;
 
 function qgShopCoordinateProblem(latitude,longitude){
   if(latitude===null||latitude===undefined||longitude===null||longitude===undefined||latitude===''||longitude==='') return 'missing';
@@ -653,17 +651,20 @@ function qgMerchantLongdoPin(loc){
   return new longdo.Marker(loc,{title:'พิกัดร้าน',icon:{html:'<div style="width:20px;height:20px;border-radius:50%;background:#e6002d;border:3px solid #fff;box-shadow:0 4px 14px #0004"></div>',offset:{x:0,y:0}},weight:longdo.OverlayWeight.Top});
 }
 function initLocationPicker(containerId,lat,lng,onChange){
+  merchantPicker?.destroy();merchantPicker=null;
   const host=document.getElementById(containerId),hasInitial=qgIsValidShopCoordinate(lat,lng),viewLat=hasInitial?Number(lat):15,viewLng=hasInitial?Number(lng):101;
   if(!host||typeof longdo==='undefined'){toast('แผนที่ยังไม่พร้อม กรุณาลองใหม่');return {map:null,get marker(){return null},locate(){}}}
-  const map=new longdo.Map({placeholder:host,ui:window.longdo.UiComponent.Mobile});try{map.Ui.LayerSelector.visible(false)}catch(e){}
+  const map=merchantPickerMap||(merchantPickerMap=new longdo.Map({placeholder:host,ui:window.longdo.UiComponent.Mobile}));
+  if(map.placeholder().parentNode!==host)host.replaceChildren(map.placeholder());map.pause(false);map.resize();try{map.Ui.LayerSelector.visible(false)}catch(e){}
   map.location({lat:viewLat,lon:viewLng},true);map.zoom(hasInitial?15:6,true);
-  let marker=null;
-  const setPoint=(plat,plng,notify=true)=>{if(!qgIsValidShopCoordinate(plat,plng))return false;if(marker)try{map.Overlays.remove(marker)}catch(e){};marker=qgMerchantLongdoPin({lat:Number(plat),lon:Number(plng)});map.Overlays.add(marker);if(notify)onChange(Number(plat),Number(plng));return true};
-  const syncCenter=()=>{const p=map.location();if(p&&qgIsValidShopCoordinate(p.lat,p.lon))setPoint(p.lat,p.lon,true)};
+  let marker=null,disposed=false;
+  const current=()=>!disposed&&host.isConnected;
+  const setPoint=(plat,plng,notify=true)=>{if(!current()||!qgIsValidShopCoordinate(plat,plng))return false;if(marker)try{map.Overlays.remove(marker)}catch(e){};marker=qgMerchantLongdoPin({lat:Number(plat),lon:Number(plng)});map.Overlays.add(marker);if(notify)onChange(Number(plat),Number(plng));return true};
+  const syncCenter=()=>{if(!current())return;const p=map.location();if(p&&qgIsValidShopCoordinate(p.lat,p.lon))setPoint(p.lat,p.lon,true)};
   try{map.Event.bind('drop',syncCenter)}catch(e){}
   if(hasInitial)setPoint(viewLat,viewLng,true);
-  const api={map,get marker(){return marker},locate(){if(!navigator.geolocation){toast('เบราว์เซอร์ไม่รองรับ GPS');return}navigator.geolocation.getCurrentPosition(pos=>{const {latitude,longitude}=pos.coords;if(!qgIsValidShopCoordinate(latitude,longitude)){toast('พิกัด GPS ไม่ถูกต้อง กรุณาตรวจสอบและลองใหม่');return}map.location({lat:latitude,lon:longitude},true);map.zoom(16,true);setPoint(latitude,longitude,true);toast('ใช้ตำแหน่ง GPS ปัจจุบันแล้ว')},err=>toast(err?.code===1?'กรุณาเปิดการเข้าถึงตำแหน่ง':err?.code===3?'รับตำแหน่งไม่ทันเวลา กรุณาลองใหม่':'ไม่สามารถรับตำแหน่ง GPS ได้'),{enableHighAccuracy:true,timeout:12000,maximumAge:30000})}};
-  registerMap(api);return api;
+  const api={map,get marker(){return marker},destroy(){if(disposed)return;disposed=true;map.Event.unbind('drop',syncCenter);map.Overlays.clear();map.pause(true);map.placeholder().remove()},locate(){if(!current())return;if(!navigator.geolocation){toast('เบราว์เซอร์ไม่รองรับ GPS');return}navigator.geolocation.getCurrentPosition(pos=>{if(!current())return;const {latitude,longitude}=pos.coords;if(!qgIsValidShopCoordinate(latitude,longitude)){toast('พิกัด GPS ไม่ถูกต้อง กรุณาตรวจสอบและลองใหม่');return}map.location({lat:latitude,lon:longitude},true);map.zoom(16,true);setPoint(latitude,longitude,true);toast('ใช้ตำแหน่ง GPS ปัจจุบันแล้ว')},err=>{if(current())toast(err?.code===1?'กรุณาเปิดการเข้าถึงตำแหน่ง':err?.code===3?'รับตำแหน่งไม่ทันเวลา กรุณาลองใหม่':'ไม่สามารถรับตำแหน่ง GPS ได้')},{enableHighAccuracy:true,timeout:12000,maximumAge:30000})}};
+  merchantPicker=api;return api;
 }
 
 /* ---------- Shop module catalog (labels only; status is stored in Supabase) ---------- */
@@ -888,6 +889,7 @@ window.addEventListener('DOMContentLoaded', ()=>{
 
 /* V5.33: a page that throws while rendering used to leave the previous screen frozen with dead buttons and no clue why. Now the error is logged and shown. */
 function router(){
+  merchantPicker?.destroy();merchantPicker=null;
   try{ window.qtShopRoute(); }
   catch(err){ console.error('router error',err); try{ toast('แสดงหน้านี้ไม่สำเร็จ: '+String((err&&err.message)||err).slice(0,90)); }catch(e){} }
 }

@@ -16,7 +16,7 @@ svg{display:block}.ico{width:20px;height:20px;fill:none;stroke:currentColor;stro
 @media(max-width:760px){.auth-shell{grid-template-columns:1fr}.auth-side{min-height:32dvh}.auth-side-copy p,.auth-stats{display:none}}
 
 /* Main operating shell */
-.stage{position:relative;height:100dvh;overflow:hidden;background:#f4e9eb}.map{position:absolute;inset:0}.leaflet-container{background:#f3e8ea}
+.stage{position:relative;height:100dvh;overflow:hidden;background:#f4e9eb}.map{position:absolute;inset:0}
 .qt-top{position:absolute;z-index:700;top:calc(10px + var(--safeT));display:flex;align-items:center;pointer-events:none}.qt-brand,.qt-status{pointer-events:auto;height:42px;border:1px solid rgba(255,255,255,.7);border-radius:22px;background:rgba(255,255,255,.88);box-shadow:0 10px 28px rgba(93,15,28,.10);backdrop-filter:blur(22px);display:flex;align-items:center}.qt-brand{padding:0 13px;gap:8px;font-size:12px;font-weight:900}.qt-brand i{width:8px;height:8px;border-radius:50%;background:var(--mint)}.qt-status{gap:9px}.qt-status span{font-size:11px;font-weight:850}.qt-switch:after{content:"";width:18px;height:18px;border-radius:50%;background:white;box-shadow:0 2px 7px #0002;transition:.2s}.qt-status.on .qt-switch{background:var(--mint)}.qt-status.on .qt-switch:after{transform:translateX(10px)}
 .qt-route{position:absolute;z-index:650;left:12px;top:calc(62px + var(--safeT));max-width:calc(100% - 78px);display:none;align-items:center;gap:10px;padding:9px 12px;border-radius:18px;background:rgba(16,30,26,.92);color:white;box-shadow:0 12px 32px #0002;backdrop-filter:blur(18px)}.qt-route strong{font-size:13px}.qt-route small{display:block;font-size:9px;opacity:.7;margin-top:2px}
 .qt-fabs{position:absolute;z-index:650;right:12px;top:calc(64px + var(--safeT));display:grid;gap:8px}.qt-fab{width:42px;height:42px;border:1px solid #fff;border-radius:21px;background:rgba(255,255,255,.92);display:grid;place-items:center;color:#b60c29;box-shadow:0 8px 22px #1233}
@@ -127,7 +127,7 @@ const POLL_MS = 60000;
     setVH();
     if(resizeRaf) cancelAnimationFrame(resizeRaf);
     resizeRaf = requestAnimationFrame(()=>{
-      if(S.map){ try{ S.map.invalidateSize({animate:false}); }catch(e){} }
+      if(S.map){ try{ S.map.resize(); }catch(e){} }
     });
   }
   setVH();
@@ -229,7 +229,7 @@ const STEP_NEXT = { ready:{to:'picked_up', label:'จ่ายเงินสด
 const S = {
   session:null, user:null, riderProfile:null,
   online:false, pos:null, map:null, riderMarker:null, jobMarkers:[],
-  activeOrder:null, openJobs:[], history:[], activeTab:'home', pollTimer:null, chatOrder:null, newJobAlert:null, routeLine:null
+  activeOrder:null, openJobs:[], history:[], activeTab:'home', pollTimer:null, chatOrder:null, newJobAlert:null, routeOverlays:[]
 };
 
 function el(html){ const t=document.createElement('template'); t.innerHTML=html.trim(); return t.content.firstElementChild; }
@@ -283,7 +283,7 @@ function startSessionGuard(){
 function stopSessionGuard(){if(sessionGuardTimer){clearInterval(sessionGuardTimer);sessionGuardTimer=null;}}
 function forceSessionLogout(msg){
   stopSessionGuard();stopPolling();stopRiderChatWatch();window.qgClearRiderInbox?.();window.qtStopNewJobAlert?.();
-  try{if(S.watchId)navigator.geolocation.clearWatch(S.watchId);}catch(e){}
+  disposeRiderMap();
   clearSession();
   Object.assign(S,{session:null,user:null,riderProfile:null,online:false,activeOrder:null,openJobs:[],history:[],chatOrder:null});
   renderLogin(msg||'เซสชันนี้ถูกยกเลิก');
@@ -637,22 +637,40 @@ async function doLogout(){
 
 /* ---------- MAIN STAGE ---------- */
 const LONGDO_API_KEY='347649ca13f49db0d8a599ae35f8de2b';
-let longdoRouteSeq=0;
+let riderMapInstance=null,riderLocationEpoch=0,riderRouteRequest=null,riderRouteCache=null;
+function clearRiderRoute(){
+  riderRouteRequest?.controller.abort();riderRouteRequest=null;riderRouteCache=null;
+  (S.routeOverlays||[]).forEach(qgRemoveOverlay);S.routeOverlays=[];
+  const badge=document.getElementById('route-badge');if(badge)badge.style.display='none';
+}
+function disposeRiderMap(){
+  riderLocationEpoch++;clearRiderRoute();
+  if(S.watchId!==null&&S.watchId!==undefined)navigator.geolocation?.clearWatch(S.watchId);
+  if(S.map){S.map.Overlays.clear();S.map.pause(true);S.map.placeholder().remove()}
+  Object.assign(S,{watchId:null,map:null,riderMarker:null,jobMarkers:[],pos:null,_centeredOnce:false});
+}
+function validRiderCoordinate(lat,lon){return lat!==null&&lat!==undefined&&lat!==''&&lon!==null&&lon!==undefined&&lon!==''&&Number.isFinite(Number(lat))&&Number.isFinite(Number(lon))&&Math.abs(Number(lat))<=90&&Math.abs(Number(lon))<=180}
+
 function initMap(){
   if(typeof longdo==='undefined'){ S.map=null; const map=document.getElementById('map'); if(map)map.innerHTML='<div class="qg-v23-map-fallback">แผนที่โหลดไม่ได้ในขณะนี้<br><small>รับงานและเปิดนำทางภายนอกได้ตามปกติ</small></div>'; return; }
-  S.map=new longdo.Map({placeholder:document.getElementById('map'),ui:window.longdo.UiComponent.Mobile});
+  const host=document.getElementById('map');S.map=riderMapInstance||(riderMapInstance=new longdo.Map({placeholder:host,ui:window.longdo.UiComponent.Mobile}));
+  if(S.map.placeholder().parentNode!==host)host.replaceChildren(S.map.placeholder());S.map.pause(false);S.map.resize();
   try{S.map.Ui.LayerSelector.visible(false)}catch(e){}
   S.map.location({lon:100.5018,lat:13.7563},true);S.map.zoom(13,true);
 }
 function startGeolocation(){
   if(!navigator.geolocation){ toast('อุปกรณ์นี้ไม่รองรับ GPS'); return; }
+  if(S.watchId!==null&&S.watchId!==undefined)navigator.geolocation.clearWatch(S.watchId);
+  const epoch=++riderLocationEpoch,session=S.session,userId=S.user?.id;
+  const current=()=>epoch===riderLocationEpoch&&riderSessionMatches(session)&&S.user?.id===userId;
   S.watchId = navigator.geolocation.watchPosition(pos=>{
+    if(!current()||!validRiderCoordinate(pos.coords.latitude,pos.coords.longitude))return;
     S.pos = {lat:pos.coords.latitude, lng:pos.coords.longitude};
     placeRiderMarker();
     if(!S._centeredOnce&&S.map){ S.map.location({lon:S.pos.lng,lat:S.pos.lat},true); S.map.zoom(15,true); S._centeredOnce=true; }
     if(S.online) pushLocation();
     if(S.activeTab==='home') renderSheet();
-  }, ()=>toast('ไม่สามารถขอตำแหน่ง GPS ได้'), {enableHighAccuracy:true, maximumAge:5000, timeout:12000});
+  }, ()=>{if(current())toast('ไม่สามารถขอตำแหน่ง GPS ได้')}, {enableHighAccuracy:true, maximumAge:5000, timeout:12000});
 }
 function recenterMap(){
   if(!S.map){toast('แผนที่ยังไม่พร้อม เปิดนำทางภายนอกจากงานได้');return}
@@ -685,12 +703,19 @@ async function toggleOnline(){
     toast('เปลี่ยนสถานะไม่สำเร็จ: '+e.message);
   }
 }
-async function pushLocation(){
-  if(!S.pos || !S.riderProfile) return;
-  try{
-    const token = await getAccessToken();
-    await sbTable('rider_profiles?user_id=eq.'+encodeURIComponent(S.user.id), {method:'PATCH', token, body:{latitude:S.pos.lat, longitude:S.pos.lng}});
-  }catch(e){ /* best-effort */ }
+let riderLocationWrite=null,riderLocationQueued=false;
+function pushLocation(){
+  if(!S.pos||!S.riderProfile||!S.user||!S.online||!navigator.onLine)return Promise.resolve();
+  if(riderLocationWrite){riderLocationQueued=true;return riderLocationWrite}
+  const task=(async()=>{
+    do{
+      riderLocationQueued=false;
+      const session=S.session,userId=S.user.id,profileId=S.riderProfile.id,pos={...S.pos},epoch=riderLocationEpoch;
+      const current=()=>riderSessionMatches(session)&&S.user?.id===userId&&S.riderProfile?.id===profileId&&S.online&&epoch===riderLocationEpoch;
+      try{const token=await getAccessToken();if(current())await sbTable('rider_profiles?user_id=eq.'+encodeURIComponent(userId),{method:'PATCH',token,body:{latitude:pos.lat,longitude:pos.lng}})}catch(e){}
+    }while(riderLocationQueued&&S.user&&S.pos&&S.riderProfile&&S.online&&navigator.onLine)
+  })().finally(()=>{if(riderLocationWrite===task)riderLocationWrite=null});
+  riderLocationWrite=task;return task;
 }
 let riderRefreshTask=null,riderRefreshQueued=false;
 function refreshData(background=false){
@@ -754,30 +779,40 @@ function placeJobMarkers(){
   });
   drawActiveRoute();
 }
-async function drawActiveRoute(){
-  if(!S.map)return;
-  (S.routeOverlays||[]).forEach(qgRemoveOverlay);S.routeOverlays=[];S.routeLine=null;
-  const badge=document.getElementById('route-badge'),txt=document.getElementById('route-text');
-  if(!S.activeOrder||!S.pos){if(badge)badge.style.display='none';return}
-  const o=S.activeOrder,st=statusFromRow(o),toShop=['rider_assigned','preparing','ready','assigned'].includes(st);
-  const lat=Number(toShop?o.pickup_latitude:o.delivery_latitude),lon=Number(toShop?o.pickup_longitude:o.delivery_longitude);
-  if(!Number.isFinite(lat)||!Number.isFinite(lon)){if(badge)badge.style.display='none';return}
-  if(badge)badge.style.display='block';if(txt)txt.textContent=(toShop?'ไปร้าน':'ไปหาลูกค้า')+' • กำลังคำนวณเส้นทาง';
-  const seq=++longdoRouteSeq;
-  try{
-    const url='https://api.longdo.com/RouteService/geojson/route?flon='+encodeURIComponent(S.pos.lng)+'&flat='+encodeURIComponent(S.pos.lat)+'&tlon='+encodeURIComponent(lon)+'&tlat='+encodeURIComponent(lat)+'&type=1&key='+encodeURIComponent(LONGDO_API_KEY);
-    const res=await fetch(url);if(!res.ok)throw Error('route '+res.status);const geo=await res.json();if(seq!==longdoRouteSeq)return;
-    let dist=0,time=0;
-    for(const f of (geo.features||[])){
-      const p=f.properties||{};dist+=Number(p.distance)||0;time+=Number(p.interval)||0;
-      const g=f.geometry||{},parts=g.type==='LineString'?[g.coordinates]:g.type==='MultiLineString'?g.coordinates:[];
-      for(const coords of parts){const locs=(coords||[]).map(x=>({lon:Number(x[0]),lat:Number(x[1])})).filter(x=>Number.isFinite(x.lon)&&Number.isFinite(x.lat));if(locs.length>1){const line=new longdo.Polyline(locs,{lineColor:'#e6002d',lineWidth:6});S.map.Overlays.add(line);S.routeOverlays.push(line)}}
-    }
-    const km=dist>0?dist/1000:haversineKm(S.pos.lat,S.pos.lng,lat,lon),mins=time>0?Math.max(1,Math.ceil(time/60)):null;
-    if(txt)txt.textContent=(toShop?'ไปร้าน • ':'ไปหาลูกค้า • ')+(Number.isFinite(km)?km.toFixed(1)+' กม.':'')+(mins?' • '+mins+' นาที':'');
-  }catch(e){
-    const km=haversineKm(S.pos.lat,S.pos.lng,lat,lon);if(txt)txt.textContent=(toShop?'ไปร้าน • ':'ไปหาลูกค้า • ')+(Number.isFinite(km)?km.toFixed(1)+' กม.':'')+' • เส้นทางชั่วคราว';
-  }
+function drawActiveRoute(){
+  const map=S.map,order=S.activeOrder,pos=S.pos,session=S.session,userId=S.user?.id;
+  if(!map||!order||!pos||!userId){clearRiderRoute();return Promise.resolve()}
+  const toShop=['rider_assigned','preparing','ready','assigned'].includes(statusFromRow(order));
+  const lat=toShop?order.pickup_latitude:order.delivery_latitude,lon=toShop?order.pickup_longitude:order.delivery_longitude;
+  if(!validRiderCoordinate(pos.lat,pos.lng)||!validRiderCoordinate(lat,lon)){clearRiderRoute();return Promise.resolve()}
+  const scope=JSON.stringify([userId,session?.sessionId,order.id,toShop,Number(lat),Number(lon)]);
+  const current=()=>S.map===map&&S.user?.id===userId&&riderSessionMatches(session)&&S.activeOrder?.id===order.id&&['rider_assigned','preparing','ready','assigned'].includes(statusFromRow(S.activeOrder))===toShop;
+  if(riderRouteRequest?.scope===scope&&riderRouteRequest.map===map)return riderRouteRequest.task;
+  if(riderRouteCache?.scope!==scope||riderRouteCache?.map!==map)clearRiderRoute();
+  if(riderRouteCache){const age=Date.now()-riderRouteCache.at,moved=haversineKm(pos.lat,pos.lng,riderRouteCache.pos.lat,riderRouteCache.pos.lng);if(age<10000||(age<60000&&moved<0.03))return Promise.resolve()}
+  if(document.hidden||!navigator.onLine)return Promise.resolve();
+  const controller=new AbortController(),request={scope,map,controller};
+  const timer=setTimeout(()=>controller.abort(),12000);
+  const badge=document.getElementById('route-badge'),txt=document.getElementById('route-text'),label=toShop?'ไปร้าน':'ไปหาลูกค้า';
+  if(badge)badge.style.display='block';if(txt&&!riderRouteCache)txt.textContent=label+' • กำลังคำนวณเส้นทาง';
+  request.task=(async()=>{
+    try{
+      const url='https://api.longdo.com/RouteService/geojson/route?flon='+encodeURIComponent(pos.lng)+'&flat='+encodeURIComponent(pos.lat)+'&tlon='+encodeURIComponent(lon)+'&tlat='+encodeURIComponent(lat)+'&type=1&key='+encodeURIComponent(LONGDO_API_KEY);
+      const res=await fetch(url,{signal:controller.signal});if(!res.ok)throw Error('route unavailable');const geo=await res.json();
+      if(controller.signal.aborted||riderRouteRequest!==request||!current())return;
+      let dist=0,time=0;const overlays=[];
+      for(const feature of geo.features||[]){
+        const properties=feature.properties||{};dist+=Number(properties.distance)||0;time+=Number(properties.interval)||0;
+        const geometry=feature.geometry||{},parts=geometry.type==='LineString'?[geometry.coordinates]:geometry.type==='MultiLineString'?geometry.coordinates:[];
+        for(const coords of parts){const locs=(coords||[]).filter(x=>validRiderCoordinate(x[1],x[0])).map(x=>({lon:Number(x[0]),lat:Number(x[1])}));if(locs.length>1)overlays.push(new longdo.Polyline(locs,{lineColor:'#e6002d',lineWidth:6}))}
+      }
+      if(!overlays.length)throw Error('route unavailable');
+      (S.routeOverlays||[]).forEach(qgRemoveOverlay);S.routeOverlays=overlays;overlays.forEach(line=>map.Overlays.add(line));
+      riderRouteCache={scope,map,pos:{...pos},at:Date.now()};
+      if(txt)txt.textContent=label+(dist>0?' • '+(dist/1000).toFixed(1)+' กม.':'')+(time>0?' • '+Math.max(1,Math.ceil(time/60))+' นาที':'');
+    }catch(e){if(riderRouteRequest===request&&current()&&txt)txt.textContent=label+' • โหลดเส้นทางไม่สำเร็จ แตะเพื่อเปิดนำทาง'}
+    finally{clearTimeout(timer);if(riderRouteRequest===request)riderRouteRequest=null}
+  })();riderRouteRequest=request;return request.task;
 }
 
 /* ---------- sheet (home) ---------- */
@@ -941,7 +976,7 @@ function qtNavHTML(){
  </nav>`;
 }
 function renderStage(){
- stopPolling();
+ stopPolling();disposeRiderMap();
  document.getElementById('app').innerHTML=`<div class="stage">
    <div id="map" class="map"></div>
    <header class="qt-top"><div class="qt-brand qt-q-only"><svg viewBox="0 0 48 48" aria-label="QueueGo" role="img"><circle cx="23" cy="23" r="16" fill="none" stroke="currentColor" stroke-width="8"/><path d="M26 27l12 12" fill="none" stroke="currentColor" stroke-width="8" stroke-linecap="round"/></svg></div><div class="qt-status" id="status-pill"><span id="status-text">ออฟไลน์</span><button class="qt-switch" id="status-switch" aria-label="เปลี่ยนสถานะ"></button></div></header>
