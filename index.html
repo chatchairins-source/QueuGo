@@ -358,13 +358,18 @@ ${c.length?`<section class="sec"><div class="cats">${c.map(k=>`<button class="ca
 <section class="sec"><div class="st"><h2>ร้านใกล้คุณ</h2><button class="lk" onclick="go('search')">ดูทั้งหมด</button></div>
 <div class="list">${list.length?list.map(shopCard).join(''):'<p class="empty">ยังไม่มีร้านค้า</p>'}</div></section>`,'home');
 };
+V.grocery=async(_,ticket=routeVersion)=>{
+  const list=await loadShops();if(ticket!==routeVersion)return;
+  const grocery=list.filter(s=>['grocery','market'].includes(String(s.public_category||'').toLowerCase()));
+  layout(`<div style="padding-top:12px"><div style="display:flex;align-items:center;gap:10px;margin-bottom:14px"><button class="ic" onclick="history.back()" aria-label="กลับ">${ico('back')}</button><div><h1 style="font-size:24px;margin:0">ร้านขายของชำ</h1><p class="sm" style="margin:3px 0 0">เลือกร้านขายของชำใกล้คุณ</p></div></div><div class="list">${grocery.length?grocery.map(shopCard).join(''):'<p class="empty">ยังไม่มีร้านขายของชำที่เปิดให้บริการ</p>'}</div></div>`,'search');
+};
 V.search=async(_,ticket=routeVersion)=>{
   const list=await loadShops();if(ticket!==routeVersion)return;
   let menuMatches=[],menuState='',timer=null,inFlight=false,queryVersion=0;
   const matchesCategory=s=>cat==='all'||s.public_category===cat;
   const draw=()=>{const k=q.toLocaleLowerCase('th'),matched=new Set(menuMatches.map(p=>String(p.shop_id)));return list.filter(s=>matchesCategory(s)&&(!k||String(s.shop_name||'').toLocaleLowerCase('th').includes(k)||String(CATS[s.public_category]||'').toLocaleLowerCase('th').includes(k)||matched.has(String(s.id))))};
   layout(`<div style="padding-top:12px"><label for="sq">ค้นหาร้าน เมนู หรือหมวดหมู่</label><input class="in" id="sq" placeholder="ค้นหาร้าน เมนู หรือหมวดหมู่" value="${esc(q)}" style="margin-bottom:0"><button class="lk" id="search-clear">ล้างคำค้นหา</button>
-<div class="cats" style="padding:12px 0 4px">${['all',...Object.keys(CATS)].map(k=>{const grocery=k==='grocery'||k==='market';return `<button class="cat" style="flex:none;${grocery?`width:132px;height:66px;border-radius:14px;overflow:hidden;background:linear-gradient(135deg,#2b2b2b,#111);background-size:cover;background-position:center;display:flex;align-items:flex-end;padding:7px`:'width:auto'}" onclick="cat='${k}';route()"><b style="margin:0;${grocery?'padding:3px 6px;border:0;background:rgba(0,0,0,.48);color:#fff':'padding:8px 13px;border-radius:99px;font-size:11px;border:1px solid '+(cat===k?'var(--red)':'#ddd')+';background:'+(cat===k?'var(--red)':'#fff')+';color:'+(cat===k?'#fff':'#333')} ;border-radius:99px;font-size:11px">${k==='all'?'ทั้งหมด':CATS[k]}</b></button>`}).join('')}</div><p class="sm" id="search-state" role="status" aria-live="polite"></p><div class="list" id="sr" style="margin-top:8px"></div></div>`,'search');
+<div style="padding:12px 0 4px"><button class="prim" style="margin:0 0 10px" onclick="go('grocery')">ร้านขายของชำ</button></div><div class="cats" style="padding:0 0 4px">${['all',...Object.keys(CATS).filter(k=>!['grocery','market'].includes(k))].map(k=>`<button class="cat" style="flex:none;width:auto" onclick="cat='${k}';route()"><b style="margin:0;padding:8px 13px;border-radius:99px;font-size:11px;border:1px solid ${cat===k?'var(--red)':'#ddd'};background:${cat===k?'var(--red)':'#fff'};color:${cat===k?'#fff':'#333'}">${k==='all'?'ทั้งหมด':CATS[k]}</b></button>`).join('')}</div><p class="sm" id="search-state" role="status" aria-live="polite"></p><div class="list" id="sr" style="margin-top:8px"></div></div>`,'search');
   const input=$('sq'),results=$('sr'),status=$('search-state');
   const active=()=>ticket===routeVersion&&input.isConnected;
   const render=()=>{if(!active())return;status.textContent=menuState;results.innerHTML=draw().map(shopCard).join('')||(menuState==='กำลังค้นหาเมนู…'?'<p class="empty">กำลังค้นหาร้านและเมนู…</p>':'<p class="empty">ไม่พบร้านหรือเมนูที่ตรงกับคำค้นหา</p>')};
@@ -494,7 +499,7 @@ const customerOrdersLive=(()=>{
 async function route(background=false){
   const [pg,param]=(location.hash.slice(1)||'home').split('/');
   const ticket=++routeVersion,ok=authed();
-  if(!ok&&!['home','market','search','shop','cart','map','login','register'].includes(pg))return go('login');
+  if(!ok&&!['home','market','grocery','search','shop','cart','map','login','register'].includes(pg))return go('login');
   if(ok&&(pg==='login'||pg==='register'))return go('home');
   if(!V[pg])return go('home');
   customerOrdersLive.sync();
