@@ -19,7 +19,7 @@ async function ownShop(){
   const token=await qtGetAccessToken();
   if(!token)throw Error('กรุณาเข้าสู่ระบบใหม่');
   const rows=await qtSupabaseTable(
-    'shop_profiles?select=id,user_id,shop_name,public_category,status,latitude,longitude,market_id,market_suggested_id,market_suggested_distance_km,market_membership_status,market_stall_no,market_zone,market_proof_path,market_rejection_reason,public_cover,metadata&user_id=eq.'+
+    'shop_profiles?select=id,user_id,shop_name,public_category,status,address,latitude,longitude,market_id,market_suggested_id,market_suggested_distance_km,market_membership_status,market_stall_no,market_zone,market_proof_path,market_rejection_reason,public_cover,metadata&user_id=eq.'+
     encodeURIComponent(u.id)+'&limit=1',
     {accessToken:token}
   );
@@ -155,11 +155,12 @@ window.qgmSubmitMarketMembership=async function(){
      !document.getElementById('qgm-market-confirm-seller')?.checked){
     return toast('กรุณายืนยันว่าร้านอยู่ในตลาดและเป็นผู้ค้าจริง');
   }
-  const u=currentUser(),cover=String(u?.cover||'').trim();
-  if(!cover)return toast('กรุณาเพิ่มภาพหน้าร้าน/แผงก่อนส่ง');
   const button=document.querySelector('.qgm-market-register .qgm-primary');
   if(button)button.disabled=true;
   try{
+    const {shop}=await ownShop();
+    const cover=String(shop.public_cover||shop.metadata?.cover||shop.metadata?.profileImage||shop.metadata?.profile_image||'').trim();
+    if(!cover)throw Error('กรุณาเพิ่มภาพหน้าร้าน/แผงก่อนส่ง');
     const result=await qtSupabaseRpc('queuego_submit_market_membership',{
       p_market_id:marketId,
       p_stall_no:document.getElementById('qgm-market-stall')?.value?.trim()||null,
