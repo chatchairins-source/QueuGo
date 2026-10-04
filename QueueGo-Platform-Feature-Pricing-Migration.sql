@@ -281,9 +281,7 @@ create or replace function public.queuego_market_multi_shop_fee(
 language sql stable
 security invoker
 set search_path to 'public','pg_temp'
-as $
-  select public.queuego_market_multi_shop_fee(p_shop_count,now());
-$;
+as 'select public.queuego_market_multi_shop_fee(p_shop_count,now());';
 
 revoke all on function public.queuego_market_multi_shop_fee(integer) from public;
 grant execute on function public.queuego_market_multi_shop_fee(integer) to anon,authenticated,service_role;
