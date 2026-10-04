@@ -15,7 +15,9 @@ const admin=read('admin/index.html');
 const platform=read('QueueGo-Platform-Feature-Pricing-Migration.sql');
 const market=read('QueueGo-Market-Registration-Migration.sql');
 const marketAdd=read('QueueGo-Market-Trip-Add-Shops.sql');
-const bundle=fs.existsSync(path.resolve(__dirname,'../QueueGo-Route-Bundle-v2.sql'))?read('QueueGo-Route-Bundle-v2.sql'):read('QueueGo-Route-Bundle-v1.sql');
+const bundleBase=fs.existsSync(path.resolve(__dirname,'../QueueGo-Route-Bundle-v2.sql'))?read('QueueGo-Route-Bundle-v2.sql'):read('QueueGo-Route-Bundle-v1.sql');
+const bundleFair=fs.existsSync(path.resolve(__dirname,'../QueueGo-Route-Bundle-Fair-Savings.sql'))?read('QueueGo-Route-Bundle-Fair-Savings.sql'):'';
+const bundle=bundleBase+'\n'+bundleFair;
 const laundryV2=read('QueueGo-Laundry-v2.sql');
 
 // Customer top-level service separation.
