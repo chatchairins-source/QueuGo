@@ -161,14 +161,18 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          echo "b47b88cfd9df8de7e9af8c33ece0434db38fa149ca57ab5a8bc87fc47601796a  android-build/branding/queuego-approved-icon.webp" | sha256sum -c -
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq webp
+          dwebp android-build/branding/queuego-approved-icon.webp -o /tmp/queuego-approved-icon.png >/dev/null
           python3 -m pip install pillow --quiet
           python3 - <<'PY'
           from PIL import Image
           from pathlib import Path
 
-          src_path=Path('android-build/branding/queuego-approved-icon.webp')
+          src_path=Path('/tmp/queuego-approved-icon.png')
           if not src_path.exists():
-              raise RuntimeError('Approved QueueGo icon source is missing')
+              raise RuntimeError('Approved QueueGo icon decode failed')
 
           src=Image.open(src_path).convert('RGBA')
           if src.width != src.height or src.width < 512:
