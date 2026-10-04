@@ -288,11 +288,7 @@ html,body {
 </style>
 
 
-<style id="qt-checkout-slider-compact">
-#checkout-confirm-slide{max-width:560px!important;margin:12px auto!important;height:58px!important;min-height:58px!important;border-radius:30px!important;}
-#checkout-confirm-slide .qt-slide-thumb{width:48px!important;height:48px!important;margin:5px!important;border-radius:50%!important;}
-@media(max-width:760px){#checkout-confirm-slide{height:54px!important;min-height:54px!important;margin:10px auto!important;}#checkout-confirm-slide .qt-slide-thumb{width:44px!important;height:44px!important;margin:5px!important;}}
-</style>
+
 <style id="qt-v541-unified-app-theme">
 /* V5.41 — one visual system across every screen */
 :root{--qt-surface:#fff;--qt-soft:#f8fafc;--qt-line:#e2e8f0;--qt-text:#172033;--qt-muted:#64748b;--qt-blue:#2563eb;--qt-radius:18px}
@@ -1997,9 +1993,8 @@ const TECH_JOB_TRANSITIONS = {
 
 <script>
 /* =====================================================================
-   V5.31 ADDITIONS — appended only, nothing above this block was removed.
-   Covers: delivery-fee formula, GP 10% formula, Slide-to-Confirm engine,
-   daily settlement + GP payment status screens (shop + admin).
+   V5.31 business additions retained after pre-Android cleanup.
+   Covers GP configuration and daily settlement/payment status screens.
    ===================================================================== */
 
 /* ---------- 12. ค่าจัดส่งตามระยะทางจริง (GPS-based, ห้ามให้ผู้ใช้กรอกระยะทางเอง) ---------- */
@@ -2017,52 +2012,6 @@ function qtGpRatePercent(shopId){
 function gpAmount(saleAmount, shopId){ return Math.round((Number(saleAmount)||0)*qtGpRatePercent(shopId))/100; }
 
 
-
-/* ---------- 7. Slide to Confirm (ใช้แทนปุ่มยืนยันสำหรับการกระทำสำคัญ) ---------- */
-
-(function qtInitSlideEngine(){
-  let dragging = null; // {el, track, thumb, maxX, action}
-  function startDrag(el, clientX, pointerId){
-    const track = el.querySelector('.qt-slide-track');
-    const thumb = el.querySelector('.qt-slide-thumb');
-    if(!track || !thumb || el.classList.contains('qt-slide-done')) return;
-    const maxX = track.clientWidth - thumb.clientWidth - 6;
-    dragging = { el, track, thumb, maxX, startX:clientX, thumbStartLeft:3,
-                 action: el.getAttribute('data-qt-action'), pointerId };
-    try{ thumb.setPointerCapture?.(pointerId); }catch(e){}
-    el.classList.add('qt-sliding');
-  }
-  function moveDrag(clientX){
-    if(!dragging) return;
-    const delta = clientX - dragging.startX;
-    let left = Math.min(Math.max(3, dragging.thumbStartLeft+delta), dragging.maxX);
-    dragging.thumb.style.left = left+'px';
-  }
-  function endDrag(){
-    if(!dragging) return;
-    const { el, thumb, maxX, action } = dragging;
-    const left = parseFloat(thumb.style.left||'3');
-    el.classList.remove('qt-sliding');
-    if(maxX>0 && left >= maxX*0.82){
-      thumb.style.left = maxX+'px';
-      el.classList.add('qt-slide-done');
-      try{ (new Function(action))(); }catch(e){ console.error('slide action failed', e); }
-    } else {
-      thumb.style.left = '3px';
-    }
-    dragging = null;
-  }
-  document.addEventListener('pointerdown', e=>{
-    const thumb = e.target.closest('.qt-slide-thumb');
-    if(!thumb) return;
-    const el = thumb.closest('.qt-slide-confirm');
-    e.preventDefault();
-    startDrag(el, e.clientX, e.pointerId);
-  });
-  document.addEventListener('pointermove', e=>{ if(dragging && (dragging.pointerId===undefined || dragging.pointerId===e.pointerId)){ e.preventDefault(); moveDrag(e.clientX); } });
-  document.addEventListener('pointerup', endDrag);
-  document.addEventListener('pointercancel', endDrag);
-})();
 
 /* ---------- 16/17/18. สรุปยอดขายรายวัน + สถานะชำระ GP ---------- */
 // สถานะการชำระ GP: pending_payment(รอชำระ) -> shop_reported(ร้านแจ้งโอน) -> under_review(รอตรวจสอบ) -> paid(ชำระแล้ว)
@@ -2148,15 +2097,7 @@ body{margin:0;padding-left:0;padding-right:0}
 }
 </style>
 
-<style id="qt-v531-slide-confirm-css">
-/* V5.31 addition: Slide to Confirm — additive only, does not modify any existing rule above */
-.qt-slide-confirm{margin:10px 0;user-select:none;}
-.qt-slide-track{position:relative;height:52px;background:#e5e7eb;border-radius:26px;display:flex;align-items:center;overflow:hidden;}
-.qt-slide-track.qt-slide-danger{background:#fee2e2;}
-.qt-slide-thumb{position:absolute;left:3px;top:3px;width:46px;height:46px;border-radius:50%;background:var(--primary,#1d4ed8);color:#fff;display:flex;align-items:center;justify-content:center;font-size:18px;cursor:grab;touch-action:none;box-shadow:0 2px 6px rgba(0,0,0,.25);transition:left .25s ease;}
-.qt-slide-confirm.qt-sliding .qt-slide-thumb{transition:none;}
-.qt-slide-confirm.qt-slide-done .qt-slide-track{background:#d1fae5;}
-</style>
+
 
 <script>
 window.addEventListener('unhandledrejection',e=>{
