@@ -110,7 +110,7 @@ Applied successfully to the existing Supabase project as migration `202610031747
 
 ## Current verification evidence
 
-- Isolated behavioral checks: **510**, plus source parsing of 50 JS blocks/files and 19 local references. Coverage includes checkout replay/quote/ownership/decimal validation, cart/search/support, transport interruption, rider completion/claim, delivery kitchen, POS/printer, QR/chat, map disposal, Customer live runtime and Admin/Merchant realtime. These tests do not certify real JWT/RLS, triggers, simultaneous server connections or hardware.
+- Isolated behavioral checks: **516**, plus source parsing of 50 JS blocks/files and 19 local references. Coverage includes checkout replay/quote/ownership/decimal validation, cart/search/support, transport interruption, rider completion/claim, delivery kitchen, POS/printer, QR/chat, map disposal, Customer live runtime and Admin/Merchant realtime. These tests do not certify real JWT/RLS, triggers, simultaneous server connections or hardware.
 - Chromium fixture regression: latest 48 route/boot cases at 390px, no additional JS errors, overflow or non-Customer changes. Earlier 144 cases covered 390/768/1280px; POS computed screen/print layout checks covered 320/390/768/1280px. All external writes are intercepted. Intentional Customer guest/search changes differ from the original baseline.
 - Public Chromium navigation returned `ERR_EMPTY_RESPONSE`; live console/authenticated network behavior is not certified. Read-only HTTP checks and source parity are separate evidence.
 - Anonymous menu query returned HTTP 200 in approximately 12.1 seconds; SQL EXPLAIN for the six-product predicate completed in approximately 10.5 ms. This does not pass mobile latency/INP/60fps targets and did not justify another index.
@@ -124,7 +124,7 @@ These are source bytes/zlib bytes, not field performance measurements. The new s
 | Entry | Baseline bytes | Current bytes | Compressed baseline → current |
 |---|---:|---:|---:|
 | `index.html` | 172,341 | 195,852 | 113,646 → 121,008 |
-| `merchant/index.html` | 471,336 | 322,449 | 229,879 → 140,198 |
+| `merchant/index.html` | 471,336 | 321,403 | 229,879 → 139,945 |
 | `admin/index.html` | 515,014 | 225,969 | 125,581 → 59,705 |
 | `rider/index.html` | 257,099 | 237,324 | 124,196 → 119,689 |
 
@@ -162,3 +162,8 @@ The 16 remote branches still requiring deletion:
 - Deleted the separate shop route firewall and its duplicate hash/startup handlers. It rejected the current `market-stock` route despite the primary router supporting it. The primary router remains the route authority.
 - Admin rejection now runs before the POS route branch. Login verifies the actual own-user profile alongside staff membership and rejects Admin, suspended and deleted profiles before persisting a Merchant/Staff session. Active staff and ordinary Shop login remain supported; no payment/GP/state policy changed.
 - Seventeen isolated route/login checks cover Market navigation, Admin POS rejection, staff/Shop login and inactive accounts. Latest total: 510 isolated behavioral checks; live Auth/RLS remains unverified.
+
+## POS staff snapshot ownership
+
+- Removed the second staff-list query after snapshot hydration and the per-user staff detail query before editing permissions. Both now read the already-loaded current shop's staff snapshot; role changes still use the existing server-authorized RPC and reload the snapshot after confirmation.
+- Six isolated checks confirm list rendering without another query, role update/reload, and rejection of a staff ID outside the current snapshot. Total: 516 isolated behavioral checks. Real multi-device/RLS evidence remains required.
