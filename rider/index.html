@@ -863,15 +863,14 @@ async function readRiderSnapshot(){
     const token=await getAccessToken();if(!current())return;if(!token)throw Error('Session unavailable');
     const mine=await sbTable('orders?select=*&order_type=eq.shopping&rider_id=eq.'+encodeURIComponent(profileId)+'&status=in.(rider_assigned,preparing,ready,assigned,picked_up,in_progress)&order=created_at.desc&limit=1',{token});if(!current())return;
     let activeOrder=Array.isArray(mine)&&mine[0]?mine[0]:null;let openJobs=[];
-    await qgLoadLaundryRiderState(token,!!activeOrder);if(!current())return;
+    // Laundry is isolated in rider/laundry.js and loads only when its panel is opened.
+    // Keep the normal delivery snapshot single-flight and free of Laundry transport calls.
     const previousOpenJobIds=new Set((S.openJobs||[]).map(x=>x?.order?.id).filter(Boolean).map(String));
     if(activeOrder){
       if(['market','grocery'].includes(activeOrder.fulfillment_vertical)){const weights=await sbRpc('market_rider_job_weights',{},token);if(!current())return;activeOrder._marketWeight=(weights||[]).find(x=>x.order_id===activeOrder.id)?.weight_kg}
       if(activeOrder.market_order_id){await enrichMarketTripRiderOrder(activeOrder,token);if(!current())return}
       if(!activeOrder.market_order_id){activeOrder=await enrichRouteBundleRiderState(activeOrder,token);if(!current())return}
       await enrichRiderOrders([activeOrder],token);if(!current())return;
-    }else if(S.laundryJob){
-      S.bundleOrders=[];S.bundleCandidates=[];openJobs=[];
     }else if(online){
       S.bundleOrders=[];S.bundleCandidates=[];
       const eligible=await sbRpc('get_rider_delivery_pool',{},token);if(!current())return;
