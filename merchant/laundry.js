@@ -176,4 +176,6 @@ window.qgRenderLaundryMerchant=async function(){
   window.qtShopLayout('ฝากซัก','<div class="qgl-head"><button class="qgm-iconbtn" type="button" onclick="navigate(\'shop-modules\')">←</button><div><h2>ฝากซัก</h2><small>กำลังโหลด...</small></div></div><section class="qgm-card qgl-card">กำลังโหลดข้อมูลฝากซัก...</section>','shop-profile');
   try{await reload()}catch(e){window.qtShopLayout('ฝากซัก','<section class="qgm-card qgl-card"><h3>โหลดฝากซักไม่สำเร็จ</h3><p>'+esc(String(e.message||e))+'</p><button class="qgm-outline" onclick="qgRenderLaundryMerchant()">ลองใหม่</button></section>','shop-profile')}
 };
+function qgLaundryMerchantDeepLinkBoot(){if((location.hash.slice(1)||'').split('/')[0]==='shop-laundry')setTimeout(()=>window.qgRenderLaundryMerchant?.(),0)}
+qgLaundryMerchantDeepLinkBoot();
 })();
