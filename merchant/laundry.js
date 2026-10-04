@@ -166,6 +166,11 @@ async function shopAction(id,action){
   state.busy=true;
   try{await rpc('queuego_laundry_shop_action_v2',{p_order_id:id,p_action:action,p_actual_quantity:qty,p_note:note});toast('อัปเดตงานฝากซักแล้ว');await reload()}catch(e){toast('อัปเดตไม่ได้: '+String(e.message||e).slice(0,120))}finally{state.busy=false}
 }
+window.addEventListener('qt:realtime-update',event=>{
+  const reason=String(event?.detail?.reason||'');
+  const view=(location.hash.slice(1)||'').split('/')[0];
+  if(view==='shop-laundry'&&/^laundry_/.test(reason)&&!state.busy)reload().catch(()=>{});
+});
 window.qgRenderLaundryMerchant=async function(){
   const u=currentUser();if(!u||u.type!=='shop')return navigate('login');
   window.qtShopLayout('ฝากซัก','<div class="qgl-head"><button class="qgm-iconbtn" type="button" onclick="navigate(\'shop-modules\')">←</button><div><h2>ฝากซัก</h2><small>กำลังโหลด...</small></div></div><section class="qgm-card qgl-card">กำลังโหลดข้อมูลฝากซัก...</section>','shop-profile');
