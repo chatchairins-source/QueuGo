@@ -113,7 +113,6 @@ window.qgmRenderMarketMembership=async function(){
       return;
     }
 
-    const cover=String(me.cover||shop.public_cover||shop.metadata?.cover||'').trim();
     const markets=await nearby(lat,lng);
     const reject=status==='rejected'
       ? '<div class="qgm-market-status rejected"><b>ใบสมัครก่อนหน้าไม่ผ่าน</b><small>'+esc(shop.market_rejection_reason||'กรุณาตรวจพิกัดและข้อมูลแล้วส่งใหม่')+'</small></div>'
@@ -130,10 +129,9 @@ window.qgmRenderMarketMembership=async function(){
           '</div>'+
           '<div class="qgm-market-fields"><label>เลขแผง (ถ้ามี)<input id="qgm-market-stall" maxlength="80" value="'+esc(shop.market_stall_no||'')+'"></label>'+
           '<label>โซน (ถ้ามี)<input id="qgm-market-zone" maxlength="80" value="'+esc(shop.market_zone||'')+'"></label></div>'+
-          (!cover?'<div class="qgm-market-status warn"><b>กรุณาใส่ภาพหน้าร้าน/แผงก่อนส่ง</b><small>ใช้ภาพหน้าร้านจากหน้า “ข้อมูลและตำแหน่งร้าน” เป็นหลักฐานร้านจริงในตลาด</small></div>':'')+
           '<label class="qgm-market-confirm"><input id="qgm-market-confirm-place" type="checkbox"><span>ฉันยืนยันว่า <b>ร้าน/แผงของฉันตั้งอยู่ในตลาดที่เลือกจริง</b></span></label>'+
           '<label class="qgm-market-confirm"><input id="qgm-market-confirm-seller" type="checkbox"><span>ฉันยืนยันว่า <b>ฉันเป็นผู้ค้าหรือมีร้าน/แผงขายอยู่ในตลาดนี้จริง</b></span></label>'+
-          '<button class="qgm-primary" type="button" '+(!cover?'disabled':'')+' onclick="qgmSubmitMarketMembership()">ส่งให้ Admin ตรวจสอบ</button>'
+          '<button class="qgm-primary" type="button" onclick="qgmSubmitMarketMembership()">ส่งให้ Admin ตรวจสอบ</button>'
         : '<div class="qgm-market-status warn"><b>ยังไม่พบตลาดใกล้พิกัดนี้</b><small>คุณสามารถขอเพิ่มตลาดใหม่ได้ ระบบจะส่งให้ Admin ตรวจสอบก่อนเปิดใช้</small></div>')+
       '<details class="qgm-market-request"><summary>ไม่พบตลาดของฉัน / ขอเพิ่มตลาดใหม่</summary>'+
         '<label>ชื่อตลาด<input id="qgm-request-name" maxlength="160" placeholder="เช่น ตลาดสด..."></label>'+
@@ -160,7 +158,6 @@ window.qgmSubmitMarketMembership=async function(){
   try{
     const {shop}=await ownShop();
     const cover=String(shop.public_cover||shop.metadata?.cover||shop.metadata?.profileImage||shop.metadata?.profile_image||'').trim();
-    if(!cover)throw Error('กรุณาเพิ่มภาพหน้าร้าน/แผงก่อนส่ง');
     const result=await qtSupabaseRpc('queuego_submit_market_membership',{
       p_market_id:marketId,
       p_stall_no:document.getElementById('qgm-market-stall')?.value?.trim()||null,
