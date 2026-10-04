@@ -181,7 +181,13 @@ function readCart(){
 function saveCart(){try{localStorage.setItem(cartKey(),JSON.stringify(cart))}catch(e){}}
 let cart=readCart(),shops=null,q='',cat='all';
 const cartN=()=>cart.items.reduce((a,i)=>a+i.qty,0);
-const cartTotal=()=>cart.items.reduce((a,i)=>a+i.price*i.qty,0);
+function cartTotal(){
+  const values=cart.items.map(item=>{const m=String(item.price).match(/^(\d+)(?:\.(\d+))?(?:e([+-]?\d+))?$/i);if(!m||!Number.isInteger(item.qty)||item.qty<1)return null;const digits=(m[2]||''),scale=digits.length-Number(m[3]||0);return {units:BigInt(m[1]+digits),scale,qty:BigInt(item.qty)}});
+  if(values.some(v=>!v))return NaN;
+  const scale=Math.max(2,...values.map(v=>v.scale)),divisor=10n**BigInt(scale-2);
+  const total=values.reduce((sum,v)=>sum+v.units*10n**BigInt(scale-v.scale)*v.qty,0n);
+  return Number((total+divisor/2n)/divisor)/100;
+}
 /* ===== 4) Data (same tables) ===== */
 async function loadShops(){
   if(shops)return shops;
@@ -189,7 +195,7 @@ async function loadShops(){
     db('shop_profiles?select=id,shop_name,status,public_category,public_logo,public_cover,public_open_time,public_close_time,public_description,address,latitude,longitude,delivery_enabled'),
     db('shop_open_states?select=shop_id,is_open,resume_at').catch(()=>[])]);
   const m=new Map((st||[]).map(s=>[String(s.shop_id),s]));
-  shops=(list||[]).filter(s=>!s.status||s.status==='active'||s.status==='approved')
+  shops=(list||[]).filter(s=>s.status==='active')
     .map(s=>({...s,open:m.has(String(s.id))?m.get(String(s.id)).is_open!==false:true}));
   return shops;
 }
@@ -205,7 +211,12 @@ async function activeOrder(){
 }
 let checkoutBusy=false;
 const pendingCheckoutKey=()=>S.get()?.userId?'qg_pending_checkout_'+S.get().userId:null;
-function readPendingCheckout(){const key=pendingCheckoutKey();if(!key)return null;try{return JSON.parse(localStorage.getItem(key)||'null')}catch(e){return null}}
+function readPendingCheckout(){const key=pendingCheckoutKey();if(!key)return null;
+  try{const pending=JSON.parse(localStorage.getItem(key)||'null');if(!pending)return null;const p=pending.body,id=value=>typeof value==='string'&&/^[\da-f]{8}(?:-[\da-f]{4}){3}-[\da-f]{12}$/i.test(value);
+    if(p&&id(p.p_order_id)&&id(p.p_shop_id)&&Array.isArray(p.p_items)&&p.p_items.length>=1&&p.p_items.length<=30&&typeof p.p_delivery_address==='string'&&[p.p_delivery_lat,p.p_delivery_lng,p.p_expected_subtotal,p.p_expected_delivery_fee].every(Number.isFinite))return pending;
+    localStorage.removeItem(key);return null;
+  }catch(e){try{localStorage.removeItem(key)}catch(_){}return null}}
+
 function deliveryFeeFor(shop,loc){
   const radians=n=>n*Math.PI/180,a=Math.sin(radians(loc.lat-Number(shop.latitude))/2)**2+Math.cos(radians(Number(shop.latitude)))*Math.cos(radians(loc.lat))*Math.sin(radians(loc.lng-Number(shop.longitude))/2)**2;
   const km=6371*2*Math.asin(Math.sqrt(Math.min(1,Math.max(0,a))));
@@ -223,11 +234,10 @@ async function placeOrder(){
     let pending=readPendingCheckout();
     if(!pending){
       if(!cart.items.length)return toast('ตะกร้าว่าง');
+      const quote=window.__checkoutQuote?.(),loc=quote?.location,address=($('delivery-address')?.value||'').trim();
+      if(!quote||quote.shopId!==cart.shopId||!Number.isFinite(quote.deliveryFee)||!Number.isFinite(quote.subtotal)||!loc||!qgIsValidCoordinate(loc.lat,loc.lng,true)||!address)throw Error('กรุณาตรวจตะกร้า ปักหมุด และระบุที่อยู่จัดส่ง');
       const old=await activeOrder();if(!sameActor())return;if(old){toast('มีออเดอร์ที่กำลังดำเนินการอยู่');return go('order/'+old.id)}
-      const shop=await loadShopProfile(cart.shopId);if(!sameActor())return;if(!shop)throw Error('ไม่พบข้อมูลร้านค้า');
-      const loc=window.__checkoutPickedLocation?.()||currentPos,address=($('delivery-address')?.value||'').trim();
-      if(!loc||!qgIsValidCoordinate(loc.lat,loc.lng,true)||!address)throw Error('กรุณาปักหมุดและระบุที่อยู่จัดส่ง');
-      pending={cart:JSON.stringify(cart),body:{p_order_id:uuid(),p_shop_id:shop.id,p_items:cart.items.map(i=>({product_id:i.id,qty:i.qty})),p_delivery_lat:Number(loc.lat),p_delivery_lng:Number(loc.lng),p_delivery_address:address,p_expected_subtotal:cartTotal(),p_expected_delivery_fee:deliveryFeeFor(shop,loc),p_note:cart.note?.trim()||null}};
+      pending={cart:JSON.stringify(cart),body:{p_order_id:uuid(),p_shop_id:quote.shopId,p_items:cart.items.map(i=>({product_id:i.id,qty:i.qty})),p_delivery_lat:Number(loc.lat),p_delivery_lng:Number(loc.lng),p_delivery_address:address,p_expected_subtotal:quote.subtotal,p_expected_delivery_fee:quote.deliveryFee,p_note:cart.note?.trim()||null}};
       localStorage.setItem(requestKey,JSON.stringify(pending));
     }
     const accessToken=await token();if(!sameActor())return;
@@ -241,8 +251,8 @@ async function placeOrder(){
   }catch(e){
     if(e.status>=400&&e.status<500&&![408,429].includes(e.status))localStorage.removeItem(requestKey);
     if(!sameActor())return;
-    toast(e.status?'ยืนยันไม่สำเร็จ กรุณาตรวจตะกร้า ราคา และตำแหน่งแล้วลองอีกครั้ง':'ยังยืนยันผลไม่ได้ กรุณาลองอีกครั้ง ระบบจะใช้รายการเดิมเพื่อป้องกันออเดอร์ซ้ำ');
-  }finally{checkoutBusy=false;if(button){button.disabled=false;button.textContent='ยืนยันสั่งซื้อ'}}
+    toast(e.status||!readPendingCheckout()?'ยังสั่งไม่ได้ กรุณาตรวจตะกร้า ราคา และตำแหน่งแล้วลองอีกครั้ง':'ยังยืนยันผลไม่ได้ กรุณาตรวจผลคำขอเดิมอีกครั้ง ระบบจะใช้รายการเดิมเพื่อป้องกันออเดอร์ซ้ำ');
+  }finally{checkoutBusy=false;if(button&&sameActor()&&button.isConnected){button.disabled=false;button.textContent=readPendingCheckout()?'ตรวจผลคำสั่งซื้อเดิม':'ยืนยันสั่งซื้อ'}}
 }
 /* ===== Customer location picker ===== */
 let currentPos=null,customerLocationPicker=null,checkoutPicker=null;
@@ -277,8 +287,8 @@ async function qtReverseGeocodeCustomer(lat,lng){
 async function openCustomerLocationPicker(){
   const u=S.get();
   layout(`<div class="pt"><button class="back" onclick="history.back()">${ico('back')}</button><h1>เลือกที่อยู่จัดส่ง</h1></div><section class="card"><p class="muted">ปักหมุดตำแหน่งรับสินค้า แล้วระบุรายละเอียดที่อยู่ด้านล่าง</p><div id="customer-location-map" class="mapbox" style="height:150px"></div><button style="margin-top:12px;padding:7px 11px;width:auto;border:1px solid #d1d5db;border-radius:9px;background:transparent;color:inherit;font-size:12px;font-weight:600" onclick="customerLocationPicker&&customerLocationPicker.locate()">ใช้ตำแหน่ง GPS ปัจจุบัน</button><div class="dist">Lat: <span id="customer-lat">--</span> · Lng: <span id="customer-lng">--</span></div><textarea id="customer-address-input" placeholder="บ้านเลขที่ หมู่บ้าน ซอย ถนน หรือจุดสังเกต" style="width:100%;min-height:82px;margin-top:10px">${esc(currentPos?.address||'')}</textarea><button class="prim" style="margin-top:12px" onclick="saveCustomerLocationPicker()">บันทึกที่อยู่นี้</button></section>`,'home');
-  let picked=null,locationVersion=0;
-  customerLocationPicker=initLocationPicker('customer-location-map',currentPos?.lat,currentPos?.lng,async(lat,lng)=>{picked=currentPos={lat,lng};$('customer-lat').textContent=lat.toFixed(6);$('customer-lng').textContent=lng.toFixed(6);const version=++locationVersion,field=$('customer-address-input'),previous=field.value;const t=await qtReverseGeocodeCustomer(lat,lng);if(t&&version===locationVersion&&field.isConnected&&field.value===previous)field.value=t});
+  let picked=null,locationVersion=0,lastAutoAddress=null;
+  customerLocationPicker=initLocationPicker('customer-location-map',currentPos?.lat,currentPos?.lng,async(lat,lng)=>{picked={lat,lng};currentPos={...currentPos,lat,lng};$('customer-lat').textContent=lat.toFixed(6);$('customer-lng').textContent=lng.toFixed(6);const version=++locationVersion,field=$('customer-address-input'),previous=field.value;if(previous&&previous!==lastAutoAddress)return;const t=await qtReverseGeocodeCustomer(lat,lng);if(t&&version===locationVersion&&field.isConnected&&field.value===previous){field.value=t;lastAutoAddress=t}});
   window.__customerPickedLocation=()=>picked;
   const picker=customerLocationPicker;setTimeout(()=>{if(customerLocationPicker===picker)picker.map.invalidateSize()},80);
 }
@@ -303,7 +313,7 @@ try{const saved=JSON.parse(localStorage.getItem('qg_customer_delivery_location')
 const authed=()=>!!S.get();
 function layout(inner,tab){
   customerLocationPicker?.destroy();checkoutPicker?.destroy();customerLocationPicker=checkoutPicker=null;
-  window.__customerPickedLocation=window.__checkoutPickedLocation=null;
+  window.__customerPickedLocation=window.__checkoutQuote=null;
   const u=S.get();
   $('root').innerHTML=`<header class="top"><div><button class="brand" onclick="go('home')">Queue<span>Go</span></button>
 <div class="acts">${u?`<button class="ic" aria-label="ตะกร้า" onclick="go('cart')">${ico('bag')}${cartN()?`<b class="badge">${cartN()>99?'99+':cartN()}</b>`:''}</button>
@@ -391,35 +401,70 @@ V.cart=()=>{
   `<div class="sum"><div class="sr"><span>ค่าอาหาร</span><span>${baht(cartTotal())}</span></div><div class="tot"><span>รวม</span><span>${baht(cartTotal())}</span></div></div>
 <button class="prim" onclick="go('checkout')">ไปชำระเงิน</button>`:'<p class="empty">ตะกร้าว่าง</p>'),'cart');
 };
-V.checkout=async(_,ticket=routeVersion)=>{if(!cart.items.length)return go('cart');const s=await loadShopProfile(cart.shopId);if(ticket!==routeVersion)return;
-  layout(`<div class="pt"><button class="back" onclick="history.back()">${ico('back')}</button><h1>ยืนยันคำสั่งซื้อ</h1></div><div class="card" style="margin-top:0"><b>${esc(s?.shop_name||'ร้านค้า')}</b><p class="sm">ชำระเงินสด • ระบบเดลิเวอรี่ QueueGo</p><div id="checkout-pin-map" class="mapbox" style="height:115px;margin-top:10px"></div><button style="margin-top:10px;padding:7px 11px;width:auto;border:1px solid #d1d5db;border-radius:9px;background:transparent;color:inherit;font-size:12px;font-weight:600" onclick="checkoutPicker&&checkoutPicker.locate()">ใช้ตำแหน่ง GPS ปัจจุบัน</button><div class="dist">Lat: <span id="co-lat">--</span> · Lng: <span id="co-lng">--</span></div><textarea class="ta" id="delivery-address" placeholder="ที่อยู่/จุดสังเกตสำหรับจัดส่ง">${esc(currentPos?.address||'')}</textarea><label for="checkout-note">หมายเหตุสำหรับร้าน</label><textarea class="ta" id="checkout-note" maxlength="500" placeholder="รายละเอียดเพิ่มเติมสำหรับร้าน (ถ้ามี)" oninput="setCheckoutNote(this.value)" ${readPendingCheckout()?'disabled':''}>${esc(readPendingCheckout()?.body?.p_note??cart.note??'')}</textarea></div><div class="sum"><div class="sr"><span>ค่าสินค้า</span><span>${baht(cartTotal())}</span></div><div class="sr"><span>ค่าจัดส่ง</span><span id="checkout-delivery-fee">เลือกตำแหน่งจัดส่ง</span></div><div class="tot"><span>ยอดรวม</span><span id="checkout-total">${baht(cartTotal())}</span></div></div><button class="prim" id="place-order-btn" onclick="placeOrder()">ยืนยันสั่งซื้อ</button>`,'cart');
-  let picked=currentPos&&qgIsValidCoordinate(currentPos.lat,currentPos.lng,true)?{lat:currentPos.lat,lng:currentPos.lng}:null;
-  const showTotal=loc=>{if(!loc||!s)return;const fee=deliveryFeeFor(s,loc);$('checkout-delivery-fee').textContent=baht(fee);$('checkout-total').textContent=baht(cartTotal()+fee)};showTotal(picked);
-  let locationVersion=0;
-  checkoutPicker=initLocationPicker('checkout-pin-map',picked?.lat,picked?.lng,async(lat,lng)=>{picked={lat,lng};showTotal(picked);currentPos={...currentPos,lat,lng};$('co-lat').textContent=lat.toFixed(6);$('co-lng').textContent=lng.toFixed(6);const version=++locationVersion,field=$('delivery-address'),previous=field.value;const t=await qtReverseGeocodeCustomer(lat,lng);if(t&&version===locationVersion&&field.isConnected&&field.value===previous){field.value=t;currentPos.address=t}});
-  window.__checkoutPickedLocation=()=>picked;const picker=checkoutPicker;setTimeout(()=>{if(checkoutPicker===picker)picker.map.invalidateSize()},80);
+function renderCheckout(body,subtotal,fee,disabled=false){layout(`<div class="pt"><button class="back" onclick="history.back()">${ico('back')}</button><h1>ยืนยันคำสั่งซื้อ</h1></div>${body}<div class="sum"><div class="sr"><span>ค่าสินค้า</span><span>${baht(subtotal)}</span></div><div class="sr"><span>ค่าจัดส่ง</span><span id="checkout-delivery-fee">${fee===null?'เลือกตำแหน่งจัดส่ง':baht(fee)}</span></div><div class="tot"><span>ยอดรวม</span><span id="checkout-total">${baht(subtotal+(fee||0))}</span></div></div><button class="prim" id="place-order-btn" onclick="placeOrder()" ${disabled?'disabled':''}>ยืนยันสั่งซื้อ</button>`,'cart')}
+V.checkout=async(_,ticket=routeVersion)=>{
+  const pending=readPendingCheckout();
+  if(pending){const p=pending.body;renderCheckout(`<div class="card" role="status"><b>ตรวจผลคำสั่งซื้อเดิม</b><p>คำขอนี้ยังไม่ได้รับผลยืนยัน กดตรวจผลอีกครั้งเพื่อดำเนินการด้วยรายการและที่อยู่เดิม ระบบจะไม่สร้างออเดอร์ซ้ำ</p><p>${esc(p.p_delivery_address)}</p>${p.p_note?`<p>หมายเหตุ: ${esc(p.p_note)}</p>`:''}</div>`,Number(p.p_expected_subtotal),Number(p.p_expected_delivery_fee));$('place-order-btn').textContent='ตรวจผลคำสั่งซื้อเดิม';return}
+  if(!cart.items.length)return go('cart');const actor=S.get()?.userId,shopId=cart.shopId;
+  const [s,menu]=await Promise.all([loadShopProfile(shopId),loadMenu(shopId)]);if(ticket!==routeVersion||S.get()?.userId!==actor||cart.shopId!==shopId)return;
+  if(!s)throw Error('ไม่พบข้อมูลร้านค้า');if(!Array.isArray(menu))throw Error('ยังโหลดรายการสินค้าไม่ได้');
+  const catalog=new Map(menu.map(p=>[String(p.id),p])),unavailable=[];let changed=false;
+  for(const item of cart.items){const product=catalog.get(String(item.id)),price=Number(product?.delivery_price??product?.price);if(!product||product.available===false||product.delivery_available===false||!Number.isFinite(price)||price<0){unavailable.push(item.name);continue}if(item.price!==price){item.price=price;changed=true}}
+  if(changed)saveCart();
+  renderCheckout(`<div class="card" style="margin-top:0"><b>${esc(s.shop_name||'ร้านค้า')}</b><p class="sm">ชำระเงินสด • ระบบเดลิเวอรี่ QueueGo</p>${changed?'<p role="status">ราคาสินค้ามีการเปลี่ยนแปลง ยอดด้านล่างเป็นราคาล่าสุด กรุณาตรวจสอบก่อนยืนยัน</p>':''}${unavailable.length?`<p role="alert">รายการที่ยังสั่งไม่ได้: ${unavailable.map(esc).join(', ')}</p><button class="lk" onclick="go('cart')">กลับไปแก้ตะกร้า</button>`:''}<div id="checkout-pin-map" class="mapbox" style="height:115px;margin-top:10px"></div><button style="margin-top:10px;padding:7px 11px;width:auto;border:1px solid #d1d5db;border-radius:9px;background:transparent;color:inherit;font-size:12px;font-weight:600" onclick="checkoutPicker&&checkoutPicker.locate()">ใช้ตำแหน่ง GPS ปัจจุบัน</button><div class="dist">Lat: <span id="co-lat">--</span> · Lng: <span id="co-lng">--</span></div><label for="delivery-address">ที่อยู่จัดส่ง</label><textarea class="ta" id="delivery-address" placeholder="ที่อยู่/จุดสังเกตสำหรับจัดส่ง">${esc(currentPos?.address||'')}</textarea><label for="checkout-note">หมายเหตุสำหรับร้าน</label><textarea class="ta" id="checkout-note" maxlength="500" placeholder="รายละเอียดเพิ่มเติมสำหรับร้าน (ถ้ามี)" oninput="setCheckoutNote(this.value)">${esc(cart.note||'')}</textarea></div>`,cartTotal(),null,unavailable.length>0);
+  let picked=currentPos&&qgIsValidCoordinate(currentPos.lat,currentPos.lng,true)?{lat:currentPos.lat,lng:currentPos.lng}:null,locationVersion=0,lastAutoAddress=null;
+  const showTotal=loc=>{if(!loc)return;const fee=deliveryFeeFor(s,loc);$('checkout-delivery-fee').textContent=baht(fee);$('checkout-total').textContent=baht(cartTotal()+fee)};showTotal(picked);
+  checkoutPicker=initLocationPicker('checkout-pin-map',picked?.lat,picked?.lng,async(lat,lng)=>{picked={lat,lng};showTotal(picked);currentPos={...currentPos,lat,lng};$('co-lat').textContent=lat.toFixed(6);$('co-lng').textContent=lng.toFixed(6);const version=++locationVersion,field=$('delivery-address'),previous=field.value;if(previous&&previous!==lastAutoAddress)return;const t=await qtReverseGeocodeCustomer(lat,lng);if(t&&version===locationVersion&&field.isConnected&&field.value===previous){field.value=t;lastAutoAddress=t;currentPos.address=t}});
+  window.__checkoutQuote=()=>!unavailable.length&&picked?{shopId,location:picked,subtotal:cartTotal(),deliveryFee:deliveryFeeFor(s,picked)}:null;
+  const picker=checkoutPicker;setTimeout(()=>{if(checkoutPicker===picker)picker.map.invalidateSize()},80);
 };
-V.order=async(id,ticket=routeVersion)=>{const rows=await db('orders?select=*&id=eq.'+encodeURIComponent(id)+'&limit=1'),o=Array.isArray(rows)&&rows[0];if(ticket!==routeVersion)return;if(!o)return layout('<p class="empty">ไม่พบออเดอร์</p>','orders');const items=await loadOrderItems(id);let pin=null;if(!['completed','cancelled'].includes(o.status))try{pin=await db('rpc/qg_customer_delivery_pin',{method:'POST',body:{p_order_id:id}})}catch(e){}if(ticket!==routeVersion)return;const flow=['pending','accepted','searching_rider','rider_assigned','preparing','ready','picked_up','in_progress','completed'],idx=flow.indexOf(o.status);layout(`<div class="pt"><button class="back" onclick="go('orders')">${ico('back')}</button><h1>#${esc(o.order_number||String(o.id).slice(0,8))}</h1></div><div class="card" style="margin-top:0"><b>${esc(STATUS_LABEL[o.status]||o.status)}</b><div class="statusflow">${flow.map((x,i)=>`<span class="${i<=idx?'on':''}">${esc(STATUS_LABEL[x])}</span>`).join('')}</div><p class="sm">${esc(o.delivery_address||'')}</p>${!['completed','cancelled'].includes(o.status)?`<p><b>รหัสยืนยันรับสินค้า: ${/^\d{6}$/.test(String(pin))?esc(pin):'ยังโหลดรหัสไม่ได้'}</b></p><small>แจ้งรหัสให้ไรเดอร์เมื่อได้รับสินค้าแล้ว</small>${!/^\d{6}$/.test(String(pin))?'<button class="lk" onclick="route()">ลองโหลดรหัสอีกครั้ง</button>':''}`:''}</div><div class="card"><b>รายการสินค้า</b>${(items||[]).map(i=>`<div class="sr"><span>${esc(i.item_name)} × ${i.quantity}</span><span>${baht(i.total_price)}</span></div>`).join('')}<div class="tot"><span>รวม</span><span>${baht(o.total_amount)}</span></div></div>`,'orders')};
+V.order=async(id,ticket=routeVersion)=>{const rows=await db('orders?select=*&id=eq.'+encodeURIComponent(id)+'&limit=1'),o=Array.isArray(rows)&&rows[0];if(ticket!==routeVersion)return;if(!o)return layout('<p class="empty">ไม่พบออเดอร์</p>','orders');const items=await loadOrderItems(id);let pin=null;if(!['completed','cancelled'].includes(o.status))try{pin=await db('rpc/qg_customer_delivery_pin',{method:'POST',body:{p_order_id:id}})}catch(e){}if(ticket!==routeVersion)return;const flow=['pending','accepted','searching_rider','rider_assigned','preparing','ready','picked_up','in_progress','completed'],idx=flow.indexOf(o.status);layout(`<div class="pt"><button class="back" onclick="go('orders')">${ico('back')}</button><h1>#${esc(o.order_number||String(o.id).slice(0,8))}</h1></div><div class="card" style="margin-top:0"><b>${esc(STATUS_LABEL[o.status]||o.status)}</b><div class="statusflow">${flow.map((x,i)=>`<span class="${i<=idx?'on':''}">${esc(STATUS_LABEL[x])}</span>`).join('')}</div><p class="sm">${esc(o.delivery_address||'')}</p><button class="lk" onclick="go('support/${esc(o.id)}')">ติดต่อฝ่ายช่วยเหลือเกี่ยวกับออเดอร์นี้</button>${!['completed','cancelled'].includes(o.status)?`<p><b>รหัสยืนยันรับสินค้า: ${/^\d{6}$/.test(String(pin))?esc(pin):'ยังโหลดรหัสไม่ได้'}</b></p><small>แจ้งรหัสให้ไรเดอร์เมื่อได้รับสินค้าแล้ว</small>${!/^\d{6}$/.test(String(pin))?'<button class="lk" onclick="route()">ลองโหลดรหัสอีกครั้ง</button>':''}`:''}</div><div class="card"><b>รายการสินค้า</b>${(items||[]).map(i=>`<div class="sr"><span>${esc(i.item_name)} × ${i.quantity}</span><span>${baht(i.total_price)}</span></div>`).join('')}<div class="tot"><span>รวม</span><span>${baht(o.total_amount)}</span></div></div>`,'orders')};
 V.orders=async(_,ticket=routeVersion)=>{
   const u=S.get();
   const rows=await db('orders?select=*&customer_id=eq.'+encodeURIComponent(u.userId)+'&order=created_at.desc&limit=30');if(ticket!==routeVersion)return;
   layout(`<div class="pt"><h1>ออเดอร์ของฉัน</h1></div><div class="list">${(rows||[]).length?rows.map(o=>`<div class="oc" onclick="go('order/${esc(o.id)}')"><div class="oh"><span class="on">#${esc(o.order_number||String(o.id).slice(0,6))}</span><span class="sp">${esc(STATUS_LABEL[o.status]||'กำลังดำเนินการ')}</span></div>
 <p>${new Date(o.created_at).toLocaleString('th-TH')}</p><b>${baht(o.total??o.total_amount??o.subtotal)}</b></div>`).join(''):'<p class="empty">ยังไม่มีออเดอร์</p>'}</div>`,'orders');
 };
+const SUPPORT_CATEGORIES={missing_item:'สินค้าไม่ครบ',wrong_item:'สินค้าไม่ตรงรายการ',damaged_food:'สินค้ามีปัญหา',rider:'ติดต่อเกี่ยวกับไรเดอร์',merchant:'ติดต่อเกี่ยวกับร้าน',payment:'การชำระเงิน',other:'เรื่องอื่น ๆ'};
+const SUPPORT_STATUS={OPEN:'รับเรื่องแล้ว',IN_REVIEW:'กำลังตรวจสอบ',WAITING_USER:'รอข้อมูลเพิ่มเติม',RESOLVED:'ดำเนินการแล้ว',REJECTED:'ไม่สามารถดำเนินการได้',CLOSED:'ปิดเรื่องแล้ว'};
+const supportPendingKey=()=>S.get()?.userId?'qg_customer_support_pending_'+S.get().userId:null;
+function readPendingSupport(){try{return JSON.parse(localStorage.getItem(supportPendingKey())||'null')}catch(e){return null}}
+let supportBusy=false;
+V.support=async(orderId,ticket=routeVersion)=>{
+  const u=S.get(),pending=readPendingSupport();
+  const [tickets,orders]=await Promise.all([db('qg_support_tickets?select=id,category,details,status,order_id,created_at,admin_note&user_id=eq.'+encodeURIComponent(u.userId)+'&order=created_at.desc&limit=30'),db('orders?select=id,order_number&customer_id=eq.'+encodeURIComponent(u.userId)+'&order=created_at.desc&limit=30')]);if(ticket!==routeVersion)return;
+  const selected=pending?.p_order_id||orderId||'',category=pending?.p_category||'other';
+  layout(`<div class="pt"><button class="back" onclick="go('profile')">${ico('back')}</button><h1>ติดต่อฝ่ายช่วยเหลือ</h1></div><section class="card"><form id="support-form"><label for="support-order">ออเดอร์ที่เกี่ยวข้อง</label><select class="in" id="support-order" ${pending?'disabled':''}><option value="">เรื่องทั่วไป</option>${selected&&!(orders||[]).some(o=>String(o.id)===String(selected))?`<option value="${esc(selected)}" selected>ออเดอร์ #${esc(String(selected).slice(0,8))}</option>`:''}${(orders||[]).map(o=>`<option value="${esc(o.id)}" ${String(o.id)===String(selected)?'selected':''}>#${esc(o.order_number||String(o.id).slice(0,8))}</option>`).join('')}</select><label for="support-category">เรื่องที่ต้องการความช่วยเหลือ</label><select class="in" id="support-category" ${pending?'disabled':''}>${Object.entries(SUPPORT_CATEGORIES).map(([key,label])=>`<option value="${key}" ${key===category?'selected':''}>${label}</option>`).join('')}</select><label for="support-details">รายละเอียด</label><textarea class="ta" id="support-details" minlength="10" maxlength="2000" required ${pending?'disabled':''} placeholder="บอกปัญหาและข้อมูลที่ช่วยให้ทีมงานตรวจสอบได้">${esc(pending?.p_details||'')}</textarea><p class="sm" id="support-feedback" role="status" aria-live="polite">${pending?'กำลังรอตรวจผลคำขอเดิม กรุณากดตรวจผลอีกครั้ง':''}</p><button class="prim" id="support-send">${pending?'ตรวจผลคำขอเดิม':'ส่งเรื่องให้ทีมงาน'}</button></form></section><section class="card"><div class="sr"><b>เรื่องที่ส่งแล้ว</b><button class="lk" onclick="route()">โหลดสถานะล่าสุด</button></div>${(tickets||[]).length?tickets.map(t=>`<article><p><b>${esc(SUPPORT_CATEGORIES[t.category]||'เรื่องที่แจ้ง')} • ${esc(SUPPORT_STATUS[t.status]||'กำลังดำเนินการ')}</b></p><small>${new Date(t.created_at).toLocaleString('th-TH')}</small><p>${esc(t.details)}</p>${t.admin_note?`<p><b>คำตอบจากทีมงาน</b><br>${esc(t.admin_note)}</p>`:''}</article>`).join(''):'<p class="empty">ยังไม่มีเรื่องที่ส่ง</p>'}</section>`,'');
+  $('support-form').onsubmit=submitSupport;
+};
+async function submitSupport(event){
+  event.preventDefault();if(supportBusy)return;const u=S.get();if(!u)return go('login');
+  const form=event.currentTarget,key=supportPendingKey(),sameActor=()=>S.get()?.userId===u.userId&&S.get()?.authUserId===u.authUserId,feedback=$('support-feedback'),button=$('support-send');
+  let pending=readPendingSupport();if(!pending){const details=$('support-details').value.trim(),category=$('support-category').value;if(details.length<10||details.length>2000||!SUPPORT_CATEGORIES[category]){feedback.textContent='กรุณาเลือกระเภทเรื่องและระบุรายละเอียด 10–2,000 ตัวอักษร';return}pending={p_ticket_id:uuid(),p_order_id:$('support-order').value||null,p_category:category,p_details:details,p_evidence_path:null};}
+  supportBusy=true;button.disabled=true;feedback.textContent='กำลังตรวจสอบและส่งเรื่อง…';
+  try{localStorage.setItem(key,JSON.stringify(pending));for(const field of form.querySelectorAll('input,select,textarea'))field.disabled=true;
+    const accessToken=await token();if(!sameActor())return;
+    const previous=await db('qg_support_tickets?select=id&id=eq.'+encodeURIComponent(pending.p_ticket_id)+'&user_id=eq.'+encodeURIComponent(u.userId)+'&limit=1',{token:accessToken});if(!sameActor())return;
+    const id=previous?.[0]?.id||await db('rpc/qg_create_ticket',{method:'POST',token:accessToken,body:pending});if(id!==pending.p_ticket_id)throw Error('Unconfirmed ticket');localStorage.removeItem(key);
+    if(!sameActor()||!form.isConnected)return;toast('ส่งเรื่องให้ทีมงานแล้ว');route();
+  }catch(e){if(e.status>=400&&e.status<500&&![408,429].includes(e.status)){localStorage.removeItem(key);if(sameActor()&&form.isConnected)for(const field of form.querySelectorAll('input,select,textarea'))field.disabled=false}if(sameActor()&&form.isConnected)feedback.textContent=e.status?'ส่งเรื่องไม่สำเร็จ กรุณาตรวจข้อมูลและลองอีกครั้ง':'ยังไม่ได้รับผลยืนยัน กรุณาตรวจผลคำขอเดิมอีกครั้ง ระบบจะไม่ส่งเรื่องซ้ำ';}
+  finally{supportBusy=false;if(sameActor()&&form.isConnected){button.disabled=false;button.textContent=readPendingSupport()?'ตรวจผลคำขอเดิม':'ส่งเรื่องให้ทีมงาน'}}
+}
 V.profile=()=>{
   const u=S.get()||{};
   layout(`<div class="pf"><div class="av">${ini(u.name)}</div><div><h1>${esc(u.name||'ลูกค้า')}</h1><p>${esc(u.phone||'')}</p><span class="acc">บัญชีลูกค้า</span></div></div>
 <div class="pl"><button class="pw" onclick="go('orders')"><span class="i">${ico('orders')}</span><b>ออเดอร์ของฉัน</b></button>
+<button class="pw" onclick="go('support')"><span class="i">${ico('orders')}</span><b>ติดต่อฝ่ายช่วยเหลือ</b></button>
 <button class="pw" onclick="S.clear();cart=readCart();go('login')"><span class="i">${ico('logout')}</span><b>ออกจากระบบ</b></button></div>`,'');
 };
 /* ===== 7) Cart actions ===== */
 window.add=(sid,pid)=>{
   if(checkoutBusy||readPendingCheckout())return toast('กรุณายืนยันผลคำสั่งซื้อเดิมในหน้าชำระเงินก่อนแก้ตะกร้า');
-  const p=(window._menu||[]).find(x=>String(x.id)===String(pid));if(!p)return;
+  const p=(window._menu||[]).find(x=>String(x.id)===String(pid));if(!p)return;const price=Number(p.delivery_price??p.price);if(!Number.isFinite(price)||price<0)return toast('รายการนี้ยังไม่พร้อมสั่ง');
   if(cart.items.length&&String(cart.shopId)!==String(sid)){if(!confirm('ตะกร้ามีสินค้าจากร้านอื่น ล้างตะกร้าเพื่อสั่งร้านนี้?'))return;cart={shopId:sid,items:[]}}
   cart.shopId=sid;const f=cart.items.find(i=>i.id===p.id);
   if(f?.qty>=99)return toast('เพิ่มได้สูงสุด 99 ชิ้นต่อรายการ');
-  f?f.qty++:cart.items.push({id:p.id,name:p.name,price:Number(p.delivery_price??p.price),image:p.image||'',qty:1});
+  f?f.qty++:cart.items.push({id:p.id,name:p.name,price,image:p.image||'',qty:1});
   saveCart();toast('เพิ่มลงตะกร้าแล้ว');route();
 };
 window.chg=(x,d)=>{if(checkoutBusy||readPendingCheckout())return toast('กรุณายืนยันผลคำสั่งซื้อเดิมก่อนแก้ตะกร้า');if(!Number.isInteger(x)||!cart.items[x]||![1,-1].includes(d))return;if(cart.items[x].qty+d>99)return toast('เพิ่มได้สูงสุด 99 ชิ้นต่อรายการ');cart.items[x].qty+=d;if(cart.items[x].qty<1)cart.items.splice(x,1);if(!cart.items.length)cart.shopId=null;saveCart();route()};
