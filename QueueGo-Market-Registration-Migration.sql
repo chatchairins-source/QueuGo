@@ -253,7 +253,13 @@ begin
    if new.market_membership_status in ('approved','rejected') then
      raise exception 'market membership review is admin-only';
    end if;
-   if new.market_reviewed_by is distinct from old.market_reviewed_by
+   if tg_op='INSERT' then
+     if new.market_reviewed_by is not null
+        or new.market_reviewed_at is not null
+        or new.market_rejection_reason is not null then
+       raise exception 'market review fields are admin-only';
+     end if;
+   elsif new.market_reviewed_by is distinct from old.market_reviewed_by
       or new.market_reviewed_at is distinct from old.market_reviewed_at
       or new.market_rejection_reason is distinct from old.market_rejection_reason then
      raise exception 'market review fields are admin-only';
