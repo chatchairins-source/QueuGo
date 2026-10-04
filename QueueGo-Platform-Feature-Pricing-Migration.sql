@@ -225,11 +225,8 @@ insert into public.queuego_platform_rules(rule_key,value,effective_from,note,cre
 select 'feature.gp','true'::jsonb,'1970-01-01 00:00:00+00','Initial state preserves current GP behavior',null
 where not exists(select 1 from public.queuego_platform_rules where rule_key='feature.gp');
 
-insert into public.queuego_platform_rules(rule_key,value,effective_from,note,created_by)
-select 'pricing.gp_default_rate',
-       to_jsonb(coalesce((select (value->>'default_rate')::numeric from public.system_settings where key='gp'),10::numeric)),
-       '1970-01-01 00:00:00+00','Initial GP rate copied from existing production setting',null
-where not exists(select 1 from public.queuego_platform_rules where rule_key='pricing.gp_default_rate');
+-- Do not seed pricing.gp_default_rate yet: existing Admin writes system_settings.gp.
+-- Once Admin schedules a versioned GP rate, that rule takes precedence without breaking the legacy control.
 
 insert into public.queuego_platform_rules(rule_key,value,effective_from,note,created_by)
 select k,v,'1970-01-01 00:00:00+00',n,null
@@ -277,6 +274,19 @@ as $$
       * public.queuego_rule_numeric('pricing.market_distance_step_fee',10,p_at)
   ,2);
 $$;
+
+create or replace function public.queuego_market_multi_shop_fee(
+  p_shop_count integer
+) returns numeric
+language sql stable
+security invoker
+set search_path to 'public','pg_temp'
+as $
+  select public.queuego_market_multi_shop_fee(p_shop_count,now());
+$;
+
+revoke all on function public.queuego_market_multi_shop_fee(integer) from public;
+grant execute on function public.queuego_market_multi_shop_fee(integer) to anon,authenticated,service_role;
 
 revoke all on function public.queuego_market_multi_shop_fee(integer,timestamptz) from public;
 revoke all on function public.queuego_market_delivery_fee(numeric,timestamptz) from public;
