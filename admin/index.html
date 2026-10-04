@@ -800,6 +800,7 @@ async function qtBackgroundHydrate(opts){
     await qtHydrateDatabase(opts);
     try{ if(typeof qtPullSystemSettings==='function') await qtPullSystemSettings(); }catch(e){ console.warn('system settings pull failed',e); }
     try{ if(typeof qtPullGpRates==='function') await qtPullGpRates(); }catch(e){ console.warn('gp rates pull failed',e); }
+    try{ if(typeof qgPullPlatformRules==='function') await qgPullPlatformRules(); }catch(e){ console.warn('platform rules pull failed',e); }
     ok=true;
   }catch(err){
     console.error('Background hydrate failed:',err);
@@ -1362,7 +1363,7 @@ function renderAdminGovernance(){
       <div id="qt-security-user-list" class="qt-security-user-list"></div>
     </section>
     <section id="qt-sec-audit" class="qt-admin-panel"><div class="qt-user-control-head"><div><h3>🧾 Audit Log</h3><p class="qt-admin-note">ประวัติการทำงานของผู้ดูแลระบบและเหตุการณ์สำคัญ</p></div><button class="btn-secondary" onclick="qtAdminRefreshAuditLog()">🔄 รีเฟรช Audit Log</button></div><div class="card"><div class="qt-audit-table-wrap"><table class="qt-admin-table"><thead><tr><th>ผู้ดำเนินการ</th><th>การทำงาน</th><th>ประเภทข้อมูล</th><th>ID รายการ</th><th>วันและเวลา</th></tr></thead><tbody>${audit.slice(-100).reverse().map(x=>{const actor=users.find(u=>u.id===x.actorId);return `<tr><td>${esc(actor?.name||x.actorId||'-')}<br><small>${esc(x.actorRole||'-')}</small></td><td>${esc(x.action||'-')}</td><td>${esc(x.entityType||'-')}</td><td>${esc(x.entityId||'-')}</td><td>${x.at?new Date(x.at).toLocaleString('th-TH'):'-'}</td></tr>`;}).join('')||'<tr><td colspan="5">ยังไม่มีบันทึก</td></tr>'}</tbody></table></div></div></section>
-    <section id="qt-sec-settings" class="qt-admin-panel"><h3>⚙️ ตั้งค่าระบบ</h3><div class="card"><div class="qt-settings-grid"><label>ค่าจัดส่ง ≤ 5 กม. (บาท)<input id="qt-set-delivery5" type="number" min="0" step="1" value="${qtGetSystemSettings().delivery5}"></label><label>ค่าจัดส่ง ≤ 10 กม. (บาท)<input id="qt-set-delivery10" type="number" min="0" step="1" value="${qtGetSystemSettings().delivery10}"></label><label>รัศมีรับงานไรเดอร์ (กม.)<input id="qt-set-riderRadius" type="number" min="0" step="0.5" value="${qtGetSystemSettings().riderRadius}"></label><label>รัศมีรับงานช่าง (กม.)<input id="qt-set-techRadius" type="number" min="0" step="0.5" value="${qtGetSystemSettings().techRadius}"></label><label>Timeout ออเดอร์ (นาที)<input id="qt-set-orderTimeout" type="number" min="1" step="1" value="${qtGetSystemSettings().orderTimeout}"></label><label>ค่าธรรมเนียมระบบ (%)<input id="qt-set-systemFee" type="number" min="0" max="100" step="0.1" value="${qtGetSystemSettings().systemFee}"></label><label class="qt-settings-toggle">เปิดการแจ้งเตือน <input id="qt-set-notifications" type="checkbox" ${qtGetSystemSettings().notifications?'checked':''}></label></div><div class="row-btns" style="margin-top:14px"><button class="btn-primary" onclick="qtSaveSystemSettings()">💾 บันทึกการตั้งค่า</button></div><p class="qt-admin-note">การตั้งค่านี้บันทึกลงฐานข้อมูลกลางและใช้กับอุปกรณ์ที่เชื่อมต่อระบบ</p></div></section>
+    <section id="qt-sec-settings" class="qt-admin-panel"><h3>⚙️ ตั้งค่าระบบ</h3><div class="card"><div class="qt-settings-grid"><label>ค่าจัดส่ง ≤ 5 กม. (บาท)<input id="qt-set-delivery5" type="number" min="0" step="1" value="${qtGetSystemSettings().delivery5}"></label><label>ค่าจัดส่ง ≤ 10 กม. (บาท)<input id="qt-set-delivery10" type="number" min="0" step="1" value="${qtGetSystemSettings().delivery10}"></label><label>รัศมีรับงานไรเดอร์ (กม.)<input id="qt-set-riderRadius" type="number" min="0" step="0.5" value="${qtGetSystemSettings().riderRadius}"></label><label>รัศมีรับงานช่าง (กม.)<input id="qt-set-techRadius" type="number" min="0" step="0.5" value="${qtGetSystemSettings().techRadius}"></label><label>Timeout ออเดอร์ (นาที)<input id="qt-set-orderTimeout" type="number" min="1" step="1" value="${qtGetSystemSettings().orderTimeout}"></label><label>ค่าธรรมเนียมระบบ (%)<input id="qt-set-systemFee" type="number" min="0" max="100" step="0.1" value="${qtGetSystemSettings().systemFee}"></label><label class="qt-settings-toggle">เปิดการแจ้งเตือน <input id="qt-set-notifications" type="checkbox" ${qtGetSystemSettings().notifications?'checked':''}></label></div><div class="row-btns" style="margin-top:14px"><button class="btn-primary" onclick="qtSaveSystemSettings()">💾 บันทึกการตั้งค่า</button></div><p class="qt-admin-note">การตั้งค่านี้บันทึกลงฐานข้อมูลกลางและใช้กับอุปกรณ์ที่เชื่อมต่อระบบ</p></div><div id="qg-platform-controls" class="card" style="margin-top:14px"><p class="qt-admin-note">กำลังโหลดสวิตช์ระบบและราคา…</p></div></section>
   </div>`);
   window.qtAdminTab=function(id){
     try{sessionStorage.setItem('qt_admin_active_tab',id);}catch(e){}
@@ -1370,6 +1371,7 @@ function renderAdminGovernance(){
     document.querySelectorAll('.qt-admin-tab').forEach(x=>x.classList.toggle('active',x.dataset.target===id));
     try{if(id==='qt-sec-delivery'&&typeof qtRenderAdminRiderPresence==='function')qtRenderAdminRiderPresence();}catch(e){}
     try{if(id==='qt-sec-security'&&typeof qtRenderSecurityUsers==='function')qtRenderSecurityUsers();}catch(e){}
+    try{if(id==='qt-sec-settings'&&typeof qgRenderPlatformControls==='function')qgRenderPlatformControls();}catch(e){console.warn('platform controls render failed',e)}
 
 const picker=document.getElementById('qg-admin-section-picker');if(picker&&[...picker.options].some(o=>o.value===id))picker.value=id;
 };
@@ -2602,6 +2604,140 @@ body:has(.qg-v23-admin-login),body:has(.qg-v23-admin-denied){padding:0}
 html,body{width:100%;max-width:100%}
 body{overflow-y:auto;-webkit-overflow-scrolling:touch;touch-action:pan-y}
 #app{width:100%;max-width:100%;min-height:100dvh;overflow:visible;touch-action:auto}
+</style>
+
+<script id="qg-platform-controls-v1">
+(function(){
+  const RULE_DEFAULTS={
+    'feature.market_multi_shop':true,
+    'feature.route_bundle':false,
+    'feature.laundry':false,
+    'feature.gp':true,
+    'pricing.gp_default_rate':10,
+    'pricing.market_base_fee':30,
+    'pricing.market_second_shop_fee':10,
+    'pricing.market_additional_shop_fee':5,
+    'route_bundle.max_detour_km':1.5,
+    'route_bundle.max_delay_minutes':10,
+    'route_bundle.max_orders':2,
+    'route_bundle.min_rider_extra_fee':10
+  };
+  window.QG_PLATFORM_RULE_ROWS=window.QG_PLATFORM_RULE_ROWS||[];
+
+  function valueOf(row){
+    const v=row&&row.value;
+    if(typeof v==='boolean'||typeof v==='number')return v;
+    if(typeof v==='string'){
+      if(v==='true')return true;if(v==='false')return false;
+      const n=Number(v);return Number.isFinite(n)?n:v;
+    }
+    return v;
+  }
+  function activeMap(rows){
+    const now=Date.now(),out={};
+    (rows||[]).slice().sort((a,b)=>new Date(b.effective_from)-new Date(a.effective_from)).forEach(r=>{
+      if(out[r.rule_key]!==undefined)return;
+      if(new Date(r.effective_from).getTime()<=now)out[r.rule_key]=valueOf(r);
+    });
+    return out;
+  }
+  function getActive(key){
+    const a=activeMap(window.QG_PLATFORM_RULE_ROWS);
+    if(a[key]!==undefined)return a[key];
+    if(key==='pricing.gp_default_rate'){
+      const d=Number(window.QT_GP_DEFAULT_RATE);
+      if(Number.isFinite(d))return d;
+    }
+    return RULE_DEFAULTS[key];
+  }
+  function bangkokNowInput(){
+    return new Date(Date.now()+7*60*60*1000).toISOString().slice(0,16);
+  }
+  function bangkokLocalToIso(v){
+    const s=String(v||'').trim();
+    if(!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(s))throw Error('กรุณาระบุวันและเวลาที่เริ่มใช้');
+    const d=new Date(s+':00+07:00');
+    if(!Number.isFinite(d.getTime()))throw Error('วัน/เวลาไม่ถูกต้อง');
+    return d.toISOString();
+  }
+  function num(id,min,max){
+    const n=Number(document.getElementById(id)?.value);
+    if(!Number.isFinite(n)||n<min||(max!==undefined&&n>max))throw Error('ค่าที่กรอกไม่ถูกต้อง: '+id);
+    return n;
+  }
+  function checked(id){return !!document.getElementById(id)?.checked}
+
+  window.qgPullPlatformRules=async function(){
+    const token=await qtGetAccessToken();if(!token)return [];
+    const rows=await qtSupabaseTable('queuego_platform_rules?select=rule_key,value,effective_from,note,created_at&order=effective_from.desc',{accessToken:token});
+    window.QG_PLATFORM_RULE_ROWS=Array.isArray(rows)?rows:[];
+    return window.QG_PLATFORM_RULE_ROWS;
+  };
+
+  window.qgRenderPlatformControls=async function(force=false){
+    const el=document.getElementById('qg-platform-controls');if(!el)return;
+    if(force||!window.QG_PLATFORM_RULE_ROWS.length){
+      el.innerHTML='<p class="qt-admin-note">กำลังโหลดสวิตช์ระบบและราคา…</p>';
+      try{await qgPullPlatformRules()}catch(e){el.innerHTML='<p class="qt-admin-note">โหลดการตั้งค่าไม่สำเร็จ: '+escapeHtml(String(e.message||e))+'</p>';return}
+      if(!el.isConnected)return;
+    }
+    const future=(window.QG_PLATFORM_RULE_ROWS||[]).filter(r=>new Date(r.effective_from).getTime()>Date.now()).sort((a,b)=>new Date(a.effective_from)-new Date(b.effective_from));
+    const next=future[0];
+    el.innerHTML=
+      '<h3>🎛️ เปิด/ปิดฟีเจอร์และราคา</h3>'+
+      '<p class="qt-admin-note">ค่าด้านล่างเป็นค่าที่มีผลกับออเดอร์ใหม่เท่านั้น ออเดอร์ที่สร้างแล้วใช้ราคาที่บันทึกไว้เดิม</p>'+
+      '<div class="qt-settings-grid">'+
+        '<label class="qt-settings-toggle">ตลาดสดซื้อหลายร้าน <input id="qg-feature-market" type="checkbox" '+(getActive('feature.market_multi_shop')?'checked':'')+'></label>'+
+        '<label class="qt-settings-toggle">งานพ่วง Route Bundle <input id="qg-feature-bundle" type="checkbox" '+(getActive('feature.route_bundle')?'checked':'')+'></label>'+
+        '<label class="qt-settings-toggle">ฝากซัก <input id="qg-feature-laundry" type="checkbox" '+(getActive('feature.laundry')?'checked':'')+'></label>'+
+        '<label class="qt-settings-toggle">คิด GP <input id="qg-feature-gp" type="checkbox" '+(getActive('feature.gp')?'checked':'')+'></label>'+
+        '<label>GP มาตรฐาน (%)<input id="qg-price-gp" type="number" min="0" max="100" step="0.1" value="'+getActive('pricing.gp_default_rate')+'"></label>'+
+        '<label>ค่ารอบพื้นฐานตลาดสด (บาท)<input id="qg-price-market-base" type="number" min="0" step="1" value="'+getActive('pricing.market_base_fee')+'"></label>'+
+        '<label>ร้านที่ 2 เพิ่ม (บาท)<input id="qg-price-market-second" type="number" min="0" step="1" value="'+getActive('pricing.market_second_shop_fee')+'"></label>'+
+        '<label>ร้านที่ 3 เป็นต้นไป / ร้าน (บาท)<input id="qg-price-market-next" type="number" min="0" step="1" value="'+getActive('pricing.market_additional_shop_fee')+'"></label>'+
+        '<label>งานพ่วง: อ้อมได้สูงสุด (กม.)<input id="qg-bundle-detour" type="number" min="0" max="50" step="0.1" value="'+getActive('route_bundle.max_detour_km')+'"></label>'+
+        '<label>งานพ่วง: ช้าเพิ่มสูงสุด (นาที)<input id="qg-bundle-delay" type="number" min="0" max="240" step="1" value="'+getActive('route_bundle.max_delay_minutes')+'"></label>'+
+        '<label>งานพ่วงพร้อมกันสูงสุด<input id="qg-bundle-max" type="number" min="1" max="5" step="1" value="'+getActive('route_bundle.max_orders')+'"></label>'+
+        '<label>รายรับ Rider เพิ่มขั้นต่ำ (บาท)<input id="qg-bundle-rider-min" type="number" min="0" max="5000" step="1" value="'+getActive('route_bundle.min_rider_extra_fee')+'"></label>'+
+        '<label>เริ่มมีผล (เวลาไทย)<input id="qg-platform-effective" type="datetime-local" value="'+bangkokNowInput()+'"></label>'+
+      '</div>'+
+      '<div class="row-btns" style="margin-top:14px"><button class="btn-primary" type="button" onclick="qgSavePlatformRules()">💾 บันทึก / ตั้งเวลามีผล</button><button class="btn-secondary" type="button" onclick="qgRenderPlatformControls(true)">🔄 โหลดค่าล่าสุด</button></div>'+
+      '<p class="qt-admin-note">'+(next?'มีค่าที่ตั้งล่วงหน้า เริ่ม '+new Date(next.effective_from).toLocaleString('th-TH',{timeZone:'Asia/Bangkok'})+' เป็นต้นไป':'ยังไม่มีค่าที่ตั้งล่วงหน้า')+'</p>';
+  };
+
+  window.qgSavePlatformRules=async function(){
+    const admin=typeof qtAdminOnly==='function'?qtAdminOnly():null;if(!admin)return;
+    try{
+      const effective=bangkokLocalToIso(document.getElementById('qg-platform-effective')?.value);
+      const rows=[
+        {rule_key:'feature.market_multi_shop',value:checked('qg-feature-market')},
+        {rule_key:'feature.route_bundle',value:checked('qg-feature-bundle')},
+        {rule_key:'feature.laundry',value:checked('qg-feature-laundry')},
+        {rule_key:'feature.gp',value:checked('qg-feature-gp')},
+        {rule_key:'pricing.gp_default_rate',value:num('qg-price-gp',0,100)},
+        {rule_key:'pricing.market_base_fee',value:num('qg-price-market-base',0,5000)},
+        {rule_key:'pricing.market_second_shop_fee',value:num('qg-price-market-second',0,5000)},
+        {rule_key:'pricing.market_additional_shop_fee',value:num('qg-price-market-next',0,5000)},
+        {rule_key:'route_bundle.max_detour_km',value:num('qg-bundle-detour',0,50)},
+        {rule_key:'route_bundle.max_delay_minutes',value:num('qg-bundle-delay',0,240)},
+        {rule_key:'route_bundle.max_orders',value:num('qg-bundle-max',1,5)},
+        {rule_key:'route_bundle.min_rider_extra_fee',value:num('qg-bundle-rider-min',0,5000)}
+      ].map(r=>({...r,effective_from:effective,note:'Admin platform control'}));
+      if(!Number.isInteger(rows.find(r=>r.rule_key==='route_bundle.max_orders').value))throw Error('จำนวนงานพ่วงสูงสุดต้องเป็นจำนวนเต็ม');
+      const token=await qtGetAccessToken();if(!token)throw Error('กรุณาเข้าสู่ระบบใหม่');
+      await qtSupabaseTable('queuego_platform_rules?on_conflict=rule_key,effective_from',{method:'POST',accessToken:token,body:rows});
+      try{qtAudit('platform_rules_update',{entityType:'system_settings',entityId:'queuego_platform_rules',effectiveFrom:effective,rules:rows.map(r=>({key:r.rule_key,value:r.value}))})}catch(e){}
+      await qgPullPlatformRules();
+      toast(new Date(effective).getTime()>Date.now()+30000?'ตั้งค่าล่วงหน้าแล้ว':'บันทึกการตั้งค่าแล้ว');
+      await qgRenderPlatformControls(false);
+    }catch(e){console.error(e);toast('บันทึกไม่สำเร็จ: '+String(e.message||e).slice(0,100))}
+  };
+})();
+</script>
+<style id="qg-platform-controls-style">
+#qg-platform-controls h3{margin:0 0 6px}
+#qg-platform-controls .qt-settings-toggle{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:48px}
+#qg-platform-controls .qt-settings-toggle input{width:22px;height:22px}
 </style>
 </body>
 </html>

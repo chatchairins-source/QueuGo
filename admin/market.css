@@ -1,1 +1,20 @@
-.qg-market-admin-link{display:block;margin:10px;padding:12px 16px;background:#e6092f;color:#fff;border:0;border-radius:12px;font-weight:700}.qg-admin-market{max-width:750px;margin:20px auto;padding:18px}.qg-admin-market article{padding:12px;border-bottom:1px solid #e8e8e8}.qg-admin-market article button{margin:6px 6px 0 0;padding:8px;background:#fff;border:1px solid #ddd;border-radius:9px}.qg-admin-market h1{font-size:24px}.qg-admin-market h2{font-size:18px;margin-top:25px}
+.qg-market-admin-link{display:block;margin:10px;padding:12px 16px;background:#e6092f;color:#fff;border:0;border-radius:12px;font-weight:700}
+.qg-admin-market{max-width:900px;margin:20px auto;padding:18px}
+.qg-admin-market article{padding:12px;border-bottom:1px solid #e8e8e8}
+.qg-admin-market article button{margin:6px 6px 0 0;padding:8px;background:#fff;border:1px solid #ddd;border-radius:9px}
+.qg-admin-market h1{font-size:24px}
+.qg-admin-market h2{font-size:18px;margin:0 0 14px}
+.qg-admin-market h3{font-size:17px;margin:0 0 13px}
+.qg-admin-back{border:0;background:#f1f2f4;border-radius:10px;padding:9px 12px;font-weight:700}
+.qg-admin-control-card{margin:14px 0;padding:16px;border:1px solid #e5e7eb;border-radius:16px;background:#fff}
+.qg-admin-control-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;align-items:start}
+.qg-admin-switches label{display:flex;align-items:center;justify-content:space-between;gap:18px;padding:12px 0;border-bottom:1px solid #eee}
+.qg-admin-switches label:last-of-type{border-bottom:0}
+.qg-admin-switches label span{display:flex;flex-direction:column;gap:3px}
+.qg-admin-switches small,.qg-admin-control-card small{color:#6b7280;line-height:1.45}
+.qg-admin-switches input[type=checkbox]{width:46px;height:24px;accent-color:#e6092f;flex:none}
+.qg-admin-field{display:flex;flex-direction:column;gap:6px;margin:10px 0;font-size:13px;font-weight:700}
+.qg-admin-field input{width:100%;min-width:0;height:42px;border:1px solid #d9dde3;border-radius:10px;padding:0 11px;background:#fff;font:inherit}
+.qg-admin-save{width:100%;border:0;border-radius:11px;background:#e6092f;color:#fff;font-weight:800;padding:11px 13px;margin-top:10px}
+.qg-admin-scheduled{margin:8px 0;padding:9px 10px;border-radius:10px;background:#fff5d9;color:#705500;font-size:12px}
+@media(max-width:760px){.qg-admin-market{margin:8px auto;padding:12px}.qg-admin-control-grid{grid-template-columns:1fr}.qg-admin-switches label{align-items:flex-start}}

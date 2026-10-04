@@ -1,9 +1,100 @@
-/* Admin Market vehicle approval and order trace; read and write via authenticated RLS/RPC. */
+/* QueueGo Admin Market operations. Platform feature/pricing controls live in Admin > ตั้งค่าระบบ. */
 (()=>{
 'use strict';
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const admin=()=>currentUser()?.type==='admin'&&currentUser()?.status==='approved';
 async function api(path){return qtSupabaseTable(path,{accessToken:await qtGetAccessToken()})}
-window.renderAdminMarket=async()=>{if(!admin())return navigate('login');layout('ตลาดสด',`<section class="card qg-admin-market"><button onclick="navigate('admin')">‹ ศูนย์ควบคุม</button><h1>ตลาดสดและรถรับงาน</h1><p>ความจุรถที่ผ่านการตรวจสอบจะถูกบังคับตอนแสดงงานและกดรับงาน</p><div id="qg-market-admin">กำลังโหลดข้อมูลจริง...</div></section>`);const el=document.getElementById('qg-market-admin');try{const [riders,orders]=await Promise.all([api('rider_profiles?select=id,rider_name,vehicle_type,vehicle_plate,vehicle_status,vehicle_capacity_kg,vehicle_verified_at,status,metadata&status=eq.active&order=created_at.desc&limit=100'),api('orders?select=id,order_number,status,fulfillment_vertical,subtotal,total_amount,created_at&fulfillment_vertical=in.(market,grocery)&order=created_at.desc&limit=50')]);if(!el.isConnected)return;el.innerHTML=`<h2>รถและความจุ</h2>${(riders||[]).map(r=>`<article><b>${esc(r.rider_name||'ไรเดอร์')}</b> · ${esc(r.vehicle_type)} · ${esc(r.vehicle_plate||'')}<br><small>สถานะ ${esc(r.vehicle_status)} · ยืนยัน ${Number(r.vehicle_capacity_kg||0)} กก. · ขอ ${esc(r.metadata?.requestedCapacityKg||'-')} กก.</small><div><button onclick="qgAdminVehicle('${r.id}','active',${Number(r.vehicle_capacity_kg||r.metadata?.requestedCapacityKg||20)})">ตรวจและอนุมัติความจุ</button><button onclick="qgAdminVehicle('${r.id}','suspended',0)">ระงับรถ</button></div></article>`).join('')||'<p>ยังไม่มีไรเดอร์ที่เปิดใช้งาน</p>'}<h2>ออเดอร์ตลาดล่าสุด</h2>${(orders||[]).map(o=>`<article><b>${esc(o.order_number||o.id)}</b> · ${esc(o.fulfillment_vertical)} · ${esc(o.status)} · ${Number(o.total_amount||0).toLocaleString('th-TH')} ฿</article>`).join('')||'<p>ยังไม่มีออเดอร์ตลาด</p>'}`;}catch(e){if(el.isConnected)el.textContent='โหลดข้อมูลไม่ได้: '+e.message}};
-window.qgAdminVehicle=async(id,status,suggested)=>{if(!admin())return;const capacity=status==='active'?Number(prompt('ความจุที่ตรวจจากเอกสารรถ (กก.)',String(suggested||''))):null;if(status==='active'&&(!Number.isFinite(capacity)||capacity<=0||capacity>1000))return toast('ความจุไม่ถูกต้อง');if(!confirm(status==='active'?'ยืนยันว่าได้ตรวจรถและความจุแล้ว?':'ระงับรถคันนี้จากงานตลาด?'))return;try{await qtSupabaseRpc('market_verify_rider_vehicle',{p_rider:id,p_capacity:capacity,p_status:status});toast('บันทึกสถานะรถแล้ว');renderAdminMarket()}catch(e){toast('บันทึกไม่ได้: '+e.message)}};
+window.renderAdminMarket=async()=>{
+  if(!admin())return navigate('login');
+  layout('ตลาดสด',`<section class="card qg-admin-market">
+    <button class="qg-admin-back" onclick="navigate('admin')">‹ ศูนย์ควบคุม</button>
+    <h1>ตลาดสดและรถรับงาน</h1>
+    <p>อนุมัติสมาชิกตลาด ตรวจรถ และติดตามออเดอร์ตลาดจากข้อมูล Supabase จริง</p>
+    <div class="row-btns"><button class="btn-secondary" type="button" onclick="qtAdminTab&&navigate('admin')">ตั้งค่า Feature / ราคา อยู่ใน Admin › ตั้งค่าระบบ</button></div>
+    <div id="qg-market-admin">กำลังโหลดข้อมูลจริง...</div>
+  </section>`);
+  await qgLoadMarketOperations();
+};
+window.qgLoadMarketOperations=async()=>{
+  const el=document.getElementById('qg-market-admin');if(!el||!admin())return;
+  try{
+    const [memberships,markets,riders,orders,requests]=await Promise.all([
+      api('shop_profiles?select=id,shop_name,market_id,market_membership_status,market_stall_no,market_zone,market_suggested_distance_km,address,status,markets:market_id(name)&market_membership_status=eq.pending&order=updated_at.asc&limit=100'),
+      api('markets?select=id,name,province,district,subdistrict,verified,active,latitude,longitude,assignment_radius_km&order=province.asc,name.asc'),
+      api('rider_profiles?select=id,rider_name,vehicle_type,vehicle_plate,vehicle_status,vehicle_capacity_kg,vehicle_verified_at,status,metadata&status=eq.active&order=created_at.desc&limit=100'),
+      api('orders?select=id,order_number,status,fulfillment_vertical,subtotal,total_amount,market_order_id,created_at&market_order_id=not.is.null&order=created_at.desc&limit=50'),
+      api('market_requests?select=id,requested_name,province,district,subdistrict,address,latitude,longitude,status,note,created_at&status=eq.pending&order=created_at.asc&limit=50').catch(()=>[])
+    ]);
+    if(!el.isConnected)return;
+    el.innerHTML=`
+      <h2>รออนุมัติสมาชิกตลาด</h2>
+      ${(memberships||[]).map(s=>`<article>
+        <b>${esc(s.shop_name||'ร้านค้า')}</b> · ${esc(s.markets?.name||'ตลาด')}
+        <br><small>แผง ${esc(s.market_stall_no||'-')} · โซน ${esc(s.market_zone||'-')} · ระยะจากตลาด ${Number(s.market_suggested_distance_km||0).toFixed(2)} กม.</small>
+        <div><button onclick="qgAdminReviewMarket('${s.id}',true)">อนุมัติ</button><button onclick="qgAdminReviewMarket('${s.id}',false)">ปฏิเสธ</button></div>
+      </article>`).join('')||'<p>ไม่มีร้านรออนุมัติ</p>'}
+      <h2>คำขอเพิ่มตลาดใหม่</h2>
+      ${(requests||[]).map(r=>`<article><b>${esc(r.requested_name)}</b> · ${esc(r.subdistrict||'')} ${esc(r.district||'')} ${esc(r.province||'')}<br><small>${esc(r.address||'')} · ${Number.isFinite(Number(r.latitude))&&Number.isFinite(Number(r.longitude))?Number(r.latitude).toFixed(5)+', '+Number(r.longitude).toFixed(5):'ไม่มีพิกัด'} · ส่งคำขอ ${new Date(r.created_at).toLocaleString('th-TH')}</small><div><button onclick="qgAdminReviewMarketRequest('${r.id}',true)">อนุมัติและเพิ่มตลาด</button><button onclick="qgAdminReviewMarketRequest('${r.id}',false)">ปฏิเสธ</button></div></article>`).join('')||'<p>ไม่มีคำขอเพิ่มตลาดใหม่</p>'}
+      <h2>ตลาดในระบบ</h2>
+      ${(markets||[]).map(m=>`<article><b>${esc(m.name)}</b> · ${esc(m.subdistrict||'')} ${esc(m.district||'')} ${esc(m.province||'')}<br><small>${m.verified?'ยืนยันพิกัดแล้ว':'รอตรวจพิกัด'} · รัศมี ${Number(m.assignment_radius_km||0).toFixed(1)} กม. · ${m.latitude==null||m.longitude==null?'ยังไม่มีพิกัด':Number(m.latitude).toFixed(5)+', '+Number(m.longitude).toFixed(5)}</small></article>`).join('')||'<p>ยังไม่มีตลาด</p>'}
+      <h2>รถและความจุ</h2>
+      ${(riders||[]).map(r=>`<article><b>${esc(r.rider_name||'ไรเดอร์')}</b> · ${esc(r.vehicle_type||'-')} · ${esc(r.vehicle_plate||'')}<br><small>สถานะ ${esc(r.vehicle_status||'-')} · ยืนยัน ${Number(r.vehicle_capacity_kg||0)} กก. · ขอ ${esc(r.metadata?.requestedCapacityKg||'-')} กก.</small><div><button onclick="qgAdminVehicle('${r.id}','active',${Number(r.vehicle_capacity_kg||r.metadata?.requestedCapacityKg||20)})">ตรวจและอนุมัติความจุ</button><button onclick="qgAdminVehicle('${r.id}','suspended',0)">ระงับรถ</button></div></article>`).join('')||'<p>ยังไม่มีไรเดอร์ที่เปิดใช้งาน</p>'}
+      <h2>ออเดอร์ตลาดล่าสุด</h2>
+      ${(orders||[]).map(o=>`<article><b>${esc(o.order_number||o.id)}</b> · ${esc(o.status)} · ${Number(o.total_amount||0).toLocaleString('th-TH')} ฿</article>`).join('')||'<p>ยังไม่มีออเดอร์ตลาด</p>'}`;
+  }catch(e){if(el.isConnected)el.textContent='โหลดข้อมูลไม่ได้: '+e.message}
+};
+window.qgAdminReviewMarket=async(shopId,approve)=>{
+  if(!admin())return;
+  let reason=null;
+  if(!approve){
+    reason=prompt('เหตุผลที่ปฏิเสธการเข้าตลาด');
+    if(reason===null)return;
+    reason=reason.trim();
+    if(!reason)return toast('กรุณาระบุเหตุผล');
+  }
+  if(!confirm(approve?'อนุมัติร้านนี้เข้าตลาด?':'ยืนยันปฏิเสธคำขอเข้าตลาด?'))return;
+  try{
+    await qtSupabaseRpc('queuego_admin_review_market_membership',{p_shop_id:shopId,p_approve:!!approve,p_reason:reason});
+    toast(approve?'อนุมัติสมาชิกตลาดแล้ว':'ปฏิเสธคำขอแล้ว');
+    await qgLoadMarketOperations();
+  }catch(e){toast('บันทึกไม่ได้: '+e.message)}
+};
+window.qgAdminReviewMarketRequest=async(requestId,approve)=>{
+  if(!admin())return;
+  let reason=null,radius=2;
+  if(approve){
+    const raw=prompt('รัศมีที่ยอมรับให้ร้านในตลาดนี้สมัครได้ (กม.)','2');
+    if(raw===null)return;
+    radius=Number(raw);
+    if(!Number.isFinite(radius)||radius<0.1||radius>10)return toast('รัศมีต้องอยู่ระหว่าง 0.1-10 กม.');
+    if(!confirm('ยืนยันเพิ่มตลาดนี้เข้าระบบ? พิกัดจะยังมีสถานะรอตรวจจนกว่า Admin ยืนยันความถูกต้อง'))return;
+  }else{
+    reason=prompt('เหตุผลที่ปฏิเสธคำขอเพิ่มตลาด');
+    if(reason===null)return;
+    reason=reason.trim();
+    if(reason.length<2)return toast('กรุณาระบุเหตุผล');
+  }
+  try{
+    const result=await qtSupabaseRpc('queuego_admin_review_market_request',{
+      p_request_id:requestId,
+      p_approve:!!approve,
+      p_reason:reason,
+      p_assignment_radius_km:radius
+    });
+    toast(approve?'เพิ่มตลาดแล้ว ร้านผู้ขอจะเข้าสู่คิวตรวจสมาชิกตลาด':'ปฏิเสธคำขอเพิ่มตลาดแล้ว');
+    await qgLoadMarketOperations();
+    return result;
+  }catch(e){toast('บันทึกไม่ได้: '+String(e.message||e).slice(0,130))}
+};
+window.qgAdminVehicle=async(id,status,suggested)=>{
+  if(!admin())return;
+  const capacity=status==='active'?Number(prompt('ความจุที่ตรวจจากเอกสารรถ (กก.)',String(suggested||''))):null;
+  if(status==='active'&&(!Number.isFinite(capacity)||capacity<=0||capacity>1000))return toast('ความจุไม่ถูกต้อง');
+  if(!confirm(status==='active'?'ยืนยันว่าได้ตรวจรถและความจุแล้ว?':'ระงับรถคันนี้จากงานตลาด?'))return;
+  try{
+    await qtSupabaseRpc('market_verify_rider_vehicle',{p_rider:id,p_capacity:capacity,p_status:status});
+    toast('บันทึกสถานะรถแล้ว');
+    await qgLoadMarketOperations();
+  }catch(e){toast('บันทึกไม่ได้: '+e.message)}
+};
 })();
