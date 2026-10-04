@@ -2618,7 +2618,8 @@ body{overflow-y:auto;-webkit-overflow-scrolling:touch;touch-action:pan-y}
     'pricing.market_additional_shop_fee':5,
     'route_bundle.max_detour_km':1.5,
     'route_bundle.max_delay_minutes':10,
-    'route_bundle.max_orders':2
+    'route_bundle.max_orders':2,
+    'route_bundle.min_rider_extra_fee':10
   };
   window.QG_PLATFORM_RULE_ROWS=window.QG_PLATFORM_RULE_ROWS||[];
 
@@ -2694,7 +2695,7 @@ body{overflow-y:auto;-webkit-overflow-scrolling:touch;touch-action:pan-y}
         '<label>ร้านที่ 3 เป็นต้นไป / ร้าน (บาท)<input id="qg-price-market-next" type="number" min="0" step="1" value="'+getActive('pricing.market_additional_shop_fee')+'"></label>'+
         '<label>งานพ่วง: อ้อมได้สูงสุด (กม.)<input id="qg-bundle-detour" type="number" min="0" max="50" step="0.1" value="'+getActive('route_bundle.max_detour_km')+'"></label>'+
         '<label>งานพ่วง: ช้าเพิ่มสูงสุด (นาที)<input id="qg-bundle-delay" type="number" min="0" max="240" step="1" value="'+getActive('route_bundle.max_delay_minutes')+'"></label>'+
-        '<label>งานพ่วงพร้อมกันสูงสุด<input id="qg-bundle-max" type="number" min="1" max="5" step="1" value="'+getActive('route_bundle.max_orders')+'"></label>'+
+        '<label>งานพ่วงพร้อมกันสูงสุด<input id="qg-bundle-max" type="number" min="1" max="5" step="1" value="'+getActive('route_bundle.max_orders')+'"></label>'+\n        '<label>รายรับ Rider เพิ่มขั้นต่ำ (บาท)<input id="qg-bundle-rider-min" type="number" min="0" max="5000" step="1" value="'+getActive('route_bundle.min_rider_extra_fee')+'"></label>'+
         '<label>เริ่มมีผล (เวลาไทย)<input id="qg-platform-effective" type="datetime-local" value="'+bangkokNowInput()+'"></label>'+
       '</div>'+
       '<div class="row-btns" style="margin-top:14px"><button class="btn-primary" type="button" onclick="qgSavePlatformRules()">💾 บันทึก / ตั้งเวลามีผล</button><button class="btn-secondary" type="button" onclick="qgRenderPlatformControls(true)">🔄 โหลดค่าล่าสุด</button></div>'+
@@ -2715,7 +2716,8 @@ body{overflow-y:auto;-webkit-overflow-scrolling:touch;touch-action:pan-y}
         {rule_key:'pricing.market_additional_shop_fee',value:num('qg-price-market-next',0,5000)},
         {rule_key:'route_bundle.max_detour_km',value:num('qg-bundle-detour',0,50)},
         {rule_key:'route_bundle.max_delay_minutes',value:num('qg-bundle-delay',0,240)},
-        {rule_key:'route_bundle.max_orders',value:num('qg-bundle-max',1,5)}
+        {rule_key:'route_bundle.max_orders',value:num('qg-bundle-max',1,5)},
+        {rule_key:'route_bundle.min_rider_extra_fee',value:num('qg-bundle-rider-min',0,5000)}
       ].map(r=>({...r,effective_from:effective,note:'Admin platform control'}));
       if(!Number.isInteger(rows.find(r=>r.rule_key==='route_bundle.max_orders').value))throw Error('จำนวนงานพ่วงสูงสุดต้องเป็นจำนวนเต็ม');
       const token=await qtGetAccessToken();if(!token)throw Error('กรุณาเข้าสู่ระบบใหม่');
