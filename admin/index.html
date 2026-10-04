@@ -1441,19 +1441,17 @@ window.addEventListener('pageshow', ()=>{
 function qtSyncHash(str){ let h=5381; for(let i=0;i<str.length;i++){ h=((h<<5)+h+str.charCodeAt(i))|0; } return h; }
 function qtSyncSignature(){
   const me=currentUser();
-  const main=qtSyncHash(JSON.stringify([me&&me.status,dbGet('qt_orders',[]),dbGet('qt_techjobs',[]),dbGet('qt_notifications',[])]));
+  const main=qtSyncHash(JSON.stringify([me&&me.status,...['qt_users','qt_orders','qt_techjobs','qt_notifications','qt_products','qt_promotions','qt_settlements','qt_order_audit'].map(key=>dbGet(key,[]))]));
   const chat=qtSyncHash(JSON.stringify(Object.keys(QT_DB_CACHE).filter(k=>k.startsWith('qt_order_chat_')&&!k.endsWith('_deleteAt')).sort().map(k=>[k,(QT_DB_CACHE[k]||[]).length])));
   return {main,chat};
 }
 function qtSyncRerender(before,after){
   const user=currentUser(); if(!user) return;
-  const parts=(location.hash.replace('#','')||'home').split('/'); const name=parts[0], param=parts[1];
-  if(name==='approval-pending' && isApproved(user)){ toast('บัญชีของคุณได้รับการอนุมัติแล้ว'); navigate('dashboard'); return; }
+  const name=(location.hash.replace('#','')||'home').split('/')[0];
   const a=document.activeElement;
   if(a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)) return; /* never interrupt typing */
-  if(name==='order' && before.main===after.main && after.chat!==before.chat){ try{ renderOrderChatArea(param); }catch(e){} return; }
   if(before.main===after.main) return;
-  const safe=['dashboard','orders','shop-orders','order','rider-jobs','technician-jobs','technician-job','notifications','admin','admin-orders','admin-gp','admin-cash','admin-support','admin-gp-rates','shop-settlement'];
+  const safe=['notifications','admin','admin-orders','admin-gp','admin-cash','admin-support','admin-gp-rates'];
   if(!safe.includes(name)) return;
   const typed=[].slice.call(document.querySelectorAll('#app textarea, #app input:not([type=checkbox]):not([type=radio]):not([type=file]):not([type=hidden])')).some(el=>String(el.value||'').trim());
   if(typed) return;
@@ -2170,86 +2168,49 @@ window.addEventListener('unhandledrejection',e=>{
 
 
 <script id="qt-real-time-v1">
-/* QueueGo Real-time v1
-   - Uses Supabase Realtime (WebSocket) instead of page refresh/polling.
-   - Rehydrates only after database events; the page itself is never refreshed.
-   - If Realtime is unavailable, the existing background sync remains as fallback.
-*/
-(function(){
-  let client=null, channel=null, loading=false, queued=false, retry=0;
-  const TABLES=['users','shop_profiles','technician_profiles','rider_profiles','products','orders','order_items','deliveries','payments','notifications','order_chat_messages','quotations','promotions','settlements','audit_logs','order_audit'];
-
-  function currentPageNeedsRender(){
-    try{
-      const p=(location.hash||'').replace(/^#/, '').split('/')[0];
-      return ['home','search','shop-view','cart','checkout','orders','order','shop-orders','shop-products','dashboard','admin','admin-orders','admin-gp','admin-cash','admin-support','admin-gp-rates','shop-settlement','rider-jobs','technician-jobs','technician-job','notifications'].includes(p);
-    }catch(e){ return true; }
+/* Admin Realtime shares the existing hydration queue and application session. */
+(()=>{
+  const tables=['users','shop_profiles','technician_profiles','rider_profiles','products','orders','order_items','deliveries','payments','notifications','order_chat_messages','quotations','promotions','settlements','audit_logs','order_audit'];
+  let owner=null,version=0,client=null,channel=null,attachTask=null,retryTimer=null,refreshTimer=null,refreshing=false,queued=false,cancelSdk=null,pageActive=true;
+  const desired=()=>{const s=qtSessionRead();return pageActive&&!document.hidden&&navigator.onLine&&s?.role==='admin'&&s.authUserId&&s.userId?s.authUserId+':'+s.userId:null};
+  const current=(epoch,actor)=>epoch===version&&actor===owner&&actor===desired();
+  function status(value){window.QT_REALTIME_STATUS=value;document.documentElement.dataset.qtRealtime=value.toLowerCase();window.dispatchEvent(new CustomEvent('qt:realtime-status',{detail:{status:value}}))}
+  function retire(){const c=client,ch=channel;client=null;channel=null;if(ch)c?.removeChannel(ch)}
+  function stop(){version++;cancelSdk?.();retire();clearTimeout(retryTimer);clearTimeout(refreshTimer);retryTimer=refreshTimer=null;attachTask=null;owner=null;queued=false;status('PAUSED')}
+  function retry(){if(retryTimer!==null||!desired())return;const epoch=version;retryTimer=setTimeout(()=>{retryTimer=null;if(epoch===version)sync()},15000)}
+  function scheduleRefresh(reason){if(!desired())return;if(refreshing){queued=true;return}if(refreshTimer!==null)return;const epoch=version,actor=owner;refreshTimer=setTimeout(()=>{refreshTimer=null;if(current(epoch,actor))refresh(reason)},600)}
+  async function refresh(reason){
+    const epoch=version,actor=owner;if(!current(epoch,actor))return;
+    if(QT_SYNC.busy||QT_DB_HYDRATING||QT_SYNC.pending>0||Date.now()-QT_SYNC.lastWrite<2500){scheduleRefresh(reason);return}
+    refreshing=true;QT_SYNC.busy=true;QT_SYNC.dirty={};
+    try{const before=qtSyncSignature();await qtHydrateDatabase({light:false});if(!current(epoch,actor))return;Object.keys(QT_SYNC.dirty).forEach(k=>QT_DB_CACHE[k]=QT_SYNC.dirty[k]);qtSyncRerender(before,qtSyncSignature());window.dispatchEvent(new CustomEvent('qt:realtime-update',{detail:{reason}}))}
+    catch(e){if(current(epoch,actor)){console.warn('[QueueGo Admin] live refresh failed');retry()}}
+    finally{QT_SYNC.dirty={};QT_SYNC.busy=false;refreshing=false;if(current(epoch,actor)&&queued){queued=false;scheduleRefresh('queued')}}
   }
-
-  async function refreshFromRealtime(reason){
-    if(loading){ queued=true; return; }
-    loading=true;
-    try{
-      if(typeof qtHydrateDatabase==='function') await qtHydrateDatabase({light:false});
-      if(typeof router==='function' && currentPageNeedsRender()){
-        const y=window.scrollY;
-        router();
-        requestAnimationFrame(()=>window.scrollTo(0,y));
-      }
-      window.dispatchEvent(new CustomEvent('qt:realtime-update',{detail:{reason}}));
-    }catch(e){ console.warn('[QueueGo Realtime] hydrate failed:',e); }
-    finally{
-      loading=false;
-      if(queued){ queued=false; setTimeout(()=>refreshFromRealtime('queued'),300); }
-    }
+  function sdk(){if(window.supabase?.createClient)return Promise.resolve();return new Promise((resolve,reject)=>{
+    const sc=document.createElement('script');let done=false;
+    const finish=e=>{if(done)return;done=true;clearTimeout(timer);sc.onload=sc.onerror=null;if(cancelSdk===cancel)cancelSdk=null;if(e){sc.remove();reject(e)}else resolve()};
+    const cancel=()=>finish(Error('Stopped'));cancelSdk=cancel;const timer=setTimeout(()=>finish(Error('SDK timeout')),10000);
+    sc.src='https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.10/dist/umd/supabase.min.js';sc.onload=()=>finish();sc.onerror=()=>finish(Error('SDK unavailable'));document.head.append(sc);
+  })}
+  function attach(){
+    if(attachTask||!owner)return;const epoch=version,actor=owner;
+    const task=(async()=>{
+      if(channel){const c=client,ch=channel,token=await qtGetAccessToken();if(current(epoch,actor)&&ch===channel&&c===client){if(!token)throw Error('Session unavailable');await c.realtime.setAuth(token)}return}
+      await sdk();if(!current(epoch,actor))return;
+      const c=window.supabase.createClient(QT_SUPABASE_CONFIG.URL,QT_SUPABASE_CONFIG.KEY,{auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false},realtime:{params:{eventsPerSecond:20}}});
+      const token=await qtGetAccessToken();if(!current(epoch,actor)){await c.removeAllChannels();return}if(!token)throw Error('Session unavailable');await c.realtime.setAuth(token);if(!current(epoch,actor)){await c.removeAllChannels();return}
+      client=c;const ch=c.channel('qg-admin-'+crypto.randomUUID());channel=ch;
+      tables.forEach(table=>ch.on('postgres_changes',{event:'*',schema:'public',table},payload=>{if(current(epoch,actor)&&channel===ch)scheduleRefresh(table+':'+payload.eventType)}));
+      ch.subscribe(value=>{if(!current(epoch,actor)||channel!==ch)return;status(value);if(value==='SUBSCRIBED'){clearTimeout(retryTimer);retryTimer=null;scheduleRefresh('connected')}else if(['CHANNEL_ERROR','TIMED_OUT','CLOSED'].includes(value)){retire();retry()}});
+    })().catch(()=>{if(current(epoch,actor)){status('CHANNEL_ERROR');retry()}}).finally(()=>{if(attachTask===task)attachTask=null});attachTask=task;
   }
-
-  function subscribe(){
-    if(!client)return;
-    const version=++subscriptionVersion;if(retryTimer){clearTimeout(retryTimer);retryTimer=null;}
-    if(channel){ try{client.removeChannel(channel);}catch(e){} }
-    channel=client.channel('qt-live-data-v1');
-    TABLES.forEach(table=>{
-      channel.on('postgres_changes',{event:'*',schema:'public',table},payload=>{
-        refreshFromRealtime(table+':'+payload.eventType);
-      });
-    });
-    channel.subscribe(status=>{
-      if(version!==subscriptionVersion)return;
-      window.QT_REALTIME_STATUS=status;
-      document.documentElement.dataset.qtRealtime=String(status||'').toLowerCase();
-      if(status==='SUBSCRIBED'){
-        retry=0;
-        window.dispatchEvent(new CustomEvent('qt:realtime-status',{detail:{status:'SUBSCRIBED'}}));
-      }else if(status==='CHANNEL_ERROR' || status==='TIMED_OUT'){
-        window.dispatchEvent(new CustomEvent('qt:realtime-status',{detail:{status}}));
-        retry=Math.min(retry+1,6);
-        retryTimer=setTimeout(()=>{retryTimer=null;try{subscribe();}catch(e){}},Math.min(30000,1000*Math.pow(2,retry)));
-      }
-    });
-  }
-
-  function loadClient(){
-    if(window.supabase?.createClient){
-      try{ client=window.supabase.createClient(QT_SUPABASE_CONFIG.URL,QT_SUPABASE_CONFIG.KEY,{realtime:{params:{eventsPerSecond:20}}}); subscribe(); return; }catch(e){console.warn('[QueueGo Realtime] init failed',e);}
-    }
-    const sc=document.createElement('script');
-    sc.src='https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
-    sc.async=true;
-    sc.onload=()=>{
-      try{
-        client=window.supabase.createClient(QT_SUPABASE_CONFIG.URL,QT_SUPABASE_CONFIG.KEY,{realtime:{params:{eventsPerSecond:20}}});
-        subscribe();
-      }catch(e){console.warn('[QueueGo Realtime] client init failed',e);}
-    };
-    sc.onerror=()=>console.warn('[QueueGo Realtime] CDN unavailable; fallback sync remains active');
-    document.head.appendChild(sc);
-  }
-
-  window.addEventListener('online',()=>{ if(client) subscribe(); });
-  window.addEventListener('hashchange',()=>{ if(client && window.QT_REALTIME_STATUS!=='SUBSCRIBED') subscribe(); });
-  window.QT_REALTIME_FORCE_REFRESH=()=>refreshFromRealtime('manual');
-  setTimeout(loadClient,800);
+  function sync(){const actor=desired();if(actor!==owner){stop();owner=actor}if(actor)attach()}
+  function resume(){sync();scheduleRefresh('resume')}
+  window.QT_REALTIME_FORCE_REFRESH=()=>{sync();scheduleRefresh('manual')};
+  window.addEventListener('online',resume);window.addEventListener('offline',sync);window.addEventListener('hashchange',sync);window.addEventListener('pagehide',()=>{pageActive=false;stop()});window.addEventListener('pageshow',()=>{pageActive=true;resume()});
+  window.addEventListener('storage',e=>{if(e.key===QT_ADMIN_SESSION_KEY)resume()});document.addEventListener('visibilitychange',()=>document.hidden?sync():resume());
+  setInterval(sync,60000);setTimeout(sync,800);
 })();
 </script>
 
