@@ -1,0 +1,182 @@
+name: QueueGo Pre Android Release Audit Build
+
+on:
+  push:
+    branches:
+      - work/pre-android-release-20261004
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: npm test
+  build:
+    needs: verify
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - role: customer
+            appid: com.queuego.customer
+            appname: QueueGo
+            source: .
+          - role: merchant
+            appid: com.queuego.merchant
+            appname: QueueGo Merchant
+            source: merchant
+          - role: rider
+            appid: com.queuego.rider
+            appname: QueueGo Rider
+            source: rider
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Prepare web bundle
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd android-build
+          npm install --no-audit --no-fund
+          rm -rf www android
+          mkdir -p www
+          if [ "${{ matrix.role }}" = "customer" ]; then
+            cp ../index.html www/index.html
+            cp ../table-order.css ../table-order.js ../table-order.html www/
+          elif [ "${{ matrix.role }}" = "merchant" ]; then
+            cp ../merchant/* www/
+            cp ../role-realtime.js www/
+            python3 -c "from pathlib import Path; p=Path('www/index.html'); p.write_text(p.read_text().replace('../role-realtime.js','role-realtime.js'))"
+            cp ../table-order.html ../table-order.css ../table-order.js www/
+          else
+            cp ../rider/index.html www/index.html
+          fi
+          node -e "let c=require('./capacitor.config.json');c.appId='${{ matrix.appid }}';c.appName='${{ matrix.appname }}';require('fs').writeFileSync('capacitor.config.json',JSON.stringify(c,null,2))"
+          npx cap add android
+          npx cap sync android
+      - name: Add Android permissions
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('android-build/android/app/src/main/AndroidManifest.xml')
+          s=p.read_text()
+          perms=[
+            'android.permission.INTERNET',
+            'android.permission.ACCESS_NETWORK_STATE',
+            'android.permission.ACCESS_COARSE_LOCATION',
+            'android.permission.ACCESS_FINE_LOCATION',
+            'android.permission.VIBRATE',
+          ]
+          block='\n'.join(f'    <uses-permission android:name="{x}" />' for x in perms)
+          s=s.replace('<application',block+'\n    <application',1)
+          p.write_text(s)
+          PY
+      - name: Create QueueGo Q launcher icon
+        shell: bash
+        run: |
+          python3 -m pip install pillow --quiet
+          python3 - <<'PY'
+          from PIL import Image,ImageDraw,ImageFont
+          from pathlib import Path
+          sizes={'mipmap-mdpi':48,'mipmap-hdpi':72,'mipmap-xhdpi':96,'mipmap-xxhdpi':144,'mipmap-xxxhdpi':192}
+          base=Path('android-build/android/app/src/main/res')
+          for folder,n in sizes.items():
+              d=base/folder; d.mkdir(parents=True,exist_ok=True)
+              im=Image.new('RGBA',(n,n),(255,255,255,255))
+              dr=ImageDraw.Draw(im)
+              red=(231,9,43,255)
+              w=max(4,round(n*0.14))
+              box=(round(n*0.20),round(n*0.17),round(n*0.72),round(n*0.69))
+              dr.ellipse(box,outline=red,width=w)
+              dr.line((round(n*0.56),round(n*0.56),round(n*0.80),round(n*0.80)),fill=red,width=w)
+              im.save(d/'ic_launcher.png')
+              im.save(d/'ic_launcher_round.png')
+          PY
+      - name: Configure release signing
+        shell: bash
+        env:
+          QG_KEYSTORE_B64: ${{ secrets.QG_ANDROID_KEYSTORE_B64 }}
+          QG_STORE_PASSWORD: ${{ secrets.QG_ANDROID_STORE_PASSWORD }}
+          QG_KEY_ALIAS: ${{ secrets.QG_ANDROID_KEY_ALIAS }}
+          QG_KEY_PASSWORD: ${{ secrets.QG_ANDROID_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          test -n "$QG_KEYSTORE_B64"
+          test -n "$QG_STORE_PASSWORD"
+          test -n "$QG_KEY_ALIAS"
+          test -n "$QG_KEY_PASSWORD"
+          echo "$QG_KEYSTORE_B64" | base64 --decode > android-build/android/queuego-release.jks
+          cat >> android-build/android/gradle.properties <<EOF
+          QG_STORE_FILE=../queuego-release.jks
+          QG_STORE_PASSWORD=$QG_STORE_PASSWORD
+          QG_KEY_ALIAS=$QG_KEY_ALIAS
+          QG_KEY_PASSWORD=$QG_KEY_PASSWORD
+          EOF
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          p=Path('android-build/android/app/build.gradle')
+          s=p.read_text()
+          marker='android {'
+          signing="""android {
+              signingConfigs {
+                  release {
+                      storeFile file(project.property("QG_STORE_FILE"))
+                      storePassword project.property("QG_STORE_PASSWORD")
+                      keyAlias project.property("QG_KEY_ALIAS")
+                      keyPassword project.property("QG_KEY_PASSWORD")
+                  }
+              }
+          """
+          s=s.replace(marker,signing,1)
+          s,count=re.subn(r'(buildTypes\s*\{\s*release\s*\{)',r'\1\n            signingConfig signingConfigs.release',s,count=1)
+          if count!=1: raise RuntimeError('Release build type not found')
+          p.write_text(s)
+          PY
+      - name: Audit Android release manifest
+        shell: bash
+        run: |
+          set -euo pipefail
+          MANIFEST=android-build/android/app/src/main/AndroidManifest.xml
+          grep -q 'android.permission.INTERNET' "$MANIFEST"
+          grep -q 'android.permission.ACCESS_NETWORK_STATE' "$MANIFEST"
+          grep -q 'android.permission.ACCESS_COARSE_LOCATION' "$MANIFEST"
+          grep -q 'android.permission.ACCESS_FINE_LOCATION' "$MANIFEST"
+          grep -q 'android.permission.VIBRATE' "$MANIFEST"
+          if grep -Eq 'android.permission.(CAMERA|READ_EXTERNAL_STORAGE|WRITE_EXTERNAL_STORAGE|READ_MEDIA_IMAGES|ACCESS_BACKGROUND_LOCATION)' "$MANIFEST"; then
+            echo "Unexpected sensitive Android permission found"
+            cat "$MANIFEST"
+            exit 1
+          fi
+          grep -Rqs 'targetSdkVersion = 36' android-build/android || {
+            echo "Android targetSdkVersion 36 not found"
+            exit 1
+          }
+      - name: Build signed release AAB and APK
+        shell: bash
+        run: |
+          cd android-build/android
+          chmod +x gradlew
+          ./gradlew bundleRelease assembleRelease --no-daemon
+          cp app/build/outputs/bundle/release/app-release.aab "../../QueueGo-${{ matrix.role }}-release.aab"
+          cp app/build/outputs/apk/release/app-release.apk "../../QueueGo-${{ matrix.role }}-release.apk"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: QueueGo-${{ matrix.role }}-release
+          path: |
+            QueueGo-${{ matrix.role }}-release.aab
+            QueueGo-${{ matrix.role }}-release.apk
+          if-no-files-found: error
