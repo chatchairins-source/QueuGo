@@ -176,23 +176,25 @@ function jwtExpiryMs(token){
 function readSession(){ try{ return JSON.parse(localStorage.getItem(SESSION_KEY)||'null'); }catch(e){ return null; } }
 function writeSession(s){ try{ localStorage.setItem(SESSION_KEY, JSON.stringify(s)); }catch(e){} }
 function clearSession(){ try{ localStorage.removeItem(SESSION_KEY); }catch(e){} }
+let riderTokenRefresh=null;
 async function getAccessToken(){
-  const s = readSession(); if(!s) return '';
-  const rawExp=Number(s.expiresAt||0);
-  const exp = rawExp ? (rawExp<1e12 ? rawExp*1000 : rawExp) : jwtExpiryMs(s.accessToken);
-  if(exp - Date.now() > 60000) return s.accessToken;
-  if(!s.refreshToken) return s.accessToken;
-  try{
-    const r = await fetch(SB.URL+'/auth/v1/token?grant_type=refresh_token', {
-      method:'POST', headers:sbHeaders(), body:JSON.stringify({refresh_token:s.refreshToken})
-    });
-    const data = await r.json().catch(()=>({}));
-    if(!r.ok || !data.access_token) throw new Error(data.error_description||data.message||'SESSION_REFRESH_FAILED');
-    const next = {...s, accessToken:data.access_token, refreshToken:data.refresh_token||s.refreshToken, expiresAt:(data.expires_at?data.expires_at*1000:0)};
-    writeSession(next);
-    return next.accessToken;
-  }catch(e){ if(exp>Date.now())return s.accessToken; throw e; }
+  const s=readSession();if(!s)return '';
+  const rawExp=Number(s.expiresAt||0),exp=rawExp?(rawExp<1e12?rawExp*1000:rawExp):jwtExpiryMs(s.accessToken);
+  if(exp-Date.now()>60000||!s.refreshToken)return s.accessToken;
+  const key=JSON.stringify([s.authUserId,s.sessionId,s.refreshToken]);if(riderTokenRefresh?.key===key)return riderTokenRefresh.task;
+  const sameActor=current=>!!current&&current.authUserId===s.authUserId&&current.sessionId===s.sessionId;
+  const task=(async()=>{
+    try{
+      const r=await fetch(SB.URL+'/auth/v1/token?grant_type=refresh_token',{method:'POST',headers:sbHeaders(),body:JSON.stringify({refresh_token:s.refreshToken}),signal:AbortSignal.timeout(15000)});
+      const data=await r.json().catch(()=>({}));const current=readSession();if(!sameActor(current))return '';
+      if(current.refreshToken!==s.refreshToken)return current.accessToken;
+      if(!r.ok||!data.access_token)throw Error('SESSION_REFRESH_FAILED');
+      const next={...s,accessToken:data.access_token,refreshToken:data.refresh_token||s.refreshToken,expiresAt:data.expires_at?data.expires_at*1000:jwtExpiryMs(data.access_token)};
+      writeSession(next);if(sameActor(S.session))S.session=next;return next.accessToken;
+    }catch(e){const current=readSession();if(!sameActor(current))return '';if(current.refreshToken!==s.refreshToken)return current.accessToken;if(exp>Date.now())return s.accessToken;throw e}
+  })().finally(()=>{if(riderTokenRefresh?.task===task)riderTokenRefresh=null});riderTokenRefresh={key,task};return task;
 }
+
 function esc(v){ return String(v??'').replace(/[&<>"']/g, ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[ch])); }
 function toast(msg){
   const t = document.getElementById('toast');
@@ -678,66 +680,52 @@ async function pushLocation(){
   }catch(e){ /* best-effort */ }
 }
 /* QueueGo v21: superseded updateStatusUI presentation removed. */
-async function refreshData(){
-  try{
-    const token = await getAccessToken();
-    const mine = await sbTable('orders?select=*&order_type=eq.shopping&rider_id=eq.'+encodeURIComponent(S.riderProfile.id)+'&status=in.(rider_assigned,preparing,ready,assigned,picked_up,in_progress)&order=created_at.desc&limit=1', {token});
-    S.activeOrder = Array.isArray(mine) && mine[0] ? mine[0] : null;
-
-    const previousOpenJobIds = new Set((S.openJobs||[]).map(x=>x&&x.order&&x.order.id ? String(x.order.id) : null).filter(Boolean));
-    if(S.activeOrder){
-      if(S.activeOrder.fulfillment_vertical==='market'||S.activeOrder.fulfillment_vertical==='grocery'){
-        const weights=await sbRpc('market_rider_job_weights',{},token);
-        S.activeOrder._marketWeight=(weights||[]).find(x=>x.order_id===S.activeOrder.id)?.weight_kg;
-      }
-      await enrichOrder(S.activeOrder);
-      S.openJobs = [];
-    } else if(S.online){
-      // Eligibility and Market vehicle capacity are decided on the server.
-      const eligible = await sbRpc('get_rider_delivery_pool',{},token);
-      const ids = (Array.isArray(eligible)?eligible:[]).map(x=>x.order_id).filter(Boolean);
-      const open = ids.length ? await sbTable('orders?select=*&id=in.('+ids.join(',')+')&order=created_at.asc&limit=25', {token}) : [];
-      const list = Array.isArray(open) ? open : [];
-      if(list.some(o=>o.fulfillment_vertical==='market'||o.fulfillment_vertical==='grocery')){
-        const weights=await sbRpc('market_rider_job_weights',{},token);
-        for(const o of list)o._marketWeight=(weights||[]).find(x=>x.order_id===o.id)?.weight_kg;
-      }
-      for(const o of list) await enrichOrder(o);
-      const candidates = list
-        .map(o=>({order:o, distanceKm: haversineKm(S.pos&&S.pos.lat, S.pos&&S.pos.lng, o.pickup_latitude, o.pickup_longitude)}))
-        .filter(x=>Number.isFinite(x.distanceKm))
-        .sort((a,b)=>a.distanceKm-b.distanceKm);
-      const nearby = candidates.filter(x=>x.distanceKm <= NEARBY_RADIUS_KM);
-      // Rider-side fallback: if there is no job within 2 km, keep the nearest open job visible.
-      // Final nearest-Rider assignment must be enforced server-side/RPC to prevent two riders claiming the same fallback job.
-      S.openJobs = nearby.length ? nearby : (candidates.length ? [candidates[0]] : []);
-    } else {
-      S.openJobs = [];
-    }
-    if(window.qtCheckNewJobs){
-      const currentOpenOrders = S.openJobs.map(x=>x.order).filter(Boolean);
-      window.qtCheckNewJobs(previousOpenJobIds, currentOpenOrders);
-    }
-    if(S.activeTab==='home') renderSheet();
-    placeJobMarkers();
-
-    const hist = await sbTable('orders?select=*&order_type=eq.shopping&rider_id=eq.'+encodeURIComponent(S.riderProfile.id)+'&status=eq.completed&order=updated_at.desc&limit=200', {token});
-    S.history = Array.isArray(hist) ? hist : [];
-    if(S.activeTab==='jobs') renderHistoryPanel();
-  }catch(e){ console.error('refreshData failed', e);const now=Date.now();if(!refreshData.lastErrorAt||now-refreshData.lastErrorAt>30000){refreshData.lastErrorAt=now;toast('โหลดงานจากฐานข้อมูลไม่สำเร็จ: '+(e.message||e));} }
-
-try{const k=qgRiderHistoryKey(),history=(S.history||[]).slice(0,100);if(k){const json=JSON.stringify({at:Date.now(),history});if(json.length<800000)localStorage.setItem(k,json)}}catch(e){}if(S.activeTab==='chat'&&!S.chatOrder)qgRenderMessageInbox();qgWatchCompletedChat()
+let riderRefreshTask=null,riderRefreshQueued=false;
+function refreshData(background=false){
+  if(!S.user||!S.riderProfile||!navigator.onLine||(background&&document.hidden))return Promise.resolve();
+  if(riderRefreshTask){if(!background)riderRefreshQueued=true;return riderRefreshTask}
+  const task=(async()=>{do{riderRefreshQueued=false;await readRiderSnapshot()}while(riderRefreshQueued&&S.user&&S.riderProfile&&navigator.onLine)})().finally(()=>{if(riderRefreshTask===task)riderRefreshTask=null});
+  riderRefreshTask=task;return task;
 }
-async function enrichOrder(o){
-  const token = await getAccessToken();
-  if(o.shop_id && !o._shop){
-    try{ const rows = await sbTable('shop_profiles?select=shop_name,phone,address&id=eq.'+encodeURIComponent(o.shop_id), {token}); o._shop = Array.isArray(rows)&&rows[0] ? rows[0] : null; }
-    catch(e){ o._shop = null; }
-  }
-  if(o.customer_id && !o._customer){
-    try{ const rows = await sbTable('users?select=name,phone&id=eq.'+encodeURIComponent(o.customer_id), {token}); o._customer = Array.isArray(rows)&&rows[0] ? rows[0] : null; }
-    catch(e){ o._customer = null; }
-  }
+async function readRiderSnapshot(){
+  const userId=S.user.id,profileId=S.riderProfile.id,sessionId=S.session?.sessionId,online=S.online;
+  const current=()=>S.user?.id===userId&&S.riderProfile?.id===profileId&&S.session?.sessionId===sessionId&&S.online===online;
+  try{
+    const token=await getAccessToken();if(!current())return;if(!token)throw Error('Session unavailable');
+    const mine=await sbTable('orders?select=*&order_type=eq.shopping&rider_id=eq.'+encodeURIComponent(profileId)+'&status=in.(rider_assigned,preparing,ready,assigned,picked_up,in_progress)&order=created_at.desc&limit=1',{token});if(!current())return;
+    const activeOrder=Array.isArray(mine)&&mine[0]?mine[0]:null;let openJobs=[];
+    const previousOpenJobIds=new Set((S.openJobs||[]).map(x=>x?.order?.id).filter(Boolean).map(String));
+    if(activeOrder){
+      if(['market','grocery'].includes(activeOrder.fulfillment_vertical)){const weights=await sbRpc('market_rider_job_weights',{},token);if(!current())return;activeOrder._marketWeight=(weights||[]).find(x=>x.order_id===activeOrder.id)?.weight_kg}
+      await enrichRiderOrders([activeOrder],token);if(!current())return;
+    }else if(online){
+      const eligible=await sbRpc('get_rider_delivery_pool',{},token);if(!current())return;
+      const ids=(Array.isArray(eligible)?eligible:[]).map(x=>x.order_id).filter(Boolean);
+      const open=ids.length?await sbTable('orders?select=*&id=in.('+ids.join(',')+')&order=created_at.asc&limit=25',{token}):[];if(!current())return;
+      const list=Array.isArray(open)?open:[];
+      if(list.some(o=>['market','grocery'].includes(o.fulfillment_vertical))){const weights=await sbRpc('market_rider_job_weights',{},token);if(!current())return;for(const o of list)o._marketWeight=(weights||[]).find(x=>x.order_id===o.id)?.weight_kg}
+      await enrichRiderOrders(list,token);if(!current())return;
+      const candidates=list.map(o=>({order:o,distanceKm:haversineKm(S.pos?.lat,S.pos?.lng,o.pickup_latitude,o.pickup_longitude)})).filter(x=>Number.isFinite(x.distanceKm)).sort((a,b)=>a.distanceKm-b.distanceKm);
+      const nearby=candidates.filter(x=>x.distanceKm<=NEARBY_RADIUS_KM);
+      // Server eligibility/claim remains authoritative; display the nearest eligible job when none is within 2 km.
+      openJobs=nearby.length?nearby:candidates.slice(0,1);
+    }
+    if(!current())return;S.activeOrder=activeOrder;S.openJobs=openJobs;
+    window.qtCheckNewJobs?.(previousOpenJobIds,openJobs.map(x=>x.order));if(S.activeTab==='home')renderSheet();placeJobMarkers();
+    const hist=await sbTable('orders?select=*&order_type=eq.shopping&rider_id=eq.'+encodeURIComponent(profileId)+'&status=eq.completed&order=updated_at.desc&limit=200',{token});if(!current())return;
+    S.history=Array.isArray(hist)?hist:[];if(S.activeTab==='jobs')renderHistoryPanel();
+    try{const k=qgRiderHistoryKey(),history=S.history.slice(0,100);if(k){const json=JSON.stringify({at:Date.now(),history});if(json.length<800000)localStorage.setItem(k,json)}}catch(e){}
+    if(S.activeTab==='chat'&&!S.chatOrder)qgRenderMessageInbox();qgWatchCompletedChat();
+  }catch(e){if(!current())return;console.error('Rider job refresh failed');const now=Date.now();if(!refreshData.lastErrorAt||now-refreshData.lastErrorAt>30000){refreshData.lastErrorAt=now;toast('โหลดงานไม่สำเร็จ กรุณาตรวจอินเทอร์เน็ตแล้วลองใหม่')}}
+}
+async function enrichRiderOrders(orders,token){
+  const shops=[...new Set(orders.filter(o=>o.shop_id&&!o._shop).map(o=>o.shop_id))],customers=[...new Set(orders.filter(o=>o.customer_id&&!o._customer).map(o=>o.customer_id))];
+  const [shopRows,customerRows]=await Promise.all([
+    shops.length?sbTable('shop_profiles?select=id,shop_name,phone,address&id=in.('+shops.map(encodeURIComponent).join(',')+')',{token}).catch(()=>[]):[],
+    customers.length?sbTable('users?select=id,name,phone&id=in.('+customers.map(encodeURIComponent).join(',')+')',{token}).catch(()=>[]):[]
+  ]);
+  const shopById=new Map((shopRows||[]).map(x=>[x.id,x])),customerById=new Map((customerRows||[]).map(x=>[x.id,x]));
+  for(const o of orders){if(o.shop_id&&!o._shop)o._shop=shopById.get(o.shop_id)||null;if(o.customer_id&&!o._customer)o._customer=customerById.get(o.customer_id)||null}
 }
 function placeJobMarkers(){
   if(!S.map)return;
@@ -837,8 +825,8 @@ function riderEarning(o){
 
 /* ---------- profile panel ---------- */
 /* QueueGo v21: superseded renderProfilePanel presentation removed. */
-function startPolling(){ stopPolling(); S.pollTimer = setInterval(refreshData, POLL_MS); }
-function stopPolling(){ if(S.pollTimer) clearInterval(S.pollTimer); S.pollTimer=null; }
+function startPolling(){ stopPolling(); S.pollTimer = setInterval(()=>refreshData(true), POLL_MS); }
+function stopPolling(){ if(S.pollTimer) clearInterval(S.pollTimer); S.pollTimer=null;riderRefreshQueued=false; }
 
 
 /* ===== v4 runtime resilience ===== */

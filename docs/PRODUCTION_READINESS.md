@@ -110,12 +110,13 @@ Applied successfully to the existing Supabase project as migration `202610031747
 
 ## Current verification evidence
 
-- Isolated behavioral checks: **516**, plus source parsing of 49 JS blocks/files and 18 local references. Coverage includes checkout replay/quote/ownership/decimal validation, cart/search/support, transport interruption, rider completion/claim, delivery kitchen, POS/printer, QR/chat, map disposal, Customer live runtime and Admin/Merchant realtime. These tests do not certify real JWT/RLS, triggers, simultaneous server connections or hardware.
-- Chromium fixture regression: latest 48 route/boot cases at 390px, no additional JS errors, overflow or non-Customer changes. Earlier 144 cases covered 390/768/1280px; POS computed screen/print layout checks covered 320/390/768/1280px. All external writes are intercepted. Intentional Customer guest/search changes differ from the original baseline.
+- Rider job reads now share one in-flight snapshot with one explicit trailing refresh, ignore responses from replaced sessions, and batch shop/customer details into two reads instead of up to 50 for 25 jobs. Token refresh is single-flight per session, bounded to 15 seconds and cannot overwrite a newer login or token rotation. Removed the replaced per-order enrichment helper. Verified with 40 isolated runtime checks; live Auth/RLS remains unverified.
+- Isolated behavioral checks: **556**, plus source parsing of 49 JS blocks/files and 18 local references. Coverage includes checkout replay/quote/ownership/decimal validation, cart/search/support, transport interruption, rider completion/claim, delivery kitchen, POS/printer, QR/chat, map disposal, Customer live runtime and Admin/Merchant realtime. These tests do not certify real JWT/RLS, triggers, simultaneous server connections or hardware.
+- Chromium fixture regression: latest 48 route/boot cases at 390px, no additional JS errors or overflow. Earlier 144 cases covered 390/768/1280px; POS computed screen/print layout checks covered 320/390/768/1280px. All external writes are intercepted. Intentional Customer guest/search changes differ from the original baseline.
 - Public Chromium navigation returned `ERR_EMPTY_RESPONSE`; live console/authenticated network behavior is not certified. Read-only HTTP checks and source parity are separate evidence.
 - Anonymous menu query returned HTTP 200 in approximately 12.1 seconds; SQL EXPLAIN for the six-product predicate completed in approximately 10.5 ms. This does not pass mobile latency/INP/60fps targets and did not justify another index.
 - Current Customer banner is preserved. The old root Market assets and deleted POS generations remain absent. No test script is loaded by application HTML or native packaging.
-- Native workflow fixes include main-only manual release builds, required QR/laundry/shared dependencies, modern permission handling and release signing configuration. No APK/AAB/device/store verification or submission has been performed.
+- Native workflow fixes include main-only manual release builds, required QR/shared dependencies, modern permission handling and release signing configuration. No APK/AAB/device/store verification or submission has been performed.
 
 ## Current source sizes
 
@@ -126,7 +127,7 @@ These are source bytes/zlib bytes, not field performance measurements. The new s
 | `index.html` | 172,341 | 195,852 | 113,646 → 121,008 |
 | `merchant/index.html` | 471,336 | 321,403 | 229,879 → 139,945 |
 | `admin/index.html` | 515,014 | 225,969 | 125,581 → 59,705 |
-| `rider/index.html` | 257,099 | 237,324 | 124,196 → 119,689 |
+| `rider/index.html` | 257,099 | 238,779 | 124,196 → 120,110 |
 
 ## Production operations and remaining blockers
 
