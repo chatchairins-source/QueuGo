@@ -48,6 +48,9 @@ ok(market.includes('ตลาดสดสวายจีก'),'Sawai Chik launch
 ok(bundle.includes("queuego_feature_enabled('route_bundle'"),'route bundle feature gate missing');
 ok(bundle.includes('bundle_customer_savings'),'bundle customer savings missing');
 ok(bundle.includes('bundle_rider_extra_fee'),'bundle rider compensation missing');
+ok(bundle.includes('primary_customer_savings')||bundle.includes('primary_savings'),'primary customer bundle saving missing');
+ok(bundle.includes('candidate_customer_savings')||bundle.includes('customer_savings'),'candidate customer bundle saving missing');
+ok(admin.includes('route_bundle.primary_savings_percent'),'Admin fair-savings split control missing');
 ok(bundle.includes('route_bundle_max_detour_km')||bundle.includes('max_detour'),'bundle detour rule missing');
 ok(bundle.includes('added_minutes')||bundle.includes('max_delay'),'bundle delay rule missing');
 ok(rider.includes('queuego_claim_route_bundle'),'Rider bundle acceptance missing');
