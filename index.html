@@ -547,7 +547,9 @@ V.home=async(_,ticket=routeVersion)=>{
 <div class="list">${normal.length?normal.map(shopCard).join(''):'<p class="empty">ยังไม่มีร้านค้า</p>'}</div></section>`,'home');
 };
 V.search=async(_,ticket=routeVersion)=>{
-  const list=(await loadShops()).filter(s=>!DEDICATED_MARKET_CATS.has(String(s.public_category||'').toLowerCase()));if(ticket!==routeVersion)return;
+  const dedicatedMarketCats=new Set(['market','fresh','fresh_market','meat','fish','vegetable','fruit']);
+  const getMarketCatalog=typeof loadMarketCatalog==='function'?loadMarketCatalog:async()=>[];
+  const list=(await loadShops()).filter(s=>!dedicatedMarketCats.has(String(s.public_category||'').toLowerCase()));if(ticket!==routeVersion)return;
   let menuMatches=[],menuState='',timer=null,inFlight=false,queryVersion=0;
   const matchesCategory=s=>cat==='all'||s.public_category===cat;
   const draw=()=>{const k=q.toLocaleLowerCase('th'),matched=new Set(menuMatches.map(p=>String(p.shop_id)));return list.filter(s=>matchesCategory(s)&&(!k||String(s.shop_name||'').toLocaleLowerCase('th').includes(k)||String(CATS[s.public_category]||'').toLocaleLowerCase('th').includes(k)||matched.has(String(s.id))))};
@@ -558,7 +560,7 @@ V.search=async(_,ticket=routeVersion)=>{
   const render=()=>{if(!active())return;status.textContent=menuState;results.innerHTML=draw().map(shopCard).join('')||(menuState==='กำลังค้นหาเมนู…'?'<p class="empty">กำลังค้นหาร้านและเมนู…</p>':'<p class="empty">ไม่พบร้านหรือเมนูที่ตรงกับคำค้นหา</p>')};
   async function findMenus(){timer=null;if(!active()||q.length<2)return;if(inFlight)return;const version=queryVersion,query=q;inFlight=true;menuState='กำลังค้นหาเมนู…';render();try{
     const literal=query.replace(/[\\%_*]/g,'\\$&');const rows=await db('products?select=id,shop_id,name&available=eq.true&delivery_available=eq.true&name=ilike.'+encodeURIComponent('%'+literal+'%')+'&order=name.asc&limit=30');
-    if(!active()||version!==queryVersion)return;const marketIds=new Set(((await loadMarketCatalog().catch(()=>[]))||[]).map(x=>String(x.product_id)));menuMatches=(Array.isArray(rows)?rows:[]).filter(x=>!marketIds.has(String(x.id)));menuState=menuMatches.length?'พบเมนูที่ตรงกันในร้านด้านล่าง':'';
+    if(!active()||version!==queryVersion)return;const marketIds=new Set(((await getMarketCatalog().catch(()=>[]))||[]).map(x=>String(x.product_id)));menuMatches=(Array.isArray(rows)?rows:[]).filter(x=>!marketIds.has(String(x.id)));menuState=menuMatches.length?'พบเมนูที่ตรงกันในร้านด้านล่าง':'';
   }catch(e){if(active()&&version===queryVersion)menuState='ค้นหาเมนูไม่สำเร็จ กรุณาลองพิมพ์คำค้นหาอีกครั้ง';}
   finally{inFlight=false;if(active()){if(version!==queryVersion&&q.length>=2){clearTimeout(timer);timer=setTimeout(findMenus,250)}else render()}}}
   function changed(){q=input.value.trim().slice(0,100);queryVersion++;menuMatches=[];menuState=q.length>=2?'กำลังค้นหาเมนู…':q.length===1?'พิมพ์อย่างน้อย 2 ตัวอักษรเพื่อค้นหาเมนู':'';clearTimeout(timer);render();if(q.length>=2)timer=setTimeout(findMenus,250)}
