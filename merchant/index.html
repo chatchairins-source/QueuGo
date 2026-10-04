@@ -581,40 +581,7 @@ function qtHandleNewNotification(n){
   showLiveToast((n.title||'การแจ้งเตือน')+': '+(n.body||n.message||''), n.link);
 }
 
-function pushNotification(userId, title, body, link, type, referenceId){
-  let all = dbGet('qt_notifications',[]);
-  const now=Date.now();
-  const safeLink=link||undefined;
-  const inferred=qtNotifDbParts({link:safeLink,type,referenceId});
-  /* Batch 5: prevent duplicate notifications caused by overlapping polling/monitors.
-     The same user + title + body + link within a short window is one event. */
-  const duplicate=all.find(n=>
-    n.userId===userId &&
-    String(n.title||'')===String(title||'') &&
-    String(n.body||n.message||'')===String(body||'') &&
-    String(n.link||'')===String(safeLink||'') &&
-    now-Number(n.createdAt||0)<4000
-  );
-  if(duplicate){
-    if(!duplicate.read) qtHandleNewNotification(duplicate);
-    return duplicate;
-  }
-  const n={
-    id:uid(),
-    userId,
-    title:title||'การแจ้งเตือน',
-    body:body||'',
-    link:safeLink,
-    type:inferred.type,
-    referenceId:referenceId || inferred.ref || null,
-    read:false,
-    createdAt:now
-  };
-  all.push(n);
-  dbSet('qt_notifications', all);
-  qtHandleNewNotification(n);
-  return n;
-}
+/* Notification creation is server/data-layer owned; only display helpers remain here. */
 function showLiveToast(text, link){
   const box = document.getElementById('notif-toast-box');
   if(!box) return;
@@ -771,49 +738,7 @@ async function qtLoadShopModules(userId){
 
 /* ---------- V5.28 GOVERNANCE / FINANCE / AUDIT ---------- */
 
-function qtAudit(action, data={}){
-  const u=currentUser();
-  const logs=dbGet('qt_audit_log',[]);
-  const d=(data&&typeof data==='object')?data:{};
-  /* V5.53: audit_logs.entity_type is NOT NULL in Supabase. Many callers only
-     supplied orderId/promotionId/etc., so infer a stable entity type/id before
-     the row is persisted. */
-  let entityType=d.entityType||d.entity_type||null;
-  let entityId=d.entityId||d.entity_id||null;
-  if(!entityType){
-    const pairs=[
-      ['orderId','order'],['order_id','order'],
-      ['promotionId','promotion'],['promotion_id','promotion'],
-      ['shopId','shop'],['shop_id','shop'],
-      ['userId','user'],['user_id','user'],
-      ['riderId','rider'],['rider_id','rider'],
-      ['technicianId','technician'],['technician_id','technician'],
-      ['productId','product'],['product_id','product'],
-      ['customerId','customer'],['customer_id','customer']
-    ];
-    for(const [k,t] of pairs){
-      if(d[k]!==undefined && d[k]!==null && String(d[k]).trim()!==''){ entityType=t; entityId=d[k]; break; }
-    }
-  }
-  if(!entityType) entityType='system';
-  if(!entityId || !qtUuidLike(entityId)) entityId=null;
-  logs.push({id:uid(), action, actorId:u?.id||null, actorRole:u?.type||null, entityType, entityId, at:Date.now(), ...d});
-  dbSet('qt_audit_log',logs);
-}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+/* Audit writes are handled by the authoritative server/RPC flows. */
 
 /* ---------- V5.29 USER CATEGORY CONTROL ---------- */
 
@@ -1037,25 +962,7 @@ function displayOrderNumber(order){
 
 
 
-const ORDER_STATUSES = [
-  {key:'pending_shop', label:'รอร้านรับงาน', icon:'⏳'},
-  {key:'shop_accepted', label:'ร้านรับงานแล้ว', icon:'✅'},
-  {key:'preparing', label:'กำลังเตรียมสินค้า', icon:'👨‍🍳'},
-  {key:'waiting_rider', label:'รอไรเดอร์รับงาน', icon:'🔍'},
-  {key:'rider_to_shop', label:'ไรเดอร์กำลังไปร้าน', icon:'🔵'},
-  {key:'picked_up', label:'รับสินค้าแล้ว', icon:'📦'},
-  {key:'delivering', label:'กำลังไปหาลูกค้า', icon:'🟠'},
-  {key:'arrived', label:'ถึงลูกค้าแล้ว', icon:'🟡'},
-  {key:'completed', label:'ส่งสำเร็จ', icon:'⚫'},
-  {key:'cancelled', label:'ยกเลิก', icon:'❌'},
-];
-function statusLabel(key){ const s = ORDER_STATUSES.find(x=>x.key===key); return s ? s.icon+' '+s.label : key; }
-
-
-
-
-
-
+/* Merchant order status labels are rendered by the current UI/status mapper below. */
 
 /* ---------- 11. ORDER CHAT ---------- */
 
