@@ -246,7 +246,7 @@ alter table public.market_orders
 
 create or replace function public.queuego_market_multi_shop_fee(
   p_shop_count integer,
-  p_at timestamptz default now()
+  p_at timestamptz
 ) returns numeric
 language sql stable
 security invoker
