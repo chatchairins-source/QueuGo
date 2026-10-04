@@ -5,7 +5,7 @@ create or replace function public.queuego_platform_rule_guard()
 returns trigger
 language plpgsql
 set search_path to 'public','pg_temp'
-as $
+as $qg$
 declare n numeric;
 begin
   if new.rule_key in ('feature.market_multi_shop','feature.route_bundle','feature.gp','feature.laundry') then
@@ -36,7 +36,7 @@ begin
   new.created_at := coalesce(new.created_at,now());
   return new;
 end
-$;
+$qg$;
 
 insert into public.queuego_platform_rules(rule_key,value,effective_from,note,created_by)
 select 'feature.laundry','false'::jsonb,'2000-01-01 00:00:00+07'::timestamptz,
