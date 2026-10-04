@@ -1377,31 +1377,6 @@ let qtSalesRange=1;
 })();
 </script>
 <!-- QueueGo Food Menu Options + GP 10% -->
-<script id="qt-shop-only-route-firewall">
-(function(){
-  const SHOP_ROUTES = new Set([
-    'login','shop-register','dashboard','shop-setup','shop-products','shop-orders','shop-order',
-    'shop-profile','shop-promote','shop-modules','shop-settlement','shop-support','admin-support','notifications',
-    'shop-catalog','shop-product','shop-promote-create','shop-media','shop-revenue','shop-hours','approval-pending','pos','pos-staff-join'
-  ]);
-  function rootOf(hash){
-    const raw=String(hash||location.hash||'#login').replace(/^#/,'');
-    return (raw.split('/')[0]||'login').trim();
-  }
-  function enforceShopRoute(){
-    const root=rootOf();
-    if(!SHOP_ROUTES.has(root)){
-      const u=(typeof currentUser==='function')?currentUser():null;
-      location.hash=(u&&u.type==='shop')?'#dashboard':'#login';
-      return false;
-    }
-    return true;
-  }
-  window.addEventListener('hashchange',enforceShopRoute,true);
-  window.addEventListener('DOMContentLoaded',enforceShopRoute,{once:true});
-  setTimeout(enforceShopRoute,0);
-})();
-</script>
 
 <script id="qt-reference-functional-pages-v11">
 (function(){
@@ -1478,7 +1453,7 @@ window.qtSupportSend=function(e){
   })();
   return false;
 };
-setInterval(()=>{if(['#shop-profile','#shop-support','#admin-support'].includes(location.hash))qtSupportRefresh()},20000);
+setInterval(()=>{if(['#shop-profile','#shop-support'].includes(location.hash))qtSupportRefresh()},20000);
 </script>
 <style id="qt-shop-support-style-v12">
 .qt-support-refresh{margin-left:auto;border:0;background:#e4fbf1;color:#109167;border-radius:7px;padding:5px 9px;font-size:17px;cursor:pointer}
@@ -1809,7 +1784,7 @@ window.renderShopProfileModern=function(){const u=shopUser();if(!u)return naviga
 };
 window.qtMerchantLogout=function(){logout();location.hash='#login';window.qtShopRoute()};
 
-function route(){const hash=location.hash.replace('#','')||'dashboard',[page,param]=hash.split('/'),u=currentUser();if(page==='pos'||page==='pos-staff-join')return qgPosRoute();if(qtSessionRead()?.role==='pos_staff'){location.hash='#pos';return}qgPosDisconnect();if(qtSessionRead()?.role==='admin'||u?.type==='admin'){clearSession();renderShopLogin();const note=document.getElementById('qgm-login-role-error');if(note){note.textContent='บัญชีนี้เป็นบัญชีแอดมิน ไม่มีสิทธิ์เข้าหน้าร้านค้า กรุณาใช้บัญชีร้านค้า';note.hidden=false}return}if(page==='login'||!u){if(page==='shop-register'&&typeof renderShopRegister==='function')return renderShopRegister();return renderShopLogin()}if(u.type!=='shop'){clearSession();return renderShopLogin()}if(u.status!=='approved'&&!['shop-setup','approval-pending'].includes(page)&&typeof renderShopPending==='function')return renderShopPending();switch(page){case'approval-pending':return renderShopPending();case'home':case'dashboard':return renderShopDashboardModern(u);case'market-stock':return qgMarketReload();case'shop-orders':return renderShopOrdersModern();case'shop-order':return renderShopOrderModern(param);case'shop-products':return renderShopProductsModern();case'shop-catalog':return renderShopCatalog();case'shop-product':return renderShopProductEditor(param||'new');case'shop-promote':return renderShopPromote();case'shop-promote-create':return renderShopPromoteCreate();case'shop-profile':return renderShopProfileModern();case'shop-setup':return renderShopSetup();case'shop-settlement':return renderShopSettlement();case'shop-revenue':return qgmRenderRevenue();case'shop-hours':return qgmRenderHours();case'shop-modules':return renderShopModules();case'shop-media':return renderMerchantMedia();case'shop-support':return renderShopSupport();case'notifications':return renderNotifications();default:return renderShopDashboardModern(u)}}
+function route(){const hash=location.hash.replace('#','')||'dashboard',[page,param]=hash.split('/'),u=currentUser();if(qtSessionRead()?.role==='admin'||u?.type==='admin'){qgPosDisconnect();clearSession();renderShopLogin();const note=document.getElementById('qgm-login-role-error');if(note){note.textContent='บัญชีนี้เป็นบัญชีแอดมิน ไม่มีสิทธิ์เข้าหน้าร้านค้า กรุณาใช้บัญชีร้านค้า';note.hidden=false}return}if(page==='pos'||page==='pos-staff-join')return qgPosRoute();if(qtSessionRead()?.role==='pos_staff'){location.hash='#pos';return}qgPosDisconnect();if(page==='login'||!u){if(page==='shop-register'&&typeof renderShopRegister==='function')return renderShopRegister();return renderShopLogin()}if(u.type!=='shop'){clearSession();return renderShopLogin()}if(u.status!=='approved'&&!['shop-setup','approval-pending'].includes(page)&&typeof renderShopPending==='function')return renderShopPending();switch(page){case'approval-pending':return renderShopPending();case'home':case'dashboard':return renderShopDashboardModern(u);case'market-stock':return qgMarketReload();case'shop-orders':return renderShopOrdersModern();case'shop-order':return renderShopOrderModern(param);case'shop-products':return renderShopProductsModern();case'shop-catalog':return renderShopCatalog();case'shop-product':return renderShopProductEditor(param||'new');case'shop-promote':return renderShopPromote();case'shop-promote-create':return renderShopPromoteCreate();case'shop-profile':return renderShopProfileModern();case'shop-setup':return renderShopSetup();case'shop-settlement':return renderShopSettlement();case'shop-revenue':return qgmRenderRevenue();case'shop-hours':return qgmRenderHours();case'shop-modules':return renderShopModules();case'shop-media':return renderMerchantMedia();case'shop-support':return renderShopSupport();case'notifications':return renderNotifications();default:return renderShopDashboardModern(u)}}
 window.qgmRefreshApplication=async function(){try{await qtHydrateDatabase({light:false});route();toast('อัปเดตสถานะล่าสุดแล้ว')}catch(e){toast('ตรวจสอบสถานะไม่สำเร็จ: '+e.message)}};
 window.qtShopRoute=route;
 })();
