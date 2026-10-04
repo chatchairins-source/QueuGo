@@ -23,7 +23,7 @@ window.qgLoadMarketOperations=async()=>{
       api('markets?select=id,name,province,district,subdistrict,verified,active,latitude,longitude,assignment_radius_km&order=province.asc,name.asc'),
       api('rider_profiles?select=id,rider_name,vehicle_type,vehicle_plate,vehicle_status,vehicle_capacity_kg,vehicle_verified_at,status,metadata&status=eq.active&order=created_at.desc&limit=100'),
       api('orders?select=id,order_number,status,fulfillment_vertical,subtotal,total_amount,market_order_id,created_at&market_order_id=not.is.null&order=created_at.desc&limit=50'),
-      api('market_requests?select=id,requested_name,province,district,subdistrict,address,status,note,created_at&status=eq.pending&order=created_at.asc&limit=50').catch(()=>[])
+      api('market_requests?select=id,requested_name,province,district,subdistrict,address,latitude,longitude,status,note,created_at&status=eq.pending&order=created_at.asc&limit=50').catch(()=>[])
     ]);
     if(!el.isConnected)return;
     el.innerHTML=`
@@ -34,7 +34,7 @@ window.qgLoadMarketOperations=async()=>{
         <div><button onclick="qgAdminReviewMarket('${s.id}',true)">อนุมัติ</button><button onclick="qgAdminReviewMarket('${s.id}',false)">ปฏิเสธ</button></div>
       </article>`).join('')||'<p>ไม่มีร้านรออนุมัติ</p>'}
       <h2>คำขอเพิ่มตลาดใหม่</h2>
-      ${(requests||[]).map(r=>`<article><b>${esc(r.requested_name)}</b> · ${esc(r.subdistrict||'')} ${esc(r.district||'')} ${esc(r.province||'')}<br><small>${esc(r.address||'')} · ส่งคำขอ ${new Date(r.created_at).toLocaleString('th-TH')}</small></article>`).join('')||'<p>ไม่มีคำขอเพิ่มตลาดใหม่</p>'}
+      ${(requests||[]).map(r=>`<article><b>${esc(r.requested_name)}</b> · ${esc(r.subdistrict||'')} ${esc(r.district||'')} ${esc(r.province||'')}<br><small>${esc(r.address||'')} · ${Number.isFinite(Number(r.latitude))&&Number.isFinite(Number(r.longitude))?Number(r.latitude).toFixed(5)+', '+Number(r.longitude).toFixed(5):'ไม่มีพิกัด'} · ส่งคำขอ ${new Date(r.created_at).toLocaleString('th-TH')}</small><div><button onclick="qgAdminReviewMarketRequest('${r.id}',true)">อนุมัติและเพิ่มตลาด</button><button onclick="qgAdminReviewMarketRequest('${r.id}',false)">ปฏิเสธ</button></div></article>`).join('')||'<p>ไม่มีคำขอเพิ่มตลาดใหม่</p>'}
       <h2>ตลาดในระบบ</h2>
       ${(markets||[]).map(m=>`<article><b>${esc(m.name)}</b> · ${esc(m.subdistrict||'')} ${esc(m.district||'')} ${esc(m.province||'')}<br><small>${m.verified?'ยืนยันพิกัดแล้ว':'รอตรวจพิกัด'} · รัศมี ${Number(m.assignment_radius_km||0).toFixed(1)} กม. · ${m.latitude==null||m.longitude==null?'ยังไม่มีพิกัด':Number(m.latitude).toFixed(5)+', '+Number(m.longitude).toFixed(5)}</small></article>`).join('')||'<p>ยังไม่มีตลาด</p>'}
       <h2>รถและความจุ</h2>
@@ -58,6 +58,33 @@ window.qgAdminReviewMarket=async(shopId,approve)=>{
     toast(approve?'อนุมัติสมาชิกตลาดแล้ว':'ปฏิเสธคำขอแล้ว');
     await qgLoadMarketOperations();
   }catch(e){toast('บันทึกไม่ได้: '+e.message)}
+};
+window.qgAdminReviewMarketRequest=async(requestId,approve)=>{
+  if(!admin())return;
+  let reason=null,radius=2;
+  if(approve){
+    const raw=prompt('รัศมีที่ยอมรับให้ร้านในตลาดนี้สมัครได้ (กม.)','2');
+    if(raw===null)return;
+    radius=Number(raw);
+    if(!Number.isFinite(radius)||radius<0.1||radius>10)return toast('รัศมีต้องอยู่ระหว่าง 0.1-10 กม.');
+    if(!confirm('ยืนยันเพิ่มตลาดนี้เข้าระบบ? พิกัดจะยังมีสถานะรอตรวจจนกว่า Admin ยืนยันความถูกต้อง'))return;
+  }else{
+    reason=prompt('เหตุผลที่ปฏิเสธคำขอเพิ่มตลาด');
+    if(reason===null)return;
+    reason=reason.trim();
+    if(reason.length<2)return toast('กรุณาระบุเหตุผล');
+  }
+  try{
+    const result=await qtSupabaseRpc('queuego_admin_review_market_request',{
+      p_request_id:requestId,
+      p_approve:!!approve,
+      p_reason:reason,
+      p_assignment_radius_km:radius
+    });
+    toast(approve?'เพิ่มตลาดแล้ว ร้านผู้ขอจะเข้าสู่คิวตรวจสมาชิกตลาด':'ปฏิเสธคำขอเพิ่มตลาดแล้ว');
+    await qgLoadMarketOperations();
+    return result;
+  }catch(e){toast('บันทึกไม่ได้: '+String(e.message||e).slice(0,130))}
 };
 window.qgAdminVehicle=async(id,status,suggested)=>{
   if(!admin())return;
