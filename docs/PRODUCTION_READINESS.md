@@ -172,3 +172,12 @@ Source commit: `6c3425de551ad7e21560cb791160244d512eaa01`. Claim serialization a
 - Pages run `37165656335` succeeded from main commit `48f1b0ed4444a123ce2d54adc19cfa3043bdef50`; all four live HTML entries plus updated POS/printer JS/CSS matched the source bytes. The subsequent CSS cleanup is validated separately when its deployment completes.
 
 Full release gates above remain FAIL where live/device proof is missing. No remote branch was deleted in this batch; the GitHub browser remains signed out and the connector does not expose branch deletion.
+
+## Final CSS and duplicate query pass
+
+- Deleted 294 earlier inline CSS declarations proven overwritten under the identical selector, condition and property: Merchant 70, Admin 140, Rider 84. Removed empty rules. No new override styles were added. Chromium compared 144 scenarios against the immediately preceding current source: no text/style changes, extra errors or overflow.
+- Removed Admin's extra active-shop users query and metadata profile fallback. Admin already fetches the authoritative users list and shop profiles; read-only inspection confirmed the deployed admin profile SELECT policy exists. Users without a profile still retain their existing user metadata. An isolated empty-profile test verifies the user list is fetched once and the shop metadata remains.
+- Removed the Rider nearest-job `fallback` field after repository reference tracing found no consumer; nearest-job selection and server claim authority remain unchanged.
+- Printer test receipts now contain real line breaks, and the synchronous verified shop-context check no longer yields between context validation and constructing an order request.
+- The new-order monitor was additionally checked with a repeated scoped pending-order snapshot: one sound event, not two. Total isolated behavioral checks: 133.
+- Remaining acceptance blockers: no authenticated browser session for deleting 16 remote branches; no safe authenticated full E2E/negative RLS/simultaneous multi-connection run; no printer hardware or device lifecycle/INP proof; promotion payment activation requires a real verified payment path; no release signing artifacts or Play listing/privacy/account deletion acceptance. Permission to act was already given; missing session/test access is the limitation.
