@@ -1,6 +1,6 @@
 <!doctype html><html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no"><meta name="theme-color" content="#f5faf7">
 <title>QueueGo Rider Future</title>
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://api.longdo.com/map/?key=347649ca13f49db0d8a599ae35f8de2b"></script>
 <style>:root{--login:linear-gradient(145deg,#7f111e,#d81b32 55%,#4b0b16)}
 :root{--mint:#e6002d;--mint2:#ff4d67;--ink:#241d20;--muted:#797177;--line:#eee3e6;--glass:rgba(255,255,255,.92);--safeT:env(safe-area-inset-top,0px);--safeB:env(safe-area-inset-bottom,0px)}
 *{box-sizing:border-box}html,body,#app{margin:0;width:100%;height:100%;overflow:hidden;background:#fcf8f9;color:var(--ink)}
@@ -100,7 +100,7 @@ html,body,#app{min-width:0;max-width:100%;overflow-x:hidden}
 .auth-divider{margin:10px 0;font-size:10px;color:#888b94}.auth-foot{display:none}.v4-version{margin-top:11px;color:#9b9da5}
 @media(max-width:760px){.auth-side{height:clamp(245px,43dvh,390px);padding:calc(18px + var(--safeT)) 23px 0}.auth-side-copy h2{font-size:14px}.auth-main{margin-top:-18px;padding:22px 22px calc(20px + var(--safeB))}.auth-card{padding:0;border-radius:0}}
 @media(max-height:700px){.auth-side{height:clamp(205px,34dvh,260px)}.auth-mark .auth-logo{width:40px;height:40px;font-size:27px}.auth-mark b{font-size:21px}.auth-mark small{font-size:12px}.auth-side-copy h2{margin-top:4px}.auth-main{padding-top:16px}.auth-card .sub{margin-bottom:8px}.auth-card .field{margin:7px 0}.auth-card .field input,.auth-card .btn{height:42px}}.qg-inbox h2,.qg-inbox-item{color:#241d20}.qg-v22-period button{border-color:#f0d2d9}.qg-v22-job-metrics,.qg-v22-photo-label{color:#b60c29}
-</style><style id="qg-q-only-topbar">.qt-top .qt-brand.qt-q-only{display:grid!important;place-items:center!important;width:42px!important;height:42px!important;padding:0!important;color:#ed0a31!important;background:rgba(255,255,255,.92)!important}.qt-top .qt-brand.qt-q-only svg{width:29px;height:29px}.rider-topbar .rider-brand.qt-q-only{display:grid;place-items:center}.rider-topbar .rider-brand.qt-q-only svg{width:42px;height:42px;color:#fff}</style><script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+</style><style id="qg-q-only-topbar">.qt-top .qt-brand.qt-q-only{display:grid!important;place-items:center!important;width:42px!important;height:42px!important;padding:0!important;color:#ed0a31!important;background:rgba(255,255,255,.92)!important}.qt-top .qt-brand.qt-q-only svg{width:29px;height:29px}.rider-topbar .rider-brand.qt-q-only{display:grid;place-items:center}.rider-topbar .rider-brand.qt-q-only svg{width:42px;height:42px;color:#fff}</style>
 </head><body>
 <div id="app"></div><div id="toast" class="toast"></div>
 <script>/* =========================================================================
@@ -636,18 +636,20 @@ async function doLogout(){
 }
 
 /* ---------- MAIN STAGE ---------- */
+const LONGDO_API_KEY='347649ca13f49db0d8a599ae35f8de2b';
+let longdoRouteSeq=0;
 function initMap(){
-  if(typeof L==='undefined'){ S.map=null; const map=document.getElementById('map'); if(map)map.innerHTML='<div class="qg-v23-map-fallback">แผนที่โหลดไม่ได้ในขณะนี้<br><small>รับงานและเปิดนำทางภายนอกได้ตามปกติ</small></div>'; return; }
-  S.map = L.map('map', {zoomControl:false, attributionControl:false}).setView([13.7563,100.5018], 13);
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom:19}).addTo(S.map);
-  requestAnimationFrame(()=>{ try{ S.map.invalidateSize({animate:false}); }catch(e){} });
+  if(typeof longdo==='undefined'){ S.map=null; const map=document.getElementById('map'); if(map)map.innerHTML='<div class="qg-v23-map-fallback">แผนที่โหลดไม่ได้ในขณะนี้<br><small>รับงานและเปิดนำทางภายนอกได้ตามปกติ</small></div>'; return; }
+  S.map=new longdo.Map({placeholder:document.getElementById('map'),ui:window.longdo.UiComponent.Mobile});
+  try{S.map.Ui.LayerSelector.visible(false)}catch(e){}
+  S.map.location({lon:100.5018,lat:13.7563},true);S.map.zoom(13,true);
 }
 function startGeolocation(){
   if(!navigator.geolocation){ toast('อุปกรณ์นี้ไม่รองรับ GPS'); return; }
   S.watchId = navigator.geolocation.watchPosition(pos=>{
     S.pos = {lat:pos.coords.latitude, lng:pos.coords.longitude};
     placeRiderMarker();
-    if(!S._centeredOnce&&S.map){ S.map.setView([S.pos.lat,S.pos.lng], 15); S._centeredOnce = true; }
+    if(!S._centeredOnce&&S.map){ S.map.location({lon:S.pos.lng,lat:S.pos.lat},true); S.map.zoom(15,true); S._centeredOnce=true; }
     if(S.online) pushLocation();
     if(S.activeTab==='home') renderSheet();
   }, ()=>toast('ไม่สามารถขอตำแหน่ง GPS ได้'), {enableHighAccuracy:true, maximumAge:5000, timeout:12000});
@@ -655,7 +657,7 @@ function startGeolocation(){
 function recenterMap(){
   if(!S.map){toast('แผนที่ยังไม่พร้อม เปิดนำทางภายนอกจากงานได้');return}
   if(!S.pos){ toast('ยังไม่ได้ตำแหน่ง GPS'); return; }
-  S.map.setView([S.pos.lat,S.pos.lng], 15);
+  S.map.location({lon:S.pos.lng,lat:S.pos.lat},true); S.map.zoom(15,true);
 }
 
 /* ---------- online toggle ---------- */
@@ -737,41 +739,46 @@ async function enrichRiderOrders(orders,token){
   const shopById=new Map((shopRows||[]).map(x=>[x.id,x])),customerById=new Map((customerRows||[]).map(x=>[x.id,x]));
   for(const o of orders){if(o.shop_id&&!o._shop)o._shop=shopById.get(o.shop_id)||null;if(o.customer_id&&!o._customer)o._customer=customerById.get(o.customer_id)||null}
 }
+function qgRemoveOverlay(o){if(o&&S.map){try{S.map.Overlays.remove(o)}catch(e){}}}
+function qgMarker(loc,html,title){
+  return new longdo.Marker(loc,{title:title||'',icon:{html:'<div style="transform:translate(-50%,-50%)">'+html+'</div>',offset:{x:0,y:0}},weight:longdo.OverlayWeight.Top});
+}
 function placeJobMarkers(){
-  if(!S.map)return;
-  S.jobMarkers.forEach(m=>S.map.removeLayer(m)); S.jobMarkers = [];
-  const list = S.activeOrder ? [S.activeOrder] : S.openJobs.map(x=>x.order);
-  const bounds = [];
+  if(!S.map||typeof longdo==='undefined')return;
+  (S.jobMarkers||[]).forEach(qgRemoveOverlay);S.jobMarkers=[];
+  const list=S.activeOrder?[S.activeOrder]:S.openJobs.map(x=>x.order);
   list.forEach(o=>{
-    const plat=Number(o.pickup_latitude), plng=Number(o.pickup_longitude);
-    const dlat=Number(o.delivery_latitude), dlng=Number(o.delivery_longitude);
-    if(Number.isFinite(plat)&&Number.isFinite(plng)){
-      const m=L.marker([plat,plng],{icon:L.divIcon({html:'<div style="width:18px;height:18px;border-radius:50%;background:#16a34a;border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.3)"></div>',className:'',iconSize:[24,24],iconAnchor:[12,12]})}).addTo(S.map);
-      m.bindPopup('<b style="color:#15803d">จุดรับ</b><br>'+esc(o.pickup_address||'ร้านค้า'));
-      S.jobMarkers.push(m); bounds.push([plat,plng]);
-    }
-    if(Number.isFinite(dlat)&&Number.isFinite(dlng)){
-      const m=L.marker([dlat,dlng],{icon:L.divIcon({html:'<div style="width:18px;height:18px;border-radius:50%;background:#dc2626;border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.3)"></div>',className:'',iconSize:[24,24],iconAnchor:[12,12]})}).addTo(S.map);
-      m.bindPopup('<b style="color:#b91c1c">จุดส่ง</b><br>'+esc(o.delivery_address||'บ้านลูกค้า'));
-      S.jobMarkers.push(m); bounds.push([dlat,dlng]);
-    }
+    const plat=Number(o.pickup_latitude),plng=Number(o.pickup_longitude),dlat=Number(o.delivery_latitude),dlng=Number(o.delivery_longitude);
+    if(Number.isFinite(plat)&&Number.isFinite(plng)){const m=qgMarker({lat:plat,lon:plng},'<div style="width:20px;height:20px;border-radius:50%;background:#16a34a;border:4px solid #fff;box-shadow:0 2px 8px #0004"></div>','จุดรับ · '+(o.pickup_address||'ร้านค้า'));S.map.Overlays.add(m);S.jobMarkers.push(m)}
+    if(Number.isFinite(dlat)&&Number.isFinite(dlng)){const m=qgMarker({lat:dlat,lon:dlng},'<div style="width:20px;height:20px;border-radius:50%;background:#e6002d;border:4px solid #fff;box-shadow:0 2px 8px #0004"></div>','จุดส่ง · '+(o.delivery_address||'บ้านลูกค้า'));S.map.Overlays.add(m);S.jobMarkers.push(m)}
   });
-  if(bounds.length && S.activeTab==='home' && !S.pos){
-    try{ S.map.fitBounds(bounds,{padding:[45,45],maxZoom:16}); }catch(e){}
-  }
   drawActiveRoute();
 }
-function drawActiveRoute(){
-  if(!S.map)return; if(S.routeLine){try{S.map.removeLayer(S.routeLine)}catch(e){} S.routeLine=null;}
+async function drawActiveRoute(){
+  if(!S.map)return;
+  (S.routeOverlays||[]).forEach(qgRemoveOverlay);S.routeOverlays=[];S.routeLine=null;
   const badge=document.getElementById('route-badge'),txt=document.getElementById('route-text');
-  if(!S.activeOrder||!S.pos){if(badge)badge.style.display='none';return;}
-  const o=S.activeOrder, st=statusFromRow(o); const toShop=st==='assigned';
-  const lat=Number(toShop?o.pickup_latitude:o.delivery_latitude),lng=Number(toShop?o.pickup_longitude:o.delivery_longitude);
-  if(!Number.isFinite(lat)||!Number.isFinite(lng)){if(badge)badge.style.display='none';return;}
-  S.routeLine=L.polyline([[S.pos.lat,S.pos.lng],[lat,lng]],{color:'#08b887',weight:6,opacity:.9,dashArray:'12 8'}).addTo(S.map);
-  const km=haversineKm(S.pos.lat,S.pos.lng,lat,lng); if(badge){badge.style.display='block';if(txt)txt.textContent=(toShop?'ไปร้าน • ':'ไปหาลูกค้า • ')+(Number.isFinite(km)?km.toFixed(1)+' กม.':'');}
+  if(!S.activeOrder||!S.pos){if(badge)badge.style.display='none';return}
+  const o=S.activeOrder,st=statusFromRow(o),toShop=['rider_assigned','preparing','ready','assigned'].includes(st);
+  const lat=Number(toShop?o.pickup_latitude:o.delivery_latitude),lon=Number(toShop?o.pickup_longitude:o.delivery_longitude);
+  if(!Number.isFinite(lat)||!Number.isFinite(lon)){if(badge)badge.style.display='none';return}
+  if(badge)badge.style.display='block';if(txt)txt.textContent=(toShop?'ไปร้าน':'ไปหาลูกค้า')+' • กำลังคำนวณเส้นทาง';
+  const seq=++longdoRouteSeq;
+  try{
+    const url='https://api.longdo.com/RouteService/geojson/route?flon='+encodeURIComponent(S.pos.lng)+'&flat='+encodeURIComponent(S.pos.lat)+'&tlon='+encodeURIComponent(lon)+'&tlat='+encodeURIComponent(lat)+'&type=1&key='+encodeURIComponent(LONGDO_API_KEY);
+    const res=await fetch(url);if(!res.ok)throw Error('route '+res.status);const geo=await res.json();if(seq!==longdoRouteSeq)return;
+    let dist=0,time=0;
+    for(const f of (geo.features||[])){
+      const p=f.properties||{};dist+=Number(p.distance)||0;time+=Number(p.interval)||0;
+      const g=f.geometry||{},parts=g.type==='LineString'?[g.coordinates]:g.type==='MultiLineString'?g.coordinates:[];
+      for(const coords of parts){const locs=(coords||[]).map(x=>({lon:Number(x[0]),lat:Number(x[1])})).filter(x=>Number.isFinite(x.lon)&&Number.isFinite(x.lat));if(locs.length>1){const line=new longdo.Polyline(locs,{lineColor:'#e6002d',lineWidth:6});S.map.Overlays.add(line);S.routeOverlays.push(line)}}
+    }
+    const km=dist>0?dist/1000:haversineKm(S.pos.lat,S.pos.lng,lat,lon),mins=time>0?Math.max(1,Math.ceil(time/60)):null;
+    if(txt)txt.textContent=(toShop?'ไปร้าน • ':'ไปหาลูกค้า • ')+(Number.isFinite(km)?km.toFixed(1)+' กม.':'')+(mins?' • '+mins+' นาที':'');
+  }catch(e){
+    const km=haversineKm(S.pos.lat,S.pos.lng,lat,lon);if(txt)txt.textContent=(toShop?'ไปร้าน • ':'ไปหาลูกค้า • ')+(Number.isFinite(km)?km.toFixed(1)+' กม.':'')+' • เส้นทางชั่วคราว';
+  }
 }
-
 
 /* ---------- sheet (home) ---------- */
 
@@ -968,16 +975,18 @@ function switchTab(tab){
  if(tab==='jobs'){document.getElementById('panel-jobs').classList.add('show');renderHistoryPanel();}
  if(tab==='earn'){document.getElementById('panel-earn').classList.add('show');qtRenderEarnings();}
  if(tab==='profile'){document.getElementById('panel-profile').classList.add('show');renderProfilePanel();}
- if(home&&S.map)requestAnimationFrame(()=>S.map.invalidateSize({animate:false}));
+ if(home&&S.map)requestAnimationFrame(()=>{try{S.map.resize?.()}catch(e){}});
 }
 function updateStatusUI(){
  const pill=document.getElementById('status-pill'),label=document.getElementById('status-text');if(!pill)return;
  pill.classList.toggle('on',S.online);if(label)label.textContent=S.online?'ออนไลน์':'ออฟไลน์';
 }
 function placeRiderMarker(){
- if(!S.pos||!S.map)return;
- const icon=L.divIcon({html:'<div style="width:26px;height:26px;border-radius:50%;background:#08bd78;border:5px solid white;box-shadow:0 5px 16px #0003"></div>',className:'',iconSize:[30,30],iconAnchor:[15,15]});
- if(S.riderMarker)S.riderMarker.setLatLng([S.pos.lat,S.pos.lng]);else S.riderMarker=L.marker([S.pos.lat,S.pos.lng],{icon}).addTo(S.map);
+ if(!S.pos||!S.map||typeof longdo==='undefined')return;
+ if(S.riderMarker)qgRemoveOverlay(S.riderMarker);
+ S.riderMarker=qgMarker({lat:S.pos.lat,lon:S.pos.lng},'<div style="width:28px;height:28px;border-radius:50%;background:#e6002d;border:5px solid white;box-shadow:0 5px 16px #0003"></div>','ตำแหน่งไรเดอร์');
+ S.map.Overlays.add(S.riderMarker);
+ if(S.activeOrder)drawActiveRoute();
 }
 function renderSheet(){
  const s=document.getElementById('sheet');if(!s)return;
