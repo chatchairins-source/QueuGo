@@ -1327,9 +1327,7 @@ let qtSalesRange=1;
 (function(){
   const SEEN_KEY='qt_shop_seen_pending_orders_v1';
   let audioCtx=null;
-  let soundTimer=null;
   let initialized=false;
-  let checkBusy=false;
 
   function shopUserSafe(){
     try{
@@ -1399,7 +1397,6 @@ let qtSalesRange=1;
   }
 
   function stopSound(){
-    clearInterval(soundTimer);soundTimer=null;
     try{window.speechSynthesis.cancel();}catch(e){}
   }
 
@@ -1422,10 +1419,10 @@ let qtSalesRange=1;
   }
 
   window.qgCheckMerchantOrders=checkForNewOrders;
-  function checkForNewOrders(){
+  function checkForNewOrders(scopedOrders){
     const u=shopUserSafe();
     if(!u) return;
-    const orders=pendingShopOrders(u);
+    const orders=Array.isArray(scopedOrders)?scopedOrders:pendingShopOrders(u);
     const seen=readSeen();
 
     // ครั้งแรก: จำออเดอร์ที่มีอยู่แล้ว ไม่ยิงเสียงย้อนหลัง

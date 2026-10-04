@@ -156,3 +156,16 @@ Source commit: `6c3425de551ad7e21560cb791160244d512eaa01`. Claim serialization a
 - [Feature matrix](FEATURE_MATRIX.md)
 - [Supabase leaked-password protection](https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection)
 - [Google Play current target requirements](https://support.google.com/googleplay/android-developer/answer/11926878)
+
+## POS / KDS and printer cleanup — 2026-10-04
+
+- The deployed POS delivery kitchen RPC still used `pending → accepted → preparing`, unlike Merchant's rider-first `pending → searching_rider → rider_assigned → preparing → ready`. Replaced its separate transition body with the same internal transition used by Merchant; entry RPCs retain independent owner/staff and shop checks. No pricing, GP, payment model or Supabase project changed. The internal helper is SECURITY INVOKER with EXECUTE revoked from PUBLIC, anon and authenticated.
+- POS KDS now fetches and displays searching/assigned states and enables preparing/ready only when the rider assignment exists. The delivery query uses the same delivery-channel boundary as the server.
+- POS reloads now share one in-flight read, apply a complete snapshot, ignore stale reads after exit/account change, and request one follow-up refresh when an event arrives during a load or write. Subscription attachment is also single-flight and scoped to the current shop, actor and view. Foreground refresh uses the document visibility event.
+- Deleted Printer's second orders subscription, repeated Supabase/CDN setup, shop lookup cache, hash listener, delayed auto-print timers, polling mount loop and unused global open/print aliases. POS's actual subscription forwards order events and mounts/removes printer controls with the POS lifecycle. The hidden button and display override were deleted.
+- Replaced the printer global busy early-return, which discarded concurrent jobs, with a serial queue. Automatic kitchen printing identifies the current item batch and prints only that batch; receipts retain all items. Leaving/switching shops invalidates queued and in-flight reads. Print Bridge requests have a 15-second timeout. No automatic retry of an ambiguous physical print was added.
+- POS owner snapshots feed the existing new-order alert monitor; no additional order query or sound handler was added. Removed unused alert timer/busy variables.
+- `npm test`: 130 isolated behavioral checks (80 previous + 25 delivery kitchen + 25 POS/printer lifecycle), plus 52 parsed JavaScript blocks and 17 local references. These are synthetic SQL/browser fixtures and do not certify deployed RLS, actual socket recovery, concurrent database connections or hardware.
+- Chromium quick regression: 48 cases, no additional JavaScript errors or non-Customer content changes. The eight Customer differences remain the previously intended guest navigation changes against the original source baseline.
+
+Full release gates above remain FAIL where live/device proof is missing. No remote branch was deleted in this batch; the GitHub browser remains signed out and the connector does not expose branch deletion.

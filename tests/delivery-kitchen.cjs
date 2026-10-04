@@ -1,0 +1,46 @@
+const {PGlite}=require('@electric-sql/pglite'),fs=require('fs'),assert=require('assert'),path=require('path');
+const id=n=>'00000000-0000-4000-8000-'+String(n).padStart(12,'0');
+(async()=>{const db=new PGlite();await db.exec(`CREATE ROLE anon;CREATE ROLE authenticated;CREATE SCHEMA auth;
+CREATE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql AS $$SELECT nullif(current_setting('test.uid',true),'')::uuid$$;
+CREATE FUNCTION pos_my_shop() RETURNS uuid LANGUAGE sql AS $$SELECT nullif(current_setting('test.shop',true),'')::uuid$$;
+CREATE FUNCTION pos_allowed(p text) RETURNS boolean LANGUAGE sql AS $$SELECT p=ANY(string_to_array(current_setting('test.permissions',true),','))$$;
+CREATE TABLE users(id uuid PRIMARY KEY,auth_user_id uuid,role text,status text);
+CREATE TABLE shop_profiles(id uuid PRIMARY KEY,user_id uuid);
+CREATE TABLE orders(id uuid PRIMARY KEY,shop_id uuid,customer_id uuid,rider_id uuid,status text,note text,sales_channel text,order_type text,updated_at timestamptz,merchant_accepted_at timestamptz,rider_search_started_at timestamptz,preparing_at timestamptz,ready_at timestamptz,cancelled_at timestamptz,pickup_address text,pickup_latitude numeric,pickup_longitude numeric,delivery_address text,delivery_latitude numeric,delivery_longitude numeric,delivery_fee numeric);
+CREATE TABLE deliveries(order_id uuid UNIQUE,rider_id uuid,status text,pickup_address text,pickup_latitude numeric,pickup_longitude numeric,delivery_address text,delivery_latitude numeric,delivery_longitude numeric,delivery_fee numeric,note text,updated_at timestamptz);
+CREATE TABLE rider_cash_advances(order_id uuid);
+CREATE TABLE audit_logs(user_id uuid,action text,entity_type text,entity_id uuid,description text,metadata jsonb);
+CREATE TABLE notifications(user_id uuid,title text,message text,type text,reference_id uuid);
+CREATE TABLE rider_profiles(id uuid,user_id uuid);
+CREATE TABLE pos_events(shop_id uuid,order_id uuid,actor_id uuid,entity text,action text,before_state jsonb,after_state jsonb);
+INSERT INTO users VALUES('${id(1)}','${id(2)}','shop','active'),('${id(3)}','${id(4)}','shop','active'),('${id(5)}','${id(6)}','customer','active');
+INSERT INTO shop_profiles VALUES('${id(7)}','${id(1)}'),('${id(8)}','${id(3)}');
+SELECT set_config('test.uid','${id(2)}',false),set_config('test.shop','${id(7)}',false),set_config('test.permissions','receive_order,cook_order,ready_order',false);`);
+await db.exec(fs.readFileSync(path.resolve(__dirname,'../QueueGo-Unified-Delivery-Kitchen-Migration.sql'),'utf8'));
+let checks=0;const eq=(a,b)=>{assert.deepEqual(a,b);checks++};
+async function reject(q,p){try{await db.query(q);assert.fail('unexpected success')}catch(e){assert.match(e.message,p);checks++}}
+async function seed(n,shop=7,channel='QUEUEGO_DELIVERY'){await db.exec(`INSERT INTO orders(id,shop_id,customer_id,status,note,sales_channel,order_type) VALUES('${id(n)}','${id(shop)}','${id(5)}','pending','customer note',${channel===null?'NULL':"'"+channel+"'"},'shopping')`)}
+async function call(name,n,action){return (await db.query(`SELECT ${name}('${id(n)}','${action}') result`)).rows[0].result}
+await seed(20);eq(await call('pos_delivery_kitchen_action',20,'accepted'),'searching_rider');
+eq((await db.query(`SELECT count(*)::int n FROM deliveries WHERE order_id='${id(20)}'`)).rows[0].n,1);
+eq((await db.query(`SELECT count(*)::int n FROM notifications WHERE reference_id='${id(20)}'`)).rows[0].n,1);
+await reject(`SELECT pos_delivery_kitchen_action('${id(20)}','accepted')`,/status changed/);
+await reject(`SELECT merchant_order_action('${id(20)}','preparing')`,/status changed/);
+eq((await db.query(`SELECT count(*)::int n FROM notifications WHERE reference_id='${id(20)}'`)).rows[0].n,1);
+await db.exec(`UPDATE orders SET status='rider_assigned',rider_id='${id(9)}' WHERE id='${id(20)}'`);
+eq(await call('merchant_order_action',20,'preparing'),'preparing');eq(await call('pos_delivery_kitchen_action',20,'ready'),'ready');
+eq((await db.query(`SELECT before_state->>'status' old,after_state->>'status' next FROM pos_events WHERE order_id='${id(20)}' ORDER BY after_state->>'status'`)).rows,[{old:'preparing',next:'ready'},{old:'pending',next:'searching_rider'}]);
+await seed(21,8);await reject(`SELECT pos_delivery_kitchen_action('${id(21)}','accepted')`,/not found/);await reject(`SELECT merchant_order_action('${id(21)}','accepted')`,/unavailable/);
+await seed(22,7,'POS');await reject(`SELECT pos_delivery_kitchen_action('${id(22)}','accepted')`,/not found/);
+await seed(23);await db.exec(`SELECT set_config('test.permissions','ready_order',false)`);await reject(`SELECT pos_delivery_kitchen_action('${id(23)}','accepted')`,/permission denied/);
+await db.exec(`SELECT set_config('test.uid','${id(6)}',false)`);await reject(`SELECT merchant_order_action('${id(23)}','accepted')`,/shop login required/);
+await db.exec(`SELECT set_config('test.uid','${id(10)}',false),set_config('test.permissions','receive_order',false)`);
+eq(await call('pos_delivery_kitchen_action',23,'accepted'),'searching_rider');eq((await db.query(`SELECT actor_id FROM pos_events WHERE order_id='${id(23)}'`)).rows[0].actor_id,id(10));
+await db.exec(`SELECT set_config('test.uid','${id(2)}',false)`);await seed(24);await db.exec(`INSERT INTO rider_cash_advances VALUES('${id(24)}')`);await reject(`SELECT merchant_order_action('${id(24)}','cancel','valid reason')`,/cash payment/);
+await seed(25);await reject(`SELECT merchant_order_action('${id(25)}','cancel','')`,/reason required/);eq(await call('merchant_order_action',25,'accepted'),'searching_rider');eq((await db.query(`SELECT merchant_order_action('${id(25)}','cancel','customer request') result`)).rows[0].result,'cancelled');
+eq((await db.query(`SELECT status FROM deliveries WHERE order_id='${id(25)}'`)).rows[0].status,'cancelled');
+eq((await db.query(`SELECT has_function_privilege('authenticated','queuego_shop_delivery_transition(uuid,text,text,uuid)','EXECUTE') allowed`)).rows[0].allowed,false);
+eq((await db.query(`SELECT has_function_privilege('anon','queuego_shop_delivery_transition(uuid,text,text,uuid)','EXECUTE') allowed`)).rows[0].allowed,false);
+await db.exec('SET ROLE authenticated');await reject(`SELECT queuego_shop_delivery_transition('${id(20)}','ready',NULL,NULL)`,/permission denied/);await db.exec('RESET ROLE');
+await seed(26,7,null);eq(await call('pos_delivery_kitchen_action',26,'accepted'),'searching_rider');
+console.log(JSON.stringify({checks,failures:0,scope:'isolated synthetic SQL; production RLS and simultaneous clients not certified'}));await db.close();})().catch(e=>{console.error(e);process.exit(1)});

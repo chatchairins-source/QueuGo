@@ -2,17 +2,16 @@
 (()=>{'use strict';
  const SETTINGS='qg_printer_settings_v1', PRINTED='qg_printer_printed_v1';
  const defaults={mode:'browser',width:'80',autoKitchen:false,autoReceipt:false,bridgeUrl:'',btService:'',btCharacteristic:''};
- let shopId=null,shopName='ร้านค้า',client=null,channel=null,bt=null,usb=null,busy=false;
+ let shopId=null,shopName='ร้านค้า',bt=null,usb=null,generation=0,queue=Promise.resolve();
  const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
  const money=n=>Number(n||0).toLocaleString('th-TH',{minimumFractionDigits:2,maximumFractionDigits:2})+' ฿';
  const get=()=>{try{return {...defaults,...JSON.parse(localStorage.getItem(SETTINGS)||'{}')}}catch(_){return {...defaults}}};
  const save=s=>{const v={...get(),...s};localStorage.setItem(SETTINGS,JSON.stringify(v));return v};
  const printed=()=>{try{return JSON.parse(localStorage.getItem(PRINTED)||'{}')}catch(_){return {}}};
- const was=(id,t)=>!!printed()[shopId+':'+t+':'+id];
- const mark=(id,t)=>{const p=printed();p[shopId+':'+t+':'+id]=Date.now();const ks=Object.keys(p).sort((a,b)=>p[b]-p[a]).slice(0,300),o={};ks.forEach(k=>o[k]=p[k]);localStorage.setItem(PRINTED,JSON.stringify(o))};
- async function rpc(name,body){const token=await qtGetAccessToken();if(!token)throw Error('กรุณาเข้าสู่ระบบร้านค้า');return qtSupabaseTable('rpc/'+name,{method:'POST',accessToken:token,body:body||{}})}
+ const was=(id,t,batch)=>!!printed()[shopId+':'+t+':'+id+(batch===undefined?'':':'+batch)];
+ const mark=(id,t,batch)=>{const p=printed();p[shopId+':'+t+':'+id+(batch===undefined?'':':'+batch)]=Date.now();const ks=Object.keys(p).sort((a,b)=>p[b]-p[a]).slice(0,300),o={};ks.forEach(k=>o[k]=p[k]);localStorage.setItem(PRINTED,JSON.stringify(o))};
  async function req(path){const token=await qtGetAccessToken();if(!token)throw Error('กรุณาเข้าสู่ระบบร้านค้า');return qtSupabaseTable(path,{accessToken:token})}
- async function ensureShop(){if(shopId)return shopId;shopId=await rpc('pos_my_shop',{});if(!shopId)throw Error('ไม่พบร้านค้า');const s=await req('shop_profiles?select=shop_name&id=eq.'+encodeURIComponent(shopId));shopName=s?.[0]?.shop_name||'ร้านค้า';return shopId}
+ function ensureShop(){if(!shopId)throw Error('กรุณาเปิดหน้าร้านก่อนใช้เครื่องพิมพ์');return shopId}
  async function fetchOrder(id){
    await ensureShop();
    const [o,i]=await Promise.all([
@@ -40,10 +39,29 @@
  async function browserPrint(text,title){const w=get().width==='58'?'58mm':'80mm',win=window.open('','_blank','width=420,height=720');if(!win)throw Error('กรุณาอนุญาต Pop-up เพื่อพิมพ์');win.document.write('<!doctype html><meta charset="utf-8"><title>'+esc(title)+'</title><style>@page{size:'+w+' auto;margin:3mm}body{font-family:-apple-system,BlinkMacSystemFont,"Noto Sans Thai",sans-serif;margin:0;width:'+w+';font-size:12px;line-height:1.35}pre{white-space:pre-wrap;margin:0}</style><pre>'+esc(text)+'</pre><script>onload=()=>setTimeout(()=>print(),80)<\/script>');win.document.close()}
  async function bluetoothPrint(text){if(!navigator.bluetooth)throw Error('เบราว์เซอร์นี้ไม่รองรับ Web Bluetooth');const s=get();if(!bt){const d=await navigator.bluetooth.requestDevice({acceptAllDevices:true,optionalServices:s.btService?[s.btService]:[]}),server=await d.gatt.connect();let ch=null;if(s.btService&&s.btCharacteristic){ch=await (await server.getPrimaryService(s.btService)).getCharacteristic(s.btCharacteristic)}else{for(const svc of await server.getPrimaryServices()){const chars=await svc.getCharacteristics().catch(()=>[]);ch=chars.find(x=>x.properties.write||x.properties.writeWithoutResponse);if(ch)break}}if(!ch)throw Error('ไม่พบช่องส่งข้อมูลของเครื่องพิมพ์ Bluetooth');bt={d,server,ch}}const bytes=escpos(text);for(let i=0;i<bytes.length;i+=180){const p=bytes.slice(i,i+180);if(bt.ch.properties.writeWithoutResponse&&bt.ch.writeValueWithoutResponse)await bt.ch.writeValueWithoutResponse(p);else await bt.ch.writeValue(p)}}
  async function usbPrint(text){if(!navigator.usb)throw Error('เบราว์เซอร์นี้ไม่รองรับ WebUSB');if(!usb){const d=await navigator.usb.requestDevice({filters:[]});await d.open();if(!d.configuration)await d.selectConfiguration(1);const iface=d.configuration.interfaces.find(x=>x.alternates.some(a=>a.endpoints.some(e=>e.direction==='out')));if(!iface)throw Error('ไม่พบช่อง USB สำหรับเครื่องพิมพ์');await d.claimInterface(iface.interfaceNumber);const alt=iface.alternates.find(a=>a.endpoints.some(e=>e.direction==='out')),ep=alt.endpoints.find(e=>e.direction==='out');usb={d,ep:ep.endpointNumber}}await usb.d.transferOut(usb.ep,escpos(text))}
- async function bridgePrint(text,type){const s=get();if(!s.bridgeUrl)throw Error('กรุณาใส่ URL ของ LAN / Print Bridge');const r=await fetch(s.bridgeUrl,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({type,width:s.width,text,shop_id:shopId,shop_name:shopName})});if(!r.ok)throw Error('Print Bridge ตอบกลับ '+r.status)}
+ async function bridgePrint(text,type){const s=get();if(!s.bridgeUrl)throw Error('กรุณาใส่ URL ของ LAN / Print Bridge');const r=await fetch(s.bridgeUrl,{signal:AbortSignal.timeout(15000),method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({type,width:s.width,text,shop_id:shopId,shop_name:shopName})});if(!r.ok)throw Error('Print Bridge ตอบกลับ '+r.status)}
  async function send(text,type){const m=get().mode;if(m==='bluetooth')return bluetoothPrint(text);if(m==='usb')return usbPrint(text);if(m==='bridge')return bridgePrint(text,type);return browserPrint(text,type==='kitchen'?'QueueGo Kitchen':'QueueGo Receipt')}
- async function printOrder(id,type='kitchen',force=false){if(busy||(!force&&was(id,type)))return;busy=true;try{const {order,items}=await fetchOrder(id);if(!order)throw Error('ไม่พบบิล');await send(await ticket(order,items,type),type);mark(id,type);toast(type==='kitchen'?'ส่งพิมพ์ใบครัวแล้ว':'ส่งพิมพ์ใบเสร็จแล้ว')}finally{busy=false}}
- async function realtime(payload){const n=payload?.new;if(!n?.id)return;const s=get();if(s.autoKitchen&&n.kitchen_status==='SENT_TO_KITCHEN')setTimeout(()=>printOrder(n.id,'kitchen').catch(showErr),700);if(s.autoReceipt&&n.payment_status==='PAID')setTimeout(()=>printOrder(n.id,'receipt').catch(showErr),500)}
+ function printOrder(id,type='kitchen',force=false){
+   const epoch=generation,shop=shopId;
+   const current=()=>epoch===generation&&shop&&shop===shopId;
+   const job=queue.then(async()=>{
+     if(!current())return;
+     const {order,items}=await fetchOrder(id);if(!current())return;
+     if(!order)throw Error('ไม่พบบิล');
+     const batch=type==='kitchen'?Math.max(0,...items.map(i=>Number(i.pos_batch||0))):undefined;
+     if(!force&&was(id,type,batch))return;
+     const rows=type==='kitchen'?items.filter(i=>Number(i.pos_batch||0)===batch):items;
+     const text=await ticket(order,rows,type);if(!current())return;
+     await send(text,type);if(!current())return;
+     mark(id,type,batch);toast(type==='kitchen'?'ส่งพิมพ์ใบครัวแล้ว':'ส่งพิมพ์ใบเสร็จแล้ว');
+   });
+   queue=job.catch(()=>{});return job;
+ }
+ function realtime(payload){
+   const n=payload?.new;if(!shopId||!n?.id||n.shop_id!==shopId)return;
+   const s=get();if(s.autoKitchen&&n.kitchen_status==='SENT_TO_KITCHEN')printOrder(n.id,'kitchen').catch(showErr);
+   if(s.autoReceipt&&n.payment_status==='PAID')printOrder(n.id,'receipt').catch(showErr);
+ }
  function showErr(e){try{toast(String(e?.message||e))}catch(_){}}
  async function recent(type){await ensureShop();const filter=type==='receipt'?'payment_status=eq.PAID':'kitchen_status=in.(SENT_TO_KITCHEN,COOKING,READY,SERVED)';return req('orders?select=id,order_number,order_type,table_id,kitchen_status,payment_status,total_amount,created_at&shop_id=eq.'+shopId+'&'+filter+'&order=created_at.desc&limit=20')}
  function close(){document.querySelector('#qg-printer-overlay')?.remove()}
@@ -56,8 +74,11 @@
    div.querySelector('#qgp-test').onclick=async()=>{div.querySelector('#qgp-save').click();try{await send('QueueGo\\n'+shopName+'\\nทดสอบเครื่องพิมพ์\\n'+new Date().toLocaleString('th-TH')+'\\n\\n','test')}catch(e){showErr(e)}};
    div.querySelectorAll('[data-list]').forEach(b=>b.onclick=async()=>{const type=b.dataset.list,l=div.querySelector('#qgp-list');l.innerHTML='กำลังโหลด…';try{const rows=await recent(type);l.innerHTML=rows.map(o=>'<button class="qgp-order" data-print="'+o.id+'" data-type="'+type+'"><span><b>'+esc(o.order_number)+'</b><small>'+new Date(o.created_at).toLocaleString('th-TH')+'</small></span><strong>'+money(o.total_amount)+'</strong></button>').join('')||'<small>ยังไม่มีรายการ</small>';l.querySelectorAll('[data-print]').forEach(x=>x.onclick=()=>printOrder(x.dataset.print,x.dataset.type,true).catch(showErr))}catch(e){l.textContent=e.message}});
  }
- async function subscribe(){if(channel||location.hash.split('/')[0]!=='#pos')return;try{await ensureShop();if(!window.supabase?.createClient){const sc=document.createElement('script');sc.src='https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.10/dist/umd/supabase.min.js';sc.onload=subscribe;document.head.append(sc);return}client=window.supabase.createClient(QT_SUPABASE_CONFIG.URL,QT_SUPABASE_CONFIG.KEY);client.realtime.setAuth(await qtGetAccessToken());channel=client.channel('printer-'+shopId+'-'+crypto.randomUUID()).on('postgres_changes',{event:'*',schema:'public',table:'orders',filter:'shop_id=eq.'+shopId},realtime).subscribe()}catch(e){showErr(e)}}
- function mountButton(){let b=document.querySelector('#qg-printer-btn');if(!b){b=document.createElement('button');b.id='qg-printer-btn';b.textContent='🖨 เครื่องพิมพ์';b.onclick=open;document.body.append(b)}b.style.display=location.hash.split('/')[0]==='#pos'?'block':'none';if(b.style.display==='block')subscribe()}
- window.qgPrinterOpen=open;window.qgPrinterPrintOrder=printOrder;
- window.addEventListener('hashchange',()=>setTimeout(mountButton,200));setInterval(mountButton,1200);setTimeout(mountButton,500);
+ function disconnect(){generation++;shopId=null;shopName='ร้านค้า';close();document.querySelector('#qg-printer-btn')?.remove()}
+ function mount(shop,name){
+   if(shopId!==shop)disconnect();shopId=shop;shopName=name||'ร้านค้า';
+   if(document.querySelector('#qg-printer-btn'))return;
+   const b=document.createElement('button');b.id='qg-printer-btn';b.textContent='🖨 เครื่องพิมพ์';b.onclick=open;document.body.append(b);
+ }
+ window.qgPrinterMount=mount;window.qgPrinterDisconnect=disconnect;window.qgPrinterOrderChanged=realtime;
 })();

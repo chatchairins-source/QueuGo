@@ -2,6 +2,7 @@
 (()=>{
   'use strict';
   const state={shop:null,shopName:'',owner:false,staff:null,staffRows:[],tables:[],products:[],orders:[],items:[],deliveryOrders:[],deliveryItems:[],selected:null,mode:'DINE_IN',table:null,noTable:false,view:'counter',channel:null,client:null,loading:false,pendingCreate:null};
+  let generation=0,loadTask=null,reloadRequested=false,subscribeTask=null;
   const requestStore='queuego-pos-pending-create';
   try{state.pendingCreate=JSON.parse(sessionStorage.getItem(requestStore)||'null')}catch(_){sessionStorage.removeItem(requestStore)}
   const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -18,39 +19,56 @@
   const tableName=id=>state.tables.find(x=>x.id===id)?.label||'ไม่ระบุโต๊ะ';
   function shell(title,body){document.title=title+' - QueueGo';document.body.className='qgm-app qg-pos-body';document.getElementById('app').innerHTML=`<main class="qg-pos"><header><button type="button" onclick="qgPosExit()" aria-label="กลับ">‹</button><strong><i>Q</i> QueueGo <span>หน้าร้าน</span></strong><button type="button" onclick="qgPosReload()" aria-label="โหลดข้อมูลใหม่">↻</button></header>${!navigator.onLine?'<p class="qg-pos-connection" role="alert">ไม่มีอินเทอร์เน็ต กรุณารอการเชื่อมต่อก่อนบันทึกออเดอร์</p>':''}${body}</main>`}
   function message(e){const s=String(e?.message||e||'ผิดพลาด');toast(s);const box=document.querySelector('#qg-pos-error');if(box)box.textContent=s}
-  function busy(v){state.loading=v;document.querySelectorAll('.qg-pos button[data-write]').forEach(b=>b.disabled=v)}
+  function busy(v){state.loading=v;if(!v&&reloadRequested&&!loadTask){reloadRequested=false;window.qgPosReload()}document.querySelectorAll('.qg-pos button[data-write]').forEach(b=>b.disabled=v)}
   window.qgPosRetryPending=async()=>{const p=state.pendingCreate;if(!p||state.loading)return;if(!navigator.onLine)return message('ไม่มีการเชื่อมต่อ');busy(true);try{state.selected=await rpc('pos_create_bill_once',{p_request:p.request,p_type:p.type,p_table:p.type==='DINE_IN'?p.table:null,p_product:p.product,p_note:p.note});state.mode=p.type;state.table=p.table;state.noTable=p.type==='DINE_IN'&&!p.table;state.pendingCreate=null;sessionStorage.removeItem(requestStore);await load()}catch(e){message(e)}finally{busy(false)}};
-  async function load(){
+  async function readSnapshot(epoch,actor){
+    const current=()=>epoch===generation&&root()==='pos'&&actor===qtSessionRead()?.authUserId;
     const noteDraft=document.getElementById('qg-pos-note')?.value||'';
     const searchDraft=document.getElementById('qg-pos-search')?.value||'';
-    const shop=await rpc('pos_my_shop',{});if(!shop)throw Error('บัญชีนี้ยังไม่มีสิทธิ์ POS ของร้าน');state.shop=shop;
+    const shop=await rpc('pos_my_shop',{});if(!shop)throw Error('บัญชีนี้ยังไม่มีสิทธิ์ POS ของร้าน');if(!current())return;
     const profileRows=await request('shop_profiles?select=shop_name&id=eq.'+encodeURIComponent(shop));
-    state.shopName=profileRows?.[0]?.shop_name||'ร้านค้า';
-    state.owner=await rpc('pos_is_owner',{});
+    const shopName=profileRows?.[0]?.shop_name||'ร้านค้า';
+    const owner=await rpc('pos_is_owner',{});if(!current())return;
     const [tables,products,orders,staff,deliveryOrders,openBills]=await Promise.all([
       request('pos_tables?select=id,label,active,qr_token&shop_id=eq.'+shop+'&order=label.asc'),
       request('products?select=id,name,price,pos_price,available,pos_available,delivery_available,delivery_price,image,category&shop_id=eq.'+shop+'&order=name.asc'),
       request('orders?select=id,order_number,order_type,table_id,staff_id,status,kitchen_status,payment_status,payment_method,bill_status,cash_tendered,cash_change,paid_at,subtotal,total_amount,discount_amount,created_at&shop_id=eq.'+shop+'&sales_channel=eq.POS&order=created_at.desc&limit=200'),
       request('pos_staff?select=user_id,shop_id,display_name,staff_role,permissions,active&shop_id=eq.'+shop),
-      request('orders?select=id,order_number,order_type,sales_channel,status,shop_id,created_at&shop_id=eq.'+shop+'&or=(sales_channel.eq.QUEUEGO_DELIVERY,order_type.eq.shopping)&status=in.(pending,accepted,preparing,ready,assigned)&order=created_at.desc&limit=100'),
+      request('orders?select=id,order_number,order_type,sales_channel,status,rider_id,shop_id,created_at&shop_id=eq.'+shop+'&or=(sales_channel.eq.QUEUEGO_DELIVERY,and(sales_channel.is.null,order_type.eq.shopping))&status=in.(pending,accepted,searching_rider,rider_assigned,preparing,ready,assigned)&order=created_at.desc&limit=100'),
       request('orders?select=id,order_number,order_type,table_id,staff_id,status,kitchen_status,payment_status,payment_method,bill_status,cash_tendered,cash_change,paid_at,subtotal,total_amount,discount_amount,created_at&shop_id=eq.'+shop+'&sales_channel=eq.POS&payment_status=eq.UNPAID&status=neq.cancelled&order=created_at.desc')
     ]);
-    state.tables=tables||[];state.products=products||[];state.orders=[...(openBills||[]),...(orders||[]).filter(o=>!(openBills||[]).some(b=>b.id===o.id))];state.deliveryOrders=deliveryOrders||[];state.staffRows=staff||[];
-    const authId=qtSessionRead()?.authUserId;
-    if(state.pendingCreate&&(state.pendingCreate.shop!==shop||state.pendingCreate.actor!==authId)){
+    if(!current())return;
+    const mergedOrders=[...(openBills||[]),...(orders||[]).filter(o=>!(openBills||[]).some(b=>b.id===o.id))];
+    const staffRows=staff||[],member=owner?null:staffRows.find(s=>s.user_id===actor&&s.active);
+    if(!owner&&!member)throw Error('บัญชีพนักงานถูกปิดสิทธิ์');
+    const ids=mergedOrders.map(o=>o.id),deliveryIds=(deliveryOrders||[]).map(o=>o.id);
+    const [items,deliveryItems]=await Promise.all([
+      ids.length?request('order_items?select=id,order_id,product_id,item_name,description,quantity,unit_price,total_price,pos_kitchen_status,pos_batch,created_at&order_id=in.('+ids.join(',')+')&order=created_at.asc'):[],
+      deliveryIds.length?request('order_items?select=id,order_id,item_name,description,quantity,created_at&order_id=in.('+deliveryIds.join(',')+')&order=created_at.asc'):[]
+    ]);
+    if(!current())return;
+    Object.assign(state,{shop,shopName,owner,staff:member,staffRows,tables:tables||[],products:products||[],orders:mergedOrders,deliveryOrders:deliveryOrders||[],items:items||[],deliveryItems:deliveryItems||[]});
+    if(state.pendingCreate&&(state.pendingCreate.shop!==shop||state.pendingCreate.actor!==actor)){
       state.pendingCreate=null;sessionStorage.removeItem(requestStore);
     }
-    state.staff=state.owner?null:state.staffRows.find(s=>s.user_id===authId&&s.active);
-    if(!state.owner&&!state.staff)throw Error('บัญชีพนักงานถูกปิดสิทธิ์');
-    const ids=state.orders.map(o=>o.id);
-    state.items=ids.length?await request('order_items?select=id,order_id,product_id,item_name,description,quantity,unit_price,total_price,pos_kitchen_status,pos_batch,created_at&order_id=in.('+ids.join(',')+')&order=created_at.asc'):[];
-    const deliveryIds=state.deliveryOrders.map(o=>o.id);
-    state.deliveryItems=deliveryIds.length?await request('order_items?select=id,order_id,item_name,description,quantity,created_at&order_id=in.('+deliveryIds.join(',')+')&order=created_at.asc'):[];
     if(state.selected&&!state.orders.some(x=>x.id===state.selected))state.selected=null;
     render();
     if(noteDraft&&document.getElementById('qg-pos-note'))document.getElementById('qg-pos-note').value=noteDraft;
     if(searchDraft&&document.getElementById('qg-pos-search')){document.getElementById('qg-pos-search').value=searchDraft;window.qgPosFilter(searchDraft)}
+    window.qgPrinterMount?.(shop,shopName);
+    if(owner)window.qgCheckMerchantOrders?.(state.deliveryOrders.filter(o=>o.status==='pending'));
     subscribe();
+  }
+  function load(){
+    if(loadTask)return loadTask;
+    const epoch=generation,actor=qtSessionRead()?.authUserId;
+    const task=readSnapshot(epoch,actor).finally(()=>{if(loadTask===task)loadTask=null;if(epoch===generation&&reloadRequested&&!state.loading){reloadRequested=false;window.qgPosReload()}});
+    loadTask=task;return task;
+  }
+  function changed(payload){
+    window.qgPrinterOrderChanged?.(payload);
+    if(loadTask||state.loading){reloadRequested=true;return}
+    window.qgPosReload();
   }
   function tabs(){return `<nav class="qg-pos-tabs">${[['counter','＋ รับออเดอร์'],['tables','โต๊ะ'],['kitchen','ครัว'],['bills','คิดเงิน'],['reports','ยอดขาย'],['history','ประวัติ'],['delivery','Delivery'],['staff','พนักงาน']].filter(x=>state.owner||!['reports','history','delivery','staff'].includes(x[0])).map(([key,label])=>`<button type="button" class="${state.view===key?'current':''}" onclick="qgPosView('${key}')">${label}</button>`).join('')}</nav>`}
   function counter(){const bill=selected(),occupied=new Map(state.orders.filter(o=>active(o)&&o.table_id).map(o=>[o.table_id,o]));return `${tabs()}<div id="qg-pos-error" role="alert"></div>${state.pendingCreate?`<div class="qg-pos-connection">กำลังตรวจบิลก่อนหน้าที่ผลลัพธ์ไม่แน่ชัด <button type="button" data-write onclick="qgPosRetryPending()">ตรวจบิลเดิม</button></div>`:''}<div class="qg-pos-panel"><div class="qg-pos-switch"><button class="${state.mode==='DINE_IN'?'on':''}" onclick="qgPosMode('DINE_IN')">ทานที่ร้าน</button><button class="${state.mode==='TAKEAWAY'?'on':''}" onclick="qgPosMode('TAKEAWAY')">รับกลับ</button></div>${state.mode==='DINE_IN'?`<h2 class="qg-pos-table-heading">เลือกโต๊ะ</h2><div class="qg-pos-tables"><button class="${state.noTable?'selected':''}" onclick="qgPosNoTable()"><b>ไม่ระบุโต๊ะ</b><small>ทานที่ร้าน</small></button>${state.tables.filter(t=>t.active).map(t=>{const o=occupied.get(t.id);return `<div class="qg-pos-counter-table"><button class="${(bill?.table_id||state.table)===t.id?'selected':''}" onclick="qgPosTable('${t.id}')"><b>${esc(t.label)}</b><small>${o?'มีออเดอร์ · '+esc(o.order_number):'ว่าง'}</small></button><button type="button" class="qg-pos-table-qr-direct" onclick="event.stopPropagation();qgPosQR('${t.id}')">ดู QR</button></div>`}).join('')}</div>${!state.tables.some(t=>t.active)&&can('manage_staff')?'<button type="button" class="qg-pos-add" onclick="qgPosEditTable()">＋ เพิ่มโต๊ะ</button>':''}`:`<button class="qg-pos-add" onclick="qgPosNewTakeaway()">＋ เปิดบิลรับกลับ</button>`}<div class="qg-pos-grid"><section><h2>เมนูสินค้า</h2><input id="qg-pos-search" type="search" placeholder="ค้นหาเมนู" oninput="qgPosFilter(this.value)"><input id="qg-pos-note" placeholder="หมายเหตุสำหรับครัว (ถ้ามี)" maxlength="500"><div class="qg-pos-products">${state.products.filter(p=>p.available&&p.pos_available).map(p=>`<button type="button" data-name="${esc(p.name.toLowerCase())}" onclick="qgPosAdd('${p.id}')">${p.image?`<img loading="lazy" src="${esc(p.image)}" alt="">`:''}<b>${esc(p.name)}</b><small>${money(p.pos_price??p.price)}</small></button>${can('edit_price')?`<button class="qg-pos-price-edit" onclick="qgPosChangePrice('${p.id}')">แก้ราคา</button>`:''}`).join('')||'<p>ยังไม่มีสินค้าที่ขายหน้าร้าน</p>'}</div></section><section><h2>บิล ${bill?esc(bill.order_number):'ใหม่'}</h2>${bill?`<p class="qg-pos-sub">${esc(bill.order_type==='DINE_IN'?'ทานที่ร้าน • '+tableName(bill.table_id):'รับกลับ')} · ${esc(bill.kitchen_status)}</p><div class="qg-pos-lines">${lines().map(i=>`<div><span><b>${esc(i.item_name)} × ${i.quantity}</b><small>${esc(i.description||'')}</small></span><strong>${money(i.total_price)}</strong>${bill.kitchen_status==='NEW'?`<button title="เพิ่ม 1" onclick="qgPosAdd('${i.product_id}','${encodeURIComponent(i.description||'').replace(/'/g,'%27')}')">＋</button><button title="ลด 1" onclick="qgPosReduce('${i.product_id}','${encodeURIComponent(i.description||'').replace(/'/g,'%27')}')">−</button>`:''}</div>`).join('')||'<p>เลือกสินค้าเพื่อเริ่มบิล</p>'}</div><div class="qg-pos-total"><span>ยอดรวม${bill.discount_amount?' · ลด '+money(bill.discount_amount):''}</span><b>${money(bill.total_amount)}</b></div><div class="qg-pos-actions">${bill.kitchen_status==='NEW'&&can('send_kitchen')?`<button data-write onclick="qgPosAction('send')">ส่งเข้าครัว</button>`:''}${bill.kitchen_status==='READY'&&can('serve_order')?`<button data-write onclick="qgPosAction('serve')">เสิร์ฟแล้ว</button>`:''}${can('discount')?`<button class="quiet" data-write onclick="qgPosDiscount()">ส่วนลด</button>`:''}${can('close_bill')&&['READY','SERVED'].includes(bill.kitchen_status)?`<button data-write onclick="qgPosPay()">คิดเงิน</button>`:''}${can('cancel_bill')?`<button class="quiet" data-write onclick="qgPosAction('cancel')">ยกเลิกบิล</button>`:''}</div>`:'<p>เลือกโต๊ะหรือเปิดบิลรับกลับ แล้วแตะเมนูสินค้า</p>'}</section></div><h2>บิลที่ยังไม่ปิด</h2><div class="qg-pos-bills">${state.orders.filter(active).map(o=>`<button onclick="qgPosOpen('${o.id}')">${esc(o.order_type==='DINE_IN'?'ทานที่ร้าน • '+tableName(o.table_id):'รับกลับ')} · ${esc(o.order_number)}<b>${money(o.total_amount)}</b></button>`).join('')||'<p>ยังไม่มีบิล</p>'}</div></div>`}
@@ -62,10 +80,10 @@
     });
     const delivery=state.deliveryOrders.map(o=>{
       const items=state.deliveryItems.filter(i=>i.order_id===o.id);
-      const action=o.status==='pending'?'accepted':o.status==='accepted'?'preparing':o.status==='preparing'?'ready':null;
+      const action=o.status==='pending'?'accepted':o.status==='rider_assigned'&&o.rider_id?'preparing':o.status==='preparing'&&o.rider_id?'ready':null;
       const permission=action==='accepted'?'receive_order':action==='preparing'?'cook_order':'ready_order';
       const label=action==='accepted'?'รับออเดอร์':action==='preparing'?'เริ่มเตรียม':'พร้อมให้ไรเดอร์รับ';
-      return `<article class="qg-pos-panel qg-pos-kitchen"><div><b>QueueGo Delivery</b><span>${esc(o.status)}</span></div><small>${esc(o.order_number)}</small>${items.map(i=>`<p>${esc(i.item_name)} × ${Number(i.quantity)} ${i.description?'· '+esc(i.description):''}</p>`).join('')}${action&&can(permission)?`<button data-write onclick="qgPosDeliveryAction('${o.id}','${action}')">${label}</button>`:''}</article>`;
+      return `<article class="qg-pos-panel qg-pos-kitchen"><div><b>QueueGo Delivery</b><span>${esc(({pending:'ออเดอร์ใหม่',accepted:'รอค้นหาไรเดอร์',searching_rider:'กำลังหาไรเดอร์',rider_assigned:'ไรเดอร์รับงานแล้ว',preparing:'กำลังเตรียม',ready:'พร้อมให้ไรเดอร์รับ',assigned:'รอไรเดอร์'})[o.status]||o.status)}</span></div><small>${esc(o.order_number)}</small>${items.map(i=>`<p>${esc(i.item_name)} × ${Number(i.quantity)} ${i.description?'· '+esc(i.description):''}</p>`).join('')}${action&&can(permission)?`<button data-write onclick="qgPosDeliveryAction('${o.id}','${action}')">${label}</button>`:''}</article>`;
     });
     return `${tabs()}<div id="qg-pos-error" role="alert"></div><h2>คิวครัว</h2>${[...delivery,...pos].join('')||'<p>ยังไม่มีออเดอร์เข้าครัว</p>'}`;
   }
@@ -91,10 +109,28 @@
   window.qgPosEnableDelivery=async()=>{if(!state.owner||state.loading)return;busy(true);try{await rpc('pos_enable_delivery',{});await load()}catch(e){message(e)}finally{busy(false)}};
   function render(){if(root()!=='pos')return;shell('หน้าร้าน',state.view==='counter'?counter():state.view==='tables'?tablesView():state.view==='kitchen'?kitchen():state.view==='bills'?billsView():state.view==='reports'?reports():state.view==='history'?historyView():state.view==='delivery'?deliveryView():staff());if(state.view==='reports')window.qgPosReport(1);if(state.view==='history')window.qgPosHistory();if(state.view==='delivery')window.qgPosDelivery();if(state.view==='staff')staffList()}
   function staffList(){const el=document.getElementById('qg-pos-staff-list');if(!el)return;request('pos_staff?select=user_id,display_name,staff_role,active,permissions&shop_id=eq.'+state.shop).then(rows=>{if(!el.isConnected)return;el.innerHTML=rows.map(s=>`<div class="qg-pos-row"><b>${esc(s.display_name)} · ${esc(s.staff_role)} ${s.active?'':'(ปิดสิทธิ์)'}</b><button data-write onclick="qgPosStaffEdit('${s.user_id}')">สิทธิ์</button></div>`).join('')}).catch(message)}
-  async function subscribe(){if(state.channel||!state.shop)return;const attach=async()=>{if(root()!=='pos'||!state.shop)return;if(!window.supabase?.createClient){const sc=document.createElement('script');sc.src='https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.10/dist/umd/supabase.min.js';sc.onload=attach;document.head.append(sc);return}state.client=window.supabase.createClient(QT_SUPABASE_CONFIG.URL,QT_SUPABASE_CONFIG.KEY);state.client.realtime.setAuth(await token());state.channel=state.client.channel('pos-'+state.shop+'-'+crypto.randomUUID()).on('postgres_changes',{event:'*',schema:'public',table:'orders',filter:'shop_id=eq.'+state.shop},()=>window.qgPosReload()).on('postgres_changes',{event:'*',schema:'public',table:'pos_tables',filter:'shop_id=eq.'+state.shop},()=>window.qgPosReload()).on('postgres_changes',{event:'*',schema:'public',table:'pos_staff',filter:'shop_id=eq.'+state.shop},()=>window.qgPosReload()).subscribe(s=>{if(s==='CHANNEL_ERROR'||s==='TIMED_OUT')message('การเชื่อมต่อ Realtime ขัดข้อง กด ↻ เพื่อโหลดข้อมูล')})};attach().catch(message)}
-  function disconnect(){if(state.channel){state.client?.removeChannel(state.channel);state.channel=null}state.shop=null}
+  function subscribe(){
+    if(state.channel||subscribeTask||!state.shop)return;
+    const epoch=generation,shop=state.shop,actor=qtSessionRead()?.authUserId;
+    const current=()=>epoch===generation&&root()==='pos'&&shop===state.shop&&actor===qtSessionRead()?.authUserId;
+    const task=(async()=>{
+      if(!window.supabase?.createClient)await new Promise((resolve,reject)=>{const sc=document.createElement('script');sc.src='https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.10/dist/umd/supabase.min.js';sc.onload=resolve;sc.onerror=()=>reject(Error('โหลด Realtime ไม่สำเร็จ กรุณาลองใหม่'));document.head.append(sc)});
+      if(!current())return;
+      const client=window.supabase.createClient(QT_SUPABASE_CONFIG.URL,QT_SUPABASE_CONFIG.KEY);
+      await client.realtime.setAuth(await token());
+      if(!current()){await client.removeAllChannels();return}
+      state.client=client;
+      state.channel=client.channel('pos-'+shop+'-'+crypto.randomUUID())
+        .on('postgres_changes',{event:'*',schema:'public',table:'orders',filter:'shop_id=eq.'+shop},p=>{if(current())changed(p)})
+        .on('postgres_changes',{event:'*',schema:'public',table:'pos_tables',filter:'shop_id=eq.'+shop},()=>{if(current())changed()})
+        .on('postgres_changes',{event:'*',schema:'public',table:'pos_staff',filter:'shop_id=eq.'+shop},()=>{if(current())changed()})
+        .subscribe(status=>{if(!current())return;if(status==='SUBSCRIBED')changed();else if(status==='CHANNEL_ERROR'||status==='TIMED_OUT')message('การเชื่อมต่อ Realtime ขัดข้อง กด ↻ เพื่อโหลดข้อมูล')});
+    })().catch(e=>{if(current())message(e)}).finally(()=>{if(subscribeTask===task)subscribeTask=null});
+    subscribeTask=task;
+  }
+  function disconnect(){generation++;reloadRequested=false;loadTask=null;subscribeTask=null;if(state.channel)state.client?.removeChannel(state.channel);state.channel=null;state.client=null;state.shop=null;state.selected=null;window.qgPrinterDisconnect?.()}
   window.qgPosDisconnect=disconnect;
-  window.qgPosRoute=function(){if(root()==='pos-staff-join')return joinView();if(root()==='pos'){if(!qtSessionRead()?.accessToken)return window.renderShopLogin();shell('หน้าร้าน','<p>กำลังโหลดหน้าร้าน...</p>');load().catch(e=>{shell('หน้าร้าน',`<div id="qg-pos-error" role="alert"></div><button onclick="qgPosExit()">กลับ</button>`);message(e)});return}if(qtSessionRead()?.role==='pos_staff'){location.hash='#pos';return}disconnect();return};
+  window.qgPosRoute=function(){if(root()==='pos-staff-join')return joinView();if(root()==='pos'){if(!qtSessionRead()?.accessToken)return window.renderShopLogin();shell('หน้าร้าน','<p>กำลังโหลดหน้าร้าน...</p>');load().catch(e=>{if(root()!=='pos')return;shell('หน้าร้าน',`<div id="qg-pos-error" role="alert"></div><button onclick="qgPosExit()">กลับ</button>`);message(e)});return}if(qtSessionRead()?.role==='pos_staff'){location.hash='#pos';return}disconnect();return};
 
 
   window.qtShopDoLogin=async function(e){e.preventDefault();if(window.qgmLoginPending)return false;const input=document.getElementById('qt-shop-login'),pass=document.getElementById('qt-shop-password');const value=input?.value.trim(),password=pass?.value;if(!value||!password)return false;const btn=e.submitter||e.currentTarget?.querySelector('[type=submit]');window.qgmLoginPending=true;btn.disabled=true;btn.textContent='กำลังเข้าสู่ระบบ…';try{const email=value.includes('@')?value:qtAuthEmailFromPhone(value),auth=await qtSupabaseAuth('token?grant_type=password',{email,password}),rows=await qtSupabaseTable('pos_staff?select=user_id,shop_id,active&user_id=eq.'+auth.user.id,{accessToken:auth.access_token});if(rows?.length){if(!rows[0].active)throw Error('บัญชีพนักงานถูกปิดสิทธิ์');setSession({userId:auth.user.id,authUserId:auth.user.id,accessToken:auth.access_token,refreshToken:auth.refresh_token,expiresAt:auth.expires_at*1000,role:'pos_staff'});location.hash='#pos';window.qtShopRoute();return false}const profile=await qtLoadOwnSupabaseUser(auth.access_token,auth.user.id);if(!profile)throw Error('ไม่พบบัญชีร้านค้าในฐานข้อมูล');const u=qtUserFromRow(profile);if(!['shop','admin'].includes(u.type))throw Error('บัญชีนี้ยังไม่ได้เข้าร่วมร้านค้า กรุณาใส่รหัสเชิญ');if(u.status==='suspended')throw Error('บัญชีถูกระงับ');QT_DB_CACHE.qt_users=[u];qtMarkClean('qt_users');setSession({userId:u.id,authUserId:profile.auth_user_id,accessToken:auth.access_token,refreshToken:auth.refresh_token||null,expiresAt:auth.expires_at?Number(auth.expires_at)*1000:qtJwtExpiryMs(auth.access_token),role:profile.role});navigate(u.type==='admin'?'admin-support':'dashboard');setTimeout(()=>qtBackgroundHydrate({light:false}),0)}catch(err){message(err);return false}finally{window.qgmLoginPending=false;btn.disabled=false;btn.textContent='เข้าสู่ระบบ'}return false};
@@ -166,7 +202,7 @@
   window.qgPosDeleteTable=async id=>{if(!can('manage_staff')||state.loading)return message('บัญชีนี้ไม่มีสิทธิ์ลบโต๊ะ');const t=state.tables.find(x=>x.id===id);if(!t)return message('ไม่พบโต๊ะของร้าน');if(state.orders.some(o=>o.table_id===id))return message('โต๊ะนี้มีประวัติออเดอร์แล้ว ลบไม่ได้ กรุณาแก้ไขโต๊ะแล้วปิดใช้งานแทน');if(!confirm('ยืนยันลบ '+t.label+'? การลบโต๊ะที่ยังไม่มีประวัติออเดอร์จะย้อนกลับไม่ได้'))return;busy(true);try{await rpc('pos_delete_table',{p_id:id});if(state.table===id){state.table=null;state.selected=null}await load();toast('ลบ '+t.label+' แล้ว')}catch(e){message(e)}finally{busy(false)}};
   window.qgPosInvite=async()=>{if(!can('manage_staff'))return;const bytes=crypto.getRandomValues(new Uint8Array(32));const secret=Array.from(bytes,b=>b.toString(16).padStart(2,'0')).join('');try{const role=document.getElementById('qg-pos-invite-role')?.value||'WAITER';await rpc('pos_create_role_invite',{p_secret:secret,p_staff_role:role});document.getElementById('qg-pos-invite').textContent='รหัสเชิญ: '+secret+' (คัดลอกส่งให้พนักงาน เก็บไว้ตอนนี้เท่านั้น)'}catch(e){message(e)}};
   window.qgPosStaffEdit=async id=>{if(!can('manage_staff'))return;try{const rows=await request('pos_staff?select=user_id,display_name,staff_role,active,permissions&user_id=eq.'+id),s=rows?.[0];if(!s)return;const role=prompt('หน้าที่ WAITER / CASHIER / KITCHEN',s.staff_role);if(!role)return;const active=confirm('เปิดใช้งานบัญชี '+s.display_name+'?');await rpc('pos_set_staff_role',{p_user:id,p_role:role.trim().toUpperCase(),p_active:active});await load()}catch(e){message(e)}};
-  window.addEventListener('visibilitychange',()=>{if(!document.hidden&&root()==='pos')window.qgPosReload()});
+  document.addEventListener('visibilitychange',()=>{if(!document.hidden&&root()==='pos')window.qgPosReload()});
   window.addEventListener('online',()=>{if(root()==='pos')window.qgPosReload()});
   window.addEventListener('offline',()=>{if(root()==='pos')render()});
 })();
