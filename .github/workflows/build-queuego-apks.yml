@@ -134,15 +134,37 @@ jobs:
           if count!=1: raise RuntimeError('Release build type not found')
           p.write_text(s)
           PY
-      - name: Build signed release AAB
+      - name: Audit Android release manifest
+        shell: bash
+        run: |
+          set -euo pipefail
+          MANIFEST=android-build/android/app/src/main/AndroidManifest.xml
+          grep -q 'android.permission.INTERNET' "$MANIFEST"
+          grep -q 'android.permission.ACCESS_NETWORK_STATE' "$MANIFEST"
+          grep -q 'android.permission.ACCESS_COARSE_LOCATION' "$MANIFEST"
+          grep -q 'android.permission.ACCESS_FINE_LOCATION' "$MANIFEST"
+          grep -q 'android.permission.VIBRATE' "$MANIFEST"
+          if grep -Eq 'android.permission.(CAMERA|READ_EXTERNAL_STORAGE|WRITE_EXTERNAL_STORAGE|READ_MEDIA_IMAGES|ACCESS_BACKGROUND_LOCATION)' "$MANIFEST"; then
+            echo "Unexpected sensitive Android permission found"
+            cat "$MANIFEST"
+            exit 1
+          fi
+          grep -Rqs 'targetSdkVersion = 36' android-build/android || {
+            echo "Android targetSdkVersion 36 not found"
+            exit 1
+          }
+      - name: Build signed release AAB and APK
         shell: bash
         run: |
           cd android-build/android
           chmod +x gradlew
-          ./gradlew bundleRelease --no-daemon
+          ./gradlew bundleRelease assembleRelease --no-daemon
           cp app/build/outputs/bundle/release/app-release.aab "../../QueueGo-${{ matrix.role }}-release.aab"
+          cp app/build/outputs/apk/release/app-release.apk "../../QueueGo-${{ matrix.role }}-release.apk"
       - uses: actions/upload-artifact@v4
         with:
-          name: QueueGo-${{ matrix.role }}-release-aab
-          path: QueueGo-${{ matrix.role }}-release.aab
+          name: QueueGo-${{ matrix.role }}-release
+          path: |
+            QueueGo-${{ matrix.role }}-release.aab
+            QueueGo-${{ matrix.role }}-release.apk
           if-no-files-found: error
