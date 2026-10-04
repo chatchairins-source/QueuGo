@@ -13,7 +13,6 @@
  let shopId=null,shopName='ร้านค้า',bt=null,usb=null,generation=0,queue=Promise.resolve();
  const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
  const money=n=>Number(n||0).toLocaleString('th-TH',{minimumFractionDigits:2,maximumFractionDigits:2})+' ฿';
- const nativeAndroid=()=>window.Capacitor?.getPlatform?.()==='android';
  const get=()=>{try{return {...defaults,...JSON.parse(localStorage.getItem(SETTINGS)||'{}')}}catch(_){return {...defaults}}};
  const save=s=>{const v={...get(),...s};localStorage.setItem(SETTINGS,JSON.stringify(v));return v};
  const printed=()=>{try{return JSON.parse(localStorage.getItem(PRINTED)||'{}')}catch(_){return {}}};
