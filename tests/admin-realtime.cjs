@@ -1,5 +1,5 @@
 const fs=require('fs'),path=require('path'),vm=require('vm'),assert=require('assert'),{JSDOM}=require('jsdom');
-const code=fs.readFileSync(path.resolve(__dirname,'../admin/index.html'),'utf8').match(/<script id="qt-real-time-v1">([\s\S]*?)<\/script>/)[1];
+const code=fs.readFileSync(path.resolve(__dirname,'../role-realtime.js'),'utf8');
 const tick=()=>new Promise(r=>setImmediate(r));
 (async()=>{let checks=0;const eq=(a,b)=>{assert.deepEqual(a,b);checks++};
 const d=new JSDOM('<main></main>',{url:'https://queuego.test/admin/#admin',runScripts:'outside-only',pretendToBeVisual:true}),w=d.window;

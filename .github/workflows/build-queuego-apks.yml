@@ -45,6 +45,8 @@ jobs:
             cp ../table-order.css ../table-order.js ../table-order.html www/
           elif [ "${{ matrix.role }}" = "merchant" ]; then
             cp ../merchant/* www/
+            cp ../role-realtime.js www/
+            python3 -c "from pathlib import Path; p=Path('www/index.html'); p.write_text(p.read_text().replace('../role-realtime.js','role-realtime.js'))"
             cp ../table-order.html ../table-order.css ../table-order.js www/
           else
             cp ../rider/index.html www/index.html

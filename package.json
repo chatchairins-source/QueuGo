@@ -2,7 +2,7 @@
   "name": "queuego-verification",
   "private": true,
   "scripts": {
-    "test": "node tests/source-integrity.cjs && node tests/critical-client.cjs && node tests/rider-completion.cjs && node tests/rider-claim.cjs && node tests/network-timeout.cjs && node tests/delivery-kitchen.cjs && node tests/pos-runtime.cjs && node tests/customer-session.cjs && node tests/qr-recovery.cjs && node tests/qr-chat-validation.cjs && node tests/location-lifecycle.cjs && node tests/customer-live.cjs && node tests/cart-state.cjs && node tests/customer-search.cjs && node tests/customer-support.cjs && node tests/checkout-quote.cjs && node tests/checkout-server.cjs && node tests/admin-realtime.cjs"
+    "test": "node tests/source-integrity.cjs && node tests/critical-client.cjs && node tests/rider-completion.cjs && node tests/rider-claim.cjs && node tests/network-timeout.cjs && node tests/delivery-kitchen.cjs && node tests/pos-runtime.cjs && node tests/customer-session.cjs && node tests/qr-recovery.cjs && node tests/qr-chat-validation.cjs && node tests/location-lifecycle.cjs && node tests/customer-live.cjs && node tests/cart-state.cjs && node tests/customer-search.cjs && node tests/customer-support.cjs && node tests/checkout-quote.cjs && node tests/checkout-server.cjs && node tests/admin-realtime.cjs && node tests/merchant-realtime.cjs"
   },
   "devDependencies": {
     "@electric-sql/pglite": "0.5.8",
