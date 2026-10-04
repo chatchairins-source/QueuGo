@@ -10,37 +10,50 @@ const localDateTime=(d=new Date())=>{
   const z=n=>String(n).padStart(2,'0');
   return d.getFullYear()+'-'+z(d.getMonth()+1)+'-'+z(d.getDate())+'T'+z(d.getHours())+':'+z(d.getMinutes());
 };
-const currentRule=(rows,type)=>{
-  const now=Date.now();
-  return (rows||[]).filter(r=>r.rule_type===type&&r.active!==false&&new Date(r.effective_from).getTime()<=now)
-    .sort((a,b)=>new Date(b.effective_from)-new Date(a.effective_from))[0]||null;
+const rowValue=(r,fallback)=>{
+  if(!r)return fallback;
+  const v=r.value;
+  if(typeof fallback==='boolean')return v===true||v==='true';
+  if(typeof fallback==='number'){const x=Number(v);return Number.isFinite(x)?x:fallback}
+  return v??fallback;
 };
-const nextRule=(rows,type)=>{
+const currentRow=(rows,key)=>{
   const now=Date.now();
-  return (rows||[]).filter(r=>r.rule_type===type&&r.active!==false&&new Date(r.effective_from).getTime()>now)
+  return (rows||[]).filter(r=>r.rule_key===key&&new Date(r.effective_from).getTime()<=now)
+    .sort((a,b)=>new Date(b.effective_from)-new Date(a.effective_from)||new Date(b.created_at)-new Date(a.created_at))[0]||null;
+};
+const nextRow=(rows,key)=>{
+  const now=Date.now();
+  return (rows||[]).filter(r=>r.rule_key===key&&new Date(r.effective_from).getTime()>now)
     .sort((a,b)=>new Date(a.effective_from)-new Date(b.effective_from))[0]||null;
 };
+const val=(rows,key,fallback)=>rowValue(currentRow(rows,key),fallback);
 const checked=v=>v?'checked':'';
 const n=(id,min=0,max=Number.POSITIVE_INFINITY)=>{
   const x=Number(document.getElementById(id)?.value);
   if(!Number.isFinite(x)||x<min||x>max)throw Error('ค่าที่กรอกไม่ถูกต้อง');
   return x;
 };
-function scheduledLabel(rule){
-  if(!rule)return '';
-  return '<div class="qg-admin-scheduled">ตั้งไว้ล่วงหน้า: '+new Date(rule.effective_from).toLocaleString('th-TH')+'</div>';
+function futureLabel(rows,keys){
+  const next=keys.map(k=>nextRow(rows,k)).filter(Boolean).sort((a,b)=>new Date(a.effective_from)-new Date(b.effective_from))[0];
+  return next?'<div class="qg-admin-scheduled">มีค่าที่ตั้งล่วงหน้า เริ่ม '+new Date(next.effective_from).toLocaleString('th-TH')+'</div>':'';
 }
 function pricingCard(title,body,type){
   return '<section class="qg-admin-control-card"><h3>'+title+'</h3>'+body+
     '<label class="qg-admin-field">มีผลตั้งแต่<input id="qg-'+type+'-effective" type="datetime-local" value="'+localDateTime()+'"></label>'+
     '<button class="qg-admin-save" type="button" onclick="qgSavePlatformPricing(\''+type+'\')">บันทึกราคา/กติกา</button></section>';
 }
+async function insertRules(rows){
+  if(!rows.length)return;
+  return write('queuego_platform_rules?on_conflict=rule_key,effective_from','POST',rows);
+}
+
 window.renderAdminMarket=async()=>{
   if(!admin())return navigate('login');
   layout('ตลาดสด',`<section class="card qg-admin-market">
     <button class="qg-admin-back" onclick="navigate('admin')">‹ ศูนย์ควบคุม</button>
     <h1>ตลาดสด · งานพ่วง · GP</h1>
-    <p>ค่าที่เปิด/ปิดจากหน้านี้เก็บใน Supabase และมีผลกับแอปโดยไม่ต้อง Build APK ใหม่</p>
+    <p>ค่าที่เปิด/ปิดจากหน้านี้เก็บใน Supabase และมีผลกับออเดอร์ใหม่โดยไม่ต้อง Build APK ใหม่</p>
     <div id="qg-platform-controls">กำลังโหลดการตั้งค่าจริง...</div>
     <div id="qg-market-admin">กำลังโหลดข้อมูลตลาดและรถรับงาน...</div>
   </section>`);
@@ -50,45 +63,56 @@ window.renderAdminMarket=async()=>{
 window.qgLoadPlatformControls=async()=>{
   const el=document.getElementById('qg-platform-controls');if(!el||!admin())return;
   try{
-    const [settings,rules]=await Promise.all([
-      api('system_settings?select=key,value&key=in.(platform_features,gp)'),
-      api('platform_pricing_rules?select=id,rule_type,effective_from,config,active,created_at&rule_type=in.(market,route_bundle,gp)&order=effective_from.desc')
-    ]);
+    const rules=await api('queuego_platform_rules?select=id,rule_key,value,effective_from,note,created_at&order=effective_from.desc');
     if(!el.isConnected)return;
-    const byKey=Object.fromEntries((settings||[]).map(x=>[x.key,x.value||{}]));
-    const features=byKey.platform_features||{};
-    const market=currentRule(rules,'market')?.config||{base_fee:30,base_distance_km:5,extra_distance_per_km:10,second_shop_fee:10,additional_shop_fee:5};
-    const route=currentRule(rules,'route_bundle')?.config||{max_detour_km:1.5,max_delay_minutes:10,max_jobs:2,min_rider_extra_fee:10};
-    const gp=currentRule(rules,'gp')?.config||byKey.gp||{default_rate:10};
-    const nextMarket=nextRule(rules,'market'),nextRoute=nextRule(rules,'route_bundle'),nextGp=nextRule(rules,'gp');
+    const marketMulti=val(rules,'feature.market_multi_shop',true);
+    const routeBundle=val(rules,'feature.route_bundle',false);
+    const gpEnabled=val(rules,'feature.gp',true);
+    const market={
+      base_fee:val(rules,'pricing.market_base_fee',30),
+      second_shop_fee:val(rules,'pricing.market_second_shop_fee',10),
+      additional_shop_fee:val(rules,'pricing.market_additional_shop_fee',5)
+    };
+    const route={
+      max_detour_km:val(rules,'route_bundle.max_detour_km',1.5),
+      max_delay_minutes:val(rules,'route_bundle.max_delay_minutes',10),
+      max_orders:val(rules,'route_bundle.max_orders',2),
+      min_rider_extra_fee:val(rules,'route_bundle.min_rider_extra_fee',10)
+    };
+    let gpRate=val(rules,'pricing.gp_default_rate',NaN);
+    if(!Number.isFinite(gpRate)){
+      try{
+        const legacy=await api('system_settings?select=value&key=eq.gp&limit=1');
+        gpRate=Number(legacy?.[0]?.value?.default_rate);
+      }catch(_){}
+      if(!Number.isFinite(gpRate))gpRate=10;
+    }
     el.innerHTML=`
       <section class="qg-admin-control-card qg-admin-switches">
         <h2>สวิตช์ระบบช่วงทดลอง</h2>
-        <label><span><b>ตลาดสดซื้อหลายร้าน</b><small>ปิด = ตลาดสดยังสั่งร้านเดียวได้ แต่ห้ามสร้าง Market Trip หลายร้าน</small></span><input id="qg-flag-market" type="checkbox" ${checked(features.market_multi_shop_enabled)}></label>
-        <label><span><b>งานพ่วง Route Bundle</b><small>อาหาร · เครื่องดื่ม · ร้านขายของชำ</small></span><input id="qg-flag-bundle" type="checkbox" ${checked(features.route_bundle_enabled)}></label>
-        <label><span><b>คิด GP</b><small>ปิด = ออเดอร์ใหม่ GP 0% · ออเดอร์เก่าไม่ถูกแก้ย้อนหลัง</small></span><input id="qg-flag-gp" type="checkbox" ${checked(features.gp_enabled!==false)}></label>
+        <label><span><b>ตลาดสดซื้อหลายร้าน</b><small>ปิด = ตลาดสดยังสั่งร้านเดียวได้ แต่สร้าง Market Trip หลายร้านไม่ได้</small></span><input id="qg-flag-market" type="checkbox" ${checked(marketMulti)}></label>
+        <label><span><b>งานพ่วง Route Bundle</b><small>อาหาร · เครื่องดื่ม · ร้านขายของชำ</small></span><input id="qg-flag-bundle" type="checkbox" ${checked(routeBundle)}></label>
+        <label><span><b>คิด GP</b><small>ปิด = ออเดอร์ใหม่ GP 0% · ออเดอร์เก่าใช้ snapshot เดิม</small></span><input id="qg-flag-gp" type="checkbox" ${checked(gpEnabled)}></label>
         <button class="qg-admin-save" type="button" onclick="qgSaveFeatureFlags()">บันทึกสวิตช์</button>
       </section>
       <div class="qg-admin-control-grid">
         ${pricingCard('ค่าบริการตลาดสด',`
-          <label class="qg-admin-field">ค่ารอบพื้นฐาน<input id="qg-market-base" type="number" min="0" step="1" value="${esc(market.base_fee??30)}"></label>
-          <label class="qg-admin-field">ร้านที่ 2 เพิ่ม<input id="qg-market-second" type="number" min="0" step="1" value="${esc(market.second_shop_fee??10)}"></label>
-          <label class="qg-admin-field">ร้านที่ 3 เป็นต้นไป / ร้าน<input id="qg-market-more" type="number" min="0" step="1" value="${esc(market.additional_shop_fee??5)}"></label>
-          <input id="qg-market-base-km" type="hidden" value="${esc(market.base_distance_km??5)}">
-          <input id="qg-market-extra-km" type="hidden" value="${esc(market.extra_distance_per_km??10)}">
-          ${scheduledLabel(nextMarket)}
+          <label class="qg-admin-field">ค่ารอบพื้นฐาน<input id="qg-market-base" type="number" min="0" step="1" value="${esc(market.base_fee)}"></label>
+          <label class="qg-admin-field">ร้านที่ 2 เพิ่ม<input id="qg-market-second" type="number" min="0" step="1" value="${esc(market.second_shop_fee)}"></label>
+          <label class="qg-admin-field">ร้านที่ 3 เป็นต้นไป / ร้าน<input id="qg-market-more" type="number" min="0" step="1" value="${esc(market.additional_shop_fee)}"></label>
+          ${futureLabel(rules,['pricing.market_base_fee','pricing.market_second_shop_fee','pricing.market_additional_shop_fee'])}
         `,'market')}
         ${pricingCard('งานพ่วง Route Bundle',`
-          <label class="qg-admin-field">อ้อมได้สูงสุด (กม.)<input id="qg-route-detour" type="number" min="0" max="50" step=".1" value="${esc(route.max_detour_km??1.5)}"></label>
-          <label class="qg-admin-field">เพิ่มเวลาสูงสุด (นาที)<input id="qg-route-delay" type="number" min="0" max="180" step="1" value="${esc(route.max_delay_minutes??10)}"></label>
-          <label class="qg-admin-field">จำนวนงานพร้อมกันสูงสุด<input id="qg-route-jobs" type="number" min="1" max="10" step="1" value="${esc(route.max_jobs??2)}"></label>
-          <label class="qg-admin-field">รายรับ Rider เพิ่มขั้นต่ำ<input id="qg-route-rider-min" type="number" min="0" step="1" value="${esc(route.min_rider_extra_fee??10)}"></label>
-          ${scheduledLabel(nextRoute)}
+          <label class="qg-admin-field">อ้อมได้สูงสุด (กม.)<input id="qg-route-detour" type="number" min="0" max="50" step=".1" value="${esc(route.max_detour_km)}"></label>
+          <label class="qg-admin-field">เพิ่มเวลาสูงสุด (นาที)<input id="qg-route-delay" type="number" min="0" max="240" step="1" value="${esc(route.max_delay_minutes)}"></label>
+          <label class="qg-admin-field">จำนวนออเดอร์พร้อมกันสูงสุด<input id="qg-route-jobs" type="number" min="1" max="5" step="1" value="${esc(route.max_orders)}"></label>
+          <label class="qg-admin-field">รายรับ Rider เพิ่มขั้นต่ำ<input id="qg-route-rider-min" type="number" min="0" step="1" value="${esc(route.min_rider_extra_fee)}"></label>
+          ${futureLabel(rules,['route_bundle.max_detour_km','route_bundle.max_delay_minutes','route_bundle.max_orders','route_bundle.min_rider_extra_fee'])}
         `,'route')}
         ${pricingCard('GP มาตรฐาน',`
-          <label class="qg-admin-field">GP (%)<input id="qg-gp-rate" type="number" min="0" max="100" step=".1" value="${esc(gp.default_rate??10)}"></label>
+          <label class="qg-admin-field">GP (%)<input id="qg-gp-rate" type="number" min="0" max="100" step=".1" value="${esc(gpRate)}"></label>
           <small>อัตราพิเศษรายร้านที่มีอยู่เดิมยังมีผลก่อนอัตรามาตรฐาน</small>
-          ${scheduledLabel(nextGp)}
+          ${futureLabel(rules,['pricing.gp_default_rate'])}
         `,'gp')}
       </div>`;
   }catch(e){if(el.isConnected)el.textContent='โหลดการตั้งค่าไม่ได้: '+e.message}
@@ -96,14 +120,15 @@ window.qgLoadPlatformControls=async()=>{
 
 window.qgSaveFeatureFlags=async()=>{
   if(!admin())return;
-  const value={
-    market_multi_shop_enabled:!!document.getElementById('qg-flag-market')?.checked,
-    route_bundle_enabled:!!document.getElementById('qg-flag-bundle')?.checked,
-    gp_enabled:!!document.getElementById('qg-flag-gp')?.checked
-  };
+  const at=new Date().toISOString();
+  const rows=[
+    {rule_key:'feature.market_multi_shop',value:!!document.getElementById('qg-flag-market')?.checked,effective_from:at,note:'Admin feature switch'},
+    {rule_key:'feature.route_bundle',value:!!document.getElementById('qg-flag-bundle')?.checked,effective_from:at,note:'Admin feature switch'},
+    {rule_key:'feature.gp',value:!!document.getElementById('qg-flag-gp')?.checked,effective_from:at,note:'Admin feature switch'}
+  ];
   try{
-    await write('system_settings?on_conflict=key','POST',{key:'platform_features',value,updated_at:new Date().toISOString()});
-    try{qtAudit('platform_feature_flags_update',{entityType:'system_settings',entityId:'platform_features',value})}catch(_){}
+    await insertRules(rows);
+    try{qtAudit('platform_feature_flags_update',{entityType:'queuego_platform_rules',entityId:'features',value:rows.map(x=>({key:x.rule_key,value:x.value}))})}catch(_){}
     toast('บันทึกสวิตช์ระบบแล้ว');
     await qgLoadPlatformControls();
   }catch(e){toast('บันทึกสวิตช์ไม่ได้: '+e.message)}
@@ -112,25 +137,34 @@ window.qgSaveFeatureFlags=async()=>{
 window.qgSavePlatformPricing=async type=>{
   if(!admin())return;
   try{
-    let ruleType=type,config;
-    if(type==='market'){
-      config={base_fee:n('qg-market-base'),base_distance_km:n('qg-market-base-km'),extra_distance_per_km:n('qg-market-extra-km'),second_shop_fee:n('qg-market-second'),additional_shop_fee:n('qg-market-more')};
-    }else if(type==='route'){
-      ruleType='route_bundle';
-      config={max_detour_km:n('qg-route-detour',0,50),max_delay_minutes:n('qg-route-delay',0,180),max_jobs:Math.round(n('qg-route-jobs',1,10)),min_rider_extra_fee:n('qg-route-rider-min',0)};
-    }else if(type==='gp'){
-      config={default_rate:n('qg-gp-rate',0,100)};
-    }else throw Error('ไม่รู้จักประเภทการตั้งค่า');
     const raw=document.getElementById('qg-'+type+'-effective')?.value;
     const effective=raw?new Date(raw):new Date();
     if(Number.isNaN(effective.getTime()))throw Error('วันเวลาที่เริ่มใช้ไม่ถูกต้อง');
-    const body={rule_type:ruleType,effective_from:effective.toISOString(),config,active:true,updated_at:new Date().toISOString()};
-    await write('platform_pricing_rules?on_conflict=rule_type,effective_from','POST',body);
+    const at=effective.toISOString();
+    let rows=[];
+    if(type==='market'){
+      rows=[
+        {rule_key:'pricing.market_base_fee',value:n('qg-market-base'),effective_from:at,note:'Admin market pricing'},
+        {rule_key:'pricing.market_second_shop_fee',value:n('qg-market-second'),effective_from:at,note:'Admin market pricing'},
+        {rule_key:'pricing.market_additional_shop_fee',value:n('qg-market-more'),effective_from:at,note:'Admin market pricing'}
+      ];
+    }else if(type==='route'){
+      rows=[
+        {rule_key:'route_bundle.max_detour_km',value:n('qg-route-detour',0,50),effective_from:at,note:'Admin route bundle rule'},
+        {rule_key:'route_bundle.max_delay_minutes',value:n('qg-route-delay',0,240),effective_from:at,note:'Admin route bundle rule'},
+        {rule_key:'route_bundle.max_orders',value:Math.round(n('qg-route-jobs',1,5)),effective_from:at,note:'Admin route bundle rule'},
+        {rule_key:'route_bundle.min_rider_extra_fee',value:n('qg-route-rider-min',0),effective_from:at,note:'Admin route bundle rule'}
+      ];
+    }else if(type==='gp'){
+      rows=[{rule_key:'pricing.gp_default_rate',value:n('qg-gp-rate',0,100),effective_from:at,note:'Admin default GP rate'}];
+    }else throw Error('ไม่รู้จักประเภทการตั้งค่า');
+    await insertRules(rows);
     if(type==='gp'&&effective.getTime()<=Date.now()+1000){
-      await write('system_settings?on_conflict=key','POST',{key:'gp',value:{default_rate:config.default_rate},updated_at:new Date().toISOString()});
-      window.QT_GP_DEFAULT_RATE=config.default_rate;
+      const rate=Number(rows[0].value);
+      await write('system_settings?on_conflict=key','POST',{key:'gp',value:{default_rate:rate},updated_at:new Date().toISOString()});
+      window.QT_GP_DEFAULT_RATE=rate;
     }
-    try{qtAudit('platform_pricing_rule_update',{entityType:'platform_pricing_rules',entityId:ruleType,ruleType,effective_from:body.effective_from,config})}catch(_){}
+    try{qtAudit('platform_pricing_rule_update',{entityType:'queuego_platform_rules',entityId:type,effective_from:at,values:rows.map(x=>({key:x.rule_key,value:x.value}))})}catch(_){}
     toast(effective.getTime()>Date.now()+60000?'ตั้งค่าล่วงหน้าแล้ว':'บันทึกค่าใหม่แล้ว');
     await qgLoadPlatformControls();
   }catch(e){toast('บันทึกค่าไม่ได้: '+e.message)}
