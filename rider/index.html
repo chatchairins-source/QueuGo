@@ -229,7 +229,7 @@ const STEP_NEXT = { ready:{to:'picked_up', label:'จ่ายเงินสด
 const S = {
   session:null, user:null, riderProfile:null,
   online:false, pos:null, map:null, riderMarker:null, jobMarkers:[],
-  activeOrder:null, openJobs:[], history:[], activeTab:'home', pollTimer:null, chatOrder:null, chatTimer:null, newJobAlert:null, routeLine:null
+  activeOrder:null, openJobs:[], history:[], activeTab:'home', pollTimer:null, chatOrder:null, newJobAlert:null, routeLine:null
 };
 
 function el(html){ const t=document.createElement('template'); t.innerHTML=html.trim(); return t.content.firstElementChild; }
@@ -253,21 +253,28 @@ async function claimActiveSession(sessionId,authUserId,token){
   if(Array.isArray(result)&&result[0]&&result[0].success===false)throw new Error('ไม่สามารถเปิด Session นี้ได้');
   return result;
 }
-async function checkActiveSession(){
-  const s=readSession();
-  if(!s||!s.sessionId||!s.accessToken||!s.authUserId)return true;
-  try{
-    const token=await getAccessToken();
-    const latest=readSession();
-    const result=await sbRpc('check_active_session',{p_session_id:latest.sessionId},token);
-    const ok=result===true || (Array.isArray(result)&&result[0]===true) || (result&&result.check_active_session===true);
-    if(!ok){forceSessionLogout('บัญชีนี้ถูกเข้าสู่ระบบจากอุปกรณ์อื่น');return false;}
-    await sbRpc('touch_active_session',{p_session_id:latest.sessionId},token);
-    return true;
-  }catch(e){
-    console.warn('active session check failed',e);
-    return true;
-  }
+function riderSessionMatches(session){
+  const stored=readSession();
+  return !!session&&!!stored&&!!S.session&&stored.authUserId===session.authUserId&&stored.sessionId===session.sessionId&&S.session.authUserId===session.authUserId&&S.session.sessionId===session.sessionId;
+}
+let riderSessionCheck=null;
+function checkActiveSession(){
+  const session=readSession();
+  if(!session?.sessionId||!session.accessToken||!session.authUserId)return Promise.resolve(true);
+  const key=JSON.stringify([session.authUserId,session.sessionId]);
+  if(riderSessionCheck?.key===key)return riderSessionCheck.task;
+  const task=(async()=>{
+    try{
+      const token=await getAccessToken();if(!riderSessionMatches(session))return false;
+      const result=await sbRpc('check_active_session',{p_session_id:session.sessionId},token);
+      if(!riderSessionMatches(session))return false;
+      const ok=result===true||(Array.isArray(result)&&result[0]===true)||(result&&result.check_active_session===true);
+      if(!ok){forceSessionLogout('บัญชีนี้ถูกเข้าสู่ระบบจากอุปกรณ์อื่น');return false}
+      await sbRpc('touch_active_session',{p_session_id:session.sessionId},token);
+      return riderSessionMatches(session);
+    }catch(e){console.warn('Rider session check unavailable');return riderSessionMatches(session)}
+  })().finally(()=>{if(riderSessionCheck?.task===task)riderSessionCheck=null});
+  riderSessionCheck={key,task};return task;
 }
 function startSessionGuard(){
   stopSessionGuard();
@@ -275,14 +282,13 @@ function startSessionGuard(){
 }
 function stopSessionGuard(){if(sessionGuardTimer){clearInterval(sessionGuardTimer);sessionGuardTimer=null;}}
 function forceSessionLogout(msg){
-  stopSessionGuard();stopPolling();
+  stopSessionGuard();stopPolling();stopRiderChatWatch();window.qgClearRiderInbox?.();window.qtStopNewJobAlert?.();
   try{if(S.watchId)navigator.geolocation.clearWatch(S.watchId);}catch(e){}
   clearSession();
-  Object.assign(S,{session:null,user:null,riderProfile:null,online:false,activeOrder:null,openJobs:[],history:[]});
+  Object.assign(S,{session:null,user:null,riderProfile:null,online:false,activeOrder:null,openJobs:[],history:[],chatOrder:null});
   renderLogin(msg||'เซสชันนี้ถูกยกเลิก');
 }
 window.addEventListener('focus',()=>{if(S.session&&S.session.sessionId)checkActiveSession();});
-document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&S.session&&S.session.sessionId)checkActiveSession();});
 
 /* ---------- boot ---------- */
 function boot(){
@@ -290,35 +296,43 @@ function boot(){
   if(s){ S.session = s; startSessionGuard(); resumeSession(); }
   else renderLogin();
 }
-async function resumeSession(){
-  try{
-    if(S.session&&S.session.sessionId){
-      const ok=await checkActiveSession();
-      if(!ok)return;
+let riderResumeTask=null;
+function resumeSession(){
+  const session=S.session;if(!session)return Promise.resolve();
+  const key=JSON.stringify([session.authUserId,session.sessionId]);
+  if(riderResumeTask?.key===key)return riderResumeTask.task;
+  const task=(async()=>{
+    try{
+      if(session.sessionId&&!await checkActiveSession())return;
+      if(!riderSessionMatches(session))return;
+      const token=await getAccessToken();if(!riderSessionMatches(session))return;
+      const rows=await sbTable('users?select=*&auth_user_id=eq.'+encodeURIComponent(session.authUserId),{token});
+      if(!riderSessionMatches(session))return;
+      const user=Array.isArray(rows)?rows[0]:null;
+      if(!user||user.role!=='rider'){forceSessionLogout('บัญชีนี้ไม่ใช่บัญชีไรเดอร์');return}
+      S.user=user;
+      if(user.status==='suspended'){renderPending(user,'บัญชีถูกระงับการใช้งาน กรุณาติดต่อผู้ดูแลระบบ');return}
+      if(user.status!=='active'){renderPending(user,'ใบสมัครของคุณอยู่ระหว่างตรวจสอบ');return}
+      if(await loadRiderProfile())renderStage();
+    }catch(e){
+      if(!riderSessionMatches(session))return;
+      console.error('Rider session restore failed');
+      document.getElementById('app').innerHTML='<div class="screen-center"><div class="pending-card"><h1>เชื่อมต่อไม่ได้</h1><p>บัญชียังอยู่ในเครื่อง กรุณาต่ออินเทอร์เน็ตแล้วลองใหม่</p><button type="button" class="btn btn-brand" id="qg-rider-retry">ลองใหม่</button></div></div>';
+      document.getElementById('qg-rider-retry').onclick=()=>resumeSession();
     }
-    const token = await getAccessToken();
-    const rows = await sbTable('users?select=*&auth_user_id=eq.'+encodeURIComponent(S.session.authUserId), {token});
-    const u = Array.isArray(rows) ? rows[0] : null;
-    if(!u || u.role!=='rider'){ clearSession(); renderLogin('บัญชีนี้ไม่ใช่บัญชีไรเดอร์'); return; }
-    S.user = u;
-    if(u.status==='suspended'){ renderPending(u,'บัญชีถูกระงับการใช้งาน กรุณาติดต่อผู้ดูแลระบบ'); return; }
-    if(u.status!=='active'){ renderPending(u,'ใบสมัครของคุณอยู่ระหว่างตรวจสอบ'); return; }
-    await loadRiderProfile();
-    renderStage();
-  }catch(e){
-    console.error('Rider session restore failed',e);
-    /* A lost connection must not delete a still valid refresh token. */
-    document.getElementById('app').innerHTML='<div class="screen-center"><div class="pending-card"><h1>เชื่อมต่อไม่ได้</h1><p>บัญชียังอยู่ในเครื่อง กรุณาต่ออินเทอร์เน็ตแล้วลองใหม่</p><button type="button" class="btn btn-brand" id="qg-rider-retry">ลองใหม่</button></div></div>';
-    document.getElementById('qg-rider-retry').onclick=()=>resumeSession();
-  }
+  })().finally(()=>{if(riderResumeTask?.task===task)riderResumeTask=null});
+  riderResumeTask={key,task};return task;
 }
 async function loadRiderProfile(){
-  const token = await getAccessToken();
-  const rows = await sbTable('rider_profiles?select=*&user_id=eq.'+encodeURIComponent(S.user.id), {token});
-  S.riderProfile = Array.isArray(rows) && rows[0] ? rows[0] : null;
-  S.online = !!(S.riderProfile && S.riderProfile.metadata && S.riderProfile.metadata.online);
-
-try{const c=JSON.parse(localStorage.getItem(qgRiderHistoryKey())||'null');if(c&&Date.now()-c.at<7*86400000&&Array.isArray(c.history))S.history=c.history}catch(e){}
+  const session=S.session,userId=S.user?.id;if(!userId)return false;
+  const current=()=>riderSessionMatches(session)&&S.user?.id===userId;
+  const token=await getAccessToken();if(!current())return false;
+  const rows=await sbTable('rider_profiles?select=*&user_id=eq.'+encodeURIComponent(userId),{token});
+  if(!current())return false;
+  S.riderProfile=Array.isArray(rows)&&rows[0]?rows[0]:null;
+  S.online=!!S.riderProfile?.metadata?.online;
+  try{const cached=JSON.parse(localStorage.getItem(qgRiderHistoryKey())||'null');if(cached&&Date.now()-cached.at<7*86400000&&Array.isArray(cached.history))S.history=cached.history}catch(e){}
+  return true;
 }
 
 /* ---------- LOGIN ---------- */
@@ -566,6 +580,8 @@ function renderRiderRegistration(){
 
 async function doLogin(){
   const btn = document.getElementById('li-btn');
+  if(!btn||btn.disabled)return;
+  const current=()=>btn.isConnected&&document.getElementById('li-btn')===btn;
   const errBox = document.getElementById('li-err');
   const phone = document.getElementById('li-phone').value.trim();
   const pass = document.getElementById('li-pass').value;
@@ -575,19 +591,21 @@ async function doLogin(){
   try{
     const email = phone.includes('@') ? phone : authEmailFromPhone(phone);
     const auth = await sbAuth('token?grant_type=password', {email, password:pass});
+    if(!current())return;
     const rows = await sbTable('users?select=*&auth_user_id=eq.'+encodeURIComponent(auth.user.id), {token:auth.access_token});
+    if(!current())return;
     const u = Array.isArray(rows) ? rows[0] : null;
     if(!u || u.role!=='rider'){ throw new Error('บัญชีนี้ไม่ใช่บัญชีไรเดอร์'); }
     const sessionId=crypto.randomUUID();
     await claimActiveSession(sessionId,auth.user.id,auth.access_token);
+    if(!current())return;
     S.session = {authUserId:auth.user.id, accessToken:auth.access_token, refreshToken:auth.refresh_token||null, expiresAt:auth.expires_at?auth.expires_at*1000:jwtExpiryMs(auth.access_token), sessionId};
     writeSession(S.session);
     startSessionGuard();
     S.user = u;
     if(u.status==='suspended'){ renderPending(u,'บัญชีถูกระงับการใช้งาน กรุณาติดต่อผู้ดูแลระบบ'); return; }
     if(u.status!=='active'){ renderPending(u,'ใบสมัครของคุณอยู่ระหว่างตรวจสอบ'); return; }
-    await loadRiderProfile();
-    renderStage();
+    if(await loadRiderProfile())renderStage();
   }catch(e){
     console.error(e);
     errBox.textContent = /invalid/i.test(e.message) ? 'อีเมลหรือรหัสผ่านไม่ถูกต้อง หากสมัครด้วยอีเมลให้ใช้อีเมลนั้นเข้าสู่ระบบ' : e.message;
@@ -612,18 +630,12 @@ function renderPending(u, msg){
   document.getElementById('pd-logout').onclick = doLogout;
 }
 async function doLogout(){
-  const s=readSession();
-  stopSessionGuard();
-  try{if(s&&s.sessionId&&s.accessToken)await sbRpc('revoke_active_session',{p_session_id:s.sessionId},s.accessToken);}catch(e){console.warn('revoke active session failed',e);}
-  clearSession();stopPolling();
-  if(S.watchId) navigator.geolocation.clearWatch(S.watchId);
-  Object.assign(S,{session:null,user:null,riderProfile:null,online:false,activeOrder:null,openJobs:[],history:[]});
-  renderLogin();
+  const session=readSession();
+  forceSessionLogout('ออกจากระบบแล้ว');
+  try{if(session?.sessionId&&session.accessToken)await sbRpc('revoke_active_session',{p_session_id:session.sessionId},session.accessToken)}catch(e){console.warn('Rider session revocation unavailable')}
 }
 
 /* ---------- MAIN STAGE ---------- */
-/* QueueGo v21: superseded renderStage presentation removed. */
-/* QueueGo v21: superseded switchTab presentation removed. */
 function initMap(){
   if(typeof L==='undefined'){ S.map=null; const map=document.getElementById('map'); if(map)map.innerHTML='<div class="qg-v23-map-fallback">แผนที่โหลดไม่ได้ในขณะนี้<br><small>รับงานและเปิดนำทางภายนอกได้ตามปกติ</small></div>'; return; }
   S.map = L.map('map', {zoomControl:false, attributionControl:false}).setView([13.7563,100.5018], 13);
@@ -640,7 +652,6 @@ function startGeolocation(){
     if(S.activeTab==='home') renderSheet();
   }, ()=>toast('ไม่สามารถขอตำแหน่ง GPS ได้'), {enableHighAccuracy:true, maximumAge:5000, timeout:12000});
 }
-/* QueueGo v21: superseded placeRiderMarker presentation removed. */
 function recenterMap(){
   if(!S.map){toast('แผนที่ยังไม่พร้อม เปิดนำทางภายนอกจากงานได้');return}
   if(!S.pos){ toast('ยังไม่ได้ตำแหน่ง GPS'); return; }
@@ -679,7 +690,6 @@ async function pushLocation(){
     await sbTable('rider_profiles?user_id=eq.'+encodeURIComponent(S.user.id), {method:'PATCH', token, body:{latitude:S.pos.lat, longitude:S.pos.lng}});
   }catch(e){ /* best-effort */ }
 }
-/* QueueGo v21: superseded updateStatusUI presentation removed. */
 let riderRefreshTask=null,riderRefreshQueued=false;
 function refreshData(background=false){
   if(!S.user||!S.riderProfile||!navigator.onLine||(background&&document.hidden))return Promise.resolve();
@@ -764,27 +774,20 @@ function drawActiveRoute(){
 
 
 /* ---------- sheet (home) ---------- */
-/* QueueGo v21: superseded renderSheet presentation removed. */
-
-
-/* QueueGo v21: superseded jobCardHTML presentation removed. */
-
-
-/* QueueGo v21: superseded bindJobCardEvents presentation removed. */
 
 
 
 
 
 
-/* QueueGo v21: superseded renderPaymentSummary presentation removed. */
-/* QueueGo v21: superseded closeChat presentation removed. */
-async function loadChatMessages(orderId){
-  try{
-    const token=await getAccessToken();
-    const rows=await sbTable('order_chat_messages?select=*&order_id=eq.'+encodeURIComponent(orderId)+'&order=created_at.asc',{token});
-    return Array.isArray(rows)?rows:[];
-  }catch(e){ console.error('chat load failed',e); return []; }
+
+
+
+
+async function loadChatMessages(orderId,token){
+  token=token||await getAccessToken();
+  const rows=await sbTable('order_chat_messages?select=*&order_id=eq.'+encodeURIComponent(orderId)+'&order=created_at.asc',{token});
+  return Array.isArray(rows)?rows:[];
 }
 
 function riderQuickMessages(){try{return JSON.parse(localStorage.getItem('qtr_quick_messages')||'null')||['กำลังเดินทางไปครับ','ถึงหน้าร้านแล้วครับ','ได้รับสินค้าแล้ว กำลังไปส่งครับ','ใกล้ถึงแล้วครับ อีกประมาณ 5 นาที','ถึงจุดส่งแล้วครับ'];}catch(e){return[];}}
@@ -796,20 +799,31 @@ function renderChatMessages(rows){
   box.innerHTML=rows.length?rows.map(m=>{const raw=String(m.message||'');const isImg=raw.startsWith('__IMG__');return `<div class="chat-bubble ${String(m.sender_id)===String(S.user.id)?'mine':'theirs'}"><div>${isImg?`<img class="chat-image" src="${esc(raw.slice(7))}" alt="รูปที่ส่งในแชต">`:esc(raw)}</div><div class="chat-time">${new Date(m.created_at).toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'})}</div></div>`}).join(''):'<div class="empty-note">ยังไม่มีข้อความ เริ่มแชทกับลูกค้าได้เลย</div>';
   box.scrollTop=box.scrollHeight;
 }
-/* QueueGo v21: superseded openChat presentation removed. */
+let riderChatSend=null;
 async function sendRiderChat(o,override){
-   if(o?.status==='completed'){try{
-     const token=await getAccessToken(),d=await sbTable('deliveries?select=delivered_at&order_id=eq.'+encodeURIComponent(o.id)+'&limit=1',{token});
-     const at=d?.[0]?.delivered_at,rows=await loadChatMessages(o.id);
-     if(!at||!rows.some(m=>String(m.sender_id)===String(order.customer_id)&&new Date(m.created_at)>new Date(at))){toast('หลังจบงาน รอลูกค้าส่งข้อความมาก่อน');return}
-   }catch(e){toast('ตรวจสอบข้อความลูกค้าไม่สำเร็จ');return}}
-
-
-const input=document.getElementById('chat-input');const message=override||(input?.value||'').trim();if(!message)return;try{const token=await getAccessToken();await sbTable('order_chat_messages',{method:'POST',token,body:{order_id:o.id,sender_id:S.user.id,message}});if(input&&!override)input.value='';renderChatMessages(await loadChatMessages(o.id));}catch(e){console.error(e);toast('ส่งข้อความไม่สำเร็จ: '+e.message);}}
-
-
-
-
+  const session=S.session,userId=S.user?.id,screen=document.getElementById('chat-screen'),input=document.getElementById('chat-input');
+  const current=()=>riderSessionMatches(session)&&S.user?.id===userId&&S.chatOrder?.id===o?.id&&screen?.isConnected;
+  const message=override||(input?.value||'').trim();if(!message||!current())return;
+  const key=JSON.stringify([session.authUserId,session.sessionId,o.id]);if(riderChatSend?.key===key)return;
+  const sending={key};riderChatSend=sending;
+  const buttons=[...screen.querySelectorAll('button[type="submit"],.quick-chip')];buttons.forEach(b=>b.disabled=true);
+  try{
+    const token=await getAccessToken();if(!current())return;
+    if(o.status==='completed'){
+      const [deliveries,rows]=await Promise.all([
+        sbTable('deliveries?select=delivered_at&order_id=eq.'+encodeURIComponent(o.id)+'&limit=1',{token}),
+        loadChatMessages(o.id,token)
+      ]);if(!current())return;
+      const at=deliveries?.[0]?.delivered_at;
+      if(!at||!rows.some(m=>String(m.sender_id)===String(o.customer_id)&&new Date(m.created_at)>new Date(at))){toast('หลังจบงาน รอลูกค้าส่งข้อความมาก่อน');return}
+    }
+    await sbTable('order_chat_messages',{method:'POST',token,body:{order_id:o.id,sender_id:userId,message}});
+    if(!current())return;
+    if(input&&!override&&input.value.trim()===message)input.value='';
+    await refreshRiderChat();
+  }catch(e){if(current())toast('ส่งข้อความไม่สำเร็จ กรุณาตรวจการเชื่อมต่อและข้อความล่าสุดก่อนลองอีกครั้ง')}
+  finally{if(riderChatSend===sending)riderChatSend=null;buttons.forEach(b=>{if(b.isConnected)b.disabled=false})}
+}
 
 /* ---------- job history panel (rider earnings, grouped day by day) ---------- */
 function riderEarning(o){
@@ -818,13 +832,11 @@ function riderEarning(o){
   return Number(o.delivery_fee ?? o.rider_fee ?? 0) || 0;
 }
 
-/* QueueGo v21: superseded renderHistoryPanel presentation removed. */
 
 
 
 
 /* ---------- profile panel ---------- */
-/* QueueGo v21: superseded renderProfilePanel presentation removed. */
 function startPolling(){ stopPolling(); S.pollTimer = setInterval(()=>refreshData(true), POLL_MS); }
 function stopPolling(){ if(S.pollTimer) clearInterval(S.pollTimer); S.pollTimer=null;riderRefreshQueued=false; }
 
@@ -832,9 +844,9 @@ function stopPolling(){ if(S.pollTimer) clearInterval(S.pollTimer); S.pollTimer=
 /* ===== v4 runtime resilience ===== */
 (function(){
   const bar=document.createElement('div');bar.id='qt-netbar';bar.textContent='ออฟไลน์ — ระบบจะเชื่อมต่อใหม่อัตโนมัติ';document.body.appendChild(bar);
-  function sync(){bar.classList.toggle('show',!navigator.onLine);if(navigator.onLine && S.user){try{refreshData();}catch(e){}}}
+  function sync(){bar.classList.toggle('show',!navigator.onLine);if(navigator.onLine&&!document.hidden&&S.user){checkActiveSession();refreshData();refreshRiderChat();}}
   addEventListener('online',sync);addEventListener('offline',sync);sync();
-  document.addEventListener('visibilitychange',()=>{if(!document.hidden && navigator.onLine && S.user){try{refreshData();}catch(e){}}});
+  document.addEventListener('visibilitychange',()=>{if(!document.hidden&&navigator.onLine&&S.user){checkActiveSession();refreshData();refreshRiderChat();}});
 })();
 
 
@@ -900,7 +912,7 @@ boot();
   }
   function checkNewJobs(previousIds,jobs){if(!S.online||S.activeOrder)return;const fresh=jobs.find(o=>o&&o.id&&!previousIds.has(String(o.id)));if(fresh)show(fresh);}
   ['click','touchstart','pointerdown'].forEach(ev=>document.addEventListener(ev,unlockAudio,{passive:true}));
-  window.qtStartNewJobAlert=show;window.qtCheckNewJobs=checkNewJobs;window.qtStopNewJobAlert=function(){clearInterval(repeatTimer);repeatTimer=null;try{if(navigator.vibrate)navigator.vibrate(0);}catch(e){}try{if('speechSynthesis'in window)window.speechSynthesis.cancel();}catch(e){}alertJobId=null;alertJob=null;const el=document.getElementById('qt-new-order-alert');if(el)el.classList.remove('show');document.body.style.overflow='';S.newJobAlert={active:false,jobId:null};};
+  window.qtStartNewJobAlert=show;window.qtCheckNewJobs=checkNewJobs;window.qtStopNewJobAlert=acknowledge;
 })();
 
 
@@ -956,7 +968,6 @@ function switchTab(tab){
  if(tab==='jobs'){document.getElementById('panel-jobs').classList.add('show');renderHistoryPanel();}
  if(tab==='earn'){document.getElementById('panel-earn').classList.add('show');qtRenderEarnings();}
  if(tab==='profile'){document.getElementById('panel-profile').classList.add('show');renderProfilePanel();}
- if(tab==='chat'){qtUnread=0;qtBadge();const o=S.activeOrder||(S.history&&S.history[0]);if(o)openChat(o);else toast('ยังไม่มีออเดอร์สำหรับแชต');}
  if(home&&S.map)requestAnimationFrame(()=>S.map.invalidateSize({animate:false}));
 }
 function updateStatusUI(){
@@ -1013,7 +1024,7 @@ function renderProfilePanel(){
 const host=document.querySelector('#panel-profile .qt-settings');if(host&&!host.querySelector('#qg-v22-rider-support')){const b=document.createElement('button');b.id='qg-v22-rider-support';b.className='qt-setting';b.innerHTML='<span>แจ้งปัญหา / ติดตามเรื่อง</span><span>›</span>';b.onclick=()=>qgOpenTicketPanel();host.appendChild(b)}
 }
 function closeChat(){
- if(S.chatTimer)clearInterval(S.chatTimer);S.chatTimer=null;S.chatOrder=null;
+ S.chatOrder=null;
  const screen=document.getElementById('chat-screen');if(screen)screen.remove();
  const stage=document.querySelector('.stage');if(stage)stage.style.display='block';
  // Back always returns to the exact tab the rider came from, never traps the user.
@@ -1023,6 +1034,7 @@ function closeChat(){
 if(S.user)window.switchTab('chat')
 }
 async function openChat(o){
+ document.getElementById('chat-screen')?.remove();
  S.chatOrder=o;const stage=document.querySelector('.stage');if(stage)stage.style.display='none';
  let screen=document.createElement('section');screen.id='chat-screen';screen.className='qt-chatpage show';document.getElementById('app').appendChild(screen);
  const cust=o._customer||{};screen.innerHTML=`<header class="qt-subhead"><button class="qt-back" id="chat-back" aria-label="ย้อนกลับ">${QTICON.back}</button><div class="qt-subtitle"><b>${esc(cust.name||'ลูกค้า')}</b><small>ออเดอร์ #${esc(qtShortOrder(o))}</small></div><div></div></header><div class="chat-box" id="chat-box"><div class="empty-note">กำลังโหลดข้อความ...</div></div>${quickMessagesHTML()}<form class="chat-compose-rider" id="chat-form"><button class="photo-btn" type="button" id="chat-photo" aria-label="ส่งรูป"></button><input type="file" id="chat-photo-input" accept="image/*" hidden><input id="chat-input" maxlength="500" autocomplete="off" placeholder="ข้อความ..." required><button type="submit" aria-label="ส่ง">↑</button></form>`;
@@ -1030,7 +1042,7 @@ async function openChat(o){
  document.getElementById('chat-form').onsubmit=async e=>{e.preventDefault();await sendRiderChat(o)};
  document.getElementById('chat-photo').onclick=()=>document.getElementById('chat-photo-input').click();
  document.getElementById('chat-photo-input').onchange=async e=>{const f=e.target.files[0];if(!f)return;if(f.size>5*1024*1024){toast('รูปต้องไม่เกิน 5 MB');return}try{const data=await compressRiderImage(f,1000,.7);await sendRiderChat(o,'__IMG__'+data)}catch(err){toast('ส่งรูปไม่สำเร็จ')}};
- bindQuickMessages(o);renderChatMessages(await loadChatMessages(o.id));if(S.chatTimer)clearInterval(S.chatTimer);S.chatTimer=setInterval(async()=>{if(S.chatOrder?.id===o.id)renderChatMessages(await loadChatMessages(o.id))},4000);
+ bindQuickMessages(o);await refreshRiderChat();
  qtUnread=0;qtBadge();
 }
 function renderPaymentSummary(o,completed=false){
@@ -1048,9 +1060,35 @@ function qtBadge(){const b=document.getElementById('qt-badge');if(!b)return;b.te
 const el=document.getElementById('qt-badge');if(el&&qgCompletedUnread()){el.textContent=String(Math.min(9,qtUnread+qgCompletedUnread()))+(qtUnread+qgCompletedUnread()>9?'+':'');el.style.display='block'}
 }
 function qtShowMessage(t){const box=document.getElementById('qt-message'),tx=document.getElementById('qt-message-text');if(!box)return;if(tx)tx.textContent=t||'ลูกค้าส่งข้อความถึงคุณ';box.classList.add('show');clearTimeout(qtMsgTimer);qtMsgTimer=setTimeout(()=>box.classList.remove('show'),3800)}
+let riderChatRead=null,riderChatQueued=false,qtLastChatScope=null;
+function refreshRiderChat(background=false){
+  if(!S.user||!navigator.onLine||document.hidden)return Promise.resolve();
+  if(riderChatRead){if(!background)riderChatQueued=true;return riderChatRead}
+  const task=(async()=>{do{riderChatQueued=false;await readRiderChat()}while(riderChatQueued&&S.user&&navigator.onLine&&!document.hidden)})().finally(()=>{if(riderChatRead===task)riderChatRead=null});
+  riderChatRead=task;return task;
+}
+async function readRiderChat(){
+  const order=S.chatOrder||S.activeOrder;if(!order||!S.user)return;
+  const session=S.session,userId=S.user.id,chat=!!S.chatOrder,screen=document.getElementById('chat-screen');
+  const current=()=>riderSessionMatches(session)&&S.user?.id===userId&&(chat?S.chatOrder?.id===order.id&&screen?.isConnected:!S.chatOrder&&S.activeOrder?.id===order.id);
+  try{
+    const token=await getAccessToken();if(!current())return;
+    const rows=await loadChatMessages(order.id,token);if(!current())return;
+    if(chat){
+      const box=screen.querySelector('#chat-box'),signature=JSON.stringify(rows);
+      if(box&&box.dataset.messages!==signature){const top=box.scrollTop,stick=!box.dataset.messages||box.scrollHeight-box.clientHeight-top<80;renderChatMessages(rows);if(!stick)box.scrollTop=top;box.dataset.messages=signature}
+      qtUnread=0;qtBadge();
+    }
+    const scope=JSON.stringify([userId,session.sessionId,order.id]),last=rows[rows.length-1];
+    if(qtLastChatScope!==scope){qtLastChatScope=scope;qtLastMsg=last?.id||null;return}
+    if(last&&last.id!==qtLastMsg){qtLastMsg=last.id;if(!chat&&String(last.sender_id)!==String(userId)){qtUnread++;qtBadge();qtShowMessage(String(last.message||'ข้อความใหม่').startsWith('__IMG__')?'ส่งรูปภาพ':last.message)}}
+  }catch(e){if(current()&&chat){const box=screen.querySelector('#chat-box');if(box&&!box.dataset.messages)box.textContent='โหลดข้อความไม่สำเร็จ ระบบจะลองใหม่เมื่อเชื่อมต่อได้'}}
+}
+function stopRiderChatWatch(){
+  if(window.qtMessagePoll)clearInterval(window.qtMessagePoll);window.qtMessagePoll=null;riderChatQueued=false;qtLastChatScope=null;qtLastMsg=null;qtUnread=0;
+}
 function qtStartMessageWatch(){
- if(window.qtMessagePoll)clearInterval(window.qtMessagePoll);qtLastMsg=null;
- window.qtMessagePoll=setInterval(async()=>{try{const o=S.activeOrder;if(!o||!S.user)return;const rows=await loadChatMessages(o.id),m=rows[rows.length-1];if(!m)return;if(qtLastMsg===null){qtLastMsg=m.id;return}if(m.id!==qtLastMsg){qtLastMsg=m.id;if(String(m.sender_id)!==String(S.user.id)&&S.chatOrder?.id!==o.id){qtUnread++;qtBadge();qtShowMessage(String(m.message||'ข้อความใหม่').startsWith('__IMG__')?'ส่งรูปภาพ':m.message)}}}catch(e){}},5000);
+  stopRiderChatWatch();window.qtMessagePoll=setInterval(()=>refreshRiderChat(true),4000);
 }
 
 boot();
@@ -1106,57 +1144,56 @@ window.advanceOrder=async function(o){
 (function(){
  const key=()=>S.user?.id?'qg-rider-history-v21:'+S.user.id:null;
  const seenKey=()=>S.user?.id?'qg-rider-chat-seen-v21:'+S.user.id:null;
- let completedUnread=0;
-
-
+ let completedUnread=0,inboxRead=null,inboxSnapshot=null;
  window.qgRiderHistoryKey=key;
  window.qgCompletedUnread=()=>completedUnread;
  window.qgMarkInboxSeen=markInboxSeen;
  window.qgWatchCompletedChat=watchCompletedChat;
+ window.qgClearRiderInbox=()=>{completedUnread=0;inboxSnapshot=null};
  function markInboxSeen(){const k=seenKey();if(k)try{localStorage.setItem(k,String(Date.now()))}catch(e){}completedUnread=0;qtBadge()}
- async function watchCompletedChat(){
-   if(!S.user||!S.history?.length)return;
-   try{const orders=S.history.slice(0,100),ids=orders.map(o=>o.id).filter(Boolean);if(!ids.length)return;
-     const token=await getAccessToken(),[messages,deliveries]=await Promise.all([
-       sbTable('order_chat_messages?select=order_id,sender_id,created_at&order_id=in.('+ids.join(',')+')&order=created_at.desc&limit=500',{token}),
-       sbTable('deliveries?select=order_id,delivered_at&order_id=in.('+ids.join(',')+')',{token})]);
-     const byOrder=new Map(orders.map(o=>[String(o.id),o]));
-     const delivered=new Map((deliveries||[]).map(d=>[String(d.order_id),Date.parse(d.delivered_at)]));
-     const seen=Number(localStorage.getItem(seenKey())||0);
-     completedUnread=(messages||[]).filter(m=>{const o=byOrder.get(String(m.order_id)),time=Date.parse(m.created_at),at=delivered.get(String(m.order_id));return o&&String(m.sender_id)===String(o.customer_id)&&Number.isFinite(at)&&time>at&&time>seen}).length;
-     if(S.activeTab==='chat')markInboxSeen();else qtBadge();
-   }catch(e){console.warn('completed chat badge refresh failed',e)}
+ function readInbox(){
+   if(!S.user||!navigator.onLine||document.hidden)return Promise.resolve(null);
+   const session=S.session,userId=S.user.id;
+   const orders=[...new Map([S.activeOrder,...(S.history||[])].filter(Boolean).map(o=>[o.id,{...o}])).values()].slice(0,100);
+   const scope=JSON.stringify([session?.authUserId,session?.sessionId,userId,orders.map(o=>[o.id,o.status,o.updated_at])]);
+   const current=()=>riderSessionMatches(session)&&S.user?.id===userId;
+   if(inboxSnapshot?.scope===scope&&Date.now()-inboxSnapshot.at<5000)return Promise.resolve(inboxSnapshot.data);
+   if(inboxRead?.scope===scope)return inboxRead.task;
+   const task=(async()=>{
+     const ids=orders.map(o=>o.id),token=await getAccessToken();if(!current())return null;
+     const [messages,deliveries]=ids.length?await Promise.all([
+       sbTable('order_chat_messages?select=order_id,sender_id,message,created_at&order_id=in.('+ids.join(',')+')&order=created_at.desc&limit=500',{token}),
+       sbTable('deliveries?select=order_id,delivered_at&order_id=in.('+ids.join(',')+')',{token})]):[[],[]];
+     if(!current())return null;
+     const data={orders,messages:messages||[],deliveries:deliveries||[],current};inboxSnapshot={scope,at:Date.now(),data};return data;
+   })().finally(()=>{if(inboxRead?.task===task)inboxRead=null});inboxRead={scope,task};return task;
  }
-
-
-
-
-
-
-
-
-
+ async function watchCompletedChat(){
+   try{
+     const data=await readInbox();if(!data||!data.current())return;
+     const byOrder=new Map(data.orders.filter(o=>o.status==='completed').map(o=>[String(o.id),o]));
+     const delivered=new Map(data.deliveries.map(d=>[String(d.order_id),Date.parse(d.delivered_at)]));
+     const seen=Number(localStorage.getItem(seenKey())||0);
+     completedUnread=data.messages.filter(m=>{const o=byOrder.get(String(m.order_id)),time=Date.parse(m.created_at),at=delivered.get(String(m.order_id));return o&&String(m.sender_id)===String(o.customer_id)&&Number.isFinite(at)&&time>at&&time>seen}).length;
+     if(S.activeTab==='chat')markInboxSeen();else qtBadge();
+   }catch(e){console.warn('Rider inbox refresh unavailable')}
+ }
 
  window.qgOpenInboxChat=function(id){const o=[S.activeOrder,...(S.history||[])].filter(Boolean).find(x=>String(x.id)===String(id));if(o){document.getElementById('qg-rider-inbox')?.remove();openChat(o)}};
  window.qgRenderMessageInbox=async function(){
    if(S.activeTab!=='chat'||S.chatOrder||!S.user)return;
    const stage=document.querySelector('.stage');if(!stage)return;
-   let box=document.getElementById('qg-rider-inbox');if(!box){box=document.createElement('section');box.id='qg-rider-inbox';box.className='qg-inbox';stage.appendChild(box)}
-   box.innerHTML='<h2>ข้อความ</h2><div class="qg-inbox-empty">กำลังโหลดข้อความ...</div>';
-   try{const token=await getAccessToken(),orders=[S.activeOrder,...(S.history||[])].filter(Boolean).slice(0,100);
-     if(!orders.length){box.innerHTML='<h2>ข้อความ</h2><div class="qg-inbox-empty">ยังไม่มีการสนทนา</div>';return}
-     const ids=orders.map(o=>o.id).filter(Boolean);
-     const [msgs,deliveries]=await Promise.all([
-       sbTable('order_chat_messages?select=order_id,sender_id,message,created_at&order_id=in.('+ids.join(',')+')&order=created_at.desc&limit=500',{token}),
-       sbTable('deliveries?select=order_id,delivered_at&order_id=in.('+ids.join(',')+')',{token})]);
-     if(!box.isConnected||S.activeTab!=='chat'||S.chatOrder)return;
-     const delivered=new Map((deliveries||[]).map(x=>[String(x.order_id),x.delivered_at]));
-     const rows=orders.map(o=>{const messages=(msgs||[]).filter(m=>String(m.order_id)===String(o.id)),at=delivered.get(String(o.id));return{o,last:messages[0],initiated:o.status!=='completed'||Boolean(at&&messages.some(m=>String(m.sender_id)===String(o.customer_id)&&new Date(m.created_at)>new Date(at)))}}).filter(x=>x.initiated).sort((a,b)=>new Date(b.last?.created_at||b.o.updated_at)-new Date(a.last?.created_at||a.o.updated_at));
-     box.innerHTML='<h2>ข้อความ</h2>'+(rows.length?rows.map(({o,last})=>'<button class="qg-inbox-item" type="button" onclick="qgOpenInboxChat(\''+esc(o.id)+'\')"><strong>ออเดอร์ '+esc(qtShortOrder(o))+'</strong><small>'+esc(last?(String(last.message).startsWith('__IMG__')?'รูปภาพ':String(last.message).slice(0,85)):'เปิดแชตระหว่างจัดส่ง')+'</small></button>').join(''):'<div class="qg-inbox-empty">ยังไม่มีข้อความจากลูกค้าหลังจบงาน</div>');
-   }catch(e){if(box.isConnected)box.innerHTML='<h2>ข้อความ</h2><div class="qg-inbox-empty">โหลดข้อความไม่สำเร็จ กรุณาลองอีกครั้ง</div>'}
+   let box=document.getElementById('qg-rider-inbox');if(!box){box=document.createElement('section');box.id='qg-rider-inbox';box.className='qg-inbox';box.innerHTML='<h2>ข้อความ</h2><div class="qg-inbox-empty">กำลังโหลดข้อความ...</div>';stage.appendChild(box)}
+   const request={};box._request=request;
+   const current=()=>box.isConnected&&box._request===request&&S.activeTab==='chat'&&!S.chatOrder;
+   try{
+     const data=await readInbox();if(!data||!data.current()||!current())return;
+     const delivered=new Map(data.deliveries.map(x=>[String(x.order_id),x.delivered_at]));
+     const rows=data.orders.map(o=>{const messages=data.messages.filter(m=>String(m.order_id)===String(o.id)),at=delivered.get(String(o.id));return{o,last:messages[0],initiated:o.status!=='completed'||Boolean(at&&messages.some(m=>String(m.sender_id)===String(o.customer_id)&&new Date(m.created_at)>new Date(at)))}}).filter(x=>x.initiated).sort((a,b)=>new Date(b.last?.created_at||b.o.updated_at)-new Date(a.last?.created_at||a.o.updated_at));
+     box.innerHTML='<h2>ข้อความ</h2>'+(rows.length?rows.map(({o,last})=>'<button class="qg-inbox-item" type="button" onclick="qgOpenInboxChat(\''+esc(o.id)+'\')"><strong>ออเดอร์ '+esc(qtShortOrder(o))+'</strong><small>'+esc(last?(String(last.message).startsWith('__IMG__')?'รูปภาพ':String(last.message).slice(0,85)):'เปิดแชตระหว่างจัดส่ง')+'</small></button>').join(''):'<div class="qg-inbox-empty">ยังไม่มีการสนทนา</div>');
+   }catch(e){if(current()){box.innerHTML='<h2>ข้อความ</h2><div class="qg-inbox-empty">โหลดข้อความไม่สำเร็จ <button type="button">ลองใหม่</button></div>';box.querySelector('button').onclick=()=>qgRenderMessageInbox()}}
  };
- setInterval(()=>{if(S.activeTab==='chat'&&!S.chatOrder)qgRenderMessageInbox()},15000);
- setInterval(watchCompletedChat,30000);
+ setInterval(()=>{watchCompletedChat();if(S.activeTab==='chat'&&!S.chatOrder)qgRenderMessageInbox()},15000);
 })();
 </script>
 <script id="qg-v22-ticket-client">

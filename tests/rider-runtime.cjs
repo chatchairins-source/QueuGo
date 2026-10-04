@@ -41,6 +41,27 @@ function boot(){
  c.fetch=async(_url,{signal})=>new Promise((_resolve,reject)=>signal.addEventListener('abort',()=>reject(Error('timeout')),{once:true}));
  const timeout=t.run('getAccessToken()');abort.abort();await assert.rejects(timeout,/timeout/);checks++;eq(budget,15000);eq(t.session().refreshToken,'retryable');
  c.AbortSignal=AbortSignal;c.fetch=async()=>({ok:true,json:async()=>({access_token:'after-timeout',expires_at:Math.floor(Date.now()/1000)+3600})});eq(await t.run('getAccessToken()'),'after-timeout');
+ // Session guard responses and logout revocation cannot erase a newer login.
+ const a=boot(),y=a.ctx;const sessionA={authUserId:'a',sessionId:'sa',accessToken:'a-token',expiresAt:Date.now()+3600000};
+ a.setSession(sessionA);let loggedOut=0,stageRenders=0,pendingRenders=0;y.console.warn=()=>{};
+ y.forceSessionLogout=()=>{loggedOut++;a.setSession(null);y.S.user=null};y.renderStage=()=>stageRenders++;y.renderPending=()=>pendingRenders++;
+ y.localStorage.getItem=()=>null;y.qgRiderHistoryKey=()=>null;
+ vm.runInContext(src.slice(src.indexOf('function riderSessionMatches('),src.indexOf('function startSessionGuard()')),y);
+ vm.runInContext(src.slice(src.indexOf('let riderResumeTask='),src.indexOf('/* ---------- LOGIN ---------- */')),y);
+ vm.runInContext(src.slice(src.indexOf('async function doLogout()'),src.indexOf('/* ---------- MAIN STAGE ---------- */')),y);
+ let authGate=deferred(),rpcCalls=0;y.sbRpc=async()=>{rpcCalls++;return authGate.promise};
+ const check=a.run('checkActiveSession()');await flush();for(let i=0;i<10;i++)a.run('checkActiveSession()');eq(rpcCalls,1);
+ const sessionB={...sessionA,authUserId:'b',sessionId:'sb'};a.setSession(sessionB);authGate.resolve(false);eq(await check,false);eq(loggedOut,0);eq(a.session().authUserId,'b');
+ a.setSession(sessionA);y.sbRpc=async()=>false;eq(await a.run('checkActiveSession()'),false);eq(loggedOut,1);eq(a.session(),null);
+ a.setSession(sessionA);authGate=deferred();y.sbRpc=async()=>authGate.promise;const logout=a.run('doLogout()');eq(a.session(),null);
+ a.setSession(sessionB);authGate.resolve(true);await logout;eq(a.session().authUserId,'b');
+ // Resume is single-flight and does not render a retired user/profile.
+ a.setSession(sessionA);y.S.user={id:'a'};y.sbRpc=async()=>true;authGate=deferred();let profileReads=0;
+ y.sbTable=async path=>{profileReads++;return path.startsWith('users?')?authGate.promise:[{id:'ra',metadata:{online:true}}]};
+ const restore=a.run('resumeSession()');a.run('resumeSession()');await flush();eq(profileReads,1);a.setSession(sessionB);authGate.resolve([{id:'a',role:'rider',status:'active'}]);await restore;eq(stageRenders,0);eq(profileReads,1);
+ a.setSession(sessionA);authGate=deferred();y.S.user={id:'a'};y.sbTable=async()=>authGate.promise;const profile=a.run('loadRiderProfile()');await flush();a.setSession(sessionB);y.S.user={id:'b'};y.S.riderProfile={id:'rb'};authGate.resolve([{id:'ra',metadata:{online:true}}]);eq(await profile,false);eq(y.S.riderProfile.id,'rb');
+ a.setSession(sessionA);y.sbTable=async path=>path.startsWith('users?')?[{id:'a',role:'rider',status:'active'}]:[{id:'ra',metadata:{online:true}}];await a.run('resumeSession()');eq(stageRenders,1);eq(y.S.riderProfile.id,'ra');eq(y.S.online,true);
+ y.sbTable=async()=>[{id:'a',role:'admin',status:'active'}];await a.run('resumeSession()');eq(a.session(),null);eq(stageRenders,1);eq(pendingRenders,0);
  // Multiple timer ticks share a pending read. Explicit refresh gets one trailing snapshot.
  const j=boot(),x=j.ctx; x.getAccessToken=async()=>x.S.session.authUserId;let gate=deferred(),mine=0,history=0;
  x.sbTable=async(path)=>{if(path.includes('status=in.')){mine++;if(mine===1)return gate.promise;return []}history++;return []};
