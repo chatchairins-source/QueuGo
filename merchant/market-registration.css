@@ -1,0 +1,14 @@
+.qgm-market-membership-entry{margin:16px 0;padding:14px;border:1px solid #e7e9ed;border-radius:14px;background:#fff8f9;display:grid;gap:10px}
+.qgm-market-membership-entry>div{display:grid;gap:4px}.qgm-market-membership-entry small{color:#737b86;line-height:1.45}
+.qgm-market-register{max-width:620px;margin:0 auto;padding:18px}.qgm-market-register h2{margin:12px 0 6px}.qgm-market-register>p{color:#69727d;line-height:1.55}
+.qgm-market-back{border:0;background:#f2f3f5;border-radius:10px;padding:8px 11px;font-weight:700}
+.qgm-market-loading{padding:22px;text-align:center;color:#7b838d}
+.qgm-market-status{display:grid;gap:5px;padding:13px;border-radius:12px;margin:12px 0}.qgm-market-status.approved{background:#eaf9f0;color:#157343}.qgm-market-status.pending{background:#fff8db;color:#725d00}.qgm-market-status.warn{background:#fff4e5;color:#865100}.qgm-market-status.rejected{background:#fff0f1;color:#a7192c}.qgm-market-status small{color:inherit;opacity:.84;line-height:1.45}
+.qgm-market-location{display:flex;justify-content:space-between;gap:12px;align-items:center;padding:10px 0;border-bottom:1px solid #eee}.qgm-market-location small{color:#737b86}
+.qgm-market-nearby h3{margin:18px 0 3px}.qgm-market-nearby>p{margin:0 0 10px;color:#737b86;font-size:12px}
+.qgm-market-choice{display:flex;align-items:flex-start;gap:10px;padding:12px;margin:8px 0;border:1px solid #e2e5e9;border-radius:12px;cursor:pointer}.qgm-market-choice:has(input:checked){border-color:#e7092b;background:#fff6f7}.qgm-market-choice input{margin-top:3px;accent-color:#e7092b}.qgm-market-choice span{display:grid;gap:3px}.qgm-market-choice small{color:#737b86}
+.qgm-market-fields{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:14px 0}.qgm-market-fields label,.qgm-market-request label{display:grid;gap:5px;font-size:12px;font-weight:700}.qgm-market-fields input,.qgm-market-request input,.qgm-market-request textarea{width:100%;border:1px solid #dfe2e6;border-radius:10px;padding:10px;font:inherit;background:#fff}
+.qgm-market-confirm{display:flex;gap:9px;align-items:flex-start;margin:10px 0;font-size:13px;line-height:1.45}.qgm-market-confirm input{margin-top:3px;accent-color:#e7092b;flex:none}
+.qgm-market-request{margin-top:18px;border-top:1px solid #eceef0;padding-top:14px}.qgm-market-request summary{font-weight:800;cursor:pointer}.qgm-market-request label{margin-top:10px}
+.qgm-market-register button[disabled]{opacity:.5;cursor:not-allowed}
+@media(max-width:560px){.qgm-market-fields{grid-template-columns:1fr}.qgm-market-register{padding:14px}.qgm-market-location{align-items:flex-start;flex-direction:column;gap:3px}}
