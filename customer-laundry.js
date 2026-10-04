@@ -63,4 +63,6 @@ V.orders=async function(_,ticket){
   }else cards='<p class="empty">ยังไม่มีออเดอร์</p>';
   layout('<div class="pt"><h1>ออเดอร์ของฉัน</h1></div><div class="list">'+cards+'</div>','orders');
 };
+function qgLaundryDeepLinkBoot(){if(/^#(?:orders|laundry-order\/)/.test(location.hash)&&S.get())setTimeout(()=>route(),0)}
+qgLaundryDeepLinkBoot();
 })();
