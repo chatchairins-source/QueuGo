@@ -297,7 +297,7 @@ begin
   order by h.created_at limit 1;
   if v_hub is null then raise exception 'setup laundry service first'; end if;
 
-  select r.*,u.* into v_rider,v_rider_user
+  select r,u into v_rider,v_rider_user
   from public.rider_profiles r
   join public.users u on u.id=r.user_id
   where regexp_replace(coalesce(u.phone,''),'[^0-9]','','g')=v_phone
