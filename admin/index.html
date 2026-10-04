@@ -2688,7 +2688,8 @@ body{overflow-y:auto;-webkit-overflow-scrolling:touch;touch-action:pan-y}
       '<p class="qt-admin-note">ค่าด้านล่างเป็นค่าที่มีผลกับออเดอร์ใหม่เท่านั้น ออเดอร์ที่สร้างแล้วใช้ราคาที่บันทึกไว้เดิม</p>'+
       '<div class="qt-settings-grid">'+
         '<label class="qt-settings-toggle">ตลาดสดซื้อหลายร้าน <input id="qg-feature-market" type="checkbox" '+(getActive('feature.market_multi_shop')?'checked':'')+'></label>'+
-        '<label class="qt-settings-toggle">งานพ่วง Route Bundle <input id="qg-feature-bundle" type="checkbox" '+(getActive('feature.route_bundle')?'checked':'')+'></label>'+\n        '<label class="qt-settings-toggle">ฝากซัก <input id="qg-feature-laundry" type="checkbox" '+(getActive('feature.laundry')?'checked':'')+'></label>'+
+        '<label class="qt-settings-toggle">งานพ่วง Route Bundle <input id="qg-feature-bundle" type="checkbox" '+(getActive('feature.route_bundle')?'checked':'')+'></label>'+
+        '<label class="qt-settings-toggle">ฝากซัก <input id="qg-feature-laundry" type="checkbox" '+(getActive('feature.laundry')?'checked':'')+'></label>'+
         '<label class="qt-settings-toggle">คิด GP <input id="qg-feature-gp" type="checkbox" '+(getActive('feature.gp')?'checked':'')+'></label>'+
         '<label>GP มาตรฐาน (%)<input id="qg-price-gp" type="number" min="0" max="100" step="0.1" value="'+getActive('pricing.gp_default_rate')+'"></label>'+
         '<label>ค่ารอบพื้นฐานตลาดสด (บาท)<input id="qg-price-market-base" type="number" min="0" step="1" value="'+getActive('pricing.market_base_fee')+'"></label>'+
@@ -2710,7 +2711,9 @@ body{overflow-y:auto;-webkit-overflow-scrolling:touch;touch-action:pan-y}
       const effective=bangkokLocalToIso(document.getElementById('qg-platform-effective')?.value);
       const rows=[
         {rule_key:'feature.market_multi_shop',value:checked('qg-feature-market')},
-        {rule_key:'feature.route_bundle',value:checked('qg-feature-bundle')},\n        {rule_key:'feature.laundry',value:checked('qg-feature-laundry')},\n        {rule_key:'feature.gp',value:checked('qg-feature-gp')},
+        {rule_key:'feature.route_bundle',value:checked('qg-feature-bundle')},
+        {rule_key:'feature.laundry',value:checked('qg-feature-laundry')},
+        {rule_key:'feature.gp',value:checked('qg-feature-gp')},
         {rule_key:'pricing.gp_default_rate',value:num('qg-price-gp',0,100)},
         {rule_key:'pricing.market_base_fee',value:num('qg-price-market-base',0,5000)},
         {rule_key:'pricing.market_second_shop_fee',value:num('qg-price-market-second',0,5000)},
