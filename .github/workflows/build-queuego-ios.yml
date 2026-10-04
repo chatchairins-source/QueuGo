@@ -43,8 +43,6 @@ jobs:
             cp ../admin/* www/
           else
             cp ../rider/index.html www/index.html
-            mkdir -p www/laundry
-            cp ../laundry/rider-integration.js www/laundry/
           fi
           node -e "let c=require('./capacitor.config.json');c.appId='${{ matrix.appid }}';c.appName='${{ matrix.appname }}';require('fs').writeFileSync('capacitor.config.json',JSON.stringify(c,null,2))"
           npx cap add ios

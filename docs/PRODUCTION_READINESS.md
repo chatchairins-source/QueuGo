@@ -58,7 +58,7 @@ A failed gate includes a required test that has not been executed. Isolated brow
 - `merchant/printer-v1.js/.css` are loaded and provide actual receipt/printer actions; kept.
 - `merchant/market.js/.css` and `admin/market.js/.css` are loaded and dispatch actual stock and platform Market operations; kept. Their route/dashboard wrappers were folded into each current router/renderer.
 - `table-order.html/.js/.css` remain the QR customer entry and server RPC/session/geofence path.
-- `laundry/rider-integration.js` has an actual Rider script reference; retained and packaged in native Rider bundles. The standalone `/laundry/` entry is retained. Customer/Merchant integration files had no production entry, dynamic reference or native build caller; deleted.
+- Removed the Rider laundry floating button at the owner’s request: deleted `laundry/rider-integration.js`, its Rider script reference and its Android/iOS bundle copy steps. This module only mounted the button and handled its preference toggle. The standalone `/laundry/` entry and database schema are retained. Customer/Merchant integration files were already deleted after caller tracing.
 - SQL migrations are retained as ordered database history and dependencies. No table, RLS policy, Supabase project or schema was removed based on an old filename.
 - Existing session-storage key migrations still serve returning users; they are not retired UI implementations and were retained.
 - Realtime outage polling and missing-map recovery are current operational recovery paths, not fallbacks to a retired UI. Responsive CSS for current screens is still active. Historical SQL definitions are migration history.
@@ -110,7 +110,7 @@ Applied successfully to the existing Supabase project as migration `202610031747
 
 ## Current verification evidence
 
-- Isolated behavioral checks: **516**, plus source parsing of 50 JS blocks/files and 19 local references. Coverage includes checkout replay/quote/ownership/decimal validation, cart/search/support, transport interruption, rider completion/claim, delivery kitchen, POS/printer, QR/chat, map disposal, Customer live runtime and Admin/Merchant realtime. These tests do not certify real JWT/RLS, triggers, simultaneous server connections or hardware.
+- Isolated behavioral checks: **516**, plus source parsing of 49 JS blocks/files and 18 local references. Coverage includes checkout replay/quote/ownership/decimal validation, cart/search/support, transport interruption, rider completion/claim, delivery kitchen, POS/printer, QR/chat, map disposal, Customer live runtime and Admin/Merchant realtime. These tests do not certify real JWT/RLS, triggers, simultaneous server connections or hardware.
 - Chromium fixture regression: latest 48 route/boot cases at 390px, no additional JS errors, overflow or non-Customer changes. Earlier 144 cases covered 390/768/1280px; POS computed screen/print layout checks covered 320/390/768/1280px. All external writes are intercepted. Intentional Customer guest/search changes differ from the original baseline.
 - Public Chromium navigation returned `ERR_EMPTY_RESPONSE`; live console/authenticated network behavior is not certified. Read-only HTTP checks and source parity are separate evidence.
 - Anonymous menu query returned HTTP 200 in approximately 12.1 seconds; SQL EXPLAIN for the six-product predicate completed in approximately 10.5 ms. This does not pass mobile latency/INP/60fps targets and did not justify another index.
