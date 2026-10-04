@@ -179,7 +179,8 @@ jobs:
               im.save(d/'ic_launcher_round.png')
           PY
 
-      - name: Configure release signing
+      - name: Configure release signing when available
+        id: signing
         shell: bash
         env:
           QG_KEYSTORE_B64: ${{ secrets.QG_ANDROID_KEYSTORE_B64 }}
@@ -188,10 +189,11 @@ jobs:
           QG_KEY_PASSWORD: ${{ secrets.QG_ANDROID_KEY_PASSWORD }}
         run: |
           set -euo pipefail
-          test -n "$QG_KEYSTORE_B64"
-          test -n "$QG_STORE_PASSWORD"
-          test -n "$QG_KEY_ALIAS"
-          test -n "$QG_KEY_PASSWORD"
+          if [ -z "$QG_KEYSTORE_B64" ] || [ -z "$QG_STORE_PASSWORD" ] || [ -z "$QG_KEY_ALIAS" ] || [ -z "$QG_KEY_PASSWORD" ]; then
+            echo "signed=false" >> "$GITHUB_OUTPUT"
+            echo "Release signing secrets are not configured; compiling unsigned AAB + debug APK for RC verification."
+            exit 0
+          fi
           echo "$QG_KEYSTORE_B64" | base64 --decode > android-build/android/queuego-release.jks
           cat >> android-build/android/gradle.properties <<EOF
           QG_STORE_FILE=../queuego-release.jks
@@ -220,24 +222,33 @@ jobs:
           if count!=1: raise RuntimeError('Release build type not found')
           p.write_text(s)
           PY
+          echo "signed=true" >> "$GITHUB_OUTPUT"
 
-      - name: Build signed AAB and APK
+      - name: Build Android RC
         shell: bash
+        env:
+          QG_SIGNED: ${{ steps.signing.outputs.signed }}
         run: |
           set -euo pipefail
           cd android-build/android
           chmod +x gradlew
-          ./gradlew bundleRelease assembleRelease --no-daemon
-          cp app/build/outputs/bundle/release/app-release.aab "../../QueueGo-${{ matrix.role }}-release.aab"
-          cp app/build/outputs/apk/release/app-release.apk "../../QueueGo-${{ matrix.role }}-release.apk"
+          if [ "$QG_SIGNED" = "true" ]; then
+            ./gradlew bundleRelease assembleRelease --no-daemon
+            cp app/build/outputs/bundle/release/app-release.aab "../../QueueGo-${{ matrix.role }}-release.aab"
+            cp app/build/outputs/apk/release/app-release.apk "../../QueueGo-${{ matrix.role }}-release.apk"
+          else
+            ./gradlew bundleRelease assembleDebug --no-daemon
+            cp app/build/outputs/bundle/release/app-release.aab "../../QueueGo-${{ matrix.role }}-rc-unsigned.aab"
+            cp app/build/outputs/apk/debug/app-debug.apk "../../QueueGo-${{ matrix.role }}-rc-debug.apk"
+          fi
           cd ../..
-          sha256sum "QueueGo-${{ matrix.role }}-release.aab" "QueueGo-${{ matrix.role }}-release.apk" > "QueueGo-${{ matrix.role }}-SHA256.txt"
+          sha256sum QueueGo-${{ matrix.role }}-*.aab QueueGo-${{ matrix.role }}-*.apk > "QueueGo-${{ matrix.role }}-SHA256.txt"
 
       - uses: actions/upload-artifact@v4
         with:
-          name: QueueGo-${{ matrix.role }}-android-release
+          name: QueueGo-${{ matrix.role }}-android-rc
           path: |
-            QueueGo-${{ matrix.role }}-release.aab
-            QueueGo-${{ matrix.role }}-release.apk
+            QueueGo-${{ matrix.role }}-*.aab
+            QueueGo-${{ matrix.role }}-*.apk
             QueueGo-${{ matrix.role }}-SHA256.txt
           if-no-files-found: error
