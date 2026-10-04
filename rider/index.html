@@ -724,6 +724,22 @@ function refreshData(background=false){
   const task=(async()=>{do{riderRefreshQueued=false;await readRiderSnapshot()}while(riderRefreshQueued&&S.user&&S.riderProfile&&navigator.onLine)})().finally(()=>{if(riderRefreshTask===task)riderRefreshTask=null});
   riderRefreshTask=task;return task;
 }
+async function enrichMarketTripRiderOrder(o,token){
+  if(!o?.market_order_id)return o;
+  const [parents,pickups]=await Promise.all([
+    sbTable('market_orders?select=id,delivery_fee,rider_bonus,shop_count,total_amount,status&id=eq.'+encodeURIComponent(o.market_order_id)+'&limit=1',{token}).catch(()=>[]),
+    sbTable('rpc/market_pickup_route_summary',{method:'POST',token,body:{p_market_order_id:o.market_order_id}}).catch(()=>[])
+  ]);
+  const parent=Array.isArray(parents)?parents[0]:null;
+  if(parent){
+    o._marketRiderEarning=(Number(parent.delivery_fee)||0)+(Number(parent.rider_bonus)||0);
+    o._marketShopCount=Number(parent.shop_count)||0;
+    o._marketParentStatus=parent.status||'';
+    o._marketTripTotal=Number(parent.total_amount)||0;
+  }
+  o._marketPickups=Array.isArray(pickups)?pickups:[];
+  return o;
+}
 async function readRiderSnapshot(){
   const userId=S.user.id,profileId=S.riderProfile.id,sessionId=S.session?.sessionId,online=S.online;
   const current=()=>S.user?.id===userId&&S.riderProfile?.id===profileId&&S.session?.sessionId===sessionId&&S.online===online;
@@ -734,12 +750,15 @@ async function readRiderSnapshot(){
     const previousOpenJobIds=new Set((S.openJobs||[]).map(x=>x?.order?.id).filter(Boolean).map(String));
     if(activeOrder){
       if(['market','grocery'].includes(activeOrder.fulfillment_vertical)){const weights=await sbRpc('market_rider_job_weights',{},token);if(!current())return;activeOrder._marketWeight=(weights||[]).find(x=>x.order_id===activeOrder.id)?.weight_kg}
+      if(activeOrder.market_order_id){await enrichMarketTripRiderOrder(activeOrder,token);if(!current())return}
       await enrichRiderOrders([activeOrder],token);if(!current())return;
     }else if(online){
       const eligible=await sbRpc('get_rider_delivery_pool',{},token);if(!current())return;
       const ids=(Array.isArray(eligible)?eligible:[]).map(x=>x.order_id).filter(Boolean);
       const open=ids.length?await sbTable('orders?select=*&id=in.('+ids.join(',')+')&order=created_at.asc&limit=25',{token}):[];if(!current())return;
       const list=Array.isArray(open)?open:[];
+      const poolByOrder=new Map((Array.isArray(eligible)?eligible:[]).map(x=>[String(x.order_id),x]));
+      for(const o of list){const quoted=poolByOrder.get(String(o.id));if(quoted&&Number.isFinite(Number(quoted.delivery_fee)))o._poolDeliveryFee=Number(quoted.delivery_fee)}
       if(list.some(o=>['market','grocery'].includes(o.fulfillment_vertical))){const weights=await sbRpc('market_rider_job_weights',{},token);if(!current())return;for(const o of list)o._marketWeight=(weights||[]).find(x=>x.order_id===o.id)?.weight_kg}
       await enrichRiderOrders(list,token);if(!current())return;
       const candidates=list.map(o=>({order:o,distanceKm:haversineKm(S.pos?.lat,S.pos?.lng,o.pickup_latitude,o.pickup_longitude)})).filter(x=>Number.isFinite(x.distanceKm)).sort((a,b)=>a.distanceKm-b.distanceKm);
@@ -773,8 +792,19 @@ function placeJobMarkers(){
   (S.jobMarkers||[]).forEach(qgRemoveOverlay);S.jobMarkers=[];
   const list=S.activeOrder?[S.activeOrder]:S.openJobs.map(x=>x.order);
   list.forEach(o=>{
-    const plat=Number(o.pickup_latitude),plng=Number(o.pickup_longitude),dlat=Number(o.delivery_latitude),dlng=Number(o.delivery_longitude);
-    if(Number.isFinite(plat)&&Number.isFinite(plng)){const m=qgMarker({lat:plat,lon:plng},'<div style="width:20px;height:20px;border-radius:50%;background:#16a34a;border:3px solid #fff;box-shadow:0 2px 8px #0004"></div>','จุดรับ · '+(o.pickup_address||'ร้านค้า'));S.map.Overlays.add(m);S.jobMarkers.push(m)}
+    const pickups=o.market_order_id&&Array.isArray(o._marketPickups)?o._marketPickups.filter(x=>x.status!=='CANCELLED'):[];
+    if(pickups.length){
+      pickups.forEach((x,i)=>{
+        const lat=Number(x.latitude),lng=Number(x.longitude);if(!Number.isFinite(lat)||!Number.isFinite(lng))return;
+        const done=x.status==='PICKED_UP',size=done?16:20;
+        const m=qgMarker({lat,lon:lng},'<div style="width:'+size+'px;height:'+size+'px;border-radius:50%;background:'+(done?'#94a3b8':'#16a34a')+';border:3px solid #fff;box-shadow:0 2px 8px #0004;display:grid;place-items:center;color:#fff;font-size:10px;font-weight:900">'+(i+1)+'</div>','จุดรับ '+(i+1)+' · '+(x.shop_name||'ร้านค้า'));
+        S.map.Overlays.add(m);S.jobMarkers.push(m);
+      });
+    }else{
+      const plat=Number(o.pickup_latitude),plng=Number(o.pickup_longitude);
+      if(Number.isFinite(plat)&&Number.isFinite(plng)){const m=qgMarker({lat:plat,lon:plng},'<div style="width:20px;height:20px;border-radius:50%;background:#16a34a;border:3px solid #fff;box-shadow:0 2px 8px #0004"></div>','จุดรับ · '+(o.pickup_address||'ร้านค้า'));S.map.Overlays.add(m);S.jobMarkers.push(m)}
+    }
+    const dlat=Number(o.delivery_latitude),dlng=Number(o.delivery_longitude);
     if(Number.isFinite(dlat)&&Number.isFinite(dlng)){const m=qgMarker({lat:dlat,lon:dlng},'<div style="width:20px;height:20px;border-radius:50%;background:#e6002d;border:3px solid #fff;box-shadow:0 2px 8px #0004"></div>','จุดส่ง · '+(o.delivery_address||'บ้านลูกค้า'));S.map.Overlays.add(m);S.jobMarkers.push(m)}
   });
   drawActiveRoute();
@@ -782,18 +812,29 @@ function placeJobMarkers(){
 function drawActiveRoute(){
   const map=S.map,order=S.activeOrder,pos=S.pos,session=S.session,userId=S.user?.id;
   if(!map||!order||!pos||!userId){clearRiderRoute();return Promise.resolve()}
-  const toShop=['rider_assigned','preparing','ready','assigned'].includes(statusFromRow(order));
-  const lat=toShop?order.pickup_latitude:order.delivery_latitude,lon=toShop?order.pickup_longitude:order.delivery_longitude;
+  const st=statusFromRow(order);
+  const pickups=order.market_order_id&&Array.isArray(order._marketPickups)?order._marketPickups:[];
+  const nextPickup=pickups.find(x=>!['PICKED_UP','CANCELLED'].includes(String(x.status||'').toUpperCase()))||null;
+  const usePickup=!!nextPickup&&!['picked_up','delivering','arrived','completed'].includes(st);
+  const lat=usePickup?nextPickup.latitude:order.delivery_latitude;
+  const lon=usePickup?nextPickup.longitude:order.delivery_longitude;
+  const targetKey=usePickup?String(nextPickup.pickup_id||nextPickup.pickup_sequence):'customer';
+  const label=usePickup?'ไปร้าน '+Number(nextPickup.pickup_sequence||1)+' · '+String(nextPickup.shop_name||'ร้านค้า'):'ไปหาลูกค้า';
   if(!validRiderCoordinate(pos.lat,pos.lng)||!validRiderCoordinate(lat,lon)){clearRiderRoute();return Promise.resolve()}
-  const scope=JSON.stringify([userId,session?.sessionId,order.id,toShop,Number(lat),Number(lon)]);
-  const current=()=>S.map===map&&S.user?.id===userId&&riderSessionMatches(session)&&S.activeOrder?.id===order.id&&['rider_assigned','preparing','ready','assigned'].includes(statusFromRow(S.activeOrder))===toShop;
+  const scope=JSON.stringify([userId,session?.sessionId,order.market_order_id||order.id,targetKey,Number(lat),Number(lon)]);
+  const current=()=>{
+    if(!(S.map===map&&S.user?.id===userId&&riderSessionMatches(session)&&S.activeOrder?.id===order.id))return false;
+    if(!usePickup)return !(['rider_assigned','preparing','ready','assigned'].includes(statusFromRow(S.activeOrder))&&Array.isArray(S.activeOrder?._marketPickups)&&S.activeOrder._marketPickups.some(x=>!['PICKED_UP','CANCELLED'].includes(String(x.status||'').toUpperCase())));
+    const cur=(S.activeOrder?._marketPickups||[]).find(x=>!['PICKED_UP','CANCELLED'].includes(String(x.status||'').toUpperCase()));
+    return String(cur?.pickup_id||cur?.pickup_sequence||'')===targetKey;
+  };
   if(riderRouteRequest?.scope===scope&&riderRouteRequest.map===map)return riderRouteRequest.task;
   if(riderRouteCache?.scope!==scope||riderRouteCache?.map!==map)clearRiderRoute();
   if(riderRouteCache){const age=Date.now()-riderRouteCache.at,moved=haversineKm(pos.lat,pos.lng,riderRouteCache.pos.lat,riderRouteCache.pos.lng);if(age<10000||(age<60000&&moved<0.03))return Promise.resolve()}
   if(document.hidden||!navigator.onLine)return Promise.resolve();
   const controller=new AbortController(),request={scope,map,controller};
   const timer=setTimeout(()=>controller.abort(),12000);
-  const badge=document.getElementById('route-badge'),txt=document.getElementById('route-text'),label=toShop?'ไปร้าน':'ไปหาลูกค้า';
+  const badge=document.getElementById('route-badge'),txt=document.getElementById('route-text');
   if(badge)badge.style.display='block';if(txt&&!riderRouteCache)txt.textContent=label+' • กำลังคำนวณเส้นทาง';
   request.task=(async()=>{
     try{
@@ -814,7 +855,6 @@ function drawActiveRoute(){
     finally{clearTimeout(timer);if(riderRouteRequest===request)riderRouteRequest=null}
   })();riderRouteRequest=request;return request.task;
 }
-
 /* ---------- sheet (home) ---------- */
 
 
@@ -869,9 +909,11 @@ async function sendRiderChat(o,override){
 
 /* ---------- job history panel (rider earnings, grouped day by day) ---------- */
 function riderEarning(o){
-  // Rider income = delivery fee only, never the product/order total (that cash is collected
-  // from the customer and handed over — it is not the rider's earning).
-  return Number(o.delivery_fee ?? o.rider_fee ?? 0) || 0;
+  // Product/order cash is not rider income. For a Market Trip the authoritative
+  // rider income is the parent delivery fee + multi-shop rider bonus.
+  if(Number.isFinite(Number(o?._marketRiderEarning)))return Number(o._marketRiderEarning);
+  if(Number.isFinite(Number(o?._poolDeliveryFee)))return Number(o._poolDeliveryFee);
+  return (Number(o?.delivery_fee ?? o?.rider_fee ?? 0)||0)+(Number(o?.rider_multi_shop_bonus||0)||0);
 }
 
 
@@ -1035,11 +1077,15 @@ function jobCardHTML(o,x){
  const km=x&&Number.isFinite(x.distanceKm)?x.distanceKm:haversineKm(S.pos&&S.pos.lat,S.pos&&S.pos.lng,o.pickup_latitude,o.pickup_longitude);
  const delivery=haversineKm(o.pickup_latitude,o.pickup_longitude,o.delivery_latitude,o.delivery_longitude);
  const fee=riderEarning(o);const active=!!S.activeOrder;
- const targetShop=['rider_assigned','preparing','ready','assigned'].includes(st);const nav=mapsLink(targetShop?o.pickup_latitude:o.delivery_latitude,targetShop?o.pickup_longitude:o.delivery_longitude,targetShop?o.pickup_address:o.delivery_address);
+ const targetShop=['rider_assigned','preparing','ready','assigned'].includes(st);
+ const marketNext=o.market_order_id&&Array.isArray(o._marketPickups)?o._marketPickups.find(x=>!['PICKED_UP','CANCELLED'].includes(String(x.status||'').toUpperCase())):null;
+ const targetLat=marketNext?marketNext.latitude:(targetShop?o.pickup_latitude:o.delivery_latitude),targetLng=marketNext?marketNext.longitude:(targetShop?o.pickup_longitude:o.delivery_longitude),targetAddress=marketNext?(marketNext.shop_address||marketNext.shop_name):(targetShop?o.pickup_address:o.delivery_address);
+ const nav=mapsLink(targetLat,targetLng,targetAddress);
  const next=STEP_NEXT[st];
- const html = `<div class="qt-handle"></div><div class="qt-jobhead"><div><div class="qt-shop">${esc(shop.shop_name||'งานจัดส่ง')}</div><div class="qt-order">${active?esc(STEP_LABEL[st]||'งานที่กำลังทำ'):'งานใหม่'} · #${esc(qtShortOrder(o))}${['market','grocery'].includes(o.fulfillment_vertical)?' · ตลาดสด '+Number(o._marketWeight||0).toLocaleString('th-TH')+' กก.':''}</div></div><div class="qt-fee">฿${Number(fee||0).toLocaleString('th-TH')}<small>รายได้งานนี้</small></div></div>
+ const marketLabel=o.market_order_id?' · Market Trip '+Number(o._marketShopCount||o.market_shop_count||1)+' ร้าน':'';
+ const html = `<div class="qt-handle"></div><div class="qt-jobhead"><div><div class="qt-shop">${esc(o.market_order_id?'ตลาดสด · '+Number(o._marketShopCount||o.market_shop_count||1)+' ร้าน':(shop.shop_name||'งานจัดส่ง'))}</div><div class="qt-order">${active?esc(STEP_LABEL[st]||'งานที่กำลังทำ'):'งานใหม่'} · #${esc(qtShortOrder(o))}${marketLabel}${['market','grocery'].includes(o.fulfillment_vertical)?' · '+Number(o._marketWeight||0).toLocaleString('th-TH')+' กก.':''}</div></div><div class="qt-fee">฿${Number(fee||0).toLocaleString('th-TH')}<small>รายได้งานนี้</small></div></div>
  <div class="qt-metrics"><div class="qt-metric"><span>ถึงร้าน</span><b>${Number.isFinite(km)?km.toFixed(1):'-'} กม.</b></div><div class="qt-metric"><span>ระยะส่ง</span><b>${Number.isFinite(delivery)?delivery.toFixed(1):'-'} กม.</b></div><div class="qt-metric"><span>ยอดออเดอร์</span><b>฿${Number(o.total_amount||0).toLocaleString('th-TH')}</b></div></div>
- <div class="qt-address">${esc(targetShop?(o.pickup_address||shop.address||'จุดรับสินค้า'):(o.delivery_address||'จุดส่งสินค้า'))}</div>
+ <div class="qt-address">${esc(marketNext?('จุดรับ '+Number(marketNext.pickup_sequence||1)+' · '+(marketNext.shop_name||'ร้านค้า')+' · '+(marketNext.shop_address||'')):(targetShop?(o.pickup_address||shop.address||'จุดรับสินค้า'):(o.delivery_address||'จุดส่งสินค้า')))}</div>
  <div class="qt-actions"><a class="qt-ghost" href="${nav}" target="_blank" rel="noopener" aria-label="นำทาง">${QTICON.loc}</a><button class="qt-ghost" id="chat-${o.id}" aria-label="แชต">${QTICON.chat}</button>${active?`<button class="qt-primary" id="next-${o.id}" ${next?'':'disabled'}>${next?esc(next.label):'รอร้านเตรียมสินค้า'}</button>`:`<button class="qt-primary" id="accept-${o.id}">รับงานนี้</button>`}</div>`;
 const toShop=x?.distanceKm??haversineKm(S.pos?.lat,S.pos?.lng,o.pickup_latitude,o.pickup_longitude),toCustomer=haversineKm(o.pickup_latitude,o.pickup_longitude,o.delivery_latitude,o.delivery_longitude),all=toShop+toCustomer;
    if(!Number.isFinite(all))return html;return html.replace(/(<div class="qt-metrics">)/,'<div class="qg-v22-job-metrics">ไปร้าน '+toShop.toFixed(1)+' กม. · ไปหาลูกค้า '+toCustomer.toFixed(1)+' กม. · รวม '+all.toFixed(1)+' กม. · ประมาณ '+Math.ceil(all/25*60)+' นาที · ค่าส่งประมาณ '+('฿'+Number(o.delivery_fee||0).toLocaleString('th-TH',{minimumFractionDigits:2,maximumFractionDigits:2}))+'</div>$1')
@@ -1344,12 +1390,12 @@ body{overflow-y:auto;-webkit-overflow-scrolling:touch;touch-action:pan-y}
 (function(){
  async function loadPickups(o){
   if(!o||!o.market_order_id)return [];
-  try{const token=await getAccessToken();const x=await sbTable('rpc/market_pickup_cash_summary',{method:'POST',token,body:{p_market_order_id:o.market_order_id}});return Array.isArray(x)?x:[]}catch(e){console.warn('market pickups',e);return []}
+  try{const token=await getAccessToken();const x=await sbTable('rpc/market_pickup_route_summary',{method:'POST',token,body:{p_market_order_id:o.market_order_id}});return Array.isArray(x)?x:[]}catch(e){console.warn('market pickups',e);return []}
  }
  function html(rows){
   if(!rows.length)return '';
   const paid=rows.filter(x=>x.status==='PICKED_UP'||Number(x.cash_paid_amount)>0).length,total=rows.reduce((a,x)=>a+Number(x.shop_amount||0),0);
-  return '<section class="qg-mp"><div class="qg-mp-head"><b>รับของหลายร้าน</b><small>รับแล้ว '+paid+'/'+rows.length+' จุด</small></div>'+rows.map((x,i)=>{const done=x.status==='PICKED_UP';return '<div class="qg-mp-row"><div class="qg-mp-top"><div><b>จุดรับ '+(i+1)+'</b><br><small>'+esc(x.shop_name||'ร้านค้า')+'</small></div><strong class="'+(done?'qg-mp-paid':'')+'">฿'+Number(x.shop_amount||0).toLocaleString('th-TH')+'</strong></div><button class="qg-mp-btn" data-pickup="'+esc(x.pickup_id)+'" data-amount="'+Number(x.shop_amount||0)+'" '+(done?'disabled':'')+'>'+(done?'✓ จ่ายและรับของแล้ว':'จ่าย ฿'+Number(x.shop_amount||0).toLocaleString('th-TH')+' และรับของ')+'</button></div>'}).join('')+'<div class="qg-mp-total"><span>เงินที่ต้องจ่ายร้านรวม</span><span>฿'+total.toLocaleString('th-TH')+'</span></div></section>';
+  return '<section class="qg-mp"><div class="qg-mp-head"><b>รับของหลายร้าน</b><small>รับแล้ว '+paid+'/'+rows.length+' จุด</small></div>'+rows.map((x,i)=>{const done=x.status==='PICKED_UP'||x.status==='CANCELLED';return '<div class="qg-mp-row"><div class="qg-mp-top"><div><b>จุดรับ '+(i+1)+' · '+esc(x.shop_name||'ร้านค้า')+'</b><br><small>'+esc(x.shop_address||'')+'</small></div><strong class="'+(done?'qg-mp-paid':'')+'">฿'+Number(x.shop_amount||0).toLocaleString('th-TH')+'</strong></div><button class="qg-mp-btn" data-pickup="'+esc(x.pickup_id)+'" data-amount="'+Number(x.shop_amount||0)+'" '+(done?'disabled':'')+'>'+(x.status==='CANCELLED'?'ยกเลิกจุดรับนี้':done?'✓ จ่ายและรับของแล้ว':'จ่าย ฿'+Number(x.shop_amount||0).toLocaleString('th-TH')+' และรับของ')+'</button></div>'}).join('')+'<div class="qg-mp-total"><span>เงินที่ต้องจ่ายร้านรวม</span><span>฿'+total.toLocaleString('th-TH')+'</span></div></section>';
  }
  window.qgMountMarketPickups=mount;
  async function mount(o){
