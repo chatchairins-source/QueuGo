@@ -6,7 +6,7 @@
 <meta charset="utf-8"/>
 <title>QueueGo Shop — Merchant Only</title>
 <meta content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover" name="viewport"/>
-<link crossorigin="" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" rel="stylesheet"/>
+
 <style id="qt-shop-base-v16">
 :root{--primary:#20bc8b;--primary-dark:#14946e;--bg:#f5fffb;--radius:12px}
 html,body{min-width:0}
@@ -43,7 +43,7 @@ body.qgm-app,body.qgm-login{height:auto!important;min-height:100dvh!important;ov
 .qgm-shell{min-height:100dvh!important}
 .qgm-content{padding-bottom:calc(var(--qg-nav-h) + env(safe-area-inset-bottom) + 28px)!important}
 </style>
-<script crossorigin="" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://api.longdo.com/map/?key=347649ca13f49db0d8a599ae35f8de2b"></script>
 </head>
 <body>
 <div id="app"></div>
@@ -638,11 +638,6 @@ let activeMaps = [];
 let activeIntervals = [];
 function registerMap(m){ activeMaps.push(m); }
 
-function tileLayer(map){
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    maxZoom:19, attribution:'© OpenStreetMap contributors'
-  }).addTo(map);
-}
 function qgShopCoordinateProblem(latitude,longitude){
   if(latitude===null||latitude===undefined||longitude===null||longitude===undefined||latitude===''||longitude==='') return 'missing';
   const lat=Number(latitude),lng=Number(longitude);
@@ -654,43 +649,22 @@ function qgShopCoordinateProblem(latitude,longitude){
   return '';
 }
 function qgIsValidShopCoordinate(latitude,longitude){ return !qgShopCoordinateProblem(latitude,longitude); }
-function initLocationPicker(containerId, lat, lng, onChange){
-  const hasInitial=qgIsValidShopCoordinate(lat,lng);
-  const viewLat=hasInitial?Number(lat):15.0,viewLng=hasInitial?Number(lng):101.0;
-  const map=L.map(containerId).setView([viewLat,viewLng],hasInitial?15:6);
-  tileLayer(map);
-  let marker=hasInitial?L.marker([viewLat,viewLng],{draggable:true}).addTo(map):null;
-  const ensureMarker=(point)=>{
-    if(marker) marker.setLatLng(point);
-    else{
-      marker=L.marker(point,{draggable:true}).addTo(map);
-      marker.on('dragend',()=>{const p=marker.getLatLng();if(qgIsValidShopCoordinate(p.lat,p.lng))onChange(p.lat,p.lng);});
-    }
-  };
-  if(marker)marker.on('dragend',()=>{const p=marker.getLatLng();if(qgIsValidShopCoordinate(p.lat,p.lng))onChange(p.lat,p.lng);});
-  map.on('click',(e)=>{
-    if(!qgIsValidShopCoordinate(e.latlng.lat,e.latlng.lng)){toast('กรุณาเลือกพิกัดร้านที่อยู่ในประเทศไทย');return;}
-    ensureMarker(e.latlng);onChange(e.latlng.lat,e.latlng.lng);
-  });
-  if(hasInitial)onChange(viewLat,viewLng);
-  registerMap(map);
-  return {
-    map,
-    get marker(){return marker;},
-    locate(){
-      if(!navigator.geolocation){toast('เบราว์เซอร์ไม่รองรับ GPS');return;}
-      navigator.geolocation.getCurrentPosition(pos=>{
-        const {latitude,longitude}=pos.coords;
-        if(!qgIsValidShopCoordinate(latitude,longitude)){toast('พิกัด GPS ไม่ถูกต้อง กรุณาตรวจสอบและลองใหม่');return;}
-        map.setView([latitude,longitude],16);
-        ensureMarker([latitude,longitude]);
-        onChange(latitude,longitude);
-        toast('ใช้ตำแหน่ง GPS ปัจจุบันแล้ว');
-      },err=>toast(err?.code===1?'กรุณาเปิดการเข้าถึงตำแหน่ง':err?.code===3?'รับตำแหน่งไม่ทันเวลา กรุณาลองใหม่':'ไม่สามารถรับตำแหน่ง GPS ได้'),{enableHighAccuracy:true,timeout:12000,maximumAge:30000});
-    }
-  };
+function qgMerchantLongdoPin(loc){
+  return new longdo.Marker(loc,{title:'พิกัดร้าน',icon:{html:'<div style="width:28px;height:28px;border-radius:50%;background:#e6002d;border:5px solid #fff;box-shadow:0 4px 14px #0004"></div>',offset:{x:0,y:0}},weight:longdo.OverlayWeight.Top});
 }
-
+function initLocationPicker(containerId,lat,lng,onChange){
+  const host=document.getElementById(containerId),hasInitial=qgIsValidShopCoordinate(lat,lng),viewLat=hasInitial?Number(lat):15,viewLng=hasInitial?Number(lng):101;
+  if(!host||typeof longdo==='undefined'){toast('แผนที่ยังไม่พร้อม กรุณาลองใหม่');return {map:null,get marker(){return null},locate(){}}}
+  const map=new longdo.Map({placeholder:host,ui:window.longdo.UiComponent.Mobile});try{map.Ui.LayerSelector.visible(false)}catch(e){}
+  map.location({lat:viewLat,lon:viewLng},true);map.zoom(hasInitial?15:6,true);
+  let marker=null;
+  const setPoint=(plat,plng,notify=true)=>{if(!qgIsValidShopCoordinate(plat,plng))return false;if(marker)try{map.Overlays.remove(marker)}catch(e){};marker=qgMerchantLongdoPin({lat:Number(plat),lon:Number(plng)});map.Overlays.add(marker);if(notify)onChange(Number(plat),Number(plng));return true};
+  const syncCenter=()=>{const p=map.location();if(p&&qgIsValidShopCoordinate(p.lat,p.lon))setPoint(p.lat,p.lon,true)};
+  try{map.Event.bind('drop',syncCenter)}catch(e){}
+  if(hasInitial)setPoint(viewLat,viewLng,true);
+  const api={map,get marker(){return marker},locate(){if(!navigator.geolocation){toast('เบราว์เซอร์ไม่รองรับ GPS');return}navigator.geolocation.getCurrentPosition(pos=>{const {latitude,longitude}=pos.coords;if(!qgIsValidShopCoordinate(latitude,longitude)){toast('พิกัด GPS ไม่ถูกต้อง กรุณาตรวจสอบและลองใหม่');return}map.location({lat:latitude,lon:longitude},true);map.zoom(16,true);setPoint(latitude,longitude,true);toast('ใช้ตำแหน่ง GPS ปัจจุบันแล้ว')},err=>toast(err?.code===1?'กรุณาเปิดการเข้าถึงตำแหน่ง':err?.code===3?'รับตำแหน่งไม่ทันเวลา กรุณาลองใหม่':'ไม่สามารถรับตำแหน่ง GPS ได้'),{enableHighAccuracy:true,timeout:12000,maximumAge:30000})}};
+  registerMap(api);return api;
+}
 
 /* ---------- Shop module catalog (labels only; status is stored in Supabase) ---------- */
 const QT_SHOP_MODULE_CATALOG=[
@@ -1933,7 +1907,7 @@ window.qgmCopyMedia=async function(url){try{await navigator.clipboard.writeText(
 window.renderShopSetup=function(){
   window.qgmShopLocation=null;
   const u=currentUser();if(!u||u.type!=='shop')return navigate('login');
-  qtShopLayout('แก้ไขข้อมูลร้าน',`<form id="qgm-shop-form" class="qgm-card qgm-form-card" onsubmit="return qgmSaveShopSetup(event)"><div class="qgm-field"><label>ชื่อร้าน</label><input id="qgs-name" required value="${escapeHtml(u.shopName||'')}"></div><div class="qgm-field"><label>ชื่อผู้ติดต่อ</label><input id="qgs-contact" required value="${escapeHtml(u.name||'')}"></div><div class="qgm-field"><label>เบอร์โทรศัพท์</label><input id="qgs-phone" value="${escapeHtml(u.phone||'')}"></div><div class="qgm-field"><label>หมวดหมู่</label><select id="qgs-category">${[['food','ร้านอาหาร'],['grocery','ของชำ/สะดวกซื้อ'],['cafe','คาเฟ่/เครื่องดื่ม'],['other','อื่นๆ'],['market','ตลาดสด'],['meat','เนื้อสัตว์'],['fish','ปลา/อาหารทะเล'],['vegetable','ผัก'],['fruit','ผลไม้']].map(([k,v])=>`<option value="${k}" ${u.category===k?'selected':''}>${v}</option>`).join('')}</select></div><div class="qgm-field"><label>ที่อยู่ร้าน</label><textarea id="qgs-address" rows="2">${escapeHtml(u.address||'')}</textarea></div><section class="qgm-location"><b>ปักพิกัดร้าน</b><p>แตะแผนที่หรือเลื่อนหมุดไปยังหน้าร้าน แล้วกดบันทึก</p><div id="qgs-map" class="map-box"></div><button type="button" class="qgm-outline" onclick="qgmLocateShop()">ใช้ตำแหน่ง GPS ปัจจุบัน</button><small id="qgs-coordinates"></small></section><div class="qgm-inline"><div class="qgm-field"><label>เปิด</label><input id="qgs-open" type="time" value="${escapeHtml(u.openTime||'06:00')}"></div><div class="qgm-field"><label>ปิด</label><input id="qgs-close" type="time" value="${escapeHtml(u.closeTime||'22:00')}"></div></div><div class="qgm-field"><label>รายละเอียด</label><textarea id="qgs-desc" rows="2">${escapeHtml(u.description||'')}</textarea></div><div class="qgm-image-fields"><label class="qgm-field"><span>โลโก้ร้าน</span><img id="qgs-logo-preview" src="${escapeHtml(qtShopImageSrc(u.logo||''))}" alt="ตัวอย่างโลโก้"><span class="qgm-upload-action">${qgmMediaIcon()} เลือกรูป<input id="qgs-logo" type="file" accept="image/jpeg,image/png,image/webp" onchange="qgmPreviewUpload(this,'qgs-logo-preview')"></span></label><label class="qgm-field"><span>ภาพหน้าร้าน</span><img id="qgs-cover-preview" src="${escapeHtml(qtShopImageSrc(u.cover||''))}" alt="ตัวอย่างภาพหน้าร้าน"><span class="qgm-upload-action">${qgmMediaIcon()} เลือกรูป<input id="qgs-cover" type="file" accept="image/jpeg,image/png,image/webp" onchange="qgmPreviewUpload(this,'qgs-cover-preview')"></span></label></div><button class="qgm-primary" type="submit">บันทึกข้อมูลร้าน</button></form>`,'shop-profile');
+  qtShopLayout('แก้ไขข้อมูลร้าน',`<form id="qgm-shop-form" class="qgm-card qgm-form-card" onsubmit="return qgmSaveShopSetup(event)"><div class="qgm-field"><label>ชื่อร้าน</label><input id="qgs-name" required value="${escapeHtml(u.shopName||'')}"></div><div class="qgm-field"><label>ชื่อผู้ติดต่อ</label><input id="qgs-contact" required value="${escapeHtml(u.name||'')}"></div><div class="qgm-field"><label>เบอร์โทรศัพท์</label><input id="qgs-phone" value="${escapeHtml(u.phone||'')}"></div><div class="qgm-field"><label>หมวดหมู่</label><select id="qgs-category">${[['food','ร้านอาหาร'],['grocery','ของชำ/สะดวกซื้อ'],['cafe','คาเฟ่/เครื่องดื่ม'],['other','อื่นๆ'],['market','ตลาดสด'],['meat','เนื้อสัตว์'],['fish','ปลา/อาหารทะเล'],['vegetable','ผัก'],['fruit','ผลไม้']].map(([k,v])=>`<option value="${k}" ${u.category===k?'selected':''}>${v}</option>`).join('')}</select></div><div class="qgm-field"><label>ที่อยู่ร้าน</label><textarea id="qgs-address" rows="2">${escapeHtml(u.address||'')}</textarea></div><section class="qgm-location"><b>ปักพิกัดร้าน</b><p>เลื่อนแผนที่ให้หมุดอยู่ตรงหน้าร้าน แล้วกดบันทึก</p><div id="qgs-map" class="map-box"></div><button type="button" class="qgm-outline" onclick="qgmLocateShop()">ใช้ตำแหน่ง GPS ปัจจุบัน</button><small id="qgs-coordinates"></small></section><div class="qgm-inline"><div class="qgm-field"><label>เปิด</label><input id="qgs-open" type="time" value="${escapeHtml(u.openTime||'06:00')}"></div><div class="qgm-field"><label>ปิด</label><input id="qgs-close" type="time" value="${escapeHtml(u.closeTime||'22:00')}"></div></div><div class="qgm-field"><label>รายละเอียด</label><textarea id="qgs-desc" rows="2">${escapeHtml(u.description||'')}</textarea></div><div class="qgm-image-fields"><label class="qgm-field"><span>โลโก้ร้าน</span><img id="qgs-logo-preview" src="${escapeHtml(qtShopImageSrc(u.logo||''))}" alt="ตัวอย่างโลโก้"><span class="qgm-upload-action">${qgmMediaIcon()} เลือกรูป<input id="qgs-logo" type="file" accept="image/jpeg,image/png,image/webp" onchange="qgmPreviewUpload(this,'qgs-logo-preview')"></span></label><label class="qgm-field"><span>ภาพหน้าร้าน</span><img id="qgs-cover-preview" src="${escapeHtml(qtShopImageSrc(u.cover||''))}" alt="ตัวอย่างภาพหน้าร้าน"><span class="qgm-upload-action">${qgmMediaIcon()} เลือกรูป<input id="qgs-cover" type="file" accept="image/jpeg,image/png,image/webp" onchange="qgmPreviewUpload(this,'qgs-cover-preview')"></span></label></div><button class="qgm-primary" type="submit">บันทึกข้อมูลร้าน</button></form>`,'shop-profile');
  const mapHost=document.getElementById('qgs-map');
  setTimeout(()=>{
   if(!mapHost?.isConnected)return;
