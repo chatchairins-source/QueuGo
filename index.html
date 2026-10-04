@@ -270,7 +270,7 @@ function calculateDistanceKm(customerLat,customerLng,shopLat,shopLng){
 
 
 function qgLongdoPin(loc,title){
-  return new longdo.Marker(loc,{title:title||'ตำแหน่งที่เลือก',icon:{html:'<div style="width:26px;height:26px;border-radius:50%;background:#1677ff;border:5px solid #fff;box-shadow:0 4px 14px #0004"></div>',offset:{x:0,y:0}},weight:longdo.OverlayWeight.Top});
+  return new longdo.Marker(loc,{title:title||'ตำแหน่งที่เลือก',icon:{html:'<div style="width:20px;height:20px;border-radius:50%;background:#1677ff;border:3px solid #fff;box-shadow:0 4px 14px #0004"></div>',offset:{x:0,y:0}},weight:longdo.OverlayWeight.Top});
 }
 function initLocationPicker(containerId,lat,lng,onChange){
   const host=document.getElementById(containerId),hasInitial=qgIsValidCoordinate(lat,lng,true),viewLat=hasInitial?Number(lat):15,viewLng=hasInitial?Number(lng):101;
