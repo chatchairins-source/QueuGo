@@ -984,7 +984,7 @@ function updateStatusUI(){
 function placeRiderMarker(){
  if(!S.pos||!S.map||typeof longdo==='undefined')return;
  if(S.riderMarker)qgRemoveOverlay(S.riderMarker);
- S.riderMarker=qgMarker({lat:S.pos.lat,lon:S.pos.lng},'<div style="width:28px;height:28px;border-radius:50%;background:#1677ff;border:5px solid white;box-shadow:0 5px 16px #0003"></div>','ตำแหน่งไรเดอร์');
+ S.riderMarker=qgMarker({lat:S.pos.lat,lon:S.pos.lng},'<div style="width:20px;height:20px;border-radius:50%;background:#1677ff;border:3px solid white;box-shadow:0 3px 10px #0003"></div>','ตำแหน่งไรเดอร์');
  S.map.Overlays.add(S.riderMarker);
  if(S.activeOrder)drawActiveRoute();
 }
