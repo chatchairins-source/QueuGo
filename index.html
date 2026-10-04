@@ -94,8 +94,7 @@ main{width:100%;max-width:720px;margin:auto;padding:0 14px 118px}
 .marketBanner img{display:block;width:100%;height:100%;object-fit:cover;object-position:center}
 .mapbox{position:relative;height:390px;border-radius:20px;overflow:hidden;background:linear-gradient(145deg,#eef5ee,#e7eef4);border:1px solid var(--ln);margin-top:10px}.dist{font-size:11px;color:var(--mu);margin:5px 3px 10px}
 </style>
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+<script src="https://api.longdo.com/map/?key=347649ca13f49db0d8a599ae35f8de2b"></script>
 </head>
 <body>
 <div id="root"></div>
@@ -270,20 +269,24 @@ function calculateDistanceKm(customerLat,customerLng,shopLat,shopLng){
 }
 
 
-function tileLayer(map){L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap contributors'}).addTo(map)}
+function qgLongdoPin(loc,title){
+  return new longdo.Marker(loc,{title:title||'ตำแหน่งที่เลือก',icon:{html:'<div style="width:26px;height:26px;border-radius:50%;background:#1677ff;border:5px solid #fff;box-shadow:0 4px 14px #0004"></div>',offset:{x:0,y:0}},weight:longdo.OverlayWeight.Top});
+}
 function initLocationPicker(containerId,lat,lng,onChange){
-  const hasInitial=qgIsValidCoordinate(lat,lng,true),viewLat=hasInitial?Number(lat):15,viewLng=hasInitial?Number(lng):101;
-  const map=L.map(containerId).setView([viewLat,viewLng],hasInitial?15:6);tileLayer(map);
-  let disposed=false;
-  let marker=hasInitial?L.marker([viewLat,viewLng],{draggable:true}).addTo(map):null;
-  const ensureMarker=point=>{if(marker)marker.setLatLng(point);else{marker=L.marker(point,{draggable:true}).addTo(map);marker.on('dragend',()=>{const p=marker.getLatLng();if(qgIsValidCoordinate(p.lat,p.lng,true))onChange(p.lat,p.lng)})}};
-  if(marker)marker.on('dragend',()=>{const p=marker.getLatLng();if(qgIsValidCoordinate(p.lat,p.lng,true))onChange(p.lat,p.lng)});
-  map.on('click',e=>{if(!qgIsValidCoordinate(e.latlng.lat,e.latlng.lng,true))return toast('กรุณาเลือกพิกัดที่อยู่ในประเทศไทย');ensureMarker(e.latlng);onChange(e.latlng.lat,e.latlng.lng)});
-  if(hasInitial)onChange(viewLat,viewLng);
-  return {map,destroy(){disposed=true;map.remove()},locate(){if(disposed)return;if(!navigator.geolocation)return toast('เบราว์เซอร์ไม่รองรับ GPS');navigator.geolocation.getCurrentPosition(pos=>{if(disposed)return;const {latitude,longitude}=pos.coords;if(!qgIsValidCoordinate(latitude,longitude,true))return toast('พิกัด GPS ไม่ถูกต้อง กรุณาลองใหม่');map.setView([latitude,longitude],16);ensureMarker([latitude,longitude]);onChange(latitude,longitude);toast('ใช้ตำแหน่ง GPS ปัจจุบันแล้ว')},err=>{if(disposed)return;toast(err?.code===1?'กรุณาเปิดการเข้าถึงตำแหน่ง':err?.code===3?'รับตำแหน่งไม่ทันเวลา กรุณาลองใหม่':'ไม่สามารถรับตำแหน่ง GPS ได้')},{enableHighAccuracy:true,timeout:12000,maximumAge:30000})}};
+  const host=document.getElementById(containerId),hasInitial=qgIsValidCoordinate(lat,lng,true),viewLat=hasInitial?Number(lat):15,viewLng=hasInitial?Number(lng):101;
+  if(!host||typeof longdo==='undefined'){toast('แผนที่ยังไม่พร้อม กรุณาลองใหม่');return {map:{invalidateSize(){}},destroy(){},locate(){}}}
+  const map=new longdo.Map({placeholder:host,ui:window.longdo.UiComponent.Mobile});try{map.Ui.LayerSelector.visible(false)}catch(e){}
+  map.location({lat:viewLat,lon:viewLng},true);map.zoom(hasInitial?15:6,true);
+  let disposed=false,marker=null;
+  const setPoint=(plat,plng,notify=true)=>{if(disposed||!qgIsValidCoordinate(plat,plng,true))return false;if(marker)try{map.Overlays.remove(marker)}catch(e){};marker=qgLongdoPin({lat:Number(plat),lon:Number(plng)});map.Overlays.add(marker);if(notify)onChange(Number(plat),Number(plng));return true};
+  const syncCenter=()=>{if(disposed)return;const p=map.location();if(p&&qgIsValidCoordinate(p.lat,p.lon,true))setPoint(p.lat,p.lon,true)};
+  try{map.Event.bind('drop',syncCenter)}catch(e){}
+  if(hasInitial)setPoint(viewLat,viewLng,true);
+  return {map:{invalidateSize(){try{map.resize?.()}catch(e){}}},destroy(){disposed=true;try{host.innerHTML=''}catch(e){}},locate(){if(disposed)return;if(!navigator.geolocation)return toast('เบราว์เซอร์ไม่รองรับ GPS');navigator.geolocation.getCurrentPosition(pos=>{if(disposed)return;const {latitude,longitude}=pos.coords;if(!qgIsValidCoordinate(latitude,longitude,true))return toast('พิกัด GPS ไม่ถูกต้อง กรุณาลองใหม่');map.location({lat:latitude,lon:longitude},true);map.zoom(16,true);setPoint(latitude,longitude,true);toast('ใช้ตำแหน่ง GPS ปัจจุบันแล้ว')},err=>{if(disposed)return;toast(err?.code===1?'กรุณาเปิดการเข้าถึงตำแหน่ง':err?.code===3?'รับตำแหน่งไม่ทันเวลา กรุณาลองใหม่':'ไม่สามารถรับตำแหน่ง GPS ได้')},{enableHighAccuracy:true,timeout:12000,maximumAge:30000})}};
 }
 async function qtReverseGeocodeCustomer(lat,lng){
-  try{const r=await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lng)}&zoom=18&addressdetails=1&accept-language=th`,{headers:{Accept:'application/json'},signal:AbortSignal.timeout(8000)});if(!r.ok)return '';const j=await r.json(),a=j.address||{};return [a.house_number,a.road,a.suburb||a.neighbourhood,a.village||a.town||a.city,a.state].filter(Boolean).join(' ')||j.display_name||''}catch(e){return ''}}
+  try{const r=await fetch(`https://api.longdo.com/map/services/address?lon=${encodeURIComponent(lng)}&lat=${encodeURIComponent(lat)}&key=347649ca13f49db0d8a599ae35f8de2b`,{signal:AbortSignal.timeout(8000)});if(!r.ok)return '';const a=await r.json();return [a.house_number,a.soi,a.road,a.subdistrict,a.district,a.province,a.postcode].filter(Boolean).join(' ')}catch(e){return ''}
+}
 async function openCustomerLocationPicker(){
   const u=S.get();
   layout(`<div class="pt"><button class="back" onclick="history.back()">${ico('back')}</button><h1>เลือกที่อยู่จัดส่ง</h1></div><section class="card"><p class="muted">ปักหมุดตำแหน่งรับสินค้า แล้วระบุรายละเอียดที่อยู่ด้านล่าง</p><div id="customer-location-map" class="mapbox" style="height:150px"></div><button style="margin-top:12px;padding:7px 11px;width:auto;border:1px solid #d1d5db;border-radius:9px;background:transparent;color:inherit;font-size:12px;font-weight:600" onclick="customerLocationPicker&&customerLocationPicker.locate()">ใช้ตำแหน่ง GPS ปัจจุบัน</button><div class="dist">Lat: <span id="customer-lat">--</span> · Lng: <span id="customer-lng">--</span></div><textarea id="customer-address-input" placeholder="บ้านเลขที่ หมู่บ้าน ซอย ถนน หรือจุดสังเกต" style="width:100%;min-height:82px;margin-top:10px">${esc(currentPos?.address||'')}</textarea><button class="prim" style="margin-top:12px" onclick="saveCustomerLocationPicker()">บันทึกที่อยู่นี้</button></section>`,'home');
