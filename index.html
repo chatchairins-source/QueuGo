@@ -346,13 +346,22 @@ ${c.length?`<section class="sec"><div class="cats">${c.map(k=>`<button class="ca
 <div class="list">${list.length?list.map(shopCard).join(''):'<p class="empty">ยังไม่มีร้านค้า</p>'}</div></section>`,'home');
 };
 V.search=async(_,ticket=routeVersion)=>{
-  const list=await loadShops();
-  if(ticket!==routeVersion)return;
-  const draw=()=>{const k=q.toLowerCase();return list.filter(s=>(cat==='all'||s.public_category===cat)&&(!k||String(s.shop_name||'').toLowerCase().includes(k)))};
-  layout(`<div style="padding-top:12px"><input class="in" id="sq" placeholder="ค้นหาร้านค้า" value="${esc(q)}" style="margin-bottom:0">
-<div class="cats" style="padding:12px 0 4px">${['all',...Object.keys(CATS)].map(k=>`<button class="cat" style="flex:none;width:auto" onclick="cat='${k}';route()"><b style="margin:0;padding:8px 13px;border-radius:99px;font-size:11px;border:1px solid ${cat===k?'var(--red)':'#ddd'};background:${cat===k?'var(--red)':'#fff'};color:${cat===k?'#fff':'#333'}">${k==='all'?'ทั้งหมด':CATS[k]}</b></button>`).join('')}</div>
-<div class="list" id="sr" style="margin-top:8px">${draw().map(shopCard).join('')||'<p class="empty">ไม่พบร้านค้า</p>'}</div></div>`,'search');
-  $('sq').oninput=e=>{q=e.target.value.trim();$('sr').innerHTML=draw().map(shopCard).join('')||'<p class="empty">ไม่พบร้านค้า</p>'};
+  const list=await loadShops();if(ticket!==routeVersion)return;
+  let menuMatches=[],menuState='',timer=null,inFlight=false,queryVersion=0;
+  const matchesCategory=s=>cat==='all'||s.public_category===cat;
+  const draw=()=>{const k=q.toLocaleLowerCase('th'),matched=new Set(menuMatches.map(p=>String(p.shop_id)));return list.filter(s=>matchesCategory(s)&&(!k||String(s.shop_name||'').toLocaleLowerCase('th').includes(k)||String(CATS[s.public_category]||'').toLocaleLowerCase('th').includes(k)||matched.has(String(s.id))))};
+  layout(`<div style="padding-top:12px"><label for="sq">ค้นหาร้าน เมนู หรือหมวดหมู่</label><input class="in" id="sq" placeholder="ค้นหาร้าน เมนู หรือหมวดหมู่" value="${esc(q)}" style="margin-bottom:0"><button class="lk" id="search-clear">ล้างคำค้นหา</button>
+<div class="cats" style="padding:12px 0 4px">${['all',...Object.keys(CATS)].map(k=>`<button class="cat" style="flex:none;width:auto" onclick="cat='${k}';route()"><b style="margin:0;padding:8px 13px;border-radius:99px;font-size:11px;border:1px solid ${cat===k?'var(--red)':'#ddd'};background:${cat===k?'var(--red)':'#fff'};color:${cat===k?'#fff':'#333'}">${k==='all'?'ทั้งหมด':CATS[k]}</b></button>`).join('')}</div><p class="sm" id="search-state" role="status" aria-live="polite"></p><div class="list" id="sr" style="margin-top:8px"></div></div>`,'search');
+  const input=$('sq'),results=$('sr'),status=$('search-state');
+  const active=()=>ticket===routeVersion&&input.isConnected;
+  const render=()=>{if(!active())return;status.textContent=menuState;results.innerHTML=draw().map(shopCard).join('')||(menuState==='กำลังค้นหาเมนู…'?'<p class="empty">กำลังค้นหาร้านและเมนู…</p>':'<p class="empty">ไม่พบร้านหรือเมนูที่ตรงกับคำค้นหา</p>')};
+  async function findMenus(){timer=null;if(!active()||q.length<2)return;if(inFlight)return;const version=queryVersion,query=q;inFlight=true;menuState='กำลังค้นหาเมนู…';render();try{
+    const literal=query.replace(/[\\%_*]/g,'\\$&');const rows=await db('products?select=id,shop_id,name&available=eq.true&delivery_available=eq.true&name=ilike.'+encodeURIComponent('%'+literal+'%')+'&order=name.asc&limit=30');
+    if(!active()||version!==queryVersion)return;menuMatches=Array.isArray(rows)?rows:[];menuState=menuMatches.length?'พบเมนูที่ตรงกันในร้านด้านล่าง':'';
+  }catch(e){if(active()&&version===queryVersion)menuState='ค้นหาเมนูไม่สำเร็จ กรุณาลองพิมพ์คำค้นหาอีกครั้ง';}
+  finally{inFlight=false;if(active()){if(version!==queryVersion&&q.length>=2){clearTimeout(timer);timer=setTimeout(findMenus,250)}else render()}}}
+  function changed(){q=input.value.trim().slice(0,100);queryVersion++;menuMatches=[];menuState=q.length>=2?'กำลังค้นหาเมนู…':q.length===1?'พิมพ์อย่างน้อย 2 ตัวอักษรเพื่อค้นหาเมนู':'';clearTimeout(timer);render();if(q.length>=2)timer=setTimeout(findMenus,250)}
+  input.oninput=changed;$('search-clear').onclick=()=>{input.value='';changed();input.focus()};render();if(q.length>=2)timer=setTimeout(findMenus,250);
 };
 async function shareShop(id){const url=(window.Capacitor?.isNativePlatform?.()?'https://chatchairins-source.github.io/QueuGo/':location.href.split('#')[0])+'#shop/'+encodeURIComponent(id);try{if(navigator.share)await navigator.share({title:'ร้านค้าใน QueueGo',url});else{await navigator.clipboard.writeText(url);toast('คัดลอกลิงก์ร้านแล้ว')}}catch(e){if(e.name!=='AbortError')toast('แชร์ลิงก์ไม่สำเร็จ')}}
 V.shop=async(id,ticket=routeVersion)=>{
