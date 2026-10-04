@@ -157,26 +157,61 @@ jobs:
           ! grep -Eq 'CAMERA|RECORD_AUDIO|READ_EXTERNAL_STORAGE|WRITE_EXTERNAL_STORAGE|READ_MEDIA_IMAGES|ACCESS_BACKGROUND_LOCATION' android-build/android/app/src/main/AndroidManifest.xml
           ! grep -q 'usesCleartextTraffic="true"' android-build/android/app/src/main/AndroidManifest.xml
 
-      - name: Create QueueGo Q launcher icon
+      - name: Install approved QueueGo launcher icon
         shell: bash
         run: |
+          set -euo pipefail
           python3 -m pip install pillow --quiet
           python3 - <<'PY'
-          from PIL import Image,ImageDraw
+          from PIL import Image
           from pathlib import Path
-          sizes={'mipmap-mdpi':48,'mipmap-hdpi':72,'mipmap-xhdpi':96,'mipmap-xxhdpi':144,'mipmap-xxxhdpi':192}
+
+          src_path=Path('android-build/branding/queuego-approved-icon.webp')
+          if not src_path.exists():
+              raise RuntimeError('Approved QueueGo icon source is missing')
+
+          src=Image.open(src_path).convert('RGBA')
+          if src.width != src.height or src.width < 512:
+              raise RuntimeError(f'Approved QueueGo icon must be square and at least 512px, got {src.size}')
+
           base=Path('android-build/android/app/src/main/res')
+          sizes={
+              'mipmap-mdpi':48,
+              'mipmap-hdpi':72,
+              'mipmap-xhdpi':96,
+              'mipmap-xxhdpi':144,
+              'mipmap-xxxhdpi':192,
+          }
+
           for folder,n in sizes.items():
-              d=base/folder; d.mkdir(parents=True,exist_ok=True)
-              im=Image.new('RGBA',(n,n),(255,255,255,255))
-              dr=ImageDraw.Draw(im)
-              red=(231,9,43,255)
-              w=max(4,round(n*0.14))
-              box=(round(n*0.20),round(n*0.17),round(n*0.72),round(n*0.69))
-              dr.ellipse(box,outline=red,width=w)
-              dr.line((round(n*0.56),round(n*0.56),round(n*0.80),round(n*0.80)),fill=red,width=w)
-              im.save(d/'ic_launcher.png')
-              im.save(d/'ic_launcher_round.png')
+              d=base/folder
+              d.mkdir(parents=True,exist_ok=True)
+              for old in d.glob('ic_launcher*'):
+                  old.unlink()
+              icon=src.resize((n,n),Image.Resampling.LANCZOS)
+              icon.save(d/'ic_launcher.png',optimize=True)
+              icon.save(d/'ic_launcher_round.png',optimize=True)
+              # Adaptive foreground keeps the exact approved artwork; Android supplies the outer mask.
+              icon.save(d/'ic_launcher_foreground.png',optimize=True)
+
+          values=base/'values'
+          values.mkdir(parents=True,exist_ok=True)
+          (values/'ic_launcher_background.xml').write_text(
+              '<?xml version="1.0" encoding="utf-8"?>\n'
+              '<resources><color name="ic_launcher_background">#0B0F14</color></resources>\n'
+          )
+
+          adaptive=base/'mipmap-anydpi-v26'
+          adaptive.mkdir(parents=True,exist_ok=True)
+          xml=(
+              '<?xml version="1.0" encoding="utf-8"?>\n'
+              '<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">\n'
+              '  <background android:drawable="@color/ic_launcher_background"/>\n'
+              '  <foreground android:drawable="@mipmap/ic_launcher_foreground"/>\n'
+              '</adaptive-icon>\n'
+          )
+          (adaptive/'ic_launcher.xml').write_text(xml)
+          (adaptive/'ic_launcher_round.xml').write_text(xml)
           PY
 
       - name: Configure release signing
