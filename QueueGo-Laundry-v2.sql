@@ -297,13 +297,14 @@ begin
   order by h.created_at limit 1;
   if v_hub is null then raise exception 'setup laundry service first'; end if;
 
-  select r,u into v_rider,v_rider_user
+  select r.* into v_rider
   from public.rider_profiles r
   join public.users u on u.id=r.user_id
   where regexp_replace(coalesce(u.phone,''),'[^0-9]','','g')=v_phone
     and u.role='rider' and u.status='active' and r.status='active'
   limit 1;
   if v_rider.id is null then raise exception 'active Rider not found'; end if;
+  select * into v_rider_user from public.users where id=v_rider.user_id;
 
   insert into public.laundry_rider_invites(hub_id,rider_id,status,invited_by,updated_at)
   values(v_hub,v_rider.id,'pending',v_user,now())
