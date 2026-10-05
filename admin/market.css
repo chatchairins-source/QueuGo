@@ -18,3 +18,5 @@
 .qg-admin-save{width:100%;border:0;border-radius:11px;background:#e6092f;color:#fff;font-weight:800;padding:11px 13px;margin-top:10px}
 .qg-admin-scheduled{margin:8px 0;padding:9px 10px;border-radius:10px;background:#fff5d9;color:#705500;font-size:12px}
 @media(max-width:760px){.qg-admin-market{margin:8px auto;padding:12px}.qg-admin-control-grid{grid-template-columns:1fr}.qg-admin-switches label{align-items:flex-start}}
+
+.qg-market-proof{display:block;max-width:260px;width:100%;max-height:200px;object-fit:contain;margin:8px 0}

@@ -1622,6 +1622,7 @@ function renderAdminDashboard(user){
     </div>
     <div class="qt-admin-home-actions">
       <button onclick="qgAdminOpenControl('qt-sec-approval','shop')"><span>อนุมัติร้านค้า</span><small>ตรวจใบสมัครร้านจากฐานข้อมูล <b id="qg-home-pending-shops">…</b></small></button>
+      <button class="qg-market-admin-link" onclick="navigate('admin-market')"><span>อนุมัติตลาด</span><small>คำขอเพิ่มตลาดและร้านสมาชิก · รอตรวจ <b id="qg-home-pending-markets">กำลังโหลด</b></small></button>
       <button onclick="qgAdminOpenControl('qt-sec-approval','rider')"><span>อนุมัติไรเดอร์</span><small>ตรวจใบสมัครและเอกสาร <b id="qg-home-pending-riders">…</b></small></button>
       <button onclick="qgAdminOpenControl('qt-sec-security','customer')"><span>ศูนย์ความปลอดภัย</span><small>ค้นหา ระงับ และปลดระงับบัญชี</small></button>
       <button onclick="qgAdminOpenControl('qt-sec-delivery')"><span>ควบคุมไรเดอร์</span><small>ออนไลน์ ออฟไลน์ และพักสิทธิ์</small></button>
@@ -1657,7 +1658,7 @@ function renderAdminDashboard(user){
       .catch(e=>{if(shop.isConnected)shop.textContent='โหลดไม่สำเร็จ';if(rider.isConnected)rider.textContent='โหลดไม่สำเร็จ';console.warn('Admin pending accounts:',e)});
   })();
 
-(()=>{if(currentUser()?.type!=='admin')return;const host=document.querySelector('.qt-admin-home-actions')||document.querySelector('#app main');if(host&&!host.querySelector('.qg-market-admin-link')){const b=document.createElement('button');b.type='button';b.className='qg-market-admin-link';b.textContent='ตลาดสด · รถและออเดอร์';b.onclick=()=>navigate('admin-market');host.append(b)}})();
+if(typeof qgLoadMarketPendingCount==='function')qgLoadMarketPendingCount();
 }
 
 
@@ -2571,8 +2572,8 @@ body:has(.qg-v23-admin-login),body:has(.qg-v23-admin-denied){padding:0}
   window.adminUnsuspendUser=id=>accountAction('restore',id);
 })();
 </script>
-<link rel="stylesheet" href="market.css?v=20260928">
-<script defer src="market.js?v=20260928"></script>
+<link rel="stylesheet" href="market.css?v=20261005">
+<script defer src="market.js?v=20261005"></script>
 <style id="qg-admin-tablet-final-override-20260929">
 /* Current tablet layout. */
 @media (min-width:600px) and (max-width:1400px){

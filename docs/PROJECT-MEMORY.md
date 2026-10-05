@@ -50,3 +50,11 @@ Commit `52c41aaf7863b916214c8baa63ffe374f8865afd` added a prominent customer nav
 - Review ownership checks bind order, customer and shop; no financial/order transition RPC is replaced. Customer cancellation uses existing RPCs only.
 - Manual payment confirmations and delivery PIN instructions stay removed. Android overlay still waits for an explicit APK request.
 - Full physical delivery, background mobile GPS, notification sound and push delivery still require device validation; unit tests do not certify these.
+
+## Market approval continuity fix
+
+- Admin dashboard has an explicit “อนุมัติตลาด” entry with a live pending count from existing market_requests and shop_profiles.
+- Market approval uses the existing queuego_admin_review_market_request and queuego_admin_review_market_membership RPCs. New market approval queues the applicant shop for a separate membership review; it never auto-approves that shop.
+- Failed request reads must show an error, never an empty approval queue. Realtime refresh also refreshes the market queue/count, with account ownership checks.
+- Membership review displays existing shop location and front/stall evidence; no new approval tables or order/payment states.
+- No actual pending request is approved as part of QA; the decision remains with Admin.
