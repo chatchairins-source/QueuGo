@@ -606,7 +606,7 @@ function currentUser(){ const s=getSession(); if(!s) return null; return dbGet('
 
 function qtResetCache(){ Object.keys(QT_DB_CACHE).forEach(k=>{ delete QT_DB_CACHE[k]; }); QT_SYNC.hash={}; QT_SYNC.profileMaps=null; QT_SYNC.dirty={}; QT_DB_FULL_TRIED=false; QT_DB_HYDRATE_QUEUED=null; }
 function logout(){
-  try{Object.keys(localStorage).filter(k=>k.startsWith('qg-merchant-setup-day-v1:')).forEach(k=>localStorage.removeItem(k))}catch(e){}
+  try{Object.keys(localStorage).filter(k=>k.startsWith('qg-merchant-setup-day-v1:')||k.startsWith('qg-merchant-action-pending-v1:')).forEach(k=>localStorage.removeItem(k))}catch(e){}
   clearSession(); qtResetCache();
   try{ if('speechSynthesis' in window) window.speechSynthesis.cancel(); }catch(e){}
   try{ if(navigator.vibrate) navigator.vibrate(0); }catch(e){}
@@ -1985,14 +1985,14 @@ window.renderShopOrdersModern=function(){const u=shopUser();if(!u)return navigat
 {const host=document.querySelector('.qgm-content');if(host){const b=document.createElement('button');b.className='qgm-outline';b.textContent='เปิดโหมดครัว';b.onclick=qgOpenKitchen;host.prepend(b)}}
 };
 
-window.renderShopOrderModern=function(id){const u=shopUser(),o=shopOrders(u).find(x=>String(x.id)===String(id));if(!o)return navigate('shop-orders');const s=status(o),subtotal=qgmMerchantSalesAmount(o),items=o.items||[];layout('รายละเอียดคำสั่งซื้อ',`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><b style="font-size:18px;color:var(--qg-red)">${esc(displayOrderNumber(o))}</b><span class="qgm-status ${s[0]}">${s[1]}</span></div><small style="color:#8b9098">สั่งเมื่อ ${new Date(o.createdAt||Date.now()).toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'})} น.</small><section class="qgm-card qgm-info" style="margin-top:12px"><div class="qgm-person"><span class="round">${svg('user')}</span><div><b>${esc(o.customerName||'ลูกค้า')}</b><small>${esc(o.customerPhone||'-')}</small></div>${o.customerPhone?`<a class="qgm-call" href="tel:${esc(o.customerPhone)}">${svg('phone')}</a>`:''}</div></section><section class="qgm-card qgm-info"><div class="qgm-address"><span class="round">${svg('pin')}</span><div><b>ที่อยู่จัดส่ง</b><small>${esc(o.deliveryAddress||o.delivery?.address||'-')}</small></div><span></span></div></section><h2 class="qgm-section-title">รายการสินค้า</h2><section class="qgm-card qgm-info">${items.map(i=>`<div class="qgm-item"><img src="${esc(img(i.image||i.image_url))}"><div><b>${esc(i.name||i.itemName||'สินค้า')}</b><small>${Number(i.qty||i.quantity||1)} × ${Number(i.price||i.unitPrice||0).toLocaleString('th-TH')} บาท</small></div><span class="qgm-item-price">${Number(i.totalPrice||((i.price||i.unitPrice||0)*(i.qty||i.quantity||1))).toLocaleString('th-TH')} บาท</span></div>`).join('')}<div class="qgm-total"><span>รวมค่าสินค้า</span><b>${subtotal.toLocaleString('th-TH')} บาท</b></div></section>${o.status==='pending_shop'?`<button class="qgm-primary" onclick="updateOrderStatus('${o.id}','shop_accepted')">รับออเดอร์</button><button class="qgm-outline" onclick="shopCancelOrder('${o.id}')">ปฏิเสธ</button>`:''}${o.status==='rider_to_shop'?`<button class="qgm-primary" onclick="updateOrderStatus('${o.id}','preparing')">เริ่มเตรียมสินค้า</button>`:''}${o.status==='preparing'?`<button class="qgm-primary" onclick="updateOrderStatus('${o.id}','waiting_rider')">พร้อมส่ง</button>`:''}`,'shop-orders',{back:true})
+window.renderShopOrderModern=function(id){const u=shopUser(),o=shopOrders(u).find(x=>String(x.id)===String(id));if(!o)return navigate('shop-orders');const s=status(o),subtotal=qgmMerchantSalesAmount(o),items=o.items||[];layout('รายละเอียดคำสั่งซื้อ',`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><b style="font-size:18px;color:var(--qg-red)">${esc(displayOrderNumber(o))}</b><span class="qgm-status ${s[0]}">${s[1]}</span></div><small style="color:#8b9098">สั่งเมื่อ ${new Date(o.createdAt||Date.now()).toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'})} น.</small><section class="qgm-card qgm-info" style="margin-top:12px"><div class="qgm-person"><span class="round">${svg('user')}</span><div><b>${esc(o.customerName||'ลูกค้า')}</b><small>${esc(o.customerPhone||'-')}</small></div>${o.customerPhone?`<a class="qgm-call" href="tel:${esc(o.customerPhone)}">${svg('phone')}</a>`:''}</div></section><section class="qgm-card qgm-info"><div class="qgm-address"><span class="round">${svg('pin')}</span><div><b>ที่อยู่จัดส่ง</b><small>${esc(o.deliveryAddress||o.delivery?.address||'-')}</small></div><span></span></div></section><h2 class="qgm-section-title">รายการสินค้า</h2><section class="qgm-card qgm-info">${items.map(i=>`<div class="qgm-item"><img src="${esc(img(i.image||i.image_url))}"><div><b>${esc(i.name||i.itemName||'สินค้า')}</b><small>${Number(i.qty||i.quantity||1)} × ${Number(i.price||i.unitPrice||0).toLocaleString('th-TH')} บาท</small></div><span class="qgm-item-price">${Number(i.totalPrice||((i.price||i.unitPrice||0)*(i.qty||i.quantity||1))).toLocaleString('th-TH')} บาท</span></div>`).join('')}<div class="qgm-total"><span>รวมค่าสินค้า</span><b>${subtotal.toLocaleString('th-TH')} บาท</b></div></section>${o.status==='pending_shop'?`<button class="qgm-primary" onclick="updateOrderStatus('${o.id}','shop_accepted',this)">รับออเดอร์</button><button class="qgm-outline" onclick="shopCancelOrder('${o.id}',this)">ปฏิเสธ</button>`:''}${o.status==='rider_to_shop'?`<button class="qgm-primary" onclick="updateOrderStatus('${o.id}','preparing',this)">เริ่มเตรียมสินค้า</button>`:''}${o.status==='preparing'?`<button class="qgm-primary" onclick="updateOrderStatus('${o.id}','waiting_rider',this)">พร้อมส่ง</button>`:''}`,'shop-orders',{back:true})
 {
 
  const u=currentUser(),o=(typeof window.shopOrders==='function'?window.shopOrders(u):[]).find(x=>String(x.id)===String(id)),main=document.querySelector('.qgm-content');if(!o||!main)return;
  const extra=document.createElement('section');extra.className='qgm-order-extra';
  if(o.riderArrivedShopAt){const p=document.createElement('p');p.style.color='var(--qg-red)';p.textContent='ไรเดอร์ถึงร้านแล้ว · '+new Date(o.riderArrivedShopAt).toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'});extra.appendChild(p)}
  if(['shop_accepted','preparing','waiting_rider','rider_to_shop','accepted','ready','assigned'].includes(o.status)){
-  const b=document.createElement('button');b.className='qgm-outline';b.textContent='ยกเลิกออเดอร์';b.onclick=()=>shopCancelOrder(id);extra.appendChild(b);
+  const b=document.createElement('button');b.className='qgm-outline';b.textContent='ยกเลิกออเดอร์';b.onclick=()=>shopCancelOrder(id,b);extra.appendChild(b);
  }
 
  if(extra.childNodes.length)main.appendChild(extra);
@@ -2612,26 +2612,122 @@ window.qgmLoadRevenue=async function(date){
     </section>`;
  }catch(e){box.innerHTML='<p class="qgm-report qgm-report-error">โหลดรายงานไม่สำเร็จ: '+escapeHtml(e.message||e)+'</p>'}
 };
-// Database checks ownership and current status in one transaction before changing an order.
-window.updateOrderStatus=async function updateOrderStatus(orderId,newStatus){
- const allowed={shop_accepted:'accepted',preparing:'preparing',waiting_rider:'ready'};
- if(!allowed[newStatus])return;
+// Merchant mutations use one durable request UUID. If the server commits but the reply is lost,
+// retrying the same UUID returns the stored result instead of running the transition twice.
+const QGM_MERCHANT_ACTION_PENDING_PREFIX='qg-merchant-action-pending-v1:';
+const QGM_MERCHANT_ACTION_INFLIGHT=new Map();
+function qgmMerchantActionKey(orderId,action){
+ const actor=qtSessionRead()?.authUserId||currentUser()?.authUserId||currentUser()?.id||'shop';
+ return QGM_MERCHANT_ACTION_PENDING_PREFIX+actor+':'+orderId+':'+action;
+}
+function qgmMerchantActionPayload(orderId,action,reason){
+ return {p_order_id:String(orderId),p_action:String(action),p_reason:reason==null?null:String(reason).trim()||null};
+}
+function qgmMerchantActionReadOrCreate(orderId,action,reason){
+ const key=qgmMerchantActionKey(orderId,action),payload=qgmMerchantActionPayload(orderId,action,reason);
  try{
+  const saved=JSON.parse(localStorage.getItem(key)||'null');
+  if(saved?.requestId&&JSON.stringify(saved.payload)===JSON.stringify(payload))return {key,requestId:saved.requestId,payload};
+ }catch(e){}
+ const requestId=uid();
+ try{localStorage.setItem(key,JSON.stringify({requestId,payload,createdAt:Date.now()}))}catch(e){}
+ return {key,requestId,payload};
+}
+function qgmMerchantActionClear(key){try{localStorage.removeItem(key)}catch(e){}}
+function qgmMerchantActionTransient(err){
+ const s=String(err?.message||err||'').toLowerCase();
+ return /failed to fetch|network|timeout|timed out|connection|load failed|abort|offline|502|503|504|gateway/.test(s);
+}
+function qgmMerchantActionReached(action,status){
+ const s=String(status||'').toLowerCase();
+ if(action==='cancel')return s==='cancelled';
+ const rank={pending:0,accepted:1,searching_rider:1,rider_assigned:2,preparing:3,ready:4,picked_up:5,in_progress:6,completed:7};
+ const target={accepted:1,preparing:3,ready:4}[action];
+ return target!=null&&rank[s]!=null&&rank[s]>=target;
+}
+async function qgmMerchantActionReconcile(token,orderId,action){
+ try{
+  const rows=await qtSupabaseTable('orders?select=id,status,note,updated_at&id=eq.'+encodeURIComponent(orderId)+'&limit=1',{accessToken:token});
+  const row=Array.isArray(rows)?rows[0]:null;
+  return row&&qgmMerchantActionReached(action,row.status)?{order_id:row.id,action,status:row.status,reconciled:true,replayed:true}:null;
+ }catch(e){return null}
+}
+function qgmApplyMerchantActionResult(orderId,result){
+ const status=String(result?.status||'');if(!status)return;
+ const order=dbGet('qt_orders',[]).find(o=>String(o.id)===String(orderId));
+ if(order){order.status=qtOrderStatusFromDb(status,'');order.updatedAt=Date.now();qtMarkClean('qt_orders')}
+}
+function qgmSetOrderActionBusy(button,busy,label){
+ if(!button)return;
+ if(busy){
+  if(!button.dataset.qgOriginalText)button.dataset.qgOriginalText=button.textContent||'';
+  button.disabled=true;button.setAttribute('aria-busy','true');button.textContent=label||'กำลังบันทึก...';
+ }else{
+  button.disabled=false;button.removeAttribute('aria-busy');
+  if(button.dataset.qgOriginalText){button.textContent=button.dataset.qgOriginalText;delete button.dataset.qgOriginalText}
+ }
+}
+window.qgmMerchantActionOnce=async function(orderId,action,reason){
+ const payload=qgmMerchantActionPayload(orderId,action,reason);
+ const inflightKey=orderId+':'+action+':'+(payload.p_reason||'');
+ if(QGM_MERCHANT_ACTION_INFLIGHT.has(inflightKey))return QGM_MERCHANT_ACTION_INFLIGHT.get(inflightKey);
+ const task=(async()=>{
   const token=await qtGetAccessToken();if(!token)throw Error('กรุณาเข้าสู่ระบบใหม่');
-  await qtSupabaseTable('rpc/merchant_order_action',{method:'POST',accessToken:token,body:{p_order_id:orderId,p_action:allowed[newStatus],p_reason:null}});
-  await qtHydrateDatabase({light:false});toast('อัปเดตสถานะแล้ว');renderShopOrderModern(orderId);
- }catch(e){toast('เปลี่ยนสถานะไม่สำเร็จ: '+(e.message||e))}
+  const pending=qgmMerchantActionReadOrCreate(orderId,action,reason);
+  let lastErr=null;
+  for(let attempt=0;attempt<2;attempt++){
+   try{
+    const result=await qtSupabaseTable('rpc/qg_merchant_action_once',{
+      method:'POST',accessToken:token,
+      body:{p_request_id:pending.requestId,p_kind:'order',p_payload:pending.payload}
+    });
+    if(!result||String(result.order_id||'')!==String(orderId)||!result.status)throw Error('เซิร์ฟเวอร์ไม่ยืนยันสถานะออเดอร์');
+    qgmMerchantActionClear(pending.key);return result;
+   }catch(err){
+    lastErr=err;
+    if(!qgmMerchantActionTransient(err)){qgmMerchantActionClear(pending.key);throw err}
+    if(attempt===0)await new Promise(r=>setTimeout(r,350));
+   }
+  }
+  const recovered=await qgmMerchantActionReconcile(token,orderId,action);
+  if(recovered){qgmMerchantActionClear(pending.key);return recovered}
+  const uncertain=Error('การเชื่อมต่อสะดุด ยังไม่ยืนยันผลจากเซิร์ฟเวอร์');
+  uncertain.qgUncertain=true;uncertain.cause=lastErr;throw uncertain;
+ })().finally(()=>QGM_MERCHANT_ACTION_INFLIGHT.delete(inflightKey));
+ QGM_MERCHANT_ACTION_INFLIGHT.set(inflightKey,task);return task;
 };
-window.shopCancelOrder=async function shopCancelOrder(orderId){
+window.updateOrderStatus=async function updateOrderStatus(orderId,newStatus,button){
+ const allowed={shop_accepted:'accepted',preparing:'preparing',waiting_rider:'ready'};
+ const action=allowed[newStatus];if(!action)return;
+ qgmSetOrderActionBusy(button,true,action==='accepted'?'กำลังรับออเดอร์...':action==='preparing'?'กำลังเริ่มเตรียม...':'กำลังส่งสถานะ...');
+ try{
+  const result=await qgmMerchantActionOnce(orderId,action,null);
+  qgmApplyMerchantActionResult(orderId,result);
+  toast(action==='accepted'?'รับออเดอร์แล้ว':action==='preparing'?'เริ่มเตรียมสินค้าแล้ว':'แจ้งพร้อมส่งแล้ว');
+  renderShopOrderModern(orderId);
+  qtBackgroundHydrate({light:false});
+ }catch(e){
+  qgmSetOrderActionBusy(button,false);
+  toast(e?.qgUncertain?'การเชื่อมต่อสะดุด ระบบจะตรวจสถานะให้อัตโนมัติ':'เปลี่ยนสถานะไม่สำเร็จ: '+(e.message||e));
+  if(e?.qgUncertain)setTimeout(()=>qtBackgroundHydrate({light:false}),700);
+ }
+};
+window.shopCancelOrder=async function shopCancelOrder(orderId,button){
  const reason=prompt('ระบุเหตุผลที่ร้านยกเลิกออเดอร์');if(reason===null)return;
  if(!reason.trim()){toast('กรุณาระบุเหตุผล');return}
  if(reason.length>500){toast('เหตุผลต้องไม่เกิน 500 ตัวอักษร');return}
  if(!confirm('ยืนยันยกเลิกออเดอร์นี้?'))return;
+ qgmSetOrderActionBusy(button,true,'กำลังยกเลิก...');
  try{
-  const token=await qtGetAccessToken();if(!token)throw Error('กรุณาเข้าสู่ระบบใหม่');
-  await qtSupabaseTable('rpc/merchant_order_action',{method:'POST',accessToken:token,body:{p_order_id:orderId,p_action:'cancel',p_reason:reason.trim()}});
-  await qtHydrateDatabase({light:false});toast('ยกเลิกออเดอร์แล้ว');renderShopOrderModern(orderId);
- }catch(e){toast('ยกเลิกไม่สำเร็จ: '+(e.message||e))}
+  const result=await qgmMerchantActionOnce(orderId,'cancel',reason.trim());
+  qgmApplyMerchantActionResult(orderId,result);
+  toast('ยกเลิกออเดอร์แล้ว');renderShopOrderModern(orderId);
+  qtBackgroundHydrate({light:false});
+ }catch(e){
+  qgmSetOrderActionBusy(button,false);
+  toast(e?.qgUncertain?'การเชื่อมต่อสะดุด ระบบจะตรวจสถานะให้อัตโนมัติ':'ยกเลิกไม่สำเร็จ: '+(e.message||e));
+  if(e?.qgUncertain)setTimeout(()=>qtBackgroundHydrate({light:false}),700);
+ }
 };
 
 
@@ -2783,9 +2879,22 @@ window.qgmExportRevenue=async function(button){
  const cash=n=>'฿'+Number(n||0).toLocaleString('th-TH');
  window.qgOpenKitchen=function(){document.getElementById('qg-v22-kitchen')?.remove();const box=document.createElement('section');box.id='qg-v22-kitchen';box.className='qg-v22-overlay';box.innerHTML='<div class="qg-v22-dialog"><header><b>โหมดครัว</b><button type="button" onclick="document.getElementById(\'qg-v22-kitchen\').remove()">✕</button></header><p>ออเดอร์ปัจจุบันจากฐานข้อมูล</p><button type="button" onclick="qgLoadKitchen()">↻ รีเฟรช</button><div id="qg-v22-kitchen-list">กำลังโหลด...</div></div>';document.body.appendChild(box);qgLoadKitchen()};
  window.qgLoadKitchen=async function(){const el=document.getElementById('qg-v22-kitchen-list');if(!el)return;try{const token=await qtGetAccessToken(),rows=await qtSupabaseTable('rpc/get_my_shop_orders',{method:'POST',accessToken:token,body:{}});if(!el.isConnected)return;const status={pending:'NEW',accepted:'ACCEPTED',searching_rider:'SEARCHING RIDER',rider_assigned:'RIDER ASSIGNED · PREPARE',preparing:'PREPARING',ready:'READY',assigned:'RIDER PICKUP',picked_up:'RIDER PICKUP'};
-   el.innerHTML=(rows||[]).filter(o=>status[o.status]).map(o=>'<article><strong>'+displayOrderNumber(o)+'</strong><span>'+status[o.status]+'</span><small>'+new Date(o.created_at).toLocaleTimeString('th-TH')+'</small><p>'+(o.items||[]).map(i=>safe(i.item_name)+' × '+Number(i.quantity)).join(' · ')+'</p><b>'+cash(o.subtotal)+'</b><div>'+(o.status==='pending'?'<button onclick="qgKitchenAction(this.dataset.id,\'accepted\')" data-id="'+safe(o.id)+'">รับออเดอร์</button>':o.status==='rider_assigned'?'<button onclick="qgKitchenAction(this.dataset.id,\'preparing\')" data-id="'+safe(o.id)+'">เริ่มเตรียม</button>':o.status==='preparing'?'<button onclick="qgKitchenAction(this.dataset.id,\'ready\')" data-id="'+safe(o.id)+'">พร้อมให้ไรเดอร์รับ</button>':'')+(o.status==='assigned'?'<small>ไรเดอร์กำลังมารับ</small>':'')+'</div></article>').join('')||'<p>ไม่มีออเดอร์ในครัวขณะนี้</p>';
+   el.innerHTML=(rows||[]).filter(o=>status[o.status]).map(o=>'<article><strong>'+displayOrderNumber(o)+'</strong><span>'+status[o.status]+'</span><small>'+new Date(o.created_at).toLocaleTimeString('th-TH')+'</small><p>'+(o.items||[]).map(i=>safe(i.item_name)+' × '+Number(i.quantity)).join(' · ')+'</p><b>'+cash(o.subtotal)+'</b><div>'+(o.status==='pending'?'<button onclick="qgKitchenAction(this,this.dataset.id,\'accepted\')" data-id="'+safe(o.id)+'">รับออเดอร์</button>':o.status==='rider_assigned'?'<button onclick="qgKitchenAction(this,this.dataset.id,\'preparing\')" data-id="'+safe(o.id)+'">เริ่มเตรียม</button>':o.status==='preparing'?'<button onclick="qgKitchenAction(this,this.dataset.id,\'ready\')" data-id="'+safe(o.id)+'">พร้อมให้ไรเดอร์รับ</button>':'')+(o.status==='assigned'?'<small>ไรเดอร์กำลังมารับ</small>':'')+'</div></article>').join('')||'<p>ไม่มีออเดอร์ในครัวขณะนี้</p>';
  }catch(e){el.textContent='โหลดออเดอร์ครัวไม่สำเร็จ: '+e.message}};
- window.qgKitchenAction=async function(id,action){try{const token=await qtGetAccessToken();await qtSupabaseTable('rpc/merchant_order_action',{method:'POST',accessToken:token,body:{p_order_id:id,p_action:action,p_reason:null}});await qgLoadKitchen();qtBackgroundHydrate({light:false})}catch(e){toast('อัปเดตออเดอร์ไม่สำเร็จ: '+e.message)}};
+ window.qgKitchenAction=async function(button,id,action){
+ if(typeof qgmMerchantActionOnce!=='function')return toast('ระบบอัปเดตออเดอร์ยังไม่พร้อม');
+ qgmSetOrderActionBusy(button,true,action==='accepted'?'กำลังรับ...':action==='preparing'?'กำลังเตรียม...':'กำลังพร้อมส่ง...');
+ try{
+  const result=await qgmMerchantActionOnce(id,action,null);
+  qgmApplyMerchantActionResult(id,result);
+  toast(action==='accepted'?'รับออเดอร์แล้ว':action==='preparing'?'เริ่มเตรียมสินค้าแล้ว':'พร้อมให้ไรเดอร์รับแล้ว');
+  qgLoadKitchen();qtBackgroundHydrate({light:false});
+ }catch(e){
+  qgmSetOrderActionBusy(button,false);
+  toast(e?.qgUncertain?'การเชื่อมต่อสะดุด ระบบจะตรวจสถานะให้อัตโนมัติ':'อัปเดตออเดอร์ไม่สำเร็จ: '+(e.message||e));
+  if(e?.qgUncertain)setTimeout(()=>{qgLoadKitchen();qtBackgroundHydrate({light:false})},700);
+ }
+};
  window.qgOpenMerchantAnalytics=function(){document.getElementById('qg-v22-analytics')?.remove();const box=document.createElement('section');box.id='qg-v22-analytics';box.className='qg-v22-overlay';box.innerHTML='<div class="qg-v22-dialog"><header><b>วิเคราะห์ร้านค้า</b><button type="button" onclick="document.getElementById(\'qg-v22-analytics\').remove()">✕</button></header><div class="qg-v22-period"><button data-days="1">วันนี้</button><button data-days="7">7 วัน</button><button data-days="30">30 วัน</button></div><div id="qg-v22-analytics-result">กำลังโหลด...</div></div>';document.body.appendChild(box);box.querySelectorAll('[data-days]').forEach(b=>b.onclick=()=>qgLoadMerchantAnalytics(Number(b.dataset.days)));qgLoadMerchantAnalytics(1)};
  window.qgLoadMerchantAnalytics=async function(days){const el=document.getElementById('qg-v22-analytics-result');if(!el)return;el.textContent='กำลังโหลด...';try{const token=await qtGetAccessToken(),r=await qtSupabaseTable('rpc/qg_merchant_analytics',{method:'POST',accessToken:token,body:{p_days:days}});if(!el.isConnected)return;const items=(r.top_items||[]).map(x=>'<p>'+safe(x.name)+' · '+Number(x.quantity)+' ชิ้น</p>').join('');el.innerHTML='<div class="qg-v22-analytics-grid">'+[['ยอดขาย',cash(r.sales)],['จำนวนออเดอร์',r.orders],['มูลค่าเฉลี่ย',cash(r.average_order_value)],['ยกเลิก',r.cancelled+' ('+r.cancellation_rate+'%)'],['เตรียมสินค้าเฉลี่ย',r.avg_prep_minutes===null?'ยังไม่มีข้อมูล':r.avg_prep_minutes+' นาที']].map(([a,b])=>'<div><small>'+a+'</small><b>'+b+'</b></div>').join('')+'</div><h3>เมนูขายดี</h3>'+(items||'<p>ยังไม่มีข้อมูล</p>')}catch(e){el.textContent='โหลดสถิติไม่สำเร็จ: '+e.message}};
  window.renderShopSettlement=function(){qgmRenderRevenue()};
