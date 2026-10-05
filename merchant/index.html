@@ -2702,17 +2702,19 @@ window.updateOrderStatus=async function updateOrderStatus(orderId,newStatus,butt
  const allowed={shop_accepted:'accepted',preparing:'preparing',waiting_rider:'ready'};
  const action=allowed[newStatus];if(!action)return;
  qgmSetOrderActionBusy(button,true,action==='accepted'?'กำลังรับออเดอร์...':action==='preparing'?'กำลังเริ่มเตรียม...':'กำลังส่งสถานะ...');
+ let result;
  try{
-  const result=await qgmMerchantActionOnce(orderId,action,null);
-  qgmApplyMerchantActionResult(orderId,result);
-  toast(action==='accepted'?'รับออเดอร์แล้ว':action==='preparing'?'เริ่มเตรียมสินค้าแล้ว':'แจ้งพร้อมส่งแล้ว');
-  renderShopOrderModern(orderId);
-  qtBackgroundHydrate({light:false});
+  result=await qgmMerchantActionOnce(orderId,action,null);
  }catch(e){
   qgmSetOrderActionBusy(button,false);
-  toast(e?.qgUncertain?'การเชื่อมต่อสะดุด ระบบจะตรวจสถานะให้อัตโนมัติ':'เปลี่ยนสถานะไม่สำเร็จ: '+(e.message||e));
+  toast(e?.qgUncertain?'การเชื่อมต่อสะดุด ระบบกำลังตรวจผลให้ ไม่ต้องกดซ้ำ':'เปลี่ยนสถานะไม่สำเร็จ: '+(e.message||e));
   if(e?.qgUncertain)setTimeout(()=>qtBackgroundHydrate({light:false}),700);
+  return;
  }
+ qgmApplyMerchantActionResult(orderId,result);
+ toast(action==='accepted'?'รับออเดอร์แล้ว':action==='preparing'?'เริ่มเตรียมสินค้าแล้ว':'แจ้งพร้อมส่งแล้ว');
+ try{renderShopOrderModern(orderId)}catch(e){console.warn('merchant order render refresh failed',e)}
+ Promise.resolve().then(()=>qtBackgroundHydrate({light:false})).catch(e=>console.warn('merchant hydrate after action failed',e));
 };
 window.shopCancelOrder=async function shopCancelOrder(orderId,button){
  const reason=prompt('ระบุเหตุผลที่ร้านยกเลิกออเดอร์');if(reason===null)return;
@@ -2720,16 +2722,19 @@ window.shopCancelOrder=async function shopCancelOrder(orderId,button){
  if(reason.length>500){toast('เหตุผลต้องไม่เกิน 500 ตัวอักษร');return}
  if(!confirm('ยืนยันยกเลิกออเดอร์นี้?'))return;
  qgmSetOrderActionBusy(button,true,'กำลังยกเลิก...');
+ let result;
  try{
-  const result=await qgmMerchantActionOnce(orderId,'cancel',reason.trim());
-  qgmApplyMerchantActionResult(orderId,result);
-  toast('ยกเลิกออเดอร์แล้ว');renderShopOrderModern(orderId);
-  qtBackgroundHydrate({light:false});
+  result=await qgmMerchantActionOnce(orderId,'cancel',reason.trim());
  }catch(e){
   qgmSetOrderActionBusy(button,false);
-  toast(e?.qgUncertain?'การเชื่อมต่อสะดุด ระบบจะตรวจสถานะให้อัตโนมัติ':'ยกเลิกไม่สำเร็จ: '+(e.message||e));
+  toast(e?.qgUncertain?'การเชื่อมต่อสะดุด ระบบกำลังตรวจผลให้ ไม่ต้องกดซ้ำ':'ยกเลิกไม่สำเร็จ: '+(e.message||e));
   if(e?.qgUncertain)setTimeout(()=>qtBackgroundHydrate({light:false}),700);
+  return;
  }
+ qgmApplyMerchantActionResult(orderId,result);
+ toast('ยกเลิกออเดอร์แล้ว');
+ try{renderShopOrderModern(orderId)}catch(e){console.warn('merchant cancel render refresh failed',e)}
+ Promise.resolve().then(()=>qtBackgroundHydrate({light:false})).catch(e=>console.warn('merchant hydrate after cancel failed',e));
 };
 
 
@@ -2886,16 +2891,19 @@ window.qgmExportRevenue=async function(button){
  window.qgKitchenAction=async function(button,id,action){
  if(typeof qgmMerchantActionOnce!=='function')return toast('ระบบอัปเดตออเดอร์ยังไม่พร้อม');
  qgmSetOrderActionBusy(button,true,action==='accepted'?'กำลังรับ...':action==='preparing'?'กำลังเตรียม...':'กำลังพร้อมส่ง...');
+ let result;
  try{
-  const result=await qgmMerchantActionOnce(id,action,null);
-  qgmApplyMerchantActionResult(id,result);
-  toast(action==='accepted'?'รับออเดอร์แล้ว':action==='preparing'?'เริ่มเตรียมสินค้าแล้ว':'พร้อมให้ไรเดอร์รับแล้ว');
-  qgLoadKitchen();qtBackgroundHydrate({light:false});
+  result=await qgmMerchantActionOnce(id,action,null);
  }catch(e){
   qgmSetOrderActionBusy(button,false);
-  toast(e?.qgUncertain?'การเชื่อมต่อสะดุด ระบบจะตรวจสถานะให้อัตโนมัติ':'อัปเดตออเดอร์ไม่สำเร็จ: '+(e.message||e));
+  toast(e?.qgUncertain?'การเชื่อมต่อสะดุด ระบบกำลังตรวจผลให้ ไม่ต้องกดซ้ำ':'อัปเดตออเดอร์ไม่สำเร็จ: '+(e.message||e));
   if(e?.qgUncertain)setTimeout(()=>{qgLoadKitchen();qtBackgroundHydrate({light:false})},700);
+  return;
  }
+ qgmApplyMerchantActionResult(id,result);
+ toast(action==='accepted'?'รับออเดอร์แล้ว':action==='preparing'?'เริ่มเตรียมสินค้าแล้ว':'พร้อมให้ไรเดอร์รับแล้ว');
+ Promise.resolve().then(()=>qgLoadKitchen()).catch(e=>console.warn('merchant kitchen refresh failed',e));
+ Promise.resolve().then(()=>qtBackgroundHydrate({light:false})).catch(e=>console.warn('merchant hydrate after kitchen action failed',e));
 };
  window.qgOpenMerchantAnalytics=function(){document.getElementById('qg-v22-analytics')?.remove();const box=document.createElement('section');box.id='qg-v22-analytics';box.className='qg-v22-overlay';box.innerHTML='<div class="qg-v22-dialog"><header><b>วิเคราะห์ร้านค้า</b><button type="button" onclick="document.getElementById(\'qg-v22-analytics\').remove()">✕</button></header><div class="qg-v22-period"><button data-days="1">วันนี้</button><button data-days="7">7 วัน</button><button data-days="30">30 วัน</button></div><div id="qg-v22-analytics-result">กำลังโหลด...</div></div>';document.body.appendChild(box);box.querySelectorAll('[data-days]').forEach(b=>b.onclick=()=>qgLoadMerchantAnalytics(Number(b.dataset.days)));qgLoadMerchantAnalytics(1)};
  window.qgLoadMerchantAnalytics=async function(days){const el=document.getElementById('qg-v22-analytics-result');if(!el)return;el.textContent='กำลังโหลด...';try{const token=await qtGetAccessToken(),r=await qtSupabaseTable('rpc/qg_merchant_analytics',{method:'POST',accessToken:token,body:{p_days:days}});if(!el.isConnected)return;const items=(r.top_items||[]).map(x=>'<p>'+safe(x.name)+' · '+Number(x.quantity)+' ชิ้น</p>').join('');el.innerHTML='<div class="qg-v22-analytics-grid">'+[['ยอดขาย',cash(r.sales)],['จำนวนออเดอร์',r.orders],['มูลค่าเฉลี่ย',cash(r.average_order_value)],['ยกเลิก',r.cancelled+' ('+r.cancellation_rate+'%)'],['เตรียมสินค้าเฉลี่ย',r.avg_prep_minutes===null?'ยังไม่มีข้อมูล':r.avg_prep_minutes+' นาที']].map(([a,b])=>'<div><small>'+a+'</small><b>'+b+'</b></div>').join('')+'</div><h3>เมนูขายดี</h3>'+(items||'<p>ยังไม่มีข้อมูล</p>')}catch(e){el.textContent='โหลดสถิติไม่สำเร็จ: '+e.message}};
