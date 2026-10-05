@@ -189,3 +189,10 @@ Commit `52c41aaf7863b916214c8baa63ffe374f8865afd` added a prominent customer nav
 - Removed the duplicate category-card grid from Merchant → Products for market/meat/fish/vegetable/fruit shop types.
 - Market-type merchants now see search, current products and the add-product button directly; category selection remains inside the product editor using the fixed fresh-market category list.
 - Restaurant/cafe category grid remains removed as before; grocery and other retail shop types keep their existing catalog grid behavior.
+
+
+## Merchant authoritative category hydration fix (2026-10-05)
+
+- Fixed a UI mismatch where Merchant could keep using a stale category from `users.metadata` even though `shop_profiles.public_category` had already changed (for example a real market shop still rendering grocery category cards).
+- Merchant hydration now treats `shop_profiles.public_category` as the authoritative category and exposes it on the current shop user. Market membership status is hydrated alongside it.
+- Merchant sync signatures now include shop category/membership fields, so a full profile refresh rerenders safe pages such as Products when the authoritative category changes. This makes the removed market category grid disappear without requiring a new login.
