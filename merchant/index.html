@@ -17,7 +17,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Thonburi",sans-
 .notif-toast{padding:10px 13px;border-radius:12px;background:#fff;color:#17392e;border:1px solid #dceee6;box-shadow:0 5px 18px rgba(23,57,46,.12);font-size:12px;cursor:pointer}
 .map-box{height:220px;border:1px solid #dceee6;border-radius:12px;overflow:hidden;margin:10px 0}
 .badge{display:inline-block;padding:3px 8px;border-radius:99px;font-size:11px}.badge-green{background:#e5fbf2;color:#13805f}.badge-yellow{background:#fff7df;color:#a16b00}.badge-gray{background:#f0f4f2;color:#667d72}
-</style>
+#qt-net-status{display:none;position:fixed;top:calc(env(safe-area-inset-top) + 8px);left:50%;transform:translateX(-50%);z-index:8999;max-width:calc(100vw - 24px);padding:10px 14px;border-radius:12px;background:#9b1c2c;color:#fff;font-size:13px;line-height:1.4;text-align:center;box-shadow:0 6px 20px rgba(0,0,0,.18)}#qt-net-status.show{display:block}#qt-net-status.checking{background:#875c00}</style>
 
 <script>
 /* Merchant route and data entry point. */
@@ -103,8 +103,20 @@ function qtSupabaseHeaders(accessToken){
   if(accessToken) h.Authorization='Bearer '+accessToken;
   return h;
 }
+function qtConnectionNotice(state){
+  const bar=document.getElementById('qt-net-status');if(!bar)return;
+  bar.classList.toggle('show',state!=='online');bar.classList.toggle('checking',state==='checking');
+  bar.textContent=state==='offline'?'ไม่มีอินเทอร์เน็ต · ออเดอร์อาจยังไม่อัปเดต':state==='checking'?'กลับมาออนไลน์ · กำลังเชื่อมต่อ QueueGo':'เชื่อมต่อเซิร์ฟเวอร์ไม่ได้ · ระบบกำลังลองใหม่';
+}
+function qtInitConnectionNotice(){
+  if(!document.getElementById('qt-net-status')){const bar=document.createElement('div');bar.id='qt-net-status';bar.setAttribute('role','status');bar.setAttribute('aria-live','polite');document.body.appendChild(bar)}
+  qtConnectionNotice(navigator.onLine===false?'offline':'online');
+}
+window.addEventListener('DOMContentLoaded',qtInitConnectionNotice);
+window.addEventListener('offline',()=>qtConnectionNotice('offline'));
+window.addEventListener('online',()=>{qtConnectionNotice('checking');if(!document.hidden)qtSyncTick(true)});
 async function qtSupabaseAuth(path, body){
-  const r=await fetch(QT_SUPABASE_CONFIG.URL+'/auth/v1/'+path,{method:'POST',headers:qtSupabaseHeaders(),body:JSON.stringify(body),signal:AbortSignal.timeout(15000)});
+  let r;try{r=await fetch(QT_SUPABASE_CONFIG.URL+'/auth/v1/'+path,{method:'POST',headers:qtSupabaseHeaders(),body:JSON.stringify(body),signal:AbortSignal.timeout(15000)})}catch(e){qtConnectionNotice('unstable');throw e}qtConnectionNotice('online');
   const data=await r.json().catch(e=>{if(e.name==='AbortError'||e.name==='TimeoutError')throw e;return ({})});
   if(!r.ok) throw new Error(data.error_description||data.msg||data.message||'AUTH_ERROR');
   return data;
@@ -118,7 +130,7 @@ async function qtSupabaseTable(path, options={}){
     headers.Prefer=String(path).includes('on_conflict=') && String(options.method||'').toUpperCase()==='POST'
       ? rep+',resolution=merge-duplicates' : rep;
   }
-  const r=await fetch(QT_SUPABASE_CONFIG.URL+'/rest/v1/'+path,{method:options.method||'GET',headers,body:options.body?JSON.stringify(options.body):undefined,signal:AbortSignal.timeout(15000)});
+  let r;try{r=await fetch(QT_SUPABASE_CONFIG.URL+'/rest/v1/'+path,{method:options.method||'GET',headers,body:options.body?JSON.stringify(options.body):undefined,signal:AbortSignal.timeout(15000)})}catch(e){qtConnectionNotice('unstable');throw e}qtConnectionNotice('online');
   const data=await r.json().catch(e=>{if(e.name==='AbortError'||e.name==='TimeoutError')throw e;return null});
   if(!r.ok) throw new Error((data&&data.message)||((data&&data.hint)?data.hint:'DB_ERROR_'+r.status));
   return data;
