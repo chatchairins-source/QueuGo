@@ -443,7 +443,7 @@ async function placeOrder(){
   const sameActor=()=>S.get()?.userId===u.userId&&S.get()?.authUserId===u.authUserId;
   checkoutBusy=true;
   const button=$('place-order-btn');if(button){button.disabled=true;button.textContent='กำลังยืนยันคำสั่งซื้อ...'}
-  let pending,result;
+  let pending,result,confirmed=false;
   try{
     pending=readPendingCheckout();
     if(!pending){
@@ -457,6 +457,7 @@ async function placeOrder(){
     const accessToken=await token();if(!sameActor())return;
     result=await db('rpc/queuego_place_cash_order',{method:'POST',token:accessToken,body:pending.body});
     if(result?.id!==pending.body.p_order_id||!String(result?.order_number||'').trim())throw Error('ยังไม่ได้รับเลขยืนยันออเดอร์เดิม กรุณาลองตรวจผลอีกครั้ง');
+    confirmed=true;
   }catch(e){
     try{if(e.status>=400&&e.status<500&&![408,429].includes(e.status))localStorage.removeItem(requestKey)}catch(_){}
     if(await reconcilePendingCheckout())return;
@@ -464,7 +465,7 @@ async function placeOrder(){
     toast(e.status||!readPendingCheckout()?'ยังสั่งไม่ได้ กรุณาตรวจตะกร้า ราคา และตำแหน่งแล้วลองอีกครั้ง':'ยังยืนยันผลไม่ได้ กรุณาตรวจผลคำขอเดิมอีกครั้ง ระบบจะใช้รายการเดิมเพื่อป้องกันออเดอร์ซ้ำ');
     return;
   }finally{
-    if(!result){checkoutBusy=false;if(button&&sameActor()&&button.isConnected){button.disabled=false;button.textContent=readPendingCheckout()?'ตรวจผลคำสั่งซื้อเดิม':'ยืนยันสั่งซื้อ'}}
+    if(!confirmed){checkoutBusy=false;if(button&&sameActor()&&button.isConnected){button.disabled=false;button.textContent=readPendingCheckout()?'ตรวจผลคำสั่งซื้อเดิม':'ยืนยันสั่งซื้อ'}}
   }
   try{
     localStorage.removeItem(requestKey);
