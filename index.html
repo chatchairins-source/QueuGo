@@ -354,9 +354,9 @@ async function marketPlaceOrder(){
   if(!currentPos||!qgIsValidCoordinate(currentPos.lat,currentPos.lng,true)||!String(currentPos.address||'').trim())return toast('กรุณาเลือกที่อยู่จัดส่งก่อน');
   marketCheckoutBusy=true;
   const btn=$('market-place-order');if(btn){btn.disabled=true;btn.textContent='กำลังยืนยัน...'}
-  const key=marketPendingKey();
+  const key=marketPendingKey();let pending,result,committed=false;
   try{
-    let pending=readPendingMarketCheckout();
+    pending=readPendingMarketCheckout();
     if(!pending){
       const active=await loadActiveMarketTrip();
       if(active?.locked)throw Error('Rider ออกจากตลาดแล้ว ไม่สามารถเพิ่มร้านได้');
@@ -368,18 +368,23 @@ async function marketPlaceOrder(){
         :{mode:'new',body:{p_market_order_id:uuid(),p_items:pItems,p_delivery_lat:Number(currentPos.lat),p_delivery_lng:Number(currentPos.lng),p_delivery_address:String(currentPos.address).trim(),p_note:note}};
       localStorage.setItem(key,JSON.stringify(pending));
     }
-    const result=pending.mode==='add'
+    result=pending.mode==='add'
       ?await db('rpc/queuego_add_market_order_shops',{method:'POST',body:pending.body})
       :await db('rpc/queuego_place_market_order',{method:'POST',body:pending.body});
     if(!result)throw Error('ไม่ได้รับผลยืนยันจากระบบ');
-    localStorage.removeItem(key);clearMarketCart();
-    toast(pending.mode==='add'?'เพิ่มร้านเข้า Market Trip แล้ว':'สร้าง Market Trip แล้ว');
-    go('orders');
+    committed=true;
   }catch(e){
     const msg=String(e?.message||e);
     if(/locked|disabled|unavailable|invalid|already exists|ข้ามตลาด|market trip already/i.test(msg)){try{localStorage.removeItem(key)}catch(_){}}
     toast('ยืนยันตลาดสดไม่สำเร็จ: '+msg.slice(0,100));
-  }finally{marketCheckoutBusy=false;if(btn&&btn.isConnected){btn.disabled=false;btn.textContent='ยืนยัน Market Trip'}}
+    return;
+  }finally{
+    if(!committed){marketCheckoutBusy=false;if(btn&&btn.isConnected){btn.disabled=false;btn.textContent='ยืนยัน Market Trip'}}
+  }
+  try{localStorage.removeItem(key);clearMarketCart()}catch(e){console.warn('market checkout post-commit cleanup failed',e)}
+  marketCheckoutBusy=false;
+  toast(pending.mode==='add'?'เพิ่มร้านเข้า Market Trip แล้ว':'สร้าง Market Trip แล้ว');
+  try{go('orders')}catch(e){console.warn('market checkout post-commit navigation failed',e)}
 }
 /* ===== 4) Data (same tables) ===== */
 async function loadShops(){
@@ -778,8 +783,10 @@ async function submitSupport(event){
   try{const evidence=$('support-evidence')?.files?.[0];if(evidence&&!pending.p_evidence_path){pending.p_evidence_path=await QGCustomer.uploadEvidence(evidence);if(!sameActor())return;}localStorage.setItem(key,JSON.stringify(pending));for(const field of form.querySelectorAll('input,select,textarea'))field.disabled=true;
     const accessToken=await token();if(!sameActor())return;
     const previous=await db('qg_support_tickets?select=id&id=eq.'+encodeURIComponent(pending.p_ticket_id)+'&user_id=eq.'+encodeURIComponent(u.userId)+'&limit=1',{token:accessToken});if(!sameActor())return;
-    const id=previous?.[0]?.id||await db('rpc/qg_create_ticket',{method:'POST',token:accessToken,body:pending});if(id!==pending.p_ticket_id)throw Error('Unconfirmed ticket');localStorage.removeItem(key);
-    if(!sameActor()||!form.isConnected)return;toast('ส่งเรื่องให้ทีมงานแล้ว');route();
+    const id=previous?.[0]?.id||await db('rpc/qg_create_ticket',{method:'POST',token:accessToken,body:pending});if(id!==pending.p_ticket_id)throw Error('Unconfirmed ticket');
+    try{localStorage.removeItem(key)}catch(e){console.warn('support post-commit cleanup failed',e)}
+    if(!sameActor()||!form.isConnected)return;toast('ส่งเรื่องให้ทีมงานแล้ว');
+    try{route()}catch(e){console.warn('support post-commit render failed',e)}
   }catch(e){if(e.status>=400&&e.status<500&&![408,429].includes(e.status)){localStorage.removeItem(key);if(sameActor()&&form.isConnected)for(const field of form.querySelectorAll('input,select,textarea'))field.disabled=false}if(sameActor()&&form.isConnected)feedback.textContent=e.status?'ส่งเรื่องไม่สำเร็จ กรุณาตรวจข้อมูลและลองอีกครั้ง':'ยังไม่ได้รับผลยืนยัน กรุณาตรวจผลคำขอเดิมอีกครั้ง ระบบจะไม่ส่งเรื่องซ้ำ';}
   finally{supportBusy=false;if(sameActor()&&form.isConnected){button.disabled=false;button.textContent=readPendingSupport()?'ตรวจผลคำขอเดิม':'ส่งเรื่องให้ทีมงาน'}}
 }
