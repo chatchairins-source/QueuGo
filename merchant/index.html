@@ -116,7 +116,7 @@ window.addEventListener('DOMContentLoaded',qtInitConnectionNotice);
 window.addEventListener('offline',()=>qtConnectionNotice('offline'));
 window.addEventListener('online',()=>{qtConnectionNotice('checking');if(!document.hidden)qtSyncTick(true)});
 async function qtSupabaseAuth(path, body){
-  let r;try{r=await fetch(QT_SUPABASE_CONFIG.URL+'/auth/v1/'+path,{method:'POST',headers:qtSupabaseHeaders(),body:JSON.stringify(body),signal:AbortSignal.timeout(15000)})}catch(e){qtConnectionNotice('unstable');throw e}qtConnectionNotice('online');
+  let r;try{r=await fetch(QT_SUPABASE_CONFIG.URL+'/auth/v1/'+path,{method:'POST',headers:qtSupabaseHeaders(),body:JSON.stringify(body),signal:AbortSignal.timeout(15000)})}catch(e){if(typeof qtConnectionNotice==='function')qtConnectionNotice('unstable');throw e}if(typeof qtConnectionNotice==='function')qtConnectionNotice('online');
   const data=await r.json().catch(e=>{if(e.name==='AbortError'||e.name==='TimeoutError')throw e;return ({})});
   if(!r.ok) throw new Error(data.error_description||data.msg||data.message||'AUTH_ERROR');
   return data;
@@ -130,7 +130,7 @@ async function qtSupabaseTable(path, options={}){
     headers.Prefer=String(path).includes('on_conflict=') && String(options.method||'').toUpperCase()==='POST'
       ? rep+',resolution=merge-duplicates' : rep;
   }
-  let r;try{r=await fetch(QT_SUPABASE_CONFIG.URL+'/rest/v1/'+path,{method:options.method||'GET',headers,body:options.body?JSON.stringify(options.body):undefined,signal:AbortSignal.timeout(15000)})}catch(e){qtConnectionNotice('unstable');throw e}qtConnectionNotice('online');
+  let r;try{r=await fetch(QT_SUPABASE_CONFIG.URL+'/rest/v1/'+path,{method:options.method||'GET',headers,body:options.body?JSON.stringify(options.body):undefined,signal:AbortSignal.timeout(15000)})}catch(e){if(typeof qtConnectionNotice==='function')qtConnectionNotice('unstable');throw e}if(typeof qtConnectionNotice==='function')qtConnectionNotice('online');
   const data=await r.json().catch(e=>{if(e.name==='AbortError'||e.name==='TimeoutError')throw e;return null});
   if(!r.ok) throw new Error((data&&data.message)||((data&&data.hint)?data.hint:'DB_ERROR_'+r.status));
   return data;
