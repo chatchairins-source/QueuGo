@@ -10,7 +10,9 @@ ok(merchant.includes("QGM_MERCHANT_ACTION_INFLIGHT"),'merchant must coalesce rep
 ok(merchant.includes("qg-merchant-action-pending-v1:"),'merchant must persist pending request id');
 ok(merchant.includes("if(QGM_MERCHANT_ACTION_INFLIGHT.has(inflightKey))return QGM_MERCHANT_ACTION_INFLIGHT.get(inflightKey)"),'same action must reuse in-flight promise');
 ok(merchant.includes("p_request_id:pending.requestId"),'retry must keep original request id');
-ok(merchant.includes("ระบบกำลังตรวจผลให้ ไม่ต้องกดซ้ำ"),'uncertain result must tell merchant not to repeat tap');
+ok(!merchant.includes("toast(e?.qgUncertain?"),'uncertain transport result must not surface a false failure toast');
+ok(merchant.includes("กำลังตรวจสอบสถานะ..."),'uncertain result must keep the action locked while auto-reconciling');
+ok(merchant.includes("await new Promise(r=>setTimeout(r,700));\n    result=await qgmMerchantActionOnce(orderId,action,null);"),'merchant must retry the same durable action automatically after an uncertain transport result');
 ok(merchant.includes("let result;\n try{\n  result=await qgmMerchantActionOnce(orderId,action,null);\n }catch(e){"),'order mutation errors must be isolated from UI refresh errors');
 ok(merchant.includes("merchant order render refresh failed"),'post-commit render failure must not be reported as order failure');
 ok(merchant.includes("merchant hydrate after action failed"),'background refresh failure must be non-fatal after commit');
@@ -18,4 +20,4 @@ ok(merchant.includes("let result;\n try{\n  result=await qgmMerchantActionOnce(i
 ok(migration.includes("qg_merchant_action_receipts"),'server must store merchant action receipts');
 ok(migration.includes("pg_advisory_xact_lock"),'server must serialize same request id');
 ok(migration.includes("'replayed',true"),'server must explicitly report replay');
-console.log(JSON.stringify({checks,failures:0,scope:'merchant single-tap idempotency and post-commit UI error isolation'}));
+console.log(JSON.stringify({checks,failures:0,scope:'merchant single-tap idempotency, silent ambiguous-result recovery and post-commit UI error isolation'}));
