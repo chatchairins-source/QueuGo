@@ -1569,7 +1569,8 @@ window.qtSupportSend=function(e){
     try{
       const token=await qtGetAccessToken();if(!token)throw new Error('กรุณาเข้าสู่ระบบอีกครั้ง');
       await qtSupabaseTable('shop_support_messages',{method:'POST',accessToken:token,body:{shop_user_id:shopId,sender_user_id:u.id,body}});
-      input.value='';await qtSupportRefresh();
+      input.value='';
+      Promise.resolve().then(()=>qtSupportRefresh()).catch(refreshErr=>console.warn('merchant support post-send refresh failed',refreshErr));
     }catch(err){toast('ส่งข้อความไม่สำเร็จ: '+(err.message||'โปรดลองอีกครั้ง'))}
     finally{button.disabled=false}
   })();
@@ -2513,8 +2514,8 @@ window.qgmSetShopOpen=async function(toggle){
   const flags=desired?await qtSupabaseTable('shop_profiles?select=delivery_enabled&id=eq.'+encodeURIComponent(pid),{accessToken:token}):[];
   if(desired&&flags[0]?.delivery_enabled===false)await qtSupabaseTable('rpc/pos_enable_delivery',{method:'POST',accessToken:token,body:{}});
   else await qtSupabaseTable('shop_open_states?on_conflict=shop_id',{method:'POST',accessToken:token,body:{shop_id:pid,is_open:desired,resume_at:null,updated_at:new Date().toISOString()}});
-  label.textContent=desired?'● เปิดร้านอยู่':'● ปิดร้านอยู่';label.style.color=desired?'#17a779':'#8b929c';
- }catch(e){toggle.checked=!desired;toast('เปลี่ยนสถานะร้านไม่สำเร็จ: '+(e.message||e))}
+ }catch(e){toggle.checked=!desired;toast('เปลี่ยนสถานะร้านไม่สำเร็จ: '+(e.message||e));return}
+ try{if(label){label.textContent=desired?'● เปิดร้านอยู่':'● ปิดร้านอยู่';label.style.color=desired?'#17a779':'#8b929c'}}catch(uiErr){console.warn('merchant shop-open post-commit UI failed',uiErr)}
  finally{toggle.disabled=false}
 };
 // Read the exact daily GP from orders. A settlement is written only when the slip is submitted.
