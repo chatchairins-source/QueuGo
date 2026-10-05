@@ -962,7 +962,7 @@ window.qgRegFindMarkets=function(){
       const lat=Number(pos.coords.latitude),lng=Number(pos.coords.longitude);
       if(!Number.isFinite(lat)||!Number.isFinite(lng))throw Error('พิกัดไม่ถูกต้อง');
       QG_REG_MARKET_STATE.lat=lat;QG_REG_MARKET_STATE.lng=lng;
-      const raw=await qtSupabaseTable('markets?select=id,name,address,province,district,subdistrict,latitude,longitude,verified,assignment_radius_km&active=eq.true&province=eq.'+encodeURIComponent('บุรีรัมย์')+'&order=name.asc');
+      const raw=await qtSupabaseTable('markets?select=id,name,address,province,district,subdistrict,latitude,longitude,verified,assignment_radius_km&active=eq.true&latitude=not.is.null&longitude=not.is.null&province=eq.'+encodeURIComponent('บุรีรัมย์')+'&order=name.asc');
       QG_REG_MARKET_STATE.markets=(Array.isArray(raw)?raw:[]).map(m=>({market_id:m.id,market_name:m.name,address:m.address,province:m.province,district:m.district,subdistrict:m.subdistrict,verified:m.verified===true,assignment_radius_km:Number(m.assignment_radius_km||3),distance_km:qgRegDistanceKm(lat,lng,m.latitude,m.longitude)})).sort((a,b)=>Number(a.distance_km)-Number(b.distance_km)||String(a.market_name).localeCompare(String(b.market_name),'th'));
       QG_REG_MARKET_STATE.selectedMarketId=QG_REG_MARKET_STATE.markets[0]?.market_id||null;
       qgRegMarketStatus('พิกัดร้าน '+lat.toFixed(6)+', '+lng.toFixed(6),'approved');
@@ -2768,8 +2768,8 @@ window.qgmExportRevenue=async function(button){
 <script defer src="pos-table-v2.js?v=20260928-2336"></script>
 <link rel="stylesheet" href="market.css?v=20260928">
 <script defer src="market.js?v=20260928"></script>
-<link rel="stylesheet" href="market-registration.css?v=20261005-1720">
-<script defer src="market-registration.js?v=20261005-1720"></script>
+<link rel="stylesheet" href="market-registration.css?v=20261005-1723">
+<script defer src="market-registration.js?v=20261005-1723"></script>
 <link rel="stylesheet" href="laundry.css?v=20261005">
 <script defer src="laundry.js?v=20261005"></script>
 <style id="qg-viewport-scroll-baseline-20261002">
