@@ -10,6 +10,9 @@ eq(w.S.activeOrder.status,'ready');eq(JSON.parse(w.localStorage.getItem('qg-ride
 await w.qgRecoverRiderIntent();eq(w.localStorage.getItem('qg-rider-intent:rider'),null);eq(calls.filter(c=>c.p==='rpc/qg_rider_action_once').length,1);
 // Unknown result retries the exact same request ID; backend receipt gives once-only semantics.
 committed.clear();calls=[];await assert.rejects(w.qgRiderMutation('rpc/rider_order_action',{token:'token',body:{p_order_id:'o',p_action:'deliver'}}));const intent=JSON.parse(w.localStorage.getItem('qg-rider-intent:rider'));committed.clear();fail=false;await w.qgRecoverRiderIntent();eq(calls.filter(c=>c.p==='rpc/qg_rider_action_once').at(-1).o.body.p_request_id,intent.id);eq(w.localStorage.getItem('qg-rider-intent:rider'),null);
+// Work bundles use the same durable gateway and keep the completed suborder summary.
+calls=[];await w.qgRiderMutation('rpc/queuego_claim_route_bundle',{token:'token',body:{p_order_id:'bundle-candidate'}});eq(calls[0].o.body.p_kind,'bundle_claim');
+w.S.bundleOrders=[{id:'second',order_number:'QT-SECOND',delivery_fee:40}];w.S.activeOrder={id:'primary',order_number:'QT-PRIMARY'};await w.qgRiderMutation('rpc/rider_order_action',{token:'token',body:{p_order_id:'second',p_action:'complete'}});eq(w.S.completedSummary.order.id,'second');w.S.completedSummary=undefined;w.S.activeOrder={id:'o',status:'ready'};
 // Definite server rejection releases the intent, rather than replaying an invalid action.
 w.sbTable=async()=>{const e=Error('order unavailable');e.definitive=true;throw e};await assert.rejects(w.qgRiderMutation('rpc/rider_order_action',{token:'token',body:{p_order_id:'o',p_action:'complete'}}));eq(w.localStorage.getItem('qg-rider-intent:rider'),null);
 // Cached job is scoped to rider/profile and visibly stale until the server snapshot succeeds.

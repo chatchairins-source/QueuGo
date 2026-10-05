@@ -100,6 +100,7 @@ await db.exec(`CREATE ROLE authenticated;CREATE ROLE anon;CREATE ROLE service_ro
 CREATE FUNCTION get_my_user_id() RETURNS uuid LANGUAGE sql AS $$SELECT id FROM users WHERE auth_user_id=auth.uid()$$;`);
 const reliability=fs.readFileSync(path.resolve(__dirname,'../supabase/migrations/20261005052023_rider_reliability_push.sql'),'utf8');
 await db.exec(reliability.slice(0,reliability.indexOf('-- Secrets are server-only'))+'COMMIT;');
+await db.exec(fs.readFileSync(path.resolve(__dirname,'../supabase/migrations/20261005053831_rider_bundle_recovery.sql'),'utf8'));
 await seed(70,null,false,'');await db.exec(`UPDATE orders SET status='ready' WHERE id='${id(70)}';`);
 const pickupPayload=JSON.stringify({p_order_id:id(70),p_action:'pickup_cash'});
 await db.query(`SELECT qg_rider_action_once('${id(71)}','order','${pickupPayload}')`);

@@ -1286,16 +1286,16 @@ function qgRouteBundleHTML(){
 }
 function qgBindRouteBundleUI(){
   document.querySelectorAll('[data-bundle-claim]').forEach(b=>b.onclick=async()=>{
-    if(b.disabled)return;
+    if(b.disabled)return;const userId=S.user?.id,session=S.session;const current=()=>S.user?.id===userId&&riderSessionMatches(session);
     const offer=(S.bundleCandidates||[]).find(x=>String(x.order_id)===String(b.dataset.bundleClaim));
     if(!offer)return;
     if(!confirm('รับงานพ่วงนี้?\nเพิ่มระยะประมาณ '+Number(offer.detour_km||0).toFixed(1)+' กม. / '+Number(offer.added_minutes||0)+' นาที\nรายรับเพิ่ม ฿'+Number(offer.rider_extra_fee||0).toLocaleString('th-TH')+'\nลูกค้าประหยัด ฿'+Number(offer.customer_savings||0).toLocaleString('th-TH')))return;
     b.disabled=true;
     try{
-      const token=await getAccessToken();
-      await sbTable('rpc/queuego_claim_route_bundle',{method:'POST',token,body:{p_order_id:offer.order_id}});
-      toast('รับงานพ่วงแล้ว');await refreshData();
-    }catch(e){toast('รับงานพ่วงไม่สำเร็จ: '+String(e.message||e));b.disabled=false}
+      const token=await getAccessToken();if(!current())return;
+      await qgRiderMutation('rpc/queuego_claim_route_bundle',{method:'POST',token,body:{p_order_id:offer.order_id}});
+      if(!current())return;toast('รับงานพ่วงแล้ว');await refreshData();
+    }catch(e){if(!current())return;toast(e.pending?e.message:'รับงานพ่วงไม่สำเร็จ: '+String(e.message||e));b.disabled=false}
   });
   document.querySelectorAll('[data-bundle-advance]').forEach(b=>b.onclick=()=>{
     const o=(S.bundleOrders||[]).find(x=>String(x.id)===String(b.dataset.bundleAdvance));if(o)advanceOrder(o);
