@@ -606,6 +606,7 @@ function currentUser(){ const s=getSession(); if(!s) return null; return dbGet('
 
 function qtResetCache(){ Object.keys(QT_DB_CACHE).forEach(k=>{ delete QT_DB_CACHE[k]; }); QT_SYNC.hash={}; QT_SYNC.profileMaps=null; QT_SYNC.dirty={}; QT_DB_FULL_TRIED=false; QT_DB_HYDRATE_QUEUED=null; }
 function logout(){
+  try{Object.keys(localStorage).filter(k=>k.startsWith(QGM_SETUP_DAY_CACHE_PREFIX)).forEach(k=>localStorage.removeItem(k))}catch(e){}
   clearSession(); qtResetCache();
   try{ if('speechSynthesis' in window) window.speechSynthesis.cancel(); }catch(e){}
   try{ if(navigator.vibrate) navigator.vibrate(0); }catch(e){}
@@ -1852,6 +1853,55 @@ window.renderShopRegister=function(){
   </main>`;
 };
 
+const QGM_SETUP_DAY_CACHE_PREFIX='qg-merchant-setup-day-v1:';
+const QGM_SETUP_SILENT_CHECKED=new Set();
+function qgmSetupCacheKey(u){
+ const actor=qtSessionRead()?.authUserId||u?.authUserId||u?.id;
+ return actor?QGM_SETUP_DAY_CACHE_PREFIX+actor:null;
+}
+function qgmReadSetupReadiness(u){
+ if(!u||u.status!=='approved')return null;
+ try{
+  const key=qgmSetupCacheKey(u),raw=key&&JSON.parse(localStorage.getItem(key)||'null');
+  if(!raw||raw.userId!==u.id||raw.date!==qtLocalDateKey())return null;
+  return raw;
+ }catch(e){return null}
+}
+function qgmWriteSetupReadiness(u,ready,left){
+ const key=qgmSetupCacheKey(u);if(!key)return;
+ try{localStorage.setItem(key,JSON.stringify({userId:u.id,date:qtLocalDateKey(),ready:!!ready,left:Number(left||0),at:Date.now()}))}catch(e){}
+}
+function qgmInvalidateSetupReadiness(u){
+ const key=qgmSetupCacheKey(u);if(key)try{localStorage.removeItem(key)}catch(e){}
+ if(key)QGM_SETUP_SILENT_CHECKED.delete(key);
+}
+window.qgmInvalidateSetupReadiness=qgmInvalidateSetupReadiness;
+async function qgmFetchSetupReadiness(u){
+ const token=await qtGetAccessToken();if(!token)throw Error('กรุณาเข้าสู่ระบบใหม่');
+ const shops=await qtSupabaseTable('shop_profiles?select=*&user_id=eq.'+encodeURIComponent(u.id)+'&limit=1',{accessToken:token});
+ const shop=shops?.[0]||{};
+ const products=shop.id?await qtSupabaseTable('products?select=name,price,image&shop_id=eq.'+encodeURIComponent(shop.id),{accessToken:token}):[];
+ const steps=window.qgmSetupSteps(u,shop,products||[]),left=steps.filter(x=>!x.done).length;
+ return {shop,products:products||[],steps,left,ready:left===0};
+}
+async function qgmVerifySetupReadinessSilent(u){
+ if(!u||u.status!=='approved')return;
+ const key=qgmSetupCacheKey(u);if(!key||QGM_SETUP_SILENT_CHECKED.has(key))return;
+ QGM_SETUP_SILENT_CHECKED.add(key);
+ try{
+  const state=await qgmFetchSetupReadiness(u);
+  if(currentUser()?.id!==u.id)return;
+  qgmWriteSetupReadiness(u,state.ready,state.left);
+  if(!state.ready&&(location.hash==='#dashboard'||location.hash==='#home'||!location.hash)){
+   toast('ข้อมูลร้านมีรายการที่ต้องตรวจสอบ');
+  }
+ }catch(e){
+  QGM_SETUP_SILENT_CHECKED.delete(key);
+  console.warn('silent shop readiness check failed',e);
+ }
+}
+window.qgmVerifySetupReadinessSilent=qgmVerifySetupReadinessSilent;
+
 window.qgmSetupSteps=function(u,shop,products){
  const text=v=>typeof v==='string'&&v.trim().length>0;
  const data={...u,...(shop.metadata||{}),shopName:shop.shop_name,phone:shop.phone||u.phone,address:shop.address,lat:shop.latitude,lng:shop.longitude,category:shop.public_category||shop.metadata?.category||u.category};
@@ -1869,14 +1919,15 @@ window.qgmSetupSteps=function(u,shop,products){
 };
 window.renderShopPending=async function(options={}){
  const u=currentUser();if(!u)return navigate('login');const owner=u.id,hash=location.hash;
+ const cached=options.dashboard?qgmReadSetupReadiness(u):null;
+ if(cached?.ready){renderShopDashboardModern(u);qgmVerifySetupReadinessSilent(u);return}
  layout('ตั้งค่าร้านค้า','<section class="qgm-card qgm-pending" id="qgm-setup-progress" aria-live="polite">กำลังตรวจสอบข้อมูลร้าน...</section>','dashboard');
  const active=()=>currentUser()?.id===owner&&location.hash===hash&&document.getElementById('qgm-setup-progress');
  try{
- const token=await qtGetAccessToken();if(!token)throw Error('กรุณาเข้าสู่ระบบใหม่');
- const shops=await qtSupabaseTable('shop_profiles?select=*&user_id=eq.'+encodeURIComponent(owner)+'&limit=1',{accessToken:token});
- if(!active())return;const shop=shops?.[0]||{};
- const products=shop.id?await qtSupabaseTable('products?select=name,price,image&shop_id=eq.'+encodeURIComponent(shop.id),{accessToken:token}):[];
- const host=active();if(!host)return;const steps=qgmSetupSteps(u,shop,products||[]),left=steps.filter(x=>!x.done).length;
+ const state=await qgmFetchSetupReadiness(u);
+ if(!active())return;
+ const host=active();if(!host)return;const {steps,left}=state;
+ qgmWriteSetupReadiness(u,state.ready,left);
  if(options.dashboard&&!left)return renderShopDashboardModern(u);
  host.innerHTML=`<div class="qgm-setup-heading"><div><span class="qgm-status">${escapeHtml(u.shopName||'ร้านค้า')}</span><h1>${left?'ตั้งค่าร้านให้เรียบร้อย':'ร้านพร้อมใช้งานแล้ว'}</h1><p>${left?'เหลืออีก '+left+' ขั้นตอน':'ข้อมูลครบและผ่านการอนุมัติแล้ว'}</p></div><span class="qgm-setup-symbol" aria-hidden="true">${left?'⚒':'✓'}</span></div><ol class="qgm-setup-list">${steps.map(x=>`<li class="${x.done?'done':''}"><span class="qgm-setup-check" aria-label="${x.done?'เสร็จแล้ว':'ยังไม่เสร็จ'}">${x.done?'✓':'○'}</span><div><b>${x.title}</b><p>${escapeHtml(x.note)}</p>${x.page&&!x.done?`<button type="button" class="qgm-link" onclick="navigate('${x.page}')">${x.page==='shop-support'?'ติดต่อแอดมิน':'ไปดำเนินการ'} →</button>`:''}</div></li>`).join('')}</ol><p>รายการนี้ช่วยตรวจความพร้อมของร้าน การอนุมัติยังเป็นหน้าที่ของแอดมิน</p><button type="button" class="qgm-outline" onclick="qgmRefreshApplication()">ตรวจสอบข้อมูลอีกครั้ง</button>${u.status==='approved'?'<button type="button" class="qgm-outline" onclick="renderShopDashboardModern(currentUser())">ดูสรุปออเดอร์</button>':''}<button type="button" class="qgm-link" onclick="qtMerchantLogout()">ออกจากระบบ</button>`;
  }catch(e){const host=active();if(host)host.innerHTML='<h1>ตรวจสอบข้อมูลร้านไม่สำเร็จ</h1><p>'+escapeHtml(e.message||String(e))+'</p><button class="qgm-outline" onclick="qgmRefreshApplication()">ลองอีกครั้ง</button>';}
@@ -1887,6 +1938,7 @@ window.qtShopForgotPassword=async function(){const email=prompt('กรอกอ
 
 
 window.renderShopDashboardModern=function(u){
+ qgmVerifySetupReadinessSilent(u);
  const os=shopOrders(u),today=qtLocalDateKey(),tod=os.filter(o=>(o.orderDate||qtLocalDateKey(o.createdAt))===today);
  const count=ss=>tod.filter(o=>ss.includes(o.status)).length;
  const logo=u.logo||u.avatar;
@@ -2132,8 +2184,8 @@ window.renderShopProfileModern=function(){const u=shopUser();if(!u)return naviga
 };
 window.qtMerchantLogout=function(){logout();location.hash='#login';window.qtShopRoute()};
 
-function route(){const hash=location.hash.replace('#','')||'dashboard',[page,param]=hash.split('/'),u=currentUser();if(qtSessionRead()?.role==='admin'||u?.type==='admin'){qgPosDisconnect();clearSession();renderShopLogin();const note=document.getElementById('qgm-login-role-error');if(note){note.textContent='บัญชีนี้เป็นบัญชีแอดมิน ไม่มีสิทธิ์เข้าหน้าร้านค้า กรุณาใช้บัญชีร้านค้า';note.hidden=false}return}if(page==='pos'||page==='pos-staff-join')return qgPosRoute();if(qtSessionRead()?.role==='pos_staff'){location.hash='#pos';return}qgPosDisconnect();if(page==='login'||!u){if(page==='shop-register'&&typeof renderShopRegister==='function')return renderShopRegister();return renderShopLogin()}if(u.type!=='shop'){clearSession();return renderShopLogin()}if(u.status!=='approved'&&!['shop-setup','approval-pending','shop-products','shop-product','shop-catalog','shop-media','shop-support','notifications'].includes(page)&&typeof renderShopPending==='function')return renderShopPending();switch(page){case'approval-pending':return renderShopPending();case'home':case'dashboard':return renderShopPending({dashboard:true});case'market-stock':return qgMarketReload();case'shop-laundry':return typeof qgRenderLaundryMerchant==='function'?qgRenderLaundryMerchant():toast('โมดูลฝากซักยังโหลดไม่เสร็จ กรุณาลองใหม่');case'shop-orders':return renderShopOrdersModern();case'shop-order':return renderShopOrderModern(param);case'shop-products':return renderShopProductsModern();case'shop-catalog':return renderShopCatalog();case'shop-product':return renderShopProductEditor(param||'new');case'shop-promote':return renderShopPromote();case'shop-promote-create':return renderShopPromoteCreate();case'shop-profile':return renderShopProfileModern();case'shop-setup':return renderShopSetup();case'shop-settlement':return renderShopSettlement();case'shop-revenue':return qgmRenderRevenue();case'shop-hours':return qgmRenderHours();case'shop-modules':return renderShopModules();case'shop-media':return renderMerchantMedia();case'shop-support':return renderShopSupport();case'notifications':return renderNotifications();default:return renderShopDashboardModern(u)}}
-window.qgmRefreshApplication=async function(){try{await qtHydrateDatabase({light:false});route();toast('อัปเดตสถานะล่าสุดแล้ว')}catch(e){toast('ตรวจสอบสถานะไม่สำเร็จ: '+e.message)}};
+function route(){const hash=location.hash.replace('#','')||'dashboard',[page,param]=hash.split('/'),u=currentUser();if(qtSessionRead()?.role==='admin'||u?.type==='admin'){qgPosDisconnect();clearSession();renderShopLogin();const note=document.getElementById('qgm-login-role-error');if(note){note.textContent='บัญชีนี้เป็นบัญชีแอดมิน ไม่มีสิทธิ์เข้าหน้าร้านค้า กรุณาใช้บัญชีร้านค้า';note.hidden=false}return}if(page==='pos'||page==='pos-staff-join')return qgPosRoute();if(qtSessionRead()?.role==='pos_staff'){location.hash='#pos';return}qgPosDisconnect();if(page==='login'||!u){if(page==='shop-register'&&typeof renderShopRegister==='function')return renderShopRegister();return renderShopLogin()}if(u.type!=='shop'){clearSession();return renderShopLogin()}if(u.status!=='approved'&&!['shop-setup','approval-pending','shop-products','shop-product','shop-catalog','shop-media','shop-support','notifications'].includes(page)&&typeof renderShopPending==='function')return renderShopPending();switch(page){case'approval-pending':return renderShopPending();case'home':case'dashboard':{const ready=qgmReadSetupReadiness(u);return u.status==='approved'&&ready?.ready?renderShopDashboardModern(u):renderShopPending({dashboard:true})}case'market-stock':return qgMarketReload();case'shop-laundry':return typeof qgRenderLaundryMerchant==='function'?qgRenderLaundryMerchant():toast('โมดูลฝากซักยังโหลดไม่เสร็จ กรุณาลองใหม่');case'shop-orders':return renderShopOrdersModern();case'shop-order':return renderShopOrderModern(param);case'shop-products':return renderShopProductsModern();case'shop-catalog':return renderShopCatalog();case'shop-product':return renderShopProductEditor(param||'new');case'shop-promote':return renderShopPromote();case'shop-promote-create':return renderShopPromoteCreate();case'shop-profile':return renderShopProfileModern();case'shop-setup':return renderShopSetup();case'shop-settlement':return renderShopSettlement();case'shop-revenue':return qgmRenderRevenue();case'shop-hours':return qgmRenderHours();case'shop-modules':return renderShopModules();case'shop-media':return renderMerchantMedia();case'shop-support':return renderShopSupport();case'notifications':return renderNotifications();default:return renderShopDashboardModern(u)}}
+window.qgmRefreshApplication=async function(){try{qgmInvalidateSetupReadiness(currentUser());await qtHydrateDatabase({light:false});route();toast('อัปเดตสถานะล่าสุดแล้ว')}catch(e){toast('ตรวจสอบสถานะไม่สำเร็จ: '+e.message)}};
 window.qtShopRoute=route;
 })();
 </script>
@@ -2333,7 +2385,7 @@ window.qgmSaveShopSetup=async function(e){e.preventDefault();const button=e.subm
  if(!Array.isArray(savedProfile)||!savedProfile.length)throw Error('ฐานข้อมูลไม่ยืนยันข้อมูลร้าน');
  const savedUser=await qtSupabaseTable('users?id=eq.'+encodeURIComponent(u.id),{method:'PATCH',accessToken:token,body:{name:next.name,phone:next.phone,metadata:qtUserMetadata(next)}});
  if(!Array.isArray(savedUser)||!savedUser.length)throw Error('ฐานข้อมูลไม่ยืนยันข้อมูลผู้ใช้');
- Object.assign(u,next);qtMarkClean('qt_users');toast('บันทึกข้อมูลร้านแล้ว');navigate('shop-profile');
+ Object.assign(u,next);qtMarkClean('qt_users');qgmInvalidateSetupReadiness(u);toast('บันทึกข้อมูลร้านแล้ว');navigate('shop-profile');
  }catch(err){console.error(err);toast('บันทึกไม่สำเร็จ: '+(err.message||err))}finally{if(button)button.disabled=false}return false;
 };
 </script>
