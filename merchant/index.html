@@ -1713,7 +1713,7 @@ window.renderShopDashboardModern=function(u){
 }
 
 {const host=document.querySelector('.qgm-menu-grid');if(host){const b=document.createElement('button');b.className='qgm-menu';b.innerHTML='<span class="ico">▦</span><span>หน้าร้าน POS</span>';b.onclick=()=>navigate('pos');host.prepend(b)}}
-{if(qgMarketCategory(u.category)){const main=document.querySelector('#app .qgm-page, #app .qgm-content, #app main');if(main){const b=document.createElement('button');b.className='qgm-primary market-entry';b.type='button';b.textContent='ตลาดสด · สินค้าและสต๊อก';b.onclick=()=>navigate('market-stock');main.append(b)}}}
+{if(qgMarketCategory(u.category)){const grid=document.querySelector('.qgm-menu-grid');if(grid){const b=document.createElement('button');b.className='qgm-menu qgm-market-menu';b.type='button';b.innerHTML='<span class="ico">'+svg('box')+'</span><span>ตลาดและสต๊อก</span>';b.onclick=()=>navigate('market-stock');grid.append(b)}}}
 };
 
 function status(o){if(o.status==='pending_shop')return['pending','รอรับ'];if(o.status==='searching_rider')return['searching','กำลังค้นหาไรเดอร์'];if(o.status==='rider_to_shop')return['preparing','ไรเดอร์รับงานแล้ว · เริ่มเตรียมสินค้า'];if(['shop_accepted','preparing'].includes(o.status))return['preparing','กำลังเตรียม'];if(o.status==='waiting_rider')return['ready','พร้อมให้ไรเดอร์รับ'];if(['completed','delivered','rider_to_customer'].includes(o.status))return['done','จัดส่งแล้ว'];return['cancel','ยกเลิก']}
