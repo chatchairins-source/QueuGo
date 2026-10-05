@@ -370,7 +370,7 @@ function qtOrderToRow(o){
   return {id:qtUuidLike(o.id)?o.id:undefined,order_number:String(o.orderNumber||o.orderNo||o.id||uid()),customer_id:o.customerId||null,shop_id:o.shopProfileId||null,technician_id:null,rider_id:o.riderProfileId||null,order_type:'shopping',status:qtOrderStatusToDb(o.status),subtotal:Number(o.subtotal||0),delivery_fee:Number(o.deliveryFee||0),total_amount:Number(o.total||o.totalAmount||0),pickup_address:o.pickupAddress??pickup.address??null,pickup_latitude:o.pickupLat??pickup.lat??null,pickup_longitude:o.pickupLng??pickup.lng??null,delivery_address:o.deliveryAddress??delivery.address??null,delivery_latitude:o.deliveryLat??delivery.lat??null,delivery_longitude:o.deliveryLng??delivery.lng??null,note:(`__QT_ORDER_STATUS__=${o.status}\n`+(o.cancelReason?`__QT_CANCEL_REASON__=${String(o.cancelReason).replace(/\n/g,' ')}\n`:'')+(o.note||'')).trim()||null,created_at:qtIso(o.createdAt),updated_at:qtIso(Date.now())};
 }
 function qtOrderFromRow(r){
-  return {id:r.id,orderNumber:r.order_number,customerId:r.customer_id,shopProfileId:r.shop_id,riderProfileId:r.rider_id,status:qtOrderStatusFromDb(r.status,r.note),orderType:r.order_type,subtotal:Number(r.subtotal||0),gpAmount:r.gp_amount==null?null:Number(r.gp_amount),gpRate:r.gp_rate==null?null:Number(r.gp_rate),deliveryFee:Number(r.delivery_fee||0),total:Number(r.total_amount||0),pickupAddress:r.pickup_address||'',pickupLat:r.pickup_latitude,pickupLng:r.pickup_longitude,deliveryAddress:r.delivery_address||'',deliveryLat:r.delivery_latitude,deliveryLng:r.delivery_longitude,note:r.note||'',cancelReason:(r.note||'').match(/__QT_CANCEL_REASON__=([^\n]+)/)?.[1]||'',createdAt:new Date(r.created_at).getTime(),updatedAt:new Date(r.updated_at||r.created_at).getTime(),items:[]};
+  return {id:r.id,orderNumber:r.order_number,customerId:r.customer_id,shopProfileId:r.shop_id,riderProfileId:r.rider_id,status:qtOrderStatusFromDb(r.status,r.note),orderType:r.order_type,subtotal:Number(r.subtotal||0),gpAmount:r.gp_amount==null?null:Number(r.gp_amount),gpRate:r.gp_rate==null?null:Number(r.gp_rate),deliveryFee:Number(r.delivery_fee||0),total:Number(r.total_amount||0),pickupAddress:r.pickup_address||'',pickupLat:r.pickup_latitude,pickupLng:r.pickup_longitude,deliveryAddress:r.delivery_address||'',deliveryLat:r.delivery_latitude,deliveryLng:r.delivery_longitude,note:r.note||'',cancelReason:(r.note||'').match(/__QT_CANCEL_REASON__=([^\n]+)/)?.[1]||'',riderArrivedShopAt:r.rider_arrived_shop_at||null,createdAt:new Date(r.created_at).getTime(),updatedAt:new Date(r.updated_at||r.created_at).getTime(),items:[]};
 }
 
 
@@ -627,13 +627,14 @@ function qtStopNotificationVibration(){qtVibrate(0)}
 function qtHandleNewNotification(n){
   const cur=currentUser();
   if(!cur || !n || n.userId!==cur.id) return;
+  window.qgPlayMerchantNotificationSound?.();
   qtStartNotificationVibration(n);
   showLiveToast((n.title||'การแจ้งเตือน')+': '+(n.body||n.message||''), n.link);
 }
 
 function showLiveToast(text, link){
-  const box = document.getElementById('notif-toast-box');
-  if(!box) return;
+  let box = document.getElementById('notif-toast-box');
+  if(!box){box=document.createElement('div');box.id='notif-toast-box';box.setAttribute('aria-live','polite');document.body.appendChild(box)}
   const el = document.createElement('div');
   el.className = 'notif-toast';
   el.textContent = '🔔 ' + text;
@@ -641,11 +642,16 @@ function showLiveToast(text, link){
   box.appendChild(el);
   setTimeout(()=>el.remove(), 5000);
 }
-function markAllNotifRead(userId){
-  let all = dbGet('qt_notifications',[]).map(n=> n.userId===userId ? {...n, read:true, readAt:n.readAt||Date.now()} : n);
-  all.filter(n=>n.userId===userId).forEach(n=>qtStopNotificationVibration(n.id));
-  dbSet('qt_notifications', all);
+async function markAllNotifRead(userId){
+ try{const token=await qtGetAccessToken();if(!token||currentUser()?.id!==userId)return;
+  await qtSupabaseTable('notifications?user_id=eq.'+encodeURIComponent(userId)+'&is_read=eq.false',{method:'PATCH',accessToken:token,body:{is_read:true}});
+  if(currentUser()?.id!==userId)return;
+  QT_DB_CACHE.qt_notifications=dbGet('qt_notifications',[]).map(n=>n.userId===userId?{...n,read:true,readAt:n.readAt||Date.now()}:n);qtMarkClean('qt_notifications');qtUpdateNotificationBadge();
+ }catch(e){console.warn('Mark notifications read failed')}
 }
+function qtUpdateNotificationBadge(){const badge=document.getElementById('qgm-notif-count'),user=currentUser();if(!badge||!user)return;const count=getNotifications(user.id).filter(n=>!n.read).length;badge.textContent=count>9?'9+':String(count);badge.hidden=count===0}
+
+
 
 
 /* ---------- Live Tracking Interface (จุดสลับเป็น Real-time API/WebSocket จริงในอนาคต) ---------- */
@@ -835,7 +841,7 @@ async function qtSyncTick(force){
     if(me){ dbGet('qt_notifications',[]).forEach(n=>{ if(n.userId===me.id && !n.read && !seenNotifs.has(n.id)){ try{ qtHandleNewNotification(n); }catch(e){} } }); }
     if(typeof qgCheckMerchantOrders==='function')qgCheckMerchantOrders();
     const after=qtSyncSignature();
-    if(after.main!==before.main||after.chat!==before.chat) qtSyncRerender(before,after);
+    if(after.main!==before.main||after.chat!==before.chat) qtSyncRerender(before,after);qtUpdateNotificationBadge();
   }catch(e){ console.warn('sync tick failed',e); }
   finally{ QT_SYNC.dirty={}; QT_SYNC.busy=false; }
 }
@@ -1199,9 +1205,9 @@ let qtSalesRange=1;
 <!-- QueueGo Shop New Order Alert + 1 Minute Order Refresh -->
 <script id="qt-shop-new-order-realtime-v1">
 (function(){
-  const SEEN_KEY='qt_shop_seen_pending_orders_v1';
+  const SEEN_KEY=()=> 'qt_shop_seen_pending_orders_v1:'+String(shopUserSafe()?.id||'');
   let audioCtx=null;
-  let initialized=false;
+
 
   function shopUserSafe(){
     try{
@@ -1217,14 +1223,14 @@ let qtSalesRange=1;
 
   function readSeen(){
     try{
-      const x=JSON.parse(sessionStorage.getItem(SEEN_KEY)||'[]');
+      const x=JSON.parse(sessionStorage.getItem(SEEN_KEY())||'[]');
       return new Set(Array.isArray(x)?x.map(String):[]);
     }catch(e){ return new Set(); }
   }
   function saveSeen(set){
     try{
       const a=[...set].slice(-300);
-      sessionStorage.setItem(SEEN_KEY,JSON.stringify(a));
+      sessionStorage.setItem(SEEN_KEY(),JSON.stringify(a));
     }catch(e){}
   }
 
@@ -1233,7 +1239,7 @@ let qtSalesRange=1;
       const AC=window.AudioContext||window.webkitAudioContext;
       if(AC){
         if(!audioCtx) audioCtx=new AC();
-        if(audioCtx.state==='suspended') audioCtx.resume();
+        if(audioCtx.state==='suspended') audioCtx.resume().catch(()=>{});
       }
     }catch(e){}
   }
@@ -1260,6 +1266,8 @@ let qtSalesRange=1;
     }catch(e){}
   }
 
+  window.qgPlayMerchantNotificationSound=beep;
+  window.qgTestMerchantSound=()=>{unlockShopAudio();beep();toast('ทดสอบเสียงแจ้งเตือนแล้ว')};
   function speak(){
     try{
       if(!('speechSynthesis' in window)) return;
@@ -1278,7 +1286,6 @@ let qtSalesRange=1;
     // Shop build V6: แจ้งออเดอร์ใหม่ด้วยเสียงเท่านั้น ไม่มี popup/ปุ่มบังคับกดรับทราบ
     stopSound();
     beep();
-    speak();
     // อัปเดต badge/รายการออเดอร์จากข้อมูลเดิม โดยไม่เปลี่ยนฐานข้อมูลหรือสถานะออเดอร์
     try{ window.dispatchEvent(new CustomEvent('qt:shop-new-order-sound',{detail:{orderId:order.id}})); }catch(e){}
   }
@@ -1299,13 +1306,6 @@ let qtSalesRange=1;
     const orders=Array.isArray(scopedOrders)?scopedOrders:pendingShopOrders(u);
     const seen=readSeen();
 
-    // ครั้งแรก: จำออเดอร์ที่มีอยู่แล้ว ไม่ยิงเสียงย้อนหลัง
-    if(!initialized){
-      orders.forEach(o=>seen.add(String(o.id)));
-      saveSeen(seen);
-      initialized=true;
-      return;
-    }
 
     for(const order of orders){
       if(!seen.has(String(order.id))){
@@ -1351,7 +1351,7 @@ let qtSalesRange=1;
     const all=getNotifications(u.id);markAllNotifRead(u.id);
     const group=n=>n.type==='order'||/ออเดอร์|order/i.test(n.title||'')?'orders':/โปรโม|Promote/i.test(n.title||'')?'promo':'system';
     const ns=all.filter(n=>notifFilter==='all'||group(n)===notifFilter);
-    qtShopLayout('การแจ้งเตือน',`<div class="qt-shop-page-title"><button class="qt-shop-back" onclick="navigate('shop-profile')">←</button><h2>การแจ้งเตือน</h2></div><div class="qt-ref-tabs">${[['all','ทั้งหมด'],['orders','ออเดอร์'],['system','ระบบ'],['promo','โปรโมชัน']].map(([k,t])=>`<button class="${notifFilter===k?'active':''}" onclick="qtNotifFilter('${k}')">${t}</button>`).join('')}</div>
+    qtShopLayout('การแจ้งเตือน',`<div class="qt-shop-page-title"><button class="qt-shop-back" onclick="navigate('shop-profile')">←</button><h2>การแจ้งเตือน</h2></div><button class="btn btn-brand" type="button" onclick="qgTestMerchantSound()">เปิดและทดสอบเสียงแจ้งเตือน</button><div class="qt-ref-tabs">${[['all','ทั้งหมด'],['orders','ออเดอร์'],['system','ระบบ'],['promo','โปรโมชัน']].map(([k,t])=>`<button class="${notifFilter===k?'active':''}" onclick="qtNotifFilter('${k}')">${t}</button>`).join('')}</div>
       <div class="qt-notif-list">${ns.length?ns.map(n=>`<button class="qt-notif-row" onclick="${n.link&&/^[\w\-\/]+$/.test(String(n.link))?`navigate('${n.link}')`:''}"><span class="qt-notif-icon ${group(n)}">${group(n)==='orders'?'▣':group(n)==='promo'?'★':'▤'}</span><span><b>${escapeHtml(n.title||'การแจ้งเตือน')}</b><small>${escapeHtml(n.body||n.message||'')}</small></span><time>${new Date(n.createdAt).toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'})}</time></button>`).join(''):'<div class="qt-shop-empty">ยังไม่มีการแจ้งเตือน</div>'}</div>`,'profile');
   };
 })();
@@ -1456,7 +1456,7 @@ button{cursor:pointer}.qgm-shell{width:100%;background:var(--qg-bg)}
 .qgm-brand{letter-spacing:-.4px}
 .qgm-logo{width:31px;height:31px;border-radius:50%;display:grid;place-items:center;background:#fff;color:var(--qg-red)}
 .qgm-logo svg{width:20px;height:20px}.qgm-spacer{flex:1}
-.qgm-iconbtn{width:40px;height:40px;border:0;background:transparent;color:inherit;display:grid;place-items:center;border-radius:12px}
+.qgm-iconbtn{position:relative;width:40px;height:40px;border:0;background:transparent;color:inherit;display:grid;place-items:center;border-radius:12px}
 .qgm-iconbtn svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
 .qgm-title{font-weight:800;margin:0;letter-spacing:-.3px}
 .qgm-back{margin-left:-8px}
@@ -1606,7 +1606,7 @@ function img(v){
 }
 function qgmBrand(){return `<span class="qgm-brand-mark"><svg viewBox="0 0 48 48" aria-label="QueueGo" role="img"><circle cx="23" cy="23" r="16" fill="none" stroke="currentColor" stroke-width="8"/><path d="M26 27l12 12" fill="none" stroke="currentColor" stroke-width="8" stroke-linecap="round"/></svg></span>`}
 function nav(active){const items=[['dashboard','home','หน้าหลัก'],['shop-orders','orders','คำสั่งซื้อ'],['shop-products','box','สินค้า'],['shop-promote','tag','โปรโมชั่น'],['shop-profile','user','บัญชี']];return `<nav class="qgm-bottom" aria-label="เมนูหลัก">${items.map(([r,i,l])=>`<button type="button" class="${active===r?'active':''}" aria-label="${l}" ${active===r?'aria-current="page"':''} onclick="navigate('${r}')"><span class="qgm-tab-icon">${svg(i)}</span><span>${l}</span></button>`).join('')}</nav>`}
-function top(title,back=false,red=false){return `<header class="qgm-top">${back?`<button class="qgm-iconbtn qgm-back" type="button" aria-label="กลับ" onclick="navigate('dashboard')">${svg('back')}</button>`:`<div class="qgm-brand">${qgmBrand()}</div>`}<h1 class="${back?'qgm-title':'qgm-spacer'}">${back?esc(title):''}</h1>${back?'<span class="qgm-header-spacer"></span>':`<button class="qgm-iconbtn" type="button" aria-label="การแจ้งเตือน" onclick="navigate('notifications')">${svg('bell')}</button>`}</header>`}
+function top(title,back=false,red=false){return `<header class="qgm-top">${back?`<button class="qgm-iconbtn qgm-back" type="button" aria-label="กลับ" onclick="navigate('dashboard')">${svg('back')}</button>`:`<div class="qgm-brand">${qgmBrand()}</div>`}<h1 class="${back?'qgm-title':'qgm-spacer'}">${back?esc(title):''}</h1>${back?'<span class="qgm-header-spacer"></span>':`<button class="qgm-iconbtn" type="button" aria-label="การแจ้งเตือน" onclick="navigate('notifications')">${svg('bell')}<span id="qgm-notif-count" ${getNotifications(currentUser()?.id).some(n=>!n.read)?'':'hidden'} style="position:absolute;right:0;top:0;background:#e6002d;color:white;border-radius:8px;font-size:10px;padding:1px 4px">${getNotifications(currentUser()?.id).filter(n=>!n.read).length}</span></button>`}</header>`}
 function layout(title,body,active,opts={}){document.title=title+' - QueueGo';document.body.className='qgm-app';document.querySelectorAll('body>.qgm-bottom').forEach(n=>n.remove());document.getElementById('app').innerHTML=`<div class="qgm-shell">${top(title,!!opts.back,!!opts.red)}<main class="qgm-content">${body}</main>${nav(active)}</div>`}
 window.qtShopLayout=(title,body,active)=>layout(title,body,active);
 
@@ -1704,6 +1704,7 @@ window.renderShopOrderModern=function(id){const u=shopUser(),o=shopOrders(u).fin
 
  const u=currentUser(),o=(typeof window.shopOrders==='function'?window.shopOrders(u):[]).find(x=>String(x.id)===String(id)),main=document.querySelector('.qgm-content');if(!o||!main)return;
  const extra=document.createElement('section');extra.className='qgm-order-extra';
+ if(o.riderArrivedShopAt){const p=document.createElement('p');p.style.color='var(--qg-red)';p.textContent='ไรเดอร์ถึงร้านแล้ว · '+new Date(o.riderArrivedShopAt).toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'});extra.appendChild(p)}
  if(['shop_accepted','preparing','waiting_rider','rider_to_shop','accepted','ready','assigned'].includes(o.status)){
   const b=document.createElement('button');b.className='qgm-outline';b.textContent='ยกเลิกออเดอร์';b.onclick=()=>shopCancelOrder(id);extra.appendChild(b);
  }

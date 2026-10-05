@@ -65,7 +65,7 @@ function boot(){
  y.sbTable=async()=>[{id:'a',role:'admin',status:'active'}];await a.run('resumeSession()');eq(a.session(),null);eq(stageRenders,1);eq(pendingRenders,0);
  // Multiple timer ticks share a pending read. Explicit refresh gets one trailing snapshot.
  const j=boot(),x=j.ctx; x.getAccessToken=async()=>x.S.session.authUserId;let gate=deferred(),mine=0,history=0;
- x.sbTable=async(path)=>{if(path.includes('status=in.')){mine++;if(mine===1)return gate.promise;return []}history++;return []};
+ x.sbTable=async(path)=>{if(path.startsWith('notifications?'))return [];if(path.includes('status=in.')){mine++;if(mine===1)return gate.promise;return []}history++;return []};
  const first=j.run('refreshData(true)');await flush();for(let i=0;i<20;i++)j.run('refreshData(true)');eq(mine,1);gate.resolve([]);await first;eq(mine,1);eq(history,1);
  gate=deferred();mine=0;const fg=j.run('refreshData()');await flush();for(let i=0;i<20;i++)j.run('refreshData()');eq(mine,1);gate.resolve([]);await fg;eq(mine,2);
  // A new actor queues its own read; old actor state never renders.
@@ -100,9 +100,9 @@ function boot(){
  eq(repairIndex>=0&&poolIndex>repairIndex,true);
  // Many jobs share just two detail queries; server eligibility and nearest-job choice remain.
  const b=boot(),z=b.ctx;z.getAccessToken=async()=>'a';z.S.online=true;const jobs=Array.from({length:25},(_,i)=>({id:'job-'+i,shop_id:'shop-'+i%2,customer_id:'customer-'+i%3,pickup_latitude:13.1+i/100,pickup_longitude:100}));
- z.sbRpc=async()=>jobs.map(o=>({order_id:o.id}));z.sbTable=async(path,opts)=>{b.calls.push({path,opts});if(path.includes('status=in.')||path.includes('status=eq.completed'))return [];if(path.startsWith('orders?'))return jobs;if(path.startsWith('shop_profiles?'))return [{id:'shop-0',shop_name:'Shop zero'},{id:'shop-1',shop_name:'Shop one'}];return [0,1,2].map(i=>({id:'customer-'+i,name:'Customer '+i}))};
+ z.sbRpc=async()=>jobs.map(o=>({order_id:o.id}));z.sbTable=async(path,opts)=>{b.calls.push({path,opts});if(path.startsWith('notifications?'))return [];if(path.includes('status=in.')||path.includes('status=eq.completed'))return [];if(path.startsWith('orders?'))return jobs;if(path.startsWith('shop_profiles?'))return [{id:'shop-0',shop_name:'Shop zero'},{id:'shop-1',shop_name:'Shop one'}];return [0,1,2].map(i=>({id:'customer-'+i,name:'Customer '+i}))};
  await b.run('refreshData()');eq(b.calls.filter(q=>q.path.startsWith('shop_profiles?')).length,1);eq(b.calls.filter(q=>q.path.startsWith('users?')).length,1);eq(z.S.openJobs.length,1);eq(z.S.openJobs[0].order.id,'job-0');eq(jobs[24]._shop.shop_name,'Shop zero');eq(jobs[24]._customer.name,'Customer 0');
  // A failed read is recoverable and retains the last successful snapshot.
- z.sbTable=async()=>{throw Error('network')};await b.run('refreshData()');eq(z.S.openJobs[0].order.id,'job-0');eq(b.events.filter(e=>e==='error').length,1);z.S.online=false;z.sbTable=async()=>[];await b.run('refreshData()');eq(z.S.openJobs.length,0);
+ z.sbTable=async(path)=>{if(path.startsWith('notifications?'))return [];throw Error('network')};await b.run('refreshData()');eq(z.S.openJobs[0].order.id,'job-0');eq(b.events.filter(e=>e==='error').length,1);z.S.online=false;z.sbTable=async()=>[];await b.run('refreshData()');eq(z.S.openJobs.length,0);
  console.log(JSON.stringify({checks,failures:0,scope:'isolated Rider refresh ownership, coalescing, batched detail reads and token rotation; real Auth/RLS/network not certified'}));
 })().catch(e=>{console.error(e);process.exit(1)});

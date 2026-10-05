@@ -30,6 +30,14 @@ assert(r.run("jobCardHTML({...S.activeOrder,status:'in_progress',subtotal:150,to
 assert(r.run("jobCardHTML({...S.activeOrder,status:'in_progress',_customer:{phone:'0812345678'}}).includes('tel:0812345678')"));
 assert(r.run("jobCardHTML(S.activeOrder).includes('แจ้งปัญหา')"));checks+=5;
 
+// Navigation exposes arrival; the arrival RPC keeps the order state intact.
+r.run("readSession=()=>S.session;S.activeOrder.shop_id='shop';qgSetPickupFlag(S.activeOrder,'navigation');");
+assert(r.run("jobCardHTML(S.activeOrder).includes('id=\"arrive-shop-order\"')"));checks++;
+r.run("calls=[];sbTable=async(path,opts)=>{calls.push({path,opts});return 'rider_assigned'};refreshData=async()=>{};");
+await r.run('qgRiderArriveShop(S.activeOrder)');
+assert.equal(r.run("calls[0].opts.body.p_action"),'arrive_shop');assert.equal(r.run('S.activeOrder.status'),'rider_assigned');checks+=2;
+r.run("S.activeOrder.rider_arrived_shop_at=new Date().toISOString();");assert(r.run("!jobCardHTML(S.activeOrder).includes('id=\"arrive-shop-order\"')"));checks++;
+
 // Completion is the only user action; no cash or PIN confirmation, including market groups.
 r.run("confirm=()=>{throw Error('unexpected cash confirmation')};prompt=()=>{throw Error('unexpected PIN')};calls=[];sbTable=async(path,opts)=>{calls.push({path,opts});return []};refreshData=async()=>{};");
 await r.run("finishOrder({id:'finish',status:'in_progress'})");assert.equal(r.run("calls[0].path"),'rpc/rider_order_action');assert.equal(r.run("calls[0].opts.body.p_action"),'complete');checks+=2;
@@ -50,5 +58,7 @@ const m=boot('merchant/index.html');await Promise.resolve();assert.equal(m.run("
 assert.equal(m.run("displayOrderNumber({order_number:'QT-0001'})"),'QT-0001');checks++;
 assert.equal(m.run("displayOrderNumber({id:'abc-def-1234'})"),'QT-1234');checks++;
 m.run("currentUser=()=>({id:'shop',type:'shop'});window.alertEvents=0;window.addEventListener('qt:shop-new-order-sound',()=>alertEvents++);qgCheckMerchantOrders([]);qgCheckMerchantOrders([{id:'new-order'}]);qgCheckMerchantOrders([{id:'new-order'}]);");assert.equal(m.run('alertEvents'),1);checks++;
+m.run("window.notificationSounds=0;window.qgPlayMerchantNotificationSound=()=>notificationSounds++;qtHandleNewNotification({id:'arrival',userId:'shop',title:'ไรเดอร์ถึงร้านแล้ว',message:'รับออเดอร์',read:false});");assert.equal(m.run('notificationSounds'),1);assert.equal(m.run("document.querySelectorAll('#notif-toast-box .notif-toast').length"),1);checks+=2;
+m.run("qtGetAccessToken=async()=>'fixture';window.notificationWrites=[];qtSupabaseTable=async(path,opts)=>{notificationWrites.push({path,opts});return []};");await m.run("markAllNotifRead('shop')");assert.equal(m.run('notificationWrites[0].opts.method'),'PATCH');checks++;
 a.dom.window.close();m.dom.window.close();
 console.log(JSON.stringify({checks,failures:0,scope:'isolated client contracts; no production orders or concurrency test'},null,2));t.dom.window.close();r.dom.window.close();})().catch(e=>{console.error(e);process.exit(1)});
