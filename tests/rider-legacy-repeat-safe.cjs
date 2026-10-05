@@ -1,0 +1,12 @@
+const fs=require('fs'),path=require('path'),assert=require('assert');
+const sql=fs.readFileSync(path.resolve(__dirname,'../supabase/migrations/20261005211000_rider_legacy_action_repeat_safe.sql'),'utf8');
+let checks=0;const ok=(v,m)=>{assert.ok(v,m);checks++};
+ok(sql.includes("v_order.rider_id=v_rider"),'same Rider claim replay must be detected');
+ok(sql.includes("id<>p_order_id"),'active-order guard must ignore the retried order itself');
+ok(sql.includes("('rider_assigned','preparing','ready','assigned','picked_up','in_progress','completed')"),'claim replay must tolerate authoritative forward states');
+ok(sql.includes("v_action='pickup_cash' and v_order.status in ('picked_up','in_progress')"),'pickup replay must be repeat-safe');
+ok(sql.includes("v_action='deliver' and v_order.status='in_progress'"),'deliver replay must be repeat-safe');
+ok(sql.includes("v_action='arrive' and v_order.status='in_progress'"),'arrival replay must be repeat-safe');
+ok(sql.includes("v_order.rider_arrived_shop_at is not null"),'shop-arrival replay must be repeat-safe');
+ok(!/\bdrop\s+(table|function|schema)\b/i.test(sql),'repeat-safe migration must not drop production objects');
+console.log(JSON.stringify({checks,failures:0,scope:'legacy Rider repeat-safe compatibility migration'}));
