@@ -1715,6 +1715,24 @@ body.qgm-login .qgm-signup{height:52px;margin:0;border-color:#e7092b;color:#e709
 .qgm-delivery-price-lock input{width:100%;height:46px;border:1px solid #e1e5ea;border-radius:12px;background:#eef1f4;color:#4f5660;font-weight:750;padding:0 13px;box-sizing:border-box}
 .qgm-delivery-price-lock input[readonly]{cursor:not-allowed}
 .qgm-delivery-price-lock small{display:block;margin-top:7px;color:#8b929c;font-size:10px;line-height:1.45}
+.qgm-menu-options{display:grid;gap:12px;padding:14px;border:1px solid #e4e7ec;border-radius:18px;background:#fbfcfd}
+.qgm-menu-options-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+.qgm-menu-options-head b{font-size:14px;color:#20242a}.qgm-menu-options-head small{display:block;margin-top:3px;color:#8a919a;font-size:10px;line-height:1.45}
+.qgm-option-group{border:1px solid #e7e9ed;border-radius:15px;background:#fff;padding:12px}
+.qgm-option-group-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}
+.qgm-option-group-head b{font-size:12px;color:#30343a}.qgm-option-group-head small{font-size:9px;color:#9aa0a8}
+.qgm-option-toggle{display:flex;align-items:center;gap:8px;font-size:11px;font-weight:750;color:#4a5058}.qgm-option-toggle input{width:19px;height:19px;accent-color:#ed1235}
+.qgm-portion-row{display:grid;grid-template-columns:minmax(0,1fr) 120px;gap:8px;align-items:center}
+.qgm-option-pill{height:44px;border:1px solid #e5e8ec;border-radius:12px;background:#f7f8fa;display:flex;align-items:center;padding:0 12px;font-size:11px;font-weight:700;color:#545a63}
+.qgm-price-input{height:44px;border:1px solid #dfe3e8;border-radius:12px;background:#fff;display:flex;align-items:center;gap:5px;padding:0 10px}
+.qgm-price-input span{font-size:11px;color:#8a9098;white-space:nowrap}.qgm-price-input input{min-width:0;width:100%;height:auto!important;border:0!important;padding:0!important;background:transparent!important;text-align:right;font-weight:750}
+.qgm-topping-list{display:grid;gap:8px}.qgm-topping-row{display:grid;grid-template-columns:24px minmax(0,1fr) 112px 32px;gap:7px;align-items:center}
+.qgm-topping-row>input[type="checkbox"]{width:19px;height:19px;accent-color:#ed1235}
+.qgm-topping-row>input[type="text"]{height:42px;border:1px solid #dfe3e8;border-radius:11px;padding:0 10px;min-width:0}
+.qgm-option-remove{width:32px;height:32px;border:0;border-radius:10px;background:#fff0f3;color:#d91434;font-size:18px;line-height:1;display:grid;place-items:center}
+.qgm-option-add{width:100%;height:40px;margin-top:9px;border:1px dashed #d8dde4;border-radius:11px;background:#fafbfc;color:#555d67;font-size:11px;font-weight:750}
+.qgm-option-help{margin:0;color:#8a919a;font-size:10px;line-height:1.5}
+@media(max-width:420px){.qgm-portion-row{grid-template-columns:1fr 108px}.qgm-topping-row{grid-template-columns:22px minmax(0,1fr) 100px 30px}.qgm-menu-options{padding:12px}}
 </style>
 <script id="qg-merchant-reference-v02-js">
 (function(){
@@ -1978,6 +1996,76 @@ window.qgmLoadProductGpRate=async function(pid){
  }
 };
 
+function qgmRestaurantOptionState(raw){
+ const list=Array.isArray(raw)?raw:[],state={portionEnabled:false,specialPrice:10,toppings:[]};
+ const portion=list.find(x=>x&&typeof x==='object'&&x.key==='portion'&&Array.isArray(x.options));
+ if(portion){
+  state.portionEnabled=true;
+  const special=portion.options.find(o=>o&&((o.key==='special')||String(o.name||'')==='พิเศษ'));
+  const value=Number(special?.price_delta??special?.price??10);if(Number.isFinite(value)&&value>=0)state.specialPrice=value;
+ }
+ const toppings=list.find(x=>x&&typeof x==='object'&&x.key==='toppings'&&Array.isArray(x.options));
+ if(toppings){
+  state.toppings=toppings.options.map(o=>({name:String(o?.name||'').trim(),price:Number(o?.price_delta??o?.price??0),enabled:true})).filter(o=>o.name&&Number.isFinite(o.price)&&o.price>=0);
+ }else{
+  state.toppings=list.filter(x=>typeof x==='string'||(x&&typeof x==='object'&&x.name&&!Array.isArray(x.options))).map(x=>({name:String(typeof x==='string'?x:x.name).trim(),price:Number(typeof x==='object'?(x.price_delta??x.price??0):0),enabled:true})).filter(o=>o.name&&Number.isFinite(o.price)&&o.price>=0);
+ }
+ if(!state.toppings.length)state.toppings=[
+  {name:'ไข่ดาว',price:10,enabled:false},
+  {name:'ไข่เจียว',price:15,enabled:false},
+  {name:'เพิ่มเนื้อ',price:20,enabled:false},
+  {name:'เพิ่มข้าว',price:10,enabled:false}
+ ];
+ return state;
+}
+let qgmToppingRowSeq=0;
+function qgmToppingRowHtml(item){
+ qgmToppingRowSeq++;
+ const price=Number(item?.price);return '<div class="qgm-topping-row" data-topping-row>'+
+  '<input type="checkbox" data-topping-enabled aria-label="เปิดใช้ท็อปปิ้ง" '+(item?.enabled?'checked':'')+'>'+
+  '<input type="text" data-topping-name maxlength="60" placeholder="ชื่อท็อปปิ้ง" value="'+esc(item?.name||'')+'">'+
+  '<label class="qgm-price-input"><span>+</span><input type="number" data-topping-price min="0" max="999999" step="0.01" value="'+(Number.isFinite(price)&&price>=0?price:0)+'"><span>บาท</span></label>'+
+  '<button type="button" class="qgm-option-remove" aria-label="ลบท็อปปิ้ง" onclick="this.closest(\'[data-topping-row]\').remove()">×</button>'+
+ '</div>';
+}
+function qgmRestaurantOptionsHtml(state){
+ return '<section class="qgm-menu-options"><div class="qgm-menu-options-head"><div><b>ตัวเลือกเมนู</b><small>กำหนดธรรมดา / พิเศษ และท็อปปิ้งของเมนูนี้</small></div></div>'+
+  '<div class="qgm-option-group"><div class="qgm-option-group-head"><div><b>ขนาด / ความพิเศษ</b><small>ลูกค้าเลือกได้ 1 ตัวเลือก</small></div><label class="qgm-option-toggle"><input id="qgm-portion-enabled" type="checkbox" '+(state.portionEnabled?'checked':'')+'> เปิดใช้</label></div>'+
+   '<div class="qgm-portion-row"><div class="qgm-option-pill">ธรรมดา · ราคาเดิม</div><label class="qgm-price-input"><span>พิเศษ +</span><input id="qgm-special-price" type="number" min="0" max="999999" step="0.01" value="'+state.specialPrice+'"><span>บาท</span></label></div>'+
+  '</div>'+
+  '<div class="qgm-option-group"><div class="qgm-option-group-head"><div><b>ท็อปปิ้ง</b><small>ลูกค้าเลือกได้หลายอย่าง</small></div></div><div id="qgm-topping-list" class="qgm-topping-list">'+state.toppings.map(qgmToppingRowHtml).join('')+'</div><button type="button" class="qgm-option-add" onclick="qgmAddToppingRow()">＋ เพิ่มท็อปปิ้งเอง</button></div>'+
+  '<p class="qgm-option-help">ติ๊กเฉพาะรายการที่ร้านต้องการเปิดขาย ราคาที่กรอกคือราคาเพิ่มจากราคาหลักของเมนู</p></section>';
+}
+window.qgmAddToppingRow=function(){
+ const list=document.getElementById('qgm-topping-list');if(!list)return;
+ list.insertAdjacentHTML('beforeend',qgmToppingRowHtml({name:'',price:0,enabled:true}));
+ const row=list.lastElementChild;row?.querySelector('[data-topping-name]')?.focus();
+};
+function qgmCollectRestaurantVariants(){
+ const groups=[];
+ if(document.getElementById('qgm-portion-enabled')?.checked){
+  const price=Number(document.getElementById('qgm-special-price')?.value);
+  if(!Number.isFinite(price)||price<0||price>999999)throw new Error('ราคาพิเศษไม่ถูกต้อง');
+  groups.push({schema:'queuego.menu-options.v1',key:'portion',name:'ขนาด / ความพิเศษ',type:'single',required:true,options:[
+   {key:'normal',name:'ธรรมดา',price_delta:0},
+   {key:'special',name:'พิเศษ',price_delta:Math.round(price*100)/100}
+  ]});
+ }
+ const toppings=[],seen=new Set();
+ document.querySelectorAll('[data-topping-row]').forEach(row=>{
+  if(!row.querySelector('[data-topping-enabled]')?.checked)return;
+  const name=String(row.querySelector('[data-topping-name]')?.value||'').trim();
+  const price=Number(row.querySelector('[data-topping-price]')?.value);
+  if(!name)throw new Error('กรุณาระบุชื่อท็อปปิ้งที่เปิดใช้');
+  if(name.length>60)throw new Error('ชื่อท็อปปิ้งยาวเกินไป');
+  if(!Number.isFinite(price)||price<0||price>999999)throw new Error('ราคาท็อปปิ้งไม่ถูกต้อง');
+  const key=name.toLocaleLowerCase('th-TH');if(seen.has(key))throw new Error('มีชื่อท็อปปิ้งซ้ำ: '+name);seen.add(key);
+  toppings.push({key:'topping-'+(toppings.length+1),name,price_delta:Math.round(price*100)/100});
+ });
+ if(toppings.length)groups.push({schema:'queuego.menu-options.v1',key:'toppings',name:'ท็อปปิ้ง',type:'multi',required:false,options:toppings});
+ return groups;
+}
+
 window.renderShopProductEditor=function(id){
  const u=shopUser(),p=id!=='new'?shopProducts(u).find(x=>String(x.id)===String(id)):null,pid=profileId(u);
  const initialCategory=p?.category||(id==='new'?window.qgmNewProductCategory:'')||'',storePrice=Number(p?.posPrice??p?.price??0);
@@ -1986,18 +2074,23 @@ window.renderShopProductEditor=function(id){
  const categoryControl=useRestaurantCategories
   ?`<select id="qgm-prod-category" required><option value="" ${selectedRestaurantCategory?'':'selected'} disabled>เลือกหมวดหมู่อาหาร</option>${restaurantCategories.map(name=>`<option value="${esc(name)}" ${selectedRestaurantCategory===name?'selected':''}>${esc(name)}</option>`).join('')}</select>`
   :`<input id="qgm-prod-category" required value="${esc(initialCategory)}">`;
+ const optionControl=useRestaurantCategories
+  ?qgmRestaurantOptionsHtml(qgmRestaurantOptionState(p?.variants))
+  :`<div class="qgm-field"><label>ตัวเลือกเพิ่มเติม (คั่นด้วยเครื่องหมายจุลภาค)</label><input id="qgm-prod-variants" value="${esc(Array.isArray(p?.variants)?p.variants.map(x=>typeof x==='string'?x:x.name).filter(Boolean).join(', '):'')}"></div>`;
  if(id==='new')window.qgmNewProductCategory='';
- layout('เพิ่มสินค้าเข้าร้าน',`<form class="qgm-card qgm-form-card" onsubmit="return qgmSaveProduct(event,'${p?.id||''}')"><div class="qgm-product-head"><img id="qgm-prod-preview" src="${esc(img(p?.image||p?.image_url))}"><div><b>${esc(p?.name||'สินค้าใหม่')}</b><small style="display:block;color:#8b9098;margin-top:4px">${esc(p?.category||'เลือกหมวดหมู่')}</small></div></div><div class="qgm-field"><label>ชื่อสินค้า *</label><input id="qgm-prod-name" required value="${esc(p?.name||'')}"></div><div class="qgm-field"><label>หมวดหมู่ *</label>${categoryControl}</div><div class="qgm-inline"><div class="qgm-field"><label>ราคาขายหน้าร้าน *</label><input id="qgm-prod-price" type="number" min="0" step="0.01" required value="${storePrice}" oninput="qgmRefreshDeliveryPricePreview()"></div><div class="qgm-field"><label>จำนวนสินค้าในสต็อก *</label><input id="qgm-prod-stock" type="number" min="0" step="1" required value="${Number(p?.stock??p?.metadata?.stock??0)}"></div></div><div class="qgm-field"><label>รูปสินค้า</label><label class="qgm-upload-action">${svg('camera')} เลือกรูปจากเครื่อง<input id="qgm-prod-file" type="file" accept="image/jpeg,image/png,image/webp" onchange="qgmPreviewUpload(this,'qgm-prod-preview')"></label><small>รูปจะเก็บในคลังรูปภาพของร้าน</small><div class="qgm-upload-status" data-upload-status-for="qgm-prod-preview" ${p?.image||p?.image_url?'':'hidden'}><img src="${esc(img(p?.image||p?.image_url))}" alt="รูปสินค้าที่เลือก"><div class="qgm-upload-status-copy"><b data-upload-name>${p?.image||p?.image_url?'รูปสินค้าปัจจุบัน':'ยังไม่ได้เลือกรูป'}</b><small data-upload-meta>${p?.image||p?.image_url?'มีรูปบันทึกอยู่แล้ว':'รองรับ JPG, PNG, WEBP'}</small><small class="ok" data-upload-state>${p?.image||p?.image_url?'บันทึกอยู่ในระบบแล้ว':'เลือกรูปแล้วกดบันทึกเพื่ออัปโหลด'}</small></div></div><input id="qgm-prod-image" type="hidden" value="${esc(p?.image||p?.image_url||'')}"></div><div class="qgm-form-row"><span>สถานะการขาย</span><label class="qgm-switch"><input id="qgm-prod-available" type="checkbox" ${p?.available!==false?'checked':''}><span></span></label></div><div class="qgm-field"><label>ตัวเลือกเพิ่มเติม (คั่นด้วยเครื่องหมายจุลภาค)</label><input id="qgm-prod-variants" value="${esc(Array.isArray(p?.variants)?p.variants.map(x=>typeof x==='string'?x:x.name).join(', '):'')}"></div><div class="qg-pos-product-fields"><label><input id="qgm-pos-available" type="checkbox" ${p?.posAvailable!==false?'checked':''}> ขายหน้าร้าน</label><label><input id="qgm-delivery-available" type="checkbox" ${p?.deliveryAvailable!==false?'checked':''}> ขาย Delivery</label><div class="qgm-delivery-price-lock"><div class="qgm-delivery-price-head"><span>ราคา Delivery</span><b id="qgm-gp-rate-label">กำลังโหลด GP…</b></div><input id="qgm-delivery-price-locked" type="number" step="0.01" readonly aria-readonly="true" tabindex="-1" placeholder="กำลังคำนวณ"><small>ระบบบวก GP จากราคาหน้าร้านอัตโนมัติ ร้านค้าแก้ไขราคานี้ไม่ได้</small></div></div><button class="qgm-primary" type="submit">เพิ่มเข้าร้าน / บันทึก</button></form>`,'shop-products',{back:true});
+ layout('เพิ่มสินค้าเข้าร้าน',`<form class="qgm-card qgm-form-card" onsubmit="return qgmSaveProduct(event,'${p?.id||''}')"><div class="qgm-product-head"><img id="qgm-prod-preview" src="${esc(img(p?.image||p?.image_url))}"><div><b>${esc(p?.name||'สินค้าใหม่')}</b><small style="display:block;color:#8b9098;margin-top:4px">${esc(p?.category||'เลือกหมวดหมู่')}</small></div></div><div class="qgm-field"><label>ชื่อสินค้า *</label><input id="qgm-prod-name" required value="${esc(p?.name||'')}"></div><div class="qgm-field"><label>หมวดหมู่ *</label>${categoryControl}</div><div class="qgm-inline"><div class="qgm-field"><label>ราคาขายหน้าร้าน *</label><input id="qgm-prod-price" type="number" min="0" step="0.01" required value="${storePrice}" oninput="qgmRefreshDeliveryPricePreview()"></div><div class="qgm-field"><label>จำนวนสินค้าในสต็อก *</label><input id="qgm-prod-stock" type="number" min="0" step="1" required value="${Number(p?.stock??p?.metadata?.stock??0)}"></div></div><div class="qgm-field"><label>รูปสินค้า</label><label class="qgm-upload-action">${svg('camera')} เลือกรูปจากเครื่อง<input id="qgm-prod-file" type="file" accept="image/jpeg,image/png,image/webp" onchange="qgmPreviewUpload(this,'qgm-prod-preview')"></label><small>รูปจะเก็บในคลังรูปภาพของร้าน</small><div class="qgm-upload-status" data-upload-status-for="qgm-prod-preview" ${p?.image||p?.image_url?'':'hidden'}><img src="${esc(img(p?.image||p?.image_url))}" alt="รูปสินค้าที่เลือก"><div class="qgm-upload-status-copy"><b data-upload-name>${p?.image||p?.image_url?'รูปสินค้าปัจจุบัน':'ยังไม่ได้เลือกรูป'}</b><small data-upload-meta>${p?.image||p?.image_url?'มีรูปบันทึกอยู่แล้ว':'รองรับ JPG, PNG, WEBP'}</small><small class="ok" data-upload-state>${p?.image||p?.image_url?'บันทึกอยู่ในระบบแล้ว':'เลือกรูปแล้วกดบันทึกเพื่ออัปโหลด'}</small></div></div><input id="qgm-prod-image" type="hidden" value="${esc(p?.image||p?.image_url||'')}"></div><div class="qgm-form-row"><span>สถานะการขาย</span><label class="qgm-switch"><input id="qgm-prod-available" type="checkbox" ${p?.available!==false?'checked':''}><span></span></label></div>${optionControl}<div class="qg-pos-product-fields"><label><input id="qgm-pos-available" type="checkbox" ${p?.posAvailable!==false?'checked':''}> ขายหน้าร้าน</label><label><input id="qgm-delivery-available" type="checkbox" ${p?.deliveryAvailable!==false?'checked':''}> ขาย Delivery</label><div class="qgm-delivery-price-lock"><div class="qgm-delivery-price-head"><span>ราคา Delivery</span><b id="qgm-gp-rate-label">กำลังโหลด GP…</b></div><input id="qgm-delivery-price-locked" type="number" step="0.01" readonly aria-readonly="true" tabindex="-1" placeholder="กำลังคำนวณ"><small>ระบบบวก GP จากราคาหน้าร้านอัตโนมัติ ร้านค้าแก้ไขราคานี้ไม่ได้</small></div></div><button class="qgm-primary" type="submit">เพิ่มเข้าร้าน / บันทึก</button></form>`,'shop-products',{back:true});
  if(pid)qgmLoadProductGpRate(pid);
 };
 
 window.qgmSaveProduct=async function(e,id){
  e.preventDefault();
- const u=shopUser(),pid=profileId(u),name=$('#qgm-prod-name').value.trim(),category=$('#qgm-prod-category').value.trim(),price=Number($('#qgm-prod-price').value),stock=Number($('#qgm-prod-stock').value),available=$('#qgm-prod-available').checked,variants=$('#qgm-prod-variants').value.split(',').map(x=>x.trim()).filter(Boolean);
+ const u=shopUser(),pid=profileId(u),name=$('#qgm-prod-name').value.trim(),category=$('#qgm-prod-category').value.trim(),price=Number($('#qgm-prod-price').value),stock=Number($('#qgm-prod-stock').value),available=$('#qgm-prod-available').checked;
+ const isRestaurant=['food','cafe'].includes(String(u?.category||''));
  let image=$('#qgm-prod-image').value.trim();
  try{
   if(!pid)throw new Error('ไม่พบ Shop Profile ID');
-  if(['food','cafe'].includes(String(u?.category||''))&&!qgmFoodCategoryNames().includes(category))throw new Error('กรุณาเลือกหมวดหมู่อาหารจากรายการ');
+  if(isRestaurant&&!qgmFoodCategoryNames().includes(category))throw new Error('กรุณาเลือกหมวดหมู่อาหารจากรายการ');
+  const variants=isRestaurant?qgmCollectRestaurantVariants():String($('#qgm-prod-variants')?.value||'').split(',').map(x=>x.trim()).filter(Boolean);
   if(!Number.isFinite(price)||price<0)throw new Error('ราคาขายหน้าร้านไม่ถูกต้อง');
   const token=await qtGetAccessToken();if(!token)throw new Error('เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่');
   const rawRate=await qtSupabaseTable('rpc/effective_gp_rate',{method:'POST',accessToken:token,body:{p_shop_profile_id:pid}});
