@@ -977,30 +977,39 @@ function drawLaundryRoute(){
   })();riderRouteRequest=request;return request.task;
 }
 
+function focusRiderNavigation(map,from,to){
+  if(!map||!validRiderCoordinate(from?.lat,from?.lng)||!validRiderCoordinate(to?.lat,to?.lng))return;
+  const distance=haversineKm(from.lat,from.lng,to.lat,to.lng);
+  const zoom=distance<1?15:distance<3?14:distance<8?13:distance<20?12:11;
+  const center={lon:(Number(from.lng)+Number(to.lng))/2,lat:(Number(from.lat)+Number(to.lat))/2};
+  try{map.location(center,true);map.zoom(zoom,true)}catch(e){}
+}
 function drawActiveRoute(){
   if(S.laundryJob&&!S.activeOrder)return drawLaundryRoute();
-  const map=S.map,baseOrder=S.activeOrder,pos=S.pos,session=S.session,userId=S.user?.id;
-  const order=baseOrder?.route_bundle_id?(qgBundleNextOrder()||baseOrder):baseOrder;
+  const map=S.map,baseOrder=S.activeOrder,isOfferPreview=!baseOrder&&!!S.openJobs?.[0]?.order,pos=S.pos,session=S.session,userId=S.user?.id;
+  const order=baseOrder?.route_bundle_id?(qgBundleNextOrder()||baseOrder):(baseOrder||(isOfferPreview?S.openJobs[0].order:null));
   if(!map||!order||!pos||!userId){clearRiderRoute();return Promise.resolve()}
   const st=statusFromRow(order);
   const pickups=order.market_order_id&&Array.isArray(order._marketPickups)?order._marketPickups:[];
   const nextPickup=pickups.find(x=>!['PICKED_UP','CANCELLED'].includes(String(x.status||'').toUpperCase()))||null;
   const useMarketPickup=!!nextPickup&&!['picked_up','delivering','arrived','completed'].includes(st);
-  const useNormalPickup=!order.market_order_id&&['rider_assigned','preparing','ready','assigned'].includes(st);
+  const useNormalPickup=!order.market_order_id&&(isOfferPreview&&st==='searching_rider'||['rider_assigned','preparing','ready','assigned'].includes(st));
   const lat=useMarketPickup?nextPickup.latitude:(useNormalPickup?order.pickup_latitude:order.delivery_latitude);
   const lon=useMarketPickup?nextPickup.longitude:(useNormalPickup?order.pickup_longitude:order.delivery_longitude);
   const targetKey=useMarketPickup?String(nextPickup.pickup_id||nextPickup.pickup_sequence):(useNormalPickup?'shop':'customer');
   const label=useMarketPickup?'ไปร้าน '+Number(nextPickup.pickup_sequence||1)+' · '+String(nextPickup.shop_name||'ร้านค้า'):(useNormalPickup?'ไปร้าน':'ไปหาลูกค้า');
   if(!validRiderCoordinate(pos.lat,pos.lng)||!validRiderCoordinate(lat,lon)){clearRiderRoute();return Promise.resolve()}
-  const scope=JSON.stringify([userId,session?.sessionId,order.market_order_id||order.route_bundle_id||order.id,order.id,targetKey,Number(lat),Number(lon)]);
+  const scope=JSON.stringify([userId,session?.sessionId,isOfferPreview?'offer':'active',order.market_order_id||order.route_bundle_id||order.id,order.id,targetKey,Number(lat),Number(lon)]);
   const current=()=>{
-    const stillSame=S.activeOrder?.route_bundle_id
-      ? S.map===map&&S.user?.id===userId&&riderSessionMatches(session)&&String(S.activeOrder?.route_bundle_id)===String(order.route_bundle_id)&&S.bundleOrders.some(x=>String(x.id)===String(order.id))
-      : S.map===map&&S.user?.id===userId&&riderSessionMatches(session)&&S.activeOrder?.id===order.id;
+    const stillSame=isOfferPreview
+      ? S.map===map&&S.user?.id===userId&&riderSessionMatches(session)&&S.online&&!S.activeOrder&&String(S.openJobs?.[0]?.order?.id)===String(order.id)
+      : S.activeOrder?.route_bundle_id
+        ? S.map===map&&S.user?.id===userId&&riderSessionMatches(session)&&String(S.activeOrder?.route_bundle_id)===String(order.route_bundle_id)&&S.bundleOrders.some(x=>String(x.id)===String(order.id))
+        : S.map===map&&S.user?.id===userId&&riderSessionMatches(session)&&S.activeOrder?.id===order.id;
     if(!stillSame)return false;
-    const live=S.activeOrder,liveSt=statusFromRow(live);
+    const live=S.activeOrder||order,liveSt=statusFromRow(live);
     if(!order.market_order_id){
-      const liveToShop=['rider_assigned','preparing','ready','assigned'].includes(liveSt);
+      const liveToShop=isOfferPreview?liveSt==='searching_rider':['rider_assigned','preparing','ready','assigned'].includes(liveSt);
       return liveToShop===useNormalPickup;
     }
     if(!useMarketPickup){
@@ -1017,6 +1026,7 @@ function drawActiveRoute(){
   const timer=setTimeout(()=>controller.abort(),12000);
   const badge=document.getElementById('route-badge'),txt=document.getElementById('route-text');
   if(badge)badge.style.display='block';if(txt&&!riderRouteCache)txt.textContent=label+' • กำลังคำนวณเส้นทาง';
+  focusRiderNavigation(map,pos,{lat:Number(lat),lng:Number(lon)});
   request.task=(async()=>{
     try{
       const url='https://api.longdo.com/RouteService/geojson/route?flon='+encodeURIComponent(pos.lng)+'&flat='+encodeURIComponent(pos.lat)+'&tlon='+encodeURIComponent(lon)+'&tlat='+encodeURIComponent(lat)+'&type=1&key='+encodeURIComponent(LONGDO_API_KEY);
