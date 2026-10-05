@@ -30,6 +30,13 @@ assert(r.run("jobCardHTML({...S.activeOrder,status:'in_progress',subtotal:150,to
 assert(r.run("jobCardHTML({...S.activeOrder,status:'in_progress',_customer:{phone:'0812345678'}}).includes('tel:0812345678')"));
 assert(r.run("jobCardHTML(S.activeOrder).includes('แจ้งปัญหา')"));checks+=5;
 
+// After pickup, both ordinary and market routes target the customer's real location.
+for(const status of ['picked_up','in_progress']){
+ const html=r.run(`jobCardHTML({...S.activeOrder,status:'${status}',delivery_latitude:13.9,delivery_longitude:100.8,market_order_id:'market',_marketPickups:[{shop_id:'shop',status:'READY',latitude:12,longitude:99}]})`);
+ assert(html.includes('นำทางไปบ้านลูกค้า'));assert(html.includes('destination=13.9%2C100.8'));assert(!html.includes('destination=12%2C99'));checks+=3;
+}
+assert(r.run("mapsLink(null,null,'บ้านลูกค้า').includes(encodeURIComponent('บ้านลูกค้า'))"));assert(r.run("!mapsLink(null,null,'บ้านลูกค้า').includes('destination=0%2C0')"));checks+=2;
+
 // Navigation exposes arrival; the arrival RPC keeps the order state intact.
 r.run("readSession=()=>S.session;S.activeOrder.shop_id='shop';qgSetPickupFlag(S.activeOrder,'navigation');");
 assert(r.run("jobCardHTML(S.activeOrder).includes('id=\"arrive-shop-order\"')"));checks++;

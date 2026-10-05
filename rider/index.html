@@ -191,7 +191,7 @@ function haversineKm(lat1,lon1,lat2,lon2){
   return R*2*Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
 }
 function mapsLink(lat,lng,address){
-  if(Number.isFinite(Number(lat)) && Number.isFinite(Number(lng))) return 'https://www.google.com/maps/dir/?api=1&destination='+encodeURIComponent(lat+','+lng);
+  if(lat!=null&&lng!=null&&String(lat).trim()!==''&&String(lng).trim()!==''&&Number.isFinite(Number(lat))&&Number.isFinite(Number(lng))&&Math.abs(Number(lat))<=90&&Math.abs(Number(lng))<=180) return 'https://www.google.com/maps/dir/?api=1&destination='+encodeURIComponent(lat+','+lng);
   return address ? 'https://www.google.com/maps/dir/?api=1&destination='+encodeURIComponent(address) : 'https://www.google.com/maps/';
 }
 
@@ -1336,7 +1336,7 @@ function jobCardHTML(o,x){
  const km=x&&Number.isFinite(x.distanceKm)?x.distanceKm:haversineKm(S.pos?.lat,S.pos?.lng,o.pickup_latitude,o.pickup_longitude);
  const delivery=haversineKm(o.pickup_latitude,o.pickup_longitude,o.delivery_latitude,o.delivery_longitude);
  const targetShop=['rider_assigned','preparing','ready','assigned','searching_rider'].includes(st);
- const marketNext=o.market_order_id&&Array.isArray(o._marketPickups)?o._marketPickups.find(x=>!['PICKED_UP','CANCELLED'].includes(String(x.status||'').toUpperCase())):null;
+ const marketNext=targetShop&&o.market_order_id&&Array.isArray(o._marketPickups)?o._marketPickups.find(x=>!['PICKED_UP','CANCELLED'].includes(String(x.status||'').toUpperCase())):null;
  const targetLat=marketNext?marketNext.latitude:(targetShop?o.pickup_latitude:o.delivery_latitude),targetLng=marketNext?marketNext.longitude:(targetShop?o.pickup_longitude:o.delivery_longitude);
  const address=marketNext?(marketNext.shop_address||marketNext.shop_name):(targetShop?(o.pickup_address||shop.address):o.delivery_address);
  const nav=mapsLink(targetLat,targetLng,address),name=targetShop?(marketNext?.shop_name||shop.shop_name||'ร้านค้า'):(cust.name||'ลูกค้า');
@@ -1352,13 +1352,13 @@ function jobCardHTML(o,x){
  <div class="qt-jobhead"><div><div class="qt-shop">${esc(o.market_order_id?'ตลาดสด · '+Number(o._marketShopCount||o.market_shop_count||1)+' ร้าน':shop.shop_name||'งานจัดส่ง')}</div><div class="qt-order">${esc(status)}</div></div><div class="qt-fee">฿${Number(riderEarning(o)||0).toLocaleString('th-TH')}<small>ค่ารอบงานนี้</small></div></div>
  <div class="qt-metrics"><div class="qt-metric"><span>ไปร้าน</span><b>${Number.isFinite(km)?km.toFixed(1):'—'} กม.</b></div><div class="qt-metric"><span>ระยะส่ง</span><b>${Number.isFinite(delivery)?delivery.toFixed(1):'—'} กม.</b></div><div class="qt-metric"><span>ยอดออเดอร์</span><b>฿${Number(o.total_amount||0).toLocaleString('th-TH')}</b></div></div>
  <div class="qt-address"><b>${targetShop?'จุดรับ':'จุดส่ง'} · ${esc(name)}</b>${esc(address||'ไม่ระบุที่อยู่')}</div>
- <div class="qg-job-tools"><a href="${nav}" data-pickup-navigation="${targetShop?'1':''}" target="_blank" rel="noopener" aria-label="นำทาง">${QTICON.loc}นำทาง</a>${phone?`<a href="tel:${esc(phone)}">โทร</a>`:'<span>ไม่มีเบอร์โทร</span>'}<button id="chat-${esc(o.id)}">${QTICON.chat}แชต</button><button id="support-${esc(o.id)}">แจ้งปัญหา</button></div>
+ <div class="qg-job-tools"><a href="${nav}" data-pickup-navigation="${targetShop?'1':''}" target="_blank" rel="noopener" aria-label="${targetShop?'นำทางไปร้าน':'นำทางไปบ้านลูกค้า'}">${QTICON.loc}${targetShop?'ไปร้าน':'ไปบ้านลูกค้า'}</a>${phone?`<a href="tel:${esc(phone)}">โทร</a>`:'<span>ไม่มีเบอร์โทร</span>'}<button id="chat-${esc(o.id)}">${QTICON.chat}แชต</button><button id="support-${esc(o.id)}">แจ้งปัญหา</button></div>
  ${targetShop&&shopArrived?'<div class="qg-job-status">✓ แจ้งร้านค้าแล้วว่าไรเดอร์ถึงร้าน</div>':''}
  ${!o.market_order_id?`<div class="qg-shop-cash-due"><span>${cashLabel}</span><b>฿${Number(cash||0).toLocaleString('th-TH')}</b></div>`:''}
  ${note?`<div class="qg-job-note"><b>หมายเหตุ</b> · ${esc(note)}</div>`:''}
  <details class="qg-job-items" id="items-${esc(o.id)}"><summary>รายการสินค้า</summary><div data-items>เปิดเพื่อดูรายการสินค้า</div></details>
 
- <div class="qt-actions">${action}</div>`;
+ <div class="qt-actions">${active&&!targetShop?`<a class="qt-ghost" href="${nav}" target="_blank" rel="noopener">${QTICON.loc} นำทางไปบ้านลูกค้า</a>`:''}${action}</div>`;
 }
 
 function bindJobCardEvents(o){
