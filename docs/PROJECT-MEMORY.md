@@ -4,7 +4,7 @@ Updated: 2026-10-05 (Asia/Bangkok).
 
 ## User instruction
 
-Keep the navigation return feature below in project memory and consider it in subsequent QueueGo development, especially native Android/iOS releases. This is pending work, not an implemented feature. Incorporate it when relevant without replacing unrelated requested work.
+Keep the navigation return feature below in project memory. Start implementing the Android return overlay only when the user explicitly instructs us to build an APK. Do not start it during web changes or unrelated development, and do not treat this memory as authorization to implement now. When the user requests an APK, include this feature in that work. The iPhone Live Activity remains a future option requiring a separate user request for iOS work. Both features are pending, not implemented.
 
 ## Pending: return to the active rider order while navigating
 
