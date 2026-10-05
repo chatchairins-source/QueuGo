@@ -2667,6 +2667,8 @@ function qgmSetOrderActionBusy(button,busy,label){
   if(button.dataset.qgOriginalText){button.textContent=button.dataset.qgOriginalText;delete button.dataset.qgOriginalText}
  }
 }
+window.qgmSetOrderActionBusy=qgmSetOrderActionBusy;
+window.qgmApplyMerchantActionResult=qgmApplyMerchantActionResult;
 window.qgmMerchantActionOnce=async function(orderId,action,reason){
  const payload=qgmMerchantActionPayload(orderId,action,reason);
  const inflightKey=orderId+':'+action+':'+(payload.p_reason||'');
