@@ -2514,7 +2514,7 @@ window.qgmSetShopOpen=async function(toggle){
   const flags=desired?await qtSupabaseTable('shop_profiles?select=delivery_enabled&id=eq.'+encodeURIComponent(pid),{accessToken:token}):[];
   if(desired&&flags[0]?.delivery_enabled===false)await qtSupabaseTable('rpc/pos_enable_delivery',{method:'POST',accessToken:token,body:{}});
   else await qtSupabaseTable('shop_open_states?on_conflict=shop_id',{method:'POST',accessToken:token,body:{shop_id:pid,is_open:desired,resume_at:null,updated_at:new Date().toISOString()}});
- }catch(e){toggle.checked=!desired;toast('เปลี่ยนสถานะร้านไม่สำเร็จ: '+(e.message||e));return}
+ }catch(e){toggle.checked=!desired;toast('เปลี่ยนสถานะร้านไม่สำเร็จ: '+(e.message||e));toggle.disabled=false;return}
  try{if(label){label.textContent=desired?'● เปิดร้านอยู่':'● ปิดร้านอยู่';label.style.color=desired?'#17a779':'#8b929c'}}catch(uiErr){console.warn('merchant shop-open post-commit UI failed',uiErr)}
  finally{toggle.disabled=false}
 };
