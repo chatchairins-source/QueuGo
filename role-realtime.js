@@ -41,5 +41,5 @@
   window.QT_REALTIME_FORCE_REFRESH=()=>{sync();scheduleRefresh('manual')};
   window.addEventListener('online',resume);window.addEventListener('offline',sync);window.addEventListener('hashchange',sync);window.addEventListener('pagehide',()=>{pageActive=false;stop()});window.addEventListener('pageshow',()=>{pageActive=true;resume()});
   window.addEventListener('storage',e=>{if(e.key===sessionKey)resume()});document.addEventListener('visibilitychange',()=>document.hidden?sync():resume());
-  setInterval(sync,60000);setTimeout(sync,800);
+  setInterval(()=>{sync();if(role==='shop'&&desired())scheduleRefresh('poll')},60000);setTimeout(sync,800);
 })();
