@@ -1,0 +1,11 @@
+const fs=require('fs'),path=require('path'),assert=require('assert'),{JSDOM}=require('jsdom');
+(async()=>{let checks=0;const eq=(a,b)=>{assert.deepEqual(a,b);checks++},d=new JSDOM('',{url:'https://queuego.test/admin/#admin-market',runScripts:'outside-only'}),w=d.window;
+w.HTMLDialogElement.prototype.showModal=function(){};let user={id:'admin',type:'admin',status:'approved'},reads=0,calls=[],fail=true,release,gate=null;
+w.currentUser=()=>user;w.qtGetAccessToken=async()=> 'isolated';w.qgAdminShopCategory=()=> 'ตลาดสด';w.toast=()=>{};w.qgLoadMarketOperations=async()=>{};
+w.qtSupabaseTable=async()=>{reads++;if(gate)await gate;return [{id:'market',name:'ตลาดจริง',latitude:14,longitude:103}]};w.qtSupabaseRpc=async(name,p)=>{calls.push({name,p});if(fail)throw Error('lost reply');return {id:'market',changed:false}};
+w.eval(fs.readFileSync(path.resolve(__dirname,'../admin/locations.js'),'utf8'));await w.qgAdminEditLocation('market','market');const f=w.document.querySelector('form');eq(!!f,true);f.elements.lat.value='15';f.elements.reason.value='แก้ทางเข้า';f.dispatchEvent(new w.Event('input'));eq(w.document.querySelector('a').href,'https://www.google.com/maps?q=15%2C103');
+await f.onsubmit({preventDefault(){}});eq(calls.length,1);eq(calls[0].name,'qg_admin_update_location');eq(calls[0].p.p_expected_lat,14);eq(calls[0].p.p_lat,15);eq(f.elements.lat.disabled,false);eq(w.document.querySelector('[role=status]').textContent.includes('lost reply'),true);
+fail=false;await f.onsubmit({preventDefault(){}});eq(calls.length,2);eq(calls[0].p,calls[1].p);eq(w.document.querySelector('dialog'),null);
+gate=new Promise(r=>release=r);const pending=w.qgAdminEditLocation('shop','shop');user={id:'other',type:'customer',status:'approved'};release();await pending;eq(w.document.querySelector('dialog'),null);const before=reads;await w.qgAdminEditLocation('market','market');eq(reads,before);
+d.window.close();console.log(JSON.stringify({checks,failures:0,scope:'isolated Admin editor preview, lost reply retry, ownership race and current RPC payload'}));
+})().catch(e=>{console.error(e);process.exit(1)});

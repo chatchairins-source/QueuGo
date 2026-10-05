@@ -64,3 +64,11 @@ Commit `52c41aaf7863b916214c8baa63ffe374f8865afd` added a prominent customer nav
 - Admin account approval, user details, shop control and market membership/request review display the shop's selected category (e.g. market → ตลาดสด), alongside the actual shop name and contact.
 - Hydration prefers shop_profiles.public_category; older rows fall back to the saved category. Missing categories remain explicitly unspecified rather than inferred from membership.
 - Role and permissions remain shop; the displayed business category does not create a new role or approval state.
+
+## Admin market/shop master coordinates
+
+- Admin can edit market coordinates from Admin → อนุมัติตลาด, and shop coordinates from the existing shop control list or pending market membership review.
+- qg_admin_update_location checks the current active Admin in Supabase, validates coordinates and reason, locks the target and rejects stale expected coordinates. Retries of an already saved position are no-ops, without duplicate audit.
+- Existing audit_logs records Admin identity, target, old/new coordinates, reason and timestamp atomically with the update. Related market suggestion distances are refreshed; existing membership/approval triggers remain.
+- Existing order pickup/delivery snapshots and state machine are not changed. Coordinates are master data for subsequent orders.
+- QA uses isolated fixtures plus real transactional checks with rollback; no actual market/shop pin is moved permanently by QA.

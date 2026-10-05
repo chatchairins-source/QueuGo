@@ -20,3 +20,5 @@
 @media(max-width:760px){.qg-admin-market{margin:8px auto;padding:12px}.qg-admin-control-grid{grid-template-columns:1fr}.qg-admin-switches label{align-items:flex-start}}
 
 .qg-market-proof{display:block;max-width:260px;width:100%;max-height:200px;object-fit:contain;margin:8px 0}
+
+.qg-location-editor{border:0;border-radius:16px;padding:20px;max-width:480px;width:calc(100% - 32px);max-height:90dvh;overflow:auto}.qg-location-editor::backdrop{background:#0008}.qg-location-editor label{display:block;margin:12px 0}.qg-location-editor input,.qg-location-editor textarea{display:block;width:100%;padding:10px;border:1px solid #ccc;border-radius:8px;font:inherit;box-sizing:border-box}.qg-location-editor button{padding:10px;margin:5px;border-radius:8px;border:1px solid #ddd}.qg-location-editor button[type=submit]{background:#df1235;color:white}.qg-location-editor p{font-size:13px}.qg-location-status{color:#a90f2e}
