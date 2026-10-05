@@ -96,7 +96,7 @@ ok(checkoutFn.includes("perform pg_advisory_xact_lock")&&checkoutFn.includes('wh
 ok(checkoutFn.includes('p_request_id,')&&checkoutFn.includes('where request_key=p_request_id'),'Laundry request key must be written and replayed by the server');
 for(const snapshot of ['service_name_snapshot','pricing_type_snapshot','unit_price_snapshot','pickup_fee_snapshot','return_fee_snapshot','round_trip_fee_snapshot'])ok(checkoutFn.includes(snapshot),'Laundry checkout snapshot missing '+snapshot);
 ok(checkoutFn.includes('insert into public.laundry_order_events')&&checkoutFn.includes('insert into public.notifications'),'Laundry order, event, and notification must share the RPC transaction');
-ok(!/\\.from\\(['"]laundry_orders['"]\\)\\s*\\.insert\\s*\\(/i.test(laundry),'Laundry client must not insert orders directly');
-ok(!/p_(?:unit_)?price\\s*:/i.test(laundry),'Laundry client must not submit service price to checkout');
+ok(!/\.from\(['"]laundry_orders['"]\)\s*\.insert\s*\(/i.test(laundry),'Laundry client must not insert orders directly');
+ok(!/p_(?:unit_)?price\s*:/i.test(laundry),'Laundry client must not submit service price to checkout');
 
 console.log(JSON.stringify({checks,failures:0,scope:'static integration contracts for QueueGo Market, Route Bundle and Laundry; no production order mutation'}));
