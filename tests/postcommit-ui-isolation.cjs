@@ -1,6 +1,7 @@
 const fs=require('fs'),path=require('path'),assert=require('assert');
 const root=path.resolve(__dirname,'..');
 const customer=fs.readFileSync(path.join(root,'index.html'),'utf8');
+const customerFeatures=fs.readFileSync(path.join(root,'customer-features.js'),'utf8');
 const merchant=fs.readFileSync(path.join(root,'merchant/index.html'),'utf8');
 const admin=fs.readFileSync(path.join(root,'admin/index.html'),'utf8');
 const rider=fs.readFileSync(path.join(root,'rider/index.html'),'utf8');
@@ -11,6 +12,7 @@ ok(customer.includes('market checkout post-commit navigation failed'),'Market ch
 ok(customer.includes('support post-commit render failed'),'Support ticket render after commit must be non-fatal');
 ok(customer.includes('let pending,result,committed=false'),'Market checkout must distinguish committed server result from UI cleanup');
 ok(customer.includes('customer location post-commit navigation failed'),'Customer saved location navigation must be non-fatal');
+ok(customerFeatures.includes('customer chat post-send refresh failed'),'Customer chat refresh after sent message must be non-fatal');
 
 ok(merchant.includes('merchant product hydrate after save failed'),'Product post-save hydrate must be non-fatal');
 ok(merchant.includes('merchant profile post-commit navigation failed'),'Shop profile navigation after save must be non-fatal');
