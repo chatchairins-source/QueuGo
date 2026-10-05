@@ -16,6 +16,7 @@ function boot(){
  localStorage:{setItem:()=>events.push('cache')},qgRenderMessageInbox:()=>{},qgWatchCompletedChat:()=>{},toast:()=>events.push('error'),console:{error:()=>{}},window:{qtCheckNewJobs:()=>{}}});
  vm.runInContext(src.slice(src.indexOf('let riderTokenRefresh='),src.indexOf('function esc(v)')),ctx);
  vm.runInContext(src.slice(src.indexOf('let riderRefreshTask='),src.indexOf('function placeJobMarkers()')),ctx);
+ vm.runInContext(src.slice(src.indexOf('async function toggleOnline(){'),src.indexOf('let riderLocationWrite=')),ctx);
  return {ctx,events,calls,run:s=>vm.runInContext(s,ctx),setSession:s=>{stored=s;ctx.S.session=s},session:()=>stored};
 }
 (async()=>{
@@ -79,6 +80,24 @@ function boot(){
  const pool=j.run('refreshData()');await flush();x.S.online=false;gate.resolve([{order_id:'open'}]);await pool;eq(x.S.openJobs.length,0);
  // Background and offline reads do not hit the transport.
  let offlineCalls=0;x.sbTable=async()=>{offlineCalls++;return []};x.document.hidden=true;await j.run('refreshData(true)');eq(offlineCalls,0);x.document.hidden=false;x.navigator.onLine=false;await j.run('refreshData()');eq(offlineCalls,0);x.navigator.onLine=true;
+ // Online status must set dispatch availability in the same profile write.
+ const tog=boot(),tc=tog.ctx;tc.getAccessToken=async()=>'token';tc.updateStatusUI=()=>{};tc.refreshData=()=>Promise.resolve();
+ tc.S.riderProfile={id:'ra',user_id:'a',metadata:{online:false,available:false}};
+ tc.sbTable=async(path,options)=>{tog.calls.push({path,options});return [{id:'ra',user_id:'a',metadata:options?.body?.metadata||{}}]};
+ await tog.run('toggleOnline()');let presence=tog.calls.filter(x=>x.path.startsWith('rider_profiles?user_id=eq.'));
+ eq(presence[0].options.body.metadata.online,true);eq(presence[0].options.body.metadata.available,true);
+ await tog.run('toggleOnline()');presence=tog.calls.filter(x=>x.path.startsWith('rider_profiles?user_id=eq.'));
+ eq(presence[1].options.body.metadata.online,false);eq(presence[1].options.body.metadata.available,false);
+ // Repair riders already marked online but left unavailable by earlier releases before querying offers.
+ const repair=boot(),rc=repair.ctx;rc.getAccessToken=async()=>'token';rc.S.online=true;
+ rc.S.riderProfile={id:'ra',user_id:'a',metadata:{online:true,available:false}};
+ rc.sbTable=async(path,options)=>{repair.calls.push({path,options});return []};
+ rc.sbRpc=async(path)=>{repair.calls.push({path,options:{}});return []};
+ await repair.run('refreshData()');
+ const repairIndex=repair.calls.findIndex(x=>x.path.startsWith('rider_profiles?user_id=eq.')&&x.options?.method==='PATCH');
+ const poolIndex=repair.calls.findIndex(x=>x.path==='get_rider_delivery_pool');
+ eq(repair.calls[repairIndex].options.body.metadata.available,true);
+ eq(repairIndex>=0&&poolIndex>repairIndex,true);
  // Many jobs share just two detail queries; server eligibility and nearest-job choice remain.
  const b=boot(),z=b.ctx;z.getAccessToken=async()=>'a';z.S.online=true;const jobs=Array.from({length:25},(_,i)=>({id:'job-'+i,shop_id:'shop-'+i%2,customer_id:'customer-'+i%3,pickup_latitude:13.1+i/100,pickup_longitude:100}));
  z.sbRpc=async()=>jobs.map(o=>({order_id:o.id}));z.sbTable=async(path,opts)=>{b.calls.push({path,opts});if(path.includes('status=in.')||path.includes('status=eq.completed'))return [];if(path.startsWith('orders?'))return jobs;if(path.startsWith('shop_profiles?'))return [{id:'shop-0',shop_name:'Shop zero'},{id:'shop-1',shop_name:'Shop one'}];return [0,1,2].map(i=>({id:'customer-'+i,name:'Customer '+i}))};

@@ -686,7 +686,7 @@ async function toggleOnline(){
   updateStatusUI();
   try{
     const token = await getAccessToken();
-    const meta = Object.assign({}, (S.riderProfile&&S.riderProfile.metadata)||{}, {online:next});
+    const meta = Object.assign({}, (S.riderProfile&&S.riderProfile.metadata)||{}, {online:next,available:next});
     const body = {user_id:S.user.id, rider_name:S.user.name||'ไรเดอร์', phone:S.user.phone||null,
       vehicle_type:(S.riderProfile&&S.riderProfile.vehicle_type)||null, vehicle_plate:(S.riderProfile&&S.riderProfile.vehicle_plate)||null,
       latitude:S.pos?S.pos.lat:null, longitude:S.pos?S.pos.lng:null, metadata:meta};
@@ -863,6 +863,12 @@ async function readRiderSnapshot(){
     const token=await getAccessToken();if(!current())return;if(!token)throw Error('Session unavailable');
     const mine=await sbTable('orders?select=*&order_type=eq.shopping&rider_id=eq.'+encodeURIComponent(profileId)+'&status=in.(rider_assigned,preparing,ready,assigned,picked_up,in_progress)&order=created_at.desc&limit=1',{token});if(!current())return;
     let activeOrder=Array.isArray(mine)&&mine[0]?mine[0]:null;let openJobs=[];
+    if(!activeOrder&&online&&S.riderProfile?.metadata?.online===true&&S.riderProfile.metadata.available!==true){
+      const metadata={...S.riderProfile.metadata,available:true};
+      await sbTable('rider_profiles?user_id=eq.'+encodeURIComponent(userId),{method:'PATCH',token,body:{metadata}});
+      if(!current())return;
+      S.riderProfile={...S.riderProfile,metadata};
+    }
     // Laundry is isolated in rider/laundry.js and loads only when its panel is opened.
     // Keep the normal delivery snapshot single-flight and free of Laundry transport calls.
     const previousOpenJobIds=new Set((S.openJobs||[]).map(x=>x?.order?.id).filter(Boolean).map(String));
