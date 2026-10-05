@@ -1,11 +1,9 @@
-.qg-market-admin-link{display:block;margin:10px;padding:12px 16px;background:#e6092f;color:#fff;border:0;border-radius:12px;font-weight:700}
-.qg-admin-market{max-width:900px;margin:20px auto;padding:18px}
-.qg-admin-market article{padding:12px;border-bottom:1px solid #e8e8e8}
-.qg-admin-market article button{margin:6px 6px 0 0;padding:8px;background:#fff;border:1px solid #ddd;border-radius:9px}
-.qg-admin-market h1{font-size:24px}
-.qg-admin-market h2{font-size:18px;margin:0 0 14px}
-.qg-admin-market h3{font-size:17px;margin:0 0 13px}
-.qg-admin-back{border:0;background:#f1f2f4;border-radius:10px;padding:9px 12px;font-weight:700}
+/* Existing Market, platform settings and coordinate editor components. */
+.qg-admin-market{max-width:1100px;margin:0 auto;padding:22px;background:#fff;border:1px solid var(--line);border-radius:18px}
+.qg-admin-market article{padding:18px;margin:12px 0;border:1px solid var(--line);border-radius:13px;background:#fff;overflow-wrap:anywhere}
+.qg-admin-market article>b{font-size:14px}.qg-admin-market article small{font-size:11px}.qg-admin-market article p{font-size:12px;color:var(--muted);margin:8px 0}.qg-admin-market article button{font-size:11px;margin:8px 5px 0 0}.qg-admin-market article button[onclick*=",true"]{background:var(--red);color:white;border-color:var(--red)}
+.qg-admin-market h2{font-size:17px;margin:26px 0 12px}.qg-admin-market>h2{margin-top:16px}.qg-admin-market .row-btns{margin:12px 0 22px}.qg-admin-market .row-btns button{font-size:11px}.qg-admin-back{font-size:11px;color:var(--muted);background:#f6f7fa;border:0;min-height:34px}.qg-market-guide{font-size:11px;color:var(--muted);padding:12px 0;margin-bottom:15px;border-bottom:1px solid var(--line)}.qg-market-guide summary{cursor:pointer;font-weight:500;color:var(--ink)}.qg-market-guide ol{padding-left:20px}.qg-market-guide li{padding:5px 0}
+@media(max-width:560px){.qg-admin-market{padding:16px;border-radius:15px}.qg-admin-market article{padding:15px}.qg-admin-market article button{font-size:10px}}
 .qg-admin-control-card{margin:14px 0;padding:16px;border:1px solid #e5e7eb;border-radius:16px;background:#fff}
 .qg-admin-control-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;align-items:start}
 .qg-admin-switches label{display:flex;align-items:center;justify-content:space-between;gap:18px;padding:12px 0;border-bottom:1px solid #eee}

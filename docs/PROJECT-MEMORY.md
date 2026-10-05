@@ -72,3 +72,12 @@ Commit `52c41aaf7863b916214c8baa63ffe374f8865afd` added a prominent customer nav
 - Existing audit_logs records Admin identity, target, old/new coordinates, reason and timestamp atomically with the update. Related market suggestion distances are refreshed; existing membership/approval triggers remain.
 - Existing order pickup/delivery snapshots and state machine are not changed. Coordinates are master data for subsequent orders.
 - QA uses isolated fixtures plus real transactional checks with rollback; no actual market/shop pin is moved permanently by QA.
+
+## Admin interface redesign
+
+- Backup: `backup-pre-admin-interface-20261005` at `4e9b2b5a8e35ecd34c87fe86ae9ca9637e16031e`.
+- Replaced legacy Admin presentation and stacked inline styles with one responsive interface.css, a desktop sidebar, mobile five-tab navigation and an accessible More dialog.
+- Dashboard uses existing loaded order/account data and live approval counts; no invented trends or production mock data.
+- Approval cards retain the selected shop category. Account search, order search/status filters and account detail dialogs reuse existing permissions and action handlers.
+- Market approval, coordinate editing, financial reporting, support and security remain available through existing routes and RPCs. No schema, payment confirmation, order transition or business model changes.
+- Regression covers dashboard/navigation, direct shop entry, category approval, user filtering, detail dialog and order filters. Responsive browser checks cover phone, tablet and desktop; full signed-in physical-device delivery validation remains separate.

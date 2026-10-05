@@ -13,7 +13,7 @@ window.qgLoadMarketPendingCount=async()=>{
       api('market_requests?select=id&status=eq.pending'),
       api('shop_profiles?select=id&market_membership_status=eq.pending')
     ]);
-    if(el.isConnected&&actor()===owner)el.textContent=String(requests.length+members.length);
+    if(el.isConnected&&actor()===owner){el.textContent=String(requests.length+members.length);const total=document.getElementById('qg-home-pending-total');if(total)total.textContent=String(Number(total.dataset.base||0)+requests.length+members.length);}
   }catch(e){if(el.isConnected&&actor()===owner)el.textContent='โหลดไม่ได้ — เปิดหน้าตลาดเพื่อลองใหม่'}
 };
 window.addEventListener('qt:realtime-update',()=>{
@@ -25,8 +25,8 @@ window.renderAdminMarket=async()=>{
   if(!admin())return navigate('login');
   layout('อนุมัติตลาด',`<section class="card qg-admin-market">
     <button class="qg-admin-back" onclick="navigate('admin')">‹ ศูนย์ควบคุม</button>
-    <h1>อนุมัติตลาดและร้านสมาชิก</h1>
-    <ol><li>คำขอเพิ่มตลาด: ตรวจชื่อ ที่อยู่และพิกัด แล้วอนุมัติหรือปฏิเสธพร้อมเหตุผล</li><li>ร้านสมาชิก: ตรวจร้าน แผง/โซน พิกัดและภาพหน้าร้าน แล้วอนุมัติแยกจากคำขอตลาด</li></ol><p>อนุมัติตลาดใหม่แล้ว ร้านผู้ขอจะเข้าคิวตรวจสมาชิก ระบบยังไม่ถือว่าร้านผ่านอนุมัติ</p><button type="button" onclick="qgLoadMarketOperations()">รีเฟรชคำขอ</button>
+    <h2>ตลาดและร้านสมาชิก</h2>
+    <details class="qg-market-guide"><summary>ขั้นตอนตรวจและอนุมัติ</summary><ol><li>คำขอเพิ่มตลาด: ตรวจชื่อ ที่อยู่และพิกัด แล้วอนุมัติหรือปฏิเสธพร้อมเหตุผล</li><li>ร้านสมาชิก: ตรวจร้าน แผง/โซน พิกัดและภาพหน้าร้าน แล้วอนุมัติแยกจากคำขอตลาด</li></ol><p>อนุมัติตลาดใหม่แล้ว ร้านผู้ขอจะเข้าคิวตรวจสมาชิก ระบบยังไม่ถือว่าร้านผ่านอนุมัติ</p></details><button type="button" onclick="qgLoadMarketOperations()">รีเฟรชคำขอ</button>
     <div class="row-btns"><button class="btn-secondary" type="button" onclick="qtAdminTab&&navigate('admin')">ตั้งค่า Feature / ราคา อยู่ใน Admin › ตั้งค่าระบบ</button></div>
     <div id="qg-market-admin">กำลังโหลดข้อมูลจริง...</div>
   </section>`);

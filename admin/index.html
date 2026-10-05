@@ -6,373 +6,29 @@
 <html lang="th">
 <head>
 <meta charset="UTF-8">
-<title>QueueGo V5.48</title>
+<title>QueueGo · Admin Control Center</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 
-<link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;600;700&display=swap" rel="stylesheet">
-<style>
-*{box-sizing:border-box;}
-body{font-family:'Prompt',system-ui,sans-serif;padding-bottom:70px;}
-.qt-banner{text-align:center;font-weight:600;}
-.qt-header{display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;z-index:50;}
-.qt-logo{font-weight:700;cursor:pointer;}
-.qt-auth-links a{text-decoration:none;font-size:14px;margin-left:8px;}
-.qt-user-chip{font-size:13px;border-radius:20px;cursor:pointer;}
-.qt-bottomnav{position:fixed;bottom:0;display:flex;z-index:150;padding-bottom:env(safe-area-inset-bottom);}
-.qt-bottomnav a{flex:1;text-align:center;text-decoration:none;font-size:11px;position:relative;}
-.qt-bottomnav a.active{font-weight:700;}
-.qt-bottomnav a span{display:block;}
-.bn-badge{position:absolute;top:2px;right:18%;background:var(--danger);color:#fff;border-radius:10px;font-size:10px;padding:0 5px;min-width:16px;line-height:15px;}.cart-count-badge{position:absolute;top:2px;right:18%;background:#1d4ed8;color:#fff;border-radius:10px;font-size:10px;padding:0 5px;min-width:16px;line-height:15px;}
-.btn-primary{color:#fff;border:none;padding:12px 16px;border-radius:10px;font-size:15px;cursor:pointer;}
-.btn-secondary{padding:10px 14px;border-radius:10px;cursor:pointer;}
-.btn-danger{color:#fff;border:none;padding:10px 14px;border-radius:10px;cursor:pointer;}
-.btn-block{display:block;width:100%;margin:8px 0;text-align:center;text-decoration:none;}
-form label{display:block;font-size:13px;font-weight:600;}
-form input,form select,form textarea{width:100%;margin-top:4px;font-size:14px;font-family:inherit;}
-.tabs{display:flex;margin:10px 0;flex-wrap:wrap;}
-.tab{cursor:pointer;font-size:13px;}
-.tab.active{color:#fff;}
-
-.shop-list{display:flex;flex-direction:column;}
-.row-btns{margin-top:6px;}
-.row-btns button,.row-btns a{flex:1;text-align:center;font-size:12px;text-decoration:none;border:none;cursor:pointer;background:#e5e7eb;color:#111827;}
-.row-btns .btn-primary{background:var(--primary);color:#fff;}
-.badge{display:inline-block;border-radius:20px;font-size:11px;background:#e5e7eb;margin-top:4px;}
-.badge-green{background:#d1fae5;color:#047857;}
-.badge-gray{background:#e5e7eb;color:#374151;}
-.order-detail-card{background:#fff;padding:12px;border-radius:10px;font-size:14px;margin:10px 0;line-height:1.7;}
-.chip{background:#f3f4f6;padding:6px 10px;border-radius:20px;font-size:12px;cursor:pointer;}
-.chip input{width:auto;margin-right:4px;}
-.promo-card{background:#fffbeb;padding:10px;margin-bottom:8px;font-size:13px;}
-.ad-tag{background:#f59e0b;color:#fff;font-size:10px;padding:2px 6px;border-radius:6px;margin-right:6px;font-weight:700;}
-.bid-table{width:100%;border-collapse:collapse;font-size:13px;background:#fff;border-radius:8px;overflow:hidden;}
-.bid-table th,.bid-table td{padding:8px;border-bottom:1px solid #e5e7eb;text-align:left;}
-.bid-table tr.top-bid{background:#fffbeb;font-weight:700;}
-.warn-text{color:#b91c1c;font-size:12px;background:#fef2f2;padding:8px;}
-.inline-form{background:#fff;padding:12px;border-radius:10px;margin:10px 0;}
-.emoji-icon{font-size:22px;}.qt-toast{position:fixed;left:50%;transform:translate(-50%,20px);background:#111827;color:#fff;padding:10px 16px;font-size:13px;opacity:0;transition:.3s;z-index:300;max-width:80%;text-align:center;}
-.qt-toast.show{opacity:1;transform:translate(-50%,0);}
-#notif-toast-box{position:fixed;top:60px;left:50%;transform:translateX(-50%);z-index:999;display:flex;flex-direction:column;gap:8px;width:90%;max-width:400px;}
-.notif-toast{background:#1e293b;color:#fff;padding:12px 16px;font-size:14px;cursor:pointer;}
-.notif-panel{background:#fff;border-radius:var(--radius);padding:8px;}
-.notif-item{font-size:14px;cursor:pointer;}
-.notif-item.unread{font-weight:600;}
-.notif-item small{display:block;color:#94a3b8;font-weight:400;margin-top:2px;}
-@media(min-width:700px){.qt-main{padding:24px;}}
-
-/* ===== QueueGo Modern UI Refresh v2 ===== */
-:root{
-  --primary:#1d4ed8;--primary-dark:#1e40af;--accent:#0ea5e9;
-  --danger:#dc2626;--bg:#f6f8fb;--surface:#fff;--text:#172033;
-  --muted:#64748b;--line:#e2e8f0;--radius:18px;
-}
-html{scroll-behavior:smooth}
-body{letter-spacing:.05px;
-}
-.qt-banner{background:#172033;color:#e2e8f0;padding:8px 14px;font-size:11px;letter-spacing:.15px}
-.qt-header{
-  padding:14px 18px;background:rgba(255,255,255,.88);
-  backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);
-  border-bottom:1px solid rgba(226,232,240,.8);box-shadow:0 4px 20px rgba(15,23,42,.04)
-}
-.qt-logo{font-size:20px;letter-spacing:-.4px;color:var(--primary-dark)}
-.qt-logo span{color:var(--accent)}
-.qt-auth-links a{font-weight:600;color:var(--primary-dark)}
-.qt-user-chip{background:#eff6ff;color:#1e40af;border:1px solid #bfdbfe;padding:8px 12px;font-weight:600}
-.qt-main{padding:22px 16px 90px}
-h1,h2,h3{color:var(--text);letter-spacing:-.4px}
-h1{font-size:clamp(25px,6vw,36px);line-height:1.2}
-h2{font-size:24px;margin:10px 0 16px}
-h3{font-size:18px;margin:20px 0 10px}
-.hero{
-  position:relative;overflow:hidden;text-align:left;margin:4px 0 22px;
-  padding:28px 24px;color:#fff;
-  background:linear-gradient(135deg,#1d4ed8 0%,#2563eb 55%,#3b82f6 100%);
-  box-shadow:0 14px 30px rgba(37,99,235,.20)
-}
-.hero:after{content:"";position:absolute;width:180px;height:180px;border:28px solid rgba(255,255,255,.10);border-radius:50%;right:-55px;top:-65px}
-.hero h1,.hero p{position:relative;z-index:1;color:#fff}
-.hero p{opacity:.88;margin:8px 0 0}
-.btn-primary,.btn-secondary,.btn-danger{
-  min-height:44px;border-radius:12px;font-family:inherit;font-weight:700;
-  transition:transform .15s,box-shadow .15s,filter .15s
-}
-.btn-primary{box-shadow:0 6px 14px rgba(37,99,235,.18)}
-.btn-primary:hover,.btn-secondary:hover,.btn-danger:hover{transform:translateY(-1px);filter:brightness(1.03)}
-.btn-secondary{color:#334155}
-.btn-danger{background:linear-gradient(135deg,#dc2626,#ef4444)}
-form,.inline-form,.order-detail-card,.notif-panel{
-  background:rgba(255,255,255,.95);border:1px solid var(--line);
-  border-radius:18px;padding:18px;box-shadow:0 8px 24px rgba(15,23,42,.045)
-}
-form label{color:#475569;margin-top:14px}
-form input,form select,form textarea{
-  padding:12px 13px;border:1px solid #dbe3ec;border-radius:11px;background:#fbfdff;
-  color:var(--text);outline:none;transition:border .15s,box-shadow .15s
-}
-form input:focus,form select:focus,form textarea:focus{
-  border-color:#3b82f6;box-shadow:0 0 0 3px rgba(59,130,246,.13);background:#fff
-}
-.tabs{gap:8px}
-.tab{border:1px solid #dbe3ec;background:#fff;color:#475569;border-radius:999px;padding:9px 14px;font-weight:600}
-.tab.active{background:#1d4ed8;border-color:#1d4ed8;box-shadow:0 5px 12px rgba(29,78,216,.16)}
-
-.shop-list{gap:12px}
-.row-btns button,.row-btns a{border-radius:10px;padding:9px;font-weight:600}
-.badge{padding:5px 9px;font-weight:600}
-.promo-card{border-radius:16px;border:1px solid #fde68a;box-shadow:0 5px 14px rgba(245,158,11,.06)}
-.warn-text{border:1px solid #fecaca;border-radius:12px}
-.qt-bottomnav{
-  background:rgba(255,255,255,.92);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);
-  border-top:1px solid rgba(226,232,240,.9);box-shadow:0 -6px 20px rgba(15,23,42,.06);
-  padding-top:5px
-}
-.qt-bottomnav a{color:#64748b;padding:9px 2px 8px;transition:color .15s}
-.qt-bottomnav a span{font-size:11px;margin-top:3px}
-.qt-bottomnav a.active{color:#1d4ed8}
-.qt-bottomnav a.active span{font-weight:700}
-.customer-order-lock{background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;padding:12px;border-radius:12px;margin:10px 0;line-height:1.6;font-size:13px;}.qt-toast{bottom:92px;border-radius:14px;box-shadow:0 10px 25px rgba(15,23,42,.2)}
-.notif-toast{border-radius:14px;box-shadow:0 10px 25px rgba(15,23,42,.18)}
-.notif-item{padding:14px;border-radius:10px;margin:3px 0;border-bottom:0}
-.notif-item.unread{background:#eff6ff}
-@media(max-width:520px){
-  .hero{padding:24px 20px;border-radius:20px}
-  .qt-user-chip{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-}
-@media(min-width:700px){
-  .qt-main{padding-top:28px}
-}
-
-
-/* QueueGo: lock viewport scale and keep layout fitted to device width */
-html {
-  width: 100%;
-  max-width: 100%;
-  overflow-x: hidden;
-  -webkit-text-size-adjust: 100%;
-  text-size-adjust: 100%;
-}
-body {
-  width: 100%;
-  max-width: 100%;
-  min-width: 0;
-  overflow-x: hidden;
-}
-input,select,textarea,button {
-  font-size: 16px;
-}
-
-/* Quote form: simple, spacious and easy to use on mobile */
-
-/* ---------- Order chat ---------- */
-.order-chat{margin-top:18px;background:#fff;border:1px solid #e5e7eb;border-radius:18px;padding:14px;box-shadow:0 8px 24px rgba(15,23,42,.06)}
-.order-chat h3{margin:0 0 10px}
-.chat-messages{height:280px;overflow-y:auto;background:#f8fafc;border-radius:14px;padding:10px;display:flex;flex-direction:column;gap:8px}
-.chat-empty{text-align:center;color:#64748b;font-size:13px;margin:auto}
-.chat-bubble{max-width:82%;padding:9px 12px;border-radius:15px;line-height:1.4;font-size:14px;word-break:break-word}
-.chat-bubble.mine{align-self:flex-end;background:#2563eb;color:#fff;border-bottom-right-radius:4px}
-.chat-bubble.theirs{align-self:flex-start;background:#e2e8f0;color:#0f172a;border-bottom-left-radius:4px}
-.chat-meta{font-size:10px;opacity:.75;margin-top:3px}
-.chat-compose{display:flex;gap:8px;margin-top:10px}
-.chat-compose input{flex:1;min-width:0;margin:0!important}
-.chat-compose button{width:88px;flex:0 0 88px}
-.chat-closed{font-size:13px;color:#64748b;background:#f1f5f9;padding:10px;border-radius:12px;text-align:center}
-@media(max-width:520px){.chat-messages{height:240px}.chat-compose button{width:76px;flex-basis:76px;padding-left:8px!important;padding-right:8px!important}}
-
-.admin-pill{display:inline-block;padding:4px 9px;border-radius:999px;background:#eef2ff;font-size:12px}.card{background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:14px;box-shadow:0 2px 8px rgba(0,0,0,.04)}
-
-.dispatch-note{padding:10px;border-radius:10px;background:#f5f3ff;margin:10px 0;font-size:14px}
-
-
-.qt-arrival-alert{
-  position:fixed;inset:0;z-index:99999;display:none;
-  align-items:center;justify-content:center;
-  background:rgba(0,0,0,.62);padding:20px;
-}
-.qt-arrival-alert.show{display:flex}
-@keyframes qtArrivalPulse{
-  from{transform:scale(1)}
-  to{transform:scale(1.025)}
-}
-
-
-/* ---------- Rider new-job alert / screen lock ---------- */
-.qt-rider-job-alert{
-  position:fixed;inset:0;z-index:100000;display:none;
-  align-items:center;justify-content:center;background:rgba(0,0,0,.68);
-  padding:18px;
-}
-.qt-rider-job-alert.show{display:flex}
-@keyframes qtRiderJobPulse{
-  from{transform:scale(1)}
-  to{transform:scale(1.025)}
-}
-
-
-/* V5.16 Rider application */
-
-/* V5.37 Rider Setup redesign */.rider-status-pill{display:inline-flex;align-items:center;gap:6px;padding:7px 11px;border-radius:999px;font-weight:700;font-size:13px;background:#fff7df;color:#8a6200;border:1px solid #f4d58a}.rider-status-pill.approved{background:#ecfdf3;color:#16734a;border-color:#b7e4cb}
-
-.rider-app{display:grid;grid-template-columns:1fr 1fr;gap:14px}.rider-app .card{margin:0}.doc-preview{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}.required-note{color:#dc2626;font-size:12px}@media(max-width:700px){.rider-app{grid-template-columns:1fr}}
-
-
-/* Rider application wizard */.req{color:#d33;font-weight:600}
-
-.qt-admin-wrap{border-radius:18px}.qt-admin-head{display:flex;justify-content:space-between;gap:12px;align-items:center}.qt-admin-tabs{border-bottom:1px solid #e5e7eb;padding-bottom:10px}.qt-admin-tab{cursor:pointer;font-weight:700}.qt-admin-tab-badge{display:inline-block;border-radius:999px;padding:1px 6px;background:#fee2e2;color:#b91c1c;font-size:11px}.qt-admin-panel{display:none}.qt-admin-panel.active{display:block}.qt-admin-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.qt-admin-status{display:inline-block;padding:3px 8px;border-radius:999px;font-size:11px;font-weight:800}.qt-admin-status.pending{background:#fef3c7;color:#92400e}.qt-admin-log{padding:8px 0;border-bottom:1px solid #e5e7eb;font-size:12px}.qt-admin-table{border-collapse:collapse}.qt-admin-table th,.qt-admin-table td{border-bottom:1px solid #e5e7eb;text-align:left;vertical-align:top;font-size:13px}.qt-admin-table th{font-size:11px;color:#64748b;background:#f8fafc}@media(max-width:700px){.qt-admin-head{align-items:flex-start;flex-direction:column}.qt-admin-grid{grid-template-columns:1fr}.qt-admin-tabs{grid-template-columns:repeat(5,minmax(0,1fr));overflow:visible;flex-wrap:unset}.qt-admin-tab{white-space:normal;width:100%;min-width:0;text-align:center;padding:8px 4px;font-size:11px;line-height:1.25}.qt-admin-table{display:block;overflow-x:auto}}
-/* QueueGo Admin Mobile Dashboard Refresh */
-.qt-admin-mobile-stats{align-items:center;overflow-x:auto;padding:2px 0 8px;margin:2px 0 10px;-webkit-overflow-scrolling:touch;scrollbar-width:none}
-.qt-admin-mobile-stats::-webkit-scrollbar{display:none}
-.qt-admin-mobile-stat{flex:0 0 auto;display:inline-flex;align-items:center;gap:5px;border:1px solid #e5e7eb;border-radius:999px;color:#475569;font-size:11px;line-height:1.1}
-.qt-admin-mobile-stat b{font-size:13px;color:#0f172a}
-.qt-admin-mobile-stat.shop{border-color:#dbeafe;background:#eff6ff}.qt-admin-mobile-stat.rider{border-color:#dcfce7;background:#f0fdf4}.qt-admin-mobile-stat.customer{border-color:#ede9fe;background:#f5f3ff}
-.qt-admin-mobile-stat .dot{width:6px;height:6px;border-radius:50%;background:#22c55e;display:inline-block}
-.qt-admin-quick-status{display:flex;flex-wrap:wrap}
-.qt-admin-quick-status span{color:#64748b;border-radius:999px;border:1px solid #e5e7eb}
-.qt-admin-quick-status b{color:#334155}
-.qt-admin-worklist{background:#fff;border:1px solid #e5e7eb;overflow:hidden;margin:10px 0 12px}
-.qt-admin-workrow{display:flex;align-items:center;gap:10px;border-bottom:1px solid #eef2f7}
-.qt-admin-workrow:last-child{border-bottom:0}
-.qt-admin-workicon{width:30px;height:30px;border-radius:9px;display:flex;align-items:center;justify-content:center;flex:0 0 30px;font-size:15px}
-.qt-admin-workmain{min-width:0;flex:1}.qt-admin-workmain b{display:block;font-size:13px;color:#1f2937}.qt-admin-workmain small{display:block;font-size:10px;color:#94a3b8;margin-top:1px}
-.qt-admin-workcount{font-size:14px;font-weight:800;color:#0f172a;min-width:24px;text-align:right}
-.qt-admin-workbtn{color:#334155;border-radius:8px;font:700 11px inherit;white-space:nowrap;cursor:pointer}
-@media(max-width:520px){.qt-admin-wrap{border-radius:14px}.qt-admin-head h2{margin:4px 0}.qt-admin-head .row-btns{width:100%;display:grid;grid-template-columns:1fr 1fr}.qt-admin-head .row-btns button{min-width:0;padding:8px 7px;font-size:11px}.qt-admin-mobile-stats{margin-left:-2px;margin-right:-2px}.qt-admin-workrow{padding:10px 8px}.qt-admin-workbtn{padding:6px 7px}.qt-admin-quick-status{gap:4px}.qt-admin-quick-status span{font-size:9px}}
-/* ---------- V5.29 THAI ADMIN USER CATEGORIES ---------- */
-.qt-user-control-head{margin-bottom:12px}
-.qt-user-category-tabs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:12px 0 16px}
-.qt-user-category-btn{border:1px solid #d9dee8;background:#fff;border-radius:12px;padding:11px 10px;font-weight:800;color:#253047;cursor:pointer;text-align:left}
-.qt-user-category-btn span{float:right;background:#eef2f7;border-radius:999px;padding:2px 8px;font-size:12px}
-.qt-user-category-btn.active{background:#10182d;color:#fff;border-color:#10182d}
-.qt-user-category-btn.active span{background:rgba(255,255,255,.16);color:#fff}
-.qt-user-category-panel{display:none}
-.qt-user-category-panel.active{display:block}
-.qt-user-category-title{display:flex;justify-content:space-between;align-items:center;margin:4px 0 10px;padding:0 2px}
-.qt-user-category-title h4{margin:0;font-size:18px}
-.qt-user-category-title span{font-size:13px;color:#697386}
-.qt-user-category-panel .qt-admin-table{margin-top:0}
-@media(min-width:700px){.qt-user-category-tabs{grid-template-columns:repeat(5,minmax(0,1fr))}}
-</style>
-
-<style id="thai-rider-address-style">
-.rider-address-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.rider-address-grid select,.rider-address-grid input{min-width:0}
-@media(max-width:700px){.rider-address-grid{grid-template-columns:1fr}.rider-address-grid input{width:100%;box-sizing:border-box}}
-</style>
-
-<style id="v526-online-status-css">
-.qt-rider-online-card{border:1px solid #e5e7eb;border-radius:12px;padding:12px;margin:8px 0;background:#fff}
-</style>
+<link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="interface.css?v=20261005">
 
 
 
 
-<style id="qt-checkout-mobile-scroll-fix">
-/* Checkout mobile: reduce oversized map/input area and keep the page vertically scrollable */
-html,body {
-  height: auto !important;
-  min-height: 100% !important;
-  overflow-x: hidden !important;
-  overflow-y: auto !important;
-  -webkit-overflow-scrolling: touch;
-}
-.qt-main {
-  min-height: 0;
-  overflow: visible !important;
-  padding-bottom: 100px !important;
-}
-@media (max-width: 760px) {
-  .qt-main {
-    padding: 8px 8px 100px !important;
-  }
-}
-</style>
 
 
 
-<style id="qt-v541-unified-app-theme">
-/* V5.41 — one visual system across every screen */
-:root{--qt-surface:#fff;--qt-soft:#f8fafc;--qt-line:#e2e8f0;--qt-text:#172033;--qt-muted:#64748b;--qt-blue:#2563eb;--qt-radius:18px}
-body{background:linear-gradient(180deg,#f7f9fc 0,#f4f7fb 100%);color:var(--qt-text)}
-.qt-main{padding-top:18px}
-.qt-appbar{min-height:62px;gap:10px}.qt-appbar-left,.qt-appbar-user{display:flex;align-items:center;gap:8px;min-width:0}.qt-appbar-left{flex:1}.qt-appbar-user{justify-content:flex-end}.qt-logo{white-space:nowrap}
-.qt-back-btn,.qt-logout-btn{width:38px;height:38px;flex:0 0 38px;border:1px solid var(--qt-line);border-radius:12px;background:#fff;color:#334155;font:800 26px/1 system-ui;display:grid;place-items:center;cursor:pointer}.qt-logout-btn{font-size:19px;color:#b91c1c;background:#fff7f7;border-color:#fecaca}
-.qt-auth-links{display:flex;gap:6px}.qt-auth-links a{margin:0!important;padding:7px 9px;border-radius:10px;background:#eff6ff}
-.qt-user-chip{max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.qt-main>h2,.qt-main>h1{margin-top:4px}.card,.order-detail-card,.inline-form,.notif-panel,.promo-card,.qt-admin-wrap,.order-chat{border-radius:var(--qt-radius)!important;border-color:var(--qt-line)!important;box-shadow:0 7px 22px rgba(15,23,42,.05)!important}
-.btn-primary,.btn-secondary,.btn-danger,.row-btns button,.row-btns a{border-radius:12px!important;min-height:42px}.btn-primary{background:linear-gradient(135deg,#1d4ed8,#2563eb)!important}.btn-secondary{background:#f1f5f9!important;border:1px solid #e2e8f0!important}
-.hero{border-radius:22px!important;margin-top:0!important}
-.qt-bottomnav{max-width:760px;left:50%!important;right:auto!important;width:100%;transform:translateX(-50%);border-radius:18px 18px 0 0}.qt-bottomnav a{min-width:0}.qt-bottomnav a.active{background:#eff6ff;border-radius:12px}
-@media(max-width:520px){.qt-header{padding:10px 9px!important}.qt-main{padding:12px 10px 92px!important}.qt-logo{font-size:17px}.qt-user-chip{max-width:108px;padding:7px 8px}.qt-back-btn,.qt-logout-btn{width:36px;height:36px;flex-basis:36px}.qt-bottomnav a{font-size:10px;padding-left:1px;padding-right:1px}}
 
-/* V5.42 Admin calm/unified UI */
-.qt-admin-wrap{max-width:1040px;margin:0 auto;background:transparent!important;border:0!important;box-shadow:none!important;padding:4px!important}
-.qt-admin-head{padding:8px 2px 14px;border-bottom:1px solid var(--qt-line);margin-bottom:12px}.qt-admin-head h2{font-size:21px;letter-spacing:-.3px;margin:0 0 4px}.qt-admin-note{font-size:12px;line-height:1.55;color:#64748b}
-.qt-admin-tabs{overflow-x:auto!important;border:0!important;scrollbar-width:none}.qt-admin-tabs::-webkit-scrollbar{display:none}.qt-admin-tab{flex:0 0 auto!important;border:1px solid #e5e7eb!important;background:#fff!important;color:#475569!important;font-size:12px!important;line-height:1.2!important}.qt-admin-tab.active{background:#0f172a!important;color:#fff!important;border-color:#0f172a!important}
-.qt-admin-panel>h3{font-size:17px;margin:4px 0 12px}.qt-admin-panel>.card,.qt-admin-panel .card{padding:14px!important;margin:10px 0!important;background:#fff!important}.qt-admin-panel .row-btns{gap:8px}.qt-admin-panel .row-btns button{min-height:38px;border-radius:10px}
-.qt-admin-quick-status{gap:7px;margin:2px 0 14px}.qt-admin-quick-status span{font-size:11px;padding:7px 10px;background:#fff}.qt-admin-mobile-stat{padding:8px 11px;background:#fff!important}
-.qt-admin-worklist{border-radius:16px;box-shadow:0 6px 20px rgba(15,23,42,.04)}.qt-admin-workrow{padding:13px 12px;min-height:56px}.qt-admin-workicon{background:#f8fafc}.qt-admin-workbtn{background:#f8fafc;border:1px solid #e5e7eb;padding:7px 10px}
-.qt-admin-home-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:14px 0}.qt-admin-home-actions button{border:1px solid #e5e7eb;background:#fff;border-radius:14px;padding:14px;text-align:left;cursor:pointer;box-shadow:0 5px 18px rgba(15,23,42,.035)}.qt-admin-home-actions span{display:block;font-weight:800;font-size:13px;color:#0f172a}.qt-admin-home-actions small{display:block;margin-top:4px;color:#94a3b8;font-size:10px;line-height:1.35}.qt-admin-logout{width:100%;border:0;background:transparent;color:#94a3b8;padding:10px;font-weight:700;cursor:pointer}
-@media(max-width:520px){.qt-admin-wrap{padding:0!important}.qt-admin-head{padding-top:4px}.qt-admin-head h2{font-size:19px}.qt-admin-home-actions{grid-template-columns:1fr 1fr;gap:8px}.qt-admin-home-actions button{padding:12px 10px}.qt-admin-panel .card{padding:12px!important}.qt-admin-workmain small{font-size:10px}.qt-admin-tabs{margin-left:-2px!important;margin-right:-2px!important}}
-</style>
 
-<style id="qt-v544-no-horizontal-unified">
-/* V5.44 — one-screen responsive system, no horizontal control strips */
-:root{--qt-card-pad:14px;--qt-control-h:44px}
-html,body,.qt-main{max-width:100%;overflow-x:hidden!important}
-button,input,select,textarea{max-width:100%;box-sizing:border-box}
-.row-btns{display:grid!important;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px!important;width:100%}
-.row-btns>button,.row-btns>.btn-primary,.row-btns>.btn-secondary,.row-btns>.btn-danger{width:100%;min-width:0!important;white-space:normal!important;line-height:1.25;min-height:42px}
-.qt-admin-tabs{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;overflow:visible!important;gap:8px!important;padding:0!important;margin:10px 0 16px!important}
-.qt-admin-tab{width:100%!important;min-width:0!important;white-space:normal!important;border-radius:12px!important;padding:10px 7px!important;text-align:center}
-.qt-admin-mobile-stats{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));overflow:visible!important;gap:8px!important}
-.qt-admin-mobile-stat{width:100%;min-width:0;white-space:normal!important;justify-content:center;box-sizing:border-box}
-.qt-admin-table{display:table!important;width:100%!important;table-layout:fixed;overflow:visible!important}
-.qt-admin-table th,.qt-admin-table td{overflow-wrap:anywhere;word-break:break-word;padding:8px 5px!important}
-.qt-admin-table button{width:100%;white-space:normal;padding:7px 5px}
-.card,.order-detail-card,.promo-card,.qt-admin-wrap{width:100%;max-width:100%;box-sizing:border-box}
-/* GP / price management */
-.qt-gp-shell{max-width:900px;margin:0 auto}
-.qt-gp-hero{background:linear-gradient(135deg,#0f172a,#263b63);color:#fff;border-radius:20px;padding:18px;margin:4px 0 14px;box-shadow:0 12px 30px rgba(15,23,42,.14)}
-.qt-gp-hero h2{margin:0 0 5px;font-size:21px}.qt-gp-hero p{margin:0;color:#dbe7fb;font-size:12px;line-height:1.55}
-.qt-gp-card{background:#fff;border:1px solid #e2e8f0;border-radius:18px;padding:15px;margin:10px 0;box-shadow:0 7px 22px rgba(15,23,42,.05)}
-.qt-gp-card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:12px}.qt-gp-card-head b{font-size:16px}.qt-gp-card-head .badge{flex:0 1 auto;text-align:center}
-.qt-gp-ratebox{display:grid;grid-template-columns:48px minmax(0,1fr) 34px 48px;align-items:center;gap:7px;background:#f8fafc;border:1px solid #e5e7eb;border-radius:14px;padding:8px;margin:8px 0 12px}
-.qt-gp-ratebox button{height:40px;padding:0!important;border-radius:10px!important}.qt-gp-ratebox input{width:100%;height:40px;text-align:center;font-size:18px;font-weight:800;margin:0}.qt-gp-percent{text-align:center;font-weight:800;color:#475569}
-.qt-gp-date{display:grid;grid-template-columns:1fr;gap:5px;margin:8px 0}.qt-gp-date label{font-size:11px;color:#64748b}.qt-gp-date input{width:100%;margin:0}
-.qt-gp-help{display:block;color:#64748b;font-size:11px;line-height:1.5;margin-top:8px}
-@media(max-width:520px){.qt-main{padding-left:12px!important;padding-right:12px!important}.qt-admin-tabs{grid-template-columns:repeat(2,minmax(0,1fr))!important}.qt-admin-mobile-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.qt-admin-table th,.qt-admin-table td{font-size:11px!important}.qt-gp-hero{border-radius:16px;padding:16px 14px}.qt-gp-card{padding:13px}.qt-gp-card-head{flex-direction:column}.qt-gp-ratebox{grid-template-columns:44px minmax(0,1fr) 28px 44px}}
-@media(max-width:360px){.qt-admin-tabs,.qt-admin-mobile-stats{grid-template-columns:1fr!important}.row-btns{grid-template-columns:1fr!important}}
-</style>
-<style id="qg-android-tablet-admin-fix-20260929">
-/* QueueGo Android tablet rendering fix — scoped to Admin only.
-   Does not change auth, Supabase, routing or phone/desktop layouts. */
-@media (min-width:600px) and (max-width:1280px) and (pointer:coarse){
-  html,body{width:100%;max-width:100%;overflow-x:hidden;-webkit-text-size-adjust:100%;text-size-adjust:100%}
-  body{margin:0!important;padding-bottom:76px!important;background:#f5faf7!important;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Prompt",system-ui,sans-serif!important}
-  #app{width:100%;max-width:100%;min-height:100dvh}
-  .qt-header.qt-appbar{display:flex!important;align-items:center!important;justify-content:space-between!important;width:100%!important;min-height:64px!important;padding:10px 18px!important;background:#fff!important;border-bottom:1px solid #e5eee9!important;box-shadow:0 2px 12px rgba(15,23,42,.06)!important;position:sticky!important;top:0!important;z-index:100!important}
-  .qt-appbar-left,.qt-appbar-user{display:flex!important;align-items:center!important;gap:10px!important;min-width:0}
-  .qt-logo{font-size:20px!important;font-weight:800!important;color:#087755!important;white-space:nowrap}
-  .qt-user-chip{max-width:42vw!important;overflow:hidden!important;text-overflow:ellipsis!important;white-space:nowrap!important;background:#edf9f3!important;color:#087755!important;border:1px solid #cde7d8!important;border-radius:999px!important;padding:8px 12px!important}
-  .qt-back-btn,.qt-logout-btn{appearance:none!important;-webkit-appearance:none!important;border:0!important;border-radius:12px!important;background:#edf9f3!important;color:#087755!important;min-width:42px!important;min-height:42px!important;font:700 18px/1 system-ui!important}
-  .qt-main{box-sizing:border-box!important;width:100%!important;max-width:900px!important;margin:0 auto!important;padding:22px 24px 96px!important}
-  .qg-admin-support{box-sizing:border-box!important;width:100%!important;max-width:860px!important;margin:0 auto!important}
-  .qg-admin-support h2{font-size:26px!important;line-height:1.25!important;margin:4px 0 14px!important}
-  .qg-admin-support>.btn-secondary{appearance:none!important;-webkit-appearance:none!important;border:1px solid #cde7d8!important;background:#fff!important;color:#087755!important;border-radius:12px!important;padding:10px 14px!important;font:700 14px/1.3 inherit!important}
-  .qg-admin-support .card{display:block!important;width:100%!important;max-width:100%!important;box-sizing:border-box!important;border:1px solid #dceae3!important;border-radius:16px!important;background:#fff!important;padding:16px!important;margin:14px 0!important;box-shadow:0 5px 18px rgba(15,23,42,.04)!important}
-  .qg-admin-support .card h3{font-size:18px!important;margin:0 0 12px!important}
-  .qg-admin-support .qg-support-list{display:grid!important;grid-template-columns:minmax(0,1fr)!important;gap:8px!important;width:100%!important}
-  .qg-admin-support .qg-support-list button{appearance:none!important;-webkit-appearance:none!important;display:block!important;width:100%!important;text-align:left!important;border:1px solid #dceae3!important;background:#f8fcfa!important;color:#183d32!important;padding:13px 14px!important;border-radius:12px!important;font:600 14px/1.4 inherit!important}
-  .qg-admin-support .qg-support-list button.active{border-color:#0d9f73!important;background:#e6f8ef!important}
-  .qg-admin-support .qg-support-messages{width:100%!important;max-height:50dvh!important;overflow:auto!important;overscroll-behavior:contain!important}
-  .qg-admin-support .qg-support-bubble{max-width:82%!important;padding:10px 12px!important;margin:8px 0!important;background:#f2f7f4!important;border-radius:14px!important;white-space:pre-wrap!important;overflow-wrap:anywhere!important;font-size:14px!important}
-  .qg-admin-support .qg-support-bubble.mine{margin-left:auto!important;background:#e3f7eb!important}
-  .qg-admin-support form{width:100%!important;box-sizing:border-box!important;margin-top:12px!important;padding:0!important;background:transparent!important;border:0!important;box-shadow:none!important}
-  .qg-admin-support textarea{display:block!important;width:100%!important;min-height:84px!important;resize:vertical!important;border:1px solid #cde7d8!important;border-radius:12px!important;padding:12px!important;font:14px/1.5 inherit!important}
-  .qg-admin-support .btn-primary{appearance:none!important;-webkit-appearance:none!important;width:100%!important;margin-top:8px!important;border:0!important;border-radius:12px!important;background:#0d9f73!important;color:#fff!important;min-height:46px!important;font:700 15px/1.3 inherit!important}
-}
-</style>
-<style id="qg-q-only-topbar">.qt-header .qt-logo.qt-q-only{width:36px;height:36px;display:grid;place-items:center;color:#ed0a31}.qt-header .qt-logo.qt-q-only svg{width:30px;height:30px}</style>
+
+
+
+
+
+
+
+
+
 </head>
 <body>
 
@@ -1322,12 +978,12 @@ function renderAdminGovernance(){
   const refunds=orders.filter(o=>o.refundStatus==='requested');
   const esc=x=>escapeHtml(String(x??'-'));
   const nav=(id,icon,label,badge='')=>`<button class="qt-admin-tab" data-target="${id}" onclick="qtAdminTab('${id}')">${icon} ${label}${badge?` <span class="qt-admin-tab-badge">${badge}</span>`:''}</button>`;
-  const providerCards=pendingUsers.map(u=>`<div class="card qg-approval-card" data-approval-role="${esc(u.type)}"><b>${esc(u.type==='shop'?(u.shopName||u.name||'-'):(u.name||'-'))}</b><br>ประเภท: ${esc(qgAdminProviderLabel(u))}${u.type==='shop'?`<br>ผู้ติดต่อ: ${esc(u.name||'-')}`:''}<br>โทร: ${esc(u.phone||'-')}<br><span class="qt-admin-status pending">รอตรวจสอบ</span><div class="row-btns"><button class="btn-primary" onclick="adminApproveUser('${u.id}')">อนุมัติ</button><button class="btn-danger" onclick="adminRejectUser('${u.id}')">ไม่อนุมัติ</button></div></div>`).join('')||'<p>ไม่มีรายการรอตรวจสอบ</p>';
+  const providerCards=pendingUsers.map(u=>`<article class="card qg-approval-card" data-approval-role="${esc(u.type)}"><div class="qg-provider-heading"><span class="qg-avatar">${esc((u.shopName||u.name||'?').slice(0,1))}</span><div><b>${esc(u.type==='shop'?(u.shopName||u.name||'-'):(u.name||'-'))}</b><small>ประเภท: ${esc(qgAdminProviderLabel(u))}</small></div><span class="qt-admin-status pending">รออนุมัติ</span></div><div class="qg-provider-details"><span>ผู้ติดต่อ<b>${esc(u.name||'-')}</b></span><span>โทรศัพท์<b>${esc(u.phone||'-')}</b></span></div><div class="row-btns"><button class="btn-secondary" onclick="qtAdminViewUser('${u.id}')">ดูข้อมูล</button><button class="btn-primary" onclick="adminApproveUser('${u.id}')">อนุมัติ</button><button class="btn-danger" onclick="adminRejectUser('${u.id}')">ปฏิเสธ</button></div></article>`).join('')||'<p class="qg-empty">ไม่มีรายการรออนุมัติ</p>';
   const promoCards=pendingPromos.map(p=>`<div class="card"><b>${esc(p.shopName||p.shopId)}</b><br>ประเภทร้าน: ${esc(qgAdminShopCategory(users.find(u=>u.type==='shop'&&(u.id===p.shopId||u.shopProfileId===p.shopId))))}<br>พื้นที่: ${esc(p.area||'-')}<br>ราคาเสนอ: <b>${Number(p.bidPrice||0).toLocaleString('th-TH')} บาท</b> • ${escapeHtml(p.periodDays||0)} วัน<br><span class="qt-admin-status pending">รออนุมัติ</span><div class="row-btns"><button class="btn-primary" onclick="adminApprovePromotion('${p.id}')">อนุมัติ</button><button class="btn-danger" onclick="adminRejectPromotion('${p.id}')">ไม่อนุมัติ</button></div></div>`).join('')||'<p>ไม่มี Promote รออนุมัติ</p>';
   const orderCards=refunds.map(o=>`<div class="card"><b>${displayOrderNumber(o)}</b> • ${Number(o.total||0).toLocaleString('th-TH')} บาท<br>ลูกค้า: ${esc(o.customerName||'-')}<br>เหตุผล: ${esc(o.refundReason||'-')}<div class="row-btns"><button class="btn-primary" onclick="adminApproveRefund('${o.id}')">อนุมัติคืนเงิน</button></div></div>`).join('')||'<p>ไม่มีคำขอคืนเงิน</p>';
   const userRows=users.filter(u=>u.type!=='admin').slice(0,50).map(u=>`<tr><td>${esc(u.name||'-')}<br><small>${esc(u.phone||'-')}</small></td><td>${esc(qgAdminProviderLabel(u))}</td><td>${esc(accountStatusLabel(u.status))}</td><td>${u.status==='suspended'?`<button class="btn-primary" onclick="adminSecurityAction('restore','${u.id}')">ปลดระงับ</button>`:`<button class="btn-danger" onclick="adminSecurityAction('suspend','${u.id}')">ระงับ</button>`}</td></tr>`).join('');
   const promoteRows=promos.slice().reverse().map(p=>`<tr><td>${esc(p.shopName||p.shopId)}</td><td>${qtPromoStatusLabel(p.status)}</td><td>${Number(p.bidPrice||0).toLocaleString('th-TH')} บาท</td><td>${p.status==='pending'?`<button class="btn-primary" onclick="adminApprovePromotion('${p.id}')">อนุมัติ</button>`:''}  ${p.status==='active'?`<button class="btn-danger" onclick="stopPromote('${p.id}')">หยุด</button>`:''}</td></tr>`).join('');
-  layout('ศูนย์ควบคุมแอดมิน',`<div class="qt-admin-wrap"><div class="qt-admin-head"><div><h2>🛡️ ศูนย์ควบคุมแอดมิน</h2><div class="qt-admin-note">แยกเมนูตามหน้าที่ เพื่อให้ควบคุมระบบได้ชัดเจน</div></div><div class="row-btns"><button class="btn-secondary" onclick="qtAdminRefresh('governance')">🔄 รีเฟรชสมาชิก</button><button class="btn-secondary" onclick="navigate('admin')">← กลับหน้าหลัก</button></div></div>
+  layout('จัดการระบบ',`<div class="qt-admin-wrap"><div class="qt-admin-head"><div><h2>🛡️ ศูนย์ควบคุมแอดมิน</h2><div class="qt-admin-note">แยกเมนูตามหน้าที่ เพื่อให้ควบคุมระบบได้ชัดเจน</div></div><div class="row-btns"><button class="btn-secondary" onclick="qtAdminRefresh('governance')">🔄 รีเฟรชสมาชิก</button><button class="btn-secondary" onclick="navigate('admin')">← กลับหน้าหลัก</button></div></div>
     <div class="qt-admin-tabs">${nav('qt-sec-overview','🏠','ภาพรวม')}${nav('qt-sec-orders','📦','ออเดอร์')}${nav('qt-sec-users','👥','ผู้ใช้งาน')}${nav('qt-sec-delivery','🚚','ไรเดอร์/จัดส่ง')}${nav('qt-sec-approval','✅','ศูนย์อนุมัติ',pendingUsers.length+pendingPromos.length)}${nav('qt-sec-promote','📣','Promote')}${nav('qt-sec-finance','💰','การเงิน',refunds.length)}${nav('qt-sec-security','🔐','ความปลอดภัย')}${nav('qt-sec-audit','🧾','บันทึกการทำงาน')}${nav('qt-sec-settings','⚙️','ตั้งค่าระบบ')}</div>
     <section id="qt-sec-overview" class="qt-admin-panel active"><div class="qt-admin-mobile-stats"><span class="qt-admin-mobile-stat shop"><i class="dot"></i>🏪 ร้านค้า <b>${qtAdminOnlineCounts(users).shop}</b></span><span class="qt-admin-mobile-stat rider"><i class="dot"></i>🛵 ไรเดอร์ <b>${qtAdminOnlineCounts(users).rider}</b></span><span class="qt-admin-mobile-stat customer"><i class="dot"></i>👤 ลูกค้า <b>${qtAdminOnlineCounts(users).customer}</b></span></div><div class="qt-admin-quick-status"><span>ออเดอร์ <b>${orders.length}</b></span><span>กำลังทำ <b>${orders.filter(o=>!['completed','cancelled'].includes(o.status)).length}</b></span><span>รออนุมัติ <b>${pendingUsers.length+pendingPromos.length}</b></span><span>ร้านค้า <b>${users.filter(u=>u.type==='shop').length}</b></span></div><div class="qt-admin-worklist"><div class="qt-admin-workrow"><div class="qt-admin-workicon">👥</div><div class="qt-admin-workmain"><b>ตรวจผู้ให้บริการ</b><small>ร้านค้า • ไรเดอร์ • ช่าง</small></div><strong class="qt-admin-workcount">${pendingUsers.length}</strong><button class="qt-admin-workbtn" onclick="qtAdminTab('qt-sec-approval')">ตรวจ</button></div><div class="qt-admin-workrow"><div class="qt-admin-workicon">📣</div><div class="qt-admin-workmain"><b>ตรวจ Promote</b><small>คำขอโฆษณารออนุมัติ</small></div><strong class="qt-admin-workcount">${pendingPromos.length}</strong><button class="qt-admin-workbtn" onclick="qtAdminTab('qt-sec-promote')">ดู</button></div><div class="qt-admin-workrow"><div class="qt-admin-workicon">💸</div><div class="qt-admin-workmain"><b>ตรวจคืนเงิน</b><small>คำขอคืนเงินที่รอดำเนินการ</small></div><strong class="qt-admin-workcount">${refunds.length}</strong><button class="qt-admin-workbtn" onclick="qtAdminTab('qt-sec-finance')">ดู</button></div></div></section>
     <section id="qt-sec-orders" class="qt-admin-panel"><h3>📦 จัดการออเดอร์</h3><p class="qt-admin-note">ดูออเดอร์และคำขอคืนเงิน โดยการคืนเงินจริงต้องตรวจสิทธิ์ฝั่ง Server ใน Production</p><button class="btn-primary" onclick="navigate('admin-orders')">เปิดศูนย์จัดการออเดอร์</button><div class="card"><h3>คำขอคืนเงินที่รอตรวจสอบ</h3>${orderCards}</div></section>
@@ -1343,18 +999,18 @@ function renderAdminGovernance(){
           return `<button class="qt-user-category-btn ${i===0?'active':''}" data-user-category="${type}" onclick="qtUserCategory('${type}')">${icon} ${label} <span>${count}</span></button>`;
         }).join('')}
       </div>
-      <div class="qt-user-category-panels">
+      <input type="search" id="qg-admin-user-search" placeholder="ค้นหาชื่อ ประเภทร้าน หรือเบอร์โทร" oninput="qgAdminFilterUsers(this.value)"><div class="qt-user-category-panels">
         ${['customer','shop','rider','technician','admin'].map((type,i)=>{
           const list=users.filter(u=>u.type===type);
           const label={customer:'ลูกค้า',shop:'ร้านค้า',rider:'ไรเดอร์',technician:'ช่าง',admin:'ผู้ดูแลระบบ'}[type];
           const icon={customer:'👤',shop:'🏪',rider:'🛵',technician:'🔧',admin:'🛡️'}[type];
-          const rows=list.slice(0,100).map(u=>`<tr><td><b>${esc(u.shopName||u.name||'-')}</b><br><small>${esc(qgAdminProviderLabel(u))} · ${esc(u.phone||'-')}</small></td><td>${esc(accountStatusLabel(u.status))}</td><td><button class="btn-secondary" onclick="qtAdminViewUser('${u.id}')">👁️ ดูข้อมูล</button> ${u.type==='admin'?'<span class="qt-admin-note">🛡️ Admin — ห้ามระงับ/ลบ</span>':(u.status==='suspended'?`<button class="btn-primary" onclick="adminSecurityAction('restore','${u.id}')">🔓 ปลดระงับ</button>`:`<button class="btn-danger" onclick="adminSecurityAction('suspend','${u.id}')">⛔ ระงับ</button>`) + ` <button class="btn-danger" onclick="adminDeleteUser('${u.id}')">🗑️ ลบ</button>`}</td></tr>`).join('');
-          return `<div class="qt-user-category-panel ${i===0?'active':''}" data-user-panel="${type}"><div class="qt-user-category-title"><h4>${icon} ${label}</h4><span>${list.length} รายการ</span></div><table class="qt-admin-table"><thead><tr><th>${label}</th><th>สถานะ</th><th>การควบคุม</th></tr></thead><tbody>${rows||'<tr><td colspan="3">ยังไม่มีข้อมูล '+label+'</td></tr>'}</tbody></table></div>`;
+          const rows=list.slice(0,100).map(u=>`<article class="qg-user-card"><div class="qg-provider-heading"><span class="qg-avatar">${esc((u.shopName||u.name||'?').slice(0,1))}</span><div><b>${esc(u.shopName||u.name||'-')}</b><small>${esc(qgAdminProviderLabel(u))} · ${esc(u.phone||'ไม่มีเบอร์โทร')}</small></div><span class="qt-admin-status ${esc(u.status)}">${esc(accountStatusLabel(u.status))}</span></div><div class="row-btns"><button class="btn-secondary" onclick="qtAdminViewUser('${u.id}')">ดูข้อมูล</button>${u.type==='admin'?'<span class="qt-admin-note">บัญชีผู้ดูแล</span>':(u.status==='suspended'?`<button class="btn-primary" onclick="adminSecurityAction('restore','${u.id}')">ปลดระงับ</button>`:`<button class="btn-danger" onclick="adminSecurityAction('suspend','${u.id}')">ระงับบัญชี</button>`)+`<button class="btn-secondary" onclick="adminDeleteUser('${u.id}')">ลบบัญชี</button>`}</div></article>`).join('');
+          return `<div class="qt-user-category-panel ${i===0?'active':''}" data-user-panel="${type}"><div class="qt-user-category-title"><h4>${label}</h4><span>${list.length} รายการ</span></div><div class="qg-user-cards">${rows||'<p class="qg-empty">ยังไม่มีข้อมูล '+label+'</p>'}</div></div>`;
         }).join('')}
       </div>
     </section>
     <section id="qt-sec-delivery" class="qt-admin-panel"><h3>🚚 ไรเดอร์และการจัดส่ง</h3><div id="qt-admin-rider-online-panel" class="card">กำลังโหลดสถานะไรเดอร์…</div><button class="btn-secondary" onclick="if(typeof qtRenderAdminRiderPresence==='function')qtRenderAdminRiderPresence()">รีเฟรชสถานะ</button></section>
-    <section id="qt-sec-approval" class="qt-admin-panel"><h3>✅ ศูนย์อนุมัติ</h3><div class="qg-approval-tabs"><button type="button" data-approval-filter="shop" onclick="qgAdminApprovalRole('shop')">ร้านค้า</button><button type="button" data-approval-filter="rider" onclick="qgAdminApprovalRole('rider')">ไรเดอร์</button><button type="button" data-approval-filter="all" onclick="qgAdminApprovalRole('all')">ทั้งหมด</button></div><div class="card"><h3>สมัครผู้ให้บริการ</h3>${providerCards}<p id="qg-approval-filter-empty" hidden>ไม่มีรายการรออนุมัติในประเภทนี้</p></div><div class="card"><h3>Promote</h3>${promoCards}</div></section>
+    <section id="qt-sec-approval" class="qt-admin-panel"><h3>✅ ศูนย์อนุมัติ</h3><div class="qg-approval-tabs"><button type="button" data-approval-filter="shop" onclick="qgAdminApprovalRole('shop')">ร้านค้า</button><button type="button" data-approval-filter="rider" onclick="qgAdminApprovalRole('rider')">ไรเดอร์</button><button type="button" data-approval-filter="all" onclick="qgAdminApprovalRole('all')">ทั้งหมด</button></div><div class="card"><h3>สมัครผู้ให้บริการ</h3><input type="search" id="qg-approval-search" placeholder="ค้นหาชื่อร้าน ประเภท หรือเบอร์โทร" oninput="qgAdminApprovalRole(window.QG_ADMIN_APPROVAL_ROLE||'all')">${providerCards}<p id="qg-approval-filter-empty" hidden>ไม่มีรายการรออนุมัติในประเภทนี้</p></div><div class="card"><h3>Promote</h3>${promoCards}</div></section>
     <section id="qt-sec-promote" class="qt-admin-panel"><h3>📣 จัดการ Promote</h3><p class="qt-admin-note">ลำดับ: ส่งคำขอ → Admin อนุมัติ → ชำระเงิน → เปิดใช้งาน</p><table class="qt-admin-table"><thead><tr><th>ร้าน</th><th>สถานะ</th><th>ราคา</th><th>การควบคุม</th></tr></thead><tbody>${promoteRows||'<tr><td colspan="4">ไม่มีข้อมูล</td></tr>'}</tbody></table></section>
     <section id="qt-sec-finance" class="qt-admin-panel"><h3>💰 การเงิน</h3><div class="card"><p>เส้นทางเงินจริง: ไรเดอร์สำรองจ่ายค่าสินค้าให้ร้าน แล้วเก็บเงินจากลูกค้า • GP เป็นค่าบริการของร้าน</p><div class="row-btns"><button class="btn-primary" onclick="navigate('admin-cash')">ดูเส้นทางเงินสด</button><button class="btn-secondary" onclick="navigate('admin-gp')">ตรวจ GP และสลิป</button></div><button class="btn-secondary btn-block" onclick="navigate('admin-gp-rates')">ปรับอัตรา GP</button></div></section>
     <section id="qt-sec-security" class="qt-admin-panel">
@@ -1379,12 +1035,14 @@ function renderAdminGovernance(){
     try{if(id==='qt-sec-settings'&&typeof qgRenderPlatformControls==='function')qgRenderPlatformControls();}catch(e){console.warn('platform controls render failed',e)}
 
 const picker=document.getElementById('qg-admin-section-picker');if(picker&&[...picker.options].some(o=>o.value===id))picker.value=id;
+if(typeof qgAdminSyncNavigation==='function')qgAdminSyncNavigation();
 };
+  if(typeof qtAdminControlPanels==='function')qtAdminControlPanels();
   let qtSavedAdminTab='qt-sec-overview'; try{qtSavedAdminTab=sessionStorage.getItem('qt_admin_active_tab')||qtSavedAdminTab;}catch(e){}
   if(!document.getElementById(qtSavedAdminTab)) qtSavedAdminTab='qt-sec-overview';
   qtAdminTab(qtSavedAdminTab);
 
-(()=>{setTimeout(qtAdminControlPanels,0);})();
+
 (()=>{
 
    const row=document.querySelector('.qt-admin-head .row-btns');
@@ -1452,6 +1110,7 @@ function qtSyncRerender(before,after){
   const a=document.activeElement;
   if(a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)) return; /* never interrupt typing */
   if(before.main===after.main) return;
+  if(document.querySelector('dialog[open],.qg-v22-admin-modal'))return;
   const safe=['notifications','admin','admin-orders','admin-gp','admin-cash','admin-support','admin-gp-rates'];
   if(!safe.includes(name)) return;
   const typed=[].slice.call(document.querySelectorAll('#app textarea, #app input:not([type=checkbox]):not([type=radio]):not([type=file]):not([type=hidden])')).some(el=>String(el.value||'').trim());
@@ -1501,65 +1160,32 @@ function router(){
 
 
 /* ---------- Layout ---------- */
+function qgAdminIcon(name){
+ const paths={home:'M3 10l9-7 9 7M5 9v12h5v-7h4v7h5V9',orders:'M8 3h8l1 3h3v15H4V6h3l1-3ZM9 11h6M9 15h6',shop:'M3 10h18l-2-6H5l-2 6ZM5 10v11h14V10M9 21v-7h6v7',users:'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M22 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8',rider:'M5 16a3 3 0 1 0 0 .1M19 16a3 3 0 1 0 0 .1M5 16l5-9 5 9h4M8 7h5M14 4h3l2 12',pin:'M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 1 1 16 0ZM15 10a3 3 0 1 1-6 0 3 3 0 0 1 6 0',chart:'M4 3v18h17M8 17v-5M13 17V8M18 17V5',money:'M3 5h18v14H3V5ZM15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0M3 9h3M18 15h3',bell:'M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4',shield:'M12 2l9 4v6c0 6-9 10-9 10S3 18 3 12V6l9-4ZM8 12l3 3 5-6',settings:'M12 8a4 4 0 1 1 0 8 4 4 0 0 1 0-8M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M5 19l2-2M17 7l2-2',menu:'M4 6h16M4 12h16M4 18h16',arrow:'M5 12h14M14 7l5 5-5 5',refresh:'M20 7v5h-5M4 17v-5h5M6 7a7 7 0 0 1 12-2l2 3M4 16l2 3a7 7 0 0 0 12-2'};
+ return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${(paths[name]||paths.menu).split('ZZ').map(p=>`<path d="${p}"/>`).join('')}</svg>`;
+}
+function qgAdminBrand(){return '<span class="qg-brand-mark"><svg viewBox="0 0 48 48" fill="none" aria-hidden="true"><circle cx="22" cy="22" r="15" stroke="currentColor" stroke-width="8"/><path d="M27 27l12 12" stroke="currentColor" stroke-width="8" stroke-linecap="round"/></svg></span><span class="qg-brand-word">Queue<span>Go</span><small>ADMIN CONTROL CENTER</small></span>';}
+function qgAdminSection(section){
+ if(currentUser()?.type!=='admin')return;
+ sessionStorage.setItem('qt_admin_active_tab',section);
+ document.getElementById('qg-admin-menu')?.close();
+ if(location.hash==='#admin-governance'){renderAdminGovernance();qtAdminTab(section)}else navigate('admin-governance');
+}
+function qgAdminFilterUsers(value){const q=String(value||'').trim().toLocaleLowerCase('th');document.querySelectorAll('.qg-user-card').forEach(card=>card.hidden=!card.textContent.toLocaleLowerCase('th').includes(q));}
+function qgAdminMenuItems(){return [
+ ['home','หน้าแรก','admin',''],['orders','จัดการออเดอร์','admin-orders',''],['shop','จัดการร้านค้า','admin-governance','qt-sec-shops'],['users','จัดการผู้ใช้','admin-governance','qt-sec-users'],['rider','ควบคุมไรเดอร์','admin-governance','qt-sec-delivery'],['pin','ตลาดสดและพิกัด','admin-market',''],['chart','รายงาน / เงินสด','admin-cash',''],['money','การเงิน / GP','admin-gp',''],['bell','ประกาศ / แจ้งเตือน','admin-governance','qt-sec-notify'],['shield','ศูนย์ความปลอดภัย','admin-governance','qt-sec-security'],['settings','ตั้งค่าระบบ','admin-governance','qt-sec-settings']
+ ];}
+function qgAdminNavigation(){const hash=location.hash.slice(1),section=sessionStorage.getItem('qt_admin_active_tab');return qgAdminMenuItems().map(([icon,label,page,tab])=>`<a href="#${page}" data-page="${page}" data-section="${tab}" class="${hash===page&&(!tab||section===tab)?'active':''}" ${tab?`onclick="event.preventDefault();qgAdminSection('${tab}')"`:''}>${qgAdminIcon(icon)}<span>${label}</span></a>`).join('');}
+function qgAdminSyncNavigation(){const hash=location.hash.slice(1),section=sessionStorage.getItem('qt_admin_active_tab');document.querySelectorAll('[data-page]').forEach(a=>{const active=hash===a.dataset.page&&(!a.dataset.section||section===a.dataset.section);a.classList.toggle('active',active);if(active)a.setAttribute('aria-current','page');else a.removeAttribute('aria-current')})}
 function layout(title, content){
-  document.title = title + ' - QueueGo';
-  const user = currentUser();
-  document.getElementById('app').innerHTML = `
-    <header class="qt-header qt-appbar">
-      <div class="qt-appbar-left">
-        ${location.hash && location.hash.replace('#','')!==qtLandingPage(user) ? `<button type="button" class="qt-back-btn" onclick="qtGoBack()" aria-label="ย้อนกลับ">‹</button>` : ''}
-        <div class="qt-logo qt-q-only" onclick="navigate(qtLandingPage(user))"><svg viewBox="0 0 48 48" aria-label="QueueGo" role="img"><circle cx="23" cy="23" r="16" fill="none" stroke="currentColor" stroke-width="8"/><path d="M26 27l12 12" fill="none" stroke="currentColor" stroke-width="8" stroke-linecap="round"/></svg></div>
-      </div>
-      ${user
-        ? `<div class="qt-appbar-user"><div class="qt-user-chip" onclick="navigate('${user.type==='customer'?'dashboard':qtLandingPage(user)}')">👤 ${escapeHtml(user.name)}</div><button type="button" class="qt-logout-btn" onclick="logout();return false;" aria-label="ออกจากระบบ">↪</button></div>`
-        : `<div class="qt-auth-links"><a href="#login">เข้าสู่ระบบ</a><a href="#register">สมัคร</a></div>`}
-    </header>
-    <main class="qt-main">${content}</main>
-    ${bottomNav()}
-    <div id="notif-toast-box"></div>
-  `;
+ document.title=title+' · QueueGo Admin';const user=currentUser();
+ document.getElementById('app').innerHTML=`<div class="qg-admin-shell">
+ <aside class="qg-admin-sidebar"><a class="qg-brand" href="#admin">${qgAdminBrand()}</a><p class="qg-nav-caption">พื้นที่ทำงาน</p><nav aria-label="เมนูผู้ดูแล">${qgAdminNavigation()}</nav><div class="qg-sidebar-user"><span class="qg-avatar">${escapeHtml((user?.name||'A').slice(0,1))}</span><div><b>${escapeHtml(user?.name||'Admin')}</b><small>ผู้ดูแลระบบ</small></div><button type="button" onclick="logout()" aria-label="ออกจากระบบ">↪</button></div></aside>
+ <div class="qg-admin-workspace"><header class="qt-header qt-appbar"><a class="qg-brand" href="#admin">${qgAdminBrand()}</a><div class="qg-header-tools"><a class="qg-notification-button" href="#notifications" aria-label="การแจ้งเตือน">${qgAdminIcon('bell')}${notificationBadgeHTML(user?.id)}</a><button type="button" class="qg-header-menu" onclick="document.getElementById('qg-admin-menu').showModal()" aria-label="เปิดเมนู">${qgAdminIcon('menu')}</button><span class="qg-avatar qg-header-avatar">${escapeHtml((user?.name||'A').slice(0,1))}</span></div></header>
+ <main class="qt-main"><div class="qg-page-title"><div><p>QUEUEGO / ADMIN</p><h1>${escapeHtml(title)}</h1></div><button type="button" class="qg-page-back" onclick="navigate('admin')">หน้าแรก ${qgAdminIcon('arrow')}</button></div>${content}</main>${bottomNav()}</div></div><dialog id="qg-admin-menu" class="qg-admin-menu"><div class="qg-menu-head"><b>เมนูจัดการ</b><button type="button" onclick="document.getElementById('qg-admin-menu').close()" aria-label="ปิดเมนู">✕</button></div><nav aria-label="เมนูเพิ่มเติม">${qgAdminNavigation()}<a href="#admin-support">${qgAdminIcon('users')}<span>ข้อความร้านค้า</span></a><a href="#admin-governance" onclick="event.preventDefault();qgAdminSection('qt-sec-audit')">${qgAdminIcon('orders')}<span>ประวัติการทำงาน</span></a><button type="button" onclick="qgAdminTickets()">${qgAdminIcon('shield')}<span>เรื่องร้องเรียน</span></button><button type="button" onclick="logout()">ออกจากระบบ</button></nav></dialog><div id="notif-toast-box"></div>`;
+ document.querySelectorAll('#qg-admin-menu a').forEach(a=>a.addEventListener('click',()=>document.getElementById('qg-admin-menu')?.close()));qgAdminSyncNavigation();
 }
-function bottomNav(){
-  const user = currentUser();
-  const hash = location.hash || '#home';
-  const isActive = h => hash===('#'+h) ? 'active' : '';
-  if(!user) return '';
-  const badge = unreadNotifCount(user.id);
-  const bnBadge = notificationBadgeHTML(user.id);
-  if(user.type==='admin') return `<nav class="qt-bottomnav">
-      <a href="#admin" class="${isActive('admin')}">🛡️<span>แอดมิน</span></a>
-      <a href="#notifications" class="${isActive('notifications')}">🔔${bnBadge}<span>แจ้งเตือน</span></a>
-    </nav>`;
-  if(user.type==='customer'){
-    /* V5.33: same navigation whether or not an order is active (no more lock) */
-    return `<nav class="qt-bottomnav">
-      <a href="#home" class="${isActive('home')}">🏠<span>หน้าแรก</span></a>
-      <a href="#search" class="${isActive('search')}">🔎<span>ค้นหา</span></a>
-      <a href="#cart" class="${isActive('cart')}">🛒<b class="cart-count-badge" style="${cartCount()>0?'':'display:none'}">${cartCount()>99?'99+':cartCount()}</b><span>ตะกร้า</span></a>
-      <a href="#orders" class="${isActive('orders')}">📦<span>คำสั่งซื้อ</span></a>
-      <a href="#notifications" class="${isActive('notifications')}">🔔${bnBadge}<span>แจ้งเตือน</span></a>
-      <a href="#dashboard" class="${isActive('dashboard')}">👤<span>โปรไฟล์</span></a>
-    </nav>`;
-  }
-  if(user.type==='shop') return `<nav class="qt-bottomnav">
-      <a href="#dashboard" class="${isActive('dashboard')}">🏪<span>แดชบอร์ด</span></a>
-      <a href="#shop-products" class="${isActive('shop-products')}">📦<span>สินค้า</span></a>
-      <a href="#shop-orders" class="${isActive('shop-orders')}">🧾<span>ออเดอร์</span></a>
-      <a href="#shop-promote" class="${isActive('shop-promote')}">⭐<span>โปรโมต</span></a>
-      <a href="#notifications" class="${isActive('notifications')}">🔔${bnBadge}<span>แจ้งเตือน</span></a>
-      <a href="#shop-modules" class="${isActive('shop-modules')}">⚙️<span>แพ็กเกจ</span></a>
-    </nav>`;
-  if(user.type==='rider') return `<nav class="qt-bottomnav">
-      <a href="#dashboard" class="${isActive('dashboard')}">👤<span>แดชบอร์ด</span></a>
-      <a href="#rider-jobs" class="${isActive('rider-jobs')}">🛵<span>งานจัดส่ง</span></a>
-      <a href="#notifications" class="${isActive('notifications')}">🔔${bnBadge}<span>แจ้งเตือน</span></a>
-    </nav>`;
-  if(user.type==='technician') return `<nav class="qt-bottomnav">
-      <a href="#dashboard" class="${isActive('dashboard')}">👤<span>แดชบอร์ด</span></a>
-      <a href="#technician-jobs" class="${isActive('technician-jobs')}">🧰<span>งานซ่อม</span></a>
-      <a href="#notifications" class="${isActive('notifications')}">🔔${bnBadge}<span>แจ้งเตือน</span></a>
-    </nav>`;
-}
+function bottomNav(){return `<nav class="qt-bottomnav" aria-label="เมนูหลัก">${[['home','หน้าแรก','admin',''],['orders','ออเดอร์','admin-orders',''],['shop','ร้านค้า','admin-governance','qt-sec-shops'],['users','ผู้ใช้','admin-governance','qt-sec-users']].map(([icon,label,page,tab])=>`<a href="#${page}" data-page="${page}" data-section="${tab}" ${tab?`onclick="event.preventDefault();qgAdminSection('${tab}')"`:''}>${qgAdminIcon(icon)}<span>${label}</span></a>`).join('')}<button type="button" onclick="document.getElementById('qg-admin-menu').showModal()">${qgAdminIcon('menu')}<span>เพิ่มเติม</span></button></nav>`;}
 
 /* ---------- 1. HOME ---------- */
 
@@ -1602,75 +1228,23 @@ function qtAdminOnlineCounts(users){
   };
 }
 function renderAdminDashboard(user){
-  if(!user || user.type!=='admin'){ navigate('login'); return; }
-  const users=dbGet('qt_users',[]), orders=dbGet('qt_orders',[]), promos=dbGet('qt_promotions',[]);
-  const pendingUsers=users.filter(u=>['shop','rider','technician'].includes(u.type)&&u.status==='pending').length;
-  const pendingPromos=promos.filter(p=>p.status==='pending').length;
-  const pending=pendingUsers+pendingPromos;
-  const activePromos=promos.filter(p=>p.status==='active').length;
-  const activeOrders=orders.filter(o=>!['completed','cancelled'].includes(o.status)).length;
-  const online=qtAdminOnlineCounts(users);
-  layout('Admin Dashboard', `<div class="qt-admin-wrap">
-    <div class="qt-admin-head"><div><h2>🛡️ QueueGo Admin</h2><p class="qt-admin-note">ภาพรวมระบบแบบย่อ • เน้นงานที่ต้องจัดการบนมือถือ</p></div></div>
-    <div class="qt-admin-mobile-stats" aria-label="ผู้ใช้งานออนไลน์">
-      <span class="qt-admin-mobile-stat shop"><i class="dot"></i>🏪 ร้านค้า <b>${online.shop}</b></span>
-      <span class="qt-admin-mobile-stat rider"><i class="dot"></i>🛵 ไรเดอร์ <b>${online.rider}</b></span>
-      <span class="qt-admin-mobile-stat customer"><i class="dot"></i>👤 ลูกค้า <b>${online.customer}</b></span>
-    </div>
-    <div class="qt-admin-quick-status">
-      <span>ออเดอร์ <b>${orders.length}</b></span><span>กำลังทำ <b>${activeOrders}</b></span><span>รออนุมัติ <b>${pending}</b></span><span>Promote <b>${activePromos}</b></span><span>สมาชิก <b>${users.length}</b></span>
-    </div>
-    <div class="qt-admin-worklist">
-      <div class="qt-admin-workrow"><div class="qt-admin-workicon">👥</div><div class="qt-admin-workmain"><b>ผู้ให้บริการรอตรวจ</b><small>ร้านค้า • ไรเดอร์ • ช่าง</small></div><strong class="qt-admin-workcount">${pendingUsers}</strong><button class="qt-admin-workbtn" onclick="navigate('admin-governance');setTimeout(()=>qtAdminTab('qt-sec-approval'),0)">ตรวจ</button></div>
-      <div class="qt-admin-workrow"><div class="qt-admin-workicon">📣</div><div class="qt-admin-workmain"><b>Promote รออนุมัติ</b><small>คำขอโฆษณาของร้านค้า</small></div><strong class="qt-admin-workcount">${pendingPromos}</strong><button class="qt-admin-workbtn" onclick="navigate('admin-governance');setTimeout(()=>qtAdminTab('qt-sec-promote'),0)">ดู</button></div>
-      <div class="qt-admin-workrow"><div class="qt-admin-workicon">📦</div><div class="qt-admin-workmain"><b>ออเดอร์กำลังดำเนินการ</b><small>งานที่ยังไม่เสร็จหรือยกเลิก</small></div><strong class="qt-admin-workcount">${activeOrders}</strong><button class="qt-admin-workbtn" onclick="navigate('admin-orders')">ดูงาน</button></div>
-    </div>
-    <div class="qt-admin-home-actions">
-      <button onclick="qgAdminOpenControl('qt-sec-approval','shop')"><span>อนุมัติร้านค้า</span><small>ตรวจใบสมัครร้านจากฐานข้อมูล <b id="qg-home-pending-shops">…</b></small></button>
-      <button class="qg-market-admin-link" onclick="navigate('admin-market')"><span>อนุมัติตลาด</span><small>คำขอเพิ่มตลาดและร้านสมาชิก · รอตรวจ <b id="qg-home-pending-markets">กำลังโหลด</b></small></button>
-      <button onclick="qgAdminOpenControl('qt-sec-approval','rider')"><span>อนุมัติไรเดอร์</span><small>ตรวจใบสมัครและเอกสาร <b id="qg-home-pending-riders">…</b></small></button>
-      <button onclick="qgAdminOpenControl('qt-sec-security','customer')"><span>ศูนย์ความปลอดภัย</span><small>ค้นหา ระงับ และปลดระงับบัญชี</small></button>
-      <button onclick="qgAdminOpenControl('qt-sec-delivery')"><span>ควบคุมไรเดอร์</span><small>ออนไลน์ ออฟไลน์ และพักสิทธิ์</small></button>
-      <button onclick="qgAdminOpenControl('qt-sec-overview')"><span>ศูนย์ควบคุม</span><small>ผู้ใช้ • อนุมัติ • ตั้งค่า</small></button>
-      <button onclick="navigate('admin-orders')"><span>จัดการออเดอร์</span><small>ติดตามและจัดการรายการ</small></button>
-      <button onclick="navigate('admin-cash')"><span>เส้นทางเงินสด</span><small>ไรเดอร์ • ร้านค้า • ลูกค้า</small></button>
-      <button onclick="navigate('admin-gp')"><span>สรุปยอด GP</span><small>รายได้และยอดร้านค้า</small></button>
-      <button onclick="qtAdminRefresh('dashboard')"><span>รีเฟรชข้อมูล</span><small>อัปเดตข้อมูลล่าสุด</small></button>
-    </div>
-    <button class="qt-admin-logout" onclick="logout()">ออกจากระบบ Admin</button>
-  </div>`);
-
-
-
-(()=>{
-
-   const actions=document.querySelector('.qt-admin-home-actions');
-   if(actions&&!actions.querySelector('[data-qg-support]'))actions.insertAdjacentHTML('beforeend','<button data-qg-support type="button" onclick="navigate(\'admin-support\')"><span>ข้อความร้านค้า</span><small>อ่านและตอบคำถามจากร้าน</small></button>');
- })();
-(()=>{if(currentUser()?.type!=='admin')return;const host=document.querySelector('.qt-admin-home-actions');if(!host)return;
-   host.insertAdjacentHTML('beforeend','<button type="button" onclick="qgAdminTickets()"><span>เรื่องร้องเรียน</span><small>หลักฐานและการตัดสิน</small></button>');
-   const box=document.createElement('section');box.className='qg-v22-admin-live';box.innerHTML='<h3>สถานะระบบจากฐานข้อมูล</h3><p>กำลังโหลด...</p>';host.before(box);
-   qgAdminRequest('rpc/qg_admin_live_counts','POST',{}).then(summary=>{if(!box.isConnected)return;const count=s=>Number(summary.orders?.[s]||0),online=Number(summary.riders_online||0),open=Number(summary.shops_open||0);
-     box.innerHTML='<h3>สถานะระบบจากฐานข้อมูล</h3><div class="qg-v22-admin-grid">'+[['รอร้าน',count('pending')],['รับแล้ว',count('accepted')],['กำลังเตรียม',count('preparing')],['รอไรเดอร์',count('ready')],['ไรเดอร์รับ',count('assigned')],['รับสินค้าแล้ว',count('picked_up')],['กำลังส่ง',count('in_progress')],['สำเร็จ',count('completed')],['ยกเลิก',count('cancelled')],['ไรเดอร์ออนไลน์',online],['ร้านเปิด',open]].map(([name,n])=>'<button type="button" onclick="navigate(\'admin-orders\')">'+name+'<b>'+n+'</b></button>').join('')+'</div>';}).catch(e=>{box.querySelector('p').textContent='โหลดสถานะไม่สำเร็จ: '+e.message});
- })();
-(()=>{
-
-    if(currentUser()?.type!=='admin')return;
-    const shop=document.getElementById('qg-home-pending-shops'),rider=document.getElementById('qg-home-pending-riders');
-    if(!shop||!rider)return;
-    qtGetAccessToken().then(token=>qtSupabaseTable('users?select=role,status&role=in.(shop,rider)&status=eq.pending',{accessToken:token}))
-      .then(rows=>{if(shop.isConnected)shop.textContent=String(rows.filter(x=>x.role==='shop').length);if(rider.isConnected)rider.textContent=String(rows.filter(x=>x.role==='rider').length)})
-      .catch(e=>{if(shop.isConnected)shop.textContent='โหลดไม่สำเร็จ';if(rider.isConnected)rider.textContent='โหลดไม่สำเร็จ';console.warn('Admin pending accounts:',e)});
-  })();
-
-if(typeof qgLoadMarketPendingCount==='function')qgLoadMarketPendingCount();
+ if(!user||user.type!=='admin')return navigate('login');
+ const users=dbGet('qt_users',[]),orders=dbGet('qt_orders',[]),promos=dbGet('qt_promotions',[]);
+ const pendingUsers=users.filter(u=>['shop','rider','technician'].includes(u.type)&&u.status==='pending');
+ const pendingPromos=promos.filter(p=>p.status==='pending').length;
+ const shops=users.filter(u=>u.type==='shop'),riders=users.filter(u=>u.type==='rider'),customers=users.filter(u=>u.type==='customer');
+ const recent=[...orders].sort((a,b)=>Number(b.createdAt)-Number(a.createdAt)).slice(0,6);
+ layout('ภาพรวมระบบ',`<div class="qg-dashboard"><section class="qg-welcome"><div><span class="qg-eyebrow">ศูนย์ควบคุมผู้ดูแล</span><h2>สวัสดี, ${escapeHtml(user.name||'Admin')}</h2><p>งานสำคัญและข้อมูลระบบ อยู่ในที่เดียว</p></div><button type="button" class="qg-refresh" onclick="qtAdminRefresh('dashboard')">${qgAdminIcon('refresh')} รีเฟรช</button></section>
+ <div class="qg-kpi-grid">${[['orders','ออเดอร์ที่โหลด',orders.length,'admin-orders'],['shop','ร้านค้า',shops.length,'shops'],['rider','ไรเดอร์',riders.length,'riders'],['users','ลูกค้า',customers.length,'users']].map(([icon,label,value,target])=>`<button class="qg-kpi ${icon}" type="button" onclick="${target==='admin-orders'?"navigate('admin-orders')":target==='shops'?"qgAdminSection('qt-sec-shops')":target==='riders'?"qgAdminSection('qt-sec-delivery')":"qgAdminSection('qt-sec-users')"}"><span class="qg-kpi-icon">${qgAdminIcon(icon)}</span><div><small>${label}</small><strong>${value.toLocaleString('th-TH')}</strong></div>${qgAdminIcon('arrow')}</button>`).join('')}</div>
+ <div class="qg-dashboard-columns"><section class="qg-dashboard-section"><div class="qg-section-heading"><div><span class="qg-eyebrow">ACTION REQUIRED</span><h2>งานที่ต้องจัดการ</h2></div><span class="qg-count" id="qg-home-pending-total" data-base="${pendingUsers.length+pendingPromos}">${pendingUsers.length+pendingPromos}</span></div><div class="qg-action-list">
+ <button type="button" onclick="qgAdminOpenControl('qt-sec-approval','shop')"><span class="qg-action-icon shop">${qgAdminIcon('shop')}</span><span><b>อนุมัติร้านค้า</b><small>ตรวจชื่อร้านและประเภทธุรกิจ</small></span><strong id="qg-home-pending-shops">${pendingUsers.filter(u=>u.type==='shop').length}</strong>${qgAdminIcon('arrow')}</button>
+ <button type="button" onclick="qgAdminOpenControl('qt-sec-approval','rider')"><span class="qg-action-icon rider">${qgAdminIcon('rider')}</span><span><b>อนุมัติไรเดอร์</b><small>ตรวจใบสมัครและเอกสาร</small></span><strong id="qg-home-pending-riders">${pendingUsers.filter(u=>u.type==='rider').length}</strong>${qgAdminIcon('arrow')}</button>
+ <button type="button" class="qg-market-admin-link" onclick="navigate('admin-market')"><span class="qg-action-icon pin">${qgAdminIcon('pin')}</span><span><b>อนุมัติตลาด</b><small>ตลาดใหม่และร้านสมาชิก</small></span><strong id="qg-home-pending-markets">…</strong>${qgAdminIcon('arrow')}</button>
+ <button type="button" onclick="qgAdminSection('qt-sec-promote')"><span class="qg-action-icon bell">${qgAdminIcon('bell')}</span><span><b>คำขอ Promote</b><small>ตรวจคำขอโฆษณาจากร้าน</small></span><strong>${pendingPromos}</strong>${qgAdminIcon('arrow')}</button></div></section>
+ <section class="qg-dashboard-section"><div class="qg-section-heading"><div><span class="qg-eyebrow">LATEST ORDERS</span><h2>ออเดอร์ล่าสุด</h2></div><a href="#admin-orders">ดูทั้งหมด ${qgAdminIcon('arrow')}</a></div><div class="qg-recent-orders">${recent.length?recent.map(o=>{const status=ORDER_STATUSES.find(x=>x.key===o.status)?.label||o.status;return `<button type="button" onclick="qgAdminTrace('${escapeHtml(o.id)}')"><span class="qg-order-icon">${qgAdminIcon('orders')}</span><span><b>#${escapeHtml(displayOrderNumber(o))}</b><small>${escapeHtml(o.shopName||shops.find(s=>s.id===o.shopId)?.shopName||'ไม่ระบุชื่อร้าน')}</small><span class="qg-status ${escapeHtml(o.status)}">${escapeHtml(status)}</span></span><span class="qg-order-amount">฿${Number(o.total||o.totalAmount||0).toLocaleString('th-TH')}<small>${new Date(o.createdAt).toLocaleString('th-TH',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit',timeZone:'Asia/Bangkok'})}</small></span></button>`}).join(''):'<p class="qg-empty">ยังไม่มีออเดอร์ที่โหลด</p>'}</div></section></div>
+ <section class="qg-dashboard-section"><div class="qg-section-heading"><div><span class="qg-eyebrow">WORKSPACE</span><h2>จัดการระบบ</h2></div></div><div class="qt-admin-home-actions">${[['money','การเงิน / GP','รายได้ร้านและตรวจสลิป',"navigate('admin-gp')"],['pin','ตลาดและพิกัด','แก้หมุดตลาดและร้าน',"navigate('admin-market')"],['shield','ศูนย์ความปลอดภัย','ระงับและปลดระงับบัญชี',"qgAdminSection('qt-sec-security')"],['bell','ประกาศ','ส่งข้อความถึงสมาชิก',"qgAdminSection('qt-sec-notify')"],['users','ข้อความร้านค้า','อ่านและตอบกลับ',"navigate('admin-support')"],['shield','เรื่องร้องเรียน','หลักฐานและการตัดสิน',"qgAdminTickets()"],['chart','รายงาน / เงินสด','ตรวจเหตุการณ์ทางการเงิน',"navigate('admin-cash')"],['settings','ตั้งค่าระบบ','บริการและอัตราค่าบริการ',"qgAdminSection('qt-sec-settings')"]].map(([icon,label,detail,action])=>`<button type="button" onclick="${action}"><span class="qg-shortcut-icon">${qgAdminIcon(icon)}</span><span><b>${label}</b><small>${detail}</small></span>${qgAdminIcon('arrow')}</button>`).join('')}</div></section><p class="qg-data-note">ข้อมูลล่าสุดที่โหลดจากระบบ</p></div>`);
+ if(typeof qgLoadMarketPendingCount==='function')qgLoadMarketPendingCount();
 }
-
-
-
-
-
-
 
 /* ---------- 3. DASHBOARD ---------- */
 
@@ -2095,15 +1669,7 @@ function qtGpRateCards(){
 }
 
 </script>
-<style id="qt-rider-fit-screen-fix">
-/* V5.20: Rider application fits the device viewport without horizontal overflow */
-html,body{min-width:0}
-body{margin:0;padding-left:0;padding-right:0}
-.qt-main{width:100%;max-width:640px;min-width:0;margin:0 auto;overflow-x:hidden}
-@media(max-width:760px){
-  .qt-main{padding:0 8px 92px!important;max-width:none}
-}
-</style>
+
 
 
 
@@ -2147,12 +1713,10 @@ window.addEventListener('unhandledrejection',e=>{
   window.qtAdminViewUser=function(id){
     const admin=typeof qtAdminOnly==='function'?qtAdminOnly():null; if(!admin)return;
     const users=typeof dbGet==='function'?dbGet('qt_users',[]):[]; const u=users.find(x=>x.id===id); if(!u){toast('ไม่พบผู้ใช้');return;}
-    const role={customer:'👤 ลูกค้า',shop:'🏪 ร้านค้า',rider:'🛵 ไรเดอร์',technician:'🔧 ช่าง',admin:'🛡️ Admin'}[u.type]||u.type||'-';
     const status=typeof accountStatusLabel==='function'?accountStatusLabel(u.status):u.status||'-';
-    const text=['ข้อมูลบัญชี',`ชื่อ: ${u.name||'-'}`,`โทรศัพท์: ${u.phone||'-'}`,`ประเภท: ${qgAdminProviderLabel(u)}`,`สถานะ: ${status}`,`ID: ${u.id||'-'}`,`สมัครเมื่อ: ${u.createdAt?new Date(u.createdAt).toLocaleString('th-TH'):'-'}`];
-    if(u.type==='admin') text.push('สิทธิ์: Admin ไม่สามารถระงับหรือลบผ่านระบบนี้');
-    else if(u.suspendedAt) text.push(`ระงับเมื่อ: ${new Date(u.suspendedAt).toLocaleString('th-TH')}`,`เหตุผล: ${u.suspendedReason||'-'}`);
-    alert(text.join('\n'));
+    const box=document.createElement('dialog');box.className='qg-admin-detail';
+    box.innerHTML=`<div class="qg-menu-head"><h2>ข้อมูลบัญชี</h2><button type="button" aria-label="ปิดข้อมูล">✕</button></div><div class="qg-provider-heading"><span class="qg-avatar">${escapeHtml((u.shopName||u.name||'?').slice(0,1))}</span><div><b>${escapeHtml(u.shopName||u.name||'-')}</b><small>${escapeHtml(qgAdminProviderLabel(u))}</small></div></div><dl>${[['ผู้ติดต่อ',u.name],['โทรศัพท์',u.phone],['สถานะ',status],['รหัสบัญชี',u.id],['สมัครเมื่อ',u.createdAt?new Date(u.createdAt).toLocaleString('th-TH'):'-'],...(u.suspendedAt?[['เหตุผลระงับ',u.suspendedReason]]:[])].map(([label,value])=>`<div><dt>${escapeHtml(label)}</dt><dd>${escapeHtml(value||'-')}</dd></div>`).join('')}</dl>${u.type==='shop'?`<button type="button" class="btn-primary btn-block" onclick="this.closest('dialog').close();qgAdminEditLocation('shop_user','${escapeHtml(u.id)}')">แก้พิกัดร้าน</button>`:''}${u.type==='admin'?'<p class="qt-admin-note">บัญชี Admin ไม่สามารถระงับหรือลบผ่านระบบนี้</p>':''}`;
+    document.body.append(box);box.addEventListener('close',()=>box.remove());box.querySelector('.qg-menu-head button').onclick=()=>box.close();box.showModal();
     try{qtAudit('user_view',{entityType:'user',entityId:u.id,userId:u.id});}catch(e){}
   };
   window.qtAdminRefreshAuditLog=function(){
@@ -2166,10 +1730,7 @@ window.addEventListener('unhandledrejection',e=>{
 })();
 </script>
 
-<style id="qt-security-center-v561">
-.qt-security-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;margin-bottom:14px}.qt-security-head h3{margin:0 0 4px}.qt-security-summary{display:flex;gap:7px;flex-wrap:wrap}.qt-security-summary span{background:#fff;border:1px solid #e5eaf2;border-radius:999px;padding:7px 10px;font-weight:800}.qt-security-role-buttons{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:12px 0 14px}.qt-security-role{appearance:none;border:1px solid #dfe6f0;background:#fff;border-radius:18px;padding:14px 8px;min-width:0;display:flex;flex-direction:column;align-items:center;gap:3px;color:#172033;box-shadow:0 5px 18px rgba(28,39,60,.05)}.qt-security-role>span{font-size:25px}.qt-security-role b{font-size:15px}.qt-security-role small{font-size:11px;color:#778399}.qt-security-role.active{border-color:#2563eb;background:#eff6ff;box-shadow:0 7px 20px rgba(37,99,235,.12)}.qt-security-toolbar{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:9px;margin-bottom:12px}.qt-security-toolbar input{width:100%;border:1px solid #dfe6f0;background:#fff;border-radius:14px;padding:12px 14px;font:inherit}.qt-security-user-list{display:grid;gap:10px}.qt-security-user-card{background:#fff;border:1px solid #e4e9f1;border-radius:18px;padding:14px;box-shadow:0 5px 18px rgba(28,39,60,.045)}.qt-security-user-top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}.qt-security-user-name{font-size:17px;font-weight:900;color:#172033}.qt-security-user-meta{margin-top:4px;font-size:13px;color:#667085;overflow-wrap:anywhere}.qt-security-status{flex:0 0 auto;border-radius:999px;padding:6px 9px;font-size:11px;font-weight:900;background:#eef2f7}.qt-security-status.active{background:#eaf8ef;color:#157347}.qt-security-status.suspended{background:#fff0f0;color:#c62828}.qt-security-status.pending{background:#fff7df;color:#8a6500}.qt-security-status.rejected{background:#f3f4f6;color:#555}.qt-security-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}.qt-security-actions button{width:100%;margin:0;min-height:42px;border-radius:13px}.qt-security-empty{text-align:center;padding:28px 12px;color:#7b8495;background:#fff;border:1px dashed #d8dee8;border-radius:18px}
-@media(max-width:520px){.qt-security-head{display:block}.qt-security-summary{margin-top:10px}.qt-security-role-buttons{gap:7px}.qt-security-role{padding:12px 4px;border-radius:15px}.qt-security-role b{font-size:14px}.qt-security-role small{font-size:10px}.qt-security-toolbar{grid-template-columns:1fr}.qt-security-actions{grid-template-columns:1fr 1fr}}
-</style>
+
 <script id="qt-security-center-v561-script">
 (function(){
   window.QT_SECURITY_ROLE=window.QT_SECURITY_ROLE||'customer';
@@ -2200,10 +1761,7 @@ window.addEventListener('unhandledrejection',e=>{
 </script>
 
 
-<style id="qt-v546-admin-full-control-style">
-.qt-admin-command-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:12px 0}.qt-admin-command{border:1px solid #e3e8f0;background:#fff;border-radius:17px;padding:14px;text-align:left;box-shadow:0 5px 18px rgba(15,23,42,.04);cursor:pointer}.qt-admin-command b{display:block;color:#172033;font-size:14px}.qt-admin-command small{display:block;color:#7a8699;font-size:10px;line-height:1.45;margin-top:4px}.qt-admin-command .ico{font-size:23px;display:block;margin-bottom:7px}.qt-admin-section-card{background:#fff;border:1px solid #e3e8f0;border-radius:18px;padding:14px;margin:10px 0}.qt-admin-broadcast-targets{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:10px 0}.qt-admin-broadcast-targets button{min-width:0;border-radius:12px;padding:10px 5px}.qt-admin-broadcast-targets button.active{background:#0f172a;color:#fff;border-color:#0f172a}.qt-admin-shop-list{display:grid;gap:9px}.qt-admin-shop-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:center;padding:12px;border:1px solid #e5eaf2;border-radius:14px}.qt-admin-shop-row small{display:block;color:#7a8699;margin-top:3px}.qt-admin-shop-row button{min-width:110px}.qt-admin-danger-note{font-size:11px;color:#8a3b12;background:#fff7ed;border:1px solid #fed7aa;border-radius:12px;padding:10px;line-height:1.5}.qt-admin-permission-row{display:flex;justify-content:space-between;gap:10px;padding:10px 0;border-bottom:1px solid #eef2f7}.qt-admin-permission-row:last-child{border-bottom:0}.qt-admin-permission-row span{color:#64748b;font-size:12px}.qt-admin-permission-row b{font-size:12px}
-@media(max-width:520px){.qt-admin-command-grid{grid-template-columns:1fr 1fr;gap:8px}.qt-admin-command{padding:12px 10px}.qt-admin-broadcast-targets{grid-template-columns:repeat(3,minmax(0,1fr))}.qt-admin-shop-row{grid-template-columns:1fr}.qt-admin-shop-row button{width:100%}}
-</style>
+
 <script id="qt-v546-admin-full-control-script">
 (function(){
   window.QT_ADMIN_BROADCAST_ROLE=window.QT_ADMIN_BROADCAST_ROLE||'all';
@@ -2243,10 +1801,7 @@ window.addEventListener('unhandledrejection',e=>{
 
 })();
 </script>
-<style id="qg-admin-live-gp-style">
-.qg-live-gp{max-width:720px;margin:0 auto;padding:12px}.qg-live-gp-card{border:1px solid #dce9e1;border-radius:14px;background:#fff;padding:14px;margin:10px 0;line-height:1.55}
-.qg-live-gp-card small{color:#718779}.qg-live-gp-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}.qg-live-gp-actions button{flex:1;min-width:100px}
-</style><script id="qg-admin-live-gp">
+<script id="qg-admin-live-gp">
 (function(){
   const money=n=>Number(n||0).toLocaleString('th-TH',{minimumFractionDigits:2,maximumFractionDigits:2});
   const day=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Bangkok',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
@@ -2338,21 +1893,7 @@ async function qgLoadAdminCash(day){
  }catch(e){if(el)el.textContent='โหลดข้อมูลไม่สำเร็จ: '+e.message;}
 }
 </script>
-<style id="qg-admin-v21-ui">
-body:has(.qt-admin-wrap),body:has(.qg-live-gp),body:has(.qg-admin-support),body:has(.qg-admin-rates),body:has(.qt-gp-shell){--primary:#0d9f73;--primary-dark:#087755;--accent:#17b789;--bg:#f5faf7}
-.qt-admin-wrap,.qg-live-gp,.qg-admin-support,.qg-admin-rates,.qt-gp-shell{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text",system-ui,sans-serif}
-.qt-admin-wrap .qt-admin-tab.active,.qt-admin-wrap .btn-primary,.qg-admin-rates .btn-primary{background:#0d9f73;color:#fff}
-.qg-admin-support,.qg-admin-rates{max-width:720px;margin:auto}.qg-admin-support h2,.qg-admin-rates h2{font-size:22px;margin:4px 0 14px}
-.qg-admin-support .card,.qg-admin-rates .card{border:1px solid #dceae3;border-radius:16px;background:#fff;padding:14px;margin:12px 0}
-.qg-admin-support .qg-support-list{display:grid;gap:7px}.qg-admin-support .qg-support-list button{text-align:left;border:1px solid #dceae3;background:#f8fcfa;padding:12px;border-radius:12px}
-.qg-admin-support .qg-support-list button.active{border-color:#0d9f73;background:#e6f8ef}
-.qg-admin-support .qg-support-messages{max-height:48vh;overflow:auto}.qg-admin-support .qg-support-bubble{padding:10px 12px;margin:7px 0;background:#f2f7f4;border-radius:12px;white-space:pre-wrap;overflow-wrap:anywhere}
-.qg-admin-support .qg-support-bubble.mine{background:#e3f7eb}.qg-admin-support textarea{min-height:72px}
-.qt-admin-wrap:has(#qg-admin-section-picker) .qt-admin-tabs{display:none!important}
-.qg-admin-section-picker{display:block;margin:8px 0 16px;font-weight:700;color:#183d32}
-.qg-admin-section-picker select{width:100%;min-height:46px;margin-top:6px;border:1px solid #cde7d8;border-radius:12px;padding:9px 12px;background:#fff;font:inherit}
-@media(max-width:520px){.qt-admin-command small{font-size:11px}}
-</style>
+
 <script id="qg-admin-v21-integration">
 (function(){
 
@@ -2455,15 +1996,18 @@ body:has(.qt-admin-wrap),body:has(.qg-live-gp),body:has(.qg-admin-support),body:
  const money=n=>'฿'+Number(n||0).toLocaleString('th-TH',{minimumFractionDigits:2,maximumFractionDigits:2});
 
 
- const states={pending:'รอร้าน',accepted:'รับแล้ว',preparing:'กำลังเตรียม',ready:'รอไรเดอร์',assigned:'ไรเดอร์รับงาน',picked_up:'รับสินค้าแล้ว',in_progress:'กำลังส่ง',completed:'สำเร็จ',cancelled:'ยกเลิก'};
+ const states={pending:'รอร้านรับ',searching_rider:'กำลังหาไรเดอร์',rider_assigned:'ไรเดอร์รับงาน',accepted:'ร้านรับแล้ว',preparing:'กำลังเตรียม',ready:'พร้อมรับสินค้า',assigned:'ไรเดอร์รับงาน',picked_up:'รับสินค้าแล้ว',in_progress:'กำลังส่ง',completed:'สำเร็จ',cancelled:'ยกเลิก'};
  window.qgAdminOrderFilter='all';
- window.renderAdminOrderCenter=function(){if(!active())return navigate('login');layout('ศูนย์ออเดอร์','<div class="qg-v22-admin-orders"><h2>ออเดอร์จริง</h2><div id="qg-v22-order-filters"></div><div id="qg-v22-order-list">กำลังโหลดจากฐานข้อมูล...</div></div>');qgLoadAdminOrders()};
+ window.renderAdminOrderCenter=function(){if(!active())return navigate('login');layout('จัดการออเดอร์','<div class="qg-v22-admin-orders"><div class="qg-order-toolbar"><input id="qg-admin-order-search" type="search" placeholder="ค้นหาเลขออเดอร์ ร้าน หรือลูกค้า"><button type="button" onclick="qgLoadAdminOrders()">รีเฟรช</button></div><div id="qg-v22-order-filters"></div><div id="qg-v22-order-list">กำลังโหลดจากฐานข้อมูล...</div></div>');qgLoadAdminOrders()};
  window.qgLoadAdminOrders=async function(){const list=document.getElementById('qg-v22-order-list'),tabs=document.getElementById('qg-v22-order-filters');if(!list)return;
    try{const rows=await req('orders?select=id,order_number,status,subtotal,delivery_fee,gp_amount,total_amount,customer_id,shop_id,rider_id,created_at&order=created_at.desc&limit=500');if(!list.isConnected)return;
-     tabs.innerHTML='<button type="button" data-status="all">ทั้งหมด '+rows.length+'</button>'+Object.entries(states).map(([key,label])=>'<button type="button" data-status="'+key+'">'+label+' '+rows.filter(o=>o.status===key).length+'</button>').join('');
+     const users=dbGet('qt_users',[]),shopName=id=>users.find(u=>u.shopProfileId===id)?.shopName||'',customerName=id=>users.find(u=>u.id===id)?.name||'';
+     tabs.innerHTML=[['all','ทั้งหมด'],['_active','กำลังดำเนินการ'],['completed','สำเร็จ'],['cancelled','ยกเลิก']].map(([key,label])=>'<button type="button" data-status="'+key+'">'+label+'</button>').join('');
      tabs.querySelectorAll('button').forEach(b=>b.onclick=()=>{qgAdminOrderFilter=b.dataset.status;paint()});
-     function paint(){tabs.querySelectorAll('button').forEach(b=>b.classList.toggle('active',b.dataset.status===qgAdminOrderFilter));const shown=rows.filter(o=>qgAdminOrderFilter==='all'||o.status===qgAdminOrderFilter);
-       list.innerHTML=shown.map(o=>'<article><strong>'+safe(o.order_number)+'</strong><span>'+safe(states[o.status]||o.status)+'</span><p>สินค้า '+money(o.subtotal)+' · ค่าส่ง '+money(o.delivery_fee)+' · GP '+money(o.gp_amount)+' · รวม '+money(o.total_amount)+'</p><small>'+new Date(o.created_at).toLocaleString('th-TH')+'</small><div><button type="button" data-id="'+safe(o.id)+'" data-op="trace">ตรวจเส้นทางเงิน</button><button type="button" data-id="'+safe(o.id)+'" data-op="delete">ลบพร้อมเก็บหลักฐาน</button></div></article>').join('')||'<p>ไม่มีออเดอร์สถานะนี้</p>';
+     const search=document.getElementById('qg-admin-order-search');if(search)search.oninput=paint;
+     function paint(){tabs.querySelectorAll('button').forEach(b=>b.classList.toggle('active',b.dataset.status===qgAdminOrderFilter));const query=(search?.value||'').trim().toLocaleLowerCase('th');const shown=rows.filter(o=>(qgAdminOrderFilter==='all'||qgAdminOrderFilter==='_active'&&!['completed','cancelled'].includes(o.status)||o.status===qgAdminOrderFilter)&&[o.order_number,shopName(o.shop_id),customerName(o.customer_id)].join(' ').toLocaleLowerCase('th').includes(query));
+       list.innerHTML=shown.map(o=>'<article><strong>#'+safe(o.order_number)+'</strong><span class="qg-status '+safe(o.status)+'">'+safe(states[o.status]||o.status)+'</span><p class="qg-order-parties">'+safe(shopName(o.shop_id)||'ไม่ระบุชื่อร้าน')+' · '+safe(customerName(o.customer_id)||'ลูกค้า')+'</p><p>สินค้า '+money(o.subtotal)+' · ค่าส่ง '+money(o.delivery_fee)+' · GP '+money(o.gp_amount)+' · รวม <b>'+money(o.total_amount)+'</b></p><small>'+new Date(o.created_at).toLocaleString('th-TH')+'</small><div><button type="button" data-id="'+safe(o.id)+'" data-op="trace">ดูข้อมูลและประวัติ</button><button type="button" data-id="'+safe(o.id)+'" data-op="delete">ลบออเดอร์</button></div></article>').join('')||'<p class="qg-empty">ไม่พบออเดอร์ตามตัวกรองนี้</p>';
+       list.insertAdjacentHTML('beforeend','<p class="qg-data-note">แสดง '+shown.length+' จาก '+rows.length+' ออเดอร์ที่โหลดล่าสุด (สูงสุด 500 รายการ)</p>');
        list.querySelectorAll('[data-op]').forEach(b=>b.onclick=()=>b.dataset.op==='trace'?qgAdminTrace(b.dataset.id):qgAdminDeleteReviewed(b.dataset.id));}
      paint();
    }catch(e){list.textContent='โหลดออเดอร์ไม่สำเร็จ: '+e.message}
@@ -2483,29 +2027,10 @@ body:has(.qt-admin-wrap),body:has(.qg-live-gp),body:has(.qg-admin-support),body:
  }catch(e){body.textContent='โหลดเรื่องร้องเรียนไม่สำเร็จ: '+e.message}};
 })();
 </script>
-<style id="qg-v22-admin-operations-style">.qg-v22-admin-live{padding:14px;background:#fff;border:1px solid #dceae3;border-radius:16px;margin:12px 0}.qg-v22-admin-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(95px,1fr));gap:7px}.qg-v22-admin-grid button{border:1px solid #dceae3;border-radius:11px;background:#f6fbf8;padding:9px;text-align:left;color:#174936}.qg-v22-admin-grid b{display:block;font-size:18px}.qg-v22-admin-orders{max-width:800px;margin:auto}.qg-v22-admin-orders #qg-v22-order-filters{display:flex;flex-wrap:wrap;gap:5px;margin:12px 0}.qg-v22-admin-orders #qg-v22-order-filters button{border:1px solid #dceae3;background:#fff;padding:7px;border-radius:9px}.qg-v22-admin-orders #qg-v22-order-filters .active{background:#ddf8ec;color:#065a42}.qg-v22-admin-orders article,.qg-v22-admin-sheet article{border:1px solid #deeee5;border-radius:14px;padding:12px;margin:9px 0;background:#fff;overflow-wrap:anywhere}.qg-v22-admin-orders article span,.qg-v22-admin-sheet article span{float:right;color:#087c59}.qg-v22-admin-orders article p{margin:8px 0}.qg-v22-admin-orders article small,.qg-v22-admin-sheet article small{display:block;color:#78897f}.qg-v22-admin-orders article button,.qg-v22-admin-sheet button:not(.qg-close){margin:6px 5px 0 0;padding:8px;border:1px solid #cce6d8;border-radius:9px;background:#eaf9f0;color:#146b4e}.qg-v22-admin-modal{position:fixed;inset:0;z-index:100000;background:#102a2aa0;display:grid;place-items:center;padding:12px}.qg-v22-admin-sheet{width:min(100%,640px);max-height:92dvh;overflow:auto;border-radius:18px;background:#fff;padding:17px;color:#193d32}.qg-v22-admin-sheet .qg-close{float:right;border:0;background:#edf7f1;border-radius:9px;padding:9px}.qg-v22-trace-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px}.qg-v22-trace-grid>div{background:#f6faf7;border:1px solid #e0eee4;border-radius:10px;padding:9px;overflow-wrap:anywhere}.qg-v22-trace-grid b{display:block;font-size:12px}.qg-v22-admin-sheet input,.qg-v22-admin-sheet select{max-width:100%;padding:8px;border:1px solid #d5e8dc;border-radius:8px}
-</style>
-<style id="qg-v23-admin-auth-style">
-body:has(.qg-v23-admin-login),body:has(.qg-v23-admin-denied){padding:0}
-.qg-v23-admin-login,.qg-v23-admin-denied{min-height:100dvh;width:100%;max-width:100%;display:flex;align-items:center;justify-content:center;padding:calc(24px + env(safe-area-inset-top)) 18px calc(24px + env(safe-area-inset-bottom));background:#fcf8f9;color:#2d1b20;text-align:center}
-.qg-v23-admin-card{width:min(100%,420px);padding:28px 22px;background:#fff;border:1px solid #f2dce1;border-radius:22px;box-shadow:0 12px 40px #74112212}
-.qg-v23-admin-mark{width:56px;height:56px;display:grid;place-items:center;margin:0 auto 14px;border-radius:16px;background:#d91232;color:#fff;font-size:30px;font-weight:800}
-.qg-v23-admin-login h1,.qg-v23-admin-denied h1{font-size:clamp(24px,7vw,32px);line-height:1.25;margin:0 0 8px;overflow-wrap:anywhere}
-.qg-v23-admin-login p,.qg-v23-admin-denied p{font-size:14px;line-height:1.6;color:#766a6e;margin:0 0 25px}
-.qg-v23-admin-login form{text-align:left;display:grid;gap:16px}
-.qg-v23-admin-login label{display:grid;gap:7px;font-size:14px;font-weight:600}
-.qg-v23-admin-login input{width:100%;min-width:0;padding:13px 14px;border:1px solid #e9cbd2;border-radius:12px;background:#fff;color:#2d1b20;font:inherit;font-size:16px}
-.qg-v23-admin-login button,.qg-v23-admin-denied button{width:100%;border:0;border-radius:12px;background:#d91232;color:white;padding:14px;font:inherit;font-weight:700;cursor:pointer}
-.qg-v23-admin-login button:disabled{opacity:.55}
-.qg-v23-admin-denied{flex-direction:column}.qg-v23-admin-denied button{max-width:320px}
-</style>
 
-<style id="qg-admin-control-restore-style">
-.qg-approval-tabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:12px 0}.qg-approval-tabs button{min-height:42px;border:1px solid #f0c9d2;border-radius:12px;background:#fff;color:#a90f2e;font:inherit;font-weight:700}.qg-approval-tabs button.active{background:#df1235;color:#fff;border-color:#df1235}.qg-approval-card[hidden],#qg-approval-filter-empty[hidden]{display:none!important}
-.qt-admin-home-actions button:nth-child(-n+4){border-color:#f0d3da;background:#fff9fa}.qt-admin-home-actions button:nth-child(-n+4) span{color:#a7092b}.qt-admin-home-actions b{color:#d00e32}
-#qg-admin-refresh-note{margin:6px 0 12px;padding:8px 11px;border-radius:10px;background:#fff7f8;color:#8c263b;font-size:12px;line-height:1.5}
-@media(max-width:520px){.qt-admin-home-actions button{min-height:77px}.qg-approval-tabs button{font-size:13px}}
-</style>
+
+
+
 <script id="qg-admin-control-restore">
 (function(){
   const allowed=new Set(['qt-sec-overview','qt-sec-approval','qt-sec-security','qt-sec-delivery','qt-sec-shops']);
@@ -2514,7 +2039,7 @@ body:has(.qg-v23-admin-login),body:has(.qg-v23-admin-denied){padding:0}
     window.QG_ADMIN_APPROVAL_ROLE=role;
     document.querySelectorAll('[data-approval-filter]').forEach(b=>b.classList.toggle('active',b.dataset.approvalFilter===role));
     let count=0;
-    document.querySelectorAll('.qg-approval-card').forEach(card=>{const show=role==='all'||card.dataset.approvalRole===role;card.hidden=!show;if(show)count++});
+    document.querySelectorAll('.qg-approval-card').forEach(card=>{const query=(document.getElementById('qg-approval-search')?.value||'').trim().toLocaleLowerCase('th');const show=(role==='all'||card.dataset.approvalRole===role)&&card.textContent.toLocaleLowerCase('th').includes(query);card.hidden=!show;if(show)count++});
     const empty=document.getElementById('qg-approval-filter-empty');if(empty)empty.hidden=count>0;
   };
   let controlRefresh=null;
@@ -2577,41 +2102,12 @@ body:has(.qg-v23-admin-login),body:has(.qg-v23-admin-denied){padding:0}
   window.adminUnsuspendUser=id=>accountAction('restore',id);
 })();
 </script>
-<link rel="stylesheet" href="market.css?v=20261005-location">
+<link rel="stylesheet" href="market.css?v=20261005-interface">
 <script defer src="locations.js?v=20261005"></script>
-<script defer src="market.js?v=20261005-location"></script>
-<style id="qg-admin-tablet-final-override-20260929">
-/* Current tablet layout. */
-@media (min-width:600px) and (max-width:1400px){
- html,body{width:100%!important;max-width:100%!important;overflow-x:hidden!important;-webkit-text-size-adjust:100%!important}
- body{margin:0!important;background:#f5faf7!important}
- #app{width:100%!important;max-width:none!important;min-height:100dvh!important}
- .qt-header.qt-appbar{width:100%!important;max-width:none!important;min-height:62px!important;padding:10px 18px!important;display:flex!important;align-items:center!important;justify-content:space-between!important;background:#fff!important;position:sticky!important;top:0!important;z-index:999!important}
- .qt-main{width:100%!important;max-width:960px!important;margin:0 auto!important;padding:20px 24px 96px!important;box-sizing:border-box!important}
- .qg-admin-support{display:block!important;width:100%!important;max-width:900px!important;margin:0 auto!important;padding:0!important;box-sizing:border-box!important}
- .qg-admin-support h2{font-size:26px!important;line-height:1.25!important;margin:6px 0 14px!important}
- .qg-admin-support>.btn-secondary{display:inline-flex!important;width:auto!important;min-height:42px!important;align-items:center!important;border:1px solid #cde7d8!important;border-radius:12px!important;background:#fff!important;color:#087755!important;padding:9px 14px!important}
- .qg-admin-support .card{display:block!important;float:none!important;position:static!important;width:100%!important;max-width:none!important;min-width:0!important;height:auto!important;box-sizing:border-box!important;margin:14px 0!important;padding:16px!important;border:1px solid #dceae3!important;border-radius:16px!important;background:#fff!important;box-shadow:0 5px 18px rgba(15,23,42,.05)!important}
- .qg-admin-support .card h3{display:block!important;width:100%!important;font-size:18px!important;margin:0 0 12px!important}
- #qg-support-shops.qg-support-list{display:grid!important;grid-template-columns:minmax(0,1fr)!important;width:100%!important;max-width:none!important;gap:8px!important}
- #qg-support-shops.qg-support-list button{display:block!important;position:static!important;width:100%!important;max-width:none!important;min-height:46px!important;margin:0!important;padding:12px 14px!important;text-align:left!important;white-space:normal!important;border:1px solid #dceae3!important;border-radius:12px!important;background:#f8fcfa!important;color:#183d32!important}
- #qg-support-shops.qg-support-list button.active{border-color:#0d9f73!important;background:#e6f8ef!important}
- #qg-support-messages.qg-support-messages{display:block!important;width:100%!important;max-width:none!important;min-height:80px!important;max-height:52dvh!important;overflow-y:auto!important;overflow-x:hidden!important}
- .qg-admin-support .qg-support-bubble{display:block!important;width:fit-content!important;max-width:82%!important;margin:8px 0!important;padding:10px 12px!important;border-radius:14px!important;background:#f2f7f4!important;white-space:pre-wrap!important;overflow-wrap:anywhere!important}
- .qg-admin-support .qg-support-bubble.mine{margin-left:auto!important;background:#e3f7eb!important}
- #qg-support-form{display:block;width:100%!important;max-width:none!important;box-sizing:border-box!important;margin:12px 0 0!important;padding:0!important;border:0!important;background:transparent!important;box-shadow:none!important}
- #qg-support-form[hidden]{display:none!important}
- #qg-support-reply{display:block!important;width:100%!important;max-width:none!important;min-height:86px!important;box-sizing:border-box!important;padding:12px!important;border:1px solid #cde7d8!important;border-radius:12px!important}
- #qg-support-form .btn-primary{display:block!important;width:100%!important;min-height:46px!important;margin:8px 0 0!important;border-radius:12px!important;background:#0d9f73!important;color:#fff!important}
-}
-</style>
+<script defer src="market.js?v=20261005-interface"></script>
 
-<style id="qg-viewport-scroll-baseline-20261002">
-/* QueueGo mobile baseline: one vertical document scroller; zoom is controlled by viewport metadata, not global touch cancellation. */
-html,body{width:100%;max-width:100%}
-body{overflow-y:auto;-webkit-overflow-scrolling:touch;touch-action:pan-y}
-#app{width:100%;max-width:100%;min-height:100dvh;overflow:visible;touch-action:auto}
-</style>
+
+
 
 <script id="qg-platform-controls-v1">
 (function(){
@@ -2744,10 +2240,6 @@ body{overflow-y:auto;-webkit-overflow-scrolling:touch;touch-action:pan-y}
   };
 })();
 </script>
-<style id="qg-platform-controls-style">
-#qg-platform-controls h3{margin:0 0 6px}
-#qg-platform-controls .qt-settings-toggle{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:48px}
-#qg-platform-controls .qt-settings-toggle input{width:22px;height:22px}
-</style>
+
 </body>
 </html>
