@@ -95,4 +95,23 @@ assert.equal((await db.query(`SELECT rider_order_action('${id(61)}','pickup_cash
 await reject(`SELECT rider_order_action('${id(61)}','arrive_shop')`,/pickup stage/);
 await db.query(`SELECT rider_order_action('${id(61)}','deliver')`);
 assert.equal((await db.query(`SELECT rider_order_action('${id(61)}','complete') result`)).rows[0].result,'completed');checks++;
+// Durable request IDs wrap the existing actions in the same transaction.
+await db.exec(`CREATE ROLE authenticated;CREATE ROLE anon;CREATE ROLE service_role;
+CREATE FUNCTION get_my_user_id() RETURNS uuid LANGUAGE sql AS $$SELECT id FROM users WHERE auth_user_id=auth.uid()$$;`);
+const reliability=fs.readFileSync(path.resolve(__dirname,'../supabase/migrations/20261005052023_rider_reliability_push.sql'),'utf8');
+await db.exec(reliability.slice(0,reliability.indexOf('-- Secrets are server-only'))+'COMMIT;');
+await seed(70,null,false,'');await db.exec(`UPDATE orders SET status='ready' WHERE id='${id(70)}';`);
+const pickupPayload=JSON.stringify({p_order_id:id(70),p_action:'pickup_cash'});
+await db.query(`SELECT qg_rider_action_once('${id(71)}','order','${pickupPayload}')`);
+await db.query(`SELECT qg_rider_action_once('${id(71)}','order','${pickupPayload}')`);
+assert.equal((await db.query(`SELECT count(*)::int n FROM audit_logs WHERE entity_id='${id(70)}' AND description='pickup_cash'`)).rows[0].n,1);checks++;
+await reject(`SELECT qg_rider_action_once('${id(71)}','order','{"p_order_id":"${id(70)}","p_action":"deliver"}')`,/already in use/);
+await db.query(`SELECT set_config('test.uid','${id(4)}',false)`);await reject(`SELECT qg_rider_action_once('${id(71)}','order','${pickupPayload}')`,/already in use/);
+await db.query(`SELECT set_config('test.uid','${id(2)}',false)`);
+await db.query(`SELECT qg_rider_action_once('${id(72)}','order','{"p_order_id":"${id(70)}","p_action":"deliver"}')`);
+const completePayload=JSON.stringify({p_order_id:id(70),p_action:'complete'});
+await db.query(`SELECT qg_rider_action_once('${id(73)}','order','${completePayload}')`);await db.query(`SELECT qg_rider_action_once('${id(73)}','order','${completePayload}')`);
+assert.equal((await db.query(`SELECT count(*)::int n FROM audit_logs WHERE entity_id='${id(70)}' AND description='complete'`)).rows[0].n,1);checks++;
+assert.equal((await db.query(`SELECT status FROM payments WHERE order_id='${id(70)}'`)).rows[0].status,'paid');checks++;
+await reject(`SELECT qg_rider_action_once('${id(74)}','order','{"p_order_id":"${id(999)}","p_action":"pickup_cash"}')`,/order unavailable/).catch(e=>{throw e});
 console.log(JSON.stringify({checks,failures:0,scope:'PGlite isolated SQL with synthetic rows; no live RLS/concurrency certification'},null,2));await db.close();})().catch(e=>{console.error(e);process.exit(1)});

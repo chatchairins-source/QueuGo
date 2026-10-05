@@ -84,6 +84,7 @@ html,body,#app{min-width:0;max-width:100%;overflow-x:hidden}
 @media(max-height:700px){.auth-side{height:clamp(205px,34dvh,260px)}.auth-mark .auth-logo{width:40px;height:40px;font-size:27px}.auth-mark b{font-size:21px}.auth-mark small{font-size:12px}.auth-side-copy h2{margin-top:4px}.auth-main{padding-top:16px}.auth-card .sub{margin-bottom:8px}.auth-card .field{margin:7px 0}.auth-card .field input,.auth-card .btn{height:42px}}.qg-inbox h2,.qg-inbox-item{color:#241d20}.qg-v22-period button{border-color:#f0d2d9}.qg-v22-job-metrics,.qg-v22-photo-label{color:#b60c29}
 </style><style id="qg-q-only-topbar">.qt-top .qt-brand.qt-q-only{display:grid!important;place-items:center!important;width:42px!important;height:42px!important;padding:0!important;color:#ed0a31!important;background:rgba(255,255,255,.92)!important}.qt-top .qt-brand.qt-q-only svg{width:29px;height:29px}.rider-topbar .rider-brand.qt-q-only{display:grid;place-items:center}.rider-topbar .rider-brand.qt-q-only svg{width:42px;height:42px;color:#fff}</style>
 <link rel="stylesheet" href="laundry.css?v=20261005">
+<link rel="manifest" href="manifest.webmanifest"><meta name="apple-mobile-web-app-capable" content="yes">
 </head><body>
 <div id="app"></div><div id="toast" class="toast"></div>
 <script>/* =========================================================================
@@ -145,7 +146,7 @@ async function sbTable(path, options={}){
     method: options.method||'GET', headers, body: options.body?JSON.stringify(options.body):undefined,signal:AbortSignal.timeout(15000)
   });
   const data = await r.json().catch(e=>{if(e.name==='AbortError'||e.name==='TimeoutError')throw e;return null});
-  if(!r.ok) throw new Error((data&&data.message) || 'DB_ERROR_'+r.status);
+  if(!r.ok){const error=new Error((data&&data.message)||'DB_ERROR_'+r.status);error.definitive=r.status>=400&&r.status<500&&!([408,429].includes(r.status));throw error;}
   return data;
 }
 function authEmailFromPhone(phone){ return String(phone||'').replace(/\D/g,'')+'@auth.queuetech.local'; }
@@ -296,7 +297,7 @@ function resumeSession(){
       S.user=user;
       if(user.status==='suspended'){renderPending(user,'บัญชีถูกระงับการใช้งาน กรุณาติดต่อผู้ดูแลระบบ');return}
       if(user.status!=='active'){renderPending(user,'ใบสมัครของคุณอยู่ระหว่างตรวจสอบ');return}
-      if(await loadRiderProfile())renderStage();
+      if(await loadRiderProfile()){window.qgRestoreRiderSnapshot?.();renderStage();window.qgRecoverRiderIntent?.();window.qgSyncPushOwner?.();}
     }catch(e){
       if(!riderSessionMatches(session))return;
       console.error('Rider session restore failed');
@@ -588,7 +589,7 @@ async function doLogin(){
     S.user = u;
     if(u.status==='suspended'){ renderPending(u,'บัญชีถูกระงับการใช้งาน กรุณาติดต่อผู้ดูแลระบบ'); return; }
     if(u.status!=='active'){ renderPending(u,'ใบสมัครของคุณอยู่ระหว่างตรวจสอบ'); return; }
-    if(await loadRiderProfile())renderStage();
+    if(await loadRiderProfile()){window.qgRestoreRiderSnapshot?.();renderStage();window.qgRecoverRiderIntent?.();window.qgSyncPushOwner?.();}
   }catch(e){
     console.error(e);
     errBox.textContent = /invalid/i.test(e.message) ? 'อีเมลหรือรหัสผ่านไม่ถูกต้อง หากสมัครด้วยอีเมลให้ใช้อีเมลนั้นเข้าสู่ระบบ' : e.message;
@@ -874,7 +875,7 @@ async function readRiderSnapshot(){
       // Server eligibility/claim remains authoritative; display the nearest eligible job when none is within 2 km.
       openJobs=nearby.length?nearby:candidates.slice(0,1);
     }
-    if(!current())return;if(!activeOrder){S.bundleOrders=[];S.bundleCandidates=[]}S.activeOrder=activeOrder;S.openJobs=openJobs;
+    if(!current())return;if(!activeOrder){S.bundleOrders=[];S.bundleCandidates=[]}S.activeOrder=activeOrder;S.openJobs=openJobs;window.qgSaveRiderSnapshot?.();
     window.qtCheckNewJobs?.(previousOpenJobIds,openJobs.map(x=>x.order));if(S.activeTab==='home')renderSheet();placeJobMarkers();
     const hist=await sbTable('orders?select=*&order_type=eq.shopping&rider_id=eq.'+encodeURIComponent(profileId)+'&status=eq.completed&order=updated_at.desc&limit=200',{token});if(!current())return;
     S.history=Array.isArray(hist)?hist:[];if(S.activeTab==='jobs')renderHistoryPanel();
@@ -1112,9 +1113,9 @@ function stopPolling(){ if(S.pollTimer) clearInterval(S.pollTimer); S.pollTimer=
 /* ===== v4 runtime resilience ===== */
 (function(){
   const bar=document.createElement('div');bar.id='qt-netbar';bar.textContent='ออฟไลน์ — ระบบจะเชื่อมต่อใหม่อัตโนมัติ';document.body.appendChild(bar);
-  function sync(){bar.classList.toggle('show',!navigator.onLine);if(navigator.onLine&&!document.hidden&&S.user){checkActiveSession();refreshData();refreshRiderChat();}}
+  function sync(){bar.classList.toggle('show',!navigator.onLine);if(navigator.onLine&&!document.hidden&&S.user){window.qgRiderResume?.();}}
   addEventListener('online',sync);addEventListener('offline',sync);sync();
-  document.addEventListener('visibilitychange',()=>{if(!document.hidden&&navigator.onLine&&S.user){checkActiveSession();refreshData();refreshRiderChat();}});
+  document.addEventListener('visibilitychange',()=>{if(!document.hidden&&navigator.onLine&&S.user){window.qgRiderResume?.();}});
 })();
 
 
@@ -1324,10 +1325,10 @@ async function qgRiderArriveShop(o,shopId=qgPickupShop(o),button){
  try{const token=await getAccessToken();if(!token)throw Error('กรุณาเข้าสู่ระบบใหม่');let orderId=o.id;
   if(o.market_order_id){const rows=await sbTable('orders?select=id&market_order_id=eq.'+encodeURIComponent(o.market_order_id)+'&shop_id=eq.'+encodeURIComponent(shopId)+'&rider_id=eq.'+encodeURIComponent(S.riderProfile.id)+'&status=in.(rider_assigned,assigned,preparing,ready)&limit=1',{token});if(!rows?.[0])throw Error('ไม่พบจุดรับที่ยังเปิดอยู่');orderId=rows[0].id}
   if(!riderSessionMatches(session)||S.user?.id!==userId)return;
-  await sbTable('rpc/rider_order_action',{method:'POST',token,body:{p_order_id:orderId,p_action:'arrive_shop'}});
+  await qgRiderMutation('rpc/rider_order_action',{method:'POST',token,body:{p_order_id:orderId,p_action:'arrive_shop'}});
   if(!riderSessionMatches(session)||S.user?.id!==userId)return;
   qgSetPickupFlag(o,'arrived',shopId);toast('แจ้งร้านค้าแล้วว่าไรเดอร์ถึงร้าน');await refreshData();
- }catch(e){toast('แจ้งถึงร้านไม่สำเร็จ: '+e.message);if(button?.isConnected)button.disabled=false}
+ }catch(e){if(!riderSessionMatches(session)||S.user?.id!==userId)return;toast(e.pending?e.message:'แจ้งถึงร้านไม่สำเร็จ: '+e.message);if(button?.isConnected)button.disabled=false}
  finally{riderActionInFlight.delete(key)}
 }
 
@@ -1351,8 +1352,8 @@ function jobCardHTML(o,x){
  return `<div class="qt-handle"></div><div class="qg-job-status"><i></i>${esc(status)} · #${esc(qtShortOrder(o))}</div><div class="qg-job-progress" aria-label="ขั้นตอนงาน ${step} จาก 4">${[1,2,3,4].map(i=>`<span class="${i<=step?'done':''}"></span>`).join('')}</div>
  <div class="qt-jobhead"><div><div class="qt-shop">${esc(o.market_order_id?'ตลาดสด · '+Number(o._marketShopCount||o.market_shop_count||1)+' ร้าน':shop.shop_name||'งานจัดส่ง')}</div><div class="qt-order">${esc(status)}</div></div><div class="qt-fee">฿${Number(riderEarning(o)||0).toLocaleString('th-TH')}<small>ค่ารอบงานนี้</small></div></div>
  <div class="qt-metrics"><div class="qt-metric"><span>ไปร้าน</span><b>${Number.isFinite(km)?km.toFixed(1):'—'} กม.</b></div><div class="qt-metric"><span>ระยะส่ง</span><b>${Number.isFinite(delivery)?delivery.toFixed(1):'—'} กม.</b></div><div class="qt-metric"><span>ยอดออเดอร์</span><b>฿${Number(o.total_amount||0).toLocaleString('th-TH')}</b></div></div>
- <div class="qt-address"><b>${targetShop?'จุดรับ':'จุดส่ง'} · ${esc(name)}</b>${esc(address||'ไม่ระบุที่อยู่')}</div>
- <div class="qg-job-tools"><a href="${nav}" data-pickup-navigation="${targetShop?'1':''}" target="_blank" rel="noopener" aria-label="${targetShop?'นำทางไปร้าน':'นำทางไปบ้านลูกค้า'}">${QTICON.loc}${targetShop?'ไปร้าน':'ไปบ้านลูกค้า'}</a>${phone?`<a href="tel:${esc(phone)}">โทร</a>`:'<span>ไม่มีเบอร์โทร</span>'}<button id="chat-${esc(o.id)}">${QTICON.chat}แชต</button><button id="support-${esc(o.id)}">แจ้งปัญหา</button></div>
+ ${window.qgRiderSyncHTML?.()||''}<div class="qt-address"><b>${targetShop?'จุดรับ':'จุดส่ง'} · ${esc(name)}</b>${esc(address||'ไม่ระบุที่อยู่')}</div>
+ ${active?`<details class="qg-job-items" ${!targetShop?'open':''}><summary>รายละเอียดจุดส่งลูกค้า</summary><div class="qg-delivery-details"><b>${esc(cust.name||'ลูกค้า')}</b><p>${esc(o.delivery_address||'ไม่ระบุที่อยู่')}</p>${note?`<p><b>หมายเหตุ / จุดสังเกต</b><br>${esc(note)}</p>`:''}${cust.phone?`<a href="tel:${esc(String(cust.phone).replace(/[^+0-9]/g,''))}">โทร ${esc(cust.phone)}</a>`:''}</div></details>`:''}<div class="qg-job-tools"><a href="${nav}" data-pickup-navigation="${targetShop?'1':''}" target="_blank" rel="noopener" aria-label="${targetShop?'นำทางไปร้าน':'นำทางไปบ้านลูกค้า'}">${QTICON.loc}${targetShop?'ไปร้าน':'ไปบ้านลูกค้า'}</a>${phone?`<a href="tel:${esc(phone)}">โทร</a>`:'<span>ไม่มีเบอร์โทร</span>'}<button id="chat-${esc(o.id)}">${QTICON.chat}แชต</button><button id="support-${esc(o.id)}">แจ้งปัญหา</button></div>
  ${targetShop&&shopArrived?'<div class="qg-job-status">✓ แจ้งร้านค้าแล้วว่าไรเดอร์ถึงร้าน</div>':''}
  ${!o.market_order_id?`<div class="qg-shop-cash-due"><span>${cashLabel}</span><b>฿${Number(cash||0).toLocaleString('th-TH')}</b></div>`:''}
  ${note?`<div class="qg-job-note"><b>หมายเหตุ</b> · ${esc(note)}</div>`:''}
@@ -1469,26 +1470,28 @@ window.statusFromRow=function(row){
 };
 
 window.acceptJob=async function(orderId){
+ const actor=S.user?.id,session=S.session;const current=()=>S.user?.id===actor&&riderSessionMatches(session);
    let token,rows;try{token=await getAccessToken();rows=await sbTable('orders?select=id,market_order_id&order_type=eq.shopping&id=eq.'+encodeURIComponent(orderId)+'&limit=1',{token})}catch(e){toast('ตรวจสอบงานไม่สำเร็จ: '+e.message);return}
-   const o=rows?.[0];if(o?.market_order_id){
+   if(!current())return;const o=rows?.[0];if(o?.market_order_id){
    const btn=document.getElementById('accept-'+orderId);if(btn)btn.disabled=true;
-   try{await sbTable('rpc/market_rider_claim_group',{method:'POST',token,body:{p_order_id:orderId}});toast('รับงานตลาดหลายร้านสำเร็จ');await refreshData()}catch(e){toast('รับงานไม่สำเร็จ: '+e.message);if(btn)btn.disabled=false}
+   try{await qgRiderMutation('rpc/market_rider_claim_group',{method:'POST',token,body:{p_order_id:orderId}});if(!current())return;toast('รับงานตลาดหลายร้านสำเร็จ');await refreshData()}catch(e){if(!current())return;toast(e.pending?e.message:'รับงานไม่สำเร็จ: '+e.message);if(btn)btn.disabled=false}
  return;}
 
   const btn=document.getElementById('accept-'+orderId);if(btn)btn.disabled=true;
-  try{const token=await getAccessToken();if(!token)throw Error('กรุณาเข้าสู่ระบบใหม่');
-    await sbTable('rpc/rider_claim_order',{method:'POST',token,body:{p_order_id:orderId}});
-    toast('รับงานสำเร็จ');await refreshData();
-  }catch(e){toast('รับงานไม่สำเร็จ: '+e.message);if(btn)btn.disabled=false;}
+  try{const token=await getAccessToken();if(!current())return;if(!token)throw Error('กรุณาเข้าสู่ระบบใหม่');
+    await qgRiderMutation('rpc/rider_claim_order',{method:'POST',token,body:{p_order_id:orderId}});
+    if(!current())return;toast('รับงานสำเร็จ');await refreshData();
+  }catch(e){if(!current())return;toast(e.pending?e.message:'รับงานไม่สำเร็จ: '+e.message);if(btn)btn.disabled=false;}
 };
 const riderActionInFlight=new Set();
 window.advanceOrder=async function(o){
+ const actor=S.user?.id,session=S.session;const current=()=>S.user?.id===actor&&riderSessionMatches(session);
    if(o?.market_order_id){
-   const st=statusFromRow(o);try{const token=await getAccessToken();
+   const st=statusFromRow(o);try{const token=await getAccessToken();if(!current())return false;
      if(st==='assigned'||st==='ready'){toast('กรุณารับของให้ครบทุกจุด');return false}
-     if(st==='picked_up'){await sbTable('rpc/market_rider_group_action',{method:'POST',token,body:{p_market_order_id:o.market_order_id,p_action:'deliver'}});toast('รับของครบแล้ว กำลังไปส่งลูกค้า');await refreshData();return true}
-     if(st==='delivering'){await sbTable('rpc/market_rider_group_action',{method:'POST',token,body:{p_market_order_id:o.market_order_id,p_action:'arrive'}});toast('ถึงจุดส่งแล้ว');await refreshData();return true}
-   }catch(e){toast('อัปเดตงานตลาดไม่สำเร็จ: '+e.message);return false}
+     if(st==='picked_up'){await qgRiderMutation('rpc/market_rider_group_action',{method:'POST',token,body:{p_market_order_id:o.market_order_id,p_action:'deliver'}});if(!current())return false;toast('รับของครบแล้ว กำลังไปส่งลูกค้า');await refreshData();return true}
+     if(st==='delivering'){await qgRiderMutation('rpc/market_rider_group_action',{method:'POST',token,body:{p_market_order_id:o.market_order_id,p_action:'arrive'}});if(!current())return false;toast('ถึงจุดส่งแล้ว');await refreshData();return true}
+   }catch(e){if(!current())return false;toast(e.pending?e.message:'อัปเดตงานตลาดไม่สำเร็จ: '+e.message);return false}
  return false;}
 
   const st=statusFromRow(o),action={ready:'pickup_cash',picked_up:'deliver',delivering:'complete',arrived:'complete'}[st];
@@ -1496,11 +1499,11 @@ window.advanceOrder=async function(o){
   if(riderActionInFlight.has(o.id))return false;
   riderActionInFlight.add(o.id);
   try{
-    const token=await getAccessToken();if(!token)throw Error('กรุณาเข้าสู่ระบบใหม่');
-    await sbTable('rpc/rider_order_action',{method:'POST',token,body:{p_order_id:o.id,p_action:action}});
-    toast(action==='pickup_cash'?'จ่ายเงินสดให้ร้าน ฿'+Number(o.subtotal||0).toLocaleString('th-TH')+' และรับสินค้าแล้ว':action==='complete'?'ส่งสำเร็จ':'กำลังไปส่งลูกค้า');
+    const token=await getAccessToken();if(!current())return false;if(!token)throw Error('กรุณาเข้าสู่ระบบใหม่');
+    await qgRiderMutation('rpc/rider_order_action',{method:'POST',token,body:{p_order_id:o.id,p_action:action}});
+    if(!current())return false;toast(action==='pickup_cash'?'จ่ายเงินสดให้ร้าน ฿'+Number(o.subtotal||0).toLocaleString('th-TH')+' และรับสินค้าแล้ว':action==='complete'?'ส่งสำเร็จ':'กำลังไปส่งลูกค้า');
     refreshData().catch(()=>{});return true;
-  }catch(e){toast('อัปเดตไม่สำเร็จ: '+e.message);return false}
+  }catch(e){if(!current())return false;toast(e.pending?e.message:'อัปเดตไม่สำเร็จ: '+e.message);return false}
   finally{riderActionInFlight.delete(o.id)}
 };
 
@@ -1613,11 +1616,11 @@ window.advanceOrder=async function(o){
    const session=S.session,userId=S.user?.id;
    const button=document.getElementById('complete-'+o.id)||document.getElementById('finish-order-btn');if(button)button.disabled=true;
    try{
-     const token=await getAccessToken();if(!token)throw Error('กรุณาเข้าสู่ระบบใหม่');
-     await sbTable(o.market_order_id?'rpc/market_rider_group_action':'rpc/rider_order_action',{method:'POST',token,body:o.market_order_id?{p_market_order_id:o.market_order_id,p_action:'complete'}:{p_order_id:o.id,p_action:'complete'}});
+     const token=await getAccessToken();if(!riderSessionMatches(session)||S.user?.id!==userId)return;if(!token)throw Error('กรุณาเข้าสู่ระบบใหม่');
+     await qgRiderMutation(o.market_order_id?'rpc/market_rider_group_action':'rpc/rider_order_action',{method:'POST',token,body:o.market_order_id?{p_market_order_id:o.market_order_id,p_action:'complete'}:{p_order_id:o.id,p_action:'complete'}});
      if(!riderSessionMatches(session)||S.user?.id!==userId)return;
      S.completedSummary={userId:S.user?.id,order:{...o,status:'completed'},at:Date.now()};toast('ส่งสำเร็จ');document.getElementById('summary-screen')?.remove();const stage=document.querySelector('.stage');if(stage)stage.style.display='block';await refreshData();renderSheet();
-   }catch(e){toast('จบงานไม่สำเร็จ: '+e.message);if(button)button.disabled=false}
+   }catch(e){if(!riderSessionMatches(session)||S.user?.id!==userId)return;toast(e.pending?e.message:'จบงานไม่สำเร็จ: '+e.message);if(button)button.disabled=false}
    finally{riderActionInFlight.delete(o.id)}
  };
 
@@ -1671,7 +1674,7 @@ body{overflow-y:auto;-webkit-overflow-scrolling:touch;touch-action:pan-y}
   const actions=sheet.querySelector('.qt-actions'),box=document.createElement('div');box.innerHTML=html(rows,o);const node=box.firstElementChild;
   if(actions)sheet.insertBefore(node,actions);else sheet.appendChild(node);
   sheet.querySelectorAll('[data-arrive-shop]').forEach(b=>b.onclick=()=>qgRiderArriveShop(o,b.dataset.arriveShop,b));
-  sheet.querySelectorAll('[data-pickup]').forEach(b=>b.onclick=async()=>{if(b.disabled)return;const amount=Number(b.dataset.amount||0);b.disabled=true;try{const token=await getAccessToken();const r=await sbTable('rpc/market_rider_confirm_pickup_cash',{method:'POST',token,body:{p_pickup_id:b.dataset.pickup,p_amount:amount}});toast(r?.all_picked_up?'รับของครบทุกจุดแล้ว — ไปส่งลูกค้าได้':'บันทึกจุดรับแล้ว');await refreshData();}catch(e){toast('บันทึกจุดรับไม่สำเร็จ: '+e.message);b.disabled=false;}});
+  sheet.querySelectorAll('[data-pickup]').forEach(b=>b.onclick=async()=>{if(b.disabled)return;const session=S.session,userId=S.user?.id;const amount=Number(b.dataset.amount||0);b.disabled=true;try{const token=await getAccessToken();if(!riderSessionMatches(session)||S.user?.id!==userId)return;const r=await qgRiderMutation('rpc/market_rider_confirm_pickup_cash',{method:'POST',token,body:{p_pickup_id:b.dataset.pickup,p_amount:amount}});if(!riderSessionMatches(session)||S.user?.id!==userId)return;toast(r?.all_picked_up?'รับของครบทุกจุดแล้ว — ไปส่งลูกค้าได้':'บันทึกจุดรับแล้ว');await refreshData();}catch(e){if(!riderSessionMatches(session)||S.user?.id!==userId)return;toast(e.pending?e.message:'บันทึกจุดรับไม่สำเร็จ: '+e.message);b.disabled=false;}});
   const next=document.getElementById('next-'+o.id);if(next){const all=rows.every(x=>x.status==='PICKED_UP'||x.status==='CANCELLED');if(!all){next.disabled=true;next.textContent='รับของให้ครบทุกจุดก่อน';}}
  }
 
@@ -1700,4 +1703,7 @@ body{overflow-y:auto;-webkit-overflow-scrolling:touch;touch-action:pan-y}
 .qg-shop-cash-due{display:flex;justify-content:space-between;align-items:center;margin:10px 0;padding:10px 13px;border-radius:13px;background:#fff7e6;color:#8a4b00;font-size:13px}
 .qg-shop-cash-due b{font-size:17px}
 </style>
+<script src="reliability.js?v=20261005-1"></script>
+<script src="issues.js?v=20261005-1"></script>
+<script src="push.js?v=20261005-1"></script>
 </body></html>

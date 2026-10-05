@@ -29,3 +29,13 @@ Shop arrival is an audited event (`rider_arrived_shop_at`), not a new order stat
 ## Last implementation reference
 
 Commit `52c41aaf7863b916214c8baa63ffe374f8865afd` added a prominent customer navigation link after pickup and prevented market pickup coordinates from overriding the delivery destination. Cross-app overlay and iOS Live Activity remain pending.
+
+## Rider web improvements implemented in this release
+
+- Returning from external Maps restores the active job view after checking the current authenticated session; cached job details are marked stale and action controls stay locked until refreshed.
+- Existing rider actions use `qg_rider_action_once` with a durable request ID and an owned receipt. Lost replies recover with the same ID rather than duplicating the action. Supabase remains authoritative.
+- The job card shows the actual customer delivery address, order notes/landmarks, and customer phone.
+- Opt-in Web Push connects the existing notifications table to a server-only outbox and Edge Function; chat messages to the rider generate notifications. Users enable it from Rider profile. iPhone requires a supported Home Screen web app.
+- Quick rider issues use the existing support tickets with an automatic order link and a stable ticket ID on retries.
+- Isolated regression tests cover action recovery, account races, quick ticket retries, and push-worker ownership. Physical-device push delivery and a complete live three-role delivery flow still require validation.
+- The Android cross-app Q overlay remains deferred until an explicit APK request; iOS native Live Activity is also pending.
