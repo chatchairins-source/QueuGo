@@ -538,8 +538,9 @@ async function saveCustomerLocationPicker(){
       await db('users?id=eq.'+encodeURIComponent(u.userId),{method:'PATCH',token:accessToken,body:{metadata,updated_at:new Date().toISOString()}});
     }
     if(!sameActor()||!field.isConnected)return;
-    localStorage.setItem('qg_customer_delivery_location',JSON.stringify({lat:p.lat,lng:p.lng,address}));
-    currentPos={lat:p.lat,lng:p.lng,address};toast('บันทึกที่อยู่จัดส่งแล้ว');go('home');
+    try{localStorage.setItem('qg_customer_delivery_location',JSON.stringify({lat:p.lat,lng:p.lng,address}))}catch(e){console.warn('customer location local cache failed',e)}
+    currentPos={lat:p.lat,lng:p.lng,address};toast('บันทึกที่อยู่จัดส่งแล้ว');
+    try{go('home')}catch(e){console.warn('customer location post-commit navigation failed',e)}
   }catch(e){toast('บันทึกที่อยู่ไม่สำเร็จ: '+String(e.message||e).slice(0,90))}
 }
 try{const saved=JSON.parse(localStorage.getItem('qg_customer_delivery_location')||'null');if(saved&&qgIsValidCoordinate(saved.lat,saved.lng,true))currentPos=saved}catch(e){}
