@@ -2208,7 +2208,8 @@ window.qgmSaveProduct=async function(e,id){
   const saved=(id&&qtUuidLike(id))?await qtSupabaseTable('products?id=eq.'+encodeURIComponent(id)+'&shop_id=eq.'+encodeURIComponent(pid),{method:'PATCH',accessToken:token,body}):await qtSupabaseTable('products',{method:'POST',accessToken:token,body});
   if(!Array.isArray(saved)||!saved.length)throw new Error('ฐานข้อมูลไม่ยืนยันการบันทึกสินค้า');
   toast('บันทึกสินค้าแล้ว · Delivery + GP '+gpRate.toLocaleString('th-TH',{maximumFractionDigits:2})+'%');
-  await qtBackgroundHydrate({light:false});navigate('shop-products');
+  try{await qtBackgroundHydrate({light:false})}catch(refreshErr){console.warn('merchant product hydrate after save failed',refreshErr)}
+  try{navigate('shop-products')}catch(navErr){console.warn('merchant product navigation after save failed',navErr)}
  }catch(err){console.error(err);toast('บันทึกไม่สำเร็จ: '+(err.message||err))}
  return false;
 };
