@@ -73,11 +73,12 @@ Commit `52c41aaf7863b916214c8baa63ffe374f8865afd` added a prominent customer nav
 - Existing order pickup/delivery snapshots and state machine are not changed. Coordinates are master data for subsequent orders.
 - QA uses isolated fixtures plus real transactional checks with rollback; no actual market/shop pin is moved permanently by QA.
 
-## Admin interface redesign
+## Admin interface rebuild (2026-10-05)
 
-- Backup: `backup-pre-admin-interface-20261005` at `4e9b2b5a8e35ecd34c87fe86ae9ca9637e16031e`.
-- Replaced legacy Admin presentation and stacked inline styles with one responsive interface.css, a desktop sidebar, mobile five-tab navigation and an accessible More dialog.
-- Dashboard uses existing loaded order/account data and live approval counts; no invented trends or production mock data.
-- Approval cards retain the selected shop category. Account search, order search/status filters and account detail dialogs reuse existing permissions and action handlers.
-- Market approval, coordinate editing, financial reporting, support and security remain available through existing routes and RPCs. No schema, payment confirmation, order transition or business model changes.
-- Regression covers dashboard/navigation, direct shop entry, category approval, user filtering, detail dialog and order filters. Responsive browser checks cover phone, tablet and desktop; full signed-in physical-device delivery validation remains separate.
+- Replaced Admin presentation: one `admin/interface.css`, a responsive sidebar/mobile navigation, dashboard, shop/user cards, approval filters, announcement form and section selector. Removed all inline legacy style blocks, old panel injection, unused customer chat/tracking UI and the obsolete Admin market stylesheet.
+- Longdo map selection replaces numeric coordinate entry and Google Maps links in Admin. Search, click/drop/center selection and optional GPS use the existing provider/key; an unavailable map locks saving. No default map center is saved without an explicit selection.
+- Existing `qg_admin_update_location` remains authoritative with expected old coordinates, audit and retry behavior. Existing order coordinates and financial state transitions are untouched.
+- Native prompts were replaced by labelled dialog forms for reasons, market radius and vehicle capacity. Tests cover validation, account races, map failure and retry payloads.
+- Automated regression passes do not certify physical mobile GPS, live map tiles or real account approval. Local browser installation was blocked by the browser download returning HTML rather than a browser archive; do not claim visual browser/device certification from automated DOM tests.
+
+- Publication authorized explicitly by the user on 2026-10-05. Rebased onto the current Admin redesign at `a4abadde6fd3f2a7b03e992f173fc7cbb00db2da`; backup before publication: `backup-pre-longdo-publish-20261005`.

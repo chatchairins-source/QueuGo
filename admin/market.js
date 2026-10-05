@@ -23,7 +23,7 @@ window.addEventListener('qt:realtime-update',()=>{
 });
 window.renderAdminMarket=async()=>{
   if(!admin())return navigate('login');
-  layout('อนุมัติตลาด',`<section class="card qg-admin-market">
+  layout('จัดการตลาดสด',`<section class="card qg-admin-market">
     <button class="qg-admin-back" onclick="navigate('admin')">‹ ศูนย์ควบคุม</button>
     <h2>ตลาดและร้านสมาชิก</h2>
     <details class="qg-market-guide"><summary>ขั้นตอนตรวจและอนุมัติ</summary><ol><li>คำขอเพิ่มตลาด: ตรวจชื่อ ที่อยู่และพิกัด แล้วอนุมัติหรือปฏิเสธพร้อมเหตุผล</li><li>ร้านสมาชิก: ตรวจร้าน แผง/โซน พิกัดและภาพหน้าร้าน แล้วอนุมัติแยกจากคำขอตลาด</li></ol><p>อนุมัติตลาดใหม่แล้ว ร้านผู้ขอจะเข้าคิวตรวจสมาชิก ระบบยังไม่ถือว่าร้านผ่านอนุมัติ</p></details><button type="button" onclick="qgLoadMarketOperations()">รีเฟรชคำขอ</button>
@@ -50,12 +50,12 @@ window.qgLoadMarketOperations=async()=>{
         <b>${esc(s.shop_name||'ไม่ระบุชื่อร้าน')}</b> · ${esc(qgAdminShopCategory(s))} · ${esc(s.markets?.name||'ตลาด')}
         <br><small>แผง ${esc(s.market_stall_no||'-')} · โซน ${esc(s.market_zone||'-')} · ระยะจากตลาด ${Number(s.market_suggested_distance_km||0).toFixed(2)} กม.</small>
         <p>${esc(s.address||'ไม่ระบุที่อยู่')}</p>
-        ${s.latitude!=null&&s.longitude!=null?`<a target="_blank" rel="noopener" href="https://www.google.com/maps?q=${encodeURIComponent(s.latitude+','+s.longitude)}">ตรวจพิกัดร้าน</a>`:''}
+        ${s.latitude!=null&&s.longitude!=null?`<button type="button" onclick="qgAdminViewLocation(${Number(s.latitude)},${Number(s.longitude)},'พิกัดร้าน')">ดูบนแผนที่</button>`:''}
         ${image(s.market_proof_path||s.public_cover||s.metadata?.cover||s.metadata?.profileImage||s.metadata?.profile_image)?`<img class="qg-market-proof" alt="ภาพหน้าร้านหรือแผง" src="${esc(image(s.market_proof_path||s.public_cover||s.metadata?.cover||s.metadata?.profileImage||s.metadata?.profile_image))}">`:'<p>ไม่มีภาพหน้าร้านที่เปิดดูได้ — ตรวจหลักฐานก่อนอนุมัติ</p>'}
         <div><button type="button" onclick="qgAdminEditLocation('shop','${s.id}')">แก้พิกัดร้าน</button><button onclick="qgAdminReviewMarket('${s.id}',true)">อนุมัติ</button><button onclick="qgAdminReviewMarket('${s.id}',false)">ปฏิเสธ</button></div>
       </article>`).join('')||'<p>ไม่มีร้านรออนุมัติ</p>'}
       <h2>คำขอเพิ่มตลาดใหม่ (${(requests||[]).length})</h2>
-      ${(requests||[]).map(r=>`<article><b>${esc(r.requested_name)}</b><p>ร้านผู้ขอ: ${esc((applicants||[]).find(s=>s.user_id===r.requester_shop_user_id)?.shop_name||'ไม่ระบุชื่อร้าน')} · ${esc(qgAdminShopCategory((applicants||[]).find(s=>s.user_id===r.requester_shop_user_id)))}</p> · ${esc(r.subdistrict||'')} ${esc(r.district||'')} ${esc(r.province||'')}<br><small>${esc(r.address||'')} · ${r.latitude!=null&&r.longitude!=null&&Number.isFinite(Number(r.latitude))&&Number.isFinite(Number(r.longitude))?Number(r.latitude).toFixed(5)+', '+Number(r.longitude).toFixed(5):'ไม่มีพิกัด'} · ส่งคำขอ ${new Date(r.created_at).toLocaleString('th-TH')}</small><p>${esc(r.note||'')}</p>${r.latitude!=null&&r.longitude!=null?`<a target="_blank" rel="noopener" href="https://www.google.com/maps?q=${encodeURIComponent(r.latitude+','+r.longitude)}">ตรวจพิกัดตลาด</a>`:''}<div><button onclick="qgAdminReviewMarketRequest('${r.id}',true)">อนุมัติและเพิ่มตลาด</button><button onclick="qgAdminReviewMarketRequest('${r.id}',false)">ปฏิเสธ</button></div></article>`).join('')||'<p>ไม่มีคำขอเพิ่มตลาดใหม่</p>'}
+      ${(requests||[]).map(r=>`<article><b>${esc(r.requested_name)}</b><p>ร้านผู้ขอ: ${esc((applicants||[]).find(s=>s.user_id===r.requester_shop_user_id)?.shop_name||'ไม่ระบุชื่อร้าน')} · ${esc(qgAdminShopCategory((applicants||[]).find(s=>s.user_id===r.requester_shop_user_id)))}</p> · ${esc(r.subdistrict||'')} ${esc(r.district||'')} ${esc(r.province||'')}<br><small>${esc(r.address||'')} · ${r.latitude!=null&&r.longitude!=null&&Number.isFinite(Number(r.latitude))&&Number.isFinite(Number(r.longitude))?Number(r.latitude).toFixed(5)+', '+Number(r.longitude).toFixed(5):'ไม่มีพิกัด'} · ส่งคำขอ ${new Date(r.created_at).toLocaleString('th-TH')}</small><p>${esc(r.note||'')}</p>${r.latitude!=null&&r.longitude!=null?`<button type="button" onclick="qgAdminViewLocation(${Number(r.latitude)},${Number(r.longitude)},'พิกัดคำขอตลาด')">ดูบนแผนที่</button>`:''}<div><button onclick="qgAdminReviewMarketRequest('${r.id}',true)">อนุมัติและเพิ่มตลาด</button><button onclick="qgAdminReviewMarketRequest('${r.id}',false)">ปฏิเสธ</button></div></article>`).join('')||'<p>ไม่มีคำขอเพิ่มตลาดใหม่</p>'}
       <h2>ตลาดในระบบ</h2>
       ${(markets||[]).map(m=>`<article><b>${esc(m.name)}</b> · ${esc(m.subdistrict||'')} ${esc(m.district||'')} ${esc(m.province||'')}<br><small>${m.verified?'ยืนยันพิกัดแล้ว':'รอตรวจพิกัด'} · รัศมี ${Number(m.assignment_radius_km||0).toFixed(1)} กม. · ${m.latitude==null||m.longitude==null?'ยังไม่มีพิกัด':Number(m.latitude).toFixed(5)+', '+Number(m.longitude).toFixed(5)}</small><div><button type="button" onclick="qgAdminEditLocation('market','${m.id}')">แก้พิกัดตลาด</button></div></article>`).join('')||'<p>ยังไม่มีตลาด</p>'}
       <h2>รถและความจุ</h2>
@@ -68,7 +68,7 @@ window.qgAdminReviewMarket=async(shopId,approve)=>{
   if(!admin())return;
   let reason=null;
   if(!approve){
-    reason=prompt('เหตุผลที่ปฏิเสธการเข้าตลาด');
+    reason=await qgAdminInput({title:'ปฏิเสธสมาชิกตลาด',label:'เหตุผลที่ปฏิเสธการเข้าตลาด'});
     if(reason===null)return;
     reason=reason.trim();
     if(reason.length<2)return toast('กรุณาระบุเหตุผลอย่างน้อย 2 ตัวอักษร');
@@ -84,13 +84,13 @@ window.qgAdminReviewMarketRequest=async(requestId,approve)=>{
   if(!admin())return;
   let reason=null,radius=2;
   if(approve){
-    const raw=prompt('รัศมีที่ยอมรับให้ร้านในตลาดนี้สมัครได้ (กม.)','2');
+    const raw=await qgAdminInput({title:'อนุมัติตลาดใหม่',label:'รัศมีรับสมัครร้าน (กม.)',type:'number',value:2,min:0.1,max:10,step:0.1,hint:'ร้านผู้ขอต้องผ่านการตรวจสมาชิกแยกอีกครั้ง'});
     if(raw===null)return;
     radius=Number(raw);
     if(!Number.isFinite(radius)||radius<0.1||radius>10)return toast('รัศมีต้องอยู่ระหว่าง 0.1-10 กม.');
     if(!confirm('ยืนยันเพิ่มตลาดนี้เข้าระบบ? พิกัดจะยังมีสถานะรอตรวจจนกว่า Admin ยืนยันความถูกต้อง'))return;
   }else{
-    reason=prompt('เหตุผลที่ปฏิเสธคำขอเพิ่มตลาด');
+    reason=await qgAdminInput({title:'ปฏิเสธตลาดใหม่',label:'เหตุผลที่ปฏิเสธคำขอเพิ่มตลาด'});
     if(reason===null)return;
     reason=reason.trim();
     if(reason.length<2)return toast('กรุณาระบุเหตุผล');
@@ -109,7 +109,9 @@ window.qgAdminReviewMarketRequest=async(requestId,approve)=>{
 };
 window.qgAdminVehicle=async(id,status,suggested)=>{
   if(!admin())return;
-  const capacity=status==='active'?Number(prompt('ความจุที่ตรวจจากเอกสารรถ (กก.)',String(suggested||''))):null;
+  const raw=status==='active'?await qgAdminInput({title:'ตรวจความจุรถ',label:'ความจุตามเอกสาร (กก.)',type:'number',value:suggested||'',min:0.1,max:1000,step:0.1}):null;
+  if(status==='active'&&raw===null)return;
+  const capacity=status==='active'?Number(raw):null;
   if(status==='active'&&(!Number.isFinite(capacity)||capacity<=0||capacity>1000))return toast('ความจุไม่ถูกต้อง');
   if(!confirm(status==='active'?'ยืนยันว่าได้ตรวจรถและความจุแล้ว?':'ระงับรถคันนี้จากงานตลาด?'))return;
   try{

@@ -1,7 +1,5 @@
 <!DOCTYPE html>
-<!-- QueueGo Admin Mobile UI Refresh 2026-09-24
-     Based strictly on the original integrated QueueGo index.html.
-     UI-only change: compact mobile Admin status/work layout; existing DB/auth/actions retained. -->
+<!-- QueueGo Admin: rebuilt presentation; existing auth, data and actions. -->
 <!-- QueueGo V5.37: security + sync fixes (XSS escaping, rider registration via Supabase Auth, approval status mapping, polling sync, real deletes) -->
 <html lang="th">
 <head>
@@ -10,24 +8,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 
 <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="interface.css?v=20261005">
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+<link rel="stylesheet" href="interface.css?v=20261005-rebuild">
+<script defer src="forms.js?v=20261005-rebuild"></script>
+<script defer src="https://api.longdo.com/map/?key=347649ca13f49db0d8a599ae35f8de2b"></script>
 
 </head>
 <body>
@@ -145,8 +128,6 @@ async function qtLoadOwnSupabaseUser(accessToken, authUserId){
   return Array.isArray(rows)?rows[0]:null;
 }
 </script>
-
-
 
 <script>
 async function qtRenderAdminRiderPresence(){
@@ -601,8 +582,6 @@ function roleLabel(t){ return {customer:'ลูกค้า',shop:'ร้าน�
 function accountStatusLabel(s){ return {pending:'รออนุมัติ',approved:'อนุมัติแล้ว',rejected:'ไม่อนุมัติ',suspended:'ระงับบัญชี'}[s] || escapeHtml(s) || 'ไม่ระบุ'; }
 function isApproved(user){ return !!user && (user.type==='customer' || user.type==='admin' || user.status==='approved'); }
 
-
-
 /* ---------- Session / Auth ---------- */
 function getSession(){ return qtSessionRead(); }
 function setSession(s){ qtSessionWrite(s); }
@@ -762,37 +741,6 @@ function renderNotifications(){
   `);
 }
 
-/* ---------- Live Tracking Interface (จุดสลับเป็น Real-time API/WebSocket จริงในอนาคต) ---------- */
-const LiveTracking = {
-  sendLocation(orderId, lat, lng){
-    let orders = dbGet('qt_orders',[]);
-    const o = orders.find(x=>x.id===orderId);
-    if(o){ o.riderLiveLat=lat; o.riderLiveLng=lng; o.riderLiveAt=Date.now(); dbSet('qt_orders', orders); }
-    // Production: ส่งตำแหน่งจริงผ่าน Realtime/API; ห้ามสร้างตำแหน่งจำลอง
-  },
-  getLatestLocation(orderId){
-    const o = dbGet('qt_orders',[]).find(x=>x.id===orderId);
-    return (o && o.riderLiveLat) ? {lat:o.riderLiveLat, lng:o.riderLiveLng, at:o.riderLiveAt} : null;
-  }
-};
-
-/* ---------- Map helpers ---------- */
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 /* ---------- Notification badge sync ---------- */
 function getUserNotifications(userId){
   if(!userId) return [];
@@ -843,26 +791,12 @@ document.addEventListener('click',qtUnlockAudio,{passive:true});
 document.addEventListener('touchend',qtUnlockAudio,{passive:true});
 document.addEventListener('pointerup',qtUnlockAudio,{passive:true});
 
-
-
 /* Re-define start function so the notification and voice are always paired. */
-
-
-
-
 
 /* ---------- Rider new-job alert / screen lock ---------- */
 let qtRiderJobAlertActive=false;
 let qtRiderJobAlertOrderId=null;
 let qtRiderJobSpeechTimer=null;
-
-
-
-
-
-
-
-
 
 function stopRiderJobAlert(){
   if(qtRiderJobAlertOrderId) qtStopNotificationVibration('rider_job_'+qtRiderJobAlertOrderId);
@@ -873,12 +807,6 @@ function stopRiderJobAlert(){
   if(el) el.classList.remove('show');
   qtRiderJobAlertOrderId=null;
 }
-
-
-
-
-
-
 
 /* ---------- V5.28 GOVERNANCE / FINANCE / AUDIT ---------- */
 function qtAdminOnly(){
@@ -933,9 +861,9 @@ function adminApprovePromotion(id){
   pushNotification(p.shopId,'✅ Promote ได้รับอนุมัติ','Admin อนุมัติคำขอแล้ว กรุณาดำเนินการชำระเงินก่อนเปิดใช้งาน','shop-promote');
   toast('อนุมัติ Promote แล้ว — ยังไม่เปิดแสดงจนกว่าจะชำระเงิน'); renderAdminGovernance();
 }
-function adminRejectPromotion(id){
+async function adminRejectPromotion(id){
   const admin=qtAdminOnly(); if(!admin)return;
-  const reason=prompt('ระบุเหตุผลที่ไม่อนุมัติ Promote:'); if(reason===null)return;
+  const reason=await qgAdminInput({title:'ปฏิเสธคำขอ Promote',label:'เหตุผลที่ไม่อนุมัติ'}); if(reason===null)return;
   let promos=dbGet('qt_promotions',[]); const p=promos.find(x=>x.id===id);
   if(!p){toast('ไม่พบคำขอ Promote');return;}
   p.status='rejected'; p.rejectedBy=admin.id; p.rejectedAt=Date.now(); p.rejectedReason=reason.trim()||'ไม่ผ่านการตรวจสอบ';
@@ -970,103 +898,37 @@ async function adminDeleteUser(id){
 
 
 function renderAdminGovernance(){
-  const admin=qtAdminOnly(); if(!admin)return;
-  const users=dbGet('qt_users',[]), promos=dbGet('qt_promotions',[]), orders=dbGet('qt_orders',[]), audit=dbGet('qt_audit_log',[]);
-  const pendingUsers=users.filter(u=>['shop','rider','technician'].includes(u.type)&&u.status==='pending');
-  const pendingPromos=promos.filter(p=>p.status==='pending');
-  const approvedPromos=promos.filter(p=>p.status==='approved');
-  const refunds=orders.filter(o=>o.refundStatus==='requested');
-  const esc=x=>escapeHtml(String(x??'-'));
-  const nav=(id,icon,label,badge='')=>`<button class="qt-admin-tab" data-target="${id}" onclick="qtAdminTab('${id}')">${icon} ${label}${badge?` <span class="qt-admin-tab-badge">${badge}</span>`:''}</button>`;
-  const providerCards=pendingUsers.map(u=>`<article class="card qg-approval-card" data-approval-role="${esc(u.type)}"><div class="qg-provider-heading"><span class="qg-avatar">${esc((u.shopName||u.name||'?').slice(0,1))}</span><div><b>${esc(u.type==='shop'?(u.shopName||u.name||'-'):(u.name||'-'))}</b><small>ประเภท: ${esc(qgAdminProviderLabel(u))}</small></div><span class="qt-admin-status pending">รออนุมัติ</span></div><div class="qg-provider-details"><span>ผู้ติดต่อ<b>${esc(u.name||'-')}</b></span><span>โทรศัพท์<b>${esc(u.phone||'-')}</b></span></div><div class="row-btns"><button class="btn-secondary" onclick="qtAdminViewUser('${u.id}')">ดูข้อมูล</button><button class="btn-primary" onclick="adminApproveUser('${u.id}')">อนุมัติ</button><button class="btn-danger" onclick="adminRejectUser('${u.id}')">ปฏิเสธ</button></div></article>`).join('')||'<p class="qg-empty">ไม่มีรายการรออนุมัติ</p>';
-  const promoCards=pendingPromos.map(p=>`<div class="card"><b>${esc(p.shopName||p.shopId)}</b><br>ประเภทร้าน: ${esc(qgAdminShopCategory(users.find(u=>u.type==='shop'&&(u.id===p.shopId||u.shopProfileId===p.shopId))))}<br>พื้นที่: ${esc(p.area||'-')}<br>ราคาเสนอ: <b>${Number(p.bidPrice||0).toLocaleString('th-TH')} บาท</b> • ${escapeHtml(p.periodDays||0)} วัน<br><span class="qt-admin-status pending">รออนุมัติ</span><div class="row-btns"><button class="btn-primary" onclick="adminApprovePromotion('${p.id}')">อนุมัติ</button><button class="btn-danger" onclick="adminRejectPromotion('${p.id}')">ไม่อนุมัติ</button></div></div>`).join('')||'<p>ไม่มี Promote รออนุมัติ</p>';
-  const orderCards=refunds.map(o=>`<div class="card"><b>${displayOrderNumber(o)}</b> • ${Number(o.total||0).toLocaleString('th-TH')} บาท<br>ลูกค้า: ${esc(o.customerName||'-')}<br>เหตุผล: ${esc(o.refundReason||'-')}<div class="row-btns"><button class="btn-primary" onclick="adminApproveRefund('${o.id}')">อนุมัติคืนเงิน</button></div></div>`).join('')||'<p>ไม่มีคำขอคืนเงิน</p>';
-  const userRows=users.filter(u=>u.type!=='admin').slice(0,50).map(u=>`<tr><td>${esc(u.name||'-')}<br><small>${esc(u.phone||'-')}</small></td><td>${esc(qgAdminProviderLabel(u))}</td><td>${esc(accountStatusLabel(u.status))}</td><td>${u.status==='suspended'?`<button class="btn-primary" onclick="adminSecurityAction('restore','${u.id}')">ปลดระงับ</button>`:`<button class="btn-danger" onclick="adminSecurityAction('suspend','${u.id}')">ระงับ</button>`}</td></tr>`).join('');
-  const promoteRows=promos.slice().reverse().map(p=>`<tr><td>${esc(p.shopName||p.shopId)}</td><td>${qtPromoStatusLabel(p.status)}</td><td>${Number(p.bidPrice||0).toLocaleString('th-TH')} บาท</td><td>${p.status==='pending'?`<button class="btn-primary" onclick="adminApprovePromotion('${p.id}')">อนุมัติ</button>`:''}  ${p.status==='active'?`<button class="btn-danger" onclick="stopPromote('${p.id}')">หยุด</button>`:''}</td></tr>`).join('');
-  layout('จัดการระบบ',`<div class="qt-admin-wrap"><div class="qt-admin-head"><div><h2>🛡️ ศูนย์ควบคุมแอดมิน</h2><div class="qt-admin-note">แยกเมนูตามหน้าที่ เพื่อให้ควบคุมระบบได้ชัดเจน</div></div><div class="row-btns"><button class="btn-secondary" onclick="qtAdminRefresh('governance')">🔄 รีเฟรชสมาชิก</button><button class="btn-secondary" onclick="navigate('admin')">← กลับหน้าหลัก</button></div></div>
-    <div class="qt-admin-tabs">${nav('qt-sec-overview','🏠','ภาพรวม')}${nav('qt-sec-orders','📦','ออเดอร์')}${nav('qt-sec-users','👥','ผู้ใช้งาน')}${nav('qt-sec-delivery','🚚','ไรเดอร์/จัดส่ง')}${nav('qt-sec-approval','✅','ศูนย์อนุมัติ',pendingUsers.length+pendingPromos.length)}${nav('qt-sec-promote','📣','Promote')}${nav('qt-sec-finance','💰','การเงิน',refunds.length)}${nav('qt-sec-security','🔐','ความปลอดภัย')}${nav('qt-sec-audit','🧾','บันทึกการทำงาน')}${nav('qt-sec-settings','⚙️','ตั้งค่าระบบ')}</div>
-    <section id="qt-sec-overview" class="qt-admin-panel active"><div class="qt-admin-mobile-stats"><span class="qt-admin-mobile-stat shop"><i class="dot"></i>🏪 ร้านค้า <b>${qtAdminOnlineCounts(users).shop}</b></span><span class="qt-admin-mobile-stat rider"><i class="dot"></i>🛵 ไรเดอร์ <b>${qtAdminOnlineCounts(users).rider}</b></span><span class="qt-admin-mobile-stat customer"><i class="dot"></i>👤 ลูกค้า <b>${qtAdminOnlineCounts(users).customer}</b></span></div><div class="qt-admin-quick-status"><span>ออเดอร์ <b>${orders.length}</b></span><span>กำลังทำ <b>${orders.filter(o=>!['completed','cancelled'].includes(o.status)).length}</b></span><span>รออนุมัติ <b>${pendingUsers.length+pendingPromos.length}</b></span><span>ร้านค้า <b>${users.filter(u=>u.type==='shop').length}</b></span></div><div class="qt-admin-worklist"><div class="qt-admin-workrow"><div class="qt-admin-workicon">👥</div><div class="qt-admin-workmain"><b>ตรวจผู้ให้บริการ</b><small>ร้านค้า • ไรเดอร์ • ช่าง</small></div><strong class="qt-admin-workcount">${pendingUsers.length}</strong><button class="qt-admin-workbtn" onclick="qtAdminTab('qt-sec-approval')">ตรวจ</button></div><div class="qt-admin-workrow"><div class="qt-admin-workicon">📣</div><div class="qt-admin-workmain"><b>ตรวจ Promote</b><small>คำขอโฆษณารออนุมัติ</small></div><strong class="qt-admin-workcount">${pendingPromos.length}</strong><button class="qt-admin-workbtn" onclick="qtAdminTab('qt-sec-promote')">ดู</button></div><div class="qt-admin-workrow"><div class="qt-admin-workicon">💸</div><div class="qt-admin-workmain"><b>ตรวจคืนเงิน</b><small>คำขอคืนเงินที่รอดำเนินการ</small></div><strong class="qt-admin-workcount">${refunds.length}</strong><button class="qt-admin-workbtn" onclick="qtAdminTab('qt-sec-finance')">ดู</button></div></div></section>
-    <section id="qt-sec-orders" class="qt-admin-panel"><h3>📦 จัดการออเดอร์</h3><p class="qt-admin-note">ดูออเดอร์และคำขอคืนเงิน โดยการคืนเงินจริงต้องตรวจสิทธิ์ฝั่ง Server ใน Production</p><button class="btn-primary" onclick="navigate('admin-orders')">เปิดศูนย์จัดการออเดอร์</button><div class="card"><h3>คำขอคืนเงินที่รอตรวจสอบ</h3>${orderCards}</div></section>
-    <section id="qt-sec-users" class="qt-admin-panel">
-      <div class="qt-user-control-head">
-        <div><h3>👥 จัดการผู้ใช้งาน</h3><p class="qt-admin-note">แยกผู้ใช้งานตามประเภทอย่างชัดเจน — ลูกค้า / ร้านค้า / ไรเดอร์ / ช่าง / Admin</p></div>
-      </div>
-      <div class="qt-user-category-tabs">
-        ${['customer','shop','rider','technician','admin'].map((type,i)=>{
-          const count=users.filter(u=>u.type===type).length;
-          const label={customer:'ลูกค้า',shop:'ร้านค้า',rider:'ไรเดอร์',technician:'ช่าง',admin:'Admin'}[type];
-          const icon={customer:'👤',shop:'🏪',rider:'🛵',technician:'🔧',admin:'🛡️'}[type];
-          return `<button class="qt-user-category-btn ${i===0?'active':''}" data-user-category="${type}" onclick="qtUserCategory('${type}')">${icon} ${label} <span>${count}</span></button>`;
-        }).join('')}
-      </div>
-      <input type="search" id="qg-admin-user-search" placeholder="ค้นหาชื่อ ประเภทร้าน หรือเบอร์โทร" oninput="qgAdminFilterUsers(this.value)"><div class="qt-user-category-panels">
-        ${['customer','shop','rider','technician','admin'].map((type,i)=>{
-          const list=users.filter(u=>u.type===type);
-          const label={customer:'ลูกค้า',shop:'ร้านค้า',rider:'ไรเดอร์',technician:'ช่าง',admin:'ผู้ดูแลระบบ'}[type];
-          const icon={customer:'👤',shop:'🏪',rider:'🛵',technician:'🔧',admin:'🛡️'}[type];
-          const rows=list.slice(0,100).map(u=>`<article class="qg-user-card"><div class="qg-provider-heading"><span class="qg-avatar">${esc((u.shopName||u.name||'?').slice(0,1))}</span><div><b>${esc(u.shopName||u.name||'-')}</b><small>${esc(qgAdminProviderLabel(u))} · ${esc(u.phone||'ไม่มีเบอร์โทร')}</small></div><span class="qt-admin-status ${esc(u.status)}">${esc(accountStatusLabel(u.status))}</span></div><div class="row-btns"><button class="btn-secondary" onclick="qtAdminViewUser('${u.id}')">ดูข้อมูล</button>${u.type==='admin'?'<span class="qt-admin-note">บัญชีผู้ดูแล</span>':(u.status==='suspended'?`<button class="btn-primary" onclick="adminSecurityAction('restore','${u.id}')">ปลดระงับ</button>`:`<button class="btn-danger" onclick="adminSecurityAction('suspend','${u.id}')">ระงับบัญชี</button>`)+`<button class="btn-secondary" onclick="adminDeleteUser('${u.id}')">ลบบัญชี</button>`}</div></article>`).join('');
-          return `<div class="qt-user-category-panel ${i===0?'active':''}" data-user-panel="${type}"><div class="qt-user-category-title"><h4>${label}</h4><span>${list.length} รายการ</span></div><div class="qg-user-cards">${rows||'<p class="qg-empty">ยังไม่มีข้อมูล '+label+'</p>'}</div></div>`;
-        }).join('')}
-      </div>
-    </section>
-    <section id="qt-sec-delivery" class="qt-admin-panel"><h3>🚚 ไรเดอร์และการจัดส่ง</h3><div id="qt-admin-rider-online-panel" class="card">กำลังโหลดสถานะไรเดอร์…</div><button class="btn-secondary" onclick="if(typeof qtRenderAdminRiderPresence==='function')qtRenderAdminRiderPresence()">รีเฟรชสถานะ</button></section>
-    <section id="qt-sec-approval" class="qt-admin-panel"><h3>✅ ศูนย์อนุมัติ</h3><div class="qg-approval-tabs"><button type="button" data-approval-filter="shop" onclick="qgAdminApprovalRole('shop')">ร้านค้า</button><button type="button" data-approval-filter="rider" onclick="qgAdminApprovalRole('rider')">ไรเดอร์</button><button type="button" data-approval-filter="all" onclick="qgAdminApprovalRole('all')">ทั้งหมด</button></div><div class="card"><h3>สมัครผู้ให้บริการ</h3><input type="search" id="qg-approval-search" placeholder="ค้นหาชื่อร้าน ประเภท หรือเบอร์โทร" oninput="qgAdminApprovalRole(window.QG_ADMIN_APPROVAL_ROLE||'all')">${providerCards}<p id="qg-approval-filter-empty" hidden>ไม่มีรายการรออนุมัติในประเภทนี้</p></div><div class="card"><h3>Promote</h3>${promoCards}</div></section>
-    <section id="qt-sec-promote" class="qt-admin-panel"><h3>📣 จัดการ Promote</h3><p class="qt-admin-note">ลำดับ: ส่งคำขอ → Admin อนุมัติ → ชำระเงิน → เปิดใช้งาน</p><table class="qt-admin-table"><thead><tr><th>ร้าน</th><th>สถานะ</th><th>ราคา</th><th>การควบคุม</th></tr></thead><tbody>${promoteRows||'<tr><td colspan="4">ไม่มีข้อมูล</td></tr>'}</tbody></table></section>
-    <section id="qt-sec-finance" class="qt-admin-panel"><h3>💰 การเงิน</h3><div class="card"><p>เส้นทางเงินจริง: ไรเดอร์สำรองจ่ายค่าสินค้าให้ร้าน แล้วเก็บเงินจากลูกค้า • GP เป็นค่าบริการของร้าน</p><div class="row-btns"><button class="btn-primary" onclick="navigate('admin-cash')">ดูเส้นทางเงินสด</button><button class="btn-secondary" onclick="navigate('admin-gp')">ตรวจ GP และสลิป</button></div><button class="btn-secondary btn-block" onclick="navigate('admin-gp-rates')">ปรับอัตรา GP</button></div></section>
-    <section id="qt-sec-security" class="qt-admin-panel">
-      <div class="qt-security-head"><div><h3>🔐 ศูนย์ความปลอดภัย</h3><p class="qt-admin-note">ตรวจสอบข้อมูลบัญชีและควบคุมการใช้งาน แยกเป็น 3 กลุ่มหลัก</p></div><div class="qt-security-summary"><span>👤 ${users.filter(u=>u.type==='customer').length}</span><span>🛵 ${users.filter(u=>u.type==='rider').length}</span><span>🏪 ${users.filter(u=>u.type==='shop').length}</span></div></div>
-      <div class="qt-security-role-buttons">
-        <button class="qt-security-role active" data-role="customer" onclick="qtSecurityRole('customer')"><span>👤</span><b>ลูกค้า</b><small>${users.filter(u=>u.type==='customer').length} บัญชี</small></button>
-        <button class="qt-security-role" data-role="rider" onclick="qtSecurityRole('rider')"><span>🛵</span><b>ไรเดอร์</b><small>${users.filter(u=>u.type==='rider').length} บัญชี</small></button>
-        <button class="qt-security-role" data-role="shop" onclick="qtSecurityRole('shop')"><span>🏪</span><b>ร้านค้า</b><small>${users.filter(u=>u.type==='shop').length} บัญชี</small></button>
-      </div>
-      <div class="qt-security-toolbar"><input id="qt-security-search" type="search" placeholder="ค้นหาชื่อหรือเบอร์โทร" oninput="qtRenderSecurityUsers()"><button class="btn-secondary" onclick="qtAdminRefresh('governance')">🔄 รีเฟรช</button></div>
-      <div id="qt-security-user-list" class="qt-security-user-list"></div>
-    </section>
-    <section id="qt-sec-audit" class="qt-admin-panel"><div class="qt-user-control-head"><div><h3>🧾 Audit Log</h3><p class="qt-admin-note">ประวัติการทำงานของผู้ดูแลระบบและเหตุการณ์สำคัญ</p></div><button class="btn-secondary" onclick="qtAdminRefreshAuditLog()">🔄 รีเฟรช Audit Log</button></div><div class="card"><div class="qt-audit-table-wrap"><table class="qt-admin-table"><thead><tr><th>ผู้ดำเนินการ</th><th>การทำงาน</th><th>ประเภทข้อมูล</th><th>ID รายการ</th><th>วันและเวลา</th></tr></thead><tbody>${audit.slice(-100).reverse().map(x=>{const actor=users.find(u=>u.id===x.actorId);return `<tr><td>${esc(actor?.name||x.actorId||'-')}<br><small>${esc(x.actorRole||'-')}</small></td><td>${esc(x.action||'-')}</td><td>${esc(x.entityType||'-')}</td><td>${esc(x.entityId||'-')}</td><td>${x.at?new Date(x.at).toLocaleString('th-TH'):'-'}</td></tr>`;}).join('')||'<tr><td colspan="5">ยังไม่มีบันทึก</td></tr>'}</tbody></table></div></div></section>
-    <section id="qt-sec-settings" class="qt-admin-panel"><h3>⚙️ ตั้งค่าระบบ</h3><div class="card"><div class="qt-settings-grid"><label>ค่าจัดส่ง ≤ 5 กม. (บาท)<input id="qt-set-delivery5" type="number" min="0" step="1" value="${qtGetSystemSettings().delivery5}"></label><label>ค่าจัดส่ง ≤ 10 กม. (บาท)<input id="qt-set-delivery10" type="number" min="0" step="1" value="${qtGetSystemSettings().delivery10}"></label><label>รัศมีรับงานไรเดอร์ (กม.)<input id="qt-set-riderRadius" type="number" min="0" step="0.5" value="${qtGetSystemSettings().riderRadius}"></label><label>รัศมีรับงานช่าง (กม.)<input id="qt-set-techRadius" type="number" min="0" step="0.5" value="${qtGetSystemSettings().techRadius}"></label><label>Timeout ออเดอร์ (นาที)<input id="qt-set-orderTimeout" type="number" min="1" step="1" value="${qtGetSystemSettings().orderTimeout}"></label><label>ค่าธรรมเนียมระบบ (%)<input id="qt-set-systemFee" type="number" min="0" max="100" step="0.1" value="${qtGetSystemSettings().systemFee}"></label><label class="qt-settings-toggle">เปิดการแจ้งเตือน <input id="qt-set-notifications" type="checkbox" ${qtGetSystemSettings().notifications?'checked':''}></label></div><div class="row-btns" style="margin-top:14px"><button class="btn-primary" onclick="qtSaveSystemSettings()">💾 บันทึกการตั้งค่า</button></div><p class="qt-admin-note">การตั้งค่านี้บันทึกลงฐานข้อมูลกลางและใช้กับอุปกรณ์ที่เชื่อมต่อระบบ</p></div><div id="qg-platform-controls" class="card" style="margin-top:14px"><p class="qt-admin-note">กำลังโหลดสวิตช์ระบบและราคา…</p></div></section>
-  </div>`);
-  window.qtAdminTab=function(id){
-    try{sessionStorage.setItem('qt_admin_active_tab',id);}catch(e){}
-    document.querySelectorAll('.qt-admin-panel').forEach(x=>x.classList.toggle('active',x.id===id));
-    document.querySelectorAll('.qt-admin-tab').forEach(x=>x.classList.toggle('active',x.dataset.target===id));
-    try{if(id==='qt-sec-delivery'&&typeof qtRenderAdminRiderPresence==='function')qtRenderAdminRiderPresence();}catch(e){}
-    try{if(id==='qt-sec-security'&&typeof qtRenderSecurityUsers==='function')qtRenderSecurityUsers();}catch(e){}
-    try{if(id==='qt-sec-settings'&&typeof qgRenderPlatformControls==='function')qgRenderPlatformControls();}catch(e){console.warn('platform controls render failed',e)}
-
-const picker=document.getElementById('qg-admin-section-picker');if(picker&&[...picker.options].some(o=>o.value===id))picker.value=id;
-if(typeof qgAdminSyncNavigation==='function')qgAdminSyncNavigation();
-};
-  if(typeof qtAdminControlPanels==='function')qtAdminControlPanels();
-  let qtSavedAdminTab='qt-sec-overview'; try{qtSavedAdminTab=sessionStorage.getItem('qt_admin_active_tab')||qtSavedAdminTab;}catch(e){}
-  if(!document.getElementById(qtSavedAdminTab)) qtSavedAdminTab='qt-sec-overview';
-  qtAdminTab(qtSavedAdminTab);
-
-
-(()=>{
-
-   const row=document.querySelector('.qt-admin-head .row-btns');
-   if(row&&!row.querySelector('[data-qg-support]'))row.insertAdjacentHTML('afterbegin','<button class="btn-secondary" data-qg-support type="button" onclick="navigate(\'admin-support\')">✉ ข้อความร้านค้า</button>');
-   setTimeout(()=>{
-     const tabs=document.querySelector('.qt-admin-tabs');if(!tabs||document.getElementById('qg-admin-section-picker'))return;
-     const label=document.createElement('label');label.className='qg-admin-section-picker';label.textContent='เลือกงานที่ต้องจัดการ';
-     const select=document.createElement('select');select.id='qg-admin-section-picker';
-     for(const button of tabs.querySelectorAll('[data-target]')){
-       const option=document.createElement('option');option.value=button.dataset.target;option.textContent=button.textContent.trim();select.appendChild(option);
-     }
-     select.value=tabs.querySelector('.active')?.dataset.target||'qt-sec-overview';
-     select.onchange=()=>qtAdminTab(select.value);label.appendChild(select);tabs.before(label);
-     qgRefreshAdminShopStates();
-   },25);
- })();
-(()=>{
-
-    qgAdminApprovalRole(window.QG_ADMIN_APPROVAL_ROLE||'all');
-    const title=document.querySelector('.qt-admin-head');
-    if(title&&!document.getElementById('qg-admin-refresh-note'))title.insertAdjacentHTML('afterend','<p id="qg-admin-refresh-note" role="status">ข้อมูลที่แสดงอยู่ · กำลังตรวจข้อมูลล่าสุด</p>');
-
-  })();
+ const admin=qtAdminOnly();if(!admin)return;
+ const users=dbGet('qt_users',[]),promos=dbGet('qt_promotions',[]),orders=dbGet('qt_orders',[]),audit=dbGet('qt_audit_log',[]),settings=qtGetSystemSettings();
+ const esc=v=>escapeHtml(String(v??'')),empty=text=>`<p class="qg-empty">${text}</p>`;
+ const pending=users.filter(u=>['shop','rider','technician'].includes(u.type)&&u.status==='pending'),shops=users.filter(u=>u.type==='shop');
+ const heading=u=>`<div class="qg-provider-heading"><span class="qg-avatar">${esc((u.shopName||u.name||'?').slice(0,1))}</span><div><b>${esc(u.shopName||u.name||'ไม่ระบุชื่อ')}</b><small>${esc(qgAdminProviderLabel(u))} · ${esc(u.phone||'ไม่มีเบอร์โทร')}</small></div><span class="qt-admin-status ${esc(u.status)}">${esc(accountStatusLabel(u.status))}</span></div>`;
+ const detail=u=>`<button class="btn-secondary" type="button" onclick="qtAdminViewUser('${esc(u.id)}')">ดูข้อมูล</button>`;
+ const approval=pending.map(u=>`<article class="qg-approval-card card" data-approval-role="${esc(u.type)}">${heading(u)}<p class="qt-admin-note">ประเภท: ${esc(qgAdminProviderLabel(u))} · ผู้ติดต่อ ${esc(u.name||'-')}</p><div class="row-btns">${detail(u)}<button class="btn-primary" onclick="adminApproveUser('${esc(u.id)}')">อนุมัติ</button><button class="btn-danger" onclick="adminRejectUser('${esc(u.id)}')">ปฏิเสธ</button></div></article>`).join('');
+ const userPanels=['customer','rider','shop','technician','admin'].map((role,i)=>`<div class="qt-user-category-panel ${i===0?'active':''}" data-user-panel="${role}"><div class="qg-user-cards">${users.filter(u=>u.type===role).map(u=>`<article class="qg-user-card">${heading(u)}<div class="row-btns">${detail(u)}${u.type==='admin'?'<small>บัญชีผู้ดูแลระบบ</small>':`<button class="${u.status==='suspended'?'btn-primary':'btn-danger'}" onclick="adminSecurityAction('${u.status==='suspended'?'restore':'suspend'}','${esc(u.id)}')">${u.status==='suspended'?'ปลดระงับ':'ระงับบัญชี'}</button><button class="btn-secondary" onclick="adminDeleteUser('${esc(u.id)}')">ลบบัญชี</button>`}</div></article>`).join('')||empty('ยังไม่มีบัญชีในประเภทนี้')}</div></div>`).join('');
+ const shopCards=shops.map(u=>`<article class="qg-shop-card card" data-status="${esc(u.status)}">${heading(u)}<p class="qt-admin-note">${u.shopOpen===false?'ปิดรับออเดอร์':'เปิดรับออเดอร์'} · ${esc(u.address||'ยังไม่ระบุที่อยู่')}</p><div class="row-btns">${detail(u)}<button class="btn-secondary" onclick="qgAdminEditLocation('shop_user','${esc(u.id)}')">ปักหมุดร้าน</button>${u.status==='pending'?`<button class="btn-primary" onclick="adminApproveUser('${esc(u.id)}')">อนุมัติ</button><button class="btn-danger" onclick="adminRejectUser('${esc(u.id)}')">ปฏิเสธ</button>`:`<button class="btn-secondary" onclick="qtAdminToggleShop('${esc(u.id)}')">${u.shopOpen===false?'เปิดร้าน':'ปิดร้าน'}</button>`}</div></article>`).join('');
+ const sections=[['qt-sec-overview','ภาพรวม'],['qt-sec-orders','ออเดอร์'],['qt-sec-shops','จัดการร้านค้า'],['qt-sec-users','จัดการผู้ใช้'],['qt-sec-delivery','ไรเดอร์'],['qt-sec-approval','ศูนย์อนุมัติ'],['qt-sec-promote','Promote'],['qt-sec-finance','การเงิน'],['qt-sec-security','ความปลอดภัย'],['qt-sec-notify','ประกาศ'],['qt-sec-audit','ประวัติการทำงาน'],['qt-sec-settings','ตั้งค่าระบบ'],['qt-sec-permissions','สิทธิ์แอดมิน']];
+ const panel=(id,body)=>`<section id="${id}" class="qt-admin-panel">${body}</section>`;
+ const fields=[['delivery5','ค่าจัดส่ง ≤ 5 กม. (บาท)',0,undefined,1],['delivery10','ค่าจัดส่ง ≤ 10 กม. (บาท)',0,undefined,1],['riderRadius','รัศมีรับงานไรเดอร์ (กม.)',0,undefined,0.5],['techRadius','รัศมีรับงานช่าง (กม.)',0,undefined,0.5],['orderTimeout','Timeout ออเดอร์ (นาที)',1,undefined,1],['systemFee','ค่าธรรมเนียมระบบ (%)',0,100,0.1]];
+ layout('จัดการระบบ',`<div class="qt-admin-wrap"><div class="qg-workspace-toolbar"><label>เลือกหมวดจัดการ<select id="qg-admin-section-picker" onchange="qtAdminTab(this.value)">${sections.map(([id,label])=>`<option value="${id}">${label}</option>`).join('')}</select></label><button type="button" class="btn-secondary" onclick="qtAdminRefresh('governance')">รีเฟรชข้อมูล</button></div><p id="qg-admin-refresh-note" class="qt-admin-note" role="status"></p>
+ ${panel('qt-sec-overview',`<h2>งานรอดำเนินการ</h2><div class="qg-workspace-actions"><button onclick="qtAdminTab('qt-sec-approval')">ตรวจผู้ให้บริการ <b>${pending.length}</b></button><button onclick="navigate('admin-market')">ตลาดและสมาชิกตลาด ${qgAdminIcon('pin')}</button><button onclick="navigate('admin-orders')">ดูออเดอร์ ${qgAdminIcon('orders')}</button><button onclick="navigate('admin-gp')">ตรวจ GP และสลิป ${qgAdminIcon('money')}</button></div>`)}
+ ${panel('qt-sec-orders','<h2>จัดการออเดอร์</h2><p class="qt-admin-note">ค้นหา ตรวจสถานะ และเปิดประวัติออเดอร์</p><button class="btn-primary" onclick="navigate(\'admin-orders\')">เปิดรายการออเดอร์</button>')}
+ ${panel('qt-sec-shops',`<h2>จัดการร้านค้า</h2><div class="qg-shop-filters">${[['all','ทั้งหมด'],['pending','รออนุมัติ'],['approved','อนุมัติแล้ว'],['rejected','ปฏิเสธแล้ว'],['suspended','ระงับ']].map(([key,label],i)=>`<button class="${i===0?'active':''}" data-shop-filter="${key}" onclick="qgAdminShopFilter('${key}')">${label}</button>`).join('')}</div><input id="qg-shop-search" type="search" aria-label="ค้นหาร้านค้า" placeholder="ค้นหาชื่อร้าน ประเภท หรือเบอร์โทร" oninput="qgAdminShopFilter()"><div class="qg-shop-list">${shopCards||empty('ยังไม่มีร้านค้า')}</div><p id="qg-shop-empty" class="qg-empty" hidden>ไม่พบร้านค้าที่ค้นหา</p>`)}
+ ${panel('qt-sec-users',`<h2>จัดการผู้ใช้</h2><div class="qt-user-category-tabs">${[['customer','ลูกค้า'],['rider','ไรเดอร์'],['shop','ร้านค้า'],['technician','ช่าง'],['admin','แอดมิน']].map(([role,label],i)=>`<button class="qt-user-category-btn ${i===0?'active':''}" data-user-category="${role}" onclick="qtUserCategory('${role}')">${label} (${users.filter(u=>u.type===role).length})</button>`).join('')}</div><input type="search" id="qg-admin-user-search" aria-label="ค้นหาผู้ใช้" placeholder="ค้นหาชื่อ ประเภทร้าน หรือเบอร์โทร" oninput="qgAdminFilterUsers(this.value)">${userPanels}`)}
+ ${panel('qt-sec-delivery','<h2>สถานะไรเดอร์</h2><div id="qt-admin-rider-online-panel" class="card">กำลังโหลดสถานะจากระบบ…</div>')}
+ ${panel('qt-sec-approval',`<h2>รออนุมัติผู้ให้บริการ</h2><div class="qg-approval-tabs">${[['all','ทั้งหมด'],['shop','ร้านค้า'],['rider','ไรเดอร์']].map(([role,label],i)=>`<button class="${i===0?'active':''}" data-approval-filter="${role}" onclick="qgAdminApprovalRole('${role}')">${label}</button>`).join('')}</div><input id="qg-approval-search" type="search" aria-label="ค้นหาใบสมัคร" placeholder="ค้นหาชื่อร้าน ประเภท หรือเบอร์โทร" oninput="qgAdminApprovalRole(window.QG_ADMIN_APPROVAL_ROLE||'all')">${approval}<p id="qg-approval-filter-empty" class="qg-empty" ${pending.length?'hidden':''}>ไม่มีใบสมัครที่ตรงกับการค้นหา</p>`)}
+ ${panel('qt-sec-promote',`<h2>คำขอ Promote</h2>${promos.map(p=>`<article class="card"><b>${esc(p.shopName||p.shopId)}</b><p>${esc(qtPromoStatusLabel(p.status))} · ${Number(p.bidPrice||0).toLocaleString('th-TH')} บาท</p><div class="row-btns">${p.status==='pending'?`<button class="btn-primary" onclick="adminApprovePromotion('${esc(p.id)}')">อนุมัติ</button><button class="btn-danger" onclick="adminRejectPromotion('${esc(p.id)}')">ปฏิเสธ</button>`:''}${p.status==='active'?`<button class="btn-danger" onclick="stopPromote('${esc(p.id)}')">หยุดโปรโมต</button>`:''}</div></article>`).join('')||empty('ยังไม่มีคำขอ Promote')}`)}
+ ${panel('qt-sec-finance',`<h2>การเงิน</h2><div class="row-btns"><button class="btn-primary" onclick="navigate('admin-gp')">GP และสลิป</button><button onclick="navigate('admin-cash')">รายงานเงินสด</button></div><h3>คำขอคืนเงิน</h3>${orders.filter(o=>o.refundStatus==='requested').map(o=>`<article class="card"><b>${esc(displayOrderNumber(o))}</b><p>${esc(o.refundReason||'-')} · ${Number(o.total||0).toLocaleString('th-TH')} บาท</p><button class="btn-primary" onclick="adminApproveRefund('${esc(o.id)}')">อนุมัติคืนเงิน</button></article>`).join('')||empty('ไม่มีคำขอคืนเงิน')}`)}
+ ${panel('qt-sec-security',`<h2>ศูนย์ความปลอดภัย</h2><div class="qt-security-role-switch">${[['customer','ลูกค้า'],['rider','ไรเดอร์'],['shop','ร้านค้า']].map(([role,label])=>`<button class="qt-security-role" data-role="${role}" onclick="qtSecurityRole('${role}')">${label}</button>`).join('')}</div><label>ค้นหาบัญชี<input id="qt-security-search" type="search" placeholder="ชื่อหรือเบอร์โทร" oninput="qtRenderSecurityUsers()"></label><div id="qt-security-user-list"></div>`)}
+ ${panel('qt-sec-notify',`<h2>สร้างประกาศ</h2><div class="card"><label>ส่งถึง</label><div class="qt-admin-broadcast-targets">${[['all','ทุกกลุ่ม'],['customer','ลูกค้า'],['shop','ร้านค้า'],['rider','ไรเดอร์']].map(([role,label])=>`<button class="btn-secondary ${role===(window.QT_ADMIN_BROADCAST_ROLE||'all')?'active':''}" data-broadcast-role="${role}" onclick="qtAdminBroadcastRole('${role}')">${label}</button>`).join('')}</div><label for="qt-admin-broadcast-title">หัวข้อประกาศ</label><input id="qt-admin-broadcast-title" maxlength="150" placeholder="เช่น แจ้งเวลาปิดปรับปรุง"><label for="qt-admin-broadcast-body">ข้อความ</label><textarea id="qt-admin-broadcast-body" maxlength="2000" placeholder="พิมพ์ข้อความที่ต้องการแจ้งสมาชิก"></textarea><button class="btn-primary btn-block" onclick="qtAdminSendBroadcast()">ส่งประกาศ</button></div>`)}
+ ${panel('qt-sec-audit',`<h2>ประวัติการทำงาน</h2><button onclick="qtAdminRefreshAuditLog()">โหลดประวัติล่าสุด</button>${audit.slice(-100).reverse().map(x=>`<article class="card"><b>${esc(x.action||'-')}</b><p class="qt-admin-note">${esc(users.find(u=>u.id===x.actorId)?.name||x.actorId||'ระบบ')} · ${x.at?new Date(x.at).toLocaleString('th-TH'):'-'}<br>${esc(x.entityType||'')} ${esc(x.entityId||'')}</p></article>`).join('')||empty('ยังไม่มีบันทึก')}`)}
+ ${panel('qt-sec-settings',`<h2>ตั้งค่าระบบ</h2><div class="card"><div class="qt-settings-grid">${fields.map(([key,label,min,max,step])=>`<label>${label}<input id="qt-set-${key}" type="number" min="${min}" ${max==null?'':`max="${max}"`} step="${step}" value="${esc(settings[key])}"></label>`).join('')}<label class="qt-settings-toggle">เปิดการแจ้งเตือน<input id="qt-set-notifications" type="checkbox" ${settings.notifications?'checked':''}></label></div><button class="btn-primary btn-block" onclick="qtSaveSystemSettings()">บันทึกการตั้งค่า</button></div><div id="qg-platform-controls" class="card">กำลังโหลดบริการและราคา…</div>`)}
+ ${panel('qt-sec-permissions','<h2>สิทธิ์ผู้ดูแลระบบ</h2><div class="card"><p>จัดการผู้ใช้ ร้านค้า ไรเดอร์ ออเดอร์ พิกัด และค่าบริการ</p><p class="qt-admin-note">ใช้สิทธิ์บัญชีผู้ดูแลจากระบบกลาง</p></div>')}</div>`);
+ window.qtAdminTab=function(id){if(!sections.some(([key])=>key===id))return;sessionStorage.setItem('qt_admin_active_tab',id);document.querySelectorAll('.qt-admin-panel').forEach(el=>el.classList.toggle('active',el.id===id));const picker=document.getElementById('qg-admin-section-picker');if(picker)picker.value=id;const title=sections.find(([key])=>key===id)?.[1];const titleNode=document.querySelector('.qg-page-title h1');if(titleNode)titleNode.textContent=title;document.title=title+' · QueueGo Admin';qgAdminSyncNavigation();if(id==='qt-sec-delivery')qtRenderAdminRiderPresence();if(id==='qt-sec-security')qtSecurityRole(window.QT_SECURITY_ROLE||'customer');if(id==='qt-sec-settings')qgRenderPlatformControls();if(id==='qt-sec-approval')qgAdminApprovalRole(window.QG_ADMIN_APPROVAL_ROLE||'all');if(id==='qt-sec-shops')qgAdminShopFilter(window.QG_ADMIN_SHOP_FILTER||'all')};
+ const saved=sessionStorage.getItem('qt_admin_active_tab');qtAdminTab(sections.some(([id])=>id===saved)?saved:'qt-sec-overview');
 }
+function qgAdminShopFilter(status){if(status)window.QG_ADMIN_SHOP_FILTER=status;const key=window.QG_ADMIN_SHOP_FILTER||'all',query=(document.getElementById('qg-shop-search')?.value||'').trim().toLocaleLowerCase('th');let count=0;document.querySelectorAll('[data-shop-filter]').forEach(b=>b.classList.toggle('active',b.dataset.shopFilter===key));document.querySelectorAll('.qg-shop-card').forEach(card=>{card.hidden=!(key==='all'||card.dataset.status===key)||!card.textContent.toLocaleLowerCase('th').includes(query);if(!card.hidden)count++});const empty=document.getElementById('qg-shop-empty');if(empty)empty.hidden=count>0;}
+
 
 /* ---------- V5.29 USER CATEGORY CONTROL ---------- */
 window.qtUserCategory=function(type){
@@ -1189,30 +1051,7 @@ function bottomNav(){return `<nav class="qt-bottomnav" aria-label="เมนู�
 
 /* ---------- 1. HOME ---------- */
 
-
-
 /* ---------- 2. REGISTER / LOGIN ---------- */
-
-
-
-
-
-
-
-const RIDER_DRAFT_DB='qt_rider_draft_v522';
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -1248,32 +1087,11 @@ function renderAdminDashboard(user){
 
 /* ---------- 3. DASHBOARD ---------- */
 
-
-
-
-
-
-
-
 /* ---------- 4. SHOP REGISTRATION (with GPS pin) ---------- */
-
-
 
 /* ---------- 5. PRODUCTS ---------- */
 
-
-
-
-
-
 /* ---------- 6/7. SEARCH NEARBY SHOPS + MAP ---------- */
-
-
-
-
-
-
-
 
 /* ---------- Shop View + Cart ---------- */
 
@@ -1291,10 +1109,6 @@ function updateCartCountUI(){
     else el.style.display='none';
   });
 }
-
-
-
-
 
 /* ---------- QT Order Number ---------- */
 /* Customer-facing order number: QT-001, QT-002, ... (3 digits).
@@ -1325,11 +1139,6 @@ function ordersFallbackNumber(order){
 
 /* ---------- 8. CHECKOUT / ORDER FLOW ---------- */
 
-
-
-
-
-
 const ORDER_STATUSES = [
   {key:'pending_shop', label:'รอร้านรับงาน', icon:'⏳'},
   {key:'shop_accepted', label:'ร้านรับงานแล้ว', icon:'✅'},
@@ -1343,190 +1152,7 @@ const ORDER_STATUSES = [
   {key:'cancelled', label:'ยกเลิก', icon:'❌'},
 ];
 
-
-
-
-
-
-
-
 /* ---------- 11. ORDER CHAT ---------- */
-function chatKey(orderId){ return 'qt_order_chat_'+orderId; }
-function isOrderParticipant(order,user){
-  return !!user && (user.id===order.customerId || user.id===order.riderId);
-}
-function chatIsClosed(order){
-  return ['completed','cancelled'].includes(order.status);
-}
-function cleanupExpiredChats(){
-  const now=Date.now();
-  Object.keys(QT_DB_CACHE).filter(k=>k.startsWith('qt_order_chat_')&&k.endsWith('_deleteAt')).forEach(k=>{
-    const deleteAt=Number(QT_DB_CACHE[k]||0);
-    if(deleteAt&&now>=deleteAt){ delete QT_DB_CACHE[k.replace(/_deleteAt$/,'')]; delete QT_DB_CACHE[k]; }
-  });
-}
-function getOrderChat(order){ cleanupExpiredChats(); return dbGet(chatKey(order.id),[]); }
-function formatChatTime(ts){ return new Date(ts).toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'}); }
-function renderOrderChat(order,user){
-  /* V5.33: the customer sees the chat box on the status page even before a rider accepts, so it is clear where the chat will appear */
-  if(!order.riderId && user && user.id===order.customerId && !chatIsClosed(order)) return `<section class="order-chat"><h3>💬 แชทระหว่างลูกค้ากับไรเดอร์</h3><div class="chat-empty">แชทจะเปิดให้ใช้งานเมื่อไรเดอร์รับงานแล้ว</div></section>`;
-  if(!order.riderId || !isOrderParticipant(order,user)) return '';
-  const closed=chatIsClosed(order); const messages=getOrderChat(order);
-  const body=messages.length ? messages.map(m=>`<div class="chat-bubble ${m.senderId===user.id?'mine':'theirs'}"><div>${escapeHtml(m.text)}</div><div class="chat-meta">${escapeHtml(m.senderName||'ผู้ใช้งาน')} • ${formatChatTime(m.createdAt)}</div></div>`).join('') : '<div class="chat-empty">ยังไม่มีข้อความ เริ่มพูดคุยกันได้เลย</div>';
-  return `<section class="order-chat"><h3>💬 แชทระหว่างลูกค้ากับไรเดอร์</h3><div id="chat-messages-${order.id}" class="chat-messages">${body}</div>${closed?'<div class="chat-closed">ออเดอร์จบแล้ว ระบบจะล้างประวัติแชทอัตโนมัติภายใน 20 นาที</div>':`<form class="chat-compose" onsubmit="return sendOrderChat(event,'${order.id}')"><input id="chat-input-${order.id}" maxlength="500" autocomplete="off" placeholder="พิมพ์ข้อความ..." required><button class="btn-primary" type="submit">ส่ง</button></form>`}</section>`;
-}
-/* escapeHtml() now lives in the qt-v532-helpers script */
-function sendOrderChat(event,orderId){
-  event.preventDefault(); const user=currentUser(); const order=dbGet('qt_orders',[]).find(o=>o.id===orderId);
-  if(!user||!order||!isOrderParticipant(order,user)||chatIsClosed(order)){toast('แชทนี้ปิดแล้ว');return false;}
-  const input=document.getElementById('chat-input-'+orderId); const message=(input?.value||'').trim(); if(!message)return false;
-  const messages=getOrderChat(order); messages.push({id:uid(),senderId:user.id,senderName:user.name,text:message,createdAt:Date.now()}); dbSet(chatKey(orderId),messages); input.value=''; renderOrderChatArea(orderId); return false;
-}
-function renderOrderChatArea(orderId){ const order=dbGet('qt_orders',[]).find(o=>o.id===orderId), user=currentUser(); const host=document.querySelector('.order-chat'); if(!order||!host||!user)return; const fresh=document.createElement('div'); fresh.innerHTML=renderOrderChat(order,user); host.replaceWith(fresh.firstElementChild); const box=document.getElementById('chat-messages-'+orderId); if(box)box.scrollTop=box.scrollHeight; }
-
-setInterval(cleanupExpiredChats,30000);
-
-
-
-
-
-/* ---------- ADMIN ORDER CENTER ---------- */
-
-
-
-
-
-
-
-
-
-
-
-
-/* ---------- 10. LIVE TRACKING ---------- */
-/*
-  V5.44 Batch 6:
-  - Removed the old simulated rider movement.
-  - The customer map must never invent a rider GPS position.
-  - If a real last-known rider location exists, show it.
-  - If no real location exists yet, show only pickup/delivery points.
-  This remains incomplete until cross-device Realtime/API is enabled.
-*/
-
-
-/* ---------- 9. RIDER SYSTEM ---------- */
-
-
-
-
-/* ---------- Thailand administrative address data ---------- */
-const EMBEDDED_THAI_PROVINCES = ["กรุงเทพมหานคร","อำนาจเจริญ","อ่างทอง","บุรีรัมย์","ฉะเชิงเทรา","ชัยนาท","ชัยภูมิ","จันทบุรี","เชียงใหม่","เชียงราย","ชลบุรี","ชุมพร","กาฬสินธุ์","กำแพงเพชร","กาญจนบุรี","ขอนแก่น","กระบี่","ลำปาง","ลำพูน","เลย","ลพบุรี","แม่ฮ่องสอน","มหาสารคาม","มุกดาหาร","นครนายก","นครปฐม","นครพนม","นครราชสีมา","นครสวรรค์","นครศรีธรรมราช","น่าน","นราธิวาส","หนองบัวลำภู","หนองคาย","นนทบุรี","ปทุมธานี","ปัตตานี","พังงา","พัทลุง","พะเยา","เพชรบูรณ์","เพชรบุรี","พิจิตร","พิษณุโลก","พระนครศรีอยุธยา","แพร่","ภูเก็ต","ปราจีนบุรี","ประจวบคีรีขันธ์","ระนอง","ราชบุรี","ระยอง","ร้อยเอ็ด","สระแก้ว","สกลนคร","สมุทรปราการ","สมุทรสาคร","สมุทรสงคราม","สระบุรี","สตูล","สิงห์บุรี","ศรีสะเกษ","สงขลา","สุโขทัย","สุพรรณบุรี","สุราษฎร์ธานี","สุรินทร์","ตาก","ตรัง","ตราด","อุบลราชธานี","อุดรธานี","อุทัยธานี","อุตรดิตถ์","ยะลา","ยโสธร","บึงกาฬ"];
-const THAI_GEO_URL = 'https://raw.githubusercontent.com/kongvut/thai-province-data/refs/heads/master/api/latest/province_with_district_and_sub_district.json';
-window.__thaiRiderGeo = window.__thaiRiderGeo || null;
-window.__thaiRiderGeoPromise = window.__thaiRiderGeoPromise || null;
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-/* ---------- V5.2 AUTO DISPATCH / FAIR RIDER DISPATCH ---------- */
-/*
- Rules:
- 1) Only approved + online + available riders are candidates.
- 2) Rider must be within 1 km of the pickup point.
- 3) Prefer riders with fewer active/assigned jobs.
- 4) If workload is tied, nearest rider wins.
- 5) A job is assigned privately to one rider; other riders do not see it.
- 6) If the assigned rider declines/times out, call dispatchNextRider().
-*/
-/* ---- Rider route/distance ---- */
- /* was missing: auto-dispatch called it and crashed */
-
-
-
-
-
-
-/* ---------- 11/14. TECHNICIAN SYSTEM (รวมคนสวน) ---------- */
-
-
-
-
-
-
-
-/* V5.31: added quote_selected / technician_confirmed / working per updated spec.
-   'requested'+'accepted' kept unchanged for the direct-select-technician path (no quote involved) —
-   nothing removed, only inserted between open_for_quotes and heading for the quote/RFQ path. */
-const TECH_STATUSES=[{key:'open_for_quotes',label:'รอช่างเสนอราคา'},{key:'requested',label:'รอช่างรับงาน'},{key:'quote_selected',label:'ลูกค้าเลือกช่างแล้ว รอช่างยืนยัน'},{key:'technician_confirmed',label:'ช่างยืนยันรับงานแล้ว'},{key:'accepted',label:'ช่างรับงานแล้ว'},{key:'heading',label:'กำลังเดินทางไปหาลูกค้า'},{key:'arrived',label:'ถึงลูกค้าแล้ว'},{key:'working',label:'กำลังดำเนินงาน'},{key:'completed',label:'งานเสร็จสิ้น'},{key:'rejected',label:'ช่างปฏิเสธ'},{key:'cancelled',label:'ยกเลิก'}];
-
-
-
-
-
-/* V5.31: who is allowed to move a job from which status to which next status.
-   NOTE per spec §21 — this is a client-side check only. In production this
-   exact table must be re-verified on the Backend before writing any status change;
-   the frontend must never be the only place that enforces this. */
-const TECH_JOB_TRANSITIONS = {
-  requested:          { accepted:'technician', rejected:'technician', cancelled:'customer' },
-  quote_selected:     { technician_confirmed:'technician', rejected:'technician', cancelled:'customer' },
-  technician_confirmed:{ heading:'technician' },
-  accepted:           { heading:'technician' },
-  heading:            { arrived:'technician' },
-  arrived:            { working:'technician' },
-  working:            { completed:'technician' },
-  open_for_quotes:    { cancelled:'customer' },
-};
-
-
-/* ---------- เรียกช่างทั่วไป (ไม่ใช่ด่วนพิเศษ) — รวมงานสวน ---------- */
-
-
-
-
-
-/* ---------- ขอใบเสนอราคาจากช่างหลายคน (Quote/Bidding) ---------- */
-
-
-
-
-
-
-/* ---------- 12/13. บริการด่วนพิเศษ ---------- */
-
-
-
-
-
-/* ---------- 15. QUEUEGO PROMOTE ---------- */
-
-
-
-
-
-
-
-
-/* ---------- 16. แพ็กเกจและโมดูลของร้าน ---------- */
-
-
-
-
-
-
 (function qtNotificationBadgeBoot(){
   function sync(){try{syncNotificationBadge();}catch(e){}}
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',sync);
@@ -1536,14 +1162,6 @@ const TECH_JOB_TRANSITIONS = {
   });
   setInterval(sync,1500);
 })();
-
-
-
-
-
-
-
-
 
 </script>
 
@@ -1571,8 +1189,6 @@ const TECH_JOB_TRANSITIONS = {
 })();
 </script>
 
-
-
 <script>
 /* =====================================================================
    V5.31 business additions retained after pre-Android cleanup.
@@ -1593,26 +1209,12 @@ function qtGpRatePercent(shopId){
 }
 function gpAmount(saleAmount, shopId){ return Math.round((Number(saleAmount)||0)*qtGpRatePercent(shopId))/100; }
 
-
-
 /* ---------- 16/17/18. สรุปยอดขายรายวัน + สถานะชำระ GP ---------- */
 // สถานะการชำระ GP: pending_payment(รอชำระ) -> shop_reported(ร้านแจ้งโอน) -> under_review(รอตรวจสอบ) -> paid(ชำระแล้ว)
 const GP_SETTLEMENT_STATUSES = {pending_payment:'รอชำระ', shop_reported:'ร้านแจ้งโอน', under_review:'รอตรวจสอบ', paid:'ชำระแล้ว'};
 
-
-
-
-
-
 /* ---- Admin GP summary: daily view + whole-month view ---- */
 window.__qtGpMode=window.__qtGpMode||'day';
-
-
-
-
-
-
-
 
 /* ---- GP rate management (Admin): default rate + special rate per shop ---- */
 window.qtPullGpRates=async function(){
@@ -1669,9 +1271,6 @@ function qtGpRateCards(){
 }
 
 </script>
-
-
-
 
 <script>
 window.addEventListener('unhandledrejection',e=>{
@@ -1760,8 +1359,6 @@ window.addEventListener('unhandledrejection',e=>{
 })();
 </script>
 
-
-
 <script id="qt-v546-admin-full-control-script">
 (function(){
   window.QT_ADMIN_BROADCAST_ROLE=window.QT_ADMIN_BROADCAST_ROLE||'all';
@@ -1781,21 +1378,6 @@ window.addEventListener('unhandledrejection',e=>{
     toast('🔔 ส่งประกาศให้ '+users.length+' บัญชีแล้ว');
     const t=document.getElementById('qt-admin-broadcast-title'),b=document.getElementById('qt-admin-broadcast-body');if(t)t.value='';if(b)b.value='';
   };
-
-  window.qtAdminControlPanels=inject;
-  function inject(){
-    const wrap=document.querySelector('.qt-admin-wrap'); if(!wrap||document.getElementById('qt-sec-notify'))return;
-    const tabs=wrap.querySelector('.qt-admin-tabs'); if(!tabs)return;
-    tabs.insertAdjacentHTML('beforeend','<button class="qt-admin-tab" data-target="qt-sec-shops" onclick="qtAdminTab(\'qt-sec-shops\')">🏪 ร้านค้า</button><button class="qt-admin-tab" data-target="qt-sec-notify" onclick="qtAdminTab(\'qt-sec-notify\')">🔔 ประกาศ</button><button class="qt-admin-tab" data-target="qt-sec-permissions" onclick="qtAdminTab(\'qt-sec-permissions\')">🛡️ สิทธิ์ Admin</button>');
-    const users=dbGet('qt_users',[]),shops=users.filter(u=>u.type==='shop'),admins=users.filter(u=>u.type==='admin');
-    const esc=x=>typeof escapeHtml==='function'?escapeHtml(String(x??'-')):String(x??'-');
-    const shopRows=shops.map(u=>'<div class="qt-admin-shop-row"><div><b>'+esc(u.shopName||u.name||'-')+'</b><small>'+esc(qgAdminShopCategory(u))+' • '+esc(u.phone||'-')+' • '+esc(accountStatusLabel(u.status))+' • '+(u.shopOpen===false?'🔴 ปิดร้าน':'🟢 เปิดร้าน')+'</small></div><div><button type="button" onclick="qgAdminEditLocation(\'shop_user\',\''+u.id+'\')">แก้พิกัดร้าน</button><button class="'+(u.shopOpen===false?'btn-primary':'btn-danger')+'" onclick="qtAdminToggleShop(\''+u.id+'\')">'+(u.shopOpen===false?'▶️ เปิดร้าน':'⏸️ ปิดร้าน')+'</button></div></div>').join('')||'<p>ยังไม่มีร้านค้า</p>';
-    const panels='<section id="qt-sec-shops" class="qt-admin-panel"><h3>🏪 ควบคุมร้านค้า</h3><p class="qt-admin-note">ดูสถานะร้าน เปิด/ปิดร้านชั่วคราว และไปยังหน้าปรับ GP</p><div class="qt-admin-section-card"><div class="row-btns"><button class="btn-primary" onclick="navigate(\'admin-gp\')">💰 ปรับ GP / ราคา</button><button class="btn-secondary" onclick="qtAdminTab(\'qt-sec-security\');setTimeout(()=>qtSecurityRole(\'shop\'),0)">🔐 ระงับร้านค้า</button></div></div><div class="qt-admin-shop-list">'+shopRows+'</div></section>'+
-    '<section id="qt-sec-notify" class="qt-admin-panel"><h3>🔔 ส่งประกาศ</h3><p class="qt-admin-note">ส่งข้อความให้ทุกบัญชี หรือเลือกเฉพาะลูกค้า ร้านค้า และไรเดอร์</p><div class="qt-admin-section-card"><div class="qt-admin-broadcast-targets"><button class="btn-secondary active" data-broadcast-role="all" onclick="qtAdminBroadcastRole(\'all\')">ทั้งหมด</button><button class="btn-secondary" data-broadcast-role="customer" onclick="qtAdminBroadcastRole(\'customer\')">ลูกค้า</button><button class="btn-secondary" data-broadcast-role="shop" onclick="qtAdminBroadcastRole(\'shop\')">ร้านค้า</button><button class="btn-secondary" data-broadcast-role="rider" onclick="qtAdminBroadcastRole(\'rider\')">ไรเดอร์</button></div><label>หัวข้อ</label><input id="qt-admin-broadcast-title" placeholder="เช่น แจ้งปิดปรับปรุงระบบ"><label>ข้อความ</label><textarea id="qt-admin-broadcast-body" rows="4" placeholder="ข้อความประกาศ"></textarea><button class="btn-primary btn-block" onclick="qtAdminSendBroadcast()">🔔 ส่งประกาศ</button></div></section>'+
-    '<section id="qt-sec-permissions" class="qt-admin-panel"><h3>🛡️ สิทธิ์ผู้ดูแลระบบ</h3><div class="qt-admin-section-card"><div class="qt-admin-permission-row"><span>บัญชี Admin ปัจจุบัน</span><b>'+admins.length+' บัญชี</b></div><div class="qt-admin-permission-row"><span>จัดการผู้ใช้/ระงับ/ปลดระงับ</span><b>อนุญาต</b></div><div class="qt-admin-permission-row"><span>จัดการออเดอร์ทุกสถานะ</span><b>อนุญาต</b></div><div class="qt-admin-permission-row"><span>จัดการร้าน/ไรเดอร์/GP/การเงิน</span><b>อนุญาต</b></div><div class="qt-admin-permission-row"><span>ตั้งค่าระบบ/Audit/ประกาศ</span><b>อนุญาต</b></div></div><div class="qt-admin-danger-note">การแบ่ง Super Admin / Staff Admin ต้องบังคับสิทธิ์ที่ฐานข้อมูลด้วย ไม่ควรใช้แค่ปุ่มซ่อนในหน้าเว็บ รุ่นนี้จึงยังไม่สร้าง Staff Admin แบบสิทธิ์ปลอม</div></section>';
-    wrap.insertAdjacentHTML('beforeend',panels);
-  }
-
 
   /* keep admin on the same control page after suspend/restore */
 
@@ -1849,7 +1431,7 @@ window.addEventListener('unhandledrejection',e=>{
     try{const token=await qtGetAccessToken();const r=await fetch(QT_SUPABASE_CONFIG.URL+'/storage/v1/object/sign/gp-slips/'+path,{method:'POST',headers:{apikey:QT_SUPABASE_CONFIG.KEY,Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({expiresIn:300})});const d=await r.json();if(!r.ok)throw Error(d.message||'เปิดสลิปไม่สำเร็จ');window.open(QT_SUPABASE_CONFIG.URL+'/storage/v1'+d.signedURL,'_blank','noopener');}catch(e){toast(e.message||'เปิดสลิปไม่สำเร็จ');}
   };
   window.qgReviewAdminGp=async function(id,approve,button){
-    let reason=null;if(approve){if(!confirm('ยืนยันว่าได้รับ GP ตามสลิปแล้ว?'))return;}else{reason=prompt('เหตุผลที่สลิปไม่ผ่าน');if(reason===null)return;if(!reason.trim()){toast('กรุณาระบุเหตุผล');return;}}
+    let reason=null;if(approve){if(!confirm('ยืนยันว่าได้รับ GP ตามสลิปแล้ว?'))return;}else{reason=await qgAdminInput({title:'สลิป GP ไม่ผ่าน',label:'เหตุผลที่สลิปไม่ผ่าน'});if(reason===null)return;if(!reason.trim()){toast('กรุณาระบุเหตุผล');return;}}
     button.disabled=true;try{const t=await qtGetAccessToken();await qtSupabaseTable('rpc/admin_review_gp',{method:'POST',accessToken:t,body:{p_settlement_id:id,p_approve:approve,p_reason:reason}});toast('บันทึกผลแล้ว');qgLoadAdminGp();}catch(e){toast(e.message||'บันทึกไม่สำเร็จ');button.disabled=false;}
   };
 })();
@@ -1885,7 +1467,7 @@ async function qgLoadAdminCash(day){
      (x.order_status==='completed'&&x.customer_payment_status!=='paid')));
    const body=`<p>ออเดอร์ ${rows.length} • ตรวจสอบเพิ่มเติม ${issues.length}</p>
      <p>ค่าสินค้าที่ไรเดอร์สำรอง: <b>฿${money(total('rider_advance'))}</b></p>
-     <p>เงินสดที่ร้านยืนยันรับ: <b>฿${money(total('merchant_receipt'))}</b></p>
+     <p>เงินสดที่ร้านรับเงิน (บันทึกอัตโนมัติ): <b>฿${money(total('merchant_receipt'))}</b></p>
      <p>GP ของออเดอร์: <b>฿${money(live.reduce((a,x)=>a+Number(x.gp_amount||0),0))}</b></p>
      <p>ยอดรวมออเดอร์ส่งสำเร็จ: <b>฿${money(rows.filter(x=>x.order_status==='completed').reduce((a,x)=>a+Number(x.total_amount||0),0))}</b></p>`
      +rows.map(x=>`<div style="padding:12px 0;border-top:1px solid #e5e7eb"><b>${escapeHtml(x.order_number||'')}</b> · ${escapeHtml(x.shop_name||'ร้านค้า')}<br><small>สถานะ ${escapeHtml(x.order_status||'-')} • ไรเดอร์ ${escapeHtml(x.rider_name||'-')}</small><br><small>ค่าสินค้า ฿${money(x.subtotal)} • ไรเดอร์สำรอง ฿${money(x.rider_advance)} • ร้านยืนยัน ฿${money(x.merchant_receipt)}</small><br><small>ลูกค้าชำระ ${escapeHtml(x.customer_payment_status||'-')} • GP ฿${money(x.gp_amount)} (${escapeHtml(x.gp_status||'-')})</small>${issues.includes(x)?'<br><strong style="color:#b91c1c">ต้องตรวจสอบยอดหรือสถานะ</strong>':''}</div>`).join('');
@@ -1896,11 +1478,6 @@ async function qgLoadAdminCash(day){
 
 <script id="qg-admin-v21-integration">
 (function(){
-
-
-
-
-
 
  window.qgRefreshAdminShopStates=async function(){
    try{const token=await qtGetAccessToken();
@@ -2015,7 +1592,7 @@ async function qgLoadAdminCash(day){
  window.qgAdminDeleteReviewed=async function(id){if(!active()||!confirm('ลบออเดอร์นี้โดยเก็บภาพรวมการเงินและหลักฐานไว้ในคลังตรวจสอบ?'))return;try{await qtDeleteOrderFromDatabase(id);await qgLoadAdminOrders();toast('ลบออเดอร์และเก็บหลักฐานแล้ว')}catch(e){toast('ลบออเดอร์ไม่สำเร็จ: '+e.message)}};
  window.qgAdminTrace=async function(id){if(!active())return;const box=document.createElement('section');box.className='qg-v22-admin-modal';box.innerHTML='<div class="qg-v22-admin-sheet"><button type="button" class="qg-close">✕</button><h2>เส้นทางออเดอร์และเงินสด</h2><div class="qg-content">กำลังโหลด...</div></div>';document.body.appendChild(box);box.querySelector('.qg-close').onclick=()=>box.remove();box.onclick=e=>{if(e.target===box)box.remove()};
    try{const x=await req('rpc/qg_admin_order_trace','POST',{p_order_id:id}),o=x.order||x.archived?.order||{},pay=x.payment||x.archived?.payments?.[0],advance=x.rider_cash||x.archived?.cash_advance,receipt=x.merchant_receipt||x.archived?.merchant_receipt,delivery=x.delivery||x.archived?.deliveries?.[0],proof=x.proof||x.archived?.proof;
-     box.querySelector('.qg-content').innerHTML='<p><b>'+safe(o.order_number||id)+'</b> · '+safe(states[o.status]||o.status||'ข้อมูลในคลัง')+'</p><div class="qg-v22-trace-grid">'+[['ลูกค้า',o.customer_id],['ร้าน',o.shop_id],['ไรเดอร์',o.rider_id],['ค่าสินค้า',money(o.subtotal)],['ค่าส่ง',money(o.delivery_fee)],['GP',money(o.gp_amount)],['ยอดรวม',money(o.total_amount)],['ไรเดอร์จ่ายร้าน',advance?money(advance.amount)+' · '+new Date(advance.paid_at).toLocaleString('th-TH'):'ยังไม่บันทึก'],['ร้านยืนยันรับ',receipt?money(receipt.amount)+' · '+new Date(receipt.received_at).toLocaleString('th-TH'):'ยังไม่ยืนยัน'],['ลูกค้าจ่ายไรเดอร์',pay?.status==='paid'?money(pay.amount)+' · '+new Date(pay.paid_at).toLocaleString('th-TH'):'ยังไม่บันทึก'],['ส่งมอบ',delivery?.delivered_at?new Date(delivery.delivered_at).toLocaleString('th-TH'):'ยังไม่ส่งสำเร็จ'],['ยืนยัน PIN',proof?.otp_verified?'ยืนยันแล้ว':'ยังไม่มีหลักฐาน']].map(([label,value])=>'<div><small>'+label+'</small><b>'+safe(value||'-')+'</b></div>').join('')+'</div>'+(proof?.photo_path?'<button type="button" data-evidence="'+safe(proof.photo_path)+'" onclick="qgAdminOpenEvidence(this.dataset.evidence)">ดูรูปส่งมอบ</button>':'')+'<h3>Audit Trail</h3>'+(x.audit||[]).map(a=>'<p>'+new Date(a.created_at).toLocaleString('th-TH')+' · '+safe(a.action)+' · '+safe(a.user_id||'ระบบ')+'</p>').join('');
+     box.querySelector('.qg-content').innerHTML='<p><b>'+safe(o.order_number||id)+'</b> · '+safe(states[o.status]||o.status||'ข้อมูลในคลัง')+'</p><div class="qg-v22-trace-grid">'+[['ลูกค้า',o.customer_id],['ร้าน',o.shop_id],['ไรเดอร์',o.rider_id],['ค่าสินค้า',money(o.subtotal)],['ค่าส่ง',money(o.delivery_fee)],['GP',money(o.gp_amount)],['ยอดรวม',money(o.total_amount)],['ไรเดอร์จ่ายร้าน',advance?money(advance.amount)+' · '+new Date(advance.paid_at).toLocaleString('th-TH'):'ยังไม่บันทึก'],['ร้านรับเงิน (บันทึกอัตโนมัติ)',receipt?money(receipt.amount)+' · '+new Date(receipt.received_at).toLocaleString('th-TH'):'ยังไม่บันทึก'],['ลูกค้าจ่ายไรเดอร์',pay?.status==='paid'?money(pay.amount)+' · '+new Date(pay.paid_at).toLocaleString('th-TH'):'ยังไม่บันทึก'],['ส่งมอบ',delivery?.delivered_at?new Date(delivery.delivered_at).toLocaleString('th-TH'):'ยังไม่ส่งสำเร็จ']].map(([label,value])=>'<div><small>'+label+'</small><b>'+safe(value||'-')+'</b></div>').join('')+'</div>'+(proof?.photo_path?'<button type="button" data-evidence="'+safe(proof.photo_path)+'" onclick="qgAdminOpenEvidence(this.dataset.evidence)">ดูรูปส่งมอบ</button>':'')+'<h3>Audit Trail</h3>'+(x.audit||[]).map(a=>'<p>'+new Date(a.created_at).toLocaleString('th-TH')+' · '+safe(a.action)+' · '+safe(a.user_id||'ระบบ')+'</p>').join('');
    }catch(e){box.querySelector('.qg-content').textContent='ตรวจสอบไม่สำเร็จ: '+e.message}
  };
  window.qgAdminOpenEvidence=async function(path){try{const t=await token(),r=await fetch(QT_SUPABASE_CONFIG.URL+'/storage/v1/object/sign/qg-evidence/'+path,{method:'POST',headers:{apikey:QT_SUPABASE_CONFIG.KEY,Authorization:'Bearer '+t,'Content-Type':'application/json'},body:JSON.stringify({expiresIn:300})});const d=await r.json();if(!r.ok)throw Error(d.message);window.open(QT_SUPABASE_CONFIG.URL+'/storage/v1'+d.signedURL,'_blank','noopener')}catch(e){toast('เปิดหลักฐานไม่สำเร็จ: '+e.message)}};
@@ -2027,9 +1604,6 @@ async function qgLoadAdminCash(day){
  }catch(e){body.textContent='โหลดเรื่องร้องเรียนไม่สำเร็จ: '+e.message}};
 })();
 </script>
-
-
-
 
 <script id="qg-admin-control-restore">
 (function(){
@@ -2070,16 +1644,13 @@ async function qgLoadAdminCash(day){
     },0);
   };
 
-
-
-
   const busy=new Set();
   async function accountAction(action,id){
     const admin=currentUser();if(!admin||admin.type!=='admin'||busy.has(id))return;
     const transitions={approve:{from:['pending','rejected'],to:'active'},reject:{from:['pending'],to:'rejected'},suspend:{from:['active'],to:'suspended'},restore:{from:['suspended'],to:'active'}};
     const transition=transitions[action];if(!transition)return;
     let reason=null;
-    if(action==='suspend'){reason=prompt('เหตุผลระงับบัญชี:');if(reason===null)return;reason=reason.trim()||'ตามการตรวจสอบของ Admin'}
+    if(action==='suspend'){reason=await qgAdminInput({title:'ระงับบัญชี',label:'เหตุผลระงับบัญชี'});if(reason===null)return;reason=reason.trim()||'ตามการตรวจสอบของ Admin'}
     busy.add(id);
     try{
       const token=await qtGetAccessToken();if(!token)throw Error('กรุณาเข้าสู่ระบบ Admin ใหม่');
@@ -2102,12 +1673,9 @@ async function qgLoadAdminCash(day){
   window.adminUnsuspendUser=id=>accountAction('restore',id);
 })();
 </script>
-<link rel="stylesheet" href="market.css?v=20261005-interface">
-<script defer src="locations.js?v=20261005"></script>
-<script defer src="market.js?v=20261005-interface"></script>
 
-
-
+<script defer src="locations.js?v=20261005-rebuild"></script>
+<script defer src="market.js?v=20261005-rebuild"></script>
 
 <script id="qg-platform-controls-v1">
 (function(){
