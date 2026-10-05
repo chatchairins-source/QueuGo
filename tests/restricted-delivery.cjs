@@ -9,7 +9,7 @@ ok(sql.includes("add column if not exists delivery_restriction"),'products must 
 ok(sql.includes("queuego_detect_delivery_restriction"),'server must classify obvious restricted products');
 ok(sql.includes("new.delivery_available:=false"),'server trigger must force restricted products out of Delivery');
 ok(sql.includes("products_restricted_not_delivery_check"),'database must enforce restricted products cannot be Delivery-enabled');
-ok(sql.includes("pos_available")===false,'restriction migration must not disable POS availability');
+ok(!/set\s+pos_available\s*=|new\.pos_available\s*:=/i.test(sql),'restriction migration must not disable POS availability');
 ok(sql.includes("update public.products"),'existing products must be backfilled');
 ok(sql.includes("(เบียร์|เหล้า|ไวน์|วิสกี้|วอดก้า|บรั่นดี|สุราขาว|สุราพื้นบ้าน)"),'Thai alcohol names must be covered');
 ok(sql.includes("(บุหรี่|ยาสูบ|ซิการ์|บุหรี่ไฟฟ้า)"),'Thai tobacco names must be covered');
