@@ -673,7 +673,7 @@ V['market-order']=async(id,ticket=routeVersion)=>{
     <div class="tot"><span>รวม</span><span>${baht(trip.total_amount)}</span></div>
   </section>`,'orders');
 };
-const customerOrderNumber=o=>String(o?.order_number||'').trim()||String(o?.id||'').slice(0,8).toUpperCase();
+const customerOrderNumber=o=>{const raw=String(o?.order_number||'').trim();const seq=raw.match(/(\d{4})$/);if(seq)return 'QT-'+seq[1];const id=String(o?.id||'').replace(/[^a-z0-9]/gi,'').slice(-4).toUpperCase();return 'QT-'+id.padStart(4,'0')};
 V.orders=async(_,ticket=routeVersion)=>{
   const u=S.get();if(!u)return go('login');
   const [rows,trips]=await Promise.all([
