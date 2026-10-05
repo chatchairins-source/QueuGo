@@ -1064,9 +1064,10 @@ function qtLocalDateKey(ts){
 
 function displayOrderNumber(order){
   const raw=String(order?.orderNumber||order?.order_number||'').trim();
-  if(raw)return raw;
-  const idx=dbGet('qt_orders',[]).findIndex(o=>o.id===order?.id);
-  return 'QT-'+String(idx<0?1:idx+1).padStart(3,'0');
+  const seq=raw.match(/(\d{4})$/);
+  if(seq)return 'QT-'+seq[1];
+  const id=String(order?.id||'').replace(/[^a-z0-9]/gi,'').slice(-4).toUpperCase();
+  return 'QT-'+id.padStart(4,'0');
 }
 
 
