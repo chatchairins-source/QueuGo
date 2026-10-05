@@ -1173,7 +1173,7 @@ async function cycleModule(moduleKey){
       });
     }
     toast(`โมดูล "${qtShopModuleLabel(moduleKey)}" → ${qtShopModuleStatusLabel(next)}`);
-    await renderShopModules();
+    try{await renderShopModules()}catch(refreshErr){console.warn('merchant module post-commit render failed',refreshErr)}
   }catch(err){
     console.error('shop_modules save failed',err);
     toast('บันทึกโมดูลไม่สำเร็จ: '+String(err.message||err).slice(0,120));
@@ -2217,7 +2217,7 @@ window.qgmSaveProduct=async function(e,id){
 window.renderShopPromote=function(){const u=shopUser(),all=dbGet('qt_promotions',[]).filter(p=>String(p.shopId||p.shop_id)===String(u.id)||String(p.shopProfileId||p.shop_id)===String(profileId(u)));layout('โปรโมชั่น',`<div class="qgm-tabs"><button class="active" data-promo="all" onclick="qgmPromoFilter('all')">ทั้งหมด</button><button data-promo="active" onclick="qgmPromoFilter('active')">กำลังใช้งาน</button><button data-promo="pending" onclick="qgmPromoFilter('pending')">รออนุมัติ</button></div><button class="qgm-outline" type="button" onclick="navigate('shop-promote-create')">สร้างโปรโมชั่นใหม่</button>${all.length?all.map(p=>`<section class="qgm-card qgm-info" data-promo-status="${esc(p.status||'pending')}"><b>${esc(p.title||p.category||'โปรโมชั่น')}</b><small style="display:block;color:#8b9098;margin-top:5px">${esc(p.status||'pending')}</small></section>`).join(''):`<div class="qgm-empty"><div class="mega">${svg('megaphone')}</div><h2>ยังไม่มีโปรโมชั่น</h2><p>สร้างโปรโมชั่นเพื่อเพิ่มยอดขาย<br>และดึงดูดลูกค้า</p><button class="qgm-primary" style="max-width:220px" onclick="navigate('shop-promote-create')">＋ สร้างโปรโมชั่น</button></div>`}`,'shop-promote',{back:true})};
 
 window.renderShopPromoteCreate=function(){layout('สร้างโปรโมชั่น',`<form class="qgm-card qgm-form-card" onsubmit="return qgmSavePromo(event)"><div class="qgm-field"><label>ชื่อ/ประเภทโปรโมชั่น</label><input id="qgm-promo-title" required placeholder="เช่น โปรโมตร้านประจำสัปดาห์"></div><div class="qgm-inline"><div class="qgm-field"><label>งบสูงสุด</label><input id="qgm-promo-budget" type="number" min="0" required></div><div class="qgm-field"><label>จำนวนวัน</label><input id="qgm-promo-days" type="number" min="1" value="7" required></div></div><button class="qgm-primary" type="submit">ส่งคำขอโปรโมชั่น</button></form>`,'shop-promote',{back:true})};
-window.qgmSavePromo=async function(e){e.preventDefault();const u=shopUser(),pid=profileId(u);try{await qtSupabaseTable('promotions',{method:'POST',accessToken:qtAccessToken(),body:{shop_id:pid,shop_name:u.shopName||u.name,category:$('#qgm-promo-title').value.trim(),area:u.address||'',bid_price:0,max_budget:Number($('#qgm-promo-budget').value),period_days:Number($('#qgm-promo-days').value),status:'pending',payment_status:'pending',metadata:{title:$('#qgm-promo-title').value.trim()}}});toast('ส่งคำขอโปรโมชั่นแล้ว');navigate('shop-promote')}catch(err){toast('บันทึกโปรโมชั่นไม่สำเร็จ: '+(err.message||err))}return false};
+window.qgmSavePromo=async function(e){e.preventDefault();const u=shopUser(),pid=profileId(u);try{await qtSupabaseTable('promotions',{method:'POST',accessToken:qtAccessToken(),body:{shop_id:pid,shop_name:u.shopName||u.name,category:$('#qgm-promo-title').value.trim(),area:u.address||'',bid_price:0,max_budget:Number($('#qgm-promo-budget').value),period_days:Number($('#qgm-promo-days').value),status:'pending',payment_status:'pending',metadata:{title:$('#qgm-promo-title').value.trim()}}});toast('ส่งคำขอโปรโมชั่นแล้ว');try{navigate('shop-promote')}catch(navErr){console.warn('merchant promo post-commit navigation failed',navErr)}}catch(err){toast('บันทึกโปรโมชั่นไม่สำเร็จ: '+(err.message||err))}return false};
 
 window.renderShopProfileModern=function(){const u=shopUser();if(!u)return navigate('login');const cover=u.cover||u.coverImage,logo=u.logo||u.avatar,hasCover=cover&&cover!==logo;layout('ข้อมูลร้านค้า',`<div class="qgm-profile-cover ${hasCover?'has-photo':''}">${hasCover?`<img src="${esc(img(cover))}" alt="ภาพหน้าร้าน">`:''}<button class="qgm-camera" type="button" aria-label="เปลี่ยนภาพร้าน" onclick="navigate('shop-setup')">${svg('camera')}</button></div><div class="qgm-profile-name"><div class="qgm-profile-identity"><img src="${esc(img(logo))}" alt=""><div><h2>${esc(u.shopName||u.name||'ร้านค้า')}</h2><small>${esc(categoryLabel(u.category)||'ร้านค้า')}</small></div></div><span class="qgm-status" id="qgm-profile-open-state">● กำลังตรวจสอบสถานะร้าน</span></div><section class="qgm-card qgm-info"><div class="qgm-detail-row">${svg('box')}<span>${esc(categoryLabel(u.category)||'ร้านค้า')}</span></div><div class="qgm-detail-row">${svg('phone')}<span>${esc(u.phone||'-')}</span></div><div class="qgm-detail-row">${svg('pin')}<span>${esc(u.address||'-')}</span></div><div class="qgm-detail-row">${svg('clock')}<span>เปิดบริการ ${esc(u.openTime||'06:00')} - ${esc(u.closeTime||'22:00')} น.</span></div></section><button class="qgm-outline" type="button" onclick="navigate('shop-setup')">แก้ไขข้อมูลร้าน</button><button class="qgm-primary" type="button" onclick="navigate('shop-products')">จัดการเมนูสินค้า</button><button class="qgm-logout" type="button" onclick="qtMerchantLogout()">ออกจากระบบ</button>`,'shop-profile',{back:true})
 {
@@ -2439,7 +2439,7 @@ window.qgmSaveShopSetup=async function(e){e.preventDefault();const button=e.subm
  if(!Array.isArray(savedProfile)||!savedProfile.length)throw Error('ฐานข้อมูลไม่ยืนยันข้อมูลร้าน');
  const savedUser=await qtSupabaseTable('users?id=eq.'+encodeURIComponent(u.id),{method:'PATCH',accessToken:token,body:{name:next.name,phone:next.phone,metadata:qtUserMetadata(next)}});
  if(!Array.isArray(savedUser)||!savedUser.length)throw Error('ฐานข้อมูลไม่ยืนยันข้อมูลผู้ใช้');
- Object.assign(u,next);qtMarkClean('qt_users');window.qgmInvalidateSetupReadiness?.(u);toast('บันทึกข้อมูลร้านแล้ว');navigate('shop-profile');
+ Object.assign(u,next);qtMarkClean('qt_users');window.qgmInvalidateSetupReadiness?.(u);toast('บันทึกข้อมูลร้านแล้ว');try{navigate('shop-profile')}catch(navErr){console.warn('merchant profile post-commit navigation failed',navErr)}
  }catch(err){console.error(err);toast('บันทึกไม่สำเร็จ: '+(err.message||err))}finally{if(button)button.disabled=false}return false;
 };
 </script>
@@ -2509,8 +2509,8 @@ window.qgmSubmitGpSlip=async function(date,input){
   const response=await fetch(QT_SUPABASE_CONFIG.URL+'/storage/v1/object/gp-slips/'+path,{method:'POST',headers:{apikey:QT_SUPABASE_CONFIG.KEY,Authorization:'Bearer '+token,'Content-Type':file.type},body:file});
   if(!response.ok){const err=await response.json().catch(()=>({}));throw Error(err.message||'อัปโหลดสลิปไม่สำเร็จ')}
   await qtSupabaseTable('rpc/report_shop_gp',{method:'POST',accessToken:token,body:{p_date:date,p_slip_path:path}});
-  await qtHydrateDatabase({light:false});toast('ส่งสลิปและแจ้งโอนให้แอดมินแล้ว');
-  if(location.hash==='#shop-revenue'&&typeof qgmLoadRevenue==='function')qgmLoadRevenue(date);else window.renderShopSettlement();
+  toast('ส่งสลิปและแจ้งโอนให้แอดมินแล้ว');
+  Promise.resolve().then(()=>qtHydrateDatabase({light:false})).then(()=>{if(location.hash==='#shop-revenue'&&typeof qgmLoadRevenue==='function')qgmLoadRevenue(date);else window.renderShopSettlement()}).catch(refreshErr=>console.warn('merchant GP post-commit refresh failed',refreshErr));
  }catch(e){toast('แจ้งโอนไม่สำเร็จ: '+(e.message||e))}
  finally{input.disabled=false;input.value=''}
 };
@@ -2553,7 +2553,7 @@ window.qgmPauseShop=async function(minutes){
   const token=await qtGetAccessToken();if(!token)throw Error('กรุณาเข้าสู่ระบบใหม่');
   const pid=await qgmGetShopPid(u,token);if(!pid)throw Error('ไม่พบข้อมูลร้าน');
   await qtSupabaseTable('shop_open_states?on_conflict=shop_id',{method:'POST',accessToken:token,body:{shop_id:pid,is_open:false,resume_at:new Date(Date.now()+minutes*60000).toISOString(),updated_at:new Date().toISOString()}});
-  toast('พักรับออเดอร์แล้ว');renderShopDashboardModern(u);
+  toast('พักรับออเดอร์แล้ว');try{renderShopDashboardModern(u)}catch(renderErr){console.warn('merchant pause post-commit render failed',renderErr)}
  }catch(e){toast('พักร้านไม่สำเร็จ: '+(e.message||e))}
 };
 
