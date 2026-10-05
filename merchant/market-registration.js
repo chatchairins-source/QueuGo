@@ -70,7 +70,7 @@ async function loadMarkets(lat,lng){
   const token=await qtGetAccessToken();
   if(!token)throw Error('กรุณาเข้าสู่ระบบใหม่');
   const rows=await qtSupabaseTable(
-    'markets?select=id,name,address,province,district,subdistrict,latitude,longitude,verified,assignment_radius_km&active=eq.true&province=eq.'+
+    'markets?select=id,name,address,province,district,subdistrict,latitude,longitude,verified,assignment_radius_km&active=eq.true&latitude=not.is.null&longitude=not.is.null&province=eq.'+
     encodeURIComponent(BURIRAM)+'&order=name.asc',
     {accessToken:token}
   );
