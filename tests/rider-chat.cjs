@@ -5,7 +5,7 @@ const flush=async()=>{for(let i=0;i<20;i++)await Promise.resolve()};let checks=0
 (async()=>{
  const dom=new JSDOM(source,{url:'https://fixture.test/rider/',runScripts:'outside-only',pretendToBeVisual:true}),w=dom.window,ctx=dom.getInternalVMContext(),run=s=>vm.runInContext(s,ctx),timers=new Map();let serial=0;
  w.fetch=async()=>({ok:true,json:async()=>[]});w.AbortSignal=AbortSignal;w.setInterval=(f,ms)=>{const id=++serial;timers.set(id,{f,ms});return id};w.clearInterval=id=>timers.delete(id);w.setTimeout=()=>0;w.clearTimeout=()=>{};w.requestAnimationFrame=()=>0;w.alert=()=>{};
- for(const script of w.document.querySelectorAll('script'))if(!script.src&&script.textContent.trim())vm.runInContext(script.textContent,ctx);
+ for(const script of w.document.querySelectorAll('script')){let code=script.textContent;if(script.src){const url=new URL(script.src);if(url.hostname!=='queuego.test')continue;code=fs.readFileSync(path.resolve(__dirname,'..',url.pathname.slice(1)),'utf8')}if(code.trim())vm.runInContext(code,ctx);}
  run("S.session={authUserId:'a',sessionId:'sa',accessToken:'fixture'};writeSession(S.session);S.user={id:'rider'};getAccessToken=async()=>'fixture';window.notices=[];toast=m=>notices.push(m);qtBadge=()=>{};window.order={id:'one',customer_id:'customer',status:'completed'};");
  const app=w.document.getElementById('app');app.innerHTML='<section class="stage"></section>';
  const now='2026-01-02T00:00:00Z',message={id:'m1',sender_id:'customer',message:'hello',created_at:now};let writes=0,reads=0,writeGate=null,readGate=null;

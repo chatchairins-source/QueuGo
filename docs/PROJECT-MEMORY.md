@@ -39,3 +39,14 @@ Commit `52c41aaf7863b916214c8baa63ffe374f8865afd` added a prominent customer nav
 - Quick rider issues use the existing support tickets with an automatic order link and a stable ticket ID on retries.
 - Isolated regression tests cover action recovery, account races, quick ticket retries, and push-worker ownership. Physical-device push delivery and a complete live three-role delivery flow still require validation.
 - The Android cross-app Q overlay remains deferred until an explicit APK request; iOS native Live Activity is also pending.
+
+## Customer features restored after the cleanup audit
+
+- Backup: `backup-pre-customer-function-restore-20261005` at `ad8c61ce8ad599cb826840df134a6413c53d467b`.
+- Restore current Customer capabilities using `customer-features.js` and existing tables, with no legacy renderer or CSS overrides loaded.
+- Tracking reads only an owned order through `qg_customer_order_context`; closed orders never return live Rider coordinates. Missing/stale GPS stays visible as missing/stale, with no invented movement.
+- Chat uses existing `order_chat_messages`, durable per-user/order message IDs and the existing chat notification trigger. Customer may initiate post-completion chat; existing Rider restrictions stay in place.
+- Favorites, reviews, notifications, shop menu categories, search modes, support evidence, email signup, cart removal/merge and profile links are restored. Promotions show existing active shop campaigns; no coupon/discount model is added.
+- Review ownership checks bind order, customer and shop; no financial/order transition RPC is replaced. Customer cancellation uses existing RPCs only.
+- Manual payment confirmations and delivery PIN instructions stay removed. Android overlay still waits for an explicit APK request.
+- Full physical delivery, background mobile GPS, notification sound and push delivery still require device validation; unit tests do not certify these.

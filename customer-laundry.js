@@ -36,12 +36,13 @@ V.orders=async function(_,ticket){
   ticket=ticket==null?routeVersion:ticket;
   const u=S.get();if(!u)return go('login');
   const out=await Promise.all([
-    db('orders?select=*&customer_id=eq.'+encodeURIComponent(u.userId)+'&order=created_at.desc&limit=50'),
+    db('orders?select=*,order_items(quantity)&customer_id=eq.'+encodeURIComponent(u.userId)+'&order=created_at.desc&limit=50'),
     db('market_orders?select=id,status,shop_count,total_amount,delivery_address,created_at&customer_id=eq.'+encodeURIComponent(u.userId)+'&order=created_at.desc&limit=30').catch(function(){return []}),
     db('laundry_orders?select=id,order_number,status,service_name_snapshot,estimated_total_amount,final_total_amount,pickup_address,created_at&customer_id=eq.'+encodeURIComponent(u.userId)+'&order=created_at.desc&limit=30').catch(function(){return []})
   ]);
   if(ticket!==routeVersion)return;
   const rows=out[0]||[],trips=out[1]||[],laundry=out[2]||[];
+  const shops=await loadShops();if(ticket!==routeVersion)return;const shopNames=new Map(shops.map(s=>[s.id,s.shop_name]));
   const normal=rows.filter(function(o){return !o.market_order_id}).map(function(o){return {kind:'order',created_at:o.created_at,data:o}});
   const market=trips.map(function(t){return {kind:'market',created_at:t.created_at,data:t}});
   const wash=laundry.map(function(t){return {kind:'laundry',created_at:t.created_at,data:t}});
@@ -58,7 +59,7 @@ V.orders=async function(_,ticket){
         return '<div class="oc" onclick="go(\'laundry-order/'+esc(l.id)+'\')"><div class="oh"><span class="on">ฝากซัก · #'+esc(l.order_number||String(l.id).slice(0,6))+'</span><span class="sp">'+esc(QG_LAUNDRY_STATUS[l.status]||l.status)+'</span></div><p>'+new Date(l.created_at).toLocaleString('th-TH')+' · '+esc(l.service_name_snapshot||'บริการฝากซัก')+'</p><b>'+(total!=null?baht(total):'รอสรุปราคา')+'</b></div>';
       }
       const o=entry.data;
-      return '<div class="oc" onclick="go(\'order/'+esc(o.id)+'\')"><div class="oh"><span class="on">#'+esc(o.order_number||String(o.id).slice(0,6))+'</span><span class="sp">'+esc(STATUS_LABEL[o.status]||'กำลังดำเนินการ')+'</span></div><p>'+new Date(o.created_at).toLocaleString('th-TH')+(Number(o.bundle_customer_savings||0)>0?' · งานพ่วงประหยัด '+baht(o.bundle_customer_savings):'')+'</p><b>'+baht(o.total!=null?o.total:(o.total_amount!=null?o.total_amount:o.subtotal))+'</b></div>';
+      return '<div class="oc" onclick="go(\'order/'+esc(o.id)+'\')"><div class="oh"><span class="on">#'+esc(o.order_number||String(o.id).slice(0,6))+'</span><span class="sp">'+esc(STATUS_LABEL[o.status]||'กำลังดำเนินการ')+'</span></div><p>'+esc(shopNames.get(o.shop_id)||'ร้านค้า')+' · '+(o.order_items||[]).reduce((sum,i)=>sum+Number(i.quantity||0),0)+' รายการ</p><p>'+new Date(o.created_at).toLocaleString('th-TH')+(Number(o.bundle_customer_savings||0)>0?' · งานพ่วงประหยัด '+baht(o.bundle_customer_savings):'')+'</p><div class="statusflow">'+['pending','searching_rider','rider_assigned','preparing','ready','picked_up','in_progress','completed'].map((state,i)=>'<span class="'+(i<=['pending','searching_rider','rider_assigned','preparing','ready','picked_up','in_progress','completed'].indexOf(o.status)?'on':'')+'">'+esc(STATUS_LABEL[state]||state)+'</span>').join('')+'</div><b>'+baht(o.total!=null?o.total:(o.total_amount!=null?o.total_amount:o.subtotal))+'</b></div>';
     }).join('');
   }else cards='<p class="empty">ยังไม่มีออเดอร์</p>';
   layout('<div class="pt"><h1>ออเดอร์ของฉัน</h1></div><div class="list">'+cards+'</div>','orders');

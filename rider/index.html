@@ -696,7 +696,7 @@ function pushLocation(){
       riderLocationQueued=false;
       const session=S.session,userId=S.user.id,profileId=S.riderProfile.id,pos={...S.pos},epoch=riderLocationEpoch;
       const current=()=>riderSessionMatches(session)&&S.user?.id===userId&&S.riderProfile?.id===profileId&&S.online&&epoch===riderLocationEpoch;
-      try{const token=await getAccessToken();if(current())await sbTable('rider_profiles?user_id=eq.'+encodeURIComponent(userId),{method:'PATCH',token,body:{latitude:pos.lat,longitude:pos.lng}})}catch(e){}
+      try{const token=await getAccessToken();if(current())await sbTable('rider_profiles?user_id=eq.'+encodeURIComponent(userId),{method:'PATCH',token,body:{latitude:pos.lat,longitude:pos.lng,updated_at:new Date().toISOString()}})}catch(e){}
     }while(riderLocationQueued&&S.user&&S.pos&&S.riderProfile&&S.online&&navigator.onLine)
   })().finally(()=>{if(riderLocationWrite===task)riderLocationWrite=null});
   riderLocationWrite=task;return task;
