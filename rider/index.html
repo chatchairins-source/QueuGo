@@ -1323,6 +1323,8 @@ function jobCardHTML(o,x){
  const km=x&&Number.isFinite(x.distanceKm)?x.distanceKm:haversineKm(S.pos&&S.pos.lat,S.pos&&S.pos.lng,o.pickup_latitude,o.pickup_longitude);
  const delivery=haversineKm(o.pickup_latitude,o.pickup_longitude,o.delivery_latitude,o.delivery_longitude);
  const fee=riderEarning(o);const active=!!S.activeOrder;
+ const shopCashDue=!o.market_order_id&&['ready','picked_up','delivering','arrived'].includes(st)?Number(o.subtotal||0):null;
+ const finalSlide=!o.market_order_id&&['delivering','arrived'].includes(st)?`<div class="qg-complete-slide"><b>เก็บเงินลูกค้า ฿${Number(o.total_amount||0).toLocaleString('th-TH')}</b><span>เลื่อนเพื่อยืนยันส่งและจบงาน</span><input id="complete-${o.id}" type="range" min="0" max="100" value="0" step="1" aria-label="เลื่อนเพื่อยืนยันส่งสำเร็จ"></div>`:'';
  const targetShop=['rider_assigned','preparing','ready','assigned'].includes(st);
  const marketNext=o.market_order_id&&Array.isArray(o._marketPickups)?o._marketPickups.find(x=>!['PICKED_UP','CANCELLED'].includes(String(x.status||'').toUpperCase())):null;
  const targetLat=marketNext?marketNext.latitude:(targetShop?o.pickup_latitude:o.delivery_latitude),targetLng=marketNext?marketNext.longitude:(targetShop?o.pickup_longitude:o.delivery_longitude),targetAddress=marketNext?(marketNext.shop_address||marketNext.shop_name):(targetShop?o.pickup_address:o.delivery_address);
@@ -1332,7 +1334,8 @@ function jobCardHTML(o,x){
  const html = `<div class="qt-handle"></div><div class="qt-jobhead"><div><div class="qt-shop">${esc(o.market_order_id?'ตลาดสด · '+Number(o._marketShopCount||o.market_shop_count||1)+' ร้าน':(shop.shop_name||'งานจัดส่ง'))}</div><div class="qt-order">${active?esc(STEP_LABEL[st]||'งานที่กำลังทำ'):'งานใหม่'} · #${esc(qtShortOrder(o))}${marketLabel}${['market','grocery'].includes(o.fulfillment_vertical)?' · '+Number(o._marketWeight||0).toLocaleString('th-TH')+' กก.':''}</div></div><div class="qt-fee">฿${Number(fee||0).toLocaleString('th-TH')}<small>รายได้งานนี้</small></div></div>
  <div class="qt-metrics"><div class="qt-metric"><span>ถึงร้าน</span><b>${Number.isFinite(km)?km.toFixed(1):'-'} กม.</b></div><div class="qt-metric"><span>ระยะส่ง</span><b>${Number.isFinite(delivery)?delivery.toFixed(1):'-'} กม.</b></div><div class="qt-metric"><span>ยอดออเดอร์</span><b>฿${Number(o.total_amount||0).toLocaleString('th-TH')}</b></div></div>
  <div class="qt-address">${esc(marketNext?('จุดรับ '+Number(marketNext.pickup_sequence||1)+' · '+(marketNext.shop_name||'ร้านค้า')+' · '+(marketNext.shop_address||'')):(targetShop?(o.pickup_address||shop.address||'จุดรับสินค้า'):(o.delivery_address||'จุดส่งสินค้า')))}</div>
- <div class="qt-actions"><a class="qt-ghost" href="${nav}" target="_blank" rel="noopener" aria-label="นำทาง">${QTICON.loc}</a><button class="qt-ghost" id="chat-${o.id}" aria-label="แชต">${QTICON.chat}</button>${active?`<button class="qt-primary" id="next-${o.id}" ${next?'':'disabled'}>${next?esc(next.label):'รอร้านเตรียมสินค้า'}</button>`:`<button class="qt-primary" id="accept-${o.id}">รับงานนี้</button>`}</div>`;
+ ${shopCashDue!==null?`<div class="qg-shop-cash-due"><span>${st==='ready'?'เงินสดที่ต้องจ่ายร้าน':'จ่ายร้านแล้ว'}</span><b>฿${shopCashDue.toLocaleString('th-TH')}</b></div>`:''}
+ <div class="qt-actions"><a class="qt-ghost" href="${nav}" target="_blank" rel="noopener" aria-label="นำทาง">${QTICON.loc}</a><button class="qt-ghost" id="chat-${o.id}" aria-label="แชต">${QTICON.chat}</button>${active?(finalSlide||`<button class="qt-primary" id="next-${o.id}" ${next?'':'disabled'}>${next?esc(next.label):'รอร้านเตรียมสินค้า'}</button>`):`<button class="qt-primary" id="accept-${o.id}">รับงานนี้</button>`}</div>`;
 const toShop=x?.distanceKm??haversineKm(S.pos?.lat,S.pos?.lng,o.pickup_latitude,o.pickup_longitude),toCustomer=haversineKm(o.pickup_latitude,o.pickup_longitude,o.delivery_latitude,o.delivery_longitude),all=toShop+toCustomer;
    if(!Number.isFinite(all))return html;return html.replace(/(<div class="qt-metrics">)/,'<div class="qg-v22-job-metrics">ไปร้าน '+toShop.toFixed(1)+' กม. · ไปหาลูกค้า '+toCustomer.toFixed(1)+' กม. · รวม '+all.toFixed(1)+' กม. · ประมาณ '+Math.ceil(all/25*60)+' นาที · ค่าส่งประมาณ '+('฿'+Number(o.delivery_fee||0).toLocaleString('th-TH',{minimumFractionDigits:2,maximumFractionDigits:2}))+'</div>$1')
 }
@@ -1340,6 +1343,7 @@ function bindJobCardEvents(o){
  const c=document.getElementById('chat-'+o.id);if(c)c.onclick=()=>openChat(o);
  const a=document.getElementById('accept-'+o.id);if(a)a.onclick=()=>acceptJob(o.id);
  const n=document.getElementById('next-'+o.id);if(n)n.onclick=()=>advanceOrder(o);
+ const s=document.getElementById('complete-'+o.id);if(s)s.oninput=async()=>{if(Number(s.value)<100||s.dataset.submitting)return;s.dataset.submitting='1';s.disabled=true;const done=await advanceOrder(o);if(!done&&s.isConnected){s.value='0';s.dataset.submitting='';s.disabled=false}};
 }
 function renderHistoryPanel(){
  const p=document.getElementById('panel-jobs');if(!p)return;
@@ -1452,27 +1456,27 @@ window.acceptJob=async function(orderId){
     toast('รับงานสำเร็จ');await refreshData();
   }catch(e){toast('รับงานไม่สำเร็จ: '+e.message);if(btn)btn.disabled=false;}
 };
+const riderActionInFlight=new Set();
 window.advanceOrder=async function(o){
    if(o?.market_order_id){
    const st=statusFromRow(o);try{const token=await getAccessToken();
-     if(st==='assigned'||st==='ready'){toast('กรุณารับของและยืนยันยอดเงินให้ครบทุกจุด');return}
-     if(st==='picked_up'){await sbTable('rpc/market_rider_group_action',{method:'POST',token,body:{p_market_order_id:o.market_order_id,p_action:'deliver'}});toast('รับของครบแล้ว กำลังไปส่งลูกค้า');await refreshData();return}
-     if(st==='delivering'){await sbTable('rpc/market_rider_group_action',{method:'POST',token,body:{p_market_order_id:o.market_order_id,p_action:'arrive'}});toast('ถึงจุดส่งแล้ว');await refreshData();return}
-   }catch(e){toast('อัปเดตงานตลาดไม่สำเร็จ: '+e.message)}
- return;}
+     if(st==='assigned'||st==='ready'){toast('กรุณารับของและยืนยันยอดเงินให้ครบทุกจุด');return false}
+     if(st==='picked_up'){await sbTable('rpc/market_rider_group_action',{method:'POST',token,body:{p_market_order_id:o.market_order_id,p_action:'deliver'}});toast('รับของครบแล้ว กำลังไปส่งลูกค้า');await refreshData();return true}
+     if(st==='delivering'){await sbTable('rpc/market_rider_group_action',{method:'POST',token,body:{p_market_order_id:o.market_order_id,p_action:'arrive'}});toast('ถึงจุดส่งแล้ว');await refreshData();return true}
+   }catch(e){toast('อัปเดตงานตลาดไม่สำเร็จ: '+e.message);return false}
+ return false;}
 
-  const st=statusFromRow(o),action={ready:'pickup_cash',picked_up:'deliver',delivering:'arrive'}[st];
-  if(!action)return;
+  const st=statusFromRow(o),action={ready:'pickup_cash',picked_up:'deliver',delivering:'complete',arrived:'complete'}[st];
+  if(!action)return false;
+  if(riderActionInFlight.has(o.id))return false;
+  riderActionInFlight.add(o.id);
   try{
     const token=await getAccessToken();if(!token)throw Error('กรุณาเข้าสู่ระบบใหม่');
-    if(action==='pickup_cash'){
-      const rows=await sbTable('orders?select=subtotal,status&id=eq.'+encodeURIComponent(o.id)+'&limit=1',{token});
-      if(rows?.[0]?.status!=='ready')throw Error('สถานะงานเปลี่ยนแล้ว กรุณาโหลดใหม่');
-      if(!confirm('ยืนยันว่าจ่ายเงินสดให้ร้าน ฿'+Number(rows[0].subtotal).toLocaleString('th-TH')+' และรับสินค้าแล้ว?'))return;
-    }
     await sbTable('rpc/rider_order_action',{method:'POST',token,body:{p_order_id:o.id,p_action:action}});
-    toast(action==='pickup_cash'?'บันทึกเงินสดที่จ่ายให้ร้านแล้ว':'อัปเดตสถานะแล้ว');await refreshData();
-  }catch(e){toast('อัปเดตไม่สำเร็จ: '+e.message);}
+    toast(action==='pickup_cash'?'จ่ายเงินสดให้ร้าน ฿'+Number(o.subtotal||0).toLocaleString('th-TH')+' และรับสินค้าแล้ว':action==='complete'?'ส่งสำเร็จ':'กำลังไปส่งลูกค้า');
+    refreshData().catch(()=>{});return true;
+  }catch(e){toast('อัปเดตไม่สำเร็จ: '+e.message);return false}
+  finally{riderActionInFlight.delete(o.id)}
 };
 
 </script>
@@ -1678,5 +1682,13 @@ body{overflow-y:auto;-webkit-overflow-scrolling:touch;touch-action:pan-y}
 
 <style id="qg-laundry-rider-style">
 .qg-laundry-rider-card{margin:12px 0;padding:12px;border:1px solid #e6e8eb;border-radius:16px;background:#fff}.qg-laundry-head b,.qg-laundry-head small{display:block}.qg-laundry-head small{color:#737b85;margin-top:3px}.qg-laundry-rider-card article{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;padding:11px 0;border-top:1px solid #edf0f2}.qg-laundry-rider-card article:first-of-type{margin-top:8px}.qg-laundry-rider-card article small{display:block;color:#737b85;margin-top:4px}.qg-laundry-rider-card article>div:last-child{text-align:right}.qg-laundry-rider-card button,.qg-laundry-invite button{border:0;border-radius:10px;padding:8px 10px;background:#111827;color:#fff;font-weight:800;margin-top:6px}.qg-laundry-route{margin:12px 0;padding:12px;border:1px solid #e6e8eb;border-radius:14px}.qg-laundry-route b,.qg-laundry-route small,.qg-laundry-route span{display:block}.qg-laundry-route small{margin-top:4px;color:#333}.qg-laundry-route span{margin-top:6px;color:#737b85;font-size:12px}.qg-laundry-invite{margin:10px 16px;padding:12px;border:1px solid #ffd7df;background:#fff8f9;border-radius:14px;display:flex;justify-content:space-between;gap:10px}.qg-laundry-invite b,.qg-laundry-invite small{display:block}.qg-laundry-invite small{color:#737b85;margin-top:3px}.qg-laundry-invite button:last-child{background:#fff;color:#b4233c;border:1px solid #ffd0d8;margin-left:5px}
+</style>
+
+<style id="qg-rider-simple-cash-slide">
+.qg-shop-cash-due{display:flex;justify-content:space-between;align-items:center;margin:10px 0;padding:10px 13px;border-radius:13px;background:#fff7e6;color:#8a4b00;font-size:13px}
+.qg-shop-cash-due b{font-size:17px}
+.qg-complete-slide{width:100%;min-height:62px;border-radius:15px;padding:9px 13px;background:#fff0f1;color:#8d1020;display:flex;flex-direction:column;gap:4px}
+.qg-complete-slide b{font-size:15px}.qg-complete-slide span{font-size:11px;color:#75525a}
+.qg-complete-slide input{width:100%;height:34px;margin:0;accent-color:#ef3340;touch-action:pan-y}
 </style>
 </body></html>

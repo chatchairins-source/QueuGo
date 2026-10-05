@@ -20,12 +20,19 @@ INSERT INTO users VALUES('${id(1)}','${id(2)}','rider','active'),('${id(3)}','${
 INSERT INTO rider_profiles VALUES('${id(7)}','${id(1)}'),('${id(8)}','${id(3)}');
 SELECT set_config('test.uid','${id(2)}',false);`);
 await db.exec(fs.readFileSync(path.resolve(__dirname,'../QueueGo-Rider-Completion-Migration.sql'),'utf8'));
+await db.exec(fs.readFileSync(path.resolve(__dirname,'../QueueGo-Rider-Slide-Completion.sql'),'utf8'));
 let checks=0;
-async function seed(n,group=null,advance=true){await db.exec(`INSERT INTO orders(id,rider_id,shop_id,customer_id,market_order_id,status,subtotal,note) VALUES('${id(n)}','${id(7)}','${id(9)}','${id(5)}',${group?"'"+id(group)+"'":'NULL'},'in_progress',100,'__QT_ORDER_STATUS__=arrived');INSERT INTO deliveries VALUES('${id(n)}','picked_up',now(),NULL,NULL);INSERT INTO payments VALUES('${id(n)}','cash','pending',NULL,NULL);INSERT INTO qg_delivery_pins VALUES('${id(n)}','123456');${advance?`INSERT INTO rider_cash_advances VALUES('${id(n)}','${id(7)}','${id(9)}',100);`:''}`)}
+async function seed(n,group=null,advance=true,note='__QT_ORDER_STATUS__=arrived'){await db.exec(`INSERT INTO orders(id,rider_id,shop_id,customer_id,market_order_id,status,subtotal,note) VALUES('${id(n)}','${id(7)}','${id(9)}','${id(5)}',${group?"'"+id(group)+"'":'NULL'},'in_progress',100,'${note}');INSERT INTO deliveries VALUES('${id(n)}','picked_up',now(),NULL,NULL);INSERT INTO payments VALUES('${id(n)}','cash','pending',NULL,NULL);INSERT INTO qg_delivery_pins VALUES('${id(n)}','123456');${advance?`INSERT INTO rider_cash_advances VALUES('${id(n)}','${id(7)}','${id(9)}',100);`:''}`)}
 async function reject(query,pattern){try{await db.query(query);assert.fail('unexpected success')}catch(e){assert.match(e.message,pattern);checks++}}
+await seed(19,null,true,'__QT_ORDER_STATUS__=delivering');
+assert.equal((await db.query(`SELECT rider_order_action('${id(19)}','complete') result`)).rows[0].result,'completed');checks++;
+assert.equal((await db.query(`SELECT status FROM orders WHERE id='${id(19)}'`)).rows[0].status,'completed');checks++;
+assert.equal((await db.query(`SELECT status FROM payments WHERE order_id='${id(19)}'`)).rows[0].status,'paid');checks++;
+assert.equal((await db.query(`SELECT status FROM deliveries WHERE order_id='${id(19)}'`)).rows[0].status,'delivered');checks++;
+assert.equal((await db.query(`SELECT rider_order_action('${id(19)}','complete') result`)).rows[0].result,'completed');checks++;
+assert.equal((await db.query(`SELECT count(*)::int n FROM qg_delivery_proofs WHERE order_id='${id(19)}'`)).rows[0].n,0);checks++;
 await seed(20);await reject(`SELECT qg_complete_with_proof('${id(20)}','999999')`,/incorrect delivery PIN/);assert.equal((await db.query('SELECT count(*)::int n FROM qg_delivery_proofs')).rows[0].n,0);checks++;
 await db.query(`SELECT set_config('test.uid','${id(4)}',false)`);await reject(`SELECT qg_complete_with_proof('${id(20)}','123456')`,/not ready/);await db.query(`SELECT set_config('test.uid','${id(2)}',false)`);
-await reject(`SELECT rider_order_action('${id(20)}','complete')`,/verified delivery proof/);
 await reject(`SELECT qg_complete_with_proof('${id(20)}','123456',100,100)`,/invalid GPS/);
 await reject(`SELECT qg_complete_with_proof('${id(20)}','123456',NULL,NULL,'another-user/file.jpg')`,/invalid delivery evidence/);
 assert.equal((await db.query(`SELECT qg_complete_with_proof('${id(20)}','123456') result`)).rows[0].result,'completed');checks++;
@@ -34,7 +41,7 @@ assert.equal((await db.query(`SELECT status FROM deliveries WHERE order_id='${id
 assert.equal((await db.query('SELECT count(*)::int n FROM merchant_cash_receipts')).rows[0].n,0);checks++;
 assert.equal((await db.query(`SELECT qg_complete_with_proof('${id(20)}','123456') result`)).rows[0].result,'completed');checks++;
 assert.equal((await db.query(`SELECT count(*)::int n FROM qg_delivery_proofs WHERE order_id='${id(20)}'`)).rows[0].n,1);checks++;
-await seed(21,null,false);await reject(`SELECT qg_complete_with_proof('${id(21)}','123456')`,/cash advance/);assert.equal((await db.query(`SELECT count(*)::int n FROM qg_delivery_proofs WHERE order_id='${id(21)}'`)).rows[0].n,0);checks++;
+await seed(21,null,false);await reject(`SELECT rider_order_action('${id(21)}','complete')`,/cash advance not recorded/);await reject(`SELECT qg_complete_with_proof('${id(21)}','123456')`,/cash advance/);assert.equal((await db.query(`SELECT count(*)::int n FROM qg_delivery_proofs WHERE order_id='${id(21)}'`)).rows[0].n,0);checks++;
 await db.exec(`INSERT INTO market_orders VALUES('${id(30)}','DELIVERING',NULL);`);await seed(31,30);await seed(32,30,false);await reject(`SELECT qg_complete_market_with_proof('${id(30)}','123456')`,/cash advance missing/);assert.equal((await db.query(`SELECT count(*)::int n FROM qg_delivery_proofs WHERE order_id IN('${id(31)}','${id(32)}')`)).rows[0].n,0);checks++;
 await db.exec(`INSERT INTO rider_cash_advances VALUES('${id(32)}','${id(7)}','${id(9)}',100);`);assert.equal((await db.query(`SELECT qg_complete_market_with_proof('${id(30)}','123456') result`)).rows[0].result,'completed');checks++;
 assert.equal((await db.query(`SELECT count(*)::int n FROM orders WHERE market_order_id='${id(30)}' AND status='completed'`)).rows[0].n,2);checks++;
