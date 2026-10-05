@@ -1063,11 +1063,8 @@ function qtLocalDateKey(ts){
 }
 
 function displayOrderNumber(order){
-  const raw = String(order?.orderNumber || order?.order_number || '').trim();
-  /* รูปแบบใหม่ QT-YYYYMMDD-xxxx (ฝังวันที่เพื่อความ unique ในฐานข้อมูล) -> แสดงเฉพาะ QT-xxxx */
-  const dated = raw.match(/^QT-\d{8}-(\d{3,4})$/i);
-  if(dated) return 'QT-'+dated[1];
-  if(raw) return raw; /* เลขออเดอร์รูปแบบเดิม (เช่น QT-001) ยังแสดงตามเดิมเพื่อความเข้ากันได้กับข้อมูลเก่า */
+  const raw=String(order?.orderNumber||order?.order_number||'').trim();
+  if(raw)return raw;
   const idx=dbGet('qt_orders',[]).findIndex(o=>o.id===order?.id);
   return 'QT-'+String(idx<0?1:idx+1).padStart(3,'0');
 }
