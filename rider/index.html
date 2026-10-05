@@ -221,7 +221,7 @@ const STEP_LABEL = {
   rider_assigned:'ไปรับสินค้าที่ร้าน',preparing:'ร้านกำลังเตรียมสินค้า',ready:'พร้อมรับสินค้า',assigned:'ไปรับสินค้าที่ร้าน', picked_up:'รับสินค้าแล้ว — ไปส่งลูกค้า',
   delivering:'กำลังจัดส่ง', arrived:'ถึงลูกค้าแล้ว', completed:'ส่งสำเร็จ'
 };
-const STEP_NEXT = { ready:{to:'picked_up', label:'จ่ายเงินสดให้ร้านและรับสินค้า'},
+const STEP_NEXT = { ready:{to:'picked_up', label:'รับสินค้าแล้ว'},
   picked_up:{to:'delivering', label:'เริ่มจัดส่ง'},
   delivering:{to:'arrived', label:'ถึงลูกค้าแล้ว'},
   arrived:{to:'completed', label:'ยืนยันส่งสำเร็จ'} };
@@ -1275,7 +1275,7 @@ function qgRouteBundleHTML(){
         if(allPicked&&nextPicked&&String(nextPicked.id)===String(o.id))action='<button data-bundle-advance="'+esc(o.id)+'">เริ่มส่งลูกค้าลำดับ '+rank+'</button>';
         else action='<small>รับของแล้ว · '+(allPicked?'รอส่งตามลำดับ':'รอรับของอีกออเดอร์ให้ครบ')+'</small>';
       }else if(st==='delivering')action='<button data-bundle-advance="'+esc(o.id)+'">ถึงลูกค้าแล้ว</button>';
-      else if(st==='arrived')action='<button data-bundle-finish="'+esc(o.id)+'">รับเงินและยืนยันส่งสำเร็จ</button>';
+      else if(st==='arrived')action='<button data-bundle-finish="'+esc(o.id)+'">ส่งสำเร็จ</button>';
       else if(st==='completed')action='<small class="qg-bundle-done">✓ ส่งสำเร็จ</small>';
       else if(st==='cancelled')action='<small>ยกเลิก</small>';
       else action='<small>'+esc(STEP_LABEL[st]||'รอร้านเตรียมสินค้า')+'</small>';
@@ -1306,7 +1306,7 @@ function qgBindRouteBundleUI(){
     const o=(S.bundleOrders||[]).find(x=>String(x.id)===String(b.dataset.bundleAdvance));if(o)advanceOrder(o);
   });
   document.querySelectorAll('[data-bundle-finish]').forEach(b=>b.onclick=()=>{
-    const o=(S.bundleOrders||[]).find(x=>String(x.id)===String(b.dataset.bundleFinish));if(o)renderPaymentSummary(o,false);
+    const o=(S.bundleOrders||[]).find(x=>String(x.id)===String(b.dataset.bundleFinish));if(o)finishOrder(o);
   });
 }
 
@@ -1324,7 +1324,7 @@ function jobCardHTML(o,x){
  const delivery=haversineKm(o.pickup_latitude,o.pickup_longitude,o.delivery_latitude,o.delivery_longitude);
  const fee=riderEarning(o);const active=!!S.activeOrder;
  const shopCashDue=!o.market_order_id&&['ready','picked_up','delivering','arrived'].includes(st)?Number(o.subtotal||0):null;
- const finalSlide=!o.market_order_id&&['delivering','arrived'].includes(st)?`<div class="qg-complete-slide"><b>เก็บเงินลูกค้า ฿${Number(o.total_amount||0).toLocaleString('th-TH')}</b><span>เลื่อนเพื่อยืนยันส่งและจบงาน</span><input id="complete-${o.id}" type="range" min="0" max="100" value="0" step="1" aria-label="เลื่อนเพื่อยืนยันส่งสำเร็จ"></div>`:'';
+ const finalSlide=['delivering','arrived'].includes(st)?`<button class="qt-primary" id="complete-${o.id}">ส่งสำเร็จ</button>`:'';
  const targetShop=['rider_assigned','preparing','ready','assigned'].includes(st);
  const marketNext=o.market_order_id&&Array.isArray(o._marketPickups)?o._marketPickups.find(x=>!['PICKED_UP','CANCELLED'].includes(String(x.status||'').toUpperCase())):null;
  const targetLat=marketNext?marketNext.latitude:(targetShop?o.pickup_latitude:o.delivery_latitude),targetLng=marketNext?marketNext.longitude:(targetShop?o.pickup_longitude:o.delivery_longitude),targetAddress=marketNext?(marketNext.shop_address||marketNext.shop_name):(targetShop?o.pickup_address:o.delivery_address);
@@ -1343,7 +1343,7 @@ function bindJobCardEvents(o){
  const c=document.getElementById('chat-'+o.id);if(c)c.onclick=()=>openChat(o);
  const a=document.getElementById('accept-'+o.id);if(a)a.onclick=()=>acceptJob(o.id);
  const n=document.getElementById('next-'+o.id);if(n)n.onclick=()=>advanceOrder(o);
- const s=document.getElementById('complete-'+o.id);if(s)s.oninput=async()=>{if(Number(s.value)<100||s.dataset.submitting)return;s.dataset.submitting='1';s.disabled=true;const done=await advanceOrder(o);if(!done&&s.isConnected){s.value='0';s.dataset.submitting='';s.disabled=false}};
+ const s=document.getElementById('complete-'+o.id);if(s)s.onclick=()=>finishOrder(o);
 }
 function renderHistoryPanel(){
  const p=document.getElementById('panel-jobs');if(!p)return;
@@ -1389,17 +1389,7 @@ async function openChat(o){
  bindQuickMessages(o);await refreshRiderChat();
  qtUnread=0;qtBadge();
 }
-function renderPaymentSummary(o,completed=false){
- const stage=document.querySelector('.stage');if(stage)stage.style.display='none';
- let s=document.getElementById('summary-screen');if(s)s.remove();s=document.createElement('section');s.id='summary-screen';s.className='qt-summary show';document.getElementById('app').appendChild(s);
- s.innerHTML=`<button class="qt-back qt-summaryback" id="summary-back">${QTICON.back}</button><div class="qt-summarycard"><div class="qt-check">${completed?'✓':'฿'}</div><h2>${completed?'ส่งสำเร็จ':'ตรวจสอบยอดก่อนจบงาน'}</h2><p class="qt-sub">#${esc(qtShortOrder(o))}</p><div class="qt-total">฿${Number(o.total_amount||0).toLocaleString('th-TH')}</div><p class="qt-sub">${completed?'งานนี้ถูกปิดเรียบร้อยแล้ว':'ตรวจสอบยอดกับลูกค้าก่อนยืนยันจบงาน'}</p>${completed?'<button class="qt-primary" id="summary-home">กลับหน้าหลัก</button>':'<button class="qt-primary" id="finish-order-btn">ยืนยันส่งสำเร็จ</button>'}</div>`;
- const back=()=>{s.remove();if(stage)stage.style.display='block';renderSheet();startPolling()};
- document.getElementById('summary-back').onclick=back;
- if(completed)document.getElementById('summary-home').onclick=()=>{S.activeOrder=null;back();refreshData()};
- else document.getElementById('finish-order-btn').onclick=()=>finishOrder(o);
 
-if(completed)return;const card=document.querySelector('#summary-screen .qt-summarycard');if(card&&!card.querySelector('#qg-v22-delivery-photo')){const label=document.createElement('label');label.className='qg-v22-photo-label';label.textContent='รูปหลักฐานการส่งมอบ (ถ้ามี)';const input=document.createElement('input');input.id='qg-v22-delivery-photo';input.type='file';input.accept='image/jpeg,image/png,image/webp';label.appendChild(input);card.insertBefore(label,card.querySelector('#finish-order-btn'))}
-}
 function qtBadge(){const b=document.getElementById('qt-badge');if(!b)return;b.textContent=qtUnread>9?'9+':qtUnread;b.style.display=qtUnread?'block':'none'
 const el=document.getElementById('qt-badge');if(el&&qgCompletedUnread()){el.textContent=String(Math.min(9,qtUnread+qgCompletedUnread()))+(qtUnread+qgCompletedUnread()>9?'+':'');el.style.display='block'}
 }
@@ -1460,7 +1450,7 @@ const riderActionInFlight=new Set();
 window.advanceOrder=async function(o){
    if(o?.market_order_id){
    const st=statusFromRow(o);try{const token=await getAccessToken();
-     if(st==='assigned'||st==='ready'){toast('กรุณารับของและยืนยันยอดเงินให้ครบทุกจุด');return false}
+     if(st==='assigned'||st==='ready'){toast('กรุณารับของให้ครบทุกจุด');return false}
      if(st==='picked_up'){await sbTable('rpc/market_rider_group_action',{method:'POST',token,body:{p_market_order_id:o.market_order_id,p_action:'deliver'}});toast('รับของครบแล้ว กำลังไปส่งลูกค้า');await refreshData();return true}
      if(st==='delivering'){await sbTable('rpc/market_rider_group_action',{method:'POST',token,body:{p_market_order_id:o.market_order_id,p_action:'arrive'}});toast('ถึงจุดส่งแล้ว');await refreshData();return true}
    }catch(e){toast('อัปเดตงานตลาดไม่สำเร็จ: '+e.message);return false}
@@ -1583,33 +1573,17 @@ window.advanceOrder=async function(o){
 
 
  window.finishOrder=async function(o){
-   if(o?.market_order_id){
+   if(!o||riderActionInFlight.has(o.id))return;
+   riderActionInFlight.add(o.id);
+   const button=document.getElementById('complete-'+o.id)||document.getElementById('finish-order-btn');if(button)button.disabled=true;
    try{
-     const token=await getAccessToken(),m=await sbTable('market_orders?select=total_amount,status&id=eq.'+encodeURIComponent(o.market_order_id)+'&limit=1',{token});
-     if(!m?.[0])throw Error('ไม่พบยอด Market Order');
-     if(!confirm('ยืนยันว่าได้รับเงินสดจากลูกค้า ฿'+Number(m[0].total_amount).toLocaleString('th-TH')+' แล้ว?'))return;
-     const pin=(document.getElementById('delivery-pin')?.value||document.getElementById('qg-delivery-pin')?.value||prompt('กรอกรหัส PIN 6 หลักจากลูกค้า')||'').trim();
-     if(!/^\d{6}$/.test(pin)){toast('กรุณากรอก PIN 6 หลัก');return}
-     let lat=null,lng=null;if(navigator.geolocation)try{const p=await new Promise((resolve,reject)=>navigator.geolocation.getCurrentPosition(resolve,reject,{enableHighAccuracy:true,timeout:5000,maximumAge:10000}));lat=p.coords.latitude;lng=p.coords.longitude}catch(e){}
-     const file=document.getElementById('qg-v22-delivery-photo')?.files?.[0],photoPath=file&&typeof qgUploadEvidence==='function'?await qgUploadEvidence(file):null;
-     await sbTable('rpc/qg_complete_market_with_proof',{method:'POST',token,body:{p_market_order_id:o.market_order_id,p_pin:pin,p_lat:lat,p_lng:lng,p_photo_path:photoPath}});
-     toast('ส่งออเดอร์ตลาดสำเร็จ');await refreshData();
-   }catch(e){toast('จบงานไม่สำเร็จ: '+e.message)}
- return;}
-
-   try{const t=await getAccessToken(),rows=await sbTable('orders?select=total_amount,status&id=eq.'+encodeURIComponent(o.id)+'&limit=1',{token:t});
-     if(rows?.[0]?.status!=='in_progress')throw Error('สถานะออเดอร์เปลี่ยนแล้ว กรุณาโหลดใหม่');
-     if(!confirm('ยืนยันว่าได้รับเงินสดจากลูกค้า ฿'+Number(rows[0].total_amount).toLocaleString('th-TH')+' แล้ว?'))return;
-   }catch(e){toast('ตรวจยอดรับเงินไม่สำเร็จ: '+e.message);return}
-   const pin=prompt('กรอกรหัส PIN 6 หลักจากลูกค้าเพื่อยืนยันการส่งมอบ');if(pin===null)return;
-   if(!/^\d{6}$/.test(pin.trim())){toast('PIN ต้องเป็นตัวเลข 6 หลัก');return}
-   const button=document.getElementById('finish-order-btn');if(button)button.disabled=true;
-   let lat=null,lng=null;
-   if(navigator.geolocation)try{const p=await new Promise((resolve,reject)=>navigator.geolocation.getCurrentPosition(resolve,reject,{enableHighAccuracy:true,timeout:5000,maximumAge:10000}));lat=p.coords.latitude;lng=p.coords.longitude}catch(e){}
-   try{const token=await getAccessToken(),file=document.getElementById('qg-v22-delivery-photo')?.files?.[0],photoPath=file?await qgUploadEvidence(file):null;await sbTable('rpc/qg_complete_with_proof',{method:'POST',token,body:{p_order_id:o.id,p_pin:pin.trim(),p_lat:lat,p_lng:lng,p_photo_path:photoPath}});
-     const rows=await sbTable('orders?select=*&id=eq.'+encodeURIComponent(o.id)+'&limit=1',{token});renderPaymentSummary(rows?.[0]||{...o,status:'completed'},true);
+     const token=await getAccessToken();if(!token)throw Error('กรุณาเข้าสู่ระบบใหม่');
+     await sbTable(o.market_order_id?'rpc/market_rider_group_action':'rpc/rider_order_action',{method:'POST',token,body:o.market_order_id?{p_market_order_id:o.market_order_id,p_action:'complete'}:{p_order_id:o.id,p_action:'complete'}});
+     toast('ส่งสำเร็จ');document.getElementById('summary-screen')?.remove();const stage=document.querySelector('.stage');if(stage)stage.style.display='block';await refreshData();
    }catch(e){toast('จบงานไม่สำเร็จ: '+e.message);if(button)button.disabled=false}
+   finally{riderActionInFlight.delete(o.id)}
  };
+
  window.qtRenderEarnings=function(){const panel=document.getElementById('panel-earn');if(!panel)return;panel.innerHTML='<div class="qt-panelhead"><h1>รายได้</h1></div>';let box=document.getElementById('qg-v22-cash-ledger');if(!box){box=document.createElement('section');box.id='qg-v22-cash-ledger';box.className='qg-v22-ledger';panel.appendChild(box)}
    box.innerHTML='<h2>สรุปงานและบัญชีเงินสด</h2><div class="qg-v22-period"><button data-days="1">วันนี้</button><button data-days="7">7 วัน</button><button data-days="30">30 วัน</button></div><div id="qg-v22-period-summary">กำลังโหลดสรุปงาน...</div><div id="qg-v22-ledger-body">กำลังโหลดจากฐานข้อมูล...</div>';
    box.querySelectorAll('[data-days]').forEach(b=>b.onclick=()=>{const days=Number(b.dataset.days);qgLoadRiderLedger(days);qgLoadRiderPeriod(days)});qgLoadRiderLedger(1);qgLoadRiderPeriod(1);
@@ -1621,7 +1595,7 @@ window.advanceOrder=async function(o){
    const to=new Date(),from=new Date(to.getTime()-(days-1)*86400000),token=await getAccessToken();const rows=await sbTable('rpc/qg_rider_cash_ledger',{method:'POST',token,body:{p_from:day(from),p_to:day(to)}});
    if(!box.isConnected)return;const sum=k=>(rows||[]).reduce((a,o)=>a+Number(o[k]||0),0),paid=sum('cash_paid_merchant'),collected=sum('cash_collected_customer'),fees=(rows||[]).filter(o=>o.payment_status==='paid').reduce((a,o)=>a+Number(o.delivery_fee||0),0),outstanding=(rows||[]).filter(o=>o.cash_paid_merchant&&!o.cash_collected_customer).reduce((a,o)=>a+Number(o.total||0),0);
    box.innerHTML='<div class="qg-v22-ledger-grid"><div>จ่ายร้าน<b>'+baht(paid)+'</b></div><div>เก็บลูกค้า<b>'+baht(collected)+'</b></div><div>ค่าส่งที่ได้รับ<b>'+baht(fees)+'</b></div><div>รอเก็บลูกค้า<b>'+baht(outstanding)+'</b></div><div>สุทธิรับ-จ่าย<b>'+baht(collected-paid)+'</b></div><div>งานสำเร็จ<b>'+(rows||[]).filter(o=>o.status==='completed').length+'</b></div></div>'+
-     (rows||[]).map(o=>'<article><b>'+String(o.order_number||o.order_id)+'</b><small>'+String(o.status)+' · '+(o.merchant_confirmed?'ร้านยืนยันรับเงิน':'ร้านยังไม่ยืนยัน')+' · '+String(o.payment_status||'รอชำระ')+'</small><span>จ่าย '+baht(o.cash_paid_merchant)+' / เก็บ '+baht(o.cash_collected_customer)+'</span></article>').join('');
+     (rows||[]).map(o=>'<article><b>'+String(o.order_number||o.order_id)+'</b><small>'+String(o.status)+' · '+(o.cash_paid_merchant?'บันทึกรับของแล้ว':'ยังไม่รับของ')+' · '+String(o.payment_status||'รอชำระ')+'</small><span>จ่าย '+baht(o.cash_paid_merchant)+' / เก็บ '+baht(o.cash_collected_customer)+'</span></article>').join('');
  }catch(e){box.textContent='โหลดบัญชีเงินสดไม่สำเร็จ: '+e.message}};
 
 
@@ -1649,7 +1623,7 @@ body{overflow-y:auto;-webkit-overflow-scrolling:touch;touch-action:pan-y}
  function html(rows){
   if(!rows.length)return '';
   const paid=rows.filter(x=>x.status==='PICKED_UP'||Number(x.cash_paid_amount)>0).length,total=rows.reduce((a,x)=>a+Number(x.shop_amount||0),0);
-  return '<section class="qg-mp"><div class="qg-mp-head"><b>รับของหลายร้าน</b><small>รับแล้ว '+paid+'/'+rows.length+' จุด</small></div>'+rows.map((x,i)=>{const done=x.status==='PICKED_UP'||x.status==='CANCELLED';return '<div class="qg-mp-row"><div class="qg-mp-top"><div><b>จุดรับ '+(i+1)+' · '+esc(x.shop_name||'ร้านค้า')+'</b><br><small>'+esc(x.shop_address||'')+'</small></div><strong class="'+(done?'qg-mp-paid':'')+'">฿'+Number(x.shop_amount||0).toLocaleString('th-TH')+'</strong></div><button class="qg-mp-btn" data-pickup="'+esc(x.pickup_id)+'" data-amount="'+Number(x.shop_amount||0)+'" '+(done?'disabled':'')+'>'+(x.status==='CANCELLED'?'ยกเลิกจุดรับนี้':done?'✓ จ่ายและรับของแล้ว':'จ่าย ฿'+Number(x.shop_amount||0).toLocaleString('th-TH')+' และรับของ')+'</button></div>'}).join('')+'<div class="qg-mp-total"><span>เงินที่ต้องจ่ายร้านรวม</span><span>฿'+total.toLocaleString('th-TH')+'</span></div></section>';
+  return '<section class="qg-mp"><div class="qg-mp-head"><b>รับของหลายร้าน</b><small>รับแล้ว '+paid+'/'+rows.length+' จุด</small></div>'+rows.map((x,i)=>{const done=x.status==='PICKED_UP'||x.status==='CANCELLED';return '<div class="qg-mp-row"><div class="qg-mp-top"><div><b>จุดรับ '+(i+1)+' · '+esc(x.shop_name||'ร้านค้า')+'</b><br><small>'+esc(x.shop_address||'')+'</small></div><strong class="'+(done?'qg-mp-paid':'')+'">฿'+Number(x.shop_amount||0).toLocaleString('th-TH')+'</strong></div><button class="qg-mp-btn" data-pickup="'+esc(x.pickup_id)+'" data-amount="'+Number(x.shop_amount||0)+'" '+(done?'disabled':'')+'>'+(x.status==='CANCELLED'?'ยกเลิกจุดรับนี้':done?'✓ รับของแล้ว':'รับสินค้าแล้ว')+'</button></div>'}).join('')+'<div class="qg-mp-total"><span>เงินที่ต้องจ่ายร้านรวม</span><span>฿'+total.toLocaleString('th-TH')+'</span></div></section>';
  }
  window.qgMountMarketPickups=mount;
  async function mount(o){
@@ -1659,7 +1633,7 @@ body{overflow-y:auto;-webkit-overflow-scrolling:touch;touch-action:pan-y}
   sheet.querySelector('.qg-mp')?.remove();
   const actions=sheet.querySelector('.qt-actions'),box=document.createElement('div');box.innerHTML=html(rows);const node=box.firstElementChild;
   if(actions)sheet.insertBefore(node,actions);else sheet.appendChild(node);
-  sheet.querySelectorAll('[data-pickup]').forEach(b=>b.onclick=async()=>{if(b.disabled)return;const amount=Number(b.dataset.amount||0);if(!confirm('ยืนยันว่าจ่ายเงินให้ร้าน ฿'+amount.toLocaleString('th-TH')+' และรับของแล้ว?'))return;b.disabled=true;try{const token=await getAccessToken();const r=await sbTable('rpc/market_rider_confirm_pickup_cash',{method:'POST',token,body:{p_pickup_id:b.dataset.pickup,p_amount:amount}});toast(r?.all_picked_up?'รับของครบทุกจุดแล้ว — ไปส่งลูกค้าได้':'บันทึกจุดรับแล้ว');await refreshData();}catch(e){toast('บันทึกจุดรับไม่สำเร็จ: '+e.message);b.disabled=false;}});
+  sheet.querySelectorAll('[data-pickup]').forEach(b=>b.onclick=async()=>{if(b.disabled)return;const amount=Number(b.dataset.amount||0);b.disabled=true;try{const token=await getAccessToken();const r=await sbTable('rpc/market_rider_confirm_pickup_cash',{method:'POST',token,body:{p_pickup_id:b.dataset.pickup,p_amount:amount}});toast(r?.all_picked_up?'รับของครบทุกจุดแล้ว — ไปส่งลูกค้าได้':'บันทึกจุดรับแล้ว');await refreshData();}catch(e){toast('บันทึกจุดรับไม่สำเร็จ: '+e.message);b.disabled=false;}});
   const next=document.getElementById('next-'+o.id);if(next){const all=rows.every(x=>x.status==='PICKED_UP'||x.status==='CANCELLED');if(!all){next.disabled=true;next.textContent='รับของให้ครบทุกจุดก่อน';}}
  }
 
@@ -1687,8 +1661,5 @@ body{overflow-y:auto;-webkit-overflow-scrolling:touch;touch-action:pan-y}
 <style id="qg-rider-simple-cash-slide">
 .qg-shop-cash-due{display:flex;justify-content:space-between;align-items:center;margin:10px 0;padding:10px 13px;border-radius:13px;background:#fff7e6;color:#8a4b00;font-size:13px}
 .qg-shop-cash-due b{font-size:17px}
-.qg-complete-slide{width:100%;min-height:62px;border-radius:15px;padding:9px 13px;background:#fff0f1;color:#8d1020;display:flex;flex-direction:column;gap:4px}
-.qg-complete-slide b{font-size:15px}.qg-complete-slide span{font-size:11px;color:#75525a}
-.qg-complete-slide input{width:100%;height:34px;margin:0;accent-color:#ef3340;touch-action:pan-y}
 </style>
 </body></html>

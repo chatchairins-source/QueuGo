@@ -18,10 +18,15 @@ assert.equal(t.run("customerOrderNumber({order_number:'QT-0001'})"),'QT-0001');c
 assert.equal(t.run("customerOrderNumber({id:'abc-def-1234'})"),'QT-1234');checks++;
 const r=boot('rider/index.html');await Promise.resolve();r.run("S.user={id:'fixture'};S.riderProfile={id:'rider'};S.session={accessToken:'fixture'};S.activeTab='home';S.online=false;window.calls=[];getAccessToken=async()=>'fixture';sbTable=async(path,opts)=>{calls.push({path,opts});return path.includes('status=in.')?[{id:'order',status:'rider_assigned',pickup_latitude:13,pickup_longitude:100,delivery_latitude:13.1,delivery_longitude:100.1}]:[]};placeJobMarkers=()=>{};");await r.run('refreshData()');assert.equal(r.run('S.activeOrder.status'),'rider_assigned');assert(r.run("calls[0].path.includes('rider_assigned,preparing,ready')"));assert(r.run("jobCardHTML(S.activeOrder).includes('disabled')"));assert(r.run("jobCardHTML({...S.activeOrder,status:'ready',subtotal:100}).includes('เงินสดที่ต้องจ่ายร้าน')"));
 assert(r.run("jobCardHTML({...S.activeOrder,status:'ready',subtotal:100}).includes('฿100')"));
-assert(r.run("jobCardHTML({...S.activeOrder,status:'delivering',id:'slide',total_amount:130}).includes('complete-slide')"));
-assert(r.run("jobCardHTML({...S.activeOrder,status:'delivering',id:'slide',total_amount:130}).includes('เก็บเงินลูกค้า ฿130')"));checks+=5;
+assert(r.run("jobCardHTML({...S.activeOrder,status:'delivering',id:'slide',total_amount:130}).includes('ส่งสำเร็จ')"));
+assert(r.run("jobCardHTML({...S.activeOrder,status:'delivering',id:'slide',total_amount:130}).includes('type=\"range\"')===false"));checks+=5;
 r.run("calls=[];sbTable=async(path,opts)=>{calls.push({path,opts});return path.startsWith('orders?select=subtotal')?[{status:'ready',subtotal:100}]:[]};refreshData=async()=>{};");await r.run("advanceOrder({id:'order',status:'ready',subtotal:100})");assert.equal(r.run("calls.find(c=>c.path==='rpc/rider_order_action').opts.body.p_action"),'pickup_cash');assert.equal(r.run("calls.filter(c=>c.path.startsWith('orders?select=subtotal')).length"),0);checks+=2;
 r.run("calls=[];sbTable=async(path,opts)=>{calls.push({path,opts});return []};refreshData=async()=>{};");await r.run("advanceOrder({id:'order',status:'delivering',total_amount:130})");assert.equal(r.run("calls.find(c=>c.path==='rpc/rider_order_action').opts.body.p_action"),'complete');checks++;
+
+// Completion is the only user action; no cash or PIN confirmation, including market groups.
+r.run("confirm=()=>{throw Error('unexpected cash confirmation')};prompt=()=>{throw Error('unexpected PIN')};calls=[];sbTable=async(path,opts)=>{calls.push({path,opts});return []};refreshData=async()=>{};");
+await r.run("finishOrder({id:'finish',status:'in_progress'})");assert.equal(r.run("calls[0].path"),'rpc/rider_order_action');assert.equal(r.run("calls[0].opts.body.p_action"),'complete');checks+=2;
+r.run("calls=[]");await r.run("finishOrder({id:'market-finish',market_order_id:'group',status:'in_progress'})");assert.equal(r.run("calls[0].path"),'rpc/market_rider_group_action');assert.equal(r.run("calls[0].opts.body.p_action"),'complete');checks+=2;
 
 // If the order committed but the network reply disappeared, reconcile its exact request UUID.
 t.run(`window.reconcileDb=async(path)=>path.startsWith('orders?select=id,order_number')?[{id:readPendingCheckout().body.p_order_id,order_number:'QT-0002'}]:[];db=reconcileDb`);

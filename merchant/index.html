@@ -1707,9 +1707,7 @@ window.renderShopOrderModern=function(id){const u=shopUser(),o=shopOrders(u).fin
  if(['shop_accepted','preparing','waiting_rider','rider_to_shop','accepted','ready','assigned'].includes(o.status)){
   const b=document.createElement('button');b.className='qgm-outline';b.textContent='ยกเลิกออเดอร์';b.onclick=()=>shopCancelOrder(id);extra.appendChild(b);
  }
- if(['picked_up','delivering','arrived','completed','delivered'].includes(o.status)&&o.riderProfileId){
-  const b=document.createElement('button');b.className='qgm-outline';b.textContent='ยืนยันรับเงินสดค่าสินค้าจากไรเดอร์';b.onclick=()=>qgmConfirmCash(id,b);extra.appendChild(b);
- }
+
  if(extra.childNodes.length)main.appendChild(extra);
 }
 {const host=document.querySelector('.qgm-content');if(!host)return;const button=document.createElement('button');button.className='qgm-outline';button.type='button';button.textContent='แจ้งปัญหาออเดอร์นี้';button.onclick=()=>qgOpenTicketPanel(id);host.appendChild(button)}
@@ -2138,15 +2136,7 @@ window.shopCancelOrder=async function shopCancelOrder(orderId){
 };
 
 
-window.qgmConfirmCash=async function(id,button){
- if(!confirm('ยืนยันว่าร้านได้รับเงินสดค่าสินค้าจากไรเดอร์แล้ว?'))return;
- button.disabled=true;
- try{
-  const token=await qtGetAccessToken();if(!token)throw Error('กรุณาเข้าสู่ระบบใหม่');
-  const amount=await qtSupabaseTable('rpc/merchant_confirm_cash',{method:'POST',accessToken:token,body:{p_order_id:id}});
-  toast('บันทึกรับเงินสดแล้ว');button.textContent='ยืนยันรับเงินสดแล้ว';button.disabled=true;
- }catch(e){toast('บันทึกเงินสดไม่สำเร็จ: '+(e.message||e));button.disabled=false}
-};
+
 })();
 </script>
 

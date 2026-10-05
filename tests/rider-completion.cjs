@@ -47,4 +47,23 @@ await db.exec(`INSERT INTO rider_cash_advances VALUES('${id(32)}','${id(7)}','${
 assert.equal((await db.query(`SELECT count(*)::int n FROM orders WHERE market_order_id='${id(30)}' AND status='completed'`)).rows[0].n,2);checks++;
 assert.equal((await db.query(`SELECT count(*)::int n FROM payments WHERE order_id IN('${id(31)}','${id(32)}') AND status='paid'`)).rows[0].n,2);checks++;
 assert.equal((await db.query(`SELECT qg_complete_market_with_proof('${id(30)}','123456') result`)).rows[0].result,'completed');checks++;
+// Current action-only cash migration: pickup records both sides, completion requires no PIN.
+await db.exec(`ALTER TABLE rider_profiles ADD COLUMN status text DEFAULT 'active';
+ALTER TABLE orders ADD COLUMN order_type text DEFAULT 'shopping';
+ALTER TABLE merchant_cash_receipts ADD COLUMN confirmed_by uuid;
+ALTER TABLE merchant_cash_receipts ADD PRIMARY KEY(order_id);
+CREATE TABLE queuego_cash_order_locks(order_id uuid);
+CREATE TABLE market_order_pickups(id uuid,order_id uuid,market_order_id uuid,shop_id uuid,status text,shop_amount numeric,cash_paid_amount numeric,cash_paid_at timestamptz,picked_up_at timestamptz,updated_at timestamptz);
+CREATE FUNCTION qg_market_group_can_deliver(uuid,uuid) RETURNS boolean LANGUAGE sql AS $$SELECT true$$;`);
+await db.exec(fs.readFileSync(path.resolve(__dirname,'../QueueGo-Order-Action-Cash-Audit.sql'),'utf8'));
+await db.exec(`CREATE TRIGGER proof_guard BEFORE UPDATE ON orders FOR EACH ROW EXECUTE FUNCTION qg_guard_delivery_proof();`);
+await seed(40,null,false,'');await db.exec(`UPDATE orders SET status='ready' WHERE id='${id(40)}';INSERT INTO queuego_cash_order_locks VALUES('${id(40)}');`);
+assert.equal((await db.query(`SELECT rider_order_action('${id(40)}','pickup_cash') result`)).rows[0].result,'picked_up');checks++;
+assert.equal((await db.query(`SELECT confirmed_by FROM merchant_cash_receipts WHERE order_id='${id(40)}'`)).rows[0].confirmed_by,id(1));checks++;
+await db.query(`SELECT rider_order_action('${id(40)}','deliver')`);
+assert.equal((await db.query(`SELECT rider_order_action('${id(40)}','complete') result`)).rows[0].result,'completed');checks++;
+assert.equal((await db.query(`SELECT status FROM payments WHERE order_id='${id(40)}'`)).rows[0].status,'paid');checks++;
+assert.equal((await db.query(`SELECT count(*)::int n FROM qg_delivery_proofs WHERE order_id='${id(40)}'`)).rows[0].n,0);checks++;
+await db.query(`SELECT rider_order_action('${id(40)}','complete')`);
+assert.equal((await db.query(`SELECT count(*)::int n FROM merchant_cash_receipts WHERE order_id='${id(40)}'`)).rows[0].n,1);checks++;
 console.log(JSON.stringify({checks,failures:0,scope:'PGlite isolated SQL with synthetic rows; no live RLS/concurrency certification'},null,2));await db.close();})().catch(e=>{console.error(e);process.exit(1)});
