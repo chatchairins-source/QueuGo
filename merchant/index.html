@@ -606,7 +606,7 @@ function currentUser(){ const s=getSession(); if(!s) return null; return dbGet('
 
 function qtResetCache(){ Object.keys(QT_DB_CACHE).forEach(k=>{ delete QT_DB_CACHE[k]; }); QT_SYNC.hash={}; QT_SYNC.profileMaps=null; QT_SYNC.dirty={}; QT_DB_FULL_TRIED=false; QT_DB_HYDRATE_QUEUED=null; }
 function logout(){
-  try{Object.keys(localStorage).filter(k=>k.startsWith(QGM_SETUP_DAY_CACHE_PREFIX)).forEach(k=>localStorage.removeItem(k))}catch(e){}
+  try{Object.keys(localStorage).filter(k=>k.startsWith('qg-merchant-setup-day-v1:')).forEach(k=>localStorage.removeItem(k))}catch(e){}
   clearSession(); qtResetCache();
   try{ if('speechSynthesis' in window) window.speechSynthesis.cancel(); }catch(e){}
   try{ if(navigator.vibrate) navigator.vibrate(0); }catch(e){}
@@ -2385,7 +2385,7 @@ window.qgmSaveShopSetup=async function(e){e.preventDefault();const button=e.subm
  if(!Array.isArray(savedProfile)||!savedProfile.length)throw Error('ฐานข้อมูลไม่ยืนยันข้อมูลร้าน');
  const savedUser=await qtSupabaseTable('users?id=eq.'+encodeURIComponent(u.id),{method:'PATCH',accessToken:token,body:{name:next.name,phone:next.phone,metadata:qtUserMetadata(next)}});
  if(!Array.isArray(savedUser)||!savedUser.length)throw Error('ฐานข้อมูลไม่ยืนยันข้อมูลผู้ใช้');
- Object.assign(u,next);qtMarkClean('qt_users');qgmInvalidateSetupReadiness(u);toast('บันทึกข้อมูลร้านแล้ว');navigate('shop-profile');
+ Object.assign(u,next);qtMarkClean('qt_users');window.qgmInvalidateSetupReadiness?.(u);toast('บันทึกข้อมูลร้านแล้ว');navigate('shop-profile');
  }catch(err){console.error(err);toast('บันทึกไม่สำเร็จ: '+(err.message||err))}finally{if(button)button.disabled=false}return false;
 };
 </script>
