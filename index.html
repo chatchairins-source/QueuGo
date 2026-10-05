@@ -234,7 +234,7 @@ function readPendingMarketCheckout(){
     return p;
   }catch(e){return null}
 }
-let marketCart=readMarketCart(),marketCatalog=null,marketShops=null,marketRuleRows=null,marketView={marketId:null,cat:'all',q:''},marketCheckoutBusy=false;
+let marketCart=readMarketCart(),marketCatalog=null,marketShops=null,marketMarkets=null,marketRuleRows=null,marketView={marketId:null,cat:'all',q:''},marketCheckoutBusy=false;
 const marketCartN=()=>marketCart.items.reduce((s,i)=>s+i.qty,0);
 const marketCartTotal=()=>marketCart.items.reduce((s,i)=>s+Number(i.price)*i.qty,0);
 const marketCartShopIds=()=>new Set(marketCart.items.map(i=>String(i.shopId)));
@@ -249,6 +249,12 @@ async function loadMarketShops(force=false){
   const rows=await db('rpc/market_public_shops_v2',{method:'POST',body:{}});
   marketShops=Array.isArray(rows)?rows:[];
   return marketShops;
+}
+async function loadMarketMarkets(force=false){
+  if(marketMarkets&&!force)return marketMarkets;
+  const rows=await db('rpc/market_public_markets_v1',{method:'POST',body:{}});
+  marketMarkets=Array.isArray(rows)?rows:[];
+  return marketMarkets;
 }
 async function loadMarketRules(force=false){
   if(marketRuleRows&&!force)return marketRuleRows;
@@ -309,11 +315,29 @@ function marketSetCategory(k){marketView.cat=k;route(true)}
 function marketSetMarket(id){marketView.marketId=id;marketView.cat='all';marketView.q='';route(true)}
 function marketSearch(v){
   marketView.q=String(v||'').trim().slice(0,100);
-  const el=$('market-results');if(!el)return;
-  const rows=(window.__marketVisibleCatalog||[]);
+  const el=$('market-results'),shopEl=$('market-shop-results');
+  const rows=(window.__marketVisibleCatalog||[]),shopRows=(window.__marketVisibleShops||[]);
   const q=marketView.q.toLocaleLowerCase('th');
   const filtered=rows.filter(p=>(marketView.cat==='all'||marketCategoryKey(p.category,p.name)===marketView.cat)&&(!q||[p.name,p.category,p.shop_name].some(x=>String(x||'').toLocaleLowerCase('th').includes(q))));
-  el.innerHTML=filtered.length?filtered.map(p=>`<div class="mi">${photo(p.image,p.name)}<div class="mc"><b>${esc(p.name)}</b><p>${esc(p.shop_name)} · ${esc(MARKET_CATEGORY_LABELS[marketCategoryKey(p.category,p.name)]||'อื่นๆ ในตลาดสด')}</p><div class="pr">${baht(p.price)}${p.unit?' / '+esc(p.unit):''}</div><small class="sm">พร้อมขาย ${Math.floor(Number(p.available_packs||0))} หน่วย</small></div><button class="plus" aria-label="เพิ่ม" onclick="marketAdd('${esc(p.product_id)}')">${ico('plus',19)}</button></div>`).join(''):'<p class="empty">ไม่พบสินค้าในหมวดนี้</p>';
+  if(shopEl){
+    const visibleShops=shopRows.filter(s=>!q||[s.shop_name,s.shop_category,s.description].some(x=>String(x||'').toLocaleLowerCase('th').includes(q))||rows.some(p=>String(p.shop_id)===String(s.shop_id)&&[p.name,p.category].some(x=>String(x||'').toLocaleLowerCase('th').includes(q))));
+    shopEl.innerHTML=visibleShops.length?visibleShops.map(s=>{
+      const count=rows.filter(p=>String(p.shop_id)===String(s.shop_id)).length;
+      const enabled=s.delivery_enabled===true;
+      const status=enabled?(count?'เปิดรับออเดอร์ · '+count+' รายการ':'เปิดร้านแล้ว · ยังไม่มีสินค้าพร้อมขาย'):'ร้านอยู่ในตลาด · ยังไม่เปิดรับ Delivery';
+      const image=s.shop_logo||s.shop_cover||'';
+      return `<article class="card" style="display:flex;align-items:center;gap:12px;padding:13px;margin:0 0 10px">${photo(image,s.shop_name)}<div class="mc" style="min-width:0"><b>${esc(s.shop_name||'ร้านค้า')}</b><p class="sm" style="margin:4px 0">${esc(status)}</p>${s.description?`<small class="sm">${esc(s.description)}</small>`:''}</div>${count?`<button class="lk" type="button" onclick="marketShowShop('${esc(s.shop_id)}')">ดูสินค้า</button>`:''}</article>`;
+    }).join(''):'<p class="empty">ไม่พบร้านที่ตรงกับคำค้นหา</p>';
+  }
+  if(!el)return;
+  el.innerHTML=filtered.length?filtered.map(p=>`<div class="mi">${photo(p.image,p.name)}<div class="mc"><b>${esc(p.name)}</b><p>${esc(p.shop_name)} · ${esc(MARKET_CATEGORY_LABELS[marketCategoryKey(p.category,p.name)]||'อื่นๆ ในตลาดสด')}</p><div class="pr">${baht(p.price)}${p.unit?' / '+esc(p.unit):''}</div><small class="sm">พร้อมขาย ${Math.floor(Number(p.available_packs||0))} หน่วย</small></div><button class="plus" aria-label="เพิ่ม" onclick="marketAdd('${esc(p.product_id)}')">${ico('plus',19)}</button></div>`).join(''):'<p class="empty">ยังไม่มีสินค้าพร้อมขายในเงื่อนไขนี้</p>';
+}
+function marketShowShop(shopId){
+  const s=(window.__marketVisibleShops||[]).find(x=>String(x.shop_id)===String(shopId));if(!s)return;
+  marketView.cat='all';marketView.q=String(s.shop_name||'').trim();
+  const input=$('market-q');if(input)input.value=marketView.q;
+  marketSearch(marketView.q);
+  $('market-products-section')?.scrollIntoView({behavior:'smooth',block:'start'});
 }
 async function marketPlaceOrder(){
   if(marketCheckoutBusy)return toast('กำลังตรวจผล Market Trip เดิม');
@@ -581,22 +605,30 @@ ${cart.shopId==id&&cartN()?`<div class="fcart" onclick="go('cart')"><b>ดูต
   const reviewSection=document.createElement('section');reviewSection.className='card';reviewSection.innerHTML='<h2>รีวิวจากลูกค้า</h2>'+QGCustomer.reviewList(ratings);$('root').querySelector('main').appendChild(reviewSection);
 };
 V.market=async(_,ticket=routeVersion)=>{
-  const [catalog,rules,active]=await Promise.all([loadMarketCatalog(),loadMarketRules(),loadActiveMarketTrip()]);
+  const [catalog,shopRows,marketRows,rules,active]=await Promise.all([loadMarketCatalog(),loadMarketShops(),loadMarketMarkets(),loadMarketRules(),loadActiveMarketTrip()]);
   if(ticket!==routeVersion)return;
   window.__activeMarketTrip=active;
-  const markets=[...new Map(catalog.map(p=>[String(p.market_id),{id:String(p.market_id),name:String(p.market_name||'ตลาดสด')}])).values()];
+  const markets=(marketRows||[]).map(m=>({id:String(m.market_id),name:String(m.name||'ตลาดสด'),latitude:Number(m.latitude),longitude:Number(m.longitude),verified:m.verified===true}));
+  if(currentPos&&qgIsValidCoordinate(currentPos.lat,currentPos.lng,true)){
+    markets.forEach(m=>{m.distance=calculateDistanceKm(currentPos.lat,currentPos.lng,m.latitude,m.longitude)});
+    markets.sort((a,b)=>(Number.isFinite(a.distance)?a.distance:Infinity)-(Number.isFinite(b.distance)?b.distance:Infinity)||a.name.localeCompare(b.name,'th'));
+  }
   const preferred=active?.market_id||marketCart.marketId||marketView.marketId||markets[0]?.id||null;
   if(preferred&&markets.some(m=>m.id===String(preferred)))marketView.marketId=String(preferred);
   else marketView.marketId=markets[0]?.id||null;
   window.__marketVisibleCatalog=catalog.filter(p=>String(p.market_id)===String(marketView.marketId||''));
+  window.__marketVisibleShops=(shopRows||[]).filter(s=>String(s.market_id)===String(marketView.marketId||''));
   const cats=[...new Set(window.__marketVisibleCatalog.map(p=>marketCategoryKey(p.category,p.name)))];
+  const selectedMarket=markets.find(m=>m.id===String(marketView.marketId));
   const tripNote=active?`<div class="card"><b>Market Trip ที่กำลังใช้งาน</b><p class="sm" style="margin:5px 0 0">${active.locked?'Rider ออกจากตลาดแล้ว ระบบล็อกการเพิ่มร้าน':'ยังเพิ่มร้านใหม่ได้ตราบใดที่ Rider ยังไม่ออกจากตลาด'} · ${esc(active.status)}</p></div>`:'';
   layout(`<div class="pt"><button class="back" onclick="history.back()">${ico('back')}</button><h1>ตลาดสด</h1></div>
   ${tripNote}
-  <div class="card"><label>เลือกตลาด</label><select class="in" onchange="marketSetMarket(this.value)">${markets.map(m=>`<option value="${esc(m.id)}" ${m.id===marketView.marketId?'selected':''}>${esc(m.name)}</option>`).join('')}</select>
-  <label for="market-q">ค้นหาสินค้า ร้าน หรือหมวดหมู่</label><input class="in" id="market-q" value="${esc(marketView.q)}" oninput="marketSearch(this.value)" placeholder="เช่น หมูสามชั้น กุ้ง เห็ด กระเทียม"></div>
+  <div class="card"><label>เลือกตลาด</label><select class="in" onchange="marketSetMarket(this.value)">${markets.length?markets.map(m=>`<option value="${esc(m.id)}" ${m.id===marketView.marketId?'selected':''}>${esc(m.name)}${Number.isFinite(m.distance)?' · '+m.distance.toLocaleString('th-TH',{maximumFractionDigits:1})+' กม.':''}</option>`).join(''):'<option value="">ยังไม่มีตลาดที่เปิดใช้งาน</option>'}</select>
+  ${selectedMarket&&Number.isFinite(selectedMarket.distance)?`<p class="sm" style="margin:6px 0 10px">เลือกตลาดใกล้ตำแหน่งคุณก่อน · ${selectedMarket.distance.toLocaleString('th-TH',{maximumFractionDigits:1})} กม.</p>`:''}
+  <label for="market-q">ค้นหาสินค้า ร้าน หรือหมวดหมู่</label><input class="in" id="market-q" value="${esc(marketView.q)}" oninput="marketSearch(this.value)" placeholder="เช่น ชื่อร้าน ผักสด หมู กุ้ง"></div>
+  <section class="sec"><div class="st"><h2>ร้านค้าในตลาด</h2><span class="sm">${window.__marketVisibleShops.length} ร้าน</span></div><div id="market-shop-results"></div></section>
   <div class="cats" style="padding:10px 0">${['all',...cats].map(k=>`<button class="cat" style="flex:none;width:auto" onclick="marketSetCategory('${esc(k)}')"><b style="margin:0;padding:8px 12px;border-radius:99px;border:1px solid ${marketView.cat===k?'var(--red)':'#ddd'};background:${marketView.cat===k?'var(--red)':'#fff'};color:${marketView.cat===k?'#fff':'#333'}">${k==='all'?'ทั้งหมด':esc(MARKET_CATEGORY_LABELS[k]||'อื่นๆ')}</b></button>`).join('')}</div>
-  <section class="sec"><div class="st"><h2>สินค้าจากร้านในตลาด</h2><span class="sm">${window.__marketVisibleCatalog.length} รายการ</span></div><div id="market-results"></div></section>
+  <section class="sec" id="market-products-section"><div class="st"><h2>สินค้าจากร้านในตลาด</h2><span class="sm">${window.__marketVisibleCatalog.length} รายการ</span></div><div id="market-results"></div></section>
   ${marketCartN()?`<div class="fcart" onclick="go('market-cart')"><b>ตะกร้าตลาดสด · ${marketCartN()} รายการ</b><span>${baht(marketCartTotal())}</span></div>`:''}`,'home');
   marketSearch(marketView.q);
 };
