@@ -20,4 +20,9 @@ ok(merchant.includes("let result;\n try{\n  result=await qgmMerchantActionOnce(i
 ok(migration.includes("qg_merchant_action_receipts"),'server must store merchant action receipts');
 ok(migration.includes("pg_advisory_xact_lock"),'server must serialize same request id');
 ok(migration.includes("'replayed',true"),'server must explicitly report replay');
+const legacy=fs.readFileSync(path.join(root,'supabase/migrations/20261005205000_merchant_order_action_repeat_safe.sql'),'utf8');
+ok(legacy.includes("v_action='accepted' and v_status in"),'legacy accept retries must return current state');
+ok(legacy.includes("v_action='preparing' and v_status in"),'legacy preparing retries must return current state');
+ok(legacy.includes("v_action='ready' and v_status in"),'legacy ready retries must return current state');
+ok(legacy.includes("v_action='cancel' and v_status='cancelled'"),'legacy cancel retries must return cancelled');
 console.log(JSON.stringify({checks,failures:0,scope:'merchant single-tap idempotency, silent ambiguous-result recovery and post-commit UI error isolation'}));
