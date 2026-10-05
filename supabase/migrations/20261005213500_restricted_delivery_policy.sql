@@ -29,7 +29,7 @@ begin
     return 'tobacco';
   end if;
 
-  if v_text ~ '(เบียร์|เหล้า|สุรา|ไวน์|วิสกี้|วอดก้า|บรั่นดี)'
+  if v_text ~ '(เบียร์|เหล้า|ไวน์|วิสกี้|วอดก้า|บรั่นดี|สุราขาว|สุราพื้นบ้าน)'
      or v_text ~ '(^|[^[:alnum:]_])(beer|wine|vodka|rum|gin|brandy|whisky|whiskey)([^[:alnum:]_]|$)' then
     return 'alcohol';
   end if;
