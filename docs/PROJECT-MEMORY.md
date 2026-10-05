@@ -133,3 +133,10 @@ Commit `52c41aaf7863b916214c8baa63ffe374f8865afd` added a prominent customer nav
 - Merchant product editor now shows a visible upload-status card for the product image.
 - Existing saved images are labeled as already stored in the system. Newly selected images show thumbnail, filename, file type, approximate size, and the status “เลือกแล้ว · จะอัปโหลดเมื่อกดบันทึก”.
 - This changes presentation/feedback only; the existing Storage upload flow still uploads the selected product image when the merchant presses Save.
+
+
+## Restaurant product categories (2026-10-05)
+
+- For restaurant/cafe Merchant product editing, the free-text product category field is replaced by a required fixed selector.
+- Categories are: เมนูแนะนำ / เมนูขายดี, อาหารจานเดียว, ข้าว, เส้น / ก๋วยเตี๋ยว, ของทอด, ของย่าง / ปิ้งย่าง, ต้ม / แกง / ซุป, ผัด, ส้มตำ / ยำ, กับข้าว, อาหารทะเล, ของทานเล่น, ของหวาน, เครื่องดื่ม, ชุดคอมโบ / เซ็ต, เมนูเด็ก, เมนูสุขภาพ / คลีน, เพิ่มเติม / ท็อปปิ้ง, อื่น ๆ.
+- The Merchant catalog category buttons use the same restaurant list for food/cafe shops. Save validation rejects restaurant categories outside this list. Other shop types keep their existing category behavior.
