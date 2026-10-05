@@ -28,6 +28,9 @@ ok(customer.includes("dedicatedMarketCats"),'normal search must exclude dedicate
 ok(customer.includes("queuego_place_market_order"),'market checkout RPC missing');
 ok(customer.includes("queuego_add_market_order_shops"),'market add-shop RPC missing');
 ok(customer.includes("ตะกร้าตลาดสดซื้อข้ามตลาดไม่ได้"),'same-market cart guard missing');
+ok(customer.includes("market_public_markets_v1"),'customer market directory RPC missing');
+ok(customer.includes("market_public_shops_v2"),'customer approved market-shop directory missing');
+ok(customer.includes("ร้านค้าในตลาด"),'customer market shop section missing');
 
 // Market pricing formula and explicit feature gate.
 ok(platform.includes("'pricing.market_second_shop_fee'"),'second-shop rule missing');
