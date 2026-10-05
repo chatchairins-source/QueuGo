@@ -5,7 +5,8 @@ const id=n=>('00000000-0000-4000-8000-'+String(n).padStart(12,'0'));
 CREATE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql AS $$SELECT nullif(current_setting('test.uid',true),'')::uuid$$;
 CREATE TABLE users(id uuid PRIMARY KEY,auth_user_id uuid,role text,status text);
 CREATE TABLE rider_profiles(id uuid PRIMARY KEY,user_id uuid);
-CREATE TABLE orders(id uuid PRIMARY KEY,rider_id uuid,shop_id uuid,customer_id uuid,market_order_id uuid,status text,subtotal numeric,note text,created_at timestamptz DEFAULT now(),updated_at timestamptz,picked_up_at timestamptz,delivering_at timestamptz,completed_at timestamptz);
+CREATE TABLE orders(id uuid PRIMARY KEY,rider_id uuid,shop_id uuid,customer_id uuid,market_order_id uuid,status text,order_type text DEFAULT 'shopping',subtotal numeric,note text,created_at timestamptz DEFAULT now(),updated_at timestamptz,picked_up_at timestamptz,delivering_at timestamptz,completed_at timestamptz);
+CREATE TABLE queuego_cash_order_locks(order_id uuid PRIMARY KEY);
 CREATE TABLE deliveries(order_id uuid,status text,picked_up_at timestamptz,delivered_at timestamptz,updated_at timestamptz);
 CREATE TABLE payments(order_id uuid,payment_method text,status text,paid_at timestamptz,updated_at timestamptz);
 CREATE TABLE rider_cash_advances(order_id uuid PRIMARY KEY,rider_id uuid,shop_id uuid,amount numeric);
@@ -21,10 +22,16 @@ INSERT INTO rider_profiles VALUES('${id(7)}','${id(1)}'),('${id(8)}','${id(3)}')
 SELECT set_config('test.uid','${id(2)}',false);`);
 await db.exec(fs.readFileSync(path.resolve(__dirname,'../QueueGo-Rider-Completion-Migration.sql'),'utf8'));
 await db.exec(fs.readFileSync(path.resolve(__dirname,'../QueueGo-Rider-Slide-Completion.sql'),'utf8'));
+await db.exec(fs.readFileSync(path.resolve(__dirname,'../QueueGo-Rider-Slide-Completion-Guard.sql'),'utf8'));
+await db.exec(`CREATE TRIGGER qg_proof_before_complete BEFORE UPDATE OF status ON orders FOR EACH ROW EXECUTE FUNCTION qg_guard_delivery_proof();`);
 let checks=0;
-async function seed(n,group=null,advance=true,note='__QT_ORDER_STATUS__=arrived'){await db.exec(`INSERT INTO orders(id,rider_id,shop_id,customer_id,market_order_id,status,subtotal,note) VALUES('${id(n)}','${id(7)}','${id(9)}','${id(5)}',${group?"'"+id(group)+"'":'NULL'},'in_progress',100,'${note}');INSERT INTO deliveries VALUES('${id(n)}','picked_up',now(),NULL,NULL);INSERT INTO payments VALUES('${id(n)}','cash','pending',NULL,NULL);INSERT INTO qg_delivery_pins VALUES('${id(n)}','123456');${advance?`INSERT INTO rider_cash_advances VALUES('${id(n)}','${id(7)}','${id(9)}',100);`:''}`)}
+async function seed(n,group=null,advance=true,note='__QT_ORDER_STATUS__=arrived'){await db.exec(`INSERT INTO orders(id,rider_id,shop_id,customer_id,market_order_id,status,subtotal,note) VALUES('${id(n)}','${id(7)}','${id(9)}','${id(5)}',${group?"'"+id(group)+"'":'NULL'},'in_progress',100,'${note}');INSERT INTO queuego_cash_order_locks VALUES('${id(n)}');INSERT INTO deliveries VALUES('${id(n)}','picked_up',now(),NULL,NULL);INSERT INTO payments VALUES('${id(n)}','cash','pending',NULL,NULL);INSERT INTO qg_delivery_pins VALUES('${id(n)}','123456');${advance?`INSERT INTO rider_cash_advances VALUES('${id(n)}','${id(7)}','${id(9)}',100);`:''}`)}
 async function reject(query,pattern){try{await db.query(query);assert.fail('unexpected success')}catch(e){assert.match(e.message,pattern);checks++}}
 await seed(19,null,true,'__QT_ORDER_STATUS__=delivering');
+await reject(`UPDATE orders SET status='completed' WHERE id='${id(19)}'`,/delivery PIN proof required/);
+await db.exec(`UPDATE rider_cash_advances SET amount=99 WHERE order_id='${id(19)}';`);
+await reject(`SELECT rider_order_action('${id(19)}','complete')`,/cash advance not recorded/);
+await db.exec(`UPDATE rider_cash_advances SET amount=100 WHERE order_id='${id(19)}';`);
 assert.equal((await db.query(`SELECT rider_order_action('${id(19)}','complete') result`)).rows[0].result,'completed');checks++;
 assert.equal((await db.query(`SELECT status FROM orders WHERE id='${id(19)}'`)).rows[0].status,'completed');checks++;
 assert.equal((await db.query(`SELECT status FROM payments WHERE order_id='${id(19)}'`)).rows[0].status,'paid');checks++;

@@ -226,6 +226,7 @@ const STEP_NEXT = { ready:{to:'picked_up', label:'จ่ายเงินสด
   delivering:{to:'arrived', label:'ถึงลูกค้าแล้ว'},
   arrived:{to:'completed', label:'ยืนยันส่งสำเร็จ'} };
 
+let qgSheetExpanded=false;
 /* ---------- app state ---------- */
 const S = {
   session:null, user:null, riderProfile:null,
@@ -851,7 +852,7 @@ function qgLaundryActiveHTML(){
   const navTo=status==='collected'
     ?mapsLink(j.to_latitude,j.to_longitude,j.to_address)
     :mapsLink(j.from_latitude,j.from_longitude,j.from_address);
-  return '<div class="qt-handle"></div><div class="qt-jobhead"><div><div class="qt-shop">ฝากซัก · '+esc(j.shop_name||j.hub_name||'ร้านซัก')+'</div><div class="qt-order">'+esc(title)+' · #'+esc(j.order_number||'')+'</div></div><div class="qt-fee">฿'+Number(j.job_fee||0).toLocaleString('th-TH')+'<small>รายได้ขานี้</small></div></div>'+
+  return '<div class="qt-jobhead"><div><div class="qt-shop">ฝากซัก · '+esc(j.shop_name||j.hub_name||'ร้านซัก')+'</div><div class="qt-order">'+esc(title)+' · #'+esc(j.order_number||'')+'</div></div><div class="qt-fee">฿'+Number(j.job_fee||0).toLocaleString('th-TH')+'<small>รายได้ขานี้</small></div></div>'+
     '<div class="qg-laundry-route"><b>'+esc(status==='collected'?'ไปปลายทาง':'ไปจุดรับ')+'</b><small>'+esc(status==='collected'?j.to_address:j.from_address)+'</small><span>จาก '+esc(j.from_address||'-')+' → '+esc(j.to_address||'-')+'</span></div>'+
     '<div class="qt-actions"><a class="qt-ghost" href="'+navTo+'" target="_blank" rel="noopener" aria-label="นำทาง">'+QTICON.loc+'</a>'+action+'</div>';
 }
@@ -1310,13 +1311,27 @@ function qgBindRouteBundleUI(){
   });
 }
 
+function qgSheetToolbar(label){
+ return `<button type="button" class="qg-sheet-toggle" data-qg-sheet-toggle aria-expanded="${qgSheetExpanded}"><span class="qt-handle"></span><span>${qgSheetExpanded?'ย่อแผงงาน':'ลากขึ้นหรือแตะเพื่อดูงานทั้งหมด'}</span><b>${qgSheetExpanded?'⌄':'⌃'}</b></button>`;
+}
+function qgBindSheetToolbar(sheet){
+ const toggle=sheet?.querySelector('[data-qg-sheet-toggle]');if(!toggle)return;
+ let startY=null;
+ toggle.onpointerdown=e=>{startY=e.clientY};
+ toggle.onpointerup=e=>{if(startY===null)return;const delta=e.clientY-startY;startY=null;if(delta < -35&&!qgSheetExpanded){qgSheetExpanded=true;renderSheet()}else if(delta > 35&&qgSheetExpanded){qgSheetExpanded=false;renderSheet()}};
+ toggle.onclick=()=>{qgSheetExpanded=!qgSheetExpanded;renderSheet()};
+}
 function renderSheet(){
  const s=document.getElementById('sheet');if(!s)return;
- if(S.laundryJob&&!S.activeOrder){s.innerHTML=qgLaundryActiveHTML();placeJobMarkers();return}
- if(S.activeOrder){s.innerHTML=jobCardHTML(S.activeOrder)+qgRouteBundleHTML();bindJobCardEvents(S.activeOrder);qgBindRouteBundleUI();if(S.activeOrder.market_order_id)setTimeout(()=>qgMountMarketPickups(S.activeOrder),0);return}
- if(!S.online){s.innerHTML=`<div class="qt-handle"></div><div class="qt-ready"><div class="qt-copy"><div class="qt-title">พร้อมรับงาน</div><div class="qt-sub">เปิดสถานะเพื่อรับออเดอร์ที่อยู่ใกล้คุณ</div></div><button class="qt-online" id="go-online">ออนไลน์</button></div>`;document.getElementById('go-online').onclick=toggleOnline;return}
- if(!S.openJobs.length){s.innerHTML=(S.pos?`<div class="qt-handle"></div><div class="qt-title">กำลังค้นหางานใกล้คุณ</div><div class="qt-sub">คุณออนไลน์อยู่ ระบบจะอัปเดตงานให้อัตโนมัติ</div>`:`<div class="qt-handle"></div><div class="qt-title">รอตำแหน่ง GPS</div><div class="qt-sub">กรุณาอนุญาตตำแหน่งเพื่อค้นหางานใกล้คุณ</div>`)+qgLaundryPoolHTML();return}
- const x=S.openJobs[0];s.innerHTML=jobCardHTML(x.order,x)+qgLaundryPoolHTML();bindJobCardEvents(x.order);
+ s.classList.toggle('qg-expanded',qgSheetExpanded);
+ const toolbar=qgSheetToolbar();
+ if(S.laundryJob&&!S.activeOrder){s.innerHTML=toolbar+qgLaundryActiveHTML();qgBindSheetToolbar(s);placeJobMarkers();return}
+ if(S.activeOrder){s.innerHTML=toolbar+`<div class="qg-sheet-job">${jobCardHTML(S.activeOrder)}${qgRouteBundleHTML()}</div>`;qgBindSheetToolbar(s);bindJobCardEvents(S.activeOrder);qgBindRouteBundleUI();if(S.activeOrder.market_order_id)setTimeout(()=>qgMountMarketPickups(S.activeOrder),0);return}
+ if(!S.online){s.innerHTML=toolbar+`<div class="qg-sheet-empty"><div class="qt-ready"><div class="qt-copy"><div class="qt-title">พร้อมรับงาน</div><div class="qt-sub">เปิดสถานะเพื่อรับออเดอร์ที่อยู่ใกล้คุณ</div></div><button class="qt-online" id="go-online">ออนไลน์</button></div></div>`;qgBindSheetToolbar(s);document.getElementById('go-online').onclick=toggleOnline;return}
+ if(!S.openJobs.length){s.innerHTML=toolbar+`<div class="qg-sheet-empty">${S.pos?`<div class="qt-title">กำลังค้นหางานใกล้คุณ</div><div class="qt-sub">คุณออนไลน์อยู่ ระบบจะอัปเดตงานให้อัตโนมัติ</div>`:`<div class="qt-title">รอตำแหน่ง GPS</div><div class="qt-sub">กรุณาอนุญาตตำแหน่งเพื่อค้นหางาน</div>`}</div>`+qgLaundryPoolHTML();qgBindSheetToolbar(s);return}
+ const shown=qgSheetExpanded?S.openJobs:S.openJobs.slice(0,1);
+ s.innerHTML=toolbar+shown.map(x=>`<div class="qg-expanded-job">${jobCardHTML(x.order,x)}</div>`).join('')+qgLaundryPoolHTML();
+ qgBindSheetToolbar(s);for(const x of shown)bindJobCardEvents(x.order);
 }
 function jobCardHTML(o,x){
  const st=statusFromRow(o),shop=o._shop||{},cust=o._customer||{};
@@ -1324,7 +1339,7 @@ function jobCardHTML(o,x){
  const delivery=haversineKm(o.pickup_latitude,o.pickup_longitude,o.delivery_latitude,o.delivery_longitude);
  const fee=riderEarning(o);const active=!!S.activeOrder;
  const shopCashDue=!o.market_order_id&&['ready','picked_up','delivering','arrived'].includes(st)?Number(o.subtotal||0):null;
- const finalSlide=!o.market_order_id&&['delivering','arrived'].includes(st)?`<div class="qg-complete-slide"><b>เก็บเงินลูกค้า ฿${Number(o.total_amount||0).toLocaleString('th-TH')}</b><span>เลื่อนเพื่อยืนยันส่งและจบงาน</span><input id="complete-${o.id}" type="range" min="0" max="100" value="0" step="1" aria-label="เลื่อนเพื่อยืนยันส่งสำเร็จ"></div>`:'';
+ const finalSlide=!o.market_order_id&&['delivering','arrived'].includes(st)?`<div class="qg-grab-slide"><b>เลื่อนเพื่อดูยอดเงิน</b><input id="review-${o.id}" type="range" min="0" max="100" value="0" step="1" aria-label="เลื่อนเพื่อดูยอดเงินก่อนยืนยันส่ง"><span>ยอดเงินจะแสดงในหน้าถัดไป</span></div>`:'';
  const targetShop=['rider_assigned','preparing','ready','assigned'].includes(st);
  const marketNext=o.market_order_id&&Array.isArray(o._marketPickups)?o._marketPickups.find(x=>!['PICKED_UP','CANCELLED'].includes(String(x.status||'').toUpperCase())):null;
  const targetLat=marketNext?marketNext.latitude:(targetShop?o.pickup_latitude:o.delivery_latitude),targetLng=marketNext?marketNext.longitude:(targetShop?o.pickup_longitude:o.delivery_longitude),targetAddress=marketNext?(marketNext.shop_address||marketNext.shop_name):(targetShop?o.pickup_address:o.delivery_address);
@@ -1343,7 +1358,7 @@ function bindJobCardEvents(o){
  const c=document.getElementById('chat-'+o.id);if(c)c.onclick=()=>openChat(o);
  const a=document.getElementById('accept-'+o.id);if(a)a.onclick=()=>acceptJob(o.id);
  const n=document.getElementById('next-'+o.id);if(n)n.onclick=()=>advanceOrder(o);
- const s=document.getElementById('complete-'+o.id);if(s)s.oninput=async()=>{if(Number(s.value)<100||s.dataset.submitting)return;s.dataset.submitting='1';s.disabled=true;const done=await advanceOrder(o);if(!done&&s.isConnected){s.value='0';s.dataset.submitting='';s.disabled=false}};
+ const s=document.getElementById('review-'+o.id);if(s)s.oninput=()=>{if(Number(s.value)<100||s.dataset.submitting)return;s.dataset.submitting='1';s.disabled=true;renderPaymentSummary(o,false)};
 }
 function renderHistoryPanel(){
  const p=document.getElementById('panel-jobs');if(!p)return;
@@ -1392,13 +1407,12 @@ async function openChat(o){
 function renderPaymentSummary(o,completed=false){
  const stage=document.querySelector('.stage');if(stage)stage.style.display='none';
  let s=document.getElementById('summary-screen');if(s)s.remove();s=document.createElement('section');s.id='summary-screen';s.className='qt-summary show';document.getElementById('app').appendChild(s);
- s.innerHTML=`<button class="qt-back qt-summaryback" id="summary-back">${QTICON.back}</button><div class="qt-summarycard"><div class="qt-check">${completed?'✓':'฿'}</div><h2>${completed?'ส่งสำเร็จ':'ตรวจสอบยอดก่อนจบงาน'}</h2><p class="qt-sub">#${esc(qtShortOrder(o))}</p><div class="qt-total">฿${Number(o.total_amount||0).toLocaleString('th-TH')}</div><p class="qt-sub">${completed?'งานนี้ถูกปิดเรียบร้อยแล้ว':'ตรวจสอบยอดกับลูกค้าก่อนยืนยันจบงาน'}</p>${completed?'<button class="qt-primary" id="summary-home">กลับหน้าหลัก</button>':'<button class="qt-primary" id="finish-order-btn">ยืนยันส่งสำเร็จ</button>'}</div>`;
+ const total=Number(o.total_amount||0),shopCash=Number(o.subtotal||0),earning=Number(riderEarning(o)||0);
+ s.innerHTML=`<button class="qt-back qt-summaryback" id="summary-back">${QTICON.back}</button><div class="qt-summarycard"><div class="qt-check">${completed?'✓':'฿'}</div><h2>${completed?'ส่งสำเร็จ':'ตรวจยอดเงินก่อนส่ง'}</h2><p class="qt-sub">ออเดอร์ #${esc(qtShortOrder(o))}</p><p class="qg-summary-label">เงินสดที่เก็บจากลูกค้า</p><div class="qt-total">฿${total.toLocaleString('th-TH')}</div><div class="qg-summary-breakdown"><div><span>ยอดสินค้าที่จ่ายให้ร้าน</span><b>฿${shopCash.toLocaleString('th-TH')}</b></div><div><span>รายได้ไรเดอร์โดยประมาณ</span><b>฿${earning.toLocaleString('th-TH')}</b></div></div><p class="qt-sub">${completed?'งานนี้ถูกปิดเรียบร้อยแล้ว':'ตรวจยอดกับลูกค้าก่อนยืนยันส่ง'}</p>${completed?'<button class="qt-primary" id="summary-home">กลับหน้าหลัก</button>':'<button class="qt-primary" id="finish-order-btn">ยืนยันส่งสำเร็จ</button>'}</div>`;
  const back=()=>{s.remove();if(stage)stage.style.display='block';renderSheet();startPolling()};
  document.getElementById('summary-back').onclick=back;
- if(completed)document.getElementById('summary-home').onclick=()=>{S.activeOrder=null;back();refreshData()};
+ if(completed)document.getElementById('summary-home').onclick=()=>{S.activeOrder=null;qgSheetExpanded=false;back();refreshData()};
  else document.getElementById('finish-order-btn').onclick=()=>finishOrder(o);
-
-if(completed)return;const card=document.querySelector('#summary-screen .qt-summarycard');if(card&&!card.querySelector('#qg-v22-delivery-photo')){const label=document.createElement('label');label.className='qg-v22-photo-label';label.textContent='รูปหลักฐานการส่งมอบ (ถ้ามี)';const input=document.createElement('input');input.id='qg-v22-delivery-photo';input.type='file';input.accept='image/jpeg,image/png,image/webp';label.appendChild(input);card.insertBefore(label,card.querySelector('#finish-order-btn'))}
 }
 function qtBadge(){const b=document.getElementById('qt-badge');if(!b)return;b.textContent=qtUnread>9?'9+':qtUnread;b.style.display=qtUnread?'block':'none'
 const el=document.getElementById('qt-badge');if(el&&qgCompletedUnread()){el.textContent=String(Math.min(9,qtUnread+qgCompletedUnread()))+(qtUnread+qgCompletedUnread()>9?'+':'');el.style.display='block'}
@@ -1596,19 +1610,13 @@ window.advanceOrder=async function(o){
      toast('ส่งออเดอร์ตลาดสำเร็จ');await refreshData();
    }catch(e){toast('จบงานไม่สำเร็จ: '+e.message)}
  return;}
-
-   try{const t=await getAccessToken(),rows=await sbTable('orders?select=total_amount,status&id=eq.'+encodeURIComponent(o.id)+'&limit=1',{token:t});
-     if(rows?.[0]?.status!=='in_progress')throw Error('สถานะออเดอร์เปลี่ยนแล้ว กรุณาโหลดใหม่');
-     if(!confirm('ยืนยันว่าได้รับเงินสดจากลูกค้า ฿'+Number(rows[0].total_amount).toLocaleString('th-TH')+' แล้ว?'))return;
-   }catch(e){toast('ตรวจยอดรับเงินไม่สำเร็จ: '+e.message);return}
-   const pin=prompt('กรอกรหัส PIN 6 หลักจากลูกค้าเพื่อยืนยันการส่งมอบ');if(pin===null)return;
-   if(!/^\d{6}$/.test(pin.trim())){toast('PIN ต้องเป็นตัวเลข 6 หลัก');return}
    const button=document.getElementById('finish-order-btn');if(button)button.disabled=true;
-   let lat=null,lng=null;
-   if(navigator.geolocation)try{const p=await new Promise((resolve,reject)=>navigator.geolocation.getCurrentPosition(resolve,reject,{enableHighAccuracy:true,timeout:5000,maximumAge:10000}));lat=p.coords.latitude;lng=p.coords.longitude}catch(e){}
-   try{const token=await getAccessToken(),file=document.getElementById('qg-v22-delivery-photo')?.files?.[0],photoPath=file?await qgUploadEvidence(file):null;await sbTable('rpc/qg_complete_with_proof',{method:'POST',token,body:{p_order_id:o.id,p_pin:pin.trim(),p_lat:lat,p_lng:lng,p_photo_path:photoPath}});
-     const rows=await sbTable('orders?select=*&id=eq.'+encodeURIComponent(o.id)+'&limit=1',{token});renderPaymentSummary(rows?.[0]||{...o,status:'completed'},true);
-   }catch(e){toast('จบงานไม่สำเร็จ: '+e.message);if(button)button.disabled=false}
+   const done=await advanceOrder(o);
+   if(!done){if(button)button.disabled=false;return}
+   try{
+     const token=await getAccessToken(),rows=await sbTable('orders?select=*&id=eq.'+encodeURIComponent(o.id)+'&limit=1',{token});
+     renderPaymentSummary(rows?.[0]||{...o,status:'completed'},true);
+   }catch(e){renderPaymentSummary({...o,status:'completed'},true)}
  };
  window.qtRenderEarnings=function(){const panel=document.getElementById('panel-earn');if(!panel)return;panel.innerHTML='<div class="qt-panelhead"><h1>รายได้</h1></div>';let box=document.getElementById('qg-v22-cash-ledger');if(!box){box=document.createElement('section');box.id='qg-v22-cash-ledger';box.className='qg-v22-ledger';panel.appendChild(box)}
    box.innerHTML='<h2>สรุปงานและบัญชีเงินสด</h2><div class="qg-v22-period"><button data-days="1">วันนี้</button><button data-days="7">7 วัน</button><button data-days="30">30 วัน</button></div><div id="qg-v22-period-summary">กำลังโหลดสรุปงาน...</div><div id="qg-v22-ledger-body">กำลังโหลดจากฐานข้อมูล...</div>';
@@ -1690,5 +1698,25 @@ body{overflow-y:auto;-webkit-overflow-scrolling:touch;touch-action:pan-y}
 .qg-complete-slide{width:100%;min-height:62px;border-radius:15px;padding:9px 13px;background:#fff0f1;color:#8d1020;display:flex;flex-direction:column;gap:4px}
 .qg-complete-slide b{font-size:15px}.qg-complete-slide span{font-size:11px;color:#75525a}
 .qg-complete-slide input{width:100%;height:34px;margin:0;accent-color:#ef3340;touch-action:pan-y}
+</style>
+
+<style id="qg-rider-expand-and-cash-confirm">
+.qt-sheet.qg-expanded{top:calc(72px + var(--safeT))!important;bottom:calc(64px + var(--safeB))!important;max-height:none!important;overflow-y:auto!important;padding:10px 11px 16px!important;border-radius:24px!important}
+.qg-sheet-toggle{position:sticky;top:-10px;z-index:4;width:100%;height:38px;margin:-10px 0 10px;padding:5px 12px;border:0;border-bottom:1px solid #f2e8eb;border-radius:22px 22px 10px 10px;background:rgba(255,255,255,.97);color:#7d2634;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;gap:9px;touch-action:pan-y}
+.qg-sheet-toggle .qt-handle{width:28px!important;height:4px!important;margin:0!important;background:#c9b8bd!important;border-radius:99px!important}
+.qg-sheet-toggle b{position:absolute;right:14px;font-size:16px}
+.qg-expanded-job{margin:8px 0;padding:13px 11px;border:1px solid #f0e1e5;border-radius:20px;background:#fff;box-shadow:0 5px 18px #32101a0c}
+.qg-sheet-job{padding:2px 2px 8px}
+.qg-sheet-empty{padding:3px 8px 14px}
+.qg-grab-slide{position:relative;height:54px;margin-top:4px;border-radius:999px;background:#ffe9ed;overflow:hidden;display:grid;place-items:center;color:#8c1e31}
+.qg-grab-slide b{font-size:12px;pointer-events:none;z-index:1}
+.qg-grab-slide span{position:absolute;bottom:3px;font-size:8px;color:#80545c;pointer-events:none;z-index:1}
+.qg-grab-slide input{position:absolute;inset:0;width:100%;height:54px;margin:0;opacity:.88;accent-color:#ef3340;touch-action:pan-y;cursor:ew-resize}
+.qg-summary-label{margin:15px 0 -12px;color:#68716f;font-size:12px;font-weight:750}
+.qg-summary-breakdown{display:grid;gap:8px;margin:12px 0;text-align:left}
+.qg-summary-breakdown div{display:flex;justify-content:space-between;gap:10px;padding:11px 12px;border-radius:13px;background:#fbf5f6;font-size:11px}
+.qg-summary-breakdown b{white-space:nowrap;color:#8b1830;font-size:12px}
+.qt-summarycard .qt-primary{min-height:50px}
+@media(max-height:650px){.qt-sheet.qg-expanded{top:calc(52px + var(--safeT))!important}}
 </style>
 </body></html>

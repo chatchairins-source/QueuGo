@@ -18,8 +18,8 @@ assert.equal(t.run("customerOrderNumber({order_number:'QT-0001'})"),'QT-0001');c
 assert.equal(t.run("customerOrderNumber({id:'abc-def-1234'})"),'QT-1234');checks++;
 const r=boot('rider/index.html');await Promise.resolve();r.run("S.user={id:'fixture'};S.riderProfile={id:'rider'};S.session={accessToken:'fixture'};S.activeTab='home';S.online=false;window.calls=[];getAccessToken=async()=>'fixture';sbTable=async(path,opts)=>{calls.push({path,opts});return path.includes('status=in.')?[{id:'order',status:'rider_assigned',pickup_latitude:13,pickup_longitude:100,delivery_latitude:13.1,delivery_longitude:100.1}]:[]};placeJobMarkers=()=>{};");await r.run('refreshData()');assert.equal(r.run('S.activeOrder.status'),'rider_assigned');assert(r.run("calls[0].path.includes('rider_assigned,preparing,ready')"));assert(r.run("jobCardHTML(S.activeOrder).includes('disabled')"));assert(r.run("jobCardHTML({...S.activeOrder,status:'ready',subtotal:100}).includes('เงินสดที่ต้องจ่ายร้าน')"));
 assert(r.run("jobCardHTML({...S.activeOrder,status:'ready',subtotal:100}).includes('฿100')"));
-assert(r.run("jobCardHTML({...S.activeOrder,status:'delivering',id:'slide',total_amount:130}).includes('complete-slide')"));
-assert(r.run("jobCardHTML({...S.activeOrder,status:'delivering',id:'slide',total_amount:130}).includes('เก็บเงินลูกค้า ฿130')"));checks+=5;
+assert(r.run("jobCardHTML({...S.activeOrder,status:'delivering',id:'slide',total_amount:130}).includes('qg-grab-slide')"));
+assert(r.run("jobCardHTML({...S.activeOrder,status:'delivering',id:'slide',total_amount:130}).includes('ยอดเงินจะแสดงในหน้าถัดไป')"));checks+=5;
 r.run("calls=[];sbTable=async(path,opts)=>{calls.push({path,opts});return path.startsWith('orders?select=subtotal')?[{status:'ready',subtotal:100}]:[]};refreshData=async()=>{};");await r.run("advanceOrder({id:'order',status:'ready',subtotal:100})");assert.equal(r.run("calls.find(c=>c.path==='rpc/rider_order_action').opts.body.p_action"),'pickup_cash');assert.equal(r.run("calls.filter(c=>c.path.startsWith('orders?select=subtotal')).length"),0);checks+=2;
 r.run("calls=[];sbTable=async(path,opts)=>{calls.push({path,opts});return []};refreshData=async()=>{};");await r.run("advanceOrder({id:'order',status:'delivering',total_amount:130})");assert.equal(r.run("calls.find(c=>c.path==='rpc/rider_order_action').opts.body.p_action"),'complete');checks++;
 
@@ -32,6 +32,17 @@ await t.run('reconcilePendingCheckout()');assert.equal(t.run('readPendingCheckou
 t.run(setup+'failNext=true;');await t.run('placeOrder()');const editedId=t.run('readPendingCheckout().body.p_order_id');
 t.run(`cart.items[0].qty=2;saveCart();db=async(path)=>path.startsWith('orders?select=id,order_number')?[{id:'${editedId}',order_number:'QT-0003'}]:[]`);
 await t.run('reconcilePendingCheckout()');assert.equal(t.run('readPendingCheckout()'),null);assert.equal(t.run('cart.items[0].qty'),2);checks+=2;
+
+
+r.run("S.activeOrder=null;S.online=true;S.openJobs=[{order:{id:'open-a',status:'ready',subtotal:90,total_amount:120,delivery_fee:30,shop_name:'ร้านแรก',pickup_latitude:13,pickup_longitude:100,delivery_latitude:13.1,delivery_longitude:100.1}},{order:{id:'open-b',status:'ready',subtotal:110,total_amount:140,delivery_fee:30,shop_name:'ร้านสอง',pickup_latitude:13, pickup_longitude:100,delivery_latitude:13.1,delivery_longitude:100.1}}];qgSheetExpanded=false;mapsLink=()=>'#';riderEarning=()=>35;renderSheet()");
+assert.equal(r.run("document.querySelectorAll('#sheet .qg-expanded-job').length"),1);checks++;
+r.run("document.querySelector('#sheet [data-qg-sheet-toggle]').click()");
+assert.equal(r.run("document.querySelectorAll('#sheet .qg-expanded-job').length"),2);assert(r.run("document.querySelector('#sheet').classList.contains('qg-expanded')"));checks+=2;
+r.run("renderPaymentSummary({id:'sum',order_number:'QT-0002',subtotal:112,total_amount:142},false)");
+assert(r.run("document.getElementById('summary-screen').textContent.includes('เงินสดที่เก็บจากลูกค้า')"));assert(r.run("document.getElementById('summary-screen').textContent.includes('฿142')"));checks+=2;
+r.run("window.advanceOrder=async()=>true;sbTable=async()=>[];refreshData=async()=>Promise.resolve()");
+await r.run("finishOrder({id:'sum',order_number:'QT-0002',subtotal:112,total_amount:142})");
+assert(r.run("document.getElementById('summary-screen').textContent.includes('ส่งสำเร็จ')"));checks++;
 
 const a=boot('admin/index.html');await Promise.resolve();a.run("window.calls=[];qtGetAccessToken=async()=>'fixture';qtSessionRead=()=>({role:'admin',authUserId:'admin'});qtSupabaseTable=async(path)=>{calls.push(path);return path==='users?select=*'?[{id:'shop',role:'shop',status:'active',metadata:{shopName:'Current shop'}}]:[]};");await a.run('qtHydrateDatabase({light:false})');assert.equal(a.run("calls.filter(p=>p.startsWith('users?')).length"),1);assert.equal(a.run("QT_DB_CACHE.qt_users.find(u=>u.id==='shop').shopName"),'Current shop');checks+=2;
 const m=boot('merchant/index.html');await Promise.resolve();assert.equal(m.run("displayOrderNumber({order_number:'QT-20261005-0001'})"),'QT-0001');checks++;
