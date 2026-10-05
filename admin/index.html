@@ -1651,7 +1651,7 @@ async function qgLoadAdminCash(day){
     const transition=transitions[action];if(!transition)return;
     let reason=null;
     if(action==='suspend'){reason=await qgAdminInput({title:'ระงับบัญชี',label:'เหตุผลระงับบัญชี'});if(reason===null)return;reason=reason.trim()||'ตามการตรวจสอบของ Admin'}
-    busy.add(id);
+    busy.add(id);let committed=false;
     try{
       const token=await qtGetAccessToken();if(!token)throw Error('กรุณาเข้าสู่ระบบ Admin ใหม่');
       const rows=await qtSupabaseTable('users?select=id,role,status&id=eq.'+encodeURIComponent(id)+'&limit=1',{accessToken:token});
@@ -1660,11 +1660,14 @@ async function qgLoadAdminCash(day){
       const path='users?id=eq.'+encodeURIComponent(id)+'&status=eq.'+encodeURIComponent(target.status)+'&role=eq.'+encodeURIComponent(target.role)+'&select=id,role,status';
       const saved=await qtSupabaseTable(path,{method:'PATCH',accessToken:token,body:{status:transition.to,updated_at:new Date().toISOString(),...(action==='suspend'?{suspension_reason:reason}:{})}});
       if(!Array.isArray(saved)||saved.length!==1)throw Error('ไม่ได้บันทึกสถานะ กรุณารีเฟรช');
-      await qtHydrateDatabase({light:false});
-      toast(({approve:'อนุมัติ',reject:'ไม่อนุมัติ',suspend:'ระงับ',restore:'ปลดระงับ'})[action]+'บัญชีแล้ว');
-      if(location.hash==='#admin-governance'){renderAdminGovernance();setTimeout(()=>qtAdminTab(action==='approve'||action==='reject'?'qt-sec-approval':'qt-sec-security'),0)}
-      else renderAdminDashboard(currentUser());
-    }catch(e){toast('บันทึกสถานะไม่สำเร็จ: '+e.message)}finally{busy.delete(id)}
+      committed=true;
+    }catch(e){toast('บันทึกสถานะไม่สำเร็จ: '+e.message);return}
+    finally{busy.delete(id)}
+    toast(({approve:'อนุมัติ',reject:'ไม่อนุมัติ',suspend:'ระงับ',restore:'ปลดระงับ'})[action]+'บัญชีแล้ว');
+    Promise.resolve().then(()=>qtHydrateDatabase({light:false})).then(()=>{
+      if(location.hash==='#admin-governance'){try{renderAdminGovernance();setTimeout(()=>qtAdminTab(action==='approve'||action==='reject'?'qt-sec-approval':'qt-sec-security'),0)}catch(e){console.warn('admin account post-commit render failed',e)}}
+      else try{renderAdminDashboard(currentUser())}catch(e){console.warn('admin account post-commit dashboard render failed',e)}
+    }).catch(e=>console.warn('admin account post-commit hydrate failed',e));
   }
   window.adminApproveUser=id=>accountAction('approve',id);
   window.adminRejectUser=id=>accountAction('reject',id);
@@ -1801,9 +1804,8 @@ async function qgLoadAdminCash(day){
       const token=await qtGetAccessToken();if(!token)throw Error('กรุณาเข้าสู่ระบบใหม่');
       await qtSupabaseTable('queuego_platform_rules?on_conflict=rule_key,effective_from',{method:'POST',accessToken:token,body:rows});
       try{qtAudit('platform_rules_update',{entityType:'system_settings',entityId:'queuego_platform_rules',effectiveFrom:effective,rules:rows.map(r=>({key:r.rule_key,value:r.value}))})}catch(e){}
-      await qgPullPlatformRules();
       toast(new Date(effective).getTime()>Date.now()+30000?'ตั้งค่าล่วงหน้าแล้ว':'บันทึกการตั้งค่าแล้ว');
-      await qgRenderPlatformControls(false);
+      Promise.resolve().then(()=>qgPullPlatformRules()).then(()=>qgRenderPlatformControls(false)).catch(refreshErr=>console.warn('admin platform post-commit refresh failed',refreshErr));
     }catch(e){console.error(e);toast('บันทึกไม่สำเร็จ: '+String(e.message||e).slice(0,100))}
   };
 })();
