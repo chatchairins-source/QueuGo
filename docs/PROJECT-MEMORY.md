@@ -58,3 +58,9 @@ Commit `52c41aaf7863b916214c8baa63ffe374f8865afd` added a prominent customer nav
 - Failed request reads must show an error, never an empty approval queue. Realtime refresh also refreshes the market queue/count, with account ownership checks.
 - Membership review displays existing shop location and front/stall evidence; no new approval tables or order/payment states.
 - No actual pending request is approved as part of QA; the decision remains with Admin.
+
+## Admin provider category labels
+
+- Admin account approval, user details, shop control and market membership/request review display the shop's selected category (e.g. market → ตลาดสด), alongside the actual shop name and contact.
+- Hydration prefers shop_profiles.public_category; older rows fall back to the saved category. Missing categories remain explicitly unspecified rather than inferred from membership.
+- Role and permissions remain shop; the displayed business category does not create a new role or approval state.

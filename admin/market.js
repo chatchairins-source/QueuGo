@@ -35,18 +35,19 @@ window.renderAdminMarket=async()=>{
 window.qgLoadMarketOperations=async()=>{
   const el=document.getElementById('qg-market-admin'),owner=actor();if(!el||!owner)return;
   try{
-    const [memberships,markets,riders,orders,requests]=await Promise.all([
-      api('shop_profiles?select=id,shop_name,market_id,market_membership_status,market_stall_no,market_zone,market_suggested_distance_km,address,status,latitude,longitude,market_proof_path,public_cover,metadata,markets:market_id(name)&market_membership_status=eq.pending&order=updated_at.asc&limit=100'),
+    const [memberships,markets,riders,orders,requests,applicants]=await Promise.all([
+      api('shop_profiles?select=id,shop_name,market_id,public_category,market_membership_status,market_stall_no,market_zone,market_suggested_distance_km,address,status,latitude,longitude,market_proof_path,public_cover,metadata,markets:market_id(name)&market_membership_status=eq.pending&order=updated_at.asc&limit=100'),
       api('markets?select=id,name,province,district,subdistrict,verified,active,latitude,longitude,assignment_radius_km&order=province.asc,name.asc'),
       api('rider_profiles?select=id,rider_name,vehicle_type,vehicle_plate,vehicle_status,vehicle_capacity_kg,vehicle_verified_at,status,metadata&status=eq.active&order=created_at.desc&limit=100'),
       api('orders?select=id,order_number,status,fulfillment_vertical,subtotal,total_amount,market_order_id,created_at&market_order_id=not.is.null&order=created_at.desc&limit=50'),
-      api('market_requests?select=id,requested_name,province,district,subdistrict,address,latitude,longitude,status,note,created_at&status=eq.pending&order=created_at.asc&limit=50')
+      api('market_requests?select=id,requested_name,province,district,subdistrict,address,latitude,longitude,status,note,requester_shop_user_id,created_at&status=eq.pending&order=created_at.asc&limit=50'),
+      api('shop_profiles?select=user_id,shop_name,public_category,metadata')
     ]);
     if(!el.isConnected||actor()!==owner)return;
     el.innerHTML=`
       <h2>รออนุมัติร้านสมาชิกตลาด (${(memberships||[]).length})</h2>
       ${(memberships||[]).map(s=>`<article>
-        <b>${esc(s.shop_name||'ร้านค้า')}</b> · ${esc(s.markets?.name||'ตลาด')}
+        <b>${esc(s.shop_name||'ไม่ระบุชื่อร้าน')}</b> · ${esc(qgAdminShopCategory(s))} · ${esc(s.markets?.name||'ตลาด')}
         <br><small>แผง ${esc(s.market_stall_no||'-')} · โซน ${esc(s.market_zone||'-')} · ระยะจากตลาด ${Number(s.market_suggested_distance_km||0).toFixed(2)} กม.</small>
         <p>${esc(s.address||'ไม่ระบุที่อยู่')}</p>
         ${s.latitude!=null&&s.longitude!=null?`<a target="_blank" rel="noopener" href="https://www.google.com/maps?q=${encodeURIComponent(s.latitude+','+s.longitude)}">ตรวจพิกัดร้าน</a>`:''}
@@ -54,7 +55,7 @@ window.qgLoadMarketOperations=async()=>{
         <div><button onclick="qgAdminReviewMarket('${s.id}',true)">อนุมัติ</button><button onclick="qgAdminReviewMarket('${s.id}',false)">ปฏิเสธ</button></div>
       </article>`).join('')||'<p>ไม่มีร้านรออนุมัติ</p>'}
       <h2>คำขอเพิ่มตลาดใหม่ (${(requests||[]).length})</h2>
-      ${(requests||[]).map(r=>`<article><b>${esc(r.requested_name)}</b> · ${esc(r.subdistrict||'')} ${esc(r.district||'')} ${esc(r.province||'')}<br><small>${esc(r.address||'')} · ${r.latitude!=null&&r.longitude!=null&&Number.isFinite(Number(r.latitude))&&Number.isFinite(Number(r.longitude))?Number(r.latitude).toFixed(5)+', '+Number(r.longitude).toFixed(5):'ไม่มีพิกัด'} · ส่งคำขอ ${new Date(r.created_at).toLocaleString('th-TH')}</small><p>${esc(r.note||'')}</p>${r.latitude!=null&&r.longitude!=null?`<a target="_blank" rel="noopener" href="https://www.google.com/maps?q=${encodeURIComponent(r.latitude+','+r.longitude)}">ตรวจพิกัดตลาด</a>`:''}<div><button onclick="qgAdminReviewMarketRequest('${r.id}',true)">อนุมัติและเพิ่มตลาด</button><button onclick="qgAdminReviewMarketRequest('${r.id}',false)">ปฏิเสธ</button></div></article>`).join('')||'<p>ไม่มีคำขอเพิ่มตลาดใหม่</p>'}
+      ${(requests||[]).map(r=>`<article><b>${esc(r.requested_name)}</b><p>ร้านผู้ขอ: ${esc((applicants||[]).find(s=>s.user_id===r.requester_shop_user_id)?.shop_name||'ไม่ระบุชื่อร้าน')} · ${esc(qgAdminShopCategory((applicants||[]).find(s=>s.user_id===r.requester_shop_user_id)))}</p> · ${esc(r.subdistrict||'')} ${esc(r.district||'')} ${esc(r.province||'')}<br><small>${esc(r.address||'')} · ${r.latitude!=null&&r.longitude!=null&&Number.isFinite(Number(r.latitude))&&Number.isFinite(Number(r.longitude))?Number(r.latitude).toFixed(5)+', '+Number(r.longitude).toFixed(5):'ไม่มีพิกัด'} · ส่งคำขอ ${new Date(r.created_at).toLocaleString('th-TH')}</small><p>${esc(r.note||'')}</p>${r.latitude!=null&&r.longitude!=null?`<a target="_blank" rel="noopener" href="https://www.google.com/maps?q=${encodeURIComponent(r.latitude+','+r.longitude)}">ตรวจพิกัดตลาด</a>`:''}<div><button onclick="qgAdminReviewMarketRequest('${r.id}',true)">อนุมัติและเพิ่มตลาด</button><button onclick="qgAdminReviewMarketRequest('${r.id}',false)">ปฏิเสธ</button></div></article>`).join('')||'<p>ไม่มีคำขอเพิ่มตลาดใหม่</p>'}
       <h2>ตลาดในระบบ</h2>
       ${(markets||[]).map(m=>`<article><b>${esc(m.name)}</b> · ${esc(m.subdistrict||'')} ${esc(m.district||'')} ${esc(m.province||'')}<br><small>${m.verified?'ยืนยันพิกัดแล้ว':'รอตรวจพิกัด'} · รัศมี ${Number(m.assignment_radius_km||0).toFixed(1)} กม. · ${m.latitude==null||m.longitude==null?'ยังไม่มีพิกัด':Number(m.latitude).toFixed(5)+', '+Number(m.longitude).toFixed(5)}</small></article>`).join('')||'<p>ยังไม่มีตลาด</p>'}
       <h2>รถและความจุ</h2>
