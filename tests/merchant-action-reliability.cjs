@@ -1,0 +1,21 @@
+const fs=require('fs'),path=require('path'),assert=require('assert');
+const root=path.resolve(__dirname,'..');
+const merchant=fs.readFileSync(path.join(root,'merchant/index.html'),'utf8');
+const migration=fs.readFileSync(path.join(root,'supabase/migrations/20261005181500_merchant_order_action_reliability.sql'),'utf8');
+let checks=0;const ok=(value,message)=>{assert.ok(value,message);checks++};
+
+ok(merchant.includes("rpc/qg_merchant_action_once"),'merchant must use once-only RPC');
+ok(!merchant.includes("rpc/merchant_order_action"),'merchant client must not call legacy action RPC directly');
+ok(merchant.includes("QGM_MERCHANT_ACTION_INFLIGHT"),'merchant must coalesce repeated taps');
+ok(merchant.includes("qg-merchant-action-pending-v1:"),'merchant must persist pending request id');
+ok(merchant.includes("if(QGM_MERCHANT_ACTION_INFLIGHT.has(inflightKey))return QGM_MERCHANT_ACTION_INFLIGHT.get(inflightKey)"),'same action must reuse in-flight promise');
+ok(merchant.includes("p_request_id:pending.requestId"),'retry must keep original request id');
+ok(merchant.includes("ระบบกำลังตรวจผลให้ ไม่ต้องกดซ้ำ"),'uncertain result must tell merchant not to repeat tap');
+ok(merchant.includes("let result;\n try{\n  result=await qgmMerchantActionOnce(orderId,action,null);\n }catch(e){"),'order mutation errors must be isolated from UI refresh errors');
+ok(merchant.includes("merchant order render refresh failed"),'post-commit render failure must not be reported as order failure');
+ok(merchant.includes("merchant hydrate after action failed"),'background refresh failure must be non-fatal after commit');
+ok(merchant.includes("let result;\n try{\n  result=await qgmMerchantActionOnce(id,action,null);\n }catch(e){"),'kitchen action mutation errors must be isolated from UI refresh errors');
+ok(migration.includes("qg_merchant_action_receipts"),'server must store merchant action receipts');
+ok(migration.includes("pg_advisory_xact_lock"),'server must serialize same request id');
+ok(migration.includes("'replayed',true"),'server must explicitly report replay');
+console.log(JSON.stringify({checks,failures:0,scope:'merchant single-tap idempotency and post-commit UI error isolation'}));
