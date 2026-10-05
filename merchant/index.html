@@ -907,9 +907,18 @@ function router(){
 
 
 const QG_REG_MARKET_CATEGORIES=new Set(['market','meat','fish','vegetable','fruit']);
-window.QG_REG_MARKET_STATE={lat:null,lng:null,markets:[],selectedMarketId:null};
+window.QG_REG_MARKET_STATE={lat:null,lng:null,markets:[],filtered:[],selectedMarketId:null,query:''};
 function qgRegEsc(v){return String(v??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]))}
 function qgRegIsMarketCategory(v){return QG_REG_MARKET_CATEGORIES.has(String(v||''))}
+function qgRegDistanceKm(lat1,lng1,lat2,lng2){const a=Number(lat1),b=Number(lng1),c=Number(lat2),d=Number(lng2);if(![a,b,c,d].every(Number.isFinite))return null;const r=6371,rad=x=>x*Math.PI/180,dLat=rad(c-a),dLng=rad(d-b),h=Math.sin(dLat/2)**2+Math.cos(rad(a))*Math.cos(rad(c))*Math.sin(dLng/2)**2;return r*2*Math.asin(Math.min(1,Math.sqrt(h)))}
+function qgRegMarketText(v){return String(v||'').toLocaleLowerCase('th-TH').replace(/ตลาดสด|ตลาด|เทศบาล|เมือง/g,'').replace(/[^0-9a-zก-๙]/gi,'')}
+function qgRegMarketSelectable(m){const d=Number(m?.distance_km),r=Number(m?.assignment_radius_km||3);return Number.isFinite(d)&&Number.isFinite(r)&&d<=r}
+function qgRegFilterRows(value){
+ QG_REG_MARKET_STATE.query=String(value||'').trim();const q=qgRegMarketText(QG_REG_MARKET_STATE.query);
+ const rows=QG_REG_MARKET_STATE.markets||[];
+ QG_REG_MARKET_STATE.filtered=!q?rows.slice():rows.filter(m=>qgRegMarketText(m.market_name).includes(q)||qgRegMarketText([m.subdistrict,m.district,m.province].filter(Boolean).join(' ')).includes(q));
+ if(q&&QG_REG_MARKET_STATE.filtered.length&&!QG_REG_MARKET_STATE.filtered.some(m=>String(m.market_id)===String(QG_REG_MARKET_STATE.selectedMarketId)))QG_REG_MARKET_STATE.selectedMarketId=String(QG_REG_MARKET_STATE.filtered[0].market_id);
+}
 window.qgRegCategoryChanged=function(){
   const category=document.getElementById('reg-category')?.value||'';
   const section=document.getElementById('qgm-reg-market-section');
@@ -920,20 +929,30 @@ function qgRegMarketStatus(message,kind=''){
   const el=document.getElementById('qgm-reg-market-location');
   if(el)el.innerHTML='<div class="qgm-market-status '+kind+'"><small>'+qgRegEsc(message)+'</small></div>';
 }
+function qgRegPaintMarketChoices(){
+ const select=document.getElementById('qgm-reg-market-select'),suggest=document.getElementById('qgm-reg-market-suggestions');if(!select||!suggest)return;
+ const rows=QG_REG_MARKET_STATE.filtered||[];
+ select.innerHTML=rows.length?rows.map((m,i)=>'<option value="'+qgRegEsc(m.market_id)+'" '+(String(m.market_id)===String(QG_REG_MARKET_STATE.selectedMarketId)?'selected':'')+'>'+qgRegEsc(m.market_name)+' · '+Number(m.distance_km||0).toLocaleString('th-TH',{maximumFractionDigits:2})+' กม.'+(i===0&&!QG_REG_MARKET_STATE.query?' · ใกล้ที่สุด':'')+'</option>').join(''):'<option value="">ไม่พบตลาดที่ชื่อใกล้เคียง</option>';
+ suggest.innerHTML=rows.slice(0,5).map((m,i)=>'<button type="button" class="qgm-market-suggestion '+(String(m.market_id)===String(QG_REG_MARKET_STATE.selectedMarketId)?'selected':'')+'" onclick="qgRegSelectMarket(\''+qgRegEsc(m.market_id)+'\')"><span><b>'+qgRegEsc(m.market_name)+'</b><small>'+Number(m.distance_km||0).toLocaleString('th-TH',{maximumFractionDigits:2})+' กม. · '+qgRegEsc([m.subdistrict,m.district,m.province].filter(Boolean).join(' · '))+' · '+(qgRegMarketSelectable(m)?'อยู่ในรัศมีสมัคร':'นอกรัศมี '+Number(m.assignment_radius_km||3).toLocaleString('th-TH',{maximumFractionDigits:2})+' กม.')+'</small></span><em>'+(i===0&&!QG_REG_MARKET_STATE.query?'ใกล้ที่สุด':String(m.market_id)===String(QG_REG_MARKET_STATE.selectedMarketId)?'เลือกแล้ว':'เลือก')+'</em></button>').join('')||'<div class="qgm-market-status warn"><small>ไม่พบชื่อใกล้เคียง ลองพิมพ์คำสั้นลง หรือขอเพิ่มตลาดใหม่ด้านล่าง</small></div>';
+}
 function qgRegRenderMarketChoices(){
   const host=document.getElementById('qgm-reg-market-list');if(!host)return;
   const rows=QG_REG_MARKET_STATE.markets||[];
   if(!rows.length){
-    host.innerHTML='<div class="qgm-market-status warn"><b>ไม่พบตลาดที่ร้านอยู่ในรัศมี</b><small>ใช้ “ไม่พบตลาดของฉัน / ขอเพิ่มตลาดใหม่” ด้านล่างได้</small></div>';
+    host.innerHTML='<div class="qgm-market-status warn"><b>ยังไม่มีตลาดในจังหวัดบุรีรัมย์ที่เปิดใช้</b><small>ใช้ “ไม่พบตลาดของฉัน / ขอเพิ่มตลาดใหม่” ด้านล่างได้</small></div>';
     QG_REG_MARKET_STATE.selectedMarketId=null;
     return;
   }
   if(!rows.some(x=>String(x.market_id)===String(QG_REG_MARKET_STATE.selectedMarketId)))QG_REG_MARKET_STATE.selectedMarketId=String(rows[0].market_id);
-  host.innerHTML='<div class="qgm-market-nearby"><h3>ตลาดใกล้พิกัดร้าน</h3><p>ระบบเลือกตลาดที่ใกล้ที่สุดให้ก่อน เปลี่ยนได้หากร้านอยู่ตลาดอื่นในรายการ</p>'+
-    rows.map((m,i)=>'<label class="qgm-market-choice"><input type="radio" name="qgm-reg-market-id" value="'+qgRegEsc(m.market_id)+'" '+(String(m.market_id)===String(QG_REG_MARKET_STATE.selectedMarketId)?'checked':'')+' onchange="qgRegSelectMarket(this.value)"><span><b>'+qgRegEsc(m.market_name)+'</b><small>'+Number(m.distance_km||0).toLocaleString('th-TH',{maximumFractionDigits:2})+' กม. · '+qgRegEsc([m.subdistrict,m.district,m.province].filter(Boolean).join(' · '))+(m.verified?' · ยืนยันพิกัดแล้ว':' · รอ Admin ยืนยันพิกัดตลาด')+'</small></span></label>').join('')+
-    '</div>';
+  qgRegFilterRows('');
+  host.innerHTML='<section class="qgm-market-picker"><div class="qgm-market-picker-head"><div><b>เลือกตลาด</b><small>ระบบเลือกตลาดที่ใกล้ที่สุดให้ก่อน หรือค้นหาชื่อและเลือกเองได้</small></div><span>ใกล้สุด '+Number(rows[0].distance_km||0).toLocaleString('th-TH',{maximumFractionDigits:2})+' กม.</span></div>'+
+    '<label class="qgm-market-search"><span>ค้นหาชื่อตลาด</span><input type="search" autocomplete="off" placeholder="เช่น สวายจีก, เทศบาลเมืองบุรีรัมย์" oninput="qgRegSearchMarkets(this.value)"></label>'+
+    '<label class="qgm-market-select-label"><span>ตลาดในจังหวัดบุรีรัมย์</span><select id="qgm-reg-market-select" onchange="qgRegSelectMarket(this.value)"></select></label>'+
+    '<div id="qgm-reg-market-suggestions" class="qgm-market-suggestions"></div></section>';
+  qgRegPaintMarketChoices();
 }
-window.qgRegSelectMarket=function(id){QG_REG_MARKET_STATE.selectedMarketId=String(id||'')};
+window.qgRegSearchMarkets=function(value){qgRegFilterRows(value);qgRegPaintMarketChoices()};
+window.qgRegSelectMarket=function(id){const found=(QG_REG_MARKET_STATE.markets||[]).find(x=>String(x.market_id)===String(id));if(!found)return;QG_REG_MARKET_STATE.selectedMarketId=String(found.market_id);qgRegPaintMarketChoices()};
 window.qgRegFindMarkets=function(){
   if(!navigator.geolocation){qgRegMarketStatus('อุปกรณ์นี้ไม่รองรับการระบุตำแหน่ง','rejected');return}
   const button=document.getElementById('qgm-reg-find-market');if(button)button.disabled=true;
@@ -943,10 +962,8 @@ window.qgRegFindMarkets=function(){
       const lat=Number(pos.coords.latitude),lng=Number(pos.coords.longitude);
       if(!Number.isFinite(lat)||!Number.isFinite(lng))throw Error('พิกัดไม่ถูกต้อง');
       QG_REG_MARKET_STATE.lat=lat;QG_REG_MARKET_STATE.lng=lng;
-      const rows=await qtSupabaseTable('rpc/queuego_nearby_markets',{
-        method:'POST',body:{p_lat:lat,p_lng:lng,p_max_km:10}
-      });
-      QG_REG_MARKET_STATE.markets=Array.isArray(rows)?rows:[];
+      const raw=await qtSupabaseTable('markets?select=id,name,address,province,district,subdistrict,latitude,longitude,verified,assignment_radius_km&active=eq.true&province=eq.'+encodeURIComponent('บุรีรัมย์')+'&order=name.asc');
+      QG_REG_MARKET_STATE.markets=(Array.isArray(raw)?raw:[]).map(m=>({market_id:m.id,market_name:m.name,address:m.address,province:m.province,district:m.district,subdistrict:m.subdistrict,verified:m.verified===true,assignment_radius_km:Number(m.assignment_radius_km||3),distance_km:qgRegDistanceKm(lat,lng,m.latitude,m.longitude)})).sort((a,b)=>Number(a.distance_km)-Number(b.distance_km)||String(a.market_name).localeCompare(String(b.market_name),'th'));
       QG_REG_MARKET_STATE.selectedMarketId=QG_REG_MARKET_STATE.markets[0]?.market_id||null;
       qgRegMarketStatus('พิกัดร้าน '+lat.toFixed(6)+', '+lng.toFixed(6),'approved');
       qgRegRenderMarketChoices();
@@ -970,6 +987,7 @@ function qgRegMarketPayload(category){
   if(selected){
     const m=(QG_REG_MARKET_STATE.markets||[]).find(x=>String(x.market_id)===selected);
     if(!m)throw Error('กรุณาเลือกตลาดอีกครั้ง');
+    if(!qgRegMarketSelectable(m))throw Error('พิกัดร้านอยู่นอกรัศมีของตลาดนี้ กรุณาเลือกตลาดที่ใกล้กว่าหรือขอเพิ่มตลาดใหม่');
     if(!confirm('ระบบพบว่าใกล้ “'+m.market_name+'” ประมาณ '+Number(m.distance_km||0).toLocaleString('th-TH',{maximumFractionDigits:2})+' กม.\\n\\nยืนยันว่าร้าน/แผงของคุณตั้งอยู่ในตลาดนี้จริง และคุณเป็นผู้ค้าในตลาดนี้จริงหรือไม่?'))throw Error('ยกเลิกการยืนยันตลาด');
     return {lat,lng,marketId:selected,stallNo,zone};
   }
@@ -2750,8 +2768,8 @@ window.qgmExportRevenue=async function(button){
 <script defer src="pos-table-v2.js?v=20260928-2336"></script>
 <link rel="stylesheet" href="market.css?v=20260928">
 <script defer src="market.js?v=20260928"></script>
-<link rel="stylesheet" href="market-registration.css?v=20261004">
-<script defer src="market-registration.js?v=20261004"></script>
+<link rel="stylesheet" href="market-registration.css?v=20261005-1720">
+<script defer src="market-registration.js?v=20261005-1720"></script>
 <link rel="stylesheet" href="laundry.css?v=20261005">
 <script defer src="laundry.js?v=20261005"></script>
 <style id="qg-viewport-scroll-baseline-20261002">
