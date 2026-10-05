@@ -12,6 +12,10 @@ let checks=0;const eq=(a,b)=>{assert.deepEqual(a,b);checks++};const deferred=()=
  for(let i=0;i<20;i++)await run('drawActiveRoute()');eq(requests.length,1);now+=15000;S.pos={lat:13.001,lng:100};await run('drawActiveRoute()');eq(requests.length,2);eq(removed.length,1);
  // Changing pickup to delivery invalidates the old request immediately.
  now+=15000;S.pos={lat:13.002,lng:100};gate=deferred();const old=run('drawActiveRoute()');const oldSignal=requests.at(-1).opts.signal;S.activeOrder.status='delivering';const oldGate=gate;gate=null;await run('drawActiveRoute()');eq(oldSignal.aborted,true);eq(new URL(requests.at(-1).url).searchParams.get('tlat'),'13.2');const count=added.length;oldGate.resolve({ok:true,json:async()=>geo});await old;eq(added.length,count);eq(label.textContent.startsWith('ไปหาลูกค้า'),true);
+ // A newly received unclaimed offer immediately routes and focuses the map on its pickup.
+ S.activeOrder=null;S.openJobs=[{order:{id:'offer',status:'searching_rider',pickup_latitude:14,pickup_longitude:101,delivery_latitude:14.5,delivery_longitude:101.5}}];S.pos={lat:13,lng:100};const mapViews=[];map.location=(p)=>mapViews.push({type:'location',p});map.zoom=(z)=>mapViews.push({type:'zoom',z});
+ await run('drawActiveRoute()');eq(new URL(requests.at(-1).url).searchParams.get('tlat'),'14');eq(label.textContent.startsWith('ไปร้าน'),true);eq(mapViews.at(-2).p.lat,13.5);eq(mapViews.at(-1).z,11);
+ S.openJobs=[];
  // Completing a job while the provider is pending cannot redraw its route.
  now+=15000;S.pos={lat:13.003,lng:100};gate=deferred();const retiring=run('drawActiveRoute()');const retiredSignal=requests.at(-1).opts.signal;S.activeOrder=null;await run('drawActiveRoute()');eq(retiredSignal.aborted,true);gate.resolve({ok:true,json:async()=>geo});gate=null;await retiring;eq(S.routeOverlays.length,0);eq(badge.style.display,'none');
  // Failed routing is explicitly an error, never a fabricated straight-line route.
