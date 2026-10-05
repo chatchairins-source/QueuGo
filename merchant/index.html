@@ -2029,6 +2029,35 @@ const qgmFoodMenuCategories=[
 const qgmRetailCatalogCategories=[['เครื่องดื่ม','box'],['บะหมี่กึ่งสำเร็จรูป','box'],['ข้าวสาร','box'],['อาหารกระป๋อง','box'],['ขนมอบ','box'],['ของใช้ในบ้าน','home'],['ของใช้ส่วนตัว','user'],['เครื่องปรุง','box'],['แช่เย็น/แช่แข็ง','box'],['อื่นๆ','box']];
 function qgmCatalogCategoriesFor(u){return ['food','cafe'].includes(String(u?.category||''))?qgmFoodMenuCategories:qgmRetailCatalogCategories}
 function qgmFoodCategoryNames(){return qgmFoodMenuCategories.map(([name])=>name)}
+const qgmMarketProductCategories=[
+ 'ผักสด',
+ 'ผลไม้',
+ 'เนื้อหมู',
+ 'เนื้อวัว',
+ 'ไก่ / เป็ด',
+ 'ปลา',
+ 'อาหารทะเล',
+ 'ไข่',
+ 'เต้าหู้ / เส้นสด / ลูกชิ้น',
+ 'ของสดพร้อมปรุง',
+ 'อาหารแช่เย็น / แช่แข็ง',
+ 'พริกแกง / เครื่องแกง',
+ 'เครื่องปรุง / ซอส',
+ 'ข้าวสาร / ธัญพืช',
+ 'ของแห้ง',
+ 'อาหารปรุงสำเร็จ',
+ 'ขนม / ของหวาน',
+ 'เครื่องดื่ม',
+ 'ของใช้ในครัวเรือน',
+ 'ดอกไม้ / ของไหว้',
+ 'อื่น ๆ'
+];
+function qgmMarketProductCategoryNames(){return qgmMarketProductCategories.slice()}
+function qgmIsMarketProductShop(u){return ['market','meat','fish','vegetable','fruit'].includes(String(u?.category||''))}
+function qgmMarketDefaultCategory(u){
+ const c=String(u?.category||'');
+ return c==='vegetable'?'ผักสด':c==='fruit'?'ผลไม้':c==='fish'?'ปลา':'';
+}
 let qgmCatalogCategory='',qgmCatalogQuery='',qgmCatalogFetching=false;
 function qgmCatalogCategoryOf(p){return String(p.category||p.metadata?.category||'').trim()||'อื่นๆ'}
 function qgmCatalogResults(){const u=shopUser();if(!u)return[];return shopProducts(u).filter(p=>(!qgmCatalogCategory||qgmCatalogCategoryOf(p)===qgmCatalogCategory)&&(!qgmCatalogQuery||(p.name+' '+qgmCatalogCategoryOf(p)).toLocaleLowerCase('th-TH').includes(qgmCatalogQuery))).slice().sort((a,b)=>String(a.name).localeCompare(String(b.name),'th'))}
@@ -2140,10 +2169,15 @@ window.renderShopProductEditor=function(id){
  const u=shopUser(),p=id!=='new'?shopProducts(u).find(x=>String(x.id)===String(id)):null,pid=profileId(u);
  const initialCategory=p?.category||(id==='new'?window.qgmNewProductCategory:'')||'',storePrice=Number(p?.posPrice??p?.price??0);
  const restaurantCategories=qgmFoodCategoryNames(),useRestaurantCategories=['food','cafe'].includes(String(u?.category||''));
+ const marketCategories=qgmMarketProductCategoryNames(),useMarketCategories=qgmIsMarketProductShop(u);
  const selectedRestaurantCategory=restaurantCategories.includes(initialCategory)?initialCategory:(initialCategory?'อื่น ๆ':'');
+ const marketInitial=initialCategory||qgmMarketDefaultCategory(u);
+ const selectedMarketCategory=marketCategories.includes(marketInitial)?marketInitial:(marketInitial?'อื่น ๆ':'');
  const categoryControl=useRestaurantCategories
   ?`<select id="qgm-prod-category" required><option value="" ${selectedRestaurantCategory?'':'selected'} disabled>เลือกหมวดหมู่อาหาร</option>${restaurantCategories.map(name=>`<option value="${esc(name)}" ${selectedRestaurantCategory===name?'selected':''}>${esc(name)}</option>`).join('')}</select>`
-  :`<input id="qgm-prod-category" required value="${esc(initialCategory)}">`;
+  :useMarketCategories
+   ?`<select id="qgm-prod-category" required><option value="" ${selectedMarketCategory?'':'selected'} disabled>เลือกหมวดหมู่สินค้า</option>${marketCategories.map(name=>`<option value="${esc(name)}" ${selectedMarketCategory===name?'selected':''}>${esc(name)}</option>`).join('')}</select>`
+   :`<input id="qgm-prod-category" required value="${esc(initialCategory)}">`;
  const optionControl=useRestaurantCategories
   ?qgmRestaurantOptionsHtml(qgmRestaurantOptionState(p?.variants))
   :`<div class="qgm-field"><label>ตัวเลือกเพิ่มเติม (คั่นด้วยเครื่องหมายจุลภาค)</label><input id="qgm-prod-variants" value="${esc(Array.isArray(p?.variants)?p.variants.map(x=>typeof x==='string'?x:x.name).filter(Boolean).join(', '):'')}"></div>`;
@@ -2155,11 +2189,12 @@ window.renderShopProductEditor=function(id){
 window.qgmSaveProduct=async function(e,id){
  e.preventDefault();
  const u=shopUser(),pid=profileId(u),name=$('#qgm-prod-name').value.trim(),category=$('#qgm-prod-category').value.trim(),price=Number($('#qgm-prod-price').value),stock=Number($('#qgm-prod-stock').value),available=$('#qgm-prod-available').checked;
- const isRestaurant=['food','cafe'].includes(String(u?.category||''));
+ const isRestaurant=['food','cafe'].includes(String(u?.category||'')),isMarketProduct=qgmIsMarketProductShop(u);
  let image=$('#qgm-prod-image').value.trim();
  try{
   if(!pid)throw new Error('ไม่พบ Shop Profile ID');
   if(isRestaurant&&!qgmFoodCategoryNames().includes(category))throw new Error('กรุณาเลือกหมวดหมู่อาหารจากรายการ');
+  if(isMarketProduct&&!qgmMarketProductCategoryNames().includes(category))throw new Error('กรุณาเลือกหมวดหมู่สินค้าตลาดสดจากรายการ');
   const variants=isRestaurant?qgmCollectRestaurantVariants():String($('#qgm-prod-variants')?.value||'').split(',').map(x=>x.trim()).filter(Boolean);
   if(!Number.isFinite(price)||price<0)throw new Error('ราคาขายหน้าร้านไม่ถูกต้อง');
   const token=await qtGetAccessToken();if(!token)throw new Error('เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่');
