@@ -25,4 +25,6 @@ ok(legacy.includes("v_action='accepted' and v_status in"),'legacy accept retries
 ok(legacy.includes("v_action='preparing' and v_status in"),'legacy preparing retries must return current state');
 ok(legacy.includes("v_action='ready' and v_status in"),'legacy ready retries must return current state');
 ok(legacy.includes("v_action='cancel' and v_status='cancelled'"),'legacy cancel retries must return cancelled');
+ok(merchant.includes("merchant product hydrate after save failed"),'saved product refresh failure must be non-fatal');
+ok(merchant.includes("merchant product navigation after save failed"),'saved product navigation failure must be isolated from the database write');
 console.log(JSON.stringify({checks,failures:0,scope:'merchant single-tap idempotency, silent ambiguous-result recovery and post-commit UI error isolation'}));
