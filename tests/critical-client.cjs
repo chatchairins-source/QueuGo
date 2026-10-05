@@ -34,7 +34,7 @@ t.run(`cart.items[0].qty=2;saveCart();db=async(path)=>path.startsWith('orders?se
 await t.run('reconcilePendingCheckout()');assert.equal(t.run('readPendingCheckout()'),null);assert.equal(t.run('cart.items[0].qty'),2);checks+=2;
 
 
-r.run("S.activeOrder=null;S.online=true;S.openJobs=[{order:{id:'open-a',status:'ready',subtotal:90,total_amount:120,delivery_fee:30,shop_name:'ร้านแรก',pickup_latitude:13,pickup_longitude:100,delivery_latitude:13.1,delivery_longitude:100.1}},{order:{id:'open-b',status:'ready',subtotal:110,total_amount:140,delivery_fee:30,shop_name:'ร้านสอง',pickup_latitude:13, pickup_longitude:100,delivery_latitude:13.1,delivery_longitude:100.1}}];qgSheetExpanded=false;mapsLink=()=>'#';riderEarning=()=>35;renderSheet()");
+r.run("S.activeOrder=null;S.laundryJob=null;S.online=true;S.openJobs=[{order:{id:'open-a',status:'ready',subtotal:90,total_amount:120,delivery_fee:30,shop_name:'ร้านแรก',pickup_latitude:13,pickup_longitude:100,delivery_latitude:13.1,delivery_longitude:100.1}},{order:{id:'open-b',status:'ready',subtotal:110,total_amount:140,delivery_fee:30,shop_name:'ร้านสอง',pickup_latitude:13, pickup_longitude:100,delivery_latitude:13.1,delivery_longitude:100.1}}];qgSheetExpanded=false;mapsLink=()=>'#';riderEarning=()=>35;renderSheet()");
 assert.equal(r.run("document.querySelectorAll('#sheet .qg-expanded-job').length"),1);checks++;
 r.run("document.querySelector('#sheet [data-qg-sheet-toggle]').click()");
 assert.equal(r.run("document.querySelectorAll('#sheet .qg-expanded-job').length"),2);assert(r.run("document.querySelector('#sheet').classList.contains('qg-expanded')"));checks+=2;
