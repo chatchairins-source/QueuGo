@@ -38,6 +38,6 @@ begin
  insert into public.audit_logs(user_id,action,entity_type,entity_id,description,metadata) values(v_user,'rider_order_action','order',p_order_id,p_action,jsonb_build_object('from',v_order.status,'to',v_next,'cash_paid_to_shop',p_action='pickup_cash'));
  if v_order.customer_id is not null then insert into public.notifications(user_id,title,message,type,reference_id) values(v_order.customer_id,'อัปเดตออเดอร์',case p_action when 'pickup_cash' then 'ไรเดอร์ชำระเงินสดให้ร้านและรับสินค้าแล้ว' when 'deliver' then 'ไรเดอร์กำลังนำสินค้าไปส่ง' when 'arrive' then 'ไรเดอร์ถึงจุดส่งแล้ว' else 'จัดส่งสำเร็จ' end,'order',p_order_id); end if;
  return case when p_action='arrive' then 'arrived' else v_next end;
-end $function$
+end $function$;
 
 COMMIT;
