@@ -15,7 +15,7 @@ let checks=0;const eq=(a,b)=>{assert.deepEqual(a,b);checks++};const deferred=()=
  // A newly received unclaimed offer immediately routes and focuses the map on its pickup.
  S.activeOrder=null;S.openJobs=[{order:{id:'offer',status:'searching_rider',pickup_latitude:14,pickup_longitude:101,delivery_latitude:14.5,delivery_longitude:101.5}}];S.pos={lat:13,lng:100};const mapViews=[];map.location=(p)=>mapViews.push({type:'location',p});map.zoom=(z)=>mapViews.push({type:'zoom',z});
  await run('drawActiveRoute()');eq(new URL(requests.at(-1).url).searchParams.get('tlat'),'14');eq(label.textContent.startsWith('ไปร้าน'),true);eq(mapViews.at(-2).p.lat,13.5);eq(mapViews.at(-1).z,11);
- S.openJobs=[];
+ S.openJobs=[];S.activeOrder={id:'o',status:'assigned',pickup_latitude:13.1,pickup_longitude:100.1,delivery_latitude:13.2,delivery_longitude:100.2};
  // Completing a job while the provider is pending cannot redraw its route.
  now+=15000;S.pos={lat:13.003,lng:100};gate=deferred();const retiring=run('drawActiveRoute()');const retiredSignal=requests.at(-1).opts.signal;S.activeOrder=null;await run('drawActiveRoute()');eq(retiredSignal.aborted,true);gate.resolve({ok:true,json:async()=>geo});gate=null;await retiring;eq(S.routeOverlays.length,0);eq(badge.style.display,'none');
  // Failed routing is explicitly an error, never a fabricated straight-line route.
