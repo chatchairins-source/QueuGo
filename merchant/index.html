@@ -529,7 +529,7 @@ async function qtHydrateDatabase(opts){
         QT_DB_CACHE.qt_users=QT_DB_CACHE.qt_users.map(u=>{
           const x=u.type==='shop'?sm.get(u.id):null;if(!x)return u;
           const lock={id:u.id,authUserId:u.authUserId,type:u.type,status:u.status,name:u.name,phone:u.phone};
-          Object.assign(u,(x.metadata&&typeof x.metadata==='object'?x.metadata:{}),{shopName:x.shop_name,address:x.address,lat:x.latitude,lng:x.longitude,shopProfileId:x.id});
+          Object.assign(u,(x.metadata&&typeof x.metadata==='object'?x.metadata:{}),{shopName:x.shop_name,address:x.address,lat:x.latitude,lng:x.longitude,shopProfileId:x.id,publicCategory:x.public_category||null,category:x.public_category||x.metadata?.category||u.category,marketMembershipStatus:x.market_membership_status||null});
           delete u.password;return Object.assign(u,lock);
         });
       }catch(e){ console.warn('profile hydrate failed',e); }
@@ -806,7 +806,7 @@ window.addEventListener('hashchange', router);
 function qtSyncHash(str){ let h=5381; for(let i=0;i<str.length;i++){ h=((h<<5)+h+str.charCodeAt(i))|0; } return h; }
 function qtSyncSignature(){
   const me=currentUser();
-  const main=qtSyncHash(JSON.stringify([me&&me.status,dbGet('qt_orders',[]),dbGet('qt_products',[]),dbGet('qt_notifications',[])]));
+  const main=qtSyncHash(JSON.stringify([me&&me.status,me&&me.category,me&&me.publicCategory,me&&me.marketMembershipStatus,dbGet('qt_orders',[]),dbGet('qt_products',[]),dbGet('qt_notifications',[])]));
   const chat=qtSyncHash(JSON.stringify(Object.keys(QT_DB_CACHE).filter(k=>k.startsWith('qt_order_chat_')&&!k.endsWith('_deleteAt')).sort().map(k=>[k,(QT_DB_CACHE[k]||[]).length])));
   return {main,chat};
 }
