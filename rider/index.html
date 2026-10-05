@@ -787,36 +787,51 @@ async function qgLoadLaundryRiderState(token,hasNormalActive){
     }
   }catch(e){console.warn('laundry rider state unavailable',e)}
 }
+const qgLaundryMutationInFlight=new Set();
+function qgLaundryRefreshAfterCommit(label,after){
+  Promise.resolve().then(()=>refreshData()).then(()=>{if(after)try{after()}catch(e){console.warn(label+' render failed',e)}}).catch(e=>console.warn(label,e));
+}
 window.qgSetLaundryMode=async function(enabled){
+  const key='mode';if(qgLaundryMutationInFlight.has(key))return;qgLaundryMutationInFlight.add(key);
   try{
     const token=await getAccessToken();
-    await sbTable('rpc/queuego_set_laundry_rider_mode',{method:'POST',token,body:{p_enabled:!!enabled}});
-    S.laundryMode=!!enabled;toast(enabled?'เปิดรับงานฝากซักแล้ว':'ปิดรับงานฝากซักแล้ว');await refreshData();
-  }catch(e){toast('เปลี่ยนโหมดฝากซักไม่สำเร็จ: '+String(e.message||e).slice(0,120))}
+    await qgRiderMutation('rpc/queuego_set_laundry_rider_mode',{method:'POST',token,body:{p_enabled:!!enabled}});
+    S.laundryMode=!!enabled;toast(enabled?'เปิดรับงานฝากซักแล้ว':'ปิดรับงานฝากซักแล้ว');
+    qgLaundryRefreshAfterCommit('laundry mode refresh failed',()=>{if(S.activeTab==='profile')renderProfilePanel()});
+  }catch(e){toast(e.pending?e.message:'เปลี่ยนโหมดฝากซักไม่สำเร็จ: '+String(e.message||e).slice(0,120))}
+  finally{qgLaundryMutationInFlight.delete(key)}
 };
 window.qgLaundryInviteAction=async function(inviteId,accept){
+  const key='invite:'+inviteId;if(qgLaundryMutationInFlight.has(key))return;qgLaundryMutationInFlight.add(key);
   try{
     const token=await getAccessToken();
-    await sbTable('rpc/queuego_laundry_rider_invite_action',{method:'POST',token,body:{p_invite_id:inviteId,p_accept:!!accept}});
-    toast(accept?'ยอมรับเป็น Rider รับ-ส่งผ้าของร้านแล้ว':'ปฏิเสธคำเชิญแล้ว');await refreshData();if(S.activeTab==='profile')renderProfilePanel();
-  }catch(e){toast('ตอบคำเชิญไม่สำเร็จ: '+String(e.message||e).slice(0,120))}
+    await qgRiderMutation('rpc/queuego_laundry_rider_invite_action',{method:'POST',token,body:{p_invite_id:inviteId,p_accept:!!accept}});
+    toast(accept?'ยอมรับเป็น Rider รับ-ส่งผ้าของร้านแล้ว':'ปฏิเสธคำเชิญแล้ว');
+    qgLaundryRefreshAfterCommit('laundry invite refresh failed',()=>{if(S.activeTab==='profile')renderProfilePanel()});
+  }catch(e){toast(e.pending?e.message:'ตอบคำเชิญไม่สำเร็จ: '+String(e.message||e).slice(0,120))}
+  finally{qgLaundryMutationInFlight.delete(key)}
 };
 window.qgClaimLaundryJob=async function(jobId){
+  const key='claim:'+jobId;if(qgLaundryMutationInFlight.has(key))return;qgLaundryMutationInFlight.add(key);
   try{
     const token=await getAccessToken();
-    await sbTable('rpc/queuego_claim_laundry_job',{method:'POST',token,body:{p_job_id:jobId}});
-    toast('รับงานฝากซักแล้ว');await refreshData();
-  }catch(e){toast('รับงานฝากซักไม่สำเร็จ: '+String(e.message||e).slice(0,130))}
+    await qgRiderMutation('rpc/queuego_claim_laundry_job',{method:'POST',token,body:{p_job_id:jobId}});
+    toast('รับงานฝากซักแล้ว');qgLaundryRefreshAfterCommit('laundry claim refresh failed');
+  }catch(e){toast(e.pending?e.message:'รับงานฝากซักไม่สำเร็จ: '+String(e.message||e).slice(0,130))}
+  finally{qgLaundryMutationInFlight.delete(key)}
 };
 window.qgLaundryRiderAction=async function(action){
   const j=S.laundryJob;if(!j?.job_id)return;
+  const key='action:'+j.job_id+':'+action;if(qgLaundryMutationInFlight.has(key))return;
   const label={arrive:'ยืนยันว่าถึงจุดรับแล้ว?',collect:j.leg==='pickup'?'ยืนยันว่ารับผ้าจากลูกค้าแล้ว?':'ยืนยันว่ารับผ้าสะอาดจากร้านแล้ว?',deliver:j.leg==='pickup'?'ยืนยันว่าส่งผ้าถึงร้านแล้ว?':'ยืนยันว่าส่งผ้าคืนลูกค้าแล้ว?'}[action];
   if(label&&!confirm(label))return;
+  qgLaundryMutationInFlight.add(key);
   try{
     const token=await getAccessToken();
-    await sbTable('rpc/queuego_laundry_rider_action',{method:'POST',token,body:{p_job_id:j.job_id,p_action:action}});
-    toast(action==='arrive'?'ถึงจุดรับแล้ว':action==='collect'?'รับผ้าแล้ว':'ส่งมอบเรียบร้อย');await refreshData();
-  }catch(e){toast('อัปเดตงานฝากซักไม่สำเร็จ: '+String(e.message||e).slice(0,130))}
+    await qgRiderMutation('rpc/queuego_laundry_rider_action',{method:'POST',token,body:{p_job_id:j.job_id,p_action:action}});
+    toast(action==='arrive'?'ถึงจุดรับแล้ว':action==='collect'?'รับผ้าแล้ว':'ส่งมอบเรียบร้อย');qgLaundryRefreshAfterCommit('laundry action refresh failed');
+  }catch(e){toast(e.pending?e.message:'อัปเดตงานฝากซักไม่สำเร็จ: '+String(e.message||e).slice(0,130))}
+  finally{qgLaundryMutationInFlight.delete(key)}
 };
 function qgLaundryPoolHTML(){
   const rows=S.laundryPool||[];if(!rows.length)return '';
@@ -828,9 +843,9 @@ function qgLaundryActiveHTML(){
   const j=S.laundryJob;if(!j)return '';
   const status=String(j.job_status||'assigned');
   const title=j.leg==='pickup'?'รับผ้าไปส่งร้าน':'รับผ้าจากร้านไปคืนลูกค้า';
-  const action=status==='assigned'?'<button class="qt-primary" onclick="qgLaundryRiderAction(\'arrive\')">ถึงจุดรับแล้ว</button>':
-    status==='arrived'?'<button class="qt-primary" onclick="qgLaundryRiderAction(\'collect\')">รับผ้าแล้ว</button>':
-    status==='collected'?'<button class="qt-primary" onclick="qgLaundryRiderAction(\'deliver\')">ส่งถึงปลายทางแล้ว</button>':'';
+  const action=status==='assigned'?'<button class="qt-primary" data-laundry-mutation="action" onclick="qgLaundryRiderAction(\'arrive\')">ถึงจุดรับแล้ว</button>':
+    status==='arrived'?'<button class="qt-primary" data-laundry-mutation="action" onclick="qgLaundryRiderAction(\'collect\')">รับผ้าแล้ว</button>':
+    status==='collected'?'<button class="qt-primary" data-laundry-mutation="action" onclick="qgLaundryRiderAction(\'deliver\')">ส่งถึงปลายทางแล้ว</button>':'';
   const navTo=status==='collected'
     ?mapsLink(j.to_latitude,j.to_longitude,j.to_address)
     :mapsLink(j.from_latitude,j.from_longitude,j.from_address);
@@ -1294,7 +1309,7 @@ function qgBindRouteBundleUI(){
     try{
       const token=await getAccessToken();if(!current())return;
       await qgRiderMutation('rpc/queuego_claim_route_bundle',{method:'POST',token,body:{p_order_id:offer.order_id}});
-      if(!current())return;toast('รับงานพ่วงแล้ว');await refreshData();
+      if(!current())return;toast('รับงานพ่วงแล้ว');qgRiderRefreshAfterCommit('rider bundle claim refresh failed');
     }catch(e){if(!current())return;toast(e.pending?e.message:'รับงานพ่วงไม่สำเร็จ: '+String(e.message||e));b.disabled=false}
   });
   document.querySelectorAll('[data-bundle-advance]').forEach(b=>b.onclick=()=>{
@@ -1400,8 +1415,8 @@ function renderProfilePanel(){
 
 const host=document.querySelector('#panel-profile .qt-settings');if(host&&!host.querySelector('#qg-v22-rider-support')){const b=document.createElement('button');b.id='qg-v22-rider-support';b.className='qt-setting';b.innerHTML='<span>แจ้งปัญหา / ติดตามเรื่อง</span><span>›</span>';b.onclick=()=>qgOpenTicketPanel();host.appendChild(b)}
  if(host&&!host.querySelector('#qg-laundry-mode')){
-   const row=document.createElement('button');row.id='qg-laundry-mode';row.className='qt-setting';row.type='button';row.innerHTML='<span>รับงานฝากซัก</span><b>'+(S.laundryMode?'เปิด':'ปิด')+'</b>';row.onclick=()=>qgSetLaundryMode(!S.laundryMode);host.insertBefore(row,host.querySelector('.danger')||null);
-   (S.laundryInvites||[]).forEach(inv=>{const box=document.createElement('div');box.className='qg-laundry-invite';box.innerHTML='<div><b>คำเชิญงานฝากซัก</b><small>'+esc(inv.shop_name||inv.hub_name||'ร้านซัก')+'</small></div><div><button type="button" data-accept="1">ยอมรับ</button><button type="button" data-accept="0">ปฏิเสธ</button></div>';box.querySelectorAll('[data-accept]').forEach(b=>b.onclick=()=>qgLaundryInviteAction(inv.invite_id,b.dataset.accept==='1'));host.parentNode.insertBefore(box,host);});
+   const row=document.createElement('button');row.id='qg-laundry-mode';row.className='qt-setting';row.type='button';row.dataset.laundryMutation='mode';row.innerHTML='<span>รับงานฝากซัก</span><b>'+(S.laundryMode?'เปิด':'ปิด')+'</b>';row.onclick=()=>qgSetLaundryMode(!S.laundryMode);host.insertBefore(row,host.querySelector('.danger')||null);
+   (S.laundryInvites||[]).forEach(inv=>{const box=document.createElement('div');box.className='qg-laundry-invite';box.innerHTML='<div><b>คำเชิญงานฝากซัก</b><small>'+esc(inv.shop_name||inv.hub_name||'ร้านซัก')+'</small></div><div><button type="button" data-laundry-mutation="invite" data-accept="1">ยอมรับ</button><button type="button" data-laundry-mutation="invite" data-accept="0">ปฏิเสธ</button></div>';box.querySelectorAll('[data-accept]').forEach(b=>b.onclick=()=>qgLaundryInviteAction(inv.invite_id,b.dataset.accept==='1'));host.parentNode.insertBefore(box,host);});
  }
 }
 function closeChat(){
@@ -1687,7 +1702,7 @@ body{overflow-y:auto;-webkit-overflow-scrolling:touch;touch-action:pan-y}
   const actions=sheet.querySelector('.qt-actions'),box=document.createElement('div');box.innerHTML=html(rows,o);const node=box.firstElementChild;
   if(actions)sheet.insertBefore(node,actions);else sheet.appendChild(node);
   sheet.querySelectorAll('[data-arrive-shop]').forEach(b=>b.onclick=()=>qgRiderArriveShop(o,b.dataset.arriveShop,b));
-  sheet.querySelectorAll('[data-pickup]').forEach(b=>b.onclick=async()=>{if(b.disabled)return;const session=S.session,userId=S.user?.id;const amount=Number(b.dataset.amount||0);b.disabled=true;try{const token=await getAccessToken();if(!riderSessionMatches(session)||S.user?.id!==userId)return;const r=await qgRiderMutation('rpc/market_rider_confirm_pickup_cash',{method:'POST',token,body:{p_pickup_id:b.dataset.pickup,p_amount:amount}});if(!riderSessionMatches(session)||S.user?.id!==userId)return;toast(r?.all_picked_up?'รับของครบทุกจุดแล้ว — ไปส่งลูกค้าได้':'บันทึกจุดรับแล้ว');await refreshData();}catch(e){if(!riderSessionMatches(session)||S.user?.id!==userId)return;toast(e.pending?e.message:'บันทึกจุดรับไม่สำเร็จ: '+e.message);b.disabled=false;}});
+  sheet.querySelectorAll('[data-pickup]').forEach(b=>b.onclick=async()=>{if(b.disabled)return;const session=S.session,userId=S.user?.id;const amount=Number(b.dataset.amount||0);b.disabled=true;try{const token=await getAccessToken();if(!riderSessionMatches(session)||S.user?.id!==userId)return;const r=await qgRiderMutation('rpc/market_rider_confirm_pickup_cash',{method:'POST',token,body:{p_pickup_id:b.dataset.pickup,p_amount:amount}});if(!riderSessionMatches(session)||S.user?.id!==userId)return;toast(r?.all_picked_up?'รับของครบทุกจุดแล้ว — ไปส่งลูกค้าได้':'บันทึกจุดรับแล้ว');qgRiderRefreshAfterCommit('rider market pickup refresh failed');}catch(e){if(!riderSessionMatches(session)||S.user?.id!==userId)return;toast(e.pending?e.message:'บันทึกจุดรับไม่สำเร็จ: '+e.message);b.disabled=false;}});
   const next=document.getElementById('next-'+o.id);if(next){const all=rows.every(x=>x.status==='PICKED_UP'||x.status==='CANCELLED');if(!all){next.disabled=true;next.textContent='รับของให้ครบทุกจุดก่อน';}}
  }
 
