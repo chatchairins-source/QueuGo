@@ -1102,7 +1102,7 @@ async function sendRiderChat(o,override){
     await sbTable('order_chat_messages',{method:'POST',token,body:{order_id:o.id,sender_id:userId,message}});
     if(!current())return;
     if(input&&!override&&input.value.trim()===message)input.value='';
-    await refreshRiderChat();
+    Promise.resolve().then(()=>refreshRiderChat()).catch(refreshErr=>console.warn('rider chat post-send refresh failed',refreshErr));
   }catch(e){if(current())toast('ส่งข้อความไม่สำเร็จ กรุณาตรวจการเชื่อมต่อและข้อความล่าสุดก่อนลองอีกครั้ง')}
   finally{if(riderChatSend===sending)riderChatSend=null;buttons.forEach(b=>{if(b.isConnected)b.disabled=false})}
 }
