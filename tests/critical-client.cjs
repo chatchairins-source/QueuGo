@@ -27,7 +27,7 @@ r.run("calls=[];sbTable=async(path,opts)=>{calls.push({path,opts});return []};re
 t.run(`window.reconcileDb=async(path)=>path.startsWith('orders?select=id,order_number')?[{id:readPendingCheckout().body.p_order_id,order_number:'QT-0002'}]:[];db=reconcileDb`);
 t.run(setup+'failNext=true;');await t.run('placeOrder()');const recovered=t.run('readPendingCheckout().body.p_order_id');
 t.run(`db=async(path)=>path.startsWith('orders?select=id,order_number')?[{id:'${recovered}',order_number:'QT-0002'}]:[]`);
-await t.run('reconcilePendingCheckout()');assert.equal(t.run('readPendingCheckout()'),null);assert.equal(t.run('cart.items.length'),0);assert(t.run('location.hash').endsWith('order/'+ '${recovered}'));checks+=3;
+await t.run('reconcilePendingCheckout()');assert.equal(t.run('readPendingCheckout()'),null);assert.equal(t.run('cart.items.length'),0);assert.equal(t.run('location.hash').split('/').pop(),recovered);checks+=3;
 // Keep items added after the timeout; only clear the cart snapshot that was submitted.
 t.run(setup+'failNext=true;');await t.run('placeOrder()');const editedId=t.run('readPendingCheckout().body.p_order_id');
 t.run(`cart.items[0].qty=2;saveCart();db=async(path)=>path.startsWith('orders?select=id,order_number')?[{id:'${editedId}',order_number:'QT-0003'}]:[]`);
