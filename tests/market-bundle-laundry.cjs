@@ -82,4 +82,21 @@ for(const col of ['unit_price_snapshot','pickup_fee_snapshot','return_fee_snapsh
 ok(laundryV2.includes("case when j.leg='pickup' then o.pickup_address else s.address end"),'Laundry pickup route origin must be customer for pickup');
 ok(laundryV2.includes("case when j.leg='pickup' then s.address else o.pickup_address end"),'Laundry pickup route destination must be shop for pickup');
 
+
+/* Laundry RPC security and no-direct-write contract. */
+const checkoutStart=laundryV2.indexOf('create or replace function public.queuego_place_laundry_order_v2');
+const checkoutEnd=laundryV2.indexOf('create or replace function',checkoutStart+1);
+const checkoutFn=laundryV2.slice(checkoutStart,checkoutEnd<0?undefined:checkoutEnd);
+ok(checkoutStart>=0,'Laundry checkout RPC definition missing');
+ok(checkoutFn.includes('auth.uid() is null'),'Laundry checkout must require an authenticated session');
+ok(checkoutFn.includes("auth_user_id=auth.uid() and role='customer' and status='active'"),'Laundry checkout must resolve the active customer from auth');
+ok(checkoutFn.includes('where id=p_hub_id and active=true'),'Laundry checkout must reject inactive hubs');
+ok(checkoutFn.includes('where id=p_service_id and hub_id=v_hub.id and active=true'),'Laundry service must be active and belong to the selected hub');
+ok(checkoutFn.includes("perform pg_advisory_xact_lock")&&checkoutFn.includes('where request_key=p_request_id'),'Laundry retry must serialize and replay by request key');
+ok(checkoutFn.includes('p_request_id,')&&checkoutFn.includes('where request_key=p_request_id'),'Laundry request key must be written and replayed by the server');
+for(const snapshot of ['service_name_snapshot','pricing_type_snapshot','unit_price_snapshot','pickup_fee_snapshot','return_fee_snapshot','round_trip_fee_snapshot'])ok(checkoutFn.includes(snapshot),'Laundry checkout snapshot missing '+snapshot);
+ok(checkoutFn.includes('insert into public.laundry_order_events')&&checkoutFn.includes('insert into public.notifications'),'Laundry order, event, and notification must share the RPC transaction');
+ok(!/\\.from\\(['"]laundry_orders['"]\\)\\s*\\.insert\\s*\\(/i.test(laundry),'Laundry client must not insert orders directly');
+ok(!/p_(?:unit_)?price\\s*:/i.test(laundry),'Laundry client must not submit service price to checkout');
+
 console.log(JSON.stringify({checks,failures:0,scope:'static integration contracts for QueueGo Market, Route Bundle and Laundry; no production order mutation'}));
