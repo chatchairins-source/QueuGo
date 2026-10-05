@@ -2706,9 +2706,24 @@ window.updateOrderStatus=async function updateOrderStatus(orderId,newStatus,butt
  try{
   result=await qgmMerchantActionOnce(orderId,action,null);
  }catch(e){
+  if(e?.qgUncertain){
+   qgmSetOrderActionBusy(button,true,'กำลังตรวจสอบสถานะ...');
+   try{
+    await new Promise(r=>setTimeout(r,700));
+    result=await qgmMerchantActionOnce(orderId,action,null);
+    qgmApplyMerchantActionResult(orderId,result);
+    toast(action==='accepted'?'รับออเดอร์แล้ว':action==='preparing'?'เริ่มเตรียมสินค้าแล้ว':'แจ้งพร้อมส่งแล้ว');
+    try{renderShopOrderModern(orderId)}catch(refreshErr){console.warn('merchant order recovery render failed',refreshErr)}
+    Promise.resolve().then(()=>qtBackgroundHydrate({light:false})).catch(refreshErr=>console.warn('merchant hydrate after recovery failed',refreshErr));
+   }catch(retryErr){
+    qgmSetOrderActionBusy(button,false);
+    if(!retryErr?.qgUncertain)toast('เปลี่ยนสถานะไม่สำเร็จ: '+(retryErr.message||retryErr));
+    else Promise.resolve().then(()=>qtBackgroundHydrate({light:false})).catch(()=>{});
+   }
+   return;
+  }
   qgmSetOrderActionBusy(button,false);
-  toast(e?.qgUncertain?'การเชื่อมต่อสะดุด ระบบกำลังตรวจผลให้ ไม่ต้องกดซ้ำ':'เปลี่ยนสถานะไม่สำเร็จ: '+(e.message||e));
-  if(e?.qgUncertain)setTimeout(()=>qtBackgroundHydrate({light:false}),700);
+  toast('เปลี่ยนสถานะไม่สำเร็จ: '+(e.message||e));
   return;
  }
  qgmApplyMerchantActionResult(orderId,result);
@@ -2726,9 +2741,24 @@ window.shopCancelOrder=async function shopCancelOrder(orderId,button){
  try{
   result=await qgmMerchantActionOnce(orderId,'cancel',reason.trim());
  }catch(e){
+  if(e?.qgUncertain){
+   qgmSetOrderActionBusy(button,true,'กำลังตรวจสอบสถานะ...');
+   try{
+    await new Promise(r=>setTimeout(r,700));
+    result=await qgmMerchantActionOnce(orderId,'cancel',reason.trim());
+    qgmApplyMerchantActionResult(orderId,result);
+    toast('ยกเลิกออเดอร์แล้ว');
+    try{renderShopOrderModern(orderId)}catch(refreshErr){console.warn('merchant cancel recovery render failed',refreshErr)}
+    Promise.resolve().then(()=>qtBackgroundHydrate({light:false})).catch(refreshErr=>console.warn('merchant hydrate after cancel recovery failed',refreshErr));
+   }catch(retryErr){
+    qgmSetOrderActionBusy(button,false);
+    if(!retryErr?.qgUncertain)toast('ยกเลิกไม่สำเร็จ: '+(retryErr.message||retryErr));
+    else Promise.resolve().then(()=>qtBackgroundHydrate({light:false})).catch(()=>{});
+   }
+   return;
+  }
   qgmSetOrderActionBusy(button,false);
-  toast(e?.qgUncertain?'การเชื่อมต่อสะดุด ระบบกำลังตรวจผลให้ ไม่ต้องกดซ้ำ':'ยกเลิกไม่สำเร็จ: '+(e.message||e));
-  if(e?.qgUncertain)setTimeout(()=>qtBackgroundHydrate({light:false}),700);
+  toast('ยกเลิกไม่สำเร็จ: '+(e.message||e));
   return;
  }
  qgmApplyMerchantActionResult(orderId,result);
@@ -2895,9 +2925,24 @@ window.qgmExportRevenue=async function(button){
  try{
   result=await qgmMerchantActionOnce(id,action,null);
  }catch(e){
+  if(e?.qgUncertain){
+   qgmSetOrderActionBusy(button,true,'กำลังตรวจสอบสถานะ...');
+   try{
+    await new Promise(r=>setTimeout(r,700));
+    result=await qgmMerchantActionOnce(id,action,null);
+    qgmApplyMerchantActionResult(id,result);
+    toast(action==='accepted'?'รับออเดอร์แล้ว':action==='preparing'?'เริ่มเตรียมสินค้าแล้ว':'พร้อมให้ไรเดอร์รับแล้ว');
+    Promise.resolve().then(()=>qgLoadKitchen()).catch(refreshErr=>console.warn('merchant kitchen recovery refresh failed',refreshErr));
+    Promise.resolve().then(()=>qtBackgroundHydrate({light:false})).catch(refreshErr=>console.warn('merchant hydrate after kitchen recovery failed',refreshErr));
+   }catch(retryErr){
+    qgmSetOrderActionBusy(button,false);
+    if(!retryErr?.qgUncertain)toast('อัปเดตออเดอร์ไม่สำเร็จ: '+(retryErr.message||retryErr));
+    else Promise.resolve().then(()=>{qgLoadKitchen();return qtBackgroundHydrate({light:false})}).catch(()=>{});
+   }
+   return;
+  }
   qgmSetOrderActionBusy(button,false);
-  toast(e?.qgUncertain?'การเชื่อมต่อสะดุด ระบบกำลังตรวจผลให้ ไม่ต้องกดซ้ำ':'อัปเดตออเดอร์ไม่สำเร็จ: '+(e.message||e));
-  if(e?.qgUncertain)setTimeout(()=>{qgLoadKitchen();qtBackgroundHydrate({light:false})},700);
+  toast('อัปเดตออเดอร์ไม่สำเร็จ: '+(e.message||e));
   return;
  }
  qgmApplyMerchantActionResult(id,result);
