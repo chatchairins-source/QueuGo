@@ -1503,9 +1503,10 @@ async function qgLoadAdminCash(day){
      const open=state?.length?state[0].is_open!==false:u.shopOpen!==false,desired=!open;
      if(!confirm(desired?'ยืนยันเปิดร้านนี้?':'ยืนยันปิดรับออเดอร์ของร้านนี้?'))return;
      await qtSupabaseTable('shop_open_states?on_conflict=shop_id',{method:'POST',accessToken:token,body:{shop_id:pid,is_open:desired,resume_at:null,updated_at:new Date().toISOString()}});
-     u.shopOpen=desired;qtAudit('shop_open_toggle',{entityType:'shop',entityId:id,open:desired});
-     toast(desired?'เปิดร้านแล้ว':'ปิดร้านแล้ว');renderAdminGovernance();setTimeout(()=>qtAdminTab('qt-sec-shops'),0);
-   }catch(e){toast('เปลี่ยนสถานะร้านไม่สำเร็จ: '+(e.message||e))}
+   }catch(e){toast('เปลี่ยนสถานะร้านไม่สำเร็จ: '+(e.message||e));return}
+   u.shopOpen=desired;try{qtAudit('shop_open_toggle',{entityType:'shop',entityId:id,open:desired})}catch(e){}
+   toast(desired?'เปิดร้านแล้ว':'ปิดร้านแล้ว');
+   try{renderAdminGovernance();setTimeout(()=>qtAdminTab('qt-sec-shops'),0)}catch(uiErr){console.warn('admin shop-open post-commit render failed',uiErr)}
  };
 
 
@@ -1543,7 +1544,7 @@ async function qgLoadAdminCash(day){
  };
  window.qgAdminReply=function(event){
    event.preventDefault();const input=document.getElementById('qg-support-reply'),button=event.target.querySelector('button'),body=input?.value.trim(),id=selected;if(!id||!body)return false;
-   button.disabled=true;(async()=>{try{const token=await qtGetAccessToken();await qtSupabaseTable('shop_support_messages',{method:'POST',accessToken:token,body:{shop_user_id:id,sender_user_id:currentUser().id,body}});input.value='';await qgLoadAdminSupport()}catch(e){toast('ส่งข้อความไม่สำเร็จ: '+(e.message||e))}finally{button.disabled=false}})();return false;
+   button.disabled=true;(async()=>{try{const token=await qtGetAccessToken();await qtSupabaseTable('shop_support_messages',{method:'POST',accessToken:token,body:{shop_user_id:id,sender_user_id:currentUser().id,body}});input.value='';Promise.resolve().then(()=>qgLoadAdminSupport()).catch(refreshErr=>console.warn('admin support post-send refresh failed',refreshErr))}catch(e){toast('ส่งข้อความไม่สำเร็จ: '+(e.message||e))}finally{button.disabled=false}})();return false;
  };
  setInterval(()=>{if(location.hash==='#admin-support')qgLoadAdminSupport()},20000);
 })();
