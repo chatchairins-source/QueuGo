@@ -21,6 +21,10 @@ const bundle=bundleBase+'\n'+bundleFair;
 const laundryV2=read('QueueGo-Laundry-v2.sql');
 
 // Customer top-level service separation.
+ok(customer.includes('onclick="go(\'grocery\')"'),'grocery service must open a dedicated page');
+ok(customer.includes("V.grocery=async"),'dedicated grocery customer view missing');
+ok(customer.includes("s.public_category||'').toLowerCase()==='grocery'"),'grocery view must show grocery shops only');
+ok(customer.includes("'search','grocery','shop'"),'grocery route must be registered');
 for(const label of ['อาหาร','เครื่องดื่ม','ร้านขายของชำ','ฝากซัก','ตลาดสด'])ok(customer.includes('<b>'+label+'</b>'),'missing service '+label);
 ok(customer.includes("go('market')"),'market must be a dedicated route');
 ok(customer.includes("location.href='laundry/'"),'laundry must use dedicated module');
