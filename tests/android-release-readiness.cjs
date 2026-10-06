@@ -23,6 +23,9 @@ ok('approved QueueGo icon source is used',/branding\/queuego-approved-icon\.webp
 ok('synthetic launcher drawing removed',!/ImageDraw/.test(workflow));
 ok('adaptive icon resources generated',/mipmap-anydpi-v26/.test(workflow)&&/ic_launcher_foreground/.test(workflow));
 ok('native Android back handler',/OnBackPressedCallback/.test(workflow)&&/getWebView\(\)\.goBack\(\)/.test(workflow));
+ok('shared Customer runtime bundled',/customer-features\.js[\s\S]*customer-laundry\.js[\s\S]*account-deletion\.js[\s\S]*queuego-push\.js[\s\S]*queuego-push-sw\.js/.test(workflow));
+ok('privacy documents bundled',/docs\/privacy\.html[\s\S]*docs\/account-deletion\.html/.test(workflow));
+ok('nested role shared paths rewritten',/replace\('\.\.\/account-deletion\.js','account-deletion\.js'\)/.test(workflow)&&/replace\('\.\.\/queuego-push\.js','queuego-push\.js'\)/.test(workflow));
 const declared=(workflow.match(/perms=\[([\s\S]*?)\n\s*\]/)||[])[1]||'';
 ok('no camera permission',!/android\.permission\.CAMERA/.test(declared));
 ok('no background location permission',!/android\.permission\.ACCESS_BACKGROUND_LOCATION/.test(declared));
