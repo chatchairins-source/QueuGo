@@ -31,6 +31,14 @@ ok(customer.includes("ตะกร้าตลาดสดซื้อข้า�
 ok(customer.includes("market_public_markets_v1"),'customer market directory RPC missing');
 ok(customer.includes("market_public_shops_v2"),'customer approved market-shop directory missing');
 ok(customer.includes("ร้านค้าในตลาด"),'customer market shop section missing');
+ok(customer.includes("const MARKET_CATEGORY_ORDER=['meat','seafood','vegetable','fruit'"),'market page must expose fixed goods categories after market selection');
+ok(customer.includes('เลือกประเภทสินค้าในตลาด'),'customer market goods menu heading missing');
+ok(merchant.includes('<option value="laundry">ร้านฝากซัก</option>'),'Merchant top-level types must include laundry shop');
+ok(merchant.includes('<option value="market">ตลาดสด</option>'),'Merchant top-level types must include fresh market');
+ok(!merchant.includes('<option value="meat">เนื้อสัตว์</option>'),'meat must be a market goods category, not a top-level shop type');
+ok(!merchant.includes('<option value="fish">ปลา/อาหารทะเล</option>'),'fish must be a market goods category, not a top-level shop type');
+ok(!merchant.includes('<option value="vegetable">ผัก</option>'),'vegetables must be a market goods category, not a top-level shop type');
+ok(!merchant.includes('<option value="fruit">ผลไม้</option>'),'fruit must be a market goods category, not a top-level shop type');
 
 // Market pricing formula and explicit feature gate.
 ok(platform.includes("'pricing.market_second_shop_fee'"),'second-shop rule missing');
