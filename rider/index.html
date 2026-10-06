@@ -45,8 +45,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro Text"
 .qg-map-tools{position:absolute;z-index:720;right:12px;top:calc(70px + var(--safeT))}.qg-map-button{width:46px;height:46px;border:0;border-radius:50%;background:#fff;color:var(--qg-red);display:grid;place-items:center;box-shadow:0 10px 28px #30131c22}
 
 /* BOTTOM SHEET */
-.qg-sheet{position:absolute;z-index:760;left:0;right:0;bottom:calc(66px + var(--safeB));border-radius:28px 28px 0 0;background:rgba(255,255,255,.98);box-shadow:0 -14px 44px rgba(38,18,24,.15);overflow:hidden;transition:height .22s ease,top .22s ease;height:clamp(305px,45dvh,460px)}
-.qg-sheet[data-level="0"]{height:170px}.qg-sheet[data-level="1"]{height:clamp(305px,45dvh,460px)}.qg-sheet[data-level="2"],.qg-sheet.qg-expanded{top:calc(62px + var(--safeT));height:auto;bottom:calc(66px + var(--safeB));overflow-y:auto;-webkit-overflow-scrolling:touch}
+.qg-sheet{position:absolute;z-index:760;left:0;right:0;bottom:calc(64px + var(--safeB));border-radius:28px 28px 0 0;background:rgba(255,255,255,.98);box-shadow:0 -14px 44px rgba(38,18,24,.15);overflow:hidden;transition:height .22s ease,top .22s ease;height:clamp(305px,45dvh,460px)}
+.qg-sheet[data-level="0"]{height:170px}.qg-sheet[data-level="1"]{height:clamp(305px,45dvh,460px)}.qg-sheet[data-level="2"],.qg-sheet.qg-expanded{top:calc(62px + var(--safeT));height:auto;bottom:calc(64px + var(--safeB));overflow-y:auto;-webkit-overflow-scrolling:touch}
+.qg-sheet[data-mode="offline"],.qg-sheet[data-mode="waiting"]{top:auto!important;height:auto!important;max-height:calc(52dvh - var(--safeB));overflow:hidden!important}
+.qg-sheet[data-mode="offline"] .qg-sheet-grab,.qg-sheet[data-mode="waiting"] .qg-sheet-grab{position:relative;top:auto}
 .qg-sheet-grab{position:sticky;z-index:10;top:0;width:100%;height:35px;border:0;background:rgba(255,255,255,.98);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;color:#aaa2a6;touch-action:none}.qg-sheet-grab>span{width:42px;height:5px;border-radius:99px;background:#cbc5c8}.qg-sheet-grab small{font-size:7px;font-weight:800}.qg-sheet-body{padding:0 14px 16px}
 .qg-wait-card{padding:3px 2px}.qg-wait-title{display:flex;gap:12px;align-items:center}.qg-wait-title h2{margin:0;font-size:21px;letter-spacing:-.02em}.qg-wait-title p{margin:3px 0 0;color:var(--qg-muted);font-size:11px;line-height:1.45}.qg-scooter-icon,.qg-scooter-dot{width:54px;height:54px;border-radius:18px;background:#fff0f3;color:var(--qg-red);display:grid;place-items:center;font-size:24px;font-weight:1000}.qg-scooter-dot{font-size:18px}
 .qg-wait-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:14px 0}.qg-wait-stats>div{padding:11px;border-radius:16px;background:#fff5f7}.qg-wait-stats span{display:block;color:#8a8387;font-size:9px}.qg-wait-stats b{display:block;margin-top:3px;font-size:15px}.qg-wait-card>.qg-btn{width:100%;margin-top:10px}.qg-tip{display:flex;gap:9px;align-items:flex-start;margin-top:12px;padding:11px 12px;border-radius:15px;background:#faf6f7}.qg-tip b{color:var(--qg-red);font-size:10px}.qg-tip span{font-size:9px;color:#716b6f;line-height:1.45}
@@ -1446,19 +1448,23 @@ function renderSheet(){
   const s=document.getElementById('sheet');
   if(!s)return;
   s.dataset.level=String(qgSheetLevel);
+  s.dataset.mode='default';
   s.classList.toggle('qg-expanded',qgSheetLevel===2);
   const toolbar=qgSheetToolbar();
   if(S.laundryJob&&!S.activeOrder){
+    s.dataset.mode='active';
     s.innerHTML=toolbar+`<div class="qg-sheet-body">${qgLaundryActiveHTML()}</div>`;
     qgBindSheetToolbar(s);placeJobMarkers();return;
   }
   if(S.activeOrder){
+    s.dataset.mode='active';
     s.innerHTML=toolbar+`<div class="qg-sheet-body">${jobCardHTML(S.activeOrder)}${qgRouteBundleHTML()}</div>`;
     qgBindSheetToolbar(s);bindJobCardEvents(S.activeOrder);qgBindRouteBundleUI();
     if(S.activeOrder.market_order_id)setTimeout(()=>qgMountMarketPickups(S.activeOrder),0);
     return;
   }
   if(!S.online){
+    s.dataset.mode='offline';
     s.innerHTML=toolbar+`<div class="qg-sheet-body">
       <section class="qg-wait-card">
         <div class="qg-wait-title"><span class="qg-scooter-dot">●</span><div><h2>พร้อมออกไปรับงานไหม?</h2><p>เปิดรับงานเมื่อคุณพร้อม ระบบจะค้นหางานใกล้คุณให้</p></div></div>
@@ -1468,6 +1474,7 @@ function renderSheet(){
     qgBindSheetToolbar(s);document.getElementById('go-online').onclick=toggleOnline;return;
   }
   if(!S.openJobs.length){
+    s.dataset.mode='waiting';
     const today=new Date().toDateString();
     const done=(S.history||[]).filter(o=>o.status==='completed'&&new Date(o.updated_at||o.created_at||0).toDateString()===today);
     const income=done.reduce((sum,o)=>sum+Number(riderEarning(o)||0),0);
@@ -1485,6 +1492,7 @@ function renderSheet(){
     </div>`;
     qgBindSheetToolbar(s);document.getElementById('go-offline').onclick=toggleOnline;return;
   }
+  s.dataset.mode='offer';
   const shown=qgSheetLevel===2?S.openJobs:S.openJobs.slice(0,1);
   s.innerHTML=toolbar+`<div class="qg-sheet-body">${shown.map(x=>jobCardHTML(x.order,x)).join('')}${qgLaundryPoolHTML()}</div>`;
   qgBindSheetToolbar(s);
