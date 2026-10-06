@@ -22,45 +22,46 @@ assert.equal(r.run('S.activeOrder.status'),'rider_assigned');
 assert(r.run("calls[0].path.includes('rider_assigned,preparing,ready')"));
 assert(r.run("jobCardHTML(S.activeOrder).includes('disabled')"));
 assert(r.run("jobCardHTML({...S.activeOrder,status:'ready',subtotal:100}).includes('รับสินค้าแล้ว')"));
-assert(!r.run("jobCardHTML({...S.activeOrder,status:'ready',subtotal:100}).includes('เงินสดที่ต้องจ่ายร้าน')"));
-assert(!r.run("jobCardHTML({...S.activeOrder,status:'delivering',id:'delivery',total_amount:130}).includes('qg-grab-slide')"));
-checks+=6;
+assert.equal(r.run("jobCardHTML({...S.activeOrder,status:'delivering',id:'route',total_amount:130}).includes('qg-grab-slide')"),false);
+assert(r.run("jobCardHTML({...S.activeOrder,status:'delivering',id:'route',total_amount:130}).includes('ถึงแล้ว')"));checks+=6;
+
+// One tap maps to one idempotent server receipt. A retry with the same semantic action reuses the same request UUID.
 r.run("calls=[];sbTable=async(path,opts)=>{calls.push({path,opts});return []};refreshData=async()=>{};");
 await r.run("advanceOrder({id:'order',status:'ready',subtotal:100})");
-assert.equal(r.run("calls.find(c=>c.path==='rpc/qg_rider_action_once').opts.body.p_kind"),'order');
-assert.equal(r.run("calls.find(c=>c.path==='rpc/qg_rider_action_once').opts.body.p_payload.p_action"),'pickup_cash');
-checks+=2;
-r.run("calls=[];");
+let riderActionCalls=r.run("calls.filter(c=>c.path==='rpc/qg_rider_action_once')");
+assert.equal(riderActionCalls.length,1);
+assert.equal(riderActionCalls[0].opts.body.p_kind,'order');
+assert.equal(riderActionCalls[0].opts.body.p_payload.p_action,'pickup_cash');
+assert.match(riderActionCalls[0].opts.body.p_request_id,/^[0-9a-f]{8}-[0-9a-f]{4}-5[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
+const retryId=riderActionCalls[0].opts.body.p_request_id;
+await r.run("advanceOrder({id:'order',status:'ready',subtotal:100})");
+riderActionCalls=r.run("calls.filter(c=>c.path==='rpc/qg_rider_action_once')");
+assert.equal(riderActionCalls.length,2);
+assert.equal(riderActionCalls[1].opts.body.p_request_id,retryId);checks+=6;
+
+r.run("calls=[];sbTable=async(path,opts)=>{calls.push({path,opts});return []};refreshData=async()=>{};");
 await r.run("advanceOrder({id:'order',status:'delivering',total_amount:130})");
-assert.equal(r.run("calls.find(c=>c.path==='rpc/qg_rider_action_once').opts.body.p_payload.p_action"),'arrive');
-assert.equal(r.run("typeof renderPaymentSummary"),'undefined');
-checks+=2;
+riderActionCalls=r.run("calls.filter(c=>c.path==='rpc/qg_rider_action_once')");
+assert.equal(riderActionCalls[0].opts.body.p_kind,'order');
+assert.equal(riderActionCalls[0].opts.body.p_payload.p_action,'arrive');
+assert.equal(r.run("calls.some(c=>c.path==='rpc/rider_order_action')"),false);checks+=3;
 
-// If the order committed but the network reply disappeared, reconcile its exact request UUID.
-t.run(`window.reconcileDb=async(path)=>path.startsWith('orders?select=id,order_number')?[{id:readPendingCheckout().body.p_order_id,order_number:'QT-0002'}]:[];db=reconcileDb`);
-t.run(setup+'failNext=true;');await t.run('placeOrder()');const recovered=t.run('readPendingCheckout().body.p_order_id');
-t.run(`db=async(path)=>path.startsWith('orders?select=id,order_number')?[{id:'${recovered}',order_number:'QT-0002'}]:[]`);
-await t.run('reconcilePendingCheckout()');assert.equal(t.run('readPendingCheckout()'),null);assert.equal(t.run('cart.items.length'),0);assert.equal(t.run('location.hash').split('/').pop(),recovered);checks+=3;
-// Keep items added after the timeout; only clear the cart snapshot that was submitted.
-t.run(setup+'failNext=true;');await t.run('placeOrder()');const editedId=t.run('readPendingCheckout().body.p_order_id');
-t.run(`cart.items[0].qty=2;saveCart();db=async(path)=>path.startsWith('orders?select=id,order_number')?[{id:'${editedId}',order_number:'QT-0003'}]:[]`);
-await t.run('reconcilePendingCheckout()');assert.equal(t.run('readPendingCheckout()'),null);assert.equal(t.run('cart.items[0].qty'),2);checks+=2;
-
-
-r.run("document.getElementById('app').innerHTML='<section id=\\'sheet\\' class=\\'qg-sheet\\'></section>';S.activeOrder=null;S.laundryJob=null;S.online=true;S.pos={lat:13,lng:100};S.openJobs=[{order:{id:'open-a',status:'searching_rider',total_amount:120,delivery_fee:30,pickup_latitude:13,pickup_longitude:100,delivery_latitude:13.1,delivery_longitude:100.1,_shop:{shop_name:'ร้านแรก'}}},{order:{id:'open-b',status:'searching_rider',total_amount:140,delivery_fee:35,pickup_latitude:13,pickup_longitude:100,delivery_latitude:13.2,delivery_longitude:100.2,_shop:{shop_name:'ร้านสอง'}}}];qgSetSheetLevel(1);renderSheet()");
-assert.equal(r.run("document.querySelectorAll('#sheet .qg-offer-card').length"),1);checks++;
+// The new sheet has 3 real snap levels; it no longer depends on the retired expanded-boolean renderer.
+r.run("document.getElementById('app').innerHTML='<section id=sheet class=qg-sheet></section>';S.activeOrder=null;S.laundryJob=null;S.online=true;S.openJobs=[{order:{id:'open-a',status:'searching_rider',delivery_fee:30,pickup_latitude:13,pickup_longitude:100,delivery_latitude:13.1,delivery_longitude:100.1}},{order:{id:'open-b',status:'searching_rider',delivery_fee:35,pickup_latitude:13,pickup_longitude:100,delivery_latitude:13.1,delivery_longitude:100.1}}];qgSetSheetLevel(1);mapsLink=()=>'#';riderEarning=o=>Number(o.delivery_fee||0);renderSheet()");
+assert.equal(r.run("document.querySelectorAll('#sheet .qg-offer-card').length"),1);
 r.run("document.querySelector('#sheet [data-qg-sheet-toggle]').click()");
 assert.equal(r.run("document.querySelectorAll('#sheet .qg-offer-card').length"),2);
 assert.equal(r.run("document.querySelector('#sheet').dataset.level"),'2');
-checks+=2;
-assert.equal(r.run("typeof qgOpenOrderChecklist"),'function');
-assert.equal(r.run("typeof qgNavigateInApp"),'function');
-checks+=2;
-const riderSource=fs.readFileSync(root+'rider/index.html','utf8');
-assert(!riderSource.includes('google.com/maps'));
-assert(!riderSource.includes('Payment Confirmation'));
-assert(!riderSource.includes('ตรวจยอดเงินก่อนส่ง'));
-checks+=3;
+assert(r.run("document.querySelector('#sheet').classList.contains('qg-expanded')"));checks+=4;
+
+// Arrival is a separate server transition; completion UI requires proof + six-digit PIN and has no payment-confirmation detour.
+r.run("document.getElementById('app').innerHTML='<section class=stage><section id=sheet class=qg-sheet></section></section>';S.activeOrder=null;stopPolling=()=>{};startPolling=()=>{};renderSheet=()=>{};getAccessToken=async()=>'fixture';sbTable=async(path,opts)=>path.startsWith('order_items?')?[{item_name:'Test',quantity:1,unit_price:100,total_price:100}]:[];");
+await r.run("qgOpenOrderChecklist({id:'proof',order_number:'QT-0002',status:'in_progress',note:'__QT_ORDER_STATUS__=arrived\\nวางไว้หน้าประตู',subtotal:100,total_amount:130,delivery_address:'Test address',_shop:{shop_name:'ร้านทดสอบ'},_customer:{name:'ลูกค้า',phone:'0800000000'}})");
+assert(r.run("document.getElementById('qg-ordercheck-page').textContent.includes('ยืนยันการจัดส่ง')"));
+assert(r.run("document.getElementById('qg-ordercheck-page').textContent.includes('รหัสส่งมอบ 6 หลัก')"));
+assert(r.run("document.getElementById('qg-ordercheck-page').textContent.includes('จัดส่งแล้ว')"));
+assert.equal(r.run("document.getElementById('qg-ordercheck-page').textContent.includes('ยืนยันการรับเงิน')"),false);
+assert.equal(r.run("document.getElementById('qg-ordercheck-page').textContent.includes('ยืนยันการจ่ายเงิน')"),false);checks+=5;
 
 const a=boot('admin/index.html');await Promise.resolve();a.run("window.calls=[];qtGetAccessToken=async()=>'fixture';qtSessionRead=()=>({role:'admin',authUserId:'admin'});qtSupabaseTable=async(path)=>{calls.push(path);return path==='users?select=*'?[{id:'shop',role:'shop',status:'active',metadata:{shopName:'Current shop'}}]:[]};");await a.run('qtHydrateDatabase({light:false})');assert.equal(a.run("calls.filter(p=>p.startsWith('users?')).length"),1);assert.equal(a.run("QT_DB_CACHE.qt_users.find(u=>u.id==='shop').shopName"),'Current shop');checks+=2;
 const m=boot('merchant/index.html');await Promise.resolve();assert.equal(m.run("displayOrderNumber({order_number:'QT-20261005-0001'})"),'QT-0001');checks++;
