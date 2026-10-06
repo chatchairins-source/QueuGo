@@ -54,6 +54,8 @@ jobs:
           npm install --no-audit --no-fund
           rm -rf www android
           mkdir -p www
+          mkdir -p www/docs
+          cp ../docs/privacy.html ../docs/account-deletion.html www/docs/
           if [ "${{ matrix.role }}" = "customer" ]; then
             cp ../index.html www/index.html
             cp ../customer-features.js ../customer-features.css ../customer-laundry.js ../account-deletion.js ../queuego-push.js ../queuego-push-sw.js www/
