@@ -992,8 +992,10 @@ async function readRiderSnapshot(){
       await enrichRiderOrders(list,token);if(!current())return;
       const candidates=list.map(o=>({order:o,distanceKm:haversineKm(S.pos?.lat,S.pos?.lng,o.pickup_latitude,o.pickup_longitude)})).filter(x=>Number.isFinite(x.distanceKm)).sort((a,b)=>a.distanceKm-b.distanceKm);
       const nearby=candidates.filter(x=>x.distanceKm<=NEARBY_RADIUS_KM);
-      // Server eligibility/claim remains authoritative; display the nearest eligible job when none is within 2 km.
-      openJobs=(nearby.length?nearby:candidates.slice(0,1)).filter(x=>!qgOfferDeclined(x.order?.id));
+      // Server eligibility/claim remains authoritative. GPS may not be ready immediately after login,
+      // so keep one server-eligible offer visible instead of flashing an empty queue.
+      const ranked=nearby.length?nearby:(candidates.length?candidates.slice(0,1):(list[0]?[{order:list[0],distanceKm:NaN}]:[]));
+      openJobs=ranked.filter(x=>!qgOfferDeclined(x.order?.id));
     }
     await qgLoadLaundryRiderState(token,!!activeOrder);if(!current())return;
     if(!activeOrder){S.bundleOrders=[];S.bundleCandidates=[]}S.activeOrder=activeOrder;S.openJobs=openJobs;
