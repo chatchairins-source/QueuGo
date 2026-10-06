@@ -1711,7 +1711,7 @@ function qgArrivalDistanceKm(o){
   return haversineKm(lat,lng,dlat,dlng);
 }
 function qgCloseRiderFlowPage(id){document.getElementById(id)?.remove()}
-function qgTelHref(phone){function qgTelHref(phone){
+function qgTelHref(phone){
   const raw=String(phone||'').trim(),safe=raw.replace(/[^0-9+]/g,'');
   return safe?'tel:'+safe:'';
 }
