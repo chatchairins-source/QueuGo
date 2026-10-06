@@ -6,6 +6,8 @@ let checks=0;const ok=(v,m)=>{assert.ok(v,m);checks++};
 
 ok(merchant.includes('let qgmProductSaveBusy=false;'),'product save must have a duplicate-submit lock');
 ok(merchant.includes("data-product-request-id="),'new product editor must keep a stable request/product id');
+ok(merchant.includes("window.qgmNewProductRequestId||(window.qgmNewProductRequestId=uid())"),'new product request id must survive editor rerenders');
+ok(merchant.includes("if(!id&&String(window.qgmNewProductRequestId||'')===String(stableId))window.qgmNewProductRequestId=null;"),'stable new-product request id must clear only after confirmed save');
 ok(merchant.includes("on_conflict=id"),'new product creation must use idempotent upsert by stable id');
 ok(merchant.includes("qgmDeleteProduct"),'merchant product editor must expose delete behavior');
 ok(merchant.includes("rpc/queuego_delete_or_archive_product"),'delete button must use ownership-checked RPC');
