@@ -19,8 +19,13 @@ ok(rider.includes("rpc/qg_market_pickup_with_photo"),'market pickup must use the
 ok(rider.includes('id="qg-pickup-confirm-btn"'),'pickup must use a direct compact confirm button');
 ok(!rider.includes('data-pick-check'),'pickup must not require redundant checkbox confirmations');
 ok(!rider.includes('qg-flow-slide'),'pickup/delivery must not use stretched slide controls');
-ok(rider.includes('qg-sheet-grab-static'),'home job sheet must be static, not manually stretched');
-ok(rider.includes('function qgBindSheetToolbar(){ /* static sheet: intentionally no drag/tap expansion */ }'),'sheet expansion handler must be disabled');
+ok(rider.includes('RIDER V5 — STRICT REBUILD'),'Rider production CSS must be the V5 strict rebuild');
+ok(rider.includes('id="home-dock"'),'home must use one static V5 dock');
+ok(rider.includes('function renderHomeDock()'),'home must have one V5 renderer');
+ok(!rider.includes('function renderSheet('),'legacy sheet renderer must be physically removed');
+ok(!rider.includes('qg-sheet-grab'),'legacy sheet handle must be physically removed');
+ok(!rider.includes('qgSheetLevel'),'legacy sheet level state must be physically removed');
+ok(!rider.includes('function qgOpenRiderMore('),'legacy active-job more sheet must be removed');
 
 ok(rider.includes("function qgOpenDeliveryConfirm(o)"),'arrival must open a dedicated delivery confirmation screen');
 ok(rider.includes('id="qg-delivery-photo"'),'delivery completion must require one photo');
@@ -35,7 +40,7 @@ ok(!customer.includes('qg_customer_delivery_pin'),'Customer must not fetch a del
 ok(!customer.includes('qg-handoff-pin'),'Customer must not render a delivery PIN card');
 
 ok(rider.includes("'phone': '<svg"),'pickup and delivery screens must retain a real phone icon');
-ok(rider.includes("const APP_VERSION='4.1.2';"),'photo-only Rider rebuild must expose the current app version');
+ok(rider.includes("const APP_VERSION='5.0.0';"),'Rider V5 strict rebuild must expose the current app version');
 ok(rider.includes("function qgOpenAccountSettings()"),'profile must expose real account settings');
 ok(rider.includes("ข้อมูลรถที่อนุมัติ"),'approved vehicle identity must remain protected');
 ok(!rider.includes("vehicle_type:vehicle,vehicle_plate:nextPlate"),'account settings must not silently change approved vehicle identity');
@@ -68,4 +73,4 @@ ok(imageSnapshotSql.includes('ADD COLUMN IF NOT EXISTS item_image text'),'order 
 ok(imageSnapshotSql.includes('BEFORE INSERT ON public.order_items'),'future orders must snapshot image at insert time');
 ok(!imageSnapshotSql.includes('UPDATE public.order_items oi'),'migration must not rewrite locked historical order items');
 
-console.log(JSON.stringify({checks,failures:0,scope:'Rider photo-only pickup and delivery proof, compact actions, state-machine and customer PIN removal'}));
+console.log(JSON.stringify({checks,failures:0,scope:'Rider V5 strict UI rebuild, photo-only pickup/delivery, state-machine and customer PIN removal'}));
