@@ -176,7 +176,7 @@ async function qtCreateSupabaseUser({type,name,phone,password,email,shopName,cat
   const rows=await qtSupabaseTable('users?select=*&on_conflict=auth_user_id',{method:'POST',accessToken:session.access_token,body:row});
   const profile=Array.isArray(rows)?rows[0]:rows;
   if(!profile) throw new Error('สร้างข้อมูลผู้ใช้ในฐานข้อมูลไม่สำเร็จ');
-  const shopBody={user_id:profile.id,shop_name:shopName,public_category:category,status:'pending',metadata:{shopName,category}};
+  const shopBody={user_id:profile.id,shop_name:shopName,status:'pending',metadata:{shopName,category}};
   if(marketRegistration&&Number.isFinite(Number(marketRegistration.lat))&&Number.isFinite(Number(marketRegistration.lng))){
     shopBody.latitude=Number(marketRegistration.lat);
     shopBody.longitude=Number(marketRegistration.lng);
@@ -2559,7 +2559,7 @@ window.qgmSaveShopSetup=async function(e){e.preventDefault();const button=e.subm
   if(!qgIsValidShopCoordinate(selected.lat,selected.lng)){const why=qgShopCoordinateProblem(selected.lat,selected.lng);throw Error(why==='swapped'?'พิกัดร้านไม่ถูกต้อง: latitude/longitude อาจสลับกัน':'พิกัดร้านไม่ถูกต้อง กรุณาปักตำแหน่งร้านใหม่');}
   next.lat=selected.lat;next.lng=selected.lng;
  }
-  const body={shop_name:next.shopName,phone:next.phone,address:next.address,public_category:next.category,metadata:qtUserMetadata(next)};
+  const body={shop_name:next.shopName,phone:next.phone,address:next.address,metadata:qtUserMetadata(next)};
  if(selected){body.latitude=next.lat;body.longitude=next.lng;}
  const savedProfile=profile?.[0]?.id?await qtSupabaseTable('shop_profiles?id=eq.'+encodeURIComponent(profile[0].id),{method:'PATCH',accessToken:token,body}):await qtSupabaseTable('shop_profiles',{method:'POST',accessToken:token,body:{...body,user_id:u.id,status:'pending'}});
  if(!Array.isArray(savedProfile)||!savedProfile.length)throw Error('ฐานข้อมูลไม่ยืนยันข้อมูลร้าน');
