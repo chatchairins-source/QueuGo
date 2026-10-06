@@ -16,9 +16,10 @@ ok(rider.includes("function qgOpenPickupVerify(o)"),'ready orders must open a de
 ok(rider.includes('id="qg-pickup-photo"'),'pickup screen must require one photo');
 ok(rider.includes("rpc/qg_pickup_with_photo"),'normal pickup must use the photo-backed RPC');
 ok(rider.includes("rpc/qg_market_pickup_with_photo"),'market pickup must use the photo-backed RPC');
-ok(rider.includes('id="qg-pickup-confirm-btn"'),'pickup must use a direct compact confirm button');
+ok(rider.includes('id="qg-pickup-slide"'),'pickup must use a photo-gated slide action');
 ok(!rider.includes('data-pick-check'),'pickup must not require redundant checkbox confirmations');
-ok(!rider.includes('qg-flow-slide'),'pickup/delivery must not use stretched slide controls');
+ok(rider.includes('function qgBindSlideAction(input,{idleLabel,busyLabel,onComplete})'),'pickup/delivery slide actions must share one guarded implementation');
+ok(rider.includes("Number(input.value)<92"),'slide action must require a deliberate near-complete gesture');
 ok(rider.includes('RIDER V5 — STRICT REBUILD'),'Rider production CSS must be the V5 strict rebuild');
 ok(rider.includes('id="home-dock"'),'home must use one static V5 dock');
 ok(rider.includes('function renderHomeDock()'),'home must have one V5 renderer');
@@ -29,7 +30,7 @@ ok(!rider.includes('function qgOpenRiderMore('),'legacy active-job more sheet mu
 
 ok(rider.includes("function qgOpenDeliveryConfirm(o)"),'arrival must open a dedicated delivery confirmation screen');
 ok(rider.includes('id="qg-delivery-photo"'),'delivery completion must require one photo');
-ok(rider.includes('id="qg-delivery-complete-btn"'),'delivery completion must use a direct compact button');
+ok(rider.includes('id="qg-delivery-slide"'),'delivery completion must use a photo-gated slide action');
 ok(rider.includes("qg_complete_with_photo"),'normal completion must use the photo-only RPC');
 ok(rider.includes("qg_complete_market_with_photo"),'market completion must use the photo-only RPC');
 ok(!rider.includes('qg-delivery-photo-extra'),'delivery must not request a second photo');
@@ -47,6 +48,12 @@ ok(!rider.includes("vehicle_type:vehicle,vehicle_plate:nextPlate"),'account sett
 ok(rider.includes("item_image&order_id=eq."),'pickup/delivery verification must read immutable item image snapshots when available');
 ok(rider.includes("const QG_ARRIVAL_GUARD_KM = 0.25;"),'arrival action must keep a declared GPS warning threshold');
 ok(rider.includes('id="details-'),'active-order card must expose order details');
+ok(rider.includes('id="primary-nav-'),'active-order primary CTA must be navigation after claim');
+ok(rider.includes('https://www.google.com/maps/dir/?api=1&destination='),'Rider primary navigation must hand off to Google Maps');
+ok(rider.includes('ยอดเงินสดที่ต้องจ่ายร้านเมื่อรับสินค้า'),'pickup slide must show cash due to the merchant before handoff');
+ok(rider.includes('ยอดเงินสดที่ต้องเก็บจากลูกค้าก่อนจบงาน'),'completion slide must show customer cash before completion');
+ok(!rider.includes('id="qg-pickup-confirm-btn"'),'legacy pickup tap confirmation must stay removed');
+ok(!rider.includes('id="qg-delivery-complete-btn"'),'legacy delivery tap completion must stay removed');
 ok(!rider.includes("qgOpenOrderChecklist("),'obsolete legacy order-check page must stay removed');
 ok(!rider.includes("qg-ordercheck-page"),'obsolete ordercheck markup must stay removed');
 ok(!rider.includes('id="more-'),'legacy active-order more button must stay removed');
