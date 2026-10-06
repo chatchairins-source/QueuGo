@@ -2244,7 +2244,7 @@ function qgmCollectRestaurantVariants(){
 }
 
 window.renderShopProductEditor=function(id){
- const u=shopUser(),p=id!=='new'?shopProducts(u).find(x=>String(x.id)===String(id)):null,pid=profileId(u),requestProductId=p?.id||uid();
+ const u=shopUser(),p=id!=='new'?shopProducts(u).find(x=>String(x.id)===String(id)):null,pid=profileId(u),requestProductId=p?.id||(id==='new'?(window.qgmNewProductRequestId||(window.qgmNewProductRequestId=uid())):uid());
  const initialCategory=p?.category||(id==='new'?window.qgmNewProductCategory:'')||'',storePrice=Number(p?.posPrice??p?.price??0);
  const restaurantCategories=qgmFoodCategoryNames(),useRestaurantCategories=['food','cafe'].includes(String(u?.category||''));
  const marketCategories=qgmMarketProductCategoryNames(),useMarketCategories=qgmIsMarketProductShop(u);
@@ -2305,6 +2305,7 @@ window.qgmSaveProduct=async function(e,id,requestProductId){
   if(!Array.isArray(saved)||!saved.length)throw new Error('ฐานข้อมูลไม่ยืนยันการบันทึกสินค้า');
   const row=saved[0],mapped=Object.assign({},row.metadata||{},{id:row.id,shopId:u.id,shopProfileId:pid,name:row.name,description:row.description,price:Number(row.price||0),image:row.image||'',category:row.category??row.metadata?.category??category,stock:Number(row.stock??row.metadata?.stock??stock),variants:row.variants??row.metadata?.variants??variants,available:row.available!==false,posAvailable:row.pos_available!==false,deliveryAvailable:row.delivery_available!==false,posPrice:row.pos_price,deliveryPrice:row.delivery_price,delivery_restriction:row.delivery_restriction||row.metadata?.delivery_restriction||restriction,createdAt:row.created_at?new Date(row.created_at).getTime():Date.now()});
   QT_DB_CACHE.qt_products=qtSanitizeCachedProducts(dbGet('qt_products',[]),u).filter(p=>String(p.id)!==String(row.id)).concat(mapped);qtMarkClean('qt_products');try{qgSaveMerchantCache()}catch(e){}
+  if(!id&&String(window.qgmNewProductRequestId||'')===String(stableId))window.qgmNewProductRequestId=null;
   toast(restriction==='none'?'บันทึกสินค้าแล้ว · Delivery + GP '+gpRate.toLocaleString('th-TH',{maximumFractionDigits:2})+'%':'บันทึกสินค้าแล้ว · '+qgmDeliveryRestrictionLabel(restriction)+' ขายหน้าร้านเท่านั้น ไม่เปิด Delivery');
   try{navigate('shop-products')}catch(navErr){console.warn('merchant product navigation after save failed',navErr)}
   Promise.resolve().then(()=>qtBackgroundHydrate({light:false})).catch(refreshErr=>console.warn('merchant product hydrate after save failed',refreshErr));
