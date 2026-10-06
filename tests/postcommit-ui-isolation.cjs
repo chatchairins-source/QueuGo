@@ -17,12 +17,14 @@ ok(customerFeatures.includes('customer notification post-read refresh failed'),'
 ok(customerFeatures.includes('customer notifications post-read refresh failed'),'Customer mark-all-read refresh after commit must be non-fatal');
 ok(customerFeatures.includes('customer review post-save refresh failed'),'Customer review refresh after saved review must be non-fatal');
 ok(customerFeatures.includes('customer review post-delete refresh failed'),'Customer review refresh after delete must be non-fatal');
+ok(customerFeatures.includes('customer cancel post-commit render failed'),'Customer cancel render after committed cancellation must be non-fatal');
 
 ok(merchant.includes('merchant product hydrate after save failed'),'Product post-save hydrate must be non-fatal');
 ok(merchant.includes('merchant profile post-commit navigation failed'),'Shop profile navigation after save must be non-fatal');
 ok(merchant.includes('merchant GP post-commit refresh failed'),'GP slip refresh after server report must be non-fatal');
 ok(merchant.includes('merchant module post-commit render failed'),'Module render after save must be non-fatal');
 ok(merchant.includes('merchant promo post-commit navigation failed'),'Promotion navigation after save must be non-fatal');
+ok(merchant.includes('merchant product post-commit render failed'),'Merchant product list render after saved availability must be non-fatal');
 ok(merchant.includes('merchant support post-send refresh failed'),'Merchant support refresh after sent message must be non-fatal');
 ok(merchant.includes('merchant shop-open post-commit UI failed'),'Merchant shop open UI update after commit must be non-fatal');
 
