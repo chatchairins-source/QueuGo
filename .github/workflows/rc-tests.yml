@@ -5,6 +5,7 @@ on:
     branches:
       - queuego-market-bundle-laundry-rc
       - main
+      - pilot-gates-20261006-v3
   workflow_dispatch:
 
 permissions:
