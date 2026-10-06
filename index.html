@@ -559,7 +559,11 @@ function layout(inner,tab){
 const nav=t=>`<nav class="nav">${[['home','home','หน้าหลัก'],['search','search','ค้นหา'],['cart','bag','ตะกร้า'],['orders','orders','ออเดอร์']].map(([k,i,l])=>
   `<a href="#${k}" class="${t===k?'on':''}"><div class="ni">${ico(i)}${k==='cart'&&cartN()?`<b class="badge" style="top:-5px;right:-8px">${cartN()}</b>`:''}</div>${l}</a>`).join('')}</nav>`;
 const go=h=>{location.hash=h};
-const shopCard=s=>`<div class="sc" onclick="go('shop/${esc(s.id)}')">${photo(s.public_logo||s.public_cover,s.shop_name)}
+function openPublicShop(id,category){
+  if(String(category||'').toLowerCase()==='laundry'){location.href='laundry/';return}
+  go('shop/'+id);
+}
+const shopCard=s=>`<div class="sc" onclick="openPublicShop('${esc(s.id)}','${esc(s.public_category||'')}')">${photo(s.public_logo||s.public_cover,s.shop_name)}
 <div class="si"><div class="sn">${esc(s.shop_name||'ร้านค้า')}</div>
 <div class="sm"><span>${esc(CATS[s.public_category]||'อื่นๆ')}</span>${s.public_open_time?`<span>${esc(s.public_open_time)}–${esc(s.public_close_time||'')}</span>`:''}</div>
 <span class="pill ${s.open?'':'off'}">${s.open?'เปิดอยู่':'ปิดอยู่'}</span></div></div>`;
@@ -631,7 +635,7 @@ V.search=async(_,ticket=routeVersion)=>{
     </div>
     <section class="sec">
       <div class="st"><div><h2>ร้านค้าทั้งหมด</h2><p class="sm" style="margin:4px 0 0">ค้นหาอาหาร เครื่องดื่ม ร้านขายของชำ และร้านค้าทั่วไปในที่เดียว</p></div><span class="sm" id="global-search-count">${list.length} ร้าน</span></div>
-      <div class="list" id="global-shop-list">${list.map(s=>`<div class="sc" data-qg-search="${esc([s.shop_name,CATS[s.public_category]||'',s.public_description||'',s.address||''].join(' ').toLocaleLowerCase('th'))}" onclick="go('shop/${esc(s.id)}')">${photo(s.public_logo||s.public_cover,s.shop_name)}
+      <div class="list" id="global-shop-list">${list.map(s=>`<div class="sc" data-qg-search="${esc([s.shop_name,CATS[s.public_category]||'',s.public_description||'',s.address||''].join(' ').toLocaleLowerCase('th'))}" onclick="openPublicShop('${esc(s.id)}','${esc(s.public_category||'')}')">${photo(s.public_logo||s.public_cover,s.shop_name)}
         <div class="si"><div class="sn">${esc(s.shop_name||'ร้านค้า')}</div>
         <div class="sm"><span>${esc(CATS[s.public_category]||'อื่นๆ')}</span>${s.public_open_time?`<span>${esc(s.public_open_time)}–${esc(s.public_close_time||'')}</span>`:''}</div>
         <span class="pill ${s.open?'':'off'}">${s.open?'เปิดอยู่':'ปิดอยู่'}</span></div></div>`).join('')}</div>
@@ -703,6 +707,7 @@ async function shareShop(id){const url=(window.Capacitor?.isNativePlatform?.()?'
 V.shop=async(id,ticket=routeVersion)=>{
   const s=(await loadShops()).find(x=>String(x.id)===String(id));
   if(!s)return layout('<p class="empty">ไม่พบร้านค้า</p>','home');
+  if(String(s.public_category||'').toLowerCase()==='laundry'){location.href='laundry/';return}
   if(DEDICATED_MARKET_CATS.has(String(s.public_category||'').toLowerCase()))return go('market');
   const [menu,ratings,favorites]=await Promise.all([loadMenu(id),QGCustomer.reviews(id),QGCustomer.loadFavorites()]);if(ticket!==routeVersion)return;
   const items=(menu||[]).filter(p=>p.delivery_available!==false),categories=[...new Set(items.map(p=>p.category||p.menu_category).filter(Boolean))];
