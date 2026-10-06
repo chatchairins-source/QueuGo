@@ -29,6 +29,8 @@ ok(merchant.includes("const belongs=pid"),'cached product ownership must prefer 
 ok(merchant.includes("?String(p?.shopId||'')===uid"),'legacy user-id ownership fallback must only apply before shop profile resolution');
 ok(merchant.includes('async function qgmRefreshProductsPage'),'product management must fetch an authoritative shop product snapshot');
 ok(merchant.includes("products?select=*&shop_id=eq."),'authoritative product snapshot must be scoped to the current shop');
+ok(merchant.includes("const ownPid=String(ownShop?.shopProfileId||profileMaps.shopByUserId.get(me?.userId)||'');"),'background Merchant hydrate must resolve one authoritative shop profile');
+ok(!merchant.includes("qtSupabaseTable('products?select=*',{accessToken:token})"),'Merchant background hydrate must never request every product row');
 ok(merchant.includes("renderShopProductsModern({authoritative:true})"),'authoritative snapshot must replace the visible cached product list');
 ok(merchant.includes("qgmProductViewSearch")&&merchant.includes("qgmProductViewMode"),'search and availability filter state must be combined instead of overriding one another');
 
