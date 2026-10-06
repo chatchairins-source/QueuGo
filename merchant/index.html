@@ -1832,7 +1832,7 @@ function qgmMerchantSalesAmount(o){
   return Number.isFinite(total)?Math.max(0,total-(Number.isFinite(fee)?fee:0)):0;
 }
 window.shopOrders=shopOrders;
-function shopProducts(u){const pid=String(profileId(u)||''),uid=String(u?.id||'');return qtSanitizeCachedProducts(dbGet('qt_products',[]),u).filter(p=>pid?(String(p.shopProfileId||'')===pid||String(p.shopId||'')===pid):String(p.shopId||'')===uid)}
+function shopProducts(u){const pid=String(profileId(u)||''),uid=String(u?.id||'');return qtSanitizeCachedProducts(dbGet('qt_products',[]),u).filter(p=>!p?.archived_at&&(pid?(String(p.shopProfileId||'')===pid||String(p.shopId||'')===pid):String(p.shopId||'')===uid))}
 function img(v){
   const s=String(v||'').trim();
   if(/^(https?:|data:image\/|blob:)/i.test(s)) return s;
