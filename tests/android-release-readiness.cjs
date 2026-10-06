@@ -26,6 +26,7 @@ ok('native Android back handler',/OnBackPressedCallback/.test(workflow)&&/getWeb
 const declared=(workflow.match(/perms=\[([\s\S]*?)\n\s*\]/)||[])[1]||'';
 ok('no camera permission',!/android\.permission\.CAMERA/.test(declared));
 ok('no background location permission',!/android\.permission\.ACCESS_BACKGROUND_LOCATION/.test(declared));
+ok('no telephony permissions',!/android\.permission\.(CALL_PHONE|READ_PHONE_STATE|ANSWER_PHONE_CALLS|READ_CALL_LOG|WRITE_CALL_LOG|PROCESS_OUTGOING_CALLS)/.test(declared));
 ok('no broad storage permission',!/android\.permission\.(READ_EXTERNAL_STORAGE|WRITE_EXTERNAL_STORAGE|READ_MEDIA_IMAGES)/.test(declared));
 ok('fine/coarse location declared',/ACCESS_FINE_LOCATION/.test(workflow)&&/ACCESS_COARSE_LOCATION/.test(workflow));
 ok('Android cleartext disabled',/Cleartext Android traffic must stay disabled/.test(workflow)&&!/usesCleartextTraffic=\"true\"',1/.test(workflow));
@@ -37,6 +38,8 @@ ok('merchant geolocation',/navigator\.geolocation/.test(merchant));
 ok('rider geolocation',/navigator\.geolocation/.test(rider));
 ok('merchant file chooser present',/type=["']file["']/.test(merchant));
 ok('rider file chooser present',/type=["']file["']/.test(rider));
+ok('rider has no dialer links',!(/href=["']tel:/i.test(rider)));
+ok('rider blocks accidental phone navigation',/function qgInstallPhoneLock\(\)/.test(rider)&&/\^tel\\s\*:/i.test(rider));
 ok('Android printer avoids unsupported Web Bluetooth USB',/nativeAndroid\(\)&&m!=='bridge'/.test(printer));
 ok('print bridge URL restricted',/HTTPS/.test(printer)&&/192\.168\./.test(printer));
 ok('network timeout protection exists',/AbortSignal\.timeout/.test(all));
