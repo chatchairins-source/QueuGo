@@ -3,6 +3,7 @@ const root=path.resolve(__dirname,'..');
 const rider=fs.readFileSync(path.join(root,'rider/index.html'),'utf8');
 const activeSql=fs.readFileSync(path.join(root,'supabase/migrations/20261006134500_rider_authoritative_active_flow.sql'),'utf8');
 const proofSql=fs.readFileSync(path.join(root,'supabase/migrations/20261006150000_rider_delivery_proof_pin_flow.sql'),'utf8');
+const marketProofSql=fs.readFileSync(path.join(root,'supabase/migrations/20261006151500_market_proof_completion_audit.sql'),'utf8');
 let checks=0;const ok=(v,m)=>{assert.ok(v,m);checks++};
 
 ok(rider.includes("function qgRiderRefreshAfterCommit(label)"),'rider must have non-fatal post-commit refresh helper');
@@ -13,6 +14,8 @@ ok(rider.includes("data-pick-check"),'pickup verification must require explicit 
 ok(rider.includes("function qgPickupAndStartDelivery(o)"),'pickup must transition safely into delivery without a duplicate money-confirmation screen');
 ok(rider.includes("function qgOpenDeliveryConfirm(o)"),'arrival must open a dedicated handoff confirmation screen');
 ok(rider.includes("qg-pin-digits"),'handoff must require the six-digit customer code');
+ok(rider.includes("'phone': '<svg"),'pickup and delivery screens must have a real phone icon');
+ok(rider.includes("const APP_VERSION='4.1.0';"),'professional Rider rebuild must expose the current app version');
 ok(rider.includes("qg-delivery-photo-extra"),'handoff must support an optional second delivery photo');
 ok(rider.includes("qg_complete_with_proof"),'normal delivery completion must use the proof RPC');
 ok(rider.includes("qg_complete_market_with_proof"),'market delivery completion must use the proof RPC');
@@ -33,4 +36,7 @@ ok(proofSql.includes('delivery photo required'),'required delivery photo must be
 ok(proofSql.includes('incorrect delivery PIN'),'customer handoff PIN must be enforced server-side');
 ok(proofSql.includes('extra_photo_path'),'optional second proof photo must persist additively');
 ok(proofSql.includes("REVOKE ALL ON FUNCTION public.qg_complete_with_proof"),'proof completion RPC must not be public/anonymous');
+ok(marketProofSql.includes("'handoff_pin_verified',true"),'market completion audit must record PIN-verified proof');
+ok(marketProofSql.includes("'cash_collected',true"),'market completion audit must record customer cash collection');
+ok(marketProofSql.includes("'จัดส่งสำเร็จ'"),'market group completion must notify the customer once');
 console.log(JSON.stringify({checks,failures:0,scope:'professional Rider pickup, handoff proof, PIN and state-machine contracts'}));
