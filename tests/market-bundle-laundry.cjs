@@ -10,7 +10,8 @@ const laundry=read('laundry/index.html');
 const merchant=read('merchant/index.html');
 const merchantLaundry=read('merchant/laundry.js');
 const rider=read('rider/index.html');
-const riderLaundry=read('rider/laundry.js');
+// Rider was rebuilt as one production surface; Laundry Rider hooks live in rider/index.html now.
+const riderLaundry=rider;
 const admin=read('admin/index.html');
 const platform=read('QueueGo-Platform-Feature-Pricing-Migration.sql');
 const market=read('QueueGo-Market-Registration-Migration.sql');
