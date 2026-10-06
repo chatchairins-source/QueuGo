@@ -22,8 +22,11 @@ assert(r.run("calls[0].path.includes('rider_assigned,preparing,ready')"));
 assert(r.run("jobCardHTML(S.activeOrder).includes('นำทาง')"));
 assert(r.run("jobCardHTML({...S.activeOrder,status:'ready',subtotal:100}).includes('ตรวจสอบรายการ')"));
 assert(r.run("jobCardHTML({...S.activeOrder,status:'picked_up',subtotal:100}).includes('เริ่มจัดส่ง')"));
-assert(r.run("jobCardHTML({...S.activeOrder,status:'in_progress',total_amount:130,note:''}).includes('ถึงแล้ว')"));
-assert(r.run("jobCardHTML({...S.activeOrder,status:'in_progress',total_amount:130,note:''}).includes('type=\"range\"')===false"));checks+=7;
+assert(r.run("jobCardHTML({...S.activeOrder,status:'in_progress',total_amount:130,note:''}).includes('นำทางไปลูกค้า')"));
+r.run("qgMarkNavigationStarted({...S.activeOrder,status:'in_progress'},'customer')");
+assert(r.run("jobCardHTML({...S.activeOrder,status:'in_progress',total_amount:130,note:''}).includes('ถึงลูกค้าแล้ว')"));
+r.run("qgClearNavigationStarted({...S.activeOrder,status:'in_progress'},'customer')");
+assert(r.run("jobCardHTML({...S.activeOrder,status:'in_progress',total_amount:130,note:''}).includes('type=\"range\"')===false"));checks+=8;
 
 // READY cannot bypass the pickup-photo screen; only PICKED_UP can issue the delivery transition directly.
 r.run("calls=[];window.pickupOpen=0;qgOpenPickupVerify=async()=>{pickupOpen++;return true};sbTable=async(path,opts)=>{calls.push({path,opts});return []};refreshData=async()=>{};");
