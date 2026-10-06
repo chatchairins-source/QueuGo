@@ -76,13 +76,14 @@ Deno.serve(async(req)=>{
           if(!s?.enabled||!n||s.user_id!==n.user_id||!endpointOK(s.endpoint)){
             status=410;
           }else{
-            const {data:user}=await admin.from('users').select('role,status').eq('id',s.user_id).single();
+            const {data:user}=await admin.from('users').select('role,status,auth_user_id').eq('id',s.user_id).single();
             if(!user||user.status!=='active'||user.role!==s.role||!allowedRoles.has(user.role)){
               status=410;
             }else{
               const payload=JSON.stringify({
                 notificationId:n.id,
                 userId:n.user_id,
+                authUserId:user.auth_user_id,
                 role:user.role,
                 title:n.title||'QueueGo',
                 message:n.message||'มีรายการอัปเดต',
