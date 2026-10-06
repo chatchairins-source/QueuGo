@@ -224,7 +224,7 @@ const STEP_LABEL = {
 const STEP_NEXT = { ready:{to:'picked_up', label:'รับสินค้าแล้ว'},
   picked_up:{to:'delivering', label:'เริ่มจัดส่ง'},
   delivering:{to:'arrived', label:'ถึงแล้ว'},
-  arrived:{to:'completed', label:'ส่งสำเร็จ'} };
+  arrived:{to:'completed', label:'จัดส่งแล้ว'} };
 
 /* QueueGo Rider sheet: 0=ย่อ, 1=กลาง, 2=เต็ม — presentation only, state machine unchanged */
 let qgSheetLevel=1;
@@ -1313,7 +1313,7 @@ function qgBindRouteBundleUI(){
     const o=(S.bundleOrders||[]).find(x=>String(x.id)===String(b.dataset.bundleAdvance));if(o)advanceOrder(o);
   });
   document.querySelectorAll('[data-bundle-finish]').forEach(b=>b.onclick=()=>{
-    const o=(S.bundleOrders||[]).find(x=>String(x.id)===String(b.dataset.bundleFinish));if(o)advanceOrder(o);
+    const o=(S.bundleOrders||[]).find(x=>String(x.id)===String(b.dataset.bundleFinish));if(o)qgOpenOrderChecklist(o);
   });
 }
 
@@ -1391,7 +1391,12 @@ function bindJobCardEvents(o){
 }
 const QG_ARRIVAL_GUARD_KM=.15;
 function qgAdvanceFromPrimary(o){
- if(statusFromRow(o)==='delivering')return qgConfirmArrival(o);
+ const st=statusFromRow(o);
+ if(st==='delivering')return qgConfirmArrival(o);
+ if(st==='arrived'){
+   if(o?.market_order_id)return finishOrder(o);
+   return qgOpenOrderChecklist(o);
+ }
  return advanceOrder(o);
 }
 function qgArrivalDistanceKm(o){
@@ -1426,16 +1431,88 @@ async function qgOpenOrderChecklist(o){
  stopPolling();
  document.getElementById('qg-ordercheck-page')?.remove();
  const page=document.createElement('section');page.id='qg-ordercheck-page';page.className='qg-ordercheck-page';
- page.innerHTML='<header><button type="button" id="qg-ordercheck-back" aria-label="ย้อนกลับ">'+QTICON.back+'</button><div><b>ตรวจสอบคำสั่งซื้อ</b><small>#'+esc(qtShortOrder(o))+'</small></div><span></span></header><main><div class="qg-ordercheck-loading">กำลังโหลดรายการ...</div></main>';
+ const close=()=>{
+   if(page._proofUrl)try{URL.revokeObjectURL(page._proofUrl)}catch(_){}
+   page.remove();if(stage)stage.style.display='block';renderSheet();startPolling();
+ };
+ page.innerHTML='<header><button type="button" id="qg-ordercheck-back" aria-label="ย้อนกลับ">'+QTICON.back+'</button><div><b>กำลังโหลด</b><small>#'+esc(qtShortOrder(o))+'</small></div><span></span></header><main><div class="qg-ordercheck-loading">กำลังโหลดรายการ...</div></main>';
  document.getElementById('app').appendChild(page);
- const close=()=>{page.remove();if(stage)stage.style.display='block';renderSheet();startPolling()};
  page.querySelector('#qg-ordercheck-back').onclick=close;
  try{
    const token=await getAccessToken();if(!token)throw Error('กรุณาเข้าสู่ระบบใหม่');
    const items=await sbTable('order_items?select=item_name,description,quantity,unit_price,total_price&order_id=eq.'+encodeURIComponent(o.id)+'&order=created_at.asc',{token});
    if(!page.isConnected)return;
    const st=statusFromRow(o),shop=o._shop||{},cust=o._customer||{},note=qgCleanOrderNote(o.note);
-   const rows=(Array.isArray(items)?items:[]).map(it=>'<article><div><b>'+esc(it.item_name||'รายการ')+'</b>'+(it.description?'<small>'+esc(it.description)+'</small>':'')+'<span>× '+Number(it.quantity||1).toLocaleString('th-TH')+'</span></div><strong>฿'+Number(it.total_price??(Number(it.unit_price||0)*Number(it.quantity||1))).toLocaleString('th-TH')+'</strong></article>').join('');
+   const deliveryPhase=['picked_up','delivering','arrived'].includes(st);
+   const itemList=Array.isArray(items)?items:[];
+   const count=itemList.reduce((n,it)=>n+Number(it.quantity||1),0);
+   const rows=itemList.map(it=>'<article><div><b>'+esc(it.item_name||'รายการ')+'</b>'+(it.description?'<small>'+esc(it.description)+'</small>':'')+'<span>× '+Number(it.quantity||1).toLocaleString('th-TH')+'</span></div><strong>฿'+Number(it.total_price??(Number(it.unit_price||0)*Number(it.quantity||1))).toLocaleString('th-TH')+'</strong></article>').join('');
+
+   if(deliveryPhase){
+     const canComplete=st==='arrived'&&!o.market_order_id;
+     const title=st==='arrived'?'ถึงจุดส่งแล้ว':'กำลังไปส่ง';
+     page.querySelector('header div b').textContent=title;
+     const phone=cust.phone||'';
+     page.querySelector('main').innerHTML=
+       '<section class="qg-delivery-detail-head"><h1>'+esc(qtShortOrder(o))+'</h1><p>'+esc(shop.shop_name||'ร้านค้า')+'</p><span>'+Number(count||itemList.length).toLocaleString('th-TH')+' รายการ</span></section>'+
+       '<section class="qg-delivery-customer"><div><h2>'+esc(cust.name||'ลูกค้า')+'</h2><small>ผู้รับสินค้า</small></div><div class="qg-delivery-contact">'+(phone?'<a href="tel:'+esc(phone)+'">'+QTICON.phone+'</a>':'')+'<button type="button" id="qg-delivery-detail-chat">'+QTICON.chat+'</button></div></section>'+
+       '<section class="qg-delivery-info"><div class="qg-delivery-info-icon">'+QTICON.loc+'</div><div><b>'+esc(o.delivery_address||'จุดส่งสินค้า')+'</b><small>'+esc(o.delivery_address||'')+'</small></div></section>'+
+       (note?'<section class="qg-delivery-info"><div class="qg-delivery-note-icon">▤</div><div><b>'+esc(note.split('\n')[0]||'หมายเหตุ')+'</b><small>'+esc(note)+'</small></div></section>':'')+
+       '<section class="qg-delivery-items"><div class="qg-delivery-section-title"><b>รายการสินค้า</b><span>'+Number(count||itemList.length).toLocaleString('th-TH')+' รายการ</span></div>'+(rows||'<div class="qg-ordercheck-empty">ไม่พบรายการสินค้า</div>')+'</section>'+
+       (canComplete?
+         '<section class="qg-delivery-proof"><div class="qg-delivery-section-title"><b>รูปถ่ายขณะจัดส่ง</b><small>ใช้เป็นหลักฐานการส่งของ</small></div><label class="qg-proof-photo" id="qg-proof-photo-label"><input id="qg-proof-photo" type="file" accept="image/jpeg,image/png,image/webp" capture="environment" hidden><div class="qg-proof-empty" id="qg-proof-empty"><span>＋</span><b>ถ่ายรูปส่งของ</b><small>ให้เห็นสินค้าและจุดส่ง<br>ไม่ต้องถ่ายใบหน้าลูกค้า</small></div><img id="qg-proof-preview" alt="รูปหลักฐานการส่ง" hidden></label><button type="button" class="qg-proof-retake" id="qg-proof-retake" hidden>ถ่ายใหม่</button><label class="qg-delivery-pin"><span>รหัสส่งมอบ 6 หลักจากลูกค้า</span><input id="qg-delivery-pin" inputmode="numeric" pattern="[0-9]*" maxlength="6" autocomplete="one-time-code" placeholder="••••••"></label></section>'+
+         '<div class="qg-ordercheck-spacer"></div><div class="qg-ordercheck-action"><button type="button" class="qg-ordercheck-primary qg-delivered-primary" id="qg-delivered-final">จัดส่งแล้ว</button></div>'
+       :
+         '<div class="qg-ordercheck-spacer"></div><div class="qg-ordercheck-action"><button type="button" class="qg-ordercheck-primary" id="qg-ordercheck-close">'+(st==='delivering'?'กลับไปนำทาง':'กลับหน้าหลัก')+'</button></div>'
+       );
+
+     const chat=page.querySelector('#qg-delivery-detail-chat');if(chat)chat.onclick=()=>{close();setTimeout(()=>openChat(o),0)};
+     const closeBtn=page.querySelector('#qg-ordercheck-close');if(closeBtn)closeBtn.onclick=close;
+
+     if(canComplete){
+       const input=page.querySelector('#qg-proof-photo'),preview=page.querySelector('#qg-proof-preview'),empty=page.querySelector('#qg-proof-empty'),retake=page.querySelector('#qg-proof-retake');
+       const choose=()=>input?.click();
+       if(retake)retake.onclick=choose;
+       input.onchange=()=>{
+         const file=input.files?.[0];if(!file)return;
+         if(!['image/jpeg','image/png','image/webp'].includes(file.type)||file.size>5*1024*1024){toast('รูปต้องเป็น JPG, PNG หรือ WebP และไม่เกิน 5 MB');input.value='';return}
+         if(page._proofUrl)try{URL.revokeObjectURL(page._proofUrl)}catch(_){}
+         page._proofUrl=URL.createObjectURL(file);preview.src=page._proofUrl;preview.hidden=false;empty.hidden=true;retake.hidden=false;
+       };
+       page.querySelector('#qg-delivered-final').onclick=async e=>{
+         const button=e.currentTarget;if(button.disabled)return;
+         const file=input.files?.[0],pin=(page.querySelector('#qg-delivery-pin')?.value||'').trim();
+         if(!file){toast('กรุณาถ่ายรูปหลักฐานการส่ง');return}
+         if(!/^\d{6}$/.test(pin)){toast('กรุณากรอกรหัสส่งมอบ 6 หลัก');page.querySelector('#qg-delivery-pin')?.focus();return}
+         button.disabled=true;button.textContent='กำลังบันทึกการส่ง...';
+         try{
+           if(typeof qgUploadEvidence!=='function')throw Error('ระบบอัปโหลดหลักฐานยังไม่พร้อม');
+           const photoPath=await qgUploadEvidence(file);
+           let lat=Number(S.pos?.lat),lng=Number(S.pos?.lng);
+           if(!Number.isFinite(lat)||!Number.isFinite(lng)){
+             lat=null;lng=null;
+             if(navigator.geolocation)try{
+               const p=await new Promise((resolve,reject)=>navigator.geolocation.getCurrentPosition(resolve,reject,{enableHighAccuracy:true,timeout:6000,maximumAge:10000}));
+               lat=p.coords.latitude;lng=p.coords.longitude;
+             }catch(_){}
+           }
+           await sbTable('rpc/qg_complete_with_proof',{method:'POST',token,body:{p_order_id:o.id,p_pin:pin,p_lat:lat,p_lng:lng,p_photo_path:photoPath}});
+           toast('จัดส่งสำเร็จ');
+           if(page._proofUrl)try{URL.revokeObjectURL(page._proofUrl)}catch(_){}
+           page.remove();if(stage)stage.style.display='block';qgSetSheetLevel(1);
+           S.activeOrder=null;
+           await refreshData();startPolling();
+         }catch(err){
+           const msg=String(err?.message||err);
+           toast(/incorrect delivery PIN/i.test(msg)?'รหัสส่งมอบไม่ถูกต้อง':'จัดส่งไม่สำเร็จ: '+msg);
+           button.disabled=false;button.textContent='จัดส่งแล้ว';
+         }
+       };
+     }
+     return;
+   }
+
+   page.querySelector('header div b').textContent='ตรวจสอบคำสั่งซื้อ';
    const primary=st==='ready'
      ?'<button type="button" class="qg-ordercheck-primary" id="qg-ordercheck-pickup">รับสินค้าแล้ว</button>'
      :'<button type="button" class="qg-ordercheck-primary" id="qg-ordercheck-close">'+(st==='preparing'||st==='rider_assigned'||st==='assigned'?'รอร้านเตรียมสินค้า':'กลับไปนำทาง')+'</button>';
@@ -1922,6 +1999,18 @@ body{overflow-y:auto;-webkit-overflow-scrolling:touch;touch-action:pan-y}
  .qg-arrival-handle{margin-bottom:15px}.qg-arrival-sheet h2{font-size:20px}.qg-arrival-sheet p{margin:12px 0 20px;font-size:13px}
  .qg-arrival-buttons button{height:50px}
 }
+</style>
+
+
+<style id="qg-rider-delivery-proof-page-20261006">
+.qg-delivery-detail-head{padding:10px 2px 18px}.qg-delivery-detail-head h1{font-size:36px;line-height:1;margin:3px 0 12px;letter-spacing:-1px}.qg-delivery-detail-head p{margin:0;color:#554f52;font-size:14px}.qg-delivery-detail-head>span{display:inline-block;margin-top:12px;padding:6px 10px;border-radius:10px;background:#fff0f2;color:#b60c29;font-size:10px;font-weight:850}
+.qg-delivery-customer{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:16px 2px}.qg-delivery-customer h2{margin:0;font-size:19px}.qg-delivery-customer small{display:block;margin-top:3px;color:#8e878a;font-size:10px}.qg-delivery-contact{display:flex;gap:8px}.qg-delivery-contact a,.qg-delivery-contact button{width:46px;height:46px;border:0;border-radius:50%;background:#f6f3f4;color:#211e20;display:grid;place-items:center}.qg-delivery-contact .ico{width:22px;height:22px}
+.qg-delivery-info{display:grid;grid-template-columns:44px minmax(0,1fr);gap:10px;align-items:start;padding:13px 2px}.qg-delivery-info-icon,.qg-delivery-note-icon{width:38px;height:38px;border-radius:12px;background:#fff0f2;color:#b60c29;display:grid;place-items:center;font-size:18px;font-weight:900}.qg-delivery-info-icon .ico{width:21px;height:21px}.qg-delivery-info b{display:block;font-size:14px;line-height:1.4}.qg-delivery-info small{display:block;margin-top:4px;color:#8d8689;font-size:11px;line-height:1.4}
+.qg-delivery-items{margin-top:13px;border:1px solid #eee7e9;border-radius:20px;padding:14px 16px}.qg-delivery-section-title{display:flex;align-items:end;justify-content:space-between;gap:8px;margin-bottom:5px}.qg-delivery-section-title>b{font-size:15px}.qg-delivery-section-title>span,.qg-delivery-section-title>small{color:#8e878a;font-size:10px}.qg-delivery-items article{display:flex;justify-content:space-between;gap:12px;padding:11px 0;border-bottom:1px solid #f0ebed}.qg-delivery-items article:last-of-type{border-bottom:0}.qg-delivery-items article b{display:block;font-size:13px}.qg-delivery-items article small{display:block;color:#8e878a;font-size:9px;margin-top:2px}.qg-delivery-items article span{display:block;font-size:10px;margin-top:4px}.qg-delivery-items article strong{white-space:nowrap;font-size:12px}
+.qg-delivery-proof{margin-top:16px;border:1px solid #eee7e9;border-radius:20px;padding:14px 16px}.qg-proof-photo{display:block;margin-top:12px;border:1.5px dashed #c9bdc1;border-radius:18px;overflow:hidden;background:#faf8f9;min-height:190px;cursor:pointer}.qg-proof-empty{min-height:190px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:20px;color:#4f484b}.qg-proof-empty>span{font-size:34px;line-height:1;color:#e6002d}.qg-proof-empty b{font-size:15px;margin-top:8px}.qg-proof-empty small{margin-top:7px;color:#91898d;font-size:10px;line-height:1.45}.qg-proof-photo img{display:block;width:100%;height:230px;object-fit:cover}.qg-proof-retake{margin-top:8px;width:100%;height:40px;border:0;border-radius:12px;background:#fff0f2;color:#b60c29;font-weight:800}
+.qg-delivery-pin{display:block;margin-top:14px}.qg-delivery-pin span{display:block;font-size:11px;font-weight:800;margin-bottom:7px}.qg-delivery-pin input{width:100%;height:52px;border:1px solid #e6dde0;border-radius:14px;background:#fff;padding:0 15px;font-size:20px;font-weight:850;letter-spacing:8px;text-align:center;outline:none}.qg-delivery-pin input:focus{border-color:#e6002d;box-shadow:0 0 0 3px rgba(230,0,45,.08)}
+.qg-delivered-primary{background:#e6002d!important}
+@media(max-width:390px){.qg-delivery-detail-head h1{font-size:32px}.qg-proof-photo img{height:205px}}
 </style>
 
 </body></html>
