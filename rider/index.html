@@ -960,20 +960,24 @@ async function readRiderSnapshot(){
       await enrichRiderOrders([activeOrder],token);if(!current())return;
     }else if(online){
       S.bundleOrders=[];S.bundleCandidates=[];
-      const eligible=await sbRpc('get_rider_delivery_pool',{},token);if(!current())return;
+      // Sequential server dispatch: this RPC returns at most the one order offered to this rider.
+      const [eligible,offerMeta]=await Promise.all([
+        sbRpc('get_rider_delivery_pool',{},token),
+        sbRpc('qg_get_my_rider_offer',{},token)
+      ]);if(!current())return;
       const ids=(Array.isArray(eligible)?eligible:[]).map(x=>x.order_id).filter(Boolean);
-      const open=ids.length?await sbTable('orders?select=*&id=in.('+ids.join(',')+')&order=created_at.asc&limit=25',{token}):[];if(!current())return;
+      const open=ids.length?await sbTable('orders?select=*&id=in.('+ids.join(',')+')&order=created_at.asc&limit=1',{token}):[];if(!current())return;
       const list=Array.isArray(open)?open:[];
       const poolByOrder=new Map((Array.isArray(eligible)?eligible:[]).map(x=>[String(x.order_id),x]));
-      for(const o of list){const quoted=poolByOrder.get(String(o.id));if(quoted&&Number.isFinite(Number(quoted.delivery_fee)))o._poolDeliveryFee=Number(quoted.delivery_fee)}
+      const metaByOrder=new Map((Array.isArray(offerMeta)?offerMeta:[]).map(x=>[String(x.order_id),x]));
+      for(const o of list){
+        const quoted=poolByOrder.get(String(o.id)),meta=metaByOrder.get(String(o.id));
+        if(quoted&&Number.isFinite(Number(quoted.delivery_fee)))o._poolDeliveryFee=Number(quoted.delivery_fee);
+        if(meta){o._offerExpiresAt=meta.expires_at;o._offerAttempt=meta.attempt}
+      }
       if(list.some(o=>['market','grocery'].includes(o.fulfillment_vertical))){const weights=await sbRpc('market_rider_job_weights',{},token);if(!current())return;for(const o of list)o._marketWeight=(weights||[]).find(x=>x.order_id===o.id)?.weight_kg}
       await enrichRiderOrders(list,token);if(!current())return;
-      const candidates=list.map(o=>({order:o,distanceKm:haversineKm(S.pos?.lat,S.pos?.lng,o.pickup_latitude,o.pickup_longitude)})).filter(x=>Number.isFinite(x.distanceKm)).sort((a,b)=>a.distanceKm-b.distanceKm);
-      const nearby=candidates.filter(x=>x.distanceKm<=NEARBY_RADIUS_KM);
-      // Server eligibility/claim remains authoritative. GPS may not be ready immediately after login,
-      // so keep one server-eligible offer visible instead of flashing an empty queue.
-      const ranked=nearby.length?nearby:(candidates.length?candidates.slice(0,1):(list[0]?[{order:list[0],distanceKm:NaN}]:[]));
-      openJobs=ranked.filter(x=>!qgOfferDeclined(x.order?.id));
+      openJobs=list.map(o=>({order:o,distanceKm:S.pos?haversineKm(S.pos.lat,S.pos.lng,o.pickup_latitude,o.pickup_longitude):NaN}));
     }
     await qgLoadLaundryRiderState(token,!!activeOrder);if(!current())return;
     if(!activeOrder){S.bundleOrders=[];S.bundleCandidates=[]}S.activeOrder=activeOrder;S.openJobs=openJobs;
@@ -1456,29 +1460,44 @@ function jobCardHTML(o,meta){
  }
  return `<article class="qg-active-card"><div class="qg-active-head"><div><span class="qg-kicker">${esc(title)}</span><h2>#${esc(code)}</h2></div><span class="qg-income-badge">฿${Number(fee||0).toLocaleString('th-TH')}</span></div><div class="qg-job-row">${logo}<div><small>ร้านค้า</small><b>${esc(shop.shop_name||'ร้านค้า')}</b></div></div><div class="qg-job-row"><span>${QTICON.user}</span><div><small>ลูกค้า</small><b>${esc(cust.name||'ลูกค้า')}</b></div></div><div class="qg-active-status"><small>${pickup?'จุดรับสินค้า':'ที่อยู่จัดส่ง'}</small><b>${esc(address)}</b></div>${note?`<div class="qg-customer-note"><small>หมายเหตุจากลูกค้า</small><b>${esc(note)}</b></div>`:''}<div class="qg-job-tools"><button class="qg-job-tool" id="next-${esc(o.id)}" ${processEnabled?'':'disabled'}>${QTICON.jobs}<span>${esc(processLabel)}</span></button><button class="qg-job-tool" id="details-${esc(o.id)}">${QTICON.jobs}<span>รายการ</span></button><button class="qg-job-tool" id="chat-${esc(o.id)}">${QTICON.chat}<span>แชต</span></button></div><button class="qg-btn qg-btn-primary qg-main-action" id="primary-nav-${esc(o.id)}" ${mainDisabled?'disabled':''}>${QTICON.loc}<span>${esc(mainLabel)}</span></button></article>`;
 }
-function bindJobCardEvents(o){const by=id=>document.getElementById(id),c=by('chat-'+o.id),a=by('accept-'+o.id),d=by('decline-'+o.id),n=by('next-'+o.id),details=by('details-'+o.id),nav=by('primary-nav-'+o.id);if(c)c.onclick=()=>openChat(o);if(a)a.onclick=()=>acceptJob(o.id);if(d)d.onclick=()=>qgDeclineOffer(o.id);if(n)n.onclick=()=>qgAdvanceFromPrimary(o);if(details)details.onclick=()=>qgOpenOrderDetails(o);if(nav&&!nav.disabled)nav.onclick=()=>qgPrimaryAction(o)}
+function bindJobCardEvents(o){
+ const by=id=>document.getElementById(id),c=by('chat-'+o.id),a=by('accept-'+o.id),d=by('decline-'+o.id),n=by('next-'+o.id),details=by('details-'+o.id),nav=by('primary-nav-'+o.id);
+ if(c)c.onclick=()=>openChat(o);
+ if(a){
+   a.onclick=()=>acceptJob(o.id);
+   const tick=()=>{
+     if(!a.isConnected){clearInterval(a._qgOfferTimer);return}
+     const end=Date.parse(o._offerExpiresAt||''),left=Number.isFinite(end)?Math.max(0,Math.ceil((end-Date.now())/1000)):30;
+     if(!a.disabled)a.textContent='รับงาน · '+left+' วิ';
+     if(left<=0){
+       clearInterval(a._qgOfferTimer);a.disabled=true;a.textContent='หมดเวลา';
+       S.openJobs=(S.openJobs||[]).filter(x=>String(x.order?.id)!==String(o.id));
+       setTimeout(()=>{if(S.activeTab==='home')renderHomeDock();qgRiderRefreshAfterCommit('rider offer expiry refresh failed')},120);
+     }
+   };
+   tick();a._qgOfferTimer=setInterval(tick,250);
+ }
+ if(d)d.onclick=()=>qgDeclineOffer(o.id);
+ if(n)n.onclick=()=>qgAdvanceFromPrimary(o);if(details)details.onclick=()=>qgOpenOrderDetails(o);if(nav&&!nav.disabled)nav.onclick=()=>qgPrimaryAction(o)
+}
 
 function targetNavLat(o){return Number(qgRouteTarget(o).lat)}
 function targetNavLng(o){return Number(qgRouteTarget(o).lng)}
-function qgOfferDeclined(orderId){
-  if(!orderId)return false;
+function qgOfferDeclined(){return false}
+async function qgDeclineOffer(orderId){
+  const btn=document.getElementById('decline-'+orderId);
+  if(btn)btn.disabled=true;
   try{
-    const key='qg-rider-declined-offers',cache=JSON.parse(sessionStorage.getItem(key)||'{}'),now=Date.now();
-    let changed=false;
-    for(const [id,until] of Object.entries(cache)){if(Number(until)<=now){delete cache[id];changed=true}}
-    if(changed)sessionStorage.setItem(key,JSON.stringify(cache));
-    return Number(cache[String(orderId)]||0)>now;
-  }catch(_){return false}
-}
-function qgDeclineOffer(orderId){
-  try{
-    const key='qg-rider-declined-offers',cache=JSON.parse(sessionStorage.getItem(key)||'{}');
-    cache[String(orderId)]=Date.now()+5*60*1000;
-    sessionStorage.setItem(key,JSON.stringify(cache));
-  }catch(_){}
-  S.openJobs=(S.openJobs||[]).filter(x=>String(x.order?.id)!==String(orderId));
-  toast('ซ่อนงานนี้ 5 นาทีแล้ว');
-  renderHomeDock();
+    const token=await getAccessToken();if(!token)throw Error('กรุณาเข้าสู่ระบบใหม่');
+    await sbTable('rpc/qg_rider_decline_offer',{method:'POST',token,body:{p_order_id:orderId}});
+    S.openJobs=(S.openJobs||[]).filter(x=>String(x.order?.id)!==String(orderId));
+    toast('ส่งงานให้ Rider คนถัดไปแล้ว');
+    renderHomeDock();
+    qgRiderRefreshAfterCommit('rider offer decline refresh failed');
+  }catch(e){
+    toast('ปฏิเสธงานไม่สำเร็จ: '+(e.message||e));
+    if(btn)btn.disabled=false;
+  }
 }
 function qgAdvanceFromPrimary(o){
   const st=statusFromRow(o);
