@@ -1637,7 +1637,7 @@ function jobCardHTML(o,meta){
     <div class="qg-info-row"><span class="qg-round-icon">${QTICON.user}</span><div><small>ลูกค้า</small><b>${esc(cust.name||'ลูกค้า')}</b></div></div>
     <div class="qg-address-box"><small>${addressLabel}</small><b>${esc(address)}</b></div>
     ${note?`<div class="qg-customer-note"><small>หมายเหตุจากลูกค้า</small><b>${esc(note)}</b></div>`:''}
-    <div class="qg-action-grid">
+    <div class="qg-action-grid qg-four">
       <button class="qg-tool" type="button" data-qg-nav="${esc(o.id)}">${QTICON.loc}<span>นำทาง</span></button>
       <button class="qg-tool" id="details-${esc(o.id)}">${QTICON.jobs}<span>รายการ</span></button>
       <button class="qg-tool" id="chat-${esc(o.id)}">${QTICON.chat}<span>แชต</span></button>
