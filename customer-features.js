@@ -31,9 +31,57 @@ const QGCustomer=(()=>{
   async function renderNotifications(_,ticket=routeVersion){const key=actor(),u=S.get(),rows=await db('notifications?select=id,title,message,type,reference_id,is_read,created_at&user_id=eq.'+encodeURIComponent(u.userId)+'&order=created_at.desc&limit=100');if(!owned(key,ticket))return;const pending=rows.filter(n=>!n.is_read);if(pending.length){try{await db('notifications?user_id=eq.'+encodeURIComponent(u.userId)+'&is_read=eq.false',{method:'PATCH',body:{is_read:true}});if(!owned(key,ticket))return;rows.forEach(n=>n.is_read=true);unread=0;badge()}catch(e){unread=pending.length;badge()}}layout(`<div class="pt"><button class="back" onclick="go('home')">${ico('back')}</button><h1>แจ้งเตือน</h1></div><button class="lk" onclick="QGCustomer.markRead(this)">อ่านทั้งหมด</button>${rows.length?rows.map(n=>`<button class="notification card ${n.is_read?'':'unread'}" onclick="QGCustomer.openNotification('${esc(n.id)}','${esc(n.reference_id||'')}',${n.is_read?'false':'true'})"><b>${esc(n.title)}</b><p>${esc(n.message)}</p><small>${esc(date(n.created_at))}</small></button>`).join(''):'<p class="empty">ยังไม่มีการแจ้งเตือน</p>'}`,'');badge();}
   async function markRead(button){button.disabled=true;const key=actor();try{await db('notifications?user_id=eq.'+encodeURIComponent(S.get().userId)+'&is_read=eq.false',{method:'PATCH',body:{is_read:true}})}catch(e){if(actor()===key)toast('บันทึกไม่สำเร็จ');if(actor()===key&&button.isConnected)button.disabled=false;return}if(actor()===key){unread=0;badge();knownNotifications=null;try{route()}catch(e){console.warn('customer notifications post-read refresh failed',e)}}if(actor()===key&&button.isConnected)button.disabled=false}
   function renderProfile(){const u=S.get()||{};layout(`<div class="pf"><div class="av">${safeImage(u.photo)?`<img src="${esc(safeImage(u.photo))}" alt="รูปโปรไฟล์">`:ini(u.name)}</div><div><h1>${esc(u.name||'ลูกค้า')}</h1><p>${esc(u.phone||u.email||'')}</p><span class="acc">บัญชีลูกค้า</span></div></div><div class="pl">${[['map','ที่อยู่จัดส่ง'],['orders','ออเดอร์ของฉัน'],['notifications','การแจ้งเตือน'],['favorites','รายการโปรด'],['promotion','โปรโมชั่นจากร้าน'],['support','ติดต่อฝ่ายช่วยเหลือ']].map(([path,label])=>`<button class="pw" onclick="go('${path}')"><b>${label}</b></button>`).join('')}<button class="pw" onclick="QGCustomer.toggleSound(this)"><b>เสียงแจ้งเตือน Rider ถึง</b><span>${localStorage.getItem('qg_customer_sound_'+u.userId)==='on'?'เปิด':'ปิด'}</span></button><p class="sm">ชำระเงินสดเมื่อรับสินค้า</p><button class="pw" onclick="S.clear();cart=readCart();QGCustomer.syncNotifications();go('login')"><b>ออกจากระบบ</b></button></div>`,'')}
-  async function renderOrder(id,ticket=routeVersion){const key=actor(),u=S.get();const rows=await db('orders?select=*&id=eq.'+encodeURIComponent(id)+'&customer_id=eq.'+encodeURIComponent(u.userId)+'&limit=1'),o=rows[0];if(!owned(key,ticket))return;if(!o)return layout('<p class="empty">ไม่พบออเดอร์</p>','orders');const [items,ctx]=await Promise.all([loadOrderItems(id),context(id)]);if(!owned(key,ticket))return;const flow=['pending','searching_rider','rider_assigned','preparing','ready','picked_up','in_progress','completed'],idx=flow.indexOf(o.status),closed=['completed','cancelled'].includes(o.status),r=ctx.rider,chatOpen=chatAvailable(o);
-    layout(`<div class="pt"><button class="back" onclick="go('orders')">${ico('back')}</button><h1>#${esc(customerOrderNumber(o))}</h1></div><section class="card"><b>${esc(STATUS_LABEL[o.status]||o.status)}</b><p class="sm">${esc(date(o.created_at))}</p>${o.status!=='cancelled'?`<div class="statusflow">${flow.map((x,i)=>`<span class="${i<=idx?'on':''}">${esc(STATUS_LABEL[x]||x)}</span>`).join('')}</div>`:''}<p>${esc(o.delivery_address||'')}</p><b>${esc(ctx.shop?.name||'ร้านค้า')}</b> ${linkPhone(ctx.shop?.phone,'โทรหาร้าน')}<p>${esc(note(o.note))}</p>${!o.rider_id&&['pending','searching_rider'].includes(o.status)?`<button class="lk" onclick="QGCustomer.cancel('${esc(id)}')">ยกเลิกคำสั่งซื้อ</button>`:''}<button class="lk" onclick="go('support/${esc(id)}')">แจ้งปัญหาออเดอร์นี้</button></section>${r?`<section class="card"><div class="sr"><div>${safeImage(r.photo)?`<img class="rider-photo" src="${esc(safeImage(r.photo))}" alt="รูป Rider">`:''}<b>${esc(r.name||'Rider')}</b><p class="sm">${esc(r.vehicle_type||'')} ${esc(r.vehicle_plate||'')}</p></div>${!closed?linkPhone(r.phone,'โทรหา Rider'):''}</div>${chatOpen?`<button class="lk" onclick="go('order-chat/${esc(id)}')">${o.status==='completed'?`แชทกับ Rider · เหลือ ${chatMinutesLeft(o)} นาที`:'แชทกับ Rider'}</button>`:o.status==='completed'?'<p class="sm">แชทปิดแล้วหลังจบงาน 30 นาที</p>':''}</section>`:''}<section class="card"><b>ติดตามการจัดส่ง</b><div id="customer-tracking-map" class="mapbox"></div><p class="sm" id="tracking-location-status">กำลังโหลดตำแหน่งล่าสุด</p></section><section class="card"><b>รายการสินค้า</b>${items.map(i=>`<div class="sr"><span>${esc(i.item_name)} × ${i.quantity}</span><span>${baht(i.total_price)}</span></div>`).join('')}<div class="sr"><span>ค่าจัดส่ง</span><span>${baht(o.delivery_fee)}</span></div>${Number(o.bundle_customer_savings)>0?`<p>ประหยัดจากงานพ่วง ${baht(o.bundle_customer_savings)}</p>`:''}<div class="tot"><span>รวม</span><span>${baht(o.total_amount)}</span></div></section>${o.status==='completed'?'<section class="card" id="customer-review">กำลังโหลดรีวิว…</section>':''}`,'orders');
-    orderSnapshot={id,actor:key,version:orderVersion(o)};track(o,ctx,ticket,key);if(o.status==='completed')await reviewForm(o,ticket,key);
+  async function customerDeliveryPin(order){
+    if(!order||!['picked_up','in_progress'].includes(order.status))return null;
+    try{
+      const value=await db('rpc/qg_customer_delivery_pin',{method:'POST',body:{p_order_id:order.id}});
+      const pin=String(value||'').replace(/\D/g,'').slice(0,6);
+      return /^\d{6}$/.test(pin)?pin:null;
+    }catch(e){
+      console.warn('customer delivery PIN unavailable',e);
+      return null;
+    }
+  }
+  async function renderOrder(id,ticket=routeVersion){
+    const key=actor(),u=S.get();
+    const rows=await db('orders?select=*&id=eq.'+encodeURIComponent(id)+'&customer_id=eq.'+encodeURIComponent(u.userId)+'&limit=1'),o=rows[0];
+    if(!owned(key,ticket))return;
+    if(!o)return layout('<p class="empty">ไม่พบออเดอร์</p>','orders');
+
+    const [items,ctx,pin]=await Promise.all([loadOrderItems(id),context(id),customerDeliveryPin(o)]);
+    if(!owned(key,ticket))return;
+
+    const flow=['pending','searching_rider','rider_assigned','preparing','ready','picked_up','in_progress','completed'],
+      idx=flow.indexOf(o.status),
+      closed=['completed','cancelled'].includes(o.status),
+      r=ctx.rider,
+      chatOpen=chatAvailable(o),
+      pinHTML=pin?`<section class="card qg-handoff-pin">
+        <div class="qg-handoff-pin-head"><div><small>รหัสส่งมอบ 6 หลัก</small><b>แจ้ง Rider เมื่อได้รับสินค้าจริง</b></div><span>สำคัญ</span></div>
+        <div class="qg-handoff-pin-digits">${pin.split('').map(x=>`<i>${esc(x)}</i>`).join('')}</div>
+        <p class="sm">อย่าแจ้งรหัสก่อนรับสินค้า Rider ต้องใช้รหัสนี้พร้อมรูปยืนยันการส่งเพื่อปิดงาน</p>
+      </section>`:'';
+
+    layout(`<div class="pt"><button class="back" onclick="go('orders')">${ico('back')}</button><h1>#${esc(customerOrderNumber(o))}</h1></div>
+      <section class="card">
+        <b>${esc(STATUS_LABEL[o.status]||o.status)}</b>
+        <p class="sm">${esc(date(o.created_at))}</p>
+        ${o.status!=='cancelled'?`<div class="statusflow">${flow.map((x,i)=>`<span class="${i<=idx?'on':''}">${esc(STATUS_LABEL[x]||x)}</span>`).join('')}</div>`:''}
+        <p>${esc(o.delivery_address||'')}</p>
+        <b>${esc(ctx.shop?.name||'ร้านค้า')}</b> ${linkPhone(ctx.shop?.phone,'โทรหาร้าน')}
+        <p>${esc(note(o.note))}</p>
+        ${!o.rider_id&&['pending','searching_rider'].includes(o.status)?`<button class="lk" onclick="QGCustomer.cancel('${esc(id)}')">ยกเลิกคำสั่งซื้อ</button>`:''}
+        <button class="lk" onclick="go('support/${esc(id)}')">แจ้งปัญหาออเดอร์นี้</button>
+      </section>
+      ${r?`<section class="card"><div class="sr"><div>${safeImage(r.photo)?`<img class="rider-photo" src="${esc(safeImage(r.photo))}" alt="รูป Rider">`:''}<b>${esc(r.name||'Rider')}</b><p class="sm">${esc(r.vehicle_type||'')} ${esc(r.vehicle_plate||'')}</p></div>${!closed?linkPhone(r.phone,'โทรหา Rider'):''}</div>${chatOpen?`<button class="lk" onclick="go('order-chat/${esc(id)}')">${o.status==='completed'?`แชทกับ Rider · เหลือ ${chatMinutesLeft(o)} นาที`:'แชทกับ Rider'}</button>`:o.status==='completed'?'<p class="sm">แชทปิดแล้วหลังจบงาน 30 นาที</p>':''}</section>`:''}
+      ${pinHTML}
+      <section class="card"><b>ติดตามการจัดส่ง</b><div id="customer-tracking-map" class="mapbox"></div><p class="sm" id="tracking-location-status">กำลังโหลดตำแหน่งล่าสุด</p></section>
+      <section class="card"><b>รายการสินค้า</b>${items.map(i=>`<div class="sr"><span>${esc(i.item_name)} × ${i.quantity}</span><span>${baht(i.total_price)}</span></div>`).join('')}<div class="sr"><span>ค่าจัดส่ง</span><span>${baht(o.delivery_fee)}</span></div>${Number(o.bundle_customer_savings)>0?`<p>ประหยัดจากงานพ่วง ${baht(o.bundle_customer_savings)}</p>`:''}<div class="tot"><span>รวม</span><span>${baht(o.total_amount)}</span></div></section>
+      ${o.status==='completed'?'<section class="card" id="customer-review">กำลังโหลดรีวิว…</section>':''}`,'orders');
+
+    orderSnapshot={id,actor:key,version:orderVersion(o)};
+    track(o,ctx,ticket,key);
+    if(o.status==='completed')await reviewForm(o,ticket,key);
   }
   function track(o,ctx,ticket,key){const host=$('customer-tracking-map');if(!host)return;if(typeof longdo==='undefined'){const status=$('tracking-location-status');if(status)status.textContent='ยังโหลดแผนที่ไม่ได้ กรุณาลองเปิดออเดอร์ใหม่';return;}const map=new longdo.Map({placeholder:host,language:'th',zoom:14});map.Ui.LayerSelector.visible(false);let marker=null;const points=[];function point(lat,lon,title,color,record=true){if(!qgIsValidCoordinate(lat,lon,true))return null;const loc={lat:Number(lat),lon:Number(lon)};const m=new longdo.Marker(loc,{title,icon:{html:`<div style="width:20px;height:20px;border-radius:50%;background:${color};border:3px solid white"></div>`}});map.Overlays.add(m);if(record)points.push(loc);return m}point(o.pickup_latitude,o.pickup_longitude,'ร้านค้า','#087556');point(o.delivery_latitude,o.delivery_longitude,'จุดส่ง','#e6002d');if(points[0])map.location(points[0],true);
     const draw=r=>{if(!owned(key,ticket)||!host.isConnected)return;const live=r&&qgIsValidCoordinate(r.latitude,r.longitude,true)&&!['completed','cancelled'].includes(o.status);if(marker){map.Overlays.remove(marker);marker=null}if(live){marker=point(r.latitude,r.longitude,'Rider · ตำแหน่งล่าสุด','#1677ff',false);$('tracking-location-status').textContent='ตำแหน่งล่าสุด · '+date(r.updated_at)+(Date.now()-new Date(r.updated_at).getTime()>120000?' · ยังไม่ได้อัปเดตใหม่':'')}else $('tracking-location-status').textContent=['completed','cancelled'].includes(o.status)?'ออเดอร์จบแล้ว':'รอข้อมูลตำแหน่งจริงจาก Rider'};draw(ctx.rider);cleanups.push(()=>{map.Overlays.clear();map.pause(true);host.replaceChildren()});if(!['completed','cancelled'].includes(o.status))poll(async()=>{const next=await context(o.id);draw(next.rider)},7000);
