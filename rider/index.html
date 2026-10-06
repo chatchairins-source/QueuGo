@@ -696,10 +696,10 @@ function renderPending(u,msg){
         <span class="qg-status-badge">${esc(msg||'รออนุมัติ')}</span>
         <h1>สวัสดี ${esc(u?.name||'ไรเดอร์')}</h1>
         <p>ใบสมัครของคุณถูกบันทึกแล้ว เมื่อ Admin อนุมัติ คุณจะสามารถเปิดรับงานได้ทันที</p>
-        <button class="qg-btn qg-btn-secondary" id="pd-logout" type="button">ออกจากระบบ</button>
+        <button class="qg-btn qg-btn-secondary" id="pd-delete" type="button">ลบบัญชี QueueGo</button><button class="qg-btn qg-btn-secondary" id="pd-logout" type="button">ออกจากระบบ</button>
       </section>
     </main>`;
-  document.getElementById('pd-logout').onclick=doLogout;
+  document.getElementById('pd-delete').onclick=e=>qgDeleteRiderAccount(e.currentTarget);document.getElementById('pd-logout').onclick=doLogout;
 }
 async function doLogout(){
   const session=readSession();
@@ -1760,6 +1760,30 @@ async function qgOpenOrderDetails(o){
   }
 }
 
+
+async function qgDeleteRiderAccount(button){
+  if(!S.session?.authUserId)return forceSessionLogout('กรุณาเข้าสู่ระบบใหม่');
+  if(!confirm('ลบบัญชี Rider QueueGo ถาวร? ระบบจะลบข้อมูลส่วนบุคคลและไฟล์ของบัญชี โดยเก็บเฉพาะประวัติธุรกรรมที่จำเป็นแบบไม่ระบุตัวบุคคล'))return;
+  const before=button?.textContent||'ลบบัญชี QueueGo';
+  if(button){button.disabled=true;button.textContent='กำลังลบบัญชี…'}
+  try{
+    const accessToken=await getAccessToken();if(!accessToken)throw new Error('กรุณาเข้าสู่ระบบใหม่');
+    const response=await fetch(SB.URL+'/functions/v1/account-delete',{
+      method:'POST',
+      headers:{apikey:SB.KEY,Authorization:'Bearer '+accessToken,'Content-Type':'application/json'},
+      body:JSON.stringify({confirm:'DELETE_ACCOUNT'}),
+      signal:AbortSignal.timeout(25000)
+    });
+    const data=await response.json().catch(()=>({}));
+    if(response.status===409)throw new Error('ยังมีงานหรือข้อเสนองานที่กำลังดำเนินการ กรุณาปิดงานหรือรอข้อเสนอหมดเวลาก่อนลบบัญชี');
+    if(!response.ok||!data.ok)throw new Error('ลบบัญชีไม่สำเร็จ กรุณาลองใหม่หรือติดต่อฝ่ายช่วยเหลือ');
+    forceSessionLogout('ลบบัญชีเรียบร้อยแล้ว');
+  }catch(error){
+    toast(error?.message||'ลบบัญชีไม่สำเร็จ');
+    if(button&&button.isConnected){button.disabled=false;button.textContent=before}
+  }
+}
+
 function qgOpenAccountSettings(){
   document.getElementById('qg-account-settings')?.remove();
   if(!S.user||!S.riderProfile){toast('ยังโหลดข้อมูลบัญชีไม่ครบ');return}
@@ -1819,12 +1843,16 @@ function renderProfilePanel(){
       <button class="qg-setting" id="qg-laundry-mode" data-laundry-mutation="mode"><span class="qg-setting-icon">${QTICON.jobs}</span><div><b>รับงานฝากซัก</b><small>งานรับ-ส่งผ้าจากร้านที่เข้าร่วม</small></div><em>${S.laundryMode?'เปิด':'ปิด'}</em></button>
       <button class="qg-setting" id="qg-rider-support-link"><span class="qg-setting-icon">${QTICON.chat}</span><div><b>แจ้งปัญหา / ติดตามเรื่อง</b><small>ติดต่อฝ่ายดูแล QueueGo</small></div><strong>›</strong></button>
       <button class="qg-setting" id="qg-account-settings-link"><span class="qg-setting-icon">${QTICON.user}</span><div><b>ตั้งค่าบัญชี</b><small>ชื่อ เบอร์โทร และข้อมูลบัญชี</small></div><strong>›</strong></button>
+      <button class="qg-setting" id="qg-privacy"><span class="qg-setting-icon">${QTICON.user}</span><div><b>นโยบายความเป็นส่วนตัว</b><small>ดูการเก็บ ใช้ และลบข้อมูลของ QueueGo</small></div><strong>›</strong></button>
+      <button class="qg-setting danger" id="qg-delete-account"><span class="qg-setting-icon">${QTICON.back}</span><div><b>ลบบัญชี QueueGo</b><small>ลบบัญชีและข้อมูลส่วนบุคคลอย่างถาวร</small></div><strong>›</strong></button>
       <button class="qg-setting danger" id="qg-logout"><span class="qg-setting-icon">${QTICON.back}</span><div><b>ออกจากระบบ</b><small>ออกจากบัญชีในอุปกรณ์นี้</small></div><strong>›</strong></button>
     </section>`;
   document.getElementById('qg-status-setting').onclick=toggleOnline;
   document.getElementById('qg-laundry-mode').onclick=()=>qgSetLaundryMode(!S.laundryMode);
   document.getElementById('qg-rider-support-link').onclick=()=>qgOpenTicketPanel();
   document.getElementById('qg-account-settings-link').onclick=qgOpenAccountSettings;
+  document.getElementById('qg-privacy').onclick=()=>{location.href='../privacy/'};
+  document.getElementById('qg-delete-account').onclick=e=>qgDeleteRiderAccount(e.currentTarget);
   document.getElementById('qg-logout').onclick=doLogout;
   const host=p.querySelector('.qg-settings');
   (S.laundryInvites||[]).forEach(inv=>{
