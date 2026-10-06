@@ -4,12 +4,9 @@ BEGIN;
 ALTER TABLE public.order_items
   ADD COLUMN IF NOT EXISTS item_image text;
 
-UPDATE public.order_items oi
-SET item_image=p.image
-FROM public.products p
-WHERE oi.product_id=p.id
-  AND oi.item_image IS NULL
-  AND nullif(trim(coalesce(p.image,'')),'') IS NOT NULL;
+-- Do not rewrite historical order rows: future inserts snapshot the image at order time.
+-- This avoids mutating locked cash/POS history and avoids pretending an old product image
+-- was necessarily the image shown when that order was created.
 
 CREATE OR REPLACE FUNCTION public.qg_snapshot_order_item_image()
 RETURNS trigger
