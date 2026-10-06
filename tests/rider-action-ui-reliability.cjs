@@ -11,6 +11,7 @@ ok(rider.includes("qgRiderRefreshAfterCommit('rider order action refresh failed'
 ok(rider.includes("qgRiderRefreshAfterCommit('rider market delivery refresh failed')"),'market delivery refresh must be isolated after commit');
 ok(rider.includes("qgRiderRefreshAfterCommit('rider market completion refresh failed')"),'market completion refresh must be isolated after commit');
 ok(rider.includes("function qgOpenOrderDetails(o)"),'active-order item details must use the current bottom-sheet renderer');
+ok(rider.includes("const QG_ARRIVAL_GUARD_KM = 0.25;"),'arrival action must have a declared GPS threshold and never throw ReferenceError');
 ok(rider.includes("id=\"details-"),'active-order card must expose the current item-details control');
 ok(!rider.includes("qgOpenOrderChecklist("),'legacy full-screen order checklist must be removed');
 ok(!rider.includes("qg-ordercheck-page"),'legacy ordercheck page markup must be removed');
