@@ -1170,6 +1170,22 @@ function drawActiveRoute(){
 
 
 
+const QG_POSTJOB_CHAT_MS=30*60*1000;
+function riderChatDeadline(o,deliveredAt){
+  if(!o||o.status!=='completed')return null;
+  const at=Date.parse(deliveredAt||o.completed_at||o.updated_at||'');
+  return Number.isFinite(at)?at+QG_POSTJOB_CHAT_MS:0;
+}
+function riderChatOpen(o,deliveredAt){
+  if(!o||o.status==='cancelled')return false;
+  const deadline=riderChatDeadline(o,deliveredAt);
+  return o.status!=='completed'||(Number.isFinite(deadline)&&deadline>Date.now());
+}
+function riderChatMinutesLeft(o,deliveredAt){
+  const deadline=riderChatDeadline(o,deliveredAt);
+  return deadline?Math.max(0,Math.ceil((deadline-Date.now())/60000)):0;
+}
+
 async function loadChatMessages(orderId,token){
   token=token||await getAccessToken();
   const rows=await sbTable('order_chat_messages?select=*&order_id=eq.'+encodeURIComponent(orderId)+'&order=created_at.asc',{token});
@@ -1214,14 +1230,7 @@ async function sendRiderChat(o,override){
   const buttons=[...screen.querySelectorAll('button[type="submit"],.quick-chip')];buttons.forEach(b=>b.disabled=true);
   try{
     const token=await getAccessToken();if(!current())return;
-    if(o.status==='completed'){
-      const [deliveries,rows]=await Promise.all([
-        sbTable('deliveries?select=delivered_at&order_id=eq.'+encodeURIComponent(o.id)+'&limit=1',{token}),
-        loadChatMessages(o.id,token)
-      ]);if(!current())return;
-      const at=deliveries?.[0]?.delivered_at;
-      if(!at||!rows.some(m=>String(m.sender_id)===String(o.customer_id)&&new Date(m.created_at)>new Date(at))){toast('หลังจบงาน รอลูกค้าส่งข้อความมาก่อน');return}
-    }
+    if(!riderChatOpen(o)){toast('ครบ 30 นาทีหลังจบงาน แชทปิดแล้ว');if(current())closeChat();return}
     await sbTable('order_chat_messages',{method:'POST',token,body:{order_id:o.id,sender_id:userId,message}});
     if(!current())return;
     if(input&&!override&&input.value.trim()===message)input.value='';
@@ -1776,18 +1785,22 @@ function renderProfilePanel(){
 function closeChat(){
   const returnTab=S.chatReturnTab||'home';
   S.chatOrder=null;
-  document.getElementById('chat-screen')?.remove();
+  const oldScreen=document.getElementById('chat-screen');
+  if(oldScreen?._expiryTimer)clearTimeout(oldScreen._expiryTimer);
+  oldScreen?.remove();
   const stage=document.querySelector('.stage');if(stage)stage.style.display='block';
   switchTab(returnTab);
 }
 async function openChat(o){
-  document.getElementById('chat-screen')?.remove();
+  if(!riderChatOpen(o)){toast('แชทปิดแล้ว ระบบให้ติดต่อกันได้ 30 นาทีหลังจบงาน');return}
+  const previous=document.getElementById('chat-screen');if(previous?._expiryTimer)clearTimeout(previous._expiryTimer);previous?.remove();
   S.chatReturnTab=S.activeTab||'home';
   S.chatOrder=o;
   const stage=document.querySelector('.stage');if(stage)stage.style.display='none';
   const screen=document.createElement('section');screen.id='chat-screen';screen.className='qg-chat-page show';document.getElementById('app').appendChild(screen);
   const cust=o._customer||{};
   screen.innerHTML=`<header class="qg-chat-head"><button class="qg-icon-btn" id="chat-back">${QTICON.back}</button><div><b>${esc(cust.name||'ลูกค้า')}</b><small>#${esc(qgShortOrder(o))}</small></div><span></span></header>
+    ${o.status==='completed'?'<div style="padding:7px 12px;text-align:center;font-size:10px;color:#8a8387;background:#fff8f9">หลังจบงานแชทจะปิดและถูกลบอัตโนมัติ · เหลือประมาณ '+riderChatMinutesLeft(o)+' นาที</div>':''}
     <div class="qg-chat-box" id="chat-box"><div class="qg-loading">กำลังโหลดข้อความ...</div></div>
     ${quickMessagesHTML()}
     <form class="qg-chat-compose" id="chat-form">
@@ -1805,6 +1818,8 @@ async function openChat(o){
     try{const data=await compressRiderImage(file,1000,.7);await sendRiderChat(o,'__IMG__'+data)}catch(_){toast('ส่งรูปไม่สำเร็จ')}
   };
   bindQuickMessages(o);
+  const deadline=riderChatDeadline(o);
+  if(deadline)screen._expiryTimer=setTimeout(()=>{if(S.chatOrder?.id===o.id&&screen.isConnected){toast('ครบ 30 นาทีหลังจบงาน แชทถูกปิดแล้ว');closeChat()}},Math.max(250,Math.min(2147483000,deadline-Date.now()+250)));
   await refreshRiderChat();
   qgUnread=0;qgUpdateBadge();
 }
@@ -1823,6 +1838,7 @@ function refreshRiderChat(background=false){
 async function readRiderChat(){
   const order=S.chatOrder||S.activeOrder;if(!order||!S.user)return;
   const session=S.session,userId=S.user.id,chat=!!S.chatOrder,screen=document.getElementById('chat-screen');
+  if(chat&&!riderChatOpen(order)){toast('ครบ 30 นาทีหลังจบงาน แชทปิดแล้ว');closeChat();return}
   const current=()=>riderSessionMatches(session)&&S.user?.id===userId&&(chat?S.chatOrder?.id===order.id&&screen?.isConnected:!S.chatOrder&&S.activeOrder?.id===order.id);
   try{
     const token=await getAccessToken();if(!current())return;
@@ -1945,7 +1961,7 @@ window.advanceOrder=async function(o){
      const byOrder=new Map(data.orders.filter(o=>o.status==='completed').map(o=>[String(o.id),o]));
      const delivered=new Map(data.deliveries.map(d=>[String(d.order_id),Date.parse(d.delivered_at)]));
      const seen=Number(localStorage.getItem(seenKey())||0);
-     completedUnread=data.messages.filter(m=>{const o=byOrder.get(String(m.order_id)),time=Date.parse(m.created_at),at=delivered.get(String(m.order_id));return o&&String(m.sender_id)===String(o.customer_id)&&Number.isFinite(at)&&time>at&&time>seen}).length;
+     completedUnread=data.messages.filter(m=>{const o=byOrder.get(String(m.order_id)),time=Date.parse(m.created_at),at=delivered.get(String(m.order_id));return o&&riderChatOpen(o,Number.isFinite(at)?new Date(at).toISOString():null)&&String(m.sender_id)===String(o.customer_id)&&Number.isFinite(at)&&time>at&&time<at+QG_POSTJOB_CHAT_MS&&time>seen}).length;
      if(S.activeTab==='chat')markInboxSeen();else qgUpdateBadge();
    }catch(e){console.warn('Rider inbox refresh unavailable')}
  }
@@ -1960,7 +1976,7 @@ window.advanceOrder=async function(o){
    try{
      const data=await readInbox();if(!data||!data.current()||!current())return;
      const delivered=new Map(data.deliveries.map(x=>[String(x.order_id),x.delivered_at]));
-     const rows=data.orders.map(o=>{const messages=data.messages.filter(m=>String(m.order_id)===String(o.id)),at=delivered.get(String(o.id));return{o,last:messages[0],initiated:o.status!=='completed'||Boolean(at&&messages.some(m=>String(m.sender_id)===String(o.customer_id)&&new Date(m.created_at)>new Date(at)))}}).filter(x=>x.initiated).sort((a,b)=>new Date(b.last?.created_at||b.o.updated_at)-new Date(a.last?.created_at||a.o.updated_at));
+     const rows=data.orders.map(o=>{const messages=data.messages.filter(m=>String(m.order_id)===String(o.id)),at=delivered.get(String(o.id));return{o,last:messages[0],available:riderChatOpen(o,at)}}).filter(x=>x.available).sort((a,b)=>new Date(b.last?.created_at||b.o.updated_at)-new Date(a.last?.created_at||a.o.updated_at));
      box.innerHTML='<h2>ข้อความ</h2>'+(rows.length?rows.map(({o,last})=>'<button class="qg-inbox-item" type="button" onclick="qgOpenInboxChat(\''+esc(o.id)+'\')"><strong>ออเดอร์ '+esc(qgShortOrder(o))+'</strong><small>'+esc(last?(String(last.message).startsWith('__IMG__')?'รูปภาพ':String(last.message).slice(0,85)):'เปิดแชตระหว่างจัดส่ง')+'</small></button>').join(''):'<div class="qg-inbox-empty">ยังไม่มีการสนทนา</div>');
    }catch(e){if(current()){box.innerHTML='<h2>ข้อความ</h2><div class="qg-inbox-empty">โหลดข้อความไม่สำเร็จ <button type="button">ลองใหม่</button></div>';box.querySelector('button').onclick=()=>qgRenderMessageInbox()}}
  };
