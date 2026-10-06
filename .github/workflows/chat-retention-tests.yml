@@ -1,0 +1,33 @@
+name: QueueGo Chat Retention Tests
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'customer-features.js'
+      - 'customer-features.css'
+      - 'rider/index.html'
+      - 'tests/customer-features.cjs'
+      - 'tests/rider-chat.cjs'
+      - 'supabase/migrations/*chat*'
+      - '.github/workflows/chat-retention-tests.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  chat-retention:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Customer notification and chat UI
+        run: node tests/customer-features.cjs
+      - name: Rider 30-minute chat behavior
+        run: node tests/rider-chat.cjs
