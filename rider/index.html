@@ -960,7 +960,7 @@ async function readRiderSnapshot(){
     if(!current())return;if(!activeOrder){S.bundleOrders=[];S.bundleCandidates=[]}S.activeOrder=activeOrder;S.openJobs=openJobs;
     window.qtCheckNewJobs?.(previousOpenJobIds,openJobs.map(x=>x.order));if(S.activeTab==='home')renderSheet();placeJobMarkers();
     const hist=await sbTable('orders?select=*&order_type=eq.shopping&rider_id=eq.'+encodeURIComponent(profileId)+'&status=eq.completed&order=updated_at.desc&limit=200',{token});if(!current())return;
-    S.history=Array.isArray(hist)?hist:[];if(S.activeTab==='jobs')renderHistoryPanel();
+    S.history=Array.isArray(hist)?hist:[];
     try{const k=qgRiderHistoryKey(),history=S.history.slice(0,100);if(k){const json=JSON.stringify({at:Date.now(),history});if(json.length<800000)localStorage.setItem(k,json)}}catch(e){}
     if(S.activeTab==='chat'&&!S.chatOrder)qgRenderMessageInbox();qgWatchCompletedChat();
   }catch(e){if(!current())return;console.error('Rider job refresh failed');const now=Date.now();if(!refreshData.lastErrorAt||now-refreshData.lastErrorAt>30000){refreshData.lastErrorAt=now;toast('โหลดงานไม่สำเร็จ กรุณาตรวจอินเทอร์เน็ตแล้วลองใหม่')}}
@@ -1266,7 +1266,6 @@ function renderStage(){
     <div class="qg-route-badge" id="route-badge"><div class="qg-route-icon">${QTICON.loc}</div><div><strong id="route-text">กำลังคำนวณเส้นทาง</strong><small>เส้นทางอัปเดตตามตำแหน่งของคุณ</small></div></div>
     <div class="qg-map-tools"><button class="qg-map-button" id="recenter" aria-label="กลับไปยังตำแหน่งปัจจุบัน">${QTICON.loc}</button></div>
     <section class="qg-sheet" id="sheet" data-level="1"></section>
-    <section class="qg-panel" id="panel-jobs"></section>
     <section class="qg-panel" id="panel-earn"></section>
     <section class="qg-panel" id="panel-profile"></section>
     ${qgNavHTML()}
@@ -1287,16 +1286,16 @@ function switchTab(tab){
   S.activeTab=tab;
   document.querySelectorAll('.qg-nav-item').forEach(b=>b.classList.toggle('active',b.dataset.tab===tab));
   document.querySelectorAll('.qg-panel').forEach(p=>p.classList.remove('show'));
-  const map=document.getElementById('map'),sheet=document.getElementById('sheet'),fabs=document.querySelector('.qg-map-tools'),route=document.getElementById('route-badge');
+  const map=document.getElementById('map'),sheet=document.getElementById('sheet'),fabs=document.querySelector('.qg-map-tools'),route=document.getElementById('route-badge'),top=document.querySelector('.qg-topbar');
   const home=tab==='home';
   if(map)map.style.display=home?'':'none';
   if(sheet)sheet.style.display=home?'':'none';
   if(fabs)fabs.style.display=home?'':'none';
+  if(top)top.style.display=home?'':'none';
   if(route&&!home)route.style.display='none';
   if(tab==='chat'){qgMarkInboxSeen();qgRenderMessageInbox();return}
-  if(tab==='jobs'){document.getElementById('panel-jobs')?.classList.add('show');renderHistoryPanel()}
-  if(tab==='earn'){document.getElementById('panel-earn')?.classList.add('show');qgRenderEarnings()}
-  if(tab==='profile'){document.getElementById('panel-profile')?.classList.add('show');renderProfilePanel()}
+  if(tab==='earn'){document.getElementById('panel-earn')?.classList.add('show');qgRenderEarnings();return}
+  if(tab==='profile'){document.getElementById('panel-profile')?.classList.add('show');renderProfilePanel();return}
   if(home&&S.map)requestAnimationFrame(()=>{try{S.map.resize?.()}catch(_){}})
 }
 function updateStatusUI(){
@@ -1679,12 +1678,6 @@ async function qgOpenOrderChecklist(o){
     page.querySelector('main').innerHTML=`<div class="qg-error-state"><b>โหลดรายการไม่สำเร็จ</b><span>${esc(err.message||String(err))}</span><button type="button" class="qg-btn qg-btn-secondary" id="qg-ordercheck-close">กลับ</button></div>`;
     page.querySelector('#qg-ordercheck-close').onclick=close;
   }
-}
-function renderHistoryPanel(){
-  const p=document.getElementById('panel-jobs');if(!p)return;
-  const rows=S.history||[];
-  p.innerHTML=`<div class="qg-panel-head"><button class="qg-icon-btn" onclick="switchTab('home')">${QTICON.back}</button><h1>ประวัติงาน</h1><span></span></div>
-    <div class="qg-history-list">${rows.length?rows.slice(0,100).map(o=>`<article><div><b>#${esc(qgShortOrder(o))}</b><small>${esc(o._shop?.shop_name||o.pickup_address||'งานจัดส่ง')}</small></div><div><span>${esc(STEP_LABEL[statusFromRow(o)]||statusFromRow(o))}</span><b>฿${Number(riderEarning(o)||0).toLocaleString('th-TH')}</b></div></article>`).join(''):'<div class="qg-empty">ยังไม่มีประวัติงาน</div>'}</div>`;
 }
 function renderProfilePanel(){
   const p=document.getElementById('panel-profile');if(!p)return;
