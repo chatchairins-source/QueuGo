@@ -91,8 +91,9 @@ document.getElementById('confirm').onclick=async()=>{
     location.href='../#orders';
   }catch(e){
     const msg=String(e?.message||e);
-    if(/disabled|unavailable|invalid|active customer|Rider unavailable/i.test(msg))try{localStorage.removeItem(key)}catch(_){}
-    alert('ส่งคำขอไม่สำเร็จ: '+msg.slice(0,140));
+    if(/disabled|unavailable|invalid|active customer|Rider unavailable|OUTSIDE_SERVICE_AREA|DELIVERY_DISTANCE_EXCEEDED/i.test(msg))try{localStorage.removeItem(key)}catch(_){}
+    const areaMessage=/OUTSIDE_SERVICE_AREA/.test(msg)?'ตำแหน่งรับผ้าอยู่นอกพื้นที่ให้บริการ QueueGo Pilot':/DELIVERY_DISTANCE_EXCEEDED/.test(msg)?'ร้านซักและจุดรับผ้าอยู่ห่างเกินขอบเขตที่ QueueGo Pilot ให้บริการ':'';
+    alert(areaMessage||('ส่งคำขอไม่สำเร็จ: '+msg.slice(0,140)));
   }finally{sending=false;if(btn.isConnected){btn.disabled=false;btn.textContent='ส่งคำขอฝากซัก'}}
 };
 boot();
