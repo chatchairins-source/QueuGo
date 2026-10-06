@@ -5,6 +5,7 @@ on:
     branches:
       - queuego-market-bundle-laundry-rc
       - main
+      - pilot-gate-account-deletion-20261006
   workflow_dispatch:
 
 permissions:
