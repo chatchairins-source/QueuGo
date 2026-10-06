@@ -30,7 +30,31 @@ const QGCustomer=(()=>{
   async function openNotification(id,reference,wasUnread=false){const key=actor();try{await db('notifications?id=eq.'+encodeURIComponent(id)+'&user_id=eq.'+encodeURIComponent(S.get().userId),{method:'PATCH',body:{is_read:true}})}catch(e){if(actor()===key)toast('เปิดแจ้งเตือนไม่สำเร็จ');return}if(actor()!==key)return;if(wasUnread){unread=Math.max(0,unread-1);badge()}try{await notificationsTick()}catch(e){console.warn('customer notification post-read refresh failed',e)}try{if(reference){const rows=await db('orders?select=id&customer_id=eq.'+encodeURIComponent(S.get().userId)+'&id=eq.'+encodeURIComponent(reference));if(actor()!==key)return;if(rows[0])return go('order/'+reference)}route()}catch(e){console.warn('customer notification post-read navigation failed',e);try{route()}catch(_){}}}
   async function renderNotifications(_,ticket=routeVersion){const key=actor(),u=S.get(),rows=await db('notifications?select=id,title,message,type,reference_id,is_read,created_at&user_id=eq.'+encodeURIComponent(u.userId)+'&order=created_at.desc&limit=100');if(!owned(key,ticket))return;const pending=rows.filter(n=>!n.is_read);if(pending.length){try{await db('notifications?user_id=eq.'+encodeURIComponent(u.userId)+'&is_read=eq.false',{method:'PATCH',body:{is_read:true}});if(!owned(key,ticket))return;rows.forEach(n=>n.is_read=true);unread=0;badge()}catch(e){unread=pending.length;badge()}}layout(`<div class="pt"><button class="back" onclick="go('home')">${ico('back')}</button><h1>แจ้งเตือน</h1></div><button class="lk" onclick="QGCustomer.markRead(this)">อ่านทั้งหมด</button>${rows.length?rows.map(n=>`<button class="notification card ${n.is_read?'':'unread'}" onclick="QGCustomer.openNotification('${esc(n.id)}','${esc(n.reference_id||'')}',${n.is_read?'false':'true'})"><b>${esc(n.title)}</b><p>${esc(n.message)}</p><small>${esc(date(n.created_at))}</small></button>`).join(''):'<p class="empty">ยังไม่มีการแจ้งเตือน</p>'}`,'');badge();}
   async function markRead(button){button.disabled=true;const key=actor();try{await db('notifications?user_id=eq.'+encodeURIComponent(S.get().userId)+'&is_read=eq.false',{method:'PATCH',body:{is_read:true}})}catch(e){if(actor()===key)toast('บันทึกไม่สำเร็จ');if(actor()===key&&button.isConnected)button.disabled=false;return}if(actor()===key){unread=0;badge();knownNotifications=null;try{route()}catch(e){console.warn('customer notifications post-read refresh failed',e)}}if(actor()===key&&button.isConnected)button.disabled=false}
-  function renderProfile(){const u=S.get()||{};layout(`<div class="pf"><div class="av">${safeImage(u.photo)?`<img src="${esc(safeImage(u.photo))}" alt="รูปโปรไฟล์">`:ini(u.name)}</div><div><h1>${esc(u.name||'ลูกค้า')}</h1><p>${esc(u.phone||u.email||'')}</p><span class="acc">บัญชีลูกค้า</span></div></div><div class="pl">${[['map','ที่อยู่จัดส่ง'],['orders','ออเดอร์ของฉัน'],['notifications','การแจ้งเตือน'],['favorites','รายการโปรด'],['promotion','โปรโมชั่นจากร้าน'],['support','ติดต่อฝ่ายช่วยเหลือ']].map(([path,label])=>`<button class="pw" onclick="go('${path}')"><b>${label}</b></button>`).join('')}<button class="pw" onclick="QGCustomer.toggleSound(this)"><b>เสียงแจ้งเตือน Rider ถึง</b><span>${localStorage.getItem('qg_customer_sound_'+u.userId)==='on'?'เปิด':'ปิด'}</span></button><p class="sm">ชำระเงินสดเมื่อรับสินค้า</p><button class="pw" onclick="S.clear();cart=readCart();QGCustomer.syncNotifications();go('login')"><b>ออกจากระบบ</b></button></div>`,'')}
+  async function deleteAccount(button){
+    const u=S.get();if(!u)return go('login');
+    if(!confirm('ต้องการลบบัญชี QueueGo และข้อมูลส่วนบุคคลถาวรใช่หรือไม่?'))return;
+    if(!confirm('ยืนยันครั้งสุดท้าย: การลบบัญชีไม่สามารถย้อนกลับได้'))return;
+    if(button)button.disabled=true;
+    try{
+      const accessToken=await token(true);
+      await QueueGoAccountDeletion.request(accessToken);
+      const keys=[
+        'qt_cart_'+u.userId,
+        'qg_market_cart_'+u.userId,
+        'qg_pending_checkout_'+u.userId,
+        'qg_pending_market_checkout_'+u.userId,
+        'qg_customer_support_pending_'+u.userId,
+        'qg_customer_sound_'+u.userId
+      ];
+      for(const key of keys)try{localStorage.removeItem(key)}catch(e){}
+      S.clear();cart=readCart();marketCart=readMarketCart();syncNotifications();
+      location.hash='#login';location.reload();
+    }catch(e){
+      toast(e?.message||'ลบบัญชีไม่สำเร็จ');
+      if(button?.isConnected)button.disabled=false;
+    }
+  }
+  function renderProfile(){const u=S.get()||{};layout(`<div class="pf"><div class="av">${safeImage(u.photo)?`<img src="${esc(safeImage(u.photo))}" alt="รูปโปรไฟล์">`:ini(u.name)}</div><div><h1>${esc(u.name||'ลูกค้า')}</h1><p>${esc(u.phone||u.email||'')}</p><span class="acc">บัญชีลูกค้า</span></div></div><div class="pl">${[['map','ที่อยู่จัดส่ง'],['orders','ออเดอร์ของฉัน'],['notifications','การแจ้งเตือน'],['favorites','รายการโปรด'],['promotion','โปรโมชั่นจากร้าน'],['support','ติดต่อฝ่ายช่วยเหลือ']].map(([path,label])=>`<button class="pw" onclick="go('${path}')"><b>${label}</b></button>`).join('')}<button class="pw" onclick="QGCustomer.toggleSound(this)"><b>เสียงแจ้งเตือน Rider ถึง</b><span>${localStorage.getItem('qg_customer_sound_'+u.userId)==='on'?'เปิด':'ปิด'}</span></button><p class="sm">ชำระเงินสดเมื่อรับสินค้า</p><button class="pw" onclick="QueueGoAccountDeletion.openPrivacy()"><b>นโยบายความเป็นส่วนตัว</b></button><button class="pw" onclick="QGCustomer.deleteAccount(this)"><b>ลบบัญชีถาวร</b><span>ลบ Auth และข้อมูลส่วนบุคคล</span></button><button class="pw" onclick="S.clear();cart=readCart();QGCustomer.syncNotifications();go('login')"><b>ออกจากระบบ</b></button></div>`,'')}
   async function renderOrder(id,ticket=routeVersion){
     const key=actor(),u=S.get();
     const rows=await db('orders?select=*&id=eq.'+encodeURIComponent(id)+'&customer_id=eq.'+encodeURIComponent(u.userId)+'&limit=1'),o=rows[0];
@@ -206,7 +230,7 @@ const QGCustomer=(()=>{
   addEventListener('pageshow',syncNotifications);addEventListener('online',syncNotifications);document.addEventListener('visibilitychange',()=>{if(!document.hidden)notificationsTick()});
   function toggleSound(button){const key='qg_customer_sound_'+S.get().userId,enabled=localStorage.getItem(key)!=='on';localStorage.setItem(key,enabled?'on':'off');button.querySelector('span').textContent=enabled?'เปิด':'ปิด';if(enabled&&'speechSynthesis' in window){const speech=new SpeechSynthesisUtterance('เปิดเสียงแจ้งเตือนแล้ว');speech.lang='th-TH';speechSynthesis.speak(speech)}}
   function filterMenu(category){document.querySelectorAll('[data-menu-category]').forEach(row=>{row.hidden=!!category&&row.dataset.menuCategory!==category})}
-  return {needsOrderRefresh,toggleSound,filterMenu,leave,poll,actor,owned,safeImage,note,linkPhone,date,context,cancel,favorite,favoriteButton,loadFavorites,reviews,reviewList,renderFavorites,renderPromotions,renderNotifications,renderProfile,renderOrder,renderChat,syncNotifications,openNotification,markRead,uploadEvidence,openEvidence};
+  return {needsOrderRefresh,toggleSound,deleteAccount,filterMenu,leave,poll,actor,owned,safeImage,note,linkPhone,date,context,cancel,favorite,favoriteButton,loadFavorites,reviews,reviewList,renderFavorites,renderPromotions,renderNotifications,renderProfile,renderOrder,renderChat,syncNotifications,openNotification,markRead,uploadEvidence,openEvidence};
 })();
 V.order=QGCustomer.renderOrder;
 V['order-chat']=QGCustomer.renderChat;
