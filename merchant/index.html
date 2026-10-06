@@ -2261,8 +2261,12 @@ window.qgmSaveProduct=async function(e,id,requestProductId){
   qgmProductGpRate=gpRate;
   const deliveryPrice=qgmDeliveryPriceFromStore(price,gpRate);
   const selected=$('#qgm-prod-file')?.files?.[0];if(selected)image=await qtUploadMerchantImage(selected,'product');
-  const description=shopProducts(u).find(p=>String(p.id)===String(id))?.description||'',restriction=qgmDeliveryRestriction(name,category,description);
-  const body={shop_id:pid,name,description,price,image,category,stock,variants,available,pos_available:$('#qgm-pos-available').checked,delivery_available:restriction==='none'&&$('#qgm-delivery-available').checked,delivery_restriction:restriction,pos_price:price,delivery_price:deliveryPrice,metadata:{stock,category,variants,delivery_restriction:restriction}};
+  const existingProduct=shopProducts(u).find(p=>String(p.id)===String(id))||null;
+  const description=existingProduct?.description||'',restriction=qgmDeliveryRestriction(name,category,description);
+  const posControl=$('#qgm-pos-available'),deliveryControl=$('#qgm-delivery-available');
+  const posAvailable=posControl?posControl.checked:(existingProduct?existingProduct.posAvailable!==false:true);
+  const deliveryRequested=deliveryControl?deliveryControl.checked:(existingProduct?existingProduct.deliveryAvailable!==false:true);
+  const body={shop_id:pid,name,description,price,image,category,stock,variants,available,pos_available:posAvailable,delivery_available:restriction==='none'&&deliveryRequested,delivery_restriction:restriction,pos_price:price,delivery_price:deliveryPrice,metadata:{stock,category,variants,delivery_restriction:restriction}};
   const stableId=(id&&qtUuidLike(id))?id:(qtUuidLike(requestProductId)?requestProductId:uid());
   const saved=(id&&qtUuidLike(id))
     ?await qtSupabaseTable('products?id=eq.'+encodeURIComponent(id)+'&shop_id=eq.'+encodeURIComponent(pid),{method:'PATCH',accessToken:token,body})
