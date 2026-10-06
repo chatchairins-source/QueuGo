@@ -78,6 +78,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro Text"
 .qg-profile-card{max-width:760px;margin:auto;padding:22px;border-radius:28px;background:linear-gradient(135deg,#9d0c2b,#e6002d);color:#fff;display:flex;align-items:center;gap:16px;box-shadow:0 16px 38px #b70b2f25;position:relative;overflow:hidden}.qg-profile-card:after{content:"Q";position:absolute;right:-22px;bottom:-54px;font-size:190px;font-weight:1000;color:#ffffff0c}.qg-profile-avatar{width:78px;height:78px;border-radius:50%;background:#fff;color:var(--qg-red);display:grid;place-items:center;font-size:32px;font-weight:1000;flex:none;position:relative;z-index:1}.qg-profile-card>div:last-child{position:relative;z-index:1}.qg-profile-card h2{margin:0;font-size:24px}.qg-profile-card p{margin:4px 0 10px;opacity:.8}.qg-profile-card span{display:inline-block;padding:7px 10px;border-radius:999px;background:#ffffff19;font-size:10px;font-weight:800}
 .qg-settings{max-width:760px;margin:14px auto 0;display:grid;gap:9px}.qg-setting{width:100%;min-height:72px;border:1px solid var(--qg-line);border-radius:20px;background:#fff;padding:10px 13px;display:grid;grid-template-columns:46px 1fr auto;gap:11px;align-items:center;text-align:left;color:var(--qg-ink)}.qg-setting-icon{width:46px;height:46px;border-radius:15px;background:#fff0f3;color:var(--qg-red);display:grid;place-items:center}.qg-setting-icon.qg-green{background:#eefaf3;color:#15964a}.qg-setting b{display:block;font-size:14px}.qg-setting small{display:block;margin-top:3px;color:#8a8387;font-size:9px}.qg-setting em{font-style:normal;padding:7px 10px;border-radius:999px;background:#fff0f3;color:var(--qg-red);font-size:10px;font-weight:900}.qg-setting em.on{background:#eefaf3;color:#15964a}.qg-setting strong{font-size:22px;color:#aaa}.qg-setting.danger b,.qg-setting.danger .qg-setting-icon{color:var(--qg-red)}.qg-laundry-invite{max-width:760px;margin:10px auto;padding:13px;border-radius:18px;background:#fff;border:1px solid #f2d6dd;display:flex;justify-content:space-between;gap:10px}.qg-laundry-invite small{display:block;color:#8a8387;margin-top:3px}.qg-laundry-invite button{border:0;border-radius:10px;padding:8px;background:#fff0f3;color:var(--qg-red);font-weight:800;margin-left:5px}
 
+.qg-account-settings-overlay{position:fixed;z-index:24000;inset:0;display:flex;align-items:flex-end;justify-content:center}.qg-account-settings-backdrop{position:absolute;inset:0;background:rgba(20,18,19,.56);backdrop-filter:blur(2px)}.qg-account-settings-card{position:relative;z-index:1;width:min(100%,620px);max-height:88dvh;overflow:auto;background:#fff;border-radius:28px 28px 0 0;padding:14px 18px calc(22px + var(--safeB));box-shadow:0 -18px 50px #0002}.qg-account-settings-card header{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding-bottom:12px;border-bottom:1px solid var(--qg-line)}.qg-account-settings-card header b{display:block;font-size:19px}.qg-account-settings-card header small{display:block;margin-top:3px;color:#8a8387;font-size:9px}.qg-account-settings-card header button{width:40px;height:40px;border:0;border-radius:50%;background:#fff0f3;color:var(--qg-red);font-size:18px}.qg-account-settings-card form{display:grid;gap:12px;padding-top:14px}.qg-account-settings-card label{font-size:11px;font-weight:800}.qg-account-settings-card input,.qg-account-settings-card select{display:block;width:100%;height:48px;margin-top:6px;border:1px solid #ded7d9;border-radius:14px;background:#fff;padding:0 12px;font:inherit;outline:0}.qg-account-settings-card input:focus,.qg-account-settings-card select:focus{border-color:var(--qg-red);box-shadow:0 0 0 3px #e6002d10}.qg-account-settings-note{margin:0;padding:10px 12px;border-radius:13px;background:#faf7f8;color:#756d70;font-size:9px;line-height:1.5}.qg-account-settings-card .qg-btn{width:100%}
+
 /* CHAT + INBOX */
 .qg-chat-page{position:fixed;z-index:12000;inset:0;background:linear-gradient(180deg,#fffafa,#fff7f8);display:grid!important;grid-template-rows:auto minmax(0,1fr) auto auto}.qg-chat-head{padding:calc(8px + var(--safeT)) 12px 8px;display:grid;grid-template-columns:44px 1fr 44px;gap:8px;align-items:center;background:rgba(255,255,255,.96);border-bottom:1px solid var(--qg-line);backdrop-filter:blur(20px)}.qg-chat-head>div{text-align:center}.qg-chat-head b{display:block;font-size:15px}.qg-chat-head small{display:block;color:#8a8387;font-size:9px;margin-top:2px}.qg-chat-head>a{width:44px;height:44px;border-radius:50%;background:#fff0f3;color:var(--qg-red);display:grid;place-items:center;text-decoration:none}
 .qg-chat-box{min-height:0;overflow:auto;padding:16px;display:flex;flex-direction:column;gap:9px}.chat-bubble{max-width:78%;padding:10px 12px;border-radius:19px;background:#fff;box-shadow:0 5px 18px #3f17210d;font-size:12px;line-height:1.48}.chat-bubble.mine{align-self:flex-end;background:#ffe8ee}.chat-bubble.theirs{align-self:flex-start}.chat-time{font-size:8px;color:#8f888d;margin-top:4px}.chat-image{max-width:100%;border-radius:13px}.empty-note{margin:auto;color:#8a8387;font-size:11px}.quick-wrap{padding:6px 12px;background:#fff8f9}.quick-title{display:flex;justify-content:space-between;color:#8a8387;font-size:9px;margin-bottom:6px}.quick-manage{border:0;background:transparent;color:var(--qg-red);font-size:9px;font-weight:800}.quick-list{display:flex;gap:7px;overflow:auto;scrollbar-width:none}.quick-list::-webkit-scrollbar{display:none}.quick-chip{flex:none;border:1px solid #eadde1;border-radius:999px;background:#fff;padding:8px 11px;font-size:10px;color:#544e51}.qg-chat-compose{display:grid;grid-template-columns:44px 1fr 50px;gap:7px;padding:8px 12px calc(8px + var(--safeB));background:#fff;border-top:1px solid var(--qg-line)}.qg-chat-compose input{min-width:0;height:48px;border:1px solid #e7dfe2;border-radius:16px;padding:0 13px;outline:none;font-size:16px}.qg-chat-compose button{border:0;border-radius:16px;background:#fff0f3;color:var(--qg-red);font-weight:900}.qg-chat-compose button[type=submit]{background:var(--qg-red);color:#fff;font-size:20px}.photo-btn{font-size:0}.photo-btn:after{content:"＋";font-size:24px}
@@ -1915,6 +1917,58 @@ async function qgOpenOrderDetails(o){
   }
 }
 
+function qgOpenAccountSettings(){
+  document.getElementById('qg-account-settings')?.remove();
+  if(!S.user||!S.riderProfile){toast('ยังโหลดข้อมูลบัญชีไม่ครบ');return}
+  const name=String(S.user.name||S.riderProfile.rider_name||'').trim(),
+    phone=String(S.user.phone||S.riderProfile.phone||'').trim(),
+    type=String(S.riderProfile.vehicle_type||'motorcycle'),
+    plate=String(S.riderProfile.vehicle_plate||'').trim();
+  const overlay=document.createElement('section');
+  overlay.id='qg-account-settings';overlay.className='qg-account-settings-overlay';
+  overlay.innerHTML=`<div class="qg-account-settings-backdrop"></div>
+    <section class="qg-account-settings-card">
+      <header><div><b>ตั้งค่าบัญชี</b><small>ข้อมูลที่ Rider ใช้ติดต่อและแสดงในระบบ</small></div><button type="button" aria-label="ปิด">✕</button></header>
+      <form id="qg-account-settings-form">
+        <label>ชื่อที่แสดง<input name="name" maxlength="100" value="${esc(name)}" required></label>
+        <label>เบอร์โทรศัพท์<input name="phone" inputmode="tel" maxlength="10" value="${esc(phone)}" placeholder="08XXXXXXXX" required></label>
+        <label>ประเภทรถ<select name="vehicle">
+          ${[['motorcycle','รถจักรยานยนต์'],['car','รถยนต์'],['bicycle','จักรยาน'],['saleng','รถซาเล้ง']].map(([k,v])=>`<option value="${k}" ${type===k?'selected':''}>${v}</option>`).join('')}
+        </select></label>
+        <label>ทะเบียนรถ<input name="plate" maxlength="30" value="${esc(plate)}" placeholder="เช่น 1กข 1234"></label>
+        <p class="qg-account-settings-note">การแก้ไขหน้านี้ไม่เปลี่ยนสถานะการอนุมัติ Rider เอกสารยืนยันตัวตน หรือบัญชีการเงิน</p>
+        <button type="submit" class="qg-btn qg-btn-primary">บันทึกการตั้งค่า</button>
+      </form>
+    </section>`;
+  document.body.appendChild(overlay);
+  const close=()=>overlay.remove();
+  overlay.querySelector('.qg-account-settings-backdrop').onclick=close;
+  overlay.querySelector('header button').onclick=close;
+  overlay.querySelector('form').onsubmit=async e=>{
+    e.preventDefault();
+    const form=e.currentTarget,button=form.querySelector('button[type=submit]');
+    const nextName=String(form.name.value||'').trim(),nextPhone=String(form.phone.value||'').replace(/\D/g,''),vehicle=String(form.vehicle.value||''),nextPlate=String(form.plate.value||'').trim();
+    if(nextName.length<2){toast('กรุณาระบุชื่ออย่างน้อย 2 ตัวอักษร');return}
+    if(!/^0\d{9}$/.test(nextPhone)){toast('เบอร์โทรศัพท์ต้องมี 10 หลักและขึ้นต้นด้วย 0');return}
+    if(!['motorcycle','car','bicycle','saleng'].includes(vehicle)){toast('ประเภทรถไม่ถูกต้อง');return}
+    button.disabled=true;button.textContent='กำลังบันทึก...';
+    try{
+      const token=await getAccessToken();if(!token)throw Error('กรุณาเข้าสู่ระบบใหม่');
+      const [users,riders]=await Promise.all([
+        sbTable('users?auth_user_id=eq.'+encodeURIComponent(S.session.authUserId),{method:'PATCH',token,body:{name:nextName,phone:nextPhone}}),
+        sbTable('rider_profiles?user_id=eq.'+encodeURIComponent(S.user.id),{method:'PATCH',token,body:{rider_name:nextName,phone:nextPhone,vehicle_type:vehicle,vehicle_plate:nextPlate||null}})
+      ]);
+      const userRow=Array.isArray(users)?users[0]:users,riderRow=Array.isArray(riders)?riders[0]:riders;
+      S.user={...S.user,...(userRow||{}),name:nextName,phone:nextPhone};
+      S.riderProfile={...S.riderProfile,...(riderRow||{}),rider_name:nextName,phone:nextPhone,vehicle_type:vehicle,vehicle_plate:nextPlate||null};
+      close();renderProfilePanel();toast('บันทึกการตั้งค่าแล้ว');
+    }catch(err){
+      toast('บันทึกการตั้งค่าไม่สำเร็จ: '+String(err.message||err).slice(0,140));
+      button.disabled=false;button.textContent='บันทึกการตั้งค่า';
+    }
+  };
+}
+
 function renderProfilePanel(){
   const p=document.getElementById('panel-profile');if(!p)return;
   const name=S.user?.name||'Rider',phone=S.user?.phone||'',plate=S.riderProfile?.vehicle_plate||'';
@@ -1925,11 +1979,13 @@ function renderProfilePanel(){
       <button class="qg-setting" id="qg-status-setting"><span class="qg-setting-icon qg-green">${QTICON.loc}</span><div><b>สถานะรับงาน</b><small>${S.online?'ออนไลน์':'ออฟไลน์'}</small></div><em class="${S.online?'on':''}">${S.online?'ออนไลน์':'ปิด'}</em></button>
       <button class="qg-setting" id="qg-laundry-mode" data-laundry-mutation="mode"><span class="qg-setting-icon">${QTICON.jobs}</span><div><b>รับงานฝากซัก</b><small>งานรับ-ส่งผ้าจากร้านที่เข้าร่วม</small></div><em>${S.laundryMode?'เปิด':'ปิด'}</em></button>
       <button class="qg-setting" id="qg-rider-support-link"><span class="qg-setting-icon">${QTICON.chat}</span><div><b>แจ้งปัญหา / ติดตามเรื่อง</b><small>ติดต่อฝ่ายดูแล QueueGo</small></div><strong>›</strong></button>
+      <button class="qg-setting" id="qg-account-settings-link"><span class="qg-setting-icon">${QTICON.user}</span><div><b>ตั้งค่าบัญชี</b><small>ชื่อ เบอร์โทร รถ และทะเบียน</small></div><strong>›</strong></button>
       <button class="qg-setting danger" id="qg-logout"><span class="qg-setting-icon">${QTICON.back}</span><div><b>ออกจากระบบ</b><small>ออกจากบัญชีในอุปกรณ์นี้</small></div><strong>›</strong></button>
     </section>`;
   document.getElementById('qg-status-setting').onclick=toggleOnline;
   document.getElementById('qg-laundry-mode').onclick=()=>qgSetLaundryMode(!S.laundryMode);
   document.getElementById('qg-rider-support-link').onclick=()=>qgOpenTicketPanel();
+  document.getElementById('qg-account-settings-link').onclick=qgOpenAccountSettings;
   document.getElementById('qg-logout').onclick=doLogout;
   const host=p.querySelector('.qg-settings');
   (S.laundryInvites||[]).forEach(inv=>{
