@@ -32,7 +32,7 @@ assert.equal(r.run("calls.find(c=>c.path==='rpc/qg_rider_action_once').opts.body
 assert.equal(r.run("calls.find(c=>c.path==='rpc/qg_rider_action_once').opts.body.p_payload.p_action"),'pickup_cash');checks+=2;
 r.run("calls=[];");
 await r.run("advanceOrder({id:'order',status:'in_progress',note:'',total_amount:130})");
-assert.equal(r.run("calls.find(c=>c.path==='rpc/qg_rider_action_once').opts.body.p_payload.p_action"),'arrive');checks++;
+assert.equal(r.run("calls.find(c=>c.path==='rpc/qg_rider_action_once').opts.body.p_payload.p_action"),'complete');checks++;
 
 // Navigation target changes from shop to customer after pickup without changing order state.
 assert.equal(r.run("targetNavLat({...S.activeOrder,status:'ready',pickup_latitude:13,delivery_latitude:13.9})"),13);
@@ -40,7 +40,7 @@ assert.equal(r.run("targetNavLng({...S.activeOrder,status:'ready',pickup_longitu
 assert.equal(r.run("targetNavLat({...S.activeOrder,status:'picked_up',pickup_latitude:13,delivery_latitude:13.9})"),13.9);
 assert.equal(r.run("targetNavLng({...S.activeOrder,status:'picked_up',pickup_longitude:100,delivery_longitude:100.8})"),100.8);checks+=4;
 
-// The current delivery primary action stops at arrival; completion remains a separate proof/checklist step.
+// The current delivery primary action completes from the authoritative in_progress state; no proof/checklist pseudo-state remains.
 r.run("window.arrivalCalls=0;qgConfirmArrival=async()=>{arrivalCalls++};");
 await r.run("qgAdvanceFromPrimary({...S.activeOrder,status:'in_progress',note:''})");
 assert.equal(r.run('arrivalCalls'),1);checks++;
