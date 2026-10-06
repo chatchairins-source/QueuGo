@@ -627,7 +627,15 @@ async function openCustomerLocationPicker(){
   let picked=null,locationVersion=0,lastAutoAddress=null;
   customerLocationPicker=initLocationPicker('customer-location-map',currentPos?.lat,currentPos?.lng,async(lat,lng)=>{picked={lat,lng};currentPos={...currentPos,lat,lng};$('customer-lat').textContent=lat.toFixed(6);$('customer-lng').textContent=lng.toFixed(6);const version=++locationVersion,field=$('customer-address-input'),previous=field.value;if(previous&&previous!==lastAutoAddress)return;const t=await qtReverseGeocodeCustomer(lat,lng);if(t&&version===locationVersion&&field.isConnected&&field.value===previous){field.value=t;lastAutoAddress=t}});
   window.__customerPickedLocation=()=>picked;
-  const picker=customerLocationPicker;setTimeout(()=>{if(customerLocationPicker===picker)picker.map?.resize()},80);
+  const picker=customerLocationPicker;
+  setTimeout(()=>{
+    if(customerLocationPicker!==picker)return;
+    picker.map?.resize();
+    // Restore QueueGo's original behavior: resolve the customer's current high-accuracy
+    // GPS position automatically when this screen opens. Saved coordinates remain the
+    // safe fallback when permission is denied or GPS is unavailable.
+    picker.locate();
+  },80);
 }
 async function saveCustomerLocationPicker(){
   const p=window.__customerPickedLocation?.();if(!p)return toast('กรุณาเลือกตำแหน่ง');
