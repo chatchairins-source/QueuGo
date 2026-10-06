@@ -118,6 +118,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro Text"
 .spinner{display:inline-block;width:18px;height:18px;border:2px solid #ffffff66;border-top-color:#fff;border-radius:50%;animation:qg-spin .7s linear infinite}@keyframes qg-spin{to{transform:rotate(360deg)}}
 
 .qg-message{position:fixed;z-index:9000;left:12px;right:12px;top:calc(8px + var(--safeT));transform:translateY(-150%);opacity:0;transition:.22s;padding:11px 12px;border-radius:17px;background:rgba(27,23,25,.96);color:#fff;box-shadow:0 14px 38px #0004;display:flex;align-items:center;gap:10px}.qg-message.show{transform:none;opacity:1}.qg-message>i{width:32px;height:32px;border-radius:11px;background:var(--qg-red);display:grid;place-items:center;font-style:normal}.qg-message b{font-size:11px}.qg-message small{display:block;max-width:72vw;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#ddd5d8;font-size:9px;margin-top:2px}
+
+.qg-quick-editor-list{display:grid;gap:8px;margin:12px 0}.qg-quick-editor-list>div{min-height:48px;padding:8px 10px;border:1px solid var(--qg-line);border-radius:14px;background:#fff;display:flex;align-items:center;justify-content:space-between;gap:10px}.qg-quick-editor-list span{font-size:12px;line-height:1.4}.qg-quick-editor-list button{flex:none;border:0;border-radius:10px;padding:8px 10px;background:#fff0f3;color:var(--qg-red);font-weight:850}.qg-quick-empty{justify-content:center!important;color:#8a8387!important;font-size:11px}.qg-quick-editor form{display:grid;grid-template-columns:1fr 74px;gap:8px}.qg-quick-editor input{min-width:0;height:48px;border:1px solid var(--qg-line);border-radius:14px;padding:0 12px;outline:none}.qg-quick-editor input:focus{border-color:#e6002d88;box-shadow:0 0 0 4px #e6002d0c}.qg-quick-editor form button{height:48px;border:0;border-radius:14px;background:var(--qg-red);color:#fff;font-weight:900}.qg-quick-editor form button:disabled,.qg-quick-editor input:disabled{opacity:.45}
 </style>
 
 </head><body>
@@ -1138,7 +1140,26 @@ async function loadChatMessages(orderId,token){
 function riderQuickMessages(){try{return JSON.parse(localStorage.getItem('qtr_quick_messages')||'null')||['กำลังเดินทางไปครับ','ถึงหน้าร้านแล้วครับ','ได้รับสินค้าแล้ว กำลังไปส่งครับ','ใกล้ถึงแล้วครับ อีกประมาณ 5 นาที','ถึงจุดส่งแล้วครับ'];}catch(e){return[];}}
 function saveRiderQuickMessages(a){localStorage.setItem('qtr_quick_messages',JSON.stringify(a.slice(0,5)));}
 function quickMessagesHTML(){return `<div class="quick-wrap"><div class="quick-title"><span>ข้อความใช้บ่อย (สูงสุด 5)</span><button class="quick-manage" type="button" id="quick-add">+ เพิ่ม</button></div><div class="quick-list">${riderQuickMessages().map((q,i)=>`<button type="button" class="quick-chip" data-q="${i}">${esc(q)}</button>`).join('')}</div></div>`;}
-function bindQuickMessages(o){document.querySelectorAll('.quick-chip').forEach(b=>{b.onclick=()=>{const q=riderQuickMessages()[Number(b.dataset.q)];const input=document.getElementById('chat-input');if(input){input.value=q;input.focus();}};b.oncontextmenu=e=>{e.preventDefault();const a=riderQuickMessages(),i=Number(b.dataset.q);if(confirm('ลบข้อความนี้?')){a.splice(i,1);saveRiderQuickMessages(a);openChat(o);}}});const add=document.getElementById('quick-add');if(add)add.onclick=()=>{const a=riderQuickMessages();if(a.length>=5){toast('บันทึกได้สูงสุด 5 ข้อความ');return;}const q=prompt('เพิ่มข้อความที่ใช้บ่อย');if(q&&q.trim()){a.push(q.trim().slice(0,100));saveRiderQuickMessages(a);openChat(o);}};}
+function bindQuickMessages(o){
+ document.querySelectorAll('.quick-chip').forEach(b=>{
+   b.onclick=()=>{const q=riderQuickMessages()[Number(b.dataset.q)];const input=document.getElementById('chat-input');if(input){input.value=q;input.focus()}};
+   b.oncontextmenu=e=>{e.preventDefault();qgOpenQuickMessageEditor(o)};
+ });
+ const add=document.getElementById('quick-add');if(add)add.onclick=()=>qgOpenQuickMessageEditor(o);
+}
+function qgOpenQuickMessageEditor(o){
+ document.getElementById('qg-quick-editor')?.remove();
+ const overlay=document.createElement('section');overlay.id='qg-quick-editor';overlay.className='qg-support-overlay';
+ const draw=()=>{
+   const rows=riderQuickMessages();
+   overlay.innerHTML=`<div class="qg-support-dialog qg-quick-editor"><header><b>ข้อความใช้บ่อย</b><button type="button" data-close aria-label="ปิด">✕</button></header><p>บันทึกได้สูงสุด 5 ข้อความ แตะข้อความในแชตเพื่อใช้งานทันที</p><div class="qg-quick-editor-list">${rows.length?rows.map((q,i)=>`<div><span>${esc(q)}</span><button type="button" data-remove="${i}">ลบ</button></div>`).join(''):'<div class="qg-quick-empty">ยังไม่มีข้อความที่บันทึกไว้</div>'}</div><form id="qg-quick-form"><input id="qg-quick-input" maxlength="100" autocomplete="off" placeholder="เพิ่มข้อความ เช่น กำลังไปส่งครับ" ${rows.length>=5?'disabled':''}><button type="submit" ${rows.length>=5?'disabled':''}>เพิ่ม</button></form></div>`;
+   overlay.querySelector('[data-close]').onclick=()=>{overlay.remove();if(S.chatOrder)openChat(o)};
+   overlay.querySelectorAll('[data-remove]').forEach(b=>b.onclick=()=>{const list=riderQuickMessages();list.splice(Number(b.dataset.remove),1);saveRiderQuickMessages(list);toast('ลบข้อความแล้ว');draw()});
+   const form=overlay.querySelector('#qg-quick-form');form.onsubmit=e=>{e.preventDefault();const input=overlay.querySelector('#qg-quick-input'),q=(input.value||'').trim();if(!q)return;const list=riderQuickMessages();if(list.length>=5){toast('บันทึกได้สูงสุด 5 ข้อความ');return}list.push(q.slice(0,100));saveRiderQuickMessages(list);toast('เพิ่มข้อความแล้ว');draw()};
+ };
+ draw();document.body.appendChild(overlay);
+ overlay.onclick=e=>{if(e.target===overlay){overlay.remove();if(S.chatOrder)openChat(o)}};
+}
 function renderChatMessages(rows){
   const box=document.getElementById('chat-box'); if(!box)return;
   box.innerHTML=rows.length?rows.map(m=>{const raw=String(m.message||'');const isImg=raw.startsWith('__IMG__');return `<div class="chat-bubble ${String(m.sender_id)===String(S.user.id)?'mine':'theirs'}"><div>${isImg?`<img class="chat-image" src="${esc(raw.slice(7))}" alt="รูปที่ส่งในแชต">`:esc(raw)}</div><div class="chat-time">${new Date(m.created_at).toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'})}</div></div>`}).join(''):'<div class="empty-note">ยังไม่มีข้อความ เริ่มแชทกับลูกค้าได้เลย</div>';
@@ -1926,10 +1947,10 @@ window.advanceOrder=async function(o){
      const response=await fetch(SB.URL+'/storage/v1/object/sign/qg-evidence/'+path,{method:'POST',headers:{apikey:SB.KEY,Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({expiresIn:300})});
      const data=await response.json();if(!response.ok)throw Error(data.message||'เปิดหลักฐานไม่สำเร็จ');
      window.open(SB.URL+'/storage/v1'+data.signedURL,'_blank','noopener');
-   }catch(e){alert(e.message)}
+   }catch(e){toast(e.message||'เปิดหลักฐานไม่สำเร็จ')}
  };
  window.qgOpenTicketPanel=function(orderId=''){
-   if(!S.user){alert('กรุณาเข้าสู่ระบบ');return}
+   if(!S.user){toast('กรุณาเข้าสู่ระบบ');return}
    document.getElementById('qg-support-ticket')?.remove();
    const panel=document.createElement('section');panel.id='qg-support-ticket';panel.className='qg-support-overlay';
    panel.innerHTML='<div class="qg-support-dialog"><header><b>ติดต่อฝ่ายดูแล</b><button type="button" id="qg-ticket-close" aria-label="ปิด">✕</button></header><p>แจ้งปัญหาและติดตามสถานะจากระบบ</p><form id="qg-ticket-form"><label>ออเดอร์ที่เกี่ยวข้อง (ถ้ามี)<select name="order"><option value="">ไม่ระบุออเดอร์</option></select></label><label>ประเภทปัญหา<select name="category"></select></label><label>รายละเอียด<textarea name="details" minlength="10" maxlength="2000" required placeholder="อธิบายปัญหาอย่างน้อย 10 ตัวอักษร"></textarea></label><label>รูปหลักฐาน (ถ้ามี)<input name="evidence" type="file" accept="image/jpeg,image/png,image/webp"></label><button type="submit">ส่งเรื่อง</button></form><h3>เรื่องที่แจ้งไว้</h3><div id="qg-ticket-list">กำลังโหลด...</div></div>';
@@ -1950,8 +1971,8 @@ window.advanceOrder=async function(o){
      try{
        const path=await upload(form.evidence.files[0]),details=form.details.value.trim();
        await request('rpc/qg_create_ticket','POST',{p_ticket_id:crypto.randomUUID(),p_order_id:form.order.value||null,p_category:form.category.value,p_details:details,p_evidence_path:path});
-       form.reset();await qgLoadTickets();alert('ส่งเรื่องให้ฝ่ายดูแลแล้ว');
-     }catch(err){alert('ส่งเรื่องไม่สำเร็จ: '+err.message)}
+       form.reset();await qgLoadTickets();toast('ส่งเรื่องให้ฝ่ายดูแลแล้ว');
+     }catch(err){toast('ส่งเรื่องไม่สำเร็จ: '+err.message)}
      finally{button.disabled=false}
    };
  };
