@@ -8,6 +8,17 @@
   let cfg={role:'',getAccessToken:null};
 
   const supported=()=>('serviceWorker' in navigator)&&('PushManager' in window)&&('Notification' in window);
+  const jwtSub=value=>{
+    try{
+      const part=String(value||'').split('.')[1]||'';
+      const raw=atob(part.replace(/-/g,'+').replace(/_/g,'/')+'==='.slice((part.length+3)%4));
+      return String(JSON.parse(raw).sub||'');
+    }catch(_){return ''}
+  };
+  const postOwner=async(reg,userId)=>{
+    const worker=reg?.active||reg?.waiting||reg?.installing||navigator.serviceWorker.controller;
+    if(worker)worker.postMessage({type:'QUEUEGO_OWNER',userId:userId||null});
+  };
   const deviceKey=()=>cfg.role?'qg_push_device_v1:'+cfg.role:'qg_push_device_v1';
   const deviceId=()=>{
     let id='';
@@ -75,6 +86,7 @@
       deviceId:deviceId(),
       subscription:{endpoint:sub.endpoint,keys:{p256dh:json.keys?.p256dh||'',auth:json.keys?.auth||''}}
     });
+    await postOwner(reg,jwtSub(await token()));
     return true;
   }
   async function resume(){
@@ -83,14 +95,18 @@
   }
   async function disable(){
     if(!supported())return true;
-    const sub=await currentSubscription().catch(()=>null);
+    const reg=await registration().catch(()=>null);
+    const sub=reg?await reg.pushManager.getSubscription().catch(()=>null):null;
+    await postOwner(reg,null);
     try{await call('unsubscribe',{deviceId:deviceId()})}catch(_){}
     if(sub)await sub.unsubscribe().catch(()=>false);
     return true;
   }
   async function unsubscribeLocal(){
     if(!supported())return true;
-    const sub=await currentSubscription().catch(()=>null);
+    const reg=await registration().catch(()=>null);
+    const sub=reg?await reg.pushManager.getSubscription().catch(()=>null):null;
+    await postOwner(reg,null);
     if(sub)await sub.unsubscribe().catch(()=>false);
     return true;
   }
