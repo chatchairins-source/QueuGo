@@ -244,10 +244,8 @@ const STEP_NEXT = { ready:{to:'picked_up', label:'รับสินค้าแ
 
 /* QueueGo Rider sheet: 0=ย่อ, 1=กลาง, 2=เต็ม — presentation only, state machine unchanged */
 let qgSheetLevel=1;
-let qgSheetExpanded=false;
 function qgSetSheetLevel(level){
   qgSheetLevel=Math.max(0,Math.min(2,Number(level)||0));
-  qgSheetExpanded=qgSheetLevel===2;
 }
 /* ---------- app state ---------- */
 const S = {
