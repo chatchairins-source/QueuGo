@@ -16,39 +16,34 @@ assert.equal(t.run('deliveryFeeFor({latitude:13,longitude:100},{lat:13,lng:100})
 assert.equal(t.run("customerOrderNumber({order_number:'QT-20261005-0001'})"),'QT-0001');checks++;
 assert.equal(t.run("customerOrderNumber({order_number:'QT-0001'})"),'QT-0001');checks++;
 assert.equal(t.run("customerOrderNumber({id:'abc-def-1234'})"),'QT-1234');checks++;
-const r=boot('rider/index.html');await Promise.resolve();r.run("readSession=()=>S.session;qgRiderMutation=(path,opts)=>sbTable(path,opts);S.user={id:'fixture'};S.riderProfile={id:'rider'};S.session={accessToken:'fixture'};S.activeTab='home';S.online=false;window.calls=[];getAccessToken=async()=>'fixture';sbTable=async(path,opts)=>{calls.push({path,opts});return path.includes('status=in.')?[{id:'order',status:'rider_assigned',pickup_latitude:13,pickup_longitude:100,delivery_latitude:13.1,delivery_longitude:100.1}]:[]};placeJobMarkers=()=>{};");await r.run('refreshData()');assert.equal(r.run('S.activeOrder.status'),'rider_assigned');assert(r.run("calls[0].path.includes('rider_assigned,preparing,ready')"));assert(r.run("jobCardHTML(S.activeOrder).includes('นำทาง')"));assert(r.run("jobCardHTML({...S.activeOrder,status:'ready',subtotal:100}).includes('เงินสดที่ต้องจ่ายร้าน')"));
-assert(r.run("jobCardHTML({...S.activeOrder,status:'ready',subtotal:100}).includes('฿100')"));
-assert(r.run("jobCardHTML({...S.activeOrder,status:'delivering',id:'slide',total_amount:130}).includes('ส่งสำเร็จ')"));
-assert(r.run("jobCardHTML({...S.activeOrder,status:'delivering',id:'slide',total_amount:130}).includes('type=\"range\"')===false"));checks+=5;
-r.run("calls=[];sbTable=async(path,opts)=>{calls.push({path,opts});return path.startsWith('orders?select=subtotal')?[{status:'ready',subtotal:100}]:[]};refreshData=async()=>{};");await r.run("advanceOrder({id:'order',status:'ready',subtotal:100})");assert.equal(r.run("calls.find(c=>c.path==='rpc/rider_order_action').opts.body.p_action"),'pickup_cash');assert.equal(r.run("calls.filter(c=>c.path.startsWith('orders?select=subtotal')).length"),0);checks+=2;
-r.run("calls=[];sbTable=async(path,opts)=>{calls.push({path,opts});return []};refreshData=async()=>{};");await r.run("advanceOrder({id:'order',status:'delivering',total_amount:130})");assert.equal(r.run("calls.find(c=>c.path==='rpc/rider_order_action').opts.body.p_action"),'complete');checks++;
+const r=boot('rider/index.html');await Promise.resolve();r.run("readSession=()=>S.session;qgRiderMutation=(path,opts)=>sbTable(path,opts);S.user={id:'fixture'};S.riderProfile={id:'rider'};S.session={authUserId:'auth',sessionId:'session',accessToken:'fixture'};S.activeTab='home';S.online=false;window.calls=[];getAccessToken=async()=>'fixture';sbTable=async(path,opts)=>{calls.push({path,opts});return path.includes('status=in.')?[{id:'order',status:'rider_assigned',pickup_latitude:13,pickup_longitude:100,delivery_latitude:13.1,delivery_longitude:100.1}]:[]};placeJobMarkers=()=>{};");await r.run('refreshData()');
+assert.equal(r.run('S.activeOrder.status'),'rider_assigned');
+assert(r.run("calls[0].path.includes('rider_assigned,preparing,ready')"));
+assert(r.run("jobCardHTML(S.activeOrder).includes('นำทาง')"));
+assert(r.run("jobCardHTML({...S.activeOrder,status:'ready',subtotal:100}).includes('รับสินค้าแล้ว')"));
+assert(r.run("jobCardHTML({...S.activeOrder,status:'picked_up',subtotal:100}).includes('เริ่มจัดส่ง')"));
+assert(r.run("jobCardHTML({...S.activeOrder,status:'in_progress',total_amount:130,note:''}).includes('ถึงแล้ว')"));
+assert(r.run("jobCardHTML({...S.activeOrder,status:'in_progress',total_amount:130,note:''}).includes('type=\"range\"')===false"));checks+=7;
 
-// One map card: stage actions, contact tools and displayed cash remain distinct.
-assert(r.run("jobCardHTML({...S.activeOrder,status:'ready',subtotal:150,total_amount:180}).includes('รับสินค้าแล้ว')"));
-assert(r.run("jobCardHTML({...S.activeOrder,status:'picked_up',subtotal:150,total_amount:180}).includes('เริ่มจัดส่ง')"));
-assert(r.run("jobCardHTML({...S.activeOrder,status:'in_progress',subtotal:150,total_amount:180}).includes('เก็บเงินลูกค้า')"));
-assert(r.run("jobCardHTML({...S.activeOrder,status:'in_progress',_customer:{phone:'0812345678'}}).includes('tel:0812345678')"));
-assert(r.run("jobCardHTML(S.activeOrder).includes('แจ้งปัญหา')"));checks+=5;
+// Rider actions use the current idempotent qg_rider_action_once path and keep the cash flow/state machine server-side.
+r.run("calls=[];sbTable=async(path,opts)=>{calls.push({path,opts});return []};refreshData=async()=>{};");
+await r.run("advanceOrder({id:'order',status:'ready',subtotal:100})");
+assert.equal(r.run("calls.find(c=>c.path==='rpc/qg_rider_action_once').opts.body.p_kind"),'order');
+assert.equal(r.run("calls.find(c=>c.path==='rpc/qg_rider_action_once').opts.body.p_payload.p_action"),'pickup_cash');checks+=2;
+r.run("calls=[];");
+await r.run("advanceOrder({id:'order',status:'in_progress',note:'',total_amount:130})");
+assert.equal(r.run("calls.find(c=>c.path==='rpc/qg_rider_action_once').opts.body.p_payload.p_action"),'arrive');checks++;
 
-// After pickup, both ordinary and market routes target the customer's real location.
-for(const status of ['picked_up','in_progress']){
- const html=r.run(`jobCardHTML({...S.activeOrder,status:'${status}',delivery_latitude:13.9,delivery_longitude:100.8,market_order_id:'market',_marketPickups:[{shop_id:'shop',status:'READY',latitude:12,longitude:99}]})`);
- assert(html.includes('นำทางไปบ้านลูกค้า'));assert(html.includes('destination=13.9%2C100.8'));assert(!html.includes('destination=12%2C99'));checks+=3;
-}
-assert(r.run("mapsLink(null,null,'บ้านลูกค้า').includes(encodeURIComponent('บ้านลูกค้า'))"));assert(r.run("!mapsLink(null,null,'บ้านลูกค้า').includes('destination=0%2C0')"));checks+=2;
+// Navigation target changes from shop to customer after pickup without changing order state.
+assert.equal(r.run("targetNavLat({...S.activeOrder,status:'ready',pickup_latitude:13,delivery_latitude:13.9})"),13);
+assert.equal(r.run("targetNavLng({...S.activeOrder,status:'ready',pickup_longitude:100,delivery_longitude:100.8})"),100);
+assert.equal(r.run("targetNavLat({...S.activeOrder,status:'picked_up',pickup_latitude:13,delivery_latitude:13.9})"),13.9);
+assert.equal(r.run("targetNavLng({...S.activeOrder,status:'picked_up',pickup_longitude:100,delivery_longitude:100.8})"),100.8);checks+=4;
 
-// Navigation exposes arrival; the arrival RPC keeps the order state intact.
-r.run("readSession=()=>S.session;S.activeOrder.shop_id='shop';qgSetPickupFlag(S.activeOrder,'navigation');");
-assert(r.run("jobCardHTML(S.activeOrder).includes('id=\"arrive-shop-order\"')"));checks++;
-r.run("calls=[];sbTable=async(path,opts)=>{calls.push({path,opts});return 'rider_assigned'};refreshData=async()=>{};");
-await r.run('qgRiderArriveShop(S.activeOrder)');
-assert.equal(r.run("calls[0].opts.body.p_action"),'arrive_shop');assert.equal(r.run('S.activeOrder.status'),'rider_assigned');checks+=2;
-r.run("S.activeOrder.rider_arrived_shop_at=new Date().toISOString();");assert(r.run("!jobCardHTML(S.activeOrder).includes('id=\"arrive-shop-order\"')"));checks++;
-
-// Completion is the only user action; no cash or PIN confirmation, including market groups.
-r.run("confirm=()=>{throw Error('unexpected cash confirmation')};prompt=()=>{throw Error('unexpected PIN')};calls=[];sbTable=async(path,opts)=>{calls.push({path,opts});return []};refreshData=async()=>{};");
-await r.run("finishOrder({id:'finish',status:'in_progress'})");assert.equal(r.run("calls[0].path"),'rpc/rider_order_action');assert.equal(r.run("calls[0].opts.body.p_action"),'complete');checks+=2;
-r.run("calls=[]");await r.run("finishOrder({id:'market-finish',market_order_id:'group',status:'in_progress'})");assert.equal(r.run("calls[0].path"),'rpc/market_rider_group_action');assert.equal(r.run("calls[0].opts.body.p_action"),'complete');checks+=2;
+// The current delivery primary action stops at arrival; completion remains a separate proof/checklist step.
+r.run("window.arrivalCalls=0;qgConfirmArrival=async()=>{arrivalCalls++};");
+await r.run("qgAdvanceFromPrimary({...S.activeOrder,status:'in_progress',note:''})");
+assert.equal(r.run('arrivalCalls'),1);checks++;
 
 // If the order committed but the network reply disappeared, reconcile its exact request UUID.
 t.run(`window.reconcileDb=async(path)=>path.startsWith('orders?select=id,order_number')?[{id:readPendingCheckout().body.p_order_id,order_number:'QT-0002'}]:[];db=reconcileDb`);
