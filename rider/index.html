@@ -1385,9 +1385,37 @@ function bindJobCardEvents(o){
  const c=document.getElementById('chat-'+o.id);if(c)c.onclick=()=>openChat(o);
  const deliveryChat=document.getElementById('delivery-chat-'+o.id);if(deliveryChat)deliveryChat.onclick=()=>openChat(o);
  const a=document.getElementById('accept-'+o.id);if(a)a.onclick=()=>acceptJob(o.id);
- const n=document.getElementById('next-'+o.id);if(n)n.onclick=()=>advanceOrder(o);
+ const n=document.getElementById('next-'+o.id);if(n)n.onclick=()=>qgAdvanceFromPrimary(o);
  const check=document.getElementById('check-'+o.id);if(check)check.onclick=()=>qgOpenOrderChecklist(o);
  const more=document.getElementById('more-'+o.id);if(more)more.onclick=()=>qgOpenTicketPanel(o.id);
+}
+const QG_ARRIVAL_GUARD_KM=.15;
+function qgAdvanceFromPrimary(o){
+ if(statusFromRow(o)==='delivering')return qgConfirmArrival(o);
+ return advanceOrder(o);
+}
+function qgArrivalDistanceKm(o){
+ const lat=Number(S.pos?.lat),lng=Number(S.pos?.lng),dlat=Number(o?.delivery_latitude),dlng=Number(o?.delivery_longitude);
+ if(![lat,lng,dlat,dlng].every(Number.isFinite))return NaN;
+ return haversineKm(lat,lng,dlat,dlng);
+}
+function qgConfirmArrival(o){
+ document.getElementById('qg-arrival-guard')?.remove();
+ const km=qgArrivalDistanceKm(o);
+ if(Number.isFinite(km)&&km<=QG_ARRIVAL_GUARD_KM)return advanceOrder(o);
+ const overlay=document.createElement('section');overlay.id='qg-arrival-guard';overlay.className='qg-arrival-guard';
+ const meters=Number.isFinite(km)?Math.max(1,Math.round(km*1000)):null;
+ overlay.innerHTML='<div class="qg-arrival-backdrop"></div><button type="button" class="qg-arrival-floatback" aria-label="ย้อนกลับ">'+QTICON.back+'</button><div class="qg-arrival-sheet"><span class="qg-arrival-handle"></span><h2>คุณไปถึงจุดส่งที่ถูกต้องแล้วหรือยัง?</h2><p>'+(meters!==null?'ระบบพบว่าคุณยังห่างจากจุดส่งประมาณ <b>'+meters.toLocaleString('th-TH')+' ม.</b>':'ระบบยังตรวจสอบตำแหน่งปัจจุบันไม่ได้')+'</p><div class="qg-arrival-buttons"><button type="button" class="qg-arrival-proceed">ดำเนินการ</button><button type="button" class="qg-arrival-cancel">ย้อนกลับ</button></div></div>';
+ document.body.appendChild(overlay);
+ const close=()=>overlay.remove();
+ overlay.querySelector('.qg-arrival-backdrop').onclick=close;
+ overlay.querySelector('.qg-arrival-floatback').onclick=close;
+ overlay.querySelector('.qg-arrival-cancel').onclick=close;
+ overlay.querySelector('.qg-arrival-proceed').onclick=async e=>{
+   const b=e.currentTarget;if(b.disabled)return;b.disabled=true;b.textContent='กำลังบันทึก...';
+   const ok=await advanceOrder(o);
+   if(ok)close();else{b.disabled=false;b.textContent='ดำเนินการ'}
+ };
 }
 function qgCleanOrderNote(note){
  return String(note||'').split('\n').filter(x=>x&&!/^__QT_ORDER_STATUS__=/.test(x)).join('\n').trim();
@@ -1870,6 +1898,30 @@ body{overflow-y:auto;-webkit-overflow-scrolling:touch;touch-action:pan-y}
 .qt-sheet[data-level="1"] .qg-delivery-tools{display:grid!important}
 .qt-sheet[data-level="1"] .qg-delivery-destination{display:block!important}
 .qt-sheet[data-level="2"] .qg-delivery-tools{display:grid!important}
+</style>
+
+
+<style id="qg-rider-arrival-guard-20261006">
+.qg-arrival-guard{position:fixed;inset:0;z-index:20000;font-family:-apple-system,BlinkMacSystemFont,"Noto Sans Thai",sans-serif}
+.qg-arrival-backdrop{position:absolute;inset:0;background:rgba(20,18,19,.62);backdrop-filter:blur(1px)}
+.qg-arrival-floatback{position:absolute;z-index:2;left:30px;bottom:calc(405px + var(--safeB));width:52px;height:52px;border:0;border-radius:50%;background:#fff;color:#242124;display:grid;place-items:center;box-shadow:0 8px 24px rgba(0,0,0,.16)}
+.qg-arrival-floatback .ico{width:25px;height:25px}
+.qg-arrival-sheet{position:absolute;z-index:3;left:0;right:0;bottom:0;padding:12px 24px calc(26px + var(--safeB));border-radius:28px 28px 0 0;background:#fff;box-shadow:0 -14px 44px rgba(0,0,0,.18)}
+.qg-arrival-handle{display:block;width:40px;height:4px;border-radius:99px;background:#d7d3d5;margin:0 auto 22px}
+.qg-arrival-sheet h2{margin:0;font-size:23px;line-height:1.25;letter-spacing:-.35px;color:#201d1f}
+.qg-arrival-sheet p{margin:18px 0 28px;color:#898386;font-size:15px;line-height:1.55}
+.qg-arrival-sheet p b{color:#e6002d}
+.qg-arrival-buttons{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.qg-arrival-buttons button{height:56px;border:0;border-radius:28px;font-size:17px;font-weight:900}
+.qg-arrival-proceed{background:#e6002d;color:#fff;box-shadow:0 8px 20px rgba(230,0,45,.20)}
+.qg-arrival-cancel{background:#f4f1f2;color:#544e51}
+.qg-arrival-proceed:disabled{opacity:.65}
+@media(max-height:700px){
+ .qg-arrival-floatback{bottom:calc(345px + var(--safeB))}
+ .qg-arrival-sheet{padding-bottom:calc(18px + var(--safeB))}
+ .qg-arrival-handle{margin-bottom:15px}.qg-arrival-sheet h2{font-size:20px}.qg-arrival-sheet p{margin:12px 0 20px;font-size:13px}
+ .qg-arrival-buttons button{height:50px}
+}
 </style>
 
 </body></html>
