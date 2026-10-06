@@ -7,7 +7,9 @@
   const api=SUPABASE_URL+'/functions/v1/queuego-push';
   let cfg={role:'',getAccessToken:null};
 
-  const supported=()=>('serviceWorker' in navigator)&&('PushManager' in window)&&('Notification' in window);
+  const nativeSupported=()=>Boolean(window.QueueGoNativePush?.supported?.());
+  const webSupported=()=>('serviceWorker' in navigator)&&('PushManager' in window)&&('Notification' in window);
+  const supported=()=>nativeSupported()||webSupported();
   const jwtSub=value=>{
     try{
       const part=String(value||'').split('.')[1]||'';
@@ -55,20 +57,22 @@
     return data;
   }
   async function registration(){
-    if(!supported())throw Error('อุปกรณ์นี้ยังไม่รองรับการแจ้งเตือนเบื้องหลัง');
+    if(!webSupported())throw Error('อุปกรณ์นี้ยังไม่รองรับการแจ้งเตือนเบื้องหลัง');
     const swUrl=new URL('queuego-push-sw.js',root);
     const reg=await navigator.serviceWorker.register(swUrl.href,{scope:root.pathname});
     await navigator.serviceWorker.ready;
     return reg;
   }
   async function currentSubscription(){
-    if(!supported())return null;
+    if(nativeSupported())return null;
+    if(!webSupported())return null;
     const reg=await registration();
     return reg.pushManager.getSubscription();
   }
   async function enable(options={}){
+    if(nativeSupported())return QueueGoNativePush.enable(options);
     const prompt=options.prompt!==false;
-    if(!supported())throw Error('อุปกรณ์นี้ยังไม่รองรับการแจ้งเตือนเบื้องหลัง');
+    if(!webSupported())throw Error('อุปกรณ์นี้ยังไม่รองรับการแจ้งเตือนเบื้องหลัง');
     let permission=Notification.permission;
     if(permission==='default'&&prompt)permission=await Notification.requestPermission();
     if(permission!=='granted')return false;
@@ -90,11 +94,13 @@
     return true;
   }
   async function resume(){
-    if(!supported()||Notification.permission!=='granted')return false;
+    if(nativeSupported())return QueueGoNativePush.resume();
+    if(!webSupported()||Notification.permission!=='granted')return false;
     try{return await enable({prompt:false})}catch(e){console.warn('QueueGo push resume unavailable',e);return false}
   }
   async function disable(){
-    if(!supported())return true;
+    if(nativeSupported())return QueueGoNativePush.disable();
+    if(!webSupported())return true;
     const reg=await registration().catch(()=>null);
     const sub=reg?await reg.pushManager.getSubscription().catch(()=>null):null;
     await postOwner(reg,null);
@@ -103,7 +109,8 @@
     return true;
   }
   async function unsubscribeLocal(){
-    if(!supported())return true;
+    if(nativeSupported())return QueueGoNativePush.unsubscribeLocal();
+    if(!webSupported())return true;
     const reg=await registration().catch(()=>null);
     const sub=reg?await reg.pushManager.getSubscription().catch(()=>null):null;
     await postOwner(reg,null);
@@ -111,6 +118,7 @@
     return true;
   }
   async function toggle(button){
+    if(nativeSupported())return QueueGoNativePush.toggle(button);
     if(button)button.disabled=true;
     try{
       const sub=await currentSubscription().catch(()=>null);
@@ -125,15 +133,17 @@
     }finally{if(button?.isConnected)button.disabled=false}
   }
   async function syncButton(button){
+    if(nativeSupported())return QueueGoNativePush.syncButton(button);
     const el=typeof button==='string'?document.querySelector(button):button;
     if(!el)return;
-    if(!supported()){el.disabled=true;el.textContent='อุปกรณ์นี้ไม่รองรับการแจ้งเตือน';return}
+    if(!webSupported()){el.disabled=true;el.textContent='อุปกรณ์นี้ไม่รองรับการแจ้งเตือน';return}
     const sub=await currentSubscription().catch(()=>null);
     el.textContent=sub?'ปิดการแจ้งเตือนเบื้องหลัง':'เปิดการแจ้งเตือนเบื้องหลัง';
   }
   function configure(options){
     cfg={...cfg,...options};
     if(!['customer','shop','rider'].includes(cfg.role))throw Error('invalid QueueGo push role');
+    if(window.QueueGoNativePush)QueueGoNativePush.configure(options);
     queueMicrotask(()=>resume());
   }
   window.QueueGoPush=Object.freeze({configure,enable,resume,disable,toggle,syncButton,unsubscribeLocal,supported});
