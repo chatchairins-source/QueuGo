@@ -2902,40 +2902,118 @@ window.updateOrderStatus=async function updateOrderStatus(orderId,newStatus,butt
  try{renderShopOrderModern(orderId)}catch(e){console.warn('merchant order render refresh failed',e)}
  Promise.resolve().then(()=>qtBackgroundHydrate({light:false})).catch(e=>console.warn('merchant hydrate after action failed',e));
 };
-window.shopCancelOrder=async function shopCancelOrder(orderId,button){
- const reason=prompt('ระบุเหตุผลที่ร้านยกเลิกออเดอร์');if(reason===null)return;
- if(!reason.trim()){toast('กรุณาระบุเหตุผล');return}
- if(reason.length>500){toast('เหตุผลต้องไม่เกิน 500 ตัวอักษร');return}
- if(!confirm('ยืนยันยกเลิกออเดอร์นี้?'))return;
- qgmSetOrderActionBusy(button,true,'กำลังยกเลิก...');
+function qgmCancelGuardStyle(){
+ if(document.getElementById('qgm-cancel-guard-style'))return;
+ const style=document.createElement('style');style.id='qgm-cancel-guard-style';style.textContent=`
+ .qgm-cancel-guard{position:fixed;inset:0;z-index:26000;display:flex;align-items:flex-end;justify-content:center}
+ .qgm-cancel-guard-backdrop{position:absolute;inset:0;background:rgba(20,18,19,.56);backdrop-filter:blur(2px)}
+ .qgm-cancel-sheet{position:relative;z-index:1;width:min(100%,680px);max-height:min(88dvh,820px);overflow:auto;background:#fff;border-radius:28px 28px 0 0;padding:10px 18px calc(18px + env(safe-area-inset-bottom));box-shadow:0 -22px 60px #0003}
+ .qgm-cancel-handle{display:block;width:42px;height:5px;border-radius:9px;background:#ded8da;margin:0 auto 14px}
+ .qgm-cancel-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px}.qgm-cancel-head h2{margin:0;color:#111;font-size:21px}.qgm-cancel-head p{margin:4px 0 0;color:#888;font-size:12px}.qgm-cancel-close{width:40px;height:40px;border:0;border-radius:50%;background:#f6f2f3;font-size:18px}
+ .qgm-cancel-order{margin-top:14px;padding:13px 14px;border-radius:16px;background:#faf6f7;display:flex;justify-content:space-between;gap:12px}.qgm-cancel-order small{display:block;color:#8b8588;font-size:10px}.qgm-cancel-order b{display:block;margin-top:3px;font-size:14px}.qgm-cancel-order strong{color:var(--qg-red);font-size:15px;white-space:nowrap}
+ .qgm-cancel-warning{margin-top:12px;padding:12px 13px;border:1px solid #ffd4dc;border-radius:16px;background:#fff6f8;color:#7b2636;font-size:11px;line-height:1.55}
+ .qgm-cancel-title{margin:16px 0 8px;font-size:14px}.qgm-cancel-reasons{display:grid;gap:8px}.qgm-cancel-reason{display:flex;align-items:center;gap:10px;padding:12px;border:1px solid #e8e2e4;border-radius:14px;background:#fff;font-size:12px}.qgm-cancel-reason:has(input:checked){border-color:#f22b4e;background:#fff6f8}.qgm-cancel-reason input{accent-color:var(--qg-red);width:18px;height:18px}
+ .qgm-cancel-other{width:100%;min-height:74px;resize:vertical;margin-top:9px;padding:11px;border:1px solid #ddd5d8;border-radius:14px;font:inherit;outline:0}.qgm-cancel-other:focus{border-color:#f22b4e;box-shadow:0 0 0 3px #f22b4e10}.qgm-cancel-other[hidden]{display:none}
+ .qgm-cancel-ack{display:flex;align-items:flex-start;gap:9px;margin-top:13px;padding:11px;border-radius:14px;background:#f7f7f8;font-size:11px;line-height:1.45}.qgm-cancel-ack input{margin-top:1px;width:18px;height:18px;accent-color:var(--qg-red)}
+ .qgm-cancel-slider-wrap{margin-top:15px;position:relative;height:62px;border-radius:18px;background:#f1ecee;overflow:hidden}.qgm-cancel-slider-fill{position:absolute;inset:0 auto 0 0;width:0;background:linear-gradient(90deg,#ffc6d0,#ff234b);transition:width .08s linear}.qgm-cancel-slider-label{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:13px;pointer-events:none;color:#6f6669}.qgm-cancel-slider{position:absolute;inset:0;width:100%;height:100%;opacity:.01;cursor:pointer}.qgm-cancel-slider:disabled{cursor:not-allowed}.qgm-cancel-slider-wrap[data-ready="0"]{opacity:.48}
+ .qgm-cancel-hint{margin:8px 0 0;text-align:center;color:#9a9295;font-size:10px}
+ `;document.head.appendChild(style);
+}
+function qgmCancelReasonValue(sheet){
+ const checked=sheet.querySelector('input[name="qgm-cancel-reason"]:checked');
+ if(!checked)return '';
+ if(checked.value==='อื่น ๆ'){
+  const detail=String(sheet.querySelector('.qgm-cancel-other')?.value||'').trim();
+  return detail?'อื่น ๆ: '+detail:'';
+ }
+ return checked.value;
+}
+function qgmSyncCancelGuard(sheet){
+ const reason=qgmCancelReasonValue(sheet),ack=!!sheet.querySelector('#qgm-cancel-ack')?.checked,slider=sheet.querySelector('.qgm-cancel-slider'),wrap=sheet.querySelector('.qgm-cancel-slider-wrap');
+ const ready=!!reason&&ack;
+ if(slider)slider.disabled=!ready;
+ if(wrap)wrap.dataset.ready=ready?'1':'0';
+}
+function qgmCloseCancelGuard(){
+ document.getElementById('qgm-cancel-guard')?.remove();
+}
+async function qgmCommitMerchantCancel(orderId,reason,sourceButton,sheet){
+ qgmSetOrderActionBusy(sourceButton,true,'กำลังยกเลิก...');
+ const slider=sheet?.querySelector('.qgm-cancel-slider');if(slider)slider.disabled=true;
  let result;
  try{
   result=await qgmMerchantActionOnce(orderId,'cancel',reason.trim());
  }catch(e){
   if(e?.qgUncertain){
-   qgmSetOrderActionBusy(button,true,'กำลังตรวจสอบสถานะ...');
+   qgmSetOrderActionBusy(sourceButton,true,'กำลังตรวจสอบสถานะ...');
    try{
     await new Promise(r=>setTimeout(r,700));
     result=await qgmMerchantActionOnce(orderId,'cancel',reason.trim());
-    qgmApplyMerchantActionResult(orderId,result);
-    toast('ยกเลิกออเดอร์แล้ว');
-    try{renderShopOrderModern(orderId)}catch(refreshErr){console.warn('merchant cancel recovery render failed',refreshErr)}
-    Promise.resolve().then(()=>qtBackgroundHydrate({light:false})).catch(refreshErr=>console.warn('merchant hydrate after cancel recovery failed',refreshErr));
    }catch(retryErr){
-    qgmSetOrderActionBusy(button,false);
+    qgmSetOrderActionBusy(sourceButton,false);
+    if(slider)slider.disabled=false;
     if(!retryErr?.qgUncertain)toast('ยกเลิกไม่สำเร็จ: '+(retryErr.message||retryErr));
     else Promise.resolve().then(()=>qtBackgroundHydrate({light:false})).catch(()=>{});
+    return false;
    }
-   return;
+  }else{
+   qgmSetOrderActionBusy(sourceButton,false);
+   if(slider)slider.disabled=false;
+   toast('ยกเลิกไม่สำเร็จ: '+(e.message||e));
+   return false;
   }
-  qgmSetOrderActionBusy(button,false);
-  toast('ยกเลิกไม่สำเร็จ: '+(e.message||e));
-  return;
  }
  qgmApplyMerchantActionResult(orderId,result);
+ qgmCloseCancelGuard();
  toast('ยกเลิกออเดอร์แล้ว');
  try{renderShopOrderModern(orderId)}catch(e){console.warn('merchant cancel render refresh failed',e)}
  Promise.resolve().then(()=>qtBackgroundHydrate({light:false})).catch(e=>console.warn('merchant hydrate after cancel failed',e));
+ return true;
+}
+window.shopCancelOrder=function shopCancelOrder(orderId,button){
+ qgmCancelGuardStyle();
+ qgmCloseCancelGuard();
+ const u=typeof shopUser==='function'?shopUser():currentUser();
+ const o=(typeof window.shopOrders==='function'?window.shopOrders(u):[]).find(x=>String(x.id)===String(orderId));
+ if(!o){toast('ไม่พบออเดอร์ กรุณารีเฟรชอีกครั้ง');return}
+ const statusKey=String(o.status||'');
+ const accepted=!['pending_shop','pending'].includes(statusKey);
+ const overlay=document.createElement('section');
+ overlay.id='qgm-cancel-guard';overlay.className='qgm-cancel-guard';
+ overlay.innerHTML=`<div class="qgm-cancel-guard-backdrop"></div>
+ <section class="qgm-cancel-sheet" role="dialog" aria-modal="true" aria-labelledby="qgm-cancel-title">
+  <span class="qgm-cancel-handle"></span>
+  <div class="qgm-cancel-head"><div><h2 id="qgm-cancel-title">${accepted?'ยกเลิกออเดอร์':'ปฏิเสธออเดอร์'}</h2><p>ขั้นตอนนี้ต้องยืนยันโดยตั้งใจ</p></div><button type="button" class="qgm-cancel-close" aria-label="ปิด">✕</button></div>
+  <div class="qgm-cancel-order"><div><small>คำสั่งซื้อ</small><b>${esc(displayOrderNumber(o))}</b></div><strong>${Number(qgmMerchantSalesAmount(o)||0).toLocaleString('th-TH')} บาท</strong></div>
+  <div class="qgm-cancel-warning">${accepted?'ร้านรับออเดอร์นี้แล้ว การยกเลิกจะถูกบันทึกและแจ้งลูกค้า'+(o.riderId||o.rider_id?' รวมถึง Rider ที่รับงานแล้ว':'')+' กรุณายกเลิกเฉพาะเมื่อจำเป็นจริง':'หากปฏิเสธ ออเดอร์นี้จะถูกยกเลิกและแจ้งลูกค้าทันที'}</div>
+  <h3 class="qgm-cancel-title">เลือกเหตุผล</h3>
+  <div class="qgm-cancel-reasons">
+   ${['สินค้าหมด','ร้านไม่สามารถจัดเตรียมสินค้าได้','ร้านปิดหรือมีเหตุฉุกเฉิน','ลูกค้าขอให้ยกเลิก','อื่น ๆ'].map(x=>`<label class="qgm-cancel-reason"><input type="radio" name="qgm-cancel-reason" value="${esc(x)}"><span>${esc(x)}</span></label>`).join('')}
+  </div>
+  <textarea class="qgm-cancel-other" maxlength="420" hidden placeholder="ระบุเหตุผลเพิ่มเติม"></textarea>
+  <label class="qgm-cancel-ack"><input id="qgm-cancel-ack" type="checkbox"><span>ฉันตรวจสอบออเดอร์นี้แล้ว และเข้าใจว่าการยกเลิกจะกระทบลูกค้า${accepted?'และอาจกระทบ Rider':''}</span></label>
+  <div class="qgm-cancel-slider-wrap" data-ready="0"><div class="qgm-cancel-slider-fill"></div><div class="qgm-cancel-slider-label">เลือกเหตุผลและยืนยันก่อน</div><input class="qgm-cancel-slider" type="range" min="0" max="100" value="0" step="1" disabled aria-label="เลื่อนเพื่อยืนยันยกเลิก"></div>
+  <p class="qgm-cancel-hint">เลื่อนไปทางขวาจนสุดเพื่อยืนยัน ${accepted?'ยกเลิก':'ปฏิเสธ'}</p>
+ </section>`;
+ document.body.appendChild(overlay);
+ const sheet=overlay.querySelector('.qgm-cancel-sheet'),slider=overlay.querySelector('.qgm-cancel-slider'),fill=overlay.querySelector('.qgm-cancel-slider-fill'),label=overlay.querySelector('.qgm-cancel-slider-label'),other=overlay.querySelector('.qgm-cancel-other');
+ const close=()=>qgmCloseCancelGuard();
+ overlay.querySelector('.qgm-cancel-guard-backdrop').onclick=close;
+ overlay.querySelector('.qgm-cancel-close').onclick=close;
+ overlay.querySelectorAll('input[name="qgm-cancel-reason"]').forEach(r=>r.addEventListener('change',()=>{
+   const isOther=r.checked&&r.value==='อื่น ๆ';other.hidden=!isOther;if(isOther)setTimeout(()=>other.focus(),0);
+   slider.value=0;fill.style.width='0%';label.textContent='เลื่อนเพื่อยืนยัน'+(accepted?'ยกเลิก':'ปฏิเสธ');qgmSyncCancelGuard(sheet);
+ }));
+ other.addEventListener('input',()=>{slider.value=0;fill.style.width='0%';qgmSyncCancelGuard(sheet)});
+ overlay.querySelector('#qgm-cancel-ack').addEventListener('change',()=>{slider.value=0;fill.style.width='0%';qgmSyncCancelGuard(sheet)});
+ slider.addEventListener('input',()=>{const v=Number(slider.value||0);fill.style.width=v+'%';label.textContent=v>=95?'ปล่อยเพื่อยืนยัน':'เลื่อนไปทางขวา'});
+ slider.addEventListener('change',async()=>{
+   const v=Number(slider.value||0),reason=qgmCancelReasonValue(sheet);
+   if(v<95||!reason||!sheet.querySelector('#qgm-cancel-ack').checked){slider.value=0;fill.style.width='0%';label.textContent='เลื่อนเพื่อยืนยัน'+(accepted?'ยกเลิก':'ปฏิเสธ');return}
+   label.textContent='กำลังยกเลิก...';
+   await qgmCommitMerchantCancel(orderId,reason,button,sheet);
+ });
+ qgmSyncCancelGuard(sheet);
 };
 
 
