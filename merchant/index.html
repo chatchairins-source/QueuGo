@@ -1912,9 +1912,14 @@ window.renderShopSetup=function(){
    const latitude=Number(u.lat),longitude=Number(u.lng),valid=qgIsValidShopCoordinate(latitude,longitude);
    let initial=true;
    const picked=initLocationPicker('qgs-map',valid?latitude:null,valid?longitude:null,(lat,lng)=>{
-    if(initial){initial=false;if(!valid){const line=document.getElementById('qgs-coordinates');if(line)line.textContent='ยังไม่ได้ปักพิกัดร้าน';return;}}
+    const line=document.getElementById('qgs-coordinates');
+    if(initial){
+      initial=false;
+      if(line)line.textContent=valid?'พิกัดปัจจุบัน: '+lat.toFixed(6)+', '+lng.toFixed(6):'ยังไม่ได้ปักพิกัดร้าน';
+      return;
+    }
     window.qgmShopLocation={lat,lng};
-    const line=document.getElementById('qgs-coordinates');if(line)line.textContent='พิกัด: '+lat.toFixed(6)+', '+lng.toFixed(6);
+    if(line)line.textContent='พิกัดใหม่: '+lat.toFixed(6)+', '+lng.toFixed(6);
    });
    window.__currentPicker=picked;
   }catch(err){
