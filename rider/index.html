@@ -473,8 +473,8 @@ function riderStepGo(step){
   (groups[target]||groups[0]).forEach(p=>{if(p)p.style.display='block';});
   const steps=document.querySelectorAll('.rider-step');steps.forEach((x,i)=>{x.classList.toggle('active',i===target);x.classList.toggle('done',i<target);});
   window.__qtRiderStep=target;
-  const submit=document.querySelector('.qg-register-submit');if(submit)submit.textContent=target===3?'ส่งใบสมัคร  →':'ถัดไป  →';
-  const wizard=document.querySelector('.qg-register-wizard');if(wizard)wizard.scrollIntoView({behavior:'smooth',block:'start'});
+  const submit=document.getElementById('rr-step-next');if(submit)submit.textContent=target===3?'ส่งใบสมัคร  →':'ถัดไป  →';
+  const wizard=document.getElementById('qg-register-wizard');if(wizard)wizard.scrollIntoView({behavior:'smooth',block:'start'});
 }
 async function riderStepNext(){
   if(window.__qtRiderAdvancing)return;
@@ -516,13 +516,13 @@ async function handleRiderRegistration(e){
   if(!f('rr-province').value||!f('rr-district').value){toast('กรุณาเลือกจังหวัดและอำเภอ/เขต');return false;}
   if(form.capacity<0||form.capacity>1000){toast('ความจุรถไม่ถูกต้อง');riderStepGo(1);return false;}
   if(!form.plate){toast('กรุณากรอกทะเบียนรถ');riderStepGo(1);return false;}
-  const agree=document.querySelector('.qg-register-confirm input[type=checkbox]'); const betaAgree=document.getElementById('rr-beta-accept');
+  const agree=document.querySelector('#qg-register-confirm input[type=checkbox]'); const betaAgree=document.getElementById('rr-beta-accept');
   if(!agree||!agree.checked||!betaAgree||!betaAgree.checked){toast('กรุณายืนยันข้อมูลและยอมรับข้อตกลง Beta ก่อนส่งใบสมัคร');riderStepGo(3);return false;}
   const files=['rr-photo','rr-id-front','rr-id-back','rr-license','rr-prb','rr-vehicle-photo'];const data={};
   for(const id of files){const input=f(id);if(input&&input.files&&input.files[0]){const file=input.files[0];data[id]=file.type.startsWith('image/')?await compressRiderImage(file):await readFileAsDataURL(file);}else{const draft=await loadRiderDraftFile(id);if(draft&&draft.data)data[id]=draft.data;}}
   const requiredDocs=files;const labels={'rr-photo':'รูปถ่ายหน้าตรง','rr-id-front':'บัตรประชาชนด้านหน้า','rr-id-back':'บัตรประชาชนด้านหลัง','rr-license':'ใบขับขี่','rr-prb':'พ.ร.บ. รถ','rr-vehicle-photo':'รูปถ่ายคู่กับรถ'};const missing=requiredDocs.filter(id=>!data[id]);
   if(missing.length){toast('กรุณาอัปโหลด: '+missing.map(x=>labels[x]).join(', '));return false;}
-  const submitBtn=e.submitter||document.querySelector('.qg-register-submit');if(submitBtn)submitBtn.disabled=true;
+  const submitBtn=e.submitter||document.getElementById('rr-step-next');if(submitBtn)submitBtn.disabled=true;
   try{
     toast('กำลังสร้างบัญชีและส่งใบสมัคร...');
     const authEmail=email||authEmailFromPhone(phone);
@@ -571,7 +571,7 @@ function renderRiderRegistration(){
         <div><h1>สมัครเป็นไรเดอร์</h1><p>กรอกข้อมูลให้ครบเพื่อส่งให้ Admin ตรวจสอบ</p></div>
         <span class="qg-mini-logo">Q</span>
       </header>
-      <div class="qg-register-wizard qg-register-card">
+      <div id="qg-register-wizard" class="qg-register-card">
         <div class="rider-steps">
           <div class="rider-step active"><b>1</b><span>ส่วนตัว</span></div><i></i>
           <div class="rider-step"><b>2</b><span>รถและพื้นที่</span></div><i></i>
@@ -611,7 +611,7 @@ function renderRiderRegistration(){
               <label>อำเภอ/เขต <span class="req">*</span><input required id="rr-district" placeholder="เช่น เมืองบุรีรัมย์"></label>
               <label>พื้นที่เพิ่มเติม<input id="rr-area" placeholder="เช่น ในเมือง / ตลาดสด"></label>
             </section>
-            <section class="rider-panel qg-register-docs">
+            <section class="rider-panel">
               <div class="qg-section-title"><b>เอกสารประกอบ</b><span>บังคับ</span></div>
               ${riderUploadCard('rr-id-front','บัตรประชาชนด้านหน้า',true,'image/*,.pdf')}
               ${riderUploadCard('rr-id-back','บัตรประชาชนด้านหลัง',true,'image/*,.pdf')}
@@ -619,7 +619,7 @@ function renderRiderRegistration(){
               ${riderUploadCard('rr-prb','พ.ร.บ. รถ',true,'image/*,.pdf')}
               ${riderUploadCard('rr-vehicle-photo','รูปถ่ายคู่กับรถ',true,'image/*')}
             </section>
-            <section class="rider-panel qg-register-confirm">
+            <section id="qg-register-confirm" class="rider-panel">
               <div class="qg-section-title"><b>ยืนยันข้อมูล</b></div>
               <label class="qg-check"><input type="checkbox" required><span>ข้าพเจ้ารับรองว่าข้อมูลและเอกสารเป็นความจริง และยินยอมให้ QueueGo ตรวจสอบ</span></label>
               <label class="qg-check"><input id="rr-beta-accept" type="checkbox" required><span>ข้าพเจ้ารับทราบว่า QueueGo อยู่ในช่วง Beta และจะตรวจสอบข้อมูลสำคัญก่อนดำเนินการ</span></label>
@@ -628,14 +628,14 @@ function renderRiderRegistration(){
           </div>
           <div class="qg-register-actions">
             <button class="qg-btn qg-btn-secondary" type="button" id="rr-step-back">ย้อนกลับ</button>
-            <button class="qg-btn qg-btn-primary qg-register-submit" type="button">ถัดไป →</button>
+            <button class="qg-btn qg-btn-primary" id="rr-step-next" type="button">ถัดไป →</button>
           </div>
         </form>
       </div>
     </main>`;
   window.__qtRiderStep=0;
   riderStepGo(0);
-  document.querySelector('.qg-register-submit').onclick=()=>riderStepNext();
+  document.getElementById('rr-step-next').onclick=()=>riderStepNext();
   document.getElementById('rr-step-back').onclick=()=>riderStepBack();
   document.getElementById('rr-back-login').onclick=()=>renderLogin();
   try{
@@ -1958,7 +1958,7 @@ window.advanceOrder=async function(o){
    }catch(e){box.textContent='โหลดเรื่องที่แจ้งไม่สำเร็จ: '+e.message}
  };
 })();
-</script></script>
+</script>
 <script id="qg-rider-earnings">
 (function(){
 window.qgRenderEarnings=function(){
@@ -2001,7 +2001,7 @@ window.qgRenderEarnings=function(){
    }catch(e){box.className='qg-error-state';box.textContent='โหลดบัญชีเงินสดไม่สำเร็จ: '+e.message}
  };
 })();
-</script></script>
+</script>
 <script id="qg-rider-market-pickups">
 (function(){
  async function loadPickups(o){
