@@ -15,7 +15,7 @@ ok(merchant.includes("merchant product hydrate after delete failed"),'delete pos
 ok(merchant.includes("Promise.resolve().then(()=>qtBackgroundHydrate({light:false})).catch(refreshErr=>console.warn('merchant product hydrate after save failed'"),'product save must not wait for background hydrate after server commit');
 ok(merchant.includes("Promise.resolve().then(()=>qtBackgroundHydrate({light:false})).catch(refreshErr=>console.warn('merchant product hydrate after delete failed'"),'product delete must not wait for background hydrate after server commit');
 ok(merchant.includes("QT_DB_CACHE.qt_products=qtSanitizeCachedProducts(dbGet('qt_products',[]),u).filter(p=>String(p.id)!==String(row.id)).concat(mapped)"),'confirmed saved product must replace its cached row immediately');
-ok(merchant.includes("!p?.archived_at"),'archived historical products must be hidden from active product management');
+ok(merchant.includes("p?.archived_at)continue"),'archived historical products must be skipped from active product management');
 ok(merchant.includes('function qtSanitizeCachedProducts'),'Merchant fast cache must sanitize product ownership and duplicate ids');
 ok(merchant.includes('productsAt:now'),'Merchant product cache must have a short freshness timestamp');
 ok(merchant.includes('productCacheFresh'),'stale cached product lists must not be trusted on boot');
