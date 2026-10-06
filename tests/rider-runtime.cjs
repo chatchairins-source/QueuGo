@@ -65,7 +65,7 @@ function boot(){
  y.sbTable=async()=>[{id:'a',role:'admin',status:'active'}];await a.run('resumeSession()');eq(a.session(),null);eq(stageRenders,1);eq(pendingRenders,0);
  // Multiple timer ticks share a pending read. Explicit refresh gets one trailing snapshot.
  const j=boot(),x=j.ctx; x.getAccessToken=async()=>x.S.session.authUserId;let gate=deferred(),mine=0,history=0;
- x.sbTable=async(path)=>{if(path.startsWith('notifications?'))return [];if(path.includes('status=in.')){mine++;if(mine===1)return gate.promise;return []}history++;return []};
+ x.sbTable=async(path)=>{if(path.startsWith('notifications?'))return [];if(path.includes('status=in.')){mine++;if(mine===1)return gate.promise;return []}if(path.includes('status=eq.completed'))history++;return []};
  const first=j.run('refreshData(true)');await flush();for(let i=0;i<20;i++)j.run('refreshData(true)');eq(mine,1);gate.resolve([]);await first;eq(mine,1);eq(history,1);
  gate=deferred();mine=0;const fg=j.run('refreshData()');await flush();for(let i=0;i<20;i++)j.run('refreshData()');eq(mine,1);gate.resolve([]);await fg;eq(mine,2);
  // A new actor queues its own read; old actor state never renders.
