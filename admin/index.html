@@ -575,7 +575,7 @@ function distanceKm(lat1,lon1,lat2,lon2){
 
 function qgAdminShopCategory(shop){
   const category=shop?.public_category||shop?.category||shop?.metadata?.category;
-  return {food:'ร้านอาหาร',grocery:'ของชำ / สะดวกซื้อ',cafe:'คาเฟ่ / เครื่องดื่ม',other:'อื่น ๆ',market:'ตลาดสด',meat:'เนื้อสัตว์',fish:'ปลา / อาหารทะเล',vegetable:'ผัก',fruit:'ผลไม้',laundry:'ร้านซักรีด'}[category]||category||'ยังไม่ระบุประเภทร้าน';
+  return {food:'ร้านอาหาร',grocery:'ร้านขายของชำ',cafe:'เครื่องดื่ม / คาเฟ่',laundry:'ร้านฝากซัก',market:'ตลาดสด',other:'อื่น ๆ',meat:'เนื้อสัตว์ (ข้อมูลเดิม)',fish:'ปลา / อาหารทะเล (ข้อมูลเดิม)',vegetable:'ผักสด (ข้อมูลเดิม)',fruit:'ผลไม้ (ข้อมูลเดิม)'}[category]||category||'ยังไม่ระบุประเภทร้าน';
 }
 function qgAdminProviderLabel(user){return user?.type==='shop'?qgAdminShopCategory(user):roleLabel(user?.type);}
 function roleLabel(t){ return {customer:'ลูกค้า',shop:'ร้านค้า',technician:'ช่าง',rider:'ไรเดอร์',admin:'แอดมิน'}[t] || escapeHtml(t); }
