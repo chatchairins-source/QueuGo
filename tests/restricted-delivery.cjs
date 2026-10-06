@@ -16,7 +16,9 @@ ok(sql.includes("(บุหรี่|ยาสูบ|ซิการ์|บุ�
 ok(!/\bdrop\s+(table|schema|column)\b/i.test(sql),'migration must not destructively drop product data');
 
 ok(merchant.includes("function qgmDeliveryRestriction(name,category,description)"),'Merchant must identify restricted products before save');
-ok(merchant.includes("delivery_available:restriction==='none'&&$('#qgm-delivery-available').checked"),'Merchant save must force restricted products POS-only');
+ok(merchant.includes("delivery_available:restriction==='none'&&deliveryRequested"),'Merchant save must force restricted products out of Delivery without depending on a stale checkbox DOM');
+ok(merchant.includes("const posAvailable=posControl?posControl.checked:(existingProduct?existingProduct.posAvailable!==false:true);"),'Merchant save must tolerate a missing POS checkbox and preserve a safe POS value');
+ok(!merchant.includes("pos_available:$('#qgm-pos-available').checked"),'Merchant save must never dereference a missing POS checkbox directly');
 ok(merchant.includes("delivery_restriction:restriction"),'Merchant must persist the restriction classification');
 ok(merchant.includes("ขายหน้าร้าน POS ได้ แต่ QueueGo จะไม่เปิดขายผ่าน Delivery"),'Merchant UI must explain POS-only policy');
 ok(merchant.includes("qgm-delivery-available")&&merchant.includes("qgmApplyDeliveryRestriction"),'Delivery switch must be automatically locked for restricted items');
