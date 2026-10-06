@@ -31,7 +31,7 @@ ok(merchant.includes("&select=id,available"),'product toggle PATCH must request 
 ok(merchant.includes("ฐานข้อมูลไม่ยืนยันสถานะสินค้า"),'product toggle must reject unconfirmed writes');
 ok(merchant.includes("qgmToggleProduct('${p.id}',this.checked,this)"),'product list toggle must pass its control for lock and rollback');
 ok(merchant.includes("const belongs=pid"),'cached product ownership must prefer the authoritative shop profile id');
-ok(merchant.includes("?String(p?.shopId||'')===uid"),'legacy user-id ownership fallback must only apply before shop profile resolution');
+ok(merchant.includes(":String(p?.shopId||'')===uid"),'legacy user-id ownership fallback must only apply before shop profile resolution');
 ok(merchant.includes('async function qgmRefreshProductsPage'),'product management must fetch an authoritative shop product snapshot');
 ok(merchant.includes("products?select=*&shop_id=eq."),'authoritative product snapshot must be scoped to the current shop');
 ok(merchant.includes("const ownPid=String(ownShop?.shopProfileId||profileMaps.shopByUserId.get(me?.userId)||'');"),'background Merchant hydrate must resolve one authoritative shop profile');
