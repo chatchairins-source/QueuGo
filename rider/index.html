@@ -45,8 +45,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro Text"
 .qg-map-tools{position:absolute;z-index:720;right:12px;top:calc(70px + var(--safeT))}.qg-map-button{width:46px;height:46px;border:0;border-radius:50%;background:#fff;color:var(--qg-red);display:grid;place-items:center;box-shadow:0 10px 28px #30131c22}
 
 /* BOTTOM SHEET */
-.qg-sheet{position:absolute;z-index:760;left:0;right:0;bottom:calc(64px + var(--safeB));border-radius:28px 28px 0 0;background:rgba(255,255,255,.98);box-shadow:0 -14px 44px rgba(38,18,24,.15);overflow:hidden;transition:height .22s ease,top .22s ease;height:clamp(305px,45dvh,460px)}
-.qg-sheet[data-level="0"]{height:170px}.qg-sheet[data-level="1"]{height:clamp(305px,45dvh,460px)}.qg-sheet[data-level="2"],.qg-sheet.qg-expanded{top:calc(62px + var(--safeT));height:auto;bottom:calc(64px + var(--safeB));overflow-y:auto;-webkit-overflow-scrolling:touch}
+.qg-sheet{position:absolute;z-index:760;left:0;right:0;bottom:calc(64px + var(--safeB));border-radius:28px 28px 0 0;background:rgba(255,255,255,.98);box-shadow:0 -14px 44px rgba(38,18,24,.15);overflow:hidden;transition:height .22s ease;max-height:48dvh;height:auto}
+.qg-sheet[data-level="0"]{height:170px}.qg-sheet[data-level="1"]{height:auto;max-height:48dvh}.qg-sheet.qg-expanded{height:auto}
 .qg-sheet[data-mode="offline"],.qg-sheet[data-mode="waiting"]{top:auto!important;height:auto!important;max-height:none!important;bottom:calc(64px + var(--safeB))!important;overflow:hidden!important}
 .qg-sheet[data-mode="offline"] .qg-sheet-grab,.qg-sheet[data-mode="waiting"] .qg-sheet-grab{position:relative;top:auto;height:26px}
 .qg-sheet[data-mode="offline"] .qg-sheet-grab small,.qg-sheet[data-mode="waiting"] .qg-sheet-grab small{display:none}
@@ -54,7 +54,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro Text"
 .qg-sheet[data-mode="offline"] .qg-wait-card,.qg-sheet[data-mode="waiting"] .qg-wait-card{padding-bottom:0}
 .qg-sheet[data-mode="waiting"] .qg-wait-stats{margin:10px 0}
 .qg-sheet[data-mode="waiting"] .qg-tip{margin-top:8px;padding:9px 10px}
-.qg-sheet-grab{position:sticky;z-index:10;top:0;width:100%;height:35px;border:0;background:rgba(255,255,255,.98);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;color:#aaa2a6;touch-action:none}.qg-sheet-grab>span{width:42px;height:5px;border-radius:99px;background:#cbc5c8}.qg-sheet-grab small{font-size:7px;font-weight:800}.qg-sheet-body{padding:0 14px 16px;overflow-y:auto;height:calc(100% - 35px);-webkit-overflow-scrolling:touch}
+.qg-sheet-grab{position:relative;z-index:10;width:100%;height:26px;background:rgba(255,255,255,.98);display:flex;align-items:center;justify-content:center;color:#aaa2a6;pointer-events:none}.qg-sheet-grab>span{width:42px;height:5px;border-radius:99px;background:#cbc5c8}.qg-sheet-body{padding:0 14px 16px;overflow-y:auto;max-height:calc(48dvh - 26px);-webkit-overflow-scrolling:touch}
 .qg-wait-card{padding:3px 2px}.qg-wait-title{display:flex;gap:12px;align-items:center}.qg-wait-title h2{margin:0;font-size:21px;letter-spacing:-.02em}.qg-wait-title p{margin:3px 0 0;color:var(--qg-muted);font-size:11px;line-height:1.45}.qg-scooter-icon,.qg-scooter-dot{width:54px;height:54px;border-radius:18px;background:#fff0f3;color:var(--qg-red);display:grid;place-items:center;font-size:24px;font-weight:1000}.qg-scooter-dot{font-size:18px}
 .qg-wait-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:14px 0}.qg-wait-stats>div{padding:11px;border-radius:16px;background:#fff5f7}.qg-wait-stats span{display:block;color:#8a8387;font-size:9px}.qg-wait-stats b{display:block;margin-top:3px;font-size:15px}.qg-wait-card>.qg-btn{width:100%;margin-top:10px}.qg-tip{display:flex;gap:9px;align-items:flex-start;margin-top:12px;padding:11px 12px;border-radius:15px;background:#faf6f7}.qg-tip b{color:var(--qg-red);font-size:10px}.qg-tip span{font-size:9px;color:#716b6f;line-height:1.45}
 
@@ -172,7 +172,7 @@ const SB = {
 const SESSION_KEY = 'qtr_session_v1';
 const NEARBY_RADIUS_KM = 2;
 const QG_ARRIVAL_GUARD_KM = 0.25;
-const APP_VERSION='4.1.1';
+const APP_VERSION='4.1.2';
 const POLL_MS = 60000;
 
 /* ---------- full-screen lock + responsive resize (all screens, incl. rider page) ---------- */
@@ -330,10 +330,10 @@ const STEP_NEXT = {
 };
 
 
-/* QueueGo Rider sheet: 0=ย่อ, 1=กลาง, 2=เต็ม — presentation only, state machine unchanged */
+/* QueueGo Rider sheet: 0=ย่อระหว่างนำทาง, 1=ขนาดตามเนื้อหา — ไม่ลากยืด */
 let qgSheetLevel=1;
 function qgSetSheetLevel(level){
-  qgSheetLevel=Math.max(0,Math.min(2,Number(level)||0));
+  qgSheetLevel=Number(level)<=0?0:1;
 }
 /* ---------- app state ---------- */
 const S = {
@@ -1497,23 +1497,10 @@ function qgBindRouteBundleUI(){
 
 
 function qgSheetToolbar(){
-  const label=qgSheetLevel===0?'ย่อ':qgSheetLevel===1?'รายละเอียดงาน':'รายละเอียดทั้งหมด';
-  return `<button type="button" class="qg-sheet-grab" data-qg-sheet-toggle data-level="${qgSheetLevel}" aria-label="ลากขึ้นหรือลงเพื่อยืดหรือหดแผงงาน"><span></span><small>${label}</small></button>`;
+  return '<div class="qg-sheet-grab qg-sheet-grab-static" aria-hidden="true"><span></span></div>';
 }
-function qgBindSheetToolbar(sheet){
-  const toggle=sheet?.querySelector('[data-qg-sheet-toggle]');
-  if(!toggle)return;
-  let startY=null,dragged=false;
-  toggle.onpointerdown=e=>{startY=e.clientY;dragged=false;try{toggle.setPointerCapture(e.pointerId)}catch(_){}};
-  toggle.onpointermove=e=>{if(startY!==null&&Math.abs(e.clientY-startY)>8)dragged=true};
-  toggle.onpointerup=e=>{
-    if(startY===null)return;
-    const delta=e.clientY-startY;startY=null;
-    if(Math.abs(delta)>28){qgSetSheetLevel(qgSheetLevel+(delta<0?1:-1));renderSheet();dragged=true}
-  };
-  toggle.onpointercancel=()=>{startY=null};
-  toggle.onclick=()=>{if(dragged){dragged=false;return}qgSetSheetLevel(qgSheetLevel===0?1:qgSheetLevel===1?2:1);renderSheet()};
-}
+function qgBindSheetToolbar(){ /* static sheet: intentionally no drag/tap expansion */ }
+
 const qgWaitingSummaryCache={at:0,data:null,task:null,riderId:null};
 function qgPaintWaitingSummary(data){
   if(!data)return;
@@ -1546,7 +1533,7 @@ function renderSheet(){
   if(!s)return;
   s.dataset.level=String(qgSheetLevel);
   s.dataset.mode='default';
-  s.classList.toggle('qg-expanded',qgSheetLevel===2);
+  s.classList.remove('qg-expanded');
   const toolbar=qgSheetToolbar();
   if(S.laundryJob&&!S.activeOrder){
     s.dataset.mode='active';
