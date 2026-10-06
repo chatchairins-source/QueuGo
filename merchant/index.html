@@ -494,7 +494,9 @@ function qtSanitizeCachedProducts(rows,user){
   const pid=String(user?.shopProfileId||''),uid=String(user?.id||''),seen=new Set(),out=[];
   for(const p of Array.isArray(rows)?rows:[]){
     const id=String(p?.id||'');if(!id||seen.has(id)||p?.archived_at)continue;
-    const belongs=String(p?.shopId||'')===uid||(pid&&(String(p?.shopProfileId||'')===pid||String(p?.shopId||'')===pid));
+    const belongs=pid
+      ?(String(p?.shopProfileId||'')===pid||String(p?.shopId||'')===pid)
+      :String(p?.shopId||'')===uid;
     if(!belongs)continue;seen.add(id);out.push(p);
   }
   return out;
@@ -1823,7 +1825,7 @@ function qgmMerchantSalesAmount(o){
   return Number.isFinite(total)?Math.max(0,total-(Number.isFinite(fee)?fee:0)):0;
 }
 window.shopOrders=shopOrders;
-function shopProducts(u){const pid=profileId(u);return dbGet('qt_products',[]).filter(p=>!p?.archived_at&&(String(p.shopId)===String(u.id)||(pid&&(String(p.shopProfileId)===String(pid)||String(p.shopId)===String(pid)))))}
+function shopProducts(u){const pid=String(profileId(u)||''),uid=String(u?.id||'');return qtSanitizeCachedProducts(dbGet('qt_products',[]),u).filter(p=>pid?(String(p.shopProfileId||'')===pid||String(p.shopId||'')===pid):String(p.shopId||'')===uid)}
 function img(v){
   const s=String(v||'').trim();
   if(/^(https?:|data:image\/|blob:)/i.test(s)) return s;
@@ -2037,8 +2039,27 @@ async function qgmRefreshProductsPage(u){
     }
   }catch(e){console.warn('merchant products authoritative refresh failed',e)}
 }
-window.qgmToggleProduct=async function(id,available){const a=dbGet('qt_products',[]),p=a.find(x=>String(x.id)===String(id)),u=shopUser();if(!p||!u||!shopProducts(u).includes(p))return;try{const token=await qtGetAccessToken();if(!token)throw new Error('เซสชันหมดอายุ');await qtSupabaseTable('products?id=eq.'+encodeURIComponent(id)+'&shop_id=eq.'+encodeURIComponent(profileId(u)),{method:'PATCH',accessToken:token,body:{available}})}catch(e){console.error(e);toast('บันทึกสถานะไม่สำเร็จ: '+(e.message||e));try{renderShopProductsModern()}catch(renderErr){console.warn('merchant product rollback render failed',renderErr)}return}p.available=available;qtMarkClean('qt_products');try{renderShopProductsModern()}catch(renderErr){console.warn('merchant product post-commit render failed',renderErr)}}
-window.renderShopProductsModern=function(options={}){const u=shopUser();if(!u)return navigate('login');const ps=shopProducts(u);layout('จัดการสินค้า',`<label class="qgm-search">${svg('search')}<input type="search" value="${esc(qgmProductViewSearch)}" placeholder="ค้นหาสินค้า..." oninput="qgmProductSearch(this.value)"></label><div class="qgm-tabs"><button data-mode="all" onclick="qgmProductFilter('all')">ทั้งหมด</button><button data-mode="on" onclick="qgmProductFilter('on')">เปิดขาย</button><button data-mode="off" onclick="qgmProductFilter('off')">ปิดขาย</button></div>${ps.map(p=>`<div class="qgm-card qgm-product" data-mode="${p.available!==false?'on':'off'}" data-search="${esc((p.name+' '+(p.category||'')).toLocaleLowerCase('th-TH'))}" onclick="if(event.target.tagName!=='INPUT'&&event.target.tagName!=='SPAN')navigate('shop-product/${p.id}')"><img src="${esc(img(p.image||p.image_url))}"><div><b>${esc(p.name)}</b><strong>${Number(p.posPrice??p.price??0).toLocaleString('th-TH')} บาท</strong><small>${p.available!==false?'เปิดขาย':'ปิดขาย'}</small></div><label class="qgm-switch"><input type="checkbox" ${p.available!==false?'checked':''} onchange="qgmToggleProduct('${p.id}',this.checked)"><span></span></label></div>`).join('')||'<div class="qgm-empty"><h2>ยังไม่มีสินค้า</h2></div>'}<div class="qgm-fab"><button type="button" onclick="navigate('shop-catalog')">${svg('plus')} เพิ่มสินค้า</button></div>`,'shop-products',{back:true});qgmApplyProductView();if(!options.authoritative)qgmRefreshProductsPage(u)};
+const qgmProductToggleInFlight=new Set();
+window.qgmToggleProduct=async function(id,available,control){
+ const key=String(id||'');if(!key||qgmProductToggleInFlight.has(key))return;
+ const a=dbGet('qt_products',[]),p=a.find(x=>String(x.id)===key),u=shopUser(),pid=profileId(u);
+ if(!p||!u||!pid||!shopProducts(u).includes(p))return;
+ const previous=p.available!==false;qgmProductToggleInFlight.add(key);if(control)control.disabled=true;
+ try{
+  const token=await qtGetAccessToken();if(!token)throw new Error('เซสชันหมดอายุ');
+  const saved=await qtSupabaseTable('products?id=eq.'+encodeURIComponent(key)+'&shop_id=eq.'+encodeURIComponent(pid)+'&select=id,available',{method:'PATCH',accessToken:token,body:{available:!!available}});
+  if(!Array.isArray(saved)||saved.length!==1||String(saved[0].id)!==key||Boolean(saved[0].available)!==Boolean(available))throw new Error('ฐานข้อมูลไม่ยืนยันสถานะสินค้า');
+  p.available=!!available;qtMarkClean('qt_products');try{qgSaveMerchantCache()}catch(e){}
+ }catch(e){
+  console.error(e);p.available=previous;if(control&&control.isConnected)control.checked=previous;
+  toast('บันทึกสถานะไม่สำเร็จ: '+(e.message||e));
+  return;
+ }finally{
+  qgmProductToggleInFlight.delete(key);if(control&&control.isConnected)control.disabled=false;
+ }
+ try{renderShopProductsModern()}catch(renderErr){console.warn('merchant product post-commit render failed',renderErr)}
+}
+window.renderShopProductsModern=function(options={}){const u=shopUser();if(!u)return navigate('login');const ps=shopProducts(u);layout('จัดการสินค้า',`<label class="qgm-search">${svg('search')}<input type="search" value="${esc(qgmProductViewSearch)}" placeholder="ค้นหาสินค้า..." oninput="qgmProductSearch(this.value)"></label><div class="qgm-tabs"><button data-mode="all" onclick="qgmProductFilter('all')">ทั้งหมด</button><button data-mode="on" onclick="qgmProductFilter('on')">เปิดขาย</button><button data-mode="off" onclick="qgmProductFilter('off')">ปิดขาย</button></div>${ps.map(p=>`<div class="qgm-card qgm-product" data-mode="${p.available!==false?'on':'off'}" data-search="${esc((p.name+' '+(p.category||'')).toLocaleLowerCase('th-TH'))}" onclick="if(event.target.tagName!=='INPUT'&&event.target.tagName!=='SPAN')navigate('shop-product/${p.id}')"><img src="${esc(img(p.image||p.image_url))}"><div><b>${esc(p.name)}</b><strong>${Number(p.posPrice??p.price??0).toLocaleString('th-TH')} บาท</strong><small>${p.available!==false?'เปิดขาย':'ปิดขาย'}</small></div><label class="qgm-switch"><input type="checkbox" ${p.available!==false?'checked':''} onchange="qgmToggleProduct('${p.id}',this.checked,this)"><span></span></label></div>`).join('')||'<div class="qgm-empty"><h2>ยังไม่มีสินค้า</h2></div>'}<div class="qgm-fab"><button type="button" onclick="navigate('shop-catalog')">${svg('plus')} เพิ่มสินค้า</button></div>`,'shop-products',{back:true});qgmApplyProductView();if(!options.authoritative)qgmRefreshProductsPage(u)};
 
 const qgmFoodMenuCategories=[
  ['เมนูแนะนำ / เมนูขายดี','tag'],
