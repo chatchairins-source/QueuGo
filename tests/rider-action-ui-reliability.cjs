@@ -4,6 +4,7 @@ const rider=fs.readFileSync(path.join(root,'rider/index.html'),'utf8');
 const activeSql=fs.readFileSync(path.join(root,'supabase/migrations/20261006134500_rider_authoritative_active_flow.sql'),'utf8');
 const proofSql=fs.readFileSync(path.join(root,'supabase/migrations/20261006150000_rider_delivery_proof_pin_flow.sql'),'utf8');
 const marketProofSql=fs.readFileSync(path.join(root,'supabase/migrations/20261006151500_market_proof_completion_audit.sql'),'utf8');
+const imageSnapshotSql=fs.readFileSync(path.join(root,'supabase/migrations/20261006152500_order_item_image_snapshot.sql'),'utf8');
 let checks=0;const ok=(v,m)=>{assert.ok(v,m);checks++};
 
 ok(rider.includes("function qgRiderRefreshAfterCommit(label)"),'rider must have non-fatal post-commit refresh helper');
@@ -16,6 +17,10 @@ ok(rider.includes("function qgOpenDeliveryConfirm(o)"),'arrival must open a dedi
 ok(rider.includes("qg-pin-digits"),'handoff must require the six-digit customer code');
 ok(rider.includes("'phone': '<svg"),'pickup and delivery screens must have a real phone icon');
 ok(rider.includes("const APP_VERSION='4.1.0';"),'professional Rider rebuild must expose the current app version');
+ok(rider.includes("function qgOpenAccountSettings()"),'profile must expose real account settings');
+ok(rider.includes("ข้อมูลรถที่อนุมัติ"),'approved vehicle identity must be visible but protected');
+ok(!rider.includes("vehicle_type:vehicle,vehicle_plate:nextPlate"),'account settings must not silently change approved vehicle identity');
+ok(rider.includes("item_image&order_id=eq."),'pickup/delivery verification must read immutable item image snapshots when available');
 ok(rider.includes("qg-delivery-photo-extra"),'handoff must support an optional second delivery photo');
 ok(rider.includes("qg_complete_with_proof"),'normal delivery completion must use the proof RPC');
 ok(rider.includes("qg_complete_market_with_proof"),'market delivery completion must use the proof RPC');
@@ -39,4 +44,7 @@ ok(proofSql.includes("REVOKE ALL ON FUNCTION public.qg_complete_with_proof"),'pr
 ok(marketProofSql.includes("'handoff_pin_verified',true"),'market completion audit must record PIN-verified proof');
 ok(marketProofSql.includes("'cash_collected',true"),'market completion audit must record customer cash collection');
 ok(marketProofSql.includes("'จัดส่งสำเร็จ'"),'market group completion must notify the customer once');
+ok(imageSnapshotSql.includes('ADD COLUMN IF NOT EXISTS item_image text'),'order items must have an additive image snapshot field');
+ok(imageSnapshotSql.includes('BEFORE INSERT ON public.order_items'),'future orders must snapshot image at insert time');
+ok(!imageSnapshotSql.includes('UPDATE public.order_items oi'),'migration must not rewrite locked historical order items');
 console.log(JSON.stringify({checks,failures:0,scope:'professional Rider pickup, handoff proof, PIN and state-machine contracts'}));
