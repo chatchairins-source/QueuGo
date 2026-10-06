@@ -2266,11 +2266,15 @@ window.qgmSaveProduct=async function(e,id,requestProductId){
  if(qgmProductSaveBusy)return false;
  qgmProductSaveBusy=true;
  const submit=e.currentTarget?.querySelector('button[type="submit"]');if(submit){submit.disabled=true;submit.textContent='กำลังบันทึก...'}
- const u=shopUser(),pid=profileId(u),name=$('#qgm-prod-name').value.trim(),category=$('#qgm-prod-category').value.trim(),price=Number($('#qgm-prod-price').value),stock=Number($('#qgm-prod-stock').value),available=$('#qgm-prod-available').checked;
+ const u=shopUser(),pid=profileId(u);
+ const nameControl=$('#qgm-prod-name'),categoryControl=$('#qgm-prod-category'),priceControl=$('#qgm-prod-price'),stockControl=$('#qgm-prod-stock'),availableControl=$('#qgm-prod-available'),imageControl=$('#qgm-prod-image');
  const isRestaurant=['food','cafe'].includes(String(u?.category||'')),isMarketProduct=qgmIsMarketProductShop(u);
- let image=$('#qgm-prod-image').value.trim();
  try{
   if(!pid)throw new Error('ไม่พบ Shop Profile ID');
+  if(!nameControl||!categoryControl||!priceControl||!stockControl||!availableControl)throw new Error('หน้าฟอร์มสินค้าไม่ครบ กรุณากลับหน้าสินค้าแล้วเปิดรายการนี้ใหม่');
+  const name=nameControl.value.trim(),category=categoryControl.value.trim(),price=Number(priceControl.value),stock=Number(stockControl.value),available=availableControl.checked;
+  const existingProduct=shopProducts(u).find(p=>String(p.id)===String(id))||null;
+  let image=String(imageControl?.value||existingProduct?.image||existingProduct?.image_url||'').trim();
   if(isRestaurant&&!qgmFoodCategoryNames().includes(category))throw new Error('กรุณาเลือกหมวดหมู่อาหารจากรายการ');
   if(isMarketProduct&&!qgmMarketProductCategoryNames().includes(category))throw new Error('กรุณาเลือกหมวดหมู่สินค้าตลาดสดจากรายการ');
   const variants=isRestaurant?qgmCollectRestaurantVariants():String($('#qgm-prod-variants')?.value||'').split(',').map(x=>x.trim()).filter(Boolean);
@@ -2282,7 +2286,6 @@ window.qgmSaveProduct=async function(e,id,requestProductId){
   qgmProductGpRate=gpRate;
   const deliveryPrice=qgmDeliveryPriceFromStore(price,gpRate);
   const selected=$('#qgm-prod-file')?.files?.[0];if(selected)image=await qtUploadMerchantImage(selected,'product');
-  const existingProduct=shopProducts(u).find(p=>String(p.id)===String(id))||null;
   const description=existingProduct?.description||'',restriction=qgmDeliveryRestriction(name,category,description);
   const posControl=$('#qgm-pos-available'),deliveryControl=$('#qgm-delivery-available');
   const posAvailable=posControl?posControl.checked:(existingProduct?existingProduct.posAvailable!==false:true);
