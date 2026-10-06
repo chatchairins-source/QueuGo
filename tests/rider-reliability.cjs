@@ -26,15 +26,18 @@ w.localStorage.setItem('qg-rider-navigation:rider',JSON.stringify({orderId:'o'})
 w.qgOpenTicketPanel=()=>{};w.qgLoadTickets=async()=>{};w.qgUploadEvidence=async()=>null;w.esc=v=>String(v||'');w.qtShortOrder=o=>o.id;
 vm.runInContext(fs.readFileSync(root+'/rider/issues.js','utf8'),d.getInternalVMContext());let issueCalls=[];w.sbTable=async(p,o)=>{issueCalls.push(o.body);if(issueCalls.length===1)throw Error('response lost');return o.body.p_ticket_id};
 w.qgOpenTicketPanel('o');let form=w.document.querySelector('#qg-v22-ticket form');form.elements.reason.value='shop_closed';form.elements.details.value='ร้านปิดประตู';await form.onsubmit({preventDefault(){}});eq(issueCalls[0].p_order_id,'o');eq(issueCalls[0].p_category,'merchant');form.elements.details.value='changed';await form.onsubmit({preventDefault(){}});eq(issueCalls[1].p_ticket_id,issueCalls[0].p_ticket_id);eq(issueCalls[1].p_details,issueCalls[0].p_details);eq(w.localStorage.getItem('qg-rider-issue:rider:o'),null);
-// Push worker persists account ownership and rejects late notifications after logout.
-const events={},shown=[],windows=[];const ctx=vm.createContext({indexedDB,URL,console,self:{registration:{scope:'https://queuego.test/rider/',showNotification:async(title,opts)=>shown.push({title,opts})},clients:{claim:async()=>{},matchAll:async()=>[],openWindow:async url=>windows.push(url)},skipWaiting:()=>{},addEventListener:(type,fn)=>events[type]=fn}});
-vm.runInContext(fs.readFileSync(root+'/rider/sw.js','utf8'),ctx);async function event(type,data){let task;events[type]({...data,waitUntil:p=>task=p});await task}
-await event('message',{data:{type:'QUEUEGO_OWNER',userId:'rider'}});await event('push',{data:{json:()=>({userId:'other',notificationId:'n',title:'Wrong account'})}});eq(shown.length,0);
-await event('push',{data:{json:()=>({userId:'rider',notificationId:'n',title:'Ready',orderId:'o'})}});eq(shown.length,1);eq(shown[0].opts.tag,'qg-n');
-await event('notificationclick',{notification:{data:shown[0].opts.data,close:()=>{}}});eq(windows[0],'https://queuego.test/rider/?order=o');
-await event('message',{data:{type:'QUEUEGO_OWNER',userId:null}});await event('push',{data:{json:()=>({userId:'rider',notificationId:'late'})}});eq(shown.length,1);
+// Unified Push worker persists authenticated account ownership and rejects late notifications after logout.
+const events={},shown=[],windows=[],clientApi={claim:async()=>{},matchAll:async()=>[],openWindow:async url=>windows.push(url)};
+const ctx=vm.createContext({indexedDB,URL,console,clients:clientApi,self:{registration:{scope:'https://queuego.test/',showNotification:async(title,opts)=>shown.push({title,opts})},clients:clientApi,skipWaiting:()=>{},addEventListener:(type,fn)=>events[type]=fn}});
+vm.runInContext(fs.readFileSync(root+'/queuego-push-sw.js','utf8'),ctx);async function event(type,data){let task;events[type]({...data,waitUntil:p=>task=p});await task}
+await event('message',{data:{type:'QUEUEGO_OWNER',userId:'auth-rider'}});
+await event('push',{data:{json:()=>({authUserId:'auth-other',role:'rider',notificationId:'n',title:'Wrong account'})}});eq(shown.length,0);
+await event('push',{data:{json:()=>({authUserId:'auth-rider',role:'rider',notificationId:'n',title:'Ready',referenceId:'o'})}});eq(shown.length,1);eq(shown[0].opts.tag,'qg-n');
+await event('notificationclick',{notification:{data:shown[0].opts.data,close:()=>{}}});eq(windows[0],'https://queuego.test/rider/#home');
+await event('message',{data:{type:'QUEUEGO_OWNER',userId:null}});
+await event('push',{data:{json:()=>({authUserId:'auth-rider',role:'rider',notificationId:'late'})}});eq(shown.length,1);
 // Encrypt a real Web Push request locally; arbitrary endpoints cannot become SSRF targets.
-const edge=fs.readFileSync(root+'/supabase/functions/rider-web-push/index.ts','utf8');const validator=edge.slice(edge.indexOf('function endpointOK('),edge.indexOf('async function config()')).replace('value:string','value');vm.runInContext(validator,ctx);
+const edge=fs.readFileSync(root+'/supabase/functions/queuego-push/index.ts','utf8');const validator=edge.slice(edge.indexOf('function endpointOK('),edge.indexOf('async function config()')).replace('value:string','value');vm.runInContext(validator,ctx);
 eq(vm.runInContext("endpointOK('https://fcm.googleapis.com/fcm/send/example')",ctx),true);eq(vm.runInContext("endpointOK('http://fcm.googleapis.com/example')",ctx),false);eq(vm.runInContext("endpointOK('https://fcm.googleapis.com.attacker.test/')",ctx),false);eq(vm.runInContext("endpointOK('https://127.0.0.1/')",ctx),false);
 const crypto=require('crypto'),webpush=require('web-push'),receiver=crypto.createECDH('prime256v1');receiver.generateKeys();const keys=webpush.generateVAPIDKeys();const details=webpush.generateRequestDetails({endpoint:'https://fcm.googleapis.com/fcm/send/isolated-test',keys:{p256dh:receiver.getPublicKey().toString('base64url'),auth:crypto.randomBytes(16).toString('base64url')}},JSON.stringify({title:'Ready'}),{vapidDetails:{subject:'https://queuego.test/',publicKey:keys.publicKey,privateKey:keys.privateKey}});eq(details.headers['Content-Encoding'],'aes128gcm');eq(details.body.length>0,true);
 d.window.close();console.log(JSON.stringify({checks,failures:0,scope:'isolated recovery/account lifecycle and IndexedDB push worker; physical notifications not certified'}));
