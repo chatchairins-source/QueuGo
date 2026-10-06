@@ -1964,9 +1964,9 @@ window.renderShopDashboardModern=function(u){
  const count=ss=>tod.filter(o=>ss.includes(o.status)).length;
  const logo=u.logo||u.avatar;
  const recent=os.slice(0,3);
- layout('หน้าหลัก',`<section class="qgm-home-store"><div class="qgm-store-identity"><img class="qgm-avatar" src="${esc(img(logo))}" alt=""><div><b>${esc(u.shopName||u.name||'ร้านค้า')}</b><small class="qgm-online" id="qgm-shop-open-label">● กำลังตรวจสอบสถานะร้าน</small></div><label class="qgm-open-switch" title="เปิดหรือปิดร้าน"><input type="checkbox" id="qgm-shop-open-toggle" onchange="qgmSetShopOpen(this)"><span></span></label><button type="button" aria-label="แก้ไขข้อมูลร้าน" onclick="navigate('shop-profile')">${svg('back')}</button></div></section><div class="qgm-section-heading"><h2>สรุปออเดอร์วันนี้</h2><small>${new Date().toLocaleDateString('th-TH',{day:'numeric',month:'short',year:'numeric'})}</small></div><section class="qgm-stats">${[['ออเดอร์ทั้งหมด',tod.length,'orders'],['เสร็จแล้ว',count(['completed','delivered']),'clock'],['กำลังเตรียม',count(['shop_accepted','preparing']),'box'],['ยกเลิก',count(['cancelled']),'close']].map(x=>`<div class="qgm-card qgm-stat"><span class="qgm-stat-icon">${svg(x[2])}</span><div><b>${x[1]}</b><small>${x[0]}</small></div></div>`).join('')}</section><div class="qgm-section-heading"><h2>ออเดอร์ล่าสุด</h2><button type="button" onclick="navigate('shop-orders')">ดูทั้งหมด ›</button></div><section class="qgm-recent">${recent.map(o=>`<button type="button" class="qgm-card qgm-recent-row" onclick="navigate('shop-order/${o.id}')"><span class="qgm-recent-symbol">${svg('orders')}</span><span><b>${esc(displayOrderNumber(o))}</b><small>${esc(o.customerName||'ลูกค้า')} · ${(o.items||[]).length} รายการ</small></span><strong>${qgmMerchantSalesAmount(o).toLocaleString('th-TH')} ฿</strong></button>`).join('')||'<div class="qgm-card qgm-recent-empty">ยังไม่มีออเดอร์</div>'}</section><div class="qgm-section-heading"><h2>เมนูหลัก</h2></div><section class="qgm-menu-grid">${[['shop-orders','orders','จัดการคำสั่งซื้อ'],['shop-products','box','จัดการสินค้า'],['shop-promote','tag','โปรโมชั่น'],['shop-settlement','chart','รายงาน'],['shop-profile','home','ข้อมูลร้านค้า'],['shop-modules','gear','ตั้งค่า'],['shop-media','gallery','คลังรูปภาพ'],['notifications','bell','การแจ้งเตือน'],['shop-support','support','ติดต่อแอดมิน']].map(x=>`<button type="button" class="qgm-menu" onclick="navigate('${x[0]}')"><span class="ico">${svg(x[1])}</span><span>${x[2]}</span></button>`).join('')}</section>`,'dashboard');
+ layout('หน้าหลัก',`<section class="qgm-home-store"><div class="qgm-store-identity"><img class="qgm-avatar" src="${esc(img(logo))}" alt=""><div><b>${esc(u.shopName||u.name||'ร้านค้า')}</b><small class="qgm-online" id="qgm-shop-open-label">● กำลังตรวจสอบสถานะร้าน</small></div><label class="qgm-open-switch" title="เปิดหรือปิดร้าน"><input type="checkbox" id="qgm-shop-open-toggle" onchange="qgmSetShopOpen(this)"><span></span></label><button type="button" aria-label="แก้ไขข้อมูลร้าน" onclick="navigate('shop-profile')">${svg('back')}</button></div></section><section id="qgm-delivery-readiness" class="qgm-card" style="margin:10px 0;padding:13px 14px">กำลังตรวจสอบความพร้อม Delivery...</section><div class="qgm-section-heading"><h2>สรุปออเดอร์วันนี้</h2><small>${new Date().toLocaleDateString('th-TH',{day:'numeric',month:'short',year:'numeric'})}</small></div><section class="qgm-stats">${[['ออเดอร์ทั้งหมด',tod.length,'orders'],['เสร็จแล้ว',count(['completed','delivered']),'clock'],['กำลังเตรียม',count(['shop_accepted','preparing']),'box'],['ยกเลิก',count(['cancelled']),'close']].map(x=>`<div class="qgm-card qgm-stat"><span class="qgm-stat-icon">${svg(x[2])}</span><div><b>${x[1]}</b><small>${x[0]}</small></div></div>`).join('')}</section><div class="qgm-section-heading"><h2>ออเดอร์ล่าสุด</h2><button type="button" onclick="navigate('shop-orders')">ดูทั้งหมด ›</button></div><section class="qgm-recent">${recent.map(o=>`<button type="button" class="qgm-card qgm-recent-row" onclick="navigate('shop-order/${o.id}')"><span class="qgm-recent-symbol">${svg('orders')}</span><span><b>${esc(displayOrderNumber(o))}</b><small>${esc(o.customerName||'ลูกค้า')} · ${(o.items||[]).length} รายการ</small></span><strong>${qgmMerchantSalesAmount(o).toLocaleString('th-TH')} ฿</strong></button>`).join('')||'<div class="qgm-card qgm-recent-empty">ยังไม่มีออเดอร์</div>'}</section><div class="qgm-section-heading"><h2>เมนูหลัก</h2></div><section class="qgm-menu-grid">${[['shop-orders','orders','จัดการคำสั่งซื้อ'],['shop-products','box','จัดการสินค้า'],['shop-promote','tag','โปรโมชั่น'],['shop-settlement','chart','รายงาน'],['shop-profile','home','ข้อมูลร้านค้า'],['shop-modules','gear','ตั้งค่า'],['shop-media','gallery','คลังรูปภาพ'],['notifications','bell','การแจ้งเตือน'],['shop-support','support','ติดต่อแอดมิน']].map(x=>`<button type="button" class="qgm-menu" onclick="navigate('${x[0]}')"><span class="ico">${svg(x[1])}</span><span>${x[2]}</span></button>`).join('')}</section>`,'dashboard');
 
-{qgmLoadShopOpen()}
+{qgmLoadShopOpen();qgmLoadDeliveryReadiness()}
 {
 
  const main=document.querySelector('.qgm-content');if(!main)return;
@@ -2505,6 +2505,49 @@ async function qgmLoadShopOpen(){
   label.style.color=toggle.checked?'#17a779':'#8b929c';
  }catch(e){toggle.disabled=true;label.textContent='ตรวจสอบสถานะร้านไม่ได้';}
 }
+function qgmDeliveryOpenMessage(error){
+ const message=String(error?.message||error||'');
+ if(/opening hours required/i.test(message))return 'ยังเปิด Delivery ไม่ได้ · กรุณาตั้งเวลาทำการก่อน';
+ if(/available Delivery product and price required/i.test(message))return 'ยังเปิด Delivery ไม่ได้ · ต้องมีสินค้าที่เปิดขาย Delivery อย่างน้อย 1 รายการและมีราคา';
+ if(/shop address and coordinates required/i.test(message))return 'ยังเปิด Delivery ไม่ได้ · กรุณาเพิ่มที่อยู่และปักหมุดตำแหน่งร้าน';
+ if(/shop profile not approved/i.test(message))return 'ยังเปิด Delivery ไม่ได้ · โปรไฟล์ร้านยังไม่พร้อมหรือยังไม่ผ่านการอนุมัติ';
+ if(/shop owner required/i.test(message))return 'เฉพาะเจ้าของร้านเท่านั้นที่เปิด Delivery ได้';
+ return 'เปลี่ยนสถานะร้านไม่สำเร็จ: '+message;
+}
+window.qgmLoadDeliveryReadiness=async function(){
+ const u=currentUser(),host=document.getElementById('qgm-delivery-readiness');if(!u||!host)return;
+ const owner=String(u.id);
+ try{
+  const token=await qtGetAccessToken();if(!token)throw Error('กรุณาเข้าสู่ระบบใหม่');
+  const pid=await qgmGetShopPid(u,token);if(!pid)throw Error('ไม่พบข้อมูลร้าน');
+  const [profiles,products,hours,marketRows]=await Promise.all([
+   qtSupabaseTable('shop_profiles?select=delivery_enabled,address,latitude,longitude,public_open_time,public_close_time,public_category,market_membership_status&id=eq.'+encodeURIComponent(pid)+'&limit=1',{accessToken:token}),
+   qtSupabaseTable('products?select=id,available,delivery_available,delivery_price,price,delivery_restriction&shop_id=eq.'+encodeURIComponent(pid),{accessToken:token}),
+   qtSupabaseTable('shop_business_hours?select=is_closed,opens_at,closes_at&shop_id=eq.'+encodeURIComponent(pid),{accessToken:token}).catch(()=>[]),
+   qtSupabaseTable('market_products?select=product_id,stock_quantity,pack_size&shop_id=eq.'+encodeURIComponent(pid),{accessToken:token}).catch(()=>[])
+  ]);
+  if(String(currentUser()?.id)!==owner||!host.isConnected)return;
+  const profile=profiles?.[0]||{},isMarket=String(profile.public_category||u.category||'').toLowerCase()==='market';
+  const hasLocation=!!String(profile.address||'').trim()&&qgIsValidShopCoordinate(Number(profile.latitude),Number(profile.longitude));
+  const hasHours=Boolean(profile.public_open_time&&profile.public_close_time)||(hours||[]).some(h=>!h.is_closed&&h.opens_at&&h.closes_at);
+  const eligible=(products||[]).filter(p=>p.available!==false&&p.delivery_available===true&&String(p.delivery_restriction||'none')==='none'&&Number(p.delivery_price??p.price)>0);
+  const eligibleIds=new Set(eligible.map(p=>String(p.id)));
+  const hasMarketStock=!isMarket||(marketRows||[]).some(m=>eligibleIds.has(String(m.product_id))&&Number(m.pack_size)>0&&Number(m.stock_quantity)>=Number(m.pack_size));
+  const missing=[];
+  if(!hasLocation)missing.push('ที่อยู่และพิกัดร้าน');
+  if(!hasHours)missing.push('เวลาทำการ');
+  if(!eligible.length)missing.push(isMarket?'สินค้าที่เปิดขายในตลาดสด':'สินค้า Delivery');
+  if(isMarket&&profile.market_membership_status!=='approved')missing.push('การยืนยันร้านในตลาดสด');
+  if(isMarket&&eligible.length&&!hasMarketStock)missing.push('สต๊อกตลาดสด');
+  const enabled=profile.delivery_enabled===true;
+  let title,detail;
+  if(enabled&&!missing.length){title='Delivery พร้อมรับออเดอร์';detail='ข้อมูลร้านครบแล้ว ใช้สวิตช์ด้านบนเพื่อเปิดหรือพักรับออเดอร์ได้ทันที';}
+  else if(enabled&&missing.length){title='Delivery เปิดอยู่ แต่ข้อมูลไม่ครบ';detail='ควรตรวจสอบ: '+missing.join(' • ');}
+  else if(!missing.length){title='พร้อมเปิด Delivery แล้ว';detail='ข้อมูลครบแล้ว เปิดสวิตช์ด้านบนเพื่อเริ่มรับออเดอร์';}
+  else{title='ยังเปิด Delivery ไม่ได้';detail='ต้องเพิ่ม: '+missing.join(' • ');}
+  host.innerHTML='<div><b>'+escapeHtml(title)+'</b><small style="display:block;margin-top:5px;color:#6f8178;line-height:1.45">'+escapeHtml(detail)+'</small></div>';
+ }catch(e){if(host.isConnected)host.innerHTML='<div><b>ตรวจความพร้อม Delivery ไม่สำเร็จ</b><small style="display:block;margin-top:5px;color:#6f8178">กรุณาลองใหม่เมื่อเชื่อมต่ออินเทอร์เน็ต</small></div>'}
+};
 window.qgmSetShopOpen=async function(toggle){
  const u=currentUser(),label=document.getElementById('qgm-shop-open-label'),desired=toggle.checked;
  toggle.disabled=true;
@@ -2514,9 +2557,10 @@ window.qgmSetShopOpen=async function(toggle){
   const flags=desired?await qtSupabaseTable('shop_profiles?select=delivery_enabled&id=eq.'+encodeURIComponent(pid),{accessToken:token}):[];
   if(desired&&flags[0]?.delivery_enabled===false)await qtSupabaseTable('rpc/pos_enable_delivery',{method:'POST',accessToken:token,body:{}});
   else await qtSupabaseTable('shop_open_states?on_conflict=shop_id',{method:'POST',accessToken:token,body:{shop_id:pid,is_open:desired,resume_at:null,updated_at:new Date().toISOString()}});
- }catch(e){toggle.checked=!desired;toast('เปลี่ยนสถานะร้านไม่สำเร็จ: '+(e.message||e));toggle.disabled=false;return}
+ }catch(e){toggle.checked=!desired;toast(qgmDeliveryOpenMessage(e));toggle.disabled=false;Promise.resolve().then(()=>qgmLoadDeliveryReadiness()).catch(()=>{});return}
  try{if(label){label.textContent=desired?'● เปิดร้านอยู่':'● ปิดร้านอยู่';label.style.color=desired?'#17a779':'#8b929c'}}catch(uiErr){console.warn('merchant shop-open post-commit UI failed',uiErr)}
  finally{toggle.disabled=false}
+ Promise.resolve().then(()=>qgmLoadDeliveryReadiness()).catch(()=>{});
 };
 // Read the exact daily GP from orders. A settlement is written only when the slip is submitted.
 window.qgmSubmitGpSlip=async function(date,input){
