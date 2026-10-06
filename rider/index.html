@@ -169,7 +169,7 @@ const SB = {
 const SESSION_KEY = 'qtr_session_v1';
 const NEARBY_RADIUS_KM = 2;
 const QG_ARRIVAL_GUARD_KM = 0.25;
-const APP_VERSION='4.0.1';
+const APP_VERSION='4.1.0';
 const POLL_MS = 60000;
 
 /* ---------- full-screen lock + responsive resize (all screens, incl. rider page) ---------- */
@@ -1370,7 +1370,7 @@ function qgShortOrder(o){
   return 'QT-' + (raw.slice(-4)||'----').toUpperCase();
 }
 
-const QTICON={'home': '<svg class="ico" viewBox="0 0 24 24"><path d="M3.5 11 12 4l8.5 7v8a1.5 1.5 0 0 1-1.5 1.5H5A1.5 1.5 0 0 1 3.5 19Z"/><path d="M9 20v-6h6v6"/></svg>', 'jobs': '<svg class="ico" viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="3"/><path d="M8 3v4M16 3v4M8 11h8M8 15h5"/></svg>', 'chat': '<svg class="ico" viewBox="0 0 24 24"><path d="M5 5h14a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-9l-5 3v-3a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2Z"/><path d="M8 11h.01M12 11h.01M16 11h.01"/></svg>', 'earn': '<svg class="ico" viewBox="0 0 24 24"><path d="M4 18V9M10 18V5M16 18v-7M22 18H2"/></svg>', 'user': '<svg class="ico" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4.5 21a7.5 7.5 0 0 1 15 0"/></svg>', 'loc': '<svg class="ico" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>', 'arrow': '<svg class="ico" viewBox="0 0 24 24"><path d="m9 5 7 7-7 7"/></svg>', 'back': '<svg class="ico" viewBox="0 0 24 24"><path d="m15 5-7 7 7 7"/></svg>'};
+const QTICON={'home': '<svg class="ico" viewBox="0 0 24 24"><path d="M3.5 11 12 4l8.5 7v8a1.5 1.5 0 0 1-1.5 1.5H5A1.5 1.5 0 0 1 3.5 19Z"/><path d="M9 20v-6h6v6"/></svg>', 'jobs': '<svg class="ico" viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="3"/><path d="M8 3v4M16 3v4M8 11h8M8 15h5"/></svg>', 'chat': '<svg class="ico" viewBox="0 0 24 24"><path d="M5 5h14a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-9l-5 3v-3a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2Z"/><path d="M8 11h.01M12 11h.01M16 11h.01"/></svg>', 'earn': '<svg class="ico" viewBox="0 0 24 24"><path d="M4 18V9M10 18V5M16 18v-7M22 18H2"/></svg>', 'user': '<svg class="ico" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4.5 21a7.5 7.5 0 0 1 15 0"/></svg>', 'phone': '<svg class="ico" viewBox="0 0 24 24"><path d="M7.2 3.5 10 7.7 8.4 9.3c1.3 2.7 3.4 4.8 6.1 6.1l1.6-1.6 4.2 2.8-.8 3.1c-.2.8-.9 1.3-1.7 1.3C10 20.6 3.4 14 3 6.2c0-.8.5-1.5 1.3-1.7Z"/></svg>', 'loc': '<svg class="ico" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>', 'arrow': '<svg class="ico" viewBox="0 0 24 24"><path d="m9 5 7 7-7 7"/></svg>', 'back': '<svg class="ico" viewBox="0 0 24 24"><path d="m15 5-7 7 7 7"/></svg>'};
 let qgUnread=0,qgLastMsg=null,qgMsgTimer=null;
 function qgNavHTML(){
   return `<nav class="qg-bottom-nav" aria-label="เมนูไรเดอร์">
@@ -1811,7 +1811,7 @@ async function qgOpenDeliveryConfirm(o){
   if(!o||statusFromRow(o)!=='in_progress')return false;
   qgCloseRiderFlowPage('qg-delivery-confirm');
   const page=document.createElement('section');page.id='qg-delivery-confirm';page.className='qg-rider-flow-page';
-  const cust=o._customer||{},shop=o._shop||{},note=qgCleanOrderNote(o.note),cash=Number(o.total_amount||0),tel=qgTelHref(cust.phone);
+  const cust=o._customer||{},shop=o._shop||{},note=qgCleanOrderNote(o.note),cash=Number(o.market_order_id?o._marketTripTotal:o.total_amount||0),tel=qgTelHref(cust.phone);
   page.innerHTML=`<header class="qg-flow-head"><button type="button" aria-label="ย้อนกลับ">${QTICON.back}</button><div><b>ยืนยันการจัดส่ง</b><small>#${esc(qgShortOrder(o))}</small></div><span></span></header>
     <main class="qg-flow-body"><div class="qg-loading">กำลังโหลดรายละเอียด...</div></main>`;
   document.body.appendChild(page);
