@@ -12,7 +12,7 @@ Keep the navigation return feature below in project memory. Start implementing t
 - iPhone installed app: use a delivery Live Activity and Dynamic Island on supported devices, with a link back to the same active order. Use notifications as appropriate for other devices. Do not promise an Android-style free-floating cross-app button on iOS. Requires native iOS integration; not implemented in the web app.
 - Web/PWA: do not represent an in-page floating control as a cross-app overlay.
 - Use the existing order and authenticated rider identity. Returning to the app must never claim another order or change order/payment state automatically.
-- Navigation before pickup targets the shop. After pickup it targets the customer's actual delivery location. Existing actions remain: arrive at shop, pickup, start delivery, complete delivery. No new mandatory confirmation step.
+- Navigation before pickup targets the shop. After pickup it targets the customer's actual delivery location. The authoritative order states remain unchanged, but the Rider web UX now requires operational verification around those transitions: item checklist before pickup and photo + customer handoff PIN before completion. These are delivery-safety checks, not separate payment-confirmation states.
 
 ## Existing flow constraints
 
@@ -48,7 +48,7 @@ Commit `52c41aaf7863b916214c8baa63ffe374f8865afd` added a prominent customer nav
 - Chat uses existing `order_chat_messages`, durable per-user/order message IDs and the existing chat notification trigger. Customer and Rider may both continue the conversation for 30 minutes after completion; after that the backend denies Customer/Rider reads and writes and expired Customer/Rider messages are purged.
 - Favorites, reviews, notifications, shop menu categories, search modes, support evidence, email signup, cart removal/merge and profile links are restored. Promotions show existing active shop campaigns; no coupon/discount model is added.
 - Review ownership checks bind order, customer and shop; no financial/order transition RPC is replaced. Customer cancellation uses existing RPCs only.
-- Manual payment confirmations and delivery PIN instructions stay removed. Android overlay still waits for an explicit APK request.
+- Manual payment-confirmation screens stay removed. A six-digit delivery handoff PIN is now shown to the owning Customer only during pickup/delivery and is used with Rider delivery-photo proof to authorize completion; it is not a payment confirmation. Android overlay still waits for an explicit APK request.
 - Full physical delivery, background mobile GPS, notification sound and push delivery still require device validation; unit tests do not certify these.
 
 ## Market approval continuity fix
@@ -233,3 +233,22 @@ Commit `52c41aaf7863b916214c8baa63ffe374f8865afd` added a prominent customer nav
 - Customer and Rider UIs hide or close expired chat threads and show the remaining post-completion window while it is active.
 - Existing expired post-completion Rider/Customer chat was cleaned when the migration was applied. Order state, payments, delivery records, notifications and audit history are unchanged.
 - Backup before this change: `backup-pre-notification-chat30-20261006-1233`.
+
+
+## Rider professional flow — acceptance reference (2026-10-06)
+
+The user-supplied Rider reference screens are the acceptance reference for workflow and information hierarchy. QueueGo keeps its own red brand and implementation; do not copy another service's branding/assets.
+
+- Home/waiting: map-first Rider home, online/offline state, nearby-job readiness, messages, earnings, profile and laundry mode.
+- Offer: show order code, shop, customer area, distance/ETA when available, Rider earning and explicit Accept/Reject. Never fake a countdown unless the server owns an expiry.
+- Pickup: when the Merchant reaches READY, Rider opens a dedicated pickup screen, sees the real order items/customer/note, and must confirm three checks (quantity, correct selections, packaging) before pickup.
+- Pickup confirmation performs the existing cash handoff to the Merchant through `pickup_cash`; there is no separate payment-confirmation screen. For a normal order the client then starts `deliver` automatically, preserving the existing READY → PICKED_UP → IN_PROGRESS states.
+- Delivery: Rider map targets the Customer, keeps call/chat/details available, and uses the existing GPS arrival guard. Being outside the guard shows a warning rather than inventing a new order state.
+- Completion: IN_PROGRESS cannot be completed from a simple action button. Rider must provide one required delivery photo, may add a second optional photo, and enter the Customer's six-digit handoff PIN. Supabase validates Rider ownership, PIN, evidence path and GPS pair before COMPLETED.
+- Customer PIN: `qg_customer_delivery_pin` returns the code only to the authenticated owning Customer. Customer UI displays it only at PICKED_UP/IN_PROGRESS and warns not to reveal it before goods are received.
+- Cash: pickup records Rider cash paid to Merchant; completion records Customer cash payment through the existing order/payment transition. No repeated “confirm money” step.
+- Market trips use the same proof/PIN completion principle, validate every shop cash advance atomically, persist proof on each suborder, write completion audit history and send one group completion notification.
+- Earnings/cash ledger and profile/message/laundry surfaces remain part of the Rider experience. Rider/Customer chat remains available for 30 minutes after completion, then backend read/write access closes and retention cleanup removes expired Rider/Customer messages.
+- Legacy full-screen Rider checklist, pseudo `arrived` order state and direct client IN_PROGRESS → COMPLETED shortcut must not return.
+- Backup before this rebuild: `backup-pre-rider-professional-rebuild-20261006`.
+- Automated RC tests certify code/state/security contracts only. A physical-device three-role delivery is still required before claiming device UX, camera, GPS and route behavior fully certified.
