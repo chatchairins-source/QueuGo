@@ -16,6 +16,34 @@ jobs:
       - run: npm ci --no-audit --no-fund
       - run: npm test
 
+      - name: Closed Beta hard gates
+        shell: bash
+        env:
+          QG_FIREBASE_GOOGLE_SERVICES_JSON_B64: ${{ secrets.QG_FIREBASE_GOOGLE_SERVICES_JSON_B64 }}
+        run: |
+          set -euo pipefail
+          node - <<'NODE'
+          const fs=require('fs');
+          const manifest=JSON.parse(fs.readFileSync('docs/pilot-recovery-manifest.json','utf8'));
+          if(manifest?.supabase?.restore_drill_certified!==true){
+            console.error('::error::Backup/Restore gate is not certified. Do not build Closed Beta.');
+            process.exit(1);
+          }
+          if(!fs.existsSync('queuego-native-push.js')){
+            console.error('::error::Native Android background push is not implemented/certified.');
+            process.exit(1);
+          }
+          const pkg=JSON.parse(fs.readFileSync('android-build/package.json','utf8'));
+          if(!pkg.dependencies?.['@capacitor/push-notifications']){
+            console.error('::error::Capacitor native push plugin is missing.');
+            process.exit(1);
+          }
+          NODE
+          test -n "$QG_FIREBASE_GOOGLE_SERVICES_JSON_B64" || {
+            echo "::error::Firebase google-services.json secret is missing."
+            exit 1
+          }
+
   build:
     needs: validate
     if: github.ref == 'refs/heads/main'
