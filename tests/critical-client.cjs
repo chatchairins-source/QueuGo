@@ -20,7 +20,7 @@ const r=boot('rider/index.html');await Promise.resolve();r.run("readSession=()=>
 assert.equal(r.run('S.activeOrder.status'),'rider_assigned');
 assert(r.run("calls[0].path.includes('rider_assigned,preparing,ready')"));
 assert(r.run("jobCardHTML(S.activeOrder).includes('นำทาง')"));
-assert(r.run("jobCardHTML({...S.activeOrder,status:'ready',subtotal:100}).includes('รับสินค้าแล้ว')"));
+assert(r.run("jobCardHTML({...S.activeOrder,status:'ready',subtotal:100}).includes('ตรวจสอบรายการ')"));
 assert(r.run("jobCardHTML({...S.activeOrder,status:'picked_up',subtotal:100}).includes('เริ่มจัดส่ง')"));
 assert(r.run("jobCardHTML({...S.activeOrder,status:'in_progress',total_amount:130,note:''}).includes('ถึงแล้ว')"));
 assert(r.run("jobCardHTML({...S.activeOrder,status:'in_progress',total_amount:130,note:''}).includes('type=\"range\"')===false"));checks+=7;
@@ -32,7 +32,7 @@ assert.equal(r.run("calls.find(c=>c.path==='rpc/qg_rider_action_once').opts.body
 assert.equal(r.run("calls.find(c=>c.path==='rpc/qg_rider_action_once').opts.body.p_payload.p_action"),'pickup_cash');checks+=2;
 r.run("calls=[];");
 await r.run("advanceOrder({id:'order',status:'in_progress',note:'',total_amount:130})");
-assert.equal(r.run("calls.find(c=>c.path==='rpc/qg_rider_action_once').opts.body.p_payload.p_action"),'complete');checks++;
+assert.equal(r.run("calls.filter(c=>c.path==='rpc/qg_rider_action_once').length"),0);checks++;
 
 // Navigation target changes from shop to customer after pickup without changing order state.
 assert.equal(r.run("targetNavLat({...S.activeOrder,status:'ready',pickup_latitude:13,delivery_latitude:13.9})"),13);
@@ -40,7 +40,7 @@ assert.equal(r.run("targetNavLng({...S.activeOrder,status:'ready',pickup_longitu
 assert.equal(r.run("targetNavLat({...S.activeOrder,status:'picked_up',pickup_latitude:13,delivery_latitude:13.9})"),13.9);
 assert.equal(r.run("targetNavLng({...S.activeOrder,status:'picked_up',pickup_longitude:100,delivery_longitude:100.8})"),100.8);checks+=4;
 
-// The current delivery primary action completes from the authoritative in_progress state; no proof/checklist pseudo-state remains.
+// The primary delivery action opens the arrival/proof flow; direct IN_PROGRESS -> COMPLETED is forbidden in the client.
 r.run("window.arrivalCalls=0;qgConfirmArrival=async()=>{arrivalCalls++};");
 await r.run("qgAdvanceFromPrimary({...S.activeOrder,status:'in_progress',note:''})");
 assert.equal(r.run('arrivalCalls'),1);checks++;
