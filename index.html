@@ -924,7 +924,7 @@ V['market-order']=async(id,ticket=routeVersion)=>{
     <div class="tot"><span>รวม</span><span>${baht(trip.total_amount)}</span></div>
   </section>`,'orders');
 };
-const customerOrderNumber=o=>{const raw=String(o?.order_number||'').trim();const seq=raw.match(/(\d{4})$/);if(seq)return 'QT-'+seq[1];const id=String(o?.id||'').replace(/[^a-z0-9]/gi,'').slice(-4).toUpperCase();return 'QT-'+id.padStart(4,'0')};
+const customerOrderNumber=o=>{const raw=String((o&&o.order_number)||(o&&o.id)||'').replace(/^QT[-_\s]*/i,'').replace(/[^A-Za-z0-9]/g,'');return 'QT-'+(raw.slice(-4)||'----').toUpperCase()};
 const SUPPORT_CATEGORIES={missing_item:'สินค้าไม่ครบ',wrong_item:'สินค้าไม่ตรงรายการ',damaged_food:'สินค้ามีปัญหา',rider:'ติดต่อเกี่ยวกับไรเดอร์',merchant:'ติดต่อเกี่ยวกับร้าน',payment:'การชำระเงิน',other:'เรื่องอื่น ๆ'};
 const SUPPORT_STATUS={OPEN:'รับเรื่องแล้ว',IN_REVIEW:'กำลังตรวจสอบ',WAITING_USER:'รอข้อมูลเพิ่มเติม',RESOLVED:'ดำเนินการแล้ว',REJECTED:'ไม่สามารถดำเนินการได้',CLOSED:'ปิดเรื่องแล้ว'};
 const supportPendingKey=()=>S.get()?.userId?'qg_customer_support_pending_'+S.get().userId:null;
@@ -1018,7 +1018,7 @@ addEventListener('hashchange',()=>route());
 </script>
 <link rel="stylesheet" href="customer-features.css?v=20261006-rider-photo-only">
 <script src="customer-features.js?v=20261006-rider-photo-only"></script>
-<script src="customer-laundry.js?v=20261006-orderlist4"></script>
+<script src="customer-laundry.js?v=20261006-orderlist5"></script>
 <script>route();</script>
 </body>
 </html>
