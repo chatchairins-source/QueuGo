@@ -1680,7 +1680,7 @@ async function qgOpenOrderChecklist(o){
     page.querySelector('#qg-ordercheck-close').onclick=close;
   }
 }
-function renderHistoryPanel(){function renderHistoryPanel(){
+function renderHistoryPanel(){
   const p=document.getElementById('panel-jobs');if(!p)return;
   const rows=S.history||[];
   p.innerHTML=`<div class="qg-panel-head"><button class="qg-icon-btn" onclick="switchTab('home')">${QTICON.back}</button><h1>ประวัติงาน</h1><span></span></div>
