@@ -6,7 +6,7 @@ let checks=0;const ok=(v,m)=>{assert.ok(v,m);checks++};
 ok(rider.includes("function qgRiderRefreshAfterCommit(label)"),'rider must have non-fatal post-commit refresh helper');
 ok(rider.includes("qgRiderRefreshAfterCommit('rider claim refresh failed')"),'normal claim refresh must be isolated after commit');
 ok(rider.includes("qgRiderRefreshAfterCommit('rider market claim refresh failed')"),'market claim refresh must be isolated after commit');
-ok(rider.includes("qgRiderRefreshAfterCommit('rider arrive-shop refresh failed')"),'arrive-shop refresh must be isolated after commit');
+ok(rider.includes("qgRiderRefreshAfterCommit('rider order advance refresh failed')"),'normal order transition refresh must be isolated after commit');
 ok(rider.includes("qgRiderRefreshAfterCommit('rider market advance refresh failed')"),'market transition refresh must be isolated after commit');
 ok(rider.includes("qgRiderRefreshAfterCommit('rider completion refresh failed')"),'completion refresh must be isolated after commit');
 ok(rider.includes("console.warn('rider completion render failed',e)"),'completion render failure must not become a mutation failure');
