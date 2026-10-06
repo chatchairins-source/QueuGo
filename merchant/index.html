@@ -490,12 +490,23 @@ function qtRerenderAfterHydrate(tries){
   const y=window.scrollY; try{ router(); }catch(e){ console.warn(e); } window.scrollTo(0,y);
 }
 /* Returning visitor (session still in this tab): fetch only the person's own account row so the first render knows who they are. */
+function qtSanitizeCachedProducts(rows,user){
+  const pid=String(user?.shopProfileId||''),uid=String(user?.id||''),seen=new Set(),out=[];
+  for(const p of Array.isArray(rows)?rows:[]){
+    const id=String(p?.id||'');if(!id||seen.has(id)||p?.archived_at)continue;
+    const belongs=String(p?.shopId||'')===uid||(pid&&(String(p?.shopProfileId||'')===pid||String(p?.shopId||'')===pid));
+    if(!belongs)continue;seen.add(id);out.push(p);
+  }
+  return out;
+}
 async function qtRestoreOwnUser(options={}){
   if(!options.refresh){
     let cached=null;try{const key=qgMerchantCacheKey();cached=key&&JSON.parse(localStorage.getItem(key)||'null')}catch(e){}
     const session=qtSessionRead();
     if(cached?.user?.id===session?.userId&&cached.user.type==='shop'&&Date.now()-cached.at<7*86400000){
-      QT_DB_CACHE.qt_users=[cached.user];QT_DB_CACHE.qt_products=Array.isArray(cached.products)?cached.products:[];
+      QT_DB_CACHE.qt_users=[cached.user];
+      const productCacheFresh=Number(cached.productsAt)>0&&Date.now()-Number(cached.productsAt)<5*60000;
+      QT_DB_CACHE.qt_products=productCacheFresh?qtSanitizeCachedProducts(cached.products,cached.user):[];
       qtRestoreOwnUser({refresh:true}).then(()=>qtRerenderAfterHydrate()).catch(()=>{});return;
     }
   }
@@ -2003,10 +2014,31 @@ window.renderShopOrderModern=function(id){const u=shopUser(),o=shopOrders(u).fin
 {const host=document.querySelector('.qgm-content');if(!host)return;const button=document.createElement('button');button.className='qgm-outline';button.type='button';button.textContent='แจ้งปัญหาออเดอร์นี้';button.onclick=()=>qgOpenTicketPanel(id);host.appendChild(button)}
 };
 
-window.qgmProductSearch=function(q){q=String(q).toLowerCase();document.querySelectorAll('.qgm-product').forEach(el=>el.hidden=!el.dataset.search.includes(q))}
-window.qgmProductFilter=function(mode){document.querySelectorAll('.qgm-product').forEach(el=>el.hidden=mode!=='all'&&el.dataset.mode!==mode);document.querySelectorAll('.qgm-tabs button').forEach(b=>b.classList.toggle('active',b.dataset.mode===mode))}
+let qgmProductViewSearch='',qgmProductViewMode='all',qgmProductsPageFetchSeq=0;
+function qgmApplyProductView(){
+  const q=qgmProductViewSearch,mode=qgmProductViewMode;
+  document.querySelectorAll('.qgm-product').forEach(el=>{const matchesSearch=!q||el.dataset.search.includes(q),matchesMode=mode==='all'||el.dataset.mode===mode;el.hidden=!(matchesSearch&&matchesMode)});
+  document.querySelectorAll('.qgm-tabs button[data-mode]').forEach(b=>b.classList.toggle('active',b.dataset.mode===mode));
+}
+window.qgmProductSearch=function(q){qgmProductViewSearch=String(q||'').trim().toLocaleLowerCase('th-TH');qgmApplyProductView()}
+window.qgmProductFilter=function(mode){qgmProductViewMode=['all','on','off'].includes(mode)?mode:'all';qgmApplyProductView()}
+async function qgmRefreshProductsPage(u){
+  const pid=profileId(u),owner=String(u?.id||''),seq=++qgmProductsPageFetchSeq;if(!pid||!owner)return;
+  try{
+    const token=await qtGetAccessToken();if(!token)throw Error('กรุณาเข้าสู่ระบบใหม่');
+    const rows=await qtSupabaseTable('products?select=*&shop_id=eq.'+encodeURIComponent(pid)+'&order=created_at.desc',{accessToken:token});
+    if(seq!==qgmProductsPageFetchSeq||String(shopUser()?.id||'')!==owner||!Array.isArray(rows))return;
+    const mapped=rows.map(p=>Object.assign({},p.metadata||{},{id:p.id,shopId:owner,shopProfileId:pid,name:p.name,description:p.description,price:Number(p.price||0),image:p.image||'',category:p.category??p.metadata?.category??'',stock:Number(p.stock??p.metadata?.stock??0),variants:p.variants??p.metadata?.variants??[],available:p.available!==false,posAvailable:p.pos_available!==false,deliveryAvailable:p.delivery_available!==false,posPrice:p.pos_price,deliveryPrice:p.delivery_price,delivery_restriction:p.delivery_restriction||p.metadata?.delivery_restriction||'none',createdAt:new Date(p.created_at).getTime()}));
+    const others=dbGet('qt_products',[]).filter(p=>String(p.shopId)!==owner&&String(p.shopProfileId)!==String(pid)&&String(p.shopId)!==String(pid));
+    QT_DB_CACHE.qt_products=others.concat(mapped);qtMarkClean('qt_products');try{qgSaveMerchantCache()}catch(e){}
+    if(location.hash==='#shop-products'){
+      const active=document.activeElement,typing=active&&active.matches?.('.qgm-search input')&&String(active.value||'').length>0;
+      if(!typing)renderShopProductsModern({authoritative:true});
+    }
+  }catch(e){console.warn('merchant products authoritative refresh failed',e)}
+}
 window.qgmToggleProduct=async function(id,available){const a=dbGet('qt_products',[]),p=a.find(x=>String(x.id)===String(id)),u=shopUser();if(!p||!u||!shopProducts(u).includes(p))return;try{const token=await qtGetAccessToken();if(!token)throw new Error('เซสชันหมดอายุ');await qtSupabaseTable('products?id=eq.'+encodeURIComponent(id)+'&shop_id=eq.'+encodeURIComponent(profileId(u)),{method:'PATCH',accessToken:token,body:{available}})}catch(e){console.error(e);toast('บันทึกสถานะไม่สำเร็จ: '+(e.message||e));try{renderShopProductsModern()}catch(renderErr){console.warn('merchant product rollback render failed',renderErr)}return}p.available=available;qtMarkClean('qt_products');try{renderShopProductsModern()}catch(renderErr){console.warn('merchant product post-commit render failed',renderErr)}}
-window.renderShopProductsModern=function(){const u=shopUser();if(!u)return navigate('login');const ps=shopProducts(u);layout('จัดการสินค้า',`<label class="qgm-search">${svg('search')}<input type="search" placeholder="ค้นหาสินค้า..." oninput="qgmProductSearch(this.value)"></label><div class="qgm-tabs"><button class="active" data-mode="all" onclick="qgmProductFilter('all')">ทั้งหมด</button><button data-mode="on" onclick="qgmProductFilter('on')">เปิดขาย</button><button data-mode="off" onclick="qgmProductFilter('off')">ปิดขาย</button></div>${ps.map(p=>`<div class="qgm-card qgm-product" data-mode="${p.available!==false?'on':'off'}" data-search="${esc((p.name+' '+(p.category||'')).toLowerCase())}" onclick="if(event.target.tagName!=='INPUT'&&event.target.tagName!=='SPAN')navigate('shop-product/${p.id}')"><img src="${esc(img(p.image||p.image_url))}"><div><b>${esc(p.name)}</b><strong>${Number(p.posPrice??p.price??0).toLocaleString('th-TH')} บาท</strong><small>${p.available!==false?'เปิดขาย':'ปิดขาย'}</small></div><label class="qgm-switch"><input type="checkbox" ${p.available!==false?'checked':''} onchange="qgmToggleProduct('${p.id}',this.checked)"><span></span></label></div>`).join('')||'<div class="qgm-empty"><h2>ยังไม่มีสินค้า</h2></div>'}<div class="qgm-fab"><button type="button" onclick="navigate('shop-catalog')">${svg('plus')} เพิ่มสินค้า</button></div>`,'shop-products',{back:true})};
+window.renderShopProductsModern=function(options={}){const u=shopUser();if(!u)return navigate('login');const ps=shopProducts(u);layout('จัดการสินค้า',`<label class="qgm-search">${svg('search')}<input type="search" value="${esc(qgmProductViewSearch)}" placeholder="ค้นหาสินค้า..." oninput="qgmProductSearch(this.value)"></label><div class="qgm-tabs"><button data-mode="all" onclick="qgmProductFilter('all')">ทั้งหมด</button><button data-mode="on" onclick="qgmProductFilter('on')">เปิดขาย</button><button data-mode="off" onclick="qgmProductFilter('off')">ปิดขาย</button></div>${ps.map(p=>`<div class="qgm-card qgm-product" data-mode="${p.available!==false?'on':'off'}" data-search="${esc((p.name+' '+(p.category||'')).toLocaleLowerCase('th-TH'))}" onclick="if(event.target.tagName!=='INPUT'&&event.target.tagName!=='SPAN')navigate('shop-product/${p.id}')"><img src="${esc(img(p.image||p.image_url))}"><div><b>${esc(p.name)}</b><strong>${Number(p.posPrice??p.price??0).toLocaleString('th-TH')} บาท</strong><small>${p.available!==false?'เปิดขาย':'ปิดขาย'}</small></div><label class="qgm-switch"><input type="checkbox" ${p.available!==false?'checked':''} onchange="qgmToggleProduct('${p.id}',this.checked)"><span></span></label></div>`).join('')||'<div class="qgm-empty"><h2>ยังไม่มีสินค้า</h2></div>'}<div class="qgm-fab"><button type="button" onclick="navigate('shop-catalog')">${svg('plus')} เพิ่มสินค้า</button></div>`,'shop-products',{back:true});qgmApplyProductView();if(!options.authoritative)qgmRefreshProductsPage(u)};
 
 const qgmFoodMenuCategories=[
  ['เมนูแนะนำ / เมนูขายดี','tag'],
@@ -2948,8 +2980,8 @@ window.qgmExportRevenue=async function(button){
   window.qgMerchantCacheKey=cacheKey;window.qgSaveMerchantCache=saveFast;
  function saveFast(){
     const key=cacheKey(),u=currentUser();if(!key||u?.type!=='shop')return;
-    const products=(dbGet('qt_products',[])||[]).filter(p=>String(p.shopId)===String(u.id)||String(p.shopProfileId)===String(qtCurrentShopProfileId(u)));
-    try{const json=JSON.stringify({at:Date.now(),user:u,products});if(json.length<900000)localStorage.setItem(key,json)}catch(e){}
+    const products=qtSanitizeCachedProducts(dbGet('qt_products',[])||[],u);
+    try{const now=Date.now(),json=JSON.stringify({at:now,productsAt:now,user:u,products});if(json.length<900000)localStorage.setItem(key,json)}catch(e){}
   }
 
 
