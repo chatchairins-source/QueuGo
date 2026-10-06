@@ -1808,6 +1808,21 @@ function qgOpenAccountSettings(){
   };
 }
 
+async function qgDeleteAccount(button){
+  if(!S.user)return;
+  if(!confirm('ต้องการลบบัญชี Rider QueueGo และข้อมูลส่วนบุคคลถาวรใช่หรือไม่?'))return;
+  if(!confirm('ยืนยันครั้งสุดท้าย: การลบบัญชีไม่สามารถย้อนกลับได้'))return;
+  if(button)button.disabled=true;
+  try{
+    const accessToken=await getAccessToken();if(!accessToken)throw Error('กรุณาเข้าสู่ระบบใหม่');
+    await QueueGoAccountDeletion.request(accessToken);
+    forceSessionLogout('บัญชีถูกลบแล้ว');
+    location.reload();
+  }catch(e){
+    toast(e?.message||'ลบบัญชีไม่สำเร็จ');
+    if(button?.isConnected)button.disabled=false;
+  }
+}
 function renderProfilePanel(){
   const p=document.getElementById('panel-profile');if(!p)return;
   const name=S.user?.name||'Rider',phone=S.user?.phone||'',plate=S.riderProfile?.vehicle_plate||'';
@@ -1819,12 +1834,16 @@ function renderProfilePanel(){
       <button class="qg-setting" id="qg-laundry-mode" data-laundry-mutation="mode"><span class="qg-setting-icon">${QTICON.jobs}</span><div><b>รับงานฝากซัก</b><small>งานรับ-ส่งผ้าจากร้านที่เข้าร่วม</small></div><em>${S.laundryMode?'เปิด':'ปิด'}</em></button>
       <button class="qg-setting" id="qg-rider-support-link"><span class="qg-setting-icon">${QTICON.chat}</span><div><b>แจ้งปัญหา / ติดตามเรื่อง</b><small>ติดต่อฝ่ายดูแล QueueGo</small></div><strong>›</strong></button>
       <button class="qg-setting" id="qg-account-settings-link"><span class="qg-setting-icon">${QTICON.user}</span><div><b>ตั้งค่าบัญชี</b><small>ชื่อ เบอร์โทร และข้อมูลบัญชี</small></div><strong>›</strong></button>
+      <button class="qg-setting" id="qg-privacy-link"><span class="qg-setting-icon">${QTICON.chat}</span><div><b>นโยบายความเป็นส่วนตัว</b><small>การใช้ข้อมูลและการลบบัญชี</small></div><strong>›</strong></button>
+      <button class="qg-setting danger" id="qg-delete-account"><span class="qg-setting-icon">${QTICON.back}</span><div><b>ลบบัญชีถาวร</b><small>ลบ Auth และข้อมูลส่วนบุคคล</small></div><strong>›</strong></button>
       <button class="qg-setting danger" id="qg-logout"><span class="qg-setting-icon">${QTICON.back}</span><div><b>ออกจากระบบ</b><small>ออกจากบัญชีในอุปกรณ์นี้</small></div><strong>›</strong></button>
     </section>`;
   document.getElementById('qg-status-setting').onclick=toggleOnline;
   document.getElementById('qg-laundry-mode').onclick=()=>qgSetLaundryMode(!S.laundryMode);
   document.getElementById('qg-rider-support-link').onclick=()=>qgOpenTicketPanel();
   document.getElementById('qg-account-settings-link').onclick=qgOpenAccountSettings;
+  document.getElementById('qg-privacy-link').onclick=()=>QueueGoAccountDeletion.openPrivacy();
+  document.getElementById('qg-delete-account').onclick=e=>qgDeleteAccount(e.currentTarget);
   document.getElementById('qg-logout').onclick=doLogout;
   const host=p.querySelector('.qg-settings');
   (S.laundryInvites||[]).forEach(inv=>{
@@ -2162,6 +2181,7 @@ window.qgRenderEarnings=function(){
  };
 })();
 </script>
+<script src="../account-deletion.js?v=20261006-pilot1"></script>
 <script id="qg-rider-market-pickups">
 (function(){
  async function loadPickups(o){
