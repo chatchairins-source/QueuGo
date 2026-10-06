@@ -478,8 +478,9 @@ async function marketPlaceOrder(){
     committed=true;
   }catch(e){
     const msg=String(e?.message||e);
-    if(/locked|disabled|unavailable|invalid|already exists|ข้ามตลาด|market trip already/i.test(msg)){try{localStorage.removeItem(key)}catch(_){}}
-    toast('ยืนยันตลาดสดไม่สำเร็จ: '+msg.slice(0,100));
+    if(/locked|disabled|unavailable|invalid|already exists|ข้ามตลาด|market trip already|OUTSIDE_SERVICE_AREA|DELIVERY_DISTANCE_EXCEEDED/i.test(msg)){try{localStorage.removeItem(key)}catch(_){}}
+    const serviceAreaError=qgServiceAreaMessage(e);
+    toast(serviceAreaError||('ยืนยันตลาดสดไม่สำเร็จ: '+msg.slice(0,100)));
     return;
   }finally{
     if(!committed){marketCheckoutBusy=false;if(btn&&btn.isConnected){btn.disabled=false;btn.textContent='ยืนยัน Market Trip'}}
@@ -570,7 +571,8 @@ async function placeOrder(){
     try{if(e.status>=400&&e.status<500&&![408,429].includes(e.status))localStorage.removeItem(requestKey)}catch(_){}
     if(await reconcilePendingCheckout())return;
     if(!sameActor())return;
-    toast(e.status||!readPendingCheckout()?'ยังสั่งไม่ได้ กรุณาตรวจตะกร้า ราคา และตำแหน่งแล้วลองอีกครั้ง':'ยังยืนยันผลไม่ได้ กรุณาตรวจผลคำขอเดิมอีกครั้ง ระบบจะใช้รายการเดิมเพื่อป้องกันออเดอร์ซ้ำ');
+    const serviceAreaError=qgServiceAreaMessage(e);
+    toast(serviceAreaError||(e.status||!readPendingCheckout()?'ยังสั่งไม่ได้ กรุณาตรวจตะกร้า ราคา และตำแหน่งแล้วลองอีกครั้ง':'ยังยืนยันผลไม่ได้ กรุณาตรวจผลคำขอเดิมอีกครั้ง ระบบจะใช้รายการเดิมเพื่อป้องกันออเดอร์ซ้ำ'));
     return;
   }finally{
     if(!confirmed){checkoutBusy=false;if(button&&sameActor()&&button.isConnected){button.disabled=false;button.textContent=readPendingCheckout()?'ตรวจผลคำสั่งซื้อเดิม':'ยืนยันสั่งซื้อ'}}
@@ -587,6 +589,12 @@ async function placeOrder(){
 }
 /* ===== Customer location picker ===== */
 let currentPos=null,customerLocationPicker=null,checkoutPicker=null;
+function qgServiceAreaMessage(error){
+  const msg=String(error?.message||error||'');
+  if(/OUTSIDE_SERVICE_AREA/.test(msg))return 'ตำแหน่งรับหรือส่งอยู่นอกพื้นที่ให้บริการ QueueGo Pilot';
+  if(/DELIVERY_DISTANCE_EXCEEDED/.test(msg))return 'ระยะทางรับ-ส่งไกลเกินขอบเขตที่ QueueGo Pilot ให้บริการ';
+  return '';
+}
 function qgIsValidCoordinate(latitude,longitude,thailandOnly=false){
   if(latitude===null||latitude===undefined||longitude===null||longitude===undefined||latitude===''||longitude==='') return false;
   const lat=Number(latitude),lng=Number(longitude);
