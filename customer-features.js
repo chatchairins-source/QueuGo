@@ -78,7 +78,7 @@ const QGCustomer=(()=>{
         </div>
         <div class="qg-order-rider-actions">
           ${!closed?linkPhone(r.phone,'โทรหา Rider'):''}
-          ${chatOpen?`<button class="lk qg-chat" onclick="go('order-chat/${esc(id)}')">${o.status==='completed'?`แชทกับ Rider · เหลือ ${chatMinutesLeft(o)} นาที`:'แชทกับ Rider'}</button>`:o.status==='completed'?'<span class="sm">แชทปิดแล้วหลังจบงาน 30 นาที</span>':''}
+          ${chatOpen?`<button class="lk qg-chat" onclick="go('order-chat/${esc(id)}')">${o.status==='completed'?`แชทต่อได้อีก ${chatMinutesLeft(o)} นาที`:'แชทกับ Rider'}</button>`:o.status==='completed'?'<span class="sm">แชทปิดแล้วหลังจบงาน 30 นาที</span>':''}
         </div>
       </section>`:''}
 
