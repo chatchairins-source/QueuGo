@@ -68,7 +68,7 @@ const SB = {
 };
 const SESSION_KEY = 'qtr_session_v1';
 const NEARBY_RADIUS_KM = 2;
-const QG_ARRIVAL_GUARD_KM = 0.25;
+const QG_ARRIVAL_GUARD_KM = 0.2;
 const APP_VERSION='5.0.0';
 const POLL_MS = 60000;
 
@@ -198,6 +198,26 @@ function haversineKm(lat1,lon1,lat2,lon2){
   const a=Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)**2;
   return R*2*Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
 }
+function qgGoogleNavigationUrl(target){
+  return 'https://www.google.com/maps/dir/?api=1&destination='+
+    encodeURIComponent(target.lat+','+target.lng)+
+    '&travelmode=driving&dir_action=navigate';
+}
+function qgLaunchGoogleNavigation(target){
+  const fallback=qgGoogleNavigationUrl(target),ua=String(navigator.userAgent||''),dest=target.lat+','+target.lng;
+  let appUrl='';
+  if(/Android/i.test(ua))appUrl='google.navigation:q='+encodeURIComponent(dest)+'&mode=d';
+  else if(/iPhone|iPad|iPod/i.test(ua))appUrl='comgooglemaps://?daddr='+encodeURIComponent(dest)+'&directionsmode=driving';
+  if(!appUrl){window.location.assign(fallback);return true}
+  let leftPage=false,timer=null;
+  const markHidden=()=>{if(document.hidden)leftPage=true};
+  document.addEventListener('visibilitychange',markHidden);
+  const cleanup=()=>{if(timer)clearTimeout(timer);document.removeEventListener('visibilitychange',markHidden)};
+  window.addEventListener('pagehide',cleanup,{once:true});
+  timer=setTimeout(()=>{cleanup();if(!leftPage&&!document.hidden)window.location.assign(fallback)},900);
+  try{window.location.href=appUrl}catch(_){cleanup();window.location.assign(fallback)}
+  return true;
+}
 function qgNavigateInApp(lat,lng){
   const target={lat:Number(lat),lng:Number(lng)};
   if(!validRiderCoordinate(target.lat,target.lng)){toast('พิกัดปลายทางยังไม่พร้อม');return false}
@@ -205,9 +225,7 @@ function qgNavigateInApp(lat,lng){
     focusRiderNavigation(S.map,S.pos,target);
     drawActiveRoute();
   }
-  const url='https://www.google.com/maps/dir/?api=1&destination='+encodeURIComponent(target.lat+','+target.lng)+'&travelmode=driving';
-  try{window.location.assign(url)}catch(_){window.open(url,'_blank','noopener')}
-  return true;
+  return qgLaunchGoogleNavigation(target);
 }
 
 /* order status <-> db column + note tag, matching the main QueueGo app */
@@ -1379,11 +1397,14 @@ function qgRouteTarget(o){
     const lat=Number(next?.latitude),lng=Number(next?.longitude);
     if(Number.isFinite(lat)&&Number.isFinite(lng))return {lat,lng,kind:'shop',label:'นำทางไปร้านถัดไป'};
   }
-  if(pickupPhase){
-    return {lat:Number(o?.pickup_latitude),lng:Number(o?.pickup_longitude),kind:'shop',label:'นำทางไปร้าน'};
-  }
+  if(pickupPhase)return {lat:Number(o?.pickup_latitude),lng:Number(o?.pickup_longitude),kind:'shop',label:'นำทางไปร้าน'};
   return {lat:Number(o?.delivery_latitude),lng:Number(o?.delivery_longitude),kind:'customer',label:'นำทางไปลูกค้า'};
 }
+const QG_NAV_STATE_PREFIX='qg-rider-nav-start-v2:';
+function qgNavStateKey(o,kind){return QG_NAV_STATE_PREFIX+(S.user?.id||'rider')+':'+String(o?.id||'')+':'+kind}
+function qgNavigationStarted(o,kind){try{return !!localStorage.getItem(qgNavStateKey(o,kind))}catch(_){return false}}
+function qgMarkNavigationStarted(o,kind){try{localStorage.setItem(qgNavStateKey(o,kind),String(Date.now()))}catch(_){}}
+function qgClearNavigationStarted(o,kind){try{localStorage.removeItem(qgNavStateKey(o,kind))}catch(_){}}
 async function qgPrimaryNavigate(o){
   if(!o)return false;
   const st=statusFromRow(o);
@@ -1392,17 +1413,46 @@ async function qgPrimaryNavigate(o){
     if(ok===false)return false;
   }
   const target=qgRouteTarget(o);
+  if(!validRiderCoordinate(target.lat,target.lng)){toast('พิกัดปลายทางยังไม่พร้อม');return false}
+  if(!o.market_order_id){
+    qgMarkNavigationStarted(o,target.kind);
+    if(S.activeTab==='home')renderHomeDock();
+  }
   return qgNavigateInApp(target.lat,target.lng);
+}
+async function qgPrimaryAction(o){
+  if(!o)return false;
+  const st=statusFromRow(o),pickup=['rider_assigned','assigned','preparing','ready'].includes(st);
+  if(!o.market_order_id&&pickup){
+    if(o.rider_arrived_shop_at){
+      if(st==='ready')return qgOpenPickupVerify(o);
+      return false;
+    }
+    if(qgNavigationStarted(o,'shop'))return qgConfirmStageArrival(o,'shop');
+  }
+  if(!o.market_order_id&&st==='in_progress'){
+    if(o.rider_arrived_customer_at)return qgOpenDeliveryConfirm(o);
+    if(qgNavigationStarted(o,'customer'))return qgConfirmStageArrival(o,'customer');
+  }
+  return qgPrimaryNavigate(o);
 }
 function jobCardHTML(o,meta){
  const st=statusFromRow(o),active=!!S.activeOrder&&String(S.activeOrder.id)===String(o.id),shop=o._shop||{},cust=o._customer||{},fee=riderEarning(o),km=meta?.km??(S.pos?haversineKm(S.pos.lat,S.pos.lng,o.pickup_latitude,o.pickup_longitude):NaN),delivery=haversineKm(o.pickup_latitude,o.pickup_longitude,o.delivery_latitude,o.delivery_longitude),code=qgShortOrder(o),logo=shop.public_logo&&/^https?:\/\//i.test(String(shop.public_logo))?`<img class="qg-shop-logo" src="${esc(shop.public_logo)}" alt="">`:`<span class="qg-shop-logo qg-shop-logo-fallback">${esc((shop.shop_name||'Q').slice(0,1))}</span>`;
  if(!active)return `<article class="qg-offer-card"><div class="qg-offer-head"><div><span class="qg-kicker">งานใหม่ใกล้คุณ</span><h2>#${esc(code)}</h2></div><span class="qg-offer-badge">฿${Number(fee||0).toLocaleString('th-TH')}</span></div><div class="qg-job-row">${logo}<div><small>รับที่ร้าน</small><b>${esc(shop.shop_name||o.pickup_address||'ร้านค้า')}</b></div><em>รับสินค้า</em></div><div class="qg-job-row"><span>${QTICON.loc}</span><div><small>ส่งให้ลูกค้า</small><b>${esc(o.delivery_address||cust.name||'จุดส่งสินค้า')}</b></div><em>ส่งสินค้า</em></div><div class="qg-offer-metrics"><div><span>ระยะทาง</span><b>${Number.isFinite(km)?km.toFixed(1):'-'} กม.</b></div><div><span>เวลาประมาณ</span><b>${Number.isFinite(delivery)?Math.max(1,Math.ceil(delivery/25*60)):'-'} นาที</b></div><div><span>รายได้</span><b class="qg-red">฿${Number(fee||0).toLocaleString('th-TH')}</b></div></div><div class="qg-dual-actions"><button class="qg-btn qg-btn-secondary" id="decline-${esc(o.id)}">ปฏิเสธ</button><button class="qg-btn qg-btn-primary" id="accept-${esc(o.id)}">รับงาน</button></div></article>`;
  const pickup=['rider_assigned','assigned','preparing','ready'].includes(st),title=st==='ready'?'ร้านเตรียมสินค้าแล้ว':st==='preparing'?'ร้านกำลังเตรียมสินค้า':pickup?'กำลังไปรับสินค้า':st==='picked_up'?'รับสินค้าแล้ว':'กำลังไปส่ง',address=pickup?(o.pickup_address||shop.address||'จุดรับสินค้า'):(o.delivery_address||'จุดส่งสินค้า'),note=qgCleanOrderNote(o.note),route=qgRouteTarget(o);
- const processLabel=o.market_order_id&&pickup?'รับของตามจุด':st==='ready'?'ตรวจสอบรายการ':st==='in_progress'?'ถึงแล้ว':st==='picked_up'?'เริ่มจัดส่ง':pickup?'รอร้าน':'รออัปเดต';
- const processEnabled=(!o.market_order_id&&st==='ready')||st==='in_progress';
- return `<article class="qg-active-card"><div class="qg-active-head"><div><span class="qg-kicker">${esc(title)}</span><h2>#${esc(code)}</h2></div><span class="qg-income-badge">฿${Number(fee||0).toLocaleString('th-TH')}</span></div><div class="qg-job-row">${logo}<div><small>ร้านค้า</small><b>${esc(shop.shop_name||'ร้านค้า')}</b></div></div><div class="qg-job-row"><span>${QTICON.user}</span><div><small>ลูกค้า</small><b>${esc(cust.name||'ลูกค้า')}</b></div></div><div class="qg-active-status"><small>${pickup?'จุดรับสินค้า':'ที่อยู่จัดส่ง'}</small><b>${esc(address)}</b></div>${note?`<div class="qg-customer-note"><small>หมายเหตุจากลูกค้า</small><b>${esc(note)}</b></div>`:''}<div class="qg-job-tools"><button class="qg-job-tool" id="next-${esc(o.id)}" ${processEnabled?'':'disabled'}>${QTICON.jobs}<span>${esc(processLabel)}</span></button><button class="qg-job-tool" id="details-${esc(o.id)}">${QTICON.jobs}<span>รายการ</span></button><button class="qg-job-tool" id="chat-${esc(o.id)}">${QTICON.chat}<span>แชต</span></button></div><button class="qg-btn qg-btn-primary qg-main-action" id="primary-nav-${esc(o.id)}">${QTICON.loc}<span>${esc(route.label)}</span></button></article>`;
+ const processLabel=o.market_order_id&&pickup?'รับของตามจุด':st==='ready'?'ตรวจสอบรายการ':st==='in_progress'?'กำลังนำส่ง':st==='picked_up'?'เริ่มจัดส่ง':pickup?'รอร้าน':'รออัปเดต';
+ const processEnabled=(!o.market_order_id&&st==='ready');
+ let mainLabel=route.label,mainDisabled=false;
+ if(!o.market_order_id&&pickup){
+   if(o.rider_arrived_shop_at){mainLabel=st==='ready'?'ตรวจสอบรายการ':'ถึงร้านแล้ว ✓';mainDisabled=st!=='ready'}
+   else if(qgNavigationStarted(o,'shop'))mainLabel='ถึงร้านแล้ว';
+ }else if(!o.market_order_id&&st==='in_progress'){
+   if(o.rider_arrived_customer_at)mainLabel='ส่งมอบสินค้า';
+   else if(qgNavigationStarted(o,'customer'))mainLabel='ถึงลูกค้าแล้ว';
+ }
+ return `<article class="qg-active-card"><div class="qg-active-head"><div><span class="qg-kicker">${esc(title)}</span><h2>#${esc(code)}</h2></div><span class="qg-income-badge">฿${Number(fee||0).toLocaleString('th-TH')}</span></div><div class="qg-job-row">${logo}<div><small>ร้านค้า</small><b>${esc(shop.shop_name||'ร้านค้า')}</b></div></div><div class="qg-job-row"><span>${QTICON.user}</span><div><small>ลูกค้า</small><b>${esc(cust.name||'ลูกค้า')}</b></div></div><div class="qg-active-status"><small>${pickup?'จุดรับสินค้า':'ที่อยู่จัดส่ง'}</small><b>${esc(address)}</b></div>${note?`<div class="qg-customer-note"><small>หมายเหตุจากลูกค้า</small><b>${esc(note)}</b></div>`:''}<div class="qg-job-tools"><button class="qg-job-tool" id="next-${esc(o.id)}" ${processEnabled?'':'disabled'}>${QTICON.jobs}<span>${esc(processLabel)}</span></button><button class="qg-job-tool" id="details-${esc(o.id)}">${QTICON.jobs}<span>รายการ</span></button><button class="qg-job-tool" id="chat-${esc(o.id)}">${QTICON.chat}<span>แชต</span></button></div><button class="qg-btn qg-btn-primary qg-main-action" id="primary-nav-${esc(o.id)}" ${mainDisabled?'disabled':''}>${QTICON.loc}<span>${esc(mainLabel)}</span></button></article>`;
 }
-function bindJobCardEvents(o){const by=id=>document.getElementById(id),c=by('chat-'+o.id),a=by('accept-'+o.id),d=by('decline-'+o.id),n=by('next-'+o.id),details=by('details-'+o.id),nav=by('primary-nav-'+o.id);if(c)c.onclick=()=>openChat(o);if(a)a.onclick=()=>acceptJob(o.id);if(d)d.onclick=()=>qgDeclineOffer(o.id);if(n)n.onclick=()=>qgAdvanceFromPrimary(o);if(details)details.onclick=()=>qgOpenOrderDetails(o);if(nav)nav.onclick=()=>qgPrimaryNavigate(o)}
+function bindJobCardEvents(o){const by=id=>document.getElementById(id),c=by('chat-'+o.id),a=by('accept-'+o.id),d=by('decline-'+o.id),n=by('next-'+o.id),details=by('details-'+o.id),nav=by('primary-nav-'+o.id);if(c)c.onclick=()=>openChat(o);if(a)a.onclick=()=>acceptJob(o.id);if(d)d.onclick=()=>qgDeclineOffer(o.id);if(n)n.onclick=()=>qgAdvanceFromPrimary(o);if(details)details.onclick=()=>qgOpenOrderDetails(o);if(nav&&!nav.disabled)nav.onclick=()=>qgPrimaryAction(o)}
 
 function targetNavLat(o){return Number(qgRouteTarget(o).lat)}
 function targetNavLng(o){return Number(qgRouteTarget(o).lng)}
@@ -1432,10 +1482,60 @@ function qgAdvanceFromPrimary(o){
   if(st==='in_progress')return qgConfirmArrival(o);
   return advanceOrder(o);
 }
-function qgArrivalDistanceKm(o){
-  const lat=Number(S.pos?.lat),lng=Number(S.pos?.lng),dlat=Number(o?.delivery_latitude),dlng=Number(o?.delivery_longitude);
+function qgArrivalDistanceKm(o,target='customer'){
+  const lat=Number(S.pos?.lat),lng=Number(S.pos?.lng);
+  const dlat=Number(target==='shop'?o?.pickup_latitude:o?.delivery_latitude);
+  const dlng=Number(target==='shop'?o?.pickup_longitude:o?.delivery_longitude);
   if(![lat,lng,dlat,dlng].every(Number.isFinite))return NaN;
   return haversineKm(lat,lng,dlat,dlng);
+}
+async function qgMarkArrival(o,target){
+  if(!o||!['shop','customer'].includes(target))return false;
+  const token=await getAccessToken();if(!token)throw Error('กรุณาเข้าสู่ระบบใหม่');
+  const lat=Number.isFinite(Number(S.pos?.lat))?Number(S.pos.lat):null;
+  const lng=Number.isFinite(Number(S.pos?.lng))?Number(S.pos.lng):null;
+  await sbTable('rpc/qg_rider_mark_arrival',{method:'POST',token,body:{p_order_id:o.id,p_target:target,p_lat:lat,p_lng:lng}});
+  qgClearNavigationStarted(o,target);
+  toast(target==='shop'?'บันทึกถึงร้านแล้ว · แจ้งร้านแล้ว':'บันทึกถึงลูกค้าแล้ว · แจ้งลูกค้าแล้ว');
+  await qgRiderRefreshAfterCommit('rider arrival refresh failed');
+  if(target==='customer'){
+    const current=S.activeOrder&&String(S.activeOrder.id)===String(o.id)?S.activeOrder:o;
+    return qgOpenDeliveryConfirm(current);
+  }
+  return true;
+}
+async function qgConfirmStageArrival(o,target){
+  document.getElementById('qg-arrival-guard')?.remove();
+  const st=statusFromRow(o);
+  if(target==='shop'&&!['rider_assigned','assigned','preparing','ready'].includes(st))return false;
+  if(target==='customer'&&st!=='in_progress')return false;
+  const km=qgArrivalDistanceKm(o,target),meters=Number.isFinite(km)?Math.max(1,Math.round(km*1000)):null;
+  const proceed=async(button)=>{
+    if(button){button.disabled=true;button.textContent='กำลังบันทึก...'}
+    try{return await qgMarkArrival(o,target)}
+    catch(e){toast('บันทึกการมาถึงไม่สำเร็จ: '+(e.message||e));if(button){button.disabled=false;button.textContent='ยืนยันว่าถึงแล้ว'}return false}
+  };
+  if(Number.isFinite(km)&&km<=QG_ARRIVAL_GUARD_KM)return proceed(null);
+
+  const place=target==='shop'?'ร้าน':'จุดส่งลูกค้า';
+  const overlay=document.createElement('section');overlay.id='qg-arrival-guard';overlay.className='qg-arrival-guard';
+  overlay.innerHTML=`<div class="qg-arrival-backdrop"></div>
+    <button type="button" class="qg-arrival-floatback" aria-label="ย้อนกลับ">${QTICON.back}</button>
+    <div class="qg-arrival-sheet">
+      <span class="qg-arrival-handle"></span>
+      <div class="qg-arrival-alert">!</div>
+      <h2>ถึง${place}จริงหรือเปล่า?</h2>
+      <p>${meters!==null?`GPS แสดงว่าคุณยังห่างจาก${place}เกิน 200 เมตร`:`ยังตรวจสอบระยะจาก GPS ไม่ได้`} คำเตือนนี้ไม่ล็อกงาน คุณยังยืนยันต่อได้</p>
+      <div class="qg-arrival-distance"><span>${QTICON.loc}</span><small>${meters!==null?'ระยะจากจุดหมายประมาณ':'GPS ยังไม่พร้อม'}</small>${meters!==null?`<b>${meters.toLocaleString('th-TH')} ม.</b>`:''}</div>
+      <div class="qg-dual-actions"><button type="button" class="qg-btn qg-btn-primary" id="qg-arrival-proceed">ยืนยันว่าถึงแล้ว</button><button type="button" class="qg-btn qg-btn-secondary" id="qg-arrival-cancel">ย้อนกลับ</button></div>
+    </div>`;
+  document.body.appendChild(overlay);
+  const close=()=>overlay.remove();
+  overlay.querySelector('.qg-arrival-backdrop').onclick=close;
+  overlay.querySelector('.qg-arrival-floatback').onclick=close;
+  overlay.querySelector('#qg-arrival-cancel').onclick=close;
+  overlay.querySelector('#qg-arrival-proceed').onclick=async e=>{const button=e.currentTarget;const ok=await proceed(button);if(ok&&overlay.isConnected)close()};
+  return false;
 }
 function qgCloseRiderFlowPage(id){document.getElementById(id)?.remove()}
 function qgTelHref(phone){
@@ -1531,31 +1631,7 @@ async function qgOpenPickupVerify(o){
     return false;
   }
 }
-async function qgConfirmArrival(o){
-  document.getElementById('qg-arrival-guard')?.remove();
-  if(statusFromRow(o)!=='in_progress')return false;
-  const km=qgArrivalDistanceKm(o),meters=Number.isFinite(km)?Math.max(1,Math.round(km*1000)):null;
-  if(Number.isFinite(km)&&km<=QG_ARRIVAL_GUARD_KM)return qgOpenDeliveryConfirm(o);
-
-  const overlay=document.createElement('section');overlay.id='qg-arrival-guard';overlay.className='qg-arrival-guard';
-  overlay.innerHTML=`<div class="qg-arrival-backdrop"></div>
-    <button type="button" class="qg-arrival-floatback" aria-label="ย้อนกลับ">${QTICON.back}</button>
-    <div class="qg-arrival-sheet">
-      <span class="qg-arrival-handle"></span>
-      <div class="qg-arrival-alert">!</div>
-      <h2>ถึงจุดส่งที่ถูกต้องแล้วหรือยัง?</h2>
-      <p>ตำแหน่ง GPS ยังห่างจากจุดส่ง กรุณาตรวจสอบก่อนดำเนินการต่อ</p>
-      <div class="qg-arrival-distance"><span>${QTICON.loc}</span><small>${meters!==null?'ห่างจากจุดส่งประมาณ':'ยังตรวจสอบระยะจาก GPS ไม่ได้'}</small>${meters!==null?`<b>${meters.toLocaleString('th-TH')} ม.</b>`:''}</div>
-      <div class="qg-dual-actions"><button type="button" class="qg-btn qg-btn-primary" id="qg-arrival-proceed">ดำเนินการ</button><button type="button" class="qg-btn qg-btn-secondary" id="qg-arrival-cancel">ย้อนกลับ</button></div>
-    </div>`;
-  document.body.appendChild(overlay);
-  const close=()=>overlay.remove();
-  overlay.querySelector('.qg-arrival-backdrop').onclick=close;
-  overlay.querySelector('.qg-arrival-floatback').onclick=close;
-  overlay.querySelector('#qg-arrival-cancel').onclick=close;
-  overlay.querySelector('#qg-arrival-proceed').onclick=()=>{close();qgOpenDeliveryConfirm(o)};
-  return false;
-}
+async function qgConfirmArrival(o){return qgConfirmStageArrival(o,'customer')}
 async function qgCompleteWithPhoto(o,file){
   if(!file)throw Error('กรุณาถ่ายรูปตอนส่งสินค้าก่อน');
   if(typeof window.qgUploadEvidence!=='function')throw Error('ระบบอัปโหลดรูปยังไม่พร้อม');
