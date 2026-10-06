@@ -322,6 +322,7 @@ begin
   delete from public.qg_support_tickets where user_id=v_user.id;
 
   delete from public.qg_rider_push_subscriptions where user_id=v_user.id;
+  delete from public.qg_push_subscriptions where user_id=v_user.id;
   delete from public.qg_rider_action_receipts where user_id=v_user.id;
   delete from public.qg_merchant_action_receipts where user_id=v_user.id;
 
