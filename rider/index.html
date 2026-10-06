@@ -894,8 +894,6 @@ window.qgClaimLaundryJob=async function(jobId){
 };
 window.qgLaundryRiderAction=async function(action){
   const j=S.laundryJob;if(!j?.job_id)return;
-  const label={arrive:'ยืนยันว่าถึงจุดรับแล้ว?',collect:j.leg==='pickup'?'ยืนยันว่ารับผ้าจากลูกค้าแล้ว?':'ยืนยันว่ารับผ้าสะอาดจากร้านแล้ว?',deliver:j.leg==='pickup'?'ยืนยันว่าส่งผ้าถึงร้านแล้ว?':'ยืนยันว่าส่งผ้าคืนลูกค้าแล้ว?'}[action];
-  if(label&&!confirm(label))return;
   try{
     const token=await getAccessToken();
     await sbTable('rpc/queuego_laundry_rider_action',{method:'POST',token,body:{p_job_id:j.job_id,p_action:action}});
