@@ -307,7 +307,7 @@ function startSessionGuard(){
 }
 function stopSessionGuard(){if(sessionGuardTimer){clearInterval(sessionGuardTimer);sessionGuardTimer=null;}}
 function forceSessionLogout(msg){
-  stopSessionGuard();stopPolling();stopRiderChatWatch();window.qgClearRiderInbox?.();window.qtStopNewJobAlert?.();
+  stopSessionGuard();stopPolling();stopRiderChatWatch();window.qgClearRiderInbox?.();window.qgStopNewJobAlert?.();
   disposeRiderMap();
   clearSession();
   Object.assign(S,{session:null,user:null,riderProfile:null,online:false,activeOrder:null,openJobs:[],history:[],bundleOrders:[],bundleCandidates:[],laundryMode:false,laundryInvites:[],laundryJob:null,laundryPool:[],chatOrder:null});
@@ -962,7 +962,7 @@ async function readRiderSnapshot(){
     }
     await qgLoadLaundryRiderState(token,!!activeOrder);if(!current())return;
     if(!activeOrder){S.bundleOrders=[];S.bundleCandidates=[]}S.activeOrder=activeOrder;S.openJobs=openJobs;
-    window.qtCheckNewJobs?.(previousOpenJobIds,openJobs.map(x=>x.order));if(S.activeTab==='home')renderSheet();placeJobMarkers();
+    window.qgCheckNewJobs?.(previousOpenJobIds,openJobs.map(x=>x.order));if(S.activeTab==='home')renderSheet();placeJobMarkers();
     const hist=await sbTable('orders?select=*&order_type=eq.shopping&rider_id=eq.'+encodeURIComponent(profileId)+'&status=eq.completed&order=updated_at.desc&limit=200',{token});if(!current())return;
     S.history=Array.isArray(hist)?hist:[];
     try{const k=qgRiderHistoryKey(),history=S.history.slice(0,100);if(k){const json=JSON.stringify({at:Date.now(),history});if(json.length<800000)localStorage.setItem(k,json)}}catch(e){}
@@ -1257,7 +1257,7 @@ boot();
   }
   function checkNewJobs(previousIds,jobs){if(!S.online||S.activeOrder)return;const fresh=jobs.find(o=>o?.id&&!previousIds.has(String(o.id))&&!qgOfferDeclined(o.id));if(fresh)show(fresh)}
   ['click','touchstart','pointerdown'].forEach(ev=>document.addEventListener(ev,unlockAudio,{passive:true}));
-  window.qtStartNewJobAlert=show;window.qtCheckNewJobs=checkNewJobs;window.qtStopNewJobAlert=acknowledge;
+  window.qgStartNewJobAlert=show;window.qgCheckNewJobs=checkNewJobs;window.qgStopNewJobAlert=acknowledge;
 })();
 
 function qgShortOrder(o){
