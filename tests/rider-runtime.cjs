@@ -12,7 +12,7 @@ function boot(){
  fetch:async()=>{throw Error('unexpected fetch')},
  sbTable:async(path,options)=>{calls.push({path,options});return []},sbRpc:async()=>[],
  NEARBY_RADIUS_KM:2,haversineKm:(_a,_b,lat)=>Math.abs(lat-13)*100,
- renderSheet:()=>events.push('render'),placeJobMarkers:()=>{},renderHistoryPanel:()=>events.push('history'),qgRiderHistoryKey:()=>null,
+ renderSheet:()=>events.push('render'),placeJobMarkers:()=>{},qgRiderHistoryKey:()=>null,
  localStorage:{setItem:()=>events.push('cache')},qgRenderMessageInbox:()=>{},qgWatchCompletedChat:()=>{},toast:()=>events.push('error'),console:{error:()=>{}},window:{qgCheckNewJobs:()=>{}}});
  vm.runInContext(src.slice(src.indexOf('let riderTokenRefresh='),src.indexOf('function esc(v)')),ctx);
  vm.runInContext(src.slice(src.indexOf('let riderRefreshTask='),src.indexOf('function placeJobMarkers()')),ctx);
