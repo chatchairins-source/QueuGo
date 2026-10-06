@@ -44,23 +44,65 @@ const QGCustomer=(()=>{
       idx=flow.indexOf(o.status),
       closed=['completed','cancelled'].includes(o.status),
       r=ctx.rider,
-      chatOpen=chatAvailable(o);
+      chatOpen=chatAvailable(o),
+      stage=o.status==='completed'?4:o.status==='in_progress'||o.status==='picked_up'?3:['rider_assigned','preparing','ready'].includes(o.status)?2:o.status==='searching_rider'?1:0,
+      stageLabels=['สั่งซื้อ','หารายเดอร์','รับสินค้า','กำลังส่ง','สำเร็จ'],
+      orderNote=note(o.note).trim();
 
-    layout(`<div class="pt"><button class="back" onclick="go('orders')">${ico('back')}</button><h1>#${esc(customerOrderNumber(o))}</h1></div>
-      <section class="card">
-        <b>${esc(STATUS_LABEL[o.status]||o.status)}</b>
-        <p class="sm">${esc(date(o.created_at))}</p>
-        ${o.status!=='cancelled'?`<div class="statusflow">${flow.map((x,i)=>`<span class="${i<=idx?'on':''}">${esc(STATUS_LABEL[x]||x)}</span>`).join('')}</div>`:''}
-        <p>${esc(o.delivery_address||'')}</p>
-        <b>${esc(ctx.shop?.name||'ร้านค้า')}</b> ${linkPhone(ctx.shop?.phone,'โทรหาร้าน')}
-        <p>${esc(note(o.note))}</p>
-        ${!o.rider_id&&['pending','searching_rider'].includes(o.status)?`<button class="lk" onclick="QGCustomer.cancel('${esc(id)}')">ยกเลิกคำสั่งซื้อ</button>`:''}
-        <button class="lk" onclick="go('support/${esc(id)}')">แจ้งปัญหาออเดอร์นี้</button>
+    layout(`<div class="qg-order-page">
+      <div class="pt"><button class="back" onclick="go('orders')">${ico('back')}</button><h1>#${esc(customerOrderNumber(o))}</h1></div>
+
+      <section class="qg-order-hero">
+        <div class="qg-order-hero-top">
+          <div><span class="qg-order-kicker">สถานะล่าสุด</span><strong class="qg-order-status">${esc(STATUS_LABEL[o.status]||o.status)}</strong></div>
+          <span class="qg-order-time">${esc(date(o.created_at))}</span>
+        </div>
+        ${o.status!=='cancelled'?`<div class="qg-order-progress">${stageLabels.map((label,i)=>`<span class="qg-order-step ${i<=stage?'on':''}">${label}</span>`).join('')}</div>`:''}
+        <div class="qg-order-place">
+          <small>ส่งไปที่</small>
+          <b>${esc(o.delivery_address||'ยังไม่มีที่อยู่จัดส่ง')}</b>
+          <span>ร้าน ${esc(ctx.shop?.name||'ร้านค้า')}${orderNote?` · ${esc(orderNote)}`:''}</span>
+        </div>
+        <div class="qg-order-hero-actions">
+          ${linkPhone(ctx.shop?.phone,'ติดต่อร้าน')}
+          ${!o.rider_id&&['pending','searching_rider'].includes(o.status)?`<button class="lk qg-danger" onclick="QGCustomer.cancel('${esc(id)}')">ยกเลิกคำสั่งซื้อ</button>`:''}
+          <button class="lk" onclick="go('support/${esc(id)}')">แจ้งปัญหา</button>
+        </div>
       </section>
-      ${r?`<section class="card"><div class="sr"><div>${safeImage(r.photo)?`<img class="rider-photo" src="${esc(safeImage(r.photo))}" alt="รูป Rider">`:''}<b>${esc(r.name||'Rider')}</b><p class="sm">${esc(r.vehicle_type||'')} ${esc(r.vehicle_plate||'')}</p></div>${!closed?linkPhone(r.phone,'โทรหา Rider'):''}</div>${chatOpen?`<button class="lk" onclick="go('order-chat/${esc(id)}')">${o.status==='completed'?`แชทกับ Rider · เหลือ ${chatMinutesLeft(o)} นาที`:'แชทกับ Rider'}</button>`:o.status==='completed'?'<p class="sm">แชทปิดแล้วหลังจบงาน 30 นาที</p>':''}</section>`:''}
-      <section class="card"><b>ติดตามการจัดส่ง</b><div id="customer-tracking-map" class="mapbox"></div><p class="sm" id="tracking-location-status">กำลังโหลดตำแหน่งล่าสุด</p></section>
-      <section class="card"><b>รายการสินค้า</b>${items.map(i=>`<div class="sr"><span>${esc(i.item_name)} × ${i.quantity}</span><span>${baht(i.total_price)}</span></div>`).join('')}<div class="sr"><span>ค่าจัดส่ง</span><span>${baht(o.delivery_fee)}</span></div>${Number(o.bundle_customer_savings)>0?`<p>ประหยัดจากงานพ่วง ${baht(o.bundle_customer_savings)}</p>`:''}<div class="tot"><span>รวม</span><span>${baht(o.total_amount)}</span></div></section>
-      ${o.status==='completed'?'<section class="card" id="customer-review">กำลังโหลดรีวิว…</section>':''}`,'orders');
+
+      ${r?`<section class="qg-order-card">
+        <div class="qg-order-section-head"><b>Rider ของคุณ</b><small>${closed?'งานสิ้นสุดแล้ว':'กำลังดูแลออเดอร์นี้'}</small></div>
+        <div class="qg-order-rider">
+          ${safeImage(r.photo)?`<img class="qg-order-rider-photo" src="${esc(safeImage(r.photo))}" alt="รูป Rider">`:`<div class="qg-order-rider-fallback">${esc(String(r.name||'R').slice(0,1).toUpperCase())}</div>`}
+          <div class="qg-order-rider-copy"><b>${esc(r.name||'Rider')}</b><span>${esc([r.vehicle_type,r.vehicle_plate].filter(Boolean).join(' ')||'ข้อมูลรถกำลังอัปเดต')}</span></div>
+        </div>
+        <div class="qg-order-rider-actions">
+          ${!closed?linkPhone(r.phone,'โทรหา Rider'):''}
+          ${chatOpen?`<button class="lk qg-chat" onclick="go('order-chat/${esc(id)}')">${o.status==='completed'?`แชทต่อได้อีก ${chatMinutesLeft(o)} นาที`:'แชทกับ Rider'}</button>`:o.status==='completed'?'<span class="sm">แชทปิดแล้วหลังจบงาน 30 นาที</span>':''}
+        </div>
+      </section>`:''}
+
+      <section class="qg-order-card qg-order-map-card">
+        <div class="qg-order-map-head"><b>ติดตามการจัดส่ง</b><span class="qg-live-dot">อัปเดตตำแหน่ง</span></div>
+        <div id="customer-tracking-map" class="mapbox qg-order-map"></div>
+        <p class="sm qg-order-location-status" id="tracking-location-status">กำลังโหลดตำแหน่งล่าสุด</p>
+      </section>
+
+      <section class="qg-order-card">
+        <div class="qg-order-section-head"><b>รายการสินค้า</b><small>${items.reduce((sum,i)=>sum+Number(i.quantity||0),0)} ชิ้น</small></div>
+        <div class="qg-order-items">
+          ${items.map(i=>`<div class="qg-order-item-row"><div class="qg-order-item-copy"><b>${esc(i.item_name)}</b><small>จำนวน ${Number(i.quantity||0).toLocaleString('th-TH')}</small></div><span class="qg-order-item-price">${baht(i.total_price)}</span></div>`).join('')}
+        </div>
+        <div class="qg-order-summary">
+          <div class="qg-order-summary-row"><span>ค่าสินค้า</span><span>${baht(o.subtotal)}</span></div>
+          <div class="qg-order-summary-row"><span>ค่าจัดส่ง</span><span>${baht(o.delivery_fee)}</span></div>
+          ${Number(o.bundle_customer_savings)>0?`<p class="qg-order-saving">ประหยัดจากงานพ่วง ${baht(o.bundle_customer_savings)}</p>`:''}
+          <div class="qg-order-total"><span>ยอดรวม</span><strong>${baht(o.total_amount)}</strong></div>
+        </div>
+      </section>
+
+      ${o.status==='completed'?'<section class="qg-order-card" id="customer-review">กำลังโหลดรีวิว…</section>':''}
+    </div>`,'orders');
 
     orderSnapshot={id,actor:key,version:orderVersion(o)};
     track(o,ctx,ticket,key);
