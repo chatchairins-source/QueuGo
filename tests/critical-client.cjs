@@ -22,8 +22,8 @@ assert.equal(r.run('S.activeOrder.status'),'rider_assigned');
 assert(r.run("calls[0].path.includes('rider_assigned,preparing,ready')"));
 assert(r.run("jobCardHTML(S.activeOrder).includes('disabled')"));
 assert(r.run("jobCardHTML({...S.activeOrder,status:'ready',subtotal:100}).includes('รับสินค้าแล้ว')"));
-assert.equal(r.run("jobCardHTML({...S.activeOrder,status:'delivering',id:'route',total_amount:130}).includes('qg-grab-slide')"),false);
-assert(r.run("jobCardHTML({...S.activeOrder,status:'delivering',id:'route',total_amount:130}).includes('ถึงแล้ว')"));checks+=6;
+assert.equal(r.run("jobCardHTML({...S.activeOrder,status:'delivering',id:'order',total_amount:130}).includes('qg-grab-slide')"),false);
+assert(r.run("jobCardHTML({...S.activeOrder,status:'delivering',id:'order',total_amount:130}).includes('ถึงแล้ว')"));checks+=6;
 
 // One tap maps to one idempotent server receipt. A retry with the same semantic action reuses the same request UUID.
 r.run("calls=[];sbTable=async(path,opts)=>{calls.push({path,opts});return []};refreshData=async()=>{};");
