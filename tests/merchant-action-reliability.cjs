@@ -16,6 +16,12 @@ ok(merchant.includes("await new Promise(r=>setTimeout(r,700));\n    result=await
 ok(merchant.includes("let result;\n try{\n  result=await qgmMerchantActionOnce(orderId,action,null);\n }catch(e){"),'order mutation errors must be isolated from UI refresh errors');
 ok(merchant.includes("merchant order render refresh failed"),'post-commit render failure must not be reported as order failure');
 ok(merchant.includes("merchant hydrate after action failed"),'background refresh failure must be non-fatal after commit');
+ok(!merchant.includes("prompt('ระบุเหตุผลที่ร้านยกเลิกออเดอร์')"),'merchant cancellation must not use one-step native prompt');
+ok(!merchant.includes("confirm('ยืนยันยกเลิกออเดอร์นี้?')"),'merchant cancellation must not use one-tap native confirm');
+ok(merchant.includes("qgm-cancel-slider"),'merchant cancellation must require slide confirmation');
+ok(merchant.includes("qgmCancelReasonValue"),'merchant cancellation must require a selected reason');
+ok(merchant.includes("qgm-cancel-ack"),'merchant cancellation must require explicit impact acknowledgement');
+ok(merchant.includes("await qgmCommitMerchantCancel(orderId,reason,button,sheet)"),'cancel RPC must run only after guarded confirmation');
 ok(merchant.includes("let result;\n try{\n  result=await qgmMerchantActionOnce(id,action,null);\n }catch(e){"),'kitchen action mutation errors must be isolated from UI refresh errors');
 ok(migration.includes("qg_merchant_action_receipts"),'server must store merchant action receipts');
 ok(migration.includes("pg_advisory_xact_lock"),'server must serialize same request id');
@@ -27,4 +33,4 @@ ok(legacy.includes("v_action='ready' and v_status in"),'legacy ready retries mus
 ok(legacy.includes("v_action='cancel' and v_status='cancelled'"),'legacy cancel retries must return cancelled');
 ok(merchant.includes("merchant product hydrate after save failed"),'saved product refresh failure must be non-fatal');
 ok(merchant.includes("merchant product navigation after save failed"),'saved product navigation failure must be isolated from the database write');
-console.log(JSON.stringify({checks,failures:0,scope:'merchant single-tap idempotency, silent ambiguous-result recovery and post-commit UI error isolation'}));
+console.log(JSON.stringify({checks,failures:0,scope:'merchant single-tap idempotency, guarded cancellation, silent ambiguous-result recovery and post-commit UI error isolation'}));
