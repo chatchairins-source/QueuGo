@@ -892,13 +892,17 @@ window.qgClaimLaundryJob=async function(jobId){
     toast('รับงานฝากซักแล้ว');await refreshData();
   }catch(e){toast('รับงานฝากซักไม่สำเร็จ: '+String(e.message||e).slice(0,130))}
 };
+let qgLaundryActionBusy=false;
 window.qgLaundryRiderAction=async function(action){
-  const j=S.laundryJob;if(!j?.job_id)return;
+  const j=S.laundryJob;if(!j?.job_id||qgLaundryActionBusy)return;
+  qgLaundryActionBusy=true;
   try{
     const token=await getAccessToken();
     await sbTable('rpc/queuego_laundry_rider_action',{method:'POST',token,body:{p_job_id:j.job_id,p_action:action}});
-    toast(action==='arrive'?'ถึงจุดรับแล้ว':action==='collect'?'รับผ้าแล้ว':'ส่งมอบเรียบร้อย');await refreshData();
+    toast(action==='arrive'?'ถึงจุดรับแล้ว':action==='collect'?'รับผ้าแล้ว':'ส่งมอบเรียบร้อย');
+    await refreshData();
   }catch(e){toast('อัปเดตงานฝากซักไม่สำเร็จ: '+String(e.message||e).slice(0,130))}
+  finally{qgLaundryActionBusy=false}
 };
 function qgLaundryPoolHTML(){
   const rows=S.laundryPool||[];if(!rows.length)return '';
@@ -934,8 +938,6 @@ async function readRiderSnapshot(){
       if(!current())return;
       S.riderProfile={...S.riderProfile,metadata};
     }
-    // Laundry is isolated in rider/laundry.js and loads only when its panel is opened.
-    // Keep the normal delivery snapshot single-flight and free of Laundry transport calls.
     const previousOpenJobIds=new Set((S.openJobs||[]).map(x=>x?.order?.id).filter(Boolean).map(String));
     if(activeOrder){
       if(['market','grocery'].includes(activeOrder.fulfillment_vertical)){const weights=await sbRpc('market_rider_job_weights',{},token);if(!current())return;activeOrder._marketWeight=(weights||[]).find(x=>x.order_id===activeOrder.id)?.weight_kg}
@@ -957,7 +959,8 @@ async function readRiderSnapshot(){
       // Server eligibility/claim remains authoritative; display the nearest eligible job when none is within 2 km.
       openJobs=(nearby.length?nearby:candidates.slice(0,1)).filter(x=>!qgOfferDeclined(x.order?.id));
     }
-    if(!current())return;if(!activeOrder){S.bundleOrders=[];S.bundleCandidates=[]}S.activeOrder=activeOrder;S.openJobs=openJobs;
+    await qgLoadLaundryRiderState(token,!!activeOrder);if(!current())return;
+    if(!activeOrder){S.bundleOrders=[];S.bundleCandidates=[]}S.activeOrder=activeOrder;S.openJobs=openJobs;
     window.qtCheckNewJobs?.(previousOpenJobIds,openJobs.map(x=>x.order));if(S.activeTab==='home')renderSheet();placeJobMarkers();
     const hist=await sbTable('orders?select=*&order_type=eq.shopping&rider_id=eq.'+encodeURIComponent(profileId)+'&status=eq.completed&order=updated_at.desc&limit=200',{token});if(!current())return;
     S.history=Array.isArray(hist)?hist:[];
@@ -2006,7 +2009,4 @@ window.advanceOrder=async function(o){
 
 })();
 </script>
-
-<script src="laundry.js?v=20261005"></script>
-
 </body></html>
