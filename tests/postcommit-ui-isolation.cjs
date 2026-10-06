@@ -13,6 +13,10 @@ ok(customer.includes('support post-commit render failed'),'Support ticket render
 ok(customer.includes('let pending,result,committed=false'),'Market checkout must distinguish committed server result from UI cleanup');
 ok(customer.includes('customer location post-commit navigation failed'),'Customer saved location navigation must be non-fatal');
 ok(customerFeatures.includes('customer chat post-send refresh failed'),'Customer chat refresh after sent message must be non-fatal');
+ok(customerFeatures.includes('customer notification post-read refresh failed'),'Customer notification refresh after read commit must be non-fatal');
+ok(customerFeatures.includes('customer notifications post-read refresh failed'),'Customer mark-all-read refresh after commit must be non-fatal');
+ok(customerFeatures.includes('customer review post-save refresh failed'),'Customer review refresh after saved review must be non-fatal');
+ok(customerFeatures.includes('customer review post-delete refresh failed'),'Customer review refresh after delete must be non-fatal');
 
 ok(merchant.includes('merchant product hydrate after save failed'),'Product post-save hydrate must be non-fatal');
 ok(merchant.includes('merchant profile post-commit navigation failed'),'Shop profile navigation after save must be non-fatal');
