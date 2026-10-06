@@ -24,7 +24,7 @@ const laundryV2=read('QueueGo-Laundry-v2.sql');
 for(const label of ['อาหาร','เครื่องดื่ม','ร้านขายของชำ','ฝากซัก','ตลาดสด'])ok(customer.includes('<b>'+label+'</b>'),'missing service '+label);
 ok(customer.includes("go('market')"),'market must be a dedicated route');
 ok(customer.includes("location.href='laundry/'"),'laundry must use dedicated module');
-ok(customer.includes("dedicatedMarketCats"),'normal search must exclude dedicated market shop categories');
+ok(customer.includes("DEDICATED_MARKET_CATS"),'normal search must exclude dedicated market shop categories');
 ok(customer.includes("queuego_place_market_order"),'market checkout RPC missing');
 ok(customer.includes("queuego_add_market_order_shops"),'market add-shop RPC missing');
 ok(customer.includes("ตะกร้าตลาดสดซื้อข้ามตลาดไม่ได้"),'same-market cart guard missing');
@@ -58,7 +58,7 @@ ok(bundle.includes('candidate_customer_savings')||bundle.includes('customer_savi
 ok(admin.includes('route_bundle.primary_savings_percent'),'Admin fair-savings split control missing');
 ok(bundle.includes('route_bundle_max_detour_km')||bundle.includes('max_detour'),'bundle detour rule missing');
 ok(bundle.includes('added_minutes')||bundle.includes('max_delay'),'bundle delay rule missing');
-ok(rider.includes('queuego_claim_route_bundle'),'Rider bundle acceptance missing');
+ok(rider.includes("qgRiderActionOnce('bundle_claim'")||rider.includes("qgRiderMutation('rpc/queuego_claim_route_bundle'"),'Rider bundle acceptance missing');
 ok(rider.includes('ลูกค้าประหยัด')||rider.includes('ประหยัด'),'Rider bundle customer saving display missing');
 
 // Admin master switches and scheduled pricing.
