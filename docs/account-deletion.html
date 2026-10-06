@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>ลบบัญชี QueueGo</title>
+<style>
+:root{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;color:#201a1d;background:#f7f7f8}body{margin:0}.wrap{max-width:560px;margin:auto;padding:28px 18px 64px}.brand{font-weight:900;font-size:28px;color:#d20a2e}.card{background:#fff;border:1px solid #e7e1e4;border-radius:18px;padding:20px;margin:14px 0;box-shadow:0 8px 24px #00000008}h1{font-size:26px}p{line-height:1.65;color:#5b5156}.field{display:grid;gap:6px;margin:12px 0}.field input{width:100%;box-sizing:border-box;border:1px solid #d9d2d5;border-radius:12px;padding:13px;font-size:16px}.btn{width:100%;border:0;border-radius:12px;padding:13px;font-size:16px;font-weight:800;cursor:pointer}.login{background:#232023;color:#fff}.danger{background:#d20a2e;color:#fff}.btn:disabled{opacity:.55}.note{background:#fff3f5;border-radius:12px;padding:12px;color:#7c2337}.ok{background:#edf9f1;color:#146534}.error{background:#fff1f1;color:#9b1c1c}.status{padding:12px;border-radius:12px;margin-top:12px;display:none}a{color:#c90a2d;font-weight:700}
+</style>
+</head>
+<body><main class="wrap">
+<div class="brand">QueueGo</div>
+<h1>ลบบัญชีและข้อมูล</h1>
+<section class="card">
+<p>หน้านี้เป็นช่องทางลบบัญชี QueueGo นอกแอป คุณต้องเข้าสู่ระบบเพื่อยืนยันว่าเป็นเจ้าของบัญชี</p>
+<div class="note">หากยังมีออเดอร์ งานส่ง งานร้านค้า หรือรายการฝากซักที่ยังไม่จบ ระบบจะไม่ลบบัญชีจนกว่างานนั้นจะเสร็จหรือถูกยกเลิก</div>
+<form id="login-form">
+<label class="field">เบอร์โทรหรืออีเมล<input id="account" autocomplete="username" required></label>
+<label class="field">รหัสผ่าน<input id="password" type="password" autocomplete="current-password" minlength="6" required></label>
+<button class="btn login" id="login-btn">เข้าสู่ระบบเพื่อยืนยัน</button>
+</form>
+<div id="delete-box" hidden>
+<p><b>ยืนยันการลบบัญชีถาวร</b></p>
+<p>ระบบจะลบ Auth, session, ไฟล์ส่วนบุคคล และล้างข้อมูลที่ระบุตัวบุคคลออกจากประวัติที่จำเป็นต้องเก็บไว้สำหรับบัญชี ความปลอดภัย หรือข้อพิพาท การลบไม่สามารถย้อนกลับได้</p>
+<label class="field">พิมพ์คำว่า <b>ลบบัญชี</b><input id="confirm-text" autocomplete="off"></label>
+<button class="btn danger" id="delete-btn" disabled>ลบบัญชี QueueGo ถาวร</button>
+</div>
+<div id="status" class="status" role="status" aria-live="polite"></div>
+<p><a href="./privacy.html">อ่านนโยบายความเป็นส่วนตัว</a></p>
+</section>
+</main>
+<script src="../account-deletion.js?v=20261006-pilot1"></script>
+<script>
+const URL='https://pkypiqhlrmzocysgeqew.supabase.co';
+const KEY='sb_publishable_Vn2Il4jp-iBtzNsGRNY8Lg_Tpvk2Vre';
+let accessToken='';
+const emailOf=p=>String(p||'').replace(/\D/g,'')+'@auth.queuetech.local';
+const statusBox=document.getElementById('status');
+function showStatus(message,type=''){statusBox.className='status '+type;statusBox.textContent=message;statusBox.style.display='block'}
+document.getElementById('login-form').onsubmit=async e=>{
+  e.preventDefault();const button=document.getElementById('login-btn');button.disabled=true;
+  try{
+    const value=document.getElementById('account').value.trim(),password=document.getElementById('password').value;
+    const response=await fetch(URL+'/auth/v1/token?grant_type=password',{method:'POST',headers:{apikey:KEY,'Content-Type':'application/json'},body:JSON.stringify({email:value.includes('@')?value:emailOf(value),password})});
+    const data=await response.json().catch(()=>({}));if(!response.ok||!data.access_token)throw Error(data.error_description||data.msg||'เข้าสู่ระบบไม่สำเร็จ');
+    accessToken=data.access_token;document.getElementById('delete-box').hidden=false;showStatus('ยืนยันตัวตนแล้ว ตรวจสอบข้อความด้านล่างก่อนลบบัญชี','ok');
+  }catch(err){showStatus(err.message||'เข้าสู่ระบบไม่สำเร็จ','error')}finally{button.disabled=false}
+};
+document.getElementById('confirm-text').oninput=e=>{document.getElementById('delete-btn').disabled=e.target.value.trim()!=='ลบบัญชี'};
+document.getElementById('delete-btn').onclick=async e=>{
+  const button=e.currentTarget;if(!accessToken)return showStatus('กรุณาเข้าสู่ระบบใหม่','error');
+  if(!confirm('ยืนยันครั้งสุดท้าย: ลบบัญชี QueueGo และข้อมูลส่วนบุคคลถาวร?'))return;
+  button.disabled=true;
+  try{await QueueGoAccountDeletion.request(accessToken);accessToken='';document.getElementById('login-form').hidden=true;document.getElementById('delete-box').hidden=true;showStatus('ลบบัญชี QueueGo สำเร็จแล้ว','ok')}
+  catch(err){showStatus(err.message||'ลบบัญชีไม่สำเร็จ','error');button.disabled=false}
+};
+</script>
+</body></html>
