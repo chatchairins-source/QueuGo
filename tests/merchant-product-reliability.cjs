@@ -14,6 +14,10 @@ ok(merchant.includes("!p?.archived_at"),'archived historical products must be hi
 ok(merchant.includes('function qtSanitizeCachedProducts'),'Merchant fast cache must sanitize product ownership and duplicate ids');
 ok(merchant.includes('productsAt:now'),'Merchant product cache must have a short freshness timestamp');
 ok(merchant.includes('productCacheFresh'),'stale cached product lists must not be trusted on boot');
+ok(merchant.includes("const posControl=$('#qgm-pos-available'),deliveryControl=$('#qgm-delivery-available');"),'product save must tolerate missing POS/Delivery controls from stale DOM');
+ok(merchant.includes("const posAvailable=posControl?posControl.checked:(existingProduct?existingProduct.posAvailable!==false:true);"),'missing POS control must preserve saved value or safe default');
+ok(merchant.includes("const deliveryRequested=deliveryControl?deliveryControl.checked:(existingProduct?existingProduct.deliveryAvailable!==false:true);"),'missing Delivery control must preserve saved value or safe default');
+ok(!merchant.includes("pos_available:$('#qgm-pos-available').checked"),'product save must never dereference a missing POS checkbox directly');
 ok(merchant.includes('async function qgmRefreshProductsPage'),'product management must fetch an authoritative shop product snapshot');
 ok(merchant.includes("products?select=*&shop_id=eq."),'authoritative product snapshot must be scoped to the current shop');
 ok(merchant.includes("renderShopProductsModern({authoritative:true})"),'authoritative snapshot must replace the visible cached product list');
