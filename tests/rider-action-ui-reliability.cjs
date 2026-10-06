@@ -6,6 +6,7 @@ const activeSql=fs.readFileSync(path.join(root,'supabase/migrations/202610061345
 const photoOnlySql=fs.readFileSync(path.join(root,'supabase/migrations/20261006150500_rider_photo_only_flow.sql'),'utf8');
 const retirePinSql=fs.readFileSync(path.join(root,'supabase/migrations/20261006153500_retire_delivery_pin_generation.sql'),'utf8');
 const imageSnapshotSql=fs.readFileSync(path.join(root,'supabase/migrations/20261006152500_order_item_image_snapshot.sql'),'utf8');
+const arrivalSql=fs.readFileSync(path.join(root,'supabase/migrations/20261006121155_rider_arrival_customer_and_warning_flow.sql'),'utf8');
 let checks=0;const ok=(v,m)=>{assert.ok(v,m);checks++};
 
 ok(rider.includes("function qgRiderRefreshAfterCommit(label)"),'rider must have non-fatal post-commit refresh helper');
@@ -46,7 +47,11 @@ ok(rider.includes("function qgOpenAccountSettings()"),'profile must expose real 
 ok(rider.includes("ข้อมูลรถที่อนุมัติ"),'approved vehicle identity must remain protected');
 ok(!rider.includes("vehicle_type:vehicle,vehicle_plate:nextPlate"),'account settings must not silently change approved vehicle identity');
 ok(rider.includes("item_image&order_id=eq."),'pickup/delivery verification must read immutable item image snapshots when available');
-ok(rider.includes("const QG_ARRIVAL_GUARD_KM = 0.25;"),'arrival action must keep a declared GPS warning threshold');
+ok(rider.includes("const QG_ARRIVAL_GUARD_KM = 0.2;"),'arrival warning threshold must be 200 metres and advisory');
+ok(rider.includes("dir_action=navigate"),'Google Maps fallback must request navigation mode');
+ok(rider.includes("google.navigation:q="),'Android navigation must prefer Google Maps navigation intent');
+ok(rider.includes("comgooglemaps://?daddr="),'iOS must prefer the Google Maps app scheme');
+ok(rider.includes("rpc/qg_rider_mark_arrival"),'Rider arrival buttons must persist arrival through the authenticated RPC');
 ok(rider.includes('id="details-'),'active-order card must expose order details');
 ok(rider.includes('id="primary-nav-'),'active-order primary CTA must be navigation after claim');
 ok(rider.includes('https://www.google.com/maps/dir/?api=1&destination='),'Rider primary navigation must hand off to Google Maps');
@@ -79,5 +84,8 @@ ok(retirePinSql.includes('REVOKE EXECUTE ON FUNCTION public.qg_customer_delivery
 ok(imageSnapshotSql.includes('ADD COLUMN IF NOT EXISTS item_image text'),'order items must have an additive image snapshot field');
 ok(imageSnapshotSql.includes('BEFORE INSERT ON public.order_items'),'future orders must snapshot image at insert time');
 ok(!imageSnapshotSql.includes('UPDATE public.order_items oi'),'migration must not rewrite locked historical order items');
+ok(arrivalSql.includes('rider_arrived_customer_at timestamptz'),'customer arrival timestamp must be additive and persisted');
+ok(arrivalSql.includes("grant execute on function public.qg_rider_mark_arrival(uuid,text,double precision,double precision) to authenticated"),'arrival RPC must be authenticated-only');
+ok(arrivalSql.includes("revoke execute on function public.qg_rider_mark_arrival(uuid,text,double precision,double precision) from anon"),'arrival RPC must stay unavailable to anon callers');
 
 console.log(JSON.stringify({checks,failures:0,scope:'Rider V5 strict UI rebuild, photo-only pickup/delivery, state-machine and customer PIN removal'}));
