@@ -965,11 +965,12 @@ async function readRiderSnapshot(){
         sbRpc('get_rider_delivery_pool',{},token),
         sbRpc('qg_get_my_rider_offer',{},token)
       ]);if(!current())return;
-      const ids=(Array.isArray(eligible)?eligible:[]).map(x=>x.order_id).filter(Boolean);
-      const open=ids.length?await sbTable('orders?select=*&id=in.('+ids.join(',')+')&order=created_at.asc&limit=1',{token}):[];if(!current())return;
-      const list=Array.isArray(open)?open:[];
-      const poolByOrder=new Map((Array.isArray(eligible)?eligible:[]).map(x=>[String(x.order_id),x]));
-      const metaByOrder=new Map((Array.isArray(offerMeta)?offerMeta:[]).map(x=>[String(x.order_id),x]));
+      const poolRows=Array.isArray(eligible)?eligible:[],offerRows=Array.isArray(offerMeta)?offerMeta:[];
+      const offeredId=offerRows.find(x=>x?.order_id)?.order_id||poolRows.find(x=>x?.order_id)?.order_id||null;
+      const open=offeredId?await sbTable('orders?select=*&id=eq.'+encodeURIComponent(offeredId)+'&order=created_at.asc&limit=1',{token}):[];if(!current())return;
+      const list=(Array.isArray(open)?open:[]).filter(o=>String(o?.id)===String(offeredId)).slice(0,1);
+      const poolByOrder=new Map(poolRows.map(x=>[String(x.order_id),x]));
+      const metaByOrder=new Map(offerRows.map(x=>[String(x.order_id),x]));
       for(const o of list){
         const quoted=poolByOrder.get(String(o.id)),meta=metaByOrder.get(String(o.id));
         if(quoted&&Number.isFinite(Number(quoted.delivery_fee)))o._poolDeliveryFee=Number(quoted.delivery_fee);
