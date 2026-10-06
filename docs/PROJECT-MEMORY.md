@@ -1,6 +1,6 @@
 # QueueGo project memory
 
-Updated: 2026-10-05 (Asia/Bangkok).
+Updated: 2026-10-06 (Asia/Bangkok).
 
 ## User instruction
 
@@ -45,7 +45,7 @@ Commit `52c41aaf7863b916214c8baa63ffe374f8865afd` added a prominent customer nav
 - Backup: `backup-pre-customer-function-restore-20261005` at `ad8c61ce8ad599cb826840df134a6413c53d467b`.
 - Restore current Customer capabilities using `customer-features.js` and existing tables, with no legacy renderer or CSS overrides loaded.
 - Tracking reads only an owned order through `qg_customer_order_context`; closed orders never return live Rider coordinates. Missing/stale GPS stays visible as missing/stale, with no invented movement.
-- Chat uses existing `order_chat_messages`, durable per-user/order message IDs and the existing chat notification trigger. Customer may initiate post-completion chat; existing Rider restrictions stay in place.
+- Chat uses existing `order_chat_messages`, durable per-user/order message IDs and the existing chat notification trigger. Customer and Rider may both continue the conversation for 30 minutes after completion; after that the backend denies Customer/Rider reads and writes and expired Customer/Rider messages are purged.
 - Favorites, reviews, notifications, shop menu categories, search modes, support evidence, email signup, cart removal/merge and profile links are restored. Promotions show existing active shop campaigns; no coupon/discount model is added.
 - Review ownership checks bind order, customer and shop; no financial/order transition RPC is replaced. Customer cancellation uses existing RPCs only.
 - Manual payment confirmations and delivery PIN instructions stay removed. Android overlay still waits for an explicit APK request.
@@ -222,3 +222,14 @@ Commit `52c41aaf7863b916214c8baa63ffe374f8865afd` added a prominent customer nav
 - Installed the user-supplied fresh-market banner above the market selector, with its full 16:9 composition and embedded WebP under 50 KiB, plus a green gradient background.
 - Removed the market search input and label from production markup. Existing nearest-market selection, categories, shop product links, market cart and order behavior remain available.
 - Backup: `backup-pre-market-banner-20261005-1853`.
+
+
+## Notification read state + 30-minute Rider/Customer chat retention (2026-10-06)
+
+- Customer notification center marks currently unread notifications as read when the user opens it. The local unread count is cleared immediately after a successful write so the red bell badge does not survive a read because a background notification refresh is already busy.
+- Rider/Customer order chat remains available through the active delivery and for exactly 30 minutes after a completed delivery. Either side may initiate or reply during that post-completion window.
+- Supabase is authoritative: `qg_chat_postjob_allowed` gates inserts and `qg_chat_read_allowed` gates reads. Completed chat uses the actual delivery/completion timestamp and closes after 30 minutes even if a client remains open.
+- `queuego-chat-retention-30m` runs once per minute via pg_cron and removes expired Rider/Customer messages for completed orders. Admin access/audit behavior and unrelated shop/technician behavior are not broadened.
+- Customer and Rider UIs hide or close expired chat threads and show the remaining post-completion window while it is active.
+- Existing expired post-completion Rider/Customer chat was cleaned when the migration was applied. Order state, payments, delivery records, notifications and audit history are unchanged.
+- Backup before this change: `backup-pre-notification-chat30-20261006-1233`.
