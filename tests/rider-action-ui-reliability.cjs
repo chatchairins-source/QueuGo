@@ -48,13 +48,13 @@ ok(rider.includes("ข้อมูลรถที่อนุมัติ"),'app
 ok(!rider.includes("vehicle_type:vehicle,vehicle_plate:nextPlate"),'account settings must not silently change approved vehicle identity');
 ok(rider.includes("item_image&order_id=eq."),'pickup/delivery verification must read immutable item image snapshots when available');
 ok(rider.includes("const QG_ARRIVAL_GUARD_KM = 0.2;"),'arrival warning threshold must be 200 metres and advisory');
-ok(rider.includes("dir_action=navigate"),'Google Maps fallback must request navigation mode');
-ok(rider.includes("google.navigation:q="),'Android navigation must prefer Google Maps navigation intent');
-ok(rider.includes("comgooglemaps://?daddr="),'iOS must prefer the Google Maps app scheme');
+ok(rider.includes("scheme=google.navigation;package=com.google.android.apps.maps"),'Android navigation must force the Google Maps app package');
+ok(rider.includes("comgooglemaps://?daddr="),'iOS must open the Google Maps app scheme');
+ok(!rider.includes("https://www.google.com/maps/dir/?api=1&destination="),'Rider navigation must not fall back to the Google Maps website');
 ok(rider.includes("rpc/qg_rider_mark_arrival"),'Rider arrival buttons must persist arrival through the authenticated RPC');
 ok(rider.includes('id="details-'),'active-order card must expose order details');
 ok(rider.includes('id="primary-nav-'),'active-order primary CTA must be navigation after claim');
-ok(rider.includes('https://www.google.com/maps/dir/?api=1&destination='),'Rider primary navigation must hand off to Google Maps');
+ok(rider.includes('package=com.google.android.apps.maps')&&rider.includes('comgooglemaps://'),'Rider primary navigation must hand off to the native Google Maps app');
 ok(rider.includes('ยอดเงินสดที่ต้องจ่ายร้านเมื่อรับสินค้า'),'pickup slide must show cash due to the merchant before handoff');
 ok(rider.includes('ยอดเงินสดที่ต้องเก็บจากลูกค้าก่อนจบงาน'),'completion slide must show customer cash before completion');
 ok(!rider.includes('id="qg-pickup-confirm-btn"'),'legacy pickup tap confirmation must stay removed');
