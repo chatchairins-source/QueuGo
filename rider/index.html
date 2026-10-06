@@ -226,9 +226,13 @@ function haversineKm(lat1,lon1,lat2,lon2){
   const a=Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)**2;
   return R*2*Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
 }
-function mapsLink(lat,lng,address){
-  if(Number.isFinite(Number(lat)) && Number.isFinite(Number(lng))) return 'https://www.google.com/maps/dir/?api=1&destination='+encodeURIComponent(lat+','+lng);
-  return address ? 'https://www.google.com/maps/dir/?api=1&destination='+encodeURIComponent(address) : 'https://www.google.com/maps/';
+function qgNavigateInApp(lat,lng){
+  const target={lat:Number(lat),lng:Number(lng)};
+  if(!S.map||!S.pos||!validRiderCoordinate(target.lat,target.lng)){toast('แผนที่หรือ GPS ยังไม่พร้อม');return}
+  qgSetSheetLevel(0);
+  renderSheet();
+  focusRiderNavigation(S.map,S.pos,target);
+  drawActiveRoute();
 }
 
 /* order status <-> db column + note tag, matching the main QueueGo app */
@@ -917,12 +921,12 @@ function qgLaundryActiveHTML(){
   const action=status==='assigned'?`<button class="qg-btn qg-btn-primary" onclick="qgLaundryRiderAction('arrive')">ถึงจุดรับแล้ว</button>`:
     status==='arrived'?`<button class="qg-btn qg-btn-primary" onclick="qgLaundryRiderAction('collect')">รับผ้าแล้ว</button>`:
     status==='collected'?`<button class="qg-btn qg-btn-primary" onclick="qgLaundryRiderAction('deliver')">ส่งถึงปลายทางแล้ว</button>`:'';
-  const navTo=status==='collected'?mapsLink(j.to_latitude,j.to_longitude,j.to_address):mapsLink(j.from_latitude,j.from_longitude,j.from_address);
+  const navLat=Number(status==='collected'?j.to_latitude:j.from_latitude),navLng=Number(status==='collected'?j.to_longitude:j.from_longitude);
   return `<article class="qg-laundry-active-card">
     <div class="qg-active-head"><div><span class="qg-kicker">งานฝากซัก</span><h2>#${esc(j.order_number||'')}</h2></div><span class="qg-income-badge">฿${Number(j.job_fee||0).toLocaleString('th-TH')}</span></div>
     <div class="qg-address-box"><small>${esc(title)}</small><b>${esc(status==='collected'?j.to_address:j.from_address)}</b></div>
     <div class="qg-laundry-route"><small>เส้นทางงาน</small><b>${esc(j.from_address||'-')} → ${esc(j.to_address||'-')}</b></div>
-    <div class="qg-dual-actions"><a class="qg-btn qg-btn-secondary" href="${navTo}" target="_blank" rel="noopener">${QTICON.loc}<span>นำทาง</span></a>${action}</div>
+    <div class="qg-dual-actions"><button type="button" class="qg-btn qg-btn-secondary" onclick="qgNavigateInApp(${Number.isFinite(navLat)?navLat:'null'},${Number.isFinite(navLng)?navLng:'null'})">${QTICON.loc}<span>นำทาง</span></button>${action}</div>
   </article>`;
 }
 async function readRiderSnapshot(){
@@ -1442,8 +1446,7 @@ function jobCardHTML(o,meta){
   const next=STEP_NEXT[st];
   const targetShop=['searching_rider','rider_assigned','assigned','preparing','ready'].includes(st);
   const deliveryPhase=!targetShop&&['picked_up','delivering','arrived'].includes(st);
-  const navLat=targetShop?o.pickup_latitude:o.delivery_latitude,navLng=targetShop?o.pickup_longitude:o.delivery_longitude;
-  const nav=validRiderCoordinate(navLat,navLng)?`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(navLat+','+navLng)}`:'#';
+  const navLat=Number(targetShop?o.pickup_latitude:o.delivery_latitude),navLng=Number(targetShop?o.pickup_longitude:o.delivery_longitude);
   const phone=targetShop?(shop.phone||''):(cust.phone||'');
   const note=qgCleanOrderNote(o.note);
   const orderCode=qgShortOrder(o);
@@ -1469,7 +1472,7 @@ function jobCardHTML(o,meta){
       <div class="qg-address-box"><small>จุดรับสินค้า</small><b>${esc(o.pickup_address||shop.address||'จุดรับสินค้า')}</b></div>
       <div class="qg-check-strip"><b>ตรวจรายการก่อนออกจากร้าน</b><span>จำนวนครบ • เมนูถูก • แพ็กเรียบร้อย</span></div>
       <div class="qg-action-grid">
-        <a class="qg-tool" href="${nav}" target="_blank" rel="noopener">${QTICON.loc}<span>นำทาง</span></a>
+        <button class="qg-tool" type="button" data-qg-nav="${esc(o.id)}">${QTICON.loc}<span>นำทาง</span></button>
         <button class="qg-tool" id="check-${esc(o.id)}">${QTICON.jobs}<span>ดูรายการ</span></button>
         <button class="qg-tool" id="chat-${esc(o.id)}">${QTICON.chat}<span>แชต</span></button>
       </div>
@@ -1488,7 +1491,7 @@ function jobCardHTML(o,meta){
       ${phone?`<a class="qg-tool" href="tel:${esc(phone)}">${QTICON.phone}<span>โทร</span></a>`:`<button class="qg-tool" disabled>${QTICON.phone}<span>โทร</span></button>`}
       <button class="qg-tool" id="more-${esc(o.id)}"><span class="qg-dots">•••</span><span>อื่นๆ</span></button>
     </div>
-    <a class="qg-map-link" href="${nav}" target="_blank" rel="noopener">${QTICON.loc}<span>เปิดนำทาง</span></a>
+    <button class="qg-map-link" type="button" data-qg-nav="${esc(o.id)}">${QTICON.loc}<span>เปิดนำทาง</span></button>
     <button class="qg-btn qg-btn-primary qg-main-action" id="next-${esc(o.id)}" ${next?'':'disabled'}>${next?esc(next.label):'ถึงจุดส่งแล้ว'}</button>
   </article>`;
 }
@@ -1501,7 +1504,10 @@ function bindJobCardEvents(o){
   const n=by('next-'+o.id);if(n)n.onclick=()=>qgAdvanceFromPrimary(o);
   const check=by('check-'+o.id);if(check)check.onclick=()=>qgOpenOrderChecklist(o);
   const more=by('more-'+o.id);if(more)more.onclick=()=>qgOpenTicketPanel(o.id);
+  document.querySelectorAll('[data-qg-nav="'+CSS.escape(String(o.id))+'"]').forEach(b=>b.onclick=()=>qgNavigateInApp(targetNavLat(o),targetNavLng(o)));
 }
+function targetNavLat(o){const st=statusFromRow(o);return Number(['searching_rider','rider_assigned','assigned','preparing','ready'].includes(st)?o.pickup_latitude:o.delivery_latitude)}
+function targetNavLng(o){const st=statusFromRow(o);return Number(['searching_rider','rider_assigned','assigned','preparing','ready'].includes(st)?o.pickup_longitude:o.delivery_longitude)}
 function qgOfferDeclined(orderId){
   if(!orderId)return false;
   try{
