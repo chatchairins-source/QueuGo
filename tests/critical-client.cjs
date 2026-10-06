@@ -25,11 +25,14 @@ assert(r.run("jobCardHTML({...S.activeOrder,status:'picked_up',subtotal:100}).in
 assert(r.run("jobCardHTML({...S.activeOrder,status:'in_progress',total_amount:130,note:''}).includes('ถึงแล้ว')"));
 assert(r.run("jobCardHTML({...S.activeOrder,status:'in_progress',total_amount:130,note:''}).includes('type=\"range\"')===false"));checks+=7;
 
-// Rider actions use the current idempotent qg_rider_action_once path and keep the cash flow/state machine server-side.
-r.run("calls=[];sbTable=async(path,opts)=>{calls.push({path,opts});return []};refreshData=async()=>{};");
+// READY cannot bypass the pickup-photo screen; only PICKED_UP can issue the delivery transition directly.
+r.run("calls=[];window.pickupOpen=0;qgOpenPickupVerify=async()=>{pickupOpen++;return true};sbTable=async(path,opts)=>{calls.push({path,opts});return []};refreshData=async()=>{};");
 await r.run("advanceOrder({id:'order',status:'ready',subtotal:100})");
-assert.equal(r.run("calls.find(c=>c.path==='rpc/qg_rider_action_once').opts.body.p_kind"),'order');
-assert.equal(r.run("calls.find(c=>c.path==='rpc/qg_rider_action_once').opts.body.p_payload.p_action"),'pickup_cash');checks+=2;
+assert.equal(r.run("pickupOpen"),1);
+assert.equal(r.run("calls.filter(c=>c.path==='rpc/qg_rider_action_once').length"),0);checks+=2;
+r.run("calls=[];");
+await r.run("advanceOrder({id:'order',status:'picked_up',subtotal:100})");
+assert.equal(r.run("calls.find(c=>c.path==='rpc/qg_rider_action_once').opts.body.p_payload.p_action"),'deliver');checks++;
 r.run("calls=[];");
 await r.run("advanceOrder({id:'order',status:'in_progress',note:'',total_amount:130})");
 assert.equal(r.run("calls.filter(c=>c.path==='rpc/qg_rider_action_once').length"),0);checks++;
