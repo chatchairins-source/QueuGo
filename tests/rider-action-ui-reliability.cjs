@@ -1,6 +1,7 @@
 const fs=require('fs'),path=require('path'),assert=require('assert');
 const root=path.resolve(__dirname,'..');
 const rider=fs.readFileSync(path.join(root,'rider/index.html'),'utf8');
+const activeSql=fs.readFileSync(path.join(root,'supabase/migrations/20261006134500_rider_authoritative_active_flow.sql'),'utf8');
 let checks=0;const ok=(v,m)=>{assert.ok(v,m);checks++};
 
 ok(rider.includes("function qgRiderRefreshAfterCommit(label)"),'rider must have non-fatal post-commit refresh helper');
@@ -19,4 +20,8 @@ ok(!rider.includes("qg_complete_market_with_proof"),'active market Rider client 
 ok(!rider.includes("id=\"more-"),'legacy active-order more button must be removed');
 ok(!rider.includes("toast('รับงานสำเร็จ');await refreshData()"),'successful claim must not be followed by fatal refresh in same try block');
 ok(!rider.includes("toast('รับงานตลาดหลายร้านสำเร็จ');await refreshData()"),'successful market claim must not be followed by fatal refresh in same try block');
+ok(activeSql.includes('CREATE POLICY order_items_rider_select'),'assigned Rider must have an order-items SELECT policy');
+ok(activeSql.includes("IF v_action='arrive' THEN v_action:='complete'; END IF;"),'stale arrive calls must collapse to authoritative completion');
+ok(activeSql.includes("v_action='complete' AND v_order.status='in_progress'"),'server completion must transition directly from in_progress');
+ok(!activeSql.includes('__QT_ORDER_STATUS__=arrived'),'new active-flow migration must not recreate the pseudo arrived note state');
 console.log(JSON.stringify({checks,failures:0,scope:'rider single-tap authoritative active-order UI and post-commit refresh isolation'}));
