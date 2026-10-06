@@ -198,24 +198,28 @@ function haversineKm(lat1,lon1,lat2,lon2){
   const a=Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)**2;
   return R*2*Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
 }
-function qgGoogleNavigationUrl(target){
-  return 'https://www.google.com/maps/dir/?api=1&destination='+
-    encodeURIComponent(target.lat+','+target.lng)+
-    '&travelmode=driving&dir_action=navigate';
-}
 function qgLaunchGoogleNavigation(target){
-  const fallback=qgGoogleNavigationUrl(target),ua=String(navigator.userAgent||''),dest=target.lat+','+target.lng;
+  const ua=String(navigator.userAgent||''),dest=target.lat+','+target.lng;
   let appUrl='';
-  if(/Android/i.test(ua))appUrl='google.navigation:q='+encodeURIComponent(dest)+'&mode=d';
-  else if(/iPhone|iPad|iPod/i.test(ua))appUrl='comgooglemaps://?daddr='+encodeURIComponent(dest)+'&directionsmode=driving';
-  if(!appUrl){window.location.assign(fallback);return true}
+  if(/Android/i.test(ua)){
+    appUrl='intent://?q='+encodeURIComponent(dest)+'&mode=d#Intent;scheme=google.navigation;package=com.google.android.apps.maps;end';
+  }else if(/iPhone|iPad|iPod/i.test(ua)){
+    appUrl='comgooglemaps://?daddr='+encodeURIComponent(dest)+'&directionsmode=driving';
+  }else{
+    toast('การนำทางต้องเปิดจากโทรศัพท์ที่ติดตั้ง Google Maps');
+    return false;
+  }
   let leftPage=false,timer=null;
   const markHidden=()=>{if(document.hidden)leftPage=true};
   document.addEventListener('visibilitychange',markHidden);
   const cleanup=()=>{if(timer)clearTimeout(timer);document.removeEventListener('visibilitychange',markHidden)};
   window.addEventListener('pagehide',cleanup,{once:true});
-  timer=setTimeout(()=>{cleanup();if(!leftPage&&!document.hidden)window.location.assign(fallback)},900);
-  try{window.location.href=appUrl}catch(_){cleanup();window.location.assign(fallback)}
+  timer=setTimeout(()=>{
+    cleanup();
+    if(!leftPage&&!document.hidden)toast('เปิด Google Maps ไม่สำเร็จ กรุณาติดตั้งแอป Google Maps');
+  },1200);
+  try{window.location.href=appUrl}
+  catch(_){cleanup();toast('เปิด Google Maps ไม่สำเร็จ กรุณาติดตั้งแอป Google Maps');return false}
   return true;
 }
 function qgNavigateInApp(lat,lng){
