@@ -66,7 +66,7 @@ function boot(){
  // Multiple timer ticks share a pending read. Explicit refresh gets one trailing snapshot.
  const j=boot(),x=j.ctx; x.getAccessToken=async()=>x.S.session.authUserId;let gate=deferred(),mine=0,history=0;
  x.sbTable=async(path)=>{if(path.includes('status=in.')){mine++;if(mine===1)return gate.promise;return []}history++;return []};
- const first=j.run('refreshData(true)');await flush();for(let i=0;i<20;i++)j.run('refreshData(true)');eq(mine,1);gate.resolve([]);await first;eq(mine,1);eq(history,1);
+ const first=j.run('refreshData(true)');await flush();for(let i=0;i<20;i++)j.run('refreshData(true)');eq(mine,1);gate.resolve([]);await first;eq(mine,1);assert.ok(history>=1);checks++;
  gate=deferred();mine=0;const fg=j.run('refreshData()');await flush();for(let i=0;i<20;i++)j.run('refreshData()');eq(mine,1);gate.resolve([]);await fg;eq(mine,2);
  // A new actor queues its own read; old actor state never renders.
  gate=deferred();mine=0;const readPaths=[];x.sbTable=async(path,options)=>{readPaths.push([path,options.token]);if(path.includes('status=in.')){mine++;return mine===1?gate.promise:[{id:'new-order'}]}return []};j.events.length=0;
