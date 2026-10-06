@@ -18,6 +18,13 @@ ok(merchant.includes("const posControl=$('#qgm-pos-available'),deliveryControl=$
 ok(merchant.includes("const posAvailable=posControl?posControl.checked:(existingProduct?existingProduct.posAvailable!==false:true);"),'missing POS control must preserve saved value or safe default');
 ok(merchant.includes("const deliveryRequested=deliveryControl?deliveryControl.checked:(existingProduct?existingProduct.deliveryAvailable!==false:true);"),'missing Delivery control must preserve saved value or safe default');
 ok(!merchant.includes("pos_available:$('#qgm-pos-available').checked"),'product save must never dereference a missing POS checkbox directly');
+ok(merchant.includes("const qgmProductToggleInFlight=new Set();"),'product availability toggle must ignore rapid duplicate taps');
+ok(merchant.includes("control.disabled=true"),'product toggle control must lock while save is in flight');
+ok(merchant.includes("&select=id,available"),'product toggle PATCH must request authoritative saved state');
+ok(merchant.includes("ฐานข้อมูลไม่ยืนยันสถานะสินค้า"),'product toggle must reject unconfirmed writes');
+ok(merchant.includes("qgmToggleProduct('${p.id}',this.checked,this)"),'product list toggle must pass its control for lock and rollback');
+ok(merchant.includes("const belongs=pid"),'cached product ownership must prefer the authoritative shop profile id');
+ok(merchant.includes("?String(p?.shopId||'')===uid"),'legacy user-id ownership fallback must only apply before shop profile resolution');
 ok(merchant.includes('async function qgmRefreshProductsPage'),'product management must fetch an authoritative shop product snapshot');
 ok(merchant.includes("products?select=*&shop_id=eq."),'authoritative product snapshot must be scoped to the current shop');
 ok(merchant.includes("renderShopProductsModern({authoritative:true})"),'authoritative snapshot must replace the visible cached product list');
