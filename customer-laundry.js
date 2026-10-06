@@ -59,12 +59,12 @@ V.orders=async function(_,ticket){
         return '<div class="oc" onclick="go(\'laundry-order/'+esc(l.id)+'\')"><div class="oh"><span class="on">ฝากซัก · #'+esc(l.order_number||String(l.id).slice(0,6))+'</span><span class="sp">'+esc(QG_LAUNDRY_STATUS[l.status]||l.status)+'</span></div><p>'+new Date(l.created_at).toLocaleString('th-TH')+' · '+esc(l.service_name_snapshot||'บริการฝากซัก')+'</p><b>'+(total!=null?baht(total):'รอสรุปราคา')+'</b></div>';
       }
       const o=entry.data;
-      const rawOrder=String(o.order_number||'').trim(),match=rawOrder.match(/(\\d{4})$/);
+      const rawOrder=String(o.order_number||'').trim(),match=rawOrder.match(/(\d{4})$/);
       let shortOrder=match?match[1]:'';
       if(!shortOrder){const seed=String(o.id||'');let hash=0;for(let i=0;i<seed.length;i++)hash=(hash*31+seed.charCodeAt(i))%10000;shortOrder=String(hash).padStart(4,'0')}
       const stage=o.status==='completed'?4:(o.status==='picked_up'||o.status==='in_progress'?3:(['rider_assigned','preparing','ready','assigned'].includes(o.status)?2:(o.status==='searching_rider'?1:0)));
       const stageLabels=['รอร้านรับ','หาไรเดอร์','รับสินค้า','กำลังส่ง','สำเร็จ'];
-      const progress=o.status==='cancelled'?'':('<div class="qg-order-list-progress">'+stageLabels.map((label,i)=>'<span class="qg-order-list-step '+(i<stage?'done':i===stage?'current':'')+'">'+esc(label)+'</span>').join('')+'</div>');
+      const progress=o.status==='cancelled'?'':('<div class="qg-order-list-progress">'+stageLabels.map((label,i)=>'<span class="qg-order-list-step '+(o.status==='completed'?'done':i<stage?'done':i===stage?'current':'')+'">'+esc(label)+'</span>').join('')+'</div>');
       const statusClass=o.status==='completed'?'done':o.status==='cancelled'?'cancelled':'';
       return '<div class="oc qg-order-list-card" onclick="go(\'order/'+esc(o.id)+'\')"><div class="oh"><span class="on qg-order-list-number">#'+esc(shortOrder)+'</span><span class="qg-order-list-status '+statusClass+'">'+esc(STATUS_LABEL[o.status]||'กำลังดำเนินการ')+'</span></div><p class="qg-order-list-meta">'+esc(shopNames.get(o.shop_id)||'ร้านค้า')+' · '+(o.order_items||[]).reduce((sum,i)=>sum+Number(i.quantity||0),0)+' รายการ</p><p class="qg-order-list-date">'+new Date(o.created_at).toLocaleString('th-TH')+(Number(o.bundle_customer_savings||0)>0?' · งานพ่วงประหยัด '+baht(o.bundle_customer_savings):'')+'</p>'+progress+'<b class="qg-order-list-total">'+baht(o.total!=null?o.total:(o.total_amount!=null?o.total_amount:o.subtotal))+'</b></div>';
     }).join('');
