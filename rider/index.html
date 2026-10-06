@@ -253,7 +253,7 @@ function qgSetSheetLevel(level){
 const S = {
   session:null, user:null, riderProfile:null,
   online:false, pos:null, map:null, riderMarker:null, jobMarkers:[],
-  activeOrder:null, openJobs:[], history:[], bundleOrders:[], bundleCandidates:[], laundryMode:false, laundryInvites:[], laundryJob:null, laundryPool:[], activeTab:'home', pollTimer:null, chatOrder:null, newJobAlert:null, routeOverlays:[]
+  activeOrder:null, openJobs:[], history:[], bundleOrders:[], bundleCandidates:[], laundryMode:false, laundryInvites:[], laundryJob:null, laundryPool:[], activeTab:'home', pollTimer:null, chatOrder:null, chatReturnTab:'home', newJobAlert:null, routeOverlays:[]
 };
 
 function el(html){ const t=document.createElement('template'); t.innerHTML=html.trim(); return t.content.firstElementChild; }
@@ -1681,20 +1681,19 @@ async function qgOpenOrderChecklist(o){
 }
 function renderProfilePanel(){
   const p=document.getElementById('panel-profile');if(!p)return;
-  const name=S.user?.name||'Rider',phone=S.user?.phone||'',plate=S.riderProfile?.vehicle_plate||'QueueGo Rider';
+  const name=S.user?.name||'Rider',phone=S.user?.phone||'',plate=S.riderProfile?.vehicle_plate||'';
+  const type=String(S.riderProfile?.vehicle_type||'motorcycle'),vehicleLabel={motorcycle:'รถจักรยานยนต์',car:'รถยนต์',bicycle:'จักรยาน',saleng:'รถซาเล้ง'}[type]||type;
   p.innerHTML=`<div class="qg-panel-head"><span></span><h1>โปรไฟล์</h1><span class="qg-mini-word">QueueGo</span></div>
-    <section class="qg-profile-card"><div class="qg-profile-avatar">${esc(name.slice(0,1).toUpperCase())}</div><div><h2>${esc(name)}</h2><p>${esc(phone||'-')}</p><span>รถจักรยานยนต์ · ${esc(plate)}</span></div></section>
+    <section class="qg-profile-card"><div class="qg-profile-avatar">${esc(name.slice(0,1).toUpperCase())}</div><div><h2>${esc(name)}</h2><p>${esc(phone||'-')}</p><span>${esc(vehicleLabel)}${plate?' · '+esc(plate):' · QueueGo Rider'}</span></div></section>
     <section class="qg-settings">
       <button class="qg-setting" id="qg-status-setting"><span class="qg-setting-icon qg-green">${QTICON.loc}</span><div><b>สถานะรับงาน</b><small>${S.online?'ออนไลน์':'ออฟไลน์'}</small></div><em class="${S.online?'on':''}">${S.online?'ออนไลน์':'ปิด'}</em></button>
       <button class="qg-setting" id="qg-laundry-mode"><span class="qg-setting-icon">${QTICON.jobs}</span><div><b>รับงานฝากซัก</b><small>งานรับ-ส่งผ้าจากร้านที่เข้าร่วม</small></div><em>${S.laundryMode?'เปิด':'ปิด'}</em></button>
       <button class="qg-setting" id="qg-rider-support-link"><span class="qg-setting-icon">${QTICON.chat}</span><div><b>แจ้งปัญหา / ติดตามเรื่อง</b><small>ติดต่อฝ่ายดูแล QueueGo</small></div><strong>›</strong></button>
-      <button class="qg-setting" id="qg-account-settings"><span class="qg-setting-icon">${QTICON.user}</span><div><b>ตั้งค่าบัญชี</b><small>ข้อมูลบัญชีและอุปกรณ์</small></div><strong>›</strong></button>
       <button class="qg-setting danger" id="qg-logout"><span class="qg-setting-icon">${QTICON.back}</span><div><b>ออกจากระบบ</b><small>ออกจากบัญชีในอุปกรณ์นี้</small></div><strong>›</strong></button>
     </section>`;
   document.getElementById('qg-status-setting').onclick=toggleOnline;
   document.getElementById('qg-laundry-mode').onclick=()=>qgSetLaundryMode(!S.laundryMode);
   document.getElementById('qg-rider-support-link').onclick=()=>qgOpenTicketPanel();
-  document.getElementById('qg-account-settings').onclick=()=>toast('การตั้งค่าบัญชีจะเพิ่มในรุ่นถัดไป');
   document.getElementById('qg-logout').onclick=doLogout;
   const host=p.querySelector('.qg-settings');
   (S.laundryInvites||[]).forEach(inv=>{
@@ -1705,17 +1704,15 @@ function renderProfilePanel(){
   });
 }
 function closeChat(){
- S.chatOrder=null;
- const screen=document.getElementById('chat-screen');if(screen)screen.remove();
- const stage=document.querySelector('.stage');if(stage)stage.style.display='block';
- // Back always returns to the exact tab the rider came from, never traps the user.
- if(S.activeTab==='chat'){S.activeTab='home';document.querySelectorAll('.qg-nav-item').forEach(b=>b.classList.toggle('active',b.dataset.tab==='home'));}
- renderSheet();
-
-if(S.user)window.switchTab('chat')
+  const returnTab=S.chatReturnTab||'home';
+  S.chatOrder=null;
+  document.getElementById('chat-screen')?.remove();
+  const stage=document.querySelector('.stage');if(stage)stage.style.display='block';
+  switchTab(returnTab);
 }
 async function openChat(o){
   document.getElementById('chat-screen')?.remove();
+  S.chatReturnTab=S.activeTab||'home';
   S.chatOrder=o;
   const stage=document.querySelector('.stage');if(stage)stage.style.display='none';
   const screen=document.createElement('section');screen.id='chat-screen';screen.className='qg-chat-page show';document.getElementById('app').appendChild(screen);
