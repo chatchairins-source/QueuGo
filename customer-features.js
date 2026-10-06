@@ -111,7 +111,87 @@ const QGCustomer=(()=>{
   function track(o,ctx,ticket,key){const host=$('customer-tracking-map');if(!host)return;if(typeof longdo==='undefined'){const status=$('tracking-location-status');if(status)status.textContent='ยังโหลดแผนที่ไม่ได้ กรุณาลองเปิดออเดอร์ใหม่';return;}const map=new longdo.Map({placeholder:host,language:'th',zoom:14});map.Ui.LayerSelector.visible(false);let marker=null;const points=[];function point(lat,lon,title,color,record=true){if(!qgIsValidCoordinate(lat,lon,true))return null;const loc={lat:Number(lat),lon:Number(lon)};const m=new longdo.Marker(loc,{title,icon:{html:`<div style="width:20px;height:20px;border-radius:50%;background:${color};border:3px solid white"></div>`}});map.Overlays.add(m);if(record)points.push(loc);return m}point(o.pickup_latitude,o.pickup_longitude,'ร้านค้า','#087556');point(o.delivery_latitude,o.delivery_longitude,'จุดส่ง','#e6002d');if(points[0])map.location(points[0],true);
     const draw=r=>{if(!owned(key,ticket)||!host.isConnected)return;const live=r&&qgIsValidCoordinate(r.latitude,r.longitude,true)&&!['completed','cancelled'].includes(o.status);if(marker){map.Overlays.remove(marker);marker=null}if(live){marker=point(r.latitude,r.longitude,'Rider · ตำแหน่งล่าสุด','#1677ff',false);$('tracking-location-status').textContent='ตำแหน่งล่าสุด · '+date(r.updated_at)+(Date.now()-new Date(r.updated_at).getTime()>120000?' · ยังไม่ได้อัปเดตใหม่':'')}else $('tracking-location-status').textContent=['completed','cancelled'].includes(o.status)?'ออเดอร์จบแล้ว':'รอข้อมูลตำแหน่งจริงจาก Rider'};draw(ctx.rider);cleanups.push(()=>{map.Overlays.clear();map.pause(true);host.replaceChildren()});if(!['completed','cancelled'].includes(o.status))poll(async()=>{const next=await context(o.id);draw(next.rider)},7000);
   }
-  async function reviewForm(o,ticket,key){const mine=await db('reviews?select=*&order_id=eq.'+encodeURIComponent(o.id)+'&customer_id=eq.'+encodeURIComponent(S.get().userId)+'&limit=1');if(!owned(key,ticket)||!$('customer-review'))return;const r=mine[0];const rating=(name,label,value,optional)=>`<label>${label}<select class="in" name="${name}">${optional?'<option value="">ไม่ระบุ</option>':''}${[5,4,3,2,1].map(n=>`<option value="${n}" ${Number(value)===n?'selected':''}>${n} ดาว</option>`).join('')}</select></label>`;$('customer-review').innerHTML=`<h2>${r?'รีวิวของคุณ':'ให้คะแนนออเดอร์นี้'}</h2><form id="review-form">${rating('rating','คะแนนร้าน',r?.rating,false)}${rating('food','คะแนนอาหาร',r?.food_rating,true)}${rating('rider','คะแนน Rider',r?.rider_rating,true)}<textarea class="ta" name="comment" maxlength="1000" placeholder="ความคิดเห็น">${esc(r?.comment||'')}</textarea><button class="prim">บันทึกรีวิว</button></form>${r?'<button class="lk" id="review-delete">ลบรีวิว</button>':''}`;$('review-form').onsubmit=async e=>{e.preventDefault();const f=e.currentTarget,b=f.querySelector('button');b.disabled=true;try{await db('rpc/qg_customer_save_review',{method:'POST',body:{p_order_id:o.id,p_rating:Number(f.elements.rating.value),p_food_rating:f.elements.food.value?Number(f.elements.food.value):null,p_rider_rating:f.elements.rider.value?Number(f.elements.rider.value):null,p_comment:f.elements.comment.value.trim()}})}catch(e){if(owned(key,ticket))toast(e.message);if(owned(key,ticket)&&b.isConnected)b.disabled=false;return}if(owned(key,ticket)){toast('บันทึกรีวิวแล้ว');try{await reviewForm(o,ticket,key)}catch(refreshErr){console.warn('customer review post-save refresh failed',refreshErr)}}if(owned(key,ticket)&&b.isConnected)b.disabled=false};if(r)$('review-delete').onclick=async()=>{if(!confirm('ลบรีวิวนี้?'))return;try{await db('reviews?id=eq.'+encodeURIComponent(r.id)+'&customer_id=eq.'+encodeURIComponent(S.get().userId),{method:'DELETE'})}catch(e){if(owned(key,ticket))toast('ลบรีวิวไม่สำเร็จ');return}if(owned(key,ticket))try{await reviewForm(o,ticket,key)}catch(refreshErr){console.warn('customer review post-delete refresh failed',refreshErr)}};
+  async function reviewForm(o,ticket,key){
+    const mine=await db('reviews?select=*&order_id=eq.'+encodeURIComponent(o.id)+'&customer_id=eq.'+encodeURIComponent(S.get().userId)+'&limit=1');
+    if(!owned(key,ticket)||!$('customer-review'))return;
+    const r=mine[0];
+    let shopCategory='';
+    try{
+      const shopRows=typeof loadShops==='function'?await loadShops():[];
+      shopCategory=String((shopRows||[]).find(s=>String(s.id)===String(o.shop_id))?.public_category||'').toLowerCase();
+    }catch(_){}
+    if(!owned(key,ticket)||!$('customer-review'))return;
+    const showFoodRating=['food','cafe'].includes(shopCategory);
+    const ratingText=value=>['','แย่มาก','พอใช้','ปานกลาง','ดี','ดีมาก'][Number(value)||0]||'';
+    const stars=(name,label,value,optional=false)=>{
+      const selected=Number(value)||0;
+      return `<div class="qg-review-rating">
+        <span class="qg-review-rating-label">${esc(label)}</span>
+        <div class="qg-star-rating" data-rating-name="${esc(name)}" role="radiogroup" aria-label="${esc(label)}">
+          ${[1,2,3,4,5].map(n=>`<button type="button" class="${n<=selected?'on':''}" data-value="${n}" role="radio" aria-checked="${n===selected}" aria-label="${n} ดาว">★</button>`).join('')}
+        </div>
+        <input type="hidden" name="${esc(name)}" value="${selected||''}">
+        <small class="qg-review-rating-note" data-rating-note="${esc(name)}">${selected?ratingText(selected):(optional?'เลือกได้ถ้าต้องการ':'กรุณาเลือกคะแนน')}</small>
+      </div>`;
+    };
+    $('customer-review').innerHTML=`<h2>${r?'รีวิวของคุณ':'ให้คะแนนออเดอร์นี้'}</h2>
+      <form id="review-form" class="qg-review-form">
+        ${stars('rating','คะแนนร้าน',r?.rating,false)}
+        ${showFoodRating?stars('food','คะแนนอาหาร',r?.food_rating,true):''}
+        ${stars('rider','คะแนน Rider',r?.rider_rating,true)}
+        <textarea class="ta" name="comment" maxlength="1000" placeholder="ความคิดเห็น">${esc(r?.comment||'')}</textarea>
+        <button class="prim" type="submit">บันทึกรีวิว</button>
+      </form>
+      ${r?'<button class="lk qg-review-delete" id="review-delete" type="button">ลบรีวิว</button>':''}`;
+
+    const form=$('review-form');
+    form.querySelectorAll('.qg-star-rating').forEach(group=>{
+      const name=group.dataset.ratingName,input=form.elements[name],note=group.parentElement.querySelector('[data-rating-note="'+name+'"]');
+      const buttons=[...group.querySelectorAll('button[data-value]')];
+      const paint=value=>{
+        const n=Number(value)||0;
+        input.value=n?String(n):'';
+        buttons.forEach(button=>{
+          const v=Number(button.dataset.value),on=v<=n;
+          button.classList.toggle('on',on);
+          button.setAttribute('aria-checked',String(v===n));
+        });
+        if(note)note.textContent=n?ratingText(n):(name==='rating'?'กรุณาเลือกคะแนน':'เลือกได้ถ้าต้องการ');
+      };
+      buttons.forEach(button=>button.onclick=()=>paint(button.dataset.value));
+    });
+
+    form.onsubmit=async e=>{
+      e.preventDefault();
+      const f=e.currentTarget,b=f.querySelector('button[type="submit"]');
+      const shopRating=Number(f.elements.rating?.value||0);
+      if(shopRating<1||shopRating>5){toast('กรุณาเลือกคะแนนร้าน 1–5 ดาว');return}
+      b.disabled=true;
+      try{
+        await db('rpc/qg_customer_save_review',{method:'POST',body:{
+          p_order_id:o.id,
+          p_rating:shopRating,
+          p_food_rating:f.elements.food?.value?Number(f.elements.food.value):null,
+          p_rider_rating:f.elements.rider?.value?Number(f.elements.rider.value):null,
+          p_comment:f.elements.comment.value.trim()
+        }});
+      }catch(e){
+        if(owned(key,ticket))toast(e.message);
+        if(owned(key,ticket)&&b.isConnected)b.disabled=false;
+        return;
+      }
+      if(owned(key,ticket)){
+        toast('บันทึกรีวิวแล้ว');
+        try{await reviewForm(o,ticket,key)}catch(refreshErr){console.warn('customer review post-save refresh failed',refreshErr)}
+      }
+      if(owned(key,ticket)&&b.isConnected)b.disabled=false;
+    };
+    if(r)$('review-delete').onclick=async()=>{
+      if(!confirm('ลบรีวิวนี้?'))return;
+      try{await db('reviews?id=eq.'+encodeURIComponent(r.id)+'&customer_id=eq.'+encodeURIComponent(S.get().userId),{method:'DELETE'})}
+      catch(e){if(owned(key,ticket))toast('ลบรีวิวไม่สำเร็จ');return}
+      if(owned(key,ticket))try{await reviewForm(o,ticket,key)}catch(refreshErr){console.warn('customer review post-delete refresh failed',refreshErr)}
+    };
   }
   const orderVersion=o=>JSON.stringify([o.status,o.rider_id,o.total_amount,o.delivery_fee,o.bundle_customer_savings,o.note]);
   async function needsOrderRefresh(id){if(!orderSnapshot||orderSnapshot.id!==id||orderSnapshot.actor!==actor()||!$('customer-tracking-map'))return true;const key=actor(),hash=location.hash;try{const rows=await db('orders?select=status,rider_id,total_amount,delivery_fee,bundle_customer_savings,note&id=eq.'+encodeURIComponent(id)+'&customer_id=eq.'+encodeURIComponent(S.get().userId)+'&limit=1');if(actor()!==key||location.hash!==hash)return false;return !rows[0]||orderVersion(rows[0])!==orderSnapshot.version}catch(e){return false}}
