@@ -1,0 +1,10 @@
+const fs=require('node:fs'),assert=require('node:assert/strict'),read=p=>fs.readFileSync(p,'utf8');
+const customer=read('customer-features.js'),merchant=read('merchant/index.html'),rider=read('rider/index.html'),privacy=read('privacy/index.html'),deletion=read('delete-account/index.html'),edge=read('supabase/functions/account-delete/index.ts'),sql=read('QueueGo-Pilot-Account-Deletion-Privacy.sql');
+for(const src of [customer,merchant,rider])assert.ok(src.includes('/functions/v1/account-delete'));
+for(const src of [customer,merchant,rider,deletion])assert.ok(src.includes('DELETE_ACCOUNT'));
+assert.ok(privacy.includes('นโยบายความเป็นส่วนตัว')&&privacy.includes('ลบบัญชี'));assert.ok(deletion.includes('เบอร์โทรศัพท์หรืออีเมล'));
+for(const secret of ['SUPABASE_SECRET_KEYS','SUPABASE_SERVICE_ROLE_KEY','service_role'])assert.ok(!deletion.includes(secret));
+assert.ok(edge.includes('SUPABASE_SECRET_KEYS')&&edge.includes('auth.admin.deleteUser'));
+assert.ok(/revoke all on function public\.queuego_account_deletion_finalize\(uuid,uuid\) from public,anon,authenticated/i.test(sql));
+assert.ok(/grant execute on function public\.queuego_account_deletion_finalize\(uuid,uuid\) to service_role/i.test(sql));
+console.log('QueueGo account deletion/privacy source checks passed');
