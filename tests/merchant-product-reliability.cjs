@@ -11,6 +11,13 @@ ok(merchant.includes("qgmDeleteProduct"),'merchant product editor must expose de
 ok(merchant.includes("rpc/queuego_delete_or_archive_product"),'delete button must use ownership-checked RPC');
 ok(merchant.includes("merchant product hydrate after delete failed"),'delete post-commit refresh must be non-fatal');
 ok(merchant.includes("!p?.archived_at"),'archived historical products must be hidden from active product management');
+ok(merchant.includes('function qtSanitizeCachedProducts'),'Merchant fast cache must sanitize product ownership and duplicate ids');
+ok(merchant.includes('productsAt:now'),'Merchant product cache must have a short freshness timestamp');
+ok(merchant.includes('productCacheFresh'),'stale cached product lists must not be trusted on boot');
+ok(merchant.includes('async function qgmRefreshProductsPage'),'product management must fetch an authoritative shop product snapshot');
+ok(merchant.includes("products?select=*&shop_id=eq."),'authoritative product snapshot must be scoped to the current shop');
+ok(merchant.includes("renderShopProductsModern({authoritative:true})"),'authoritative snapshot must replace the visible cached product list');
+ok(merchant.includes("qgmProductViewSearch")&&merchant.includes("qgmProductViewMode"),'search and availability filter state must be combined instead of overriding one another');
 
 ok(sql.includes('create or replace function public.queuego_delete_or_archive_product'),'safe product delete/archive RPC must exist');
 ok(sql.includes('join public.shop_profiles sp on sp.id=p.shop_id'),'RPC must verify shop ownership');
@@ -20,4 +27,4 @@ ok(sql.includes("return 'archived'"),'historical products must archive instead o
 ok(sql.includes("return 'deleted'"),'unused products must hard-delete');
 ok(sql.includes('revoke all on function public.queuego_delete_or_archive_product(uuid) from public,anon'),'delete RPC must not be callable anonymously');
 
-console.log(JSON.stringify({checks,failures:0,scope:'Merchant product single-submit idempotency and safe delete/archive'}));
+console.log(JSON.stringify({checks,failures:0,scope:'Merchant product single-submit idempotency, authoritative cache refresh, and safe delete/archive'}));
