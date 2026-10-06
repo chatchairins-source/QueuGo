@@ -18,6 +18,8 @@ ok(merchant.includes("const posControl=$('#qgm-pos-available'),deliveryControl=$
 ok(merchant.includes("const posAvailable=posControl?posControl.checked:(existingProduct?existingProduct.posAvailable!==false:true);"),'missing POS control must preserve saved value or safe default');
 ok(merchant.includes("const deliveryRequested=deliveryControl?deliveryControl.checked:(existingProduct?existingProduct.deliveryAvailable!==false:true);"),'missing Delivery control must preserve saved value or safe default');
 ok(!merchant.includes("pos_available:$('#qgm-pos-available').checked"),'product save must never dereference a missing POS checkbox directly');
+ok(merchant.includes("if(!nameControl||!categoryControl||!priceControl||!stockControl||!availableControl)throw new Error('หน้าฟอร์มสินค้าไม่ครบ"),'product save must reject an incomplete/stale editor DOM cleanly');
+ok(!merchant.includes("available=$('#qgm-prod-available').checked"),'product save must not dereference required controls before validation');
 ok(merchant.includes("const qgmProductToggleInFlight=new Set();"),'product availability toggle must ignore rapid duplicate taps');
 ok(merchant.includes("control.disabled=true"),'product toggle control must lock while save is in flight');
 ok(merchant.includes("&select=id,available"),'product toggle PATCH must request authoritative saved state');
