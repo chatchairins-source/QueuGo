@@ -917,52 +917,59 @@ async function qgLoadLaundryRiderState(token,hasNormalActive){
     }
   }catch(e){console.warn('laundry rider state unavailable',e)}
 }
+const qgLaundryMutationInFlight=new Set();
+function qgLaundryRefreshAfterCommit(label){return qgRiderRefreshAfterCommit(label)}
 window.qgSetLaundryMode=async function(enabled){
+  const key='mode';if(qgLaundryMutationInFlight.has(key))return;qgLaundryMutationInFlight.add(key);
   try{
     const token=await getAccessToken();
-    await sbTable('rpc/queuego_set_laundry_rider_mode',{method:'POST',token,body:{p_enabled:!!enabled}});
-    S.laundryMode=!!enabled;toast(enabled?'เปิดรับงานฝากซักแล้ว':'ปิดรับงานฝากซักแล้ว');await qgRiderRefreshAfterCommit('rider laundry mode refresh failed');
-  }catch(e){toast('เปลี่ยนโหมดฝากซักไม่สำเร็จ: '+String(e.message||e).slice(0,120))}
+    await qgRiderMutation('rpc/queuego_set_laundry_rider_mode',{method:'POST',token,body:{p_enabled:!!enabled}});
+    S.laundryMode=!!enabled;toast(enabled?'เปิดรับงานฝากซักแล้ว':'ปิดรับงานฝากซักแล้ว');await qgLaundryRefreshAfterCommit('rider laundry mode refresh failed');
+  }catch(e){if(!e?.pending)toast('เปลี่ยนโหมดฝากซักไม่สำเร็จ: '+String(e.message||e).slice(0,120))}
+  finally{qgLaundryMutationInFlight.delete(key)}
 };
 window.qgLaundryInviteAction=async function(inviteId,accept){
+  const key='invite:'+inviteId;if(qgLaundryMutationInFlight.has(key))return;qgLaundryMutationInFlight.add(key);
   try{
     const token=await getAccessToken();
-    await qgRiderActionOnce('laundry_invite',{p_invite_id:inviteId,p_accept:!!accept},token);
-    toast(accept?'ยอมรับเป็น Rider รับ-ส่งผ้าของร้านแล้ว':'ปฏิเสธคำเชิญแล้ว');await qgRiderRefreshAfterCommit('rider laundry invite refresh failed');if(S.activeTab==='profile')try{renderProfilePanel()}catch(e){console.warn('rider laundry invite render failed',e)}
-  }catch(e){toast('ตอบคำเชิญไม่สำเร็จ: '+String(e.message||e).slice(0,120))}
+    await qgRiderMutation('rpc/queuego_laundry_rider_invite_action',{method:'POST',token,body:{p_invite_id:inviteId,p_accept:!!accept}});
+    toast(accept?'ยอมรับเป็น Rider รับ-ส่งผ้าของร้านแล้ว':'ปฏิเสธคำเชิญแล้ว');await qgLaundryRefreshAfterCommit('rider laundry invite refresh failed');if(S.activeTab==='profile')try{renderProfilePanel()}catch(e){console.warn('rider laundry invite render failed',e)}
+  }catch(e){if(!e?.pending)toast('ตอบคำเชิญไม่สำเร็จ: '+String(e.message||e).slice(0,120))}
+  finally{qgLaundryMutationInFlight.delete(key)}
 };
 window.qgClaimLaundryJob=async function(jobId){
+  const key='claim:'+jobId;if(qgLaundryMutationInFlight.has(key))return;qgLaundryMutationInFlight.add(key);
   try{
     const token=await getAccessToken();
-    await qgRiderActionOnce('laundry_claim',{p_job_id:jobId},token);
-    toast('รับงานฝากซักแล้ว');await qgRiderRefreshAfterCommit('rider laundry claim refresh failed');
-  }catch(e){toast('รับงานฝากซักไม่สำเร็จ: '+String(e.message||e).slice(0,130))}
+    await qgRiderMutation('rpc/queuego_claim_laundry_job',{method:'POST',token,body:{p_job_id:jobId}});
+    toast('รับงานฝากซักแล้ว');await qgLaundryRefreshAfterCommit('rider laundry claim refresh failed');
+  }catch(e){if(!e?.pending)toast('รับงานฝากซักไม่สำเร็จ: '+String(e.message||e).slice(0,130))}
+  finally{qgLaundryMutationInFlight.delete(key)}
 };
-let qgLaundryActionBusy=false;
 window.qgLaundryRiderAction=async function(action){
-  const j=S.laundryJob;if(!j?.job_id||qgLaundryActionBusy)return;
-  qgLaundryActionBusy=true;
+  const j=S.laundryJob,key='action:'+action;if(!j?.job_id||qgLaundryMutationInFlight.has(key))return;
+  qgLaundryMutationInFlight.add(key);
   try{
     const token=await getAccessToken();
-    await sbTable('rpc/queuego_laundry_rider_action',{method:'POST',token,body:{p_job_id:j.job_id,p_action:action}});
+    await qgRiderMutation('rpc/queuego_laundry_rider_action',{method:'POST',token,body:{p_job_id:j.job_id,p_action:action}});
     toast(action==='arrive'?'ถึงจุดรับแล้ว':action==='collect'?'รับผ้าแล้ว':'ส่งมอบเรียบร้อย');
-    await qgRiderRefreshAfterCommit('rider laundry action refresh failed');
-  }catch(e){toast('อัปเดตงานฝากซักไม่สำเร็จ: '+String(e.message||e).slice(0,130))}
-  finally{qgLaundryActionBusy=false}
+    await qgLaundryRefreshAfterCommit('rider laundry action refresh failed');
+  }catch(e){if(!e?.pending)toast('อัปเดตงานฝากซักไม่สำเร็จ: '+String(e.message||e).slice(0,130))}
+  finally{qgLaundryMutationInFlight.delete(key)}
 };
 function qgLaundryPoolHTML(){
   const rows=S.laundryPool||[];if(!rows.length)return '';
   return `<section class="qg-laundry-card"><div class="qg-laundry-card-head"><div><b>งานฝากซักที่รับได้</b><small>เฉพาะร้านที่คุณยอมรับเป็น Rider แล้ว</small></div><span>${rows.length} งาน</span></div>
-    ${rows.slice(0,5).map(j=>`<article class="qg-laundry-offer"><div><b>${esc(j.leg==='pickup'?'รับผ้าจากลูกค้า':'ส่งผ้าคืนลูกค้า')} · #${esc(j.order_number||'')}</b><small>${esc(j.shop_name||j.hub_name||'ร้านซัก')} · ${esc(j.service_name||'บริการฝากซัก')}</small><p>${esc(j.from_address||'')} → ${esc(j.to_address||'')}</p></div><div><strong>฿${Number(j.job_fee||0).toLocaleString('th-TH')}</strong><button type="button" class="qg-btn qg-btn-primary" onclick="qgClaimLaundryJob('${esc(j.job_id)}')">รับงาน</button></div></article>`).join('')}
+    ${rows.slice(0,5).map(j=>`<article class="qg-laundry-offer"><div><b>${esc(j.leg==='pickup'?'รับผ้าจากลูกค้า':'ส่งผ้าคืนลูกค้า')} · #${esc(j.order_number||'')}</b><small>${esc(j.shop_name||j.hub_name||'ร้านซัก')} · ${esc(j.service_name||'บริการฝากซัก')}</small><p>${esc(j.from_address||'')} → ${esc(j.to_address||'')}</p></div><div><strong>฿${Number(j.job_fee||0).toLocaleString('th-TH')}</strong><button type="button" class="qg-btn qg-btn-primary" data-laundry-mutation="claim" onclick="qgClaimLaundryJob('${esc(j.job_id)}')">รับงาน</button></div></article>`).join('')}
   </section>`;
 }
 function qgLaundryActiveHTML(){
   const j=S.laundryJob;if(!j)return '';
   const status=String(j.job_status||'assigned');
   const title=j.leg==='pickup'?'รับผ้าไปส่งร้าน':'รับผ้าจากร้านไปคืนลูกค้า';
-  const action=status==='assigned'?`<button class="qg-btn qg-btn-primary" onclick="qgLaundryRiderAction('arrive')">ถึงจุดรับแล้ว</button>`:
-    status==='arrived'?`<button class="qg-btn qg-btn-primary" onclick="qgLaundryRiderAction('collect')">รับผ้าแล้ว</button>`:
-    status==='collected'?`<button class="qg-btn qg-btn-primary" onclick="qgLaundryRiderAction('deliver')">ส่งถึงปลายทางแล้ว</button>`:'';
+  const action=status==='assigned'?`<button class="qg-btn qg-btn-primary" data-laundry-mutation="arrive" onclick="qgLaundryRiderAction('arrive')">ถึงจุดรับแล้ว</button>`:
+    status==='arrived'?`<button class="qg-btn qg-btn-primary" data-laundry-mutation="collect" onclick="qgLaundryRiderAction('collect')">รับผ้าแล้ว</button>`:
+    status==='collected'?`<button class="qg-btn qg-btn-primary" data-laundry-mutation="deliver" onclick="qgLaundryRiderAction('deliver')">ส่งถึงปลายทางแล้ว</button>`:'';
   const navLat=Number(status==='collected'?j.to_latitude:j.from_latitude),navLng=Number(status==='collected'?j.to_longitude:j.from_longitude);
   return `<article class="qg-laundry-active-card">
     <div class="qg-active-head"><div><span class="qg-kicker">งานฝากซัก</span><h2>#${esc(j.order_number||'')}</h2></div><span class="qg-income-badge">฿${Number(j.job_fee||0).toLocaleString('th-TH')}</span></div>
@@ -1772,7 +1779,7 @@ function renderProfilePanel(){
     <section class="qg-profile-card"><div class="qg-profile-avatar">${esc(name.slice(0,1).toUpperCase())}</div><div><h2>${esc(name)}</h2><p>${esc(phone||'-')}</p><span>${esc(vehicleLabel)}${plate?' · '+esc(plate):' · QueueGo Rider'}</span></div></section>
     <section class="qg-settings">
       <button class="qg-setting" id="qg-status-setting"><span class="qg-setting-icon qg-green">${QTICON.loc}</span><div><b>สถานะรับงาน</b><small>${S.online?'ออนไลน์':'ออฟไลน์'}</small></div><em class="${S.online?'on':''}">${S.online?'ออนไลน์':'ปิด'}</em></button>
-      <button class="qg-setting" id="qg-laundry-mode"><span class="qg-setting-icon">${QTICON.jobs}</span><div><b>รับงานฝากซัก</b><small>งานรับ-ส่งผ้าจากร้านที่เข้าร่วม</small></div><em>${S.laundryMode?'เปิด':'ปิด'}</em></button>
+      <button class="qg-setting" id="qg-laundry-mode" data-laundry-mutation="mode"><span class="qg-setting-icon">${QTICON.jobs}</span><div><b>รับงานฝากซัก</b><small>งานรับ-ส่งผ้าจากร้านที่เข้าร่วม</small></div><em>${S.laundryMode?'เปิด':'ปิด'}</em></button>
       <button class="qg-setting" id="qg-rider-support-link"><span class="qg-setting-icon">${QTICON.chat}</span><div><b>แจ้งปัญหา / ติดตามเรื่อง</b><small>ติดต่อฝ่ายดูแล QueueGo</small></div><strong>›</strong></button>
       <button class="qg-setting danger" id="qg-logout"><span class="qg-setting-icon">${QTICON.back}</span><div><b>ออกจากระบบ</b><small>ออกจากบัญชีในอุปกรณ์นี้</small></div><strong>›</strong></button>
     </section>`;
@@ -1783,7 +1790,7 @@ function renderProfilePanel(){
   const host=p.querySelector('.qg-settings');
   (S.laundryInvites||[]).forEach(inv=>{
     const box=document.createElement('div');box.className='qg-laundry-invite';
-    box.innerHTML=`<div><b>คำเชิญงานฝากซัก</b><small>${esc(inv.shop_name||inv.hub_name||'ร้านซัก')}</small></div><div><button type="button" data-accept="1">ยอมรับ</button><button type="button" data-accept="0">ปฏิเสธ</button></div>`;
+    box.innerHTML=`<div><b>คำเชิญงานฝากซัก</b><small>${esc(inv.shop_name||inv.hub_name||'ร้านซัก')}</small></div><div><button type="button" data-laundry-mutation="invite-accept" data-accept="1">ยอมรับ</button><button type="button" data-laundry-mutation="invite-reject" data-accept="0">ปฏิเสธ</button></div>`;
     box.querySelectorAll('[data-accept]').forEach(b=>b.onclick=()=>qgLaundryInviteAction(inv.invite_id,b.dataset.accept==='1'));
     host.before(box);
   });
