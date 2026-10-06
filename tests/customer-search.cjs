@@ -1,2 +1,52 @@
 const fs=require('fs'),path=require('path'),vm=require('vm'),assert=require('assert'),{JSDOM}=require('jsdom');
-(async()=>{let checks=0;const eq=(a,b)=>{assert.deepEqual(a,b);checks++};const d=new JSDOM('<div id="root"></div>'),w=d.window,timers=new Map(),calls=[];let serial=0,reply=null;const shops=[{id:'food',shop_name:'ร้านข้าว',public_category:'food'},{id:'cafe',shop_name:'Coffee Shop',public_category:'cafe'}];const ctx=vm.createContext({V:{},routeVersion:1,q:'',cat:'all',CATS:{food:'อาหาร',cafe:'เครื่องดื่ม'},loadShops:async()=>shops,layout:html=>w.document.getElementById('root').innerHTML=html,$:id=>w.document.getElementById(id),esc:s=>String(s??''),shopCard:s=>'<div>'+s.shop_name+'</div>',setTimeout:f=>{timers.set(++serial,f);return serial},clearTimeout:id=>timers.delete(id),db:async path=>{calls.push(path);return await new Promise(resolve=>reply=resolve)}});const source=fs.readFileSync(path.resolve(__dirname,'../index.html'),'utf8');vm.runInContext(source.slice(source.indexOf('V.search='),source.indexOf('async function shareShop')),ctx);await vm.runInContext('V.search()',ctx);const input=w.document.getElementById('sq'),result=()=>w.document.getElementById('sr').textContent,state=()=>w.document.getElementById('search-state').textContent;function type(value){input.value=value;input.oninput({target:input})}async function tick(){const next=[...timers.entries()][0];if(!next)return;timers.delete(next[0]);next[1]();for(let i=0;i<5;i++)await Promise.resolve()}type('ข');eq(calls.length,0);eq(result().includes('ร้านข้าว'),true);type('ชา');type('ชาไทย');eq(timers.size,1);eq(calls.length,0);await tick();eq(calls.length,1);eq(state().includes('กำลังค้นหา'),true);eq(calls[0].includes('limit=30'),true);type('กาแฟ');await tick();eq(calls.length,1);reply([{shop_id:'food'}]);for(let i=0;i<8;i++)await Promise.resolve();eq(result().includes('ร้านข้าว'),false);eq(timers.size,1);await tick();eq(calls.length,2);reply([{shop_id:'cafe'},{shop_id:'not-public'}]);for(let i=0;i<8;i++)await Promise.resolve();eq(result().includes('Coffee Shop'),true);eq(result().includes('ร้านข้าว'),false);eq(state().includes('พบเมนู'),true);w.document.getElementById('search-clear').onclick();eq(input.value,'');eq(calls.length,2);eq(timers.size,0);eq(result().includes('ร้านข้าว'),true);type('อาหาร');eq(result().includes('ร้านข้าว'),true);await tick();ctx.routeVersion=2;w.document.getElementById('root').innerHTML='<p>Another view</p>';reply([{shop_id:'cafe'}]);for(let i=0;i<8;i++)await Promise.resolve();eq(w.document.getElementById('root').textContent,'Another view');eq(timers.size,0);d.window.close();console.log(JSON.stringify({checks,failures:0,scope:'isolated debounced menu search, single-flight and stale view protection; live catalog latency not certified'}));})().catch(e=>{console.error(e);process.exit(1)});
+(async()=>{
+ let checks=0;const eq=(a,b)=>{assert.deepEqual(a,b);checks++};
+ const d=new JSDOM('<div id="root"></div>'),w=d.window;
+ const shops=[
+  {id:'food',shop_name:'ร้านข้าว',public_category:'food',public_description:'ข้าวแกง',address:'เมือง'},
+  {id:'cafe',shop_name:'Coffee Shop',public_category:'cafe',public_description:'กาแฟ',address:'ตลาด'},
+  {id:'market',shop_name:'ร้านตลาดสด',public_category:'market',public_description:'ผักสด',address:'ตลาดสด'}
+ ];
+ const ctx=vm.createContext({
+  V:{},routeVersion:1,q:'',CATS:{food:'อาหาร',cafe:'เครื่องดื่ม',market:'ตลาดสด'},
+  DEDICATED_MARKET_CATS:new Set(['market','fresh','fresh_market','meat','fish','vegetable','fruit']),
+  currentPos:null,qgIsValidCoordinate:()=>false,calculateDistanceKm:()=>Infinity,
+  loadShops:async()=>shops,
+  layout:html=>w.document.getElementById('root').innerHTML=html,
+  $:id=>w.document.getElementById(id),
+  esc:s=>String(s??'').replace(/[&<>"]/g,''),
+  photo:()=>'<span class="ph"></span>',
+  ico:()=>'<i></i>',go:()=>{},
+  document:w.document,history:w.history
+ });
+ const source=fs.readFileSync(path.resolve(__dirname,'../index.html'),'utf8');
+ const start=source.indexOf('function globalShopSearch');
+ const end=source.indexOf('V.food=',start);
+ vm.runInContext(source.slice(start,end),ctx);
+ await vm.runInContext('V.search()',ctx);
+ const input=w.document.getElementById('global-search');
+ const count=()=>w.document.getElementById('global-search-count').textContent;
+ const visible=()=>[...w.document.querySelectorAll('#global-shop-list .sc')].filter(x=>!x.hidden).map(x=>x.textContent);
+ eq(!!input,true);
+ eq(w.document.querySelectorAll('#global-shop-list .sc').length,2);
+ eq(w.document.getElementById('root').textContent.includes('ร้านตลาดสด'),false);
+ eq(count(),'2 ร้าน');
+ vm.runInContext("globalShopSearch('กาแฟ')",ctx);
+ eq(visible().length,1);
+ eq(visible()[0].includes('Coffee Shop'),true);
+ eq(count(),'1 ร้าน');
+ vm.runInContext("globalShopSearch('อาหาร')",ctx);
+ eq(visible().length,1);
+ eq(visible()[0].includes('ร้านข้าว'),true);
+ vm.runInContext("globalShopSearch('ไม่พบ')",ctx);
+ eq(visible().length,0);
+ eq(w.document.getElementById('global-search-empty').hidden,false);
+ vm.runInContext("globalShopSearch('')",ctx);
+ eq(visible().length,2);
+ eq(w.document.getElementById('global-search-empty').hidden,true);
+ ctx.routeVersion=2;
+ await vm.runInContext('V.search(null,1)',ctx);
+ eq(w.document.getElementById('global-shop-list')!==null,true);
+ d.window.close();
+ console.log(JSON.stringify({checks,failures:0,scope:'isolated global shop search and dedicated market-category separation; no live directory latency certification'}));
+})().catch(e=>{console.error(e);process.exit(1)});
