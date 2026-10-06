@@ -1812,7 +1812,7 @@ function qgmMerchantSalesAmount(o){
   return Number.isFinite(total)?Math.max(0,total-(Number.isFinite(fee)?fee:0)):0;
 }
 window.shopOrders=shopOrders;
-function shopProducts(u){const pid=profileId(u);return dbGet('qt_products',[]).filter(p=>String(p.shopId)===String(u.id)||(pid&&(String(p.shopProfileId)===String(pid)||String(p.shopId)===String(pid))))}
+function shopProducts(u){const pid=profileId(u);return dbGet('qt_products',[]).filter(p=>!p?.archived_at&&(String(p.shopId)===String(u.id)||(pid&&(String(p.shopProfileId)===String(pid)||String(p.shopId)===String(pid)))))}
 function img(v){
   const s=String(v||'').trim();
   if(/^(https?:|data:image\/|blob:)/i.test(s)) return s;
@@ -2184,7 +2184,7 @@ function qgmCollectRestaurantVariants(){
 }
 
 window.renderShopProductEditor=function(id){
- const u=shopUser(),p=id!=='new'?shopProducts(u).find(x=>String(x.id)===String(id)):null,pid=profileId(u);
+ const u=shopUser(),p=id!=='new'?shopProducts(u).find(x=>String(x.id)===String(id)):null,pid=profileId(u),requestProductId=p?.id||uid();
  const initialCategory=p?.category||(id==='new'?window.qgmNewProductCategory:'')||'',storePrice=Number(p?.posPrice??p?.price??0);
  const restaurantCategories=qgmFoodCategoryNames(),useRestaurantCategories=['food','cafe'].includes(String(u?.category||''));
  const marketCategories=qgmMarketProductCategoryNames(),useMarketCategories=qgmIsMarketProductShop(u);
@@ -2200,15 +2200,19 @@ window.renderShopProductEditor=function(id){
   ?qgmRestaurantOptionsHtml(qgmRestaurantOptionState(p?.variants))
   :`<div class="qgm-field"><label>ตัวเลือกเพิ่มเติม (คั่นด้วยเครื่องหมายจุลภาค)</label><input id="qgm-prod-variants" value="${esc(Array.isArray(p?.variants)?p.variants.map(x=>typeof x==='string'?x:x.name).filter(Boolean).join(', '):'')}"></div>`;
  if(id==='new')window.qgmNewProductCategory='';
- layout('เพิ่มสินค้าเข้าร้าน',`<form class="qgm-card qgm-form-card" onsubmit="return qgmSaveProduct(event,'${p?.id||''}')"><div class="qgm-product-head"><img id="qgm-prod-preview" src="${esc(img(p?.image||p?.image_url))}"><div><b>${esc(p?.name||'สินค้าใหม่')}</b><small style="display:block;color:#8b9098;margin-top:4px">${esc(p?.category||'เลือกหมวดหมู่')}</small></div></div><div class="qgm-field"><label>ชื่อสินค้า *</label><input id="qgm-prod-name" required value="${esc(p?.name||'')}"></div><div class="qgm-field"><label>หมวดหมู่ *</label>${categoryControl}</div><div class="qgm-inline"><div class="qgm-field"><label>ราคาขายหน้าร้าน *</label><input id="qgm-prod-price" type="number" min="0" step="0.01" required value="${storePrice}" oninput="qgmRefreshDeliveryPricePreview()"></div><div class="qgm-field"><label>จำนวนสินค้าในสต็อก *</label><input id="qgm-prod-stock" type="number" min="0" step="1" required value="${Number(p?.stock??p?.metadata?.stock??0)}"></div></div><div class="qgm-field"><label>รูปสินค้า</label><label class="qgm-upload-action">${svg('camera')} เลือกรูปจากเครื่อง<input id="qgm-prod-file" type="file" accept="image/jpeg,image/png,image/webp" onchange="qgmPreviewUpload(this,'qgm-prod-preview')"></label><small>รูปจะเก็บในคลังรูปภาพของร้าน</small><div class="qgm-upload-status" data-upload-status-for="qgm-prod-preview" ${p?.image||p?.image_url?'':'hidden'}><img src="${esc(img(p?.image||p?.image_url))}" alt="รูปสินค้าที่เลือก"><div class="qgm-upload-status-copy"><b data-upload-name>${p?.image||p?.image_url?'รูปสินค้าปัจจุบัน':'ยังไม่ได้เลือกรูป'}</b><small data-upload-meta>${p?.image||p?.image_url?'มีรูปบันทึกอยู่แล้ว':'รองรับ JPG, PNG, WEBP'}</small><small class="ok" data-upload-state>${p?.image||p?.image_url?'บันทึกอยู่ในระบบแล้ว':'เลือกรูปแล้วกดบันทึกเพื่ออัปโหลด'}</small></div></div><input id="qgm-prod-image" type="hidden" value="${esc(p?.image||p?.image_url||'')}"></div><div class="qgm-form-row"><span>สถานะการขาย</span><label class="qgm-switch"><input id="qgm-prod-available" type="checkbox" ${p?.available!==false?'checked':''}><span></span></label></div>${optionControl}<div class="qg-pos-product-fields"><label><input id="qgm-pos-available" type="checkbox" ${p?.posAvailable!==false?'checked':''}> ขายหน้าร้าน</label><label><input id="qgm-delivery-available" type="checkbox" ${p?.deliveryAvailable!==false&&String(p?.delivery_restriction||'none')==='none'?'checked':''}> ขาย Delivery</label><small id="qgm-delivery-restriction-note" class="qgm-restriction-note" hidden></small><div class="qgm-delivery-price-lock"><div class="qgm-delivery-price-head"><span>ราคา Delivery</span><b id="qgm-gp-rate-label">กำลังโหลด GP…</b></div><input id="qgm-delivery-price-locked" type="number" step="0.01" readonly aria-readonly="true" tabindex="-1" placeholder="กำลังคำนวณ"><small>ระบบบวก GP จากราคาหน้าร้านอัตโนมัติ ร้านค้าแก้ไขราคานี้ไม่ได้</small></div></div><button class="qgm-primary" type="submit">เพิ่มเข้าร้าน / บันทึก</button></form>`,'shop-products',{back:true});
+ layout(p?'แก้ไขสินค้า':'เพิ่มสินค้าเข้าร้าน',`<form class="qgm-card qgm-form-card" data-product-request-id="${requestProductId}" onsubmit="return qgmSaveProduct(event,'${p?.id||''}','${requestProductId}')"><div class="qgm-product-head"><img id="qgm-prod-preview" src="${esc(img(p?.image||p?.image_url))}"><div><b>${esc(p?.name||'สินค้าใหม่')}</b><small style="display:block;color:#8b9098;margin-top:4px">${esc(p?.category||'เลือกหมวดหมู่')}</small></div></div><div class="qgm-field"><label>ชื่อสินค้า *</label><input id="qgm-prod-name" required value="${esc(p?.name||'')}"></div><div class="qgm-field"><label>หมวดหมู่ *</label>${categoryControl}</div><div class="qgm-inline"><div class="qgm-field"><label>ราคาขายหน้าร้าน *</label><input id="qgm-prod-price" type="number" min="0" step="0.01" required value="${storePrice}" oninput="qgmRefreshDeliveryPricePreview()"></div><div class="qgm-field"><label>จำนวนสินค้าในสต็อก *</label><input id="qgm-prod-stock" type="number" min="0" step="1" required value="${Number(p?.stock??p?.metadata?.stock??0)}"></div></div><div class="qgm-field"><label>รูปสินค้า</label><label class="qgm-upload-action">${svg('camera')} เลือกรูปจากเครื่อง<input id="qgm-prod-file" type="file" accept="image/jpeg,image/png,image/webp" onchange="qgmPreviewUpload(this,'qgm-prod-preview')"></label><small>รูปจะเก็บในคลังรูปภาพของร้าน</small><div class="qgm-upload-status" data-upload-status-for="qgm-prod-preview" ${p?.image||p?.image_url?'':'hidden'}><img src="${esc(img(p?.image||p?.image_url))}" alt="รูปสินค้าที่เลือก"><div class="qgm-upload-status-copy"><b data-upload-name>${p?.image||p?.image_url?'รูปสินค้าปัจจุบัน':'ยังไม่ได้เลือกรูป'}</b><small data-upload-meta>${p?.image||p?.image_url?'มีรูปบันทึกอยู่แล้ว':'รองรับ JPG, PNG, WEBP'}</small><small class="ok" data-upload-state>${p?.image||p?.image_url?'บันทึกอยู่ในระบบแล้ว':'เลือกรูปแล้วกดบันทึกเพื่ออัปโหลด'}</small></div></div><input id="qgm-prod-image" type="hidden" value="${esc(p?.image||p?.image_url||'')}"></div><div class="qgm-form-row"><span>สถานะการขาย</span><label class="qgm-switch"><input id="qgm-prod-available" type="checkbox" ${p?.available!==false?'checked':''}><span></span></label></div>${optionControl}<div class="qg-pos-product-fields"><label><input id="qgm-pos-available" type="checkbox" ${p?.posAvailable!==false?'checked':''}> ขายหน้าร้าน</label><label><input id="qgm-delivery-available" type="checkbox" ${p?.deliveryAvailable!==false&&String(p?.delivery_restriction||'none')==='none'?'checked':''}> ขาย Delivery</label><small id="qgm-delivery-restriction-note" class="qgm-restriction-note" hidden></small><div class="qgm-delivery-price-lock"><div class="qgm-delivery-price-head"><span>ราคา Delivery</span><b id="qgm-gp-rate-label">กำลังโหลด GP…</b></div><input id="qgm-delivery-price-locked" type="number" step="0.01" readonly aria-readonly="true" tabindex="-1" placeholder="กำลังคำนวณ"><small>ระบบบวก GP จากราคาหน้าร้านอัตโนมัติ ร้านค้าแก้ไขราคานี้ไม่ได้</small></div></div><button class="qgm-primary" type="submit">เพิ่มเข้าร้าน / บันทึก</button>${p?`<button class="qgm-outline" style="margin-top:10px;border-color:#ef4444;color:#d71920" type="button" onclick="qgmDeleteProduct('${p.id}',this)">ลบสินค้า</button>`:''}</form>`,'shop-products',{back:true});
  if(pid)qgmLoadProductGpRate(pid);
  const restrictionInputs=[document.getElementById('qgm-prod-name'),document.getElementById('qgm-prod-category')].filter(Boolean);
  restrictionInputs.forEach(el=>{el.addEventListener('input',qgmApplyDeliveryRestriction);el.addEventListener('change',qgmApplyDeliveryRestriction)});
  qgmApplyDeliveryRestriction();
 };
 
-window.qgmSaveProduct=async function(e,id){
+let qgmProductSaveBusy=false;
+window.qgmSaveProduct=async function(e,id,requestProductId){
  e.preventDefault();
+ if(qgmProductSaveBusy)return false;
+ qgmProductSaveBusy=true;
+ const submit=e.currentTarget?.querySelector('button[type="submit"]');if(submit){submit.disabled=true;submit.textContent='กำลังบันทึก...'}
  const u=shopUser(),pid=profileId(u),name=$('#qgm-prod-name').value.trim(),category=$('#qgm-prod-category').value.trim(),price=Number($('#qgm-prod-price').value),stock=Number($('#qgm-prod-stock').value),available=$('#qgm-prod-available').checked;
  const isRestaurant=['food','cafe'].includes(String(u?.category||'')),isMarketProduct=qgmIsMarketProductShop(u);
  let image=$('#qgm-prod-image').value.trim();
@@ -2227,13 +2231,34 @@ window.qgmSaveProduct=async function(e,id){
   const selected=$('#qgm-prod-file')?.files?.[0];if(selected)image=await qtUploadMerchantImage(selected,'product');
   const description=shopProducts(u).find(p=>String(p.id)===String(id))?.description||'',restriction=qgmDeliveryRestriction(name,category,description);
   const body={shop_id:pid,name,description,price,image,category,stock,variants,available,pos_available:$('#qgm-pos-available').checked,delivery_available:restriction==='none'&&$('#qgm-delivery-available').checked,delivery_restriction:restriction,pos_price:price,delivery_price:deliveryPrice,metadata:{stock,category,variants,delivery_restriction:restriction}};
-  const saved=(id&&qtUuidLike(id))?await qtSupabaseTable('products?id=eq.'+encodeURIComponent(id)+'&shop_id=eq.'+encodeURIComponent(pid),{method:'PATCH',accessToken:token,body}):await qtSupabaseTable('products',{method:'POST',accessToken:token,body});
+  const stableId=(id&&qtUuidLike(id))?id:(qtUuidLike(requestProductId)?requestProductId:uid());
+  const saved=(id&&qtUuidLike(id))
+    ?await qtSupabaseTable('products?id=eq.'+encodeURIComponent(id)+'&shop_id=eq.'+encodeURIComponent(pid),{method:'PATCH',accessToken:token,body})
+    :await qtSupabaseTable('products?select=*&on_conflict=id',{method:'POST',accessToken:token,body:{id:stableId,...body}});
   if(!Array.isArray(saved)||!saved.length)throw new Error('ฐานข้อมูลไม่ยืนยันการบันทึกสินค้า');
   toast(restriction==='none'?'บันทึกสินค้าแล้ว · Delivery + GP '+gpRate.toLocaleString('th-TH',{maximumFractionDigits:2})+'%':'บันทึกสินค้าแล้ว · '+qgmDeliveryRestrictionLabel(restriction)+' ขายหน้าร้านเท่านั้น ไม่เปิด Delivery');
   try{await qtBackgroundHydrate({light:false})}catch(refreshErr){console.warn('merchant product hydrate after save failed',refreshErr)}
   try{navigate('shop-products')}catch(navErr){console.warn('merchant product navigation after save failed',navErr)}
  }catch(err){console.error(err);toast('บันทึกไม่สำเร็จ: '+(err.message||err))}
+ finally{qgmProductSaveBusy=false;if(submit&&submit.isConnected){submit.disabled=false;submit.textContent='เพิ่มเข้าร้าน / บันทึก'}}
  return false;
+};
+
+let qgmProductDeleteBusy=false;
+window.qgmDeleteProduct=async function(id,button){
+ if(qgmProductDeleteBusy||!qtUuidLike(id))return;
+ if(!confirm('ลบสินค้านี้ออกจากร้าน?'))return;
+ const u=shopUser(),pid=profileId(u);if(!u||!pid)return;
+ qgmProductDeleteBusy=true;if(button)button.disabled=true;
+ try{
+  const token=await qtGetAccessToken();if(!token)throw new Error('เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่');
+  const result=await qtSupabaseTable('rpc/queuego_delete_or_archive_product',{method:'POST',accessToken:token,body:{p_product_id:id}});
+  QT_DB_CACHE.qt_products=dbGet('qt_products',[]).filter(p=>String(p.id)!==String(id));qtMarkClean('qt_products');
+  toast(result==='archived'?'นำสินค้าออกจากร้านแล้ว · ประวัติออเดอร์เดิมยังอยู่':'ลบสินค้าแล้ว');
+  try{await qtBackgroundHydrate({light:false})}catch(refreshErr){console.warn('merchant product hydrate after delete failed',refreshErr)}
+  try{navigate('shop-products')}catch(navErr){console.warn('merchant product navigation after delete failed',navErr)}
+ }catch(err){console.error(err);toast('ลบสินค้าไม่สำเร็จ: '+(err.message||err))}
+ finally{qgmProductDeleteBusy=false;if(button&&button.isConnected)button.disabled=false}
 };
 
 window.renderShopPromote=function(){const u=shopUser(),all=dbGet('qt_promotions',[]).filter(p=>String(p.shopId||p.shop_id)===String(u.id)||String(p.shopProfileId||p.shop_id)===String(profileId(u)));layout('โปรโมชั่น',`<div class="qgm-tabs"><button class="active" data-promo="all" onclick="qgmPromoFilter('all')">ทั้งหมด</button><button data-promo="active" onclick="qgmPromoFilter('active')">กำลังใช้งาน</button><button data-promo="pending" onclick="qgmPromoFilter('pending')">รออนุมัติ</button></div><button class="qgm-outline" type="button" onclick="navigate('shop-promote-create')">สร้างโปรโมชั่นใหม่</button>${all.length?all.map(p=>`<section class="qgm-card qgm-info" data-promo-status="${esc(p.status||'pending')}"><b>${esc(p.title||p.category||'โปรโมชั่น')}</b><small style="display:block;color:#8b9098;margin-top:5px">${esc(p.status||'pending')}</small></section>`).join(''):`<div class="qgm-empty"><div class="mega">${svg('megaphone')}</div><h2>ยังไม่มีโปรโมชั่น</h2><p>สร้างโปรโมชั่นเพื่อเพิ่มยอดขาย<br>และดึงดูดลูกค้า</p><button class="qgm-primary" style="max-width:220px" onclick="navigate('shop-promote-create')">＋ สร้างโปรโมชั่น</button></div>`}`,'shop-promote',{back:true})};
