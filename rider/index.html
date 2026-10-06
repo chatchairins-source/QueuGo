@@ -116,6 +116,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro Text"
 .qg-mp{margin:10px 0;padding:12px;border:1px solid #f0dfe3;border-radius:18px;background:#fff}.qg-mp-head{display:flex;justify-content:space-between;gap:10px}.qg-mp-head small{color:#8a8387}.qg-mp-row{padding:10px 0;border-top:1px solid #f0eaec}.qg-mp-row:first-of-type{margin-top:8px}.qg-mp-top{display:flex;justify-content:space-between;gap:10px}.qg-mp-top small{color:#8a8387;font-size:9px}.qg-mp-top strong{color:var(--qg-red)}.qg-mp-btn{width:100%;height:40px;margin-top:8px;border:0;border-radius:12px;background:var(--qg-red);color:#fff;font-weight:900}.qg-mp-btn:disabled{background:#f0e9eb;color:#8f878b}.qg-mp-paid{color:#168b47!important}.qg-mp-total{display:flex;justify-content:space-between;padding-top:10px;border-top:1px solid #f0eaec;font-weight:900;font-size:11px}
 .qg-support-overlay{position:fixed;inset:0;z-index:100000;background:rgba(20,16,18,.62);display:grid;place-items:center;padding:16px}.qg-support-dialog{width:min(100%,540px);max-height:92dvh;overflow:auto;background:#fff;border-radius:24px;padding:18px;color:var(--qg-ink);box-shadow:0 24px 70px #0003}.qg-support-dialog header{display:flex;justify-content:space-between;align-items:center}.qg-support-dialog header b{font-size:19px}.qg-support-dialog header button{width:38px;height:38px;border:0;border-radius:50%;background:#fff0f3;color:var(--qg-red)}.qg-support-dialog>p{color:#7c7579;font-size:11px}.qg-support-dialog form{display:grid;gap:10px}.qg-support-dialog label{display:grid;gap:6px;font-size:11px;font-weight:800}.qg-support-dialog input,.qg-support-dialog select,.qg-support-dialog textarea{width:100%;border:1px solid #e6dfe2;border-radius:15px;background:#fff;padding:11px 12px;outline:none}.qg-support-dialog textarea{min-height:100px;resize:vertical}.qg-support-dialog form button{height:48px;border:0;border-radius:15px;background:var(--qg-red);color:#fff;font-weight:900}.qg-support-dialog article{padding:11px;margin:8px 0;border:1px solid var(--qg-line);border-radius:15px}.qg-support-dialog article span{float:right;color:var(--qg-red)}.qg-support-dialog article small{display:block;margin-top:5px;color:#8a8387}
 .spinner{display:inline-block;width:18px;height:18px;border:2px solid #ffffff66;border-top-color:#fff;border-radius:50%;animation:qg-spin .7s linear infinite}@keyframes qg-spin{to{transform:rotate(360deg)}}
+
+.qg-message{position:fixed;z-index:9000;left:12px;right:12px;top:calc(8px + var(--safeT));transform:translateY(-150%);opacity:0;transition:.22s;padding:11px 12px;border-radius:17px;background:rgba(27,23,25,.96);color:#fff;box-shadow:0 14px 38px #0004;display:flex;align-items:center;gap:10px}.qg-message.show{transform:none;opacity:1}.qg-message>i{width:32px;height:32px;border-radius:11px;background:var(--qg-red);display:grid;place-items:center;font-style:normal}.qg-message b{font-size:11px}.qg-message small{display:block;max-width:72vw;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#ddd5d8;font-size:9px;margin-top:2px}
 </style>
 
 </head><body>
@@ -1258,7 +1260,7 @@ function renderStage(){
   stopPolling();
   disposeRiderMap();
   document.getElementById('app').innerHTML=`<div class="stage qg-stage">
-    <div id="map" class="map qg-map"></div>
+    <div id="map" class="qg-map"></div>
     <header class="qg-topbar">
       <div class="qg-brand-pill"><span class="qg-qmark-small">Q</span><b>Queue<span>Go</span></b><em>Rider</em></div>
       <div class="qg-online-pill" id="status-pill"><i></i><span id="status-text">ออฟไลน์</span><button class="qg-online-switch" id="status-switch" aria-label="เปลี่ยนสถานะรับงาน"></button></div>
@@ -1459,7 +1461,7 @@ function jobCardHTML(o,meta){
     </article>`;
   }
   if(st==='ready'||st==='preparing'||st==='rider_assigned'||st==='assigned'){
-    return `<article class="qg-active-card qg-pickup-card">
+    return `<article class="qg-active-card">
       <div class="qg-active-head"><div><span class="qg-kicker">${st==='ready'?'ร้านเตรียมสินค้าให้แล้ว':'กำลังไปรับสินค้าที่ร้าน'}</span><h2>#${esc(orderCode)}</h2></div><span class="qg-income-badge">฿${Number(fee||0).toLocaleString('th-TH')}</span></div>
       <div class="qg-shop-row">${logo}<div><small>ร้านค้า</small><b>${esc(shop.shop_name||'ร้านค้า')}</b></div></div>
       <div class="qg-info-row"><span class="qg-round-icon">${QTICON.user}</span><div><small>ลูกค้า</small><b>${esc(cust.name||'ลูกค้า')}</b></div>${phone?`<a class="qg-round-action" href="tel:${esc(phone)}">${QTICON.phone}</a>`:''}</div>
@@ -1473,7 +1475,7 @@ function jobCardHTML(o,meta){
       <button class="qg-btn qg-btn-primary qg-main-action" id="next-${esc(o.id)}" ${next?'':'disabled'}>${next?esc(next.label):'รอร้านเตรียมสินค้า'}</button>
     </article>`;
   }
-  return `<article class="qg-active-card qg-delivery-card">
+  return `<article class="qg-active-card">
     <div class="qg-active-head"><div><span class="qg-kicker">กำลังไปส่ง</span><h2>#${esc(orderCode)}</h2></div><span class="qg-income-badge">฿${Number(fee||0).toLocaleString('th-TH')}</span></div>
     <div class="qg-shop-row">${logo}<div><small>ร้านค้า</small><b>${esc(shop.shop_name||'ร้านค้า')}</b></div></div>
     <div class="qg-info-row"><span class="qg-round-icon">${QTICON.user}</span><div><small>ลูกค้า</small><b>${esc(cust.name||'ลูกค้า')}</b></div>${phone?`<a class="qg-round-action" href="tel:${esc(phone)}">${QTICON.phone}</a>`:''}<button class="qg-round-action" id="delivery-chat-${esc(o.id)}">${QTICON.chat}</button></div>
@@ -1535,36 +1537,34 @@ async function qgConfirmArrival(o){
  if(st==='arrived'){o._arrivalConfirmed=true;qgOpenOrderChecklist(o);return}
  const km=qgArrivalDistanceKm(o),meters=Number.isFinite(km)?Math.max(1,Math.round(km*1000)):null;
  const markArrived=async()=>{
-   const ok=await advanceOrder(o);
-   if(!ok)return false;
-   o._arrivalConfirmed=true;
-   o.status=o.status==='in_progress'?o.status:'in_progress';
-   o.note='__QT_ORDER_STATUS__=arrived\n'+qgCleanOrderNote(o.note);
-   qgOpenOrderChecklist(o);return true;
+  const ok=await advanceOrder(o);if(!ok)return false;
+  o._arrivalConfirmed=true;
+  o.status=o.status==='in_progress'?o.status:'in_progress';
+  o.note='__QT_ORDER_STATUS__=arrived\n'+qgCleanOrderNote(o.note);
+  qgOpenOrderChecklist(o);return true;
  };
  if(Number.isFinite(km)&&km<=QG_ARRIVAL_GUARD_KM){await markArrived();return}
  const overlay=document.createElement('section');overlay.id='qg-arrival-guard';overlay.className='qg-arrival-guard';
  overlay.innerHTML=`<div class="qg-arrival-backdrop"></div>
-   <button type="button" class="qg-arrival-floatback" aria-label="ย้อนกลับ">${QTICON.back}</button>
-   <div class="qg-arrival-sheet">
-     <span class="qg-arrival-handle"></span>
-     <div class="qg-arrival-icon">⌖</div>
-     <h2>คุณไปถึงจุดส่งที่ถูกต้องแล้วหรือยัง?</h2>
-     <p>ระบบตรวจพบว่าคุณอาจยังอยู่ไม่ถึงจุดส่งจริง กรุณาตรวจสอบอีกครั้งก่อนดำเนินการต่อ</p>
-     <div class="qg-arrival-distance"><span>${meters!==null?'คุณยังห่างจากจุดส่งประมาณ':'ยังตรวจสอบระยะจาก GPS ไม่ได้'}</span>${meters!==null?`<b>${meters.toLocaleString('th-TH')} ม.</b>`:''}</div>
-     <div class="qg-arrival-buttons"><button type="button" class="qg-arrival-proceed">ดำเนินการ</button><button type="button" class="qg-arrival-cancel">ย้อนกลับ</button></div>
-   </div>`;
+  <button type="button" class="qg-arrival-floatback" aria-label="ย้อนกลับ">${QTICON.back}</button>
+  <div class="qg-arrival-sheet">
+   <span class="qg-arrival-handle"></span>
+   <div class="qg-arrival-alert">!</div>
+   <h2>คุณไปถึงจุดส่งที่ถูกต้องแล้วหรือยัง?</h2>
+   <p>ระบบตรวจพบว่าคุณอาจยังอยู่ไม่ถึงจุดส่งจริง กรุณาตรวจสอบอีกครั้งก่อนดำเนินการต่อ</p>
+   <div class="qg-arrival-distance"><span>${QTICON.loc}</span><small>${meters!==null?'คุณยังห่างจากจุดส่งประมาณ':'ยังตรวจสอบระยะจาก GPS ไม่ได้'}</small>${meters!==null?`<b>${meters.toLocaleString('th-TH')} ม.</b>`:''}</div>
+   <div class="qg-dual-actions"><button type="button" class="qg-btn qg-btn-primary" id="qg-arrival-proceed">ดำเนินการ</button><button type="button" class="qg-btn qg-btn-secondary" id="qg-arrival-cancel">ย้อนกลับ</button></div>
+  </div>`;
  document.body.appendChild(overlay);
  const close=()=>overlay.remove();
  overlay.querySelector('.qg-arrival-backdrop').onclick=close;
  overlay.querySelector('.qg-arrival-floatback').onclick=close;
- overlay.querySelector('.qg-arrival-cancel').onclick=close;
- overlay.querySelector('.qg-arrival-proceed').onclick=async e=>{
-   const b=e.currentTarget;if(b.disabled)return;b.disabled=true;b.textContent='กำลังบันทึก...';
-   const ok=await markArrived();if(ok)close();else{b.disabled=false;b.textContent='ดำเนินการ'}
+ overlay.querySelector('#qg-arrival-cancel').onclick=close;
+ overlay.querySelector('#qg-arrival-proceed').onclick=async ev=>{
+  const b=ev.currentTarget;if(b.disabled)return;b.disabled=true;b.textContent='กำลังบันทึก...';
+  const ok=await markArrived();if(ok)close();else{b.disabled=false;b.textContent='ดำเนินการ'}
  };
 }
-
 function qgCleanOrderNote(note){
  return String(note||'').split('\n').filter(x=>x&&!/^__QT_ORDER_STATUS__=/.test(x)).join('\n').trim();
 }
@@ -1721,9 +1721,9 @@ async function openChat(o){
   const screen=document.createElement('section');screen.id='chat-screen';screen.className='qg-chat-page show';document.getElementById('app').appendChild(screen);
   const cust=o._customer||{};
   screen.innerHTML=`<header class="qg-chat-head"><button class="qg-icon-btn" id="chat-back">${QTICON.back}</button><div><b>${esc(cust.name||'ลูกค้า')}</b><small>#${esc(qgShortOrder(o))}</small></div>${cust.phone?`<a href="tel:${esc(cust.phone)}">${QTICON.phone}</a>`:'<span></span>'}</header>
-    <div class="chat-box qg-chat-box" id="chat-box"><div class="qg-loading">กำลังโหลดข้อความ...</div></div>
+    <div class="qg-chat-box" id="chat-box"><div class="qg-loading">กำลังโหลดข้อความ...</div></div>
     ${quickMessagesHTML()}
-    <form class="chat-compose-rider qg-chat-compose" id="chat-form">
+    <form class="qg-chat-compose" id="chat-form">
       <button class="photo-btn" type="button" id="chat-photo" aria-label="ส่งรูป"></button>
       <input type="file" id="chat-photo-input" accept="image/*" hidden>
       <input id="chat-input" maxlength="500" autocomplete="off" placeholder="พิมพ์ข้อความ..." required>
