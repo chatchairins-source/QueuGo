@@ -167,6 +167,24 @@ main{width:100%;max-width:720px;margin:auto;padding:0 14px 118px}
 .qg-order-total span{font-size:13px;font-weight:900}
 .qg-order-total strong{color:#17191d;font-size:22px;line-height:1;font-weight:1000}
 @media(max-width:420px){.qg-order-hero{padding:17px}.qg-order-status{font-size:21px}.qg-order-step{font-size:7px}.qg-order-map{height:210px!important}.qg-order-rider-actions{gap:6px}}
+
+/* Customer review — direct gold star rating */
+#customer-review{padding:18px}
+#customer-review>h2{margin:0 0 16px;font-size:19px;letter-spacing:-.2px}
+.qg-review-form{display:grid;gap:17px}
+.qg-review-rating{display:grid;gap:7px}
+.qg-review-rating-label{font-size:12px;font-weight:850;color:#242126}
+.qg-star-rating{display:flex;align-items:center;gap:5px}
+.qg-star-rating button{width:38px;height:38px;padding:0;border:0;background:transparent;color:#d9dde3;font-size:31px;line-height:1;display:grid;place-items:center;cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent;transition:transform .08s ease,color .08s ease}
+.qg-star-rating button.on{color:#f4b400}
+.qg-star-rating button:active{transform:scale(.9)}
+.qg-star-rating button:focus-visible{outline:2px solid #f4b400;outline-offset:2px;border-radius:8px}
+.qg-review-rating-note{min-height:15px;color:#8e878b;font-size:9px;font-weight:700}
+.qg-review-form .ta{min-height:105px;border-radius:17px}
+.qg-review-form .prim{min-height:52px;border-radius:17px;font-weight:900}
+.qg-review-delete{margin-top:10px!important;color:#8a8387!important}
+@media(max-width:380px){.qg-star-rating button{width:34px;height:36px;font-size:28px}}
+
 .empty{text-align:center;color:var(--mu);padding:35px 15px}
 .nav{position:fixed;left:0;right:0;bottom:0;z-index:280;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));padding:6px 8px calc(6px + env(safe-area-inset-bottom,0px));background:rgba(255,255,255,.95);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);border-top:1px solid #e9eaec}
 .nav a{color:#8a8d93;text-decoration:none;text-align:center;font-size:10px;font-weight:700;padding:3px 0}.nav a.on{color:var(--red)}
