@@ -84,6 +84,28 @@ main{width:100%;max-width:720px;margin:auto;padding:0 14px 118px}
 .ta:focus{border-color:var(--red)}
 .statusflow{display:flex;gap:7px;overflow-x:auto;padding:8px 0 2px;scrollbar-width:none}.statusflow::-webkit-scrollbar{display:none}.statusflow span{flex:none;padding:6px 9px;border-radius:99px;background:#f1f2f4;color:#777;font-size:10px;font-weight:700}.statusflow span.on{background:var(--gs);color:#0a9660}
 
+.qg-order-list-card{padding:16px 16px 15px;border-radius:22px;box-shadow:0 7px 22px rgba(30,24,27,.045)}
+.qg-order-list-card .oh{align-items:flex-start}
+.qg-order-list-number{font-size:22px!important;letter-spacing:.2px;color:#17191d}
+.qg-order-list-status{flex:none;max-width:48%;padding:7px 10px;border-radius:999px;background:#fff0f3;color:var(--red);font-size:9px;font-weight:900;line-height:1.25;text-align:center}
+.qg-order-list-status.done{background:#eafaf3;color:#0a9660}
+.qg-order-list-status.cancelled{background:#f0f1f3;color:#747981}
+.qg-order-list-meta{margin:8px 0 0!important;color:#7f848c!important;font-size:11px!important}
+.qg-order-list-date{margin-top:5px!important;color:#9a9ea5!important}
+.qg-order-list-progress{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:4px;margin-top:14px}
+.qg-order-list-step{position:relative;min-width:0;padding-top:17px;text-align:center;color:#aaa4a8;font-size:7px;font-weight:800;line-height:1.2}
+.qg-order-list-step:before{content:"";position:absolute;top:2px;left:50%;transform:translateX(-50%);width:9px;height:9px;border-radius:50%;background:#dcd8da;border:2px solid #fff;box-shadow:0 0 0 1px #e5e0e2;z-index:2}
+.qg-order-list-step:after{content:"";position:absolute;left:-50%;right:50%;top:6px;height:2px;background:#e7e3e5;z-index:1}
+.qg-order-list-step:first-child:after{display:none}
+.qg-order-list-step.done{color:#25815a}
+.qg-order-list-step.done:before{background:#22a56c;box-shadow:0 0 0 1px rgba(34,165,108,.18)}
+.qg-order-list-step.done:after{background:#22a56c}
+.qg-order-list-step.current{color:var(--red)}
+.qg-order-list-step.current:before{background:var(--red);box-shadow:0 0 0 4px rgba(239,51,64,.10)}
+.qg-order-list-step.current:after{background:#22a56c}
+.qg-order-list-total{display:block;margin-top:12px;font-size:18px;font-weight:900}
+@media(max-width:420px){.qg-order-list-card{padding:15px}.qg-order-list-number{font-size:20px!important}.qg-order-list-status{max-width:52%}.qg-order-list-step{font-size:6.5px}}
+
 /* Customer order detail — mobile-first hierarchy, presentation only */
 .qg-order-page{padding-bottom:10px}
 .qg-order-page .pt{padding:4px 0 12px}
