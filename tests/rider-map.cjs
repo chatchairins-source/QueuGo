@@ -25,7 +25,7 @@ let checks=0;const eq=(a,b)=>{assert.deepEqual(a,b);checks++};const deferred=()=
  // Invalid/missing coordinates never become a route to (0,0).
  S.activeOrder.pickup_latitude=null;await run('drawActiveRoute()');eq(S.routeOverlays.length,0);eq(run('validRiderCoordinate(null,100)'),false);
  // GPS callbacks are owned by a single live watcher, including watch ID zero.
- const watches=[],cleared=[];let renders=0;ctx.navigator.geolocation={watchPosition:(ok,error)=>{watches.push({ok,error});return watches.length-1},clearWatch:id=>cleared.push(id)};ctx.toast=()=>{};ctx.placeRiderMarker=()=>renders++;ctx.renderSheet=()=>{};ctx.pushLocation=()=>{};S.online=false;
+ const watches=[],cleared=[];let renders=0;ctx.navigator.geolocation={watchPosition:(ok,error)=>{watches.push({ok,error});return watches.length-1},clearWatch:id=>cleared.push(id)};ctx.toast=()=>{};ctx.placeRiderMarker=()=>renders++;ctx.renderHomeDock=()=>{};ctx.pushLocation=()=>{};S.online=false;
  vm.runInContext(source.slice(source.indexOf('function startGeolocation()'),source.indexOf('function recenterMap()')),ctx);
  run('startGeolocation();startGeolocation()');eq(cleared[0],0);watches[0].ok({coords:{latitude:15,longitude:102}});eq(renders,0);watches[1].ok({coords:{latitude:15,longitude:102}});eq(renders,1);run('disposeRiderMap()');watches[1].ok({coords:{latitude:16,longitude:103}});eq(renders,1);eq(S.pos,null);eq(S.map,null);
  // Position uploads use the captured account and coalesce a GPS burst to the latest position.
