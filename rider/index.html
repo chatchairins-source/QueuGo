@@ -1553,8 +1553,13 @@ function qgSafeItemImage(value){
 function qgBindSlideAction(input,{idleLabel,busyLabel,onComplete}){
   if(!input)return {setEnabled:()=>{},reset:()=>{}};
   const host=input.closest('.qg-slide-action'),label=host?.querySelector('.qg-slide-action-label');
-  let busy=false;
-  const reset=()=>{input.value='0';host?.style.setProperty('--slide-progress','0%')};
+  let busy=false,raf=0;
+  const paint=value=>{
+    const pct=Math.max(0,Math.min(100,Number(value)||0));
+    if(raf)cancelAnimationFrame(raf);
+    raf=requestAnimationFrame(()=>{raf=0;host?.style.setProperty('--slide-progress',pct+'%')});
+  };
+  const reset=()=>{input.value='0';paint(0)};
   const setEnabled=enabled=>{
     if(busy)return;
     input.disabled=!enabled;
@@ -1562,16 +1567,22 @@ function qgBindSlideAction(input,{idleLabel,busyLabel,onComplete}){
     if(label)label.textContent=enabled?idleLabel:'ถ่ายรูปก่อนเพื่อเปิดสไลด์';
     if(!enabled)reset();
   };
-  input.addEventListener('input',()=>host?.style.setProperty('--slide-progress',Math.max(0,Math.min(100,Number(input.value)||0))+'%'));
-  input.addEventListener('change',async()=>{
+  const commit=async()=>{
     if(input.disabled||busy)return;
-    if(Number(input.value)<92){reset();return}
-    busy=true;input.disabled=true;host?.classList.add('is-busy');host?.style.setProperty('--slide-progress','100%');if(label)label.textContent=busyLabel;
+    if(Number(input.value)<92)return;
+    busy=true;input.disabled=true;host?.classList.add('is-busy');paint(100);if(label)label.textContent=busyLabel;
     let ok=false;
     try{ok=(await onComplete())!==false}catch(e){toast(e?.message||'ดำเนินการไม่สำเร็จ')}
     if(!ok){
       busy=false;host?.classList.remove('is-busy');input.disabled=false;if(label)label.textContent=idleLabel;reset();
     }
+  };
+  input.addEventListener('input',()=>{
+    paint(input.value);
+    if(Number(input.value)>=92)void commit();
+  },{passive:true});
+  input.addEventListener('change',()=>{
+    if(Number(input.value)<92&&!busy)reset();
   });
   reset();setEnabled(false);
   return {setEnabled,reset};
@@ -1589,7 +1600,7 @@ async function qgPickupWithPhoto(o,file){
     const lng=Number.isFinite(Number(S.pos?.lng))?Number(S.pos.lng):null;
     const result=await sbTable('rpc/qg_pickup_with_photo',{method:'POST',token,body:{p_order_id:o.id,p_photo_path:photoPath,p_lat:lat,p_lng:lng}});
     toast(String(result)==='in_progress'?'รับสินค้าแล้ว · กำลังไปส่งลูกค้า':'รับสินค้าแล้ว');
-    await qgRiderRefreshAfterCommit('rider pickup photo refresh failed');
+    void qgRiderRefreshAfterCommit('rider pickup photo refresh failed');
     return true;
   }catch(e){
     toast('รับสินค้าไม่สำเร็จ: '+(e.message||e));
