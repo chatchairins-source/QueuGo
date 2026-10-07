@@ -8,6 +8,7 @@ on:
       - 'customer-features.js'
       - 'customer-features.css'
       - 'rider/index.html'
+      - 'queuego-order-number.js'
       - 'tests/customer-features.cjs'
       - 'tests/rider-chat.cjs'
       - 'supabase/migrations/*chat*'

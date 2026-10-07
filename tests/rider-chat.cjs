@@ -1,9 +1,11 @@
 const fs=require('fs'),path=require('path'),vm=require('vm'),assert=require('assert'),{JSDOM}=require('jsdom');
 const source=fs.readFileSync(path.resolve(__dirname,'../rider/index.html'),'utf8');
+const orderNumberSource=fs.readFileSync(path.resolve(__dirname,'../queuego-order-number.js'),'utf8');
 const gate=()=>{let resolve,reject;const promise=new Promise((a,b)=>{resolve=a;reject=b});return {promise,resolve,reject}};
 const flush=async()=>{for(let i=0;i<20;i++)await Promise.resolve()};let checks=0;const eq=(a,b)=>{assert.deepStrictEqual(a,b);checks++};
 (async()=>{
  const dom=new JSDOM(source,{url:'https://fixture.test/rider/',runScripts:'outside-only',pretendToBeVisual:true}),w=dom.window,ctx=dom.getInternalVMContext(),run=s=>vm.runInContext(s,ctx),timers=new Map();let serial=0;
+ vm.runInContext(orderNumberSource,ctx,{filename:'queuego-order-number.js'});
  w.fetch=async()=>({ok:true,json:async()=>[]});w.AbortSignal=AbortSignal;w.QueueGoPush={configure(){},disable:async()=>true,toggle:async()=>true,unsubscribeLocal:async()=>true,resume:async()=>true};w.QueueGoUGC={configure(){},state:async()=>({accepted:true,blockedByMe:false,blockedMe:false,canPost:true}),accept:async()=>({accepted:true}),block:async()=>({blocked:true}),unblock:async()=>({blocked:false}),report:async()=>'report',guidelinesUrl:()=> 'https://fixture.test/docs/community-guidelines.html'};w.setInterval=(f,ms)=>{const id=++serial;timers.set(id,{f,ms});return id};w.clearInterval=id=>timers.delete(id);w.setTimeout=()=>0;w.clearTimeout=()=>{};w.requestAnimationFrame=()=>0;w.alert=()=>{};
  for(const script of w.document.querySelectorAll('script')){let code=script.textContent;if(script.src){const url=new URL(script.src);if(url.hostname!=='queuego.test')continue;code=fs.readFileSync(path.resolve(__dirname,'..',url.pathname.slice(1)),'utf8')}if(code.trim())vm.runInContext(code,ctx);}
  run("S.session={authUserId:'a',sessionId:'sa',accessToken:'fixture'};writeSession(S.session);S.user={id:'rider'};getAccessToken=async()=>'fixture';window.notices=[];toast=m=>notices.push(m);qtBadge=()=>{};window.order={id:'one',customer_id:'customer',status:'completed',completed_at:new Date().toISOString()};");
