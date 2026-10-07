@@ -304,6 +304,9 @@ Deno.serve(async(req)=>{
       if(nativeToken.length<16||nativeToken.length>4096||!allowedPlatforms.has(platform)){
         return respond({error:'invalid native token'},400);
       }
+      // Native FCM registration must bootstrap qg_push_config as well.
+      // qg_wake_push() reads its worker_token from this row before it can invoke the worker.
+      await config();
       const deviceRow=await admin.from('qg_native_push_tokens').select('user_id').eq('id',input.deviceId).maybeSingle();
       if(deviceRow.error)throw deviceRow.error;
       if(deviceRow.data&&deviceRow.data.user_id!==user.id)return respond({error:'device unavailable'},403);

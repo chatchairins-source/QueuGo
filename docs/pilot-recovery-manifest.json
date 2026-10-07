@@ -1,11 +1,11 @@
 {
-  "generated_at": "2026-10-07T10:44:00+07:00",
+  "generated_at": "2026-10-07T10:46:00+07:00",
   "github": {
     "repository": "chatchairins-source/QueuGo",
     "source_of_truth": "main",
-    "head_at_manifest": "5234fdc1cfb2207b339db12dd807503ab9985525",
+    "head_at_manifest": "f64679dbf7ae787224697b9f1126c092476b5222",
     "previous_backup_branch": "backup-pre-closed-beta-20261007-0035",
-    "latest_backup_branch": "backup-pre-unified-push-cron-1203e4a8-20261007",
+    "latest_backup_branch": "backup-pre-native-push-config-bootstrap-f64679db-20261007",
     "certified_source_commit": "1203e4a83bfa2731a738a998f70a3cea7e4fffb0",
     "rc_tests": {
       "run_id": 37567895758,
@@ -170,7 +170,10 @@
     "legacy_rider_push_cron_removed": true,
     "legacy_wake_rpc_mode": "SERVICE_ROLE_COMPATIBILITY_WRAPPER_TO_QG_WAKE_PUSH",
     "legacy_push_queue_rows_at_switch": 0,
-    "unified_push_queue_rows_at_switch": 0
+    "unified_push_queue_rows_at_switch": 0,
+    "native_subscription_bootstraps_push_config": true,
+    "push_config_rows_before_first_native_bootstrap": 0,
+    "push_config_bootstrap_reason": "qg_wake_push requires qg_push_config.worker_token before invoking queuego-push; subscribe-native now creates the config row through the existing Edge config() path."
   },
   "android": {
     "capacitor_version": "8.0.0",
