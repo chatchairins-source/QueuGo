@@ -153,7 +153,7 @@ Expected declarations to review carefully:
 - **Location sharing/use:** Yes, for delivery/service functionality
 - **Purchases / commerce:** Yes, real-world goods/services; verify exact IARC wording in Console
 - **Violence / sexual / gambling / controlled substances:** answer from actual catalog/content, not from this draft
-- **Ads:** requires business decision below
+- **Ads:** **Yes** — Customer can display paid merchant Promote placements; use the conservative Play declaration below
 
 ### Merchant — likely questionnaire considerations
 
@@ -168,7 +168,7 @@ Review carefully:
 - Communication: Yes where support messaging is treated as communication
 - UGC: product/shop content is merchant-generated; answer IARC wording accurately
 - Purchases/commerce: real-world commerce management
-- Ads: see business decision
+- Ads: **No** for the current Merchant app — it manages a merchant's own Promote requests but does not display third-party ads to the merchant
 
 ### Rider — likely questionnaire considerations
 
@@ -185,20 +185,35 @@ Review carefully:
 - User-generated content: Yes
 - Location use: Yes
 - Real-world commerce/workflow: Yes where questionnaire asks
+- Ads: **No** for the current Rider app — no ad-display surface is present
 
-## 5. “Contains ads” decision — DO NOT GUESS
+## 5. “Contains ads” decision — RESOLVED FOR CURRENT BUILD
 
-QueueGo has a Merchant Promote / promotion feature.
+Google Play requires a per-app declaration. Current QueueGo decision:
 
-Before answering the Play Console “Contains ads” declaration, determine whether the Customer app displays merchant placements that are:
-- paid,
-- sponsored,
-- promoted for commercial consideration, or
-- otherwise advertising rather than an organic store/product listing.
+- **QueueGo Customer (`com.queuego.customer`): Yes — Contains ads.**
+- **QueueGo Merchant (`com.queuego.merchant`): No.**
+- **QueueGo Rider (`com.queuego.rider`): No.**
 
-If paid/promoted merchant placements appear to users, declare ads as required by the exact Play Console wording and ensure the content rating is compatible.
+Why Customer is declared **Yes**:
+- Customer has a `โปรโมชั่นจากร้าน` surface backed by `qg_public_promotions()`.
+- Merchant Promote records contain `bid_price`, `max_budget`, `period_days` and `payment_status`.
+- Admin approval explicitly keeps Promote unavailable until payment and labels the queue as merchant advertising.
+- `qg_public_promotions()` can expose active merchant placements without requiring an app update.
+- Production currently has 0 promotion rows, 0 active rows and 0 paid rows, but an empty table today does not remove the server-controlled advertising capability.
 
-If Promote is disabled/not displayed in the submitted build, document that build-state evidence before choosing “No”.
+Why Merchant and Rider are **No** for the current submitted apps:
+- Merchant provides a management/purchase workflow for the merchant's own promotion; it does not render third-party advertisements to the merchant.
+- Rider has no promotion/ad display surface in the reviewed build.
+
+Google Play's current review guidance says the Contains ads declaration covers ad SDK ads, display/banner ads and native ads. Because QueueGo's Customer Promote feature is a paid merchant placement surface, **Yes** is the conservative declaration even though no paid campaign is active in production today.
+
+Re-evaluate these declarations if:
+- Customer Promote is completely disabled/removed from both client and server exposure before submission; or
+- Merchant/Rider later begin displaying third-party or sponsored placements.
+
+Policy reference:
+- https://support.google.com/googleplay/android-developer/answer/9859455
 
 ## 6. Content safeguards already implemented
 
@@ -230,7 +245,7 @@ For each of the three apps:
 - [ ] Data Safety completed from final production behavior
 - [ ] Target audience declared
 - [ ] IARC questionnaire completed
-- [ ] Contains Ads declaration confirmed against final Promote behavior
+- [ ] Contains Ads entered in Play Console: Customer **Yes**, Merchant **No**, Rider **No** (revalidate if submitted behavior changes)
 - [ ] UGC declarations match actual chat/content features
 - [ ] Store listing screenshots match current production UI
 - [ ] Account deletion path verified

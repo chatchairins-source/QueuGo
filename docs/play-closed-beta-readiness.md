@@ -217,6 +217,18 @@ Current code/release controls support these intended Play answers, subject to fi
 - Data collection: **Yes** — QueueGo necessarily collects account/order/location/service data.
 - Data sharing: **Yes (conservative)** — declare location sharing with Longdo for App functionality. Supabase/Firebase processing may use the service-provider exception where the current agreements apply.
 
+## Contains Ads declaration
+
+Current submission answer from reviewed code + production state:
+- **Customer: Yes** — paid merchant Promote placements can be exposed through `qg_public_promotions()`.
+- **Merchant: No** — Promote is a management workflow, not an ad-display surface in the Merchant app.
+- **Rider: No** — no ad-display surface exists in the reviewed Rider build.
+
+Production evidence at review time: `public.promotions` has 0 rows, 0 active rows and 0 paid rows. The Customer answer remains **Yes** because the server-controlled paid Promote capability can be activated without shipping a new app version.
+
+Google Play review reference:
+- https://support.google.com/googleplay/android-developer/answer/9859455
+
 ## Store review evidence to retain
 
 Before submitting Closed Beta, keep evidence/screenshots of:
@@ -250,5 +262,6 @@ Before submitting Closed Beta, keep evidence/screenshots of:
 4. Configure Android release signing secrets.
 5. Build physical-test APKs and certify background notifications on real Android devices.
 6. Enter the finalized Data Safety answers in Play Console using the conservative Longdo location-sharing classification above.
-7. Confirm Google Play developer account type/date to determine whether the 12-testers/14-days requirement applies.
-8. Only then build the Closed Beta AABs.
+7. Enter Contains Ads declarations: Customer **Yes**, Merchant **No**, Rider **No**.
+8. Confirm Google Play developer account type/date to determine whether the 12-testers/14-days requirement applies.
+9. Only then build the Closed Beta AABs.

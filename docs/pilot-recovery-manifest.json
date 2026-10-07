@@ -1,25 +1,25 @@
 {
-  "generated_at": "2026-10-07T10:01:00+07:00",
+  "generated_at": "2026-10-07T10:04:00+07:00",
   "github": {
     "repository": "chatchairins-source/QueuGo",
     "source_of_truth": "main",
-    "head_at_manifest": "67a511b6319d8784ec99d5f60eb755ee9b9f73ca",
+    "head_at_manifest": "6c2988a0a22b7722cb32007707697d6bb4ebe682",
     "previous_backup_branch": "backup-pre-closed-beta-20261007-0035",
-    "latest_backup_branch": "backup-post-ugc-chat-hardening-20261007",
-    "certified_source_commit": "e03a9f32c58f7f0ad4a0b000e7566391c14f5ab5",
+    "latest_backup_branch": "backup-pre-ads-decision-6c2988a0-20261007",
+    "certified_source_commit": "6c2988a0a22b7722cb32007707697d6bb4ebe682",
     "rc_tests": {
-      "run_id": 37564207221,
+      "run_id": 37564867901,
       "status": "SUCCESS",
-      "head_sha": "e03a9f32c58f7f0ad4a0b000e7566391c14f5ab5"
+      "head_sha": "6c2988a0a22b7722cb32007707697d6bb4ebe682"
     },
     "chat_retention_tests": {
       "run_id": 37559294226,
       "status": "SUCCESS"
     },
     "pages_deployment_last_checked": {
-      "run_id": 37564206330,
+      "run_id": 37564867558,
       "status": "SUCCESS",
-      "head_sha": "e03a9f32c58f7f0ad4a0b000e7566391c14f5ab5"
+      "head_sha": "6c2988a0a22b7722cb32007707697d6bb4ebe682"
     },
     "operational_inventory_commit": "a406bb7f8de013fa6bd7d595ca01832a7ce28293",
     "operational_inventory_rc_run": {
@@ -268,7 +268,16 @@
     ],
     "longdo_service_provider_exception": false,
     "longdo_note": "Public Longdo terms reviewed do not establish a service-provider-only processing role. Declare location sharing for App functionality unless a QueueTech-Longdo DPA/commercial agreement later supports the exception.",
-    "data_safety_console_entry": "PENDING_PLAY_CONSOLE_ENTRY"
+    "data_safety_console_entry": "PENDING_PLAY_CONSOLE_ENTRY",
+    "contains_ads_policy_reviewed_at": "2026-10-07",
+    "contains_ads": {
+      "customer": "YES",
+      "merchant": "NO",
+      "rider": "NO",
+      "production_promotion_rows": 0,
+      "reason": "Customer exposes a server-controlled paid merchant Promote surface; Merchant only manages its own Promote requests; Rider has no ad-display surface."
+    },
+    "contains_ads_console_entry": "PENDING_PLAY_CONSOLE_ENTRY"
   },
   "remaining_external_blockers": [
     "Enable Supabase Auth leaked-password protection.",
@@ -277,6 +286,7 @@
     "Configure Android release signing secrets.",
     "Build Pilot APKs and certify native background notification on a physical Android device.",
     "Enter finalized Data Safety answers in Play Console using Longdo location sharing = Yes for App functionality.",
+    "Enter Contains Ads declarations in Play Console: Customer Yes, Merchant No, Rider No.",
     "Confirm Google Play developer account type/date and any 12-testers/14-days requirement.",
     "Create dedicated reusable Play reviewer accounts and capture real current-app screenshots."
   ]
