@@ -4,9 +4,10 @@ const deferred=()=>{let resolve,reject;const promise=new Promise((a,b)=>{resolve
 const flush=async()=>{for(let i=0;i<20;i++)await Promise.resolve()};
 let checks=0;const eq=(a,b)=>{assert.deepStrictEqual(a,b);checks++};
 const offerPoll=/const OFFER_POLL_MS = (\d+);/.exec(src);
-eq(!!offerPoll,true);eq(Number(offerPoll[1])<=5000,true);
+eq(!!offerPoll,true);eq(Number(offerPoll[1])<=3000,true);
 eq(src.includes('riderOfferPollTimer=setInterval(qgPollRiderOfferNow,OFFER_POLL_MS)'),true);
 eq(src.includes("sbRpc('qg_get_my_rider_offer',{},token)"),true);
+eq(src.includes("if(Array.isArray(rows)&&rows.some(x=>x?.order_id))await refreshData();"),true);
 eq(src.includes('function qgOpenCashConfirmPage({o,mode,amount,onConfirm,onBack})'),true);
 eq(src.includes('ตรวจสอบรายการครบแล้ว'),true);
 eq(src.includes('ถ่ายรูปสินค้าที่รับก่อนชำระเงิน'),true);
