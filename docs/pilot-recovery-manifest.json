@@ -1,14 +1,14 @@
 {
-  "generated_at": "2026-10-07T09:26:00+07:00",
+  "generated_at": "2026-10-07T09:27:00+07:00",
   "github": {
     "repository": "chatchairins-source/QueuGo",
     "source_of_truth": "main",
-    "head_at_manifest": "dc3c0c548015183ea2c5146fd61a2f32166ada6b",
+    "head_at_manifest": "51e99d6c25914f51f0c742574c42492103528505",
     "previous_backup_branch": "backup-pre-closed-beta-20261007-0035",
-    "latest_backup_branch": "backup-pre-external-blockers-20261007-0922",
-    "certified_source_commit": "dc3c0c548015183ea2c5146fd61a2f32166ada6b",
+    "latest_backup_branch": "backup-certified-pre-external-blockers-51e99d6c-20261007",
+    "certified_source_commit": "51e99d6c25914f51f0c742574c42492103528505",
     "rc_tests": {
-      "run_id": 37561846271,
+      "run_id": 37561980962,
       "status": "SUCCESS"
     },
     "chat_retention_tests": {
@@ -16,7 +16,7 @@
       "status": "SUCCESS"
     },
     "pages_deployment_last_checked": {
-      "run_id": 37561845538,
+      "run_id": 37561980652,
       "status": "SUCCESS"
     }
   },
