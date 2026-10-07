@@ -7,14 +7,21 @@ for(const p of [
   'docs/play-app-access-content-rating.md',
   'docs/privacy.html',
   'docs/account-deletion.html',
-  'docs/community-guidelines.html'
+  'docs/community-guidelines.html',
+  '.github/workflows/release-secret-readiness.yml'
 ])ok(fs.existsSync(p),'Play readiness source missing: '+p);
 const listing=read('docs/play-store-listing-draft.md');
 for(const app of ['QueueGo','QueueGo Merchant','QueueGo Rider'])ok(listing.includes(app),'Store listing must cover '+app);
 const access=read('docs/play-app-access-content-rating.md');
 const readiness=read('docs/play-closed-beta-readiness.md');
 const manifest=JSON.parse(read('docs/pilot-recovery-manifest.json'));
+const releaseSecrets=read('.github/workflows/release-secret-readiness.yml');
 for(const id of ['com.queuego.customer','com.queuego.merchant','com.queuego.rider'])ok(access.includes(id),'App Access draft must cover '+id);
+ok(/workflow_dispatch/.test(releaseSecrets),'Release secret preflight must be manually runnable after owner configures secrets');
+for(const id of ['com.queuego.customer','com.queuego.merchant','com.queuego.rider'])ok(releaseSecrets.includes(id),'Firebase preflight must require Android client '+id);
+ok(releaseSecrets.includes('base64 --decode > /tmp/google-services.json'),'Release preflight must decode Firebase config without committing it');
+ok(releaseSecrets.includes('keytool -list')&&releaseSecrets.includes('keytool -importkeystore'),'Release preflight must validate keystore, alias and key password');
+ok(releaseSecrets.includes('Clean temporary credentials'),'Release preflight must remove decoded credentials from the runner');
 ok(/dedicated Play-review accounts/i.test(access),'Reviewer access must use dedicated reusable accounts');
 ok(/Do not use an actual customer/i.test(access),'Reviewer access must forbid real-user credentials');
 ok(/Contains ads.*RESOLVED FOR CURRENT BUILD/is.test(access),'Contains Ads decision must remain resolved for current build');
