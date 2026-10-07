@@ -1,0 +1,174 @@
+name: QueueGo Encrypted Backup Restore Drill
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: queuego-backup-restore-drill
+  cancel-in-progress: false
+
+jobs:
+  backup-restore-drill:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      QG_SUPABASE_URL: https://pkypiqhlrmzocysgeqew.supabase.co
+      QG_SUPABASE_DB_URL: ${{ secrets.QG_SUPABASE_DB_URL }}
+      QG_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.QG_SUPABASE_SERVICE_ROLE_KEY }}
+      QG_BACKUP_PASSPHRASE: ${{ secrets.QG_BACKUP_PASSPHRASE }}
+      QG_STORAGE_BACKUP_DIR: backup/storage
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Validate backup secrets
+        shell: bash
+        run: |
+          set -euo pipefail
+          for name in QG_SUPABASE_DB_URL QG_SUPABASE_SERVICE_ROLE_KEY QG_BACKUP_PASSPHRASE; do
+            if [ -z "${!name:-}" ]; then
+              echo "::error::Missing required secret: $name"
+              exit 1
+            fi
+          done
+          if [ "${#QG_BACKUP_PASSPHRASE}" -lt 20 ]; then
+            echo "::error::QG_BACKUP_PASSPHRASE must be at least 20 characters"
+            exit 1
+          fi
+
+      - name: Install backup tooling
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+          npm install --no-save --no-audit --no-fund @supabase/supabase-js@2.49.10
+
+      - name: Export database and Storage
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p backup/storage
+
+          npx --yes supabase@latest db dump --db-url "$QG_SUPABASE_DB_URL" -f backup/roles.sql --role-only
+          npx --yes supabase@latest db dump --db-url "$QG_SUPABASE_DB_URL" -f backup/schema.sql
+          npx --yes supabase@latest db dump --db-url "$QG_SUPABASE_DB_URL" -f backup/data.sql --use-copy --data-only
+
+          psql "$QG_SUPABASE_DB_URL" -X -A -t -v ON_ERROR_STOP=1 -f ops/backup-inventory.sql > backup/source-inventory.json
+          node ops/backup-storage.mjs
+
+          sha256sum backup/roles.sql backup/schema.sql backup/data.sql backup/storage-manifest.json > backup/core.sha256
+
+      - name: Start clean local Supabase
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p restore-lab
+          cd restore-lab
+          npx --yes supabase@latest init
+          npx --yes supabase@latest start
+          npx --yes supabase@latest status -o env > ../local-supabase.env
+
+      - name: Restore database
+        shell: bash
+        run: |
+          set -euo pipefail
+          LOCAL_DB_URL='postgresql://postgres:postgres@127.0.0.1:54322/postgres'
+
+          sed -i 's/^SET transaction_timeout/-- &/' backup/roles.sql backup/schema.sql backup/data.sql || true
+
+          psql \
+            --dbname "$LOCAL_DB_URL" \
+            --single-transaction \
+            --variable ON_ERROR_STOP=1 \
+            --file backup/roles.sql \
+            --file backup/schema.sql \
+            --command 'SET session_replication_role = replica' \
+            --file backup/data.sql
+
+          psql "$LOCAL_DB_URL" -X -v ON_ERROR_STOP=1 -f ops/restore-verify.sql
+          psql "$LOCAL_DB_URL" -X -A -t -v ON_ERROR_STOP=1 -f ops/backup-inventory.sql > backup/restored-inventory.json
+          node ops/compare-inventory.mjs backup/source-inventory.json backup/restored-inventory.json
+
+      - name: Restore and verify Storage objects
+        shell: bash
+        run: |
+          set -euo pipefail
+          set -a
+          source local-supabase.env
+          set +a
+
+          export QG_RESTORE_SUPABASE_URL="$API_URL"
+          export QG_RESTORE_SERVICE_ROLE_KEY="$SERVICE_ROLE_KEY"
+          node ops/restore-storage.mjs
+
+      - name: Create encrypted off-site artifact
+        shell: bash
+        env:
+          GIT_SHA: ${{ github.sha }}
+          RUN_ID: ${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
+          NAME="queuego-backup-${STAMP}"
+
+          node - <<'NODE' > backup/backup-summary.json
+          const fs=require('fs');
+          const storage=JSON.parse(fs.readFileSync('backup/storage-manifest.json','utf8'));
+          const source=JSON.parse(fs.readFileSync('backup/source-inventory.json','utf8'));
+          const restored=JSON.parse(fs.readFileSync('backup/restored-inventory.json','utf8'));
+          console.log(JSON.stringify({
+            version:1,
+            createdAt:new Date().toISOString(),
+            gitSha:process.env.GIT_SHA,
+            githubRunId:process.env.RUN_ID,
+            databaseRestoreDrill:true,
+            storageRestoreDrill:true,
+            storageObjects:storage.objects.length,
+            storageBytes:storage.objects.reduce((n,o)=>n+o.bytes,0),
+            sourceInventory:source,
+            restoredInventory:restored
+          },null,2));
+          NODE
+
+          tar -C backup -czf "${NAME}.tar.gz" .
+          openssl enc -aes-256-cbc -salt -pbkdf2 -iter 250000 -md sha256 \
+            -in "${NAME}.tar.gz" \
+            -out "${NAME}.tar.gz.enc" \
+            -pass env:QG_BACKUP_PASSPHRASE
+
+          openssl enc -d -aes-256-cbc -pbkdf2 -iter 250000 -md sha256 \
+            -in "${NAME}.tar.gz.enc" \
+            -out verify-backup.tar.gz \
+            -pass env:QG_BACKUP_PASSPHRASE
+          tar -tzf verify-backup.tar.gz >/dev/null
+
+          sha256sum "${NAME}.tar.gz.enc" > "${NAME}.tar.gz.enc.sha256"
+          echo "QG_BACKUP_ARTIFACT=${NAME}" >> "$GITHUB_ENV"
+
+          rm -rf backup restore-lab local-supabase.env "${NAME}.tar.gz" verify-backup.tar.gz
+
+      - name: Upload encrypted backup
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.QG_BACKUP_ARTIFACT }}
+          path: |
+            ${{ env.QG_BACKUP_ARTIFACT }}.tar.gz.enc
+            ${{ env.QG_BACKUP_ARTIFACT }}.tar.gz.enc.sha256
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Stop local Supabase
+        if: always()
+        shell: bash
+        run: |
+          if [ -d restore-lab ]; then
+            cd restore-lab
+            npx --yes supabase@latest stop --no-backup || true
+          fi
