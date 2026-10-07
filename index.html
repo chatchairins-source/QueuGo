@@ -228,6 +228,27 @@ main{width:100%;max-width:720px;margin:auto;padding:0 12px 92px}
 .qg-review-summary-actions .lk{min-height:40px;padding:0 12px;border:1px solid #eadfe2;border-radius:12px;background:#fff}
 .qg-review-summary-actions .qg-review-delete{margin-top:0!important}
 .qg-review-cancel{margin-top:2px!important;color:#8a8387!important}
+
+/* Shop reviews: compact by default, expand on demand */
+.qg-shop-reviews-card{padding:12px 13px;margin-top:10px}
+.qg-shop-review-head{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.qg-shop-review-head h2{margin:0;font-size:18px;line-height:1.2;letter-spacing:-.2px}
+.qg-shop-review-head p{display:flex;align-items:baseline;gap:7px;margin:4px 0 0;color:#8a8f96;font-size:10px}
+.qg-shop-review-head strong{color:#202226;font-size:14px}
+.qg-shop-review-latest{margin-top:9px}
+.qg-shop-review-item{padding:8px 0;border-top:1px solid #f0edef}
+.qg-shop-review-latest .qg-shop-review-item{padding:8px 0 0;border-top:1px solid #f0edef}
+.qg-shop-review-meta{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.qg-shop-review-meta b{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11.5px}
+.qg-shop-review-meta span{flex:none;font-size:10px;font-weight:850;color:#303236}
+.qg-shop-review-item p{margin:4px 0 0;color:#4f5359;font-size:11px;line-height:1.4;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}
+.qg-shop-review-item small{display:block;margin-top:4px;color:#a0a4aa;font-size:8.5px}
+.qg-shop-review-empty{margin:9px 0 0;color:#90949a;font-size:10.5px}
+.qg-shop-review-more{margin-top:8px;border-top:1px solid #f0edef}
+.qg-shop-review-more summary{list-style:none;cursor:pointer;padding:9px 0 1px;text-align:center;color:var(--red);font-size:10.5px;font-weight:850}
+.qg-shop-review-more summary::-webkit-details-marker{display:none}
+.qg-shop-review-more[open] summary{padding-bottom:7px}
+.qg-shop-review-list{max-height:310px;overflow:auto;overscroll-behavior:contain}
 @media(max-width:380px){.qg-review-rating{grid-template-columns:80px 1fr}.qg-star-rating button{width:30px;height:30px;font-size:25px}}
 
 .empty{text-align:center;color:var(--mu);padding:35px 15px}
@@ -923,7 +944,7 @@ V.shop=async(id,ticket=routeVersion)=>{
 ${QGCustomer.favoriteButton('product',p.id,favorites.some(f=>f.product_id===p.id))}${p.available===false?'<span class="sm">หมด</span>':`<button class="plus" ${s.open?'':'disabled'} aria-label="เพิ่ม" onclick="add('${esc(id)}','${esc(p.id)}')">${ico('plus',19)}</button>`}</div>`).join(''):'<p class="empty">ยังไม่มีเมนู</p>'}</div>
 ${cart.shopId==id&&cartN()?`<div class="fcart" onclick="go('cart')"><b>ดูตะกร้า · ${cartN()} รายการ</b><span>${baht(cartTotal())}</span></div>`:''}`,'home');
   window._menu=items.filter(p=>p.available!==false);
-  const reviewSection=document.createElement('section');reviewSection.className='card';reviewSection.innerHTML='<h2>รีวิวจากลูกค้า</h2>'+QGCustomer.reviewList(ratings);$('root').querySelector('main').appendChild(reviewSection);
+  const reviewSection=document.createElement('section');reviewSection.className='card qg-shop-reviews-card';reviewSection.innerHTML=QGCustomer.reviewList(ratings);$('root').querySelector('main').appendChild(reviewSection);
 };
 V.market=async(_,ticket=routeVersion)=>{
   const [catalog,shopRows,marketRows,rules,active]=await Promise.all([loadMarketCatalog(),loadMarketShops(),loadMarketMarkets(),loadMarketRules(),loadActiveMarketTrip()]);
