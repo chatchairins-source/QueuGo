@@ -20,6 +20,7 @@ const capacitor=JSON.parse(read('android-build/capacitor.config.json'));
 const edge=read('supabase/functions/queuego-push/index.ts');
 const retired=read('supabase/functions/rider-web-push/index.ts');
 const deletion=read('QueueGo-Pilot-Account-Deletion-Privacy.sql');
+const riderOfferNotify=read('supabase/migrations/20261007152746_rider_offer_notify_and_retry_expired.sql');
 
 ok(runtime.includes("navigator.serviceWorker.register"),'shared runtime must register a Service Worker');
 ok(runtime.includes("pushManager.subscribe"),'shared runtime must create a push subscription');
@@ -76,6 +77,9 @@ ok(!cronFix.includes('/functions/v1/rider-web-push'),'push retry cron migration 
 ok(/revoke all on function public\.qg_wake_rider_push\(\) from public, anon, authenticated/i.test(cronFix),'legacy wake wrapper must stay client-inaccessible');
 ok(/perform public\.qg_wake_push\(\)/i.test(cronFix),'legacy wake wrapper must delegate to unified worker');
 ok(retired.includes("status:410"),'old Rider-only worker must be retired');
+ok(riderOfferNotify.includes("insert into public.notifications(user_id,title,message,type,reference_id)"),'Rider offer dispatch must create a notification for unified push');
+ok(riderOfferNotify.includes("h.outcome='expired' and h.resolved_at>now()-interval '30 seconds'"),'expired Rider offers must retry without the old 10-minute dead zone');
+ok(riderOfferNotify.includes("h.outcome='declined' and h.resolved_at>now()-interval '10 minutes'"),'explicit Rider declines must keep the longer cooldown');
 
 for(const asset of ['customer-features.js','customer-features.css','customer-laundry.js','account-deletion.js','queuego-ugc.js','queuego-native-push.js','queuego-push.js','queuego-push-sw.js']){
   ok(workflow.includes(asset),'Customer Android bundle must include '+asset);
