@@ -4,7 +4,7 @@
 
 Code/database security audit: **PASS**
 
-Platform Auth hardening: **BLOCKED separately** until Supabase leaked-password protection is enabled.
+Platform Auth hardening for Closed Beta: **PASS WITH FREE-PLAN COMPENSATING CONTROLS**. Supabase leaked-password protection remains disabled and deferred because current Supabase documentation lists it as a Pro Plan+ feature.
 
 ## Anonymous SECURITY DEFINER surface
 
@@ -67,10 +67,20 @@ Transactional smoke test passed for accept → report → block → unblock and 
 
 After the final anonymous surface reduction, the checked production window contained no Postgres ERROR and no Edge Function HTTP 4xx/5xx.
 
-## Remaining external security blocker
+## Supabase Auth platform status
 
-Supabase Security Advisor still reports leaked-password protection disabled. This is a Supabase Auth platform setting and remains a separate Closed Beta hard gate:
+Supabase Security Advisor still reports leaked-password protection disabled at **WARN** level. Current Supabase documentation states that leaked-password protection is available on the **Pro Plan and above**.
 
-- `release_gates.security_platform_auth = BLOCKED`
+QueueGo is currently on the Free plan. For Closed Beta, this item is therefore classified as **deferred Pro hardening**, not a build blocker, with the following compensating controls:
 
-Do not change that gate to PASS until leaked-password protection is enabled and rechecked.
+- Shared signup policy runtime: `queuego-password-policy.js`
+- Minimum password length: **12**
+- Required classes: uppercase, lowercase, number, symbol
+- Applied to new Customer, Merchant and Rider registrations
+- Regression test: `tests/password-policy.cjs`
+- Release gate: `release_gates.security_platform_auth = PASS_FREE_PLAN_CONTROLS`
+
+This does **not** claim that Supabase leaked-password protection is enabled. When QueueGo upgrades to Pro, enable the feature and re-run the Security Advisor; then this gate can be promoted to full `PASS`.
+
+Supabase reference:
+- https://supabase.com/docs/guides/auth/password-security

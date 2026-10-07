@@ -14,11 +14,33 @@ Closed Beta release remains **BLOCKED** until every hard gate below passes:
 - UGC / chat safety implementation: PASS
 - Android target API 36 static gate: PASS
 - Backup/Restore drill: BLOCKED — GitHub backup secrets not configured
-- Supabase Auth leaked-password protection: BLOCKED — platform setting still disabled
+- Supabase Auth: PASS WITH FREE-PLAN CONTROLS — 12-character upper/lower/number/symbol signup policy is shared across all roles; leaked-password protection remains a Pro-only deferred hardening item
 - Native Firebase background notification physical test: BLOCKED — credentials/device test missing
 - Android release signing: BLOCKED — release signing secrets missing
 
 The release workflow is intentionally configured to fail while hard gates are not certified.
+
+### Supabase Auth / password hardening
+
+QueueGo's current Supabase project remains on the Free plan. Supabase Security Advisor reports leaked-password protection disabled as a **WARN**, and current Supabase documentation states that leaked-password protection is available on **Pro Plan and above**.
+
+Closed Beta therefore uses a documented compensating-control decision rather than pretending the feature is enabled:
+
+- shared `queuego-password-policy.js`
+- minimum 12 characters
+- uppercase + lowercase + number + symbol
+- enforced in Customer, Merchant and Rider registration UI/runtime
+- covered by `tests/password-policy.cjs`
+- release gate value: `PASS_FREE_PLAN_CONTROLS`
+
+When QueueGo upgrades to Pro, enable leaked-password protection and promote the Auth gate to full `PASS`.
+
+Supabase reference:
+- https://supabase.com/docs/guides/auth/password-security
+
+Google Play's User Data policy requires appropriate security measures for personal/sensitive data, including modern cryptography in transit; it does not name Supabase leaked-password protection as a mandatory Play feature:
+- https://support.google.com/googleplay/android-developer/answer/10144311
+
 
 ## Google Play policy checkpoints
 
@@ -269,13 +291,13 @@ Before submitting Closed Beta, keep evidence/screenshots of:
 
 ## Remaining external blockers
 
-1. Enable Supabase leaked-password protection.
-2. Configure backup secrets and run the encrypted Backup/Restore drill successfully.
-3. Configure Firebase Android + Edge credentials.
-4. Configure Android release signing secrets.
-5. Build physical-test APKs and certify background notifications on real Android devices.
-6. Enter the finalized Data Safety answers in Play Console using the conservative Longdo location-sharing classification above.
-7. Enter Contains Ads declarations: Customer **Yes**, Merchant **No**, Rider **No**.
-8. Enter Target Audience as **18+ only** for all three apps and enable **Restrict Minor Access** for Closed Beta.
-9. Confirm Google Play developer account type/date to determine whether the 12-testers/14-days requirement applies.
+1. Configure backup secrets and run the encrypted Backup/Restore drill successfully.
+2. Configure Firebase Android + Edge credentials.
+3. Configure Android release signing secrets.
+4. Build physical-test APKs and certify background notifications on real Android devices.
+5. Enter the finalized Data Safety answers in Play Console using the conservative Longdo location-sharing classification above.
+6. Enter Contains Ads declarations: Customer **Yes**, Merchant **No**, Rider **No**.
+7. Enter Target Audience as **18+ only** for all three apps and enable **Restrict Minor Access** for Closed Beta.
+8. Confirm Google Play developer account type/date to determine whether the 12-testers/14-days requirement applies.
+9. Create dedicated reusable Play reviewer accounts and capture current-app screenshots.
 10. Only then build the Closed Beta AABs.

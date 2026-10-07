@@ -32,9 +32,21 @@ jobs:
               process.exit(1);
             }
           }
-          if(gates.security_platform_auth!=='PASS'){
-            console.error('::error::Security platform Auth gate is not PASS.');
+          const authGate=gates.security_platform_auth;
+          if(!['PASS','PASS_FREE_PLAN_CONTROLS'].includes(authGate)){
+            console.error('::error::Security platform Auth gate is neither PASS nor PASS_FREE_PLAN_CONTROLS.');
             process.exit(1);
+          }
+          if(authGate==='PASS_FREE_PLAN_CONTROLS'){
+            const security=manifest?.security||{};
+            if(security.leaked_password_protection_enabled!==false
+              || security.leaked_password_protection_plan_requirement!=='PRO_OR_ABOVE'
+              || Number(security.signup_password_minimum_characters||0)<12
+              || security.signup_password_complexity!=='UPPER_LOWER_NUMBER_SYMBOL'
+              || security.signup_password_policy_shared_runtime!=='queuego-password-policy.js'){
+              console.error('::error::Free-plan Auth compensating controls are not fully certified.');
+              process.exit(1);
+            }
           }
           if(manifest?.supabase?.restore_drill_certified!==true){
             console.error('::error::Backup/Restore gate is not certified. Do not build Closed Beta.');

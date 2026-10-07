@@ -1,25 +1,25 @@
 {
-  "generated_at": "2026-10-07T10:22:00+07:00",
+  "generated_at": "2026-10-07T10:28:00+07:00",
   "github": {
     "repository": "chatchairins-source/QueuGo",
     "source_of_truth": "main",
-    "head_at_manifest": "d950d490d8a1fe1ceb0f9ac43c77a61441c7c767",
+    "head_at_manifest": "af5daa4e8d88eaecb8cb4e339e299728d7ed4faf",
     "previous_backup_branch": "backup-pre-closed-beta-20261007-0035",
-    "latest_backup_branch": "backup-pre-password-hardening-d950d490-20261007",
-    "certified_source_commit": "bf90364c633119740f5402a428c7a7c610725676",
+    "latest_backup_branch": "backup-pre-auth-gate-reclass-af5daa4e-20261007",
+    "certified_source_commit": "af5daa4e8d88eaecb8cb4e339e299728d7ed4faf",
     "rc_tests": {
-      "run_id": 37565284730,
+      "run_id": 37566606599,
       "status": "SUCCESS",
-      "head_sha": "bf90364c633119740f5402a428c7a7c610725676"
+      "head_sha": "af5daa4e8d88eaecb8cb4e339e299728d7ed4faf"
     },
     "chat_retention_tests": {
       "run_id": 37559294226,
       "status": "SUCCESS"
     },
     "pages_deployment_last_checked": {
-      "run_id": 37565284087,
+      "run_id": 37566606318,
       "status": "SUCCESS",
-      "head_sha": "bf90364c633119740f5402a428c7a7c610725676"
+      "head_sha": "af5daa4e8d88eaecb8cb4e339e299728d7ed4faf"
     },
     "operational_inventory_commit": "a406bb7f8de013fa6bd7d595ca01832a7ce28293",
     "operational_inventory_rc_run": {
@@ -40,7 +40,7 @@
     "core_e2e_production": "PASS",
     "backup_restore": "BLOCKED",
     "android_closed_beta": "BLOCKED",
-    "security_platform_auth": "BLOCKED",
+    "security_platform_auth": "PASS_FREE_PLAN_CONTROLS",
     "security_audit": "PASS",
     "notification_background_physical": "BLOCKED",
     "external_backup_pipeline": "READY",
@@ -144,7 +144,7 @@
     "release_workflow_has_run": false,
     "hard_gate_blocks_build_without_restore_certification": true,
     "hard_gate_blocks_build_without_firebase_config": true,
-    "hard_gate_blocks_build_without_security_platform_auth": true,
+    "hard_gate_blocks_build_without_security_platform_auth": false,
     "hard_gate_blocks_build_without_physical_notification_certification": true,
     "release_secret_readiness": {
       "checked_by_github_actions": true,
@@ -176,7 +176,8 @@
       "rider"
     ],
     "play_icon_512_artifact": true,
-    "real_app_screenshots": "PENDING_PHYSICAL_BUILD"
+    "real_app_screenshots": "PENDING_PHYSICAL_BUILD",
+    "auth_gate_accepts_free_plan_compensating_controls": true
   },
   "security": {
     "code_surface_hardened": true,
@@ -219,7 +220,11 @@
       "rider"
     ],
     "signup_password_hardening_scope": "NEW_APP_REGISTRATIONS",
-    "leaked_password_protection_status": "DEFERRED_PRO_ONLY_PENDING_RELEASE_GATE_REVIEW"
+    "leaked_password_protection_status": "DEFERRED_PRO_ONLY",
+    "leaked_password_protection_release_blocker": false,
+    "leaked_password_protection_upgrade_recommendation": true,
+    "auth_release_decision": "PASS_FREE_PLAN_CONTROLS",
+    "auth_release_decision_note": "Closed Beta may proceed on Free plan with shared 12-character complexity controls. This does not claim Supabase leaked-password protection is enabled; enable it after a Pro upgrade."
   },
   "performance": {
     "auth_rls_initplan_warnings_before": 13,
@@ -302,7 +307,6 @@
     "target_audience_console_entry": "PENDING_PLAY_CONSOLE_ENTRY"
   },
   "remaining_external_blockers": [
-    "Decide whether to upgrade Supabase to Pro to enable leaked-password protection; current Supabase documentation marks this feature Pro-only.",
     "Configure QG_SUPABASE_DB_URL, QG_SUPABASE_SERVICE_ROLE_KEY and QG_BACKUP_PASSPHRASE, then pass QueueGo Encrypted Backup Restore Drill.",
     "Configure QG_FIREBASE_GOOGLE_SERVICES_JSON_B64 and Supabase FIREBASE_SERVICE_ACCOUNT_JSON.",
     "Configure Android release signing secrets.",
@@ -312,5 +316,8 @@
     "Enter Target Audience in Play Console as 18+ only for Customer, Merchant and Rider, and enable Restrict Minor Access for Closed Beta.",
     "Confirm Google Play developer account type/date and any 12-testers/14-days requirement.",
     "Create dedicated reusable Play reviewer accounts and capture real current-app screenshots."
+  ],
+  "post_beta_recommendations": [
+    "After upgrading Supabase to Pro, enable leaked-password protection and re-run Security Advisor; then promote security_platform_auth from PASS_FREE_PLAN_CONTROLS to PASS."
   ]
 }
