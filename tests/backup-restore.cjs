@@ -21,6 +21,7 @@ ok(/aes-256-cbc/.test(workflow)&&/pbkdf2/.test(workflow),'off-site artifact must
 ok(/upload-artifact@v4/.test(workflow)&&/\.tar\.gz\.enc/.test(workflow),'only encrypted backup artifact should be uploaded');
 ok(!/upload-artifact@[\s\S]{0,400}backup\/data\.sql/.test(workflow),'plaintext database dump must never be uploaded');
 ok(/QG_BACKUP_PASSPHRASE/.test(workflow)&&/QG_SUPABASE_DB_URL/.test(workflow)&&/QG_SUPABASE_SERVICE_ROLE_KEY/.test(workflow),'backup secrets must be externalized');
+ok(/missing=0[\s\S]*Missing required secret: \$name[\s\S]*missing=1[\s\S]*if \[ "\$missing" -ne 0 \]/.test(workflow),'backup secret preflight must report all missing secrets before failing');
 ok(exporter.includes('storage-manifest.json')&&exporter.includes('sha256'),'Storage exporter must hash every object');
 ok(restorer.includes('upsert:true')&&restorer.includes('Restored object verification failed'),'Storage restore must re-upload and checksum verify objects');
 ok(inventory.includes('auth.users')&&inventory.includes('storage.objects'),'backup inventory must cover Auth and Storage metadata');
