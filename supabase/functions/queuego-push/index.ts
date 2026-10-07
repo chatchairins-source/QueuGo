@@ -168,14 +168,6 @@ Deno.serve(async(req)=>{
 
   try{
     const input=await req.json();
-    if(input.action==='health'){
-      return respond({
-        ok:true,
-        nativeTransport:true,
-        firebaseConfigured:Boolean(Deno.env.get('FIREBASE_SERVICE_ACCOUNT_JSON')),
-        serviceRoleConfigured:Boolean(Deno.env.get('SUPABASE_SERVICE_ROLE_KEY'))
-      });
-    }
     if(input.action==='dispatch'){
       const c=await config();
       if(req.headers.get('x-queuego-worker')!==c.worker_token)return respond({error:'unauthorized'},401);
