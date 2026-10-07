@@ -1,16 +1,16 @@
 {
-  "generated_at": "2026-10-07T12:40:00+07:00",
+  "generated_at": "2026-10-07T12:42:00+07:00",
   "github": {
     "repository": "chatchairins-source/QueuGo",
     "source_of_truth": "main",
-    "head_at_manifest": "b738c2ce5ef1d9d065a9d033258e6134d0d2270e",
+    "head_at_manifest": "14b5d20a46ac2f936cc738ff1dda0df31dcc3bae",
     "previous_backup_branch": "backup-pre-closed-beta-20261007-0035",
-    "latest_backup_branch": "backup-certified-qt-order-display-b738c2ce-20261007",
-    "certified_source_commit": "b738c2ce5ef1d9d065a9d033258e6134d0d2270e",
+    "latest_backup_branch": "backup-certified-qt-all-surfaces-14b5d20a-20261007",
+    "certified_source_commit": "14b5d20a46ac2f936cc738ff1dda0df31dcc3bae",
     "rc_tests": {
-      "run_id": 37574995875,
+      "run_id": 37577502279,
       "status": "SUCCESS",
-      "head_sha": "b738c2ce5ef1d9d065a9d033258e6134d0d2270e"
+      "head_sha": "14b5d20a46ac2f936cc738ff1dda0df31dcc3bae"
     },
     "chat_retention_tests": {
       "run_id": 37574995871,
@@ -18,9 +18,9 @@
       "head_sha": "b738c2ce5ef1d9d065a9d033258e6134d0d2270e"
     },
     "pages_deployment_last_checked": {
-      "run_id": 37574995067,
+      "run_id": 37577501143,
       "status": "SUCCESS",
-      "head_sha": "b738c2ce5ef1d9d065a9d033258e6134d0d2270e"
+      "head_sha": "14b5d20a46ac2f936cc738ff1dda0df31dcc3bae"
     },
     "operational_inventory_commit": "a406bb7f8de013fa6bd7d595ca01832a7ce28293",
     "operational_inventory_rc_run": {
@@ -501,10 +501,11 @@
     "pos_shared_allocator": true,
     "table_qr_shared_allocator": true,
     "pos_qr_migration": "20261007045146_unify_pos_qr_order_codes.sql",
-    "order_number_test_checks": 32,
+    "order_number_test_checks": 35,
     "legacy_pos_qr_display_normalized": true,
-    "certified_source_commit": "b738c2ce5ef1d9d065a9d033258e6134d0d2270e",
-    "certified_rc_run": 37574995875
+    "certified_source_commit": "14b5d20a46ac2f936cc738ff1dda0df31dcc3bae",
+    "certified_rc_run": 37577502279,
+    "standalone_laundry_shared_formatter": true
   },
   "production_integrity_audit": {
     "checked_at": "2026-10-07T11:54:00+07:00",
