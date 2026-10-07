@@ -29,6 +29,7 @@ const customerLaundry=read('customer-laundry.js');
 const merchantLaundry=read('merchant/laundry.js');
 const riderLaundry=read('rider/laundry.js');
 const laundryCodeMigration=read('supabase/migrations/20261007043952_unify_laundry_visible_order_codes.sql');
+const posQrCodeMigration=read('supabase/migrations/20261007045146_unify_pos_qr_order_codes.sql');
 const release=read('.github/workflows/build-queuego-apks.yml');
 const pilot=read('.github/workflows/build-queuego-pilot-apks.yml');
 const activeCodeGuard=read('supabase/migrations/20261007041346_enforce_active_visible_order_code_uniqueness.sql');
@@ -48,6 +49,9 @@ assert(merchantLaundry.includes('QueueGoOrderNumber.format(o)'),'Merchant Laundr
 assert((riderLaundry.match(/QueueGoOrderNumber\.format\(j\)/g)||[]).length>=2,'Rider Laundry pool and active job must use shared formatter');
 assert(laundryCodeMigration.includes("alter column order_number set default public.qg_next_order_number()"),'Laundry new orders must use the shared server allocator');
 assert(laundryCodeMigration.includes("from public.laundry_orders l"),'Shared allocator must reserve active Laundry visible codes');
+assert(posQrCodeMigration.includes("create or replace function public.pos_edit_bill"),'POS bill RPC must remain versioned in source');
+assert(posQrCodeMigration.includes("create or replace function public.qg_table_checkout"),'Table QR checkout RPC must remain versioned in source');
+assert((posQrCodeMigration.match(/public\.qg_next_order_number\(\)/g)||[]).length>=2,'POS and Table QR order creation must both use the shared server allocator');
 assert(!rider.includes('#${esc(j.order_number||\'\')}'));
 assert(rider.includes('qgShortOrder({order_number:o.order_number,id:o.order_id})'));
 assert(merchant.includes('escText(displayOrderNumber(o))'));
@@ -62,4 +66,4 @@ assert(activeCodeGuard.includes('orders_active_visible_code_uq'),'DB must enforc
 assert(activeCodeGuard.includes("queuego-visible-order-number"),'allocator must serialize visible-code allocation across date boundaries');
 assert(activeCodeGuard.includes("right(o.order_number,4)=v_code"),'allocator must reject an already-active visible code');
 assert(activeCodeGuard.includes("1000 + floor(random() * 9000)"),'new visible codes must remain randomized 4-digit numbers');
-console.log(JSON.stringify({checks:24,failures:0,scope:'Unified numeric visible order code QT-XXXX across Customer, Merchant, Rider, Admin and Laundry with active-code uniqueness'}));
+console.log(JSON.stringify({checks:27,failures:0,scope:'Unified numeric visible order code QT-XXXX across Customer, Merchant, Rider, Admin, Laundry, POS and Table QR with active-code uniqueness'}));
