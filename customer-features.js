@@ -10,7 +10,7 @@ const QGCustomer=(()=>{
   const date=value=>value?new Date(value).toLocaleString('th-TH'):'';
   const CHAT_AFTER_COMPLETE_MS=30*60*1000;
   function chatDeadline(order){if(!order||order.status!=='completed')return null;const at=Date.parse(order.completed_at||order.updated_at||'');return Number.isFinite(at)?at+CHAT_AFTER_COMPLETE_MS:0}
-  function chatAvailable(order){if(!order||order.status==='cancelled')return false;const deadline=chatDeadline(order);return order.status!=='completed'||(Number.isFinite(deadline)&&deadline>Date.now())}
+  function chatAvailable(order){if(!order||['cancelled','no_rider_available'].includes(order.status))return false;const deadline=chatDeadline(order);return order.status!=='completed'||(Number.isFinite(deadline)&&deadline>Date.now())}
   function chatMinutesLeft(order){const deadline=chatDeadline(order);return deadline?Math.max(0,Math.ceil((deadline-Date.now())/60000)):0}
   const note=value=>String(value||'').replace(/^__QT_ORDER_STATUS__=[^\n\\]*(?:\\n|\n|$)/,'');
   function leave(){for(const f of cleanups.splice(0))try{f()}catch(e){}}
@@ -121,13 +121,13 @@ const QGCustomer=(()=>{
 
     const flow=['pending','searching_rider','rider_assigned','preparing','ready','picked_up','in_progress','completed'],
       idx=flow.indexOf(o.status),
-      closed=['completed','cancelled'].includes(o.status),
+      closed=['completed','cancelled','no_rider_available'].includes(o.status),
       r=ctx.rider,
       chatOpen=chatAvailable(o),
       stage=o.status==='completed'?4:o.status==='in_progress'||o.status==='picked_up'?3:['rider_assigned','preparing','ready'].includes(o.status)?2:o.status==='searching_rider'?1:0,
       stageLabels=['สั่งซื้อ','หารายเดอร์','รับสินค้า','กำลังส่ง','สำเร็จ'],
       orderNote=note(o.note).trim(),
-      statusTime=o.status==='completed'?(o.completed_at||o.updated_at||o.created_at):o.created_at;
+      statusTime=['completed','cancelled','no_rider_available'].includes(o.status)?(o.completed_at||o.updated_at||o.created_at):o.created_at;
 
     layout(`<div class="qg-order-page">
       <div class="pt"><button class="back" onclick="go('orders')">${ico('back')}</button><h1>${esc(customerOrderNumber(o))}</h1></div>
@@ -137,7 +137,7 @@ const QGCustomer=(()=>{
           <div><span class="qg-order-kicker">สถานะล่าสุด</span><strong class="qg-order-status">${esc(STATUS_LABEL[o.status]||o.status)}</strong></div>
           <span class="qg-order-time">${esc(date(statusTime))}</span>
         </div>
-        ${o.status!=='cancelled'?`<div class="qg-order-progress">${stageLabels.map((label,i)=>`<span class="qg-order-step ${i<=stage?'on':''}">${label}</span>`).join('')}</div>`:''}
+        ${!['cancelled','no_rider_available'].includes(o.status)?`<div class="qg-order-progress">${stageLabels.map((label,i)=>`<span class="qg-order-step ${i<=stage?'on':''}">${label}</span>`).join('')}</div>`:''}
         <div class="qg-order-place">
           <small>ส่งไปที่</small>
           <b>${esc(o.delivery_address||'ยังไม่มีที่อยู่จัดส่ง')}</b>
