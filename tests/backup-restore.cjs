@@ -1,0 +1,30 @@
+const fs=require('fs'),path=require('path'),assert=require('assert');
+const root=path.resolve(__dirname,'..');
+const read=p=>fs.readFileSync(path.join(root,p),'utf8');
+let checks=0;const ok=(v,m)=>{assert.ok(v,m);checks++};
+
+const workflow=read('.github/workflows/backup-restore-drill.yml');
+const release=read('.github/workflows/build-queuego-apks.yml');
+const exporter=read('ops/backup-storage.mjs');
+const restorer=read('ops/restore-storage.mjs');
+const inventory=read('ops/backup-inventory.sql');
+const verify=read('ops/restore-verify.sql');
+
+ok(/workflow_dispatch/.test(workflow),'backup drill must be manually runnable');
+ok(/supabase@latest db dump/.test(workflow),'backup drill must use Supabase-aware database dump');
+ok(/--role-only/.test(workflow)&&/--data-only/.test(workflow)&&/--use-copy/.test(workflow),'backup must export roles, schema and data');
+ok(/supabase@latest start/.test(workflow),'restore drill must start a clean local Supabase');
+ok(/--single-transaction/.test(workflow)&&/ON_ERROR_STOP/.test(workflow),'database restore must be atomic and stop on errors');
+ok(/restore-storage\.mjs/.test(workflow),'Storage objects must be restored during the drill');
+ok(/aes-256-cbc/.test(workflow)&&/pbkdf2/.test(workflow),'off-site artifact must be encrypted before upload');
+ok(/upload-artifact@v4/.test(workflow)&&/\.tar\.gz\.enc/.test(workflow),'only encrypted backup artifact should be uploaded');
+ok(!/upload-artifact@[\s\S]{0,400}backup\/data\.sql/.test(workflow),'plaintext database dump must never be uploaded');
+ok(/QG_BACKUP_PASSPHRASE/.test(workflow)&&/QG_SUPABASE_DB_URL/.test(workflow)&&/QG_SUPABASE_SERVICE_ROLE_KEY/.test(workflow),'backup secrets must be externalized');
+ok(exporter.includes('storage-manifest.json')&&exporter.includes('sha256'),'Storage exporter must hash every object');
+ok(restorer.includes('upsert:true')&&restorer.includes('Restored object verification failed'),'Storage restore must re-upload and checksum verify objects');
+ok(inventory.includes('auth.users')&&inventory.includes('storage.objects'),'backup inventory must cover Auth and Storage metadata');
+ok(verify.includes('queuego_restore_verification_ok'),'restore SQL must emit a success sentinel');
+ok(verify.includes('qg_notifications_queuego_push'),'restore must verify unified notification trigger');
+ok(/restore_drill_certified/.test(release),'Closed Beta release must depend on restore certification');
+
+console.log(JSON.stringify({checks,failures:0,scope:'Encrypted external database + Storage backup and local restore drill'}));
