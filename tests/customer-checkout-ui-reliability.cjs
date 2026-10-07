@@ -12,7 +12,8 @@ ok(customer.includes("if(await reconcilePendingCheckout())return;"),'ambiguous c
 ok(customer.includes("if(!confirmed){checkoutBusy=false;"),'checkout failure cleanup must run only before a confirmed server result');
 ok(!customer.includes("toast('สั่งซื้อสำเร็จ · '+customerOrderNumber({order_number:result.order_number,id:result.id}));go('order/'+result.id);\n  }catch(e){"),'success UI work must not remain inside the mutation failure catch scope');
 ok(customer.includes('CUSTOMER COMPACT DENSITY'),'Customer production layout must keep compact-density mode');
-ok(customer.includes("const u=S.get(),home=tab==='home';"),'Customer layout must scope the restored density to Home only');
+ok(customer.includes("const u=S.get(),home=((location.hash.slice(1)||'home').split('/')[0]==='home');"),'Customer layout must scope the restored density to the actual #home route only');
+ok(customer.includes("((location.hash.slice(1)||'home').split('/')[0]==='home')?'qg-home-original-nav':''"),'Customer original nav density must not leak into food/cafe/grocery/shop routes');
 ok(customer.includes('.qg-home-original-main .promo{margin-top:13px;aspect-ratio:662/386'),'Customer Home hero must keep the approved original ratio');
 ok(customer.includes('.qg-home-original-main .sc{border-radius:18px;padding:10px;gap:12px'),'Customer Home store cards must keep the approved original density');
 ok(customer.includes('.qg-order-map{height:178px!important'),'Customer order tracking map must avoid oversized vertical space');
