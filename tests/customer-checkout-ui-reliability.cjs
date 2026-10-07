@@ -19,9 +19,13 @@ ok(customer.includes('.qg-home-original-main .sc{border-radius:18px;padding:10px
 ok(customer.includes('.qg-order-map{height:178px!important'),'Customer order tracking map must avoid oversized vertical space');
 ok(customer.includes('.prim{width:100%;min-height:48px'),'Customer primary actions must retain practical touch height while compact');
 ok(customer.includes('@media(max-height:760px)'),'Customer must have a short-screen compact density mode');
-ok(customer.includes('customer-features.js?v=20261007-profile3'),'Customer feature bundle must refresh after profile rebuild');
+ok(customer.includes('customer-features.js?v=20261007-terminal4'),'Customer feature bundle must refresh after terminal-state fix');
 ok(!customer.includes('customer-features.js?v=20261007-bg1'),'Customer must not keep the stale bg1 order feature bundle URL');
 ok(customer.includes('.qg-profile-row{display:flex;align-items:center;justify-content:space-between'),'Customer profile rows must use compact grouped layout');
 ok(customer.includes('.qg-profile-row-copy small{color:#8a8f96'),'Customer profile long descriptions must render below their labels instead of colliding in columns');
 ok(customer.includes('.qg-profile-note{display:flex;align-items:center;justify-content:space-between'),'Customer cash-payment note must be a dedicated compact info row');
+ok(customer.includes("no_rider_available:'ไม่พบ Rider'"),'Customer must show a Thai no-rider terminal label');
+ok(features.includes("['completed','cancelled','no_rider_available'].includes(o.status)"),'Customer no-rider orders must be terminal/closed');
+ok(features.includes("!['cancelled','no_rider_available'].includes(o.status)"),'Customer must not render active delivery progress for no-rider terminal orders');
+ok(features.includes("['cancelled','no_rider_available'].includes(order.status)"),'Customer chat must close for no-rider terminal orders');
 console.log(JSON.stringify({checks,failures:0,scope:'customer checkout post-commit UI error isolation and ambiguous-result recovery'}));
