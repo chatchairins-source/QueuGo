@@ -1,16 +1,16 @@
 {
-  "generated_at": "2026-10-07T13:15:49+07:00",
+  "generated_at": "2026-10-07T13:17:34+07:00",
   "github": {
     "repository": "chatchairins-source/QueuGo",
     "source_of_truth": "main",
-    "head_at_manifest": "d50affbb6b783bcd53f7fcabccfd29145f1afa24",
+    "head_at_manifest": "60d7407e3bb597f6297d792dba2a61cefad2c2e2",
     "previous_backup_branch": "backup-pre-closed-beta-20261007-0035",
-    "latest_backup_branch": "backup-certified-qt-table-qr-d50affbb-20261007",
-    "certified_source_commit": "d50affbb6b783bcd53f7fcabccfd29145f1afa24",
+    "latest_backup_branch": "backup-pre-gate-recheck-60d7407e-20261007",
+    "certified_source_commit": "60d7407e3bb597f6297d792dba2a61cefad2c2e2",
     "rc_tests": {
-      "run_id": 37580393679,
+      "run_id": 37580588869,
       "status": "SUCCESS",
-      "head_sha": "d50affbb6b783bcd53f7fcabccfd29145f1afa24"
+      "head_sha": "60d7407e3bb597f6297d792dba2a61cefad2c2e2"
     },
     "chat_retention_tests": {
       "run_id": 37574995871,
@@ -18,9 +18,9 @@
       "head_sha": "b738c2ce5ef1d9d065a9d033258e6134d0d2270e"
     },
     "pages_deployment_last_checked": {
-      "run_id": 37580392585,
+      "run_id": 37580588896,
       "status": "SUCCESS",
-      "head_sha": "d50affbb6b783bcd53f7fcabccfd29145f1afa24"
+      "head_sha": "60d7407e3bb597f6297d792dba2a61cefad2c2e2"
     },
     "operational_inventory_commit": "a406bb7f8de013fa6bd7d595ca01832a7ce28293",
     "operational_inventory_rc_run": {
@@ -119,8 +119,8 @@
         "QG_SUPABASE_SERVICE_ROLE_KEY",
         "QG_BACKUP_PASSPHRASE"
       ],
-      "run_attempt": 5,
-      "checked_at": "2026-10-07T11:52:04+07:00",
+      "run_attempt": 6,
+      "checked_at": "2026-10-07T13:17:11+07:00",
       "latest_validation_result": "FAIL"
     },
     "restore_drill_ugc_verification_ready": true,
@@ -243,8 +243,8 @@
         "QG_ANDROID_KEY_ALIAS",
         "QG_ANDROID_KEY_PASSWORD"
       ],
-      "run_attempt": 5,
-      "checked_at": "2026-10-07T11:52:03+07:00",
+      "run_attempt": 6,
+      "checked_at": "2026-10-07T13:16:35+07:00",
       "latest_validation_result": "FAIL"
     },
     "pilot_test_workflow": ".github/workflows/build-queuego-pilot-apks.yml",
