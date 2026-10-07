@@ -75,6 +75,7 @@ const NEARBY_RADIUS_KM = 2;
 const QG_ARRIVAL_GUARD_KM = 0.2;
 const APP_VERSION='5.0.0';
 const POLL_MS = 60000;
+const OFFER_POLL_MS = 5000;
 
 /* ---------- full-screen lock + responsive resize (all screens, incl. rider page) ---------- */
 (function(){
@@ -1229,8 +1230,30 @@ function riderEarning(o){
 
 
 /* ---------- profile panel ---------- */
-function startPolling(){ stopPolling(); S.pollTimer = setInterval(()=>refreshData(true), POLL_MS); }
-function stopPolling(){ if(S.pollTimer) clearInterval(S.pollTimer); S.pollTimer=null;riderRefreshQueued=false; }
+let riderOfferPollTimer=null,riderOfferPollBusy=false;
+async function qgPollRiderOfferNow(){
+  if(riderOfferPollBusy||!S.user||!S.riderProfile||!S.online||S.activeOrder||(S.openJobs||[]).length||document.hidden||!navigator.onLine)return;
+  riderOfferPollBusy=true;
+  const userId=S.user.id,profileId=S.riderProfile.id,sessionId=S.session?.sessionId;
+  const current=()=>S.user?.id===userId&&S.riderProfile?.id===profileId&&S.session?.sessionId===sessionId&&S.online&&!S.activeOrder;
+  try{
+    const token=await getAccessToken();if(!current()||!token)return;
+    const rows=await sbRpc('qg_get_my_rider_offer',{},token);if(!current())return;
+    if(Array.isArray(rows)&&rows.some(x=>x?.order_id))await refreshData(true);
+  }catch(e){console.warn('Rider offer poll failed');}
+  finally{riderOfferPollBusy=false;}
+}
+function startPolling(){
+  stopPolling();
+  S.pollTimer=setInterval(()=>refreshData(true),POLL_MS);
+  riderOfferPollTimer=setInterval(qgPollRiderOfferNow,OFFER_POLL_MS);
+  setTimeout(qgPollRiderOfferNow,0);
+}
+function stopPolling(){
+  if(S.pollTimer)clearInterval(S.pollTimer);
+  if(riderOfferPollTimer)clearInterval(riderOfferPollTimer);
+  S.pollTimer=null;riderOfferPollTimer=null;riderOfferPollBusy=false;riderRefreshQueued=false;
+}
 
 
 /* Runtime connectivity resilience */
