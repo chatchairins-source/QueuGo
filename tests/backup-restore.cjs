@@ -11,7 +11,8 @@ const inventory=read('ops/backup-inventory.sql');
 const verify=read('ops/restore-verify.sql');
 
 ok(/workflow_dispatch/.test(workflow),'backup drill must be manually runnable');
-ok(/supabase@latest db dump/.test(workflow),'backup drill must use Supabase-aware database dump');
+ok(/supabase@2\.120\.0 db dump/.test(workflow),'backup drill must use pinned Supabase-aware database dump');
+ok(!/supabase@latest/.test(workflow),'backup workflow must pin Supabase CLI and never use @latest');
 ok(/--role-only/.test(workflow)&&/--data-only/.test(workflow)&&/--use-copy/.test(workflow),'backup must export roles, schema and data');
 ok(/supabase@latest start/.test(workflow),'restore drill must start a clean local Supabase');
 ok(/--single-transaction/.test(workflow)&&/ON_ERROR_STOP/.test(workflow),'database restore must be atomic and stop on errors');

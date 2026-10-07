@@ -56,9 +56,9 @@ jobs:
           set -euo pipefail
           mkdir -p backup/storage
 
-          npx --yes supabase@latest db dump --db-url "$QG_SUPABASE_DB_URL" -f backup/roles.sql --role-only
-          npx --yes supabase@latest db dump --db-url "$QG_SUPABASE_DB_URL" -f backup/schema.sql
-          npx --yes supabase@latest db dump --db-url "$QG_SUPABASE_DB_URL" -f backup/data.sql --use-copy --data-only
+          npx --yes supabase@2.120.0 db dump --db-url "$QG_SUPABASE_DB_URL" -f backup/roles.sql --role-only
+          npx --yes supabase@2.120.0 db dump --db-url "$QG_SUPABASE_DB_URL" -f backup/schema.sql
+          npx --yes supabase@2.120.0 db dump --db-url "$QG_SUPABASE_DB_URL" -f backup/data.sql --use-copy --data-only
 
           psql "$QG_SUPABASE_DB_URL" -X -A -t -v ON_ERROR_STOP=1 -f ops/backup-inventory.sql > backup/source-inventory.json
           node ops/backup-storage.mjs
@@ -71,9 +71,9 @@ jobs:
           set -euo pipefail
           mkdir -p restore-lab
           cd restore-lab
-          npx --yes supabase@latest init
-          npx --yes supabase@latest start
-          npx --yes supabase@latest status -o env > ../local-supabase.env
+          npx --yes supabase@2.120.0 init
+          npx --yes supabase@2.120.0 start
+          npx --yes supabase@2.120.0 status -o env > ../local-supabase.env
 
       - name: Restore database
         shell: bash
@@ -170,5 +170,5 @@ jobs:
         run: |
           if [ -d restore-lab ]; then
             cd restore-lab
-            npx --yes supabase@latest stop --no-backup || true
+            npx --yes supabase@2.120.0 stop --no-backup || true
           fi

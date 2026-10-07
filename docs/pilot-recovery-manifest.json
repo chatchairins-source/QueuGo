@@ -1,9 +1,9 @@
 {
-  "generated_at": "2026-10-07T10:30:00+07:00",
+  "generated_at": "2026-10-07T10:33:00+07:00",
   "github": {
     "repository": "chatchairins-source/QueuGo",
     "source_of_truth": "main",
-    "head_at_manifest": "3ea88feec31b510bd1935ff2671c7805d696610d",
+    "head_at_manifest": "d90ba0ddd051d9690b861da09a621a5a18f2df04",
     "previous_backup_branch": "backup-pre-closed-beta-20261007-0035",
     "latest_backup_branch": "backup-certified-auth-baseline-3ea88fee-20261007",
     "certified_source_commit": "3ea88feec31b510bd1935ff2671c7805d696610d",
@@ -110,11 +110,13 @@
         "QG_SUPABASE_SERVICE_ROLE_KEY",
         "QG_BACKUP_PASSPHRASE"
       ],
-      "run_attempt": 2,
-      "checked_at": "2026-10-07T09:51:18+07:00",
+      "run_attempt": 3,
+      "checked_at": "2026-10-07T10:29:48+07:00",
       "latest_validation_result": "FAIL"
     },
-    "restore_drill_ugc_verification_ready": true
+    "restore_drill_ugc_verification_ready": true,
+    "backup_cli_version": "2.120.0",
+    "backup_cli_version_policy": "PINNED"
   },
   "notifications": {
     "unified_outbox": true,
@@ -157,8 +159,8 @@
         "QG_ANDROID_KEY_ALIAS",
         "QG_ANDROID_KEY_PASSWORD"
       ],
-      "run_attempt": 2,
-      "checked_at": "2026-10-07T09:51:17+07:00",
+      "run_attempt": 4,
+      "checked_at": "2026-10-07T10:29:52+07:00",
       "latest_validation_result": "FAIL"
     },
     "pilot_test_workflow": ".github/workflows/build-queuego-pilot-apks.yml",
