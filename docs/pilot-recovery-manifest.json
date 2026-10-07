@@ -1,11 +1,11 @@
 {
-  "generated_at": "2026-10-07T11:06:00+07:00",
+  "generated_at": "2026-10-07T11:15:00+07:00",
   "github": {
     "repository": "chatchairins-source/QueuGo",
     "source_of_truth": "main",
-    "head_at_manifest": "efcf16de12a56e98e4e5c1ac4a1c3c0637bbc279",
+    "head_at_manifest": "9fd0c87727a1c2994a9ea13967fede0d29502c17",
     "previous_backup_branch": "backup-pre-closed-beta-20261007-0035",
-    "latest_backup_branch": "backup-pre-unified-order-code-68b6851c-20261007",
+    "latest_backup_branch": "backup-pre-active-order-code-9fd0c877-20261007",
     "certified_source_commit": "0ee7294a618254fa599ae36abfda77f8557f891a",
     "rc_tests": {
       "run_id": 37568188542,
@@ -69,8 +69,8 @@
     "database_version": "17.6.1.166",
     "region": "ap-southeast-2",
     "latest_migration": [
-      "20261007034201",
-      "switch_push_retry_cron_to_unified_worker"
+      "20261007041346",
+      "enforce_active_visible_order_code_uniqueness"
     ],
     "edge_functions": [
       {
@@ -447,6 +447,13 @@
     "accepts_legacy_qo_input": true,
     "emits_qo": false,
     "uuid_fallback": false,
-    "decision": "DISPLAY_ONLY_NO_DATABASE_REWRITE"
+    "decision": "DISPLAY_ONLY_NO_DATABASE_REWRITE",
+    "visible_character_set": "NUMERIC_4_DIGITS_FOR_NEW_ORDERS",
+    "server_generator": "qg_next_order_number",
+    "random_range": "1000-9999",
+    "active_visible_code_unique": true,
+    "active_uniqueness_index": "orders_active_visible_code_uq",
+    "active_duplicate_codes_live": 0,
+    "all_roles_shared_formatter": true
   }
 }

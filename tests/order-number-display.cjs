@@ -26,6 +26,7 @@ const customerFeatures=read('customer-features.js');
 const customerLaundry=read('customer-laundry.js');
 const release=read('.github/workflows/build-queuego-apks.yml');
 const pilot=read('.github/workflows/build-queuego-pilot-apks.yml');
+const activeCodeGuard=read('supabase/migrations/20261007041346_enforce_active_visible_order_code_uniqueness.sql');
 
 assert(customer.includes('src="queuego-order-number.js"'));
 for(const source of [merchant,rider,admin])assert(source.includes('src="../queuego-order-number.js"'));
@@ -48,4 +49,8 @@ for(const workflow of [release,pilot]){
 for(const source of [customer,merchant,rider,admin]){
   assert(!source.includes('QT-YYYYMMDD-xxxx'));
 }
-console.log(JSON.stringify({checks:20,failures:0,scope:'Unified visible order code QT-XXXX across Customer, Merchant, Rider and Admin'}));
+assert(activeCodeGuard.includes('orders_active_visible_code_uq'),'DB must enforce one active visible QT-XXXX code');
+assert(activeCodeGuard.includes("queuego-visible-order-number"),'allocator must serialize visible-code allocation across date boundaries');
+assert(activeCodeGuard.includes("right(o.order_number,4)=v_code"),'allocator must reject an already-active visible code');
+assert(activeCodeGuard.includes("1000 + floor(random() * 9000)"),'new visible codes must remain randomized 4-digit numbers');
+console.log(JSON.stringify({checks:24,failures:0,scope:'Unified visible order code QT-XXXX across Customer, Merchant, Rider and Admin with active-code uniqueness'}));
