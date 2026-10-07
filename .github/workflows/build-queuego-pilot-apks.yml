@@ -81,10 +81,10 @@ jobs:
           rm -rf www android
           mkdir -p www
           mkdir -p www/docs
-          cp ../docs/privacy.html ../docs/account-deletion.html www/docs/
+          cp ../docs/privacy.html ../docs/account-deletion.html ../docs/community-guidelines.html www/docs/
           if [ "${{ matrix.role }}" = "customer" ]; then
             cp ../index.html www/index.html
-            cp ../customer-features.js ../customer-features.css ../customer-laundry.js ../account-deletion.js ../queuego-native-push.js ../queuego-push.js ../queuego-push-sw.js www/
+            cp ../customer-features.js ../customer-features.css ../customer-laundry.js ../account-deletion.js ../queuego-ugc.js ../queuego-native-push.js ../queuego-push.js ../queuego-push-sw.js www/
             cp ../table-order.css ../table-order.js ../table-order.html www/
           elif [ "${{ matrix.role }}" = "merchant" ]; then
             cp ../merchant/* www/
@@ -95,6 +95,7 @@ jobs:
           s=p.read_text()
           s=s.replace('../role-realtime.js','role-realtime.js')
           s=s.replace('../account-deletion.js','account-deletion.js')
+          s=s.replace('../queuego-ugc.js','queuego-ugc.js')
           s=s.replace('../queuego-native-push.js','queuego-native-push.js')
           s=s.replace('../queuego-push.js','queuego-push.js')
           p.write_text(s)
