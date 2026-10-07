@@ -21,6 +21,7 @@ ok('release signing enforced',/QG_ANDROID_KEYSTORE_B64/.test(workflow)&&/signing
 ok('Closed Beta requires certified restore drill',/restore_drill_certified/.test(workflow)&&/Do not build Closed Beta/.test(workflow));
 ok('Closed Beta requires native push plugin',/@capacitor\/push-notifications/.test(workflow)&&/Native Android background push/.test(workflow));
 ok('Closed Beta requires Firebase config secret',/QG_FIREBASE_GOOGLE_SERVICES_JSON_B64/.test(workflow)&&/google-services\.json secret is missing/.test(workflow));
+ok('Closed Beta requires reviewed security audit certification',/ugc_chat_safety','security_audit/.test(workflow)||/security_audit/.test(workflow));
 ok('Closed Beta requires platform Auth security certification',/security_platform_auth/.test(workflow)&&/Security platform Auth gate is not PASS/.test(workflow));
 ok('Closed Beta requires physical notification certification',/physical_background_notification_certified/.test(workflow)&&/Physical Android background notification is not certified/.test(workflow));
 ok('Closed Beta requires UGC chat safety certification',/ugc_chat_safety/.test(workflow));
