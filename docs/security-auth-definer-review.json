@@ -1,0 +1,57 @@
+{
+  "version": 1,
+  "reviewed_at": "2026-10-07T08:42:00+07:00",
+  "production_project": "pkypiqhlrmzocysgeqew",
+  "authenticated_security_definer_total": 123,
+  "direct_identity_or_role_guard_count": 113,
+  "no_direct_identity_guard_count": 10,
+  "classification": {
+    "intentional_public_or_guest": [
+      "market_public_catalog_v2()",
+      "market_public_markets_v1()",
+      "market_public_shops_v2()",
+      "qg_public_promotions()",
+      "qg_public_shop_reviews(uuid)",
+      "qg_table_catalog(uuid,uuid)",
+      "qg_table_checkout(uuid,uuid,uuid,jsonb,double precision,double precision)",
+      "qg_table_scan(uuid,uuid,double precision,double precision)",
+      "qg_table_session_status(uuid,uuid)"
+    ],
+    "downstream_guarded_authenticated_wrapper": [
+      {
+        "signature": "queuego_place_cash_order(uuid,uuid,jsonb,double precision,double precision,text,numeric,numeric,text)",
+        "downstream": "queuego_place_cash_order_core(uuid,uuid,jsonb,double precision,double precision,text,numeric,numeric,text)",
+        "controls": [
+          "requires auth.uid()",
+          "requires active customer role",
+          "order id ownership/idempotency check",
+          "one active customer order",
+          "shop/product availability validation",
+          "authoritative server pricing",
+          "service-area route assertion"
+        ]
+      }
+    ]
+  },
+  "hardening_applied": [
+    {
+      "signature": "effective_gp_rate(uuid,date)",
+      "action": "restricted to own active shop or active admin before calling internal GP helper"
+    },
+    {
+      "signature": "market_public_catalog()",
+      "action": "authenticated EXECUTE revoked; legacy implementation is service-role only"
+    },
+    {
+      "signature": "queuego_nearest_market(double precision,double precision,numeric)",
+      "action": "authenticated EXECUTE revoked; unused helper is service-role only"
+    }
+  ],
+  "advisor_after_review": {
+    "anonymous_security_definer_executable": 9,
+    "authenticated_security_definer_executable": 123,
+    "leaked_password_protection": 1
+  },
+  "conclusion": "PASS_CODE_DATABASE_REVIEW",
+  "boundary": "Supabase Auth leaked-password protection is a separate platform gate and remains blocked until enabled in the Supabase dashboard."
+}
