@@ -19,4 +19,6 @@ ok(customer.includes('.qg-home-original-main .sc{border-radius:18px;padding:10px
 ok(customer.includes('.qg-order-map{height:178px!important'),'Customer order tracking map must avoid oversized vertical space');
 ok(customer.includes('.prim{width:100%;min-height:48px'),'Customer primary actions must retain practical touch height while compact');
 ok(customer.includes('@media(max-height:760px)'),'Customer must have a short-screen compact density mode');
+ok(customer.includes('customer-features.js?v=20261007-completed-summary2'),'Customer order feature bundle must use a fresh cache-busting version');
+ok(!customer.includes('customer-features.js?v=20261007-bg1'),'Customer must not keep the stale bg1 order feature bundle URL');
 console.log(JSON.stringify({checks,failures:0,scope:'customer checkout post-commit UI error isolation and ambiguous-result recovery'}));
