@@ -19,6 +19,9 @@ ok(customer.includes('.qg-home-original-main .sc{border-radius:18px;padding:10px
 ok(customer.includes('.qg-order-map{height:178px!important'),'Customer order tracking map must avoid oversized vertical space');
 ok(customer.includes('.prim{width:100%;min-height:48px'),'Customer primary actions must retain practical touch height while compact');
 ok(customer.includes('@media(max-height:760px)'),'Customer must have a short-screen compact density mode');
-ok(customer.includes('customer-features.js?v=20261007-completed-summary2'),'Customer order feature bundle must use a fresh cache-busting version');
+ok(customer.includes('customer-features.js?v=20261007-profile3'),'Customer feature bundle must refresh after profile rebuild');
 ok(!customer.includes('customer-features.js?v=20261007-bg1'),'Customer must not keep the stale bg1 order feature bundle URL');
+ok(customer.includes('.qg-profile-row{display:flex;align-items:center;justify-content:space-between'),'Customer profile rows must use compact grouped layout');
+ok(customer.includes('.qg-profile-row-copy small{color:#8a8f96'),'Customer profile long descriptions must render below their labels instead of colliding in columns');
+ok(customer.includes('.qg-profile-note{display:flex;align-items:center;justify-content:space-between'),'Customer cash-payment note must be a dedicated compact info row');
 console.log(JSON.stringify({checks,failures:0,scope:'customer checkout post-commit UI error isolation and ambiguous-result recovery'}));
