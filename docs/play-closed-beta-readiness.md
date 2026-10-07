@@ -97,6 +97,7 @@ Implemented controls:
 - Reported images are reviewable only from the report snapshot.
 - Direct client access to moderation tables is denied.
 - Anonymous users cannot call UGC moderation RPCs.
+- Anonymous Data API table privileges on `order_chat_messages` are revoked; signed-in chat access remains explicit and RLS-controlled (`20261007023348_ugc_chat_revoke_anon_table_privileges`).
 - Dead Merchant legacy order-chat implementation has been removed.
 
 Policy sources:
@@ -208,6 +209,13 @@ Before submitting Closed Beta, keep evidence/screenshots of:
 - Closed Beta build version, SHA-256 and signing certificate fingerprint
 - Successful Backup/Restore drill run
 - Successful QueueGo RC Tests run for the exact release commit
+
+## Current UGC gate evidence
+
+- Production migration: `20261007023348_ugc_chat_revoke_anon_table_privileges`
+- Live privilege verification: `anon` has no SELECT/INSERT/UPDATE/DELETE privilege on `public.order_chat_messages`; `authenticated` retains those four privileges subject to RLS.
+- Focused source verification after hardening: **45 checks / 0 failures** across UGC chat safety and Play readiness sources.
+- The full QueueGo RC workflow must still pass for the exact final release commit before AAB release; do not reuse an older RC run as release evidence.
 
 ## Remaining external blockers
 
