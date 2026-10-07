@@ -13,9 +13,9 @@ t.run(setup+"db=async(path)=>path.startsWith('orders?')?[]:{id:'30000000-0000-40
 t.run("db=async(path,opts)=>({id:opts.body.p_order_id,order_number:'QT-20261005-0001'})");await t.run('placeOrder()');assert.equal(t.run('readPendingCheckout()'),null);assert.equal(t.run('cart.items.length'),0);assert.notEqual(retained,'30000000-0000-4000-8000-000000000003');checks+=3;
 // Existing server fee boundaries, not a new pricing policy.
 assert.equal(t.run('deliveryFeeFor({latitude:13,longitude:100},{lat:13,lng:100})'),30);checks++;
-assert.equal(t.run("customerOrderNumber({order_number:'QT-20261005-0001'})"),'QT-0001');checks++;
-assert.equal(t.run("customerOrderNumber({order_number:'QT-0001'})"),'QT-0001');checks++;
-assert.equal(t.run("customerOrderNumber({id:'abc-def-1234'})"),'QT-1234');checks++;
+assert.equal(t.run("customerOrderNumber({order_number:'QT-20261005-0001'})"),'QO-0001');checks++;
+assert.equal(t.run("customerOrderNumber({order_number:'QT-0001'})"),'QO-0001');checks++;
+assert.equal(t.run("customerOrderNumber({id:'abc-def-1234'})"),'QO-1234');checks++;
 const r=boot('rider/index.html');await Promise.resolve();r.run("readSession=()=>S.session;qgRiderMutation=(path,opts)=>sbTable(path,opts);S.user={id:'fixture'};S.riderProfile={id:'rider'};S.session={authUserId:'auth',sessionId:'session',accessToken:'fixture'};S.activeTab='home';S.online=false;window.calls=[];getAccessToken=async()=>'fixture';sbTable=async(path,opts)=>{calls.push({path,opts});return path.includes('status=in.')?[{id:'order',status:'rider_assigned',pickup_latitude:13,pickup_longitude:100,delivery_latitude:13.1,delivery_longitude:100.1}]:[]};placeJobMarkers=()=>{};");await r.run('refreshData()');
 assert.equal(r.run('S.activeOrder.status'),'rider_assigned');
 assert(r.run("calls[0].path.includes('rider_assigned,preparing,ready')"));
@@ -62,9 +62,9 @@ t.run(`cart.items[0].qty=2;saveCart();db=async(path)=>path.startsWith('orders?se
 await t.run('reconcilePendingCheckout()');assert.equal(t.run('readPendingCheckout()'),null);assert.equal(t.run('cart.items[0].qty'),2);checks+=2;
 
 const a=boot('admin/index.html');await Promise.resolve();a.run("window.calls=[];qtGetAccessToken=async()=>'fixture';qtSessionRead=()=>({role:'admin',authUserId:'admin'});qtSupabaseTable=async(path)=>{calls.push(path);return path==='users?select=*'?[{id:'shop',role:'shop',status:'active',metadata:{shopName:'Current shop'}}]:[]};");await a.run('qtHydrateDatabase({light:false})');assert.equal(a.run("calls.filter(p=>p.startsWith('users?')).length"),1);assert.equal(a.run("QT_DB_CACHE.qt_users.find(u=>u.id==='shop').shopName"),'Current shop');checks+=2;
-const m=boot('merchant/index.html');await Promise.resolve();assert.equal(m.run("displayOrderNumber({order_number:'QT-20261005-0001'})"),'QT-0001');checks++;
-assert.equal(m.run("displayOrderNumber({order_number:'QT-0001'})"),'QT-0001');checks++;
-assert.equal(m.run("displayOrderNumber({id:'abc-def-1234'})"),'QT-1234');checks++;
+const m=boot('merchant/index.html');await Promise.resolve();assert.equal(m.run("displayOrderNumber({order_number:'QT-20261005-0001'})"),'QO-0001');checks++;
+assert.equal(m.run("displayOrderNumber({order_number:'QT-0001'})"),'QO-0001');checks++;
+assert.equal(m.run("displayOrderNumber({id:'abc-def-1234'})"),'QO-1234');checks++;
 m.run("currentUser=()=>({id:'shop',type:'shop'});window.alertEvents=0;window.addEventListener('qt:shop-new-order-sound',()=>alertEvents++);qgCheckMerchantOrders([]);qgCheckMerchantOrders([{id:'new-order'}]);qgCheckMerchantOrders([{id:'new-order'}]);");assert.equal(m.run('alertEvents'),1);checks++;
 m.run("window.notificationSounds=0;window.qgPlayMerchantNotificationSound=()=>notificationSounds++;qtHandleNewNotification({id:'arrival',userId:'shop',title:'ไรเดอร์ถึงร้านแล้ว',message:'รับออเดอร์',read:false});");assert.equal(m.run('notificationSounds'),1);assert.equal(m.run("document.querySelectorAll('#notif-toast-box .notif-toast').length"),1);checks+=2;
 m.run("qtGetAccessToken=async()=>'fixture';window.notificationWrites=[];qtSupabaseTable=async(path,opts)=>{notificationWrites.push({path,opts});return []};");await m.run("markAllNotifRead('shop')");assert.equal(m.run('notificationWrites[0].opts.method'),'PATCH');checks++;

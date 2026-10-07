@@ -17,7 +17,7 @@ V['laundry-order']=async function(id,ticket){
   const qty=o.actual_quantity!=null?o.actual_quantity:(o.actual_kg!=null?o.actual_kg:(o.estimated_quantity!=null?o.estimated_quantity:o.estimated_kg));
   const serviceAmount=o.final_amount!=null?o.final_amount:o.estimated_amount;
   const total=o.final_total_amount!=null?o.final_total_amount:(o.estimated_total_amount!=null?o.estimated_total_amount:(serviceAmount!=null?Number(serviceAmount)+delivery:null));
-  let html='<div class="pt"><button class="back" onclick="go(\'orders\')">'+ico('back')+'</button><h1>#'+esc(o.order_number||String(o.id).slice(0,8))+'</h1></div>';
+  let html='<div class="pt"><button class="back" onclick="go(\'orders\')">'+ico('back')+'</button><h1>'+esc(QueueGoOrderNumber.format(o))+'</h1></div>';
   html+='<section class="card" style="margin-top:0"><div class="sr"><b>ฝากซัก · '+esc(QG_LAUNDRY_STATUS[o.status]||o.status)+'</b><button class="lk" onclick="route()">โหลดสถานะล่าสุด</button></div><p class="sm">'+esc(o.service_name_snapshot||o.service_type||'บริการฝากซัก')+'</p><p class="sm">'+esc(o.pickup_address||'')+'</p>';
   if(o.status==='cancelled')html+='<p style="color:#b4233c"><b>งานนี้ถูกยกเลิก</b></p>';
   else html+='<div class="statusflow">'+QG_LAUNDRY_FLOW.map(function(x,i){return '<span class="'+(idx>=0&&i<=idx?'on':'')+'">'+esc(QG_LAUNDRY_STATUS[x])+'</span>'}).join('')+'</div>';
@@ -56,16 +56,15 @@ V.orders=async function(_,ticket){
       }
       if(entry.kind==='laundry'){
         const l=entry.data,total=l.final_total_amount!=null?l.final_total_amount:l.estimated_total_amount;
-        return '<div class="oc" onclick="go(\'laundry-order/'+esc(l.id)+'\')"><div class="oh"><span class="on">ฝากซัก · #'+esc(l.order_number||String(l.id).slice(0,6))+'</span><span class="sp">'+esc(QG_LAUNDRY_STATUS[l.status]||l.status)+'</span></div><p>'+new Date(l.created_at).toLocaleString('th-TH')+' · '+esc(l.service_name_snapshot||'บริการฝากซัก')+'</p><b>'+(total!=null?baht(total):'รอสรุปราคา')+'</b></div>';
+        return '<div class="oc" onclick="go(\'laundry-order/'+esc(l.id)+'\')"><div class="oh"><span class="on">ฝากซัก · '+esc(QueueGoOrderNumber.format(l))+'</span><span class="sp">'+esc(QG_LAUNDRY_STATUS[l.status]||l.status)+'</span></div><p>'+new Date(l.created_at).toLocaleString('th-TH')+' · '+esc(l.service_name_snapshot||'บริการฝากซัก')+'</p><b>'+(total!=null?baht(total):'รอสรุปราคา')+'</b></div>';
       }
       const o=entry.data;
       const riderOrder=customerOrderNumber(o);
-      const shortOrder=String(riderOrder).replace(/^QT-/i,'').slice(-4).toUpperCase();
       const stage=o.status==='completed'?4:(o.status==='picked_up'||o.status==='in_progress'?3:(['rider_assigned','preparing','ready','assigned'].includes(o.status)?2:(o.status==='searching_rider'?1:0)));
       const stageLabels=['รอร้านรับ','หาไรเดอร์','รับสินค้า','กำลังส่ง','สำเร็จ'];
       const progress=o.status==='cancelled'?'':('<div class="qg-order-list-progress">'+stageLabels.map((label,i)=>'<span class="qg-order-list-step '+(o.status==='completed'?'done':i<stage?'done':i===stage?'current':'')+'">'+esc(label)+'</span>').join('')+'</div>');
       const statusClass=o.status==='completed'?'done':o.status==='cancelled'?'cancelled':'';
-      return '<div class="oc qg-order-list-card" onclick="go(\'order/'+esc(o.id)+'\')"><div class="oh"><span class="on qg-order-list-number">#'+esc(shortOrder)+'</span><span class="qg-order-list-status '+statusClass+'">'+esc(STATUS_LABEL[o.status]||'กำลังดำเนินการ')+'</span></div><p class="qg-order-list-meta">'+esc(shopNames.get(o.shop_id)||'ร้านค้า')+' · '+(o.order_items||[]).reduce((sum,i)=>sum+Number(i.quantity||0),0)+' รายการ</p><p class="qg-order-list-date">'+new Date(o.created_at).toLocaleString('th-TH')+(Number(o.bundle_customer_savings||0)>0?' · งานพ่วงประหยัด '+baht(o.bundle_customer_savings):'')+'</p>'+progress+'<b class="qg-order-list-total">'+baht(o.total!=null?o.total:(o.total_amount!=null?o.total_amount:o.subtotal))+'</b></div>';
+      return '<div class="oc qg-order-list-card" onclick="go(\'order/'+esc(o.id)+'\')"><div class="oh"><span class="on qg-order-list-number">'+esc(riderOrder)+'</span><span class="qg-order-list-status '+statusClass+'">'+esc(STATUS_LABEL[o.status]||'กำลังดำเนินการ')+'</span></div><p class="qg-order-list-meta">'+esc(shopNames.get(o.shop_id)||'ร้านค้า')+' · '+(o.order_items||[]).reduce((sum,i)=>sum+Number(i.quantity||0),0)+' รายการ</p><p class="qg-order-list-date">'+new Date(o.created_at).toLocaleString('th-TH')+(Number(o.bundle_customer_savings||0)>0?' · งานพ่วงประหยัด '+baht(o.bundle_customer_savings):'')+'</p>'+progress+'<b class="qg-order-list-total">'+baht(o.total!=null?o.total:(o.total_amount!=null?o.total_amount:o.subtotal))+'</b></div>';
     }).join('');
   }else cards='<p class="empty">ยังไม่มีออเดอร์</p>';
   layout('<div class="pt"><h1>ออเดอร์ของฉัน</h1></div><div class="list">'+cards+'</div>','orders');

@@ -75,7 +75,7 @@ const QGCustomer=(()=>{
       orderNote=note(o.note).trim();
 
     layout(`<div class="qg-order-page">
-      <div class="pt"><button class="back" onclick="go('orders')">${ico('back')}</button><h1>#${esc(customerOrderNumber(o))}</h1></div>
+      <div class="pt"><button class="back" onclick="go('orders')">${ico('back')}</button><h1>${esc(customerOrderNumber(o))}</h1></div>
 
       <section class="qg-order-hero">
         <div class="qg-order-hero-top">
