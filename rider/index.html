@@ -1194,7 +1194,8 @@ function qgOpenQuickMessageEditor(o){
 }
 function renderChatMessages(rows){
   const box=document.getElementById('chat-box'); if(!box)return;
-  box.innerHTML=rows.length?rows.map(m=>{const raw=String(m.message||'');const isImg=raw.startsWith('__IMG__');return `<div class="chat-bubble ${String(m.sender_id)===String(S.user.id)?'mine':'theirs'}"><div>${isImg?`<img class="chat-image" src="${esc(raw.slice(7))}" alt="รูปที่ส่งในแชต">`:esc(raw)}</div><div class="chat-time">${new Date(m.created_at).toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'})}</div></div>`}).join(''):'<div class="empty-note">ยังไม่มีข้อความ เริ่มแชทกับลูกค้าได้เลย</div>';
+  box.innerHTML=rows.length?rows.map(m=>{const raw=String(m.message||'');const isImg=raw.startsWith('__IMG__');return `<div class="chat-bubble ${String(m.sender_id)===String(S.user.id)?'mine':'theirs'}"><div>${isImg?`<img class="chat-image" src="${esc(raw.slice(7))}" alt="รูปที่ส่งในแชต">`:esc(raw)}</div><div class="chat-time">${new Date(m.created_at).toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'})}</div>${String(m.sender_id)!==String(S.user.id)?`<button type="button" data-chat-report="${esc(m.id)}" style="margin-top:4px">รายงาน</button>`:''}</div>`}).join(''):'<div class="empty-note">ยังไม่มีข้อความ เริ่มแชทกับลูกค้าได้เลย</div>';
+  box.querySelectorAll('[data-chat-report]').forEach(btn=>btn.onclick=()=>{if(S.chatOrder)qgOpenRiderChatReport(S.chatOrder,btn.dataset.chatReport)});
   box.scrollTop=box.scrollHeight;
 }
 let riderChatSend=null;
@@ -1869,15 +1870,43 @@ function closeChat(){
   const stage=document.querySelector('.stage');if(stage)stage.style.display='block';
   switchTab(returnTab);
 }
+function qgChatGateScreen(o,state){
+  document.getElementById('chat-screen')?.remove();
+  S.chatReturnTab=S.activeTab||'home';S.chatOrder=o;
+  const stage=document.querySelector('.stage');if(stage)stage.style.display='none';
+  const screen=document.createElement('section');screen.id='chat-screen';screen.className='qg-chat-page show';document.getElementById('app').appendChild(screen);
+  const blocked=state?.blockedByMe||state?.blockedMe;
+  screen.innerHTML=`<header class="qg-chat-head"><button class="qg-icon-btn" id="chat-back">${QTICON.back}</button><div><b>${blocked?'แชตถูกจำกัด':'กติกาการแชต'}</b><small>#${esc(qgShortOrder(o))}</small></div><span></span></header><div style="padding:18px;max-width:620px;margin:auto;width:100%">${blocked?`<section class="qg-support-dialog"><h2>แชตถูกจำกัด</h2><p>${state.blockedByMe?'คุณบล็อกลูกค้าคนนี้ไว้':'คู่สนทนาได้บล็อกการแชตไว้'} การบล็อกแชตไม่ยกเลิกหน้าที่ในการส่งออเดอร์</p>${state.blockedByMe?'<button type="button" id="qg-chat-unblock">ปลดบล็อกและเปิดแชต</button>':''}</section>`:`<section class="qg-support-dialog"><h2>ก่อนเริ่มแชต</h2><p>ใช้แชตเพื่อประสานงานออเดอร์เท่านั้น ห้ามคุกคาม สแปม หลอกลวง ส่งเนื้อหาไม่เหมาะสม หรือเผยแพร่ข้อมูลส่วนบุคคลที่ไม่จำเป็น</p><p><a href="${esc(QueueGoUGC.guidelinesUrl())}" target="_blank" rel="noopener">อ่านกติกาชุมชน QueueGo</a></p><button type="button" id="qg-chat-accept-terms">ยอมรับกติกาและเปิดแชต</button></section>`}</div>`;
+  screen.querySelector('#chat-back').onclick=closeChat;
+  const accept=screen.querySelector('#qg-chat-accept-terms');if(accept)accept.onclick=async()=>{accept.disabled=true;try{await QueueGoUGC.accept();screen.remove();if(stage)stage.style.display='block';S.chatOrder=null;await openChat(o)}catch(e){toast(e.message||'ยอมรับกติกาไม่สำเร็จ');accept.disabled=false}};
+  const unblock=screen.querySelector('#qg-chat-unblock');if(unblock)unblock.onclick=async()=>{unblock.disabled=true;try{await QueueGoUGC.unblock(o.id);screen.remove();if(stage)stage.style.display='block';S.chatOrder=null;await openChat(o)}catch(e){toast(e.message||'ปลดบล็อกไม่สำเร็จ');unblock.disabled=false}};
+}
+function qgOpenRiderChatReport(o,messageId){
+  document.getElementById('qg-chat-report-overlay')?.remove();
+  const overlay=document.createElement('section');overlay.id='qg-chat-report-overlay';overlay.className='qg-support-overlay';
+  overlay.innerHTML=`<div class="qg-support-dialog"><header><b>รายงานเนื้อหาแชต</b><button type="button" data-close>✕</button></header><form id="qg-chat-report-form"><label>เหตุผล<select name="reason"><option value="harassment">คุกคาม / กลั่นแกล้ง</option><option value="inappropriate">เนื้อหาไม่เหมาะสม</option><option value="spam">สแปม</option><option value="fraud">หลอกลวง / ฉ้อโกง</option><option value="safety">ความปลอดภัย</option><option value="other">อื่น ๆ</option></select></label><label>รายละเอียด<textarea name="details" maxlength="1000" rows="4" placeholder="อธิบายเพิ่มเติม (ไม่บังคับ)"></textarea></label><button type="submit">ส่งรายงาน</button></form></div>`;
+  document.body.appendChild(overlay);overlay.querySelector('[data-close]').onclick=()=>overlay.remove();overlay.onclick=e=>{if(e.target===overlay)overlay.remove()};
+  overlay.querySelector('#qg-chat-report-form').onsubmit=async e=>{e.preventDefault();const b=e.currentTarget.querySelector('button[type="submit"]');b.disabled=true;try{await QueueGoUGC.report(o.id,messageId||null,e.currentTarget.elements.reason.value,e.currentTarget.elements.details.value.trim());toast('ส่งรายงานให้ QueueGo ตรวจสอบแล้ว');overlay.remove()}catch(err){toast(err.message||'ส่งรายงานไม่สำเร็จ');b.disabled=false}};
+}
+function qgOpenRiderChatSafety(o){
+  document.getElementById('qg-chat-safety-overlay')?.remove();
+  const overlay=document.createElement('section');overlay.id='qg-chat-safety-overlay';overlay.className='qg-support-overlay';
+  overlay.innerHTML=`<div class="qg-support-dialog"><header><b>ความปลอดภัยแชต</b><button type="button" data-close>✕</button></header><div style="display:grid;gap:9px"><button type="button" data-report>รายงานคู่สนทนา</button><button type="button" data-block>บล็อกลูกค้า</button><a href="${esc(QueueGoUGC.guidelinesUrl())}" target="_blank" rel="noopener">อ่านกติกาชุมชน QueueGo</a></div></div>`;
+  document.body.appendChild(overlay);overlay.querySelector('[data-close]').onclick=()=>overlay.remove();overlay.onclick=e=>{if(e.target===overlay)overlay.remove()};
+  overlay.querySelector('[data-report]').onclick=()=>{overlay.remove();qgOpenRiderChatReport(o,null)};
+  overlay.querySelector('[data-block]').onclick=async()=>{if(!confirm('บล็อกลูกค้าคนนี้จากการส่งข้อความใหม่? การบล็อกไม่ยกเลิกออเดอร์'))return;try{await QueueGoUGC.block(o.id);toast('บล็อกคู่สนทนาแล้ว');overlay.remove();closeChat();await openChat(o)}catch(e){toast(e.message||'บล็อกไม่สำเร็จ')}};
+}
 async function openChat(o){
   if(!riderChatOpen(o)){toast('แชทปิดแล้ว ระบบให้ติดต่อกันได้ 30 นาทีหลังจบงาน');return}
+  let moderation;try{moderation=await QueueGoUGC.state(o.id)}catch(e){toast('ตรวจสอบความปลอดภัยแชตไม่สำเร็จ');return}
+  if(!moderation?.accepted||moderation.blockedByMe||moderation.blockedMe){qgChatGateScreen(o,moderation);return}
   const previous=document.getElementById('chat-screen');if(previous?._expiryTimer)clearTimeout(previous._expiryTimer);previous?.remove();
   S.chatReturnTab=S.activeTab||'home';
   S.chatOrder=o;
   const stage=document.querySelector('.stage');if(stage)stage.style.display='none';
   const screen=document.createElement('section');screen.id='chat-screen';screen.className='qg-chat-page show';document.getElementById('app').appendChild(screen);
   const cust=o._customer||{};
-  screen.innerHTML=`<header class="qg-chat-head"><button class="qg-icon-btn" id="chat-back">${QTICON.back}</button><div><b>${esc(cust.name||'ลูกค้า')}</b><small>#${esc(qgShortOrder(o))}</small></div><span></span></header>
+  screen.innerHTML=`<header class="qg-chat-head"><button class="qg-icon-btn" id="chat-back">${QTICON.back}</button><div><b>${esc(cust.name||'ลูกค้า')}</b><small>#${esc(qgShortOrder(o))}</small></div><button type="button" class="qg-icon-btn" id="chat-safety" aria-label="ความปลอดภัยแชต">⋯</button></header>
     ${o.status==='completed'?'<div style="padding:7px 12px;text-align:center;font-size:10px;color:#8a8387;background:#fff8f9">หลังจบงานแชทจะปิดและถูกลบอัตโนมัติ · เหลือประมาณ '+riderChatMinutesLeft(o)+' นาที</div>':''}
     <div class="qg-chat-box" id="chat-box"><div class="qg-loading">กำลังโหลดข้อความ...</div></div>
     ${quickMessagesHTML()}
@@ -1887,7 +1916,7 @@ async function openChat(o){
       <input id="chat-input" maxlength="500" autocomplete="off" placeholder="พิมพ์ข้อความ..." required>
       <button type="submit" aria-label="ส่ง">➤</button>
     </form>`;
-  document.getElementById('chat-back').onclick=closeChat;
+  document.getElementById('chat-back').onclick=closeChat;document.getElementById('chat-safety').onclick=()=>qgOpenRiderChatSafety(o);
   document.getElementById('chat-form').onsubmit=async e=>{e.preventDefault();await sendRiderChat(o)};
   document.getElementById('chat-photo').onclick=()=>document.getElementById('chat-photo-input').click();
   document.getElementById('chat-photo-input').onchange=async e=>{
