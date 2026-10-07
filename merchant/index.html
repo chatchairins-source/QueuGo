@@ -2163,7 +2163,7 @@ window.renderShopOrdersModern=function(){const u=shopUser();if(!u)return navigat
 {const host=document.querySelector('.qgm-content');if(host&&qgmKitchenEnabledFor(u)){const b=document.createElement('button');b.className='qgm-outline qgm-inline-action';b.textContent='เปิดโหมดครัว';b.onclick=qgOpenKitchen;host.prepend(b)}}
 };
 
-const QGM_PREP_WINDOW_MS=30*60*1000;
+const QGM_PREP_WINDOW_MS=20*60*1000;
 let qgmPrepCountdownTimer=null;
 function qgmPrepCountdownText(startedAt){
  const start=Number(startedAt),left=Math.max(0,QGM_PREP_WINDOW_MS-(Date.now()-start));
@@ -2181,7 +2181,7 @@ function qgmUpdatePrepCountdown(){
  if(out)out.textContent=value.text;
  el.classList.toggle('expired',value.left<=0);
  const label=el.querySelector('[data-qgm-prep-label]');
- if(label)label.textContent=value.left>0?'เวลาเตรียมสินค้าคงเหลือ':'ครบกำหนดเวลาเตรียมสินค้า 30 นาที';
+ if(label)label.textContent=value.left>0?'เวลาเตรียมสินค้าคงเหลือ':'ครบกำหนดเวลาเตรียมสินค้า 20 นาที';
 }
 function qgmStartPrepCountdown(){
  if(qgmPrepCountdownTimer)clearInterval(qgmPrepCountdownTimer);
@@ -2205,7 +2205,7 @@ window.renderShopOrderModern=function(id){
  const arrived=o.riderArrivedShopAt?`<div class="qgm-od-arrived">Rider ถึงร้านแล้ว · ${new Date(o.riderArrivedShopAt).toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'})} น.</div>`:'';
  const customerPhone=o.customerPhone?`<a class="qgm-od-call" href="tel:${esc(o.customerPhone)}" aria-label="โทรหาลูกค้า">${svg('phone')}</a>`:'';
  const prepCountdown=(String(o.status||'')==='preparing'&&Number.isFinite(Number(o.preparingAt)))
-   ?`<div class="qgm-od-prep-countdown" data-qgm-prep-start="${Number(o.preparingAt)}"><span data-qgm-prep-label>เวลาเตรียมสินค้าคงเหลือ</span><strong data-qgm-prep-remaining>30:00</strong><small>เริ่มนับทันทีเมื่อร้านกด “เริ่มเตรียมสินค้า”</small></div>`
+   ?`<div class="qgm-od-prep-countdown" data-qgm-prep-start="${Number(o.preparingAt)}"><span data-qgm-prep-label>เวลาเตรียมสินค้าคงเหลือ</span><strong data-qgm-prep-remaining>20:00</strong><small>เริ่มนับทันทีเมื่อร้านกด “เริ่มเตรียมสินค้า”</small></div>`
    :'';
  const stepLabels=['ออเดอร์เข้า','ร้านรับ','เตรียมสินค้า','กำลังจัดส่ง','สำเร็จ'];
  const orderState=String(o.status||'').toLowerCase();
