@@ -3,12 +3,12 @@
   "github": {
     "repository": "chatchairins-source/QueuGo",
     "source_of_truth": "main",
-    "head_at_manifest": "a90ad559fe015b2a1012ecc5d27bf039668b2cb1",
+    "head_at_manifest": "75a60ef35d86370083b954d2cbdb60da11a68459",
     "previous_backup_branch": "backup-pre-closed-beta-20261007-0035",
     "latest_backup_branch": "backup-native-push-pre-closed-beta-20261007-0725",
-    "certified_source_commit": "6bc4a5bc73ccffe9f4387ac99f25a8a10a43eafb",
+    "certified_source_commit": "75a60ef35d86370083b954d2cbdb60da11a68459",
     "rc_tests": {
-      "run_id": 37559862183,
+      "run_id": 37560041087,
       "status": "SUCCESS"
     },
     "chat_retention_tests": {
@@ -16,8 +16,8 @@
       "status": "SUCCESS"
     },
     "pages_deployment_last_checked": {
-      "run_id": 37559861611,
-      "status": "IN_PROGRESS_AT_MANIFEST_UPDATE"
+      "run_id": 37560040566,
+      "status": "SUCCESS"
     }
   },
   "release_gates": {
@@ -173,6 +173,7 @@
     "transaction_smoke_test": "PASS",
     "chat_retention_test": "PASS",
     "privacy_snapshot_cleanup": true,
-    "source_migration": "20261007005927_queuego_ugc_chat_moderation.sql"
+    "source_migration": "20261007005927_queuego_ugc_chat_moderation.sql",
+    "admin_snapshot_image_review": true
   }
 }
