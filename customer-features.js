@@ -15,6 +15,18 @@ const QGCustomer=(()=>{
   const note=value=>String(value||'').replace(/^__QT_ORDER_STATUS__=[^\n\\]*(?:\\n|\n|$)/,'');
   function leave(){for(const f of cleanups.splice(0))try{f()}catch(e){}}
   function poll(task,delay=5000){let stopped=false,timer;const run=async()=>{if(stopped)return;try{if(!document.hidden&&navigator.onLine!==false)await task()}catch(e){}finally{if(!stopped)timer=setTimeout(run,delay)}};timer=setTimeout(run,delay);cleanups.push(()=>{stopped=true;clearTimeout(timer)});}
+  function riderSearchElapsedText(startedAt){
+    const start=Date.parse(startedAt||'');
+    if(!Number.isFinite(start))return 'กำลังค้นหา';
+    const sec=Math.max(0,Math.floor((Date.now()-start)/1000)),min=Math.floor(sec/60),rem=sec%60;
+    return String(min).padStart(2,'0')+':'+String(rem).padStart(2,'0');
+  }
+  function startRiderSearchClock(startedAt){
+    const el=$('qg-rider-search-elapsed');if(!el)return;
+    let stopped=false,timer=null;
+    const paint=()=>{if(stopped||!el.isConnected)return;el.textContent=riderSearchElapsedText(startedAt);timer=setTimeout(paint,1000)};
+    paint();cleanups.push(()=>{stopped=true;clearTimeout(timer)});
+  }
   async function context(id){return db('rpc/qg_customer_order_context',{method:'POST',body:{p_order_id:id}})}
   async function cancel(id,market=false){if(!confirm('ยกเลิกคำสั่งซื้อนี้?'))return;const key=actor();try{await db(market?'rpc/qg_customer_cancel_market_order':'rpc/qg_customer_cancel_order',{method:'POST',body:market?{p_market_order_id:id}:{p_order_id:id}})}catch(e){if(actor()===key)toast(e.message);return}if(actor()===key){toast('ยกเลิกออเดอร์แล้ว');try{route()}catch(e){console.warn('customer cancel post-commit render failed',e)}}}
   async function favorite(kind,id,button){if(!S.get())return go('login');if(!['shop','product'].includes(kind))return;const key=actor();button.disabled=true;try{const rows=await db('qg_customer_favorites?select=id&user_id=eq.'+encodeURIComponent(S.get().userId)+'&'+kind+'_id=eq.'+encodeURIComponent(id));if(actor()!==key)return;const yes=rows.length>0;await db(yes?'qg_customer_favorites?id=eq.'+encodeURIComponent(rows[0].id):'qg_customer_favorites',{method:yes?'DELETE':'POST',body:yes?undefined:{user_id:S.get().userId,[kind+'_id']:id}});if(actor()===key&&button.isConnected){button.setAttribute('aria-pressed',String(!yes));button.textContent=yes?'♡':'♥'}}catch(e){if(actor()===key)toast('บันทึกรายการโปรดไม่สำเร็จ')}finally{if(actor()===key&&button.isConnected)button.disabled=false}}
@@ -134,7 +146,9 @@ const QGCustomer=(()=>{
       chatOpen=chatAvailable(o),
       visibleStatus=o.status==='in_progress'&&o.rider_arrived_customer_at?'arrived':o.status,
       stage=o.status==='completed'?4:['in_progress','picked_up'].includes(o.status)?3:['rider_assigned','assigned','preparing','ready'].includes(o.status)?2:['accepted','searching_rider'].includes(o.status)?1:0,
-      stageLabels=['สั่งซื้อ','หารายเดอร์','รับสินค้า','กำลังส่ง','สำเร็จ'],
+      stageLabels=['สั่งซื้อ','หาไรเดอร์','รับสินค้า','กำลังส่ง','สำเร็จ'],
+      searching=o.status==='searching_rider',
+      searchStartedAt=o.rider_search_started_at||o.updated_at||o.created_at,
       orderNote=note(o.note).trim(),
       statusTime=['completed','cancelled','no_rider_available'].includes(o.status)?(o.completed_at||o.updated_at||o.created_at):visibleStatus==='arrived'?(o.rider_arrived_customer_at||o.updated_at||o.created_at):o.created_at;
 
@@ -159,6 +173,24 @@ const QGCustomer=(()=>{
         </div>
       </section>
 
+      ${searching?`<section class="qg-rider-search-card" aria-live="polite">
+        <div class="qg-rider-search-head">
+          <span class="qg-rider-search-symbol" aria-hidden="true"><i></i></span>
+          <div class="qg-rider-search-copy">
+            <small>ระบบกำลังทำงาน</small>
+            <h2>กำลังติดต่อ Rider ที่พร้อมรับงาน</h2>
+            <p>QueueGo เสนอออเดอร์ให้ Rider ทีละคน เพื่อไม่ให้เกิดการแย่งงาน</p>
+          </div>
+          <span class="qg-rider-search-badge">กำลังค้นหา</span>
+        </div>
+        <div class="qg-rider-search-flow">
+          <div class="qg-rider-search-step active"><span>1</span><div><b>เลือกรายเดอร์ที่เหมาะสม</b><small>พิจารณา Rider ที่ออนไลน์และพร้อมรับงานใกล้จุดรับสินค้า</small></div></div>
+          <div class="qg-rider-search-step"><span>2</span><div><b>รอการตอบรับสูงสุด 30 วินาที</b><small>ออเดอร์ถูกเสนอให้ Rider เพียงคนเดียวในแต่ละรอบ</small></div></div>
+          <div class="qg-rider-search-step"><span>3</span><div><b>ส่งต่อให้ Rider คนถัดไปอัตโนมัติ</b><small>หากปฏิเสธหรือหมดเวลา ระบบจะดำเนินการต่อเอง</small></div></div>
+        </div>
+        <div class="qg-rider-search-foot"><span>ค้นหามา <b id="qg-rider-search-elapsed">${esc(riderSearchElapsedText(searchStartedAt))}</b></span><span>หน้านี้อัปเดตอัตโนมัติ</span></div>
+      </section>`:''}
+
       ${r?`<section class="qg-order-card">
         <div class="qg-order-section-head"><b>${o.status==='completed'?'ผู้จัดส่ง':'Rider ของคุณ'}</b><small>${o.status==='completed'?'จัดส่งสำเร็จ':o.status==='cancelled'?'ออเดอร์ยกเลิกแล้ว':'กำลังดูแลออเดอร์นี้'}</small></div>
         <div class="qg-order-rider">
@@ -172,9 +204,9 @@ const QGCustomer=(()=>{
       </section>`:''}
 
       ${!closed?`<section class="qg-order-card qg-order-map-card">
-        <div class="qg-order-map-head"><b>ติดตามการจัดส่ง</b><span class="qg-live-dot">อัปเดตตำแหน่ง</span></div>
-        <div id="customer-tracking-map" class="mapbox qg-order-map"></div>
-        <p class="sm qg-order-location-status" id="tracking-location-status">กำลังโหลดตำแหน่งล่าสุด</p>
+        <div class="qg-order-map-head"><b>${searching?'พื้นที่ค้นหา Rider':'ติดตามการจัดส่ง'}</b><span class="qg-live-dot ${searching?'searching':''}">${searching?'ค้นหาอัตโนมัติ':'อัปเดตตำแหน่ง'}</span></div>
+        <div id="customer-tracking-map" class="mapbox qg-order-map ${searching?'qg-order-map-searching':''}"></div>
+        <p class="sm qg-order-location-status" id="tracking-location-status">${searching?'กำลังค้นหา Rider ที่พร้อมรับงานใกล้ร้าน':'กำลังโหลดตำแหน่งล่าสุด'}</p>
       </section>`:''}
 
       <section class="qg-order-card">
@@ -194,11 +226,12 @@ const QGCustomer=(()=>{
     </div>`,'orders');
 
     orderSnapshot={id,actor:key,version:orderVersion(o),closed};
+    if(searching)startRiderSearchClock(searchStartedAt);
     if(!closed)track(o,ctx,ticket,key);
     if(o.status==='completed')await reviewForm(o,ticket,key);
   }
-  function track(o,ctx,ticket,key){const host=$('customer-tracking-map');if(!host)return;if(typeof longdo==='undefined'){const status=$('tracking-location-status');if(status)status.textContent='ยังโหลดแผนที่ไม่ได้ กรุณาลองเปิดออเดอร์ใหม่';return;}const map=new longdo.Map({placeholder:host,language:'th',zoom:14});map.Ui.LayerSelector.visible(false);let marker=null;const points=[];function point(lat,lon,title,color,record=true){if(!qgIsValidCoordinate(lat,lon,true))return null;const loc={lat:Number(lat),lon:Number(lon)};const m=new longdo.Marker(loc,{title,icon:{html:`<div style="width:20px;height:20px;border-radius:50%;background:${color};border:3px solid white"></div>`}});map.Overlays.add(m);if(record)points.push(loc);return m}point(o.pickup_latitude,o.pickup_longitude,'ร้านค้า','#087556');point(o.delivery_latitude,o.delivery_longitude,'จุดส่ง','#e6002d');if(points[0])map.location(points[0],true);
-    const draw=r=>{if(!owned(key,ticket)||!host.isConnected)return;const live=r&&qgIsValidCoordinate(r.latitude,r.longitude,true)&&!['completed','cancelled'].includes(o.status);if(marker){map.Overlays.remove(marker);marker=null}if(live){marker=point(r.latitude,r.longitude,'Rider · ตำแหน่งล่าสุด','#1677ff',false);$('tracking-location-status').textContent='ตำแหน่งล่าสุด · '+date(r.updated_at)+(Date.now()-new Date(r.updated_at).getTime()>120000?' · ยังไม่ได้อัปเดตใหม่':'')}else $('tracking-location-status').textContent=['completed','cancelled'].includes(o.status)?'ออเดอร์จบแล้ว':'รอข้อมูลตำแหน่งจริงจาก Rider'};draw(ctx.rider);cleanups.push(()=>{map.Overlays.clear();map.pause(true);host.replaceChildren()});if(!['completed','cancelled'].includes(o.status))poll(async()=>{const next=await context(o.id);draw(next.rider)},7000);
+  function track(o,ctx,ticket,key){const host=$('customer-tracking-map');if(!host)return;if(typeof longdo==='undefined'){const status=$('tracking-location-status');if(status)status.textContent='ยังโหลดแผนที่ไม่ได้ กรุณาลองเปิดออเดอร์ใหม่';return;}const map=new longdo.Map({placeholder:host,language:'th',zoom:14});map.Ui.LayerSelector.visible(false);let marker=null;const points=[];function point(lat,lon,title,color,record=true,html=''){if(!qgIsValidCoordinate(lat,lon,true))return null;const loc={lat:Number(lat),lon:Number(lon)};const iconHtml=html||`<div style="width:20px;height:20px;border-radius:50%;background:${color};border:3px solid white"></div>`;const m=new longdo.Marker(loc,{title,icon:{html:iconHtml}});map.Overlays.add(m);if(record)points.push(loc);return m}point(o.pickup_latitude,o.pickup_longitude,'ร้านค้า','#087556');point(o.delivery_latitude,o.delivery_longitude,'จุดส่ง','#e6002d');if(o.status==='searching_rider')point(o.pickup_latitude,o.pickup_longitude,'กำลังค้นหา Rider','',false,'<div class="qg-rider-search-map-pulse"><i></i><b></b><span></span></div>');if(points[0])map.location(points[0],true);
+    const draw=r=>{if(!owned(key,ticket)||!host.isConnected)return;const status=$('tracking-location-status');if(o.status==='searching_rider'){if(marker){map.Overlays.remove(marker);marker=null}if(status)status.textContent='กำลังค้นหา Rider ที่พร้อมรับงานใกล้ร้าน · ระบบจะส่งต่ออัตโนมัติ';return}const live=r&&qgIsValidCoordinate(r.latitude,r.longitude,true)&&!['completed','cancelled'].includes(o.status);if(marker){map.Overlays.remove(marker);marker=null}if(live){marker=point(r.latitude,r.longitude,'Rider · ตำแหน่งล่าสุด','#1677ff',false);if(status)status.textContent='ตำแหน่งล่าสุด · '+date(r.updated_at)+(Date.now()-new Date(r.updated_at).getTime()>120000?' · ยังไม่ได้อัปเดตใหม่':'')}else if(status)status.textContent=['completed','cancelled'].includes(o.status)?'ออเดอร์จบแล้ว':'รอข้อมูลตำแหน่งจริงจาก Rider'};draw(ctx.rider);cleanups.push(()=>{map.Overlays.clear();map.pause(true);host.replaceChildren()});if(!['completed','cancelled'].includes(o.status))poll(async()=>{const next=await context(o.id);draw(next.rider)},7000);
   }
   async function reviewForm(o,ticket,key,edit=false){
     const mine=await db('reviews?select=*&order_id=eq.'+encodeURIComponent(o.id)+'&customer_id=eq.'+encodeURIComponent(S.get().userId)+'&limit=1');
