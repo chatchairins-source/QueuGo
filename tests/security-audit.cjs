@@ -20,8 +20,11 @@ ok(!/grant\s+execute[^;]+to\s+(public|anon)\s*;/i.test(sql),'hardening migration
 const customer=fs.readFileSync(path.join(root,'index.html'),'utf8');
 const merchant=fs.readFileSync(path.join(root,'merchant/index.html'),'utf8');
 const rider=fs.readFileSync(path.join(root,'rider/index.html'),'utf8');
-ok(customer.includes('password.length<8')&&customer.includes('minlength="8"'),'Customer signup must require at least 8 characters');
-ok(merchant.includes('password.length<8')&&merchant.includes('minlength="8"'),'Merchant signup must require at least 8 characters');
-ok(rider.includes('password.length<8')&&rider.includes('minlength="8"'),'Rider signup must require at least 8 characters');
+const passwordPolicy=fs.readFileSync(path.join(root,'queuego-password-policy.js'),'utf8');
+ok(/MIN_LENGTH=12/.test(passwordPolicy)&&/\[a-z\]/.test(passwordPolicy)&&/\[A-Z\]/.test(passwordPolicy)&&/\[0-9\]/.test(passwordPolicy),'Shared password policy must require 12 chars plus upper/lower/number/symbol');
+for(const [role,source,inputId] of [['Customer',customer,'rw'],['Merchant',merchant,'reg-password'],['Rider',rider,'rr-password']]){
+ ok(source.includes('queuego-password-policy.js')&&source.includes('QueueGoPasswordPolicy'),'Shared password policy must protect '+role+' signup');
+ ok(new RegExp('id="'+inputId+'"[^>]*minlength="12"').test(source),role+' signup must require at least 12 characters');
+}
 
-console.log(JSON.stringify({checks,failures:0,scope:'QueueGo pilot Data API/SECURITY DEFINER surface hardening, explicit server-only RLS deny, and signup password minimum'}));
+console.log(JSON.stringify({checks,failures:0,scope:'QueueGo pilot Data API/SECURITY DEFINER hardening, explicit server-only RLS deny, and shared 12-character signup password policy'}));
