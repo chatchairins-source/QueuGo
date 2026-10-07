@@ -3,7 +3,7 @@
   "github": {
     "repository": "chatchairins-source/QueuGo",
     "source_of_truth": "main",
-    "head_at_manifest": "8d1d162f89828aadf66d31621ddbc4d72c125e95",
+    "head_at_manifest": "1a7118b17ca56f5240546785206914726c280950",
     "previous_backup_branch": "backup-pre-closed-beta-20261007-0035",
     "latest_backup_branch": "backup-native-push-pre-closed-beta-20261007-0725"
   },
@@ -40,8 +40,8 @@
     "database_version": "17.6.1.166",
     "region": "ap-southeast-2",
     "latest_migration": [
-      "20261006173656",
-      "queuego_native_push_transport"
+      "20261007004045",
+      "pilot_fk_index_coverage"
     ],
     "edge_functions": [
       {
@@ -52,7 +52,7 @@
       },
       {
         "slug": "queuego-push",
-        "version": 3,
+        "version": 6,
         "status": "ACTIVE",
         "verify_jwt": false
       },
@@ -74,7 +74,17 @@
       "QG_SUPABASE_DB_URL",
       "QG_SUPABASE_SERVICE_ROLE_KEY",
       "QG_BACKUP_PASSPHRASE"
-    ]
+    ],
+    "backup_secret_readiness": {
+      "checked_by_github_actions": true,
+      "run_id": 37553305666,
+      "ready": false,
+      "missing": [
+        "QG_SUPABASE_DB_URL",
+        "QG_SUPABASE_SERVICE_ROLE_KEY",
+        "QG_BACKUP_PASSPHRASE"
+      ]
+    }
   },
   "notifications": {
     "unified_outbox": true,
@@ -86,7 +96,10 @@
       "GitHub Actions secret QG_FIREBASE_GOOGLE_SERVICES_JSON_B64 has not been proven by an Android Release run.",
       "Supabase Edge secret FIREBASE_SERVICE_ACCOUNT_JSON cannot be verified from the available connector.",
       "No physical Android device has registered a native token and received a background notification yet."
-    ]
+    ],
+    "firebase_edge_secret_checked": true,
+    "firebase_edge_secret_configured": false,
+    "firebase_edge_secret_name": "FIREBASE_SERVICE_ACCOUNT_JSON"
   },
   "android": {
     "capacitor_version": "8.0.0",
@@ -95,11 +108,30 @@
     "hard_gate_blocks_build_without_restore_certification": true,
     "hard_gate_blocks_build_without_firebase_config": true,
     "hard_gate_blocks_build_without_security_platform_auth": true,
-    "hard_gate_blocks_build_without_physical_notification_certification": true
+    "hard_gate_blocks_build_without_physical_notification_certification": true,
+    "release_secret_readiness": {
+      "checked_by_github_actions": true,
+      "run_id": 37553473151,
+      "ready": false,
+      "missing": [
+        "QG_FIREBASE_GOOGLE_SERVICES_JSON_B64",
+        "QG_ANDROID_KEYSTORE_B64",
+        "QG_ANDROID_STORE_PASSWORD",
+        "QG_ANDROID_KEY_ALIAS",
+        "QG_ANDROID_KEY_PASSWORD"
+      ]
+    }
   },
   "security": {
     "code_surface_hardened": true,
     "leaked_password_protection_enabled": false,
     "leaked_password_protection_blocker": "Supabase Security Advisor still reports Auth leaked-password protection disabled. The available connector cannot change this Auth platform setting."
+  },
+  "performance": {
+    "auth_rls_initplan_warnings_before": 13,
+    "auth_rls_initplan_warnings_after": 0,
+    "unindexed_foreign_keys_before": 44,
+    "unindexed_foreign_keys_after_pilot_coverage": 27,
+    "note": "Remaining unindexed FKs are outside the selected active Pilot paths or lower priority; no broad over-indexing was applied."
   }
 }
