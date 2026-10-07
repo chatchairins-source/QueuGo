@@ -72,7 +72,8 @@ const QGCustomer=(()=>{
       chatOpen=chatAvailable(o),
       stage=o.status==='completed'?4:o.status==='in_progress'||o.status==='picked_up'?3:['rider_assigned','preparing','ready'].includes(o.status)?2:o.status==='searching_rider'?1:0,
       stageLabels=['สั่งซื้อ','หารายเดอร์','รับสินค้า','กำลังส่ง','สำเร็จ'],
-      orderNote=note(o.note).trim();
+      orderNote=note(o.note).trim(),
+      statusTime=o.status==='completed'?(o.completed_at||o.updated_at||o.created_at):o.created_at;
 
     layout(`<div class="qg-order-page">
       <div class="pt"><button class="back" onclick="go('orders')">${ico('back')}</button><h1>${esc(customerOrderNumber(o))}</h1></div>
@@ -80,7 +81,7 @@ const QGCustomer=(()=>{
       <section class="qg-order-hero">
         <div class="qg-order-hero-top">
           <div><span class="qg-order-kicker">สถานะล่าสุด</span><strong class="qg-order-status">${esc(STATUS_LABEL[o.status]||o.status)}</strong></div>
-          <span class="qg-order-time">${esc(date(o.created_at))}</span>
+          <span class="qg-order-time">${esc(date(statusTime))}</span>
         </div>
         ${o.status!=='cancelled'?`<div class="qg-order-progress">${stageLabels.map((label,i)=>`<span class="qg-order-step ${i<=stage?'on':''}">${label}</span>`).join('')}</div>`:''}
         <div class="qg-order-place">
@@ -96,7 +97,7 @@ const QGCustomer=(()=>{
       </section>
 
       ${r?`<section class="qg-order-card">
-        <div class="qg-order-section-head"><b>Rider ของคุณ</b><small>${closed?'งานสิ้นสุดแล้ว':'กำลังดูแลออเดอร์นี้'}</small></div>
+        <div class="qg-order-section-head"><b>${o.status==='completed'?'ผู้จัดส่ง':'Rider ของคุณ'}</b><small>${o.status==='completed'?'จัดส่งสำเร็จ':o.status==='cancelled'?'ออเดอร์ยกเลิกแล้ว':'กำลังดูแลออเดอร์นี้'}</small></div>
         <div class="qg-order-rider">
           ${safeImage(r.photo)?`<img class="qg-order-rider-photo" src="${esc(safeImage(r.photo))}" alt="รูป Rider">`:`<div class="qg-order-rider-fallback">${esc(String(r.name||'R').slice(0,1).toUpperCase())}</div>`}
           <div class="qg-order-rider-copy"><b>${esc(r.name||'Rider')}</b><span>${esc([r.vehicle_type,r.vehicle_plate].filter(Boolean).join(' ')||'ข้อมูลรถกำลังอัปเดต')}</span></div>
@@ -107,11 +108,11 @@ const QGCustomer=(()=>{
         </div>
       </section>`:''}
 
-      <section class="qg-order-card qg-order-map-card">
+      ${!closed?`<section class="qg-order-card qg-order-map-card">
         <div class="qg-order-map-head"><b>ติดตามการจัดส่ง</b><span class="qg-live-dot">อัปเดตตำแหน่ง</span></div>
         <div id="customer-tracking-map" class="mapbox qg-order-map"></div>
         <p class="sm qg-order-location-status" id="tracking-location-status">กำลังโหลดตำแหน่งล่าสุด</p>
-      </section>
+      </section>`:''}
 
       <section class="qg-order-card">
         <div class="qg-order-section-head"><b>รายการสินค้า</b><small>${items.reduce((sum,i)=>sum+Number(i.quantity||0),0)} ชิ้น</small></div>
@@ -129,8 +130,8 @@ const QGCustomer=(()=>{
       ${o.status==='completed'?'<section class="qg-order-card" id="customer-review">กำลังโหลดรีวิว…</section>':''}
     </div>`,'orders');
 
-    orderSnapshot={id,actor:key,version:orderVersion(o)};
-    track(o,ctx,ticket,key);
+    orderSnapshot={id,actor:key,version:orderVersion(o),closed};
+    if(!closed)track(o,ctx,ticket,key);
     if(o.status==='completed')await reviewForm(o,ticket,key);
   }
   function track(o,ctx,ticket,key){const host=$('customer-tracking-map');if(!host)return;if(typeof longdo==='undefined'){const status=$('tracking-location-status');if(status)status.textContent='ยังโหลดแผนที่ไม่ได้ กรุณาลองเปิดออเดอร์ใหม่';return;}const map=new longdo.Map({placeholder:host,language:'th',zoom:14});map.Ui.LayerSelector.visible(false);let marker=null;const points=[];function point(lat,lon,title,color,record=true){if(!qgIsValidCoordinate(lat,lon,true))return null;const loc={lat:Number(lat),lon:Number(lon)};const m=new longdo.Marker(loc,{title,icon:{html:`<div style="width:20px;height:20px;border-radius:50%;background:${color};border:3px solid white"></div>`}});map.Overlays.add(m);if(record)points.push(loc);return m}point(o.pickup_latitude,o.pickup_longitude,'ร้านค้า','#087556');point(o.delivery_latitude,o.delivery_longitude,'จุดส่ง','#e6002d');if(points[0])map.location(points[0],true);
@@ -219,7 +220,7 @@ const QGCustomer=(()=>{
     };
   }
   const orderVersion=o=>JSON.stringify([o.status,o.rider_id,o.total_amount,o.delivery_fee,o.bundle_customer_savings,o.note]);
-  async function needsOrderRefresh(id){if(!orderSnapshot||orderSnapshot.id!==id||orderSnapshot.actor!==actor()||!$('customer-tracking-map'))return true;const key=actor(),hash=location.hash;try{const rows=await db('orders?select=status,rider_id,total_amount,delivery_fee,bundle_customer_savings,note&id=eq.'+encodeURIComponent(id)+'&customer_id=eq.'+encodeURIComponent(S.get().userId)+'&limit=1');if(actor()!==key||location.hash!==hash)return false;return !rows[0]||orderVersion(rows[0])!==orderSnapshot.version}catch(e){return false}}
+  async function needsOrderRefresh(id){if(!orderSnapshot||orderSnapshot.id!==id||orderSnapshot.actor!==actor()||(!orderSnapshot.closed&&!$('customer-tracking-map')))return true;const key=actor(),hash=location.hash;try{const rows=await db('orders?select=status,rider_id,total_amount,delivery_fee,bundle_customer_savings,note&id=eq.'+encodeURIComponent(id)+'&customer_id=eq.'+encodeURIComponent(S.get().userId)+'&limit=1');if(actor()!==key||location.hash!==hash)return false;return !rows[0]||orderVersion(rows[0])!==orderSnapshot.version}catch(e){return false}}
   const chatKey=id=>'qg_customer_chat_pending_'+S.get()?.userId+'_'+id;
   function chatBody(message){const text=String(message||'');if(text.startsWith('__IMG__')){const image=safeImage(text.slice(7));return image?`<img class="chat-image" src="${esc(image)}" alt="รูปในแชท">`:'รูปภาพไม่พร้อมแสดง'}return esc(text)}
   async function customerChatGate(id,ticket,key){
