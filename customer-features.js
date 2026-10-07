@@ -167,7 +167,7 @@ const QGCustomer=(()=>{
           <span>ร้าน ${esc(ctx.shop?.name||'ร้านค้า')}${orderNote?` · ${esc(orderNote)}`:''}</span>
         </div>
         <div class="qg-order-hero-actions">
-          ${linkPhone(ctx.shop?.phone,'ติดต่อร้าน')}
+          ${!['pending','searching_rider'].includes(o.status)?linkPhone(ctx.shop?.phone,'ติดต่อร้าน'):''}
           ${!o.rider_id&&['pending','searching_rider'].includes(o.status)?`<button class="lk qg-danger" onclick="QGCustomer.cancel('${esc(id)}')">ยกเลิกคำสั่งซื้อ</button>`:''}
           <button class="lk" onclick="go('support/${esc(id)}')">แจ้งปัญหา</button>
         </div>
