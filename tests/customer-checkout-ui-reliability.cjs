@@ -1,6 +1,6 @@
 const fs=require('fs'),path=require('path'),assert=require('assert');
 const root=path.resolve(__dirname,'..');
-const customer=fs.readFileSync(path.join(root,'index.html'),'utf8');
+const customer=fs.readFileSync(path.join(root,'index.html'),'utf8'),features=fs.readFileSync(path.join(root,'customer-features.js'),'utf8');
 let checks=0;const ok=(v,m)=>{assert.ok(v,m);checks++};
 
 ok(customer.includes("customer checkout post-commit local cleanup failed"),'post-commit local cleanup must be non-fatal');
