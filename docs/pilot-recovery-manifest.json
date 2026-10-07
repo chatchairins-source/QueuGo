@@ -1,9 +1,9 @@
 {
-  "generated_at": "2026-10-07T09:55:00+07:00",
+  "generated_at": "2026-10-07T10:01:00+07:00",
   "github": {
     "repository": "chatchairins-source/QueuGo",
     "source_of_truth": "main",
-    "head_at_manifest": "e03a9f32c58f7f0ad4a0b000e7566391c14f5ab5",
+    "head_at_manifest": "67a511b6319d8784ec99d5f60eb755ee9b9f73ca",
     "previous_backup_branch": "backup-pre-closed-beta-20261007-0035",
     "latest_backup_branch": "backup-post-ugc-chat-hardening-20261007",
     "certified_source_commit": "e03a9f32c58f7f0ad4a0b000e7566391c14f5ab5",
@@ -26,7 +26,8 @@
       "run_id": 37564143214,
       "status": "SUCCESS",
       "head_sha": "a406bb7f8de013fa6bd7d595ca01832a7ce28293"
-    }
+    },
+    "data_safety_decision_commit": "67a511b6319d8784ec99d5f60eb755ee9b9f73ca"
   },
   "release_gates": {
     "account_deletion_privacy": "PASS",
@@ -250,14 +251,24 @@
     "privacy_policy": "docs/privacy.html",
     "community_guidelines": "docs/community-guidelines.html",
     "data_safety_draft_ready": true,
-    "provider_sharing_classification": "PENDING_CONTRACT_VERIFICATION",
+    "provider_sharing_classification": "RESOLVED_CONSERVATIVE_LONGDO_LOCATION_SHARED",
     "personal_account_closed_test_requirement": "PENDING_PLAY_ACCOUNT_TYPE_CHECK",
     "store_listing_draft": "docs/play-store-listing-draft.md",
     "app_access_content_rating_draft": "docs/play-app-access-content-rating.md",
     "play_icon_512_artifact": true,
     "real_screenshots": "PENDING_PHYSICAL_BUILD",
     "reviewer_accounts": "PENDING_EXTERNAL_CONFIGURATION",
-    "public_pages_ci": "PASS"
+    "public_pages_ci": "PASS",
+    "provider_sharing_policy_reviewed_at": "2026-10-07",
+    "data_safety_collection": "YES",
+    "data_safety_sharing": "YES_LONGDO_LOCATION_APP_FUNCTIONALITY",
+    "service_provider_exceptions": [
+      "Supabase",
+      "Firebase Cloud Messaging / Google"
+    ],
+    "longdo_service_provider_exception": false,
+    "longdo_note": "Public Longdo terms reviewed do not establish a service-provider-only processing role. Declare location sharing for App functionality unless a QueueTech-Longdo DPA/commercial agreement later supports the exception.",
+    "data_safety_console_entry": "PENDING_PLAY_CONSOLE_ENTRY"
   },
   "remaining_external_blockers": [
     "Enable Supabase Auth leaked-password protection.",
@@ -265,8 +276,8 @@
     "Configure QG_FIREBASE_GOOGLE_SERVICES_JSON_B64 and Supabase FIREBASE_SERVICE_ACCOUNT_JSON.",
     "Configure Android release signing secrets.",
     "Build Pilot APKs and certify native background notification on a physical Android device.",
+    "Enter finalized Data Safety answers in Play Console using Longdo location sharing = Yes for App functionality.",
     "Confirm Google Play developer account type/date and any 12-testers/14-days requirement.",
-    "Confirm Data Safety provider/service-provider sharing classification.",
     "Create dedicated reusable Play reviewer accounts and capture real current-app screenshots."
   ]
 }
