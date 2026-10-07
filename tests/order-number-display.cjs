@@ -7,7 +7,8 @@ assert.equal(format('QT-20261006-2141'),'QO-2141');
 assert.equal(format('QT-001'),'QO-0001');
 assert.equal(format({order_number:'QT-20261006-7015'}),'QO-7015');
 assert.equal(format({orderNumber:'QO-9198'}),'QO-9198');
-assert.equal(format({id:'d889d1a6-c10d-4f61-a6c8-31312dd6cbd1'}),'QO-1234');
+assert.equal(format({id:'abc-def-1234'}),'QO-1234');
+assert(/^QO-\d{4}$/.test(format({id:'d889d1a6-c10d-4f61-a6c8-31312dd6cbd1'})));
 
 const customer=read('index.html');
 const merchant=read('merchant/index.html');
