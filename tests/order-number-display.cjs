@@ -68,6 +68,7 @@ assert(tableQr.includes("QueueGoOrderNumber.format(result)"),'Table QR checkout 
 assert(!tableQr.includes("เลขออเดอร์ '+result.order_id"),'Table QR must never display raw order UUID as the order code');
 assert(tableQr.includes("result?.order_number"),'Table QR checkout must require server order_number before confirming success');
 assert(!rider.includes('#${esc(j.order_number||\'\')}'));
+assert(!rider.includes('<h2>#${esc(code)}</h2>'),'Rider offer/active cards must show QT-XXXX without a hash prefix');
 assert(rider.includes('qgShortOrder({order_number:o.order_number,id:o.order_id})'));
 assert(merchant.includes('escText(displayOrderNumber(o))'));
 for(const workflow of [release,pilot]){
