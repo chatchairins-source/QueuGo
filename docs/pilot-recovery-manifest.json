@@ -1,25 +1,25 @@
 {
-  "generated_at": "2026-10-07T10:40:00+07:00",
+  "generated_at": "2026-10-07T10:41:00+07:00",
   "github": {
     "repository": "chatchairins-source/QueuGo",
     "source_of_truth": "main",
-    "head_at_manifest": "fd248ccaa8ab7ef3502664c5e80de229a95af8d4",
+    "head_at_manifest": "a6dc39531ab363caf4dc5f11297ed13b7df3101f",
     "previous_backup_branch": "backup-pre-closed-beta-20261007-0035",
-    "latest_backup_branch": "backup-pre-release-versioning-fd248cca-20261007",
-    "certified_source_commit": "fe01ac5d6a38f9f0c3b9de4c2553a8b8b0055563",
+    "latest_backup_branch": "backup-pre-push-v8-evidence-a6dc3953-20261007",
+    "certified_source_commit": "a6dc39531ab363caf4dc5f11297ed13b7df3101f",
     "rc_tests": {
-      "run_id": 37567381154,
+      "run_id": 37567614603,
       "status": "SUCCESS",
-      "head_sha": "fe01ac5d6a38f9f0c3b9de4c2553a8b8b0055563"
+      "head_sha": "a6dc39531ab363caf4dc5f11297ed13b7df3101f"
     },
     "chat_retention_tests": {
       "run_id": 37559294226,
       "status": "SUCCESS"
     },
     "pages_deployment_last_checked": {
-      "run_id": 37567380970,
+      "run_id": 37567614675,
       "status": "SUCCESS",
-      "head_sha": "fe01ac5d6a38f9f0c3b9de4c2553a8b8b0055563"
+      "head_sha": "a6dc39531ab363caf4dc5f11297ed13b7df3101f"
     },
     "operational_inventory_commit": "a406bb7f8de013fa6bd7d595ca01832a7ce28293",
     "operational_inventory_rc_run": {
@@ -80,9 +80,10 @@
       },
       {
         "slug": "queuego-push",
-        "version": 7,
+        "version": 8,
         "status": "ACTIVE",
-        "verify_jwt": false
+        "verify_jwt": false,
+        "ezbr_sha256": "59160b8fd81d0118f98c6c5fa30a48ec4c47b7284acb0dbde062acd788032585"
       },
       {
         "slug": "rider-web-push",
@@ -145,8 +146,20 @@
     ],
     "native_test_firebase_oauth_preflight": true,
     "native_test_preflight_behavior": "When a native token exists, the physical test validates FIREBASE_SERVICE_ACCOUNT_JSON via Google OAuth before creating a push_test notification.",
-    "edge_function_version": 7,
-    "edge_source_matches_github": true
+    "edge_function_version": 8,
+    "edge_source_matches_github": true,
+    "edge_function_status": "ACTIVE",
+    "edge_function_verify_jwt": false,
+    "edge_function_sha256": "59160b8fd81d0118f98c6c5fa30a48ec4c47b7284acb0dbde062acd788032585",
+    "edge_deployed_at": "2026-10-07T10:36:14+07:00",
+    "edge_post_deploy_log_check": {
+      "checked": true,
+      "window_minutes": 30,
+      "edge_invocations": 0,
+      "runtime_errors_observed": 0,
+      "status": "NO_POST_DEPLOY_INVOCATION",
+      "note": "Deployment is ACTIVE and deployed source was read back successfully. No Edge invocation occurred in the checked post-deploy window, so physical/native runtime delivery is not certified."
+    }
   },
   "android": {
     "capacitor_version": "8.0.0",
