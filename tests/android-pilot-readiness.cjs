@@ -15,9 +15,14 @@ ok(!/bundleRelease|assembleRelease/.test(workflow),'Pilot APK workflow must neve
 ok(!/QG_ANDROID_KEYSTORE_B64|QG_ANDROID_STORE_PASSWORD|QG_ANDROID_KEY_PASSWORD/.test(workflow),'Pilot APK workflow must not consume release signing secrets');
 ok(/pilot-test\.apk/.test(workflow),'Pilot artifact must be unmistakably marked as test-only');
 ok(/queuego-native-push\.js/.test(workflow),'Pilot bundle must include native push client');
-ok(workflow.includes("cp ../role-realtime.js ../account-deletion.js ../queuego-ugc.js ../queuego-native-push.js"),'Pilot Merchant bundle must copy UGC runtime');
-ok(workflow.includes("cp ../account-deletion.js ../queuego-ugc.js ../queuego-native-push.js"),'Pilot Rider bundle must copy UGC runtime');
-ok(workflow.includes("s=s.replace('../queuego-ugc.js','queuego-ugc.js')"),'Pilot nested roles must rewrite UGC runtime path');
+const pilotCopyLines=workflow.split('\n').filter(line=>line.trim().startsWith('cp '));
+const pilotMerchantCopy=pilotCopyLines.find(line=>line.includes('../role-realtime.js'))||'';
+const pilotRiderCopy=pilotCopyLines.find(line=>line.includes('../queuego-native-push.js')&&!line.includes('../role-realtime.js')&&!line.includes('../customer-features.js'))||'';
+for(const asset of ['../queuego-password-policy.js','../account-deletion.js','../queuego-ugc.js','../queuego-native-push.js']){
+  ok(pilotMerchantCopy.includes(asset),'Pilot Merchant bundle must copy '+asset);
+  ok(pilotRiderCopy.includes(asset),'Pilot Rider bundle must copy '+asset);
+}
+ok(workflow.includes("s=s.replace('../queuego-password-policy.js','queuego-password-policy.js')")&&workflow.includes("s=s.replace('../queuego-ugc.js','queuego-ugc.js')"),'Pilot nested roles must rewrite shared runtime paths');
 ok(/play-icon-512\.png/.test(workflow)&&/resize\(\(512,512\)/.test(workflow),'Pilot artifacts must include approved 512px Play Store icon');
 ok(/@capacitor\/push-notifications/.test(workflow),'Pilot prerequisites must enforce Capacitor push plugin');
 ok(/POST_NOTIFICATIONS/.test(workflow),'Pilot APK must verify Android notification permission');
