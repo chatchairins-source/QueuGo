@@ -335,12 +335,23 @@ jobs:
           test -n "$QG_KEY_ALIAS"
           test -n "$QG_KEY_PASSWORD"
           echo "$QG_KEYSTORE_B64" | base64 --decode > android-build/android/queuego-release.jks
-          cat >> android-build/android/gradle.properties <<EOF
-          QG_STORE_FILE=../queuego-release.jks
-          QG_STORE_PASSWORD=$QG_STORE_PASSWORD
-          QG_KEY_ALIAS=$QG_KEY_ALIAS
-          QG_KEY_PASSWORD=$QG_KEY_PASSWORD
-          EOF
+          test -s android-build/android/queuego-release.jks
+          keytool -list \
+            -keystore android-build/android/queuego-release.jks \
+            -storepass "$QG_STORE_PASSWORD" \
+            -alias "$QG_KEY_ALIAS" >/dev/null
+          rm -f /tmp/queuego-signing-validation.p12
+          keytool -importkeystore \
+            -srckeystore android-build/android/queuego-release.jks \
+            -srcstorepass "$QG_STORE_PASSWORD" \
+            -srcalias "$QG_KEY_ALIAS" \
+            -srckeypass "$QG_KEY_PASSWORD" \
+            -destkeystore /tmp/queuego-signing-validation.p12 \
+            -deststoretype PKCS12 \
+            -deststorepass QueueGoValidationOnly123! \
+            -destkeypass QueueGoValidationOnly123! \
+            -noprompt >/dev/null
+          rm -f /tmp/queuego-signing-validation.p12
           python3 - <<'PY'
           from pathlib import Path
           import re
@@ -365,6 +376,11 @@ jobs:
 
       - name: Build signed AAB and APK
         shell: bash
+        env:
+          ORG_GRADLE_PROJECT_QG_STORE_FILE: ../queuego-release.jks
+          ORG_GRADLE_PROJECT_QG_STORE_PASSWORD: ${{ secrets.QG_ANDROID_STORE_PASSWORD }}
+          ORG_GRADLE_PROJECT_QG_KEY_ALIAS: ${{ secrets.QG_ANDROID_KEY_ALIAS }}
+          ORG_GRADLE_PROJECT_QG_KEY_PASSWORD: ${{ secrets.QG_ANDROID_KEY_PASSWORD }}
         run: |
           set -euo pipefail
           cd android-build/android
