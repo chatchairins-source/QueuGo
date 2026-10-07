@@ -1041,7 +1041,7 @@ async function handleRegister(e){
   const password=document.getElementById('reg-password')?.value||'';
   const confirmation=document.getElementById('reg-password-confirm')?.value||'';
   let marketRegistration=null;
-  if(!name||shopName.length<2||shopName.length>100||!['food','grocery','cafe','laundry','market','other'].includes(category)||!/^0[0-9]{9}$/.test(phone)||password.length<6||password!==confirmation){
+  if(!name||shopName.length<2||shopName.length>100||!['food','grocery','cafe','laundry','market','other'].includes(category)||!/^0[0-9]{9}$/.test(phone)||password.length<8||password!==confirmation){
     toast('กรุณากรอกชื่อร้าน เลือกประเภทร้าน และตรวจข้อมูลสมัครให้ครบ');return false;
   }
   try{marketRegistration=qgRegMarketPayload(category)}catch(err){toast(err.message||'กรุณาตรวจข้อมูลตลาด');return false}
@@ -1891,8 +1891,8 @@ window.renderShopRegister=function(){
         </section>
         <label class="qgm-login-input">${svg('user')}<input id="reg-name" autocomplete="name" required maxlength="120" placeholder="ชื่อผู้ติดต่อ" aria-label="ชื่อผู้ติดต่อ"></label>
         <label class="qgm-login-input">${svg('phone')}<input id="reg-phone" type="tel" inputmode="numeric" autocomplete="tel" required maxlength="12" placeholder="เบอร์โทรศัพท์ 10 หลัก" aria-label="เบอร์โทรศัพท์"></label>
-        <label class="qgm-login-input">${svg('lock')}<input id="reg-password" type="password" autocomplete="new-password" required minlength="6" placeholder="รหัสผ่านอย่างน้อย 6 ตัว" aria-label="รหัสผ่าน"></label>
-        <label class="qgm-login-input">${svg('lock')}<input id="reg-password-confirm" type="password" autocomplete="new-password" required minlength="6" placeholder="ยืนยันรหัสผ่าน" aria-label="ยืนยันรหัสผ่าน"></label>
+        <label class="qgm-login-input">${svg('lock')}<input id="reg-password" type="password" autocomplete="new-password" required minlength="8" placeholder="รหัสผ่านอย่างน้อย 8 ตัว" aria-label="รหัสผ่าน"></label>
+        <label class="qgm-login-input">${svg('lock')}<input id="reg-password-confirm" type="password" autocomplete="new-password" required minlength="8" placeholder="ยืนยันรหัสผ่าน" aria-label="ยืนยันรหัสผ่าน"></label>
         ${qgBetaTermsHtml("shop")}<button class="qgm-primary" type="submit">สมัครร้านค้า</button>
       </form>
       <div class="qgm-login-divider">มีบัญชีแล้ว</div>
