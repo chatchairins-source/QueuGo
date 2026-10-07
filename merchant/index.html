@@ -255,20 +255,7 @@ function dbSet(key, val){
   QT_DB_CACHE[key]=val;
   if(QT_SYNC.busy) QT_SYNC.dirty[key]=val; /* a poll is in flight: re-apply this local write after it finishes */
   if(QT_DB_KEYS.has(key)) qtTrackPersist(qtPersistKey(key,val)).catch(err=>qtSyncFailed(key,err));
-  else if(String(key).startsWith('qt_order_chat_') && !String(key).endsWith('_deleteAt')) qtTrackPersist(qtPersistChat(String(key).replace('qt_order_chat_',''),val)).catch(err=>qtSyncFailed(key,err));
   else if(!String(key).endsWith('_deleteAt')) console.warn('[QueueGo] dbSet("'+key+'") is not in QT_DB_KEYS and has no sync handler — this write stays local-only and will NOT sync to Supabase or other devices. Add "'+key+'" to QT_DB_KEYS in the code if this data should be shared.');
-}
-
-async function qtPersistChat(orderId,messages){
-  const token=await qtGetAccessToken();if(!token||!qtUuidLike(orderId))return;
-  const rows=Array.isArray(messages)?messages:[];
-  const saved=await qtSupabaseTable('order_chat_messages?select=id&order_id=eq.'+encodeURIComponent(orderId),{accessToken:token});
-  const known=new Set((saved||[]).map(m=>String(m.id)));
-  for(const m of rows){
-    if(!qtUuidLike(m.id)||!qtUuidLike(m.senderId)||known.has(String(m.id)))continue;
-    await qtSupabaseTable('order_chat_messages',{method:'POST',accessToken:token,body:{id:m.id,order_id:orderId,sender_id:m.senderId,message:m.text||'',created_at:qtIso(m.createdAt)}});
-    known.add(String(m.id));
-  }
 }
 
 function uid(){ return (window.crypto&&crypto.randomUUID) ? crypto.randomUUID() : ('00000000-0000-4000-8000-'+Math.random().toString(16).slice(2,14).padEnd(12,'0')); }
@@ -558,11 +545,6 @@ async function qtHydrateDatabase(opts){
     const orderItems=await qtSupabaseTable('order_items?select=*',{accessToken:token}).catch(()=>[]);
     const deliveries=await qtSupabaseTable('deliveries?select=*',{accessToken:token}).catch(()=>[]);
     const payments=await qtSupabaseTable('payments?select=*',{accessToken:token}).catch(()=>[]);
-    const chatRows=await qtSupabaseTable('order_chat_messages?select=*',{accessToken:token}).catch(()=>null);
-    if(Array.isArray(chatRows)){
-      Object.keys(QT_DB_CACHE).forEach(k=>{ if(k.startsWith('qt_order_chat_') && !k.endsWith('_deleteAt')) delete QT_DB_CACHE[k]; });
-      chatRows.forEach(m=>{const k='qt_order_chat_'+m.order_id; QT_DB_CACHE[k]=QT_DB_CACHE[k]||[]; QT_DB_CACHE[k].push({id:m.id,senderId:m.sender_id,text:m.message,createdAt:new Date(m.created_at).getTime()});});
-    }
     QT_DB_CACHE.qt_orders=(Array.isArray(orders)?orders:[]).map(r=>{const o=qtOrderFromRow(r);o.shopId=profileMaps.shopById.get(r.shop_id)||o.shopId;o.items=(orderItems||[]).filter(i=>i.order_id===r.id).map(i=>({id:i.id,name:i.item_name,description:i.description,qty:Number(i.quantity||1),quantity:Number(i.quantity||1),price:Number(i.unit_price||0),unitPrice:Number(i.unit_price||0),totalPrice:Number(i.total_price||0),itemType:i.item_type}));const d=(deliveries||[]).find(x=>x.order_id===r.id);if(d)o.delivery={id:d.id,status:d.status,riderProfileId:d.rider_id,distanceKm:Number(d.distance_km||0),deliveryFee:Number(d.delivery_fee||0),pickedUpAt:d.picked_up_at?new Date(d.picked_up_at).getTime():null,deliveredAt:d.delivered_at?new Date(d.delivered_at).getTime():null,note:d.note||''};const pay=(payments||[]).find(x=>x.order_id===r.id);if(pay)o.payment={id:pay.id,amount:Number(pay.amount||0),method:pay.payment_method,status:pay.status,reference:pay.transaction_reference,paidAt:pay.paid_at?new Date(pay.paid_at).getTime():null,note:pay.note||''};return o;});
     try{const ns=await qtSupabaseTable('notifications?select=*',{accessToken:token}); QT_DB_CACHE.qt_notifications=(Array.isArray(ns)?ns:[]).map(n=>({id:n.id,userId:n.user_id,title:n.title||'การแจ้งเตือน',message:n.message||'',body:n.message||'',link:qtNotifLinkFromRow(n),type:n.type||'system',referenceId:n.reference_id||null,read:n.is_read===true,readAt:n.is_read?new Date(n.created_at).getTime():null,createdAt:new Date(n.created_at).getTime()}));}catch(e){ if(!Array.isArray(QT_DB_CACHE.qt_notifications)) QT_DB_CACHE.qt_notifications=[]; }
     qtMarkClean('qt_orders'); qtMarkClean('qt_notifications');
@@ -827,8 +809,7 @@ function qtSyncHash(str){ let h=5381; for(let i=0;i<str.length;i++){ h=((h<<5)+h
 function qtSyncSignature(){
   const me=currentUser();
   const main=qtSyncHash(JSON.stringify([me&&me.status,me&&me.category,me&&me.publicCategory,me&&me.marketMembershipStatus,dbGet('qt_orders',[]),dbGet('qt_products',[]),dbGet('qt_notifications',[])]));
-  const chat=qtSyncHash(JSON.stringify(Object.keys(QT_DB_CACHE).filter(k=>k.startsWith('qt_order_chat_')&&!k.endsWith('_deleteAt')).sort().map(k=>[k,(QT_DB_CACHE[k]||[]).length])));
-  return {main,chat};
+  return {main};
 }
 function qtSyncRerender(before,after){
   const user=currentUser(); if(!user) return;
@@ -862,7 +843,7 @@ async function qtSyncTick(force){
     if(me){ dbGet('qt_notifications',[]).forEach(n=>{ if(n.userId===me.id && !n.read && !seenNotifs.has(n.id)){ try{ qtHandleNewNotification(n); }catch(e){} } }); }
     if(typeof qgCheckMerchantOrders==='function')qgCheckMerchantOrders();
     const after=qtSyncSignature();
-    if(after.main!==before.main||after.chat!==before.chat) qtSyncRerender(before,after);qtUpdateNotificationBadge();
+    if(after.main!==before.main) qtSyncRerender(before,after);qtUpdateNotificationBadge();
   }catch(e){ console.warn('sync tick failed',e); }
   finally{ QT_SYNC.dirty={}; QT_SYNC.busy=false; }
 }
@@ -1542,7 +1523,6 @@ button.qt-notif-row:active{transform:scale(.995)}
 })();
 </script>
 
-<style>.qt-chat-open{border:0;border-radius:8px;background:#e9fbf3;color:#14946e;padding:8px}#qt-shop-chat-messages{max-height:180px;overflow:auto}#qt-shop-chat form{display:flex;gap:5px;margin-top:10px}#qt-shop-chat input{min-width:0;flex:1;border:1px solid #dcebe4;border-radius:7px;padding:8px}#qt-shop-chat button{border:0;border-radius:7px;background:#20bc8b;color:#fff;padding:8px}.qt-chat-line{width:fit-content;max-width:85%;padding:7px;margin:5px 0;background:#f2f8f5;border-radius:8px;font-size:11px}.qt-chat-line.mine{margin-left:auto;background:#dcf8ea}.qt-chat-line small{display:block;text-align:right;color:#778e81;margin-top:3px}</style>
 <script id="qt-shop-support-v12">
 let qtSupportSelectedShop=null,qtSupportLoading=false;
 function qtSupportTime(value){return new Date(value).toLocaleString('th-TH',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}
