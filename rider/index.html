@@ -1839,7 +1839,7 @@ async function qgOpenDeliveryConfirm(o){
         <section class="qg-flow-hero"><span>ขั้นตอนที่ 2</span><h1>ถ่ายรูปยืนยันการส่ง</h1><p>ถ่ายเฉพาะสินค้าและจุดส่ง ไม่ต้องถ่ายหน้าลูกค้า</p></section>
         <section class="qg-proof-box qg-proof-single"><div class="qg-flow-card-head"><b>รูปตอนส่งสินค้า</b><span>จำเป็น</span></div><label class="qg-proof-pick"><input id="qg-delivery-photo" type="file" accept="image/*" capture="environment" aria-label="เปิดกล้องถ่ายรูปตอนส่งสินค้า"><span class="qg-proof-plus">＋</span><b>ถ่ายรูปตอนส่ง</b><small>ให้เห็นสินค้าและจุดส่งชัดเจน</small></label><img id="qg-delivery-preview" hidden alt="รูปตอนส่งสินค้า"></section>
         <button type="button" class="qg-btn qg-btn-primary qg-flow-next" id="qg-delivery-photo-next" disabled>ไปหน้าเก็บเงินจากลูกค้า</button>
-        <small class="qg-slide-caption">ต้องมีรูปหลักฐานก่อนยืนยันรับเงิน</small>`;
+        <small class="qg-slide-caption">ต้องมีรูปหลักฐานก่อนเข้าสู่ขั้นตอนเก็บเงิน</small>`;
       const input=page.querySelector('#qg-delivery-photo'),preview=page.querySelector('#qg-delivery-preview'),next=page.querySelector('#qg-delivery-photo-next');
       input.onchange=()=>{
         const file=input.files?.[0],proofBox=input.closest('.qg-proof-single');
