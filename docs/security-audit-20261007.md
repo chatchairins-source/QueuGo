@@ -59,7 +59,7 @@ Transactional smoke test passed for accept → report → block → unblock and 
 ## RLS / performance hardening
 
 - `auth_rls_initplan` findings: 13 → 0.
-- Unindexed FK findings: 44 → 8 after indexing Pilot hot paths.
+- Unindexed FK findings: 44 → 0 after additive covering-index migrations, including `20261007031513_cover_remaining_foreign_keys`.
 - UGC internal tables deny direct `anon` / `authenticated` table access.
 - Live post-migration privilege verification confirmed `anon` has no SELECT/INSERT/UPDATE/DELETE privilege on `order_chat_messages`, while the authenticated role retains the required chat table privileges.
 
@@ -80,7 +80,7 @@ QueueGo is currently on the Free plan. For Closed Beta, this item is therefore c
 - Regression test: `tests/password-policy.cjs`
 - Release gate: `release_gates.security_platform_auth = PASS_FREE_PLAN_CONTROLS`
 
-This does **not** claim that Supabase leaked-password protection is enabled. When QueueGo upgrades to Pro, enable the feature and re-run the Security Advisor; then this gate can be promoted to full `PASS`.
+This does **not** claim that Supabase leaked-password protection is enabled. The shared policy applies to new in-app registrations; Supabase Auth itself remains the authoritative identity service. When QueueGo upgrades to Pro, enable leaked-password protection and re-run the Security Advisor; then this gate can be promoted to full `PASS`.
 
 Supabase reference:
 - https://supabase.com/docs/guides/auth/password-security

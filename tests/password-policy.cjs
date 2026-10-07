@@ -17,6 +17,12 @@ const rider=fs.readFileSync('rider/index.html','utf8');
 ok(/id="rw"[^>]*minlength="12"/.test(customer),'Customer registration must require 12 chars');
 ok(/id="reg-password"[^>]*minlength="12"/.test(merchant),'Merchant registration must require 12 chars');
 ok(/id="rr-password"[^>]*minlength="12"/.test(rider),'Rider registration must require 12 chars');
+const manifest=JSON.parse(fs.readFileSync('docs/pilot-recovery-manifest.json','utf8'));
+ok(manifest?.release_gates?.security_platform_auth==='PASS_FREE_PLAN_CONTROLS','Free-plan Pilot Auth gate must be explicit');
+ok(manifest?.security?.leaked_password_protection_enabled===false,'Manifest must not claim leaked-password protection is enabled');
+ok(manifest?.security?.leaked_password_protection_plan_requirement==='PRO_OR_ABOVE','Manifest must record the Pro-only leaked-password requirement');
+ok(manifest?.security?.leaked_password_protection_release_blocker===false,'Pro-only leaked-password protection must be classified as post-Beta hardening on the Free-plan baseline');
+ok(manifest?.android?.auth_gate_accepts_free_plan_compensating_controls===true,'Android release gate must record the certified Free-plan Auth path');
 for(const wf of ['.github/workflows/build-queuego-pilot-apks.yml','.github/workflows/build-queuego-apks.yml']){
   const s=fs.readFileSync(wf,'utf8');
   ok(s.includes('queuego-password-policy.js'),'Android workflow must bundle password policy: '+wf);

@@ -38,9 +38,19 @@ The secret value must remain only in Supabase Edge secrets. Do not put the JSON 
 
 ## Supabase Auth platform setting
 
-Security Advisor currently reports **Leaked Password Protection Disabled**.
+Security Advisor currently reports **Leaked Password Protection Disabled** at WARN level. Current Supabase documentation lists leaked-password protection as available on **Pro Plan and above**.
 
-Enable leaked-password protection in Supabase Auth before changing `security_platform_auth` to `PASS`.
+QueueGo Closed Beta on the current Free plan uses the explicit gate value `PASS_FREE_PLAN_CONTROLS` with compensating controls:
+- shared `queuego-password-policy.js`
+- minimum 12 characters
+- uppercase + lowercase + number + symbol
+- Customer, Merchant and Rider new registrations
+- regression coverage in `tests/password-policy.cjs`
+
+This does **not** mean leaked-password protection is enabled. After a future Pro upgrade, enable it, re-run Security Advisor and promote `security_platform_auth` to full `PASS`.
+
+Reference:
+- https://supabase.com/docs/guides/auth/password-security
 
 ## Physical Android notification certification
 

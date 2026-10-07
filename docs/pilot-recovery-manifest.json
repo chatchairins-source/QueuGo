@@ -1,25 +1,25 @@
 {
-  "generated_at": "2026-10-07T10:28:00+07:00",
+  "generated_at": "2026-10-07T10:30:00+07:00",
   "github": {
     "repository": "chatchairins-source/QueuGo",
     "source_of_truth": "main",
-    "head_at_manifest": "af5daa4e8d88eaecb8cb4e339e299728d7ed4faf",
+    "head_at_manifest": "3ea88feec31b510bd1935ff2671c7805d696610d",
     "previous_backup_branch": "backup-pre-closed-beta-20261007-0035",
-    "latest_backup_branch": "backup-pre-auth-gate-reclass-af5daa4e-20261007",
-    "certified_source_commit": "af5daa4e8d88eaecb8cb4e339e299728d7ed4faf",
+    "latest_backup_branch": "backup-certified-auth-baseline-3ea88fee-20261007",
+    "certified_source_commit": "3ea88feec31b510bd1935ff2671c7805d696610d",
     "rc_tests": {
-      "run_id": 37566606599,
+      "run_id": 37566751164,
       "status": "SUCCESS",
-      "head_sha": "af5daa4e8d88eaecb8cb4e339e299728d7ed4faf"
+      "head_sha": "3ea88feec31b510bd1935ff2671c7805d696610d"
     },
     "chat_retention_tests": {
       "run_id": 37559294226,
       "status": "SUCCESS"
     },
     "pages_deployment_last_checked": {
-      "run_id": 37566606318,
+      "run_id": 37566750333,
       "status": "SUCCESS",
-      "head_sha": "af5daa4e8d88eaecb8cb4e339e299728d7ed4faf"
+      "head_sha": "3ea88feec31b510bd1935ff2671c7805d696610d"
     },
     "operational_inventory_commit": "a406bb7f8de013fa6bd7d595ca01832a7ce28293",
     "operational_inventory_rc_run": {
@@ -144,7 +144,7 @@
     "release_workflow_has_run": false,
     "hard_gate_blocks_build_without_restore_certification": true,
     "hard_gate_blocks_build_without_firebase_config": true,
-    "hard_gate_blocks_build_without_security_platform_auth": false,
+    "hard_gate_blocks_build_without_security_platform_auth": true,
     "hard_gate_blocks_build_without_physical_notification_certification": true,
     "release_secret_readiness": {
       "checked_by_github_actions": true,
@@ -177,7 +177,11 @@
     ],
     "play_icon_512_artifact": true,
     "real_app_screenshots": "PENDING_PHYSICAL_BUILD",
-    "auth_gate_accepts_free_plan_compensating_controls": true
+    "auth_gate_accepts_free_plan_compensating_controls": true,
+    "auth_gate_required_values": [
+      "PASS",
+      "PASS_FREE_PLAN_CONTROLS"
+    ]
   },
   "security": {
     "code_surface_hardened": true,
@@ -224,7 +228,8 @@
     "leaked_password_protection_release_blocker": false,
     "leaked_password_protection_upgrade_recommendation": true,
     "auth_release_decision": "PASS_FREE_PLAN_CONTROLS",
-    "auth_release_decision_note": "Closed Beta may proceed on Free plan with shared 12-character complexity controls. This does not claim Supabase leaked-password protection is enabled; enable it after a Pro upgrade."
+    "auth_release_decision_note": "Closed Beta may proceed on Free plan with shared 12-character complexity controls. This does not claim Supabase leaked-password protection is enabled; enable it after a Pro upgrade.",
+    "auth_release_decision_verified_by_rc_run": 37566751164
   },
   "performance": {
     "auth_rls_initplan_warnings_before": 13,
