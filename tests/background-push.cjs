@@ -13,6 +13,7 @@ const rider=read('rider/index.html');
 const workflow=read('.github/workflows/build-queuego-apks.yml');
 const sql=read('supabase/migrations/20261006170833_queuego_background_push_unified.sql');
 const nativeSql=read('supabase/migrations/20261006173656_queuego_native_push_transport.sql');
+const cronFix=read('supabase/migrations/20261007034201_switch_push_retry_cron_to_unified_worker.sql');
 const androidPkg=JSON.parse(read('android-build/package.json'));
 const capacitor=JSON.parse(read('android-build/capacitor.config.json'));
 const edge=read('supabase/functions/queuego-push/index.ts');
@@ -62,6 +63,10 @@ ok(rider.includes('qg-push-test'),'Rider profile must expose physical notificati
 ok(nativeSql.includes('create table if not exists public.qg_native_push_tokens'),'native push tokens must be server-owned');
 ok(nativeSql.includes('native_token_id')&&nativeSql.includes('num_nonnulls(subscription_id,native_token_id)=1'),'one outbox must support exactly one web or native transport');
 ok(nativeSql.includes('insert into public.qg_push_outbox(notification_id,native_token_id)'),'notification enqueue must include native tokens in the same outbox');
+ok(cronFix.includes("'queuego-push-retry'")&&cronFix.includes("'SELECT public.qg_wake_push();'"),'push retry cron must wake unified worker');
+ok(!cronFix.includes('/functions/v1/rider-web-push'),'push retry cron migration must not call retired rider-web-push');
+ok(/revoke all on function public\.qg_wake_rider_push\(\) from public, anon, authenticated/i.test(cronFix),'legacy wake wrapper must stay client-inaccessible');
+ok(/perform public\.qg_wake_push\(\)/i.test(cronFix),'legacy wake wrapper must delegate to unified worker');
 ok(retired.includes("status:410"),'old Rider-only worker must be retired');
 
 for(const asset of ['customer-features.js','customer-features.css','customer-laundry.js','account-deletion.js','queuego-ugc.js','queuego-native-push.js','queuego-push.js','queuego-push-sw.js']){

@@ -1,11 +1,11 @@
 {
-  "generated_at": "2026-10-07T10:45:00+07:00",
+  "generated_at": "2026-10-07T10:44:00+07:00",
   "github": {
     "repository": "chatchairins-source/QueuGo",
     "source_of_truth": "main",
-    "head_at_manifest": "1203e4a83bfa2731a738a998f70a3cea7e4fffb0",
+    "head_at_manifest": "5234fdc1cfb2207b339db12dd807503ab9985525",
     "previous_backup_branch": "backup-pre-closed-beta-20261007-0035",
-    "latest_backup_branch": "backup-certified-release-pilot-provenance-1203e4a8-20261007",
+    "latest_backup_branch": "backup-pre-unified-push-cron-1203e4a8-20261007",
     "certified_source_commit": "1203e4a83bfa2731a738a998f70a3cea7e4fffb0",
     "rc_tests": {
       "run_id": 37567895758,
@@ -69,8 +69,8 @@
     "database_version": "17.6.1.166",
     "region": "ap-southeast-2",
     "latest_migration": [
-      "20261007031513",
-      "cover_remaining_foreign_keys"
+      "20261007034201",
+      "switch_push_retry_cron_to_unified_worker"
     ],
     "edge_functions": [
       {
@@ -160,7 +160,17 @@
       "runtime_errors_observed": 0,
       "status": "NO_POST_DEPLOY_INVOCATION",
       "note": "Deployment is ACTIVE and deployed source was read back successfully. No Edge invocation occurred in the checked post-deploy window, so physical/native runtime delivery is not certified."
-    }
+    },
+    "push_retry_cron": {
+      "job_name": "queuego-push-retry",
+      "schedule": "* * * * *",
+      "command": "SELECT public.qg_wake_push();",
+      "status": "ACTIVE"
+    },
+    "legacy_rider_push_cron_removed": true,
+    "legacy_wake_rpc_mode": "SERVICE_ROLE_COMPATIBILITY_WRAPPER_TO_QG_WAKE_PUSH",
+    "legacy_push_queue_rows_at_switch": 0,
+    "unified_push_queue_rows_at_switch": 0
   },
   "android": {
     "capacitor_version": "8.0.0",
