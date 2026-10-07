@@ -13,6 +13,9 @@ select jsonb_build_object(
   'public.laundry_orders',(select count(*) from public.laundry_orders),
   'public.qg_pickup_proofs',(select count(*) from public.qg_pickup_proofs),
   'public.qg_delivery_proofs',(select count(*) from public.qg_delivery_proofs),
+  'public.qg_ugc_terms_acceptances',(select count(*) from public.qg_ugc_terms_acceptances),
+  'public.qg_user_blocks',(select count(*) from public.qg_user_blocks),
+  'public.qg_ugc_reports',(select count(*) from public.qg_ugc_reports),
   'storage.buckets',(select count(*) from storage.buckets),
   'storage.objects',(select count(*) from storage.objects)
 );
