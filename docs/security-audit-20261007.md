@@ -52,6 +52,7 @@ No authenticated non-anonymous SECURITY DEFINER candidate remained without an ob
 - Report evidence snapshot survives normal chat expiry.
 - Account deletion clears UGC terms/blocks and removes personal moderation snapshot content.
 - RLS-only helper was moved from `public` into `queuego_private`.
+- Anonymous table privileges on `public.order_chat_messages` were revoked in migration `20261007023348_ugc_chat_revoke_anon_table_privileges`; authenticated CRUD privileges remain explicit and are still constrained by RLS.
 
 Transactional smoke test passed for accept → report → block → unblock and was rolled back without leaving test data.
 
@@ -60,6 +61,7 @@ Transactional smoke test passed for accept → report → block → unblock and 
 - `auth_rls_initplan` findings: 13 → 0.
 - Unindexed FK findings: 44 → 8 after indexing Pilot hot paths.
 - UGC internal tables deny direct `anon` / `authenticated` table access.
+- Live post-migration privilege verification confirmed `anon` has no SELECT/INSERT/UPDATE/DELETE privilege on `order_chat_messages`, while the authenticated role retains the required chat table privileges.
 
 ## Runtime verification
 
