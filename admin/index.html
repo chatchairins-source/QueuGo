@@ -539,7 +539,7 @@ async function qtHydrateDatabase(opts){
     const serviceRows=(Array.isArray(orders)?orders:[]).filter(r=>r.order_type==='service');
     let quotes=[]; try{quotes=await qtSupabaseTable('quotations?select=*',{accessToken:token});}catch(e){}
     QT_DB_CACHE.qt_techjobs=serviceRows.map(r=>{ const quoteRows=(Array.isArray(quotes)?quotes:[]).filter(q=>q.order_id===r.id); const mappedQuotes=quoteRows.map(q=>({id:q.id,technicianId:profileMaps.techById.get(q.technician_id)||q.technician_id,technicianName:'',price:Number(q.total_amount||0),note:q.note||'',createdAt:new Date(q.created_at).getTime()})); const j=qtTechJobFromRow(r,mappedQuotes); j.technicianId=profileMaps.techById.get(r.technician_id)||j.technicianId; return j; });
-    try{const ns=await qtSupabaseTable('notifications?select=*',{accessToken:token}); QT_DB_CACHE.qt_notifications=(Array.isArray(ns)?ns:[]).map(n=>({id:n.id,userId:n.user_id,title:n.title||'การแจ้งเตือน',message:n.message||'',body:n.message||'',link:qtNotifLinkFromRow(n),type:n.type||'system',referenceId:n.reference_id||null,read:n.is_read===true,readAt:n.is_read?new Date(n.created_at).getTime():null,createdAt:new Date(n.created_at).getTime()}));}catch(e){ if(!Array.isArray(QT_DB_CACHE.qt_notifications)) QT_DB_CACHE.qt_notifications=[]; }
+    try{const ns=await qtSupabaseTable('notifications?select=*',{accessToken:token}); QT_DB_CACHE.qt_notifications=(Array.isArray(ns)?ns:[]).map(n=>({id:n.id,userId:n.user_id,title:n.title||'การแจ้งเตือน',message:QueueGoOrderNumber.replaceInText(n.message||''),body:QueueGoOrderNumber.replaceInText(n.message||''),link:qtNotifLinkFromRow(n),type:n.type||'system',referenceId:n.reference_id||null,read:n.is_read===true,readAt:n.is_read?new Date(n.created_at).getTime():null,createdAt:new Date(n.created_at).getTime()}));}catch(e){ if(!Array.isArray(QT_DB_CACHE.qt_notifications)) QT_DB_CACHE.qt_notifications=[]; }
     qtMarkClean('qt_orders'); qtMarkClean('qt_techjobs'); qtMarkClean('qt_notifications');
     if(!light){
     QT_DB_CACHE.qt_audit_log=[]; QT_DB_CACHE.qt_finance_ledger=[];    try{const ps=await qtSupabaseTable('products?select=*',{accessToken:token}); QT_DB_CACHE.qt_products=(Array.isArray(ps)?ps:[]).map(p=>Object.assign({id:p.id,shopId:p.shop_id,name:p.name,description:p.description,price:Number(p.price||0),image:p.image||'',available:p.available!==false,createdAt:new Date(p.created_at).getTime()},p.metadata||{}));}catch(e){QT_DB_CACHE.qt_products=[];}
@@ -1112,7 +1112,7 @@ function updateCartCountUI(){
 }
 
 /* ---------- QT Order Number ---------- */
-/* Customer-facing order number: QT-001, QT-002, ... (3 digits).
+/* Customer-facing order number: QT-XXXX (4 digits).
    Numbering is GLOBAL across all shops and resets each calendar day.
    Therefore no two shops can receive the same QT number on the same day.
    The internal id remains unchanged for routing/storage compatibility. */
