@@ -13,6 +13,8 @@ const all=[customer,merchant,rider,printer,read('admin/index.html'),read('role-r
 const checks=[];
 const ok=(name,value)=>{checks.push([name,Boolean(value)]);assert.ok(value,name)};
 
+ok('legacy ungated icon RC workflow removed',!fs.existsSync('.github/workflows/publish-approved-icon-rc.yml'));
+ok('legacy stale APK republisher removed',!fs.existsSync('.github/workflows/publish-approved-apks.yml'));
 ok('Play target API 36',/targetSdkVersion.*36/.test(workflow));
 ok('compile API 36',/compileSdkVersion.*36/.test(workflow));
 ok('release builds AAB',/bundleRelease/.test(workflow)&&/\.aab/.test(workflow));
