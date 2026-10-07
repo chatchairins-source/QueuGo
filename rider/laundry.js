@@ -54,14 +54,14 @@ function render(){
     (jobs.length?jobs.map(j=>{
       const from=navLink(j.from_latitude,j.from_longitude,j.from_address);
       const to=navLink(j.to_latitude,j.to_longitude,j.to_address);
-      return '<article class="qglr-job"><div class="qglr-jobhead"><div><b>#'+esc(j.order_number)+'</b><small>'+(j.leg==='pickup'?'รับผ้าจากลูกค้า → ร้าน':'รับผ้าจากร้าน → ลูกค้า')+' · '+esc(j.service_name||'ฝากซัก')+'</small></div><strong>฿'+money(j.job_fee)+'</strong></div>'+
+      return '<article class="qglr-job"><div class="qglr-jobhead"><div><b>'+esc(QueueGoOrderNumber.format(j))+'</b><small>'+(j.leg==='pickup'?'รับผ้าจากลูกค้า → ร้าน':'รับผ้าจากร้าน → ลูกค้า')+' · '+esc(j.service_name||'ฝากซัก')+'</small></div><strong>฿'+money(j.job_fee)+'</strong></div>'+
       '<div class="qglr-stop"><span>จาก</span><b>'+esc(j.from_address||'-')+'</b><a href="'+esc(from)+'" target="_blank" rel="noopener">นำทาง</a></div>'+
       '<div class="qglr-stop"><span>ไป</span><b>'+esc(j.to_address||'-')+'</b><a href="'+esc(to)+'" target="_blank" rel="noopener">ปลายทาง</a></div>'+
       actionButton(j)+'</article>';
     }).join(''):'<p class="qglr-empty">ไม่มีงานฝากซักที่กำลังทำ</p>')+'</section>';
 
   html+='<section class="qglr-card"><h3>งานฝากซักที่รับได้</h3>'+
-    (d.feature_enabled?(pool.length?pool.map(j=>'<article class="qglr-item"><div><b>#'+esc(j.order_number)+' · '+esc(j.shop_name||j.hub_name||'ร้านฝากซัก')+'</b><small>'+(j.leg==='pickup'?'ไปรับผ้าจากลูกค้า':'ส่งผ้าคืนลูกค้า')+' · '+esc(j.service_name||'')+' · รายรับ ฿'+money(j.job_fee)+'</small><small>'+esc(j.from_address||'')+' → '+esc(j.to_address||'')+'</small></div><button data-laundry-claim="'+esc(j.job_id)+'">รับงาน</button></article>').join(''):'<p class="qglr-empty">ตอนนี้ยังไม่มีงานฝากซักที่รับได้</p>'):'<p class="qglr-empty">Admin ยังปิดการรับงานใหม่</p>')+
+    (d.feature_enabled?(pool.length?pool.map(j=>'<article class="qglr-item"><div><b>'+esc(QueueGoOrderNumber.format(j))+' · '+esc(j.shop_name||j.hub_name||'ร้านฝากซัก')+'</b><small>'+(j.leg==='pickup'?'ไปรับผ้าจากลูกค้า':'ส่งผ้าคืนลูกค้า')+' · '+esc(j.service_name||'')+' · รายรับ ฿'+money(j.job_fee)+'</small><small>'+esc(j.from_address||'')+' → '+esc(j.to_address||'')+'</small></div><button data-laundry-claim="'+esc(j.job_id)+'">รับงาน</button></article>').join(''):'<p class="qglr-empty">ตอนนี้ยังไม่มีงานฝากซักที่รับได้</p>'):'<p class="qglr-empty">Admin ยังปิดการรับงานใหม่</p>')+
     '</section>';
   body.innerHTML=html;
   bind();

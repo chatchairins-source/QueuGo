@@ -13,7 +13,9 @@ var QueueGoOrderNumber=(function(){
     if(!match)match=raw.match(/^LW-\d{8}-\d{6}-([A-Z0-9]{4})$/);
     if(!match)return '----';
     const code=match[1].toUpperCase();
-    return /^\d+$/.test(code)?code.padStart(4,'0'):code;
+    if(/^\d+$/.test(code))return code.padStart(4,'0');
+    if(/^LW-/.test(raw)&&/^[0-9A-F]{4}$/.test(code))return String(parseInt(code,16)%10000).padStart(4,'0');
+    return String(parseInt(code,36)%10000).padStart(4,'0');
   }
   function format(input){return 'QT-'+fourChars(input)}
   function replaceInText(value){

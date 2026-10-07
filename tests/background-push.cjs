@@ -59,6 +59,7 @@ ok(/revoke all on function public\.qg_finish_rider_push\(uuid,uuid,integer\) fro
 ok(edge.includes("FIREBASE_SERVICE_ACCOUNT_JSON")&&edge.includes("sendNativePush"),'edge worker must support authenticated FCM HTTP v1 delivery');
 ok(edge.includes("function visibleOrderText"),'push worker must share visible QT-XXXX text normalization');
 ok(edge.includes("title:visibleOrderText")&&edge.includes("body:visibleOrderText")&&edge.includes("message:visibleOrderText"),'push delivery must shorten canonical order numbers for native and web push');
+ok(edge.includes("function visibleFour")&&edge.includes("parseInt(upper,16)%10000"),'Laundry legacy order numbers must normalize to numeric QT-XXXX in push');
 ok(edge.includes("subscribe-native")&&edge.includes("unsubscribe-native"),'edge worker must own native token lifecycle');
 ok(/input\.action==='subscribe-native'[\s\S]{0,900}await config\(\)/.test(edge),'native subscription must bootstrap unified worker config before persisting an FCM token');
 ok(edge.includes("input.action==='test'")&&edge.includes("type:'push_test'"),'edge worker must provide a rate-limited physical notification test');

@@ -1,11 +1,11 @@
 {
-  "generated_at": "2026-10-07T11:34:00+07:00",
+  "generated_at": "2026-10-07T11:40:00+07:00",
   "github": {
     "repository": "chatchairins-source/QueuGo",
     "source_of_truth": "main",
-    "head_at_manifest": "d6271b27939850717266789b081a04aa73452a3e",
+    "head_at_manifest": "972319db5dc8c2a9254b8e43e85e19e27c98e29d",
     "previous_backup_branch": "backup-pre-closed-beta-20261007-0035",
-    "latest_backup_branch": "backup-pre-retire-legacy-push-d6271b27-20261007",
+    "latest_backup_branch": "backup-pre-laundry-qt-code-972319db-20261007",
     "certified_source_commit": "f3c92184be2f8d8fe5ea65b611e0039a7e2a12a7",
     "rc_tests": {
       "run_id": 37570842458,
@@ -69,8 +69,8 @@
     "database_version": "17.6.1.166",
     "region": "ap-southeast-2",
     "latest_migration": [
-      "20261007043258",
-      "retire_legacy_rider_push_rpc_surface"
+      "20261007043952",
+      "unify_laundry_visible_order_codes"
     ],
     "edge_functions": [
       {
@@ -450,13 +450,14 @@
       "customer",
       "merchant",
       "rider",
-      "admin"
+      "admin",
+      "laundry"
     ],
     "accepts_legacy_qo_input": true,
     "emits_qo": false,
     "uuid_fallback": false,
     "decision": "DISPLAY_ONLY_NO_DATABASE_REWRITE",
-    "visible_character_set": "NUMERIC_4_DIGITS_FOR_NEW_ORDERS",
+    "visible_character_set": "NUMERIC_4_DIGITS",
     "server_generator": "qg_next_order_number",
     "random_range": "1000-9999",
     "active_visible_code_unique": true,
@@ -472,8 +473,20 @@
       "merchant",
       "rider",
       "admin",
+      "customer_laundry",
+      "merchant_laundry",
+      "rider_laundry",
       "native_push",
       "web_push"
-    ]
+    ],
+    "laundry_new_orders_shared_allocator": true,
+    "laundry_default": "qg_next_order_number()",
+    "laundry_active_legacy_visible_codes": [
+      "QT-4115",
+      "QT-9502",
+      "QT-7963"
+    ],
+    "laundry_legacy_database_rewrite": false,
+    "laundry_legacy_display_mapping": "HEX_SUFFIX_MOD_10000"
   }
 }

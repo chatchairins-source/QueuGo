@@ -32,10 +32,18 @@ function roleUrl(role:string,referenceId?:string|null){
   if(role==='rider') return '/QueuGo/rider/#home';
   return referenceId?'/QueuGo/#order/'+encodeURIComponent(referenceId):'/QueuGo/#notifications';
 }
+function visibleFour(token:string,code:string){
+  const upper=String(code||'').toUpperCase();
+  if(/^\d{1,4}$/.test(upper))return upper.padStart(4,'0');
+  if(/^LW-/i.test(token)&&/^[0-9A-F]{4}$/.test(upper))return String(parseInt(upper,16)%10000).padStart(4,'0');
+  if(/^[A-Z0-9]{1,4}$/.test(upper))return String(parseInt(upper,36)%10000).padStart(4,'0');
+  return '----';
+}
 function visibleOrderText(value:unknown){
-  return String(value??'')
-    .replace(/\b(?:QT|QO)-\d{8}-([0-9]{1,4})\b/gi,(_,code)=>'QT-'+String(code).padStart(4,'0'))
-    .replace(/\b(?:QT|QO)-([0-9]{1,4})\b/gi,(_,code)=>'QT-'+String(code).padStart(4,'0'));
+  return String(value??'').replace(
+    /\b(?:QT|QO)-\d{8}-([A-Z0-9]{1,4})\b|\b(?:QT|QO)-([A-Z0-9]{1,4})\b|\bLW-\d{8}-\d{6}-([0-9A-F]{4})\b/gi,
+    (token,a,b,c)=>'QT-'+visibleFour(token,a||b||c)
+  );
 }
 function b64url(value:Uint8Array|string){
   const bytes=typeof value==='string'?new TextEncoder().encode(value):value;

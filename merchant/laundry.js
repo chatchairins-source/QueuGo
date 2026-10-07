@@ -72,7 +72,7 @@ function render(){
     '</div></section>';
 
   body+='<section class="qgm-card qgl-card"><h3>งานฝากซักล่าสุด</h3><div class="qgl-orders">'+
-    (orders.length?orders.map(o=>'<article><div><b>#'+esc(o.order_number)+'</b><small>'+esc(o.service_name_snapshot||'บริการฝากซัก')+' · '+status(o.status)+'</small><small>'+esc(o.pickup_address||'')+(o.final_total_amount!=null?' · ยอดรวม ฿'+money(o.final_total_amount):o.estimated_total_amount!=null?' · ประมาณ ฿'+money(o.estimated_total_amount):'')+'</small></div><div class="qgl-order-actions">'+actionHtml(o)+'</div></article>').join(''):'<p class="qgl-empty">ยังไม่มีงานฝากซัก</p>')+
+    (orders.length?orders.map(o=>'<article><div><b>'+esc(QueueGoOrderNumber.format(o))+'</b><small>'+esc(o.service_name_snapshot||'บริการฝากซัก')+' · '+status(o.status)+'</small><small>'+esc(o.pickup_address||'')+(o.final_total_amount!=null?' · ยอดรวม ฿'+money(o.final_total_amount):o.estimated_total_amount!=null?' · ประมาณ ฿'+money(o.estimated_total_amount):'')+'</small></div><div class="qgl-order-actions">'+actionHtml(o)+'</div></article>').join(''):'<p class="qgl-empty">ยังไม่มีงานฝากซัก</p>')+
     '</div></section>';
 
   window.qtShopLayout('ฝากซัก',body,'shop-profile');bind();
