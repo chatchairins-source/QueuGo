@@ -65,9 +65,9 @@
      // An interrupted request reuses its original payload. The server alone confirms creation/replay.
      if(!pending.point){pending.point=await locationPoint();localStorage.setItem(pendingKey,JSON.stringify(pending))}
      const result=await rpc('qg_table_checkout',{p_session:session.session_id,p_device_key:device,p_request:pending.request,p_items:pending.items,p_lat:pending.point.lat,p_lng:pending.point.lng});
-     if(!result?.order_id)throw Error('ยังไม่ได้รับผลยืนยันจากร้าน');
+     if(!result?.order_id||!String(result?.order_number||'').trim())throw Error('ยังไม่ได้รับเลขยืนยันออเดอร์จากร้าน');
      cart.clear();pending=null;localStorage.removeItem(pendingKey);localStorage.removeItem(cartKey);
-     message='ส่งเข้าครัวแล้ว · เลขออเดอร์ '+result.order_id+' คุณสั่งอาหารเพิ่มได้ในเวลาที่เหลือ';confirmed=true;
+     message='ส่งเข้าครัวแล้ว · เลขออเดอร์ '+QueueGoOrderNumber.format(result)+' คุณสั่งอาหารเพิ่มได้ในเวลาที่เหลือ';confirmed=true;
    }catch(e){
      if(e.status>=400&&e.status<500&&![408,429].includes(e.status)){pending=null;localStorage.removeItem(pendingKey)}
      message=(e?.name==='TimeoutError'||e?.name==='AbortError'?'การเชื่อมต่อใช้เวลานาน ยังยืนยันผลไม่ได้':e.message||'ยังยืนยันผลไม่ได้')+(pending?' · กดตรวจออเดอร์เดิมอีกครั้ง':' · รายการเดิมยังอยู่ กรุณาตรวจสอบแล้วลองอีกครั้ง');
