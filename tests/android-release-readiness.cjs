@@ -33,7 +33,8 @@ ok('adaptive icon resources generated',/mipmap-anydpi-v26/.test(workflow)&&/ic_l
 ok('native Android back handler',/OnBackPressedCallback/.test(workflow)&&/getWebView\(\)\.goBack\(\)/.test(workflow));
 ok('shared Customer runtime bundled',/customer-features\.js[\s\S]*customer-laundry\.js[\s\S]*account-deletion\.js[\s\S]*queuego-push\.js[\s\S]*queuego-push-sw\.js/.test(workflow));
 ok('privacy documents bundled',/docs\/privacy\.html[\s\S]*docs\/account-deletion\.html/.test(workflow));
-ok('nested role shared paths rewritten',/replace\('\.\.\/account-deletion\.js','account-deletion\.js'\)/.test(workflow)&&/replace\('\.\.\/queuego-push\.js','queuego-push\.js'\)/.test(workflow));
+ok('nested role UGC and push assets copied',workflow.includes("cp ../role-realtime.js ../account-deletion.js ../queuego-ugc.js ../queuego-native-push.js")&&workflow.includes("cp ../account-deletion.js ../queuego-ugc.js ../queuego-native-push.js"));
+ok('nested role shared paths rewritten',/replace\('\.\.\/account-deletion\.js','account-deletion\.js'\)/.test(workflow)&&/replace\('\.\.\/queuego-ugc\.js','queuego-ugc\.js'\)/.test(workflow)&&/replace\('\.\.\/queuego-native-push\.js','queuego-native-push\.js'\)/.test(workflow)&&/replace\('\.\.\/queuego-push\.js','queuego-push\.js'\)/.test(workflow));
 const declared=(workflow.match(/perms=\[([\s\S]*?)\n\s*\]/)||[])[1]||'';
 ok('no camera permission',!/android\.permission\.CAMERA/.test(declared));
 ok('no background location permission',!/android\.permission\.ACCESS_BACKGROUND_LOCATION/.test(declared));
