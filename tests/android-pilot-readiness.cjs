@@ -16,5 +16,7 @@ ok(!/QG_ANDROID_KEYSTORE_B64|QG_ANDROID_STORE_PASSWORD|QG_ANDROID_KEY_PASSWORD/.
 ok(/pilot-test\.apk/.test(workflow),'Pilot artifact must be unmistakably marked as test-only');
 ok(/queuego-native-push\.js/.test(workflow),'Pilot bundle must include native push client');
 ok(/@capacitor\/push-notifications/.test(workflow),'Pilot prerequisites must enforce Capacitor push plugin');
+ok(/POST_NOTIFICATIONS/.test(workflow),'Pilot APK must verify Android notification permission');
+ok(/Generated Android project is not targetSdk 36/.test(workflow)&&/Generated Android project is not compileSdk 36/.test(workflow),'Pilot APK must verify generated API 36 project');
 
 console.log(JSON.stringify({checks,failures:0,scope:'Physical-device Pilot APK build remains debug-only, regression-gated and Firebase-aware'}));
