@@ -1,30 +1,31 @@
 {
-  "generated_at": "2026-10-07T09:54:00+07:00",
+  "generated_at": "2026-10-07T09:55:00+07:00",
   "github": {
     "repository": "chatchairins-source/QueuGo",
     "source_of_truth": "main",
-    "head_at_manifest": "a406bb7f8de013fa6bd7d595ca01832a7ce28293",
+    "head_at_manifest": "e03a9f32c58f7f0ad4a0b000e7566391c14f5ab5",
     "previous_backup_branch": "backup-pre-closed-beta-20261007-0035",
     "latest_backup_branch": "backup-post-ugc-chat-hardening-20261007",
-    "certified_source_commit": "9541954e354a38024f15f022e355d64b05cdb6c7",
+    "certified_source_commit": "e03a9f32c58f7f0ad4a0b000e7566391c14f5ab5",
     "rc_tests": {
-      "run_id": 37562910676,
+      "run_id": 37564207221,
       "status": "SUCCESS",
-      "head_sha": "9541954e354a38024f15f022e355d64b05cdb6c7"
+      "head_sha": "e03a9f32c58f7f0ad4a0b000e7566391c14f5ab5"
     },
     "chat_retention_tests": {
       "run_id": 37559294226,
       "status": "SUCCESS"
     },
     "pages_deployment_last_checked": {
-      "run_id": 37562909838,
+      "run_id": 37564206330,
       "status": "SUCCESS",
-      "head_sha": "9541954e354a38024f15f022e355d64b05cdb6c7"
+      "head_sha": "e03a9f32c58f7f0ad4a0b000e7566391c14f5ab5"
     },
     "operational_inventory_commit": "a406bb7f8de013fa6bd7d595ca01832a7ce28293",
     "operational_inventory_rc_run": {
       "run_id": 37564143214,
-      "status": "IN_PROGRESS"
+      "status": "SUCCESS",
+      "head_sha": "a406bb7f8de013fa6bd7d595ca01832a7ce28293"
     }
   },
   "release_gates": {
