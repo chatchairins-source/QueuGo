@@ -37,6 +37,8 @@ ok('no camera permission',!/android\.permission\.CAMERA/.test(declared));
 ok('no background location permission',!/android\.permission\.ACCESS_BACKGROUND_LOCATION/.test(declared));
 ok('no broad storage permission',!/android\.permission\.(READ_EXTERNAL_STORAGE|WRITE_EXTERNAL_STORAGE|READ_MEDIA_IMAGES)/.test(declared));
 ok('fine/coarse location declared',/ACCESS_FINE_LOCATION/.test(workflow)&&/ACCESS_COARSE_LOCATION/.test(workflow));
+ok('notification permission verified',/POST_NOTIFICATIONS/.test(workflow));
+ok('generated Android project checked for API 36',/Generated Android project is not targetSdk 36/.test(workflow)&&/Generated Android project is not compileSdk 36/.test(workflow));
 ok('Android cleartext disabled',/Cleartext Android traffic must stay disabled/.test(workflow)&&!/usesCleartextTraffic=\"true\"',1/.test(workflow));
 ok('customer persists session',/localStorage/.test(customer));
 ok('merchant persists session',/localStorage/.test(merchant));
