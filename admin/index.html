@@ -1138,6 +1138,7 @@ const ORDER_STATUSES = [
   {key:'delivering', label:'กำลังไปหาลูกค้า', icon:'🟠'},
   {key:'arrived', label:'ถึงลูกค้าแล้ว', icon:'🟡'},
   {key:'completed', label:'ส่งสำเร็จ', icon:'⚫'},
+  {key:'no_rider_available', label:'ไม่พบ Rider', icon:'—'},
   {key:'cancelled', label:'ยกเลิก', icon:'❌'},
 ];
 
@@ -1563,7 +1564,7 @@ async function qgLoadAdminCash(day){
  const money=n=>'฿'+Number(n||0).toLocaleString('th-TH',{minimumFractionDigits:2,maximumFractionDigits:2});
 
 
- const states={pending:'รอร้านรับ',searching_rider:'กำลังหาไรเดอร์',rider_assigned:'ไรเดอร์รับงาน',accepted:'ร้านรับแล้ว',preparing:'กำลังเตรียม',ready:'พร้อมรับสินค้า',assigned:'ไรเดอร์รับงาน',picked_up:'รับสินค้าแล้ว',in_progress:'กำลังส่ง',completed:'สำเร็จ',cancelled:'ยกเลิก'};
+ const states={pending:'รอร้านรับ',searching_rider:'กำลังหาไรเดอร์',rider_assigned:'ไรเดอร์รับงาน',accepted:'ร้านรับแล้ว',preparing:'กำลังเตรียม',ready:'พร้อมรับสินค้า',assigned:'ไรเดอร์รับงาน',picked_up:'รับสินค้าแล้ว',in_progress:'กำลังส่ง',completed:'สำเร็จ',no_rider_available:'ไม่พบ Rider',cancelled:'ยกเลิก'};
  window.qgAdminOrderFilter='all';
  window.renderAdminOrderCenter=function(){if(!active())return navigate('login');layout('จัดการออเดอร์','<div class="qg-v22-admin-orders"><div class="qg-order-toolbar"><input id="qg-admin-order-search" type="search" placeholder="ค้นหาเลขออเดอร์ ร้าน หรือลูกค้า"><button type="button" onclick="qgLoadAdminOrders()">รีเฟรช</button></div><div id="qg-v22-order-filters"></div><div id="qg-v22-order-list">กำลังโหลดจากฐานข้อมูล...</div></div>');qgLoadAdminOrders()};
  window.qgLoadAdminOrders=async function(){const list=document.getElementById('qg-v22-order-list'),tabs=document.getElementById('qg-v22-order-filters');if(!list)return;
@@ -1572,7 +1573,7 @@ async function qgLoadAdminCash(day){
      tabs.innerHTML=[['all','ทั้งหมด'],['_active','กำลังดำเนินการ'],['completed','สำเร็จ'],['cancelled','ยกเลิก']].map(([key,label])=>'<button type="button" data-status="'+key+'">'+label+'</button>').join('');
      tabs.querySelectorAll('button').forEach(b=>b.onclick=()=>{qgAdminOrderFilter=b.dataset.status;paint()});
      const search=document.getElementById('qg-admin-order-search');if(search)search.oninput=paint;
-     function paint(){tabs.querySelectorAll('button').forEach(b=>b.classList.toggle('active',b.dataset.status===qgAdminOrderFilter));const query=(search?.value||'').trim().toLocaleLowerCase('th');const shown=rows.filter(o=>(qgAdminOrderFilter==='all'||qgAdminOrderFilter==='_active'&&!['completed','cancelled'].includes(o.status)||o.status===qgAdminOrderFilter)&&[o.order_number,QueueGoOrderNumber.format(o),shopName(o.shop_id),customerName(o.customer_id)].join(' ').toLocaleLowerCase('th').includes(query));
+     function paint(){tabs.querySelectorAll('button').forEach(b=>b.classList.toggle('active',b.dataset.status===qgAdminOrderFilter));const query=(search?.value||'').trim().toLocaleLowerCase('th');const shown=rows.filter(o=>(qgAdminOrderFilter==='all'||qgAdminOrderFilter==='_active'&&!['completed','cancelled','no_rider_available'].includes(o.status)||o.status===qgAdminOrderFilter)&&[o.order_number,QueueGoOrderNumber.format(o),shopName(o.shop_id),customerName(o.customer_id)].join(' ').toLocaleLowerCase('th').includes(query));
        list.innerHTML=shown.map(o=>'<article><strong>'+safe(QueueGoOrderNumber.format(o))+'</strong><span class="qg-status '+safe(o.status)+'">'+safe(states[o.status]||o.status)+'</span><p class="qg-order-parties">'+safe(shopName(o.shop_id)||'ไม่ระบุชื่อร้าน')+' · '+safe(customerName(o.customer_id)||'ลูกค้า')+'</p><p>สินค้า '+money(o.subtotal)+' · ค่าส่ง '+money(o.delivery_fee)+' · GP '+money(o.gp_amount)+' · รวม <b>'+money(o.total_amount)+'</b></p><small>'+new Date(o.created_at).toLocaleString('th-TH')+'</small><div><button type="button" data-id="'+safe(o.id)+'" data-op="trace">ดูข้อมูลและประวัติ</button><button type="button" data-id="'+safe(o.id)+'" data-op="delete">ลบออเดอร์</button></div></article>').join('')||'<p class="qg-empty">ไม่พบออเดอร์ตามตัวกรองนี้</p>';
        list.insertAdjacentHTML('beforeend','<p class="qg-data-note">แสดง '+shown.length+' จาก '+rows.length+' ออเดอร์ที่โหลดล่าสุด (สูงสุด 500 รายการ)</p>');
        list.querySelectorAll('[data-op]').forEach(b=>b.onclick=()=>b.dataset.op==='trace'?qgAdminTrace(b.dataset.id):qgAdminDeleteReviewed(b.dataset.id));}
