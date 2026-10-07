@@ -723,7 +723,7 @@ const authed=()=>!!S.get();
 function layout(inner,tab){
   customerLocationPicker?.destroy();checkoutPicker?.destroy();customerLocationPicker=checkoutPicker=null;
   window.__customerPickedLocation=window.__checkoutQuote=null;
-  const u=S.get(),home=tab==='home';
+  const u=S.get(),home=((location.hash.slice(1)||'home').split('/')[0]==='home');
   $('root').innerHTML=`<header class="top${home?' qg-home-original-top':''}"><div><button class="brand" onclick="go('home')">Queue<span>Go</span></button>
 <div class="acts">${u?`<button class="ic" aria-label="ตะกร้า" onclick="go('cart')">${ico('bag')}${cartN()?`<b class="badge">${cartN()>99?'99+':cartN()}</b>`:''}</button>
 <button class="ic" aria-label="แจ้งเตือน" onclick="go('notifications')">${ico('bell')}<b id="customer-notification-count" hidden></b></button><button class="ic" aria-label="โปรไฟล์" onclick="go('profile')">${ico('user')}</button>`:'<button class="lk" onclick="go(\'login\')">เข้าสู่ระบบ</button>'}</div></div></header>
