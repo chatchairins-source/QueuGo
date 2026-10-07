@@ -1,25 +1,25 @@
 {
-  "generated_at": "2026-10-07T10:33:00+07:00",
+  "generated_at": "2026-10-07T10:35:00+07:00",
   "github": {
     "repository": "chatchairins-source/QueuGo",
     "source_of_truth": "main",
-    "head_at_manifest": "d90ba0ddd051d9690b861da09a621a5a18f2df04",
+    "head_at_manifest": "d67a462efe5192260ce61dc6db95924f4d944230",
     "previous_backup_branch": "backup-pre-closed-beta-20261007-0035",
-    "latest_backup_branch": "backup-certified-auth-baseline-3ea88fee-20261007",
-    "certified_source_commit": "3ea88feec31b510bd1935ff2671c7805d696610d",
+    "latest_backup_branch": "backup-certified-backup-cli-pin-d67a462e-20261007",
+    "certified_source_commit": "d67a462efe5192260ce61dc6db95924f4d944230",
     "rc_tests": {
-      "run_id": 37566751164,
+      "run_id": 37567241832,
       "status": "SUCCESS",
-      "head_sha": "3ea88feec31b510bd1935ff2671c7805d696610d"
+      "head_sha": "d67a462efe5192260ce61dc6db95924f4d944230"
     },
     "chat_retention_tests": {
       "run_id": 37559294226,
       "status": "SUCCESS"
     },
     "pages_deployment_last_checked": {
-      "run_id": 37566750333,
+      "run_id": 37567241527,
       "status": "SUCCESS",
-      "head_sha": "3ea88feec31b510bd1935ff2671c7805d696610d"
+      "head_sha": "d67a462efe5192260ce61dc6db95924f4d944230"
     },
     "operational_inventory_commit": "a406bb7f8de013fa6bd7d595ca01832a7ce28293",
     "operational_inventory_rc_run": {
@@ -110,13 +110,15 @@
         "QG_SUPABASE_SERVICE_ROLE_KEY",
         "QG_BACKUP_PASSPHRASE"
       ],
-      "run_attempt": 3,
-      "checked_at": "2026-10-07T10:29:48+07:00",
+      "run_attempt": 4,
+      "checked_at": "2026-10-07T10:30:29+07:00",
       "latest_validation_result": "FAIL"
     },
     "restore_drill_ugc_verification_ready": true,
     "backup_cli_version": "2.120.0",
-    "backup_cli_version_policy": "PINNED"
+    "backup_cli_version_policy": "PINNED",
+    "backup_code_gate": "PASS",
+    "backup_runtime_gate": "BLOCKED_MISSING_SECRETS"
   },
   "notifications": {
     "unified_outbox": true,
@@ -160,7 +162,7 @@
         "QG_ANDROID_KEY_PASSWORD"
       ],
       "run_attempt": 4,
-      "checked_at": "2026-10-07T10:29:52+07:00",
+      "checked_at": "2026-10-07T10:29:50+07:00",
       "latest_validation_result": "FAIL"
     },
     "pilot_test_workflow": ".github/workflows/build-queuego-pilot-apks.yml",
@@ -183,7 +185,9 @@
     "auth_gate_required_values": [
       "PASS",
       "PASS_FREE_PLAN_CONTROLS"
-    ]
+    ],
+    "release_secret_code_gate": "PASS",
+    "release_secret_runtime_gate": "BLOCKED_MISSING_SECRETS"
   },
   "security": {
     "code_surface_hardened": true,
