@@ -3138,7 +3138,7 @@ window.qgmLoadRevenuePeriod=async function(days,end){
   const token=await qtGetAccessToken(),rows=await qtSupabaseTable('rpc/merchant_revenue_days',{method:'POST',accessToken:token,body:{p_from:start.toISOString().slice(0,10),p_to:end}});
   if(!box.isConnected)return;
   const sum=k=>(rows||[]).reduce((n,r)=>n+Number(r[k]||0),0),money=n=>'฿'+n.toLocaleString('th-TH',{minimumFractionDigits:2,maximumFractionDigits:2});
-  box.innerHTML='<section class="qgm-report"><h2>รายได้ '+days+' วัน</h2><div class="qgm-report-grid"><div><small>ยอดค่าสินค้า</small><b>'+money(sum('gross_sales'))+'</b></div><div><small>จำนวนออเดอร์</small><b>'+sum('order_count')+'</b></div><div><small>GP</small><b>'+money(sum('gp_due'))+'</b></div><div><small>เงินสดที่ร้านยืนยันรับ</small><b>'+money(sum('cash_received'))+'</b></div></div></section>'+(rows||[]).map(r=>'<section class="qgm-report"><b>'+escapeHtml(r.date_key)+'</b> · '+Number(r.order_count||0)+' ออเดอร์ · '+money(Number(r.gross_sales||0))+'</section>').join('');
+  box.innerHTML='<section class="qgm-report"><h2>รายได้ '+days+' วัน</h2><div class="qgm-report-grid"><div><small>ยอดค่าสินค้า</small><b>'+money(sum('gross_sales'))+'</b></div><div><small>จำนวนออเดอร์</small><b>'+sum('order_count')+'</b></div><div><small>GP</small><b>'+money(sum('gp_due'))+'</b></div><div><small>เงินสดค่าสินค้าที่ร้านได้รับ</small><b>'+money(sum('cash_received'))+'</b></div></div></section>'+(rows||[]).map(r=>'<section class="qgm-report"><b>'+escapeHtml(r.date_key)+'</b> · '+Number(r.order_count||0)+' ออเดอร์ · '+money(Number(r.gross_sales||0))+'</section>').join('');
  }catch(e){box.textContent='โหลดรายได้ไม่สำเร็จ: '+e.message}
 };
 window.qgmLoadRevenue=async function(date){
@@ -3153,9 +3153,9 @@ window.qgmLoadRevenue=async function(date){
   const money=n=>'฿'+Number(n||0).toLocaleString('th-TH',{minimumFractionDigits:2,maximumFractionDigits:2});
   const due=Number(r.gp_due||0),sales=Number(r.gross_sales||0),cash=Number(r.cash_received||0);
   box.innerHTML=`<section class="qgm-report"><h2>${escapeHtml(new Date(date+'T12:00:00').toLocaleDateString('th-TH',{day:'numeric',month:'long',year:'numeric'}))}</h2>
-    <div class="qgm-report-grid"><div><small>ยอดค่าสินค้าหลังไรเดอร์รับ</small><b>${money(sales)}</b></div><div><small>GP ที่ต้องชำระ</small><b>${money(due)}</b></div><div><small>เงินสดที่ร้านยืนยันรับ</small><b>${money(cash)}</b></div><div><small>ออเดอร์ที่ไรเดอร์รับสินค้า</small><b>${Number(r.order_count||0)}</b></div></div>
+    <div class="qgm-report-grid"><div><small>ยอดค่าสินค้าหลังไรเดอร์รับ</small><b>${money(sales)}</b></div><div><small>GP ที่ต้องชำระ</small><b>${money(due)}</b></div><div><small>เงินสดค่าสินค้าที่ร้านได้รับ</small><b>${money(cash)}</b></div><div><small>ออเดอร์ที่ไรเดอร์รับสินค้า</small><b>${Number(r.order_count||0)}</b></div></div>
     <p class="qgm-report-status">ประมาณการยอดค่าสินค้าหลังหัก GP: ${money(sales-due)} · สถานะ GP: ${escapeHtml(GP_SETTLEMENT_STATUSES[r.gp_status]||r.gp_status||'รอชำระ')}</p>
-    <small>เงินสดที่ยืนยันรับนับตามวันที่ร้านกดยืนยัน ออเดอร์เก่าที่ไม่ได้กดยืนยันอาจไม่อยู่ในช่องนี้</small>
+    <small>ยอดเงินสดบันทึกอัตโนมัติตาม flow การรับสินค้าของออเดอร์ ไม่ต้องกดยืนยันการรับเงินเพิ่ม</small>
     ${due>0&&r.gp_status==='pending'?`<label class="qgm-gp-slip">แนบสลิปและแจ้งโอน<input type="file" accept="image/png,image/jpeg,image/webp,application/pdf" onchange="qgmSubmitGpSlip('${date}',this)"></label>`:''}
     </section>`;
  }catch(e){box.innerHTML='<p class="qgm-report qgm-report-error">โหลดรายงานไม่สำเร็จ: '+escapeHtml(e.message||e)+'</p>'}
