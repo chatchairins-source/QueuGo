@@ -1,5 +1,11 @@
 # QueueGo production readiness — current engineering batch
 
+> **Historical snapshot — do not use this file as the current Closed Beta release gate.**  
+> This document records the engineering state from **2026-10-04** at baseline `6b3a07e...`.  
+> Current release decisions are maintained in `docs/pilot-recovery-manifest.json`, `docs/play-closed-beta-readiness.md`, and `docs/security-audit-20261007.md`.  
+> In particular, later work completed real core production E2E evidence, UGC/chat safety, API 36 gates, password hardening, and reduced Supabase Performance Advisor findings for auth RLS initplan and unindexed foreign keys to **0**.
+
+
 Date: 2026-10-04 (Asia/Bangkok). Audit baseline: `main` at `6b3a07e4176c874e32f30fb51c9b7afe635445fc`. Only `main` was checked out. No old branch was merged or used as a code source. Recovery uses Git history.
 
 **NOT READY — BLOCKERS REMAIN**
