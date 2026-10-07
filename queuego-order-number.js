@@ -17,7 +17,7 @@ var QueueGoOrderNumber=(function(){
     const code=match[1].toUpperCase();
     return /^\d+$/.test(code)?code.padStart(4,'0'):code.padStart(4,'0');
   }
-  function format(input){return 'QT-'+fourChars(input)}
+  function format(input){return 'QO-'+fourChars(input)}
   function replaceInText(value){
     return String(value??'').replace(
       /\b(?:QT|QO)-\d{8}-[A-Z0-9]{1,4}\b|\b(?:QT|QO)-[A-Z0-9]{1,4}\b|\bLW-\d{8}-\d{6}-[A-Z0-9]{4}\b/gi,
