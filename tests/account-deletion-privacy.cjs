@@ -29,5 +29,10 @@ must(deletion.includes('เข้าสู่ระบบเพื่อยื�
 must(sql.includes('queuego_account_deletion_eligibility'),'SQL source must include eligibility gate');
 must(sql.includes("delivery_address='ข้อมูลถูกลบตามคำขอเจ้าของบัญชี'"),'market order PII scrub must respect NOT NULL');
 must(!sql.includes('set delivery_address=null,delivery_latitude=null,delivery_longitude=null\n     where customer_id=v_user.id;'),'market order scrub must not null NOT NULL columns');
+must(sql.includes('delete from public.qg_ugc_terms_acceptances where user_id=v_user.id;'),'account deletion must remove UGC terms acceptance');
+must(sql.includes('delete from public.qg_user_blocks where blocker_user_id=v_user.id or blocked_user_id=v_user.id;'),'account deletion must remove UGC blocks');
+must(sql.includes('content_snapshot=case when reporter_user_id=v_user.id or reported_user_id=v_user.id then null else content_snapshot end'),'account deletion must scrub reported chat snapshots');
+must(privacy.includes('รายงานหรือบล็อกคู่สนทนา'),'privacy policy must disclose chat report/block rights');
+must(privacy.includes('สำเนาเนื้อหา'),'privacy policy must disclose moderation snapshot retention and cleanup');
 
 console.log('account deletion/privacy gate checks passed');
