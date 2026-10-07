@@ -117,6 +117,9 @@
     if(sub)await sub.unsubscribe().catch(()=>false);
     return true;
   }
+  async function test(){
+    return call('test');
+  }
   async function toggle(button){
     if(nativeSupported())return QueueGoNativePush.toggle(button);
     if(button)button.disabled=true;
@@ -146,5 +149,5 @@
     if(window.QueueGoNativePush)QueueGoNativePush.configure(options);
     queueMicrotask(()=>resume());
   }
-  window.QueueGoPush=Object.freeze({configure,enable,resume,disable,toggle,syncButton,unsubscribeLocal,supported});
+  window.QueueGoPush=Object.freeze({configure,enable,resume,disable,test,toggle,syncButton,unsubscribeLocal,supported});
 })();
