@@ -1,14 +1,14 @@
 {
-  "generated_at": "2026-10-07T08:42:00+07:00",
+  "generated_at": "2026-10-07T09:17:00+07:00",
   "github": {
     "repository": "chatchairins-source/QueuGo",
     "source_of_truth": "main",
-    "head_at_manifest": "b19e5ed92604ca818c3e59b4f94a56a41bd6a038",
+    "head_at_manifest": "ff449adaccfbbbfcd0924e41549ed94404897957",
     "previous_backup_branch": "backup-pre-closed-beta-20261007-0035",
     "latest_backup_branch": "backup-security-ugc-pre-closed-beta-20261007-0915",
     "certified_source_commit": "64a29c955c817d12026e4e87d6e334392ef40770",
     "rc_tests": {
-      "run_id": 37560984942,
+      "run_id": 37561092887,
       "status": "SUCCESS"
     },
     "chat_retention_tests": {
@@ -16,7 +16,7 @@
       "status": "SUCCESS"
     },
     "pages_deployment_last_checked": {
-      "run_id": 37560984627,
+      "run_id": 37561092266,
       "status": "SUCCESS"
     }
   },
@@ -159,11 +159,22 @@
     "signup_password_minimum_characters": 8,
     "anonymous_security_definer_review": "docs/security-anon-definer-allowlist.json",
     "security_audit": "PASS",
-    "authenticated_security_definer_review": "docs/security-auth-definer-review.json",
+    "authenticated_security_definer_review": {
+      "status": "PASS",
+      "unguarded_non_anonymous_candidates": 0,
+      "direct_or_delegated_guard_patterns": [
+        "auth.uid()",
+        "get_my_user_id()/get_my_role()",
+        "is_active_admin()",
+        "pos_allowed()/pos_my_shop()/pos_is_owner()",
+        "queuego_place_cash_order_core()"
+      ]
+    },
     "anonymous_security_definer_count": 9,
     "authenticated_security_definer_count": 123,
     "authenticated_direct_guard_count": 113,
-    "authenticated_no_direct_guard_reviewed_count": 10
+    "authenticated_no_direct_guard_reviewed_count": 10,
+    "audit_report": "docs/security-audit-20261007.md"
   },
   "performance": {
     "auth_rls_initplan_warnings_before": 13,
