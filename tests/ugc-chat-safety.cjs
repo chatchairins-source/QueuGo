@@ -36,5 +36,7 @@ ok(release.includes('queuego-ugc.js')&&release.includes('community-guidelines.ht
 ok(pilot.includes('queuego-ugc.js')&&pilot.includes('community-guidelines.html'),'Pilot APK bundle must include UGC safety assets');
 ok(/รายงานและบล็อก/.test(rules)&&/เนื้อหาที่ห้าม/.test(rules),'community rules must define prohibited content and report/block behavior');
 ok(!/dbSet\(['"]qt_order_chat_/.test(merchant),'Merchant must not have an active legacy order-chat sender without moderation UI');
+ok(!merchant.includes('function qtPersistChat'),'Merchant dead legacy chat persistence must stay removed');
+ok(!merchant.includes('qt_order_chat_'),'Merchant dead legacy chat cache keys must stay removed');
 
 console.log(JSON.stringify({checks,failures:0,scope:'QueueGo UGC terms, server enforcement, reporting, blocking, moderation, retention and Android bundling'}));
