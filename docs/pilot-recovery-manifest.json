@@ -55,8 +55,8 @@
     "database_version": "17.6.1.166",
     "region": "ap-southeast-2",
     "latest_migration": [
-      "20261007021517",
-      "security_scope_authenticated_definer_helpers"
+      "20261007021827",
+      "account_deletion_ugc_snapshot_cleanup"
     ],
     "edge_functions": [
       {
@@ -200,7 +200,8 @@
     "direct_client_table_access": false,
     "anon_rpc_access": false,
     "live_real_order_transaction": "PENDING_REAL_CHAT_WINDOW",
-    "live_real_order_note": "No current real order is inside the permitted chat window. No fake/demo production order will be created for certification."
+    "live_real_order_note": "No current real order is inside the permitted chat window. No fake/demo production order will be created for certification.",
+    "android_role_bundle_verified": true
   },
   "play": {
     "readiness_doc": "docs/play-closed-beta-readiness.md",
@@ -216,7 +217,8 @@
     "app_access_content_rating_draft": "docs/play-app-access-content-rating.md",
     "play_icon_512_artifact": true,
     "real_screenshots": "PENDING_PHYSICAL_BUILD",
-    "reviewer_accounts": "PENDING_EXTERNAL_CONFIGURATION"
+    "reviewer_accounts": "PENDING_EXTERNAL_CONFIGURATION",
+    "public_pages_ci": "PASS"
   },
   "remaining_external_blockers": [
     "Enable Supabase Auth leaked-password protection.",
