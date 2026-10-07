@@ -124,7 +124,7 @@ const QGCustomer=(()=>{
       closed=['completed','cancelled','no_rider_available'].includes(o.status),
       r=ctx.rider,
       chatOpen=chatAvailable(o),
-      stage=o.status==='completed'?4:o.status==='in_progress'||o.status==='picked_up'?3:['rider_assigned','preparing','ready'].includes(o.status)?2:o.status==='searching_rider'?1:0,
+      stage=o.status==='completed'?4:['in_progress','picked_up'].includes(o.status)?3:['rider_assigned','assigned','preparing','ready'].includes(o.status)?2:['accepted','searching_rider'].includes(o.status)?1:0,
       stageLabels=['สั่งซื้อ','หารายเดอร์','รับสินค้า','กำลังส่ง','สำเร็จ'],
       orderNote=note(o.note).trim(),
       statusTime=['completed','cancelled','no_rider_available'].includes(o.status)?(o.completed_at||o.updated_at||o.created_at):o.created_at;
