@@ -1,16 +1,16 @@
 {
-  "generated_at": "2026-10-07T13:17:34+07:00",
+  "generated_at": "2026-10-07T13:24:12+07:00",
   "github": {
     "repository": "chatchairins-source/QueuGo",
     "source_of_truth": "main",
-    "head_at_manifest": "60d7407e3bb597f6297d792dba2a61cefad2c2e2",
+    "head_at_manifest": "449593d64f809c1c828f5b676108871693f27ebe",
     "previous_backup_branch": "backup-pre-closed-beta-20261007-0035",
-    "latest_backup_branch": "backup-pre-gate-recheck-60d7407e-20261007",
-    "certified_source_commit": "60d7407e3bb597f6297d792dba2a61cefad2c2e2",
+    "latest_backup_branch": "backup-pre-manifest-sync-449593d6-20261007",
+    "certified_source_commit": "6263672b8ac8765cb73a3d34508df367926a5da2",
     "rc_tests": {
-      "run_id": 37580588869,
+      "run_id": 37581216176,
       "status": "SUCCESS",
-      "head_sha": "60d7407e3bb597f6297d792dba2a61cefad2c2e2"
+      "head_sha": "6263672b8ac8765cb73a3d34508df367926a5da2"
     },
     "chat_retention_tests": {
       "run_id": 37574995871,
@@ -18,9 +18,9 @@
       "head_sha": "b738c2ce5ef1d9d065a9d033258e6134d0d2270e"
     },
     "pages_deployment_last_checked": {
-      "run_id": 37580588896,
+      "run_id": 37581241282,
       "status": "SUCCESS",
-      "head_sha": "60d7407e3bb597f6297d792dba2a61cefad2c2e2"
+      "head_sha": "449593d64f809c1c828f5b676108871693f27ebe"
     },
     "operational_inventory_commit": "a406bb7f8de013fa6bd7d595ca01832a7ce28293",
     "operational_inventory_rc_run": {
@@ -34,7 +34,7 @@
     "push_firebase_preflight_commit": "7c3f0a2a2d8ebb103ba30e014022929699c4f175",
     "android_signing_hardening_commit": "6823cc2da77cfb9781673ce8fd4e9733e4446f54",
     "pilot_provenance_commit": "6cc35be3d32c9c79016ea4bab728240fc10264c7",
-    "latest_source_verification_commit": "d50affbb6b783bcd53f7fcabccfd29145f1afa24",
+    "latest_source_verification_commit": "6263672b8ac8765cb73a3d34508df367926a5da2",
     "latest_source_verification_status": "PASS_GITHUB_RC",
     "latest_source_verification_checks": 38,
     "latest_source_verification_failures": 0
@@ -86,10 +86,10 @@
       },
       {
         "slug": "queuego-push",
-        "version": 11,
+        "version": 12,
         "status": "ACTIVE",
         "verify_jwt": false,
-        "ezbr_sha256": "db9ef2c3e83a805892ec2615e1e90010ea5b37534ad0add002a84c0566abefcf"
+        "ezbr_sha256": "ab62a45d7f757accb6e298d70261a0f219d1b4c4266a65b0d36e965cf3f36aac"
       },
       {
         "slug": "rider-web-push",
@@ -302,7 +302,22 @@
     "pilot_evidence_includes_github_run_id": true,
     "pilot_evidence_includes_artifact_sha256": true,
     "pilot_provenance_gate": "PASS",
-    "pilot_runtime_gate": "BLOCKED_MISSING_FIREBASE_SECRET_AND_PHYSICAL_CERTIFICATION"
+    "pilot_runtime_gate": "BLOCKED_MISSING_FIREBASE_SECRET_AND_PHYSICAL_CERTIFICATION",
+    "release_secret_preflight_workflow": ".github/workflows/release-secret-readiness.yml",
+    "release_secret_preflight_durable": true,
+    "release_secret_preflight_manual_dispatch": true,
+    "release_secret_preflight_validates_firebase_packages": [
+      "com.queuego.customer",
+      "com.queuego.merchant",
+      "com.queuego.rider"
+    ],
+    "release_secret_preflight_validates_keystore_store_password": true,
+    "release_secret_preflight_validates_keystore_alias": true,
+    "release_secret_preflight_validates_keystore_key_password": true,
+    "release_secret_preflight_cleans_decoded_credentials": true,
+    "release_secret_preflight_source_commit": "e96b2f5d6673ecf4f0b56b2cd14c85071113548a",
+    "release_secret_preflight_regression_guard_commit": "6263672b8ac8765cb73a3d34508df367926a5da2",
+    "release_secret_preflight_rc_run": 37581216176
   },
   "security": {
     "code_surface_hardened": true,
@@ -509,8 +524,8 @@
     "pos_qr_migration": "20261007045146_unify_pos_qr_order_codes.sql",
     "order_number_test_checks": 39,
     "legacy_pos_qr_display_normalized": true,
-    "certified_source_commit": "d50affbb6b783bcd53f7fcabccfd29145f1afa24",
-    "certified_rc_run": 37580393679,
+    "certified_source_commit": "6263672b8ac8765cb73a3d34508df367926a5da2",
+    "certified_rc_run": 37581216176,
     "standalone_laundry_shared_formatter": true,
     "table_qr_shared_formatter": true,
     "table_qr_raw_uuid_display": false,
@@ -520,8 +535,8 @@
     "remote_source_checks": 38,
     "remote_source_failures": 0,
     "source_verification_status": "PASS",
-    "last_rc_certified_commit": "d50affbb6b783bcd53f7fcabccfd29145f1afa24",
-    "last_rc_certified_run": 37580393679,
+    "last_rc_certified_commit": "6263672b8ac8765cb73a3d34508df367926a5da2",
+    "last_rc_certified_run": 37581216176,
     "qr_recovery_test_checks": 36,
     "table_qr_checkout_requires_order_number": true
   },
