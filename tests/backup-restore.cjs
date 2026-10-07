@@ -14,7 +14,7 @@ ok(/workflow_dispatch/.test(workflow),'backup drill must be manually runnable');
 ok(/supabase@2\.120\.0 db dump/.test(workflow),'backup drill must use pinned Supabase-aware database dump');
 ok(!/supabase@latest/.test(workflow),'backup workflow must pin Supabase CLI and never use @latest');
 ok(/--role-only/.test(workflow)&&/--data-only/.test(workflow)&&/--use-copy/.test(workflow),'backup must export roles, schema and data');
-ok(/supabase@latest start/.test(workflow),'restore drill must start a clean local Supabase');
+ok(/supabase@2\.120\.0 start/.test(workflow),'restore drill must start a clean local Supabase with the pinned CLI');
 ok(/--single-transaction/.test(workflow)&&/ON_ERROR_STOP/.test(workflow),'database restore must be atomic and stop on errors');
 ok(/restore-storage\.mjs/.test(workflow),'Storage objects must be restored during the drill');
 ok(/aes-256-cbc/.test(workflow)&&/pbkdf2/.test(workflow),'off-site artifact must be encrypted before upload');
