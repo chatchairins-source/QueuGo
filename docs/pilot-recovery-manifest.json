@@ -1,11 +1,11 @@
 {
-  "generated_at": "2026-10-07T13:26:37+07:00",
+  "generated_at": "2026-10-07T13:28:06+07:00",
   "github": {
     "repository": "chatchairins-source/QueuGo",
     "source_of_truth": "main",
-    "head_at_manifest": "97293b8b2151ba677a47529a3620dfa8b65d3780",
+    "head_at_manifest": "fa54b15a6153e3eb691c1c8469af77982a97ba78",
     "previous_backup_branch": "backup-pre-closed-beta-20261007-0035",
-    "latest_backup_branch": "backup-pre-prod-audit-97293b8b-20261007",
+    "latest_backup_branch": "backup-pre-integrity-sync-fa54b15a-20261007",
     "certified_source_commit": "97293b8b2151ba677a47529a3620dfa8b65d3780",
     "rc_tests": {
       "run_id": 37581398966,
@@ -546,9 +546,9 @@
     "table_qr_checkout_requires_order_number": true
   },
   "production_integrity_audit": {
-    "checked_at": "2026-10-07T13:26:20+07:00",
-    "scope": "read-only production audit after unified QT order code, durable Closed Beta preflight and push hardening",
-    "latest_completed_checked": 10,
+    "checked_at": "2026-10-07T13:28:06+07:00",
+    "scope": "read-only production audit after QT unification and Closed Beta preflight hardening",
+    "latest_completed_checked": 5,
     "latest_new_flow_completed_with_pickup_and_delivery_proof": 5,
     "latest_completed_state_timestamps_monotonic": true,
     "duplicate_merchant_request_ids": 0,
@@ -573,6 +573,9 @@
       "qg_native_push_tokens",
       "qg_push_outbox",
       "qg_push_config"
-    ]
+    ],
+    "recent_completed_with_delivery_row": 5,
+    "recent_completed_with_pickup_photo": 5,
+    "recent_completed_with_delivery_photo": 5
   }
 }
