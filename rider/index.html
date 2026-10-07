@@ -95,7 +95,7 @@ const NEARBY_RADIUS_KM = 2;
 const QG_ARRIVAL_GUARD_KM = 0.2;
 const APP_VERSION='5.0.0';
 const POLL_MS = 60000;
-const OFFER_POLL_MS = 5000;
+const OFFER_POLL_MS = 3000;
 
 /* ---------- full-screen lock + responsive resize (all screens, incl. rider page) ---------- */
 (function(){
@@ -1259,7 +1259,7 @@ async function qgPollRiderOfferNow(){
   try{
     const token=await getAccessToken();if(!current()||!token)return;
     const rows=await sbRpc('qg_get_my_rider_offer',{},token);if(!current())return;
-    if(Array.isArray(rows)&&rows.some(x=>x?.order_id))await refreshData(true);
+    if(Array.isArray(rows)&&rows.some(x=>x?.order_id))await refreshData();
   }catch(e){console.warn('Rider offer poll failed');}
   finally{riderOfferPollBusy=false;}
 }
