@@ -1838,6 +1838,7 @@ function renderProfilePanel(){
       <button class="qg-setting" id="qg-rider-support-link"><span class="qg-setting-icon">${QTICON.chat}</span><div><b>แจ้งปัญหา / ติดตามเรื่อง</b><small>ติดต่อฝ่ายดูแล QueueGo</small></div><strong>›</strong></button>
       <button class="qg-setting" id="qg-account-settings-link"><span class="qg-setting-icon">${QTICON.user}</span><div><b>ตั้งค่าบัญชี</b><small>ชื่อ เบอร์โทร และข้อมูลบัญชี</small></div><strong>›</strong></button>
       <button class="qg-setting" id="qg-push-setting"><span class="qg-setting-icon">${QTICON.chat}</span><div><b>การแจ้งเตือนเบื้องหลัง</b><small>รับงานและสถานะสำคัญแม้ไม่ได้เปิดหน้านี้</small></div><strong>›</strong></button>
+      <button class="qg-setting" id="qg-push-test"><span class="qg-setting-icon">${QTICON.chat}</span><div><b>ทดสอบการแจ้งเตือน</b><small>ส่งแจ้งเตือนทดสอบหลัง 7 วินาที</small></div><strong>›</strong></button>
       <button class="qg-setting" id="qg-privacy-link"><span class="qg-setting-icon">${QTICON.chat}</span><div><b>นโยบายความเป็นส่วนตัว</b><small>การใช้ข้อมูลและการลบบัญชี</small></div><strong>›</strong></button>
       <button class="qg-setting danger" id="qg-delete-account"><span class="qg-setting-icon">${QTICON.back}</span><div><b>ลบบัญชีถาวร</b><small>ลบ Auth และข้อมูลส่วนบุคคล</small></div><strong>›</strong></button>
       <button class="qg-setting danger" id="qg-logout"><span class="qg-setting-icon">${QTICON.back}</span><div><b>ออกจากระบบ</b><small>ออกจากบัญชีในอุปกรณ์นี้</small></div><strong>›</strong></button>
@@ -1847,6 +1848,7 @@ function renderProfilePanel(){
   document.getElementById('qg-rider-support-link').onclick=()=>qgOpenTicketPanel();
   document.getElementById('qg-account-settings-link').onclick=qgOpenAccountSettings;
   document.getElementById('qg-push-setting').onclick=e=>QueueGoPush.toggle(e.currentTarget).then(on=>toast(on?'เปิดการแจ้งเตือนเบื้องหลังแล้ว':'ปิดการแจ้งเตือนเบื้องหลังแล้ว')).catch(err=>toast(err.message||'เปิดการแจ้งเตือนไม่สำเร็จ'));
+  document.getElementById('qg-push-test').onclick=e=>{const b=e.currentTarget;b.disabled=true;toast('ระบบจะส่งแจ้งเตือนใน 7 วินาที กด Home เพื่อทดสอบได้เลย');QueueGoPush.test().catch(err=>toast(err.message||'ทดสอบแจ้งเตือนไม่สำเร็จ')).finally(()=>b.disabled=false)};
   document.getElementById('qg-privacy-link').onclick=()=>QueueGoAccountDeletion.openPrivacy();
   document.getElementById('qg-delete-account').onclick=e=>qgDeleteAccount(e.currentTarget);
   document.getElementById('qg-logout').onclick=doLogout;
