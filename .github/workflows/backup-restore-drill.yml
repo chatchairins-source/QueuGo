@@ -31,12 +31,16 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          missing=0
           for name in QG_SUPABASE_DB_URL QG_SUPABASE_SERVICE_ROLE_KEY QG_BACKUP_PASSPHRASE; do
             if [ -z "${!name:-}" ]; then
               echo "::error::Missing required secret: $name"
-              exit 1
+              missing=1
             fi
           done
+          if [ "$missing" -ne 0 ]; then
+            exit 1
+          fi
           if [ "${#QG_BACKUP_PASSPHRASE}" -lt 20 ]; then
             echo "::error::QG_BACKUP_PASSPHRASE must be at least 20 characters"
             exit 1
