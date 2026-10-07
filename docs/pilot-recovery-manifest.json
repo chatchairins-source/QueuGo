@@ -1,16 +1,16 @@
 {
-  "generated_at": "2026-10-07T13:24:12+07:00",
+  "generated_at": "2026-10-07T13:26:37+07:00",
   "github": {
     "repository": "chatchairins-source/QueuGo",
     "source_of_truth": "main",
-    "head_at_manifest": "449593d64f809c1c828f5b676108871693f27ebe",
+    "head_at_manifest": "97293b8b2151ba677a47529a3620dfa8b65d3780",
     "previous_backup_branch": "backup-pre-closed-beta-20261007-0035",
-    "latest_backup_branch": "backup-pre-manifest-sync-449593d6-20261007",
-    "certified_source_commit": "6263672b8ac8765cb73a3d34508df367926a5da2",
+    "latest_backup_branch": "backup-pre-prod-audit-97293b8b-20261007",
+    "certified_source_commit": "97293b8b2151ba677a47529a3620dfa8b65d3780",
     "rc_tests": {
-      "run_id": 37581216176,
+      "run_id": 37581398966,
       "status": "SUCCESS",
-      "head_sha": "6263672b8ac8765cb73a3d34508df367926a5da2"
+      "head_sha": "97293b8b2151ba677a47529a3620dfa8b65d3780"
     },
     "chat_retention_tests": {
       "run_id": 37574995871,
@@ -18,9 +18,9 @@
       "head_sha": "b738c2ce5ef1d9d065a9d033258e6134d0d2270e"
     },
     "pages_deployment_last_checked": {
-      "run_id": 37581241282,
+      "run_id": 37581398306,
       "status": "SUCCESS",
-      "head_sha": "449593d64f809c1c828f5b676108871693f27ebe"
+      "head_sha": "97293b8b2151ba677a47529a3620dfa8b65d3780"
     },
     "operational_inventory_commit": "a406bb7f8de013fa6bd7d595ca01832a7ce28293",
     "operational_inventory_rc_run": {
@@ -34,7 +34,7 @@
     "push_firebase_preflight_commit": "7c3f0a2a2d8ebb103ba30e014022929699c4f175",
     "android_signing_hardening_commit": "6823cc2da77cfb9781673ce8fd4e9733e4446f54",
     "pilot_provenance_commit": "6cc35be3d32c9c79016ea4bab728240fc10264c7",
-    "latest_source_verification_commit": "6263672b8ac8765cb73a3d34508df367926a5da2",
+    "latest_source_verification_commit": "97293b8b2151ba677a47529a3620dfa8b65d3780",
     "latest_source_verification_status": "PASS_GITHUB_RC",
     "latest_source_verification_checks": 38,
     "latest_source_verification_failures": 0
@@ -365,7 +365,12 @@
     "leaked_password_protection_upgrade_recommendation": true,
     "auth_release_decision": "PASS_FREE_PLAN_CONTROLS",
     "auth_release_decision_note": "Closed Beta may proceed on Free plan with shared 12-character complexity controls. This does not claim Supabase leaked-password protection is enabled; enable it after a Pro upgrade.",
-    "auth_release_decision_verified_by_rc_run": 37566751164
+    "auth_release_decision_verified_by_rc_run": 37566751164,
+    "security_advisor_last_checked_at": "2026-10-07T13:26:20+07:00",
+    "security_advisor_anon_definer_count_live": 9,
+    "security_advisor_authenticated_definer_count_live": 123,
+    "security_advisor_leaked_password_warning_live": true,
+    "security_advisor_status": "MATCHES_REVIEWED_ALLOWLIST_PLUS_FREE_PLAN_WARN"
   },
   "performance": {
     "auth_rls_initplan_warnings_before": 13,
@@ -541,8 +546,8 @@
     "table_qr_checkout_requires_order_number": true
   },
   "production_integrity_audit": {
-    "checked_at": "2026-10-07T11:54:00+07:00",
-    "scope": "read-only production audit after unified QT order code and push hardening",
+    "checked_at": "2026-10-07T13:26:20+07:00",
+    "scope": "read-only production audit after unified QT order code, durable Closed Beta preflight and push hardening",
     "latest_completed_checked": 10,
     "latest_new_flow_completed_with_pickup_and_delivery_proof": 5,
     "latest_completed_state_timestamps_monotonic": true,
@@ -553,6 +558,21 @@
     "orphan_delivery_proofs": 0,
     "active_orders_without_canonical_database_code": 0,
     "active_duplicate_visible_qt_codes": 0,
-    "historical_note": "Older completed orders created before photo-proof enforcement may not contain pickup/delivery proof rows; no historical evidence was fabricated or backfilled."
+    "historical_note": "Older completed orders created before photo-proof enforcement may not contain pickup/delivery proof rows; no historical evidence was fabricated or backfilled.",
+    "enabled_native_push_tokens": 0,
+    "enabled_web_push_subscriptions": 0,
+    "push_outbox_inflight": 0,
+    "push_config_rows": 0,
+    "critical_security_tables_rls_enabled": true,
+    "critical_security_tables_anon_direct_privileges": false,
+    "critical_security_tables_checked": [
+      "order_chat_messages",
+      "qg_ugc_reports",
+      "qg_user_blocks",
+      "qg_push_subscriptions",
+      "qg_native_push_tokens",
+      "qg_push_outbox",
+      "qg_push_config"
+    ]
   }
 }
