@@ -27,6 +27,7 @@ ok('Closed Beta requires physical notification certification',/physical_backgrou
 ok('Closed Beta requires UGC chat safety certification',/ugc_chat_safety/.test(workflow));
 ok('approved QueueGo icon source exists',fs.existsSync('android-build/branding/queuego-approved-icon.webp'));
 ok('approved QueueGo icon source is used',/branding\/queuego-approved-icon\.webp/.test(workflow));
+ok('Play Store 512 icon is exported',/play-icon-512\.png/.test(workflow)&&/resize\(\(512,512\)/.test(workflow));
 ok('synthetic launcher drawing removed',!/ImageDraw/.test(workflow));
 ok('adaptive icon resources generated',/mipmap-anydpi-v26/.test(workflow)&&/ic_launcher_foreground/.test(workflow));
 ok('native Android back handler',/OnBackPressedCallback/.test(workflow)&&/getWebView\(\)\.goBack\(\)/.test(workflow));
