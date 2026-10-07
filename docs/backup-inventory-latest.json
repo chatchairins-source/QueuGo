@@ -1,10 +1,10 @@
 {
-  "generated_at": "2026-10-07T07:25:00+07:00",
+  "generated_at": "2026-10-07T09:25:00+07:00",
   "project_ref": "pkypiqhlrmzocysgeqew",
   "database_version": "17.6.1.166",
   "latest_migration": [
-    "20261006173656",
-    "queuego_native_push_transport"
+    "20261007021827",
+    "account_deletion_ugc_snapshot_cleanup"
   ],
   "counts": {
     "auth.users": 33,
@@ -21,6 +21,9 @@
     "public.laundry_orders": 3,
     "public.qg_pickup_proofs": 5,
     "public.qg_delivery_proofs": 7,
+    "public.qg_ugc_terms_acceptances": 0,
+    "public.qg_user_blocks": 0,
+    "public.qg_ugc_reports": 0,
     "storage.buckets": 3,
     "storage.objects": 41
   },
@@ -45,10 +48,10 @@
     }
   ],
   "schema": {
-    "public_functions": 210,
-    "security_definer_functions": 191,
+    "public_functions": 208,
+    "security_definer_functions": 189,
     "types_snapshot": "supabase/database.types.ts"
   },
   "contains_personal_data": false,
-  "note": "Counts and byte totals only. No user records, names, phone numbers, addresses, tokens, or object contents are stored in this inventory."
+  "note": "Counts and byte totals only. No user records, names, phone numbers, addresses, tokens, message contents, moderation evidence, or object contents are stored in this inventory."
 }
