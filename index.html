@@ -729,7 +729,7 @@ function layout(inner,tab){
 <button class="ic" aria-label="แจ้งเตือน" onclick="go('notifications')">${ico('bell')}<b id="customer-notification-count" hidden></b></button><button class="ic" aria-label="โปรไฟล์" onclick="go('profile')">${ico('user')}</button>`:'<button class="lk" onclick="go(\'login\')">เข้าสู่ระบบ</button>'}</div></div></header>
 <main class="${home?'qg-home-original-main':''}">${inner}</main>${nav(tab)}`;
 }
-const nav=t=>`<nav class="nav ${t==='home'?'qg-home-original-nav':''}">${[['home','home','หน้าหลัก'],['search','search','ค้นหา'],['cart','bag','ตะกร้า'],['orders','orders','ออเดอร์']].map(([k,i,l])=>
+const nav=t=>`<nav class="nav ${((location.hash.slice(1)||'home').split('/')[0]==='home')?'qg-home-original-nav':''}">${[['home','home','หน้าหลัก'],['search','search','ค้นหา'],['cart','bag','ตะกร้า'],['orders','orders','ออเดอร์']].map(([k,i,l])=>
   `<a href="#${k}" class="${t===k?'on':''}"><div class="ni">${ico(i)}${k==='cart'&&cartN()?`<b class="badge" style="top:-5px;right:-8px">${cartN()}</b>`:''}</div>${l}</a>`).join('')}</nav>`;
 const go=h=>{location.hash=h};
 function openPublicShop(id,category){
