@@ -212,6 +212,35 @@ main{width:100%;max-width:720px;margin:auto;padding:0 12px 92px}
   .sum{padding:9px 10px}.prim{min-height:46px}.qg-order-hero{padding:11px}.qg-order-card{padding:10px}
   .qg-order-map{height:145px!important}.qg-order-place{padding:8px 9px}.qg-order-item-row{padding:6px 0}
 }
+
+/* Home keeps the approved original density; compact mode remains for transactional pages. */
+.qg-home-original-top{padding:calc(env(safe-area-inset-top,0px) + 10px) 16px 10px}
+.qg-home-original-top .ic{width:40px;height:40px;border-radius:13px}
+.qg-home-original-main{padding:0 14px 118px}
+.qg-home-original-main .sec{margin-top:20px}
+.qg-home-original-main .st{margin:0 2px 11px}
+.qg-home-original-main .st h2{font-size:18px}
+.qg-home-original-main .loc{gap:10px;padding:13px 2px 10px}
+.qg-home-original-main .pin{width:34px;height:34px;border-radius:11px}
+.qg-home-original-main .srch{height:48px;border-radius:15px}
+.qg-home-original-main .promo{margin-top:13px;aspect-ratio:662/386;border-radius:20px}
+.qg-home-original-main .cats{gap:13px;padding:2px 2px 5px}
+.qg-home-original-main .cat{flex:0 0 64px}
+.qg-home-original-main .cat i{width:54px;height:54px}
+.qg-home-original-main .cat svg{width:25px}
+.qg-home-original-main .cat b{font-size:10px;margin-top:6px}
+.qg-home-original-main .list{gap:10px}
+.qg-home-original-main .sc{border-radius:18px;padding:10px;gap:12px}
+.qg-home-original-main .ph{width:92px;height:92px;border-radius:14px}
+.qg-home-original-main .sm{gap:6px;font-size:11px;margin-top:6px}
+.qg-home-original-main .pill{font-size:10px;padding:4px 7px;margin-top:7px}
+.qg-home-original-nav{padding:6px 8px calc(6px + env(safe-area-inset-bottom,0px))}
+.qg-home-original-nav a{font-size:10px;padding:3px 0}
+.qg-home-original-nav .ni{width:24px;height:24px}
+@media(max-width:420px){
+  .qg-home-original-main{padding-left:12px;padding-right:12px}
+  .qg-home-original-main .ph{width:82px;height:82px}
+}
 </style>
 <script src="https://api.longdo.com/map/?key=347649ca13f49db0d8a599ae35f8de2b"></script>
 <script src="queuego-order-number.js"></script>
@@ -681,13 +710,13 @@ const authed=()=>!!S.get();
 function layout(inner,tab){
   customerLocationPicker?.destroy();checkoutPicker?.destroy();customerLocationPicker=checkoutPicker=null;
   window.__customerPickedLocation=window.__checkoutQuote=null;
-  const u=S.get();
-  $('root').innerHTML=`<header class="top"><div><button class="brand" onclick="go('home')">Queue<span>Go</span></button>
+  const u=S.get(),home=tab==='home';
+  $('root').innerHTML=`<header class="top${home?' qg-home-original-top':''}"><div><button class="brand" onclick="go('home')">Queue<span>Go</span></button>
 <div class="acts">${u?`<button class="ic" aria-label="ตะกร้า" onclick="go('cart')">${ico('bag')}${cartN()?`<b class="badge">${cartN()>99?'99+':cartN()}</b>`:''}</button>
 <button class="ic" aria-label="แจ้งเตือน" onclick="go('notifications')">${ico('bell')}<b id="customer-notification-count" hidden></b></button><button class="ic" aria-label="โปรไฟล์" onclick="go('profile')">${ico('user')}</button>`:'<button class="lk" onclick="go(\'login\')">เข้าสู่ระบบ</button>'}</div></div></header>
-<main>${inner}</main>${nav(tab)}`;
+<main class="${home?'qg-home-original-main':''}">${inner}</main>${nav(tab)}`;
 }
-const nav=t=>`<nav class="nav">${[['home','home','หน้าหลัก'],['search','search','ค้นหา'],['cart','bag','ตะกร้า'],['orders','orders','ออเดอร์']].map(([k,i,l])=>
+const nav=t=>`<nav class="nav ${t==='home'?'qg-home-original-nav':''}">${[['home','home','หน้าหลัก'],['search','search','ค้นหา'],['cart','bag','ตะกร้า'],['orders','orders','ออเดอร์']].map(([k,i,l])=>
   `<a href="#${k}" class="${t===k?'on':''}"><div class="ni">${ico(i)}${k==='cart'&&cartN()?`<b class="badge" style="top:-5px;right:-8px">${cartN()}</b>`:''}</div>${l}</a>`).join('')}</nav>`;
 const go=h=>{location.hash=h};
 function openPublicShop(id,category){
