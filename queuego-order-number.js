@@ -1,4 +1,4 @@
-(function(root){
+var QueueGoOrderNumber=(function(){
   'use strict';
   function rawValue(input){
     if(input&&typeof input==='object'){
@@ -19,5 +19,7 @@
     return String(hash).padStart(4,'0');
   }
   function format(input){return 'QO-'+fourDigits(input)}
-  root.QueueGoOrderNumber=Object.freeze({format,fourDigits});
-})(window);
+  return Object.freeze({format,fourDigits});
+})();
+if(typeof window!=='undefined')window.QueueGoOrderNumber=QueueGoOrderNumber;
+if(typeof module==='object'&&module.exports)module.exports=QueueGoOrderNumber;
