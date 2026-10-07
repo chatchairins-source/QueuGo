@@ -242,6 +242,9 @@ jobs:
           if src.width != src.height or src.width < 512:
               raise RuntimeError(f'Approved QueueGo icon must be square and at least 512px, got {src.size}')
 
+          play=src.resize((512,512),Image.Resampling.LANCZOS)
+          play.save(Path('QueueGo-${{ matrix.role }}-play-icon-512.png'),optimize=True)
+
           base=Path('android-build/android/app/src/main/res')
           sizes={
               'mipmap-mdpi':48,
@@ -299,5 +302,6 @@ jobs:
           path: |
             QueueGo-${{ matrix.role }}-pilot-test.apk
             QueueGo-${{ matrix.role }}-pilot-test-SHA256.txt
+            QueueGo-${{ matrix.role }}-play-icon-512.png
           if-no-files-found: error
           retention-days: 7
