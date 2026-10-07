@@ -2396,22 +2396,113 @@ window.qgmDeleteAccount=async function(button){
   if(button?.isConnected)button.disabled=false;
  }
 };
-window.renderShopProfileModern=function(){const u=shopUser();if(!u)return navigate('login');const cover=u.cover||u.coverImage,logo=u.logo||u.avatar,hasCover=cover&&cover!==logo;layout('ข้อมูลร้านค้า',`<div class="qgm-profile-cover ${hasCover?'has-photo':''}">${hasCover?`<img src="${esc(img(cover))}" alt="ภาพหน้าร้าน">`:''}<button class="qgm-camera" type="button" aria-label="เปลี่ยนภาพร้าน" onclick="navigate('shop-setup')">${svg('camera')}</button></div><div class="qgm-profile-name"><div class="qgm-profile-identity"><img src="${esc(img(logo))}" alt=""><div><h2>${esc(u.shopName||u.name||'ร้านค้า')}</h2><small>${esc(categoryLabel(u.category)||'ร้านค้า')}</small></div></div><span class="qgm-status" id="qgm-profile-open-state">● กำลังตรวจสอบสถานะร้าน</span></div><section class="qgm-card qgm-info"><div class="qgm-detail-row">${svg('box')}<span>${esc(categoryLabel(u.category)||'ร้านค้า')}</span></div><div class="qgm-detail-row">${svg('phone')}<span>${esc(u.phone||'-')}</span></div><div class="qgm-detail-row">${svg('pin')}<span>${esc(u.address||'-')}</span></div><div class="qgm-detail-row">${svg('clock')}<span>เปิดบริการ ${esc(u.openTime||'06:00')} - ${esc(u.closeTime||'22:00')} น.</span></div></section><button class="qgm-outline" type="button" onclick="navigate('shop-setup')">แก้ไขข้อมูลร้าน</button><button class="qgm-primary" type="button" onclick="navigate('shop-products')">จัดการเมนูสินค้า</button><button class="qgm-outline" type="button" onclick="QueueGoPush.toggle(this).then(on=>toast(on?'เปิดการแจ้งเตือนเบื้องหลังแล้ว':'ปิดการแจ้งเตือนเบื้องหลังแล้ว')).catch(e=>toast(e.message||'เปิดการแจ้งเตือนไม่สำเร็จ'))">การแจ้งเตือนเบื้องหลัง</button><button class="qgm-outline" type="button" onclick="this.disabled=true;toast('ระบบจะส่งแจ้งเตือนใน 7 วินาที กด Home เพื่อทดสอบได้เลย');QueueGoPush.test().catch(e=>toast(e.message||'ทดสอบแจ้งเตือนไม่สำเร็จ')).finally(()=>this.disabled=false)">ทดสอบการแจ้งเตือน</button><button class="qgm-outline" type="button" onclick="QueueGoAccountDeletion.openPrivacy()">นโยบายความเป็นส่วนตัว</button><button class="qgm-logout" type="button" onclick="qgmDeleteAccount(this)">ลบบัญชีถาวร</button><button class="qgm-outline" type="button" onclick="qtMerchantLogout()">ออกจากระบบ</button>`,'shop-profile',{back:true})
-{
+window.renderShopProfileModern=function(){
+ const u=shopUser();if(!u)return navigate('login');
+ const logo=u.logo||u.avatar;
+ layout('บัญชีร้านค้า',`
+  <div class="qgm-account-page">
+    <section class="qgm-account-hero">
+      <img class="qgm-account-logo" src="${esc(img(logo))}" alt="โลโก้ร้าน">
+      <div class="qgm-account-copy">
+        <h1>${esc(u.shopName||u.name||'ร้านค้า')}</h1>
+        <p>${esc(categoryLabel(u.category)||'ร้านค้า')}</p>
+      </div>
+      <span class="qgm-account-status" id="qgm-profile-open-state">กำลังตรวจสอบ</span>
+    </section>
 
- const main=document.querySelector('.qgm-content');if(!main)return;
- const b=document.createElement('button');b.className='qgm-outline';b.type='button';b.textContent='เวลาทำการและวันหยุด';b.onclick=()=>navigate('shop-hours');
- const edit=main.querySelector('button[onclick*="shop-setup"]');(edit||main.lastChild).after(b);
-}
-{
-    const el=document.getElementById('qgm-profile-open-state');if(!el)return;
-    (async()=>{try{const u=currentUser(),token=await qtGetAccessToken(),pid=await qgmGetShopPid(u,token);
-      const rows=await qtSupabaseTable('shop_open_states?select=is_open,resume_at&shop_id=eq.'+encodeURIComponent(pid),{accessToken:token});
-      if(!el.isConnected)return;const r=rows?.[0],open=!r||r.is_open!==false||Boolean(r.resume_at&&new Date(r.resume_at)<=new Date());
-      el.textContent=open?'● เปิดร้านอยู่':'● ปิดร้านอยู่';el.classList.toggle('done',open);
-    }catch(e){if(el.isConnected)el.textContent='● ตรวจสอบสถานะร้านไม่ได้'}})();
-  }
-{const button=document.createElement('button');button.className='qgm-outline';button.type='button';button.textContent='แจ้งปัญหา / ติดตามเรื่อง';button.onclick=()=>qgOpenTicketPanel();document.querySelector('.qgm-content')?.appendChild(button)}
+    <section class="qgm-account-section">
+      <h2>ข้อมูลร้าน</h2>
+      <div class="qgm-account-card qgm-account-info">
+        <div class="qgm-account-info-row"><span class="qgm-account-icon">${svg('box')}</span><div><small>ประเภทร้าน</small><b>${esc(categoryLabel(u.category)||'ร้านค้า')}</b></div></div>
+        <div class="qgm-account-info-row"><span class="qgm-account-icon">${svg('phone')}</span><div><small>เบอร์โทร</small><b>${esc(u.phone||'-')}</b></div></div>
+        <div class="qgm-account-info-row"><span class="qgm-account-icon">${svg('pin')}</span><div><small>ที่อยู่ร้าน</small><b>${esc(u.address||'-')}</b></div></div>
+        <div class="qgm-account-info-row"><span class="qgm-account-icon">${svg('clock')}</span><div><small>เวลาทำการ</small><b>${esc(u.openTime||'06:00')} - ${esc(u.closeTime||'22:00')} น.</b></div></div>
+      </div>
+    </section>
+
+    <section class="qgm-account-section">
+      <h2>จัดการร้าน</h2>
+      <div class="qgm-account-card">
+        <button class="qgm-account-row" type="button" onclick="navigate('shop-setup')">
+          <span class="qgm-account-row-icon">${svg('home')}</span>
+          <span class="qgm-account-row-copy"><b>แก้ไขข้อมูลร้าน</b><small>ชื่อร้าน เบอร์โทร ที่อยู่ และข้อมูลหน้าร้าน</small></span>
+          <span class="qgm-account-chevron">›</span>
+        </button>
+        <button class="qgm-account-row" type="button" onclick="navigate('shop-hours')">
+          <span class="qgm-account-row-icon">${svg('clock')}</span>
+          <span class="qgm-account-row-copy"><b>เวลาทำการและวันหยุด</b><small>ตั้งเวลาเปิด–ปิดและวันหยุดของร้าน</small></span>
+          <span class="qgm-account-chevron">›</span>
+        </button>
+        <button class="qgm-account-row qgm-account-row-primary" type="button" onclick="navigate('shop-products')">
+          <span class="qgm-account-row-icon">${svg('box')}</span>
+          <span class="qgm-account-row-copy"><b>จัดการเมนูสินค้า</b><small>เพิ่ม แก้ไข ราคา และสถานะสินค้า</small></span>
+          <span class="qgm-account-chevron">›</span>
+        </button>
+      </div>
+    </section>
+
+    <section class="qgm-account-section">
+      <h2>การแจ้งเตือน</h2>
+      <div class="qgm-account-card">
+        <button class="qgm-account-row" type="button" onclick="QueueGoPush.toggle(this).then(on=>toast(on?'เปิดการแจ้งเตือนเบื้องหลังแล้ว':'ปิดการแจ้งเตือนเบื้องหลังแล้ว')).catch(e=>toast(e.message||'เปิดการแจ้งเตือนไม่สำเร็จ'))">
+          <span class="qgm-account-row-icon">${svg('bell')}</span>
+          <span class="qgm-account-row-copy"><b>การแจ้งเตือนเบื้องหลัง</b><small>รับออเดอร์และสถานะสำคัญแม้ไม่ได้เปิดหน้านี้</small></span>
+          <span class="qgm-account-chevron">›</span>
+        </button>
+        <button class="qgm-account-row" type="button" onclick="this.disabled=true;toast('ระบบจะส่งแจ้งเตือนใน 7 วินาที กด Home เพื่อทดสอบได้เลย');QueueGoPush.test().catch(e=>toast(e.message||'ทดสอบแจ้งเตือนไม่สำเร็จ')).finally(()=>this.disabled=false)">
+          <span class="qgm-account-row-icon">${svg('bell')}</span>
+          <span class="qgm-account-row-copy"><b>ทดสอบการแจ้งเตือน</b><small>ตรวจว่าแจ้งเตือนเข้าเมื่อแอปอยู่เบื้องหลัง</small></span>
+          <span class="qgm-account-chevron">›</span>
+        </button>
+      </div>
+    </section>
+
+    <section class="qgm-account-section">
+      <h2>ความเป็นส่วนตัวและบัญชี</h2>
+      <div class="qgm-account-card">
+        <button class="qgm-account-row" type="button" onclick="QueueGoAccountDeletion.openPrivacy()">
+          <span class="qgm-account-row-icon">${svg('gear')}</span>
+          <span class="qgm-account-row-copy"><b>นโยบายความเป็นส่วนตัว</b><small>ข้อมูลเกี่ยวกับการเก็บและใช้ข้อมูลส่วนบุคคล</small></span>
+          <span class="qgm-account-chevron">›</span>
+        </button>
+        <button class="qgm-account-row qgm-account-danger" type="button" onclick="qgmDeleteAccount(this)">
+          <span class="qgm-account-row-icon">${svg('close')}</span>
+          <span class="qgm-account-row-copy"><b>ลบบัญชีถาวร</b><small>ลบบัญชีและข้อมูลร้านตามขั้นตอนที่กำหนด</small></span>
+          <span class="qgm-account-chevron">›</span>
+        </button>
+        <button class="qgm-account-row" type="button" onclick="qtMerchantLogout()">
+          <span class="qgm-account-row-icon">${svg('back')}</span>
+          <span class="qgm-account-row-copy"><b>ออกจากระบบ</b><small>ออกจากบัญชีร้านค้าบนอุปกรณ์นี้</small></span>
+          <span class="qgm-account-chevron">›</span>
+        </button>
+      </div>
+    </section>
+
+    <section class="qgm-account-section">
+      <h2>ช่วยเหลือ</h2>
+      <div class="qgm-account-card">
+        <button class="qgm-account-row" type="button" onclick="qgOpenTicketPanel()">
+          <span class="qgm-account-row-icon">${svg('support')}</span>
+          <span class="qgm-account-row-copy"><b>แจ้งปัญหา / ติดตามเรื่อง</b><small>ติดต่อทีมงาน QueueGo เมื่อพบปัญหาการใช้งาน</small></span>
+          <span class="qgm-account-chevron">›</span>
+        </button>
+      </div>
+    </section>
+  </div>`,'shop-profile',{back:true});
+
+ const el=document.getElementById('qgm-profile-open-state');
+ if(el){
+   (async()=>{try{
+     const user=currentUser(),token=await qtGetAccessToken(),pid=await qgmGetShopPid(user,token);
+     const rows=await qtSupabaseTable('shop_open_states?select=is_open,resume_at&shop_id=eq.'+encodeURIComponent(pid),{accessToken:token});
+     if(!el.isConnected)return;
+     const row=rows?.[0],open=!row||row.is_open!==false||Boolean(row.resume_at&&new Date(row.resume_at)<=new Date());
+     el.textContent=open?'เปิดร้านอยู่':'ปิดร้านอยู่';
+     el.classList.toggle('on',open);
+   }catch(e){
+     if(el.isConnected){el.textContent='ตรวจสอบไม่ได้';el.classList.remove('on')}
+   }})();
+ }
 };
 window.qtMerchantLogout=async function(){try{await QueueGoPush.disable()}catch(_){}logout();location.hash='#login';window.qtShopRoute()};
 
