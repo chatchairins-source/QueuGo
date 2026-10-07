@@ -1,16 +1,16 @@
 {
-  "generated_at": "2026-10-07T11:45:00+07:00",
+  "generated_at": "2026-10-07T11:54:00+07:00",
   "github": {
     "repository": "chatchairins-source/QueuGo",
     "source_of_truth": "main",
-    "head_at_manifest": "f30016ab4e2cae66b3fdf12460401e3385f577c2",
+    "head_at_manifest": "e34adfbf5188c5c8c3c12cdae0b096aae13136ab",
     "previous_backup_branch": "backup-pre-closed-beta-20261007-0035",
-    "latest_backup_branch": "backup-certified-qt-laundry-f30016ab-20261007",
-    "certified_source_commit": "f30016ab4e2cae66b3fdf12460401e3385f577c2",
+    "latest_backup_branch": "backup-certified-qt-ordercodes-unified-push-e34adfbf-20261007",
+    "certified_source_commit": "e34adfbf5188c5c8c3c12cdae0b096aae13136ab",
     "rc_tests": {
-      "run_id": 37572818144,
+      "run_id": 37572977521,
       "status": "SUCCESS",
-      "head_sha": "f30016ab4e2cae66b3fdf12460401e3385f577c2"
+      "head_sha": "e34adfbf5188c5c8c3c12cdae0b096aae13136ab"
     },
     "chat_retention_tests": {
       "run_id": 37572818150,
@@ -18,9 +18,9 @@
       "head_sha": "f30016ab4e2cae66b3fdf12460401e3385f577c2"
     },
     "pages_deployment_last_checked": {
-      "run_id": 37572817294,
+      "run_id": 37572976455,
       "status": "SUCCESS",
-      "head_sha": "f30016ab4e2cae66b3fdf12460401e3385f577c2"
+      "head_sha": "e34adfbf5188c5c8c3c12cdae0b096aae13136ab"
     },
     "operational_inventory_commit": "a406bb7f8de013fa6bd7d595ca01832a7ce28293",
     "operational_inventory_rc_run": {
@@ -115,8 +115,8 @@
         "QG_SUPABASE_SERVICE_ROLE_KEY",
         "QG_BACKUP_PASSPHRASE"
       ],
-      "run_attempt": 4,
-      "checked_at": "2026-10-07T10:30:29+07:00",
+      "run_attempt": 5,
+      "checked_at": "2026-10-07T11:52:04+07:00",
       "latest_validation_result": "FAIL"
     },
     "restore_drill_ugc_verification_ready": true,
@@ -237,8 +237,8 @@
         "QG_ANDROID_KEY_ALIAS",
         "QG_ANDROID_KEY_PASSWORD"
       ],
-      "run_attempt": 4,
-      "checked_at": "2026-10-07T10:29:50+07:00",
+      "run_attempt": 5,
+      "checked_at": "2026-10-07T11:52:03+07:00",
       "latest_validation_result": "FAIL"
     },
     "pilot_test_workflow": ".github/workflows/build-queuego-pilot-apks.yml",
@@ -490,5 +490,20 @@
     "laundry_legacy_display_mapping": "HEX_SUFFIX_MOD_10000",
     "cross_orders_laundry_active_duplicate_codes": 0,
     "status": "PASS"
+  },
+  "production_integrity_audit": {
+    "checked_at": "2026-10-07T11:54:00+07:00",
+    "scope": "read-only production audit after unified QT order code and push hardening",
+    "latest_completed_checked": 10,
+    "latest_new_flow_completed_with_pickup_and_delivery_proof": 5,
+    "latest_completed_state_timestamps_monotonic": true,
+    "duplicate_merchant_request_ids": 0,
+    "duplicate_rider_request_ids": 0,
+    "orphan_deliveries": 0,
+    "orphan_pickup_proofs": 0,
+    "orphan_delivery_proofs": 0,
+    "active_orders_without_canonical_database_code": 0,
+    "active_duplicate_visible_qt_codes": 0,
+    "historical_note": "Older completed orders created before photo-proof enforcement may not contain pickup/delivery proof rows; no historical evidence was fabricated or backfilled."
   }
 }
