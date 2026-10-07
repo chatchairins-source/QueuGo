@@ -1,25 +1,26 @@
 {
-  "generated_at": "2026-10-07T11:40:00+07:00",
+  "generated_at": "2026-10-07T11:45:00+07:00",
   "github": {
     "repository": "chatchairins-source/QueuGo",
     "source_of_truth": "main",
-    "head_at_manifest": "972319db5dc8c2a9254b8e43e85e19e27c98e29d",
+    "head_at_manifest": "f30016ab4e2cae66b3fdf12460401e3385f577c2",
     "previous_backup_branch": "backup-pre-closed-beta-20261007-0035",
-    "latest_backup_branch": "backup-pre-laundry-qt-code-972319db-20261007",
-    "certified_source_commit": "f3c92184be2f8d8fe5ea65b611e0039a7e2a12a7",
+    "latest_backup_branch": "backup-certified-qt-laundry-f30016ab-20261007",
+    "certified_source_commit": "f30016ab4e2cae66b3fdf12460401e3385f577c2",
     "rc_tests": {
-      "run_id": 37570842458,
+      "run_id": 37572818144,
       "status": "SUCCESS",
-      "head_sha": "f3c92184be2f8d8fe5ea65b611e0039a7e2a12a7"
+      "head_sha": "f30016ab4e2cae66b3fdf12460401e3385f577c2"
     },
     "chat_retention_tests": {
-      "run_id": 37559294226,
-      "status": "SUCCESS"
+      "run_id": 37572818150,
+      "status": "SUCCESS",
+      "head_sha": "f30016ab4e2cae66b3fdf12460401e3385f577c2"
     },
     "pages_deployment_last_checked": {
-      "run_id": 37570842377,
+      "run_id": 37572817294,
       "status": "SUCCESS",
-      "head_sha": "f3c92184be2f8d8fe5ea65b611e0039a7e2a12a7"
+      "head_sha": "f30016ab4e2cae66b3fdf12460401e3385f577c2"
     },
     "operational_inventory_commit": "a406bb7f8de013fa6bd7d595ca01832a7ce28293",
     "operational_inventory_rc_run": {
@@ -81,10 +82,10 @@
       },
       {
         "slug": "queuego-push",
-        "version": 8,
+        "version": 11,
         "status": "ACTIVE",
         "verify_jwt": false,
-        "ezbr_sha256": "59160b8fd81d0118f98c6c5fa30a48ec4c47b7284acb0dbde062acd788032585"
+        "ezbr_sha256": "db9ef2c3e83a805892ec2615e1e90010ea5b37534ad0add002a84c0566abefcf"
       },
       {
         "slug": "rider-web-push",
@@ -147,19 +148,18 @@
     ],
     "native_test_firebase_oauth_preflight": true,
     "native_test_preflight_behavior": "When a native token exists, the physical test validates FIREBASE_SERVICE_ACCOUNT_JSON via Google OAuth before creating a push_test notification.",
-    "edge_function_version": 10,
+    "edge_function_version": 11,
     "edge_source_matches_github": true,
     "edge_function_status": "ACTIVE",
     "edge_function_verify_jwt": false,
-    "edge_function_sha256": "018d6d5acf137597d6d28ea22b5308d55d388dcd5236a444f8e611c3a804e710",
+    "edge_function_sha256": "db9ef2c3e83a805892ec2615e1e90010ea5b37534ad0add002a84c0566abefcf",
     "edge_deployed_at": "2026-10-07T10:36:14+07:00",
     "edge_post_deploy_log_check": {
       "checked": true,
-      "window_minutes": 30,
-      "edge_invocations": 0,
-      "runtime_errors_observed": 0,
-      "status": "NO_POST_DEPLOY_INVOCATION",
-      "note": "Deployment is ACTIVE and deployed source was read back successfully. No Edge invocation occurred in the checked post-deploy window, so physical/native runtime delivery is not certified."
+      "checked_after_version": 11,
+      "error_events_observed": 0,
+      "status": "CLEAN_NO_ERROR_EVENTS_OBSERVED",
+      "note": "Version 11 source was read back from Supabase and matched GitHub byte-for-byte. No post-deploy error event was observed in the checked window."
     },
     "push_retry_cron": {
       "job_name": "queuego-push-retry",
@@ -487,6 +487,8 @@
       "QT-7963"
     ],
     "laundry_legacy_database_rewrite": false,
-    "laundry_legacy_display_mapping": "HEX_SUFFIX_MOD_10000"
+    "laundry_legacy_display_mapping": "HEX_SUFFIX_MOD_10000",
+    "cross_orders_laundry_active_duplicate_codes": 0,
+    "status": "PASS"
   }
 }
