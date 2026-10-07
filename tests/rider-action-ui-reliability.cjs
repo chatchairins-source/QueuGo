@@ -17,7 +17,7 @@ ok(rider.includes("function qgOpenPickupVerify(o)"),'ready orders must open a de
 ok(rider.includes('id="qg-pickup-photo"'),'pickup screen must require one photo');
 ok(rider.includes("rpc/qg_pickup_with_photo"),'normal pickup must use the photo-backed RPC');
 ok(rider.includes("rpc/qg_market_pickup_with_photo"),'market pickup must use the photo-backed RPC');
-ok(rider.includes('id="qg-pickup-slide"'),'pickup must use a photo-gated slide action');
+ok(rider.includes('id="qg-pickup-photo-next" disabled'),'pickup must gate cash confirmation behind a required photo');
 ok(!rider.includes('data-pick-check'),'pickup must not require redundant checkbox confirmations');
 ok(rider.includes('function qgBindSlideAction(input,{idleLabel,busyLabel,onComplete})'),'pickup/delivery slide actions must share one guarded implementation');
 ok(rider.includes("Number(input.value)<92"),'slide action must require a deliberate near-complete gesture');
@@ -36,8 +36,12 @@ ok(!rider.includes('qgSheetLevel'),'legacy sheet level state must be physically 
 ok(!rider.includes('function qgOpenRiderMore('),'legacy active-job more sheet must be removed');
 
 ok(rider.includes("function qgOpenDeliveryConfirm(o)"),'arrival must open a dedicated delivery confirmation screen');
+ok(rider.includes('ตรวจสอบรายการครบแล้ว'),'pickup must force item verification before photo/payment');
+ok(rider.includes('ชำระเงินให้ร้านเรียบร้อยแล้ว'),'shop cash confirmation must be explicit');
+ok(rider.includes('ส่งสินค้าให้ลูกค้าเรียบร้อยแล้ว'),'delivery flow must confirm handoff before proof');
+ok(rider.includes('เก็บเงินจากลูกค้าเรียบร้อยแล้ว'),'customer cash collection confirmation must be explicit');
 ok(rider.includes('id="qg-delivery-photo"'),'delivery completion must require one photo');
-ok(rider.includes('id="qg-delivery-slide"'),'delivery completion must use a photo-gated slide action');
+ok(rider.includes('id="qg-delivery-photo-next" disabled'),'delivery completion must gate cash collection behind a required photo');
 ok(rider.includes("qg_complete_with_photo"),'normal completion must use the photo-only RPC');
 ok(rider.includes("qg_complete_market_with_photo"),'market completion must use the photo-only RPC');
 ok(!rider.includes('qg-delivery-photo-extra'),'delivery must not request a second photo');
@@ -68,8 +72,8 @@ ok(rider.includes("rpc/qg_rider_mark_arrival"),'Rider arrival buttons must persi
 ok(rider.includes('id="details-'),'active-order card must expose order details');
 ok(rider.includes('id="primary-nav-'),'active-order primary CTA must be navigation after claim');
 ok(rider.includes('package=com.google.android.apps.maps')&&rider.includes('comgooglemaps://'),'Rider primary navigation must hand off to the native Google Maps app');
-ok(rider.includes('ยอดเงินสดที่ต้องจ่ายร้านเมื่อรับสินค้า'),'pickup slide must show cash due to the merchant before handoff');
-ok(rider.includes('ยอดเงินสดที่ต้องเก็บจากลูกค้าก่อนจบงาน'),'completion slide must show customer cash before completion');
+ok(rider.includes('ยอดที่ต้องชำระให้ร้าน'),'pickup cash page must show cash due to the merchant before handoff');
+ok(rider.includes('ยอดที่ต้องเก็บจากลูกค้า'),'completion cash page must show customer cash before completion');
 ok(!rider.includes('id="qg-pickup-confirm-btn"'),'legacy pickup tap confirmation must stay removed');
 ok(!rider.includes('id="qg-delivery-complete-btn"'),'legacy delivery tap completion must stay removed');
 ok(!rider.includes("qgOpenOrderChecklist("),'obsolete legacy order-check page must stay removed');
