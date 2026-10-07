@@ -1,14 +1,14 @@
 {
-  "generated_at": "2026-10-07T09:17:00+07:00",
+  "generated_at": "2026-10-07T09:23:00+07:00",
   "github": {
     "repository": "chatchairins-source/QueuGo",
     "source_of_truth": "main",
-    "head_at_manifest": "ff449adaccfbbbfcd0924e41549ed94404897957",
+    "head_at_manifest": "400c30c9b1f823b924d9d7f5fee7842a5c2f773a",
     "previous_backup_branch": "backup-pre-closed-beta-20261007-0035",
     "latest_backup_branch": "backup-security-ugc-pre-closed-beta-20261007-0915",
-    "certified_source_commit": "64a29c955c817d12026e4e87d6e334392ef40770",
+    "certified_source_commit": "400c30c9b1f823b924d9d7f5fee7842a5c2f773a",
     "rc_tests": {
-      "run_id": 37561092887,
+      "run_id": 37561599812,
       "status": "SUCCESS"
     },
     "chat_retention_tests": {
@@ -16,7 +16,7 @@
       "status": "SUCCESS"
     },
     "pages_deployment_last_checked": {
-      "run_id": 37561092266,
+      "run_id": 37561599262,
       "status": "SUCCESS"
     }
   },
@@ -54,8 +54,8 @@
     "database_version": "17.6.1.166",
     "region": "ap-southeast-2",
     "latest_migration": [
-      "20261007021517",
-      "security_scope_authenticated_definer_helpers"
+      "20261007021827",
+      "account_deletion_ugc_snapshot_cleanup"
     ],
     "edge_functions": [
       {
@@ -150,25 +150,77 @@
     "target_sdk": 36,
     "compile_sdk": 36,
     "notification_permission_gate": true,
-    "hard_gate_blocks_build_without_security_audit": true
+    "hard_gate_blocks_build_without_security_audit": true,
+    "ugc_runtime_bundled_for": [
+      "customer",
+      "merchant",
+      "rider"
+    ]
   },
   "security": {
     "code_surface_hardened": true,
     "leaked_password_protection_enabled": false,
     "leaked_password_protection_blocker": "Supabase Security Advisor still reports Auth leaked-password protection disabled. The available connector cannot change this Auth platform setting.",
     "signup_password_minimum_characters": 8,
-    "anonymous_security_definer_review": "docs/security-anon-definer-allowlist.json",
+    "anonymous_security_definer_review": {
+      "0": "d",
+      "1": "o",
+      "2": "c",
+      "3": "s",
+      "4": "/",
+      "5": "s",
+      "6": "e",
+      "7": "c",
+      "8": "u",
+      "9": "r",
+      "10": "i",
+      "11": "t",
+      "12": "y",
+      "13": "-",
+      "14": "a",
+      "15": "n",
+      "16": "o",
+      "17": "n",
+      "18": "-",
+      "19": "d",
+      "20": "e",
+      "21": "f",
+      "22": "i",
+      "23": "n",
+      "24": "e",
+      "25": "r",
+      "26": "-",
+      "27": "a",
+      "28": "l",
+      "29": "l",
+      "30": "o",
+      "31": "w",
+      "32": "l",
+      "33": "i",
+      "34": "s",
+      "35": "t",
+      "36": ".",
+      "37": "j",
+      "38": "s",
+      "39": "o",
+      "40": "n",
+      "advisor_warn_count": 9,
+      "intentional_allowlisted": 9,
+      "unreviewed": 0
+    },
     "security_audit": "PASS",
     "authenticated_security_definer_review": {
       "status": "PASS",
-      "unguarded_non_anonymous_candidates": 0,
+      "advisor_total": 123,
+      "no_unreviewed_non_anonymous_candidates": true,
       "direct_or_delegated_guard_patterns": [
         "auth.uid()",
         "get_my_user_id()/get_my_role()",
         "is_active_admin()",
         "pos_allowed()/pos_my_shop()/pos_is_owner()",
         "queuego_place_cash_order_core()"
-      ]
+      ],
+      "review_file": "docs/security-auth-definer-review.json"
     },
     "anonymous_security_definer_count": 9,
     "authenticated_security_definer_count": 123,
