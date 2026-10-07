@@ -2142,10 +2142,24 @@ window.renderShopDashboardModern=function(u){
 {if(qgMarketCategory(u.category)){const grid=document.querySelector('.qgm-menu-grid');if(grid){const b=document.createElement('button');b.className='qgm-menu qgm-market-menu';b.type='button';b.innerHTML='<span class="ico">'+svg('box')+'</span><span>ตลาดและสต๊อก</span>';b.onclick=()=>navigate('market-stock');grid.append(b)}}}
 };
 
-function status(o){if(o.status==='pending_shop')return['pending','รอรับ'];if(o.status==='searching_rider')return['searching','กำลังค้นหาไรเดอร์'];if(o.status==='rider_to_shop')return['preparing','ไรเดอร์รับงานแล้ว · เริ่มเตรียมสินค้า'];if(['shop_accepted','preparing'].includes(o.status))return['preparing','กำลังเตรียม'];if(o.status==='waiting_rider')return['ready','พร้อมให้ไรเดอร์รับ'];if(['completed','delivered','rider_to_customer'].includes(o.status))return['done','จัดส่งแล้ว'];return['cancel','ยกเลิก']}
+function status(o){
+ const s=String(o?.status||'').toLowerCase();
+ if(s==='pending_shop')return['pending','รอรับ'];
+ if(s==='searching_rider')return['searching','กำลังค้นหาไรเดอร์'];
+ if(['shop_accepted','accepted'].includes(s))return['preparing','ร้านรับออเดอร์แล้ว'];
+ if(['rider_to_shop','assigned','rider_assigned'].includes(s))return['preparing','Rider กำลังมารับสินค้า'];
+ if(s==='preparing')return['preparing','กำลังเตรียม'];
+ if(['waiting_rider','ready'].includes(s))return['ready','พร้อมให้ Rider รับ'];
+ if(s==='picked_up')return['delivering','Rider รับสินค้าแล้ว'];
+ if(['delivering','in_progress','rider_to_customer'].includes(s))return['delivering','กำลังจัดส่ง'];
+ if(s==='arrived')return['delivering','Rider ถึงลูกค้าแล้ว'];
+ if(['completed','delivered'].includes(s))return['done','จัดส่งสำเร็จ'];
+ if(['cancelled','no_rider_available'].includes(s))return['cancel',s==='no_rider_available'?'ไม่พบ Rider':'ยกเลิก'];
+ return['processing','กำลังดำเนินการ'];
+}
 window.qgmOrderFilter=function(mode){document.querySelectorAll('.qgm-order').forEach(el=>el.hidden=mode!=='all'&&el.dataset.status!==mode);document.querySelectorAll('.qgm-tabs button').forEach(b=>b.classList.toggle('active',b.dataset.mode===mode))}
 window.qgmOrderSearch=function(q){q=String(q).toLowerCase();document.querySelectorAll('.qgm-order').forEach(el=>el.hidden=!el.dataset.search.includes(q))}
-window.renderShopOrdersModern=function(){const u=shopUser();if(!u)return navigate('login');const os=shopOrders(u);layout('คำสั่งซื้อ',`<div class="qgm-unified-page qgm-unified-orders"><div class="qgm-unified-intro"><b>คำสั่งซื้อ</b><small>ดูสถานะและจัดการออเดอร์ของร้าน</small></div><div class="qgm-tabs"><button class="active" data-mode="all" onclick="qgmOrderFilter('all')">ทั้งหมด</button><button data-mode="pending" onclick="qgmOrderFilter('pending')">รอรับ</button><button data-mode="preparing" onclick="qgmOrderFilter('preparing')">กำลังเตรียม</button><button data-mode="searching" onclick="qgmOrderFilter('searching')">กำลังหาไรเดอร์</button><button data-mode="done" onclick="qgmOrderFilter('done')">จัดส่งแล้ว</button></div><label class="qgm-search">${svg('search')}<input type="search" placeholder="ค้นหาด้วยเลขออเดอร์ หรือชื่อลูกค้า" oninput="qgmOrderSearch(this.value)"></label>${os.map(o=>{const s=status(o),first=o.items?.[0]||{};return `<button class="qgm-card qgm-order" data-status="${s[0]}" data-search="${esc(((displayOrderNumber(o)||'')+' '+(o.customerName||'')).toLowerCase())}" onclick="navigate('shop-order/${o.id}')">${first.image||first.image_url?`<img src="${esc(img(first.image||first.image_url))}" alt="">`:`<span class="qgm-order-thumb">${svg('orders')}</span>`}<div class="qgm-order-main"><b>${esc(displayOrderNumber(o))}</b><small>ลูกค้า: ${esc(o.customerName||'ลูกค้า')}</small><small>${(o.items||[]).length} รายการ • ${qgmMerchantSalesAmount(o).toLocaleString('th-TH')} บาท</small></div><div class="qgm-order-side"><span class="qgm-status ${s[0]}">${s[1]}</span><small>${new Date(o.createdAt||Date.now()).toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'})} น.</small></div></button>`}).join('')||'<div class="qgm-empty"><h2>ยังไม่มีคำสั่งซื้อ</h2></div>'}</div>`,'shop-orders',{back:true})
+window.renderShopOrdersModern=function(){const u=shopUser();if(!u)return navigate('login');const os=shopOrders(u);layout('คำสั่งซื้อ',`<div class="qgm-unified-page qgm-unified-orders"><div class="qgm-unified-intro"><b>คำสั่งซื้อ</b><small>ดูสถานะและจัดการออเดอร์ของร้าน</small></div><div class="qgm-tabs"><button class="active" data-mode="all" onclick="qgmOrderFilter('all')">ทั้งหมด</button><button data-mode="pending" onclick="qgmOrderFilter('pending')">รอรับ</button><button data-mode="preparing" onclick="qgmOrderFilter('preparing')">กำลังเตรียม</button><button data-mode="searching" onclick="qgmOrderFilter('searching')">กำลังหาไรเดอร์</button><button data-mode="delivering" onclick="qgmOrderFilter('delivering')">กำลังส่ง</button><button data-mode="done" onclick="qgmOrderFilter('done')">สำเร็จ</button></div><label class="qgm-search">${svg('search')}<input type="search" placeholder="ค้นหาด้วยเลขออเดอร์ หรือชื่อลูกค้า" oninput="qgmOrderSearch(this.value)"></label>${os.map(o=>{const s=status(o),first=o.items?.[0]||{};return `<button class="qgm-card qgm-order" data-status="${s[0]}" data-search="${esc(((displayOrderNumber(o)||'')+' '+(o.customerName||'')).toLowerCase())}" onclick="navigate('shop-order/${o.id}')">${first.image||first.image_url?`<img src="${esc(img(first.image||first.image_url))}" alt="">`:`<span class="qgm-order-thumb">${svg('orders')}</span>`}<div class="qgm-order-main"><b>${esc(displayOrderNumber(o))}</b><small>ลูกค้า: ${esc(o.customerName||'ลูกค้า')}</small><small>${(o.items||[]).length} รายการ • ${qgmMerchantSalesAmount(o).toLocaleString('th-TH')} บาท</small></div><div class="qgm-order-side"><span class="qgm-status ${s[0]}">${s[1]}</span><small>${new Date(o.createdAt||Date.now()).toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'})} น.</small></div></button>`}).join('')||'<div class="qgm-empty"><h2>ยังไม่มีคำสั่งซื้อ</h2></div>'}</div>`,'shop-orders',{back:true})
 {const host=document.querySelector('.qgm-content');if(host&&qgmKitchenEnabledFor(u)){const b=document.createElement('button');b.className='qgm-outline qgm-inline-action';b.textContent='เปิดโหมดครัว';b.onclick=qgOpenKitchen;host.prepend(b)}}
 };
 
@@ -2164,11 +2178,12 @@ window.renderShopOrderModern=function(id){
  const waitingNote=o.status==='waiting_rider'?'<div class="qgm-od-action-note">สินค้าพร้อมแล้ว · รอ Rider มารับสินค้า</div>':o.status==='searching_rider'?'<div class="qgm-od-action-note">กำลังค้นหา Rider ให้กับออเดอร์นี้</div>':'';
  const arrived=o.riderArrivedShopAt?`<div class="qgm-od-arrived">Rider ถึงร้านแล้ว · ${new Date(o.riderArrivedShopAt).toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'})} น.</div>`:'';
  const customerPhone=o.customerPhone?`<a class="qgm-od-call" href="tel:${esc(o.customerPhone)}" aria-label="โทรหาลูกค้า">${svg('phone')}</a>`:'';
- const stepLabels=['ออเดอร์เข้า','รับออเดอร์','เตรียมสินค้า','พร้อมรับ','สำเร็จ'];
- const stage=o.status==='completed'||o.status==='delivered'||o.status==='rider_to_customer'?4
-   :['waiting_rider','picked_up','delivering','in_progress'].includes(o.status)?3
-   :['rider_to_shop','preparing','ready','assigned'].includes(o.status)?2
-   :['shop_accepted','searching_rider','accepted'].includes(o.status)?1:0;
+ const stepLabels=['ออเดอร์เข้า','ร้านรับ','เตรียมสินค้า','กำลังจัดส่ง','สำเร็จ'];
+ const orderState=String(o.status||'').toLowerCase();
+ const stage=['completed','delivered'].includes(orderState)?4
+   :['picked_up','delivering','in_progress','rider_to_customer','arrived'].includes(orderState)?3
+   :['rider_to_shop','preparing','ready','waiting_rider','assigned','rider_assigned'].includes(orderState)?2
+   :['shop_accepted','searching_rider','accepted'].includes(orderState)?1:0;
  const progress=o.status==='cancelled'?'':`<div class="qgm-od-progress">${stepLabels.map((label,i)=>`<span class="qgm-od-step ${i<=stage?'on':''}">${label}</span>`).join('')}</div>`;
  const itemCount=items.reduce((sum,i)=>sum+Number(i.qty||i.quantity||1),0);
  const itemHtml=items.map(i=>{
