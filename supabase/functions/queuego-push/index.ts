@@ -256,6 +256,13 @@ Deno.serve(async(req)=>{
       ]);
       if(webError||nativeError)throw webError||nativeError;
       if((webCount||0)+(nativeCount||0)===0)return respond({error:'เปิดการแจ้งเตือนก่อนทดสอบ'},409);
+      if((nativeCount||0)>0){
+        try{
+          await firebaseAccess();
+        }catch{
+          return respond({error:'ระบบแจ้งเตือน Android ยังไม่พร้อม'},503);
+        }
+      }
 
       const since=new Date(Date.now()-60000).toISOString();
       const recent=await admin.from('notifications')

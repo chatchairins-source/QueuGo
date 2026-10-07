@@ -54,6 +54,7 @@ ok(edge.includes("qg_finish_push"),'edge worker must finish/retry leased jobs');
 ok(edge.includes("FIREBASE_SERVICE_ACCOUNT_JSON")&&edge.includes("sendNativePush"),'edge worker must support authenticated FCM HTTP v1 delivery');
 ok(edge.includes("subscribe-native")&&edge.includes("unsubscribe-native"),'edge worker must own native token lifecycle');
 ok(edge.includes("input.action==='test'")&&edge.includes("type:'push_test'"),'edge worker must provide a rate-limited physical notification test');
+ok(edge.includes("if((nativeCount||0)>0)")&&edge.includes("await firebaseAccess()")&&edge.includes("ระบบแจ้งเตือน Android ยังไม่พร้อม"),'native physical test must validate Firebase OAuth before scheduling a test notification');
 ok(edge.includes("setTimeout(resolve,7000)"),'physical notification test must delay delivery long enough to background the app');
 ok(customerFeatures.includes('ทดสอบการแจ้งเตือน'),'Customer profile must expose physical notification test');
 ok(merchant.includes('ทดสอบการแจ้งเตือน'),'Merchant profile must expose physical notification test');
