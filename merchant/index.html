@@ -548,7 +548,7 @@ async function qtHydrateDatabase(opts){
     const deliveries=await qtSupabaseTable('deliveries?select=*',{accessToken:token}).catch(()=>[]);
     const payments=await qtSupabaseTable('payments?select=*',{accessToken:token}).catch(()=>[]);
     QT_DB_CACHE.qt_orders=(Array.isArray(orders)?orders:[]).map(r=>{const o=qtOrderFromRow(r);o.shopId=profileMaps.shopById.get(r.shop_id)||o.shopId;o.items=(orderItems||[]).filter(i=>i.order_id===r.id).map(i=>({id:i.id,name:i.item_name,description:i.description,qty:Number(i.quantity||1),quantity:Number(i.quantity||1),price:Number(i.unit_price||0),unitPrice:Number(i.unit_price||0),totalPrice:Number(i.total_price||0),itemType:i.item_type}));const d=(deliveries||[]).find(x=>x.order_id===r.id);if(d)o.delivery={id:d.id,status:d.status,riderProfileId:d.rider_id,distanceKm:Number(d.distance_km||0),deliveryFee:Number(d.delivery_fee||0),pickedUpAt:d.picked_up_at?new Date(d.picked_up_at).getTime():null,deliveredAt:d.delivered_at?new Date(d.delivered_at).getTime():null,note:d.note||''};const pay=(payments||[]).find(x=>x.order_id===r.id);if(pay)o.payment={id:pay.id,amount:Number(pay.amount||0),method:pay.payment_method,status:pay.status,reference:pay.transaction_reference,paidAt:pay.paid_at?new Date(pay.paid_at).getTime():null,note:pay.note||''};return o;});
-    try{const ns=await qtSupabaseTable('notifications?select=*',{accessToken:token}); QT_DB_CACHE.qt_notifications=(Array.isArray(ns)?ns:[]).map(n=>({id:n.id,userId:n.user_id,title:n.title||'การแจ้งเตือน',message:n.message||'',body:n.message||'',link:qtNotifLinkFromRow(n),type:n.type||'system',referenceId:n.reference_id||null,read:n.is_read===true,readAt:n.is_read?new Date(n.created_at).getTime():null,createdAt:new Date(n.created_at).getTime()}));}catch(e){ if(!Array.isArray(QT_DB_CACHE.qt_notifications)) QT_DB_CACHE.qt_notifications=[]; }
+    try{const ns=await qtSupabaseTable('notifications?select=*',{accessToken:token}); QT_DB_CACHE.qt_notifications=(Array.isArray(ns)?ns:[]).map(n=>({id:n.id,userId:n.user_id,title:n.title||'การแจ้งเตือน',message:QueueGoOrderNumber.replaceInText(n.message||''),body:QueueGoOrderNumber.replaceInText(n.message||''),link:qtNotifLinkFromRow(n),type:n.type||'system',referenceId:n.reference_id||null,read:n.is_read===true,readAt:n.is_read?new Date(n.created_at).getTime():null,createdAt:new Date(n.created_at).getTime()}));}catch(e){ if(!Array.isArray(QT_DB_CACHE.qt_notifications)) QT_DB_CACHE.qt_notifications=[]; }
     qtMarkClean('qt_orders'); qtMarkClean('qt_notifications');
     if(!light){
     QT_DB_CACHE.qt_audit_log=[];
@@ -1099,7 +1099,7 @@ async function handleRegister(e){
 
 
 /* ---------- QT Order Number ---------- */
-/* Order number display: QT-001, QT-002, ... (3 digits).
+/* Order number display: QT-XXXX (4 digits).
    Numbering is GLOBAL across all shops and resets each calendar day.
    Therefore no two shops can receive the same QT number on the same day.
    The internal id remains unchanged for routing/storage compatibility. */
