@@ -26,7 +26,7 @@ jobs:
           const fs=require('fs');
           const manifest=JSON.parse(fs.readFileSync('docs/pilot-recovery-manifest.json','utf8'));
           const gates=manifest?.release_gates||{};
-          for(const gate of ['account_deletion_privacy','service_area','core_e2e_production']){
+          for(const gate of ['account_deletion_privacy','service_area','core_e2e_production','ugc_chat_safety']){
             if(gates[gate]!=='PASS'){
               console.error('::error::Release gate '+gate+' is not PASS.');
               process.exit(1);
