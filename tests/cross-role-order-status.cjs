@@ -20,7 +20,7 @@ ok(merchant.includes('riderArrivedCustomerAt:r.rider_arrived_customer_at||null')
 ok(merchant.includes("s=(['in_progress','delivering','rider_to_customer'].includes(raw)&&o?.riderArrivedCustomerAt)?'arrived':raw"),'Merchant derives arrived presentation state');
 ok(merchant.includes("if(s==='arrived')return['delivering','Rider ถึงลูกค้าแล้ว']"),'Merchant arrived stays in delivery group');
 ok(merchant.includes("if(['completed','delivered'].includes(s))return['done','จัดส่งสำเร็จ']"),'Merchant success only for completed/delivered');
-ok(rider.includes("window.statusFromRow=function(row){ return String(row?.status||''); };"),'Rider retains authoritative raw status for actions');
+ok(/window\.statusFromRow=function\(row\)\{\s*return String\(row\?\.status\|\|''\);\s*\};/.test(rider),'Rider retains authoritative raw status for actions');
 ok(rider.includes("st==='in_progress'&&o.rider_arrived_customer_at?'Rider ถึงลูกค้าแล้ว':'กำลังไปส่ง'"),'Rider shows arrived presentation without mutating state');
 ok(admin.includes("qtOrderStatusFromDb(r.status,r.note,r.rider_arrived_customer_at)"),'Admin canonicalizer consumes arrival timestamp');
 ok(admin.includes("if(s==='in_progress')return arrivedCustomerAt||"),'Admin derives arrived from timestamp');
