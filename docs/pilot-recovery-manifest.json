@@ -1,26 +1,26 @@
 {
-  "generated_at": "2026-10-07T11:57:00+07:00",
+  "generated_at": "2026-10-07T12:40:00+07:00",
   "github": {
     "repository": "chatchairins-source/QueuGo",
     "source_of_truth": "main",
-    "head_at_manifest": "c70603a4836d1ec346e3e3411f84b1cd6b647ee1",
+    "head_at_manifest": "b738c2ce5ef1d9d065a9d033258e6134d0d2270e",
     "previous_backup_branch": "backup-pre-closed-beta-20261007-0035",
-    "latest_backup_branch": "backup-pre-rls-dedupe-c70603a4-20261007",
-    "certified_source_commit": "e34adfbf5188c5c8c3c12cdae0b096aae13136ab",
+    "latest_backup_branch": "backup-certified-qt-order-display-b738c2ce-20261007",
+    "certified_source_commit": "b738c2ce5ef1d9d065a9d033258e6134d0d2270e",
     "rc_tests": {
-      "run_id": 37572977521,
+      "run_id": 37574995875,
       "status": "SUCCESS",
-      "head_sha": "e34adfbf5188c5c8c3c12cdae0b096aae13136ab"
+      "head_sha": "b738c2ce5ef1d9d065a9d033258e6134d0d2270e"
     },
     "chat_retention_tests": {
-      "run_id": 37572818150,
+      "run_id": 37574995871,
       "status": "SUCCESS",
-      "head_sha": "f30016ab4e2cae66b3fdf12460401e3385f577c2"
+      "head_sha": "b738c2ce5ef1d9d065a9d033258e6134d0d2270e"
     },
     "pages_deployment_last_checked": {
-      "run_id": 37572976455,
+      "run_id": 37574995067,
       "status": "SUCCESS",
-      "head_sha": "e34adfbf5188c5c8c3c12cdae0b096aae13136ab"
+      "head_sha": "b738c2ce5ef1d9d065a9d033258e6134d0d2270e"
     },
     "operational_inventory_commit": "a406bb7f8de013fa6bd7d595ca01832a7ce28293",
     "operational_inventory_rc_run": {
@@ -455,7 +455,9 @@
       "merchant",
       "rider",
       "admin",
-      "laundry"
+      "laundry",
+      "pos",
+      "table_qr"
     ],
     "accepts_legacy_qo_input": true,
     "emits_qo": false,
@@ -498,7 +500,11 @@
     "status": "PASS",
     "pos_shared_allocator": true,
     "table_qr_shared_allocator": true,
-    "pos_qr_migration": "20261007045146_unify_pos_qr_order_codes.sql"
+    "pos_qr_migration": "20261007045146_unify_pos_qr_order_codes.sql",
+    "order_number_test_checks": 32,
+    "legacy_pos_qr_display_normalized": true,
+    "certified_source_commit": "b738c2ce5ef1d9d065a9d033258e6134d0d2270e",
+    "certified_rc_run": 37574995875
   },
   "production_integrity_audit": {
     "checked_at": "2026-10-07T11:54:00+07:00",
