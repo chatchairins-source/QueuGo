@@ -63,7 +63,9 @@ ok(nativeSql.includes('native_token_id')&&nativeSql.includes('num_nonnulls(subsc
 ok(nativeSql.includes('insert into public.qg_push_outbox(notification_id,native_token_id)'),'notification enqueue must include native tokens in the same outbox');
 ok(retired.includes("status:410"),'old Rider-only worker must be retired');
 
-ok(workflow.includes('customer-features.js ../customer-features.css ../customer-laundry.js ../account-deletion.js ../queuego-native-push.js ../queuego-push.js ../queuego-push-sw.js'),'Customer Android bundle must include web and native push runtime files');
+for(const asset of ['customer-features.js','customer-features.css','customer-laundry.js','account-deletion.js','queuego-ugc.js','queuego-native-push.js','queuego-push.js','queuego-push-sw.js']){
+  ok(workflow.includes(asset),'Customer Android bundle must include '+asset);
+}
 ok(workflow.includes("s=s.replace('../queuego-native-push.js','queuego-native-push.js')")&&workflow.includes("s=s.replace('../queuego-push.js','queuego-push.js')"),'Android nested role bundles must rewrite shared push paths');
 ok(workflow.includes('QG_FIREBASE_GOOGLE_SERVICES_JSON_B64')&&workflow.includes('android/app/google-services.json'),'Android release must inject Firebase app configuration securely');
 ok(androidPkg.dependencies?.['@capacitor/push-notifications']==='8.0.0','Android build must install Capacitor 8 Push Notifications');
