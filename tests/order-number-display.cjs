@@ -12,11 +12,15 @@ assert.equal(format({orderNumber:'QT-9198'}),'QT-9198');
 assert.equal(format({order_number:'LW-20260930-112419-e26b'}),'QT-7963');
 assert.equal(format({order_number:'LW-20260930-110545-251e'}),'QT-9502');
 assert.equal(format({order_number:'LW-20260930-110459-8543'}),'QT-4115');
+assert.equal(format({order_number:'POS-32D8C1AD0747'}),'QT-1863');
+assert.equal(format({order_number:'QR-12DBF4E490AE'}),'QT-7038');
 assert.equal(format({id:'abc-def-1234'}),'QT-----');
 assert.equal(format({id:'d889d1a6-c10d-4f61-a6c8-31312dd6cbd1'}),'QT-----');
 assert.equal(format('d889d1a6-c10d-4f61-a6c8-31312dd6cbd1'),'QT-----','UUID string must not become an order code');
 assert.equal(replaceInText('กรุณาตรวจสอบคำสั่งซื้อ QT-20261006-2141'),'กรุณาตรวจสอบคำสั่งซื้อ QT-2141');
 assert.equal(replaceInText('ออเดอร์ QT-9198 พร้อมส่ง'),'ออเดอร์ QT-9198 พร้อมส่ง');
+assert.equal(replaceInText('บิลเก่า POS-32D8C1AD0747'),'บิลเก่า QT-1863');
+assert.equal(replaceInText('QR เก่า QR-12DBF4E490AE'),'QR เก่า QT-7038');
 assert(format('QT-20261006-2141').startsWith('QT-'),'visible order codes must always emit QT');
 assert(!read('queuego-order-number.js').includes("return 'QO-'"),'shared formatter must not emit QO');
 
@@ -33,6 +37,7 @@ const posQrCodeMigration=read('supabase/migrations/20261007045146_unify_pos_qr_o
 const release=read('.github/workflows/build-queuego-apks.yml');
 const pilot=read('.github/workflows/build-queuego-pilot-apks.yml');
 const activeCodeGuard=read('supabase/migrations/20261007041346_enforce_active_visible_order_code_uniqueness.sql');
+const pushEdge=read('supabase/functions/queuego-push/index.ts');
 
 assert(customer.includes('src="queuego-order-number.js"'));
 for(const source of [merchant,rider,admin])assert(source.includes('src="../queuego-order-number.js"'));
@@ -66,4 +71,5 @@ assert(activeCodeGuard.includes('orders_active_visible_code_uq'),'DB must enforc
 assert(activeCodeGuard.includes("queuego-visible-order-number"),'allocator must serialize visible-code allocation across date boundaries');
 assert(activeCodeGuard.includes("right(o.order_number,4)=v_code"),'allocator must reject an already-active visible code');
 assert(activeCodeGuard.includes("1000 + floor(random() * 9000)"),'new visible codes must remain randomized 4-digit numbers');
-console.log(JSON.stringify({checks:27,failures:0,scope:'Unified numeric visible order code QT-XXXX across Customer, Merchant, Rider, Admin, Laundry, POS and Table QR with active-code uniqueness'}));
+assert(pushEdge.includes("(?:POS|QR)-([0-9A-F]{4,})"),'Push notification formatter must normalize legacy POS/QR codes');
+console.log(JSON.stringify({checks:32,failures:0,scope:'Unified numeric visible order code QT-XXXX across Customer, Merchant, Rider, Admin, Laundry, POS and Table QR including legacy POS/QR display compatibility'}));

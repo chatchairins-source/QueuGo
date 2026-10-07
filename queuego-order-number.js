@@ -7,6 +7,8 @@ var QueueGoOrderNumber=(function(){
   function fourChars(input){
     const raw=rawValue(input).toUpperCase();
     if(!raw)return '----';
+    const legacyPosQr=raw.match(/^(?:POS|QR)-([0-9A-F]{4,})$/);
+    if(legacyPosQr)return String(parseInt(legacyPosQr[1].slice(-4),16)%10000).padStart(4,'0');
     let match=raw.match(/^(?:QT|QO)-\d{8}-([A-Z0-9]{1,4})$/);
     if(!match)match=raw.match(/^(?:QT|QO)-([A-Z0-9]{1,4})$/);
     if(!match)match=raw.match(/^([0-9]{1,4})$/);
@@ -20,7 +22,7 @@ var QueueGoOrderNumber=(function(){
   function format(input){return 'QT-'+fourChars(input)}
   function replaceInText(value){
     return String(value??'').replace(
-      /\b(?:QT|QO)-\d{8}-[A-Z0-9]{1,4}\b|\b(?:QT|QO)-[A-Z0-9]{1,4}\b|\bLW-\d{8}-\d{6}-[A-Z0-9]{4}\b/gi,
+      /\b(?:QT|QO)-\d{8}-[A-Z0-9]{1,4}\b|\b(?:QT|QO)-[A-Z0-9]{1,4}\b|\bLW-\d{8}-\d{6}-[A-Z0-9]{4}\b|\b(?:POS|QR)-[0-9A-F]{4,}\b/gi,
       token=>format(token)
     );
   }

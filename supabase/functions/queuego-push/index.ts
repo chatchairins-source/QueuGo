@@ -34,6 +34,7 @@ function roleUrl(role:string,referenceId?:string|null){
 }
 function visibleFour(token:string,code:string){
   const upper=String(code||'').toUpperCase();
+  if(/^(?:POS|QR)-/i.test(token)&&/^[0-9A-F]{4,}$/.test(upper))return String(parseInt(upper.slice(-4),16)%10000).padStart(4,'0');
   if(/^LW-/i.test(token)&&/^[0-9A-F]{4}$/.test(upper))return String(parseInt(upper,16)%10000).padStart(4,'0');
   if(/^\d{1,4}$/.test(upper))return upper.padStart(4,'0');
   if(/^[A-Z0-9]{1,4}$/.test(upper))return String(parseInt(upper,36)%10000).padStart(4,'0');
@@ -41,8 +42,8 @@ function visibleFour(token:string,code:string){
 }
 function visibleOrderText(value:unknown){
   return String(value??'').replace(
-    /\b(?:QT|QO)-\d{8}-([A-Z0-9]{1,4})\b|\b(?:QT|QO)-([A-Z0-9]{1,4})\b|\bLW-\d{8}-\d{6}-([0-9A-F]{4})\b/gi,
-    (token,a,b,c)=>'QT-'+visibleFour(token,a||b||c)
+    /\b(?:QT|QO)-\d{8}-([A-Z0-9]{1,4})\b|\b(?:QT|QO)-([A-Z0-9]{1,4})\b|\bLW-\d{8}-\d{6}-([0-9A-F]{4})\b|\b(?:POS|QR)-([0-9A-F]{4,})\b/gi,
+    (token,a,b,c,d)=>'QT-'+visibleFour(token,a||b||c||d)
   );
 }
 function b64url(value:Uint8Array|string){
