@@ -93,6 +93,7 @@ jobs:
         shell: bash
         env:
           QG_FIREBASE_GOOGLE_SERVICES_JSON_B64: ${{ secrets.QG_FIREBASE_GOOGLE_SERVICES_JSON_B64 }}
+          QG_APP_ID: ${{ matrix.appid }}
         run: |
           set -euo pipefail
           cd android-build
@@ -135,12 +136,20 @@ jobs:
           npx cap add android
           printf '%s' "$QG_FIREBASE_GOOGLE_SERVICES_JSON_B64" | base64 --decode > android/app/google-services.json
           python3 - <<'PY'
-          import json
+          import json,os
           from pathlib import Path
           p=Path('android/app/google-services.json')
           data=json.loads(p.read_text())
-          if not data.get('project_info') or not data.get('client'):
+          clients=data.get('client') or []
+          if not data.get('project_info') or not clients:
               raise RuntimeError('Invalid Firebase google-services.json')
+          packages={
+              c.get('client_info',{}).get('android_client_info',{}).get('package_name')
+              for c in clients
+          }
+          expected=os.environ['QG_APP_ID']
+          if expected not in packages:
+              raise RuntimeError(f'Firebase config has no Android client for {expected}')
           PY
           npx cap sync android
 
