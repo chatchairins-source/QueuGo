@@ -1,16 +1,16 @@
 {
-  "generated_at": "2026-10-07T13:28:06+07:00",
+  "generated_at": "2026-10-07T15:02:00+07:00",
   "github": {
     "repository": "chatchairins-source/QueuGo",
     "source_of_truth": "main",
-    "head_at_manifest": "fa54b15a6153e3eb691c1c8469af77982a97ba78",
+    "head_at_manifest": "6ee2402e416e892dc71f4c5fab78fc5694220a94",
     "previous_backup_branch": "backup-pre-closed-beta-20261007-0035",
-    "latest_backup_branch": "backup-pre-integrity-sync-fa54b15a-20261007",
-    "certified_source_commit": "97293b8b2151ba677a47529a3620dfa8b65d3780",
+    "latest_backup_branch": "backup-cross-role-ui-state-certified-6ee2402e-20261007",
+    "certified_source_commit": "6ee2402e416e892dc71f4c5fab78fc5694220a94",
     "rc_tests": {
-      "run_id": 37581398966,
+      "run_id": 37590892456,
       "status": "SUCCESS",
-      "head_sha": "97293b8b2151ba677a47529a3620dfa8b65d3780"
+      "head_sha": "6ee2402e416e892dc71f4c5fab78fc5694220a94"
     },
     "chat_retention_tests": {
       "run_id": 37574995871,
@@ -18,9 +18,9 @@
       "head_sha": "b738c2ce5ef1d9d065a9d033258e6134d0d2270e"
     },
     "pages_deployment_last_checked": {
-      "run_id": 37581398306,
+      "run_id": 37590891790,
       "status": "SUCCESS",
-      "head_sha": "97293b8b2151ba677a47529a3620dfa8b65d3780"
+      "head_sha": "6ee2402e416e892dc71f4c5fab78fc5694220a94"
     },
     "operational_inventory_commit": "a406bb7f8de013fa6bd7d595ca01832a7ce28293",
     "operational_inventory_rc_run": {
@@ -34,7 +34,7 @@
     "push_firebase_preflight_commit": "7c3f0a2a2d8ebb103ba30e014022929699c4f175",
     "android_signing_hardening_commit": "6823cc2da77cfb9781673ce8fd4e9733e4446f54",
     "pilot_provenance_commit": "6cc35be3d32c9c79016ea4bab728240fc10264c7",
-    "latest_source_verification_commit": "97293b8b2151ba677a47529a3620dfa8b65d3780",
+    "latest_source_verification_commit": "6ee2402e416e892dc71f4c5fab78fc5694220a94",
     "latest_source_verification_status": "PASS_GITHUB_RC",
     "latest_source_verification_checks": 38,
     "latest_source_verification_failures": 0
@@ -546,7 +546,7 @@
     "table_qr_checkout_requires_order_number": true
   },
   "production_integrity_audit": {
-    "checked_at": "2026-10-07T13:28:06+07:00",
+    "checked_at": "2026-10-07T15:02:00+07:00",
     "scope": "read-only production audit after QT unification and Closed Beta preflight hardening",
     "latest_completed_checked": 5,
     "latest_new_flow_completed_with_pickup_and_delivery_proof": 5,
@@ -577,5 +577,34 @@
     "recent_completed_with_delivery_row": 5,
     "recent_completed_with_pickup_photo": 5,
     "recent_completed_with_delivery_photo": 5
+  },
+  "ui_unification": {
+    "status": "PASS",
+    "customer": {
+      "home_density": "RESTORED_APPROVED_ORIGINAL",
+      "transactional_pages": "COMPACT",
+      "completed_order_tracking": "STOPPED_AFTER_COMPLETION",
+      "saved_review": "COLLAPSED_SUMMARY"
+    },
+    "rider": {
+      "active_flow": "COMPACT",
+      "short_screen_mode": true
+    },
+    "merchant": {
+      "account": "GROUPED_COMPACT",
+      "orders_products_reports_settings": "UNIFIED_COMPACT",
+      "active_delivery_state_mapping": "PASS",
+      "rider_to_customer_display": "กำลังจัดส่ง",
+      "status_helper": "window.qgmOrderStatus",
+      "legacy_cash_confirmation_wording": false
+    },
+    "admin": {
+      "mobile_workspace": "COMPACT",
+      "governance_orders_market_location_support": "UNIFIED_COMPACT",
+      "longdo_location_editor_preserved": true
+    },
+    "certified_commit": "6ee2402e416e892dc71f4c5fab78fc5694220a94",
+    "rc_run": 37590892456,
+    "pages_run": 37590891790
   }
 }
