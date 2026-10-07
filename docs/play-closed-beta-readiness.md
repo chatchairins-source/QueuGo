@@ -173,15 +173,40 @@ Policy source:
 | Photos | Pickup/delivery proof and chat/evidence images | App functionality, safety | Required for proof steps / optional for chat |
 | Device or other IDs | Push token, session/device identifiers | Notifications, security | Optional/functional |
 
-### Sharing decision — must be confirmed before Play submission
+### Provider sharing classification — conservative submission decision (2026-10-07)
 
-Do not automatically answer "No sharing" until QueueTech verifies the provider relationship and data flow for:
-- Supabase
-- Firebase Cloud Messaging / Google
-- Longdo map/routing services
-- any other production map/navigation provider or infrastructure processor
+Google Play defines "sharing" as transferring user data to a third party, including transfers from an app-controlled WebView. A transfer to a qualifying service provider that processes data on the developer's behalf and instructions does not have to be declared as sharing.
 
-If those providers process data only on QueueTech's behalf and meet Google's service-provider definition, those transfers may fall under the Data Safety sharing exception. User-initiated navigation transfers may also qualify for the user-initiated exception. The Play declaration must match the final production contracts and behavior.
+Current QueueGo decision:
+
+| Provider | QueueGo use / transfer | Public contractual evidence | Play Data Safety treatment |
+|---|---|---|---|
+| Supabase | Auth, database, Storage, Realtime, account/order/location/chat/support data | Supabase DPA states Supabase acts as processor/service provider and processes Covered Data on behalf of and under Customer instructions | **Collected: Yes. Shared: service-provider exception may be used** for Supabase processing under the applicable Supabase agreement/DPA |
+| Firebase Cloud Messaging / Google | Native push transport; FCM/Installations SDK metadata, installation ID/token and app version as applicable | Firebase Data Processing and Security Terms govern Customer Data; Firebase privacy guidance states Google generally operates as processor/service provider for Firebase customer data | **Collected: Yes** for applicable FCM/Installations data. **Shared: service-provider exception may be used** for Firebase processing covered by those terms |
+| Longdo Map / Metamedia Technology | Customer reverse geocoding, map rendering, merchant/shop pins, Rider route calculation; exact origin/destination coordinates are sent to Longdo endpoints | Public Longdo API terms point to Longdo privacy policy. The public privacy policy says Longdo may collect IP/usage/location data, but the public terms reviewed do not establish that all API personal-data processing is solely on QueueTech's behalf/instructions | **Conservative answer: Shared = Yes for location, purpose App functionality.** Do not claim the service-provider exception unless a QueueTech–Longdo commercial agreement/DPA explicitly supports it |
+| External navigation app opened by the user | Explicit "navigate" action where the user chooses to open an external navigation service | Google Play has a user-initiated-transfer exception when the user reasonably expects the transfer | Can rely on the user-initiated exception for that explicit navigation handoff, but this does **not** remove the Longdo sharing declaration above |
+
+Code evidence:
+- Customer loads Longdo Map and sends selected latitude/longitude to Longdo reverse-geocoding.
+- Rider loads Longdo Map and sends current Rider coordinates plus destination coordinates to Longdo RouteService.
+- Merchant loads Longdo Map for shop location/pin workflows.
+- `android-build/package.json` includes Capacitor Push Notifications 8.0.0 and does not declare Firebase Analytics or Crashlytics.
+
+Current public-policy sources reviewed:
+- Google Play Data Safety: https://support.google.com/googleplay/android-developer/answer/10787469
+- Supabase DPA: https://supabase.com/legal/customer-resources/data-processing-addendum
+- Firebase Data Processing terms: https://firebase.google.com/terms/data-processing-terms
+- Firebase Play Data disclosure: https://firebase.google.com/docs/android/play-data-disclosure
+- Longdo API terms: https://map.longdo.com/api/terms/
+- Longdo privacy policy: https://www.longdo.com/en/privacy
+
+### Per-app sharing answer
+
+- **Customer:** declare Approximate/Precise location as shared with Longdo for App functionality where applicable.
+- **Merchant:** conservatively declare location/shop-coordinate transfer as shared with Longdo for App functionality because a shop location may be linked to an individual/sole proprietor.
+- **Rider:** declare Approximate/Precise location as shared with Longdo for App functionality because route requests transmit the Rider origin and delivery destination.
+- Supabase/Firebase transfers still count as **collection** where applicable even when the service-provider sharing exception is used.
+- Recheck the Firebase Play Data disclosure page whenever the native SDK/plugin version changes.
 
 ## Encryption and deletion answers
 
@@ -190,7 +215,7 @@ Current code/release controls support these intended Play answers, subject to fi
 - Data encrypted in transit: **Yes** — release client endpoints use HTTPS and cleartext Android traffic is blocked.
 - Users can request deletion: **Yes** — in-app and external deletion path exist.
 - Data collection: **Yes** — QueueGo necessarily collects account/order/location/service data.
-- Data sharing: **Do not submit yet** — verify provider/service-provider classification first.
+- Data sharing: **Yes (conservative)** — declare location sharing with Longdo for App functionality. Supabase/Firebase processing may use the service-provider exception where the current agreements apply.
 
 ## Store review evidence to retain
 
@@ -224,6 +249,6 @@ Before submitting Closed Beta, keep evidence/screenshots of:
 3. Configure Firebase Android + Edge credentials.
 4. Configure Android release signing secrets.
 5. Build physical-test APKs and certify background notifications on real Android devices.
-6. Confirm Data Safety provider-sharing classification.
+6. Enter the finalized Data Safety answers in Play Console using the conservative Longdo location-sharing classification above.
 7. Confirm Google Play developer account type/date to determine whether the 12-testers/14-days requirement applies.
 8. Only then build the Closed Beta AABs.
