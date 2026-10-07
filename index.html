@@ -692,7 +692,7 @@ V.login=()=>layout(`<div class="card"><h1 style="font-size:24px;margin-bottom:4p
 <button class="prim" id="lb" style="margin-top:4px">เข้าสู่ระบบ</button>
 <p class="empty" style="padding:16px 0 0">ยังไม่มีบัญชี? <a href="#register" style="color:var(--red);font-weight:700">สมัครสมาชิก</a></p></div>`);
 V.register=()=>layout(`<div class="card"><h1 style="font-size:24px;margin-bottom:16px">สมัครสมาชิก</h1>
-<input class="in" id="rn" placeholder="ชื่อ-นามสกุล"><label for="register-mode">สมัครด้วย</label><select class="in" id="register-mode" onchange="document.getElementById('register-email').hidden=this.value!=='email'"><option value="phone">เบอร์โทรศัพท์</option><option value="email">อีเมล</option></select><input class="in" id="register-email" type="email" placeholder="อีเมล" hidden><input class="in" id="rp" placeholder="เบอร์โทร" inputmode="tel"><input class="in" id="rw" type="password" placeholder="รหัสผ่าน (อย่างน้อย 6 ตัว)">
+<input class="in" id="rn" placeholder="ชื่อ-นามสกุล"><label for="register-mode">สมัครด้วย</label><select class="in" id="register-mode" onchange="document.getElementById('register-email').hidden=this.value!=='email'"><option value="phone">เบอร์โทรศัพท์</option><option value="email">อีเมล</option></select><input class="in" id="register-email" type="email" placeholder="อีเมล" hidden><input class="in" id="rp" placeholder="เบอร์โทร" inputmode="tel"><input class="in" id="rw" type="password" placeholder="รหัสผ่าน (อย่างน้อย 8 ตัว)" minlength="8">
 <input class="in" id="rw-confirm" type="password" placeholder="ยืนยันรหัสผ่าน"><p class="sm" style="margin:0 0 12px">ต้องอนุญาตตำแหน่งที่ตั้งเพื่อสมัครสมาชิก</p>
 <button class="prim" id="rb" style="margin-top:0">สมัครและเข้าสู่ระบบ</button>
 <p class="empty" style="padding:16px 0 0"><a href="#login" style="color:var(--red);font-weight:700">มีบัญชีแล้ว</a></p></div>`);
@@ -1039,7 +1039,7 @@ function bind(pg){
   if(pg==='register')$('rb').onclick=async e=>{
     const b=e.target,name=$('rn').value.trim(),phone=$('rp').value.trim(),password=$('rw').value;
     const mode=$('register-mode').value,email=mode==='email'?$('register-email').value.trim():'';
-    if(!name||password.length<6||$('rw-confirm').value!==password||(mode==='phone'?phone.replace(/\D/g,'').length<9:!(/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))))return toast('กรอกข้อมูลให้ครบและยืนยันรหัสผ่านให้ตรงกัน');
+    if(!name||password.length<8||$('rw-confirm').value!==password||(mode==='phone'?phone.replace(/\D/g,'').length<9:!(/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))))return toast('กรอกข้อมูลให้ครบและยืนยันรหัสผ่านให้ตรงกัน');
     b.disabled=true;
     try{
       const pos=await new Promise((ok,no)=>navigator.geolocation?navigator.geolocation.getCurrentPosition(ok,no,{enableHighAccuracy:true,timeout:15000}):no());
