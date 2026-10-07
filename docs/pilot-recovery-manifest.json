@@ -3,7 +3,7 @@
   "github": {
     "repository": "chatchairins-source/QueuGo",
     "source_of_truth": "main",
-    "head_at_manifest": "1a7118b17ca56f5240546785206914726c280950",
+    "head_at_manifest": "eedc87e0e3f871d526e31a367ded7fa4c3c22ffc",
     "previous_backup_branch": "backup-pre-closed-beta-20261007-0035",
     "latest_backup_branch": "backup-native-push-pre-closed-beta-20261007-0725"
   },
@@ -40,8 +40,8 @@
     "database_version": "17.6.1.166",
     "region": "ap-southeast-2",
     "latest_migration": [
-      "20261007004045",
-      "pilot_fk_index_coverage"
+      "20261007005147",
+      "pilot_fk_index_coverage_phase2"
     ],
     "edge_functions": [
       {
@@ -99,7 +99,14 @@
     ],
     "firebase_edge_secret_checked": true,
     "firebase_edge_secret_configured": false,
-    "firebase_edge_secret_name": "FIREBASE_SERVICE_ACCOUNT_JSON"
+    "firebase_edge_secret_name": "FIREBASE_SERVICE_ACCOUNT_JSON",
+    "physical_test_action_ready": true,
+    "physical_test_delay_seconds": 7,
+    "physical_test_controls": [
+      "customer",
+      "shop",
+      "rider"
+    ]
   },
   "android": {
     "capacitor_version": "8.0.0",
@@ -120,18 +127,23 @@
         "QG_ANDROID_KEY_ALIAS",
         "QG_ANDROID_KEY_PASSWORD"
       ]
-    }
+    },
+    "pilot_test_workflow": ".github/workflows/build-queuego-pilot-apks.yml",
+    "pilot_test_apk_ready_when_firebase_secret_present": true,
+    "pilot_test_build_type": "debug",
+    "closed_beta_build_type": "release"
   },
   "security": {
     "code_surface_hardened": true,
     "leaked_password_protection_enabled": false,
-    "leaked_password_protection_blocker": "Supabase Security Advisor still reports Auth leaked-password protection disabled. The available connector cannot change this Auth platform setting."
+    "leaked_password_protection_blocker": "Supabase Security Advisor still reports Auth leaked-password protection disabled. The available connector cannot change this Auth platform setting.",
+    "signup_password_minimum_characters": 8
   },
   "performance": {
     "auth_rls_initplan_warnings_before": 13,
     "auth_rls_initplan_warnings_after": 0,
     "unindexed_foreign_keys_before": 44,
-    "unindexed_foreign_keys_after_pilot_coverage": 27,
-    "note": "Remaining unindexed FKs are outside the selected active Pilot paths or lower priority; no broad over-indexing was applied."
+    "unindexed_foreign_keys_after_pilot_coverage": 8,
+    "note": "Reduced unindexed FK advisor findings from 44 to 8 by indexing active Pilot hot paths. Remaining findings are lower-priority admin/promotion/route-bundle metadata paths."
   }
 }
