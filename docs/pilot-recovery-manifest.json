@@ -1,16 +1,16 @@
 {
-  "generated_at": "2026-10-07T15:50:19+07:00",
+  "generated_at": "2026-10-07T15:59:26+07:00",
   "github": {
     "repository": "chatchairins-source/QueuGo",
     "source_of_truth": "main",
-    "head_at_manifest": "fade76935f074b2bf355313e0040fdd5b4518052",
+    "head_at_manifest": "6dda59b3b22b11aad682d4733cd36ab998087531",
     "previous_backup_branch": "backup-pre-closed-beta-20261007-0035",
-    "latest_backup_branch": "backup-rider-profile-cross-role-certified-fade7693-20261007",
-    "certified_source_commit": "fade76935f074b2bf355313e0040fdd5b4518052",
+    "latest_backup_branch": "backup-android-gate-hardened-6dda59b3-20261007",
+    "certified_source_commit": "6dda59b3b22b11aad682d4733cd36ab998087531",
     "rc_tests": {
-      "run_id": 37596221189,
+      "run_id": 37597329188,
       "status": "SUCCESS",
-      "head_sha": "fade76935f074b2bf355313e0040fdd5b4518052"
+      "head_sha": "6dda59b3b22b11aad682d4733cd36ab998087531"
     },
     "chat_retention_tests": {
       "run_id": 37574995871,
@@ -18,9 +18,9 @@
       "head_sha": "b738c2ce5ef1d9d065a9d033258e6134d0d2270e"
     },
     "pages_deployment_last_checked": {
-      "run_id": 37596220874,
+      "run_id": 37597328508,
       "status": "SUCCESS",
-      "head_sha": "fade76935f074b2bf355313e0040fdd5b4518052"
+      "head_sha": "6dda59b3b22b11aad682d4733cd36ab998087531"
     },
     "operational_inventory_commit": "a406bb7f8de013fa6bd7d595ca01832a7ce28293",
     "operational_inventory_rc_run": {
@@ -34,7 +34,7 @@
     "push_firebase_preflight_commit": "7c3f0a2a2d8ebb103ba30e014022929699c4f175",
     "android_signing_hardening_commit": "6823cc2da77cfb9781673ce8fd4e9733e4446f54",
     "pilot_provenance_commit": "6cc35be3d32c9c79016ea4bab728240fc10264c7",
-    "latest_source_verification_commit": "fade76935f074b2bf355313e0040fdd5b4518052",
+    "latest_source_verification_commit": "6dda59b3b22b11aad682d4733cd36ab998087531",
     "latest_source_verification_status": "PASS_GITHUB_RC",
     "latest_source_verification_checks": 38,
     "latest_source_verification_failures": 0
@@ -115,19 +115,25 @@
       "run_id": 37553305666,
       "ready": false,
       "missing": [
-        "QG_SUPABASE_DB_URL",
+        "QG_SUPABASE_DB_URL"
+      ],
+      "unevaluated_after_fail_fast": [
         "QG_SUPABASE_SERVICE_ROLE_KEY",
         "QG_BACKUP_PASSPHRASE"
       ],
-      "run_attempt": 7,
-      "checked_at": "2026-10-07T15:23:27+07:00",
-      "latest_validation_result": "FAIL"
+      "run_attempt": 8,
+      "checked_at": "2026-10-07T15:54:09+07:00",
+      "latest_validation_result": "FAIL",
+      "note": "Attempt 8 reconfirmed QG_SUPABASE_DB_URL missing. The legacy fail-fast preflight stopped before evaluating the remaining two secrets; source is now hardened to report all missing secrets on the next manual run."
     },
     "restore_drill_ugc_verification_ready": true,
     "backup_cli_version": "2.120.0",
     "backup_cli_version_policy": "PINNED",
     "backup_code_gate": "PASS",
-    "backup_runtime_gate": "BLOCKED_MISSING_SECRETS"
+    "backup_runtime_gate": "BLOCKED_MISSING_SECRETS",
+    "backup_preflight_reports_all_missing_secrets": true,
+    "backup_preflight_hardening_commit": "6585fa7c2498a6e8492ca4970a3a8a1f1e633c2f",
+    "backup_preflight_regression_guard_commit": "e3cac60efd2192060751fd57eb24617752a7d194"
   },
   "notifications": {
     "unified_outbox": true,
@@ -243,8 +249,8 @@
         "QG_ANDROID_KEY_ALIAS",
         "QG_ANDROID_KEY_PASSWORD"
       ],
-      "run_attempt": 7,
-      "checked_at": "2026-10-07T15:23:27+07:00",
+      "run_attempt": 8,
+      "checked_at": "2026-10-07T15:54:11+07:00",
       "latest_validation_result": "FAIL"
     },
     "pilot_test_workflow": ".github/workflows/build-queuego-pilot-apks.yml",
@@ -317,7 +323,29 @@
     "release_secret_preflight_cleans_decoded_credentials": true,
     "release_secret_preflight_source_commit": "e96b2f5d6673ecf4f0b56b2cd14c85071113548a",
     "release_secret_preflight_regression_guard_commit": "6263672b8ac8765cb73a3d34508df367926a5da2",
-    "release_secret_preflight_rc_run": 37581216176
+    "release_secret_preflight_rc_run": 37581216176,
+    "legacy_ungated_publish_workflows_removed": true,
+    "removed_legacy_workflows": [
+      ".github/workflows/publish-approved-icon-rc.yml",
+      ".github/workflows/publish-approved-apks.yml"
+    ],
+    "allowed_android_build_workflows": [
+      ".github/workflows/build-queuego-pilot-apks.yml",
+      ".github/workflows/build-queuego-apks.yml"
+    ],
+    "legacy_publish_retirement_commits": [
+      "8100b9e7d87ca45290a83df6beb1c9c2d57506db",
+      "de253e5be9c09ee17b1f4e9274010e52e7231801"
+    ],
+    "legacy_publish_regression_guard_commit": "6dda59b3b22b11aad682d4733cd36ab998087531",
+    "legacy_github_release_assets_present": true,
+    "legacy_github_release_tags": [
+      "queuego-android-approved-icon-rc-20261004",
+      "queuego-approved-icon-rc-20261004",
+      "queuego-android-rc-20261004-approved-icon",
+      "queuego-customer-rc-20261001"
+    ],
+    "legacy_release_policy": "HISTORICAL_ONLY_DO_NOT_USE_FOR_PILOT_OR_CLOSED_BETA"
   },
   "security": {
     "code_surface_hardened": true,
@@ -465,7 +493,8 @@
     "Enter Contains Ads declarations in Play Console: Customer Yes, Merchant No, Rider No.",
     "Enter Target Audience in Play Console as 18+ only for Customer, Merchant and Rider, and enable Restrict Minor Access for Closed Beta.",
     "Confirm Google Play developer account type/date and any 12-testers/14-days requirement.",
-    "Create dedicated reusable Play reviewer accounts and capture real current-app screenshots."
+    "Create dedicated reusable Play reviewer accounts and capture real current-app screenshots.",
+    "Do not use the historical GitHub Release APKs from 2026-10-01/04 for Pilot or Closed Beta; only artifacts from the gated Pilot/Release workflows are valid."
   ],
   "post_beta_recommendations": [
     "After upgrading Supabase to Pro, enable leaked-password protection and re-run Security Advisor; then promote security_platform_auth from PASS_FREE_PLAN_CONTROLS to PASS."
@@ -616,9 +645,9 @@
       "legacy_cash_confirmation_wording": false,
       "no_rider_terminal_state": "PASS_NOT_ACTIVE"
     },
-    "certified_commit": "fade76935f074b2bf355313e0040fdd5b4518052",
-    "rc_run": 37596221189,
-    "pages_run": 37596220874
+    "certified_commit": "6dda59b3b22b11aad682d4733cd36ab998087531",
+    "rc_run": 37597329188,
+    "pages_run": 37597328508
   },
   "production_e2e_readonly_audit": {
     "checked_at": "2026-10-07T15:06:25+07:00",
