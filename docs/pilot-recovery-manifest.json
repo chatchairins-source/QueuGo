@@ -1,11 +1,11 @@
 {
-  "generated_at": "2026-10-07T11:21:00+07:00",
+  "generated_at": "2026-10-07T11:34:00+07:00",
   "github": {
     "repository": "chatchairins-source/QueuGo",
     "source_of_truth": "main",
-    "head_at_manifest": "f3c92184be2f8d8fe5ea65b611e0039a7e2a12a7",
+    "head_at_manifest": "d6271b27939850717266789b081a04aa73452a3e",
     "previous_backup_branch": "backup-pre-closed-beta-20261007-0035",
-    "latest_backup_branch": "backup-pre-active-order-code-9fd0c877-20261007",
+    "latest_backup_branch": "backup-pre-retire-legacy-push-d6271b27-20261007",
     "certified_source_commit": "f3c92184be2f8d8fe5ea65b611e0039a7e2a12a7",
     "rc_tests": {
       "run_id": 37570842458,
@@ -69,8 +69,8 @@
     "database_version": "17.6.1.166",
     "region": "ap-southeast-2",
     "latest_migration": [
-      "20261007041346",
-      "enforce_active_visible_order_code_uniqueness"
+      "20261007043258",
+      "retire_legacy_rider_push_rpc_surface"
     ],
     "edge_functions": [
       {
@@ -200,7 +200,11 @@
       "config_rows": 1,
       "direct_client_grants": false,
       "rls_enabled": true,
-      "wake_wrapper": "SERVICE_ROLE_ONLY_TO_QG_WAKE_PUSH"
+      "wake_wrapper": "SERVICE_ROLE_ONLY_TO_QG_WAKE_PUSH",
+      "lease_rpc_executable": false,
+      "finish_rpc_executable": false,
+      "retired_edge_status": "HTTP_410",
+      "retirement_migration": "20261007043258_retire_legacy_rider_push_rpc_surface.sql"
     },
     "unified_runtime_rows": {
       "config_rows": 0,
@@ -211,7 +215,8 @@
     "notification_code_gate": "PASS_WAITING_EXTERNAL_FIREBASE_AND_PHYSICAL_DEVICE",
     "visible_order_code_normalization": "QT-XXXX",
     "native_push_order_code_normalized": true,
-    "web_push_order_code_normalized": true
+    "web_push_order_code_normalized": true,
+    "unified_push_execution_path_only": true
   },
   "android": {
     "capacitor_version": "8.0.0",

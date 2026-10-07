@@ -13,6 +13,7 @@ const rider=read('rider/index.html');
 const workflow=read('.github/workflows/build-queuego-apks.yml');
 const sql=read('supabase/migrations/20261006170833_queuego_background_push_unified.sql');
 const nativeSql=read('supabase/migrations/20261006173656_queuego_native_push_transport.sql');
+const retireLegacy=read('supabase/migrations/20261007043258_retire_legacy_rider_push_rpc_surface.sql');
 const cronFix=read('supabase/migrations/20261007034201_switch_push_retry_cron_to_unified_worker.sql');
 const androidPkg=JSON.parse(read('android-build/package.json'));
 const capacitor=JSON.parse(read('android-build/capacitor.config.json'));
@@ -52,6 +53,9 @@ ok(sql.includes('qg_push_subscriptions where user_id=v_user.id'),'account deleti
 ok(edge.includes("allowedRoles=new Set(['customer','shop','rider'])"),'edge worker must restrict supported roles');
 ok(edge.includes("qg_lease_push"),'edge worker must lease the unified outbox');
 ok(edge.includes("qg_finish_push"),'edge worker must finish/retry leased jobs');
+ok(retireLegacy.includes("LEGACY_PUSH_RETIRED_USE_QUEUEGO_PUSH"),'legacy Rider push RPCs must hard-fail if called by an owner');
+ok(/revoke all on function public\.qg_lease_rider_push\(\) from public, anon, authenticated, service_role/i.test(retireLegacy),'legacy Rider lease RPC must not remain executable');
+ok(/revoke all on function public\.qg_finish_rider_push\(uuid,uuid,integer\) from public, anon, authenticated, service_role/i.test(retireLegacy),'legacy Rider finish RPC must not remain executable');
 ok(edge.includes("FIREBASE_SERVICE_ACCOUNT_JSON")&&edge.includes("sendNativePush"),'edge worker must support authenticated FCM HTTP v1 delivery');
 ok(edge.includes("function visibleOrderText"),'push worker must share visible QT-XXXX text normalization');
 ok(edge.includes("title:visibleOrderText")&&edge.includes("body:visibleOrderText")&&edge.includes("message:visibleOrderText"),'push delivery must shorten canonical order numbers for native and web push');
