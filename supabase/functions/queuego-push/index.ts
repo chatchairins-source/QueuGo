@@ -249,6 +249,35 @@ Deno.serve(async(req)=>{
     const {data:user}=await admin.from('users').select('id,role,status').eq('auth_user_id',auth.data.user.id).single();
     if(!user||user.status!=='active'||!allowedRoles.has(user.role))return respond({error:'active app account required'},403);
 
+    if(input.action==='test'){
+      const [{count:webCount,error:webError},{count:nativeCount,error:nativeError}]=await Promise.all([
+        admin.from('qg_push_subscriptions').select('id',{count:'exact',head:true}).eq('user_id',user.id).eq('enabled',true),
+        admin.from('qg_native_push_tokens').select('id',{count:'exact',head:true}).eq('user_id',user.id).eq('enabled',true)
+      ]);
+      if(webError||nativeError)throw webError||nativeError;
+      if((webCount||0)+(nativeCount||0)===0)return respond({error:'เปิดการแจ้งเตือนก่อนทดสอบ'},409);
+
+      const since=new Date(Date.now()-60000).toISOString();
+      const recent=await admin.from('notifications')
+        .select('id',{count:'exact',head:true})
+        .eq('user_id',user.id)
+        .eq('type','push_test')
+        .gte('created_at',since);
+      if(recent.error)throw recent.error;
+      if((recent.count||0)>0)return respond({ok:true,rateLimited:true});
+
+      await new Promise(resolve=>setTimeout(resolve,7000));
+      const created=await admin.from('notifications').insert({
+        user_id:user.id,
+        title:'ทดสอบการแจ้งเตือน QueueGo',
+        message:'ถ้าคุณเห็นข้อความนี้ตอนแอปอยู่เบื้องหลัง ระบบแจ้งเตือนทำงานแล้ว',
+        type:'push_test',
+        is_read:false
+      }).select('id').single();
+      if(created.error)throw created.error;
+      return respond({ok:true,notificationId:created.data.id,delaySeconds:7});
+    }
+
     if(input.action==='public-key'){
       const c=await config();
       return respond({publicKey:c.public_key,role:user.role});
