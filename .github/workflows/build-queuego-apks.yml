@@ -135,6 +135,8 @@ jobs:
           fi
           node -e "let c=require('./capacitor.config.json');c.appId='${{ matrix.appid }}';c.appName='${{ matrix.appname }}';require('fs').writeFileSync('capacitor.config.json',JSON.stringify(c,null,2))"
           npx cap add android
+          grep -Eq 'compileSdkVersion[[:space:]]*=[[:space:]]*36' android/variables.gradle || { echo "::error::Generated Android project is not compileSdk 36"; exit 1; }
+          grep -Eq 'targetSdkVersion[[:space:]]*=[[:space:]]*36' android/variables.gradle || { echo "::error::Generated Android project is not targetSdk 36"; exit 1; }
           printf '%s' "$QG_FIREBASE_GOOGLE_SERVICES_JSON_B64" | base64 --decode > android/app/google-services.json
           python3 - <<'PY'
           import json,os
