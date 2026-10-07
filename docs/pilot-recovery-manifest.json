@@ -1,16 +1,16 @@
 {
-  "generated_at": "2026-10-07T15:02:00+07:00",
+  "generated_at": "2026-10-07T15:06:25+07:00",
   "github": {
     "repository": "chatchairins-source/QueuGo",
     "source_of_truth": "main",
-    "head_at_manifest": "6ee2402e416e892dc71f4c5fab78fc5694220a94",
+    "head_at_manifest": "05172a5660477f2cbd2b735ed3bf1ca82ef35425",
     "previous_backup_branch": "backup-pre-closed-beta-20261007-0035",
-    "latest_backup_branch": "backup-cross-role-ui-state-certified-6ee2402e-20261007",
-    "certified_source_commit": "6ee2402e416e892dc71f4c5fab78fc5694220a94",
+    "latest_backup_branch": "backup-cross-role-ui-audit-certified-05172a56-20261007",
+    "certified_source_commit": "05172a5660477f2cbd2b735ed3bf1ca82ef35425",
     "rc_tests": {
-      "run_id": 37590892456,
+      "run_id": 37591140697,
       "status": "SUCCESS",
-      "head_sha": "6ee2402e416e892dc71f4c5fab78fc5694220a94"
+      "head_sha": "05172a5660477f2cbd2b735ed3bf1ca82ef35425"
     },
     "chat_retention_tests": {
       "run_id": 37574995871,
@@ -18,9 +18,9 @@
       "head_sha": "b738c2ce5ef1d9d065a9d033258e6134d0d2270e"
     },
     "pages_deployment_last_checked": {
-      "run_id": 37590891790,
+      "run_id": 37591140402,
       "status": "SUCCESS",
-      "head_sha": "6ee2402e416e892dc71f4c5fab78fc5694220a94"
+      "head_sha": "05172a5660477f2cbd2b735ed3bf1ca82ef35425"
     },
     "operational_inventory_commit": "a406bb7f8de013fa6bd7d595ca01832a7ce28293",
     "operational_inventory_rc_run": {
@@ -34,7 +34,7 @@
     "push_firebase_preflight_commit": "7c3f0a2a2d8ebb103ba30e014022929699c4f175",
     "android_signing_hardening_commit": "6823cc2da77cfb9781673ce8fd4e9733e4446f54",
     "pilot_provenance_commit": "6cc35be3d32c9c79016ea4bab728240fc10264c7",
-    "latest_source_verification_commit": "6ee2402e416e892dc71f4c5fab78fc5694220a94",
+    "latest_source_verification_commit": "05172a5660477f2cbd2b735ed3bf1ca82ef35425",
     "latest_source_verification_status": "PASS_GITHUB_RC",
     "latest_source_verification_checks": 38,
     "latest_source_verification_failures": 0
@@ -606,5 +606,51 @@
     "certified_commit": "6ee2402e416e892dc71f4c5fab78fc5694220a94",
     "rc_run": 37590892456,
     "pages_run": 37590891790
+  },
+  "production_e2e_readonly_audit": {
+    "checked_at": "2026-10-07T15:06:25+07:00",
+    "mode": "READ_ONLY_EXISTING_REAL_ORDERS_NO_FAKE_DATA",
+    "recent_completed_checked": 10,
+    "canonical_qt_database_numbers": 10,
+    "merchant_accept_timestamps_present": 10,
+    "rider_assign_timestamps_present": 10,
+    "preparing_timestamps_present": 10,
+    "ready_timestamps_present": 10,
+    "pickup_timestamps_present": 10,
+    "delivering_timestamps_present": 10,
+    "completed_timestamps_present": 10,
+    "delivery_pickup_timestamps_present": 10,
+    "delivery_delivered_timestamps_present": 10,
+    "merchant_time_inversions": 0,
+    "rider_assign_time_inversions": 0,
+    "preparing_time_inversions": 0,
+    "ready_time_inversions": 0,
+    "pickup_time_inversions": 0,
+    "delivering_time_inversions": 0,
+    "completed_time_inversions": 0,
+    "completed_before_pickup": 0,
+    "delivery_row_time_inversions": 0,
+    "pickup_proof_timing_anomalies": 0,
+    "delivery_proof_timing_anomalies": 0,
+    "latest_new_flow_completed_checked": 5,
+    "latest_new_flow_with_pickup_proof": 5,
+    "latest_new_flow_with_delivery_proof": 5,
+    "historical_proof_note": "Older completed orders predate enforced photo-proof flow; no evidence was fabricated or backfilled.",
+    "merchant_action_receipts": {
+      "rows": 24,
+      "distinct_request_ids": 24,
+      "duplicate_request_rows": 0
+    },
+    "rider_claim_receipts": {
+      "rows": 9,
+      "distinct_request_ids": 9,
+      "duplicate_request_rows": 0
+    },
+    "rider_order_action_receipts": {
+      "rows": 12,
+      "distinct_request_ids": 12,
+      "duplicate_request_rows": 0
+    },
+    "verdict": "PASS_EXISTING_PRODUCTION_EVIDENCE"
   }
 }
