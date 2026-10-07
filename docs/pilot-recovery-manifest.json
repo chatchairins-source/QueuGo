@@ -1,16 +1,16 @@
 {
-  "generated_at": "2026-10-07T15:35:33+07:00",
+  "generated_at": "2026-10-07T15:50:19+07:00",
   "github": {
     "repository": "chatchairins-source/QueuGo",
     "source_of_truth": "main",
-    "head_at_manifest": "51dfc19e2935e9931995e7cba9eb2836852c096b",
+    "head_at_manifest": "fade76935f074b2bf355313e0040fdd5b4518052",
     "previous_backup_branch": "backup-pre-closed-beta-20261007-0035",
-    "latest_backup_branch": "backup-cross-role-terminal-certified-51dfc19e-20261007",
-    "certified_source_commit": "51dfc19e2935e9931995e7cba9eb2836852c096b",
+    "latest_backup_branch": "backup-rider-profile-cross-role-certified-fade7693-20261007",
+    "certified_source_commit": "fade76935f074b2bf355313e0040fdd5b4518052",
     "rc_tests": {
-      "run_id": 37594659175,
+      "run_id": 37596221189,
       "status": "SUCCESS",
-      "head_sha": "51dfc19e2935e9931995e7cba9eb2836852c096b"
+      "head_sha": "fade76935f074b2bf355313e0040fdd5b4518052"
     },
     "chat_retention_tests": {
       "run_id": 37574995871,
@@ -18,9 +18,9 @@
       "head_sha": "b738c2ce5ef1d9d065a9d033258e6134d0d2270e"
     },
     "pages_deployment_last_checked": {
-      "run_id": 37594658876,
+      "run_id": 37596220874,
       "status": "SUCCESS",
-      "head_sha": "51dfc19e2935e9931995e7cba9eb2836852c096b"
+      "head_sha": "fade76935f074b2bf355313e0040fdd5b4518052"
     },
     "operational_inventory_commit": "a406bb7f8de013fa6bd7d595ca01832a7ce28293",
     "operational_inventory_rc_run": {
@@ -34,7 +34,7 @@
     "push_firebase_preflight_commit": "7c3f0a2a2d8ebb103ba30e014022929699c4f175",
     "android_signing_hardening_commit": "6823cc2da77cfb9781673ce8fd4e9733e4446f54",
     "pilot_provenance_commit": "6cc35be3d32c9c79016ea4bab728240fc10264c7",
-    "latest_source_verification_commit": "51dfc19e2935e9931995e7cba9eb2836852c096b",
+    "latest_source_verification_commit": "fade76935f074b2bf355313e0040fdd5b4518052",
     "latest_source_verification_status": "PASS_GITHUB_RC",
     "latest_source_verification_checks": 38,
     "latest_source_verification_failures": 0
@@ -546,7 +546,7 @@
     "table_qr_checkout_requires_order_number": true
   },
   "production_integrity_audit": {
-    "checked_at": "2026-10-07T15:35:33+07:00",
+    "checked_at": "2026-10-07T15:50:19+07:00",
     "scope": "read-only production audit after cross-role terminal-state and UI unification",
     "latest_completed_checked": 5,
     "latest_new_flow_completed_with_pickup_and_delivery_proof": 5,
@@ -588,11 +588,17 @@
       "completed_order_tracking": "STOPPED_AFTER_COMPLETION",
       "saved_review": "COLLAPSED_SUMMARY",
       "no_rider_terminal_state": "PASS_NO_TRACKING_NO_PROGRESS",
-      "feature_cache_bust": "customer-features.js?v=20261007-terminal4"
+      "feature_cache_bust": "customer-features.js?v=20261007-terminal5",
+      "accepted_progress_alias": "PASS",
+      "assigned_progress_alias": "PASS"
     },
     "rider": {
       "active_flow": "COMPACT",
-      "short_screen_mode": true
+      "short_screen_mode": true,
+      "profile": "GROUPED_COMPACT",
+      "obsolete_direct_completion_step_map": "REMOVED",
+      "logout_danger_style": false,
+      "cash_confirmation_buttons": "REMOVED"
     },
     "merchant": {
       "account": "GROUPED_COMPACT",
@@ -610,9 +616,9 @@
       "legacy_cash_confirmation_wording": false,
       "no_rider_terminal_state": "PASS_NOT_ACTIVE"
     },
-    "certified_commit": "51dfc19e2935e9931995e7cba9eb2836852c096b",
-    "rc_run": 37594659175,
-    "pages_run": 37594658876
+    "certified_commit": "fade76935f074b2bf355313e0040fdd5b4518052",
+    "rc_run": 37596221189,
+    "pages_run": 37596220874
   },
   "production_e2e_readonly_audit": {
     "checked_at": "2026-10-07T15:06:25+07:00",
@@ -661,14 +667,16 @@
     "verdict": "PASS_EXISTING_PRODUCTION_EVIDENCE"
   },
   "cross_role_state_audit": {
-    "checked_at": "2026-10-07T15:35:33+07:00",
+    "checked_at": "2026-10-07T15:50:19+07:00",
     "status": "PASS",
     "customer": {
       "no_rider_available": "TERMINAL",
       "tracking_stopped": true,
       "progress_hidden": true,
       "chat_closed": true,
-      "visible_label": "ไม่พบ Rider"
+      "visible_label": "ไม่พบ Rider",
+      "accepted_progress": "MERCHANT_ACCEPTED_STAGE",
+      "assigned_progress": "RIDER_ASSIGNED_STAGE"
     },
     "merchant": {
       "rider_to_customer": "กำลังจัดส่ง",
@@ -679,7 +687,9 @@
     "rider": {
       "picked_up": "รับสินค้าแล้ว",
       "in_progress": "กำลังไปส่ง",
-      "completed": "ส่งสำเร็จ"
+      "completed": "ส่งสำเร็จ",
+      "obsolete_direct_completion_map": false,
+      "completion_flow": "ARRIVAL_THEN_PHOTO_THEN_SLIDE_COMPLETE"
     },
     "admin": {
       "no_rider_available": "TERMINAL",
