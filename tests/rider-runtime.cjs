@@ -7,6 +7,14 @@ const offerPoll=/const OFFER_POLL_MS = (\d+);/.exec(src);
 eq(!!offerPoll,true);eq(Number(offerPoll[1])<=5000,true);
 eq(src.includes('riderOfferPollTimer=setInterval(qgPollRiderOfferNow,OFFER_POLL_MS)'),true);
 eq(src.includes("sbRpc('qg_get_my_rider_offer',{},token)"),true);
+eq(src.includes('function qgOpenCashConfirmPage({o,mode,amount,onConfirm,onBack})'),true);
+eq(src.includes('ตรวจสอบรายการครบแล้ว'),true);
+eq(src.includes('ถ่ายรูปสินค้าที่รับก่อนชำระเงิน'),true);
+eq(src.includes('ชำระเงินให้ร้านเรียบร้อยแล้ว'),true);
+eq(src.includes('ส่งสินค้าให้ลูกค้าเรียบร้อยแล้ว'),true);
+eq(src.includes('ไปหน้าเก็บเงินจากลูกค้า'),true);
+eq(src.includes('เก็บเงินจากลูกค้าเรียบร้อยแล้ว'),true);
+eq(src.includes('ไม่มีปุ่มยืนยันเงินแยก'),false);
 function boot(){
  let stored=null;const events=[],calls=[];
  const ctx=vm.createContext({Date,JSON,Map,Set,Number,String,Array,Promise,Error,encodeURIComponent,AbortSignal,
