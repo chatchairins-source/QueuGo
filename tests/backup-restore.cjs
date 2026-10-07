@@ -23,6 +23,10 @@ ok(/QG_BACKUP_PASSPHRASE/.test(workflow)&&/QG_SUPABASE_DB_URL/.test(workflow)&&/
 ok(exporter.includes('storage-manifest.json')&&exporter.includes('sha256'),'Storage exporter must hash every object');
 ok(restorer.includes('upsert:true')&&restorer.includes('Restored object verification failed'),'Storage restore must re-upload and checksum verify objects');
 ok(inventory.includes('auth.users')&&inventory.includes('storage.objects'),'backup inventory must cover Auth and Storage metadata');
+ok(inventory.includes('public.qg_ugc_terms_acceptances')&&inventory.includes('public.qg_user_blocks')&&inventory.includes('public.qg_ugc_reports'),'backup inventory must cover UGC safety state');
+ok(verify.includes("queuego_private.qg_chat_moderation_post_allowed"),'restore must verify private UGC moderation helper');
+ok(verify.includes("public.qg_chat_moderation_post_allowed(uuid,uuid)")&&verify.includes("Restore exposed deprecated public chat moderation helper"),'restore must reject deprecated public UGC helper');
+ok(verify.includes("content_snapshot")&&verify.includes("qg_ugc_reports"),'restore must verify UGC moderation evidence snapshot');
 ok(verify.includes('queuego_restore_verification_ok'),'restore SQL must emit a success sentinel');
 ok(verify.includes('qg_notifications_queuego_push'),'restore must verify unified notification trigger');
 ok(/restore_drill_certified/.test(release),'Closed Beta release must depend on restore certification');
