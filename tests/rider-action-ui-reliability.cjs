@@ -76,6 +76,7 @@ ok(!rider.includes("qgOpenOrderChecklist("),'obsolete legacy order-check page mu
 ok(!rider.includes("qg-ordercheck-page"),'obsolete ordercheck markup must stay removed');
 ok(!rider.includes('id="more-'),'legacy active-order more button must stay removed');
 ok(!rider.includes("action={ready:'pickup_cash',picked_up:'deliver',in_progress:'complete'}"),'direct completion must never bypass delivery photo');
+ok(!rider.includes('STEP_NEXT'),'obsolete direct status-to-status completion map must stay removed');
 
 ok(activeSql.includes('CREATE POLICY order_items_rider_select'),'assigned Rider must be able to read order items');
 ok(activeSql.includes("v_action='complete' AND v_order.status='in_progress'"),'server state machine must keep the authoritative completion transition');
