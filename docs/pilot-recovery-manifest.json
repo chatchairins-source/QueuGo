@@ -1,11 +1,11 @@
 {
-  "generated_at": "2026-10-07T10:41:00+07:00",
+  "generated_at": "2026-10-07T10:42:00+07:00",
   "github": {
     "repository": "chatchairins-source/QueuGo",
     "source_of_truth": "main",
-    "head_at_manifest": "a6dc39531ab363caf4dc5f11297ed13b7df3101f",
+    "head_at_manifest": "2c8be72f1128cb4d190ec5cb2e04f2264077f5f1",
     "previous_backup_branch": "backup-pre-closed-beta-20261007-0035",
-    "latest_backup_branch": "backup-pre-push-v8-evidence-a6dc3953-20261007",
+    "latest_backup_branch": "backup-pre-release-provenance-2c8be72f-20261007",
     "certified_source_commit": "a6dc39531ab363caf4dc5f11297ed13b7df3101f",
     "rc_tests": {
       "run_id": 37567614603,
@@ -217,7 +217,11 @@
     "release_artifact_package_verification": true,
     "release_apk_non_debuggable_verification": true,
     "release_apk_signature_verification": "APKSIGNER",
-    "release_aab_signature_verification": "JARSIGNER_STRICT"
+    "release_aab_signature_verification": "JARSIGNER_STRICT",
+    "release_evidence_includes_git_sha": true,
+    "release_evidence_includes_github_run_id": true,
+    "release_evidence_includes_signing_certificate_sha256": true,
+    "release_evidence_includes_artifact_sha256": true
   },
   "security": {
     "code_surface_hardened": true,

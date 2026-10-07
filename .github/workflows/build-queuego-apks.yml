@@ -395,6 +395,8 @@ jobs:
           QG_APP_ID: ${{ matrix.appid }}
           QG_VERSION_CODE: ${{ github.run_number }}
           QG_VERSION_NAME: 1.0.0-beta.${{ github.run_number }}
+          QG_GIT_SHA: ${{ github.sha }}
+          QG_RUN_ID: ${{ github.run_id }}
           ORG_GRADLE_PROJECT_QG_STORE_FILE: ../queuego-release.jks
           ORG_GRADLE_PROJECT_QG_STORE_PASSWORD: ${{ secrets.QG_ANDROID_STORE_PASSWORD }}
           ORG_GRADLE_PROJECT_QG_KEY_ALIAS: ${{ secrets.QG_ANDROID_KEY_ALIAS }}
@@ -437,6 +439,8 @@ jobs:
             echo "application_id=$QG_APP_ID"
             echo "version_code=$QG_VERSION_CODE"
             echo "version_name=$QG_VERSION_NAME"
+            echo "git_sha=$QG_GIT_SHA"
+            echo "github_run_id=$QG_RUN_ID"
             echo "signer_certificate_sha256=$CERT_SHA256"
             cat "QueueGo-${{ matrix.role }}-SHA256.txt"
           } > "QueueGo-${{ matrix.role }}-release-evidence.txt"

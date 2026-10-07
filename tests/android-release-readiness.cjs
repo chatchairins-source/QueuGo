@@ -27,6 +27,8 @@ ok('release APK package and version are verified after build',/aapt["']? dump ba
 ok('release APK must be non-debuggable',/application-debuggable/.test(workflow)&&/Release APK must not be debuggable/.test(workflow));
 ok('release APK signature is verified',/apksigner["']? verify|APKSIGNER.*verify/s.test(workflow));
 ok('release signer certificate fingerprint is retained',/--print-certs/.test(workflow)&&/Signer #1 certificate SHA-256 digest/.test(workflow)&&/signer_certificate_sha256/.test(workflow));
+ok('release evidence links artifact to exact source commit',/QG_GIT_SHA:\s*\$\{\{ github\.sha \}\}/.test(workflow)&&/git_sha=\$QG_GIT_SHA/.test(workflow));
+ok('release evidence retains GitHub run id',/QG_RUN_ID:\s*\$\{\{ github\.run_id \}\}/.test(workflow)&&/github_run_id=\$QG_RUN_ID/.test(workflow));
 ok('release evidence artifact is uploaded',/release-evidence\.txt/.test(workflow));
 ok('release AAB signature is verified',/jarsigner -verify -strict/.test(workflow));
 ok('Closed Beta requires certified restore drill',/restore_drill_certified/.test(workflow)&&/Do not build Closed Beta/.test(workflow));
