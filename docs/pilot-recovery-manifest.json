@@ -1,9 +1,9 @@
 {
-  "generated_at": "2026-10-07T09:15:00+07:00",
+  "generated_at": "2026-10-07T08:42:00+07:00",
   "github": {
     "repository": "chatchairins-source/QueuGo",
     "source_of_truth": "main",
-    "head_at_manifest": "64a29c955c817d12026e4e87d6e334392ef40770",
+    "head_at_manifest": "b19e5ed92604ca818c3e59b4f94a56a41bd6a038",
     "previous_backup_branch": "backup-pre-closed-beta-20261007-0035",
     "latest_backup_branch": "backup-security-ugc-pre-closed-beta-20261007-0915",
     "certified_source_commit": "64a29c955c817d12026e4e87d6e334392ef40770",
@@ -54,8 +54,8 @@
     "database_version": "17.6.1.166",
     "region": "ap-southeast-2",
     "latest_migration": [
-      "20261007021020",
-      "reduce_anon_security_definer_surface"
+      "20261007021517",
+      "security_scope_authenticated_definer_helpers"
     ],
     "edge_functions": [
       {
@@ -157,23 +157,13 @@
     "leaked_password_protection_enabled": false,
     "leaked_password_protection_blocker": "Supabase Security Advisor still reports Auth leaked-password protection disabled. The available connector cannot change this Auth platform setting.",
     "signup_password_minimum_characters": 8,
-    "anonymous_security_definer_review": {
-      "status": "PASS",
-      "advisor_warn_count": 9,
-      "intentional_allowlisted": 9,
-      "unreviewed": 0,
-      "allowlist": "docs/security-anon-definer-allowlist.json",
-      "removed_anonymous_execute": [
-        "market_public_catalog()",
-        "queuego_nearest_market(double precision,double precision,numeric)"
-      ],
-      "verification": {
-        "legacy_catalog_anon_execute": false,
-        "nearest_market_anon_execute": false,
-        "reviewed_public_rpc_anon_execute": true,
-        "production_error_window": "CLEAN"
-      }
-    }
+    "anonymous_security_definer_review": "docs/security-anon-definer-allowlist.json",
+    "security_audit": "PASS",
+    "authenticated_security_definer_review": "docs/security-auth-definer-review.json",
+    "anonymous_security_definer_count": 9,
+    "authenticated_security_definer_count": 123,
+    "authenticated_direct_guard_count": 113,
+    "authenticated_no_direct_guard_reviewed_count": 10
   },
   "performance": {
     "auth_rls_initplan_warnings_before": 13,
@@ -211,7 +201,8 @@
     "community_guidelines": "docs/community-guidelines.html",
     "data_safety_draft_ready": true,
     "provider_sharing_classification": "PENDING_CONTRACT_VERIFICATION",
-    "personal_account_closed_test_requirement": "PENDING_PLAY_ACCOUNT_TYPE_CHECK"
+    "personal_account_closed_test_requirement": "PENDING_PLAY_ACCOUNT_TYPE_CHECK",
+    "store_listing_draft": "docs/play-store-listing-draft.md"
   },
   "remaining_external_blockers": [
     "Supabase Auth leaked-password protection is disabled and must be enabled in the Supabase Auth platform settings.",
