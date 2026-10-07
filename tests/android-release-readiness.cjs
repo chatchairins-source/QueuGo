@@ -23,6 +23,7 @@ ok('Closed Beta requires native push plugin',/@capacitor\/push-notifications/.te
 ok('Closed Beta requires Firebase config secret',/QG_FIREBASE_GOOGLE_SERVICES_JSON_B64/.test(workflow)&&/google-services\.json secret is missing/.test(workflow));
 ok('Closed Beta requires platform Auth security certification',/security_platform_auth/.test(workflow)&&/Security platform Auth gate is not PASS/.test(workflow));
 ok('Closed Beta requires physical notification certification',/physical_background_notification_certified/.test(workflow)&&/Physical Android background notification is not certified/.test(workflow));
+ok('Closed Beta requires UGC chat safety certification',/ugc_chat_safety/.test(workflow));
 ok('approved QueueGo icon source exists',fs.existsSync('android-build/branding/queuego-approved-icon.webp'));
 ok('approved QueueGo icon source is used',/branding\/queuego-approved-icon\.webp/.test(workflow));
 ok('synthetic launcher drawing removed',!/ImageDraw/.test(workflow));
