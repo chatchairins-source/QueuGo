@@ -1,11 +1,11 @@
 {
-  "generated_at": "2026-10-07T10:46:30+07:00",
+  "generated_at": "2026-10-07T10:49:00+07:00",
   "github": {
     "repository": "chatchairins-source/QueuGo",
     "source_of_truth": "main",
-    "head_at_manifest": "0ee7294a618254fa599ae36abfda77f8557f891a",
+    "head_at_manifest": "68b6851c212b23825c2664cb0ee822c1cb799f67",
     "previous_backup_branch": "backup-pre-closed-beta-20261007-0035",
-    "latest_backup_branch": "backup-pre-native-push-config-bootstrap-f64679db-20261007",
+    "latest_backup_branch": "backup-pre-unified-order-code-68b6851c-20261007",
     "certified_source_commit": "0ee7294a618254fa599ae36abfda77f8557f891a",
     "rc_tests": {
       "run_id": 37568188542,
@@ -431,5 +431,19 @@
   ],
   "post_beta_recommendations": [
     "After upgrading Supabase to Pro, enable leaked-password protection and re-run Security Advisor; then promote security_platform_auth from PASS_FREE_PLAN_CONTROLS to PASS."
-  ]
+  ],
+  "order_number_display": {
+    "canonical_database_format": "QT-YYYYMMDD-XXXX",
+    "visible_format": "QT-XXXX",
+    "source": "orders.order_number",
+    "shared_formatter": "queuego-order-number.js",
+    "roles": [
+      "customer",
+      "merchant",
+      "rider",
+      "admin"
+    ],
+    "uuid_fallback": false,
+    "decision": "DISPLAY_ONLY_NO_DATABASE_REWRITE"
+  }
 }

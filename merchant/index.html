@@ -46,7 +46,8 @@ body.qgm-app,body.qgm-login{height:auto!important;min-height:100dvh!important;ov
 .qgm-content{padding-bottom:calc(var(--qg-nav-h) + env(safe-area-inset-bottom) + 28px)!important}
 </style>
 <script src="https://api.longdo.com/map/?key=347649ca13f49db0d8a599ae35f8de2b"></script>
-<style id="qgm-setup-checklist-style">.qgm-pending{max-width:680px}.qgm-setup-heading{display:flex;align-items:center;justify-content:space-between;gap:16px}.qgm-setup-symbol{font-size:48px;color:#ed0a31}.qgm-setup-list{list-style:none;padding:0;margin:20px 0;border:1px solid #e3e5e9;border-radius:18px;overflow:hidden}.qgm-setup-list li{display:flex;gap:14px;padding:20px 16px;align-items:flex-start;background:#fff}.qgm-setup-list li+li{border-top:1px solid #e3e5e9}.qgm-setup-list b{font-size:17px}.qgm-setup-list p{font-size:14px;margin:6px 0;overflow-wrap:anywhere}.qgm-setup-check{flex:0 0 28px;height:28px;border-radius:50%;display:grid;place-items:center;color:#858b94;border:2px solid #d4d7dc}.qgm-setup-list .done .qgm-setup-check{background:#0ab76a;color:#fff;border-color:#0ab76a}.qgm-setup-list .qgm-link{padding:6px 0;min-height:40px;text-align:left}.qgm-pending>.qgm-outline{margin:10px 0}</style></head>
+<style id="qgm-setup-checklist-style">.qgm-pending{max-width:680px}.qgm-setup-heading{display:flex;align-items:center;justify-content:space-between;gap:16px}.qgm-setup-symbol{font-size:48px;color:#ed0a31}.qgm-setup-list{list-style:none;padding:0;margin:20px 0;border:1px solid #e3e5e9;border-radius:18px;overflow:hidden}.qgm-setup-list li{display:flex;gap:14px;padding:20px 16px;align-items:flex-start;background:#fff}.qgm-setup-list li+li{border-top:1px solid #e3e5e9}.qgm-setup-list b{font-size:17px}.qgm-setup-list p{font-size:14px;margin:6px 0;overflow-wrap:anywhere}.qgm-setup-check{flex:0 0 28px;height:28px;border-radius:50%;display:grid;place-items:center;color:#858b94;border:2px solid #d4d7dc}.qgm-setup-list .done .qgm-setup-check{background:#0ab76a;color:#fff;border-color:#0ab76a}.qgm-setup-list .qgm-link{padding:6px 0;min-height:40px;text-align:left}.qgm-pending>.qgm-outline{margin:10px 0}</style><script src="../queuego-order-number.js"></script>
+</head>
 <body>
 <div id="app"></div>
 <script id="qt-v532-helpers">
@@ -1110,13 +1111,7 @@ function qtLocalDateKey(ts){
   return `${y}-${m}-${day}`;
 }
 
-function displayOrderNumber(order){
-  const raw=String(order?.orderNumber||order?.order_number||'').trim();
-  const seq=raw.match(/(\d{4})$/);
-  if(seq)return 'QT-'+seq[1];
-  const id=String(order?.id||'').replace(/[^a-z0-9]/gi,'').slice(-4).toUpperCase();
-  return 'QT-'+id.padStart(4,'0');
-}
+function displayOrderNumber(order){return QueueGoOrderNumber.format(order);}
 
 
 /* Merchant order status */
@@ -3279,7 +3274,7 @@ window.qgmExportRevenue=async function(button){
    panel.innerHTML='<div class="qg-v22-dialog"><header><b>ติดต่อฝ่ายดูแล</b><button type="button" id="qg-ticket-close" aria-label="ปิด">✕</button></header><p>แจ้งปัญหาและติดตามสถานะจากระบบ</p><form id="qg-ticket-form"><label>ออเดอร์ที่เกี่ยวข้อง (ถ้ามี)<select name="order"><option value="">ไม่ระบุออเดอร์</option></select></label><label>ประเภทปัญหา<select name="category"></select></label><label>รายละเอียด<textarea name="details" minlength="10" maxlength="2000" required placeholder="อธิบายปัญหาอย่างน้อย 10 ตัวอักษร"></textarea></label><label>รูปหลักฐาน (ถ้ามี)<input name="evidence" type="file" accept="image/jpeg,image/png,image/webp"></label><button type="submit">ส่งเรื่อง</button></form><h3>เรื่องที่แจ้งไว้</h3><div id="qg-ticket-list">กำลังโหลด...</div></div>';
    document.body.appendChild(panel);panel.querySelector('#qg-ticket-close').onclick=()=>panel.remove();panel.onclick=e=>{if(e.target===panel)panel.remove()};
    panel.querySelector('[name=category]').innerHTML=Object.entries(names).map(([key,label])=>'<option value="'+key+'">'+label+'</option>').join('');
-   request('orders?select=id,order_number&order_type=eq.shopping&order=created_at.desc&limit=50').then(rows=>{if(!panel.isConnected)return;const select=panel.querySelector('[name=order]');select.insertAdjacentHTML('beforeend',(rows||[]).map(o=>'<option value="'+escText(o.id)+'">'+escText(o.order_number||o.id)+'</option>').join(''));if(orderId)select.value=orderId}).catch(e=>{panel.querySelector('#qg-ticket-list').textContent='โหลดออเดอร์ไม่สำเร็จ: '+e.message});
+   request('orders?select=id,order_number&order_type=eq.shopping&order=created_at.desc&limit=50').then(rows=>{if(!panel.isConnected)return;const select=panel.querySelector('[name=order]');select.insertAdjacentHTML('beforeend',(rows||[]).map(o=>'<option value="'+escText(o.id)+'">'+escText(displayOrderNumber(o))+'</option>').join(''));if(orderId)select.value=orderId}).catch(e=>{panel.querySelector('#qg-ticket-list').textContent='โหลดออเดอร์ไม่สำเร็จ: '+e.message});
    qgLoadTickets();
    panel.querySelector('#qg-ticket-form').onsubmit=async e=>{e.preventDefault();const form=e.currentTarget,button=form.querySelector('button[type=submit]');button.disabled=true;try{const path=await upload(form.evidence.files[0]),details=form.details.value.trim();await request('rpc/qg_create_ticket','POST',{p_ticket_id:crypto.randomUUID(),p_order_id:form.order.value||null,p_category:form.category.value,p_details:details,p_evidence_path:path});form.reset();await qgLoadTickets();alert('ส่งเรื่องให้ฝ่ายดูแลแล้ว')}catch(err){alert('ส่งเรื่องไม่สำเร็จ: '+err.message)}finally{button.disabled=false}};
  };

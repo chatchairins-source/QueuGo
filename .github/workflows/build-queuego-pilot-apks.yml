@@ -84,16 +84,17 @@ jobs:
           cp ../docs/privacy.html ../docs/account-deletion.html ../docs/community-guidelines.html www/docs/
           if [ "${{ matrix.role }}" = "customer" ]; then
             cp ../index.html www/index.html
-            cp ../customer-features.js ../customer-features.css ../customer-laundry.js ../queuego-password-policy.js ../account-deletion.js ../queuego-ugc.js ../queuego-native-push.js ../queuego-push.js ../queuego-push-sw.js www/
+            cp ../customer-features.js ../customer-features.css ../customer-laundry.js ../queuego-order-number.js ../queuego-order-number.js ../queuego-password-policy.js ../account-deletion.js ../queuego-ugc.js ../queuego-native-push.js ../queuego-push.js ../queuego-push-sw.js www/
             cp ../table-order.css ../table-order.js ../table-order.html www/
           elif [ "${{ matrix.role }}" = "merchant" ]; then
             cp ../merchant/* www/
-            cp ../role-realtime.js ../queuego-password-policy.js ../account-deletion.js ../queuego-ugc.js ../queuego-native-push.js ../queuego-push.js ../queuego-push-sw.js www/
+            cp ../role-realtime.js ../queuego-order-number.js ../queuego-order-number.js ../queuego-password-policy.js ../account-deletion.js ../queuego-ugc.js ../queuego-native-push.js ../queuego-push.js ../queuego-push-sw.js www/
             python3 - <<'PY'
           from pathlib import Path
           p=Path('www/index.html')
           s=p.read_text()
           s=s.replace('../role-realtime.js','role-realtime.js')
+          s=s.replace('../queuego-order-number.js','queuego-order-number.js')
           s=s.replace('../queuego-password-policy.js','queuego-password-policy.js')
           s=s.replace('../account-deletion.js','account-deletion.js')
           s=s.replace('../queuego-ugc.js','queuego-ugc.js')
@@ -104,11 +105,12 @@ jobs:
             cp ../table-order.html ../table-order.css ../table-order.js www/
           else
             cp ../rider/index.html www/index.html
-            cp ../queuego-password-policy.js ../account-deletion.js ../queuego-ugc.js ../queuego-native-push.js ../queuego-push.js ../queuego-push-sw.js www/
+            cp ../queuego-order-number.js ../queuego-password-policy.js ../account-deletion.js ../queuego-ugc.js ../queuego-native-push.js ../queuego-push.js ../queuego-push-sw.js www/
             python3 - <<'PY'
           from pathlib import Path
           p=Path('www/index.html')
           s=p.read_text()
+          s=s.replace('../queuego-order-number.js','queuego-order-number.js')
           s=s.replace('../queuego-password-policy.js','queuego-password-policy.js')
           s=s.replace('../account-deletion.js','account-deletion.js')
           s=s.replace('../queuego-ugc.js','queuego-ugc.js')

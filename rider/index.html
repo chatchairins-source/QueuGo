@@ -56,6 +56,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro Text"
 @media(max-width:800px){.qg-auth{grid-template-columns:1fr}.qg-auth-brand{display:none}.qg-auth-card{margin:calc(24px + var(--safeT)) auto}.rider-grid{grid-template-columns:1fr}.qg-register-card{border-radius:22px}}@media(min-width:760px){.qg-home-dock{left:50%;right:auto;width:min(660px,calc(100% - 28px));transform:translateX(-50%)}.qg-topbar{left:50%;right:auto;width:min(720px,calc(100% - 28px));transform:translateX(-50%)}}
 </style>
 
+<script src="../queuego-order-number.js"></script>
 </head><body>
 <div id="app"></div><div id="toast" class="toast"></div>
 <script>/* =========================================================================
@@ -1291,12 +1292,7 @@ boot();
   window.qgStartNewJobAlert=show;window.qgCheckNewJobs=checkNewJobs;window.qgStopNewJobAlert=acknowledge;
 })();
 
-function qgShortOrder(o){
-  const raw=String((o&&o.order_number)||(o&&o.id)||'')
-    .replace(/^QT[-_\s]*/i,'')
-    .replace(/[^A-Za-z0-9]/g,'');
-  return 'QT-' + (raw.slice(-4)||'----').toUpperCase();
-}
+function qgShortOrder(o){return QueueGoOrderNumber.format(o);}
 
 const QTICON={'home': '<svg class="ico" viewBox="0 0 24 24"><path d="M3.5 11 12 4l8.5 7v8a1.5 1.5 0 0 1-1.5 1.5H5A1.5 1.5 0 0 1 3.5 19Z"/><path d="M9 20v-6h6v6"/></svg>', 'jobs': '<svg class="ico" viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="3"/><path d="M8 3v4M16 3v4M8 11h8M8 15h5"/></svg>', 'chat': '<svg class="ico" viewBox="0 0 24 24"><path d="M5 5h14a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-9l-5 3v-3a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2Z"/><path d="M8 11h.01M12 11h.01M16 11h.01"/></svg>', 'earn': '<svg class="ico" viewBox="0 0 24 24"><path d="M4 18V9M10 18V5M16 18v-7M22 18H2"/></svg>', 'user': '<svg class="ico" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4.5 21a7.5 7.5 0 0 1 15 0"/></svg>', 'phone': '<svg class="ico" viewBox="0 0 24 24"><path d="M7.2 3.5 10 7.7 8.4 9.3c1.3 2.7 3.4 4.8 6.1 6.1l1.6-1.6 4.2 2.8-.8 3.1c-.2.8-.9 1.3-1.7 1.3C10 20.6 3.4 14 3 6.2c0-.8.5-1.5 1.3-1.7Z"/></svg>', 'loc': '<svg class="ico" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>', 'arrow': '<svg class="ico" viewBox="0 0 24 24"><path d="m9 5 7 7-7 7"/></svg>', 'back': '<svg class="ico" viewBox="0 0 24 24"><path d="m15 5-7 7 7 7"/></svg>'};
 let qgUnread=0,qgLastMsg=null,qgMsgTimer=null;
@@ -1355,12 +1351,12 @@ function qgRouteBundleHTML(){
       else if(st==='completed')action='<small class="qg-bundle-done">✓ ส่งสำเร็จ</small>';
       else if(st==='cancelled')action='<small>ยกเลิก</small>';
       else action='<small>'+esc(STEP_LABEL[st]||'รอร้านเตรียมสินค้า')+'</small>';
-      return '<article class="qg-bundle-order"><div><b>#'+esc(qgShortOrder(o))+' · '+esc(shop)+'</b><small>รับร้าน '+Number(o.route_bundle_sequence||1)+' · ส่งลูกค้าลำดับ '+rank+' · ค่าส่ง ฿'+Number(o.delivery_fee||0).toLocaleString('th-TH')+(Number(o.bundle_customer_savings||0)>0?' · ลูกค้าประหยัด ฿'+Number(o.bundle_customer_savings).toLocaleString('th-TH'):'')+'</small></div>'+action+'</article>';
+      return '<article class="qg-bundle-order"><div><b>'+esc(qgShortOrder(o))+' · '+esc(shop)+'</b><small>รับร้าน '+Number(o.route_bundle_sequence||1)+' · ส่งลูกค้าลำดับ '+rank+' · ค่าส่ง ฿'+Number(o.delivery_fee||0).toLocaleString('th-TH')+(Number(o.bundle_customer_savings||0)>0?' · ลูกค้าประหยัด ฿'+Number(o.bundle_customer_savings).toLocaleString('th-TH'):'')+'</small></div>'+action+'</article>';
     }).join('')+'</section>';
   }
   if(offers.length){
     out+='<section class="qg-bundle-card qg-bundle-offers"><div class="qg-bundle-head"><div><b>มีงานพ่วงในเส้นทาง</b><small>เลือกเองได้ ไม่บังคับรับ</small></div></div>'+
-      offers.map(x=>'<article class="qg-bundle-offer"><div><b>'+esc(x.shop_name||'ร้านค้า')+' · #'+esc(qgShortOrder({order_number:x.order_number,id:x.order_id}))+'</b><small>เพิ่ม '+Number(x.detour_km||0).toFixed(1)+' กม. · ประมาณ '+Number(x.added_minutes||0)+' นาที · รายรับเพิ่ม ฿'+Number(x.rider_extra_fee||0).toLocaleString('th-TH')+' · ลูกค้าประหยัด ฿'+Number(x.customer_savings||0).toLocaleString('th-TH')+'</small></div><button data-bundle-claim="'+esc(x.order_id)+'">รับงานพ่วง</button></article>').join('')+
+      offers.map(x=>'<article class="qg-bundle-offer"><div><b>'+esc(x.shop_name||'ร้านค้า')+' · '+esc(qgShortOrder({order_number:x.order_number,id:x.order_id}))+'</b><small>เพิ่ม '+Number(x.detour_km||0).toFixed(1)+' กม. · ประมาณ '+Number(x.added_minutes||0)+' นาที · รายรับเพิ่ม ฿'+Number(x.rider_extra_fee||0).toLocaleString('th-TH')+' · ลูกค้าประหยัด ฿'+Number(x.customer_savings||0).toLocaleString('th-TH')+'</small></div><button data-bundle-claim="'+esc(x.order_id)+'">รับงานพ่วง</button></article>').join('')+
       '</section>';
   }
   return out;
@@ -1635,7 +1631,7 @@ async function qgOpenPickupVerify(o){
   if(!o||statusFromRow(o)!=='ready')return false;
   qgCloseRiderFlowPage('qg-pickup-verify');
   const page=document.createElement('section');page.id='qg-pickup-verify';page.className='qg-rider-flow-page qg-rider-flow-compact';
-  page.innerHTML=`<header class="qg-flow-head"><button type="button" aria-label="ย้อนกลับ">${QTICON.back}</button><div><b>รับสินค้าที่ร้าน</b><small>#${esc(qgShortOrder(o))}</small></div><span></span></header><main class="qg-flow-body"><div class="qg-loading">กำลังโหลดรายการ...</div></main>`;
+  page.innerHTML=`<header class="qg-flow-head"><button type="button" aria-label="ย้อนกลับ">${QTICON.back}</button><div><b>รับสินค้าที่ร้าน</b><small>${esc(qgShortOrder(o))}</small></div><span></span></header><main class="qg-flow-body"><div class="qg-loading">กำลังโหลดรายการ...</div></main>`;
   document.body.appendChild(page);
   page.querySelector('header button').onclick=()=>page.remove();
   try{
@@ -1649,7 +1645,7 @@ async function qgOpenPickupVerify(o){
       <section class="qg-pickup-banner"><span>QueueGo Rider</span><h1>ร้านเตรียมสินค้าให้แล้ว</h1><p>ตรวจรายการ แล้วถ่ายรูปสินค้าที่รับจากร้าน</p></section>
       <section class="qg-flow-card qg-pickup-meta">
         <div class="qg-pickup-shop">${shopLogo?`<img class="qg-shop-logo" src="${esc(shopLogo)}" alt="">`:`<div class="qg-shop-logo qg-shop-logo-fallback">${esc((shop.shop_name||'Q').slice(0,1))}</div>`}<div><small>ร้านค้า</small><b>${esc(shop.shop_name||'ร้านค้า')}</b></div></div>
-        <div class="qg-pickup-row"><span>${QTICON.jobs}</span><div><small>รหัสออเดอร์</small><b>#${esc(qgShortOrder(o))}</b></div></div>
+        <div class="qg-pickup-row"><span>${QTICON.jobs}</span><div><small>รหัสออเดอร์</small><b>${esc(qgShortOrder(o))}</b></div></div>
         <div class="qg-pickup-row"><span>${QTICON.user}</span><div><small>ลูกค้า</small><b>${esc(cust.name||'ลูกค้า')}</b></div><div class="qg-contact-actions">${tel?`<a href="${esc(tel)}" aria-label="โทรหาลูกค้า">${QTICON.phone}</a>`:''}<button type="button" id="qg-pickup-chat" aria-label="แชต">${QTICON.chat}</button></div></div>
       </section>
       <section class="qg-flow-cash"><small>ยอดเงินสดที่ต้องจ่ายร้านเมื่อรับสินค้า</small><b>฿${shopCash.toLocaleString('th-TH')}</b><span>การสไลด์รับสินค้าเป็นการบันทึกการจ่ายร้านในตัว ไม่มีปุ่มยืนยันเงินแยก</span></section>
@@ -1685,7 +1681,7 @@ async function qgCompleteWithPhoto(o,file,preparedPhotoPath=null){
 function qgShowDeliverySuccess(o){
   document.getElementById('qg-delivery-success')?.remove();
   const box=document.createElement('section');box.id='qg-delivery-success';box.className='qg-flow-success';
-  box.innerHTML=`<div class="qg-flow-success-card"><div class="qg-flow-success-check">✓</div><h2>จัดส่งสำเร็จ</h2><p>#${esc(qgShortOrder(o))}</p><b>รายได้ค่าส่ง ฿${Number(riderEarning(o)||0).toLocaleString('th-TH')}</b><button type="button" class="qg-btn qg-btn-primary">รับทราบ</button></div>`;
+  box.innerHTML=`<div class="qg-flow-success-card"><div class="qg-flow-success-check">✓</div><h2>จัดส่งสำเร็จ</h2><p>${esc(qgShortOrder(o))}</p><b>รายได้ค่าส่ง ฿${Number(riderEarning(o)||0).toLocaleString('th-TH')}</b><button type="button" class="qg-btn qg-btn-primary">รับทราบ</button></div>`;
   document.body.appendChild(box);box.querySelector('button').onclick=()=>box.remove();setTimeout(()=>box.remove(),4500);
 }
 async function qgOpenDeliveryConfirm(o){
@@ -1693,7 +1689,7 @@ async function qgOpenDeliveryConfirm(o){
   qgCloseRiderFlowPage('qg-delivery-confirm');
   const page=document.createElement('section');page.id='qg-delivery-confirm';page.className='qg-rider-flow-page qg-rider-flow-compact';
   const cust=o._customer||{},shop=o._shop||{},note=qgCleanOrderNote(o.note),cash=Number(o.market_order_id?o._marketTripTotal:o.total_amount||0),tel=qgTelHref(cust.phone);
-  page.innerHTML=`<header class="qg-flow-head"><button type="button" aria-label="ย้อนกลับ">${QTICON.back}</button><div><b>ส่งสินค้า</b><small>#${esc(qgShortOrder(o))}</small></div><span></span></header><main class="qg-flow-body"><div class="qg-loading">กำลังโหลดรายละเอียด...</div></main>`;
+  page.innerHTML=`<header class="qg-flow-head"><button type="button" aria-label="ย้อนกลับ">${QTICON.back}</button><div><b>ส่งสินค้า</b><small>${esc(qgShortOrder(o))}</small></div><span></span></header><main class="qg-flow-body"><div class="qg-loading">กำลังโหลดรายละเอียด...</div></main>`;
   document.body.appendChild(page);
   page.querySelector('header>button:first-child').onclick=()=>page.remove();
   try{
@@ -1703,7 +1699,7 @@ async function qgOpenDeliveryConfirm(o){
     const rows=list.map(x=>{const img=qgSafeItemImage(x.item_image);return `<article class="qg-flow-item">${img?`<img class="qg-flow-item-image" src="${esc(img)}" alt="">`:''}<div class="qg-flow-item-copy"><b>${esc(x.item_name||'รายการ')}</b><span>× ${Number(x.quantity||1).toLocaleString('th-TH')}</span></div><strong>฿${Number(x.total_price||0).toLocaleString('th-TH')}</strong></article>`}).join('');
     const itemsSection=list.length?`<section class="qg-flow-card"><div class="qg-flow-card-head"><b>สินค้า</b><span>${count} รายการ</span></div>${rows}</section>`:'';
     page.querySelector('.qg-flow-body').innerHTML=`
-      <section class="qg-flow-hero"><span>ถึงจุดส่งแล้ว</span><h1>#${esc(qgShortOrder(o))}</h1><p>${esc(shop.shop_name||'ร้านค้า')}</p></section>
+      <section class="qg-flow-hero"><span>ถึงจุดส่งแล้ว</span><h1>${esc(qgShortOrder(o))}</h1><p>${esc(shop.shop_name||'ร้านค้า')}</p></section>
       <section class="qg-flow-customer"><div><small>ลูกค้า</small><h2>${esc(cust.name||'ลูกค้า')}</h2></div><div class="qg-contact-actions">${tel?`<a href="${esc(tel)}" aria-label="โทรหาลูกค้า">${QTICON.phone}</a>`:''}<button type="button" id="qg-delivery-chat" aria-label="แชต">${QTICON.chat}</button></div></section>
       <section class="qg-flow-address"><span>${QTICON.loc}</span><div><small>ที่อยู่จัดส่ง</small><b>${esc(o.delivery_address||'จุดส่งสินค้า')}</b></div></section>
       ${note?`<section class="qg-flow-note"><small>หมายเหตุจากลูกค้า</small><b>${esc(note)}</b></section>`:''}
@@ -1735,7 +1731,7 @@ async function qgOpenOrderDetails(o){
   overlay.className='qg-order-details-overlay';
   overlay.innerHTML=`<div class="qg-order-details-backdrop"></div>
     <section class="qg-order-details-sheet">
-      <header><div><b>รายการออเดอร์</b><small>#${esc(qgShortOrder(o))}</small></div><button type="button" aria-label="ปิด">✕</button></header>
+      <header><div><b>รายการออเดอร์</b><small>${esc(qgShortOrder(o))}</small></div><button type="button" aria-label="ปิด">✕</button></header>
       <div class="qg-order-details-body"><div class="qg-loading">กำลังโหลดรายการ...</div></div>
     </section>`;
   document.body.appendChild(overlay);
@@ -1876,7 +1872,7 @@ function qgChatGateScreen(o,state){
   const stage=document.querySelector('.stage');if(stage)stage.style.display='none';
   const screen=document.createElement('section');screen.id='chat-screen';screen.className='qg-chat-page show';document.getElementById('app').appendChild(screen);
   const blocked=state?.blockedByMe||state?.blockedMe;
-  screen.innerHTML=`<header class="qg-chat-head"><button class="qg-icon-btn" id="chat-back">${QTICON.back}</button><div><b>${blocked?'แชตถูกจำกัด':'กติกาการแชต'}</b><small>#${esc(qgShortOrder(o))}</small></div><span></span></header><div style="padding:18px;max-width:620px;margin:auto;width:100%">${blocked?`<section class="qg-support-dialog"><h2>แชตถูกจำกัด</h2><p>${state.blockedByMe?'คุณบล็อกลูกค้าคนนี้ไว้':'คู่สนทนาได้บล็อกการแชตไว้'} การบล็อกแชตไม่ยกเลิกหน้าที่ในการส่งออเดอร์</p>${state.blockedByMe?'<button type="button" id="qg-chat-unblock">ปลดบล็อกและเปิดแชต</button>':''}</section>`:`<section class="qg-support-dialog"><h2>ก่อนเริ่มแชต</h2><p>ใช้แชตเพื่อประสานงานออเดอร์เท่านั้น ห้ามคุกคาม สแปม หลอกลวง ส่งเนื้อหาไม่เหมาะสม หรือเผยแพร่ข้อมูลส่วนบุคคลที่ไม่จำเป็น</p><p><a href="${esc(QueueGoUGC.guidelinesUrl())}" target="_blank" rel="noopener">อ่านกติกาชุมชน QueueGo</a></p><button type="button" id="qg-chat-accept-terms">ยอมรับกติกาและเปิดแชต</button></section>`}</div>`;
+  screen.innerHTML=`<header class="qg-chat-head"><button class="qg-icon-btn" id="chat-back">${QTICON.back}</button><div><b>${blocked?'แชตถูกจำกัด':'กติกาการแชต'}</b><small>${esc(qgShortOrder(o))}</small></div><span></span></header><div style="padding:18px;max-width:620px;margin:auto;width:100%">${blocked?`<section class="qg-support-dialog"><h2>แชตถูกจำกัด</h2><p>${state.blockedByMe?'คุณบล็อกลูกค้าคนนี้ไว้':'คู่สนทนาได้บล็อกการแชตไว้'} การบล็อกแชตไม่ยกเลิกหน้าที่ในการส่งออเดอร์</p>${state.blockedByMe?'<button type="button" id="qg-chat-unblock">ปลดบล็อกและเปิดแชต</button>':''}</section>`:`<section class="qg-support-dialog"><h2>ก่อนเริ่มแชต</h2><p>ใช้แชตเพื่อประสานงานออเดอร์เท่านั้น ห้ามคุกคาม สแปม หลอกลวง ส่งเนื้อหาไม่เหมาะสม หรือเผยแพร่ข้อมูลส่วนบุคคลที่ไม่จำเป็น</p><p><a href="${esc(QueueGoUGC.guidelinesUrl())}" target="_blank" rel="noopener">อ่านกติกาชุมชน QueueGo</a></p><button type="button" id="qg-chat-accept-terms">ยอมรับกติกาและเปิดแชต</button></section>`}</div>`;
   screen.querySelector('#chat-back').onclick=closeChat;
   const accept=screen.querySelector('#qg-chat-accept-terms');if(accept)accept.onclick=async()=>{accept.disabled=true;try{await QueueGoUGC.accept();screen.remove();if(stage)stage.style.display='block';S.chatOrder=null;await openChat(o)}catch(e){toast(e.message||'ยอมรับกติกาไม่สำเร็จ');accept.disabled=false}};
   const unblock=screen.querySelector('#qg-chat-unblock');if(unblock)unblock.onclick=async()=>{unblock.disabled=true;try{await QueueGoUGC.unblock(o.id);screen.remove();if(stage)stage.style.display='block';S.chatOrder=null;await openChat(o)}catch(e){toast(e.message||'ปลดบล็อกไม่สำเร็จ');unblock.disabled=false}};
@@ -1906,7 +1902,7 @@ async function openChat(o){
   const stage=document.querySelector('.stage');if(stage)stage.style.display='none';
   const screen=document.createElement('section');screen.id='chat-screen';screen.className='qg-chat-page show';document.getElementById('app').appendChild(screen);
   const cust=o._customer||{};
-  screen.innerHTML=`<header class="qg-chat-head"><button class="qg-icon-btn" id="chat-back">${QTICON.back}</button><div><b>${esc(cust.name||'ลูกค้า')}</b><small>#${esc(qgShortOrder(o))}</small></div><button type="button" class="qg-icon-btn" id="chat-safety" aria-label="ความปลอดภัยแชต">⋯</button></header>
+  screen.innerHTML=`<header class="qg-chat-head"><button class="qg-icon-btn" id="chat-back">${QTICON.back}</button><div><b>${esc(cust.name||'ลูกค้า')}</b><small>${esc(qgShortOrder(o))}</small></div><button type="button" class="qg-icon-btn" id="chat-safety" aria-label="ความปลอดภัยแชต">⋯</button></header>
     ${o.status==='completed'?'<div style="padding:7px 12px;text-align:center;font-size:10px;color:#8a8387;background:#fff8f9">หลังจบงานแชทจะปิดและถูกลบอัตโนมัติ · เหลือประมาณ '+riderChatMinutesLeft(o)+' นาที</div>':''}
     <div class="qg-chat-box" id="chat-box"><div class="qg-loading">กำลังโหลดข้อความ...</div></div>
     ${quickMessagesHTML()}
@@ -2149,7 +2145,7 @@ window.advanceOrder=async function(o){
    request('orders?select=id,order_number&order_type=eq.shopping&order=created_at.desc&limit=50').then(rows=>{
      if(!panel.isConnected)return;
      const select=panel.querySelector('[name=order]');
-     select.insertAdjacentHTML('beforeend',(rows||[]).map(o=>'<option value="'+escText(o.id)+'">'+escText(o.order_number||o.id)+'</option>').join(''));
+     select.insertAdjacentHTML('beforeend',(rows||[]).map(o=>'<option value="'+escText(o.id)+'">'+escText(qgShortOrder(o))+'</option>').join(''));
      if(orderId)select.value=orderId;
    }).catch(e=>{panel.querySelector('#qg-ticket-list').textContent='โหลดออเดอร์ไม่สำเร็จ: '+e.message});
    qgLoadTickets();
@@ -2212,7 +2208,7 @@ window.qgRenderEarnings=function(){
      if(!box.isConnected)return;
      const list=Array.isArray(rows)?rows:[],sum=k=>list.reduce((a,o)=>a+Number(o[k]||0),0),paid=sum('cash_paid_merchant'),collected=sum('cash_collected_customer'),fees=list.reduce((a,o)=>a+Number(o.delivery_fee||0),0);
      box.className='qg-ledger';
-     box.innerHTML=`<section class="qg-cash-card"><div class="qg-section-title"><b>บัญชีเงินสด</b><span>${days===1?'วันนี้':days+' วัน'}</span></div><div class="qg-cash-grid"><div><span>จ่ายร้าน</span><b>${baht(paid)}</b></div><div><span>เก็บลูกค้า</span><b>${baht(collected)}</b></div><div><span>ค่าส่งที่ได้รับ</span><b>${baht(fees)}</b></div><div><span>สุทธิรับ-จ่าย</span><b class="qg-red">${baht(collected-paid)}</b></div></div></section><section class="qg-recent"><div class="qg-section-title"><b>รายการงานล่าสุด</b><span>${list.length} งาน</span></div>${list.length?list.slice(0,30).map(o=>`<article><div><b>${esc(String(o.order_number||o.order_id||''))}</b><small>${esc(String(o.status||''))}</small></div><div><span>${o.status==='completed'?'สำเร็จ':'กำลังดำเนินการ'}</span><b>${baht(o.delivery_fee||0)}</b></div></article>`).join(''):'<div class="qg-empty">ยังไม่มีรายการ</div>'}</section>`;
+     box.innerHTML=`<section class="qg-cash-card"><div class="qg-section-title"><b>บัญชีเงินสด</b><span>${days===1?'วันนี้':days+' วัน'}</span></div><div class="qg-cash-grid"><div><span>จ่ายร้าน</span><b>${baht(paid)}</b></div><div><span>เก็บลูกค้า</span><b>${baht(collected)}</b></div><div><span>ค่าส่งที่ได้รับ</span><b>${baht(fees)}</b></div><div><span>สุทธิรับ-จ่าย</span><b class="qg-red">${baht(collected-paid)}</b></div></div></section><section class="qg-recent"><div class="qg-section-title"><b>รายการงานล่าสุด</b><span>${list.length} งาน</span></div>${list.length?list.slice(0,30).map(o=>`<article><div><b>${esc(qgShortOrder({order_number:o.order_number,id:o.order_id}))}</b><small>${esc(String(o.status||''))}</small></div><div><span>${o.status==='completed'?'สำเร็จ':'กำลังดำเนินการ'}</span><b>${baht(o.delivery_fee||0)}</b></div></article>`).join(''):'<div class="qg-empty">ยังไม่มีรายการ</div>'}</section>`;
    }catch(e){box.className='qg-error-state';box.textContent='โหลดบัญชีเงินสดไม่สำเร็จ: '+e.message}
  };
 })();
