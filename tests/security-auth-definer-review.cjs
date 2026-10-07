@@ -6,7 +6,7 @@ let checks=0;const ok=(v,m)=>{assert.ok(v,m);checks++};
 const review=JSON.parse(read('docs/security-auth-definer-review.json'));
 const anon=JSON.parse(read('docs/security-anon-definer-allowlist.json'));
 const migration=read('supabase/migrations/20261007021517_security_scope_authenticated_definer_helpers.sql');
-const cash=read('QueueGo-Checkout-Server.sql');
+const cash=read('QueueGo-Market-Checkout-Migration.sql');
 
 ok(review.authenticated_security_definer_total===123,'review must record current authenticated SECURITY DEFINER total');
 ok(review.direct_identity_or_role_guard_count===113,'review must record directly guarded functions');
