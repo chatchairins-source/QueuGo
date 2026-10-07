@@ -1,10 +1,10 @@
 {
-  "generated_at": "2026-10-07T09:25:00+07:00",
+  "generated_at": "2026-10-07T09:53:00+07:00",
   "project_ref": "pkypiqhlrmzocysgeqew",
   "database_version": "17.6.1.166",
   "latest_migration": [
-    "20261007021827",
-    "account_deletion_ugc_snapshot_cleanup"
+    "20261007023348",
+    "ugc_chat_revoke_anon_table_privileges"
   ],
   "counts": {
     "auth.users": 33,
