@@ -512,7 +512,6 @@ async function handleRiderRegistration(e){
   e.preventDefault();
   const f=id=>document.getElementById(id);
   const name=String(f('rr-name').value||'').trim(),phone=f('rr-phone').value.trim().replace(/[-\s]/g,''),password=f('rr-password').value;
-  QueueGoPasswordPolicy.requireStrong(password);
   const email=String(f('rr-email').value||'').trim().toLowerCase();
   const form={email,area:String(f('rr-area').value||'').trim(),province:f('rr-province').value,district:String(f('rr-district').value||'').trim(),vehicle:f('rr-vehicle').value,plate:String(f('rr-plate').value||'').trim(),make:String(f('rr-make').value||'').trim(),model:String(f('rr-model').value||'').trim(),capacity:Number(f('rr-capacity').value||0)};
   if(!name||!phone||!password){toast('กรุณากรอกข้อมูลส่วนตัวให้ครบ');return false;}
