@@ -3,8 +3,9 @@
   "github": {
     "repository": "chatchairins-source/QueuGo",
     "source_of_truth": "main",
-    "head_at_manifest": "32640cadc89afe08d2392b13e25285d2b017e72c",
-    "previous_backup_branch": "backup-pre-closed-beta-20261007-0035"
+    "head_at_manifest": "8d1d162f89828aadf66d31621ddbc4d72c125e95",
+    "previous_backup_branch": "backup-pre-closed-beta-20261007-0035",
+    "latest_backup_branch": "backup-native-push-pre-closed-beta-20261007-0725"
   },
   "release_gates": {
     "account_deletion_privacy": "PASS",
@@ -14,7 +15,11 @@
     "notification_background_native_code": "PASS",
     "core_e2e_production": "PASS",
     "backup_restore": "BLOCKED",
-    "android_closed_beta": "BLOCKED"
+    "android_closed_beta": "BLOCKED",
+    "security_platform_auth": "BLOCKED",
+    "security_audit": "BLOCKED",
+    "notification_background_physical": "BLOCKED",
+    "external_backup_pipeline": "READY"
   },
   "production_evidence": {
     "recent_photo_only_completed_orders": 5,
@@ -61,8 +66,15 @@
     ],
     "managed_daily_backup_certified": false,
     "restore_drill_certified": false,
-    "blocking_reason": "QueueTech is on Supabase Free. Managed daily backup/restore is not certified. Upgrade to a paid plan or maintain and drill an external logical backup before changing restore_drill_certified to true.",
-    "storage_note": "Database restore does not restore Storage objects; Storage requires a separate backup/restore procedure."
+    "blocking_reason": "External encrypted backup/restore drill is implemented but has not completed successfully yet. Managed daily backup is unavailable on the current Free plan.",
+    "storage_note": "Database restore does not restore Storage objects; Storage requires a separate backup/restore procedure.",
+    "external_backup_restore_pipeline_ready": true,
+    "external_backup_workflow": ".github/workflows/backup-restore-drill.yml",
+    "backup_required_secrets": [
+      "QG_SUPABASE_DB_URL",
+      "QG_SUPABASE_SERVICE_ROLE_KEY",
+      "QG_BACKUP_PASSPHRASE"
+    ]
   },
   "notifications": {
     "unified_outbox": true,
@@ -73,7 +85,7 @@
     "blockers": [
       "GitHub Actions secret QG_FIREBASE_GOOGLE_SERVICES_JSON_B64 has not been proven by an Android Release run.",
       "Supabase Edge secret FIREBASE_SERVICE_ACCOUNT_JSON cannot be verified from the available connector.",
-      "No physical Android device has registered a native token yet."
+      "No physical Android device has registered a native token and received a background notification yet."
     ]
   },
   "android": {
@@ -81,6 +93,13 @@
     "push_plugin": "@capacitor/push-notifications@8.0.0",
     "release_workflow_has_run": false,
     "hard_gate_blocks_build_without_restore_certification": true,
-    "hard_gate_blocks_build_without_firebase_config": true
+    "hard_gate_blocks_build_without_firebase_config": true,
+    "hard_gate_blocks_build_without_security_platform_auth": true,
+    "hard_gate_blocks_build_without_physical_notification_certification": true
+  },
+  "security": {
+    "code_surface_hardened": true,
+    "leaked_password_protection_enabled": false,
+    "leaked_password_protection_blocker": "Supabase Security Advisor still reports Auth leaked-password protection disabled. The available connector cannot change this Auth platform setting."
   }
 }
