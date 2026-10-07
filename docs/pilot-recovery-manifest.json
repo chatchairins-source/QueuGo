@@ -5,7 +5,20 @@
     "source_of_truth": "main",
     "head_at_manifest": "a90ad559fe015b2a1012ecc5d27bf039668b2cb1",
     "previous_backup_branch": "backup-pre-closed-beta-20261007-0035",
-    "latest_backup_branch": "backup-native-push-pre-closed-beta-20261007-0725"
+    "latest_backup_branch": "backup-native-push-pre-closed-beta-20261007-0725",
+    "certified_source_commit": "6bc4a5bc73ccffe9f4387ac99f25a8a10a43eafb",
+    "rc_tests": {
+      "run_id": 37559862183,
+      "status": "SUCCESS"
+    },
+    "chat_retention_tests": {
+      "run_id": 37559294226,
+      "status": "SUCCESS"
+    },
+    "pages_deployment_last_checked": {
+      "run_id": 37559861611,
+      "status": "IN_PROGRESS_AT_MANIFEST_UPDATE"
+    }
   },
   "release_gates": {
     "account_deletion_privacy": "PASS",
@@ -153,11 +166,13 @@
     "community_guidelines": "docs/community-guidelines.html",
     "customer_report_block_ui": true,
     "rider_report_block_ui": true,
+    "merchant_legacy_order_chat_removed": true,
     "admin_moderation_queue": true,
     "server_insert_guard": true,
     "rls_helper_schema": "queuego_private",
     "transaction_smoke_test": "PASS",
     "chat_retention_test": "PASS",
-    "privacy_snapshot_cleanup": true
+    "privacy_snapshot_cleanup": true,
+    "source_migration": "20261007005927_queuego_ugc_chat_moderation.sql"
   }
 }
