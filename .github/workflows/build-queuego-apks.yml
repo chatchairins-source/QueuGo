@@ -25,8 +25,23 @@ jobs:
           node - <<'NODE'
           const fs=require('fs');
           const manifest=JSON.parse(fs.readFileSync('docs/pilot-recovery-manifest.json','utf8'));
+          const gates=manifest?.release_gates||{};
+          for(const gate of ['account_deletion_privacy','service_area','core_e2e_production']){
+            if(gates[gate]!=='PASS'){
+              console.error('::error::Release gate '+gate+' is not PASS.');
+              process.exit(1);
+            }
+          }
+          if(gates.security_platform_auth!=='PASS'){
+            console.error('::error::Security platform Auth gate is not PASS.');
+            process.exit(1);
+          }
           if(manifest?.supabase?.restore_drill_certified!==true){
             console.error('::error::Backup/Restore gate is not certified. Do not build Closed Beta.');
+            process.exit(1);
+          }
+          if(manifest?.notifications?.physical_background_notification_certified!==true){
+            console.error('::error::Physical Android background notification is not certified.');
             process.exit(1);
           }
           if(!fs.existsSync('queuego-native-push.js')){
