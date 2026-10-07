@@ -12,8 +12,9 @@ ok(customer.includes("if(await reconcilePendingCheckout())return;"),'ambiguous c
 ok(customer.includes("if(!confirmed){checkoutBusy=false;"),'checkout failure cleanup must run only before a confirmed server result');
 ok(!customer.includes("toast('สั่งซื้อสำเร็จ · '+customerOrderNumber({order_number:result.order_number,id:result.id}));go('order/'+result.id);\n  }catch(e){"),'success UI work must not remain inside the mutation failure catch scope');
 ok(customer.includes('CUSTOMER COMPACT DENSITY'),'Customer production layout must keep compact-density mode');
-ok(customer.includes('.promo{margin-top:9px;aspect-ratio:2.05/1'),'Customer home hero must stay compact enough to reveal more content');
-ok(customer.includes('.sc{background:#fff;border:1px solid var(--ln);border-radius:16px;padding:8px'),'Customer store cards must remain compact');
+ok(customer.includes("const u=S.get(),home=tab==='home';"),'Customer layout must scope the restored density to Home only');
+ok(customer.includes('.qg-home-original-main .promo{margin-top:13px;aspect-ratio:662/386'),'Customer Home hero must keep the approved original ratio');
+ok(customer.includes('.qg-home-original-main .sc{border-radius:18px;padding:10px;gap:12px'),'Customer Home store cards must keep the approved original density');
 ok(customer.includes('.qg-order-map{height:178px!important'),'Customer order tracking map must avoid oversized vertical space');
 ok(customer.includes('.prim{width:100%;min-height:48px'),'Customer primary actions must retain practical touch height while compact');
 ok(customer.includes('@media(max-height:760px)'),'Customer must have a short-screen compact density mode');
