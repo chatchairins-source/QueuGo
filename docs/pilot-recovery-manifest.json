@@ -1,25 +1,25 @@
 {
-  "generated_at": "2026-10-07T10:07:00+07:00",
+  "generated_at": "2026-10-07T10:09:00+07:00",
   "github": {
     "repository": "chatchairins-source/QueuGo",
     "source_of_truth": "main",
-    "head_at_manifest": "09baf029a142122bf12242bc380ff0ea922b6743",
+    "head_at_manifest": "bf90364c633119740f5402a428c7a7c610725676",
     "previous_backup_branch": "backup-pre-closed-beta-20261007-0035",
     "latest_backup_branch": "backup-pre-target-audience-09baf029-20261007",
-    "certified_source_commit": "09baf029a142122bf12242bc380ff0ea922b6743",
+    "certified_source_commit": "bf90364c633119740f5402a428c7a7c610725676",
     "rc_tests": {
-      "run_id": 37565115907,
+      "run_id": 37565284730,
       "status": "SUCCESS",
-      "head_sha": "09baf029a142122bf12242bc380ff0ea922b6743"
+      "head_sha": "bf90364c633119740f5402a428c7a7c610725676"
     },
     "chat_retention_tests": {
       "run_id": 37559294226,
       "status": "SUCCESS"
     },
     "pages_deployment_last_checked": {
-      "run_id": 37565115432,
+      "run_id": 37565284087,
       "status": "SUCCESS",
-      "head_sha": "09baf029a142122bf12242bc380ff0ea922b6743"
+      "head_sha": "bf90364c633119740f5402a428c7a7c610725676"
     },
     "operational_inventory_commit": "a406bb7f8de013fa6bd7d595ca01832a7ce28293",
     "operational_inventory_rc_run": {
@@ -27,7 +27,9 @@
       "status": "SUCCESS",
       "head_sha": "a406bb7f8de013fa6bd7d595ca01832a7ce28293"
     },
-    "data_safety_decision_commit": "67a511b6319d8784ec99d5f60eb755ee9b9f73ca"
+    "data_safety_decision_commit": "67a511b6319d8784ec99d5f60eb755ee9b9f73ca",
+    "contains_ads_decision_commit": "09baf029a142122bf12242bc380ff0ea922b6743",
+    "target_audience_decision_commit": "bf90364c633119740f5402a428c7a7c610725676"
   },
   "release_gates": {
     "account_deletion_privacy": "PASS",
