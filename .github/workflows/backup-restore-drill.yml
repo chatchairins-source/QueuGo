@@ -2,10 +2,6 @@ name: QueueGo Encrypted Backup Restore Drill
 
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
-    paths:
-      - ops/backup-trigger.txt
 
 permissions:
   contents: read
