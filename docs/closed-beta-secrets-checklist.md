@@ -27,6 +27,19 @@ After these three are configured, run **QueueGo Encrypted Backup Restore Drill**
 
 Do not reuse the backup passphrase for Android signing.
 
+### Release secret preflight
+
+After the five GitHub Android/Firebase secrets above are configured, run the GitHub Actions workflow **QueueGo Release Secret Readiness** before building any APK/AAB.
+
+The preflight intentionally validates secret material without printing it:
+- decodes `google-services.json` in the ephemeral runner only;
+- requires Firebase Android clients for `com.queuego.customer`, `com.queuego.merchant`, and `com.queuego.rider`;
+- decodes the release keystore only in the ephemeral runner;
+- validates the keystore store password, configured alias, and key password;
+- removes all decoded temporary credential files with an `always()` cleanup step.
+
+A green preflight proves the GitHub-side Firebase/signing inputs are structurally usable. It does **not** certify the Supabase Edge secret `FIREBASE_SERVICE_ACCOUNT_JSON` or a physical background notification; those remain separate gates.
+
 ## Supabase Edge Functions
 
 Set the Edge Function secret:
