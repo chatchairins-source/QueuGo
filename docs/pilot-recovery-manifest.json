@@ -1,14 +1,14 @@
 {
-  "generated_at": "2026-10-07T08:42:00+07:00",
+  "generated_at": "2026-10-07T09:15:00+07:00",
   "github": {
     "repository": "chatchairins-source/QueuGo",
     "source_of_truth": "main",
-    "head_at_manifest": "a435b2d53c67e2b0a643e26fb5df19dd69909bed",
+    "head_at_manifest": "64a29c955c817d12026e4e87d6e334392ef40770",
     "previous_backup_branch": "backup-pre-closed-beta-20261007-0035",
-    "latest_backup_branch": "backup-play-ugc-ready-20261007-0842",
-    "certified_source_commit": "a435b2d53c67e2b0a643e26fb5df19dd69909bed",
+    "latest_backup_branch": "backup-security-ugc-pre-closed-beta-20261007-0915",
+    "certified_source_commit": "64a29c955c817d12026e4e87d6e334392ef40770",
     "rc_tests": {
-      "run_id": 37560557555,
+      "run_id": 37560984942,
       "status": "SUCCESS"
     },
     "chat_retention_tests": {
@@ -16,7 +16,7 @@
       "status": "SUCCESS"
     },
     "pages_deployment_last_checked": {
-      "run_id": 37560556838,
+      "run_id": 37560984627,
       "status": "SUCCESS"
     }
   },
@@ -30,7 +30,7 @@
     "backup_restore": "BLOCKED",
     "android_closed_beta": "BLOCKED",
     "security_platform_auth": "BLOCKED",
-    "security_audit": "BLOCKED",
+    "security_audit": "PASS",
     "notification_background_physical": "BLOCKED",
     "external_backup_pipeline": "READY",
     "ugc_chat_safety": "PASS"
@@ -54,8 +54,8 @@
     "database_version": "17.6.1.166",
     "region": "ap-southeast-2",
     "latest_migration": [
-      "20261007015540",
-      "account_deletion_ugc_snapshot_cleanup"
+      "20261007021020",
+      "reduce_anon_security_definer_surface"
     ],
     "edge_functions": [
       {
@@ -149,13 +149,31 @@
     "hard_gate_blocks_build_without_ugc_chat_safety": true,
     "target_sdk": 36,
     "compile_sdk": 36,
-    "notification_permission_gate": true
+    "notification_permission_gate": true,
+    "hard_gate_blocks_build_without_security_audit": true
   },
   "security": {
     "code_surface_hardened": true,
     "leaked_password_protection_enabled": false,
     "leaked_password_protection_blocker": "Supabase Security Advisor still reports Auth leaked-password protection disabled. The available connector cannot change this Auth platform setting.",
-    "signup_password_minimum_characters": 8
+    "signup_password_minimum_characters": 8,
+    "anonymous_security_definer_review": {
+      "status": "PASS",
+      "advisor_warn_count": 9,
+      "intentional_allowlisted": 9,
+      "unreviewed": 0,
+      "allowlist": "docs/security-anon-definer-allowlist.json",
+      "removed_anonymous_execute": [
+        "market_public_catalog()",
+        "queuego_nearest_market(double precision,double precision,numeric)"
+      ],
+      "verification": {
+        "legacy_catalog_anon_execute": false,
+        "nearest_market_anon_execute": false,
+        "reviewed_public_rpc_anon_execute": true,
+        "production_error_window": "CLEAN"
+      }
+    }
   },
   "performance": {
     "auth_rls_initplan_warnings_before": 13,
@@ -194,5 +212,11 @@
     "data_safety_draft_ready": true,
     "provider_sharing_classification": "PENDING_CONTRACT_VERIFICATION",
     "personal_account_closed_test_requirement": "PENDING_PLAY_ACCOUNT_TYPE_CHECK"
-  }
+  },
+  "remaining_external_blockers": [
+    "Supabase Auth leaked-password protection is disabled and must be enabled in the Supabase Auth platform settings.",
+    "Backup/Restore drill cannot run until QG_SUPABASE_DB_URL, QG_SUPABASE_SERVICE_ROLE_KEY and QG_BACKUP_PASSPHRASE are configured in GitHub Actions.",
+    "Native FCM cannot be certified until Firebase/Android signing secrets are configured.",
+    "A physical Android device must register a native token and pass the background notification test before Closed Beta."
+  ]
 }
