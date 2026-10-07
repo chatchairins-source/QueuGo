@@ -6,7 +6,7 @@
 <section id="list"><div class="hero"><h1>ฝากซัก</h1><p>เลือกร้านและบริการ ร้านยืนยันก่อน แล้ว Rider ไปรับผ้าถึงที่และส่งคืนเมื่อเสร็จ</p></div><div id="shops" class="empty">กำลังโหลดร้านซัก...</div></section>
 <section id="order" class="hidden"><div class="card"><h2 id="shopName">ร้านซัก</h2><div id="services" class="services"></div><div id="quantity" class="qtybox hidden"></div><div id="fees"></div><h3>จุดรับผ้า</h3><div id="location" class="location">ใช้ที่อยู่จัดส่งของบัญชี QueueGo</div><label for="note"><b>หมายเหตุ</b></label><textarea id="note" class="in" maxlength="500" rows="3" placeholder="เช่น โทรก่อนถึง / มีผ้าสีตก"></textarea><button id="confirm" class="primary">ส่งคำขอฝากซัก</button><p class="muted">ราคาและค่ารับส่งจะถูกบันทึกกับออเดอร์ทันที ร้านเปลี่ยนราคาในภายหลังจะไม่ย้อนมาเปลี่ยนออเดอร์นี้</p></div></section>
 </main>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script>
+<script src="../queuego-order-number.js"></script><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script>
 const URL='https://pkypiqhlrmzocysgeqew.supabase.co';
 const KEY='sb_publishable_Vn2Il4jp-iBtzNsGRNY8Lg_Tpvk2Vre';
 const db=supabase.createClient(URL,KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
@@ -87,7 +87,7 @@ document.getElementById('confirm').onclick=async()=>{
     });
     if(error)throw error;
     localStorage.removeItem(key);
-    alert('ส่งคำขอฝากซักแล้ว '+(data?.order_number||'')+' รอร้านกดรับคำขอ');
+    alert('ส่งคำขอฝากซักแล้ว '+QueueGoOrderNumber.format(data)+' รอร้านกดรับคำขอ');
     location.href='../#orders';
   }catch(e){
     const msg=String(e?.message||e);
