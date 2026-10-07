@@ -1,25 +1,25 @@
 {
-  "generated_at": "2026-10-07T10:43:00+07:00",
+  "generated_at": "2026-10-07T10:45:00+07:00",
   "github": {
     "repository": "chatchairins-source/QueuGo",
     "source_of_truth": "main",
-    "head_at_manifest": "45cc4c3759331bf73a64ebe06a4a92526f9a415d",
+    "head_at_manifest": "1203e4a83bfa2731a738a998f70a3cea7e4fffb0",
     "previous_backup_branch": "backup-pre-closed-beta-20261007-0035",
-    "latest_backup_branch": "backup-certified-release-hardening-45cc4c37-20261007",
-    "certified_source_commit": "45cc4c3759331bf73a64ebe06a4a92526f9a415d",
+    "latest_backup_branch": "backup-certified-release-pilot-provenance-1203e4a8-20261007",
+    "certified_source_commit": "1203e4a83bfa2731a738a998f70a3cea7e4fffb0",
     "rc_tests": {
-      "run_id": 37567784836,
+      "run_id": 37567895758,
       "status": "SUCCESS",
-      "head_sha": "45cc4c3759331bf73a64ebe06a4a92526f9a415d"
+      "head_sha": "1203e4a83bfa2731a738a998f70a3cea7e4fffb0"
     },
     "chat_retention_tests": {
       "run_id": 37559294226,
       "status": "SUCCESS"
     },
     "pages_deployment_last_checked": {
-      "run_id": 37567784521,
+      "run_id": 37567895823,
       "status": "SUCCESS",
-      "head_sha": "45cc4c3759331bf73a64ebe06a4a92526f9a415d"
+      "head_sha": "1203e4a83bfa2731a738a998f70a3cea7e4fffb0"
     },
     "operational_inventory_commit": "a406bb7f8de013fa6bd7d595ca01832a7ce28293",
     "operational_inventory_rc_run": {
@@ -31,7 +31,8 @@
     "contains_ads_decision_commit": "09baf029a142122bf12242bc380ff0ea922b6743",
     "target_audience_decision_commit": "bf90364c633119740f5402a428c7a7c610725676",
     "push_firebase_preflight_commit": "7c3f0a2a2d8ebb103ba30e014022929699c4f175",
-    "android_signing_hardening_commit": "6823cc2da77cfb9781673ce8fd4e9733e4446f54"
+    "android_signing_hardening_commit": "6823cc2da77cfb9781673ce8fd4e9733e4446f54",
+    "pilot_provenance_commit": "6cc35be3d32c9c79016ea4bab728240fc10264c7"
   },
   "release_gates": {
     "account_deletion_privacy": "PASS",
@@ -232,7 +233,14 @@
       "signer_certificate_sha256",
       "artifact_sha256"
     ],
-    "release_artifact_runtime_gate": "BLOCKED_MISSING_SECRETS_AND_PHYSICAL_CERTIFICATION"
+    "release_artifact_runtime_gate": "BLOCKED_MISSING_SECRETS_AND_PHYSICAL_CERTIFICATION",
+    "pilot_artifact_package_verification": true,
+    "pilot_artifact_debug_build_verification": true,
+    "pilot_evidence_includes_git_sha": true,
+    "pilot_evidence_includes_github_run_id": true,
+    "pilot_evidence_includes_artifact_sha256": true,
+    "pilot_provenance_gate": "PASS",
+    "pilot_runtime_gate": "BLOCKED_MISSING_FIREBASE_SECRET_AND_PHYSICAL_CERTIFICATION"
   },
   "security": {
     "code_surface_hardened": true,
