@@ -16,4 +16,12 @@ for(const table of ['admin_order_delete_archive','market_order_add_requests','po
 ok(sql.includes('qg_server_only_no_client_access'),'explicit deny RLS policy must be source-controlled');
 ok(sql.includes('Intentional anonymous SECURITY DEFINER allowlist'),'public definer endpoints must have a reviewed allowlist');
 ok(!/grant\s+execute[^;]+to\s+(public|anon)\s*;/i.test(sql),'hardening migration must not add anonymous execute grants');
-console.log(JSON.stringify({checks,failures:0,scope:'QueueGo pilot Data API/SECURITY DEFINER surface hardening and explicit server-only RLS deny'}));
+
+const customer=fs.readFileSync(path.join(root,'index.html'),'utf8');
+const merchant=fs.readFileSync(path.join(root,'merchant/index.html'),'utf8');
+const rider=fs.readFileSync(path.join(root,'rider/index.html'),'utf8');
+ok(customer.includes('password.length<8')&&customer.includes('minlength="8"'),'Customer signup must require at least 8 characters');
+ok(merchant.includes('password.length<8')&&merchant.includes('minlength="8"'),'Merchant signup must require at least 8 characters');
+ok(rider.includes('password.length<8')&&rider.includes('minlength="8"'),'Rider signup must require at least 8 characters');
+
+console.log(JSON.stringify({checks,failures:0,scope:'QueueGo pilot Data API/SECURITY DEFINER surface hardening, explicit server-only RLS deny, and signup password minimum'}));
