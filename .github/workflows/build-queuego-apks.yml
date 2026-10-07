@@ -422,13 +422,24 @@ jobs:
             echo "::error::Release APK must not be debuggable"
             exit 1
           fi
-          "$APKSIGNER" verify --verbose "$APK" >/dev/null
+          CERT_INFO="$("$APKSIGNER" verify --verbose --print-certs "$APK")"
+          echo "$CERT_INFO" | grep -q 'Signer #1 certificate SHA-256 digest:'
+          CERT_SHA256="$(echo "$CERT_INFO" | sed -n 's/^Signer #1 certificate SHA-256 digest: //p' | head -n1)"
+          test -n "$CERT_SHA256"
           jarsigner -verify -strict "$AAB" >/dev/null
 
           cp "$AAB" "../../QueueGo-${{ matrix.role }}-release.aab"
           cp "$APK" "../../QueueGo-${{ matrix.role }}-release.apk"
           cd ../..
           sha256sum "QueueGo-${{ matrix.role }}-release.aab" "QueueGo-${{ matrix.role }}-release.apk" > "QueueGo-${{ matrix.role }}-SHA256.txt"
+          {
+            echo "role=${{ matrix.role }}"
+            echo "application_id=$QG_APP_ID"
+            echo "version_code=$QG_VERSION_CODE"
+            echo "version_name=$QG_VERSION_NAME"
+            echo "signer_certificate_sha256=$CERT_SHA256"
+            cat "QueueGo-${{ matrix.role }}-SHA256.txt"
+          } > "QueueGo-${{ matrix.role }}-release-evidence.txt"
 
       - uses: actions/upload-artifact@v4
         with:
@@ -437,5 +448,6 @@ jobs:
             QueueGo-${{ matrix.role }}-release.aab
             QueueGo-${{ matrix.role }}-release.apk
             QueueGo-${{ matrix.role }}-SHA256.txt
+            QueueGo-${{ matrix.role }}-release-evidence.txt
             QueueGo-${{ matrix.role }}-play-icon-512.png
           if-no-files-found: error

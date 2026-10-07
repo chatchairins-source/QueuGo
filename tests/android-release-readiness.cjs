@@ -26,6 +26,8 @@ ok('release versionName is deterministic beta label',/QG_VERSION_NAME:\s*1\.0\.0
 ok('release APK package and version are verified after build',/aapt["']? dump badging|AAPT.*dump badging/s.test(workflow)&&/QG_APP_ID/.test(workflow)&&/QG_VERSION_CODE/.test(workflow)&&/QG_VERSION_NAME/.test(workflow));
 ok('release APK must be non-debuggable',/application-debuggable/.test(workflow)&&/Release APK must not be debuggable/.test(workflow));
 ok('release APK signature is verified',/apksigner["']? verify|APKSIGNER.*verify/s.test(workflow));
+ok('release signer certificate fingerprint is retained',/--print-certs/.test(workflow)&&/Signer #1 certificate SHA-256 digest/.test(workflow)&&/signer_certificate_sha256/.test(workflow));
+ok('release evidence artifact is uploaded',/release-evidence\.txt/.test(workflow));
 ok('release AAB signature is verified',/jarsigner -verify -strict/.test(workflow));
 ok('Closed Beta requires certified restore drill',/restore_drill_certified/.test(workflow)&&/Do not build Closed Beta/.test(workflow));
 ok('Closed Beta requires native push plugin',/@capacitor\/push-notifications/.test(workflow)&&/Native Android background push/.test(workflow));
