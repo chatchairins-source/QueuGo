@@ -48,8 +48,8 @@
     }
   ],
   "schema": {
-    "public_functions": 208,
-    "security_definer_functions": 189,
+    "public_functions": 218,
+    "security_definer_functions": 199,
     "types_snapshot": "supabase/database.types.ts"
   },
   "contains_personal_data": false,
