@@ -55,7 +55,61 @@ const QGCustomer=(()=>{
       if(button?.isConnected)button.disabled=false;
     }
   }
-  function renderProfile(){const u=S.get()||{};layout(`<div class="pf"><div class="av">${safeImage(u.photo)?`<img src="${esc(safeImage(u.photo))}" alt="รูปโปรไฟล์">`:ini(u.name)}</div><div><h1>${esc(u.name||'ลูกค้า')}</h1><p>${esc(u.phone||u.email||'')}</p><span class="acc">บัญชีลูกค้า</span></div></div><div class="pl">${[['map','ที่อยู่จัดส่ง'],['orders','ออเดอร์ของฉัน'],['notifications','การแจ้งเตือน'],['favorites','รายการโปรด'],['promotion','โปรโมชั่นจากร้าน'],['support','ติดต่อฝ่ายช่วยเหลือ']].map(([path,label])=>`<button class="pw" onclick="go('${path}')"><b>${label}</b></button>`).join('')}<button class="pw" onclick="QGCustomer.toggleSound(this)"><b>เสียงแจ้งเตือน Rider ถึง</b><span>${localStorage.getItem('qg_customer_sound_'+u.userId)==='on'?'เปิด':'ปิด'}</span></button><p class="sm">ชำระเงินสดเมื่อรับสินค้า</p><button class="pw" onclick="QueueGoPush.toggle(this).then(on=>toast(on?'เปิดการแจ้งเตือนเบื้องหลังแล้ว':'ปิดการแจ้งเตือนเบื้องหลังแล้ว')).catch(e=>toast(e.message||'เปิดการแจ้งเตือนไม่สำเร็จ'))"><b>การแจ้งเตือนเบื้องหลัง</b><span>รับสถานะออเดอร์แม้ไม่ได้เปิดหน้านี้</span></button><button class="pw" onclick="this.disabled=true;toast('ระบบจะส่งแจ้งเตือนใน 7 วินาที กด Home เพื่อทดสอบได้เลย');QueueGoPush.test().catch(e=>toast(e.message||'ทดสอบแจ้งเตือนไม่สำเร็จ')).finally(()=>this.disabled=false)"><b>ทดสอบการแจ้งเตือน</b><span>ตรวจว่าแจ้งเตือนเข้าเมื่อแอปอยู่เบื้องหลัง</span></button><button class="pw" onclick="QueueGoAccountDeletion.openPrivacy()"><b>นโยบายความเป็นส่วนตัว</b></button><button class="pw" onclick="QGCustomer.deleteAccount(this)"><b>ลบบัญชีถาวร</b><span>ลบ Auth และข้อมูลส่วนบุคคล</span></button><button class="pw" onclick="QueueGoPush.disable().finally(()=>{S.clear();cart=readCart();QGCustomer.syncNotifications();go('login')})"><b>ออกจากระบบ</b></button></div>`,'')}
+  function renderProfile(){
+    const u=S.get()||{},soundOn=localStorage.getItem('qg_customer_sound_'+u.userId)==='on';
+    layout(`<div class="qg-profile">
+      <section class="qg-profile-hero">
+        <div class="qg-profile-avatar">${safeImage(u.photo)?`<img src="${esc(safeImage(u.photo))}" alt="รูปโปรไฟล์">`:ini(u.name)}</div>
+        <div class="qg-profile-copy">
+          <h1>${esc(u.name||'ลูกค้า')}</h1>
+          <p>${esc(u.phone||u.email||'')}</p>
+          <span class="qg-profile-account">บัญชีลูกค้า</span>
+        </div>
+      </section>
+
+      <section class="qg-profile-section">
+        <h2>บัญชีและการใช้งาน</h2>
+        <div class="qg-profile-card">
+          ${[['map','ที่อยู่จัดส่ง'],['orders','ออเดอร์ของฉัน'],['notifications','การแจ้งเตือน'],['favorites','รายการโปรด'],['promotion','โปรโมชั่นจากร้าน'],['support','ติดต่อฝ่ายช่วยเหลือ']].map(([path,label])=>`<button class="qg-profile-row" onclick="go('${path}')"><span class="qg-profile-row-copy"><b>${label}</b></span><span class="qg-profile-chevron">›</span></button>`).join('')}
+        </div>
+      </section>
+
+      <section class="qg-profile-section">
+        <h2>การแจ้งเตือน</h2>
+        <div class="qg-profile-card">
+          <button class="qg-profile-row" onclick="QGCustomer.toggleSound(this)">
+            <span class="qg-profile-row-copy"><b>เสียงแจ้งเตือนเมื่อ Rider ถึง</b><small>เสียงเตือนเมื่อ Rider มาถึงจุดส่ง</small></span>
+            <span class="qg-profile-state ${soundOn?'on':''}">${soundOn?'เปิด':'ปิด'}</span>
+          </button>
+          <button class="qg-profile-row" onclick="QueueGoPush.toggle(this).then(on=>toast(on?'เปิดการแจ้งเตือนเบื้องหลังแล้ว':'ปิดการแจ้งเตือนเบื้องหลังแล้ว')).catch(e=>toast(e.message||'เปิดการแจ้งเตือนไม่สำเร็จ'))">
+            <span class="qg-profile-row-copy"><b>การแจ้งเตือนเบื้องหลัง</b><small>รับสถานะออเดอร์แม้ไม่ได้เปิดหน้านี้</small></span>
+            <span class="qg-profile-chevron">›</span>
+          </button>
+          <button class="qg-profile-row" onclick="this.disabled=true;toast('ระบบจะส่งแจ้งเตือนใน 7 วินาที กด Home เพื่อทดสอบได้เลย');QueueGoPush.test().catch(e=>toast(e.message||'ทดสอบแจ้งเตือนไม่สำเร็จ')).finally(()=>this.disabled=false)">
+            <span class="qg-profile-row-copy"><b>ทดสอบการแจ้งเตือน</b><small>ตรวจว่าแจ้งเตือนเข้าเมื่อแอปอยู่เบื้องหลัง</small></span>
+            <span class="qg-profile-chevron">›</span>
+          </button>
+        </div>
+        <div class="qg-profile-note"><b>การชำระเงิน</b><span>ชำระเงินสดเมื่อรับสินค้า</span></div>
+      </section>
+
+      <section class="qg-profile-section">
+        <h2>ความเป็นส่วนตัวและบัญชี</h2>
+        <div class="qg-profile-card">
+          <button class="qg-profile-row" onclick="QueueGoAccountDeletion.openPrivacy()">
+            <span class="qg-profile-row-copy"><b>นโยบายความเป็นส่วนตัว</b></span><span class="qg-profile-chevron">›</span>
+          </button>
+          <button class="qg-profile-row qg-profile-danger" onclick="QGCustomer.deleteAccount(this)">
+            <span class="qg-profile-row-copy"><b>ลบบัญชีถาวร</b><small>ลบ Auth และข้อมูลส่วนบุคคล</small></span><span class="qg-profile-chevron">›</span>
+          </button>
+          <button class="qg-profile-row" onclick="QueueGoPush.disable().finally(()=>{S.clear();cart=readCart();QGCustomer.syncNotifications();go('login')})">
+            <span class="qg-profile-row-copy"><b>ออกจากระบบ</b></span><span class="qg-profile-chevron">›</span>
+          </button>
+        </div>
+      </section>
+    </div>`,'');
+  }
+
   async function renderOrder(id,ticket=routeVersion){
     const key=actor(),u=S.get();
     const rows=await db('orders?select=*&id=eq.'+encodeURIComponent(id)+'&customer_id=eq.'+encodeURIComponent(u.userId)+'&limit=1'),o=rows[0];
