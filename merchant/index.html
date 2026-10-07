@@ -47,6 +47,49 @@ body.qgm-app,body.qgm-login{height:auto!important;min-height:100dvh!important;ov
 </style>
 <script src="https://api.longdo.com/map/?key=347649ca13f49db0d8a599ae35f8de2b"></script>
 <style id="qgm-setup-checklist-style">.qgm-pending{max-width:680px}.qgm-setup-heading{display:flex;align-items:center;justify-content:space-between;gap:16px}.qgm-setup-symbol{font-size:48px;color:#ed0a31}.qgm-setup-list{list-style:none;padding:0;margin:20px 0;border:1px solid #e3e5e9;border-radius:18px;overflow:hidden}.qgm-setup-list li{display:flex;gap:14px;padding:20px 16px;align-items:flex-start;background:#fff}.qgm-setup-list li+li{border-top:1px solid #e3e5e9}.qgm-setup-list b{font-size:17px}.qgm-setup-list p{font-size:14px;margin:6px 0;overflow-wrap:anywhere}.qgm-setup-check{flex:0 0 28px;height:28px;border-radius:50%;display:grid;place-items:center;color:#858b94;border:2px solid #d4d7dc}.qgm-setup-list .done .qgm-setup-check{background:#0ab76a;color:#fff;border-color:#0ab76a}.qgm-setup-list .qgm-link{padding:6px 0;min-height:40px;text-align:left}.qgm-pending>.qgm-outline{margin:10px 0}</style><script src="../queuego-order-number.js"></script>
+<style id="qg-merchant-account-compact-v1">
+/* Merchant account — compact grouped settings, aligned with Customer profile. */
+.qgm-account-page{display:grid;gap:12px;padding-bottom:8px}
+.qgm-account-hero{display:grid;grid-template-columns:56px minmax(0,1fr) auto;gap:11px;align-items:center;padding:10px 2px 8px}
+.qgm-account-logo{width:56px;height:56px;border-radius:17px;object-fit:cover;background:#eceef1;border:1px solid #e6e8eb}
+.qgm-account-copy{min-width:0}
+.qgm-account-copy h1{margin:0;font-size:19px;line-height:1.2;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.qgm-account-copy p{margin:4px 0 0;color:#8b9098;font-size:10px;font-weight:650;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.qgm-account-status{display:inline-flex;align-items:center;justify-content:center;min-height:30px;padding:0 9px;border-radius:999px;background:#f0f1f3;color:#777d85;font-size:9px;font-weight:850;white-space:nowrap}
+.qgm-account-status.on{background:#e8f9f1;color:#0a9660}
+.qgm-account-section{display:grid;gap:6px}
+.qgm-account-section>h2{margin:0 2px;color:#81868e;font-size:10px;font-weight:850;letter-spacing:.15px}
+.qgm-account-card{overflow:hidden;border:1px solid #e6e8eb;border-radius:16px;background:#fff;box-shadow:0 4px 16px rgba(26,29,33,.025)}
+.qgm-account-info{padding:0 12px}
+.qgm-account-info-row{display:grid;grid-template-columns:32px minmax(0,1fr);gap:9px;align-items:center;min-height:52px;padding:8px 0;border-bottom:1px solid #eceef1}
+.qgm-account-info-row:last-child{border-bottom:0}
+.qgm-account-icon{width:32px;height:32px;border-radius:10px;display:grid;place-items:center;background:#fff1f4;color:var(--qg-red)}
+.qgm-account-icon svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:1.8}
+.qgm-account-info-row div{min-width:0}
+.qgm-account-info-row small{display:block;color:#959aa1;font-size:8.5px;font-weight:700;line-height:1.25}
+.qgm-account-info-row b{display:block;margin-top:2px;color:#202329;font-size:11.5px;line-height:1.35;font-weight:800;overflow-wrap:anywhere}
+.qgm-account-row{display:grid;grid-template-columns:34px minmax(0,1fr) 18px;gap:9px;align-items:center;width:100%;min-height:54px;padding:9px 11px;border:0;border-bottom:1px solid #eceef1;background:#fff;color:#202329;text-align:left;cursor:pointer;touch-action:manipulation}
+.qgm-account-row:last-child{border-bottom:0}
+.qgm-account-row:disabled{opacity:.55}
+.qgm-account-row-icon{width:34px;height:34px;border-radius:11px;display:grid;place-items:center;background:#f6f7f8;color:#737982}
+.qgm-account-row-icon svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:1.8}
+.qgm-account-row-copy{display:grid;gap:2px;min-width:0}
+.qgm-account-row-copy b{font-size:12.5px;line-height:1.25;font-weight:850}
+.qgm-account-row-copy small{color:#91969e;font-size:9px;line-height:1.35;font-weight:600}
+.qgm-account-chevron{color:#b4b8be;font-size:21px;line-height:1;text-align:right}
+.qgm-account-row-primary .qgm-account-row-icon{background:#fff0f3;color:var(--qg-red)}
+.qgm-account-row-primary .qgm-account-row-copy b{color:#d90d2d}
+.qgm-account-danger .qgm-account-row-icon{background:#fff2f3;color:#d52a3e}
+.qgm-account-danger .qgm-account-row-copy b{color:#d52a3e}
+@media(max-width:380px){
+  .qgm-account-hero{grid-template-columns:50px minmax(0,1fr) auto;gap:9px}
+  .qgm-account-logo{width:50px;height:50px;border-radius:15px}
+  .qgm-account-copy h1{font-size:17px}
+  .qgm-account-row{padding:8px 10px}
+  .qgm-account-row-copy b{font-size:12px}
+  .qgm-account-row-copy small{font-size:8.5px}
+}
+</style>
 </head>
 <body>
 <div id="app"></div>
