@@ -1,25 +1,25 @@
 {
-  "generated_at": "2026-10-07T10:35:00+07:00",
+  "generated_at": "2026-10-07T10:37:00+07:00",
   "github": {
     "repository": "chatchairins-source/QueuGo",
     "source_of_truth": "main",
-    "head_at_manifest": "d67a462efe5192260ce61dc6db95924f4d944230",
+    "head_at_manifest": "fe01ac5d6a38f9f0c3b9de4c2553a8b8b0055563",
     "previous_backup_branch": "backup-pre-closed-beta-20261007-0035",
     "latest_backup_branch": "backup-certified-backup-cli-pin-d67a462e-20261007",
-    "certified_source_commit": "d67a462efe5192260ce61dc6db95924f4d944230",
+    "certified_source_commit": "fe01ac5d6a38f9f0c3b9de4c2553a8b8b0055563",
     "rc_tests": {
-      "run_id": 37567241832,
+      "run_id": 37567381154,
       "status": "SUCCESS",
-      "head_sha": "d67a462efe5192260ce61dc6db95924f4d944230"
+      "head_sha": "fe01ac5d6a38f9f0c3b9de4c2553a8b8b0055563"
     },
     "chat_retention_tests": {
       "run_id": 37559294226,
       "status": "SUCCESS"
     },
     "pages_deployment_last_checked": {
-      "run_id": 37567241527,
+      "run_id": 37567380970,
       "status": "SUCCESS",
-      "head_sha": "d67a462efe5192260ce61dc6db95924f4d944230"
+      "head_sha": "fe01ac5d6a38f9f0c3b9de4c2553a8b8b0055563"
     },
     "operational_inventory_commit": "a406bb7f8de013fa6bd7d595ca01832a7ce28293",
     "operational_inventory_rc_run": {
@@ -29,7 +29,9 @@
     },
     "data_safety_decision_commit": "67a511b6319d8784ec99d5f60eb755ee9b9f73ca",
     "contains_ads_decision_commit": "09baf029a142122bf12242bc380ff0ea922b6743",
-    "target_audience_decision_commit": "bf90364c633119740f5402a428c7a7c610725676"
+    "target_audience_decision_commit": "bf90364c633119740f5402a428c7a7c610725676",
+    "push_firebase_preflight_commit": "7c3f0a2a2d8ebb103ba30e014022929699c4f175",
+    "android_signing_hardening_commit": "6823cc2da77cfb9781673ce8fd4e9733e4446f54"
   },
   "release_gates": {
     "account_deletion_privacy": "PASS",
@@ -78,7 +80,7 @@
       },
       {
         "slug": "queuego-push",
-        "version": 6,
+        "version": 7,
         "status": "ACTIVE",
         "verify_jwt": false
       },
@@ -140,7 +142,11 @@
       "customer",
       "shop",
       "rider"
-    ]
+    ],
+    "native_test_firebase_oauth_preflight": true,
+    "native_test_preflight_behavior": "When a native token exists, the physical test validates FIREBASE_SERVICE_ACCOUNT_JSON via Google OAuth before creating a push_test notification.",
+    "edge_function_version": 7,
+    "edge_source_matches_github": true
   },
   "android": {
     "capacitor_version": "8.0.0",
@@ -187,7 +193,12 @@
       "PASS_FREE_PLAN_CONTROLS"
     ],
     "release_secret_code_gate": "PASS",
-    "release_secret_runtime_gate": "BLOCKED_MISSING_SECRETS"
+    "release_secret_runtime_gate": "BLOCKED_MISSING_SECRETS",
+    "signing_keystore_preflight": true,
+    "signing_alias_preflight": true,
+    "signing_key_password_preflight": true,
+    "signing_secrets_written_to_gradle_properties": false,
+    "signing_secret_transport": "ORG_GRADLE_PROJECT environment variables"
   },
   "security": {
     "code_surface_hardened": true,
