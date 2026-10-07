@@ -1,14 +1,14 @@
 {
-  "generated_at": "2026-10-07T09:22:00+07:00",
+  "generated_at": "2026-10-07T09:26:00+07:00",
   "github": {
     "repository": "chatchairins-source/QueuGo",
     "source_of_truth": "main",
-    "head_at_manifest": "400c30c9b1f823b924d9d7f5fee7842a5c2f773a",
+    "head_at_manifest": "dc3c0c548015183ea2c5146fd61a2f32166ada6b",
     "previous_backup_branch": "backup-pre-closed-beta-20261007-0035",
     "latest_backup_branch": "backup-pre-external-blockers-20261007-0922",
-    "certified_source_commit": "400c30c9b1f823b924d9d7f5fee7842a5c2f773a",
+    "certified_source_commit": "dc3c0c548015183ea2c5146fd61a2f32166ada6b",
     "rc_tests": {
-      "run_id": 37561599812,
+      "run_id": 37561846271,
       "status": "SUCCESS"
     },
     "chat_retention_tests": {
@@ -16,7 +16,7 @@
       "status": "SUCCESS"
     },
     "pages_deployment_last_checked": {
-      "run_id": 37561599262,
+      "run_id": 37561845538,
       "status": "SUCCESS"
     }
   },
@@ -99,7 +99,8 @@
         "QG_SUPABASE_SERVICE_ROLE_KEY",
         "QG_BACKUP_PASSPHRASE"
       ]
-    }
+    },
+    "restore_drill_ugc_verification_ready": true
   },
   "notifications": {
     "unified_outbox": true,
