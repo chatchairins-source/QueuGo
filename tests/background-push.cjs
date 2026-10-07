@@ -66,7 +66,9 @@ ok(retired.includes("status:410"),'old Rider-only worker must be retired');
 for(const asset of ['customer-features.js','customer-features.css','customer-laundry.js','account-deletion.js','queuego-ugc.js','queuego-native-push.js','queuego-push.js','queuego-push-sw.js']){
   ok(workflow.includes(asset),'Customer Android bundle must include '+asset);
 }
-ok(workflow.includes("s=s.replace('../queuego-native-push.js','queuego-native-push.js')")&&workflow.includes("s=s.replace('../queuego-push.js','queuego-push.js')"),'Android nested role bundles must rewrite shared push paths');
+ok(workflow.includes("cp ../role-realtime.js ../account-deletion.js ../queuego-ugc.js ../queuego-native-push.js"),'Merchant Android bundle must copy UGC and native push runtime');
+ok(workflow.includes("cp ../account-deletion.js ../queuego-ugc.js ../queuego-native-push.js"),'Rider Android bundle must copy UGC and native push runtime');
+ok(workflow.includes("s=s.replace('../queuego-ugc.js','queuego-ugc.js')")&&workflow.includes("s=s.replace('../queuego-native-push.js','queuego-native-push.js')")&&workflow.includes("s=s.replace('../queuego-push.js','queuego-push.js')"),'Android nested role bundles must rewrite UGC and push paths');
 ok(workflow.includes('QG_FIREBASE_GOOGLE_SERVICES_JSON_B64')&&workflow.includes('android/app/google-services.json'),'Android release must inject Firebase app configuration securely');
 ok(androidPkg.dependencies?.['@capacitor/push-notifications']==='8.0.0','Android build must install Capacitor 8 Push Notifications');
 ok(Array.isArray(capacitor.plugins?.PushNotifications?.presentationOptions),'Capacitor config must enable native push presentation options');
