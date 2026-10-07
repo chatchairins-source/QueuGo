@@ -1,16 +1,16 @@
 {
-  "generated_at": "2026-10-07T13:06:02+07:00",
+  "generated_at": "2026-10-07T13:15:49+07:00",
   "github": {
     "repository": "chatchairins-source/QueuGo",
     "source_of_truth": "main",
-    "head_at_manifest": "bf8d9709e8f21f776586b2df58ec4633507f4334",
+    "head_at_manifest": "d50affbb6b783bcd53f7fcabccfd29145f1afa24",
     "previous_backup_branch": "backup-pre-closed-beta-20261007-0035",
-    "latest_backup_branch": "backup-post-table-qr-qt-bf8d9709-20261007",
-    "certified_source_commit": "14b5d20a46ac2f936cc738ff1dda0df31dcc3bae",
+    "latest_backup_branch": "backup-certified-qt-table-qr-d50affbb-20261007",
+    "certified_source_commit": "d50affbb6b783bcd53f7fcabccfd29145f1afa24",
     "rc_tests": {
-      "run_id": 37577502279,
+      "run_id": 37580393679,
       "status": "SUCCESS",
-      "head_sha": "14b5d20a46ac2f936cc738ff1dda0df31dcc3bae"
+      "head_sha": "d50affbb6b783bcd53f7fcabccfd29145f1afa24"
     },
     "chat_retention_tests": {
       "run_id": 37574995871,
@@ -18,9 +18,9 @@
       "head_sha": "b738c2ce5ef1d9d065a9d033258e6134d0d2270e"
     },
     "pages_deployment_last_checked": {
-      "run_id": 37577501143,
+      "run_id": 37580392585,
       "status": "SUCCESS",
-      "head_sha": "14b5d20a46ac2f936cc738ff1dda0df31dcc3bae"
+      "head_sha": "d50affbb6b783bcd53f7fcabccfd29145f1afa24"
     },
     "operational_inventory_commit": "a406bb7f8de013fa6bd7d595ca01832a7ce28293",
     "operational_inventory_rc_run": {
@@ -34,8 +34,8 @@
     "push_firebase_preflight_commit": "7c3f0a2a2d8ebb103ba30e014022929699c4f175",
     "android_signing_hardening_commit": "6823cc2da77cfb9781673ce8fd4e9733e4446f54",
     "pilot_provenance_commit": "6cc35be3d32c9c79016ea4bab728240fc10264c7",
-    "latest_source_verification_commit": "bf8d9709e8f21f776586b2df58ec4633507f4334",
-    "latest_source_verification_status": "PASS_REMOTE_SOURCE_CHECKS",
+    "latest_source_verification_commit": "d50affbb6b783bcd53f7fcabccfd29145f1afa24",
+    "latest_source_verification_status": "PASS_GITHUB_RC",
     "latest_source_verification_checks": 38,
     "latest_source_verification_failures": 0
   },
@@ -509,8 +509,8 @@
     "pos_qr_migration": "20261007045146_unify_pos_qr_order_codes.sql",
     "order_number_test_checks": 39,
     "legacy_pos_qr_display_normalized": true,
-    "certified_source_commit": "14b5d20a46ac2f936cc738ff1dda0df31dcc3bae",
-    "certified_rc_run": 37577502279,
+    "certified_source_commit": "d50affbb6b783bcd53f7fcabccfd29145f1afa24",
+    "certified_rc_run": 37580393679,
     "standalone_laundry_shared_formatter": true,
     "table_qr_shared_formatter": true,
     "table_qr_raw_uuid_display": false,
@@ -520,8 +520,10 @@
     "remote_source_checks": 38,
     "remote_source_failures": 0,
     "source_verification_status": "PASS",
-    "last_rc_certified_commit": "14b5d20a46ac2f936cc738ff1dda0df31dcc3bae",
-    "last_rc_certified_run": 37577502279
+    "last_rc_certified_commit": "d50affbb6b783bcd53f7fcabccfd29145f1afa24",
+    "last_rc_certified_run": 37580393679,
+    "qr_recovery_test_checks": 36,
+    "table_qr_checkout_requires_order_number": true
   },
   "production_integrity_audit": {
     "checked_at": "2026-10-07T11:54:00+07:00",
