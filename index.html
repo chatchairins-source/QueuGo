@@ -258,6 +258,7 @@ async function login(v,pw){
   cart=readCart();if(guestCart.items.length){if(!cart.items.length)cart=guestCart;else if(cart.shopId===guestCart.shopId){for(const item of guestCart.items){const mine=cart.items.find(x=>x.id===item.id);if(mine)mine.qty=Math.min(99,mine.qty+item.qty);else cart.items.push(item)}}else toast('มีตะกร้าคนละร้าน สินค้าก่อนเข้าสู่ระบบยังเก็บไว้');saveCart();if(cart.shopId===guestCart.shopId)localStorage.removeItem('qt_cart_guest')}marketCart=readMarketCart();if(!marketCart.items.length&&guestMarketCart.items.length){marketCart=guestMarketCart;saveMarketCart();localStorage.removeItem('qg_market_cart_guest')}
 }
 async function register({name,phone,email,password,lat,lng}){
+  QueueGoPasswordPolicy.requireStrong(password);
   await auth('signup',{email:email||emailOf(phone),password,data:{name,phone,role:'customer',latitude:lat,longitude:lng}});
   await login(email||phone,password);
 }
@@ -692,8 +693,8 @@ V.login=()=>layout(`<div class="card"><h1 style="font-size:24px;margin-bottom:4p
 <button class="prim" id="lb" style="margin-top:4px">เข้าสู่ระบบ</button>
 <p class="empty" style="padding:16px 0 0">ยังไม่มีบัญชี? <a href="#register" style="color:var(--red);font-weight:700">สมัครสมาชิก</a></p></div>`);
 V.register=()=>layout(`<div class="card"><h1 style="font-size:24px;margin-bottom:16px">สมัครสมาชิก</h1>
-<input class="in" id="rn" placeholder="ชื่อ-นามสกุล"><label for="register-mode">สมัครด้วย</label><select class="in" id="register-mode" onchange="document.getElementById('register-email').hidden=this.value!=='email'"><option value="phone">เบอร์โทรศัพท์</option><option value="email">อีเมล</option></select><input class="in" id="register-email" type="email" placeholder="อีเมล" hidden><input class="in" id="rp" placeholder="เบอร์โทร" inputmode="tel"><input class="in" id="rw" type="password" placeholder="รหัสผ่าน (อย่างน้อย 8 ตัว)" minlength="8">
-<input class="in" id="rw-confirm" type="password" placeholder="ยืนยันรหัสผ่าน"><p class="sm" style="margin:0 0 12px">ต้องอนุญาตตำแหน่งที่ตั้งเพื่อสมัครสมาชิก</p>
+<input class="in" id="rn" placeholder="ชื่อ-นามสกุล"><label for="register-mode">สมัครด้วย</label><select class="in" id="register-mode" onchange="document.getElementById('register-email').hidden=this.value!=='email'"><option value="phone">เบอร์โทรศัพท์</option><option value="email">อีเมล</option></select><input class="in" id="register-email" type="email" placeholder="อีเมล" hidden><input class="in" id="rp" placeholder="เบอร์โทร" inputmode="tel"><input class="in" id="rw" type="password" autocomplete="new-password" placeholder="อย่างน้อย 12 ตัว: A-Z, a-z, ตัวเลข, สัญลักษณ์" minlength="12">
+<input class="in" id="rw-confirm" type="password" autocomplete="new-password" placeholder="ยืนยันรหัสผ่าน"><p class="sm" style="margin:0 0 12px">ต้องอนุญาตตำแหน่งที่ตั้งเพื่อสมัครสมาชิก</p>
 <button class="prim" id="rb" style="margin-top:0">สมัครและเข้าสู่ระบบ</button>
 <p class="empty" style="padding:16px 0 0"><a href="#login" style="color:var(--red);font-weight:700">มีบัญชีแล้ว</a></p></div>`);
 V.home=async(_,ticket=routeVersion)=>{
@@ -1039,7 +1040,9 @@ function bind(pg){
   if(pg==='register')$('rb').onclick=async e=>{
     const b=e.target,name=$('rn').value.trim(),phone=$('rp').value.trim(),password=$('rw').value;
     const mode=$('register-mode').value,email=mode==='email'?$('register-email').value.trim():'';
-    if(!name||password.length<8||$('rw-confirm').value!==password||(mode==='phone'?phone.replace(/\D/g,'').length<9:!(/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))))return toast('กรอกข้อมูลให้ครบและยืนยันรหัสผ่านให้ตรงกัน');
+    if(!name||(mode==='phone'?phone.replace(/\D/g,'').length<9:!(/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))))return toast('กรอกข้อมูลสมัครสมาชิกให้ครบ');
+    if(!QueueGoPasswordPolicy.validate(password))return toast(QueueGoPasswordPolicy.MESSAGE);
+    if($('rw-confirm').value!==password)return toast('ยืนยันรหัสผ่านให้ตรงกัน');
     b.disabled=true;
     try{
       const pos=await new Promise((ok,no)=>navigator.geolocation?navigator.geolocation.getCurrentPosition(ok,no,{enableHighAccuracy:true,timeout:15000}):no());
@@ -1051,6 +1054,7 @@ addEventListener('hashchange',()=>route());
 
 </script>
 <link rel="stylesheet" href="customer-features.css?v=20261006-rider-photo-only">
+<script src="queuego-password-policy.js?v=20261007-security1"></script>
 <script src="account-deletion.js?v=20261006-pilot1"></script>
 <script src="queuego-ugc.js?v=20261007-ugc1"></script>
 <script>QueueGoUGC.configure({getAccessToken:()=>token(true)});</script>

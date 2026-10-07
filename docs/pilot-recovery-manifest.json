@@ -1,11 +1,11 @@
 {
-  "generated_at": "2026-10-07T10:17:00+07:00",
+  "generated_at": "2026-10-07T10:22:00+07:00",
   "github": {
     "repository": "chatchairins-source/QueuGo",
     "source_of_truth": "main",
-    "head_at_manifest": "67bdab513362ad8a4357337429d4bd770a66b3aa",
+    "head_at_manifest": "d950d490d8a1fe1ceb0f9ac43c77a61441c7c767",
     "previous_backup_branch": "backup-pre-closed-beta-20261007-0035",
-    "latest_backup_branch": "backup-pre-final-fk-indexes-67bdab51-20261007",
+    "latest_backup_branch": "backup-pre-password-hardening-d950d490-20261007",
     "certified_source_commit": "bf90364c633119740f5402a428c7a7c610725676",
     "rc_tests": {
       "run_id": 37565284730,
@@ -182,7 +182,7 @@
     "code_surface_hardened": true,
     "leaked_password_protection_enabled": false,
     "leaked_password_protection_blocker": "Supabase currently reports this as a WARN and current documentation states leaked-password protection is available on Pro Plan and above. QueueGo remains on Free; this cannot be enabled without a plan change.",
-    "signup_password_minimum_characters": 8,
+    "signup_password_minimum_characters": 12,
     "anonymous_security_definer_review": "docs/security-anon-definer-allowlist.json",
     "security_audit": "PASS",
     "authenticated_security_definer_review": "docs/security-auth-definer-review.json",
@@ -210,7 +210,16 @@
       }
     },
     "leaked_password_protection_advisor_level": "WARN",
-    "leaked_password_protection_plan_requirement": "PRO_OR_ABOVE"
+    "leaked_password_protection_plan_requirement": "PRO_OR_ABOVE",
+    "signup_password_complexity": "UPPER_LOWER_NUMBER_SYMBOL",
+    "signup_password_policy_shared_runtime": "queuego-password-policy.js",
+    "signup_password_roles": [
+      "customer",
+      "merchant",
+      "rider"
+    ],
+    "signup_password_hardening_scope": "NEW_APP_REGISTRATIONS",
+    "leaked_password_protection_status": "DEFERRED_PRO_ONLY_PENDING_RELEASE_GATE_REVIEW"
   },
   "performance": {
     "auth_rls_initplan_warnings_before": 13,

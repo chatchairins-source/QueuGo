@@ -490,7 +490,7 @@ async function riderStepNext(){
     if(s===0){
       if(!f('rr-name').value.trim()||!f('rr-phone').value.trim()||!f('rr-password').value){toast('กรุณากรอกข้อมูลส่วนตัวให้ครบ');return;}
       if(!/^0[0-9]{9}$/.test(f('rr-phone').value.replace(/[-\s]/g,''))){toast('กรุณากรอกเบอร์โทรศัพท์ 10 หลัก');return;}
-      if(f('rr-password').value.length<8){toast('รหัสผ่านต้องมีอย่างน้อย 8 ตัวอักษร');return;}
+      if(!QueueGoPasswordPolicy.validate(f('rr-password').value)){toast(QueueGoPasswordPolicy.MESSAGE);return;}
       if(f('rr-email').value&&!f('rr-email').checkValidity()){toast('กรุณากรอกอีเมลให้ถูกต้อง');return;}
       if(!(await hasFile('rr-photo'))){toast('กรุณาอัปโหลดรูปถ่ายหน้าตรง');return;}
     }
@@ -512,11 +512,12 @@ async function handleRiderRegistration(e){
   e.preventDefault();
   const f=id=>document.getElementById(id);
   const name=String(f('rr-name').value||'').trim(),phone=f('rr-phone').value.trim().replace(/[-\s]/g,''),password=f('rr-password').value;
+  QueueGoPasswordPolicy.requireStrong(password);
   const email=String(f('rr-email').value||'').trim().toLowerCase();
   const form={email,area:String(f('rr-area').value||'').trim(),province:f('rr-province').value,district:String(f('rr-district').value||'').trim(),vehicle:f('rr-vehicle').value,plate:String(f('rr-plate').value||'').trim(),make:String(f('rr-make').value||'').trim(),model:String(f('rr-model').value||'').trim(),capacity:Number(f('rr-capacity').value||0)};
   if(!name||!phone||!password){toast('กรุณากรอกข้อมูลส่วนตัวให้ครบ');return false;}
   if(!/^0[0-9]{9}$/.test(phone)){toast('กรุณากรอกเบอร์โทรศัพท์ 10 หลัก เช่น 0812345678');return false;}
-  if(password.length<8){toast('รหัสผ่านต้องมีอย่างน้อย 8 ตัวอักษร');return false;}
+  if(!QueueGoPasswordPolicy.validate(password)){toast(QueueGoPasswordPolicy.MESSAGE);return false;}
   if(!f('rr-province').value||!f('rr-district').value){toast('กรุณาเลือกจังหวัดและอำเภอ/เขต');return false;}
   if(form.capacity<0||form.capacity>1000){toast('ความจุรถไม่ถูกต้อง');riderStepGo(1);return false;}
   if(!form.plate){toast('กรุณากรอกทะเบียนรถ');riderStepGo(1);return false;}
@@ -598,7 +599,7 @@ function renderRiderRegistration(){
               <div class="qg-section-title"><b>ข้อมูลส่วนตัว</b></div>
               <label>ชื่อ - นามสกุล <span class="req">*</span><input required id="rr-name" placeholder="เช่น นายสมชาย ใจดี"></label>
               <label>เบอร์โทรศัพท์ <span class="req">*</span><input required id="rr-phone" inputmode="tel" placeholder="0812345678"></label>
-              <label>รหัสผ่าน <span class="req">*</span><input required id="rr-password" type="password" minlength="8" placeholder="อย่างน้อย 8 ตัวอักษร"></label>
+              <label>รหัสผ่าน <span class="req">*</span><input required id="rr-password" type="password" autocomplete="new-password" minlength="12" placeholder="อย่างน้อย 12 ตัว: A-Z, a-z, ตัวเลข, สัญลักษณ์"></label>
               <label>อีเมล (ถ้ามี)<input id="rr-email" type="email" placeholder="rider@example.com"></label>
             </section>
             <section class="rider-panel">
@@ -2217,6 +2218,7 @@ window.qgRenderEarnings=function(){
  };
 })();
 </script>
+<script src="../queuego-password-policy.js?v=20261007-security1"></script>
 <script src="../account-deletion.js?v=20261006-pilot1"></script>
 <script src="../queuego-ugc.js?v=20261007-ugc1"></script>
 <script>QueueGoUGC.configure({getAccessToken:()=>getAccessToken()});</script>
