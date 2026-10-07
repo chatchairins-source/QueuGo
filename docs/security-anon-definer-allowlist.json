@@ -1,0 +1,106 @@
+{
+  "version": 1,
+  "reviewed_at": "2026-10-07T08:42:00+07:00",
+  "purpose": "Intentional anonymous SECURITY DEFINER RPCs required by public storefront or guest QR table ordering.",
+  "rules": [
+    {
+      "signature": "market_public_catalog_v2()",
+      "category": "public_storefront",
+      "reason": "Customer Market catalog before sign-in.",
+      "controls": [
+        "active shop/user/market membership",
+        "available delivery product",
+        "bounded result set"
+      ]
+    },
+    {
+      "signature": "market_public_markets_v1()",
+      "category": "public_storefront",
+      "reason": "Customer market selector before sign-in.",
+      "controls": [
+        "active markets only",
+        "public market fields only"
+      ]
+    },
+    {
+      "signature": "market_public_shops_v2()",
+      "category": "public_storefront",
+      "reason": "Customer Market shop directory before sign-in.",
+      "controls": [
+        "active shop/user",
+        "approved market membership",
+        "public shop fields only"
+      ]
+    },
+    {
+      "signature": "qg_public_promotions()",
+      "category": "public_storefront",
+      "reason": "Public active promotion cards.",
+      "controls": [
+        "active promotions only",
+        "active shops only",
+        "bounded result set"
+      ]
+    },
+    {
+      "signature": "qg_public_shop_reviews(uuid)",
+      "category": "public_storefront",
+      "reason": "Public completed-order reviews.",
+      "controls": [
+        "completed orders only",
+        "customer name masked to first character",
+        "bounded recent items"
+      ]
+    },
+    {
+      "signature": "qg_table_scan(uuid,uuid,double precision,double precision)",
+      "category": "guest_table_order",
+      "reason": "Guest scans a physical table QR without creating an account.",
+      "controls": [
+        "active table",
+        "device hash",
+        "shop coordinates required",
+        "100m geofence",
+        "1-hour session"
+      ]
+    },
+    {
+      "signature": "qg_table_catalog(uuid,uuid)",
+      "category": "guest_table_order",
+      "reason": "Guest table session loads menu.",
+      "controls": [
+        "session id + device hash",
+        "not revoked",
+        "not expired",
+        "active table",
+        "public product fields only"
+      ]
+    },
+    {
+      "signature": "qg_table_checkout(uuid,uuid,uuid,jsonb,double precision,double precision)",
+      "category": "guest_table_order",
+      "reason": "Guest table session submits dine-in order.",
+      "controls": [
+        "session + device binding",
+        "100m geofence",
+        "1-50 item bound",
+        "request idempotency",
+        "product shop ownership",
+        "POS availability"
+      ]
+    },
+    {
+      "signature": "qg_table_session_status(uuid,uuid)",
+      "category": "guest_table_order",
+      "reason": "Guest restores table session after reload.",
+      "controls": [
+        "session id + device hash",
+        "active/expiry status only"
+      ]
+    }
+  ],
+  "explicitly_not_anonymous": [
+    "market_public_catalog()",
+    "queuego_nearest_market(double precision,double precision,numeric)"
+  ]
+}
