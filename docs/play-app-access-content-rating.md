@@ -83,52 +83,27 @@ QueueGo's Service Area is a real business constraint. For review, provide either
 
 Google requires review access credentials/instructions to remain valid regardless of reviewer location.
 
-## 3. Target Audience draft
+## 3. Target Audience decision — CLOSED BETA
 
-### Merchant
+Current QueueGo Closed Beta target for all three Android apps:
 
-Recommended Play target:
-- **18 and over**
+- **QueueGo Customer (`com.queuego.customer`): Ages 18 and over only.**
+- **QueueGo Merchant (`com.queuego.merchant`): Ages 18 and over only.**
+- **QueueGo Rider (`com.queuego.rider`): Ages 18 and over only.**
+- **Restrict Minor Access: Enable for the Closed Beta/Pilot apps in Play Console.**
 
-Reason:
-- Business account
-- Store operations
-- Cash/GP/accounting functions
-- Legal/business responsibilities
+Why this is the correct Pilot boundary:
+- Customer uses cash transactions, precise delivery location, 1:1 Customer–Rider chat, user-generated images/messages and real-world delivery interaction.
+- Merchant is a business/operator role with store operations, GP/accounting and cash responsibility.
+- Rider is a work/delivery role with location, vehicle/work responsibility and cash handling.
+- The current product has not been designed, consented or moderated as a service for children.
 
-### Rider
+Google Play states that apps targeting children become subject to Families requirements. Selecting only Ages 18 and over keeps the current Pilot out of those child-targeting requirements. For the Pilot, enable Play's **Restrict Minor Access** control so accounts Google identifies as minors cannot discover/download the app.
 
-Recommended Play target:
-- **18 and over**
+Do not add any under-18 target age group merely to increase reach. Before a future Production expansion to younger users, perform a new policy/privacy/UGC review, including parental-consent requirements where applicable, age-appropriate content safeguards, ads treatment and Data Safety.
 
-Reason:
-- Work/delivery role
-- Cash handling
-- Vehicle/work responsibility
-- Location-dependent work flow
-
-### Customer
-
-Business decision still required before Play submission.
-
-Recommended default for Pilot:
-- **18 and over**, unless QueueTech intentionally designs the service for minors.
-
-Why the conservative default fits the current Pilot:
-- Cash transactions and orders
-- Precise delivery location
-- 1:1 Customer–Rider chat
-- User-generated images/messages
-- Real-world delivery interaction
-
-If QueueTech intentionally targets ages under 18, reassess:
-- Target Audience selection
-- Families policy implications
-- Age-appropriate UGC protections
-- Data Safety / personal-data handling
-- Store listing imagery and language
-
-Do not select child age groups merely to increase reach. Selecting children triggers additional Google Play Families requirements.
+Policy reference:
+- https://support.google.com/googleplay/android-developer/answer/9867159
 
 ## 4. Content Rating / IARC preparation
 
@@ -243,7 +218,7 @@ For each of the three apps:
 - [ ] English Play Console access instructions entered
 - [ ] Privacy policy URL entered
 - [ ] Data Safety completed from final production behavior
-- [ ] Target audience declared
+- [ ] Target Audience entered in Play Console: **18+ only** for Customer, Merchant and Rider; enable **Restrict Minor Access** for Closed Beta
 - [ ] IARC questionnaire completed
 - [ ] Contains Ads entered in Play Console: Customer **Yes**, Merchant **No**, Rider **No** (revalidate if submitted behavior changes)
 - [ ] UGC declarations match actual chat/content features

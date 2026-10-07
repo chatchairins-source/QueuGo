@@ -1,25 +1,25 @@
 {
-  "generated_at": "2026-10-07T10:04:00+07:00",
+  "generated_at": "2026-10-07T10:07:00+07:00",
   "github": {
     "repository": "chatchairins-source/QueuGo",
     "source_of_truth": "main",
-    "head_at_manifest": "6c2988a0a22b7722cb32007707697d6bb4ebe682",
+    "head_at_manifest": "09baf029a142122bf12242bc380ff0ea922b6743",
     "previous_backup_branch": "backup-pre-closed-beta-20261007-0035",
-    "latest_backup_branch": "backup-pre-ads-decision-6c2988a0-20261007",
-    "certified_source_commit": "6c2988a0a22b7722cb32007707697d6bb4ebe682",
+    "latest_backup_branch": "backup-pre-target-audience-09baf029-20261007",
+    "certified_source_commit": "09baf029a142122bf12242bc380ff0ea922b6743",
     "rc_tests": {
-      "run_id": 37564867901,
+      "run_id": 37565115907,
       "status": "SUCCESS",
-      "head_sha": "6c2988a0a22b7722cb32007707697d6bb4ebe682"
+      "head_sha": "09baf029a142122bf12242bc380ff0ea922b6743"
     },
     "chat_retention_tests": {
       "run_id": 37559294226,
       "status": "SUCCESS"
     },
     "pages_deployment_last_checked": {
-      "run_id": 37564867558,
+      "run_id": 37565115432,
       "status": "SUCCESS",
-      "head_sha": "6c2988a0a22b7722cb32007707697d6bb4ebe682"
+      "head_sha": "09baf029a142122bf12242bc380ff0ea922b6743"
     },
     "operational_inventory_commit": "a406bb7f8de013fa6bd7d595ca01832a7ce28293",
     "operational_inventory_rc_run": {
@@ -277,7 +277,15 @@
       "production_promotion_rows": 0,
       "reason": "Customer exposes a server-controlled paid merchant Promote surface; Merchant only manages its own Promote requests; Rider has no ad-display surface."
     },
-    "contains_ads_console_entry": "PENDING_PLAY_CONSOLE_ENTRY"
+    "contains_ads_console_entry": "PENDING_PLAY_CONSOLE_ENTRY",
+    "target_audience_policy_reviewed_at": "2026-10-07",
+    "target_audience": {
+      "customer": "18_PLUS_ONLY",
+      "merchant": "18_PLUS_ONLY",
+      "rider": "18_PLUS_ONLY"
+    },
+    "restrict_minor_access": "ENABLE_FOR_CLOSED_BETA",
+    "target_audience_console_entry": "PENDING_PLAY_CONSOLE_ENTRY"
   },
   "remaining_external_blockers": [
     "Enable Supabase Auth leaked-password protection.",
@@ -287,6 +295,7 @@
     "Build Pilot APKs and certify native background notification on a physical Android device.",
     "Enter finalized Data Safety answers in Play Console using Longdo location sharing = Yes for App functionality.",
     "Enter Contains Ads declarations in Play Console: Customer Yes, Merchant No, Rider No.",
+    "Enter Target Audience in Play Console as 18+ only for Customer, Merchant and Rider, and enable Restrict Minor Access for Closed Beta.",
     "Confirm Google Play developer account type/date and any 12-testers/14-days requirement.",
     "Create dedicated reusable Play reviewer accounts and capture real current-app screenshots."
   ]

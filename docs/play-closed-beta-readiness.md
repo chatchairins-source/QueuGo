@@ -116,6 +116,19 @@ This requirement is conditional on the Play developer account type/date. Do not 
 Policy source:
 - https://support.google.com/googleplay/android-developer/answer/14151465
 
+### Target Audience / minor access
+
+Closed Beta decision for all three apps:
+- **Customer: 18 and over only**
+- **Merchant: 18 and over only**
+- **Rider: 18 and over only**
+- **Restrict Minor Access: Enable for Closed Beta/Pilot**
+
+This is a Pilot compliance boundary, not a permanent product promise. Any later decision to target users under 18 requires a fresh Families/privacy/UGC/ads review before changing the Play Console audience.
+
+Policy source:
+- https://support.google.com/googleplay/android-developer/answer/9867159
+
 ## Data Safety draft
 
 Google Play treats data transmitted off-device from an app-controlled WebView as app collection. QueueGo must therefore declare data collected by the web application running inside Capacitor.
@@ -263,5 +276,6 @@ Before submitting Closed Beta, keep evidence/screenshots of:
 5. Build physical-test APKs and certify background notifications on real Android devices.
 6. Enter the finalized Data Safety answers in Play Console using the conservative Longdo location-sharing classification above.
 7. Enter Contains Ads declarations: Customer **Yes**, Merchant **No**, Rider **No**.
-8. Confirm Google Play developer account type/date to determine whether the 12-testers/14-days requirement applies.
-9. Only then build the Closed Beta AABs.
+8. Enter Target Audience as **18+ only** for all three apps and enable **Restrict Minor Access** for Closed Beta.
+9. Confirm Google Play developer account type/date to determine whether the 12-testers/14-days requirement applies.
+10. Only then build the Closed Beta AABs.
