@@ -21,6 +21,12 @@ ok('release signing enforced',/QG_ANDROID_KEYSTORE_B64/.test(workflow)&&/signing
 ok('release keystore validated before Gradle',/keytool -list/.test(workflow)&&/keytool -importkeystore/.test(workflow));
 ok('release signing secrets use Gradle environment properties',/ORG_GRADLE_PROJECT_QG_STORE_PASSWORD/.test(workflow)&&/ORG_GRADLE_PROJECT_QG_KEY_PASSWORD/.test(workflow));
 ok('release signing secrets are not written to gradle.properties',!/QG_STORE_PASSWORD=\$QG_STORE_PASSWORD/.test(workflow)&&!/QG_KEY_PASSWORD=\$QG_KEY_PASSWORD/.test(workflow));
+ok('release versionCode is monotonic per workflow dispatch',/QG_VERSION_CODE:\s*\$\{\{ github\.run_number \}\}/.test(workflow)&&/versionCode\\s\+/.test(workflow));
+ok('release versionName is deterministic beta label',/QG_VERSION_NAME:\s*1\.0\.0-beta\.\$\{\{ github\.run_number \}\}/.test(workflow)&&/versionName/.test(workflow));
+ok('release APK package and version are verified after build',/aapt["']? dump badging|AAPT.*dump badging/s.test(workflow)&&/QG_APP_ID/.test(workflow)&&/QG_VERSION_CODE/.test(workflow)&&/QG_VERSION_NAME/.test(workflow));
+ok('release APK must be non-debuggable',/application-debuggable/.test(workflow)&&/Release APK must not be debuggable/.test(workflow));
+ok('release APK signature is verified',/apksigner["']? verify|APKSIGNER.*verify/s.test(workflow));
+ok('release AAB signature is verified',/jarsigner -verify -strict/.test(workflow));
 ok('Closed Beta requires certified restore drill',/restore_drill_certified/.test(workflow)&&/Do not build Closed Beta/.test(workflow));
 ok('Closed Beta requires native push plugin',/@capacitor\/push-notifications/.test(workflow)&&/Native Android background push/.test(workflow));
 ok('Closed Beta requires Firebase config secret',/QG_FIREBASE_GOOGLE_SERVICES_JSON_B64/.test(workflow)&&/google-services\.json secret is missing/.test(workflow));

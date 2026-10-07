@@ -176,6 +176,8 @@ jobs:
         shell: bash
         env:
           QG_ROLE: ${{ matrix.role }}
+          QG_VERSION_CODE: ${{ github.run_number }}
+          QG_VERSION_NAME: 1.0.0-beta.${{ github.run_number }}
         run: |
           set -euo pipefail
           python3 - <<'PY'
@@ -216,6 +218,19 @@ jobs:
             v,n=re.subn(rf'({key}\s*=\s*)\d+',rf'\g<1>36',v,count=1)
             if n!=1: raise RuntimeError(f'{key} not found')
           variables.write_text(v)
+
+          # Deterministic Play versioning: each new workflow dispatch gets a higher versionCode.
+          app_gradle=root/'app/build.gradle'
+          g=app_gradle.read_text()
+          version_code=int(os.environ['QG_VERSION_CODE'])
+          version_name=os.environ['QG_VERSION_NAME']
+          if version_code<1 or version_code>2100000000:
+            raise RuntimeError('Android versionCode outside Play-supported range')
+          g,n=re.subn(r'(\bversionCode\s+)\d+',rf'\g<1>{version_code}',g,count=1)
+          if n!=1: raise RuntimeError('versionCode not found')
+          g,n=re.subn(r'(\bversionName\s+)["\'][^"\']+["\']',lambda m:f'{m.group(1)}"{version_name}"',g,count=1)
+          if n!=1: raise RuntimeError('versionName not found')
+          app_gradle.write_text(g)
 
           # Native Android Back: follow WebView/history first; exit only at the root.
           activity=next((root/'app/src/main/java').rglob('MainActivity.java'))
@@ -377,6 +392,9 @@ jobs:
       - name: Build signed AAB and APK
         shell: bash
         env:
+          QG_APP_ID: ${{ matrix.appid }}
+          QG_VERSION_CODE: ${{ github.run_number }}
+          QG_VERSION_NAME: 1.0.0-beta.${{ github.run_number }}
           ORG_GRADLE_PROJECT_QG_STORE_FILE: ../queuego-release.jks
           ORG_GRADLE_PROJECT_QG_STORE_PASSWORD: ${{ secrets.QG_ANDROID_STORE_PASSWORD }}
           ORG_GRADLE_PROJECT_QG_KEY_ALIAS: ${{ secrets.QG_ANDROID_KEY_ALIAS }}
@@ -386,8 +404,29 @@ jobs:
           cd android-build/android
           chmod +x gradlew
           ./gradlew bundleRelease assembleRelease --no-daemon
-          cp app/build/outputs/bundle/release/app-release.aab "../../QueueGo-${{ matrix.role }}-release.aab"
-          cp app/build/outputs/apk/release/app-release.apk "../../QueueGo-${{ matrix.role }}-release.apk"
+
+          APK=app/build/outputs/apk/release/app-release.apk
+          AAB=app/build/outputs/bundle/release/app-release.aab
+          test -s "$APK"
+          test -s "$AAB"
+
+          BUILD_TOOLS="$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -n1)"
+          AAPT="$BUILD_TOOLS/aapt"
+          APKSIGNER="$BUILD_TOOLS/apksigner"
+          test -x "$AAPT"
+          test -x "$APKSIGNER"
+
+          BADGING="$("$AAPT" dump badging "$APK")"
+          echo "$BADGING" | grep -F "package: name='$QG_APP_ID' versionCode='$QG_VERSION_CODE' versionName='$QG_VERSION_NAME'"
+          if echo "$BADGING" | grep -q 'application-debuggable'; then
+            echo "::error::Release APK must not be debuggable"
+            exit 1
+          fi
+          "$APKSIGNER" verify --verbose "$APK" >/dev/null
+          jarsigner -verify -strict "$AAB" >/dev/null
+
+          cp "$AAB" "../../QueueGo-${{ matrix.role }}-release.aab"
+          cp "$APK" "../../QueueGo-${{ matrix.role }}-release.apk"
           cd ../..
           sha256sum "QueueGo-${{ matrix.role }}-release.aab" "QueueGo-${{ matrix.role }}-release.apk" > "QueueGo-${{ matrix.role }}-SHA256.txt"
 

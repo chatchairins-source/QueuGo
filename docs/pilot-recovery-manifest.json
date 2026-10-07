@@ -1,11 +1,11 @@
 {
-  "generated_at": "2026-10-07T10:37:00+07:00",
+  "generated_at": "2026-10-07T10:40:00+07:00",
   "github": {
     "repository": "chatchairins-source/QueuGo",
     "source_of_truth": "main",
-    "head_at_manifest": "fe01ac5d6a38f9f0c3b9de4c2553a8b8b0055563",
+    "head_at_manifest": "fd248ccaa8ab7ef3502664c5e80de229a95af8d4",
     "previous_backup_branch": "backup-pre-closed-beta-20261007-0035",
-    "latest_backup_branch": "backup-certified-backup-cli-pin-d67a462e-20261007",
+    "latest_backup_branch": "backup-pre-release-versioning-fd248cca-20261007",
     "certified_source_commit": "fe01ac5d6a38f9f0c3b9de4c2553a8b8b0055563",
     "rc_tests": {
       "run_id": 37567381154,
@@ -198,7 +198,13 @@
     "signing_alias_preflight": true,
     "signing_key_password_preflight": true,
     "signing_secrets_written_to_gradle_properties": false,
-    "signing_secret_transport": "ORG_GRADLE_PROJECT environment variables"
+    "signing_secret_transport": "ORG_GRADLE_PROJECT environment variables",
+    "release_version_code_strategy": "GITHUB_WORKFLOW_RUN_NUMBER",
+    "release_version_name_strategy": "1.0.0-beta.<github.run_number>",
+    "release_artifact_package_verification": true,
+    "release_apk_non_debuggable_verification": true,
+    "release_apk_signature_verification": "APKSIGNER",
+    "release_aab_signature_verification": "JARSIGNER_STRICT"
   },
   "security": {
     "code_surface_hardened": true,
