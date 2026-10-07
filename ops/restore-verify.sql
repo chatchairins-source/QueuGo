@@ -8,7 +8,8 @@ begin
     ('public.users'),('public.shop_profiles'),('public.rider_profiles'),
     ('public.orders'),('public.order_items'),('public.deliveries'),
     ('public.notifications'),('public.products'),('public.markets'),
-    ('public.qg_push_subscriptions'),('public.qg_native_push_tokens')
+    ('public.qg_push_subscriptions'),('public.qg_native_push_tokens'),
+    ('public.qg_ugc_terms_acceptances'),('public.qg_user_blocks'),('public.qg_ugc_reports')
   ) as x(name)
   where to_regclass(x.name) is null;
   if missing is not null then
@@ -24,6 +25,21 @@ begin
   if to_regprocedure('public.qg_enqueue_push()') is null then
     raise exception 'Restore missing push enqueue trigger function';
   end if;
+  if to_regprocedure('public.qg_report_chat(uuid,uuid,text,text)') is null then
+    raise exception 'Restore missing UGC report RPC';
+  end if;
+  if to_regprocedure('queuego_private.qg_chat_moderation_post_allowed(uuid,uuid)') is null then
+    raise exception 'Restore missing private chat moderation helper';
+  end if;
+  if to_regprocedure('public.qg_chat_moderation_post_allowed(uuid,uuid)') is not null then
+    raise exception 'Restore exposed deprecated public chat moderation helper';
+  end if;
+  if not exists(
+    select 1 from information_schema.columns
+    where table_schema='public' and table_name='qg_ugc_reports' and column_name='content_snapshot'
+  ) then
+    raise exception 'Restore missing UGC moderation evidence snapshot column';
+  end if;
 
   if not exists(
     select 1 from pg_trigger
@@ -37,7 +53,7 @@ begin
   if exists(
     select 1 from pg_class c join pg_namespace n on n.oid=c.relnamespace
     where n.nspname='public'
-      and c.relname in ('users','orders','notifications','qg_push_subscriptions','qg_native_push_tokens')
+      and c.relname in ('users','orders','notifications','qg_push_subscriptions','qg_native_push_tokens','qg_ugc_terms_acceptances','qg_user_blocks','qg_ugc_reports')
       and not c.relrowsecurity
   ) then
     raise exception 'Restore lost RLS on a required table';
