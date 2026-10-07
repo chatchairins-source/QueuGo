@@ -1,0 +1,32 @@
+const fs=require('fs'),assert=require('assert');
+const read=p=>fs.readFileSync(p,'utf8');
+const customer=read('index.html'),features=read('customer-features.js'),merchant=read('merchant/index.html'),rider=read('rider/index.html'),admin=read('admin/index.html');
+let checks=0;const ok=(v,m)=>{assert.ok(v,m);checks++};
+for(const source of [customer,features,merchant,rider,admin]){
+  ok(!source.includes('ยืนยันรับเงิน'),'forbidden receive-money confirmation wording');
+  ok(!source.includes('ยืนยันจ่ายเงิน'),'forbidden pay-money confirmation wording');
+  ok(!/payment confirmation/i.test(source),'forbidden Payment Confirmation wording');
+  ok(!source.includes('qg_customer_delivery_pin'),'customer delivery PIN must stay retired');
+}
+ok(customer.includes("rider_to_customer:'กำลังจัดส่ง'"),'Customer rider_to_customer label');
+ok(customer.includes("arrived:'Rider ถึงลูกค้าแล้ว'"),'Customer arrived label');
+ok(features.includes("visibleStatus=o.status==='in_progress'&&o.rider_arrived_customer_at?'arrived':o.status"),'Customer derives arrived from arrival timestamp');
+ok(features.includes("STATUS_LABEL[visibleStatus]||visibleStatus"),'Customer displays derived status');
+ok(features.includes("o.rider_arrived_customer_at,o.total_amount"),'Customer refresh fingerprint includes arrival timestamp');
+ok(features.includes('select=status,rider_id,rider_arrived_customer_at,total_amount'),'Customer refresh query includes arrival timestamp');
+ok(features.includes("stage=o.status==='completed'?4:"),'Customer success step is gated by completed');
+ok(features.includes("closed=['completed','cancelled','no_rider_available'].includes(o.status)"),'Customer closes tracking only on terminal states');
+ok(merchant.includes('riderArrivedCustomerAt:r.rider_arrived_customer_at||null'),'Merchant hydrates arrival timestamp');
+ok(merchant.includes("s=(['in_progress','delivering','rider_to_customer'].includes(raw)&&o?.riderArrivedCustomerAt)?'arrived':raw"),'Merchant derives arrived presentation state');
+ok(merchant.includes("if(s==='arrived')return['delivering','Rider ถึงลูกค้าแล้ว']"),'Merchant arrived stays in delivery group');
+ok(merchant.includes("if(['completed','delivered'].includes(s))return['done','จัดส่งสำเร็จ']"),'Merchant success only for completed/delivered');
+ok(rider.includes("window.statusFromRow=function(row){ return String(row?.status||''); };"),'Rider retains authoritative raw status for actions');
+ok(rider.includes("st==='in_progress'&&o.rider_arrived_customer_at?'Rider ถึงลูกค้าแล้ว':'กำลังไปส่ง'"),'Rider shows arrived presentation without mutating state');
+ok(admin.includes("qtOrderStatusFromDb(r.status,r.note,r.rider_arrived_customer_at)"),'Admin canonicalizer consumes arrival timestamp');
+ok(admin.includes("if(s==='in_progress')return arrivedCustomerAt||"),'Admin derives arrived from timestamp');
+ok(admin.includes("{key:'searching_rider', label:'กำลังหาไรเดอร์'"),'Admin labels searching_rider');
+ok(admin.includes("{key:'rider_assigned', label:'ไรเดอร์รับงานแล้ว'"),'Admin labels rider_assigned');
+ok(admin.includes("{key:'arrived', label:'ถึงลูกค้าแล้ว'"),'Admin labels arrived');
+ok(admin.includes("{key:'completed', label:'ส่งสำเร็จ'"),'Admin reserves success for completed');
+for(const source of [customer,merchant,rider,admin])ok(source.includes('QueueGoOrderNumber'),'All roles use shared QT-XXXX formatter');
+console.log(JSON.stringify({checks,failures:0,scope:'cross-role order status, derived arrived state, payment wording, QT display'}));

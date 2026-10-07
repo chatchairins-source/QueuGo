@@ -124,17 +124,18 @@ const QGCustomer=(()=>{
       closed=['completed','cancelled','no_rider_available'].includes(o.status),
       r=ctx.rider,
       chatOpen=chatAvailable(o),
+      visibleStatus=o.status==='in_progress'&&o.rider_arrived_customer_at?'arrived':o.status,
       stage=o.status==='completed'?4:['in_progress','picked_up'].includes(o.status)?3:['rider_assigned','assigned','preparing','ready'].includes(o.status)?2:['accepted','searching_rider'].includes(o.status)?1:0,
       stageLabels=['สั่งซื้อ','หารายเดอร์','รับสินค้า','กำลังส่ง','สำเร็จ'],
       orderNote=note(o.note).trim(),
-      statusTime=['completed','cancelled','no_rider_available'].includes(o.status)?(o.completed_at||o.updated_at||o.created_at):o.created_at;
+      statusTime=['completed','cancelled','no_rider_available'].includes(o.status)?(o.completed_at||o.updated_at||o.created_at):visibleStatus==='arrived'?(o.rider_arrived_customer_at||o.updated_at||o.created_at):o.created_at;
 
     layout(`<div class="qg-order-page">
       <div class="pt"><button class="back" onclick="go('orders')">${ico('back')}</button><h1>${esc(customerOrderNumber(o))}</h1></div>
 
       <section class="qg-order-hero">
         <div class="qg-order-hero-top">
-          <div><span class="qg-order-kicker">สถานะล่าสุด</span><strong class="qg-order-status">${esc(STATUS_LABEL[o.status]||o.status)}</strong></div>
+          <div><span class="qg-order-kicker">สถานะล่าสุด</span><strong class="qg-order-status">${esc(STATUS_LABEL[visibleStatus]||visibleStatus)}</strong></div>
           <span class="qg-order-time">${esc(date(statusTime))}</span>
         </div>
         ${!['cancelled','no_rider_available'].includes(o.status)?`<div class="qg-order-progress">${stageLabels.map((label,i)=>`<span class="qg-order-step ${i<=stage?'on':''}">${label}</span>`).join('')}</div>`:''}
@@ -295,8 +296,8 @@ const QGCustomer=(()=>{
     };
     if(r&&$('review-cancel'))$('review-cancel').onclick=()=>reviewForm(o,ticket,key,false);
   }
-  const orderVersion=o=>JSON.stringify([o.status,o.rider_id,o.total_amount,o.delivery_fee,o.bundle_customer_savings,o.note]);
-  async function needsOrderRefresh(id){if(!orderSnapshot||orderSnapshot.id!==id||orderSnapshot.actor!==actor()||(!orderSnapshot.closed&&!$('customer-tracking-map')))return true;const key=actor(),hash=location.hash;try{const rows=await db('orders?select=status,rider_id,total_amount,delivery_fee,bundle_customer_savings,note&id=eq.'+encodeURIComponent(id)+'&customer_id=eq.'+encodeURIComponent(S.get().userId)+'&limit=1');if(actor()!==key||location.hash!==hash)return false;return !rows[0]||orderVersion(rows[0])!==orderSnapshot.version}catch(e){return false}}
+  const orderVersion=o=>JSON.stringify([o.status,o.rider_id,o.rider_arrived_customer_at,o.total_amount,o.delivery_fee,o.bundle_customer_savings,o.note]);
+  async function needsOrderRefresh(id){if(!orderSnapshot||orderSnapshot.id!==id||orderSnapshot.actor!==actor()||(!orderSnapshot.closed&&!$('customer-tracking-map')))return true;const key=actor(),hash=location.hash;try{const rows=await db('orders?select=status,rider_id,rider_arrived_customer_at,total_amount,delivery_fee,bundle_customer_savings,note&id=eq.'+encodeURIComponent(id)+'&customer_id=eq.'+encodeURIComponent(S.get().userId)+'&limit=1');if(actor()!==key||location.hash!==hash)return false;return !rows[0]||orderVersion(rows[0])!==orderSnapshot.version}catch(e){return false}}
   const chatKey=id=>'qg_customer_chat_pending_'+S.get()?.userId+'_'+id;
   function chatBody(message){const text=String(message||'');if(text.startsWith('__IMG__')){const image=safeImage(text.slice(7));return image?`<img class="chat-image" src="${esc(image)}" alt="รูปในแชท">`:'รูปภาพไม่พร้อมแสดง'}return esc(text)}
   async function customerChatGate(id,ticket,key){

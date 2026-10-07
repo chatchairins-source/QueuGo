@@ -589,7 +589,7 @@ async function loadShops(){
 }
 const loadMenu=id=>db('products?select=id,shop_id,name,description,price,delivery_price,image,available,delivery_available&shop_id=eq.'+encodeURIComponent(id)+'&delivery_available=eq.true');
 const uuid=()=>crypto.randomUUID();
-const STATUS_LABEL={pending:'รอร้านรับ',accepted:'ร้านรับแล้ว',searching_rider:'กำลังหาไรเดอร์',rider_assigned:'ไรเดอร์รับงานแล้ว',preparing:'กำลังเตรียม',ready:'พร้อมรับสินค้า',assigned:'ไรเดอร์รับงาน',picked_up:'รับสินค้าแล้ว',in_progress:'กำลังจัดส่ง',completed:'ส่งสำเร็จ',no_rider_available:'ไม่พบ Rider',cancelled:'ยกเลิก'};
+const STATUS_LABEL={pending:'รอร้านรับ',accepted:'ร้านรับแล้ว',searching_rider:'กำลังหาไรเดอร์',rider_assigned:'ไรเดอร์รับงานแล้ว',preparing:'กำลังเตรียม',ready:'พร้อมรับสินค้า',assigned:'ไรเดอร์รับงาน',picked_up:'รับสินค้าแล้ว',in_progress:'กำลังจัดส่ง',rider_to_customer:'กำลังจัดส่ง',arrived:'Rider ถึงลูกค้าแล้ว',completed:'ส่งสำเร็จ',no_rider_available:'ไม่พบ Rider',cancelled:'ยกเลิก'};
 async function loadShopProfile(id){const rows=await db('shop_profiles?select=*&id=eq.'+encodeURIComponent(id)+'&limit=1');return Array.isArray(rows)?rows[0]:null}
 async function loadOrderItems(id){return await db('order_items?select=*&order_id=eq.'+encodeURIComponent(id)+'&order=created_at.asc').catch(()=>[])}
 async function activeOrder(){

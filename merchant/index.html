@@ -515,7 +515,7 @@ function qtOrderToRow(o){
   return {id:qtUuidLike(o.id)?o.id:undefined,order_number:String(o.orderNumber||o.orderNo||o.id||uid()),customer_id:o.customerId||null,shop_id:o.shopProfileId||null,technician_id:null,rider_id:o.riderProfileId||null,order_type:'shopping',status:qtOrderStatusToDb(o.status),subtotal:Number(o.subtotal||0),delivery_fee:Number(o.deliveryFee||0),total_amount:Number(o.total||o.totalAmount||0),pickup_address:o.pickupAddress??pickup.address??null,pickup_latitude:o.pickupLat??pickup.lat??null,pickup_longitude:o.pickupLng??pickup.lng??null,delivery_address:o.deliveryAddress??delivery.address??null,delivery_latitude:o.deliveryLat??delivery.lat??null,delivery_longitude:o.deliveryLng??delivery.lng??null,note:(`__QT_ORDER_STATUS__=${o.status}\n`+(o.cancelReason?`__QT_CANCEL_REASON__=${String(o.cancelReason).replace(/\n/g,' ')}\n`:'')+(o.note||'')).trim()||null,created_at:qtIso(o.createdAt),updated_at:qtIso(Date.now())};
 }
 function qtOrderFromRow(r){
-  return {id:r.id,orderNumber:r.order_number,customerId:r.customer_id,shopProfileId:r.shop_id,riderProfileId:r.rider_id,status:qtOrderStatusFromDb(r.status,r.note),orderType:r.order_type,subtotal:Number(r.subtotal||0),gpAmount:r.gp_amount==null?null:Number(r.gp_amount),gpRate:r.gp_rate==null?null:Number(r.gp_rate),deliveryFee:Number(r.delivery_fee||0),total:Number(r.total_amount||0),pickupAddress:r.pickup_address||'',pickupLat:r.pickup_latitude,pickupLng:r.pickup_longitude,deliveryAddress:r.delivery_address||'',deliveryLat:r.delivery_latitude,deliveryLng:r.delivery_longitude,note:r.note||'',cancelReason:(r.note||'').match(/__QT_CANCEL_REASON__=([^\n]+)/)?.[1]||'',riderArrivedShopAt:r.rider_arrived_shop_at||null,createdAt:new Date(r.created_at).getTime(),updatedAt:new Date(r.updated_at||r.created_at).getTime(),items:[]};
+  return {id:r.id,orderNumber:r.order_number,customerId:r.customer_id,shopProfileId:r.shop_id,riderProfileId:r.rider_id,status:qtOrderStatusFromDb(r.status,r.note),orderType:r.order_type,subtotal:Number(r.subtotal||0),gpAmount:r.gp_amount==null?null:Number(r.gp_amount),gpRate:r.gp_rate==null?null:Number(r.gp_rate),deliveryFee:Number(r.delivery_fee||0),total:Number(r.total_amount||0),pickupAddress:r.pickup_address||'',pickupLat:r.pickup_latitude,pickupLng:r.pickup_longitude,deliveryAddress:r.delivery_address||'',deliveryLat:r.delivery_latitude,deliveryLng:r.delivery_longitude,note:r.note||'',cancelReason:(r.note||'').match(/__QT_CANCEL_REASON__=([^\n]+)/)?.[1]||'',riderArrivedShopAt:r.rider_arrived_shop_at||null,riderArrivedCustomerAt:r.rider_arrived_customer_at||null,createdAt:new Date(r.created_at).getTime(),updatedAt:new Date(r.updated_at||r.created_at).getTime(),items:[]};
 }
 
 
@@ -2143,7 +2143,7 @@ window.renderShopDashboardModern=function(u){
 };
 
 window.qgmOrderStatus=function(o){
- const s=String(o?.status||'').toLowerCase();
+ const raw=String(o?.status||'').toLowerCase(),s=(['in_progress','delivering','rider_to_customer'].includes(raw)&&o?.riderArrivedCustomerAt)?'arrived':raw;
  if(s==='pending_shop')return['pending','รอรับ'];
  if(s==='searching_rider')return['searching','กำลังค้นหาไรเดอร์'];
  if(['shop_accepted','accepted'].includes(s))return['preparing','ร้านรับออเดอร์แล้ว'];
