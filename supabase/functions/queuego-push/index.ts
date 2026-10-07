@@ -32,6 +32,11 @@ function roleUrl(role:string,referenceId?:string|null){
   if(role==='rider') return '/QueuGo/rider/#home';
   return referenceId?'/QueuGo/#order/'+encodeURIComponent(referenceId):'/QueuGo/#notifications';
 }
+function visibleOrderText(value:unknown){
+  return String(value??'')
+    .replace(/\b(?:QT|QO)-\d{8}-([0-9]{1,4})\b/gi,(_,code)=>'QT-'+String(code).padStart(4,'0'))
+    .replace(/\b(?:QT|QO)-([0-9]{1,4})\b/gi,(_,code)=>'QT-'+String(code).padStart(4,'0'));
+}
 function b64url(value:Uint8Array|string){
   const bytes=typeof value==='string'?new TextEncoder().encode(value):value;
   let binary='';
@@ -111,8 +116,8 @@ async function sendNativePush(deviceToken:string,user:any,n:any){
         message:{
           token:deviceToken,
           notification:{
-            title:String(n.title||'QueueGo').slice(0,80),
-            body:String(n.message||'มีรายการอัปเดต').slice(0,220)
+            title:visibleOrderText(n.title||'QueueGo').slice(0,80),
+            body:visibleOrderText(n.message||'มีรายการอัปเดต').slice(0,220)
           },
           data,
           android:{
@@ -202,8 +207,8 @@ Deno.serve(async(req)=>{
                   userId:n.user_id,
                   authUserId:user.auth_user_id,
                   role:user.role,
-                  title:n.title||'QueueGo',
-                  message:n.message||'มีรายการอัปเดต',
+                  title:visibleOrderText(n.title||'QueueGo'),
+                  message:visibleOrderText(n.message||'มีรายการอัปเดต'),
                   type:n.type||'notification',
                   referenceId:n.reference_id||null,
                   url:roleUrl(user.role,n.reference_id)
