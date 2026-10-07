@@ -33,6 +33,8 @@ const customerLaundry=read('customer-laundry.js');
 const standaloneLaundry=read('laundry/index.html');
 const merchantLaundry=read('merchant/laundry.js');
 const riderLaundry=read('rider/laundry.js');
+const tableQrHtml=read('table-order.html');
+const tableQr=read('table-order.js');
 const laundryCodeMigration=read('supabase/migrations/20261007043952_unify_laundry_visible_order_codes.sql');
 const posQrCodeMigration=read('supabase/migrations/20261007045146_unify_pos_qr_order_codes.sql');
 const release=read('.github/workflows/build-queuego-apks.yml');
@@ -61,6 +63,10 @@ assert(laundryCodeMigration.includes("from public.laundry_orders l"),'Shared all
 assert(posQrCodeMigration.includes("create or replace function public.pos_edit_bill"),'POS bill RPC must remain versioned in source');
 assert(posQrCodeMigration.includes("create or replace function public.qg_table_checkout"),'Table QR checkout RPC must remain versioned in source');
 assert((posQrCodeMigration.match(/public\.qg_next_order_number\(\)/g)||[]).length>=2,'POS and Table QR order creation must both use the shared server allocator');
+assert(tableQrHtml.includes('src="queuego-order-number.js"'),'Table QR page must load shared order formatter');
+assert(tableQr.includes("QueueGoOrderNumber.format(result)"),'Table QR checkout success must display shared QT code');
+assert(!tableQr.includes("เลขออเดอร์ '+result.order_id"),'Table QR must never display raw order UUID as the order code');
+assert(tableQr.includes("result?.order_number"),'Table QR checkout must require server order_number before confirming success');
 assert(!rider.includes('#${esc(j.order_number||\'\')}'));
 assert(rider.includes('qgShortOrder({order_number:o.order_number,id:o.order_id})'));
 assert(merchant.includes('escText(displayOrderNumber(o))'));
@@ -76,4 +82,4 @@ assert(activeCodeGuard.includes("queuego-visible-order-number"),'allocator must 
 assert(activeCodeGuard.includes("right(o.order_number,4)=v_code"),'allocator must reject an already-active visible code');
 assert(activeCodeGuard.includes("1000 + floor(random() * 9000)"),'new visible codes must remain randomized 4-digit numbers');
 assert(pushEdge.includes("(?:POS|QR)-([0-9A-F]{4,})"),'Push notification formatter must normalize legacy POS/QR codes');
-console.log(JSON.stringify({checks:35,failures:0,scope:'Unified numeric visible order code QT-XXXX across Customer, Merchant, Rider, Admin, Laundry, POS and Table QR including standalone Laundry and legacy POS/QR display compatibility'}));
+console.log(JSON.stringify({checks:39,failures:0,scope:'Unified numeric visible order code QT-XXXX across Customer, Merchant, Rider, Admin, Laundry, POS and Table QR including standalone Laundry and legacy POS/QR display compatibility'}));
