@@ -1,0 +1,54 @@
+{
+  "generated_at": "2026-10-07T07:25:00+07:00",
+  "project_ref": "pkypiqhlrmzocysgeqew",
+  "database_version": "17.6.1.166",
+  "latest_migration": [
+    "20261006173656",
+    "queuego_native_push_transport"
+  ],
+  "counts": {
+    "auth.users": 33,
+    "public.users": 35,
+    "public.shop_profiles": 12,
+    "public.rider_profiles": 3,
+    "public.orders": 26,
+    "public.order_items": 25,
+    "public.deliveries": 19,
+    "public.notifications": 271,
+    "public.products": 8,
+    "public.markets": 2,
+    "public.market_orders": 0,
+    "public.laundry_orders": 3,
+    "public.qg_pickup_proofs": 5,
+    "public.qg_delivery_proofs": 7,
+    "storage.buckets": 3,
+    "storage.objects": 41
+  },
+  "storage": [
+    {
+      "bucket": "gp-slips",
+      "public": false,
+      "objects": 0,
+      "bytes": 0
+    },
+    {
+      "bucket": "merchant-media",
+      "public": true,
+      "objects": 28,
+      "bytes": 13305684
+    },
+    {
+      "bucket": "qg-evidence",
+      "public": false,
+      "objects": 13,
+      "bytes": 35732473
+    }
+  ],
+  "schema": {
+    "public_functions": 210,
+    "security_definer_functions": 191,
+    "types_snapshot": "supabase/database.types.ts"
+  },
+  "contains_personal_data": false,
+  "note": "Counts and byte totals only. No user records, names, phone numbers, addresses, tokens, or object contents are stored in this inventory."
+}
