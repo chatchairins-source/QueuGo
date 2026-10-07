@@ -1,25 +1,25 @@
 {
-  "generated_at": "2026-10-07T10:46:00+07:00",
+  "generated_at": "2026-10-07T10:46:30+07:00",
   "github": {
     "repository": "chatchairins-source/QueuGo",
     "source_of_truth": "main",
-    "head_at_manifest": "f64679dbf7ae787224697b9f1126c092476b5222",
+    "head_at_manifest": "0ee7294a618254fa599ae36abfda77f8557f891a",
     "previous_backup_branch": "backup-pre-closed-beta-20261007-0035",
     "latest_backup_branch": "backup-pre-native-push-config-bootstrap-f64679db-20261007",
-    "certified_source_commit": "1203e4a83bfa2731a738a998f70a3cea7e4fffb0",
+    "certified_source_commit": "0ee7294a618254fa599ae36abfda77f8557f891a",
     "rc_tests": {
-      "run_id": 37567895758,
+      "run_id": 37568188542,
       "status": "SUCCESS",
-      "head_sha": "1203e4a83bfa2731a738a998f70a3cea7e4fffb0"
+      "head_sha": "0ee7294a618254fa599ae36abfda77f8557f891a"
     },
     "chat_retention_tests": {
       "run_id": 37559294226,
       "status": "SUCCESS"
     },
     "pages_deployment_last_checked": {
-      "run_id": 37567895823,
+      "run_id": 37568188154,
       "status": "SUCCESS",
-      "head_sha": "1203e4a83bfa2731a738a998f70a3cea7e4fffb0"
+      "head_sha": "0ee7294a618254fa599ae36abfda77f8557f891a"
     },
     "operational_inventory_commit": "a406bb7f8de013fa6bd7d595ca01832a7ce28293",
     "operational_inventory_rc_run": {
@@ -147,7 +147,7 @@
     ],
     "native_test_firebase_oauth_preflight": true,
     "native_test_preflight_behavior": "When a native token exists, the physical test validates FIREBASE_SERVICE_ACCOUNT_JSON via Google OAuth before creating a push_test notification.",
-    "edge_function_version": 8,
+    "edge_function_version": 9,
     "edge_source_matches_github": true,
     "edge_function_status": "ACTIVE",
     "edge_function_verify_jwt": false,
@@ -165,7 +165,24 @@
       "job_name": "queuego-push-retry",
       "schedule": "* * * * *",
       "command": "SELECT public.qg_wake_push();",
-      "status": "ACTIVE"
+      "status": "ACTIVE",
+      "runtime_checks": [
+        {
+          "runid": 13467,
+          "status": "succeeded",
+          "started_at": "2026-10-07T10:43:00+07:00"
+        },
+        {
+          "runid": 13481,
+          "status": "succeeded",
+          "started_at": "2026-10-07T10:44:00+07:00"
+        },
+        {
+          "runid": 13495,
+          "status": "succeeded",
+          "started_at": "2026-10-07T10:45:00+07:00"
+        }
+      ]
     },
     "legacy_rider_push_cron_removed": true,
     "legacy_wake_rpc_mode": "SERVICE_ROLE_COMPATIBILITY_WRAPPER_TO_QG_WAKE_PUSH",
@@ -173,7 +190,25 @@
     "unified_push_queue_rows_at_switch": 0,
     "native_subscription_bootstraps_push_config": true,
     "push_config_rows_before_first_native_bootstrap": 0,
-    "push_config_bootstrap_reason": "qg_wake_push requires qg_push_config.worker_token before invoking queuego-push; subscribe-native now creates the config row through the existing Edge config() path."
+    "push_config_bootstrap_reason": "qg_wake_push requires qg_push_config.worker_token before invoking queuego-push; subscribe-native now creates the config row through the existing Edge config() path.",
+    "push_tables_direct_client_grants": false,
+    "push_tables_rls_enabled": true,
+    "legacy_push_runtime": {
+      "cron_active": false,
+      "subscription_rows": 0,
+      "outbox_rows": 0,
+      "config_rows": 1,
+      "direct_client_grants": false,
+      "rls_enabled": true,
+      "wake_wrapper": "SERVICE_ROLE_ONLY_TO_QG_WAKE_PUSH"
+    },
+    "unified_runtime_rows": {
+      "config_rows": 0,
+      "native_tokens": 0,
+      "web_subscriptions": 0,
+      "outbox_rows": 0
+    },
+    "notification_code_gate": "PASS_WAITING_EXTERNAL_FIREBASE_AND_PHYSICAL_DEVICE"
   },
   "android": {
     "capacitor_version": "8.0.0",
