@@ -1,9 +1,9 @@
 {
-  "generated_at": "2026-10-07T07:25:00+07:00",
+  "generated_at": "2026-10-07T08:42:00+07:00",
   "github": {
     "repository": "chatchairins-source/QueuGo",
     "source_of_truth": "main",
-    "head_at_manifest": "eedc87e0e3f871d526e31a367ded7fa4c3c22ffc",
+    "head_at_manifest": "a90ad559fe015b2a1012ecc5d27bf039668b2cb1",
     "previous_backup_branch": "backup-pre-closed-beta-20261007-0035",
     "latest_backup_branch": "backup-native-push-pre-closed-beta-20261007-0725"
   },
@@ -19,7 +19,8 @@
     "security_platform_auth": "BLOCKED",
     "security_audit": "BLOCKED",
     "notification_background_physical": "BLOCKED",
-    "external_backup_pipeline": "READY"
+    "external_backup_pipeline": "READY",
+    "ugc_chat_safety": "PASS"
   },
   "production_evidence": {
     "recent_photo_only_completed_orders": 5,
@@ -40,8 +41,8 @@
     "database_version": "17.6.1.166",
     "region": "ap-southeast-2",
     "latest_migration": [
-      "20261007005147",
-      "pilot_fk_index_coverage_phase2"
+      "20261007015540",
+      "account_deletion_ugc_snapshot_cleanup"
     ],
     "edge_functions": [
       {
@@ -131,7 +132,8 @@
     "pilot_test_workflow": ".github/workflows/build-queuego-pilot-apks.yml",
     "pilot_test_apk_ready_when_firebase_secret_present": true,
     "pilot_test_build_type": "debug",
-    "closed_beta_build_type": "release"
+    "closed_beta_build_type": "release",
+    "hard_gate_blocks_build_without_ugc_chat_safety": true
   },
   "security": {
     "code_surface_hardened": true,
@@ -145,5 +147,17 @@
     "unindexed_foreign_keys_before": 44,
     "unindexed_foreign_keys_after_pilot_coverage": 8,
     "note": "Reduced unindexed FK advisor findings from 44 to 8 by indexing active Pilot hot paths. Remaining findings are lower-priority admin/promotion/route-bundle metadata paths."
+  },
+  "ugc": {
+    "terms_version": 1,
+    "community_guidelines": "docs/community-guidelines.html",
+    "customer_report_block_ui": true,
+    "rider_report_block_ui": true,
+    "admin_moderation_queue": true,
+    "server_insert_guard": true,
+    "rls_helper_schema": "queuego_private",
+    "transaction_smoke_test": "PASS",
+    "chat_retention_test": "PASS",
+    "privacy_snapshot_cleanup": true
   }
 }
