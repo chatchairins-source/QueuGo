@@ -1,11 +1,32 @@
 {
-  "generated_at": "2026-10-07T00:30:00+07:00",
+  "generated_at": "2026-10-07T07:25:00+07:00",
   "github": {
     "repository": "chatchairins-source/QueuGo",
     "source_of_truth": "main",
-    "head_at_manifest": "be8b422e4172a6a31b959c8c387bbc865d940d8d",
-    "backup_branch": "backup-pilot-gates-20261007-0026",
-    "backup_branch_commit": "64f48da5f970f7ca65815f82d5b44adeb0ac8ab9"
+    "head_at_manifest": "32640cadc89afe08d2392b13e25285d2b017e72c",
+    "previous_backup_branch": "backup-pre-closed-beta-20261007-0035"
+  },
+  "release_gates": {
+    "account_deletion_privacy": "PASS",
+    "service_area": "PASS",
+    "security_code_gate": "PASS",
+    "notification_background_web_code": "PASS",
+    "notification_background_native_code": "PASS",
+    "core_e2e_production": "PASS",
+    "backup_restore": "BLOCKED",
+    "android_closed_beta": "BLOCKED"
+  },
+  "production_evidence": {
+    "recent_photo_only_completed_orders": 5,
+    "recent_photo_only_with_rider": 5,
+    "recent_photo_only_with_delivery_row": 5,
+    "recent_photo_only_with_pickup_proof": 5,
+    "recent_photo_only_with_delivery_proof": 5,
+    "recent_photo_only_with_notifications": 5,
+    "merchant_action_receipts_after_flow_change": 15,
+    "rider_action_receipts_after_flow_change": 5,
+    "duplicate_merchant_request_ids": 0,
+    "duplicate_rider_request_ids": 0
   },
   "supabase": {
     "project_ref": "pkypiqhlrmzocysgeqew",
@@ -13,28 +34,53 @@
     "plan": "free",
     "database_version": "17.6.1.166",
     "region": "ap-southeast-2",
-    "latest_migrations": [
-      ["20261006082818","rider_photo_only_cleanup"],
-      ["20261006121155","rider_arrival_customer_and_warning_flow"],
-      ["20261006143738","sequential_rider_offer_dispatch_30s_v2"],
-      ["20261006143919","sequential_rider_offer_rls_lock"],
-      ["20261006144615","fix_rider_offer_read_no_dispatch_exec"],
-      ["20261006144936","fix_rider_pool_numeric_return_types"],
-      ["20261006152636","queuego_pilot_account_deletion_privacy"],
-      ["20261006152944","fix_account_deletion_market_order_not_null"],
-      ["20261006155035","queuego_pilot_service_area_gate"],
-      ["20261006155601","queuego_pilot_security_surface_hardening"],
-      ["20261006155707","queuego_pilot_security_rls_explicit_deny"],
-      ["20261006170833","queuego_background_push_unified"]
+    "latest_migration": [
+      "20261006173656",
+      "queuego_native_push_transport"
     ],
     "edge_functions": [
-      {"slug":"account-delete","version":2,"status":"ACTIVE","verify_jwt":true},
-      {"slug":"queuego-push","version":2,"status":"ACTIVE","verify_jwt":false},
-      {"slug":"rider-web-push","version":2,"status":"ACTIVE","verify_jwt":false,"retired":true}
+      {
+        "slug": "account-delete",
+        "version": 2,
+        "status": "ACTIVE",
+        "verify_jwt": true
+      },
+      {
+        "slug": "queuego-push",
+        "version": 3,
+        "status": "ACTIVE",
+        "verify_jwt": false
+      },
+      {
+        "slug": "rider-web-push",
+        "version": 2,
+        "status": "ACTIVE",
+        "verify_jwt": false,
+        "retired": true
+      }
     ],
     "managed_daily_backup_certified": false,
     "restore_drill_certified": false,
-    "blocking_reason": "Supabase Free plan does not provide managed daily backups. Upgrade to a paid plan or maintain an external logical dump before declaring the Backup/Restore gate passed.",
-    "storage_note": "Supabase database backups do not restore Storage objects; Storage requires a separate backup plan."
+    "blocking_reason": "QueueTech is on Supabase Free. Managed daily backup/restore is not certified. Upgrade to a paid plan or maintain and drill an external logical backup before changing restore_drill_certified to true.",
+    "storage_note": "Database restore does not restore Storage objects; Storage requires a separate backup/restore procedure."
+  },
+  "notifications": {
+    "unified_outbox": true,
+    "web_push_transport": true,
+    "native_fcm_transport": true,
+    "native_push_tokens_in_production": 0,
+    "physical_background_notification_certified": false,
+    "blockers": [
+      "GitHub Actions secret QG_FIREBASE_GOOGLE_SERVICES_JSON_B64 has not been proven by an Android Release run.",
+      "Supabase Edge secret FIREBASE_SERVICE_ACCOUNT_JSON cannot be verified from the available connector.",
+      "No physical Android device has registered a native token yet."
+    ]
+  },
+  "android": {
+    "capacitor_version": "8.0.0",
+    "push_plugin": "@capacitor/push-notifications@8.0.0",
+    "release_workflow_has_run": false,
+    "hard_gate_blocks_build_without_restore_certification": true,
+    "hard_gate_blocks_build_without_firebase_config": true
   }
 }
