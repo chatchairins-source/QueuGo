@@ -1,25 +1,25 @@
 {
-  "generated_at": "2026-10-07T11:16:00+07:00",
+  "generated_at": "2026-10-07T11:21:00+07:00",
   "github": {
     "repository": "chatchairins-source/QueuGo",
     "source_of_truth": "main",
-    "head_at_manifest": "dc56ed5ec9a279541ef0474150d4573a6075826b",
+    "head_at_manifest": "f3c92184be2f8d8fe5ea65b611e0039a7e2a12a7",
     "previous_backup_branch": "backup-pre-closed-beta-20261007-0035",
     "latest_backup_branch": "backup-pre-active-order-code-9fd0c877-20261007",
-    "certified_source_commit": "dc56ed5ec9a279541ef0474150d4573a6075826b",
+    "certified_source_commit": "f3c92184be2f8d8fe5ea65b611e0039a7e2a12a7",
     "rc_tests": {
-      "run_id": 37570549451,
+      "run_id": 37570842458,
       "status": "SUCCESS",
-      "head_sha": "dc56ed5ec9a279541ef0474150d4573a6075826b"
+      "head_sha": "f3c92184be2f8d8fe5ea65b611e0039a7e2a12a7"
     },
     "chat_retention_tests": {
       "run_id": 37559294226,
       "status": "SUCCESS"
     },
     "pages_deployment_last_checked": {
-      "run_id": 37570548847,
+      "run_id": 37570842377,
       "status": "SUCCESS",
-      "head_sha": "dc56ed5ec9a279541ef0474150d4573a6075826b"
+      "head_sha": "f3c92184be2f8d8fe5ea65b611e0039a7e2a12a7"
     },
     "operational_inventory_commit": "a406bb7f8de013fa6bd7d595ca01832a7ce28293",
     "operational_inventory_rc_run": {
@@ -147,11 +147,11 @@
     ],
     "native_test_firebase_oauth_preflight": true,
     "native_test_preflight_behavior": "When a native token exists, the physical test validates FIREBASE_SERVICE_ACCOUNT_JSON via Google OAuth before creating a push_test notification.",
-    "edge_function_version": 9,
+    "edge_function_version": 10,
     "edge_source_matches_github": true,
     "edge_function_status": "ACTIVE",
     "edge_function_verify_jwt": false,
-    "edge_function_sha256": "59160b8fd81d0118f98c6c5fa30a48ec4c47b7284acb0dbde062acd788032585",
+    "edge_function_sha256": "018d6d5acf137597d6d28ea22b5308d55d388dcd5236a444f8e611c3a804e710",
     "edge_deployed_at": "2026-10-07T10:36:14+07:00",
     "edge_post_deploy_log_check": {
       "checked": true,
@@ -208,7 +208,10 @@
       "web_subscriptions": 0,
       "outbox_rows": 0
     },
-    "notification_code_gate": "PASS_WAITING_EXTERNAL_FIREBASE_AND_PHYSICAL_DEVICE"
+    "notification_code_gate": "PASS_WAITING_EXTERNAL_FIREBASE_AND_PHYSICAL_DEVICE",
+    "visible_order_code_normalization": "QT-XXXX",
+    "native_push_order_code_normalized": true,
+    "web_push_order_code_normalized": true
   },
   "android": {
     "capacitor_version": "8.0.0",
@@ -457,6 +460,15 @@
     "all_roles_shared_formatter": true,
     "live_allocator_sample": "QT-20261007-4488",
     "live_allocator_sample_canonical_format": true,
-    "live_allocator_sample_not_conflicting_with_active": true
+    "live_allocator_sample_not_conflicting_with_active": true,
+    "system_push_normalized": true,
+    "all_visible_surfaces": [
+      "customer",
+      "merchant",
+      "rider",
+      "admin",
+      "native_push",
+      "web_push"
+    ]
   }
 }
