@@ -1,11 +1,11 @@
 {
-  "generated_at": "2026-10-07T10:09:00+07:00",
+  "generated_at": "2026-10-07T10:17:00+07:00",
   "github": {
     "repository": "chatchairins-source/QueuGo",
     "source_of_truth": "main",
-    "head_at_manifest": "bf90364c633119740f5402a428c7a7c610725676",
+    "head_at_manifest": "67bdab513362ad8a4357337429d4bd770a66b3aa",
     "previous_backup_branch": "backup-pre-closed-beta-20261007-0035",
-    "latest_backup_branch": "backup-pre-target-audience-09baf029-20261007",
+    "latest_backup_branch": "backup-pre-final-fk-indexes-67bdab51-20261007",
     "certified_source_commit": "bf90364c633119740f5402a428c7a7c610725676",
     "rc_tests": {
       "run_id": 37565284730,
@@ -66,8 +66,8 @@
     "database_version": "17.6.1.166",
     "region": "ap-southeast-2",
     "latest_migration": [
-      "20261007023348",
-      "ugc_chat_revoke_anon_table_privileges"
+      "20261007031513",
+      "cover_remaining_foreign_keys"
     ],
     "edge_functions": [
       {
@@ -181,7 +181,7 @@
   "security": {
     "code_surface_hardened": true,
     "leaked_password_protection_enabled": false,
-    "leaked_password_protection_blocker": "Supabase Security Advisor still reports Auth leaked-password protection disabled. The available connector cannot change this Auth platform setting.",
+    "leaked_password_protection_blocker": "Supabase currently reports this as a WARN and current documentation states leaked-password protection is available on Pro Plan and above. QueueGo remains on Free; this cannot be enabled without a plan change.",
     "signup_password_minimum_characters": 8,
     "anonymous_security_definer_review": "docs/security-anon-definer-allowlist.json",
     "security_audit": "PASS",
@@ -192,7 +192,7 @@
     "authenticated_no_direct_guard_reviewed_count": 10,
     "audit_report": "docs/security-audit-20261007.md",
     "production_error_window_after_hardening": "CLEAN",
-    "leaked_password_protection_last_checked_at": "2026-10-07T09:52:31+07:00",
+    "leaked_password_protection_last_checked_at": "2026-10-07T10:14:24+07:00",
     "ugc_anon_chat_table_privileges_revoked": true,
     "ugc_anon_chat_table_privilege_migration": "20261007023348_ugc_chat_revoke_anon_table_privileges",
     "ugc_anon_chat_live_privilege_check": {
@@ -208,14 +208,17 @@
         "update": true,
         "delete": true
       }
-    }
+    },
+    "leaked_password_protection_advisor_level": "WARN",
+    "leaked_password_protection_plan_requirement": "PRO_OR_ABOVE"
   },
   "performance": {
     "auth_rls_initplan_warnings_before": 13,
     "auth_rls_initplan_warnings_after": 0,
     "unindexed_foreign_keys_before": 44,
-    "unindexed_foreign_keys_after_pilot_coverage": 8,
-    "note": "Reduced unindexed FK advisor findings from 44 to 8 by indexing active Pilot hot paths. Remaining findings are lower-priority admin/promotion/route-bundle metadata paths."
+    "unindexed_foreign_keys_after_pilot_coverage": 0,
+    "note": "Supabase Performance Advisor now reports 0 unindexed foreign-key findings and 0 auth RLS initplan findings after additive index coverage.",
+    "final_fk_index_migration": "20261007031513_cover_remaining_foreign_keys.sql"
   },
   "ugc": {
     "terms_version": 1,
@@ -290,7 +293,7 @@
     "target_audience_console_entry": "PENDING_PLAY_CONSOLE_ENTRY"
   },
   "remaining_external_blockers": [
-    "Enable Supabase Auth leaked-password protection.",
+    "Decide whether to upgrade Supabase to Pro to enable leaked-password protection; current Supabase documentation marks this feature Pro-only.",
     "Configure QG_SUPABASE_DB_URL, QG_SUPABASE_SERVICE_ROLE_KEY and QG_BACKUP_PASSPHRASE, then pass QueueGo Encrypted Backup Restore Drill.",
     "Configure QG_FIREBASE_GOOGLE_SERVICES_JSON_B64 and Supabase FIREBASE_SERVICE_ACCOUNT_JSON.",
     "Configure Android release signing secrets.",
