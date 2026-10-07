@@ -25,6 +25,8 @@ ok(customer.includes('customerChatGate')&&customer.includes('customerChatReport'
 ok(rider.includes('qgChatGateScreen')&&rider.includes('qgOpenRiderChatReport')&&rider.includes('qgOpenRiderChatSafety'),'Rider chat must enforce terms/report/block');
 ok(admin.includes('qgAdminUGCReports')&&admin.includes('qg_admin_ugc_report_action'),'Admin must have UGC moderation queue');
 ok(admin.includes('content_snapshot'),'Admin moderation must survive chat expiry');
+ok(!/qgAdminLoadUGCReports[\s\S]{0,2600}order_chat_messages\?/.test(admin),'Admin UGC queue must not read live chat rooms');
+ok(/data:image\\\/(?:jpeg\|png\|webp)/.test(admin)||admin.includes('data:image\\/(?:jpeg|png|webp)'), 'Admin must render only reported image snapshots with a strict image data URL allowlist');
 for(const table of ['qg_ugc_terms_acceptances','qg_user_blocks','qg_ugc_reports'])ok(migration.includes('public.'+table),'UGC migration must create '+table);
 ok(migration.includes('qg_ugc_terms_no_client_access')&&migration.includes('qg_user_blocks_no_client_access')&&migration.includes('qg_ugc_reports_no_client_access'),'UGC internal tables must deny direct client table access');
 ok(migration.includes('qg_chat_moderation_post_allowed')&&migration.includes('order_chat_messages_insert'),'order chat insert policy must enforce moderation server-side');
@@ -36,6 +38,7 @@ ok(release.includes('queuego-ugc.js')&&release.includes('community-guidelines.ht
 ok(pilot.includes('queuego-ugc.js')&&pilot.includes('community-guidelines.html'),'Pilot APK bundle must include UGC safety assets');
 ok(/รายงานและบล็อก/.test(rules)&&/เนื้อหาที่ห้าม/.test(rules),'community rules must define prohibited content and report/block behavior');
 ok(!/dbSet\(['"]qt_order_chat_/.test(merchant),'Merchant must not have an active legacy order-chat sender without moderation UI');
+ok(!/qtPersistChat|qt_order_chat_|qt-shop-chat|qt-chat-open/.test(merchant),'Merchant must not retain dead legacy order-chat implementation');
 ok(!merchant.includes('function qtPersistChat'),'Merchant dead legacy chat persistence must stay removed');
 ok(!merchant.includes('qt_order_chat_'),'Merchant dead legacy chat cache keys must stay removed');
 
