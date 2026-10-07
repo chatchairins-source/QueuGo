@@ -78,6 +78,37 @@ main{width:100%;max-width:720px;margin:auto;padding:0 12px 92px}
 .pf{display:flex;align-items:center;gap:13px;padding:18px 0 20px}.av{width:70px;height:70px;border-radius:23px;background:#e9eaec;display:grid;place-items:center;font-size:26px;font-weight:800;color:#9a9ea5}
 .pf h1{font-size:21px}.pf p{margin:3px 0;color:var(--mu);font-size:12px}
 .acc{display:inline-flex;background:var(--gs);color:#0b9660;border-radius:999px;padding:4px 8px;font-size:10px;font-weight:700;margin-top:5px}
+
+/* Customer profile — compact grouped settings */
+.qg-profile{padding-top:4px}
+.qg-profile-hero{display:flex;align-items:center;gap:12px;padding:14px 2px 12px}
+.qg-profile-avatar{width:60px;height:60px;flex:0 0 60px;border-radius:20px;background:#e9eaec;display:grid;place-items:center;overflow:hidden;color:#989da5;font-size:22px;font-weight:850}
+.qg-profile-avatar img{width:100%;height:100%;object-fit:cover}
+.qg-profile-copy{min-width:0}
+.qg-profile-copy h1{margin:0;font-size:20px;line-height:1.15}
+.qg-profile-copy p{margin:3px 0 0;color:var(--mu);font-size:11px;line-height:1.3;overflow-wrap:anywhere}
+.qg-profile-account{display:inline-flex;margin-top:5px;padding:3px 7px;border-radius:999px;background:var(--gs);color:#0a9660;font-size:9px;font-weight:800}
+.qg-profile-section{margin-top:10px}
+.qg-profile-section>h2{margin:0 2px 6px;color:#777d85;font-size:10px;font-weight:850;letter-spacing:.2px}
+.qg-profile-card{overflow:hidden;border:1px solid var(--ln);border-radius:16px;background:#fff}
+.qg-profile-row{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;min-height:50px;padding:10px 12px;border:0;border-bottom:1px solid var(--ln);background:#fff;color:var(--ink);text-align:left;cursor:pointer}
+.qg-profile-row:last-child{border-bottom:0}
+.qg-profile-row:disabled{opacity:.55}
+.qg-profile-row-copy{display:grid;gap:2px;min-width:0}
+.qg-profile-row-copy b{font-size:13px;line-height:1.25}
+.qg-profile-row-copy small{color:#8a8f96;font-size:9.5px;line-height:1.35;font-weight:600}
+.qg-profile-chevron{flex:0 0 auto;color:#afb3b9;font-size:22px;line-height:1}
+.qg-profile-state{flex:0 0 auto;min-width:38px;padding:4px 7px;border-radius:999px;background:#f1f2f4;color:#7d8289;font-size:9px;font-weight:850;text-align:center}
+.qg-profile-state.on{background:#e9faf2;color:#0a9660}
+.qg-profile-note{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:7px;padding:8px 10px;border-radius:12px;background:#f7f7f8;color:#737980}
+.qg-profile-note b{font-size:10px;color:#5d6269}
+.qg-profile-note span{font-size:9.5px;text-align:right}
+.qg-profile-danger b{color:#d92f3e}
+@media(max-width:380px){
+  .qg-profile-row{padding:9px 10px}
+  .qg-profile-row-copy b{font-size:12.5px}
+  .qg-profile-row-copy small{font-size:9px}
+}
 .in{width:100%;height:52px;border:1px solid var(--ln);border-radius:16px;background:#fff;padding:0 15px;outline:none;margin-bottom:10px}
 .in:focus{border-color:var(--red)}
 .card{background:#fff;border:1px solid var(--ln);border-radius:16px;padding:13px;margin-top:12px}
@@ -1115,7 +1146,7 @@ addEventListener('hashchange',()=>route());
 <script src="queuego-native-push.js?v=20261007-native1"></script>
 <script src="queuego-push.js?v=20261007-native1"></script>
 <script>QueueGoPush.configure({role:'customer',getAccessToken:()=>token(true)});</script>
-<script src="customer-features.js?v=20261007-completed-summary2"></script>
+<script src="customer-features.js?v=20261007-profile3"></script>
 <script src="customer-laundry.js?v=20261006-orderlist5"></script>
 <script>route();</script>
 </body>
