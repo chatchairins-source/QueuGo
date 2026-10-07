@@ -1,11 +1,11 @@
 {
-  "generated_at": "2026-10-07T12:42:00+07:00",
+  "generated_at": "2026-10-07T13:06:02+07:00",
   "github": {
     "repository": "chatchairins-source/QueuGo",
     "source_of_truth": "main",
-    "head_at_manifest": "14b5d20a46ac2f936cc738ff1dda0df31dcc3bae",
+    "head_at_manifest": "bf8d9709e8f21f776586b2df58ec4633507f4334",
     "previous_backup_branch": "backup-pre-closed-beta-20261007-0035",
-    "latest_backup_branch": "backup-certified-qt-all-surfaces-14b5d20a-20261007",
+    "latest_backup_branch": "backup-post-table-qr-qt-bf8d9709-20261007",
     "certified_source_commit": "14b5d20a46ac2f936cc738ff1dda0df31dcc3bae",
     "rc_tests": {
       "run_id": 37577502279,
@@ -33,7 +33,11 @@
     "target_audience_decision_commit": "bf90364c633119740f5402a428c7a7c610725676",
     "push_firebase_preflight_commit": "7c3f0a2a2d8ebb103ba30e014022929699c4f175",
     "android_signing_hardening_commit": "6823cc2da77cfb9781673ce8fd4e9733e4446f54",
-    "pilot_provenance_commit": "6cc35be3d32c9c79016ea4bab728240fc10264c7"
+    "pilot_provenance_commit": "6cc35be3d32c9c79016ea4bab728240fc10264c7",
+    "latest_source_verification_commit": "bf8d9709e8f21f776586b2df58ec4633507f4334",
+    "latest_source_verification_status": "PASS_REMOTE_SOURCE_CHECKS",
+    "latest_source_verification_checks": 38,
+    "latest_source_verification_failures": 0
   },
   "release_gates": {
     "account_deletion_privacy": "PASS",
@@ -148,18 +152,20 @@
     ],
     "native_test_firebase_oauth_preflight": true,
     "native_test_preflight_behavior": "When a native token exists, the physical test validates FIREBASE_SERVICE_ACCOUNT_JSON via Google OAuth before creating a push_test notification.",
-    "edge_function_version": 11,
+    "edge_function_version": 12,
     "edge_source_matches_github": true,
     "edge_function_status": "ACTIVE",
     "edge_function_verify_jwt": false,
-    "edge_function_sha256": "db9ef2c3e83a805892ec2615e1e90010ea5b37534ad0add002a84c0566abefcf",
-    "edge_deployed_at": "2026-10-07T10:36:14+07:00",
+    "edge_function_sha256": "ab62a45d7f757accb6e298d70261a0f219d1b4c4266a65b0d36e965cf3f36aac",
+    "edge_deployed_at": "2026-10-07T12:10:26+07:00",
     "edge_post_deploy_log_check": {
       "checked": true,
-      "checked_after_version": 11,
+      "checked_after_version": 12,
       "error_events_observed": 0,
       "status": "CLEAN_NO_ERROR_EVENTS_OBSERVED",
-      "note": "Version 11 source was read back from Supabase and matched GitHub byte-for-byte. No post-deploy error event was observed in the checked window."
+      "checked_window_start": "2026-10-07T12:10:26+07:00",
+      "checked_window_end": "2026-10-07T12:56:00+07:00",
+      "note": "Version 12 source was read back from Supabase and matched GitHub byte-for-byte. No queuego-push error event was observed in the checked post-deploy window."
     },
     "push_retry_cron": {
       "job_name": "queuego-push-retry",
@@ -501,11 +507,21 @@
     "pos_shared_allocator": true,
     "table_qr_shared_allocator": true,
     "pos_qr_migration": "20261007045146_unify_pos_qr_order_codes.sql",
-    "order_number_test_checks": 35,
+    "order_number_test_checks": 39,
     "legacy_pos_qr_display_normalized": true,
     "certified_source_commit": "14b5d20a46ac2f936cc738ff1dda0df31dcc3bae",
     "certified_rc_run": 37577502279,
-    "standalone_laundry_shared_formatter": true
+    "standalone_laundry_shared_formatter": true,
+    "table_qr_shared_formatter": true,
+    "table_qr_raw_uuid_display": false,
+    "table_qr_formatter_loader_commit": "b32c09b6eb536e3153229757b1efbc35d0698cb6",
+    "table_qr_fix_commit": "0ac758bb2eb98ea79f7dc3d6902fdd0ffc42f30a",
+    "table_qr_regression_guard_commit": "bf8d9709e8f21f776586b2df58ec4633507f4334",
+    "remote_source_checks": 38,
+    "remote_source_failures": 0,
+    "source_verification_status": "PASS",
+    "last_rc_certified_commit": "14b5d20a46ac2f936cc738ff1dda0df31dcc3bae",
+    "last_rc_certified_run": 37577502279
   },
   "production_integrity_audit": {
     "checked_at": "2026-10-07T11:54:00+07:00",
