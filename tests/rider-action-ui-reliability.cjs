@@ -50,6 +50,13 @@ ok(!customer.includes('qg-handoff-pin'),'Customer must not render a delivery PIN
 ok(rider.includes("'phone': '<svg"),'pickup and delivery screens must retain a real phone icon');
 ok(rider.includes("const APP_VERSION='5.0.0';"),'Rider V5 strict rebuild must expose the current app version');
 ok(rider.includes("function qgOpenAccountSettings()"),'profile must expose real account settings');
+ok(rider.includes('RIDER PROFILE COMPACT GROUPED V1'),'Rider profile must keep the compact grouped visual system');
+ok(rider.includes('class="qg-setting-section"'),'Rider profile settings must be grouped into sections');
+ok(rider.includes('<h2>การรับงาน</h2>'),'Rider profile must separate work availability settings');
+ok(rider.includes('<h2>การแจ้งเตือน</h2>'),'Rider profile must separate notification settings');
+ok(rider.includes('<h2>ความเป็นส่วนตัวและบัญชี</h2>'),'Rider profile must group privacy/account actions');
+ok(rider.includes('class="qg-setting" id="qg-logout"'),'Rider logout must remain a normal account action');
+ok(!rider.includes('class="qg-setting danger" id="qg-logout"'),'Rider logout must not be styled as a destructive action');
 ok(rider.includes("ข้อมูลรถที่อนุมัติ"),'approved vehicle identity must remain protected');
 ok(!rider.includes("vehicle_type:vehicle,vehicle_plate:nextPlate"),'account settings must not silently change approved vehicle identity');
 ok(rider.includes("item_image&order_id=eq."),'pickup/delivery verification must read immutable item image snapshots when available');
