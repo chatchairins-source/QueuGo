@@ -1,23 +1,30 @@
 {
-  "generated_at": "2026-10-07T09:27:00+07:00",
+  "generated_at": "2026-10-07T09:54:00+07:00",
   "github": {
     "repository": "chatchairins-source/QueuGo",
     "source_of_truth": "main",
-    "head_at_manifest": "51e99d6c25914f51f0c742574c42492103528505",
+    "head_at_manifest": "a406bb7f8de013fa6bd7d595ca01832a7ce28293",
     "previous_backup_branch": "backup-pre-closed-beta-20261007-0035",
-    "latest_backup_branch": "backup-certified-pre-external-blockers-51e99d6c-20261007",
-    "certified_source_commit": "51e99d6c25914f51f0c742574c42492103528505",
+    "latest_backup_branch": "backup-post-ugc-chat-hardening-20261007",
+    "certified_source_commit": "9541954e354a38024f15f022e355d64b05cdb6c7",
     "rc_tests": {
-      "run_id": 37561980962,
-      "status": "SUCCESS"
+      "run_id": 37562910676,
+      "status": "SUCCESS",
+      "head_sha": "9541954e354a38024f15f022e355d64b05cdb6c7"
     },
     "chat_retention_tests": {
       "run_id": 37559294226,
       "status": "SUCCESS"
     },
     "pages_deployment_last_checked": {
-      "run_id": 37561980652,
-      "status": "SUCCESS"
+      "run_id": 37562909838,
+      "status": "SUCCESS",
+      "head_sha": "9541954e354a38024f15f022e355d64b05cdb6c7"
+    },
+    "operational_inventory_commit": "a406bb7f8de013fa6bd7d595ca01832a7ce28293",
+    "operational_inventory_rc_run": {
+      "run_id": 37564143214,
+      "status": "IN_PROGRESS"
     }
   },
   "release_gates": {
@@ -55,8 +62,8 @@
     "database_version": "17.6.1.166",
     "region": "ap-southeast-2",
     "latest_migration": [
-      "20261007021827",
-      "account_deletion_ugc_snapshot_cleanup"
+      "20261007023348",
+      "ugc_chat_revoke_anon_table_privileges"
     ],
     "edge_functions": [
       {
@@ -98,7 +105,10 @@
         "QG_SUPABASE_DB_URL",
         "QG_SUPABASE_SERVICE_ROLE_KEY",
         "QG_BACKUP_PASSPHRASE"
-      ]
+      ],
+      "run_attempt": 2,
+      "checked_at": "2026-10-07T09:51:18+07:00",
+      "latest_validation_result": "FAIL"
     },
     "restore_drill_ugc_verification_ready": true
   },
@@ -142,7 +152,10 @@
         "QG_ANDROID_STORE_PASSWORD",
         "QG_ANDROID_KEY_ALIAS",
         "QG_ANDROID_KEY_PASSWORD"
-      ]
+      ],
+      "run_attempt": 2,
+      "checked_at": "2026-10-07T09:51:17+07:00",
+      "latest_validation_result": "FAIL"
     },
     "pilot_test_workflow": ".github/workflows/build-queuego-pilot-apks.yml",
     "pilot_test_apk_ready_when_firebase_secret_present": true,
@@ -174,7 +187,24 @@
     "authenticated_direct_guard_count": 113,
     "authenticated_no_direct_guard_reviewed_count": 10,
     "audit_report": "docs/security-audit-20261007.md",
-    "production_error_window_after_hardening": "CLEAN"
+    "production_error_window_after_hardening": "CLEAN",
+    "leaked_password_protection_last_checked_at": "2026-10-07T09:52:31+07:00",
+    "ugc_anon_chat_table_privileges_revoked": true,
+    "ugc_anon_chat_table_privilege_migration": "20261007023348_ugc_chat_revoke_anon_table_privileges",
+    "ugc_anon_chat_live_privilege_check": {
+      "anon": {
+        "select": false,
+        "insert": false,
+        "update": false,
+        "delete": false
+      },
+      "authenticated": {
+        "select": true,
+        "insert": true,
+        "update": true,
+        "delete": true
+      }
+    }
   },
   "performance": {
     "auth_rls_initplan_warnings_before": 13,
@@ -202,7 +232,14 @@
     "anon_rpc_access": false,
     "live_real_order_transaction": "PENDING_REAL_CHAT_WINDOW",
     "live_real_order_note": "No current real order is inside the permitted chat window. No fake/demo production order will be created for certification.",
-    "android_role_bundle_verified": true
+    "android_role_bundle_verified": true,
+    "anon_order_chat_table_access": false,
+    "focused_source_gate": {
+      "checks": 45,
+      "failures": 0,
+      "status": "PASS"
+    },
+    "privilege_hardening_migration": "20261007023348_ugc_chat_revoke_anon_table_privileges.sql"
   },
   "play": {
     "readiness_doc": "docs/play-closed-beta-readiness.md",
