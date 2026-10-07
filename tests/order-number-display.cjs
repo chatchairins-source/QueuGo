@@ -8,10 +8,13 @@ assert.equal(format('QT-20261006-2141'),'QT-2141');
 assert.equal(format('QT-001'),'QT-0001');
 assert.equal(format({order_number:'QT-20261006-7015'}),'QT-7015');
 assert.equal(format({orderNumber:'QT-9198'}),'QT-9198');
-assert.equal(format({id:'abc-def-1234'}),'QT-1234');
-assert(/^QT-\d{4}$/.test(format({id:'d889d1a6-c10d-4f61-a6c8-31312dd6cbd1'})));
+assert.equal(format({orderNumber:'QO-9198'}),'QT-9198');
+assert.equal(format({order_number:'LW-20260930-112419-e26b'}),'QT-E26B');
+assert.equal(format({id:'abc-def-1234'}),'QT-----');
+assert.equal(format({id:'d889d1a6-c10d-4f61-a6c8-31312dd6cbd1'}),'QT-----');
 assert.equal(replaceInText('กรุณาตรวจสอบคำสั่งซื้อ QT-20261006-2141'),'กรุณาตรวจสอบคำสั่งซื้อ QT-2141');
 assert.equal(replaceInText('ออเดอร์ QO-9198 พร้อมส่ง'),'ออเดอร์ QT-9198');
+assert(!format('QT-20261006-2141').startsWith('QO-'),'must never emit QO');
 
 const customer=read('index.html');
 const merchant=read('merchant/index.html');
