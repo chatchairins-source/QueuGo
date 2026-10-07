@@ -3,12 +3,12 @@
   "github": {
     "repository": "chatchairins-source/QueuGo",
     "source_of_truth": "main",
-    "head_at_manifest": "75a60ef35d86370083b954d2cbdb60da11a68459",
+    "head_at_manifest": "a435b2d53c67e2b0a643e26fb5df19dd69909bed",
     "previous_backup_branch": "backup-pre-closed-beta-20261007-0035",
-    "latest_backup_branch": "backup-native-push-pre-closed-beta-20261007-0725",
-    "certified_source_commit": "75a60ef35d86370083b954d2cbdb60da11a68459",
+    "latest_backup_branch": "backup-play-ugc-ready-20261007-0842",
+    "certified_source_commit": "a435b2d53c67e2b0a643e26fb5df19dd69909bed",
     "rc_tests": {
-      "run_id": 37560041087,
+      "run_id": 37560557555,
       "status": "SUCCESS"
     },
     "chat_retention_tests": {
@@ -16,7 +16,7 @@
       "status": "SUCCESS"
     },
     "pages_deployment_last_checked": {
-      "run_id": 37560040566,
+      "run_id": 37560556838,
       "status": "SUCCESS"
     }
   },
@@ -146,7 +146,10 @@
     "pilot_test_apk_ready_when_firebase_secret_present": true,
     "pilot_test_build_type": "debug",
     "closed_beta_build_type": "release",
-    "hard_gate_blocks_build_without_ugc_chat_safety": true
+    "hard_gate_blocks_build_without_ugc_chat_safety": true,
+    "target_sdk": 36,
+    "compile_sdk": 36,
+    "notification_permission_gate": true
   },
   "security": {
     "code_surface_hardened": true,
@@ -174,6 +177,22 @@
     "chat_retention_test": "PASS",
     "privacy_snapshot_cleanup": true,
     "source_migration": "20261007005927_queuego_ugc_chat_moderation.sql",
-    "admin_snapshot_image_review": true
+    "admin_snapshot_image_review": true,
+    "admin_snapshot_only_review": true,
+    "direct_client_table_access": false,
+    "anon_rpc_access": false,
+    "live_real_order_transaction": "PENDING_REAL_CHAT_WINDOW",
+    "live_real_order_note": "No current real order is inside the permitted chat window. No fake/demo production order will be created for certification."
+  },
+  "play": {
+    "readiness_doc": "docs/play-closed-beta-readiness.md",
+    "target_api_policy_checked_at": "2026-10-07",
+    "target_api_required": 36,
+    "account_deletion_external_page": "docs/account-deletion.html",
+    "privacy_policy": "docs/privacy.html",
+    "community_guidelines": "docs/community-guidelines.html",
+    "data_safety_draft_ready": true,
+    "provider_sharing_classification": "PENDING_CONTRACT_VERIFICATION",
+    "personal_account_closed_test_requirement": "PENDING_PLAY_ACCOUNT_TYPE_CHECK"
   }
 }
