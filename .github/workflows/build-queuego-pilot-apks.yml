@@ -291,14 +291,39 @@ jobs:
 
       - name: Build Pilot test APK
         shell: bash
+        env:
+          QG_APP_ID: ${{ matrix.appid }}
+          QG_GIT_SHA: ${{ github.sha }}
+          QG_RUN_ID: ${{ github.run_id }}
         run: |
           set -euo pipefail
           cd android-build/android
           chmod +x gradlew
           ./gradlew assembleDebug --no-daemon
-          cp app/build/outputs/apk/debug/app-debug.apk "../../QueueGo-${{ matrix.role }}-pilot-test.apk"
+
+          APK=app/build/outputs/apk/debug/app-debug.apk
+          test -s "$APK"
+          BUILD_TOOLS="$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -n1)"
+          AAPT="$BUILD_TOOLS/aapt"
+          test -x "$AAPT"
+          BADGING="$("$AAPT" dump badging "$APK")"
+          echo "$BADGING" | grep -F "package: name='$QG_APP_ID'"
+          if ! echo "$BADGING" | grep -q 'application-debuggable'; then
+            echo "::error::Pilot test APK must remain a debug build"
+            exit 1
+          fi
+
+          cp "$APK" "../../QueueGo-${{ matrix.role }}-pilot-test.apk"
           cd ../..
           sha256sum "QueueGo-${{ matrix.role }}-pilot-test.apk" > "QueueGo-${{ matrix.role }}-pilot-test-SHA256.txt"
+          {
+            echo "role=${{ matrix.role }}"
+            echo "application_id=$QG_APP_ID"
+            echo "git_sha=$QG_GIT_SHA"
+            echo "github_run_id=$QG_RUN_ID"
+            echo "build_type=debug"
+            cat "QueueGo-${{ matrix.role }}-pilot-test-SHA256.txt"
+          } > "QueueGo-${{ matrix.role }}-pilot-test-evidence.txt"
 
       - uses: actions/upload-artifact@v4
         with:
@@ -306,6 +331,7 @@ jobs:
           path: |
             QueueGo-${{ matrix.role }}-pilot-test.apk
             QueueGo-${{ matrix.role }}-pilot-test-SHA256.txt
+            QueueGo-${{ matrix.role }}-pilot-test-evidence.txt
             QueueGo-${{ matrix.role }}-play-icon-512.png
           if-no-files-found: error
           retention-days: 7
