@@ -339,7 +339,7 @@ async function qtCreateSupabaseUser({type,name,phone,password,email,shopName,cat
     shopBody.latitude=Number(marketRegistration.lat);
     shopBody.longitude=Number(marketRegistration.lng);
   }
-  const shops=await qtSupabaseTable('shop_profiles?select=id,shop_name,public_category,status,latitude,longitude,market_suggested_id,market_suggested_distance_km,market_membership_status&on_conflict=user_id',{
+  const shops=await qtSupabaseTable('shop_profiles?select=id,shop_name,public_category,status,latitude,longitude,market_suggested_id,market_suggested_distance_km,market_membership_status',{
     method:'POST',accessToken:session.access_token,body:shopBody
   });
   if(!Array.isArray(shops)||shops.length!==1||shops[0].shop_name!==shopName||shops[0].public_category!==category||shops[0].status!=='pending'){
