@@ -154,3 +154,26 @@
 .qg-review-map{height:220px;border-radius:14px;overflow:hidden;background:#eef0f3;margin:10px 0}
 .qg-review-missing{padding:18px;border:1px dashed #cfd3d8;border-radius:12px;color:#6f747b}
 @media(max-width:520px){.qg-review-images{grid-template-columns:1fr}.qg-review-images img{height:180px}}
+
+
+/* Managed home banner carousel */
+.qg-banner-admin-card{margin-top:12px}
+.qg-banner-admin-head h3{margin:0 0 4px;font-size:17px}
+.qg-banner-admin-head p,.qg-banner-manager-note{margin:0;color:#727780;font-size:12px;line-height:1.45}
+.qg-banner-manager-note{margin:0 0 10px}
+.qg-banner-slots{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.qg-banner-slot{border:1px solid #e4e7eb;border-radius:16px;padding:12px;background:#fff;min-width:0}
+.qg-banner-slot-title{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:8px}
+.qg-banner-slot-title b{font-size:14px}.qg-banner-slot-title span{font-size:10px;color:#727780}
+.qg-banner-preview{aspect-ratio:662/386;border-radius:12px;overflow:hidden;background:#f2f3f5;display:grid;place-items:center;color:#8a9099;font-size:12px}
+.qg-banner-preview img{width:100%;height:100%;object-fit:cover;display:block}
+.qg-banner-slot label{display:block;margin-top:10px;font-size:11px;font-weight:700;color:#4d535b}
+.qg-banner-slot input[type=text]{width:100%;margin-top:5px;border:1px solid #dfe3e8;border-radius:10px;padding:9px 10px;font:inherit;background:#fff}
+.qg-banner-file{position:relative;display:flex!important;align-items:center;justify-content:center;min-height:38px;border:1px solid #e5092f;border-radius:10px;color:#d5092b!important;background:#fff;cursor:pointer;overflow:hidden}
+.qg-banner-file input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer}
+.qg-banner-active{display:flex!important;align-items:center;justify-content:space-between;gap:10px}
+.qg-banner-active input{width:18px;height:18px}
+.qg-banner-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+.qg-banner-actions button{min-height:38px}
+.qg-banner-error{color:#b42318;margin:0}
+@media(max-width:760px){.qg-banner-slots{grid-template-columns:1fr}.qg-banner-preview{aspect-ratio:662/386}}
