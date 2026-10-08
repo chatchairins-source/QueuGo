@@ -380,13 +380,11 @@ async function qtPersistKeyRaw(key,val){
              stale qt_users cache must not overwrite a newer DB coordinate. Update the
              existing profile by its user_id and only send coordinate fields when the
              local profile actually has numeric coordinates. */
-          const shopRows=await qtSupabaseTable('shop_profiles?select=id&user_id=eq.'+encodeURIComponent(u.id)+'&limit=1',{accessToken:token});
-          const shopBody={shop_name:u.shopName||u.name||'ร้านค้า',phone:u.phone||null,address:u.address||null,status:u.status==='suspended'?'suspended':'active',metadata:qtUserMetadata(u)};
+          const shopRows=await qtSupabaseTable('shop_profiles?select=id&user_id=eq.'+encodeURIComponent(u.id)+'&archived_at=is.null&order=created_at.desc&limit=1',{accessToken:token});
+          const shopBody={shop_name:u.shopName||u.name||'ร้านค้า',phone:u.phone||null,address:u.address||null,metadata:qtUserMetadata(u)};
           if(Number.isFinite(Number(u.lat)) && Number.isFinite(Number(u.lng))){shopBody.latitude=Number(u.lat);shopBody.longitude=Number(u.lng);}
           if(Array.isArray(shopRows)&&shopRows[0]?.id){
             await qtSupabaseTable('shop_profiles?id=eq.'+encodeURIComponent(shopRows[0].id),{method:'PATCH',accessToken:token,body:shopBody});
-          }else{
-            await qtSupabaseTable('shop_profiles?on_conflict=user_id',{method:'POST',accessToken:token,body:{user_id:u.id,...shopBody}});
           }
         }
         if(u.type==='technician') await qtSupabaseTable('technician_profiles?on_conflict=user_id',{method:'POST',accessToken:token,body:{user_id:u.id,technician_name:u.name||'ช่าง',technician_type:Array.isArray(u.jobTypes)?u.jobTypes.join(','):u.jobType||null,phone:u.phone||null,address:u.address||null,service_area:u.serviceArea||null,latitude:u.lat??null,longitude:u.lng??null,description:u.description||null,status:u.status==='suspended'?'suspended':(u.online?'active':'offline'),metadata:qtUserMetadata(u)}});
@@ -399,7 +397,7 @@ async function qtPersistKeyRaw(key,val){
       } return;
     }
     if(key==='qt_orders'){
-      const __pm=new Map(); const profileId=async(table,userId)=>{if(!qtUuidLike(userId))return null; const ck=table+':'+userId; if(__pm.has(ck)) return __pm.get(ck); const rows=await qtSupabaseTable(table+'?select=id&user_id=eq.'+encodeURIComponent(userId)+'&limit=1',{accessToken:token}); const v=Array.isArray(rows)&&rows[0]?rows[0].id:null; __pm.set(ck,v); return v;};
+      const __pm=new Map(); const profileId=async(table,userId)=>{if(!qtUuidLike(userId))return null; const ck=table+':'+userId; if(__pm.has(ck)) return __pm.get(ck); const path=table==='shop_profiles'?table+'?select=id&user_id=eq.'+encodeURIComponent(userId)+'&archived_at=is.null&order=created_at.desc&limit=1':table+'?select=id&user_id=eq.'+encodeURIComponent(userId)+'&limit=1'; const rows=await qtSupabaseTable(path,{accessToken:token}); const v=Array.isArray(rows)&&rows[0]?rows[0].id:null; __pm.set(ck,v); return v;};
       for(const o of (val||[])){
         if(!qtUuidLike(o.id)) continue;
         const row=qtOrderToRow(o);
@@ -418,7 +416,7 @@ async function qtPersistKeyRaw(key,val){
     if(key==='qt_notifications'){ for(const n of (val||[])){ if(!qtUuidLike(n.id)||!qtUuidLike(n.userId)) continue; await qtSupabaseTable('notifications?on_conflict=id',{method:'POST',accessToken:token,body:(()=>{const d=qtNotifDbParts(n);return {id:n.id,user_id:n.userId,title:n.title||'',message:n.message||n.body||'',type:d.type,reference_id:d.ref,is_read:!!n.read,created_at:qtIso(n.createdAt)};})()}); } return; }
     if(key==='qt_audit_log'){ for(const a of (val||[])){ if(!qtUuidLike(a.id)) continue; await qtSupabaseTable('audit_logs?on_conflict=id',{method:'POST',accessToken:token,body:{id:a.id,user_id:qtUuidLike(a.actorId)?a.actorId:null,action:a.action||'system',entity_type:a.entityType||null,entity_id:qtUuidLike(a.entityId)?a.entityId:null,description:a.description||'',metadata:a,created_at:qtIso(a.at)}}); } return; }
     if(key==='qt_finance_ledger'){ for(const a of (val||[])){ if(!qtUuidLike(a.id)) continue; const oid=qtUuidLike(a.orderId)?a.orderId:null; if(oid) await qtSupabaseTable('payments?on_conflict=id',{method:'POST',accessToken:token,body:{id:a.id,order_id:oid,payer_id:qtUuidLike(a.customerId)?a.customerId:(qtUuidLike(a.enteredBy)?a.enteredBy:null),amount:Number(a.amount||0),payment_method:'online',status:a.status==='refunded'?'refunded':a.status==='paid'||a.status==='recorded'?'paid':'pending',paid_at:a.createdAt?qtIso(a.createdAt):null,note:a.type||''}}); } return; }
-    if(key==='qt_products'){ const shopProfileId=async(userId)=>{if(!qtUuidLike(userId))return null; const rows=await qtSupabaseTable('shop_profiles?select=id&user_id=eq.'+encodeURIComponent(userId)+'&limit=1',{accessToken:token}); return Array.isArray(rows)&&rows[0]?rows[0].id:null;}; for(const p of (val||[])){ if(!qtUuidLike(p.id)) continue; await qtSupabaseTable('products?on_conflict=id',{method:'POST',accessToken:token,body:{id:p.id,shop_id:await shopProfileId(p.shopId),name:p.name||'',description:p.description||'',price:Number(p.price||0),image:p.image||null,available:p.available!==false,metadata:p,created_at:qtIso(p.createdAt),updated_at:qtIso(Date.now())}}); } return; }
+    if(key==='qt_products'){ const shopProfileId=async(userId)=>{if(!qtUuidLike(userId))return null; const rows=await qtSupabaseTable('shop_profiles?select=id&user_id=eq.'+encodeURIComponent(userId)+'&archived_at=is.null&order=created_at.desc&limit=1',{accessToken:token}); return Array.isArray(rows)&&rows[0]?rows[0].id:null;}; for(const p of (val||[])){ if(!qtUuidLike(p.id)) continue; await qtSupabaseTable('products?on_conflict=id',{method:'POST',accessToken:token,body:{id:p.id,shop_id:await shopProfileId(p.shopId),name:p.name||'',description:p.description||'',price:Number(p.price||0),image:p.image||null,available:p.available!==false,metadata:p,created_at:qtIso(p.createdAt),updated_at:qtIso(Date.now())}}); } return; }
     if(key==='qt_promotions'){ for(const p of (val||[])){ if(!qtUuidLike(p.id)) continue; await qtSupabaseTable('promotions?on_conflict=id',{method:'POST',accessToken:token,body:{id:p.id,shop_id:p.shopId,shop_name:p.shopName||null,category:p.category||null,area:p.area||null,bid_price:Number(p.bidPrice||0),max_budget:Number(p.maxBudget||0),period_days:Number(p.periodDays||0),status:p.status||'pending',approved_by:p.approvedBy||null,approved_at:p.approvedAt?qtIso(p.approvedAt):null,payment_status:p.paymentStatus||'pending',activated_at:p.activatedAt?qtIso(p.activatedAt):null,metadata:p,created_at:qtIso(p.createdAt),updated_at:qtIso(Date.now())}}); } return; }
     if(key==='qt_settlements'){ for(const x of (val||[])){ if(!qtUuidLike(x.id)) continue; await qtSupabaseTable('settlements?on_conflict=id',{method:'POST',accessToken:token,body:{id:x.id,shop_id:x.shopId,date_key:x.dateKey,status:x.status||'pending_payment',amount:Number(x.amount||x.gp||0),metadata:x,created_at:qtIso(x.createdAt),updated_at:qtIso(Date.now())}}); } return; }
     if(key==='qt_order_audit'){ for(const x of (val||[])){ if(!qtUuidLike(x.id)||!qtUuidLike(x.orderId)) continue; await qtSupabaseTable('order_audit?on_conflict=id',{method:'POST',accessToken:token,body:{id:x.id,order_id:x.orderId,admin_id:x.adminId,action:x.action||'system',metadata:x,created_at:qtIso(x.at)}}); } return; }
@@ -1551,7 +1549,7 @@ async function qgLoadAdminCash(day){
  window.qgRefreshAdminShopStates=async function(){
    try{const token=await qtGetAccessToken();
      const [profiles,states]=await Promise.all([
-       qtSupabaseTable('shop_profiles?select=id,user_id',{accessToken:token}),
+       qtSupabaseTable('shop_profiles?select=id,user_id&archived_at=is.null',{accessToken:token}),
        qtSupabaseTable('shop_open_states?select=shop_id,is_open,resume_at',{accessToken:token})]);
      const byId=new Map((profiles||[]).map(p=>[String(p.user_id),p.id])),byShop=new Map((states||[]).map(x=>[String(x.shop_id),x]));
      for(const button of document.querySelectorAll('.qt-admin-shop-row button[onclick^="qtAdminToggleShop"]')){
@@ -1566,7 +1564,7 @@ async function qgLoadAdminCash(day){
    if(!qtAdminOnly())return;
    const users=dbGet('qt_users',[]),u=users.find(x=>x.type==='shop'&&String(x.id)===String(id));if(!u)return toast('ไม่พบร้านค้า');
    try{const token=await qtGetAccessToken();if(!token)throw Error('กรุณาเข้าสู่ระบบใหม่');
-     const profiles=await qtSupabaseTable('shop_profiles?select=id&user_id=eq.'+encodeURIComponent(id)+'&limit=1',{accessToken:token});
+     const profiles=await qtSupabaseTable('shop_profiles?select=id&user_id=eq.'+encodeURIComponent(id)+'&archived_at=is.null&order=created_at.desc&limit=1',{accessToken:token});
      const pid=profiles?.[0]?.id;if(!pid)throw Error('ไม่พบโปรไฟล์ร้าน');
      const state=await qtSupabaseTable('shop_open_states?select=is_open&shop_id=eq.'+encodeURIComponent(pid),{accessToken:token});
      const open=state?.length?state[0].is_open!==false:u.shopOpen!==false,desired=!open;
@@ -1601,7 +1599,7 @@ async function qgLoadAdminCash(day){
    try{const token=await qtGetAccessToken();if(!token)throw Error('กรุณาเข้าสู่ระบบใหม่');
      const rows=await qtSupabaseTable('shop_support_messages?select=id,shop_user_id,sender_user_id,body,slip_path,created_at&order=created_at.asc',{accessToken:token});
      const ids=[...new Set(rows.map(m=>m.shop_user_id))];
-     const profiles=ids.length?await qtSupabaseTable('shop_profiles?select=user_id,shop_name&user_id=in.('+ids.join(',')+')',{accessToken:token}):[];
+     const profiles=ids.length?await qtSupabaseTable('shop_profiles?select=user_id,shop_name&user_id=in.('+ids.join(',')+')&archived_at=is.null',{accessToken:token}):[];
      const names=new Map((profiles||[]).map(x=>[x.user_id,x.shop_name]));
      if(!ids.includes(selected))selected=ids[0]||null;
      inbox.innerHTML=ids.length?ids.map(id=>'<button type="button" class="'+(selected===id?'active':'')+'" onclick="qgSelectAdminSupport(\''+escapeHtml(id)+'\')">'+escapeHtml(names.get(id)||'ร้านค้า')+' · '+rows.filter(m=>m.shop_user_id===id).length+' ข้อความ</button>').join(''):'ยังไม่มีข้อความจากร้านค้า';
