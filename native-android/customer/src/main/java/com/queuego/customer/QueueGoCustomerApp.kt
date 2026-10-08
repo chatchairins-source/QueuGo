@@ -462,9 +462,11 @@ private fun CustomerShell(auth: NativeAuth, logout: () -> Unit) {
                     LaundryOrderDetailScreen(auth = auth, order = it, onBack = { screen = "orders" })
                 }
                 "order" -> OrderTrackingScreen(
+                    auth = auth,
                     order = selectedOrder,
                     items = orderItems,
                     context = trackingContext,
+                    shopCategory = selectedOrder?.shopId?.let { id -> shops.find { it.id == id }?.category },
                     busy = busy,
                     onChat = { screen = "chat" },
                     onCancel = {
@@ -872,9 +874,11 @@ private fun OrdersScreen(
 
 @Composable
 private fun OrderTrackingScreen(
+    auth: NativeAuth,
     order: CustomerOrder?,
     items: List<CustomerOrderItem>,
     context: CustomerOrderContext?,
+    shopCategory: String?,
     busy: Boolean,
     onChat: () -> Unit,
     onCancel: () -> Unit,
@@ -1006,6 +1010,14 @@ private fun OrderTrackingScreen(
                 HorizontalDivider(Modifier.padding(vertical = 8.dp))
                 SummaryRow("รวม", order.total, true)
             }
+        }
+        if (order.status == "completed") {
+            Spacer(Modifier.height(10.dp))
+            CustomerReviewCard(
+                auth = auth,
+                order = order,
+                shopCategory = shopCategory
+            )
         }
         Spacer(Modifier.height(30.dp))
     }
