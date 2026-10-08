@@ -555,7 +555,7 @@ async function qtPersistKeyRaw(key,val){
              stale qt_users cache must not overwrite a newer DB coordinate. Update the
              existing profile by its user_id and only send coordinate fields when the
              local profile actually has numeric coordinates. */
-          const shopRows=await qtSupabaseTable('shop_profiles?select=id&user_id=eq.'+encodeURIComponent(u.id)+'&limit=1',{accessToken:token});
+          const shopRows=await qtSupabaseTable('shop_profiles?select=id&user_id=eq.'+encodeURIComponent(u.id)+'&archived_at=is.null&limit=1',{accessToken:token});
           const shopBody={shop_name:u.shopName||u.name||'ร้านค้า',phone:u.phone||null,address:u.address||null,status:u.status==='approved'?'active':u.status==='suspended'?'suspended':u.status==='rejected'?'rejected':'pending',metadata:qtUserMetadata(u)};
           if(Number.isFinite(Number(u.lat)) && Number.isFinite(Number(u.lng))){shopBody.latitude=Number(u.lat);shopBody.longitude=Number(u.lng);}
           if(Array.isArray(shopRows)&&shopRows[0]?.id){
