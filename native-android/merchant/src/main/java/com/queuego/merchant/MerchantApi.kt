@@ -56,6 +56,13 @@ data class MerchantProduct(
     val available: Boolean
 )
 
+data class MerchantSupportMessage(
+    val id: String,
+    val senderUserId: String,
+    val body: String,
+    val createdAt: String?
+)
+
 data class ShopReadiness(val complete: Boolean, val checks: JSONObject, val catalogKind: String?)
 
 class MerchantApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
@@ -264,6 +271,44 @@ class MerchantApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
             .put("delivery_available", true)
         val raw = http.post("products", auth.session.accessToken, body)
         if (raw is JSONArray && raw.length() == 0) error("ฐานข้อมูลยังไม่ยืนยันสินค้า")
+    }
+
+    suspend fun loadSupportMessages(auth: NativeAuth): List<MerchantSupportMessage> {
+        val rows = http.array(
+            http.get(
+                "shop_support_messages?select=id,sender_user_id,body,created_at" +
+                    "&shop_user_id=eq." + http.enc(auth.user.id) +
+                    "&order=created_at.asc",
+                auth.session.accessToken
+            )
+        )
+        return buildList {
+            for (i in 0 until rows.length()) {
+                val r = rows.optJSONObject(i) ?: continue
+                add(
+                    MerchantSupportMessage(
+                        id = r.optString("id"),
+                        senderUserId = r.optString("sender_user_id"),
+                        body = r.optString("body"),
+                        createdAt = r.optNullable("created_at")
+                    )
+                )
+            }
+        }
+    }
+
+    suspend fun sendSupportMessage(auth: NativeAuth, body: String) {
+        val text = body.trim()
+        require(text.isNotBlank()) { "กรุณาพิมพ์ข้อความ" }
+        val raw = http.post(
+            "shop_support_messages",
+            auth.session.accessToken,
+            JSONObject()
+                .put("shop_user_id", auth.user.id)
+                .put("sender_user_id", auth.user.id)
+                .put("body", text)
+        )
+        if (raw is JSONArray && raw.length() == 0) error("ระบบยังไม่ยืนยันข้อความ")
     }
 
     suspend fun readiness(auth: NativeAuth, shopId: String?): ShopReadiness? {
