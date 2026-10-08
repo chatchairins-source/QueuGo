@@ -252,6 +252,49 @@ class MerchantApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
         if (rows is JSONArray && rows.length() == 0) error("ฐานข้อมูลยังไม่ยืนยันสินค้า")
     }
 
+    suspend fun updateProduct(
+        auth: NativeAuth,
+        shopId: String,
+        product: MerchantProduct,
+        name: String,
+        description: String?,
+        price: Double,
+        gpRate: Double
+    ) {
+        val cleanName = name.trim()
+        require(cleanName.isNotBlank()) { "กรุณากรอกชื่อสินค้า" }
+        require(price >= 0.0 && price.isFinite()) { "ราคาสินค้าไม่ถูกต้อง" }
+        val deliveryPrice = if (gpRate > 0 && gpRate < 100) {
+            price / (1.0 - gpRate / 100.0)
+        } else price
+        val raw = http.patch(
+            "products?id=eq." + http.enc(product.id) +
+                "&shop_id=eq." + http.enc(shopId),
+            auth.session.accessToken,
+            JSONObject()
+                .put("name", cleanName)
+                .put("description", description?.trim()?.takeIf { it.isNotBlank() } ?: JSONObject.NULL)
+                .put("price", price)
+                .put("delivery_price", kotlin.math.ceil(deliveryPrice))
+        )
+        if (raw is JSONArray && raw.length() == 0) error("ฐานข้อมูลยังไม่ยืนยันการแก้ไขสินค้า")
+    }
+
+    suspend fun deleteOrArchiveProduct(auth: NativeAuth, productId: String) {
+        val raw = http.rpc(
+            "queuego_delete_or_archive_product",
+            auth.session.accessToken,
+            JSONObject().put("p_product_id", productId)
+        )
+        val result = when (raw) {
+            is String -> raw
+            is JSONArray -> raw.optString(0)
+            is JSONObject -> raw.optString("queuego_delete_or_archive_product")
+            else -> raw.toString()
+        }
+        if (result.isBlank()) error("Server ยังไม่ยืนยันการนำสินค้าออก")
+    }
+
     suspend fun createProduct(
         auth: NativeAuth,
         shopId: String,
