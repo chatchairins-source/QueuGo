@@ -47,6 +47,7 @@ import androidx.core.content.FileProvider
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.io.File
+import java.time.Instant
 
 @Composable
 fun QueueGoRiderApp() {
@@ -653,6 +654,21 @@ private fun OfferCard(
     onAccept: () -> Unit,
     onDecline: () -> Unit
 ) {
+    var secondsLeft by remember(job.id, job.offerExpiresAt) { mutableStateOf(30) }
+
+    LaunchedEffect(job.id, job.offerExpiresAt) {
+        while (true) {
+            val end = runCatching { Instant.parse(job.offerExpiresAt ?: "").toEpochMilli() }.getOrNull()
+            secondsLeft = if (end == null) {
+                30
+            } else {
+                (((end - System.currentTimeMillis()).coerceAtLeast(0L) + 999L) / 1000L).toInt()
+            }
+            if (secondsLeft <= 0) break
+            delay(250)
+        }
+    }
+
     Card(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp)) {
             Text("งานใหม่", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
@@ -665,15 +681,20 @@ private fun OfferCard(
             Row(Modifier.fillMaxWidth()) {
                 OutlinedButton(
                     onClick = onDecline,
-                    enabled = !busy,
+                    enabled = !busy && secondsLeft > 0,
                     modifier = Modifier.weight(1f)
                 ) { Text("ปฏิเสธ") }
                 Spacer(Modifier.width(10.dp))
                 Button(
                     onClick = onAccept,
-                    enabled = !busy,
+                    enabled = !busy && secondsLeft > 0,
                     modifier = Modifier.weight(1f)
-                ) { Text("รับงาน") }
+                ) {
+                    Text(
+                        if (secondsLeft > 0) "รับงาน · " + secondsLeft + " วิ"
+                        else "หมดเวลา"
+                    )
+                }
             }
         }
     }
