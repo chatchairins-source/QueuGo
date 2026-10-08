@@ -6,7 +6,7 @@ plugins {
 
 android {
     namespace = "com.queuego.rider"
-    compileSdk = 37
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.queuego.rider"
