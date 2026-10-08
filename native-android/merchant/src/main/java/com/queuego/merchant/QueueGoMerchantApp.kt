@@ -263,7 +263,14 @@ private fun MerchantShell(auth: NativeAuth, logout: () -> Unit) {
                     }
                 )
                 "laundry" -> MerchantLaundryScreen(auth)
-                "profile" -> MerchantProfileScreen(auth, shop, readiness, logout)
+                "support" -> MerchantSupportScreen(auth) { screen = "profile" }
+                "profile" -> MerchantProfileScreen(
+                    auth = auth,
+                    shop = shop,
+                    readiness = readiness,
+                    onSupport = { screen = "support" },
+                    logout = logout
+                )
             }
         }
     }
@@ -560,7 +567,13 @@ private fun ProductsScreen(
 }
 
 @Composable
-private fun MerchantProfileScreen(auth: NativeAuth, shop: MerchantShop?, readiness: ShopReadiness?, logout: () -> Unit) {
+private fun MerchantProfileScreen(
+    auth: NativeAuth,
+    shop: MerchantShop?,
+    readiness: ShopReadiness?,
+    onSupport: () -> Unit,
+    logout: () -> Unit
+) {
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(14.dp)) {
         QgSectionTitle("ร้านค้า")
         Spacer(Modifier.height(12.dp))
@@ -593,7 +606,11 @@ private fun MerchantProfileScreen(auth: NativeAuth, shop: MerchantShop?, readine
                 }
             }
         }
-        Spacer(Modifier.height(18.dp))
+        Spacer(Modifier.height(12.dp))
+        Button(onClick = onSupport, modifier = Modifier.fillMaxWidth()) {
+            Text("ข้อความถึง QueueGo Admin")
+        }
+        Spacer(Modifier.height(10.dp))
         OutlinedButton(onClick = logout, modifier = Modifier.fillMaxWidth()) { Text("ออกจากระบบ") }
     }
 }
