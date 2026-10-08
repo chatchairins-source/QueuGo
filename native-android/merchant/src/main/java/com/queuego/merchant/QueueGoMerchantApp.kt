@@ -46,6 +46,7 @@ import com.queuego.shared.QgBg
 import com.queuego.shared.QgBottomNav
 import com.queuego.shared.QgCard
 import com.queuego.shared.QgGreen
+import com.queuego.shared.QgIcon
 import com.queuego.shared.QgMuted
 import com.queuego.shared.QgNavItem
 import com.queuego.shared.QgRed
@@ -167,11 +168,11 @@ private fun MerchantShell(auth: NativeAuth, logout: () -> Unit) {
                 QgBottomNav(
                     selected = screen,
                     items = listOf(
-                        QgNavItem("home", "ภาพรวม", "Q"),
-                        QgNavItem("orders", "ออเดอร์", "▤"),
-                        QgNavItem("products", "สินค้า", "□"),
-                        QgNavItem("laundry", "ฝากซัก", "◎"),
-                        QgNavItem("profile", "ร้านค้า", "●")
+                        QgNavItem("home", "ภาพรวม", "home"),
+                        QgNavItem("orders", "ออเดอร์", "orders"),
+                        QgNavItem("products", "สินค้า", "box"),
+                        QgNavItem("laundry", "ฝากซัก", "laundry"),
+                        QgNavItem("profile", "ร้านค้า", "store")
                     )
                 ) { screen = it }
             }
@@ -216,7 +217,10 @@ private fun MerchantShell(auth: NativeAuth, logout: () -> Unit) {
                         orderItems = emptyList()
                         screen = "order"
                     },
-                    onPos = { screen = "pos" }
+                    onPos = { screen = "pos" },
+                    onOrders = { screen = "orders" },
+                    onProducts = { screen = "products" },
+                    onLaundry = { screen = "laundry" }
                 )
                 "orders" -> MerchantOrdersScreen(orders, loading) {
                     selectedOrder = it
@@ -316,12 +320,25 @@ private fun MerchantShell(auth: NativeAuth, logout: () -> Unit) {
 @Composable
 private fun MerchantTopBar(title: String, onHome: () -> Unit) {
     Row(
-        Modifier.fillMaxWidth().background(Color.White).padding(horizontal = 14.dp, vertical = 10.dp),
+        Modifier
+            .fillMaxWidth()
+            .background(Color(0xFAFFFFFF))
+            .padding(horizontal = 14.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Box(Modifier.clickable(onClick = onHome)) { QueueGoBrand(suffix = "Merchant") }
+        Box(
+            Modifier
+                .size(36.dp)
+                .background(QgRed, RoundedCornerShape(12.dp))
+                .clickable(onClick = onHome),
+            contentAlignment = Alignment.Center
+        ) {
+            Text("Q", color = Color.White, fontWeight = FontWeight.Black, style = MaterialTheme.typography.titleLarge)
+        }
+        Spacer(Modifier.width(8.dp))
+        QueueGoBrand(suffix = "Merchant")
         Spacer(Modifier.weight(1f))
-        Text(title, color = QgMuted, style = MaterialTheme.typography.labelMedium, maxLines = 1)
+        Text(title, color = QgMuted, style = MaterialTheme.typography.labelSmall, maxLines = 1)
     }
 }
 
@@ -336,79 +353,205 @@ private fun DashboardScreen(
     busy: Boolean,
     onToggleOpen: (Boolean) -> Unit,
     onOpen: (MerchantOrder) -> Unit,
-    onPos: () -> Unit
+    onPos: () -> Unit,
+    onOrders: () -> Unit,
+    onProducts: () -> Unit,
+    onLaundry: () -> Unit
 ) {
-    val todaySales = orders.filter { it.status != "cancelled" }.sumOf { it.subtotal }
-    val incoming = orders.filter { it.status in setOf("pending", "accepted", "searching_rider", "rider_assigned", "preparing", "ready") }
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(14.dp)) {
+    val incoming = orders.filter {
+        it.status in setOf("pending", "accepted", "searching_rider", "rider_assigned", "preparing", "ready")
+    }
+
+    Column(
+        Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 12.dp)
+    ) {
+        Spacer(Modifier.height(8.dp))
+
         if (shop != null) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                QgRemoteImage(shop.logo ?: shop.cover, Modifier.size(64.dp), shop.name)
-                Spacer(Modifier.width(10.dp))
-                Column(Modifier.weight(1f)) {
-                    Text(shop.name, fontWeight = FontWeight.Black, style = MaterialTheme.typography.titleLarge)
-                    Text(shop.address ?: "QueueGo Merchant", color = QgMuted, style = MaterialTheme.typography.bodySmall)
-                }
-                QgStatusPill(if (shop.status == "active") "เปิดใช้งาน" else shop.status, shop.status == "active")
-            }
-        }
-        Spacer(Modifier.height(10.dp))
-        QgCard(Modifier.fillMaxWidth()) {
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) {
-                    Text(if (shopOpen) "ร้านเปิดรับออเดอร์" else "ร้านปิดชั่วคราว", fontWeight = FontWeight.ExtraBold)
-                    Text(if (shopOpen) "ลูกค้าสามารถสั่งซื้อได้" else "ลูกค้าจะเห็นร้านแต่ไม่สามารถสั่งใหม่", color = QgMuted, style = MaterialTheme.typography.bodySmall)
-                }
-                Switch(checked = shopOpen, onCheckedChange = onToggleOpen, enabled = !busy && shop != null)
-            }
-        }
-        Spacer(Modifier.height(10.dp))
-        if (readiness != null && !readiness.complete) {
             QgCard(Modifier.fillMaxWidth()) {
-                Column {
-                    Text("ร้านยังตั้งค่าไม่ครบ", fontWeight = FontWeight.ExtraBold)
-                    Text("กรอกข้อมูลร้าน รูป พิกัด และสินค้าให้ครบก่อนส่งตรวจ", color = QgMuted)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(Modifier.size(52.dp)) {
+                        QgRemoteImage(shop.logo ?: shop.cover, Modifier.fillMaxSize(), shop.name)
+                    }
+                    Spacer(Modifier.width(10.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text(
+                            shop.name,
+                            fontWeight = FontWeight.ExtraBold,
+                            style = MaterialTheme.typography.titleMedium,
+                            maxLines = 1
+                        )
+                        Text(
+                            if (shopOpen) "เปิดรับออเดอร์" else "ปิดร้านชั่วคราว",
+                            color = if (shopOpen) QgGreen else QgMuted,
+                            fontWeight = FontWeight.Bold,
+                            style = MaterialTheme.typography.labelSmall
+                        )
+                    }
+                    Switch(
+                        checked = shopOpen,
+                        onCheckedChange = onToggleOpen,
+                        enabled = !busy
+                    )
                 }
             }
+
+            if (!shop.cover.isNullOrBlank()) {
+                Spacer(Modifier.height(2.dp))
+                QgRemoteImage(
+                    shop.cover,
+                    Modifier.fillMaxWidth().height(128.dp),
+                    shop.name
+                )
+            }
+        }
+
+        if (readiness != null && !readiness.complete) {
             Spacer(Modifier.height(10.dp))
+            QgCard(Modifier.fillMaxWidth()) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        Modifier
+                            .size(38.dp)
+                            .background(Color(0xFFFFF0F3), RoundedCornerShape(12.dp)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text("!", color = QgRed, fontWeight = FontWeight.Black)
+                    }
+                    Spacer(Modifier.width(10.dp))
+                    Column {
+                        Text("ร้านยังตั้งค่าไม่ครบ", fontWeight = FontWeight.ExtraBold)
+                        Text(
+                            "กรอกข้อมูลร้าน รูป พิกัด และสินค้าให้ครบก่อนส่งตรวจ",
+                            color = QgMuted,
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+                }
+            }
         }
+
+        Text(
+            "ภาพรวมวันนี้",
+            modifier = Modifier.padding(horizontal = 2.dp, vertical = 14.dp),
+            fontWeight = FontWeight.ExtraBold,
+            style = MaterialTheme.typography.titleMedium
+        )
+
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            MetricCard("ออเดอร์วันนี้", revenue.orderCount.toString(), Modifier.weight(1f))
-            MetricCard("ยอดขาย", "฿" + "%.0f".format(revenue.grossSales), Modifier.weight(1f))
-            MetricCard("เงินสดรับ", "฿" + "%.0f".format(revenue.cashReceived), Modifier.weight(1f))
+            MerchantMetricCard("ออเดอร์", revenue.orderCount.toString(), "orders", Modifier.weight(1f))
+            MerchantMetricCard("ยอดขาย", "฿" + "%.0f".format(revenue.grossSales), "bag", Modifier.weight(1f))
         }
         Spacer(Modifier.height(8.dp))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            MetricCard("ออเดอร์ใหม่", orders.count { it.status == "pending" }.toString(), Modifier.weight(1f))
-            MetricCard("กำลังทำ", orders.count { it.status in setOf("preparing", "ready") }.toString(), Modifier.weight(1f))
-            MetricCard("GP วันนี้", "฿" + "%.0f".format(revenue.gpDue), Modifier.weight(1f))
+            MerchantMetricCard("เงินสดรับ", "฿" + "%.0f".format(revenue.cashReceived), "store", Modifier.weight(1f))
+            MerchantMetricCard("GP วันนี้", "฿" + "%.0f".format(revenue.gpDue), "orders", Modifier.weight(1f))
         }
-        Spacer(Modifier.height(12.dp))
-        Button(
-            onClick = onPos,
-            enabled = shop != null && !loading,
-            modifier = Modifier.fillMaxWidth().height(52.dp)
-        ) {
-            Text("เปิด POS หน้าร้าน", fontWeight = FontWeight.ExtraBold)
+
+        Text(
+            "จัดการร้าน",
+            modifier = Modifier.padding(horizontal = 2.dp, vertical = 14.dp),
+            fontWeight = FontWeight.ExtraBold,
+            style = MaterialTheme.typography.titleMedium
+        )
+
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            MerchantMenuTile("POS หน้าร้าน", "store", onPos, Modifier.weight(1f))
+            MerchantMenuTile("ออเดอร์", "orders", onOrders, Modifier.weight(1f))
+            MerchantMenuTile("สินค้า", "box", onProducts, Modifier.weight(1f))
         }
+        Spacer(Modifier.height(8.dp))
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            MerchantMenuTile("ฝากซัก", "laundry", onLaundry, Modifier.weight(1f))
+            MerchantMenuTile(
+                "ออเดอร์ใหม่ " + orders.count { it.status == "pending" },
+                "bell",
+                onOrders,
+                Modifier.weight(1f)
+            )
+            MerchantMenuTile(
+                "กำลังทำ " + orders.count { it.status in setOf("preparing", "ready") },
+                "food",
+                onOrders,
+                Modifier.weight(1f)
+            )
+        }
+
         Spacer(Modifier.height(16.dp))
-        QgSectionTitle("ออเดอร์ที่ต้องจัดการ", "ข้อมูลจริงจาก QueueGo Production")
-        Spacer(Modifier.height(8.dp))
+        QgSectionTitle("ออเดอร์ที่ต้องจัดการ", "รับ → เตรียม → พร้อมส่ง")
+        Spacer(Modifier.height(10.dp))
         when {
             loading && orders.isEmpty() -> CircularProgressIndicator()
-            incoming.isEmpty() -> QgCard(Modifier.fillMaxWidth()) { Text("ยังไม่มีออเดอร์ที่ต้องจัดการ", color = QgMuted) }
-            else -> incoming.take(8).forEach { MerchantOrderCard(it, onOpen) }
+            incoming.isEmpty() -> QgCard(Modifier.fillMaxWidth()) {
+                Text("ยังไม่มีออเดอร์ที่ต้องจัดการ", color = QgMuted)
+            }
+            else -> incoming.take(6).forEach { MerchantOrderCard(it, onOpen) }
         }
-        Spacer(Modifier.height(30.dp))
+        Spacer(Modifier.height(28.dp))
     }
 }
 
 @Composable
-private fun MetricCard(label: String, value: String, modifier: Modifier) {
+private fun MerchantMetricCard(
+    label: String,
+    value: String,
+    icon: String,
+    modifier: Modifier
+) {
     QgCard(modifier) {
-        Column {
-            Text(label, color = QgMuted, style = MaterialTheme.typography.labelSmall)
-            Text(value, fontWeight = FontWeight.Black, style = MaterialTheme.typography.titleLarge)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                Modifier
+                    .size(38.dp)
+                    .background(Color(0xFFFFF0F3), RoundedCornerShape(12.dp)),
+                contentAlignment = Alignment.Center
+            ) {
+                QgIcon(icon, Modifier.size(20.dp), QgRed)
+            }
+            Spacer(Modifier.width(9.dp))
+            Column {
+                Text(label, color = QgMuted, style = MaterialTheme.typography.labelSmall)
+                Text(value, fontWeight = FontWeight.Black, style = MaterialTheme.typography.titleMedium)
+            }
+        }
+    }
+}
+
+@Composable
+private fun MerchantMenuTile(
+    label: String,
+    icon: String,
+    onClick: () -> Unit,
+    modifier: Modifier
+) {
+    QgCard(
+        modifier
+            .height(96.dp)
+            .clickable(onClick = onClick)
+    ) {
+        Column(
+            Modifier.fillMaxSize(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Box(
+                Modifier
+                    .size(38.dp)
+                    .background(Color(0xFFFFF0F3), RoundedCornerShape(12.dp)),
+                contentAlignment = Alignment.Center
+            ) {
+                QgIcon(icon, Modifier.size(20.dp), QgRed)
+            }
+            Spacer(Modifier.height(7.dp))
+            Text(
+                label,
+                fontWeight = FontWeight.Bold,
+                style = MaterialTheme.typography.labelSmall,
+                maxLines = 2
+            )
         }
     }
 }
