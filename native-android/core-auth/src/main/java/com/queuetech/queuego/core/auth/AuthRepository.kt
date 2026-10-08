@@ -11,7 +11,7 @@ class AuthRepository(
     private val sessionStore: SecureSessionStore,
 ) {
     suspend fun login(identifier: String, password: String, expectedRole: AppRole): QueueGoUser {
-        val auth = api.passwordLogin(authEmail(identifier), password)
+        val auth = api.passwordLogin(AuthIdentity.toSupabaseEmail(identifier), password)
         val profile = api.loadUserProfile(auth.accessToken, auth.authUserId)
         if (profile.role != expectedRole) {
             throw IllegalStateException("บัญชีนี้เป็นบัญชี${profile.role.displayName} กรุณาใช้แอปให้ตรงกับประเภทบัญชี")
@@ -55,14 +55,6 @@ class AuthRepository(
     suspend fun logout() {
         sessionStore.read()?.let { runCatching { api.signOut(it.accessToken) } }
         sessionStore.clear()
-    }
-
-    private fun authEmail(identifier: String): String {
-        val clean = identifier.trim()
-        if (clean.contains("@")) return clean.lowercase()
-        val digits = clean.filter(Char::isDigit)
-        require(digits.isNotBlank()) { "กรุณากรอกเบอร์โทรศัพท์หรืออีเมล" }
-        return "$digits@auth.queuetech.local"
     }
 
     private fun AuthTokenResponse.toSession(profile: QueueGoUser): QueueGoSession =
