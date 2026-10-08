@@ -225,6 +225,9 @@ private fun RiderHome(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var snapshot by remember { mutableStateOf<RiderSnapshot?>(null) }
+    var todaySummary by remember { mutableStateOf<RiderPeriodSummary?>(null) }
+    var lastSummaryAt by remember { mutableStateOf(0L) }
+    var lastLocationPushAt by remember { mutableStateOf(0L) }
     var loadError by remember { mutableStateOf<String?>(null) }
     var actionBusy by remember { mutableStateOf(false) }
     var actionMessage by remember { mutableStateOf<String?>(null) }
@@ -345,6 +348,20 @@ private fun RiderHome(
                     snapshot = it
                     loadError = null
                     if (it.activeJob == null) RiderReturnService.stop(context)
+                    val now = System.currentTimeMillis()
+                    if (it.online && now - lastLocationPushAt >= 10_000L) {
+                        val loc = lastKnownLocation(context)
+                        if (loc != null) {
+                            runCatching { api.updateLocation(auth, loc.first, loc.second) }
+                            lastLocationPushAt = now
+                        }
+                    }
+                    if (now - lastSummaryAt >= 60_000L || todaySummary == null) {
+                        runCatching { api.periodSummary(auth, 1) }.onSuccess { summary ->
+                            todaySummary = summary
+                            lastSummaryAt = now
+                        }
+                    }
                 }
                 .onFailure { loadError = it.message ?: "โหลดงานไม่สำเร็จ" }
             delay(3_000)
@@ -475,6 +492,73 @@ private fun RiderHome(
                         modifier = Modifier.weight(1f)
                     )
                     QgStatusPill(if (current.online) "ONLINE" else "OFFLINE", current.online)
+                }
+                Spacer(Modifier.height(8.dp))
+                if (current.activeJob == null) {
+                    if (current.online) {
+                        OutlinedButton(
+                            onClick = {
+                                if (actionBusy) return@OutlinedButton
+                                actionBusy = true
+                                scope.launch {
+                                    val loc = lastKnownLocation(context)
+                                    runCatching { api.setOnline(auth, false, loc?.first, loc?.second) }
+                                        .onSuccess {
+                                            actionMessage = "ปิดรับงานแล้ว"
+                                            snapshot = runCatching { api.riderSnapshot(auth) }.getOrNull()
+                                        }
+                                        .onFailure { actionMessage = it.message ?: "ปิดรับงานไม่สำเร็จ" }
+                                    actionBusy = false
+                                }
+                            },
+                            enabled = !actionBusy,
+                            modifier = Modifier.fillMaxWidth()
+                        ) { Text("ปิดรับงาน") }
+                    } else {
+                        Button(
+                            onClick = {
+                                if (!ensureLocationPermission()) return@Button
+                                if (actionBusy) return@Button
+                                actionBusy = true
+                                scope.launch {
+                                    val loc = lastKnownLocation(context)
+                                    runCatching { api.setOnline(auth, true, loc?.first, loc?.second) }
+                                        .onSuccess {
+                                            actionMessage = "เปิดรับงานแล้ว"
+                                            snapshot = runCatching { api.riderSnapshot(auth) }.getOrNull()
+                                        }
+                                        .onFailure { actionMessage = it.message ?: "เปิดรับงานไม่สำเร็จ" }
+                                    actionBusy = false
+                                }
+                            },
+                            enabled = !actionBusy,
+                            modifier = Modifier.fillMaxWidth()
+                        ) { Text("เปิดรับงาน", fontWeight = FontWeight.Black) }
+                    }
+                    val summary = todaySummary
+                    if (summary != null) {
+                        Spacer(Modifier.height(10.dp))
+                        Card(
+                            Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(18.dp),
+                            colors = CardDefaults.cardColors(containerColor = Color.White)
+                        ) {
+                            Row(Modifier.fillMaxWidth().padding(14.dp)) {
+                                Column(Modifier.weight(1f)) {
+                                    Text("วันนี้", color = QgMuted, style = MaterialTheme.typography.labelSmall)
+                                    Text(summary.jobs.toString() + " งาน", fontWeight = FontWeight.Black)
+                                }
+                                Column(Modifier.weight(1f)) {
+                                    Text("รายได้", color = QgMuted, style = MaterialTheme.typography.labelSmall)
+                                    Text("฿" + "%.0f".format(summary.income), fontWeight = FontWeight.Black)
+                                }
+                                Column(Modifier.weight(1f)) {
+                                    Text("ออนไลน์", color = QgMuted, style = MaterialTheme.typography.labelSmall)
+                                    Text("%.1f ชม.".format(summary.onlineHours), fontWeight = FontWeight.Black)
+                                }
+                            }
+                        }
+                    }
                 }
                 Spacer(Modifier.height(12.dp))
                 when {
