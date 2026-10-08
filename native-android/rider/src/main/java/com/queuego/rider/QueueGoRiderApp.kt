@@ -9,6 +9,7 @@ import android.net.Uri
 import android.os.Build
 import android.provider.Settings
 import com.queuego.shared.QueueGoTheme
+import com.queuego.shared.QgAccountDeletionSection
 import com.queuego.shared.QueueGoBrand
 import com.queuego.shared.QgStatusPill
 import com.queuego.shared.QgRed
@@ -742,6 +743,11 @@ private fun RiderHome(
 
         Spacer(Modifier.height(14.dp))
         RiderRecentHistoryCard(recentHistory)
+        Spacer(Modifier.height(14.dp))
+        QgAccountDeletionSection(
+            accessToken = auth.session.accessToken,
+            onDeleted = onLogout
+        )
         Spacer(Modifier.height(24.dp))
         OutlinedButton(onClick = onLogout, modifier = Modifier.fillMaxWidth()) {
             Text("ออกจากระบบ")
