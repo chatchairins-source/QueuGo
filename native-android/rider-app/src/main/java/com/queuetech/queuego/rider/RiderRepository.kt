@@ -107,8 +107,9 @@ class RiderRepository(
         val token = accessToken()
         val statuses = "rider_assigned,preparing,ready,assigned,picked_up,in_progress"
         val path = buildString {
-            append("orders?select=id,order_number,status,shop_id,pickup_address,pickup_latitude,pickup_longitude,")
-            append("delivery_address,delivery_latitude,delivery_longitude,total_amount,delivery_fee,market_order_id,fulfillment_vertical")
+            append("orders?select=id,order_number,status,shop_id,customer_id,pickup_address,pickup_latitude,pickup_longitude,")
+            append("delivery_address,delivery_latitude,delivery_longitude,total_amount,delivery_fee,subtotal,note,")
+            append("rider_arrived_shop_at,rider_arrived_customer_at,market_order_id,fulfillment_vertical")
             append("&rider_id=eq.")
             append(encode(profileId))
             append("&status=in.(")
@@ -132,6 +133,19 @@ class RiderRepository(
             shops.optJSONObject(0)?.optString("shop_name").orEmpty().ifBlank { "ร้านค้า" }
         }
 
+        val customerId = order.optString("customer_id")
+        val customerName = if (customerId.isBlank()) {
+            "ลูกค้า"
+        } else {
+            val customers = JSONArray(
+                api.rest(
+                    token,
+                    "users?select=id,name&id=eq." + encode(customerId) + "&limit=1",
+                ),
+            )
+            customers.optJSONObject(0)?.optString("name").orEmpty().ifBlank { "ลูกค้า" }
+        }
+
         return RiderActiveJob(
             orderId = order.getString("id"),
             orderNumber = order.optString("order_number").ifBlank { order.getString("id").takeLast(4) },
@@ -145,6 +159,11 @@ class RiderRepository(
             deliveryLongitude = order.optNullableDouble("delivery_longitude"),
             totalAmount = order.optDouble("total_amount", 0.0),
             deliveryFee = order.optDouble("delivery_fee", 0.0),
+            subtotal = order.optDouble("subtotal", 0.0),
+            customerName = customerName,
+            note = cleanOrderNote(order.optString("note")),
+            riderArrivedShopAt = order.optNullableString("rider_arrived_shop_at"),
+            riderArrivedCustomerAt = order.optNullableString("rider_arrived_customer_at"),
             marketOrderId = order.optNullableString("market_order_id"),
             fulfillmentVertical = order.optString("fulfillment_vertical"),
         )
@@ -174,6 +193,98 @@ class RiderRepository(
         )
     }
 
+    suspend fun markArrival(
+        orderId: String,
+        target: String,
+        coordinate: RiderCoordinate?,
+    ) {
+        require(target == "shop" || target == "customer") { "ปลายทางไม่ถูกต้อง" }
+        val token = accessToken()
+        api.rpc(
+            token,
+            "qg_rider_mark_arrival",
+            JSONObject()
+                .put("p_order_id", orderId)
+                .put("p_target", target)
+                .put("p_lat", coordinate?.latitude ?: JSONObject.NULL)
+                .put("p_lng", coordinate?.longitude ?: JSONObject.NULL),
+        )
+    }
+
+    suspend fun loadOrderItems(orderId: String): List<RiderOrderItem> {
+        val token = accessToken()
+        val rows = JSONArray(
+            api.rest(
+                token,
+                "order_items?select=item_name,description,quantity,unit_price,total_price,item_image&order_id=eq." +
+                    encode(orderId) + "&order=created_at.asc",
+            ),
+        )
+        return buildList {
+            for (index in 0 until rows.length()) {
+                val item = rows.optJSONObject(index) ?: continue
+                val quantity = item.optInt("quantity", 1).coerceAtLeast(1)
+                val unit = item.optDouble("unit_price", 0.0)
+                add(
+                    RiderOrderItem(
+                        name = item.optString("item_name").ifBlank { "รายการ" },
+                        description = item.optString("description"),
+                        quantity = quantity,
+                        unitPrice = unit,
+                        totalPrice = item.optDouble(
+                            "total_price",
+                            unit * quantity,
+                        ),
+                        imageUrl = item.optString("item_image"),
+                    ),
+                )
+            }
+        }
+    }
+
+    suspend fun pickupWithPhoto(
+        orderId: String,
+        photoPath: String,
+        coordinate: RiderCoordinate?,
+    ): String {
+        val token = accessToken()
+        return api.rpc(
+            token,
+            "qg_pickup_with_photo",
+            JSONObject()
+                .put("p_order_id", orderId)
+                .put("p_photo_path", photoPath)
+                .put("p_lat", coordinate?.latitude ?: JSONObject.NULL)
+                .put("p_lng", coordinate?.longitude ?: JSONObject.NULL),
+        ).trim().trim('"')
+    }
+
+    suspend fun completeWithPhoto(
+        job: RiderActiveJob,
+        photoPath: String,
+        coordinate: RiderCoordinate?,
+    ): String {
+        val token = accessToken()
+        val isMarket = !job.marketOrderId.isNullOrBlank()
+        val function = if (isMarket) {
+            "qg_complete_market_with_photo"
+        } else {
+            "qg_complete_with_photo"
+        }
+        val body = JSONObject()
+            .put("p_photo_path", photoPath)
+            .put("p_lat", coordinate?.latitude ?: JSONObject.NULL)
+            .put("p_lng", coordinate?.longitude ?: JSONObject.NULL)
+
+        if (isMarket) {
+            body.put("p_market_order_id", job.marketOrderId)
+        } else {
+            body.put("p_order_id", job.orderId)
+        }
+
+        return api.rpc(token, function, body).trim().trim('"')
+    }
+
     private fun parseProfile(item: JSONObject): RiderProfileState {
         val metadata = item.optJSONObject("metadata") ?: JSONObject()
         return RiderProfileState(
@@ -191,8 +302,14 @@ class RiderRepository(
     }
 
     private fun accessToken(): String =
-        sessionStore.read()?.accessToken?.takeIf(String::isNotBlank)
+        sessionStore.read()?.accessToken?.takeIf { it.isNotBlank() }
             ?: throw IllegalStateException("กรุณาเข้าสู่ระบบใหม่")
+
+    private fun cleanOrderNote(note: String): String =
+        note.lineSequence()
+            .filter { line -> line.isNotBlank() && !line.startsWith("__QT_ORDER_STATUS__=") }
+            .joinToString("\n")
+            .trim()
 
     private fun encode(value: String): String =
         URLEncoder.encode(value, Charsets.UTF_8.name())
