@@ -82,6 +82,7 @@ private fun CustomerShell(auth: NativeAuth, logout: () -> Unit) {
     val api = remember { CustomerApi() }
     val marketApi = remember { CustomerMarketApi() }
     val laundryApi = remember { CustomerLaundryApi() }
+    val extrasApi = remember { CustomerExtrasApi() }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
     val cartStore = remember(auth.user.id) { CustomerCartStore(context, auth.user.id) }
@@ -94,6 +95,7 @@ private fun CustomerShell(auth: NativeAuth, logout: () -> Unit) {
     var laundryOrders by remember { mutableStateOf<List<LaundryOrderSummary>>(emptyList()) }
     var banners by remember { mutableStateOf<List<HomeBanner>>(emptyList()) }
     var serviceBanners by remember { mutableStateOf<Map<String, ServiceBanner>>(emptyMap()) }
+    var notifications by remember { mutableStateOf<List<CustomerNotification>>(emptyList()) }
     var selectedShop by remember { mutableStateOf<CustomerShop?>(null) }
     var selectedOrder by remember { mutableStateOf<CustomerOrder?>(null) }
     var selectedMarketTrip by remember { mutableStateOf<MarketTripSummary?>(null) }
@@ -123,6 +125,7 @@ private fun CustomerShell(auth: NativeAuth, logout: () -> Unit) {
                 }
                 banners = api.loadHomeBanners(auth)
                 serviceBanners = api.loadServiceBanners(auth)
+                notifications = runCatching { extrasApi.notifications(auth) }.getOrDefault(emptyList())
                 message = null
             }.onFailure { message = it.message ?: "โหลดข้อมูลไม่สำเร็จ" }
             loading = false
@@ -150,6 +153,12 @@ private fun CustomerShell(auth: NativeAuth, logout: () -> Unit) {
     }
 
     LaunchedEffect(auth.user.id) { refresh() }
+    LaunchedEffect(auth.user.id) {
+        while (true) {
+            runCatching { extrasApi.notifications(auth) }.onSuccess { notifications = it }
+            delay(8_000)
+        }
+    }
     LaunchedEffect(cart) { cartStore.save(cart) }
     LaunchedEffect(screen, selectedOrder?.id) {
         if (screen == "orders" || screen == "order") {
@@ -177,14 +186,14 @@ private fun CustomerShell(auth: NativeAuth, logout: () -> Unit) {
     Scaffold(
         containerColor = QgBg,
         bottomBar = {
-            if (screen in setOf("home", "cart", "orders", "profile")) {
+            if (screen in setOf("home", "search", "cart", "orders")) {
                 QgBottomNav(
                     selected = screen,
                     items = listOf(
                         QgNavItem("home", "หน้าหลัก", "Q"),
+                        QgNavItem("search", "ค้นหา", "⌕"),
                         QgNavItem("cart", "ตะกร้า", cart.sumOf { it.quantity }.toString()),
-                        QgNavItem("orders", "ออเดอร์", "▤"),
-                        QgNavItem("profile", "บัญชี", "●")
+                        QgNavItem("orders", "ออเดอร์", "▤")
                     )
                 ) { screen = it }
             }
@@ -197,8 +206,11 @@ private fun CustomerShell(auth: NativeAuth, logout: () -> Unit) {
         ) {
             CustomerTopBar(
                 cartCount = cart.sumOf { it.quantity },
+                unreadCount = notifications.count { !it.read },
                 onHome = { screen = "home" },
-                onCart = { screen = "cart" }
+                onCart = { screen = "cart" },
+                onNotifications = { screen = "notifications" },
+                onProfile = { screen = "profile" }
             )
             if (message != null) {
                 Text(
@@ -209,6 +221,57 @@ private fun CustomerShell(auth: NativeAuth, logout: () -> Unit) {
                 )
             }
             when (screen) {
+                "search" -> CustomerSearchScreen(
+                    shops = shops,
+                    onOpenShop = { shop ->
+                        selectedShop = shop
+                        products = emptyList()
+                        screen = "shop"
+                        scope.launch {
+                            runCatching { api.loadProducts(auth, shop.id) }
+                                .onSuccess { products = it }
+                                .onFailure { message = it.message }
+                        }
+                    }
+                )
+                "notifications" -> CustomerNotificationsScreen(
+                    notifications = notifications,
+                    busy = busy,
+                    onBack = { screen = "home" },
+                    onMarkAll = {
+                        if (!busy) {
+                            busy = true
+                            scope.launch {
+                                runCatching { extrasApi.markAllRead(auth) }
+                                    .onSuccess {
+                                        notifications = notifications.map { it.copy(read = true) }
+                                        message = "อ่านการแจ้งเตือนทั้งหมดแล้ว"
+                                    }
+                                    .onFailure { message = it.message ?: "บันทึกแจ้งเตือนไม่สำเร็จ" }
+                                busy = false
+                            }
+                        }
+                    },
+                    onOpen = { notification ->
+                        if (!busy) {
+                            busy = true
+                            scope.launch {
+                                runCatching { extrasApi.markRead(auth, notification.id) }
+                                notifications = notifications.map {
+                                    if (it.id == notification.id) it.copy(read = true) else it
+                                }
+                                val ref = notification.referenceId
+                                val target = if (!ref.isNullOrBlank()) orders.find { it.id == ref } else null
+                                if (target != null) {
+                                    selectedOrder = target
+                                    orderItems = runCatching { api.loadOrderItems(auth, target.id) }.getOrDefault(emptyList())
+                                    screen = "order"
+                                }
+                                busy = false
+                            }
+                        }
+                    }
+                )
                 "home" -> CustomerHome(
                     loading, banners, serviceBanners, category, shops,
                     onCategory = {
@@ -405,7 +468,14 @@ private fun CustomerShell(auth: NativeAuth, logout: () -> Unit) {
 }
 
 @Composable
-private fun CustomerTopBar(cartCount: Int, onHome: () -> Unit, onCart: () -> Unit) {
+private fun CustomerTopBar(
+    cartCount: Int,
+    unreadCount: Int,
+    onHome: () -> Unit,
+    onCart: () -> Unit,
+    onNotifications: () -> Unit,
+    onProfile: () -> Unit
+) {
     Row(
         Modifier.fillMaxWidth().background(androidx.compose.ui.graphics.Color.White).padding(horizontal = 14.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically
@@ -415,6 +485,12 @@ private fun CustomerTopBar(cartCount: Int, onHome: () -> Unit, onCart: () -> Uni
         OutlinedButton(onClick = onCart) {
             Text(if (cartCount > 0) "ตะกร้า $cartCount" else "ตะกร้า")
         }
+        Spacer(Modifier.width(6.dp))
+        OutlinedButton(onClick = onNotifications) {
+            Text(if (unreadCount > 0) "แจ้งเตือน $unreadCount" else "แจ้งเตือน")
+        }
+        Spacer(Modifier.width(6.dp))
+        OutlinedButton(onClick = onProfile) { Text("บัญชี") }
     }
 }
 
