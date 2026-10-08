@@ -139,6 +139,20 @@ class QueueGoApi(
     suspend fun rpc(accessToken: String, functionName: String, body: JSONObject = JSONObject()): String =
         request("POST", "/rest/v1/rpc/$functionName", accessToken, body.toString())
 
+    suspend fun rest(
+        accessToken: String,
+        path: String,
+        method: String = "GET",
+        body: JSONObject? = null,
+        preferRepresentation: Boolean = false,
+    ): String = request(
+        method = method,
+        path = "/rest/v1/$path",
+        accessToken = accessToken,
+        body = body?.toString(),
+        preferRepresentation = preferRepresentation,
+    )
+
     suspend fun claimActiveSession(
         accessToken: String,
         sessionId: String,
@@ -221,6 +235,7 @@ class QueueGoApi(
         accessToken: String? = null,
         body: String? = null,
         acceptEmpty: Boolean = false,
+        preferRepresentation: Boolean = false,
     ): String = withContext(Dispatchers.IO) {
         val connection = (URL(baseUrl + path).openConnection() as HttpURLConnection).apply {
             requestMethod = method
@@ -230,6 +245,7 @@ class QueueGoApi(
             setRequestProperty("apikey", publishableKey)
             setRequestProperty("Accept", "application/json")
             setRequestProperty("Content-Type", "application/json")
+            if (preferRepresentation) setRequestProperty("Prefer", "return=representation")
             if (!accessToken.isNullOrBlank()) setRequestProperty("Authorization", "Bearer $accessToken")
             if (body != null) {
                 doOutput = true
