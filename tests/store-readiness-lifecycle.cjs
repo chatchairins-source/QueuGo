@@ -8,6 +8,7 @@ const v2=read('supabase/migrations/20261008032050_store_readiness_review_hardeni
 const v3=read('supabase/migrations/20261008032631_store_readiness_rls_hardening_v3.sql');
 const overview=read('supabase/migrations/20261008033600_store_admin_readiness_overview_v4.sql');
 const reapplyV5=read('supabase/migrations/20261008035002_store_reapplication_generated_columns_fix_v5.sql');
+const reapplyV6=read('supabase/migrations/20261008035409_store_reapplication_role_guard_v6.sql');
 const reconcile=read('supabase/migrations/20261008034157_store_readiness_legacy_reconcile_v4.sql');
 let checks=0;const ok=(v,m)=>{assert.ok(v,m);checks++};
 
@@ -54,6 +55,7 @@ ok(!v3.includes('delete from public.orders'),'Archive must never delete order hi
 ok(reapply.includes('shop_profiles_one_current_per_owner')&&reapply.includes('queuego_start_new_shop_application'),'Archived owner must be able to start one fresh application');
 ok(reapplyV5.includes('insert into public.shop_profiles(user_id,shop_name,status,onboarding_status,metadata)'),'Reapplication must write only base shop fields');
 ok(!reapplyV5.includes('insert into public.shop_profiles(user_id,shop_name,public_category'),'Reapplication must not write generated public_category directly');
+ok(reapplyV6.includes("public.get_my_role() is distinct from 'shop'")&&reapplyV6.includes("SHOP_LOGIN_REQUIRED"),'Only merchant-role users may create a fresh shop application');
 ok(merchant.includes('qgmStartNewStoreApplication'),'Merchant UI must expose fresh application after archive');
 ok(admin.includes("if(u.type==='shop')return qgAdminArchiveShop(id)"),'Legacy Admin delete entry must route shops to safe archive');
 
