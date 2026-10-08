@@ -1,5 +1,6 @@
 package com.queuego.merchant
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -76,6 +77,12 @@ private fun MerchantShell(auth: NativeAuth, logout: () -> Unit) {
     var loading by remember { mutableStateOf(true) }
     var busy by remember { mutableStateOf(false) }
     var message by remember { mutableStateOf<String?>(null) }
+
+    BackHandler(enabled = screen != "home") {
+        screen = "home"
+        selectedOrder = null
+
+    }
 
     suspend fun refreshAll() {
         loading = true
