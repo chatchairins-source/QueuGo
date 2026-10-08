@@ -234,6 +234,7 @@ private fun RiderHome(
     var loadError by remember { mutableStateOf<String?>(null) }
     var actionBusy by remember { mutableStateOf(false) }
     var actionMessage by remember { mutableStateOf<String?>(null) }
+    var chatJob by remember { mutableStateOf<RiderJob?>(null) }
     var verifyMode by remember { mutableStateOf<String?>(null) }
     var verifyJob by remember { mutableStateOf<RiderJob?>(null) }
     var verifyItems by remember { mutableStateOf<List<RiderItem>>(emptyList()) }
@@ -375,6 +376,15 @@ private fun RiderHome(
                 .onFailure { loadError = it.message ?: "โหลดงานไม่สำเร็จ" }
             delay(3_000)
         }
+    }
+
+    if (chatJob != null) {
+        RiderChatScreen(
+            auth = auth,
+            job = chatJob!!,
+            onBack = { chatJob = null }
+        )
+        return
     }
 
     if (verifyMode != null && verifyJob != null) {
@@ -624,6 +634,7 @@ private fun RiderHome(
                                 current.marketPickups.all { it.done }
                             ) activeJob.copy(status = "picked_up") else activeJob,
                             busy = actionBusy,
+                            onChat = { chatJob = current.activeJob },
                             onNavigate = { openNavigation(context, current.activeJob) },
                             onArriveShop = {
                                 if (!ensureLocationPermission()) return@ActiveJobCard
@@ -895,6 +906,7 @@ private fun MarketPickupPanel(
 private fun ActiveJobCard(
     job: RiderJob,
     busy: Boolean,
+    onChat: () -> Unit,
     onNavigate: () -> Unit,
     onArriveShop: () -> Unit,
     onPickupVerify: () -> Unit,
@@ -942,7 +954,15 @@ private fun ActiveJobCard(
                     }
                 }
             }
-            Spacer(Modifier.height(14.dp))
+            Spacer(Modifier.height(12.dp))
+            OutlinedButton(
+                onClick = onChat,
+                enabled = !busy,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("แชทกับลูกค้า")
+            }
+            Spacer(Modifier.height(8.dp))
 
             when (job.status) {
                 "rider_assigned", "assigned", "preparing", "ready" -> {
