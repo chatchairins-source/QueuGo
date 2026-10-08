@@ -148,6 +148,69 @@ class QueueGoApi {
         Unit
     }
 
+    suspend fun setOnline(
+        auth: QueueGoAuth,
+        online: Boolean,
+        latitude: Double?,
+        longitude: Double?
+    ) = withContext(Dispatchers.IO) {
+        val profiles = requestArray(
+            "GET",
+            "/rest/v1/rider_profiles?select=id,metadata&user_id=eq." + enc(auth.user.id) + "&limit=1",
+            auth.session.accessToken
+        )
+        if (profiles.length() == 0) error("ไม่พบโปรไฟล์ Rider")
+        val row = profiles.getJSONObject(0)
+        val metadata = row.optJSONObject("metadata") ?: JSONObject()
+        metadata.put("online", online).put("available", online)
+        val body = JSONObject().put("metadata", metadata)
+        if (latitude != null) body.put("latitude", latitude)
+        if (longitude != null) body.put("longitude", longitude)
+        requestAny(
+            "PATCH",
+            "/rest/v1/rider_profiles?user_id=eq." + enc(auth.user.id),
+            auth.session.accessToken,
+            body
+        )
+        Unit
+    }
+
+    suspend fun updateLocation(
+        auth: QueueGoAuth,
+        latitude: Double,
+        longitude: Double
+    ) = withContext(Dispatchers.IO) {
+        requestAny(
+            "PATCH",
+            "/rest/v1/rider_profiles?user_id=eq." + enc(auth.user.id),
+            auth.session.accessToken,
+            JSONObject().put("latitude", latitude).put("longitude", longitude)
+        )
+        Unit
+    }
+
+    suspend fun periodSummary(auth: QueueGoAuth, days: Int = 1): RiderPeriodSummary =
+        withContext(Dispatchers.IO) {
+            val raw = rpc(
+                "qg_rider_period_summary",
+                auth.session.accessToken,
+                JSONObject().put("p_days", days)
+            )
+            val o = when (raw) {
+                is JSONObject -> raw
+                is JSONArray -> raw.optJSONObject(0) ?: JSONObject()
+                else -> JSONObject()
+            }
+            RiderPeriodSummary(
+                days = o.optInt("days", days),
+                jobs = o.optInt("jobs", 0),
+                income = o.optDouble("income", 0.0),
+                onlineHours = o.optDouble("online_hours", 0.0),
+                incomePerHour = if (o.has("income_per_hour") && !o.isNull("income_per_hour"))
+                    o.optDouble("income_per_hour").takeIf { !it.isNaN() } else null
+            )
+        }
+
     suspend fun riderSnapshot(auth: QueueGoAuth): RiderSnapshot = withContext(Dispatchers.IO) {
         val profiles = requestArray(
             "GET",
