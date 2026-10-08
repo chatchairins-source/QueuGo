@@ -411,8 +411,7 @@ class QueueGoApi {
                 value.startsWith("{") -> JSONObject(value)
                 value == "true" -> true
                 value == "false" -> false
-                value.startsWith("\"") && value.endsWith("\"") -> value.removeSurrounding("\"")
-                else -> value
+                else -> value.trim(34.toChar())
             }
         } finally {
             connection.disconnect()
