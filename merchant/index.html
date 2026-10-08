@@ -2272,7 +2272,9 @@ function qgmUpdatePrepCountdown(){
  }
  const value=qgmPrepCountdownText(el.dataset.qgmPrepStart);
  const out=el.querySelector('[data-qgm-prep-remaining]');
+ const label=el.querySelector('[data-qgm-prep-label]');
  if(out)out.textContent=value.text;
+ if(label)label.textContent=value.left>0?'กำลังเตรียมสินค้า':'สินค้าพร้อมส่ง';
  el.classList.toggle('expired',value.left<=0);
  el.title=value.left>0?'เวลาเตรียมสินค้าคงเหลือ '+value.text:'ครบกำหนดเวลาเตรียมสินค้า 20 นาที · กดเมื่อสินค้าพร้อมส่ง';
 }
@@ -2390,7 +2392,7 @@ window.renderShopOrderModern=function(id){
    :o.status==='rider_to_shop'
     ?`<button class="qgm-od-primary" onclick="updateOrderStatus('${o.id}','preparing',this)">เริ่มเตรียมสินค้า</button>`
     :o.status==='preparing'
-     ?`<button class="qgm-od-primary qgm-od-ready-button" ${o.preparingAt!=null&&Number.isFinite(Number(o.preparingAt))?`data-qgm-prep-start="${Number(o.preparingAt)}"`:''} onclick="updateOrderStatus('${o.id}','waiting_rider',this)"><span>สินค้าพร้อมส่ง</span>${o.preparingAt!=null&&Number.isFinite(Number(o.preparingAt))?`<strong data-qgm-prep-remaining>${qgmPrepCountdownText(o.preparingAt).text}</strong>`:''}</button>`
+     ?`<button class="qgm-od-primary qgm-od-ready-button" ${o.preparingAt!=null&&Number.isFinite(Number(o.preparingAt))?`data-qgm-prep-start="${Number(o.preparingAt)}"`:''} onclick="updateOrderStatus('${o.id}','waiting_rider',this)"><span data-qgm-prep-label>${o.preparingAt!=null&&Number.isFinite(Number(o.preparingAt))&&qgmPrepCountdownText(o.preparingAt).left>0?'กำลังเตรียมสินค้า':'สินค้าพร้อมส่ง'}</span>${o.preparingAt!=null&&Number.isFinite(Number(o.preparingAt))?`<strong data-qgm-prep-remaining>${qgmPrepCountdownText(o.preparingAt).text}</strong>`:''}</button>`
      :'';
  const waitingNote=o.status==='waiting_rider'?'<div class="qgm-od-action-note">สินค้าพร้อมแล้ว · รอ Rider มารับสินค้า</div>':o.status==='searching_rider'?'<div class="qgm-od-action-note">กำลังค้นหา Rider ให้กับออเดอร์นี้</div>':'';
  const arrived=o.riderArrivedShopAt?`<div class="qgm-od-arrived">Rider ถึงร้านแล้ว · ${new Date(o.riderArrivedShopAt).toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'})} น.</div>`:'';
@@ -3467,15 +3469,35 @@ function qgmMerchantActionReached(action,status){
 }
 async function qgmMerchantActionReconcile(token,orderId,action){
  try{
-  const rows=await qtSupabaseTable('orders?select=id,status,note,updated_at&id=eq.'+encodeURIComponent(orderId)+'&limit=1',{accessToken:token});
+  const rows=await qtSupabaseTable('orders?select=id,status,note,preparing_at,ready_at,updated_at&id=eq.'+encodeURIComponent(orderId)+'&limit=1',{accessToken:token});
   const row=Array.isArray(rows)?rows[0]:null;
-  return row&&qgmMerchantActionReached(action,row.status)?{order_id:row.id,action,status:row.status,reconciled:true,replayed:true}:null;
+  return row&&qgmMerchantActionReached(action,row.status)?{order_id:row.id,action,status:row.status,preparing_at:row.preparing_at||null,ready_at:row.ready_at||null,updated_at:row.updated_at||null,reconciled:true,replayed:true}:null;
  }catch(e){return null}
+}
+async function qgmMerchantActionTimingSnapshot(token,orderId,action,result){
+ if(!['preparing','ready'].includes(String(action||'')))return result;
+ try{
+  const rows=await qtSupabaseTable('orders?select=id,status,preparing_at,ready_at,updated_at&id=eq.'+encodeURIComponent(orderId)+'&limit=1',{accessToken:token});
+  const row=Array.isArray(rows)?rows[0]:null;
+  if(!row||String(row.id)!==String(orderId))return result;
+  return Object.assign({},result,{status:row.status||result.status,preparing_at:row.preparing_at||result.preparing_at||null,ready_at:row.ready_at||result.ready_at||null,updated_at:row.updated_at||result.updated_at||null});
+ }catch(e){
+  console.warn('merchant action timing refresh failed',e);
+  return result;
+ }
 }
 function qgmApplyMerchantActionResult(orderId,result){
  const status=String(result?.status||'');if(!status)return;
  const order=dbGet('qt_orders',[]).find(o=>String(o.id)===String(orderId));
- if(order){order.status=qtOrderStatusFromDb(status,'');order.updatedAt=Date.now();qtMarkClean('qt_orders')}
+ if(order){
+  order.status=qtOrderStatusFromDb(status,'');
+  const serverUpdated=Date.parse(String(result?.updated_at||''));order.updatedAt=Number.isFinite(serverUpdated)?serverUpdated:Date.now();
+  if(status==='preparing'){
+   const serverStart=Date.parse(String(result?.preparing_at||''));
+   order.preparingAt=Number.isFinite(serverStart)?serverStart:(Number.isFinite(Number(order.preparingAt))?Number(order.preparingAt):Date.now());
+  }
+  qtMarkClean('qt_orders');
+ }
 }
 function qgmSetOrderActionBusy(button,busy,label){
  if(!button)return;
@@ -3504,6 +3526,7 @@ window.qgmMerchantActionOnce=async function(orderId,action,reason){
       body:{p_request_id:pending.requestId,p_kind:'order',p_payload:pending.payload}
     });
     if(!result||String(result.order_id||'')!==String(orderId)||!result.status)throw Error('เซิร์ฟเวอร์ไม่ยืนยันสถานะออเดอร์');
+    result=await qgmMerchantActionTimingSnapshot(token,orderId,action,result);
     qgmMerchantActionClear(pending.key);return result;
    }catch(err){
     lastErr=err;

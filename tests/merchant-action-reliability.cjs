@@ -16,6 +16,11 @@ ok(merchant.includes("await new Promise(r=>setTimeout(r,700));\n    result=await
 ok(merchant.includes("let result;\n try{\n  result=await qgmMerchantActionOnce(orderId,action,null);\n }catch(e){"),'order mutation errors must be isolated from UI refresh errors');
 ok(merchant.includes("merchant order render refresh failed"),'post-commit render failure must not be reported as order failure');
 ok(merchant.includes("merchant hydrate after action failed"),'background refresh failure must be non-fatal after commit');
+ok(merchant.includes("orders?select=id,status,note,preparing_at,ready_at,updated_at"),'merchant reconcile must recover authoritative preparation timestamps');
+ok(merchant.includes("function qgmMerchantActionTimingSnapshot"),'confirmed preparation actions must refresh server timing without blocking the committed action');
+ok(merchant.includes("order.preparingAt=Number.isFinite(serverStart)?serverStart"),'merchant cache must receive preparing_at immediately after starting preparation');
+ok(merchant.includes('data-qgm-prep-label')&&merchant.includes('data-qgm-prep-remaining'),'preparation countdown and label must live inside the ready button');
+ok(merchant.includes("label.textContent=value.left>0?'กำลังเตรียมสินค้า':'สินค้าพร้อมส่ง'"),'ready button label must transition with the 20-minute countdown');
 ok(!merchant.includes("prompt('ระบุเหตุผลที่ร้านยกเลิกออเดอร์')"),'merchant cancellation must not use one-step native prompt');
 ok(!merchant.includes("confirm('ยืนยันยกเลิกออเดอร์นี้?')"),'merchant cancellation must not use one-tap native confirm');
 ok(merchant.includes("qgm-cancel-slider"),'merchant cancellation must require slide confirmation');
