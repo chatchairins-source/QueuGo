@@ -296,7 +296,7 @@ function qtAuthEmailFromPhone(phone){
   const digits=String(phone||'').replace(/\D/g,'');
   return digits+'@auth.queuetech.local';
 }
-async function qtCreateSupabaseUser({type,name,phone,password,email,shopName,category,marketRegistration=null}){
+async function qtCreateSupabaseUser({type,name,phone,password,email,shopName,category,shoppingSubcategories=[],marketRegistration=null}){
   QueueGoPasswordPolicy.requireStrong(password);
   const cleanEmail=String(email||'').trim().toLowerCase();
   const cleanPhone=String(phone||'').trim();
@@ -304,7 +304,7 @@ async function qtCreateSupabaseUser({type,name,phone,password,email,shopName,cat
   const auth=await qtSupabaseAuth('signup',{
     email:authEmail,
     password,
-    data:{name,phone:cleanPhone||null,role:'shop',shop_name:shopName,category}
+    data:{name,phone:cleanPhone||null,role:'shop',shop_name:shopName,category,shoppingSubcategories}
   });
   let session=auth.session;
   if(!auth.user) throw new Error('สร้างบัญชี Auth ไม่สำเร็จ');
@@ -329,12 +329,12 @@ async function qtCreateSupabaseUser({type,name,phone,password,email,shopName,cat
     name,
     phone:cleanPhone||null,
     status:'pending',
-    metadata:{shopName,category}
+    metadata:{shopName,category,shoppingSubcategories}
   };
   const rows=await qtSupabaseTable('users?select=*&on_conflict=auth_user_id',{method:'POST',accessToken:session.access_token,body:row});
   const profile=Array.isArray(rows)?rows[0]:rows;
   if(!profile) throw new Error('สร้างข้อมูลผู้ใช้ในฐานข้อมูลไม่สำเร็จ');
-  const shopBody={user_id:profile.id,shop_name:shopName,status:'pending',metadata:{shopName,category}};
+  const shopBody={user_id:profile.id,shop_name:shopName,status:'pending',metadata:{shopName,category,shoppingSubcategories}};
   if(marketRegistration&&Number.isFinite(Number(marketRegistration.lat))&&Number.isFinite(Number(marketRegistration.lng))){
     shopBody.latitude=Number(marketRegistration.lat);
     shopBody.longitude=Number(marketRegistration.lng);
@@ -753,7 +753,7 @@ function placeholderImg(){
 
 function isApproved(user){return !!user&&(user.type==='admin'||user.status==='approved')}
 
-function categoryLabel(c){ return {food:'🍜 ร้านอาหาร',grocery:'🛒 ร้านขายของชำ',cafe:'☕ เครื่องดื่ม / คาเฟ่',laundry:'🧺 ร้านฝากซัก',market:'🧺 ตลาดสด',other:'📦 อื่น ๆ',meat:'🥩 เนื้อสัตว์',fish:'🐟 ปลา / อาหารทะเล',vegetable:'🥬 ผักสด',fruit:'🍎 ผลไม้'}[c] || escapeHtml(c); }
+function categoryLabel(c){ return {food:'ร้านอาหาร',grocery:'ร้านขายของชำ',cafe:'เครื่องดื่ม / คาเฟ่',laundry:'ร้านฝากซัก',market:'ตลาดสด',shopping:'ช้อปปิ้ง',other:'อื่น ๆ',meat:'เนื้อสัตว์',fish:'ปลา / อาหารทะเล',vegetable:'ผักสด',fruit:'ผลไม้'}[c] || escapeHtml(c); }
 
 /* ---------- Session / Auth ---------- */
 function getSession(){ return qtSessionRead(); }
@@ -1085,11 +1085,30 @@ function qgRegFilterRows(value){
  QG_REG_MARKET_STATE.filtered=!q?rows.slice():rows.filter(m=>qgRegMarketText(m.market_name).includes(q)||qgRegMarketText([m.subdistrict,m.district,m.province].filter(Boolean).join(' ')).includes(q));
  if(q&&QG_REG_MARKET_STATE.filtered.length&&!QG_REG_MARKET_STATE.filtered.some(m=>String(m.market_id)===String(QG_REG_MARKET_STATE.selectedMarketId)))QG_REG_MARKET_STATE.selectedMarketId=String(QG_REG_MARKET_STATE.filtered[0].market_id);
 }
+const QG_SHOPPING_SUBCATEGORIES=[
+  ['mobile_accessories','มือถือและอุปกรณ์'],
+  ['computer_it','คอมพิวเตอร์และไอที'],
+  ['automotive_car','อะไหล่รถยนต์'],
+  ['automotive_motorcycle','อะไหล่มอเตอร์ไซค์']
+];
+function qgShoppingSubcategoryValues(prefix){
+  return QG_SHOPPING_SUBCATEGORIES.map(([key])=>key).filter(key=>document.getElementById(prefix+'-'+key)?.checked);
+}
+function qgShoppingSubcategoryChoices(prefix,selected=[]){
+  const set=new Set(Array.isArray(selected)?selected:[]);
+  return '<div class="qgm-shopping-subcategory-grid">'+QG_SHOPPING_SUBCATEGORIES.map(([key,label])=>'<label><input id="'+prefix+'-'+key+'" type="checkbox" value="'+key+'" '+(set.has(key)?'checked':'')+'><span>'+qgRegEsc(label)+'</span></label>').join('')+'</div>';
+}
+window.qgmShopCategoryChanged=function(){
+  const category=document.getElementById('qgs-category')?.value||'';
+  const section=document.getElementById('qgm-shop-shopping-section');
+  if(section)section.hidden=category!=='shopping';
+};
 window.qgRegCategoryChanged=function(){
   const category=document.getElementById('reg-category')?.value||'';
-  const section=document.getElementById('qgm-reg-market-section');
-  if(!section)return;
-  section.hidden=!qgRegIsMarketCategory(category);
+  const marketSection=document.getElementById('qgm-reg-market-section');
+  const shoppingSection=document.getElementById('qgm-reg-shopping-section');
+  if(marketSection)marketSection.hidden=!qgRegIsMarketCategory(category);
+  if(shoppingSection)shoppingSection.hidden=category!=='shopping';
 };
 function qgRegMarketStatus(message,kind=''){
   const el=document.getElementById('qgm-reg-market-location');
@@ -1180,15 +1199,17 @@ async function handleRegister(e){
   const password=document.getElementById('reg-password')?.value||'';
   const confirmation=document.getElementById('reg-password-confirm')?.value||'';
   let marketRegistration=null;
-  if(!name||shopName.length<2||shopName.length>100||!['food','grocery','cafe','laundry','market','other'].includes(category)||!/^0[0-9]{9}$/.test(phone)){
+  const shoppingSubcategories=category==='shopping'?qgShoppingSubcategoryValues('qgm-reg-shopping'):[];
+  if(!name||shopName.length<2||shopName.length>100||!['food','grocery','cafe','laundry','market','shopping','other'].includes(category)||!/^0[0-9]{9}$/.test(phone)){
     toast('กรุณากรอกชื่อร้าน เลือกประเภทร้าน และตรวจข้อมูลสมัครให้ครบ');return false;
   }
+  if(category==='shopping'&&!shoppingSubcategories.length){toast('กรุณาเลือกหมวดย่อยของร้านช้อปปิ้งอย่างน้อย 1 หมวด');return false;}
   if(!QueueGoPasswordPolicy.validate(password)){toast(QueueGoPasswordPolicy.MESSAGE);return false;}
   if(password!==confirmation){toast('ยืนยันรหัสผ่านให้ตรงกัน');return false;}
   try{marketRegistration=qgRegMarketPayload(category)}catch(err){toast(err.message||'กรุณาตรวจข้อมูลตลาด');return false}
   const button=e.submitter;if(button)button.disabled=true;
   try{
-    const result=await qtCreateSupabaseUser({type:'shop',name,phone,password,email:'',shopName,category,marketRegistration});
+    const result=await qtCreateSupabaseUser({type:'shop',name,phone,password,email:'',shopName,category,shoppingSubcategories,marketRegistration});
     if(result.needsEmailConfirmation){toast('กรุณายืนยันบัญชีทางอีเมลก่อนเข้าสู่ระบบ');navigate('login');return false;}
     const p=result.profile;
     if(p?.role!=='shop'||!result.session?.access_token)throw new Error('สร้างบัญชีร้านค้าไม่สำเร็จ');
@@ -2012,7 +2033,8 @@ window.renderShopRegister=function(){
     <section class="qgm-login-panel">
       <form onsubmit="handleRegister(event);return false">
         <label class="qgm-register-field">ชื่อร้าน <span>*</span><input id="reg-shop-name" autocomplete="organization" required minlength="2" maxlength="100" placeholder="ชื่อร้านที่ลูกค้าจะเห็น"></label>
-        <label class="qgm-register-field">ประเภทร้านค้า <span>*</span><select id="reg-category" required onchange="qgRegCategoryChanged()"><option value="" selected disabled>เลือกประเภทร้านค้า</option><option value="food">ร้านอาหาร</option><option value="grocery">ร้านขายของชำ</option><option value="cafe">เครื่องดื่ม / คาเฟ่</option><option value="laundry">ร้านฝากซัก</option><option value="market">ตลาดสด</option><option value="other">อื่น ๆ</option></select></label>
+        <label class="qgm-register-field">ประเภทร้านค้า <span>*</span><select id="reg-category" required onchange="qgRegCategoryChanged()"><option value="" selected disabled>เลือกประเภทร้านค้า</option><option value="food">ร้านอาหาร</option><option value="grocery">ร้านขายของชำ</option><option value="cafe">เครื่องดื่ม / คาเฟ่</option><option value="laundry">ร้านฝากซัก</option><option value="market">ตลาดสด</option><option value="shopping">ช้อปปิ้ง</option><option value="other">อื่น ๆ</option></select></label>
+        <section id="qgm-reg-shopping-section" class="qgm-market-membership-entry" hidden><div><b>ร้านของคุณขายสินค้าอะไร</b><small>เลือกได้มากกว่า 1 หมวด ใช้สินค้า สต๊อก ตะกร้า และการจัดส่งระบบเดิม</small></div>${qgShoppingSubcategoryChoices('qgm-reg-shopping')}</section>
         <section id="qgm-reg-market-section" class="qgm-market-membership-entry" hidden>
           <div><b>ยืนยันตลาดที่ร้านตั้งอยู่</b><small>QueueGo จะใช้พิกัดหน้าร้านเพื่อแนะนำตลาดที่ใกล้ที่สุด ร้านจะเข้าหน้าตลาดสดได้หลัง Admin ตรวจสอบและอนุมัติ</small></div>
           <button id="qgm-reg-find-market" class="qgm-outline" type="button" onclick="qgRegFindMarkets()">📍 ใช้พิกัดร้านนี้และค้นหาตลาดใกล้ฉัน</button>
@@ -3088,7 +3110,7 @@ window.qgmCopyMedia=async function(url){try{await navigator.clipboard.writeText(
 window.renderShopSetup=function(){
   window.qgmShopLocation=null;
   const u=currentUser();if(!u||u.type!=='shop')return navigate('login');
-  qtShopLayout('แก้ไขข้อมูลร้าน',`<form id="qgm-shop-form" class="qgm-card qgm-form-card" onsubmit="return qgmSaveShopSetup(event)"><div class="qgm-field"><label>ชื่อร้าน</label><input id="qgs-name" required value="${escapeHtml(u.shopName||'')}"></div><div class="qgm-field"><label>ชื่อผู้ติดต่อ</label><input id="qgs-contact" required value="${escapeHtml(u.name||'')}"></div><div class="qgm-field"><label>เบอร์โทรศัพท์</label><input id="qgs-phone" value="${escapeHtml(u.phone||'')}"></div><div class="qgm-field"><label>หมวดหมู่</label><select id="qgs-category">${[['food','ร้านอาหาร'],['grocery','ร้านขายของชำ'],['cafe','เครื่องดื่ม / คาเฟ่'],['laundry','ร้านฝากซัก'],['market','ตลาดสด'],['other','อื่น ๆ']].map(([k,v])=>`<option value="${k}" ${qgmTopLevelShopCategory(u.category)===k?'selected':''}>${v}</option>`).join('')}</select><small>ปลา เนื้อสัตว์ ผักสด และผลไม้ ให้เลือก “ตลาดสด” แล้วกำหนดเป็นหมวดสินค้าในร้าน</small></div><div class="qgm-field"><label>ที่อยู่ร้าน</label><textarea id="qgs-address" rows="2">${escapeHtml(u.address||'')}</textarea></div><section class="qgm-location"><b>ปักพิกัดร้าน</b><p>เลื่อนแผนที่ให้หมุดอยู่ตรงหน้าร้าน แล้วกดบันทึก</p><div id="qgs-map" class="map-box"></div><button type="button" class="qgm-outline" onclick="qgmLocateShop()">ใช้ตำแหน่ง GPS ปัจจุบัน</button><small id="qgs-coordinates"></small></section><div class="qgm-inline"><div class="qgm-field"><label>เปิด</label><input id="qgs-open" type="time" value="${escapeHtml(u.openTime||'06:00')}"></div><div class="qgm-field"><label>ปิด</label><input id="qgs-close" type="time" value="${escapeHtml(u.closeTime||'22:00')}"></div></div><div class="qgm-field"><label>รายละเอียด</label><textarea id="qgs-desc" rows="2">${escapeHtml(u.description||'')}</textarea></div><div class="qgm-image-fields"><label class="qgm-field"><span>รูปหน้าร้าน / โปรไฟล์ร้าน</span><img id="qgs-logo-preview" src="${escapeHtml(qtShopImageSrc(u.logo||''))}" alt="ตัวอย่างโลโก้"><span class="qgm-upload-action">${qgmMediaIcon()} เลือกรูป<input id="qgs-logo" type="file" accept="image/jpeg,image/png,image/webp" onchange="qgmPreviewUpload(this,'qgs-logo-preview')"></span></label><label class="qgm-field"><span>รูปหน้าปก</span><img id="qgs-cover-preview" src="${escapeHtml(qtShopImageSrc(u.cover||''))}" alt="ตัวอย่างภาพหน้าร้าน"><span class="qgm-upload-action">${qgmMediaIcon()} เลือกรูป<input id="qgs-cover" type="file" accept="image/jpeg,image/png,image/webp" onchange="qgmPreviewUpload(this,'qgs-cover-preview')"></span></label></div><button class="qgm-primary" type="submit">บันทึกข้อมูลร้าน</button></form>`,'shop-profile');
+  qtShopLayout('แก้ไขข้อมูลร้าน',`<form id="qgm-shop-form" class="qgm-card qgm-form-card" onsubmit="return qgmSaveShopSetup(event)"><div class="qgm-field"><label>ชื่อร้าน</label><input id="qgs-name" required value="${escapeHtml(u.shopName||'')}"></div><div class="qgm-field"><label>ชื่อผู้ติดต่อ</label><input id="qgs-contact" required value="${escapeHtml(u.name||'')}"></div><div class="qgm-field"><label>เบอร์โทรศัพท์</label><input id="qgs-phone" value="${escapeHtml(u.phone||'')}"></div><div class="qgm-field"><label>หมวดหมู่</label><select id="qgs-category" onchange="qgmShopCategoryChanged()">${[['food','ร้านอาหาร'],['grocery','ร้านขายของชำ'],['cafe','เครื่องดื่ม / คาเฟ่'],['laundry','ร้านฝากซัก'],['market','ตลาดสด'],['shopping','ช้อปปิ้ง'],['other','อื่น ๆ']].map(([k,v])=>`<option value="${k}" ${qgmTopLevelShopCategory(u.category)===k?'selected':''}>${v}</option>`).join('')}</select><small>ร้านช้อปปิ้งเลือกหมวดย่อยได้หลายหมวด โดยยังใช้สินค้าและสต๊อกชุดเดิม</small></div><section id="qgm-shop-shopping-section" class="qgm-field" ${qgmTopLevelShopCategory(u.category)==='shopping'?'':'hidden'}><label>หมวดย่อยช้อปปิ้ง</label>${qgShoppingSubcategoryChoices('qgm-shop-shopping',u.shoppingSubcategories||[])}</section><div class="qgm-field"><label>ที่อยู่ร้าน</label><textarea id="qgs-address" rows="2">${escapeHtml(u.address||'')}</textarea></div><section class="qgm-location"><b>ปักพิกัดร้าน</b><p>เลื่อนแผนที่ให้หมุดอยู่ตรงหน้าร้าน แล้วกดบันทึก</p><div id="qgs-map" class="map-box"></div><button type="button" class="qgm-outline" onclick="qgmLocateShop()">ใช้ตำแหน่ง GPS ปัจจุบัน</button><small id="qgs-coordinates"></small></section><div class="qgm-inline"><div class="qgm-field"><label>เปิด</label><input id="qgs-open" type="time" value="${escapeHtml(u.openTime||'06:00')}"></div><div class="qgm-field"><label>ปิด</label><input id="qgs-close" type="time" value="${escapeHtml(u.closeTime||'22:00')}"></div></div><div class="qgm-field"><label>รายละเอียด</label><textarea id="qgs-desc" rows="2">${escapeHtml(u.description||'')}</textarea></div><div class="qgm-image-fields"><label class="qgm-field"><span>รูปหน้าร้าน / โปรไฟล์ร้าน</span><img id="qgs-logo-preview" src="${escapeHtml(qtShopImageSrc(u.logo||''))}" alt="ตัวอย่างโลโก้"><span class="qgm-upload-action">${qgmMediaIcon()} เลือกรูป<input id="qgs-logo" type="file" accept="image/jpeg,image/png,image/webp" onchange="qgmPreviewUpload(this,'qgs-logo-preview')"></span></label><label class="qgm-field"><span>รูปหน้าปก</span><img id="qgs-cover-preview" src="${escapeHtml(qtShopImageSrc(u.cover||''))}" alt="ตัวอย่างภาพหน้าร้าน"><span class="qgm-upload-action">${qgmMediaIcon()} เลือกรูป<input id="qgs-cover" type="file" accept="image/jpeg,image/png,image/webp" onchange="qgmPreviewUpload(this,'qgs-cover-preview')"></span></label></div><button class="qgm-primary" type="submit">บันทึกข้อมูลร้าน</button></form>`,'shop-profile');
  const mapHost=document.getElementById('qgs-map');
  setTimeout(()=>{
   if(!mapHost?.isConnected)return;
@@ -3142,6 +3164,7 @@ window.qgmSaveShopSetup=async function(e){e.preventDefault();const button=e.subm
 </script>
 <style id="qg-v10-media-css">
 .qgm-menu:nth-child(7) .ico{background:#f1edff;color:#7356c8}.qgm-menu:nth-child(8) .ico{background:#fff0f3;color:#e7092b}.qgm-menu:nth-child(9) .ico{background:#eaf6fc;color:#268fc5}
+.qgm-shopping-subcategory-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:10px}.qgm-shopping-subcategory-grid label{display:flex;align-items:center;gap:8px;min-height:44px;border:1px solid #e4e8ed;border-radius:12px;padding:10px;background:#fff;font-size:12px;font-weight:700}.qgm-shopping-subcategory-grid input{accent-color:#e7092b}@media(max-width:430px){.qgm-shopping-subcategory-grid{grid-template-columns:1fr}}
 .qgm-upload-action{position:relative;display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:46px;border:1px solid #e7092b;background:#fff;color:#d5092b;border-radius:12px;padding:10px 15px;font-weight:700;overflow:hidden;cursor:pointer}.qgm-upload-action svg,.qgm-media-hero svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}.qgm-upload-action input[type=file]{position:absolute;inset:0;opacity:0;width:100%;height:100%;cursor:pointer}
 .qgm-upload-status{display:grid;grid-template-columns:54px minmax(0,1fr);gap:11px;align-items:center;margin-top:10px;padding:10px;border:1px solid #e4e8ed;border-radius:14px;background:#f8fafc}
 .qgm-upload-status[hidden]{display:none}
