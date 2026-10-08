@@ -80,6 +80,21 @@ data class RiderOrderItem(
     val imageUrl: String,
 )
 
+data class RiderMarketPickup(
+    val pickupId: String,
+    val sequence: Int,
+    val shopName: String,
+    val shopAddress: String,
+    val latitude: Double?,
+    val longitude: Double?,
+    val shopAmount: Double,
+    val cashPaidAmount: Double,
+    val status: String,
+) {
+    val done: Boolean
+        get() = status.uppercase() in setOf("PICKED_UP", "CANCELLED")
+}
+
 data class RiderProofState(
     val mode: RiderProofMode,
     val orderId: String,
@@ -87,6 +102,9 @@ data class RiderProofState(
     val items: List<RiderOrderItem> = emptyList(),
     val loading: Boolean = true,
     val photoUri: String? = null,
+    val marketPickupId: String? = null,
+    val marketPickupLabel: String? = null,
+    val marketPickupAmount: Double? = null,
     val submitting: Boolean = false,
     val error: String? = null,
 )
@@ -104,6 +122,7 @@ data class RiderDashboardState(
     val offer: RiderOffer? = null,
     val activeJob: RiderActiveJob? = null,
     val proof: RiderProofState? = null,
+    val marketPickups: List<RiderMarketPickup> = emptyList(),
     val navigationRequest: RiderNavigationRequest? = null,
     val actionBusy: Boolean = false,
     val message: String? = null,
