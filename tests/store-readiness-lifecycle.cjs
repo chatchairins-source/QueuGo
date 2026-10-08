@@ -88,6 +88,7 @@ ok(v8.includes("'can_register_again',true"),'Unopened delete must explicitly per
 ok(admin.includes('qgAdminDeleteUnopenedShop')&&admin.includes('rpc/queuego_admin_delete_unopened_shop'),'Admin must expose the safe unopened-registration delete flow');
 ok(admin.includes("u.shopProfileId?qgAdminArchiveShop(id):qgAdminDeleteUnopenedShop(id)"),'Admin delete must archive real stores and hard-delete only profile-less registrations');
 ok(admin.includes("u.shopProfileId?'ลบร้าน':'ลบรายการสมัคร'"),'Admin must distinguish store archive from unopened registration cleanup');
+ok(admin.includes('ยังไม่เคยสร้างโปรไฟล์ร้าน')&&admin.includes("qtAudit('shop_unopened_view'"),'Admin detail must show a usable unopened-registration view instead of calling the shop application RPC');
 
 // Case G: public/customer visibility only active + approved + not archived.
 ok(v3.includes("sp.status='active'")&&v3.includes("sp.archived_at is null")&&v3.includes("sp.onboarding_status='approved'"),'Authenticated product visibility must require active approved store');
