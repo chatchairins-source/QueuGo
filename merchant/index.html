@@ -2291,7 +2291,7 @@ window.renderShopOrderModern=function(id){
  const u=shopUser(),o=shopOrders(u).find(x=>String(x.id)===String(id));
  if(!o)return navigate('shop-orders');
  const st=window.qgmOrderStatus(o),subtotal=qgmMerchantSalesAmount(o),items=o.items||[],created=new Date(o.createdAt||Date.now()).toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'});
- const canCancel=['shop_accepted','preparing','waiting_rider','rider_to_shop','accepted','ready','assigned'].includes(o.status);
+ const canCancel=['shop_accepted','rider_to_shop','accepted'].includes(o.status);
  const primary=o.status==='pending_shop'
    ?`<button class="qgm-od-primary" onclick="updateOrderStatus('${o.id}','shop_accepted',this)">รับออเดอร์</button><button class="qgm-od-secondary" onclick="shopCancelOrder('${o.id}',this)">ปฏิเสธออเดอร์</button>`
    :o.status==='rider_to_shop'
