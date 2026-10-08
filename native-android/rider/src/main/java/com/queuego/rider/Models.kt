@@ -95,3 +95,13 @@ data class RiderPeriodSummary(
     val onlineHours: Double,
     val incomePerHour: Double?
 )
+
+
+data class RiderHistoryOrder(
+    val id: String,
+    val number: String,
+    val pickupAddress: String?,
+    val deliveryAddress: String?,
+    val deliveryFee: Double,
+    val completedAt: String?
+)
