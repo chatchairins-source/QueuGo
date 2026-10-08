@@ -17,6 +17,7 @@ for(const p of [
   'customer/src/main/java/com/queuego/customer/CustomerApi.kt',
   'customer/src/main/java/com/queuego/customer/CustomerMarketApi.kt',
   'customer/src/main/java/com/queuego/customer/CustomerLaundryApi.kt',
+  'customer/src/main/java/com/queuego/customer/CustomerExtras.kt',
   'merchant/src/main/java/com/queuego/merchant/QueueGoMerchantApp.kt',
   'merchant/src/main/java/com/queuego/merchant/MerchantApi.kt',
   'merchant/src/main/java/com/queuego/merchant/MerchantLaundryApi.kt'
@@ -51,6 +52,8 @@ ok(source.includes('queuego_place_cash_order'),'Customer native checkout must us
 ok(source.includes('market_public_catalog_v2')&&source.includes('queuego_place_market_order'),'Customer native Market must use production market RPCs');
 ok(source.includes('queuego_add_market_order_shops'),'Customer native Market must preserve add-shop flow');
 ok(source.includes('queuego_place_laundry_order_v2'),'Customer native Laundry must use production laundry order RPC');
+ok(source.includes('notifications?select=id,title,message,type,reference_id,is_read,created_at'),'Customer native notifications must use production notifications table');
+ok(source.includes('CustomerSearchScreen')&&source.includes('QgNavItem("search"'),'Customer native must preserve global search navigation');
 ok(source.includes('qg_merchant_action_once'),'Merchant native order actions must stay idempotent');
 ok(source.includes('get_my_shop_orders'),'Merchant native Orders must use production order source');
 ok(source.includes('queuego_laundry_merchant_state')&&source.includes('queuego_laundry_shop_action_v2'),'Merchant native Laundry must use production laundry state/actions');
