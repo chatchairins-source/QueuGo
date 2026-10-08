@@ -43,6 +43,16 @@ data class CustomerNotification(
     val createdAt: String?
 )
 
+data class CustomerSupportTicket(
+    val id: String,
+    val category: String,
+    val details: String,
+    val status: String,
+    val orderId: String?,
+    val adminNote: String?,
+    val createdAt: String?
+)
+
 class CustomerExtrasApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
     suspend fun notifications(auth: NativeAuth): List<CustomerNotification> {
         val rows = http.array(
@@ -77,6 +87,55 @@ class CustomerExtrasApi(private val http: QueueGoNativeApi = QueueGoNativeApi())
             auth.session.accessToken,
             JSONObject().put("is_read", true)
         )
+    }
+
+    suspend fun supportTickets(auth: NativeAuth): List<CustomerSupportTicket> {
+        val rows = http.array(
+            http.get(
+                "qg_support_tickets?select=id,category,details,status,order_id,admin_note,created_at" +
+                    "&user_id=eq." + http.enc(auth.user.id) +
+                    "&order=created_at.desc&limit=30",
+                auth.session.accessToken
+            )
+        )
+        return buildList {
+            for (i in 0 until rows.length()) {
+                val r = rows.optJSONObject(i) ?: continue
+                add(
+                    CustomerSupportTicket(
+                        id = r.optString("id"),
+                        category = r.optString("category"),
+                        details = r.optString("details"),
+                        status = r.optString("status"),
+                        orderId = r.optString("order_id").takeIf { it.isNotBlank() && it != "null" },
+                        adminNote = r.optString("admin_note").takeIf { it.isNotBlank() && it != "null" },
+                        createdAt = r.optString("created_at").takeIf { it.isNotBlank() && it != "null" }
+                    )
+                )
+            }
+        }
+    }
+
+    suspend fun createSupportTicket(
+        auth: NativeAuth,
+        ticketId: String,
+        orderId: String?,
+        category: String,
+        details: String
+    ) {
+        val body = JSONObject()
+            .put("p_ticket_id", ticketId)
+            .put("p_order_id", orderId)
+            .put("p_category", category)
+            .put("p_details", details.trim())
+            .put("p_evidence_path", JSONObject.NULL)
+        val raw = http.rpc("qg_create_ticket", auth.session.accessToken, body)
+        val confirmed = when (raw) {
+            is String -> raw
+            is JSONObject -> raw.optString("id").ifBlank { raw.optString("qg_create_ticket") }
+            else -> raw.toString().trim('"')
+        }
+        if (confirmed != ticketId) error("ระบบยังไม่ยืนยันเลขคำร้อง")
     }
 
     suspend fun markAllRead(auth: NativeAuth) {
