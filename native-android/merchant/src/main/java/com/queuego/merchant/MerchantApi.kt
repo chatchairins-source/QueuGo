@@ -14,7 +14,15 @@ data class MerchantShop(
     val cover: String?,
     val address: String?,
     val status: String,
-    val onboardingStatus: String
+    val onboardingStatus: String,
+    val deliveryEnabled: Boolean
+)
+
+data class MerchantTodayRevenue(
+    val orderCount: Int,
+    val grossSales: Double,
+    val gpDue: Double,
+    val cashReceived: Double
 )
 
 data class MerchantOrder(
@@ -53,7 +61,7 @@ data class ShopReadiness(val complete: Boolean, val checks: JSONObject, val cata
 class MerchantApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
     suspend fun loadShop(auth: NativeAuth): MerchantShop? {
         val rows = http.array(http.get(
-            "shop_profiles?select=id,shop_name,public_category,public_logo,public_cover,address,status,onboarding_status" +
+            "shop_profiles?select=id,shop_name,public_category,public_logo,public_cover,address,status,onboarding_status,delivery_enabled" +
                 "&user_id=eq." + http.enc(auth.user.id) + "&archived_at=is.null&order=created_at.desc&limit=1",
             auth.session.accessToken
         ))
@@ -66,7 +74,50 @@ class MerchantApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
             r.optNullable("public_cover"),
             r.optNullable("address"),
             r.optString("status"),
-            r.optString("onboarding_status").ifBlank { "draft" }
+            r.optString("onboarding_status").ifBlank { "draft" },
+            r.optBoolean("delivery_enabled", false)
+        )
+    }
+
+    suspend fun shopOpenState(auth: NativeAuth, shopId: String): Boolean {
+        val rows = http.array(http.get(
+            "shop_open_states?select=shop_id,is_open&shop_id=eq." + http.enc(shopId) + "&limit=1",
+            auth.session.accessToken
+        ))
+        return rows.optJSONObject(0)?.optBoolean("is_open", true) ?: true
+    }
+
+    suspend fun setShopOpen(auth: NativeAuth, shop: MerchantShop, open: Boolean) {
+        if (open && !shop.deliveryEnabled) {
+            http.rpc("pos_enable_delivery", auth.session.accessToken, JSONObject())
+            return
+        }
+        val path = "shop_open_states?shop_id=eq." + http.enc(shop.id)
+        val rows = http.array(http.get(
+            "shop_open_states?select=shop_id&shop_id=eq." + http.enc(shop.id) + "&limit=1",
+            auth.session.accessToken
+        ))
+        val body = JSONObject()
+            .put("shop_id", shop.id)
+            .put("is_open", open)
+            .put("resume_at", JSONObject.NULL)
+        if (rows.length() > 0) http.patch(path, auth.session.accessToken, body)
+        else http.post("shop_open_states", auth.session.accessToken, body)
+    }
+
+    suspend fun todayRevenue(auth: NativeAuth, date: String): MerchantTodayRevenue {
+        val raw = http.rpc(
+            "merchant_revenue_days",
+            auth.session.accessToken,
+            JSONObject().put("p_from", date).put("p_to", date)
+        )
+        val rows = http.array(raw)
+        val r = rows.optJSONObject(0) ?: return MerchantTodayRevenue(0, 0.0, 0.0, 0.0)
+        return MerchantTodayRevenue(
+            r.optInt("order_count", 0),
+            r.optDouble("gross_sales", 0.0),
+            r.optDouble("gp_due", 0.0),
+            r.optDouble("cash_received", 0.0)
         )
     }
 
