@@ -41,6 +41,27 @@ data class CustomerOrder(
     val createdAt: String?
 )
 
+data class CustomerTrackingShop(
+    val name: String,
+    val phone: String?
+)
+
+data class CustomerTrackingRider(
+    val name: String,
+    val phone: String?,
+    val photo: String?,
+    val vehicleType: String?,
+    val vehiclePlate: String?,
+    val latitude: Double?,
+    val longitude: Double?,
+    val updatedAt: String?
+)
+
+data class CustomerOrderContext(
+    val shop: CustomerTrackingShop?,
+    val rider: CustomerTrackingRider?
+)
+
 data class CustomerOrderItem(
     val name: String,
     val quantity: Int,
@@ -132,6 +153,41 @@ class CustomerApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
                 ))
             }
         }
+    }
+
+    suspend fun loadOrderContext(auth: NativeAuth, orderId: String): CustomerOrderContext {
+        val raw = http.rpc(
+            "qg_customer_order_context",
+            auth.session.accessToken,
+            JSONObject().put("p_order_id", orderId)
+        )
+        val root = when (raw) {
+            is JSONObject -> raw
+            is JSONArray -> raw.optJSONObject(0) ?: JSONObject()
+            else -> JSONObject()
+        }
+        val shopObj = root.optJSONObject("shop")
+        val riderObj = root.optJSONObject("rider")
+        return CustomerOrderContext(
+            shop = shopObj?.let {
+                CustomerTrackingShop(
+                    name = it.optString("name").ifBlank { "ร้านค้า" },
+                    phone = it.optNullable("phone")
+                )
+            },
+            rider = riderObj?.let {
+                CustomerTrackingRider(
+                    name = it.optString("name").ifBlank { "Rider" },
+                    phone = it.optNullable("phone"),
+                    photo = it.optNullable("photo"),
+                    vehicleType = it.optNullable("vehicle_type"),
+                    vehiclePlate = it.optNullable("vehicle_plate"),
+                    latitude = it.optDoubleOrNull("latitude"),
+                    longitude = it.optDoubleOrNull("longitude"),
+                    updatedAt = it.optNullable("updated_at")
+                )
+            }
+        )
     }
 
     suspend fun loadOrderItems(auth: NativeAuth, orderId: String): List<CustomerOrderItem> {
