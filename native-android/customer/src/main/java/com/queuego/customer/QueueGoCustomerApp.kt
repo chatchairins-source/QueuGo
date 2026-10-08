@@ -45,6 +45,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.queuego.shared.NativeAuth
+import com.queuego.shared.QgAccountDeletionSection
 import com.queuego.shared.QgBg
 import com.queuego.shared.QgBottomNav
 import com.queuego.shared.QgCard
@@ -893,6 +894,11 @@ private fun ProfileScreen(auth: NativeAuth, logout: () -> Unit) {
                 Text("บัญชีนี้ใช้ Session และ RLS ของระบบจริง", color = QgMuted)
             }
         }
+        Spacer(Modifier.height(10.dp))
+        QgAccountDeletionSection(
+            accessToken = auth.session.accessToken,
+            onDeleted = logout
+        )
         Spacer(Modifier.height(18.dp))
         OutlinedButton(onClick = logout, modifier = Modifier.fillMaxWidth()) { Text("ออกจากระบบ") }
     }
