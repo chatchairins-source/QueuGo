@@ -8,6 +8,7 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -22,6 +23,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
@@ -49,6 +51,9 @@ import com.queuego.shared.QgAccountDeletionSection
 import com.queuego.shared.QgBg
 import com.queuego.shared.QgBottomNav
 import com.queuego.shared.QgCard
+import com.queuego.shared.QgLine
+import com.queuego.shared.QgIconButton
+import com.queuego.shared.QgIcon
 import com.queuego.shared.QgMuted
 import com.queuego.shared.QgNavItem
 import com.queuego.shared.QgRed
@@ -195,10 +200,10 @@ private fun CustomerShell(auth: NativeAuth, logout: () -> Unit) {
                 QgBottomNav(
                     selected = screen,
                     items = listOf(
-                        QgNavItem("home", "หน้าหลัก", "Q"),
-                        QgNavItem("search", "ค้นหา", "⌕"),
-                        QgNavItem("cart", "ตะกร้า", cart.sumOf { it.quantity }.toString()),
-                        QgNavItem("orders", "ออเดอร์", "▤")
+                        QgNavItem("home", "หน้าหลัก", "home"),
+                        QgNavItem("search", "ค้นหา", "search"),
+                        QgNavItem("cart", if (cart.sumOf { it.quantity } > 0) "ตะกร้า " + cart.sumOf { it.quantity } else "ตะกร้า", "bag"),
+                        QgNavItem("orders", "ออเดอร์", "orders")
                     )
                 ) { screen = it }
             }
@@ -547,20 +552,20 @@ private fun CustomerTopBar(
     onProfile: () -> Unit
 ) {
     Row(
-        Modifier.fillMaxWidth().background(androidx.compose.ui.graphics.Color.White).padding(horizontal = 14.dp, vertical = 10.dp),
+        Modifier
+            .fillMaxWidth()
+            .background(androidx.compose.ui.graphics.Color(0xFAFFFFFF))
+            .border(0.5.dp, androidx.compose.ui.graphics.Color(0x0D000000))
+            .padding(horizontal = 16.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box(Modifier.clickable(onClick = onHome)) { QueueGoBrand() }
         Spacer(Modifier.weight(1f))
-        OutlinedButton(onClick = onCart) {
-            Text(if (cartCount > 0) "ตะกร้า $cartCount" else "ตะกร้า")
-        }
-        Spacer(Modifier.width(6.dp))
-        OutlinedButton(onClick = onNotifications) {
-            Text(if (unreadCount > 0) "แจ้งเตือน $unreadCount" else "แจ้งเตือน")
-        }
-        Spacer(Modifier.width(6.dp))
-        OutlinedButton(onClick = onProfile) { Text("บัญชี") }
+        QgIconButton("bag", badge = cartCount, onClick = onCart)
+        Spacer(Modifier.width(8.dp))
+        QgIconButton("bell", badge = unreadCount, onClick = onNotifications)
+        Spacer(Modifier.width(8.dp))
+        QgIconButton("user", onClick = onProfile)
     }
 }
 
@@ -574,104 +579,200 @@ private fun CustomerHome(
     onCategory: (String) -> Unit,
     onShop: (CustomerShop) -> Unit
 ) {
-    val visible = if (category == "all") shops else shops.filter {
-        when (category) {
-            "cafe" -> it.category in setOf("cafe", "drink", "beverage")
-            "market" -> it.category in setOf("market", "fresh", "fresh_market")
-            else -> it.category == category
+    var bannerIndex by remember(banners.size) { mutableStateOf(0) }
+    LaunchedEffect(banners.size) {
+        if (banners.size > 1) {
+            while (true) {
+                delay(5_000)
+                bannerIndex = (bannerIndex + 1) % banners.size
+            }
         }
     }
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(12.dp)) {
-        Text("บริการใกล้คุณ", color = QgMuted, style = MaterialTheme.typography.bodySmall)
-        Spacer(Modifier.height(8.dp))
-        var bannerIndex by remember(banners.size) { mutableStateOf(0) }
-        LaunchedEffect(banners.size) {
-            if (banners.size > 1) {
-                while (true) {
-                    delay(5_000)
-                    bannerIndex = (bannerIndex + 1) % banners.size
-                }
-            }
-        }
+
+    Column(
+        Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 14.dp)
+    ) {
+        Spacer(Modifier.height(13.dp))
         val banner = banners.getOrNull(bannerIndex)
         if (banner != null) {
-            QgRemoteImage(banner.image, Modifier.fillMaxWidth().height(168.dp), "Q")
-            if (!banner.title.isNullOrBlank()) {
-                Text(banner.title!!, fontWeight = FontWeight.ExtraBold, modifier = Modifier.padding(top = 6.dp))
-            }
+            QgRemoteImage(
+                banner.image,
+                Modifier.fillMaxWidth().height(178.dp),
+                "Q"
+            )
             if (banners.size > 1) {
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
+                Row(
+                    Modifier.fillMaxWidth().padding(top = 6.dp),
+                    horizontalArrangement = Arrangement.Center
+                ) {
                     banners.indices.forEach { i ->
-                        Text(if (i == bannerIndex) "●" else "○", color = if (i == bannerIndex) QgRed else QgMuted)
+                        Box(
+                            Modifier
+                                .padding(horizontal = 2.dp)
+                                .size(if (i == bannerIndex) 7.dp else 5.dp)
+                                .clip(CircleShape)
+                                .background(if (i == bannerIndex) QgRed else androidx.compose.ui.graphics.Color(0xFFC9CCD1))
+                        )
                     }
                 }
             }
         } else {
             Box(
-                Modifier.fillMaxWidth().height(145.dp).background(QgRed, RoundedCornerShape(20.dp)).padding(18.dp),
+                Modifier
+                    .fillMaxWidth()
+                    .height(178.dp)
+                    .background(QgRed, RoundedCornerShape(20.dp))
+                    .padding(18.dp),
                 contentAlignment = Alignment.BottomStart
             ) {
                 Column {
-                    Text("QueueGo", color = androidx.compose.ui.graphics.Color.White, fontWeight = FontWeight.Black, style = MaterialTheme.typography.headlineMedium)
-                    Text("อาหาร เครื่องดื่ม ของชำ ตลาดสด และบริการใกล้บ้าน", color = androidx.compose.ui.graphics.Color.White)
+                    Text(
+                        "QueueGo",
+                        color = androidx.compose.ui.graphics.Color.White,
+                        fontWeight = FontWeight.Black,
+                        style = MaterialTheme.typography.headlineMedium
+                    )
+                    Text(
+                        "บริการใกล้บ้าน ใช้ง่ายในทุกวัน",
+                        color = androidx.compose.ui.graphics.Color.White,
+                        style = MaterialTheme.typography.bodySmall
+                    )
                 }
             }
         }
-        Spacer(Modifier.height(14.dp))
-        Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            categories.forEach { (key, label) ->
-                if (category == key) Button(onClick = { onCategory(key) }) { Text(label) }
-                else OutlinedButton(onClick = { onCategory(key) }) { Text(label) }
+
+        Spacer(Modifier.height(20.dp))
+        Row(
+            Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                "บริการ",
+                color = androidx.compose.ui.graphics.Color(0xFF17191D),
+                fontWeight = FontWeight.ExtraBold,
+                style = MaterialTheme.typography.titleMedium
+            )
+            Spacer(Modifier.weight(1f))
+        }
+        Spacer(Modifier.height(11.dp))
+
+        Row(
+            Modifier.horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(13.dp)
+        ) {
+            categories.filter { it.first != "all" }.forEach { (key, label) ->
+                CustomerCategoryButton(
+                    key = key,
+                    label = label,
+                    selected = category == key,
+                    onClick = { onCategory(key) }
+                )
             }
         }
-        if (category != "all") {
-            val serviceKey = when (category) {
-                "cafe" -> "drink"
-                else -> category
-            }
-            val serviceBanner = serviceBanners[serviceKey]
-            if (serviceBanner != null && serviceBanner.active) {
-                Spacer(Modifier.height(12.dp))
-                if (!serviceBanner.image.isNullOrBlank()) {
-                    QgRemoteImage(serviceBanner.image, Modifier.fillMaxWidth().height(135.dp), "Q")
-                } else {
-                    Box(
-                        Modifier.fillMaxWidth().height(118.dp).background(QgRed, RoundedCornerShape(18.dp)).padding(16.dp),
-                        contentAlignment = Alignment.BottomStart
-                    ) {
-                        Text(
-                            serviceBanner.title ?: categories.find { it.first == category }?.second ?: "QueueGo",
-                            color = androidx.compose.ui.graphics.Color.White,
-                            fontWeight = FontWeight.Black
-                        )
-                    }
-                }
-                if (!serviceBanner.title.isNullOrBlank()) Text(serviceBanner.title!!, fontWeight = FontWeight.ExtraBold, modifier = Modifier.padding(top = 5.dp))
-                if (!serviceBanner.subtitle.isNullOrBlank()) Text(serviceBanner.subtitle!!, color = QgMuted, style = MaterialTheme.typography.bodySmall)
-            }
+
+        Spacer(Modifier.height(20.dp))
+        Row(
+            Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                "ร้านค้าแนะนำ",
+                color = androidx.compose.ui.graphics.Color(0xFF17191D),
+                fontWeight = FontWeight.ExtraBold,
+                style = MaterialTheme.typography.titleMedium
+            )
+            Spacer(Modifier.weight(1f))
+            Text("ใกล้คุณ", color = QgRed, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelMedium)
         }
-        Spacer(Modifier.height(16.dp))
-        QgSectionTitle(if (category == "all") "ร้านค้าแนะนำ" else categories.find { it.first == category }?.second ?: "ร้านค้า")
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(11.dp))
+
         when {
             loading -> CircularProgressIndicator()
-            visible.isEmpty() -> QgCard(Modifier.fillMaxWidth()) { Text("ยังไม่พบร้านที่เปิดให้บริการในหมวดนี้", color = QgMuted) }
-            else -> visible.forEach { shop ->
-                QgCard(Modifier.fillMaxWidth().padding(bottom = 8.dp).clickable { onShop(shop) }) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        QgRemoteImage(shop.logo ?: shop.cover, Modifier.size(72.dp), shop.name)
-                        Spacer(Modifier.width(10.dp))
-                        Column(Modifier.weight(1f)) {
-                            Text(shop.name, fontWeight = FontWeight.ExtraBold)
-                            Text(shop.address ?: categoryLabel(shop.category), color = QgMuted, style = MaterialTheme.typography.bodySmall)
-                            Spacer(Modifier.height(5.dp))
-                            QgStatusPill(if (shop.open) "เปิดอยู่" else "ปิดอยู่", shop.open)
-                        }
-                    }
-                }
+            shops.isEmpty() -> QgCard(Modifier.fillMaxWidth()) {
+                Text("ยังไม่พบร้านที่เปิดให้บริการ", color = QgMuted)
+            }
+            else -> shops.take(12).forEach { shop ->
+                CustomerBlueprintShopCard(shop = shop, onClick = { onShop(shop) })
             }
         }
-        Spacer(Modifier.height(24.dp))
+        Spacer(Modifier.height(28.dp))
+    }
+}
+
+@Composable
+private fun CustomerCategoryButton(
+    key: String,
+    label: String,
+    selected: Boolean,
+    onClick: () -> Unit
+) {
+    Column(
+        Modifier
+            .width(64.dp)
+            .clickable(onClick = onClick),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Box(
+            Modifier
+                .size(54.dp)
+                .clip(CircleShape)
+                .background(if (selected) androidx.compose.ui.graphics.Color(0xFFFFF3F5) else androidx.compose.ui.graphics.Color.White)
+                .border(
+                    1.dp,
+                    if (selected) androidx.compose.ui.graphics.Color(0xFFFFCCD5) else QgLine,
+                    CircleShape
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            QgIcon(key, Modifier.size(25.dp), QgRed)
+        }
+        Spacer(Modifier.height(6.dp))
+        Text(
+            label,
+            color = androidx.compose.ui.graphics.Color(0xFF3A3D42),
+            fontWeight = FontWeight.Bold,
+            style = MaterialTheme.typography.labelSmall,
+            maxLines = 1
+        )
+    }
+}
+
+@Composable
+private fun CustomerBlueprintShopCard(
+    shop: CustomerShop,
+    onClick: () -> Unit
+) {
+    QgCard(
+        Modifier
+            .fillMaxWidth()
+            .padding(bottom = 10.dp)
+            .clickable(onClick = onClick)
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            QgRemoteImage(shop.logo ?: shop.cover, Modifier.size(92.dp), shop.name)
+            Spacer(Modifier.width(12.dp))
+            Column(Modifier.weight(1f)) {
+                Text(
+                    shop.name,
+                    color = androidx.compose.ui.graphics.Color(0xFF17191D),
+                    fontWeight = FontWeight.ExtraBold,
+                    style = MaterialTheme.typography.titleSmall,
+                    maxLines = 1
+                )
+                Spacer(Modifier.height(5.dp))
+                Text(
+                    shop.address ?: categoryLabel(shop.category),
+                    color = QgMuted,
+                    style = MaterialTheme.typography.bodySmall,
+                    maxLines = 2
+                )
+                Spacer(Modifier.height(7.dp))
+                QgStatusPill(if (shop.open) "เปิดอยู่" else "ปิดอยู่", shop.open)
+            }
+        }
     }
 }
 
@@ -702,7 +803,13 @@ private fun ServiceCategoryScreen(
         else -> "บริการใกล้คุณ"
     }
 
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(12.dp)) {
+    Column(
+        Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 12.dp)
+    ) {
+        Spacer(Modifier.height(8.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
             OutlinedButton(onClick = onBack) { Text("ย้อนกลับ") }
             Spacer(Modifier.width(10.dp))
@@ -710,76 +817,75 @@ private fun ServiceCategoryScreen(
         }
         Spacer(Modifier.height(12.dp))
 
-        if (serviceBanner != null && serviceBanner.active) {
-            if (!serviceBanner.image.isNullOrBlank()) {
-                QgRemoteImage(serviceBanner.image, Modifier.fillMaxWidth().height(152.dp), "Q")
-            } else {
-                Box(
-                    Modifier.fillMaxWidth().height(132.dp)
-                        .background(QgRed, RoundedCornerShape(20.dp))
-                        .padding(18.dp),
-                    contentAlignment = Alignment.BottomStart
+        if (serviceBanner != null && serviceBanner.active && !serviceBanner.image.isNullOrBlank()) {
+            Box {
+                QgRemoteImage(
+                    serviceBanner.image,
+                    Modifier.fillMaxWidth().height(172.dp),
+                    "Q"
+                )
+                Column(
+                    Modifier
+                        .align(Alignment.BottomStart)
+                        .fillMaxWidth()
+                        .background(androidx.compose.ui.graphics.Color(0x66000000))
+                        .padding(horizontal = 18.dp, vertical = 14.dp)
                 ) {
-                    Column {
-                        Text(
-                            serviceBanner.title ?: title,
-                            color = androidx.compose.ui.graphics.Color.White,
-                            fontWeight = FontWeight.Black,
-                            style = MaterialTheme.typography.titleLarge
-                        )
-                        Text(
-                            serviceBanner.subtitle ?: fallbackSubtitle,
-                            color = androidx.compose.ui.graphics.Color.White
-                        )
-                    }
+                    Text(
+                        serviceBanner.title ?: title,
+                        color = androidx.compose.ui.graphics.Color.White,
+                        fontWeight = FontWeight.Black,
+                        style = MaterialTheme.typography.titleLarge
+                    )
+                    Text(
+                        serviceBanner.subtitle ?: fallbackSubtitle,
+                        color = androidx.compose.ui.graphics.Color.White,
+                        style = MaterialTheme.typography.bodySmall
+                    )
                 }
-            }
-            if (!serviceBanner.title.isNullOrBlank()) {
-                Text(serviceBanner.title!!, fontWeight = FontWeight.ExtraBold, modifier = Modifier.padding(top = 7.dp))
-            }
-            if (!serviceBanner.subtitle.isNullOrBlank()) {
-                Text(serviceBanner.subtitle!!, color = QgMuted, style = MaterialTheme.typography.bodySmall)
             }
         } else {
             Box(
-                Modifier.fillMaxWidth().height(132.dp)
+                Modifier
+                    .fillMaxWidth()
+                    .height(162.dp)
                     .background(QgRed, RoundedCornerShape(20.dp))
                     .padding(18.dp),
                 contentAlignment = Alignment.BottomStart
             ) {
                 Column {
-                    Text(title, color = androidx.compose.ui.graphics.Color.White, fontWeight = FontWeight.Black, style = MaterialTheme.typography.titleLarge)
-                    Text(fallbackSubtitle, color = androidx.compose.ui.graphics.Color.White)
+                    Text(
+                        title,
+                        color = androidx.compose.ui.graphics.Color.White,
+                        fontWeight = FontWeight.Black,
+                        style = MaterialTheme.typography.titleLarge
+                    )
+                    Text(
+                        fallbackSubtitle,
+                        color = androidx.compose.ui.graphics.Color.White,
+                        style = MaterialTheme.typography.bodySmall
+                    )
                 }
             }
         }
 
         Spacer(Modifier.height(16.dp))
-        QgSectionTitle("ร้านที่เปิดให้บริการ", title)
-        Spacer(Modifier.height(8.dp))
+        Text(
+            "ร้านที่เปิดให้บริการ",
+            fontWeight = FontWeight.ExtraBold,
+            style = MaterialTheme.typography.titleMedium
+        )
+        Spacer(Modifier.height(10.dp))
         when {
             loading -> CircularProgressIndicator()
             visible.isEmpty() -> QgCard(Modifier.fillMaxWidth()) {
                 Text("ยังไม่พบร้านที่เปิดให้บริการในหมวดนี้", color = QgMuted)
             }
             else -> visible.forEach { shop ->
-                QgCard(
-                    Modifier.fillMaxWidth().padding(bottom = 8.dp).clickable { onShop(shop) }
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        QgRemoteImage(shop.logo ?: shop.cover, Modifier.size(72.dp), shop.name)
-                        Spacer(Modifier.width(10.dp))
-                        Column(Modifier.weight(1f)) {
-                            Text(shop.name, fontWeight = FontWeight.ExtraBold)
-                            Text(shop.address ?: categoryLabel(shop.category), color = QgMuted, style = MaterialTheme.typography.bodySmall)
-                            Spacer(Modifier.height(5.dp))
-                            QgStatusPill(if (shop.open) "เปิดอยู่" else "ปิดอยู่", shop.open)
-                        }
-                    }
-                }
+                CustomerBlueprintShopCard(shop = shop, onClick = { onShop(shop) })
             }
         }
-        Spacer(Modifier.height(24.dp))
+        Spacer(Modifier.height(28.dp))
     }
 }
 
