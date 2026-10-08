@@ -29,6 +29,9 @@ class QueueGoNativeApi {
     suspend fun patch(path: String, token: String, body: JSONObject): Any =
         withContext(Dispatchers.IO) { request("PATCH", "/rest/v1/" + path, token, body) }
 
+    suspend fun delete(path: String, token: String): Any =
+        withContext(Dispatchers.IO) { request("DELETE", "/rest/v1/" + path, token, null) }
+
     suspend fun rpc(name: String, token: String? = null, body: JSONObject = JSONObject()): Any =
         withContext(Dispatchers.IO) { request("POST", "/rest/v1/rpc/" + name, token, body) }
 
