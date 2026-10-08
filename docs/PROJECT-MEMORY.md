@@ -261,3 +261,17 @@ The user-supplied Rider reference screens are the acceptance reference for workf
 - Owner requested the existing 20-minute preparation countdown inside the “สินค้าพร้อมส่ง” button. Removed the separate countdown card and its unused CSS.
 - Countdown still derives from Production `preparing_at`; reopening the order does not restart it. At expiry it stays at 00:00 and the Merchant explicitly presses the ready action. The timer does not transition an order automatically or prevent an earlier ready action.
 - No database, RPC, RLS, payment or order-state changes. Backup: `backup-pre-merchant-button-countdown-20261008-0856`.
+
+
+## Native Android migration (2026-10-08)
+
+- Explicit Play Store direction: the owner rejected a WebView/website-wrapper app and requested real Android applications. Native Android is now the Play Store migration track; current web Production remains available while features are migrated.
+- Backup before native work: `backup-pre-native-android-20261008-2103`. Working branch: `queuego-native-android-v1`. Do not replace `main` until native regression/device gates pass.
+- Native stack: Kotlin + Jetpack Compose, compileSdk/targetSdk 36, minSdk 26. CI rejects WebView UI usage in `native-android/**`.
+- Three native application IDs now build from one Gradle project: `com.queuego.customer`, `com.queuego.merchant`, `com.queuego.rider`.
+- Customer and Merchant native shells share encrypted Android-Keystore session storage and the existing Supabase Production authentication / active-session RPCs. Role validation remains `customer` and `shop`; these shells are not yet feature-parity replacements for the web apps.
+- Rider native is farther along: existing sequential server dispatch (`get_rider_delivery_pool` + `qg_get_my_rider_offer`), accept/decline, active-order states, arrival RPC, pickup/delivery photo proof, existing `qg-evidence` bucket, and existing idempotent rider action RPC are reused. Manual cash-confirmation screens are not reintroduced.
+- Market multi-stop Rider native reuses `market_pickup_route_summary`, `market_claim`, `qg_market_pickup_with_photo`, market deliver action, and `qg_complete_market_with_photo`; no parallel order state machine was created.
+- Android navigation return feature is now implemented in native Rider: foreground service + draggable Q overlay when draw-over-other-apps permission is granted, with notification return fallback. It is stopped when returning to QueueGo, losing the active job, completing delivery, session loss, or logout.
+- Native CI builds Customer / Merchant / Rider debug APKs together and rejects WebView. Full QueueGo regression must run before native artifacts are accepted.
+- Still required before Play Closed Beta release: migrate Customer/Merchant feature parity, native push/FCM integration for the new native project, production release signing/AAB workflow for this native project, approved QueueGo launcher assets in each module, physical Android testing of login/session/GPS/camera/file upload/overlay/notification/Maps lifecycle, real three-role E2E, and final Play Console declarations/reviewer access.
