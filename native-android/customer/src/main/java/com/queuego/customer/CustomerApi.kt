@@ -155,6 +155,14 @@ class CustomerApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
         }
     }
 
+    suspend fun cancelOrder(auth: NativeAuth, orderId: String) {
+        http.rpc(
+            "qg_customer_cancel_order",
+            auth.session.accessToken,
+            JSONObject().put("p_order_id", orderId)
+        )
+    }
+
     suspend fun loadOrderContext(auth: NativeAuth, orderId: String): CustomerOrderContext {
         val raw = http.rpc(
             "qg_customer_order_context",
