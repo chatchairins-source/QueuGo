@@ -1,0 +1,14 @@
+.qg-banner-admin-card{margin-top:14px}.qg-banner-admin-head h3{margin:0 0 5px;font-size:17px}.qg-banner-admin-head p,.qg-banner-manager-note{margin:0;color:#707681;font-size:12px;line-height:1.45}
+.qg-banner-slots,.qg-service-banner-slots{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:12px}
+.qg-banner-slot,.qg-service-banner-slot{border:1px solid #e7e9ed;border-radius:16px;background:#fff;padding:10px;min-width:0}
+.qg-banner-slot-title{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px}.qg-banner-slot-title b{font-size:13px}.qg-banner-slot-title span{font-size:10px;color:#737984}
+.qg-banner-preview{aspect-ratio:2.05/1;border-radius:12px;overflow:hidden;background:linear-gradient(135deg,#f3f4f6,#e7e9ed);display:grid;place-items:center;color:#8a9098;font-size:11px;margin-bottom:9px}
+.qg-banner-preview img{width:100%;height:100%;object-fit:cover;display:block}
+.qg-banner-file{position:relative;display:flex;align-items:center;justify-content:center;min-height:42px;border:1px solid #e7092b;border-radius:11px;color:#d5092b;font-weight:750;font-size:12px;overflow:hidden;cursor:pointer;margin-bottom:9px}
+.qg-banner-file input{position:absolute;inset:0;opacity:0;cursor:pointer}
+.qg-banner-slot label:not(.qg-banner-file):not(.qg-banner-active),.qg-service-banner-slot label:not(.qg-banner-file):not(.qg-banner-active){display:block;font-size:11px;color:#5f6570;margin-top:8px}
+.qg-banner-slot input[type=text],.qg-service-banner-slot input[type=text]{width:100%;margin-top:4px;min-height:40px;border:1px solid #dfe3e8;border-radius:10px;padding:8px 10px;background:#fff}
+.qg-banner-active{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:9px;font-size:11px}.qg-banner-active input{width:18px;height:18px;accent-color:#e7092b}
+.qg-banner-actions{display:flex;gap:7px;margin-top:9px}.qg-banner-actions button{flex:1;min-height:39px;padding:7px;font-size:11px}
+.qg-banner-error{color:#c32134;font-size:12px}.qg-service-banner-slots{grid-template-columns:repeat(2,minmax(0,1fr))}
+@media(max-width:720px){.qg-banner-slots,.qg-service-banner-slots{grid-template-columns:1fr}.qg-banner-slot,.qg-service-banner-slot{padding:11px}}
