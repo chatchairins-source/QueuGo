@@ -3521,7 +3521,7 @@ window.qgmMerchantActionOnce=async function(orderId,action,reason){
   let lastErr=null;
   for(let attempt=0;attempt<2;attempt++){
    try{
-    const result=await qtSupabaseTable('rpc/qg_merchant_action_once',{
+    let result=await qtSupabaseTable('rpc/qg_merchant_action_once',{
       method:'POST',accessToken:token,
       body:{p_request_id:pending.requestId,p_kind:'order',p_payload:pending.payload}
     });
