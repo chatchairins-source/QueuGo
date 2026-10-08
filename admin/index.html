@@ -513,7 +513,7 @@ async function qtHydrateDatabase(opts){
         QT_DB_CACHE.qt_users=QT_DB_CACHE.qt_users.map(u=>{
           const x=u.type==='shop'?sm.get(u.id):u.type==='technician'?tm.get(u.id):u.type==='rider'?rm.get(u.id):null; if(!x) return u;
           const lock={id:u.id,authUserId:u.authUserId,type:u.type,status:u.status,name:u.name,phone:u.phone};
-          Object.assign(u,(x.metadata&&typeof x.metadata==='object'?x.metadata:{}),u.type==='shop'?{shopProfileId:x.id,shopName:x.shop_name,public_category:x.public_category,category:x.public_category||x.metadata?.category||u.category,address:x.address,lat:x.latitude,lng:x.longitude}:u.type==='technician'?{jobTypes:(x.technician_type||'').split(',').filter(Boolean),serviceArea:x.service_area,address:x.address,lat:x.latitude,lng:x.longitude,description:x.description}:u.type==='rider'?{
+          Object.assign(u,(x.metadata&&typeof x.metadata==='object'?x.metadata:{}),u.type==='shop'?{shopProfileId:x.id,shopName:x.shop_name,public_category:x.public_category,category:x.public_category||x.metadata?.category||u.category,address:x.address,lat:x.latitude,lng:x.longitude,onboardingStatus:x.onboarding_status||'draft',submittedForReviewAt:x.submitted_for_review_at||null,approvedAt:x.approved_at||null,archivedAt:x.archived_at||null,shopDbStatus:x.status}:u.type==='technician'?{jobTypes:(x.technician_type||'').split(',').filter(Boolean),serviceArea:x.service_area,address:x.address,lat:x.latitude,lng:x.longitude,description:x.description}:u.type==='rider'?{
             vehicleType:x.vehicle_type,
             vehiclePlate:x.vehicle_plate,
             address:x.address,
@@ -911,7 +911,7 @@ function renderAdminGovernance(){
  const admin=qtAdminOnly();if(!admin)return;
  const users=dbGet('qt_users',[]),promos=dbGet('qt_promotions',[]),orders=dbGet('qt_orders',[]),audit=dbGet('qt_audit_log',[]),settings=qtGetSystemSettings();
  const esc=v=>escapeHtml(String(v??'')),empty=text=>`<p class="qg-empty">${text}</p>`;
- const pending=users.filter(u=>['shop','rider','technician'].includes(u.type)&&u.status==='pending'),shops=users.filter(u=>u.type==='shop');
+ const pending=users.filter(u=>(u.type==='shop'?u.onboardingStatus==='pending_approval':['rider','technician'].includes(u.type)&&u.status==='pending')),shops=users.filter(u=>u.type==='shop');
  const heading=u=>`<div class="qg-provider-heading"><span class="qg-avatar">${esc((u.shopName||u.name||'?').slice(0,1))}</span><div><b>${esc(u.shopName||u.name||'ไม่ระบุชื่อ')}</b><small>${esc(qgAdminProviderLabel(u))} · ${esc(u.phone||'ไม่มีเบอร์โทร')}</small></div><span class="qt-admin-status ${esc(u.status)}">${esc(accountStatusLabel(u.status))}</span></div>`;
  const detail=u=>`<button class="btn-secondary" type="button" onclick="qtAdminViewUser('${esc(u.id)}')">ดูข้อมูล</button>`;
  const approval=pending.map(u=>`<article class="qg-approval-card card" data-approval-role="${esc(u.type)}">${heading(u)}<p class="qt-admin-note">ประเภท: ${esc(qgAdminProviderLabel(u))} · ผู้ติดต่อ ${esc(u.name||'-')}</p><div class="row-btns">${detail(u)}<button class="btn-primary" onclick="adminApproveUser('${esc(u.id)}')">อนุมัติ</button><button class="btn-danger" onclick="adminRejectUser('${esc(u.id)}')">ปฏิเสธ</button></div></article>`).join('');
