@@ -215,7 +215,8 @@ private fun MerchantShell(auth: NativeAuth, logout: () -> Unit) {
                         selectedOrder = it
                         orderItems = emptyList()
                         screen = "order"
-                    }
+                    },
+                    onPos = { screen = "pos" }
                 )
                 "orders" -> MerchantOrdersScreen(orders, loading) {
                     selectedOrder = it
@@ -297,6 +298,7 @@ private fun MerchantShell(auth: NativeAuth, logout: () -> Unit) {
                         }
                     }
                 )
+                "pos" -> MerchantPosScreen(auth) { screen = "home" }
                 "laundry" -> MerchantLaundryScreen(auth)
                 "support" -> MerchantSupportScreen(auth) { screen = "profile" }
                 "profile" -> MerchantProfileScreen(
@@ -333,7 +335,8 @@ private fun DashboardScreen(
     revenue: MerchantTodayRevenue,
     busy: Boolean,
     onToggleOpen: (Boolean) -> Unit,
-    onOpen: (MerchantOrder) -> Unit
+    onOpen: (MerchantOrder) -> Unit,
+    onPos: () -> Unit
 ) {
     val todaySales = orders.filter { it.status != "cancelled" }.sumOf { it.subtotal }
     val incoming = orders.filter { it.status in setOf("pending", "accepted", "searching_rider", "rider_assigned", "preparing", "ready") }
@@ -379,6 +382,14 @@ private fun DashboardScreen(
             MetricCard("ออเดอร์ใหม่", orders.count { it.status == "pending" }.toString(), Modifier.weight(1f))
             MetricCard("กำลังทำ", orders.count { it.status in setOf("preparing", "ready") }.toString(), Modifier.weight(1f))
             MetricCard("GP วันนี้", "฿" + "%.0f".format(revenue.gpDue), Modifier.weight(1f))
+        }
+        Spacer(Modifier.height(12.dp))
+        Button(
+            onClick = onPos,
+            enabled = shop != null && !loading,
+            modifier = Modifier.fillMaxWidth().height(52.dp)
+        ) {
+            Text("เปิด POS หน้าร้าน", fontWeight = FontWeight.ExtraBold)
         }
         Spacer(Modifier.height(16.dp))
         QgSectionTitle("ออเดอร์ที่ต้องจัดการ", "ข้อมูลจริงจาก QueueGo Production")

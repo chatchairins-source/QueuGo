@@ -70,6 +70,8 @@ ok(source.includes('CustomerSearchScreen')&&source.includes('QgNavItem("search"'
 ok(source.includes('ServiceCategoryScreen')&&source.includes('"category" -> ServiceCategoryScreen'),'Food Drink Grocery Shopping must use dedicated native category pages');
 
 ok(source.includes('qg_merchant_action_once'),'Merchant native order actions must stay idempotent');
+ok(source.includes('pos_my_shop')&&source.includes('pos_create_bill_once')&&source.includes('pos_edit_bill')&&source.includes('pos_bill_action')&&source.includes('pos_take_payment'),'Merchant native POS must reuse production POS RPCs');
+
 ok(source.includes('get_my_shop_orders'),'Merchant native Orders must use production order source');
 ok(source.includes('ToneGenerator')&&source.includes('STREAM_NOTIFICATION'),'Merchant native must alert on new orders');
 ok(source.includes('queuego_delete_or_archive_product')&&source.includes('updateProduct('),'Merchant native must support safe product archive and price editing');
