@@ -27,6 +27,11 @@ ok(!customer.includes('customer-shopping.js')&&!customer.includes('customer-shop
 ok(merchant.includes("<option value=\"shopping\">ช้อปปิ้ง</option>"),'merchant shopping type missing');
 for(const key of ['mobile_accessories','computer_it','automotive_car','automotive_motorcycle'])ok(merchant.includes(key),'merchant subcategory missing: '+key);
 ok(merchant.includes("shoppingSubcategories"),'merchant shopping subcategories not persisted');
+ok(merchant.includes("next.shoppingSubcategories=next.category==='shopping'?qgShoppingSubcategoryValues('qgm-shop-shopping'):[]"),'merchant shop edit must persist the currently selected shopping subcategories');
+ok(merchant.includes("if(next.category==='shopping'&&!next.shoppingSubcategories.length)throw Error('กรุณาเลือกหมวดย่อยของร้านช้อปปิ้งอย่างน้อย 1 หมวด')"),'merchant shop edit must require at least one Shopping subcategory');
+ok(merchant.includes('function qgmShoppingProductCategoryNames(u)'),'shopping product categories must reuse the selected Shopping taxonomy');
+ok(merchant.includes("useShoppingCategories=qgmTopLevelShopCategory(u?.category)==='shopping'"),'shopping product editor must switch to Shopping category choices');
+ok(merchant.includes("if(isShoppingProduct&&!qgmShoppingProductCategoryNames(u).includes(category))throw new Error('กรุณาเลือกหมวดหมู่สินค้าช้อปปิ้งจากรายการ')"),'shopping product save must validate against the selected Shopping taxonomy');
 
 ok(admin.includes("category==='shopping'")&&admin.includes("automotive_motorcycle:'อะไหล่มอเตอร์ไซค์'"),'admin shopping/subcategory label missing');
 ok(admin.includes('qgAdminLoadHomeBanners'),'admin home banner manager missing');

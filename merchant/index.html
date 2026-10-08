@@ -2480,6 +2480,7 @@ const qgmFoodMenuCategories=[
 const qgmRetailCatalogCategories=[['เครื่องดื่ม','box'],['บะหมี่กึ่งสำเร็จรูป','box'],['ข้าวสาร','box'],['อาหารกระป๋อง','box'],['ขนมอบ','box'],['ของใช้ในบ้าน','home'],['ของใช้ส่วนตัว','user'],['เครื่องปรุง','box'],['แช่เย็น/แช่แข็ง','box'],['อื่นๆ','box']];
 const qgmShoppingCatalogGroups={mobile_accessories:[['โทรศัพท์มือถือ','phone'],['เคส / ฟิล์ม','box'],['สายชาร์จ / อะแดปเตอร์','box'],['หูฟัง / ลำโพง','box'],['พาวเวอร์แบงก์ / แบตเตอรี่','box']],computer_it:[['คอมพิวเตอร์ / โน้ตบุ๊ก','box'],['เมาส์ / คีย์บอร์ด','box'],['อุปกรณ์จัดเก็บข้อมูล','box'],['เน็ตเวิร์ก / เราเตอร์','box'],['เครื่องพิมพ์ / หมึก','box']],automotive_car:[['น้ำมันเครื่อง / ของเหลว','box'],['แบตเตอรี่','box'],['ระบบเบรก','box'],['ระบบไฟ','box'],['ยาง / ล้อ','box'],['เครื่องยนต์','box'],['ช่วงล่าง','box'],['อุปกรณ์ตกแต่งรถยนต์','box']],automotive_motorcycle:[['น้ำมันเครื่อง / ของเหลว','box'],['แบตเตอรี่','box'],['ระบบเบรก','box'],['ระบบไฟ','box'],['ยาง / ล้อ','box'],['เครื่องยนต์','box'],['โซ่ / สเตอร์','box'],['อุปกรณ์ตกแต่งมอเตอร์ไซค์','box']]};
 function qgmShoppingCatalogCategoriesFor(u){const keys=Array.isArray(u?.shoppingSubcategories)?u.shoppingSubcategories:[];const seen=new Set(),out=[];for(const key of keys)for(const item of (qgmShoppingCatalogGroups[key]||[])){if(seen.has(item[0]))continue;seen.add(item[0]);out.push(item)}if(!seen.has('อื่นๆ'))out.push(['อื่นๆ','box']);return out.length>1?out:qgmRetailCatalogCategories}
+function qgmShoppingProductCategoryNames(u){return qgmShoppingCatalogCategoriesFor(u).map(([name])=>name)}
 function qgmCatalogCategoriesFor(u){if(['food','cafe'].includes(String(u?.category||'')))return qgmFoodMenuCategories;if(qgmTopLevelShopCategory(u?.category)==='shopping')return qgmShoppingCatalogCategoriesFor(u);return qgmRetailCatalogCategories}
 function qgmFoodCategoryNames(){return qgmFoodMenuCategories.map(([name])=>name)}
 const qgmMarketProductCategories=[
@@ -2638,14 +2639,18 @@ window.renderShopProductEditor=function(id){
  const initialCategory=p?.category||(id==='new'?window.qgmNewProductCategory:'')||'',storePrice=Number(p?.posPrice??p?.price??0);
  const restaurantCategories=qgmFoodCategoryNames(),useRestaurantCategories=['food','cafe'].includes(String(u?.category||''));
  const marketCategories=qgmMarketProductCategoryNames(),useMarketCategories=qgmIsMarketProductShop(u);
+ const shoppingCategories=qgmShoppingProductCategoryNames(u),useShoppingCategories=qgmTopLevelShopCategory(u?.category)==='shopping';
  const selectedRestaurantCategory=restaurantCategories.includes(initialCategory)?initialCategory:(initialCategory?'อื่น ๆ':'');
  const marketInitial=initialCategory||qgmMarketDefaultCategory(u);
  const selectedMarketCategory=marketCategories.includes(marketInitial)?marketInitial:(marketInitial?'อื่น ๆ':'');
+ const selectedShoppingCategory=shoppingCategories.includes(initialCategory)?initialCategory:(initialCategory&&shoppingCategories.includes('อื่นๆ')?'อื่นๆ':'');
  const categoryControl=useRestaurantCategories
   ?`<select id="qgm-prod-category" required><option value="" ${selectedRestaurantCategory?'':'selected'} disabled>เลือกหมวดหมู่อาหาร</option>${restaurantCategories.map(name=>`<option value="${esc(name)}" ${selectedRestaurantCategory===name?'selected':''}>${esc(name)}</option>`).join('')}</select>`
   :useMarketCategories
    ?`<select id="qgm-prod-category" required><option value="" ${selectedMarketCategory?'':'selected'} disabled>เลือกหมวดหมู่สินค้า</option>${marketCategories.map(name=>`<option value="${esc(name)}" ${selectedMarketCategory===name?'selected':''}>${esc(name)}</option>`).join('')}</select>`
-   :`<input id="qgm-prod-category" required value="${esc(initialCategory)}">`;
+   :useShoppingCategories
+    ?`<select id="qgm-prod-category" required><option value="" ${selectedShoppingCategory?'':'selected'} disabled>เลือกหมวดหมู่สินค้า</option>${shoppingCategories.map(name=>`<option value="${esc(name)}" ${selectedShoppingCategory===name?'selected':''}>${esc(name)}</option>`).join('')}</select>`
+    :`<input id="qgm-prod-category" required value="${esc(initialCategory)}">`;
  const optionControl=useRestaurantCategories
   ?qgmRestaurantOptionsHtml(qgmRestaurantOptionState(p?.variants))
   :`<div class="qgm-field"><label>ตัวเลือกเพิ่มเติม (คั่นด้วยเครื่องหมายจุลภาค)</label><input id="qgm-prod-variants" value="${esc(Array.isArray(p?.variants)?p.variants.map(x=>typeof x==='string'?x:x.name).filter(Boolean).join(', '):'')}"></div>`;
@@ -2665,7 +2670,7 @@ window.qgmSaveProduct=async function(e,id,requestProductId){
  const submit=e.currentTarget?.querySelector('button[type="submit"]');if(submit){submit.disabled=true;submit.textContent='กำลังบันทึก...'}
  const u=shopUser(),pid=profileId(u);
  const nameControl=$('#qgm-prod-name'),categoryControl=$('#qgm-prod-category'),priceControl=$('#qgm-prod-price'),stockControl=$('#qgm-prod-stock'),availableControl=$('#qgm-prod-available'),imageControl=$('#qgm-prod-image');
- const isRestaurant=['food','cafe'].includes(String(u?.category||'')),isMarketProduct=qgmIsMarketProductShop(u);
+ const isRestaurant=['food','cafe'].includes(String(u?.category||'')),isMarketProduct=qgmIsMarketProductShop(u),isShoppingProduct=qgmTopLevelShopCategory(u?.category)==='shopping';
  try{
   if(!pid)throw new Error('ไม่พบ Shop Profile ID');
   if(!nameControl||!categoryControl||!priceControl||!stockControl||!availableControl)throw new Error('หน้าฟอร์มสินค้าไม่ครบ กรุณากลับหน้าสินค้าแล้วเปิดรายการนี้ใหม่');
@@ -2674,6 +2679,7 @@ window.qgmSaveProduct=async function(e,id,requestProductId){
   let image=String(imageControl?.value||existingProduct?.image||existingProduct?.image_url||'').trim();
   if(isRestaurant&&!qgmFoodCategoryNames().includes(category))throw new Error('กรุณาเลือกหมวดหมู่อาหารจากรายการ');
   if(isMarketProduct&&!qgmMarketProductCategoryNames().includes(category))throw new Error('กรุณาเลือกหมวดหมู่สินค้าตลาดสดจากรายการ');
+  if(isShoppingProduct&&!qgmShoppingProductCategoryNames(u).includes(category))throw new Error('กรุณาเลือกหมวดหมู่สินค้าช้อปปิ้งจากรายการ');
   const variants=isRestaurant?qgmCollectRestaurantVariants():String($('#qgm-prod-variants')?.value||'').split(',').map(x=>x.trim()).filter(Boolean);
   if(!Number.isFinite(price)||price<0)throw new Error('ราคาขายหน้าร้านไม่ถูกต้อง');
   const token=await qtGetAccessToken();if(!token)throw new Error('เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่');
@@ -3147,6 +3153,8 @@ window.qgmLocateShop=function(){
 window.qgmSaveShopSetup=async function(e){e.preventDefault();const button=e.submitter,u=currentUser();if(!u)return false;if(button)button.disabled=true;
  try{const token=await qtGetAccessToken();if(!token)throw Error('กรุณาเข้าสู่ระบบใหม่');
  const next={...u,shopName:document.getElementById('qgs-name').value.trim(),name:document.getElementById('qgs-contact').value.trim(),phone:document.getElementById('qgs-phone').value.trim(),category:document.getElementById('qgs-category').value,address:document.getElementById('qgs-address').value.trim(),openTime:document.getElementById('qgs-open').value,closeTime:document.getElementById('qgs-close').value,description:document.getElementById('qgs-desc').value.trim()};
+ next.shoppingSubcategories=next.category==='shopping'?qgShoppingSubcategoryValues('qgm-shop-shopping'):[];
+ if(next.category==='shopping'&&!next.shoppingSubcategories.length)throw Error('กรุณาเลือกหมวดย่อยของร้านช้อปปิ้งอย่างน้อย 1 หมวด');
  const logo=document.getElementById('qgs-logo').files[0],cover=document.getElementById('qgs-cover').files[0];if(logo)next.logo=await qtUploadMerchantImage(logo,'logo');if(cover)next.cover=await qtUploadMerchantImage(cover,'cover');
  const profile=await qtSupabaseTable('shop_profiles?select=id&user_id=eq.'+encodeURIComponent(u.id)+'&archived_at=is.null&order=created_at.desc&limit=1',{accessToken:token});
  const selected=window.qgmShopLocation;
