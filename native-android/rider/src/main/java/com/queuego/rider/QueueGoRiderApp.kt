@@ -226,7 +226,9 @@ private fun RiderHome(
     val scope = rememberCoroutineScope()
     var snapshot by remember { mutableStateOf<RiderSnapshot?>(null) }
     var todaySummary by remember { mutableStateOf<RiderPeriodSummary?>(null) }
+    var recentHistory by remember { mutableStateOf<List<RiderHistoryOrder>>(emptyList()) }
     var lastSummaryAt by remember { mutableStateOf(0L) }
+    var lastHistoryAt by remember { mutableStateOf(0L) }
     var lastLocationPushAt by remember { mutableStateOf(0L) }
     var loadError by remember { mutableStateOf<String?>(null) }
     var actionBusy by remember { mutableStateOf(false) }
@@ -360,6 +362,12 @@ private fun RiderHome(
                         runCatching { api.periodSummary(auth, 1) }.onSuccess { summary ->
                             todaySummary = summary
                             lastSummaryAt = now
+                        }
+                    }
+                    if (now - lastHistoryAt >= 60_000L || recentHistory.isEmpty()) {
+                        runCatching { api.history(auth, 20) }.onSuccess { rows ->
+                            recentHistory = rows
+                            lastHistoryAt = now
                         }
                     }
                 }
@@ -732,6 +740,8 @@ private fun RiderHome(
             }
         }
 
+        Spacer(Modifier.height(14.dp))
+        RiderRecentHistoryCard(recentHistory)
         Spacer(Modifier.height(24.dp))
         OutlinedButton(onClick = onLogout, modifier = Modifier.fillMaxWidth()) {
             Text("ออกจากระบบ")
