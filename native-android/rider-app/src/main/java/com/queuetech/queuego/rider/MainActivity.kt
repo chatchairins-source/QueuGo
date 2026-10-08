@@ -43,6 +43,11 @@ class MainActivity : ComponentActivity() {
             api = api,
             sessionStore = sessionStore,
         )
+        val photoStore = RiderEvidencePhotoStore(
+            context = applicationContext,
+            api = api,
+            sessionStore = sessionStore,
+        )
 
         authViewModel = ViewModelProvider(
             this,
@@ -54,6 +59,7 @@ class MainActivity : ComponentActivity() {
             RiderViewModel.factory(
                 repository = riderRepository,
                 locationProvider = RiderLocationProvider(applicationContext),
+                photoStore = photoStore,
             ),
         )[RiderViewModel::class.java]
 
@@ -72,6 +78,7 @@ class MainActivity : ComponentActivity() {
                             logout()
                         },
                         onNavigate = ::openNavigation,
+                        onCreateCaptureUri = photoStore::createCaptureUri,
                     )
                 }
             }
