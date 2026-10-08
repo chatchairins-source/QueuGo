@@ -24,6 +24,7 @@ class SecureSessionStore(context: Context) {
             .put("authUserId", session.authUserId)
             .put("userId", session.userId)
             .put("role", session.role.backendValue)
+            .put("activeSessionId", session.activeSessionId)
             .toString().toByteArray(Charsets.UTF_8)
         val cipher = Cipher.getInstance(TRANSFORMATION)
         cipher.init(Cipher.ENCRYPT_MODE, getOrCreateKey())
@@ -49,6 +50,7 @@ class SecureSessionStore(context: Context) {
                 authUserId = json.getString("authUserId"),
                 userId = json.getString("userId"),
                 role = role,
+                activeSessionId = json.optString("activeSessionId").takeIf { it.isNotBlank() && it != "null" },
             )
         }.getOrNull()
     }
