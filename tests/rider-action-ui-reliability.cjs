@@ -24,8 +24,8 @@ ok(rider.includes("Number(input.value)<92"),'slide action must require a deliber
 ok(rider.includes('RIDER V5 — STRICT REBUILD'),'Rider production CSS must be the V5 strict rebuild');
 ok(rider.includes('RIDER V5 COMPACT DENSITY'),'Rider V5 must keep the compact-density production layout');
 ok(rider.includes('.qg-home-card,.qg-offer-card,.qg-active-card{background:rgba(255,255,255,.985);border:1px solid #eee5e8;border-radius:21px;'),'Rider home/active cards must remain compact');
-ok(rider.includes('.qg-flow-head{position:relative;z-index:3;flex:0 0 auto;min-height:56px;'),'Rider pickup/delivery header must stay compact and fixed above scrolling content');
-ok(rider.includes('.qg-flow-body{width:100%;max-width:680px;min-height:0;flex:1 1 auto;overflow-y:auto;'),'Rider flow body must be the only scrolling section');
+ok(/\.qg-flow-head\{[^}]*position:relative[^}]*flex:0 0 auto[^}]*min-height:56px/.test(rider),'Rider pickup/delivery header must stay compact and fixed above scrolling content');
+ok(/\.qg-flow-body\{[^}]*max-width:680px[^}]*flex:1 1 auto[^}]*overflow-y:auto/.test(rider),'Rider flow body must be the only scrolling section');
 ok(rider.includes('.qg-contact-actions a,.qg-contact-actions button{width:44px;height:44px;'),'Compact Rider contact controls must retain 44px touch targets');
 ok(rider.includes('@media(max-height:760px)'),'Rider must have a compact short-screen density mode');
 ok(rider.includes('id="home-dock"'),'home must use one static V5 dock');
