@@ -4,7 +4,7 @@ plugins {
 }
 android {
     namespace = "com.queuetech.queuego.merchant"
-    compileSdk = 37
+    compileSdk = 36
     defaultConfig {
         applicationId = "com.queuetech.queuego.merchant"
         minSdk = 24
