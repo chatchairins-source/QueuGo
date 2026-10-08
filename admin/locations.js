@@ -41,7 +41,7 @@ window.qgAdminEditLocation=async(kind,id)=>{
  const actor=owner();if(!actor||!['market','shop','shop_user'].includes(kind))return;close();const ticket=opening;
  try{
   const token=await qtGetAccessToken();if(owner()!==actor||opening!==ticket)return;
-  const market=kind==='market',rows=await qtSupabaseTable((market?'markets?select=id,name,latitude,longitude&id=eq.':'shop_profiles?select=id,shop_name,public_category,metadata,latitude,longitude&'+(kind==='shop_user'?'user_id':'id')+'=eq.')+encodeURIComponent(id)+'&limit=1',{accessToken:token});
+  const market=kind==='market',path=market?'markets?select=id,name,latitude,longitude&id=eq.'+encodeURIComponent(id)+'&limit=1':'shop_profiles?select=id,shop_name,public_category,metadata,latitude,longitude&'+(kind==='shop_user'?'user_id':'id')+'=eq.'+encodeURIComponent(id)+(kind==='shop_user'?'&archived_at=is.null&order=created_at.desc':'')+'&limit=1',rows=await qtSupabaseTable(path,{accessToken:token});
   if(owner()!==actor||opening!==ticket)return;const row=rows?.[0];if(!row)throw Error('ไม่พบข้อมูลพิกัด');
   const box=shell('แก้พิกัด'+(market?'ตลาด':'ร้าน'),(row.name||row.shop_name)+(market?'':' · '+qgAdminShopCategory(row)),true),form=box.querySelector('form'),status=box.querySelector('[role=status]'),p=picker(box,{lat:row.latitude,lon:row.longitude},true,actor);dispose=()=>p.destroy();let busy=false;
   box.querySelectorAll('.qg-location-cancel').forEach(b=>b.onclick=()=>{if(!busy)close()});box.addEventListener('cancel',e=>{e.preventDefault();if(!busy)close()});
