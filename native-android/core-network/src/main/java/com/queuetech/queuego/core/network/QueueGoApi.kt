@@ -59,6 +59,69 @@ class QueueGoApi(
     suspend fun rpc(accessToken: String, functionName: String, body: JSONObject = JSONObject()): String =
         request("POST", "/rest/v1/rpc/$functionName", accessToken, body.toString())
 
+    suspend fun claimActiveSession(
+        accessToken: String,
+        sessionId: String,
+        deviceId: String,
+    ): Boolean {
+        val raw = rpc(
+            accessToken,
+            "claim_active_session",
+            JSONObject()
+                .put("p_session_id", sessionId)
+                .put("p_device_id", deviceId),
+        )
+        val rows = runCatching { JSONArray(raw) }.getOrNull() ?: return false
+        return rows.length() > 0 && rows.optJSONObject(0)?.optBoolean("success", false) == true
+    }
+
+    suspend fun checkActiveSession(accessToken: String, sessionId: String): Boolean =
+        parseRpcBoolean(
+            rpc(
+                accessToken,
+                "check_active_session",
+                JSONObject().put("p_session_id", sessionId),
+            ),
+        )
+
+    suspend fun touchActiveSession(accessToken: String, sessionId: String): Boolean =
+        parseRpcBoolean(
+            rpc(
+                accessToken,
+                "touch_active_session",
+                JSONObject().put("p_session_id", sessionId),
+            ),
+        )
+
+    private fun parseRpcBoolean(raw: String): Boolean {
+        val clean = raw.trim()
+        if (clean.equals("true", ignoreCase = true)) return true
+        if (clean.equals("false", ignoreCase = true)) return false
+
+        val array = runCatching { JSONArray(clean) }.getOrNull()
+        if (array != null && array.length() > 0) {
+            val first = array.opt(0)
+            if (first is Boolean) return first
+            if (first is JSONObject) {
+                val keys = first.keys()
+                while (keys.hasNext()) {
+                    val key = keys.next()
+                    if (first.opt(key) is Boolean) return first.optBoolean(key)
+                }
+            }
+        }
+
+        val obj = runCatching { JSONObject(clean) }.getOrNull()
+        if (obj != null) {
+            val keys = obj.keys()
+            while (keys.hasNext()) {
+                val key = keys.next()
+                if (obj.opt(key) is Boolean) return obj.optBoolean(key)
+            }
+        }
+        return false
+    }
+
     private fun parseAuthToken(raw: String): AuthTokenResponse {
         val json = JSONObject(raw)
         val user = json.optJSONObject("user")
