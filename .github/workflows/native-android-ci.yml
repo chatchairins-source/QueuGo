@@ -12,7 +12,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: native-android-${{ github.ref }}
+  group: native-android-v2-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
