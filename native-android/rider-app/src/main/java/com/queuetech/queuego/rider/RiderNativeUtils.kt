@@ -12,7 +12,7 @@ object RiderServerTime {
     fun parseMillis(value: String): Long? {
         val trimmed = value.trim()
         if (trimmed.isBlank()) return null
-        val normalized = trimmed.replace(longFraction, "$1")
+        val normalized = trimmed.replace(longFraction) { match -> match.groupValues[1] }
 
         val patterns = listOf(
             "yyyy-MM-dd'T'HH:mm:ss.SSSXXX",
