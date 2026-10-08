@@ -12,6 +12,8 @@ const reapplyV6=read('supabase/migrations/20261008035409_store_reapplication_rol
 const reconcile=read('supabase/migrations/20261008034157_store_readiness_legacy_reconcile_v4.sql');
 const statusBackup=read('supabase/migrations/20261008040547_store_status_cascade_backup_20261008.sql');
 const v7=read('supabase/migrations/20261008040628_store_lifecycle_status_cascade_hardening_v7.sql');
+const unopenedBackup=read('supabase/migrations/20261008041244_unopened_shop_users_backup_20261008.sql');
+const v8=read('supabase/migrations/20261008041312_unopened_shop_cleanup_v8.sql');
 let checks=0;const ok=(v,m)=>{assert.ok(v,m);checks++};
 
 // Case A/B: readiness is based on real store data, media, location and sellable catalog — never a fake/test order.
@@ -77,6 +79,16 @@ ok(v7.includes("when onboarding_status='approved' then 'active'")&&v7.includes("
 ok(v7.includes("old.onboarding_status='approved'")&&v7.includes("old.status is distinct from 'suspended'")&&v7.includes('SHOP_RESTORE_REQUIRES_APPROVED_SUSPENSION'),'Only a suspended approved store may use the restore path');
 ok(v7.includes('SHOP_NOT_READY'),'Restored approved stores must still pass readiness');
 
+// Never-opened legacy merchant accounts have no shop profile: keep them pending and allow a safe clean delete.
+ok(unopenedBackup.includes('unopened_shop_users_backup_20261008'),'Never-opened merchant users must be backed up before reconciliation');
+ok(v8.includes("u.role='shop'")&&v8.includes("not exists(select 1 from public.shop_profiles sp where sp.user_id=u.id)")&&v8.includes("set status='pending'"),'Legacy shop users without a profile must return to pending');
+ok(v8.includes('queuego_admin_delete_unopened_shop'),'Dedicated unopened-shop delete RPC must exist');
+ok(v8.includes('SHOP_ARCHIVE_REQUIRED')&&v8.includes('SHOP_USER_HAS_HISTORY'),'Unopened delete must refuse profiles or preserved history');
+ok(v8.includes("'can_register_again',true"),'Unopened delete must explicitly permit re-registration');
+ok(admin.includes('qgAdminDeleteUnopenedShop')&&admin.includes('rpc/queuego_admin_delete_unopened_shop'),'Admin must expose the safe unopened-registration delete flow');
+ok(admin.includes("u.shopProfileId?qgAdminArchiveShop(id):qgAdminDeleteUnopenedShop(id)"),'Admin delete must archive real stores and hard-delete only profile-less registrations');
+ok(admin.includes("u.shopProfileId?'ลบร้าน':'ลบรายการสมัคร'"),'Admin must distinguish store archive from unopened registration cleanup');
+
 // Case G: public/customer visibility only active + approved + not archived.
 ok(v3.includes("sp.status='active'")&&v3.includes("sp.archived_at is null")&&v3.includes("sp.onboarding_status='approved'"),'Authenticated product visibility must require active approved store');
 ok(v3.includes('users_guest_active_shops')&&v3.includes('users_customer_select_shops'),'Public/user shop visibility must be hardened');
@@ -101,4 +113,4 @@ for(const token of ["['ready','พร้อมใช้งาน']","['pending_r
 // Schema/source-of-truth must contain initial lifecycle migration as well as hardening.
 ok(v1.includes('onboarding_status')&&v1.includes('submitted_for_review_at')&&v1.includes('archived_at'),'Lifecycle columns must be tracked in GitHub migrations');
 
-console.log(JSON.stringify({checks,failures:0,scope:'Store readiness, approval, archive, reapplication, current-profile resolution, lifecycle restore and public visibility A-G'}));
+console.log(JSON.stringify({checks,failures:0,scope:'Store readiness, approval, archive, reapplication, unopened cleanup, current-profile resolution, lifecycle restore and public visibility A-G'}));
