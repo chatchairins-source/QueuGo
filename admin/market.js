@@ -11,7 +11,7 @@ window.qgLoadMarketPendingCount=async()=>{
   try{
     const [requests,members]=await Promise.all([
       api('market_requests?select=id&status=eq.pending'),
-      api('shop_profiles?select=id&market_membership_status=eq.pending')
+      api('shop_profiles?select=id&market_membership_status=eq.pending&archived_at=is.null')
     ]);
     if(el.isConnected&&actor()===owner){el.textContent=String(requests.length+members.length);const total=document.getElementById('qg-home-pending-total');if(total)total.textContent=String(Number(total.dataset.base||0)+requests.length+members.length);}
   }catch(e){if(el.isConnected&&actor()===owner)el.textContent='โหลดไม่ได้ — เปิดหน้าตลาดเพื่อลองใหม่'}
@@ -36,12 +36,12 @@ window.qgLoadMarketOperations=async()=>{
   const el=document.getElementById('qg-market-admin'),owner=actor();if(!el||!owner)return;
   try{
     const [memberships,markets,riders,orders,requests,applicants]=await Promise.all([
-      api('shop_profiles?select=id,shop_name,market_id,public_category,market_membership_status,market_stall_no,market_zone,market_suggested_distance_km,address,status,latitude,longitude,market_proof_path,public_cover,metadata,markets:market_id(name)&market_membership_status=eq.pending&order=updated_at.asc&limit=100'),
+      api('shop_profiles?select=id,shop_name,market_id,public_category,market_membership_status,market_stall_no,market_zone,market_suggested_distance_km,address,status,latitude,longitude,market_proof_path,public_cover,metadata,markets:market_id(name)&market_membership_status=eq.pending&archived_at=is.null&order=updated_at.asc&limit=100'),
       api('markets?select=id,name,province,district,subdistrict,verified,active,latitude,longitude,assignment_radius_km&order=province.asc,name.asc'),
       api('rider_profiles?select=id,rider_name,vehicle_type,vehicle_plate,vehicle_status,vehicle_capacity_kg,vehicle_verified_at,status,metadata&status=eq.active&order=created_at.desc&limit=100'),
       api('orders?select=id,order_number,status,fulfillment_vertical,subtotal,total_amount,market_order_id,created_at&market_order_id=not.is.null&order=created_at.desc&limit=50'),
       api('market_requests?select=id,requested_name,province,district,subdistrict,address,latitude,longitude,status,note,requester_shop_user_id,created_at&status=eq.pending&order=created_at.asc&limit=50'),
-      api('shop_profiles?select=user_id,shop_name,public_category,metadata')
+      api('shop_profiles?select=user_id,shop_name,public_category,metadata&archived_at=is.null')
     ]);
     if(!el.isConnected||actor()!==owner)return;
     el.innerHTML=`
