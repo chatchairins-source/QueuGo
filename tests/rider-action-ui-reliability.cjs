@@ -36,10 +36,13 @@ ok(!rider.includes('qgSheetLevel'),'legacy sheet level state must be physically 
 ok(!rider.includes('function qgOpenRiderMore('),'legacy active-job more sheet must be removed');
 
 ok(rider.includes("function qgOpenDeliveryConfirm(o)"),'arrival must open a dedicated delivery confirmation screen');
-ok(rider.includes('ตรวจสอบรายการ'),'pickup must force item verification before photo/payment');
+ok(rider.includes('ตรวจสอบรายการและถ่ายรูป'),'pickup must show item verification and required photo on the same page');
 ok(rider.includes('ชำระเงินให้ร้านเรียบร้อยแล้ว'),'shop cash confirmation must be explicit');
-ok(rider.includes('ส่งสินค้าให้ลูกค้าเรียบร้อยแล้ว'),'delivery flow must confirm handoff before proof');
+ok(rider.includes('ตรวจสอบและส่งมอบสินค้า'),'delivery must show item verification and proof on the same page');
 ok(rider.includes('เก็บเงินจากลูกค้าเรียบร้อยแล้ว'),'customer cash collection confirmation must be explicit');
+ok(!rider.includes('id="qg-pickup-items-ok"'),'pickup must not have a separate inspect-to-photo transition button');
+ok(!rider.includes('id="qg-delivery-handed"'),'delivery must not have a separate handoff-to-photo transition button');
+ok(!rider.includes('const renderInspect=')&&!rider.includes('const renderHandoff='),'pickup and delivery must not retain split-screen renderers');
 ok(rider.includes('.qg-rider-flow-page{position:fixed;z-index:18500;inset:0;background:#f8f7f8;display:flex;flex-direction:column;overflow:hidden}'),'Rider staged page must lock the viewport and scroll only its content');
 ok(rider.includes('.qg-flow-next{position:fixed'),'Rider staged primary action must stay fixed at the bottom');
 ok(rider.includes('left:10px;right:10px;bottom:calc(12px + var(--safeB));width:auto'),'fixed Rider CTAs must stay fully inside the iOS viewport');

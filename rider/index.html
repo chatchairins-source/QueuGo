@@ -1718,11 +1718,11 @@ async function qgOpenPickupVerify(o){
     const rows=list.map(x=>{const img=qgSafeItemImage(x.item_image);return `<article class="qg-flow-item">${img?`<img class="qg-flow-item-image" src="${esc(img)}" alt="">`:''}<div class="qg-flow-item-copy"><b>${esc(x.item_name||'รายการ')}</b>${x.description?`<small>${esc(x.description)}</small>`:''}<span>× ${Number(x.quantity||1).toLocaleString('th-TH')}</span></div><strong>฿${Number(x.total_price??Number(x.unit_price||0)*Number(x.quantity||1)).toLocaleString('th-TH')}</strong></article>`}).join('');
     const itemsSection=list.length?`<section class="qg-flow-card"><div class="qg-flow-card-head"><b>รายการสินค้า</b><span>${count} รายการ</span></div>${rows}<div class="qg-flow-total"><span>รวมค่าสินค้า</span><b>฿${shopCash.toLocaleString('th-TH')}</b></div></section>`:'<section class="qg-flow-card"><div class="qg-empty">ไม่พบรายการสินค้า</div></section>';
 
-    const renderInspect=()=>{
+    const renderPickupPage=()=>{
       if(!page.isConnected)return;
       back.onclick=()=>page.remove();
       page.querySelector('.qg-flow-body').innerHTML=`
-        <section class="qg-pickup-banner"><span>ขั้นตอนที่ 1</span><h1>ตรวจสอบรายการสินค้า</h1><p>เช็กชื่อสินค้าและจำนวนให้ครบก่อนรับออกจากร้าน</p></section>
+        <section class="qg-pickup-banner"><span>รับสินค้าที่ร้าน</span><h1>ตรวจสอบรายการและถ่ายรูป</h1><p>เช็กชื่อสินค้าและจำนวนให้ครบ แล้วถ่ายรูปหลักฐานในหน้าเดียว</p></section>
         <section class="qg-flow-card qg-pickup-meta">
           <div class="qg-pickup-shop">${shopLogo?`<img class="qg-shop-logo" src="${esc(shopLogo)}" alt="">`:`<div class="qg-shop-logo qg-shop-logo-fallback">${esc((shop.shop_name||'Q').slice(0,1))}</div>`}<div><small>ร้านค้า</small><b>${esc(shop.shop_name||'ร้านค้า')}</b></div></div>
           <div class="qg-pickup-row"><span>${QTICON.jobs}</span><div><small>รหัสออเดอร์</small><b>${esc(qgShortOrder(o))}</b></div></div>
@@ -1730,19 +1730,9 @@ async function qgOpenPickupVerify(o){
         </section>
         ${itemsSection}
         ${note?`<section class="qg-flow-note"><small>หมายเหตุจากลูกค้า</small><b>${esc(note)}</b></section>`:''}
-        <button type="button" class="qg-btn qg-btn-primary qg-flow-next" id="qg-pickup-items-ok">ตรวจสอบรายการ</button>
-        <small class="qg-slide-caption">ตรวจของให้ครบก่อนเข้าสู่ขั้นตอนถ่ายรูป</small>`;
-      page.querySelector('#qg-pickup-items-ok').onclick=renderPhoto;
-    };
-
-    const renderPhoto=()=>{
-      if(!page.isConnected)return;
-      back.onclick=renderInspect;
-      page.querySelector('.qg-flow-body').innerHTML=`
-        <section class="qg-pickup-banner"><span>ขั้นตอนที่ 2</span><h1>ถ่ายรูปสินค้าที่รับ</h1><p>ต้องมีรูปหลักฐานก่อนเข้าสู่หน้าชำระเงินให้ร้าน</p></section>
-        <section class="qg-proof-box qg-proof-single"><div class="qg-flow-card-head"><b>รูปตอนรับสินค้า</b><span>จำเป็น</span></div><label class="qg-proof-pick"><input id="qg-pickup-photo" type="file" accept="image/*" capture="environment" aria-label="เปิดกล้องถ่ายรูปสินค้าที่รับ"><span class="qg-proof-plus">＋</span><b>ถ่ายรูปสินค้าที่รับ</b><small>ให้เห็นสินค้าที่รับจากร้านชัดเจน</small></label><img id="qg-pickup-preview" hidden alt="รูปตอนรับสินค้า"></section>
-        <button type="button" class="qg-btn qg-btn-primary qg-flow-next" id="qg-pickup-photo-next" disabled hidden>ไปหน้าชำระเงินให้ร้าน</button>
-        <small class="qg-slide-caption">ถ่ายรูปสินค้าที่รับก่อนชำระเงิน</small>`;
+        <section class="qg-proof-box qg-proof-single"><div class="qg-flow-card-head"><b>รูปตอนรับสินค้า</b><span>จำเป็น</span></div><label class="qg-proof-pick"><input id="qg-pickup-photo" type="file" accept="image/*" capture="environment" aria-label="เปิดกล้องถ่ายรูปสินค้าที่รับ"><span class="qg-proof-plus">＋</span><b>ถ่ายรูปสินค้าที่รับ</b><small>ให้เห็นสินค้าที่ตรวจรับจากร้านชัดเจน</small></label><img id="qg-pickup-preview" hidden alt="รูปตอนรับสินค้า"></section>
+        <button type="button" class="qg-btn qg-btn-primary qg-flow-next" id="qg-pickup-photo-next" disabled hidden>ยืนยันรับสินค้า</button>
+        <small class="qg-slide-caption">ตรวจรายการให้ครบและถ่ายรูปก่อนรับสินค้า</small>`;
       const input=page.querySelector('#qg-pickup-photo'),preview=page.querySelector('#qg-pickup-preview'),next=page.querySelector('#qg-pickup-photo-next');
       input.onchange=()=>{
         const file=input.files?.[0],proofBox=input.closest('.qg-proof-single');
@@ -1774,7 +1764,7 @@ async function qgOpenPickupVerify(o){
       };
     };
 
-    renderInspect();
+    renderPickupPage();
     return true;
   }catch(e){
     if(page.isConnected)page.querySelector('.qg-flow-body').innerHTML=`<div class="qg-error-state"><b>โหลดรายละเอียดไม่สำเร็จ</b><span>${esc(e.message||String(e))}</span></div>`;
@@ -1818,29 +1808,19 @@ async function qgOpenDeliveryConfirm(o){
     const rows=list.map(x=>{const img=qgSafeItemImage(x.item_image);return `<article class="qg-flow-item">${img?`<img class="qg-flow-item-image" src="${esc(img)}" alt="">`:''}<div class="qg-flow-item-copy"><b>${esc(x.item_name||'รายการ')}</b><span>× ${Number(x.quantity||1).toLocaleString('th-TH')}</span></div><strong>฿${Number(x.total_price||0).toLocaleString('th-TH')}</strong></article>`}).join('');
     const itemsSection=list.length?`<section class="qg-flow-card"><div class="qg-flow-card-head"><b>สินค้า</b><span>${count} รายการ</span></div>${rows}</section>`:'';
 
-    const renderHandoff=()=>{
+    const renderDeliveryPage=()=>{
       if(!page.isConnected)return;
       back.onclick=()=>page.remove();
       page.querySelector('.qg-flow-body').innerHTML=`
-        <section class="qg-flow-hero"><span>ขั้นตอนที่ 1</span><h1>ส่งสินค้าให้ลูกค้า</h1><p>${esc(qgShortOrder(o))} · ${esc(shop.shop_name||'ร้านค้า')}</p></section>
+        <section class="qg-flow-hero"><span>ส่งสินค้าให้ลูกค้า</span><h1>ตรวจสอบและส่งมอบสินค้า</h1><p>${esc(qgShortOrder(o))} · ตรวจรายการและถ่ายรูปหลักฐานในหน้าเดียว</p></section>
         <section class="qg-flow-customer"><div><small>ลูกค้า</small><h2>${esc(cust.name||'ลูกค้า')}</h2></div><div class="qg-contact-actions">${tel?`<a href="${esc(tel)}" aria-label="โทรหาลูกค้า">${QTICON.phone}</a>`:''}<button type="button" id="qg-delivery-chat" aria-label="แชต">${QTICON.chat}</button></div></section>
         <section class="qg-flow-address"><span>${QTICON.loc}</span><div><small>ที่อยู่จัดส่ง</small><b>${esc(o.delivery_address||'จุดส่งสินค้า')}</b></div></section>
         ${note?`<section class="qg-flow-note"><small>หมายเหตุจากลูกค้า</small><b>${esc(note)}</b></section>`:''}
         ${itemsSection}
-        <button type="button" class="qg-btn qg-btn-primary qg-flow-next" id="qg-delivery-handed">ส่งสินค้าให้ลูกค้าเรียบร้อยแล้ว</button>
-        <small class="qg-slide-caption">ส่งสินค้าให้ลูกค้าก่อน แล้วจึงถ่ายรูปยืนยัน</small>`;
+        <section class="qg-proof-box qg-proof-single"><div class="qg-flow-card-head"><b>รูปตอนส่งสินค้า</b><span>จำเป็น</span></div><label class="qg-proof-pick"><input id="qg-delivery-photo" type="file" accept="image/*" capture="environment" aria-label="เปิดกล้องถ่ายรูปตอนส่งสินค้า"><span class="qg-proof-plus">＋</span><b>ถ่ายรูปตอนส่ง</b><small>ให้เห็นสินค้าและจุดส่งชัดเจน ไม่ต้องถ่ายหน้าลูกค้า</small></label><img id="qg-delivery-preview" hidden alt="รูปตอนส่งสินค้า"></section>
+        <button type="button" class="qg-btn qg-btn-primary qg-flow-next" id="qg-delivery-photo-next" disabled hidden>ยืนยันส่งสินค้า</button>
+        <small class="qg-slide-caption">ตรวจรายการให้ครบและถ่ายรูปหลักฐานก่อนยืนยันส่ง</small>`;
       page.querySelector('#qg-delivery-chat').onclick=()=>{page.remove();openChat(o)};
-      page.querySelector('#qg-delivery-handed').onclick=renderPhoto;
-    };
-
-    const renderPhoto=()=>{
-      if(!page.isConnected)return;
-      back.onclick=renderHandoff;
-      page.querySelector('.qg-flow-body').innerHTML=`
-        <section class="qg-flow-hero"><span>ขั้นตอนที่ 2</span><h1>ถ่ายรูปยืนยันการส่ง</h1><p>ถ่ายเฉพาะสินค้าและจุดส่ง ไม่ต้องถ่ายหน้าลูกค้า</p></section>
-        <section class="qg-proof-box qg-proof-single"><div class="qg-flow-card-head"><b>รูปตอนส่งสินค้า</b><span>จำเป็น</span></div><label class="qg-proof-pick"><input id="qg-delivery-photo" type="file" accept="image/*" capture="environment" aria-label="เปิดกล้องถ่ายรูปตอนส่งสินค้า"><span class="qg-proof-plus">＋</span><b>ถ่ายรูปตอนส่ง</b><small>ให้เห็นสินค้าและจุดส่งชัดเจน</small></label><img id="qg-delivery-preview" hidden alt="รูปตอนส่งสินค้า"></section>
-        <button type="button" class="qg-btn qg-btn-primary qg-flow-next" id="qg-delivery-photo-next" disabled hidden>ไปหน้าเก็บเงินจากลูกค้า</button>
-        <small class="qg-slide-caption">ต้องมีรูปหลักฐานก่อนเข้าสู่ขั้นตอนเก็บเงิน</small>`;
       const input=page.querySelector('#qg-delivery-photo'),preview=page.querySelector('#qg-delivery-preview'),next=page.querySelector('#qg-delivery-photo-next');
       input.onchange=()=>{
         const file=input.files?.[0],proofBox=input.closest('.qg-proof-single');
@@ -1873,7 +1853,7 @@ async function qgOpenDeliveryConfirm(o){
       };
     };
 
-    renderHandoff();
+    renderDeliveryPage();
     return true;
   }catch(e){
     if(page.isConnected)page.querySelector('.qg-flow-body').innerHTML=`<div class="qg-error-state"><b>โหลดรายละเอียดไม่สำเร็จ</b><span>${esc(e.message||String(e))}</span></div>`;
