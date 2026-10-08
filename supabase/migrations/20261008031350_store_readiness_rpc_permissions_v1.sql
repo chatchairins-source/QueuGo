@@ -1,0 +1,13 @@
+revoke all on function public.queuego_shop_readiness(uuid) from public,anon;
+revoke all on function public.queuego_submit_shop_for_review(uuid) from public,anon;
+revoke all on function public.queuego_admin_approve_shop(uuid) from public,anon;
+revoke all on function public.queuego_admin_request_shop_changes(uuid,text) from public,anon;
+revoke all on function public.queuego_admin_archive_shop(uuid,text) from public,anon;
+revoke all on function public.queuego_start_new_shop_application(text,text) from public,anon;
+grant execute on function public.queuego_shop_readiness(uuid) to authenticated;
+grant execute on function public.queuego_submit_shop_for_review(uuid) to authenticated;
+grant execute on function public.queuego_admin_approve_shop(uuid) to authenticated;
+grant execute on function public.queuego_admin_request_shop_changes(uuid,text) to authenticated;
+grant execute on function public.queuego_admin_archive_shop(uuid,text) to authenticated;
+grant execute on function public.queuego_start_new_shop_application(text,text) to authenticated;
+alter function public.queuego_public_shop_visible(public.shop_profiles) set search_path=public,pg_temp;
