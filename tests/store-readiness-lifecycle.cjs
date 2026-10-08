@@ -61,7 +61,7 @@ ok(reapplyV5.includes('insert into public.shop_profiles(user_id,shop_name,status
 ok(!reapplyV5.includes('insert into public.shop_profiles(user_id,shop_name,public_category'),'Reapplication must not write generated public_category directly');
 ok(reapplyV6.includes("public.get_my_role() is distinct from 'shop'")&&reapplyV6.includes("SHOP_LOGIN_REQUIRED"),'Only merchant-role users may create a fresh shop application');
 ok(merchant.includes('qgmStartNewStoreApplication'),'Merchant UI must expose fresh application after archive');
-ok(admin.includes("if(u.type==='shop')return qgAdminArchiveShop(id)"),'Legacy Admin delete entry must route shops to safe archive');
+ok(admin.includes("if(u.type==='shop')return u.shopProfileId?qgAdminArchiveShop(id):qgAdminDeleteUnopenedShop(id)"),'Admin delete entry must archive real stores and route profile-less registrations to safe cleanup');
 
 // Current-profile resolution after archive/reapplication.
 ok(!admin.includes('shop_profiles?on_conflict=user_id'),'Admin cache must never recreate a shop through the retired user_id upsert');
