@@ -1353,6 +1353,14 @@ window.addEventListener('unhandledrejection',e=>{
       document.body.append(box);box.addEventListener('close',()=>box.remove(),{once:true});box.querySelector('.qg-menu-head button').onclick=()=>box.close();box.showModal();
       try{qtAudit('user_view',{entityType:'user',entityId:u.id,userId:u.id});}catch(e){} return;
     }
+    if(!u.shopProfileId){
+      const status=typeof accountStatusLabel==='function'?accountStatusLabel(u.status):u.status||'-';
+      const category=typeof qgAdminProviderLabel==='function'?qgAdminProviderLabel(u):'ร้านค้า';
+      const box=document.createElement('dialog');box.className='qg-admin-detail';
+      box.innerHTML=`<div class="qg-menu-head"><div><h2>รายการสมัครร้าน</h2><p>ยังไม่เคยสร้างโปรไฟล์ร้าน</p></div><button type="button" aria-label="ปิดข้อมูล">✕</button></div><div class="qg-provider-heading"><span class="qg-avatar">${escapeHtml((u.shopName||u.name||'?').slice(0,1))}</span><div><b>${escapeHtml(u.shopName||u.name||'ยังไม่ระบุชื่อร้าน')}</b><small>${escapeHtml(category)}</small></div></div><dl>${[['ผู้ติดต่อ',u.name],['โทรศัพท์',u.phone],['สถานะบัญชี',status],['รหัสบัญชี',u.id],['สมัครเมื่อ',u.createdAt?new Date(u.createdAt).toLocaleString('th-TH'):'-']].map(([label,value])=>`<div><dt>${escapeHtml(label)}</dt><dd>${escapeHtml(value||'-')}</dd></div>`).join('')}</dl><p class="qt-admin-note">บัญชีนี้ยังไม่มีโปรไฟล์ร้าน จึงยังไม่มีพิกัด รูปหน้าร้าน รูปหน้าปก หรือรายการสินค้า และยังไม่สามารถส่งให้ Admin อนุมัติเปิดร้านได้</p><div class="row-btns"><button class="btn-danger" type="button" onclick="this.closest('dialog').close();qgAdminDeleteUnopenedShop('${escapeHtml(u.id)}')">ลบรายการสมัคร</button></div>`;
+      document.body.append(box);box.addEventListener('close',()=>box.remove(),{once:true});box.querySelector('.qg-menu-head button').onclick=()=>box.close();box.showModal();
+      try{qtAudit('shop_unopened_view',{entityType:'user',entityId:u.id,userId:u.id});}catch(e){} return;
+    }
     try{
       const token=await qtGetAccessToken();if(!token)throw Error('กรุณาเข้าสู่ระบบ Admin ใหม่');
       const raw=await qtSupabaseTable('rpc/queuego_admin_shop_application',{method:'POST',accessToken:token,body:{p_shop_user_id:u.id}});
