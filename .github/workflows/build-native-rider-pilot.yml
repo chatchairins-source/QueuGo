@@ -1,4 +1,4 @@
-name: QueueGo Rider Native Pilot
+name: QueueGo Native Android Pilot
 
 on:
   workflow_dispatch:
@@ -14,9 +14,9 @@ permissions:
   contents: read
 
 jobs:
-  rider-native:
+  native-pilot:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 35
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v5
@@ -30,16 +30,19 @@ jobs:
           gradle-version: '9.6.0'
       - name: Source integrity
         run: node tests/native-android-source.cjs
-      - name: Build native Rider APK
-        run: gradle -p native-android :rider:assembleDebug --stacktrace
+      - name: Build three native APKs
+        run: gradle -p native-android :customer:assembleDebug :merchant:assembleDebug :rider:assembleDebug --stacktrace
       - name: Reject WebView
         run: |
           if grep -R -E 'android\.webkit\.WebView|<WebView\b|loadUrl\(' native-android; then
-            echo "WebView is forbidden in QueueGo native Rider"
+            echo "WebView is forbidden in QueueGo native apps"
             exit 1
           fi
       - uses: actions/upload-artifact@v4
         with:
-          name: queuego-rider-native-pilot
-          path: native-android/rider/build/outputs/apk/debug/rider-debug.apk
+          name: queuego-native-pilot-apks
+          path: |
+            native-android/customer/build/outputs/apk/debug/customer-debug.apk
+            native-android/merchant/build/outputs/apk/debug/merchant-debug.apk
+            native-android/rider/build/outputs/apk/debug/rider-debug.apk
           if-no-files-found: error

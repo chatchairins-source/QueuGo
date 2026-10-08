@@ -6,4 +6,4 @@ dependencyResolutionManagement {
     repositories { google(); mavenCentral() }
 }
 rootProject.name = "QueueGoNative"
-include(":rider")
+include(":shared", ":customer", ":merchant", ":rider")

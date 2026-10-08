@@ -6,12 +6,20 @@ let checks=0;const ok=(v,m)=>{assert.ok(v,m);checks++};
 for(const p of [
   'settings.gradle.kts',
   'build.gradle.kts',
+  'shared/build.gradle.kts',
+  'customer/build.gradle.kts',
+  'merchant/build.gradle.kts',
   'rider/build.gradle.kts',
   'rider/src/main/AndroidManifest.xml',
   'rider/src/main/java/com/queuego/rider/QueueGoRiderApp.kt',
   'rider/src/main/java/com/queuego/rider/QueueGoApi.kt'
 ]) ok(fs.existsSync(path.join(root,p)),'missing '+p);
 
+const customerGradle=read('customer/build.gradle.kts');
+const merchantGradle=read('merchant/build.gradle.kts');
+ok(customerGradle.includes('applicationId = "com.queuego.customer"'),'Customer package id');
+ok(merchantGradle.includes('applicationId = "com.queuego.merchant"'),'Merchant package id');
+ok(/targetSdk\s*=\s*36/.test(customerGradle)&&/targetSdk\s*=\s*36/.test(merchantGradle),'Customer/Merchant targetSdk 36');
 const gradle=read('rider/build.gradle.kts');
 ok(gradle.includes('applicationId = "com.queuego.rider"'),'Rider package id');
 ok(/compileSdk\s*=\s*36/.test(gradle),'compileSdk 36');
@@ -26,7 +34,9 @@ const all=[];
 })(root);
 const source=all.join('\n');
 
-ok(!/android\.webkit\.WebView|<WebView\b|loadUrl\(/.test(source),'native Rider must not use WebView UI');
+ok(!/android\.webkit\.WebView|<WebView\b|loadUrl\(/.test(source),'native apps must not use WebView UI');
+ok(source.includes('expectedRole = "customer"')&&source.includes('expectedRole = "shop"'),'Customer/Merchant must validate real QueueGo roles');
+ok(source.includes('SecureRoleSessionStore')&&source.includes('NativeAuthApi'),'Customer/Merchant must share native auth/session implementation');
 ok(source.includes('claim_active_session'),'reuse active-session claim');
 ok(source.includes('check_active_session')&&source.includes('touch_active_session'),'reuse session guard');
 ok(source.includes('get_rider_delivery_pool')&&source.includes('qg_get_my_rider_offer'),'reuse sequential server dispatch');
