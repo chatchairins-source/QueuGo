@@ -71,10 +71,11 @@ class QueueGoApi {
         }
 
     suspend fun validate(auth: QueueGoAuth): QueueGoAuth = withContext(Dispatchers.IO) {
+        val liveAuth = refreshIfNeeded(auth)
         val result = rpc(
             "check_active_session",
-            auth.session.accessToken,
-            JSONObject().put("p_session_id", auth.session.sessionId)
+            liveAuth.session.accessToken,
+            JSONObject().put("p_session_id", liveAuth.session.sessionId)
         )
         val valid = result == true ||
             (result is JSONArray && result.length() > 0 &&
@@ -85,18 +86,44 @@ class QueueGoApi {
 
         val users = requestArray(
             "GET",
-            "/rest/v1/users?select=id,name,role,status&auth_user_id=eq." + enc(auth.session.authUserId),
-            auth.session.accessToken
+            "/rest/v1/users?select=id,name,role,status&auth_user_id=eq." + enc(liveAuth.session.authUserId),
+            liveAuth.session.accessToken
         )
         if (users.length() == 0) error("ไม่พบบัญชี QueueGo")
         val row = users.getJSONObject(0)
         if (row.optString("role") != "rider") error("สิทธิ์บัญชีไม่ถูกต้อง")
-        auth.copy(
+        liveAuth.copy(
             user = QueueGoUser(
                 id = row.getString("id"),
                 name = row.optString("name").ifBlank { "ไรเดอร์" },
                 role = "rider",
                 status = row.optString("status")
+            )
+        )
+    }
+
+    private fun refreshIfNeeded(auth: QueueGoAuth): QueueGoAuth {
+        val session = auth.session
+        val refresh = session.refreshToken?.takeIf { it.isNotBlank() } ?: return auth
+        if (session.expiresAtMs > System.currentTimeMillis() + 60_000L) return auth
+
+        val renewed = requestObject(
+            "POST",
+            "/auth/v1/token?grant_type=refresh_token",
+            null,
+            JSONObject().put("refresh_token", refresh)
+        )
+        val nextAccess = renewed.optString("access_token")
+        if (nextAccess.isBlank()) error("ไม่สามารถต่ออายุ Session Rider ได้")
+        val nextRefresh = renewed.optString("refresh_token").takeIf { it.isNotBlank() } ?: refresh
+        val nextExpiry = renewed.optLong("expires_at", 0L).let {
+            if (it > 0L) it * 1000L else System.currentTimeMillis() + 55 * 60_000L
+        }
+        return auth.copy(
+            session = session.copy(
+                accessToken = nextAccess,
+                refreshToken = nextRefresh,
+                expiresAtMs = nextExpiry
             )
         )
     }
