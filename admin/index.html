@@ -1699,7 +1699,16 @@ async function qgLoadAdminCash(day){
     catch(e){toast('อนุมัติร้านไม่สำเร็จ: '+(e.message||e))}
     finally{busy.delete(id)}
   };
-  window.adminRejectUser=id=>accountAction('reject',id);
+  window.adminRejectUser=async id=>{
+    const local=dbGet('qt_users',[]).find(x=>String(x.id)===String(id));
+    if(local?.type!=='shop')return accountAction('reject',id);
+    if(busy.has(id)||local.onboardingStatus!=='pending_approval')return;
+    const note=await qgAdminInput({title:'ส่งกลับให้ร้านแก้ไข',label:'สิ่งที่ต้องแก้ไข'});if(note===null)return;
+    busy.add(id);
+    try{const token=await qtGetAccessToken();await qtSupabaseTable('rpc/queuego_admin_request_shop_changes',{method:'POST',accessToken:token,body:{p_shop_id:local.shopProfileId,p_reason:note.trim()||null}});toast('ส่งกลับให้ร้านแก้ไขแล้ว');await qtHydrateDatabase({light:false});if(location.hash==='#admin-governance'){renderAdminGovernance();setTimeout(()=>qtAdminTab('qt-sec-approval'),0)}}
+    catch(e){toast('ดำเนินการไม่สำเร็จ: '+(e.message||e))}
+    finally{busy.delete(id)}
+  };
   window.adminSecurityAction=(action,id)=>accountAction(action,id);
   window.adminSuspendUser=id=>accountAction('suspend',id);
   window.adminUnsuspendUser=id=>accountAction('restore',id);
