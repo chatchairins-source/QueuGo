@@ -23,6 +23,7 @@
   };
   const escBanner=v=>String(v??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
   const encodePath=path=>String(path||'').split('/').map(encodeURIComponent).join('/');
+  const safeLink=value=>{const link=String(value||'').trim();if(!link)return '';if(link.startsWith('#')||/^https?:\/\//i.test(link))return link;throw Error('ลิงก์ต้องขึ้นต้นด้วย # หรือ https://')};
   function normalize(value){
     const cfg=value&&typeof value==='object'?JSON.parse(JSON.stringify(value)):{version:'1'};
     cfg.version='1';
@@ -71,6 +72,7 @@
         '<label class="qg-banner-file">เลือกรูปใหม่<input type="file" accept="image/jpeg,image/png,image/webp" onchange="qgAdminUploadServiceBanner(\''+key+'\',this)"></label>'+
         '<label>หัวข้อ<input id="qg-service-title-'+key+'" type="text" maxlength="80" value="'+escBanner(item.title||DEFAULTS[key][0])+'"></label>'+
         '<label>คำโปรย<input id="qg-service-subtitle-'+key+'" type="text" maxlength="180" value="'+escBanner(item.subtitle||DEFAULTS[key][1])+'"></label>'+
+        '<label>ลิงก์เมื่อกด (ไม่บังคับ)<input id="qg-service-link-'+key+'" type="text" maxlength="500" value="'+escBanner(item.link||item.link_target||'')+'" placeholder="#shopping หรือ https://..."></label>'+
         '<label class="qg-banner-active"><span>เปิดใช้งานแบนเนอร์</span><input id="qg-service-active-'+key+'" type="checkbox" '+(active?'checked':'')+'></label>'+
         '<div class="qg-banner-actions"><button type="button" class="btn-primary" onclick="qgAdminSaveServiceBanner(\''+key+'\')">บันทึก</button><button type="button" class="btn-secondary" onclick="qgAdminClearServiceBanner(\''+key+'\')">กลับภาพเริ่มต้น</button></div>'+
       '</article>';
@@ -88,6 +90,7 @@
       if(!cfg[key])throw Error('ไม่พบหมวดแบนเนอร์');
       cfg[key].title=String(document.getElementById('qg-service-title-'+key)?.value||'').trim().slice(0,80)||DEFAULTS[key][0];
       cfg[key].subtitle=String(document.getElementById('qg-service-subtitle-'+key)?.value||'').trim().slice(0,180)||DEFAULTS[key][1];
+      cfg[key].link=safeLink(document.getElementById('qg-service-link-'+key)?.value||'').slice(0,500);
       cfg[key].active=!!document.getElementById('qg-service-active-'+key)?.checked;
       await writeConfig(cfg);render(cfg);toast('บันทึกแบนเนอร์ '+DEFAULTS[key][0]+' แล้ว');
     }catch(e){toast('บันทึกไม่สำเร็จ: '+String(e.message||e).slice(0,90))}

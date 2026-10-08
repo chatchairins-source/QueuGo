@@ -36,6 +36,8 @@ ok(merchant.includes("if(isShoppingProduct&&!qgmShoppingProductCategoryNames(u).
 ok(admin.includes("category==='shopping'")&&admin.includes("automotive_motorcycle:'อะไหล่มอเตอร์ไซค์'"),'admin shopping/subcategory label missing');
 ok(admin.includes('qgAdminLoadHomeBanners'),'admin home banner manager missing');
 ok(admin.includes('qgAdminLoadServiceBanners')&&adminService.includes('qgAdminLoadServiceBanners'),'admin category banner manager missing');
+ok(customer.includes('function qgServiceBannerLink(value)')&&customer.includes('qgOpenServiceBanner(this.dataset.link)'),'service banner advertising links missing');
+ok(adminService.includes('qg-service-link-')&&adminService.includes("cfg[key].link=safeLink("),'admin service banner link editor missing');
 ok(adminService.includes("const KEY='service_banners',BUCKET='queuego-banners'"),'service banner storage manager missing');
 
 ok(db.includes('public_subcategories text[]'),'database public subcategory projection missing');

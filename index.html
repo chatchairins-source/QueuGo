@@ -281,6 +281,7 @@ main:has(.qg-customer-action-dock){padding-bottom:calc(142px + env(safe-area-ins
 .qg-service-banner img{display:block;width:100%;height:100%;object-fit:cover}
 .qg-service-banner-copy{position:absolute;inset:auto 0 0;padding:30px 18px 16px;color:#fff;background:linear-gradient(transparent,rgba(0,0,0,.68))}
 .qg-service-banner-copy b{display:block;font-size:20px;line-height:1.15}.qg-service-banner-copy small{display:block;margin-top:4px;font-size:12px;color:#fff}
+.qg-service-banner[role="link"]{cursor:pointer}
 .qg-shopping-categories{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:12px 0 4px}
 .qg-shopping-category{border:1px solid #eceef1;background:#fff;border-radius:16px;padding:14px 8px;min-height:94px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;font:inherit;font-weight:800;color:#25282d}
 .qg-shopping-category i{display:grid;place-items:center;width:42px;height:42px;border-radius:14px;background:#fff1f3;color:#e7092b}.qg-shopping-category svg{stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
@@ -479,10 +480,13 @@ async function loadServiceBannerConfig(){
 }
 function qgServiceBannerEntry(key){return serviceBannerConfigCache&&typeof serviceBannerConfigCache[key]==='object'?serviceBannerConfigCache[key]:{}}
 function qgServiceBannerImage(key,fallback=''){const e=qgServiceBannerEntry(key),src=String(e.image_url||e.image_data||'').trim();return (/^data:image\//.test(src)||/^https?:\/\//i.test(src))?src:fallback}
+function qgServiceBannerLink(value){const link=String(value||'').trim();return link.startsWith('#')||/^https?:\/\//i.test(link)?link:''}
+function qgOpenServiceBanner(link){const safe=qgServiceBannerLink(link);if(safe)qgOpenHomeBanner(safe)}
 function qgServiceBannerMarkup(key,fallback,title,subtitle){
   const e=qgServiceBannerEntry(key);if(e.active===false)return '';
-  const src=qgServiceBannerImage(key,fallback),heading=String(e.title||title||''),copy=String(e.subtitle||subtitle||'');
-  return `<div class="qg-service-banner">${src?`<img src="${esc(src)}" alt="${esc(heading||'QueueGo')}" onerror="this.remove()">`:''}<div class="qg-service-banner-copy">${heading?`<b>${esc(heading)}</b>`:''}${copy?`<small>${esc(copy)}</small>`:''}</div></div>`;
+  const src=qgServiceBannerImage(key,fallback),heading=String(e.title||title||''),copy=String(e.subtitle||subtitle||''),link=qgServiceBannerLink(e.link||e.link_target||'');
+  const attrs=link?` data-link="${esc(link)}" role="link" tabindex="0" onclick="qgOpenServiceBanner(this.dataset.link)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();qgOpenServiceBanner(this.dataset.link)}"`:'';
+  return `<div class="qg-service-banner"${attrs}>${src?`<img src="${esc(src)}" alt="${esc(heading||'QueueGo')}" onerror="this.remove()">`:''}<div class="qg-service-banner-copy">${heading?`<b>${esc(heading)}</b>`:''}${copy?`<small>${esc(copy)}</small>`:''}</div></div>`;
 }
 const SHOPPING_SUBCATEGORY_LABELS={mobile_accessories:'มือถือและอุปกรณ์',computer_it:'คอมพิวเตอร์และไอที',automotive_car:'อะไหล่รถยนต์',automotive_motorcycle:'อะไหล่มอเตอร์ไซค์'};
 function qgShopHasSubcategory(shop,key){return Array.isArray(shop?.public_subcategories)&&shop.public_subcategories.includes(key)}
