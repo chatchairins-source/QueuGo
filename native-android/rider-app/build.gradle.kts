@@ -29,6 +29,7 @@ dependencies {
     implementation(project(":core-model"))
     implementation(project(":core-network"))
     implementation(project(":core-auth"))
+    implementation(project(":core-push"))
     implementation(project(":core-ui"))
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.activity.compose)
