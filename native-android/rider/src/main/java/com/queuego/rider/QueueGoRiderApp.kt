@@ -1,14 +1,24 @@
 package com.queuego.rider
 
+import android.Manifest
+import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.location.LocationManager
 import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -31,8 +41,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
+import androidx.core.content.FileProvider
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import java.io.File
 
 @Composable
 fun QueueGoRiderApp() {
@@ -195,8 +207,79 @@ private fun RiderHome(
     onLogout: () -> Unit
 ) {
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     var snapshot by remember { mutableStateOf<RiderSnapshot?>(null) }
     var loadError by remember { mutableStateOf<String?>(null) }
+    var actionBusy by remember { mutableStateOf(false) }
+    var actionMessage by remember { mutableStateOf<String?>(null) }
+    var verifyMode by remember { mutableStateOf<String?>(null) }
+    var verifyJob by remember { mutableStateOf<RiderJob?>(null) }
+    var verifyItems by remember { mutableStateOf<List<RiderItem>>(emptyList()) }
+    var photoUri by remember { mutableStateOf<Uri?>(null) }
+    var pendingCameraUri by remember { mutableStateOf<Uri?>(null) }
+
+    val locationPermission = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { grants ->
+        actionMessage = if (grants.values.any { it }) {
+            "อนุญาตตำแหน่งแล้ว กดปุ่มเดิมอีกครั้ง"
+        } else {
+            "ยังไม่ได้รับสิทธิ์ตำแหน่ง"
+        }
+    }
+
+    val cameraLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.TakePicture()
+    ) { success ->
+        if (success) {
+            photoUri = pendingCameraUri
+            actionMessage = "ถ่ายรูปหลักฐานแล้ว"
+        } else {
+            pendingCameraUri = null
+        }
+    }
+
+    fun ensureLocationPermission(): Boolean {
+        if (hasLocationPermission(context)) return true
+        locationPermission.launch(
+            arrayOf(
+                Manifest.permission.ACCESS_FINE_LOCATION,
+                Manifest.permission.ACCESS_COARSE_LOCATION
+            )
+        )
+        return false
+    }
+
+    fun openCamera() {
+        val uri = createEvidenceUri(context)
+        pendingCameraUri = uri
+        cameraLauncher.launch(uri)
+    }
+
+    fun openVerification(mode: String, job: RiderJob) {
+        actionBusy = true
+        actionMessage = null
+        scope.launch {
+            runCatching { api.orderItems(auth, job.id) }
+                .onSuccess {
+                    verifyMode = mode
+                    verifyJob = job
+                    verifyItems = it
+                    photoUri = null
+                    pendingCameraUri = null
+                }
+                .onFailure { actionMessage = it.message ?: "โหลดรายการไม่สำเร็จ" }
+            actionBusy = false
+        }
+    }
+
+    fun closeVerification() {
+        verifyMode = null
+        verifyJob = null
+        verifyItems = emptyList()
+        photoUri = null
+        pendingCameraUri = null
+    }
 
     LaunchedEffect(auth.session.sessionId) {
         while (true) {
@@ -210,11 +293,85 @@ private fun RiderHome(
         }
     }
 
-    Column(modifier.fillMaxSize().padding(20.dp)) {
+    if (verifyMode != null && verifyJob != null) {
+        VerificationScreen(
+            modifier = modifier,
+            mode = verifyMode!!,
+            job = verifyJob!!,
+            items = verifyItems,
+            photoReady = photoUri != null,
+            busy = actionBusy,
+            message = actionMessage,
+            onBack = { closeVerification() },
+            onCamera = { openCamera() },
+            onConfirm = {
+                val job = verifyJob ?: return@VerificationScreen
+                val uri = photoUri ?: run {
+                    actionMessage = "กรุณาถ่ายรูปหลักฐานก่อน"
+                    return@VerificationScreen
+                }
+                val location = lastKnownLocation(context)
+                actionBusy = true
+                actionMessage = null
+                scope.launch {
+                    val result = runCatching {
+                        if (verifyMode == "pickup") {
+                            api.pickupWithPhoto(
+                                context,
+                                auth,
+                                job.id,
+                                uri,
+                                location?.first,
+                                location?.second
+                            )
+                        } else {
+                            api.completeWithPhoto(
+                                context,
+                                auth,
+                                job.id,
+                                uri,
+                                location?.first,
+                                location?.second
+                            )
+                        }
+                    }
+                    result.onSuccess {
+                        actionMessage = if (verifyMode == "pickup") {
+                            "รับสินค้าแล้ว"
+                        } else {
+                            "จัดส่งสำเร็จ"
+                        }
+                        closeVerification()
+                        snapshot = runCatching { api.riderSnapshot(auth) }.getOrNull()
+                    }.onFailure {
+                        actionMessage = it.message ?: "บันทึกหลักฐานไม่สำเร็จ"
+                    }
+                    actionBusy = false
+                }
+            }
+        )
+        return
+    }
+
+    Column(
+        modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp)
+    ) {
         Text("QueueGo Rider", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
         Text("สวัสดี " + auth.user.name)
         Text("สถานะบัญชี: " + auth.user.status)
         Spacer(Modifier.height(18.dp))
+
+        if (actionMessage != null) {
+            Text(
+                actionMessage!!,
+                color = if (actionMessage!!.contains("สำเร็จ") || actionMessage!!.contains("แล้ว")) {
+                    MaterialTheme.colorScheme.primary
+                } else {
+                    MaterialTheme.colorScheme.error
+                }
+            )
+            Spacer(Modifier.height(10.dp))
+        }
 
         if (auth.user.status != "active") {
             Card(Modifier.fillMaxWidth()) {
@@ -235,24 +392,125 @@ private fun RiderHome(
                     fontWeight = FontWeight.Bold
                 )
                 Spacer(Modifier.height(12.dp))
-                val job = current.activeJob ?: current.offeredJob
-                if (job == null) {
-                    Card(Modifier.fillMaxWidth()) {
-                        Column(Modifier.padding(16.dp)) {
-                            Text("ยังไม่มีงานที่ Server เสนอให้", fontWeight = FontWeight.Bold)
-                            Text("QueueGo แสดงเฉพาะงานที่จัดให้ Rider คนนี้")
-                        }
-                    }
-                } else {
-                    JobCard(job) {
-                        val target = job.navigationTarget ?: return@JobCard
-                        val uri = Uri.parse(
-                            "google.navigation:q=" + target.first + "," + target.second + "&mode=d"
+                when {
+                    current.activeJob != null -> {
+                        ActiveJobCard(
+                            job = current.activeJob,
+                            busy = actionBusy,
+                            onNavigate = { openNavigation(context, current.activeJob) },
+                            onArriveShop = {
+                                if (!ensureLocationPermission()) return@ActiveJobCard
+                                val loc = lastKnownLocation(context)
+                                actionBusy = true
+                                scope.launch {
+                                    runCatching {
+                                        api.markArrival(
+                                            auth,
+                                            current.activeJob.id,
+                                            "shop",
+                                            loc?.first,
+                                            loc?.second
+                                        )
+                                    }.onSuccess {
+                                        actionMessage = "บันทึกถึงร้านแล้ว"
+                                        snapshot = runCatching { api.riderSnapshot(auth) }.getOrNull()
+                                    }.onFailure {
+                                        actionMessage = it.message ?: "บันทึกถึงร้านไม่สำเร็จ"
+                                    }
+                                    actionBusy = false
+                                }
+                            },
+                            onPickupVerify = {
+                                openVerification("pickup", current.activeJob)
+                            },
+                            onStartDelivery = {
+                                actionBusy = true
+                                scope.launch {
+                                    runCatching { api.startDelivery(auth, current.activeJob.id) }
+                                        .onSuccess {
+                                            actionMessage = "เริ่มจัดส่งแล้ว"
+                                            val updated = runCatching { api.riderSnapshot(auth) }.getOrNull()
+                                            if (updated != null) snapshot = updated
+                                            openNavigation(context, current.activeJob.copy(status = "in_progress"))
+                                        }
+                                        .onFailure {
+                                            actionMessage = it.message ?: "เริ่มจัดส่งไม่สำเร็จ"
+                                        }
+                                    actionBusy = false
+                                }
+                            },
+                            onArriveCustomer = {
+                                if (!ensureLocationPermission()) return@ActiveJobCard
+                                val loc = lastKnownLocation(context)
+                                actionBusy = true
+                                scope.launch {
+                                    runCatching {
+                                        api.markArrival(
+                                            auth,
+                                            current.activeJob.id,
+                                            "customer",
+                                            loc?.first,
+                                            loc?.second
+                                        )
+                                    }.onSuccess {
+                                        actionMessage = "บันทึกถึงลูกค้าแล้ว"
+                                        snapshot = runCatching { api.riderSnapshot(auth) }.getOrNull()
+                                    }.onFailure {
+                                        actionMessage = it.message ?: "บันทึกถึงลูกค้าไม่สำเร็จ"
+                                    }
+                                    actionBusy = false
+                                }
+                            },
+                            onDeliveryVerify = {
+                                openVerification("delivery", current.activeJob)
+                            }
                         )
-                        val intent = Intent(Intent.ACTION_VIEW, uri).apply {
-                            setPackage("com.google.android.apps.maps")
+                    }
+                    current.offeredJob != null -> {
+                        OfferCard(
+                            job = current.offeredJob,
+                            busy = actionBusy,
+                            onAccept = {
+                                if (current.offeredJob.marketOrderId != null) {
+                                    actionMessage = "งานตลาดหลายร้านจะย้ายเข้า Native ในชุดถัดไป"
+                                    return@OfferCard
+                                }
+                                actionBusy = true
+                                scope.launch {
+                                    runCatching { api.acceptOffer(auth, current.offeredJob.id) }
+                                        .onSuccess {
+                                            actionMessage = "รับงานสำเร็จ"
+                                            snapshot = runCatching { api.riderSnapshot(auth) }.getOrNull()
+                                        }
+                                        .onFailure {
+                                            actionMessage = it.message ?: "รับงานไม่สำเร็จ"
+                                        }
+                                    actionBusy = false
+                                }
+                            },
+                            onDecline = {
+                                actionBusy = true
+                                scope.launch {
+                                    runCatching { api.declineOffer(auth, current.offeredJob.id) }
+                                        .onSuccess {
+                                            actionMessage = "ส่งงานให้ Rider คนถัดไปแล้ว"
+                                            snapshot = runCatching { api.riderSnapshot(auth) }.getOrNull()
+                                        }
+                                        .onFailure {
+                                            actionMessage = it.message ?: "ปฏิเสธงานไม่สำเร็จ"
+                                        }
+                                    actionBusy = false
+                                }
+                            }
+                        )
+                    }
+                    else -> {
+                        Card(Modifier.fillMaxWidth()) {
+                            Column(Modifier.padding(16.dp)) {
+                                Text("ยังไม่มีงานที่ Server เสนอให้", fontWeight = FontWeight.Bold)
+                                Text("QueueGo แสดงเฉพาะงานที่จัดให้ Rider คนนี้")
+                            }
                         }
-                        runCatching { context.startActivity(intent) }
                     }
                 }
             }
@@ -266,23 +524,254 @@ private fun RiderHome(
 }
 
 @Composable
-private fun JobCard(job: RiderJob, onNavigate: () -> Unit) {
+private fun OfferCard(
+    job: RiderJob,
+    busy: Boolean,
+    onAccept: () -> Unit,
+    onDecline: () -> Unit
+) {
+    Card(Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(16.dp)) {
+            Text("งานใหม่", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+            Text(job.numberLabel, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+            Spacer(Modifier.height(8.dp))
+            Text("รับที่ร้าน: " + (job.pickupAddress ?: "ยังไม่มีที่อยู่ร้าน"))
+            Text("ส่ง: " + (job.deliveryAddress ?: "ยังไม่มีที่อยู่ลูกค้า"))
+            job.deliveryFee?.let { Text("รายได้ค่าส่ง ฿" + "%.0f".format(it)) }
+            Spacer(Modifier.height(14.dp))
+            Row(Modifier.fillMaxWidth()) {
+                OutlinedButton(
+                    onClick = onDecline,
+                    enabled = !busy,
+                    modifier = Modifier.weight(1f)
+                ) { Text("ปฏิเสธ") }
+                Spacer(Modifier.width(10.dp))
+                Button(
+                    onClick = onAccept,
+                    enabled = !busy,
+                    modifier = Modifier.weight(1f)
+                ) { Text("รับงาน") }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ActiveJobCard(
+    job: RiderJob,
+    busy: Boolean,
+    onNavigate: () -> Unit,
+    onArriveShop: () -> Unit,
+    onPickupVerify: () -> Unit,
+    onStartDelivery: () -> Unit,
+    onArriveCustomer: () -> Unit,
+    onDeliveryVerify: () -> Unit
+) {
     Card(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp)) {
             Text(job.numberLabel, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
             Text("สถานะ: " + job.status)
             Spacer(Modifier.height(8.dp))
-            Text(job.pickupAddress ?: "ยังไม่มีที่อยู่ร้าน")
-            Text("→ " + (job.deliveryAddress ?: "ยังไม่มีที่อยู่ลูกค้า"))
+            Text("ร้าน: " + (job.pickupAddress ?: "ยังไม่มีที่อยู่ร้าน"))
+            Text("ลูกค้า: " + (job.deliveryAddress ?: "ยังไม่มีที่อยู่ลูกค้า"))
             job.deliveryFee?.let { Text("ค่าส่ง ฿" + "%.0f".format(it)) }
-            Spacer(Modifier.height(12.dp))
-            Button(
-                onClick = onNavigate,
-                enabled = job.navigationTarget != null,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text(if (job.isDelivering) "นำทางไปหาลูกค้า" else "นำทางไปร้าน")
+            Spacer(Modifier.height(14.dp))
+
+            when (job.status) {
+                "rider_assigned", "assigned", "preparing", "ready" -> {
+                    Button(
+                        onClick = onNavigate,
+                        enabled = !busy && job.navigationTarget != null,
+                        modifier = Modifier.fillMaxWidth()
+                    ) { Text("นำทางไปร้าน") }
+                    Spacer(Modifier.height(8.dp))
+                    if (!job.shopArrived) {
+                        OutlinedButton(
+                            onClick = onArriveShop,
+                            enabled = !busy,
+                            modifier = Modifier.fillMaxWidth()
+                        ) { Text("ถึงร้านแล้ว") }
+                    } else if (job.status == "ready") {
+                        Button(
+                            onClick = onPickupVerify,
+                            enabled = !busy,
+                            modifier = Modifier.fillMaxWidth()
+                        ) { Text("ตรวจสอบรายการและถ่ายรูป") }
+                    } else {
+                        Text("ถึงร้านแล้ว · รอร้านเตรียมสินค้า")
+                    }
+                }
+                "picked_up" -> {
+                    Button(
+                        onClick = onStartDelivery,
+                        enabled = !busy,
+                        modifier = Modifier.fillMaxWidth()
+                    ) { Text("เริ่มจัดส่งและนำทาง") }
+                }
+                "in_progress" -> {
+                    Button(
+                        onClick = onNavigate,
+                        enabled = !busy && job.navigationTarget != null,
+                        modifier = Modifier.fillMaxWidth()
+                    ) { Text("นำทางไปลูกค้า") }
+                    Spacer(Modifier.height(8.dp))
+                    if (!job.customerArrived) {
+                        OutlinedButton(
+                            onClick = onArriveCustomer,
+                            enabled = !busy,
+                            modifier = Modifier.fillMaxWidth()
+                        ) { Text("ถึงลูกค้าแล้ว") }
+                    } else {
+                        Button(
+                            onClick = onDeliveryVerify,
+                            enabled = !busy,
+                            modifier = Modifier.fillMaxWidth()
+                        ) { Text("ตรวจสอบและส่งมอบสินค้า") }
+                    }
+                }
             }
         }
+    }
+}
+
+@Composable
+private fun VerificationScreen(
+    modifier: Modifier,
+    mode: String,
+    job: RiderJob,
+    items: List<RiderItem>,
+    photoReady: Boolean,
+    busy: Boolean,
+    message: String?,
+    onBack: () -> Unit,
+    onCamera: () -> Unit,
+    onConfirm: () -> Unit
+) {
+    val pickup = mode == "pickup"
+    Column(
+        modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp)
+    ) {
+        OutlinedButton(onClick = onBack, enabled = !busy) { Text("ย้อนกลับ") }
+        Spacer(Modifier.height(14.dp))
+        Text(
+            if (pickup) "ตรวจสอบรายการและถ่ายรูป" else "ตรวจสอบและส่งมอบสินค้า",
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.Bold
+        )
+        Text(job.numberLabel)
+        Text(
+            if (pickup) {
+                "เช็กชื่อสินค้าและจำนวนให้ครบ แล้วถ่ายรูปหลักฐานในหน้าเดียว"
+            } else {
+                "ตรวจรายการและถ่ายรูปตอนส่งสินค้าในหน้าเดียว"
+            }
+        )
+        Spacer(Modifier.height(14.dp))
+
+        Card(Modifier.fillMaxWidth()) {
+            Column(Modifier.padding(14.dp)) {
+                Text("รายการสินค้า", fontWeight = FontWeight.Bold)
+                if (items.isEmpty()) {
+                    Text("ไม่พบรายการสินค้า")
+                } else {
+                    items.forEach { item ->
+                        Spacer(Modifier.height(8.dp))
+                        Text(item.name, fontWeight = FontWeight.SemiBold)
+                        if (!item.description.isNullOrBlank()) Text(item.description)
+                        Text("จำนวน " + item.quantity + " · ฿" + "%.0f".format(item.totalPrice))
+                    }
+                }
+            }
+        }
+
+        Spacer(Modifier.height(14.dp))
+        Card(Modifier.fillMaxWidth()) {
+            Column(Modifier.padding(14.dp)) {
+                Text(
+                    if (pickup) "รูปตอนรับสินค้า · จำเป็น" else "รูปตอนส่งสินค้า · จำเป็น",
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    if (pickup) {
+                        "ให้เห็นสินค้าที่ตรวจรับจากร้านชัดเจน"
+                    } else {
+                        "ให้เห็นสินค้าและจุดส่งชัดเจน ไม่ต้องถ่ายหน้าลูกค้า"
+                    }
+                )
+                Spacer(Modifier.height(10.dp))
+                Button(
+                    onClick = onCamera,
+                    enabled = !busy,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(if (photoReady) "ถ่ายใหม่" else "เปิดกล้องถ่ายรูป")
+                }
+                if (photoReady) {
+                    Spacer(Modifier.height(8.dp))
+                    Text("ถ่ายรูปหลักฐานแล้ว ✓", color = MaterialTheme.colorScheme.primary)
+                }
+            }
+        }
+
+        if (message != null) {
+            Spacer(Modifier.height(10.dp))
+            Text(message)
+        }
+        Spacer(Modifier.height(14.dp))
+        Button(
+            onClick = onConfirm,
+            enabled = photoReady && !busy,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            if (busy) {
+                CircularProgressIndicator()
+            } else {
+                Text(if (pickup) "ยืนยันรับสินค้า" else "ยืนยันส่งสินค้า")
+            }
+        }
+        Spacer(Modifier.height(30.dp))
+    }
+}
+
+private fun hasLocationPermission(context: Context): Boolean =
+    context.checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED ||
+        context.checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
+
+private fun lastKnownLocation(context: Context): Pair<Double, Double>? {
+    if (!hasLocationPermission(context)) return null
+    val manager = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
+    return runCatching {
+        manager.getProviders(true)
+            .mapNotNull { provider -> runCatching { manager.getLastKnownLocation(provider) }.getOrNull() }
+            .maxByOrNull { it.time }
+            ?.let { it.latitude to it.longitude }
+    }.getOrNull()
+}
+
+private fun createEvidenceUri(context: Context): Uri {
+    val dir = File(context.cacheDir, "queuego-evidence").apply { mkdirs() }
+    val file = File.createTempFile("qg-proof-", ".jpg", dir)
+    return FileProvider.getUriForFile(
+        context,
+        context.packageName + ".fileprovider",
+        file
+    )
+}
+
+private fun openNavigation(context: Context, job: RiderJob) {
+    val target = job.navigationTarget ?: return
+    val navigation = Uri.parse(
+        "google.navigation:q=" + target.first + "," + target.second + "&mode=d"
+    )
+    val mapsIntent = Intent(Intent.ACTION_VIEW, navigation).apply {
+        setPackage("com.google.android.apps.maps")
+    }
+    val opened = runCatching { context.startActivity(mapsIntent) }.isSuccess
+    if (!opened) {
+        val web = Uri.parse(
+            "https://www.google.com/maps/dir/?api=1&destination=" +
+                target.first + "," + target.second
+        )
+        runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, web)) }
     }
 }

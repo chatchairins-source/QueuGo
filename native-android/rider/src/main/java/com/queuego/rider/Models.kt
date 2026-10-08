@@ -20,6 +20,15 @@ data class QueueGoAuth(
     val user: QueueGoUser
 )
 
+data class RiderItem(
+    val name: String,
+    val description: String?,
+    val quantity: Int,
+    val unitPrice: Double,
+    val totalPrice: Double,
+    val imageUrl: String?
+)
+
 data class RiderJob(
     val id: String,
     val orderNumber: String?,
@@ -30,7 +39,10 @@ data class RiderJob(
     val deliveryAddress: String?,
     val deliveryLat: Double?,
     val deliveryLng: Double?,
-    val deliveryFee: Double?
+    val deliveryFee: Double?,
+    val marketOrderId: String?,
+    val arrivedShopAt: String?,
+    val arrivedCustomerAt: String?
 ) {
     val numberLabel: String
         get() = orderNumber?.let { if (it.startsWith("QT-")) it else "QT-" + it } ?: "QT-----"
@@ -44,6 +56,12 @@ data class RiderJob(
             val lng = if (isDelivering) deliveryLng else pickupLng
             return if (lat != null && lng != null) lat to lng else null
         }
+
+    val shopArrived: Boolean
+        get() = !arrivedShopAt.isNullOrBlank()
+
+    val customerArrived: Boolean
+        get() = !arrivedCustomerAt.isNullOrBlank()
 }
 
 data class RiderSnapshot(
