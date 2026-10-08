@@ -7,4 +7,5 @@ data class QueueGoSession(
     val authUserId: String,
     val userId: String,
     val role: AppRole,
+    val activeSessionId: String? = null,
 )
