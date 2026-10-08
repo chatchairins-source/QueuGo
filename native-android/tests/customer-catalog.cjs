@@ -1,0 +1,18 @@
+const fs=require('fs'),path=require('path'),assert=require('assert');
+const root=path.resolve(__dirname,'..');
+const read=p=>fs.readFileSync(path.join(root,p),'utf8');
+let checks=0;const ok=(v,m)=>{assert.ok(v,m);checks++};
+const api=read('core-network/src/main/java/com/queuetech/queuego/core/network/QueueGoApi.kt');
+const app=read('customer-app/src/main/java/com/queuetech/queuego/customer/CustomerNativeApp.kt');
+const cart=read('customer-app/src/main/java/com/queuetech/queuego/customer/CustomerCartStore.kt');
+const activity=read('customer-app/src/main/java/com/queuetech/queuego/customer/MainActivity.kt');
+ok(api.includes('shop_profiles?select=id,shop_name,status,public_category'),'native customer must query real shop_profiles');
+ok(api.includes('products?select=id,shop_id,name,description,price,delivery_price'),'native customer must query real products');
+ok(api.includes('delivery_available=eq.true'),'native catalog must use delivery products');
+ok(app.includes('NativeCategory("food"')&&app.includes('NativeCategory("shopping"'),'native home categories missing');
+ok(app.includes('it.category in setOf("food", "cafe", "grocery", "shopping")'),'generic product flow must not swallow market/laundry');
+ok(cart.includes('current.shopId == null || current.shopId == product.shopId'),'normal cart must remain single-shop');
+ok(cart.includes('coerceAtMost(99)'),'cart quantity cap missing');
+ok(activity.includes('CustomerNativeApp(user = user'),'Customer activity must open native catalog after auth');
+ok(!app.includes('WebView')&&!app.includes('chatchairins-source.github.io/QueuGo'),'customer native flow must not fall back to web');
+console.log(JSON.stringify({checks,failures:0,scope:'Customer native Production catalog/cart'}));

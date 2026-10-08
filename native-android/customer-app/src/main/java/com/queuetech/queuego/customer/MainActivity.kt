@@ -22,7 +22,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             QueueGoTheme {
                 NativeAuthGate("QueueGo", vm) { user, logout ->
-                    NativeAccountHome("QueueGo", user, "Native · Supabase Production", logout)
+                    CustomerNativeApp(user = user, onLogout = logout)
                 }
             }
         }

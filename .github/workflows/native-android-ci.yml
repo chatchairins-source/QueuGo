@@ -43,6 +43,8 @@ jobs:
             echo "Wrapped-web Android implementation is forbidden."
             exit 1
           fi
+      - name: Customer native catalog gate
+        run: node native-android/tests/customer-catalog.cjs
       - name: Gradle help
         run: gradle -p native-android help
       - name: Build native debug apps
