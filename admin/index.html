@@ -587,7 +587,7 @@ function distanceKm(lat1,lon1,lat2,lon2){
 
 function qgAdminShopCategory(shop){
   const category=shop?.public_category||shop?.category||shop?.metadata?.category;
-  return {food:'ร้านอาหาร',grocery:'ร้านขายของชำ',cafe:'เครื่องดื่ม / คาเฟ่',laundry:'ร้านฝากซัก',market:'ตลาดสด',other:'อื่น ๆ',meat:'เนื้อสัตว์ (ข้อมูลเดิม)',fish:'ปลา / อาหารทะเล (ข้อมูลเดิม)',vegetable:'ผักสด (ข้อมูลเดิม)',fruit:'ผลไม้ (ข้อมูลเดิม)'}[category]||category||'ยังไม่ระบุประเภทร้าน';
+  return {food:'ร้านอาหาร',grocery:'ร้านขายของชำ',cafe:'เครื่องดื่ม / คาเฟ่',laundry:'ร้านฝากซัก',market:'ตลาดสด',shopping:'ช้อปปิ้ง',other:'อื่น ๆ',meat:'เนื้อสัตว์ (ข้อมูลเดิม)',fish:'ปลา / อาหารทะเล (ข้อมูลเดิม)',vegetable:'ผักสด (ข้อมูลเดิม)',fruit:'ผลไม้ (ข้อมูลเดิม)'}[category]||category||'ยังไม่ระบุประเภทร้าน';
 }
 function qgAdminProviderLabel(user){return user?.type==='shop'?qgAdminShopCategory(user):roleLabel(user?.type);}
 function roleLabel(t){ return {customer:'ลูกค้า',shop:'ร้านค้า',technician:'ช่าง',rider:'ไรเดอร์',admin:'แอดมิน'}[t] || escapeHtml(t); }
@@ -965,9 +965,9 @@ function renderAdminGovernance(){
  ${panel('qt-sec-security',`<h2>ศูนย์ความปลอดภัย</h2><div class="qt-security-role-switch">${[['customer','ลูกค้า'],['rider','ไรเดอร์'],['shop','ร้านค้า']].map(([role,label])=>`<button class="qt-security-role" data-role="${role}" onclick="qtSecurityRole('${role}')">${label}</button>`).join('')}</div><label>ค้นหาบัญชี<input id="qt-security-search" type="search" placeholder="ชื่อหรือเบอร์โทร" oninput="qtRenderSecurityUsers()"></label><div id="qt-security-user-list"></div>`)}
  ${panel('qt-sec-notify',`<h2>สร้างประกาศ</h2><div class="card"><label>ส่งถึง</label><div class="qt-admin-broadcast-targets">${[['all','ทุกกลุ่ม'],['customer','ลูกค้า'],['shop','ร้านค้า'],['rider','ไรเดอร์']].map(([role,label])=>`<button class="btn-secondary ${role===(window.QT_ADMIN_BROADCAST_ROLE||'all')?'active':''}" data-broadcast-role="${role}" onclick="qtAdminBroadcastRole('${role}')">${label}</button>`).join('')}</div><label for="qt-admin-broadcast-title">หัวข้อประกาศ</label><input id="qt-admin-broadcast-title" maxlength="150" placeholder="เช่น แจ้งเวลาปิดปรับปรุง"><label for="qt-admin-broadcast-body">ข้อความ</label><textarea id="qt-admin-broadcast-body" maxlength="2000" placeholder="พิมพ์ข้อความที่ต้องการแจ้งสมาชิก"></textarea><button class="btn-primary btn-block" onclick="qtAdminSendBroadcast()">ส่งประกาศ</button></div>`)}
  ${panel('qt-sec-audit',`<h2>ประวัติการทำงาน</h2><button onclick="qtAdminRefreshAuditLog()">โหลดประวัติล่าสุด</button>${audit.slice(-100).reverse().map(x=>`<article class="card"><b>${esc(x.action||'-')}</b><p class="qt-admin-note">${esc(users.find(u=>u.id===x.actorId)?.name||x.actorId||'ระบบ')} · ${x.at?new Date(x.at).toLocaleString('th-TH'):'-'}<br>${esc(x.entityType||'')} ${esc(x.entityId||'')}</p></article>`).join('')||empty('ยังไม่มีบันทึก')}`)}
- ${panel('qt-sec-settings',`<h2>ตั้งค่าระบบ</h2><div class="card"><div class="qt-settings-grid">${fields.map(([key,label,min,max,step])=>`<label>${label}<input id="qt-set-${key}" type="number" min="${min}" ${max==null?'':`max="${max}"`} step="${step}" value="${esc(settings[key])}"></label>`).join('')}<label class="qt-settings-toggle">เปิดการแจ้งเตือน<input id="qt-set-notifications" type="checkbox" ${settings.notifications?'checked':''}></label></div><button class="btn-primary btn-block" onclick="qtSaveSystemSettings()">บันทึกการตั้งค่า</button></div><div id="qg-platform-controls" class="card">กำลังโหลดบริการและราคา…</div><div class="card qg-banner-admin-card"><div class="qg-banner-admin-head"><div><h3>แบนเนอร์หน้าแรก</h3><p>รองรับสูงสุด 3 ภาพ สไลด์อัตโนมัติ และเตรียมลิงก์สำหรับโฆษณาในอนาคต</p></div></div><div id="qg-home-banner-manager" class="qg-home-banner-manager">กำลังโหลดแบนเนอร์…</div></div>`)}
+ ${panel('qt-sec-settings',`<h2>ตั้งค่าระบบ</h2><div class="card"><div class="qt-settings-grid">${fields.map(([key,label,min,max,step])=>`<label>${label}<input id="qt-set-${key}" type="number" min="${min}" ${max==null?'':`max="${max}"`} step="${step}" value="${esc(settings[key])}"></label>`).join('')}<label class="qt-settings-toggle">เปิดการแจ้งเตือน<input id="qt-set-notifications" type="checkbox" ${settings.notifications?'checked':''}></label></div><button class="btn-primary btn-block" onclick="qtSaveSystemSettings()">บันทึกการตั้งค่า</button></div><div id="qg-platform-controls" class="card">กำลังโหลดบริการและราคา…</div><div class="card qg-banner-admin-card"><div class="qg-banner-admin-head"><div><h3>แบนเนอร์หน้าแรก</h3><p>รองรับสูงสุด 3 ภาพ สไลด์อัตโนมัติ และเตรียมลิงก์สำหรับโฆษณาในอนาคต</p></div></div><div id="qg-home-banner-manager" class="qg-home-banner-manager">กำลังโหลดแบนเนอร์…</div></div><div class="card qg-banner-admin-card"><div class="qg-banner-admin-head"><div><h3>แบนเนอร์หมวดหมู่</h3><p>อัปโหลดหรือเปลี่ยนภาพของอาหาร เครื่องดื่ม ของชำ ตลาดสด และ Shopping ได้จากจุดเดียว</p></div></div><div id="qg-service-banner-manager" class="qg-home-banner-manager">กำลังโหลดแบนเนอร์หมวดหมู่…</div></div>`)}
  ${panel('qt-sec-permissions','<h2>สิทธิ์ผู้ดูแลระบบ</h2><div class="card"><p>จัดการผู้ใช้ ร้านค้า ไรเดอร์ ออเดอร์ พิกัด และค่าบริการ</p><p class="qt-admin-note">ใช้สิทธิ์บัญชีผู้ดูแลจากระบบกลาง</p></div>')}</div>`);
- window.qtAdminTab=function(id){if(!sections.some(([key])=>key===id))return;sessionStorage.setItem('qt_admin_active_tab',id);document.querySelectorAll('.qt-admin-panel').forEach(el=>el.classList.toggle('active',el.id===id));const picker=document.getElementById('qg-admin-section-picker');if(picker)picker.value=id;const title=sections.find(([key])=>key===id)?.[1];const titleNode=document.querySelector('.qg-page-title h1');if(titleNode)titleNode.textContent=title;document.title=title+' · QueueGo Admin';qgAdminSyncNavigation();if(id==='qt-sec-delivery')qtRenderAdminRiderPresence();if(id==='qt-sec-security')qtSecurityRole(window.QT_SECURITY_ROLE||'customer');if(id==='qt-sec-settings'){qgRenderPlatformControls();if(typeof qgAdminLoadHomeBanners==='function')qgAdminLoadHomeBanners();}if(id==='qt-sec-approval')qgAdminApprovalRole(window.QG_ADMIN_APPROVAL_ROLE||'all');if(id==='qt-sec-shops')qgAdminShopFilter(window.QG_ADMIN_SHOP_FILTER||'all')};
+ window.qtAdminTab=function(id){if(!sections.some(([key])=>key===id))return;sessionStorage.setItem('qt_admin_active_tab',id);document.querySelectorAll('.qt-admin-panel').forEach(el=>el.classList.toggle('active',el.id===id));const picker=document.getElementById('qg-admin-section-picker');if(picker)picker.value=id;const title=sections.find(([key])=>key===id)?.[1];const titleNode=document.querySelector('.qg-page-title h1');if(titleNode)titleNode.textContent=title;document.title=title+' · QueueGo Admin';qgAdminSyncNavigation();if(id==='qt-sec-delivery')qtRenderAdminRiderPresence();if(id==='qt-sec-security')qtSecurityRole(window.QT_SECURITY_ROLE||'customer');if(id==='qt-sec-settings'){qgRenderPlatformControls();if(typeof qgAdminLoadHomeBanners==='function')qgAdminLoadHomeBanners();if(typeof qgAdminLoadServiceBanners==='function')qgAdminLoadServiceBanners();}if(id==='qt-sec-approval')qgAdminApprovalRole(window.QG_ADMIN_APPROVAL_ROLE||'all');if(id==='qt-sec-shops')qgAdminShopFilter(window.QG_ADMIN_SHOP_FILTER||'all')};
  const saved=sessionStorage.getItem('qt_admin_active_tab');qtAdminTab(sections.some(([id])=>id===saved)?saved:'qt-sec-overview');
 }
 function qgAdminShopFilter(status){if(status)window.QG_ADMIN_SHOP_FILTER=status;const key=window.QG_ADMIN_SHOP_FILTER||'all',query=(document.getElementById('qg-shop-search')?.value||'').trim().toLocaleLowerCase('th');let count=0;document.querySelectorAll('[data-shop-filter]').forEach(b=>b.classList.toggle('active',b.dataset.shopFilter===key));document.querySelectorAll('.qg-shop-card').forEach(card=>{card.hidden=!(key==='all'||card.dataset.bucket===key)||!card.textContent.toLocaleLowerCase('th').includes(query);if(!card.hidden)count++});const empty=document.getElementById('qg-shop-empty');if(empty)empty.hidden=count>0;}
@@ -2043,6 +2043,98 @@ async function qgLoadAdminCash(day){
       }else cfg.slides[slot-1]={slot,active:false};
       await writeConfig(cfg);if(oldPath)removeObject(oldPath);render(cfg);toast('อัปเดตแบนเนอร์แล้ว');
     }catch(e){toast('ล้างแบนเนอร์ไม่สำเร็จ: '+String(e.message||e).slice(0,90))}
+  };
+})();
+</script>
+
+
+<script id="qg-admin-service-banner-manager">
+(function(){
+  const KEY='service_banners',BUCKET='queuego-banners';
+  const ITEMS=[
+    ['food','อาหาร'],['cafe','เครื่องดื่ม'],['grocery','ร้านขายของชำ'],['market','ตลาดสด'],
+    ['shopping','ช้อปปิ้ง'],['mobile_accessories','มือถือและอุปกรณ์'],
+    ['computer_it','คอมพิวเตอร์และไอที'],['automotive','อะไหล่ยานยนต์']
+  ];
+  const h=value=>String(value??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+  const encodePath=path=>String(path||'').split('/').map(encodeURIComponent).join('/');
+  const clone=value=>value&&typeof value==='object'?JSON.parse(JSON.stringify(value)):{};
+  async function readConfig(){
+    const token=await qtGetAccessToken();if(!token)throw Error('กรุณาเข้าสู่ระบบใหม่');
+    const rows=await qtSupabaseTable('system_settings?select=value&key=eq.'+KEY+'&limit=1',{accessToken:token});
+    return clone(Array.isArray(rows)&&rows[0]?.value||{});
+  }
+  async function writeConfig(cfg){
+    const token=await qtGetAccessToken();if(!token)throw Error('กรุณาเข้าสู่ระบบใหม่');
+    cfg=clone(cfg);cfg.version='1';
+    await qtSupabaseTable('system_settings?on_conflict=key',{method:'POST',accessToken:token,body:{key:KEY,value:cfg,updated_at:new Date().toISOString()}});
+    window.QG_ADMIN_SERVICE_BANNERS=cfg;return cfg;
+  }
+  async function removeObject(path){
+    if(!path)return;
+    try{
+      const token=await qtGetAccessToken();if(!token)return;
+      await fetch(QT_SUPABASE_CONFIG.URL+'/storage/v1/object/'+BUCKET+'/'+encodePath(path),{method:'DELETE',headers:{apikey:QT_SUPABASE_CONFIG.KEY,Authorization:'Bearer '+token}});
+    }catch(e){console.warn('service banner cleanup failed',e)}
+  }
+  function entry(cfg,key,label){
+    const row=cfg[key]&&typeof cfg[key]==='object'?cfg[key]:{};
+    return Object.assign({title:label,subtitle:'',active:true},row);
+  }
+  function render(cfg){
+    const root=document.getElementById('qg-service-banner-manager');if(!root)return;
+    root.innerHTML='<div class="qg-banner-manager-note">รูปที่ยังไม่อัปโหลดจะใช้ภาพเริ่มต้นเดิมหรือพื้นหลัง QueueGo อัตโนมัติ · JPG, PNG, WebP ไม่เกิน 5 MB</div><div class="qg-banner-slots">'+ITEMS.map(function(item){
+      const key=item[0],label=item[1],row=entry(cfg,key,label),src=String(row.image_url||row.image_data||'');
+      return '<article class="qg-banner-slot" data-key="'+h(key)+'">'+
+        '<div class="qg-banner-slot-title"><b>'+h(label)+'</b><span>'+(src?'มีภาพกำหนดเอง':'ใช้ค่าเริ่มต้น')+'</span></div>'+
+        '<div class="qg-banner-preview">'+(src?'<img src="'+h(src)+'" alt="'+h(label)+'">':'<div>ยังไม่ได้อัปโหลดภาพ</div>')+'</div>'+
+        '<label class="qg-banner-file">เลือกรูปใหม่<input type="file" accept="image/jpeg,image/png,image/webp" onchange="qgAdminUploadServiceBanner(\''+h(key)+'\',this)"></label>'+
+        '<label>หัวข้อ<input id="qg-service-title-'+h(key)+'" maxlength="100" value="'+h(row.title||label)+'"></label>'+
+        '<label>คำโปรย<input id="qg-service-subtitle-'+h(key)+'" maxlength="180" value="'+h(row.subtitle||'')+'"></label>'+
+        '<div class="qg-banner-actions"><button type="button" class="btn-primary" onclick="qgAdminSaveServiceBanner(\''+h(key)+'\')">บันทึกข้อความ</button>'+
+        '<button type="button" class="btn-secondary" onclick="qgAdminClearServiceBanner(\''+h(key)+'\')">กลับภาพเริ่มต้น</button></div>'+
+      '</article>';
+    }).join('')+'</div>';
+  }
+  window.qgAdminLoadServiceBanners=async function(){
+    const root=document.getElementById('qg-service-banner-manager');if(!root)return;
+    root.innerHTML='กำลังโหลดแบนเนอร์หมวดหมู่…';
+    try{const cfg=await readConfig();window.QG_ADMIN_SERVICE_BANNERS=cfg;render(cfg)}
+    catch(e){root.innerHTML='<p class="qg-banner-error">โหลดแบนเนอร์หมวดหมู่ไม่สำเร็จ: '+h(e.message||e)+'</p>'}
+  };
+  window.qgAdminUploadServiceBanner=async function(key,input){
+    const file=input?.files?.[0];if(!file)return;
+    if(!['image/jpeg','image/png','image/webp'].includes(file.type)){toast('รองรับเฉพาะ JPG, PNG และ WebP');input.value='';return}
+    if(file.size>5*1024*1024){toast('รูปต้องมีขนาดไม่เกิน 5 MB');input.value='';return}
+    input.disabled=true;let path='',oldPath='';
+    try{
+      const cfg=clone(window.QG_ADMIN_SERVICE_BANNERS||await readConfig()),label=ITEMS.find(x=>x[0]===key)?.[1]||key,row=entry(cfg,key,label);
+      oldPath=String(row.storage_path||'');
+      const ext=file.type==='image/png'?'png':file.type==='image/webp'?'webp':'jpg';
+      path='services/'+key+'/'+Date.now()+'-'+crypto.randomUUID().slice(0,8)+'.'+ext;
+      const token=await qtGetAccessToken();if(!token)throw Error('กรุณาเข้าสู่ระบบใหม่');
+      const response=await fetch(QT_SUPABASE_CONFIG.URL+'/storage/v1/object/'+BUCKET+'/'+encodePath(path),{method:'POST',headers:{apikey:QT_SUPABASE_CONFIG.KEY,Authorization:'Bearer '+token,'Content-Type':file.type,'x-upsert':'false'},body:file});
+      const data=await response.json().catch(()=>({}));if(!response.ok)throw Error(data.message||'อัปโหลดรูปไม่สำเร็จ');
+      row.image_url=QT_SUPABASE_CONFIG.URL+'/storage/v1/object/public/'+BUCKET+'/'+encodePath(path);
+      row.storage_path=path;delete row.image_data;cfg[key]=row;
+      await writeConfig(cfg);if(oldPath&&oldPath!==path)removeObject(oldPath);render(cfg);toast('อัปโหลดแบนเนอร์ '+label+' แล้ว');
+    }catch(e){if(path)removeObject(path);toast('อัปโหลดไม่สำเร็จ: '+String(e.message||e).slice(0,90))}
+    finally{input.disabled=false;input.value=''}
+  };
+  window.qgAdminSaveServiceBanner=async function(key){
+    try{
+      const cfg=clone(window.QG_ADMIN_SERVICE_BANNERS||await readConfig()),label=ITEMS.find(x=>x[0]===key)?.[1]||key,row=entry(cfg,key,label);
+      row.title=String(document.getElementById('qg-service-title-'+key)?.value||label).trim().slice(0,100);
+      row.subtitle=String(document.getElementById('qg-service-subtitle-'+key)?.value||'').trim().slice(0,180);
+      row.active=true;cfg[key]=row;await writeConfig(cfg);render(cfg);toast('บันทึกแบนเนอร์ '+label+' แล้ว');
+    }catch(e){toast('บันทึกไม่สำเร็จ: '+String(e.message||e).slice(0,90))}
+  };
+  window.qgAdminClearServiceBanner=async function(key){
+    try{
+      const cfg=clone(window.QG_ADMIN_SERVICE_BANNERS||await readConfig()),label=ITEMS.find(x=>x[0]===key)?.[1]||key,row=entry(cfg,key,label),oldPath=String(row.storage_path||'');
+      delete row.image_url;delete row.image_data;delete row.storage_path;row.active=true;cfg[key]=row;
+      await writeConfig(cfg);if(oldPath)removeObject(oldPath);render(cfg);toast('กลับไปใช้ภาพเริ่มต้นของ '+label+' แล้ว');
+    }catch(e){toast('อัปเดตแบนเนอร์ไม่สำเร็จ: '+String(e.message||e).slice(0,90))}
   };
 })();
 </script>
