@@ -791,7 +791,9 @@ private fun OfferCard(
             Spacer(Modifier.height(8.dp))
             Text("รับที่ร้าน: " + (job.pickupAddress ?: "ยังไม่มีที่อยู่ร้าน"))
             Text("ส่ง: " + (job.deliveryAddress ?: "ยังไม่มีที่อยู่ลูกค้า"))
-            job.deliveryFee?.let { Text("รายได้ค่าส่ง ฿" + "%.0f".format(it)) }
+            job.shopCash?.let { Text("เงินสดจ่ายร้าน ฿" + "%.0f".format(it), fontWeight = FontWeight.Bold) }
+            job.customerCash?.let { Text("เงินสดเก็บลูกค้า ฿" + "%.0f".format(it), fontWeight = FontWeight.Bold) }
+            job.deliveryFee?.let { Text("รายได้ค่าส่ง ฿" + "%.0f".format(it), color = QgRed, fontWeight = FontWeight.Black) }
             Spacer(Modifier.height(14.dp))
             Row(Modifier.fillMaxWidth()) {
                 OutlinedButton(
@@ -891,7 +893,39 @@ private fun ActiveJobCard(
             Spacer(Modifier.height(8.dp))
             Text("ร้าน: " + (job.pickupAddress ?: "ยังไม่มีที่อยู่ร้าน"))
             Text("ลูกค้า: " + (job.deliveryAddress ?: "ยังไม่มีที่อยู่ลูกค้า"))
-            job.deliveryFee?.let { Text("ค่าส่ง ฿" + "%.0f".format(it)) }
+            job.deliveryFee?.let { Text("รายได้ค่าส่ง ฿" + "%.0f".format(it), color = QgRed, fontWeight = FontWeight.Black) }
+            if (job.marketOrderId == null && job.status in setOf("rider_assigned", "assigned", "preparing", "ready")) {
+                job.shopCash?.let {
+                    Spacer(Modifier.height(8.dp))
+                    Card(
+                        Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF3F5))
+                    ) {
+                        Column(Modifier.padding(12.dp)) {
+                            Text("เงินสดที่ต้องจ่ายร้าน", color = QgMuted, style = MaterialTheme.typography.labelMedium)
+                            Text("฿" + "%.0f".format(it), color = QgRed, fontWeight = FontWeight.Black, style = MaterialTheme.typography.headlineSmall)
+                            Text("แสดงยอดเท่านั้น ไม่ต้องกดยืนยันการเงิน", color = QgMuted, style = MaterialTheme.typography.labelSmall)
+                        }
+                    }
+                }
+            }
+            if (job.status == "in_progress") {
+                job.customerCash?.let {
+                    Spacer(Modifier.height(8.dp))
+                    Card(
+                        Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF3F5))
+                    ) {
+                        Column(Modifier.padding(12.dp)) {
+                            Text("เงินสดที่ต้องเก็บจากลูกค้า", color = QgMuted, style = MaterialTheme.typography.labelMedium)
+                            Text("฿" + "%.0f".format(it), color = QgRed, fontWeight = FontWeight.Black, style = MaterialTheme.typography.headlineSmall)
+                            Text("ส่งมอบสินค้าและถ่ายรูปจบงานได้เลย", color = QgMuted, style = MaterialTheme.typography.labelSmall)
+                        }
+                    }
+                }
+            }
             Spacer(Modifier.height(14.dp))
 
             when (job.status) {
