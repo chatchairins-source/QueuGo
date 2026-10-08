@@ -13,7 +13,6 @@ import java.net.URLEncoder
 import java.net.URL
 import java.nio.charset.StandardCharsets
 import java.util.UUID
-import java.security.MessageDigest
 
 class QueueGoApi {
     companion object {
@@ -424,72 +423,6 @@ class QueueGoApi {
     private fun JSONObject.putNullable(name: String, value: Double?): JSONObject {
         if (value == null) put(name, JSONObject.NULL) else put(name, value)
         return this
-    }
-
-    suspend fun acceptOffer(auth: QueueGoAuth, job: RiderJob) = withContext(Dispatchers.IO) {
-        val kind = if (job.marketOrderId != null) "market_claim" else "claim"
-        riderActionOnce(
-            auth = auth,
-            kind = kind,
-            payload = JSONObject().put("p_order_id", job.id)
-        )
-        Unit
-    }
-
-    suspend fun declineOffer(auth: QueueGoAuth, orderId: String) = withContext(Dispatchers.IO) {
-        rpc(
-            "qg_rider_decline_offer",
-            auth.session.accessToken,
-            JSONObject().put("p_order_id", orderId)
-        )
-        Unit
-    }
-
-    suspend fun startDelivery(auth: QueueGoAuth, job: RiderJob) = withContext(Dispatchers.IO) {
-        if (job.marketOrderId != null) {
-            riderActionOnce(
-                auth,
-                "market",
-                JSONObject()
-                    .put("p_market_order_id", job.marketOrderId)
-                    .put("p_action", "deliver")
-            )
-        } else {
-            riderActionOnce(
-                auth,
-                "order",
-                JSONObject()
-                    .put("p_order_id", job.id)
-                    .put("p_action", "deliver")
-            )
-        }
-        Unit
-    }
-
-    private fun riderActionOnce(auth: QueueGoAuth, kind: String, payload: JSONObject): Any {
-        val requestId = stableRequestId(auth.user.id + "|" + kind + "|" + payload.toString())
-        return rpc(
-            "qg_rider_action_once",
-            auth.session.accessToken,
-            JSONObject()
-                .put("p_request_id", requestId)
-                .put("p_kind", kind)
-                .put("p_payload", payload)
-        )
-    }
-
-    private fun stableRequestId(value: String): String {
-        val digest = MessageDigest.getInstance("SHA-256")
-            .digest(value.toByteArray(StandardCharsets.UTF_8))
-            .copyOfRange(0, 16)
-        digest[6] = ((digest[6].toInt() and 0x0f) or 0x50).toByte()
-        digest[8] = ((digest[8].toInt() and 0x3f) or 0x80).toByte()
-        val hex = digest.joinToString("") { "%02x".format(it.toInt() and 0xff) }
-        return hex.substring(0, 8) + "-" +
-            hex.substring(8, 12) + "-" +
-            hex.substring(12, 16) + "-" +
-            hex.substring(16, 20) + "-" +
-            hex.substring(20, 32)
     }
 
     private fun firstOfferExpiry(rows: JSONArray): String? {
