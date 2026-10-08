@@ -28,6 +28,7 @@ dependencies {
     implementation("androidx.activity:activity-compose:1.13.0")
     implementation("androidx.compose.material3:material3:1.4.0")
     implementation("androidx.compose.ui:ui:1.11.4")
-    implementation("androidx.compose.foundation:foundation:1.11.4")\n    implementation("androidx.core:core-ktx:1.17.0")
+    implementation("androidx.compose.foundation:foundation:1.11.4")
+    implementation("androidx.core:core-ktx:1.17.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
 }
