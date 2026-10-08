@@ -61,7 +61,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro Text"
 
 <script src="../queuego-order-number.js"></script>
 <style id="qg-rider-cash-confirm-style">
-.qg-flow-next{position:fixed;z-index:18600;left:50%;bottom:calc(12px + var(--safeB));transform:translateX(-50%);width:min(660px,calc(100% - 20px));min-height:54px;margin:0;border-radius:18px!important;background:#f04455!important;box-shadow:0 0 0 8px rgba(255,255,255,.97),0 8px 22px rgba(240,68,85,.16)!important}
+.qg-flow-next{position:fixed;z-index:18600;left:10px;right:10px;bottom:calc(12px + var(--safeB));width:auto;max-width:660px;min-height:54px;margin:0 auto;transform:none!important;border-radius:18px!important;background:#f04455!important;box-shadow:0 0 0 8px rgba(255,255,255,.97),0 8px 22px rgba(240,68,85,.16)!important}.qg-flow-next[hidden]{display:none!important}
+.qg-proof-single:not(.has-proof)>.qg-proof-pick{position:fixed;z-index:18610;left:10px;right:10px;bottom:calc(12px + var(--safeB));width:auto;max-width:660px;min-height:54px;margin:0 auto;padding:0 16px;border:0;border-radius:18px;background:#f04455;color:#fff;box-shadow:0 0 0 8px rgba(255,255,255,.97),0 8px 22px rgba(240,68,85,.16);display:flex;align-items:center;justify-content:center;gap:8px}.qg-proof-single:not(.has-proof)>.qg-proof-pick .qg-proof-plus{font-size:20px;color:#fff}.qg-proof-single:not(.has-proof)>.qg-proof-pick b{font-size:12px;color:#fff}.qg-proof-single:not(.has-proof)>.qg-proof-pick small{display:none}
 .qg-cash-confirm-page{background:#f7f7f8;color:#161616}
 .qg-cash-confirm-head{background:#fff;border-bottom:1px solid #ececef}
 .qg-cash-confirm-main{min-height:calc(100dvh - 250px);display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:76px 22px 230px;text-align:center}
@@ -1740,15 +1741,15 @@ async function qgOpenPickupVerify(o){
       page.querySelector('.qg-flow-body').innerHTML=`
         <section class="qg-pickup-banner"><span>ขั้นตอนที่ 2</span><h1>ถ่ายรูปสินค้าที่รับ</h1><p>ต้องมีรูปหลักฐานก่อนเข้าสู่หน้าชำระเงินให้ร้าน</p></section>
         <section class="qg-proof-box qg-proof-single"><div class="qg-flow-card-head"><b>รูปตอนรับสินค้า</b><span>จำเป็น</span></div><label class="qg-proof-pick"><input id="qg-pickup-photo" type="file" accept="image/*" capture="environment" aria-label="เปิดกล้องถ่ายรูปสินค้าที่รับ"><span class="qg-proof-plus">＋</span><b>ถ่ายรูปสินค้าที่รับ</b><small>ให้เห็นสินค้าที่รับจากร้านชัดเจน</small></label><img id="qg-pickup-preview" hidden alt="รูปตอนรับสินค้า"></section>
-        <button type="button" class="qg-btn qg-btn-primary qg-flow-next" id="qg-pickup-photo-next" disabled>ไปหน้าชำระเงินให้ร้าน</button>
+        <button type="button" class="qg-btn qg-btn-primary qg-flow-next" id="qg-pickup-photo-next" disabled hidden>ไปหน้าชำระเงินให้ร้าน</button>
         <small class="qg-slide-caption">ถ่ายรูปสินค้าที่รับก่อนชำระเงิน</small>`;
       const input=page.querySelector('#qg-pickup-photo'),preview=page.querySelector('#qg-pickup-preview'),next=page.querySelector('#qg-pickup-photo-next');
       input.onchange=()=>{
         const file=input.files?.[0],proofBox=input.closest('.qg-proof-single');
         if(page._pickupProofUrl){URL.revokeObjectURL(page._pickupProofUrl);page._pickupProofUrl=null}
         page._pickupUploadPromise=null;
-        if(!file){preview.hidden=true;proofBox?.classList.remove('has-proof');next.disabled=true;return}
-        page._pickupProofUrl=URL.createObjectURL(file);preview.src=page._pickupProofUrl;preview.hidden=false;proofBox?.classList.add('has-proof');next.disabled=false;
+        if(!file){preview.hidden=true;proofBox?.classList.remove('has-proof');next.disabled=true;next.hidden=true;return}
+        page._pickupProofUrl=URL.createObjectURL(file);preview.src=page._pickupProofUrl;preview.hidden=false;proofBox?.classList.add('has-proof');next.disabled=false;next.hidden=false;
         if(typeof window.qgUploadEvidence==='function')page._pickupUploadPromise=window.qgUploadEvidence(file);
       };
       next.onclick=()=>{
@@ -1838,15 +1839,15 @@ async function qgOpenDeliveryConfirm(o){
       page.querySelector('.qg-flow-body').innerHTML=`
         <section class="qg-flow-hero"><span>ขั้นตอนที่ 2</span><h1>ถ่ายรูปยืนยันการส่ง</h1><p>ถ่ายเฉพาะสินค้าและจุดส่ง ไม่ต้องถ่ายหน้าลูกค้า</p></section>
         <section class="qg-proof-box qg-proof-single"><div class="qg-flow-card-head"><b>รูปตอนส่งสินค้า</b><span>จำเป็น</span></div><label class="qg-proof-pick"><input id="qg-delivery-photo" type="file" accept="image/*" capture="environment" aria-label="เปิดกล้องถ่ายรูปตอนส่งสินค้า"><span class="qg-proof-plus">＋</span><b>ถ่ายรูปตอนส่ง</b><small>ให้เห็นสินค้าและจุดส่งชัดเจน</small></label><img id="qg-delivery-preview" hidden alt="รูปตอนส่งสินค้า"></section>
-        <button type="button" class="qg-btn qg-btn-primary qg-flow-next" id="qg-delivery-photo-next" disabled>ไปหน้าเก็บเงินจากลูกค้า</button>
+        <button type="button" class="qg-btn qg-btn-primary qg-flow-next" id="qg-delivery-photo-next" disabled hidden>ไปหน้าเก็บเงินจากลูกค้า</button>
         <small class="qg-slide-caption">ต้องมีรูปหลักฐานก่อนเข้าสู่ขั้นตอนเก็บเงิน</small>`;
       const input=page.querySelector('#qg-delivery-photo'),preview=page.querySelector('#qg-delivery-preview'),next=page.querySelector('#qg-delivery-photo-next');
       input.onchange=()=>{
         const file=input.files?.[0],proofBox=input.closest('.qg-proof-single');
         if(page._deliveryProofUrl){URL.revokeObjectURL(page._deliveryProofUrl);page._deliveryProofUrl=null}
         page._deliveryUploadPromise=null;
-        if(!file){preview.hidden=true;proofBox?.classList.remove('has-proof');next.disabled=true;return}
-        page._deliveryProofUrl=URL.createObjectURL(file);preview.src=page._deliveryProofUrl;preview.hidden=false;proofBox?.classList.add('has-proof');next.disabled=false;
+        if(!file){preview.hidden=true;proofBox?.classList.remove('has-proof');next.disabled=true;next.hidden=true;return}
+        page._deliveryProofUrl=URL.createObjectURL(file);preview.src=page._deliveryProofUrl;preview.hidden=false;proofBox?.classList.add('has-proof');next.disabled=false;next.hidden=false;
         if(typeof window.qgUploadEvidence==='function')page._deliveryUploadPromise=window.qgUploadEvidence(file);
       };
       next.onclick=()=>{
