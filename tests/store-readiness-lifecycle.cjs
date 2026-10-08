@@ -20,7 +20,7 @@ ok(rs>=0&&re>rs,'Readiness function must be locatable');
 ok(!readiness.includes('from public.orders'),'Readiness must not require a fake/test order');
 ok(readiness.includes('public.laundry_services'),'Laundry readiness must use real sellable services');
 ok(merchant.includes("page:isLaundry?'shop-laundry':'shop-products'"),'Laundry applicant must reach service setup before approval');
-ok(merchant.includes('public_category:next.category')&&merchant.includes('public_logo:next.logo||null')&&merchant.includes('public_cover:next.cover||null'),'Merchant setup must persist canonical public store fields');
+ok(!merchant.includes('public_category:next.category')&&!merchant.includes('public_logo:next.logo||null')&&!merchant.includes('public_cover:next.cover||null')&&merchant.includes('metadata:qtUserMetadata(next)'),'Merchant setup must persist generated public fields through metadata only');
 
 // Case C: one submit, repeat safe.
 ok(v2.includes("v_status in ('pending_approval','approved')"),'Duplicate submit must replay safely');
