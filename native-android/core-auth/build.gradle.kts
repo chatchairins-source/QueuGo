@@ -1,7 +1,7 @@
 plugins { alias(libs.plugins.android.library) }
 android {
     namespace = "com.queuetech.queuego.core.auth"
-    compileSdk = 36
+    compileSdk = 37
     defaultConfig { minSdk = 24 }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
