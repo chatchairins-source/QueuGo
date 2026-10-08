@@ -34,6 +34,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.queuego.shared.NativeAuth
@@ -56,12 +57,15 @@ fun MarketNativeScreen(
 ) {
     val api = remember { CustomerMarketApi() }
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
+    val cartStore = remember(auth.user.id) { MarketCartStore(context, auth.user.id) }
     var markets by remember { mutableStateOf<List<MarketInfo>>(emptyList()) }
     var shops by remember { mutableStateOf<List<MarketShop>>(emptyList()) }
     var catalog by remember { mutableStateOf<List<MarketProduct>>(emptyList()) }
     var selectedMarket by remember { mutableStateOf<String?>(null) }
     var selectedShop by remember { mutableStateOf<String?>(null) }
-    var cart by remember { mutableStateOf<List<MarketCartLine>>(emptyList()) }
+    var cart by remember(auth.user.id) { mutableStateOf<List<MarketCartLine>>(emptyList()) }
+    var restoredCart by remember(auth.user.id) { mutableStateOf(false) }
     var activeTrip by remember { mutableStateOf<ActiveMarketTrip?>(null) }
     var note by remember { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }
@@ -75,12 +79,27 @@ fun MarketNativeScreen(
             markets = m
             shops = api.loadShops(auth)
             catalog = api.loadCatalog(auth)
+            if (!restoredCart) {
+                val saved = cartStore.load()
+                cart = saved.mapNotNull { line ->
+                    catalog.find { it.id == line.productId && it.availablePacks > 0 }?.let { fresh ->
+                        MarketCartLine(fresh, line.quantity.coerceAtMost(fresh.availablePacks).coerceAtLeast(1))
+                    }
+                }.let { restored ->
+                    if (restored.map { it.product.marketId }.toSet().size <= 1) restored else emptyList()
+                }
+                restoredCart = true
+            }
             activeTrip = api.activeTrip(auth)
             if (selectedMarket == null) {
                 selectedMarket = activeTrip?.marketId ?: api.nearest(m, location)?.id
             }
         }.onFailure { message = it.message ?: "โหลดตลาดสดไม่สำเร็จ" }
         loading = false
+    }
+
+    LaunchedEffect(cart, restoredCart) {
+        if (restoredCart) cartStore.save(cart)
     }
 
     val market = markets.find { it.id == selectedMarket }
