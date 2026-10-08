@@ -150,6 +150,47 @@ class RiderViewModel(
         viewModelScope.launch { openProof(RiderProofMode.PICKUP, job) }
     }
 
+    fun openMarketPickupProof(pickup: RiderMarketPickup) {
+        val job = _state.value.activeJob ?: return
+        if (job.marketOrderId.isNullOrBlank()) {
+            setError("งานนี้ไม่ใช่ออเดอร์ตลาดหลายร้าน")
+            return
+        }
+        if (pickup.done) return
+        _state.value = _state.value.copy(
+            proof = RiderProofState(
+                mode = RiderProofMode.PICKUP,
+                orderId = job.orderId,
+                orderNumber = job.orderNumber,
+                loading = false,
+                marketPickupId = pickup.pickupId,
+                marketPickupLabel = "จุดรับ " + pickup.sequence + " · " + pickup.shopName,
+                marketPickupAmount = pickup.shopAmount,
+            ),
+            error = null,
+            message = null,
+        )
+    }
+
+    fun resumeMarketDelivery() {
+        val job = _state.value.activeJob ?: return
+        val marketId = job.marketOrderId ?: return
+        if (_state.value.actionBusy) return
+        viewModelScope.launch {
+            _state.value = _state.value.copy(actionBusy = true, error = null, message = null)
+            try {
+                repository.startMarketDelivery(marketId)
+                refreshSnapshot(showLoading = false)
+                _state.value.activeJob?.let(::requestCustomerNavigation)
+            } catch (error: Exception) {
+                _state.value = _state.value.copy(
+                    actionBusy = false,
+                    error = error.message ?: "เริ่มนำส่งลูกค้าไม่สำเร็จ",
+                )
+            }
+        }
+    }
+
     fun openDeliveryProof() {
         val job = _state.value.activeJob ?: return
         if (job.status != "in_progress") {
@@ -197,32 +238,51 @@ class RiderViewModel(
 
                 when (proof.mode) {
                     RiderProofMode.PICKUP -> {
-                        repository.pickupWithPhoto(
-                            orderId = job.orderId,
-                            photoPath = photoPath,
-                            coordinate = coordinate,
-                        )
-                        _state.value = _state.value.copy(
-                            proof = null,
-                            actionBusy = false,
-                            message = "รับสินค้าแล้ว · กำลังไปส่งลูกค้า",
-                        )
-                        refreshSnapshot(showLoading = false)
-                        val next = _state.value.activeJob
-                        if (
-                            next != null &&
-                            !next.isPickupPhase &&
-                            next.deliveryLatitude != null &&
-                            next.deliveryLongitude != null
-                        ) {
-                            _state.value = _state.value.copy(
-                                navigationRequest = RiderNavigationRequest(
-                                    latitude = next.deliveryLatitude,
-                                    longitude = next.deliveryLongitude,
-                                    label = next.deliveryAddress.ifBlank { next.customerName },
-                                    id = System.nanoTime(),
-                                ),
+                        val pickupId = proof.marketPickupId
+                        if (!pickupId.isNullOrBlank()) {
+                            val pickup = _state.value.marketPickups.firstOrNull {
+                                it.pickupId == pickupId
+                            } ?: throw IllegalStateException("ไม่พบจุดรับสินค้าตลาด")
+                            val allPickedUp = repository.marketPickupWithPhoto(
+                                pickup = pickup,
+                                photoPath = photoPath,
+                                coordinate = coordinate,
                             )
+                            _state.value = _state.value.copy(
+                                proof = null,
+                                actionBusy = false,
+                                message = if (allPickedUp) {
+                                    "รับสินค้าครบทุกจุดแล้ว · กำลังไปส่งลูกค้า"
+                                } else {
+                                    "รับสินค้าจุดนี้แล้ว · ไปจุดรับถัดไป"
+                                },
+                            )
+                            refreshSnapshot(showLoading = false)
+
+                            if (allPickedUp) {
+                                val marketId = job.marketOrderId
+                                    ?: throw IllegalStateException("ไม่พบ Market Order")
+                                repository.startMarketDelivery(marketId)
+                                refreshSnapshot(showLoading = false)
+                                _state.value.activeJob?.let(::requestCustomerNavigation)
+                            } else {
+                                _state.value.marketPickups
+                                    .firstOrNull { !it.done }
+                                    ?.let(::requestPickupNavigation)
+                            }
+                        } else {
+                            repository.pickupWithPhoto(
+                                orderId = job.orderId,
+                                photoPath = photoPath,
+                                coordinate = coordinate,
+                            )
+                            _state.value = _state.value.copy(
+                                proof = null,
+                                actionBusy = false,
+                                message = "รับสินค้าแล้ว · กำลังไปส่งลูกค้า",
+                            )
+                            refreshSnapshot(showLoading = false)
+                            _state.value.activeJob?.let(::requestCustomerNavigation)
                         }
                     }
 
@@ -326,6 +386,33 @@ class RiderViewModel(
         }
     }
 
+    private fun requestPickupNavigation(pickup: RiderMarketPickup) {
+        val lat = pickup.latitude ?: return
+        val lng = pickup.longitude ?: return
+        _state.value = _state.value.copy(
+            navigationRequest = RiderNavigationRequest(
+                latitude = lat,
+                longitude = lng,
+                label = pickup.shopName,
+                id = System.nanoTime(),
+            ),
+        )
+    }
+
+    private fun requestCustomerNavigation(job: RiderActiveJob) {
+        if (job.isPickupPhase) return
+        val lat = job.deliveryLatitude ?: return
+        val lng = job.deliveryLongitude ?: return
+        _state.value = _state.value.copy(
+            navigationRequest = RiderNavigationRequest(
+                latitude = lat,
+                longitude = lng,
+                label = job.deliveryAddress.ifBlank { job.customerName },
+                id = System.nanoTime(),
+            ),
+        )
+    }
+
     private suspend fun currentCoordinate(): RiderCoordinate =
         withTimeout(10_000L) { locationProvider.current() }
 
@@ -350,6 +437,12 @@ class RiderViewModel(
                 } else {
                     null
                 }
+                val marketPickups = activeJob?.marketOrderId
+                    ?.let { marketId ->
+                        runCatching { repository.loadMarketPickups(marketId) }
+                            .getOrElse { emptyList() }
+                    }
+                    ?: emptyList()
                 val currentProof = _state.value.proof
                 val proof = if (
                     activeJob != null &&
@@ -366,6 +459,7 @@ class RiderViewModel(
                     activeJob = activeJob,
                     offer = offer,
                     proof = proof,
+                    marketPickups = marketPickups,
                     actionBusy = false,
                     error = null,
                 )
