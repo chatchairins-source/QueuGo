@@ -22,6 +22,7 @@ ok(customer.includes("qgServiceBannerMarkup('market'"),'market managed banner mi
 ok(customer.includes("qgServiceBannerMarkup(bannerKey"),'shopping managed banner missing');
 ok(customer.includes("if(e.active===false)return ''"),'customer banner visibility switch missing');
 ok(customer.includes('qgInitHomeBannerCarousel'),'home banner carousel missing');
+ok(!customer.includes('customer-shopping.js')&&!customer.includes('customer-shopping.css'),'customer shopping must have single implementation');
 
 ok(merchant.includes("<option value=\"shopping\">ช้อปปิ้ง</option>"),'merchant shopping type missing');
 for(const key of ['mobile_accessories','computer_it','automotive_car','automotive_motorcycle'])ok(merchant.includes(key),'merchant subcategory missing: '+key);
