@@ -23,13 +23,6 @@ data class LaundrySettings(
 ) {
     val deliveryFee: Double
         get() = if (deliveryFeeMode == "round_trip") roundTripFee else pickupFee + returnFee
-    private fun formatNumber(raw: String?, id: String): String {
-        val clean = raw.orEmpty().trim()
-        if (clean.startsWith("QT-", true)) return clean.uppercase()
-        val digits = clean.filter { it.isDigit() }.takeLast(4)
-        if (digits.length == 4) return "QT-" + digits
-        return "QT-" + kotlin.math.abs(id.hashCode() % 10000).toString().padStart(4, '0')
-    }
 }
 
 private fun JSONObject.optDoubleNullable(key: String): Double? =
@@ -159,7 +152,7 @@ class CustomerLaundryApi(private val http: QueueGoNativeApi = QueueGoNativeApi()
                 if (id.isBlank()) continue
                 add(LaundryOrderSummary(
                     id,
-                    formatNumber(r.optString("order_number"), id),
+                    laundryFormatNumber(r.optString("order_number"), id),
                     r.optString("status"),
                     r.optString("service_name_snapshot").ifBlank { "บริการฝากซัก" },
                     r.optDoubleNullable("estimated_total_amount"),
@@ -218,4 +211,13 @@ class CustomerLaundryApi(private val http: QueueGoNativeApi = QueueGoNativeApi()
             if (it.length() == 0) error("ระบบยังไม่ยืนยันคำขอฝากซัก")
         }
     }
+}
+
+
+private fun laundryFormatNumber(raw: String?, id: String): String {
+    val clean = raw.orEmpty().trim()
+    if (clean.startsWith("QT-", true)) return clean.uppercase()
+    val digits = clean.filter { it.isDigit() }.takeLast(4)
+    if (digits.length == 4) return "QT-" + digits
+    return "QT-" + kotlin.math.abs(id.hashCode() % 10000).toString().padStart(4, '0')
 }
