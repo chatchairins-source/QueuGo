@@ -3130,7 +3130,7 @@ window.qgmSaveShopSetup=async function(e){e.preventDefault();const button=e.subm
   if(!qgIsValidShopCoordinate(selected.lat,selected.lng)){const why=qgShopCoordinateProblem(selected.lat,selected.lng);throw Error(why==='swapped'?'พิกัดร้านไม่ถูกต้อง: latitude/longitude อาจสลับกัน':'พิกัดร้านไม่ถูกต้อง กรุณาปักตำแหน่งร้านใหม่');}
   next.lat=selected.lat;next.lng=selected.lng;
  }
-  const body={shop_name:next.shopName,phone:next.phone,address:next.address,public_category:next.category,public_logo:next.logo||null,public_cover:next.cover||null,public_open_time:next.openTime||null,public_close_time:next.closeTime||null,public_description:next.description||null,metadata:qtUserMetadata(next)};
+  const body={shop_name:next.shopName,phone:next.phone,address:next.address,metadata:qtUserMetadata(next)};
  if(selected){body.latitude=next.lat;body.longitude=next.lng;}
  const savedProfile=profile?.[0]?.id?await qtSupabaseTable('shop_profiles?id=eq.'+encodeURIComponent(profile[0].id),{method:'PATCH',accessToken:token,body}):await qtSupabaseTable('shop_profiles',{method:'POST',accessToken:token,body:{...body,user_id:u.id,status:'pending'}});
  if(!Array.isArray(savedProfile)||!savedProfile.length)throw Error('ฐานข้อมูลไม่ยืนยันข้อมูลร้าน');
