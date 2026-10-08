@@ -90,7 +90,8 @@ private fun CustomerShell(auth: NativeAuth, logout: () -> Unit) {
     var orders by remember { mutableStateOf<List<CustomerOrder>>(emptyList()) }
     var marketTrips by remember { mutableStateOf<List<MarketTripSummary>>(emptyList()) }
     var laundryOrders by remember { mutableStateOf<List<LaundryOrderSummary>>(emptyList()) }
-    var banner by remember { mutableStateOf<HomeBanner?>(null) }
+    var banners by remember { mutableStateOf<List<HomeBanner>>(emptyList()) }
+    var serviceBanners by remember { mutableStateOf<Map<String, ServiceBanner>>(emptyMap()) }
     var selectedShop by remember { mutableStateOf<CustomerShop?>(null) }
     var selectedOrder by remember { mutableStateOf<CustomerOrder?>(null) }
     var selectedMarketTrip by remember { mutableStateOf<MarketTripSummary?>(null) }
@@ -118,7 +119,8 @@ private fun CustomerShell(auth: NativeAuth, logout: () -> Unit) {
                     location = saved
                     if (address.isBlank()) address = saved.address
                 }
-                banner = api.loadHomeBanner(auth)
+                banners = api.loadHomeBanners(auth)
+                serviceBanners = api.loadServiceBanners(auth)
                 message = null
             }.onFailure { message = it.message ?: "โหลดข้อมูลไม่สำเร็จ" }
             loading = false
@@ -197,7 +199,7 @@ private fun CustomerShell(auth: NativeAuth, logout: () -> Unit) {
             }
             when (screen) {
                 "home" -> CustomerHome(
-                    loading, banner, category, shops,
+                    loading, banners, serviceBanners, category, shops,
                     onCategory = {
                         when (it) {
                             "market" -> screen = "market"
@@ -408,7 +410,8 @@ private fun CustomerTopBar(cartCount: Int, onHome: () -> Unit, onCart: () -> Uni
 @Composable
 private fun CustomerHome(
     loading: Boolean,
-    banner: HomeBanner?,
+    banners: List<HomeBanner>,
+    serviceBanners: Map<String, ServiceBanner>,
     category: String,
     shops: List<CustomerShop>,
     onCategory: (String) -> Unit,
@@ -424,10 +427,27 @@ private fun CustomerHome(
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(12.dp)) {
         Text("บริการใกล้คุณ", color = QgMuted, style = MaterialTheme.typography.bodySmall)
         Spacer(Modifier.height(8.dp))
+        var bannerIndex by remember(banners.size) { mutableStateOf(0) }
+        LaunchedEffect(banners.size) {
+            if (banners.size > 1) {
+                while (true) {
+                    delay(5_000)
+                    bannerIndex = (bannerIndex + 1) % banners.size
+                }
+            }
+        }
+        val banner = banners.getOrNull(bannerIndex)
         if (banner != null) {
             QgRemoteImage(banner.image, Modifier.fillMaxWidth().height(168.dp), "Q")
             if (!banner.title.isNullOrBlank()) {
                 Text(banner.title!!, fontWeight = FontWeight.ExtraBold, modifier = Modifier.padding(top = 6.dp))
+            }
+            if (banners.size > 1) {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
+                    banners.indices.forEach { i ->
+                        Text(if (i == bannerIndex) "●" else "○", color = if (i == bannerIndex) QgRed else QgMuted)
+                    }
+                }
             }
         } else {
             Box(
@@ -445,6 +465,32 @@ private fun CustomerHome(
             categories.forEach { (key, label) ->
                 if (category == key) Button(onClick = { onCategory(key) }) { Text(label) }
                 else OutlinedButton(onClick = { onCategory(key) }) { Text(label) }
+            }
+        }
+        if (category != "all") {
+            val serviceKey = when (category) {
+                "cafe" -> "drink"
+                else -> category
+            }
+            val serviceBanner = serviceBanners[serviceKey]
+            if (serviceBanner != null && serviceBanner.active) {
+                Spacer(Modifier.height(12.dp))
+                if (!serviceBanner.image.isNullOrBlank()) {
+                    QgRemoteImage(serviceBanner.image, Modifier.fillMaxWidth().height(135.dp), "Q")
+                } else {
+                    Box(
+                        Modifier.fillMaxWidth().height(118.dp).background(QgRed, RoundedCornerShape(18.dp)).padding(16.dp),
+                        contentAlignment = Alignment.BottomStart
+                    ) {
+                        Text(
+                            serviceBanner.title ?: categories.find { it.first == category }?.second ?: "QueueGo",
+                            color = androidx.compose.ui.graphics.Color.White,
+                            fontWeight = FontWeight.Black
+                        )
+                    }
+                }
+                if (!serviceBanner.title.isNullOrBlank()) Text(serviceBanner.title!!, fontWeight = FontWeight.ExtraBold, modifier = Modifier.padding(top = 5.dp))
+                if (!serviceBanner.subtitle.isNullOrBlank()) Text(serviceBanner.subtitle!!, color = QgMuted, style = MaterialTheme.typography.bodySmall)
             }
         }
         Spacer(Modifier.height(16.dp))
