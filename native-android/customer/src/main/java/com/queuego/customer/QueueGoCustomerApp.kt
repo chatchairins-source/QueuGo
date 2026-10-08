@@ -462,7 +462,16 @@ private fun CustomerShell(auth: NativeAuth, logout: () -> Unit) {
                     items = orderItems,
                     onBack = { screen = "orders" }
                 )
-                "profile" -> ProfileScreen(auth, logout)
+                "support" -> CustomerSupportScreen(
+                    auth = auth,
+                    orders = orders.filter { it.status == "completed" },
+                    onBack = { screen = "profile" }
+                )
+                "profile" -> ProfileScreen(
+                    auth = auth,
+                    onSupport = { screen = "support" },
+                    logout = logout
+                )
             }
         }
     }
@@ -877,7 +886,11 @@ private fun OrderTrackingScreen(order: CustomerOrder?, items: List<CustomerOrder
 }
 
 @Composable
-private fun ProfileScreen(auth: NativeAuth, logout: () -> Unit) {
+private fun ProfileScreen(
+    auth: NativeAuth,
+    onSupport: () -> Unit,
+    logout: () -> Unit
+) {
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(14.dp)) {
         QgSectionTitle("บัญชีของฉัน")
         Spacer(Modifier.height(12.dp))
@@ -893,6 +906,10 @@ private fun ProfileScreen(auth: NativeAuth, logout: () -> Unit) {
                 Text("QueueGo Production", fontWeight = FontWeight.ExtraBold)
                 Text("บัญชีนี้ใช้ Session และ RLS ของระบบจริง", color = QgMuted)
             }
+        }
+        Spacer(Modifier.height(10.dp))
+        Button(onClick = onSupport, modifier = Modifier.fillMaxWidth()) {
+            Text("ติดต่อฝ่ายช่วยเหลือ")
         }
         Spacer(Modifier.height(10.dp))
         QgAccountDeletionSection(
