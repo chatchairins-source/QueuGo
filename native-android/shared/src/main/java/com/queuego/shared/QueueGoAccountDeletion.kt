@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Button
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
@@ -118,7 +119,7 @@ fun QgAccountDeletionSection(
                     ) {
                         Text("ยกเลิก")
                     }
-                    Spacer(Modifier.height(1.dp).weight(0.05f))
+                    Spacer(Modifier.width(8.dp))
                     Button(
                         onClick = {
                             if (busy) return@Button
