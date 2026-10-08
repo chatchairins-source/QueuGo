@@ -20,13 +20,14 @@ ok(customer.includes("qgServiceBannerMarkup('cafe'"),'cafe managed banner missin
 ok(customer.includes("qgServiceBannerMarkup('grocery'"),'grocery managed banner missing');
 ok(customer.includes("qgServiceBannerMarkup('market'"),'market managed banner missing');
 ok(customer.includes("qgServiceBannerMarkup(bannerKey"),'shopping managed banner missing');
+ok(customer.includes("if(e.active===false)return ''"),'customer banner visibility switch missing');
 ok(customer.includes('qgInitHomeBannerCarousel'),'home banner carousel missing');
 
 ok(merchant.includes("<option value=\"shopping\">ช้อปปิ้ง</option>"),'merchant shopping type missing');
 for(const key of ['mobile_accessories','computer_it','automotive_car','automotive_motorcycle'])ok(merchant.includes(key),'merchant subcategory missing: '+key);
 ok(merchant.includes("shoppingSubcategories"),'merchant shopping subcategories not persisted');
 
-ok(admin.includes("shopping:'ช้อปปิ้ง'"),'admin shopping label missing');
+ok(admin.includes("category==='shopping'")&&admin.includes("automotive_motorcycle:'อะไหล่มอเตอร์ไซค์'"),'admin shopping/subcategory label missing');
 ok(admin.includes('qgAdminLoadHomeBanners'),'admin home banner manager missing');
 ok(admin.includes('qgAdminLoadServiceBanners')&&adminService.includes('qgAdminLoadServiceBanners'),'admin category banner manager missing');
 ok(adminService.includes("const KEY='service_banners',BUCKET='queuego-banners'"),'service banner storage manager missing');
