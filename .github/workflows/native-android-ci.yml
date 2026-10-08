@@ -45,6 +45,13 @@ jobs:
           fi
       - name: Customer native catalog gate
         run: node native-android/tests/customer-catalog.cjs
+      - name: Native push transport gate
+        run: |
+          grep -q 'subscribe-native' native-android/core-push/src/main/java/com/queuetech/queuego/core/push/NativePushRepository.kt
+          grep -q 'unsubscribe-native' native-android/core-push/src/main/java/com/queuetech/queuego/core/push/NativePushRepository.kt
+          grep -q 'queuego-push' native-android/core-push/src/main/java/com/queuetech/queuego/core/push/NativePushRepository.kt
+          grep -q '/functions/v1/' native-android/core-network/src/main/java/com/queuetech/queuego/core/network/QueueGoApi.kt
+
       - name: Rider native delivery flow gate
         run: |
           RIDER="native-android/rider-app/src/main/java/com/queuetech/queuego/rider"
@@ -70,3 +77,15 @@ jobs:
         run: gradle -p native-android :customer-app:assembleDebug :merchant-app:assembleDebug :rider-app:assembleDebug
       - name: Unit tests
         run: gradle -p native-android testDebugUnitTest
+
+      - name: Upload native debug APKs
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: queuego-native-debug-${{ github.sha }}
+          retention-days: 7
+          if-no-files-found: error
+          path: |
+            native-android/customer-app/build/outputs/apk/debug/customer-app-debug.apk
+            native-android/merchant-app/build/outputs/apk/debug/merchant-app-debug.apk
+            native-android/rider-app/build/outputs/apk/debug/rider-app-debug.apk
