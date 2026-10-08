@@ -480,7 +480,8 @@ async function loadServiceBannerConfig(){
 function qgServiceBannerEntry(key){return serviceBannerConfigCache&&typeof serviceBannerConfigCache[key]==='object'?serviceBannerConfigCache[key]:{}}
 function qgServiceBannerImage(key,fallback=''){const e=qgServiceBannerEntry(key),src=String(e.image_url||e.image_data||'').trim();return (/^data:image\//.test(src)||/^https?:\/\//i.test(src))?src:fallback}
 function qgServiceBannerMarkup(key,fallback,title,subtitle){
-  const e=qgServiceBannerEntry(key),src=qgServiceBannerImage(key,fallback),heading=String(e.title||title||''),copy=String(e.subtitle||subtitle||'');
+  const e=qgServiceBannerEntry(key);if(e.active===false)return '';
+  const src=qgServiceBannerImage(key,fallback),heading=String(e.title||title||''),copy=String(e.subtitle||subtitle||'');
   return `<div class="qg-service-banner">${src?`<img src="${esc(src)}" alt="${esc(heading||'QueueGo')}" onerror="this.remove()">`:''}<div class="qg-service-banner-copy">${heading?`<b>${esc(heading)}</b>`:''}${copy?`<small>${esc(copy)}</small>`:''}</div></div>`;
 }
 const SHOPPING_SUBCATEGORY_LABELS={mobile_accessories:'มือถือและอุปกรณ์',computer_it:'คอมพิวเตอร์และไอที',automotive_car:'อะไหล่รถยนต์',automotive_motorcycle:'อะไหล่มอเตอร์ไซค์'};
