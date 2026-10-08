@@ -9,7 +9,11 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            QueueGoRoleNativeApp("shop", "QueueGo Merchant", "ร้านค้า")
+            QueueGoRoleNativeApp(
+                expectedRole = "shop",
+                appTitle = "QueueGo Merchant",
+                roleLabel = "ร้านค้า"
+            )
         }
     }
 }
