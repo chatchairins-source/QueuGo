@@ -1729,7 +1729,7 @@ async function qgOpenPickupVerify(o){
         </section>
         ${itemsSection}
         ${note?`<section class="qg-flow-note"><small>หมายเหตุจากลูกค้า</small><b>${esc(note)}</b></section>`:''}
-        <button type="button" class="qg-btn qg-btn-primary qg-flow-next" id="qg-pickup-items-ok">ตรวจสอบรายการครบแล้ว</button>
+        <button type="button" class="qg-btn qg-btn-primary qg-flow-next" id="qg-pickup-items-ok">ตรวจสอบรายการ</button>
         <small class="qg-slide-caption">ตรวจของให้ครบก่อนเข้าสู่ขั้นตอนถ่ายรูป</small>`;
       page.querySelector('#qg-pickup-items-ok').onclick=renderPhoto;
     };
