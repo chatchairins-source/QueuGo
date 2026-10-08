@@ -74,7 +74,7 @@ fun CustomerSupportScreen(
                 Row(Modifier.fillMaxWidth()) {
                     OutlinedButton(
                         onClick = { selectedOrderId = "" },
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier.fillMaxWidth()
                     ) { Text(if (selectedOrderId.isBlank()) "✓ เรื่องทั่วไป" else "เรื่องทั่วไป") }
                 }
                 orders.take(10).forEach { order ->
