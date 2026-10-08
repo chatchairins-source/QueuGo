@@ -72,10 +72,11 @@ class NativeAuthApi {
 
     suspend fun validate(auth: NativeAuth, expectedRole: String): NativeAuth =
         withContext(Dispatchers.IO) {
+            val liveAuth = refreshIfNeeded(auth)
             val check = rpc(
                 "check_active_session",
-                auth.session.accessToken,
-                JSONObject().put("p_session_id", auth.session.sessionId)
+                liveAuth.session.accessToken,
+                JSONObject().put("p_session_id", liveAuth.session.sessionId)
             )
             val valid = check == true ||
                 (check is JSONArray && check.length() > 0 &&
@@ -85,22 +86,48 @@ class NativeAuthApi {
             if (!valid) error("Session นี้ไม่ได้ใช้งานบนอุปกรณ์นี้แล้ว")
             val rows = requestArray(
                 "GET",
-                "/rest/v1/users?select=id,name,role,status&auth_user_id=eq." + enc(auth.session.authUserId),
-                auth.session.accessToken
+                "/rest/v1/users?select=id,name,role,status&auth_user_id=eq." + enc(liveAuth.session.authUserId),
+                liveAuth.session.accessToken
             )
             if (rows.length() == 0) error("ไม่พบบัญชี QueueGo")
             val row = rows.getJSONObject(0)
             if (row.optString("role") != expectedRole) error("สิทธิ์บัญชีไม่ตรงกับแอป")
-            auth.copy(
+            liveAuth.copy(
                 user = NativeUser(
                     row.getString("id"),
-                    auth.session.authUserId,
+                    liveAuth.session.authUserId,
                     row.optString("name").ifBlank { "QueueGo" },
                     row.optString("role"),
                     row.optString("status")
                 )
             )
         }
+
+    private fun refreshIfNeeded(auth: NativeAuth): NativeAuth {
+        val session = auth.session
+        val refresh = session.refreshToken?.takeIf { it.isNotBlank() } ?: return auth
+        if (session.expiresAtMs > System.currentTimeMillis() + 60_000L) return auth
+
+        val renewed = requestObject(
+            "POST",
+            "/auth/v1/token?grant_type=refresh_token",
+            null,
+            JSONObject().put("refresh_token", refresh)
+        )
+        val nextAccess = renewed.optString("access_token")
+        if (nextAccess.isBlank()) error("ไม่สามารถต่ออายุ Session ได้")
+        val nextRefresh = renewed.optString("refresh_token").takeIf { it.isNotBlank() } ?: refresh
+        val nextExpiry = renewed.optLong("expires_at", 0L).let {
+            if (it > 0L) it * 1000L else System.currentTimeMillis() + 55 * 60_000L
+        }
+        return auth.copy(
+            session = session.copy(
+                accessToken = nextAccess,
+                refreshToken = nextRefresh,
+                expiresAtMs = nextExpiry
+            )
+        )
+    }
 
     suspend fun touch(session: NativeSession) = withContext(Dispatchers.IO) {
         rpc(
