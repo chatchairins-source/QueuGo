@@ -88,20 +88,25 @@ fun QueueGoRiderApp() {
     }
 
     LaunchedEffect(auth?.session?.sessionId) {
-        val current = auth ?: return@LaunchedEffect
+        if (auth == null) return@LaunchedEffect
         while (true) {
             delay(25_000)
-            val valid = runCatching {
-                api.validate(current)
-                api.touch(current.session)
-            }.isSuccess
-            if (!valid) {
+            val current = auth ?: break
+            val result = runCatching {
+                val validated = api.validate(current)
+                api.touch(validated.session)
+                validated
+            }
+            result.onSuccess { validated ->
+                store.save(validated)
+                auth = validated
+            }.onFailure {
                 RiderReturnService.stop(context)
                 store.clear()
                 auth = null
-                error = "Session นี้ถูกยกเลิกหรือเปิดจากอุปกรณ์อื่น"
-                break
+                error = "Session นี้ถูกยกเลิก หมดอายุ หรือเปิดจากอุปกรณ์อื่น"
             }
+            if (result.isFailure) break
         }
     }
 
