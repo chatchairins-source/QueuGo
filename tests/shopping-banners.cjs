@@ -24,6 +24,27 @@ ok(customer.includes("if(e.active===false)return ''"),'customer banner visibilit
 ok(customer.includes('qgInitHomeBannerCarousel'),'home banner carousel missing');
 ok(!customer.includes('customer-shopping.js')&&!customer.includes('customer-shopping.css'),'customer shopping must have single implementation');
 
+const homeStart=customer.indexOf('V.home=async');
+const homeEnd=customer.indexOf('function globalShopSearch',homeStart);
+const homeSource=homeStart>=0&&homeEnd>homeStart?customer.slice(homeStart,homeEnd):'';
+ok(homeSource.length>0,'customer home source missing');
+ok((homeSource.match(/go\('shopping'\)/g)||[]).length===1,'Home must expose exactly one primary Shopping button');
+ok(!/shopping\/(?:mobile_accessories|computer_it|automotive)/.test(homeSource),'Shopping subcategories must not clutter Home');
+ok(homeSource.includes("ico('shopping',25)")&&homeSource.includes('<b>ช้อปปิ้ง</b>'),'Home Shopping button must use the QueueGo icon set');
+
+const shoppingStart=customer.indexOf('V.shopping=async');
+const shoppingEnd=customer.indexOf('async function shareShop',shoppingStart);
+const shoppingSource=shoppingStart>=0&&shoppingEnd>shoppingStart?customer.slice(shoppingStart,shoppingEnd):'';
+ok(shoppingSource.length>0,'Shopping page source missing');
+const shoppingOrder=[
+  shoppingSource.indexOf('<h1>${esc(title)}</h1>'),
+  shoppingSource.indexOf('qgServiceBannerMarkup(bannerKey'),
+  shoppingSource.indexOf('${categoryGrid}${autoFilters}'),
+  shoppingSource.indexOf('<h2>ร้านใกล้คุณ</h2>')
+];
+ok(shoppingOrder.every(x=>x>=0)&&shoppingOrder.every((x,i)=>i===0||x>shoppingOrder[i-1]),'Shopping layout must remain title → banner → subcategories → nearby stores');
+for(const icon of ["ico('phone',26)","ico('monitor',26)","ico('gear',26)","ico('car',16)","ico('motorcycle',16)"])ok(shoppingSource.includes(icon),'Shopping icon missing: '+icon);
+
 ok(merchant.includes("<option value=\"shopping\">ช้อปปิ้ง</option>"),'merchant shopping type missing');
 for(const key of ['mobile_accessories','computer_it','automotive_car','automotive_motorcycle'])ok(merchant.includes(key),'merchant subcategory missing: '+key);
 ok(merchant.includes("shoppingSubcategories"),'merchant shopping subcategories not persisted');
@@ -50,4 +71,4 @@ ok(banners.includes("jsonb_build_object('slot',3,'active',false)"),'home carouse
 const forbidden=['queuego_place_shopping_order','shopping_rider_claim','shopping_orders'];
 for(const token of forbidden)ok(!customer.includes(token)&&!merchant.includes(token)&&!db.includes(token),'shopping must reuse existing order flow: '+token);
 
-console.log(JSON.stringify({checks,failures:0,scope:'Shopping categories, reusable retail flow, icons, managed category banners and three-slot home carousel'}));
+console.log(JSON.stringify({checks,failures:0,scope:'Shopping categories, reusable retail flow, QueueGo icons, uncluttered Home, managed category banners and three-slot home carousel'}));
