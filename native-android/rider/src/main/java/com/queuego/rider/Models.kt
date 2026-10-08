@@ -56,7 +56,9 @@ data class RiderJob(
     val marketOrderId: String?,
     val offerExpiresAt: String? = null,
     val arrivedShopAt: String?,
-    val arrivedCustomerAt: String?
+    val arrivedCustomerAt: String?,
+    val shopCash: Double? = null,
+    val customerCash: Double? = null
 ) {
     val numberLabel: String
         get() = orderNumber?.let { if (it.startsWith("QT-")) it else "QT-" + it } ?: "QT-----"
