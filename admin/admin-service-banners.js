@@ -119,13 +119,4 @@
       await writeConfig(cfg);if(oldPath)removeObject(oldPath);render(cfg);toast('กลับไปใช้ภาพเริ่มต้นแล้ว');
     }catch(e){toast('อัปเดตไม่สำเร็จ: '+String(e.message||e).slice(0,90))}
   };
-
-  const baseTab=window.qtAdminTab;
-  if(typeof baseTab==='function'){
-    window.qtAdminTab=function(id){
-      const out=baseTab.apply(this,arguments);
-      if(id==='qt-sec-settings')setTimeout(()=>window.qgAdminLoadServiceBanners?.(),0);
-      return out;
-    };
-  }
 })();
