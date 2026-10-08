@@ -466,6 +466,7 @@ private fun CustomerShell(auth: NativeAuth, logout: () -> Unit) {
                     items = orderItems,
                     context = trackingContext,
                     busy = busy,
+                    onChat = { screen = "chat" },
                     onCancel = {
                         val current = selectedOrder
                         if (current != null && !busy) {
@@ -488,6 +489,13 @@ private fun CustomerShell(auth: NativeAuth, logout: () -> Unit) {
                         screen = "orders"
                     }
                 )
+                "chat" -> selectedOrder?.let { activeOrder ->
+                    CustomerChatScreen(
+                        auth = auth,
+                        order = activeOrder,
+                        onBack = { screen = "order" }
+                    )
+                }
                 "support" -> CustomerSupportScreen(
                     auth = auth,
                     orders = orders.filter { it.status == "completed" },
@@ -868,6 +876,7 @@ private fun OrderTrackingScreen(
     items: List<CustomerOrderItem>,
     context: CustomerOrderContext?,
     busy: Boolean,
+    onChat: () -> Unit,
     onCancel: () -> Unit,
     onBack: () -> Unit
 ) {
@@ -952,6 +961,15 @@ private fun OrderTrackingScreen(
                             }
                         }
                     }
+                }
+            }
+            Spacer(Modifier.height(8.dp))
+            if (order.chatAvailable()) {
+                Button(
+                    onClick = onChat,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(if (order.status == "completed") "แชทกับ Rider (ภายใน 30 นาที)" else "แชทกับ Rider")
                 }
             }
             Spacer(Modifier.height(10.dp))
