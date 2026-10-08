@@ -4,6 +4,7 @@ import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
 import android.location.LocationManager
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -126,6 +127,14 @@ private fun CustomerShell(auth: NativeAuth, logout: () -> Unit) {
             }.onFailure { message = it.message ?: "โหลดข้อมูลไม่สำเร็จ" }
             loading = false
         }
+    }
+
+    BackHandler(enabled = screen != "home") {
+        screen = "home"
+        selectedOrder = null
+        selectedMarketTrip = null
+        selectedLaundryOrder = null
+        selectedShop = null
     }
 
     val permission = rememberLauncherForActivityResult(
