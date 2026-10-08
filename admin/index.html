@@ -516,7 +516,7 @@ async function qtHydrateDatabase(opts){
         QT_DB_CACHE.qt_users=QT_DB_CACHE.qt_users.map(u=>{
           const x=u.type==='shop'?sm.get(u.id):u.type==='technician'?tm.get(u.id):u.type==='rider'?rm.get(u.id):null; if(!x) return u;
           const lock={id:u.id,authUserId:u.authUserId,type:u.type,status:u.status,name:u.name,phone:u.phone};
-          Object.assign(u,(x.metadata&&typeof x.metadata==='object'?x.metadata:{}),u.type==='shop'?{shopProfileId:x.id,shopName:x.shop_name,public_category:x.public_category,category:x.public_category||x.metadata?.category||u.category,address:x.address,lat:x.latitude,lng:x.longitude,onboardingStatus:x.onboarding_status||'draft',submittedForReviewAt:x.submitted_for_review_at||null,approvedAt:x.approved_at||null,archivedAt:x.archived_at||null,shopDbStatus:x.status,shopReadiness:som.get(String(x.id))?.readiness||null,shopOrderCount:Number(som.get(String(x.id))?.order_count||0)}:u.type==='technician'?{jobTypes:(x.technician_type||'').split(',').filter(Boolean),serviceArea:x.service_area,address:x.address,lat:x.latitude,lng:x.longitude,description:x.description}:u.type==='rider'?{
+          Object.assign(u,(x.metadata&&typeof x.metadata==='object'?x.metadata:{}),u.type==='shop'?{shopProfileId:x.id,shopName:x.shop_name,public_category:x.public_category,public_subcategories:x.public_subcategories,shoppingSubcategories:Array.isArray(x.public_subcategories)?x.public_subcategories:(x.metadata?.shoppingSubcategories||[]),category:x.public_category||x.metadata?.category||u.category,address:x.address,lat:x.latitude,lng:x.longitude,onboardingStatus:x.onboarding_status||'draft',submittedForReviewAt:x.submitted_for_review_at||null,approvedAt:x.approved_at||null,archivedAt:x.archived_at||null,shopDbStatus:x.status,shopReadiness:som.get(String(x.id))?.readiness||null,shopOrderCount:Number(som.get(String(x.id))?.order_count||0)}:u.type==='technician'?{jobTypes:(x.technician_type||'').split(',').filter(Boolean),serviceArea:x.service_area,address:x.address,lat:x.latitude,lng:x.longitude,description:x.description}:u.type==='rider'?{
             vehicleType:x.vehicle_type,
             vehiclePlate:x.vehicle_plate,
             address:x.address,
@@ -588,7 +588,13 @@ function distanceKm(lat1,lon1,lat2,lon2){
 
 function qgAdminShopCategory(shop){
   const category=shop?.public_category||shop?.category||shop?.metadata?.category;
-  return {food:'ร้านอาหาร',grocery:'ร้านขายของชำ',cafe:'เครื่องดื่ม / คาเฟ่',laundry:'ร้านฝากซัก',market:'ตลาดสด',shopping:'ช้อปปิ้ง',other:'อื่น ๆ',meat:'เนื้อสัตว์ (ข้อมูลเดิม)',fish:'ปลา / อาหารทะเล (ข้อมูลเดิม)',vegetable:'ผักสด (ข้อมูลเดิม)',fruit:'ผลไม้ (ข้อมูลเดิม)'}[category]||category||'ยังไม่ระบุประเภทร้าน';
+  if(category==='shopping'){
+    const labels={mobile_accessories:'มือถือและอุปกรณ์',computer_it:'คอมพิวเตอร์และไอที',automotive_car:'อะไหล่รถยนต์',automotive_motorcycle:'อะไหล่มอเตอร์ไซค์'};
+    const raw=shop?.shoppingSubcategories||shop?.public_subcategories||shop?.metadata?.shoppingSubcategories||[];
+    const subs=(Array.isArray(raw)?raw:[]).map(key=>labels[key]).filter(Boolean);
+    return subs.length?'ช้อปปิ้ง · '+subs.join(' / '):'ช้อปปิ้ง';
+  }
+  return {food:'ร้านอาหาร',grocery:'ร้านขายของชำ',cafe:'เครื่องดื่ม / คาเฟ่',laundry:'ร้านฝากซัก',market:'ตลาดสด',other:'อื่น ๆ',meat:'เนื้อสัตว์ (ข้อมูลเดิม)',fish:'ปลา / อาหารทะเล (ข้อมูลเดิม)',vegetable:'ผักสด (ข้อมูลเดิม)',fruit:'ผลไม้ (ข้อมูลเดิม)'}[category]||category||'ยังไม่ระบุประเภทร้าน';
 }
 function qgAdminProviderLabel(user){return user?.type==='shop'?qgAdminShopCategory(user):roleLabel(user?.type);}
 function roleLabel(t){ return {customer:'ลูกค้า',shop:'ร้านค้า',technician:'ช่าง',rider:'ไรเดอร์',admin:'แอดมิน'}[t] || escapeHtml(t); }
