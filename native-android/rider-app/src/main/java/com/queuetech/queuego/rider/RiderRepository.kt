@@ -242,6 +242,66 @@ class RiderRepository(
         }
     }
 
+    suspend fun loadMarketPickups(marketOrderId: String): List<RiderMarketPickup> {
+        val token = accessToken()
+        val rows = JSONArray(
+            api.rpc(
+                token,
+                "market_pickup_route_summary",
+                JSONObject().put("p_market_order_id", marketOrderId),
+            ),
+        )
+        return buildList {
+            for (index in 0 until rows.length()) {
+                val item = rows.optJSONObject(index) ?: continue
+                add(
+                    RiderMarketPickup(
+                        pickupId = item.getString("pickup_id"),
+                        sequence = item.optInt("pickup_sequence", index + 1),
+                        shopName = item.optString("shop_name").ifBlank { "ร้านค้า" },
+                        shopAddress = item.optString("shop_address"),
+                        latitude = item.optNullableDouble("latitude"),
+                        longitude = item.optNullableDouble("longitude"),
+                        shopAmount = item.optDouble("shop_amount", 0.0),
+                        cashPaidAmount = item.optDouble("cash_paid_amount", 0.0),
+                        status = item.optString("status"),
+                    ),
+                )
+            }
+        }
+    }
+
+    suspend fun marketPickupWithPhoto(
+        pickup: RiderMarketPickup,
+        photoPath: String,
+        coordinate: RiderCoordinate?,
+    ): Boolean {
+        val token = accessToken()
+        val raw = api.rpc(
+            token,
+            "qg_market_pickup_with_photo",
+            JSONObject()
+                .put("p_pickup_id", pickup.pickupId)
+                .put("p_amount", pickup.shopAmount)
+                .put("p_photo_path", photoPath)
+                .put("p_lat", coordinate?.latitude ?: JSONObject.NULL)
+                .put("p_lng", coordinate?.longitude ?: JSONObject.NULL),
+        )
+        val result = JSONObject(raw)
+        return result.optBoolean("all_picked_up", false)
+    }
+
+    suspend fun startMarketDelivery(marketOrderId: String): String {
+        val token = accessToken()
+        return api.rpc(
+            token,
+            "market_rider_group_action",
+            JSONObject()
+                .put("p_market_order_id", marketOrderId)
+                .put("p_action", "deliver"),
+        ).trim().trim('"')
+    }
+
     suspend fun pickupWithPhoto(
         orderId: String,
         photoPath: String,
