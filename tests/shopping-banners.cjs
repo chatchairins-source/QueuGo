@@ -4,6 +4,7 @@ const ok=(value,message)=>{assert.ok(value,message);checks++};
 const customer=fs.readFileSync(path.resolve(__dirname,'../index.html'),'utf8');
 const merchant=fs.readFileSync(path.resolve(__dirname,'../merchant/index.html'),'utf8');
 const admin=fs.readFileSync(path.resolve(__dirname,'../admin/index.html'),'utf8');
+const adminService=fs.readFileSync(path.resolve(__dirname,'../admin/admin-service-banners.js'),'utf8');
 const db=fs.readFileSync(path.resolve(__dirname,'../supabase/migrations/20261008051127_shopping_categories_and_service_banners_v1.sql'),'utf8');
 const banners=fs.readFileSync(path.resolve(__dirname,'../supabase/migrations/20261008050646_home_banner_carousel_storage_v1.sql'),'utf8');
 
@@ -27,8 +28,8 @@ ok(merchant.includes("shoppingSubcategories"),'merchant shopping subcategories n
 
 ok(admin.includes("shopping:'ช้อปปิ้ง'"),'admin shopping label missing');
 ok(admin.includes('qgAdminLoadHomeBanners'),'admin home banner manager missing');
-ok(admin.includes('qgAdminLoadServiceBanners'),'admin category banner manager missing');
-ok(admin.includes("const KEY='service_banners',BUCKET='queuego-banners'"),'service banner storage manager missing');
+ok(admin.includes('qgAdminLoadServiceBanners')&&adminService.includes('qgAdminLoadServiceBanners'),'admin category banner manager missing');
+ok(adminService.includes("const KEY='service_banners',BUCKET='queuego-banners'"),'service banner storage manager missing');
 
 ok(db.includes('public_subcategories text[]'),'database public subcategory projection missing');
 ok(db.includes('trg_queuego_shop_public_subcategories'),'database shopping subcategory sync trigger missing');
