@@ -2074,6 +2074,12 @@ async function qgmFetchSetupReadiness(u){
  ];
  return {shop,products:[],steps,left:steps.filter(x=>!x.done).length,ready:readiness?.complete===true,readiness};
 }
+window.qgmStartNewStoreApplication=async function(){
+ const name=prompt('ชื่อร้านใหม่');if(!name?.trim())return;
+ const category=prompt('ประเภทร้าน: food / cafe / grocery / market / laundry / other','food');if(!category)return;
+ try{const token=await qtGetAccessToken();await qtSupabaseTable('rpc/queuego_start_new_shop_application',{method:'POST',accessToken:token,body:{p_shop_name:name.trim(),p_category:category.trim().toLowerCase()}});qgmInvalidateSetupReadiness(currentUser());await qtRestoreOwnUser({refresh:true});toast('เริ่มสมัครร้านใหม่แล้ว');renderShopPending()}
+ catch(e){toast('เริ่มสมัครร้านใหม่ไม่สำเร็จ: '+(e.message||e))}
+};
 let qgmReviewSubmitBusy=false;
 window.qgmSubmitStoreReview=async function(button){
  if(qgmReviewSubmitBusy)return;qgmReviewSubmitBusy=true;if(button)button.disabled=true;
@@ -2133,7 +2139,7 @@ window.renderShopPending=async function(options={}){
  qgmWriteSetupReadiness(u,state.ready,left);
  if(options.dashboard&&!left)return renderShopDashboardModern(u);
  const reviewState=state.readiness?.onboarding_status||u.onboardingStatus||'draft',submitted=reviewState==='pending_approval',approved=reviewState==='approved'||u.status==='approved'; host.innerHTML=`<div class="qgm-setup-heading"><div><span class="qgm-status">ความพร้อมร้าน ${5-left}/5</span><h1>${approved?'ร้านพร้อมใช้งาน':submitted?'ส่งให้ Admin ตรวจแล้ว':left?'เตรียมร้านก่อนเปิดใช้งาน':'พร้อมส่งตรวจเพื่อเปิดร้าน'}</h1><p>${submitted?'Admin กำลังตรวจข้อมูลร้าน':left?'เหลือ '+left+' รายการที่ต้องทำ':'ข้อมูลพร้อมสำหรับการตรวจอนุมัติ'}</p></div><span class="qgm-setup-symbol" aria-hidden="true">${svg(approved?'check':'gear')}</span></div><ol class="qgm-setup-list">${steps.map(x=>`<li class="${x.done?'done':''}"><span class="qgm-setup-check" aria-label="${x.done?'เสร็จแล้ว':'ยังไม่เสร็จ'}">${svg(x.done?'check':'close')}</span><div><b>${x.title}</b><p>${escapeHtml(x.note)}</p>${x.page&&!x.done?`<button type="button" class="qgm-link" onclick="navigate('${x.page}')">ไปดำเนินการ</button>`:''}</div></li>`).join('')}</ol><button type="button" class="qgm-primary" onclick="qgmSubmitStoreReview(this)" ${left||submitted||approved?'disabled':''}>${approved?'ร้านผ่านการอนุมัติแล้ว':submitted?'รอ Admin ตรวจ':'ส่งตรวจเพื่อเปิดร้าน'}</button><button type="button" class="qgm-outline" onclick="qgmRefreshApplication()">ตรวจสอบข้อมูลอีกครั้ง</button>${approved?'<button type="button" class="qgm-outline" onclick="renderShopDashboardModern(currentUser())">ดูสรุปออเดอร์</button>':''}<button type="button" class="qgm-link" onclick="qtMerchantLogout()">ออกจากระบบ</button>`;
- }catch(e){const host=active();if(host)host.innerHTML='<h1>ตรวจสอบข้อมูลร้านไม่สำเร็จ</h1><p>'+escapeHtml(e.message||String(e))+'</p><button class="qgm-outline" onclick="qgmRefreshApplication()">ลองอีกครั้ง</button>';}
+ }catch(e){const host=active();if(host){const missing=String(e.message||e).includes('SHOP_NOT_FOUND');host.innerHTML=missing?'<h1>ยังไม่มีร้านที่กำลังสมัคร</h1><p>ร้านเดิมถูกนำออกจากการให้บริการแล้ว คุณสามารถเริ่มสมัครร้านใหม่ได้โดยประวัติออเดอร์เดิมยังคงอยู่</p><button class="qgm-primary" onclick="qgmStartNewStoreApplication()">เริ่มสมัครร้านใหม่</button>':'<h1>ตรวจสอบข้อมูลร้านไม่สำเร็จ</h1><p>'+escapeHtml(e.message||String(e))+'</p><button class="qgm-outline" onclick="qgmRefreshApplication()">ลองอีกครั้ง</button>';}}
 };
 window.qtToggleLoginPassword=function(button){const input=document.getElementById('qt-shop-password');if(!input)return;input.type=input.type==='password'?'text':'password';button.setAttribute('aria-label',input.type==='password'?'แสดงรหัสผ่าน':'ซ่อนรหัสผ่าน')};
 
