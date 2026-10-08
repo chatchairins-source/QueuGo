@@ -54,6 +54,7 @@ data class RiderJob(
     val deliveryLng: Double?,
     val deliveryFee: Double?,
     val marketOrderId: String?,
+    val offerExpiresAt: String? = null,
     val arrivedShopAt: String?,
     val arrivedCustomerAt: String?
 ) {
