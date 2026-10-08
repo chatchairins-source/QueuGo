@@ -224,7 +224,7 @@ class QueueGoApi {
         val online = profile.optJSONObject("metadata")?.optBoolean("online", false) ?: false
 
         val fields = "id,order_number,status,pickup_address,pickup_latitude,pickup_longitude," +
-            "delivery_address,delivery_latitude,delivery_longitude,delivery_fee,market_order_id," +
+            "delivery_address,delivery_latitude,delivery_longitude,delivery_fee,subtotal,total_amount,market_order_id," +
             "rider_arrived_shop_at,rider_arrived_customer_at"
         val activeRows = requestArray(
             "GET",
@@ -240,7 +240,7 @@ class QueueGoApi {
             marketPickups = marketPickupRoute(auth, active.marketOrderId)
             val parents = requestArray(
                 "GET",
-                "/rest/v1/market_orders?select=delivery_fee,rider_bonus&id=eq." +
+                "/rest/v1/market_orders?select=delivery_fee,rider_bonus,total_amount&id=eq." +
                     enc(active.marketOrderId) + "&limit=1",
                 auth.session.accessToken
             )
@@ -248,7 +248,9 @@ class QueueGoApi {
                 val parent = parents.getJSONObject(0)
                 active = active.copy(
                     deliveryFee = parent.doubleOrZero("delivery_fee") +
-                        parent.doubleOrZero("rider_bonus")
+                        parent.doubleOrZero("rider_bonus"),
+                    shopCash = null,
+                    customerCash = parent.doubleOrNull("total_amount")
                 )
             }
         }
@@ -501,7 +503,9 @@ class QueueGoApi {
         deliveryFee = o.doubleOrNull("delivery_fee"),
         marketOrderId = o.optString("market_order_id").takeIf { it.isNotBlank() },
         arrivedShopAt = o.optString("rider_arrived_shop_at").takeIf { it.isNotBlank() },
-        arrivedCustomerAt = o.optString("rider_arrived_customer_at").takeIf { it.isNotBlank() }
+        arrivedCustomerAt = o.optString("rider_arrived_customer_at").takeIf { it.isNotBlank() },
+        shopCash = o.doubleOrNull("subtotal"),
+        customerCash = o.doubleOrNull("total_amount")
     )
 
     private fun JSONObject.doubleOrNull(name: String): Double? =
