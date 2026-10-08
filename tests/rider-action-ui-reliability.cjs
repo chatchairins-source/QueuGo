@@ -42,6 +42,11 @@ ok(rider.includes('ส่งสินค้าให้ลูกค้าเร�
 ok(rider.includes('เก็บเงินจากลูกค้าเรียบร้อยแล้ว'),'customer cash collection confirmation must be explicit');
 ok(rider.includes('.qg-rider-flow-page{position:fixed;z-index:18500;inset:0;background:#f8f7f8;display:flex;flex-direction:column;overflow:hidden}'),'Rider staged page must lock the viewport and scroll only its content');
 ok(rider.includes('.qg-flow-next{position:fixed'),'Rider staged primary action must stay fixed at the bottom');
+ok(rider.includes('left:10px;right:10px;bottom:calc(12px + var(--safeB));width:auto'),'fixed Rider CTAs must stay fully inside the iOS viewport');
+ok(!rider.includes('.qg-flow-next{position:fixed;z-index:18600;left:50%'),'fixed Rider CTAs must not rely on transform centering');
+ok(rider.includes('.qg-proof-single:not(.has-proof)>.qg-proof-pick{position:fixed'),'camera action must move to the bottom before a proof exists');
+ok(rider.includes('id="qg-pickup-photo-next" disabled hidden'),'pickup payment CTA must stay hidden until a photo exists');
+ok(rider.includes('id="qg-delivery-photo-next" disabled hidden'),'delivery cash CTA must stay hidden until a photo exists');
 ok(rider.includes('background:#f04455'),'Rider primary action color must use the softer QueueGo red');
 ok(rider.includes('content:"ถ่ายใหม่"'),'proof preview must collapse to one photo with a compact retake control');
 ok(rider.includes('id="qg-delivery-photo"'),'delivery completion must require one photo');
