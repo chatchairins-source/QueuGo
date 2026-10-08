@@ -703,7 +703,7 @@ async function qtHydrateDatabase(opts){
     const orderItems=await qtSupabaseTable('order_items?select=*',{accessToken:token}).catch(()=>[]);
     const deliveries=await qtSupabaseTable('deliveries?select=*',{accessToken:token}).catch(()=>[]);
     const payments=await qtSupabaseTable('payments?select=*',{accessToken:token}).catch(()=>[]);
-    QT_DB_CACHE.qt_orders=(Array.isArray(orders)?orders:[]).map(r=>{const o=qtOrderFromRow(r);o.shopId=profileMaps.shopById.get(r.shop_id)||o.shopId;o.items=(orderItems||[]).filter(i=>i.order_id===r.id).map(i=>({id:i.id,name:i.item_name,description:i.description,qty:Number(i.quantity||1),quantity:Number(i.quantity||1),price:Number(i.unit_price||0),unitPrice:Number(i.unit_price||0),totalPrice:Number(i.total_price||0),itemType:i.item_type}));const d=(deliveries||[]).find(x=>x.order_id===r.id);if(d)o.delivery={id:d.id,status:d.status,riderProfileId:d.rider_id,distanceKm:Number(d.distance_km||0),deliveryFee:Number(d.delivery_fee||0),pickedUpAt:d.picked_up_at?new Date(d.picked_up_at).getTime():null,deliveredAt:d.delivered_at?new Date(d.delivered_at).getTime():null,note:d.note||''};const pay=(payments||[]).find(x=>x.order_id===r.id);if(pay)o.payment={id:pay.id,amount:Number(pay.amount||0),method:pay.payment_method,status:pay.status,reference:pay.transaction_reference,paidAt:pay.paid_at?new Date(pay.paid_at).getTime():null,note:pay.note||''};return o;});
+    QT_DB_CACHE.qt_orders=(Array.isArray(orders)?orders:[]).map(r=>{const o=qtOrderFromRow(r);o.shopId=profileMaps.shopById.get(r.shop_id)||o.shopId;o.items=(orderItems||[]).filter(i=>i.order_id===r.id).map(i=>({id:i.id,productId:i.product_id||null,name:i.item_name,description:i.description,qty:Number(i.quantity||1),quantity:Number(i.quantity||1),price:Number(i.unit_price||0),unitPrice:Number(i.unit_price||0),totalPrice:Number(i.total_price||0),itemType:i.item_type,image:i.item_image||null}));const d=(deliveries||[]).find(x=>x.order_id===r.id);if(d)o.delivery={id:d.id,status:d.status,riderProfileId:d.rider_id,distanceKm:Number(d.distance_km||0),deliveryFee:Number(d.delivery_fee||0),pickedUpAt:d.picked_up_at?new Date(d.picked_up_at).getTime():null,deliveredAt:d.delivered_at?new Date(d.delivered_at).getTime():null,note:d.note||''};const pay=(payments||[]).find(x=>x.order_id===r.id);if(pay)o.payment={id:pay.id,amount:Number(pay.amount||0),method:pay.payment_method,status:pay.status,reference:pay.transaction_reference,paidAt:pay.paid_at?new Date(pay.paid_at).getTime():null,note:pay.note||''};return o;});
     try{const ns=await qtSupabaseTable('notifications?select=*',{accessToken:token}); QT_DB_CACHE.qt_notifications=(Array.isArray(ns)?ns:[]).map(n=>({id:n.id,userId:n.user_id,title:n.title||'การแจ้งเตือน',message:QueueGoOrderNumber.replaceInText(n.message||''),body:QueueGoOrderNumber.replaceInText(n.message||''),link:qtNotifLinkFromRow(n),type:n.type||'system',referenceId:n.reference_id||null,read:n.is_read===true,readAt:n.is_read?new Date(n.created_at).getTime():null,createdAt:new Date(n.created_at).getTime()}));}catch(e){ if(!Array.isArray(QT_DB_CACHE.qt_notifications)) QT_DB_CACHE.qt_notifications=[]; }
     qtMarkClean('qt_orders'); qtMarkClean('qt_notifications');
     if(!light){
@@ -2189,6 +2189,104 @@ function qgmStartPrepCountdown(){
  qgmUpdatePrepCountdown();
 }
 
+let qgmOrderEditDraft=null;
+
+function qgmOrderEditTotal(){
+ return (qgmOrderEditDraft?.items||[]).reduce((sum,i)=>sum+Number(i.unitPrice||0)*Number(i.qty||0),0);
+}
+function qgmOrderEditPaint(){
+ const host=document.getElementById('qgm-order-edit-list');
+ if(!host||!qgmOrderEditDraft)return;
+ host.innerHTML=qgmOrderEditDraft.items.map((i,index)=>`
+   <article class="qgm-order-edit-row">
+     <img src="${esc(img(i.image||''))}" alt="">
+     <div class="qgm-order-edit-copy"><b>${esc(i.name||'สินค้า')}</b><small>${Number(i.unitPrice||0).toLocaleString('th-TH')} บาท/ชิ้น</small></div>
+     <div class="qgm-order-edit-stepper">
+       <button type="button" onclick="qgmOrderEditQty(${index},-1)" aria-label="ลดจำนวน">−</button>
+       <strong>${Number(i.qty||1).toLocaleString('th-TH')}</strong>
+       <button type="button" onclick="qgmOrderEditQty(${index},1)" aria-label="เพิ่มจำนวน">+</button>
+     </div>
+     <button class="qgm-order-edit-remove" type="button" onclick="qgmOrderEditRemove(${index})">ลบ</button>
+   </article>`).join('')||'<div class="qgm-empty">ต้องเหลือสินค้าอย่างน้อย 1 รายการ</div>';
+ const total=document.getElementById('qgm-order-edit-total');
+ if(total)total.textContent=qgmOrderEditTotal().toLocaleString('th-TH')+' บาท';
+ const save=document.getElementById('qgm-order-edit-save');
+ if(save)save.disabled=!qgmOrderEditDraft.items.length;
+}
+window.qgmOrderEditQty=function(index,delta){
+ if(!qgmOrderEditDraft)return;
+ const item=qgmOrderEditDraft.items[index];if(!item)return;
+ item.qty=Math.max(1,Math.min(99,Number(item.qty||1)+Number(delta||0)));
+ qgmOrderEditPaint();
+};
+window.qgmOrderEditRemove=function(index){
+ if(!qgmOrderEditDraft)return;
+ qgmOrderEditDraft.items.splice(index,1);qgmOrderEditPaint();
+};
+window.qgmOrderEditAdd=function(){
+ if(!qgmOrderEditDraft)return;
+ const sel=document.getElementById('qgm-order-substitute-select'),id=sel?.value;
+ if(!id)return toast('เลือกสินค้าทดแทนก่อน');
+ if(qgmOrderEditDraft.items.some(i=>String(i.productId||'')===String(id)))return toast('สินค้านี้อยู่ในออเดอร์แล้ว');
+ const p=qgmOrderEditDraft.products.find(x=>String(x.id)===String(id));if(!p)return;
+ qgmOrderEditDraft.items.push({itemId:null,productId:p.id,name:p.name,qty:1,unitPrice:Number(p.deliveryPrice??p.price??0),image:p.image||p.image_url||''});
+ qgmOrderEditPaint();
+};
+window.qgmCloseOrderEditor=function(){
+ document.getElementById('qgm-order-edit-overlay')?.remove();
+ qgmOrderEditDraft=null;
+};
+window.qgmOpenOrderEditor=function(id){
+ const u=shopUser(),o=shopOrders(u).find(x=>String(x.id)===String(id));
+ if(!u||!o)return;
+ if(o.status!=='rider_to_shop')return toast('แก้รายการได้ก่อนเริ่มเตรียมสินค้าเท่านั้น');
+ const products=shopProducts(u).filter(p=>p.available!==false&&p.deliveryAvailable!==false);
+ qgmOrderEditDraft={
+   orderId:o.id,
+   items:(o.items||[]).map(i=>({itemId:i.id,productId:i.productId||null,name:i.name||i.itemName||'สินค้า',qty:Number(i.qty||i.quantity||1),unitPrice:Number(i.unitPrice??i.price??0),image:i.image||''})),
+   products
+ };
+ document.getElementById('qgm-order-edit-overlay')?.remove();
+ const overlay=document.createElement('section');overlay.id='qgm-order-edit-overlay';overlay.className='qgm-order-edit-overlay';
+ const options=products.map(p=>`<option value="${esc(p.id)}">${esc(p.name)} · ${Number(p.deliveryPrice??p.price??0).toLocaleString('th-TH')} บาท</option>`).join('');
+ overlay.innerHTML=`<div class="qgm-order-edit-shell">
+   <header><button type="button" onclick="qgmCloseOrderEditor()" aria-label="ปิด">‹</button><div><b>แก้ไขรายการสินค้า</b><small>${esc(displayOrderNumber(o))}</small></div><span></span></header>
+   <main>
+     <div class="qgm-order-edit-note"><b>กรณีสินค้าหมด</b><span>ลดจำนวน ลบ หรือเลือกสินค้าทดแทนจากร้านได้ก่อนเริ่มเตรียมสินค้า ยอดใหม่จะไม่เกินยอดที่ลูกค้าสั่งไว้</span></div>
+     <div id="qgm-order-edit-list"></div>
+     <section class="qgm-order-edit-add">
+       <label>เลือกสินค้าทดแทน</label>
+       <div><select id="qgm-order-substitute-select"><option value="">เลือกสินค้าจากร้าน</option>${options}</select><button type="button" onclick="qgmOrderEditAdd()">เพิ่ม</button></div>
+     </section>
+   </main>
+   <footer>
+     <div><span>ยอดค่าสินค้าใหม่</span><strong id="qgm-order-edit-total">0 บาท</strong></div>
+     <button id="qgm-order-edit-save" type="button" onclick="qgmSaveOrderEditor(this)">บันทึกการแก้ไข</button>
+   </footer>
+ </div>`;
+ document.body.appendChild(overlay);
+ qgmOrderEditPaint();
+};
+window.qgmSaveOrderEditor=async function(button){
+ const d=qgmOrderEditDraft;if(!d||!d.items.length)return;
+ button.disabled=true;
+ try{
+   const token=await qtGetAccessToken();if(!token)throw new Error('เซสชันหมดอายุ');
+   const payload=d.items.map(i=>i.itemId?{item_id:i.itemId,qty:Number(i.qty||1)}:{product_id:i.productId,qty:Number(i.qty||1)});
+   await qtSupabaseTable('rpc/qg_merchant_edit_order_items',{
+     method:'POST',accessToken:token,
+     body:{p_order_id:d.orderId,p_items:payload,p_reason:'สินค้าหมด / สินค้าทดแทน'}
+   });
+   qgmCloseOrderEditor();
+   await qtHydrateDatabase({light:true});
+   renderShopOrderModern(d.orderId);
+   toast('อัปเดตรายการสินค้าแล้ว');
+ }catch(e){
+   console.error(e);
+   toast('แก้ไขออเดอร์ไม่สำเร็จ: '+String(e.message||e).slice(0,90));
+ }finally{if(button?.isConnected)button.disabled=false}
+};
+
 window.renderShopOrderModern=function(id){
  const u=shopUser(),o=shopOrders(u).find(x=>String(x.id)===String(id));
  if(!o)return navigate('shop-orders');
@@ -2259,6 +2357,7 @@ window.renderShopOrderModern=function(id){
    ${waitingNote}
    <div class="qgm-od-actions">
      ${primary}
+     ${o.status==='rider_to_shop'?`<button class="qgm-od-secondary qgm-od-edit" type="button" onclick="qgmOpenOrderEditor('${o.id}')">แก้ไขรายการ</button>`:''}
      ${canCancel?`<button class="qgm-od-secondary" onclick="shopCancelOrder('${o.id}',this)">ยกเลิกออเดอร์</button>`:''}
      <button class="qgm-od-secondary soft" type="button" onclick="qgOpenTicketPanel('${o.id}')">แจ้งปัญหาออเดอร์นี้</button>
    </div>
@@ -2877,6 +2976,24 @@ body.qgm-app{background:#f8f9fb}
 .qgm-od-primary:disabled,.qgm-od-secondary:disabled{opacity:.6}
 .qgm-od-secondary{border:1px solid #f1c9d0;background:#fff;color:#d83b4c}
 .qgm-od-secondary.soft{border-color:#e6e8eb;color:#737982}
+.qgm-od-edit{border-color:#dfe3e8;color:#3f4650}
+.qgm-order-edit-overlay{position:fixed;z-index:1000;inset:0;background:#f7f7f8}
+.qgm-order-edit-shell{height:100dvh;display:flex;flex-direction:column;background:#f7f7f8}
+.qgm-order-edit-shell>header{flex:0 0 auto;min-height:62px;padding:calc(7px + env(safe-area-inset-top)) 14px 7px;background:#fff;border-bottom:1px solid #eceef1;display:grid;grid-template-columns:44px 1fr 44px;align-items:center}
+.qgm-order-edit-shell>header button{width:42px;height:42px;border:0;border-radius:14px;background:#fff0f3;color:#d83b4c;font-size:29px;line-height:1}
+.qgm-order-edit-shell>header div{text-align:center}.qgm-order-edit-shell>header b{display:block;font-size:15px}.qgm-order-edit-shell>header small{display:block;margin-top:2px;color:#9499a1;font-size:9px}
+.qgm-order-edit-shell>main{flex:1 1 auto;min-height:0;overflow:auto;-webkit-overflow-scrolling:touch;padding:10px 10px 150px}
+.qgm-order-edit-note,.qgm-order-edit-add{padding:12px;border:1px solid #eceef1;border-radius:17px;background:#fff}
+.qgm-order-edit-note b{display:block;font-size:12px}.qgm-order-edit-note span{display:block;margin-top:4px;color:#7d838c;font-size:9.5px;line-height:1.5}
+.qgm-order-edit-row{display:grid;grid-template-columns:48px minmax(0,1fr) auto auto;gap:9px;align-items:center;margin-top:8px;padding:10px;border:1px solid #eceef1;border-radius:17px;background:#fff}
+.qgm-order-edit-row img{width:48px;height:48px;border-radius:12px;object-fit:cover;background:#f0f1f3}.qgm-order-edit-copy{min-width:0}.qgm-order-edit-copy b{display:block;font-size:11.5px}.qgm-order-edit-copy small{display:block;margin-top:3px;color:#8b9098;font-size:8.5px}
+.qgm-order-edit-stepper{display:flex;align-items:center;gap:5px}.qgm-order-edit-stepper button{width:32px;height:32px;border:1px solid #e4e6e9;border-radius:10px;background:#fff;color:#d83b4c;font-size:18px}.qgm-order-edit-stepper strong{min-width:22px;text-align:center;font-size:11px}
+.qgm-order-edit-remove{height:32px;padding:0 9px;border:0;border-radius:10px;background:#fff1f3;color:#d83b4c;font-size:9px;font-weight:850}
+.qgm-order-edit-add{margin-top:10px}.qgm-order-edit-add label{display:block;margin-bottom:7px;font-size:10px;font-weight:850}.qgm-order-edit-add>div{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:7px}.qgm-order-edit-add select{min-width:0;height:44px;border:1px solid #e3e5e8;border-radius:12px;background:#fff;padding:0 10px;font-size:10px}.qgm-order-edit-add button{height:44px;padding:0 15px;border:0;border-radius:12px;background:#fff0f3;color:#d83b4c;font-weight:900}
+.qgm-order-edit-shell>footer{position:fixed;z-index:2;left:0;right:0;bottom:0;padding:12px 12px calc(12px + env(safe-area-inset-bottom));background:rgba(255,255,255,.98);border-top:1px solid #eceef1;box-shadow:0 -8px 26px rgba(28,24,26,.08)}
+.qgm-order-edit-shell>footer>div{display:flex;align-items:center;justify-content:space-between;margin-bottom:9px}.qgm-order-edit-shell>footer span{font-size:10px;color:#777d85}.qgm-order-edit-shell>footer strong{font-size:18px}
+.qgm-order-edit-shell>footer button{width:100%;min-height:52px;border:0;border-radius:16px;background:#f04455;color:#fff;font-weight:900;box-shadow:0 8px 20px rgba(240,68,85,.15)}
+.qgm-order-edit-shell>footer button:disabled{opacity:.5}
 @media(max-width:520px){
  .qgm-od{gap:11px}
  .qgm-od-hero{padding:17px}
