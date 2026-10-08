@@ -45,6 +45,25 @@ jobs:
           fi
       - name: Customer native catalog gate
         run: node native-android/tests/customer-catalog.cjs
+      - name: Rider native delivery flow gate
+        run: |
+          RIDER="native-android/rider-app/src/main/java/com/queuetech/queuego/rider"
+          grep -q 'qg_get_my_rider_offer' "$RIDER/RiderRepository.kt"
+          grep -q 'qg_rider_mark_arrival' "$RIDER/RiderRepository.kt"
+          grep -q 'qg_pickup_with_photo' "$RIDER/RiderRepository.kt"
+          grep -q 'qg_complete_with_photo' "$RIDER/RiderRepository.kt"
+          grep -q 'qg_market_pickup_with_photo' "$RIDER/RiderRepository.kt"
+          grep -q 'market_pickup_route_summary' "$RIDER/RiderRepository.kt"
+          grep -q 'market_rider_group_action' "$RIDER/RiderRepository.kt"
+          grep -q 'ActivityResultContracts.TakePicture' "$RIDER/RiderHomeScreen.kt"
+          grep -q 'ตรวจรายการและถ่ายรูป' "$RIDER/RiderHomeScreen.kt"
+          grep -q 'ตรวจส่งมอบและถ่ายรูป' "$RIDER/RiderHomeScreen.kt"
+          grep -q 'รับงาน · \$leftSeconds วิ' "$RIDER/RiderHomeScreen.kt"
+          if grep -R -n 'android.webkit.WebView' native-android/rider-app/src; then
+            echo "Rider Native must not contain WebView"
+            exit 1
+          fi
+
       - name: Gradle help
         run: gradle -p native-android help
       - name: Build native debug apps
