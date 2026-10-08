@@ -41,6 +41,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.queuego.shared.NativeAuth
+import com.queuego.shared.QgAccountDeletionSection
 import com.queuego.shared.QgBg
 import com.queuego.shared.QgBottomNav
 import com.queuego.shared.QgCard
@@ -610,6 +611,11 @@ private fun MerchantProfileScreen(
         Button(onClick = onSupport, modifier = Modifier.fillMaxWidth()) {
             Text("ข้อความถึง QueueGo Admin")
         }
+        Spacer(Modifier.height(10.dp))
+        QgAccountDeletionSection(
+            accessToken = auth.session.accessToken,
+            onDeleted = logout
+        )
         Spacer(Modifier.height(10.dp))
         OutlinedButton(onClick = logout, modifier = Modifier.fillMaxWidth()) { Text("ออกจากระบบ") }
     }
