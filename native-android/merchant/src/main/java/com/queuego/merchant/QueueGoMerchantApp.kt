@@ -54,6 +54,8 @@ import com.queuego.shared.QueueGoBrand
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneId
 
 @Composable
 fun QueueGoMerchantApp() {
@@ -71,6 +73,8 @@ private fun MerchantShell(auth: NativeAuth, logout: () -> Unit) {
     var orders by remember { mutableStateOf<List<MerchantOrder>>(emptyList()) }
     var products by remember { mutableStateOf<List<MerchantProduct>>(emptyList()) }
     var readiness by remember { mutableStateOf<ShopReadiness?>(null) }
+    var shopOpen by remember { mutableStateOf(true) }
+    var todayRevenue by remember { mutableStateOf(MerchantTodayRevenue(0, 0.0, 0.0, 0.0)) }
     var selectedOrder by remember { mutableStateOf<MerchantOrder?>(null) }
     var orderItems by remember { mutableStateOf<List<MerchantOrderItem>>(emptyList()) }
     var gpRate by remember { mutableStateOf(0.0) }
@@ -93,6 +97,9 @@ private fun MerchantShell(auth: NativeAuth, logout: () -> Unit) {
             if (s != null) {
                 products = api.loadProducts(auth, s.id)
                 readiness = api.readiness(auth, s.id)
+                shopOpen = runCatching { api.shopOpenState(auth, s.id) }.getOrDefault(true)
+                val today = LocalDate.now(ZoneId.of("Asia/Bangkok")).toString()
+                todayRevenue = runCatching { api.todayRevenue(auth, today) }.getOrDefault(MerchantTodayRevenue(0, 0.0, 0.0, 0.0))
                 gpRate = runCatching { api.effectiveGp(auth, s.id) }.getOrDefault(0.0)
             }
         }.onFailure { message = it.message ?: "โหลดข้อมูลร้านไม่สำเร็จ" }
@@ -165,11 +172,35 @@ private fun MerchantShell(auth: NativeAuth, logout: () -> Unit) {
                 )
             }
             when (screen) {
-                "home" -> DashboardScreen(shop, orders, readiness, loading) {
-                    selectedOrder = it
-                    orderItems = emptyList()
-                    screen = "order"
-                }
+                "home" -> DashboardScreen(
+                    shop = shop,
+                    orders = orders,
+                    readiness = readiness,
+                    loading = loading,
+                    shopOpen = shopOpen,
+                    revenue = todayRevenue,
+                    busy = busy,
+                    onToggleOpen = { next ->
+                        val currentShop = shop
+                        if (currentShop != null && !busy) {
+                            busy = true
+                            scope.launch {
+                                runCatching { api.setShopOpen(auth, currentShop, next) }
+                                    .onSuccess {
+                                        shopOpen = next
+                                        message = if (next) "เปิดร้านแล้ว" else "ปิดร้านชั่วคราวแล้ว"
+                                    }
+                                    .onFailure { message = it.message ?: "เปลี่ยนสถานะร้านไม่สำเร็จ" }
+                                busy = false
+                            }
+                        }
+                    },
+                    onOpen = {
+                        selectedOrder = it
+                        orderItems = emptyList()
+                        screen = "order"
+                    }
+                )
                 "orders" -> MerchantOrdersScreen(orders, loading) {
                     selectedOrder = it
                     orderItems = emptyList()
@@ -241,6 +272,10 @@ private fun DashboardScreen(
     orders: List<MerchantOrder>,
     readiness: ShopReadiness?,
     loading: Boolean,
+    shopOpen: Boolean,
+    revenue: MerchantTodayRevenue,
+    busy: Boolean,
+    onToggleOpen: (Boolean) -> Unit,
     onOpen: (MerchantOrder) -> Unit
 ) {
     val todaySales = orders.filter { it.status != "cancelled" }.sumOf { it.subtotal }
@@ -257,7 +292,17 @@ private fun DashboardScreen(
                 QgStatusPill(if (shop.status == "active") "เปิดใช้งาน" else shop.status, shop.status == "active")
             }
         }
-        Spacer(Modifier.height(14.dp))
+        Spacer(Modifier.height(10.dp))
+        QgCard(Modifier.fillMaxWidth()) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text(if (shopOpen) "ร้านเปิดรับออเดอร์" else "ร้านปิดชั่วคราว", fontWeight = FontWeight.ExtraBold)
+                    Text(if (shopOpen) "ลูกค้าสามารถสั่งซื้อได้" else "ลูกค้าจะเห็นร้านแต่ไม่สามารถสั่งใหม่", color = QgMuted, style = MaterialTheme.typography.bodySmall)
+                }
+                Switch(checked = shopOpen, onCheckedChange = onToggleOpen, enabled = !busy && shop != null)
+            }
+        }
+        Spacer(Modifier.height(10.dp))
         if (readiness != null && !readiness.complete) {
             QgCard(Modifier.fillMaxWidth()) {
                 Column {
@@ -268,9 +313,15 @@ private fun DashboardScreen(
             Spacer(Modifier.height(10.dp))
         }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            MetricCard("ออเดอร์วันนี้", revenue.orderCount.toString(), Modifier.weight(1f))
+            MetricCard("ยอดขาย", "฿" + "%.0f".format(revenue.grossSales), Modifier.weight(1f))
+            MetricCard("เงินสดรับ", "฿" + "%.0f".format(revenue.cashReceived), Modifier.weight(1f))
+        }
+        Spacer(Modifier.height(8.dp))
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             MetricCard("ออเดอร์ใหม่", orders.count { it.status == "pending" }.toString(), Modifier.weight(1f))
             MetricCard("กำลังทำ", orders.count { it.status in setOf("preparing", "ready") }.toString(), Modifier.weight(1f))
-            MetricCard("ยอดสินค้า", "฿" + "%.0f".format(todaySales), Modifier.weight(1f))
+            MetricCard("GP วันนี้", "฿" + "%.0f".format(revenue.gpDue), Modifier.weight(1f))
         }
         Spacer(Modifier.height(16.dp))
         QgSectionTitle("ออเดอร์ที่ต้องจัดการ", "ข้อมูลจริงจาก QueueGo Production")
