@@ -139,6 +139,17 @@ class QueueGoApi(
     suspend fun rpc(accessToken: String, functionName: String, body: JSONObject = JSONObject()): String =
         request("POST", "/rest/v1/rpc/$functionName", accessToken, body.toString())
 
+    suspend fun edgeFunction(
+        accessToken: String,
+        functionName: String,
+        body: JSONObject = JSONObject(),
+    ): String = request(
+        method = "POST",
+        path = "/functions/v1/$functionName",
+        accessToken = accessToken,
+        body = body.toString(),
+    )
+
     suspend fun rest(
         accessToken: String,
         path: String,
