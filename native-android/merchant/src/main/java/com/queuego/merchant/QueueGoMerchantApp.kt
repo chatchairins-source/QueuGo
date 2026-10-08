@@ -261,6 +261,40 @@ private fun MerchantShell(auth: NativeAuth, logout: () -> Unit) {
                                 busy = false
                             }
                         }
+                    },
+                    onUpdate = { product, name, desc, price ->
+                        val s = shop
+                        if (s == null) {
+                            message = "ยังไม่พบข้อมูลร้าน"
+                        } else {
+                            busy = true
+                            scope.launch {
+                                runCatching {
+                                    api.updateProduct(auth, s.id, product, name, desc, price, gpRate)
+                                }.onSuccess {
+                                    products = api.loadProducts(auth, s.id)
+                                    message = "บันทึกสินค้าแล้ว"
+                                }.onFailure { message = it.message }
+                                busy = false
+                            }
+                        }
+                    },
+                    onDelete = { product ->
+                        val s = shop
+                        if (s == null) {
+                            message = "ยังไม่พบข้อมูลร้าน"
+                        } else {
+                            busy = true
+                            scope.launch {
+                                runCatching { api.deleteOrArchiveProduct(auth, product.id) }
+                                    .onSuccess {
+                                        products = api.loadProducts(auth, s.id)
+                                        message = "นำสินค้าออกจากร้านแล้ว"
+                                    }
+                                    .onFailure { message = it.message }
+                                busy = false
+                            }
+                        }
                     }
                 )
                 "laundry" -> MerchantLaundryScreen(auth)
