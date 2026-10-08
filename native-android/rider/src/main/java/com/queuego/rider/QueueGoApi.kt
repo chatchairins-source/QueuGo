@@ -127,7 +127,7 @@ class QueueGoApi {
             "/rest/v1/rider_profiles?select=id,metadata&user_id=eq." + enc(auth.user.id) + "&limit=1",
             auth.session.accessToken
         )
-        if (profiles.length() == 0) return@withContext RiderSnapshot(false, null, null)
+        if (profiles.length() == 0) return@withContext RiderSnapshot(false, null, null, emptyList())
 
         val profile = profiles.getJSONObject(0)
         val profileId = profile.getString("id")
@@ -144,7 +144,24 @@ class QueueGoApi {
                 "&order=created_at.desc&limit=1",
             auth.session.accessToken
         )
-        val active = if (activeRows.length() > 0) parseJob(activeRows.getJSONObject(0)) else null
+        var active = if (activeRows.length() > 0) parseJob(activeRows.getJSONObject(0)) else null
+        var marketPickups = emptyList<MarketPickup>()
+        if (active?.marketOrderId != null) {
+            marketPickups = marketPickupRoute(auth, active.marketOrderId)
+            val parents = requestArray(
+                "GET",
+                "/rest/v1/market_orders?select=delivery_fee,rider_bonus&id=eq." +
+                    enc(active.marketOrderId) + "&limit=1",
+                auth.session.accessToken
+            )
+            if (parents.length() > 0) {
+                val parent = parents.getJSONObject(0)
+                active = active.copy(
+                    deliveryFee = parent.doubleOrZero("delivery_fee") +
+                        parent.doubleOrZero("rider_bonus")
+                )
+            }
+        }
 
         var offered: RiderJob? = null
         if (active == null && online) {
@@ -160,7 +177,7 @@ class QueueGoApi {
                 if (rows.length() > 0) offered = parseJob(rows.getJSONObject(0))
             }
         }
-        RiderSnapshot(online, active, offered)
+        RiderSnapshot(online, active, offered, marketPickups)
     }
 
     suspend fun orderItems(auth: QueueGoAuth, orderId: String): List<RiderItem> =
@@ -193,11 +210,11 @@ class QueueGoApi {
             }
         }
 
-    suspend fun acceptOffer(auth: QueueGoAuth, orderId: String) = withContext(Dispatchers.IO) {
+    suspend fun acceptOffer(auth: QueueGoAuth, job: RiderJob) = withContext(Dispatchers.IO) {
         actionOnce(
             auth,
-            "claim",
-            JSONObject().put("p_order_id", orderId)
+            if (job.marketOrderId != null) "market_claim" else "claim",
+            JSONObject().put("p_order_id", job.id)
         )
     }
 
@@ -224,12 +241,22 @@ class QueueGoApi {
         rpc("qg_rider_mark_arrival", auth.session.accessToken, body)
     }
 
-    suspend fun startDelivery(auth: QueueGoAuth, orderId: String) = withContext(Dispatchers.IO) {
-        actionOnce(
-            auth,
-            "order",
-            JSONObject().put("p_order_id", orderId).put("p_action", "deliver")
-        )
+    suspend fun startDelivery(auth: QueueGoAuth, job: RiderJob) = withContext(Dispatchers.IO) {
+        if (job.marketOrderId != null) {
+            actionOnce(
+                auth,
+                "market",
+                JSONObject()
+                    .put("p_market_order_id", job.marketOrderId)
+                    .put("p_action", "deliver")
+            )
+        } else {
+            actionOnce(
+                auth,
+                "order",
+                JSONObject().put("p_order_id", job.id).put("p_action", "deliver")
+            )
+        }
     }
 
     suspend fun pickupWithPhoto(
@@ -252,18 +279,74 @@ class QueueGoApi {
     suspend fun completeWithPhoto(
         context: Context,
         auth: QueueGoAuth,
-        orderId: String,
+        job: RiderJob,
+        photoUri: Uri,
+        latitude: Double?,
+        longitude: Double?
+    ) = withContext(Dispatchers.IO) {
+        val path = uploadEvidence(context, auth, photoUri)
+        if (job.marketOrderId != null) {
+            val body = JSONObject()
+                .put("p_market_order_id", job.marketOrderId)
+                .put("p_photo_path", path)
+                .putNullable("p_lat", latitude)
+                .putNullable("p_lng", longitude)
+            rpc("qg_complete_market_with_photo", auth.session.accessToken, body)
+        } else {
+            val body = JSONObject()
+                .put("p_order_id", job.id)
+                .put("p_photo_path", path)
+                .putNullable("p_lat", latitude)
+                .putNullable("p_lng", longitude)
+            rpc("qg_complete_with_photo", auth.session.accessToken, body)
+        }
+    }
+
+    suspend fun marketPickupWithPhoto(
+        context: Context,
+        auth: QueueGoAuth,
+        pickup: MarketPickup,
         photoUri: Uri,
         latitude: Double?,
         longitude: Double?
     ) = withContext(Dispatchers.IO) {
         val path = uploadEvidence(context, auth, photoUri)
         val body = JSONObject()
-            .put("p_order_id", orderId)
+            .put("p_pickup_id", pickup.pickupId)
+            .put("p_amount", pickup.shopAmount)
             .put("p_photo_path", path)
             .putNullable("p_lat", latitude)
             .putNullable("p_lng", longitude)
-        rpc("qg_complete_with_photo", auth.session.accessToken, body)
+        rpc("qg_market_pickup_with_photo", auth.session.accessToken, body)
+    }
+
+    private fun marketPickupRoute(auth: QueueGoAuth, marketOrderId: String): List<MarketPickup> {
+        val rows = rpc(
+            "market_pickup_route_summary",
+            auth.session.accessToken,
+            JSONObject().put("p_market_order_id", marketOrderId)
+        )
+        val array = when (rows) {
+            is JSONArray -> rows
+            is JSONObject -> JSONArray().put(rows)
+            else -> JSONArray()
+        }
+        return buildList {
+            for (i in 0 until array.length()) {
+                val row = array.optJSONObject(i) ?: continue
+                add(
+                    MarketPickup(
+                        pickupId = row.optString("pickup_id"),
+                        status = row.optString("status"),
+                        shopName = row.optString("shop_name").ifBlank { "ร้านค้า" },
+                        shopAddress = row.optString("shop_address").takeIf { it.isNotBlank() },
+                        shopAmount = row.doubleOrZero("shop_amount"),
+                        latitude = row.doubleOrNull("latitude"),
+                        longitude = row.doubleOrNull("longitude")
+                    )
+                )
+            }
+        }
     }
 
     private fun actionOnce(auth: QueueGoAuth, kind: String, payload: JSONObject): Any {

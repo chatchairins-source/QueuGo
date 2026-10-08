@@ -29,6 +29,19 @@ data class RiderItem(
     val imageUrl: String?
 )
 
+data class MarketPickup(
+    val pickupId: String,
+    val status: String,
+    val shopName: String,
+    val shopAddress: String?,
+    val shopAmount: Double,
+    val latitude: Double?,
+    val longitude: Double?
+) {
+    val done: Boolean
+        get() = status.uppercase() == "PICKED_UP" || status.uppercase() == "CANCELLED"
+}
+
 data class RiderJob(
     val id: String,
     val orderNumber: String?,
@@ -67,5 +80,6 @@ data class RiderJob(
 data class RiderSnapshot(
     val online: Boolean,
     val activeJob: RiderJob?,
-    val offeredJob: RiderJob?
+    val offeredJob: RiderJob?,
+    val marketPickups: List<MarketPickup> = emptyList()
 )

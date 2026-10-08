@@ -219,6 +219,7 @@ private fun RiderHome(
     var verifyMode by remember { mutableStateOf<String?>(null) }
     var verifyJob by remember { mutableStateOf<RiderJob?>(null) }
     var verifyItems by remember { mutableStateOf<List<RiderItem>>(emptyList()) }
+    var verifyMarketPickup by remember { mutableStateOf<MarketPickup?>(null) }
     var photoUri by remember { mutableStateOf<Uri?>(null) }
     var pendingCameraUri by remember { mutableStateOf<Uri?>(null) }
 
@@ -306,10 +307,21 @@ private fun RiderHome(
         }
     }
 
+    fun openMarketPickupVerification(job: RiderJob, pickup: MarketPickup) {
+        verifyMode = "marketPickup"
+        verifyJob = job
+        verifyMarketPickup = pickup
+        verifyItems = emptyList()
+        photoUri = null
+        pendingCameraUri = null
+        actionMessage = null
+    }
+
     fun closeVerification() {
         verifyMode = null
         verifyJob = null
         verifyItems = emptyList()
+        verifyMarketPickup = null
         photoUri = null
         pendingCameraUri = null
     }
@@ -332,6 +344,7 @@ private fun RiderHome(
             modifier = modifier,
             mode = verifyMode!!,
             job = verifyJob!!,
+            marketPickup = verifyMarketPickup,
             items = verifyItems,
             photoReady = photoUri != null,
             busy = actionBusy,
@@ -349,8 +362,8 @@ private fun RiderHome(
                 actionMessage = null
                 scope.launch {
                     val result = runCatching {
-                        if (verifyMode == "pickup") {
-                            api.pickupWithPhoto(
+                        when (verifyMode) {
+                            "pickup" -> api.pickupWithPhoto(
                                 context,
                                 auth,
                                 job.id,
@@ -358,11 +371,18 @@ private fun RiderHome(
                                 location?.first,
                                 location?.second
                             )
-                        } else {
-                            api.completeWithPhoto(
+                            "marketPickup" -> api.marketPickupWithPhoto(
                                 context,
                                 auth,
-                                job.id,
+                                verifyMarketPickup ?: error("ไม่พบจุดรับตลาด"),
+                                uri,
+                                location?.first,
+                                location?.second
+                            )
+                            else -> api.completeWithPhoto(
+                                context,
+                                auth,
+                                job,
                                 uri,
                                 location?.first,
                                 location?.second
@@ -370,10 +390,10 @@ private fun RiderHome(
                         }
                     }
                     result.onSuccess {
-                        actionMessage = if (verifyMode == "pickup") {
-                            "รับสินค้าแล้ว"
-                        } else {
-                            "จัดส่งสำเร็จ"
+                        actionMessage = when (verifyMode) {
+                            "pickup" -> "รับสินค้าแล้ว"
+                            "marketPickup" -> "รับสินค้าจุดนี้แล้ว"
+                            else -> "จัดส่งสำเร็จ"
                         }
                         if (verifyMode == "delivery") RiderReturnService.stop(context)
                         closeVerification()
@@ -429,13 +449,57 @@ private fun RiderHome(
                 Spacer(Modifier.height(12.dp))
                 when {
                     current.activeJob != null -> {
+                        val activeJob = current.activeJob
                         ReturnControlCard(
                             overlayAllowed = Settings.canDrawOverlays(context),
                             onConfigure = { configureReturnControl() }
                         )
                         Spacer(Modifier.height(10.dp))
+                        if (activeJob.marketOrderId != null && activeJob.status != "in_progress") {
+                            MarketPickupPanel(
+                                job = activeJob,
+                                pickups = current.marketPickups,
+                                busy = actionBusy,
+                                onNavigate = { pickup ->
+                                    openNavigation(
+                                        context,
+                                        activeJob.copy(
+                                            status = "ready",
+                                            pickupAddress = pickup.shopAddress,
+                                            pickupLat = pickup.latitude,
+                                            pickupLng = pickup.longitude
+                                        )
+                                    )
+                                },
+                                onVerify = { pickup ->
+                                    openMarketPickupVerification(activeJob, pickup)
+                                },
+                                onStartDelivery = {
+                                    actionBusy = true
+                                    scope.launch {
+                                        runCatching { api.startDelivery(auth, activeJob) }
+                                            .onSuccess {
+                                                actionMessage = "รับของครบแล้ว · เริ่มจัดส่ง"
+                                                val updated = runCatching { api.riderSnapshot(auth) }.getOrNull()
+                                                if (updated != null) snapshot = updated
+                                                openNavigation(context, activeJob.copy(status = "in_progress"))
+                                            }
+                                            .onFailure {
+                                                actionMessage = it.message ?: "เริ่มจัดส่งไม่สำเร็จ"
+                                            }
+                                        actionBusy = false
+                                    }
+                                }
+                            )
+                            Spacer(Modifier.height(10.dp))
+                        }
                         ActiveJobCard(
-                            job = current.activeJob,
+                            job = if (
+                                activeJob.marketOrderId != null &&
+                                activeJob.status != "in_progress" &&
+                                current.marketPickups.isNotEmpty() &&
+                                current.marketPickups.all { it.done }
+                            ) activeJob.copy(status = "picked_up") else activeJob,
                             busy = actionBusy,
                             onNavigate = { openNavigation(context, current.activeJob) },
                             onArriveShop = {
@@ -466,7 +530,7 @@ private fun RiderHome(
                             onStartDelivery = {
                                 actionBusy = true
                                 scope.launch {
-                                    runCatching { api.startDelivery(auth, current.activeJob.id) }
+                                    runCatching { api.startDelivery(auth, current.activeJob) }
                                         .onSuccess {
                                             actionMessage = "เริ่มจัดส่งแล้ว"
                                             val updated = runCatching { api.riderSnapshot(auth) }.getOrNull()
@@ -511,13 +575,9 @@ private fun RiderHome(
                             job = current.offeredJob,
                             busy = actionBusy,
                             onAccept = {
-                                if (current.offeredJob.marketOrderId != null) {
-                                    actionMessage = "งานตลาดหลายร้านจะย้ายเข้า Native ในชุดถัดไป"
-                                    return@OfferCard
-                                }
                                 actionBusy = true
                                 scope.launch {
-                                    runCatching { api.acceptOffer(auth, current.offeredJob.id) }
+                                    runCatching { api.acceptOffer(auth, current.offeredJob) }
                                         .onSuccess {
                                             actionMessage = "รับงานสำเร็จ"
                                             snapshot = runCatching { api.riderSnapshot(auth) }.getOrNull()
@@ -620,6 +680,64 @@ private fun OfferCard(
 }
 
 @Composable
+private fun MarketPickupPanel(
+    job: RiderJob,
+    pickups: List<MarketPickup>,
+    busy: Boolean,
+    onNavigate: (MarketPickup) -> Unit,
+    onVerify: (MarketPickup) -> Unit,
+    onStartDelivery: () -> Unit
+) {
+    val pending = pickups.filter { !it.done }
+    Card(Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(16.dp)) {
+            Text("รับของหลายร้าน", fontWeight = FontWeight.Bold)
+            Text(job.numberLabel + " · รับแล้ว " + (pickups.size - pending.size) + "/" + pickups.size + " จุด")
+            Spacer(Modifier.height(10.dp))
+
+            pickups.forEachIndexed { index, pickup ->
+                Text(
+                    "จุดรับ " + (index + 1) + " · " + pickup.shopName,
+                    fontWeight = FontWeight.SemiBold
+                )
+                if (!pickup.shopAddress.isNullOrBlank()) Text(pickup.shopAddress)
+                Text("ยอดร้าน ฿" + "%.0f".format(pickup.shopAmount))
+                Spacer(Modifier.height(6.dp))
+                if (pickup.done) {
+                    Text(
+                        if (pickup.status.uppercase() == "CANCELLED") "ยกเลิกจุดรับนี้" else "รับสินค้าแล้ว ✓",
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                } else {
+                    Row(Modifier.fillMaxWidth()) {
+                        OutlinedButton(
+                            onClick = { onNavigate(pickup) },
+                            enabled = !busy && pickup.latitude != null && pickup.longitude != null,
+                            modifier = Modifier.weight(1f)
+                        ) { Text("นำทาง") }
+                        Spacer(Modifier.width(8.dp))
+                        Button(
+                            onClick = { onVerify(pickup) },
+                            enabled = !busy,
+                            modifier = Modifier.weight(1f)
+                        ) { Text("ถ่ายรูปและรับ") }
+                    }
+                }
+                Spacer(Modifier.height(12.dp))
+            }
+
+            if (pickups.isNotEmpty() && pending.isEmpty()) {
+                Button(
+                    onClick = onStartDelivery,
+                    enabled = !busy,
+                    modifier = Modifier.fillMaxWidth()
+                ) { Text("รับครบแล้ว · เริ่มจัดส่ง") }
+            }
+        }
+    }
+}
+
+@Composable
 private fun ActiveJobCard(
     job: RiderJob,
     busy: Boolean,
@@ -702,6 +820,7 @@ private fun VerificationScreen(
     modifier: Modifier,
     mode: String,
     job: RiderJob,
+    marketPickup: MarketPickup?,
     items: List<RiderItem>,
     photoReady: Boolean,
     busy: Boolean,
@@ -711,27 +830,42 @@ private fun VerificationScreen(
     onConfirm: () -> Unit
 ) {
     val pickup = mode == "pickup"
+    val marketPickupMode = mode == "marketPickup"
     Column(
         modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp)
     ) {
         OutlinedButton(onClick = onBack, enabled = !busy) { Text("ย้อนกลับ") }
         Spacer(Modifier.height(14.dp))
         Text(
-            if (pickup) "ตรวจสอบรายการและถ่ายรูป" else "ตรวจสอบและส่งมอบสินค้า",
+            when {
+                marketPickupMode -> "ตรวจจุดรับและถ่ายรูป"
+                pickup -> "ตรวจสอบรายการและถ่ายรูป"
+                else -> "ตรวจสอบและส่งมอบสินค้า"
+            },
             style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.Bold
         )
         Text(job.numberLabel)
         Text(
-            if (pickup) {
-                "เช็กชื่อสินค้าและจำนวนให้ครบ แล้วถ่ายรูปหลักฐานในหน้าเดียว"
-            } else {
-                "ตรวจรายการและถ่ายรูปตอนส่งสินค้าในหน้าเดียว"
+            when {
+                marketPickupMode -> "ตรวจร้านและยอดที่ต้องรับสินค้า แล้วถ่ายรูปหลักฐานในหน้าเดียว"
+                pickup -> "เช็กชื่อสินค้าและจำนวนให้ครบ แล้วถ่ายรูปหลักฐานในหน้าเดียว"
+                else -> "ตรวจรายการและถ่ายรูปตอนส่งสินค้าในหน้าเดียว"
             }
         )
+        if (marketPickupMode && marketPickup != null) {
+            Spacer(Modifier.height(10.dp))
+            Card(Modifier.fillMaxWidth()) {
+                Column(Modifier.padding(14.dp)) {
+                    Text(marketPickup.shopName, fontWeight = FontWeight.Bold)
+                    if (!marketPickup.shopAddress.isNullOrBlank()) Text(marketPickup.shopAddress)
+                    Text("ยอดร้าน ฿" + "%.0f".format(marketPickup.shopAmount))
+                }
+            }
+        }
         Spacer(Modifier.height(14.dp))
 
-        Card(Modifier.fillMaxWidth()) {
+        if (!marketPickupMode) Card(Modifier.fillMaxWidth()) {
             Column(Modifier.padding(14.dp)) {
                 Text("รายการสินค้า", fontWeight = FontWeight.Bold)
                 if (items.isEmpty()) {
@@ -751,14 +885,18 @@ private fun VerificationScreen(
         Card(Modifier.fillMaxWidth()) {
             Column(Modifier.padding(14.dp)) {
                 Text(
-                    if (pickup) "รูปตอนรับสินค้า · จำเป็น" else "รูปตอนส่งสินค้า · จำเป็น",
+                    when {
+                        marketPickupMode -> "รูปตอนรับสินค้าจุดนี้ · จำเป็น"
+                        pickup -> "รูปตอนรับสินค้า · จำเป็น"
+                        else -> "รูปตอนส่งสินค้า · จำเป็น"
+                    },
                     fontWeight = FontWeight.Bold
                 )
                 Text(
-                    if (pickup) {
-                        "ให้เห็นสินค้าที่ตรวจรับจากร้านชัดเจน"
-                    } else {
-                        "ให้เห็นสินค้าและจุดส่งชัดเจน ไม่ต้องถ่ายหน้าลูกค้า"
+                    when {
+                        marketPickupMode -> "ให้เห็นสินค้าที่รับจากร้านนี้ชัดเจน"
+                        pickup -> "ให้เห็นสินค้าที่ตรวจรับจากร้านชัดเจน"
+                        else -> "ให้เห็นสินค้าและจุดส่งชัดเจน ไม่ต้องถ่ายหน้าลูกค้า"
                     }
                 )
                 Spacer(Modifier.height(10.dp))
@@ -789,7 +927,13 @@ private fun VerificationScreen(
             if (busy) {
                 CircularProgressIndicator()
             } else {
-                Text(if (pickup) "ยืนยันรับสินค้า" else "ยืนยันส่งสินค้า")
+                Text(
+                    when {
+                        marketPickupMode -> "ยืนยันรับสินค้าจุดนี้"
+                        pickup -> "ยืนยันรับสินค้า"
+                        else -> "ยืนยันส่งสินค้า"
+                    }
+                )
             }
         }
         Spacer(Modifier.height(30.dp))
