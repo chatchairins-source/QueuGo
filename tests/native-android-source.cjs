@@ -21,6 +21,7 @@ for(const p of [
   'customer/src/main/java/com/queuego/customer/CustomerLaundryApi.kt',
   'customer/src/main/java/com/queuego/customer/CustomerExtras.kt',
   'customer/src/main/java/com/queuego/customer/CustomerSupportScreen.kt',
+  'customer/src/main/java/com/queuego/customer/CustomerChat.kt',
   'merchant/src/main/java/com/queuego/merchant/QueueGoMerchantApp.kt',
   'merchant/src/main/java/com/queuego/merchant/MerchantApi.kt',
   'merchant/src/main/java/com/queuego/merchant/MerchantLaundryApi.kt',
@@ -60,6 +61,8 @@ ok(source.includes('notifications?select=id,title,message,type,reference_id,is_r
 ok(source.includes('qg_support_tickets?select=id,category,details,status,order_id,admin_note,created_at')&&source.includes('qg_create_ticket'),'Customer native support must use production ticket RPC');
 ok(source.includes('qg_customer_order_context')&&source.includes('CustomerTrackingRider'),'Customer native tracking must use production order context');
 ok(source.includes('qg_customer_cancel_order'),'Customer native cancellation must use production RPC');
+ok(source.includes('qg_chat_moderation_state')&&source.includes('qg_accept_ugc_terms')&&source.includes('qg_block_chat_counterpart')&&source.includes('qg_report_chat'),'Customer native chat must preserve UGC safety RPCs');
+ok(source.includes('order_chat_messages?select=id,sender_id,message,created_at'),'Customer native chat must use production chat table');
 ok(source.includes('CustomerSearchScreen')&&source.includes('QgNavItem("search"'),'Customer native must preserve global search navigation');
 ok(source.includes('qg_merchant_action_once'),'Merchant native order actions must stay idempotent');
 ok(source.includes('get_my_shop_orders'),'Merchant native Orders must use production order source');
