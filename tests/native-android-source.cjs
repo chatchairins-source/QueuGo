@@ -14,7 +14,7 @@ for(const p of [
 
 const gradle=read('rider/build.gradle.kts');
 ok(gradle.includes('applicationId = "com.queuego.rider"'),'Rider package id');
-ok(/compileSdk\s*=\s*37/.test(gradle),'compileSdk 37');
+ok(/compileSdk\s*=\s*36/.test(gradle),'compileSdk 36');
 ok(/targetSdk\s*=\s*36/.test(gradle),'targetSdk 36');
 
 const all=[];
