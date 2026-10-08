@@ -1,6 +1,6 @@
 const fs=require('fs'),path=require('path'),assert=require('assert');
 const read=p=>fs.readFileSync(path.resolve(__dirname,'..',p),'utf8');
-const merchant=read('merchant/index.html'),admin=read('admin/index.html');
+const merchant=read('merchant/index.html'),admin=read('admin/index.html'),adminLocations=read('admin/locations.js'),adminMarket=read('admin/market.js');
 const v1=read('supabase/migrations/20261008030941_store_readiness_safe_archive_v1.sql');
 const reapply=read('supabase/migrations/20261008031227_store_reapplication_after_archive_v1.sql');
 const backup=read('supabase/migrations/20261008031652_store_lifecycle_backup_20261008.sql');
@@ -10,6 +10,8 @@ const overview=read('supabase/migrations/20261008033600_store_admin_readiness_ov
 const reapplyV5=read('supabase/migrations/20261008035002_store_reapplication_generated_columns_fix_v5.sql');
 const reapplyV6=read('supabase/migrations/20261008035409_store_reapplication_role_guard_v6.sql');
 const reconcile=read('supabase/migrations/20261008034157_store_readiness_legacy_reconcile_v4.sql');
+const statusBackup=read('supabase/migrations/20261008040547_store_status_cascade_backup_20261008.sql');
+const v7=read('supabase/migrations/20261008040628_store_lifecycle_status_cascade_hardening_v7.sql');
 let checks=0;const ok=(v,m)=>{assert.ok(v,m);checks++};
 
 // Case A/B: readiness is based on real store data, media, location and sellable catalog — never a fake/test order.
@@ -59,6 +61,22 @@ ok(reapplyV6.includes("public.get_my_role() is distinct from 'shop'")&&reapplyV6
 ok(merchant.includes('qgmStartNewStoreApplication'),'Merchant UI must expose fresh application after archive');
 ok(admin.includes("if(u.type==='shop')return qgAdminArchiveShop(id)"),'Legacy Admin delete entry must route shops to safe archive');
 
+// Current-profile resolution after archive/reapplication.
+ok(!admin.includes('shop_profiles?on_conflict=user_id'),'Admin cache must never recreate a shop through the retired user_id upsert');
+ok(admin.includes("shop_profiles?select=id&user_id=eq.'+encodeURIComponent(u.id)+'&archived_at=is.null&order=created_at.desc&limit=1"),'Admin shop persistence must target the current non-archived profile');
+ok(admin.includes("shop_profiles?select=id,user_id&archived_at=is.null"),'Admin open-state refresh must ignore archived profiles');
+ok(admin.includes("shop_profiles?select=id&user_id=eq.'+encodeURIComponent(id)+'&archived_at=is.null&order=created_at.desc&limit=1"),'Admin open/close action must resolve the current profile');
+ok(adminLocations.includes("kind==='shop_user'?'&archived_at=is.null&order=created_at.desc':''"),'Admin location editor must resolve the current profile for a merchant user');
+ok(adminMarket.includes('market_membership_status=eq.pending&archived_at=is.null'),'Market review must ignore archived merchant profiles');
+ok(merchant.includes("shop_profiles?select=user_id,shop_name&user_id=in.('+ids.map(encodeURIComponent).join(',')+')&archived_at=is.null"),'Merchant support lookup must use the current store name');
+
+// Suspension/restore must respect lifecycle instead of bypassing approval or mutating archived history.
+ok(statusBackup.includes('store_status_cascade_backup_20261008'),'Status cascade definitions must be backed up before replacement');
+ok(v7.includes("where user_id=new.id and archived_at is null"),'User status cascade must never mutate archived shop history');
+ok(v7.includes("when onboarding_status='approved' then 'active'")&&v7.includes("else 'pending'"),'Account restore must not activate an unapproved shop');
+ok(v7.includes("old.onboarding_status='approved'")&&v7.includes("old.status is distinct from 'suspended'")&&v7.includes('SHOP_RESTORE_REQUIRES_APPROVED_SUSPENSION'),'Only a suspended approved store may use the restore path');
+ok(v7.includes('SHOP_NOT_READY'),'Restored approved stores must still pass readiness');
+
 // Case G: public/customer visibility only active + approved + not archived.
 ok(v3.includes("sp.status='active'")&&v3.includes("sp.archived_at is null")&&v3.includes("sp.onboarding_status='approved'"),'Authenticated product visibility must require active approved store');
 ok(v3.includes('users_guest_active_shops')&&v3.includes('users_customer_select_shops'),'Public/user shop visibility must be hardened');
@@ -83,4 +101,4 @@ for(const token of ["['ready','พร้อมใช้งาน']","['pending_r
 // Schema/source-of-truth must contain initial lifecycle migration as well as hardening.
 ok(v1.includes('onboarding_status')&&v1.includes('submitted_for_review_at')&&v1.includes('archived_at'),'Lifecycle columns must be tracked in GitHub migrations');
 
-console.log(JSON.stringify({checks,failures:0,scope:'Store readiness, approval, archive, reapplication, legacy reconcile and public visibility A-G'}));
+console.log(JSON.stringify({checks,failures:0,scope:'Store readiness, approval, archive, reapplication, current-profile resolution, lifecycle restore and public visibility A-G'}));
