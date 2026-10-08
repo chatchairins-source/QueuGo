@@ -2,6 +2,7 @@ package com.queuetech.queuego.rider
 
 import android.Manifest
 import android.content.pm.PackageManager
+import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
@@ -44,9 +45,23 @@ fun RiderHomeScreen(
     viewModel: RiderViewModel,
     onLogout: () -> Unit,
     onNavigate: (Double, Double, String) -> Unit,
+    onCreateCaptureUri: () -> Uri,
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
+    var pendingCaptureUri by remember { mutableStateOf<Uri?>(null) }
+
+    val cameraLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.TakePicture(),
+    ) { success ->
+        val uri = pendingCaptureUri
+        if (success && uri != null) {
+            viewModel.proofPhotoCaptured(uri.toString())
+        } else {
+            viewModel.setError("ไม่ได้บันทึกรูป กรุณาถ่ายใหม่")
+        }
+        pendingCaptureUri = null
+    }
 
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions(),
@@ -73,6 +88,22 @@ fun RiderHomeScreen(
                     Manifest.permission.ACCESS_FINE_LOCATION,
                 ),
             )
+        }
+    }
+
+    fun captureProof() {
+        val uri = runCatching { onCreateCaptureUri() }.getOrElse {
+            viewModel.setError(it.message ?: "เปิดกล้องไม่สำเร็จ")
+            return
+        }
+        pendingCaptureUri = uri
+        cameraLauncher.launch(uri)
+    }
+
+    state.navigationRequest?.let { request ->
+        LaunchedEffect(request.id) {
+            onNavigate(request.latitude, request.longitude, request.label)
+            viewModel.navigationHandled()
         }
     }
 
@@ -167,10 +198,25 @@ fun RiderHomeScreen(
                     )
                 }
 
+                state.proof != null && state.activeJob != null -> {
+                    ProofCard(
+                        proof = state.proof!!,
+                        job = state.activeJob!!,
+                        onCapture = ::captureProof,
+                        onSubmit = viewModel::submitProof,
+                        onBack = viewModel::closeProof,
+                    )
+                }
+
                 state.activeJob != null -> {
                     ActiveJobCard(
                         job = state.activeJob!!,
+                        busy = state.actionBusy,
                         onNavigate = onNavigate,
+                        onArrivedShop = viewModel::arrivedAtShop,
+                        onOpenPickupProof = viewModel::openPickupProof,
+                        onArrivedCustomer = viewModel::arrivedAtCustomer,
+                        onOpenDeliveryProof = viewModel::openDeliveryProof,
                     )
                 }
 
@@ -311,12 +357,17 @@ private fun OfferCard(
 @Composable
 private fun ActiveJobCard(
     job: RiderActiveJob,
+    busy: Boolean,
     onNavigate: (Double, Double, String) -> Unit,
+    onArrivedShop: () -> Unit,
+    onOpenPickupProof: () -> Unit,
+    onArrivedCustomer: () -> Unit,
+    onOpenDeliveryProof: () -> Unit,
 ) {
     val targetLat = if (job.isPickupPhase) job.pickupLatitude else job.deliveryLatitude
     val targetLng = if (job.isPickupPhase) job.pickupLongitude else job.deliveryLongitude
     val targetLabel = if (job.isPickupPhase) job.shopName else job.deliveryAddress
-    val buttonLabel = if (job.isPickupPhase) "นำทางไปร้าน" else "นำทางไปหาลูกค้า"
+    val navLabel = if (job.isPickupPhase) "นำทางไปร้าน" else "นำทางไปหาลูกค้า"
 
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(
@@ -333,8 +384,12 @@ private fun ActiveJobCard(
             LabelValue("สถานะ", riderStatusLabel(job.status))
             LabelValue("ร้าน", job.shopName)
             if (job.deliveryAddress.isNotBlank()) {
-                LabelValue("ลูกค้า", job.deliveryAddress)
+                LabelValue("ส่งที่", job.deliveryAddress)
             }
+            if (job.note.isNotBlank()) {
+                LabelValue("หมายเหตุ", job.note)
+            }
+
             Button(
                 onClick = {
                     if (targetLat != null && targetLng != null) {
@@ -344,13 +399,196 @@ private fun ActiveJobCard(
                 enabled = targetLat != null && targetLng != null,
                 modifier = Modifier.fillMaxWidth(),
             ) {
-                Text(buttonLabel)
+                Text(navLabel)
             }
+
+            if (job.isPickupPhase) {
+                when {
+                    job.riderArrivedShopAt.isNullOrBlank() -> {
+                        OutlinedButton(
+                            onClick = onArrivedShop,
+                            enabled = !busy,
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Text(if (busy) "กำลังบันทึก..." else "ถึงร้านแล้ว")
+                        }
+                    }
+
+                    job.status == "ready" -> {
+                        OutlinedButton(
+                            onClick = onOpenPickupProof,
+                            enabled = !busy,
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Text("ตรวจรายการและถ่ายรูป")
+                        }
+                    }
+
+                    else -> {
+                        Text(
+                            "ถึงร้านแล้ว · แจ้งร้านแล้ว · รอร้านกดพร้อมส่ง",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+            } else if (job.status == "in_progress") {
+                if (job.riderArrivedCustomerAt.isNullOrBlank()) {
+                    OutlinedButton(
+                        onClick = onArrivedCustomer,
+                        enabled = !busy,
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text(if (busy) "กำลังบันทึก..." else "ถึงลูกค้าแล้ว")
+                    }
+                } else {
+                    OutlinedButton(
+                        onClick = onOpenDeliveryProof,
+                        enabled = !busy,
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text("ตรวจส่งมอบและถ่ายรูป")
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ProofCard(
+    proof: RiderProofState,
+    job: RiderActiveJob,
+    onCapture: () -> Unit,
+    onSubmit: () -> Unit,
+    onBack: () -> Unit,
+) {
+    val pickup = proof.mode == RiderProofMode.PICKUP
+    val itemCount = proof.items.sumOf { it.quantity }
+
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        if (pickup) "รับสินค้าที่ร้าน" else "ส่งสินค้าให้ลูกค้า",
+                        fontWeight = FontWeight.Black,
+                    )
+                    Text(
+                        proof.orderNumber,
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.Bold,
+                    )
+                }
+                TextButton(
+                    onClick = onBack,
+                    enabled = !proof.submitting,
+                ) {
+                    Text("ย้อนกลับ")
+                }
+            }
+
             Text(
-                "ขั้นถัดไปจะเพิ่ม ถึงร้าน → ตรวจรายการ+ถ่ายรูป → ไปหาลูกค้า → ส่ง+ถ่ายรูป",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                if (pickup) {
+                    "ตรวจรายการให้ครบและถ่ายรูปสินค้าที่รับในหน้านี้"
+                } else {
+                    "ตรวจการส่งมอบและถ่ายรูปสินค้า/จุดส่งในหน้านี้"
+                },
+                style = MaterialTheme.typography.bodyMedium,
             )
+
+            HorizontalDivider()
+
+            if (proof.loading) {
+                CircularProgressIndicator(
+                    modifier = Modifier.align(Alignment.CenterHorizontally),
+                )
+            } else if (proof.items.isEmpty()) {
+                Text("ไม่พบรายการสินค้า")
+            } else {
+                Text(
+                    "รายการสินค้า · $itemCount ชิ้น",
+                    fontWeight = FontWeight.Bold,
+                )
+                proof.items.forEach { item ->
+                    Row(modifier = Modifier.fillMaxWidth()) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(item.name, fontWeight = FontWeight.SemiBold)
+                            if (item.description.isNotBlank()) {
+                                Text(
+                                    item.description,
+                                    style = MaterialTheme.typography.bodySmall,
+                                )
+                            }
+                            Text("× " + item.quantity, style = MaterialTheme.typography.bodySmall)
+                        }
+                        Text(
+                            "฿" + String.format(Locale.US, "%.0f", item.totalPrice),
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                    }
+                }
+            }
+
+            HorizontalDivider()
+            if (pickup) {
+                LabelValue(
+                    "ยอดสินค้าที่รับ",
+                    "฿" + String.format(Locale.US, "%.0f", job.subtotal),
+                )
+            } else {
+                LabelValue(
+                    "ยอดเก็บจากลูกค้า",
+                    "฿" + String.format(Locale.US, "%.0f", job.totalAmount),
+                )
+            }
+
+            OutlinedButton(
+                onClick = onCapture,
+                enabled = !proof.submitting,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text(
+                    if (proof.photoUri.isNullOrBlank()) {
+                        if (pickup) "ถ่ายรูปสินค้าที่รับ" else "ถ่ายรูปตอนส่งสินค้า"
+                    } else {
+                        "ถ่ายรูปใหม่"
+                    },
+                )
+            }
+
+            if (!proof.photoUri.isNullOrBlank()) {
+                Text(
+                    "รูปหลักฐานพร้อมแล้ว",
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Bold,
+                )
+            }
+
+            proof.error?.let {
+                Text(
+                    it,
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
+
+            Button(
+                onClick = onSubmit,
+                enabled = !proof.loading && !proof.submitting && !proof.photoUri.isNullOrBlank(),
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text(
+                    when {
+                        proof.submitting -> "กำลังบันทึก..."
+                        pickup -> "ยืนยันรับสินค้า"
+                        else -> "ยืนยันส่งสินค้า"
+                    },
+                )
+            }
         }
     }
 }
