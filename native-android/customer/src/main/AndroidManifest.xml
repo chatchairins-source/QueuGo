@@ -1,6 +1,11 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-permission android:name="android.permission.INTERNET" />
-    <application android:label="QueueGo" android:theme="@style/AppTheme" android:usesCleartextTraffic="false">
+    <application
+        android:label="QueueGo"
+        android:icon="@drawable/ic_queuego_launcher"
+        android:roundIcon="@drawable/ic_queuego_launcher"
+        android:theme="@style/AppTheme"
+        android:usesCleartextTraffic="false">
         <activity android:name=".MainActivity" android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

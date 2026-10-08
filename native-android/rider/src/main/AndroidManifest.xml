@@ -9,6 +9,8 @@
 
     <application
         android:label="QueueGo Rider"
+        android:icon="@drawable/ic_queuego_launcher"
+        android:roundIcon="@drawable/ic_queuego_launcher"
         android:theme="@style/AppTheme"
         android:usesCleartextTraffic="false">
         <provider
