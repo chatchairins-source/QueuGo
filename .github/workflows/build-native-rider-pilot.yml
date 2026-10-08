@@ -11,7 +11,7 @@ on:
       - '.github/workflows/build-native-rider-pilot.yml'
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   native-pilot:
@@ -50,3 +50,22 @@ jobs:
             native-android/merchant/build/outputs/apk/debug/merchant-debug.apk
             native-android/rider/build/outputs/apk/debug/rider-debug.apk
           if-no-files-found: error
+      - name: Prepare direct-download APKs
+        if: contains(github.event.head_commit.message, '[publish-apks]')
+        run: |
+          mkdir -p release
+          cp native-android/customer/build/outputs/apk/debug/customer-debug.apk release/QueueGo-Customer.apk
+          cp native-android/merchant/build/outputs/apk/debug/merchant-debug.apk release/QueueGo-Merchant.apk
+          cp native-android/rider/build/outputs/apk/debug/rider-debug.apk release/QueueGo-Rider.apk
+      - name: Publish direct APK download links
+        if: contains(github.event.head_commit.message, '[publish-apks]')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="native-pilot-${GITHUB_SHA::7}"
+          gh release create "$TAG" release/*.apk \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" \
+            --title "QueueGo Native Pilot ${GITHUB_SHA::7}" \
+            --notes "QueueGo native Android pilot APKs for Customer, Merchant and Rider. Debug/test build only." \
+            --prerelease
