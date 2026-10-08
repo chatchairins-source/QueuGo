@@ -188,7 +188,10 @@ private fun CustomerShell(auth: NativeAuth, logout: () -> Unit) {
             when (screen) {
                 "home" -> CustomerHome(
                     loading, banner, category, shops,
-                    onCategory = { category = it },
+                    onCategory = {
+                        if (it == "market") screen = "market"
+                        else category = it
+                    },
                     onShop = { shop ->
                         selectedShop = shop
                         products = emptyList()
@@ -197,6 +200,36 @@ private fun CustomerShell(auth: NativeAuth, logout: () -> Unit) {
                             runCatching { api.loadProducts(auth, shop.id) }
                                 .onSuccess { products = it }
                                 .onFailure { message = it.message }
+                        }
+                    }
+                )
+                "market" -> MarketNativeScreen(
+                    auth = auth,
+                    location = location,
+                    address = address,
+                    onAddress = {
+                        address = it
+                        location = location?.copy(address = it)
+                    },
+                    onGps = {
+                        if (hasLocation(context)) {
+                            val p = lastKnownLocation(context)
+                            if (p != null) {
+                                location = CustomerLocation(p.first, p.second, address)
+                                message = "ใช้ตำแหน่งปัจจุบันแล้ว"
+                            } else message = "ยังอ่านตำแหน่ง GPS ไม่ได้"
+                        } else {
+                            permission.launch(arrayOf(
+                                Manifest.permission.ACCESS_FINE_LOCATION,
+                                Manifest.permission.ACCESS_COARSE_LOCATION
+                            ))
+                        }
+                    },
+                    onBack = { screen = "home" },
+                    onDone = {
+                        scope.launch {
+                            orders = runCatching { api.loadOrders(auth) }.getOrDefault(orders)
+                            screen = "orders"
                         }
                     }
                 )
