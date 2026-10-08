@@ -3,6 +3,7 @@ package com.queuetech.queuego.core.ui
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.queuetech.queuego.core.auth.ActiveSessionCheck
 import com.queuetech.queuego.core.auth.AuthRepository
 import com.queuetech.queuego.core.model.AppRole
 import com.queuetech.queuego.core.model.QueueGoUser
@@ -40,6 +41,17 @@ class NativeAuthViewModel(
                 onFailure = { NativeAuthState.SignedOut(it.message ?: "เข้าสู่ระบบไม่สำเร็จ") },
             )
         }
+    }
+
+    suspend fun verifyRiderSession(): ActiveSessionCheck {
+        if (expectedRole != AppRole.RIDER || _state.value !is NativeAuthState.SignedIn) {
+            return ActiveSessionCheck.NOT_APPLICABLE
+        }
+        val result = repository.verifyActiveSession()
+        if (result == ActiveSessionCheck.REPLACED) {
+            _state.value = NativeAuthState.SignedOut("บัญชีนี้ถูกเข้าสู่ระบบจากอุปกรณ์อื่น")
+        }
+        return result
     }
 
     fun logout() {
