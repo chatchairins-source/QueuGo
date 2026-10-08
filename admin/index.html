@@ -589,7 +589,7 @@ function distanceKm(lat1,lon1,lat2,lon2){
 function qgAdminShopCategory(shop){
   const category=shop?.public_category||shop?.category||shop?.metadata?.category;
   if(category==='shopping'){
-    const labels={mobile_accessories:'มือถือและอุปกรณ์',computer_it:'คอมพิวเตอร์และไอที',automotive_car:'อะไหล่รถยนต์',automotive_motorcycle:'อะไหล่มอเตอร์ไซค์'};
+    const labels={mobile_accessories:'มือถือและอุปกรณ์',computer_it:'คอมพิวเตอร์และไอที',automotive_car:'อะไหล่รถยนต์',automotive_motorcycle:'อะไหล่มอเตอร์ไซค์',fashion_accessories:'เสื้อผ้าและเครื่องประดับ',toys:'ของเล่น',home_decor:'ตกแต่งบ้าน'};
     const raw=shop?.shoppingSubcategories||shop?.public_subcategories||shop?.metadata?.shoppingSubcategories||[];
     const subs=(Array.isArray(raw)?raw:[]).map(key=>labels[key]).filter(Boolean);
     return subs.length?'ช้อปปิ้ง · '+subs.join(' / '):'ช้อปปิ้ง';
