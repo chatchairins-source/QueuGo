@@ -79,6 +79,8 @@ fun QueueGoCustomerApp() {
 @Composable
 private fun CustomerShell(auth: NativeAuth, logout: () -> Unit) {
     val api = remember { CustomerApi() }
+    val marketApi = remember { CustomerMarketApi() }
+    val laundryApi = remember { CustomerLaundryApi() }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
 
@@ -86,9 +88,13 @@ private fun CustomerShell(auth: NativeAuth, logout: () -> Unit) {
     var category by remember { mutableStateOf("all") }
     var shops by remember { mutableStateOf<List<CustomerShop>>(emptyList()) }
     var orders by remember { mutableStateOf<List<CustomerOrder>>(emptyList()) }
+    var marketTrips by remember { mutableStateOf<List<MarketTripSummary>>(emptyList()) }
+    var laundryOrders by remember { mutableStateOf<List<LaundryOrderSummary>>(emptyList()) }
     var banner by remember { mutableStateOf<HomeBanner?>(null) }
     var selectedShop by remember { mutableStateOf<CustomerShop?>(null) }
     var selectedOrder by remember { mutableStateOf<CustomerOrder?>(null) }
+    var selectedMarketTrip by remember { mutableStateOf<MarketTripSummary?>(null) }
+    var selectedLaundryOrder by remember { mutableStateOf<LaundryOrderSummary?>(null) }
     var products by remember { mutableStateOf<List<CustomerProduct>>(emptyList()) }
     var orderItems by remember { mutableStateOf<List<CustomerOrderItem>>(emptyList()) }
     var cart by remember { mutableStateOf<List<CartLine>>(emptyList()) }
@@ -103,20 +109,16 @@ private fun CustomerShell(auth: NativeAuth, logout: () -> Unit) {
         scope.launch {
             loading = true
             runCatching {
-                val s = api.loadShops(auth)
-                val o = api.loadOrders(auth)
-                val l = api.loadSavedLocation(auth)
-                val b = api.loadHomeBanner(auth)
-                listOf(s, o, l, b)
-            }.onSuccess {
-                shops = it[0] as List<CustomerShop>
-                orders = it[1] as List<CustomerOrder>
-                val saved = it[2] as CustomerLocation?
+                shops = api.loadShops(auth)
+                orders = api.loadOrders(auth)
+                marketTrips = runCatching { marketApi.trips(auth) }.getOrDefault(emptyList())
+                laundryOrders = runCatching { laundryApi.orders(auth) }.getOrDefault(emptyList())
+                val saved = api.loadSavedLocation(auth)
                 if (saved != null) {
                     location = saved
                     if (address.isBlank()) address = saved.address
                 }
-                banner = it[3] as HomeBanner?
+                banner = api.loadHomeBanner(auth)
                 message = null
             }.onFailure { message = it.message ?: "โหลดข้อมูลไม่สำเร็จ" }
             loading = false
@@ -142,6 +144,14 @@ private fun CustomerShell(auth: NativeAuth, logout: () -> Unit) {
                 runCatching { api.loadOrders(auth) }.onSuccess { fresh ->
                     orders = fresh
                     selectedOrder = selectedOrder?.let { old -> fresh.find { it.id == old.id } ?: old }
+                }
+                runCatching { marketApi.trips(auth) }.onSuccess { fresh ->
+                    marketTrips = fresh
+                    selectedMarketTrip = selectedMarketTrip?.let { old -> fresh.find { it.id == old.id } ?: old }
+                }
+                runCatching { laundryApi.orders(auth) }.onSuccess { fresh ->
+                    laundryOrders = fresh
+                    selectedLaundryOrder = selectedLaundryOrder?.let { old -> fresh.find { it.id == old.id } ?: old }
                 }
                 if (screen == "order" && selectedOrder != null) {
                     runCatching { api.loadOrderItems(auth, selectedOrder!!.id) }.onSuccess { orderItems = it }
@@ -348,12 +358,28 @@ private fun CustomerShell(auth: NativeAuth, logout: () -> Unit) {
                 "orders" -> OrdersScreen(
                     loading = loading,
                     orders = orders,
+                    marketTrips = marketTrips,
+                    laundryOrders = laundryOrders,
                     onOpen = {
                         selectedOrder = it
                         orderItems = emptyList()
                         screen = "order"
+                    },
+                    onMarketOpen = {
+                        selectedMarketTrip = it
+                        screen = "market-trip"
+                    },
+                    onLaundryOpen = {
+                        selectedLaundryOrder = it
+                        screen = "laundry-order"
                     }
                 )
+                "market-trip" -> selectedMarketTrip?.let {
+                    MarketTripDetailScreen(auth = auth, trip = it, onBack = { screen = "orders" })
+                }
+                "laundry-order" -> selectedLaundryOrder?.let {
+                    LaundryOrderDetailScreen(auth = auth, order = it, onBack = { screen = "orders" })
+                }
                 "order" -> OrderTrackingScreen(
                     order = selectedOrder,
                     items = orderItems,
@@ -590,26 +616,80 @@ private fun SummaryRow(label: String, amount: Double?, strong: Boolean = false) 
 }
 
 @Composable
-private fun OrdersScreen(loading: Boolean, orders: List<CustomerOrder>, onOpen: (CustomerOrder) -> Unit) {
+private fun OrdersScreen(
+    loading: Boolean,
+    orders: List<CustomerOrder>,
+    marketTrips: List<MarketTripSummary>,
+    laundryOrders: List<LaundryOrderSummary>,
+    onOpen: (CustomerOrder) -> Unit,
+    onMarketOpen: (MarketTripSummary) -> Unit,
+    onLaundryOpen: (LaundryOrderSummary) -> Unit
+) {
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(14.dp)) {
-        QgSectionTitle("ออเดอร์", "ติดตามสถานะคำสั่งซื้อแบบ Production")
+        QgSectionTitle("ออเดอร์ของฉัน", "อาหาร ตลาดสด ฝากซัก และบริการทั้งหมด")
         Spacer(Modifier.height(10.dp))
-        if (loading && orders.isEmpty()) CircularProgressIndicator()
-        else if (orders.isEmpty()) QgCard(Modifier.fillMaxWidth()) { Text("ยังไม่มีออเดอร์", color = QgMuted) }
-        else orders.forEach { order ->
-            QgCard(Modifier.fillMaxWidth().padding(bottom = 8.dp).clickable { onOpen(order) }) {
-                Column {
-                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                        Text(order.number, fontWeight = FontWeight.Black, style = MaterialTheme.typography.titleMedium)
-                        Spacer(Modifier.weight(1f))
-                        QgStatusPill(statusLabel(order.status), order.status !in setOf("cancelled", "no_rider_available"))
+        if (loading && orders.isEmpty() && marketTrips.isEmpty() && laundryOrders.isEmpty()) {
+            CircularProgressIndicator()
+        }
+        if (orders.isEmpty() && marketTrips.isEmpty() && laundryOrders.isEmpty() && !loading) {
+            QgCard(Modifier.fillMaxWidth()) { Text("ยังไม่มีออเดอร์", color = QgMuted) }
+        }
+
+        if (marketTrips.isNotEmpty()) {
+            Text("ตลาดสด", fontWeight = FontWeight.ExtraBold, modifier = Modifier.padding(vertical = 8.dp))
+            marketTrips.forEach { trip ->
+                QgCard(Modifier.fillMaxWidth().padding(bottom = 8.dp).clickable { onMarketOpen(trip) }) {
+                    Column {
+                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                            Text("Market Trip · " + trip.shopCount + " ร้าน", fontWeight = FontWeight.Black)
+                            Spacer(Modifier.weight(1f))
+                            QgStatusPill(marketTripStatus(trip.status), trip.status.uppercase() != "CANCELLED")
+                        }
+                        Spacer(Modifier.height(5.dp))
+                        Text(trip.deliveryAddress ?: "", color = QgMuted, style = MaterialTheme.typography.bodySmall)
+                        Text("รวม ฿" + "%.0f".format(trip.total), fontWeight = FontWeight.Bold)
                     }
-                    Spacer(Modifier.height(6.dp))
-                    Text(order.deliveryAddress ?: "", color = QgMuted, style = MaterialTheme.typography.bodySmall)
-                    Text("รวม ฿" + "%.0f".format(order.total), fontWeight = FontWeight.Bold)
                 }
             }
         }
+
+        if (laundryOrders.isNotEmpty()) {
+            Text("ฝากซัก", fontWeight = FontWeight.ExtraBold, modifier = Modifier.padding(vertical = 8.dp))
+            laundryOrders.forEach { order ->
+                QgCard(Modifier.fillMaxWidth().padding(bottom = 8.dp).clickable { onLaundryOpen(order) }) {
+                    Column {
+                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                            Text(order.number, fontWeight = FontWeight.Black)
+                            Spacer(Modifier.weight(1f))
+                            QgStatusPill(laundryStatus(order.status), order.status != "cancelled")
+                        }
+                        Spacer(Modifier.height(5.dp))
+                        Text(order.serviceName, color = QgMuted)
+                        val total = order.finalTotal ?: order.estimatedTotal
+                        Text(total?.let { "รวม ฿" + "%.0f".format(it) } ?: "รอสรุปราคา", fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+        }
+
+        if (orders.isNotEmpty()) {
+            Text("Delivery", fontWeight = FontWeight.ExtraBold, modifier = Modifier.padding(vertical = 8.dp))
+            orders.filter { it.shopId != null }.forEach { order ->
+                QgCard(Modifier.fillMaxWidth().padding(bottom = 8.dp).clickable { onOpen(order) }) {
+                    Column {
+                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                            Text(order.number, fontWeight = FontWeight.Black, style = MaterialTheme.typography.titleMedium)
+                            Spacer(Modifier.weight(1f))
+                            QgStatusPill(statusLabel(order.status), order.status !in setOf("cancelled", "no_rider_available"))
+                        }
+                        Spacer(Modifier.height(6.dp))
+                        Text(order.deliveryAddress ?: "", color = QgMuted, style = MaterialTheme.typography.bodySmall)
+                        Text("รวม ฿" + "%.0f".format(order.total), fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+        }
+        Spacer(Modifier.height(30.dp))
     }
 }
 
