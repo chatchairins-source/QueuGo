@@ -507,7 +507,8 @@ async function qtHydrateDatabase(opts){
         try{ riders=await qtSupabaseTable('rider_profiles?select=*',{accessToken:token}); }
         catch(e){ console.warn('[QueueGo] rider_profiles read failed:',e); }
 
-        const sm=new Map((shops||[]).filter(x=>x&&x.user_id).map(x=>[x.user_id,x])),tm=new Map((techs||[]).filter(x=>x&&x.user_id).map(x=>[x.user_id,x])),rm=new Map((riders||[]).filter(x=>x&&x.user_id).map(x=>[x.user_id,x]));
+        const sm=new Map();for(const x of (shops||[]).filter(x=>x&&x.user_id)){const prev=sm.get(x.user_id),xp=x.archived_at?1:0,pp=prev?.archived_at?1:0;if(!prev||xp<pp||(xp===pp&&String(x.created_at||'')>String(prev.created_at||'')))sm.set(x.user_id,x)}
+        const tm=new Map((techs||[]).filter(x=>x&&x.user_id).map(x=>[x.user_id,x])),rm=new Map((riders||[]).filter(x=>x&&x.user_id).map(x=>[x.user_id,x]));
         profileMaps={shopById:new Map((shops||[]).map(x=>[x.id,x.user_id])),techById:new Map((techs||[]).map(x=>[x.id,x.user_id])),riderById:new Map((riders||[]).map(x=>[x.id,x.user_id]))};
         QT_SYNC.profileMaps=profileMaps;
         QT_DB_CACHE.qt_users=QT_DB_CACHE.qt_users.map(u=>{
