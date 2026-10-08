@@ -84,3 +84,12 @@ data class RiderSnapshot(
     val offeredJob: RiderJob?,
     val marketPickups: List<MarketPickup> = emptyList()
 )
+
+
+data class RiderPeriodSummary(
+    val days: Int,
+    val jobs: Int,
+    val income: Double,
+    val onlineHours: Double,
+    val incomePerHour: Double?
+)
