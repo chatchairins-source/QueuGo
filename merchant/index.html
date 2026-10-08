@@ -1704,7 +1704,7 @@ window.qtSupportRefresh=async function(){
     let rows=await qtSupabaseTable('shop_support_messages?select=id,shop_user_id,sender_user_id,body,slip_path,created_at'+(u.type==='shop'?'&shop_user_id=eq.'+encodeURIComponent(u.id):'')+'&order=created_at.asc',{accessToken:token});
     rows=Array.isArray(rows)?rows:[];
     if(u.type==='admin'){
-      const ids=[...new Set(rows.map(m=>m.shop_user_id))],profiles=ids.length?await qtSupabaseTable('shop_profiles?select=user_id,shop_name&user_id=in.('+ids.map(encodeURIComponent).join(',')+')',{accessToken:token}):[];
+      const ids=[...new Set(rows.map(m=>m.shop_user_id))],profiles=ids.length?await qtSupabaseTable('shop_profiles?select=user_id,shop_name&user_id=in.('+ids.map(encodeURIComponent).join(',')+')&archived_at=is.null',{accessToken:token}):[];
       const names=new Map((profiles||[]).map(p=>[p.user_id,p.shop_name]));
       if(!qtSupportSelectedShop&&ids.length)qtSupportSelectedShop=ids[0];
       const inbox=document.getElementById('qt-support-inbox');
