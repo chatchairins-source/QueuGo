@@ -13,6 +13,7 @@ for(const p of [
   'rider/src/main/AndroidManifest.xml',
   'rider/src/main/java/com/queuego/rider/QueueGoRiderApp.kt',
   'rider/src/main/java/com/queuego/rider/QueueGoApi.kt',
+  'rider/src/main/java/com/queuego/rider/RiderHistoryCard.kt',
   'customer/src/main/java/com/queuego/customer/QueueGoCustomerApp.kt',
   'customer/src/main/java/com/queuego/customer/CustomerApi.kt',
   'customer/src/main/java/com/queuego/customer/CustomerMarketApi.kt',
@@ -20,7 +21,8 @@ for(const p of [
   'customer/src/main/java/com/queuego/customer/CustomerExtras.kt',
   'merchant/src/main/java/com/queuego/merchant/QueueGoMerchantApp.kt',
   'merchant/src/main/java/com/queuego/merchant/MerchantApi.kt',
-  'merchant/src/main/java/com/queuego/merchant/MerchantLaundryApi.kt'
+  'merchant/src/main/java/com/queuego/merchant/MerchantLaundryApi.kt',
+  'merchant/src/main/java/com/queuego/merchant/MerchantSupportScreen.kt'
 ]) ok(fs.existsSync(path.join(root,p)),'missing '+p);
 
 const customerGradle=read('customer/build.gradle.kts');
@@ -56,6 +58,8 @@ ok(source.includes('notifications?select=id,title,message,type,reference_id,is_r
 ok(source.includes('CustomerSearchScreen')&&source.includes('QgNavItem("search"'),'Customer native must preserve global search navigation');
 ok(source.includes('qg_merchant_action_once'),'Merchant native order actions must stay idempotent');
 ok(source.includes('get_my_shop_orders'),'Merchant native Orders must use production order source');
+ok(source.includes('ToneGenerator')&&source.includes('STREAM_NOTIFICATION'),'Merchant native must alert on new orders');
+ok(source.includes('shop_support_messages?select=id,sender_user_id,body,created_at'),'Merchant native must preserve Admin support messaging');
 ok(source.includes('queuego_laundry_merchant_state')&&source.includes('queuego_laundry_shop_action_v2'),'Merchant native Laundry must use production laundry state/actions');
 ok(source.includes('พร้อมส่ง · เหลือ'),'Merchant preparation countdown must remain on ready button');
 ok(source.includes('SecureRoleSessionStore')&&source.includes('NativeAuthApi'),'Customer/Merchant must share native auth/session implementation');
@@ -68,6 +72,7 @@ ok(source.includes('qg_rider_mark_arrival'),'native Rider must reuse arrival RPC
 ok(source.includes('qg_pickup_with_photo')&&source.includes('qg_complete_with_photo'),'native Rider must reuse photo proof RPCs');
 ok(source.includes('/storage/v1/object/qg-evidence/'),'native Rider must upload proof to existing evidence bucket');
 ok(source.includes('qg_rider_decline_offer'),'native Rider must preserve sequential offer decline');
+ok(source.includes('status=eq.completed&order=updated_at.desc'),'Rider native must expose completed history');
 ok(source.includes('market_pickup_route_summary')&&source.includes('qg_market_pickup_with_photo'),'native Rider must preserve market multi-stop pickup flow');
 ok(source.includes('market_claim')&&source.includes('qg_complete_market_with_photo'),'native Rider must claim and complete market groups through existing RPCs');
 ok(source.includes('FileProvider')&&source.includes('TakePicture'),'native Rider must use Android camera flow');
