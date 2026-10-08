@@ -15,6 +15,7 @@ for(const p of [
   'rider/src/main/java/com/queuego/rider/QueueGoRiderApp.kt',
   'rider/src/main/java/com/queuego/rider/QueueGoApi.kt',
   'rider/src/main/java/com/queuego/rider/RiderHistoryCard.kt',
+  'rider/src/main/java/com/queuego/rider/RiderChat.kt',
   'customer/src/main/java/com/queuego/customer/QueueGoCustomerApp.kt',
   'customer/src/main/java/com/queuego/customer/CustomerApi.kt',
   'customer/src/main/java/com/queuego/customer/CustomerMarketApi.kt',
@@ -83,6 +84,8 @@ ok(source.includes('qg_pickup_with_photo')&&source.includes('qg_complete_with_ph
 ok(source.includes('/storage/v1/object/qg-evidence/'),'native Rider must upload proof to existing evidence bucket');
 ok(source.includes('qg_rider_decline_offer'),'native Rider must preserve sequential offer decline');
 ok(source.includes('status=eq.completed&order=updated_at.desc'),'Rider native must expose completed history');
+ok((source.match(/qg_chat_moderation_state/g)||[]).length>=2&&(source.match(/qg_accept_ugc_terms/g)||[]).length>=2,'Rider native chat must preserve UGC safety');
+ok((source.match(/order_chat_messages\?select=id,sender_id,message,created_at/g)||[]).length>=2,'Customer and Rider native chat must use production chat table');
 ok(source.includes('market_pickup_route_summary')&&source.includes('qg_market_pickup_with_photo'),'native Rider must preserve market multi-stop pickup flow');
 ok(source.includes('market_claim')&&source.includes('qg_complete_market_with_photo'),'native Rider must claim and complete market groups through existing RPCs');
 ok(source.includes('FileProvider')&&source.includes('TakePicture'),'native Rider must use Android camera flow');
