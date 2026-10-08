@@ -907,6 +907,16 @@ async function adminDeleteUser(id){
 }
 
 
+
+async function qgAdminArchiveShop(userId){
+ const u=dbGet('qt_users',[]).find(x=>x.type==='shop'&&String(x.id)===String(userId));if(!u?.shopProfileId)return toast('ไม่พบโปรไฟล์ร้าน');
+ const reason=await qgAdminInput({title:'นำร้านออกจากระบบ',label:'เหตุผล'});if(reason===null)return;
+ if(!confirm('ยืนยันนำร้าน “'+(u.shopName||u.name||'ร้านค้า')+'” ออกจากการให้บริการ? ประวัติออเดอร์เดิมจะยังอยู่'))return;
+ try{const token=await qtGetAccessToken();await qtSupabaseTable('rpc/queuego_admin_archive_shop',{method:'POST',accessToken:token,body:{p_shop_id:u.shopProfileId,p_reason:reason.trim()||null}});toast('นำร้านออกจากการให้บริการแล้ว');await qtHydrateDatabase({light:false});renderAdminGovernance();setTimeout(()=>qtAdminTab('qt-sec-shops'),0)}
+ catch(e){toast('ดำเนินการไม่สำเร็จ: '+(e.message||e))}
+}
+window.qgAdminArchiveShop=qgAdminArchiveShop;
+
 function renderAdminGovernance(){
  const admin=qtAdminOnly();if(!admin)return;
  const users=dbGet('qt_users',[]),promos=dbGet('qt_promotions',[]),orders=dbGet('qt_orders',[]),audit=dbGet('qt_audit_log',[]),settings=qtGetSystemSettings();
@@ -916,7 +926,7 @@ function renderAdminGovernance(){
  const detail=u=>`<button class="btn-secondary" type="button" onclick="qtAdminViewUser('${esc(u.id)}')">ดูข้อมูล</button>`;
  const approval=pending.map(u=>`<article class="qg-approval-card card" data-approval-role="${esc(u.type)}">${heading(u)}<p class="qt-admin-note">ประเภท: ${esc(qgAdminProviderLabel(u))} · ผู้ติดต่อ ${esc(u.name||'-')}</p><div class="row-btns">${detail(u)}<button class="btn-primary" onclick="adminApproveUser('${esc(u.id)}')">อนุมัติ</button><button class="btn-danger" onclick="adminRejectUser('${esc(u.id)}')">ปฏิเสธ</button></div></article>`).join('');
  const userPanels=['customer','rider','shop','technician','admin'].map((role,i)=>`<div class="qt-user-category-panel ${i===0?'active':''}" data-user-panel="${role}"><div class="qg-user-cards">${users.filter(u=>u.type===role).map(u=>`<article class="qg-user-card">${heading(u)}<div class="row-btns">${detail(u)}${u.type==='admin'?'<small>บัญชีผู้ดูแลระบบ</small>':`<button class="${u.status==='suspended'?'btn-primary':'btn-danger'}" onclick="adminSecurityAction('${u.status==='suspended'?'restore':'suspend'}','${esc(u.id)}')">${u.status==='suspended'?'ปลดระงับ':'ระงับบัญชี'}</button><button class="btn-secondary" onclick="adminDeleteUser('${esc(u.id)}')">ลบบัญชี</button>`}</div></article>`).join('')||empty('ยังไม่มีบัญชีในประเภทนี้')}</div></div>`).join('');
- const shopCards=shops.map(u=>`<article class="qg-shop-card card" data-status="${esc(u.status)}">${heading(u)}<p class="qt-admin-note">${u.shopOpen===false?'ปิดรับออเดอร์':'เปิดรับออเดอร์'} · ${esc(u.address||'ยังไม่ระบุที่อยู่')}</p><div class="row-btns">${detail(u)}<button class="btn-secondary" onclick="qgAdminEditLocation('shop_user','${esc(u.id)}')">ปักหมุดร้าน</button>${u.status==='pending'?`<button class="btn-primary" onclick="adminApproveUser('${esc(u.id)}')">อนุมัติ</button><button class="btn-danger" onclick="adminRejectUser('${esc(u.id)}')">ปฏิเสธ</button>`:`<button class="btn-secondary" onclick="qtAdminToggleShop('${esc(u.id)}')">${u.shopOpen===false?'เปิดร้าน':'ปิดร้าน'}</button>`}</div></article>`).join('');
+ const shopCards=shops.map(u=>`<article class="qg-shop-card card" data-status="${esc(u.status)}">${heading(u)}<p class="qt-admin-note">${u.shopOpen===false?'ปิดรับออเดอร์':'เปิดรับออเดอร์'} · ${esc(u.address||'ยังไม่ระบุที่อยู่')}</p><div class="row-btns">${detail(u)}<button class="btn-secondary" onclick="qgAdminEditLocation('shop_user','${esc(u.id)}')">ปักหมุดร้าน</button>${u.status==='pending'?`<button class="btn-primary" onclick="adminApproveUser('${esc(u.id)}')">อนุมัติ</button><button class="btn-danger" onclick="adminRejectUser('${esc(u.id)}')">ปฏิเสธ</button>`:`<button class="btn-secondary" onclick="qtAdminToggleShop('${esc(u.id)}')">${u.shopOpen===false?'เปิดร้าน':'ปิดร้าน'}</button>`}<button class="btn-danger" onclick="qgAdminArchiveShop('${esc(u.id)}')">ลบร้าน</button></div></article>`).join('');
  const sections=[['qt-sec-overview','ภาพรวม'],['qt-sec-orders','ออเดอร์'],['qt-sec-shops','จัดการร้านค้า'],['qt-sec-users','จัดการผู้ใช้'],['qt-sec-delivery','ไรเดอร์'],['qt-sec-approval','ศูนย์อนุมัติ'],['qt-sec-promote','Promote'],['qt-sec-finance','การเงิน'],['qt-sec-security','ความปลอดภัย'],['qt-sec-notify','ประกาศ'],['qt-sec-audit','ประวัติการทำงาน'],['qt-sec-settings','ตั้งค่าระบบ'],['qt-sec-permissions','สิทธิ์แอดมิน']];
  const panel=(id,body)=>`<section id="${id}" class="qt-admin-panel">${body}</section>`;
  const fields=[['delivery5','ค่าจัดส่ง ≤ 5 กม. (บาท)',0,undefined,1],['delivery10','ค่าจัดส่ง ≤ 10 กม. (บาท)',0,undefined,1],['riderRadius','รัศมีรับงานไรเดอร์ (กม.)',0,undefined,0.5],['techRadius','รัศมีรับงานช่าง (กม.)',0,undefined,0.5],['orderTimeout','Timeout ออเดอร์ (นาที)',1,undefined,1],['systemFee','ค่าธรรมเนียมระบบ (%)',0,100,0.1]];
