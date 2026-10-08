@@ -58,6 +58,7 @@ ok(source.includes('queuego_add_market_order_shops'),'Customer native Market mus
 ok(source.includes('queuego_place_laundry_order_v2'),'Customer native Laundry must use production laundry order RPC');
 ok(source.includes('notifications?select=id,title,message,type,reference_id,is_read,created_at'),'Customer native notifications must use production notifications table');
 ok(source.includes('qg_support_tickets?select=id,category,details,status,order_id,admin_note,created_at')&&source.includes('qg_create_ticket'),'Customer native support must use production ticket RPC');
+ok(source.includes('qg_customer_order_context')&&source.includes('CustomerTrackingRider'),'Customer native tracking must use production order context');
 ok(source.includes('CustomerSearchScreen')&&source.includes('QgNavItem("search"'),'Customer native must preserve global search navigation');
 ok(source.includes('qg_merchant_action_once'),'Merchant native order actions must stay idempotent');
 ok(source.includes('get_my_shop_orders'),'Merchant native Orders must use production order source');
