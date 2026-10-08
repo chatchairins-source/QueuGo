@@ -23,7 +23,17 @@ data class LaundrySettings(
 ) {
     val deliveryFee: Double
         get() = if (deliveryFeeMode == "round_trip") roundTripFee else pickupFee + returnFee
+    private fun formatNumber(raw: String?, id: String): String {
+        val clean = raw.orEmpty().trim()
+        if (clean.startsWith("QT-", true)) return clean.uppercase()
+        val digits = clean.filter { it.isDigit() }.takeLast(4)
+        if (digits.length == 4) return "QT-" + digits
+        return "QT-" + kotlin.math.abs(id.hashCode() % 10000).toString().padStart(4, '0')
+    }
 }
+
+private fun JSONObject.optDoubleNullable(key: String): Double? =
+    if (!has(key) || isNull(key)) null else optDouble(key).takeIf { it.isFinite() }
 
 data class LaundryService(
     val id: String,
@@ -39,6 +49,23 @@ data class LaundryCatalog(
     val featureEnabled: Boolean,
     val hubs: List<LaundryHub>,
     val settings: Map<String, LaundrySettings>
+)
+
+data class LaundryOrderSummary(
+    val id: String,
+    val number: String,
+    val status: String,
+    val serviceName: String,
+    val estimatedTotal: Double?,
+    val finalTotal: Double?,
+    val pickupAddress: String?,
+    val createdAt: String?
+)
+
+data class LaundryEvent(
+    val status: String,
+    val note: String?,
+    val createdAt: String?
 )
 
 class CustomerLaundryApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
@@ -114,6 +141,49 @@ class CustomerLaundryApi(private val http: QueueGoNativeApi = QueueGoNativeApi()
                     r.optDouble("price", 0.0),
                     r.optString("pricing_type").ifBlank { "fixed" },
                     if (r.has("estimated_minutes") && !r.isNull("estimated_minutes")) r.optInt("estimated_minutes") else null
+                ))
+            }
+        }
+    }
+
+    suspend fun orders(auth: NativeAuth): List<LaundryOrderSummary> {
+        val rows = http.array(http.get(
+            "laundry_orders?select=id,order_number,status,service_name_snapshot,estimated_total_amount,final_total_amount,pickup_address,created_at" +
+                "&customer_id=eq." + http.enc(auth.user.id) + "&order=created_at.desc&limit=50",
+            auth.session.accessToken
+        ))
+        return buildList {
+            for (i in 0 until rows.length()) {
+                val r = rows.optJSONObject(i) ?: continue
+                val id = r.optString("id")
+                if (id.isBlank()) continue
+                add(LaundryOrderSummary(
+                    id,
+                    formatNumber(r.optString("order_number"), id),
+                    r.optString("status"),
+                    r.optString("service_name_snapshot").ifBlank { "บริการฝากซัก" },
+                    r.optDoubleNullable("estimated_total_amount"),
+                    r.optDoubleNullable("final_total_amount"),
+                    r.optString("pickup_address").takeIf { it.isNotBlank() && it != "null" },
+                    r.optString("created_at").takeIf { it.isNotBlank() && it != "null" }
+                ))
+            }
+        }
+    }
+
+    suspend fun events(auth: NativeAuth, orderId: String): List<LaundryEvent> {
+        val rows = http.array(http.get(
+            "laundry_order_events?select=to_status,note,created_at&laundry_order_id=eq." +
+                http.enc(orderId) + "&order=created_at.asc",
+            auth.session.accessToken
+        ))
+        return buildList {
+            for (i in 0 until rows.length()) {
+                val r = rows.optJSONObject(i) ?: continue
+                add(LaundryEvent(
+                    r.optString("to_status"),
+                    r.optString("note").takeIf { it.isNotBlank() && it != "null" },
+                    r.optString("created_at").takeIf { it.isNotBlank() && it != "null" }
                 ))
             }
         }
