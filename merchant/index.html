@@ -687,7 +687,7 @@ async function qtHydrateDatabase(opts){
         QT_DB_CACHE.qt_users=QT_DB_CACHE.qt_users.map(u=>{
           const x=u.type==='shop'?sm.get(u.id):null;if(!x)return u;
           const lock={id:u.id,authUserId:u.authUserId,type:u.type,status:u.status,name:u.name,phone:u.phone};
-          Object.assign(u,(x.metadata&&typeof x.metadata==='object'?x.metadata:{}),{shopName:x.shop_name,address:x.address,lat:x.latitude,lng:x.longitude,shopProfileId:x.id,publicCategory:x.public_category||null,category:x.public_category||x.metadata?.category||u.category,marketMembershipStatus:x.market_membership_status||null});
+          Object.assign(u,(x.metadata&&typeof x.metadata==='object'?x.metadata:{}),{shopName:x.shop_name,address:x.address,lat:x.latitude,lng:x.longitude,shopProfileId:x.id,publicCategory:x.public_category||null,category:x.public_category||x.metadata?.category||u.category,marketMembershipStatus:x.market_membership_status||null,onboardingStatus:x.onboarding_status||'draft',submittedForReviewAt:x.submitted_for_review_at||null,archivedAt:x.archived_at||null});
           delete u.password;return Object.assign(u,lock);
         });
       }catch(e){ console.warn('profile hydrate failed',e); }
@@ -2060,12 +2060,33 @@ function qgmInvalidateSetupReadiness(u){
 window.qgmInvalidateSetupReadiness=qgmInvalidateSetupReadiness;
 async function qgmFetchSetupReadiness(u){
  const token=await qtGetAccessToken();if(!token)throw Error('กรุณาเข้าสู่ระบบใหม่');
- const shops=await qtSupabaseTable('shop_profiles?select=*&user_id=eq.'+encodeURIComponent(u.id)+'&limit=1',{accessToken:token});
+ const rows=await qtSupabaseTable('rpc/queuego_shop_readiness',{method:'POST',accessToken:token,body:{p_shop_id:u.shopProfileId||null}});
+ const readiness=Array.isArray(rows)?rows[0]:rows;
+ const shops=await qtSupabaseTable('shop_profiles?select=*&id=eq.'+encodeURIComponent(readiness?.shop_id||u.shopProfileId||'')+'&limit=1',{accessToken:token});
  const shop=shops?.[0]||{};
- const products=shop.id?await qtSupabaseTable('products?select=name,price,image&shop_id=eq.'+encodeURIComponent(shop.id),{accessToken:token}):[];
- const steps=window.qgmSetupSteps(u,shop,products||[]),left=steps.filter(x=>!x.done).length;
- return {shop,products:products||[],steps,left,ready:left===0};
+ const checks=readiness?.checks||{};
+ const steps=[
+  {title:'ข้อมูลร้านครบ',done:checks.shop_info===true,note:checks.shop_info?'ชื่อร้าน ประเภท เบอร์โทร และเวลาทำการครบแล้ว':'กรอกชื่อร้าน ประเภท เบอร์โทร และเวลาเปิด-ปิด',page:'shop-setup'},
+  {title:'รูปหน้าร้าน',done:checks.storefront_image===true,note:checks.storefront_image?'อัปโหลดรูปหน้าร้านสำเร็จแล้ว':'อัปโหลดรูปหน้าร้านจริง',page:'shop-setup'},
+  {title:'รูปหน้าปก',done:checks.cover_image===true,note:checks.cover_image?'อัปโหลดรูปหน้าปกสำเร็จแล้ว':'อัปโหลดรูปหน้าปกจริง',page:'shop-setup'},
+  {title:'ตำแหน่งร้าน',done:checks.location===true,note:checks.location?'บันทึกพิกัดร้านแล้ว':'ปักหมุดตำแหน่งร้านบนแผนที่ Longdo',page:'shop-setup'},
+  {title:'สินค้า/เมนูพร้อมขายอย่างน้อย 1 รายการ',done:checks.product===true,note:checks.product?'มีสินค้า/เมนูพร้อมขายแล้ว':'เพิ่มสินค้า/เมนูที่มีชื่อ ราคา และเปิดขาย',page:'shop-products'}
+ ];
+ return {shop,products:[],steps,left:steps.filter(x=>!x.done).length,ready:readiness?.complete===true,readiness};
 }
+let qgmReviewSubmitBusy=false;
+window.qgmSubmitStoreReview=async function(button){
+ if(qgmReviewSubmitBusy)return;qgmReviewSubmitBusy=true;if(button)button.disabled=true;
+ try{
+  const u=currentUser(),token=await qtGetAccessToken();if(!u||!token)throw Error('กรุณาเข้าสู่ระบบใหม่');
+  const rows=await qtSupabaseTable('rpc/queuego_submit_shop_for_review',{method:'POST',accessToken:token,body:{p_shop_id:u.shopProfileId||null}});
+  const result=Array.isArray(rows)?rows[0]:rows;
+  u.onboardingStatus='pending_approval';u.submittedForReviewAt=new Date().toISOString();
+  toast(result?.duplicate?'ส่งตรวจไว้แล้ว':'ส่งตรวจเพื่อเปิดร้านแล้ว');
+  await qtRestoreOwnUser({refresh:true});renderShopPending();
+ }catch(e){toast((e.message||e).includes('SHOP_NOT_READY')?'ข้อมูลร้านยังไม่ครบ กรุณาทำ Checklist ให้ครบก่อน':(e.message||e))}
+ finally{qgmReviewSubmitBusy=false;if(button?.isConnected)button.disabled=false}
+};
 async function qgmVerifySetupReadinessSilent(u){
  if(!u||u.status!=='approved')return;
  const key=qgmSetupCacheKey(u);if(!key||QGM_SETUP_SILENT_CHECKED.has(key))return;
@@ -2111,7 +2132,7 @@ window.renderShopPending=async function(options={}){
  const host=active();if(!host)return;const {steps,left}=state;
  qgmWriteSetupReadiness(u,state.ready,left);
  if(options.dashboard&&!left)return renderShopDashboardModern(u);
- host.innerHTML=`<div class="qgm-setup-heading"><div><span class="qgm-status">${escapeHtml(u.shopName||'ร้านค้า')}</span><h1>${left?'ตั้งค่าร้านให้เรียบร้อย':'ร้านพร้อมใช้งานแล้ว'}</h1><p>${left?'เหลืออีก '+left+' ขั้นตอน':'ข้อมูลครบและผ่านการอนุมัติแล้ว'}</p></div><span class="qgm-setup-symbol" aria-hidden="true">${left?'⚒':'✓'}</span></div><ol class="qgm-setup-list">${steps.map(x=>`<li class="${x.done?'done':''}"><span class="qgm-setup-check" aria-label="${x.done?'เสร็จแล้ว':'ยังไม่เสร็จ'}">${x.done?'✓':'○'}</span><div><b>${x.title}</b><p>${escapeHtml(x.note)}</p>${x.page&&!x.done?`<button type="button" class="qgm-link" onclick="navigate('${x.page}')">${x.page==='shop-support'?'ติดต่อแอดมิน':'ไปดำเนินการ'} →</button>`:''}</div></li>`).join('')}</ol><p>รายการนี้ช่วยตรวจความพร้อมของร้าน การอนุมัติยังเป็นหน้าที่ของแอดมิน</p><button type="button" class="qgm-outline" onclick="qgmRefreshApplication()">ตรวจสอบข้อมูลอีกครั้ง</button>${u.status==='approved'?'<button type="button" class="qgm-outline" onclick="renderShopDashboardModern(currentUser())">ดูสรุปออเดอร์</button>':''}<button type="button" class="qgm-link" onclick="qtMerchantLogout()">ออกจากระบบ</button>`;
+ const reviewState=state.readiness?.onboarding_status||u.onboardingStatus||'draft',submitted=reviewState==='pending_approval',approved=reviewState==='approved'||u.status==='approved'; host.innerHTML=`<div class="qgm-setup-heading"><div><span class="qgm-status">ความพร้อมร้าน ${5-left}/5</span><h1>${approved?'ร้านพร้อมใช้งาน':submitted?'ส่งให้ Admin ตรวจแล้ว':left?'เตรียมร้านก่อนเปิดใช้งาน':'พร้อมส่งตรวจเพื่อเปิดร้าน'}</h1><p>${submitted?'Admin กำลังตรวจข้อมูลร้าน':left?'เหลือ '+left+' รายการที่ต้องทำ':'ข้อมูลพร้อมสำหรับการตรวจอนุมัติ'}</p></div><span class="qgm-setup-symbol" aria-hidden="true">${svg(approved?'check':'gear')}</span></div><ol class="qgm-setup-list">${steps.map(x=>`<li class="${x.done?'done':''}"><span class="qgm-setup-check" aria-label="${x.done?'เสร็จแล้ว':'ยังไม่เสร็จ'}">${svg(x.done?'check':'close')}</span><div><b>${x.title}</b><p>${escapeHtml(x.note)}</p>${x.page&&!x.done?`<button type="button" class="qgm-link" onclick="navigate('${x.page}')">ไปดำเนินการ</button>`:''}</div></li>`).join('')}</ol><button type="button" class="qgm-primary" onclick="qgmSubmitStoreReview(this)" ${left||submitted||approved?'disabled':''}>${approved?'ร้านผ่านการอนุมัติแล้ว':submitted?'รอ Admin ตรวจ':'ส่งตรวจเพื่อเปิดร้าน'}</button><button type="button" class="qgm-outline" onclick="qgmRefreshApplication()">ตรวจสอบข้อมูลอีกครั้ง</button>${approved?'<button type="button" class="qgm-outline" onclick="renderShopDashboardModern(currentUser())">ดูสรุปออเดอร์</button>':''}<button type="button" class="qgm-link" onclick="qtMerchantLogout()">ออกจากระบบ</button>`;
  }catch(e){const host=active();if(host)host.innerHTML='<h1>ตรวจสอบข้อมูลร้านไม่สำเร็จ</h1><p>'+escapeHtml(e.message||String(e))+'</p><button class="qgm-outline" onclick="qgmRefreshApplication()">ลองอีกครั้ง</button>';}
 };
 window.qtToggleLoginPassword=function(button){const input=document.getElementById('qt-shop-password');if(!input)return;input.type=input.type==='password'?'text':'password';button.setAttribute('aria-label',input.type==='password'?'แสดงรหัสผ่าน':'ซ่อนรหัสผ่าน')};
