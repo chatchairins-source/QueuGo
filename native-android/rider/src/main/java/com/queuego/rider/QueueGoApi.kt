@@ -211,6 +211,46 @@ class QueueGoApi {
             )
         }
 
+    suspend fun history(auth: QueueGoAuth, limit: Int = 50): List<RiderHistoryOrder> =
+        withContext(Dispatchers.IO) {
+            val profiles = requestArray(
+                "GET",
+                "/rest/v1/rider_profiles?select=id&user_id=eq." + enc(auth.user.id) + "&limit=1",
+                auth.session.accessToken
+            )
+            if (profiles.length() == 0) return@withContext emptyList()
+            val profileId = profiles.getJSONObject(0).getString("id")
+            val rows = requestArray(
+                "GET",
+                "/rest/v1/orders?select=id,order_number,pickup_address,delivery_address,delivery_fee,updated_at" +
+                    "&rider_id=eq." + enc(profileId) +
+                    "&status=eq.completed&order=updated_at.desc&limit=" + limit.coerceIn(1, 200),
+                auth.session.accessToken
+            )
+            buildList {
+                for (i in 0 until rows.length()) {
+                    val r = rows.optJSONObject(i) ?: continue
+                    val id = r.optString("id")
+                    val raw = r.optString("order_number")
+                    val number = when {
+                        raw.startsWith("QT-", true) -> raw.uppercase()
+                        raw.filter(Char::isDigit).length >= 4 -> "QT-" + raw.filter(Char::isDigit).takeLast(4)
+                        else -> "QT-" + kotlin.math.abs(id.hashCode() % 10000).toString().padStart(4, '0')
+                    }
+                    add(
+                        RiderHistoryOrder(
+                            id = id,
+                            number = number,
+                            pickupAddress = r.optString("pickup_address").takeIf { it.isNotBlank() },
+                            deliveryAddress = r.optString("delivery_address").takeIf { it.isNotBlank() },
+                            deliveryFee = r.optDouble("delivery_fee", 0.0),
+                            completedAt = r.optString("updated_at").takeIf { it.isNotBlank() }
+                        )
+                    )
+                }
+            }
+        }
+
     suspend fun riderSnapshot(auth: QueueGoAuth): RiderSnapshot = withContext(Dispatchers.IO) {
         val profiles = requestArray(
             "GET",
