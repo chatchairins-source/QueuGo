@@ -9,4 +9,9 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setContent { QueueGoRiderApp() }
     }
+
+    override fun onResume() {
+        super.onResume()
+        RiderReturnService.stop(this)
+    }
 }

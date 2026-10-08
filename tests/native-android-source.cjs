@@ -37,6 +37,10 @@ ok(source.includes('qg_pickup_with_photo')&&source.includes('qg_complete_with_ph
 ok(source.includes('/storage/v1/object/qg-evidence/'),'native Rider must upload proof to existing evidence bucket');
 ok(source.includes('qg_rider_decline_offer'),'native Rider must preserve sequential offer decline');
 ok(source.includes('FileProvider')&&source.includes('TakePicture'),'native Rider must use Android camera flow');
+ok(source.includes('SYSTEM_ALERT_WINDOW')&&source.includes('TYPE_APPLICATION_OVERLAY'),'native Rider must provide Android cross-app Q return overlay');
+ok(source.includes('FOREGROUND_SERVICE_SPECIAL_USE')&&source.includes('RiderReturnService'),'navigation return overlay must run as explicit foreground special-use service');
+ok(source.includes('ACTION_MANAGE_OVERLAY_PERMISSION'),'overlay permission must be explicitly user-controlled');
+ok(source.includes('RiderReturnService.stop'),'overlay service must have cleanup path');
 ok(!/cash-confirm|ยืนยันชำระเงินให้ร้าน|ยืนยันเก็บเงินจากลูกค้า/i.test(source),'native Rider must not reintroduce manual cash confirmation screens');
 ok(!/service_role|sb_secret_/i.test(source),'no privileged Supabase secret');
 console.log(JSON.stringify({checks,failures:0,scope:'QueueGo Rider native Android source'}));

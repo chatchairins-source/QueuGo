@@ -6,6 +6,8 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.location.LocationManager
 import android.net.Uri
+import android.os.Build
+import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
@@ -83,6 +85,7 @@ fun QueueGoRiderApp() {
                 api.touch(current.session)
             }.isSuccess
             if (!valid) {
+                RiderReturnService.stop(context)
                 store.clear()
                 auth = null
                 error = "Session นี้ถูกยกเลิกหรือเปิดจากอุปกรณ์อื่น"
@@ -121,6 +124,7 @@ fun QueueGoRiderApp() {
                     api = api,
                     onLogout = {
                         val current = auth!!
+                        RiderReturnService.stop(context)
                         scope.launch { api.revoke(current.session) }
                         store.clear()
                         auth = null
@@ -228,6 +232,16 @@ private fun RiderHome(
         }
     }
 
+    val notificationPermission = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        actionMessage = if (granted) {
+            "อนุญาตการแจ้งเตือนแล้ว"
+        } else {
+            "หากไม่เปิดปุ่มลอย QueueGo จะใช้การแจ้งเตือนเป็นทางกลับ"
+        }
+    }
+
     val cameraLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.TakePicture()
     ) { success ->
@@ -248,6 +262,25 @@ private fun RiderHome(
             )
         )
         return false
+    }
+
+    fun configureReturnControl() {
+        if (Build.VERSION.SDK_INT >= 33 &&
+            context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+        ) {
+            notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+            return
+        }
+        if (!Settings.canDrawOverlays(context)) {
+            val intent = Intent(
+                Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                Uri.parse("package:" + context.packageName)
+            )
+            context.startActivity(intent)
+            actionMessage = "เปิดสิทธิ์ 'แสดงทับแอปอื่น' เพื่อใช้ปุ่ม Q ระหว่างนำทาง"
+            return
+        }
+        actionMessage = "ปุ่ม Q กลับ QueueGo พร้อมใช้งานแล้ว"
     }
 
     fun openCamera() {
@@ -287,6 +320,7 @@ private fun RiderHome(
                 .onSuccess {
                     snapshot = it
                     loadError = null
+                    if (it.activeJob == null) RiderReturnService.stop(context)
                 }
                 .onFailure { loadError = it.message ?: "โหลดงานไม่สำเร็จ" }
             delay(3_000)
@@ -341,6 +375,7 @@ private fun RiderHome(
                         } else {
                             "จัดส่งสำเร็จ"
                         }
+                        if (verifyMode == "delivery") RiderReturnService.stop(context)
                         closeVerification()
                         snapshot = runCatching { api.riderSnapshot(auth) }.getOrNull()
                     }.onFailure {
@@ -394,6 +429,11 @@ private fun RiderHome(
                 Spacer(Modifier.height(12.dp))
                 when {
                     current.activeJob != null -> {
+                        ReturnControlCard(
+                            overlayAllowed = Settings.canDrawOverlays(context),
+                            onConfigure = { configureReturnControl() }
+                        )
+                        Spacer(Modifier.height(10.dp))
                         ActiveJobCard(
                             job = current.activeJob,
                             busy = actionBusy,
@@ -519,6 +559,29 @@ private fun RiderHome(
         Spacer(Modifier.height(24.dp))
         OutlinedButton(onClick = onLogout, modifier = Modifier.fillMaxWidth()) {
             Text("ออกจากระบบ")
+        }
+    }
+}
+
+@Composable
+private fun ReturnControlCard(
+    overlayAllowed: Boolean,
+    onConfigure: () -> Unit
+) {
+    Card(Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(14.dp)) {
+            Text("ปุ่ม Q กลับ QueueGo", fontWeight = FontWeight.Bold)
+            Text(
+                if (overlayAllowed) {
+                    "พร้อมแสดงปุ่มลอยขณะเปิด Google Maps"
+                } else {
+                    "ยังไม่ได้เปิดสิทธิ์ปุ่มลอย · หากไม่เปิดจะใช้การแจ้งเตือนเป็นทางกลับ"
+                }
+            )
+            Spacer(Modifier.height(8.dp))
+            OutlinedButton(onClick = onConfigure, modifier = Modifier.fillMaxWidth()) {
+                Text(if (overlayAllowed) "ตรวจการตั้งค่าปุ่มลอย" else "เปิดปุ่มลอย")
+            }
         }
     }
 }
@@ -760,6 +823,7 @@ private fun createEvidenceUri(context: Context): Uri {
 
 private fun openNavigation(context: Context, job: RiderJob) {
     val target = job.navigationTarget ?: return
+    RiderReturnService.start(context)
     val navigation = Uri.parse(
         "google.navigation:q=" + target.first + "," + target.second + "&mode=d"
     )
