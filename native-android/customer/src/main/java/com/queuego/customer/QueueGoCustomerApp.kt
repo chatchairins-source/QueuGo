@@ -83,6 +83,7 @@ private fun CustomerShell(auth: NativeAuth, logout: () -> Unit) {
     val laundryApi = remember { CustomerLaundryApi() }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
+    val cartStore = remember(auth.user.id) { CustomerCartStore(context, auth.user.id) }
 
     var screen by remember { mutableStateOf("home") }
     var category by remember { mutableStateOf("all") }
@@ -98,7 +99,7 @@ private fun CustomerShell(auth: NativeAuth, logout: () -> Unit) {
     var selectedLaundryOrder by remember { mutableStateOf<LaundryOrderSummary?>(null) }
     var products by remember { mutableStateOf<List<CustomerProduct>>(emptyList()) }
     var orderItems by remember { mutableStateOf<List<CustomerOrderItem>>(emptyList()) }
-    var cart by remember { mutableStateOf<List<CartLine>>(emptyList()) }
+    var cart by remember(auth.user.id) { mutableStateOf(cartStore.load()) }
     var location by remember { mutableStateOf<CustomerLocation?>(null) }
     var address by remember { mutableStateOf("") }
     var note by remember { mutableStateOf("") }
@@ -140,6 +141,7 @@ private fun CustomerShell(auth: NativeAuth, logout: () -> Unit) {
     }
 
     LaunchedEffect(auth.user.id) { refresh() }
+    LaunchedEffect(cart) { cartStore.save(cart) }
     LaunchedEffect(screen, selectedOrder?.id) {
         if (screen == "orders" || screen == "order") {
             while (true) {
