@@ -8,6 +8,16 @@ import android.location.LocationManager
 import android.net.Uri
 import android.os.Build
 import android.provider.Settings
+import com.queuego.shared.QueueGoTheme
+import com.queuego.shared.QueueGoBrand
+import com.queuego.shared.QgStatusPill
+import com.queuego.shared.QgRed
+import com.queuego.shared.QgMuted
+import com.queuego.shared.QgBg
+import androidx.compose.ui.graphics.Color
+import androidx.compose.material3.CardDefaults
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.background
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
@@ -95,8 +105,8 @@ fun QueueGoRiderApp() {
         }
     }
 
-    MaterialTheme {
-        Scaffold { insets ->
+    QueueGoTheme {
+        Scaffold(containerColor = QgBg) { insets ->
             when {
                 restoring -> LoadingScreen(Modifier.padding(insets))
                 auth == null -> LoginScreen(
@@ -160,14 +170,10 @@ private fun LoginScreen(
         modifier.fillMaxSize().padding(24.dp),
         verticalArrangement = Arrangement.Center
     ) {
-        Text(
-            "Q",
-            style = MaterialTheme.typography.displayLarge,
-            color = MaterialTheme.colorScheme.primary,
-            fontWeight = FontWeight.Black
-        )
-        Text("QueueGo Rider", style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold)
-        Text("Android Native · Production")
+        QueueGoBrand(suffix = "Rider")
+        Spacer(Modifier.height(8.dp))
+        Text("พร้อมรับงานกับ QueueGo", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Black)
+        Text("เข้าสู่ระบบด้วยบัญชี Production เดิม", color = QgMuted)
         Spacer(Modifier.height(28.dp))
 
         OutlinedTextField(
@@ -410,12 +416,25 @@ private fun RiderHome(
     }
 
     Column(
-        modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp)
+        modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(14.dp)
     ) {
-        Text("QueueGo Rider", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
-        Text("สวัสดี " + auth.user.name)
-        Text("สถานะบัญชี: " + auth.user.status)
-        Spacer(Modifier.height(18.dp))
+        Card(
+            Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(22.dp),
+            colors = CardDefaults.cardColors(containerColor = Color.White)
+        ) {
+            Column(Modifier.padding(18.dp)) {
+                QueueGoBrand(suffix = "Rider")
+                Spacer(Modifier.height(10.dp))
+                Text("สวัสดี " + auth.user.name, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black)
+                Spacer(Modifier.height(6.dp))
+                QgStatusPill(
+                    if (auth.user.status == "active") "บัญชีพร้อมใช้งาน" else "สถานะ " + auth.user.status,
+                    auth.user.status == "active"
+                )
+            }
+        }
+        Spacer(Modifier.height(14.dp))
 
         if (actionMessage != null) {
             Text(
@@ -430,7 +449,7 @@ private fun RiderHome(
         }
 
         if (auth.user.status != "active") {
-            Card(Modifier.fillMaxWidth()) {
+            Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(20.dp), colors = CardDefaults.cardColors(containerColor = Color.White)) {
                 Column(Modifier.padding(16.dp)) {
                     Text("บัญชียังไม่พร้อมรับงาน", fontWeight = FontWeight.Bold)
                     Text("สถานะ: " + auth.user.status)
@@ -443,10 +462,15 @@ private fun RiderHome(
             } else if (loadError != null) {
                 Text(loadError!!, color = MaterialTheme.colorScheme.error)
             } else if (current != null) {
-                Text(
-                    if (current.online) "ออนไลน์ · พร้อมรับงาน" else "ออฟไลน์",
-                    fontWeight = FontWeight.Bold
-                )
+                Row(Modifier.fillMaxWidth(), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                    Text(
+                        if (current.online) "ออนไลน์ · พร้อมรับงาน" else "ออฟไลน์",
+                        fontWeight = FontWeight.Black,
+                        style = MaterialTheme.typography.titleMedium,
+                        modifier = Modifier.weight(1f)
+                    )
+                    QgStatusPill(if (current.online) "ONLINE" else "OFFLINE", current.online)
+                }
                 Spacer(Modifier.height(12.dp))
                 when {
                     current.activeJob != null -> {
@@ -606,10 +630,12 @@ private fun RiderHome(
                         )
                     }
                     else -> {
-                        Card(Modifier.fillMaxWidth()) {
-                            Column(Modifier.padding(16.dp)) {
-                                Text("ยังไม่มีงานที่ Server เสนอให้", fontWeight = FontWeight.Bold)
-                                Text("QueueGo แสดงเฉพาะงานที่จัดให้ Rider คนนี้")
+                        Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(20.dp), colors = CardDefaults.cardColors(containerColor = Color.White)) {
+                            Column(Modifier.padding(18.dp)) {
+                                Text("พร้อมรับงาน", color = QgRed, fontWeight = FontWeight.Black, style = MaterialTheme.typography.titleLarge)
+                                Spacer(Modifier.height(5.dp))
+                                Text("ยังไม่มีงานที่ Server จัดให้ Rider คนนี้", fontWeight = FontWeight.Bold)
+                                Text("เมื่อมีงาน ระบบจะแสดงการ์ดข้อเสนอพร้อมตัวนับเวลาบนปุ่มรับงาน", color = QgMuted, style = MaterialTheme.typography.bodySmall)
                             }
                         }
                     }
@@ -629,7 +655,7 @@ private fun ReturnControlCard(
     overlayAllowed: Boolean,
     onConfigure: () -> Unit
 ) {
-    Card(Modifier.fillMaxWidth()) {
+    Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(20.dp), colors = CardDefaults.cardColors(containerColor = Color.White)) {
         Column(Modifier.padding(14.dp)) {
             Text("ปุ่ม Q กลับ QueueGo", fontWeight = FontWeight.Bold)
             Text(
@@ -669,7 +695,7 @@ private fun OfferCard(
         }
     }
 
-    Card(Modifier.fillMaxWidth()) {
+    Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(20.dp), colors = CardDefaults.cardColors(containerColor = Color.White)) {
         Column(Modifier.padding(16.dp)) {
             Text("งานใหม่", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
             Text(job.numberLabel, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
@@ -710,7 +736,7 @@ private fun MarketPickupPanel(
     onStartDelivery: () -> Unit
 ) {
     val pending = pickups.filter { !it.done }
-    Card(Modifier.fillMaxWidth()) {
+    Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(20.dp), colors = CardDefaults.cardColors(containerColor = Color.White)) {
         Column(Modifier.padding(16.dp)) {
             Text("รับของหลายร้าน", fontWeight = FontWeight.Bold)
             Text(job.numberLabel + " · รับแล้ว " + (pickups.size - pending.size) + "/" + pickups.size + " จุด")
@@ -769,7 +795,7 @@ private fun ActiveJobCard(
     onArriveCustomer: () -> Unit,
     onDeliveryVerify: () -> Unit
 ) {
-    Card(Modifier.fillMaxWidth()) {
+    Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(20.dp), colors = CardDefaults.cardColors(containerColor = Color.White)) {
         Column(Modifier.padding(16.dp)) {
             Text(job.numberLabel, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
             Text("สถานะ: " + job.status)
@@ -876,7 +902,7 @@ private fun VerificationScreen(
         )
         if (marketPickupMode && marketPickup != null) {
             Spacer(Modifier.height(10.dp))
-            Card(Modifier.fillMaxWidth()) {
+            Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(20.dp), colors = CardDefaults.cardColors(containerColor = Color.White)) {
                 Column(Modifier.padding(14.dp)) {
                     Text(marketPickup.shopName, fontWeight = FontWeight.Bold)
                     if (!marketPickup.shopAddress.isNullOrBlank()) Text(marketPickup.shopAddress)
@@ -886,7 +912,7 @@ private fun VerificationScreen(
         }
         Spacer(Modifier.height(14.dp))
 
-        if (!marketPickupMode) Card(Modifier.fillMaxWidth()) {
+        if (!marketPickupMode) Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(20.dp), colors = CardDefaults.cardColors(containerColor = Color.White)) {
             Column(Modifier.padding(14.dp)) {
                 Text("รายการสินค้า", fontWeight = FontWeight.Bold)
                 if (items.isEmpty()) {
@@ -903,7 +929,7 @@ private fun VerificationScreen(
         }
 
         Spacer(Modifier.height(14.dp))
-        Card(Modifier.fillMaxWidth()) {
+        Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(20.dp), colors = CardDefaults.cardColors(containerColor = Color.White)) {
             Column(Modifier.padding(14.dp)) {
                 Text(
                     when {
