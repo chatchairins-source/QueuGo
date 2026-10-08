@@ -12,7 +12,14 @@ for(const p of [
   'rider/build.gradle.kts',
   'rider/src/main/AndroidManifest.xml',
   'rider/src/main/java/com/queuego/rider/QueueGoRiderApp.kt',
-  'rider/src/main/java/com/queuego/rider/QueueGoApi.kt'
+  'rider/src/main/java/com/queuego/rider/QueueGoApi.kt',
+  'customer/src/main/java/com/queuego/customer/QueueGoCustomerApp.kt',
+  'customer/src/main/java/com/queuego/customer/CustomerApi.kt',
+  'customer/src/main/java/com/queuego/customer/CustomerMarketApi.kt',
+  'customer/src/main/java/com/queuego/customer/CustomerLaundryApi.kt',
+  'merchant/src/main/java/com/queuego/merchant/QueueGoMerchantApp.kt',
+  'merchant/src/main/java/com/queuego/merchant/MerchantApi.kt',
+  'merchant/src/main/java/com/queuego/merchant/MerchantLaundryApi.kt'
 ]) ok(fs.existsSync(path.join(root,p)),'missing '+p);
 
 const customerGradle=read('customer/build.gradle.kts');
@@ -36,6 +43,18 @@ const source=all.join('\n');
 
 ok(!/android\.webkit\.WebView|<WebView\b|loadUrl\(/.test(source),'native apps must not use WebView UI');
 ok(source.includes('expectedRole = "customer"')&&source.includes('expectedRole = "shop"'),'Customer/Merchant must validate real QueueGo roles');
+const customerMain=read('customer/src/main/java/com/queuego/customer/MainActivity.kt');
+const merchantMain=read('merchant/src/main/java/com/queuego/merchant/MainActivity.kt');
+ok(customerMain.includes('QueueGoCustomerApp()')&&!customerMain.includes('QueueGoRoleNativeApp'),'Customer must launch full native app, not role shell');
+ok(merchantMain.includes('QueueGoMerchantApp()')&&!merchantMain.includes('QueueGoRoleNativeApp'),'Merchant must launch full native app, not role shell');
+ok(source.includes('queuego_place_cash_order'),'Customer native checkout must use production cash-order RPC');
+ok(source.includes('market_public_catalog_v2')&&source.includes('queuego_place_market_order'),'Customer native Market must use production market RPCs');
+ok(source.includes('queuego_add_market_order_shops'),'Customer native Market must preserve add-shop flow');
+ok(source.includes('queuego_place_laundry_order_v2'),'Customer native Laundry must use production laundry order RPC');
+ok(source.includes('qg_merchant_action_once'),'Merchant native order actions must stay idempotent');
+ok(source.includes('get_my_shop_orders'),'Merchant native Orders must use production order source');
+ok(source.includes('queuego_laundry_merchant_state')&&source.includes('queuego_laundry_shop_action_v2'),'Merchant native Laundry must use production laundry state/actions');
+ok(source.includes('พร้อมส่ง · เหลือ'),'Merchant preparation countdown must remain on ready button');
 ok(source.includes('SecureRoleSessionStore')&&source.includes('NativeAuthApi'),'Customer/Merchant must share native auth/session implementation');
 ok(source.includes('claim_active_session'),'reuse active-session claim');
 ok(source.includes('check_active_session')&&source.includes('touch_active_session'),'reuse session guard');
@@ -55,4 +74,4 @@ ok(source.includes('ACTION_MANAGE_OVERLAY_PERMISSION'),'overlay permission must 
 ok(source.includes('RiderReturnService.stop'),'overlay service must have cleanup path');
 ok(!/cash-confirm|ยืนยันชำระเงินให้ร้าน|ยืนยันเก็บเงินจากลูกค้า/i.test(source),'native Rider must not reintroduce manual cash confirmation screens');
 ok(!/service_role|sb_secret_/i.test(source),'no privileged Supabase secret');
-console.log(JSON.stringify({checks,failures:0,scope:'QueueGo Rider native Android source'}));
+console.log(JSON.stringify({checks,failures:0,scope:'QueueGo Customer Merchant Rider native Android source'}));
