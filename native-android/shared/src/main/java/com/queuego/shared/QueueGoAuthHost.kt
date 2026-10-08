@@ -56,19 +56,24 @@ fun QueueGoAuthHost(
     }
 
     LaunchedEffect(auth?.session?.sessionId) {
-        val current = auth ?: return@LaunchedEffect
+        if (auth == null) return@LaunchedEffect
         while (true) {
             delay(25_000)
-            val ok = runCatching {
-                api.validate(current, expectedRole)
-                api.touch(current.session)
-            }.isSuccess
-            if (!ok) {
+            val current = auth ?: break
+            val result = runCatching {
+                val validated = api.validate(current, expectedRole)
+                api.touch(validated.session)
+                validated
+            }
+            result.onSuccess { validated ->
+                store.save(validated)
+                auth = validated
+            }.onFailure {
                 store.clear()
                 auth = null
-                error = "Session นี้ถูกยกเลิกหรือเปิดจากอุปกรณ์อื่น"
-                break
+                error = "Session นี้ถูกยกเลิก หมดอายุ หรือเปิดจากอุปกรณ์อื่น"
             }
+            if (result.isFailure) break
         }
     }
 
