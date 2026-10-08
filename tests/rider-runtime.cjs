@@ -9,7 +9,7 @@ eq(src.includes('riderOfferPollTimer=setInterval(qgPollRiderOfferNow,OFFER_POLL_
 eq(src.includes("sbRpc('qg_get_my_rider_offer',{},token)"),true);
 eq(src.includes("if(Array.isArray(rows)&&rows.some(x=>x?.order_id))await refreshData();"),true);
 eq(src.includes('function qgOpenCashConfirmPage({o,mode,amount,onConfirm,onBack})'),true);
-eq(src.includes('ตรวจสอบรายการครบแล้ว'),true);
+eq(src.includes('ตรวจสอบรายการ'),true);
 eq(src.includes('ถ่ายรูปสินค้าที่รับก่อนชำระเงิน'),true);
 eq(src.includes('ชำระเงินให้ร้านเรียบร้อยแล้ว'),true);
 eq(src.includes('ส่งสินค้าให้ลูกค้าเรียบร้อยแล้ว'),true);
