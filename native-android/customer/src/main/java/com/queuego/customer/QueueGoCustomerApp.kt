@@ -189,8 +189,11 @@ private fun CustomerShell(auth: NativeAuth, logout: () -> Unit) {
                 "home" -> CustomerHome(
                     loading, banner, category, shops,
                     onCategory = {
-                        if (it == "market") screen = "market"
-                        else category = it
+                        when (it) {
+                            "market" -> screen = "market"
+                            "laundry" -> screen = "laundry"
+                            else -> category = it
+                        }
                     },
                     onShop = { shop ->
                         selectedShop = shop
@@ -201,6 +204,34 @@ private fun CustomerShell(auth: NativeAuth, logout: () -> Unit) {
                                 .onSuccess { products = it }
                                 .onFailure { message = it.message }
                         }
+                    }
+                )
+                "laundry" -> LaundryNativeScreen(
+                    auth = auth,
+                    location = location,
+                    address = address,
+                    onAddress = {
+                        address = it
+                        location = location?.copy(address = it)
+                    },
+                    onGps = {
+                        if (hasLocation(context)) {
+                            val p = lastKnownLocation(context)
+                            if (p != null) {
+                                location = CustomerLocation(p.first, p.second, address)
+                                message = "ใช้ตำแหน่งปัจจุบันแล้ว"
+                            } else message = "ยังอ่านตำแหน่ง GPS ไม่ได้"
+                        } else {
+                            permission.launch(arrayOf(
+                                Manifest.permission.ACCESS_FINE_LOCATION,
+                                Manifest.permission.ACCESS_COARSE_LOCATION
+                            ))
+                        }
+                    },
+                    onBack = { screen = "home" },
+                    onDone = {
+                        message = "ส่งคำขอฝากซักแล้ว"
+                        screen = "orders"
                     }
                 )
                 "market" -> MarketNativeScreen(
