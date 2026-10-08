@@ -1,0 +1,45 @@
+name: QueueGo Rider Native Pilot
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - queuego-native-android-v1
+    paths:
+      - 'native-android/**'
+      - 'tests/native-android-source.cjs'
+      - '.github/workflows/build-native-rider-pilot.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  rider-native:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Install Android SDK
+        run: yes | sdkmanager "platforms;android-37" "build-tools;36.0.0" >/dev/null
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.6.0'
+      - name: Source integrity
+        run: node tests/native-android-source.cjs
+      - name: Build native Rider APK
+        run: gradle -p native-android :rider:assembleDebug --stacktrace
+      - name: Reject WebView
+        run: |
+          if grep -R -E 'android\.webkit\.WebView|<WebView\b|loadUrl\(' native-android; then
+            echo "WebView is forbidden in QueueGo native Rider"
+            exit 1
+          fi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: queuego-rider-native-pilot
+          path: native-android/rider/build/outputs/apk/debug/rider-debug.apk
+          if-no-files-found: error
