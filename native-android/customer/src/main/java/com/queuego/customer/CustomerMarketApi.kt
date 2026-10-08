@@ -53,6 +53,24 @@ data class ActiveMarketTrip(
     val shopIds: Set<String>
 )
 
+data class MarketTripSummary(
+    val id: String,
+    val marketId: String,
+    val status: String,
+    val shopCount: Int,
+    val total: Double,
+    val deliveryAddress: String?,
+    val createdAt: String?
+)
+
+data class MarketTripChild(
+    val id: String,
+    val number: String,
+    val shopId: String?,
+    val status: String,
+    val total: Double
+)
+
 class CustomerMarketApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
     suspend fun loadMarkets(auth: NativeAuth): List<MarketInfo> {
         val rows = http.array(http.rpc("market_public_markets_v1", auth.session.accessToken))
@@ -207,6 +225,52 @@ class CustomerMarketApi(private val http: QueueGoNativeApi = QueueGoNativeApi())
         }
     }
 
+    suspend fun trips(auth: NativeAuth): List<MarketTripSummary> {
+        val rows = http.array(http.get(
+            "market_orders?select=id,market_id,status,shop_count,total_amount,delivery_address,created_at" +
+                "&customer_id=eq." + http.enc(auth.user.id) + "&order=created_at.desc&limit=50",
+            auth.session.accessToken
+        ))
+        return buildList {
+            for (i in 0 until rows.length()) {
+                val r = rows.optJSONObject(i) ?: continue
+                val id = r.optString("id")
+                if (id.isBlank()) continue
+                add(MarketTripSummary(
+                    id,
+                    r.optString("market_id"),
+                    r.optString("status"),
+                    r.optInt("shop_count", 0),
+                    r.optDouble("total_amount", 0.0),
+                    r.optString("delivery_address").takeIf { it.isNotBlank() && it != "null" },
+                    r.optString("created_at").takeIf { it.isNotBlank() && it != "null" }
+                ))
+            }
+        }
+    }
+
+    suspend fun tripChildren(auth: NativeAuth, tripId: String): List<MarketTripChild> {
+        val rows = http.array(http.get(
+            "orders?select=id,order_number,shop_id,status,total_amount,subtotal" +
+                "&market_order_id=eq." + http.enc(tripId) + "&order=created_at.asc",
+            auth.session.accessToken
+        ))
+        return buildList {
+            for (i in 0 until rows.length()) {
+                val r = rows.optJSONObject(i) ?: continue
+                val id = r.optString("id")
+                if (id.isBlank()) continue
+                add(MarketTripChild(
+                    id,
+                    marketOrderNumber(r.optString("order_number"), id),
+                    r.optString("shop_id").takeIf { it.isNotBlank() && it != "null" },
+                    r.optString("status"),
+                    r.optDouble("total_amount", r.optDouble("subtotal", 0.0))
+                ))
+            }
+        }
+    }
+
     fun nearest(markets: List<MarketInfo>, location: CustomerLocation?): MarketInfo? {
         if (markets.isEmpty()) return null
         if (location == null) return markets.firstOrNull()
@@ -228,3 +292,12 @@ class CustomerMarketApi(private val http: QueueGoNativeApi = QueueGoNativeApi())
 
 private fun JSONObject.optDoubleOrNull(key: String): Double? =
     if (!has(key) || isNull(key)) null else optDouble(key).takeIf { it.isFinite() }
+
+
+private fun marketOrderNumber(raw: String?, id: String): String {
+    val clean = raw.orEmpty().trim()
+    if (clean.startsWith("QT-", true)) return clean.uppercase()
+    val digits = clean.filter { it.isDigit() }.takeLast(4)
+    if (digits.length == 4) return "QT-" + digits
+    return "QT-" + kotlin.math.abs(id.hashCode() % 10000).toString().padStart(4, '0')
+}
