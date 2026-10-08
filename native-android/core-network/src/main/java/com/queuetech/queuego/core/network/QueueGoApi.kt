@@ -153,6 +153,46 @@ class QueueGoApi(
         preferRepresentation = preferRepresentation,
     )
 
+    suspend fun uploadEvidenceJpeg(
+        accessToken: String,
+        authUserId: String,
+        jpegBytes: ByteArray,
+    ): String = withContext(Dispatchers.IO) {
+        require(jpegBytes.isNotEmpty()) { "ไม่พบข้อมูลรูปหลักฐาน" }
+        require(jpegBytes.size <= 5 * 1024 * 1024) {
+            "รูปหลักฐานต้องมีขนาดไม่เกิน 5 MB"
+        }
+
+        val path = authUserId + "/" + java.util.UUID.randomUUID().toString() + ".jpg"
+        val connection = (
+            URL(baseUrl + "/storage/v1/object/qg-evidence/" + path).openConnection()
+                as HttpURLConnection
+        ).apply {
+            requestMethod = "POST"
+            connectTimeout = 15_000
+            readTimeout = 30_000
+            useCaches = false
+            doOutput = true
+            setRequestProperty("apikey", publishableKey)
+            setRequestProperty("Authorization", "Bearer $accessToken")
+            setRequestProperty("Content-Type", "image/jpeg")
+            setRequestProperty("x-upsert", "false")
+        }
+
+        try {
+            connection.outputStream.use { it.write(jpegBytes) }
+            val code = connection.responseCode
+            val stream = if (code in 200..299) connection.inputStream else connection.errorStream
+            val text = stream?.bufferedReader(Charsets.UTF_8)?.use { it.readText() }.orEmpty()
+            if (code !in 200..299) {
+                throw QueueGoApiException(code, parseError(text, code))
+            }
+            path
+        } finally {
+            connection.disconnect()
+        }
+    }
+
     suspend fun claimActiveSession(
         accessToken: String,
         sessionId: String,
