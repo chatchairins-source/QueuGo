@@ -678,7 +678,7 @@ async function qtHydrateDatabase(opts){
       QT_DB_CACHE.qt_users=(Array.isArray(userRows)?userRows:[]).map(qtUserFromRow);
       try{
         let shops=[];
-        if(me?.role==='shop'&&me.userId)try{ shops=await qtSupabaseTable('shop_profiles?select=*&user_id=eq.'+encodeURIComponent(me.userId)+'&limit=1',{accessToken:token}); }
+        if(me?.role==='shop'&&me.userId)try{ shops=await qtSupabaseTable('shop_profiles?select=*&user_id=eq.'+encodeURIComponent(me.userId)+'&archived_at=is.null&limit=1',{accessToken:token}); }
         catch(e){ console.warn('[QueueGo] shop_profiles read failed:',e); }
 
         const sm=new Map((shops||[]).filter(x=>x&&x.user_id).map(x=>[x.user_id,x]));
