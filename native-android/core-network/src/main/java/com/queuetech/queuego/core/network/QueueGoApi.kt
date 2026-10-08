@@ -1,6 +1,8 @@
 package com.queuetech.queuego.core.network
 
 import com.queuetech.queuego.core.model.AppRole
+import com.queuetech.queuego.core.model.QueueGoProduct
+import com.queuetech.queuego.core.model.QueueGoShop
 import com.queuetech.queuego.core.model.QueueGoUser
 import java.net.HttpURLConnection
 import java.net.URL
@@ -54,6 +56,84 @@ class QueueGoApi(
             phone = item.optString("phone"),
             status = item.optString("status"),
         )
+    }
+
+    suspend fun loadActiveShops(): List<QueueGoShop> {
+        val raw = request(
+            "GET",
+            "/rest/v1/shop_profiles?select=id,shop_name,status,public_category,public_subcategories,public_logo,public_cover,public_open_time,public_close_time,public_description,address,latitude,longitude,delivery_enabled&status=eq.active&order=shop_name.asc",
+        )
+        val rows = JSONArray(raw)
+        val openStates = runCatching {
+            val stateRows = JSONArray(
+                request("GET", "/rest/v1/shop_open_states?select=shop_id,is_open,resume_at")
+            )
+            buildMap<String, Boolean> {
+                for (index in 0 until stateRows.length()) {
+                    val item = stateRows.getJSONObject(index)
+                    put(item.getString("shop_id"), item.optBoolean("is_open", true))
+                }
+            }
+        }.getOrDefault(emptyMap())
+
+        return buildList {
+            for (index in 0 until rows.length()) {
+                val item = rows.getJSONObject(index)
+                if (item.optString("status") != "active") continue
+                val subcategories = item.optJSONArray("public_subcategories")
+                add(
+                    QueueGoShop(
+                        id = item.getString("id"),
+                        name = item.optString("shop_name").ifBlank { "ร้านค้า" },
+                        category = item.optString("public_category").ifBlank { "other" },
+                        subcategories = buildList {
+                            if (subcategories != null) {
+                                for (subIndex in 0 until subcategories.length()) {
+                                    add(subcategories.optString(subIndex))
+                                }
+                            }
+                        }.filter(String::isNotBlank),
+                        description = item.optString("public_description"),
+                        address = item.optString("address"),
+                        logoUrl = item.optString("public_logo"),
+                        coverUrl = item.optString("public_cover"),
+                        latitude = item.optNullableDouble("latitude"),
+                        longitude = item.optNullableDouble("longitude"),
+                        deliveryEnabled = item.optBoolean("delivery_enabled", true),
+                        isOpen = openStates[item.getString("id")] ?: true,
+                    )
+                )
+            }
+        }
+    }
+
+    suspend fun loadProductsForShop(shopId: String): List<QueueGoProduct> {
+        val encodedShopId = java.net.URLEncoder.encode(shopId, Charsets.UTF_8.name())
+        val raw = request(
+            "GET",
+            "/rest/v1/products?select=id,shop_id,name,description,price,delivery_price,image,available,delivery_available&shop_id=eq.$encodedShopId&delivery_available=eq.true&order=created_at.asc",
+        )
+        val rows = JSONArray(raw)
+        return buildList {
+            for (index in 0 until rows.length()) {
+                val item = rows.getJSONObject(index)
+                val deliveryAvailable = item.optBoolean("delivery_available", true)
+                if (!deliveryAvailable) continue
+                add(
+                    QueueGoProduct(
+                        id = item.getString("id"),
+                        shopId = item.getString("shop_id"),
+                        name = item.optString("name").ifBlank { "สินค้า" },
+                        description = item.optString("description"),
+                        price = item.optDouble("price", 0.0).coerceAtLeast(0.0),
+                        deliveryPrice = item.optNullableDouble("delivery_price"),
+                        imageUrl = item.optString("image"),
+                        available = item.optBoolean("available", true),
+                        deliveryAvailable = deliveryAvailable,
+                    )
+                )
+            }
+        }
     }
 
     suspend fun rpc(accessToken: String, functionName: String, body: JSONObject = JSONObject()): String =
@@ -165,6 +245,11 @@ class QueueGoApi(
         } finally {
             connection.disconnect()
         }
+    }
+
+    private fun JSONObject.optNullableDouble(key: String): Double? {
+        if (!has(key) || isNull(key)) return null
+        return optDouble(key).takeIf(Double::isFinite)
     }
 
     private fun parseError(raw: String, status: Int): String {
