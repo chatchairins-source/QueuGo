@@ -208,6 +208,16 @@ fun RiderHomeScreen(
                     )
                 }
 
+                state.activeJob?.marketOrderId != null &&
+                    state.marketPickups.any { !it.done } -> {
+                    MarketPickupCard(
+                        pickups = state.marketPickups,
+                        busy = state.actionBusy,
+                        onNavigate = onNavigate,
+                        onOpenProof = viewModel::openMarketPickupProof,
+                    )
+                }
+
                 state.activeJob != null -> {
                     ActiveJobCard(
                         job = state.activeJob!!,
@@ -217,6 +227,7 @@ fun RiderHomeScreen(
                         onOpenPickupProof = viewModel::openPickupProof,
                         onArrivedCustomer = viewModel::arrivedAtCustomer,
                         onOpenDeliveryProof = viewModel::openDeliveryProof,
+                        onStartMarketDelivery = viewModel::resumeMarketDelivery,
                     )
                 }
 
@@ -363,6 +374,7 @@ private fun ActiveJobCard(
     onOpenPickupProof: () -> Unit,
     onArrivedCustomer: () -> Unit,
     onOpenDeliveryProof: () -> Unit,
+    onStartMarketDelivery: () -> Unit,
 ) {
     val targetLat = if (job.isPickupPhase) job.pickupLatitude else job.deliveryLatitude
     val targetLng = if (job.isPickupPhase) job.pickupLongitude else job.deliveryLongitude
@@ -432,6 +444,14 @@ private fun ActiveJobCard(
                         )
                     }
                 }
+            } else if (!job.marketOrderId.isNullOrBlank() && job.status == "picked_up") {
+                OutlinedButton(
+                    onClick = onStartMarketDelivery,
+                    enabled = !busy,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text(if (busy) "กำลังเริ่มนำส่ง..." else "เริ่มนำส่งลูกค้า")
+                }
             } else if (job.status == "in_progress") {
                 if (job.riderArrivedCustomerAt.isNullOrBlank()) {
                     OutlinedButton(
@@ -456,6 +476,78 @@ private fun ActiveJobCard(
 }
 
 @Composable
+private fun MarketPickupCard(
+    pickups: List<RiderMarketPickup>,
+    busy: Boolean,
+    onNavigate: (Double, Double, String) -> Unit,
+    onOpenProof: (RiderMarketPickup) -> Unit,
+) {
+    val current = pickups.firstOrNull { !it.done } ?: return
+    val doneCount = pickups.count { it.done }
+
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Text("รับของหลายร้าน", fontWeight = FontWeight.Black)
+            Text(
+                "รับแล้ว " + doneCount + "/" + pickups.size + " จุด",
+                color = MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.Bold,
+            )
+            HorizontalDivider()
+            LabelValue(
+                "จุดรับปัจจุบัน",
+                "จุด " + current.sequence + " · " + current.shopName,
+            )
+            if (current.shopAddress.isNotBlank()) {
+                LabelValue("ที่อยู่ร้าน", current.shopAddress)
+            }
+            LabelValue(
+                "เงินที่ต้องจ่ายร้าน",
+                "฿" + String.format(Locale.US, "%.0f", current.shopAmount),
+            )
+
+            Button(
+                onClick = {
+                    val lat = current.latitude
+                    val lng = current.longitude
+                    if (lat != null && lng != null) {
+                        onNavigate(lat, lng, current.shopName)
+                    }
+                },
+                enabled = current.latitude != null && current.longitude != null,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text("นำทางไปจุดรับ " + current.sequence)
+            }
+
+            OutlinedButton(
+                onClick = { onOpenProof(current) },
+                enabled = !busy,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text("ตรวจสินค้าและถ่ายรูปจุดนี้")
+            }
+
+            pickups.forEach { pickup ->
+                Text(
+                    text = "จุด " + pickup.sequence + " · " + pickup.shopName + " · " +
+                        if (pickup.done) "รับแล้ว" else "รอรับ",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (pickup.done) {
+                        MaterialTheme.colorScheme.primary
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    },
+                )
+            }
+        }
+    }
+}
+
+@Composable
 private fun ProofCard(
     proof: RiderProofState,
     job: RiderActiveJob,
@@ -464,6 +556,7 @@ private fun ProofCard(
     onBack: () -> Unit,
 ) {
     val pickup = proof.mode == RiderProofMode.PICKUP
+    val marketPickup = !proof.marketPickupId.isNullOrBlank()
     val itemCount = proof.items.sumOf { it.quantity }
 
     Card(modifier = Modifier.fillMaxWidth()) {
@@ -474,7 +567,11 @@ private fun ProofCard(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        if (pickup) "รับสินค้าที่ร้าน" else "ส่งสินค้าให้ลูกค้า",
+                        when {
+                            marketPickup -> proof.marketPickupLabel ?: "รับสินค้าจุดตลาด"
+                            pickup -> "รับสินค้าที่ร้าน"
+                            else -> "ส่งสินค้าให้ลูกค้า"
+                        },
                         fontWeight = FontWeight.Black,
                     )
                     Text(
@@ -492,17 +589,22 @@ private fun ProofCard(
             }
 
             Text(
-                if (pickup) {
-                    "ตรวจรายการให้ครบและถ่ายรูปสินค้าที่รับในหน้านี้"
-                } else {
-                    "ตรวจการส่งมอบและถ่ายรูปสินค้า/จุดส่งในหน้านี้"
+                when {
+                    marketPickup -> "ตรวจสินค้าของร้านนี้ให้ครบ แล้วถ่ายรูปหลักฐานในหน้าเดียว"
+                    pickup -> "ตรวจรายการให้ครบและถ่ายรูปสินค้าที่รับในหน้านี้"
+                    else -> "ตรวจการส่งมอบและถ่ายรูปสินค้า/จุดส่งในหน้านี้"
                 },
                 style = MaterialTheme.typography.bodyMedium,
             )
 
             HorizontalDivider()
 
-            if (proof.loading) {
+            if (marketPickup) {
+                Text(
+                    "ตรวจจำนวนและสภาพสินค้ากับร้านก่อนถ่ายรูป",
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+            } else if (proof.loading) {
                 CircularProgressIndicator(
                     modifier = Modifier.align(Alignment.CenterHorizontally),
                 )
@@ -534,7 +636,12 @@ private fun ProofCard(
             }
 
             HorizontalDivider()
-            if (pickup) {
+            if (marketPickup) {
+                LabelValue(
+                    "ยอดที่จ่ายร้าน",
+                    "฿" + String.format(Locale.US, "%.0f", proof.marketPickupAmount ?: 0.0),
+                )
+            } else if (pickup) {
                 LabelValue(
                     "ยอดสินค้าที่รับ",
                     "฿" + String.format(Locale.US, "%.0f", job.subtotal),
