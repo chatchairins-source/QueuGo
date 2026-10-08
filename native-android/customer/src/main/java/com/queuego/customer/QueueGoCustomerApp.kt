@@ -465,6 +465,24 @@ private fun CustomerShell(auth: NativeAuth, logout: () -> Unit) {
                     order = selectedOrder,
                     items = orderItems,
                     context = trackingContext,
+                    busy = busy,
+                    onCancel = {
+                        val current = selectedOrder
+                        if (current != null && !busy) {
+                            busy = true
+                            scope.launch {
+                                runCatching { api.cancelOrder(auth, current.id) }
+                                    .onSuccess {
+                                        message = "ยกเลิกออเดอร์แล้ว"
+                                        orders = runCatching { api.loadOrders(auth) }.getOrDefault(orders)
+                                        selectedOrder = orders.find { it.id == current.id }
+                                            ?: current.copy(status = "cancelled")
+                                    }
+                                    .onFailure { message = it.message ?: "ยกเลิกออเดอร์ไม่สำเร็จ" }
+                                busy = false
+                            }
+                        }
+                    },
                     onBack = {
                         trackingContext = null
                         screen = "orders"
@@ -849,6 +867,8 @@ private fun OrderTrackingScreen(
     order: CustomerOrder?,
     items: List<CustomerOrderItem>,
     context: CustomerOrderContext?,
+    busy: Boolean,
+    onCancel: () -> Unit,
     onBack: () -> Unit
 ) {
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(14.dp)) {
@@ -933,6 +953,16 @@ private fun OrderTrackingScreen(
                         }
                     }
                 }
+            }
+            Spacer(Modifier.height(10.dp))
+        }
+        if (order.status in setOf("pending", "searching_rider") && context?.rider == null) {
+            OutlinedButton(
+                onClick = onCancel,
+                enabled = !busy,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(if (busy) "กำลังยกเลิก..." else "ยกเลิกคำสั่งซื้อ")
             }
             Spacer(Modifier.height(10.dp))
         }
