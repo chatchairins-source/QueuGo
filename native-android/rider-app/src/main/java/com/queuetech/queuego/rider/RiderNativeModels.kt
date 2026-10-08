@@ -48,6 +48,11 @@ data class RiderActiveJob(
     val deliveryLongitude: Double?,
     val totalAmount: Double,
     val deliveryFee: Double,
+    val subtotal: Double,
+    val customerName: String,
+    val note: String,
+    val riderArrivedShopAt: String?,
+    val riderArrivedCustomerAt: String?,
     val marketOrderId: String?,
     val fulfillmentVertical: String,
 ) {
@@ -60,11 +65,38 @@ data class RiderActiveJob(
         )
 }
 
+
+enum class RiderProofMode {
+    PICKUP,
+    DELIVERY,
+}
+
+data class RiderOrderItem(
+    val name: String,
+    val description: String,
+    val quantity: Int,
+    val unitPrice: Double,
+    val totalPrice: Double,
+    val imageUrl: String,
+)
+
+data class RiderProofState(
+    val mode: RiderProofMode,
+    val orderId: String,
+    val orderNumber: String,
+    val items: List<RiderOrderItem> = emptyList(),
+    val loading: Boolean = true,
+    val photoUri: String? = null,
+    val submitting: Boolean = false,
+    val error: String? = null,
+)
+
 data class RiderDashboardState(
     val loading: Boolean = true,
     val profile: RiderProfileState? = null,
     val offer: RiderOffer? = null,
     val activeJob: RiderActiveJob? = null,
+    val proof: RiderProofState? = null,
     val actionBusy: Boolean = false,
     val message: String? = null,
     val error: String? = null,
