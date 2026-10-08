@@ -1,5 +1,7 @@
 package com.queuego.merchant
 
+import android.media.AudioManager
+import android.media.ToneGenerator
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -75,6 +77,7 @@ private fun MerchantShell(auth: NativeAuth, logout: () -> Unit) {
     var readiness by remember { mutableStateOf<ShopReadiness?>(null) }
     var shopOpen by remember { mutableStateOf(true) }
     var todayRevenue by remember { mutableStateOf(MerchantTodayRevenue(0, 0.0, 0.0, 0.0)) }
+    var knownPendingIds by remember { mutableStateOf<Set<String>?>(null) }
     var selectedOrder by remember { mutableStateOf<MerchantOrder?>(null) }
     var orderItems by remember { mutableStateOf<List<MerchantOrderItem>>(emptyList()) }
     var gpRate by remember { mutableStateOf(0.0) }
@@ -94,6 +97,7 @@ private fun MerchantShell(auth: NativeAuth, logout: () -> Unit) {
             val s = api.loadShop(auth)
             shop = s
             orders = api.loadOrders(auth)
+            knownPendingIds = orders.filter { it.status == "pending" }.map { it.id }.toSet()
             if (s != null) {
                 products = api.loadProducts(auth, s.id)
                 readiness = api.readiness(auth, s.id)
@@ -111,6 +115,17 @@ private fun MerchantShell(auth: NativeAuth, logout: () -> Unit) {
         if (screen == "home" || screen == "orders" || screen == "order") {
             while (true) {
                 runCatching { api.loadOrders(auth) }.onSuccess { fresh ->
+                    val pendingNow = fresh.filter { it.status == "pending" }.map { it.id }.toSet()
+                    val before = knownPendingIds
+                    if (before != null && pendingNow.any { it !in before }) {
+                        val tone = ToneGenerator(AudioManager.STREAM_NOTIFICATION, 90)
+                        tone.startTone(ToneGenerator.TONE_PROP_BEEP2, 650)
+                        scope.launch {
+                            delay(750)
+                            runCatching { tone.release() }
+                        }
+                    }
+                    knownPendingIds = pendingNow
                     orders = fresh
                     selectedOrder = selectedOrder?.let { old -> fresh.find { it.id == old.id } ?: old }
                 }
