@@ -2306,7 +2306,8 @@ window.renderShopOrderModern=function(id){
    :'';
  const stepLabels=['ออเดอร์เข้า','ร้านรับ','เตรียมสินค้า','กำลังจัดส่ง','สำเร็จ'];
  const orderState=String(o.status||'').toLowerCase();
- const showActions=!['completed','delivered','cancelled','no_rider_available'].includes(orderState);
+ const canReportCompleted=orderState==='completed';
+ const showActions=canReportCompleted||!['completed','delivered','cancelled','no_rider_available'].includes(orderState);
  const stage=['completed','delivered'].includes(orderState)?4
    :['picked_up','delivering','in_progress','rider_to_customer','arrived'].includes(orderState)?3
    :['rider_to_shop','preparing','ready','waiting_rider','assigned','rider_assigned'].includes(orderState)?2
@@ -2360,7 +2361,7 @@ window.renderShopOrderModern=function(id){
      ${primary}
      ${o.status==='rider_to_shop'?`<button class="qgm-od-secondary qgm-od-edit" type="button" onclick="qgmOpenOrderEditor('${o.id}')">แก้ไขรายการ</button>`:''}
      ${canCancel?`<button class="qgm-od-secondary" onclick="shopCancelOrder('${o.id}',this)">ยกเลิกออเดอร์</button>`:''}
-     <button class="qgm-od-secondary soft" type="button" onclick="qgOpenTicketPanel('${o.id}')">แจ้งปัญหาออเดอร์นี้</button>
+     ${canReportCompleted?`<button class="qgm-od-secondary soft qgm-od-report-completed" type="button" onclick="qgOpenTicketPanel('${o.id}')">แจ้งปัญหาออเดอร์นี้</button>`:''}
    </div>`:''}
  </div>`,'shop-orders',{back:true});
  qgmStartPrepCountdown();
@@ -2978,6 +2979,7 @@ body.qgm-app{background:#f8f9fb}
 .qgm-od-primary:disabled,.qgm-od-secondary:disabled{opacity:.6}
 .qgm-od-secondary{border:1px solid #f1c9d0;background:#fff;color:#d83b4c}
 .qgm-od-secondary.soft{border-color:#e6e8eb;color:#737982}
+.qgm-od-report-completed:only-child{grid-column:1/-1}
 .qgm-od-edit{border-color:#dfe3e8;color:#3f4650}
 .qgm-order-edit-overlay{position:fixed;z-index:1000;inset:0;background:#f7f7f8}
 .qgm-order-edit-shell{height:100dvh;display:flex;flex-direction:column;background:#f7f7f8}
