@@ -12,4 +12,5 @@ dependencies {
     api(project(":core-model"))
     implementation(project(":core-network"))
     implementation(libs.kotlinx.coroutines.android)
+    testImplementation(libs.junit4)
 }
