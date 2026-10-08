@@ -91,12 +91,20 @@ data class RiderProofState(
     val error: String? = null,
 )
 
+data class RiderNavigationRequest(
+    val latitude: Double,
+    val longitude: Double,
+    val label: String,
+    val id: Long,
+)
+
 data class RiderDashboardState(
     val loading: Boolean = true,
     val profile: RiderProfileState? = null,
     val offer: RiderOffer? = null,
     val activeJob: RiderActiveJob? = null,
     val proof: RiderProofState? = null,
+    val navigationRequest: RiderNavigationRequest? = null,
     val actionBusy: Boolean = false,
     val message: String? = null,
     val error: String? = null,
