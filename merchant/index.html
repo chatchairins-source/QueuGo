@@ -2098,7 +2098,7 @@ async function qgmFetchSetupReadiness(u){
 }
 window.qgmStartNewStoreApplication=async function(){
  const name=prompt('ชื่อร้านใหม่');if(!name?.trim())return;
- const category=prompt('ประเภทร้าน: food / cafe / grocery / market / laundry / other','food');if(!category)return;
+ const category=prompt('ประเภทร้าน: food / cafe / grocery / market / laundry / shopping / other','food');if(!category)return;
  try{const token=await qtGetAccessToken();await qtSupabaseTable('rpc/queuego_start_new_shop_application',{method:'POST',accessToken:token,body:{p_shop_name:name.trim(),p_category:category.trim().toLowerCase()}});qgmInvalidateSetupReadiness(currentUser());await qtRestoreOwnUser({refresh:true});toast('เริ่มสมัครร้านใหม่แล้ว');renderShopPending()}
  catch(e){toast('เริ่มสมัครร้านใหม่ไม่สำเร็จ: '+(e.message||e))}
 };
@@ -2478,7 +2478,9 @@ const qgmFoodMenuCategories=[
  ['อื่น ๆ','box']
 ];
 const qgmRetailCatalogCategories=[['เครื่องดื่ม','box'],['บะหมี่กึ่งสำเร็จรูป','box'],['ข้าวสาร','box'],['อาหารกระป๋อง','box'],['ขนมอบ','box'],['ของใช้ในบ้าน','home'],['ของใช้ส่วนตัว','user'],['เครื่องปรุง','box'],['แช่เย็น/แช่แข็ง','box'],['อื่นๆ','box']];
-function qgmCatalogCategoriesFor(u){return ['food','cafe'].includes(String(u?.category||''))?qgmFoodMenuCategories:qgmRetailCatalogCategories}
+const qgmShoppingCatalogGroups={mobile_accessories:[['โทรศัพท์มือถือ','phone'],['เคส / ฟิล์ม','box'],['สายชาร์จ / อะแดปเตอร์','box'],['หูฟัง / ลำโพง','box'],['พาวเวอร์แบงก์ / แบตเตอรี่','box']],computer_it:[['คอมพิวเตอร์ / โน้ตบุ๊ก','box'],['เมาส์ / คีย์บอร์ด','box'],['อุปกรณ์จัดเก็บข้อมูล','box'],['เน็ตเวิร์ก / เราเตอร์','box'],['เครื่องพิมพ์ / หมึก','box']],automotive_car:[['น้ำมันเครื่อง / ของเหลว','box'],['แบตเตอรี่','box'],['ระบบเบรก','box'],['ระบบไฟ','box'],['ยาง / ล้อ','box'],['เครื่องยนต์','box'],['ช่วงล่าง','box'],['อุปกรณ์ตกแต่งรถยนต์','box']],automotive_motorcycle:[['น้ำมันเครื่อง / ของเหลว','box'],['แบตเตอรี่','box'],['ระบบเบรก','box'],['ระบบไฟ','box'],['ยาง / ล้อ','box'],['เครื่องยนต์','box'],['โซ่ / สเตอร์','box'],['อุปกรณ์ตกแต่งมอเตอร์ไซค์','box']]};
+function qgmShoppingCatalogCategoriesFor(u){const keys=Array.isArray(u?.shoppingSubcategories)?u.shoppingSubcategories:[];const seen=new Set(),out=[];for(const key of keys)for(const item of (qgmShoppingCatalogGroups[key]||[])){if(seen.has(item[0]))continue;seen.add(item[0]);out.push(item)}if(!seen.has('อื่นๆ'))out.push(['อื่นๆ','box']);return out.length>1?out:qgmRetailCatalogCategories}
+function qgmCatalogCategoriesFor(u){if(['food','cafe'].includes(String(u?.category||'')))return qgmFoodMenuCategories;if(qgmTopLevelShopCategory(u?.category)==='shopping')return qgmShoppingCatalogCategoriesFor(u);return qgmRetailCatalogCategories}
 function qgmFoodCategoryNames(){return qgmFoodMenuCategories.map(([name])=>name)}
 const qgmMarketProductCategories=[
  'ผักสด',
