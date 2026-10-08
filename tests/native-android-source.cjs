@@ -68,6 +68,7 @@ ok(source.includes('CustomerSearchScreen')&&source.includes('QgNavItem("search"'
 ok(source.includes('qg_merchant_action_once'),'Merchant native order actions must stay idempotent');
 ok(source.includes('get_my_shop_orders'),'Merchant native Orders must use production order source');
 ok(source.includes('ToneGenerator')&&source.includes('STREAM_NOTIFICATION'),'Merchant native must alert on new orders');
+ok(source.includes('queuego_delete_or_archive_product')&&source.includes('updateProduct('),'Merchant native must support safe product archive and price editing');
 ok(source.includes('shop_support_messages?select=id,sender_user_id,body,created_at'),'Merchant native must preserve Admin support messaging');
 ok(source.includes('queuego_laundry_merchant_state')&&source.includes('queuego_laundry_shop_action_v2'),'Merchant native Laundry must use production laundry state/actions');
 ok(source.includes('พร้อมส่ง · เหลือ'),'Merchant preparation countdown must remain on ready button');
