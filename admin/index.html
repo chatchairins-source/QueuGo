@@ -13,7 +13,8 @@
 <script defer src="https://api.longdo.com/map/?key=347649ca13f49db0d8a599ae35f8de2b"></script>
 
 <script src="../queuego-order-number.js"></script>
-<link rel="stylesheet" href="admin-banners.css?v=20261008-banner1">\n</head>
+<link rel="stylesheet" href="admin-banners.css?v=20261008-banner1">
+</head>
 <body>
 
 <div id="app"></div>
@@ -2048,96 +2049,7 @@ async function qgLoadAdminCash(day){
 </script>
 
 
-<script id="qg-admin-service-banner-manager">
-(function(){
-  const KEY='service_banners',BUCKET='queuego-banners';
-  const ITEMS=[
-    ['food','อาหาร'],['cafe','เครื่องดื่ม'],['grocery','ร้านขายของชำ'],['market','ตลาดสด'],
-    ['shopping','ช้อปปิ้ง'],['mobile_accessories','มือถือและอุปกรณ์'],
-    ['computer_it','คอมพิวเตอร์และไอที'],['automotive','อะไหล่ยานยนต์']
-  ];
-  const h=value=>String(value??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
-  const encodePath=path=>String(path||'').split('/').map(encodeURIComponent).join('/');
-  const clone=value=>value&&typeof value==='object'?JSON.parse(JSON.stringify(value)):{};
-  async function readConfig(){
-    const token=await qtGetAccessToken();if(!token)throw Error('กรุณาเข้าสู่ระบบใหม่');
-    const rows=await qtSupabaseTable('system_settings?select=value&key=eq.'+KEY+'&limit=1',{accessToken:token});
-    return clone(Array.isArray(rows)&&rows[0]?.value||{});
-  }
-  async function writeConfig(cfg){
-    const token=await qtGetAccessToken();if(!token)throw Error('กรุณาเข้าสู่ระบบใหม่');
-    cfg=clone(cfg);cfg.version='1';
-    await qtSupabaseTable('system_settings?on_conflict=key',{method:'POST',accessToken:token,body:{key:KEY,value:cfg,updated_at:new Date().toISOString()}});
-    window.QG_ADMIN_SERVICE_BANNERS=cfg;return cfg;
-  }
-  async function removeObject(path){
-    if(!path)return;
-    try{
-      const token=await qtGetAccessToken();if(!token)return;
-      await fetch(QT_SUPABASE_CONFIG.URL+'/storage/v1/object/'+BUCKET+'/'+encodePath(path),{method:'DELETE',headers:{apikey:QT_SUPABASE_CONFIG.KEY,Authorization:'Bearer '+token}});
-    }catch(e){console.warn('service banner cleanup failed',e)}
-  }
-  function entry(cfg,key,label){
-    const row=cfg[key]&&typeof cfg[key]==='object'?cfg[key]:{};
-    return Object.assign({title:label,subtitle:'',active:true},row);
-  }
-  function render(cfg){
-    const root=document.getElementById('qg-service-banner-manager');if(!root)return;
-    root.innerHTML='<div class="qg-banner-manager-note">รูปที่ยังไม่อัปโหลดจะใช้ภาพเริ่มต้นเดิมหรือพื้นหลัง QueueGo อัตโนมัติ · JPG, PNG, WebP ไม่เกิน 5 MB</div><div class="qg-banner-slots">'+ITEMS.map(function(item){
-      const key=item[0],label=item[1],row=entry(cfg,key,label),src=String(row.image_url||row.image_data||'');
-      return '<article class="qg-banner-slot" data-key="'+h(key)+'">'+
-        '<div class="qg-banner-slot-title"><b>'+h(label)+'</b><span>'+(src?'มีภาพกำหนดเอง':'ใช้ค่าเริ่มต้น')+'</span></div>'+
-        '<div class="qg-banner-preview">'+(src?'<img src="'+h(src)+'" alt="'+h(label)+'">':'<div>ยังไม่ได้อัปโหลดภาพ</div>')+'</div>'+
-        '<label class="qg-banner-file">เลือกรูปใหม่<input type="file" accept="image/jpeg,image/png,image/webp" onchange="qgAdminUploadServiceBanner(\''+h(key)+'\',this)"></label>'+
-        '<label>หัวข้อ<input id="qg-service-title-'+h(key)+'" maxlength="100" value="'+h(row.title||label)+'"></label>'+
-        '<label>คำโปรย<input id="qg-service-subtitle-'+h(key)+'" maxlength="180" value="'+h(row.subtitle||'')+'"></label>'+
-        '<div class="qg-banner-actions"><button type="button" class="btn-primary" onclick="qgAdminSaveServiceBanner(\''+h(key)+'\')">บันทึกข้อความ</button>'+
-        '<button type="button" class="btn-secondary" onclick="qgAdminClearServiceBanner(\''+h(key)+'\')">กลับภาพเริ่มต้น</button></div>'+
-      '</article>';
-    }).join('')+'</div>';
-  }
-  window.qgAdminLoadServiceBanners=async function(){
-    const root=document.getElementById('qg-service-banner-manager');if(!root)return;
-    root.innerHTML='กำลังโหลดแบนเนอร์หมวดหมู่…';
-    try{const cfg=await readConfig();window.QG_ADMIN_SERVICE_BANNERS=cfg;render(cfg)}
-    catch(e){root.innerHTML='<p class="qg-banner-error">โหลดแบนเนอร์หมวดหมู่ไม่สำเร็จ: '+h(e.message||e)+'</p>'}
-  };
-  window.qgAdminUploadServiceBanner=async function(key,input){
-    const file=input?.files?.[0];if(!file)return;
-    if(!['image/jpeg','image/png','image/webp'].includes(file.type)){toast('รองรับเฉพาะ JPG, PNG และ WebP');input.value='';return}
-    if(file.size>5*1024*1024){toast('รูปต้องมีขนาดไม่เกิน 5 MB');input.value='';return}
-    input.disabled=true;let path='',oldPath='';
-    try{
-      const cfg=clone(window.QG_ADMIN_SERVICE_BANNERS||await readConfig()),label=ITEMS.find(x=>x[0]===key)?.[1]||key,row=entry(cfg,key,label);
-      oldPath=String(row.storage_path||'');
-      const ext=file.type==='image/png'?'png':file.type==='image/webp'?'webp':'jpg';
-      path='services/'+key+'/'+Date.now()+'-'+crypto.randomUUID().slice(0,8)+'.'+ext;
-      const token=await qtGetAccessToken();if(!token)throw Error('กรุณาเข้าสู่ระบบใหม่');
-      const response=await fetch(QT_SUPABASE_CONFIG.URL+'/storage/v1/object/'+BUCKET+'/'+encodePath(path),{method:'POST',headers:{apikey:QT_SUPABASE_CONFIG.KEY,Authorization:'Bearer '+token,'Content-Type':file.type,'x-upsert':'false'},body:file});
-      const data=await response.json().catch(()=>({}));if(!response.ok)throw Error(data.message||'อัปโหลดรูปไม่สำเร็จ');
-      row.image_url=QT_SUPABASE_CONFIG.URL+'/storage/v1/object/public/'+BUCKET+'/'+encodePath(path);
-      row.storage_path=path;delete row.image_data;cfg[key]=row;
-      await writeConfig(cfg);if(oldPath&&oldPath!==path)removeObject(oldPath);render(cfg);toast('อัปโหลดแบนเนอร์ '+label+' แล้ว');
-    }catch(e){if(path)removeObject(path);toast('อัปโหลดไม่สำเร็จ: '+String(e.message||e).slice(0,90))}
-    finally{input.disabled=false;input.value=''}
-  };
-  window.qgAdminSaveServiceBanner=async function(key){
-    try{
-      const cfg=clone(window.QG_ADMIN_SERVICE_BANNERS||await readConfig()),label=ITEMS.find(x=>x[0]===key)?.[1]||key,row=entry(cfg,key,label);
-      row.title=String(document.getElementById('qg-service-title-'+key)?.value||label).trim().slice(0,100);
-      row.subtitle=String(document.getElementById('qg-service-subtitle-'+key)?.value||'').trim().slice(0,180);
-      row.active=true;cfg[key]=row;await writeConfig(cfg);render(cfg);toast('บันทึกแบนเนอร์ '+label+' แล้ว');
-    }catch(e){toast('บันทึกไม่สำเร็จ: '+String(e.message||e).slice(0,90))}
-  };
-  window.qgAdminClearServiceBanner=async function(key){
-    try{
-      const cfg=clone(window.QG_ADMIN_SERVICE_BANNERS||await readConfig()),label=ITEMS.find(x=>x[0]===key)?.[1]||key,row=entry(cfg,key,label),oldPath=String(row.storage_path||'');
-      delete row.image_url;delete row.image_data;delete row.storage_path;row.active=true;cfg[key]=row;
-      await writeConfig(cfg);if(oldPath)removeObject(oldPath);render(cfg);toast('กลับไปใช้ภาพเริ่มต้นของ '+label+' แล้ว');
-    }catch(e){toast('อัปเดตแบนเนอร์ไม่สำเร็จ: '+String(e.message||e).slice(0,90))}
-  };
-})();
-</script>
 
-<script src="admin-service-banners.js?v=20261008-banner1"></script>\n</body>
+<script src="admin-service-banners.js?v=20261008-banner1"></script>
+</body>
 </html>
