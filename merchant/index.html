@@ -2306,6 +2306,7 @@ window.renderShopOrderModern=function(id){
    :'';
  const stepLabels=['ออเดอร์เข้า','ร้านรับ','เตรียมสินค้า','กำลังจัดส่ง','สำเร็จ'];
  const orderState=String(o.status||'').toLowerCase();
+ const showActions=!['completed','delivered','cancelled','no_rider_available'].includes(orderState);
  const stage=['completed','delivered'].includes(orderState)?4
    :['picked_up','delivering','in_progress','rider_to_customer','arrived'].includes(orderState)?3
    :['rider_to_shop','preparing','ready','waiting_rider','assigned','rider_assigned'].includes(orderState)?2
@@ -2318,7 +2319,7 @@ window.renderShopOrderModern=function(id){
    return `<div class="qgm-od-item">${thumb}<div class="qgm-od-item-copy"><b>${esc(i.name||i.itemName||'สินค้า')}</b><small>${qty.toLocaleString('th-TH')} × ${unit.toLocaleString('th-TH')} บาท</small></div><span class="qgm-od-price">${total.toLocaleString('th-TH')} บาท</span></div>`;
  }).join('');
  const cashVisible=!['pending_shop','cancelled'].includes(o.status);
- layout('รายละเอียดคำสั่งซื้อ',`<div class="qgm-od">
+ layout('รายละเอียดคำสั่งซื้อ',`<div class="qgm-od ${showActions?'':'qgm-od-no-actions'}">
    <section class="qgm-od-hero">
      <div class="qgm-od-hero-top">
        <div>
@@ -2355,12 +2356,12 @@ window.renderShopOrderModern=function(id){
    </section>
 
    ${waitingNote}
-   <div class="qgm-od-actions">
+   ${showActions?`<div class="qgm-od-actions">
      ${primary}
      ${o.status==='rider_to_shop'?`<button class="qgm-od-secondary qgm-od-edit" type="button" onclick="qgmOpenOrderEditor('${o.id}')">แก้ไขรายการ</button>`:''}
      ${canCancel?`<button class="qgm-od-secondary" onclick="shopCancelOrder('${o.id}',this)">ยกเลิกออเดอร์</button>`:''}
      <button class="qgm-od-secondary soft" type="button" onclick="qgOpenTicketPanel('${o.id}')">แจ้งปัญหาออเดอร์นี้</button>
-   </div>
+   </div>`:''}
  </div>`,'shop-orders',{back:true});
  qgmStartPrepCountdown();
 };
@@ -2909,6 +2910,7 @@ body.qgm-app{background:#f8f9fb}
 <style id="qgm-order-detail-v3">
 /* Merchant order detail V3 — customer-style visual language, merchant flow unchanged */
 .qgm-od{display:grid;gap:12px;padding-bottom:calc(150px + var(--qg-nav-h) + env(safe-area-inset-bottom))}
+.qgm-od.qgm-od-no-actions{padding-bottom:calc(18px + var(--qg-nav-h) + env(safe-area-inset-bottom))}
 .qgm-od-hero{position:relative;overflow:hidden;padding:19px;border:0;border-radius:24px;background:linear-gradient(145deg,#fff 0%,#fff7f8 62%,#fff0f2 100%);box-shadow:0 12px 34px rgba(30,24,27,.08)}
 .qgm-od-hero:after{content:"";position:absolute;width:150px;height:150px;right:-55px;top:-70px;border-radius:50%;background:rgba(230,0,45,.07)}
 .qgm-od-hero-top{position:relative;z-index:1;display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
