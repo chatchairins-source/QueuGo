@@ -66,8 +66,11 @@ main{width:100%;max-width:720px;margin:auto;padding:0 12px 92px}
 .sum{background:#fff;border-radius:16px;padding:11px 12px;margin-top:10px;border:1px solid var(--ln)}
 .sr{display:flex;justify-content:space-between;padding:4px 0;font-size:12px}
 .tot{display:flex;justify-content:space-between;padding-top:8px;margin-top:6px;border-top:1px solid var(--ln);font-size:17px;font-weight:800}
-.prim{width:100%;min-height:48px;border:0;border-radius:15px;background:var(--red);color:#fff;font-weight:800;cursor:pointer;box-shadow:0 8px 18px rgba(239,51,64,.18);margin-top:10px}
+.prim{width:100%;min-height:48px;border:0;border-radius:15px;background:#f04455;color:#fff;font-weight:800;cursor:pointer;box-shadow:0 8px 18px rgba(240,68,85,.15);margin-top:10px}
 .prim:disabled{opacity:.5}
+.qg-customer-action-dock{position:fixed;z-index:270;left:50%;bottom:calc(54px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);width:min(680px,calc(100% - 20px));padding:8px;border:1px solid #ece5e8;border-radius:20px;background:rgba(255,255,255,.97);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);box-shadow:0 8px 28px rgba(35,24,29,.12)}
+.qg-customer-action-dock .prim{min-height:54px;margin:0;border-radius:16px}
+main:has(.qg-customer-action-dock){padding-bottom:calc(142px + env(safe-area-inset-bottom,0px))}
 .oc{background:#fff;border:1px solid var(--ln);border-radius:18px;padding:15px;cursor:pointer}
 .oh{display:flex;justify-content:space-between;gap:8px}.on{font-weight:800;font-size:16px}
 .sp{font-size:10px;font-weight:800;background:#f2f3f5;padding:6px 8px;border-radius:999px;height:fit-content}
@@ -1009,9 +1012,9 @@ V.cart=()=>{
   (cart.items.length?cart.items.map((i,x)=>`<div class="ci">${photo(i.image,i.name)}<div class="mc"><b>${esc(i.name)}</b><div class="pr" style="margin-top:3px">${baht(i.price)}</div>
 <div class="qty"><button onclick="chg(${x},-1)">−</button><strong>${i.qty}</strong><button onclick="chg(${x},1)">+</button><button onclick="removeCartItem(${x})" aria-label="ลบรายการ">ลบ</button></div></div></div>`).join('')+
   `<div class="sum"><div class="sr"><span>ค่าอาหาร</span><span>${baht(cartTotal())}</span></div><div class="tot"><span>รวม</span><span>${baht(cartTotal())}</span></div></div>
-<button class="prim" onclick="go('checkout')">ไปชำระเงิน</button>`:'<p class="empty">ตะกร้าว่าง</p>'),'cart');
+<div class="qg-customer-action-dock"><button class="prim" onclick="go('checkout')">ไปชำระเงิน</button></div>`:'<p class="empty">ตะกร้าว่าง</p>'),'cart');
 };
-function renderCheckout(body,subtotal,fee,disabled=false){layout(`<div class="pt"><button class="back" onclick="history.back()">${ico('back')}</button><h1>ยืนยันคำสั่งซื้อ</h1></div>${body}<div class="sum"><div class="sr"><span>ค่าสินค้า</span><span>${baht(subtotal)}</span></div><div class="sr"><span>ค่าจัดส่ง</span><span id="checkout-delivery-fee">${fee===null?'เลือกตำแหน่งจัดส่ง':baht(fee)}</span></div><div class="tot"><span>ยอดรวม</span><span id="checkout-total">${baht(subtotal+(fee||0))}</span></div></div><button class="prim" id="place-order-btn" onclick="placeOrder()" ${disabled?'disabled':''}>ยืนยันสั่งซื้อ</button>`,'cart')}
+function renderCheckout(body,subtotal,fee,disabled=false){layout(`<div class="pt"><button class="back" onclick="history.back()">${ico('back')}</button><h1>ยืนยันคำสั่งซื้อ</h1></div>${body}<div class="sum"><div class="sr"><span>ค่าสินค้า</span><span>${baht(subtotal)}</span></div><div class="sr"><span>ค่าจัดส่ง</span><span id="checkout-delivery-fee">${fee===null?'เลือกตำแหน่งจัดส่ง':baht(fee)}</span></div><div class="tot"><span>ยอดรวม</span><span id="checkout-total">${baht(subtotal+(fee||0))}</span></div></div><div class="qg-customer-action-dock"><button class="prim" id="place-order-btn" onclick="placeOrder()" ${disabled?'disabled':''}>ยืนยันสั่งซื้อ</button></div>`,'cart')}
 V.checkout=async(_,ticket=routeVersion)=>{
   const pending=readPendingCheckout();
   if(pending){const p=pending.body;renderCheckout(`<div class="card" role="status"><b>ตรวจผลคำสั่งซื้อเดิม</b><p>คำขอนี้ยังไม่ได้รับผลยืนยัน กดตรวจผลอีกครั้งเพื่อดำเนินการด้วยรายการและที่อยู่เดิม ระบบจะไม่สร้างออเดอร์ซ้ำ</p><p>${esc(p.p_delivery_address)}</p>${p.p_note?`<p>หมายเหตุ: ${esc(p.p_note)}</p>`:''}</div>`,Number(p.p_expected_subtotal),Number(p.p_expected_delivery_fee));$('place-order-btn').textContent='ตรวจผลคำสั่งซื้อเดิม';return}
