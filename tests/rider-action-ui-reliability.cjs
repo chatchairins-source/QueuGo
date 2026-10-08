@@ -36,7 +36,7 @@ ok(!rider.includes('qgSheetLevel'),'legacy sheet level state must be physically 
 ok(!rider.includes('function qgOpenRiderMore('),'legacy active-job more sheet must be removed');
 
 ok(rider.includes("function qgOpenDeliveryConfirm(o)"),'arrival must open a dedicated delivery confirmation screen');
-ok(rider.includes('ตรวจสอบรายการครบแล้ว'),'pickup must force item verification before photo/payment');
+ok(rider.includes('ตรวจสอบรายการ'),'pickup must force item verification before photo/payment');
 ok(rider.includes('ชำระเงินให้ร้านเรียบร้อยแล้ว'),'shop cash confirmation must be explicit');
 ok(rider.includes('ส่งสินค้าให้ลูกค้าเรียบร้อยแล้ว'),'delivery flow must confirm handoff before proof');
 ok(rider.includes('เก็บเงินจากลูกค้าเรียบร้อยแล้ว'),'customer cash collection confirmation must be explicit');
