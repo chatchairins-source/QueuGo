@@ -1,0 +1,44 @@
+name: QueueGo Native Android CI
+
+on:
+  push:
+    branches: ["work/native-android-*"]
+    paths:
+      - "native-android/**"
+      - ".github/workflows/native-android-ci.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+      - name: Install Android API 36
+        run: sdkmanager "platforms;android-36" "build-tools;36.0.0"
+      - name: Set up Gradle 9.6
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "9.6.0"
+      - name: Reject wrapped-web implementations
+        run: |
+          if grep -R -n -E 'android\.webkit\.WebView|Capacitor|Cordova|TrustedWebActivity' native-android/*/src 2>/dev/null; then
+            echo "Wrapped-web Android implementation is forbidden."
+            exit 1
+          fi
+      - name: Gradle help
+        run: gradle -p native-android help
+      - name: Build native debug apps
+        run: gradle -p native-android :customer-app:assembleDebug :merchant-app:assembleDebug :rider-app:assembleDebug
+      - name: Unit tests
+        run: gradle -p native-android testDebugUnitTest

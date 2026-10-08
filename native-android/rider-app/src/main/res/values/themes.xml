@@ -1,0 +1,9 @@
+<resources>
+    <style name="Theme.QueueGo" parent="android:style/Theme.Material.Light.NoActionBar">
+        <item name="android:fontFamily">sans</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:navigationBarColor">#FFFFFF</item>
+        <item name="android:statusBarColor">#FFFFFF</item>
+        <item name="android:colorAccent">#EC092E</item>
+    </style>
+</resources>
