@@ -1040,7 +1040,7 @@ V.shopping=async(mode,ticket=routeVersion)=>{
   const selected=String(mode||'all');
   let rows=all,title='ช้อปปิ้ง',bannerKey='shopping',subtitle='สินค้าจากร้านใกล้คุณ ส่งได้ทันที';
   if(selected==='mobile_accessories'){rows=all.filter(s=>qgShopHasSubcategory(s,'mobile_accessories'));title='มือถือและอุปกรณ์';bannerKey='mobile_accessories';subtitle='มือถือ เคส ฟิล์ม สายชาร์จ และอุปกรณ์ใกล้คุณ'}
-  else if(selected==='computer_it'){rows=all.filter(s=>qgShopHasSubcategory(s,'computer_it'));title='คอมพิวเตอร์และไอที';bannerKey='computer_it';subtitle='อุปกรณ์ไอทีจากร้านใกล้คุณ';
+  else if(selected==='computer_it'){rows=all.filter(s=>qgShopHasSubcategory(s,'computer_it'));title='คอมพิวเตอร์และไอที';bannerKey='computer_it';subtitle='อุปกรณ์ไอทีจากร้านใกล้คุณ'}
   else if(selected==='automotive'||selected==='automotive_car'||selected==='automotive_motorcycle'){
     rows=all.filter(s=>selected==='automotive'?(qgShopHasSubcategory(s,'automotive_car')||qgShopHasSubcategory(s,'automotive_motorcycle')):qgShopHasSubcategory(s,selected));
     title=selected==='automotive_car'?'อะไหล่รถยนต์':selected==='automotive_motorcycle'?'อะไหล่มอเตอร์ไซค์':'อะไหล่ยานยนต์';bannerKey='automotive';subtitle='อะไหล่รถยนต์และมอเตอร์ไซค์จากร้านใกล้คุณ';
