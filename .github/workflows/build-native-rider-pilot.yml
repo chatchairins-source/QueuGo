@@ -13,6 +13,10 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: queuego-native-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   native-pilot:
     runs-on: ubuntu-latest
