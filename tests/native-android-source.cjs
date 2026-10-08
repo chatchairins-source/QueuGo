@@ -7,6 +7,7 @@ for(const p of [
   'settings.gradle.kts',
   'build.gradle.kts',
   'shared/build.gradle.kts',
+  'shared/src/main/java/com/queuego/shared/QueueGoAccountDeletion.kt',
   'customer/build.gradle.kts',
   'merchant/build.gradle.kts',
   'rider/build.gradle.kts',
@@ -63,6 +64,8 @@ ok(source.includes('shop_support_messages?select=id,sender_user_id,body,created_
 ok(source.includes('queuego_laundry_merchant_state')&&source.includes('queuego_laundry_shop_action_v2'),'Merchant native Laundry must use production laundry state/actions');
 ok(source.includes('พร้อมส่ง · เหลือ'),'Merchant preparation countdown must remain on ready button');
 ok(source.includes('SecureRoleSessionStore')&&source.includes('NativeAuthApi'),'Customer/Merchant must share native auth/session implementation');
+ok(source.includes('functions/v1/account-delete')&&source.includes('DELETE_ACCOUNT'),'native apps must expose account deletion through production edge function');
+ok((source.match(/QgAccountDeletionSection\(/g)||[]).length>=4,'Customer Merchant Rider must wire account deletion UI');
 ok(source.includes('claim_active_session'),'reuse active-session claim');
 ok(source.includes('check_active_session')&&source.includes('touch_active_session'),'reuse session guard');
 ok(source.includes('get_rider_delivery_pool')&&source.includes('qg_get_my_rider_offer'),'reuse sequential server dispatch');
