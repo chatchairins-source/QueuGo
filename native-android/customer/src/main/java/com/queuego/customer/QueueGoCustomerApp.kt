@@ -99,6 +99,7 @@ private fun CustomerShell(auth: NativeAuth, logout: () -> Unit) {
     var notifications by remember { mutableStateOf<List<CustomerNotification>>(emptyList()) }
     var selectedShop by remember { mutableStateOf<CustomerShop?>(null) }
     var selectedOrder by remember { mutableStateOf<CustomerOrder?>(null) }
+    var trackingContext by remember { mutableStateOf<CustomerOrderContext?>(null) }
     var selectedMarketTrip by remember { mutableStateOf<MarketTripSummary?>(null) }
     var selectedLaundryOrder by remember { mutableStateOf<LaundryOrderSummary?>(null) }
     var products by remember { mutableStateOf<List<CustomerProduct>>(emptyList()) }
@@ -136,6 +137,7 @@ private fun CustomerShell(auth: NativeAuth, logout: () -> Unit) {
     BackHandler(enabled = screen != "home") {
         screen = "home"
         selectedOrder = null
+        trackingContext = null
         selectedMarketTrip = null
         selectedLaundryOrder = null
         selectedShop = null
@@ -177,7 +179,9 @@ private fun CustomerShell(auth: NativeAuth, logout: () -> Unit) {
                     selectedLaundryOrder = selectedLaundryOrder?.let { old -> fresh.find { it.id == old.id } ?: old }
                 }
                 if (screen == "order" && selectedOrder != null) {
-                    runCatching { api.loadOrderItems(auth, selectedOrder!!.id) }.onSuccess { orderItems = it }
+                    val orderId = selectedOrder!!.id
+                    runCatching { api.loadOrderItems(auth, orderId) }.onSuccess { orderItems = it }
+                    runCatching { api.loadOrderContext(auth, orderId) }.onSuccess { trackingContext = it }
                 }
                 delay(3_000)
             }
@@ -460,7 +464,11 @@ private fun CustomerShell(auth: NativeAuth, logout: () -> Unit) {
                 "order" -> OrderTrackingScreen(
                     order = selectedOrder,
                     items = orderItems,
-                    onBack = { screen = "orders" }
+                    context = trackingContext,
+                    onBack = {
+                        trackingContext = null
+                        screen = "orders"
+                    }
                 )
                 "support" -> CustomerSupportScreen(
                     auth = auth,
@@ -837,7 +845,12 @@ private fun OrdersScreen(
 }
 
 @Composable
-private fun OrderTrackingScreen(order: CustomerOrder?, items: List<CustomerOrderItem>, onBack: () -> Unit) {
+private fun OrderTrackingScreen(
+    order: CustomerOrder?,
+    items: List<CustomerOrderItem>,
+    context: CustomerOrderContext?,
+    onBack: () -> Unit
+) {
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(14.dp)) {
         OutlinedButton(onClick = onBack) { Text("ย้อนกลับ") }
         Spacer(Modifier.height(12.dp))
@@ -853,11 +866,76 @@ private fun OrderTrackingScreen(order: CustomerOrder?, items: List<CustomerOrder
             Column {
                 Text("สถานะปัจจุบัน", fontWeight = FontWeight.ExtraBold)
                 Text(statusLabel(order.status), color = QgRed, fontWeight = FontWeight.Bold)
-                Spacer(Modifier.height(6.dp))
+                Spacer(Modifier.height(8.dp))
+                val stage = when (order.status.lowercase()) {
+                    "completed" -> 4
+                    "picked_up", "in_progress", "rider_to_customer", "arrived" -> 3
+                    "rider_assigned", "assigned", "preparing", "ready" -> 2
+                    "accepted", "searching_rider" -> 1
+                    else -> 0
+                }
+                val stages = listOf("สั่งซื้อ", "หา Rider", "รับสินค้า", "กำลังส่ง", "สำเร็จ")
+                Row(
+                    Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    stages.forEachIndexed { index, label ->
+                        QgStatusPill(label, index <= stage)
+                    }
+                }
+                Spacer(Modifier.height(8.dp))
                 Text(order.deliveryAddress ?: "", color = QgMuted)
+                context?.shop?.let { shop ->
+                    Spacer(Modifier.height(4.dp))
+                    Text("ร้าน " + shop.name, color = QgMuted)
+                }
             }
         }
         Spacer(Modifier.height(10.dp))
+        if (order.status == "searching_rider") {
+            QgCard(Modifier.fillMaxWidth()) {
+                Column {
+                    Text("กำลังติดต่อ Rider ที่พร้อมรับงาน", color = QgRed, fontWeight = FontWeight.Black)
+                    Text(
+                        "QueueGo เสนอออเดอร์ให้ Rider ทีละคน รอบละสูงสุด 30 วินาที หากปฏิเสธหรือหมดเวลา ระบบส่งต่อคนถัดไปอัตโนมัติ",
+                        color = QgMuted
+                    )
+                }
+            }
+            Spacer(Modifier.height(10.dp))
+        }
+        context?.rider?.let { rider ->
+            QgCard(Modifier.fillMaxWidth()) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    QgRemoteImage(rider.photo, Modifier.size(62.dp), rider.name)
+                    Spacer(Modifier.width(10.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text(
+                            if (order.status == "completed") "ผู้จัดส่ง" else "Rider ของคุณ",
+                            color = QgMuted,
+                            style = MaterialTheme.typography.labelSmall
+                        )
+                        Text(rider.name, fontWeight = FontWeight.Black, style = MaterialTheme.typography.titleMedium)
+                        val vehicle = listOfNotNull(rider.vehicleType, rider.vehiclePlate).joinToString(" ")
+                        if (vehicle.isNotBlank()) Text(vehicle, color = QgMuted)
+                        if (rider.latitude != null && rider.longitude != null &&
+                            order.status !in setOf("completed", "cancelled")
+                        ) {
+                            Spacer(Modifier.height(5.dp))
+                            Text(
+                                "ตำแหน่งล่าสุด %.5f, %.5f".format(rider.latitude, rider.longitude),
+                                color = QgRed,
+                                fontWeight = FontWeight.Bold
+                            )
+                            if (!rider.updatedAt.isNullOrBlank()) {
+                                Text("อัปเดต " + rider.updatedAt, color = QgMuted, style = MaterialTheme.typography.labelSmall)
+                            }
+                        }
+                    }
+                }
+            }
+            Spacer(Modifier.height(10.dp))
+        }
         QgCard(Modifier.fillMaxWidth()) {
             Column {
                 Text("รายการสินค้า", fontWeight = FontWeight.ExtraBold)
