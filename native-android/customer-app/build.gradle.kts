@@ -4,7 +4,7 @@ plugins {
 }
 android {
     namespace = "com.queuetech.queuego.customer"
-    compileSdk = 37
+    compileSdk = 36
     defaultConfig {
         applicationId = "com.queuetech.queuego"
         minSdk = 24
