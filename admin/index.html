@@ -499,22 +499,25 @@ async function qtHydrateDatabase(opts){
       try{
         /* Load each public profile table independently. A technician/rider RLS error
            must never make the public shop list disappear as a side effect. */
-        let shops=[], techs=[], riders=[];
+        let shops=[], techs=[], riders=[],shopOverview=[];
         try{ shops=await qtSupabaseTable('shop_profiles?select=*',{accessToken:token}); }
         catch(e){ console.warn('[QueueGo] shop_profiles read failed:',e); }
         try{ techs=await qtSupabaseTable('technician_profiles?select=*',{accessToken:token}); }
         catch(e){ console.warn('[QueueGo] technician_profiles read failed:',e); }
         try{ riders=await qtSupabaseTable('rider_profiles?select=*',{accessToken:token}); }
         catch(e){ console.warn('[QueueGo] rider_profiles read failed:',e); }
+        if(me?.role==='admin')try{shopOverview=await qtSupabaseTable('rpc/queuego_admin_shop_overview',{method:'POST',accessToken:token,body:{}})}
+        catch(e){console.warn('[QueueGo] shop readiness overview failed:',e)}
 
         const sm=new Map();for(const x of (shops||[]).filter(x=>x&&x.user_id)){const prev=sm.get(x.user_id),xp=x.archived_at?1:0,pp=prev?.archived_at?1:0;if(!prev||xp<pp||(xp===pp&&String(x.created_at||'')>String(prev.created_at||'')))sm.set(x.user_id,x)}
+        const som=new Map((Array.isArray(shopOverview)?shopOverview:[]).filter(x=>x&&x.shop_id).map(x=>[String(x.shop_id),x]));
         const tm=new Map((techs||[]).filter(x=>x&&x.user_id).map(x=>[x.user_id,x])),rm=new Map((riders||[]).filter(x=>x&&x.user_id).map(x=>[x.user_id,x]));
         profileMaps={shopById:new Map((shops||[]).map(x=>[x.id,x.user_id])),techById:new Map((techs||[]).map(x=>[x.id,x.user_id])),riderById:new Map((riders||[]).map(x=>[x.id,x.user_id]))};
         QT_SYNC.profileMaps=profileMaps;
         QT_DB_CACHE.qt_users=QT_DB_CACHE.qt_users.map(u=>{
           const x=u.type==='shop'?sm.get(u.id):u.type==='technician'?tm.get(u.id):u.type==='rider'?rm.get(u.id):null; if(!x) return u;
           const lock={id:u.id,authUserId:u.authUserId,type:u.type,status:u.status,name:u.name,phone:u.phone};
-          Object.assign(u,(x.metadata&&typeof x.metadata==='object'?x.metadata:{}),u.type==='shop'?{shopProfileId:x.id,shopName:x.shop_name,public_category:x.public_category,category:x.public_category||x.metadata?.category||u.category,address:x.address,lat:x.latitude,lng:x.longitude,onboardingStatus:x.onboarding_status||'draft',submittedForReviewAt:x.submitted_for_review_at||null,approvedAt:x.approved_at||null,archivedAt:x.archived_at||null,shopDbStatus:x.status}:u.type==='technician'?{jobTypes:(x.technician_type||'').split(',').filter(Boolean),serviceArea:x.service_area,address:x.address,lat:x.latitude,lng:x.longitude,description:x.description}:u.type==='rider'?{
+          Object.assign(u,(x.metadata&&typeof x.metadata==='object'?x.metadata:{}),u.type==='shop'?{shopProfileId:x.id,shopName:x.shop_name,public_category:x.public_category,category:x.public_category||x.metadata?.category||u.category,address:x.address,lat:x.latitude,lng:x.longitude,onboardingStatus:x.onboarding_status||'draft',submittedForReviewAt:x.submitted_for_review_at||null,approvedAt:x.approved_at||null,archivedAt:x.archived_at||null,shopDbStatus:x.status,shopReadiness:som.get(String(x.id))?.readiness||null,shopOrderCount:Number(som.get(String(x.id))?.order_count||0)}:u.type==='technician'?{jobTypes:(x.technician_type||'').split(',').filter(Boolean),serviceArea:x.service_area,address:x.address,lat:x.latitude,lng:x.longitude,description:x.description}:u.type==='rider'?{
             vehicleType:x.vehicle_type,
             vehiclePlate:x.vehicle_plate,
             address:x.address,
@@ -926,8 +929,8 @@ function renderAdminGovernance(){
  const shopBucket=u=>{
    if(u.archivedAt||u.onboardingStatus==='archived'||u.shopDbStatus==='deleted')return'archived';
    if(u.onboardingStatus==='pending_approval')return'pending_review';
-   if(u.status==='approved'||u.onboardingStatus==='approved')return'ready';
-   const hasSetup=Boolean(u.address||u.logo||u.cover||u.profileImage||u.lat||u.lng||u.submittedForReviewAt);
+   if((u.status==='approved'||u.onboardingStatus==='approved')&&u.shopReadiness?.complete===true)return'ready';
+   const hasSetup=Boolean(u.address||u.logo||u.cover||u.profileImage||u.lat||u.lng||u.submittedForReviewAt||u.shopReadiness?.completed_count);
    if((u.onboardingStatus||'draft')==='draft'&&!hasSetup)return'never_opened';
    return'incomplete';
  };
