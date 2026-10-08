@@ -561,7 +561,7 @@ async function qtPersistKeyRaw(key,val){
           if(Array.isArray(shopRows)&&shopRows[0]?.id){
             await qtSupabaseTable('shop_profiles?id=eq.'+encodeURIComponent(shopRows[0].id),{method:'PATCH',accessToken:token,body:shopBody});
           }else{
-            await qtSupabaseTable('shop_profiles?on_conflict=user_id',{method:'POST',accessToken:token,body:{user_id:u.id,...shopBody}});
+            await qtSupabaseTable('shop_profiles',{method:'POST',accessToken:token,body:{user_id:u.id,...shopBody}});
           }
         }
       } return;
