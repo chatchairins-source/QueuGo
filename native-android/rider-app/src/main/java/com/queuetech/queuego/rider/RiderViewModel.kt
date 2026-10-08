@@ -1,5 +1,6 @@
 package com.queuetech.queuego.rider
 
+import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
@@ -18,6 +19,7 @@ import kotlinx.coroutines.withTimeout
 class RiderViewModel(
     private val repository: RiderRepository,
     private val locationProvider: RiderLocationProvider,
+    private val photoStore: RiderEvidencePhotoStore,
 ) : ViewModel() {
     private val _state = MutableStateFlow(RiderDashboardState())
     val state: StateFlow<RiderDashboardState> = _state.asStateFlow()
@@ -54,11 +56,7 @@ class RiderViewModel(
         viewModelScope.launch {
             _state.value = _state.value.copy(actionBusy = true, error = null, message = null)
             try {
-                val coordinate = if (enabled) {
-                    withTimeout(10_000L) { locationProvider.current() }
-                } else {
-                    null
-                }
+                val coordinate = if (enabled) currentCoordinate() else null
                 val profile = repository.setOnline(user.id, enabled, coordinate)
                 _state.value = _state.value.copy(
                     profile = profile,
@@ -139,6 +137,125 @@ class RiderViewModel(
         viewModelScope.launch { refreshSnapshot(showLoading = false) }
     }
 
+    fun arrivedAtShop() = markArrival("shop")
+
+    fun arrivedAtCustomer() = markArrival("customer")
+
+    fun openPickupProof() {
+        val job = _state.value.activeJob ?: return
+        if (job.status != "ready") {
+            setError("ร้านยังไม่กดสินค้าพร้อมส่ง")
+            return
+        }
+        viewModelScope.launch { openProof(RiderProofMode.PICKUP, job) }
+    }
+
+    fun openDeliveryProof() {
+        val job = _state.value.activeJob ?: return
+        if (job.status != "in_progress") {
+            setError("ออเดอร์ยังไม่อยู่ในขั้นตอนส่งลูกค้า")
+            return
+        }
+        viewModelScope.launch { openProof(RiderProofMode.DELIVERY, job) }
+    }
+
+    fun proofPhotoCaptured(uri: String) {
+        val proof = _state.value.proof ?: return
+        _state.value = _state.value.copy(
+            proof = proof.copy(photoUri = uri, error = null),
+            error = null,
+        )
+    }
+
+    fun closeProof() {
+        val proof = _state.value.proof ?: return
+        if (proof.submitting) return
+        _state.value = _state.value.copy(proof = null)
+    }
+
+    fun submitProof() {
+        val proof = _state.value.proof ?: return
+        val job = _state.value.activeJob ?: return
+        val photoUri = proof.photoUri
+        if (photoUri.isNullOrBlank()) {
+            _state.value = _state.value.copy(
+                proof = proof.copy(error = "กรุณาถ่ายรูปหลักฐานก่อน"),
+            )
+            return
+        }
+        if (proof.submitting) return
+
+        viewModelScope.launch {
+            _state.value = _state.value.copy(
+                proof = proof.copy(submitting = true, error = null),
+                error = null,
+                message = null,
+            )
+            try {
+                val coordinate = currentCoordinate()
+                val photoPath = photoStore.upload(Uri.parse(photoUri))
+
+                when (proof.mode) {
+                    RiderProofMode.PICKUP -> {
+                        repository.pickupWithPhoto(
+                            orderId = job.orderId,
+                            photoPath = photoPath,
+                            coordinate = coordinate,
+                        )
+                        _state.value = _state.value.copy(
+                            proof = null,
+                            actionBusy = false,
+                            message = "รับสินค้าแล้ว · กำลังไปส่งลูกค้า",
+                        )
+                        refreshSnapshot(showLoading = false)
+                        val next = _state.value.activeJob
+                        if (
+                            next != null &&
+                            !next.isPickupPhase &&
+                            next.deliveryLatitude != null &&
+                            next.deliveryLongitude != null
+                        ) {
+                            _state.value = _state.value.copy(
+                                navigationRequest = RiderNavigationRequest(
+                                    latitude = next.deliveryLatitude,
+                                    longitude = next.deliveryLongitude,
+                                    label = next.deliveryAddress.ifBlank { next.customerName },
+                                    id = System.nanoTime(),
+                                ),
+                            )
+                        }
+                    }
+
+                    RiderProofMode.DELIVERY -> {
+                        repository.completeWithPhoto(
+                            job = job,
+                            photoPath = photoPath,
+                            coordinate = coordinate,
+                        )
+                        _state.value = _state.value.copy(
+                            proof = null,
+                            actionBusy = false,
+                            message = "จัดส่งสำเร็จ",
+                        )
+                        refreshSnapshot(showLoading = false)
+                    }
+                }
+            } catch (error: Exception) {
+                val current = _state.value.proof ?: proof
+                _state.value = _state.value.copy(
+                    proof = current.copy(
+                        submitting = false,
+                        error = error.message ?: "บันทึกหลักฐานไม่สำเร็จ",
+                    ),
+                )
+            }
+        }
+    }
+
+    fun navigationHandled() {
+        _state.value = _state.value.copy(navigationRequest = null)
+    }
+
     fun refreshNow() {
         viewModelScope.launch { refreshSnapshot(showLoading = false) }
     }
@@ -146,6 +263,71 @@ class RiderViewModel(
     fun setError(message: String) {
         _state.value = _state.value.copy(error = message, message = null)
     }
+
+    private fun markArrival(target: String) {
+        val job = _state.value.activeJob ?: return
+        if (_state.value.actionBusy) return
+
+        viewModelScope.launch {
+            _state.value = _state.value.copy(actionBusy = true, error = null, message = null)
+            try {
+                val coordinate = currentCoordinate()
+                repository.markArrival(job.orderId, target, coordinate)
+                _state.value = _state.value.copy(actionBusy = false)
+                refreshSnapshot(showLoading = false)
+
+                val current = _state.value.activeJob ?: job
+                if (target == "shop") {
+                    if (current.status == "ready") {
+                        openProof(RiderProofMode.PICKUP, current)
+                    } else {
+                        _state.value = _state.value.copy(
+                            message = "ถึงร้านแล้ว · แจ้งร้านแล้ว · รอร้านกดพร้อมส่ง",
+                        )
+                    }
+                } else {
+                    openProof(RiderProofMode.DELIVERY, current)
+                }
+            } catch (error: Exception) {
+                _state.value = _state.value.copy(
+                    actionBusy = false,
+                    error = error.message ?: "บันทึกการมาถึงไม่สำเร็จ",
+                )
+            }
+        }
+    }
+
+    private suspend fun openProof(mode: RiderProofMode, job: RiderActiveJob) {
+        val currentProof = RiderProofState(
+            mode = mode,
+            orderId = job.orderId,
+            orderNumber = job.orderNumber,
+            loading = true,
+        )
+        _state.value = _state.value.copy(proof = currentProof, error = null, message = null)
+        try {
+            val items = repository.loadOrderItems(job.orderId)
+            val stillOpen = _state.value.proof
+            if (stillOpen?.orderId == job.orderId && stillOpen.mode == mode) {
+                _state.value = _state.value.copy(
+                    proof = stillOpen.copy(items = items, loading = false, error = null),
+                )
+            }
+        } catch (error: Exception) {
+            val stillOpen = _state.value.proof
+            if (stillOpen?.orderId == job.orderId && stillOpen.mode == mode) {
+                _state.value = _state.value.copy(
+                    proof = stillOpen.copy(
+                        loading = false,
+                        error = error.message ?: "โหลดรายการสินค้าไม่สำเร็จ",
+                    ),
+                )
+            }
+        }
+    }
+
+    private suspend fun currentCoordinate(): RiderCoordinate =
+        withTimeout(10_000L) { locationProvider.current() }
 
     private suspend fun refreshSnapshot(showLoading: Boolean) {
         val user = boundUser ?: return
@@ -168,12 +350,22 @@ class RiderViewModel(
                 } else {
                     null
                 }
+                val currentProof = _state.value.proof
+                val proof = if (
+                    activeJob != null &&
+                    currentProof?.orderId == activeJob.orderId
+                ) {
+                    currentProof
+                } else {
+                    null
+                }
 
                 _state.value = _state.value.copy(
                     loading = false,
                     profile = profile,
                     activeJob = activeJob,
                     offer = offer,
+                    proof = proof,
                     actionBusy = false,
                     error = null,
                 )
@@ -209,10 +401,11 @@ class RiderViewModel(
         fun factory(
             repository: RiderRepository,
             locationProvider: RiderLocationProvider,
+            photoStore: RiderEvidencePhotoStore,
         ): ViewModelProvider.Factory = object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(modelClass: Class<T>): T =
-                RiderViewModel(repository, locationProvider) as T
+                RiderViewModel(repository, locationProvider, photoStore) as T
         }
     }
 }
