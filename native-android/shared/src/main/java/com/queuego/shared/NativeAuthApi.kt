@@ -12,9 +12,10 @@ import java.net.URL
 import java.nio.charset.StandardCharsets
 import java.util.UUID
 
-class NativeAuthApi {
+class NativeAuthApi(
+    private val baseUrl: String = "https://pkypiqhlrmzocysgeqew.supabase.co"
+) {
     companion object {
-        private const val BASE_URL = "https://pkypiqhlrmzocysgeqew.supabase.co"
         private const val KEY = "sb_publishable_Vn2Il4jp-iBtzNsGRNY8Lg_Tpvk2Vre"
         private const val TIMEOUT = 15000
     }
@@ -40,9 +41,11 @@ class NativeAuthApi {
             "/rest/v1/users?select=id,name,role,status,auth_user_id&auth_user_id=eq." + enc(authUserId),
             token
         )
-        if (rows.length() == 0) error("ไม่พบบัญชี QueueGo")
+        if (rows.length() == 0) throw NativeSessionInvalidException("ไม่พบบัญชี QueueGo")
         val row = rows.getJSONObject(0)
         if (row.optString("role") != expectedRole) error("บัญชีนี้ใช้กับแอปนี้ไม่ได้")
+        if (row.optString("status") in setOf("suspended", "deleted"))
+            throw NativeSessionInvalidException("บัญชีนี้ถูกระงับหรือปิดใช้งาน")
         val sessionId = UUID.randomUUID().toString()
         val claim = rpc(
             "claim_active_session",
@@ -70,9 +73,15 @@ class NativeAuthApi {
         )
     }
 
-    suspend fun validate(auth: NativeAuth, expectedRole: String): NativeAuth =
+    suspend fun validate(
+        auth: NativeAuth,
+        expectedRole: String,
+        onSessionRefreshed: (NativeAuth) -> Unit = {}
+    ): NativeAuth =
         withContext(Dispatchers.IO) {
             val liveAuth = refreshIfNeeded(auth)
+            // Refresh tokens rotate. Preserve the new token even if a later read times out.
+            if (liveAuth.session != auth.session) onSessionRefreshed(liveAuth)
             val check = rpc(
                 "check_active_session",
                 liveAuth.session.accessToken,
@@ -83,15 +92,17 @@ class NativeAuthApi {
                     (check.optBoolean(0, false) ||
                         check.optJSONObject(0)?.optBoolean("check_active_session", false) == true)) ||
                 (check is JSONObject && check.optBoolean("check_active_session", false))
-            if (!valid) error("Session นี้ไม่ได้ใช้งานบนอุปกรณ์นี้แล้ว")
+            if (!valid) throw NativeSessionInvalidException("Session นี้ไม่ได้ใช้งานบนอุปกรณ์นี้แล้ว")
             val rows = requestArray(
                 "GET",
                 "/rest/v1/users?select=id,name,role,status&auth_user_id=eq." + enc(liveAuth.session.authUserId),
                 liveAuth.session.accessToken
             )
-            if (rows.length() == 0) error("ไม่พบบัญชี QueueGo")
+            if (rows.length() == 0) throw NativeSessionInvalidException("ไม่พบบัญชี QueueGo")
             val row = rows.getJSONObject(0)
-            if (row.optString("role") != expectedRole) error("สิทธิ์บัญชีไม่ตรงกับแอป")
+            if (row.optString("role") != expectedRole) throw NativeSessionInvalidException("สิทธิ์บัญชีไม่ตรงกับแอป")
+            if (row.optString("status") in setOf("suspended", "deleted"))
+                throw NativeSessionInvalidException("บัญชีนี้ถูกระงับหรือปิดใช้งาน")
             liveAuth.copy(
                 user = NativeUser(
                     row.getString("id"),
@@ -159,7 +170,7 @@ class NativeAuthApi {
         requestAny(method, path, token, null) as? JSONArray ?: JSONArray()
 
     private fun requestAny(method: String, path: String, token: String?, body: JSONObject?): Any {
-        val connection = URL(BASE_URL + path).openConnection() as HttpURLConnection
+        val connection = URL(baseUrl.trimEnd('/') + path).openConnection() as HttpURLConnection
         try {
             connection.requestMethod = method
             connection.connectTimeout = TIMEOUT
@@ -183,7 +194,11 @@ class NativeAuthApi {
             if (code !in 200..299) {
                 val message = runCatching { JSONObject(text).optString("message") }.getOrNull()
                     ?.takeIf { it.isNotBlank() } ?: "HTTP " + code
-                error(message)
+                val authCode = runCatching { JSONObject(text).optString("error_code").ifBlank { JSONObject(text).optString("code") } }.getOrDefault("")
+                if (path.startsWith("/auth/v1/token?grant_type=refresh_token") &&
+                    authCode in setOf("refresh_token_not_found", "refresh_token_already_used", "session_not_found", "user_not_found", "user_banned"))
+                    throw NativeSessionInvalidException(message)
+                throw NativeAuthHttpException(code, message)
             }
             if (text.isBlank()) return JSONObject()
             val value = text.trim()

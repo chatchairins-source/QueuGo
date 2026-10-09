@@ -27,6 +27,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -44,15 +45,30 @@ fun QueueGoAuthHost(
     var restoring by remember { mutableStateOf(true) }
     var busy by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
+    var restoreAttempt by remember { mutableStateOf(0) }
+    var recoveryRequired by remember { mutableStateOf(false) }
 
-    LaunchedEffect(expectedRole) {
-        val cached = store.load()
-        if (cached != null) {
-            runCatching { api.validate(cached, expectedRole) }
-                .onSuccess { store.save(it); auth = it }
-                .onFailure { store.clear(); error = it.message }
+    LaunchedEffect(expectedRole, restoreAttempt) {
+        restoring = true
+        try {
+            val cached = store.load()
+            if (cached != null) {
+                val validated = api.validate(cached, expectedRole) { store.save(it) }
+                store.save(validated)
+                auth = validated
+            }
+            recoveryRequired = false
+            error = null
+        } catch (failure: Exception) {
+            if (failure is CancellationException) throw failure
+            if (shouldClearNativeSession(failure)) {
+                store.clear()
+                recoveryRequired = false
+            } else recoveryRequired = true
+            error = failure.message
+        } finally {
+            restoring = false
         }
-        restoring = false
     }
 
     LaunchedEffect(auth?.session?.sessionId) {
@@ -60,20 +76,26 @@ fun QueueGoAuthHost(
         while (true) {
             delay(25_000)
             val current = auth ?: break
-            val result = runCatching {
-                val validated = api.validate(current, expectedRole)
-                api.touch(validated.session)
-                validated
-            }
-            result.onSuccess { validated ->
+            try {
+                val validated = api.validate(current, expectedRole) { refreshed ->
+                    store.save(refreshed)
+                    auth = refreshed
+                }
+                // Persist rotated refresh tokens before the independent heartbeat can fail.
                 store.save(validated)
                 auth = validated
-            }.onFailure {
-                store.clear()
-                auth = null
-                error = "Session นี้ถูกยกเลิก หมดอายุ หรือเปิดจากอุปกรณ์อื่น"
+                api.touch(validated.session)
+            } catch (failure: Exception) {
+                if (failure is CancellationException) throw failure
+                if (shouldClearNativeSession(failure)) {
+                    store.clear()
+                    auth = null
+                    error = "Session นี้ถูกยกเลิก หมดอายุ หรือเปิดจากอุปกรณ์อื่น"
+                    break
+                }
+                // A failed network read does not revoke a previously validated session.
+                // Try again on the next tick; protected writes remain server-authorized.
             }
-            if (result.isFailure) break
         }
     }
 
@@ -82,14 +104,30 @@ fun QueueGoAuthHost(
             restoring -> Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.Center) {
                 CircularProgressIndicator(Modifier.padding(24.dp))
             }
+            recoveryRequired -> Column(
+                Modifier.fillMaxSize().padding(24.dp),
+                verticalArrangement = Arrangement.Center
+            ) {
+                Text("เชื่อมต่อไม่สำเร็จ", fontWeight = FontWeight.Bold)
+                Text(error ?: "กรุณาตรวจสอบการเชื่อมต่อแล้วลองใหม่", color = QgMuted)
+                Button(onClick = { restoreAttempt += 1 }, modifier = Modifier.fillMaxWidth()) {
+                    Text("ลองใหม่")
+                }
+            }
             auth == null -> QueueGoLoginScreen(appLabel, busy, error) { id, pass ->
                 busy = true
                 error = null
                 scope.launch {
-                    runCatching { api.signIn(id, pass, expectedRole, store.deviceId()) }
-                        .onSuccess { store.save(it); auth = it }
-                        .onFailure { error = it.message ?: "เข้าสู่ระบบไม่สำเร็จ" }
-                    busy = false
+                    try {
+                        val signedIn = api.signIn(id, pass, expectedRole, store.deviceId())
+                        store.save(signedIn)
+                        auth = signedIn
+                    } catch (failure: Exception) {
+                        if (failure is CancellationException) throw failure
+                        error = failure.message ?: "เข้าสู่ระบบไม่สำเร็จ"
+                    } finally {
+                        busy = false
+                    }
                 }
             }
             else -> content(auth!!) {
