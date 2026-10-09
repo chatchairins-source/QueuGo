@@ -267,7 +267,6 @@ private fun MerchantShell(auth: NativeAuth, logout: () -> Unit) {
     ) { insets ->
         Column(Modifier.fillMaxSize().padding(insets).background(QgBg)) {
             MerchantTopBar(
-                title = shop?.name ?: "QueueGo Merchant",
                 unreadCount = notifications.count { !it.isRead },
                 onHome = { screen = "home" },
                 onNotifications = { screen = "notifications" }
@@ -604,7 +603,6 @@ private fun MerchantShell(auth: NativeAuth, logout: () -> Unit) {
 
 @Composable
 private fun MerchantTopBar(
-    title: String,
     unreadCount: Int,
     onHome: () -> Unit,
     onNotifications: () -> Unit
@@ -613,29 +611,18 @@ private fun MerchantTopBar(
         Modifier
             .fillMaxWidth()
             .background(Color(0xFAFFFFFF))
-            .padding(horizontal = 14.dp, vertical = 10.dp),
+            .padding(horizontal = 14.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box(
             Modifier
-                .size(36.dp)
-                .background(QgRed, RoundedCornerShape(12.dp))
+                .size(40.dp)
                 .clickable(onClick = onHome),
             contentAlignment = Alignment.Center
         ) {
-            Text("Q", color = Color.White, fontWeight = FontWeight.Black, style = MaterialTheme.typography.titleLarge)
+            QgIcon("brand_q", Modifier.size(36.dp), QgRed)
         }
-        Spacer(Modifier.width(8.dp))
-        QueueGoBrand(suffix = "Merchant")
         Spacer(Modifier.weight(1f))
-        Text(
-            title,
-            color = QgMuted,
-            style = MaterialTheme.typography.labelSmall,
-            maxLines = 1,
-            modifier = Modifier.weight(1f, fill = false)
-        )
-        Spacer(Modifier.width(8.dp))
         QgIconButton(
             icon = "bell",
             badge = unreadCount,
