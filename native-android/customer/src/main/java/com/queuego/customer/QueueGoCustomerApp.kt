@@ -362,7 +362,7 @@ private fun CustomerShell(auth: NativeAuth, logout: () -> Unit) {
                 "category" -> ServiceCategoryScreen(
                     loading = loading,
                     category = category,
-                    serviceBanner = serviceBanners[if (category == "cafe") "drink" else category],
+                    serviceBanner = serviceBanners[category],
                     shops = shops,
                     onBack = {
                         category = "all"
@@ -830,7 +830,7 @@ private fun CustomerBlueprintShopCard(
 }
 
 @Composable
-private fun ServiceCategoryScreen(
+internal fun ShoppingCategoryScreen(
     loading: Boolean,
     category: String,
     serviceBanner: ServiceBanner?,
@@ -838,23 +838,9 @@ private fun ServiceCategoryScreen(
     onBack: () -> Unit,
     onShop: (CustomerShop) -> Unit
 ) {
-    val visible = shops.filter {
-        when (category) {
-            "cafe" -> it.category in setOf("cafe", "drink", "beverage")
-            "grocery" -> it.category in setOf("grocery", "convenience")
-            "food" -> it.category in setOf("food", "restaurant")
-            "shopping" -> it.category == "shopping"
-            else -> it.category == category
-        }
-    }
+    val visible = shops.filter { it.category == category }
     val title = categories.find { it.first == category }?.second ?: "บริการ"
-    val fallbackSubtitle = when (category) {
-        "food" -> "อาหารใกล้คุณ สั่งง่าย ส่งถึงบ้าน"
-        "cafe" -> "เครื่องดื่มและคาเฟ่ใกล้คุณ"
-        "grocery" -> "ซื้อของใกล้บ้าน เงินหมุนเวียนในชุมชน"
-        "shopping" -> "ร้านค้าใกล้บ้าน เลือกซื้อได้สะดวก"
-        else -> "บริการใกล้คุณ"
-    }
+    val fallbackSubtitle = "ร้านค้าใกล้บ้าน เลือกซื้อได้สะดวก"
 
     Column(
         Modifier

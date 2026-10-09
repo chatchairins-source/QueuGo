@@ -278,7 +278,9 @@ fun QgRemoteImage(
     source: String?,
     modifier: Modifier,
     fallback: String = "Q",
-    contentScale: ContentScale = ContentScale.Crop
+    contentScale: ContentScale = ContentScale.Crop,
+    cornerRadius: androidx.compose.ui.unit.Dp = 14.dp,
+    showFallback: Boolean = true
 ) {
     var image by remember(source) { mutableStateOf<androidx.compose.ui.graphics.ImageBitmap?>(null) }
     LaunchedEffect(source) {
@@ -297,16 +299,17 @@ fun QgRemoteImage(
         }
     }
     if (image != null) {
-        Image(image!!, null, modifier.clip(RoundedCornerShape(14.dp)), contentScale = contentScale)
-    } else {
+        Image(image!!, null, modifier.clip(RoundedCornerShape(cornerRadius)), contentScale = contentScale)
+    } else if (showFallback) {
         Box(
             modifier
-                .clip(RoundedCornerShape(14.dp))
+                .clip(RoundedCornerShape(cornerRadius))
                 .background(Color(0xFFF0F1F2))
-                .border(1.dp, QgLine, RoundedCornerShape(14.dp)),
+                .border(1.dp, QgLine, RoundedCornerShape(cornerRadius)),
             contentAlignment = Alignment.Center
         ) {
             Text(fallback.take(1).uppercase(), color = Color(0xFFC3C6CB), fontWeight = FontWeight.Black)
         }
     }
+    else { Box(modifier.clip(RoundedCornerShape(cornerRadius))) }
 }

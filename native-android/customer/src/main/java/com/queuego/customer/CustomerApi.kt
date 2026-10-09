@@ -15,7 +15,9 @@ data class CustomerShop(
     val address: String?,
     val latitude: Double?,
     val longitude: Double?,
-    val open: Boolean
+    val open: Boolean,
+    val openTime: String? = null,
+    val closeTime: String? = null
 )
 
 data class CustomerProduct(
@@ -85,7 +87,7 @@ class CustomerApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
     suspend fun loadShops(auth: NativeAuth): List<CustomerShop> {
         val token = auth.session.accessToken
         val rows = http.array(http.get(
-            "shop_profiles?select=id,shop_name,public_category,public_logo,public_cover,address,latitude,longitude,status&status=eq.active",
+            "shop_profiles?select=id,shop_name,public_category,public_logo,public_cover,address,latitude,longitude,status,public_open_time,public_close_time&status=eq.active",
             token
         ))
         val states = runCatching {
@@ -110,7 +112,9 @@ class CustomerApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
                     row.optNullable("address"),
                     row.optDoubleOrNull("latitude"),
                     row.optDoubleOrNull("longitude"),
-                    open[id] != false
+                    open[id] != false,
+                    row.optNullable("public_open_time"),
+                    row.optNullable("public_close_time")
                 ))
             }
         }
