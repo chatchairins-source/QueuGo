@@ -18,3 +18,10 @@ fun merchantRealtimeSubscriptions(userId: String, shopId: String): List<NativeRe
     NativeRealtimeSubscription("notifications", "user_id=eq.$userId"),
     NativeRealtimeSubscription("orders", "shop_id=eq.$shopId")
 )
+
+fun customerRealtimeSubscriptions(userId: String): List<NativeRealtimeSubscription> = listOf(
+    NativeRealtimeSubscription("notifications", "user_id=eq.$userId"),
+    NativeRealtimeSubscription("orders", "customer_id=eq.$userId"),
+    NativeRealtimeSubscription("market_orders", "customer_id=eq.$userId"),
+    NativeRealtimeSubscription("laundry_orders", "customer_id=eq.$userId")
+)

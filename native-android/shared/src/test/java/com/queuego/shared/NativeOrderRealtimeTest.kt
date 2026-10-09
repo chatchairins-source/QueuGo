@@ -162,4 +162,13 @@ class NativeOrderRealtimeTest {
         }
     }
 
+    @Test fun customerSubscriptionsNeverReadAnotherCustomersOrdersOrUnfilteredPool() {
+        assertEquals(listOf(
+            NativeRealtimeSubscription("notifications", "user_id=eq.customer-1"),
+            NativeRealtimeSubscription("orders", "customer_id=eq.customer-1"),
+            NativeRealtimeSubscription("market_orders", "customer_id=eq.customer-1"),
+            NativeRealtimeSubscription("laundry_orders", "customer_id=eq.customer-1")),
+            customerRealtimeSubscriptions("customer-1"))
+    }
+
 }

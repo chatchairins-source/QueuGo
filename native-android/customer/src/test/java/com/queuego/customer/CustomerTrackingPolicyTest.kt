@@ -35,4 +35,29 @@ class CustomerTrackingPolicyTest {
     @Test fun oneMissingCoordinateDoesNotCreateAPartialMarker() {
         assertEquals(1, customerTrackingPoints(order().copy(pickupLatitude = null), null).size)
     }
+    @Test fun terminalContextIsAttemptedOncePerDetailVisitEvenAfterRepeatedInvalidations() {
+        val gate = TrackingContextRefreshGate()
+        assertTrue(gate.shouldFetch(order()))
+        assertTrue(gate.shouldFetch(order()))
+        assertTrue(gate.shouldFetch(order("completed")))
+        repeat(5) { assertFalse(gate.shouldFetch(order("completed"))) }
+        assertTrue(TrackingContextRefreshGate().shouldFetch(order("completed")))
+    }
+    @Test fun allTerminalStatesStopContextRetries() {
+        listOf("completed", "cancelled", "no_rider_available").forEach {
+            val gate = TrackingContextRefreshGate()
+            assertTrue(gate.shouldFetch(order(it)))
+            assertFalse(gate.shouldFetch(order(it)))
+        }
+    }
+
+    @Test fun lifecycleCancellationAllowsTheUnfinishedFinalSnapshotOnResume() {
+        val gate = TrackingContextRefreshGate()
+        val closed = order("completed")
+        assertTrue(gate.shouldFetch(closed))
+        gate.cancelled(closed)
+        assertTrue(gate.shouldFetch(closed))
+        assertFalse(gate.shouldFetch(closed))
+    }
+
 }

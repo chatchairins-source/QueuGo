@@ -36,6 +36,14 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.repeatOnLifecycle
+import com.queuego.shared.NativeOrderRealtime
+import com.queuego.shared.customerRealtimeSubscriptions
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -91,6 +99,9 @@ private fun CustomerShell(auth: NativeAuth, logout: () -> Unit) {
     val laundryApi = remember { CustomerLaundryApi() }
     val extrasApi = remember { CustomerExtrasApi() }
     val scope = rememberCoroutineScope()
+    val realtime = remember { NativeOrderRealtime() }
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
+    val liveMutex = remember { Mutex() }
     val context = LocalContext.current
     val cartStore = remember(auth.user.id) { CustomerCartStore(context, auth.user.id) }
 
@@ -118,10 +129,12 @@ private fun CustomerShell(auth: NativeAuth, logout: () -> Unit) {
     var loading by remember { mutableStateOf(true) }
     var message by remember { mutableStateOf<String?>(null) }
 
+    val contextRefreshGate = remember(selectedOrder?.id) { TrackingContextRefreshGate() }
+
     fun refresh() {
         scope.launch {
             loading = true
-            runCatching {
+            liveMutex.withLock { runCatching {
                 shops = api.loadShops(auth)
                 orders = api.loadOrders(auth)
                 marketTrips = runCatching { marketApi.trips(auth) }.getOrDefault(emptyList())
@@ -135,7 +148,10 @@ private fun CustomerShell(auth: NativeAuth, logout: () -> Unit) {
                 serviceBanners = api.loadServiceBanners(auth)
                 notifications = runCatching { extrasApi.notifications(auth) }.getOrDefault(emptyList())
                 message = null
-            }.onFailure { message = it.message ?: "โหลดข้อมูลไม่สำเร็จ" }
+            }.onFailure {
+                if (it is CancellationException) throw it
+                message = it.message ?: "โหลดข้อมูลไม่สำเร็จ"
+            } }
             loading = false
         }
     }
@@ -161,37 +177,71 @@ private fun CustomerShell(auth: NativeAuth, logout: () -> Unit) {
         } else message = "กรุณาอนุญาตตำแหน่งเพื่อจัดส่ง"
     }
 
+    suspend fun refreshNotifications() = liveMutex.withLock {
+        runCatching { extrasApi.notifications(auth) }
+            .onFailure { if (it is CancellationException) throw it }
+            .onSuccess { notifications = it }
+    }
+
+    suspend fun refreshOrders() = liveMutex.withLock {
+        runCatching { api.loadOrders(auth) }
+            .onFailure { if (it is CancellationException) throw it }
+            .onSuccess { fresh ->
+                orders = fresh
+                selectedOrder = selectedOrder?.let { old -> fresh.find { it.id == old.id } ?: old }
+            }
+        runCatching { marketApi.trips(auth) }
+            .onFailure { if (it is CancellationException) throw it }
+            .onSuccess { fresh ->
+                marketTrips = fresh
+                selectedMarketTrip = selectedMarketTrip?.let { old -> fresh.find { it.id == old.id } ?: old }
+            }
+        runCatching { laundryApi.orders(auth) }
+            .onFailure { if (it is CancellationException) throw it }
+            .onSuccess { fresh ->
+                laundryOrders = fresh
+                selectedLaundryOrder = selectedLaundryOrder?.let { old -> fresh.find { it.id == old.id } ?: old }
+            }
+        val detail = selectedOrder?.takeIf { screen == "order" }
+        if (detail != null && contextRefreshGate.shouldFetch(detail)) {
+            runCatching { api.loadOrderItems(auth, detail.id) }
+                .onFailure { if (it is CancellationException) { contextRefreshGate.cancelled(detail); throw it } }
+                .onSuccess { if (screen == "order" && selectedOrder?.id == detail.id) orderItems = it }
+            if (screen == "order" && selectedOrder?.id == detail.id) {
+                runCatching { api.loadOrderContext(auth, detail.id) }
+                    .onFailure { if (it is CancellationException) { contextRefreshGate.cancelled(detail); throw it } }
+                    .onSuccess { if (screen == "order" && selectedOrder?.id == detail.id) trackingContext = it }
+            }
+        }
+    }
+
     LaunchedEffect(auth.user.id) { refresh() }
-    LaunchedEffect(auth.user.id) {
-        while (true) {
-            runCatching { extrasApi.notifications(auth) }.onSuccess { notifications = it }
-            delay(8_000)
+    LaunchedEffect(auth.session.accessToken, lifecycle) {
+        lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            while (true) {
+                refreshNotifications()
+                delay(8_000)
+            }
+        }
+    }
+    // Key the closure to detail visits, so a reopened closed order gets one final snapshot.
+    LaunchedEffect(auth.session.accessToken, selectedOrder?.id, lifecycle) {
+        lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            realtime.changes(auth.session.accessToken, customerRealtimeSubscriptions(auth.user.id)).collect {
+                refreshNotifications()
+                refreshOrders()
+            }
         }
     }
     LaunchedEffect(cart) { cartStore.save(cart) }
-    LaunchedEffect(screen, selectedOrder?.id) {
+    LaunchedEffect(auth.session.accessToken, screen, selectedOrder?.id, lifecycle) {
         if (screen == "orders" || screen == "order") {
-            while (true) {
-                runCatching { api.loadOrders(auth) }.onSuccess { fresh ->
-                    orders = fresh
-                    selectedOrder = selectedOrder?.let { old -> fresh.find { it.id == old.id } ?: old }
+            lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                while (true) {
+                    refreshOrders()
+                    if (screen == "order" && selectedOrder?.trackingClosed() == true) break
+                    delay(3_000)
                 }
-                runCatching { marketApi.trips(auth) }.onSuccess { fresh ->
-                    marketTrips = fresh
-                    selectedMarketTrip = selectedMarketTrip?.let { old -> fresh.find { it.id == old.id } ?: old }
-                }
-                runCatching { laundryApi.orders(auth) }.onSuccess { fresh ->
-                    laundryOrders = fresh
-                    selectedLaundryOrder = selectedLaundryOrder?.let { old -> fresh.find { it.id == old.id } ?: old }
-                }
-                if (screen == "order" && selectedOrder != null) {
-                    val orderId = selectedOrder!!.id
-                    runCatching { api.loadOrderItems(auth, orderId) }.onSuccess { orderItems = it }
-                    runCatching { api.loadOrderContext(auth, orderId) }.onSuccess { trackingContext = it }
-                }
-                // A closed tracking page must not keep requesting live context.
-                if (screen == "order" && selectedOrder?.status in setOf("completed", "cancelled", "no_rider_available")) break
-                delay(3_000)
             }
         }
     }

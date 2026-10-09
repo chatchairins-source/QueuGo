@@ -16,3 +16,10 @@ fun customerTrackingPoints(order: CustomerOrder, rider: CustomerTrackingRider?):
         if (order.status != "searching_rider") point(rider?.latitude, rider?.longitude, 0xFF1677FF.toInt())
     }
 }
+
+/** One final context attempt per detail visit; repeated invalidations must not poll closed locations. */
+internal class TrackingContextRefreshGate {
+    private val finalAttempts = mutableSetOf<String>()
+    fun shouldFetch(order: CustomerOrder): Boolean = !order.trackingClosed() || finalAttempts.add(order.id)
+    fun cancelled(order: CustomerOrder) { finalAttempts.remove(order.id) }
+}
