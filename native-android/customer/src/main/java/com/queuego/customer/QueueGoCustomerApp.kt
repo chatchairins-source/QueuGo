@@ -940,7 +940,6 @@ private fun CustomerBlueprintShopCard(
     onClick: () -> Unit
 ) {
     val compact = LocalConfiguration.current.screenWidthDp <= 420
-    val imageSize = if (compact) 82.dp else 92.dp
     QgCard(
         Modifier
             .fillMaxWidth()
@@ -950,7 +949,7 @@ private fun CustomerBlueprintShopCard(
         Row(verticalAlignment = Alignment.CenterVertically) {
             QgRemoteImage(
                 source = shop.logo ?: shop.cover,
-                modifier = Modifier.size(imageSize),
+                modifier = if (compact) Modifier.size(82.dp) else Modifier.size(92.dp),
                 fallback = shop.name,
                 cornerRadius = 14.dp
             )
