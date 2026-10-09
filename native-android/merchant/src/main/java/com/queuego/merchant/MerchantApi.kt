@@ -678,11 +678,14 @@ class MerchantApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
         }
     }
 
-    suspend fun cycleModule(auth: NativeAuth, module: MerchantModule?): MerchantModule {
-        val key = module?.key ?: error("ไม่พบโมดูล")
+    suspend fun cycleModule(
+        auth: NativeAuth,
+        key: String,
+        module: MerchantModule?
+    ): MerchantModule {
         require(key in merchantModuleCatalog.map { it.first }.toSet()) { "ไม่พบโมดูล" }
         val statuses = listOf("disabled", "trial", "enabled")
-        val current = module.status.takeIf { it in statuses } ?: "disabled"
+        val current = module?.status?.takeIf { it in statuses } ?: "disabled"
         val next = statuses[(statuses.indexOf(current) + 1) % statuses.size]
         val now = java.time.Instant.now().toString()
         val body = JSONObject()
@@ -709,7 +712,7 @@ class MerchantApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
             )
         }
         return loadModules(auth).find { it.key == key }
-            ?: MerchantModule(module.id, key, next, module.startedAt, null)
+            ?: MerchantModule(module?.id, key, next, module?.startedAt, null)
     }
 
     suspend fun loadPromotions(auth: NativeAuth, shopId: String): List<MerchantPromotion> {
