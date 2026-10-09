@@ -208,6 +208,10 @@ fun QgIcon(name: String, modifier: Modifier = Modifier, color: Color = QgRed) {
             drawLine(color, Offset(w * x1, h * y1), Offset(w * x2, h * y2), sw, StrokeCap.Round)
 
         when (name) {
+            "brand_q" -> {
+                drawCircle(color, w * .30f, Offset(w * .47f, h * .46f), style = stroke)
+                line(.57f,.58f,.84f,.85f)
+            }
             "home", "Q" -> {
                 line(.16f,.48f,.5f,.18f); line(.5f,.18f,.84f,.48f)
                 line(.24f,.43f,.24f,.82f); line(.76f,.43f,.76f,.82f)
