@@ -174,13 +174,13 @@ ok(source.includes('functions/v1/account-delete')&&source.includes('DELETE_ACCOU
 ok((source.match(/QgAccountDeletionSection\(/g)||[]).length>=4,'Customer Merchant Rider must wire account deletion UI');
 ok(source.includes('claim_active_session'),'reuse active-session claim');
 ok(source.includes('check_active_session')&&source.includes('touch_active_session'),'reuse session guard');
-ok(source.includes('qg_get_my_rider_offer')&&source.includes('qg_rider_action_once')&&source.includes('qg_rider_decline_offer'),'reuse guarded sequential server-selected Rider dispatch');
+ok(riderApi.includes('qg_get_my_rider_offer')&&riderApi.includes('qg_rider_action_once')&&riderApi.includes('qg_rider_decline_offer'),'reuse guarded sequential server-selected Rider dispatch');
 ok(source.includes('status=in.(rider_assigned,preparing,ready,assigned,picked_up,in_progress)'),'reuse active order states');
 ok(source.includes('AndroidKeyStore')&&source.includes('AES/GCM/NoPadding'),'encrypted session storage');
 ok(source.includes('qg_rider_mark_arrival'),'native Rider must reuse arrival RPC');
 ok(source.includes('qg_pickup_with_photo')&&source.includes('qg_complete_with_photo'),'native Rider must reuse photo proof RPCs');
 ok(source.includes('/storage/v1/object/qg-evidence/'),'native Rider must upload proof to existing evidence bucket');
-ok(source.includes('qg_rider_decline_offer'),'native Rider must preserve sequential offer decline');
+ok(riderApi.includes('qg_rider_decline_offer'),'native Rider must preserve sequential offer decline');
 ok(source.includes('status=eq.completed&order=updated_at.desc'),'Rider native must expose completed history');
 ok((source.match(/qg_chat_moderation_state/g)||[]).length>=2&&(source.match(/qg_accept_ugc_terms/g)||[]).length>=2,'Rider native chat must preserve UGC safety');
 ok((source.match(/order_chat_messages\?select=id,sender_id,message,created_at/g)||[]).length>=2,'Customer and Rider native chat must use production chat table');
