@@ -86,6 +86,25 @@ data class MerchantSupportMessage(
     val createdAt: String?
 )
 
+data class MerchantBusinessDay(
+    val weekday: Int,
+    val opensAt: String,
+    val closesAt: String,
+    val isClosed: Boolean
+)
+
+data class MerchantSpecialHours(
+    val day: String?,
+    val opensAt: String,
+    val closesAt: String,
+    val isClosed: Boolean
+)
+
+data class MerchantHoursState(
+    val days: List<MerchantBusinessDay>,
+    val special: MerchantSpecialHours?
+)
+
 data class ShopReadiness(val complete: Boolean, val checks: JSONObject, val catalogKind: String?)
 
 class MerchantApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
@@ -211,6 +230,96 @@ class MerchantApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
             .put("resume_at", JSONObject.NULL)
         if (rows.length() > 0) http.patch(path, auth.session.accessToken, body)
         else http.post("shop_open_states", auth.session.accessToken, body)
+    }
+
+    suspend fun loadBusinessHours(
+        auth: NativeAuth,
+        shopId: String,
+        fromDay: String
+    ): MerchantHoursState {
+        val dayRows = http.array(
+            http.get(
+                "shop_business_hours?select=weekday,opens_at,closes_at,is_closed" +
+                    "&shop_id=eq." + http.enc(shopId) + "&order=weekday.asc",
+                auth.session.accessToken
+            )
+        )
+        val byDay = HashMap<Int, MerchantBusinessDay>()
+        for (i in 0 until dayRows.length()) {
+            val r = dayRows.optJSONObject(i) ?: continue
+            val weekday = r.optInt("weekday", -1)
+            if (weekday !in 0..6) continue
+            byDay[weekday] = MerchantBusinessDay(
+                weekday = weekday,
+                opensAt = normalizeMerchantTime(r.optString("opens_at"), "06:00"),
+                closesAt = normalizeMerchantTime(r.optString("closes_at"), "22:00"),
+                isClosed = r.optBoolean("is_closed", false)
+            )
+        }
+        val days = (0..6).map { weekday ->
+            byDay[weekday] ?: MerchantBusinessDay(weekday, "06:00", "22:00", false)
+        }
+
+        val specialRows = runCatching {
+            http.array(
+                http.get(
+                    "shop_special_hours?select=day,is_closed,opens_at,closes_at" +
+                        "&shop_id=eq." + http.enc(shopId) +
+                        "&day=gte." + http.enc(fromDay) +
+                        "&order=day.asc&limit=1",
+                    auth.session.accessToken
+                )
+            )
+        }.getOrElse { JSONArray() }
+        val special = specialRows.optJSONObject(0)?.let { r ->
+            MerchantSpecialHours(
+                day = r.optNullable("day"),
+                opensAt = normalizeMerchantTime(r.optString("opens_at"), "06:00"),
+                closesAt = normalizeMerchantTime(r.optString("closes_at"), "22:00"),
+                isClosed = r.optBoolean("is_closed", true)
+            )
+        }
+        return MerchantHoursState(days, special)
+    }
+
+    suspend fun saveBusinessHours(
+        auth: NativeAuth,
+        days: List<MerchantBusinessDay>,
+        special: MerchantSpecialHours?
+    ) {
+        require(days.map { it.weekday }.toSet() == (0..6).toSet()) {
+            "กรุณาตั้งค่าเวลาทำการให้ครบ 7 วัน"
+        }
+        val rows = JSONArray()
+        days.sortedBy { it.weekday }.forEach { day ->
+            require(day.weekday in 0..6) { "วันทำการไม่ถูกต้อง" }
+            require(merchantTimeValid(day.opensAt) && merchantTimeValid(day.closesAt)) {
+                "เวลาทำการไม่ถูกต้อง"
+            }
+            rows.put(
+                JSONObject()
+                    .put("weekday", day.weekday)
+                    .put("opens_at", day.opensAt)
+                    .put("closes_at", day.closesAt)
+                    .put("is_closed", day.isClosed)
+            )
+        }
+        val specialDay = special?.day?.trim()?.takeIf { it.matches(Regex("\\d{4}-\\d{2}-\\d{2}")) }
+        if (special != null) {
+            require(merchantTimeValid(special.opensAt) && merchantTimeValid(special.closesAt)) {
+                "เวลาพิเศษไม่ถูกต้อง"
+            }
+        }
+        http.rpc(
+            "merchant_save_hours",
+            auth.session.accessToken,
+            JSONObject()
+                .put("p_days", rows)
+                .put("p_special_day", specialDay ?: JSONObject.NULL)
+                .put("p_special_closed", special?.isClosed ?: true)
+                .put("p_special_open", special?.opensAt ?: "06:00")
+                .put("p_special_close", special?.closesAt ?: "22:00")
+        )
     }
 
     suspend fun todayRevenue(auth: NativeAuth, date: String): MerchantTodayRevenue {
@@ -509,3 +618,16 @@ internal fun parseMerchantSubcategories(raw: Any?): Set<String> {
 
 private fun JSONObject.optDoubleOrNull(key: String): Double? =
     if (!has(key) || isNull(key)) null else optDouble(key).takeIf { it.isFinite() }
+
+
+internal fun normalizeMerchantTime(value: String?, fallback: String): String {
+    val clean = value.orEmpty().trim().take(5)
+    return if (merchantTimeValid(clean)) clean else fallback
+}
+
+internal fun merchantTimeValid(value: String): Boolean {
+    val match = Regex("^(\\d{2}):(\\d{2})$").matchEntire(value.trim()) ?: return false
+    val hour = match.groupValues[1].toIntOrNull() ?: return false
+    val minute = match.groupValues[2].toIntOrNull() ?: return false
+    return hour in 0..23 && minute in 0..59
+}
