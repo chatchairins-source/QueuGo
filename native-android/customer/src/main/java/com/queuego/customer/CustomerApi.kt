@@ -127,7 +127,6 @@ class CustomerApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
         return buildList {
             for (i in 0 until rows.length()) {
                 val r = rows.optJSONObject(i) ?: continue
-                if (!r.optBoolean("available", true)) continue
                 add(CustomerProduct(
                     r.optString("id"),
                     r.optString("shop_id"),
@@ -136,7 +135,7 @@ class CustomerApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
                     r.optDouble("price", 0.0),
                     r.optDouble("delivery_price", r.optDouble("price", 0.0)),
                     r.optNullable("image"),
-                    true
+                    r.optBoolean("available", true)
                 ))
             }
         }

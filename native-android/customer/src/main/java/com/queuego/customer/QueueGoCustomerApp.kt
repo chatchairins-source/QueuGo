@@ -106,6 +106,7 @@ private fun CustomerShell(auth: NativeAuth, logout: () -> Unit) {
     val cartStore = remember(auth.user.id) { CustomerCartStore(context, auth.user.id) }
 
     var screen by remember { mutableStateOf("home") }
+    var shopReturnScreen by remember { mutableStateOf("home") }
     var category by remember { mutableStateOf("all") }
     var shops by remember { mutableStateOf<List<CustomerShop>>(emptyList()) }
     var orders by remember { mutableStateOf<List<CustomerOrder>>(emptyList()) }
@@ -287,6 +288,7 @@ private fun CustomerShell(auth: NativeAuth, logout: () -> Unit) {
                 "search" -> CustomerSearchScreen(
                     shops = shops,
                     onOpenShop = { shop ->
+                        shopReturnScreen = screen
                         selectedShop = shop
                         products = emptyList()
                         screen = "shop"
@@ -349,6 +351,7 @@ private fun CustomerShell(auth: NativeAuth, logout: () -> Unit) {
                         }
                     },
                     onShop = { shop ->
+                        shopReturnScreen = screen
                         selectedShop = shop
                         products = emptyList()
                         screen = "shop"
@@ -369,6 +372,7 @@ private fun CustomerShell(auth: NativeAuth, logout: () -> Unit) {
                         screen = "home"
                     },
                     onShop = { shop ->
+                        shopReturnScreen = screen
                         selectedShop = shop
                         products = emptyList()
                         screen = "shop"
@@ -438,10 +442,11 @@ private fun CustomerShell(auth: NativeAuth, logout: () -> Unit) {
                     }
                 )
                 "shop" -> ShopScreen(
+                    auth = auth,
                     shop = selectedShop,
                     products = products,
                     cart = cart,
-                    onBack = { screen = "home" },
+                    onBack = { screen = shopReturnScreen },
                     onAdd = { product ->
                         val currentShopId = cart.firstOrNull()?.product?.shopId
                         if (currentShopId != null && currentShopId != product.shopId) {
@@ -925,55 +930,6 @@ internal fun ShoppingCategoryScreen(
             }
         }
         Spacer(Modifier.height(28.dp))
-    }
-}
-
-@Composable
-private fun ShopScreen(
-    shop: CustomerShop?,
-    products: List<CustomerProduct>,
-    cart: List<CartLine>,
-    onBack: () -> Unit,
-    onAdd: (CustomerProduct) -> Unit,
-    onCart: () -> Unit
-) {
-    if (shop == null) return
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
-        Box {
-            QgRemoteImage(shop.cover ?: shop.logo, Modifier.fillMaxWidth().height(190.dp), shop.name)
-            OutlinedButton(onClick = onBack, modifier = Modifier.padding(12.dp).background(androidx.compose.ui.graphics.Color.White, RoundedCornerShape(14.dp))) { Text("ย้อนกลับ") }
-        }
-        Column(Modifier.padding(14.dp)) {
-            Text(shop.name, fontWeight = FontWeight.Black, style = MaterialTheme.typography.headlineSmall)
-            Text(shop.address ?: categoryLabel(shop.category), color = QgMuted)
-            Spacer(Modifier.height(8.dp))
-            QgStatusPill(if (shop.open) "เปิดอยู่" else "ปิดอยู่", shop.open)
-            Spacer(Modifier.height(18.dp))
-            QgSectionTitle("เมนู / สินค้า")
-            Spacer(Modifier.height(8.dp))
-            if (products.isEmpty()) {
-                QgCard(Modifier.fillMaxWidth()) { Text("ยังไม่มีสินค้าพร้อมขาย", color = QgMuted) }
-            } else products.forEach { p ->
-                Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                    QgRemoteImage(p.image, Modifier.size(68.dp), p.name)
-                    Spacer(Modifier.width(10.dp))
-                    Column(Modifier.weight(1f)) {
-                        Text(p.name, fontWeight = FontWeight.Bold)
-                        if (!p.description.isNullOrBlank()) Text(p.description!!, color = QgMuted, style = MaterialTheme.typography.bodySmall)
-                        Text("฿" + "%.0f".format(p.deliveryPrice), fontWeight = FontWeight.ExtraBold)
-                    }
-                    Button(onClick = { onAdd(p) }, enabled = shop.open) { Text("+") }
-                }
-                HorizontalDivider()
-            }
-            if (cart.isNotEmpty()) {
-                Spacer(Modifier.height(10.dp))
-                Button(onClick = onCart, modifier = Modifier.fillMaxWidth()) {
-                    Text("ดูตะกร้า · " + cart.sumOf { it.quantity } + " รายการ · ฿" + "%.0f".format(cart.sumOf { it.product.deliveryPrice * it.quantity }))
-                }
-            }
-            Spacer(Modifier.height(30.dp))
-        }
     }
 }
 
