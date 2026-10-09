@@ -34,6 +34,8 @@ for(const p of [
   'merchant/src/main/java/com/queuego/merchant/MerchantGpSlipUpload.kt',
   'merchant/src/main/java/com/queuego/merchant/MerchantPromotionScreen.kt',
   'merchant/src/main/java/com/queuego/merchant/MerchantNotificationsScreen.kt',
+  'merchant/src/main/java/com/queuego/merchant/MerchantProductModel.kt',
+  'merchant/src/main/java/com/queuego/merchant/MerchantProductsScreen.kt',
   'merchant/src/main/AndroidManifest.xml',
   'merchant/src/main/java/com/queuego/merchant/MerchantLaundryApi.kt',
   'merchant/src/main/java/com/queuego/merchant/MerchantSupportScreen.kt'
@@ -96,7 +98,7 @@ ok(source.includes('pos_my_shop')&&source.includes('pos_create_bill_once')&&sour
 
 ok(source.includes('get_my_shop_orders'),'Merchant native Orders must use production order source');
 ok(source.includes('ToneGenerator')&&source.includes('STREAM_NOTIFICATION'),'Merchant native must alert on new orders');
-ok(source.includes('queuego_delete_or_archive_product')&&source.includes('updateProduct('),'Merchant native must support safe product archive and price editing');
+ok(source.includes('queuego_delete_or_archive_product')&&source.includes('saveProduct('),'Merchant native must support safe product archive and full product editing');
 ok(source.includes('shop_support_messages?select=id,sender_user_id,body,created_at'),'Merchant native must preserve Admin support messaging');
 const merchantSetup=read('merchant/src/main/java/com/queuego/merchant/MerchantShopSetupScreen.kt');
 const merchantImageUpload=read('merchant/src/main/java/com/queuego/merchant/MerchantImageUpload.kt');
@@ -124,6 +126,15 @@ const merchantNotifications=read('merchant/src/main/java/com/queuego/merchant/Me
 ok(source.includes('notifications?select=id,title,message,type,reference_id,is_read,created_at')&&source.includes('markNotificationsRead('),'Merchant native notification center must use owned Production notifications table');
 ok(merchantNotifications.includes('ทั้งหมด')&&merchantNotifications.includes('ออเดอร์')&&merchantNotifications.includes('ระบบ')&&merchantNotifications.includes('โปรโมชัน'),'Merchant native notification center must preserve web filter groups');
 ok(source.includes('unreadCount = notifications.count { !it.isRead }')&&source.includes('QgIconButton(')&&source.includes('"notifications" -> MerchantNotificationsScreen'),'Merchant native header must expose unread notification badge and route');
+const merchantProductModel=read('merchant/src/main/java/com/queuego/merchant/MerchantProductModel.kt');
+const merchantProductsScreen=read('merchant/src/main/java/com/queuego/merchant/MerchantProductsScreen.kt');
+ok(source.includes('products?select=id,name,description,price,delivery_price,image,category,stock,variants,available,pos_available,delivery_available,pos_price,delivery_restriction,metadata'),'Merchant native products must load Production stock/category/variant/channel fields');
+ok(source.includes('merchantDeliveryPriceFromStore')&&source.includes('1.0 + rate / 100.0'),'Merchant native Delivery price must add GP to the storefront price like Production web');
+ok(source.includes('resolution=merge-duplicates')&&source.includes('on_conflict=id'),'Merchant native new-product save must use stable idempotent upsert');
+ok(merchantProductModel.includes('เมนูแนะนำ / เมนูขายดี')&&merchantProductModel.includes('เพิ่มเติม / ท็อปปิ้ง')&&merchantProductModel.includes('ของสดพร้อมปรุง'),'Merchant native product categories must preserve Production food and market catalogs');
+ok(merchantProductModel.includes('queuego.menu-options.v1')&&merchantProductModel.includes('ธรรมดา')&&merchantProductModel.includes('พิเศษ')&&merchantProductModel.includes('ท็อปปิ้ง'),'Merchant native food editor must preserve structured menu options');
+ok(merchantProductsScreen.includes('จำนวนในสต็อก *')&&merchantProductsScreen.includes('ขายหน้าร้าน')&&merchantProductsScreen.includes('ขาย Delivery')&&merchantProductsScreen.includes('รูปจะเก็บในคลังรูปภาพของร้าน'),'Merchant native product editor must preserve stock, channels and image flow');
+ok(source.includes('"product" ->')&&!source.includes('private fun ProductsScreen('),'Merchant native must remove the legacy inline product implementation');
 const sharedDesign=read('shared/src/main/java/com/queuego/shared/QueueGoDesign.kt');
 ok(sharedDesign.includes('"tag" ->')&&sharedDesign.includes('"chart" ->')&&sharedDesign.includes('"clock" ->')&&sharedDesign.includes('"support" ->'),'shared native icon set must preserve Merchant web vectors');
 ok(source.includes('queuego_laundry_merchant_state')&&source.includes('queuego_laundry_shop_action_v2'),'Merchant native Laundry must use production laundry state/actions');
