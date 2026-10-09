@@ -171,7 +171,7 @@ fun RiderLongdoMap(
     )
 
     LaunchedEffect(job?.id, job?.status, job?.pickupLat, job?.pickupLng, job?.deliveryLat, job?.deliveryLng, laundryJob?.jobId, laundryJob?.jobStatus, marketPickups) {
-        holder.refreshOverlays(context, job, marketPickups)
+        holder.refreshOverlays(context, job, laundryJob, marketPickups)
     }
 
     LaunchedEffect(recenterSignal) {
