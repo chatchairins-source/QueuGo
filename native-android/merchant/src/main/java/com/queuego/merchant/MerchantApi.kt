@@ -95,6 +95,16 @@ data class MerchantSupportMessage(
     val createdAt: String?
 )
 
+data class MerchantPromotion(
+    val id: String,
+    val title: String,
+    val status: String,
+    val maxBudget: Double,
+    val periodDays: Int,
+    val paymentStatus: String,
+    val createdAt: String?
+)
+
 data class MerchantBusinessDay(
     val weekday: Int,
     val opensAt: String,
@@ -591,6 +601,66 @@ class MerchantApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
             .put("delivery_available", true)
         val raw = http.post("products", auth.session.accessToken, body)
         if (raw is JSONArray && raw.length() == 0) error("ฐานข้อมูลยังไม่ยืนยันสินค้า")
+    }
+
+    suspend fun loadPromotions(auth: NativeAuth, shopId: String): List<MerchantPromotion> {
+        val rows = http.array(
+            http.get(
+                "promotions?select=id,category,status,max_budget,period_days,payment_status,metadata,created_at" +
+                    "&shop_id=eq." + http.enc(shopId) +
+                    "&order=created_at.desc",
+                auth.session.accessToken
+            )
+        )
+        return buildList {
+            for (i in 0 until rows.length()) {
+                val r = rows.optJSONObject(i) ?: continue
+                val meta = r.optJSONObject("metadata")
+                add(
+                    MerchantPromotion(
+                        id = r.optString("id"),
+                        title = meta?.optString("title").orEmpty()
+                            .ifBlank { r.optString("category").ifBlank { "โปรโมชั่น" } },
+                        status = r.optString("status").ifBlank { "pending" },
+                        maxBudget = r.optDouble("max_budget", 0.0),
+                        periodDays = r.optInt("period_days", 7),
+                        paymentStatus = r.optString("payment_status").ifBlank { "pending" },
+                        createdAt = r.optNullable("created_at")
+                    )
+                )
+            }
+        }
+    }
+
+    suspend fun createPromotion(
+        auth: NativeAuth,
+        shop: MerchantShop,
+        title: String,
+        maxBudget: Double,
+        periodDays: Int
+    ) {
+        val cleanTitle = title.trim()
+        require(cleanTitle.isNotBlank()) { "กรุณากรอกชื่อ/ประเภทโปรโมชั่น" }
+        require(maxBudget >= 0.0 && maxBudget.isFinite()) { "งบสูงสุดไม่ถูกต้อง" }
+        require(periodDays >= 1) { "จำนวนวันต้องอย่างน้อย 1 วัน" }
+        val raw = http.post(
+            "promotions",
+            auth.session.accessToken,
+            JSONObject()
+                .put("shop_id", shop.id)
+                .put("shop_name", shop.name)
+                .put("category", cleanTitle)
+                .put("area", shop.address.orEmpty())
+                .put("bid_price", 0)
+                .put("max_budget", maxBudget)
+                .put("period_days", periodDays)
+                .put("status", "pending")
+                .put("payment_status", "pending")
+                .put("metadata", JSONObject().put("title", cleanTitle))
+        )
+        if (raw is JSONArray && raw.length() == 0) {
+            error("ฐานข้อมูลยังไม่ยืนยันคำขอโปรโมชั่น")
+        }
     }
 
     suspend fun loadSupportMessages(auth: NativeAuth): List<MerchantSupportMessage> {
