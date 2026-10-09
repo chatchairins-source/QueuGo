@@ -39,6 +39,7 @@ for(const p of [
   'merchant/src/main/java/com/queuego/merchant/MerchantCatalogScreen.kt',
   'merchant/src/main/java/com/queuego/merchant/MerchantMediaScreen.kt',
   'merchant/src/main/java/com/queuego/merchant/MerchantModulesScreen.kt',
+  'merchant/src/main/java/com/queuego/merchant/MerchantMarketStockScreen.kt',
   'merchant/src/main/AndroidManifest.xml',
   'merchant/src/main/java/com/queuego/merchant/MerchantLaundryApi.kt',
   'merchant/src/main/java/com/queuego/merchant/MerchantSupportScreen.kt'
@@ -149,6 +150,11 @@ ok(source.includes('shop_modules?select=id,shop_user_id,module_key,status,starte
 ok(source.includes('"storefront" to "หน้าร้าน"')&&source.includes('"products" to "หน้าสินค้า"')&&source.includes('"orders" to "ระบบรับออเดอร์"')&&source.includes('"promote" to "ระบบโปรโมต"'),'Merchant native settings must preserve Production module catalog');
 ok(source.includes('MerchantMenuTile("คลังรูปภาพ"')&&source.includes('MerchantMenuTile("การแจ้งเตือน"')&&source.includes('MerchantMenuTile("ติดต่อแอดมิน"'),'Merchant native dashboard must expose Production media notification and support routes');
 ok(source.includes('pauseShop(')&&source.includes('30 นาที')&&source.includes('1 ชั่วโมง')&&source.includes('1 วัน')&&source.includes('resume_at'),'Merchant native dashboard must preserve Production timed pause controls');
+const merchantMarketStock=read('merchant/src/main/java/com/queuego/merchant/MerchantMarketStockScreen.kt');
+ok(source.includes('rpc/market_save_product')===false && source.includes('"market_save_product"')&&source.includes('"market_adjust_stock"'),'Merchant native market stock must call Production market RPCs through shared RPC client');
+ok(source.includes('market_products?select=product_id,unit,pack_size,item_weight_kg,stock_quantity,min_stock,cost_price')&&source.includes('market_stock_movements?select=type,quantity,note,created_at'),'Merchant native market stock must load authoritative market inventory and movements');
+ok(merchantMarketStock.includes('สินค้าและสต๊อกตลาด')&&merchantMarketStock.includes('รับเข้า / ปรับยอด')&&merchantMarketStock.includes('สต๊อกเริ่มต้น')&&merchantMarketStock.includes('แจ้งเตือนใกล้หมด'),'Merchant native market stock must preserve Production stock workflow');
+ok(source.includes('"market-stock" ->')&&source.includes('MerchantMenuTile("ตลาดและสต๊อก"'),'Merchant native market shops must expose dedicated Market stock route');
 const sharedDesign=read('shared/src/main/java/com/queuego/shared/QueueGoDesign.kt');
 ok(sharedDesign.includes('"tag" ->')&&sharedDesign.includes('"chart" ->')&&sharedDesign.includes('"clock" ->')&&sharedDesign.includes('"support" ->'),'shared native icon set must preserve Merchant web vectors');
 ok(source.includes('queuego_laundry_merchant_state')&&source.includes('queuego_laundry_shop_action_v2'),'Merchant native Laundry must use production laundry state/actions');
