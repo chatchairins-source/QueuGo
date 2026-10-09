@@ -11,8 +11,8 @@ android {
         applicationId = "com.queuego.rider"
         minSdk = 26
         targetSdk = 36
-        versionCode = 3
-        versionName = "0.3.0-visual-blueprint"
+        versionCode = 4
+        versionName = "0.4.0-rider-map"
     }
 
     buildFeatures { compose = true }
@@ -26,6 +26,8 @@ android {
 
 dependencies {
     implementation(project(":shared"))
+    implementation(files("libs/LongdoMapAndroidSDK_v0.1.8.aar"))
+    implementation("com.google.android.gms:play-services-location:21.3.0")
     implementation("androidx.activity:activity-compose:1.13.0")
     implementation("androidx.compose.material3:material3:1.4.0")
     implementation("androidx.compose.ui:ui:1.11.4")

@@ -73,6 +73,9 @@ ok(source.includes('CustomerCategoryButton')&&source.includes('.size(54.dp)')&&s
 ok(source.includes('QgIconButton("bag"')&&source.includes('QgIconButton("bell"')&&source.includes('QgIconButton("user"'),'Customer top actions must remain icon-first like the web blueprint');
 ok(source.includes('MerchantMenuTile')&&source.includes('height(128.dp)')&&source.includes('"จัดการร้าน"'),'Merchant native dashboard must preserve store cover KPI and menu-grid blueprint');
 ok(source.includes('RiderBlueprintTopBar')&&source.includes('RoundedCornerShape(21.dp)')&&source.includes('"รับงาน · " + secondsLeft + " วิ"'),'Rider native must preserve approved topbar job-card and accept-countdown blueprint');
+ok(source.includes('RiderLongdoMap')&&source.includes('MapGLSurfaceView')&&source.includes('LongdoLayer'),'native Rider must include Longdo map SDK host');
+ok(source.includes('longdo.map.key'),'native Rider manifest must provide Longdo map key');
+ok(source.includes('updateAndShowCurrentLocation')&&source.includes('clearPin')&&source.includes('pushPin'),'native Rider map must show rider location and job pins');
 ok(source.includes('QgBottomNav')&&source.includes('.height(58.dp)'),'native bottom navigation must keep approved compact web density');
 
 ok(source.includes('qg_merchant_action_once'),'Merchant native order actions must stay idempotent');
