@@ -200,6 +200,38 @@ class CustomerApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
         }
     }
 
+    suspend fun loadActiveOrder(auth: NativeAuth): CustomerOrder? {
+        val rows = http.array(http.get(
+            "orders?select=id,order_number,shop_id,status,subtotal,delivery_fee,total_amount,delivery_address,created_at,rider_id,completed_at,updated_at,pickup_latitude,pickup_longitude,delivery_latitude,delivery_longitude,note,rider_arrived_customer_at,bundle_customer_savings" +
+                "&customer_id=eq." + http.enc(auth.user.id) +
+                "&status=in.(pending,accepted,searching_rider,rider_assigned,preparing,ready,assigned,picked_up,in_progress)" +
+                "&order=created_at.desc&limit=1",
+            auth.session.accessToken
+        ))
+        val r = rows.optJSONObject(0) ?: return null
+        return CustomerOrder(
+            r.optString("id"),
+            orderNumber(r.optString("order_number"), r.optString("id")),
+            r.optNullable("shop_id"),
+            r.optString("status"),
+            r.optDouble("subtotal", 0.0),
+            r.optDouble("delivery_fee", 0.0),
+            r.optDouble("total_amount", 0.0),
+            r.optNullable("delivery_address"),
+            r.optNullable("created_at"),
+            r.optNullable("rider_id"),
+            r.optNullable("completed_at"),
+            r.optNullable("updated_at"),
+            r.optDoubleOrNull("pickup_latitude"),
+            r.optDoubleOrNull("pickup_longitude"),
+            r.optDoubleOrNull("delivery_latitude"),
+            r.optDoubleOrNull("delivery_longitude"),
+            r.optNullable("note"),
+            r.optNullable("rider_arrived_customer_at"),
+            r.optDouble("bundle_customer_savings", 0.0)
+        )
+    }
+
     suspend fun cancelOrder(auth: NativeAuth, orderId: String) {
         http.rpc(
             "qg_customer_cancel_order",
