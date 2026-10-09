@@ -223,6 +223,11 @@ fun QgIcon(name: String, modifier: Modifier = Modifier, color: Color = QgRed) {
                 line(.5f,.08f,.5f,.19f); line(.5f,.81f,.5f,.92f)
                 line(.08f,.5f,.19f,.5f); line(.81f,.5f,.92f,.5f)
             }
+            "pin" -> {
+                drawCircle(color, w*.29f, Offset(w*.5f,h*.41f), style=stroke)
+                line(.27f,.57f,.5f,.88f); line(.73f,.57f,.5f,.88f)
+                drawCircle(color, w*.10f, Offset(w*.5f,h*.41f), style=stroke)
+            }
             "bag" -> {
                 drawRoundRect(color, Offset(w*.2f,h*.34f), Size(w*.6f,h*.5f), CornerRadius(w*.08f), style=stroke)
                 drawArc(color, 200f, 140f, false, Offset(w*.34f,h*.12f), Size(w*.32f,h*.34f), style=stroke)
@@ -240,29 +245,40 @@ fun QgIcon(name: String, modifier: Modifier = Modifier, color: Color = QgRed) {
                 drawCircle(color, w*.17f, Offset(w*.5f,h*.32f), style=stroke)
                 drawArc(color, 200f, 140f, false, Offset(w*.22f,h*.5f), Size(w*.56f,h*.42f), style=stroke)
             }
-            "food" -> {
-                line(.3f,.15f,.3f,.85f); line(.2f,.15f,.2f,.4f); line(.4f,.15f,.4f,.4f); line(.2f,.4f,.4f,.4f)
-                line(.7f,.15f,.7f,.85f); drawArc(color, 90f, 180f, false, Offset(w*.58f,h*.15f), Size(w*.24f,h*.34f), style=stroke)
+            "food", "utensils" -> {
+                line(.29f,.13f,.29f,.46f); line(.17f,.13f,.17f,.33f); line(.42f,.13f,.42f,.33f)
+                drawArc(color, 0f, 180f, false, Offset(w*.17f,h*.25f), Size(w*.25f,h*.17f), style=stroke)
+                line(.29f,.46f,.29f,.88f)
+                line(.71f,.13f,.71f,.88f)
+                drawArc(color, 90f, 180f, false, Offset(w*.58f,h*.13f), Size(w*.25f,h*.30f), style=stroke)
             }
             "drink", "cafe" -> {
-                drawRoundRect(color, Offset(w*.22f,h*.32f), Size(w*.48f,h*.43f), CornerRadius(w*.05f), style=stroke)
-                drawArc(color, -80f, 160f, false, Offset(w*.62f,h*.38f), Size(w*.24f,h*.25f), style=stroke)
-                line(.3f,.2f,.68f,.2f)
+                line(.29f,.13f,.71f,.13f)
+                line(.29f,.13f,.33f,.88f); line(.71f,.13f,.67f,.88f)
+                line(.33f,.88f,.67f,.88f); line(.31f,.29f,.69f,.29f)
             }
-            "grocery" -> {
-                drawRoundRect(color, Offset(w*.2f,h*.27f), Size(w*.6f,h*.56f), CornerRadius(w*.06f), style=stroke)
-                line(.3f,.27f,.38f,.14f); line(.7f,.27f,.62f,.14f); line(.35f,.5f,.65f,.5f)
+            "grocery", "bottle" -> {
+                line(.38f,.13f,.63f,.13f); line(.38f,.13f,.38f,.29f); line(.63f,.13f,.63f,.29f)
+                line(.38f,.29f,.29f,.42f); line(.63f,.29f,.71f,.42f)
+                line(.29f,.42f,.29f,.83f); line(.71f,.42f,.71f,.83f)
+                line(.29f,.83f,.71f,.83f); line(.29f,.50f,.71f,.50f)
             }
-            "market" -> {
-                line(.18f,.38f,.82f,.38f); line(.23f,.38f,.23f,.82f); line(.77f,.38f,.77f,.82f)
-                line(.23f,.82f,.77f,.82f); line(.18f,.38f,.28f,.18f); line(.28f,.18f,.72f,.18f); line(.72f,.18f,.82f,.38f)
+            "market", "basket" -> {
+                line(.17f,.42f,.83f,.42f); line(.17f,.42f,.25f,.83f); line(.83f,.42f,.75f,.83f)
+                line(.25f,.83f,.75f,.83f); line(.29f,.42f,.42f,.17f); line(.71f,.42f,.58f,.17f)
+                line(.33f,.58f,.67f,.58f); line(.38f,.71f,.62f,.71f)
             }
-            "laundry" -> {
-                drawCircle(color, w*.32f, Offset(w*.5f,h*.55f), style=stroke)
-                drawRoundRect(color, Offset(w*.2f,h*.1f), Size(w*.6f,h*.78f), CornerRadius(w*.08f), style=stroke)
-                drawCircle(color, w*.035f, Offset(w*.32f,h*.22f))
+            "laundry", "grid" -> {
+                drawRoundRect(color, Offset(w*.17f,h*.17f), Size(w*.25f,h*.25f), CornerRadius(w*.04f), style=stroke)
+                drawRoundRect(color, Offset(w*.58f,h*.17f), Size(w*.25f,h*.25f), CornerRadius(w*.04f), style=stroke)
+                drawRoundRect(color, Offset(w*.17f,h*.58f), Size(w*.25f,h*.25f), CornerRadius(w*.04f), style=stroke)
+                drawRoundRect(color, Offset(w*.58f,h*.58f), Size(w*.25f,h*.25f), CornerRadius(w*.04f), style=stroke)
             }
-            "shopping", "box" -> {
+            "shopping" -> {
+                drawRoundRect(color, Offset(w*.17f,h*.33f), Size(w*.66f,h*.54f), CornerRadius(w*.04f), style=stroke)
+                drawArc(color, 200f, 140f, false, Offset(w*.36f,h*.13f), Size(w*.28f,h*.29f), style=stroke)
+            }
+            "box" -> {
                 drawRoundRect(color, Offset(w*.2f,h*.26f), Size(w*.6f,h*.56f), CornerRadius(w*.05f), style=stroke)
                 line(.2f,.4f,.8f,.4f); line(.5f,.26f,.5f,.82f)
             }
