@@ -756,7 +756,8 @@ class MerchantApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
         val body = JSONObject()
             .put("status", next)
             .put("updated_at", now)
-        if (module.id.isNullOrBlank()) {
+        val moduleId = module?.id
+        if (moduleId.isNullOrBlank()) {
             body
                 .put("shop_user_id", auth.user.id)
                 .put("module_key", key)
@@ -768,10 +769,10 @@ class MerchantApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
                 body
             )
         } else {
-            if (next != "disabled" && module.startedAt.isNullOrBlank()) body.put("started_at", now)
+            if (next != "disabled" && module?.startedAt.isNullOrBlank()) body.put("started_at", now)
             if (next == "disabled") body.put("expires_at", JSONObject.NULL)
             http.patch(
-                "shop_modules?id=eq." + http.enc(module.id),
+                "shop_modules?id=eq." + http.enc(moduleId),
                 auth.session.accessToken,
                 body
             )
