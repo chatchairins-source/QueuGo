@@ -22,7 +22,7 @@ import com.queuego.shared.QgRed
 internal fun CustomerBottomNavigation(screen: String, cartCount: Int, onSelect: (String) -> Unit) {
     val home = screen == "home"
     val selected = when (screen) {
-        "home", "category", "shop", "market", "laundry" -> "home"
+        "home", "category", "shop", "market", "laundry", "location" -> "home"
         "search", "cart", "orders" -> screen
         else -> ""
     }
