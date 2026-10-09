@@ -2,6 +2,14 @@ package com.queuego.rider
 
 import android.content.Intent
 import android.net.Uri
+import androidx.compose.foundation.border
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.layout.Box
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -339,6 +347,18 @@ private fun RiderChatRoom(auth: QueueGoAuth, job: RiderJob, onBack: () -> Unit, 
         refreshAfterConfirmedAction()
     }
 
+    fun sendInput() {
+        if (busy || closed || input.isBlank() || window?.isOpen(System.currentTimeMillis()) != true) return
+        val text = input
+        busy = true
+        scope.launch {
+            try { deliver(text, true) }
+            catch (cancelled: CancellationException) { throw cancelled }
+            catch (failure: Exception) { message = failure.message ?: "ส่งข้อความไม่สำเร็จ" }
+            finally { busy = false }
+        }
+    }
+
     val photoPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         if (uri != null && !busy && !closed) {
             busy = true
@@ -539,7 +559,8 @@ private fun RiderChatRoom(auth: QueueGoAuth, job: RiderJob, onBack: () -> Unit, 
                             OutlinedTextField(value = reportDetails,
                                 onValueChange = { if (it.length <= 1000) reportDetails = it },
                                 placeholder = { Text("อธิบายเพิ่มเติม (ไม่บังคับ)") },
-                                label = { Text("รายละเอียด") }, modifier = Modifier.fillMaxWidth(), enabled = !busy)
+                                label = { Text("รายละเอียด") }, minLines = 4, maxLines = 4,
+                                modifier = Modifier.fillMaxWidth(), enabled = !busy)
                         } },
                         dismissButton = { TextButton(onClick = { reportMessageId = null }, enabled = !busy) { Text("ปิด") } },
                         confirmButton = { TextButton(onClick = {
@@ -565,37 +586,38 @@ private fun RiderChatRoom(auth: QueueGoAuth, job: RiderJob, onBack: () -> Unit, 
                         onSave = { quickMessages = it; quickStore.save(it) },
                         onClose = { editQuickMessages = false })
                 }
-                Spacer(Modifier.height(8.dp))
-                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    OutlinedButton(
+                Box(Modifier.fillMaxWidth().height(1.dp).background(Color(0xFFEEE6E8)))
+                Row(Modifier.fillMaxWidth().background(Color.White).padding(horizontal = 10.dp, vertical = 9.dp),
+                    horizontalArrangement = Arrangement.spacedBy(7.dp), verticalAlignment = Alignment.CenterVertically) {
+                    TextButton(
                         onClick = { photoPicker.launch("image/*") },
                         modifier = Modifier.width(44.dp).height(46.dp),
-                        contentPadding = PaddingValues(0.dp),
+                        shape = RoundedCornerShape(14.dp), contentPadding = PaddingValues(0.dp),
+                        colors = ButtonDefaults.textButtonColors(containerColor = Color(0xFFFFF0F3), contentColor = QgRed),
                         enabled = !busy && !closed && window?.isOpen(System.currentTimeMillis()) == true
                     ) { Text("ส่งรูป", fontSize = 9.sp) }
-                    Spacer(Modifier.padding(4.dp))
-                    OutlinedTextField(
-                        value = input,
-                        onValueChange = { if (it.length <= 500) input = it },
-                        label = { Text("พิมพ์ข้อความ") },
-                        modifier = Modifier.weight(1f),
-                        singleLine = true
-                    )
-                    Spacer(Modifier.padding(4.dp))
-                    Button(
-                        onClick = {
-                            if (busy || input.isBlank() || window?.isOpen(System.currentTimeMillis()) != true) return@Button
-                            val text = input
-                            busy = true
-                            scope.launch {
-                                try { deliver(text, true) }
-                                catch (cancelled: CancellationException) { throw cancelled }
-                                catch (failure: Exception) { message = failure.message ?: "ส่งข้อความไม่สำเร็จ" }
-                                finally { busy = false }
+                    BasicTextField(
+                        value = input, onValueChange = { if (it.length <= 500) input = it },
+                        modifier = Modifier.weight(1f).height(46.dp)
+                            .border(1.dp, Color(0xFFE6DDE0), RoundedCornerShape(14.dp)).padding(horizontal = 12.dp),
+                        textStyle = TextStyle(fontSize = 16.sp, color = Color(0xFF17171B)),
+                        singleLine = true, enabled = !closed,
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
+                        keyboardActions = KeyboardActions(onSend = { sendInput() }),
+                        decorationBox = { field ->
+                            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.CenterStart) {
+                                if (input.isEmpty()) Text("พิมพ์ข้อความ...", fontSize = 16.sp, color = Color(0xFF8A8387))
+                                field()
                             }
-                        },
+                        }
+                    )
+                    TextButton(
+                        onClick = { sendInput() }, modifier = Modifier.width(48.dp).height(46.dp)
+                            .semantics { contentDescription = "ส่ง" },
+                        shape = RoundedCornerShape(14.dp), contentPadding = PaddingValues(0.dp),
+                        colors = ButtonDefaults.textButtonColors(containerColor = Color(0xFFFFF0F3), contentColor = QgRed),
                         enabled = !busy && input.isNotBlank() && !closed && window?.isOpen(System.currentTimeMillis()) == true
-                    ) { Text("ส่ง") }
+                    ) { Text("➤", fontSize = 22.sp, fontWeight = FontWeight.Black) }
                 }
             }
         }

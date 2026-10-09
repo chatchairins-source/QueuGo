@@ -2,6 +2,7 @@ package com.queuego.rider
 
 import android.content.Context
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -62,7 +63,7 @@ internal fun RiderQuickMessageEditor(rows: List<String>, onSave: (List<String>) 
         onDismissRequest = onClose,
         title = { Text("ข้อความใช้บ่อย") },
         text = {
-            Column {
+            Column(Modifier.verticalScroll(rememberScrollState())) {
                 Text("บันทึกได้สูงสุด 5 ข้อความ แตะข้อความในแชตเพื่อใช้งานทันที")
                 if (rows.isEmpty()) Text("ยังไม่มีข้อความที่บันทึกไว้")
                 rows.forEachIndexed { index, text ->
