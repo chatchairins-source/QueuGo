@@ -403,3 +403,11 @@ The user-supplied Rider reference screens are the acceptance reference for workf
 - Repository secret `QG_FIREBASE_GOOGLE_SERVICES_JSON_B64` is currently absent in the native pilot workflow environment. QA builds therefore conditionally compile without applying google-services; the FCM code is present but physical background-push delivery is NOT certified until a real Firebase config is supplied. The secret/config is never committed.
 - CI repair removed a duplicate Merchant market-category declaration and fixed nullable Merchant module-cycle state exposed by the full three-app build.
 - Final native pilot run `37884000618` PASS: npm regression, native source integrity, launcher/category asset checks, JVM tests, all three native APK debug builds, No-WebView gate and artifact upload all succeeded.
+
+## Rider Realtime CI repair continuation — 2026-10-09
+
+- Continued from authoritative branch HEAD ac489d0cd83ceb4277307cb676a6f6acdf697ccb. Preserved unfinished local Customer Home edits in git stash before fast-forwarding; did not overlay them onto the newer Native implementation.
+- Backup backup-native-before-rider-realtime-tests-20261009 at ac489d0, local and GitHub.
+- Verified Rider subscriptions already correctly scope notifications to QueueGo user ID and orders/Laundry jobs/invites/preferences to Rider profile ID. Production code unchanged.
+- Updated outdated shared tests to require all five subscriptions, assert every table/filter, and verify all five accepted event IDs invalidate while an unknown ID does not. Existing partial-ack rejection coverage is retained.
+- Initial run37886328274 verified failed at shared unit tests, with build/WebView/artifact steps skipped. Current local environment no longer has the previous Gradle/Android SDK installation; remote CI will provide actual JVM/build evidence. Source integrity180 and whitespace checks pass. Firebase configuration/background device push and real visual/Production E2E remain unverified; no Pilot/Play Store readiness claim.

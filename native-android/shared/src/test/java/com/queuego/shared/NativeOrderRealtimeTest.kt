@@ -91,7 +91,10 @@ class NativeOrderRealtimeTest {
             riderRealtimeSubscriptions("user-1", null))
         assertEquals(listOf(
             NativeRealtimeSubscription("notifications", "user_id=eq.user-1"),
-            NativeRealtimeSubscription("orders", "rider_id=eq.profile-2")),
+            NativeRealtimeSubscription("orders", "rider_id=eq.profile-2"),
+            NativeRealtimeSubscription("laundry_rider_jobs", "rider_id=eq.profile-2"),
+            NativeRealtimeSubscription("laundry_rider_invites", "rider_id=eq.profile-2"),
+            NativeRealtimeSubscription("laundry_rider_preferences", "rider_id=eq.profile-2")),
             riderRealtimeSubscriptions("user-1", "profile-2"))
         assertThrows(IllegalArgumentException::class.java) { NativeRealtimeSubscription("orders", "") }
     }
@@ -122,14 +125,23 @@ class NativeOrderRealtimeTest {
             withTimeout(5_000) { signals.receive() }
             val join = joins.poll(1, TimeUnit.SECONDS)
             assertEquals("rider-jwt", join.getJSONObject("payload").getString("access_token"))
-            assertEquals(2, join.getJSONObject("payload").getJSONObject("config").getJSONArray("postgres_changes").length())
+            val filters = join.getJSONObject("payload").getJSONObject("config").getJSONArray("postgres_changes")
+            assertEquals(5, filters.length())
+            val tables = listOf("notifications", "orders", "laundry_rider_jobs", "laundry_rider_invites", "laundry_rider_preferences")
+            tables.forEachIndexed { index, table ->
+                assertEquals(table, filters.getJSONObject(index).getString("table"))
+                assertEquals(if (index == 0) "user_id=eq.user-1" else "rider_id=eq.profile-2", filters.getJSONObject(index).getString("filter"))
+            }
             val socket = sockets.poll(1, TimeUnit.SECONDS)
             fun change(id: Int) = JSONObject().put("topic", join.getString("topic"))
                 .put("event", "postgres_changes").put("payload", JSONObject().put("ids", org.json.JSONArray().put(id))).toString()
             socket.send(change(999))
             assertNull(withTimeoutOrNull(150) { signals.receive() })
-            socket.send(change(11))
-            withTimeout(5_000) { signals.receive() }
+            // Every accepted subscription, including all three Laundry tables, invalidates.
+            for (id in 10..14) {
+                socket.send(change(id))
+                withTimeout(5_000) { signals.receive() }
+            }
         } finally {
             collector.cancel()
             collector.join()
