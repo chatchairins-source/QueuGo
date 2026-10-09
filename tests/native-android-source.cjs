@@ -9,6 +9,7 @@ for(const p of [
   'shared/build.gradle.kts',
   'shared/src/main/java/com/queuego/shared/QueueGoAccountDeletion.kt',
   'customer/build.gradle.kts',
+  'customer/src/main/AndroidManifest.xml',
   'merchant/build.gradle.kts',
   'rider/build.gradle.kts',
   'rider/src/main/AndroidManifest.xml',
@@ -81,6 +82,8 @@ ok(source.includes('RiderLongdoMap')&&source.includes('MapGLSurfaceView')&&sourc
 const riderApp=read('rider/src/main/java/com/queuego/rider/QueueGoRiderApp.kt');
 ok(riderApp.includes('RiderLongdoMap(')&&riderApp.includes('heightIn(max = maxHeight * 0.62f)') && !riderApp.includes('fillMaxHeight(0.62f)')&&riderApp.includes('recenterSignal'),'Rider native must keep map-first home with bottom dock and recenter control');
 ok(source.includes('longdo.map.key'),'native Rider manifest must provide Longdo map key');
+const customerManifest=read('customer/src/main/AndroidManifest.xml');
+ok(customerManifest.includes('longdo.map.key')&&customerManifest.includes('ACCESS_FINE_LOCATION'),'native Customer Longdo picker must declare map key and location permission');
 ok(source.includes('deviceLocation')&&source.includes('setLocation(MapLocation')&&source.includes('clearPin')&&source.includes('pushPin'),'native Rider map must use Android GPS and show rider/job pins');
 ok(source.includes('QgBottomNav')&&source.includes('.height(58.dp)'),'native bottom navigation must keep approved compact web density');
 
