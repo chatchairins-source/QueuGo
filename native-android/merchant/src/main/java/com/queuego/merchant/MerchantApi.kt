@@ -15,7 +15,28 @@ data class MerchantShop(
     val address: String?,
     val status: String,
     val onboardingStatus: String,
-    val deliveryEnabled: Boolean
+    val deliveryEnabled: Boolean,
+    val phone: String? = null,
+    val latitude: Double? = null,
+    val longitude: Double? = null,
+    val openTime: String? = null,
+    val closeTime: String? = null,
+    val description: String? = null,
+    val shoppingSubcategories: Set<String> = emptySet()
+)
+
+data class MerchantShopSetupDraft(
+    val shopName: String,
+    val contactName: String,
+    val phone: String,
+    val category: String,
+    val shoppingSubcategories: Set<String>,
+    val address: String,
+    val latitude: Double?,
+    val longitude: Double?,
+    val openTime: String,
+    val closeTime: String,
+    val description: String
 )
 
 data class MerchantTodayRevenue(
@@ -68,7 +89,7 @@ data class ShopReadiness(val complete: Boolean, val checks: JSONObject, val cata
 class MerchantApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
     suspend fun loadShop(auth: NativeAuth): MerchantShop? {
         val rows = http.array(http.get(
-            "shop_profiles?select=id,shop_name,public_category,public_logo,public_cover,address,status,onboarding_status,delivery_enabled" +
+            "shop_profiles?select=id,shop_name,public_category,public_subcategories,public_logo,public_cover,public_description,phone,address,latitude,longitude,public_open_time,public_close_time,status,onboarding_status,delivery_enabled" +
                 "&user_id=eq." + http.enc(auth.user.id) + "&archived_at=is.null&order=created_at.desc&limit=1",
             auth.session.accessToken
         ))
@@ -82,8 +103,86 @@ class MerchantApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
             r.optNullable("address"),
             r.optString("status"),
             r.optString("onboarding_status").ifBlank { "draft" },
-            r.optBoolean("delivery_enabled", false)
+            r.optBoolean("delivery_enabled", false),
+            r.optNullable("phone"),
+            r.optDoubleOrNull("latitude"),
+            r.optDoubleOrNull("longitude"),
+            r.optNullable("public_open_time"),
+            r.optNullable("public_close_time"),
+            r.optNullable("public_description"),
+            parseMerchantSubcategories(r.opt("public_subcategories"))
         )
+    }
+
+    suspend fun saveShopSetup(
+        auth: NativeAuth,
+        shop: MerchantShop,
+        draft: MerchantShopSetupDraft
+    ): MerchantShop {
+        val shopName = draft.shopName.trim()
+        val contactName = draft.contactName.trim()
+        val phone = draft.phone.trim()
+        val address = draft.address.trim()
+        val category = draft.category.trim().lowercase()
+        require(shopName.isNotBlank()) { "กรุณากรอกชื่อร้าน" }
+        require(contactName.isNotBlank()) { "กรุณากรอกชื่อผู้ติดต่อ" }
+        require(category in setOf("food", "grocery", "cafe", "laundry", "market", "shopping", "other")) {
+            "หมวดหมู่ร้านไม่ถูกต้อง"
+        }
+        if (category == "shopping") {
+            require(draft.shoppingSubcategories.isNotEmpty()) {
+                "กรุณาเลือกหมวดย่อยของร้านช้อปปิ้งอย่างน้อย 1 หมวด"
+            }
+        }
+        val lat = draft.latitude
+        val lng = draft.longitude
+        if (lat != null || lng != null) {
+            require(lat != null && lng != null && merchantCoordinateValid(lat, lng)) {
+                "พิกัดร้านไม่ถูกต้อง กรุณาปักตำแหน่งร้านใหม่"
+            }
+        }
+
+        val metadata = JSONObject()
+            .put("shopName", shopName)
+            .put("name", contactName)
+            .put("phone", phone)
+            .put("category", category)
+            .put("shoppingSubcategories", JSONArray(draft.shoppingSubcategories.toList()))
+            .put("address", address)
+            .put("openTime", draft.openTime.trim())
+            .put("closeTime", draft.closeTime.trim())
+            .put("description", draft.description.trim())
+            .put("logo", shop.logo ?: JSONObject.NULL)
+            .put("cover", shop.cover ?: JSONObject.NULL)
+        if (lat != null && lng != null) metadata.put("lat", lat).put("lng", lng)
+
+        val shopBody = JSONObject()
+            .put("shop_name", shopName)
+            .put("phone", phone)
+            .put("address", address)
+            .put("metadata", metadata)
+        if (lat != null && lng != null) {
+            shopBody.put("latitude", lat).put("longitude", lng)
+        }
+
+        val saved = http.patch(
+            "shop_profiles?id=eq." + http.enc(shop.id),
+            auth.session.accessToken,
+            shopBody
+        )
+        if (saved is JSONArray && saved.length() == 0) error("ฐานข้อมูลไม่ยืนยันข้อมูลร้าน")
+
+        val userSaved = http.patch(
+            "users?id=eq." + http.enc(auth.user.id),
+            auth.session.accessToken,
+            JSONObject()
+                .put("name", contactName)
+                .put("phone", phone)
+                .put("metadata", metadata)
+        )
+        if (userSaved is JSONArray && userSaved.length() == 0) error("ฐานข้อมูลไม่ยืนยันข้อมูลผู้ใช้")
+
+        return loadShop(auth) ?: error("ไม่พบข้อมูลร้านหลังบันทึก")
     }
 
     suspend fun shopOpenState(auth: NativeAuth, shopId: String): Boolean {
@@ -385,3 +484,26 @@ class MerchantApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
 
 private fun JSONObject.optNullable(key: String): String? =
     optString(key).takeIf { it.isNotBlank() && it != "null" }
+
+
+internal fun merchantCoordinateValid(latitude: Double, longitude: Double): Boolean =
+    latitude in 5.0..21.0 && longitude in 97.0..106.0 && !(latitude == 0.0 && longitude == 0.0)
+
+internal fun parseMerchantSubcategories(raw: Any?): Set<String> {
+    val values = when (raw) {
+        is JSONArray -> (0 until raw.length()).map { raw.optString(it) }
+        is String -> runCatching {
+            val array = JSONArray(raw)
+            (0 until array.length()).map { array.optString(it) }
+        }.getOrElse {
+            raw.removePrefix("[").removeSuffix("]")
+                .split(',')
+                .map { it.trim().trim('"', '\'') }
+        }
+        else -> emptyList()
+    }
+    return values.mapNotNull { it.trim().lowercase().takeIf(String::isNotBlank) }.toSet()
+}
+
+private fun JSONObject.optDoubleOrNull(key: String): Double? =
+    if (!has(key) || isNull(key)) null else optDouble(key).takeIf { it.isFinite() }
