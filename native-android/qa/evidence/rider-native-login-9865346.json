@@ -1,0 +1,19 @@
+{
+  "source_head": "986534696b8970d2a125fb695699ef001e7f426e",
+  "workflow_run": "37932248613",
+  "captured_at_utc": "2026-10-09T12:52:44.750352+00:00",
+  "package": "com.queuego.rider",
+  "apk_sha256": "ad43817f0ca07b500f3fe0ad0b85039e1f75877669885abf51cd8a182fcff2d3",
+  "screenshot_sha256": "2999f0951c11308e8fadad7901bd01c73e8bc8cb1ee383b7954bff2c97aa33fc",
+  "width_px": 1080,
+  "height_px": 2280,
+  "android_api": "30",
+  "hardware_accelerated_emulator": true,
+  "physical_device": false,
+  "state": "fresh-session login; no credentials entered",
+  "launch_smoke": "PASS",
+  "home_map_captured": false,
+  "visual_parity_certified": false,
+  "production_e2e_certified": false,
+  "physical_fcm_certified": false
+}

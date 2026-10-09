@@ -47,7 +47,9 @@ Local debug APK fingerprints (verification records, no Owner APK delivery):
 
 The capture checks process/resumed activity/runtime crash log and real accessibility login text, then saves an unmodified device screenshot, metrics and commit/APK/image digests. It enters no credentials, manufactures no state and makes no order/online/photo/support actions. Evidence is an internal14-day CI artifact. **Fresh-session login smoke PASS is not Home/Offer/Active/Pickup/Delivery visual parity, Production E2E or physical-device FCM.** No new app feature/backend is introduced.
 
-Accelerated CI run/result: **pending actual execution**. Previous code/evidence CI37922547941 at3a13109 PASS remains historical, not proof of this new step.
+Accelerated CI [37929722268](https://github.com/chatchairins-source/QueuGo/actions/runs/37929722268) at292df52 passed the original regression/assets/JVM/three-build/No WebView gates but **FAILED before Android boot**. Its actual artifact11615598142 contains `Unknown AVD name`: command-line tools and emulator resolved different default Android user homes. This is a runtime-infrastructure failure, not evidence of an application crash.
+
+Fix9865346 explicitly shares a run-scoped `ANDROID_AVD_HOME` registry across the official tools and asserts its AVD index exists before launch. Actual local tool verification PASS: avdmanager created the index and emulator `-list-avds` resolved the same AVD. No system home/global SDK setting was changed and no app state was injected. Full replacement CI [37932248613](https://github.com/chatchairins-source/QueuGo/actions/runs/37932248613) at9865346 **PASS**, including actual Android boot, install, launch, accessibility and screenshot checks. Local npm regression/source191/launcher61/category12/whitespace PASS.
 
 ## Remaining release blockers
 
@@ -55,3 +57,15 @@ Accelerated CI run/result: **pending actual execution**. Previous code/evidence 
 - Need a permitted actual Rider session on the Native runtime and real authorized job states for the five Rider comparison pairs. Browser secrets/JWTs were not exported.
 - Customer/Merchant pairs, normal/Market/Laundry real Production E2E, physical FCM/background/offline/session recovery and P0/P1 clearance remain unverified. Existing Firebase config absence is not cured by emulator screenshots.
 - No APK/RC/Pilot/Play readiness claim or Owner delivery. Continue Rider-first; VoIP remains deferred.
+
+## Actual accelerated Native launch evidence
+
+![Actual Rider fresh-session login; not a Home comparison](evidence/rider-native-login-9865346.png)
+
+Captured2026-10-09T12:52:44.750352Z on real Android API30 emulator at1080×2280px/440dpi. Inspected the unmodified frame: QueueGo Rider branding, Thai login copy, credential fields and disabled login action are rendered; not an empty page. No credentials were entered. Cold activity launch Status:ok, TotalTime2902ms; no FATAL EXCEPTION and empty crash buffer. This verifies only the observed launch, not all runtime flows.
+
+- CI artifact11616627950 ZIP SHA256: `d22be3449bb915663dca1469a0288d8f5515212f1421a5791158c7f41e22ecaa`; checked against retrieved ZIP bytes.
+- Actual Rider APK SHA256: `ad43817f0ca07b500f3fe0ad0b85039e1f75877669885abf51cd8a182fcff2d3`.
+- Unmodified PNG SHA256: `2999f0951c11308e8fadad7901bd01c73e8bc8cb1ee383b7954bff2c97aa33fc`; verified against [capture metadata](evidence/rider-native-login-9865346.json), source986534696b8970d2a125fb695699ef001e7f426e.
+
+**Home/Offer/Active/Pickup/Delivery Visual Gate remains FAIL — missing matching authenticated mobile Web/Native pairs.** Physical FCM and Production E2E remain unverified. No APK delivered.
