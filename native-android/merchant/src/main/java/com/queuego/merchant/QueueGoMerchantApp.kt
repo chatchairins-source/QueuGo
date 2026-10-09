@@ -104,6 +104,8 @@ private fun MerchantShell(auth: NativeAuth, logout: () -> Unit) {
     var knownPendingIds by remember { mutableStateOf<Set<String>?>(null) }
     var selectedOrder by remember { mutableStateOf<MerchantOrder?>(null) }
     var selectedProduct by remember { mutableStateOf<MerchantProduct?>(null) }
+    var newProductCategory by remember { mutableStateOf<String?>(null) }
+    var productReturnScreen by remember { mutableStateOf("products") }
     var orderItems by remember { mutableStateOf<List<MerchantOrderItem>>(emptyList()) }
     var gpRate by remember { mutableStateOf(0.0) }
     var loading by remember { mutableStateOf(true) }
@@ -142,7 +144,8 @@ private fun MerchantShell(auth: NativeAuth, logout: () -> Unit) {
         screen = when (screen) {
             "shop-setup", "hours", "support" -> "profile"
             "notifications", "media", "modules" -> "home"
-            "product" -> "products"
+            "catalog" -> "products"
+            "product" -> productReturnScreen
             "order" -> "orders"
             else -> "home"
         }
@@ -353,13 +356,42 @@ private fun MerchantShell(auth: NativeAuth, logout: () -> Unit) {
                     },
                     onOpen = { product ->
                         selectedProduct = product
+                        newProductCategory = null
+                        productReturnScreen = "products"
                         screen = "product"
                     },
                     onAdd = {
                         selectedProduct = null
-                        screen = "product"
+                        newProductCategory = null
+                        screen = "catalog"
                     }
                 )
+                "catalog" -> {
+                    val activeShop = shop
+                    if (activeShop == null) {
+                        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            Text("ยังไม่พบข้อมูลร้าน", color = QgMuted)
+                        }
+                    } else {
+                        MerchantCatalogScreen(
+                            shop = activeShop,
+                            products = products,
+                            onOpenProduct = { product ->
+                                selectedProduct = product
+                                newProductCategory = null
+                                productReturnScreen = "catalog"
+                                screen = "product"
+                            },
+                            onAddProduct = { category ->
+                                selectedProduct = null
+                                newProductCategory = category
+                                productReturnScreen = "catalog"
+                                screen = "product"
+                            },
+                            onBack = { screen = "products" }
+                        )
+                    }
+                }
                 "product" -> {
                     val activeShop = shop
                     if (activeShop == null) {
@@ -370,6 +402,7 @@ private fun MerchantShell(auth: NativeAuth, logout: () -> Unit) {
                         MerchantProductEditorScreen(
                             shop = activeShop,
                             product = selectedProduct,
+                            initialCategory = newProductCategory,
                             gpRate = gpRate,
                             busy = busy,
                             onSave = { draft, imageUri ->
@@ -396,8 +429,9 @@ private fun MerchantShell(auth: NativeAuth, logout: () -> Unit) {
                                                 api.readiness(auth, activeShop.id)
                                             }.getOrDefault(readiness)
                                             selectedProduct = null
+                                            newProductCategory = null
                                             message = "บันทึกสินค้าแล้ว"
-                                            screen = "products"
+                                            screen = productReturnScreen
                                         }.onFailure {
                                             message = it.message ?: "บันทึกสินค้าไม่สำเร็จ"
                                         }
@@ -415,8 +449,9 @@ private fun MerchantShell(auth: NativeAuth, logout: () -> Unit) {
                                         }.onSuccess { fresh ->
                                             products = fresh
                                             selectedProduct = null
+                                            newProductCategory = null
                                             message = "นำสินค้าออกจากร้านแล้ว"
-                                            screen = "products"
+                                            screen = productReturnScreen
                                         }.onFailure {
                                             message = it.message ?: "นำสินค้าออกจากร้านไม่สำเร็จ"
                                         }
@@ -426,7 +461,8 @@ private fun MerchantShell(auth: NativeAuth, logout: () -> Unit) {
                             },
                             onBack = {
                                 selectedProduct = null
-                                screen = "products"
+                                newProductCategory = null
+                                screen = productReturnScreen
                             }
                         )
                     }
