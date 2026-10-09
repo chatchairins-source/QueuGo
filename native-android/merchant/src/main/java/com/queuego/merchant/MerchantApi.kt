@@ -163,25 +163,47 @@ class MerchantApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
             }
         }
 
-        val metadata = JSONObject()
-            .put("shopName", shopName)
-            .put("name", contactName)
-            .put("phone", phone)
-            .put("category", category)
-            .put("shoppingSubcategories", JSONArray(draft.shoppingSubcategories.toList()))
-            .put("address", address)
-            .put("openTime", draft.openTime.trim())
-            .put("closeTime", draft.closeTime.trim())
-            .put("description", draft.description.trim())
-            .put("logo", draft.logo ?: shop.logo ?: JSONObject.NULL)
-            .put("cover", draft.cover ?: shop.cover ?: JSONObject.NULL)
-        if (lat != null && lng != null) metadata.put("lat", lat).put("lng", lng)
+        val existingShopMetadata = runCatching {
+            http.array(
+                http.get(
+                    "shop_profiles?select=metadata&id=eq." + http.enc(shop.id) + "&limit=1",
+                    auth.session.accessToken
+                )
+            ).optJSONObject(0)?.optJSONObject("metadata")
+        }.getOrNull() ?: JSONObject()
+        val existingUserMetadata = runCatching {
+            http.array(
+                http.get(
+                    "users?select=metadata&id=eq." + http.enc(auth.user.id) + "&limit=1",
+                    auth.session.accessToken
+                )
+            ).optJSONObject(0)?.optJSONObject("metadata")
+        }.getOrNull() ?: JSONObject()
 
+        fun mergeMetadata(base: JSONObject): JSONObject =
+            JSONObject(base.toString())
+                .put("shopName", shopName)
+                .put("name", contactName)
+                .put("phone", phone)
+                .put("category", category)
+                .put("shoppingSubcategories", JSONArray(draft.shoppingSubcategories.toList()))
+                .put("address", address)
+                .put("openTime", draft.openTime.trim())
+                .put("closeTime", draft.closeTime.trim())
+                .put("description", draft.description.trim())
+                .put("logo", draft.logo ?: shop.logo ?: JSONObject.NULL)
+                .put("cover", draft.cover ?: shop.cover ?: JSONObject.NULL)
+                .also { metadata ->
+                    if (lat != null && lng != null) metadata.put("lat", lat).put("lng", lng)
+                }
+
+        val shopMetadata = mergeMetadata(existingShopMetadata)
+        val userMetadata = mergeMetadata(existingUserMetadata)
         val shopBody = JSONObject()
             .put("shop_name", shopName)
             .put("phone", phone)
             .put("address", address)
-            .put("metadata", metadata)
+            .put("metadata", shopMetadata)
         if (lat != null && lng != null) {
             shopBody.put("latitude", lat).put("longitude", lng)
         }
@@ -199,7 +221,7 @@ class MerchantApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
             JSONObject()
                 .put("name", contactName)
                 .put("phone", phone)
-                .put("metadata", metadata)
+                .put("metadata", userMetadata)
         )
         if (userSaved is JSONArray && userSaved.length() == 0) error("ฐานข้อมูลไม่ยืนยันข้อมูลผู้ใช้")
 
