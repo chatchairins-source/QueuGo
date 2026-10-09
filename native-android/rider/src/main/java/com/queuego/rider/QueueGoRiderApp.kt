@@ -1090,6 +1090,242 @@ private fun RiderHome(
 }
 
 @Composable
+private fun RiderLaundryActiveCard(
+    job: RiderLaundryJob,
+    busy: Boolean,
+    onNavigate: () -> Unit,
+    onAction: (String) -> Unit
+) {
+    val action = when (job.jobStatus) {
+        "assigned" -> "arrive"
+        "arrived" -> "collect"
+        "collected" -> "deliver"
+        else -> null
+    }
+    val actionLabel = when (action) {
+        "arrive" -> "ถึงจุดรับแล้ว"
+        "collect" -> "รับผ้าแล้ว"
+        "deliver" -> "ส่งถึงปลายทางแล้ว"
+        else -> "กำลังอัปเดต"
+    }
+    val currentAddress = if (job.isCollected) job.toAddress else job.fromAddress
+
+    Card(
+        Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(21.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFEEE5E8)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 5.dp)
+    ) {
+        Column(Modifier.padding(14.dp)) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        "งานฝากซัก",
+                        color = QgRed,
+                        fontWeight = FontWeight.ExtraBold,
+                        style = MaterialTheme.typography.labelMedium
+                    )
+                    Text(job.numberLabel, fontWeight = FontWeight.Black, style = MaterialTheme.typography.headlineSmall)
+                    Text(
+                        job.shopName ?: job.hubName ?: "ร้านซัก",
+                        color = QgMuted,
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+                Box(
+                    Modifier
+                        .clip(RoundedCornerShape(13.dp))
+                        .background(QgRedSoft)
+                        .padding(horizontal = 9.dp, vertical = 6.dp)
+                ) {
+                    Text("฿" + "%.0f".format(job.jobFee), color = QgRed, fontWeight = FontWeight.Black)
+                }
+            }
+
+            Spacer(Modifier.height(9.dp))
+            Text(job.routeLabel, fontWeight = FontWeight.Bold)
+            Text(
+                currentAddress ?: "พิกัดปลายทางยังไม่พร้อม",
+                color = QgMuted,
+                style = MaterialTheme.typography.bodySmall
+            )
+
+            Spacer(Modifier.height(9.dp))
+            Card(
+                Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(14.dp),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFFFAF6F7))
+            ) {
+                Column(Modifier.padding(10.dp)) {
+                    Text("เส้นทางงาน", color = QgMuted, style = MaterialTheme.typography.labelSmall)
+                    Text(
+                        (job.fromAddress ?: "-") + " → " + (job.toAddress ?: "-"),
+                        fontWeight = FontWeight.Bold,
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                    job.serviceName?.let {
+                        Spacer(Modifier.height(3.dp))
+                        Text(it, color = QgMuted, style = MaterialTheme.typography.labelSmall)
+                    }
+                }
+            }
+
+            Spacer(Modifier.height(9.dp))
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                OutlinedButton(
+                    onClick = onNavigate,
+                    enabled = !busy && job.navigationTarget != null,
+                    modifier = Modifier.weight(1f).height(50.dp),
+                    shape = RoundedCornerShape(18.dp)
+                ) {
+                    QgIcon("location", Modifier.size(18.dp), QgRed)
+                    Spacer(Modifier.width(6.dp))
+                    Text("นำทาง", fontWeight = FontWeight.Bold)
+                }
+                Button(
+                    onClick = { action?.let(onAction) },
+                    enabled = !busy && action != null,
+                    modifier = Modifier.weight(1.25f).height(50.dp),
+                    shape = RoundedCornerShape(18.dp)
+                ) {
+                    Text(actionLabel, fontWeight = FontWeight.Black)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun RiderLaundryPoolCard(
+    jobs: List<RiderLaundryJob>,
+    busy: Boolean,
+    onClaim: (RiderLaundryJob) -> Unit
+) {
+    Card(
+        Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(21.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFEEE5E8))
+    ) {
+        Column(Modifier.padding(14.dp)) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text("งานฝากซักที่รับได้", fontWeight = FontWeight.Black)
+                    Text(
+                        "เฉพาะร้านที่คุณยอมรับเป็น Rider แล้ว",
+                        color = QgMuted,
+                        style = MaterialTheme.typography.labelSmall
+                    )
+                }
+                QgStatusPill(jobs.size.toString() + " งาน", true)
+            }
+
+            jobs.take(5).forEachIndexed { index, job ->
+                if (index > 0) {
+                    Spacer(Modifier.height(10.dp))
+                    androidx.compose.material3.HorizontalDivider(color = QgLine)
+                    Spacer(Modifier.height(10.dp))
+                }
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text(
+                            (if (job.leg == "pickup") "รับผ้าจากลูกค้า" else "ส่งผ้าคืนลูกค้า") +
+                                " · " + job.numberLabel,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            (job.shopName ?: job.hubName ?: "ร้านซัก") +
+                                " · " + (job.serviceName ?: "บริการฝากซัก"),
+                            color = QgMuted,
+                            style = MaterialTheme.typography.labelSmall
+                        )
+                        Text(
+                            (job.fromAddress ?: "-") + " → " + (job.toAddress ?: "-"),
+                            color = QgMuted,
+                            style = MaterialTheme.typography.labelSmall,
+                            maxLines = 2
+                        )
+                    }
+                    Spacer(Modifier.width(8.dp))
+                    Column(horizontalAlignment = Alignment.End) {
+                        Text("฿" + "%.0f".format(job.jobFee), color = QgRed, fontWeight = FontWeight.Black)
+                        Button(
+                            onClick = { onClaim(job) },
+                            enabled = !busy,
+                            shape = RoundedCornerShape(14.dp)
+                        ) {
+                            Text("รับงาน", fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun RiderLaundryModeCard(
+    enabled: Boolean,
+    invites: List<RiderLaundryInvite>,
+    busy: Boolean,
+    onToggle: (Boolean) -> Unit,
+    onInvite: (RiderLaundryInvite, Boolean) -> Unit
+) {
+    Card(
+        Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(21.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFEEE5E8))
+    ) {
+        Column(Modifier.padding(14.dp)) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text("โหมดงานฝากซัก", fontWeight = FontWeight.Black)
+                    Text(
+                        if (enabled) "พร้อมรับงานรับ-ส่งผ้าจากร้านที่เชื่อมไว้" else "ปิดรับงานฝากซักอยู่",
+                        color = QgMuted,
+                        style = MaterialTheme.typography.labelSmall
+                    )
+                }
+                Switch(
+                    checked = enabled,
+                    onCheckedChange = { onToggle(it) },
+                    enabled = !busy
+                )
+            }
+
+            invites.forEach { invite ->
+                Spacer(Modifier.height(10.dp))
+                androidx.compose.material3.HorizontalDivider(color = QgLine)
+                Spacer(Modifier.height(10.dp))
+                Text("คำเชิญงานฝากซัก", color = QgRed, fontWeight = FontWeight.Bold)
+                Text(invite.shopName.ifBlank { invite.hubName }, fontWeight = FontWeight.Bold)
+                Text(invite.hubName, color = QgMuted, style = MaterialTheme.typography.labelSmall)
+                Spacer(Modifier.height(7.dp))
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedButton(
+                        onClick = { onInvite(invite, false) },
+                        enabled = !busy,
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(14.dp)
+                    ) { Text("ปฏิเสธ") }
+                    Button(
+                        onClick = { onInvite(invite, true) },
+                        enabled = !busy,
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(14.dp)
+                    ) { Text("ยอมรับ", fontWeight = FontWeight.Bold) }
+                }
+            }
+        }
+    }
+}
+
+@Composable
 private fun ReturnControlCard(
     overlayAllowed: Boolean,
     onConfigure: () -> Unit
@@ -1672,6 +1908,25 @@ private fun createEvidenceUri(context: Context): Uri {
         context.packageName + ".fileprovider",
         file
     )
+}
+
+private fun openLaundryNavigation(context: Context, job: RiderLaundryJob) {
+    val target = job.navigationTarget ?: return
+    RiderReturnService.start(context)
+    val navigation = Uri.parse(
+        "google.navigation:q=" + target.first + "," + target.second + "&mode=d"
+    )
+    val mapsIntent = Intent(Intent.ACTION_VIEW, navigation).apply {
+        setPackage("com.google.android.apps.maps")
+    }
+    val opened = runCatching { context.startActivity(mapsIntent) }.isSuccess
+    if (!opened) {
+        val web = Uri.parse(
+            "https://www.google.com/maps/dir/?api=1&destination=" +
+                target.first + "," + target.second
+        )
+        runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, web)) }
+    }
 }
 
 private fun openNavigation(context: Context, job: RiderJob) {
