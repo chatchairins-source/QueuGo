@@ -366,7 +366,62 @@ class QueueGoApi {
                 }
             }
         }
-        RiderSnapshot(online, active, offered, marketPickups, profileId)
+        val laundry = loadLaundryState(
+            auth = auth,
+            profileId = profileId,
+            online = online,
+            hasNormalActive = active != null
+        )
+        RiderSnapshot(online, active, offered, marketPickups, profileId, laundry)
+    }
+
+    suspend fun setLaundryMode(auth: QueueGoAuth, enabled: Boolean) = withContext(Dispatchers.IO) {
+        rpc(
+            "queuego_set_laundry_rider_mode",
+            auth.session.accessToken,
+            JSONObject().put("p_enabled", enabled)
+        )
+        Unit
+    }
+
+    suspend fun laundryInviteAction(
+        auth: QueueGoAuth,
+        inviteId: String,
+        accept: Boolean
+    ) = withContext(Dispatchers.IO) {
+        rpc(
+            "queuego_laundry_rider_invite_action",
+            auth.session.accessToken,
+            JSONObject()
+                .put("p_invite_id", inviteId)
+                .put("p_accept", accept)
+        )
+        Unit
+    }
+
+    suspend fun claimLaundryJob(auth: QueueGoAuth, jobId: String) = withContext(Dispatchers.IO) {
+        rpc(
+            "queuego_claim_laundry_job",
+            auth.session.accessToken,
+            JSONObject().put("p_job_id", jobId)
+        )
+        Unit
+    }
+
+    suspend fun laundryAction(
+        auth: QueueGoAuth,
+        jobId: String,
+        action: String
+    ) = withContext(Dispatchers.IO) {
+        require(action in setOf("arrive", "collect", "deliver")) { "สถานะงานฝากซักไม่ถูกต้อง" }
+        rpc(
+            "queuego_laundry_rider_action",
+            auth.session.accessToken,
+            JSONObject()
+                .put("p_job_id", jobId)
+                .put("p_action", action)
+        )
+        Unit
     }
 
     suspend fun orderItems(auth: QueueGoAuth, orderId: String): List<RiderItem> =
@@ -507,6 +562,114 @@ class QueueGoApi {
             .putNullable("p_lat", latitude)
             .putNullable("p_lng", longitude)
         rpc("qg_market_pickup_with_photo", auth.session.accessToken, body)
+    }
+
+    private fun loadLaundryState(
+        auth: QueueGoAuth,
+        profileId: String,
+        online: Boolean,
+        hasNormalActive: Boolean
+    ): RiderLaundryState {
+        val prefRows = runCatching {
+            requestArray(
+                "GET",
+                "/rest/v1/laundry_rider_preferences?select=laundry_mode_enabled" +
+                    "&rider_id=eq." + enc(profileId) + "&limit=1",
+                auth.session.accessToken
+            )
+        }.getOrDefault(JSONArray())
+        val modeEnabled = prefRows.optJSONObject(0)?.optBoolean("laundry_mode_enabled", false) == true
+
+        val invitesRaw = runCatching {
+            rpc("queuego_laundry_rider_invites", auth.session.accessToken, JSONObject())
+        }.getOrNull()
+        val inviteRows = when (invitesRaw) {
+            is JSONArray -> invitesRaw
+            is JSONObject -> JSONArray().put(invitesRaw)
+            else -> JSONArray()
+        }
+        val invites = buildList {
+            for (i in 0 until inviteRows.length()) {
+                val row = inviteRows.optJSONObject(i) ?: continue
+                val inviteId = row.optString("invite_id")
+                val hubId = row.optString("hub_id")
+                if (inviteId.isBlank() || hubId.isBlank()) continue
+                add(
+                    RiderLaundryInvite(
+                        inviteId = inviteId,
+                        hubId = hubId,
+                        hubName = row.optString("hub_name").ifBlank { "ศูนย์ฝากซัก" },
+                        shopName = row.optString("shop_name").ifBlank { "ร้านซัก" },
+                        status = row.optString("status").ifBlank { "pending" },
+                        createdAt = row.optString("created_at").takeIf { it.isNotBlank() }
+                    )
+                )
+            }
+        }
+
+        val activeRaw = runCatching {
+            rpc("queuego_laundry_rider_active_job", auth.session.accessToken, JSONObject())
+        }.getOrNull()
+        val active = when (activeRaw) {
+            is JSONObject -> parseLaundryJob(activeRaw)
+            is JSONArray -> activeRaw.optJSONObject(0)?.let(::parseLaundryJob)
+            else -> null
+        }
+
+        var pool = emptyList<RiderLaundryJob>()
+        if (!hasNormalActive && active == null && online && modeEnabled) {
+            val poolRaw = runCatching {
+                rpc("queuego_laundry_rider_pool", auth.session.accessToken, JSONObject())
+            }.getOrNull()
+            val rows = when (poolRaw) {
+                is JSONArray -> poolRaw
+                is JSONObject -> JSONArray().put(poolRaw)
+                else -> JSONArray()
+            }
+            pool = buildList {
+                for (i in 0 until rows.length()) {
+                    val row = rows.optJSONObject(i) ?: continue
+                    parseLaundryJob(row)?.let(::add)
+                }
+            }
+        }
+
+        return RiderLaundryState(
+            modeEnabled = modeEnabled,
+            invites = invites,
+            activeJob = active,
+            pool = pool
+        )
+    }
+
+    private fun parseLaundryJob(row: JSONObject): RiderLaundryJob? {
+        val jobId = row.optString("job_id")
+        val laundryOrderId = row.optString("laundry_order_id")
+        if (jobId.isBlank() || laundryOrderId.isBlank()) return null
+        return RiderLaundryJob(
+            jobId = jobId,
+            laundryOrderId = laundryOrderId,
+            orderNumber = row.optString("order_number").takeIf { it.isNotBlank() },
+            leg = row.optString("leg").ifBlank { "pickup" },
+            jobStatus = row.optString("job_status").ifBlank { "waiting" },
+            orderStatus = row.optString("order_status").takeIf { it.isNotBlank() },
+            hubId = row.optString("hub_id").takeIf { it.isNotBlank() },
+            hubName = row.optString("hub_name").takeIf { it.isNotBlank() },
+            shopName = row.optString("shop_name").takeIf { it.isNotBlank() },
+            serviceName = row.optString("service_name").takeIf { it.isNotBlank() },
+            actualQuantity = row.doubleOrNull("actual_quantity"),
+            pricingType = row.optString("pricing_type").takeIf { it.isNotBlank() },
+            jobFee = row.doubleOrZero("job_fee"),
+            fromAddress = row.optString("from_address").takeIf { it.isNotBlank() },
+            fromLatitude = row.doubleOrNull("from_latitude"),
+            fromLongitude = row.doubleOrNull("from_longitude"),
+            toAddress = row.optString("to_address").takeIf { it.isNotBlank() },
+            toLatitude = row.doubleOrNull("to_latitude"),
+            toLongitude = row.doubleOrNull("to_longitude"),
+            customerAmount = row.doubleOrNull("customer_amount"),
+            actualKg = row.doubleOrNull("actual_kg"),
+            createdAt = row.optString("created_at").takeIf { it.isNotBlank() }
+        )
     }
 
     private fun marketPickupRoute(auth: QueueGoAuth, marketOrderId: String): List<MarketPickup> {
