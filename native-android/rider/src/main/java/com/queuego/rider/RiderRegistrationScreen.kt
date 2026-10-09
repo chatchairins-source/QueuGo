@@ -125,7 +125,7 @@ internal fun RiderRegistrationScreen(
                             if(index>0) Box(Modifier.weight(1f).padding(top=13.dp).height(2.dp).background(RegistrationLine))
                             Column(horizontalAlignment=Alignment.CenterHorizontally) {
                                 Box(Modifier.size(28.dp).background(if(index<=step)RegistrationRed else Color(0xFFF3EDEF),RoundedCornerShape(50)),contentAlignment=Alignment.Center) {
-                                    Text((index+1).toString(),fontSize=12.sp,color=if(index<=step)Color.White else Color(0xFFAAA0A5))
+                                    Text((index+1).toString(),fontSize=9.sp,fontWeight=FontWeight.Bold,color=if(index<=step)Color.White else Color(0xFFAAA0A5))
                                 }
                                 Spacer(Modifier.height(5.dp))
                                 Text(label,fontSize=9.sp,color=if(index==step)RegistrationRed else Color(0xFFAAA0A5))
@@ -133,20 +133,27 @@ internal fun RiderRegistrationScreen(
                         }
                     }
                     val upload: @Composable (String) -> Unit = { key ->
-                        Column(Modifier.fillMaxWidth().border(1.dp,Color(0xFFDDCFD4),RoundedCornerShape(16.dp)).padding(12.dp)) {
-                            Text(RIDER_DOCUMENTS.getValue(key)+" (บังคับ)",fontSize=11.sp,fontWeight=FontWeight.ExtraBold)
-                            RegistrationButton(if(key=="rr-photo")"เลือกรูปถ่ายหน้าตรง" else "เลือกไฟล์",false,!locked,Modifier.fillMaxWidth()) {
+                        val face=key=="rr-photo"
+                        Column(
+                            if(face)Modifier.fillMaxWidth() else Modifier.fillMaxWidth()
+                                .border(1.dp,Color(0xFFDDCFD4),RoundedCornerShape(16.dp)).padding(12.dp),
+                            horizontalAlignment=if(face)Alignment.CenterHorizontally else Alignment.Start
+                        ) {
+                            if(!face)Text(RIDER_DOCUMENTS.getValue(key)+" (บังคับ)",fontSize=11.sp,fontWeight=FontWeight.ExtraBold)
+                            if(face)documents[key]?.let { RegistrationDocumentPreview(it) }
+                            RegistrationButton(if(face)"เลือกรูปถ่ายหน้าตรง" else "เลือกไฟล์",false,!locked,Modifier.fillMaxWidth(),compact=true) {
                                 selectedDocument=key
                                 picker.launch(if(key=="rr-photo"||key=="rr-vehicle-photo")arrayOf("image/*")else arrayOf("image/*","application/pdf"))
                             }
-                            documents[key]?.let { RegistrationDocumentPreview(it) }
-                            Text(if(key in documents)"เลือกไฟล์แล้ว" else if(key=="rr-photo")"ยังไม่ได้เลือกรูป" else "ยังไม่ได้เลือกไฟล์",fontSize=10.sp,color=Color(0xFF77747B))
-                            if(key=="rr-photo")Text("JPG/PNG ไม่เกิน 8 MB • เห็นใบหน้าชัดเจน",fontSize=10.sp)
+                            Text(if(key in documents)"เลือกไฟล์แล้ว" else if(face)"ยังไม่ได้เลือกรูป" else "ยังไม่ได้เลือกไฟล์",
+                                fontSize=10.sp,color=Color(0xFF77747B),modifier=Modifier.padding(vertical=8.dp))
+                            if(!face)documents[key]?.let { RegistrationDocumentPreview(it) }
+                            if(face)Text("JPG/PNG ไม่เกิน 8 MB • เห็นใบหน้าชัดเจน",fontSize=13.sp)
                         }
                     }
                     val panels: List<@Composable () -> Unit> = when(step) {
                         0 -> listOf(
-                            { RegistrationPanel("รูปโปรไฟล์") { upload("rr-photo") } },
+                            { RegistrationPanel("รูปโปรไฟล์",required=true) { upload("rr-photo") } },
                             { RegistrationPanel("ข้อมูลส่วนตัว") {
                                 RegistrationField("ชื่อ - นามสกุล *","เช่น นายสมชาย ใจดี",form.name,locked) { form=form.copy(name=it) }
                                 RegistrationField("เบอร์โทรศัพท์ *","0812345678",form.phone,locked,type=KeyboardType.Phone) { form=form.copy(phone=it) }
@@ -167,7 +174,7 @@ internal fun RiderRegistrationScreen(
                                 RegistrationField("อำเภอ/เขต *","เช่น เมืองบุรีรัมย์",form.district,locked) { form=form.copy(district=it) }
                                 RegistrationField("พื้นที่เพิ่มเติม","เช่น ในเมือง / ตลาดสด",form.area,locked) { form=form.copy(area=it) }
                             } })
-                        2 -> listOf({ RegistrationPanel("เอกสารประกอบ") { RIDER_DOCUMENTS.keys.drop(1).forEach { upload(it); Spacer(Modifier.height(9.dp)) } } })
+                        2 -> listOf({ RegistrationPanel("เอกสารประกอบ",required=true) { RIDER_DOCUMENTS.keys.drop(1).forEach { upload(it); Spacer(Modifier.height(9.dp)) } } })
                         else -> listOf({ RegistrationPanel("ยืนยันข้อมูล") {
                             RegistrationAgreement(agreement,!locked,"ข้าพเจ้ารับรองว่าข้อมูลและเอกสารเป็นความจริง และยินยอมให้ QueueGo ตรวจสอบ") { agreement=it }
                             RegistrationAgreement(betaAgreement,!locked,"ข้าพเจ้ารับทราบว่า QueueGo อยู่ในช่วง Beta และจะตรวจสอบข้อมูลสำคัญก่อนดำเนินการ") { betaAgreement=it }
@@ -206,9 +213,13 @@ internal fun RiderRegistrationScreen(
     }
 }
 
-@Composable private fun RegistrationPanel(title:String,content:@Composable ColumnScope.()->Unit) {
+@Composable private fun RegistrationPanel(title:String,required:Boolean=false,content:@Composable ColumnScope.()->Unit) {
     Column(Modifier.fillMaxWidth().border(1.dp,RegistrationLine,RoundedCornerShape(20.dp)).padding(18.dp)) {
-        Text(title,fontSize=17.sp,fontWeight=FontWeight.Bold,modifier=Modifier.padding(bottom=10.dp));content()
+        Row(Modifier.fillMaxWidth().padding(bottom=10.dp),horizontalArrangement=Arrangement.SpaceBetween) {
+            Text(title,fontSize=17.sp,fontWeight=FontWeight.Bold)
+            if(required)Text("บังคับ",fontSize=11.sp,color=RegistrationRed,fontWeight=FontWeight.ExtraBold)
+        }
+        content()
     }
 }
 @Composable private fun RegistrationField(label:String,hint:String,value:String,locked:Boolean,secret:Boolean=false,type:KeyboardType=KeyboardType.Text,change:(String)->Unit) {
@@ -233,9 +244,9 @@ internal fun RiderRegistrationScreen(
         }
     }
 }
-@Composable private fun RegistrationButton(label:String,primary:Boolean,enabled:Boolean,modifier:Modifier,onClick:()->Unit) {
-    Button(onClick=onClick,enabled=enabled,modifier=modifier.height(52.dp),shape=RoundedCornerShape(18.dp),border=if(primary)null else BorderStroke(1.dp,Color(0xFFF3C7D1)),
-        colors=ButtonDefaults.buttonColors(containerColor=if(primary)Color(0xFFF04455)else Color.White,contentColor=if(primary)Color.White else RegistrationRed)) { Text(label,fontSize=15.sp,fontWeight=FontWeight.Black) }
+@Composable private fun RegistrationButton(label:String,primary:Boolean,enabled:Boolean,modifier:Modifier,compact:Boolean=false,onClick:()->Unit) {
+    Button(onClick=onClick,enabled=enabled,modifier=modifier.height(if(compact)42.dp else 52.dp),shape=RoundedCornerShape(18.dp),border=if(primary)null else BorderStroke(1.dp,Color(0xFFF3C7D1)),
+        colors=ButtonDefaults.buttonColors(containerColor=if(primary)Color(0xFFF04455)else Color.White,contentColor=if(primary)Color.White else RegistrationRed)) { Text(label,fontSize=if(compact)12.sp else 15.sp,fontWeight=FontWeight.Black) }
 }
 @Composable private fun RegistrationAgreement(value:Boolean,enabled:Boolean,label:String,change:(Boolean)->Unit) {
     Row(Modifier.padding(vertical=10.dp),verticalAlignment=Alignment.Top) { Checkbox(value,change,enabled=enabled);Text(label,fontSize=11.sp,modifier=Modifier.weight(1f).padding(top=12.dp)) }
