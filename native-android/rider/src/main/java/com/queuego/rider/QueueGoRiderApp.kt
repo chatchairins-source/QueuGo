@@ -92,6 +92,8 @@ import androidx.compose.material3.Icon
 import androidx.core.content.FileProvider
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import java.io.File
 import java.time.Instant
 
@@ -338,6 +340,7 @@ private fun RiderHome(
     var chatJob by remember { mutableStateOf<RiderJob?>(null) }
     var verifyMode by remember { mutableStateOf<String?>(null) }
     var verifyJob by remember { mutableStateOf<RiderJob?>(null) }
+    var verifyDetails by remember { mutableStateOf<RiderVerificationDetails?>(null) }
     var verifyItems by remember { mutableStateOf<List<RiderItem>>(emptyList()) }
     var verifyMarketPickup by remember { mutableStateOf<MarketPickup?>(null) }
     var photoUri by remember { mutableStateOf<Uri?>(null) }
@@ -480,15 +483,25 @@ private fun RiderHome(
         actionBusy = true
         actionMessage = null
         scope.launch {
-            runCatching { api.orderItems(auth, job.id) }
+            runCatching {
+                coroutineScope {
+                    val items = async { api.orderItems(auth, job.id) }
+                    val details = async { api.verificationDetails(auth, job.id) }
+                    items.await() to details.await()
+                }
+            }
                 .onSuccess {
                     verifyMode = mode
                     verifyJob = job
-                    verifyItems = it
+                    verifyItems = it.first
+                    verifyDetails = it.second
                     photoUri = null
                     pendingCameraUri = null
                 }
-                .onFailure { actionMessage = it.message ?: "โหลดรายการไม่สำเร็จ" }
+                .onFailure {
+                    if (it is CancellationException) throw it
+                    actionMessage = it.message ?: "โหลดรายการไม่สำเร็จ"
+                }
             actionBusy = false
         }
     }
@@ -498,6 +511,7 @@ private fun RiderHome(
         verifyJob = job
         verifyMarketPickup = pickup
         verifyItems = emptyList()
+        verifyDetails = null
         photoUri = null
         pendingCameraUri = null
         actionMessage = null
@@ -507,6 +521,7 @@ private fun RiderHome(
         verifyMode = null
         verifyJob = null
         verifyItems = emptyList()
+        verifyDetails = null
         verifyMarketPickup = null
         photoUri = null
         pendingCameraUri = null
@@ -608,11 +623,13 @@ private fun RiderHome(
             job = verifyJob!!,
             marketPickup = verifyMarketPickup,
             items = verifyItems,
+            details = verifyDetails,
             photoUri = photoUri,
             busy = actionBusy,
             message = actionMessage,
             onBack = { closeVerification() },
             onCamera = { openCamera() },
+            onChat = { val job = verifyJob; closeVerification(); chatJob = job },
             onConfirm = {
                 val job = verifyJob ?: return@VerificationScreen
                 val uri = photoUri ?: run {
@@ -1969,13 +1986,16 @@ private fun VerificationScreen(
     job: RiderJob,
     marketPickup: MarketPickup?,
     items: List<RiderItem>,
+    details: RiderVerificationDetails?,
     photoUri: Uri?,
     busy: Boolean,
     message: String?,
     onBack: () -> Unit,
     onCamera: () -> Unit,
+    onChat: () -> Unit,
     onConfirm: () -> Unit
 ) {
+    val context = LocalContext.current
     val pickup = mode == "pickup"
     val marketPickupMode = mode == "marketPickup"
     var previewReady by remember(photoUri) { mutableStateOf(false) }
@@ -2008,6 +2028,40 @@ private fun VerificationScreen(
                             fontSize = if (shortScreen) 18.sp else 20.sp, fontWeight = FontWeight.Bold)
                         Text(if (pickup || marketPickupMode) "เช็กชื่อสินค้าและจำนวนให้ครบ แล้วถ่ายรูปหลักฐานในหน้าเดียว" else "ตรวจรายการและถ่ายรูปหลักฐานในหน้าเดียว", fontSize = 9.sp, color = QgMuted)
                     }
+                }
+                if (pickup && details != null) {
+                    RiderProofCard(shortScreen) {
+                        Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            QgRemoteImage(details.shopLogo, Modifier.size(40.dp), fallback = details.shopName?.take(1) ?: "Q", cornerRadius = 12.dp)
+                            Column {
+                                Text("ร้านค้า", fontSize = 8.sp, color = QgMuted)
+                                Text(details.shopName ?: "ร้านค้า", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                            }
+                        }
+                        Box(Modifier.fillMaxWidth().height(1.dp).background(Color(0xFFF0EAEC)))
+                        RiderProofMetaRow(R.drawable.qg_rider_flow_jobs, "รหัสออเดอร์", job.numberLabel)
+                        Box(Modifier.fillMaxWidth().height(1.dp).background(Color(0xFFF0EAEC)))
+                        RiderProofMetaRow(R.drawable.qg_rider_nav_user, "ลูกค้า", details.customerName ?: "ลูกค้า")
+                    }
+                }
+                if (!pickup && !marketPickupMode) {
+                    RiderProofCard(shortScreen) {
+                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Column(Modifier.weight(1f)) {
+                                Text("ลูกค้า", fontSize = 8.sp, color = QgMuted)
+                                Text(details?.customerName ?: "ลูกค้า", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                            }
+                            val phone = details?.customerPhone?.filter { it.isDigit() || it == '+' }?.takeIf { it.isNotBlank() }
+                            if (phone != null) RiderProofContact(R.drawable.qg_rider_flow_phone, "โทรหาลูกค้า", !busy) {
+                                runCatching { context.startActivity(Intent(Intent.ACTION_DIAL, Uri.fromParts("tel", phone, null))) }
+                            }
+                            RiderProofContact(R.drawable.qg_rider_nav_chat, "แชต", !busy, onChat)
+                        }
+                    }
+                    RiderProofCard(shortScreen) {
+                        RiderProofMetaRow(R.drawable.qg_rider_flow_loc, "ที่อยู่จัดส่ง", job.deliveryAddress ?: "จุดส่งสินค้า")
+                    }
+                    details?.note?.let { RiderProofNote(it, shortScreen) }
                 }
                 if (marketPickupMode && marketPickup != null) {
                     Spacer(Modifier.height(10.dp))
@@ -2055,6 +2109,7 @@ private fun VerificationScreen(
                     }
                 }
 
+                if (pickup) details?.note?.let { RiderProofNote(it, shortScreen) }
                 Spacer(Modifier.height(6.dp))
                 if (photoUri != null) {
                     Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(18.dp), colors = CardDefaults.cardColors(containerColor = Color.White)) {
@@ -2092,6 +2147,43 @@ private fun VerificationScreen(
                 else Text(when { !photoReady && marketPickupMode -> "ถ่ายรูปสินค้าจุดนี้"; !photoReady && pickup -> "ถ่ายรูปสินค้าที่รับ"; !photoReady -> "ถ่ายรูปตอนส่ง"; marketPickupMode -> "ยืนยันรับสินค้าจุดนี้"; pickup -> "ยืนยันรับสินค้า"; else -> "ยืนยันส่งสินค้า" }, fontSize = 12.sp, fontWeight = FontWeight.Bold)
             }
         }
+    }
+}
+
+@Composable
+private fun RiderProofCard(shortScreen: Boolean, content: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit) {
+    Card(Modifier.fillMaxWidth().padding(top = 6.dp), shape = RoundedCornerShape(18.dp),
+        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFEEE6E8)),
+        colors = CardDefaults.cardColors(containerColor = Color.White)) {
+        Column(Modifier.padding(horizontal = if (shortScreen) 9.dp else 10.dp, vertical = if (shortScreen) 8.dp else 9.dp), content = content)
+    }
+}
+
+@Composable
+private fun RiderProofMetaRow(icon: Int, label: String, value: String) {
+    Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Icon(painterResource(icon), null, Modifier.size(22.dp), tint = QgRed)
+        Column(Modifier.weight(1f)) {
+            Text(label, fontSize = 8.sp, color = QgMuted)
+            Text(value, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+        }
+    }
+}
+
+@Composable
+private fun RiderProofContact(icon: Int, label: String, enabled: Boolean, onClick: () -> Unit) {
+    Box(Modifier.size(44.dp).clip(RoundedCornerShape(22.dp)).background(QgRedSoft)
+        .clickable(enabled = enabled, onClick = onClick), contentAlignment = Alignment.Center) {
+        Icon(painterResource(icon), label, Modifier.size(22.dp), tint = QgRed)
+    }
+}
+
+@Composable
+private fun RiderProofNote(note: String, shortScreen: Boolean) {
+    RiderProofCard(shortScreen) {
+        Text("หมายเหตุจากลูกค้า", fontSize = 8.sp, color = QgMuted)
+        Text(note, fontSize = 11.sp, fontWeight = FontWeight.Bold)
     }
 }
 

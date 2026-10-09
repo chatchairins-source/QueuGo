@@ -506,6 +506,18 @@ class QueueGoApi {
         Unit
     }
 
+    suspend fun verificationDetails(auth: QueueGoAuth, orderId: String): RiderVerificationDetails =
+        withContext(Dispatchers.IO) {
+            val order = requestArray("GET", "/rest/v1/orders?select=shop_id,customer_id,note&id=eq." + enc(orderId) + "&limit=1", auth.session.accessToken)
+                .optJSONObject(0) ?: error("ไม่พบข้อมูลออเดอร์ที่มีสิทธิ์อ่าน")
+            val shopId = order.optString("shop_id").takeIf { it.isNotBlank() && it != "null" }
+            val customerId = order.optString("customer_id").takeIf { it.isNotBlank() && it != "null" }
+            val shop = shopId?.let { requestArray("GET", "/rest/v1/shop_profiles?select=shop_name,public_logo&id=eq." + enc(it) + "&limit=1", auth.session.accessToken).optJSONObject(0) }
+            val customer = customerId?.let { requestArray("GET", "/rest/v1/users?select=name,phone&id=eq." + enc(it) + "&limit=1", auth.session.accessToken).optJSONObject(0) }
+            fun text(row: JSONObject?, key: String): String? = row?.optString(key)?.takeIf { it.isNotBlank() && it != "null" }
+            RiderVerificationDetails(text(shop, "shop_name"), text(shop, "public_logo"), text(customer, "name"), text(customer, "phone"), cleanRiderOrderNote(text(order, "note")))
+        }
+
     suspend fun orderItems(auth: QueueGoAuth, orderId: String): List<RiderItem> =
         withContext(Dispatchers.IO) {
             val rows = requestArray(

@@ -449,3 +449,11 @@ The user-supplied Rider reference screens are the acceptance reference for workf
 - Follow-up in the same proof work: retained product imageUrl now renders actual existing images at46dp/42dp short-screen, web11dp radius. Restored horizontal image/name/description/quantity/price rows, count, separators and actual shopCash total (only when present). No invented product or monetary fallback.
 
 - Re-fetched main: still9026bf445650dbeeb0fd254582481a08a16108fc. Actual final CI37890715086 at15573e8e068ad85295bc125a673bbd2c0b82b7e2 PASS: regression, source integrity/assets, shared/customer/rider JVM tests, three native APK builds, No WebView and artifact upload. Still no physical camera/EXIF/retake, screenshot comparison, background FCM or real Production E2E certification.
+
+## Rider verification real details/contact parity — 2026-10-09
+
+- Backup backup-native-before-rider-proof-details-20261009 at5fd4a3d local/GitHub. Followed current main9026bf4 pickup meta and delivery customer/contact/address/note sections.
+- Added authenticated RLS-scoped reads of existing order shop_id/customer_id/note, shop_profiles shop_name/public_logo and users name/phone, only by IDs from that order. Item/details hydration is parallel and a failed read keeps the existing job screen with an actionable error; no new policy/grant/backend.
+- Pickup shows actual40dp shop logo/name, QT order and customer rows with original jobs/user vectors. Delivery shows actual customer/name,44dp phone/chat controls, address/location vector and optional customer note before items; pickup note remains after items. Exact phone/location/jobs vectors converted from Production QTICON, stroke1.9/round joins.
+- Phone uses ACTION_DIAL (no direct call/permission); chat closes the proof page as web does and opens existing RiderChatScreen for the same job. Cleared details on close/market point entry; no stale prior-order metadata. Existing proof upload/atomic action RPCs unchanged.
+- Notes remove only lines beginning __QT_ORDER_STATUS__= as web; added JVM coverage for hidden status lines and preserving customer text. Source integrity180/whitespace pass; await actual CI. Physical call/chat/proof UX, live user RLS and screenshots remain uncertified.
