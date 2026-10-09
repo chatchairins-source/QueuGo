@@ -286,17 +286,7 @@ private fun CustomerShell(auth: NativeAuth, logout: () -> Unit) {
     Scaffold(
         containerColor = QgBg,
         bottomBar = {
-            if (screen in setOf("home", "search", "cart", "orders")) {
-                QgBottomNav(
-                    selected = screen,
-                    items = listOf(
-                        QgNavItem("home", "หน้าหลัก", "home"),
-                        QgNavItem("search", "ค้นหา", "search"),
-                        QgNavItem("cart", if (cart.sumOf { it.quantity } > 0) "ตะกร้า " + cart.sumOf { it.quantity } else "ตะกร้า", "bag"),
-                        QgNavItem("orders", "ออเดอร์", "orders")
-                    )
-                ) { screen = it }
-            }
+            CustomerBottomNavigation(screen, cart.sumOf { it.quantity }) { screen = it }
         }
     ) { insets ->
         Column(
@@ -688,53 +678,7 @@ private fun CustomerHome(
             .padding(horizontal = 14.dp)
     ) {
         Spacer(Modifier.height(13.dp))
-        val banner = banners.getOrNull(bannerIndex)
-        if (banner != null) {
-            QgRemoteImage(
-                banner.image,
-                Modifier.fillMaxWidth().height(178.dp),
-                "Q"
-            )
-            if (banners.size > 1) {
-                Row(
-                    Modifier.fillMaxWidth().padding(top = 6.dp),
-                    horizontalArrangement = Arrangement.Center
-                ) {
-                    banners.indices.forEach { i ->
-                        Box(
-                            Modifier
-                                .padding(horizontal = 2.dp)
-                                .size(if (i == bannerIndex) 7.dp else 5.dp)
-                                .clip(CircleShape)
-                                .background(if (i == bannerIndex) QgRed else androidx.compose.ui.graphics.Color(0xFFC9CCD1))
-                        )
-                    }
-                }
-            }
-        } else {
-            Box(
-                Modifier
-                    .fillMaxWidth()
-                    .height(178.dp)
-                    .background(QgRed, RoundedCornerShape(20.dp))
-                    .padding(18.dp),
-                contentAlignment = Alignment.BottomStart
-            ) {
-                Column {
-                    Text(
-                        "QueueGo",
-                        color = androidx.compose.ui.graphics.Color.White,
-                        fontWeight = FontWeight.Black,
-                        style = MaterialTheme.typography.headlineMedium
-                    )
-                    Text(
-                        "บริการใกล้บ้าน ใช้ง่ายในทุกวัน",
-                        color = androidx.compose.ui.graphics.Color.White,
-                        style = MaterialTheme.typography.bodySmall
-                    )
-                }
-            }
-        }
+        CustomerHomeBanner(banners, bannerIndex) { bannerIndex = it }
 
         Spacer(Modifier.height(20.dp))
         Row(

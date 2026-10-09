@@ -9,4 +9,9 @@ for(const [category,name] of [['food','FOOD_BANNER'],['cafe','CAFE_BANNER'],['gr
  assert.ok(native.equals(original),category+' Native must reuse the exact web image bytes');checks++;
  assert.ok(native.subarray(0,4).toString()==='RIFF' && native.subarray(8,12).toString()==='WEBP',category+' actual WebP');checks++;
 }
-console.log(JSON.stringify({checks,failures:0,scope:'Customer Food/Drink/Grocery assets are byte-identical to the web blueprint; screenshot parity remains pending'}));
+const home=source.match(/const HOME_FALLBACK_BANNER="data:image\/webp;base64,([^"]+)"/);
+assert.ok(home,'Home web fallback exists');checks++;
+const nativeHome=fs.readFileSync(path.join(root,'native-android/customer/src/main/res/drawable/qg_home_banner.webp'));
+assert.ok(nativeHome.equals(Buffer.from(home[1],'base64')),'Home Native uses exact web photo');checks++;
+assert.ok(nativeHome.subarray(0,4).toString()==='RIFF' && nativeHome.subarray(8,12).toString()==='WEBP','Home actual WebP');checks++;
+console.log(JSON.stringify({checks,failures:0,scope:'Customer Home/Food/Drink/Grocery assets are byte-identical to the web blueprint; screenshot parity remains pending'}));
