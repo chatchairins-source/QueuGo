@@ -287,11 +287,18 @@ class MerchantApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
     }
 
     suspend fun shopOpenState(auth: NativeAuth, shopId: String): Boolean {
-        val rows = http.array(http.get(
-            "shop_open_states?select=shop_id,is_open&shop_id=eq." + http.enc(shopId) + "&limit=1",
-            auth.session.accessToken
-        ))
-        return rows.optJSONObject(0)?.optBoolean("is_open", true) ?: true
+        val rows = http.array(
+            http.get(
+                "shop_open_states?select=shop_id,is_open,resume_at&shop_id=eq." +
+                    http.enc(shopId) + "&limit=1",
+                auth.session.accessToken
+            )
+        )
+        val row = rows.optJSONObject(0) ?: return true
+        if (row.optBoolean("is_open", true)) return true
+        val resumeAt = row.optNullable("resume_at") ?: return false
+        val resume = runCatching { java.time.Instant.parse(resumeAt) }.getOrNull() ?: return false
+        return !resume.isAfter(java.time.Instant.now())
     }
 
     suspend fun setShopOpen(auth: NativeAuth, shop: MerchantShop, open: Boolean) {
@@ -310,6 +317,21 @@ class MerchantApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
             .put("resume_at", JSONObject.NULL)
         if (rows.length() > 0) http.patch(path, auth.session.accessToken, body)
         else http.post("shop_open_states", auth.session.accessToken, body)
+    }
+
+    suspend fun pauseShop(auth: NativeAuth, shopId: String, minutes: Int) {
+        require(minutes in setOf(30, 60, 1440)) { "ระยะเวลาพักร้านไม่ถูกต้อง" }
+        val resumeAt = java.time.Instant.now().plusSeconds(minutes.toLong() * 60L).toString()
+        val body = JSONObject()
+            .put("shop_id", shopId)
+            .put("is_open", false)
+            .put("resume_at", resumeAt)
+            .put("updated_at", java.time.Instant.now().toString())
+        http.upsert(
+            "shop_open_states?on_conflict=shop_id",
+            auth.session.accessToken,
+            body
+        )
     }
 
     suspend fun loadBusinessHours(
