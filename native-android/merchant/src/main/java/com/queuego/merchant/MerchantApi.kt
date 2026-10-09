@@ -1,5 +1,6 @@
 package com.queuego.merchant
 
+import com.queuego.shared.sendNativeChatOnce
 import com.queuego.shared.NativeAuth
 import com.queuego.shared.QueueGoNativeApi
 import org.json.JSONArray
@@ -156,7 +157,8 @@ data class MerchantSupportMessage(
     val id: String,
     val senderUserId: String,
     val body: String,
-    val createdAt: String?
+    val createdAt: String?,
+    val slipPath: String? = null
 )
 
 data class MerchantNotification(
@@ -1007,7 +1009,7 @@ class MerchantApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
     suspend fun loadSupportMessages(auth: NativeAuth): List<MerchantSupportMessage> {
         val rows = http.array(
             http.get(
-                "shop_support_messages?select=id,sender_user_id,body,created_at" +
+                "shop_support_messages?select=id,sender_user_id,body,created_at,slip_path" +
                     "&shop_user_id=eq." + http.enc(auth.user.id) +
                     "&order=created_at.asc",
                 auth.session.accessToken
@@ -1021,25 +1023,30 @@ class MerchantApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
                         id = r.optString("id"),
                         senderUserId = r.optString("sender_user_id"),
                         body = r.optString("body"),
-                        createdAt = r.optNullable("created_at")
+                        createdAt = r.optNullable("created_at"),
+                        slipPath = r.optNullable("slip_path")
                     )
                 )
             }
         }
     }
 
-    suspend fun sendSupportMessage(auth: NativeAuth, body: String) {
+    suspend fun sendSupportMessage(auth: NativeAuth, body: String, requestId: String = UUID.randomUUID().toString()) {
         val text = body.trim()
         require(text.isNotBlank()) { "กรุณาพิมพ์ข้อความ" }
-        val raw = http.post(
-            "shop_support_messages",
-            auth.session.accessToken,
-            JSONObject()
-                .put("shop_user_id", auth.user.id)
-                .put("sender_user_id", auth.user.id)
-                .put("body", text)
+        require(text.length <= 2000) { "ข้อความยาวเกิน 2000 ตัวอักษร" }
+        val path = "shop_support_messages?select=id&id=eq." + http.enc(requestId) +
+            "&shop_user_id=eq." + http.enc(auth.user.id) + "&sender_user_id=eq." + http.enc(auth.user.id)
+        sendNativeChatOnce(
+            exists = { http.array(http.get(path, auth.session.accessToken)).length() > 0 },
+            insert = {
+                val raw = http.post("shop_support_messages", auth.session.accessToken,
+                    JSONObject().put("id", requestId).put("shop_user_id", auth.user.id)
+                        .put("sender_user_id", auth.user.id).put("body", text))
+                val rows = http.array(raw)
+                (0 until rows.length()).any { rows.optJSONObject(it)?.optString("id") == requestId }
+            }
         )
-        if (raw is JSONArray && raw.length() == 0) error("ระบบยังไม่ยืนยันข้อความ")
     }
 
     suspend fun readiness(auth: NativeAuth, shopId: String?): ShopReadiness? {
