@@ -19,6 +19,9 @@ for(const p of [
   'rider/src/main/res/drawable/qg_notification.xml',
   'rider/src/main/java/com/queuego/rider/RiderHistoryCard.kt',
   'rider/src/main/java/com/queuego/rider/RiderChat.kt',
+  'rider/src/main/java/com/queuego/rider/RiderMessagesScreen.kt',
+  'rider/src/main/java/com/queuego/rider/RiderEarningsScreen.kt',
+  'rider/src/main/java/com/queuego/rider/RiderProfileScreen.kt',
   'customer/src/main/java/com/queuego/customer/QueueGoCustomerApp.kt',
   'customer/src/main/java/com/queuego/customer/CustomerApi.kt',
   'customer/src/main/java/com/queuego/customer/CustomerMarketApi.kt',
@@ -116,6 +119,15 @@ const riderDispatchLaundryMigration=fs.readFileSync(path.resolve(root,'..','supa
 ok(riderMap.includes('laundryJob: RiderLaundryJob?')&&riderMap.includes('laundryJob.fromLatitude')&&riderMap.includes('laundryJob.toLatitude'),'Rider native Longdo map must show laundry pickup and destination pins');
 ok(nativeRealtimeSubscriptions.includes('"laundry_rider_jobs"')&&nativeRealtimeSubscriptions.includes('"laundry_rider_invites"')&&nativeRealtimeSubscriptions.includes('"laundry_rider_preferences"'),'Rider native must refresh laundry state from owned Realtime changes');
 ok(riderDispatchLaundryMigration.includes("from public.laundry_rider_jobs lj")&&riderDispatchLaundryMigration.includes("lj.status in('assigned','accepted','arrived','collected')"),'automatic Rider dispatch must not offer normal delivery work during an active Laundry leg');
+const riderMessages=read('rider/src/main/java/com/queuego/rider/RiderMessagesScreen.kt');
+const riderEarnings=read('rider/src/main/java/com/queuego/rider/RiderEarningsScreen.kt');
+const riderProfile=read('rider/src/main/java/com/queuego/rider/RiderProfileScreen.kt');
+ok(riderApp.includes('RiderBottomNavigation(')&&riderApp.includes('Triple("home", "หน้าแรก", "home")')&&riderApp.includes('Triple("chat", "ข้อความ", "support")')&&riderApp.includes('Triple("earn", "รายได้", "chart")')&&riderApp.includes('Triple("profile", "โปรไฟล์", "user")'),'Rider native must preserve Production four-tab bottom navigation');
+ok(riderApp.includes('BackHandler(enabled = activeTab != "home"')&&riderApp.includes('activeTab = "home"'),'Rider native Android back must return non-home tabs to Home');
+ok(riderMessages.includes('order_chat_messages?select=order_id,sender_id,message,created_at')&&riderMessages.includes('deliveries?select=order_id,delivered_at')&&riderMessages.includes('30 * 60_000L'),'Rider native message inbox must use Production chat and 30-minute completed-order window');
+ok(riderEarnings.includes('api.periodSummary(auth, days)')&&riderEarnings.includes('api.cashLedger(auth, from.toString(), to.toString())')&&riderEarnings.includes('"วันนี้"')&&riderEarnings.includes('"7 วัน"')&&riderEarnings.includes('"30 วัน"'),'Rider native earnings must preserve Production periods and ledger source');
+ok(riderProfile.includes('api.updateAccount(auth, name, phone)')&&riderProfile.includes('api.setLaundryMode(auth, enabled)')&&riderProfile.includes('api.testNativePush(auth)')&&riderProfile.includes('QgAccountDeletionSection'),'Rider native profile must preserve account, Laundry, push and deletion controls');
+ok(riderApi.includes('qg_rider_cash_ledger')&&riderApi.includes('/rest/v1/users?auth_user_id=eq.')&&riderApi.includes('/rest/v1/rider_profiles?user_id=eq.'),'Rider native profile and earnings must reuse Production ownership APIs');
 ok(nativeRootGradle.includes('com.google.gms.google-services')&&gradle.includes('com.google.firebase:firebase-bom:35.0.0')&&gradle.includes('com.google.firebase:firebase-messaging'),'Rider native must compile with current Firebase Messaging transport');
 ok(riderManifest.includes('.QueueGoRiderMessagingService')&&riderManifest.includes('com.google.firebase.MESSAGING_EVENT')&&riderManifest.includes('queuego_orders'),'Rider native manifest must register FCM service and order channel');
 ok(riderPush.includes('FirebaseMessagingService')&&riderPush.includes('NotificationManager.IMPORTANCE_HIGH')&&riderPush.includes('syncRiderNativePush'),'Rider native must receive high-priority background job notifications and sync FCM tokens');
