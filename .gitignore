@@ -4,3 +4,5 @@ native-android/**/build/
 native-android/**/.gradle/
 native-android/**/.kotlin/
 native-android/rider/libs/*.aar
+
+native-android/**/google-services.json
