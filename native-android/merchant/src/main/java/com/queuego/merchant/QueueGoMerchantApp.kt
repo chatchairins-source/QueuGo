@@ -251,15 +251,15 @@ private fun MerchantShell(auth: NativeAuth, logout: () -> Unit) {
     Scaffold(
         containerColor = QgBg,
         bottomBar = {
-            if (screen in setOf("home", "orders", "products", "laundry", "profile")) {
+            if (screen in setOf("home", "orders", "products", "promotions", "profile")) {
                 QgBottomNav(
                     selected = screen,
                     items = listOf(
-                        QgNavItem("home", "ภาพรวม", "home"),
-                        QgNavItem("orders", "ออเดอร์", "orders"),
+                        QgNavItem("home", "หน้าหลัก", "home"),
+                        QgNavItem("orders", "คำสั่งซื้อ", "orders"),
                         QgNavItem("products", "สินค้า", "box"),
-                        QgNavItem("laundry", "ฝากซัก", "laundry"),
-                        QgNavItem("profile", "ร้านค้า", "store")
+                        QgNavItem("promotions", "โปรโมชั่น", "tag"),
+                        QgNavItem("profile", "บัญชี", "user")
                     )
                 ) { screen = it }
             }
