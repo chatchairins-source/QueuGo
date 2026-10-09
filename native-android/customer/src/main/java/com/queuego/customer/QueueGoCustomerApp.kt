@@ -444,6 +444,9 @@ private fun CustomerShell(auth: NativeAuth, logout: () -> Unit) {
                             )
                         }
                     },
+                    resolveAddress = { latitude, longitude ->
+                        api.reverseGeocode(latitude, longitude)
+                    },
                     onSave = { picked ->
                         if (!busy) {
                             busy = true
