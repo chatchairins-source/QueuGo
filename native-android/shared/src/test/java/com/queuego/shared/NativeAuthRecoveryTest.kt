@@ -57,6 +57,19 @@ class NativeAuthRecoveryTest {
         } finally { server.shutdown() }
     }
 
+    @Test fun malformedSuccessfulResponsesDoNotDeleteCredentials() = runBlocking {
+        val server = MockWebServer()
+        server.start()
+        try {
+            val api = NativeAuthApi(server.url("/").toString())
+            server.enqueue(MockResponse().setBody("{}"))
+            assertFalse(shouldClearNativeSession(failure { api.validate(cached(), "customer") }))
+            server.enqueue(MockResponse().setBody("true"))
+            server.enqueue(MockResponse().setBody("{}"))
+            assertFalse(shouldClearNativeSession(failure { api.validate(cached(), "customer") }))
+        } finally { server.shutdown() }
+    }
+
     @Test fun roleAndSuspendedStatusCannotRestoreAccount() = runBlocking {
         val server = MockWebServer()
         server.start()

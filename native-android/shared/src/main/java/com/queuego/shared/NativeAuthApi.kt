@@ -87,11 +87,16 @@ class NativeAuthApi(
                 liveAuth.session.accessToken,
                 JSONObject().put("p_session_id", liveAuth.session.sessionId)
             )
-            val valid = check == true ||
-                (check is JSONArray && check.length() > 0 &&
-                    (check.optBoolean(0, false) ||
-                        check.optJSONObject(0)?.optBoolean("check_active_session", false) == true)) ||
-                (check is JSONObject && check.optBoolean("check_active_session", false))
+            val result = when (check) {
+                is Boolean -> check
+                is JSONArray -> check.opt(0).let { first ->
+                    if (first is JSONObject) first.opt("check_active_session") else first
+                }
+                is JSONObject -> check.opt("check_active_session")
+                else -> null
+            }
+            // Unexpected 200 response shapes are not proof of session revocation.
+            val valid = result as? Boolean ?: error("รูปแบบข้อมูล Session ไม่ถูกต้อง")
             if (!valid) throw NativeSessionInvalidException("Session นี้ไม่ได้ใช้งานบนอุปกรณ์นี้แล้ว")
             val rows = requestArray(
                 "GET",
@@ -167,7 +172,7 @@ class NativeAuthApi(
         requestAny(method, path, token, body) as? JSONObject ?: error("รูปแบบข้อมูลไม่ถูกต้อง")
 
     private fun requestArray(method: String, path: String, token: String): JSONArray =
-        requestAny(method, path, token, null) as? JSONArray ?: JSONArray()
+        requestAny(method, path, token, null) as? JSONArray ?: error("รูปแบบข้อมูลบัญชีไม่ถูกต้อง")
 
     private fun requestAny(method: String, path: String, token: String?, body: JSONObject?): Any {
         val connection = URL(baseUrl.trimEnd('/') + path).openConnection() as HttpURLConnection

@@ -629,3 +629,5 @@ The user-supplied Rider reference screens are the acceptance reference for workf
 - Rotated refresh tokens are saved before subsequent authorization reads/heartbeat so transient downstream errors cannot discard the rotated credential. This does not grant offline account approval: cold app access still requires server validation.
 - Added shared JVM regression cases for transient vs definitive errors. No account/order writes or Production UI changes. Actual authenticated offline/reconnect and expired-session device tests remain unproven.
 - Customer/Merchant generic authentication UI remains a known Production blueprint mismatch, and all authenticated flow/physical-device/notification visual gates remain open. Latest APK build must include this follow-up; do not deliver previous artifacts as final.
+
+- Follow-up review: malformed HTTP 200 session/account payloads must not look like confirmed revocation or a deleted account. Validation now checks actual Boolean/array shapes and treats unexpected shapes as recoverable errors. Added actual API response regression cases.
