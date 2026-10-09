@@ -1,8 +1,12 @@
 package com.queuego.merchant
 
+import android.Manifest
 import android.media.AudioManager
 import android.media.ToneGenerator
+import android.net.Uri
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -32,11 +36,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -55,6 +61,7 @@ import com.queuego.shared.QgCard
 import com.queuego.shared.QgGreen
 import com.queuego.shared.QgIcon
 import com.queuego.shared.QgMuted
+import com.queuego.shared.QgMapPoint
 import com.queuego.shared.QgNavItem
 import com.queuego.shared.QgRed
 import com.queuego.shared.QgRemoteImage
@@ -96,6 +103,34 @@ private fun MerchantShell(auth: NativeAuth, logout: () -> Unit) {
     var loading by remember { mutableStateOf(true) }
     var busy by remember { mutableStateOf(false) }
     var message by remember { mutableStateOf<String?>(null) }
+    val context = LocalContext.current
+    var setupLogoUri by remember { mutableStateOf<Uri?>(null) }
+    var setupCoverUri by remember { mutableStateOf<Uri?>(null) }
+    var merchantGpsPoint by remember { mutableStateOf<QgMapPoint?>(null) }
+    var merchantGpsSignal by remember { mutableIntStateOf(0) }
+
+    val logoPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) {
+        if (it != null) setupLogoUri = it
+    }
+    val coverPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) {
+        if (it != null) setupCoverUri = it
+    }
+    fun updateMerchantGps() {
+        val point = merchantLastKnownLocation(context)
+        if (point != null) {
+            merchantGpsPoint = point
+            merchantGpsSignal++
+            message = "ใช้ตำแหน่ง GPS ปัจจุบันแล้ว"
+        } else {
+            message = "ยังอ่านตำแหน่ง GPS ไม่ได้"
+        }
+    }
+    val locationPermission = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { grants ->
+        if (grants.values.any { it }) updateMerchantGps()
+        else message = "กรุณาอนุญาตตำแหน่งเพื่อปักหมุดร้าน"
+    }
 
     BackHandler(enabled = screen != "home") {
         screen = "home"
@@ -330,9 +365,85 @@ private fun MerchantShell(auth: NativeAuth, logout: () -> Unit) {
                     auth = auth,
                     shop = shop,
                     readiness = readiness,
+                    onSetup = {
+                        setupLogoUri = null
+                        setupCoverUri = null
+                        merchantGpsPoint = null
+                        screen = "shop-setup"
+                    },
                     onSupport = { screen = "support" },
                     logout = logout
                 )
+                "shop-setup" -> {
+                    val activeShop = shop
+                    if (activeShop == null) {
+                        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            Text("ยังไม่พบข้อมูลร้าน", color = QgMuted)
+                        }
+                    } else {
+                        MerchantShopSetupScreen(
+                            shop = activeShop,
+                            contactName = auth.user.name,
+                            busy = busy,
+                            gpsPoint = merchantGpsPoint,
+                            gpsSignal = merchantGpsSignal,
+                            logoUri = setupLogoUri,
+                            coverUri = setupCoverUri,
+                            onPickLogo = { logoPicker.launch("image/*") },
+                            onPickCover = { coverPicker.launch("image/*") },
+                            onGps = {
+                                if (merchantHasLocationPermission(context)) {
+                                    updateMerchantGps()
+                                } else {
+                                    locationPermission.launch(
+                                        arrayOf(
+                                            Manifest.permission.ACCESS_FINE_LOCATION,
+                                            Manifest.permission.ACCESS_COARSE_LOCATION
+                                        )
+                                    )
+                                }
+                            },
+                            onSave = { draft ->
+                                if (!busy) {
+                                    busy = true
+                                    message = null
+                                    scope.launch {
+                                        runCatching {
+                                            val logo = setupLogoUri?.let {
+                                                uploadMerchantImage(context, auth, it, "logo")
+                                            }
+                                            val cover = setupCoverUri?.let {
+                                                uploadMerchantImage(context, auth, it, "cover")
+                                            }
+                                            val saved = api.saveShopSetup(
+                                                auth,
+                                                activeShop,
+                                                draft.copy(
+                                                    logo = logo ?: activeShop.logo,
+                                                    cover = cover ?: activeShop.cover
+                                                )
+                                            )
+                                            val nextReadiness = api.readiness(auth, saved.id)
+                                            saved to nextReadiness
+                                        }.onSuccess { (saved, nextReadiness) ->
+                                            shop = saved
+                                            readiness = nextReadiness
+                                            setupLogoUri = null
+                                            setupCoverUri = null
+                                            merchantGpsPoint = null
+                                            message = "บันทึกข้อมูลร้านแล้ว"
+                                            screen = "profile"
+                                        }.onFailure {
+                                            message = it.message ?: "บันทึกข้อมูลร้านไม่สำเร็จ"
+                                        }
+                                        busy = false
+                                    }
+                                }
+                            },
+                            onBack = { screen = "profile" }
+                        )
+                    }
+                }
             }
         }
     }
@@ -936,6 +1047,7 @@ private fun MerchantProfileScreen(
     auth: NativeAuth,
     shop: MerchantShop?,
     readiness: ShopReadiness?,
+    onSetup: () -> Unit,
     onSupport: () -> Unit,
     logout: () -> Unit
 ) {
@@ -972,6 +1084,14 @@ private fun MerchantProfileScreen(
             }
         }
         Spacer(Modifier.height(12.dp))
+        Button(
+            onClick = onSetup,
+            enabled = shop != null,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("แก้ไขข้อมูลและตำแหน่งร้าน")
+        }
+        Spacer(Modifier.height(10.dp))
         Button(onClick = onSupport, modifier = Modifier.fillMaxWidth()) {
             Text("ข้อความถึง QueueGo Admin")
         }
