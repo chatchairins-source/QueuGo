@@ -1,5 +1,14 @@
 package com.queuego.merchant
 
+import androidx.activity.compose.BackHandler
+import androidx.compose.runtime.key
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.repeatOnLifecycle
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -38,6 +47,11 @@ fun MerchantSupportScreen(
     auth: NativeAuth,
     onBack: () -> Unit
 ) {
+    key(auth.user.id, auth.session.sessionId) { MerchantSupportRoom(auth, onBack) }
+}
+
+@Composable
+private fun MerchantSupportRoom(auth: NativeAuth, onBack: () -> Unit) {
     val api = remember { MerchantApi() }
     val scope = rememberCoroutineScope()
     var messages by remember { mutableStateOf<List<MerchantSupportMessage>>(emptyList()) }
@@ -45,25 +59,38 @@ fun MerchantSupportScreen(
     var busy by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
 
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
+    val back by rememberUpdatedState(onBack)
+    var loading by remember { mutableStateOf(true) }
+    BackHandler { if (!busy) back() }
+
     suspend fun refresh() {
-        runCatching { api.loadSupportMessages(auth) }
-            .onSuccess { messages = it; error = null }
-            .onFailure { error = it.message ?: "โหลดข้อความไม่สำเร็จ" }
+        try {
+            val next = api.loadSupportMessages(auth)
+            currentCoroutineContext().ensureActive()
+            messages = next
+            error = null
+            loading = false
+        } catch (cancelled: CancellationException) { throw cancelled }
+        catch (failure: Exception) {
+            currentCoroutineContext().ensureActive()
+            error = failure.message ?: "โหลดข้อความไม่สำเร็จ"
+            loading = false
+        }
     }
 
-    LaunchedEffect(auth.user.id) {
-        while (true) {
-            refresh()
-            delay(5_000)
+    LaunchedEffect(auth.session.accessToken, lifecycle) {
+        lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            while (true) { refresh(); delay(5_000) }
         }
     }
 
     Column(Modifier.fillMaxSize().padding(14.dp)) {
         Row(Modifier.fillMaxWidth()) {
-            OutlinedButton(onClick = onBack) { Text("ย้อนกลับ") }
+            OutlinedButton(onClick = { if (!busy) back() }) { Text("ย้อนกลับ") }
         }
         Spacer(Modifier.height(12.dp))
-        QgSectionTitle("ข้อความถึงแอดมิน", "ใช้ช่องทางเดิมของ QueueGo Production")
+        QgSectionTitle("ข้อความถึงแอดมิน", "QueueGo Support")
         if (!error.isNullOrBlank()) {
             Spacer(Modifier.height(6.dp))
             Text(error!!, color = QgRed)
@@ -74,7 +101,9 @@ fun MerchantSupportScreen(
                 .fillMaxWidth()
                 .verticalScroll(rememberScrollState())
         ) {
-            if (messages.isEmpty()) {
+            if (loading) {
+                Text("กำลังโหลดข้อความ...", color = QgMuted)
+            } else if (messages.isEmpty() && error.isNullOrBlank()) {
                 Text("ยังไม่มีข้อความ เริ่มพิมพ์ถึงทีม QueueGo ด้านล่างได้เลย", color = QgMuted)
             } else {
                 messages.forEach { message ->
@@ -129,10 +158,11 @@ fun MerchantSupportScreen(
                 scope.launch {
                     runCatching { api.sendSupportMessage(auth, body) }
                         .onSuccess {
-                            input = ""
+                            currentCoroutineContext().ensureActive()
+                            if (input.trim() == body.trim()) input = ""
                             refresh()
                         }
-                        .onFailure { error = it.message ?: "ส่งข้อความไม่สำเร็จ" }
+                        .onFailure { if (it is CancellationException) throw it; error = it.message ?: "ส่งข้อความไม่สำเร็จ" }
                     busy = false
                 }
             },
