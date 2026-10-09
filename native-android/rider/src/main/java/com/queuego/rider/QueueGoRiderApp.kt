@@ -636,6 +636,7 @@ private fun RiderHome(
                 "profile" -> RiderProfileScreen(
                     auth = auth,
                     snapshot = snapshot,
+                    history = recentHistory,
                     api = api,
                     onSnapshot = { snapshot = it },
                     onLogout = onLogout,
