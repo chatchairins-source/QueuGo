@@ -9,6 +9,7 @@
         android:roundIcon="@mipmap/ic_queuego_launcher"
         android:theme="@style/AppTheme"
         android:usesCleartextTraffic="false">
+        <meta-data android:name="longdo.map.key" android:value="347649ca13f49db0d8a599ae35f8de2b" />
         <activity android:name=".MainActivity" android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
