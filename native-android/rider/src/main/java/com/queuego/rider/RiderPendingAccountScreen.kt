@@ -74,8 +74,8 @@ private fun RiderAccountCard(modifier: Modifier, badge: String?, title: String, 
                         fontSize = 11.sp, fontWeight = FontWeight.Black,
                         modifier = Modifier.background(Color(0xFFFFF0F3), RoundedCornerShape(999.dp))
                             .padding(horizontal = 12.dp, vertical = 8.dp))
-                    Spacer(Modifier.height(16.dp))
                     }
+                    Spacer(Modifier.height(16.dp))
                     Text(title, fontWeight = FontWeight.Bold,
                         fontSize = 32.sp, color = Color(0xFF17171B))
                     Spacer(Modifier.height(5.dp))

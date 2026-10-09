@@ -117,9 +117,8 @@ fun QueueGoRiderApp() {
         restorationError = false
         val cached = store.load()
         if (cached != null) {
-            runCatching { api.validate(cached) }
+            runCatching { api.validate(cached).also { store.save(it) } }
                 .onSuccess {
-                    store.save(it)
                     auth = it
                     registrationOpen = store.pendingRegistrationUserId() == it.session.authUserId
                 }
@@ -144,10 +143,10 @@ fun QueueGoRiderApp() {
             val result = runCatching {
                 val validated = api.validate(current)
                 api.touch(validated.session)
+                store.save(validated)
                 validated
             }
             result.onSuccess { validated ->
-                store.save(validated)
                 auth = validated
             }.onFailure {
                 if (it is CancellationException) throw it
@@ -204,23 +203,22 @@ fun QueueGoRiderApp() {
                         busy = true
                         error = null
                         scope.launch {
-                            runCatching { api.signIn(id, password, store.deviceId()) }
-                                .onSuccess {
-                                    store.save(it)
-                                    auth = it
-                                    if (it.user.status == "pending") {
-                                        val draft = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { store.loadRegistrationDraft() }
-                                        if (draft?.optJSONObject("form")?.optString("phone")?.replace(Regex("[-\\s]"), "") == it.user.phone &&
-                                            (store.pendingRegistrationUserId() == it.session.authUserId || api.registrationProfileMissing(it))) {
-                                            store.saveRegistrationCheckpoint(it)
-                                            registrationOpen = true
-                                        }
+                            try {
+                                val signed = api.signIn(id, password, store.deviceId())
+                                store.save(signed)
+                                auth = signed
+                                if (signed.user.status == "pending") {
+                                    val draft = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { store.loadRegistrationDraft() }
+                                    if (draft?.optJSONObject("form")?.optString("phone")?.replace(Regex("[-\\s]"), "") == signed.user.phone &&
+                                        (store.pendingRegistrationUserId() == signed.session.authUserId || api.registrationProfileMissing(signed))) {
+                                        store.saveRegistrationCheckpoint(signed)
+                                        registrationOpen = true
                                     }
                                 }
-                                .onFailure {
-                                    error = it.message ?: "เข้าสู่ระบบไม่สำเร็จ"
-                                }
-                            busy = false
+                            } catch (e: Exception) {
+                                if (e is CancellationException) throw e
+                                error = e.message ?: "เข้าสู่ระบบไม่สำเร็จ"
+                            } finally { busy = false }
                         }
                     }
                 )

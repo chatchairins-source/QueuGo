@@ -4,6 +4,7 @@ import datetime
 import hashlib
 import json
 import os
+import re
 import struct
 import subprocess
 import time
@@ -39,6 +40,71 @@ run([adb_bin, "start-server"])
 adb = [adb_bin, "-s", "emulator-5554"]
 package = "com.queuego.rider"
 component = package + "/.MainActivity"
+
+def capture_role_viewports():
+    """Real Android display configurations; no authenticated state or sample orders."""
+    evidence = []
+    roles = ("customer", "merchant", "rider")
+    for role in roles:
+        role_apk = repo / f"native-android/{role}/build/outputs/apk/debug/{role}-debug.apk"
+        assert role_apk.is_file(), f"Missing actual {role} APK"
+        run(adb + ["install", "-r", str(role_apk)])
+    for viewport, dimensions, density in (("phone", "1080x2280", "440"),
+                                           ("small-phone", "720x1280", "320"),
+                                           ("tablet", "1600x2560", "240")):
+        run(adb + ["shell", "wm", "size", dimensions])
+        run(adb + ["shell", "wm", "density", density])
+        for role in roles:
+            pkg = f"com.queuego.{role}"
+            activity_name = pkg + "/.MainActivity"
+            directory = output / "matrix" / role / viewport
+            directory.mkdir(parents=True, exist_ok=True)
+            run(adb + ["shell", "am", "force-stop", pkg])
+            run(adb + ["logcat", "-c"])
+            started = run(adb + ["shell", "am", "start", "-W", "-n", activity_name], capture_output=True, text=True)
+            (directory / "activity-start.txt").write_text(started.stdout + started.stderr)
+            assert "Status: ok" in started.stdout, f"{role} {viewport} launch failed"
+            time.sleep(5)
+            run(adb + ["shell", "pidof", pkg], capture_output=True)
+            activities = run(adb + ["shell", "dumpsys", "activity", "activities"], capture_output=True, text=True).stdout
+            assert any("mResumedActivity" in line and activity_name in line for line in activities.splitlines()), f"{role} {viewport} not resumed"
+            runtime = run(adb + ["logcat", "-d", "-s", "AndroidRuntime:E"], capture_output=True, text=True).stdout
+            (directory / "android-runtime.txt").write_text(runtime)
+            assert "FATAL EXCEPTION" not in runtime, f"{role} {viewport} crashed"
+            run(adb + ["shell", "uiautomator", "dump", "/sdcard/queuego-launch.xml"])
+            ui_path = directory / "launch.xml"
+            run(adb + ["pull", "/sdcard/queuego-launch.xml", str(ui_path)])
+            ui_nodes = list(ET.parse(ui_path).getroot().iter("node"))
+            assert any(n.get("package") == pkg and "เข้าสู่ระบบ" in (n.get("text", "") + n.get("content-desc", "")) for n in ui_nodes), f"{role} {viewport} login not rendered"
+            screenshot = directory / "login.png"
+            with screenshot.open("wb") as png:
+                run(adb + ["exec-out", "screencap", "-p"], stdout=png)
+            item = {"role": role, "viewport": viewport, "dimensions": dimensions, "density_dpi": int(density),
+                    "package": pkg, "source_head": os.environ["GITHUB_SHA"], "state": "fresh-session login",
+                    "apk_sha256": hashlib.sha256((repo / f"native-android/{role}/build/outputs/apk/debug/{role}-debug.apk").read_bytes()).hexdigest(),
+                    "screenshot_sha256": hashlib.sha256(screenshot.read_bytes()).hexdigest(), "launch_smoke": "PASS",
+                    "physical_device": False, "visual_parity_certified": False, "production_e2e_certified": False}
+            if role == "rider":
+                button = next((n for n in ui_nodes if n.get("text") == "สมัครเป็นไรเดอร์"), None)
+                assert button is not None, f"Rider registration entry missing at {viewport}"
+                numbers = [int(x) for x in re.findall(r"\d+", button.get("bounds", ""))]
+                assert len(numbers) == 4
+                run(adb + ["shell", "input", "tap", str((numbers[0] + numbers[2]) // 2), str((numbers[1] + numbers[3]) // 2)])
+                time.sleep(3)
+                run(adb + ["shell", "uiautomator", "dump", "/sdcard/queuego-registration.xml"])
+                registration_xml = directory / "registration.xml"
+                run(adb + ["pull", "/sdcard/queuego-registration.xml", str(registration_xml)])
+                actual_registration = list(ET.parse(registration_xml).getroot().iter("node"))
+                assert any(n.get("package") == pkg and "ข้อมูลส่วนตัว" in n.get("text", "") for n in actual_registration), "Native registration screen not rendered"
+                with (directory / "registration.png").open("wb") as png:
+                    run(adb + ["exec-out", "screencap", "-p"], stdout=png)
+                item["native_registration_step_one"] = "PASS; no account/data submitted"
+                runtime = run(adb + ["logcat", "-d", "-s", "AndroidRuntime:E"], capture_output=True, text=True).stdout
+                assert "FATAL EXCEPTION" not in runtime, "Native registration crashed"
+            evidence.append(item)
+    (output / "matrix-metadata.json").write_text(json.dumps(evidence, ensure_ascii=False, indent=2) + "\n")
+    print("Actual three-role phone/small-phone/tablet fresh-session launch matrix PASS; authenticated E2E/visual parity remain unverified")
+
 
 with (output / "emulator.log").open("w") as log:
     emulator = subprocess.Popen([emulator_bin, "-avd", name, "-port", "5554", "-accel", "on", "-no-window", "-no-snapshot", "-no-audio", "-gpu", "swiftshader", "-memory", "2048", "-cores", "2"], stdout=log, stderr=subprocess.STDOUT)
@@ -99,6 +165,7 @@ with (output / "emulator.log").open("w") as log:
         }
         (output / "metadata.json").write_text(json.dumps(metadata, ensure_ascii=False, indent=2) + "\n")
         print("Actual Rider unauthenticated launch PASS; Home visual / E2E / physical FCM remain unverified")
+        capture_role_viewports()
     finally:
         for arguments, filename in [(["logcat", "-d", "-s", "AndroidRuntime:E"], "android-runtime.txt"), (["logcat", "-b", "crash", "-d"], "crash-buffer.txt")]:
             try:
