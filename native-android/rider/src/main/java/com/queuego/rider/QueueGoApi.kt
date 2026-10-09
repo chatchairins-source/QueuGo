@@ -161,6 +161,22 @@ class QueueGoApi {
         )
         if (profiles.length() == 0) error("ไม่พบโปรไฟล์ Rider")
         val row = profiles.getJSONObject(0)
+        if (!online) {
+            // Going offline must release a live sequential offer immediately instead of
+            // blocking the next Rider until the 30-second lease expires.
+            val liveOffer = runCatching {
+                rpcArray("qg_get_my_rider_offer", auth.session.accessToken)
+            }.getOrDefault(JSONArray())
+            firstOrderId(liveOffer)?.let { offeredId ->
+                runCatching {
+                    rpc(
+                        "qg_rider_decline_offer",
+                        auth.session.accessToken,
+                        JSONObject().put("p_order_id", offeredId)
+                    )
+                }
+            }
+        }
         val metadata = row.optJSONObject("metadata") ?: JSONObject()
         metadata.put("online", online).put("available", online)
         val body = JSONObject().put("metadata", metadata)
