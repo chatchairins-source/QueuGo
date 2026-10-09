@@ -167,6 +167,15 @@ private fun MerchantShell(auth: NativeAuth, logout: () -> Unit) {
         loading = false
     }
 
+    fun playMerchantNotificationSound() {
+        val tone = ToneGenerator(AudioManager.STREAM_NOTIFICATION, 90)
+        tone.startTone(ToneGenerator.TONE_PROP_BEEP2, 650)
+        scope.launch {
+            delay(750)
+            runCatching { tone.release() }
+        }
+    }
+
     suspend fun refreshOrders() = ordersMutex.withLock {
         runCatching { api.loadOrders(auth) }.onSuccess { fresh ->
             val pendingNow = fresh.filter { it.status == "pending" }.map { it.id }.toSet()
@@ -212,15 +221,6 @@ private fun MerchantShell(auth: NativeAuth, logout: () -> Unit) {
                 refreshNotifications()
                 delay(10_000)
             }
-        }
-    }
-
-    fun playMerchantNotificationSound() {
-        val tone = ToneGenerator(AudioManager.STREAM_NOTIFICATION, 90)
-        tone.startTone(ToneGenerator.TONE_PROP_BEEP2, 650)
-        scope.launch {
-            delay(750)
-            runCatching { tone.release() }
         }
     }
 
