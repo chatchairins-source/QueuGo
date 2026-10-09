@@ -1534,7 +1534,8 @@ private fun ProfileScreen(
         Spacer(Modifier.height(10.dp))
         QgAccountDeletionSection(
             accessToken = auth.session.accessToken,
-            onDeleted = logout
+            onDeleted = logout,
+            pendingChatUserId = auth.user.id
         )
         Spacer(Modifier.height(18.dp))
         OutlinedButton(onClick = logout, modifier = Modifier.fillMaxWidth()) { Text("ออกจากระบบ") }

@@ -42,6 +42,14 @@ class NativeChatPendingStoreTest {
         assertThrows(Exception::class.java) { NativeChatPendingStore(unavailable, "user", "order").prepare("ข้อความ") }
     }
 
+    @Test fun deletionClearsOnlyTheDeletedUsersPendingPayloads() = withRoot { root ->
+        val other = NativeChatPendingStore(root, "other-user", "order").prepare("ยังค้างส่ง")
+        NativeChatPendingStore(root, "deleted-user", "order").prepare("ลบ")
+        assertTrue(NativeChatPendingStore.clearUser(root, "deleted-user"))
+        assertNull(NativeChatPendingStore(root, "deleted-user", "order").load())
+        assertEquals(other, NativeChatPendingStore(root, "other-user", "order").load())
+    }
+
     @Test fun transientHttpFailuresKeepPendingLikeWeb() {
         listOf(408, 409, 429, 500, 503).forEach { assertFalse(nativeChatPermanentFailure(it)) }
         listOf(400, 401, 403, 404, 422).forEach { assertTrue(nativeChatPermanentFailure(it)) }

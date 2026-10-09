@@ -79,7 +79,8 @@ class QueueGoAccountDeletionApi {
 @Composable
 fun QgAccountDeletionSection(
     accessToken: String,
-    onDeleted: () -> Unit
+    onDeleted: () -> Unit,
+    pendingChatUserId: String? = null
 ) {
     val api = remember { QueueGoAccountDeletionApi() }
     val context = LocalContext.current
@@ -130,7 +131,9 @@ fun QgAccountDeletionSection(
                             scope.launch {
                                 runCatching { api.delete(accessToken) }
                                     .onSuccess {
-                                        withContext(Dispatchers.IO) { File(context.noBackupFilesDir, "customer-chat-pending").deleteRecursively() }
+                                        pendingChatUserId?.let { userId ->
+                                            withContext(Dispatchers.IO) { NativeChatPendingStore.clearUser(File(context.noBackupFilesDir, "customer-chat-pending"), userId) }
+                                        }
                                         onDeleted()
                                     }
                                     .onFailure { message = it.message ?: "ลบบัญชีไม่สำเร็จ" }

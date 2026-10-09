@@ -12,8 +12,11 @@ data class NativeChatPending(val id: String, val payload: String)
 
 /** App-private, no-backup root supplied by the caller. Never sends automatically. */
 class NativeChatPendingStore(private val root: File, private val userId: String, private val orderId: String) {
-    private fun hash(value: String) = MessageDigest.getInstance("SHA-256")
-        .digest(value.toByteArray(Charsets.UTF_8)).joinToString("") { "%02x".format(it) }
+    companion object {
+        private fun hash(value: String) = MessageDigest.getInstance("SHA-256")
+            .digest(value.toByteArray(Charsets.UTF_8)).joinToString("") { "%02x".format(it) }
+        fun clearUser(root: File, userId: String) = File(root, hash(userId)).deleteRecursively()
+    }
     private val file = File(File(root, hash(userId)), hash(orderId) + ".json")
 
     @Synchronized fun load(): NativeChatPending? {
