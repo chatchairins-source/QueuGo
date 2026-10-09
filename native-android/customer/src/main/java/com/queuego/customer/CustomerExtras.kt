@@ -148,69 +148,6 @@ class CustomerExtrasApi(private val http: QueueGoNativeApi = QueueGoNativeApi())
 }
 
 @Composable
-fun CustomerSearchScreen(
-    shops: List<CustomerShop>,
-    onOpenShop: (CustomerShop) -> Unit
-) {
-    var query by remember { mutableStateOf("") }
-    val q = query.trim().lowercase()
-    val filtered = if (q.isBlank()) shops else shops.filter { shop ->
-        listOf(shop.name, shop.category, shop.address.orEmpty())
-            .joinToString(" ")
-            .lowercase()
-            .contains(q)
-    }
-
-    Column(
-        Modifier.fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(14.dp)
-    ) {
-        QgSectionTitle("ค้นหา", "ค้นหาร้าน อาหาร เครื่องดื่ม ของชำ และช้อปปิ้ง")
-        Spacer(Modifier.height(10.dp))
-        OutlinedTextField(
-            value = query,
-            onValueChange = { query = it },
-            label = { Text("ค้นหาร้านหรือหมวดหมู่") },
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth()
-        )
-        Spacer(Modifier.height(12.dp))
-        if (filtered.isEmpty()) {
-            QgCard(Modifier.fillMaxWidth()) {
-                Text("ไม่พบร้านที่ตรงกับคำค้นหา", color = QgMuted)
-            }
-        } else {
-            filtered.forEach { shop ->
-                QgCard(
-                    Modifier.fillMaxWidth()
-                        .padding(bottom = 8.dp)
-                        .clickable { onOpenShop(shop) }
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        QgRemoteImage(shop.logo ?: shop.cover, Modifier.size(70.dp), shop.name)
-                        Spacer(Modifier.size(10.dp))
-                        Column(Modifier.weight(1f)) {
-                            Text(shop.name, fontWeight = FontWeight.ExtraBold)
-                            Text(customerSearchCategory(shop.category), color = QgMuted)
-                            if (!shop.address.isNullOrBlank()) {
-                                Text(shop.address!!, color = QgMuted, maxLines = 1)
-                            }
-                            Text(
-                                if (shop.open) "เปิดอยู่" else "ปิดอยู่",
-                                color = if (shop.open) com.queuego.shared.QgGreen else QgMuted,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-                    }
-                }
-            }
-        }
-        Spacer(Modifier.height(24.dp))
-    }
-}
-
-@Composable
 fun CustomerNotificationsScreen(
     notifications: List<CustomerNotification>,
     busy: Boolean,
@@ -269,12 +206,4 @@ fun CustomerNotificationsScreen(
     }
 }
 
-private fun customerSearchCategory(category: String): String = when (category.lowercase()) {
-    "food" -> "อาหาร"
-    "cafe", "drink" -> "เครื่องดื่ม"
-    "grocery" -> "ร้านขายของชำ"
-    "market", "fresh", "fresh_market" -> "ตลาดสด"
-    "laundry" -> "ฝากซัก"
-    "shopping" -> "ช้อปปิ้ง"
-    else -> "ร้านค้า"
-}
+
