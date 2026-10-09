@@ -287,3 +287,5 @@ The user-supplied Rider reference screens are the acceptance reference for workf
 - `npm test` passes; native source integrity passes 88 checks. Neither certifies pixel match, GPS/camera, physical devices, true Realtime recovery or real Production deliveries.
 - Audit found polling loops and no native Realtime socket implementation. Functional parity must include actual Production Realtime integration and lifecycle/recovery testing.
 - Outstanding: authenticated screen inventory and measurements, all-page native parity repairs, professional three-icon preview/adaptive assets, screenshots side by side, live normal/market/laundry flows, physical lifecycle/notification tests. Do not mark the three apps complete based on README coverage or source-string assertions.
+
+- Additional audit gap: Customer tracking currently renders Rider coordinate text instead of a native map; Merchant source has no native map/location picker. These missing web capabilities remain parity blockers, even when source integrity passes. Merchant secure sign-in was offered but browser remains on the sign-in page; no authenticated screen certification is claimed.
