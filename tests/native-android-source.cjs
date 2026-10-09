@@ -15,6 +15,8 @@ for(const p of [
   'rider/src/main/AndroidManifest.xml',
   'rider/src/main/java/com/queuego/rider/QueueGoRiderApp.kt',
   'rider/src/main/java/com/queuego/rider/QueueGoApi.kt',
+  'rider/src/main/java/com/queuego/rider/RiderPush.kt',
+  'rider/src/main/res/drawable/qg_notification.xml',
   'rider/src/main/java/com/queuego/rider/RiderHistoryCard.kt',
   'rider/src/main/java/com/queuego/rider/RiderChat.kt',
   'customer/src/main/java/com/queuego/customer/QueueGoCustomerApp.kt',
@@ -90,6 +92,11 @@ ok(source.includes('MerchantMenuTile')&&source.includes('height(128.dp)')&&sourc
 ok(source.includes('RiderBlueprintTopBar')&&source.includes('RoundedCornerShape(21.dp)')&&source.includes('"รับงาน · " + secondsLeft + " วิ"'),'Rider native must preserve approved topbar job-card and accept-countdown blueprint');
 const riderApi=read('rider/src/main/java/com/queuego/rider/QueueGoApi.kt');
 const riderApp=read('rider/src/main/java/com/queuego/rider/QueueGoRiderApp.kt');
+const riderPush=read('rider/src/main/java/com/queuego/rider/RiderPush.kt');
+const riderSessionStore=read('rider/src/main/java/com/queuego/rider/SessionStore.kt');
+const riderManifest=read('rider/src/main/AndroidManifest.xml');
+const nativeRootGradle=read('build.gradle.kts');
+const pilotWorkflow=fs.readFileSync(path.resolve(root,'..','.github','workflows','build-native-rider-pilot.yml'),'utf8');
 ok(riderApi.includes('qg_get_my_rider_offer')&&!riderApi.includes('rpcArray("get_rider_delivery_pool"'),'Rider native must show only the server-selected live offer, never a shared delivery pool');
 ok(riderApi.includes('qg_rider_decline_offer')&&riderApi.includes('qg_rider_action_once'),'Rider native offer accept/decline must stay on guarded Production RPCs');
 ok(riderApp.includes('ระบบกำลังหางานและจัดให้คุณอัตโนมัติ')&&riderApp.includes('ไม่มีการแย่งงานกับ Rider คนอื่น'),'Rider waiting state must explain automatic sequential assignment');
@@ -99,6 +106,13 @@ ok(riderApi.includes('if (!online)')&&riderApi.includes('qg_get_my_rider_offer')
 ok(riderApp.includes('api.setOnline(current, false, null, null)')&&riderApp.includes('api.revoke(current.session)'),'Rider logout must take the Rider offline before session revocation');
 ok(riderApp.includes('รับงานสำเร็จ · กำลังเปิดนำทางไปร้าน')&&riderApp.includes('updated?.activeJob?.let { accepted ->')&&riderApp.includes('openNavigation(context, accepted)'),'Rider native must auto-open navigation to the shop after accepting a server offer');
 ok(riderApp.includes('รับสินค้าแล้ว · กำลังเปิดนำทางไปลูกค้า')&&riderApp.includes('completedMode == "pickup"')&&riderApp.includes('openNavigation(context, pickedUp)'),'Rider native must auto-open navigation to the customer after pickup proof');
+ok(nativeRootGradle.includes('com.google.gms.google-services')&&gradle.includes('com.google.firebase:firebase-bom:35.0.0')&&gradle.includes('com.google.firebase:firebase-messaging'),'Rider native must compile with current Firebase Messaging transport');
+ok(riderManifest.includes('.QueueGoRiderMessagingService')&&riderManifest.includes('com.google.firebase.MESSAGING_EVENT')&&riderManifest.includes('queuego_orders'),'Rider native manifest must register FCM service and order channel');
+ok(riderPush.includes('FirebaseMessagingService')&&riderPush.includes('NotificationManager.IMPORTANCE_HIGH')&&riderPush.includes('syncRiderNativePush'),'Rider native must receive high-priority background job notifications and sync FCM tokens');
+ok(riderApi.includes('/functions/v1/queuego-push')&&riderApi.includes('"subscribe-native"')&&riderApi.includes('"unsubscribe-native"'),'Rider native must reuse QueueGo Production push backend');
+ok(riderSessionStore.includes('fun pushDeviceId()')&&riderSessionStore.includes('UUID.randomUUID().toString()'),'Rider push subscription must use a stable UUID device id');
+ok(riderApp.includes('syncRiderNativePush(context, auth, api, pushStore)')&&riderApp.includes('disableRiderNativePush(current, api, store)'),'Rider login/logout must synchronize native push subscription lifecycle');
+ok(pilotWorkflow.includes('QG_FIREBASE_GOOGLE_SERVICES_JSON_B64')&&pilotWorkflow.includes('native-android/rider/google-services.json')&&pilotWorkflow.includes('com.queuego.rider'),'native Rider CI must inject and validate Firebase config without committing it');
 ok(source.includes('RiderLongdoMap')&&source.includes('MapGLSurfaceView')&&source.includes('LongdoLayer'),'native Rider must include Longdo map SDK host');
 ok(riderApp.includes('RiderLongdoMap(')&&riderApp.includes('heightIn(max = maxHeight * 0.62f)') && !riderApp.includes('fillMaxHeight(0.62f)')&&riderApp.includes('recenterSignal'),'Rider native must keep map-first home with bottom dock and recenter control');
 ok(source.includes('longdo.map.key'),'native Rider manifest must provide Longdo map key');
