@@ -53,7 +53,10 @@ data class CustomerOrder(
     val pickupLatitude: Double? = null,
     val pickupLongitude: Double? = null,
     val deliveryLatitude: Double? = null,
-    val deliveryLongitude: Double? = null
+    val deliveryLongitude: Double? = null,
+    val note: String? = null,
+    val riderArrivedCustomerAt: String? = null,
+    val bundleCustomerSavings: Double = 0.0
 )
 
 data class CustomerTrackingShop(
@@ -165,7 +168,7 @@ class CustomerApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
 
     suspend fun loadOrders(auth: NativeAuth): List<CustomerOrder> {
         val rows = http.array(http.get(
-            "orders?select=id,order_number,shop_id,status,subtotal,delivery_fee,total_amount,delivery_address,created_at,rider_id,completed_at,updated_at,pickup_latitude,pickup_longitude,delivery_latitude,delivery_longitude" +
+            "orders?select=id,order_number,shop_id,status,subtotal,delivery_fee,total_amount,delivery_address,created_at,rider_id,completed_at,updated_at,pickup_latitude,pickup_longitude,delivery_latitude,delivery_longitude,note,rider_arrived_customer_at,bundle_customer_savings" +
                 "&customer_id=eq." + http.enc(auth.user.id) + "&order=created_at.desc&limit=100",
             auth.session.accessToken
         ))
@@ -188,7 +191,10 @@ class CustomerApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
                     r.optDoubleOrNull("pickup_latitude"),
                     r.optDoubleOrNull("pickup_longitude"),
                     r.optDoubleOrNull("delivery_latitude"),
-                    r.optDoubleOrNull("delivery_longitude")
+                    r.optDoubleOrNull("delivery_longitude"),
+                    r.optNullable("note"),
+                    r.optNullable("rider_arrived_customer_at"),
+                    r.optDouble("bundle_customer_savings", 0.0)
                 ))
             }
         }
