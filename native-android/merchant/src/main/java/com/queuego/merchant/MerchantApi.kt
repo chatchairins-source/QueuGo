@@ -126,6 +126,14 @@ data class MerchantNotification(
     val createdAt: String?
 )
 
+data class MerchantModule(
+    val id: String?,
+    val key: String,
+    val status: String,
+    val startedAt: String?,
+    val expiresAt: String?
+)
+
 data class MerchantPromotion(
     val id: String,
     val title: String,
@@ -643,6 +651,67 @@ class MerchantApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
         if (result.isBlank()) error("Server ยังไม่ยืนยันการนำสินค้าออก")
     }
 
+    suspend fun loadModules(auth: NativeAuth): List<MerchantModule> {
+        val rows = http.array(
+            http.get(
+                "shop_modules?select=id,shop_user_id,module_key,status,started_at,expires_at,created_at,updated_at" +
+                    "&shop_user_id=eq." + http.enc(auth.user.id) +
+                    "&order=created_at.asc",
+                auth.session.accessToken
+            )
+        )
+        return buildList {
+            for (i in 0 until rows.length()) {
+                val row = rows.optJSONObject(i) ?: continue
+                val key = row.optString("module_key")
+                if (key.isBlank()) continue
+                add(
+                    MerchantModule(
+                        id = row.optNullable("id"),
+                        key = key,
+                        status = row.optString("status").ifBlank { "disabled" },
+                        startedAt = row.optNullable("started_at"),
+                        expiresAt = row.optNullable("expires_at")
+                    )
+                )
+            }
+        }
+    }
+
+    suspend fun cycleModule(auth: NativeAuth, module: MerchantModule?): MerchantModule {
+        val key = module?.key ?: error("ไม่พบโมดูล")
+        require(key in merchantModuleCatalog.map { it.first }.toSet()) { "ไม่พบโมดูล" }
+        val statuses = listOf("disabled", "trial", "enabled")
+        val current = module.status.takeIf { it in statuses } ?: "disabled"
+        val next = statuses[(statuses.indexOf(current) + 1) % statuses.size]
+        val now = java.time.Instant.now().toString()
+        val body = JSONObject()
+            .put("status", next)
+            .put("updated_at", now)
+        if (module.id.isNullOrBlank()) {
+            body
+                .put("shop_user_id", auth.user.id)
+                .put("module_key", key)
+                .put("started_at", if (next == "disabled") JSONObject.NULL else now)
+                .put("expires_at", JSONObject.NULL)
+            http.upsert(
+                "shop_modules?on_conflict=shop_user_id,module_key",
+                auth.session.accessToken,
+                body
+            )
+        } else {
+            if (next != "disabled" && module.startedAt.isNullOrBlank()) body.put("started_at", now)
+            if (next == "disabled") body.put("expires_at", JSONObject.NULL)
+            http.patch(
+                "shop_modules?id=eq." + http.enc(module.id),
+                auth.session.accessToken,
+                body
+            )
+        }
+        return loadModules(auth).find { it.key == key }
+            ?: MerchantModule(module.id, key, next, module.startedAt, null)
+    }
+
     suspend fun loadPromotions(auth: NativeAuth, shopId: String): List<MerchantPromotion> {
         val rows = http.array(
             http.get(
@@ -877,6 +946,22 @@ internal fun merchantDeliveryRestrictionLabel(kind: String): String = when (kind
     "tobacco" -> "ยาสูบ/บุหรี่"
     "alcohol" -> "แอลกอฮอล์"
     else -> ""
+}
+
+internal val merchantModuleCatalog = listOf(
+    "storefront" to "หน้าร้าน",
+    "products" to "หน้าสินค้า",
+    "orders" to "ระบบรับออเดอร์",
+    "delivery" to "ระบบจัดส่ง",
+    "management" to "ระบบจัดการร้าน",
+    "promote" to "ระบบโปรโมต"
+)
+
+internal fun merchantModuleStatusLabel(status: String): String = when (status) {
+    "enabled" -> "เปิดใช้งาน"
+    "trial" -> "ทดลองใช้"
+    "disabled" -> "ปิดใช้งาน"
+    else -> "ยังไม่ได้ตั้งค่า"
 }
 
 internal fun merchantCoordinateValid(latitude: Double, longitude: Double): Boolean =
