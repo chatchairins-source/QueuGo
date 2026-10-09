@@ -281,7 +281,8 @@ private fun MerchantShell(auth: NativeAuth, logout: () -> Unit) {
                     onPos = { screen = "pos" },
                     onOrders = { screen = "orders" },
                     onProducts = { screen = "products" },
-                    onLaundry = { screen = "laundry" }
+                    onLaundry = { screen = "laundry" },
+                    onRevenue = { screen = "revenue" }
                 )
                 "orders" -> MerchantOrdersScreen(orders, loading) {
                     selectedOrder = it
@@ -365,6 +366,11 @@ private fun MerchantShell(auth: NativeAuth, logout: () -> Unit) {
                 )
                 "pos" -> MerchantPosScreen(auth) { screen = "home" }
                 "laundry" -> MerchantLaundryScreen(auth)
+                "revenue" -> MerchantRevenueScreen(
+                    auth = auth,
+                    api = api,
+                    onBack = { screen = "home" }
+                )
                 "support" -> MerchantSupportScreen(auth) { screen = "profile" }
                 "profile" -> MerchantProfileScreen(
                     auth = auth,
@@ -517,7 +523,8 @@ private fun DashboardScreen(
     onPos: () -> Unit,
     onOrders: () -> Unit,
     onProducts: () -> Unit,
-    onLaundry: () -> Unit
+    onLaundry: () -> Unit,
+    onRevenue: () -> Unit
 ) {
     val incoming = orders.filter {
         it.status in setOf("pending", "accepted", "searching_rider", "rider_assigned", "preparing", "ready")
@@ -612,6 +619,9 @@ private fun DashboardScreen(
             MerchantMetricCard("GP วันนี้", "฿" + "%.0f".format(revenue.gpDue), "orders", Modifier.weight(1f))
         }
 
+        Spacer(Modifier.height(9.dp))
+        MerchantRevenueEntry(onRevenue)
+
         Text(
             "จัดการร้าน",
             modifier = Modifier.padding(horizontal = 2.dp, vertical = 14.dp),
@@ -633,12 +643,7 @@ private fun DashboardScreen(
                 onOrders,
                 Modifier.weight(1f)
             )
-            MerchantMenuTile(
-                "กำลังทำ " + orders.count { it.status in setOf("preparing", "ready") },
-                "food",
-                onOrders,
-                Modifier.weight(1f)
-            )
+            MerchantMenuTile("รายงาน", "chart", onRevenue, Modifier.weight(1f))
         }
 
         Spacer(Modifier.height(16.dp))
@@ -652,6 +657,31 @@ private fun DashboardScreen(
             else -> incoming.take(6).forEach { MerchantOrderCard(it, onOpen) }
         }
         Spacer(Modifier.height(28.dp))
+    }
+}
+
+@Composable
+private fun MerchantRevenueEntry(onClick: () -> Unit) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .background(Color(0xFFE4F9ED), RoundedCornerShape(15.dp))
+            .border(1.dp, Color(0xFFC5ECD8), RoundedCornerShape(15.dp))
+            .clickable(onClick = onClick)
+            .padding(14.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text("฿", color = Color(0xFF174536), fontSize = 25.sp, fontWeight = FontWeight.Bold)
+        Spacer(Modifier.width(12.dp))
+        Column(Modifier.weight(1f)) {
+            Text("รายได้ทั้งหมด", color = Color(0xFF174536), fontSize = 14.sp, fontWeight = FontWeight.ExtraBold)
+            Text(
+                "เลือกวัน ดูยอดขาย เงินสด และ GP ย้อนหลัง",
+                color = Color(0xFF658679),
+                fontSize = 10.sp
+            )
+        }
+        Text("›", color = Color(0xFF658679), fontSize = 20.sp)
     }
 }
 
