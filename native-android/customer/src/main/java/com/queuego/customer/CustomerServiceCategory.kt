@@ -46,7 +46,8 @@ internal fun webBannerImage(banner: ServiceBanner?): String? = banner?.image?.tr
 
 @Composable
 internal fun ServiceCategoryScreen(loading: Boolean, category: String, serviceBanner: ServiceBanner?,
-    shops: List<CustomerShop>, onBack: () -> Unit, onShop: (CustomerShop) -> Unit) {
+    shops: List<CustomerShop>, onBack: () -> Unit, onShop: (CustomerShop) -> Unit,
+    onBannerLink: (String) -> Unit = {}) {
     val spec = webServiceCategory(category)
     if (spec == null) {
         ShoppingCategoryScreen(loading, category, serviceBanner, shops, onBack, onShop)
@@ -64,25 +65,13 @@ internal fun ServiceCategoryScreen(loading: Boolean, category: String, serviceBa
             Spacer(Modifier.width(8.dp))
             Text(spec.heading, fontSize = 20.sp, lineHeight = 30.sp, fontWeight = FontWeight.Bold)
         }
-        if (serviceBanner?.active != false) {
-            Box(Modifier.fillMaxWidth().aspectRatio(720f / 343f)
-                .shadow(8.dp, RoundedCornerShape(20.dp), ambientColor = Color(0x1214181E), spotColor = Color(0x1214181E))
-                .clip(RoundedCornerShape(20.dp))
-                .background(Brush.linearGradient(listOf(Color(0xFFEF0B32), Color(0xFF8F071F))))) {
-                val image = webBannerImage(serviceBanner)
-                if (image == null) Image(painterResource(spec.drawable), spec.bannerTitle, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
-                else QgRemoteImage(image, Modifier.fillMaxSize(), cornerRadius = 20.dp, showFallback = false)
-                Column(Modifier.align(Alignment.BottomStart).fillMaxWidth()
-                    .background(Brush.verticalGradient(listOf(Color.Transparent, Color(0xAD000000))))
-                    .padding(start = 18.dp, end = 18.dp, top = 30.dp, bottom = 16.dp)) {
-                    Text(serviceBanner?.title?.takeIf { it.isNotEmpty() } ?: spec.bannerTitle,
-                        color = Color.White, fontSize = 20.sp, lineHeight = 23.sp, fontWeight = FontWeight.Bold)
-                    Spacer(Modifier.height(4.dp))
-                    Text(serviceBanner?.subtitle?.takeIf { it.isNotEmpty() } ?: spec.bannerSubtitle,
-                        color = Color.White, fontSize = 12.sp, lineHeight = 18.sp)
-                }
-            }
-        }
+        CustomerServiceBanner(
+            banner = serviceBanner,
+            fallbackDrawable = spec.drawable,
+            fallbackTitle = spec.bannerTitle,
+            fallbackSubtitle = spec.bannerSubtitle,
+            onLink = onBannerLink
+        )
         Spacer(Modifier.height(14.dp))
         Row(Modifier.fillMaxWidth().padding(horizontal = 2.dp), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
@@ -102,7 +91,7 @@ internal fun ServiceCategoryScreen(loading: Boolean, category: String, serviceBa
 }
 
 @Composable
-private fun WebCategoryShopCard(shop: CustomerShop, categoryLabel: String, onClick: () -> Unit) {
+internal fun WebCategoryShopCard(shop: CustomerShop, categoryLabel: String, onClick: () -> Unit) {
     val imageSize = if (LocalConfiguration.current.screenWidthDp <= 420) 72.dp else 78.dp
     val radius = RoundedCornerShape(16.dp)
     Row(Modifier.fillMaxWidth().shadow(4.dp, radius, ambientColor = Color(0x0914181E), spotColor = Color(0x0914181E))
@@ -120,6 +109,73 @@ private fun WebCategoryShopCard(shop: CustomerShop, categoryLabel: String, onCli
                 color = if(shop.open) Color(0xFF0A9660) else Color(0xFF777777),
                 modifier = Modifier.clip(RoundedCornerShape(99.dp)).background(if(shop.open) Color(0xFFEAFAF3) else Color(0xFFF1F1F2))
                     .padding(horizontal = 6.dp, vertical = 3.dp))
+        }
+    }
+}
+
+
+@Composable
+internal fun CustomerServiceBanner(
+    banner: ServiceBanner?,
+    fallbackDrawable: Int?,
+    fallbackTitle: String,
+    fallbackSubtitle: String,
+    onLink: (String) -> Unit = {}
+) {
+    if (banner?.active == false) return
+    val remoteImage = webBannerImage(banner)
+    val heading = banner?.title?.takeIf { it.isNotBlank() } ?: fallbackTitle
+    val subtitle = banner?.subtitle?.takeIf { it.isNotBlank() } ?: fallbackSubtitle
+    val link = banner?.link?.takeIf { it.isNotBlank() }
+    val shape = RoundedCornerShape(20.dp)
+    val baseModifier = Modifier
+        .fillMaxWidth()
+        .aspectRatio(720f / 343f)
+        .shadow(8.dp, shape, ambientColor = Color(0x1214181E), spotColor = Color(0x1214181E))
+        .clip(shape)
+        .background(Brush.linearGradient(listOf(Color(0xFFEF0B32), Color(0xFF8F071F))))
+    Box(if (link != null) baseModifier.clickable { onLink(link) } else baseModifier) {
+        when {
+            remoteImage != null -> QgRemoteImage(
+                remoteImage,
+                Modifier.fillMaxSize(),
+                heading.ifBlank { "QueueGo" },
+                contentScale = ContentScale.Crop,
+                cornerRadius = 20.dp,
+                showFallback = false
+            )
+            fallbackDrawable != null -> Image(
+                painterResource(fallbackDrawable),
+                heading.ifBlank { "QueueGo" },
+                Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop
+            )
+        }
+        Column(
+            Modifier
+                .align(Alignment.BottomStart)
+                .fillMaxWidth()
+                .background(Brush.verticalGradient(listOf(Color.Transparent, Color(0xAD000000))))
+                .padding(start = 18.dp, end = 18.dp, top = 30.dp, bottom = 16.dp)
+        ) {
+            if (heading.isNotBlank()) {
+                Text(
+                    heading,
+                    color = Color.White,
+                    fontSize = 20.sp,
+                    lineHeight = 23.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+            if (subtitle.isNotBlank()) {
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    subtitle,
+                    color = Color.White,
+                    fontSize = 12.sp,
+                    lineHeight = 18.sp
+                )
+            }
         }
     }
 }
