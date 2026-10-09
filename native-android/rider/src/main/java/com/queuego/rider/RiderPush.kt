@@ -9,6 +9,7 @@ import android.media.AudioAttributes
 import android.media.RingtoneManager
 import android.os.Build
 import androidx.core.app.NotificationCompat
+import com.google.firebase.FirebaseApp
 import com.google.firebase.messaging.FirebaseMessaging
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
@@ -53,16 +54,21 @@ private suspend fun firebaseToken(): String = suspendCancellableCoroutine { cont
         }
 }
 
+internal fun riderFirebaseConfigured(context: Context): Boolean =
+    runCatching { FirebaseApp.getApps(context).isNotEmpty() }.getOrDefault(false)
+
 internal suspend fun syncRiderNativePush(
     context: Context,
     auth: QueueGoAuth,
     api: QueueGoApi,
     store: SessionStore
-) {
+): Boolean {
     ensureRiderOrderChannel(context)
+    if (!riderFirebaseConfigured(context)) return false
     val token = firebaseToken().trim()
     require(token.length >= 16) { "ไม่ได้รับ Push token จาก Firebase" }
     api.subscribeNativePush(auth, store.pushDeviceId(), token)
+    return true
 }
 
 internal suspend fun disableRiderNativePush(
@@ -125,7 +131,7 @@ class QueueGoRiderMessagingService : FirebaseMessagingService() {
             .setContentText(body.take(220))
             .setStyle(NotificationCompat.BigTextStyle().bigText(body.take(220)))
             .setPriority(NotificationCompat.PRIORITY_HIGH)
-            .setCategory(NotificationCompat.CATEGORY_CALL)
+            .setCategory(NotificationCompat.CATEGORY_MESSAGE)
             .setAutoCancel(true)
             .setContentIntent(pendingIntent)
             .build()
