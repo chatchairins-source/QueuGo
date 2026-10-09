@@ -10,6 +10,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
@@ -29,6 +30,13 @@ internal fun CustomerHomeBanner(
         Modifier
             .fillMaxWidth()
             .aspectRatio(662f / 386f)
+            .shadow(
+                elevation = 8.dp,
+                shape = RoundedCornerShape(20.dp),
+                clip = false,
+                ambientColor = Color(0x1214181E),
+                spotColor = Color(0x1214181E)
+            )
             .clip(RoundedCornerShape(20.dp))
             .then(openModifier)
     ) {
