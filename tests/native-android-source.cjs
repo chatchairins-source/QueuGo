@@ -32,6 +32,7 @@ for(const p of [
   'merchant/src/main/java/com/queuego/merchant/MerchantHoursScreen.kt',
   'merchant/src/main/java/com/queuego/merchant/MerchantRevenueScreen.kt',
   'merchant/src/main/java/com/queuego/merchant/MerchantGpSlipUpload.kt',
+  'merchant/src/main/java/com/queuego/merchant/MerchantPromotionScreen.kt',
   'merchant/src/main/AndroidManifest.xml',
   'merchant/src/main/java/com/queuego/merchant/MerchantLaundryApi.kt',
   'merchant/src/main/java/com/queuego/merchant/MerchantSupportScreen.kt'
@@ -114,6 +115,10 @@ ok(source.includes('merchant_revenue_days')&&source.includes('report_shop_gp'),'
 ok(merchantRevenue.includes('7 วันที่ผ่านมา')&&merchantRevenue.includes('30 วันที่ผ่านมา')&&merchantRevenue.includes('ดาวน์โหลดรายงาน 30 วัน (CSV)'),'Merchant native revenue must preserve web period and CSV controls');
 ok(merchantRevenue.includes('แนบสลิปและแจ้งโอน')&&merchantGpSlip.includes('/storage/v1/object/gp-slips/')&&merchantGpSlip.includes('5 * 1024 * 1024'),'Merchant native GP slip must preserve Production bucket and 5 MB limit');
 ok(source.includes('MerchantRevenueEntry(')&&source.includes('รายได้ทั้งหมด')&&source.includes('เลือกวัน ดูยอดขาย เงินสด และ GP ย้อนหลัง'),'Merchant native dashboard must preserve revenue entry blueprint');
+const merchantPromotion=read('merchant/src/main/java/com/queuego/merchant/MerchantPromotionScreen.kt');
+ok(source.includes('promotions?select=id,category,status,max_budget,period_days,payment_status,metadata,created_at')&&source.includes('"promotions"'),'Merchant native promotions must use Production promotions table and route');
+ok(merchantPromotion.includes('ทั้งหมด')&&merchantPromotion.includes('กำลังใช้งาน')&&merchantPromotion.includes('รออนุมัติ')&&merchantPromotion.includes('สร้างโปรโมชั่นใหม่'),'Merchant native promotions must preserve web filters and create flow');
+ok(source.includes('MerchantMenuTile("โปรโมชั่น"')&&source.includes('MerchantMenuTile("รายงาน"'),'Merchant native dashboard must expose promotions and reports');
 ok(source.includes('queuego_laundry_merchant_state')&&source.includes('queuego_laundry_shop_action_v2'),'Merchant native Laundry must use production laundry state/actions');
 ok(source.includes('พร้อมส่ง · เหลือ'),'Merchant preparation countdown must remain on ready button');
 ok(source.includes('SecureRoleSessionStore')&&source.includes('NativeAuthApi'),'Customer/Merchant must share native auth/session implementation');
