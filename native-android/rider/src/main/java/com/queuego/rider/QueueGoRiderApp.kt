@@ -166,6 +166,7 @@ fun QueueGoRiderApp() {
                         RiderReturnService.stop(context)
                         scope.launch {
                             runCatching { api.setOnline(current, false, null, null) }
+                            runCatching { disableRiderNativePush(current, api, store) }
                             runCatching { api.revoke(current.session) }
                         }
                         store.clear()
@@ -307,6 +308,7 @@ private fun RiderHome(
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    val pushStore = remember(context) { SessionStore(context) }
     val realtime = remember { NativeOrderRealtime() }
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     val snapshotMutex = remember { Mutex() }
@@ -345,7 +347,23 @@ private fun RiderHome(
         actionMessage = if (granted) {
             "อนุญาตการแจ้งเตือนแล้ว"
         } else {
-            "หากไม่เปิดปุ่มลอย QueueGo จะใช้การแจ้งเตือนเป็นทางกลับ"
+            "ยังไม่ได้อนุญาตการแจ้งเตือน งานใหม่จะไม่เด้งเมื่อแอปอยู่เบื้องหลัง"
+        }
+    }
+
+    LaunchedEffect(auth.user.id) {
+        ensureRiderOrderChannel(context)
+        runCatching {
+            syncRiderNativePush(context, auth, api, pushStore)
+        }.onFailure {
+            actionMessage = "เชื่อมการแจ้งเตือนเบื้องหลังไม่สำเร็จ: " +
+                (it.message ?: "กรุณาลองใหม่")
+        }
+        if (
+            Build.VERSION.SDK_INT >= 33 &&
+            context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+        ) {
+            notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
         }
     }
 
