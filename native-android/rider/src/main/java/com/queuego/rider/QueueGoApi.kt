@@ -297,17 +297,21 @@ class QueueGoApi {
 
         var offered: RiderJob? = null
         if (active == null && online) {
-            val pool = rpcArray("get_rider_delivery_pool", auth.session.accessToken)
+            // Server is the single source of truth for sequential Rider offers.
+            // Never expose a shared pool: only the Rider selected by qg_dispatch_rider_offers()
+            // can see and accept this live 30-second offer.
             val offer = rpcArray("qg_get_my_rider_offer", auth.session.accessToken)
-            val offeredId = firstOrderId(offer) ?: firstOrderId(pool)
+            val offeredId = firstOrderId(offer)
             val offerExpiry = firstOfferExpiry(offer)
-            if (offeredId != null) {
+            if (offeredId != null && offerExpiry != null) {
                 val rows = requestArray(
                     "GET",
                     "/rest/v1/orders?select=" + fields + "&id=eq." + enc(offeredId) + "&limit=1",
                     auth.session.accessToken
                 )
-                if (rows.length() > 0) offered = parseJob(rows.getJSONObject(0)).copy(offerExpiresAt = offerExpiry)
+                if (rows.length() > 0) {
+                    offered = parseJob(rows.getJSONObject(0)).copy(offerExpiresAt = offerExpiry)
+                }
             }
         }
         RiderSnapshot(online, active, offered, marketPickups, profileId)
