@@ -23,6 +23,7 @@ import com.queuego.shared.QgRedSoft
 import com.queuego.shared.QgRiderBg
 import androidx.compose.ui.graphics.Color
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Switch
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -610,6 +611,7 @@ private fun RiderHome(
     var recenterSignal by remember { mutableStateOf(0) }
     var mapReady by remember { mutableStateOf(false) }
     val mapJob = snapshot?.activeJob ?: snapshot?.offeredJob
+    val mapLaundryJob = if (snapshot?.activeJob == null) snapshot?.laundry?.activeJob else null
 
     BoxWithConstraints(
         modifier
@@ -619,6 +621,7 @@ private fun RiderHome(
         RiderLongdoMap(
             modifier = Modifier.fillMaxSize(),
             job = mapJob,
+            laundryJob = mapLaundryJob,
             marketPickups = snapshot?.marketPickups.orEmpty(),
             recenterSignal = recenterSignal,
             onMapReady = { mapReady = it }
@@ -714,7 +717,7 @@ private fun RiderHome(
                     QgStatusPill(if (current.online) "ONLINE" else "OFFLINE", current.online)
                 }
                 Spacer(Modifier.height(8.dp))
-                if (current.activeJob == null) {
+                if (current.activeJob == null && current.laundry.activeJob == null) {
                     if (current.online) {
                         OutlinedButton(
                             onClick = {
@@ -905,6 +908,44 @@ private fun RiderHome(
                             }
                         )
                     }
+                    current.laundry.activeJob != null -> {
+                        val laundryJob = current.laundry.activeJob
+                        ReturnControlCard(
+                            overlayAllowed = Settings.canDrawOverlays(context),
+                            onConfigure = { configureReturnControl() }
+                        )
+                        Spacer(Modifier.height(10.dp))
+                        RiderLaundryActiveCard(
+                            job = laundryJob,
+                            busy = actionBusy,
+                            onNavigate = { openLaundryNavigation(context, laundryJob) },
+                            onAction = { action ->
+                                if (actionBusy) return@RiderLaundryActiveCard
+                                actionBusy = true
+                                scope.launch {
+                                    runCatching { api.laundryAction(auth, laundryJob.jobId, action) }
+                                        .onSuccess {
+                                            actionMessage = when (action) {
+                                                "arrive" -> "ถึงจุดรับแล้ว"
+                                                "collect" -> "รับผ้าแล้ว · กำลังเปิดนำทางไปปลายทาง"
+                                                else -> "ส่งมอบงานฝากซักเรียบร้อย"
+                                            }
+                                            val updated = runCatching { api.riderSnapshot(auth) }.getOrNull()
+                                            if (updated != null) snapshot = updated
+                                            if (action == "collect") {
+                                                updated?.laundry?.activeJob?.let {
+                                                    openLaundryNavigation(context, it)
+                                                }
+                                            }
+                                        }
+                                        .onFailure {
+                                            actionMessage = it.message ?: "อัปเดตงานฝากซักไม่สำเร็จ"
+                                        }
+                                    actionBusy = false
+                                }
+                            }
+                        )
+                    }
                     current.offeredJob != null -> {
                         OfferCard(
                             job = current.offeredJob,
@@ -958,6 +999,78 @@ private fun RiderHome(
                         }
                     }
                 }
+
+                if (
+                    current.activeJob == null &&
+                    current.laundry.activeJob == null &&
+                    current.laundry.pool.isNotEmpty()
+                ) {
+                    Spacer(Modifier.height(10.dp))
+                    RiderLaundryPoolCard(
+                        jobs = current.laundry.pool,
+                        busy = actionBusy,
+                        onClaim = { job ->
+                            if (actionBusy) return@RiderLaundryPoolCard
+                            actionBusy = true
+                            scope.launch {
+                                runCatching { api.claimLaundryJob(auth, job.jobId) }
+                                    .onSuccess {
+                                        actionMessage = "รับงานฝากซักแล้ว · กำลังเปิดนำทาง"
+                                        val updated = runCatching { api.riderSnapshot(auth) }.getOrNull()
+                                        if (updated != null) snapshot = updated
+                                        updated?.laundry?.activeJob?.let {
+                                            openLaundryNavigation(context, it)
+                                        }
+                                    }
+                                    .onFailure {
+                                        actionMessage = it.message ?: "รับงานฝากซักไม่สำเร็จ"
+                                    }
+                                actionBusy = false
+                            }
+                        }
+                    )
+                }
+
+                Spacer(Modifier.height(10.dp))
+                RiderLaundryModeCard(
+                    enabled = current.laundry.modeEnabled,
+                    invites = current.laundry.invites,
+                    busy = actionBusy,
+                    onToggle = { enabled ->
+                        if (actionBusy) return@RiderLaundryModeCard
+                        actionBusy = true
+                        scope.launch {
+                            runCatching { api.setLaundryMode(auth, enabled) }
+                                .onSuccess {
+                                    actionMessage = if (enabled) "เปิดรับงานฝากซักแล้ว" else "ปิดรับงานฝากซักแล้ว"
+                                    snapshot = runCatching { api.riderSnapshot(auth) }.getOrNull()
+                                }
+                                .onFailure {
+                                    actionMessage = it.message ?: "เปลี่ยนโหมดฝากซักไม่สำเร็จ"
+                                }
+                            actionBusy = false
+                        }
+                    },
+                    onInvite = { invite, accept ->
+                        if (actionBusy) return@RiderLaundryModeCard
+                        actionBusy = true
+                        scope.launch {
+                            runCatching { api.laundryInviteAction(auth, invite.inviteId, accept) }
+                                .onSuccess {
+                                    actionMessage = if (accept) {
+                                        "ยอมรับเป็น Rider รับ-ส่งผ้าของร้านแล้ว"
+                                    } else {
+                                        "ปฏิเสธคำเชิญแล้ว"
+                                    }
+                                    snapshot = runCatching { api.riderSnapshot(auth) }.getOrNull()
+                                }
+                                .onFailure {
+                                    actionMessage = it.message ?: "ตอบคำเชิญไม่สำเร็จ"
+                                }
+                            actionBusy = false
+                        }
+                    }
+                )
             }
         }
 
