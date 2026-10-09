@@ -592,7 +592,9 @@ private fun CustomerShell(auth: NativeAuth, logout: () -> Unit) {
                     onBack = { screen = shopReturnScreen },
                     onAdd = { product ->
                         val currentShopId = cart.firstOrNull()?.product?.shopId
-                        if (currentShopId != null && currentShopId != product.shopId) {
+                        if (checkoutPending) {
+                            message = "กรุณาตรวจผลคำสั่งซื้อเดิมก่อนแก้ตะกร้า"
+                        } else if (currentShopId != null && currentShopId != product.shopId) {
                             message = "หนึ่งตะกร้าสั่งได้จากร้านเดียว กรุณาสั่งร้านเดิมให้เสร็จก่อน"
                         } else {
                             val existing = cart.find { it.product.id == product.id }
@@ -609,18 +611,18 @@ private fun CustomerShell(auth: NativeAuth, logout: () -> Unit) {
                     checkoutPending = checkoutPending,
                     onBack = { screen = "home" },
                     onMinus = { id ->
-                        cart = cart.mapNotNull {
+                        if (!checkoutPending) cart = cart.mapNotNull {
                             if (it.product.id != id) it
                             else if (it.quantity <= 1) null else it.copy(quantity = it.quantity - 1)
                         }
                     },
                     onPlus = { id ->
-                        cart = cart.map {
+                        if (!checkoutPending) cart = cart.map {
                             if (it.product.id == id) it.copy(quantity = (it.quantity + 1).coerceAtMost(99)) else it
                         }
                     },
                     onRemove = { id ->
-                        cart = cart.filterNot { it.product.id == id }
+                        if (!checkoutPending) cart = cart.filterNot { it.product.id == id }
                     },
                     onCheckout = {
                         if (checkoutPending) {
