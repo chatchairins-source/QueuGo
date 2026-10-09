@@ -60,7 +60,7 @@ def capture_role_viewports():
             directory = output / "matrix" / role / viewport
             directory.mkdir(parents=True, exist_ok=True)
             run(adb + ["shell", "am", "force-stop", pkg])
-            run(adb + ["logcat", "-c"])
+            run(adb + ["logcat", "-b", "all", "-c"])
             started = run(adb + ["shell", "am", "start", "-W", "-n", activity_name], capture_output=True, text=True)
             (directory / "activity-start.txt").write_text(started.stdout + started.stderr)
             assert "Status: ok" in started.stdout, f"{role} {viewport} launch failed"
@@ -118,7 +118,7 @@ def verify_real_home_map_runtime():
     run(adb + ["shell", "am", "force-stop", package])
     run(adb + ["install", "-r", str(baseline / "rider-untransformed.apk")])
     run(adb + ["install", "-r", str(baseline / "rider-test.apk")])
-    run(adb + ["logcat", "-c"])
+    run(adb + ["logcat", "-b", "all", "-c"])
     before = subprocess.run(instrument, capture_output=True, text=True, timeout=120)
     crash = run(adb + ["logcat", "-d"], capture_output=True, text=True).stdout
     before_text = before.stdout + before.stderr + crash
@@ -127,7 +127,7 @@ def verify_real_home_map_runtime():
     run(adb + ["shell", "am", "force-stop", package])
     run(adb + ["install", "-r", str(apk)])
     run(adb + ["install", "-r", str(test_apk)])
-    run(adb + ["logcat", "-c"])
+    run(adb + ["logcat", "-b", "all", "-c"])
     after = run(instrument, capture_output=True, text=True, timeout=150)
     runtime = run(adb + ["logcat", "-d", "-s", "AndroidRuntime:E"], capture_output=True, text=True).stdout
     (output / "map-after-fix.txt").write_text(after.stdout + after.stderr + runtime)
@@ -160,7 +160,7 @@ with (output / "emulator.log").open("w") as log:
             assert time.monotonic() < deadline, "Android boot timed out; no Native screenshot certified"
             time.sleep(5)
         run(adb + ["install", "-r", str(apk)])
-        run(adb + ["logcat", "-c"])
+        run(adb + ["logcat", "-b", "all", "-c"])
         start = run(adb + ["shell", "am", "start", "-W", "-n", component], capture_output=True, text=True)
         (output / "activity-start.txt").write_text(start.stdout + start.stderr)
         assert "Status: ok" in start.stdout, "Activity launch did not succeed"
