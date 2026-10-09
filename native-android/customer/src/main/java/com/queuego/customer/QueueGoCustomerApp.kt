@@ -207,7 +207,9 @@ private fun CustomerShell(auth: NativeAuth, logout: () -> Unit) {
     }
 
     BackHandler(enabled = screen != "home") {
-        if (screen == "shopping" && shoppingMode != "all") {
+        if (screen == "checkout") {
+            screen = "cart"
+        } else if (screen == "shopping" && shoppingMode != "all") {
             shoppingMode = "all"
         } else {
             screen = "home"
@@ -597,7 +599,64 @@ private fun CustomerShell(auth: NativeAuth, logout: () -> Unit) {
                     },
                     onCart = { screen = "cart" }
                 )
-                "cart" -> CartScreen(
+                "cart" -> CustomerCartScreen(
+                    cart = cart,
+                    busy = busy,
+                    onBack = { screen = "home" },
+                    onMinus = { id ->
+                        cart = cart.mapNotNull {
+                            if (it.product.id != id) it
+                            else if (it.quantity <= 1) null else it.copy(quantity = it.quantity - 1)
+                        }
+                    },
+                    onPlus = { id ->
+                        cart = cart.map {
+                            if (it.product.id == id) it.copy(quantity = (it.quantity + 1).coerceAtMost(99)) else it
+                        }
+                    },
+                    onRemove = { id ->
+                        cart = cart.filterNot { it.product.id == id }
+                    },
+                    onCheckout = {
+                        if (!busy && cart.isNotEmpty()) {
+                            busy = true
+                            message = null
+                            scope.launch {
+                                val current = cart.toList()
+                                val shopId = current.firstOrNull()?.product?.shopId
+                                runCatching {
+                                    require(!shopId.isNullOrBlank()) { "ตะกร้าว่าง" }
+                                    val fresh = api.loadProducts(auth, shopId)
+                                    val byId = fresh.associateBy { it.id }
+                                    val unavailable = current.filter { line ->
+                                        byId[line.product.id]?.available != true
+                                    }
+                                    require(unavailable.isEmpty()) {
+                                        "รายการที่ยังสั่งไม่ได้: " + unavailable.joinToString(", ") { it.product.name }
+                                    }
+                                    var changed = false
+                                    val reconciled = current.map { line ->
+                                        val latest = byId.getValue(line.product.id)
+                                        if (latest.deliveryPrice != line.product.deliveryPrice ||
+                                            latest.name != line.product.name ||
+                                            latest.image != line.product.image
+                                        ) changed = true
+                                        line.copy(product = latest)
+                                    }
+                                    cart = reconciled
+                                    if (changed) {
+                                        message = "ราคาสินค้ามีการเปลี่ยนแปลง กรุณาตรวจสอบยอดล่าสุดก่อนยืนยัน"
+                                    }
+                                    screen = "checkout"
+                                }.onFailure {
+                                    message = it.message ?: "ตรวจสอบตะกร้าไม่สำเร็จ"
+                                }
+                                busy = false
+                            }
+                        }
+                    }
+                )
+                "checkout" -> CustomerCheckoutScreen(
                     checkoutPending = checkoutPending,
                     cart = cart,
                     shop = shops.find { it.id == cart.firstOrNull()?.product?.shopId },
@@ -605,11 +664,8 @@ private fun CustomerShell(auth: NativeAuth, logout: () -> Unit) {
                     address = address,
                     note = note,
                     busy = busy,
-                    onAddress = {
-                        address = it
-                        location = location?.copy(address = it)
-                    },
-                    onNote = { note = it },
+                    resolveAddress = { latitude, longitude -> api.reverseGeocode(latitude, longitude) },
+                    onBack = { screen = "cart" },
                     onGps = {
                         if (hasLocation(context)) {
                             val p = lastKnownLocation(context)
@@ -618,18 +674,20 @@ private fun CustomerShell(auth: NativeAuth, logout: () -> Unit) {
                                 message = "ใช้ตำแหน่งปัจจุบันแล้ว"
                             } else message = "ยังอ่านตำแหน่ง GPS ไม่ได้"
                         } else {
-                            permission.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION))
+                            permission.launch(arrayOf(
+                                Manifest.permission.ACCESS_FINE_LOCATION,
+                                Manifest.permission.ACCESS_COARSE_LOCATION
+                            ))
                         }
                     },
-                    onMinus = { id ->
-                        cart = cart.mapNotNull {
-                            if (it.product.id != id) it
-                            else if (it.quantity <= 1) null else it.copy(quantity = it.quantity - 1)
-                        }
+                    onLocationChange = { next ->
+                        location = next
                     },
-                    onPlus = { id ->
-                        cart = cart.map { if (it.product.id == id) it.copy(quantity = it.quantity + 1) else it }
+                    onAddress = {
+                        address = it
+                        location = location?.copy(address = it)
                     },
+                    onNote = { note = it.take(500) },
                     onPlace = {
                         if (!busy) {
                             busy = true
@@ -637,35 +695,62 @@ private fun CustomerShell(auth: NativeAuth, logout: () -> Unit) {
                             val submittedLocation = location?.copy(address = address.trim())
                             val submittedShop = shops.find { it.id == submittedCart.firstOrNull()?.product?.shopId }
                             val submittedNote = note
-                            // Persist the cart snapshot immediately so reconciliation can clear
-                            // exactly the submitted cart without touching later edits.
                             cartStore.save(submittedCart)
                             scope.launch {
                                 try {
                                     val order = checkoutRecovery.submit(
                                         create = {
-                                            require(submittedShop != null && submittedLocation != null && submittedLocation.address.isNotBlank()) { "กรุณาเลือกตำแหน่งและกรอกที่อยู่จัดส่ง" }
-                                            cartStore.pending(api.checkoutBody(auth, UUID.randomUUID().toString(), submittedShop, submittedCart, submittedLocation, submittedNote), submittedCart)
+                                            require(submittedShop != null && submittedLocation != null && submittedLocation.address.isNotBlank()) {
+                                                "กรุณาเลือกตำแหน่งและกรอกที่อยู่จัดส่ง"
+                                            }
+                                            cartStore.pending(
+                                                api.checkoutBody(
+                                                    auth,
+                                                    UUID.randomUUID().toString(),
+                                                    submittedShop,
+                                                    submittedCart,
+                                                    submittedLocation,
+                                                    submittedNote
+                                                ),
+                                                submittedCart
+                                            )
                                         },
                                         send = { pending ->
                                             val body = pending.body
-                                            api.saveLocation(auth, CustomerLocation(body.getDouble("p_delivery_lat"), body.getDouble("p_delivery_lng"), body.getString("p_delivery_address")))
+                                            api.saveLocation(
+                                                auth,
+                                                CustomerLocation(
+                                                    body.getDouble("p_delivery_lat"),
+                                                    body.getDouble("p_delivery_lng"),
+                                                    body.getString("p_delivery_address")
+                                                )
+                                            )
                                             api.placeOrder(auth, body)
                                         },
                                         recover = { api.findPlacedOrder(auth, it.body.getString("p_order_id")) },
-                                        definitiveRejection = { e -> e is com.queuego.shared.QueueGoHttpException && e.statusCode in 400..499 && e.statusCode !in listOf(401, 403, 408, 429) }
+                                        definitiveRejection = { e ->
+                                            e is com.queuego.shared.QueueGoHttpException &&
+                                                e.statusCode in 400..499 &&
+                                                e.statusCode !in listOf(401, 403, 408, 429)
+                                        }
                                     )
                                     showPlacedOrder(order)
-                                } catch (e: CancellationException) { throw e }
-                                catch (e: Exception) {
+                                } catch (e: CancellationException) {
+                                    throw e
+                                } catch (e: Exception) {
                                     checkoutPending = runCatching { checkoutJournal.read() != null }.getOrDefault(true)
                                     message = when {
-                                        checkoutPending -> "ยังยืนยันผลไม่ได้ กรุณาตรวจผลคำขอเดิมอีกครั้ง ระบบจะใช้รายการเดิมเพื่อป้องกันออเดอร์ซ้ำ"
-                                        e.message?.contains("OUTSIDE_SERVICE_AREA") == true -> "ตำแหน่งอยู่นอกพื้นที่ให้บริการ QueueGo"
-                                        e.message?.contains("DELIVERY_DISTANCE_EXCEEDED") == true -> "ระยะทางไกลเกินขอบเขตให้บริการ"
+                                        checkoutPending ->
+                                            "ยังยืนยันผลไม่ได้ กรุณาตรวจผลคำขอเดิมอีกครั้ง ระบบจะใช้รายการเดิมเพื่อป้องกันออเดอร์ซ้ำ"
+                                        e.message?.contains("OUTSIDE_SERVICE_AREA") == true ->
+                                            "ตำแหน่งอยู่นอกพื้นที่ให้บริการ QueueGo"
+                                        e.message?.contains("DELIVERY_DISTANCE_EXCEEDED") == true ->
+                                            "ระยะทางไกลเกินขอบเขตให้บริการ"
                                         else -> e.message ?: "สั่งซื้อไม่สำเร็จ"
                                     }
-                                } finally { busy = false }
+                                } finally {
+                                    busy = false
+                                }
                             }
                         }
                     }
@@ -1190,93 +1275,6 @@ internal fun customerDistanceKm(location: CustomerLocation, shop: CustomerShop):
         kotlin.math.cos(lat1Rad) * kotlin.math.cos(lat2Rad) *
         kotlin.math.sin(dLon / 2) * kotlin.math.sin(dLon / 2)
     return 6_371.0 * 2.0 * kotlin.math.atan2(kotlin.math.sqrt(a), kotlin.math.sqrt(1.0 - a))
-}
-
-@Composable
-private fun CartScreen(
-    checkoutPending: Boolean,
-    cart: List<CartLine>,
-    shop: CustomerShop?,
-    location: CustomerLocation?,
-    address: String,
-    note: String,
-    busy: Boolean,
-    onAddress: (String) -> Unit,
-    onNote: (String) -> Unit,
-    onGps: () -> Unit,
-    onMinus: (String) -> Unit,
-    onPlus: (String) -> Unit,
-    onPlace: () -> Unit
-) {
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(14.dp)) {
-        QgSectionTitle("ตะกร้าของคุณ", shop?.name)
-        Spacer(Modifier.height(10.dp))
-        if (cart.isEmpty() && !checkoutPending) {
-            QgCard(Modifier.fillMaxWidth()) { Text("ตะกร้ายังว่าง", color = QgMuted) }
-            return
-        }
-        cart.forEach { line ->
-            Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                QgRemoteImage(line.product.image, Modifier.size(58.dp), line.product.name)
-                Spacer(Modifier.width(9.dp))
-                Column(Modifier.weight(1f)) {
-                    Text(line.product.name, fontWeight = FontWeight.Bold)
-                    Text("฿" + "%.0f".format(line.product.deliveryPrice * line.quantity))
-                }
-                OutlinedButton(onClick = { onMinus(line.product.id) }) { Text("−") }
-                Text(line.quantity.toString(), Modifier.padding(horizontal = 8.dp), fontWeight = FontWeight.Bold)
-                OutlinedButton(onClick = { onPlus(line.product.id) }) { Text("+") }
-            }
-        }
-        Spacer(Modifier.height(12.dp))
-        QgCard(Modifier.fillMaxWidth()) {
-            Column {
-                Text("จุดจัดส่ง", fontWeight = FontWeight.ExtraBold)
-                Text(
-                    if (location == null) "ยังไม่ได้ระบุตำแหน่ง GPS" else "%.5f, %.5f".format(location.latitude, location.longitude),
-                    color = QgMuted,
-                    style = MaterialTheme.typography.bodySmall
-                )
-                Spacer(Modifier.height(8.dp))
-                OutlinedButton(onClick = onGps, modifier = Modifier.fillMaxWidth()) { Text("ใช้ตำแหน่งปัจจุบัน") }
-                Spacer(Modifier.height(8.dp))
-                OutlinedTextField(
-                    value = address, onValueChange = onAddress,
-                    label = { Text("ที่อยู่ / จุดสังเกตสำหรับจัดส่ง") },
-                    modifier = Modifier.fillMaxWidth()
-                )
-                Spacer(Modifier.height(8.dp))
-                OutlinedTextField(
-                    value = note, onValueChange = onNote,
-                    label = { Text("หมายเหตุสำหรับร้าน (ถ้ามี)") },
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
-        }
-        Spacer(Modifier.height(12.dp))
-        val subtotal = cart.sumOf { it.product.deliveryPrice * it.quantity }
-        val fee = runCatching {
-            if (shop != null && location != null) CustomerApi().deliveryFee(shop, location.copy(address = address)) else null
-        }.getOrNull()
-        QgCard(Modifier.fillMaxWidth()) {
-            Column {
-                SummaryRow("ค่าสินค้า", subtotal)
-                SummaryRow("ค่าส่ง", fee)
-                HorizontalDivider(Modifier.padding(vertical = 8.dp))
-                SummaryRow("รวม", if (fee == null) null else subtotal + fee, true)
-            }
-        }
-        Spacer(Modifier.height(12.dp))
-        Button(
-            onClick = onPlace,
-            enabled = !busy && (checkoutPending || (location != null && address.isNotBlank() && fee != null)),
-            modifier = Modifier.fillMaxWidth().height(54.dp)
-        ) {
-            if (busy) CircularProgressIndicator(Modifier.size(22.dp), strokeWidth = 2.dp)
-            else Text(if (checkoutPending) "ตรวจผลคำสั่งซื้อเดิม" else "ยืนยันสั่งซื้อ", fontWeight = FontWeight.ExtraBold)
-        }
-        Spacer(Modifier.height(30.dp))
-    }
 }
 
 @Composable
