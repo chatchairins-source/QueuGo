@@ -4,6 +4,10 @@ import android.net.Uri
 import android.provider.OpenableColumns
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.foundation.layout.Box
 import androidx.compose.material3.TextButton
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.foundation.lazy.LazyColumn
@@ -69,6 +73,11 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.time.Instant
 import java.util.UUID
+
+private val customerChatReportReasons = linkedMapOf(
+    "harassment" to "คุกคาม / กลั่นแกล้ง", "inappropriate" to "เนื้อหาไม่เหมาะสม",
+    "spam" to "สแปม", "fraud" to "หลอกลวง / ฉ้อโกง", "safety" to "ความปลอดภัย", "other" to "อื่น ๆ"
+)
 
 data class CustomerChatModeration(
     val accepted: Boolean,
@@ -136,6 +145,7 @@ class CustomerChatApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
         reason: String,
         details: String?
     ) {
+        require(reason in customerChatReportReasons) { "เหตุผลไม่ถูกต้อง" }
         http.rpc(
             "qg_report_chat",
             auth.session.accessToken,
@@ -209,6 +219,9 @@ private fun CustomerChatRoom(auth: NativeAuth, order: CustomerOrder, onBack: () 
     var message by remember { mutableStateOf<String?>(null) }
     var reportMessageId by remember { mutableStateOf<String?>(null) }
     var reportDetails by remember { mutableStateOf("") }
+    var reportReason by remember { mutableStateOf("harassment") }
+    var reasonMenu by remember { mutableStateOf(false) }
+    var reportError by remember { mutableStateOf<String?>(null) }
 
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     val currentOrder by rememberUpdatedState(order)
@@ -254,6 +267,12 @@ private fun CustomerChatRoom(auth: NativeAuth, order: CustomerOrder, onBack: () 
         moderation = mod
         messages = nextMessages
         readError = null
+    }
+
+    LaunchedEffect(reportMessageId) {
+        reportReason = "harassment"
+        reasonMenu = false
+        reportError = null
     }
 
     LaunchedEffect(pendingStore) {
@@ -456,54 +475,53 @@ private fun CustomerChatRoom(auth: NativeAuth, order: CustomerOrder, onBack: () 
                 }
 
                 if (reportMessageId != null) {
-                    Spacer(Modifier.height(8.dp))
-                    QgCard(Modifier.fillMaxWidth()) {
-                        Column {
-                            Text(
-                                if (reportMessageId!!.isBlank()) "รายงานคู่สนทนา" else "รายงานข้อความ",
-                                fontWeight = FontWeight.ExtraBold
-                            )
-                            OutlinedTextField(
-                                value = reportDetails,
-                                onValueChange = { if (it.length <= 1000) reportDetails = it },
-                                label = { Text("รายละเอียดเพิ่มเติม (ถ้ามี)") },
-                                modifier = Modifier.fillMaxWidth()
-                            )
-                            Spacer(Modifier.height(7.dp))
-                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                OutlinedButton(
-                                    onClick = { reportMessageId = null },
-                                    modifier = Modifier.weight(1f)
-                                ) { Text("ยกเลิก") }
-                                Button(
-                                    onClick = {
-                                        busy = true
-                                        val target = reportMessageId
-                                        scope.launch {
-                                            runCatching {
-                                                api.report(
-                                                    auth,
-                                                    order.id,
-                                                    target?.takeIf { it.isNotBlank() },
-                                                    "other",
-                                                    reportDetails
-                                                )
-                                            }.onSuccess {
-                                                message = "ส่งรายงานให้ QueueGo ตรวจสอบแล้ว"
-                                                reportMessageId = null
-                                            }.onFailure {
-                                                if (it is CancellationException) throw it
-                                                message = it.message ?: "ส่งรายงานไม่สำเร็จ"
-                                            }
-                                            busy = false
+                    AlertDialog(
+                        onDismissRequest = { if (!busy) reportMessageId = null },
+                        title = { Text("รายงานเนื้อหาแชต") },
+                        text = {
+                            Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                                reportError?.let { Text(it, color = QgRed) }
+                                Text("เหตุผล")
+                                Box {
+                                    OutlinedButton(onClick = { reasonMenu = true }, enabled = !busy) {
+                                        Text(customerChatReportReasons.getValue(reportReason))
+                                    }
+                                    DropdownMenu(expanded = reasonMenu, onDismissRequest = { reasonMenu = false }) {
+                                        customerChatReportReasons.forEach { (value, label) ->
+                                            DropdownMenuItem(text = { Text(label) }, onClick = { reportReason = value; reasonMenu = false })
                                         }
-                                    },
-                                    enabled = !busy,
-                                    modifier = Modifier.weight(1f)
-                                ) { Text("ส่งรายงาน") }
+                                    }
+                                }
+                                OutlinedTextField(value = reportDetails,
+                                    onValueChange = { if (it.length <= 1000) reportDetails = it },
+                                    label = { Text("รายละเอียด") },
+                                    placeholder = { Text("อธิบายเพิ่มเติม (ไม่บังคับ)") },
+                                    minLines = 4, maxLines = 4,
+                                    enabled = !busy, modifier = Modifier.fillMaxWidth())
                             }
+                        },
+                        dismissButton = { TextButton(onClick = { reportMessageId = null }, enabled = !busy) { Text("ยกเลิก") } },
+                        confirmButton = {
+                            TextButton(onClick = {
+                                if (busy) return@TextButton
+                                busy = true
+                                reportError = null
+                                val target = reportMessageId
+                                val reason = reportReason
+                                val details = reportDetails
+                                scope.launch {
+                                    try {
+                                        api.report(auth, order.id, target?.takeIf { it.isNotBlank() }, reason, details)
+                                        currentCoroutineContext().ensureActive()
+                                        message = "ส่งรายงานให้ QueueGo ตรวจสอบแล้ว"
+                                        reportMessageId = null
+                                    } catch (cancelled: CancellationException) { throw cancelled }
+                                    catch (failure: Exception) { reportError = failure.message ?: "ส่งรายงานไม่สำเร็จ" }
+                                    finally { busy = false }
+                                }
+                            }, enabled = !busy) { Text("ส่งรายงาน") }
                         }
-                    }
+                    )
                 }
 
                 Spacer(Modifier.height(8.dp))
