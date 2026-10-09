@@ -36,6 +36,7 @@ for(const p of [
   'merchant/src/main/java/com/queuego/merchant/MerchantNotificationsScreen.kt',
   'merchant/src/main/java/com/queuego/merchant/MerchantProductModel.kt',
   'merchant/src/main/java/com/queuego/merchant/MerchantProductsScreen.kt',
+  'merchant/src/main/java/com/queuego/merchant/MerchantCatalogScreen.kt',
   'merchant/src/main/java/com/queuego/merchant/MerchantMediaScreen.kt',
   'merchant/src/main/java/com/queuego/merchant/MerchantModulesScreen.kt',
   'merchant/src/main/AndroidManifest.xml',
@@ -139,6 +140,8 @@ ok(merchantProductModel.includes('เมนูแนะนำ / เมนูข�
 ok(merchantProductModel.includes('queuego.menu-options.v1')&&merchantProductModel.includes('ธรรมดา')&&merchantProductModel.includes('พิเศษ')&&merchantProductModel.includes('ท็อปปิ้ง'),'Merchant native food editor must preserve structured menu options');
 ok(merchantProductsScreen.includes('จำนวนในสต็อก *')&&merchantProductsScreen.includes('ขายหน้าร้าน')&&merchantProductsScreen.includes('ขาย Delivery')&&merchantProductsScreen.includes('รูปจะเก็บในคลังรูปภาพของร้าน'),'Merchant native product editor must preserve stock, channels and image flow');
 ok(source.includes('"product" ->')&&!source.includes('private fun ProductsScreen('),'Merchant native must remove the legacy inline product implementation');
+const merchantCatalog=read('merchant/src/main/java/com/queuego/merchant/MerchantCatalogScreen.kt');
+ok(source.includes('"catalog" ->')&&merchantCatalog.includes('เพิ่มสินค้าจากคลังสินค้า')&&merchantCatalog.includes('ค้นหาเมนูในร้าน...')&&merchantCatalog.includes('ดูและแก้ไข'),'Merchant native product add flow must preserve Production catalog page');
 const merchantMedia=read('merchant/src/main/java/com/queuego/merchant/MerchantMediaScreen.kt');
 const merchantModules=read('merchant/src/main/java/com/queuego/merchant/MerchantModulesScreen.kt');
 ok(merchantMedia.includes('/storage/v1/object/list/merchant-media')&&merchantMedia.includes('auth.session.authUserId + "/"')&&merchantMedia.includes('เพิ่มรูปจากเครื่อง'),'Merchant native media library must list and upload only the signed-in shop prefix');
