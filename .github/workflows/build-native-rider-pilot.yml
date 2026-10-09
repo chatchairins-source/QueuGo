@@ -44,7 +44,7 @@ jobs:
       - name: Source integrity
         run: node tests/native-android-source.cjs
       - name: Tracking coordinate and terminal-state unit tests
-        run: gradle -p native-android :customer:testDebugUnitTest --stacktrace
+        run: gradle -p native-android :shared:testDebugUnitTest :customer:testDebugUnitTest --stacktrace
       - name: Build three native APKs
         run: gradle -p native-android :customer:assembleDebug :merchant:assembleDebug :rider:assembleDebug --stacktrace
       - name: Reject WebView

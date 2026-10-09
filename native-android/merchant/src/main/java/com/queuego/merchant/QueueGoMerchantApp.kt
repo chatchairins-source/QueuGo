@@ -40,6 +40,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.queuego.shared.NativeOrderRealtime
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.repeatOnLifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import com.queuego.shared.NativeAuth
 import com.queuego.shared.QgAccountDeletionSection
 import com.queuego.shared.QgBg
@@ -72,6 +78,9 @@ fun QueueGoMerchantApp() {
 private fun MerchantShell(auth: NativeAuth, logout: () -> Unit) {
     val api = remember { MerchantApi() }
     val scope = rememberCoroutineScope()
+    val realtime = remember { NativeOrderRealtime() }
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
+    val ordersMutex = remember { Mutex() }
     var screen by remember { mutableStateOf("home") }
     var shop by remember { mutableStateOf<MerchantShop?>(null) }
     var orders by remember { mutableStateOf<List<MerchantOrder>>(emptyList()) }
@@ -97,9 +106,9 @@ private fun MerchantShell(auth: NativeAuth, logout: () -> Unit) {
         loading = true
         runCatching {
             val s = api.loadShop(auth)
-            shop = s
             orders = api.loadOrders(auth)
             knownPendingIds = orders.filter { it.status == "pending" }.map { it.id }.toSet()
+            shop = s
             if (s != null) {
                 products = api.loadProducts(auth, s.id)
                 readiness = api.readiness(auth, s.id)
@@ -112,28 +121,39 @@ private fun MerchantShell(auth: NativeAuth, logout: () -> Unit) {
         loading = false
     }
 
+    suspend fun refreshOrders() = ordersMutex.withLock {
+        runCatching { api.loadOrders(auth) }.onSuccess { fresh ->
+            val pendingNow = fresh.filter { it.status == "pending" }.map { it.id }.toSet()
+            val before = knownPendingIds
+            if (before != null && pendingNow.any { it !in before }) {
+                val tone = ToneGenerator(AudioManager.STREAM_NOTIFICATION, 90)
+                tone.startTone(ToneGenerator.TONE_PROP_BEEP2, 650)
+                scope.launch {
+                    delay(750)
+                    runCatching { tone.release() }
+                }
+            }
+            knownPendingIds = pendingNow
+            orders = fresh
+            selectedOrder = selectedOrder?.let { old -> fresh.find { it.id == old.id } ?: old }
+        }
+        if (screen == "order" && selectedOrder != null) {
+            runCatching { api.loadOrderItems(auth, selectedOrder!!.id) }.onSuccess { orderItems = it }
+        }
+    }
+
+    LaunchedEffect(auth.session.accessToken, shop?.id, lifecycle) {
+        val shopId = shop?.id ?: return@LaunchedEffect
+        lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            realtime.changes(auth.session.accessToken, shopId).collect { refreshOrders() }
+        }
+    }
+
     LaunchedEffect(auth.user.id) { refreshAll() }
     LaunchedEffect(screen) {
         if (screen == "home" || screen == "orders" || screen == "order") {
             while (true) {
-                runCatching { api.loadOrders(auth) }.onSuccess { fresh ->
-                    val pendingNow = fresh.filter { it.status == "pending" }.map { it.id }.toSet()
-                    val before = knownPendingIds
-                    if (before != null && pendingNow.any { it !in before }) {
-                        val tone = ToneGenerator(AudioManager.STREAM_NOTIFICATION, 90)
-                        tone.startTone(ToneGenerator.TONE_PROP_BEEP2, 650)
-                        scope.launch {
-                            delay(750)
-                            runCatching { tone.release() }
-                        }
-                    }
-                    knownPendingIds = pendingNow
-                    orders = fresh
-                    selectedOrder = selectedOrder?.let { old -> fresh.find { it.id == old.id } ?: old }
-                }
-                if (screen == "order" && selectedOrder != null) {
-                    runCatching { api.loadOrderItems(auth, selectedOrder!!.id) }.onSuccess { orderItems = it }
-                }
+                refreshOrders()
                 delay(3_000)
             }
         }
