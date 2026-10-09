@@ -22,7 +22,8 @@ data class CustomerShop(
     val open: Boolean,
     val openTime: String? = null,
     val closeTime: String? = null,
-    val subcategories: Set<String> = emptySet()
+    val subcategories: Set<String> = emptySet(),
+    val description: String? = null
 )
 
 data class CustomerProduct(
@@ -106,7 +107,7 @@ class CustomerApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
     suspend fun loadShops(auth: NativeAuth): List<CustomerShop> {
         val token = auth.session.accessToken
         val rows = http.array(http.get(
-            "shop_profiles?select=id,shop_name,public_category,public_subcategories,public_logo,public_cover,address,latitude,longitude,status,public_open_time,public_close_time&status=eq.active",
+            "shop_profiles?select=id,shop_name,public_category,public_subcategories,public_logo,public_cover,public_description,address,latitude,longitude,status,public_open_time,public_close_time&status=eq.active",
             token
         ))
         val states = runCatching {
@@ -134,7 +135,8 @@ class CustomerApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
                     open[id] != false,
                     row.optNullable("public_open_time"),
                     row.optNullable("public_close_time"),
-                    parseShopSubcategories(row.opt("public_subcategories"))
+                    parseShopSubcategories(row.opt("public_subcategories")),
+                    row.optNullable("public_description")
                 ))
             }
         }
