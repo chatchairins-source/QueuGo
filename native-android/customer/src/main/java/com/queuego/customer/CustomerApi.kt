@@ -2,8 +2,12 @@ package com.queuego.customer
 
 import com.queuego.shared.NativeAuth
 import com.queuego.shared.QueueGoNativeApi
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
+import java.net.HttpURLConnection
+import java.net.URL
 import java.util.UUID
 
 data class CustomerShop(
@@ -266,6 +270,27 @@ class CustomerApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
         )
     }
 
+    suspend fun reverseGeocode(latitude: Double, longitude: Double): String? = withContext(Dispatchers.IO) {
+        if (latitude !in 5.0..21.0 || longitude !in 97.0..106.0) return@withContext null
+        val connection = URL(
+            "https://api.longdo.com/map/services/address?lon=$longitude&lat=$latitude&key=347649ca13f49db0d8a599ae35f8de2b"
+        ).openConnection() as HttpURLConnection
+        connection.connectTimeout = 8_000
+        connection.readTimeout = 8_000
+        connection.requestMethod = "GET"
+        connection.setRequestProperty("Accept", "application/json")
+        try {
+            if (connection.responseCode !in 200..299) return@withContext null
+            connection.inputStream.bufferedReader(Charsets.UTF_8).use { reader ->
+                formatLongdoAddress(reader.readText())
+            }
+        } catch (_: Exception) {
+            null
+        } finally {
+            connection.disconnect()
+        }
+    }
+
     suspend fun loadHomeBanners(auth: NativeAuth): List<HomeBanner> {
         val rows = runCatching {
             http.array(http.get("system_settings?select=value&key=eq.home_service_banner&limit=1", auth.session.accessToken))
@@ -409,3 +434,12 @@ private fun JSONObject.optNullable(key: String): String? =
 
 private fun JSONObject.optDoubleOrNull(key: String): Double? =
     if (!has(key) || isNull(key)) null else optDouble(key).takeIf { it.isFinite() }
+
+
+internal fun formatLongdoAddress(raw: String): String? = runCatching {
+    val address = JSONObject(raw)
+    listOf("house_number", "soi", "road", "subdistrict", "district", "province", "postcode")
+        .mapNotNull { key -> address.optString(key).trim().takeIf { it.isNotBlank() && it != "null" } }
+        .joinToString(" ")
+        .takeIf { it.isNotBlank() }
+}.getOrNull()
