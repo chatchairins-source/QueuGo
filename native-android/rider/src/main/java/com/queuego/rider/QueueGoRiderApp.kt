@@ -164,7 +164,10 @@ fun QueueGoRiderApp() {
                     onLogout = {
                         val current = auth!!
                         RiderReturnService.stop(context)
-                        scope.launch { api.revoke(current.session) }
+                        scope.launch {
+                            runCatching { api.setOnline(current, false, null, null) }
+                            runCatching { api.revoke(current.session) }
+                        }
                         store.clear()
                         auth = null
                     }
