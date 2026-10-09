@@ -8,18 +8,14 @@ import org.junit.Test
 
 class CustomerShoppingTest {
     @Test
-    fun parsesPublicShoppingSubcategories() {
+    fun normalizesPublicShoppingSubcategories() {
         assertEquals(
             setOf("mobile_accessories", "computer_it"),
-            parseShopSubcategories(JSONArray().put("mobile_accessories").put("computer_it"))
-        )
-        assertEquals(
-            setOf("toys", "home_decor"),
-            parseShopSubcategories("""["toys","home_decor"]""")
+            normalizeShopSubcategories(listOf(" mobile_accessories ", "COMPUTER_IT"))
         )
         assertEquals(
             setOf("automotive_car", "automotive_motorcycle"),
-            parseShopSubcategories("automotive_car, automotive_motorcycle")
+            normalizeShopSubcategories(listOf("automotive_car", "automotive_motorcycle", ""))
         )
     }
 
