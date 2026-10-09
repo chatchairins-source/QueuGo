@@ -37,3 +37,8 @@ internal fun validateRiderChatPayload(raw: String): String {
     } else require(clean.length <= 500) { "ข้อความยาวเกิน 500 ตัวอักษร" }
     return clean
 }
+
+internal val riderChatReportReasons = linkedMapOf(
+    "harassment" to "คุกคาม / กลั่นแกล้ง", "inappropriate" to "เนื้อหาไม่เหมาะสม",
+    "spam" to "สแปม", "fraud" to "หลอกลวง / ฉ้อโกง", "safety" to "ความปลอดภัย", "other" to "อื่น ๆ"
+)

@@ -611,7 +611,8 @@ private fun RiderHome(
         RiderChatScreen(
             auth = auth,
             job = chatJob!!,
-            onBack = { chatJob = null }
+            onBack = { chatJob = null },
+            modifier = modifier
         )
         return
     }
