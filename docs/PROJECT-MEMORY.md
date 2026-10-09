@@ -633,3 +633,10 @@ The user-supplied Rider reference screens are the acceptance reference for workf
 - Follow-up review: malformed HTTP 200 session/account payloads must not look like confirmed revocation or a deleted account. Validation now checks actual Boolean/array shapes and treats unexpected shapes as recoverable errors. Added actual API response regression cases.
 
 - Compared Production Customer login contract in index.html: it requires users.status=active. Native Customer login/restore now enforces the same rule, including pending accounts; Merchant pending onboarding remains allowed. Regression covers pending Customer rejection.
+
+
+## Owner-requested direct APK sharing — 2026-10-10
+
+- Owner explicitly requested externally shareable direct APK links, rather than chat-scoped links or sign-in-only Actions artifact downloads. CI38002405309 at68cf202 passed; those test APKs were verified and delivered, but full visual/E2E/FCM/Release signing gates remain open.
+- Added a narrowly opt-in CI publisher: only successful pushes whose commit message includes [share-test-apks] can publish a clearly labelled GitHub prerelease. It rebuilds and tests all3 apps from the new HEAD, completes actual Android launch matrix first, verifies the branch has not advanced, and attaches those exact APKs plus matrix/checksums. Ordinary subsequent commits do not publish automatically.
+- This explicit Owner sharing request supersedes the previous internal-artifacts-only comment for these DEBUG test APKs. No Production UI/backend/orders or Native app screens changed. No Full Gate, UI100, P0/P1=0, signed Release AAB or Play readiness claim. Publication and direct-download verification pending the new CI run.

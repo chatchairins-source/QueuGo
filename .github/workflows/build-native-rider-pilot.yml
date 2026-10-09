@@ -107,5 +107,49 @@ jobs:
           path: artifacts/native-rider-launch/
           if-no-files-found: warn
           retention-days: 14
-      # Build artifacts are internal QA inputs only. Public APK publication is
-      # disabled until real visual and Production functional evidence is reviewed.
+      # Explicit owner-requested sharing only; ordinary builds stay internal.
+      # Public test APKs do not certify visual parity, E2E or Play readiness.
+      - name: Publish owner-requested shareable test APKs
+        if: success() && github.event_name == 'push' && contains(github.event.head_commit.message, '[share-test-apks]')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          short_sha="${GITHUB_SHA:0:7}"
+          test_tag="native-test-${short_sha}"
+          latest_sha="$(git ls-remote origin refs/heads/queuego-native-android-v1 | cut -f1)"
+          test "$latest_sha" = "$GITHUB_SHA"
+          mkdir -p artifacts/shareable-native
+          for role in customer merchant rider; do
+            case "$role" in
+              customer) label=Customer ;;
+              merchant) label=Merchant ;;
+              rider) label=Rider ;;
+            esac
+            cp "native-android/${role}/build/outputs/apk/debug/${role}-debug.apk" \
+              "artifacts/shareable-native/QueueGo-${label}-${short_sha}.apk"
+          done
+          cp artifacts/native-rider-launch/matrix-metadata.json artifacts/shareable-native/android-launch-matrix.json
+          (cd artifacts/shareable-native && sha256sum *.apk > SHA256SUMS.txt)
+          cat > artifacts/shareable-native/release-notes.md <<'NOTES'
+          Owner-requested downloadable DEBUG test APKs for Customer, Merchant and Rider.
+
+          This is NOT a Play Store release or a Full Gate pass. Customer/Merchant authentication UI still differs from Production. Matched visual parity, authenticated food/Market/Laundry E2E, physical Samsung/lifecycle/background notifications, release signing and AAB gates remain open.
+
+          CI checks regression, JVM tests, source/assets, three native builds, source WebView rejection and actual emulator fresh-session login at phone/small-phone/tablet sizes. Rider registration step one is opened without submitting an account. The attached launch matrix and SHA256SUMS identify the exact APK bytes.
+          NOTES
+          printf '\nSource commit: %s\nCI evidence: https://github.com/%s/actions/runs/%s\n' \
+            "$GITHUB_SHA" "$GITHUB_REPOSITORY" "$GITHUB_RUN_ID" >> artifacts/shareable-native/release-notes.md
+          if gh release view "$test_tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            tag_sha="$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/${test_tag}" --jq '.object.sha')"
+            test "$tag_sha" = "$GITHUB_SHA"
+            gh release upload "$test_tag" artifacts/shareable-native/*.apk \
+              artifacts/shareable-native/SHA256SUMS.txt artifacts/shareable-native/android-launch-matrix.json \
+              --repo "$GITHUB_REPOSITORY" --clobber
+          else
+            gh release create "$test_tag" artifacts/shareable-native/*.apk \
+              artifacts/shareable-native/SHA256SUMS.txt artifacts/shareable-native/android-launch-matrix.json \
+              --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --prerelease --latest=false \
+              --title "QueueGo Native Android test ${short_sha}" \
+              --notes-file artifacts/shareable-native/release-notes.md
+          fi
