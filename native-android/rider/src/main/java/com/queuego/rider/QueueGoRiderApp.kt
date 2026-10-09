@@ -33,6 +33,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -523,32 +524,89 @@ private fun RiderHome(
         return
     }
 
-    Column(
+    var recenterSignal by remember { mutableStateOf(0) }
+    var mapReady by remember { mutableStateOf(false) }
+    val mapJob = snapshot?.activeJob ?: snapshot?.offeredJob
+
+    Box(
         modifier
             .fillMaxSize()
             .background(QgRiderBg)
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 8.dp, vertical = 10.dp)
     ) {
-        RiderBlueprintTopBar(
-            name = auth.user.name,
-            active = auth.user.status == "active",
-            online = snapshot?.online == true
+        RiderLongdoMap(
+            modifier = Modifier.fillMaxSize(),
+            job = mapJob,
+            marketPickups = snapshot?.marketPickups.orEmpty(),
+            recenterSignal = recenterSignal,
+            onMapReady = { mapReady = it }
         )
-        Spacer(Modifier.height(10.dp))
 
-        if (actionMessage != null) {
-            Text(
-                actionMessage!!,
-                color = if (actionMessage!!.contains("สำเร็จ") || actionMessage!!.contains("แล้ว")) {
-                    MaterialTheme.colorScheme.primary
-                } else {
-                    MaterialTheme.colorScheme.error
-                }
+        Column(
+            Modifier
+                .align(Alignment.TopCenter)
+                .fillMaxWidth()
+                .padding(horizontal = 10.dp, vertical = 7.dp)
+        ) {
+            RiderBlueprintTopBar(
+                name = auth.user.name,
+                active = auth.user.status == "active",
+                online = snapshot?.online == true
             )
-            Spacer(Modifier.height(10.dp))
+            if (actionMessage != null) {
+                Spacer(Modifier.height(7.dp))
+                Card(
+                    Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(14.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xEE171519))
+                ) {
+                    Text(
+                        actionMessage!!,
+                        color = Color.White,
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 9.dp),
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+            }
+            if (!mapReady) {
+                Spacer(Modifier.height(7.dp))
+                Card(
+                    shape = RoundedCornerShape(14.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xEEFFFFFF))
+                ) {
+                    Text(
+                        "กำลังเชื่อมต่อ Longdo Map…",
+                        color = QgMuted,
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 7.dp),
+                        style = MaterialTheme.typography.labelSmall
+                    )
+                }
+            }
         }
 
+        Card(
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(top = 70.dp, end = 10.dp)
+                .size(44.dp)
+                .clickable { recenterSignal += 1 },
+            shape = androidx.compose.foundation.shape.CircleShape,
+            colors = CardDefaults.cardColors(containerColor = Color(0xF8FFFFFF)),
+            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFEEE5E8)),
+            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+        ) {
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                QgIcon("location", Modifier.size(23.dp), QgRed)
+            }
+        }
+
+        Column(
+            Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth()
+                .fillMaxHeight(0.62f)
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 8.dp, vertical = 8.dp)
+        ) {
         if (auth.user.status != "active") {
             Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(21.dp), colors = CardDefaults.cardColors(containerColor = Color.White)) {
                 Column(Modifier.padding(16.dp)) {
@@ -822,6 +880,7 @@ private fun RiderHome(
         Spacer(Modifier.height(24.dp))
         OutlinedButton(onClick = onLogout, modifier = Modifier.fillMaxWidth()) {
             Text("ออกจากระบบ")
+        }
         }
     }
 }
