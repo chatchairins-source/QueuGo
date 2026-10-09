@@ -310,7 +310,7 @@ class QueueGoApi {
                 if (rows.length() > 0) offered = parseJob(rows.getJSONObject(0)).copy(offerExpiresAt = offerExpiry)
             }
         }
-        RiderSnapshot(online, active, offered, marketPickups)
+        RiderSnapshot(online, active, offered, marketPickups, profileId)
     }
 
     suspend fun orderItems(auth: QueueGoAuth, orderId: String): List<RiderItem> =

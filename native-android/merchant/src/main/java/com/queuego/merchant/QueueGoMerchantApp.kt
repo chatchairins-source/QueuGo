@@ -40,6 +40,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.queuego.shared.merchantRealtimeSubscriptions
 import com.queuego.shared.NativeOrderRealtime
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.repeatOnLifecycle
@@ -145,7 +146,7 @@ private fun MerchantShell(auth: NativeAuth, logout: () -> Unit) {
     LaunchedEffect(auth.session.accessToken, shop?.id, lifecycle) {
         val shopId = shop?.id ?: return@LaunchedEffect
         lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
-            realtime.changes(auth.session.accessToken, shopId).collect { refreshOrders() }
+            realtime.changes(auth.session.accessToken, merchantRealtimeSubscriptions(auth.user.id, shopId)).collect { refreshOrders() }
         }
     }
 

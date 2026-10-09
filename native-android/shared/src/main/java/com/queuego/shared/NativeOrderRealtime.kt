@@ -30,11 +30,19 @@ class NativeOrderRealtime internal constructor(
         OkHttpClient.Builder().pingInterval(20, TimeUnit.SECONDS).build()
     )
 
-    fun changes(token: String, shopId: String): Flow<Unit> = flow {
+    fun changes(token: String, shopId: String): Flow<Unit> =
+        changes(token, listOf(NativeRealtimeSubscription("orders", "shop_id=eq.$shopId")), "realtime:merchant-orders")
+
+    fun changes(token: String, subscriptions: List<NativeRealtimeSubscription>): Flow<Unit> =
+        changes(token, subscriptions, "realtime:queuego-native")
+
+    private fun changes(token: String, subscriptions: List<NativeRealtimeSubscription>, topic: String): Flow<Unit> = flow {
+        require(subscriptions.isNotEmpty())
+        require(subscriptions.distinct().size == subscriptions.size)
         var backoff = 1_000L
         while (true) {
             try {
-                emitAll(connection(token, shopId))
+                emitAll(connection(token, subscriptions, topic))
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (_: Exception) {
@@ -45,8 +53,8 @@ class NativeOrderRealtime internal constructor(
         }
     }.conflate()
 
-    private fun connection(token: String, shopId: String): Flow<Unit> = callbackFlow {
-        val topic = "realtime:merchant-orders"
+    private fun connection(token: String, subscriptions: List<NativeRealtimeSubscription>, topic: String): Flow<Unit> = callbackFlow {
+        val subscriptionIds = java.util.concurrent.ConcurrentHashMap.newKeySet<Long>()
         val joined = java.util.concurrent.atomic.AtomicBoolean(false)
         val lastReply = java.util.concurrent.atomic.AtomicLong(System.nanoTime())
         fun message(event: String, payload: JSONObject, ref: String) = JSONObject()
@@ -58,9 +66,10 @@ class NativeOrderRealtime internal constructor(
                     .put("broadcast", JSONObject().put("ack", false).put("self", false))
                     .put("presence", JSONObject().put("enabled", false))
                     .put("private", false)
-                    .put("postgres_changes", JSONArray().put(JSONObject()
-                        .put("event", "*").put("schema", "public").put("table", "orders")
-                        .put("filter", "shop_id=eq.$shopId")))
+                    .put("postgres_changes", JSONArray().also { rows ->
+                        subscriptions.forEach { rows.put(JSONObject().put("event", "*")
+                            .put("schema", "public").put("table", it.table).put("filter", it.filter)) }
+                    })
                 webSocket.send(message("phx_join", JSONObject().put("config", config)
                     .put("access_token", token), "1"))
             }
@@ -76,17 +85,28 @@ class NativeOrderRealtime internal constructor(
                     when (envelope.optString("event")) {
                         "phx_reply" -> if (envelope.optString("ref") == "1") {
                             val accepted = payload.optJSONObject("response")?.optJSONArray("postgres_changes")
-                            if (payload.optString("status") != "ok" || accepted == null || accepted.length() != 1 ||
-                                accepted.optJSONObject(0)?.optString("table") != "orders" ||
-                                accepted.optJSONObject(0)?.optString("schema") != "public" ||
-                                accepted.optJSONObject(0)?.optString("filter") != "shop_id=eq.$shopId") {
+                            val matched = accepted != null && accepted.length() == subscriptions.size &&
+                                subscriptions.all { expected -> (0 until accepted.length()).count { i ->
+                                    val row = accepted.optJSONObject(i)
+                                    row?.optString("table") == expected.table && row.optString("schema") == "public" &&
+                                        row.optString("filter") == expected.filter && row.has("id")
+                                } == 1 }
+                            if (payload.optString("status") != "ok" || !matched) {
                                 close(IOException("Realtime subscription rejected"))
                             } else {
+                                (0 until accepted!!.length()).forEach { i ->
+                                    subscriptionIds.add(accepted.getJSONObject(i).getLong("id"))
+                                }
                                 joined.set(true)
                                 trySend(Unit) // Refetch on every successful reconnect.
                             }
                         }
-                        "postgres_changes" -> if (joined.get()) trySend(Unit)
+                        "postgres_changes" -> if (joined.get()) {
+                            val ids = payload.optJSONArray("ids")
+                            if (ids != null && (0 until ids.length()).any { subscriptionIds.contains(ids.optLong(it, -1)) }) {
+                                trySend(Unit)
+                            }
+                        }
                         "phx_error", "phx_close" -> close(IOException("Realtime channel closed"))
                         "system" -> if (payload.optString("status") == "error") close(IOException("Realtime unavailable"))
                     }

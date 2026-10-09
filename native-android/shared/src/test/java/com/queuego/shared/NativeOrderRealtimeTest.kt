@@ -1,5 +1,7 @@
 package com.queuego.shared
 
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.withTimeout
@@ -70,6 +72,89 @@ class NativeOrderRealtimeTest {
         try {
             val realtime = NativeOrderRealtime(server.url("/websocket").toString(), client)
             assertNull(withTimeoutOrNull(500) { realtime.changes("user-jwt", "owned-shop").first() })
+        } finally {
+            client.dispatcher.executorService.shutdown()
+            client.connectionPool.evictAll()
+            server.shutdown()
+        }
+    }
+
+    @Test fun merchantReceivesOwnNotificationsEvenWhenOrderSelectIsRestricted() {
+        assertEquals(listOf(
+            NativeRealtimeSubscription("notifications", "user_id=eq.owner-1"),
+            NativeRealtimeSubscription("orders", "shop_id=eq.shop-2")),
+            merchantRealtimeSubscriptions("owner-1", "shop-2"))
+    }
+
+    @Test fun riderFiltersUseUserIdForNotificationsAndProfileIdForAssignedOrders() {
+        assertEquals(listOf(NativeRealtimeSubscription("notifications", "user_id=eq.user-1")),
+            riderRealtimeSubscriptions("user-1", null))
+        assertEquals(listOf(
+            NativeRealtimeSubscription("notifications", "user_id=eq.user-1"),
+            NativeRealtimeSubscription("orders", "rider_id=eq.profile-2")),
+            riderRealtimeSubscriptions("user-1", "profile-2"))
+        assertThrows(IllegalArgumentException::class.java) { NativeRealtimeSubscription("orders", "") }
+    }
+
+    @Test fun riderChannelValidatesAllFiltersAndOnlyAcceptedEventIdsInvalidate() = runBlocking {
+        val server = MockWebServer()
+        val sockets = LinkedBlockingQueue<WebSocket>()
+        val joins = LinkedBlockingQueue<JSONObject>()
+        server.enqueue(MockResponse().withWebSocketUpgrade(object : WebSocketListener() {
+            override fun onMessage(socket: WebSocket, text: String) {
+                val message = JSONObject(text)
+                if (message.optString("event") != "phx_join") return
+                joins.add(message)
+                val changes = message.getJSONObject("payload").getJSONObject("config").getJSONArray("postgres_changes")
+                for (i in 0 until changes.length()) changes.getJSONObject(i).put("id", i + 10)
+                socket.send(JSONObject().put("topic", message.getString("topic")).put("event", "phx_reply").put("ref", "1")
+                    .put("payload", JSONObject().put("status", "ok").put("response", JSONObject().put("postgres_changes", changes))).toString())
+                sockets.add(socket)
+            }
+        }))
+        val client = OkHttpClient()
+        val signals = Channel<Unit>(Channel.UNLIMITED)
+        val collector = launch {
+            NativeOrderRealtime(server.url("/websocket").toString(), client)
+                .changes("rider-jwt", riderRealtimeSubscriptions("user-1", "profile-2")).collect { signals.send(it) }
+        }
+        try {
+            withTimeout(5_000) { signals.receive() }
+            val join = joins.poll(1, TimeUnit.SECONDS)
+            assertEquals("rider-jwt", join.getJSONObject("payload").getString("access_token"))
+            assertEquals(2, join.getJSONObject("payload").getJSONObject("config").getJSONArray("postgres_changes").length())
+            val socket = sockets.poll(1, TimeUnit.SECONDS)
+            fun change(id: Int) = JSONObject().put("topic", join.getString("topic"))
+                .put("event", "postgres_changes").put("payload", JSONObject().put("ids", org.json.JSONArray().put(id))).toString()
+            socket.send(change(999))
+            assertNull(withTimeoutOrNull(150) { signals.receive() })
+            socket.send(change(11))
+            withTimeout(5_000) { signals.receive() }
+        } finally {
+            collector.cancel()
+            collector.join()
+            signals.close()
+            client.dispatcher.executorService.shutdown()
+            client.connectionPool.evictAll()
+            server.shutdown()
+        }
+    }
+
+    @Test fun partialRiderSubscriptionAcknowledgementCannotReportAConnectedRefresh() = runBlocking {
+        val server = MockWebServer()
+        server.enqueue(MockResponse().withWebSocketUpgrade(object : WebSocketListener() {
+            override fun onMessage(socket: WebSocket, text: String) {
+                val message = JSONObject(text)
+                if (message.optString("event") != "phx_join") return
+                val first = message.getJSONObject("payload").getJSONObject("config").getJSONArray("postgres_changes").getJSONObject(0).put("id", 10)
+                socket.send(JSONObject().put("topic", message.getString("topic")).put("event", "phx_reply").put("ref", "1")
+                    .put("payload", JSONObject().put("status", "ok").put("response", JSONObject().put("postgres_changes", org.json.JSONArray().put(first)))).toString())
+            }
+        }))
+        val client = OkHttpClient()
+        try {
+            val realtime = NativeOrderRealtime(server.url("/websocket").toString(), client)
+            assertNull(withTimeoutOrNull(500) { realtime.changes("rider-jwt", riderRealtimeSubscriptions("user-1", "profile-2")).first() })
         } finally {
             client.dispatcher.executorService.shutdown()
             client.connectionPool.evictAll()

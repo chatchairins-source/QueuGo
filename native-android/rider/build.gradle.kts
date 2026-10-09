@@ -25,6 +25,7 @@ android {
 
 
 dependencies {
+    implementation("androidx.lifecycle:lifecycle-runtime-compose:2.9.4")
     implementation(project(":shared"))
     implementation("com.google.android.gms:play-services-location:21.3.0")
     implementation("androidx.activity:activity-compose:1.13.0")

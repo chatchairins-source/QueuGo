@@ -53,6 +53,14 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.repeatOnLifecycle
+import com.queuego.shared.NativeOrderRealtime
+import com.queuego.shared.riderRealtimeSubscriptions
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -294,6 +302,10 @@ private fun RiderHome(
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    val realtime = remember { NativeOrderRealtime() }
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
+    val snapshotMutex = remember { Mutex() }
+
     var snapshot by remember { mutableStateOf<RiderSnapshot?>(null) }
     var todaySummary by remember { mutableStateOf<RiderPeriodSummary?>(null) }
     var recentHistory by remember { mutableStateOf<List<RiderHistoryOrder>>(emptyList()) }
@@ -414,36 +426,54 @@ private fun RiderHome(
         pendingCameraUri = null
     }
 
-    LaunchedEffect(auth.session.sessionId) {
-        while (true) {
-            runCatching { api.riderSnapshot(auth) }
-                .onSuccess {
-                    snapshot = it
-                    loadError = null
-                    if (it.activeJob == null) RiderReturnService.stop(context)
-                    val now = System.currentTimeMillis()
-                    if (it.online && now - lastLocationPushAt >= 10_000L) {
-                        val loc = lastKnownLocation(context)
-                        if (loc != null) {
-                            runCatching { api.updateLocation(auth, loc.first, loc.second) }
-                            lastLocationPushAt = now
-                        }
-                    }
-                    if (now - lastSummaryAt >= 60_000L || todaySummary == null) {
-                        runCatching { api.periodSummary(auth, 1) }.onSuccess { summary ->
-                            todaySummary = summary
-                            lastSummaryAt = now
-                        }
-                    }
-                    if (now - lastHistoryAt >= 60_000L || recentHistory.isEmpty()) {
-                        runCatching { api.history(auth, 20) }.onSuccess { rows ->
-                            recentHistory = rows
-                            lastHistoryAt = now
-                        }
+    suspend fun refreshSnapshot() = snapshotMutex.withLock {
+        runCatching { api.riderSnapshot(auth) }
+            .onSuccess {
+                snapshot = it
+                loadError = null
+                if (it.activeJob == null) RiderReturnService.stop(context)
+                val now = System.currentTimeMillis()
+                if (it.online && now - lastLocationPushAt >= 10_000L) {
+                    val loc = lastKnownLocation(context)
+                    if (loc != null) {
+                        runCatching { api.updateLocation(auth, loc.first, loc.second) }
+                            .onFailure { if (it is CancellationException) throw it }
+                        lastLocationPushAt = now
                     }
                 }
-                .onFailure { loadError = it.message ?: "โหลดงานไม่สำเร็จ" }
-            delay(3_000)
+                if (now - lastSummaryAt >= 60_000L || todaySummary == null) {
+                    runCatching { api.periodSummary(auth, 1) }
+                        .onFailure { if (it is CancellationException) throw it }.onSuccess { summary ->
+                        todaySummary = summary
+                        lastSummaryAt = now
+                    }
+                }
+                if (now - lastHistoryAt >= 60_000L || recentHistory.isEmpty()) {
+                    runCatching { api.history(auth, 20) }
+                        .onFailure { if (it is CancellationException) throw it }.onSuccess { rows ->
+                        recentHistory = rows
+                        lastHistoryAt = now
+                    }
+                }
+            }
+            .onFailure {
+                if (it is CancellationException) throw it
+                loadError = it.message ?: "โหลดงานไม่สำเร็จ"
+            }
+    }
+
+    val subscriptions = riderRealtimeSubscriptions(auth.user.id, snapshot?.riderProfileId)
+    LaunchedEffect(auth.session.accessToken, subscriptions, lifecycle) {
+        lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            realtime.changes(auth.session.accessToken, subscriptions).collect { refreshSnapshot() }
+        }
+    }
+    LaunchedEffect(auth.session.accessToken, lifecycle) {
+        lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            while (true) {
+                refreshSnapshot()
+                delay(3_000)
+            }
         }
     }
 

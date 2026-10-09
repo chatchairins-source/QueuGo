@@ -84,7 +84,8 @@ data class RiderSnapshot(
     val online: Boolean,
     val activeJob: RiderJob?,
     val offeredJob: RiderJob?,
-    val marketPickups: List<MarketPickup> = emptyList()
+    val marketPickups: List<MarketPickup> = emptyList(),
+    val riderProfileId: String? = null
 )
 
 
