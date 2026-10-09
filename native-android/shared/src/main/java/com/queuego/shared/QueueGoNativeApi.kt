@@ -26,6 +26,17 @@ class QueueGoNativeApi {
     suspend fun post(path: String, token: String?, body: Any): Any =
         withContext(Dispatchers.IO) { request("POST", "/rest/v1/" + path, token, body) }
 
+    suspend fun upsert(path: String, token: String, body: Any): Any =
+        withContext(Dispatchers.IO) {
+            request(
+                "POST",
+                "/rest/v1/" + path,
+                token,
+                body,
+                "return=representation,resolution=merge-duplicates"
+            )
+        }
+
     suspend fun patch(path: String, token: String, body: JSONObject): Any =
         withContext(Dispatchers.IO) { request("PATCH", "/rest/v1/" + path, token, body) }
 
@@ -39,7 +50,13 @@ class QueueGoNativeApi {
     fun obj(value: Any): JSONObject = value as? JSONObject ?: JSONObject()
     fun enc(value: String): String = URLEncoder.encode(value, StandardCharsets.UTF_8.toString())
 
-    private fun request(method: String, path: String, token: String?, body: Any?): Any {
+    private fun request(
+        method: String,
+        path: String,
+        token: String?,
+        body: Any?,
+        prefer: String? = null
+    ): Any {
         val connection = URL(BASE_URL + path).openConnection() as HttpURLConnection
         try {
             connection.requestMethod = method
@@ -51,7 +68,9 @@ class QueueGoNativeApi {
             if (!token.isNullOrBlank()) {
                 connection.setRequestProperty("Authorization", "Bearer " + token)
             }
-            if (method != "GET") connection.setRequestProperty("Prefer", "return=representation")
+            if (method != "GET") {
+                connection.setRequestProperty("Prefer", prefer ?: "return=representation")
+            }
             if (body != null) {
                 connection.doOutput = true
                 connection.outputStream.use {
