@@ -63,6 +63,13 @@ internal suspend fun syncRiderNativePush(
     api: QueueGoApi,
     store: SessionStore
 ): Boolean {
+    // Only an approved/active Rider may register a device for job notifications.
+    // This guard is intentionally below the UI layer so pending/suspended accounts
+    // cannot become push-eligible through a stale screen or lifecycle callback.
+    if (auth.user.status != "active") {
+        disableRiderNativePush(auth, api, store)
+        return false
+    }
     ensureRiderOrderChannel(context)
     if (!riderFirebaseConfigured(context)) return false
     val token = firebaseToken().trim()
@@ -92,13 +99,23 @@ class QueueGoRiderMessagingService : FirebaseMessagingService() {
                 val api = QueueGoApi()
                 val auth = api.validate(cached)
                 store.save(auth)
-                api.subscribeNativePush(auth, store.pushDeviceId(), token)
+                if (auth.user.status == "active") {
+                    api.subscribeNativePush(auth, store.pushDeviceId(), token)
+                } else {
+                    disableRiderNativePush(auth, api, store)
+                }
             }
         }
     }
 
     override fun onMessageReceived(message: RemoteMessage) {
         super.onMessageReceived(message)
+
+        // Foreground/data-only FCM still reaches the service even when the UI is not
+        // visible. Never surface Rider job/status notifications for a cached account
+        // that is no longer approved for work.
+        val cached = SessionStore(applicationContext).load() ?: return
+        if (cached.user.status != "active") return
         ensureRiderOrderChannel(this)
 
         // FCM displays notification payloads automatically while the app is backgrounded.
