@@ -22,10 +22,16 @@ apk = repo / "native-android/rider/build/outputs/apk/debug/rider-debug.apk"
 assert apk.is_file(), "Build the actual Rider APK first"
 assert os.access("/dev/kvm", os.R_OK | os.W_OK), "An accelerated Android runner is required"
 manager = sdk / "cmdline-tools/latest/bin"
+# Recent command-line tools and the emulator can resolve different default
+# Android user homes on hosted runners. Share an explicit, run-scoped registry.
+avd_registry = Path(os.environ["RUNNER_TEMP"]) / "queuego-avd-registry"
+avd_registry.mkdir(parents=True, exist_ok=True)
+os.environ["ANDROID_AVD_HOME"] = str(avd_registry)
 run([str(manager / "sdkmanager"), "emulator", "platform-tools", "system-images;android-30;default;x86_64"], input="y\n" * 100, text=True, timeout=300)
 name = "queuego_rider_capture_" + os.environ["GITHUB_RUN_ID"] + "_" + os.environ.get("GITHUB_RUN_ATTEMPT", "1")
 avd_path = Path(os.environ["RUNNER_TEMP"]) / name
 run([str(manager / "avdmanager"), "create", "avd", "-n", name, "-k", "system-images;android-30;default;x86_64", "-p", str(avd_path), "-d", "pixel_4"], input="no\n", text=True)
+assert (avd_registry / (name + ".ini")).is_file(), "AVD registry was not created in the shared emulator search path"
 emulator_bin = str(sdk / "emulator/emulator")
 run([emulator_bin, "-accel-check"])
 adb_bin = str(sdk / "platform-tools/adb")
