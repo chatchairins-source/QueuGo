@@ -62,6 +62,7 @@ import com.queuego.shared.QgBottomNav
 import com.queuego.shared.QgCard
 import com.queuego.shared.QgGreen
 import com.queuego.shared.QgIcon
+import com.queuego.shared.QgIconButton
 import com.queuego.shared.QgMuted
 import com.queuego.shared.QgMapPoint
 import com.queuego.shared.QgNavItem
@@ -91,9 +92,11 @@ private fun MerchantShell(auth: NativeAuth, logout: () -> Unit) {
     val realtime = remember { NativeOrderRealtime() }
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     val ordersMutex = remember { Mutex() }
+    val notificationsMutex = remember { Mutex() }
     var screen by remember { mutableStateOf("home") }
     var shop by remember { mutableStateOf<MerchantShop?>(null) }
     var orders by remember { mutableStateOf<List<MerchantOrder>>(emptyList()) }
+    var notifications by remember { mutableStateOf<List<MerchantNotification>>(emptyList()) }
     var products by remember { mutableStateOf<List<MerchantProduct>>(emptyList()) }
     var readiness by remember { mutableStateOf<ShopReadiness?>(null) }
     var shopOpen by remember { mutableStateOf(true) }
@@ -137,6 +140,7 @@ private fun MerchantShell(auth: NativeAuth, logout: () -> Unit) {
     BackHandler(enabled = screen != "home") {
         screen = when (screen) {
             "shop-setup", "hours", "support" -> "profile"
+            "notifications" -> "home"
             "order" -> "orders"
             else -> "home"
         }
@@ -148,6 +152,7 @@ private fun MerchantShell(auth: NativeAuth, logout: () -> Unit) {
         runCatching {
             val s = api.loadShop(auth)
             orders = api.loadOrders(auth)
+            notifications = runCatching { api.loadNotifications(auth) }.getOrDefault(emptyList())
             knownPendingIds = orders.filter { it.status == "pending" }.map { it.id }.toSet()
             shop = s
             if (s != null) {
@@ -167,12 +172,7 @@ private fun MerchantShell(auth: NativeAuth, logout: () -> Unit) {
             val pendingNow = fresh.filter { it.status == "pending" }.map { it.id }.toSet()
             val before = knownPendingIds
             if (before != null && pendingNow.any { it !in before }) {
-                val tone = ToneGenerator(AudioManager.STREAM_NOTIFICATION, 90)
-                tone.startTone(ToneGenerator.TONE_PROP_BEEP2, 650)
-                scope.launch {
-                    delay(750)
-                    runCatching { tone.release() }
-                }
+                playMerchantNotificationSound()
             }
             knownPendingIds = pendingNow
             orders = fresh
@@ -183,10 +183,20 @@ private fun MerchantShell(auth: NativeAuth, logout: () -> Unit) {
         }
     }
 
+    suspend fun refreshNotifications() = notificationsMutex.withLock {
+        runCatching { api.loadNotifications(auth) }.onSuccess { notifications = it }
+    }
+
     LaunchedEffect(auth.session.accessToken, shop?.id, lifecycle) {
         val shopId = shop?.id ?: return@LaunchedEffect
         lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
-            realtime.changes(auth.session.accessToken, merchantRealtimeSubscriptions(auth.user.id, shopId)).collect { refreshOrders() }
+            realtime.changes(
+                auth.session.accessToken,
+                merchantRealtimeSubscriptions(auth.user.id, shopId)
+            ).collect {
+                refreshOrders()
+                refreshNotifications()
+            }
         }
     }
 
@@ -197,6 +207,20 @@ private fun MerchantShell(auth: NativeAuth, logout: () -> Unit) {
                 refreshOrders()
                 delay(3_000)
             }
+        } else if (screen == "notifications") {
+            while (true) {
+                refreshNotifications()
+                delay(10_000)
+            }
+        }
+    }
+
+    fun playMerchantNotificationSound() {
+        val tone = ToneGenerator(AudioManager.STREAM_NOTIFICATION, 90)
+        tone.startTone(ToneGenerator.TONE_PROP_BEEP2, 650)
+        scope.launch {
+            delay(750)
+            runCatching { tone.release() }
         }
     }
 
@@ -240,7 +264,12 @@ private fun MerchantShell(auth: NativeAuth, logout: () -> Unit) {
         }
     ) { insets ->
         Column(Modifier.fillMaxSize().padding(insets).background(QgBg)) {
-            MerchantTopBar(shop?.name ?: "QueueGo Merchant") { screen = "home" }
+            MerchantTopBar(
+                title = shop?.name ?: "QueueGo Merchant",
+                unreadCount = notifications.count { !it.isRead },
+                onHome = { screen = "home" },
+                onNotifications = { screen = "notifications" }
+            )
             if (!message.isNullOrBlank()) {
                 Text(
                     message!!,
@@ -387,6 +416,41 @@ private fun MerchantShell(auth: NativeAuth, logout: () -> Unit) {
                         )
                     }
                 }
+                "notifications" -> MerchantNotificationsScreen(
+                    notifications = notifications,
+                    onBack = { screen = "home" },
+                    onMarkAllRead = {
+                        if (notifications.any { !it.isRead }) {
+                            notifications = notifications.map { it.copy(isRead = true) }
+                            scope.launch {
+                                runCatching { api.markNotificationsRead(auth) }
+                                    .onFailure { refreshNotifications() }
+                            }
+                        }
+                    },
+                    onTestSound = {
+                        playMerchantNotificationSound()
+                        message = "ทดสอบเสียงแจ้งเตือนแล้ว"
+                    },
+                    onOpenOrder = { orderId ->
+                        scope.launch {
+                            val current = orders.find { it.id == orderId }
+                                ?: runCatching { api.loadOrders(auth) }
+                                    .getOrNull()
+                                    ?.also { orders = it }
+                                    ?.find { it.id == orderId }
+                            if (current != null) {
+                                selectedOrder = current
+                                orderItems = runCatching { api.loadOrderItems(auth, current.id) }
+                                    .getOrDefault(emptyList())
+                                screen = "order"
+                            } else {
+                                message = "ไม่พบออเดอร์ที่อ้างอิงจากการแจ้งเตือน"
+                                screen = "orders"
+                            }
+                        }
+                    }
+                )
                 "support" -> MerchantSupportScreen(auth) { screen = "profile" }
                 "profile" -> MerchantProfileScreen(
                     auth = auth,
@@ -401,6 +465,11 @@ private fun MerchantShell(auth: NativeAuth, logout: () -> Unit) {
                     },
                     onHours = { screen = "hours" },
                     onProducts = { screen = "products" },
+                    onNotifications = { screen = "notifications" },
+                    onTestSound = {
+                        playMerchantNotificationSound()
+                        message = "ทดสอบเสียงแจ้งเตือนแล้ว"
+                    },
                     onSupport = { screen = "support" },
                     logout = logout
                 )
@@ -501,7 +570,12 @@ private fun MerchantShell(auth: NativeAuth, logout: () -> Unit) {
 }
 
 @Composable
-private fun MerchantTopBar(title: String, onHome: () -> Unit) {
+private fun MerchantTopBar(
+    title: String,
+    unreadCount: Int,
+    onHome: () -> Unit,
+    onNotifications: () -> Unit
+) {
     Row(
         Modifier
             .fillMaxWidth()
@@ -521,7 +595,19 @@ private fun MerchantTopBar(title: String, onHome: () -> Unit) {
         Spacer(Modifier.width(8.dp))
         QueueGoBrand(suffix = "Merchant")
         Spacer(Modifier.weight(1f))
-        Text(title, color = QgMuted, style = MaterialTheme.typography.labelSmall, maxLines = 1)
+        Text(
+            title,
+            color = QgMuted,
+            style = MaterialTheme.typography.labelSmall,
+            maxLines = 1,
+            modifier = Modifier.weight(1f, fill = false)
+        )
+        Spacer(Modifier.width(8.dp))
+        QgIconButton(
+            icon = "bell",
+            badge = unreadCount,
+            onClick = onNotifications
+        )
     }
 }
 
@@ -1122,6 +1208,8 @@ private fun MerchantProfileScreen(
     onSetup: () -> Unit,
     onHours: () -> Unit,
     onProducts: () -> Unit,
+    onNotifications: () -> Unit,
+    onTestSound: () -> Unit,
     onSupport: () -> Unit,
     logout: () -> Unit
 ) {
@@ -1250,6 +1338,24 @@ private fun MerchantProfileScreen(
                     if (index != labels.lastIndex) HorizontalDivider(color = Color(0xFFECEEF1))
                 }
             }
+        }
+
+        Spacer(Modifier.height(12.dp))
+        MerchantProfileSectionTitle("การแจ้งเตือน")
+        MerchantProfileCard {
+            MerchantProfileActionRow(
+                icon = "bell",
+                title = "ศูนย์การแจ้งเตือน",
+                subtitle = "ดูออเดอร์ สถานะระบบ และข่าวสารของร้าน",
+                onClick = onNotifications
+            )
+            HorizontalDivider(color = Color(0xFFECEEF1))
+            MerchantProfileActionRow(
+                icon = "bell",
+                title = "ทดสอบเสียงแจ้งเตือน",
+                subtitle = "ตรวจว่าอุปกรณ์เปิดเสียงสำหรับออเดอร์ใหม่",
+                onClick = onTestSound
+            )
         }
 
         Spacer(Modifier.height(12.dp))
