@@ -377,11 +377,11 @@ private fun CustomerShell(auth: NativeAuth, logout: () -> Unit) {
             when (screen) {
                 "search" -> CustomerSearchScreen(
                     shops = shops,
+                    location = location,
+                    onBack = { screen = "home" },
                     onOpenShop = { shop ->
-                        shopReturnScreen = screen
-                        selectedShop = shop
-                        screen = "shop"
-                        shopCatalog.open(shop.id) { api.loadProducts(auth, shop.id) }
+                        if (shop.category.lowercase() == "laundry") screen = "laundry"
+                        else openShopFromHome(shop, "search")
                     }
                 )
                 "notifications" -> CustomerNotificationsScreen(
