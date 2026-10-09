@@ -109,6 +109,49 @@ data class MerchantProductDraft(
     val variantsJson: String
 )
 
+data class MerchantMarketProduct(
+    val productId: String,
+    val name: String,
+    val category: String,
+    val price: Double,
+    val deliveryPrice: Double,
+    val image: String?,
+    val available: Boolean,
+    val unit: String,
+    val packSize: Double,
+    val weightKg: Double?,
+    val stockQuantity: Double,
+    val minStock: Double,
+    val costPrice: Double
+)
+
+data class MerchantStockMovement(
+    val type: String,
+    val quantity: Double,
+    val note: String?,
+    val createdAt: String?
+)
+
+data class MerchantMarketStockState(
+    val products: List<MerchantMarketProduct>,
+    val movements: List<MerchantStockMovement>
+)
+
+data class MerchantMarketProductDraft(
+    val productId: String?,
+    val name: String,
+    val category: String,
+    val price: Double,
+    val image: String?,
+    val unit: String,
+    val packSize: Double,
+    val weightKg: Double,
+    val costPrice: Double,
+    val initialStock: Double,
+    val minStock: Double,
+    val available: Boolean
+)
+
 data class MerchantSupportMessage(
     val id: String,
     val senderUserId: String,
@@ -797,6 +840,132 @@ class MerchantApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
         }
     }
 
+    suspend fun loadMarketStock(
+        auth: NativeAuth,
+        shopId: String
+    ): MerchantMarketStockState {
+        val productRows = http.array(
+            http.get(
+                "products?select=id,name,category,price,delivery_price,image,available" +
+                    "&shop_id=eq." + http.enc(shopId),
+                auth.session.accessToken
+            )
+        )
+        val marketRows = http.array(
+            http.get(
+                "market_products?select=product_id,unit,pack_size,item_weight_kg,stock_quantity,min_stock,cost_price" +
+                    "&shop_id=eq." + http.enc(shopId),
+                auth.session.accessToken
+            )
+        )
+        val movementRows = http.array(
+            http.get(
+                "market_stock_movements?select=type,quantity,note,created_at" +
+                    "&shop_id=eq." + http.enc(shopId) +
+                    "&order=created_at.desc&limit=30",
+                auth.session.accessToken
+            )
+        )
+        val productsById = HashMap<String, JSONObject>()
+        for (i in 0 until productRows.length()) {
+            val row = productRows.optJSONObject(i) ?: continue
+            val id = row.optString("id")
+            if (id.isNotBlank()) productsById[id] = row
+        }
+        val products = buildList {
+            for (i in 0 until marketRows.length()) {
+                val market = marketRows.optJSONObject(i) ?: continue
+                val id = market.optString("product_id")
+                val product = productsById[id] ?: continue
+                val pack = market.optDouble("pack_size", 1.0).takeIf { it > 0.0 } ?: 1.0
+                add(
+                    MerchantMarketProduct(
+                        productId = id,
+                        name = product.optString("name").ifBlank { "สินค้า" },
+                        category = product.optString("category"),
+                        price = product.optDouble("price", 0.0),
+                        deliveryPrice = product.optDouble(
+                            "delivery_price",
+                            product.optDouble("price", 0.0)
+                        ),
+                        image = product.optNullable("image"),
+                        available = product.optBoolean("available", true),
+                        unit = market.optString("unit").ifBlank { "ชิ้น" },
+                        packSize = pack,
+                        weightKg = market.optDoubleOrNull("item_weight_kg"),
+                        stockQuantity = market.optDouble("stock_quantity", 0.0),
+                        minStock = market.optDouble("min_stock", 0.0),
+                        costPrice = market.optDouble("cost_price", 0.0)
+                    )
+                )
+            }
+        }
+        val movements = buildList {
+            for (i in 0 until movementRows.length()) {
+                val row = movementRows.optJSONObject(i) ?: continue
+                add(
+                    MerchantStockMovement(
+                        type = row.optString("type"),
+                        quantity = row.optDouble("quantity", 0.0),
+                        note = row.optNullable("note"),
+                        createdAt = row.optNullable("created_at")
+                    )
+                )
+            }
+        }
+        return MerchantMarketStockState(products, movements)
+    }
+
+    suspend fun saveMarketProduct(auth: NativeAuth, draft: MerchantMarketProductDraft) {
+        val name = draft.name.trim()
+        val category = draft.category.trim()
+        require(name.isNotBlank()) { "กรุณากรอกชื่อสินค้า" }
+        require(category in merchantMarketProductCategories) { "กรุณาเลือกหมวดหมู่สินค้าจากรายการ" }
+        require(draft.price.isFinite() && draft.price >= 0.0) { "ราคาสินค้าไม่ถูกต้อง" }
+        require(draft.packSize.isFinite() && draft.packSize > 0.0) { "ปริมาณต่อชุดไม่ถูกต้อง" }
+        require(draft.weightKg.isFinite() && draft.weightKg > 0.0) { "น้ำหนักต่อชุดไม่ถูกต้อง" }
+        require(draft.costPrice.isFinite() && draft.costPrice >= 0.0) { "ต้นทุนไม่ถูกต้อง" }
+        require(draft.initialStock.isFinite() && draft.initialStock >= 0.0) { "สต๊อกเริ่มต้นไม่ถูกต้อง" }
+        require(draft.minStock.isFinite() && draft.minStock >= 0.0) { "ระดับแจ้งเตือนสต๊อกไม่ถูกต้อง" }
+        http.rpc(
+            "market_save_product",
+            auth.session.accessToken,
+            JSONObject()
+                .put("p_product", draft.productId ?: JSONObject.NULL)
+                .put("p_name", name)
+                .put("p_category", category)
+                .put("p_price", draft.price)
+                .put("p_image", draft.image?.trim()?.takeIf { it.isNotBlank() } ?: JSONObject.NULL)
+                .put("p_unit", draft.unit)
+                .put("p_pack_size", draft.packSize)
+                .put("p_weight_kg", draft.weightKg)
+                .put("p_cost", draft.costPrice)
+                .put("p_initial_stock", if (draft.productId == null) draft.initialStock else 0.0)
+                .put("p_min_stock", draft.minStock)
+                .put("p_available", draft.available)
+        )
+    }
+
+    suspend fun adjustMarketStock(
+        auth: NativeAuth,
+        productId: String,
+        delta: Double,
+        note: String
+    ) {
+        require(delta.isFinite() && delta != 0.0) { "ระบุจำนวนที่ไม่เป็นศูนย์" }
+        val cleanNote = note.trim()
+        require(cleanNote.isNotBlank()) { "กรุณาระบุเหตุผล" }
+        http.rpc(
+            "market_adjust_stock",
+            auth.session.accessToken,
+            JSONObject()
+                .put("p_product", productId)
+                .put("p_delta", delta)
+                .put("p_type", if (delta > 0.0) "purchase" else "adjustment")
+                .put("p_note", cleanNote)
+        )
+    }
+
     suspend fun loadNotifications(auth: NativeAuth): List<MerchantNotification> {
         val rows = http.array(
             http.get(
@@ -972,6 +1141,17 @@ internal fun merchantDeliveryRestrictionLabel(kind: String): String = when (kind
     "alcohol" -> "แอลกอฮอล์"
     else -> ""
 }
+
+internal val merchantMarketProductCategories = listOf(
+    "ผักสด", "ผลไม้", "เนื้อหมู", "เนื้อวัว", "ไก่ / เป็ด", "ปลา", "อาหารทะเล",
+    "ไข่", "เต้าหู้ / เส้นสด / ลูกชิ้น", "ของสดพร้อมปรุง", "อาหารแช่เย็น / แช่แข็ง",
+    "พริกแกง / เครื่องแกง", "เครื่องปรุง / ซอส", "ข้าวสาร / ธัญพืช", "ของแห้ง",
+    "อาหารปรุงสำเร็จ", "ขนม / ของหวาน", "เครื่องดื่ม", "ของใช้ในครัวเรือน",
+    "ดอกไม้ / ของไหว้", "อื่น ๆ"
+)
+
+internal fun merchantMarketStockPermitted(category: String?): Boolean =
+    category?.lowercase() in setOf("market", "meat", "fish", "vegetable", "fruit", "grocery")
 
 internal val merchantModuleCatalog = listOf(
     "storefront" to "หน้าร้าน",
