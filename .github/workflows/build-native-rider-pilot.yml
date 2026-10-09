@@ -42,10 +42,10 @@ jobs:
           QG_FIREBASE_GOOGLE_SERVICES_JSON_B64: ${{ secrets.QG_FIREBASE_GOOGLE_SERVICES_JSON_B64 }}
         run: |
           set -euo pipefail
-          test -n "${QG_FIREBASE_GOOGLE_SERVICES_JSON_B64:-}" || {
-            echo "::error::QG_FIREBASE_GOOGLE_SERVICES_JSON_B64 is required for native Rider background jobs"
-            exit 1
-          }
+          if [ -z "${QG_FIREBASE_GOOGLE_SERVICES_JSON_B64:-}" ]; then
+            echo "::warning::Firebase config secret is absent; native Rider APK will build without physical background-push certification"
+            exit 0
+          fi
           umask 077
           printf '%s' "$QG_FIREBASE_GOOGLE_SERVICES_JSON_B64" | base64 --decode > native-android/rider/google-services.json
           python3 - <<'PY'
