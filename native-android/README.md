@@ -11,7 +11,7 @@ True native Android migration for QueueGo using Kotlin + Jetpack Compose. No Web
 ## Native coverage
 - Customer: Home, dedicated service pages with banners, shops, products, persistent cart, cash checkout, orders/tracking, Market multi-shop, Laundry, search, notifications, support, Rider chat, cancellation, review, account deletion.
 - Merchant: Dashboard, store open/close, daily revenue, orders and preparation flow, product catalog/create/edit/archive, native counter POS, Laundry operations, admin support messaging, account deletion.
-- Rider: server-targeted offers with accept countdown, online/location heartbeat, market multi-stop, navigation return control, arrival, pickup/delivery photo proof, cash responsibility display, Customer chat, daily stats/history, account deletion.
+- Rider: Longdo map-first home, Android GPS rider location, shop/customer job pins, server-targeted offers with accept countdown, online/location heartbeat, market multi-stop, navigation return control, arrival, pickup/delivery photo proof, cash responsibility display, Customer chat, daily stats/history, account deletion.
 
 The web production app is not replaced or modified by this native branch.
 
