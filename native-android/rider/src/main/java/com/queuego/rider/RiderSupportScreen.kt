@@ -1,6 +1,7 @@
 package com.queuego.rider
 
 import android.content.Context
+import android.content.Intent
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -34,7 +35,8 @@ data class RiderSupportTicket(
     val status: String,
     val orderId: String?,
     val createdAt: String?,
-    val adminNote: String?
+    val adminNote: String?,
+    val evidencePath: String?
 )
 
 private class RiderSupportApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
@@ -57,7 +59,8 @@ private class RiderSupportApi(private val http: QueueGoNativeApi = QueueGoNative
                         status = row.optString("status"),
                         orderId = row.optString("order_id").takeIf { it.isNotBlank() },
                         createdAt = row.optString("created_at").takeIf { it.isNotBlank() },
-                        adminNote = row.optString("admin_note").takeIf { it.isNotBlank() }
+                        adminNote = row.optString("admin_note").takeIf { it.isNotBlank() },
+                        evidencePath = row.optString("evidence_path").takeIf { it.isNotBlank() }
                     )
                 )
             }
@@ -102,6 +105,35 @@ private class RiderSupportApi(private val http: QueueGoNativeApi = QueueGoNative
             connection.disconnect()
         }
         objectPath
+    }
+
+    suspend fun signedEvidenceUrl(auth: QueueGoAuth, path: String): String = withContext(Dispatchers.IO) {
+        require(path.isNotBlank()) { "ไม่พบรูปหลักฐาน" }
+        val url = URL(
+            QueueGoNativeApi.BASE_URL + "/storage/v1/object/sign/qg-evidence/" + path
+        )
+        val connection = url.openConnection() as HttpURLConnection
+        try {
+            connection.requestMethod = "POST"
+            connection.connectTimeout = 15000
+            connection.readTimeout = 15000
+            connection.doOutput = true
+            connection.setRequestProperty("apikey", QueueGoNativeApi.PUBLISHABLE_KEY)
+            connection.setRequestProperty("Authorization", "Bearer " + auth.session.accessToken)
+            connection.setRequestProperty("Content-Type", "application/json")
+            connection.outputStream.use {
+                it.write(JSONObject().put("expiresIn", 300).toString().toByteArray(Charsets.UTF_8))
+            }
+            if (connection.responseCode !in 200..299) error("เปิดหลักฐานไม่สำเร็จ")
+            val body = connection.inputStream.bufferedReader().use { it.readText() }
+            val signed = JSONObject(body).optString("signedURL")
+                .ifBlank { JSONObject(body).optString("signedUrl") }
+            require(signed.isNotBlank()) { "เปิดหลักฐานไม่สำเร็จ" }
+            if (signed.startsWith("http")) signed
+            else QueueGoNativeApi.BASE_URL + "/storage/v1" + signed
+        } finally {
+            connection.disconnect()
+        }
     }
 
     suspend fun create(
@@ -155,6 +187,7 @@ fun RiderSupportScreen(
     var details by remember { mutableStateOf("") }
     var evidence by remember { mutableStateOf<Uri?>(null) }
     var busy by remember { mutableStateOf(false) }
+    var openingEvidenceId by remember { mutableStateOf<String?>(null) }
     var message by remember { mutableStateOf<String?>(null) }
     var orderMenu by remember { mutableStateOf(false) }
     var categoryMenu by remember { mutableStateOf(false) }
@@ -299,6 +332,34 @@ fun RiderSupportScreen(
                             Text("ฝ่ายดูแล: " + it, fontWeight = FontWeight.Bold)
                         }
                         ticket.createdAt?.let { Text(it, color = QgMuted, style = MaterialTheme.typography.labelSmall) }
+                        ticket.evidencePath?.let { path ->
+                            Spacer(Modifier.height(6.dp))
+                            OutlinedButton(
+                                onClick = {
+                                    if (openingEvidenceId != null) return@OutlinedButton
+                                    openingEvidenceId = ticket.id
+                                    message = null
+                                    scope.launch {
+                                        runCatching {
+                                            api.signedEvidenceUrl(auth, path)
+                                        }.onSuccess { signedUrl ->
+                                            runCatching {
+                                                context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(signedUrl)))
+                                            }.onFailure {
+                                                message = "ไม่สามารถเปิดรูปหลักฐานได้"
+                                            }
+                                        }.onFailure {
+                                            message = it.message ?: "เปิดหลักฐานไม่สำเร็จ"
+                                        }
+                                        openingEvidenceId = null
+                                    }
+                                },
+                                enabled = openingEvidenceId == null,
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text(if (openingEvidenceId == ticket.id) "กำลังเปิด..." else "ดูหลักฐาน")
+                            }
+                        }
                     }
                 }
             }
