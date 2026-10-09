@@ -80,12 +80,70 @@ data class RiderJob(
         get() = !arrivedCustomerAt.isNullOrBlank()
 }
 
+data class RiderLaundryInvite(
+    val inviteId: String,
+    val hubId: String,
+    val hubName: String,
+    val shopName: String,
+    val status: String,
+    val createdAt: String?
+)
+
+data class RiderLaundryJob(
+    val jobId: String,
+    val laundryOrderId: String,
+    val orderNumber: String?,
+    val leg: String,
+    val jobStatus: String,
+    val orderStatus: String?,
+    val hubId: String?,
+    val hubName: String?,
+    val shopName: String?,
+    val serviceName: String?,
+    val actualQuantity: Double?,
+    val pricingType: String?,
+    val jobFee: Double,
+    val fromAddress: String?,
+    val fromLatitude: Double?,
+    val fromLongitude: Double?,
+    val toAddress: String?,
+    val toLatitude: Double?,
+    val toLongitude: Double?,
+    val customerAmount: Double?,
+    val actualKg: Double? = null,
+    val createdAt: String? = null
+) {
+    val numberLabel: String
+        get() = orderNumber?.let { if (it.startsWith("QT-")) it else "QT-" + it } ?: "QT-----"
+
+    val isCollected: Boolean
+        get() = jobStatus == "collected"
+
+    val navigationTarget: Pair<Double, Double>?
+        get() {
+            val lat = if (isCollected) toLatitude else fromLatitude
+            val lng = if (isCollected) toLongitude else fromLongitude
+            return if (lat != null && lng != null) lat to lng else null
+        }
+
+    val routeLabel: String
+        get() = if (leg == "pickup") "รับผ้าไปส่งร้าน" else "รับผ้าจากร้านไปคืนลูกค้า"
+}
+
+data class RiderLaundryState(
+    val modeEnabled: Boolean = false,
+    val invites: List<RiderLaundryInvite> = emptyList(),
+    val activeJob: RiderLaundryJob? = null,
+    val pool: List<RiderLaundryJob> = emptyList()
+)
+
 data class RiderSnapshot(
     val online: Boolean,
     val activeJob: RiderJob?,
     val offeredJob: RiderJob?,
     val marketPickups: List<MarketPickup> = emptyList(),
-    val riderProfileId: String? = null
+    val riderProfileId: String? = null,
+    val laundry: RiderLaundryState = RiderLaundryState()
 )
 
 
