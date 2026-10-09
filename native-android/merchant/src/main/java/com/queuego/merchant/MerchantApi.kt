@@ -36,7 +36,9 @@ data class MerchantShopSetupDraft(
     val longitude: Double?,
     val openTime: String,
     val closeTime: String,
-    val description: String
+    val description: String,
+    val logo: String?,
+    val cover: String?
 )
 
 data class MerchantTodayRevenue(
@@ -152,8 +154,8 @@ class MerchantApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
             .put("openTime", draft.openTime.trim())
             .put("closeTime", draft.closeTime.trim())
             .put("description", draft.description.trim())
-            .put("logo", shop.logo ?: JSONObject.NULL)
-            .put("cover", shop.cover ?: JSONObject.NULL)
+            .put("logo", draft.logo ?: shop.logo ?: JSONObject.NULL)
+            .put("cover", draft.cover ?: shop.cover ?: JSONObject.NULL)
         if (lat != null && lng != null) metadata.put("lat", lat).put("lng", lng)
 
         val shopBody = JSONObject()
