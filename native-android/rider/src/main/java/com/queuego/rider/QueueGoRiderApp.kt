@@ -564,14 +564,21 @@ private fun RiderHome(
                         }
                     }
                     result.onSuccess {
-                        actionMessage = when (verifyMode) {
-                            "pickup" -> "รับสินค้าแล้ว"
+                        val completedMode = verifyMode
+                        actionMessage = when (completedMode) {
+                            "pickup" -> "รับสินค้าแล้ว · กำลังเปิดนำทางไปลูกค้า"
                             "marketPickup" -> "รับสินค้าจุดนี้แล้ว"
                             else -> "จัดส่งสำเร็จ"
                         }
-                        if (verifyMode == "delivery") RiderReturnService.stop(context)
+                        if (completedMode == "delivery") RiderReturnService.stop(context)
                         closeVerification()
-                        snapshot = runCatching { api.riderSnapshot(auth) }.getOrNull()
+                        val updated = runCatching { api.riderSnapshot(auth) }.getOrNull()
+                        if (updated != null) snapshot = updated
+                        if (completedMode == "pickup") {
+                            updated?.activeJob?.let { pickedUp ->
+                                openNavigation(context, pickedUp)
+                            }
+                        }
                     }.onFailure {
                         actionMessage = it.message ?: "บันทึกหลักฐานไม่สำเร็จ"
                     }
@@ -889,8 +896,12 @@ private fun RiderHome(
                                 scope.launch {
                                     runCatching { api.acceptOffer(auth, current.offeredJob) }
                                         .onSuccess {
-                                            actionMessage = "รับงานสำเร็จ"
-                                            snapshot = runCatching { api.riderSnapshot(auth) }.getOrNull()
+                                            actionMessage = "รับงานสำเร็จ · กำลังเปิดนำทางไปร้าน"
+                                            val updated = runCatching { api.riderSnapshot(auth) }.getOrNull()
+                                            if (updated != null) snapshot = updated
+                                            updated?.activeJob?.let { accepted ->
+                                                openNavigation(context, accepted)
+                                            }
                                         }
                                         .onFailure {
                                             actionMessage = it.message ?: "รับงานไม่สำเร็จ"
