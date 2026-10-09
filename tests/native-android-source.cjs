@@ -75,7 +75,7 @@ ok(source.includes('MerchantMenuTile')&&source.includes('height(128.dp)')&&sourc
 ok(source.includes('RiderBlueprintTopBar')&&source.includes('RoundedCornerShape(21.dp)')&&source.includes('"รับงาน · " + secondsLeft + " วิ"'),'Rider native must preserve approved topbar job-card and accept-countdown blueprint');
 ok(source.includes('RiderLongdoMap')&&source.includes('MapGLSurfaceView')&&source.includes('LongdoLayer'),'native Rider must include Longdo map SDK host');
 const riderApp=read('rider/src/main/java/com/queuego/rider/QueueGoRiderApp.kt');
-ok(riderApp.includes('RiderLongdoMap(')&&riderApp.includes('fillMaxHeight(0.62f)')&&riderApp.includes('recenterSignal'),'Rider native must keep map-first home with bottom dock and recenter control');
+ok(riderApp.includes('RiderLongdoMap(')&&riderApp.includes('heightIn(max = maxHeight * 0.62f)') && !riderApp.includes('fillMaxHeight(0.62f)')&&riderApp.includes('recenterSignal'),'Rider native must keep map-first home with bottom dock and recenter control');
 ok(source.includes('longdo.map.key'),'native Rider manifest must provide Longdo map key');
 ok(source.includes('deviceLocation')&&source.includes('setLocation(MapLocation')&&source.includes('clearPin')&&source.includes('pushPin'),'native Rider map must use Android GPS and show rider/job pins');
 ok(source.includes('QgBottomNav')&&source.includes('.height(58.dp)'),'native bottom navigation must keep approved compact web density');
