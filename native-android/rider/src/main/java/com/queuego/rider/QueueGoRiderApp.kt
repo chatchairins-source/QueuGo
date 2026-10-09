@@ -18,6 +18,7 @@ import com.queuego.shared.QgRed
 import com.queuego.shared.QgMuted
 import com.queuego.shared.QgBg
 import com.queuego.shared.QgIcon
+import com.queuego.shared.QgRemoteImage
 import com.queuego.shared.QgLine
 import com.queuego.shared.QgRedSoft
 import com.queuego.shared.QgRiderBg
@@ -2020,22 +2021,39 @@ private fun VerificationScreen(
                 }
                 Spacer(Modifier.height(14.dp))
 
-                if (!marketPickupMode) Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(21.dp), colors = CardDefaults.cardColors(containerColor = Color.White)) {
-                    Column(Modifier.padding(14.dp)) {
-                        Text("รายการสินค้า", fontWeight = FontWeight.Bold)
-                        if (items.isEmpty()) {
-                            Text("ไม่พบรายการสินค้า")
-                        } else {
-                            items.forEach { item ->
-                                Spacer(Modifier.height(8.dp))
-                                Text(item.name, fontWeight = FontWeight.SemiBold)
-                                if (!item.description.isNullOrBlank()) Text(item.description)
-                                Text("จำนวน " + item.quantity + " · ฿" + "%.0f".format(item.totalPrice))
+                if (!marketPickupMode) Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(18.dp),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFEEE6E8)),
+                    colors = CardDefaults.cardColors(containerColor = Color.White)) {
+                    Column(Modifier.padding(horizontal = 10.dp, vertical = if (shortScreen) 8.dp else 9.dp)) {
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                            Text(if (pickup) "รายการสินค้า" else "สินค้า", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                            Text("${items.sumOf { it.quantity }} รายการ", fontSize = 8.sp, color = QgMuted)
+                        }
+                        if (items.isEmpty()) Text("ไม่พบรายการสินค้า", fontSize = 10.sp, color = QgMuted)
+                        items.forEachIndexed { index, item ->
+                            Row(Modifier.fillMaxWidth().padding(vertical = if (shortScreen) 6.dp else 7.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                if (!item.imageUrl.isNullOrBlank()) QgRemoteImage(item.imageUrl,
+                                    Modifier.size(if (shortScreen) 42.dp else 46.dp), cornerRadius = 11.dp, showFallback = false)
+                                Column(Modifier.weight(1f)) {
+                                    Text(item.name, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                                    if (pickup && !item.description.isNullOrBlank()) Text(item.description, fontSize = 9.sp, color = QgMuted)
+                                    Text("× ${item.quantity}", fontSize = 8.sp, color = QgMuted)
+                                }
+                                Text("฿" + "%.0f".format(item.totalPrice), fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                            }
+                            if (index < items.lastIndex) Box(Modifier.fillMaxWidth().height(1.dp).background(Color(0xFFF0EAEC)))
+                        }
+                        if (pickup && job.shopCash != null) {
+                            Box(Modifier.fillMaxWidth().height(1.dp).background(Color(0xFFEEE6E8)))
+                            Row(Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+                                Text("รวมค่าสินค้า", fontSize = 10.sp)
+                                Text("฿" + "%.0f".format(job.shopCash), fontSize = 17.sp, fontWeight = FontWeight.Bold, color = QgRed)
                             }
                         }
                     }
                 }
-
 
                 Spacer(Modifier.height(6.dp))
                 if (photoUri != null) {
