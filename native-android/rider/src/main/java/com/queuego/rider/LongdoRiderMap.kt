@@ -1,5 +1,9 @@
 package com.queuego.rider
 
+import android.Manifest
+import android.content.Context
+import android.content.pm.PackageManager
+import android.location.LocationManager
 import android.view.LayoutInflater
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -43,8 +47,20 @@ private class RiderLongdoHolder {
 
         runCatching { ldmap.clearPin() }
 
+        deviceLocation(context)?.let { (lat, lon) ->
+            runCatching {
+                ldmap.pushPin(
+                    Pin(
+                        MapLocation(lon, lat),
+                        context,
+                        android.R.drawable.ic_menu_compass
+                    )
+                )
+            }
+        }
+
         if (job == null) {
-            runCatching { ldmap.updateAndShowCurrentLocation() }
+            centerOnDevice(context)
             return
         }
 
@@ -72,16 +88,22 @@ private class RiderLongdoHolder {
         if (target != null) {
             runCatching { ldmap.setLocation(MapLocation(target.second, target.first)) }
         } else {
-            runCatching { ldmap.updateAndShowCurrentLocation() }
+            centerOnDevice(context)
         }
     }
 
-    fun recenter() {
-        runCatching { map?.updateAndShowCurrentLocation() }
+    fun centerOnDevice(context: Context) {
+        val location = deviceLocation(context) ?: return
+        runCatching {
+            map?.setLocation(MapLocation(location.second, location.first))
+        }
+    }
+
+    fun recenter(context: Context) {
+        centerOnDevice(context)
     }
 
     fun dispose() {
-        runCatching { map?.cancelUpdateAndShowCurrentLocation() }
         runCatching { mapView?.onPause() }
         map = null
         mapView = null
@@ -115,7 +137,7 @@ fun RiderLongdoMap(
                     runCatching {
                         map.setBase(LongdoLayer(ctx, "gray", 0, 1, 20))
                     }
-                    runCatching { map.updateAndShowCurrentLocation() }
+                    holder.centerOnDevice(ctx)
                     holder.refreshOverlays(ctx, latestJob.value, latestPickups.value)
                     onMapReady(true)
                 }
@@ -133,7 +155,7 @@ fun RiderLongdoMap(
     }
 
     LaunchedEffect(recenterSignal) {
-        if (recenterSignal > 0) holder.recenter()
+        if (recenterSignal > 0) holder.recenter(context)
     }
 
     DisposableEffect(Unit) {
@@ -142,4 +164,20 @@ fun RiderLongdoMap(
             onMapReady(false)
         }
     }
+}
+
+
+private fun deviceLocation(context: Context): Pair<Double, Double>? {
+    val fine = context.checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
+    val coarse = context.checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
+    if (!fine && !coarse) return null
+    val manager = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
+    return runCatching {
+        manager.getProviders(true)
+            .mapNotNull { provider ->
+                runCatching { manager.getLastKnownLocation(provider) }.getOrNull()
+            }
+            .maxByOrNull { it.time }
+            ?.let { it.latitude to it.longitude }
+    }.getOrNull()
 }
