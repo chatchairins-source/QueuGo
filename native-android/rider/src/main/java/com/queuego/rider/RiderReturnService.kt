@@ -28,6 +28,10 @@ class RiderReturnService : Service() {
         private const val NOTIFICATION_ID = 4107
 
         fun start(context: Context) {
+            // Overlay/navigation return is a work-only capability. Refuse to start
+            // from stale UI state for pending, suspended, or inactive Riders.
+            val cached = SessionStore(context.applicationContext).load() ?: return
+            if (cached.user.status != "active") return
             val intent = Intent(context, RiderReturnService::class.java)
             ContextCompat.startForegroundService(context, intent)
         }
@@ -47,6 +51,15 @@ class RiderReturnService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        // Re-check at the service boundary as Android may restart/dispatch a service
+        // after the screen that originally launched it has gone away.
+        val cached = SessionStore(applicationContext).load()
+        if (cached?.user?.status != "active") {
+            removeOverlay()
+            stopSelf()
+            return START_NOT_STICKY
+        }
+
         val notification = NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(android.R.drawable.ic_menu_directions)
             .setContentTitle("QueueGo Rider")
