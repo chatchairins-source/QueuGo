@@ -7,6 +7,7 @@ import android.security.keystore.KeyProperties
 import android.util.Base64
 import org.json.JSONObject
 import java.security.KeyStore
+import java.util.UUID
 import javax.crypto.Cipher
 import javax.crypto.KeyGenerator
 import javax.crypto.SecretKey
@@ -19,6 +20,15 @@ class SessionStore(private val context: Context) {
     fun deviceId(): String =
         Settings.Secure.getString(context.contentResolver, Settings.Secure.ANDROID_ID)
             ?.takeIf { it.isNotBlank() } ?: "android-device"
+
+    @Synchronized
+    fun pushDeviceId(): String {
+        val existing = prefs.getString("push_device_id", null).orEmpty()
+        if (existing.matches(Regex("^[0-9a-fA-F-]{36}$"))) return existing
+        val created = UUID.randomUUID().toString()
+        prefs.edit().putString("push_device_id", created).apply()
+        return created
+    }
 
     fun save(auth: QueueGoAuth) {
         val json = JSONObject()
