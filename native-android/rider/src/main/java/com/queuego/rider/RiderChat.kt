@@ -8,8 +8,12 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -17,6 +21,9 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.runtime.key
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -31,6 +38,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.queuego.shared.QgCard
 import com.queuego.shared.QgMuted
 import com.queuego.shared.QgRed
@@ -170,37 +178,19 @@ class RiderChatApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
         text: String,
         requestId: String = UUID.randomUUID().toString()
     ) {
-        val clean = text.trim()
-        require(clean.isNotBlank()) { "กรุณาพิมพ์ข้อความ" }
-        require(clean.length <= 500) { "ข้อความยาวเกิน 500 ตัวอักษร" }
-
-        val existing = http.array(
-            http.get(
-                "order_chat_messages?select=id&id=eq." + http.enc(requestId) +
-                    "&order_id=eq." + http.enc(orderId),
-                auth.session.accessToken
-            )
+        val clean = validateRiderChatPayload(text)
+        val path = "order_chat_messages?select=id&id=eq." + http.enc(requestId) +
+            "&order_id=eq." + http.enc(orderId) + "&sender_id=eq." + http.enc(auth.user.id)
+        sendRiderChatOnce(
+            exists = { http.array(http.get(path, auth.session.accessToken)).length() > 0 },
+            insert = {
+                val response = http.post("order_chat_messages", auth.session.accessToken,
+                    JSONObject().put("id", requestId).put("order_id", orderId)
+                        .put("sender_id", auth.user.id).put("message", clean))
+                val rows = http.array(response)
+                (0 until rows.length()).any { rows.optJSONObject(it)?.optString("id") == requestId }
+            }
         )
-        if (existing.length() > 0) return
-
-        http.post(
-            "order_chat_messages",
-            auth.session.accessToken,
-            JSONObject()
-                .put("id", requestId)
-                .put("order_id", orderId)
-                .put("sender_id", auth.user.id)
-                .put("message", clean)
-        )
-
-        val verify = http.array(
-            http.get(
-                "order_chat_messages?select=id&id=eq." + http.enc(requestId) +
-                    "&order_id=eq." + http.enc(orderId),
-                auth.session.accessToken
-            )
-        )
-        if (verify.length() == 0) error("ยังไม่ได้รับผลยืนยันข้อความ")
     }
 }
 
@@ -276,6 +266,43 @@ private fun RiderChatRoom(auth: QueueGoAuth, job: RiderJob, onBack: () -> Unit) 
         }
     }
 
+
+    val context = LocalContext.current
+    val outbox = remember { RiderChatOutbox() }
+
+    suspend fun deliver(payload: String, clearInput: Boolean) {
+        val liveWindow = api.window(auth, job.id)
+        currentCoroutineContext().ensureActive()
+        window = liveWindow
+        if (!liveWindow.isOpen(System.currentTimeMillis())) { closeExpired(); return }
+        api.send(auth, job.id, payload, outbox.requestId(payload))
+        currentCoroutineContext().ensureActive()
+        outbox.confirmed(payload)
+        if (clearInput && input.trim() == payload.trim()) input = ""
+        message = null
+        // Delivery is already confirmed. A read failure must not become a send failure.
+        try { refresh() }
+        catch (cancelled: CancellationException) { throw cancelled }
+        catch (failure: Exception) {
+            currentCoroutineContext().ensureActive()
+            readError = failure.message ?: "โหลดแชทไม่สำเร็จ"
+        }
+    }
+
+    val photoPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        if (uri != null && !busy && !closed) {
+            busy = true
+            scope.launch {
+                try {
+                    val payload = prepareRiderChatImage(context.contentResolver, uri)
+                    currentCoroutineContext().ensureActive()
+                    deliver(payload, false)
+                } catch (cancelled: CancellationException) { throw cancelled }
+                catch (failure: Exception) { message = failure.message ?: "ส่งรูปไม่สำเร็จ" }
+                finally { busy = false }
+            }
+        }
+    }
 
     Column(Modifier.fillMaxSize().padding(14.dp)) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -371,15 +398,11 @@ private fun RiderChatRoom(auth: QueueGoAuth, job: RiderJob, onBack: () -> Unit) 
                 }
 
                 Spacer(Modifier.height(8.dp))
-                Column(
-                    Modifier.weight(1f)
-                        .fillMaxWidth()
-                        .verticalScroll(rememberScrollState())
-                ) {
+                LazyColumn(Modifier.weight(1f).fillMaxWidth()) {
                     if (messages.isEmpty()) {
-                        Text("ยังไม่มีข้อความ", color = QgMuted)
+                        item { Text("ยังไม่มีข้อความ", color = QgMuted) }
                     } else {
-                        messages.forEach { chat ->
+                        items(messages, key = { it.id }) { chat ->
                             val mine = chat.senderId == auth.user.id
                             Row(
                                 Modifier.fillMaxWidth().padding(vertical = 4.dp),
@@ -399,7 +422,9 @@ private fun RiderChatRoom(auth: QueueGoAuth, job: RiderJob, onBack: () -> Unit) 
                                         color = if (mine) QgRed else QgMuted,
                                         fontWeight = FontWeight.Bold
                                     )
-                                    Text(chat.message)
+                                    if (chat.message.startsWith("__IMG__")) {
+                                        RiderChatImage(chat.message.removePrefix("__IMG__"))
+                                    } else Text(chat.message)
                                     if (!chat.createdAt.isNullOrBlank()) {
                                         Text(
                                             chat.createdAt!!,
@@ -478,6 +503,13 @@ private fun RiderChatRoom(auth: QueueGoAuth, job: RiderJob, onBack: () -> Unit) 
 
                 Spacer(Modifier.height(8.dp))
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    OutlinedButton(
+                        onClick = { photoPicker.launch("image/*") },
+                        modifier = Modifier.width(44.dp).height(46.dp),
+                        contentPadding = PaddingValues(0.dp),
+                        enabled = !busy && !closed && window?.isOpen(System.currentTimeMillis()) == true
+                    ) { Text("ส่งรูป", fontSize = 9.sp) }
+                    Spacer(Modifier.padding(4.dp))
                     OutlinedTextField(
                         value = input,
                         onValueChange = { if (it.length <= 500) input = it },
@@ -492,22 +524,10 @@ private fun RiderChatRoom(auth: QueueGoAuth, job: RiderJob, onBack: () -> Unit) 
                             val text = input
                             busy = true
                             scope.launch {
-                                runCatching {
-                                    val liveWindow = api.window(auth, job.id)
-                                    currentCoroutineContext().ensureActive()
-                                    window = liveWindow
-                                    if (!liveWindow.isOpen(System.currentTimeMillis())) {
-                                        closeExpired()
-                                        return@launch
-                                    }
-                                    api.send(auth, job.id, text)
-                                    currentCoroutineContext().ensureActive()
-                                    input = ""
-                                    val nextMessages = api.messages(auth, job.id)
-                                    currentCoroutineContext().ensureActive()
-                                    messages = nextMessages
-                                }.onFailure { if (it is CancellationException) throw it; message = it.message ?: "ส่งข้อความไม่สำเร็จ" }
-                                busy = false
+                                try { deliver(text, true) }
+                                catch (cancelled: CancellationException) { throw cancelled }
+                                catch (failure: Exception) { message = failure.message ?: "ส่งข้อความไม่สำเร็จ" }
+                                finally { busy = false }
                             }
                         },
                         enabled = !busy && input.isNotBlank() && !closed && window?.isOpen(System.currentTimeMillis()) == true
