@@ -1,5 +1,16 @@
 package com.queuego.customer
 
+import androidx.activity.compose.BackHandler
+import androidx.compose.runtime.key
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.repeatOnLifecycle
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
+import com.queuego.shared.NativeChatOutbox
+import com.queuego.shared.sendNativeChatOnce
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -148,48 +159,19 @@ class CustomerChatApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
         require(clean.isNotBlank()) { "กรุณาพิมพ์ข้อความ" }
         require(clean.length <= 500) { "ข้อความยาวเกิน 500 ตัวอักษร" }
 
-        val existing = http.array(
-            http.get(
-                "order_chat_messages?select=id&id=eq." + http.enc(requestId) +
-                    "&order_id=eq." + http.enc(orderId),
-                auth.session.accessToken
-            )
+        val path = "order_chat_messages?select=id&id=eq." + http.enc(requestId) +
+            "&order_id=eq." + http.enc(orderId) + "&sender_id=eq." + http.enc(auth.user.id)
+        sendNativeChatOnce(
+            exists = { http.array(http.get(path, auth.session.accessToken)).length() > 0 },
+            insert = {
+                val response = http.post("order_chat_messages", auth.session.accessToken,
+                    JSONObject().put("id", requestId).put("order_id", orderId)
+                        .put("sender_id", auth.user.id).put("message", clean))
+                val rows = http.array(response)
+                (0 until rows.length()).any { rows.optJSONObject(it)?.optString("id") == requestId }
+            }
         )
-        if (existing.length() > 0) return
-
-        val raw = http.post(
-            "order_chat_messages",
-            auth.session.accessToken,
-            JSONObject()
-                .put("id", requestId)
-                .put("order_id", orderId)
-                .put("sender_id", auth.user.id)
-                .put("message", clean)
-        )
-        if (raw is JSONArray && raw.length() == 0) {
-            val verify = http.array(
-                http.get(
-                    "order_chat_messages?select=id&id=eq." + http.enc(requestId) +
-                        "&order_id=eq." + http.enc(orderId),
-                    auth.session.accessToken
-                )
-            )
-            if (verify.length() == 0) error("ยังไม่ได้รับผลยืนยันข้อความ")
-        }
     }
-}
-
-private fun CustomerOrder.chatDeadlineMs(): Long? {
-    if (status != "completed") return null
-    val source = completedAt ?: updatedAt ?: return null
-    val base = runCatching { Instant.parse(source).toEpochMilli() }.getOrNull() ?: return null
-    return base + 30L * 60L * 1000L
-}
-
-fun CustomerOrder.chatAvailable(now: Long = System.currentTimeMillis()): Boolean {
-    if (riderId.isNullOrBlank()) return false
-    if (status != "completed") return status !in setOf("cancelled", "no_rider_available")
-    return (chatDeadlineMs() ?: 0L) > now
 }
 
 @Composable
@@ -198,6 +180,11 @@ fun CustomerChatScreen(
     order: CustomerOrder,
     onBack: () -> Unit
 ) {
+    key(auth.user.id, auth.session.sessionId, order.id) { CustomerChatRoom(auth, order, onBack) }
+}
+
+@Composable
+private fun CustomerChatRoom(auth: NativeAuth, order: CustomerOrder, onBack: () -> Unit) {
     val api = remember { CustomerChatApi() }
     val scope = rememberCoroutineScope()
     var moderation by remember { mutableStateOf<CustomerChatModeration?>(null) }
@@ -208,19 +195,59 @@ fun CustomerChatScreen(
     var reportMessageId by remember { mutableStateOf<String?>(null) }
     var reportDetails by remember { mutableStateOf("") }
 
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
+    val currentOrder by rememberUpdatedState(order)
+    val back by rememberUpdatedState(onBack)
+    val outbox = remember { NativeChatOutbox() }
+    var readError by remember { mutableStateOf<String?>(null) }
+    var closed by remember { mutableStateOf(false) }
+    BackHandler { if (!busy) back() }
+
+    fun closeExpired() { if (!closed) { closed = true; back() } }
+
     suspend fun refresh() {
+        if (!currentOrder.chatAvailable()) { closeExpired(); return }
         val mod = api.moderation(auth, order.id)
+        val nextMessages = if (mod.accepted && !mod.blockedByMe && !mod.blockedMe) {
+            api.messages(auth, order.id)
+        } else emptyList()
+        currentCoroutineContext().ensureActive()
+        if (!currentOrder.chatAvailable()) { closeExpired(); return }
         moderation = mod
-        if (mod.accepted && !mod.blockedByMe && !mod.blockedMe && order.chatAvailable()) {
-            messages = api.messages(auth, order.id)
+        messages = nextMessages
+        readError = null
+    }
+
+    suspend fun refreshAfterConfirmedAction() {
+        try { refresh() }
+        catch (cancelled: CancellationException) { throw cancelled }
+        catch (failure: Exception) {
+            currentCoroutineContext().ensureActive()
+            readError = failure.message ?: "โหลดแชทไม่สำเร็จ"
         }
     }
 
-    LaunchedEffect(order.id) {
-        while (true) {
-            runCatching { refresh() }
-                .onFailure { message = it.message ?: "โหลดแชทไม่สำเร็จ" }
-            delay(4_000)
+    LaunchedEffect(auth.session.accessToken, lifecycle) {
+        lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            while (!closed) {
+                try { refresh() }
+                catch (cancelled: CancellationException) { throw cancelled }
+                catch (failure: Exception) {
+                    currentCoroutineContext().ensureActive()
+                    readError = failure.message ?: "โหลดแชทไม่สำเร็จ"
+                }
+                delay(4_000)
+            }
+        }
+    }
+
+    LaunchedEffect(order.status, order.completedAt, order.updatedAt, lifecycle) {
+        lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            if (!currentOrder.chatAvailable()) { closeExpired(); return@repeatOnLifecycle }
+            currentOrder.chatDeadlineMs()?.let { deadline ->
+                delay((deadline - System.currentTimeMillis()).coerceAtLeast(0L))
+                if (!currentOrder.chatAvailable()) closeExpired()
+            }
         }
     }
 
@@ -232,9 +259,10 @@ fun CustomerChatScreen(
         }
         Spacer(Modifier.height(12.dp))
         QgSectionTitle("แชทกับ Rider", "ใช้เพื่อประสานงานออเดอร์นี้เท่านั้น")
-        if (!message.isNullOrBlank()) {
+        val visibleMessage = readError ?: message
+        if (!visibleMessage.isNullOrBlank()) {
             Spacer(Modifier.height(6.dp))
-            Text(message!!, color = QgRed)
+            Text(visibleMessage, color = QgRed)
         }
         Spacer(Modifier.height(10.dp))
 
@@ -269,8 +297,8 @@ fun CustomerChatScreen(
                                 scope.launch {
                                     runCatching {
                                         api.acceptTerms(auth)
-                                        refresh()
-                                    }.onFailure { message = it.message ?: "ยอมรับกติกาไม่สำเร็จ" }
+                                        refreshAfterConfirmedAction()
+                                    }.onFailure { if (it is CancellationException) throw it; message = it.message ?: "ยอมรับกติกาไม่สำเร็จ" }
                                     busy = false
                                 }
                             },
@@ -296,8 +324,8 @@ fun CustomerChatScreen(
                                 scope.launch {
                                     runCatching {
                                         api.unblock(auth, order.id)
-                                        refresh()
-                                    }.onFailure { message = it.message ?: "ปลดบล็อกไม่สำเร็จ" }
+                                        refreshAfterConfirmedAction()
+                                    }.onFailure { if (it is CancellationException) throw it; message = it.message ?: "ปลดบล็อกไม่สำเร็จ" }
                                     busy = false
                                 }
                             },
@@ -323,8 +351,8 @@ fun CustomerChatScreen(
                             scope.launch {
                                 runCatching {
                                     api.block(auth, order.id)
-                                    refresh()
-                                }.onFailure { message = it.message ?: "บล็อกไม่สำเร็จ" }
+                                    refreshAfterConfirmedAction()
+                                }.onFailure { if (it is CancellationException) throw it; message = it.message ?: "บล็อกไม่สำเร็จ" }
                                 busy = false
                             }
                         },
@@ -421,6 +449,7 @@ fun CustomerChatScreen(
                                                 message = "ส่งรายงานให้ QueueGo ตรวจสอบแล้ว"
                                                 reportMessageId = null
                                             }.onFailure {
+                                                if (it is CancellationException) throw it
                                                 message = it.message ?: "ส่งรายงานไม่สำเร็จ"
                                             }
                                             busy = false
@@ -446,19 +475,22 @@ fun CustomerChatScreen(
                     Spacer(Modifier.padding(4.dp))
                     Button(
                         onClick = {
-                            if (busy || input.isBlank()) return@Button
+                            if (busy || closed || input.isBlank() || !currentOrder.chatAvailable()) return@Button
                             val text = input
                             busy = true
                             scope.launch {
                                 runCatching {
-                                    api.send(auth, order.id, text)
-                                    input = ""
-                                    messages = api.messages(auth, order.id)
-                                }.onFailure { message = it.message ?: "ส่งข้อความไม่สำเร็จ" }
+                                    api.send(auth, order.id, text, outbox.requestId(text))
+                                    currentCoroutineContext().ensureActive()
+                                    outbox.confirmed(text)
+                                    if (input.trim() == text.trim()) input = ""
+                                    message = null
+                                    refreshAfterConfirmedAction()
+                                }.onFailure { if (it is CancellationException) throw it; message = it.message ?: "ส่งข้อความไม่สำเร็จ" }
                                 busy = false
                             }
                         },
-                        enabled = !busy && input.isNotBlank()
+                        enabled = !busy && !closed && input.isNotBlank() && currentOrder.chatAvailable()
                     ) { Text("ส่ง") }
                 }
             }

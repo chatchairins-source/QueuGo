@@ -1,30 +1,11 @@
 package com.queuego.rider
 
-import kotlinx.coroutines.CancellationException
-import java.util.UUID
-import java.security.MessageDigest
+import com.queuego.shared.NativeChatOutbox
+import com.queuego.shared.sendNativeChatOnce
 
-/** Retain the same ID after an ambiguous response; never insert a second message on retry. */
-internal class RiderChatOutbox {
-    private val requests = mutableMapOf<String, String>()
-    private fun key(payload: String): String = MessageDigest.getInstance("SHA-256")
-        .digest(payload.trim().toByteArray(Charsets.UTF_8)).joinToString("") { "%02x".format(it) }
-    fun requestId(payload: String): String = requests.getOrPut(key(payload)) { UUID.randomUUID().toString() }
-    fun confirmed(payload: String) { requests.remove(key(payload)) }
-}
-
-internal suspend fun sendRiderChatOnce(exists: suspend () -> Boolean, insert: suspend () -> Boolean) {
-    if (exists()) return
-    try {
-        if (insert()) return
-    } catch (cancelled: CancellationException) {
-        throw cancelled
-    } catch (failure: Exception) {
-        if (exists()) return
-        throw failure
-    }
-    check(exists()) { "ยังไม่ได้รับผลยืนยันข้อความ" }
-}
+internal typealias RiderChatOutbox = NativeChatOutbox
+internal suspend fun sendRiderChatOnce(exists: suspend () -> Boolean, insert: suspend () -> Boolean) =
+    sendNativeChatOnce(exists, insert)
 
 internal fun validateRiderChatPayload(raw: String): String {
     val clean = raw.trim()
