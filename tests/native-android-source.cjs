@@ -22,6 +22,7 @@ for(const p of [
   'rider/src/main/java/com/queuego/rider/RiderMessagesScreen.kt',
   'rider/src/main/java/com/queuego/rider/RiderEarningsScreen.kt',
   'rider/src/main/java/com/queuego/rider/RiderProfileScreen.kt',
+  'rider/src/main/java/com/queuego/rider/RiderSupportScreen.kt',
   'customer/src/main/java/com/queuego/customer/QueueGoCustomerApp.kt',
   'customer/src/main/java/com/queuego/customer/CustomerApi.kt',
   'customer/src/main/java/com/queuego/customer/CustomerMarketApi.kt',
@@ -127,6 +128,9 @@ ok(riderApp.includes('BackHandler(enabled = activeTab != "home"')&&riderApp.incl
 ok(riderMessages.includes('order_chat_messages?select=order_id,sender_id,message,created_at')&&riderMessages.includes('deliveries?select=order_id,delivered_at')&&riderMessages.includes('30 * 60_000L'),'Rider native message inbox must use Production chat and 30-minute completed-order window');
 ok(riderEarnings.includes('api.periodSummary(auth, days)')&&riderEarnings.includes('api.cashLedger(auth, from.toString(), to.toString())')&&riderEarnings.includes('"วันนี้"')&&riderEarnings.includes('"7 วัน"')&&riderEarnings.includes('"30 วัน"'),'Rider native earnings must preserve Production periods and ledger source');
 ok(riderProfile.includes('api.updateAccount(auth, name, phone)')&&riderProfile.includes('api.setLaundryMode(auth, enabled)')&&riderProfile.includes('api.testNativePush(auth)')&&riderProfile.includes('QgAccountDeletionSection'),'Rider native profile must preserve account, Laundry, push and deletion controls');
+const riderSupport=read('rider/src/main/java/com/queuego/rider/RiderSupportScreen.kt');
+ok(riderProfile.includes('RiderSupportScreen(')&&riderProfile.includes('แจ้งปัญหา / ติดตามเรื่อง'),'Rider native profile must expose Production support flow');
+ok(riderSupport.includes('qg_support_tickets?select=id,category,details,status,order_id,created_at,admin_note,evidence_path')&&riderSupport.includes('"qg_create_ticket"')&&riderSupport.includes('/storage/v1/object/qg-evidence/'),'Rider native support must reuse Production ticket RPC/table and evidence bucket');
 ok(riderApi.includes('qg_rider_cash_ledger')&&riderApi.includes('/rest/v1/users?auth_user_id=eq.')&&riderApi.includes('/rest/v1/rider_profiles?user_id=eq.'),'Rider native profile and earnings must reuse Production ownership APIs');
 ok(nativeRootGradle.includes('com.google.gms.google-services')&&gradle.includes('com.google.firebase:firebase-bom:35.0.0')&&gradle.includes('com.google.firebase:firebase-messaging'),'Rider native must compile with current Firebase Messaging transport');
 ok(riderManifest.includes('.QueueGoRiderMessagingService')&&riderManifest.includes('com.google.firebase.MESSAGING_EVENT')&&riderManifest.includes('queuego_orders'),'Rider native manifest must register FCM service and order channel');
