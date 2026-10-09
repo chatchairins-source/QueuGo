@@ -118,6 +118,7 @@ private fun CustomerShell(auth: NativeAuth, logout: () -> Unit) {
     var screen by remember { mutableStateOf("home") }
     var shopReturnScreen by remember { mutableStateOf("home") }
     var category by remember { mutableStateOf("all") }
+    var shoppingMode by remember { mutableStateOf("all") }
     var shops by remember { mutableStateOf<List<CustomerShop>>(emptyList()) }
     var orders by remember { mutableStateOf<List<CustomerOrder>>(emptyList()) }
     var marketTrips by remember { mutableStateOf<List<MarketTripSummary>>(emptyList()) }
@@ -201,12 +202,16 @@ private fun CustomerShell(auth: NativeAuth, logout: () -> Unit) {
     }
 
     BackHandler(enabled = screen != "home") {
-        screen = "home"
-        selectedOrder = null
-        trackingContext = null
-        selectedMarketTrip = null
-        selectedLaundryOrder = null
-        selectedShop = null
+        if (screen == "shopping" && shoppingMode != "all") {
+            shoppingMode = "all"
+        } else {
+            screen = "home"
+            selectedOrder = null
+            trackingContext = null
+            selectedMarketTrip = null
+            selectedLaundryOrder = null
+            selectedShop = null
+        }
     }
 
     val permission = rememberLauncherForActivityResult(
@@ -241,7 +246,15 @@ private fun CustomerShell(auth: NativeAuth, logout: () -> Unit) {
                 route == "map" -> screen = "location"
                 route == "market" -> screen = "market"
                 route == "laundry" -> screen = "laundry"
-                route in setOf("food", "cafe", "grocery", "shopping") -> {
+                route == "shopping" -> {
+                    shoppingMode = "all"
+                    screen = "shopping"
+                }
+                route.startsWith("shopping/") -> {
+                    shoppingMode = route.substringAfter("shopping/").substringBefore('/').ifBlank { "all" }
+                    screen = "shopping"
+                }
+                route in setOf("food", "cafe", "grocery") -> {
                     category = route
                     screen = "category"
                 }
@@ -415,6 +428,10 @@ private fun CustomerShell(auth: NativeAuth, logout: () -> Unit) {
                         when (it) {
                             "market" -> screen = "market"
                             "laundry" -> screen = "laundry"
+                            "shopping" -> {
+                                shoppingMode = "all"
+                                screen = "shopping"
+                            }
                             else -> {
                                 category = it
                                 screen = "category"
@@ -474,12 +491,22 @@ private fun CustomerShell(auth: NativeAuth, logout: () -> Unit) {
                         category = "all"
                         screen = "home"
                     },
-                    onShop = { shop ->
-                        shopReturnScreen = screen
-                        selectedShop = shop
-                        screen = "shop"
-                        shopCatalog.open(shop.id) { api.loadProducts(auth, shop.id) }
-                    }
+                    onShop = { shop -> openShopFromHome(shop, "category") },
+                    onBannerLink = ::openHomeBannerLink
+                )
+                "shopping" -> CustomerShoppingScreen(
+                    loading = loading,
+                    mode = shoppingMode,
+                    serviceBanners = serviceBanners,
+                    shops = shops,
+                    location = location,
+                    onBack = {
+                        if (shoppingMode == "all") screen = "home"
+                        else shoppingMode = "all"
+                    },
+                    onMode = { shoppingMode = it },
+                    onShop = { shop -> openShopFromHome(shop, "shopping") },
+                    onBannerLink = ::openHomeBannerLink
                 )
                 "laundry" -> LaundryNativeScreen(
                     auth = auth,
@@ -768,7 +795,7 @@ private fun CustomerHome(
             key != "grocery" && key != "shopping" && key !in homeDedicatedMarketCategories
         }
         if (location == null) eligible
-        else eligible.sortedBy { homeDistanceKm(location, it) }
+        else eligible.sortedBy { customerDistanceKm(location, it) }
     }
 
     Column(
@@ -1009,7 +1036,7 @@ private fun CustomerBlueprintShopCard(
     }
 }
 
-private fun homeDistanceKm(location: CustomerLocation, shop: CustomerShop): Double {
+internal fun customerDistanceKm(location: CustomerLocation, shop: CustomerShop): Double {
     val lat2 = shop.latitude ?: return Double.POSITIVE_INFINITY
     val lon2 = shop.longitude ?: return Double.POSITIVE_INFINITY
     if (lat2 !in 5.0..21.0 || lon2 !in 97.0..106.0) return Double.POSITIVE_INFINITY
@@ -1021,105 +1048,6 @@ private fun homeDistanceKm(location: CustomerLocation, shop: CustomerShop): Doub
         kotlin.math.cos(lat1Rad) * kotlin.math.cos(lat2Rad) *
         kotlin.math.sin(dLon / 2) * kotlin.math.sin(dLon / 2)
     return 6_371.0 * 2.0 * kotlin.math.atan2(kotlin.math.sqrt(a), kotlin.math.sqrt(1.0 - a))
-}
-
-@Composable
-internal fun ShoppingCategoryScreen(
-    loading: Boolean,
-    category: String,
-    serviceBanner: ServiceBanner?,
-    shops: List<CustomerShop>,
-    onBack: () -> Unit,
-    onShop: (CustomerShop) -> Unit
-) {
-    val visible = shops.filter { it.category == category }
-    val title = categories.find { it.first == category }?.second ?: "บริการ"
-    val fallbackSubtitle = "ร้านค้าใกล้บ้าน เลือกซื้อได้สะดวก"
-
-    Column(
-        Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 12.dp)
-    ) {
-        Spacer(Modifier.height(8.dp))
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            OutlinedButton(onClick = onBack) { Text("ย้อนกลับ") }
-            Spacer(Modifier.width(10.dp))
-            Text(title, fontWeight = FontWeight.Black, style = MaterialTheme.typography.headlineSmall)
-        }
-        Spacer(Modifier.height(12.dp))
-
-        if (serviceBanner != null && serviceBanner.active && !serviceBanner.image.isNullOrBlank()) {
-            Box {
-                QgRemoteImage(
-                    serviceBanner.image,
-                    Modifier.fillMaxWidth().height(172.dp),
-                    "Q"
-                )
-                Column(
-                    Modifier
-                        .align(Alignment.BottomStart)
-                        .fillMaxWidth()
-                        .background(androidx.compose.ui.graphics.Color(0x66000000))
-                        .padding(horizontal = 18.dp, vertical = 14.dp)
-                ) {
-                    Text(
-                        serviceBanner.title ?: title,
-                        color = androidx.compose.ui.graphics.Color.White,
-                        fontWeight = FontWeight.Black,
-                        style = MaterialTheme.typography.titleLarge
-                    )
-                    Text(
-                        serviceBanner.subtitle ?: fallbackSubtitle,
-                        color = androidx.compose.ui.graphics.Color.White,
-                        style = MaterialTheme.typography.bodySmall
-                    )
-                }
-            }
-        } else {
-            Box(
-                Modifier
-                    .fillMaxWidth()
-                    .height(162.dp)
-                    .background(QgRed, RoundedCornerShape(20.dp))
-                    .padding(18.dp),
-                contentAlignment = Alignment.BottomStart
-            ) {
-                Column {
-                    Text(
-                        title,
-                        color = androidx.compose.ui.graphics.Color.White,
-                        fontWeight = FontWeight.Black,
-                        style = MaterialTheme.typography.titleLarge
-                    )
-                    Text(
-                        fallbackSubtitle,
-                        color = androidx.compose.ui.graphics.Color.White,
-                        style = MaterialTheme.typography.bodySmall
-                    )
-                }
-            }
-        }
-
-        Spacer(Modifier.height(16.dp))
-        Text(
-            "ร้านที่เปิดให้บริการ",
-            fontWeight = FontWeight.ExtraBold,
-            style = MaterialTheme.typography.titleMedium
-        )
-        Spacer(Modifier.height(10.dp))
-        when {
-            loading -> CircularProgressIndicator()
-            visible.isEmpty() -> QgCard(Modifier.fillMaxWidth()) {
-                Text("ยังไม่พบร้านที่เปิดให้บริการในหมวดนี้", color = QgMuted)
-            }
-            else -> visible.forEach { shop ->
-                CustomerBlueprintShopCard(shop = shop, onClick = { onShop(shop) })
-            }
-        }
-        Spacer(Modifier.height(28.dp))
-    }
 }
 
 @Composable
