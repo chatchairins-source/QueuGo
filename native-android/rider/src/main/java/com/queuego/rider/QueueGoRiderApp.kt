@@ -5,6 +5,8 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.location.LocationManager
+import android.media.AudioManager
+import android.media.ToneGenerator
 import android.net.Uri
 import android.os.Build
 import android.provider.Settings
@@ -322,6 +324,7 @@ private fun RiderHome(
     var verifyMarketPickup by remember { mutableStateOf<MarketPickup?>(null) }
     var photoUri by remember { mutableStateOf<Uri?>(null) }
     var pendingCameraUri by remember { mutableStateOf<Uri?>(null) }
+    var lastOfferAlertKey by remember { mutableStateOf<String?>(null) }
 
     val locationPermission = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -426,9 +429,30 @@ private fun RiderHome(
         pendingCameraUri = null
     }
 
+    fun playRiderOfferAlert() {
+        val tone = ToneGenerator(AudioManager.STREAM_NOTIFICATION, 100)
+        tone.startTone(ToneGenerator.TONE_PROP_BEEP2, 650)
+        scope.launch {
+            delay(720)
+            runCatching {
+                tone.startTone(ToneGenerator.TONE_PROP_BEEP, 450)
+                delay(520)
+                tone.release()
+            }
+        }
+    }
+
     suspend fun refreshSnapshot() = snapshotMutex.withLock {
         runCatching { api.riderSnapshot(auth) }
             .onSuccess {
+                val offerKey = it.offeredJob?.let { job ->
+                    job.id + ":" + (job.offerExpiresAt ?: "")
+                }
+                if (offerKey != null && offerKey != lastOfferAlertKey) {
+                    lastOfferAlertKey = offerKey
+                    playRiderOfferAlert()
+                    actionMessage = "มีงานใหม่ที่ระบบจัดให้ กรุณาตอบรับภายใน 30 วินาที"
+                }
                 snapshot = it
                 loadError = null
                 if (it.activeJob == null) RiderReturnService.stop(context)
@@ -884,6 +908,10 @@ private fun RiderHome(
                                         }
                                     actionBusy = false
                                 }
+                            },
+                            onExpired = {
+                                actionMessage = "ข้อเสนอนี้หมดเวลา ระบบกำลังส่งงานให้ Rider คนถัดไป"
+                                scope.launch { refreshSnapshot() }
                             }
                         )
                     }
@@ -892,8 +920,8 @@ private fun RiderHome(
                             Column(Modifier.padding(18.dp)) {
                                 Text("พร้อมรับงาน", color = QgRed, fontWeight = FontWeight.Black, style = MaterialTheme.typography.titleLarge)
                                 Spacer(Modifier.height(5.dp))
-                                Text("ยังไม่มีงานที่ Server จัดให้ Rider คนนี้", fontWeight = FontWeight.Bold)
-                                Text("เมื่อมีงาน ระบบจะแสดงการ์ดข้อเสนอพร้อมตัวนับเวลาบนปุ่มรับงาน", color = QgMuted, style = MaterialTheme.typography.bodySmall)
+                                Text("ระบบกำลังหางานและจัดให้คุณอัตโนมัติ", fontWeight = FontWeight.Bold)
+                                Text("เมื่อ Server เลือกคุณ งานจะขึ้นเฉพาะเครื่องนี้ 30 วินาที ไม่มีการแย่งงานกับ Rider คนอื่น", color = QgMuted, style = MaterialTheme.typography.bodySmall)
                             }
                         }
                     }
@@ -944,7 +972,8 @@ private fun OfferCard(
     job: RiderJob,
     busy: Boolean,
     onAccept: () -> Unit,
-    onDecline: () -> Unit
+    onDecline: () -> Unit,
+    onExpired: () -> Unit
 ) {
     var secondsLeft by remember(job.id, job.offerExpiresAt) { mutableStateOf(30) }
 
@@ -953,7 +982,10 @@ private fun OfferCard(
             val end = runCatching { Instant.parse(job.offerExpiresAt ?: "").toEpochMilli() }.getOrNull()
             secondsLeft = if (end == null) 30 else
                 (((end - System.currentTimeMillis()).coerceAtLeast(0L) + 999L) / 1000L).toInt()
-            if (secondsLeft <= 0) break
+            if (secondsLeft <= 0) {
+                onExpired()
+                break
+            }
             delay(250)
         }
     }
