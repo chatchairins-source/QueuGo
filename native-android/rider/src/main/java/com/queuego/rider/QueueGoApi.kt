@@ -71,6 +71,64 @@ class QueueGoApi {
             )
         }
 
+    internal suspend fun registrationProfileMissing(auth: QueueGoAuth): Boolean = withContext(Dispatchers.IO) {
+        require(auth.user.role == "rider" && auth.user.status == "pending")
+        requestArray("GET", "/rest/v1/rider_profiles?select=user_id&user_id=eq." + enc(auth.user.id), auth.session.accessToken).length() == 0
+    }
+
+    internal suspend fun registerRider(
+        form: RiderRegistrationForm, password: String, documents: Map<String, String>,
+        deviceId: String, existing: QueueGoAuth?, checkpoint: suspend (QueueGoAuth) -> Unit
+    ): QueueGoAuth = withContext(Dispatchers.IO) {
+        for (step in 0..2) require(form.validate(step, password, documents.keys, existing != null) == null) {
+            form.validate(step, password, documents.keys, existing != null).orEmpty()
+        }
+        val email = form.email.trim().lowercase().ifBlank { form.normalizedPhone + "@auth.queuetech.local" }
+        val auth = if (existing != null) validate(existing) else {
+            // No automatic signup replay: if Auth succeeded but its reply was lost,
+            // the owner can log in with the same credentials and resume this draft.
+            val signup = requestObject("POST", "/auth/v1/signup", null,
+                JSONObject().put("email", email).put("password", password)
+                    .put("data", JSONObject().put("name", form.name.trim()).put("phone", form.normalizedPhone).put("role", "rider")))
+            val token = signup.optString("access_token").ifBlank {
+                requestObject("POST", "/auth/v1/token?grant_type=password", null,
+                    JSONObject().put("email",email).put("password",password)).getString("access_token")
+            }
+            val authId = signup.optJSONObject("user")?.optString("id").orEmpty()
+            require(authId.isNotBlank()) { "สร้างบัญชี Supabase Authentication ไม่สำเร็จ" }
+            val users = requestArray("GET", "/rest/v1/users?select=id,role,status&auth_user_id=eq." + enc(authId), token)
+            if (users.length() == 0) requestAny("POST", "/rest/v1/users", token,
+                JSONObject().put("auth_user_id",authId).put("role","rider").put("name",form.name.trim())
+                    .put("phone",form.normalizedPhone).put("status","pending"))
+            signIn(email, password, deviceId)
+        }
+        require(auth.user.role == "rider" && auth.user.status == "pending") { "บัญชีนี้ไม่ใช่ใบสมัครไรเดอร์ที่รออนุมัติ" }
+        checkpoint(auth)
+        val metadata = JSONObject().put("source","rider-registration")
+            .put("email",form.email.trim().ifBlank { null }).put("serviceArea",form.area.trim().ifBlank { null })
+            .put("serviceProvince",form.province).put("serviceDistrict",form.district.trim())
+            .put("vehicleType",form.vehicle).put("vehiclePlate",form.plate.trim())
+            .put("vehicleMake",form.make.trim().ifBlank { null }).put("vehicleModel",form.model.trim().ifBlank { null })
+            .put("requestedCapacityKg",form.capacity.ifBlank { "0" }.toDouble())
+            .put("applicationStatus","pending").put("applicationSubmittedAt",System.currentTimeMillis())
+            .put("available",false).put("online",false)
+        val imageKeys = listOf("profileImage","idCardFrontImage","idCardBackImage","driverLicenseImage","compulsoryInsuranceImage","vehiclePhoto")
+        RIDER_DOCUMENTS.keys.forEachIndexed { index, key -> metadata.put(imageKeys[index],documents.getValue(key)) }
+        val body = JSONObject().put("user_id",auth.user.id).put("rider_name",form.name.trim())
+            .put("phone",form.normalizedPhone).put("vehicle_type",form.vehicle).put("vehicle_plate",form.plate.trim())
+            .put("address",form.area.trim().ifBlank { null }).put("status","pending").put("metadata",metadata)
+        val before = requestArray("GET","/rest/v1/rider_profiles?select=user_id,status&user_id=eq." + enc(auth.user.id),auth.session.accessToken)
+        val result = if (before.length() == 0) {
+            requestAny("POST","/rest/v1/rider_profiles",auth.session.accessToken,body)
+        } else {
+            require(before.getJSONObject(0).optString("status") == "pending") { "ใบสมัครนี้ถูกตรวจสอบแล้ว กรุณาเข้าสู่ระบบอีกครั้ง" }
+            body.remove("user_id"); body.remove("status")
+            requestAny("PATCH","/rest/v1/rider_profiles?status=eq.pending&user_id=eq." + enc(auth.user.id),auth.session.accessToken,body)
+        }
+        require(result is JSONArray && result.length() == 1) { "บันทึกใบสมัครไม่สำเร็จ กรุณาลองใหม่" }
+        auth
+    }
+
     suspend fun validate(auth: QueueGoAuth): QueueGoAuth = withContext(Dispatchers.IO) {
         val liveAuth = refreshIfNeeded(auth)
         val result = rpc(
@@ -83,16 +141,16 @@ class QueueGoApi {
                 (result.optBoolean(0, false) ||
                     result.optJSONObject(0)?.optBoolean("check_active_session", false) == true)) ||
             (result is JSONObject && result.optBoolean("check_active_session", false))
-        if (!valid) error("บัญชีนี้ถูกเข้าสู่ระบบจากอุปกรณ์อื่น")
+        if (!valid) throw RiderSessionInvalidException("บัญชีนี้ถูกเข้าสู่ระบบจากอุปกรณ์อื่น")
 
         val users = requestArray(
             "GET",
-            "/rest/v1/users?select=id,name,role,status&auth_user_id=eq." + enc(liveAuth.session.authUserId),
+            "/rest/v1/users?select=id,name,phone,role,status&auth_user_id=eq." + enc(liveAuth.session.authUserId),
             liveAuth.session.accessToken
         )
-        if (users.length() == 0) error("ไม่พบบัญชี QueueGo")
+        if (users.length() == 0) throw RiderSessionInvalidException("ไม่พบบัญชี QueueGo")
         val row = users.getJSONObject(0)
-        if (row.optString("role") != "rider") error("สิทธิ์บัญชีไม่ถูกต้อง")
+        if (row.optString("role") != "rider") throw RiderSessionInvalidException("สิทธิ์บัญชีไม่ถูกต้อง")
         liveAuth.copy(
             user = QueueGoUser(
                 id = row.getString("id"),
@@ -109,12 +167,17 @@ class QueueGoApi {
         val refresh = session.refreshToken?.takeIf { it.isNotBlank() } ?: return auth
         if (session.expiresAtMs > System.currentTimeMillis() + 60_000L) return auth
 
-        val renewed = requestObject(
+        val renewed = try { requestObject(
             "POST",
             "/auth/v1/token?grant_type=refresh_token",
             null,
             JSONObject().put("refresh_token", refresh)
-        )
+        ) } catch (e: RiderHttpException) {
+            if (e.statusCode == 400 || e.statusCode == 401) {
+                throw RiderSessionInvalidException("Session Rider หมดอายุ กรุณาเข้าสู่ระบบอีกครั้ง")
+            }
+            throw e
+        }
         val nextAccess = renewed.optString("access_token")
         if (nextAccess.isBlank()) error("ไม่สามารถต่ออายุ Session Rider ได้")
         val nextRefresh = renewed.optString("refresh_token").takeIf { it.isNotBlank() } ?: refresh
@@ -839,7 +902,7 @@ class QueueGoApi {
                 }.orEmpty()
                 val message = runCatching { JSONObject(text).optString("message") }.getOrNull()
                     ?.takeIf { it.isNotBlank() } ?: "อัปโหลดหลักฐานไม่สำเร็จ"
-                error(message)
+                throw RiderHttpException(code, message)
             }
             return path
         } finally {

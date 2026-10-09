@@ -67,6 +67,37 @@ class SessionStore(private val context: Context) {
 
     fun clear() = prefs.edit().remove("session").apply()
 
+    fun pendingRegistrationUserId(): String? = prefs.getString("pending_registration_user", null)
+
+    fun saveRegistrationCheckpoint(auth: QueueGoAuth) {
+        save(auth)
+        check(prefs.edit().putString("pending_registration_user", auth.session.authUserId).commit())
+    }
+
+    fun finishRegistration() {
+        check(prefs.edit().remove("pending_registration_user").commit())
+        java.io.File(context.noBackupFilesDir, "rider-registration.enc").delete()
+    }
+
+    @Synchronized
+    fun saveRegistrationDraft(value: JSONObject) {
+        val encrypted = encrypt(value.toString())
+        val target = java.io.File(context.noBackupFilesDir, "rider-registration.enc")
+        val temporary = java.io.File(context.noBackupFilesDir, "rider-registration.tmp")
+        java.io.FileOutputStream(temporary).use { stream ->
+            stream.write(encrypted.toByteArray(Charsets.UTF_8)); stream.fd.sync()
+        }
+        check(temporary.renameTo(target)) { "บันทึกใบสมัครในเครื่องไม่สำเร็จ" }
+    }
+
+    @Synchronized
+    fun loadRegistrationDraft(): JSONObject? {
+        val target = java.io.File(context.noBackupFilesDir, "rider-registration.enc")
+        if (!target.exists()) return null
+        require(target.length() <= 100 * 1024 * 1024) { "ใบสมัครในเครื่องไม่ถูกต้อง" }
+        return JSONObject(decrypt(target.readText()))
+    }
+
     private fun secretKey(): SecretKey {
         val store = KeyStore.getInstance("AndroidKeyStore").apply { load(null) }
         (store.getKey(alias, null) as? SecretKey)?.let { return it }

@@ -108,18 +108,29 @@ fun QueueGoRiderApp() {
     var restoring by remember { mutableStateOf(true) }
     var busy by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
+    var restorationError by remember { mutableStateOf(false) }
+    var restorationAttempt by remember { mutableStateOf(0) }
+    var registrationOpen by remember { mutableStateOf(false) }
 
-    LaunchedEffect(Unit) {
+    LaunchedEffect(restorationAttempt) {
+        restoring = true
+        restorationError = false
         val cached = store.load()
         if (cached != null) {
             runCatching { api.validate(cached) }
                 .onSuccess {
                     store.save(it)
                     auth = it
+                    registrationOpen = store.pendingRegistrationUserId() == it.session.authUserId
                 }
                 .onFailure {
-                    store.clear()
-                    error = it.message
+                    if (it is CancellationException) throw it
+                    if (shouldClearRiderSession(it)) {
+                        store.clear()
+                        error = it.message
+                    } else {
+                        restorationError = true
+                    }
                 }
         }
         restoring = false
@@ -139,12 +150,15 @@ fun QueueGoRiderApp() {
                 store.save(validated)
                 auth = validated
             }.onFailure {
-                RiderReturnService.stop(context)
-                store.clear()
-                auth = null
-                error = "Session นี้ถูกยกเลิก หมดอายุ หรือเปิดจากอุปกรณ์อื่น"
+                if (it is CancellationException) throw it
+                if (shouldClearRiderSession(it)) {
+                    RiderReturnService.stop(context)
+                    store.clear()
+                    auth = null
+                    error = "Session นี้ถูกยกเลิก หมดอายุ หรือเปิดจากอุปกรณ์อื่น"
+                }
             }
-            if (result.isFailure) break
+            if (auth == null) break
         }
     }
 
@@ -152,10 +166,40 @@ fun QueueGoRiderApp() {
         Scaffold(containerColor = QgBg) { insets ->
             when {
                 restoring -> LoadingScreen(Modifier.padding(insets))
+                restorationError -> RiderConnectionRecoveryScreen(Modifier.padding(insets)) {
+                    restorationAttempt += 1
+                }
+                registrationOpen -> RiderRegistrationScreen(
+                    modifier = Modifier.padding(insets), store = store, busy = busy, error = error,
+                    resuming = auth != null,
+                    onBack = { if (!busy) { registrationOpen = false; error = null } },
+                    onSubmit = { form, password, documents ->
+                        if (!busy) {
+                            busy = true
+                            error = null
+                            scope.launch {
+                                try {
+                                    val result = api.registerRider(form, password, documents, store.deviceId(), auth) { checkpoint ->
+                                        store.saveRegistrationCheckpoint(checkpoint)
+                                        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) { auth = checkpoint }
+                                    }
+                                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { store.finishRegistration() }
+                                    store.save(result)
+                                    auth = result
+                                    registrationOpen = false
+                                } catch (e: Exception) {
+                                    if (e is CancellationException) throw e
+                                    error = e.message ?: "สมัครสมาชิกไม่สำเร็จ"
+                                } finally { busy = false }
+                            }
+                        }
+                    }
+                )
                 auth == null -> LoginScreen(
                     modifier = Modifier.padding(insets),
                     busy = busy,
                     error = error,
+                    onRegister = { registrationOpen = true; error = null },
                     onLogin = { id, password ->
                         busy = true
                         error = null
@@ -164,11 +208,32 @@ fun QueueGoRiderApp() {
                                 .onSuccess {
                                     store.save(it)
                                     auth = it
+                                    if (it.user.status == "pending") {
+                                        val draft = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { store.loadRegistrationDraft() }
+                                        if (draft?.optJSONObject("form")?.optString("phone")?.replace(Regex("[-\\s]"), "") == it.user.phone &&
+                                            (store.pendingRegistrationUserId() == it.session.authUserId || api.registrationProfileMissing(it))) {
+                                            store.saveRegistrationCheckpoint(it)
+                                            registrationOpen = true
+                                        }
+                                    }
                                 }
                                 .onFailure {
                                     error = it.message ?: "เข้าสู่ระบบไม่สำเร็จ"
                                 }
                             busy = false
+                        }
+                    }
+                )
+                auth?.user?.status != "active" -> RiderPendingAccountScreen(
+                    modifier = Modifier.padding(insets), name = auth!!.user.name,
+                    onLogout = {
+                        val current = auth!!
+                        RiderReturnService.stop(context)
+                        store.clear()
+                        auth = null
+                        scope.launch {
+                            runCatching { disableRiderNativePush(current, api, store) }
+                            runCatching { api.revoke(current.session) }
                         }
                     }
                 )
@@ -208,9 +273,10 @@ private fun LoginScreen(
     modifier: Modifier,
     busy: Boolean,
     error: String?,
-    onLogin: (String, String) -> Unit
+    onLogin: (String, String) -> Unit,
+    onRegister: () -> Unit
 ) {
-    RiderLoginScreen(modifier, busy, error, onLogin)
+    RiderLoginScreen(modifier, busy, error, onLogin, onRegister)
 }
 
 @Composable

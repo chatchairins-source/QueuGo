@@ -49,7 +49,8 @@ internal fun RiderLoginScreen(
     modifier: Modifier,
     busy: Boolean,
     error: String?,
-    onLogin: (String, String) -> Unit
+    onLogin: (String, String) -> Unit,
+    onRegister: () -> Unit
 ) {
     var identifier by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
@@ -125,12 +126,7 @@ internal fun RiderLoginScreen(
                     }
                     Spacer(Modifier.height(10.dp))
                     OutlinedButton(
-                        onClick = {
-                            // Existing Production onboarding remains usable; native registration
-                            // is still a functional parity gap, never certified by login capture.
-                            runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://chatchairins-source.github.io/QueuGo/rider/"))) }
-                                .onFailure { navigationError = "เปิดหน้าสมัครไม่สำเร็จ กรุณาลองใหม่" }
-                        },
+                        onClick = onRegister,
                         enabled = !busy, modifier = Modifier.fillMaxWidth().height(52.dp),
                         shape = RoundedCornerShape(18.dp), border = BorderStroke(1.dp, Color(0xFFF3C7D1)),
                         colors = ButtonDefaults.outlinedButtonColors(containerColor = Color.White, contentColor = AuthRed)
