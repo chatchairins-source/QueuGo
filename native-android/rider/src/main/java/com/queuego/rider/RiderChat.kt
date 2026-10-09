@@ -224,6 +224,7 @@ private fun RiderChatRoom(auth: QueueGoAuth, job: RiderJob, onBack: () -> Unit) 
     var input by remember(auth.user.id, auth.session.sessionId, job.id) { mutableStateOf("") }
     var busy by remember(auth.user.id, auth.session.sessionId, job.id) { mutableStateOf(false) }
     var message by remember(auth.user.id, auth.session.sessionId, job.id) { mutableStateOf<String?>(null) }
+    var readError by remember(auth.user.id, auth.session.sessionId, job.id) { mutableStateOf<String?>(null) }
     var reportMessageId by remember(auth.user.id, auth.session.sessionId, job.id) { mutableStateOf<String?>(null) }
     var reportDetails by remember(auth.user.id, auth.session.sessionId, job.id) { mutableStateOf("") }
 
@@ -249,6 +250,7 @@ private fun RiderChatRoom(auth: QueueGoAuth, job: RiderJob, onBack: () -> Unit) 
         if (!nextWindow.isOpen(System.currentTimeMillis())) { closeExpired(); return }
         moderation = mod
         messages = nextMessages
+        readError = null
     }
 
     LaunchedEffect(auth.user.id, auth.session.sessionId, auth.session.accessToken, job.id, lifecycle) {
@@ -258,7 +260,7 @@ private fun RiderChatRoom(auth: QueueGoAuth, job: RiderJob, onBack: () -> Unit) 
                 catch (cancelled: CancellationException) { throw cancelled }
                 catch (failure: Exception) {
                     currentCoroutineContext().ensureActive()
-                    message = failure.message ?: "โหลดแชทไม่สำเร็จ"
+                    readError = failure.message ?: "โหลดแชทไม่สำเร็จ"
                 }
                 delay(4_000)
             }
@@ -283,9 +285,10 @@ private fun RiderChatRoom(auth: QueueGoAuth, job: RiderJob, onBack: () -> Unit) 
         }
         Spacer(Modifier.height(12.dp))
         QgSectionTitle("แชทกับลูกค้า", "ใช้เพื่อประสานงานออเดอร์นี้เท่านั้น")
-        if (!message.isNullOrBlank()) {
+        val visibleMessage = readError ?: message
+        if (!visibleMessage.isNullOrBlank()) {
             Spacer(Modifier.height(6.dp))
-            Text(message!!, color = QgRed)
+            Text(visibleMessage, color = QgRed)
         }
         Spacer(Modifier.height(10.dp))
 
