@@ -146,7 +146,7 @@ const merchantMedia=read('merchant/src/main/java/com/queuego/merchant/MerchantMe
 const merchantModules=read('merchant/src/main/java/com/queuego/merchant/MerchantModulesScreen.kt');
 ok(merchantMedia.includes('/storage/v1/object/list/merchant-media')&&merchantMedia.includes('auth.session.authUserId + "/"')&&merchantMedia.includes('เพิ่มรูปจากเครื่อง'),'Merchant native media library must list and upload only the signed-in shop prefix');
 ok(source.includes('shop_modules?select=id,shop_user_id,module_key,status,started_at,expires_at,created_at,updated_at')&&source.includes('shop_modules?on_conflict=shop_user_id,module_key'),'Merchant native settings must reuse Production shop_modules');
-ok(merchantModules.includes('หน้าร้าน')&&merchantModules.includes('หน้าสินค้า')&&merchantModules.includes('ระบบรับออเดอร์')&&merchantModules.includes('ระบบโปรโมต'),'Merchant native settings must preserve Production module catalog');
+ok(source.includes('"storefront" to "หน้าร้าน"')&&source.includes('"products" to "หน้าสินค้า"')&&source.includes('"orders" to "ระบบรับออเดอร์"')&&source.includes('"promote" to "ระบบโปรโมต"'),'Merchant native settings must preserve Production module catalog');
 ok(source.includes('MerchantMenuTile("คลังรูปภาพ"')&&source.includes('MerchantMenuTile("การแจ้งเตือน"')&&source.includes('MerchantMenuTile("ติดต่อแอดมิน"'),'Merchant native dashboard must expose Production media notification and support routes');
 ok(source.includes('pauseShop(')&&source.includes('30 นาที')&&source.includes('1 ชั่วโมง')&&source.includes('1 วัน')&&source.includes('resume_at'),'Merchant native dashboard must preserve Production timed pause controls');
 const sharedDesign=read('shared/src/main/java/com/queuego/shared/QueueGoDesign.kt');
