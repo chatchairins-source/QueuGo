@@ -68,7 +68,8 @@ data class MerchantOrder(
     val note: String?,
     val createdAt: String?,
     val preparingAt: String?,
-    val readyAt: String?
+    val readyAt: String?,
+    val itemCount: Int = 0
 )
 
 data class MerchantOrderItem(
@@ -540,7 +541,8 @@ class MerchantApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
                         r.optNullable("note"),
                         r.optNullable("created_at"),
                         r.optNullable("preparing_at"),
-                        r.optNullable("ready_at")
+                        r.optNullable("ready_at"),
+                        r.optJSONArray("items")?.length() ?: 0
                     )
                 )
             }
