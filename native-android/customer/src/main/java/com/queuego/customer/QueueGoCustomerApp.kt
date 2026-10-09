@@ -189,6 +189,8 @@ private fun CustomerShell(auth: NativeAuth, logout: () -> Unit) {
                     runCatching { api.loadOrderItems(auth, orderId) }.onSuccess { orderItems = it }
                     runCatching { api.loadOrderContext(auth, orderId) }.onSuccess { trackingContext = it }
                 }
+                // A closed tracking page must not keep requesting live context.
+                if (screen == "order" && selectedOrder?.status in setOf("completed", "cancelled", "no_rider_available")) break
                 delay(3_000)
             }
         }
