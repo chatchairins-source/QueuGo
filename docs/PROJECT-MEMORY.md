@@ -447,3 +447,5 @@ The user-supplied Rider reference screens are the acceptance reference for workf
 - Item/market rows retained. Full shop/customer/note/contact/image density and native screenshots still need work; this checkpoint does not certify full verification-screen visual parity. Source integrity180/whitespace pass; actual build/CI pending.
 
 - Follow-up in the same proof work: retained product imageUrl now renders actual existing images at46dp/42dp short-screen, web11dp radius. Restored horizontal image/name/description/quantity/price rows, count, separators and actual shopCash total (only when present). No invented product or monetary fallback.
+
+- Re-fetched main: still9026bf445650dbeeb0fd254582481a08a16108fc. Actual final CI37890715086 at15573e8e068ad85295bc125a673bbd2c0b82b7e2 PASS: regression, source integrity/assets, shared/customer/rider JVM tests, three native APK builds, No WebView and artifact upload. Still no physical camera/EXIF/retake, screenshot comparison, background FCM or real Production E2E certification.
