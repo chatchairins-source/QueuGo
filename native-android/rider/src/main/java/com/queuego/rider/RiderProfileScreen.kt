@@ -26,6 +26,7 @@ import kotlinx.coroutines.launch
 fun RiderProfileScreen(
     auth: QueueGoAuth,
     snapshot: RiderSnapshot?,
+    history: List<RiderHistoryOrder>,
     api: QueueGoApi,
     onSnapshot: (RiderSnapshot) -> Unit,
     onLogout: () -> Unit,
@@ -41,6 +42,7 @@ fun RiderProfileScreen(
     }
     var busy by remember { mutableStateOf(false) }
     var message by remember { mutableStateOf<String?>(null) }
+    var showSupport by remember { mutableStateOf(false) }
 
     fun refresh() {
         scope.launch {
@@ -48,6 +50,17 @@ fun RiderProfileScreen(
                 .onSuccess(onSnapshot)
                 .onFailure { message = it.message ?: "โหลดข้อมูล Rider ไม่สำเร็จ" }
         }
+    }
+
+    if (showSupport) {
+        RiderSupportScreen(
+            auth = auth,
+            activeJob = snapshot?.activeJob,
+            history = history,
+            onBack = { showSupport = false },
+            modifier = modifier
+        )
+        return
     }
 
     Column(
@@ -182,6 +195,10 @@ fun RiderProfileScreen(
                 }
             } else {
                 OutlinedButton(onClick = { editing = true }, modifier = Modifier.fillMaxWidth()) { Text("ตั้งค่าบัญชี") }
+                Spacer(Modifier.height(8.dp))
+                OutlinedButton(onClick = { showSupport = true }, modifier = Modifier.fillMaxWidth()) {
+                    Text("แจ้งปัญหา / ติดตามเรื่อง")
+                }
             }
         }
 
