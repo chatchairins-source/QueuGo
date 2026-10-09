@@ -15,6 +15,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
+import java.io.File
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -80,6 +82,7 @@ fun QgAccountDeletionSection(
     onDeleted: () -> Unit
 ) {
     val api = remember { QueueGoAccountDeletionApi() }
+    val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var armed by remember { mutableStateOf(false) }
     var busy by remember { mutableStateOf(false) }
@@ -126,7 +129,10 @@ fun QgAccountDeletionSection(
                             busy = true
                             scope.launch {
                                 runCatching { api.delete(accessToken) }
-                                    .onSuccess { onDeleted() }
+                                    .onSuccess {
+                                        withContext(Dispatchers.IO) { File(context.noBackupFilesDir, "customer-chat-pending").deleteRecursively() }
+                                        onDeleted()
+                                    }
                                     .onFailure { message = it.message ?: "ลบบัญชีไม่สำเร็จ" }
                                 busy = false
                             }

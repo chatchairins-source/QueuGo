@@ -20,7 +20,13 @@ import androidx.lifecycle.repeatOnLifecycle
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
-import com.queuego.shared.NativeChatOutbox
+import com.queuego.shared.NativeChatPending
+import com.queuego.shared.NativeChatPendingStore
+import com.queuego.shared.nativeChatPermanentFailure
+import com.queuego.shared.QueueGoHttpException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import java.io.File
 import com.queuego.shared.sendNativeChatOnce
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -207,10 +213,13 @@ private fun CustomerChatRoom(auth: NativeAuth, order: CustomerOrder, onBack: () 
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     val currentOrder by rememberUpdatedState(order)
     val back by rememberUpdatedState(onBack)
-    val outbox = remember { NativeChatOutbox() }
     val context = LocalContext.current
+    val pendingStore = remember { NativeChatPendingStore(File(context.noBackupFilesDir, "customer-chat-pending"), auth.user.id, order.id) }
+    var pending by remember { mutableStateOf<NativeChatPending?>(null) }
+    var pendingReady by remember { mutableStateOf(false) }
     var photoUri by remember { mutableStateOf<Uri?>(null) }
     var photoName by remember { mutableStateOf<String?>(null) }
+    var pendingPhotoSource by remember { mutableStateOf<Uri?>(null) }
     val photoPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) {
             photoUri = uri
@@ -226,7 +235,13 @@ private fun CustomerChatRoom(auth: NativeAuth, order: CustomerOrder, onBack: () 
     var closed by remember { mutableStateOf(false) }
     BackHandler { if (!busy) back() }
 
-    fun closeExpired() { if (!closed) { closed = true; back() } }
+    suspend fun closeExpired() {
+        if (!closed) {
+            closed = true
+            try { withContext(Dispatchers.IO) { pendingStore.clear() } }
+            finally { back() }
+        }
+    }
 
     suspend fun refresh() {
         if (!currentOrder.chatAvailable()) { closeExpired(); return }
@@ -239,6 +254,14 @@ private fun CustomerChatRoom(auth: NativeAuth, order: CustomerOrder, onBack: () 
         moderation = mod
         messages = nextMessages
         readError = null
+    }
+
+    LaunchedEffect(pendingStore) {
+        try {
+            pending = withContext(Dispatchers.IO) { pendingStore.load() }
+        } catch (cancelled: CancellationException) { throw cancelled }
+        catch (failure: Exception) { message = failure.message ?: "กู้คืนข้อความค้างส่งไม่สำเร็จ" }
+        finally { pendingReady = true }
     }
 
     suspend fun refreshAfterConfirmedAction() {
@@ -491,27 +514,39 @@ private fun CustomerChatRoom(auth: NativeAuth, order: CustomerOrder, onBack: () 
                     if (photoUri != null) Text(photoName ?: "รูปภาพที่เลือก", color = QgMuted, modifier = Modifier.weight(1f))
                 }
                 Button(onClick = {
-                    if (busy || closed || (input.isBlank() && photoUri == null) || !currentOrder.chatAvailable()) return@Button
+                    if (busy || closed || !pendingReady || (pending == null && input.isBlank() && photoUri == null) || !currentOrder.chatAvailable()) return@Button
                     val text = input
                     val uri = photoUri
                     busy = true
                     scope.launch {
                         try {
-                            val payload = uri?.let { prepareNativeChatImage(context.contentResolver, it,
-                                setOf("image/jpeg", "image/png", "image/webp")) } ?: text
+                            val recovered = withContext(Dispatchers.IO) { pendingStore.load() }
+                            val payload = recovered?.payload ?: (uri?.let { prepareNativeChatImage(context.contentResolver, it,
+                                setOf("image/jpeg", "image/png", "image/webp")) } ?: text)
+                            val request = withContext(Dispatchers.IO) { pendingStore.prepare(payload) }
+                            pending = request
+                            if (recovered == null) pendingPhotoSource = uri
                             if (!currentOrder.chatAvailable()) { closeExpired(); return@launch }
-                            api.send(auth, order.id, payload, outbox.requestId(payload))
+                            api.send(auth, order.id, request.payload, request.id)
                             currentCoroutineContext().ensureActive()
-                            outbox.confirmed(payload)
-                            if (input == text) input = ""
-                            if (photoUri == uri) { photoUri = null; photoName = null }
+                            withContext(Dispatchers.IO) { pendingStore.clear() }
+                            pending = null
+                            if ((recovered == null && input == text) || input == request.payload) input = ""
+                            if (photoUri != null && photoUri == pendingPhotoSource) { photoUri = null; photoName = null }
+                            pendingPhotoSource = null
                             message = null
                             refreshAfterConfirmedAction()
                         } catch (cancelled: CancellationException) { throw cancelled }
-                        catch (failure: Exception) { message = failure.message ?: "ส่งข้อความไม่สำเร็จ" }
+                        catch (failure: Exception) {
+                            if (failure is QueueGoHttpException && nativeChatPermanentFailure(failure.statusCode)) {
+                                withContext(Dispatchers.IO) { pendingStore.clear() }
+                                pending = null
+                            }
+                            message = failure.message ?: "ส่งข้อความไม่สำเร็จ"
+                        }
                         finally { busy = false }
                     }
-                }, enabled = !busy && !closed && (input.isNotBlank() || photoUri != null) && currentOrder.chatAvailable(),
+                }, enabled = !busy && !closed && pendingReady && (pending != null || input.isNotBlank() || photoUri != null) && currentOrder.chatAvailable(),
                     modifier = Modifier.fillMaxWidth()) { Text("ส่งข้อความ / ตรวจผลข้อความเดิม") }
             }
         }
