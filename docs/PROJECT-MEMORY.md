@@ -631,3 +631,5 @@ The user-supplied Rider reference screens are the acceptance reference for workf
 - Customer/Merchant generic authentication UI remains a known Production blueprint mismatch, and all authenticated flow/physical-device/notification visual gates remain open. Latest APK build must include this follow-up; do not deliver previous artifacts as final.
 
 - Follow-up review: malformed HTTP 200 session/account payloads must not look like confirmed revocation or a deleted account. Validation now checks actual Boolean/array shapes and treats unexpected shapes as recoverable errors. Added actual API response regression cases.
+
+- Compared Production Customer login contract in index.html: it requires users.status=active. Native Customer login/restore now enforces the same rule, including pending accounts; Merchant pending onboarding remains allowed. Regression covers pending Customer rejection.

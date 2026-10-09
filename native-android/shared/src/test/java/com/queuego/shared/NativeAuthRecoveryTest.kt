@@ -75,7 +75,7 @@ class NativeAuthRecoveryTest {
         server.start()
         try {
             val api = NativeAuthApi(server.url("/").toString())
-            for ((role, status) in listOf("merchant" to "active", "customer" to "suspended", "customer" to "deleted")) {
+            for ((role, status) in listOf("merchant" to "active", "customer" to "suspended", "customer" to "deleted", "customer" to "pending")) {
                 server.enqueue(MockResponse().setBody("true"))
                 server.enqueue(MockResponse().setBody("""[{"id":"user-id","name":"Account","role":"$role","status":"$status"}]"""))
                 assertTrue(shouldClearNativeSession(failure { api.validate(cached(), "customer") }))

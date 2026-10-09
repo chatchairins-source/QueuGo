@@ -44,7 +44,8 @@ class NativeAuthApi(
         if (rows.length() == 0) throw NativeSessionInvalidException("ไม่พบบัญชี QueueGo")
         val row = rows.getJSONObject(0)
         if (row.optString("role") != expectedRole) error("บัญชีนี้ใช้กับแอปนี้ไม่ได้")
-        if (row.optString("status") in setOf("suspended", "deleted"))
+        if (row.optString("status") in setOf("suspended", "deleted") ||
+                (expectedRole == "customer" && row.optString("status") != "active"))
             throw NativeSessionInvalidException("บัญชีนี้ถูกระงับหรือปิดใช้งาน")
         val sessionId = UUID.randomUUID().toString()
         val claim = rpc(
@@ -106,7 +107,8 @@ class NativeAuthApi(
             if (rows.length() == 0) throw NativeSessionInvalidException("ไม่พบบัญชี QueueGo")
             val row = rows.getJSONObject(0)
             if (row.optString("role") != expectedRole) throw NativeSessionInvalidException("สิทธิ์บัญชีไม่ตรงกับแอป")
-            if (row.optString("status") in setOf("suspended", "deleted"))
+            if (row.optString("status") in setOf("suspended", "deleted") ||
+                (expectedRole == "customer" && row.optString("status") != "active"))
                 throw NativeSessionInvalidException("บัญชีนี้ถูกระงับหรือปิดใช้งาน")
             liveAuth.copy(
                 user = NativeUser(
