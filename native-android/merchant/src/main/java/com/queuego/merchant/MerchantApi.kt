@@ -85,7 +85,28 @@ data class MerchantProduct(
     val price: Double,
     val deliveryPrice: Double,
     val image: String?,
-    val available: Boolean
+    val available: Boolean,
+    val category: String = "",
+    val stock: Int = 0,
+    val variantsJson: String = "[]",
+    val posAvailable: Boolean = true,
+    val deliveryAvailable: Boolean = true,
+    val posPrice: Double? = null,
+    val deliveryRestriction: String = "none"
+)
+
+data class MerchantProductDraft(
+    val requestId: String,
+    val name: String,
+    val description: String?,
+    val category: String,
+    val price: Double,
+    val stock: Int,
+    val image: String?,
+    val available: Boolean,
+    val posAvailable: Boolean,
+    val deliveryAvailable: Boolean,
+    val variantsJson: String
 )
 
 data class MerchantSupportMessage(
@@ -499,23 +520,17 @@ class MerchantApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
     }
 
     suspend fun loadProducts(auth: NativeAuth, shopId: String): List<MerchantProduct> {
-        val rows = http.array(http.get(
-            "products?select=id,name,description,price,delivery_price,image,available&shop_id=eq." +
-                http.enc(shopId) + "&order=created_at.desc",
-            auth.session.accessToken
-        ))
+        val rows = http.array(
+            http.get(
+                "products?select=id,name,description,price,delivery_price,image,category,stock,variants,available,pos_available,delivery_available,pos_price,delivery_restriction,metadata" +
+                    "&shop_id=eq." + http.enc(shopId) + "&order=created_at.desc",
+                auth.session.accessToken
+            )
+        )
         return buildList {
             for (i in 0 until rows.length()) {
-                val r = rows.optJSONObject(i) ?: continue
-                add(MerchantProduct(
-                    r.optString("id"),
-                    r.optString("name").ifBlank { "สินค้า" },
-                    r.optNullable("description"),
-                    r.optDouble("price", 0.0),
-                    r.optDouble("delivery_price", r.optDouble("price", 0.0)),
-                    r.optNullable("image"),
-                    r.optBoolean("available", true)
-                ))
+                val row = rows.optJSONObject(i) ?: continue
+                merchantProductFromRow(row)?.let(::add)
             }
         }
     }
@@ -549,32 +564,68 @@ class MerchantApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
         if (rows is JSONArray && rows.length() == 0) error("ฐานข้อมูลยังไม่ยืนยันสินค้า")
     }
 
-    suspend fun updateProduct(
+    suspend fun saveProduct(
         auth: NativeAuth,
         shopId: String,
-        product: MerchantProduct,
-        name: String,
-        description: String?,
-        price: Double,
+        product: MerchantProduct?,
+        draft: MerchantProductDraft,
         gpRate: Double
-    ) {
-        val cleanName = name.trim()
+    ): MerchantProduct {
+        val cleanName = draft.name.trim()
+        val cleanDescription = draft.description?.trim()?.takeIf { it.isNotBlank() }
+        val cleanCategory = draft.category.trim()
         require(cleanName.isNotBlank()) { "กรุณากรอกชื่อสินค้า" }
-        require(price >= 0.0 && price.isFinite()) { "ราคาสินค้าไม่ถูกต้อง" }
-        val deliveryPrice = if (gpRate > 0 && gpRate < 100) {
-            price / (1.0 - gpRate / 100.0)
-        } else price
-        val raw = http.patch(
-            "products?id=eq." + http.enc(product.id) +
-                "&shop_id=eq." + http.enc(shopId),
-            auth.session.accessToken,
-            JSONObject()
-                .put("name", cleanName)
-                .put("description", description?.trim()?.takeIf { it.isNotBlank() } ?: JSONObject.NULL)
-                .put("price", price)
-                .put("delivery_price", kotlin.math.ceil(deliveryPrice))
-        )
-        if (raw is JSONArray && raw.length() == 0) error("ฐานข้อมูลยังไม่ยืนยันการแก้ไขสินค้า")
+        require(cleanCategory.isNotBlank()) { "กรุณาเลือกหมวดหมู่สินค้า" }
+        require(draft.price >= 0.0 && draft.price.isFinite()) { "ราคาขายหน้าร้านไม่ถูกต้อง" }
+        require(draft.stock >= 0) { "จำนวนสินค้าในสต็อกไม่ถูกต้อง" }
+        require(gpRate in 0.0..100.0 && gpRate.isFinite()) { "อัตรา GP ไม่ถูกต้อง" }
+        val variants = runCatching { JSONArray(draft.variantsJson.ifBlank { "[]" }) }
+            .getOrElse { throw IllegalArgumentException("ตัวเลือกสินค้าไม่ถูกต้อง") }
+        val restriction = merchantDeliveryRestriction(cleanName, cleanCategory, cleanDescription)
+        val deliveryAvailable = restriction == "none" && draft.deliveryAvailable
+        val deliveryPrice = merchantDeliveryPriceFromStore(draft.price, gpRate)
+        val metadata = JSONObject()
+            .put("stock", draft.stock)
+            .put("category", cleanCategory)
+            .put("variants", variants)
+            .put("delivery_restriction", restriction)
+        val body = JSONObject()
+            .put("shop_id", shopId)
+            .put("name", cleanName)
+            .put("description", cleanDescription ?: JSONObject.NULL)
+            .put("price", draft.price)
+            .put("image", draft.image?.trim()?.takeIf { it.isNotBlank() } ?: JSONObject.NULL)
+            .put("category", cleanCategory)
+            .put("stock", draft.stock)
+            .put("variants", variants)
+            .put("available", draft.available)
+            .put("pos_available", draft.posAvailable)
+            .put("delivery_available", deliveryAvailable)
+            .put("delivery_restriction", restriction)
+            .put("pos_price", draft.price)
+            .put("delivery_price", deliveryPrice)
+            .put("metadata", metadata)
+
+        val raw = if (product != null) {
+            http.patch(
+                "products?id=eq." + http.enc(product.id) + "&shop_id=eq." + http.enc(shopId),
+                auth.session.accessToken,
+                body
+            )
+        } else {
+            require(draft.requestId.matches(Regex("^[0-9a-fA-F-]{36}$"))) {
+                "รหัสคำขอบันทึกสินค้าไม่ถูกต้อง"
+            }
+            body.put("id", draft.requestId)
+            http.upsert(
+                "products?select=*&on_conflict=id",
+                auth.session.accessToken,
+                body
+            )
+        }
+        val rows = http.array(raw)
+        val row = rows.optJSONObject(0) ?: error("ฐานข้อมูลยังไม่ยืนยันการบันทึกสินค้า")
+        return merchantProductFromRow(row) ?: error("ข้อมูลสินค้าที่บันทึกไม่สมบูรณ์")
     }
 
     suspend fun deleteOrArchiveProduct(auth: NativeAuth, productId: String) {
@@ -590,27 +641,6 @@ class MerchantApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
             else -> raw.toString()
         }
         if (result.isBlank()) error("Server ยังไม่ยืนยันการนำสินค้าออก")
-    }
-
-    suspend fun createProduct(
-        auth: NativeAuth,
-        shopId: String,
-        name: String,
-        description: String?,
-        price: Double,
-        gpRate: Double
-    ) {
-        val deliveryPrice = if (gpRate > 0) price / (1.0 - gpRate / 100.0) else price
-        val body = JSONObject()
-            .put("shop_id", shopId)
-            .put("name", name.trim())
-            .put("description", description?.trim()?.takeIf { it.isNotBlank() })
-            .put("price", price)
-            .put("delivery_price", kotlin.math.ceil(deliveryPrice))
-            .put("available", true)
-            .put("delivery_available", true)
-        val raw = http.post("products", auth.session.accessToken, body)
-        if (raw is JSONArray && raw.length() == 0) error("ฐานข้อมูลยังไม่ยืนยันสินค้า")
     }
 
     suspend fun loadPromotions(auth: NativeAuth, shopId: String): List<MerchantPromotion> {
@@ -780,6 +810,74 @@ class MerchantApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
 private fun JSONObject.optNullable(key: String): String? =
     optString(key).takeIf { it.isNotBlank() && it != "null" }
 
+
+private fun merchantProductFromRow(r: JSONObject): MerchantProduct? {
+    val id = r.optString("id")
+    if (id.isBlank()) return null
+    val metadata = r.optJSONObject("metadata")
+    val category = r.optString("category")
+        .ifBlank { metadata?.optString("category").orEmpty() }
+    val stock = if (r.has("stock") && !r.isNull("stock")) {
+        r.optInt("stock", 0)
+    } else metadata?.optInt("stock", 0) ?: 0
+    val variantsRaw = if (r.has("variants") && !r.isNull("variants")) {
+        r.opt("variants")
+    } else metadata?.opt("variants")
+    val restriction = r.optString("delivery_restriction")
+        .ifBlank { metadata?.optString("delivery_restriction").orEmpty() }
+        .ifBlank { "none" }
+    val price = r.optDouble("price", 0.0)
+    return MerchantProduct(
+        id = id,
+        name = r.optString("name").ifBlank { "สินค้า" },
+        description = r.optNullable("description"),
+        price = price,
+        deliveryPrice = r.optDouble("delivery_price", price),
+        image = r.optNullable("image"),
+        available = r.optBoolean("available", true),
+        category = category,
+        stock = stock.coerceAtLeast(0),
+        variantsJson = merchantVariantsJson(variantsRaw),
+        posAvailable = r.optBoolean("pos_available", true),
+        deliveryAvailable = r.optBoolean("delivery_available", true),
+        posPrice = r.optDoubleOrNull("pos_price") ?: price,
+        deliveryRestriction = restriction
+    )
+}
+
+internal fun merchantVariantsJson(raw: Any?): String = when (raw) {
+    is JSONArray -> raw.toString()
+    is String -> runCatching { JSONArray(raw).toString() }.getOrDefault("[]")
+    else -> "[]"
+}
+
+internal fun merchantDeliveryPriceFromStore(price: Double, gpRate: Double): Double {
+    if (!price.isFinite() || price < 0.0) return 0.0
+    val rate = gpRate.takeIf { it.isFinite() && it >= 0.0 } ?: 0.0
+    return kotlin.math.round(price * (1.0 + rate / 100.0) * 100.0) / 100.0
+}
+
+internal fun merchantDeliveryRestriction(
+    name: String?,
+    category: String?,
+    description: String?
+): String {
+    val text = listOf(name, category, description).joinToString(" ") { it.orEmpty() }
+        .lowercase()
+    val tobaccoThai = Regex("(บุหรี่|ยาสูบ|ซิการ์|บุหรี่ไฟฟ้า)")
+    val tobaccoEnglish = Regex("\\b(cigarette|cigar|tobacco|vape)\\b", RegexOption.IGNORE_CASE)
+    if (tobaccoThai.containsMatchIn(text) || tobaccoEnglish.containsMatchIn(text)) return "tobacco"
+    val alcoholThai = Regex("(เบียร์|เหล้า|ไวน์|วิสกี้|วอดก้า|บรั่นดี|สุราขาว|สุราพื้นบ้าน)")
+    val alcoholEnglish = Regex("\\b(beer|wine|vodka|rum|gin|brandy|whisky|whiskey)\\b", RegexOption.IGNORE_CASE)
+    if (alcoholThai.containsMatchIn(text) || alcoholEnglish.containsMatchIn(text)) return "alcohol"
+    return "none"
+}
+
+internal fun merchantDeliveryRestrictionLabel(kind: String): String = when (kind) {
+    "tobacco" -> "ยาสูบ/บุหรี่"
+    "alcohol" -> "แอลกอฮอล์"
+    else -> ""
+}
 
 internal fun merchantCoordinateValid(latitude: Double, longitude: Double): Boolean =
     latitude in 5.0..21.0 && longitude in 97.0..106.0 && !(latitude == 0.0 && longitude == 0.0)
