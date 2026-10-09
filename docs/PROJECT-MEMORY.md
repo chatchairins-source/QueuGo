@@ -275,3 +275,15 @@ The user-supplied Rider reference screens are the acceptance reference for workf
 - Android navigation return feature is now implemented in native Rider: foreground service + draggable Q overlay when draw-over-other-apps permission is granted, with notification return fallback. It is stopped when returning to QueueGo, losing the active job, completing delivery, session loss, or logout.
 - Native CI builds Customer / Merchant / Rider debug APKs together and rejects WebView. Full QueueGo regression must run before native artifacts are accepted.
 - Still required before Play Closed Beta release: migrate Customer/Merchant feature parity, native push/FCM integration for the new native project, production release signing/AAB workflow for this native project, approved QueueGo launcher assets in each module, physical Android testing of login/session/GPS/camera/file upload/overlay/notification/Maps lifecycle, real three-role E2E, and final Play Console declarations/reviewer access.
+
+
+## Native parity audit resumed (2026-10-09)
+
+- Owner requires Kotlin/Compose Customer/Merchant/Rider to preserve every Production web screen and flow; no WebView, mock, shell, placeholders or new UI interpretation. Work only on `queuego-native-android-v1`; do not merge main or alter web blueprint.
+- Resume head: `c9a7c5b76aa9c425129d91313f2b203a5a053e7c`. Backup: `backup-native-before-parity-gate-20261009`. Production main inspected at `9026bf445650dbeeb0fd254582481a08a16108fc`.
+- Public Home rendered in the browser. Merchant and Rider rendered sign-in pages; authenticated operational screens have NOT been visually inspected. Mobile screenshot comparison is NOT certified.
+- Fixed Rider dock to wrap content with a maximum of 62% of available height instead of forcing every dock to occupy 62%. Native screenshot verification remains pending.
+- Removed commit-message-triggered public APK release from native build workflow. Internal build artifacts are QA inputs, not Owner deliverables. Keep public APK publication disabled until visual and live functional parity are proven and P0/P1 are zero.
+- `npm test` passes; native source integrity passes 88 checks. Neither certifies pixel match, GPS/camera, physical devices, true Realtime recovery or real Production deliveries.
+- Audit found polling loops and no native Realtime socket implementation. Functional parity must include actual Production Realtime integration and lifecycle/recovery testing.
+- Outstanding: authenticated screen inventory and measurements, all-page native parity repairs, professional three-icon preview/adaptive assets, screenshots side by side, live normal/market/laundry flows, physical lifecycle/notification tests. Do not mark the three apps complete based on README coverage or source-string assertions.
