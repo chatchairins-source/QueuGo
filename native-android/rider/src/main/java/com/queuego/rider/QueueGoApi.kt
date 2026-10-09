@@ -148,6 +148,42 @@ class QueueGoApi {
         Unit
     }
 
+    suspend fun subscribeNativePush(
+        auth: QueueGoAuth,
+        deviceId: String,
+        token: String
+    ) = withContext(Dispatchers.IO) {
+        require(deviceId.matches(Regex("^[0-9a-fA-F-]{36}$"))) { "รหัสอุปกรณ์แจ้งเตือนไม่ถูกต้อง" }
+        require(token.length in 16..4096) { "Push token ไม่ถูกต้อง" }
+        requestAny(
+            "POST",
+            "/functions/v1/queuego-push",
+            auth.session.accessToken,
+            JSONObject()
+                .put("action", "subscribe-native")
+                .put("deviceId", deviceId)
+                .put("platform", "android")
+                .put("token", token)
+        )
+        Unit
+    }
+
+    suspend fun unsubscribeNativePush(
+        auth: QueueGoAuth,
+        deviceId: String
+    ) = withContext(Dispatchers.IO) {
+        if (!deviceId.matches(Regex("^[0-9a-fA-F-]{36}$"))) return@withContext
+        requestAny(
+            "POST",
+            "/functions/v1/queuego-push",
+            auth.session.accessToken,
+            JSONObject()
+                .put("action", "unsubscribe-native")
+                .put("deviceId", deviceId)
+        )
+        Unit
+    }
+
     suspend fun setOnline(
         auth: QueueGoAuth,
         online: Boolean,
