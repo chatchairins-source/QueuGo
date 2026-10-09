@@ -217,6 +217,10 @@ fun QgIcon(name: String, modifier: Modifier = Modifier, color: Color = QgRed) {
                 drawCircle(color, w*.28f, Offset(w*.43f,h*.42f), style=stroke)
                 line(.63f,.62f,.86f,.85f)
             }
+            "back" -> {
+                line(.63f,.18f,.32f,.50f)
+                line(.32f,.50f,.63f,.82f)
+            }
             "location" -> {
                 drawCircle(color, w*.28f, Offset(w*.5f,h*.5f), style=stroke)
                 drawCircle(color, w*.08f, Offset(w*.5f,h*.5f), style=stroke)
