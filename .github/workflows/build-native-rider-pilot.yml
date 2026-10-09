@@ -37,6 +37,30 @@ jobs:
           mkdir -p native-android/rider/libs
           curl -fsSL "https://api.longdo.com/map-android-SDK/LongdoMapAndroidSDK_v0.1.8.aar" -o native-android/rider/libs/LongdoMapAndroidSDK_v0.1.8.aar
           echo "52d98e8deaaef4400f2623eebb212daa  native-android/rider/libs/LongdoMapAndroidSDK_v0.1.8.aar" | md5sum -c -
+      - name: Prepare native Rider Firebase config
+        env:
+          QG_FIREBASE_GOOGLE_SERVICES_JSON_B64: ${{ secrets.QG_FIREBASE_GOOGLE_SERVICES_JSON_B64 }}
+        run: |
+          set -euo pipefail
+          test -n "${QG_FIREBASE_GOOGLE_SERVICES_JSON_B64:-}" || {
+            echo "::error::QG_FIREBASE_GOOGLE_SERVICES_JSON_B64 is required for native Rider background jobs"
+            exit 1
+          }
+          umask 077
+          printf '%s' "$QG_FIREBASE_GOOGLE_SERVICES_JSON_B64" | base64 --decode > native-android/rider/google-services.json
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('native-android/rider/google-services.json')
+          data=json.loads(p.read_text())
+          packages={
+              c.get('client_info',{}).get('android_client_info',{}).get('package_name')
+              for c in (data.get('client') or [])
+          }
+          if 'com.queuego.rider' not in packages:
+              raise SystemExit('::error::Firebase config has no com.queuego.rider Android client')
+          print('Native Rider Firebase config: valid')
+          PY
       - name: Install regression dependencies
         run: npm ci
       - name: Full QueueGo regression
