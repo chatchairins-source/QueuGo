@@ -26,6 +26,9 @@ for(const p of [
   'customer/src/main/java/com/queuego/customer/CustomerReview.kt',
   'merchant/src/main/java/com/queuego/merchant/QueueGoMerchantApp.kt',
   'merchant/src/main/java/com/queuego/merchant/MerchantApi.kt',
+  'merchant/src/main/java/com/queuego/merchant/MerchantShopSetupScreen.kt',
+  'merchant/src/main/java/com/queuego/merchant/MerchantImageUpload.kt',
+  'merchant/src/main/AndroidManifest.xml',
   'merchant/src/main/java/com/queuego/merchant/MerchantLaundryApi.kt',
   'merchant/src/main/java/com/queuego/merchant/MerchantSupportScreen.kt'
 ]) ok(fs.existsSync(path.join(root,p)),'missing '+p);
@@ -87,6 +90,14 @@ ok(source.includes('get_my_shop_orders'),'Merchant native Orders must use produc
 ok(source.includes('ToneGenerator')&&source.includes('STREAM_NOTIFICATION'),'Merchant native must alert on new orders');
 ok(source.includes('queuego_delete_or_archive_product')&&source.includes('updateProduct('),'Merchant native must support safe product archive and price editing');
 ok(source.includes('shop_support_messages?select=id,sender_user_id,body,created_at'),'Merchant native must preserve Admin support messaging');
+const merchantSetup=read('merchant/src/main/java/com/queuego/merchant/MerchantShopSetupScreen.kt');
+const merchantImageUpload=read('merchant/src/main/java/com/queuego/merchant/MerchantImageUpload.kt');
+const merchantManifest=read('merchant/src/main/AndroidManifest.xml');
+ok(merchantSetup.includes('QgLongdoLocationPickerMap(')&&merchantSetup.includes('ใช้ตำแหน่ง GPS ปัจจุบัน')&&merchantSetup.includes('บันทึกข้อมูลร้าน'),'Merchant native shop setup must preserve Longdo picker, GPS and save flow');
+ok(merchantSetup.includes('mobile_accessories')&&merchantSetup.includes('automotive_motorcycle')&&merchantSetup.includes('home_decor'),'Merchant native Shopping setup must preserve web subcategories');
+ok(merchantImageUpload.includes('/storage/v1/object/merchant-media/')&&merchantImageUpload.includes('12 * 1024 * 1024')&&merchantImageUpload.includes('3 * 1024 * 1024'),'Merchant native shop images must use production merchant-media limits');
+ok(merchantManifest.includes('ACCESS_FINE_LOCATION')&&merchantManifest.includes('longdo.map.key'),'Merchant native setup must declare location and Longdo key');
+ok(source.includes('saveShopSetup(')&&source.includes('shop_profiles?id=eq.')&&source.includes('users?id=eq.'),'Merchant native setup must persist owned shop and user profile');
 ok(source.includes('queuego_laundry_merchant_state')&&source.includes('queuego_laundry_shop_action_v2'),'Merchant native Laundry must use production laundry state/actions');
 ok(source.includes('พร้อมส่ง · เหลือ'),'Merchant preparation countdown must remain on ready button');
 ok(source.includes('SecureRoleSessionStore')&&source.includes('NativeAuthApi'),'Customer/Merchant must share native auth/session implementation');
