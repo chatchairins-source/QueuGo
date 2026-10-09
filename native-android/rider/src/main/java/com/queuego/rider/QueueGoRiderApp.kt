@@ -28,6 +28,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
@@ -331,6 +332,7 @@ private fun RiderHome(
     var photoUri by remember { mutableStateOf<Uri?>(null) }
     var pendingCameraUri by remember { mutableStateOf<Uri?>(null) }
     var lastOfferAlertKey by remember { mutableStateOf<String?>(null) }
+    var activeTab by remember { mutableStateOf("home") }
 
     val locationPermission = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -508,6 +510,10 @@ private fun RiderHome(
             }
     }
 
+    BackHandler(enabled = activeTab != "home" && chatJob == null && verifyMode == null) {
+        activeTab = "home"
+    }
+
     val subscriptions = riderRealtimeSubscriptions(auth.user.id, snapshot?.riderProfileId)
     LaunchedEffect(auth.session.accessToken, subscriptions, lifecycle) {
         lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
@@ -608,6 +614,43 @@ private fun RiderHome(
         return
     }
 
+    if (activeTab != "home") {
+        Box(
+            modifier
+                .fillMaxSize()
+                .background(QgRiderBg)
+        ) {
+            when (activeTab) {
+                "chat" -> RiderMessagesScreen(
+                    auth = auth,
+                    activeJob = snapshot?.activeJob,
+                    history = recentHistory,
+                    onOpenChat = { chatJob = it },
+                    modifier = Modifier.fillMaxSize()
+                )
+                "earn" -> RiderEarningsScreen(
+                    auth = auth,
+                    api = api,
+                    modifier = Modifier.fillMaxSize()
+                )
+                "profile" -> RiderProfileScreen(
+                    auth = auth,
+                    snapshot = snapshot,
+                    api = api,
+                    onSnapshot = { snapshot = it },
+                    onLogout = onLogout,
+                    modifier = Modifier.fillMaxSize()
+                )
+            }
+            RiderBottomNavigation(
+                activeTab = activeTab,
+                onSelect = { activeTab = it },
+                modifier = Modifier.align(Alignment.BottomCenter)
+            )
+        }
+        return
+    }
+
     var recenterSignal by remember { mutableStateOf(0) }
     var mapReady by remember { mutableStateOf(false) }
     val mapJob = snapshot?.activeJob ?: snapshot?.offeredJob
@@ -692,6 +735,7 @@ private fun RiderHome(
                 .heightIn(max = maxHeight * 0.62f)
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 8.dp, vertical = 8.dp)
+                .padding(bottom = 66.dp)
         ) {
         if (auth.user.status != "active") {
             Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(21.dp), colors = CardDefaults.cardColors(containerColor = Color.White)) {
@@ -1076,15 +1120,67 @@ private fun RiderHome(
 
         Spacer(Modifier.height(14.dp))
         RiderRecentHistoryCard(recentHistory)
-        Spacer(Modifier.height(14.dp))
-        QgAccountDeletionSection(
-            accessToken = auth.session.accessToken,
-            onDeleted = onLogout
-        )
-        Spacer(Modifier.height(24.dp))
-        OutlinedButton(onClick = onLogout, modifier = Modifier.fillMaxWidth()) {
-            Text("ออกจากระบบ")
+        Spacer(Modifier.height(18.dp))
         }
+
+        RiderBottomNavigation(
+            activeTab = activeTab,
+            onSelect = { activeTab = it },
+            modifier = Modifier.align(Alignment.BottomCenter)
+        )
+    }
+}
+
+@Composable
+private fun RiderBottomNavigation(
+    activeTab: String,
+    onSelect: (String) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier
+            .fillMaxWidth()
+            .padding(horizontal = 8.dp, vertical = 6.dp)
+            .height(58.dp),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFAFFFFFF)),
+        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFEEE6E8)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 10.dp)
+    ) {
+        Row(
+            Modifier.fillMaxSize().padding(4.dp),
+            horizontalArrangement = Arrangement.spacedBy(2.dp)
+        ) {
+            listOf(
+                Triple("home", "หน้าแรก", "home"),
+                Triple("chat", "ข้อความ", "support"),
+                Triple("earn", "รายได้", "chart"),
+                Triple("profile", "โปรไฟล์", "user")
+            ).forEach { (key, label, icon) ->
+                val selected = activeTab == key
+                Column(
+                    Modifier
+                        .weight(1f)
+                        .fillMaxSize()
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(if (selected) QgRedSoft else Color.Transparent)
+                        .clickable { onSelect(key) },
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    QgIcon(
+                        icon,
+                        Modifier.size(19.dp),
+                        if (selected) QgRed else Color(0xFF8D878B)
+                    )
+                    Text(
+                        label,
+                        color = if (selected) QgRed else Color(0xFF8D878B),
+                        fontWeight = FontWeight.ExtraBold,
+                        style = MaterialTheme.typography.labelSmall
+                    )
+                }
+            }
         }
     }
 }
