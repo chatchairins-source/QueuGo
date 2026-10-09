@@ -286,6 +286,56 @@ fun QgIcon(name: String, modifier: Modifier = Modifier, color: Color = QgRed) {
                 drawRoundRect(color, Offset(w*.2f,h*.26f), Size(w*.6f,h*.56f), CornerRadius(w*.05f), style=stroke)
                 line(.2f,.4f,.8f,.4f); line(.5f,.26f,.5f,.82f)
             }
+            "phone" -> {
+                drawRoundRect(color, Offset(w*.29f,h*.10f), Size(w*.42f,h*.80f), CornerRadius(w*.08f), style=stroke)
+                line(.42f,.21f,.58f,.21f); line(.46f,.78f,.54f,.78f)
+            }
+            "monitor" -> {
+                drawRoundRect(color, Offset(w*.13f,h*.17f), Size(w*.74f,h*.50f), CornerRadius(w*.07f), style=stroke)
+                line(.50f,.67f,.50f,.83f); line(.33f,.83f,.67f,.83f)
+            }
+            "gear" -> {
+                drawCircle(color, w*.14f, Offset(w*.50f,h*.50f), style=stroke)
+                drawCircle(color, w*.31f, Offset(w*.50f,h*.50f), style=stroke)
+                line(.50f,.07f,.50f,.19f); line(.50f,.81f,.50f,.93f)
+                line(.07f,.50f,.19f,.50f); line(.81f,.50f,.93f,.50f)
+                line(.20f,.20f,.29f,.29f); line(.71f,.71f,.80f,.80f)
+                line(.80f,.20f,.71f,.29f); line(.29f,.71f,.20f,.80f)
+            }
+            "shirt" -> {
+                line(.33f,.17f,.21f,.25f); line(.21f,.25f,.10f,.40f); line(.10f,.40f,.25f,.50f)
+                line(.25f,.50f,.25f,.86f); line(.25f,.86f,.75f,.86f); line(.75f,.86f,.75f,.50f)
+                line(.75f,.50f,.90f,.40f); line(.90f,.40f,.79f,.25f); line(.79f,.25f,.67f,.17f)
+                drawArc(color, 0f, 180f, false, Offset(w*.33f,h*.11f), Size(w*.34f,h*.23f), style=stroke)
+            }
+            "toy" -> {
+                drawCircle(color, w*.08f, Offset(w*.33f,h*.28f), style=stroke)
+                drawCircle(color, w*.08f, Offset(w*.67f,h*.28f), style=stroke)
+                drawCircle(color, w*.25f, Offset(w*.50f,h*.54f), style=stroke)
+                drawCircle(color, w*.025f, Offset(w*.41f,h*.51f))
+                drawCircle(color, w*.025f, Offset(w*.59f,h*.51f))
+                drawArc(color, 20f, 140f, false, Offset(w*.40f,h*.57f), Size(w*.20f,h*.15f), style=stroke)
+            }
+            "decor" -> {
+                drawRoundRect(color, Offset(w*.20f,h*.26f), Size(w*.60f,h*.34f), CornerRadius(w*.10f), style=stroke)
+                drawRoundRect(color, Offset(w*.10f,h*.45f), Size(w*.80f,h*.30f), CornerRadius(w*.08f), style=stroke)
+                line(.21f,.75f,.21f,.86f); line(.79f,.75f,.79f,.86f)
+            }
+            "car" -> {
+                line(.17f,.63f,.17f,.38f); line(.17f,.38f,.29f,.20f); line(.29f,.20f,.71f,.20f)
+                line(.71f,.20f,.83f,.38f); line(.83f,.38f,.83f,.63f); line(.13f,.46f,.87f,.46f)
+                drawCircle(color, w*.04f, Offset(w*.29f,h*.63f), style=stroke)
+                drawCircle(color, w*.04f, Offset(w*.71f,h*.63f), style=stroke)
+                line(.21f,.63f,.21f,.79f); line(.21f,.79f,.31f,.79f)
+                line(.79f,.63f,.79f,.79f); line(.79f,.79f,.69f,.79f)
+            }
+            "motorcycle" -> {
+                drawCircle(color, w*.13f, Offset(w*.25f,h*.67f), style=stroke)
+                drawCircle(color, w*.13f, Offset(w*.75f,h*.67f), style=stroke)
+                line(.38f,.67f,.55f,.67f); line(.55f,.67f,.63f,.46f); line(.63f,.46f,.46f,.46f)
+                line(.46f,.46f,.38f,.33f); line(.38f,.33f,.25f,.33f)
+                line(.55f,.67f,.42f,.46f); line(.63f,.46f,.75f,.67f); line(.58f,.29f,.71f,.29f)
+            }
             else -> {
                 drawCircle(color, w*.3f, Offset(w*.5f,h*.5f), style=stroke)
             }
