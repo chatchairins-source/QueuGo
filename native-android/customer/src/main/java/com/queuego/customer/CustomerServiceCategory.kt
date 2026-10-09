@@ -49,10 +49,7 @@ internal fun ServiceCategoryScreen(loading: Boolean, category: String, serviceBa
     shops: List<CustomerShop>, onBack: () -> Unit, onShop: (CustomerShop) -> Unit,
     onBannerLink: (String) -> Unit = {}) {
     val spec = webServiceCategory(category)
-    if (spec == null) {
-        ShoppingCategoryScreen(loading, category, serviceBanner, shops, onBack, onShop)
-        return
-    }
+    if (spec == null) return
     val visible = shops.filter { when(category) {
         "food" -> it.category in setOf("food", "restaurant")
         "cafe" -> it.category in setOf("cafe", "drink", "beverage")
