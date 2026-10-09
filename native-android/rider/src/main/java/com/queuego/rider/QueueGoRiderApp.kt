@@ -69,6 +69,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -79,6 +80,11 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.layout.widthIn
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import androidx.compose.ui.res.painterResource
 import androidx.compose.material3.Icon
 import androidx.core.content.FileProvider
@@ -336,6 +342,54 @@ private fun RiderHome(
     var pendingCameraUri by remember { mutableStateOf<Uri?>(null) }
     var lastOfferAlertKey by remember { mutableStateOf<String?>(null) }
     var activeTab by remember { mutableStateOf("home") }
+
+    val badgePreferences = remember(context) { context.getSharedPreferences("rider_chat_seen", Context.MODE_PRIVATE) }
+    val badgeTracker = remember(auth.user.id, auth.session.sessionId) { RiderMessageBadgeTracker(auth.user.id) }
+    val badgeApi = remember { RiderMessageBadgeApi() }
+    var unreadMessages by remember(auth.user.id, auth.session.sessionId) { mutableStateOf(0) }
+    var messageNotice by remember(auth.user.id, auth.session.sessionId) { mutableStateOf<String?>(null) }
+    var messageNoticeVersion by remember(auth.user.id, auth.session.sessionId) { mutableStateOf(0) }
+    val badgeActive by rememberUpdatedState(snapshot?.activeJob?.id)
+    val badgeHistory by rememberUpdatedState(recentHistory)
+    val badgeChat by rememberUpdatedState(chatJob?.id)
+    val badgeInbox by rememberUpdatedState(activeTab == "chat")
+    LaunchedEffect(auth.user.id, auth.session.sessionId, auth.session.accessToken, lifecycle) {
+        lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            while (true) {
+                val active = badgeActive
+                val ids = (listOfNotNull(active) + badgeHistory.map { it.id }).distinct().take(100)
+                try {
+                    val (rooms, messages) = badgeApi.read(auth, ids)
+                    currentCoroutineContext().ensureActive()
+                    if (active == badgeActive) {
+                        val now = System.currentTimeMillis()
+                        if (badgeInbox) badgePreferences.edit().putLong(auth.user.id, now).apply()
+                        val (count, notice) = badgeTracker.update(active, badgeChat, badgeInbox, rooms,
+                            messages, badgePreferences.getLong(auth.user.id, 0L), now)
+                        unreadMessages = count
+                        if (notice != null) {
+                            messageNotice = notice
+                            messageNoticeVersion++
+                        }
+                    }
+                } catch (e: Exception) {
+                    if (e is CancellationException) throw e
+                    // Keep the last authoritative count during a failed read; retry on the next tick.
+                }
+                delay(if (badgeActive == null) 15_000 else 5_000)
+            }
+        }
+    }
+    LaunchedEffect(messageNoticeVersion) {
+        if (messageNotice != null) {
+            delay(3_800)
+            messageNotice = null
+        }
+    }
+    LaunchedEffect(chatJob?.id, activeTab, auth.user.id) {
+        if (activeTab == "chat") badgePreferences.edit().putLong(auth.user.id, System.currentTimeMillis()).apply()
+        if (chatJob != null) unreadMessages = 0
+    }
 
     val locationPermission = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -652,9 +706,11 @@ private fun RiderHome(
             }
             RiderBottomNavigation(
                 activeTab = activeTab,
+                unreadMessages = unreadMessages,
                 onSelect = { activeTab = it },
                 modifier = Modifier.align(Alignment.BottomCenter)
             )
+            messageNotice?.let { RiderMessageNotice(it, Modifier.align(Alignment.TopCenter)) }
         }
         return
     }
@@ -1133,15 +1189,34 @@ private fun RiderHome(
 
         RiderBottomNavigation(
             activeTab = activeTab,
+            unreadMessages = unreadMessages,
             onSelect = { activeTab = it },
             modifier = Modifier.align(Alignment.BottomCenter)
         )
+        messageNotice?.let { RiderMessageNotice(it, Modifier.align(Alignment.TopCenter)) }
+    }
+}
+
+@Composable
+private fun RiderMessageNotice(message: String, modifier: Modifier) {
+    Row(
+        modifier.padding(horizontal = 14.dp, vertical = 12.dp).widthIn(max = 520.dp).fillMaxWidth()
+            .background(Color(0xFF171519), RoundedCornerShape(16.dp)).padding(11.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        Canvas(Modifier.size(6.dp)) { drawCircle(Color(0xFFFF4766)) }
+        Column {
+            Text("ข้อความใหม่", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+            Text(message, color = Color(0xFFD7D1D4), fontSize = 8.sp, maxLines = 2)
+        }
     }
 }
 
 @Composable
 private fun RiderBottomNavigation(
     activeTab: String,
+    unreadMessages: Int,
     onSelect: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -1176,6 +1251,7 @@ private fun RiderBottomNavigation(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center
                 ) {
+                    Box {
                     Icon(
                         painter = painterResource(when (icon) {
                             "home" -> R.drawable.qg_rider_nav_home
@@ -1187,6 +1263,18 @@ private fun RiderBottomNavigation(
                         modifier = Modifier.size(19.dp),
                         tint = if (selected) QgRed else Color(0xFF8D878B)
                     )
+                    if (key == "chat" && unreadMessages > 0) {
+                        Text(
+                            if (unreadMessages > 9) "9+" else unreadMessages.toString(),
+                            modifier = Modifier.align(Alignment.TopEnd).offset(x = 9.dp, y = (-3).dp)
+                                .background(Color(0xFFFF3B30), RoundedCornerShape(99.dp))
+                                .padding(horizontal = 4.dp),
+                            color = Color.White,
+                            fontSize = 8.sp,
+                            lineHeight = 15.sp
+                        )
+                    }
+                    }
                     Text(
                         label,
                         modifier = Modifier.padding(top = 2.dp),

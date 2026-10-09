@@ -428,3 +428,11 @@ The user-supplied Rider reference screens are the acceptance reference for workf
 - Additional source parity gap found: web qgUpdateBadge/readRiderChat implements unseen incoming-message badge and foreground message notice, while current Native bottom nav/inbox has no unread count. Must implement against real scoped chat messages (including post-completion 30-minute rooms), with per-user/order seen state and lifecycle guards; do not fabricate a count. Current vector change does not close this gap.
 
 - Final actual CI37889041290 at b815baafe9173cb801e1a27b5aa28b8af21e57f2 PASS: regression, integrity, assets, shared/customer/rider tests, all three APK builds, No WebView and artifact upload. No device visual/background-push/live E2E certification inferred.
+
+## Rider unread-message Native parity — 2026-10-09
+
+- Backup backup-native-before-rider-message-badge-20261009 at874fa1f local/GitHub. Followed current main9026bf4 readRiderChat/qgUpdateBadge/watchCompletedChat; no backend or web changes.
+- Added RLS-scoped reads of existing orders/customer ownership, deliveries and order_chat_messages, bounded to existing active/history IDs (100 rooms/500 messages as web). Active-room first read is a baseline; new latest counterpart messages increment once, self messages do not, opening chat clears active count.
+- Completed-room count includes only the actual order customer, after delivered_at, before30-minute deadline and after the user's persisted inbox-seen timestamp. Opening messages updates that timestamp. Badge caps display at9+, using web red/white/8sp styling; foreground active-message notice follows web dark card and3800ms lifetime.
+- Tracker/count scoped to user+session, coroutine to current token+STARTED lifecycle; cancellation propagates and stale active-order reads are discarded. Failed reads preserve previous count, retry5s active/15s idle. Added JVM tests for baseline/duplicate/self/open-room behavior, customer/seen/deadline boundaries, changed room/account.
+- Source integrity180/whitespace PASS. Await actual CI JVM/build gate; do not claim visual/live RLS/reconnect/device/background notification certification. Existing native inbox and badge polling can issue separate reads; completed alert toast/notification behavior and screenshot parity still need verification.
