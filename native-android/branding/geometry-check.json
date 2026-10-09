@@ -1,0 +1,19 @@
+{
+  "renderer": "sharp 0.35.4",
+  "safeRadiusDp": 33,
+  "roleWeightSpreadPercent": 8.44,
+  "metrics": {
+    "customer": {
+      "maxRadiusDp": 31.67,
+      "roleCoverage": 207.36
+    },
+    "merchant": {
+      "maxRadiusDp": 31.67,
+      "roleCoverage": 221.01
+    },
+    "rider": {
+      "maxRadiusDp": 31.67,
+      "roleCoverage": 224.87
+    }
+  }
+}

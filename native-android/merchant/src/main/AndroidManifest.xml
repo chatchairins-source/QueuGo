@@ -3,8 +3,8 @@
     <application
         tools:replace="android:label"
         android:label="QueueGo Merchant"
-        android:icon="@drawable/ic_queuego_launcher"
-        android:roundIcon="@drawable/ic_queuego_launcher"
+        android:icon="@mipmap/ic_queuego_launcher"
+        android:roundIcon="@mipmap/ic_queuego_launcher"
         android:theme="@style/AppTheme"
         android:usesCleartextTraffic="false">
         <activity android:name=".MainActivity" android:exported="true">

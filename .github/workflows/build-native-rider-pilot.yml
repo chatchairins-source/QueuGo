@@ -43,6 +43,8 @@ jobs:
         run: npm test
       - name: Source integrity
         run: node tests/native-android-source.cjs
+      - name: Verify launcher asset family
+        run: node tests/native-launcher-assets.cjs
       - name: Tracking coordinate and terminal-state unit tests
         run: gradle -p native-android :shared:testDebugUnitTest :customer:testDebugUnitTest --stacktrace
       - name: Build three native APKs
