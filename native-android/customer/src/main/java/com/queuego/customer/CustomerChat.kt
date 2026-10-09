@@ -1,5 +1,16 @@
 package com.queuego.customer
 
+import android.net.Uri
+import android.provider.OpenableColumns
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.material3.TextButton
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import com.queuego.shared.NativeChatImage
+import com.queuego.shared.prepareNativeChatImage
+import com.queuego.shared.validateNativeChatPayload
 import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.key
 import androidx.compose.runtime.rememberUpdatedState
@@ -135,7 +146,7 @@ class CustomerChatApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
             http.get(
                 "order_chat_messages?select=id,sender_id,message,created_at" +
                     "&order_id=eq." + http.enc(orderId) +
-                    "&order=created_at.asc&limit=100",
+                    "&order=created_at.desc&limit=100",
                 auth.session.accessToken
             )
         )
@@ -151,13 +162,11 @@ class CustomerChatApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
                     )
                 )
             }
-        }
+        }.asReversed()
     }
 
     suspend fun send(auth: NativeAuth, orderId: String, text: String, requestId: String = UUID.randomUUID().toString()) {
-        val clean = text.trim()
-        require(clean.isNotBlank()) { "กรุณาพิมพ์ข้อความ" }
-        require(clean.length <= 500) { "ข้อความยาวเกิน 500 ตัวอักษร" }
+        val clean = validateNativeChatPayload(text)
 
         val path = "order_chat_messages?select=id&id=eq." + http.enc(requestId) +
             "&order_id=eq." + http.enc(orderId) + "&sender_id=eq." + http.enc(auth.user.id)
@@ -199,6 +208,20 @@ private fun CustomerChatRoom(auth: NativeAuth, order: CustomerOrder, onBack: () 
     val currentOrder by rememberUpdatedState(order)
     val back by rememberUpdatedState(onBack)
     val outbox = remember { NativeChatOutbox() }
+    val context = LocalContext.current
+    var photoUri by remember { mutableStateOf<Uri?>(null) }
+    var photoName by remember { mutableStateOf<String?>(null) }
+    val photoPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) {
+            photoUri = uri
+            photoName = runCatching {
+                context.contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { cursor ->
+                    val column = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+                    if (column >= 0 && cursor.moveToFirst()) cursor.getString(column) else null
+                }
+            }.getOrNull()
+        }
+    }
     var readError by remember { mutableStateOf<String?>(null) }
     var closed by remember { mutableStateOf(false) }
     BackHandler { if (!busy) back() }
@@ -360,15 +383,11 @@ private fun CustomerChatRoom(auth: NativeAuth, order: CustomerOrder, onBack: () 
                     ) { Text("บล็อก Rider") }
                 }
                 Spacer(Modifier.height(8.dp))
-                Column(
-                    Modifier.weight(1f)
-                        .fillMaxWidth()
-                        .verticalScroll(rememberScrollState())
-                ) {
+                LazyColumn(Modifier.weight(1f).fillMaxWidth()) {
                     if (messages.isEmpty()) {
-                        Text("ยังไม่มีข้อความ", color = QgMuted)
+                        item { Text("ยังไม่มีข้อความ", color = QgMuted) }
                     } else {
-                        messages.forEach { m ->
+                        items(messages, key = { it.id }) { m ->
                             val mine = m.senderId == auth.user.id
                             Row(
                                 Modifier.fillMaxWidth().padding(vertical = 4.dp),
@@ -388,7 +407,8 @@ private fun CustomerChatRoom(auth: NativeAuth, order: CustomerOrder, onBack: () 
                                         color = if (mine) QgRed else QgMuted,
                                         fontWeight = FontWeight.Bold
                                     )
-                                    Text(m.message)
+                                    if (m.message.startsWith("__IMG__")) NativeChatImage(m.message.removePrefix("__IMG__"))
+                                    else Text(m.message)
                                     if (!m.createdAt.isNullOrBlank()) {
                                         Text(m.createdAt!!, color = QgMuted, style = androidx.compose.material3.MaterialTheme.typography.labelSmall)
                                     }
@@ -464,35 +484,35 @@ private fun CustomerChatRoom(auth: NativeAuth, order: CustomerOrder, onBack: () 
                 }
 
                 Spacer(Modifier.height(8.dp))
+                OutlinedTextField(value = input, onValueChange = { if (it.length <= 500) input = it },
+                    placeholder = { Text("พิมพ์ข้อความ") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    OutlinedTextField(
-                        value = input,
-                        onValueChange = { if (it.length <= 500) input = it },
-                        label = { Text("พิมพ์ข้อความ") },
-                        modifier = Modifier.weight(1f),
-                        singleLine = true
-                    )
-                    Spacer(Modifier.padding(4.dp))
-                    Button(
-                        onClick = {
-                            if (busy || closed || input.isBlank() || !currentOrder.chatAvailable()) return@Button
-                            val text = input
-                            busy = true
-                            scope.launch {
-                                runCatching {
-                                    api.send(auth, order.id, text, outbox.requestId(text))
-                                    currentCoroutineContext().ensureActive()
-                                    outbox.confirmed(text)
-                                    if (input.trim() == text.trim()) input = ""
-                                    message = null
-                                    refreshAfterConfirmedAction()
-                                }.onFailure { if (it is CancellationException) throw it; message = it.message ?: "ส่งข้อความไม่สำเร็จ" }
-                                busy = false
-                            }
-                        },
-                        enabled = !busy && !closed && input.isNotBlank() && currentOrder.chatAvailable()
-                    ) { Text("ส่ง") }
+                    TextButton(onClick = { photoPicker.launch(arrayOf("image/jpeg", "image/png", "image/webp")) }, enabled = !busy) { Text("เลือกไฟล์") }
+                    if (photoUri != null) Text(photoName ?: "รูปภาพที่เลือก", color = QgMuted, modifier = Modifier.weight(1f))
                 }
+                Button(onClick = {
+                    if (busy || closed || (input.isBlank() && photoUri == null) || !currentOrder.chatAvailable()) return@Button
+                    val text = input
+                    val uri = photoUri
+                    busy = true
+                    scope.launch {
+                        try {
+                            val payload = uri?.let { prepareNativeChatImage(context.contentResolver, it,
+                                setOf("image/jpeg", "image/png", "image/webp")) } ?: text
+                            if (!currentOrder.chatAvailable()) { closeExpired(); return@launch }
+                            api.send(auth, order.id, payload, outbox.requestId(payload))
+                            currentCoroutineContext().ensureActive()
+                            outbox.confirmed(payload)
+                            if (input == text) input = ""
+                            if (photoUri == uri) { photoUri = null; photoName = null }
+                            message = null
+                            refreshAfterConfirmedAction()
+                        } catch (cancelled: CancellationException) { throw cancelled }
+                        catch (failure: Exception) { message = failure.message ?: "ส่งข้อความไม่สำเร็จ" }
+                        finally { busy = false }
+                    }
+                }, enabled = !busy && !closed && (input.isNotBlank() || photoUri != null) && currentOrder.chatAvailable(),
+                    modifier = Modifier.fillMaxWidth()) { Text("ส่งข้อความ / ตรวจผลข้อความเดิม") }
             }
         }
     }
