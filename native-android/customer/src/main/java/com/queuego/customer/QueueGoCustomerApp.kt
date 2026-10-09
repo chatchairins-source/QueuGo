@@ -151,7 +151,8 @@ private fun CustomerShell(auth: NativeAuth, logout: () -> Unit) {
     var message by remember { mutableStateOf<String?>(null) }
     val checkoutJournal = remember(cartStore) { cartStore.journal() }
     val checkoutRecovery = remember(checkoutJournal) { CustomerCheckoutRecovery<PendingCustomerCheckout, CustomerOrder>(checkoutJournal) }
-    var checkoutPending by remember { mutableStateOf(runCatching { checkoutJournal.read() != null }.getOrDefault(false)) }
+    var pendingCheckoutRecord by remember { mutableStateOf(runCatching { checkoutJournal.read() }.getOrNull()) }
+    var checkoutPending by remember { mutableStateOf(pendingCheckoutRecord != null) }
 
     var lastCheckoutReceipt by remember { mutableStateOf<String?>(null) }
 
@@ -162,6 +163,7 @@ private fun CustomerShell(auth: NativeAuth, logout: () -> Unit) {
         selectedOrder = order
         orderItems = emptyList()
         message = "สั่งซื้อสำเร็จ · " + order.number
+        pendingCheckoutRecord = null
         checkoutPending = false
         screen = "order"
     }
@@ -174,7 +176,8 @@ private fun CustomerShell(auth: NativeAuth, logout: () -> Unit) {
                     }
                 } catch (e: CancellationException) { throw e }
                 catch (_: Exception) { /* Preserve pending for reconnect or explicit retry. */ }
-                checkoutPending = runCatching { checkoutJournal.read() != null }.getOrDefault(false)
+                pendingCheckoutRecord = runCatching { checkoutJournal.read() }.getOrNull()
+                checkoutPending = pendingCheckoutRecord != null
                 delay(8_000)
             }
         }
@@ -603,6 +606,7 @@ private fun CustomerShell(auth: NativeAuth, logout: () -> Unit) {
                 "cart" -> CustomerCartScreen(
                     cart = cart,
                     busy = busy,
+                    checkoutPending = checkoutPending,
                     onBack = { screen = "home" },
                     onMinus = { id ->
                         cart = cart.mapNotNull {
@@ -660,7 +664,7 @@ private fun CustomerShell(auth: NativeAuth, logout: () -> Unit) {
                     }
                 )
                 "checkout" -> CustomerCheckoutScreen(
-                    checkoutPending = checkoutPending,
+                    pendingCheckout = pendingCheckoutRecord,
                     cart = cart,
                     shop = shops.find { it.id == cart.firstOrNull()?.product?.shopId },
                     location = location,
@@ -701,6 +705,16 @@ private fun CustomerShell(auth: NativeAuth, logout: () -> Unit) {
                             cartStore.save(submittedCart)
                             scope.launch {
                                 try {
+                                    if (!checkoutPending) {
+                                        val active = api.loadActiveOrder(auth)
+                                        if (active != null) {
+                                            selectedOrder = active
+                                            orderItems = runCatching { api.loadOrderItems(auth, active.id) }.getOrDefault(emptyList())
+                                            message = "มีออเดอร์ที่กำลังดำเนินการอยู่ · " + active.number
+                                            screen = "order"
+                                            return@launch
+                                        }
+                                    }
                                     val order = checkoutRecovery.submit(
                                         create = {
                                             require(submittedShop != null && submittedLocation != null && submittedLocation.address.isNotBlank()) {
@@ -741,7 +755,8 @@ private fun CustomerShell(auth: NativeAuth, logout: () -> Unit) {
                                 } catch (e: CancellationException) {
                                     throw e
                                 } catch (e: Exception) {
-                                    checkoutPending = runCatching { checkoutJournal.read() != null }.getOrDefault(true)
+                                    pendingCheckoutRecord = runCatching { checkoutJournal.read() }.getOrNull()
+                                    checkoutPending = pendingCheckoutRecord != null
                                     message = when {
                                         checkoutPending ->
                                             "ยังยืนยันผลไม่ได้ กรุณาตรวจผลคำขอเดิมอีกครั้ง ระบบจะใช้รายการเดิมเพื่อป้องกันออเดอร์ซ้ำ"
