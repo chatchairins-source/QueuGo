@@ -95,6 +95,16 @@ data class MerchantSupportMessage(
     val createdAt: String?
 )
 
+data class MerchantNotification(
+    val id: String,
+    val title: String,
+    val message: String,
+    val type: String,
+    val referenceId: String?,
+    val isRead: Boolean,
+    val createdAt: String?
+)
+
 data class MerchantPromotion(
     val id: String,
     val title: String,
@@ -661,6 +671,43 @@ class MerchantApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
         if (raw is JSONArray && raw.length() == 0) {
             error("ฐานข้อมูลยังไม่ยืนยันคำขอโปรโมชั่น")
         }
+    }
+
+    suspend fun loadNotifications(auth: NativeAuth): List<MerchantNotification> {
+        val rows = http.array(
+            http.get(
+                "notifications?select=id,title,message,type,reference_id,is_read,created_at" +
+                    "&user_id=eq." + http.enc(auth.user.id) +
+                    "&order=created_at.desc&limit=200",
+                auth.session.accessToken
+            )
+        )
+        return buildList {
+            for (i in 0 until rows.length()) {
+                val r = rows.optJSONObject(i) ?: continue
+                val id = r.optString("id")
+                if (id.isBlank()) continue
+                add(
+                    MerchantNotification(
+                        id = id,
+                        title = r.optString("title").ifBlank { "การแจ้งเตือน" },
+                        message = r.optString("message"),
+                        type = r.optString("type").ifBlank { "system" },
+                        referenceId = r.optNullable("reference_id"),
+                        isRead = r.optBoolean("is_read", false),
+                        createdAt = r.optNullable("created_at")
+                    )
+                )
+            }
+        }
+    }
+
+    suspend fun markNotificationsRead(auth: NativeAuth) {
+        http.patch(
+            "notifications?user_id=eq." + http.enc(auth.user.id) + "&is_read=eq.false",
+            auth.session.accessToken,
+            JSONObject().put("is_read", true)
+        )
     }
 
     suspend fun loadSupportMessages(auth: NativeAuth): List<MerchantSupportMessage> {
