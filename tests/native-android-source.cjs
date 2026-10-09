@@ -25,6 +25,7 @@ for(const p of [
   'rider/src/main/java/com/queuego/rider/RiderSupportScreen.kt',
   'customer/src/main/java/com/queuego/customer/QueueGoCustomerApp.kt',
   'customer/src/main/java/com/queuego/customer/CustomerApi.kt',
+  'customer/src/main/java/com/queuego/customer/CustomerCartCheckout.kt',
   'customer/src/main/java/com/queuego/customer/CustomerMarketApi.kt',
   'customer/src/main/java/com/queuego/customer/CustomerLaundryApi.kt',
   'customer/src/main/java/com/queuego/customer/CustomerExtras.kt',
@@ -77,6 +78,9 @@ const merchantMain=read('merchant/src/main/java/com/queuego/merchant/MainActivit
 ok(customerMain.includes('QueueGoCustomerApp()')&&!customerMain.includes('QueueGoRoleNativeApp'),'Customer must launch full native app, not role shell');
 ok(merchantMain.includes('QueueGoMerchantApp()')&&!merchantMain.includes('QueueGoRoleNativeApp'),'Merchant must launch full native app, not role shell');
 ok(source.includes('queuego_place_cash_order'),'Customer native checkout must use production cash-order RPC');
+const customerCartCheckout=read('customer/src/main/java/com/queuego/customer/CustomerCartCheckout.kt');
+ok(source.includes('"cart" -> CustomerCartScreen')&&source.includes('"checkout" -> CustomerCheckoutScreen')&&customerCartCheckout.includes('"ตะกร้าสินค้า"')&&customerCartCheckout.includes('"ไปชำระเงิน"')&&customerCartCheckout.includes('"ยืนยันคำสั่งซื้อ"')&&customerCartCheckout.includes('height(115.dp)')&&customerCartCheckout.includes('QgLongdoLocationPickerMap')&&customerCartCheckout.includes('"ยืนยันสั่งซื้อ"'),'Customer native must preserve separate Production cart and checkout screens with checkout Longdo map and fixed action dock');
+ok(!/private fun CartScreen\(/.test(source),'legacy combined Customer cart-checkout implementation must stay removed');
 ok(source.includes('market_public_catalog_v2')&&source.includes('queuego_place_market_order'),'Customer native Market must use production market RPCs');
 ok(source.includes('queuego_add_market_order_shops'),'Customer native Market must preserve add-shop flow');
 ok(source.includes('queuego_place_laundry_order_v2'),'Customer native Laundry must use production laundry order RPC');
