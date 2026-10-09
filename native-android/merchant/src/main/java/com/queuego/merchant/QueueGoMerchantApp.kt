@@ -141,7 +141,7 @@ private fun MerchantShell(auth: NativeAuth, logout: () -> Unit) {
     BackHandler(enabled = screen != "home") {
         screen = when (screen) {
             "shop-setup", "hours", "support" -> "profile"
-            "notifications" -> "home"
+            "notifications", "media", "modules" -> "home"
             "product" -> "products"
             "order" -> "orders"
             else -> "home"
@@ -313,7 +313,12 @@ private fun MerchantShell(auth: NativeAuth, logout: () -> Unit) {
                     onProducts = { screen = "products" },
                     onLaundry = { screen = "laundry" },
                     onRevenue = { screen = "revenue" },
-                    onPromotion = { screen = "promotions" }
+                    onPromotion = { screen = "promotions" },
+                    onProfile = { screen = "profile" },
+                    onModules = { screen = "modules" },
+                    onMedia = { screen = "media" },
+                    onNotifications = { screen = "notifications" },
+                    onSupport = { screen = "support" }
                 )
                 "orders" -> MerchantOrdersScreen(orders, loading) {
                     selectedOrder = it
@@ -483,6 +488,18 @@ private fun MerchantShell(auth: NativeAuth, logout: () -> Unit) {
                         }
                     }
                 )
+                "media" -> MerchantMediaScreen(
+                    auth = auth,
+                    onBack = { screen = "home" }
+                )
+                "modules" -> MerchantModulesScreen(
+                    auth = auth,
+                    api = api,
+                    onBack = { screen = "home" },
+                    onSetup = { screen = "shop-setup" },
+                    onHours = { screen = "hours" },
+                    onLaundry = { screen = "laundry" }
+                )
                 "support" -> MerchantSupportScreen(auth) { screen = "profile" }
                 "profile" -> MerchantProfileScreen(
                     auth = auth,
@@ -647,7 +664,12 @@ private fun DashboardScreen(
     onProducts: () -> Unit,
     onLaundry: () -> Unit,
     onRevenue: () -> Unit,
-    onPromotion: () -> Unit
+    onPromotion: () -> Unit,
+    onProfile: () -> Unit,
+    onModules: () -> Unit,
+    onMedia: () -> Unit,
+    onNotifications: () -> Unit,
+    onSupport: () -> Unit
 ) {
     val incoming = orders.filter {
         it.status in setOf("pending", "accepted", "searching_rider", "rider_assigned", "preparing", "ready")
@@ -753,15 +775,27 @@ private fun DashboardScreen(
         )
 
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            MerchantMenuTile("POS หน้าร้าน", "store", onPos, Modifier.weight(1f))
-            MerchantMenuTile("ออเดอร์", "orders", onOrders, Modifier.weight(1f))
-            MerchantMenuTile("สินค้า", "box", onProducts, Modifier.weight(1f))
+            MerchantMenuTile("หน้าร้าน POS", "store", onPos, Modifier.weight(1f))
+            MerchantMenuTile("จัดการคำสั่งซื้อ", "orders", onOrders, Modifier.weight(1f))
+            MerchantMenuTile("จัดการสินค้า", "box", onProducts, Modifier.weight(1f))
         }
         Spacer(Modifier.height(8.dp))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            MerchantMenuTile("ฝากซัก", "laundry", onLaundry, Modifier.weight(1f))
             MerchantMenuTile("โปรโมชั่น", "tag", onPromotion, Modifier.weight(1f))
             MerchantMenuTile("รายงาน", "chart", onRevenue, Modifier.weight(1f))
+            MerchantMenuTile("ข้อมูลร้านค้า", "home", onProfile, Modifier.weight(1f))
+        }
+        Spacer(Modifier.height(8.dp))
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            MerchantMenuTile("ตั้งค่า", "gear", onModules, Modifier.weight(1f))
+            MerchantMenuTile("คลังรูปภาพ", "gallery", onMedia, Modifier.weight(1f))
+            MerchantMenuTile("การแจ้งเตือน", "bell", onNotifications, Modifier.weight(1f))
+        }
+        Spacer(Modifier.height(8.dp))
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            MerchantMenuTile("ติดต่อแอดมิน", "support", onSupport, Modifier.weight(1f))
+            MerchantMenuTile("ฝากซัก", "laundry", onLaundry, Modifier.weight(1f))
+            Spacer(Modifier.weight(1f))
         }
 
         Spacer(Modifier.height(16.dp))
