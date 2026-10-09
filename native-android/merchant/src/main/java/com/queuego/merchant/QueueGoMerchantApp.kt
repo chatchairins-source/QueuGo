@@ -133,9 +133,12 @@ private fun MerchantShell(auth: NativeAuth, logout: () -> Unit) {
     }
 
     BackHandler(enabled = screen != "home") {
-        screen = "home"
+        screen = when (screen) {
+            "shop-setup", "hours", "support" -> "profile"
+            "order" -> "orders"
+            else -> "home"
+        }
         selectedOrder = null
-
     }
 
     suspend fun refreshAll() {
@@ -365,15 +368,39 @@ private fun MerchantShell(auth: NativeAuth, logout: () -> Unit) {
                     auth = auth,
                     shop = shop,
                     readiness = readiness,
+                    shopOpen = shopOpen,
                     onSetup = {
                         setupLogoUri = null
                         setupCoverUri = null
                         merchantGpsPoint = null
                         screen = "shop-setup"
                     },
+                    onHours = { screen = "hours" },
+                    onProducts = { screen = "products" },
                     onSupport = { screen = "support" },
                     logout = logout
                 )
+                "hours" -> {
+                    val activeShop = shop
+                    if (activeShop == null) {
+                        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            Text("ยังไม่พบข้อมูลร้าน", color = QgMuted)
+                        }
+                    } else {
+                        MerchantHoursScreen(
+                            auth = auth,
+                            shop = activeShop,
+                            api = api,
+                            onBack = { screen = "profile" },
+                            onSaved = {
+                                scope.launch {
+                                    shop = runCatching { api.loadShop(auth) }.getOrDefault(shop)
+                                    readiness = runCatching { api.readiness(auth, activeShop.id) }.getOrDefault(readiness)
+                                }
+                            }
+                        )
+                    }
+                }
                 "shop-setup" -> {
                     val activeShop = shop
                     if (activeShop == null) {
@@ -1047,62 +1074,272 @@ private fun MerchantProfileScreen(
     auth: NativeAuth,
     shop: MerchantShop?,
     readiness: ShopReadiness?,
+    shopOpen: Boolean,
     onSetup: () -> Unit,
+    onHours: () -> Unit,
+    onProducts: () -> Unit,
     onSupport: () -> Unit,
     logout: () -> Unit
 ) {
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(14.dp)) {
-        QgSectionTitle("ร้านค้า")
-        Spacer(Modifier.height(12.dp))
-        QgCard(Modifier.fillMaxWidth()) {
-            Column {
-                Text(shop?.name ?: auth.user.name, fontWeight = FontWeight.Black, style = MaterialTheme.typography.titleLarge)
-                Text(shop?.address ?: "ยังไม่ได้กรอกที่อยู่ร้าน", color = QgMuted)
-                Spacer(Modifier.height(6.dp))
-                QgStatusPill(if (readiness?.complete == true) "ข้อมูลพร้อมขาย" else "ตั้งค่ายังไม่ครบ", readiness?.complete == true)
+    Column(
+        Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 14.dp)
+    ) {
+        Spacer(Modifier.height(8.dp))
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = 2.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            QgRemoteImage(
+                source = shop?.logo ?: shop?.cover,
+                modifier = Modifier.size(56.dp),
+                fallback = shop?.name ?: auth.user.name,
+                cornerRadius = 17.dp
+            )
+            Spacer(Modifier.width(11.dp))
+            Column(Modifier.weight(1f)) {
+                Text(
+                    shop?.name ?: auth.user.name,
+                    color = Color(0xFF202329),
+                    fontSize = 19.sp,
+                    lineHeight = 23.sp,
+                    fontWeight = FontWeight.Black,
+                    maxLines = 1
+                )
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    merchantCategoryLabel(shop?.category),
+                    color = Color(0xFF8B9098),
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1
+                )
+            }
+            Box(
+                Modifier
+                    .background(
+                        if (shopOpen) Color(0xFFE8F9F1) else Color(0xFFF0F1F3),
+                        RoundedCornerShape(99.dp)
+                    )
+                    .padding(horizontal = 9.dp, vertical = 7.dp)
+            ) {
+                Text(
+                    if (shopOpen) "เปิดร้านอยู่" else "ปิดร้านอยู่",
+                    color = if (shopOpen) Color(0xFF0A9660) else Color(0xFF777D85),
+                    fontSize = 9.sp,
+                    fontWeight = FontWeight.ExtraBold
+                )
             }
         }
-        Spacer(Modifier.height(10.dp))
+
+        MerchantProfileSectionTitle("ข้อมูลร้าน")
+        MerchantProfileCard {
+            MerchantProfileInfoRow("box", "ประเภทร้าน", merchantCategoryLabel(shop?.category))
+            HorizontalDivider(color = Color(0xFFECEEF1))
+            MerchantProfileInfoRow("phone", "เบอร์โทร", shop?.phone ?: "-")
+            HorizontalDivider(color = Color(0xFFECEEF1))
+            MerchantProfileInfoRow("pin", "ที่อยู่ร้าน", shop?.address ?: "-")
+            HorizontalDivider(color = Color(0xFFECEEF1))
+            MerchantProfileInfoRow(
+                "clock",
+                "เวลาทำการ",
+                (shop?.openTime ?: "06:00") + " - " + (shop?.closeTime ?: "22:00") + " น."
+            )
+        }
+
+        Spacer(Modifier.height(12.dp))
+        MerchantProfileSectionTitle("จัดการร้าน")
+        MerchantProfileCard {
+            MerchantProfileActionRow(
+                icon = "home",
+                title = "แก้ไขข้อมูลร้าน",
+                subtitle = "ชื่อร้าน เบอร์โทร ที่อยู่ และข้อมูลหน้าร้าน",
+                enabled = shop != null,
+                onClick = onSetup
+            )
+            HorizontalDivider(color = Color(0xFFECEEF1))
+            MerchantProfileActionRow(
+                icon = "clock",
+                title = "เวลาทำการและวันหยุด",
+                subtitle = "ตั้งเวลาเปิด–ปิดและวันหยุดของร้าน",
+                enabled = shop != null,
+                onClick = onHours
+            )
+            HorizontalDivider(color = Color(0xFFECEEF1))
+            MerchantProfileActionRow(
+                icon = "box",
+                title = "จัดการเมนูสินค้า",
+                subtitle = "เพิ่ม แก้ไข ราคา และสถานะสินค้า",
+                primary = true,
+                enabled = shop != null,
+                onClick = onProducts
+            )
+        }
+
         if (readiness != null) {
-            QgCard(Modifier.fillMaxWidth()) {
-                Column {
-                    Text("Store Readiness", fontWeight = FontWeight.ExtraBold)
-                    val labels = listOf(
-                        "shop_info" to "ข้อมูลร้าน",
-                        "storefront_image" to "รูปหน้าร้าน",
-                        "cover_image" to "รูปหน้าปก",
-                        "location" to "ตำแหน่งร้าน",
-                        "catalog" to "สินค้า/บริการ"
-                    )
-                    labels.forEach { (key, label) ->
-                        Row(Modifier.fillMaxWidth().padding(vertical = 5.dp)) {
-                            Text(label, Modifier.weight(1f))
-                            Text(if (readiness.checks.optBoolean(key, false)) "พร้อม" else "ยังไม่ครบ", color = if (readiness.checks.optBoolean(key, false)) QgGreen else QgRed, fontWeight = FontWeight.Bold)
-                        }
+            Spacer(Modifier.height(12.dp))
+            MerchantProfileSectionTitle("ความพร้อมร้าน")
+            MerchantProfileCard {
+                val labels = listOf(
+                    "shop_info" to "ข้อมูลร้าน",
+                    "storefront_image" to "รูปหน้าร้าน",
+                    "cover_image" to "รูปหน้าปก",
+                    "location" to "ตำแหน่งร้าน",
+                    "catalog" to "สินค้า/บริการ"
+                )
+                labels.forEachIndexed { index, (key, label) ->
+                    Row(
+                        Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(label, Modifier.weight(1f), fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        val ready = readiness.checks.optBoolean(key, false)
+                        Text(
+                            if (ready) "พร้อม" else "ยังไม่ครบ",
+                            color = if (ready) QgGreen else QgRed,
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.ExtraBold
+                        )
                     }
+                    if (index != labels.lastIndex) HorizontalDivider(color = Color(0xFFECEEF1))
                 }
             }
         }
+
         Spacer(Modifier.height(12.dp))
-        Button(
-            onClick = onSetup,
-            enabled = shop != null,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text("แก้ไขข้อมูลและตำแหน่งร้าน")
+        MerchantProfileSectionTitle("ช่วยเหลือ")
+        MerchantProfileCard {
+            MerchantProfileActionRow(
+                icon = "support",
+                title = "แจ้งปัญหา / ติดตามเรื่อง",
+                subtitle = "ติดต่อทีมงาน QueueGo เมื่อพบปัญหาการใช้งาน",
+                onClick = onSupport
+            )
         }
-        Spacer(Modifier.height(10.dp))
-        Button(onClick = onSupport, modifier = Modifier.fillMaxWidth()) {
-            Text("ข้อความถึง QueueGo Admin")
-        }
-        Spacer(Modifier.height(10.dp))
+
+        Spacer(Modifier.height(12.dp))
+        MerchantProfileSectionTitle("ความเป็นส่วนตัวและบัญชี")
         QgAccountDeletionSection(
             accessToken = auth.session.accessToken,
             onDeleted = logout
         )
-        Spacer(Modifier.height(10.dp))
-        OutlinedButton(onClick = logout, modifier = Modifier.fillMaxWidth()) { Text("ออกจากระบบ") }
+        Spacer(Modifier.height(8.dp))
+        OutlinedButton(onClick = logout, modifier = Modifier.fillMaxWidth().height(46.dp)) {
+            Text("ออกจากระบบ", fontWeight = FontWeight.Bold)
+        }
+        Spacer(Modifier.height(28.dp))
     }
+}
+
+@Composable
+private fun MerchantProfileSectionTitle(text: String) {
+    Text(
+        text,
+        color = Color(0xFF81868E),
+        fontSize = 10.sp,
+        fontWeight = FontWeight.ExtraBold,
+        modifier = Modifier.padding(horizontal = 2.dp, vertical = 6.dp)
+    )
+}
+
+@Composable
+private fun MerchantProfileCard(content: @Composable () -> Unit) {
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .background(Color.White, RoundedCornerShape(16.dp))
+            .border(1.dp, Color(0xFFE6E8EB), RoundedCornerShape(16.dp))
+    ) { content() }
+}
+
+@Composable
+private fun MerchantProfileInfoRow(icon: String, label: String, value: String) {
+    Row(
+        Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            Modifier
+                .size(32.dp)
+                .background(Color(0xFFFFF1F4), RoundedCornerShape(10.dp)),
+            contentAlignment = Alignment.Center
+        ) { QgIcon(icon, Modifier.size(17.dp), QgRed) }
+        Spacer(Modifier.width(9.dp))
+        Column(Modifier.weight(1f)) {
+            Text(label, color = Color(0xFF959AA1), fontSize = 8.5.sp, fontWeight = FontWeight.Bold)
+            Spacer(Modifier.height(2.dp))
+            Text(
+                value,
+                color = Color(0xFF202329),
+                fontSize = 11.5.sp,
+                lineHeight = 16.sp,
+                fontWeight = FontWeight.ExtraBold
+            )
+        }
+    }
+}
+
+@Composable
+private fun MerchantProfileActionRow(
+    icon: String,
+    title: String,
+    subtitle: String,
+    primary: Boolean = false,
+    enabled: Boolean = true,
+    onClick: () -> Unit
+) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .clickable(enabled = enabled, onClick = onClick)
+            .padding(horizontal = 11.dp, vertical = 9.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            Modifier
+                .size(34.dp)
+                .background(
+                    if (primary) Color(0xFFFFF0F3) else Color(0xFFF6F7F8),
+                    RoundedCornerShape(11.dp)
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            QgIcon(
+                icon,
+                Modifier.size(17.dp),
+                if (primary) QgRed else Color(0xFF737982)
+            )
+        }
+        Spacer(Modifier.width(9.dp))
+        Column(Modifier.weight(1f)) {
+            Text(
+                title,
+                color = if (primary) Color(0xFFD90D2D) else Color(0xFF202329),
+                fontSize = 12.5.sp,
+                fontWeight = FontWeight.ExtraBold
+            )
+            Spacer(Modifier.height(2.dp))
+            Text(
+                subtitle,
+                color = Color(0xFF91969E),
+                fontSize = 9.sp,
+                lineHeight = 12.sp
+            )
+        }
+        Text("›", color = Color(0xFFB4B8BE), fontSize = 21.sp)
+    }
+}
+
+private fun merchantCategoryLabel(category: String?): String = when (category?.lowercase()) {
+    "food" -> "ร้านอาหาร"
+    "grocery" -> "ร้านขายของชำ"
+    "cafe" -> "เครื่องดื่ม / คาเฟ่"
+    "laundry" -> "ร้านฝากซัก"
+    "market" -> "ตลาดสด"
+    "shopping" -> "ช้อปปิ้ง"
+    else -> "ร้านค้า"
 }
 
 private fun merchantStatus(status: String): String = when (status.lowercase()) {
