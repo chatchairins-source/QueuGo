@@ -129,7 +129,12 @@ def verify_real_home_map_runtime():
     run(adb + ["install", "-r", str(test_apk)])
     run(adb + ["logcat", "-b", "all", "-c"])
     after = run(instrument, capture_output=True, text=True, timeout=150)
-    runtime = run(adb + ["logcat", "-d", "-s", "AndroidRuntime:E"], capture_output=True, text=True).stdout
+    process_log = run(adb + ["logcat", "-d", "-s", "QueueGoMapRuntime:I"], capture_output=True, text=True).stdout
+    completed_pids = re.findall(r"completed_pid=(\d+)", process_log)
+    assert completed_pids, "Corrected map test must identify its completed Android process"
+    corrected_pid = completed_pids[-1]
+    runtime = run(adb + ["logcat", "-d", "--pid=" + corrected_pid, "-s", "AndroidRuntime:E"], capture_output=True, text=True).stdout
+    (output / "map-process-log.txt").write_text(process_log)
     (output / "map-after-fix.txt").write_text(after.stdout + after.stderr + runtime)
     assert "OK (1 test)" in after.stdout, "Real map instrumentation did not pass"
     assert "FATAL EXCEPTION" not in runtime, "Corrected Home map crashed"
@@ -138,6 +143,7 @@ def verify_real_home_map_runtime():
         "workflow_run": os.environ["GITHUB_RUN_ID"],
         "apk_sha256": hashlib.sha256(apk.read_bytes()).hexdigest(),
         "baseline": "reproduced NoClassDefFoundError android/support/v4/view/GestureDetectorCompat",
+        "corrected_instrumentation_process_pid": corrected_pid,
         "actual_native_home_map_creation": "PASS",
         "map_background_foreground_and_activity_recreation": "PASS",
         "authenticated_login_e2e": False,

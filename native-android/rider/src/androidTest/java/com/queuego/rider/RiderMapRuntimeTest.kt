@@ -1,5 +1,7 @@
 package com.queuego.rider
 
+import android.os.Process
+import android.util.Log
 import androidx.lifecycle.Lifecycle
 import androidx.test.core.app.ActivityScenario
 import org.junit.Assert.assertTrue
@@ -22,5 +24,6 @@ class RiderMapRuntimeTest {
             scenario.recreate()
             awaitRealMap()
         }
+        Log.i("QueueGoMapRuntime", "completed_pid=${Process.myPid()}")
     }
 }
