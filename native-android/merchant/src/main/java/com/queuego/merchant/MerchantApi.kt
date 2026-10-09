@@ -48,6 +48,15 @@ data class MerchantTodayRevenue(
     val cashReceived: Double
 )
 
+data class MerchantRevenueDay(
+    val dateKey: String,
+    val orderCount: Int,
+    val grossSales: Double,
+    val gpDue: Double,
+    val cashReceived: Double,
+    val gpStatus: String
+)
+
 data class MerchantOrder(
     val id: String,
     val number: String,
@@ -341,6 +350,42 @@ class MerchantApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
                 .put("p_special_closed", special?.isClosed ?: true)
                 .put("p_special_open", special?.opensAt ?: "06:00")
                 .put("p_special_close", special?.closesAt ?: "22:00")
+        )
+    }
+
+    suspend fun revenueDays(auth: NativeAuth, from: String, to: String): List<MerchantRevenueDay> {
+        require(from.matches(Regex("\\d{4}-\\d{2}-\\d{2}"))) { "วันที่เริ่มต้นไม่ถูกต้อง" }
+        require(to.matches(Regex("\\d{4}-\\d{2}-\\d{2}"))) { "วันที่สิ้นสุดไม่ถูกต้อง" }
+        val raw = http.rpc(
+            "merchant_revenue_days",
+            auth.session.accessToken,
+            JSONObject().put("p_from", from).put("p_to", to)
+        )
+        val rows = http.array(raw)
+        return buildList {
+            for (i in 0 until rows.length()) {
+                val r = rows.optJSONObject(i) ?: continue
+                add(
+                    MerchantRevenueDay(
+                        dateKey = r.optString("date_key"),
+                        orderCount = r.optInt("order_count", 0),
+                        grossSales = r.optDouble("gross_sales", 0.0),
+                        gpDue = r.optDouble("gp_due", 0.0),
+                        cashReceived = r.optDouble("cash_received", 0.0),
+                        gpStatus = r.optString("gp_status").ifBlank { "pending" }
+                    )
+                )
+            }
+        }
+    }
+
+    suspend fun reportGpSlip(auth: NativeAuth, date: String, slipPath: String) {
+        require(date.matches(Regex("\\d{4}-\\d{2}-\\d{2}"))) { "วันที่รายงานไม่ถูกต้อง" }
+        require(slipPath.isNotBlank()) { "ไม่พบไฟล์สลิป" }
+        http.rpc(
+            "report_shop_gp",
+            auth.session.accessToken,
+            JSONObject().put("p_date", date).put("p_slip_path", slipPath)
         )
     }
 
