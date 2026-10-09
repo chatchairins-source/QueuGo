@@ -17,11 +17,12 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithCache
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
+import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.TextStyle
@@ -84,7 +85,18 @@ internal fun RiderLoginScreen(
         val card: @Composable () -> Unit = {
             Surface(
                 modifier = Modifier.widthIn(max = 430.dp).fillMaxWidth()
-                    .shadow(18.dp, RoundedCornerShape(30.dp), ambientColor = Color(0x1F3A131E), spotColor = Color(0x1F3A131E)),
+                    .drawWithCache {
+                        // CSS box-shadow: 0 18px 46px rgba(58,19,30,.12).
+                        // Android elevation additionally attenuates the supplied colour;
+                        // draw the actual Gaussian shadow instead of guessing elevation.
+                        val sigma = 46.dp.toPx() / 2f
+                        val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = android.graphics.Color.WHITE
+                            setShadowLayer((sigma - .5f) / .57735f, 0f, 18.dp.toPx(), android.graphics.Color.argb(31, 58, 19, 30))
+                        }
+                        val radius = 30.dp.toPx()
+                        onDrawBehind { drawIntoCanvas { it.nativeCanvas.drawRoundRect(0f, 0f, size.width, size.height, radius, radius, paint) } }
+                    },
                 shape = RoundedCornerShape(30.dp), color = Color.White
             ) {
                 Column(Modifier.padding(28.dp)) {
