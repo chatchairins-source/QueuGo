@@ -511,9 +511,13 @@ class QueueGoApi {
             val order = requestArray("GET", "/rest/v1/orders?select=shop_id,customer_id,note&id=eq." + enc(orderId) + "&limit=1", auth.session.accessToken)
                 .optJSONObject(0) ?: error("ไม่พบข้อมูลออเดอร์ที่มีสิทธิ์อ่าน")
             val shopId = order.optString("shop_id").takeIf { it.isNotBlank() && it != "null" }
-            val customerId = order.optString("customer_id").takeIf { it.isNotBlank() && it != "null" }
             val shop = shopId?.let { requestArray("GET", "/rest/v1/shop_profiles?select=shop_name,public_logo&id=eq." + enc(it) + "&limit=1", auth.session.accessToken).optJSONObject(0) }
-            val customer = customerId?.let { requestArray("GET", "/rest/v1/users?select=name,phone&id=eq." + enc(it) + "&limit=1", auth.session.accessToken).optJSONObject(0) }
+            val contact = requestAny("POST", "/rest/v1/rpc/qg_rider_order_contact", auth.session.accessToken, JSONObject().put("p_order_id", orderId))
+            val customer = when (contact) {
+                is JSONObject -> contact
+                is JSONArray -> contact.optJSONObject(0)
+                else -> null
+            }
             fun text(row: JSONObject?, key: String): String? = row?.optString(key)?.takeIf { it.isNotBlank() && it != "null" }
             RiderVerificationDetails(text(shop, "shop_name"), text(shop, "public_logo"), text(customer, "name"), text(customer, "phone"), cleanRiderOrderNote(text(order, "note")))
         }
