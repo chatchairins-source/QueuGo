@@ -39,6 +39,7 @@ import com.queuego.shared.QgLine
 import com.queuego.shared.QgLongdoLocationPickerMap
 import com.queuego.shared.QgMapPoint
 import com.queuego.shared.QgMuted
+import kotlinx.coroutines.delay
 import kotlin.math.abs
 
 @Composable
@@ -47,6 +48,7 @@ internal fun CustomerLocationPickerScreen(
     address: String,
     busy: Boolean,
     onGps: () -> Unit,
+    resolveAddress: suspend (Double, Double) -> String?,
     onSave: (CustomerLocation) -> Unit,
     onBack: () -> Unit
 ) {
@@ -56,6 +58,7 @@ internal fun CustomerLocationPickerScreen(
     var draftAddress by remember(address) { mutableStateOf(address) }
     var recenterToken by remember { mutableIntStateOf(0) }
     var mapReady by remember { mutableStateOf(false) }
+    var lastAutoAddress by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(location?.latitude, location?.longitude) {
         val next = location?.takeIf { validCustomerPoint(it.latitude, it.longitude) } ?: return@LaunchedEffect
@@ -66,6 +69,30 @@ internal fun CustomerLocationPickerScreen(
         ) {
             selected = next.copy(address = draftAddress)
             recenterToken++
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        // Web blueprint resolves GPS automatically on opening; saved coordinates remain
+        // visible and usable if permission is denied or a current fix is unavailable.
+        delay(80)
+        onGps()
+    }
+
+    LaunchedEffect(selected?.latitude, selected?.longitude) {
+        val point = selected ?: return@LaunchedEffect
+        if (!(draftAddress.isBlank() || draftAddress == lastAutoAddress)) return@LaunchedEffect
+        delay(350)
+        val resolved = resolveAddress(point.latitude, point.longitude)?.trim().orEmpty()
+        if (resolved.isBlank()) return@LaunchedEffect
+        val current = selected ?: return@LaunchedEffect
+        if (abs(current.latitude - point.latitude) > 0.000001 ||
+            abs(current.longitude - point.longitude) > 0.000001
+        ) return@LaunchedEffect
+        if (draftAddress.isBlank() || draftAddress == lastAutoAddress) {
+            draftAddress = resolved
+            lastAutoAddress = resolved
+            selected = current.copy(address = resolved)
         }
     }
 
