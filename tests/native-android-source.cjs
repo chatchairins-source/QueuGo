@@ -69,8 +69,8 @@ ok(source.includes('qg_customer_save_review')&&source.includes('reviews?select=i
 ok(source.includes('\"search\" -> CustomerSearchScreen')&&source.includes('CustomerBottomNavigation(screen, cart.sumOf')&&source.includes('Triple(\"search\", \"ค้นหา\", R.drawable.qg_nav_search)')&&source.includes('onSelect(key)'),'Customer native must preserve global search navigation');
 ok(source.includes('ServiceCategoryScreen')&&source.includes('"category" -> ServiceCategoryScreen'),'Food Drink Grocery Shopping must use dedicated native category pages');
 
-ok(source.includes('CustomerCategoryButton')&&source.includes('.size(54.dp)')&&source.includes('Modifier.size(92.dp)'),'Customer native Home must preserve approved web category and shop-card proportions');
-ok(source.includes('QgIconButton("bag"')&&source.includes('QgIconButton("bell"')&&source.includes('QgIconButton("user"'),'Customer top actions must remain icon-first like the web blueprint');
+ok(source.includes('CustomerCategoryButton')&&source.includes('.size(54.dp)')&&source.includes('Modifier.size(92.dp)')&&source.includes('top = 13.dp, bottom = 10.dp')&&source.includes('fontSize = 18.sp'),'Customer native Home must preserve approved web location, category, heading and shop-card proportions');
+ok(source.includes('CustomerTopAction(')&&source.includes('R.drawable.qg_nav_bag')&&source.includes('R.drawable.qg_top_bell')&&source.includes('R.drawable.qg_top_user'),'Customer top actions must remain exact icon-first web vectors');
 ok(source.includes('MerchantMenuTile')&&source.includes('height(128.dp)')&&source.includes('"จัดการร้าน"'),'Merchant native dashboard must preserve store cover KPI and menu-grid blueprint');
 ok(source.includes('RiderBlueprintTopBar')&&source.includes('RoundedCornerShape(21.dp)')&&source.includes('"รับงาน · " + secondsLeft + " วิ"'),'Rider native must preserve approved topbar job-card and accept-countdown blueprint');
 ok(source.includes('RiderLongdoMap')&&source.includes('MapGLSurfaceView')&&source.includes('LongdoLayer'),'native Rider must include Longdo map SDK host');
