@@ -75,6 +75,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -606,7 +607,7 @@ private fun RiderHome(
             job = verifyJob!!,
             marketPickup = verifyMarketPickup,
             items = verifyItems,
-            photoReady = photoUri != null,
+            photoUri = photoUri,
             busy = actionBusy,
             message = actionMessage,
             onBack = { closeVerification() },
@@ -1967,7 +1968,7 @@ private fun VerificationScreen(
     job: RiderJob,
     marketPickup: MarketPickup?,
     items: List<RiderItem>,
-    photoReady: Boolean,
+    photoUri: Uri?,
     busy: Boolean,
     message: String?,
     onBack: () -> Unit,
@@ -1976,112 +1977,103 @@ private fun VerificationScreen(
 ) {
     val pickup = mode == "pickup"
     val marketPickupMode = mode == "marketPickup"
-    Column(
-        modifier.fillMaxSize().background(QgRiderBg).verticalScroll(rememberScrollState()).padding(14.dp)
-    ) {
-        OutlinedButton(onClick = onBack, enabled = !busy) { Text("ย้อนกลับ") }
-        Spacer(Modifier.height(14.dp))
-        Text(
-            when {
-                marketPickupMode -> "ตรวจจุดรับและถ่ายรูป"
-                pickup -> "ตรวจสอบรายการและถ่ายรูป"
-                else -> "ตรวจสอบและส่งมอบสินค้า"
-            },
-            style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.Bold
-        )
-        Text(job.numberLabel)
-        Text(
-            when {
-                marketPickupMode -> "ตรวจร้านและยอดที่ต้องรับสินค้า แล้วถ่ายรูปหลักฐานในหน้าเดียว"
-                pickup -> "เช็กชื่อสินค้าและจำนวนให้ครบ แล้วถ่ายรูปหลักฐานในหน้าเดียว"
-                else -> "ตรวจรายการและถ่ายรูปตอนส่งสินค้าในหน้าเดียว"
-            }
-        )
-        if (marketPickupMode && marketPickup != null) {
-            Spacer(Modifier.height(10.dp))
-            Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(21.dp), colors = CardDefaults.cardColors(containerColor = Color.White)) {
-                Column(Modifier.padding(14.dp)) {
-                    Text(marketPickup.shopName, fontWeight = FontWeight.Bold)
-                    if (!marketPickup.shopAddress.isNullOrBlank()) Text(marketPickup.shopAddress)
-                    Text("ยอดร้าน ฿" + "%.0f".format(marketPickup.shopAmount))
+    var previewReady by remember(photoUri) { mutableStateOf(false) }
+    val photoReady = photoUri != null
+    val screenHeight = LocalConfiguration.current.screenHeightDp
+    val shortScreen = screenHeight <= 760
+    BackHandler { if (!busy) onBack() }
+    Box(modifier.fillMaxSize().background(Color(0xFFF8F7F8))) {
+        Column(Modifier.fillMaxSize()) {
+            Row(
+                Modifier.fillMaxWidth().background(Color.White).padding(horizontal = 10.dp, vertical = 5.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(Modifier.size(44.dp).clip(RoundedCornerShape(22.dp)).background(QgRedSoft)
+                    .clickable(enabled = !busy, onClick = onBack), contentAlignment = Alignment.Center) {
+                    Icon(painterResource(R.drawable.qg_rider_flow_back), "ย้อนกลับ", Modifier.size(22.dp), tint = Color(0xFFE23A4C))
                 }
+                Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(if (pickup || marketPickupMode) "รับสินค้าที่ร้าน" else "ส่งสินค้าให้ลูกค้า", fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                    Text(job.numberLabel, fontSize = 8.sp, color = Color(0xFF8A8387))
+                }
+                Spacer(Modifier.size(44.dp))
             }
-        }
-        Spacer(Modifier.height(14.dp))
-
-        if (!marketPickupMode) Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(21.dp), colors = CardDefaults.cardColors(containerColor = Color.White)) {
-            Column(Modifier.padding(14.dp)) {
-                Text("รายการสินค้า", fontWeight = FontWeight.Bold)
-                if (items.isEmpty()) {
-                    Text("ไม่พบรายการสินค้า")
-                } else {
-                    items.forEach { item ->
-                        Spacer(Modifier.height(8.dp))
-                        Text(item.name, fontWeight = FontWeight.SemiBold)
-                        if (!item.description.isNullOrBlank()) Text(item.description)
-                        Text("จำนวน " + item.quantity + " · ฿" + "%.0f".format(item.totalPrice))
+            Column(Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState())
+                .padding(horizontal = 10.dp).padding(top = if (shortScreen) 7.dp else 9.dp, bottom = 92.dp)) {
+                Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(18.dp), colors = CardDefaults.cardColors(containerColor = Color.White)) {
+                    Column(Modifier.padding(horizontal = 11.dp, vertical = if (shortScreen) 9.dp else 12.dp)) {
+                        Text(if (pickup || marketPickupMode) "รับสินค้าที่ร้าน" else "ส่งสินค้าให้ลูกค้า", fontSize = 9.sp, color = QgMuted)
+                        Text(when { marketPickupMode -> "ตรวจจุดรับและถ่ายรูป"; pickup -> "ตรวจสอบรายการและถ่ายรูป"; else -> "ตรวจสอบและส่งมอบสินค้า" },
+                            fontSize = if (shortScreen) 18.sp else 20.sp, fontWeight = FontWeight.Bold)
+                        Text(if (pickup || marketPickupMode) "เช็กชื่อสินค้าและจำนวนให้ครบ แล้วถ่ายรูปหลักฐานในหน้าเดียว" else "ตรวจรายการและถ่ายรูปหลักฐานในหน้าเดียว", fontSize = 9.sp, color = QgMuted)
                     }
                 }
-            }
-        }
-
-        Spacer(Modifier.height(14.dp))
-        Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(21.dp), colors = CardDefaults.cardColors(containerColor = Color.White)) {
-            Column(Modifier.padding(14.dp)) {
-                Text(
-                    when {
-                        marketPickupMode -> "รูปตอนรับสินค้าจุดนี้ · จำเป็น"
-                        pickup -> "รูปตอนรับสินค้า · จำเป็น"
-                        else -> "รูปตอนส่งสินค้า · จำเป็น"
-                    },
-                    fontWeight = FontWeight.Bold
-                )
-                Text(
-                    when {
-                        marketPickupMode -> "ให้เห็นสินค้าที่รับจากร้านนี้ชัดเจน"
-                        pickup -> "ให้เห็นสินค้าที่ตรวจรับจากร้านชัดเจน"
-                        else -> "ให้เห็นสินค้าและจุดส่งชัดเจน ไม่ต้องถ่ายหน้าลูกค้า"
+                if (marketPickupMode && marketPickup != null) {
+                    Spacer(Modifier.height(10.dp))
+                    Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(21.dp), colors = CardDefaults.cardColors(containerColor = Color.White)) {
+                        Column(Modifier.padding(14.dp)) {
+                            Text(marketPickup.shopName, fontWeight = FontWeight.Bold)
+                            if (!marketPickup.shopAddress.isNullOrBlank()) Text(marketPickup.shopAddress)
+                            Text("ยอดร้าน ฿" + "%.0f".format(marketPickup.shopAmount))
+                        }
                     }
-                )
-                Spacer(Modifier.height(10.dp))
-                Button(
-                    onClick = onCamera,
-                    enabled = !busy,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text(if (photoReady) "ถ่ายใหม่" else "เปิดกล้องถ่ายรูป")
                 }
-                if (photoReady) {
-                    Spacer(Modifier.height(8.dp))
-                    Text("ถ่ายรูปหลักฐานแล้ว ✓", color = MaterialTheme.colorScheme.primary)
-                }
-            }
-        }
+                Spacer(Modifier.height(14.dp))
 
-        if (message != null) {
-            Spacer(Modifier.height(10.dp))
-            Text(message)
-        }
-        Spacer(Modifier.height(14.dp))
-        Button(
-            onClick = onConfirm,
-            enabled = photoReady && !busy,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            if (busy) {
-                CircularProgressIndicator()
-            } else {
-                Text(
-                    when {
-                        marketPickupMode -> "ยืนยันรับสินค้าจุดนี้"
-                        pickup -> "ยืนยันรับสินค้า"
-                        else -> "ยืนยันส่งสินค้า"
+                if (!marketPickupMode) Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(21.dp), colors = CardDefaults.cardColors(containerColor = Color.White)) {
+                    Column(Modifier.padding(14.dp)) {
+                        Text("รายการสินค้า", fontWeight = FontWeight.Bold)
+                        if (items.isEmpty()) {
+                            Text("ไม่พบรายการสินค้า")
+                        } else {
+                            items.forEach { item ->
+                                Spacer(Modifier.height(8.dp))
+                                Text(item.name, fontWeight = FontWeight.SemiBold)
+                                if (!item.description.isNullOrBlank()) Text(item.description)
+                                Text("จำนวน " + item.quantity + " · ฿" + "%.0f".format(item.totalPrice))
+                            }
+                        }
                     }
-                )
+                }
+
+
+                Spacer(Modifier.height(6.dp))
+                if (photoUri != null) {
+                    Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(18.dp), colors = CardDefaults.cardColors(containerColor = Color.White)) {
+                        Column(Modifier.padding(10.dp)) {
+                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                Text(if (pickup || marketPickupMode) "รูปตอนรับสินค้า" else "รูปตอนส่งสินค้า", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                                Text("จำเป็น", fontSize = 8.sp, color = QgMuted)
+                            }
+                            Box(Modifier.fillMaxWidth().padding(top = 8.dp).height(if (shortScreen) 108.dp else (screenHeight * .31f).coerceIn(160f, 215f).dp)
+                                .clip(RoundedCornerShape(15.dp))) {
+                                RiderEvidencePreview(photoUri, Modifier.fillMaxSize()) { previewReady = it }
+                                Box(Modifier.align(Alignment.BottomEnd).padding(8.dp)
+                                    .height(38.dp).clip(RoundedCornerShape(99.dp)).background(Color(0xF5FFFFFF))
+                                    .clickable(enabled = !busy, onClick = onCamera).padding(horizontal = 13.dp), contentAlignment = Alignment.Center) {
+                                    Text("ถ่ายใหม่", fontSize = 10.sp, fontWeight = FontWeight.Black)
+                                }
+                            }
+                        }
+                    }
+                }
+                if (message != null) Text(message, color = QgRed, modifier = Modifier.padding(top = 8.dp))
+                Text(if (pickup || marketPickupMode) "ตรวจรายการให้ครบและถ่ายรูปก่อนรับสินค้า" else "ตรวจรายการให้ครบและถ่ายรูปหลักฐานก่อนยืนยันส่ง", fontSize = 8.sp, color = QgMuted, modifier = Modifier.padding(top = 5.dp))
             }
         }
-        Spacer(Modifier.height(30.dp))
+        Box(Modifier.align(Alignment.BottomCenter).padding(horizontal = 10.dp, vertical = 12.dp).widthIn(max = 660.dp).fillMaxWidth()
+            .background(Color(0xFAFFFFFF), RoundedCornerShape(18.dp))) {
+            Button(
+                onClick = if (photoReady) onConfirm else onCamera,
+                enabled = !busy && (!photoReady || previewReady),
+                modifier = Modifier.fillMaxWidth().height(54.dp),
+                shape = RoundedCornerShape(18.dp),
+                colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = Color(0xFFF04455))
+            ) {
+                if (busy) CircularProgressIndicator(Modifier.size(20.dp), color = Color.White)
+                else Text(when { !photoReady && marketPickupMode -> "ถ่ายรูปสินค้าจุดนี้"; !photoReady && pickup -> "ถ่ายรูปสินค้าที่รับ"; !photoReady -> "ถ่ายรูปตอนส่ง"; marketPickupMode -> "ยืนยันรับสินค้าจุดนี้"; pickup -> "ยืนยันรับสินค้า"; else -> "ยืนยันส่งสินค้า" }, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+            }
+        }
     }
 }
 

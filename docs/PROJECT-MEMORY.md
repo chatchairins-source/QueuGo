@@ -438,3 +438,10 @@ The user-supplied Rider reference screens are the acceptance reference for workf
 - Source integrity180/whitespace PASS. Await actual CI JVM/build gate; do not claim visual/live RLS/reconnect/device/background notification certification. Existing native inbox and badge polling can issue separate reads; completed alert toast/notification behavior and screenshot parity still need verification.
 
 - Actual final CI37889890946 at2fea8cdffab6835cde0b2977304d2985f4273f02 PASS: full regression, integrity, assets, JVM tests including new badge cases, three native APK builds, No WebView and artifact upload. Production data/FCM/device/visual parity remain untested; no Owner APK delivery.
+
+## Rider proof preview and fixed actions — 2026-10-09
+
+- Backup backup-native-before-rider-proof-preview-20261009 at ef2b7be local/GitHub. Compared main9026bf4 pickup/delivery qg-proof-single and fixed camera/confirm buttons. Previously Native showed only a success text with no actual camera preview; actions scrolled with content.
+- Native now decodes the actual camera URI off the UI thread, bounds image memory to1280px and honors EXIF rotation/mirroring. Real decode/loading/error states; failed preview requires retaking instead of enabling confirmation. Camera file remains original for existing evidence upload/RPC.
+- Verification header is fixed with exact web back-vector, centered title/order number; items scroll with92dp footer clearance. Camera or confirmation is fixed54dp at bottom12dp/10dp side margins/radius18 and web#f04455. Actual preview uses web responsive108dp short-screen or160–215dp tall-screen height, Crop/radius15 and overlaid38dp retake action. Native Back is blocked while committing. No cash-confirm/OTP flow added; original pickup/market/completion actions preserved.
+- Item/market rows retained. Full shop/customer/note/contact/image density and native screenshots still need work; this checkpoint does not certify full verification-screen visual parity. Source integrity180/whitespace pass; actual build/CI pending.
