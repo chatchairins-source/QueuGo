@@ -73,8 +73,14 @@ jobs:
         run: node tests/native-category-assets.cjs
       - name: Tracking coordinate and terminal-state unit tests
         run: gradle -p native-android :shared:testDebugUnitTest :customer:testDebugUnitTest :rider:testDebugUnitTest --no-build-cache --stacktrace
+      - name: Build untransformed Longdo crash regression baseline
+        run: |
+          gradle -p native-android :rider:assembleDebug :rider:assembleDebugAndroidTest -Pandroid.enableJetifier=false --stacktrace
+          mkdir -p artifacts/native-rider-launch/baseline
+          cp native-android/rider/build/outputs/apk/debug/rider-debug.apk artifacts/native-rider-launch/baseline/rider-untransformed.apk
+          cp native-android/rider/build/outputs/apk/androidTest/debug/rider-debug-androidTest.apk artifacts/native-rider-launch/baseline/rider-test.apk
       - name: Build three native APKs
-        run: gradle -p native-android :customer:assembleDebug :merchant:assembleDebug :rider:assembleDebug --no-build-cache --stacktrace
+        run: gradle -p native-android :customer:assembleDebug :merchant:assembleDebug :rider:assembleDebug :rider:assembleDebugAndroidTest --no-build-cache --stacktrace
       - name: Reject WebView
         run: |
           if grep -R -E 'android\.webkit\.WebView|<WebView\b|loadUrl\(' native-android; then
@@ -129,6 +135,7 @@ jobs:
             cp "native-android/${role}/build/outputs/apk/debug/${role}-debug.apk" \
               "artifacts/shareable-native/QueueGo-${label}-${short_sha}.apk"
           done
+          cp artifacts/native-rider-launch/map-runtime-metadata.json artifacts/shareable-native/map-runtime-metadata.json
           cp artifacts/native-rider-launch/matrix-metadata.json artifacts/shareable-native/android-launch-matrix.json
           (cd artifacts/shareable-native && sha256sum *.apk > SHA256SUMS.txt)
           cat > artifacts/shareable-native/release-notes.md <<'NOTES'
@@ -136,7 +143,7 @@ jobs:
 
           This is NOT a Play Store release or a Full Gate pass. Customer/Merchant authentication UI still differs from Production. Matched visual parity, authenticated food/Market/Laundry E2E, physical Samsung/lifecycle/background notifications, release signing and AAB gates remain open.
 
-          CI checks regression, JVM tests, source/assets, three native builds, source WebView rejection and actual emulator fresh-session login at phone/small-phone/tablet sizes. Rider registration step one is opened without submitting an account. The attached launch matrix and SHA256SUMS identify the exact APK bytes.
+          CI checks regression, JVM tests, source/assets, three native builds, source WebView rejection and actual emulator fresh-session login at phone/small-phone/tablet sizes. Rider registration step one is opened without submitting an account. A real Home map instrumentation regression reproduces the legacy SDK crash before AndroidX transformation, then checks map creation, background/foreground and activity recreation in the corrected APK without creating users or orders. The attached launch matrix and SHA256SUMS identify the exact APK bytes.
           NOTES
           printf '\nSource commit: %s\nCI evidence: https://github.com/%s/actions/runs/%s\n' \
             "$GITHUB_SHA" "$GITHUB_REPOSITORY" "$GITHUB_RUN_ID" >> artifacts/shareable-native/release-notes.md
@@ -144,11 +151,11 @@ jobs:
             tag_sha="$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/${test_tag}" --jq '.object.sha')"
             test "$tag_sha" = "$GITHUB_SHA"
             gh release upload "$test_tag" artifacts/shareable-native/*.apk \
-              artifacts/shareable-native/SHA256SUMS.txt artifacts/shareable-native/android-launch-matrix.json \
+              artifacts/shareable-native/SHA256SUMS.txt artifacts/shareable-native/android-launch-matrix.json artifacts/shareable-native/map-runtime-metadata.json \
               --repo "$GITHUB_REPOSITORY" --clobber
           else
             gh release create "$test_tag" artifacts/shareable-native/*.apk \
-              artifacts/shareable-native/SHA256SUMS.txt artifacts/shareable-native/android-launch-matrix.json \
+              artifacts/shareable-native/SHA256SUMS.txt artifacts/shareable-native/android-launch-matrix.json artifacts/shareable-native/map-runtime-metadata.json \
               --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --prerelease --latest=false \
               --title "QueueGo Native Android test ${short_sha}" \
               --notes-file artifacts/shareable-native/release-notes.md

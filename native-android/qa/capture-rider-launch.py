@@ -106,6 +106,48 @@ def capture_role_viewports():
     print("Actual three-role phone/small-phone/tablet fresh-session launch matrix PASS; authenticated E2E/visual parity remain unverified")
 
 
+def verify_real_home_map_runtime():
+    """A dependency/lifecycle component test, never an authenticated E2E claim."""
+    baseline = output / "baseline"
+    test_apk = repo / "native-android/rider/build/outputs/apk/androidTest/debug/rider-debug-androidTest.apk"
+    runner = "com.queuego.rider.test/androidx.test.runner.AndroidJUnitRunner"
+    instrument = adb + ["shell", "am", "instrument", "-w", "-r", "-e", "class",
+                        "com.queuego.rider.RiderMapRuntimeTest", runner]
+    run(adb + ["shell", "wm", "size", "1080x2280"])
+    run(adb + ["shell", "wm", "density", "440"])
+    run(adb + ["shell", "am", "force-stop", package])
+    run(adb + ["install", "-r", str(baseline / "rider-untransformed.apk")])
+    run(adb + ["install", "-r", str(baseline / "rider-test.apk")])
+    run(adb + ["logcat", "-c"])
+    before = subprocess.run(instrument, capture_output=True, text=True, timeout=120)
+    crash = run(adb + ["logcat", "-d"], capture_output=True, text=True).stdout
+    before_text = before.stdout + before.stderr + crash
+    (output / "map-before-fix.txt").write_text(before_text)
+    assert "NoClassDefFoundError" in before_text and "android/support/v4/view/GestureDetectorCompat" in before_text, "Baseline must reproduce the exact missing legacy Longdo class"
+    run(adb + ["shell", "am", "force-stop", package])
+    run(adb + ["install", "-r", str(apk)])
+    run(adb + ["install", "-r", str(test_apk)])
+    run(adb + ["logcat", "-c"])
+    after = run(instrument, capture_output=True, text=True, timeout=150)
+    runtime = run(adb + ["logcat", "-d", "-s", "AndroidRuntime:E"], capture_output=True, text=True).stdout
+    (output / "map-after-fix.txt").write_text(after.stdout + after.stderr + runtime)
+    assert "OK (1 test)" in after.stdout, "Real map instrumentation did not pass"
+    assert "FATAL EXCEPTION" not in runtime, "Corrected Home map crashed"
+    metadata = {
+        "source_head": os.environ["GITHUB_SHA"],
+        "workflow_run": os.environ["GITHUB_RUN_ID"],
+        "apk_sha256": hashlib.sha256(apk.read_bytes()).hexdigest(),
+        "baseline": "reproduced NoClassDefFoundError android/support/v4/view/GestureDetectorCompat",
+        "actual_native_home_map_creation": "PASS",
+        "map_background_foreground_and_activity_recreation": "PASS",
+        "authenticated_login_e2e": False,
+        "physical_device": False,
+        "production_account_or_order_writes": False,
+    }
+    (output / "map-runtime-metadata.json").write_text(json.dumps(metadata, indent=2) + "\n")
+    print("Actual Longdo crash before fix reproduced; corrected native Home map mount/background/recreation PASS")
+
+
 with (output / "emulator.log").open("w") as log:
     emulator = subprocess.Popen([emulator_bin, "-avd", name, "-port", "5554", "-accel", "on", "-no-window", "-no-snapshot", "-no-audio", "-gpu", "swiftshader", "-memory", "2048", "-cores", "2"], stdout=log, stderr=subprocess.STDOUT)
     try:
@@ -166,6 +208,7 @@ with (output / "emulator.log").open("w") as log:
         (output / "metadata.json").write_text(json.dumps(metadata, ensure_ascii=False, indent=2) + "\n")
         print("Actual Rider unauthenticated launch PASS; Home visual / E2E / physical FCM remain unverified")
         capture_role_viewports()
+        verify_real_home_map_runtime()
     finally:
         for arguments, filename in [(["logcat", "-d", "-s", "AndroidRuntime:E"], "android-runtime.txt"), (["logcat", "-b", "crash", "-d"], "crash-buffer.txt")]:
             try:
