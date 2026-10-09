@@ -1,6 +1,7 @@
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.plugin.compose")
+    id("com.google.gms.google-services")
 }
 
 android {
@@ -25,6 +26,8 @@ android {
 
 
 dependencies {
+    implementation(platform("com.google.firebase:firebase-bom:35.0.0"))
+    implementation("com.google.firebase:firebase-messaging")
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.9.4")
     implementation(project(":shared"))
     implementation("com.google.android.gms:play-services-location:21.3.0")
