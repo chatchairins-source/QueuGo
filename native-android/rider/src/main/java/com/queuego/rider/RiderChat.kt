@@ -184,7 +184,8 @@ class RiderChatApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
             http.get(
                 "order_chat_messages?select=id,sender_id,message,created_at" +
                     "&order_id=eq." + http.enc(orderId) +
-                    "&order=created_at.asc&limit=100",
+                    // Match the web reader: retain the server history cap, not a client first-100 cutoff.
+                    "&order=created_at.asc",
                 auth.session.accessToken
             )
         )
