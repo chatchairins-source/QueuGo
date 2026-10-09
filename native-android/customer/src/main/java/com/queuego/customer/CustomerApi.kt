@@ -296,14 +296,14 @@ class CustomerApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
         }
     }
 
-    suspend fun placeOrder(
+    fun checkoutBody(
         auth: NativeAuth,
         requestId: String = UUID.randomUUID().toString(),
         shop: CustomerShop,
         lines: List<CartLine>,
         location: CustomerLocation,
         note: String?
-    ): CustomerOrder {
+    ): JSONObject {
         require(lines.isNotEmpty()) { "ตะกร้าว่าง" }
         val subtotal = lines.sumOf { it.product.deliveryPrice * it.quantity }
         val fee = deliveryFee(shop, location)
@@ -319,6 +319,10 @@ class CustomerApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
             .put("p_expected_subtotal", subtotal)
             .put("p_expected_delivery_fee", fee)
             .put("p_note", note?.trim()?.takeIf { it.isNotBlank() })
+        return body
+    }
+
+    suspend fun placeOrder(auth: NativeAuth, body: JSONObject): CustomerOrder {
         val raw = http.rpc("queuego_place_cash_order", auth.session.accessToken, body)
         val r = when (raw) {
             is JSONObject -> raw
@@ -326,18 +330,25 @@ class CustomerApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
             else -> JSONObject()
         }
         val id = r.optString("id")
-        if (id.isBlank()) error("ระบบยังไม่ยืนยันออเดอร์")
+        if (id != body.getString("p_order_id") || r.optString("order_number").isBlank()) error("ยังไม่ได้รับเลขยืนยันออเดอร์เดิม")
         return CustomerOrder(
             id,
             orderNumber(r.optString("order_number"), id),
-            shop.id,
+            body.getString("p_shop_id"),
             r.optString("status").ifBlank { "pending" },
-            r.optDouble("subtotal", subtotal),
-            r.optDouble("delivery_fee", fee),
-            r.optDouble("total_amount", subtotal + fee),
-            location.address,
+            r.optDouble("subtotal", body.getDouble("p_expected_subtotal")),
+            r.optDouble("delivery_fee", body.getDouble("p_expected_delivery_fee")),
+            r.optDouble("total_amount", body.getDouble("p_expected_subtotal") + body.getDouble("p_expected_delivery_fee")),
+            body.getString("p_delivery_address"),
             r.optNullable("created_at")
         )
+    }
+
+    suspend fun findPlacedOrder(auth: NativeAuth, requestId: String): CustomerOrder? {
+        val rows = http.array(http.get("orders?select=id,order_number,shop_id,status,subtotal,delivery_fee,total_amount,delivery_address,created_at&customer_id=eq." + http.enc(auth.user.id) + "&id=eq." + http.enc(requestId) + "&limit=1", auth.session.accessToken))
+        val row = rows.optJSONObject(0) ?: return null
+        if (row.optString("id") != requestId || row.optString("order_number").isBlank()) return null
+        return CustomerOrder(requestId, orderNumber(row.getString("order_number"), requestId), row.optNullable("shop_id"), row.optString("status"), row.optDouble("subtotal"), row.optDouble("delivery_fee"), row.optDouble("total_amount"), row.optNullable("delivery_address"), row.optNullable("created_at"))
     }
 
     fun deliveryFee(shop: CustomerShop, location: CustomerLocation): Double {

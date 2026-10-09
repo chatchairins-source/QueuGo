@@ -62,14 +62,16 @@ private class ShopExtrasApi(private val http: QueueGoNativeApi = QueueGoNativeAp
 
 @Composable
 internal fun ShopScreen(auth: NativeAuth, shop: CustomerShop?, products: List<CustomerProduct>, cart: List<CartLine>,
+    productsLoading: Boolean, productsError: String?, onRetryProducts: () -> Unit,
     onBack: () -> Unit, onAdd: (CustomerProduct) -> Unit, onCart: () -> Unit) {
     if (shop == null) { Text("ไม่พบร้านค้า", Modifier.padding(35.dp), color = QgMuted); return }
     // A keyed subtree cancels requests and discards state when the actor or shop changes.
-    key(auth.user.id, shop.id) { ShopBody(auth, shop, products, cart, onBack, onAdd, onCart) }
+    key(auth.user.id, shop.id) { ShopBody(auth, shop, products, cart, productsLoading, productsError, onRetryProducts, onBack, onAdd, onCart) }
 }
 
 @Composable
 private fun ShopBody(auth: NativeAuth, shop: CustomerShop, products: List<CustomerProduct>, cart: List<CartLine>,
+    productsLoading: Boolean, productsError: String?, onRetryProducts: () -> Unit,
     onBack: () -> Unit, onAdd: (CustomerProduct) -> Unit, onCart: () -> Unit) {
     val api = remember { ShopExtrasApi() }
     val scope = rememberCoroutineScope()
@@ -142,7 +144,11 @@ private fun ShopBody(auth: NativeAuth, shop: CustomerShop, products: List<Custom
                 // Production loadMenu currently returns no category field, hence the same All control.
                 Text("ทั้งหมด", color = QgRed, fontSize = 13.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = inset + 6.dp, vertical = 12.dp))
                 Spacer(Modifier.height(6.dp))
-                if (products.isEmpty()) Text("ยังไม่มีเมนู", Modifier.fillMaxWidth().padding(35.dp), color = QgMuted)
+                when {
+                    productsLoading -> LinearProgressIndicator(Modifier.fillMaxWidth().padding(horizontal = inset, vertical = 18.dp))
+                    productsError != null -> Text("$productsError · ลองอีกครั้ง", Modifier.fillMaxWidth().clickable(onClick = onRetryProducts).padding(35.dp), color = QgRed)
+                    products.isEmpty() -> Text("ยังไม่มีเมนู", Modifier.fillMaxWidth().padding(35.dp), color = QgMuted)
+                }
                 products.forEach { product ->
                     Row(Modifier.fillMaxWidth().background(Color.White).padding(horizontal = inset, vertical = if (compact) 7.dp else 9.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(9.dp)) {
                         QgRemoteImage(product.image, Modifier.size(if (compact) 64.dp else 72.dp, if (compact) 58.dp else 66.dp), product.name, cornerRadius = 13.dp)

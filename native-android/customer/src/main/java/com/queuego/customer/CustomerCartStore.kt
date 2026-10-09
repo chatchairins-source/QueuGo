@@ -4,6 +4,8 @@ import android.content.Context
 import org.json.JSONArray
 import org.json.JSONObject
 
+internal data class PendingCustomerCheckout(val body: JSONObject, val cartSnapshot: String)
+
 class CustomerCartStore(context: Context, userId: String) {
     private val prefs = context.getSharedPreferences("queuego_customer_cart_" + userId, Context.MODE_PRIVATE)
 
@@ -28,7 +30,7 @@ class CustomerCartStore(context: Context, userId: String) {
         }
     }.getOrDefault(emptyList())
 
-    fun save(lines: List<CartLine>) {
+    private fun serialize(lines: List<CartLine>): String {
         val rows = JSONArray()
         lines.forEach { line ->
             rows.put(
@@ -43,6 +45,30 @@ class CustomerCartStore(context: Context, userId: String) {
                     .put("quantity", line.quantity)
             )
         }
-        prefs.edit().putString("cart", rows.toString()).apply()
+        return rows.toString()
+    }
+
+    fun save(lines: List<CartLine>) { prefs.edit().putString("cart", serialize(lines)).apply() }
+
+    internal fun pending(body: JSONObject, lines: List<CartLine>) = PendingCustomerCheckout(body, serialize(lines))
+
+    internal fun journal(): CheckoutJournal<PendingCustomerCheckout> = object : CheckoutJournal<PendingCustomerCheckout> {
+        override fun read(): PendingCustomerCheckout? {
+            val raw = prefs.getString("pending_checkout", null) ?: return null
+            val value = JSONObject(raw)
+            val body = value.getJSONObject("body")
+            java.util.UUID.fromString(body.getString("p_order_id"))
+            java.util.UUID.fromString(body.getString("p_shop_id"))
+            return PendingCustomerCheckout(body, value.getString("cart"))
+        }
+        override fun write(pending: PendingCustomerCheckout) {
+            check(prefs.edit().putString("pending_checkout", JSONObject().put("body", pending.body).put("cart", pending.cartSnapshot).toString()).commit()) { "บันทึกคำขอสั่งซื้อไม่สำเร็จ" }
+        }
+        override fun clear() { check(prefs.edit().remove("pending_checkout").commit()) }
+        override fun complete(pending: PendingCustomerCheckout) {
+            val edit = prefs.edit().remove("pending_checkout")
+            if (prefs.getString("cart", "[]") == pending.cartSnapshot) edit.putString("cart", "[]")
+            check(edit.commit())
+        }
     }
 }

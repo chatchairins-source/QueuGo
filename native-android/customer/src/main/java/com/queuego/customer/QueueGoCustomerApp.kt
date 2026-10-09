@@ -34,6 +34,9 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.runtime.key
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.lifecycle.Lifecycle
@@ -88,7 +91,7 @@ private val categories = listOf(
 @Composable
 fun QueueGoCustomerApp() {
     QueueGoAuthHost(expectedRole = "customer", appLabel = "Customer") { auth, logout ->
-        CustomerShell(auth, logout)
+        key(auth.user.id, auth.user.authUserId) { CustomerShell(auth, logout) }
     }
 }
 
@@ -120,7 +123,10 @@ private fun CustomerShell(auth: NativeAuth, logout: () -> Unit) {
     var trackingContext by remember { mutableStateOf<CustomerOrderContext?>(null) }
     var selectedMarketTrip by remember { mutableStateOf<MarketTripSummary?>(null) }
     var selectedLaundryOrder by remember { mutableStateOf<LaundryOrderSummary?>(null) }
-    var products by remember { mutableStateOf<List<CustomerProduct>>(emptyList()) }
+    val shopCatalog = remember(auth.user.id) { CustomerShopCatalog(scope) }
+    val catalogState by shopCatalog.state.collectAsState()
+    DisposableEffect(shopCatalog) { onDispose { shopCatalog.close() } }
+    LaunchedEffect(screen) { if (screen != "shop") shopCatalog.close() }
     var orderItems by remember { mutableStateOf<List<CustomerOrderItem>>(emptyList()) }
     var cart by remember(auth.user.id) { mutableStateOf(cartStore.load()) }
     var location by remember { mutableStateOf<CustomerLocation?>(null) }
@@ -129,6 +135,36 @@ private fun CustomerShell(auth: NativeAuth, logout: () -> Unit) {
     var busy by remember { mutableStateOf(false) }
     var loading by remember { mutableStateOf(true) }
     var message by remember { mutableStateOf<String?>(null) }
+    val checkoutJournal = remember(cartStore) { cartStore.journal() }
+    val checkoutRecovery = remember(checkoutJournal) { CustomerCheckoutRecovery<PendingCustomerCheckout, CustomerOrder>(checkoutJournal) }
+    var checkoutPending by remember { mutableStateOf(runCatching { checkoutJournal.read() != null }.getOrDefault(false)) }
+
+    var lastCheckoutReceipt by remember { mutableStateOf<String?>(null) }
+
+    fun showPlacedOrder(order: CustomerOrder) {
+        lastCheckoutReceipt = order.id
+        cart = cartStore.load()
+        note = ""
+        selectedOrder = order
+        orderItems = emptyList()
+        message = "สั่งซื้อสำเร็จ · " + order.number
+        checkoutPending = false
+        screen = "order"
+    }
+    LaunchedEffect(auth.session.accessToken, lifecycle) {
+        lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            while (true) {
+                try {
+                    checkoutRecovery.reconcile { api.findPlacedOrder(auth, it.body.getString("p_order_id")) }?.let {
+                        if (lastCheckoutReceipt != it.id) showPlacedOrder(it)
+                    }
+                } catch (e: CancellationException) { throw e }
+                catch (_: Exception) { /* Preserve pending for reconnect or explicit retry. */ }
+                checkoutPending = runCatching { checkoutJournal.read() != null }.getOrDefault(false)
+                delay(8_000)
+            }
+        }
+    }
 
     val contextRefreshGate = remember(selectedOrder?.id) { TrackingContextRefreshGate() }
 
@@ -290,13 +326,8 @@ private fun CustomerShell(auth: NativeAuth, logout: () -> Unit) {
                     onOpenShop = { shop ->
                         shopReturnScreen = screen
                         selectedShop = shop
-                        products = emptyList()
                         screen = "shop"
-                        scope.launch {
-                            runCatching { api.loadProducts(auth, shop.id) }
-                                .onSuccess { products = it }
-                                .onFailure { message = it.message }
-                        }
+                        shopCatalog.open(shop.id) { api.loadProducts(auth, shop.id) }
                     }
                 )
                 "notifications" -> CustomerNotificationsScreen(
@@ -353,13 +384,8 @@ private fun CustomerShell(auth: NativeAuth, logout: () -> Unit) {
                     onShop = { shop ->
                         shopReturnScreen = screen
                         selectedShop = shop
-                        products = emptyList()
                         screen = "shop"
-                        scope.launch {
-                            runCatching { api.loadProducts(auth, shop.id) }
-                                .onSuccess { products = it }
-                                .onFailure { message = it.message }
-                        }
+                        shopCatalog.open(shop.id) { api.loadProducts(auth, shop.id) }
                     }
                 )
                 "category" -> ServiceCategoryScreen(
@@ -374,13 +400,8 @@ private fun CustomerShell(auth: NativeAuth, logout: () -> Unit) {
                     onShop = { shop ->
                         shopReturnScreen = screen
                         selectedShop = shop
-                        products = emptyList()
                         screen = "shop"
-                        scope.launch {
-                            runCatching { api.loadProducts(auth, shop.id) }
-                                .onSuccess { products = it }
-                                .onFailure { message = it.message }
-                        }
+                        shopCatalog.open(shop.id) { api.loadProducts(auth, shop.id) }
                     }
                 )
                 "laundry" -> LaundryNativeScreen(
@@ -444,7 +465,10 @@ private fun CustomerShell(auth: NativeAuth, logout: () -> Unit) {
                 "shop" -> ShopScreen(
                     auth = auth,
                     shop = selectedShop,
-                    products = products,
+                    products = catalogState.products,
+                    productsLoading = catalogState.loading,
+                    productsError = catalogState.error,
+                    onRetryProducts = { selectedShop?.let { shop -> shopCatalog.open(shop.id) { api.loadProducts(auth, shop.id) } } },
                     cart = cart,
                     onBack = { screen = shopReturnScreen },
                     onAdd = { product ->
@@ -461,6 +485,7 @@ private fun CustomerShell(auth: NativeAuth, logout: () -> Unit) {
                     onCart = { screen = "cart" }
                 )
                 "cart" -> CartScreen(
+                    checkoutPending = checkoutPending,
                     cart = cart,
                     shop = shops.find { it.id == cart.firstOrNull()?.product?.shopId },
                     location = location,
@@ -493,32 +518,41 @@ private fun CustomerShell(auth: NativeAuth, logout: () -> Unit) {
                         cart = cart.map { if (it.product.id == id) it.copy(quantity = it.quantity + 1) else it }
                     },
                     onPlace = {
-                        val shop = shops.find { it.id == cart.firstOrNull()?.product?.shopId }
-                        val loc = location?.copy(address = address.trim())
-                        if (shop == null || loc == null || address.isBlank()) {
-                            message = "กรุณาเลือกตำแหน่งและกรอกที่อยู่จัดส่ง"
-                        } else {
+                        if (!busy) {
                             busy = true
-                            val requestId = UUID.randomUUID().toString()
+                            val submittedCart = cart.toList()
+                            val submittedLocation = location?.copy(address = address.trim())
+                            val submittedShop = shops.find { it.id == submittedCart.firstOrNull()?.product?.shopId }
+                            val submittedNote = note
+                            // Persist the cart snapshot immediately so reconciliation can clear
+                            // exactly the submitted cart without touching later edits.
+                            cartStore.save(submittedCart)
                             scope.launch {
-                                runCatching {
-                                    api.saveLocation(auth, loc)
-                                    api.placeOrder(auth, requestId, shop, cart, loc, note)
-                                }.onSuccess { order ->
-                                    cart = emptyList()
-                                    note = ""
-                                    selectedOrder = order
-                                    orderItems = emptyList()
-                                    message = "สั่งซื้อสำเร็จ · " + order.number
-                                    screen = "order"
-                                }.onFailure { e ->
+                                try {
+                                    val order = checkoutRecovery.submit(
+                                        create = {
+                                            require(submittedShop != null && submittedLocation != null && submittedLocation.address.isNotBlank()) { "กรุณาเลือกตำแหน่งและกรอกที่อยู่จัดส่ง" }
+                                            cartStore.pending(api.checkoutBody(auth, UUID.randomUUID().toString(), submittedShop, submittedCart, submittedLocation, submittedNote), submittedCart)
+                                        },
+                                        send = { pending ->
+                                            val body = pending.body
+                                            api.saveLocation(auth, CustomerLocation(body.getDouble("p_delivery_lat"), body.getDouble("p_delivery_lng"), body.getString("p_delivery_address")))
+                                            api.placeOrder(auth, body)
+                                        },
+                                        recover = { api.findPlacedOrder(auth, it.body.getString("p_order_id")) },
+                                        definitiveRejection = { e -> e is com.queuego.shared.QueueGoHttpException && e.statusCode in 400..499 && e.statusCode !in listOf(401, 403, 408, 429) }
+                                    )
+                                    showPlacedOrder(order)
+                                } catch (e: CancellationException) { throw e }
+                                catch (e: Exception) {
+                                    checkoutPending = runCatching { checkoutJournal.read() != null }.getOrDefault(true)
                                     message = when {
+                                        checkoutPending -> "ยังยืนยันผลไม่ได้ กรุณาตรวจผลคำขอเดิมอีกครั้ง ระบบจะใช้รายการเดิมเพื่อป้องกันออเดอร์ซ้ำ"
                                         e.message?.contains("OUTSIDE_SERVICE_AREA") == true -> "ตำแหน่งอยู่นอกพื้นที่ให้บริการ QueueGo"
                                         e.message?.contains("DELIVERY_DISTANCE_EXCEEDED") == true -> "ระยะทางไกลเกินขอบเขตให้บริการ"
                                         else -> e.message ?: "สั่งซื้อไม่สำเร็จ"
                                     }
-                                }
-                                busy = false
+                                } finally { busy = false }
                             }
                         }
                     }
@@ -935,6 +969,7 @@ internal fun ShoppingCategoryScreen(
 
 @Composable
 private fun CartScreen(
+    checkoutPending: Boolean,
     cart: List<CartLine>,
     shop: CustomerShop?,
     location: CustomerLocation?,
@@ -951,7 +986,7 @@ private fun CartScreen(
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(14.dp)) {
         QgSectionTitle("ตะกร้าของคุณ", shop?.name)
         Spacer(Modifier.height(10.dp))
-        if (cart.isEmpty()) {
+        if (cart.isEmpty() && !checkoutPending) {
             QgCard(Modifier.fillMaxWidth()) { Text("ตะกร้ายังว่าง", color = QgMuted) }
             return
         }
@@ -1009,11 +1044,11 @@ private fun CartScreen(
         Spacer(Modifier.height(12.dp))
         Button(
             onClick = onPlace,
-            enabled = !busy && location != null && address.isNotBlank() && fee != null,
+            enabled = !busy && (checkoutPending || (location != null && address.isNotBlank() && fee != null)),
             modifier = Modifier.fillMaxWidth().height(54.dp)
         ) {
             if (busy) CircularProgressIndicator(Modifier.size(22.dp), strokeWidth = 2.dp)
-            else Text("ยืนยันสั่งซื้อ", fontWeight = FontWeight.ExtraBold)
+            else Text(if (checkoutPending) "ตรวจผลคำสั่งซื้อเดิม" else "ยืนยันสั่งซื้อ", fontWeight = FontWeight.ExtraBold)
         }
         Spacer(Modifier.height(30.dp))
     }
