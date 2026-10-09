@@ -111,7 +111,9 @@ ok(riderApi.includes('queuego_set_laundry_rider_mode')&&riderApi.includes('queue
 ok(riderApp.includes('RiderLaundryActiveCard(')&&riderApp.includes('RiderLaundryPoolCard(')&&riderApp.includes('RiderLaundryModeCard('),'Rider native must expose laundry active, pool, mode and invite UI');
 ok(riderApp.includes('รับผ้าแล้ว · กำลังเปิดนำทางไปปลายทาง')&&riderApp.includes('openLaundryNavigation(context, it)'),'Rider native laundry collect must continue navigation to destination');
 const riderMap=read('rider/src/main/java/com/queuego/rider/LongdoRiderMap.kt');
+const nativeRealtimeSubscriptions=read('shared/src/main/java/com/queuego/shared/NativeRealtimeSubscription.kt');
 ok(riderMap.includes('laundryJob: RiderLaundryJob?')&&riderMap.includes('laundryJob.fromLatitude')&&riderMap.includes('laundryJob.toLatitude'),'Rider native Longdo map must show laundry pickup and destination pins');
+ok(nativeRealtimeSubscriptions.includes('"laundry_rider_jobs"')&&nativeRealtimeSubscriptions.includes('"laundry_rider_invites"')&&nativeRealtimeSubscriptions.includes('"laundry_rider_preferences"'),'Rider native must refresh laundry state from owned Realtime changes');
 ok(nativeRootGradle.includes('com.google.gms.google-services')&&gradle.includes('com.google.firebase:firebase-bom:35.0.0')&&gradle.includes('com.google.firebase:firebase-messaging'),'Rider native must compile with current Firebase Messaging transport');
 ok(riderManifest.includes('.QueueGoRiderMessagingService')&&riderManifest.includes('com.google.firebase.MESSAGING_EVENT')&&riderManifest.includes('queuego_orders'),'Rider native manifest must register FCM service and order channel');
 ok(riderPush.includes('FirebaseMessagingService')&&riderPush.includes('NotificationManager.IMPORTANCE_HIGH')&&riderPush.includes('syncRiderNativePush'),'Rider native must receive high-priority background job notifications and sync FCM tokens');
