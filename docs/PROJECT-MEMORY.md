@@ -503,3 +503,5 @@ The user-supplied Rider reference screens are the acceptance reference for workf
 - Source integrity180/whitespace PASS. Actual CI pending. Authenticated rendered web/native screenshots, device dialog/keyboard/back/contact flow and Production E2E remain required; this is source/layout/function restoration, not certified visual parity.
 
 - Combined media/quick-message CI37896921027 atd82900b42b6f695814f850725eaf30cf27113300 PASS: full regression, integrity/assets, JVM tests including delivery/outbox/quick-message cases, all three APK builds, No WebView and artifacts. Earlier image-only CI37896622575 was cancelled when superseded; do not count it as a completed pass. Header/safety follow-up still awaits its own CI.
+
+- Follow-up before final gate: terms acceptance/block/unblock now share confirmed-action refresh recovery with sending. Once the existing mutation RPC confirms, a later read failure is displayed as read failure instead of incorrectly claiming the mutation failed. Original RPC calls, moderation and cancellation retained.

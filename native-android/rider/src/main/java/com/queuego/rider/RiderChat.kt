@@ -267,6 +267,15 @@ private fun RiderChatRoom(auth: QueueGoAuth, job: RiderJob, onBack: () -> Unit, 
         readError = null
     }
 
+    suspend fun refreshAfterConfirmedAction() {
+        try { refresh() }
+        catch (cancelled: CancellationException) { throw cancelled }
+        catch (failure: Exception) {
+            currentCoroutineContext().ensureActive()
+            readError = failure.message ?: "โหลดแชทไม่สำเร็จ"
+        }
+    }
+
     LaunchedEffect(auth.user.id, auth.session.sessionId, auth.session.accessToken, job.id, lifecycle) {
         lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
             while (!closed) {
@@ -327,12 +336,7 @@ private fun RiderChatRoom(auth: QueueGoAuth, job: RiderJob, onBack: () -> Unit, 
         if (clearInput && input.trim() == payload.trim()) input = ""
         message = null
         // Delivery is already confirmed. A read failure must not become a send failure.
-        try { refresh() }
-        catch (cancelled: CancellationException) { throw cancelled }
-        catch (failure: Exception) {
-            currentCoroutineContext().ensureActive()
-            readError = failure.message ?: "โหลดแชทไม่สำเร็จ"
-        }
+        refreshAfterConfirmedAction()
     }
 
     val photoPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
@@ -408,7 +412,7 @@ private fun RiderChatRoom(auth: QueueGoAuth, job: RiderJob, onBack: () -> Unit, 
                             scope.launch {
                                 runCatching {
                                     api.acceptTerms(auth)
-                                    refresh()
+                                    refreshAfterConfirmedAction()
                                 }.onFailure { if (it is CancellationException) throw it; message = it.message ?: "ยอมรับกติกาไม่สำเร็จ" }
                                 busy = false
                             }
@@ -431,7 +435,7 @@ private fun RiderChatRoom(auth: QueueGoAuth, job: RiderJob, onBack: () -> Unit, 
                             scope.launch {
                                 runCatching {
                                     api.unblock(auth, job.id)
-                                    refresh()
+                                    refreshAfterConfirmedAction()
                                 }.onFailure { if (it is CancellationException) throw it; message = it.message ?: "ปลดบล็อกไม่สำเร็จ" }
                                 busy = false
                             }
@@ -512,7 +516,7 @@ private fun RiderChatRoom(auth: QueueGoAuth, job: RiderJob, onBack: () -> Unit, 
                         confirmButton = { TextButton(onClick = {
                             busy = true
                             scope.launch {
-                                try { api.block(auth, job.id); refresh(); confirmBlock = false }
+                                try { api.block(auth, job.id); refreshAfterConfirmedAction(); confirmBlock = false }
                                 catch (cancelled: CancellationException) { throw cancelled }
                                 catch (failure: Exception) { message = failure.message ?: "บล็อกไม่สำเร็จ" }
                                 finally { busy = false }
