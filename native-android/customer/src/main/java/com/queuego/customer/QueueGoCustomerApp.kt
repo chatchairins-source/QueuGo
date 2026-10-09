@@ -2,6 +2,8 @@ package com.queuego.customer
 
 import android.Manifest
 import android.content.Context
+import android.content.Intent
+import android.net.Uri
 import android.content.pm.PackageManager
 import android.location.LocationManager
 import androidx.activity.compose.BackHandler
@@ -55,9 +57,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.queuego.shared.NativeAuth
 import com.queuego.shared.QgAccountDeletionSection
 import com.queuego.shared.QgBg
@@ -82,11 +86,14 @@ private val categories = listOf(
     "all" to "ทั้งหมด",
     "food" to "อาหาร",
     "cafe" to "เครื่องดื่ม",
-    "grocery" to "ของชำ",
-    "market" to "ตลาดสด",
+    "grocery" to "ร้านขายของชำ",
     "laundry" to "ฝากซัก",
+    "market" to "ตลาดสด",
     "shopping" to "ช้อปปิ้ง"
 )
+
+private val homeDedicatedMarketCategories =
+    setOf("market", "fresh", "fresh_market", "meat", "fish", "vegetable", "fruit")
 
 @Composable
 fun QueueGoCustomerApp() {
@@ -212,6 +219,44 @@ private fun CustomerShell(auth: NativeAuth, logout: () -> Unit) {
                 message = "ใช้ตำแหน่งปัจจุบันแล้ว"
             } else message = "ยังอ่านตำแหน่ง GPS ไม่ได้"
         } else message = "กรุณาอนุญาตตำแหน่งเพื่อจัดส่ง"
+    }
+
+    fun openShopFromHome(shop: CustomerShop, returnTo: String = screen) {
+        shopReturnScreen = returnTo
+        selectedShop = shop
+        screen = "shop"
+        shopCatalog.open(shop.id) { api.loadProducts(auth, shop.id) }
+    }
+
+    fun openHomeBannerLink(raw: String) {
+        val value = raw.trim()
+        if (value.isBlank()) return
+        if (value.startsWith("#")) {
+            val route = value.removePrefix("#").trim().trimStart('/')
+            when {
+                route.isBlank() || route == "home" -> screen = "home"
+                route == "search" -> screen = "search"
+                route == "cart" -> screen = "cart"
+                route == "orders" -> screen = "orders"
+                route == "map" -> screen = "location"
+                route == "market" -> screen = "market"
+                route == "laundry" -> screen = "laundry"
+                route in setOf("food", "cafe", "grocery", "shopping") -> {
+                    category = route
+                    screen = "category"
+                }
+                route.startsWith("shop/") -> {
+                    val id = route.substringAfter("shop/").substringBefore('/')
+                    shops.find { it.id == id }?.let { openShopFromHome(it, "home") }
+                }
+            }
+            return
+        }
+        if (value.startsWith("https://", true) || value.startsWith("http://", true)) {
+            runCatching {
+                context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(value)))
+            }.onFailure { message = "เปิดลิงก์ไม่สำเร็จ" }
+        }
     }
 
     suspend fun refreshNotifications() = liveMutex.withLock {
@@ -359,10 +404,15 @@ private fun CustomerShell(auth: NativeAuth, logout: () -> Unit) {
                     }
                 )
                 "home" -> CustomerHome(
-                    loading, banners, serviceBanners, category, shops,
+                    loading = loading,
+                    banners = banners,
+                    location = location,
+                    deliveryAddress = address,
+                    shops = shops,
+                    onLocation = { screen = "location" },
+                    onSearch = { screen = "search" },
                     onCategory = {
                         when (it) {
-                            "all" -> category = "all"
                             "market" -> screen = "market"
                             "laundry" -> screen = "laundry"
                             else -> {
@@ -371,12 +421,46 @@ private fun CustomerShell(auth: NativeAuth, logout: () -> Unit) {
                             }
                         }
                     },
-                    onShop = { shop ->
-                        shopReturnScreen = screen
-                        selectedShop = shop
-                        screen = "shop"
-                        shopCatalog.open(shop.id) { api.loadProducts(auth, shop.id) }
-                    }
+                    onShop = { shop -> openShopFromHome(shop, "home") },
+                    onBannerLink = ::openHomeBannerLink
+                )
+                "location" -> CustomerLocationPickerScreen(
+                    location = location,
+                    address = address,
+                    busy = busy,
+                    onGps = {
+                        if (hasLocation(context)) {
+                            val p = lastKnownLocation(context)
+                            if (p != null) {
+                                location = CustomerLocation(p.first, p.second, address)
+                                message = "ใช้ตำแหน่งปัจจุบันแล้ว"
+                            } else message = "ยังอ่านตำแหน่ง GPS ไม่ได้"
+                        } else {
+                            permission.launch(
+                                arrayOf(
+                                    Manifest.permission.ACCESS_FINE_LOCATION,
+                                    Manifest.permission.ACCESS_COARSE_LOCATION
+                                )
+                            )
+                        }
+                    },
+                    onSave = { picked ->
+                        if (!busy) {
+                            busy = true
+                            scope.launch {
+                                runCatching { api.saveLocation(auth, picked) }
+                                    .onSuccess {
+                                        location = picked
+                                        address = picked.address
+                                        message = "บันทึกที่อยู่แล้ว"
+                                        screen = "home"
+                                    }
+                                    .onFailure { message = it.message ?: "บันทึกที่อยู่ไม่สำเร็จ" }
+                                busy = false
+                            }
+                        }
+                    },
+                    onBack = { screen = "home" }
                 )
                 "category" -> ServiceCategoryScreen(
                     loading = loading,
@@ -655,82 +739,151 @@ private fun CustomerTopBar(
 private fun CustomerHome(
     loading: Boolean,
     banners: List<HomeBanner>,
-    serviceBanners: Map<String, ServiceBanner>,
-    category: String,
+    location: CustomerLocation?,
+    deliveryAddress: String,
     shops: List<CustomerShop>,
+    onLocation: () -> Unit,
+    onSearch: () -> Unit,
     onCategory: (String) -> Unit,
-    onShop: (CustomerShop) -> Unit
+    onShop: (CustomerShop) -> Unit,
+    onBannerLink: (String) -> Unit
 ) {
-    var bannerIndex by remember(banners.size) { mutableStateOf(0) }
-    LaunchedEffect(banners.size) {
+    var bannerIndex by remember(banners.map { it.image }) { mutableStateOf(0) }
+    val rotationMs = banners.firstOrNull()?.rotationMs ?: 5_000L
+    LaunchedEffect(banners.size, rotationMs) {
         if (banners.size > 1) {
             while (true) {
-                delay(5_000)
+                delay(rotationMs)
                 bannerIndex = (bannerIndex + 1) % banners.size
             }
         }
+    }
+
+    val nearbyShops = remember(shops, location) {
+        val eligible = shops.filter { shop ->
+            val key = shop.category.lowercase()
+            key != "grocery" && key != "shopping" && key !in homeDedicatedMarketCategories
+        }
+        if (location == null) eligible
+        else eligible.sortedBy { homeDistanceKm(location, it) }
     }
 
     Column(
         Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(horizontal = 14.dp)
+            .padding(horizontal = 12.dp)
     ) {
-        Spacer(Modifier.height(13.dp))
-        CustomerHomeBanner(banners, bannerIndex) { bannerIndex = it }
-
-        Spacer(Modifier.height(20.dp))
         Row(
-            Modifier.fillMaxWidth(),
+            Modifier
+                .fillMaxWidth()
+                .clickable(onClick = onLocation)
+                .padding(horizontal = 2.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(
-                "บริการ",
-                color = androidx.compose.ui.graphics.Color(0xFF17191D),
-                fontWeight = FontWeight.ExtraBold,
-                style = MaterialTheme.typography.titleMedium
-            )
-            Spacer(Modifier.weight(1f))
+            Box(
+                Modifier
+                    .size(34.dp)
+                    .clip(RoundedCornerShape(11.dp))
+                    .background(androidx.compose.ui.graphics.Color(0xFFFFF0F1)),
+                contentAlignment = Alignment.Center
+            ) {
+                QgIcon("pin", Modifier.size(19.dp), QgRed)
+            }
+            Spacer(Modifier.width(10.dp))
+            Column(Modifier.weight(1f)) {
+                Text(
+                    "ส่งไปที่",
+                    color = QgMuted,
+                    fontSize = 11.sp,
+                    lineHeight = 14.sp
+                )
+                Text(
+                    deliveryAddress.ifBlank { location?.address.orEmpty() }.ifBlank { "เลือกที่อยู่จัดส่ง" },
+                    color = androidx.compose.ui.graphics.Color(0xFF17191D),
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 13.sp,
+                    lineHeight = 17.sp,
+                    maxLines = 1
+                )
+            }
         }
-        Spacer(Modifier.height(11.dp))
 
         Row(
-            Modifier.horizontalScroll(rememberScrollState()),
+            Modifier
+                .fillMaxWidth()
+                .height(48.dp)
+                .clip(RoundedCornerShape(15.dp))
+                .background(androidx.compose.ui.graphics.Color.White)
+                .border(1.dp, QgLine, RoundedCornerShape(15.dp))
+                .clickable(onClick = onSearch)
+                .padding(horizontal = 14.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            QgIcon("search", Modifier.size(20.dp), androidx.compose.ui.graphics.Color(0xFF3F434A))
+            Spacer(Modifier.width(10.dp))
+            Text(
+                "ค้นหาร้านค้าจากทุกหมวด",
+                color = androidx.compose.ui.graphics.Color(0xFF9A9EA5),
+                fontSize = 14.sp
+            )
+        }
+
+        Spacer(Modifier.height(13.dp))
+        CustomerHomeBanner(
+            banners = banners,
+            selected = bannerIndex,
+            onSelect = { bannerIndex = it },
+            onOpen = { banner -> banner.link?.let(onBannerLink) }
+        )
+
+        Spacer(Modifier.height(14.dp))
+        Row(
+            Modifier
+                .horizontalScroll(rememberScrollState())
+                .padding(horizontal = 2.dp, vertical = 2.dp),
             horizontalArrangement = Arrangement.spacedBy(13.dp)
         ) {
             categories.filter { it.first != "all" }.forEach { (key, label) ->
                 CustomerCategoryButton(
                     key = key,
                     label = label,
-                    selected = category == key,
                     onClick = { onCategory(key) }
                 )
             }
         }
 
-        Spacer(Modifier.height(20.dp))
+        Spacer(Modifier.height(14.dp))
         Row(
-            Modifier.fillMaxWidth(),
+            Modifier.fillMaxWidth().padding(horizontal = 2.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                "ร้านค้าแนะนำ",
+                "ร้านใกล้คุณ",
                 color = androidx.compose.ui.graphics.Color(0xFF17191D),
                 fontWeight = FontWeight.ExtraBold,
-                style = MaterialTheme.typography.titleMedium
+                fontSize = 17.sp,
+                lineHeight = 22.sp
             )
             Spacer(Modifier.weight(1f))
-            Text("ใกล้คุณ", color = QgRed, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelMedium)
+            Text(
+                "ดูทั้งหมด",
+                color = QgRed,
+                fontWeight = FontWeight.Bold,
+                fontSize = 13.sp,
+                modifier = Modifier.clickable(onClick = onSearch)
+            )
         }
-        Spacer(Modifier.height(11.dp))
+        Spacer(Modifier.height(8.dp))
 
         when {
             loading -> CircularProgressIndicator()
-            shops.isEmpty() -> QgCard(Modifier.fillMaxWidth()) {
-                Text("ยังไม่พบร้านที่เปิดให้บริการ", color = QgMuted)
-            }
-            else -> shops.take(12).forEach { shop ->
+            nearbyShops.isEmpty() -> Text(
+                "ยังไม่มีร้านค้า",
+                color = QgMuted,
+                modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp)
+            )
+            else -> nearbyShops.forEach { shop ->
                 CustomerBlueprintShopCard(shop = shop, onClick = { onShop(shop) })
             }
         }
@@ -742,9 +895,17 @@ private fun CustomerHome(
 private fun CustomerCategoryButton(
     key: String,
     label: String,
-    selected: Boolean,
     onClick: () -> Unit
 ) {
+    val icon = when (key) {
+        "food" -> "utensils"
+        "cafe" -> "drink"
+        "grocery" -> "bottle"
+        "laundry" -> "grid"
+        "market" -> "basket"
+        "shopping" -> "shopping"
+        else -> key
+    }
     Column(
         Modifier
             .width(64.dp)
@@ -755,22 +916,19 @@ private fun CustomerCategoryButton(
             Modifier
                 .size(54.dp)
                 .clip(CircleShape)
-                .background(if (selected) androidx.compose.ui.graphics.Color(0xFFFFF3F5) else androidx.compose.ui.graphics.Color.White)
-                .border(
-                    1.dp,
-                    if (selected) androidx.compose.ui.graphics.Color(0xFFFFCCD5) else QgLine,
-                    CircleShape
-                ),
+                .background(androidx.compose.ui.graphics.Color.White)
+                .border(1.dp, QgLine, CircleShape),
             contentAlignment = Alignment.Center
         ) {
-            QgIcon(key, Modifier.size(25.dp), QgRed)
+            QgIcon(icon, Modifier.size(25.dp), QgRed)
         }
         Spacer(Modifier.height(6.dp))
         Text(
             label,
             color = androidx.compose.ui.graphics.Color(0xFF3A3D42),
             fontWeight = FontWeight.Bold,
-            style = MaterialTheme.typography.labelSmall,
+            fontSize = 10.sp,
+            lineHeight = 13.sp,
             maxLines = 1
         )
     }
@@ -781,6 +939,8 @@ private fun CustomerBlueprintShopCard(
     shop: CustomerShop,
     onClick: () -> Unit
 ) {
+    val compact = LocalConfiguration.current.screenWidthDp <= 420
+    val imageSize = if (compact) 82.dp else 92.dp
     QgCard(
         Modifier
             .fillMaxWidth()
@@ -788,28 +948,77 @@ private fun CustomerBlueprintShopCard(
             .clickable(onClick = onClick)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            QgRemoteImage(shop.logo ?: shop.cover, Modifier.size(92.dp), shop.name)
+            QgRemoteImage(
+                source = shop.logo ?: shop.cover,
+                modifier = Modifier.size(imageSize),
+                fallback = shop.name,
+                cornerRadius = 14.dp
+            )
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
                 Text(
                     shop.name,
                     color = androidx.compose.ui.graphics.Color(0xFF17191D),
                     fontWeight = FontWeight.ExtraBold,
-                    style = MaterialTheme.typography.titleSmall,
+                    fontSize = 15.sp,
+                    lineHeight = 19.sp,
                     maxLines = 1
                 )
-                Spacer(Modifier.height(5.dp))
-                Text(
-                    shop.address ?: categoryLabel(shop.category),
-                    color = QgMuted,
-                    style = MaterialTheme.typography.bodySmall,
-                    maxLines = 2
-                )
+                Spacer(Modifier.height(6.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(
+                        categoryLabel(shop.category),
+                        color = QgMuted,
+                        fontSize = 11.sp,
+                        lineHeight = 14.sp,
+                        maxLines = 1
+                    )
+                    if (!shop.openTime.isNullOrBlank()) {
+                        Text(
+                            shop.openTime + "–" + (shop.closeTime ?: ""),
+                            color = QgMuted,
+                            fontSize = 11.sp,
+                            lineHeight = 14.sp,
+                            maxLines = 1
+                        )
+                    }
+                }
                 Spacer(Modifier.height(7.dp))
-                QgStatusPill(if (shop.open) "เปิดอยู่" else "ปิดอยู่", shop.open)
+                Box(
+                    Modifier
+                        .clip(CircleShape)
+                        .background(
+                            if (shop.open) androidx.compose.ui.graphics.Color(0xFFEAF9F3)
+                            else androidx.compose.ui.graphics.Color(0xFFF1F1F2)
+                        )
+                        .padding(horizontal = 7.dp, vertical = 4.dp)
+                ) {
+                    Text(
+                        if (shop.open) "เปิดอยู่" else "ปิดอยู่",
+                        color = if (shop.open) androidx.compose.ui.graphics.Color(0xFF0A9660)
+                        else androidx.compose.ui.graphics.Color(0xFF777777),
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 10.sp,
+                        lineHeight = 12.sp
+                    )
+                }
             }
         }
     }
+}
+
+private fun homeDistanceKm(location: CustomerLocation, shop: CustomerShop): Double {
+    val lat2 = shop.latitude ?: return Double.POSITIVE_INFINITY
+    val lon2 = shop.longitude ?: return Double.POSITIVE_INFINITY
+    if (lat2 !in 5.0..21.0 || lon2 !in 97.0..106.0) return Double.POSITIVE_INFINITY
+    val lat1Rad = Math.toRadians(location.latitude)
+    val lat2Rad = Math.toRadians(lat2)
+    val dLat = Math.toRadians(lat2 - location.latitude)
+    val dLon = Math.toRadians(lon2 - location.longitude)
+    val a = kotlin.math.sin(dLat / 2) * kotlin.math.sin(dLat / 2) +
+        kotlin.math.cos(lat1Rad) * kotlin.math.cos(lat2Rad) *
+        kotlin.math.sin(dLon / 2) * kotlin.math.sin(dLon / 2)
+    return 6_371.0 * 2.0 * kotlin.math.atan2(kotlin.math.sqrt(a), kotlin.math.sqrt(1.0 - a))
 }
 
 @Composable
