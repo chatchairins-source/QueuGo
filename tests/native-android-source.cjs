@@ -33,6 +33,7 @@ for(const p of [
   'merchant/src/main/java/com/queuego/merchant/MerchantRevenueScreen.kt',
   'merchant/src/main/java/com/queuego/merchant/MerchantGpSlipUpload.kt',
   'merchant/src/main/java/com/queuego/merchant/MerchantPromotionScreen.kt',
+  'merchant/src/main/java/com/queuego/merchant/MerchantNotificationsScreen.kt',
   'merchant/src/main/AndroidManifest.xml',
   'merchant/src/main/java/com/queuego/merchant/MerchantLaundryApi.kt',
   'merchant/src/main/java/com/queuego/merchant/MerchantSupportScreen.kt'
@@ -119,6 +120,10 @@ const merchantPromotion=read('merchant/src/main/java/com/queuego/merchant/Mercha
 ok(source.includes('promotions?select=id,category,status,max_budget,period_days,payment_status,metadata,created_at')&&source.includes('"promotions"'),'Merchant native promotions must use Production promotions table and route');
 ok(merchantPromotion.includes('ทั้งหมด')&&merchantPromotion.includes('กำลังใช้งาน')&&merchantPromotion.includes('รออนุมัติ')&&merchantPromotion.includes('สร้างโปรโมชั่นใหม่'),'Merchant native promotions must preserve web filters and create flow');
 ok(source.includes('MerchantMenuTile("โปรโมชั่น"')&&source.includes('MerchantMenuTile("รายงาน"'),'Merchant native dashboard must expose promotions and reports');
+const merchantNotifications=read('merchant/src/main/java/com/queuego/merchant/MerchantNotificationsScreen.kt');
+ok(source.includes('notifications?select=id,title,message,type,reference_id,is_read,created_at')&&source.includes('markNotificationsRead('),'Merchant native notification center must use owned Production notifications table');
+ok(merchantNotifications.includes('ทั้งหมด')&&merchantNotifications.includes('ออเดอร์')&&merchantNotifications.includes('ระบบ')&&merchantNotifications.includes('โปรโมชัน'),'Merchant native notification center must preserve web filter groups');
+ok(source.includes('unreadCount = notifications.count { !it.isRead }')&&source.includes('QgIconButton(')&&source.includes('"notifications" -> MerchantNotificationsScreen'),'Merchant native header must expose unread notification badge and route');
 const sharedDesign=read('shared/src/main/java/com/queuego/shared/QueueGoDesign.kt');
 ok(sharedDesign.includes('"tag" ->')&&sharedDesign.includes('"chart" ->')&&sharedDesign.includes('"clock" ->')&&sharedDesign.includes('"support" ->'),'shared native icon set must preserve Merchant web vectors');
 ok(source.includes('queuego_laundry_merchant_state')&&source.includes('queuego_laundry_shop_action_v2'),'Merchant native Laundry must use production laundry state/actions');
