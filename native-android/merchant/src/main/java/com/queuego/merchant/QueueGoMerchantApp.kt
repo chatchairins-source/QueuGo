@@ -306,6 +306,21 @@ private fun MerchantShell(auth: NativeAuth, logout: () -> Unit) {
                             }
                         }
                     },
+                    onPause = { minutes ->
+                        val currentShop = shop
+                        if (currentShop != null && !busy) {
+                            busy = true
+                            scope.launch {
+                                runCatching { api.pauseShop(auth, currentShop.id, minutes) }
+                                    .onSuccess {
+                                        shopOpen = false
+                                        message = "พักรับออเดอร์แล้ว"
+                                    }
+                                    .onFailure { message = it.message ?: "พักร้านไม่สำเร็จ" }
+                                busy = false
+                            }
+                        }
+                    },
                     onOpen = {
                         selectedOrder = it
                         orderItems = emptyList()
@@ -694,6 +709,7 @@ private fun DashboardScreen(
     revenue: MerchantTodayRevenue,
     busy: Boolean,
     onToggleOpen: (Boolean) -> Unit,
+    onPause: (Int) -> Unit,
     onOpen: (MerchantOrder) -> Unit,
     onPos: () -> Unit,
     onOrders: () -> Unit,
@@ -755,6 +771,19 @@ private fun DashboardScreen(
                     Modifier.fillMaxWidth().height(128.dp),
                     shop.name
                 )
+            }
+        }
+
+        if (shop != null) {
+            Row(
+                Modifier.fillMaxWidth().padding(top = 9.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                Text("พักรับออเดอร์:", color = QgMuted, fontSize = 9.5.sp)
+                MerchantPauseButton("30 นาที", busy) { onPause(30) }
+                MerchantPauseButton("1 ชั่วโมง", busy) { onPause(60) }
+                MerchantPauseButton("1 วัน", busy) { onPause(1440) }
             }
         }
 
@@ -845,6 +874,23 @@ private fun DashboardScreen(
             else -> incoming.take(6).forEach { MerchantOrderCard(it, onOpen) }
         }
         Spacer(Modifier.height(28.dp))
+    }
+}
+
+@Composable
+private fun MerchantPauseButton(
+    label: String,
+    busy: Boolean,
+    onClick: () -> Unit
+) {
+    Box(
+        Modifier
+            .background(Color.White, RoundedCornerShape(18.dp))
+            .border(1.dp, Color(0xFFD6EADF), RoundedCornerShape(18.dp))
+            .clickable(enabled = !busy, onClick = onClick)
+            .padding(horizontal = 9.dp, vertical = 7.dp)
+    ) {
+        Text(label, color = Color(0xFF447263), fontSize = 9.sp, fontWeight = FontWeight.Bold)
     }
 }
 
