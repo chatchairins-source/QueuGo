@@ -1142,14 +1142,6 @@ internal fun merchantDeliveryRestrictionLabel(kind: String): String = when (kind
     else -> ""
 }
 
-internal val merchantMarketProductCategories = listOf(
-    "ผักสด", "ผลไม้", "เนื้อหมู", "เนื้อวัว", "ไก่ / เป็ด", "ปลา", "อาหารทะเล",
-    "ไข่", "เต้าหู้ / เส้นสด / ลูกชิ้น", "ของสดพร้อมปรุง", "อาหารแช่เย็น / แช่แข็ง",
-    "พริกแกง / เครื่องแกง", "เครื่องปรุง / ซอส", "ข้าวสาร / ธัญพืช", "ของแห้ง",
-    "อาหารปรุงสำเร็จ", "ขนม / ของหวาน", "เครื่องดื่ม", "ของใช้ในครัวเรือน",
-    "ดอกไม้ / ของไหว้", "อื่น ๆ"
-)
-
 internal fun merchantMarketStockPermitted(category: String?): Boolean =
     category?.lowercase() in setOf("market", "meat", "fish", "vegetable", "fruit", "grocery")
 
