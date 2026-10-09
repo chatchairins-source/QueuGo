@@ -476,6 +476,10 @@ private fun RiderHome(
                     lastOfferAlertKey = offerKey
                     playRiderOfferAlert()
                     actionMessage = "มีงานใหม่ที่ระบบจัดให้ กรุณาตอบรับภายใน 30 วินาที"
+                    // A selected 30-second offer must be visible immediately even if the Rider
+                    // was viewing earnings/profile/messages. There is no shared job pool.
+                    chatJob = null
+                    activeTab = "home"
                 }
                 snapshot = it
                 loadError = null
