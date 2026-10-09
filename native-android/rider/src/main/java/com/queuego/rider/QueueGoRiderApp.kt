@@ -78,6 +78,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.res.painterResource
+import androidx.compose.material3.Icon
 import androidx.core.content.FileProvider
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -1154,7 +1157,7 @@ private fun RiderBottomNavigation(
     ) {
         Row(
             Modifier.fillMaxSize().padding(4.dp),
-            horizontalArrangement = Arrangement.spacedBy(2.dp)
+            horizontalArrangement = Arrangement.Start
         ) {
             listOf(
                 Triple("home", "หน้าแรก", "home"),
@@ -1173,16 +1176,24 @@ private fun RiderBottomNavigation(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center
                 ) {
-                    QgIcon(
-                        icon,
-                        Modifier.size(19.dp),
-                        if (selected) QgRed else Color(0xFF8D878B)
+                    Icon(
+                        painter = painterResource(when (icon) {
+                            "home" -> R.drawable.qg_rider_nav_home
+                            "support" -> R.drawable.qg_rider_nav_chat
+                            "chart" -> R.drawable.qg_rider_nav_earn
+                            else -> R.drawable.qg_rider_nav_user
+                        }),
+                        contentDescription = null,
+                        modifier = Modifier.size(19.dp),
+                        tint = if (selected) QgRed else Color(0xFF8D878B)
                     )
                     Text(
                         label,
+                        modifier = Modifier.padding(top = 2.dp),
                         color = if (selected) QgRed else Color(0xFF8D878B),
                         fontWeight = FontWeight.ExtraBold,
-                        style = MaterialTheme.typography.labelSmall
+                        fontSize = 8.sp,
+                        lineHeight = 10.sp
                     )
                 }
             }

@@ -416,3 +416,10 @@ The user-supplied Rider reference screens are the acceptance reference for workf
 - Found and repaired a Production Realtime publication omission: laundry_rider_preferences was absent, while jobs/invites were present. Backup backup-native-before-laundry-preferences-realtime-20261009 at 5b562d8; applied server migration20261009052132 and checked all three published with preferences RLS preserved. Committed matching additive SQL; no policy/grant/data/RPC/dispatch change.
 - Four-tab audit against main9026bf4 verifies names/basic dock dimensions and selected-offer Home takeover only; icon/label rendered parity remains pending. See native-android/qa/rider-ci-recovery-20261009.md.
 - Actual CI log confirms Firebase config secret absent. Background FCM and device/reconnect/30s/Laundry/Production E2E plus screenshot parity remain blocked by missing configuration/device/authenticated sessions. No APK Pilot/Play readiness claimed.
+
+## Rider bottom-navigation vector parity — 2026-10-09
+
+- Latest baseline c5720c0 CI37888454332 PASS through all three APK builds and No WebView. Backup backup-native-before-rider-nav-vectors-20261009 local/GitHub before editing.
+- Inspected live rendered Production Rider: unauthenticated login page, so working-screen visual verification remains unavailable. No synthetic login or mock operational state introduced.
+- Replaced four generic navigation Canvas icons with Native vector drawable paths from main9026bf4 QTICON home/chat/earn/user, preserving 24-unit viewBox, 19dp size, 1.9 stroke and round caps/joins. User circle is the equivalent two SVG arcs. Labels now8sp with2dp gap; removed invented2dp gaps between grid columns. Native font scaling remains supported.
+- Source integrity180 and whitespace pass. Full build is delegated to real CI, not assumed from source. Native screenshot parity, responsive dock height/shadow/badge and authenticated/device/E2E/FCM gates remain pending.
