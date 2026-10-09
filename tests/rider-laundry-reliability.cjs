@@ -3,6 +3,7 @@ const root=path.resolve(__dirname,'..');
 const rider=fs.readFileSync(path.join(root,'rider/index.html'),'utf8');
 const reliability=fs.readFileSync(path.join(root,'rider/reliability.js'),'utf8');
 const sql=fs.readFileSync(path.join(root,'supabase/migrations/20261005212500_rider_laundry_action_receipts.sql'),'utf8');
+const dispatchSql=fs.readFileSync(path.join(root,'supabase/migrations/20261009044500_rider_dispatch_excludes_active_laundry.sql'),'utf8');
 let checks=0;const ok=(v,m)=>{assert.ok(v,m);checks++};
 
 for(const [rpc,kind] of Object.entries({
@@ -27,5 +28,9 @@ for(const kind of ['bundle_claim','laundry_mode','laundry_invite','laundry_claim
 ok(sql.includes('pg_advisory_xact_lock'),'Rider receipt wrapper must serialize the request id');
 ok(sql.includes('request id already in use'),'request id payload mismatch must stay blocked');
 ok(!/\bdrop\s+(table|function|schema)\b/i.test(sql),'migration must be additive');
+ok(dispatchSql.includes("from public.laundry_rider_jobs lj")&&dispatchSql.includes("lj.status in('assigned','accepted','arrived','collected')"),'automatic Rider dispatch must exclude Riders performing active Laundry legs');
+ok(dispatchSql.includes("now()+interval '30 seconds'"),'Laundry availability guard must preserve the 30-second sequential offer lease');
+ok(dispatchSql.includes("insert into public.notifications(user_id,title,message,type,reference_id)"),'Laundry availability guard must preserve selected-Rider push notification creation');
+ok(!/\bdrop\s+(table|function|schema)\b/i.test(dispatchSql),'dispatch safety migration must not drop schema objects');
 
-console.log(JSON.stringify({checks,failures:0,scope:'Rider Laundry durable one-tap intents and non-fatal post-commit refresh'}));
+console.log(JSON.stringify({checks,failures:0,scope:'Rider Laundry durable one-tap intents, automatic-dispatch exclusivity and non-fatal post-commit refresh'}));
