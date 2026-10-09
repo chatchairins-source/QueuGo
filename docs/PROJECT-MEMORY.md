@@ -423,3 +423,8 @@ The user-supplied Rider reference screens are the acceptance reference for workf
 - Inspected live rendered Production Rider: unauthenticated login page, so working-screen visual verification remains unavailable. No synthetic login or mock operational state introduced.
 - Replaced four generic navigation Canvas icons with Native vector drawable paths from main9026bf4 QTICON home/chat/earn/user, preserving 24-unit viewBox, 19dp size, 1.9 stroke and round caps/joins. User circle is the equivalent two SVG arcs. Labels now8sp with2dp gap; removed invented2dp gaps between grid columns. Native font scaling remains supported.
 - Source integrity180 and whitespace pass. Full build is delegated to real CI, not assumed from source. Native screenshot parity, responsive dock height/shadow/badge and authenticated/device/E2E/FCM gates remain pending.
+
+- Follow-up local full npm test PASS. Actual CI37889041290 passed JVM test step and reached three-app build; completion is not yet assumed.
+- Additional source parity gap found: web qgUpdateBadge/readRiderChat implements unseen incoming-message badge and foreground message notice, while current Native bottom nav/inbox has no unread count. Must implement against real scoped chat messages (including post-completion 30-minute rooms), with per-user/order seen state and lifecycle guards; do not fabricate a count. Current vector change does not close this gap.
+
+- Final actual CI37889041290 at b815baafe9173cb801e1a27b5aa28b8af21e57f2 PASS: regression, integrity, assets, shared/customer/rider tests, all three APK builds, No WebView and artifact upload. No device visual/background-push/live E2E certification inferred.
