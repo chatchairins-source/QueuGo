@@ -269,6 +269,9 @@ private fun RiderChatRoom(auth: QueueGoAuth, job: RiderJob, onBack: () -> Unit) 
 
     val context = LocalContext.current
     val outbox = remember { RiderChatOutbox() }
+    val quickStore = remember(auth.user.id) { RiderQuickMessageStore(context, auth.user.id) }
+    var quickMessages by remember(auth.user.id) { mutableStateOf(quickStore.load()) }
+    var editQuickMessages by remember { mutableStateOf(false) }
 
     suspend fun deliver(payload: String, clearInput: Boolean) {
         val liveWindow = api.window(auth, job.id)
@@ -501,6 +504,13 @@ private fun RiderChatRoom(auth: QueueGoAuth, job: RiderJob, onBack: () -> Unit) 
                     }
                 }
 
+                RiderQuickMessageShelf(quickMessages, enabled = !busy && !closed,
+                    onPick = { input = it }, onEdit = { editQuickMessages = true })
+                if (editQuickMessages) {
+                    RiderQuickMessageEditor(quickMessages,
+                        onSave = { quickMessages = it; quickStore.save(it) },
+                        onClose = { editQuickMessages = false })
+                }
                 Spacer(Modifier.height(8.dp))
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     OutlinedButton(
