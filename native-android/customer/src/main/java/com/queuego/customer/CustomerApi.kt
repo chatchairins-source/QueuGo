@@ -450,29 +450,36 @@ private fun JSONObject.optDoubleOrNull(key: String): Double? =
     if (!has(key) || isNull(key)) null else optDouble(key).takeIf { it.isFinite() }
 
 
-internal fun formatLongdoAddress(raw: String): String? = runCatching {
-    val address = JSONObject(raw)
+private val longdoAddressKeys =
     listOf("house_number", "soi", "road", "subdistrict", "district", "province", "postcode")
-        .mapNotNull { key -> address.optString(key).trim().takeIf { it.isNotBlank() && it != "null" } }
+
+internal fun formatLongdoAddressParts(parts: Map<String, String?>): String? =
+    longdoAddressKeys
+        .mapNotNull { key -> parts[key]?.trim()?.takeIf { it.isNotBlank() && it != "null" } }
         .joinToString(" ")
         .takeIf { it.isNotBlank() }
+
+internal fun formatLongdoAddress(raw: String): String? = runCatching {
+    val address = JSONObject(raw)
+    formatLongdoAddressParts(longdoAddressKeys.associateWith { key -> address.optString(key) })
 }.getOrNull()
 
 
+internal fun normalizeShopSubcategories(values: Iterable<String>): Set<String> =
+    values.mapNotNull { value -> value.trim().lowercase().takeIf { it.isNotBlank() } }.toSet()
+
 internal fun parseShopSubcategories(raw: Any?): Set<String> {
     val values = when (raw) {
-        is JSONArray -> (0 until raw.length()).mapNotNull { index ->
-            raw.optString(index).trim().lowercase().takeIf { it.isNotBlank() }
-        }
+        is JSONArray -> (0 until raw.length()).map { index -> raw.optString(index) }
         is String -> runCatching {
             val array = JSONArray(raw)
-            (0 until array.length()).mapNotNull { index ->
-                array.optString(index).trim().lowercase().takeIf { it.isNotBlank() }
-            }
+            (0 until array.length()).map { index -> array.optString(index) }
         }.getOrElse {
-            raw.split(',').mapNotNull { it.trim().lowercase().takeIf(String::isNotBlank) }
+            raw.removePrefix("[").removeSuffix("]")
+                .split(',')
+                .map { it.trim().trim('"', '\'') }
         }
         else -> emptyList()
     }
-    return values.toSet()
+    return normalizeShopSubcategories(values)
 }
