@@ -4,7 +4,8 @@ data class QueueGoUser(
     val id: String,
     val name: String,
     val role: String,
-    val status: String
+    val status: String,
+    val phone: String? = null
 )
 
 data class QueueGoSession(
@@ -137,13 +138,37 @@ data class RiderLaundryState(
     val pool: List<RiderLaundryJob> = emptyList()
 )
 
+data class RiderProfileInfo(
+    val profileId: String,
+    val riderName: String?,
+    val phone: String?,
+    val vehicleType: String?,
+    val vehiclePlate: String?,
+    val vehicleStatus: String?,
+    val vehicleVerifiedAt: String?
+)
+
+data class RiderCashLedgerEntry(
+    val orderId: String,
+    val orderNumber: String?,
+    val status: String,
+    val deliveryFee: Double,
+    val cashPaidMerchant: Double,
+    val cashCollectedCustomer: Double,
+    val createdAt: String?
+) {
+    val numberLabel: String
+        get() = orderNumber?.let { if (it.startsWith("QT-")) it else "QT-" + it } ?: "QT-----"
+}
+
 data class RiderSnapshot(
     val online: Boolean,
     val activeJob: RiderJob?,
     val offeredJob: RiderJob?,
     val marketPickups: List<MarketPickup> = emptyList(),
     val riderProfileId: String? = null,
-    val laundry: RiderLaundryState = RiderLaundryState()
+    val laundry: RiderLaundryState = RiderLaundryState(),
+    val profile: RiderProfileInfo? = null
 )
 
 
