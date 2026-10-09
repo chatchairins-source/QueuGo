@@ -103,6 +103,7 @@ private fun MerchantShell(auth: NativeAuth, logout: () -> Unit) {
     var todayRevenue by remember { mutableStateOf(MerchantTodayRevenue(0, 0.0, 0.0, 0.0)) }
     var knownPendingIds by remember { mutableStateOf<Set<String>?>(null) }
     var selectedOrder by remember { mutableStateOf<MerchantOrder?>(null) }
+    var selectedProduct by remember { mutableStateOf<MerchantProduct?>(null) }
     var orderItems by remember { mutableStateOf<List<MerchantOrderItem>>(emptyList()) }
     var gpRate by remember { mutableStateOf(0.0) }
     var loading by remember { mutableStateOf(true) }
@@ -141,6 +142,7 @@ private fun MerchantShell(auth: NativeAuth, logout: () -> Unit) {
         screen = when (screen) {
             "shop-setup", "hours", "support" -> "profile"
             "notifications" -> "home"
+            "product" -> "products"
             "order" -> "orders"
             else -> "home"
         }
@@ -326,74 +328,105 @@ private fun MerchantShell(auth: NativeAuth, logout: () -> Unit) {
                     onBack = { screen = "orders" },
                     onAction = { action, reason -> selectedOrder?.let { runAction(it, action, reason) } }
                 )
-                "products" -> ProductsScreen(
+                "products" -> MerchantProductsScreen(
                     products = products,
-                    gpRate = gpRate,
                     busy = busy,
                     onToggle = { product, next ->
-                        busy = true
-                        scope.launch {
-                            runCatching { api.setProductAvailable(auth, product.id, next) }
-                                .onSuccess {
-                                    products = products.map { if (it.id == product.id) it.copy(available = next) else it }
-                                    message = if (next) "เปิดขายสินค้าแล้ว" else "ปิดขายสินค้าแล้ว"
-                                }
-                                .onFailure { message = it.message }
-                            busy = false
-                        }
-                    },
-                    onCreate = { name, desc, price ->
-                        val s = shop
-                        if (s == null) {
-                            message = "ยังไม่พบข้อมูลร้าน"
-                        } else {
+                        if (!busy) {
                             busy = true
                             scope.launch {
-                                runCatching { api.createProduct(auth, s.id, name, desc, price, gpRate) }
+                                runCatching { api.setProductAvailable(auth, product.id, next) }
                                     .onSuccess {
-                                        products = api.loadProducts(auth, s.id)
-                                        message = "เพิ่มสินค้าแล้ว"
+                                        products = products.map {
+                                            if (it.id == product.id) it.copy(available = next) else it
+                                        }
+                                        message = if (next) "เปิดขายสินค้าแล้ว" else "ปิดขายสินค้าแล้ว"
                                     }
-                                    .onFailure { message = it.message }
+                                    .onFailure { message = it.message ?: "เปลี่ยนสถานะสินค้าไม่สำเร็จ" }
                                 busy = false
                             }
                         }
                     },
-                    onUpdate = { product, name, desc, price ->
-                        val s = shop
-                        if (s == null) {
-                            message = "ยังไม่พบข้อมูลร้าน"
-                        } else {
-                            busy = true
-                            scope.launch {
-                                runCatching {
-                                    api.updateProduct(auth, s.id, product, name, desc, price, gpRate)
-                                }.onSuccess {
-                                    products = api.loadProducts(auth, s.id)
-                                    message = "บันทึกสินค้าแล้ว"
-                                }.onFailure { message = it.message }
-                                busy = false
-                            }
-                        }
+                    onOpen = { product ->
+                        selectedProduct = product
+                        screen = "product"
                     },
-                    onDelete = { product ->
-                        val s = shop
-                        if (s == null) {
-                            message = "ยังไม่พบข้อมูลร้าน"
-                        } else {
-                            busy = true
-                            scope.launch {
-                                runCatching { api.deleteOrArchiveProduct(auth, product.id) }
-                                    .onSuccess {
-                                        products = api.loadProducts(auth, s.id)
-                                        message = "นำสินค้าออกจากร้านแล้ว"
-                                    }
-                                    .onFailure { message = it.message }
-                                busy = false
-                            }
-                        }
+                    onAdd = {
+                        selectedProduct = null
+                        screen = "product"
                     }
                 )
+                "product" -> {
+                    val activeShop = shop
+                    if (activeShop == null) {
+                        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            Text("ยังไม่พบข้อมูลร้าน", color = QgMuted)
+                        }
+                    } else {
+                        MerchantProductEditorScreen(
+                            shop = activeShop,
+                            product = selectedProduct,
+                            gpRate = gpRate,
+                            busy = busy,
+                            onSave = { draft, imageUri ->
+                                if (!busy) {
+                                    busy = true
+                                    scope.launch {
+                                        runCatching {
+                                            val image = imageUri?.let {
+                                                uploadMerchantImage(context, auth, it, "product")
+                                            }
+                                            api.saveProduct(
+                                                auth = auth,
+                                                shopId = activeShop.id,
+                                                product = selectedProduct,
+                                                draft = draft.copy(
+                                                    image = image ?: draft.image ?: selectedProduct?.image
+                                                ),
+                                                gpRate = gpRate
+                                            )
+                                            api.loadProducts(auth, activeShop.id)
+                                        }.onSuccess { fresh ->
+                                            products = fresh
+                                            readiness = runCatching {
+                                                api.readiness(auth, activeShop.id)
+                                            }.getOrDefault(readiness)
+                                            selectedProduct = null
+                                            message = "บันทึกสินค้าแล้ว"
+                                            screen = "products"
+                                        }.onFailure {
+                                            message = it.message ?: "บันทึกสินค้าไม่สำเร็จ"
+                                        }
+                                        busy = false
+                                    }
+                                }
+                            },
+                            onDelete = { product ->
+                                if (!busy) {
+                                    busy = true
+                                    scope.launch {
+                                        runCatching {
+                                            api.deleteOrArchiveProduct(auth, product.id)
+                                            api.loadProducts(auth, activeShop.id)
+                                        }.onSuccess { fresh ->
+                                            products = fresh
+                                            selectedProduct = null
+                                            message = "นำสินค้าออกจากร้านแล้ว"
+                                            screen = "products"
+                                        }.onFailure {
+                                            message = it.message ?: "นำสินค้าออกจากร้านไม่สำเร็จ"
+                                        }
+                                        busy = false
+                                    }
+                                }
+                            },
+                            onBack = {
+                                selectedProduct = null
+                                screen = "products"
+                            }
+                        )
+                    }
+                }
                 "pos" -> MerchantPosScreen(auth) { screen = "home" }
                 "laundry" -> MerchantLaundryScreen(auth)
                 "revenue" -> MerchantRevenueScreen(
@@ -973,226 +1006,6 @@ private fun MerchantOrderDetail(
             }
             "completed" -> QgCard(Modifier.fillMaxWidth()) {
                 Text("ออเดอร์เสร็จสมบูรณ์", color = QgGreen, fontWeight = FontWeight.ExtraBold)
-            }
-        }
-        Spacer(Modifier.height(30.dp))
-    }
-}
-
-@Composable
-private fun ProductsScreen(
-    products: List<MerchantProduct>,
-    gpRate: Double,
-    busy: Boolean,
-    onToggle: (MerchantProduct, Boolean) -> Unit,
-    onCreate: (String, String?, Double) -> Unit,
-    onUpdate: (MerchantProduct, String, String?, Double) -> Unit,
-    onDelete: (MerchantProduct) -> Unit
-) {
-    var adding by remember { mutableStateOf(false) }
-    var name by remember { mutableStateOf("") }
-    var desc by remember { mutableStateOf("") }
-    var price by remember { mutableStateOf("") }
-    var editingId by remember { mutableStateOf<String?>(null) }
-    var editName by remember { mutableStateOf("") }
-    var editDesc by remember { mutableStateOf("") }
-    var editPrice by remember { mutableStateOf("") }
-    var deleteArmedId by remember { mutableStateOf<String?>(null) }
-
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(14.dp)) {
-        QgSectionTitle(
-            "สินค้า / เมนู",
-            "กรอกราคาขายหน้าร้าน ระบบคำนวณราคา Delivery + GP " + "%.0f".format(gpRate) + "% อัตโนมัติ"
-        )
-        Spacer(Modifier.height(10.dp))
-        Button(onClick = { adding = !adding }, modifier = Modifier.fillMaxWidth()) {
-            Text(if (adding) "ปิดแบบฟอร์ม" else "เพิ่มสินค้า")
-        }
-        if (adding) {
-            Spacer(Modifier.height(10.dp))
-            QgCard(Modifier.fillMaxWidth()) {
-                Column {
-                    OutlinedTextField(
-                        value = name,
-                        onValueChange = { name = it },
-                        label = { Text("ชื่อสินค้า") },
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    Spacer(Modifier.height(8.dp))
-                    OutlinedTextField(
-                        value = desc,
-                        onValueChange = { desc = it },
-                        label = { Text("รายละเอียด") },
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    Spacer(Modifier.height(8.dp))
-                    OutlinedTextField(
-                        value = price,
-                        onValueChange = { price = it.filter { ch -> ch.isDigit() || ch == '.' } },
-                        label = { Text("ราคาขายหน้าร้าน") },
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    price.toDoubleOrNull()?.let { storePrice ->
-                        val delivery = if (gpRate > 0 && gpRate < 100) {
-                            kotlin.math.ceil(storePrice / (1.0 - gpRate / 100.0))
-                        } else storePrice
-                        Spacer(Modifier.height(5.dp))
-                        Text(
-                            "ราคา Delivery โดยประมาณ ฿" + "%.0f".format(delivery),
-                            color = QgMuted,
-                            style = MaterialTheme.typography.bodySmall
-                        )
-                    }
-                    Spacer(Modifier.height(10.dp))
-                    Button(
-                        onClick = {
-                            val p = price.toDoubleOrNull()
-                            if (name.isNotBlank() && p != null && p >= 0) {
-                                onCreate(name, desc, p)
-                                name = ""
-                                desc = ""
-                                price = ""
-                                adding = false
-                            }
-                        },
-                        enabled = !busy && name.isNotBlank() && price.toDoubleOrNull() != null,
-                        modifier = Modifier.fillMaxWidth()
-                    ) { Text("บันทึกสินค้า") }
-                }
-            }
-        }
-
-        Spacer(Modifier.height(12.dp))
-        if (products.isEmpty()) {
-            QgCard(Modifier.fillMaxWidth()) { Text("ยังไม่มีสินค้า", color = QgMuted) }
-        } else {
-            products.forEach { product ->
-                val editing = editingId == product.id
-                QgCard(Modifier.fillMaxWidth().padding(bottom = 8.dp)) {
-                    Column {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            QgRemoteImage(product.image, Modifier.size(62.dp), product.name)
-                            Spacer(Modifier.width(10.dp))
-                            Column(Modifier.weight(1f)) {
-                                Text(product.name, fontWeight = FontWeight.ExtraBold)
-                                Text(
-                                    "หน้าร้าน ฿" + "%.0f".format(product.price) +
-                                        " · Delivery ฿" + "%.0f".format(product.deliveryPrice),
-                                    color = QgMuted,
-                                    style = MaterialTheme.typography.bodySmall
-                                )
-                                Text(
-                                    if (product.available) "เปิดขาย" else "ปิดขาย",
-                                    color = if (product.available) QgGreen else QgMuted,
-                                    fontWeight = FontWeight.Bold
-                                )
-                            }
-                            Switch(
-                                checked = product.available,
-                                onCheckedChange = { onToggle(product, it) },
-                                enabled = !busy
-                            )
-                        }
-
-                        Spacer(Modifier.height(8.dp))
-                        OutlinedButton(
-                            onClick = {
-                                if (editing) {
-                                    editingId = null
-                                    deleteArmedId = null
-                                } else {
-                                    editingId = product.id
-                                    editName = product.name
-                                    editDesc = product.description.orEmpty()
-                                    editPrice = product.price.toString()
-                                    deleteArmedId = null
-                                }
-                            },
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Text(if (editing) "ปิดการแก้ไข" else "แก้ไขสินค้า")
-                        }
-
-                        if (editing) {
-                            Spacer(Modifier.height(8.dp))
-                            OutlinedTextField(
-                                value = editName,
-                                onValueChange = { editName = it },
-                                label = { Text("ชื่อสินค้า") },
-                                modifier = Modifier.fillMaxWidth()
-                            )
-                            Spacer(Modifier.height(7.dp))
-                            OutlinedTextField(
-                                value = editDesc,
-                                onValueChange = { editDesc = it },
-                                label = { Text("รายละเอียด") },
-                                modifier = Modifier.fillMaxWidth()
-                            )
-                            Spacer(Modifier.height(7.dp))
-                            OutlinedTextField(
-                                value = editPrice,
-                                onValueChange = { editPrice = it.filter { ch -> ch.isDigit() || ch == '.' } },
-                                label = { Text("ราคาขายหน้าร้าน") },
-                                modifier = Modifier.fillMaxWidth()
-                            )
-                            editPrice.toDoubleOrNull()?.let { storePrice ->
-                                val delivery = if (gpRate > 0 && gpRate < 100) {
-                                    kotlin.math.ceil(storePrice / (1.0 - gpRate / 100.0))
-                                } else storePrice
-                                Spacer(Modifier.height(5.dp))
-                                Text(
-                                    "ระบบจะปรับราคา Delivery เป็น ฿" + "%.0f".format(delivery),
-                                    color = QgMuted,
-                                    style = MaterialTheme.typography.bodySmall
-                                )
-                            }
-                            Spacer(Modifier.height(8.dp))
-                            Button(
-                                onClick = {
-                                    val nextPrice = editPrice.toDoubleOrNull()
-                                    if (editName.isNotBlank() && nextPrice != null && nextPrice >= 0) {
-                                        onUpdate(product, editName, editDesc, nextPrice)
-                                        editingId = null
-                                        deleteArmedId = null
-                                    }
-                                },
-                                enabled = !busy && editName.isNotBlank() && editPrice.toDoubleOrNull() != null,
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Text("บันทึกการแก้ไข")
-                            }
-                            Spacer(Modifier.height(7.dp))
-                            OutlinedButton(
-                                onClick = {
-                                    if (deleteArmedId == product.id) {
-                                        onDelete(product)
-                                        editingId = null
-                                        deleteArmedId = null
-                                    } else {
-                                        deleteArmedId = product.id
-                                    }
-                                },
-                                enabled = !busy,
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Text(
-                                    if (deleteArmedId == product.id)
-                                        "ยืนยันนำสินค้าออกจากร้าน"
-                                    else
-                                        "นำสินค้าออกจากร้าน"
-                                )
-                            }
-                            if (deleteArmedId == product.id) {
-                                Spacer(Modifier.height(4.dp))
-                                Text(
-                                    "ถ้ามีประวัติออเดอร์ ระบบจะ Archive สินค้าแทนการทำลายประวัติเดิม",
-                                    color = QgRed,
-                                    style = MaterialTheme.typography.bodySmall
-                                )
-                            }
-                        }
-                    }
-                }
             }
         }
         Spacer(Modifier.height(30.dp))
