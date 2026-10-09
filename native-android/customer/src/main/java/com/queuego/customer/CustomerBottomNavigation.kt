@@ -24,6 +24,7 @@ internal fun CustomerBottomNavigation(screen: String, cartCount: Int, onSelect: 
     val selected = when (screen) {
         "home", "category", "shopping", "shop", "market", "laundry", "location" -> "home"
         "search", "cart", "orders" -> screen
+        "checkout" -> "cart"
         else -> ""
     }
     Column(Modifier.fillMaxWidth().background(Color(0xF2FFFFFF)).windowInsetsPadding(WindowInsets.navigationBars)) {
