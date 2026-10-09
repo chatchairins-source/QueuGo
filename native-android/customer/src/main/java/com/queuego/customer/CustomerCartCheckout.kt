@@ -43,6 +43,7 @@ import kotlin.math.abs
 internal fun CustomerCartScreen(
     cart: List<CartLine>,
     busy: Boolean,
+    checkoutPending: Boolean,
     onBack: () -> Unit,
     onMinus: (String) -> Unit,
     onPlus: (String) -> Unit,
@@ -101,7 +102,7 @@ internal fun CustomerCartScreen(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            CustomerQtyButton("−") { onMinus(line.product.id) }
+                            CustomerQtyButton("−", enabled = !checkoutPending) { onMinus(line.product.id) }
                             Text(
                                 line.quantity.toString(),
                                 modifier = Modifier.widthIn(min = 18.dp),
@@ -109,8 +110,8 @@ internal fun CustomerCartScreen(
                                 fontWeight = FontWeight.Bold,
                                 textAlign = androidx.compose.ui.text.style.TextAlign.Center
                             )
-                            CustomerQtyButton("+") { onPlus(line.product.id) }
-                            CustomerQtyButton("ลบ", compact = true) { onRemove(line.product.id) }
+                            CustomerQtyButton("+", enabled = !checkoutPending) { onPlus(line.product.id) }
+                            CustomerQtyButton("ลบ", compact = true, enabled = !checkoutPending) { onRemove(line.product.id) }
                         }
                     }
                 }
@@ -129,7 +130,11 @@ internal fun CustomerCartScreen(
 
         if (cart.isNotEmpty()) {
             CustomerActionDock(
-                label = if (busy) "กำลังตรวจสอบ..." else "ไปชำระเงิน",
+                label = when {
+                    busy -> "กำลังตรวจสอบ..."
+                    checkoutPending -> "ตรวจผลคำสั่งซื้อเดิม"
+                    else -> "ไปชำระเงิน"
+                },
                 enabled = !busy,
                 onClick = onCheckout
             )
@@ -139,7 +144,7 @@ internal fun CustomerCartScreen(
 
 @Composable
 internal fun CustomerCheckoutScreen(
-    checkoutPending: Boolean,
+    pendingCheckout: PendingCustomerCheckout?,
     cart: List<CartLine>,
     shop: CustomerShop?,
     location: CustomerLocation?,
@@ -154,8 +159,22 @@ internal fun CustomerCheckoutScreen(
     onNote: (String) -> Unit,
     onPlace: () -> Unit
 ) {
-    var selected by remember {
-        mutableStateOf(location?.takeIf { validCheckoutPoint(it.latitude, it.longitude) })
+    val checkoutPending = pendingCheckout != null
+    val pendingBody = pendingCheckout?.body
+    val pendingLocation = pendingBody?.let { body ->
+        runCatching {
+            CustomerLocation(
+                body.getDouble("p_delivery_lat"),
+                body.getDouble("p_delivery_lng"),
+                body.getString("p_delivery_address")
+            )
+        }.getOrNull()
+    }
+    var selected by remember(pendingCheckout?.body?.optString("p_order_id")) {
+        mutableStateOf(
+            pendingLocation?.takeIf { validCheckoutPoint(it.latitude, it.longitude) }
+                ?: location?.takeIf { validCheckoutPoint(it.latitude, it.longitude) }
+        )
     }
     var recenterToken by remember { mutableStateOf(0) }
     var mapReady by remember { mutableStateOf(false) }
@@ -186,12 +205,22 @@ internal fun CustomerCheckoutScreen(
         }
     }
 
-    val subtotal = cart.sumOf { it.product.deliveryPrice * it.quantity }
-    val fee = runCatching {
-        if (!checkoutPending && shop != null && selected != null) CustomerApi().deliveryFee(shop, selected!!.copy(address = address))
-        else if (checkoutPending) null else null
-    }.getOrNull()
-    val pendingBody = if (checkoutPending) "คำขอนี้ยังไม่ได้รับผลยืนยัน ระบบจะใช้รายการและที่อยู่เดิมเพื่อป้องกันออเดอร์ซ้ำ" else null
+    val subtotal = pendingBody?.optDouble("p_expected_subtotal")
+        ?.takeIf { it.isFinite() }
+        ?: cart.sumOf { it.product.deliveryPrice * it.quantity }
+    val fee = if (checkoutPending) {
+        pendingBody?.optDouble("p_expected_delivery_fee")?.takeIf { it.isFinite() }
+    } else {
+        runCatching {
+            if (shop != null && selected != null) CustomerApi().deliveryFee(shop, selected!!.copy(address = address))
+            else null
+        }.getOrNull()
+    }
+    val pendingMessage = if (checkoutPending) {
+        "คำขอนี้ยังไม่ได้รับผลยืนยัน ระบบจะใช้รายการและที่อยู่เดิมเพื่อป้องกันออเดอร์ซ้ำ"
+    } else null
+    val visibleAddress = pendingBody?.optString("p_delivery_address")?.takeIf { it.isNotBlank() } ?: address
+    val visibleNote = pendingBody?.optString("p_note")?.takeIf { it.isNotBlank() && it != "null" } ?: note
 
     Box(Modifier.fillMaxSize()) {
         Column(
@@ -207,14 +236,14 @@ internal fun CustomerCheckoutScreen(
                 CustomerCheckoutCard {
                     Text("ตรวจผลคำสั่งซื้อเดิม", fontWeight = FontWeight.ExtraBold)
                     Spacer(Modifier.height(6.dp))
-                    Text(pendingBody.orEmpty(), color = QgMuted, fontSize = 11.sp, lineHeight = 16.sp)
-                    if (address.isNotBlank()) {
+                    Text(pendingMessage.orEmpty(), color = QgMuted, fontSize = 11.sp, lineHeight = 16.sp)
+                    if (visibleAddress.isNotBlank()) {
                         Spacer(Modifier.height(6.dp))
-                        Text(address, fontSize = 12.sp)
+                        Text(visibleAddress, fontSize = 12.sp)
                     }
-                    if (note.isNotBlank()) {
+                    if (visibleNote.isNotBlank()) {
                         Spacer(Modifier.height(4.dp))
-                        Text("หมายเหตุ: " + note, color = QgMuted, fontSize = 11.sp)
+                        Text("หมายเหตุ: " + visibleNote, color = QgMuted, fontSize = 11.sp)
                     }
                 }
             } else {
@@ -347,18 +376,24 @@ private fun CustomerTransactionHeader(title: String, onBack: () -> Unit) {
 }
 
 @Composable
-private fun CustomerQtyButton(label: String, compact: Boolean = false, onClick: () -> Unit) {
+private fun CustomerQtyButton(
+    label: String,
+    compact: Boolean = false,
+    enabled: Boolean = true,
+    onClick: () -> Unit
+) {
     Box(
         Modifier
             .size(30.dp)
             .clip(CircleShape)
             .background(Color.White)
             .border(1.dp, Color(0xFFDDDDDD), CircleShape)
-            .clickable(onClick = onClick),
+            .clickable(enabled = enabled, onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
         Text(
             label,
+            color = if (enabled) Color(0xFF202226) else Color(0xFFB8BABE),
             fontSize = if (compact) 9.sp else 16.sp,
             lineHeight = if (compact) 10.sp else 18.sp,
             fontWeight = if (compact) FontWeight.Bold else FontWeight.Normal
