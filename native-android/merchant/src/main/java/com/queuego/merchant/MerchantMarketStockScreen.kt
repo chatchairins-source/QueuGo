@@ -304,7 +304,7 @@ private fun MerchantMarketProductEditor(
     var minStock by remember(product?.productId) { mutableStateOf(product?.minStock?.toString() ?: "0") }
     var available by remember(product?.productId) { mutableStateOf(product?.available ?: true) }
     var imageUri by remember(product?.productId) { mutableStateOf<Uri?>(null) }
-    var error by remember(product?.productId) { mutableStateOf<String?>(null) }
+    var localError by remember(product?.productId) { mutableStateOf<String?>(null) }
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) {
         if (it != null) imageUri = it
     }
@@ -397,8 +397,8 @@ private fun MerchantMarketProductEditor(
             Switch(available, { available = it })
         }
 
-        if (!error.isNullOrBlank()) {
-            Text(error!!, color = QgRed, fontSize = 10.sp)
+        if (!localError.isNullOrBlank()) {
+            Text(localError!!, color = QgRed, fontSize = 10.sp)
         }
 
         Button(
@@ -424,10 +424,10 @@ private fun MerchantMarketProductEditor(
                     require(category in merchantMarketProductCategories) { "กรุณาเลือกหมวดหมู่สินค้า" }
                     draft
                 }.onSuccess {
-                    error = null
+                    localError = null
                     onSave(it, imageUri)
                 }.onFailure {
-                    error = it.message ?: "ข้อมูลสินค้าไม่ถูกต้อง"
+                    localError = it.message ?: "ข้อมูลสินค้าไม่ถูกต้อง"
                 }
             },
             enabled = !busy,
