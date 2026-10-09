@@ -92,7 +92,14 @@ data class HomeBanner(
     val link: String? = null,
     val rotationMs: Long = 5_000L
 )
-data class ServiceBanner(val key: String, val image: String?, val title: String?, val subtitle: String?, val active: Boolean)
+data class ServiceBanner(
+    val key: String,
+    val image: String?,
+    val title: String?,
+    val subtitle: String?,
+    val active: Boolean,
+    val link: String? = null
+)
 data class CartLine(val product: CustomerProduct, val quantity: Int)
 
 class CustomerApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
@@ -334,12 +341,17 @@ class CustomerApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
                 val item = value.optJSONObject(key) ?: return@forEach
                 val image = item.optString("image_url").ifBlank { item.optString("image_data") }
                     .takeIf { it.isNotBlank() }
+                val rawLink = item.optString("link").ifBlank { item.optString("link_target") }.trim()
+                val link = rawLink.takeIf {
+                    it.startsWith("#") || it.startsWith("http://", true) || it.startsWith("https://", true)
+                }
                 put(key, ServiceBanner(
                     key,
                     image,
                     item.optNullable("title"),
                     item.optNullable("subtitle"),
-                    item.optBoolean("active", true)
+                    item.optBoolean("active", true),
+                    link
                 ))
             }
         }
