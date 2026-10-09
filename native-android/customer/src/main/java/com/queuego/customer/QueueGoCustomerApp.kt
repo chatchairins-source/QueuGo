@@ -618,7 +618,9 @@ private fun CustomerShell(auth: NativeAuth, logout: () -> Unit) {
                         cart = cart.filterNot { it.product.id == id }
                     },
                     onCheckout = {
-                        if (!busy && cart.isNotEmpty()) {
+                        if (checkoutPending) {
+                            screen = "checkout"
+                        } else if (!busy && cart.isNotEmpty()) {
                             busy = true
                             message = null
                             scope.launch {
