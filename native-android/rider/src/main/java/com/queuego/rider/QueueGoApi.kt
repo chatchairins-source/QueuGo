@@ -36,7 +36,7 @@ class QueueGoApi {
             val authUserId = auth.getJSONObject("user").getString("id")
             val users = requestArray(
                 "GET",
-                "/rest/v1/users?select=id,name,role,status&auth_user_id=eq." + enc(authUserId),
+                "/rest/v1/users?select=id,name,phone,role,status&auth_user_id=eq." + enc(authUserId),
                 accessToken
             )
             if (users.length() == 0) error("ไม่พบบัญชี QueueGo")
@@ -65,7 +65,8 @@ class QueueGoApi {
                     id = row.getString("id"),
                     name = row.optString("name").ifBlank { "ไรเดอร์" },
                     role = row.optString("role"),
-                    status = row.optString("status")
+                    status = row.optString("status"),
+                    phone = row.optString("phone").takeIf { it.isNotBlank() }
                 )
             )
         }
@@ -97,7 +98,8 @@ class QueueGoApi {
                 id = row.getString("id"),
                 name = row.optString("name").ifBlank { "ไรเดอร์" },
                 role = "rider",
-                status = row.optString("status")
+                status = row.optString("status"),
+                phone = row.optString("phone").takeIf { it.isNotBlank() }
             )
         )
     }
@@ -192,7 +194,7 @@ class QueueGoApi {
     ) = withContext(Dispatchers.IO) {
         val profiles = requestArray(
             "GET",
-            "/rest/v1/rider_profiles?select=id,metadata&user_id=eq." + enc(auth.user.id) + "&limit=1",
+            "/rest/v1/rider_profiles?select=id,rider_name,phone,vehicle_type,vehicle_plate,vehicle_status,vehicle_verified_at,metadata&user_id=eq." + enc(auth.user.id) + "&limit=1",
             auth.session.accessToken
         )
         if (profiles.length() == 0) error("ไม่พบโปรไฟล์ Rider")
@@ -303,6 +305,67 @@ class QueueGoApi {
             }
         }
 
+    suspend fun cashLedger(
+        auth: QueueGoAuth,
+        fromDate: String,
+        toDate: String
+    ): List<RiderCashLedgerEntry> = withContext(Dispatchers.IO) {
+        val raw = rpc(
+            "qg_rider_cash_ledger",
+            auth.session.accessToken,
+            JSONObject()
+                .put("p_from", fromDate)
+                .put("p_to", toDate)
+        )
+        val rows = when (raw) {
+            is JSONArray -> raw
+            is JSONObject -> JSONArray().put(raw)
+            else -> JSONArray()
+        }
+        buildList {
+            for (i in 0 until rows.length()) {
+                val row = rows.optJSONObject(i) ?: continue
+                val orderId = row.optString("order_id")
+                if (orderId.isBlank()) continue
+                add(
+                    RiderCashLedgerEntry(
+                        orderId = orderId,
+                        orderNumber = row.optString("order_number").takeIf { it.isNotBlank() },
+                        status = row.optString("status"),
+                        deliveryFee = row.doubleOrZero("delivery_fee"),
+                        cashPaidMerchant = row.doubleOrZero("cash_paid_merchant"),
+                        cashCollectedCustomer = row.doubleOrZero("cash_collected_customer"),
+                        createdAt = row.optString("created_at").takeIf { it.isNotBlank() }
+                    )
+                )
+            }
+        }
+    }
+
+    suspend fun updateAccount(
+        auth: QueueGoAuth,
+        name: String,
+        phone: String
+    ) = withContext(Dispatchers.IO) {
+        val cleanName = name.trim()
+        val cleanPhone = phone.filter(Char::isDigit)
+        require(cleanName.length >= 2) { "กรุณาระบุชื่ออย่างน้อย 2 ตัวอักษร" }
+        require(Regex("^0\\d{9}$").matches(cleanPhone)) { "เบอร์โทรศัพท์ต้องมี 10 หลักและขึ้นต้นด้วย 0" }
+        requestAny(
+            "PATCH",
+            "/rest/v1/users?auth_user_id=eq." + enc(auth.session.authUserId),
+            auth.session.accessToken,
+            JSONObject().put("name", cleanName).put("phone", cleanPhone)
+        )
+        requestAny(
+            "PATCH",
+            "/rest/v1/rider_profiles?user_id=eq." + enc(auth.user.id),
+            auth.session.accessToken,
+            JSONObject().put("rider_name", cleanName).put("phone", cleanPhone)
+        )
+        Unit
+    }
+
     suspend fun riderSnapshot(auth: QueueGoAuth): RiderSnapshot = withContext(Dispatchers.IO) {
         val profiles = requestArray(
             "GET",
@@ -372,7 +435,16 @@ class QueueGoApi {
             online = online,
             hasNormalActive = active != null
         )
-        RiderSnapshot(online, active, offered, marketPickups, profileId, laundry)
+        val profileInfo = RiderProfileInfo(
+            profileId = profileId,
+            riderName = profile.optString("rider_name").takeIf { it.isNotBlank() },
+            phone = profile.optString("phone").takeIf { it.isNotBlank() },
+            vehicleType = profile.optString("vehicle_type").takeIf { it.isNotBlank() },
+            vehiclePlate = profile.optString("vehicle_plate").takeIf { it.isNotBlank() },
+            vehicleStatus = profile.optString("vehicle_status").takeIf { it.isNotBlank() },
+            vehicleVerifiedAt = profile.optString("vehicle_verified_at").takeIf { it.isNotBlank() }
+        )
+        RiderSnapshot(online, active, offered, marketPickups, profileId, laundry, profileInfo)
     }
 
     suspend fun setLaundryMode(auth: QueueGoAuth, enabled: Boolean) = withContext(Dispatchers.IO) {
