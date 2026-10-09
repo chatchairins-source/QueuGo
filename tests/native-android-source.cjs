@@ -148,6 +148,7 @@ ok(merchantMedia.includes('/storage/v1/object/list/merchant-media')&&merchantMed
 ok(source.includes('shop_modules?select=id,shop_user_id,module_key,status,started_at,expires_at,created_at,updated_at')&&source.includes('shop_modules?on_conflict=shop_user_id,module_key'),'Merchant native settings must reuse Production shop_modules');
 ok(merchantModules.includes('หน้าร้าน')&&merchantModules.includes('หน้าสินค้า')&&merchantModules.includes('ระบบรับออเดอร์')&&merchantModules.includes('ระบบโปรโมต'),'Merchant native settings must preserve Production module catalog');
 ok(source.includes('MerchantMenuTile("คลังรูปภาพ"')&&source.includes('MerchantMenuTile("การแจ้งเตือน"')&&source.includes('MerchantMenuTile("ติดต่อแอดมิน"'),'Merchant native dashboard must expose Production media notification and support routes');
+ok(source.includes('pauseShop(')&&source.includes('30 นาที')&&source.includes('1 ชั่วโมง')&&source.includes('1 วัน')&&source.includes('resume_at'),'Merchant native dashboard must preserve Production timed pause controls');
 const sharedDesign=read('shared/src/main/java/com/queuego/shared/QueueGoDesign.kt');
 ok(sharedDesign.includes('"tag" ->')&&sharedDesign.includes('"chart" ->')&&sharedDesign.includes('"clock" ->')&&sharedDesign.includes('"support" ->'),'shared native icon set must preserve Merchant web vectors');
 ok(source.includes('queuego_laundry_merchant_state')&&source.includes('queuego_laundry_shop_action_v2'),'Merchant native Laundry must use production laundry state/actions');
