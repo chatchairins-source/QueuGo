@@ -7,28 +7,34 @@ import org.junit.Test
 class CustomerLocationAddressTest {
     @Test
     fun formatsLongdoAddressInWebBlueprintOrder() {
-        val raw = """{
-          "house_number":"12/3",
-          "soi":"ซอย 5",
-          "road":"ถนนหลัก",
-          "subdistrict":"ในเมือง",
-          "district":"เมืองบุรีรัมย์",
-          "province":"บุรีรัมย์",
-          "postcode":"31000"
-        }"""
         assertEquals(
             "12/3 ซอย 5 ถนนหลัก ในเมือง เมืองบุรีรัมย์ บุรีรัมย์ 31000",
-            formatLongdoAddress(raw)
+            formatLongdoAddressParts(
+                mapOf(
+                    "house_number" to "12/3",
+                    "soi" to "ซอย 5",
+                    "road" to "ถนนหลัก",
+                    "subdistrict" to "ในเมือง",
+                    "district" to "เมืองบุรีรัมย์",
+                    "province" to "บุรีรัมย์",
+                    "postcode" to "31000"
+                )
+            )
         )
     }
 
     @Test
-    fun ignoresBlankComponentsAndInvalidPayload() {
+    fun ignoresBlankAddressComponents() {
         assertEquals(
             "บุรีรัมย์ 31000",
-            formatLongdoAddress("""{"house_number":"","province":"บุรีรัมย์","postcode":"31000"}""")
+            formatLongdoAddressParts(
+                mapOf(
+                    "house_number" to "",
+                    "province" to "บุรีรัมย์",
+                    "postcode" to "31000"
+                )
+            )
         )
-        assertNull(formatLongdoAddress("not-json"))
-        assertNull(formatLongdoAddress("{}"))
+        assertNull(formatLongdoAddressParts(emptyMap()))
     }
 }
