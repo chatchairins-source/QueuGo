@@ -89,5 +89,23 @@ jobs:
             native-android/merchant/build/outputs/apk/debug/merchant-debug.apk
             native-android/rider/build/outputs/apk/debug/rider-debug.apk
           if-no-files-found: error
+      - name: Enable runner-only access to Android acceleration
+        run: |
+          set -euo pipefail
+          test -c /dev/kvm
+          if [ ! -r /dev/kvm ] || [ ! -w /dev/kvm ]; then
+            sudo chown "$(id -u):$(id -g)" /dev/kvm
+          fi
+      - name: Capture actual Rider launch on accelerated Android
+        timeout-minutes: 12
+        run: python3 native-android/qa/capture-rider-launch.py
+      - name: Save real Android launch evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: queuego-rider-native-launch-evidence
+          path: artifacts/native-rider-launch/
+          if-no-files-found: warn
+          retention-days: 14
       # Build artifacts are internal QA inputs only. Public APK publication is
       # disabled until real visual and Production functional evidence is reviewed.

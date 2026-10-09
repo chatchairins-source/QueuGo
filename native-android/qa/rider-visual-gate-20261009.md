@@ -31,7 +31,7 @@ Market multi-stop, Laundry, Messages, Earnings, Profile and Support remain pendi
 
 ## Concrete runtime constraints
 
-- Local adb, emulator and Android SDK executables were not found; no connected Android test device is available. /dev/kvm is absent. Official Android SDK repository is reachable, so this is not reported as a download/network outage. Software emulation has not been installed or certified, and no Native Home/session capture is available.
+- Runtime follow-up: official SDK/adb/emulator, API30 system image, private JDK17 and checksum-verified Gradle9.6 are now installed. A clean, cache-disabled local build passes all three apps and63 JVM tests. /dev/kvm remains absent; software boot failed to reach boot complete in45 checks, then18 diagnostic checks (ADB became online, framework startup remained incomplete). No Native Home/session capture is available. See [runtime checkpoint](rider-runtime-checkpoint-20261009.md). Accelerated CI launch capture is added and awaits an actual run; its fresh-session login frame cannot substitute for Home comparison.
 - Current browser API exposes screenshots and page interaction, but no documented mobile viewport/emulation setter. Attempted browser UI DevTools shortcut once; viewport/state stayed unchanged. Do not use injected CSS, crops, standalone browser automation or fake data as a substitute.
 - Need a permitted mobile browser viewport and an Android test runtime with an actual Rider session and authorized real order states to produce the five pairs. Do not extract browser credentials/JWTs to provision Native.
 
