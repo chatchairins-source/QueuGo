@@ -33,7 +33,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -528,7 +529,7 @@ private fun RiderHome(
     var mapReady by remember { mutableStateOf(false) }
     val mapJob = snapshot?.activeJob ?: snapshot?.offeredJob
 
-    Box(
+    BoxWithConstraints(
         modifier
             .fillMaxSize()
             .background(QgRiderBg)
@@ -603,7 +604,7 @@ private fun RiderHome(
             Modifier
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
-                .fillMaxHeight(0.62f)
+                .heightIn(max = maxHeight * 0.62f)
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 8.dp, vertical = 8.dp)
         ) {
