@@ -1,5 +1,6 @@
 package com.queuego.customer
 
+import android.content.Intent
 import android.net.Uri
 import android.provider.OpenableColumns
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -7,6 +8,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Box
 import androidx.compose.material3.TextButton
 import androidx.compose.ui.platform.LocalContext
@@ -208,6 +210,7 @@ fun CustomerChatScreen(
     key(auth.user.id, auth.session.sessionId, order.id) { CustomerChatRoom(auth, order, onBack) }
 }
 
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 private fun CustomerChatRoom(auth: NativeAuth, order: CustomerOrder, onBack: () -> Unit) {
     val api = remember { CustomerChatApi() }
@@ -222,6 +225,8 @@ private fun CustomerChatRoom(auth: NativeAuth, order: CustomerOrder, onBack: () 
     var reportReason by remember { mutableStateOf("harassment") }
     var reasonMenu by remember { mutableStateOf(false) }
     var reportError by remember { mutableStateOf<String?>(null) }
+    var confirmBlock by remember { mutableStateOf(false) }
+    var blockError by remember { mutableStateOf<String?>(null) }
 
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     val currentOrder by rememberUpdatedState(order)
@@ -243,6 +248,12 @@ private fun CustomerChatRoom(auth: NativeAuth, order: CustomerOrder, onBack: () 
                 }
             }.getOrNull()
         }
+    }
+    fun openGuidelines() {
+        try {
+            context.startActivity(Intent(Intent.ACTION_VIEW,
+                Uri.parse("https://chatchairins-source.github.io/QueuGo/docs/community-guidelines.html")))
+        } catch (failure: Exception) { message = "เปิดกติกาชุมชนไม่สำเร็จ" }
     }
     var readError by remember { mutableStateOf<String?>(null) }
     var closed by remember { mutableStateOf(false) }
@@ -354,6 +365,7 @@ private fun CustomerChatRoom(auth: NativeAuth, order: CustomerOrder, onBack: () 
                             "ใช้แชทเพื่อประสานงานออเดอร์ ห้ามคุกคาม สแปม หลอกลวง ส่งเนื้อหาไม่เหมาะสม หรือเผยข้อมูลส่วนบุคคลที่ไม่จำเป็น",
                             color = QgMuted
                         )
+                        TextButton(onClick = { openGuidelines() }) { Text("อ่านกติกาชุมชน QueueGo") }
                         Spacer(Modifier.height(10.dp))
                         Button(
                             onClick = {
@@ -373,7 +385,7 @@ private fun CustomerChatRoom(auth: NativeAuth, order: CustomerOrder, onBack: () 
                     }
                 }
             }
-            mod.blockedMe -> {
+            mod.blockedMe && !mod.blockedByMe -> {
                 QgCard(Modifier.fillMaxWidth()) {
                     Text("คู่สนทนาได้จำกัดการแชทไว้ การบล็อกไม่ยกเลิกออเดอร์", color = QgMuted)
                 }
@@ -381,7 +393,7 @@ private fun CustomerChatRoom(auth: NativeAuth, order: CustomerOrder, onBack: () 
             mod.blockedByMe -> {
                 QgCard(Modifier.fillMaxWidth()) {
                     Column {
-                        Text("คุณบล็อก Rider คนนี้ไว้", fontWeight = FontWeight.ExtraBold)
+                        Text("คุณบล็อก Rider คนนี้ไว้ การบล็อกแชตไม่ยกเลิกการส่งออเดอร์", fontWeight = FontWeight.ExtraBold)
                         Spacer(Modifier.height(8.dp))
                         Button(
                             onClick = {
@@ -401,28 +413,40 @@ private fun CustomerChatRoom(auth: NativeAuth, order: CustomerOrder, onBack: () 
                 }
             }
             else -> {
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedButton(
-                        onClick = {
-                            reportMessageId = ""
-                            reportDetails = ""
-                        },
-                        modifier = Modifier.weight(1f)
-                    ) { Text("รายงาน") }
-                    OutlinedButton(
-                        onClick = {
-                            if (busy) return@OutlinedButton
+                FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedButton(onClick = { reportMessageId = ""; reportDetails = "" }, enabled = !busy) {
+                        Text("รายงานคู่สนทนา")
+                    }
+                    OutlinedButton(onClick = { blockError = null; confirmBlock = true }, enabled = !busy) {
+                        Text("บล็อก Rider")
+                    }
+                    TextButton(onClick = { openGuidelines() }) { Text("กติกาแชต") }
+                }
+                if (confirmBlock) {
+                    AlertDialog(onDismissRequest = { if (!busy) confirmBlock = false },
+                        title = { Text("บล็อก Rider") },
+                        text = { Column {
+                            Text("บล็อก Rider คนนี้จากการส่งข้อความใหม่? การบล็อกไม่ยกเลิกออเดอร์")
+                            blockError?.let { Text(it, color = QgRed) }
+                        } },
+                        dismissButton = { TextButton(onClick = { confirmBlock = false }, enabled = !busy) { Text("ยกเลิก") } },
+                        confirmButton = { TextButton(onClick = {
+                            if (busy) return@TextButton
                             busy = true
+                            blockError = null
                             scope.launch {
-                                runCatching {
+                                try {
                                     api.block(auth, order.id)
+                                    currentCoroutineContext().ensureActive()
+                                    confirmBlock = false
+                                    message = "บล็อกคู่สนทนาแล้ว"
                                     refreshAfterConfirmedAction()
-                                }.onFailure { if (it is CancellationException) throw it; message = it.message ?: "บล็อกไม่สำเร็จ" }
-                                busy = false
+                                } catch (cancelled: CancellationException) { throw cancelled }
+                                catch (failure: Exception) { blockError = failure.message ?: "บล็อกไม่สำเร็จ" }
+                                finally { busy = false }
                             }
-                        },
-                        modifier = Modifier.weight(1f)
-                    ) { Text("บล็อก Rider") }
+                        }, enabled = !busy) { Text("บล็อก Rider") } }
+                    )
                 }
                 Spacer(Modifier.height(8.dp))
                 LazyColumn(Modifier.weight(1f).fillMaxWidth()) {
