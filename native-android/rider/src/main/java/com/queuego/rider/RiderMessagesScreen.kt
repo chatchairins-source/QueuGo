@@ -1,5 +1,7 @@
 package com.queuego.rider
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -7,17 +9,25 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.repeatOnLifecycle
 import com.queuego.shared.QgMuted
 import com.queuego.shared.QgRed
 import com.queuego.shared.QueueGoNativeApi
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.delay
 import org.json.JSONArray
 import java.time.Instant
@@ -116,70 +126,70 @@ fun RiderMessagesScreen(
     modifier: Modifier = Modifier
 ) {
     val api = remember { RiderInboxApi() }
-    var rows by remember { mutableStateOf<List<RiderInboxRow>>(emptyList()) }
-    var loading by remember { mutableStateOf(true) }
-    var error by remember { mutableStateOf<String?>(null) }
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
+    var rows by remember(auth.user.id, auth.session.sessionId) { mutableStateOf<List<RiderInboxRow>>(emptyList()) }
+    var loading by remember(auth.user.id, auth.session.sessionId) { mutableStateOf(true) }
+    var error by remember(auth.user.id, auth.session.sessionId) { mutableStateOf<String?>(null) }
+    var retry by remember(auth.user.id, auth.session.sessionId) { mutableStateOf(0) }
 
-    LaunchedEffect(auth.session.accessToken, activeJob?.id, history) {
-        while (true) {
-            runCatching { api.rows(auth, activeJob, history) }
-                .onSuccess {
-                    rows = it
+    LaunchedEffect(auth.user.id, auth.session.sessionId, auth.session.accessToken, activeJob, history, lifecycle, retry) {
+        lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            while (true) {
+                try {
+                    val next = api.rows(auth, activeJob, history)
+                    currentCoroutineContext().ensureActive()
+                    rows = next
                     error = null
                     loading = false
-                }
-                .onFailure {
-                    error = it.message ?: "โหลดข้อความไม่สำเร็จ"
+                } catch (cancelled: CancellationException) {
+                    throw cancelled
+                } catch (failure: Exception) {
+                    currentCoroutineContext().ensureActive()
+                    error = "โหลดข้อความไม่สำเร็จ"
                     loading = false
                 }
-            delay(15_000)
+                delay(15_000)
+            }
         }
     }
 
     Column(
-        modifier.fillMaxSize().verticalScroll(rememberScrollState())
-            .padding(horizontal = 12.dp, vertical = 10.dp)
+        modifier.fillMaxSize().background(Color(0xFFF8F7F8))
+            .verticalScroll(rememberScrollState())
+            .padding(start = 14.dp, end = 14.dp, top = 18.dp, bottom = 78.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text("ข้อความ", fontWeight = FontWeight.Black, style = MaterialTheme.typography.headlineSmall)
-        Text("แชทออเดอร์ที่กำลังส่งและหลังส่งสำเร็จไม่เกิน 30 นาที", color = QgMuted)
-        Spacer(Modifier.height(12.dp))
+        Text("ข้อความ", fontWeight = FontWeight.Bold, fontSize = 27.sp,
+            modifier = Modifier.widthIn(max = 720.dp).fillMaxWidth())
+        Spacer(Modifier.height(15.dp))
 
-        if (loading) {
-            CircularProgressIndicator()
-        } else if (!error.isNullOrBlank()) {
-            Text(error!!, color = QgRed)
-        } else if (rows.isEmpty()) {
-            Card(
-                Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(18.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.White)
-            ) {
-                Text("ยังไม่มีการสนทนา", color = QgMuted, modifier = Modifier.padding(18.dp))
+        if (loading || !error.isNullOrBlank() || rows.isEmpty()) {
+            Column(Modifier.widthIn(max = 720.dp).fillMaxWidth().padding(vertical = 30.dp),
+                horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(if (loading) "กำลังโหลดข้อความ..." else error ?: "ยังไม่มีการสนทนา",
+                    color = Color(0xFF8A8387))
+                if (!error.isNullOrBlank()) {
+                    TextButton(onClick = { loading = true; error = null; retry++ }) { Text("ลองใหม่") }
+                }
             }
         } else {
             rows.forEachIndexed { index, row ->
                 if (index > 0) Spacer(Modifier.height(8.dp))
                 Card(
-                    Modifier.fillMaxWidth().clickable { onOpenChat(row.job) },
+                    Modifier.widthIn(max = 720.dp).fillMaxWidth().clickable { onOpenChat(row.job) },
                     shape = RoundedCornerShape(18.dp),
+                    border = BorderStroke(1.dp, Color(0xFFEEE6E8)),
                     colors = CardDefaults.cardColors(containerColor = Color.White)
                 ) {
-                    Row(Modifier.fillMaxWidth().padding(14.dp)) {
-                        Column(Modifier.weight(1f)) {
-                            Text("ออเดอร์ " + row.job.numberLabel, fontWeight = FontWeight.Black)
-                            Text(
-                                row.lastMessage?.let {
-                                    if (it.startsWith("__IMG__")) "รูปภาพ" else it.take(85)
-                                } ?: "เปิดแชตระหว่างจัดส่ง",
-                                color = QgMuted,
-                                maxLines = 2
-                            )
-                        }
-                        Text("›", color = QgRed, fontWeight = FontWeight.Black)
+                    Column(Modifier.fillMaxWidth().padding(13.dp)) {
+                        Text("ออเดอร์ " + row.job.numberLabel, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                        Spacer(Modifier.height(4.dp))
+                        Text(row.lastMessage?.let {
+                            if (it.startsWith("__IMG__")) "รูปภาพ" else it.take(85)
+                        } ?: "เปิดแชตระหว่างจัดส่ง", color = Color(0xFF8A8387), fontSize = 9.sp)
                     }
                 }
             }
         }
-        Spacer(Modifier.height(86.dp))
     }
 }

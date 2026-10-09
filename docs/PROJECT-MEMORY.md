@@ -473,3 +473,11 @@ The user-supplied Rider reference screens are the acceptance reference for workf
 
 - Production REST anonymous call reached qg_rider_order_contact and was denied HTTP401/code42501 (schema cache exposes the RPC; no private data returned). Security advisors comparison excluding observation timestamps: zero new groups/findings, baseline6 INFO policyless backups/9 anonymous definer/134 authenticated definer/1 password-protection warning unchanged.
 - Actual final CI37892846686 atc1cf00c165450445e994ad72868279fedcc0ad26 PASS: npm regression including new22 SQL security checks, source integrity/assets, JVM tests, all three APK builds, No WebView and artifacts. Positive live Rider JWT/contact read, phone/chat/camera/device/visual/FCM/Production E2E still required; no Pilot readiness claim.
+
+## Rider Inbox and chat recovery — 2026-10-09
+
+- Backup backup-native-before-rider-chat-recovery-20261009 atf95c256 local/GitHub. Compared actual main9026bf4 qg-inbox CSS/render and riderChatDeadline/open rules; Production web unchanged.
+- Inbox now follows web27sp title,14dp sides/18dp top/78dp bottom,720dp width cap,13dp row padding,18dp radius/1dp border,13sp title/9sp preview/4dp gap and8dp row gaps. Removed invented subtitle/arrow/empty card; real loading/empty/error and retry retained. Actual authenticated order/message/delivery reads unchanged.
+- Inbox/chat polls only at STARTED, refresh immediately on return, rethrow cancellation and reject cancelled read responses before committing UI. Inbox state scoped to user/session; chat composition/scopes additionally isolated by order. No fake messages or data.
+- Chat checks actual order status/delivery timestamp, closes cancelled/expired room and enforces web30minute post-completion deadline (delivery timestamp preferred, existing updated_at fallback). Deadline timer resumes with lifecycle; send rechecks live access before existing idempotent send. No mutation/state-machine/backend changes. Added JVM tests for exact deadline boundary, authoritative timestamp precedence/fallback, malformed/missing completed timestamp, active and cancelled rooms.
+- Source integrity180 and whitespace PASS. Full CI pending; native screenshots, real room/background/reconnect/device behavior and Production E2E remain uncertified.

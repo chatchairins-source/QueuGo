@@ -17,11 +17,13 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.runtime.key
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -34,6 +36,12 @@ import com.queuego.shared.QgMuted
 import com.queuego.shared.QgRed
 import com.queuego.shared.QgSectionTitle
 import com.queuego.shared.QueueGoNativeApi
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.repeatOnLifecycle
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.json.JSONArray
@@ -58,6 +66,22 @@ class RiderChatApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
         is JSONObject -> raw
         is JSONArray -> raw.optJSONObject(0) ?: JSONObject()
         else -> JSONObject()
+    }
+
+    internal suspend fun window(auth: QueueGoAuth, orderId: String): RiderChatWindow {
+        val rows = http.array(http.get(
+            "orders?select=status,updated_at&id=eq." + http.enc(orderId) + "&limit=1",
+            auth.session.accessToken
+        ))
+        val order = rows.optJSONObject(0) ?: return RiderChatWindow("cancelled", null)
+        val status = order.optString("status")
+        val deliveredAt = if (status == "completed") {
+            http.array(http.get(
+                "deliveries?select=delivered_at&order_id=eq." + http.enc(orderId) + "&limit=1",
+                auth.session.accessToken
+            )).optJSONObject(0)?.optString("delivered_at")
+        } else null
+        return riderChatWindow(status, deliveredAt, order.optString("updated_at"))
     }
 
     suspend fun moderation(auth: QueueGoAuth, orderId: String): RiderChatModeration {
@@ -186,31 +210,70 @@ fun RiderChatScreen(
     job: RiderJob,
     onBack: () -> Unit
 ) {
+    key(auth.user.id, auth.session.sessionId, job.id) {
+        RiderChatRoom(auth, job, onBack)
+    }
+}
+
+@Composable
+private fun RiderChatRoom(auth: QueueGoAuth, job: RiderJob, onBack: () -> Unit) {
     val api = remember { RiderChatApi() }
     val scope = rememberCoroutineScope()
-    var moderation by remember { mutableStateOf<RiderChatModeration?>(null) }
-    var messages by remember { mutableStateOf<List<RiderChatMessage>>(emptyList()) }
-    var input by remember { mutableStateOf("") }
-    var busy by remember { mutableStateOf(false) }
-    var message by remember { mutableStateOf<String?>(null) }
-    var reportMessageId by remember { mutableStateOf<String?>(null) }
-    var reportDetails by remember { mutableStateOf("") }
+    var moderation by remember(auth.user.id, auth.session.sessionId, job.id) { mutableStateOf<RiderChatModeration?>(null) }
+    var messages by remember(auth.user.id, auth.session.sessionId, job.id) { mutableStateOf<List<RiderChatMessage>>(emptyList()) }
+    var input by remember(auth.user.id, auth.session.sessionId, job.id) { mutableStateOf("") }
+    var busy by remember(auth.user.id, auth.session.sessionId, job.id) { mutableStateOf(false) }
+    var message by remember(auth.user.id, auth.session.sessionId, job.id) { mutableStateOf<String?>(null) }
+    var reportMessageId by remember(auth.user.id, auth.session.sessionId, job.id) { mutableStateOf<String?>(null) }
+    var reportDetails by remember(auth.user.id, auth.session.sessionId, job.id) { mutableStateOf("") }
+
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
+    val back by rememberUpdatedState(onBack)
+    var window by remember(auth.user.id, auth.session.sessionId, job.id) { mutableStateOf<RiderChatWindow?>(null) }
+    var closed by remember(auth.user.id, auth.session.sessionId, job.id) { mutableStateOf(false) }
+
+    fun closeExpired() {
+        if (!closed) { closed = true; back() }
+    }
 
     suspend fun refresh() {
+        val nextWindow = api.window(auth, job.id)
+        currentCoroutineContext().ensureActive()
+        window = nextWindow
+        if (!nextWindow.isOpen(System.currentTimeMillis())) { closeExpired(); return }
         val mod = api.moderation(auth, job.id)
+        val nextMessages = if (mod.accepted && !mod.blockedByMe && !mod.blockedMe) {
+            api.messages(auth, job.id)
+        } else emptyList()
+        currentCoroutineContext().ensureActive()
+        if (!nextWindow.isOpen(System.currentTimeMillis())) { closeExpired(); return }
         moderation = mod
-        if (mod.accepted && !mod.blockedByMe && !mod.blockedMe) {
-            messages = api.messages(auth, job.id)
+        messages = nextMessages
+    }
+
+    LaunchedEffect(auth.user.id, auth.session.sessionId, auth.session.accessToken, job.id, lifecycle) {
+        lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            while (!closed) {
+                try { refresh() }
+                catch (cancelled: CancellationException) { throw cancelled }
+                catch (failure: Exception) {
+                    currentCoroutineContext().ensureActive()
+                    message = failure.message ?: "โหลดแชทไม่สำเร็จ"
+                }
+                delay(4_000)
+            }
         }
     }
 
-    LaunchedEffect(job.id) {
-        while (true) {
-            runCatching { refresh() }
-                .onFailure { message = it.message ?: "โหลดแชทไม่สำเร็จ" }
-            delay(4_000)
+    LaunchedEffect(window, lifecycle) {
+        lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            window?.deadline?.let { deadline ->
+                delay((deadline - System.currentTimeMillis()).coerceAtLeast(0L))
+                closeExpired()
+            }
         }
     }
+
 
     Column(Modifier.fillMaxSize().padding(14.dp)) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -247,7 +310,7 @@ fun RiderChatScreen(
                                 runCatching {
                                     api.acceptTerms(auth)
                                     refresh()
-                                }.onFailure { message = it.message ?: "ยอมรับกติกาไม่สำเร็จ" }
+                                }.onFailure { if (it is CancellationException) throw it; message = it.message ?: "ยอมรับกติกาไม่สำเร็จ" }
                                 busy = false
                             }
                         },
@@ -270,7 +333,7 @@ fun RiderChatScreen(
                                 runCatching {
                                     api.unblock(auth, job.id)
                                     refresh()
-                                }.onFailure { message = it.message ?: "ปลดบล็อกไม่สำเร็จ" }
+                                }.onFailure { if (it is CancellationException) throw it; message = it.message ?: "ปลดบล็อกไม่สำเร็จ" }
                                 busy = false
                             }
                         },
@@ -296,7 +359,7 @@ fun RiderChatScreen(
                                 runCatching {
                                     api.block(auth, job.id)
                                     refresh()
-                                }.onFailure { message = it.message ?: "บล็อกไม่สำเร็จ" }
+                                }.onFailure { if (it is CancellationException) throw it; message = it.message ?: "บล็อกไม่สำเร็จ" }
                                 busy = false
                             }
                         },
@@ -396,6 +459,7 @@ fun RiderChatScreen(
                                                 message = "ส่งรายงานให้ QueueGo ตรวจสอบแล้ว"
                                                 reportMessageId = null
                                             }.onFailure {
+                                                if (it is CancellationException) throw it
                                                 message = it.message ?: "ส่งรายงานไม่สำเร็จ"
                                             }
                                             busy = false
@@ -421,19 +485,29 @@ fun RiderChatScreen(
                     Spacer(Modifier.padding(4.dp))
                     Button(
                         onClick = {
-                            if (busy || input.isBlank()) return@Button
+                            if (busy || input.isBlank() || window?.isOpen(System.currentTimeMillis()) != true) return@Button
                             val text = input
                             busy = true
                             scope.launch {
                                 runCatching {
+                                    val liveWindow = api.window(auth, job.id)
+                                    currentCoroutineContext().ensureActive()
+                                    window = liveWindow
+                                    if (!liveWindow.isOpen(System.currentTimeMillis())) {
+                                        closeExpired()
+                                        return@launch
+                                    }
                                     api.send(auth, job.id, text)
+                                    currentCoroutineContext().ensureActive()
                                     input = ""
-                                    messages = api.messages(auth, job.id)
-                                }.onFailure { message = it.message ?: "ส่งข้อความไม่สำเร็จ" }
+                                    val nextMessages = api.messages(auth, job.id)
+                                    currentCoroutineContext().ensureActive()
+                                    messages = nextMessages
+                                }.onFailure { if (it is CancellationException) throw it; message = it.message ?: "ส่งข้อความไม่สำเร็จ" }
                                 busy = false
                             }
                         },
-                        enabled = !busy && input.isNotBlank()
+                        enabled = !busy && input.isNotBlank() && !closed && window?.isOpen(System.currentTimeMillis()) == true
                     ) { Text("ส่ง") }
                 }
             }
