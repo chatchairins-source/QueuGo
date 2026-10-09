@@ -24,6 +24,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -31,6 +33,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -58,7 +61,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -353,6 +358,7 @@ private fun CustomerShell(auth: NativeAuth, logout: () -> Unit) {
                 .background(QgBg)
         ) {
             CustomerTopBar(
+                home = screen == "home",
                 cartCount = cart.sumOf { it.quantity },
                 unreadCount = notifications.count { !it.read },
                 onHome = { screen = "home" },
@@ -438,7 +444,10 @@ private fun CustomerShell(auth: NativeAuth, logout: () -> Unit) {
                             }
                         }
                     },
-                    onShop = { shop -> openShopFromHome(shop, "home") },
+                    onShop = { shop ->
+                        if (shop.category.lowercase() == "laundry") screen = "laundry"
+                        else openShopFromHome(shop, "home")
+                    },
                     onBannerLink = ::openHomeBannerLink
                 )
                 "location" -> CustomerLocationPickerScreen(
@@ -740,6 +749,7 @@ private fun CustomerShell(auth: NativeAuth, logout: () -> Unit) {
 
 @Composable
 private fun CustomerTopBar(
+    home: Boolean,
     cartCount: Int,
     unreadCount: Int,
     onHome: () -> Unit,
@@ -747,21 +757,117 @@ private fun CustomerTopBar(
     onNotifications: () -> Unit,
     onProfile: () -> Unit
 ) {
-    Row(
+    val horizontalPadding = if (home) 16.dp else 12.dp
+    val verticalPadding = if (home) 10.dp else 6.dp
+    val actionSize = if (home) 40.dp else 42.dp
+    val actionRadius = if (home) 13.dp else 12.dp
+
+    Column(
         Modifier
             .fillMaxWidth()
-            .background(androidx.compose.ui.graphics.Color(0xFAFFFFFF))
-            .border(0.5.dp, androidx.compose.ui.graphics.Color(0x0D000000))
-            .padding(horizontal = 16.dp, vertical = 10.dp),
-        verticalAlignment = Alignment.CenterVertically
+            .background(androidx.compose.ui.graphics.Color(0xF0FFFFFF))
     ) {
-        Box(Modifier.clickable(onClick = onHome)) { QueueGoBrand() }
-        Spacer(Modifier.weight(1f))
-        QgIconButton("bag", badge = cartCount, onClick = onCart)
-        Spacer(Modifier.width(8.dp))
-        QgIconButton("bell", badge = unreadCount, onClick = onNotifications)
-        Spacer(Modifier.width(8.dp))
-        QgIconButton("user", onClick = onProfile)
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = horizontalPadding, vertical = verticalPadding),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Row(Modifier.clickable(onClick = onHome)) {
+                Text(
+                    "Queue",
+                    color = androidx.compose.ui.graphics.Color(0xFF17191D),
+                    fontSize = 18.sp,
+                    lineHeight = 22.sp,
+                    letterSpacing = (-0.4).sp,
+                    fontWeight = FontWeight.ExtraBold
+                )
+                Text(
+                    "Go",
+                    color = QgRed,
+                    fontSize = 18.sp,
+                    lineHeight = 22.sp,
+                    letterSpacing = (-0.4).sp,
+                    fontWeight = FontWeight.ExtraBold
+                )
+            }
+            Spacer(Modifier.weight(1f))
+            CustomerTopAction(
+                resource = R.drawable.qg_nav_bag,
+                description = "ตะกร้า",
+                size = actionSize,
+                radius = actionRadius,
+                badge = cartCount,
+                onClick = onCart
+            )
+            Spacer(Modifier.width(8.dp))
+            CustomerTopAction(
+                resource = R.drawable.qg_top_bell,
+                description = "แจ้งเตือน",
+                size = actionSize,
+                radius = actionRadius,
+                badge = unreadCount,
+                onClick = onNotifications
+            )
+            Spacer(Modifier.width(8.dp))
+            CustomerTopAction(
+                resource = R.drawable.qg_top_user,
+                description = "โปรไฟล์",
+                size = actionSize,
+                radius = actionRadius,
+                onClick = onProfile
+            )
+        }
+        HorizontalDivider(thickness = 1.dp, color = androidx.compose.ui.graphics.Color(0x0D000000))
+    }
+}
+
+@Composable
+private fun CustomerTopAction(
+    resource: Int,
+    description: String,
+    size: androidx.compose.ui.unit.Dp,
+    radius: androidx.compose.ui.unit.Dp,
+    badge: Int = 0,
+    onClick: () -> Unit
+) {
+    Box(Modifier.size(size)) {
+        Box(
+            Modifier
+                .fillMaxSize()
+                .clip(RoundedCornerShape(radius))
+                .background(androidx.compose.ui.graphics.Color(0xFFF3F4F6))
+                .clickable(onClick = onClick),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                painter = painterResource(resource),
+                contentDescription = description,
+                modifier = Modifier.size(20.dp),
+                tint = androidx.compose.ui.graphics.Color(0xFF24272D)
+            )
+        }
+        if (badge > 0) {
+            Box(
+                Modifier
+                    .align(Alignment.TopEnd)
+                    .offset(x = 4.dp, y = (-4).dp)
+                    .widthIn(min = 17.dp)
+                    .height(17.dp)
+                    .clip(CircleShape)
+                    .background(QgRed)
+                    .padding(horizontal = 4.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    if (badge > 99) "99+" else badge.toString(),
+                    color = androidx.compose.ui.graphics.Color.White,
+                    fontSize = 10.sp,
+                    lineHeight = 12.sp,
+                    fontWeight = FontWeight.ExtraBold
+                )
+            }
+        }
     }
 }
 
@@ -798,17 +904,18 @@ private fun CustomerHome(
         else eligible.sortedBy { customerDistanceKm(location, it) }
     }
 
+    val homeHorizontalPadding = if (LocalConfiguration.current.screenWidthDp <= 420) 12.dp else 14.dp
     Column(
         Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(horizontal = 12.dp)
+            .padding(horizontal = homeHorizontalPadding)
     ) {
         Row(
             Modifier
                 .fillMaxWidth()
                 .clickable(onClick = onLocation)
-                .padding(horizontal = 2.dp, vertical = 10.dp),
+                .padding(start = 2.dp, end = 2.dp, top = 13.dp, bottom = 10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Box(
@@ -818,7 +925,12 @@ private fun CustomerHome(
                     .background(androidx.compose.ui.graphics.Color(0xFFFFF0F1)),
                 contentAlignment = Alignment.Center
             ) {
-                QgIcon("pin", Modifier.size(19.dp), QgRed)
+                Icon(
+                    painter = painterResource(R.drawable.qg_home_pin),
+                    contentDescription = null,
+                    modifier = Modifier.size(19.dp),
+                    tint = QgRed
+                )
             }
             Spacer(Modifier.width(10.dp))
             Column(Modifier.weight(1f)) {
@@ -843,6 +955,13 @@ private fun CustomerHome(
             Modifier
                 .fillMaxWidth()
                 .height(48.dp)
+                .shadow(
+                    elevation = 4.dp,
+                    shape = RoundedCornerShape(15.dp),
+                    clip = false,
+                    ambientColor = androidx.compose.ui.graphics.Color(0x0914181E),
+                    spotColor = androidx.compose.ui.graphics.Color(0x0914181E)
+                )
                 .clip(RoundedCornerShape(15.dp))
                 .background(androidx.compose.ui.graphics.Color.White)
                 .border(1.dp, QgLine, RoundedCornerShape(15.dp))
@@ -850,7 +969,12 @@ private fun CustomerHome(
                 .padding(horizontal = 14.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            QgIcon("search", Modifier.size(20.dp), androidx.compose.ui.graphics.Color(0xFF3F434A))
+            Icon(
+                painter = painterResource(R.drawable.qg_nav_search),
+                contentDescription = null,
+                modifier = Modifier.size(20.dp),
+                tint = androidx.compose.ui.graphics.Color(0xFF3F434A)
+            )
             Spacer(Modifier.width(10.dp))
             Text(
                 "ค้นหาร้านค้าจากทุกหมวด",
@@ -867,11 +991,11 @@ private fun CustomerHome(
             onOpen = { banner -> banner.link?.let(onBannerLink) }
         )
 
-        Spacer(Modifier.height(14.dp))
+        Spacer(Modifier.height(20.dp))
         Row(
             Modifier
                 .horizontalScroll(rememberScrollState())
-                .padding(horizontal = 2.dp, vertical = 2.dp),
+                .padding(start = 2.dp, end = 2.dp, top = 2.dp, bottom = 5.dp),
             horizontalArrangement = Arrangement.spacedBy(13.dp)
         ) {
             categories.filter { it.first != "all" }.forEach { (key, label) ->
@@ -883,7 +1007,7 @@ private fun CustomerHome(
             }
         }
 
-        Spacer(Modifier.height(14.dp))
+        Spacer(Modifier.height(20.dp))
         Row(
             Modifier.fillMaxWidth().padding(horizontal = 2.dp),
             verticalAlignment = Alignment.CenterVertically
@@ -892,7 +1016,7 @@ private fun CustomerHome(
                 "ร้านใกล้คุณ",
                 color = androidx.compose.ui.graphics.Color(0xFF17191D),
                 fontWeight = FontWeight.ExtraBold,
-                fontSize = 17.sp,
+                fontSize = 18.sp,
                 lineHeight = 22.sp
             )
             Spacer(Modifier.weight(1f))
@@ -904,7 +1028,7 @@ private fun CustomerHome(
                 modifier = Modifier.clickable(onClick = onSearch)
             )
         }
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(11.dp))
 
         when {
             loading -> CircularProgressIndicator()
@@ -945,6 +1069,13 @@ private fun CustomerCategoryButton(
         Box(
             Modifier
                 .size(54.dp)
+                .shadow(
+                    elevation = 4.dp,
+                    shape = CircleShape,
+                    clip = false,
+                    ambientColor = androidx.compose.ui.graphics.Color(0x0914181E),
+                    spotColor = androidx.compose.ui.graphics.Color(0x0914181E)
+                )
                 .clip(CircleShape)
                 .background(androidx.compose.ui.graphics.Color.White)
                 .border(1.dp, QgLine, CircleShape),
@@ -970,67 +1101,78 @@ private fun CustomerBlueprintShopCard(
     onClick: () -> Unit
 ) {
     val compact = LocalConfiguration.current.screenWidthDp <= 420
-    QgCard(
+    val radius = RoundedCornerShape(18.dp)
+    Row(
         Modifier
             .fillMaxWidth()
             .padding(bottom = 10.dp)
-            .clickable(onClick = onClick)
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            QgRemoteImage(
-                source = shop.logo ?: shop.cover,
-                modifier = if (compact) Modifier.size(82.dp) else Modifier.size(92.dp),
-                fallback = shop.name,
-                cornerRadius = 14.dp
+            .shadow(
+                elevation = 4.dp,
+                shape = radius,
+                clip = false,
+                ambientColor = androidx.compose.ui.graphics.Color(0x0914181E),
+                spotColor = androidx.compose.ui.graphics.Color(0x0914181E)
             )
-            Spacer(Modifier.width(12.dp))
-            Column(Modifier.weight(1f)) {
+            .clip(radius)
+            .background(androidx.compose.ui.graphics.Color.White)
+            .border(1.dp, QgLine, radius)
+            .clickable(onClick = onClick)
+            .padding(10.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        QgRemoteImage(
+            source = shop.logo ?: shop.cover,
+            modifier = if (compact) Modifier.size(82.dp) else Modifier.size(92.dp),
+            fallback = shop.name,
+            cornerRadius = 14.dp
+        )
+        Spacer(Modifier.width(12.dp))
+        Column(Modifier.weight(1f)) {
+            Text(
+                shop.name,
+                color = androidx.compose.ui.graphics.Color(0xFF17191D),
+                fontWeight = FontWeight.ExtraBold,
+                fontSize = 15.sp,
+                lineHeight = 19.sp,
+                maxLines = 1
+            )
+            Spacer(Modifier.height(6.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text(
-                    shop.name,
-                    color = androidx.compose.ui.graphics.Color(0xFF17191D),
-                    fontWeight = FontWeight.ExtraBold,
-                    fontSize = 15.sp,
-                    lineHeight = 19.sp,
+                    categoryLabel(shop.category),
+                    color = QgMuted,
+                    fontSize = 11.sp,
+                    lineHeight = 14.sp,
                     maxLines = 1
                 )
-                Spacer(Modifier.height(6.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                if (!shop.openTime.isNullOrBlank()) {
                     Text(
-                        categoryLabel(shop.category),
+                        shop.openTime + "–" + (shop.closeTime ?: ""),
                         color = QgMuted,
                         fontSize = 11.sp,
                         lineHeight = 14.sp,
                         maxLines = 1
                     )
-                    if (!shop.openTime.isNullOrBlank()) {
-                        Text(
-                            shop.openTime + "–" + (shop.closeTime ?: ""),
-                            color = QgMuted,
-                            fontSize = 11.sp,
-                            lineHeight = 14.sp,
-                            maxLines = 1
-                        )
-                    }
                 }
-                Spacer(Modifier.height(7.dp))
-                Box(
-                    Modifier
-                        .clip(CircleShape)
-                        .background(
-                            if (shop.open) androidx.compose.ui.graphics.Color(0xFFEAF9F3)
-                            else androidx.compose.ui.graphics.Color(0xFFF1F1F2)
-                        )
-                        .padding(horizontal = 7.dp, vertical = 4.dp)
-                ) {
-                    Text(
-                        if (shop.open) "เปิดอยู่" else "ปิดอยู่",
-                        color = if (shop.open) androidx.compose.ui.graphics.Color(0xFF0A9660)
-                        else androidx.compose.ui.graphics.Color(0xFF777777),
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 10.sp,
-                        lineHeight = 12.sp
+            }
+            Spacer(Modifier.height(7.dp))
+            Box(
+                Modifier
+                    .clip(CircleShape)
+                    .background(
+                        if (shop.open) androidx.compose.ui.graphics.Color(0xFFEAF9F3)
+                        else androidx.compose.ui.graphics.Color(0xFFF1F1F2)
                     )
-                }
+                    .padding(horizontal = 7.dp, vertical = 4.dp)
+            ) {
+                Text(
+                    if (shop.open) "เปิดอยู่" else "ปิดอยู่",
+                    color = if (shop.open) androidx.compose.ui.graphics.Color(0xFF0A9660)
+                    else androidx.compose.ui.graphics.Color(0xFF777777),
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 10.sp,
+                    lineHeight = 12.sp
+                )
             }
         }
     }
