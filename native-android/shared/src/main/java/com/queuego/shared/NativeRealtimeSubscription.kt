@@ -11,7 +11,12 @@ data class NativeRealtimeSubscription(val table: String, val filter: String) {
 fun riderRealtimeSubscriptions(userId: String, profileId: String?): List<NativeRealtimeSubscription> =
     buildList {
         add(NativeRealtimeSubscription("notifications", "user_id=eq.$userId"))
-        if (!profileId.isNullOrBlank()) add(NativeRealtimeSubscription("orders", "rider_id=eq.$profileId"))
+        if (!profileId.isNullOrBlank()) {
+            add(NativeRealtimeSubscription("orders", "rider_id=eq.$profileId"))
+            add(NativeRealtimeSubscription("laundry_rider_jobs", "rider_id=eq.$profileId"))
+            add(NativeRealtimeSubscription("laundry_rider_invites", "rider_id=eq.$profileId"))
+            add(NativeRealtimeSubscription("laundry_rider_preferences", "rider_id=eq.$profileId"))
+        }
     }
 
 fun merchantRealtimeSubscriptions(userId: String, shopId: String): List<NativeRealtimeSubscription> = listOf(
