@@ -25,6 +25,7 @@ for(const p of [
   'rider/src/main/java/com/queuego/rider/RiderSupportScreen.kt',
   'customer/src/main/java/com/queuego/customer/QueueGoCustomerApp.kt',
   'customer/src/main/java/com/queuego/customer/CustomerApi.kt',
+  'customer/src/main/java/com/queuego/customer/CustomerOrderTrackingScreen.kt',
   'customer/src/main/java/com/queuego/customer/CustomerCartCheckout.kt',
   'customer/src/main/java/com/queuego/customer/CustomerMarketApi.kt',
   'customer/src/main/java/com/queuego/customer/CustomerLaundryApi.kt',
@@ -87,6 +88,10 @@ ok(source.includes('queuego_place_laundry_order_v2'),'Customer native Laundry mu
 ok(source.includes('notifications?select=id,title,message,type,reference_id,is_read,created_at'),'Customer native notifications must use production notifications table');
 ok(source.includes('qg_support_tickets?select=id,category,details,status,order_id,admin_note,created_at')&&source.includes('qg_create_ticket'),'Customer native support must use production ticket RPC');
 ok(source.includes('qg_customer_order_context')&&source.includes('CustomerTrackingRider'),'Customer native tracking must use production order context');
+const customerTrackingScreen=read('customer/src/main/java/com/queuego/customer/CustomerOrderTrackingScreen.kt');
+ok(source.includes('"order" -> CustomerOrderTrackingScreen')&&customerTrackingScreen.includes('"สถานะล่าสุด"')&&customerTrackingScreen.includes('"ส่งไปที่"')&&customerTrackingScreen.includes('CustomerTrackingProgress(stage)')&&customerTrackingScreen.includes('"Rider ของคุณ"')&&customerTrackingScreen.includes('"รายการสินค้า"')&&customerTrackingScreen.includes('"ยอดรวม"'),'Customer native tracking must preserve Production order-detail hierarchy');
+ok(customerTrackingScreen.includes('size(46.dp)')&&customerTrackingScreen.includes('RoundedCornerShape(20.dp)')&&customerTrackingScreen.includes('fontSize = 22.sp')&&customerTrackingScreen.includes('"แจ้งปัญหา"'),'Customer native tracking must preserve Production rider, hero, total and support proportions');
+ok(!/private fun OrderTrackingScreen\(/.test(source),'legacy generic Customer tracking screen must stay removed');
 ok(source.includes('qg_customer_cancel_order'),'Customer native cancellation must use production RPC');
 ok(source.includes('qg_chat_moderation_state')&&source.includes('qg_accept_ugc_terms')&&source.includes('qg_block_chat_counterpart')&&source.includes('qg_report_chat'),'Customer native chat must preserve UGC safety RPCs');
 ok(source.includes('order_chat_messages?select=id,sender_id,message,created_at'),'Customer native chat must use production chat table');
