@@ -79,7 +79,14 @@ data class CustomerOrderItem(
 )
 
 data class CustomerLocation(val latitude: Double, val longitude: Double, val address: String)
-data class HomeBanner(val image: String, val title: String?, val subtitle: String?)
+data class HomeBanner(
+    val image: String,
+    val title: String?,
+    val subtitle: String?,
+    val alt: String? = null,
+    val link: String? = null,
+    val rotationMs: Long = 5_000L
+)
 data class ServiceBanner(val key: String, val image: String?, val title: String?, val subtitle: String?, val active: Boolean)
 data class CartLine(val product: CustomerProduct, val quantity: Int)
 
@@ -265,12 +272,27 @@ class CustomerApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
         }.getOrElse { return emptyList() }
         val value = rows.optJSONObject(0)?.optJSONObject("value") ?: return emptyList()
         val slides = value.optJSONArray("slides") ?: return emptyList()
+        val rotationMs = value.optLong("rotation_ms", 5_000L).coerceIn(3_000L, 15_000L)
         return buildList {
             for (i in 0 until slides.length().coerceAtMost(3)) {
                 val slide = slides.optJSONObject(i) ?: continue
                 if (!slide.optBoolean("active", true)) continue
-                val image = slide.optString("image_url").ifBlank { slide.optString("image_data") }
-                if (image.isNotBlank()) add(HomeBanner(image, slide.optNullable("title"), slide.optNullable("subtitle")))
+                val image = slide.optString("image_url").ifBlank { slide.optString("image_data") }.trim()
+                if (!(image.startsWith("data:image/") || image.startsWith("http://", true) || image.startsWith("https://", true))) continue
+                val linkValue = slide.optString("link").ifBlank { slide.optString("link_target") }.trim()
+                val link = linkValue.takeIf {
+                    it.startsWith("#") || it.startsWith("http://", true) || it.startsWith("https://", true)
+                }
+                add(
+                    HomeBanner(
+                        image = image,
+                        title = slide.optNullable("title"),
+                        subtitle = slide.optNullable("subtitle"),
+                        alt = slide.optNullable("alt") ?: "QueueGo",
+                        link = link,
+                        rotationMs = rotationMs
+                    )
+                )
             }
         }
     }
