@@ -518,8 +518,6 @@ internal fun MerchantProductEditorScreen(
                 effectiveDelivery,
                 enabled = restriction == "none"
             ) { deliveryAvailable = it }
-            if (restriction != "none") deliveryAvailable = false
-
             Spacer(Modifier.height(8.dp))
             OutlinedTextField(
                 value = description,
