@@ -143,7 +143,7 @@ private fun MerchantShell(auth: NativeAuth, logout: () -> Unit) {
     BackHandler(enabled = screen != "home") {
         screen = when (screen) {
             "shop-setup", "hours", "support" -> "profile"
-            "notifications", "media", "modules" -> "home"
+            "notifications", "media", "modules", "market-stock" -> "home"
             "catalog" -> "products"
             "product" -> productReturnScreen
             "order" -> "orders"
@@ -336,7 +336,8 @@ private fun MerchantShell(auth: NativeAuth, logout: () -> Unit) {
                     onModules = { screen = "modules" },
                     onMedia = { screen = "media" },
                     onNotifications = { screen = "notifications" },
-                    onSupport = { screen = "support" }
+                    onSupport = { screen = "support" },
+                    onMarketStock = { screen = "market-stock" }
                 )
                 "orders" -> MerchantOrdersScreen(orders, loading) {
                     selectedOrder = it
@@ -539,6 +540,21 @@ private fun MerchantShell(auth: NativeAuth, logout: () -> Unit) {
                         }
                     }
                 )
+                "market-stock" -> {
+                    val activeShop = shop
+                    if (activeShop == null) {
+                        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            Text("ยังไม่พบข้อมูลร้าน", color = QgMuted)
+                        }
+                    } else {
+                        MerchantMarketStockScreen(
+                            auth = auth,
+                            shop = activeShop,
+                            api = api,
+                            onBack = { screen = "home" }
+                        )
+                    }
+                }
                 "media" -> MerchantMediaScreen(
                     auth = auth,
                     onBack = { screen = "home" }
@@ -721,7 +737,8 @@ private fun DashboardScreen(
     onModules: () -> Unit,
     onMedia: () -> Unit,
     onNotifications: () -> Unit,
-    onSupport: () -> Unit
+    onSupport: () -> Unit,
+    onMarketStock: () -> Unit
 ) {
     val incoming = orders.filter {
         it.status in setOf("pending", "accepted", "searching_rider", "rider_assigned", "preparing", "ready")
@@ -861,6 +878,15 @@ private fun DashboardScreen(
             MerchantMenuTile("ติดต่อแอดมิน", "support", onSupport, Modifier.weight(1f))
             MerchantMenuTile("ฝากซัก", "laundry", onLaundry, Modifier.weight(1f))
             Spacer(Modifier.weight(1f))
+        }
+
+        if (merchantMarketStockPermitted(shop?.category)) {
+            Spacer(Modifier.height(8.dp))
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                MerchantMenuTile("ตลาดและสต๊อก", "box", onMarketStock, Modifier.weight(1f))
+                Spacer(Modifier.weight(1f))
+                Spacer(Modifier.weight(1f))
+            }
         }
 
         Spacer(Modifier.height(16.dp))
