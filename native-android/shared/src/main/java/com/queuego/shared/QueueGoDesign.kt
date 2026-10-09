@@ -336,6 +336,49 @@ fun QgIcon(name: String, modifier: Modifier = Modifier, color: Color = QgRed) {
                 line(.46f,.46f,.38f,.33f); line(.38f,.33f,.25f,.33f)
                 line(.55f,.67f,.42f,.46f); line(.63f,.46f,.75f,.67f); line(.58f,.29f,.71f,.29f)
             }
+            "tag" -> {
+                line(.83f,.54f,.54f,.83f); line(.54f,.83f,.17f,.46f)
+                line(.17f,.46f,.17f,.17f); line(.17f,.17f,.46f,.17f)
+                line(.46f,.17f,.83f,.54f)
+                drawCircle(color, w*.04f, Offset(w*.35f,h*.35f), style=stroke)
+            }
+            "chart" -> {
+                line(.17f,.83f,.17f,.42f); line(.42f,.83f,.42f,.17f)
+                line(.67f,.83f,.67f,.54f); line(.08f,.83f,.92f,.83f)
+            }
+            "clock" -> {
+                drawCircle(color, w*.37f, Offset(w*.5f,h*.5f), style=stroke)
+                line(.50f,.29f,.50f,.50f); line(.50f,.50f,.63f,.58f)
+            }
+            "close" -> {
+                line(.25f,.25f,.75f,.75f); line(.75f,.25f,.25f,.75f)
+            }
+            "gallery" -> {
+                drawRoundRect(color, Offset(w*.13f,h*.17f), Size(w*.74f,h*.66f), CornerRadius(w*.10f), style=stroke)
+                drawCircle(color, w*.055f, Offset(w*.33f,h*.37f), style=stroke)
+                line(.21f,.71f,.42f,.50f); line(.42f,.50f,.55f,.63f)
+                line(.55f,.63f,.63f,.54f); line(.63f,.54f,.79f,.71f)
+            }
+            "support" -> {
+                drawRoundRect(color, Offset(w*.17f,h*.21f), Size(w*.66f,h*.50f), CornerRadius(w*.04f), style=stroke)
+                line(.38f,.71f,.27f,.84f); line(.27f,.84f,.27f,.71f)
+                line(.33f,.42f,.67f,.42f); line(.33f,.55f,.54f,.55f)
+            }
+            "megaphone" -> {
+                line(.13f,.46f,.71f,.21f); line(.71f,.21f,.71f,.79f)
+                line(.71f,.79f,.13f,.54f); line(.13f,.54f,.13f,.46f)
+                line(.29f,.60f,.29f,.83f); line(.29f,.83f,.46f,.83f)
+                line(.46f,.83f,.42f,.65f); line(.83f,.38f,.83f,.63f)
+            }
+            "camera" -> {
+                drawRoundRect(color, Offset(w*.17f,h*.29f), Size(w*.66f,h*.50f), CornerRadius(w*.04f), style=stroke)
+                line(.17f,.29f,.33f,.29f); line(.33f,.29f,.42f,.21f)
+                line(.42f,.21f,.58f,.21f); line(.58f,.21f,.67f,.29f)
+                drawCircle(color, w*.16f, Offset(w*.50f,h*.54f), style=stroke)
+            }
+            "plus" -> {
+                line(.50f,.21f,.50f,.79f); line(.21f,.50f,.79f,.50f)
+            }
             else -> {
                 drawCircle(color, w*.3f, Offset(w*.5f,h*.5f), style=stroke)
             }
