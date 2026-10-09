@@ -216,6 +216,7 @@ private fun MerchantProductFilter(
 internal fun MerchantProductEditorScreen(
     shop: MerchantShop,
     product: MerchantProduct?,
+    initialCategory: String? = null,
     gpRate: Double,
     busy: Boolean,
     onSave: (MerchantProductDraft, Uri?) -> Unit,
@@ -231,9 +232,10 @@ internal fun MerchantProductEditorScreen(
 
     var name by remember(product?.id) { mutableStateOf(product?.name.orEmpty()) }
     var description by remember(product?.id) { mutableStateOf(product?.description.orEmpty()) }
-    var category by remember(product?.id) {
+    var category by remember(product?.id, initialCategory) {
         mutableStateOf(
             product?.category?.takeIf { it in categories }
+                ?: initialCategory?.takeIf { it in categories }
                 ?: merchantDefaultProductCategory(shop).takeIf { it in categories }
                 ?: ""
         )
