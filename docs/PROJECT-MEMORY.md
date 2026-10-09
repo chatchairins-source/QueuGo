@@ -292,3 +292,16 @@ The user-supplied Rider reference screens are the acceptance reference for workf
 
 - Build verification: all three `assembleDebug` tasks passed locally with Gradle 9.6.0, JDK 17 and Android SDK 36 (126 tasks; BUILD SUCCESSFUL). These internal APKs are NOT approved for Owner delivery. Visual and Production functional gates remain unpassed.
 - Customer normal tracking now stops its repeating context requests after a terminal order (`completed`, `cancelled`, `no_rider_available`); the final snapshot is fetched once before stopping. No backend/state transition changes.
+
+
+## Customer native tracking map (2026-10-09)
+
+- Backup: `backup-native-before-tracking-map-20261009` at `c7b41f5946dd872071ffe19ce9de651f843c90de`. Work stays on `queuego-native-android-v1`; web and database are unchanged.
+- Added the native Longdo OpenGL tracking map using existing order pickup/delivery snapshot coordinates and Rider coordinates from `qg_customer_order_context`. Verified the four snapshot columns exist in Production via a read-only schema query.
+- Native normal Customer tracking now shows shop/customer/Rider pins, excludes invalid/swapped/outside-Thailand coordinates using the web's existing bounds, hides Rider markers during server search, and removes the live map on terminal orders. Missing coordinates remain missing; no fabricated movement or map points.
+- Map height follows the web CSS breakpoints: 145dp for compact-height screens, otherwise 160dp through 420dp width and 178dp above that. This is source-derived sizing, NOT a pixel-match certification.
+- Native map pauses/resumes with Activity lifecycle, keeps manual map panning on marker refresh, releases pins on disposal, and offers retry after a bounded map initialization timeout.
+- The verified Longdo AAR is shared by the three modules through `:shared`, preserving each launcher label in manifest merging. Rider continues to use its existing map/job flow.
+- Added five actual JVM unit tests for terminal-order cached-location suppression, searching-state Rider suppression, missing coordinates, invalid coordinate boundaries and incomplete pairs. CI runs these before the three-app builds.
+- Full `npm test` passes and native source integrity passes 88 checks. Build/output directories are excluded from source-integrity scanning so generated Gradle HTML does not masquerade as website source.
+- Outstanding: authenticated screenshot comparison/real map tile rendering; Customer location/checkout maps; Merchant settings/location picker; Market/Laundry native tracking map parity; native Realtime, icons, live E2E/device gates. No Owner APK delivery is approved.

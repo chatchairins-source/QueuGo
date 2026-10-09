@@ -1192,19 +1192,7 @@ private fun OrderTrackingScreen(
                         Text(rider.name, fontWeight = FontWeight.Black, style = MaterialTheme.typography.titleMedium)
                         val vehicle = listOfNotNull(rider.vehicleType, rider.vehiclePlate).joinToString(" ")
                         if (vehicle.isNotBlank()) Text(vehicle, color = QgMuted)
-                        if (rider.latitude != null && rider.longitude != null &&
-                            order.status !in setOf("completed", "cancelled")
-                        ) {
-                            Spacer(Modifier.height(5.dp))
-                            Text(
-                                "ตำแหน่งล่าสุด %.5f, %.5f".format(rider.latitude, rider.longitude),
-                                color = QgRed,
-                                fontWeight = FontWeight.Bold
-                            )
-                            if (!rider.updatedAt.isNullOrBlank()) {
-                                Text("อัปเดต " + rider.updatedAt, color = QgMuted, style = MaterialTheme.typography.labelSmall)
-                            }
-                        }
+
                     }
                 }
             }
@@ -1229,6 +1217,7 @@ private fun OrderTrackingScreen(
             }
             Spacer(Modifier.height(10.dp))
         }
+        CustomerTrackingMap(order, context?.rider)
         QgCard(Modifier.fillMaxWidth()) {
             Column {
                 Text("รายการสินค้า", fontWeight = FontWeight.ExtraBold)

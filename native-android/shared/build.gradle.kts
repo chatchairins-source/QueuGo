@@ -13,6 +13,8 @@ android {
     }
 }
 dependencies {
+    api(files("../rider/libs/LongdoMapAndroidSDK_v0.1.8.aar"))
+    implementation("androidx.lifecycle:lifecycle-runtime:2.9.4")
     implementation("androidx.compose.material3:material3:1.4.0")
     implementation("androidx.compose.ui:ui:1.11.4")
     implementation("androidx.compose.foundation:foundation:1.11.4")

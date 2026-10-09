@@ -26,7 +26,6 @@ android {
 
 dependencies {
     implementation(project(":shared"))
-    implementation(files("libs/LongdoMapAndroidSDK_v0.1.8.aar"))
     implementation("com.google.android.gms:play-services-location:21.3.0")
     implementation("androidx.activity:activity-compose:1.13.0")
     implementation("androidx.compose.material3:material3:1.4.0")

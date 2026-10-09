@@ -1,1 +1,6 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android" />
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-feature android:glEsVersion="0x00020000" android:required="true" />
+    <application>
+        <meta-data android:name="longdo.map.key" android:value="347649ca13f49db0d8a599ae35f8de2b" />
+    </application>
+</manifest>

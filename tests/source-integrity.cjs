@@ -1,6 +1,6 @@
 const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict'),{parse}=require('acorn');
 const root=path.resolve(__dirname,'..');let scripts=0,refs=0;
-function scan(dir){return fs.readdirSync(dir,{withFileTypes:true}).flatMap(e=>['.git','node_modules','tests'].includes(e.name)?[]:e.isDirectory()?scan(path.join(dir,e.name)):[path.join(dir,e.name)])}
+function scan(dir){return fs.readdirSync(dir,{withFileTypes:true}).flatMap(e=>(['.git','node_modules','tests'].includes(e.name)||(path.relative(root,dir).split(path.sep)[0]==='native-android'&&e.isDirectory()&&['build','.gradle','.kotlin'].includes(e.name)))?[]:e.isDirectory()?scan(path.join(dir,e.name)):[path.join(dir,e.name)])}
 for(const file of scan(root)){
  const s=fs.readFileSync(file,'utf8');
  if(file.endsWith('.js')){try{parse(s,{ecmaVersion:'latest'});scripts++}catch(e){throw new Error('JavaScript syntax: '+path.relative(root,file)+': '+e.message,{cause:e})}}
