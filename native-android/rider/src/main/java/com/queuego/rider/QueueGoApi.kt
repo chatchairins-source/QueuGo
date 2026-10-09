@@ -170,6 +170,16 @@ class QueueGoApi {
         Unit
     }
 
+    suspend fun testNativePush(auth: QueueGoAuth) = withContext(Dispatchers.IO) {
+        requestAny(
+            "POST",
+            "/functions/v1/queuego-push",
+            auth.session.accessToken,
+            JSONObject().put("action", "test")
+        )
+        Unit
+    }
+
     suspend fun unsubscribeNativePush(
         auth: QueueGoAuth,
         deviceId: String
