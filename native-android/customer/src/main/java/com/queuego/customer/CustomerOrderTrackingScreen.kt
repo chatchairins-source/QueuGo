@@ -1,7 +1,5 @@
 package com.queuego.customer
 
-import android.content.Intent
-import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -22,7 +20,6 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -46,12 +43,13 @@ internal fun CustomerOrderTrackingScreen(
     context: CustomerOrderContext?,
     shopCategory: String?,
     busy: Boolean,
+    onCallShop: () -> Unit,
+    onCallRider: () -> Unit,
     onChat: () -> Unit,
     onSupport: () -> Unit,
     onCancel: () -> Unit,
     onBack: () -> Unit
 ) {
-    val androidContext = LocalContext.current
     val compact = LocalConfiguration.current.screenWidthDp <= 420
 
     Column(
@@ -192,15 +190,15 @@ internal fun CustomerOrderTrackingScreen(
                     Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
-                    if (order.status.lowercase() !in setOf("pending", "searching_rider")) {
-                        context?.shop?.phone?.takeIf { it.isNotBlank() }?.let { phone ->
-                            CustomerTrackingAction(
-                                label = "ติดต่อร้าน",
-                                modifier = Modifier.weight(1f)
-                            ) {
-                                openCustomerDialer(androidContext, phone)
-                            }
-                        }
+                    if (
+                        order.status.lowercase() !in setOf("pending", "searching_rider") &&
+                        context?.shop != null
+                    ) {
+                        CustomerTrackingAction(
+                            label = "ติดต่อร้าน",
+                            modifier = Modifier.weight(1f),
+                            onClick = onCallShop
+                        )
                     }
                     if (
                         order.riderId.isNullOrBlank() &&
@@ -284,12 +282,11 @@ internal fun CustomerOrderTrackingScreen(
                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     if (!closed) {
-                        rider.phone?.takeIf { it.isNotBlank() }?.let { phone ->
-                            CustomerTrackingAction(
-                                label = "โทรหา Rider",
-                                modifier = Modifier.weight(1f)
-                            ) { openCustomerDialer(androidContext, phone) }
-                        }
+                        CustomerTrackingAction(
+                            label = "โทรหา Rider",
+                            modifier = Modifier.weight(1f),
+                            onClick = onCallRider
+                        )
                     }
                     if (order.chatAvailable()) {
                         CustomerTrackingAction(
@@ -713,10 +710,3 @@ private fun customerTrackingTime(order: CustomerOrder, visibleStatus: String): S
     }.getOrDefault(raw.take(16).replace('T', ' '))
 }
 
-private fun openCustomerDialer(context: android.content.Context, rawPhone: String) {
-    val phone = rawPhone.filter { it.isDigit() || it == '+' }
-    if (phone.isBlank()) return
-    runCatching {
-        context.startActivity(Intent(Intent.ACTION_DIAL, Uri.fromParts("tel", phone, null)))
-    }
-}
