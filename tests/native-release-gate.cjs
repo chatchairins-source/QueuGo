@@ -50,14 +50,6 @@ for(const token of [
 }
 assert.match(artifactVerifier,/len\(signer_digests\) != 1/,'all three release apps must use one certified signing identity');
 
-const artifactVerifierPath='native-android/qa/verify-native-release-artifacts.py';
-assert.equal(fs.existsSync(artifactVerifierPath),true,'signed Native release artifact verifier must exist');
-const artifactVerifier=fs.readFileSync(artifactVerifierPath,'utf8');
-for(const required of ['com.queuego.customer','com.queuego.merchant','com.queuego.rider','application-debuggable','apksigner','jarsigner','apk_sha256','aab_sha256','signer_certificate_sha256']){
-  assert.ok(artifactVerifier.includes(required),`release artifact verifier must retain ${required}`);
-}
-assert.match(artifactVerifier,/len\(signer_digests\) != 1/,'all three Native release apps must use one certified signer');
-
 const gradle=fs.readFileSync('native-android/build.gradle.kts','utf8');
 assert.match(gradle,/isDebuggable = false/);
 assert.match(gradle,/signingConfig = nativeReleaseSigning/);
