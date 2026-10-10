@@ -78,6 +78,11 @@ ok(manifest?.play?.voice_audio_reassessment_required_on_architecture_change===tr
 ok(manifest?.play?.voice_audio_media_readable_by_turn_provider===false,'Recovery manifest must preserve the reviewed encrypted TURN media boundary');
 ok(manifest?.play?.cloudflare_turn_relay_metadata_review==='PENDING_FINAL_PLAY_CONSOLE_METADATA_CLASSIFICATION','Cloudflare TURN relay metadata must remain pending final Play classification');
 ok(manifest?.play?.foreground_service_console_declaration==='BLOCKED_PENDING_REAL_DEVICE_VIDEO_AND_PLAY_ENTRY','FGS Play Console gate must remain blocked until real-device evidence and Console entry exist');
+ok(manifest?.android?.turn_edge_production_deployed===true&&manifest?.android?.turn_edge_production_status==='ACTIVE'&&manifest?.android?.turn_edge_production_version===2,'Recovery manifest must retain the verified Production queuego-turn deployment');
+ok(manifest?.android?.turn_edge_verify_jwt===true&&manifest?.android?.turn_edge_source_exact_match===true,'Production queuego-turn must stay JWT-protected and source-identical to GitHub');
+ok(manifest?.android?.turn_edge_bundle_sha256==='747116e17f5c4a2feb2852851e1e346b5a8e456c5a6b521682ab1a5f02ed894c','Recovery manifest must pin the observed Production TURN Edge bundle SHA-256');
+ok(manifest?.android?.turn_runtime_secret_status==='UNVERIFIED_NO_PRODUCTION_REQUESTS_OBSERVED','TURN secret readiness must not be inferred without Production request evidence');
+ok(manifest?.android?.turn_forced_relay_two_device_gate==='OPEN','Real two-device forced TURN relay gate must remain open until physical evidence exists');
 ok(nativeVoicePeer.includes('PeerConnection.RTCConfiguration')&&nativeVoicePeer.includes('createAudioTrack("queuego-audio"'),'Data Safety E2EE exception must remain tied to the Native peer-to-peer WebRTC audio path');
 ok(nativeTurnEdge.includes('rtc.live.cloudflare.com/v1/turn/')&&nativeTurnEdge.includes('generate-ice-servers'),'Native voice relay must remain the reviewed Cloudflare TURN credential path');
 ok(!/MediaRecorder|FileOutputStream|recordToFile|transcription|Realtime SFU|\/sfu\//i.test(nativeVoicePeer+'\n'+nativeTurnEdge),'Voice Data Safety E2EE exception must fail if media recording, transcription or SFU/server media processing appears in the certified source');
