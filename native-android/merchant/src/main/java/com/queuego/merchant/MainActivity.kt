@@ -1,5 +1,7 @@
 package com.queuego.merchant
 
+import com.queuego.shared.nativeLogoutScope
+
 import android.Manifest
 import android.content.Context
 import android.location.Location
@@ -99,6 +101,9 @@ class MainActivity : ComponentActivity() {
 private fun MerchantNativeEntryGate() {
     val context = LocalContext.current
     val store = remember { SecureRoleSessionStore(context, "shop") }
+    val api = remember { NativeAuthApi() }
+    val scope = rememberCoroutineScope()
+    val logoutScope = remember(context) { nativeLogoutScope(context, scope) }
     var current by remember { mutableStateOf(store.load()) }
 
     LaunchedEffect(Unit) {
@@ -117,6 +122,7 @@ private fun MerchantNativeEntryGate() {
                 initialAuth = current!!,
                 store = store,
                 onLogout = {
+                    current?.session?.let { session -> logoutScope.launch { api.revoke(session) } }
                     store.clear()
                     current = null
                 }

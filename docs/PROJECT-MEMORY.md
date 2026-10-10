@@ -727,3 +727,11 @@ The user-supplied Rider reference screens are the acceptance reference for workf
 - Added focused recency/clock-correction test. CI compile/runtime pending; no main merge until green.
 
 - Durable print-history df0bf6b7 passed CI38026266057 including shared suspend queue tests, Merchant recency test, three builds and emulator/Longdo before inclusion. Combined tree awaits its own CI; logout-session branch remains isolated pending CI.
+## 2026-10-10 logout request lifecycle
+- POS staff logout previously only cleared local storage and did not call the deployed revoke_active_session RPC. It now captures the session before clearing and submits revocation on the Activity lifecycle scope.
+- Shared native logout hosts likewise use the Activity scope (resolving wrapped contexts), preventing removal of the authentication composable from cancelling its own revocation job. Local logout remains immediate. Existing fallback is retained for non-Activity hosts; offline/backend failures remain best effort and authenticated/physical revocation is not certified.
+- No RLS, RPC, Auth provider or cash/order state changes. CI pending before integration. Full release gate remains open.
+
+- Logout58b5aa6 independently passed CI38026724977 through all three native builds, unit/regression/asset/no-WebView gates and actual emulator/Longdo before combination. The combined tree still requires its own CI. Physical logout/session revocation and full authenticated E2E remain unverified.
+
+- Combined POS/printer/order/durable-print tree e9401e2 passed CI38026908862 in full, including real accelerated three-role viewport/Longdo matrix. After remote ancestry/HEAD checks and backup, Native advanced db863c6 to e9401e2. Logout is now added only after its independent success; final combined CI remains required before another Native update. Customer guest compiler recovery is isolated at8bd42d2 and awaits its own CI. Full Release Gate remains open; no deliverables sent.
