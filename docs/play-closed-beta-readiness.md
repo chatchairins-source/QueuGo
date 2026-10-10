@@ -87,9 +87,32 @@ Image selection/upload uses the system picker or scoped file chooser rather than
 
 The microphone foreground service is started only from visible outgoing/answer user actions before media creation. Incoming FCM does not start microphone access in the background. The service keeps an already-started call eligible through background lifecycle and stops on call/session termination. Physical two-device/background audio certification and the Play foreground-service declaration remain OPEN.
 
+#### Play Console foreground-service declaration draft
+
+Google Play requires Android 14+ apps to declare each foreground-service type in Play Console, describe the feature and user impact if it is delayed/interrupted, and provide a demo video showing how the user triggers the feature. Source readiness below does not complete that Console declaration.
+
+**Customer / Merchant / Rider — `microphone`**
+- Functionality: order-scoped in-app WebRTC voice call between authorized QueueGo order participants.
+- User initiation/perception: starts only after the user taps the visible call/answer action; an ongoing QueueGo call notification remains visible and provides a hang-up action.
+- Why immediate: deferring or interrupting the service would stop microphone capture and break the active real-time call the user explicitly started or answered.
+- Stop boundary: service ends with call/session termination; incoming FCM alone never starts microphone capture.
+- Demo video evidence required: show the visible call/answer action, Android microphone permission where applicable, active-call UI, foreground notification, backgrounding the app while the already-started call remains active, and user hang-up returning the service to stopped state.
+
+**Rider only — `specialUse`**
+- Manifest subtype: `Active QueueGo Rider navigation return control`.
+- Functionality: while an authenticated Rider account is active and the Rider leaves QueueGo for navigation/work context, `RiderReturnService` keeps a visible notification and optional Floating Q overlay that returns the Rider to the active QueueGo work screen.
+- User perception: persistent notification says to tap to return to the current job; Floating Q is shown only when overlay permission is granted.
+- Why immediate: if interrupted while the Rider is actively navigating/working, the explicit return control disappears and the Rider loses the user-visible shortcut back to the live job.
+- Stop boundary: the service is `START_NOT_STICKY`, refuses pending/suspended/inactive Rider sessions, stops itself if the cached Rider is not active, and removes its overlay on destroy.
+- Demo video evidence required: show active Rider state, user-triggered navigation/work handoff, foreground notification, optional Floating Q when permission is granted, tap-to-return behavior, then the service/overlay stopping when the Rider is no longer in the active work boundary.
+
+Play Console declaration status remains **BLOCKED** until these real-device videos and final Console entries exist.
+
 Policy sources:
-- https://support.google.com/googleplay/android-developer/answer/16558241
-- https://developer.android.com/develop/background-work/services/fgs/restrictions-bg-start
+- https://support.google.com/googleplay/android-developer/answer/13392821
+- https://support.google.com/googleplay/android-developer/answer/16559646
+- https://developer.android.com/about/versions/14/changes/fgs-types-required
+- https://developer.android.com/develop/background-work/services/fgs/service-types
 
 ### Account deletion
 
