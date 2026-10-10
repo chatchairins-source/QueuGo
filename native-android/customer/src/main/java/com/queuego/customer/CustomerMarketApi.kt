@@ -74,8 +74,13 @@ data class MarketTripChild(
 )
 
 class CustomerMarketApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
-    suspend fun loadMarkets(auth: NativeAuth): List<MarketInfo> {
-        val rows = http.array(http.rpc("market_public_markets_v1", auth.session.accessToken))
+    suspend fun loadMarkets(auth: NativeAuth): List<MarketInfo> =
+        loadMarketsWithToken(auth.session.accessToken)
+
+    suspend fun loadMarketsPublic(): List<MarketInfo> = loadMarketsWithToken(null)
+
+    private suspend fun loadMarketsWithToken(token: String?): List<MarketInfo> {
+        val rows = http.array(http.rpc("market_public_markets_v1", token))
         return buildList {
             for (i in 0 until rows.length()) {
                 val r = rows.optJSONObject(i) ?: continue
@@ -94,8 +99,13 @@ class CustomerMarketApi(private val http: QueueGoNativeApi = QueueGoNativeApi())
         }
     }
 
-    suspend fun loadShops(auth: NativeAuth): List<MarketShop> {
-        val rows = http.array(http.rpc("market_public_shops_v2", auth.session.accessToken))
+    suspend fun loadShops(auth: NativeAuth): List<MarketShop> =
+        loadShopsWithToken(auth.session.accessToken)
+
+    suspend fun loadShopsPublic(): List<MarketShop> = loadShopsWithToken(null)
+
+    private suspend fun loadShopsWithToken(token: String?): List<MarketShop> {
+        val rows = http.array(http.rpc("market_public_shops_v2", token))
         return buildList {
             for (i in 0 until rows.length()) {
                 val r = rows.optJSONObject(i) ?: continue
@@ -116,8 +126,13 @@ class CustomerMarketApi(private val http: QueueGoNativeApi = QueueGoNativeApi())
         }
     }
 
-    suspend fun loadCatalog(auth: NativeAuth): List<MarketProduct> {
-        val rows = http.array(http.rpc("market_public_catalog_v2", auth.session.accessToken))
+    suspend fun loadCatalog(auth: NativeAuth): List<MarketProduct> =
+        loadCatalogWithToken(auth.session.accessToken)
+
+    suspend fun loadCatalogPublic(): List<MarketProduct> = loadCatalogWithToken(null)
+
+    private suspend fun loadCatalogWithToken(token: String?): List<MarketProduct> {
+        val rows = http.array(http.rpc("market_public_catalog_v2", token))
         return buildList {
             for (i in 0 until rows.length()) {
                 val r = rows.optJSONObject(i) ?: continue
