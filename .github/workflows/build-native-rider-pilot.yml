@@ -170,7 +170,7 @@ jobs:
           if [ ! -r /dev/kvm ] || [ ! -w /dev/kvm ]; then
             sudo chown "$(id -u):$(id -g)" /dev/kvm
           fi
-      - name: Capture actual Rider launch on accelerated Android
+      - name: Capture native launch, map and voice service lifecycle on Android
         timeout-minutes: 12
         run: python3 native-android/qa/capture-rider-launch.py
       - name: Save real Android launch evidence
