@@ -32,6 +32,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -55,6 +56,16 @@ fun LaundryNativeScreen(
 ) {
     val api = remember { CustomerLaundryApi() }
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
+    val requestStore = remember(auth.user.id) { CustomerLaundryRequestStore(context, auth.user.id) }
+    val checkoutJournal = remember(requestStore) { requestStore.journal() }
+    val checkoutRecovery = remember(checkoutJournal) {
+        CustomerCheckoutRecovery<PendingLaundryCheckout, org.json.JSONObject>(checkoutJournal)
+    }
+    var pendingCheckoutRecord by remember(auth.user.id) {
+        mutableStateOf(runCatching { checkoutJournal.read() }.getOrNull())
+    }
+    var retryPendingSignal by remember { mutableStateOf(0) }
     var catalog by remember { mutableStateOf<LaundryCatalog?>(null) }
     var selectedHub by remember { mutableStateOf<LaundryHub?>(null) }
     var services by remember { mutableStateOf<List<LaundryService>>(emptyList()) }
@@ -64,6 +75,7 @@ fun LaundryNativeScreen(
     var loading by remember { mutableStateOf(true) }
     var busy by remember { mutableStateOf(false) }
     var message by remember { mutableStateOf<String?>(null) }
+    val checkoutPending = pendingCheckoutRecord != null
 
     LaunchedEffect(auth.user.id) {
         loading = true
@@ -73,7 +85,26 @@ fun LaundryNativeScreen(
         loading = false
     }
 
+    LaunchedEffect(auth.session.accessToken, pendingCheckoutRecord?.body?.toString(), retryPendingSignal) {
+        if (pendingCheckoutRecord == null || busy) return@LaunchedEffect
+        busy = true
+        runCatching {
+            checkoutRecovery.reconcile { api.sendPrepared(auth, it.prepared()) }
+        }.onSuccess { receipt ->
+            if (receipt != null) {
+                pendingCheckoutRecord = null
+                message = "ตรวจพบคำขอฝากซักที่ยืนยันแล้ว"
+                onDone()
+            }
+        }.onFailure {
+            message = "มีคำขอฝากซักเดิมรอตรวจสอบ · กดตรวจผลเมื่อเชื่อมต่อได้"
+        }
+        pendingCheckoutRecord = runCatching { checkoutJournal.read() }.getOrNull()
+        busy = false
+    }
+
     fun chooseHub(hub: LaundryHub) {
+        if (checkoutPending) return
         selectedHub = hub
         services = emptyList()
         selectedService = null
