@@ -27,6 +27,7 @@ PACKAGE_RE = re.compile(
     r"package: name='(?P<package>[^']+)' versionCode='(?P<code>[^']+)' versionName='(?P<name>[^']+)'"
 )
 CERT_RE = re.compile(r"^Signer #1 certificate SHA-256 digest:\s*(?P<digest>[0-9a-fA-F:]+)\s*$", re.MULTILINE)
+KEYTOOL_SHA256_RE = re.compile(r"SHA256:\s*(?P<digest>[0-9a-fA-F:]+)")
 
 
 def run(args: list[str]) -> str:
@@ -92,8 +93,9 @@ def verify() -> dict:
     aapt = android_build_tool("aapt")
     apksigner = android_build_tool("apksigner")
     jarsigner = shutil.which("jarsigner")
-    if not jarsigner:
-        raise ValueError("jarsigner is unavailable; a JDK is required")
+    keytool = shutil.which("keytool")
+    if not jarsigner or not keytool:
+        raise ValueError("jarsigner and keytool are required from a JDK")
 
     source_sha = run(["git", "rev-parse", "HEAD"]).strip()
     artifacts: dict[str, dict] = {}
@@ -126,7 +128,14 @@ def verify() -> dict:
         cert_sha = cert_match.group("digest").replace(":", "").lower()
         signer_digests.add(cert_sha)
 
-        run([jarsigner, "-verify", "-strict", str(aab)])
+        run([jarsigner, "-verify", str(aab)])
+        aab_certificate = run([keytool, "-printcert", "-jarfile", str(aab)])
+        aab_cert_match = KEYTOOL_SHA256_RE.search(aab_certificate)
+        if not aab_cert_match:
+            raise ValueError(f"AAB signer certificate digest missing for {role}")
+        aab_cert_sha = aab_cert_match.group("digest").replace(":", "").lower()
+        if aab_cert_sha != cert_sha:
+            raise ValueError(f"APK/AAB signer mismatch for {role}")
 
         artifacts[role] = {
             "application_id": package,
@@ -137,9 +146,11 @@ def verify() -> dict:
             "aab": str(aab.relative_to(ROOT)),
             "aab_sha256": sha256(aab),
             "signer_certificate_sha256": cert_sha,
+            "aab_signer_certificate_sha256": aab_cert_sha,
             "apk_non_debuggable": True,
             "apk_signature_verified": True,
             "aab_signature_verified": True,
+            "apk_aab_signer_match": True,
         }
 
     if len(signer_digests) != 1:
