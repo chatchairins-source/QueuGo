@@ -16,6 +16,8 @@ Closed Beta release remains **BLOCKED** until every hard gate below passes:
 - Backup/Restore drill: BLOCKED — GitHub backup secrets not configured
 - Supabase Auth: PASS WITH FREE-PLAN CONTROLS — 12-character upper/lower/number/symbol signup policy is shared across all roles; leaked-password protection remains a Pro-only deferred hardening item
 - Native Firebase background notification physical test: BLOCKED — credentials/device test missing
+- Native in-app voice code/backend: PASS — WebRTC audio-only + private signaling + Production RPC/RLS deployed
+- Native voice TURN/two-device physical E2E: BLOCKED — TURN secret presence and real two-device relay not certified
 - Android release signing: BLOCKED — release signing secrets missing
 
 The release workflow is intentionally configured to fail while hard gates are not certified.
@@ -48,10 +50,11 @@ Google Play's User Data policy requires appropriate security measures for person
 
 For phone/tablet apps submitted after 2026-08-31, Google Play requires new apps and updates to target Android 16 / API 36 or newer.
 
-QueueGo uses Capacitor Android 8.x, whose supported target SDK is API 36. Both the Pilot APK and Closed Beta workflows verify the generated Android project has:
+QueueGo Closed Beta now uses the real Kotlin/Compose Native Android apps under `native-android/` (Customer, Merchant, Rider), not the historical Capacitor/WebView release path. The Native Pilot and Native Closed Beta workflows verify:
 
-- compileSdkVersion = 36
-- targetSdkVersion = 36
+- compileSdk = 36
+- targetSdk = 36
+- no WebView usage in the Native source tree
 
 Builds fail if the generated project is not API 36.
 
@@ -63,25 +66,27 @@ Policy sources:
 
 QueueGo release builds are limited to the permissions required by the active feature set:
 
-Expected:
+Expected for the active Native feature set:
 - INTERNET
-- ACCESS_NETWORK_STATE
+- ACCESS_NETWORK_STATE where required
 - ACCESS_COARSE_LOCATION
 - ACCESS_FINE_LOCATION
-- VIBRATE
-- POST_NOTIFICATIONS (native push plugin)
+- POST_NOTIFICATIONS
+- RECORD_AUDIO — only for user-initiated QueueGo in-app voice calls
+- Rider only: SYSTEM_ALERT_WINDOW + foreground-service permissions for the approved floating return-to-QueueGo navigation control
 
-Explicitly forbidden by the release workflow:
+Explicitly forbidden for the Closed Beta Native apps unless a future reviewed feature requires them:
 - CAMERA
-- RECORD_AUDIO
 - READ_EXTERNAL_STORAGE
 - WRITE_EXTERNAL_STORAGE
 - READ_MEDIA_IMAGES
 - ACCESS_BACKGROUND_LOCATION
+- READ_CALL_LOG / WRITE_CALL_LOG
+- READ_PHONE_STATE for voice calling
 
-Image selection uses the Android system picker / WebView file chooser instead of broad media-library permission.
+QueueGo does not request background location. Location is used only for customer delivery location, shop coordinates, Rider foreground work/navigation, service-area checks and distance calculations.
 
-QueueGo does not request background location. Location is used only for foreground service functionality such as customer delivery location, shop coordinates, Rider location while using the work flow, service-area checks, distance calculations and navigation.
+`RECORD_AUDIO` is requested at runtime only when the user starts or answers a QueueGo voice call. QueueGo does not use the microphone for hidden/background capture, does not record phone calls, and does not persist audio files. The call media is transmitted in real time by WebRTC, with a short-lived TURN relay credential when direct peer connectivity is not possible.
 
 Policy source:
 - https://support.google.com/googleplay/android-developer/answer/16558241
@@ -176,6 +181,7 @@ Policy source:
 | Photos | Chat images, delivery/support evidence | App functionality, safety/support | Optional |
 | Other user-generated content | Reviews, notes, support descriptions | App functionality, safety/support | Optional |
 | Device or other IDs | Push token, session/device identifiers | Notifications, security/fraud prevention | Optional/functional |
+| Voice or sound recordings | Real-time microphone audio during a user-initiated QueueGo call; not recorded or persisted | App functionality / order coordination | Optional; only while using voice call |
 
 ### Merchant app — expected collected data
 
@@ -192,6 +198,7 @@ Policy source:
 | Other in-app messages | Merchant ↔ Admin support | App functionality/support | Optional |
 | Photos | Shop media, evidence, GP slip where used | App functionality/accounting/support | Optional |
 | Device or other IDs | Push/session identifiers | Notifications, security | Optional/functional |
+| Voice or sound recordings | Real-time microphone audio during a user-initiated QueueGo call; not recorded or persisted | App functionality / order coordination | Optional; only while using voice call |
 
 ### Rider app — expected collected data
 
@@ -207,6 +214,7 @@ Policy source:
 | Other in-app messages | Customer ↔ Rider order chat | App functionality, safety | Optional |
 | Photos | Pickup/delivery proof and chat/evidence images | App functionality, safety | Required for proof steps / optional for chat |
 | Device or other IDs | Push token, session/device identifiers | Notifications, security | Optional/functional |
+| Voice or sound recordings | Real-time microphone audio during a user-initiated QueueGo call; not recorded or persisted | App functionality / delivery coordination | Optional; only while using voice call |
 
 ### Provider sharing classification — conservative submission decision (2026-10-07)
 
@@ -249,8 +257,8 @@ Current code/release controls support these intended Play answers, subject to fi
 
 - Data encrypted in transit: **Yes** — release client endpoints use HTTPS and cleartext Android traffic is blocked.
 - Users can request deletion: **Yes** — in-app and external deletion path exist.
-- Data collection: **Yes** — QueueGo necessarily collects account/order/location/service data.
-- Data sharing: **Yes (conservative)** — declare location sharing with Longdo for App functionality. Supabase/Firebase processing may use the service-provider exception where the current agreements apply.
+- Data collection: **Yes** — QueueGo necessarily collects account/order/location/service data. The Data Safety form must also account for real-time microphone audio transmitted off-device during optional in-app calls; the media is not recorded or persisted by QueueGo.
+- Data sharing: **Yes (conservative)** — declare location sharing with Longdo for App functionality. Supabase/Firebase processing may use the service-provider exception where the current agreements apply. Voice media is user-initiated WebRTC traffic and may traverse the configured TURN provider as a network relay.
 
 ## Contains Ads declaration
 
@@ -294,8 +302,9 @@ Before submitting Closed Beta, keep evidence/screenshots of:
 1. Configure backup secrets and run the encrypted Backup/Restore drill successfully.
 2. Configure Firebase Android + Edge credentials.
 3. Configure Android release signing secrets.
-4. Build physical-test APKs and certify background notifications on real Android devices.
-5. Enter the finalized Data Safety answers in Play Console using the conservative Longdo location-sharing classification above.
+4. Configure/verify TURN Edge secrets and certify a real two-device QueueGo audio call over a relay-capable network path.
+5. Build Native physical-test APKs and certify background notifications on real Android devices.
+6. Enter the finalized Data Safety answers in Play Console using the conservative Longdo location-sharing classification above and the optional real-time microphone-audio disclosure.
 6. Enter Contains Ads declarations: Customer **Yes**, Merchant **No**, Rider **No**.
 7. Enter Target Audience as **18+ only** for all three apps and enable **Restrict Minor Access** for Closed Beta.
 8. Confirm Google Play developer account type/date to determine whether the 12-testers/14-days requirement applies.
