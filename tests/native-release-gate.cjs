@@ -39,6 +39,8 @@ for(const [role,label] of roles){
   const appGradle=fs.readFileSync(`native-android/${role}/build.gradle.kts`,'utf8');
   assert.match(appGradle,new RegExp(`namespace\\s*=\\s*"com\\.queuego\\.${role}"`));
   assert.match(appGradle,new RegExp(`applicationId\\s*=\\s*"com\\.queuego\\.${role}"`));
+  assert.ok(appGradle.includes(`providers.environmentVariable("QG_${role.toUpperCase()}_VERSION_CODE")`),`${role} release versionCode must come from the certified environment`);
+  assert.ok(appGradle.includes('providers.environmentVariable("QG_NATIVE_VERSION_NAME")'),`${role} release versionName must come from the certified environment`);
   const manifest=fs.readFileSync(`native-android/${role}/src/main/AndroidManifest.xml`,'utf8');
   assert.match(manifest,new RegExp(`android:label="${label}"`));
   assert.match(manifest,/android:icon="@mipmap\/ic_queuego_launcher"/);
