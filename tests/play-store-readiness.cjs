@@ -23,7 +23,9 @@ ok(releaseSecrets.includes('base64 --decode > /tmp/google-services.json'),'Relea
 ok(releaseSecrets.includes("mobilesdk_app_id"),'Firebase preflight must reject incomplete Android clients without mobilesdk_app_id');
 ok(releaseSecrets.includes('len(matches) != 1'),'Firebase preflight must require exactly one client per QueueGo package');
 ok(releaseSecrets.includes("project_id"),'Firebase preflight must require explicit Firebase project identity');
-ok(releaseSecrets.includes('keytool -list')&&releaseSecrets.includes('keytool -importkeystore'),'Release preflight must validate keystore, alias and key password');
+ok(/keytool[\s\S]{0,180}-list -v/.test(releaseSecrets)&&releaseSecrets.includes('keytool -importkeystore'),'Release preflight must validate keystore, alias and key password');
+ok(releaseSecrets.includes('-storepass:env QG_ANDROID_STORE_PASSWORD')&&releaseSecrets.includes('-srckeypass:env QG_ANDROID_KEY_PASSWORD'),'Signing passwords must stay out of keytool argv');
+ok(releaseSecrets.includes('Android signing certificate SHA-256: $fingerprint'),'Release preflight must expose only the signing certificate fingerprint for identity pinning');
 ok(releaseSecrets.includes('Clean temporary credentials'),'Release preflight must remove decoded credentials from the runner');
 ok(/dedicated Play-review accounts/i.test(access),'Reviewer access must use dedicated reusable accounts');
 ok(/Do not use an actual customer/i.test(access),'Reviewer access must forbid real-user credentials');
