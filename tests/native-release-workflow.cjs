@@ -10,6 +10,7 @@ ok(workflow.includes('refs/heads/queuego-native-android-v1'),'release must be re
 ok(workflow.includes('actions: read'),'release must have Actions read permission for certification evidence');
 ok(workflow.includes('certification_run_id'),'release must require an external certification run');
 ok(workflow.includes('QG_NATIVE_CERTIFICATION_RUN_ID'),'release artifact provenance must retain the certification run id');
+ok(workflow.includes('QG_CERTIFIED_NATIVE_PILOT_RUN_ID=$pilot_run_id'),'final release must export the independently revalidated Native Pilot run id to the canonical gate verifier');
 ok(workflow.includes('queuego-native-release-certification'),'release must download the fixed certification artifact');
 ok(workflow.includes('native-release-evidence.json'),'release must require the certification report');
 ok(workflow.includes('run_head')&&workflow.includes('GITHUB_SHA'),'certification evidence must match exact release HEAD');
