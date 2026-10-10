@@ -7,6 +7,7 @@ import android.security.keystore.KeyProperties
 import android.util.Base64
 import org.json.JSONObject
 import java.security.KeyStore
+import java.util.UUID
 import javax.crypto.Cipher
 import javax.crypto.KeyGenerator
 import javax.crypto.SecretKey
@@ -19,6 +20,17 @@ class SecureRoleSessionStore(private val context: Context, private val roleKey: 
     fun deviceId(): String =
         Settings.Secure.getString(context.contentResolver, Settings.Secure.ANDROID_ID)
             ?.takeIf { it.isNotBlank() } ?: "android-device"
+
+    @Synchronized
+    fun pushDeviceId(): String {
+        val existing = prefs.getString("push_device_id", null).orEmpty()
+        if (existing.matches(Regex("^[0-9a-fA-F-]{36}$"))) return existing
+        val created = UUID.randomUUID().toString()
+        check(prefs.edit().putString("push_device_id", created).commit()) {
+            "บันทึกรหัสอุปกรณ์แจ้งเตือนไม่สำเร็จ"
+        }
+        return created
+    }
 
     fun save(auth: NativeAuth) {
         val json = JSONObject()
