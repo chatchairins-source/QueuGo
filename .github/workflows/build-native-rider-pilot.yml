@@ -12,6 +12,7 @@ on:
       - work-native-voice-ui-integration-v2-20261010
       - work-native-customer-push-voice-v1-20261010
       - work-native-voice-release-gate-v1-20261010
+      - work-native-merchant-voice-incoming-v1-20261010
       - work-native-customer-logout-integration-20261010
       - work-native-customer-location-integration-v2-20261010
       - work-native-printer-ticket-parity-20261010
@@ -93,6 +94,11 @@ jobs:
               print('Native Customer Firebase config: valid')
           else:
               print('::warning::Firebase config has no com.queuego.customer Android client; Customer background-push physical certification remains open')
+          if 'com.queuego.merchant' in packages:
+              shutil.copyfile(p,'native-android/merchant/google-services.json')
+              print('Native Merchant Firebase config: valid')
+          else:
+              print('::warning::Firebase config has no com.queuego.merchant Android client; Merchant background-push physical certification remains open')
           PY
           rm -f "$tmp_json"
       - name: Install regression dependencies
