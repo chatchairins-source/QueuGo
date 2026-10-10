@@ -23,6 +23,9 @@ for(const role of ['CUSTOMER','MERCHANT','RIDER']){
 }
 assert.doesNotMatch(verifier,/for role, previous_code in/,'release verifier must not trust hard-coded prior Play versionCodes');
 assert.match(verifier,/"backup_restore"/,'Native release must require certified Backup/Restore evidence');
+for(const gate of ['service_area','ugc_chat_safety','security_platform_auth']){
+  assert.match(verifier,new RegExp(`"${gate}"`),`Native release must require explicit ${gate} evidence`);
+}
 for(const legacy of ['.github/workflows/build-queuego-apks.yml','.github/workflows/build-queuego-pilot-apks.yml']){
   assert.equal(fs.existsSync(legacy),false,`legacy Capacitor Android build workflow must stay retired: ${legacy}`);
 }
