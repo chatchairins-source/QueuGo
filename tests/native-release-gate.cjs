@@ -66,19 +66,21 @@ try{
   const physicalEnvelope={
     gate:'physical_push_customer',source_sha:head,status:'PASS',observed_at:observedAt,
     operator_certified:true,
+    operator_id_hash:'9'.repeat(64),
+    native_pilot_run_id:123,
     checks:{
       foreground:true,background:true,killed:true,refresh_login:true,
       logout_revocation:true,stale_token_exclusion:true,
       order_notification:true,call_notification:true
     },
-    artifacts:[{file:artifact,sha256:artifactSha,kind:'log'}]
+    artifacts:[{file:artifact,sha256:artifactSha,kind:'screen_recording'}]
   };
   fs.writeFileSync(path.join(evidenceDir,'physical_push_customer.json'),JSON.stringify(physicalEnvelope));
   const physicalSha=crypto.createHash('sha256').update(fs.readFileSync(path.join(evidenceDir,'physical_push_customer.json'))).digest('hex');
   gates.physical_push_customer={status:'PASS',evidence_file:'physical_push_customer.json',sha256:physicalSha};
   const physicalReport=path.join(evidenceDir,'physical-report.json');
   fs.writeFileSync(physicalReport,JSON.stringify({source_sha:head,p0:0,p1:0,gates}));
-  const physicalResult=spawnSync('python3',[script],{env:{...env,QG_NATIVE_RELEASE_EVIDENCE:physicalReport},encoding:'utf8'});
+  const physicalResult=spawnSync('python3',[script],{env:{...env,QG_NATIVE_RELEASE_EVIDENCE:physicalReport,QG_CERTIFIED_NATIVE_PILOT_RUN_ID:'123'},encoding:'utf8'});
   assert.equal(physicalResult.status,1,'physical gate without device identity must fail');
   assert.match(physicalResult.stderr,/physical gate evidence must identify at least one device: physical_push_customer/);
 
@@ -88,23 +90,29 @@ try{
     model:'Test Android Device',
     role:'rider',
     physical:true,
-    emulator:false
+    emulator:false,
+    package_name:'com.queuego.rider',
+    app_source_sha:head,
+    build_type:'debug',
+    app_version_name:'1.0.0',
+    app_version_code:1
   }];
   fs.writeFileSync(path.join(evidenceDir,'physical_push_customer.json'),JSON.stringify(physicalEnvelope));
   const wrongRoleSha=crypto.createHash('sha256').update(fs.readFileSync(path.join(evidenceDir,'physical_push_customer.json'))).digest('hex');
   gates.physical_push_customer={status:'PASS',evidence_file:'physical_push_customer.json',sha256:wrongRoleSha};
   fs.writeFileSync(physicalReport,JSON.stringify({source_sha:head,p0:0,p1:0,gates}));
-  const wrongRoleResult=spawnSync('python3',[script],{env:{...env,QG_NATIVE_RELEASE_EVIDENCE:physicalReport},encoding:'utf8'});
+  const wrongRoleResult=spawnSync('python3',[script],{env:{...env,QG_NATIVE_RELEASE_EVIDENCE:physicalReport,QG_CERTIFIED_NATIVE_PILOT_RUN_ID:'123'},encoding:'utf8'});
   assert.equal(wrongRoleResult.status,1,'Customer push evidence with only a Rider device must fail');
   assert.match(wrongRoleResult.stderr,/physical gate evidence is missing required roles \(customer\): physical_push_customer/);
 
   physicalEnvelope.devices[0].role='customer';
+  physicalEnvelope.devices[0].package_name='com.queuego.customer';
   delete physicalEnvelope.checks.call_notification;
   fs.writeFileSync(path.join(evidenceDir,'physical_push_customer.json'),JSON.stringify(physicalEnvelope));
   const missingSemanticSha=crypto.createHash('sha256').update(fs.readFileSync(path.join(evidenceDir,'physical_push_customer.json'))).digest('hex');
   gates.physical_push_customer={status:'PASS',evidence_file:'physical_push_customer.json',sha256:missingSemanticSha};
   fs.writeFileSync(physicalReport,JSON.stringify({source_sha:head,p0:0,p1:0,gates}));
-  const missingSemanticResult=spawnSync('python3',[script],{env:{...env,QG_NATIVE_RELEASE_EVIDENCE:physicalReport},encoding:'utf8'});
+  const missingSemanticResult=spawnSync('python3',[script],{env:{...env,QG_NATIVE_RELEASE_EVIDENCE:physicalReport,QG_CERTIFIED_NATIVE_PILOT_RUN_ID:'123'},encoding:'utf8'});
   assert.equal(missingSemanticResult.status,1,'Customer push evidence must include every required observed check');
   assert.match(missingSemanticResult.stderr,/physical gate required check missing: physical_push_customer\.call_notification/);
 
@@ -114,9 +122,50 @@ try{
   const emulatorSha=crypto.createHash('sha256').update(fs.readFileSync(path.join(evidenceDir,'physical_push_customer.json'))).digest('hex');
   gates.physical_push_customer={status:'PASS',evidence_file:'physical_push_customer.json',sha256:emulatorSha};
   fs.writeFileSync(physicalReport,JSON.stringify({source_sha:head,p0:0,p1:0,gates}));
-  const emulatorResult=spawnSync('python3',[script],{env:{...env,QG_NATIVE_RELEASE_EVIDENCE:physicalReport},encoding:'utf8'});
+  const emulatorResult=spawnSync('python3',[script],{env:{...env,QG_NATIVE_RELEASE_EVIDENCE:physicalReport,QG_CERTIFIED_NATIVE_PILOT_RUN_ID:'123'},encoding:'utf8'});
   assert.equal(emulatorResult.status,1,'Emulator evidence must never certify a physical gate');
   assert.match(emulatorResult.stderr,/physical gate device must be a real non-emulator device: physical_push_customer/);
+
+  physicalEnvelope.devices[0].emulator=false;
+  physicalEnvelope.devices[0].physical=true;
+  physicalEnvelope.native_pilot_run_id=999;
+  fs.writeFileSync(path.join(evidenceDir,'physical_push_customer.json'),JSON.stringify(physicalEnvelope));
+  let bindSha=crypto.createHash('sha256').update(fs.readFileSync(path.join(evidenceDir,'physical_push_customer.json'))).digest('hex');
+  gates.physical_push_customer={status:'PASS',evidence_file:'physical_push_customer.json',sha256:bindSha};
+  fs.writeFileSync(physicalReport,JSON.stringify({source_sha:head,p0:0,p1:0,gates}));
+  const wrongPilot=spawnSync('python3',[script],{env:{...env,QG_NATIVE_RELEASE_EVIDENCE:physicalReport,QG_CERTIFIED_NATIVE_PILOT_RUN_ID:'123'},encoding:'utf8'});
+  assert.equal(wrongPilot.status,1,'Physical evidence from another Native Pilot run must fail');
+  assert.match(wrongPilot.stderr,/physical gate Native Pilot run mismatch: physical_push_customer/);
+
+  physicalEnvelope.native_pilot_run_id=123;
+  physicalEnvelope.devices[0].package_name='com.queuego.rider';
+  fs.writeFileSync(path.join(evidenceDir,'physical_push_customer.json'),JSON.stringify(physicalEnvelope));
+  bindSha=crypto.createHash('sha256').update(fs.readFileSync(path.join(evidenceDir,'physical_push_customer.json'))).digest('hex');
+  gates.physical_push_customer={status:'PASS',evidence_file:'physical_push_customer.json',sha256:bindSha};
+  fs.writeFileSync(physicalReport,JSON.stringify({source_sha:head,p0:0,p1:0,gates}));
+  const wrongPackage=spawnSync('python3',[script],{env:{...env,QG_NATIVE_RELEASE_EVIDENCE:physicalReport,QG_CERTIFIED_NATIVE_PILOT_RUN_ID:'123'},encoding:'utf8'});
+  assert.equal(wrongPackage.status,1,'Physical evidence with role/package mismatch must fail');
+  assert.match(wrongPackage.stderr,/physical gate device package_name does not match role: physical_push_customer/);
+
+  physicalEnvelope.devices[0].package_name='com.queuego.customer';
+  physicalEnvelope.devices[0].app_source_sha='0'.repeat(40);
+  fs.writeFileSync(path.join(evidenceDir,'physical_push_customer.json'),JSON.stringify(physicalEnvelope));
+  bindSha=crypto.createHash('sha256').update(fs.readFileSync(path.join(evidenceDir,'physical_push_customer.json'))).digest('hex');
+  gates.physical_push_customer={status:'PASS',evidence_file:'physical_push_customer.json',sha256:bindSha};
+  fs.writeFileSync(physicalReport,JSON.stringify({source_sha:head,p0:0,p1:0,gates}));
+  const wrongSource=spawnSync('python3',[script],{env:{...env,QG_NATIVE_RELEASE_EVIDENCE:physicalReport,QG_CERTIFIED_NATIVE_PILOT_RUN_ID:'123'},encoding:'utf8'});
+  assert.equal(wrongSource.status,1,'Physical evidence from another source SHA must fail');
+  assert.match(wrongSource.stderr,/physical gate device app_source_sha mismatch: physical_push_customer/);
+
+  physicalEnvelope.devices[0].app_source_sha=head;
+  physicalEnvelope.artifacts=[{file:artifact,sha256:artifactSha,kind:'log'}];
+  fs.writeFileSync(path.join(evidenceDir,'physical_push_customer.json'),JSON.stringify(physicalEnvelope));
+  bindSha=crypto.createHash('sha256').update(fs.readFileSync(path.join(evidenceDir,'physical_push_customer.json'))).digest('hex');
+  gates.physical_push_customer={status:'PASS',evidence_file:'physical_push_customer.json',sha256:bindSha};
+  fs.writeFileSync(physicalReport,JSON.stringify({source_sha:head,p0:0,p1:0,gates}));
+  const wrongKind=spawnSync('python3',[script],{env:{...env,QG_NATIVE_RELEASE_EVIDENCE:physicalReport,QG_CERTIFIED_NATIVE_PILOT_RUN_ID:'123'},encoding:'utf8'});
+  assert.equal(wrongKind.status,1,'Physical evidence without a gate-appropriate artifact kind must fail');
+  assert.match(wrongKind.stderr,/physical gate requires an appropriate artifact kind/);
 }finally{fs.rmSync(evidenceDir,{recursive:true,force:true});}
 
 const bindingDir=fs.mkdtempSync(path.join(os.tmpdir(),'qg-release-binding-'));
@@ -180,12 +229,20 @@ try{
   };
   const gates={};
   for(const gate of gateNames){
+    const physicalKind =
+      gate==='turn_relay' ? 'network_trace' :
+      ['customer_blueprint','merchant_blueprint','rider_blueprint'].includes(gate) ? 'screenshot' :
+      physical.has(gate) ? 'screen_recording' : 'log';
     const envelope={
       gate,source_sha:head,status:'PASS',observed_at:observedAt,
       checks:semanticChecks[gate]||{observed:true},
-      artifacts:[{file:artifact,sha256:artifactSha,kind:'log'}]
+      artifacts:[{file:artifact,sha256:artifactSha,kind:physicalKind}]
     };
-    if(semanticChecks[gate]) envelope.operator_certified=true;
+    if(semanticChecks[gate]){
+      envelope.operator_certified=true;
+      envelope.operator_id_hash='9'.repeat(64);
+      envelope.native_pilot_run_id=123;
+    }
     if(['customer_blueprint','merchant_blueprint','rider_blueprint'].includes(gate)) envelope.blocking_differences=0;
     if(gate==='full_native_ci') envelope.github_run_id=456;
     if(gate==='backup_restore') envelope.github_run_id=456;
@@ -199,9 +256,9 @@ try{
     if(gate==='release_signing') envelope.signing_certificate_sha256='b'.repeat(64);
     if(physical.has(gate)){
       envelope.devices=[
-        {device_id_hash:'1'.repeat(64),android_api:36,model:'Customer Device',role:'customer',physical:true,emulator:false},
-        {device_id_hash:'2'.repeat(64),android_api:36,model:'Merchant Device',role:'merchant',physical:true,emulator:false},
-        {device_id_hash:'3'.repeat(64),android_api:36,model:'Rider Device',role:'rider',physical:true,emulator:false}
+        {device_id_hash:'1'.repeat(64),android_api:36,model:'Customer Device',role:'customer',physical:true,emulator:false,package_name:'com.queuego.customer',app_source_sha:head,build_type:'debug',app_version_name:'1.0.0',app_version_code:1},
+        {device_id_hash:'2'.repeat(64),android_api:36,model:'Merchant Device',role:'merchant',physical:true,emulator:false,package_name:'com.queuego.merchant',app_source_sha:head,build_type:'debug',app_version_name:'1.0.0',app_version_code:1},
+        {device_id_hash:'3'.repeat(64),android_api:36,model:'Rider Device',role:'rider',physical:true,emulator:false,package_name:'com.queuego.rider',app_source_sha:head,build_type:'debug',app_version_name:'1.0.0',app_version_code:1}
       ];
     }
     if(gate==='physical_voice_two_devices_two_networks'||gate==='turn_relay'){
@@ -265,6 +322,14 @@ assert.match(verifier,/gate evidence observed_at must be UTC ISO-8601 seconds/,'
 assert.match(verifier,/gate evidence checks must be non-empty and all true/,'gate evidence must record explicit successful checks');
 assert.match(verifier,/gate evidence must reference at least one artifact/,'gate evidence must reference hashed artifacts');
 assert.match(verifier,/physical gate evidence must identify at least one device/,'physical evidence must identify a device');
+assert.match(verifier,/physical gate operator_id_hash is invalid/,'physical evidence must identify the certifying operator without storing raw identity');
+assert.match(verifier,/physical gate Native Pilot run mismatch/,'physical evidence must bind to the attested Native Pilot run');
+assert.match(verifier,/PHYSICAL_GATE_REQUIRED_ARTIFACT_KINDS/,'physical evidence must define gate-appropriate artifact kinds');
+assert.match(verifier,/physical gate requires an appropriate artifact kind/,'physical evidence must reject irrelevant artifact kinds');
+assert.match(verifier,/physical gate device package_name does not match role/,'physical evidence must bind role to the correct package');
+assert.match(verifier,/physical gate device app_source_sha mismatch/,'physical evidence must bind the installed app to the exact source HEAD');
+assert.match(verifier,/physical gate device build_type is invalid/,'physical evidence must record Native build type');
+assert.match(verifier,/physical gate device app_version_code is invalid/,'physical evidence must record a valid app versionCode');
 assert.match(verifier,/PHYSICAL_GATE_REQUIRED_ROLES/,'physical evidence must bind gates to the expected app roles');
 assert.match(verifier,/physical gate device role is invalid/,'physical evidence must use Customer Merchant or Rider role identity');
 assert.match(verifier,/physical gate evidence is missing required roles/,'physical evidence must fail when a required app role is absent');
