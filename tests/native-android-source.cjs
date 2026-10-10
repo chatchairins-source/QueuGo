@@ -164,6 +164,10 @@ ok(source.includes('QgBottomNav')&&source.includes('.height(58.dp)'),'native bot
 
 ok(source.includes('qg_merchant_action_once'),'Merchant native order actions must stay idempotent');
 ok(source.includes('pos_my_shop')&&source.includes('pos_create_bill_once')&&source.includes('pos_edit_bill')&&source.includes('pos_bill_action')&&source.includes('pos_take_payment'),'Merchant native POS must reuse production POS RPCs');
+ok(source.includes('pos_cancel_bill')&&source.includes('pos_apply_discount')&&source.includes('pos_refund_bill')&&source.includes('pos_change_price'),'Merchant native POS must preserve cancel discount refund and price RPCs');
+ok(source.includes('pos_create_role_invite')&&source.includes('pos_set_staff_role')&&source.includes('pos_staff?select=user_id,shop_id,display_name,staff_role,permissions,active'),'Merchant native POS must preserve Production staff roles and invite management');
+ok(source.includes('pos_save_table')&&source.includes('pos_delete_table')&&source.includes('qg_table_rotate_qr'),'Merchant native POS must preserve table and QR management');
+ok(source.includes('pos_owner_dashboard')&&source.includes('pos_delivery_kitchen_action')&&source.includes('pos_enable_delivery'),'Merchant native POS must preserve reports and Delivery integration');
 
 ok(source.includes('get_my_shop_orders'),'Merchant native Orders must use production order source');
 ok(source.includes('ToneGenerator')&&source.includes('STREAM_NOTIFICATION'),'Merchant native must alert on new orders');
