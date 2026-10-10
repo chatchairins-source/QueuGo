@@ -147,3 +147,37 @@ end
 $function$
 ;
 
+
+-- Captured active-session predicate used by the new wrapper.
+CREATE OR REPLACE FUNCTION public.check_active_session(p_session_id uuid)
+ RETURNS boolean
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+DECLARE
+    uid uuid;
+    current_session uuid;
+BEGIN
+
+    uid := auth.uid();
+
+    IF uid IS NULL THEN
+        RETURN false;
+    END IF;
+
+    SELECT session_id
+    INTO current_session
+    FROM public.user_active_sessions
+    WHERE user_id = uid
+      AND revoked_at IS NULL;
+
+    IF current_session IS NULL THEN
+        RETURN false;
+    END IF;
+
+    RETURN current_session = p_session_id;
+
+END;
+$function$
+;

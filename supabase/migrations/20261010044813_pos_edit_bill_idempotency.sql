@@ -1,5 +1,15 @@
 -- Add replay protection around the existing Production POS edit function.
 -- No existing table, policy, order state, payment flow, or RPC is replaced.
+do $$ declare v_table regclass; v_function regprocedure; begin
+  v_table := to_regclass('public.pos_edit_request_keys');
+  v_function := to_regprocedure('public.pos_edit_bill_once(uuid,uuid,text,uuid,uuid,integer,text,uuid)');
+  if v_table is not null and coalesce(obj_description(v_table,'pg_class'),'') <> 'queuego:pos-edit-once-v1' then
+    raise exception 'existing POS edit ledger requires review';
+  end if;
+  if v_function is not null and coalesce(obj_description(v_function,'pg_proc'),'') <> 'queuego:pos-edit-once-v1' then
+    raise exception 'existing POS edit RPC requires review';
+  end if;
+end $$;
 create table if not exists public.pos_edit_request_keys (
   request_id uuid primary key,
   shop_id uuid not null references public.shop_profiles(id) on delete cascade,
@@ -8,6 +18,7 @@ create table if not exists public.pos_edit_request_keys (
   payload jsonb not null check (jsonb_typeof(payload) = 'object'),
   created_at timestamptz not null default now()
 );
+comment on table public.pos_edit_request_keys is 'queuego:pos-edit-once-v1';
 create index if not exists pos_edit_request_keys_shop_created_idx
   on public.pos_edit_request_keys(shop_id, created_at);
 create index if not exists pos_edit_request_keys_order_fk_idx
@@ -24,7 +35,7 @@ end $$;
 
 create or replace function public.pos_edit_bill_once(
   p_request uuid, p_order uuid, p_type text, p_table uuid,
-  p_product uuid, p_quantity integer, p_note text default ''
+  p_product uuid, p_quantity integer, p_note text default '', p_session_id uuid default null
 ) returns uuid language plpgsql security definer set search_path = public, pg_temp as $$
 declare
   v_shop uuid;
@@ -33,6 +44,9 @@ declare
   v_payload jsonb;
   v_order uuid;
 begin
+  if p_session_id is null or not coalesce(public.check_active_session(p_session_id),false) then
+    raise exception 'active POS session required';
+  end if;
   v_shop := public.pos_my_shop();
   if v_actor is null or v_shop is null or not coalesce(public.pos_allowed('receive_order'),false) then
     raise exception 'POS access denied';
@@ -66,5 +80,6 @@ begin
     values(p_request,v_shop,v_actor,v_order,v_payload);
   return v_order;
 end $$;
-revoke all on function public.pos_edit_bill_once(uuid,uuid,text,uuid,uuid,integer,text) from public,anon;
-grant execute on function public.pos_edit_bill_once(uuid,uuid,text,uuid,uuid,integer,text) to authenticated;
+comment on function public.pos_edit_bill_once(uuid,uuid,text,uuid,uuid,integer,text,uuid) is 'queuego:pos-edit-once-v1';
+revoke all on function public.pos_edit_bill_once(uuid,uuid,text,uuid,uuid,integer,text,uuid) from public,anon;
+grant execute on function public.pos_edit_bill_once(uuid,uuid,text,uuid,uuid,integer,text,uuid) to authenticated;
