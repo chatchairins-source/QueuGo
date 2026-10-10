@@ -65,6 +65,7 @@ import com.google.zxing.BarcodeFormat
 import com.google.zxing.MultiFormatWriter
 import com.queuego.shared.NativeAuth
 import com.queuego.shared.NativeOrderRealtime
+import com.queuego.shared.NativePrintQueue
 import com.queuego.shared.NativeRealtimeSubscription
 import com.queuego.shared.QgCard
 import com.queuego.shared.QgGreen
@@ -73,6 +74,7 @@ import com.queuego.shared.QgRed
 import com.queuego.shared.QgRemoteImage
 import com.queuego.shared.QgSectionTitle
 import com.queuego.shared.QgStatusPill
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
@@ -105,7 +107,7 @@ fun MerchantPosScreen(
     val api = remember { MerchantPosApi() }
     val realtime = remember { NativeOrderRealtime() }
     val refreshMutex = remember { Mutex() }
-    val printerMutex = remember { Mutex() }
+    val printQueue = remember { NativePrintQueue() }
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
@@ -163,8 +165,9 @@ fun MerchantPosScreen(
     var inviteSecret by rememberSaveable { mutableStateOf("") }
 
     var printerSettings by remember { mutableStateOf(printerStore.load()) }
-    var printerBaseline by remember { mutableStateOf<Map<String, String>?>(null) }
-    var printBusy by remember { mutableStateOf(false) }
+    var printerBaseline by remember { mutableStateOf<Map<String, Pair<String?, String?>>?>(null) }
+    var pendingPrintCount by remember { mutableStateOf(0) }
+    val printBusy = pendingPrintCount > 0
 
     fun can(permission: String): Boolean {
         val s = snapshot ?: return false
@@ -176,28 +179,54 @@ fun MerchantPosScreen(
         type: String,
         text: String,
         printedKey: String? = null,
+        billId: String? = null,
+        force: Boolean = false,
         successMessage: String
     ) {
-        val snap = snapshot
-        if (snap == null || printBusy) return
+        val snap = snapshot ?: return
+        // Manual double taps are rejected synchronously; automatic jobs queue instead of disappearing.
+        if ((force || type == "test") && printBusy) return
+        pendingPrintCount++
         scope.launch {
-            printerMutex.withLock {
-                printBusy = true
-                runCatching {
-                    printBridge.print(
-                        settings = settings,
-                        type = type,
-                        text = text,
-                        shopId = snap.shopId,
-                        shopName = snap.shopName
-                    )
-                }.onSuccess {
-                    if (!printedKey.isNullOrBlank()) printerStore.markPrinted(printedKey)
-                    message = successMessage
-                }.onFailure {
-                    message = it.message ?: "พิมพ์ไม่สำเร็จ"
+            try {
+                val sent = printQueue.submit(
+                    key = printedKey,
+                    force = force,
+                    wasPrinted = printerStore::wasPrinted,
+                    markPrinted = printerStore::markPrinted
+                ) {
+                    // Refresh through the authenticated Production API before sending shop data externally.
+                    val fresh = api.snapshot(auth)
+                    require(fresh.shopId == snap.shopId) { "สิทธิ์ร้านเปลี่ยนแล้ว กรุณาโหลด POS ใหม่" }
+                    val ticket = if (billId == null) text else {
+                        val bill = fresh.bills.firstOrNull { it.id == billId }
+                            ?: error("ไม่พบบิล กรุณาโหลด POS ใหม่")
+                        val currentKey = if (type == "kitchen") merchantKitchenPrintKey(fresh, bill)
+                            else merchantReceiptPrintKey(fresh, bill)
+                        require(currentKey != null) { "สถานะบิลเปลี่ยนแล้ว กรุณาโหลด POS ใหม่ก่อนพิมพ์" }
+                        if (type == "kitchen") {
+                            val prefix = "kitchen:" + fresh.shopId + ":" + bill.id + ":"
+                            val batch = printedKey?.takeIf { it.startsWith(prefix) }
+                                ?.removePrefix(prefix)?.toIntOrNull()
+                            require(batch != null && fresh.linesByOrder[bill.id].orEmpty().any { it.batch == batch }) {
+                                "ไม่พบชุดครัวที่ต้องการพิมพ์ กรุณาโหลด POS ใหม่"
+                            }
+                            merchantKitchenTicket(fresh, bill, batch)
+                        } else {
+                            require(currentKey == printedKey) { "บิลเปลี่ยนแล้ว กรุณาโหลด POS ใหม่" }
+                            merchantReceiptTicket(fresh, bill)
+                        }
+                    }
+                    printBridge.print(settings, type, ticket, fresh.shopId, fresh.shopName)
                 }
-                printBusy = false
+                if (sent) message = successMessage
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (failure: Exception) {
+                message = (failure.message ?: "พิมพ์ไม่สำเร็จ") +
+                    " · ตรวจเครื่องพิมพ์ก่อนกดพิมพ์ซ้ำ ระบบไม่ส่งซ้ำอัตโนมัติเมื่อผลไม่แน่นอน"
+            } finally {
+                pendingPrintCount--
             }
         }
     }
@@ -350,24 +379,24 @@ fun MerchantPosScreen(
         }
     }
 
-    LaunchedEffect(snapshot?.bills, printerSettings) {
+    LaunchedEffect(snapshot, printerSettings) {
         val snap = snapshot ?: return@LaunchedEffect
         val current = snap.bills.associate { bill ->
-            val kitchen = merchantKitchenPrintKey(snap, bill).orEmpty()
-            val receipt = merchantReceiptPrintKey(snap, bill).orEmpty()
-            bill.id to (kitchen + "|" + receipt)
+            val kitchen = merchantKitchenPrintKey(snap, bill)
+            val receipt = merchantReceiptPrintKey(snap, bill)
+            bill.id to (kitchen to receipt)
         }
         val previous = printerBaseline
         printerBaseline = current
         if (previous == null || printerSettings.bridgeUrl.isBlank()) return@LaunchedEffect
 
         snap.bills.forEach { bill ->
-            val prior = previous[bill.id].orEmpty()
+            val prior = previous[bill.id]
             val kitchenKey = merchantKitchenPrintKey(snap, bill)
             if (
                 printerSettings.autoKitchen &&
                 !kitchenKey.isNullOrBlank() &&
-                !prior.contains(kitchenKey) &&
+                prior?.first != kitchenKey &&
                 !printerStore.wasPrinted(kitchenKey)
             ) {
                 sendToPrinter(
@@ -375,6 +404,7 @@ fun MerchantPosScreen(
                     type = "kitchen",
                     text = merchantKitchenTicket(snap, bill),
                     printedKey = kitchenKey,
+                    billId = bill.id,
                     successMessage = "พิมพ์ใบครัวอัตโนมัติแล้ว · " + bill.number
                 )
             }
@@ -383,7 +413,7 @@ fun MerchantPosScreen(
             if (
                 printerSettings.autoReceipt &&
                 !receiptKey.isNullOrBlank() &&
-                !prior.contains(receiptKey) &&
+                prior?.second != receiptKey &&
                 !printerStore.wasPrinted(receiptKey)
             ) {
                 sendToPrinter(
@@ -391,6 +421,7 @@ fun MerchantPosScreen(
                     type = "receipt",
                     text = merchantReceiptTicket(snap, bill),
                     printedKey = receiptKey,
+                    billId = bill.id,
                     successMessage = "พิมพ์ใบเสร็จอัตโนมัติแล้ว · " + bill.number
                 )
             }
@@ -743,6 +774,8 @@ fun MerchantPosScreen(
                             type = "kitchen",
                             text = merchantKitchenTicket(snap, bill),
                             printedKey = key,
+                            billId = bill.id,
+                            force = true,
                             successMessage = "พิมพ์ใบครัวแล้ว · " + bill.number
                         )
                     },
@@ -753,6 +786,8 @@ fun MerchantPosScreen(
                             type = "receipt",
                             text = merchantReceiptTicket(snap, bill),
                             printedKey = key,
+                            billId = bill.id,
+                            force = true,
                             successMessage = "พิมพ์ใบเสร็จแล้ว · " + bill.number
                         )
                     }

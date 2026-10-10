@@ -73,7 +73,7 @@ jobs:
       - name: Verify Production category banner assets
         run: node tests/native-category-assets.cjs
       - name: Tracking coordinate and terminal-state unit tests
-        run: gradle -p native-android :shared:testDebugUnitTest :customer:testDebugUnitTest :rider:testDebugUnitTest --no-build-cache --stacktrace
+        run: gradle -p native-android :shared:testDebugUnitTest :merchant:testDebugUnitTest :customer:testDebugUnitTest :rider:testDebugUnitTest --no-build-cache --stacktrace
       - name: Build untransformed Longdo crash regression baseline
         run: |
           gradle -p native-android :rider:assembleDebug :rider:assembleDebugAndroidTest -Pandroid.enableJetifier=false --stacktrace

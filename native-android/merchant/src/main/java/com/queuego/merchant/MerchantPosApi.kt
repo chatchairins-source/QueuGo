@@ -1,6 +1,7 @@
 package com.queuego.merchant
 
 import com.queuego.shared.NativeAuth
+import com.queuego.shared.nativePosPermissionAllowed
 import com.queuego.shared.QueueGoNativeApi
 import org.json.JSONArray
 import org.json.JSONObject
@@ -61,17 +62,12 @@ data class PosStaff(
     val displayName: String,
     val role: String,
     val permissions: Set<String>,
-    val active: Boolean
+    val active: Boolean,
+    val deniedPermissions: Set<String> = emptySet()
 ) {
-    fun allows(permission: String): Boolean {
-        if (permission in permissions) return true
-        return when (permission) {
-            "receive_order", "send_kitchen", "serve_order" -> role == "WAITER"
-            "cook_order", "ready_order" -> role == "KITCHEN"
-            "close_bill" -> role == "CASHIER"
-            else -> false
-        }
-    }
+    fun allows(permission: String): Boolean = nativePosPermissionAllowed(
+        active, role, permission, permissions, deniedPermissions
+    )
 }
 
 data class PosDeliveryOrder(
@@ -239,7 +235,8 @@ class MerchantPosApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
                     PosTable(
                         id = r.optString("id"),
                         label = r.optString("label").ifBlank { "โต๊ะ" },
-                        active = r.optBoolean("active", true),
+                        active = r.optBoolean("active", false),
+                    deniedPermissions = deniedPermissions,
                         qrToken = nullableString(r, "qr_token")
                     )
                 )
@@ -628,11 +625,13 @@ class MerchantPosApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
             val id = r.optString("user_id")
             if (id.isBlank()) continue
             val permissions = mutableSetOf<String>()
+            val deniedPermissions = mutableSetOf<String>()
             val p = r.optJSONObject("permissions") ?: JSONObject()
             val keys = p.keys()
             while (keys.hasNext()) {
                 val key = keys.next()
                 if (p.optBoolean(key, false)) permissions += key
+                else deniedPermissions += key
             }
             add(
                 PosStaff(
@@ -640,7 +639,8 @@ class MerchantPosApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
                     displayName = r.optString("display_name").ifBlank { "พนักงาน" },
                     role = r.optString("staff_role").ifBlank { "WAITER" },
                     permissions = permissions,
-                    active = r.optBoolean("active", true)
+                    active = r.optBoolean("active", false),
+                    deniedPermissions = deniedPermissions
                 )
             )
         }

@@ -13,7 +13,7 @@ import java.nio.charset.StandardCharsets
 import javax.net.ssl.HttpsURLConnection
 
 data class MerchantPrinterSettings(
-    val widthMm: Int = 58,
+    val widthMm: Int = 80,
     val bridgeUrl: String = "",
     val autoKitchen: Boolean = false,
     val autoReceipt: Boolean = false
@@ -30,7 +30,7 @@ class MerchantPrinterStore(context: Context) {
         context.getSharedPreferences("queuego-merchant-printer-v1", Context.MODE_PRIVATE)
 
     fun load(): MerchantPrinterSettings = MerchantPrinterSettings(
-        widthMm = prefs.getInt("width_mm", 58).takeIf { it in setOf(58, 80) } ?: 58,
+        widthMm = prefs.getInt("width_mm", 80).takeIf { it in setOf(58, 80) } ?: 80,
         bridgeUrl = prefs.getString("bridge_url", "").orEmpty(),
         autoKitchen = prefs.getBoolean("auto_kitchen", false),
         autoReceipt = prefs.getBoolean("auto_receipt", false)
@@ -72,6 +72,7 @@ class MerchantPrintBridge {
         val endpoint = URL(safe.bridgeUrl)
         val connection = endpoint.openConnection() as HttpsURLConnection
         try {
+            connection.instanceFollowRedirects = false
             connection.requestMethod = "POST"
             connection.connectTimeout = 8_000
             connection.readTimeout = 8_000
@@ -80,7 +81,7 @@ class MerchantPrintBridge {
             connection.setRequestProperty("Content-Type", "application/json; charset=utf-8")
             val body = JSONObject()
                 .put("type", type)
-                .put("width", safe.widthMm)
+                .put("width", safe.widthMm.toString())
                 .put("text", text)
                 .put("shop_id", shopId)
                 .put("shop_name", shopName)
@@ -122,7 +123,7 @@ fun validateMerchantPrintBridgeUrl(value: String) {
 
 fun merchantKitchenPrintKey(snapshot: PosSnapshot, bill: PosBill): String? {
     val lines = snapshot.linesByOrder[bill.id].orEmpty()
-    if (lines.isEmpty()) return null
+    if (lines.isEmpty() || bill.status == "cancelled" || bill.paymentStatus == "REFUNDED") return null
     val batch = lines.maxOfOrNull { it.batch } ?: 0
     if (bill.kitchenStatus !in setOf("SENT_TO_KITCHEN", "COOKING", "READY", "SERVED")) return null
     return "kitchen:" + snapshot.shopId + ":" + bill.id + ":" + batch
@@ -131,9 +132,9 @@ fun merchantKitchenPrintKey(snapshot: PosSnapshot, bill: PosBill): String? {
 fun merchantReceiptPrintKey(snapshot: PosSnapshot, bill: PosBill): String? =
     if (bill.paymentStatus == "PAID") "receipt:" + snapshot.shopId + ":" + bill.id else null
 
-fun merchantKitchenTicket(snapshot: PosSnapshot, bill: PosBill): String {
+fun merchantKitchenTicket(snapshot: PosSnapshot, bill: PosBill, requestedBatch: Int? = null): String {
     val all = snapshot.linesByOrder[bill.id].orEmpty()
-    val batch = all.maxOfOrNull { it.batch } ?: 0
+    val batch = requestedBatch ?: (all.maxOfOrNull { it.batch } ?: 0)
     val lines = all.filter { it.batch == batch }
     val table = snapshot.tables.firstOrNull { it.id == bill.tableId }?.label
     return buildString {
