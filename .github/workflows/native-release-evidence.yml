@@ -1,0 +1,136 @@
+name: QueueGo Native Release Evidence Record
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_sha:
+        description: Exact queuego-native-android-v1 commit SHA being certified
+        required: true
+        type: string
+      p0:
+        description: Observed P0 defect count (must be 0)
+        required: true
+        default: '0'
+        type: string
+      p1:
+        description: Observed P1 defect count (must be 0)
+        required: true
+        default: '0'
+        type: string
+      certification_json:
+        description: JSON object keyed by every Native release gate with status PASS, evidence_ref and evidence_sha256
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: queuego-native-release-evidence
+  cancel-in-progress: false
+
+jobs:
+  record:
+    if: github.ref == 'refs/heads/queuego-native-android-v1'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Record operator-certified immutable gate references
+        shell: bash
+        env:
+          QG_CERT_SOURCE_SHA: ${{ inputs.source_sha }}
+          QG_CERT_P0: ${{ inputs.p0 }}
+          QG_CERT_P1: ${{ inputs.p1 }}
+          QG_CERTIFICATION_JSON: ${{ inputs.certification_json }}
+          QG_RUN_ID: ${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib
+          import json
+          import os
+          from pathlib import Path
+          import re
+          import runpy
+          import subprocess
+          from datetime import datetime, timezone
+
+          root=Path.cwd()
+          source=os.environ['QG_CERT_SOURCE_SHA'].strip().lower()
+          if not re.fullmatch(r'[0-9a-f]{40}', source):
+              raise SystemExit('::error::source_sha must be an exact 40-character git SHA')
+          head=subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip().lower()
+          if source != head:
+              raise SystemExit(f'::error::Certification source_sha {source} does not match checked-out HEAD {head}')
+          if os.environ.get('QG_CERT_P0') != '0' or os.environ.get('QG_CERT_P1') != '0':
+              raise SystemExit('::error::Release evidence cannot be recorded while P0 or P1 is nonzero')
+
+          gate_source=runpy.run_path(str(root/'native-android/qa/verify-native-release-gate.py'))
+          gates=tuple(gate_source['GATES'])
+          supplied=json.loads(os.environ['QG_CERTIFICATION_JSON'])
+          if not isinstance(supplied,dict):
+              raise SystemExit('::error::certification_json must be an object keyed by release gate')
+          missing=sorted(set(gates)-set(supplied))
+          extra=sorted(set(supplied)-set(gates))
+          if missing or extra:
+              raise SystemExit('::error::Certification gate keys mismatch. Missing='+','.join(missing)+' Extra='+','.join(extra))
+
+          out=root/'release-evidence'
+          evidence_dir=out/'evidence'
+          evidence_dir.mkdir(parents=True,exist_ok=True)
+          report={
+              'source_sha': source,
+              'p0': 0,
+              'p1': 0,
+              'recorded_at': datetime.now(timezone.utc).isoformat(),
+              'github_run_id': os.environ['QG_RUN_ID'],
+              'operator_certified': True,
+              'gates': {},
+          }
+
+          for name in gates:
+              item=supplied[name]
+              if not isinstance(item,dict) or item.get('status') != 'PASS':
+                  raise SystemExit(f'::error::Gate {name} must be explicitly operator-certified PASS')
+              ref=str(item.get('evidence_ref') or '').strip()
+              digest=str(item.get('evidence_sha256') or '').strip().lower()
+              note=str(item.get('note') or '').strip()
+              if not ref:
+                  raise SystemExit(f'::error::Gate {name} has no immutable evidence_ref')
+              if not re.fullmatch(r'[0-9a-f]{64}', digest):
+                  raise SystemExit(f'::error::Gate {name} evidence_sha256 must be a 64-character SHA-256 digest')
+              record={
+                  'gate': name,
+                  'source_sha': source,
+                  'status': 'PASS',
+                  'evidence_ref': ref,
+                  'evidence_sha256': digest,
+              }
+              if note:
+                  record['note']=note
+              path=evidence_dir/f'{name}.json'
+              payload=json.dumps(record,sort_keys=True,indent=2)+'\n'
+              path.write_text(payload)
+              local_digest=hashlib.sha256(path.read_bytes()).hexdigest()
+              report['gates'][name]={
+                  'status':'PASS',
+                  'evidence_file':f'evidence/{name}.json',
+                  'sha256':local_digest,
+              }
+
+          (out/'release-evidence.json').write_text(json.dumps(report,indent=2)+'\n')
+          print('Native release evidence record created for '+source+' with '+str(len(gates))+' certified gates')
+          PY
+
+      - name: Upload certified Native release evidence record
+        uses: actions/upload-artifact@v4
+        with:
+          name: queuego-native-release-evidence
+          path: release-evidence/
+          if-no-files-found: error
+          retention-days: 30
+
+      # This workflow records operator-certified references and hashes.
+      # It does not infer or auto-certify physical behavior or Play Console state.
