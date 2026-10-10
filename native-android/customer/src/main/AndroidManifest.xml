@@ -11,6 +11,12 @@
         android:theme="@style/AppTheme"
         android:usesCleartextTraffic="false">
         <meta-data android:name="longdo.map.key" android:value="347649ca13f49db0d8a599ae35f8de2b" />
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_icon"
+            android:resource="@drawable/qg_notification" />
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_channel_id"
+            android:value="queuego_orders" />
         <service
             android:name=".QueueGoCustomerMessagingService"
             android:exported="false">
