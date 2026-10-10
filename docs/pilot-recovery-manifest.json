@@ -389,7 +389,18 @@
     "native_release_evidence_auto_certifies_physical_or_play": false,
     "native_release_evidence_requires_external_sha256": true,
     "native_signed_release_latest_run": null,
-    "native_signed_release_latest_result": "NOT_RUN_GATE_BLOCKED"
+    "native_signed_release_latest_result": "NOT_RUN_GATE_BLOCKED",
+    "release_play_history_bound_to_evidence": true,
+    "release_signing_identity_bound_to_evidence": true,
+    "release_evidence_context_fields": [
+      "customer_play_max_version_code",
+      "merchant_play_max_version_code",
+      "rider_play_max_version_code",
+      "expected_signer_certificate_sha256"
+    ],
+    "release_build_play_history_override_allowed": false,
+    "release_keystore_certificate_must_match_certified_fingerprint": true,
+    "release_artifact_certificate_must_match_certified_fingerprint": true
   },
   "security": {
     "code_surface_hardened": true,
