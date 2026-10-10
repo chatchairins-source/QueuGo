@@ -73,6 +73,15 @@ assert.match(artifactVerifier,/AAB versionCode mismatch/,'post-build verifier mu
 assert.match(artifactVerifier,/AAB versionName mismatch/,'post-build verifier must reject wrong AAB versionName');
 assert.match(artifactVerifier,/release artifact evidence must be written outside the source checkout/,'post-build evidence must remain external to source');
 
+const pageSizeVerifierPath='native-android/qa/verify-16kb-page-size.py';
+assert.ok(fs.existsSync(pageSizeVerifierPath),'16 KB page-size verifier must exist');
+const pageSizeVerifier=fs.readFileSync(pageSizeVerifierPath,'utf8');
+for(const token of ['"-P", "16"','MIN_ALIGNMENT = 0x4000','arm64-v8a','x86_64','readelf']){
+  assert.ok(pageSizeVerifier.includes(token),`16 KB verifier missing ${token}`);
+}
+assert.match(artifactVerifier,/PAGE_ALIGNMENT_16K/,'signed AAB verifier must require 16 KB page alignment');
+assert.ok(artifactVerifier.includes('"aab_page_alignment_16kb": True'),'signed artifact evidence must record 16 KB AAB alignment');
+
 const nativeCi=fs.readFileSync('.github/workflows/build-native-rider-pilot.yml','utf8');
 for(const trigger of ["'tests/**'","'package.json'","'package-lock.json'"]){
   assert.ok(nativeCi.includes(trigger),`Native pilot CI must cover full regression input ${trigger}`);
