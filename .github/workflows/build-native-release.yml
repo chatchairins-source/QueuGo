@@ -135,6 +135,9 @@ jobs:
           meta="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$CERTIFICATION_RUN_ID")"
           run_head="$(jq -r '.head_sha // empty' <<<"$meta")"
           run_conclusion="$(jq -r '.conclusion // empty' <<<"$meta")"
+          run_path="$(jq -r '.path // empty' <<<"$meta")"
+          run_event="$(jq -r '.event // empty' <<<"$meta")"
+          run_branch="$(jq -r '.head_branch // empty' <<<"$meta")"
           if [ "$run_head" != "$GITHUB_SHA" ]; then
             echo "::error::Certification artifact must come from exact release HEAD"
             exit 1
@@ -143,14 +146,54 @@ jobs:
             echo "::error::Certification workflow run is not successful"
             exit 1
           fi
+          if [ "$run_path" != ".github/workflows/native-release-certification.yml" ]; then
+            echo "::error::Certification run must come from the trusted Native certification workflow"
+            exit 1
+          fi
+          if [ "$run_event" != "workflow_dispatch" ] || [ "$run_branch" != "queuego-native-android-v1" ]; then
+            echo "::error::Certification run must be manually dispatched from Native Source of Truth"
+            exit 1
+          fi
           evidence_dir="$RUNNER_TEMP/queuego-native-release-certification"
           mkdir -p "$evidence_dir"
           gh run download "$CERTIFICATION_RUN_ID"             --repo "$GITHUB_REPOSITORY"             --name queuego-native-release-certification             --dir "$evidence_dir"
           report="$evidence_dir/native-release-evidence.json"
+          certification_metadata="$evidence_dir/certified-release-metadata.json"
           if [ ! -s "$report" ]; then
             echo "::error::native-release-evidence.json missing from certification artifact"
             exit 1
           fi
+          if [ ! -s "$certification_metadata" ]; then
+            echo "::error::certified-release-metadata.json missing from certification artifact"
+            exit 1
+          fi
+          QG_CERTIFICATION_METADATA="$certification_metadata" python3 - <<'PY'
+          import json, os, re
+          from pathlib import Path
+
+          data = json.loads(Path(os.environ["QG_CERTIFICATION_METADATA"]).read_text())
+          expected = {
+              "result": "PASS",
+              "source_sha": os.environ["GITHUB_SHA"],
+              "certification_run_id": os.environ["QG_NATIVE_CERTIFICATION_RUN_ID"],
+              "certification_workflow": ".github/workflows/native-release-certification.yml",
+              "version_name": os.environ["QG_NATIVE_VERSION_NAME"],
+              "customer_version_code": int(os.environ["QG_CUSTOMER_VERSION_CODE"]),
+              "merchant_version_code": int(os.environ["QG_MERCHANT_VERSION_CODE"]),
+              "rider_version_code": int(os.environ["QG_RIDER_VERSION_CODE"]),
+              "customer_play_max_version_code": int(os.environ["QG_CUSTOMER_PLAY_MAX_VERSION_CODE"]),
+              "merchant_play_max_version_code": int(os.environ["QG_MERCHANT_PLAY_MAX_VERSION_CODE"]),
+              "rider_play_max_version_code": int(os.environ["QG_RIDER_PLAY_MAX_VERSION_CODE"]),
+          }
+          for key, value in expected.items():
+              if data.get(key) != value:
+                  raise SystemExit(f"::error::Certification metadata mismatch: {key}")
+          expected_cert = re.sub(r"[^0-9a-fA-F]", "", os.environ["QG_ANDROID_SIGNING_CERT_SHA256"]).lower()
+          if data.get("signing_certificate_sha256") != expected_cert:
+              raise SystemExit("::error::Certification signing fingerprint does not match release input")
+          if not re.fullmatch(r"[0-9a-f]{64}", str(data.get("evidence_bundle_sha256", ""))):
+              raise SystemExit("::error::Certification evidence bundle SHA-256 is malformed")
+          PY
           echo "QG_NATIVE_RELEASE_EVIDENCE=$report" >> "$GITHUB_ENV"
 
       - uses: actions/setup-java@v5
