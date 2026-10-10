@@ -67,6 +67,31 @@ any requirement below is OPEN.
   Runtime certification remains BLOCKED on Actions credentials plus real
   physical evidence; bucket provisioning itself is no longer a blocker.
 
+## Structured physical evidence semantic contract v2
+
+Physical release evidence remains **OPEN** until real-device capture exists. The
+release verifier now requires more than a generic PASS envelope: every physical
+gate must be explicitly operator-certified, identify real non-emulator Android
+devices with role binding, and include the exact observed checks for that gate.
+
+- Customer/Merchant/Rider push: foreground, background, killed, refresh/login,
+  logout revocation, stale-token exclusion, order notification and call notification.
+- Voice: real Customer + Rider devices, two distinct networks, bidirectional
+  audio, foreground/background continuity, complete controls and hang-up cleanup.
+- TURN: forced relay plus observed relay candidate and selected relay path on
+  two real devices/two distinct networks.
+- Session/order/block authorization: real order, session/order/block
+  authorization, session/block revocation and private-topic revocation.
+- Rider Floating Q: overlay granted/denied, tap-to-return, notification return
+  and automatic stop outside active work.
+- Blueprint: all required screens/states observed, pixel-diff reviewed and
+  blocking_differences = 0 for Customer, Merchant and Rider.
+- Lifecycle: permissions, single-back-to-Home, upload, location, session
+  persistence, offline/timeout, reconnect and background/foreground for all 3 roles.
+
+These checks validate semantic completeness and evidence identity only; they do
+not infer that screenshots/videos are truthful and do not close any physical gate.
+
 ## Still OPEN
 
 1. Real Firebase project with complete Customer/Merchant/Rider clients and
