@@ -158,9 +158,9 @@ Policy source:
 
 ## Data Safety draft
 
-Google Play treats data transmitted off-device from an app-controlled WebView as app collection. QueueGo must therefore declare data collected by the web application running inside Capacitor.
+QueueGo Closed Beta certification scope is the three Native Android apps. Native CI rejects WebView, so Data Safety answers must describe data collected or transmitted by the Native Customer, Merchant and Rider clients together with the QueueGo backend and active infrastructure providers. Legacy Capacitor/WebView behavior is not release evidence and must not be used to answer the Native Play Console questionnaire.
 
-Google Play also states that transfers to qualifying service providers, legal-purpose transfers, and some user-initiated transfers are not necessarily declared as "sharing." QueueTech must confirm the contractual role of infrastructure/map providers before final submission.
+Google Play states that transfers to qualifying service providers, legal-purpose transfers, and some user-initiated transfers are not necessarily declared as "sharing." QueueTech must confirm the contractual role of infrastructure/map providers before final submission.
 
 Policy source:
 - https://support.google.com/googleplay/android-developer/answer/10787469
@@ -215,7 +215,7 @@ Policy source:
 
 ### Provider sharing classification — conservative submission decision (2026-10-07)
 
-Google Play defines "sharing" as transferring user data to a third party, including transfers from an app-controlled WebView. A transfer to a qualifying service provider that processes data on the developer's behalf and instructions does not have to be declared as sharing.
+Google Play defines "sharing" as transferring user data to a third party. A transfer to a qualifying service provider that processes data on the developer's behalf and instructions does not have to be declared as sharing. QueueGo applies this definition to the Native Android data flows below.
 
 Current QueueGo decision:
 
@@ -230,7 +230,7 @@ Code evidence:
 - Customer loads Longdo Map and sends selected latitude/longitude to Longdo reverse-geocoding.
 - Rider loads Longdo Map and sends current Rider coordinates plus destination coordinates to Longdo RouteService.
 - Merchant loads Longdo Map for shop location/pin workflows.
-- `android-build/package.json` includes Capacitor Push Notifications 8.0.0 and does not declare Firebase Analytics or Crashlytics.
+- Native Android release CI rejects WebView and validates the three production package IDs; FCM configuration remains a hard release gate and Firebase Analytics/Crashlytics are not used as certification evidence.
 
 Current public-policy sources reviewed:
 - Google Play Data Safety: https://support.google.com/googleplay/android-developer/answer/10787469
@@ -246,7 +246,7 @@ Current public-policy sources reviewed:
 - **Merchant:** conservatively declare location/shop-coordinate transfer as shared with Longdo for App functionality because a shop location may be linked to an individual/sole proprietor.
 - **Rider:** declare Approximate/Precise location as shared with Longdo for App functionality because route requests transmit the Rider origin and delivery destination.
 - Supabase/Firebase transfers still count as **collection** where applicable even when the service-provider sharing exception is used.
-- Recheck the Firebase Play Data disclosure page whenever the native SDK/plugin version changes.
+- Recheck the Firebase Play Data disclosure page whenever the Native Firebase SDK version or enabled Firebase product set changes.
 
 ## Encryption and deletion answers
 
