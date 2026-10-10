@@ -719,3 +719,11 @@ The user-supplied Rider reference screens are the acceptance reference for workf
 - Local source integrity 201/201 and Production order display regression 39/39 passed. Native shared tests/three compile/runtime CI pending. Main/release gate unchanged until full checks pass.
 
 - Order formatter48fbceaa independently passed CI38025967279 (shared legacy-code fixtures, all builds and emulator/Longdo) before this merge. Combined POS/printer/order tree remains subject to full CI; Native main still db863c6.
+
+
+## 2026-10-10 acknowledged print durability
+- Printer completion markers previously used asynchronous SharedPreferences.apply and arbitrarily retained HashSet iteration order. Changed acknowledgement persistence to synchronous commit on Dispatchers.IO while the print queue lock is held. Kept original keys through a compatible timestamp-history upgrade; most recent 300 acknowledged jobs are retained deterministically, including clock corrections.
+- Queue completion callback is suspendable so durable disk persistence never blocks the UI thread. Bridge failures remain unacknowledged; explicit reprint remains available. A successful bridge response followed by disk failure reports that printing occurred and asks the operator to inspect before reprinting. Bridge-side exactly-once guarantees and physical-device validation remain unproven.
+- Added focused recency/clock-correction test. CI compile/runtime pending; no main merge until green.
+
+- Durable print-history df0bf6b7 passed CI38026266057 including shared suspend queue tests, Merchant recency test, three builds and emulator/Longdo before inclusion. Combined tree awaits its own CI; logout-session branch remains isolated pending CI.
