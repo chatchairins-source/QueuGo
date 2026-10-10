@@ -34,7 +34,8 @@ GATES = (
 
 PHYSICAL_GATES = {
     "physical_push_customer", "physical_push_merchant", "physical_push_rider",
-    "physical_voice_two_devices_two_networks", "rider_floating_q",
+    "physical_voice_two_devices_two_networks", "turn_relay",
+    "voice_session_order_block_authorization", "rider_floating_q",
     "customer_blueprint", "merchant_blueprint", "rider_blueprint",
     "android_lifecycle_permissions_upload_location",
 }
@@ -43,12 +44,94 @@ PHYSICAL_GATE_REQUIRED_ROLES = {
     "physical_push_customer": {"customer"},
     "physical_push_merchant": {"merchant"},
     "physical_push_rider": {"rider"},
+    "physical_voice_two_devices_two_networks": {"customer", "rider"},
+    "turn_relay": {"customer", "rider"},
+    "voice_session_order_block_authorization": {"customer", "rider"},
     "rider_floating_q": {"rider"},
     "customer_blueprint": {"customer"},
     "merchant_blueprint": {"merchant"},
     "rider_blueprint": {"rider"},
     "android_lifecycle_permissions_upload_location": {"customer", "merchant", "rider"},
 }
+
+PHYSICAL_GATE_REQUIRED_CHECKS = {
+    "physical_push_customer": (
+        "foreground", "background", "killed", "refresh_login",
+        "logout_revocation", "stale_token_exclusion",
+        "order_notification", "call_notification",
+    ),
+    "physical_push_merchant": (
+        "foreground", "background", "killed", "refresh_login",
+        "logout_revocation", "stale_token_exclusion",
+        "order_notification", "call_notification",
+    ),
+    "physical_push_rider": (
+        "foreground", "background", "killed", "refresh_login",
+        "logout_revocation", "stale_token_exclusion",
+        "order_notification", "call_notification",
+    ),
+    "physical_voice_two_devices_two_networks": (
+        "two_devices", "two_networks", "bidirectional_audio",
+        "foreground_background", "controls_complete", "hangup_cleanup",
+    ),
+    "turn_relay": (
+        "forced_turn_relay", "relay_candidate_observed", "relay_path_selected",
+    ),
+    "voice_session_order_block_authorization": (
+        "real_order", "session_authorization", "order_authorization",
+        "block_authorization", "session_revocation",
+        "block_revocation", "private_topic_revocation",
+    ),
+    "rider_floating_q": (
+        "overlay_granted_path", "overlay_denied_path",
+        "tap_returns_to_active_job", "persistent_notification_return",
+        "stops_outside_active_work",
+    ),
+    "customer_blueprint": (
+        "all_required_screens_observed", "all_required_states_observed",
+        "pixel_diff_reviewed",
+    ),
+    "merchant_blueprint": (
+        "all_required_screens_observed", "all_required_states_observed",
+        "pixel_diff_reviewed",
+    ),
+    "rider_blueprint": (
+        "all_required_screens_observed", "all_required_states_observed",
+        "pixel_diff_reviewed",
+    ),
+    "android_lifecycle_permissions_upload_location": (
+        "customer_permissions", "customer_single_back_to_home",
+        "customer_upload", "customer_location",
+        "customer_session_persistence", "customer_offline_timeout",
+        "customer_reconnect", "customer_background_foreground",
+        "merchant_permissions", "merchant_single_back_to_home",
+        "merchant_upload", "merchant_location",
+        "merchant_session_persistence", "merchant_offline_timeout",
+        "merchant_reconnect", "merchant_background_foreground",
+        "rider_permissions", "rider_single_back_to_home",
+        "rider_upload", "rider_location",
+        "rider_session_persistence", "rider_offline_timeout",
+        "rider_reconnect", "rider_background_foreground",
+    ),
+}
+
+BLUEPRINT_GATES = {"customer_blueprint", "merchant_blueprint", "rider_blueprint"}
+
+
+def verify_physical_gate_semantics(envelope: dict, gate: str) -> None:
+    required_checks = PHYSICAL_GATE_REQUIRED_CHECKS.get(gate)
+    if required_checks is None:
+        return
+    if envelope.get("operator_certified") is not True:
+        raise ValueError(f"physical gate must be explicitly operator-certified: {gate}")
+    checks = envelope.get("checks", {})
+    for key in required_checks:
+        if checks.get(key) is not True:
+            raise ValueError(f"physical gate required check missing: {gate}.{key}")
+    if gate in BLUEPRINT_GATES:
+        blocking = envelope.get("blocking_differences")
+        if type(blocking) is not int or blocking != 0:
+            raise ValueError(f"physical blueprint blocking_differences must equal zero: {gate}")
 
 
 def bundle_file(bundle_root: Path, relative: str, label: str) -> Path:
@@ -137,31 +220,35 @@ def verify_gate_envelope(path: Path, bundle_root: Path, gate: str, head: str, ex
                 raise ValueError(f"physical gate device model is missing: {gate}")
             if role not in {"customer", "merchant", "rider"}:
                 raise ValueError(f"physical gate device role is invalid: {gate}")
+            if device.get("physical") is not True or device.get("emulator") is not False:
+                raise ValueError(f"physical gate device must be a real non-emulator device: {gate}")
             device_ids.add(device_hash)
             observed_roles.add(role)
         required_roles = PHYSICAL_GATE_REQUIRED_ROLES.get(gate, set())
         if not required_roles.issubset(observed_roles):
             missing_roles = ", ".join(sorted(required_roles - observed_roles))
             raise ValueError(f"physical gate evidence is missing required roles ({missing_roles}): {gate}")
-        if gate == "physical_voice_two_devices_two_networks":
+        if gate in {"physical_voice_two_devices_two_networks", "turn_relay"}:
             if len(device_ids) < 2:
-                raise ValueError("physical voice gate requires two distinct devices")
+                raise ValueError(f"{gate} requires two distinct devices")
             networks = envelope.get("networks")
             if not isinstance(networks, list) or len(networks) < 2:
-                raise ValueError("physical voice gate requires two network observations")
+                raise ValueError(f"{gate} requires two network observations")
             network_ids = set()
             for network in networks:
                 if not isinstance(network, dict):
-                    raise ValueError("physical voice network entry must be an object")
+                    raise ValueError(f"{gate} network entry must be an object")
                 network_hash = str(network.get("network_id_hash", "")).lower()
                 network_type = network.get("type")
                 if not re.fullmatch(r"[0-9a-f]{64}", network_hash):
-                    raise ValueError("physical voice network_id_hash is invalid")
+                    raise ValueError(f"{gate} network_id_hash is invalid")
                 if network_type not in {"wifi", "mobile", "ethernet", "other"}:
-                    raise ValueError("physical voice network type is invalid")
+                    raise ValueError(f"{gate} network type is invalid")
                 network_ids.add(network_hash)
             if len(network_ids) < 2:
-                raise ValueError("physical voice gate requires two distinct networks")
+                raise ValueError(f"{gate} requires two distinct networks")
+
+    verify_physical_gate_semantics(envelope, gate)
 
     return envelope
 

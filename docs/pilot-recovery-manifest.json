@@ -516,7 +516,51 @@
     "release_certification_backup_artifact_prefix": "queuego-backup-",
     "release_certification_backup_artifact_live_required": true,
     "release_certification_final_release_revalidates_backup_restore_run": true,
-    "release_gate_backup_restore_attested_run_binding": true
+    "release_gate_backup_restore_attested_run_binding": true,
+    "release_gate_physical_semantic_contract_version": 2,
+    "release_gate_physical_operator_certification_required": true,
+    "release_gate_physical_real_non_emulator_required": true,
+    "release_gate_push_semantic_checks": [
+      "foreground",
+      "background",
+      "killed",
+      "refresh_login",
+      "logout_revocation",
+      "stale_token_exclusion",
+      "order_notification",
+      "call_notification"
+    ],
+    "release_gate_voice_semantic_checks": [
+      "two_devices",
+      "two_networks",
+      "bidirectional_audio",
+      "foreground_background",
+      "controls_complete",
+      "hangup_cleanup"
+    ],
+    "release_gate_turn_semantic_checks": [
+      "forced_turn_relay",
+      "relay_candidate_observed",
+      "relay_path_selected"
+    ],
+    "release_gate_voice_authorization_semantic_checks": [
+      "real_order",
+      "session_authorization",
+      "order_authorization",
+      "block_authorization",
+      "session_revocation",
+      "block_revocation",
+      "private_topic_revocation"
+    ],
+    "release_gate_floating_q_semantic_checks": [
+      "overlay_granted_path",
+      "overlay_denied_path",
+      "tap_returns_to_active_job",
+      "persistent_notification_return",
+      "stops_outside_active_work"
+    ],
+    "release_gate_blueprint_requires_zero_blocking_differences": true,
+    "release_gate_physical_semantic_runtime_gate": "OPEN_PENDING_REAL_DEVICE_CAPTURE"
   },
   "security": {
     "code_surface_hardened": true,

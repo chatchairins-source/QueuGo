@@ -65,7 +65,12 @@ try{
   }
   const physicalEnvelope={
     gate:'physical_push_customer',source_sha:head,status:'PASS',observed_at:observedAt,
-    checks:{foreground:true,background:true,killed:true},
+    operator_certified:true,
+    checks:{
+      foreground:true,background:true,killed:true,refresh_login:true,
+      logout_revocation:true,stale_token_exclusion:true,
+      order_notification:true,call_notification:true
+    },
     artifacts:[{file:artifact,sha256:artifactSha,kind:'log'}]
   };
   fs.writeFileSync(path.join(evidenceDir,'physical_push_customer.json'),JSON.stringify(physicalEnvelope));
@@ -81,7 +86,9 @@ try{
     device_id_hash:'a'.repeat(64),
     android_api:36,
     model:'Test Android Device',
-    role:'rider'
+    role:'rider',
+    physical:true,
+    emulator:false
   }];
   fs.writeFileSync(path.join(evidenceDir,'physical_push_customer.json'),JSON.stringify(physicalEnvelope));
   const wrongRoleSha=crypto.createHash('sha256').update(fs.readFileSync(path.join(evidenceDir,'physical_push_customer.json'))).digest('hex');
@@ -90,6 +97,26 @@ try{
   const wrongRoleResult=spawnSync('python3',[script],{env:{...env,QG_NATIVE_RELEASE_EVIDENCE:physicalReport},encoding:'utf8'});
   assert.equal(wrongRoleResult.status,1,'Customer push evidence with only a Rider device must fail');
   assert.match(wrongRoleResult.stderr,/physical gate evidence is missing required roles \(customer\): physical_push_customer/);
+
+  physicalEnvelope.devices[0].role='customer';
+  delete physicalEnvelope.checks.call_notification;
+  fs.writeFileSync(path.join(evidenceDir,'physical_push_customer.json'),JSON.stringify(physicalEnvelope));
+  const missingSemanticSha=crypto.createHash('sha256').update(fs.readFileSync(path.join(evidenceDir,'physical_push_customer.json'))).digest('hex');
+  gates.physical_push_customer={status:'PASS',evidence_file:'physical_push_customer.json',sha256:missingSemanticSha};
+  fs.writeFileSync(physicalReport,JSON.stringify({source_sha:head,p0:0,p1:0,gates}));
+  const missingSemanticResult=spawnSync('python3',[script],{env:{...env,QG_NATIVE_RELEASE_EVIDENCE:physicalReport},encoding:'utf8'});
+  assert.equal(missingSemanticResult.status,1,'Customer push evidence must include every required observed check');
+  assert.match(missingSemanticResult.stderr,/physical gate required check missing: physical_push_customer\.call_notification/);
+
+  physicalEnvelope.checks.call_notification=true;
+  physicalEnvelope.devices[0].emulator=true;
+  fs.writeFileSync(path.join(evidenceDir,'physical_push_customer.json'),JSON.stringify(physicalEnvelope));
+  const emulatorSha=crypto.createHash('sha256').update(fs.readFileSync(path.join(evidenceDir,'physical_push_customer.json'))).digest('hex');
+  gates.physical_push_customer={status:'PASS',evidence_file:'physical_push_customer.json',sha256:emulatorSha};
+  fs.writeFileSync(physicalReport,JSON.stringify({source_sha:head,p0:0,p1:0,gates}));
+  const emulatorResult=spawnSync('python3',[script],{env:{...env,QG_NATIVE_RELEASE_EVIDENCE:physicalReport},encoding:'utf8'});
+  assert.equal(emulatorResult.status,1,'Emulator evidence must never certify a physical gate');
+  assert.match(emulatorResult.stderr,/physical gate device must be a real non-emulator device: physical_push_customer/);
 }finally{fs.rmSync(evidenceDir,{recursive:true,force:true});}
 
 const bindingDir=fs.mkdtempSync(path.join(os.tmpdir(),'qg-release-binding-'));
@@ -110,17 +137,56 @@ try{
   ];
   const physical=new Set([
     'physical_push_customer','physical_push_merchant','physical_push_rider',
-    'physical_voice_two_devices_two_networks','rider_floating_q',
+    'physical_voice_two_devices_two_networks','turn_relay',
+    'voice_session_order_block_authorization','rider_floating_q',
     'customer_blueprint','merchant_blueprint','rider_blueprint',
     'android_lifecycle_permissions_upload_location'
   ]);
+  const pushChecks={
+    foreground:true,background:true,killed:true,refresh_login:true,
+    logout_revocation:true,stale_token_exclusion:true,
+    order_notification:true,call_notification:true
+  };
+  const semanticChecks={
+    physical_push_customer:pushChecks,
+    physical_push_merchant:pushChecks,
+    physical_push_rider:pushChecks,
+    physical_voice_two_devices_two_networks:{
+      two_devices:true,two_networks:true,bidirectional_audio:true,
+      foreground_background:true,controls_complete:true,hangup_cleanup:true
+    },
+    turn_relay:{forced_turn_relay:true,relay_candidate_observed:true,relay_path_selected:true},
+    voice_session_order_block_authorization:{
+      real_order:true,session_authorization:true,order_authorization:true,
+      block_authorization:true,session_revocation:true,
+      block_revocation:true,private_topic_revocation:true
+    },
+    rider_floating_q:{
+      overlay_granted_path:true,overlay_denied_path:true,
+      tap_returns_to_active_job:true,persistent_notification_return:true,
+      stops_outside_active_work:true
+    },
+    customer_blueprint:{all_required_screens_observed:true,all_required_states_observed:true,pixel_diff_reviewed:true},
+    merchant_blueprint:{all_required_screens_observed:true,all_required_states_observed:true,pixel_diff_reviewed:true},
+    rider_blueprint:{all_required_screens_observed:true,all_required_states_observed:true,pixel_diff_reviewed:true},
+    android_lifecycle_permissions_upload_location:{
+      customer_permissions:true,customer_single_back_to_home:true,customer_upload:true,customer_location:true,
+      customer_session_persistence:true,customer_offline_timeout:true,customer_reconnect:true,customer_background_foreground:true,
+      merchant_permissions:true,merchant_single_back_to_home:true,merchant_upload:true,merchant_location:true,
+      merchant_session_persistence:true,merchant_offline_timeout:true,merchant_reconnect:true,merchant_background_foreground:true,
+      rider_permissions:true,rider_single_back_to_home:true,rider_upload:true,rider_location:true,
+      rider_session_persistence:true,rider_offline_timeout:true,rider_reconnect:true,rider_background_foreground:true
+    }
+  };
   const gates={};
   for(const gate of gateNames){
     const envelope={
       gate,source_sha:head,status:'PASS',observed_at:observedAt,
-      checks:{observed:true},
+      checks:semanticChecks[gate]||{observed:true},
       artifacts:[{file:artifact,sha256:artifactSha,kind:'log'}]
     };
+    if(semanticChecks[gate]) envelope.operator_certified=true;
+    if(['customer_blueprint','merchant_blueprint','rider_blueprint'].includes(gate)) envelope.blocking_differences=0;
     if(gate==='full_native_ci') envelope.github_run_id=456;
     if(gate==='backup_restore') envelope.github_run_id=456;
     if(gate==='production_backend') envelope.supabase_project_ref='pkypiqhlrmzocysgeqew';
@@ -133,12 +199,12 @@ try{
     if(gate==='release_signing') envelope.signing_certificate_sha256='b'.repeat(64);
     if(physical.has(gate)){
       envelope.devices=[
-        {device_id_hash:'1'.repeat(64),android_api:36,model:'Customer Device',role:'customer'},
-        {device_id_hash:'2'.repeat(64),android_api:36,model:'Merchant Device',role:'merchant'},
-        {device_id_hash:'3'.repeat(64),android_api:36,model:'Rider Device',role:'rider'}
+        {device_id_hash:'1'.repeat(64),android_api:36,model:'Customer Device',role:'customer',physical:true,emulator:false},
+        {device_id_hash:'2'.repeat(64),android_api:36,model:'Merchant Device',role:'merchant',physical:true,emulator:false},
+        {device_id_hash:'3'.repeat(64),android_api:36,model:'Rider Device',role:'rider',physical:true,emulator:false}
       ];
     }
-    if(gate==='physical_voice_two_devices_two_networks'){
+    if(gate==='physical_voice_two_devices_two_networks'||gate==='turn_relay'){
       envelope.networks=[
         {network_id_hash:'4'.repeat(64),type:'wifi'},
         {network_id_hash:'5'.repeat(64),type:'mobile'}
@@ -202,8 +268,13 @@ assert.match(verifier,/physical gate evidence must identify at least one device/
 assert.match(verifier,/PHYSICAL_GATE_REQUIRED_ROLES/,'physical evidence must bind gates to the expected app roles');
 assert.match(verifier,/physical gate device role is invalid/,'physical evidence must use Customer Merchant or Rider role identity');
 assert.match(verifier,/physical gate evidence is missing required roles/,'physical evidence must fail when a required app role is absent');
-assert.match(verifier,/physical voice gate requires two distinct devices/,'voice certification must require two distinct devices');
-assert.match(verifier,/physical voice gate requires two distinct networks/,'voice certification must require two distinct networks');
+assert.match(verifier,/requires two distinct devices/,'voice and TURN certification must require two distinct devices');
+assert.match(verifier,/requires two distinct networks/,'voice and TURN certification must require two distinct networks');
+assert.match(verifier,/PHYSICAL_GATE_REQUIRED_CHECKS/,'physical release gates must define explicit semantic check contracts');
+assert.match(verifier,/physical gate must be explicitly operator-certified/,'physical gates must require explicit operator certification');
+assert.match(verifier,/physical gate required check missing/,'physical gates must reject missing observed semantics');
+assert.match(verifier,/real non-emulator device/,'physical certification must reject emulator-only evidence');
+assert.match(verifier,/physical blueprint blocking_differences must equal zero/,'Blueprint certification must reject blocking differences');
 assert.match(verifier,/QG_CERTIFIED_NATIVE_PILOT_RUN_ID/,'release evidence must bind full_native_ci to the attested Native Pilot run');
 assert.match(verifier,/QG_CERTIFIED_BACKUP_RESTORE_RUN_ID/,'release evidence must bind backup_restore to the attested restore drill');
 assert.match(verifier,/backup_restore evidence does not match the attested Backup Restore Drill/,'backup evidence must reject a mismatched restore-drill run');
