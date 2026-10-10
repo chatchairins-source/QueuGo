@@ -400,7 +400,10 @@
     "release_bundletool_required": true,
     "release_bundletool_version": "1.18.3",
     "release_bundletool_sha256": "a099cfa1543f55593bc2ed16a70a7c67fe54b1747bb7301f37fdfd6d91028e29",
-    "release_artifact_evidence_external_to_source": true
+    "release_artifact_evidence_external_to_source": true,
+    "longdo_android_sdk_version": "0.1.8",
+    "longdo_android_sdk_sha256": "0918c23673ba6c7a349746f005525aca2ff3470f8e2966d5d2a4cb633ae5980c",
+    "longdo_integrity_algorithm": "SHA-256"
   },
   "security": {
     "code_surface_hardened": true,

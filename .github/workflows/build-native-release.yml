@@ -171,7 +171,7 @@ jobs:
           set -euo pipefail
           mkdir -p native-android/rider/libs
           curl -fsSL "https://api.longdo.com/map-android-SDK/LongdoMapAndroidSDK_v0.1.8.aar"             -o native-android/rider/libs/LongdoMapAndroidSDK_v0.1.8.aar
-          echo "52d98e8deaaef4400f2623eebb212daa  native-android/rider/libs/LongdoMapAndroidSDK_v0.1.8.aar" | md5sum -c -
+          echo "0918c23673ba6c7a349746f005525aca2ff3470f8e2966d5d2a4cb633ae5980c  native-android/rider/libs/LongdoMapAndroidSDK_v0.1.8.aar" | sha256sum -c -
 
       - name: Download verified Android bundletool
         shell: bash
@@ -246,6 +246,20 @@ jobs:
 
       - name: Native unit tests before release
         run: gradle -p native-android :shared:testDebugUnitTest :customer:testDebugUnitTest :merchant:testDebugUnitTest :rider:testDebugUnitTest --no-build-cache --stacktrace
+
+      - name: Verify Native release assets
+        run: |
+          node tests/native-launcher-assets.cjs
+          node tests/native-category-assets.cjs
+
+      - name: Reject WebView before release packaging
+        shell: bash
+        run: |
+          set -euo pipefail
+          if grep -R -E 'android\.webkit\.WebView|<WebView\b|loadUrl\(' native-android; then
+            echo "::error::WebView is forbidden in QueueGo Native release apps"
+            exit 1
+          fi
 
       - name: Verify certified release gate before packaging
         env:
