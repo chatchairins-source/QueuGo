@@ -571,7 +571,16 @@
     "physical_evidence_capture_auto_certifies": false,
     "physical_evidence_capture_operator_certify_required": true,
     "physical_evidence_capture_identity_hash_salt": "PER_CAPTURE_RANDOM_256_BIT_NOT_STORED",
-    "physical_evidence_capture_identity_hash_domain_separated": true
+    "physical_evidence_capture_identity_hash_domain_separated": true,
+    "release_evidence_bundler": "native-android/qa/finalize-native-release-evidence.py",
+    "release_evidence_bundler_uses_canonical_gate_validator": true,
+    "release_evidence_bundler_requires_clean_source": true,
+    "release_evidence_bundler_requires_p0_p1_zero": true,
+    "release_evidence_bundler_external_output_required": true,
+    "release_evidence_bundler_max_files": 1000,
+    "release_evidence_bundler_max_uncompressed_bytes": 4294967296,
+    "release_evidence_bundler_output_status": "READY_FOR_PRIVATE_STORAGE_UPLOAD",
+    "release_evidence_bundler_auto_certifies": false
   },
   "security": {
     "code_surface_hardened": true,
