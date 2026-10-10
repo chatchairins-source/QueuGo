@@ -193,7 +193,25 @@ jobs:
               raise SystemExit("::error::Certification signing fingerprint does not match release input")
           if not re.fullmatch(r"[0-9a-f]{64}", str(data.get("evidence_bundle_sha256", ""))):
               raise SystemExit("::error::Certification evidence bundle SHA-256 is malformed")
+          pilot_run_id = data.get("native_pilot_run_id")
+          if type(pilot_run_id) is not int or pilot_run_id <= 0:
+              raise SystemExit("::error::Certification Native Pilot run id is missing or invalid")
           PY
+          pilot_run_id="$(jq -r '.native_pilot_run_id // empty' "$certification_metadata")"
+          pilot_meta="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$pilot_run_id")"
+          pilot_head="$(jq -r '.head_sha // empty' <<<"$pilot_meta")"
+          pilot_path="$(jq -r '.path // empty' <<<"$pilot_meta")"
+          pilot_branch="$(jq -r '.head_branch // empty' <<<"$pilot_meta")"
+          pilot_event="$(jq -r '.event // empty' <<<"$pilot_meta")"
+          pilot_conclusion="$(jq -r '.conclusion // empty' <<<"$pilot_meta")"
+          if [ "$pilot_head" != "$GITHUB_SHA" ] || \
+             [ "$pilot_path" != ".github/workflows/build-native-rider-pilot.yml" ] || \
+             [ "$pilot_branch" != "queuego-native-android-v1" ] || \
+             [ "$pilot_event" != "push" ] || \
+             [ "$pilot_conclusion" != "success" ]; then
+            echo "::error::Certification references an invalid Native Pilot CI run"
+            exit 1
+          fi
           echo "QG_NATIVE_RELEASE_EVIDENCE=$report" >> "$GITHUB_ENV"
 
       - uses: actions/setup-java@v5

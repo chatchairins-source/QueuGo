@@ -131,6 +131,12 @@ That certification workflow downloads an operator-produced evidence ZIP only fro
 the fixed private Supabase Storage bucket `queuego-native-release-evidence`,
 verifies its supplied SHA-256, safely rejects ZIP traversal/symlinks, runs
 `verify-native-release-gate.py`, and writes `certified-release-metadata.json`.
+Before the certification artifact is produced, the certification workflow also
+queries GitHub Actions and requires a successful `QueueGo Native Android Pilot`
+push run from `.github/workflows/build-native-rider-pilot.yml` on the exact same
+git HEAD. That Native Pilot run ID is embedded into certification metadata, and
+the final release independently resolves the run again and re-checks HEAD,
+workflow path, branch, event and success conclusion.
 The final release re-checks that versionName, all three release versionCodes,
 all three observed Play maxima and the signing certificate fingerprint match the
 certified metadata exactly before packaging. Signed outputs remain internal
