@@ -94,14 +94,11 @@ begin
     select pg_get_functiondef(v_signature::regprocedure) into v_before;
     if v_before is null then raise exception 'LAUNDRY_WRITE_RPC_NOT_FOUND: %',v_signature; end if;
 
-    if position('where s.user_id=v_user and s.archived_at is null' in v_before) > 0
-       and position('order by h.created_at desc' in v_before) > 0 then
+    if position('where s.user_id=v_user and s.archived_at is null' in v_before) > 0 then
       continue;
     end if;
 
-    if (length(v_before)-length(replace(v_before,'where s.user_id=v_user','')))/length('where s.user_id=v_user') <> 1
-       or (length(v_before)-length(replace(v_before,'order by h.created_at','')))/length('order by h.created_at') <> 1
-       or position('order by h.created_at desc' in v_before) > 0 then
+    if (length(v_before)-length(replace(v_before,'where s.user_id=v_user','')))/length('where s.user_id=v_user') <> 1 then
       raise exception 'LAUNDRY_WRITE_RPC_UNEXPECTED_DEFINITION: %',v_signature;
     end if;
 
@@ -109,11 +106,6 @@ begin
       v_before,
       'where s.user_id=v_user',
       'where s.user_id=v_user and s.archived_at is null'
-    );
-    v_after := replace(
-      v_after,
-      'order by h.created_at',
-      'order by h.created_at desc'
     );
     if v_after = v_before then raise exception 'LAUNDRY_WRITE_RPC_PATCH_NOT_APPLIED: %',v_signature; end if;
     execute v_after;
@@ -140,12 +132,10 @@ begin
   if position('where user_id=v_user and archived_at is null order by created_at desc limit 1;' in v_state) = 0 then
     raise exception 'LAUNDRY_MERCHANT_STATE_CURRENT_PROFILE_GUARD_MISSING';
   end if;
-  if position('where s.user_id=v_user and s.archived_at is null' in v_service) = 0
-     or position('order by h.created_at desc' in v_service) = 0 then
+  if position('where s.user_id=v_user and s.archived_at is null' in v_service) = 0 then
     raise exception 'LAUNDRY_SAVE_SERVICE_CURRENT_PROFILE_GUARD_MISSING';
   end if;
-  if position('where s.user_id=v_user and s.archived_at is null' in v_settings) = 0
-     or position('order by h.created_at desc' in v_settings) = 0 then
+  if position('where s.user_id=v_user and s.archived_at is null' in v_settings) = 0 then
     raise exception 'LAUNDRY_SAVE_SETTINGS_CURRENT_PROFILE_GUARD_MISSING';
   end if;
 end
