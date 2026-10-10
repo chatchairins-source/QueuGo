@@ -19,18 +19,6 @@ on:
         description: Rider release versionCode
         required: true
         type: string
-      customer_play_max_version_code:
-        description: Highest Customer versionCode observed in Play Console
-        required: true
-        type: string
-      merchant_play_max_version_code:
-        description: Highest Merchant versionCode observed in Play Console
-        required: true
-        type: string
-      rider_play_max_version_code:
-        description: Highest Rider versionCode observed in Play Console
-        required: true
-        type: string
       evidence_run_id:
         description: GitHub Actions run containing the certified Native release evidence artifact
         required: true
@@ -64,9 +52,6 @@ jobs:
       QG_CUSTOMER_VERSION_CODE: ${{ inputs.customer_version_code }}
       QG_MERCHANT_VERSION_CODE: ${{ inputs.merchant_version_code }}
       QG_RIDER_VERSION_CODE: ${{ inputs.rider_version_code }}
-      QG_CUSTOMER_PLAY_MAX_VERSION_CODE: ${{ inputs.customer_play_max_version_code }}
-      QG_MERCHANT_PLAY_MAX_VERSION_CODE: ${{ inputs.merchant_play_max_version_code }}
-      QG_RIDER_PLAY_MAX_VERSION_CODE: ${{ inputs.rider_play_max_version_code }}
     steps:
       - uses: actions/checkout@v4
 
@@ -93,6 +78,8 @@ jobs:
 
       - name: Bind certified evidence to this release
         shell: bash
+        env:
+          QG_RELEASE_SOURCE_SHA: ${{ github.sha }}
         run: |
           set -euo pipefail
           EVIDENCE="$RUNNER_TEMP/queuego-native-release-evidence/${{ inputs.evidence_report_path }}"
@@ -100,7 +87,34 @@ jobs:
             echo "::error::Certified release evidence report is missing: $EVIDENCE"
             exit 1
           }
-          echo "QG_NATIVE_RELEASE_EVIDENCE=$EVIDENCE" >> "$GITHUB_ENV"
+          QG_RELEASE_EVIDENCE="$EVIDENCE" python3 - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+          import re
+
+          path=Path(os.environ['QG_RELEASE_EVIDENCE'])
+          report=json.loads(path.read_text())
+          expected_source=os.environ['QG_RELEASE_SOURCE_SHA'].strip().lower()
+          if str(report.get('source_sha') or '').strip().lower() != expected_source:
+              raise SystemExit('::error::Certified release evidence source_sha does not match this release commit')
+          context=report.get('release_context') or {}
+          play=context.get('play_max_version_codes') or {}
+          signer=str(context.get('expected_signer_certificate_sha256') or '').replace(':','').strip().lower()
+          if not re.fullmatch(r'[0-9a-f]{64}',signer):
+              raise SystemExit('::error::Certified signer fingerprint is missing from release evidence')
+          env_path=Path(os.environ['GITHUB_ENV'])
+          values={'QG_ANDROID_EXPECTED_SIGNER_SHA256':signer}
+          for role in ('customer','merchant','rider'):
+              value=play.get(role)
+              if type(value) is not int or value < 0 or value > 2100000000:
+                  raise SystemExit(f'::error::Certified Play versionCode maximum is invalid for {role}')
+              values[f'QG_{role.upper()}_PLAY_MAX_VERSION_CODE']=str(value)
+          with env_path.open('a') as handle:
+              handle.write(f"QG_NATIVE_RELEASE_EVIDENCE={path}\n")
+              for key,value in values.items():
+                  handle.write(f"{key}={value}\n")
+          PY
 
       - name: Download verified Longdo Android SDK
         shell: bash
