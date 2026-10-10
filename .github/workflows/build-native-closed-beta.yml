@@ -222,16 +222,16 @@ jobs:
             aab_sha="$(sha256sum "$aab" | awk '{print $1}')"
             cp "$apk" "artifacts/native-closed-beta/QueueGo-$role-$QG_VERSION_NAME.apk"
             cp "$aab" "artifacts/native-closed-beta/QueueGo-$role-$QG_VERSION_NAME.aab"
-            cat > "artifacts/native-closed-beta/QueueGo-$role-release-evidence.txt" <<EOF
-application_id=$appid
-version_code=$QG_VERSION_CODE
-version_name=$QG_VERSION_NAME
-git_sha=$QG_GIT_SHA
-github_run_id=$QG_RUN_ID
-signer_certificate_sha256=$cert_sha
-apk_sha256=$apk_sha
-aab_sha256=$aab_sha
-EOF
+            printf '%s\n' \
+              "application_id=$appid" \
+              "version_code=$QG_VERSION_CODE" \
+              "version_name=$QG_VERSION_NAME" \
+              "git_sha=$QG_GIT_SHA" \
+              "github_run_id=$QG_RUN_ID" \
+              "signer_certificate_sha256=$cert_sha" \
+              "apk_sha256=$apk_sha" \
+              "aab_sha256=$aab_sha" \
+              > "artifacts/native-closed-beta/QueueGo-$role-release-evidence.txt"
           }
           verify_app customer com.queuego.customer
           verify_app merchant com.queuego.merchant
