@@ -13,7 +13,7 @@ const ok=(name,value)=>{checks.push([name,Boolean(value)]);assert.ok(value,name)
 
 ok('Native Closed Beta workflow exists',/name: QueueGo Native Android Closed Beta/.test(workflow));
 ok('Native Closed Beta is manual only',/workflow_dispatch:/.test(workflow)&&!/^\s*push:\s*$/m.test(workflow));
-ok('Native Closed Beta requires Native branch',/queuego-native-android-v1/.test(workflow)&&/Closed Beta may only build from queuego-native-android-v1/.test(workflow));
+ok('Native Closed Beta checks out Native source explicitly',(workflow.match(/ref: queuego-native-android-v1/g)||[]).length===2&&/QG_NATIVE_GIT_SHA=\$native_sha/.test(workflow)&&/QG_GIT_SHA=\$\(git rev-parse HEAD\)/.test(workflow));
 ok('Native Closed Beta does not use legacy Capacitor build dir',!workflow.includes('android-build/'));
 ok('Native Closed Beta requires restore drill',/restore_drill_certified/.test(workflow)&&/Backup\/Restore drill is not certified/.test(workflow));
 ok('Native Closed Beta requires physical push',/physical_background_notification_certified/.test(workflow)&&/Physical native background notification is not certified/.test(workflow));
@@ -64,6 +64,8 @@ ok('Pilot does not upload internal release variants',!pilotWorkflow.includes('qu
 
 ok('Recovery manifest points to Native source',manifest?.android?.native_source_of_truth==='native-android/');
 ok('Recovery manifest points to Native release workflow',manifest?.android?.native_closed_beta_workflow==='.github/workflows/build-native-closed-beta.yml');
+ok('Default branch hosts the manual Native release dispatcher',manifest?.android?.native_closed_beta_workflow_dispatch_host_branch==='main'&&manifest?.android?.native_closed_beta_checkout_ref==='queuego-native-android-v1');
+ok('Artifact provenance comes from checked-out Native SHA',manifest?.android?.release_provenance_git_sha_source==='CHECKED_OUT_NATIVE_BRANCH_HEAD');
 ok('Recovery manifest locks Native versionCode floor',manifest?.android?.release_version_code_strategy==='1000000_PLUS_NATIVE_CLOSED_BETA_WORKFLOW_RUN_NUMBER'&&manifest?.android?.release_version_code_floor===1000000);
 ok('Legacy Capacitor release is historical only',/HISTORICAL_ONLY/.test(manifest?.android?.legacy_capacitor_release_policy||''));
 ok('Voice code gate PASS',manifest?.voice?.code_gate==='PASS');
