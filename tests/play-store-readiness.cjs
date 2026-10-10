@@ -17,6 +17,8 @@ const readiness=read('docs/play-closed-beta-readiness.md');
 const manifest=JSON.parse(read('docs/pilot-recovery-manifest.json'));
 const releaseSecrets=read('.github/workflows/release-secret-readiness.yml');
 const releaseCertification=read('.github/workflows/native-release-certification.yml');
+const nativeVoicePeer=read('native-android/shared/src/main/java/com/queuego/shared/NativeVoicePeer.kt');
+const nativeTurnEdge=read('supabase/functions/queuego-turn/index.ts');
 const nativeRootGradle=read('native-android/build.gradle.kts');
 for(const role of ['customer','merchant','rider']){
   const appGradle=read(`native-android/${role}/build.gradle.kts`);
@@ -65,10 +67,28 @@ ok(/Native Android Customer, Merchant, Rider apps/i.test(readiness),'Play readin
 ok(/RECORD_AUDIO for optional order-scoped audio calls/i.test(readiness),'Native voice microphone disclosure must remain explicit');
 ok(/FOREGROUND_SERVICE_MICROPHONE/i.test(readiness),'Native microphone foreground-service permission must remain documented');
 ok(/Incoming FCM does not start microphone access in the background/i.test(readiness),'Play readiness must preserve visible-user-action microphone start boundary');
+ok(/Play Console foreground-service declaration draft/i.test(readiness),'Play readiness must retain an explicit foreground-service declaration draft');
+ok(/Customer \/ Merchant \/ Rider — `microphone`/i.test(readiness),'All three Native apps must have a microphone FGS declaration draft');
+ok(/Rider only — `specialUse`/i.test(readiness)&&/Active QueueGo Rider navigation return control/i.test(readiness),'Rider specialUse declaration must retain the reviewed subtype and use case');
+ok(/Demo video evidence required/i.test(readiness),'Foreground-service declaration must require real-device demo video evidence');
+ok(/Play Console declaration status remains \*\*BLOCKED\*\*/i.test(readiness),'FGS source readiness must not certify the external Play Console gate');
 ok(!/Explicitly forbidden by the release workflow:[\s\S]{0,300}RECORD_AUDIO/i.test(readiness),'Legacy Capacitor RECORD_AUDIO prohibition must not return');
 ok(/Native CI rejects WebView/i.test(readiness),'Data Safety draft must use Native no-WebView certification scope');
 ok(!/data collected by the web application running inside Capacitor/i.test(readiness),'Legacy Capacitor Data Safety collection rule must not certify Native apps');
 ok(!/android-build\/package\.json[^\n]*Capacitor Push Notifications/i.test(readiness),'Legacy Capacitor push inventory must not remain Native Play evidence');
+ok((readiness.match(/\| Voice or sound recordings \|/g)||[]).length===3,'Customer, Merchant and Rider Data Safety tables must each review Native voice media');
+ok(/end-to-end-encryption exception remains satisfied/i.test(readiness),'Native voice media must retain the Google Play E2EE collection-exception boundary');
+ok(/Cloudflare Realtime TURN[\s\S]*cannot inspect media content/i.test(readiness),'Play readiness must document Cloudflare TURN encrypted-media boundary');
+ok(/re-review if recording, transcription, SFU\/server media access or non-E2EE transport is introduced/i.test(readiness),'Voice Data Safety exception must fail closed on media architecture changes');
+ok(manifest?.play?.voice_audio_data_safety==='E2EE_EXCEPTION_WHILE_PEER_ONLY_WEBRTC','Recovery manifest must preserve the reviewed voice-media E2EE exception');
+ok(Array.isArray(manifest?.play?.voice_audio_roles)&&manifest.play.voice_audio_roles.length===3,'Voice Data Safety review must cover all three Native roles');
+ok(manifest?.play?.voice_audio_reassessment_required_on_architecture_change===true,'Voice Data Safety must require reassessment on architecture changes');
+ok(manifest?.play?.voice_audio_media_readable_by_turn_provider===false,'Recovery manifest must preserve the reviewed encrypted TURN media boundary');
+ok(manifest?.play?.cloudflare_turn_relay_metadata_review==='PENDING_FINAL_PLAY_CONSOLE_METADATA_CLASSIFICATION','Cloudflare TURN relay metadata must remain pending final Play classification');
+ok(manifest?.play?.foreground_service_declaration_status==='BLOCKED_REAL_DEVICE_VIDEO_AND_PLAY_CONSOLE_ENTRY','Play FGS declaration must remain externally blocked');
+ok(nativeVoicePeer.includes('PeerConnection.RTCConfiguration')&&nativeVoicePeer.includes('createAudioTrack("queuego-audio"'),'Data Safety E2EE exception must remain tied to the Native peer-to-peer WebRTC audio path');
+ok(nativeTurnEdge.includes('rtc.live.cloudflare.com/v1/turn/')&&nativeTurnEdge.includes('generate-ice-servers'),'Native voice relay must remain the reviewed Cloudflare TURN credential path');
+ok(!/MediaRecorder|FileOutputStream|recordToFile|transcription|Realtime SFU|\/sfu\//i.test(nativeVoicePeer+'\n'+nativeTurnEdge),'Voice Data Safety E2EE exception must fail if media recording, transcription or SFU/server media processing appears in the certified source');
 
 ok(manifest?.play?.provider_sharing_classification==='RESOLVED_CONSERVATIVE_LONGDO_LOCATION_SHARED','Provider sharing classification must not regress to pending');
 ok(manifest?.play?.data_safety_sharing==='YES_LONGDO_LOCATION_APP_FUNCTIONALITY','Manifest must lock Longdo location sharing for app functionality');
