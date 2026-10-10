@@ -739,3 +739,10 @@ The user-supplied Rider reference screens are the acceptance reference for workf
 - Combined the latest-HEAD Customer guest browsing/location persistence staging with the independently isolated lifecycle-safe logout revocation fix. This staging tree still includes all Native e9401e26 POS idempotency, printer durability and canonical order-number work.
 - Logout revocation is launched from the Activity lifecycle for POS staff and shared native auth hosts so clearing local UI/session state cannot cancel the backend revoke request. Local logout remains immediate; offline revoke remains best effort.
 - No Production schema, RLS, order state machine or cash-flow changes in this integration. Full CI on this exact combined tree is required before advancing queuego-native-android-v1.
+
+
+## 2026-10-10 native voice call foundation
+- Confirmed existing Customer/Rider call buttons still use Android ACTION_DIAL/tel and are not in-app calls. Rider floating Q is already implemented and wired to Google Maps navigation with overlay permission handling; do not duplicate it.
+- Voice work is isolated on work-native-voice-call-v1-20261010 from the combined Customer/logout staging head. Shared voice signaling reuses the existing publishable key, authenticated JWT and OkHttp WebSocket stack; no duplicate auth system or WebView.
+- Added strict order-call RPC client contracts and private qg-call:<uuid> Realtime signaling with heartbeat, token refresh, event allowlist and fail-closed join behavior. WebRTC Android dependency is pinned to io.github.webrtc-sdk:android:150.7871.01. MockWebServer tests cover private join, JWT, broadcast, rejection and topic/event validation.
+- No Production call tables/policies/RPCs have been deployed yet. No UI tel: path is replaced until backend + WebRTC audio engine + permission/error flow pass CI and security checks.
