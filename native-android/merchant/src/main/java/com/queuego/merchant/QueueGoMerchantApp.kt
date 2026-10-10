@@ -79,14 +79,27 @@ import java.time.LocalDate
 import java.time.ZoneId
 
 @Composable
-fun QueueGoMerchantApp() {
+fun QueueGoMerchantApp(
+    pushReferenceId: String? = null,
+    onPushConsumed: () -> Unit = {}
+) {
     QueueGoAuthHost(expectedRole = "shop", appLabel = "Merchant") { auth, logout ->
-        MerchantShell(auth, logout)
+        MerchantShell(
+            auth = auth,
+            logout = logout,
+            pushReferenceId = pushReferenceId,
+            onPushConsumed = onPushConsumed
+        )
     }
 }
 
 @Composable
-private fun MerchantShell(auth: NativeAuth, logout: () -> Unit) {
+private fun MerchantShell(
+    auth: NativeAuth,
+    logout: () -> Unit,
+    pushReferenceId: String? = null,
+    onPushConsumed: () -> Unit = {}
+) {
     val api = remember { MerchantApi() }
     val scope = rememberCoroutineScope()
     val realtime = remember { NativeOrderRealtime() }
@@ -215,6 +228,25 @@ private fun MerchantShell(auth: NativeAuth, logout: () -> Unit) {
     }
 
     LaunchedEffect(auth.user.id) { refreshAll() }
+
+    LaunchedEffect(pushReferenceId, loading, orders) {
+        val reference = pushReferenceId?.trim()?.takeIf { it.isNotEmpty() } ?: return@LaunchedEffect
+        if (loading) return@LaunchedEffect
+        val currentOrder = orders.find { it.id == reference }
+            ?: runCatching { api.loadOrders(auth) }.getOrNull()
+                ?.also { orders = it }
+                ?.find { it.id == reference }
+        if (currentOrder != null) {
+            selectedOrder = currentOrder
+            orderItems = runCatching { api.loadOrderItems(auth, currentOrder.id) }
+                .getOrDefault(emptyList())
+            screen = "order"
+        } else {
+            message = "ไม่พบออเดอร์ที่อ้างอิงจากการแจ้งเตือน"
+            screen = "notifications"
+        }
+        onPushConsumed()
+    }
     LaunchedEffect(screen) {
         if (screen == "home" || screen == "orders" || screen == "order") {
             while (true) {
