@@ -314,7 +314,8 @@
     "release_secret_preflight_validates_keystore_key_password": true,
     "release_secret_preflight_cleans_decoded_credentials": true,
     "allowed_android_build_workflows": [
-      ".github/workflows/build-native-rider-pilot.yml"
+      ".github/workflows/build-native-rider-pilot.yml",
+      ".github/workflows/build-native-release.yml"
     ],
     "legacy_github_release_assets_present": true,
     "legacy_github_release_tags": [
@@ -375,7 +376,13 @@
       "same_signer_all_three_apps",
       "aab_signer_certificate_sha256",
       "apk_aab_signer_match"
-    ]
+    ],
+    "native_release_workflow": ".github/workflows/build-native-release.yml",
+    "native_release_workflow_present": true,
+    "native_release_workflow_manual_only": true,
+    "native_release_workflow_exact_head_evidence_required": true,
+    "native_release_workflow_packages_only_after_gate": true,
+    "native_release_workflow_public_publish": false
   },
   "security": {
     "code_surface_hardened": true,
