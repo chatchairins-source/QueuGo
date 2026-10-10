@@ -45,6 +45,8 @@ on:
       - 'docs/privacy.html'
       - 'docs/account-deletion.html'
       - '.github/workflows/release-secret-readiness.yml'
+      - '.github/workflows/build-native-signed-release.yml'
+      - '.github/workflows/native-release-evidence.yml'
       - 'tests/background-push.cjs'
       - 'tests/native-customer-merchant-push.cjs'
       - 'ops/native-voice-call-schema-proposal-*.sql'
