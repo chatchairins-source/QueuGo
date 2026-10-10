@@ -1,7 +1,5 @@
 package com.queuego.rider
 
-import android.content.Intent
-import android.net.Uri
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -23,7 +21,6 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.nativeCanvas
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -55,8 +52,6 @@ internal fun RiderLoginScreen(
     var identifier by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var validation by remember { mutableStateOf<String?>(null) }
-    var navigationError by remember { mutableStateOf<String?>(null) }
-    val context = LocalContext.current
     val submit = {
         if (!busy) {
             if (identifier.isBlank() || password.isBlank()) {
@@ -111,7 +106,7 @@ internal fun RiderLoginScreen(
                     LoginField("รหัสผ่าน", "รหัสผ่าน", password,
                         { password = it; validation = null }, true, busy, submit)
                     Spacer(Modifier.height(13.dp))
-                    val message = validation ?: navigationError ?: error
+                    val message = validation ?: error
                     if (message != null) {
                         Text(message, style = authText(11, 17), color = Color(0xFFB4233D),
                             modifier = Modifier.fillMaxWidth().background(Color(0xFFFFF0F3), RoundedCornerShape(12.dp)).padding(horizontal = 12.dp, vertical = 10.dp))
