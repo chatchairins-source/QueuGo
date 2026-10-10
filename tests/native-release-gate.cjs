@@ -46,9 +46,9 @@ for(const [role,label] of roles){
 const sharedManifest=fs.readFileSync('native-android/shared/src/main/AndroidManifest.xml','utf8');
 assert.match(sharedManifest,/android\.permission\.FOREGROUND_SERVICE/);
 assert.match(sharedManifest,/android\.permission\.FOREGROUND_SERVICE_MICROPHONE/);
-assert.match(sharedManifest,/NativeVoiceForegroundService[\\s\\S]*android:exported="false"[\\s\\S]*android:foregroundServiceType="microphone"/);
+assert.match(sharedManifest,/NativeVoiceForegroundService[\s\S]*android:exported="false"[\s\S]*android:foregroundServiceType="microphone"/);
 const riderManifest=fs.readFileSync('native-android/rider/src/main/AndroidManifest.xml','utf8');
 assert.match(riderManifest,/android\.permission\.SYSTEM_ALERT_WINDOW/);
-assert.match(riderManifest,/RiderReturnService[\\s\\S]*android:foregroundServiceType="specialUse"/);
+assert.match(riderManifest,/RiderReturnService[\s\S]*android:foregroundServiceType="specialUse"/);
 
 console.log('Native release packaging guard: PASS (negative authorization checks; physical/signing certification remains OPEN)');
