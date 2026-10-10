@@ -466,7 +466,16 @@
     "release_certification_tls_only": true,
     "release_certification_rejects_duplicate_zip_paths": true,
     "release_certification_rejects_backslash_zip_paths": true,
-    "release_evidence_hashing": "STREAMING_SHA256_1_MIB_CHUNKS"
+    "release_evidence_hashing": "STREAMING_SHA256_1_MIB_CHUNKS",
+    "turn_edge_production_deployed": true,
+    "turn_edge_production_status": "ACTIVE",
+    "turn_edge_production_version": 2,
+    "turn_edge_verify_jwt": true,
+    "turn_edge_bundle_sha256": "747116e17f5c4a2feb2852851e1e346b5a8e456c5a6b521682ab1a5f02ed894c",
+    "turn_edge_source_exact_match": true,
+    "turn_edge_last_checked_at": "2026-10-10T14:15:00Z",
+    "turn_runtime_secret_status": "UNVERIFIED_NO_PRODUCTION_REQUESTS_OBSERVED",
+    "turn_forced_relay_two_device_gate": "OPEN"
   },
   "security": {
     "code_surface_hardened": true,
