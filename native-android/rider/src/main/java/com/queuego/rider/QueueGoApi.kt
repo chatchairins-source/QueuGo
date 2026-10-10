@@ -231,6 +231,7 @@ class QueueGoApi {
                 .put("deviceId", deviceId)
                 .put("platform", "android")
                 .put("token", token)
+                .put("sessionId", auth.session.sessionId)
         )
         Unit
     }
