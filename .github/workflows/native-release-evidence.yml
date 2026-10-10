@@ -21,6 +21,22 @@ on:
         description: JSON keyed by every Native release gate; status PASS except security_platform_auth may use PASS_FREE_PLAN_CONTROLS, plus evidence_ref and evidence_sha256
         required: true
         type: string
+      customer_play_max_version_code:
+        description: Highest Customer versionCode observed in Play Console (0 if none exists)
+        required: true
+        type: string
+      merchant_play_max_version_code:
+        description: Highest Merchant versionCode observed in Play Console (0 if none exists)
+        required: true
+        type: string
+      rider_play_max_version_code:
+        description: Highest Rider versionCode observed in Play Console (0 if none exists)
+        required: true
+        type: string
+      expected_signer_certificate_sha256:
+        description: Certified Android upload/release signing certificate SHA-256 (64 hex characters)
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -44,6 +60,10 @@ jobs:
           QG_CERT_P0: ${{ inputs.p0 }}
           QG_CERT_P1: ${{ inputs.p1 }}
           QG_CERTIFICATION_JSON: ${{ inputs.certification_json }}
+          QG_CUSTOMER_PLAY_MAX_VERSION_CODE: ${{ inputs.customer_play_max_version_code }}
+          QG_MERCHANT_PLAY_MAX_VERSION_CODE: ${{ inputs.merchant_play_max_version_code }}
+          QG_RIDER_PLAY_MAX_VERSION_CODE: ${{ inputs.rider_play_max_version_code }}
+          QG_ANDROID_EXPECTED_SIGNER_SHA256: ${{ inputs.expected_signer_certificate_sha256 }}
           QG_RUN_ID: ${{ github.run_id }}
         run: |
           set -euo pipefail
@@ -77,6 +97,20 @@ jobs:
           if missing or extra:
               raise SystemExit('::error::Certification gate keys mismatch. Missing='+','.join(missing)+' Extra='+','.join(extra))
 
+          play_max={}
+          for role in ('customer','merchant','rider'):
+              name=f'QG_{role.upper()}_PLAY_MAX_VERSION_CODE'
+              raw=os.environ.get(name,'').strip()
+              if not re.fullmatch(r'\d+',raw):
+                  raise SystemExit(f'::error::{name} must be the observed non-negative Play versionCode maximum')
+              value=int(raw)
+              if value < 0 or value > 2100000000:
+                  raise SystemExit(f'::error::{name} is outside the Android versionCode range')
+              play_max[role]=value
+          expected_signer=os.environ.get('QG_ANDROID_EXPECTED_SIGNER_SHA256','').replace(':','').strip().lower()
+          if not re.fullmatch(r'[0-9a-f]{64}',expected_signer):
+              raise SystemExit('::error::expected_signer_certificate_sha256 must be a 64-character SHA-256 fingerprint')
+
           out=root/'release-evidence'
           evidence_dir=out/'evidence'
           evidence_dir.mkdir(parents=True,exist_ok=True)
@@ -87,6 +121,10 @@ jobs:
               'recorded_at': datetime.now(timezone.utc).isoformat(),
               'github_run_id': os.environ['QG_RUN_ID'],
               'operator_certified': True,
+              'release_context': {
+                  'play_max_version_codes': play_max,
+                  'expected_signer_certificate_sha256': expected_signer,
+              },
               'gates': {},
           }
 
