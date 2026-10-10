@@ -79,17 +79,26 @@ def verify():
             raise ValueError(f"Firebase config requires one complete client: {package}")
     if len(projects) != 1:
         raise ValueError("all Native Firebase configs must use the certified Production project")
-    required = ("QG_ANDROID_KEYSTORE_PATH", "QG_ANDROID_STORE_PASSWORD", "QG_ANDROID_KEY_ALIAS", "QG_ANDROID_KEY_PASSWORD")
+    required = ("QG_ANDROID_KEYSTORE_PATH", "QG_ANDROID_STORE_PASSWORD", "QG_ANDROID_KEY_ALIAS", "QG_ANDROID_KEY_PASSWORD", "QG_ANDROID_EXPECTED_CERT_SHA256")
     if any(not os.environ.get(key) for key in required):
         raise ValueError("Native release signing environment is incomplete")
+    expected_cert = re.sub(r"[^0-9a-fA-F]", "", os.environ["QG_ANDROID_EXPECTED_CERT_SHA256"]).lower()
+    if not re.fullmatch(r"[0-9a-f]{64}", expected_cert):
+        raise ValueError("QG_ANDROID_EXPECTED_CERT_SHA256 must be a 64-hex SHA-256 fingerprint")
     if not Path(os.environ["QG_ANDROID_KEYSTORE_PATH"]).is_file():
         raise ValueError("Native release keystore is unavailable")
     # keytool reads the password from environment, never argv or logs.
-    entry = subprocess.run(["keytool", "-J-Duser.language=en", "-J-Duser.country=US", "-list", "-keystore", os.environ["QG_ANDROID_KEYSTORE_PATH"],
+    entry = subprocess.run(["keytool", "-J-Duser.language=en", "-J-Duser.country=US", "-list", "-v", "-keystore", os.environ["QG_ANDROID_KEYSTORE_PATH"],
                     "-storepass:env", "QG_ANDROID_STORE_PASSWORD", "-alias", os.environ["QG_ANDROID_KEY_ALIAS"]],
                    check=True, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True)
     if "PrivateKeyEntry" not in entry.stdout:
         raise ValueError("release alias is not a signing private-key entry")
+    cert_match = re.search(r"SHA256:\s*([0-9a-fA-F:]+)", entry.stdout)
+    if not cert_match:
+        raise ValueError("release signing certificate SHA-256 fingerprint is unavailable")
+    actual_cert = re.sub(r"[^0-9a-fA-F]", "", cert_match.group(1)).lower()
+    if actual_cert != expected_cert:
+        raise ValueError("release signing certificate does not match QG_ANDROID_EXPECTED_CERT_SHA256")
     with tempfile.TemporaryDirectory(prefix="queuego-signing-check-") as directory:
         validation_env = dict(os.environ, QG_VALIDATION_PASSWORD=secrets.token_urlsafe(32))
         subprocess.run(["keytool", "-importkeystore", "-srckeystore", os.environ["QG_ANDROID_KEYSTORE_PATH"],
