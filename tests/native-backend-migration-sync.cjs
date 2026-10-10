@@ -17,4 +17,5 @@ for(const path of [
 ]){
   assert.strictEqual(read(path),pushSource,path+' must match gated push source exactly');
 }
+// Production remote history reconciled after duplicate idempotent concurrent apply.
 console.log('Native backend migration mirror: PASS');
