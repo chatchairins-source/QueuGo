@@ -130,7 +130,7 @@ async function sendNativePush(deviceToken:string,user:any,n:any){
           },
           data,
           android:{
-            priority:user.role==='rider'?'high':'normal',
+            priority:(user.role==='rider'||n.type==='voice_call')?'high':'normal',
             notification:{channel_id:'queuego_orders',sound:'default'}
           }
         }
@@ -227,7 +227,7 @@ Deno.serve(async(req)=>{
                   payload,
                   {
                     TTL:3600,
-                    urgency:user.role==='rider'?'high':'normal',
+                    urgency:(user.role==='rider'||n.type==='voice_call')?'high':'normal',
                     vapidDetails:{
                       subject:'https://chatchairins-source.github.io/QueuGo/',
                       publicKey:c.public_key,
