@@ -164,6 +164,13 @@ jobs:
           cp native-android/rider/build/outputs/apk/androidTest/debug/rider-debug-androidTest.apk artifacts/native-rider-launch/baseline/rider-test.apk
       - name: Build three native APKs
         run: gradle -p native-android :customer:assembleDebug :merchant:assembleDebug :rider:assembleDebug :rider:assembleDebugAndroidTest --no-build-cache --stacktrace
+      - name: Verify Android 16 KB page-size packaging
+        run: |
+          python3 native-android/qa/verify-16kb-page-size.py \
+            native-android/customer/build/outputs/apk/debug/customer-debug.apk \
+            native-android/merchant/build/outputs/apk/debug/merchant-debug.apk \
+            native-android/rider/build/outputs/apk/debug/rider-debug.apk
+
       - name: Reject WebView
         run: |
           if grep -R -E 'android\.webkit\.WebView|<WebView\b|loadUrl\(' native-android; then
