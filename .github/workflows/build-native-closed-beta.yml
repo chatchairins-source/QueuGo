@@ -1,0 +1,252 @@
+name: QueueGo Native Android Closed Beta
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: queuego-native-closed-beta
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      QG_FIREBASE_GOOGLE_SERVICES_JSON_B64: ${{ secrets.QG_FIREBASE_GOOGLE_SERVICES_JSON_B64 }}
+      QG_ANDROID_KEYSTORE_B64: ${{ secrets.QG_ANDROID_KEYSTORE_B64 }}
+      QG_ANDROID_STORE_PASSWORD: ${{ secrets.QG_ANDROID_STORE_PASSWORD }}
+      QG_ANDROID_KEY_ALIAS: ${{ secrets.QG_ANDROID_KEY_ALIAS }}
+      QG_ANDROID_KEY_PASSWORD: ${{ secrets.QG_ANDROID_KEY_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Require Native source branch
+        run: |
+          set -euo pipefail
+          test "${GITHUB_REF}" = "refs/heads/queuego-native-android-v1" || {
+            echo "::error::Closed Beta may only build from queuego-native-android-v1"
+            exit 1
+          }
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Full QueueGo regression
+        run: npm test
+      - name: Native Closed Beta hard gates
+        run: |
+          set -euo pipefail
+          node - <<'NODE'
+          const fs=require('fs');
+          const m=JSON.parse(fs.readFileSync('docs/pilot-recovery-manifest.json','utf8'));
+          const gates=m.release_gates||{};
+          for(const gate of [
+            'account_deletion_privacy',
+            'service_area',
+            'core_e2e_production',
+            'ugc_chat_safety',
+            'security_audit',
+            'internal_source_readiness'
+          ]){
+            if(gates[gate]!=='PASS') throw new Error('Release gate '+gate+' is not PASS');
+          }
+          if(!['PASS','PASS_FREE_PLAN_CONTROLS'].includes(gates.security_platform_auth)){
+            throw new Error('Security platform Auth gate is not certified');
+          }
+          if(m?.supabase?.restore_drill_certified!==true){
+            throw new Error('Backup/Restore drill is not certified');
+          }
+          if(m?.notifications?.physical_background_notification_certified!==true){
+            throw new Error('Physical native background notification is not certified');
+          }
+          if(m?.voice?.turn_relay_certified!==true){
+            throw new Error('TURN relay is not certified');
+          }
+          if(m?.voice?.two_device_audio_e2e_certified!==true){
+            throw new Error('Real two-device native voice E2E is not certified');
+          }
+          if(m?.voice?.microphone_permission_policy!=='USER_INITIATED_IN_APP_CALL_ONLY'){
+            throw new Error('Microphone permission policy is not release-certified');
+          }
+          NODE
+      - name: Require Android/Firebase signing secrets
+        shell: bash
+        run: |
+          set -euo pipefail
+          missing=0
+          for name in             QG_FIREBASE_GOOGLE_SERVICES_JSON_B64             QG_ANDROID_KEYSTORE_B64             QG_ANDROID_STORE_PASSWORD             QG_ANDROID_KEY_ALIAS             QG_ANDROID_KEY_PASSWORD
+          do
+            if [ -z "${!name:-}" ]; then
+              echo "::error::Missing required Closed Beta secret: $name"
+              missing=1
+            fi
+          done
+          exit "$missing"
+      - name: Validate Firebase config for all Native apps
+        run: |
+          set -euo pipefail
+          umask 077
+          printf '%s' "$QG_FIREBASE_GOOGLE_SERVICES_JSON_B64" | base64 --decode > /tmp/google-services.json
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          data=json.loads(Path('/tmp/google-services.json').read_text())
+          packages={
+            c.get('client_info',{}).get('android_client_info',{}).get('package_name')
+            for c in (data.get('client') or [])
+          }
+          required={'com.queuego.customer','com.queuego.merchant','com.queuego.rider'}
+          missing=sorted(required-packages)
+          if missing:
+            raise SystemExit('::error::Firebase config missing Native Android clients: '+', '.join(missing))
+          print('Firebase config contains all three QueueGo Native packages')
+          PY
+      - name: Validate Android release keystore
+        run: |
+          set -euo pipefail
+          umask 077
+          printf '%s' "$QG_ANDROID_KEYSTORE_B64" | base64 --decode > /tmp/queuego-release.jks
+          test -s /tmp/queuego-release.jks
+          keytool -list             -keystore /tmp/queuego-release.jks             -storepass "$QG_ANDROID_STORE_PASSWORD"             -alias "$QG_ANDROID_KEY_ALIAS" >/dev/null
+          rm -f /tmp/queuego-validation.p12
+          keytool -importkeystore             -srckeystore /tmp/queuego-release.jks             -srcstorepass "$QG_ANDROID_STORE_PASSWORD"             -srcalias "$QG_ANDROID_KEY_ALIAS"             -srckeypass "$QG_ANDROID_KEY_PASSWORD"             -destkeystore /tmp/queuego-validation.p12             -deststoretype PKCS12             -deststorepass QueueGoValidationOnly123!             -destkeypass QueueGoValidationOnly123!             -noprompt >/dev/null
+      - name: Cleanup validation credentials
+        if: always()
+        run: rm -f /tmp/google-services.json /tmp/queuego-release.jks /tmp/queuego-validation.p12
+
+  build:
+    needs: validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      QG_VERSION_CODE: ${{ github.run_number }}
+      QG_VERSION_NAME: 1.0.0-beta.${{ github.run_number }}
+      QG_GIT_SHA: ${{ github.sha }}
+      QG_RUN_ID: ${{ github.run_id }}
+      QG_FIREBASE_GOOGLE_SERVICES_JSON_B64: ${{ secrets.QG_FIREBASE_GOOGLE_SERVICES_JSON_B64 }}
+      ORG_GRADLE_PROJECT_QG_VERSION_CODE: ${{ github.run_number }}
+      ORG_GRADLE_PROJECT_QG_VERSION_NAME: 1.0.0-beta.${{ github.run_number }}
+      ORG_GRADLE_PROJECT_QG_STORE_FILE: queuego-release.jks
+      ORG_GRADLE_PROJECT_QG_STORE_PASSWORD: ${{ secrets.QG_ANDROID_STORE_PASSWORD }}
+      ORG_GRADLE_PROJECT_QG_KEY_ALIAS: ${{ secrets.QG_ANDROID_KEY_ALIAS }}
+      ORG_GRADLE_PROJECT_QG_KEY_PASSWORD: ${{ secrets.QG_ANDROID_KEY_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Install Android SDK
+        run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-36" "build-tools;36.0.0" >/dev/null
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.6.0'
+      - name: Download verified Longdo Android SDK
+        run: |
+          set -euo pipefail
+          mkdir -p native-android/rider/libs
+          curl -fsSL "https://api.longdo.com/map-android-SDK/LongdoMapAndroidSDK_v0.1.8.aar" -o native-android/rider/libs/LongdoMapAndroidSDK_v0.1.8.aar
+          echo "52d98e8deaaef4400f2623eebb212daa  native-android/rider/libs/LongdoMapAndroidSDK_v0.1.8.aar" | md5sum -c -
+      - name: Materialize Firebase configs and release keystore
+        env:
+          QG_ANDROID_KEYSTORE_B64: ${{ secrets.QG_ANDROID_KEYSTORE_B64 }}
+        run: |
+          set -euo pipefail
+          umask 077
+          tmp="$(mktemp)"
+          printf '%s' "$QG_FIREBASE_GOOGLE_SERVICES_JSON_B64" | base64 --decode > "$tmp"
+          QG_FIREBASE_CONFIG="$tmp" python3 - <<'PY'
+          import json,os,shutil
+          from pathlib import Path
+          p=Path(os.environ['QG_FIREBASE_CONFIG'])
+          data=json.loads(p.read_text())
+          packages={
+            c.get('client_info',{}).get('android_client_info',{}).get('package_name')
+            for c in (data.get('client') or [])
+          }
+          targets={
+            'com.queuego.customer':Path('native-android/customer/google-services.json'),
+            'com.queuego.merchant':Path('native-android/merchant/google-services.json'),
+            'com.queuego.rider':Path('native-android/rider/google-services.json')
+          }
+          missing=sorted(set(targets)-packages)
+          if missing:
+            raise SystemExit('Missing Firebase Native clients: '+', '.join(missing))
+          for package,target in targets.items():
+            shutil.copyfile(p,target)
+            os.chmod(target,0o600)
+          PY
+          rm -f "$tmp"
+          printf '%s' "$QG_ANDROID_KEYSTORE_B64" | base64 --decode > native-android/queuego-release.jks
+          test -s native-android/queuego-release.jks
+      - name: Compile unit tests before release build
+        run: gradle -p native-android :shared:testDebugUnitTest :customer:testDebugUnitTest :merchant:testDebugUnitTest :rider:testDebugUnitTest --no-build-cache --stacktrace
+      - name: Reject WebView
+        run: |
+          if grep -R -E 'android\.webkit\.WebView|<WebView\b|loadUrl\(' native-android; then
+            echo "::error::WebView is forbidden in QueueGo Native release"
+            exit 1
+          fi
+      - name: Build signed Native APK and AAB for all roles
+        run: |
+          set -euo pipefail
+          gradle -p native-android             :customer:assembleRelease :customer:bundleRelease             :merchant:assembleRelease :merchant:bundleRelease             :rider:assembleRelease :rider:bundleRelease             --no-build-cache --stacktrace
+      - name: Verify Native release artifacts
+        run: |
+          set -euo pipefail
+          BUILD_TOOLS="$ANDROID_HOME/build-tools/36.0.0"
+          AAPT="$BUILD_TOOLS/aapt"
+          APKSIGNER="$BUILD_TOOLS/apksigner"
+          mkdir -p artifacts/native-closed-beta
+          verify_app() {
+            role="$1"
+            appid="$2"
+            apk="native-android/$role/build/outputs/apk/release/$role-release.apk"
+            aab="native-android/$role/build/outputs/bundle/release/$role-release.aab"
+            test -s "$apk"
+            test -s "$aab"
+            badging="$("$AAPT" dump badging "$apk")"
+            echo "$badging" | grep -F "package: name='$appid' versionCode='$QG_VERSION_CODE' versionName='$QG_VERSION_NAME'"
+            if echo "$badging" | grep -q 'application-debuggable'; then
+              echo "::error::$role release APK is debuggable"
+              exit 1
+            fi
+            cert="$("$APKSIGNER" verify --verbose --print-certs "$apk")"
+            echo "$cert" | grep -q 'Signer #1 certificate SHA-256 digest:'
+            cert_sha="$(echo "$cert" | sed -n 's/^Signer #1 certificate SHA-256 digest: //p' | head -n1)"
+            jarsigner -verify -strict "$aab" >/dev/null
+            apk_sha="$(sha256sum "$apk" | awk '{print $1}')"
+            aab_sha="$(sha256sum "$aab" | awk '{print $1}')"
+            cp "$apk" "artifacts/native-closed-beta/QueueGo-$role-$QG_VERSION_NAME.apk"
+            cp "$aab" "artifacts/native-closed-beta/QueueGo-$role-$QG_VERSION_NAME.aab"
+            cat > "artifacts/native-closed-beta/QueueGo-$role-release-evidence.txt" <<EOF
+application_id=$appid
+version_code=$QG_VERSION_CODE
+version_name=$QG_VERSION_NAME
+git_sha=$QG_GIT_SHA
+github_run_id=$QG_RUN_ID
+signer_certificate_sha256=$cert_sha
+apk_sha256=$apk_sha
+aab_sha256=$aab_sha
+EOF
+          }
+          verify_app customer com.queuego.customer
+          verify_app merchant com.queuego.merchant
+          verify_app rider com.queuego.rider
+      - name: Upload gated Native Closed Beta artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: queuego-native-closed-beta-${{ github.run_number }}
+          path: artifacts/native-closed-beta/
+          if-no-files-found: error
+          retention-days: 14
+      - name: Cleanup release credentials
+        if: always()
+        run: |
+          rm -f native-android/queuego-release.jks
+          rm -f native-android/customer/google-services.json
+          rm -f native-android/merchant/google-services.json
+          rm -f native-android/rider/google-services.json
