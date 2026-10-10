@@ -8,6 +8,7 @@ on:
       - work-native-closed-beta-release-v1-20261010
       - work-native-closed-beta-finalize-v1-20261010
       - work-native-closed-beta-integration-v1-20261010
+      - work-native-closed-beta-final-v1-20261010
       - work-native-voice-call-v1-20261010
       - work-native-voice-controller-v1-20261010
       - work-native-voice-turn-client-v1-20261010
