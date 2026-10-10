@@ -11,6 +11,11 @@ import android.net.Uri
 import android.os.Build
 import android.provider.Settings
 import com.queuego.shared.QueueGoTheme
+import com.queuego.shared.QueueGoVoiceCallOverlay
+import com.queuego.shared.NativeVoiceCallController
+import com.queuego.shared.NativeUser
+import com.queuego.shared.NativeSession
+import com.queuego.shared.NativeAuth
 import com.queuego.shared.QgAccountDeletionSection
 import com.queuego.shared.QueueGoBrand
 import com.queuego.shared.QgStatusPill
@@ -57,6 +62,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -66,6 +72,7 @@ import com.queuego.shared.riderRealtimeSubscriptions
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -277,6 +284,24 @@ private fun LoginScreen(
     RiderLoginScreen(modifier, busy, error, onLogin, onRegister)
 }
 
+
+private fun QueueGoAuth.asNativeVoiceAuth(): NativeAuth = NativeAuth(
+    session = NativeSession(
+        authUserId = session.authUserId,
+        accessToken = session.accessToken,
+        refreshToken = session.refreshToken,
+        expiresAtMs = session.expiresAtMs,
+        sessionId = session.sessionId
+    ),
+    user = NativeUser(
+        id = user.id,
+        authUserId = session.authUserId,
+        name = user.name,
+        role = user.role,
+        status = user.status
+    )
+)
+
 @Composable
 private fun RiderHome(
     modifier: Modifier,
@@ -286,6 +311,15 @@ private fun RiderHome(
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    val nativeVoiceAuth = remember(
+        auth.user.id,
+        auth.session.accessToken,
+        auth.session.sessionId,
+        auth.session.expiresAtMs
+    ) { auth.asNativeVoiceAuth() }
+    val voiceController = remember(auth.user.id) { NativeVoiceCallController(context) }
+    val voiceState by voiceController.state.collectAsState()
+    DisposableEffect(voiceController) { onDispose { voiceController.close() } }
     val pushStore = remember(context) { SessionStore(context) }
     val realtime = remember { NativeOrderRealtime() }
     val lifecycle = LocalLifecycleOwner.current.lifecycle
@@ -310,6 +344,45 @@ private fun RiderHome(
     var pendingCameraUri by remember { mutableStateOf<Uri?>(null) }
     var lastOfferAlertKey by remember { mutableStateOf<String?>(null) }
     var activeTab by remember { mutableStateOf("home") }
+    var pendingVoiceOrderId by remember { mutableStateOf<String?>(null) }
+    var pendingVoiceAnswer by remember { mutableStateOf(false) }
+    val voicePermission = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted) {
+            if (pendingVoiceAnswer) {
+                voiceController.answerIncoming(nativeVoiceAuth)
+            } else {
+                pendingVoiceOrderId?.let { orderId ->
+                    voiceController.startOutgoing(nativeVoiceAuth, orderId, "customer")
+                }
+            }
+        } else {
+            actionMessage = "กรุณาอนุญาตไมโครโฟนเพื่อโทรผ่าน QueueGo"
+        }
+        pendingVoiceOrderId = null
+        pendingVoiceAnswer = false
+    }
+
+    fun startCustomerVoice(orderId: String) {
+        if (context.checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
+            voiceController.startOutgoing(nativeVoiceAuth, orderId, "customer")
+        } else {
+            pendingVoiceOrderId = orderId
+            pendingVoiceAnswer = false
+            voicePermission.launch(Manifest.permission.RECORD_AUDIO)
+        }
+    }
+
+    fun answerVoiceCall() {
+        if (context.checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
+            voiceController.answerIncoming(nativeVoiceAuth)
+        } else {
+            pendingVoiceOrderId = null
+            pendingVoiceAnswer = true
+            voicePermission.launch(Manifest.permission.RECORD_AUDIO)
+        }
+    }
 
     val badgePreferences = remember(context) { context.getSharedPreferences("rider_chat_seen", Context.MODE_PRIVATE) }
     val badgeTracker = remember(auth.user.id, auth.session.sessionId) { RiderMessageBadgeTracker(auth.user.id) }
@@ -565,6 +638,24 @@ private fun RiderHome(
         lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
             while (true) {
                 refreshSnapshot()
+                delay(3_000)
+            }
+        }
+    }
+    LaunchedEffect(
+        nativeVoiceAuth.session.accessToken,
+        nativeVoiceAuth.session.sessionId,
+        lifecycle
+    ) {
+        lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            while (true) {
+                try {
+                    voiceController.refreshIncoming(nativeVoiceAuth)
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (_: Exception) {
+                    // Native push plus foreground polling provide recovery without blocking Rider work.
+                }
                 delay(3_000)
             }
         }
