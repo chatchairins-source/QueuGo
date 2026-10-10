@@ -122,6 +122,11 @@ begin
     where c.topic=p_topic
       and c.status='accepted'
       and c.expires_at>now()
+      and exists(
+        select 1 from public.orders o
+        where o.id=c.order_id
+          and lower(o.status) not in ('cancelled','completed','no_rider_available')
+      )
       and (
         (c.caller_user_id=v_queuego_user and c.caller_session_id=v_current_session)
         or
@@ -310,6 +315,16 @@ begin
      and status='accepted'
      and expires_at<=now();
 
+  update public.qg_call_sessions c
+     set status='ended',ended_at=coalesce(ended_at,now())
+   where c.order_id=p_order_id
+     and c.status in ('ringing','accepted')
+     and not exists(
+       select 1 from public.orders o
+       where o.id=c.order_id
+         and lower(o.status) not in ('cancelled','completed','no_rider_available')
+     );
+
   select c.id into v_call_id
   from public.qg_call_sessions c
   where c.order_id=p_order_id
@@ -480,6 +495,11 @@ begin
     where c.id=p_call_id
       and c.status='accepted'
       and c.expires_at>now()
+      and exists(
+        select 1 from public.orders o
+        where o.id=c.order_id
+          and lower(o.status) not in ('cancelled','completed','no_rider_available')
+      )
       and (
         (c.caller_user_id=v_actor and c.caller_session_id=p_session_id)
         or
