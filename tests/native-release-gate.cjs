@@ -23,4 +23,32 @@ assert.match(gradle,/signingConfig = nativeReleaseSigning/);
 assert.match(gradle,/name\.contains\("Release"\)/,'direct internal release tasks must also require the gate');
 assert.match(gradle,/dependsOn\(verifyNativeReleaseGate\)/);
 assert(!/signingConfigs.getByName\("debug"\)/.test(gradle),'release must not use debug signing');
+
+const roles=[
+  ['customer','QueueGo'],
+  ['merchant','QueueGo Merchant'],
+  ['rider','QueueGo Rider'],
+];
+for(const [role,label] of roles){
+  const appGradle=fs.readFileSync(`native-android/${role}/build.gradle.kts`,'utf8');
+  assert.match(appGradle,new RegExp(`namespace\\s*=\\s*"com\\.queuego\\.${role}"`));
+  assert.match(appGradle,new RegExp(`applicationId\\s*=\\s*"com\\.queuego\\.${role}"`));
+  const manifest=fs.readFileSync(`native-android/${role}/src/main/AndroidManifest.xml`,'utf8');
+  assert.match(manifest,new RegExp(`android:label="${label.replace(/[.*+?^{}()|[\\]\\\\]/g,'\\\\console.log('Native release packaging guard: PASS (negative authorization checks; physical/signing certification remains OPEN)');')}"`));
+  assert.match(manifest,/android:icon="@mipmap\/ic_queuego_launcher"/);
+  assert.match(manifest,/android:roundIcon="@mipmap\/ic_queuego_launcher"/);
+  assert.ok(fs.existsSync(`native-android/branding/${role}-play-store-512.png`),`${role} Play Store 512px icon missing`);
+  assert.ok(fs.existsSync(`native-android/branding/${role}-play-store.svg`),`${role} Play Store vector icon missing`);
+  for(const density of ['mdpi','hdpi','xhdpi','xxhdpi','xxxhdpi']){
+    assert.ok(fs.existsSync(`native-android/${role}/src/main/res/mipmap-${density}/ic_queuego_launcher.png`),`${role} launcher ${density} missing`);
+  }
+}
+const sharedManifest=fs.readFileSync('native-android/shared/src/main/AndroidManifest.xml','utf8');
+assert.match(sharedManifest,/android\.permission\.FOREGROUND_SERVICE/);
+assert.match(sharedManifest,/android\.permission\.FOREGROUND_SERVICE_MICROPHONE/);
+assert.match(sharedManifest,/NativeVoiceForegroundService[\\s\\S]*android:exported="false"[\\s\\S]*android:foregroundServiceType="microphone"/);
+const riderManifest=fs.readFileSync('native-android/rider/src/main/AndroidManifest.xml','utf8');
+assert.match(riderManifest,/android\.permission\.SYSTEM_ALERT_WINDOW/);
+assert.match(riderManifest,/RiderReturnService[\\s\\S]*android:foregroundServiceType="specialUse"/);
+
 console.log('Native release packaging guard: PASS (negative authorization checks; physical/signing certification remains OPEN)');
