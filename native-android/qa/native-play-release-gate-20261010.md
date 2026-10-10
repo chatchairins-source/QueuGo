@@ -48,11 +48,12 @@ any requirement below is OPEN.
   QG_ANDROID_KEY_PASSWORD absent from the Actions environment.
 - Production Supabase project `pkypiqhlrmzocysgeqew` was checked read-only
   on 2026-10-10: private Storage bucket `queuego-native-release-evidence` is not
-  present yet. Certification and release-readiness workflows now require
-  `QG_SUPABASE_URL=https://pkypiqhlrmzocysgeqew.supabase.co`, verify that the
+  present yet. Certification and release-readiness workflows now pin
+  `https://pkypiqhlrmzocysgeqew.supabase.co` directly in source, verify that the
   fixed bucket exists and remains private, and fail closed on any other project.
-  Runtime certification remains BLOCKED until the bucket,
-  QG_SUPABASE_SERVICE_ROLE_KEY and real physical evidence are configured.
+  No mutable Actions variable is required for this non-secret origin. Runtime
+  certification remains BLOCKED until the bucket, QG_SUPABASE_SERVICE_ROLE_KEY
+  and real physical evidence are configured.
 
 ## Still OPEN
 
