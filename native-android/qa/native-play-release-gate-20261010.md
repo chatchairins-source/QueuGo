@@ -126,7 +126,15 @@ No example PASS report is supplied. Files/hashes prove evidence identity; they d
 physical behavior. The operator remains responsible for truthful certification.
 Evidence file references must be relative paths contained inside the downloaded
 certification bundle. Absolute paths, parent traversal, missing files and
-malformed non-SHA-256 digests are rejected before release packaging.
+malformed non-SHA-256 digests are rejected before release packaging. Each gate
+evidence file must now be a JSON envelope bound to the exact gate, exact git HEAD,
+certified status, UTC observation timestamp, non-empty all-true checks and at
+least one separately hashed artifact file. Physical gates must include hashed
+device identities (never raw serials), Android API level, model and QueueGo role.
+Customer/Merchant/Rider push and Blueprint evidence must include the matching app
+role; Floating Q requires Rider evidence; the lifecycle matrix must cover all
+three roles. The two-device/two-network voice gate requires two distinct device
+hashes plus two distinct network hashes and network types.
 
 The verifier requires all three complete Firebase clients in one Production
 project plus the actual keystore. It verifies the keystore alias using keytool
