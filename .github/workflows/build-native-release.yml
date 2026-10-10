@@ -1,0 +1,255 @@
+name: QueueGo Native Android Certified Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      certification_run_id:
+        description: Successful evidence workflow run on this exact HEAD containing queuego-native-release-certification
+        required: true
+        type: string
+      version_name:
+        description: Release versionName in x.y.z form
+        required: true
+        type: string
+      customer_version_code:
+        description: Customer release versionCode
+        required: true
+        type: string
+      merchant_version_code:
+        description: Merchant release versionCode
+        required: true
+        type: string
+      rider_version_code:
+        description: Rider release versionCode
+        required: true
+        type: string
+      customer_play_max_version_code:
+        description: Highest Customer versionCode currently observed in Play Console
+        required: true
+        type: string
+      merchant_play_max_version_code:
+        description: Highest Merchant versionCode currently observed in Play Console
+        required: true
+        type: string
+      rider_play_max_version_code:
+        description: Highest Rider versionCode currently observed in Play Console
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: queuego-native-certified-release
+  cancel-in-progress: false
+
+jobs:
+  certified-release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      QG_NATIVE_VERSION_NAME: ${{ inputs.version_name }}
+      QG_CUSTOMER_VERSION_CODE: ${{ inputs.customer_version_code }}
+      QG_MERCHANT_VERSION_CODE: ${{ inputs.merchant_version_code }}
+      QG_RIDER_VERSION_CODE: ${{ inputs.rider_version_code }}
+      QG_CUSTOMER_PLAY_MAX_VERSION_CODE: ${{ inputs.customer_play_max_version_code }}
+      QG_MERCHANT_PLAY_MAX_VERSION_CODE: ${{ inputs.merchant_play_max_version_code }}
+      QG_RIDER_PLAY_MAX_VERSION_CODE: ${{ inputs.rider_play_max_version_code }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Require Native Source of Truth branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "$GITHUB_REF" != "refs/heads/queuego-native-android-v1" ]; then
+            echo "::error::Certified release may run only from queuego-native-android-v1"
+            exit 1
+          fi
+
+      - name: Require external release secrets
+        shell: bash
+        env:
+          QG_FIREBASE_GOOGLE_SERVICES_JSON_B64: ${{ secrets.QG_FIREBASE_GOOGLE_SERVICES_JSON_B64 }}
+          QG_ANDROID_KEYSTORE_B64: ${{ secrets.QG_ANDROID_KEYSTORE_B64 }}
+          QG_ANDROID_STORE_PASSWORD: ${{ secrets.QG_ANDROID_STORE_PASSWORD }}
+          QG_ANDROID_KEY_ALIAS: ${{ secrets.QG_ANDROID_KEY_ALIAS }}
+          QG_ANDROID_KEY_PASSWORD: ${{ secrets.QG_ANDROID_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          missing=0
+          for name in             QG_FIREBASE_GOOGLE_SERVICES_JSON_B64             QG_ANDROID_KEYSTORE_B64             QG_ANDROID_STORE_PASSWORD             QG_ANDROID_KEY_ALIAS             QG_ANDROID_KEY_PASSWORD
+          do
+            if [ -z "${!name:-}" ]; then
+              echo "::error::Missing certified release secret: $name"
+              missing=1
+            fi
+          done
+          test "$missing" -eq 0
+
+      - name: Download exact-HEAD certification evidence
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CERTIFICATION_RUN_ID: ${{ inputs.certification_run_id }}
+        run: |
+          set -euo pipefail
+          case "$CERTIFICATION_RUN_ID" in
+            ''|*[!0-9]*) echo "::error::certification_run_id must be numeric"; exit 1 ;;
+          esac
+          meta="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$CERTIFICATION_RUN_ID")"
+          run_head="$(jq -r '.head_sha // empty' <<<"$meta")"
+          run_conclusion="$(jq -r '.conclusion // empty' <<<"$meta")"
+          if [ "$run_head" != "$GITHUB_SHA" ]; then
+            echo "::error::Certification artifact must come from exact release HEAD"
+            exit 1
+          fi
+          if [ "$run_conclusion" != "success" ]; then
+            echo "::error::Certification workflow run is not successful"
+            exit 1
+          fi
+          evidence_dir="$RUNNER_TEMP/queuego-native-release-certification"
+          mkdir -p "$evidence_dir"
+          gh run download "$CERTIFICATION_RUN_ID"             --repo "$GITHUB_REPOSITORY"             --name queuego-native-release-certification             --dir "$evidence_dir"
+          report="$evidence_dir/native-release-evidence.json"
+          if [ ! -s "$report" ]; then
+            echo "::error::native-release-evidence.json missing from certification artifact"
+            exit 1
+          fi
+          echo "QG_NATIVE_RELEASE_EVIDENCE=$report" >> "$GITHUB_ENV"
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Install Android SDK
+        run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-36" "build-tools;36.0.0" >/dev/null
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.6.0'
+
+      - name: Download verified Longdo Android SDK
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p native-android/rider/libs
+          curl -fsSL "https://api.longdo.com/map-android-SDK/LongdoMapAndroidSDK_v0.1.8.aar"             -o native-android/rider/libs/LongdoMapAndroidSDK_v0.1.8.aar
+          echo "52d98e8deaaef4400f2623eebb212daa  native-android/rider/libs/LongdoMapAndroidSDK_v0.1.8.aar" | md5sum -c -
+
+      - name: Prepare certified Firebase and signing inputs
+        shell: bash
+        env:
+          QG_FIREBASE_GOOGLE_SERVICES_JSON_B64: ${{ secrets.QG_FIREBASE_GOOGLE_SERVICES_JSON_B64 }}
+          QG_ANDROID_KEYSTORE_B64: ${{ secrets.QG_ANDROID_KEYSTORE_B64 }}
+        run: |
+          set -euo pipefail
+          umask 077
+          firebase="$RUNNER_TEMP/queuego-google-services.json"
+          keystore="$RUNNER_TEMP/queuego-release.keystore"
+          printf '%s' "$QG_FIREBASE_GOOGLE_SERVICES_JSON_B64" | base64 --decode > "$firebase"
+          printf '%s' "$QG_ANDROID_KEYSTORE_B64" | base64 --decode > "$keystore"
+          test -s "$firebase"
+          test -s "$keystore"
+          QG_FIREBASE_CONFIG="$firebase" python3 - <<'PY'
+          import json, os, shutil
+          from pathlib import Path
+
+          source = Path(os.environ["QG_FIREBASE_CONFIG"])
+          data = json.loads(source.read_text())
+          if not data.get("project_info", {}).get("project_id"):
+              raise SystemExit("::error::Firebase config is missing project_id")
+          required = {
+              "com.queuego.customer": Path("native-android/customer/google-services.json"),
+              "com.queuego.merchant": Path("native-android/merchant/google-services.json"),
+              "com.queuego.rider": Path("native-android/rider/google-services.json"),
+          }
+          clients = data.get("client") or []
+          for package, target in required.items():
+              matches = [
+                  client for client in clients
+                  if client.get("client_info", {}).get("android_client_info", {}).get("package_name") == package
+              ]
+              if len(matches) != 1:
+                  raise SystemExit(f"::error::Firebase config requires exactly one Android client for {package}")
+              if not matches[0].get("client_info", {}).get("mobilesdk_app_id"):
+                  raise SystemExit(f"::error::Firebase client is incomplete for {package}")
+              shutil.copyfile(source, target)
+              target.chmod(0o600)
+          PY
+          chmod 600 "$keystore"
+          echo "QG_ANDROID_KEYSTORE_PATH=$keystore" >> "$GITHUB_ENV"
+
+      - name: Install regression dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Full QueueGo regression before release
+        run: npm test
+
+      - name: Native release source contracts
+        run: |
+          node tests/native-release-gate.cjs
+          node tests/native-customer-merchant-push.cjs
+          node tests/native-push-session-binding.cjs
+          node tests/native-voice-call-contract.cjs
+          node tests/native-voice-turn-edge.cjs
+          node tests/native-voice-ui-contract.cjs
+          node tests/native-voice-background.cjs
+          node tests/native-backend-migration-sync.cjs
+          node tests/native-android-source.cjs
+
+      - name: Native unit tests before release
+        run: gradle -p native-android :shared:testDebugUnitTest :customer:testDebugUnitTest :merchant:testDebugUnitTest :rider:testDebugUnitTest --no-build-cache --stacktrace
+
+      - name: Verify certified release gate before packaging
+        env:
+          QG_ANDROID_STORE_PASSWORD: ${{ secrets.QG_ANDROID_STORE_PASSWORD }}
+          QG_ANDROID_KEY_ALIAS: ${{ secrets.QG_ANDROID_KEY_ALIAS }}
+          QG_ANDROID_KEY_PASSWORD: ${{ secrets.QG_ANDROID_KEY_PASSWORD }}
+        run: python3 native-android/qa/verify-native-release-gate.py
+
+      - name: Build signed Native APK and AAB for all roles
+        env:
+          QG_ANDROID_STORE_PASSWORD: ${{ secrets.QG_ANDROID_STORE_PASSWORD }}
+          QG_ANDROID_KEY_ALIAS: ${{ secrets.QG_ANDROID_KEY_ALIAS }}
+          QG_ANDROID_KEY_PASSWORD: ${{ secrets.QG_ANDROID_KEY_PASSWORD }}
+        run: |
+          gradle -p native-android             :customer:assembleRelease :customer:bundleRelease             :merchant:assembleRelease :merchant:bundleRelease             :rider:assembleRelease :rider:bundleRelease             --no-build-cache --stacktrace
+
+      - name: Verify signed Native release artifacts
+        shell: bash
+        run: |
+          set -euo pipefail
+          evidence="$RUNNER_TEMP/native-release-artifacts.json"
+          QG_NATIVE_RELEASE_ARTIFACT_EVIDENCE="$evidence"             python3 native-android/qa/verify-native-release-artifacts.py
+          release_dir="$RUNNER_TEMP/queuego-native-certified-release"
+          mkdir -p "$release_dir"
+          cp native-android/customer/build/outputs/apk/release/customer-release.apk "$release_dir/"
+          cp native-android/customer/build/outputs/bundle/release/customer-release.aab "$release_dir/"
+          cp native-android/merchant/build/outputs/apk/release/merchant-release.apk "$release_dir/"
+          cp native-android/merchant/build/outputs/bundle/release/merchant-release.aab "$release_dir/"
+          cp native-android/rider/build/outputs/apk/release/rider-release.apk "$release_dir/"
+          cp native-android/rider/build/outputs/bundle/release/rider-release.aab "$release_dir/"
+          cp "$evidence" "$release_dir/"
+
+      - name: Retain certified release artifacts internally
+        uses: actions/upload-artifact@v4
+        with:
+          name: queuego-native-certified-release-${{ inputs.version_name }}
+          path: ${{ runner.temp }}/queuego-native-certified-release/
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Remove decoded credentials and evidence
+        if: always()
+        shell: bash
+        run: |
+          rm -f native-android/customer/google-services.json
+          rm -f native-android/merchant/google-services.json
+          rm -f native-android/rider/google-services.json
+          rm -f "$RUNNER_TEMP/queuego-google-services.json"
+          rm -f "$RUNNER_TEMP/queuego-release.keystore"
+          rm -rf "$RUNNER_TEMP/queuego-native-release-certification"
