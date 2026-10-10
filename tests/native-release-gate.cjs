@@ -78,6 +78,9 @@ for(const trigger of ["'tests/**'","'package.json'","'package-lock.json'"]){
   assert.ok(nativeCi.includes(trigger),`Native pilot CI must cover full regression input ${trigger}`);
 }
 
+const nativePilotWorkflow=fs.readFileSync('.github/workflows/build-native-rider-pilot.yml','utf8');
+assert.ok(nativePilotWorkflow.includes("- 'work-native-**'"),'Native pilot CI must cover every work-native branch');
+
 const gradle=fs.readFileSync('native-android/build.gradle.kts','utf8');
 assert.match(gradle,/isDebuggable = false/);
 assert.match(gradle,/signingConfig = nativeReleaseSigning/);
