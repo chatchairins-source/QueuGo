@@ -28,6 +28,8 @@ for(const gate of ['service_area','ugc_chat_safety','security_platform_auth']){
 }
 assert.match(verifier,/PASS_FREE_PLAN_CONTROLS/,'Native release verifier must honor the documented Free-plan Auth compensating-control status');
 assert.match(verifier,/name == "security_platform_auth"/,'PASS_FREE_PLAN_CONTROLS exception must be scoped only to the Auth gate');
+assert.ok(verifier.includes('QG_ANDROID_EXPECTED_CERT_SHA256'),'pre-build release verifier must require the certified signing certificate fingerprint');
+assert.match(verifier,/actual_cert != expected_cert/,'pre-build release verifier must reject the wrong signing certificate');
 for(const legacy of ['.github/workflows/build-queuego-apks.yml','.github/workflows/build-queuego-pilot-apks.yml']){
   assert.equal(fs.existsSync(legacy),false,`legacy Capacitor Android build workflow must stay retired: ${legacy}`);
 }
@@ -52,6 +54,9 @@ for(const token of [
   assert.ok(artifactVerifier.includes(token),`signed artifact verifier missing required check: ${token}`);
 }
 assert.match(artifactVerifier,/APK\/AAB signer mismatch/,'release artifact verifier must reject per-role APK/AAB signer mismatch');
+assert.ok(artifactVerifier.includes('QG_ANDROID_EXPECTED_CERT_SHA256'),'post-build verifier must require the certified signing certificate fingerprint');
+assert.match(artifactVerifier,/cert_sha != expected_cert/,'post-build APK verifier must reject the wrong certified signer');
+assert.match(artifactVerifier,/aab_cert_sha != expected_cert/,'post-build AAB verifier must reject the wrong certified signer');
 assert.match(artifactVerifier,/len\(signer_digests\) != 1/,'all three release apps must use one certified signing identity');
 
 const nativeCi=fs.readFileSync('.github/workflows/build-native-rider-pilot.yml','utf8');
