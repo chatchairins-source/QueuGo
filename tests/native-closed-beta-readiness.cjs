@@ -69,6 +69,8 @@ ok('TURN physical gate remains false until certified',manifest?.voice?.turn_rela
 ok('two-device voice gate remains false until certified',manifest?.voice?.two_device_audio_e2e_certified===false);
 ok('Voice does not persist audio',manifest?.voice?.media_recorded_or_persisted===false);
 ok('Play readiness allows user-initiated RECORD_AUDIO',/RECORD_AUDIO[^\n]*user-initiated|RECORD_AUDIO[^\n]*QueueGo in-app voice/i.test(readiness));
+ok('Play readiness no longer describes active Android release as WebView',!/data transmitted off-device from an app-controlled WebView/i.test(readiness)&&!/web application running inside Capacitor/i.test(readiness));
+ok('Play readiness uses Native Firebase dependency evidence',/native-android\/customer[\s\S]*Firebase Cloud Messaging/.test(readiness)&&!/android-build\/package\.json[^\n]*Capacitor Push Notifications/i.test(readiness));
 ok('Play readiness still forbids background location',/ACCESS_BACKGROUND_LOCATION/.test(readiness));
 ok('Play Data Safety includes real-time voice audio',/Voice or sound recordings/.test(readiness)&&/Real-time microphone audio/.test(readiness));
 ok('Privacy policy discloses QueueGo calls',/การโทรผ่าน QueueGo/.test(privacy));
