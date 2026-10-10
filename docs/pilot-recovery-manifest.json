@@ -355,9 +355,9 @@
       "rider"
     ],
     "native_pilot_workflow": ".github/workflows/build-native-rider-pilot.yml",
-    "native_pilot_latest_certified_run": 38043983595,
-    "native_pilot_latest_certified_head": "559ea783e77a68678f168af2388d5cda660a859a",
-    "native_pilot_latest_launch_evidence_artifact": 11667161963,
+    "native_pilot_latest_certified_run": 38070312765,
+    "native_pilot_latest_certified_head": "33e64430af4edb93cadcf2ae9f4c667d55da259a",
+    "native_pilot_latest_launch_evidence_artifact": 11676896580,
     "native_ci_rejects_webview": true,
     "legacy_capacitor_build_workflows_retired": true,
     "retired_legacy_capacitor_build_workflows": [
@@ -569,7 +569,12 @@
       "actions/setup-node": "v7.1.0",
       "gradle/actions/setup-gradle": "v6.4.0",
       "actions/upload-artifact": "v7.0.2"
-    }
+    },
+    "native_pilot_latest_apk_artifact": 11677115695,
+    "native_pilot_latest_apk_artifact_sha256": "8582db5df2fe59ab70f23c3fbbbf3f9e8468aea81e5391437e8ff421f6d145d9",
+    "native_pilot_latest_launch_evidence_sha256": "b376d69dd4e1bc1285249afd8bc48ae031762cdb7e7279681590f148ea806117",
+    "native_pilot_latest_runtime_result": "PASS_SOFTWARE_RUNTIME_ONLY_PHYSICAL_CERTIFICATION_OPEN",
+    "native_pilot_latest_evidence_checked_at": "2026-10-11T00:15:26+07:00"
   },
   "security": {
     "code_surface_hardened": true,
