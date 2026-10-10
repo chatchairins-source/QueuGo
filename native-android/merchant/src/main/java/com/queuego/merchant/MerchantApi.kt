@@ -80,7 +80,22 @@ data class MerchantOrderItem(
     val description: String?,
     val quantity: Int,
     val totalPrice: Double,
-    val image: String?
+    val image: String?,
+    val id: String = "",
+    val productId: String? = null,
+    val unitPrice: Double = 0.0
+)
+
+data class MerchantOrderEditItem(
+    val itemId: String? = null,
+    val productId: String? = null,
+    val quantity: Int
+)
+
+data class MerchantOrderEditResult(
+    val subtotal: Double,
+    val totalAmount: Double,
+    val authorizedSubtotal: Double
 )
 
 data class MerchantProduct(
@@ -583,7 +598,7 @@ class MerchantApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
 
     suspend fun loadOrderItems(auth: NativeAuth, orderId: String): List<MerchantOrderItem> {
         val rows = http.array(http.get(
-            "order_items?select=item_name,description,quantity,total_price,item_image" +
+            "order_items?select=id,product_id,item_name,description,quantity,unit_price,total_price,item_image" +
                 "&order_id=eq." + http.enc(orderId) + "&order=created_at.asc",
             auth.session.accessToken
         ))
@@ -591,14 +606,62 @@ class MerchantApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
             for (i in 0 until rows.length()) {
                 val r = rows.optJSONObject(i) ?: continue
                 add(MerchantOrderItem(
-                    r.optString("item_name").ifBlank { "สินค้า" },
-                    r.optNullable("description"),
-                    r.optInt("quantity", 1),
-                    r.optDouble("total_price", 0.0),
-                    r.optNullable("item_image")
+                    name = r.optString("item_name").ifBlank { "สินค้า" },
+                    description = r.optNullable("description"),
+                    quantity = r.optInt("quantity", 1),
+                    totalPrice = r.optDouble("total_price", 0.0),
+                    image = r.optNullable("item_image"),
+                    id = r.optString("id"),
+                    productId = r.optNullable("product_id"),
+                    unitPrice = r.optDouble(
+                        "unit_price",
+                        r.optDouble("total_price", 0.0) / r.optInt("quantity", 1).coerceAtLeast(1)
+                    )
                 ))
             }
         }
+    }
+
+    suspend fun editOrderItems(
+        auth: NativeAuth,
+        orderId: String,
+        items: List<MerchantOrderEditItem>,
+        reason: String = "สินค้าหมด / สินค้าทดแทน"
+    ): MerchantOrderEditResult {
+        require(items.size in 1..30) { "ต้องเหลือสินค้าอย่างน้อย 1 รายการ" }
+        val payload = JSONArray()
+        items.forEach { item ->
+            require(item.quantity in 1..99) { "จำนวนสินค้าต้องอยู่ระหว่าง 1 ถึง 99" }
+            require((item.itemId.isNullOrBlank()) xor (item.productId.isNullOrBlank())) {
+                "ข้อมูลสินค้าที่แก้ไขไม่สมบูรณ์"
+            }
+            payload.put(
+                JSONObject()
+                    .put("item_id", item.itemId ?: JSONObject.NULL)
+                    .put("product_id", item.productId ?: JSONObject.NULL)
+                    .put("qty", item.quantity)
+            )
+        }
+        val raw = http.rpc(
+            "qg_merchant_edit_order_items",
+            auth.session.accessToken,
+            JSONObject()
+                .put("p_order_id", orderId)
+                .put("p_items", payload)
+                .put("p_reason", reason.trim().take(200).ifBlank { "สินค้าหมด / สินค้าทดแทน" })
+        )
+        val row = when (raw) {
+            is JSONObject -> raw
+            is JSONArray -> raw.optJSONObject(0) ?: JSONObject()
+            else -> JSONObject()
+        }
+        val subtotal = row.optDouble("subtotal", Double.NaN)
+        val totalAmount = row.optDouble("total_amount", Double.NaN)
+        val authorized = row.optDouble("authorized_subtotal", Double.NaN)
+        if (!subtotal.isFinite() || !totalAmount.isFinite() || !authorized.isFinite()) {
+            error("Server ยังไม่ยืนยันยอดออเดอร์ที่แก้ไข")
+        }
+        return MerchantOrderEditResult(subtotal, totalAmount, authorized)
     }
 
     suspend fun action(auth: NativeAuth, orderId: String, action: String, reason: String? = null): MerchantOrder {
