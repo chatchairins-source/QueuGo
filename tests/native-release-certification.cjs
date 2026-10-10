@@ -12,6 +12,7 @@ ok(cert.includes('actions: read'),'certification must have read-only Actions per
 ok(cert.includes('Require successful exact-HEAD Native Pilot CI'),'certification must require automated Native Pilot CI attestation');
 ok(cert.includes('.github/workflows/build-native-rider-pilot.yml')&&cert.includes('.event == "push"')&&cert.includes('.conclusion == "success"'),'certification must pin the successful main-branch Native Pilot workflow identity');
 ok(cert.includes('QG_CERTIFIED_NATIVE_PILOT_RUN_ID'),'certification must retain the attested Native Pilot run id');
+ok(cert.includes('actions/runs?head_sha=$GITHUB_SHA&status=success'),'certification must query successful workflow runs by exact HEAD directly');
 ok(cert.includes('queuego-native-release-evidence'),'certification must use the fixed private evidence bucket');
 ok(cert.includes('vars.QG_SUPABASE_URL'),'certification must source the Supabase project URL from Actions variables');
 ok(cert.includes('https://pkypiqhlrmzocysgeqew.supabase.co'),'certification must pin the QueueGo Production Supabase origin');
