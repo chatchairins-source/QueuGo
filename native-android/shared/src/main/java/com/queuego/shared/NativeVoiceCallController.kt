@@ -200,6 +200,11 @@ class NativeVoiceCallController(
         _state.value = _state.value.copy(speaker = enabled)
     }
 
+    fun dismissTerminal() {
+        if (_state.value.phase !in setOf(NativeVoicePhase.ENDED, NativeVoicePhase.ERROR)) return
+        _state.value = NativeVoiceControllerState()
+    }
+
     private suspend fun connect(call: NativeVoiceCall, caller: Boolean) {
         val currentAuth = auth ?: throw IllegalStateException("Session สิ้นสุดแล้ว")
         check(
