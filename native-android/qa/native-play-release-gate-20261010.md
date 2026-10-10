@@ -95,7 +95,8 @@ not infer that screenshots/videos are truthful and do not close any physical gat
 `native-android/qa/capture-physical-release-evidence.py` is the supported
 real-device capture helper. It imports the canonical gate roles/checks directly
 from `verify-native-release-gate.py`, rejects emulator identities, hashes device
-and network identifiers, copies/hashes evidence artifacts and can capture an ADB
+and network identifiers with a per-capture random 256-bit salt that is not stored,
+copies/hashes evidence artifacts and can capture an ADB
 screenshot. It writes `status=DRAFT` and `operator_certified=false` by default;
 `--certify` is accepted only after every canonical check for that gate is
 explicitly supplied. Evidence output is required outside the source checkout.
