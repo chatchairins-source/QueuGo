@@ -47,6 +47,8 @@ data class MarketProduct(
 
 data class MarketCartLine(val product: MarketProduct, val quantity: Int)
 
+internal data class PreparedMarketCheckout(val rpc: String, val body: JSONObject)
+
 data class ActiveMarketTrip(
     val id: String,
     val marketId: String,
@@ -195,12 +197,12 @@ class CustomerMarketApi(private val http: QueueGoNativeApi = QueueGoNativeApi())
         )
     }
 
-    suspend fun place(
+    suspend fun preparePlace(
         auth: NativeAuth,
         lines: List<MarketCartLine>,
         location: CustomerLocation,
         note: String?
-    ): Any {
+    ): PreparedMarketCheckout {
         require(lines.isNotEmpty()) { "ตะกร้าตลาดสดว่าง" }
         val marketId = lines.first().product.marketId
         require(lines.all { it.product.marketId == marketId }) { "ตะกร้าตลาดสดซื้อข้ามตลาดไม่ได้" }
@@ -212,35 +214,55 @@ class CustomerMarketApi(private val http: QueueGoNativeApi = QueueGoNativeApi())
         lines.forEach { line ->
             items.put(JSONObject().put("product_id", line.product.id).put("qty", line.quantity))
         }
+        val cleanNote = note?.trim()?.takeIf { it.isNotBlank() }
 
         return if (active == null) {
-            http.rpc(
+            PreparedMarketCheckout(
                 "queuego_place_market_order",
-                auth.session.accessToken,
                 JSONObject()
                     .put("p_market_order_id", UUID.randomUUID().toString())
                     .put("p_items", items)
                     .put("p_delivery_lat", location.latitude)
                     .put("p_delivery_lng", location.longitude)
                     .put("p_delivery_address", location.address)
-                    .put("p_note", note?.trim()?.takeIf { it.isNotBlank() })
+                    .put("p_note", cleanNote)
             )
         } else {
             val incomingShops = lines.map { it.product.shopId }.toSet()
             if (incomingShops.any { it in active.shopIds }) {
                 error("ร้านนี้อยู่ใน Market Trip แล้ว")
             }
-            http.rpc(
+            PreparedMarketCheckout(
                 "queuego_add_market_order_shops",
-                auth.session.accessToken,
                 JSONObject()
                     .put("p_request_id", UUID.randomUUID().toString())
                     .put("p_market_order_id", active.id)
                     .put("p_items", items)
-                    .put("p_note", note?.trim()?.takeIf { it.isNotBlank() })
+                    .put("p_note", cleanNote)
             )
         }
     }
+
+    suspend fun sendPrepared(auth: NativeAuth, pending: PreparedMarketCheckout): JSONObject {
+        require(pending.rpc in setOf("queuego_place_market_order", "queuego_add_market_order_shops")) {
+            "คำขอ Market Trip ไม่ถูกต้อง"
+        }
+        val raw = http.rpc(pending.rpc, auth.session.accessToken, pending.body)
+        return when (raw) {
+            is JSONObject -> raw
+            is JSONArray -> raw.optJSONObject(0) ?: JSONObject()
+            else -> JSONObject()
+        }.also {
+            if (it.length() == 0) error("ระบบยังไม่ยืนยัน Market Trip")
+        }
+    }
+
+    suspend fun place(
+        auth: NativeAuth,
+        lines: List<MarketCartLine>,
+        location: CustomerLocation,
+        note: String?
+    ): JSONObject = sendPrepared(auth, preparePlace(auth, lines, location, note))
 
     suspend fun trips(auth: NativeAuth): List<MarketTripSummary> {
         val rows = http.array(http.get(
