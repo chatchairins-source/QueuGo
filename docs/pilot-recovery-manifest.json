@@ -504,7 +504,12 @@
     "release_gate_physical_role_binding": true,
     "release_gate_lifecycle_requires_all_roles": true,
     "release_gate_voice_requires_two_distinct_devices": true,
-    "release_gate_voice_requires_two_distinct_networks": true
+    "release_gate_voice_requires_two_distinct_networks": true,
+    "release_gate_full_native_ci_attested_run_binding": true,
+    "release_gate_production_supabase_project_ref": "pkypiqhlrmzocysgeqew",
+    "release_gate_firebase_project_binding": true,
+    "release_gate_play_version_metadata_binding": true,
+    "release_gate_signing_certificate_binding": true
   },
   "security": {
     "code_surface_hardened": true,
