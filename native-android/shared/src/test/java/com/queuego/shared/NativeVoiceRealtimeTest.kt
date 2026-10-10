@@ -99,7 +99,7 @@ class NativeVoiceRealtimeTest {
             override fun onMessage(webSocket: WebSocket, text: String) {
                 val message = JSONObject(text)
                 if (message.optString("event") == "phx_join") {
-                    socket.send(
+                    webSocket.send(
                         JSONObject()
                             .put("topic", message.getString("topic"))
                             .put("event", "phx_reply")
