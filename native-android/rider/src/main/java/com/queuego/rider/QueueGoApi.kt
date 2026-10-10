@@ -441,7 +441,7 @@ class QueueGoApi {
     suspend fun riderSnapshot(auth: QueueGoAuth): RiderSnapshot = withContext(Dispatchers.IO) {
         val profiles = requestArray(
             "GET",
-            "/rest/v1/rider_profiles?select=id,metadata&user_id=eq." + enc(auth.user.id) + "&limit=1",
+            "/rest/v1/rider_profiles?select=id,rider_name,phone,vehicle_type,vehicle_plate,vehicle_status,vehicle_verified_at,metadata&user_id=eq." + enc(auth.user.id) + "&limit=1",
             auth.session.accessToken
         )
         if (profiles.length() == 0) return@withContext RiderSnapshot(false, null, null, emptyList())
@@ -1006,7 +1006,7 @@ class QueueGoApi {
             if (code !in 200..299) {
                 val message = runCatching { JSONObject(text).optString("message") }.getOrNull()
                     ?.takeIf { it.isNotBlank() } ?: "HTTP " + code
-                error(message)
+                throw RiderHttpException(code, message)
             }
 
             if (text.isBlank()) return JSONObject()
