@@ -79,7 +79,7 @@ class NativeVoiceCallController(
                     phase = NativeVoicePhase.RINGING_OUT,
                     call = call
                 ))
-                val accepted = withTimeoutOrNull(50_000L) {
+                val accepted: NativeVoiceCall? = withTimeoutOrNull<NativeVoiceCall?>(50_000L) {
                     while (true) {
                         delay(900L)
                         val currentAuth = auth ?: throw IllegalStateException("Session สิ้นสุดแล้ว")
