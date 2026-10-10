@@ -28,7 +28,8 @@ any requirement below is OPEN.
 
 ## Still OPEN
 
-1. Exact combined-tree Full Native CI, then new main CI after integration.
+1. Background microphone service staging Full Native CI and post-merge main CI.
+   Prior push integration main CI38040292297 and signing branch CI38040460644 passed.
 2. Real Firebase project with complete Customer/Merchant/Rider clients and
    QG_FIREBASE_GOOGLE_SERVICES_JSON_B64 configured in GitHub Actions. All three
    packages become required for release; warning-mode debug CI is not certification.
@@ -76,12 +77,14 @@ Supabase stores call/session/order/participant/status/timing metadata, not audio
 SDP or ICE candidates. Private Realtime carries ephemeral signaling; Firebase
 transports notifications. Cloudflare TURN is an infrastructure provider.
 
-Before release, publish the staged privacy disclosure covering microphone use, media
-transmission, call metadata and the Firebase/Cloudflare providers. Complete the
+Privacy disclosure is published: web main b4bb6df5, Pages run38040711859,
+HTTP200 and exact reviewed text verified at the public privacy URL. Complete the
 Play Data Safety assessment for Native FCM and voice transmission, including
 whether ephemeral processing/processor exceptions apply under current Play
 definitions. Do not reuse the old Capacitor rule forbidding RECORD_AUDIO or its
 SDK inventory. Do not claim a fixed call-metadata retention period until the
-actual backend policy is confirmed. These documentation items are OPEN.
+actual backend policy is confirmed. Data Safety, retention-policy and Play Console declarations remain OPEN.
+The microphone foreground service also requires an accurate Play foreground
+service declaration with real user-flow evidence; source permission is insufficient.
 
 Signing reference: https://developer.android.com/build/build-variants
