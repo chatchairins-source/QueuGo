@@ -196,6 +196,17 @@ jobs:
       - name: Capture native launch, map and voice service lifecycle on Android
         timeout-minutes: 12
         run: python3 native-android/qa/capture-rider-launch.py
+      - name: Capture Native 16 KB emulator runtime
+        timeout-minutes: 15
+        run: python3 native-android/qa/capture-16kb-runtime.py
+      - name: Save Native 16 KB runtime evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: queuego-native-16kb-runtime-evidence
+          path: artifacts/native-16kb-runtime/
+          if-no-files-found: warn
+          retention-days: 14
       - name: Save real Android launch evidence
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
