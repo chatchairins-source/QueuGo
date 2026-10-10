@@ -695,3 +695,9 @@ The user-supplied Rider reference screens are the acceptance reference for workf
 - Release Gate remains OPEN: complete three-role Production blueprint/authenticated E2E, live concurrency/RLS/session, physical Android/notification/GPS/printer/background matrix, signing and Play readiness. No APK/AAB/source/UI deliverable is sent to the owner. CI build evidence does not certify those gates.
 
 - Nullable RPC fix daa6ffaf: independent CI38024210955 PASS through checkout serialization unit tests, all three builds, Reject WebView and actual emulator/Longdo. Integrated only after that result; combined integration branch remains subject to its own full CI before Native main update.
+
+
+## 2026-10-10 printer ticket Production text parity
+- Read actual main merchant/printer-v1.js ticket builder. Native ticket previously added labels/subtotals and omitted creation time, receipt notes and Production feed spacing.
+- Native kitchen/receipt now follow Production heading, order/table/time, note lines, totals/discount/payment tokens/cash change and trailing feed spacing. Date uses Thai Buddhist year with the device timezone, matching the Production browser locale. Missing/unparseable server timestamps remain explicit rather than fabricated. Existing kitchen batch isolation and replay keys retained.
+- Focused receipt regression updated for Buddhist year, description and feed spacing. CI/physical printer verification pending; this branch is not merged until green. Full release gate remains open.

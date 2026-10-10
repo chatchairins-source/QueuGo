@@ -135,66 +135,50 @@ fun merchantReceiptPrintKey(snapshot: PosSnapshot, bill: PosBill): String? =
 fun merchantKitchenTicket(snapshot: PosSnapshot, bill: PosBill, requestedBatch: Int? = null): String {
     val all = snapshot.linesByOrder[bill.id].orEmpty()
     val batch = requestedBatch ?: (all.maxOfOrNull { it.batch } ?: 0)
-    val lines = all.filter { it.batch == batch }
-    val table = snapshot.tables.firstOrNull { it.id == bill.tableId }?.label
+    return merchantPrintTicket(snapshot, bill, all.filter { it.batch == batch }, receipt = false)
+}
+
+fun merchantReceiptTicket(snapshot: PosSnapshot, bill: PosBill): String =
+    merchantPrintTicket(snapshot, bill, snapshot.linesByOrder[bill.id].orEmpty(), receipt = true)
+
+private fun merchantPrintTicket(snapshot: PosSnapshot, bill: PosBill, lines: List<PosLine>, receipt: Boolean): String {
+    val separator = "--------------------------------"
+    val where = if (bill.type == "DINE_IN") {
+        if (bill.tableId == null) "ไม่ระบุโต๊ะ"
+        else snapshot.tables.firstOrNull { it.id == bill.tableId }?.label ?: "โต๊ะ"
+    } else "รับกลับ"
+    val created = bill.createdAt?.let { value -> runCatching {
+        java.time.format.DateTimeFormatter.ofPattern("d/M/yyyy HH:mm:ss", java.util.Locale.forLanguageTag("th-TH"))
+            .withChronology(java.time.chrono.ThaiBuddhistChronology.INSTANCE)
+            .format(java.time.Instant.parse(value).atZone(java.time.ZoneId.systemDefault()))
+    }.getOrNull() } ?: "-"
     return buildString {
+        appendLine("QueueGo")
         appendLine(snapshot.shopName)
-        appendLine("ใบครัว · " + bill.number)
-        appendLine(
-            when (bill.type) {
-                "DINE_IN" -> "ทานที่ร้าน · " + (table ?: "ไม่ระบุโต๊ะ")
-                else -> "รับกลับ"
-            }
-        )
-        appendLine("ชุดครัว #" + batch)
-        appendLine("--------------------------------")
+        appendLine(if (receipt) "ใบเสร็จรับเงิน" else "ใบเข้าครัว")
+        appendLine(separator)
+        appendLine(bill.number)
+        appendLine(where)
+        appendLine(created)
+        appendLine(separator)
         lines.forEach { line ->
             appendLine(line.quantity.toString() + " x " + line.name)
             if (!line.description.isNullOrBlank()) appendLine("  " + line.description)
         }
-        appendLine("--------------------------------")
-        appendLine("QueueGo POS")
-    }.trimEnd()
-}
-
-fun merchantReceiptTicket(snapshot: PosSnapshot, bill: PosBill): String {
-    val lines = snapshot.linesByOrder[bill.id].orEmpty()
-    val table = snapshot.tables.firstOrNull { it.id == bill.tableId }?.label
-    val payment = when (bill.paymentMethod) {
-        "cash" -> "เงินสด"
-        "bank_transfer" -> "โอนเงิน"
-        "promptpay" -> "พร้อมเพย์"
-        "card" -> "บัตร"
-        "other" -> "อื่น ๆ"
-        else -> bill.paymentMethod ?: "-"
-    }
-    return buildString {
-        appendLine(snapshot.shopName)
-        appendLine("ใบเสร็จ · " + bill.number)
-        appendLine(
-            when (bill.type) {
-                "DINE_IN" -> "ทานที่ร้าน · " + (table ?: "ไม่ระบุโต๊ะ")
-                else -> "รับกลับ"
+        if (receipt) {
+            appendLine(separator)
+            appendLine("รวม " + merchantPrinterMoney(bill.total))
+            if (bill.discount > 0) appendLine("ส่วนลด " + merchantPrinterMoney(bill.discount))
+            if (!bill.paymentMethod.isNullOrBlank()) appendLine("ชำระ " + bill.paymentMethod)
+            if (bill.paymentMethod == "cash") {
+                appendLine("รับเงิน " + merchantPrinterMoney(bill.cashTendered ?: 0.0))
+                appendLine("เงินทอน " + merchantPrinterMoney(bill.cashChange ?: 0.0))
             }
-        )
-        appendLine("--------------------------------")
-        lines.forEach { line ->
-            appendLine(line.quantity.toString() + " x " + line.name + "  ฿" + merchantPrinterMoney(line.total))
         }
-        appendLine("--------------------------------")
-        appendLine("ยอดก่อนลด  ฿" + merchantPrinterMoney(bill.subtotal))
-        if (bill.discount > 0) appendLine("ส่วนลด      -฿" + merchantPrinterMoney(bill.discount))
-        appendLine("ยอดสุทธิ     ฿" + merchantPrinterMoney(bill.total))
-        appendLine("ชำระด้วย     " + payment)
-        if (bill.paymentMethod == "cash" && bill.cashTendered != null) {
-            appendLine("รับเงิน       ฿" + merchantPrinterMoney(bill.cashTendered))
-            appendLine("เงินทอน      ฿" + merchantPrinterMoney(bill.cashChange ?: 0.0))
-        }
-        appendLine("--------------------------------")
-        appendLine("ขอบคุณที่ใช้บริการ")
-        appendLine("QueueGo POS")
-    }.trimEnd()
+        appendLine(separator)
+        appendLine()
+    }
 }
 
 private fun merchantPrinterMoney(value: Double): String =
-    String.format(java.util.Locale.US, "%,.2f", value.coerceAtLeast(0.0))
+    String.format(java.util.Locale.US, "%,.2f ฿", value)

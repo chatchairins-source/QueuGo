@@ -4,7 +4,7 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class MerchantPrinterTest {
-    private val bill = PosBill("bill", "QT-0123", "DINE_IN", "table", "SENT_TO_KITCHEN", "UNPAID", 90.0, 10.0, subtotal = 100.0)
+    private val bill = PosBill("bill", "QT-0123", "DINE_IN", "table", "SENT_TO_KITCHEN", "UNPAID", 90.0, 10.0, subtotal = 100.0, createdAt = "2026-10-10T04:00:00Z")
     private fun snapshot(bill: PosBill = this.bill): PosSnapshot = PosSnapshot(
         "shop", "ร้านทดสอบ", true, null, emptyList(), emptyList(),
         listOf(PosTable("table", "โต๊ะ 7", true)), listOf(bill),
@@ -31,9 +31,13 @@ class MerchantPrinterTest {
         val text = merchantReceiptTicket(snapshot(paid), paid)
         assertEquals("receipt:shop:bill", merchantReceiptPrintKey(snapshot(paid), paid))
         assertTrue(text.contains("QT-0123"))
-        assertTrue(text.contains("-฿10.00"))
-        assertTrue(text.contains("ยอดสุทธิ     ฿90.00"))
-        assertTrue(text.contains("เงินทอน      ฿10.00"))
+        assertTrue(text.contains("ส่วนลด 10.00 ฿"))
+        assertTrue(text.contains("รวม 90.00 ฿"))
+        assertTrue(text.contains("เงินทอน 10.00 ฿"))
+        assertTrue(text.startsWith("QueueGo\nร้านทดสอบ\nใบเสร็จรับเงิน\n"))
+        assertTrue(text.contains("10/10/2569"))
+        assertTrue(text.contains("  ไม่เผ็ด"))
+        assertTrue(text.endsWith("--------------------------------\n\n"))
         val refunded = paid.copy(paymentStatus = "REFUNDED", status = "cancelled")
         assertNull(merchantReceiptPrintKey(snapshot(refunded), refunded))
         assertNull(merchantKitchenPrintKey(snapshot(refunded), refunded))
