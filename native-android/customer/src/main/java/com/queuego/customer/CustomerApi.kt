@@ -36,7 +36,8 @@ data class CustomerProduct(
     val price: Double,
     val deliveryPrice: Double,
     val image: String?,
-    val available: Boolean
+    val available: Boolean,
+    val variantsJson: String = "[]"
 )
 
 data class CustomerOrder(
@@ -86,7 +87,8 @@ data class CustomerOrderItem(
     val name: String,
     val quantity: Int,
     val totalPrice: Double,
-    val image: String?
+    val image: String?,
+    val optionSummary: String? = null
 )
 
 data class CustomerLocation(val latitude: Double, val longitude: Double, val address: String)
@@ -106,7 +108,11 @@ data class ServiceBanner(
     val active: Boolean,
     val link: String? = null
 )
-data class CartLine(val product: CustomerProduct, val quantity: Int)
+data class CartLine(
+    val product: CustomerProduct,
+    val quantity: Int,
+    val selections: List<CustomerMenuSelection> = emptyList()
+)
 
 class CustomerApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
     suspend fun loadShops(auth: NativeAuth): List<CustomerShop> =
@@ -158,7 +164,7 @@ class CustomerApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
         loadProductsWithToken(null, shopId)
 
     private suspend fun loadProductsWithToken(token: String?, shopId: String): List<CustomerProduct> {
-        val path = "products?select=id,shop_id,name,description,price,delivery_price,image,available,delivery_available" +
+        val path = "products?select=id,shop_id,name,description,price,delivery_price,image,available,delivery_available,variants" +
             "&shop_id=eq." + http.enc(shopId) + "&delivery_available=eq.true&order=name.asc"
         val rows = http.array(http.get(path, token))
         return buildList {
@@ -172,7 +178,8 @@ class CustomerApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
                     r.optDouble("price", 0.0),
                     r.optDouble("delivery_price", r.optDouble("price", 0.0)),
                     r.optNullable("image"),
-                    r.optBoolean("available", true)
+                    r.optBoolean("available", true),
+                    customerVariantsJson(r.opt("variants"))
                 ))
             }
         }
@@ -289,7 +296,7 @@ class CustomerApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
 
     suspend fun loadOrderItems(auth: NativeAuth, orderId: String): List<CustomerOrderItem> {
         val rows = http.array(http.get(
-            "order_items?select=item_name,quantity,total_price,item_image&order_id=eq." +
+            "order_items?select=item_name,quantity,total_price,item_image,selected_options&order_id=eq." +
                 http.enc(orderId) + "&order=created_at.asc",
             auth.session.accessToken
         ))
@@ -300,7 +307,8 @@ class CustomerApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
                     r.optString("item_name").ifBlank { "สินค้า" },
                     r.optInt("quantity", 1),
                     r.optDouble("total_price", 0.0),
-                    r.optNullable("item_image")
+                    r.optNullable("item_image"),
+                    customerSelectedOptionsLabel(r.opt("selected_options"))
                 ))
             }
         }
@@ -429,10 +437,18 @@ class CustomerApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
         note: String?
     ): JSONObject {
         require(lines.isNotEmpty()) { "ตะกร้าว่าง" }
-        val subtotal = lines.sumOf { it.product.deliveryPrice * it.quantity }
+        val subtotal = lines.sumOf { customerCartLineUnitPrice(it) * it.quantity }
         val fee = deliveryFee(shop, location)
         val items = JSONArray()
-        lines.forEach { items.put(JSONObject().put("product_id", it.product.id).put("qty", it.quantity)) }
+        lines.forEach { line ->
+            val selections = customerCanonicalMenuSelections(line.product, line.selections)
+            items.put(
+                JSONObject()
+                    .put("product_id", line.product.id)
+                    .put("qty", line.quantity)
+                    .put("options", customerMenuSelectionPayload(selections))
+            )
+        }
         val body = JSONObject()
             .put("p_order_id", requestId)
             .put("p_shop_id", shop.id)
