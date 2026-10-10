@@ -126,6 +126,8 @@ try{
   fs.writeFileSync(path.join(bindingDir,artifact),'binding evidence');
   const artifactSha=crypto.createHash('sha256').update(fs.readFileSync(path.join(bindingDir,artifact))).digest('hex');
   const observedAt='2026-10-10T00:00:00Z';
+  const coverageMatrixSha=crypto.createHash('sha256').update(fs.readFileSync('native-android/qa/native-screen-coverage-20261010.json')).digest('hex');
+
   const gateNames=[
     'full_native_ci','production_backend','backup_restore','security_regression',
     'service_area','ugc_chat_safety','security_platform_auth','firebase_three_packages',
@@ -186,7 +188,10 @@ try{
       artifacts:[{file:artifact,sha256:artifactSha,kind:'log'}]
     };
     if(semanticChecks[gate]) envelope.operator_certified=true;
-    if(['customer_blueprint','merchant_blueprint','rider_blueprint'].includes(gate)) envelope.blocking_differences=0;
+    if(['customer_blueprint','merchant_blueprint','rider_blueprint'].includes(gate)){
+      envelope.blocking_differences=0;
+      envelope.coverage_matrix_sha256=coverageMatrixSha;
+    }
     if(gate==='full_native_ci') envelope.github_run_id=456;
     if(gate==='backup_restore') envelope.github_run_id=456;
     if(gate==='production_backend') envelope.supabase_project_ref='pkypiqhlrmzocysgeqew';
@@ -215,6 +220,23 @@ try{
     const sha=crypto.createHash('sha256').update(fs.readFileSync(path.join(bindingDir,file))).digest('hex');
     gates[gate]={status:'PASS',evidence_file:file,sha256:sha};
   }
+  const blueprintEnvelopePath=path.join(bindingDir,'customer_blueprint.json');
+  const blueprintEnvelope=JSON.parse(fs.readFileSync(blueprintEnvelopePath,'utf8'));
+  blueprintEnvelope.coverage_matrix_sha256='0'.repeat(64);
+  fs.writeFileSync(blueprintEnvelopePath,JSON.stringify(blueprintEnvelope));
+  gates.customer_blueprint.sha256=crypto.createHash('sha256').update(fs.readFileSync(blueprintEnvelopePath)).digest('hex');
+  const badBlueprintReport=path.join(bindingDir,'bad-blueprint-report.json');
+  fs.writeFileSync(badBlueprintReport,JSON.stringify({source_sha:head,p0:0,p1:0,gates}));
+  const badBlueprintResult=spawnSync('python3',[script],{
+    env:{...env,QG_NATIVE_RELEASE_EVIDENCE:badBlueprintReport,QG_CERTIFIED_NATIVE_PILOT_RUN_ID:'123',QG_CERTIFIED_BACKUP_RESTORE_RUN_ID:'789'},
+    encoding:'utf8'
+  });
+  assert.equal(badBlueprintResult.status,1,'Blueprint evidence must be bound to the exact source coverage matrix');
+  assert.match(badBlueprintResult.stderr,/physical blueprint coverage matrix SHA-256 mismatch: customer_blueprint/);
+  blueprintEnvelope.coverage_matrix_sha256=coverageMatrixSha;
+  fs.writeFileSync(blueprintEnvelopePath,JSON.stringify(blueprintEnvelope));
+  gates.customer_blueprint.sha256=crypto.createHash('sha256').update(fs.readFileSync(blueprintEnvelopePath)).digest('hex');
+
   const report=path.join(bindingDir,'native-release-evidence.json');
   fs.writeFileSync(report,JSON.stringify({source_sha:head,p0:0,p1:0,gates}));
   const result=spawnSync('python3',[script],{
@@ -275,6 +297,8 @@ assert.match(verifier,/physical gate must be explicitly operator-certified/,'phy
 assert.match(verifier,/physical gate required check missing/,'physical gates must reject missing observed semantics');
 assert.match(verifier,/real non-emulator device/,'physical certification must reject emulator-only evidence');
 assert.match(verifier,/physical blueprint blocking_differences must equal zero/,'Blueprint certification must reject blocking differences');
+assert.match(verifier,/native-screen-coverage-20261010\.json/,'Blueprint certification must bind the reviewed Native screen coverage matrix');
+assert.match(verifier,/physical blueprint coverage matrix SHA-256 mismatch/,'Blueprint certification must reject stale or mismatched coverage matrices');
 assert.match(verifier,/QG_CERTIFIED_NATIVE_PILOT_RUN_ID/,'release evidence must bind full_native_ci to the attested Native Pilot run');
 assert.match(verifier,/QG_CERTIFIED_BACKUP_RESTORE_RUN_ID/,'release evidence must bind backup_restore to the attested restore drill');
 assert.match(verifier,/backup_restore evidence does not match the attested Backup Restore Drill/,'backup evidence must reject a mismatched restore-drill run');
