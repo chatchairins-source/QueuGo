@@ -160,6 +160,23 @@ class MerchantPosApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
                 "&sales_channel=eq.POS&order=created_at.desc&limit=200",
             auth.session.accessToken
         ))
+        val openBillsRaw = http.array(http.get(
+            "orders?select=id,order_number,order_type,table_id,staff_id,status,kitchen_status,payment_status," +
+                "payment_method,bill_status,cash_tendered,cash_change,paid_at,subtotal,total_amount,discount_amount,created_at" +
+                "&shop_id=eq." + http.enc(shopId) +
+                "&sales_channel=eq.POS&payment_status=eq.UNPAID&status=neq.cancelled&order=created_at.desc",
+            auth.session.accessToken
+        ))
+        val mergedBillsRaw = JSONArray()
+        val seenBillIds = mutableSetOf<String>()
+        for (source in listOf(openBillsRaw, billsRaw)) {
+            for (i in 0 until source.length()) {
+                val row = source.optJSONObject(i) ?: continue
+                val id = row.optString("id")
+                if (id.isBlank() || !seenBillIds.add(id)) continue
+                mergedBillsRaw.put(row)
+            }
+        }
         val staffRaw = http.array(http.get(
             "pos_staff?select=user_id,shop_id,display_name,staff_role,permissions,active" +
                 "&shop_id=eq." + http.enc(shopId),
@@ -174,7 +191,7 @@ class MerchantPosApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
             auth.session.accessToken
         ))
 
-        val billIds = idsOf(billsRaw)
+        val billIds = idsOf(mergedBillsRaw)
         val deliveryIds = idsOf(deliveryRaw)
         val itemsRaw = if (billIds.isEmpty()) JSONArray() else http.array(http.get(
             "order_items?select=order_id,product_id,item_name,description,quantity,total_price,pos_kitchen_status,pos_batch" +
@@ -229,8 +246,8 @@ class MerchantPosApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
             }
         }
         val bills = buildList {
-            for (i in 0 until billsRaw.length()) {
-                val r = billsRaw.optJSONObject(i) ?: continue
+            for (i in 0 until mergedBillsRaw.length()) {
+                val r = mergedBillsRaw.optJSONObject(i) ?: continue
                 val id = r.optString("id")
                 if (id.isBlank()) continue
                 add(parseBill(r, id))
@@ -273,14 +290,15 @@ class MerchantPosApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
         type: String,
         tableId: String?,
         productId: String,
-        note: String
+        note: String,
+        requestId: String = UUID.randomUUID().toString()
     ): String {
         val raw = if (currentBillId.isNullOrBlank()) {
             http.rpc(
                 "pos_create_bill_once",
                 auth.session.accessToken,
                 JSONObject()
-                    .put("p_request", UUID.randomUUID().toString())
+                    .put("p_request", requestId)
                     .put("p_type", type)
                     .put("p_table", tableId ?: JSONObject.NULL)
                     .put("p_product", productId)

@@ -169,6 +169,7 @@ ok(source.includes('pos_create_role_invite')&&source.includes('pos_set_staff_rol
 ok(source.includes('pos_save_table')&&source.includes('pos_delete_table')&&source.includes('qg_table_rotate_qr'),'Merchant native POS must preserve table and QR management');
 ok(source.includes('pos_owner_dashboard')&&source.includes('pos_delivery_kitchen_action')&&source.includes('pos_enable_delivery'),'Merchant native POS must preserve reports and Delivery integration');
 ok(source.includes('PosTabs(')&&source.includes('"reports" to "ยอดขาย"')&&source.includes('"history" to "ประวัติ"')&&source.includes('"delivery" to "Delivery"')&&source.includes('"staff" to "พนักงาน"'),'Merchant native POS must preserve Production counter tables kitchen bills reports history Delivery and staff tabs');
+ok(source.includes('pendingPosRequestId')&&source.includes('ตรวจบิลเดิม')&&source.includes('requestId = requestId'),'Merchant native POS must preserve idempotent new-bill recovery after uncertain network results');
 ok(source.includes('table-order.html#scan/')&&merchantGradle.includes('com.google.zxing:core:3.5.3'),'Merchant native POS must render Production table QR links without a WebView');
 
 ok(source.includes('get_my_shop_orders'),'Merchant native Orders must use production order source');

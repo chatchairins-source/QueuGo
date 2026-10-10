@@ -52,6 +52,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -72,6 +73,7 @@ import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.ZoneId
 import java.util.Locale
+import java.util.UUID
 
 private val posRoles = listOf(
     "WAITER" to "พนักงานเสิร์ฟ",
@@ -107,6 +109,12 @@ fun MerchantPosScreen(
     var search by rememberSaveable { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }
     var message by remember { mutableStateOf<String?>(null) }
+
+    var pendingPosRequestId by rememberSaveable { mutableStateOf<String?>(null) }
+    var pendingPosProductId by rememberSaveable { mutableStateOf<String?>(null) }
+    var pendingPosType by rememberSaveable { mutableStateOf<String?>(null) }
+    var pendingPosTableId by rememberSaveable { mutableStateOf<String?>(null) }
+    var pendingPosNote by rememberSaveable { mutableStateOf<String?>(null) }
 
     var paymentMethod by rememberSaveable { mutableStateOf("cash") }
     var paymentMethodMenu by remember { mutableStateOf(false) }
@@ -183,6 +191,90 @@ fun MerchantPosScreen(
                 .onFailure { message = it.message ?: "บันทึกไม่สำเร็จ" }
             busy = false
         }
+    }
+
+    fun addPosProduct(product: PosProduct) {
+        if (busy) return
+        if (!can("receive_order")) {
+            message = "บัญชีนี้ไม่มีสิทธิ์รับออเดอร์"
+            return
+        }
+        if (mode == "DINE_IN" && tableId == null && !noTable) {
+            message = "เลือกโต๊ะหรือไม่ระบุโต๊ะก่อน"
+            return
+        }
+
+        val newBill = selectedBillId.isNullOrBlank()
+        val targetTable = if (mode == "DINE_IN") tableId else null
+        val requestId = if (newBill) {
+            val existing = pendingPosRequestId
+            if (existing != null) {
+                val same = pendingPosProductId == product.id &&
+                    pendingPosType == mode &&
+                    pendingPosTableId == targetTable &&
+                    pendingPosNote == note
+                if (!same) {
+                    message = "มีบิลก่อนหน้าที่ยังไม่ทราบผล กรุณาตรวจบิลเดิมก่อนเพิ่มรายการใหม่"
+                    return
+                }
+                existing
+            } else {
+                UUID.randomUUID().toString().also {
+                    pendingPosRequestId = it
+                    pendingPosProductId = product.id
+                    pendingPosType = mode
+                    pendingPosTableId = targetTable
+                    pendingPosNote = note
+                }
+            }
+        } else UUID.randomUUID().toString()
+
+        busy = true
+        scope.launch {
+            runCatching {
+                api.addProduct(
+                    auth = auth,
+                    currentBillId = selectedBillId,
+                    type = mode,
+                    tableId = targetTable,
+                    productId = product.id,
+                    note = note,
+                    requestId = requestId
+                )
+            }.onSuccess { id ->
+                selectedBillId = id
+                snapshot = api.snapshot(auth)
+                pendingPosRequestId = null
+                pendingPosProductId = null
+                pendingPosType = null
+                pendingPosTableId = null
+                pendingPosNote = null
+                message = "เพิ่มสินค้าแล้ว"
+            }.onFailure {
+                message = if (newBill) {
+                    "ผลเปิดบิลยังไม่แน่ชัด · กดตรวจบิลเดิมก่อนทำรายการอื่น: " +
+                        (it.message ?: "เชื่อมต่อไม่สำเร็จ")
+                } else it.message ?: "เพิ่มสินค้าไม่สำเร็จ"
+            }
+            busy = false
+        }
+    }
+
+    fun retryPendingPosCreate() {
+        val productId = pendingPosProductId ?: return
+        val product = snapshot?.products?.firstOrNull { it.id == productId }
+        if (product == null) {
+            message = "ไม่พบสินค้าของบิลที่รอตรวจ กรุณาโหลดข้อมูลใหม่"
+            return
+        }
+        if (selectedBillId != null) {
+            selectedBillId = null
+        }
+        mode = pendingPosType ?: mode
+        tableId = pendingPosTableId
+        noTable = mode == "DINE_IN" && tableId == null
+        note = pendingPosNote.orEmpty()
+        addPosProduct(product)
     }
 
     LaunchedEffect(auth.session.accessToken) { reload() }
@@ -284,6 +376,7 @@ fun MerchantPosScreen(
                     note = note,
                     search = search,
                     busy = busy,
+                    pendingCreate = pendingPosRequestId != null,
                     canReceive = can("receive_order"),
                     canSendKitchen = can("send_kitchen"),
                     canServe = can("serve_order"),
@@ -313,32 +406,8 @@ fun MerchantPosScreen(
                     },
                     onNote = { note = it.take(500) },
                     onSearch = { search = it },
-                    onProduct = { product ->
-                        if (!can("receive_order")) {
-                            message = "บัญชีนี้ไม่มีสิทธิ์รับออเดอร์"
-                        } else if (mode == "DINE_IN" && tableId == null && !noTable) {
-                            message = "เลือกโต๊ะหรือไม่ระบุโต๊ะก่อน"
-                        } else {
-                            busy = true
-                            scope.launch {
-                                runCatching {
-                                    api.addProduct(
-                                        auth,
-                                        selectedBillId,
-                                        mode,
-                                        if (mode == "DINE_IN") tableId else null,
-                                        product.id,
-                                        note
-                                    )
-                                }.onSuccess { id ->
-                                    selectedBillId = id
-                                    snapshot = api.snapshot(auth)
-                                    message = "เพิ่มสินค้าแล้ว"
-                                }.onFailure { message = it.message ?: "เพิ่มสินค้าไม่สำเร็จ" }
-                                busy = false
-                            }
-                        }
-                    },
+                    onProduct = ::addPosProduct,
+                    onRetryPending = ::retryPendingPosCreate,
                     onReduce = { line ->
                         val bill = selectedBill
                         if (bill != null && line.productId != null) {
@@ -852,6 +921,7 @@ private fun PosCounterView(
     note: String,
     search: String,
     busy: Boolean,
+    pendingCreate: Boolean,
     canReceive: Boolean,
     canSendKitchen: Boolean,
     canServe: Boolean,
@@ -865,6 +935,7 @@ private fun PosCounterView(
     onNote: (String) -> Unit,
     onSearch: (String) -> Unit,
     onProduct: (PosProduct) -> Unit,
+    onRetryPending: () -> Unit,
     onReduce: (PosLine) -> Unit,
     onOpenBill: (PosBill) -> Unit,
     onBillAction: (String, String) -> Unit,
@@ -876,6 +947,29 @@ private fun PosCounterView(
     val openBills = snapshot.bills.filter { it.open }
     val lines = selectedBill?.let { snapshot.linesByOrder[it.id].orEmpty() }.orEmpty()
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(14.dp)) {
+        if (pendingCreate) {
+            Surface(
+                color = Color(0xFFFFF5E8),
+                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    Modifier.padding(10.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        "กำลังตรวจบิลก่อนหน้าที่ผลลัพธ์ไม่แน่ชัด",
+                        modifier = Modifier.weight(1f),
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    OutlinedButton(onClick = onRetryPending, enabled = !busy) {
+                        Text("ตรวจบิลเดิม", fontSize = 10.sp)
+                    }
+                }
+            }
+            Spacer(Modifier.height(8.dp))
+        }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             PosChoiceButton("ทานที่ร้าน", mode == "DINE_IN", Modifier.weight(1f)) { onMode("DINE_IN") }
             PosChoiceButton("รับกลับ", mode == "TAKEAWAY", Modifier.weight(1f)) { onMode("TAKEAWAY") }
