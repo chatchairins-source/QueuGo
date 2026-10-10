@@ -43,6 +43,7 @@ on:
       - 'tests/native-release-gate.cjs'
       - 'tests/native-release-workflow.cjs'
       - '.github/workflows/build-native-release.yml'
+      - '.github/workflows/native-release-certification.yml'
       - 'tests/play-store-readiness.cjs'
       - 'docs/play-closed-beta-readiness.md'
       - 'docs/play-store-listing-draft.md'
