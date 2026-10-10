@@ -8,9 +8,14 @@ for(const p of [
   'build.gradle.kts',
   'shared/build.gradle.kts',
   'shared/src/main/java/com/queuego/shared/QueueGoAccountDeletion.kt',
+  'shared/src/main/java/com/queuego/shared/NativePush.kt',
   'customer/build.gradle.kts',
   'customer/src/main/AndroidManifest.xml',
+  'customer/src/main/java/com/queuego/customer/QueueGoCustomerMessagingService.kt',
+  'customer/src/main/res/drawable/qg_notification.xml',
   'merchant/build.gradle.kts',
+  'merchant/src/main/java/com/queuego/merchant/QueueGoMerchantMessagingService.kt',
+  'merchant/src/main/res/drawable/qg_notification.xml',
   'rider/build.gradle.kts',
   'rider/src/main/AndroidManifest.xml',
   'rider/src/main/java/com/queuego/rider/QueueGoRiderApp.kt',
@@ -78,8 +83,8 @@ ok(!/android\.webkit\.WebView|<WebView\b|loadUrl\(/.test(source),'native apps mu
 ok(source.includes('expectedRole = "customer"')&&source.includes('expectedRole = "shop"'),'Customer/Merchant must validate real QueueGo roles');
 const customerMain=read('customer/src/main/java/com/queuego/customer/MainActivity.kt');
 const merchantMain=read('merchant/src/main/java/com/queuego/merchant/MainActivity.kt');
-ok(customerMain.includes('QueueGoCustomerApp()')&&!customerMain.includes('QueueGoRoleNativeApp'),'Customer must launch full native app, not role shell');
-ok(merchantMain.includes('QueueGoMerchantApp()')&&!merchantMain.includes('QueueGoRoleNativeApp'),'Merchant must launch full native app, not role shell');
+ok(customerMain.includes('QueueGoCustomerApp(')&&!customerMain.includes('QueueGoRoleNativeApp'),'Customer must launch full native app, not role shell');
+ok(merchantMain.includes('QueueGoMerchantApp(')&&!merchantMain.includes('QueueGoRoleNativeApp'),'Merchant must launch full native app, not role shell');
 ok(source.includes('queuego_place_cash_order'),'Customer native checkout must use production cash-order RPC');
 const customerCartCheckout=read('customer/src/main/java/com/queuego/customer/CustomerCartCheckout.kt');
 ok(source.includes('"cart" -> CustomerCartScreen')&&source.includes('"checkout" -> CustomerCheckoutScreen')&&customerCartCheckout.includes('"ตะกร้าสินค้า"')&&customerCartCheckout.includes('"ไปชำระเงิน"')&&customerCartCheckout.includes('"ยืนยันคำสั่งซื้อ"')&&customerCartCheckout.includes('height(115.dp)')&&customerCartCheckout.includes('QgLongdoLocationPickerMap')&&customerCartCheckout.includes('"ยืนยันสั่งซื้อ"'),'Customer native must preserve separate Production cart and checkout screens with checkout Longdo map and fixed action dock');
@@ -159,7 +164,46 @@ ok(riderPush.includes('FirebaseMessagingService')&&riderPush.includes('Notificat
 ok(riderApi.includes('/functions/v1/queuego-push')&&riderApi.includes('"subscribe-native"')&&riderApi.includes('"unsubscribe-native"'),'Rider native must reuse QueueGo Production push backend');
 ok(riderSessionStore.includes('fun pushDeviceId()')&&riderSessionStore.includes('UUID.randomUUID().toString()'),'Rider push subscription must use a stable UUID device id');
 ok(riderApp.includes('syncRiderNativePush(context, auth, api, pushStore)')&&riderApp.includes('disableRiderNativePush(current, api, store)'),'Rider login/logout must synchronize native push subscription lifecycle');
-ok(pilotWorkflow.includes('QG_FIREBASE_GOOGLE_SERVICES_JSON_B64')&&pilotWorkflow.includes('native-android/rider/google-services.json')&&pilotWorkflow.includes('com.queuego.rider'),'native Rider CI must inject and validate Firebase config without committing it');
+ok(
+  pilotWorkflow.includes('QG_FIREBASE_GOOGLE_SERVICES_JSON_B64')&&
+  pilotWorkflow.includes('native-android/google-services.queuego.json')&&
+  pilotWorkflow.includes("'customer':'com.queuego.customer'")&&
+  pilotWorkflow.includes("'merchant':'com.queuego.merchant'")&&
+  pilotWorkflow.includes("'rider':'com.queuego.rider'")&&
+  pilotWorkflow.includes("if apps['rider'] not in packages")&&
+  pilotWorkflow.includes("shutil.copyfile(source,target)"),
+  'native CI must validate the existing Firebase secret and materialize only configured role clients without committing it'
+);
+const sharedPush=read('shared/src/main/java/com/queuego/shared/NativePush.kt');
+const customerPushService=read('customer/src/main/java/com/queuego/customer/QueueGoCustomerMessagingService.kt');
+const merchantPushService=read('merchant/src/main/java/com/queuego/merchant/QueueGoMerchantMessagingService.kt');
+ok(
+  customerGradle.includes('com.google.firebase:firebase-messaging')&&
+  merchantGradle.includes('com.google.firebase:firebase-messaging')&&
+  source.includes('android.permission.POST_NOTIFICATIONS'),
+  'Customer and Merchant native apps must compile FCM transport and declare Android 13 notification permission'
+);
+ok(
+  sharedPush.includes('"subscribe-native"')&&sharedPush.includes('"unsubscribe-native"')&&
+  sharedPush.includes('QUEUEGO_NATIVE_PUSH_CHANNEL = "queuego_orders"')&&
+  sharedPush.includes('QueueGoNativeMessagingService')&&
+  source.includes('fun pushDeviceId(): String'),
+  'Customer and Merchant native push must reuse Production queuego-push with stable UUID lifecycle and shared FCM service'
+);
+ok(
+  customerPushService.includes('expectedRole = "customer"')&&
+  merchantPushService.includes('expectedRole = "shop"')&&
+  source.includes('queuego_push_reference_id')&&
+  source.includes('LaunchedEffect(pushReferenceId, loading, orders)'),
+  'Customer and Merchant native push must enforce role adapters and route notification references into native order detail'
+);
+ok(
+  source.includes('disableNativePush(current, store)')&&
+  source.includes('testNativePush(auth)')&&
+  source.includes('openNativeNotificationSettings(context)'),
+  'Customer and Merchant native push must unsubscribe on logout and expose real push testing/settings recovery'
+);
+
 ok(source.includes('RiderLongdoMap')&&source.includes('MapGLSurfaceView')&&source.includes('LongdoLayer'),'native Rider must include Longdo map SDK host');
 ok(riderApp.includes('RiderLongdoMap(')&&riderApp.includes('heightIn(max = maxHeight * 0.62f)') && !riderApp.includes('fillMaxHeight(0.62f)')&&riderApp.includes('recenterSignal'),'Rider native must keep map-first home with bottom dock and recenter control');
 ok(source.includes('longdo.map.key'),'native Rider manifest must provide Longdo map key');
