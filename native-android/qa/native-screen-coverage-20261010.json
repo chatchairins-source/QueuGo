@@ -50,7 +50,14 @@
       ],
       [
         "order_chat",
-        "native-android/customer/src/main/java/com/queuego/customer/CustomerChatWindow.kt"
+        "native-android/customer/src/main/java/com/queuego/customer/CustomerChat.kt",
+        "screen"
+      ],
+      [
+        "order_chat_window_policy",
+        "native-android/customer/src/main/java/com/queuego/customer/CustomerChatWindow.kt",
+        "helper",
+        "chatAvailable"
       ],
       [
         "review",
@@ -133,7 +140,8 @@
       [
         "gp_slip_private_signer",
         "native-android/merchant/src/main/java/com/queuego/merchant/MerchantGpSlipViewer.kt",
-        "helper"
+        "helper",
+        "signMerchantGpSlip"
       ]
     ],
     "rider": [
