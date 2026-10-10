@@ -36,13 +36,10 @@ class NativeVoiceRealtimeTest {
                     "broadcast" -> webSocket.send(
                         JSONObject()
                             .put("topic", message.getString("topic"))
-                            .put("event", "broadcast")
-                            .put(
-                                "payload",
-                                JSONObject()
-                                    .put("event", "answer")
-                                    .put("payload", JSONObject().put("sdp", "answer-sdp"))
-                            )
+                            .put("event", "phx_reply")
+                            .put("ref", message.optString("ref"))
+                            .put("join_ref", "1")
+                            .put("payload", JSONObject().put("status", "ok").put("response", JSONObject()))
                             .toString()
                     )
                 }
@@ -72,9 +69,36 @@ class NativeVoiceRealtimeTest {
             assertEquals("offer-sdp", outbound.getJSONObject("payload")
                 .getJSONObject("payload").getString("sdp"))
 
-            val inbound = withTimeout(5_000) { connection.signals.first() }
-            assertEquals("answer", inbound.event)
+            val inbound = parseNativeVoiceBroadcast(
+                JSONObject()
+                    .put("topic", "realtime:$topic")
+                    .put("event", "broadcast")
+                    .put("payload", JSONObject()
+                        .put("event", "answer")
+                        .put("payload", JSONObject().put("sdp", "answer-sdp"))),
+                "realtime:$topic"
+            )
+            assertNotNull(inbound)
+            assertEquals("answer", inbound!!.event)
             assertEquals("answer-sdp", inbound.payload.getString("sdp"))
+            assertNull(parseNativeVoiceBroadcast(
+                JSONObject()
+                    .put("topic", "realtime:other")
+                    .put("event", "broadcast")
+                    .put("payload", JSONObject()
+                        .put("event", "answer")
+                        .put("payload", JSONObject())),
+                "realtime:$topic"
+            ))
+            assertNull(parseNativeVoiceBroadcast(
+                JSONObject()
+                    .put("topic", "realtime:$topic")
+                    .put("event", "broadcast")
+                    .put("payload", JSONObject()
+                        .put("event", "unknown")
+                        .put("payload", JSONObject())),
+                "realtime:$topic"
+            ))
 
             assertTrue(connection.updateAccessToken("jwt-two"))
             val tokenUpdate = received.poll(1, TimeUnit.SECONDS)
