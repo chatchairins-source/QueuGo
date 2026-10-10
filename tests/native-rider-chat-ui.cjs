@@ -15,6 +15,8 @@ ok(quick.includes('"จัดการข้อความด่วน"'),'Quic
 
 ok(chat.includes('fillMaxWidth(0.78f)'),'Rider chat bubbles must remain compact rather than full-width cards');
 ok(chat.includes('riderChatTimeLabel(chat.createdAt)'),'Rider chat must show compact local clock labels instead of raw server timestamps');
+ok(chat.includes('rememberLazyListState()')&&chat.includes('scrollToItem(messages.lastIndex)'),'Rider chat must move to the newest message when a new message arrives');
+ok(chat.includes('LaunchedEffect(messages.size, messages.lastOrNull()?.id)'),'Rider chat auto-scroll must react only to actual tail-message changes');
 ok(chat.includes('RoundedCornerShape(topStart = 18.dp'),'Rider chat bubbles must retain directional bubble corners');
 ok(chat.includes('R.drawable.qg_rider_chat_photo'),'Rider composer must use the native photo icon');
 ok(chat.includes('R.drawable.qg_rider_chat_send'),'Rider composer must use the native send icon');
