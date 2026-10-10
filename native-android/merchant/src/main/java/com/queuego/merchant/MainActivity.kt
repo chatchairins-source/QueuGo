@@ -68,6 +68,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.queuego.shared.NativeAuth
 import com.queuego.shared.NativeAuthApi
 import com.queuego.shared.NativeMerchantMarketRegistration
 import com.queuego.shared.NativeMerchantMarketRequest
@@ -77,6 +78,7 @@ import com.queuego.shared.QgGreen
 import com.queuego.shared.QgMapPoint
 import com.queuego.shared.QgMuted
 import com.queuego.shared.QgRed
+import com.queuego.shared.NativeSessionInvalidException
 import com.queuego.shared.QueueGoTheme
 import com.queuego.shared.SecureRoleSessionStore
 import kotlinx.coroutines.CancellationException
@@ -98,24 +100,83 @@ class MainActivity : ComponentActivity() {
 private fun MerchantNativeEntryGate() {
     val context = LocalContext.current
     val store = remember { SecureRoleSessionStore(context, "shop") }
-    var hasSession by remember { mutableStateOf(store.load() != null) }
+    var current by remember { mutableStateOf(store.load()) }
 
     LaunchedEffect(Unit) {
         while (true) {
-            val present = store.load() != null
-            if (present != hasSession) hasSession = present
+            val saved = store.load()
+            if (saved?.session?.accessToken != current?.session?.accessToken ||
+                saved?.user?.role != current?.user?.role
+            ) current = saved
             delay(350)
         }
     }
 
-    if (hasSession) {
-        QueueGoMerchantApp()
-    } else {
-        QueueGoTheme {
+    when {
+        current?.user?.role == "pos_staff" -> QueueGoTheme {
+            PosStaffNativeHost(
+                initialAuth = current!!,
+                store = store,
+                onLogout = {
+                    store.clear()
+                    current = null
+                }
+            )
+        }
+        current != null -> QueueGoMerchantApp()
+        else -> QueueGoTheme {
             MerchantNativeAuthentication(
                 store = store,
-                onAuthenticated = { hasSession = true }
+                onAuthenticated = { current = store.load() }
             )
+        }
+    }
+}
+
+@Composable
+private fun PosStaffNativeHost(
+    initialAuth: NativeAuth,
+    store: SecureRoleSessionStore,
+    onLogout: () -> Unit
+) {
+    val api = remember { NativeAuthApi() }
+    var auth by remember { mutableStateOf(initialAuth) }
+    var recoveryError by remember { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(initialAuth.session.authUserId) {
+        while (true) {
+            try {
+                val validated = api.validatePosStaff(auth) { refreshed ->
+                    store.save(refreshed)
+                    auth = refreshed
+                }
+                store.save(validated)
+                auth = validated
+                recoveryError = null
+            } catch (failure: Exception) {
+                if (failure is CancellationException) throw failure
+                if (failure is NativeSessionInvalidException) {
+                    store.clear()
+                    onLogout()
+                    return@LaunchedEffect
+                }
+                recoveryError = failure.message
+            }
+            delay(25_000)
+        }
+    }
+
+    Column(Modifier.fillMaxSize()) {
+        if (!recoveryError.isNullOrBlank()) {
+            Text(
+                "การเชื่อมต่อ POS ขัดข้อง ระบบจะลองใหม่อัตโนมัติ",
+                color = MaterialTheme.colorScheme.error,
+                fontSize = 12.sp,
+                modifier = Modifier.padding(horizontal = 14.dp, vertical = 5.dp)
+            )
+        }
+        Box(Modifier.weight(1f)) {
+            MerchantPosScreen(auth = auth, onBack = onLogout)
         }
     }
 }
@@ -130,6 +191,7 @@ private fun MerchantNativeAuthentication(
     val api = remember { NativeAuthApi() }
 
     var register by rememberSaveable { mutableStateOf(false) }
+    var staffJoin by rememberSaveable { mutableStateOf(false) }
     var busy by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     var message by remember { mutableStateOf<String?>(null) }
@@ -137,6 +199,10 @@ private fun MerchantNativeAuthentication(
     var loginId by rememberSaveable { mutableStateOf("") }
     var loginPassword by remember { mutableStateOf("") }
     var showLoginPassword by remember { mutableStateOf(false) }
+    var staffName by rememberSaveable { mutableStateOf("") }
+    var staffEmail by rememberSaveable { mutableStateOf("") }
+    var staffPassword by remember { mutableStateOf("") }
+    var staffSecret by rememberSaveable { mutableStateOf("") }
 
     var shopName by rememberSaveable { mutableStateOf("") }
     var category by rememberSaveable { mutableStateOf("") }
@@ -194,12 +260,36 @@ private fun MerchantNativeAuthentication(
         message = null
         scope.launch {
             try {
-                val auth = api.signIn(loginId.trim(), loginPassword, "shop", store.deviceId())
+                val auth = api.signInMerchantOrStaff(loginId.trim(), loginPassword, store.deviceId())
                 store.save(auth)
                 onAuthenticated()
             } catch (failure: Exception) {
                 if (failure is CancellationException) throw failure
                 error = failure.message ?: "เข้าสู่ระบบไม่สำเร็จ"
+            } finally {
+                busy = false
+            }
+        }
+    }
+
+    fun joinStaff() {
+        if (busy) return
+        error = null
+        message = null
+        busy = true
+        scope.launch {
+            try {
+                val auth = api.joinPosStaff(
+                    staffName.trim(),
+                    staffEmail.trim(),
+                    staffPassword,
+                    staffSecret.trim()
+                )
+                store.save(auth)
+                onAuthenticated()
+            } catch (failure: Exception) {
+                if (failure is CancellationException) throw failure
+                error = failure.message ?: "เข้าร่วมร้านไม่สำเร็จ"
             } finally {
                 busy = false
             }
@@ -326,12 +416,14 @@ private fun MerchantNativeAuthentication(
         )
     }
 
-    BackHandler(register && !busy) {
+    BackHandler((register || staffJoin) && !busy) {
         register = false
+        staffJoin = false
         error = null
         message = null
         password = ""
         confirmation = ""
+        staffPassword = ""
     }
 
     if (forgotDialog) {
@@ -383,7 +475,7 @@ private fun MerchantNativeAuthentication(
         Box(
             Modifier
                 .fillMaxWidth()
-                .height(if (register) 250.dp else 360.dp)
+                .height(if (register || staffJoin) 250.dp else 360.dp)
         ) {
             Image(
                 painter = painterResource(R.drawable.qgm_merchant_photo),
@@ -411,17 +503,22 @@ private fun MerchantNativeAuthentication(
                 }
                 Spacer(Modifier.height(28.dp))
                 Text(
-                    if (register) "สมัครร้านค้ากับ QueueGo" else "เข้าสู่ระบบร้านค้า",
+                    when {
+                        staffJoin -> "พนักงานหน้าร้าน"
+                        register -> "สมัครร้านค้ากับ QueueGo"
+                        else -> "เข้าสู่ระบบร้านค้า"
+                    },
                     color = Color.White,
                     fontSize = 27.sp,
                     fontWeight = FontWeight.ExtraBold
                 )
                 Spacer(Modifier.height(7.dp))
                 Text(
-                    if (register)
-                        "ลงทะเบียนร้านไว้ล่วงหน้า\nเพื่อเตรียมสินค้าให้พร้อมก่อนเปิดบริการ"
-                    else
-                        "จัดการคิวร้านของคุณ\nให้ง่ายขึ้น ในทุก ๆ วัน",
+                    when {
+                        staffJoin -> "ใช้บัญชีพนักงานของคุณเอง\nและรหัสเชิญจากเจ้าของร้าน"
+                        register -> "ลงทะเบียนร้านไว้ล่วงหน้า\nเพื่อเตรียมสินค้าให้พร้อมก่อนเปิดบริการ"
+                        else -> "จัดการคิวร้านของคุณ\nให้ง่ายขึ้น ในทุก ๆ วัน"
+                    },
                     color = Color.White,
                     fontSize = 14.sp,
                     lineHeight = 21.sp
@@ -436,7 +533,7 @@ private fun MerchantNativeAuthentication(
                 .background(Color.White, RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp))
                 .padding(horizontal = 20.dp, vertical = 24.dp)
         ) {
-            if (!register) {
+            if (!register && !staffJoin) {
                 OutlinedTextField(
                     loginId,
                     { loginId = it },
@@ -485,10 +582,58 @@ private fun MerchantNativeAuthentication(
                 ) { Text("ลืมรหัสผ่าน?", color = QgRed) }
                 MerchantEntryDivider("หรือ")
                 OutlinedButton(
-                    onClick = { register = true; error = null; message = null; loginPassword = "" },
+                    onClick = {
+                        register = true
+                        staffJoin = false
+                        error = null
+                        message = null
+                        loginPassword = ""
+                    },
                     enabled = !busy,
                     modifier = Modifier.fillMaxWidth().height(52.dp)
                 ) { Text("สมัครร้านค้าใหม่", color = QgRed, fontWeight = FontWeight.Bold) }
+                Spacer(Modifier.height(10.dp))
+                OutlinedButton(
+                    onClick = {
+                        staffJoin = true
+                        register = false
+                        staffJoin = false
+                        error = null
+                        message = null
+                        loginPassword = ""
+                    },
+                    enabled = !busy,
+                    modifier = Modifier.fillMaxWidth().height(52.dp)
+                ) { Text("พนักงานหน้าร้าน: สมัคร / ใส่รหัสเชิญ", fontWeight = FontWeight.Bold) }
+            } else if (staffJoin) {
+                MerchantEntrySection(
+                    "เข้าร่วมร้านค้า",
+                    "ใช้บัญชีพนักงานของคุณเองและรหัสเชิญจากเจ้าของร้าน"
+                ) {
+                    MerchantEntryField("ชื่อพนักงาน", staffName, { staffName = it.take(100) }, "ชื่อพนักงาน", !busy)
+                    MerchantEntryField("อีเมล", staffEmail, { staffEmail = it }, "อีเมล", !busy, KeyboardType.Email)
+                    MerchantEntryPassword("รหัสผ่าน", staffPassword, { staffPassword = it }, "อย่างน้อย 8 ตัว", !busy)
+                    MerchantEntryField("รหัสเชิญ", staffSecret, { staffSecret = it.trim() }, "รหัสเชิญจากเจ้าของร้าน", !busy)
+                    Button(
+                        onClick = ::joinStaff,
+                        enabled = !busy,
+                        modifier = Modifier.fillMaxWidth().height(54.dp)
+                    ) {
+                        if (busy) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
+                        else Text("สมัครและเข้าร่วมร้าน", fontWeight = FontWeight.Bold)
+                    }
+                }
+                MerchantEntryDivider("มีบัญชีแล้ว")
+                OutlinedButton(
+                    onClick = {
+                        staffJoin = false
+                        error = null
+                        message = null
+                        staffPassword = ""
+                    },
+                    enabled = !busy,
+                    modifier = Modifier.fillMaxWidth().height(52.dp)
+                ) { Text("กลับไปเข้าสู่ระบบ", color = QgRed, fontWeight = FontWeight.Bold) }
             } else {
                 MerchantEntryField("ชื่อร้าน *", shopName, { shopName = it.take(100) }, "ชื่อร้านที่ลูกค้าจะเห็น", !busy)
                 Text("ประเภทร้านค้า *", fontSize = 13.sp, fontWeight = FontWeight.Bold)

@@ -279,20 +279,210 @@ class NativeAuthApi(
         Unit
     }
 
+    suspend fun signInMerchantOrStaff(
+        identifier: String,
+        password: String,
+        deviceId: String
+    ): NativeAuth = withContext(Dispatchers.IO) {
+        val grant = passwordGrant(identifier, password)
+        val token = grant.getString("access_token")
+        val authUserId = grant.getJSONObject("user").getString("id")
+        val staffRows = requestArray(
+            "GET",
+            "/rest/v1/pos_staff?select=user_id,shop_id,display_name,active&user_id=eq." +
+                enc(authUserId) + "&limit=1",
+            token
+        )
+        if (staffRows.length() > 0) {
+            val staff = staffRows.getJSONObject(0)
+            if (!staff.optBoolean("active", false)) {
+                throw NativeSessionInvalidException("บัญชีพนักงานถูกปิดสิทธิ์")
+            }
+            return@withContext posStaffAuth(grant, staff)
+        }
+
+        val rows = requestArray(
+            "GET",
+            "/rest/v1/users?select=id,name,role,status,auth_user_id&auth_user_id=eq." + enc(authUserId),
+            token
+        )
+        if (rows.length() == 0) {
+            throw NativeSessionInvalidException("บัญชีนี้ยังไม่ได้เข้าร่วมร้านค้า กรุณาใส่รหัสเชิญ")
+        }
+        val row = rows.getJSONObject(0)
+        if (row.optString("role") == "admin") {
+            throw NativeSessionInvalidException("บัญชีนี้เป็นบัญชี Admin กรุณาเข้าสู่ระบบที่หน้า Admin")
+        }
+        if (row.optString("role") != "shop") {
+            throw NativeSessionInvalidException("บัญชีนี้ยังไม่ได้เข้าร่วมร้านค้า กรุณาใส่รหัสเชิญ")
+        }
+        if (row.optString("status") in setOf("suspended", "deleted")) {
+            throw NativeSessionInvalidException("บัญชีถูกระงับหรือปิดใช้งาน")
+        }
+        val sessionId = UUID.randomUUID().toString()
+        val claim = rpc(
+            "claim_active_session",
+            token,
+            JSONObject().put("p_session_id", sessionId).put("p_device_id", deviceId)
+        )
+        if (claim is JSONArray && claim.length() > 0 &&
+            claim.optJSONObject(0)?.optBoolean("success", true) == false
+        ) error("ไม่สามารถเปิด Session นี้ได้")
+        NativeAuth(
+            NativeSession(
+                authUserId,
+                token,
+                grant.optString("refresh_token").takeIf { it.isNotBlank() },
+                grant.optLong("expires_at", 0L) * 1000L,
+                sessionId
+            ),
+            NativeUser(
+                row.getString("id"),
+                authUserId,
+                row.optString("name").ifBlank { "ร้านค้า" },
+                "shop",
+                row.optString("status").ifBlank { "pending" }
+            )
+        )
+    }
+
+    suspend fun joinPosStaff(
+        displayName: String,
+        email: String,
+        password: String,
+        secret: String
+    ): NativeAuth = withContext(Dispatchers.IO) {
+        val cleanName = displayName.trim()
+        val cleanEmail = email.trim().lowercase()
+        val cleanSecret = secret.trim()
+        require(cleanName.length in 1..100) { "กรุณากรอกชื่อพนักงาน" }
+        require(Regex("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$").matches(cleanEmail)) {
+            "กรุณากรอกอีเมลให้ถูกต้อง"
+        }
+        require(password.length >= 8) { "รหัสผ่านต้องมีอย่างน้อย 8 ตัว" }
+        require(cleanSecret.isNotBlank()) { "กรุณากรอกรหัสเชิญ" }
+
+        val grant = try {
+            passwordGrant(cleanEmail, password)
+        } catch (loginFailure: Exception) {
+            if (loginFailure is kotlinx.coroutines.CancellationException) throw loginFailure
+            val signup = requestObject(
+                "POST",
+                "/auth/v1/signup",
+                null,
+                JSONObject()
+                    .put("email", cleanEmail)
+                    .put("password", password)
+                    .put("data", JSONObject().put("name", cleanName).put("role", "customer"))
+            )
+            authGrant(signup) ?: throw IllegalStateException(
+                "สมัครบัญชีแล้ว กรุณายืนยันอีเมล จากนั้นกลับมาใส่ข้อมูลเดิมเพื่อเข้าร่วมร้าน"
+            )
+        }
+        val token = grant.getString("access_token")
+        val authUserId = grant.getJSONObject("user").getString("id")
+        rpc(
+            "pos_join_shop",
+            token,
+            JSONObject().put("p_secret", cleanSecret).put("p_display_name", cleanName)
+        )
+        val rows = requestArray(
+            "GET",
+            "/rest/v1/pos_staff?select=user_id,shop_id,display_name,active&user_id=eq." +
+                enc(authUserId) + "&limit=1",
+            token
+        )
+        if (rows.length() == 0 || !rows.getJSONObject(0).optBoolean("active", false)) {
+            throw NativeSessionInvalidException("เข้าร่วมร้านแล้วแต่ยังยืนยันสิทธิ์พนักงานไม่ได้")
+        }
+        posStaffAuth(grant, rows.getJSONObject(0))
+    }
+
+    suspend fun validatePosStaff(
+        auth: NativeAuth,
+        onSessionRefreshed: (NativeAuth) -> Unit = {}
+    ): NativeAuth = withContext(Dispatchers.IO) {
+        require(auth.user.role == "pos_staff") { "สิทธิ์บัญชีไม่ตรงกับ POS" }
+        val live = refreshIfNeeded(auth)
+        if (live.session != auth.session) onSessionRefreshed(live)
+        val rows = requestArray(
+            "GET",
+            "/rest/v1/pos_staff?select=user_id,shop_id,display_name,active&user_id=eq." +
+                enc(live.session.authUserId) + "&limit=1",
+            live.session.accessToken
+        )
+        if (rows.length() == 0 || !rows.getJSONObject(0).optBoolean("active", false)) {
+            throw NativeSessionInvalidException("บัญชีพนักงานถูกปิดสิทธิ์")
+        }
+        val shop = rpc("pos_my_shop", live.session.accessToken, JSONObject())
+        val shopId = when (shop) {
+            is String -> shop
+            is JSONObject -> shop.optString("pos_my_shop").ifBlank { shop.optString("id") }
+            is JSONArray -> shop.optString(0)
+            else -> shop.toString().trim('"')
+        }
+        if (shopId.isBlank() || shopId == "null") {
+            throw NativeSessionInvalidException("บัญชีนี้ยังไม่มีสิทธิ์ POS ของร้าน")
+        }
+        val staff = rows.getJSONObject(0)
+        live.copy(
+            user = live.user.copy(
+                id = live.session.authUserId,
+                name = staff.optString("display_name").ifBlank { live.user.name },
+                role = "pos_staff",
+                status = "active"
+            )
+        )
+    }
+
+    private fun passwordGrant(identifier: String, password: String): JSONObject {
+        val email = if (identifier.contains("@")) identifier.trim()
+        else identifier.filter(Char::isDigit) + "@auth.queuetech.local"
+        return requestObject(
+            "POST",
+            "/auth/v1/token?grant_type=password",
+            null,
+            JSONObject().put("email", email).put("password", password)
+        )
+    }
+
+    private fun authGrant(response: JSONObject): JSONObject? {
+        if (response.optString("access_token").isNotBlank()) return response
+        val nested = response.optJSONObject("session")
+        return nested?.takeIf { it.optString("access_token").isNotBlank() }?.also {
+            if (!it.has("user") && response.has("user")) it.put("user", response.getJSONObject("user"))
+        }
+    }
+
+    private fun posStaffAuth(grant: JSONObject, staff: JSONObject): NativeAuth {
+        val authUserId = grant.getJSONObject("user").getString("id")
+        return NativeAuth(
+            NativeSession(
+                authUserId,
+                grant.getString("access_token"),
+                grant.optString("refresh_token").takeIf { it.isNotBlank() },
+                grant.optLong("expires_at", 0L).let {
+                    if (it > 0L) it * 1000L else System.currentTimeMillis() + 55 * 60_000L
+                },
+                "pos-staff-" + UUID.randomUUID()
+            ),
+            NativeUser(
+                authUserId,
+                authUserId,
+                staff.optString("display_name").ifBlank { "พนักงาน" },
+                "pos_staff",
+                "active"
+            )
+        )
+    }
+
     suspend fun signIn(
         identifier: String,
         password: String,
         expectedRole: String,
         deviceId: String
     ): NativeAuth = withContext(Dispatchers.IO) {
-        val email = if (identifier.contains("@")) identifier.trim()
-        else identifier.filter(Char::isDigit) + "@auth.queuetech.local"
-        val auth = requestObject(
-            "POST",
-            "/auth/v1/token?grant_type=password",
-            null,
-            JSONObject().put("email", email).put("password", password)
-        )
+        val auth = passwordGrant(identifier, password)
         val token = auth.getString("access_token")
         val authUserId = auth.getJSONObject("user").getString("id")
         val rows = requestArray(
