@@ -2,6 +2,7 @@ const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const os=require('node:os');
 const path=require('node:path');
+const crypto=require('node:crypto');
 const {spawnSync}=require('node:child_process');
 const script='native-android/qa/verify-native-release-gate.py';
 const env={...process.env};
@@ -17,6 +18,66 @@ try{
   assert.equal(result.status,1,'stale certification must fail');
   assert.match(result.stderr,/exact release HEAD/);
 }finally{fs.rmSync(dir,{recursive:true,force:true});}
+
+const evidenceDir=fs.mkdtempSync(path.join(os.tmpdir(),'qg-release-envelope-'));
+try{
+  const head=spawnSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).stdout.trim();
+  const artifact='artifact.txt';
+  fs.writeFileSync(path.join(evidenceDir,artifact),'observed evidence');
+  const artifactSha=crypto.createHash('sha256').update(fs.readFileSync(path.join(evidenceDir,artifact))).digest('hex');
+  const observedAt='2026-10-10T00:00:00Z';
+
+  const badEnvelope={
+    gate:'wrong_gate',
+    source_sha:head,
+    status:'PASS',
+    observed_at:observedAt,
+    checks:{observed:true},
+    artifacts:[{file:artifact,sha256:artifactSha,kind:'log'}]
+  };
+  const badEnvelopePath=path.join(evidenceDir,'full_native_ci.json');
+  fs.writeFileSync(badEnvelopePath,JSON.stringify(badEnvelope));
+  const badEnvelopeSha=crypto.createHash('sha256').update(fs.readFileSync(badEnvelopePath)).digest('hex');
+  const badReport=path.join(evidenceDir,'bad-report.json');
+  fs.writeFileSync(badReport,JSON.stringify({
+    source_sha:head,p0:0,p1:0,
+    gates:{full_native_ci:{status:'PASS',evidence_file:'full_native_ci.json',sha256:badEnvelopeSha}}
+  }));
+  const badResult=spawnSync('python3',[script],{env:{...env,QG_NATIVE_RELEASE_EVIDENCE:badReport},encoding:'utf8'});
+  assert.equal(badResult.status,1,'mismatched gate envelope must fail');
+  assert.match(badResult.stderr,/gate evidence envelope mismatch: full_native_ci/);
+
+  const preceding=[
+    'full_native_ci','production_backend','backup_restore','security_regression',
+    'service_area','ugc_chat_safety','security_platform_auth','firebase_three_packages'
+  ];
+  const gates={};
+  for(const gate of preceding){
+    const envelope={
+      gate,source_sha:head,status:'PASS',observed_at:observedAt,
+      checks:{observed:true},
+      artifacts:[{file:artifact,sha256:artifactSha,kind:'log'}]
+    };
+    const file=`${gate}.json`;
+    fs.writeFileSync(path.join(evidenceDir,file),JSON.stringify(envelope));
+    const sha=crypto.createHash('sha256').update(fs.readFileSync(path.join(evidenceDir,file))).digest('hex');
+    gates[gate]={status:'PASS',evidence_file:file,sha256:sha};
+  }
+  const physicalEnvelope={
+    gate:'physical_push_customer',source_sha:head,status:'PASS',observed_at:observedAt,
+    checks:{foreground:true,background:true,killed:true},
+    artifacts:[{file:artifact,sha256:artifactSha,kind:'log'}]
+  };
+  fs.writeFileSync(path.join(evidenceDir,'physical_push_customer.json'),JSON.stringify(physicalEnvelope));
+  const physicalSha=crypto.createHash('sha256').update(fs.readFileSync(path.join(evidenceDir,'physical_push_customer.json'))).digest('hex');
+  gates.physical_push_customer={status:'PASS',evidence_file:'physical_push_customer.json',sha256:physicalSha};
+  const physicalReport=path.join(evidenceDir,'physical-report.json');
+  fs.writeFileSync(physicalReport,JSON.stringify({source_sha:head,p0:0,p1:0,gates}));
+  const physicalResult=spawnSync('python3',[script],{env:{...env,QG_NATIVE_RELEASE_EVIDENCE:physicalReport},encoding:'utf8'});
+  assert.equal(physicalResult.status,1,'physical gate without device identity must fail');
+  assert.match(physicalResult.stderr,/physical gate evidence must identify at least one device: physical_push_customer/);
+}finally{fs.rmSync(evidenceDir,{recursive:true,force:true});}
+
 const verifier=fs.readFileSync(script,'utf8');
 assert.ok(verifier.includes('for role in ("customer", "merchant", "rider")'),'release verifier must apply Play history checks to Customer, Merchant and Rider');
 assert.ok(verifier.includes('play_max_name = f"QG_{role.upper()}_PLAY_MAX_VERSION_CODE"'),'release verifier must derive the per-role observed Play max environment name');
@@ -30,13 +91,22 @@ assert.match(verifier,/PASS_FREE_PLAN_CONTROLS/,'Native release verifier must ho
 assert.match(verifier,/name == "security_platform_auth"/,'PASS_FREE_PLAN_CONTROLS exception must be scoped only to the Auth gate');
 assert.match(verifier,/QG_ANDROID_SIGNING_CERT_SHA256/,'Native release must require the certified signing certificate fingerprint');
 assert.match(verifier,/release signing certificate does not match the certified identity/,'Native release must reject the wrong signing identity');
-assert.match(verifier,/evidence_rel\.is_absolute\(\)/,'release evidence must reject absolute paths');
-assert.match(verifier,/"\.\." in evidence_rel\.parts/,'release evidence must reject parent traversal');
+assert.match(verifier,/def bundle_file\(bundle_root: Path, relative: str, label: str\)/,'release evidence must resolve all bundle paths through one safe helper');
+assert.match(verifier,/rel\.is_absolute\(\)/,'release evidence must reject absolute paths');
+assert.match(verifier,/"\.\." in rel\.parts/,'release evidence must reject parent traversal');
 assert.match(verifier,/\[0-9a-fA-F\]\{64\}/,'release evidence must require a SHA-256 digest');
 assert.match(verifier,/gate evidence file is unavailable/,'release evidence must require a regular evidence file');
 assert.match(verifier,/def sha256_file\(path: Path\)/,'release evidence hashing must stream through a dedicated file helper');
 assert.match(verifier,/handle\.read\(1024 \* 1024\)/,'release evidence hashing must use bounded streaming chunks');
 assert.doesNotMatch(verifier,/path\.read_bytes\(\)/,'release evidence verifier must not load large evidence files fully into RAM');
+assert.match(verifier,/def verify_gate_envelope/,'release verifier must validate structured gate evidence envelopes');
+assert.match(verifier,/gate evidence must be a JSON envelope/,'release evidence must use JSON envelopes');
+assert.match(verifier,/gate evidence observed_at must be UTC ISO-8601 seconds/,'gate evidence must include a strict UTC observation timestamp');
+assert.match(verifier,/gate evidence checks must be non-empty and all true/,'gate evidence must record explicit successful checks');
+assert.match(verifier,/gate evidence must reference at least one artifact/,'gate evidence must reference hashed artifacts');
+assert.match(verifier,/physical gate evidence must identify at least one device/,'physical evidence must identify a device');
+assert.match(verifier,/physical voice gate requires two distinct devices/,'voice certification must require two distinct devices');
+assert.match(verifier,/physical voice gate requires two distinct networks/,'voice certification must require two distinct networks');
 for(const legacy of ['.github/workflows/build-queuego-apks.yml','.github/workflows/build-queuego-pilot-apks.yml']){
   assert.equal(fs.existsSync(legacy),false,`legacy Capacitor Android build workflow must stay retired: ${legacy}`);
 }
