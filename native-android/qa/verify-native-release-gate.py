@@ -45,8 +45,18 @@ def verify():
         digest = item.get("sha256")
         if not evidence or not digest:
             raise ValueError(f"gate has no verifiable evidence: {name}")
-        path = (report_file.parent / evidence).resolve()
-        if hashlib.sha256(path.read_bytes()).hexdigest() != digest:
+        evidence_rel = Path(str(evidence))
+        if evidence_rel.is_absolute() or ".." in evidence_rel.parts:
+            raise ValueError(f"gate evidence must stay inside the certification bundle: {name}")
+        if not re.fullmatch(r"[0-9a-fA-F]{64}", str(digest)):
+            raise ValueError(f"gate evidence SHA-256 is malformed: {name}")
+        bundle_root = report_file.parent.resolve()
+        path = (bundle_root / evidence_rel).resolve()
+        if path.parent != bundle_root and bundle_root not in path.parents:
+            raise ValueError(f"gate evidence escapes the certification bundle: {name}")
+        if not path.is_file():
+            raise ValueError(f"gate evidence file is unavailable: {name}")
+        if hashlib.sha256(path.read_bytes()).hexdigest() != str(digest).lower():
             raise ValueError(f"evidence hash mismatch: {name}")
     if not re.fullmatch(r"\d+\.\d+\.\d+", os.environ.get("QG_NATIVE_VERSION_NAME", "")):
         raise ValueError("release versionName must be explicitly set to x.y.z")

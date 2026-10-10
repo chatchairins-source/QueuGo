@@ -93,6 +93,9 @@ status=PASS except security_platform_auth, which may use the documented
 PASS_FREE_PLAN_CONTROLS status while QueueGo remains on the Supabase Free plan.
 No example PASS report is supplied. Files/hashes prove evidence identity; they do not prove
 physical behavior. The operator remains responsible for truthful certification.
+Evidence file references must be relative paths contained inside the downloaded
+certification bundle. Absolute paths, parent traversal, missing files and
+malformed non-SHA-256 digests are rejected before release packaging.
 
 The verifier requires all three complete Firebase clients in one Production
 project plus the actual keystore. It verifies the keystore alias using keytool
