@@ -45,6 +45,11 @@ ok(/Native Android Customer, Merchant, Rider apps/i.test(readiness),'Play readin
 ok(/RECORD_AUDIO for optional order-scoped audio calls/i.test(readiness),'Native voice microphone disclosure must remain explicit');
 ok(/FOREGROUND_SERVICE_MICROPHONE/i.test(readiness),'Native microphone foreground-service permission must remain documented');
 ok(/Incoming FCM does not start microphone access in the background/i.test(readiness),'Play readiness must preserve visible-user-action microphone start boundary');
+ok(/Play Console foreground-service declaration draft/i.test(readiness),'Play readiness must retain an explicit foreground-service declaration draft');
+ok(/Customer \/ Merchant \/ Rider — `microphone`/i.test(readiness),'All three Native apps must have a microphone FGS declaration draft');
+ok(/Rider only — `specialUse`/i.test(readiness)&&/Active QueueGo Rider navigation return control/i.test(readiness),'Rider specialUse declaration must retain the reviewed subtype and use case');
+ok(/Demo video evidence required/i.test(readiness),'Foreground-service declaration must require real-device demo video evidence');
+ok(/Play Console declaration status remains \*\*BLOCKED\*\*/i.test(readiness),'FGS source readiness must not certify the external Play Console gate');
 ok(!/Explicitly forbidden by the release workflow:[\s\S]{0,300}RECORD_AUDIO/i.test(readiness),'Legacy Capacitor RECORD_AUDIO prohibition must not return');
 ok(/Native CI rejects WebView/i.test(readiness),'Data Safety draft must use Native no-WebView certification scope');
 ok(!/data collected by the web application running inside Capacitor/i.test(readiness),'Legacy Capacitor Data Safety collection rule must not certify Native apps');
