@@ -119,6 +119,14 @@ audio quality, Blueprint parity or any other external result. Unsupported PASS
 input remains prohibited; the operator is responsible for the evidence.
 Neither workflow has closed the external Release Gate in the current state.
 
+The evidence record also binds the observed highest Play versionCode for each
+package and the certified Android signing certificate SHA-256 fingerprint.
+The signed-release workflow derives those Play maxima and the signer fingerprint
+from the evidence artifact; they are not independent build-time overrides.
+The pre-build verifier hashes the certificate exported from the supplied keystore
+and requires an exact match to the certified fingerprint. The post-build verifier
+requires the APK/AAB signer identity to match the same fingerprint.
+
 ## Native voice privacy and Data Safety preflight
 
 All three apps use RECORD_AUDIO for optional order-scoped audio-only calls.
