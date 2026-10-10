@@ -26,6 +26,8 @@ assert.match(verifier,/"backup_restore"/,'Native release must require certified 
 for(const gate of ['service_area','ugc_chat_safety','security_platform_auth']){
   assert.match(verifier,new RegExp(`"${gate}"`),`Native release must require explicit ${gate} evidence`);
 }
+assert.match(verifier,/PASS_FREE_PLAN_CONTROLS/,'Native release verifier must honor the documented Free-plan Auth compensating-control status');
+assert.match(verifier,/name == "security_platform_auth"/,'PASS_FREE_PLAN_CONTROLS exception must be scoped only to the Auth gate');
 for(const legacy of ['.github/workflows/build-queuego-apks.yml','.github/workflows/build-queuego-pilot-apks.yml']){
   assert.equal(fs.existsSync(legacy),false,`legacy Capacitor Android build workflow must stay retired: ${legacy}`);
 }
