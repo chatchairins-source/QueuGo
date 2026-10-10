@@ -6,6 +6,8 @@ on:
     branches:
       - queuego-native-android-v1
       - work-native-merchant-printer-20261010
+      - work-native-merchant-login-parity-20261010
+      - work-native-verified-integration-20261010
     paths:
       - 'native-android/**'
       - 'tests/native-android-source.cjs'
