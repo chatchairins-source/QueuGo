@@ -8,6 +8,7 @@ from pathlib import Path
 import subprocess
 import sys
 import tempfile
+from datetime import datetime, timezone
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -30,6 +31,120 @@ GATES = (
     "android_lifecycle_permissions_upload_location", "privacy_data_safety_account_deletion",
     "play_store_preflight", "release_signing",
 )
+
+PHYSICAL_GATES = {
+    "physical_push_customer", "physical_push_merchant", "physical_push_rider",
+    "physical_voice_two_devices_two_networks", "rider_floating_q",
+    "customer_blueprint", "merchant_blueprint", "rider_blueprint",
+    "android_lifecycle_permissions_upload_location",
+}
+
+
+def bundle_file(bundle_root: Path, relative: str, label: str) -> Path:
+    rel = Path(str(relative))
+    if rel.is_absolute() or ".." in rel.parts:
+        raise ValueError(f"{label} must stay inside the certification bundle")
+    resolved = (bundle_root / rel).resolve()
+    if resolved.parent != bundle_root and bundle_root not in resolved.parents:
+        raise ValueError(f"{label} escapes the certification bundle")
+    if not resolved.is_file():
+        raise ValueError(f"{label} file is unavailable")
+    return resolved
+
+
+def verify_gate_envelope(path: Path, bundle_root: Path, gate: str, head: str, expected_status: str):
+    if path.suffix.lower() != ".json":
+        raise ValueError(f"gate evidence must be a JSON envelope: {gate}")
+    try:
+        envelope = json.loads(path.read_text())
+    except (json.JSONDecodeError, UnicodeDecodeError) as error:
+        raise ValueError(f"gate evidence JSON is invalid: {gate}") from error
+    if not isinstance(envelope, dict):
+        raise ValueError(f"gate evidence envelope must be an object: {gate}")
+    if envelope.get("gate") != gate:
+        raise ValueError(f"gate evidence envelope mismatch: {gate}")
+    if envelope.get("source_sha") != head:
+        raise ValueError(f"gate evidence source_sha mismatch: {gate}")
+    if envelope.get("status") != expected_status:
+        raise ValueError(f"gate evidence status mismatch: {gate}")
+
+    observed_at = envelope.get("observed_at")
+    if not isinstance(observed_at, str) or not re.fullmatch(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z", observed_at):
+        raise ValueError(f"gate evidence observed_at must be UTC ISO-8601 seconds: {gate}")
+    try:
+        observed = datetime.strptime(observed_at, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
+    except ValueError as error:
+        raise ValueError(f"gate evidence observed_at is invalid: {gate}") from error
+    if observed > datetime.now(timezone.utc):
+        raise ValueError(f"gate evidence observed_at cannot be in the future: {gate}")
+
+    checks = envelope.get("checks")
+    if not isinstance(checks, dict) or not checks or any(value is not True for value in checks.values()):
+        raise ValueError(f"gate evidence checks must be non-empty and all true: {gate}")
+
+    artifacts = envelope.get("artifacts")
+    if not isinstance(artifacts, list) or not artifacts:
+        raise ValueError(f"gate evidence must reference at least one artifact: {gate}")
+    seen_artifacts = set()
+    for index, artifact in enumerate(artifacts):
+        if not isinstance(artifact, dict):
+            raise ValueError(f"gate artifact entry must be an object: {gate}")
+        artifact_rel = artifact.get("file")
+        artifact_digest = str(artifact.get("sha256", "")).lower()
+        artifact_kind = artifact.get("kind")
+        if not isinstance(artifact_rel, str) or not artifact_rel:
+            raise ValueError(f"gate artifact file is missing: {gate}")
+        if artifact_rel in seen_artifacts:
+            raise ValueError(f"gate evidence contains duplicate artifact paths: {gate}")
+        seen_artifacts.add(artifact_rel)
+        if not isinstance(artifact_kind, str) or not re.fullmatch(r"[a-z0-9_-]{2,40}", artifact_kind):
+            raise ValueError(f"gate artifact kind is invalid: {gate}")
+        if not re.fullmatch(r"[0-9a-f]{64}", artifact_digest):
+            raise ValueError(f"gate artifact SHA-256 is malformed: {gate}")
+        artifact_path = bundle_file(bundle_root, artifact_rel, f"gate artifact {gate}[{index}]")
+        if sha256_file(artifact_path) != artifact_digest:
+            raise ValueError(f"gate artifact hash mismatch: {gate}")
+
+    if gate in PHYSICAL_GATES:
+        devices = envelope.get("devices")
+        if not isinstance(devices, list) or not devices:
+            raise ValueError(f"physical gate evidence must identify at least one device: {gate}")
+        device_ids = set()
+        for device in devices:
+            if not isinstance(device, dict):
+                raise ValueError(f"physical gate device entry must be an object: {gate}")
+            device_hash = str(device.get("device_id_hash", "")).lower()
+            api = device.get("android_api")
+            model = device.get("model")
+            if not re.fullmatch(r"[0-9a-f]{64}", device_hash):
+                raise ValueError(f"physical gate device_id_hash is invalid: {gate}")
+            if type(api) is not int or api < 23 or api > 100:
+                raise ValueError(f"physical gate android_api is invalid: {gate}")
+            if not isinstance(model, str) or not model.strip():
+                raise ValueError(f"physical gate device model is missing: {gate}")
+            device_ids.add(device_hash)
+        if gate == "physical_voice_two_devices_two_networks":
+            if len(device_ids) < 2:
+                raise ValueError("physical voice gate requires two distinct devices")
+            networks = envelope.get("networks")
+            if not isinstance(networks, list) or len(networks) < 2:
+                raise ValueError("physical voice gate requires two network observations")
+            network_ids = set()
+            for network in networks:
+                if not isinstance(network, dict):
+                    raise ValueError("physical voice network entry must be an object")
+                network_hash = str(network.get("network_id_hash", "")).lower()
+                network_type = network.get("type")
+                if not re.fullmatch(r"[0-9a-f]{64}", network_hash):
+                    raise ValueError("physical voice network_id_hash is invalid")
+                if network_type not in {"wifi", "mobile", "ethernet", "other"}:
+                    raise ValueError("physical voice network type is invalid")
+                network_ids.add(network_hash)
+            if len(network_ids) < 2:
+                raise ValueError("physical voice gate requires two distinct networks")
+
+    return envelope
+
 
 
 def verify():
@@ -55,19 +170,13 @@ def verify():
         digest = item.get("sha256")
         if not evidence or not digest:
             raise ValueError(f"gate has no verifiable evidence: {name}")
-        evidence_rel = Path(str(evidence))
-        if evidence_rel.is_absolute() or ".." in evidence_rel.parts:
-            raise ValueError(f"gate evidence must stay inside the certification bundle: {name}")
         if not re.fullmatch(r"[0-9a-fA-F]{64}", str(digest)):
             raise ValueError(f"gate evidence SHA-256 is malformed: {name}")
         bundle_root = report_file.parent.resolve()
-        path = (bundle_root / evidence_rel).resolve()
-        if path.parent != bundle_root and bundle_root not in path.parents:
-            raise ValueError(f"gate evidence escapes the certification bundle: {name}")
-        if not path.is_file():
-            raise ValueError(f"gate evidence file is unavailable: {name}")
+        path = bundle_file(bundle_root, str(evidence), f"gate evidence {name}")
         if sha256_file(path) != str(digest).lower():
             raise ValueError(f"evidence hash mismatch: {name}")
+        verify_gate_envelope(path, bundle_root, name, head, status)
     if not re.fullmatch(r"\d+\.\d+\.\d+", os.environ.get("QG_NATIVE_VERSION_NAME", "")):
         raise ValueError("release versionName must be explicitly set to x.y.z")
     projects = set()
