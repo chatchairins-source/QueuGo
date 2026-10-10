@@ -9,6 +9,7 @@ import android.content.pm.PackageManager
 import android.media.AudioAttributes
 import android.media.RingtoneManager
 import android.os.Build
+import android.provider.Settings
 import androidx.core.app.NotificationCompat
 import com.google.firebase.FirebaseApp
 import com.google.firebase.messaging.FirebaseMessaging
@@ -56,6 +57,13 @@ fun ensureNativePushChannel(
 
 fun nativeFirebaseConfigured(context: Context): Boolean =
     runCatching { FirebaseApp.getApps(context).isNotEmpty() }.getOrDefault(false)
+
+fun openNativeNotificationSettings(context: Context) {
+    val intent = Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+        .putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
+        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+    runCatching { context.startActivity(intent) }
+}
 
 private suspend fun nativeFirebaseToken(): String = suspendCancellableCoroutine { continuation ->
     FirebaseMessaging.getInstance().token
