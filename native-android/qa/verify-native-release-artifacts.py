@@ -105,8 +105,20 @@ def verify() -> dict:
     apksigner = android_build_tool("apksigner")
     jarsigner = shutil.which("jarsigner")
     keytool = shutil.which("keytool")
-    if not jarsigner or not keytool:
-        raise ValueError("jarsigner and keytool are required from a JDK")
+    java = shutil.which("java")
+    if not jarsigner or not keytool or not java:
+        raise ValueError("java, jarsigner and keytool are required from a JDK")
+    bundletool_raw = os.environ.get("QG_BUNDLETOOL_JAR", "")
+    bundletool_hash = re.sub(r"[^0-9a-fA-F]", "", os.environ.get("QG_BUNDLETOOL_SHA256", "")).lower()
+    if not bundletool_raw:
+        raise ValueError("QG_BUNDLETOOL_JAR must point to the certified bundletool jar")
+    if not re.fullmatch(r"[0-9a-f]{64}", bundletool_hash):
+        raise ValueError("QG_BUNDLETOOL_SHA256 must be the certified 64-hex bundletool digest")
+    bundletool = Path(bundletool_raw).resolve()
+    if not bundletool.is_file():
+        raise ValueError("certified bundletool jar is unavailable")
+    if sha256(bundletool) != bundletool_hash:
+        raise ValueError("bundletool SHA-256 does not match QG_BUNDLETOOL_SHA256")
 
     source_sha = run(["git", "rev-parse", "HEAD"]).strip()
     if run(["git", "status", "--porcelain", "--untracked-files=normal"]).strip():
@@ -143,6 +155,16 @@ def verify() -> dict:
             raise ValueError(f"APK signer does not match certified release certificate for {role}")
         signer_digests.add(cert_sha)
 
+        aab_package = run([java, "-jar", str(bundletool), "dump", "manifest", f"--bundle={aab}", "--xpath=/manifest/@package"]).strip()
+        aab_code = run([java, "-jar", str(bundletool), "dump", "manifest", f"--bundle={aab}", "--xpath=/manifest/@android:versionCode"]).strip()
+        aab_name = run([java, "-jar", str(bundletool), "dump", "manifest", f"--bundle={aab}", "--xpath=/manifest/@android:versionName"]).strip()
+        if aab_package != package:
+            raise ValueError(f"AAB package mismatch for {role}")
+        if aab_code != str(expected_codes[role]):
+            raise ValueError(f"AAB versionCode mismatch for {role}")
+        if aab_name != version_name:
+            raise ValueError(f"AAB versionName mismatch for {role}")
+
         run([jarsigner, "-verify", str(aab)])
         aab_certificate = run([keytool, "-J-Duser.language=en", "-J-Duser.country=US", "-printcert", "-jarfile", str(aab)])
         aab_cert_match = KEYTOOL_SHA256_RE.search(aab_certificate)
@@ -163,6 +185,8 @@ def verify() -> dict:
             "apk_sha256": sha256(apk),
             "aab": str(aab.relative_to(ROOT)),
             "aab_sha256": sha256(aab),
+            "aab_manifest_metadata_verified": True,
+            "bundletool_sha256": bundletool_hash,
             "signer_certificate_sha256": cert_sha,
             "aab_signer_certificate_sha256": aab_cert_sha,
             "apk_non_debuggable": True,
