@@ -10,8 +10,8 @@ const controller=read('native-android/shared/src/main/java/com/queuego/shared/Na
 const overlay=read('native-android/shared/src/main/java/com/queuego/shared/QueueGoVoiceCallOverlay.kt');
 
 for(const app of ['customer','merchant','rider']){
-  const manifest=read(\`native-android/\${app}/src/main/AndroidManifest.xml\`);
-  assert(/android\.permission\.RECORD_AUDIO/.test(manifest),\`\${app} RECORD_AUDIO missing\`);
+  const manifest=read(`native-android/${app}/src/main/AndroidManifest.xml`);
+  assert(/android\.permission\.RECORD_AUDIO/.test(manifest),`${app} RECORD_AUDIO missing`);
 }
 
 assert(/onCallShop/.test(customerTracking),'Customer shop call callback missing');
