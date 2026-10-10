@@ -30,6 +30,10 @@ assert.match(verifier,/PASS_FREE_PLAN_CONTROLS/,'Native release verifier must ho
 assert.match(verifier,/name == "security_platform_auth"/,'PASS_FREE_PLAN_CONTROLS exception must be scoped only to the Auth gate');
 assert.match(verifier,/QG_ANDROID_SIGNING_CERT_SHA256/,'Native release must require the certified signing certificate fingerprint');
 assert.match(verifier,/release signing certificate does not match the certified identity/,'Native release must reject the wrong signing identity');
+assert.match(verifier,/evidence_rel\.is_absolute\(\)/,'release evidence must reject absolute paths');
+assert.match(verifier,/"\.\." in evidence_rel\.parts/,'release evidence must reject parent traversal');
+assert.match(verifier,/\[0-9a-fA-F\]\{64\}/,'release evidence must require a SHA-256 digest');
+assert.match(verifier,/gate evidence file is unavailable/,'release evidence must require a regular evidence file');
 for(const legacy of ['.github/workflows/build-queuego-apks.yml','.github/workflows/build-queuego-pilot-apks.yml']){
   assert.equal(fs.existsSync(legacy),false,`legacy Capacitor Android build workflow must stay retired: ${legacy}`);
 }
