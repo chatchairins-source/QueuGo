@@ -56,6 +56,7 @@ jobs:
       QG_CUSTOMER_PLAY_MAX_VERSION_CODE: ${{ inputs.customer_play_max_version_code }}
       QG_MERCHANT_PLAY_MAX_VERSION_CODE: ${{ inputs.merchant_play_max_version_code }}
       QG_RIDER_PLAY_MAX_VERSION_CODE: ${{ inputs.rider_play_max_version_code }}
+      QG_NATIVE_CERTIFICATION_RUN_ID: ${{ inputs.certification_run_id }}
 
     steps:
       - uses: actions/checkout@v4
