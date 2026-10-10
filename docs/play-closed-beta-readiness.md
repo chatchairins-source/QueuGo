@@ -19,7 +19,7 @@ Closed Beta release remains **BLOCKED** until every hard gate below passes:
 - Supabase Auth: PASS WITH FREE-PLAN CONTROLS — 12-character upper/lower/number/symbol signup policy is shared across all roles; leaked-password protection remains a Pro-only deferred hardening item
 - Native Firebase background notification physical test: BLOCKED — credentials/device test missing
 - Play Data Safety + foreground-service declarations: BLOCKED — Play Console certification/evidence not completed
-- Android release signing: BLOCKED — run 38039197325 confirmed QG_ANDROID_KEYSTORE_B64, QG_ANDROID_STORE_PASSWORD, QG_ANDROID_KEY_ALIAS and QG_ANDROID_KEY_PASSWORD absent; the same run also confirmed QG_FIREBASE_GOOGLE_SERVICES_JSON_B64 absent
+- Android release signing: BLOCKED — run 38039197325 confirmed QG_ANDROID_KEYSTORE_B64, QG_ANDROID_STORE_PASSWORD, QG_ANDROID_KEY_ALIAS and QG_ANDROID_KEY_PASSWORD absent; the same run also confirmed QG_FIREBASE_GOOGLE_SERVICES_JSON_B64 absent. The hardened Native release path additionally requires QG_ANDROID_EXPECTED_CERT_SHA256 to be set from the certified upload/signing certificate before release packaging.
 
 The release workflow is intentionally configured to fail while hard gates are not certified.
 
@@ -298,7 +298,7 @@ Before submitting Closed Beta, keep evidence/screenshots of:
 
 1. Configure backup secrets and run the encrypted Backup/Restore drill successfully.
 2. Configure Firebase Android + Edge credentials.
-3. Configure Android release signing secrets.
+3. Configure Android release signing secrets and set QG_ANDROID_EXPECTED_CERT_SHA256 from the certified Play/upload-key certificate fingerprint.
 4. Build physical-test APKs and certify background notifications on real Android devices.
 5. Enter the finalized Data Safety answers in Play Console using the conservative Longdo location-sharing classification above.
 6. Enter Contains Ads declarations: Customer **Yes**, Merchant **No**, Rider **No**.
