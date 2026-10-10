@@ -4,6 +4,7 @@ import hashlib
 import importlib.util
 import json
 import re
+import secrets
 import shutil
 import subprocess
 import sys
@@ -52,7 +53,7 @@ def adb_text(adb: str, serial: str, *args: str) -> str:
     return run([adb, "-s", serial, *args]).strip()
 
 
-def physical_device(adb: str, role: str, serial: str) -> dict:
+def physical_device(adb: str, role: str, serial: str, identity_salt: bytes) -> dict:
     if role not in ROLE_VALUES:
         raise ValueError(f"invalid role: {role}")
     if not serial or serial.startswith("emulator-"):
@@ -71,7 +72,7 @@ def physical_device(adb: str, role: str, serial: str) -> dict:
     api = int(api_raw)
     if api < 23 or api > 100:
         raise ValueError(f"invalid Android API from device: {role}")
-    opaque = f"{serial}\0{fingerprint}\0{model}".encode()
+    opaque = identity_salt + b"\0device\0" + f"{serial}\0{fingerprint}\0{model}".encode()
     return {
         "device_id_hash": sha256_bytes(opaque),
         "android_api": api,
@@ -178,8 +179,9 @@ def main() -> int:
     if not adb:
         raise ValueError("adb is required for physical evidence capture")
 
+    identity_salt = secrets.token_bytes(32)
     device_specs = [parse_pair(raw, ROLE_VALUES, "device") for raw in args.device]
-    devices = [physical_device(adb, role, serial) for role, serial in device_specs]
+    devices = [physical_device(adb, role, serial, identity_salt) for role, serial in device_specs]
     observed_roles = {item["role"] for item in devices}
     required_roles = set(contract.PHYSICAL_GATE_REQUIRED_ROLES.get(gate, set()))
     if not required_roles.issubset(observed_roles):
@@ -207,7 +209,7 @@ def main() -> int:
     for raw in args.network:
         network_type, opaque_label = parse_pair(raw, NETWORK_TYPES, "network")
         networks.append({
-            "network_id_hash": sha256_bytes(opaque_label.encode()),
+            "network_id_hash": sha256_bytes(identity_salt + b"\0network\0" + opaque_label.encode()),
             "type": network_type,
         })
 
