@@ -11,6 +11,17 @@ import org.junit.Test
 
 class NativePosStaffAuthTest {
     @Test
+    fun staffJoinRejectsWeakSignupPasswordBeforeNetwork() {
+        val error = assertThrows(IllegalArgumentException::class.java) {
+            runBlocking {
+                NativeAuthApi("http://127.0.0.1:1")
+                    .joinPosStaff("พนักงาน", "staff@example.com", "password123", "secret")
+            }
+        }
+        assertEquals(NATIVE_PASSWORD_POLICY_MESSAGE, error.message)
+    }
+
+    @Test
     fun merchantLoginPrefersActivePosStaffBeforePublicUserRole() = runBlocking {
         val server = MockWebServer()
         server.start()
@@ -70,7 +81,7 @@ class NativePosStaffAuthTest {
                 """[{"user_id":"auth-staff","shop_id":"shop-id","display_name":"พนักงาน","active":true}]"""
             ))
             val auth = NativeAuthApi(server.url("/").toString())
-                .joinPosStaff("พนักงาน", "staff@example.com", "password123", "secret-code")
+                .joinPosStaff("พนักงาน", "staff@example.com", "QueueGo#2026Staff", "secret-code")
             assertEquals("pos_staff", auth.user.role)
             server.takeRequest()
             val join = server.takeRequest()
@@ -97,7 +108,7 @@ class NativePosStaffAuthTest {
                 """[{"user_id":"auth-new","shop_id":"shop-id","display_name":"ใหม่","active":true}]"""
             ))
             val auth = NativeAuthApi(server.url("/").toString())
-                .joinPosStaff("ใหม่", "new@example.com", "password123", "secret")
+                .joinPosStaff("ใหม่", "new@example.com", "QueueGo#2026Staff", "secret")
             assertEquals("pos_staff", auth.user.role)
             server.takeRequest()
             val signup = server.takeRequest()
