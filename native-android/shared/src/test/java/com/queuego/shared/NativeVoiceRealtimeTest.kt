@@ -3,8 +3,6 @@ package com.queuego.shared
 import java.util.UUID
 import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.TimeUnit
-import kotlinx.coroutines.CoroutineStart
-import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
@@ -21,31 +19,30 @@ class NativeVoiceRealtimeTest {
     @Test fun privateJoinBroadcastAndTokenRefreshUseAuthenticatedCallTopic() = runBlocking {
         val server = MockWebServer()
         val received = LinkedBlockingQueue<JSONObject>()
-        val sockets = LinkedBlockingQueue<WebSocket>()
         server.enqueue(MockResponse().withWebSocketUpgrade(object : WebSocketListener() {
             override fun onMessage(webSocket: WebSocket, text: String) {
                 val message = JSONObject(text)
                 received.add(message)
                 when (message.optString("event")) {
-                    "phx_join" -> {
-                        webSocket.send(
-                            JSONObject()
-                                .put("topic", message.getString("topic"))
-                                .put("event", "phx_reply")
-                                .put("ref", "1")
-                                .put("join_ref", "1")
-                                .put("payload", JSONObject().put("status", "ok").put("response", JSONObject()))
-                                .toString()
-                        )
-                        sockets.add(webSocket)
-                    }
-                    "broadcast" -> webSocket.send(
+                    "phx_join" -> webSocket.send(
                         JSONObject()
                             .put("topic", message.getString("topic"))
                             .put("event", "phx_reply")
-                            .put("ref", message.optString("ref"))
+                            .put("ref", "1")
                             .put("join_ref", "1")
                             .put("payload", JSONObject().put("status", "ok").put("response", JSONObject()))
+                            .toString()
+                    )
+                    "broadcast" -> webSocket.send(
+                        JSONObject()
+                            .put("topic", message.getString("topic"))
+                            .put("event", "broadcast")
+                            .put(
+                                "payload",
+                                JSONObject()
+                                    .put("event", "answer")
+                                    .put("payload", JSONObject().put("sdp", "answer-sdp"))
+                            )
                             .toString()
                     )
                 }
@@ -68,11 +65,6 @@ class NativeVoiceRealtimeTest {
             assertFalse(config.getJSONObject("broadcast").getBoolean("self"))
             assertEquals(0, config.getJSONArray("postgres_changes").length())
 
-            val serverSocket = sockets.poll(1, TimeUnit.SECONDS)
-            assertNotNull(serverSocket)
-            val inboundDeferred = async(start = CoroutineStart.UNDISPATCHED) {
-                withTimeout(5_000) { connection.signals.first() }
-            }
             assertTrue(connection.send("offer", JSONObject().put("sdp", "offer-sdp")))
             val outbound = received.poll(1, TimeUnit.SECONDS)
             assertEquals("broadcast", outbound.getString("event"))
@@ -80,16 +72,7 @@ class NativeVoiceRealtimeTest {
             assertEquals("offer-sdp", outbound.getJSONObject("payload")
                 .getJSONObject("payload").getString("sdp"))
 
-            assertTrue(serverSocket.send(
-                JSONObject()
-                    .put("topic", "realtime:$topic")
-                    .put("event", "broadcast")
-                    .put("payload", JSONObject()
-                        .put("event", "answer")
-                        .put("payload", JSONObject().put("sdp", "answer-sdp")))
-                    .toString()
-            ))
-            val inbound = inboundDeferred.await()
+            val inbound = withTimeout(5_000) { connection.signals.first() }
             assertEquals("answer", inbound.event)
             assertEquals("answer-sdp", inbound.payload.getString("sdp"))
 
