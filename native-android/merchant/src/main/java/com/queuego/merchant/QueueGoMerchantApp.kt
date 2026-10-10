@@ -72,6 +72,12 @@ import com.queuego.shared.QgSectionTitle
 import com.queuego.shared.QgStatusPill
 import com.queuego.shared.QueueGoAuthHost
 import com.queuego.shared.QueueGoBrand
+import com.queuego.shared.SecureRoleSessionStore
+import com.queuego.shared.nativeFirebaseConfigured
+import com.queuego.shared.nativePushPermissionGranted
+import com.queuego.shared.openNativeNotificationSettings
+import com.queuego.shared.syncNativePush
+import com.queuego.shared.testNativePush
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.time.Instant
@@ -1187,6 +1193,12 @@ private fun MerchantProfileScreen(
     onSupport: () -> Unit,
     logout: () -> Unit
 ) {
+    val context = LocalContext.current
+    val pushStore = remember { SecureRoleSessionStore(context, "shop") }
+    val pushScope = rememberCoroutineScope()
+    var pushBusy by remember { mutableStateOf(false) }
+    var pushStatus by remember { mutableStateOf<String?>(null) }
+
     Column(
         Modifier
             .fillMaxSize()
@@ -1323,6 +1335,56 @@ private fun MerchantProfileScreen(
                 subtitle = "ดูออเดอร์ สถานะระบบ และข่าวสารของร้าน",
                 onClick = onNotifications
             )
+            HorizontalDivider(color = Color(0xFFECEEF1))
+            MerchantProfileActionRow(
+                icon = "bell",
+                title = "การแจ้งเตือนเบื้องหลัง",
+                subtitle = when {
+                    !nativeFirebaseConfigured(context) -> "ยังไม่มี Firebase config สำหรับ QueueGo Merchant"
+                    nativePushPermissionGranted(context) -> "เปิดแล้ว · แตะเพื่อทดสอบ Push จริง"
+                    else -> "ปิดสิทธิ์อยู่ · แตะเพื่อเปิดการตั้งค่า"
+                },
+                enabled = !pushBusy,
+                onClick = {
+                    when {
+                        !nativeFirebaseConfigured(context) ->
+                            pushStatus = "ยังทดสอบไม่ได้จนกว่า Firebase config ของ Merchant จะพร้อม"
+                        !nativePushPermissionGranted(context) ->
+                            openNativeNotificationSettings(context)
+                        else -> {
+                            pushBusy = true
+                            pushScope.launch {
+                                runCatching {
+                                    val synced = syncNativePush(
+                                        context = context,
+                                        auth = auth,
+                                        expectedRole = "shop",
+                                        store = pushStore,
+                                        channelName = "QueueGo Merchant",
+                                        channelDescription = "แจ้งเตือนออเดอร์ใหม่และสถานะร้าน QueueGo",
+                                        highImportance = true
+                                    )
+                                    check(synced) { "ลงทะเบียนอุปกรณ์แจ้งเตือนไม่สำเร็จ" }
+                                    testNativePush(auth)
+                                }.onSuccess {
+                                    pushStatus = "ส่งคำขอทดสอบแล้ว ระบบจะส่ง Push จริงมายังอุปกรณ์นี้"
+                                }.onFailure {
+                                    pushStatus = it.message ?: "ทดสอบการแจ้งเตือนไม่สำเร็จ"
+                                }
+                                pushBusy = false
+                            }
+                        }
+                    }
+                }
+            )
+            if (!pushStatus.isNullOrBlank()) {
+                Text(
+                    pushStatus!!,
+                    color = Color(0xFF777D85),
+                    fontSize = 10.sp,
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                )
+            }
             HorizontalDivider(color = Color(0xFFECEEF1))
             MerchantProfileActionRow(
                 icon = "bell",
