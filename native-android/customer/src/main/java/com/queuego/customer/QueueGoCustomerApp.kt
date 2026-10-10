@@ -103,7 +103,10 @@ private val homeDedicatedMarketCategories =
     setOf("market", "fresh", "fresh_market", "meat", "fish", "vegetable", "fruit")
 
 @Composable
-fun QueueGoCustomerApp() {
+fun QueueGoCustomerApp(
+    pushReferenceId: String? = null,
+    onPushConsumed: () -> Unit = {}
+) {
     val context = LocalContext.current
     val store = remember { SecureRoleSessionStore(context, "customer") }
     var authRequested by rememberSaveable { mutableStateOf(store.load() != null) }
@@ -135,7 +138,9 @@ fun QueueGoCustomerApp() {
                         destinationAfterLogin = "home"
                         authRequested = false
                     },
-                    initialScreen = destinationAfterLogin
+                    initialScreen = destinationAfterLogin,
+                    pushReferenceId = pushReferenceId,
+                    onPushConsumed = onPushConsumed
                 )
             }
         }
@@ -146,7 +151,9 @@ fun QueueGoCustomerApp() {
 private fun CustomerShell(
     auth: NativeAuth,
     logout: () -> Unit,
-    initialScreen: String = "home"
+    initialScreen: String = "home",
+    pushReferenceId: String? = null,
+    onPushConsumed: () -> Unit = {}
 ) {
     val api = remember { CustomerApi() }
     val marketApi = remember { CustomerMarketApi() }
@@ -397,6 +404,21 @@ private fun CustomerShell(
     }
 
     LaunchedEffect(auth.user.id) { refresh() }
+
+    LaunchedEffect(pushReferenceId, loading, orders) {
+        val reference = pushReferenceId?.trim()?.takeIf { it.isNotEmpty() } ?: return@LaunchedEffect
+        if (loading) return@LaunchedEffect
+        val target = orders.find { it.id == reference }
+        if (target != null) {
+            selectedOrder = target
+            orderItems = runCatching { api.loadOrderItems(auth, target.id) }.getOrDefault(emptyList())
+            screen = "order"
+        } else {
+            screen = "notifications"
+            message = "ไม่พบออเดอร์ที่อ้างอิงจากการแจ้งเตือน"
+        }
+        onPushConsumed()
+    }
     LaunchedEffect(auth.session.accessToken, lifecycle) {
         lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
             while (true) {
