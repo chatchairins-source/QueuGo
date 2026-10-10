@@ -26,7 +26,7 @@ assert(/topic = 'qg-call:' \|\| id::text/i.test(tableBody), 'topic must be deriv
 has(/create unique index if not exists qg_call_sessions_active_pair_uq[\s\S]*where status in \('ringing','accepted'\)/i,
   'concurrent active pair guard missing');
 
-for (const fn of ['qg_call_start','qg_call_active','qg_call_answer','qg_call_decline','qg_call_end','qg_call_ice_config']) {
+for (const fn of ['qg_call_start','qg_call_active','qg_call_incoming','qg_call_answer','qg_call_decline','qg_call_end','qg_call_ice_config']) {
   has(new RegExp('create or replace function public\\.' + fn, 'i'), fn + ' missing');
 }
 const startSignature = sql.match(/create or replace function public\.qg_call_start[\s\S]*?\) returns jsonb/i)?.[0] || '';
@@ -34,12 +34,16 @@ assert(!/p_(callee|counterpart|target_user|user_id)\s+uuid/i.test(startSignature
   'caller must not submit arbitrary callee user id');
 
 const activeSessionChecks = (lower.match(/check_active_session\(p_session_id\)/g) || []).length;
-assert(activeSessionChecks >= 6, 'every call RPC must validate current app session');
+assert(activeSessionChecks >= 7, 'every call RPC must validate current app session');
 has(/qg_user_blocks[\s\S]*blocker_user_id=v_actor_id[\s\S]*blocked_user_id=v_callee_id/i,
   'two-party block enforcement missing');
 has(/created_at>now\(\)-interval '5 minutes'[\s\S]*>= 3/i, 'call rate limit missing');
 has(/'voice_call'/i, 'incoming call notification type missing');
 has(/insert into public\.notifications/i, 'incoming call must use existing push pipeline');
+has(/qg_call_incoming[\s\S]*callee_user_id=v_actor[\s\S]*status='ringing'/i,
+  'incoming call discovery must be callee-scoped');
+has(/qg_call_incoming[\s\S]*caller_session_id[\s\S]*revoked_at is null/i,
+  'incoming call discovery must reject stale caller app sessions');
 
 has(/create or replace function qg_private\.qg_voice_realtime_allowed/i, 'private realtime authorization helper missing');
 has(/user_active_sessions[\s\S]*revoked_at is null/i, 'realtime must require a live app session');
