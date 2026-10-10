@@ -1,0 +1,305 @@
+name: QueueGo Native Release Certification
+
+on:
+  workflow_dispatch:
+    inputs:
+      evidence_object_path:
+        description: Object path inside the private queuego-native-release-evidence Supabase Storage bucket
+        required: true
+        type: string
+      evidence_bundle_sha256:
+        description: SHA-256 of the uploaded physical/Play evidence ZIP
+        required: true
+        type: string
+      version_name:
+        description: Certified release versionName in x.y.z form
+        required: true
+        type: string
+      customer_version_code:
+        description: Customer release versionCode
+        required: true
+        type: string
+      merchant_version_code:
+        description: Merchant release versionCode
+        required: true
+        type: string
+      rider_version_code:
+        description: Rider release versionCode
+        required: true
+        type: string
+      customer_play_max_version_code:
+        description: Highest Customer versionCode observed in Play Console
+        required: true
+        type: string
+      merchant_play_max_version_code:
+        description: Highest Merchant versionCode observed in Play Console
+        required: true
+        type: string
+      rider_play_max_version_code:
+        description: Highest Rider versionCode observed in Play Console
+        required: true
+        type: string
+      signing_certificate_sha256:
+        description: Certified upload/signing certificate SHA-256 fingerprint
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: queuego-native-release-certification
+  cancel-in-progress: false
+
+jobs:
+  certify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      QG_NATIVE_VERSION_NAME: ${{ inputs.version_name }}
+      QG_CUSTOMER_VERSION_CODE: ${{ inputs.customer_version_code }}
+      QG_MERCHANT_VERSION_CODE: ${{ inputs.merchant_version_code }}
+      QG_RIDER_VERSION_CODE: ${{ inputs.rider_version_code }}
+      QG_CUSTOMER_PLAY_MAX_VERSION_CODE: ${{ inputs.customer_play_max_version_code }}
+      QG_MERCHANT_PLAY_MAX_VERSION_CODE: ${{ inputs.merchant_play_max_version_code }}
+      QG_RIDER_PLAY_MAX_VERSION_CODE: ${{ inputs.rider_play_max_version_code }}
+      QG_ANDROID_SIGNING_CERT_SHA256: ${{ inputs.signing_certificate_sha256 }}
+      QG_SUPABASE_URL: ${{ vars.QG_SUPABASE_URL }}
+      QG_EVIDENCE_BUCKET: queuego-native-release-evidence
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Require Native Source of Truth branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "$GITHUB_REF" != "refs/heads/queuego-native-android-v1" ]; then
+            echo "::error::Release certification may run only from queuego-native-android-v1"
+            exit 1
+          fi
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Validate certification inputs
+        shell: bash
+        env:
+          QG_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.QG_SUPABASE_SERVICE_ROLE_KEY }}
+          EVIDENCE_OBJECT_PATH: ${{ inputs.evidence_object_path }}
+          EVIDENCE_BUNDLE_SHA256: ${{ inputs.evidence_bundle_sha256 }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import os, re
+          from urllib.parse import urlparse
+
+          base = os.environ.get("QG_SUPABASE_URL", "")
+          parsed = urlparse(base)
+          if parsed.scheme != "https" or not re.fullmatch(r"[a-z0-9]+\.supabase\.co", parsed.hostname or ""):
+              raise SystemExit("::error::QG_SUPABASE_URL must be the trusted https://<project-ref>.supabase.co origin")
+          if parsed.path not in ("", "/") or parsed.query or parsed.fragment:
+              raise SystemExit("::error::QG_SUPABASE_URL must not contain path/query/fragment")
+
+          if not os.environ.get("QG_SUPABASE_SERVICE_ROLE_KEY"):
+              raise SystemExit("::error::Missing QG_SUPABASE_SERVICE_ROLE_KEY")
+
+          obj = os.environ.get("EVIDENCE_OBJECT_PATH", "")
+          if len(obj) > 512 or obj.startswith("/") or not obj.endswith(".zip"):
+              raise SystemExit("::error::evidence_object_path must be a relative .zip object path")
+          if ".." in obj.split("/") or not re.fullmatch(r"[A-Za-z0-9._/-]+", obj):
+              raise SystemExit("::error::evidence_object_path contains unsafe characters or traversal")
+
+          digest = os.environ.get("EVIDENCE_BUNDLE_SHA256", "")
+          if not re.fullmatch(r"[0-9a-fA-F]{64}", digest):
+              raise SystemExit("::error::evidence_bundle_sha256 must be a 64-hex SHA-256 digest")
+
+          version = os.environ.get("QG_NATIVE_VERSION_NAME", "")
+          if not re.fullmatch(r"\d+\.\d+\.\d+", version):
+              raise SystemExit("::error::version_name must be x.y.z")
+          for role in ("CUSTOMER", "MERCHANT", "RIDER"):
+              release_raw = os.environ.get(f"QG_{role}_VERSION_CODE", "")
+              play_raw = os.environ.get(f"QG_{role}_PLAY_MAX_VERSION_CODE", "")
+              if not release_raw.isdigit() or not play_raw.isdigit():
+                  raise SystemExit(f"::error::{role} versionCode inputs must be non-negative integers")
+              release_code, play_max = int(release_raw), int(play_raw)
+              if release_code <= 0 or release_code > 2100000000 or release_code <= play_max:
+                  raise SystemExit(f"::error::{role} release versionCode must be valid and exceed Play maximum")
+
+          cert = re.sub(r"[^0-9a-fA-F]", "", os.environ.get("QG_ANDROID_SIGNING_CERT_SHA256", ""))
+          if not re.fullmatch(r"[0-9a-fA-F]{64}", cert):
+              raise SystemExit("::error::signing_certificate_sha256 must be a 32-byte SHA-256 fingerprint")
+          PY
+
+      - name: Download private physical evidence bundle
+        shell: bash
+        env:
+          QG_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.QG_SUPABASE_SERVICE_ROLE_KEY }}
+          EVIDENCE_OBJECT_PATH: ${{ inputs.evidence_object_path }}
+          EVIDENCE_BUNDLE_SHA256: ${{ inputs.evidence_bundle_sha256 }}
+        run: |
+          set -euo pipefail
+          bundle="$RUNNER_TEMP/queuego-native-physical-evidence.zip"
+          encoded_path="$(python3 - <<'PY'
+          import os
+          from urllib.parse import quote
+          print(quote(os.environ["EVIDENCE_OBJECT_PATH"], safe="/._-"))
+          PY
+          )"
+          url="${QG_SUPABASE_URL%/}/storage/v1/object/authenticated/$QG_EVIDENCE_BUCKET/$encoded_path"
+          curl --fail --silent --show-error --location \
+            -H "Authorization: Bearer $QG_SUPABASE_SERVICE_ROLE_KEY" \
+            -H "apikey: $QG_SUPABASE_SERVICE_ROLE_KEY" \
+            "$url" -o "$bundle"
+          printf '%s  %s\n' "$EVIDENCE_BUNDLE_SHA256" "$bundle" | sha256sum -c -
+          echo "QG_EVIDENCE_BUNDLE=$bundle" >> "$GITHUB_ENV"
+
+      - name: Safely extract certification evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          evidence_dir="$RUNNER_TEMP/queuego-native-release-certification"
+          rm -rf "$evidence_dir"
+          mkdir -p "$evidence_dir"
+          QG_EVIDENCE_DIR="$evidence_dir" python3 - <<'PY'
+          import os, shutil, stat, zipfile
+          from pathlib import Path
+
+          archive = Path(os.environ["QG_EVIDENCE_BUNDLE"]).resolve()
+          root = Path(os.environ["QG_EVIDENCE_DIR"]).resolve()
+          max_files = 1000
+          max_total = 4 * 1024 * 1024 * 1024
+          total = 0
+
+          with zipfile.ZipFile(archive) as zf:
+              infos = zf.infolist()
+              if len(infos) > max_files:
+                  raise SystemExit("::error::Evidence ZIP contains too many entries")
+              for info in infos:
+                  rel = Path(info.filename)
+                  if rel.is_absolute() or ".." in rel.parts:
+                      raise SystemExit("::error::Evidence ZIP contains path traversal")
+                  mode = (info.external_attr >> 16) & 0o170000
+                  if mode == stat.S_IFLNK:
+                      raise SystemExit("::error::Evidence ZIP may not contain symlinks")
+                  total += info.file_size
+                  if total > max_total:
+                      raise SystemExit("::error::Evidence ZIP exceeds 4 GiB uncompressed limit")
+                  target = (root / rel).resolve()
+                  if target != root and root not in target.parents:
+                      raise SystemExit("::error::Evidence ZIP entry escapes extraction root")
+                  if info.is_dir():
+                      target.mkdir(parents=True, exist_ok=True)
+                      continue
+                  target.parent.mkdir(parents=True, exist_ok=True)
+                  with zf.open(info) as src, target.open("wb") as dst:
+                      shutil.copyfileobj(src, dst)
+
+          report = root / "native-release-evidence.json"
+          if not report.is_file() or report.stat().st_size <= 0:
+              raise SystemExit("::error::native-release-evidence.json must exist at the evidence bundle root")
+          PY
+          echo "QG_NATIVE_RELEASE_EVIDENCE=$evidence_dir/native-release-evidence.json" >> "$GITHUB_ENV"
+          echo "QG_CERTIFICATION_DIR=$evidence_dir" >> "$GITHUB_ENV"
+
+      - name: Prepare Firebase and release signing inputs
+        shell: bash
+        env:
+          QG_FIREBASE_GOOGLE_SERVICES_JSON_B64: ${{ secrets.QG_FIREBASE_GOOGLE_SERVICES_JSON_B64 }}
+          QG_ANDROID_KEYSTORE_B64: ${{ secrets.QG_ANDROID_KEYSTORE_B64 }}
+        run: |
+          set -euo pipefail
+          umask 077
+          firebase="$RUNNER_TEMP/queuego-google-services.json"
+          keystore="$RUNNER_TEMP/queuego-release.keystore"
+          printf '%s' "$QG_FIREBASE_GOOGLE_SERVICES_JSON_B64" | base64 --decode > "$firebase"
+          printf '%s' "$QG_ANDROID_KEYSTORE_B64" | base64 --decode > "$keystore"
+          test -s "$firebase"
+          test -s "$keystore"
+          QG_FIREBASE_CONFIG="$firebase" python3 - <<'PY'
+          import json, os, shutil
+          from pathlib import Path
+
+          source = Path(os.environ["QG_FIREBASE_CONFIG"])
+          data = json.loads(source.read_text())
+          if not data.get("project_info", {}).get("project_id"):
+              raise SystemExit("::error::Firebase config is missing project_id")
+          required = {
+              "com.queuego.customer": Path("native-android/customer/google-services.json"),
+              "com.queuego.merchant": Path("native-android/merchant/google-services.json"),
+              "com.queuego.rider": Path("native-android/rider/google-services.json"),
+          }
+          clients = data.get("client") or []
+          for package, target in required.items():
+              matches = [
+                  client for client in clients
+                  if client.get("client_info", {}).get("android_client_info", {}).get("package_name") == package
+              ]
+              if len(matches) != 1 or not matches[0].get("client_info", {}).get("mobilesdk_app_id"):
+                  raise SystemExit(f"::error::Firebase config requires one complete Android client for {package}")
+              shutil.copyfile(source, target)
+              target.chmod(0o600)
+          PY
+          chmod 600 "$keystore"
+          echo "QG_ANDROID_KEYSTORE_PATH=$keystore" >> "$GITHUB_ENV"
+
+      - name: Verify operator-certified release evidence
+        env:
+          QG_ANDROID_STORE_PASSWORD: ${{ secrets.QG_ANDROID_STORE_PASSWORD }}
+          QG_ANDROID_KEY_ALIAS: ${{ secrets.QG_ANDROID_KEY_ALIAS }}
+          QG_ANDROID_KEY_PASSWORD: ${{ secrets.QG_ANDROID_KEY_PASSWORD }}
+        run: python3 native-android/qa/verify-native-release-gate.py
+
+      - name: Bind certification to exact release metadata
+        shell: bash
+        env:
+          EVIDENCE_OBJECT_PATH: ${{ inputs.evidence_object_path }}
+          EVIDENCE_BUNDLE_SHA256: ${{ inputs.evidence_bundle_sha256 }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json, os, re
+          from pathlib import Path
+
+          cert = re.sub(r"[^0-9a-fA-F]", "", os.environ["QG_ANDROID_SIGNING_CERT_SHA256"]).lower()
+          metadata = {
+              "result": "PASS",
+              "source_sha": os.environ["GITHUB_SHA"],
+              "certification_run_id": os.environ["GITHUB_RUN_ID"],
+              "certification_workflow": ".github/workflows/native-release-certification.yml",
+              "evidence_object_path": os.environ["EVIDENCE_OBJECT_PATH"],
+              "evidence_bundle_sha256": os.environ["EVIDENCE_BUNDLE_SHA256"].lower(),
+              "version_name": os.environ["QG_NATIVE_VERSION_NAME"],
+              "customer_version_code": int(os.environ["QG_CUSTOMER_VERSION_CODE"]),
+              "merchant_version_code": int(os.environ["QG_MERCHANT_VERSION_CODE"]),
+              "rider_version_code": int(os.environ["QG_RIDER_VERSION_CODE"]),
+              "customer_play_max_version_code": int(os.environ["QG_CUSTOMER_PLAY_MAX_VERSION_CODE"]),
+              "merchant_play_max_version_code": int(os.environ["QG_MERCHANT_PLAY_MAX_VERSION_CODE"]),
+              "rider_play_max_version_code": int(os.environ["QG_RIDER_PLAY_MAX_VERSION_CODE"]),
+              "signing_certificate_sha256": cert,
+          }
+          target = Path(os.environ["QG_CERTIFICATION_DIR"]) / "certified-release-metadata.json"
+          target.write_text(json.dumps(metadata, indent=2, sort_keys=True) + "\n")
+          PY
+
+      - name: Upload trusted certification artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: queuego-native-release-certification
+          path: ${{ runner.temp }}/queuego-native-release-certification/
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Remove decoded credentials and downloaded evidence
+        if: always()
+        shell: bash
+        run: |
+          rm -f native-android/customer/google-services.json
+          rm -f native-android/merchant/google-services.json
+          rm -f native-android/rider/google-services.json
+          rm -f "$RUNNER_TEMP/queuego-google-services.json"
+          rm -f "$RUNNER_TEMP/queuego-release.keystore"
+          rm -f "$RUNNER_TEMP/queuego-native-physical-evidence.zip"
+          rm -rf "$RUNNER_TEMP/queuego-native-release-certification"
