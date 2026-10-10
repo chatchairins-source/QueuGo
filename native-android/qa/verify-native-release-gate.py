@@ -11,7 +11,8 @@ import tempfile
 
 ROOT = Path(__file__).resolve().parents[2]
 GATES = (
-    "full_native_ci", "production_backend", "security_regression",
+    "full_native_ci", "production_backend", "backup_restore", "security_regression",
+    "service_area", "ugc_chat_safety", "security_platform_auth",
     "firebase_three_packages", "physical_push_customer", "physical_push_merchant",
     "physical_push_rider", "physical_voice_two_devices_two_networks", "turn_relay",
     "voice_session_order_block_authorization", "rider_floating_q",
@@ -36,7 +37,9 @@ def verify():
         raise ValueError("P0/P1 must both equal zero")
     for name in GATES:
         item = report.get("gates", {}).get(name, {})
-        if item.get("status") != "PASS":
+        status = item.get("status")
+        allowed_statuses = {"PASS", "PASS_FREE_PLAN_CONTROLS"} if name == "security_platform_auth" else {"PASS"}
+        if status not in allowed_statuses:
             raise ValueError(f"uncertified gate: {name}")
         evidence = item.get("evidence_file")
         digest = item.get("sha256")
@@ -48,10 +51,21 @@ def verify():
     if not re.fullmatch(r"\d+\.\d+\.\d+", os.environ.get("QG_NATIVE_VERSION_NAME", "")):
         raise ValueError("release versionName must be explicitly set to x.y.z")
     projects = set()
-    for role, previous_code in (("customer", 3), ("merchant", 3), ("rider", 5)):
-        version_code = int(os.environ.get(f"QG_{role.upper()}_VERSION_CODE", "0"))
-        if version_code <= previous_code or version_code > 2100000000:
-            raise ValueError(f"release versionCode must advance for {role}")
+    for role in ("customer", "merchant", "rider"):
+        release_name = f"QG_{role.upper()}_VERSION_CODE"
+        play_max_name = f"QG_{role.upper()}_PLAY_MAX_VERSION_CODE"
+        release_raw = os.environ.get(release_name, "")
+        play_max_raw = os.environ.get(play_max_name, "")
+        if not re.fullmatch(r"\d+", release_raw):
+            raise ValueError(f"{release_name} must be an explicit positive integer")
+        if not re.fullmatch(r"\d+", play_max_raw):
+            raise ValueError(f"{play_max_name} must be the observed highest Play versionCode")
+        version_code = int(release_raw)
+        play_max = int(play_max_raw)
+        if version_code <= 0 or version_code > 2100000000:
+            raise ValueError(f"release versionCode is out of range for {role}")
+        if version_code <= play_max:
+            raise ValueError(f"release versionCode must exceed observed Play history for {role}")
         path = ROOT / "native-android" / role / "google-services.json"
         config = json.loads(path.read_text())
         project_id = config.get("project_info", {}).get("project_id")

@@ -31,6 +31,21 @@ any requirement below is OPEN.
   artifact 11666493683 was saved. This closes the software/CI staging gate for
   the microphone foreground service only. Physical two-device background audio
   and Play foreground-service declaration evidence remain OPEN.
+- Native main HEAD 559ea783 completed QueueGo Native Android Pilot run
+  38043983595 successfully. Three-role fresh-session phone/small-phone/tablet
+  launch matrix passed; corrected Longdo Home map mount/background/recreation
+  passed; microphone foreground-service background/owned cleanup passed.
+  Launch evidence artifact 11667161963 was saved with SHA256
+  f6d47055e64c92546126bcbf797e93fca7ee6c31255eda4e127c62ae4f2deaf0.
+  The runtime log explicitly leaves authenticated E2E/visual parity, physical
+  FCM and real two-device voice audio unverified.
+- Backup/Restore run 38039279454 failed at secret validation with
+  QG_SUPABASE_DB_URL, QG_SUPABASE_SERVICE_ROLE_KEY and QG_BACKUP_PASSPHRASE
+  absent from the Actions environment.
+- Release Secret Readiness run 38039197325 failed with
+  QG_FIREBASE_GOOGLE_SERVICES_JSON_B64, QG_ANDROID_KEYSTORE_B64,
+  QG_ANDROID_STORE_PASSWORD, QG_ANDROID_KEY_ALIAS and
+  QG_ANDROID_KEY_PASSWORD absent from the Actions environment.
 
 ## Still OPEN
 
@@ -57,22 +72,36 @@ non-debuggable, with no debug-keystore fallback. Signing inputs are environment-
 QG_ANDROID_KEYSTORE_PATH, QG_ANDROID_STORE_PASSWORD, QG_ANDROID_KEY_ALIAS,
 QG_ANDROID_KEY_PASSWORD. Keystore files/configs are ignored by git.
 
-Release requires QG_NATIVE_VERSION_NAME (x.y.z) and per-app advancing
-QG_CUSTOMER_VERSION_CODE, QG_MERCHANT_VERSION_CODE, QG_RIDER_VERSION_CODE.
-The Play preflight must also verify each code exceeds the actual Play history.
+Release requires QG_NATIVE_VERSION_NAME (x.y.z), per-app release codes
+QG_CUSTOMER_VERSION_CODE, QG_MERCHANT_VERSION_CODE, QG_RIDER_VERSION_CODE,
+and the observed highest Play Console codes
+QG_CUSTOMER_PLAY_MAX_VERSION_CODE, QG_MERCHANT_PLAY_MAX_VERSION_CODE,
+QG_RIDER_PLAY_MAX_VERSION_CODE. The verifier fails closed unless every release
+code is greater than the explicitly supplied Play maximum; it no longer trusts
+hard-coded historical versionCode values.
 
 Every application task containing Release, including direct internal packaging
 and signing tasks, depends on verifyNativeReleaseGate. The verifier fails closed without operator-certified
 QG_NATIVE_RELEASE_EVIDENCE. The JSON report must reference the exact git HEAD,
-p0=0, p1=0, and every gate named in verify-native-release-gate.py, each with
-status=PASS, evidence_file and sha256 of the actual recorded evidence. No example
-PASS report is supplied. Files/hashes prove evidence identity; they do not prove
+p0=0, p1=0, and every gate named in verify-native-release-gate.py with
+evidence_file and sha256 of the actual recorded evidence. Every gate requires
+status=PASS except security_platform_auth, which may use the documented
+PASS_FREE_PLAN_CONTROLS status while QueueGo remains on the Supabase Free plan.
+No example PASS report is supplied. Files/hashes prove evidence identity; they do not prove
 physical behavior. The operator remains responsible for truthful certification.
 
 The verifier requires all three complete Firebase clients in one Production
 project plus the actual keystore. It verifies the keystore alias using keytool
 without logging secrets. Debug CI remains usable while physical certification is
 pending. Final signed build/inspection and Play Console submission remain gated.
+
+After the hard gate authorizes release packaging, `verify-native-release-artifacts.py`
+must inspect the actual signed Customer/Merchant/Rider APK/AAB outputs. It checks
+the expected applicationId, per-app versionCode, shared versionName, non-debuggable
+APK state, APK signing certificate, strict AAB JAR signature, SHA-256 for both
+artifacts, and enforces the same certified signer identity across all three apps.
+Source readiness for this verifier does not close the signed-artifact gate; PASS
+requires the real release outputs.
 
 ## Native voice privacy and Data Safety preflight
 

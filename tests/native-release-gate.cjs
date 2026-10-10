@@ -17,6 +17,39 @@ try{
   assert.equal(result.status,1,'stale certification must fail');
   assert.match(result.stderr,/exact release HEAD/);
 }finally{fs.rmSync(dir,{recursive:true,force:true});}
+const verifier=fs.readFileSync(script,'utf8');
+for(const role of ['CUSTOMER','MERCHANT','RIDER']){
+  assert.ok(verifier.includes(`QG_${role}_PLAY_MAX_VERSION_CODE`),`release verifier must require observed Play version history for ${role}`);
+}
+assert.doesNotMatch(verifier,/for role, previous_code in/,'release verifier must not trust hard-coded prior Play versionCodes');
+assert.match(verifier,/"backup_restore"/,'Native release must require certified Backup/Restore evidence');
+for(const gate of ['service_area','ugc_chat_safety','security_platform_auth']){
+  assert.match(verifier,new RegExp(`"${gate}"`),`Native release must require explicit ${gate} evidence`);
+}
+assert.match(verifier,/PASS_FREE_PLAN_CONTROLS/,'Native release verifier must honor the documented Free-plan Auth compensating-control status');
+assert.match(verifier,/name == "security_platform_auth"/,'PASS_FREE_PLAN_CONTROLS exception must be scoped only to the Auth gate');
+for(const legacy of ['.github/workflows/build-queuego-apks.yml','.github/workflows/build-queuego-pilot-apks.yml']){
+  assert.equal(fs.existsSync(legacy),false,`legacy Capacitor Android build workflow must stay retired: ${legacy}`);
+}
+
+const artifactVerifierPath='native-android/qa/verify-native-release-artifacts.py';
+assert.ok(fs.existsSync(artifactVerifierPath),'signed Native release artifact verifier must exist');
+const artifactVerifier=fs.readFileSync(artifactVerifierPath,'utf8');
+for(const token of [
+  '"customer": "com.queuego.customer"',
+  '"merchant": "com.queuego.merchant"',
+  '"rider": "com.queuego.rider"',
+  '"application-debuggable"',
+  '"--print-certs"',
+  '"-verify", "-strict"',
+  '"apk_sha256"',
+  '"aab_sha256"',
+  '"signer_certificate_sha256"'
+]){
+  assert.ok(artifactVerifier.includes(token),`signed artifact verifier missing required check: ${token}`);
+}
+assert.match(artifactVerifier,/len\(signer_digests\) != 1/,'all three release apps must use one certified signing identity');
+
 const gradle=fs.readFileSync('native-android/build.gradle.kts','utf8');
 assert.match(gradle,/isDebuggable = false/);
 assert.match(gradle,/signingConfig = nativeReleaseSigning/);
@@ -33,6 +66,8 @@ for(const [role,label] of roles){
   const appGradle=fs.readFileSync(`native-android/${role}/build.gradle.kts`,'utf8');
   assert.match(appGradle,new RegExp(`namespace\\s*=\\s*"com\\.queuego\\.${role}"`));
   assert.match(appGradle,new RegExp(`applicationId\\s*=\\s*"com\\.queuego\\.${role}"`));
+  assert.ok(appGradle.includes(`providers.environmentVariable("QG_${role.toUpperCase()}_VERSION_CODE")`),`${role} release versionCode must come from the certified environment`);
+  assert.ok(appGradle.includes('providers.environmentVariable("QG_NATIVE_VERSION_NAME")'),`${role} release versionName must come from the certified environment`);
   const manifest=fs.readFileSync(`native-android/${role}/src/main/AndroidManifest.xml`,'utf8');
   assert.match(manifest,new RegExp(`android:label="${label}"`));
   assert.match(manifest,/android:icon="@mipmap\/ic_queuego_launcher"/);

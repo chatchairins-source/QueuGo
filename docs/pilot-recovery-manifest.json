@@ -112,19 +112,17 @@
     ],
     "backup_secret_readiness": {
       "checked_by_github_actions": true,
-      "run_id": 37553305666,
+      "run_id": 38039279454,
       "ready": false,
       "missing": [
-        "QG_SUPABASE_DB_URL"
-      ],
-      "unevaluated_after_fail_fast": [
+        "QG_SUPABASE_DB_URL",
         "QG_SUPABASE_SERVICE_ROLE_KEY",
         "QG_BACKUP_PASSPHRASE"
       ],
-      "run_attempt": 8,
-      "checked_at": "2026-10-07T15:54:09+07:00",
+      "run_attempt": 1,
+      "checked_at": "2026-10-10T08:50:41Z",
       "latest_validation_result": "FAIL",
-      "note": "Attempt 8 reconfirmed QG_SUPABASE_DB_URL missing. The legacy fail-fast preflight stopped before evaluating the remaining two secrets; source is now hardened to report all missing secrets on the next manual run."
+      "note": "Run 38039279454 used the hardened preflight and reported all three required backup secrets missing before failing."
     },
     "restore_drill_ugc_verification_ready": true,
     "backup_cli_version": "2.120.0",
@@ -142,7 +140,7 @@
     "native_push_tokens_in_production": 0,
     "physical_background_notification_certified": false,
     "blockers": [
-      "GitHub Actions secret QG_FIREBASE_GOOGLE_SERVICES_JSON_B64 has not been proven by an Android Release run.",
+      "GitHub Actions run 38039197325 confirmed QG_FIREBASE_GOOGLE_SERVICES_JSON_B64 is absent.",
       "Supabase Edge secret FIREBASE_SERVICE_ACCOUNT_JSON cannot be verified from the available connector.",
       "No physical Android device has registered a native token and received a background notification yet."
     ],
@@ -231,8 +229,6 @@
     "unified_push_execution_path_only": true
   },
   "android": {
-    "capacitor_version": "8.0.0",
-    "push_plugin": "@capacitor/push-notifications@8.0.0",
     "release_workflow_has_run": false,
     "hard_gate_blocks_build_without_restore_certification": true,
     "hard_gate_blocks_build_without_firebase_config": true,
@@ -240,7 +236,7 @@
     "hard_gate_blocks_build_without_physical_notification_certification": true,
     "release_secret_readiness": {
       "checked_by_github_actions": true,
-      "run_id": 37553473151,
+      "run_id": 38039197325,
       "ready": false,
       "missing": [
         "QG_FIREBASE_GOOGLE_SERVICES_JSON_B64",
@@ -249,13 +245,9 @@
         "QG_ANDROID_KEY_ALIAS",
         "QG_ANDROID_KEY_PASSWORD"
       ],
-      "run_attempt": 8,
-      "checked_at": "2026-10-07T15:54:11+07:00",
+      "checked_at": "2026-10-10T10:22:14Z",
       "latest_validation_result": "FAIL"
     },
-    "pilot_test_workflow": ".github/workflows/build-queuego-pilot-apks.yml",
-    "pilot_test_apk_ready_when_firebase_secret_present": true,
-    "pilot_test_build_type": "debug",
     "closed_beta_build_type": "release",
     "hard_gate_blocks_build_without_ugc_chat_safety": true,
     "target_sdk": 36,
@@ -268,7 +260,7 @@
       "rider"
     ],
     "play_icon_512_artifact": true,
-    "real_app_screenshots": "PENDING_PHYSICAL_BUILD",
+    "real_app_screenshots": "PENDING_PHYSICAL_BLUEPRINT_CERTIFICATION",
     "auth_gate_accepts_free_plan_compensating_controls": true,
     "auth_gate_required_values": [
       "PASS",
@@ -280,18 +272,18 @@
     "signing_alias_preflight": true,
     "signing_key_password_preflight": true,
     "signing_secrets_written_to_gradle_properties": false,
-    "signing_secret_transport": "ORG_GRADLE_PROJECT environment variables",
-    "release_version_code_strategy": "GITHUB_WORKFLOW_RUN_NUMBER",
-    "release_version_name_strategy": "1.0.0-beta.<github.run_number>",
-    "release_artifact_package_verification": true,
-    "release_apk_non_debuggable_verification": true,
-    "release_apk_signature_verification": "APKSIGNER",
-    "release_aab_signature_verification": "JARSIGNER_STRICT",
-    "release_evidence_includes_git_sha": true,
-    "release_evidence_includes_github_run_id": true,
-    "release_evidence_includes_signing_certificate_sha256": true,
-    "release_evidence_includes_artifact_sha256": true,
-    "release_provenance_gate": "PASS",
+    "signing_secret_transport": "QG_ANDROID_* environment variables",
+    "release_version_code_strategy": "EXPLICIT_PER_APP_GT_OBSERVED_PLAY_MAX",
+    "release_version_name_strategy": "EXPLICIT_QG_NATIVE_VERSION_NAME_X.Y.Z",
+    "release_artifact_package_verification": false,
+    "release_apk_non_debuggable_verification": false,
+    "release_apk_signature_verification": "PENDING_SIGNED_NATIVE_RELEASE",
+    "release_aab_signature_verification": "PENDING_SIGNED_NATIVE_RELEASE",
+    "release_evidence_includes_git_sha": false,
+    "release_evidence_includes_github_run_id": false,
+    "release_evidence_includes_signing_certificate_sha256": false,
+    "release_evidence_includes_artifact_sha256": false,
+    "release_provenance_gate": "BLOCKED_EXTERNAL_EVIDENCE",
     "release_provenance_evidence": [
       "application_id",
       "version_code",
@@ -301,14 +293,14 @@
       "signer_certificate_sha256",
       "artifact_sha256"
     ],
-    "release_artifact_runtime_gate": "BLOCKED_MISSING_SECRETS_AND_PHYSICAL_CERTIFICATION",
+    "release_artifact_runtime_gate": "BLOCKED_MISSING_SECRETS_PHYSICAL_CERTIFICATION_AND_PLAY_HISTORY",
     "pilot_artifact_package_verification": true,
     "pilot_artifact_debug_build_verification": true,
     "pilot_evidence_includes_git_sha": true,
     "pilot_evidence_includes_github_run_id": true,
     "pilot_evidence_includes_artifact_sha256": true,
     "pilot_provenance_gate": "PASS",
-    "pilot_runtime_gate": "BLOCKED_MISSING_FIREBASE_SECRET_AND_PHYSICAL_CERTIFICATION",
+    "pilot_runtime_gate": "PASS_SOFTWARE_RUNTIME_ONLY_PHYSICAL_CERTIFICATION_OPEN",
     "release_secret_preflight_workflow": ".github/workflows/release-secret-readiness.yml",
     "release_secret_preflight_durable": true,
     "release_secret_preflight_manual_dispatch": true,
@@ -321,23 +313,9 @@
     "release_secret_preflight_validates_keystore_alias": true,
     "release_secret_preflight_validates_keystore_key_password": true,
     "release_secret_preflight_cleans_decoded_credentials": true,
-    "release_secret_preflight_source_commit": "e96b2f5d6673ecf4f0b56b2cd14c85071113548a",
-    "release_secret_preflight_regression_guard_commit": "6263672b8ac8765cb73a3d34508df367926a5da2",
-    "release_secret_preflight_rc_run": 37581216176,
-    "legacy_ungated_publish_workflows_removed": true,
-    "removed_legacy_workflows": [
-      ".github/workflows/publish-approved-icon-rc.yml",
-      ".github/workflows/publish-approved-apks.yml"
-    ],
     "allowed_android_build_workflows": [
-      ".github/workflows/build-queuego-pilot-apks.yml",
-      ".github/workflows/build-queuego-apks.yml"
+      ".github/workflows/build-native-rider-pilot.yml"
     ],
-    "legacy_publish_retirement_commits": [
-      "8100b9e7d87ca45290a83df6beb1c9c2d57506db",
-      "de253e5be9c09ee17b1f4e9274010e52e7231801"
-    ],
-    "legacy_publish_regression_guard_commit": "6dda59b3b22b11aad682d4733cd36ab998087531",
     "legacy_github_release_assets_present": true,
     "legacy_github_release_tags": [
       "queuego-android-approved-icon-rc-20261004",
@@ -345,7 +323,57 @@
       "queuego-android-rc-20261004-approved-icon",
       "queuego-customer-rc-20261001"
     ],
-    "legacy_release_policy": "HISTORICAL_ONLY_DO_NOT_USE_FOR_PILOT_OR_CLOSED_BETA"
+    "legacy_release_policy": "HISTORICAL_ONLY_DO_NOT_USE_FOR_PILOT_OR_CLOSED_BETA",
+    "native_scope": "Customer/Merchant/Rider",
+    "native_build_system": "Gradle multi-module",
+    "legacy_capacitor_release_workflows_retired": true,
+    "pilot_builds_without_firebase_in_warning_mode": true,
+    "physical_push_certification_requires_firebase_secret": true,
+    "platform": "NATIVE_ANDROID",
+    "native_modules": [
+      "customer",
+      "merchant",
+      "rider"
+    ],
+    "native_pilot_workflow": ".github/workflows/build-native-rider-pilot.yml",
+    "native_pilot_latest_certified_run": 38043983595,
+    "native_pilot_latest_certified_head": "559ea783e77a68678f168af2388d5cda660a859a",
+    "native_pilot_latest_launch_evidence_artifact": 11667161963,
+    "native_ci_rejects_webview": true,
+    "legacy_capacitor_build_workflows_retired": true,
+    "retired_legacy_capacitor_build_workflows": [
+      ".github/workflows/build-queuego-pilot-apks.yml",
+      ".github/workflows/build-queuego-apks.yml"
+    ],
+    "native_pilot_workflow_has_run": true,
+    "release_secret_preflight_requires_complete_firebase_clients": true,
+    "release_secret_preflight_requires_mobilesdk_app_id": true,
+    "release_secret_preflight_requires_project_id": true,
+    "release_play_history_inputs": [
+      "QG_CUSTOMER_PLAY_MAX_VERSION_CODE",
+      "QG_MERCHANT_PLAY_MAX_VERSION_CODE",
+      "QG_RIDER_PLAY_MAX_VERSION_CODE"
+    ],
+    "release_gate_verifier": "native-android/qa/verify-native-release-gate.py",
+    "release_gate_requires_backup_restore": true,
+    "release_gate_requires_exact_git_head": true,
+    "release_gate_requires_p0_p1_zero": true,
+    "release_secret_preflight_latest_run": 38039197325,
+    "release_secret_preflight_latest_result": "FAIL_MISSING_SECRETS",
+    "release_secret_preflight_latest_checked_at": "2026-10-10T10:22:14Z",
+    "release_artifact_verifier": "native-android/qa/verify-native-release-artifacts.py",
+    "release_artifact_verifier_present": true,
+    "release_artifact_checks": [
+      "application_id",
+      "version_code",
+      "version_name",
+      "non_debuggable",
+      "apk_signature",
+      "aab_signature",
+      "artifact_sha256",
+      "signer_certificate_sha256",
+      "same_signer_all_three_apps"
+    ]
   },
   "security": {
     "code_surface_hardened": true,
