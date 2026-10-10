@@ -293,8 +293,8 @@
     "signing_key_password_preflight": true,
     "signing_secrets_written_to_gradle_properties": false,
     "signing_secret_transport": "ORG_GRADLE_PROJECT environment variables",
-    "release_version_code_strategy": "GITHUB_WORKFLOW_RUN_NUMBER",
-    "release_version_name_strategy": "1.0.0-beta.<github.run_number>",
+    "release_version_code_strategy": "1000000_PLUS_NATIVE_CLOSED_BETA_WORKFLOW_RUN_NUMBER",
+    "release_version_name_strategy": "1.0.0-beta.<native_closed_beta_workflow_run_number>",
     "release_artifact_package_verification": true,
     "release_apk_non_debuggable_verification": true,
     "release_apk_signature_verification": "APKSIGNER",
@@ -366,7 +366,9 @@
     "hard_gate_blocks_build_without_turn_relay_certification": true,
     "microphone_permission_policy": "USER_INITIATED_IN_APP_CALL_ONLY",
     "legacy_capacitor_release_workflow": ".github/workflows/build-queuego-apks.yml",
-    "legacy_capacitor_release_policy": "HISTORICAL_ONLY_DO_NOT_USE_FOR_NATIVE_CLOSED_BETA"
+    "legacy_capacitor_release_policy": "HISTORICAL_ONLY_DO_NOT_USE_FOR_NATIVE_CLOSED_BETA",
+    "release_version_code_floor": 1000000,
+    "release_version_code_max": 2100000000
   },
   "security": {
     "code_surface_hardened": true,
