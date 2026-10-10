@@ -67,12 +67,16 @@ any requirement below is OPEN.
   Runtime certification remains BLOCKED on Actions credentials plus real
   physical evidence; bucket provisioning itself is no longer a blocker.
 
-## Structured physical evidence semantic contract v2
+## Structured physical evidence semantic contract v3
 
 Physical release evidence remains **OPEN** until real-device capture exists. The
 release verifier now requires more than a generic PASS envelope: every physical
-gate must be explicitly operator-certified, identify real non-emulator Android
-devices with role binding, and include the exact observed checks for that gate.
+gate must be explicitly operator-certified, identify the certifying operator by
+a non-reversible SHA-256 `operator_id_hash`, bind to the exact attested Native
+Pilot run, identify real non-emulator Android devices, and include the exact
+observed checks for that gate. Each device entry must also bind its role to the
+correct QueueGo package, exact source SHA, build type, versionName and versionCode.
+Physical evidence from another Pilot build/source/package is rejected.
 
 - Customer/Merchant/Rider push: foreground, background, killed, refresh/login,
   logout revocation, stale-token exclusion, order notification and call notification.
@@ -88,6 +92,10 @@ devices with role binding, and include the exact observed checks for that gate.
   blocking_differences = 0 for Customer, Merchant and Rider.
 - Lifecycle: permissions, single-back-to-Home, upload, location, session
   persistence, offline/timeout, reconnect and background/foreground for all 3 roles.
+- Artifact-kind binding: push/voice/Floating Q/lifecycle evidence must include an
+  appropriate screen recording or reviewed log type; TURN requires a network
+  trace; Blueprint evidence requires a screenshot or pixel-diff artifact. A
+  generic unrelated `log` artifact cannot certify a physical gate.
 
 These checks validate semantic completeness and evidence identity only; they do
 not infer that screenshots/videos are truthful and do not close any physical gate.
