@@ -112,19 +112,17 @@
     ],
     "backup_secret_readiness": {
       "checked_by_github_actions": true,
-      "run_id": 37553305666,
+      "run_id": 38039279454,
       "ready": false,
       "missing": [
-        "QG_SUPABASE_DB_URL"
-      ],
-      "unevaluated_after_fail_fast": [
+        "QG_SUPABASE_DB_URL",
         "QG_SUPABASE_SERVICE_ROLE_KEY",
         "QG_BACKUP_PASSPHRASE"
       ],
-      "run_attempt": 8,
-      "checked_at": "2026-10-07T15:54:09+07:00",
+      "run_attempt": 1,
+      "checked_at": "2026-10-10T08:50:41Z",
       "latest_validation_result": "FAIL",
-      "note": "Attempt 8 reconfirmed QG_SUPABASE_DB_URL missing. The legacy fail-fast preflight stopped before evaluating the remaining two secrets; source is now hardened to report all missing secrets on the next manual run."
+      "note": "Run 38039279454 used the hardened preflight and reported all three required backup secrets missing before failing."
     },
     "restore_drill_ugc_verification_ready": true,
     "backup_cli_version": "2.120.0",
@@ -142,7 +140,7 @@
     "native_push_tokens_in_production": 0,
     "physical_background_notification_certified": false,
     "blockers": [
-      "GitHub Actions secret QG_FIREBASE_GOOGLE_SERVICES_JSON_B64 has not been proven by an Android Release run.",
+      "GitHub Actions run 38039197325 confirmed QG_FIREBASE_GOOGLE_SERVICES_JSON_B64 is absent.",
       "Supabase Edge secret FIREBASE_SERVICE_ACCOUNT_JSON cannot be verified from the available connector.",
       "No physical Android device has registered a native token and received a background notification yet."
     ],
@@ -359,7 +357,10 @@
     "release_gate_verifier": "native-android/qa/verify-native-release-gate.py",
     "release_gate_requires_backup_restore": true,
     "release_gate_requires_exact_git_head": true,
-    "release_gate_requires_p0_p1_zero": true
+    "release_gate_requires_p0_p1_zero": true,
+    "release_secret_preflight_latest_run": 38039197325,
+    "release_secret_preflight_latest_result": "FAIL_MISSING_SECRETS",
+    "release_secret_preflight_latest_checked_at": "2026-10-10T10:22:14Z"
   },
   "security": {
     "code_surface_hardened": true,
