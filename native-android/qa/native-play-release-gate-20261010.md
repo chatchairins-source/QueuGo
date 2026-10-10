@@ -70,7 +70,10 @@ any requirement below is OPEN.
 One root Gradle signing configuration covers all three apps. Release is explicitly
 non-debuggable, with no debug-keystore fallback. Signing inputs are environment-only:
 QG_ANDROID_KEYSTORE_PATH, QG_ANDROID_STORE_PASSWORD, QG_ANDROID_KEY_ALIAS,
-QG_ANDROID_KEY_PASSWORD. Keystore files/configs are ignored by git.
+QG_ANDROID_KEY_PASSWORD, plus QG_ANDROID_EXPECTED_CERT_SHA256 containing the
+certified upload/signing certificate fingerprint observed from the intended Play
+identity. The pre-build verifier rejects a valid-but-wrong keystore whose
+certificate fingerprint does not match. Keystore files/configs are ignored by git.
 
 Release requires QG_NATIVE_VERSION_NAME (x.y.z), per-app release codes
 QG_CUSTOMER_VERSION_CODE, QG_MERCHANT_VERSION_CODE, QG_RIDER_VERSION_CODE,
@@ -100,7 +103,8 @@ must inspect the actual signed Customer/Merchant/Rider APK/AAB outputs. It check
 the expected applicationId, per-app versionCode, shared versionName, non-debuggable
 APK state, APK signing certificate, AAB JAR signature, SHA-256 for both artifacts,
 and the AAB signer certificate fingerprint. Each role's APK/AAB signer must match,
-and the same certified signer identity is enforced across all three apps.
+each artifact must match QG_ANDROID_EXPECTED_CERT_SHA256, and the same certified
+signer identity is enforced across all three apps.
 Source readiness for this verifier does not close the signed-artifact gate; PASS
 requires the real release outputs.
 
