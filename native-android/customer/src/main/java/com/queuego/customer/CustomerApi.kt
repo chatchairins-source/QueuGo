@@ -440,7 +440,7 @@ class CustomerApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
             .put("p_delivery_address", location.address)
             .put("p_expected_subtotal", subtotal)
             .put("p_expected_delivery_fee", fee)
-            .put("p_note", note?.trim()?.takeIf { it.isNotBlank() })
+            .put("p_note", note?.trim()?.takeIf { it.isNotBlank() } ?: JSONObject.NULL)
         return body
     }
 

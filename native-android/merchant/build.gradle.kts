@@ -19,6 +19,7 @@ android {
     }
 }
 dependencies {
+    testImplementation("junit:junit:4.13.2")
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.9.4")
     implementation(project(":shared"))
     implementation("androidx.activity:activity-compose:1.13.0")
@@ -27,4 +28,5 @@ dependencies {
     implementation("androidx.compose.foundation:foundation:1.11.4")
     implementation("androidx.core:core-ktx:1.17.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
+    implementation("com.google.zxing:core:3.5.3")
 }

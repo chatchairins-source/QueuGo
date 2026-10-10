@@ -1,6 +1,7 @@
 package com.queuego.merchant
 
 import com.queuego.shared.NativeAuth
+import com.queuego.shared.nativePosPermissionAllowed
 import com.queuego.shared.QueueGoNativeApi
 import org.json.JSONArray
 import org.json.JSONObject
@@ -61,17 +62,12 @@ data class PosStaff(
     val displayName: String,
     val role: String,
     val permissions: Set<String>,
-    val active: Boolean
+    val active: Boolean,
+    val deniedPermissions: Set<String> = emptySet()
 ) {
-    fun allows(permission: String): Boolean {
-        if (permission in permissions) return true
-        return when (permission) {
-            "receive_order", "send_kitchen", "serve_order" -> role == "WAITER"
-            "cook_order", "ready_order" -> role == "KITCHEN"
-            "close_bill" -> role == "CASHIER"
-            else -> false
-        }
-    }
+    fun allows(permission: String): Boolean = nativePosPermissionAllowed(
+        active, role, permission, permissions, deniedPermissions
+    )
 }
 
 data class PosDeliveryOrder(
@@ -127,11 +123,15 @@ data class PosSnapshot(
     val deliveryLinesByOrder: Map<String, List<PosLine>>
 )
 
+class PosAccessDeniedException(message: String) : IllegalStateException(message)
+
 class MerchantPosApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
     suspend fun snapshot(auth: NativeAuth): PosSnapshot {
         val rawShop = http.rpc("pos_my_shop", auth.session.accessToken, JSONObject())
         val shopId = scalarText(rawShop)
-        require(shopId.isNotBlank() && shopId != "null") { "บัญชีนี้ยังไม่มีสิทธิ์ POS ของร้าน" }
+        if (shopId.isBlank() || shopId == "null") {
+            throw PosAccessDeniedException("บัญชีนี้ยังไม่มีสิทธิ์ POS ของร้าน")
+        }
 
         val owner = scalarBoolean(
             http.rpc("pos_is_owner", auth.session.accessToken, JSONObject()),
@@ -160,6 +160,23 @@ class MerchantPosApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
                 "&sales_channel=eq.POS&order=created_at.desc&limit=200",
             auth.session.accessToken
         ))
+        val openBillsRaw = http.array(http.get(
+            "orders?select=id,order_number,order_type,table_id,staff_id,status,kitchen_status,payment_status," +
+                "payment_method,bill_status,cash_tendered,cash_change,paid_at,subtotal,total_amount,discount_amount,created_at" +
+                "&shop_id=eq." + http.enc(shopId) +
+                "&sales_channel=eq.POS&payment_status=eq.UNPAID&status=neq.cancelled&order=created_at.desc",
+            auth.session.accessToken
+        ))
+        val mergedBillsRaw = JSONArray()
+        val seenBillIds = mutableSetOf<String>()
+        for (source in listOf(openBillsRaw, billsRaw)) {
+            for (i in 0 until source.length()) {
+                val row = source.optJSONObject(i) ?: continue
+                val id = row.optString("id")
+                if (id.isBlank() || !seenBillIds.add(id)) continue
+                mergedBillsRaw.put(row)
+            }
+        }
         val staffRaw = http.array(http.get(
             "pos_staff?select=user_id,shop_id,display_name,staff_role,permissions,active" +
                 "&shop_id=eq." + http.enc(shopId),
@@ -174,7 +191,7 @@ class MerchantPosApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
             auth.session.accessToken
         ))
 
-        val billIds = idsOf(billsRaw)
+        val billIds = idsOf(mergedBillsRaw)
         val deliveryIds = idsOf(deliveryRaw)
         val itemsRaw = if (billIds.isEmpty()) JSONArray() else http.array(http.get(
             "order_items?select=order_id,product_id,item_name,description,quantity,total_price,pos_kitchen_status,pos_batch" +
@@ -188,6 +205,10 @@ class MerchantPosApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
         ))
 
         val staff = parseStaff(staffRaw)
+        val currentStaff = staff.firstOrNull { it.userId == auth.session.authUserId }
+        if (!owner && currentStaff?.active != true) {
+            throw PosAccessDeniedException("บัญชีพนักงานนี้ไม่มีสิทธิ์ POS ที่เปิดใช้งาน")
+        }
         val products = buildList {
             for (i in 0 until productsRaw.length()) {
                 val r = productsRaw.optJSONObject(i) ?: continue
@@ -229,8 +250,8 @@ class MerchantPosApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
             }
         }
         val bills = buildList {
-            for (i in 0 until billsRaw.length()) {
-                val r = billsRaw.optJSONObject(i) ?: continue
+            for (i in 0 until mergedBillsRaw.length()) {
+                val r = mergedBillsRaw.optJSONObject(i) ?: continue
                 val id = r.optString("id")
                 if (id.isBlank()) continue
                 add(parseBill(r, id))
@@ -256,7 +277,7 @@ class MerchantPosApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
             shopId = shopId,
             shopName = shopName,
             owner = owner,
-            currentStaff = staff.firstOrNull { it.userId == auth.session.authUserId },
+            currentStaff = currentStaff,
             staff = staff,
             products = products,
             tables = tables,
@@ -273,14 +294,15 @@ class MerchantPosApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
         type: String,
         tableId: String?,
         productId: String,
-        note: String
+        note: String,
+        requestId: String = UUID.randomUUID().toString()
     ): String {
         val raw = if (currentBillId.isNullOrBlank()) {
             http.rpc(
                 "pos_create_bill_once",
                 auth.session.accessToken,
                 JSONObject()
-                    .put("p_request", UUID.randomUUID().toString())
+                    .put("p_request", requestId)
                     .put("p_type", type)
                     .put("p_table", tableId ?: JSONObject.NULL)
                     .put("p_product", productId)
@@ -610,11 +632,13 @@ class MerchantPosApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
             val id = r.optString("user_id")
             if (id.isBlank()) continue
             val permissions = mutableSetOf<String>()
+            val deniedPermissions = mutableSetOf<String>()
             val p = r.optJSONObject("permissions") ?: JSONObject()
             val keys = p.keys()
             while (keys.hasNext()) {
                 val key = keys.next()
                 if (p.optBoolean(key, false)) permissions += key
+                else deniedPermissions += key
             }
             add(
                 PosStaff(
@@ -622,7 +646,8 @@ class MerchantPosApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
                     displayName = r.optString("display_name").ifBlank { "พนักงาน" },
                     role = r.optString("staff_role").ifBlank { "WAITER" },
                     permissions = permissions,
-                    active = r.optBoolean("active", true)
+                    active = r.optBoolean("active", false),
+                    deniedPermissions = deniedPermissions
                 )
             )
         }

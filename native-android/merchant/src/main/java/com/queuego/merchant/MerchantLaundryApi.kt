@@ -163,12 +163,12 @@ class MerchantLaundryApi(private val http: QueueGoNativeApi = QueueGoNativeApi()
             "queuego_laundry_save_service",
             auth.session.accessToken,
             JSONObject()
-                .put("p_service_id", serviceId)
+                .put("p_service_id", serviceId ?: JSONObject.NULL)
                 .put("p_name", name.trim())
-                .put("p_description", description?.trim()?.takeIf { it.isNotBlank() })
+                .put("p_description", description?.trim()?.takeIf { it.isNotBlank() } ?: JSONObject.NULL)
                 .put("p_pricing_type", pricingType)
                 .put("p_price", price)
-                .put("p_estimated_minutes", estimatedMinutes)
+                .put("p_estimated_minutes", estimatedMinutes ?: JSONObject.NULL)
                 .put("p_active", active)
         )
     }
