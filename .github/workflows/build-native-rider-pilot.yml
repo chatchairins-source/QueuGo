@@ -5,6 +5,7 @@ on:
   push:
     branches:
       - queuego-native-android-v1
+      - work-native-closed-beta-release-v1-20261010
       - work-native-voice-call-v1-20261010
       - work-native-voice-controller-v1-20261010
       - work-native-voice-turn-client-v1-20261010
@@ -23,6 +24,11 @@ on:
       - work-native-pos-edit-idempotency-20261010
     paths:
       - 'native-android/**'
+      - 'docs/pilot-recovery-manifest.json'
+      - 'docs/privacy.html'
+      - 'docs/play-closed-beta-readiness.md'
+      - '.github/workflows/build-native-closed-beta.yml'
+      - 'tests/native-closed-beta-readiness.cjs'
       - 'tests/native-android-source.cjs'
       - 'tests/native-pos-edit-idempotency.cjs'
       - 'tests/native-voice-call-contract.cjs'
@@ -124,6 +130,8 @@ jobs:
         run: node tests/native-voice-ui-contract.cjs
       - name: Native backend migration mirror
         run: node tests/native-backend-migration-sync.cjs
+      - name: Native Closed Beta readiness
+        run: node tests/native-closed-beta-readiness.cjs
       - name: Source integrity
         run: node tests/native-android-source.cjs
       - name: Verify launcher asset family
