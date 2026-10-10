@@ -47,50 +47,86 @@ import kotlinx.coroutines.launch
 
 @Composable
 fun MarketNativeScreen(
-    auth: NativeAuth,
+    auth: NativeAuth?,
     location: CustomerLocation?,
     address: String,
     onAddress: (String) -> Unit,
     onGps: () -> Unit,
     onBack: () -> Unit,
-    onDone: () -> Unit
+    onDone: () -> Unit,
+    onRequireLogin: () -> Unit = {}
 ) {
     val api = remember { CustomerMarketApi() }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
-    val cartStore = remember(auth.user.id) { MarketCartStore(context, auth.user.id) }
+    val actorId = auth?.user?.id ?: "guest"
+    val cartStore = remember(actorId) { MarketCartStore(context, actorId) }
     var markets by remember { mutableStateOf<List<MarketInfo>>(emptyList()) }
     var shops by remember { mutableStateOf<List<MarketShop>>(emptyList()) }
     var catalog by remember { mutableStateOf<List<MarketProduct>>(emptyList()) }
     var selectedMarket by remember { mutableStateOf<String?>(null) }
     var selectedShop by remember { mutableStateOf<String?>(null) }
-    var cart by remember(auth.user.id) { mutableStateOf<List<MarketCartLine>>(emptyList()) }
-    var restoredCart by remember(auth.user.id) { mutableStateOf(false) }
+    var cart by remember(actorId) { mutableStateOf<List<MarketCartLine>>(emptyList()) }
+    var restoredCart by remember(actorId) { mutableStateOf(false) }
     var activeTrip by remember { mutableStateOf<ActiveMarketTrip?>(null) }
     var note by remember { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }
     var loading by remember { mutableStateOf(true) }
     var message by remember { mutableStateOf<String?>(null) }
 
-    LaunchedEffect(auth.user.id, location?.latitude, location?.longitude) {
+    LaunchedEffect(actorId, location?.latitude, location?.longitude) {
         loading = true
         runCatching {
-            val m = api.loadMarkets(auth)
+            val m = if (auth == null) api.loadMarketsPublic() else api.loadMarkets(auth)
             markets = m
-            shops = api.loadShops(auth)
-            catalog = api.loadCatalog(auth)
+            shops = if (auth == null) api.loadShopsPublic() else api.loadShops(auth)
+            catalog = if (auth == null) api.loadCatalogPublic() else api.loadCatalog(auth)
             if (!restoredCart) {
-                val saved = cartStore.load()
-                cart = saved.mapNotNull { line ->
-                    catalog.find { it.id == line.productId && it.availablePacks > 0 }?.let { fresh ->
-                        MarketCartLine(fresh, line.quantity.coerceAtMost(fresh.availablePacks).coerceAtLeast(1))
+                fun restore(saved: List<MarketCartStore.Saved>): List<MarketCartLine> =
+                    saved.mapNotNull { line ->
+                        catalog.find { it.id == line.productId && it.availablePacks > 0 }?.let { fresh ->
+                            MarketCartLine(
+                                fresh,
+                                line.quantity.coerceAtMost(fresh.availablePacks).coerceAtLeast(1)
+                            )
+                        }
+                    }.let { restored ->
+                        if (restored.map { it.product.marketId }.toSet().size <= 1) restored else emptyList()
                     }
-                }.let { restored ->
-                    if (restored.map { it.product.marketId }.toSet().size <= 1) restored else emptyList()
+
+                val accountCart = restore(cartStore.load())
+                val guestStore = if (auth == null) null else MarketCartStore(context, "guest")
+                val guestCart = guestStore?.let { restore(it.load()) }.orEmpty()
+                cart = when {
+                    guestCart.isEmpty() -> accountCart
+                    accountCart.isEmpty() -> {
+                        guestStore?.save(emptyList())
+                        guestCart
+                    }
+                    accountCart.first().product.marketId == guestCart.first().product.marketId -> {
+                        val merged = (accountCart + guestCart)
+                            .groupBy { it.product.id }
+                            .values
+                            .map { rows ->
+                                val product = rows.last().product
+                                MarketCartLine(
+                                    product,
+                                    rows.sumOf { it.quantity }
+                                        .coerceAtMost(product.availablePacks)
+                                        .coerceAtLeast(1)
+                                )
+                            }
+                        guestStore?.save(emptyList())
+                        merged
+                    }
+                    else -> {
+                        message = "ตะกร้าตลาดสดก่อนเข้าสู่ระบบเป็นคนละตลาด จึงเก็บไว้แยกกัน"
+                        accountCart
+                    }
                 }
                 restoredCart = true
             }
-            activeTrip = api.activeTrip(auth)
+            activeTrip = if (auth == null) null else api.activeTrip(auth)
             if (selectedMarket == null) {
                 selectedMarket = activeTrip?.marketId ?: api.nearest(m, location)?.id
             }
@@ -324,6 +360,8 @@ fun MarketNativeScreen(
                         message = "กรุณาเลือกตำแหน่งและกรอกที่อยู่จัดส่ง"
                     } else if (activeTrip?.locked == true) {
                         message = "Rider ออกจากตลาดแล้ว ไม่สามารถเพิ่มร้านได้"
+                    } else if (auth == null) {
+                        onRequireLogin()
                     } else {
                         busy = true
                         scope.launch {
@@ -342,7 +380,12 @@ fun MarketNativeScreen(
                 modifier = Modifier.fillMaxWidth().height(56.dp)
             ) {
                 if (busy) CircularProgressIndicator(Modifier.size(22.dp), strokeWidth = 2.dp)
-                else Text(if (activeTrip == null) "ยืนยัน Market Trip" else "เพิ่มร้านเข้า Market Trip", fontWeight = FontWeight.Black)
+                else Text(
+                    if (auth == null) "เข้าสู่ระบบเพื่อสั่งซื้อ"
+                    else if (activeTrip == null) "ยืนยัน Market Trip"
+                    else "เพิ่มร้านเข้า Market Trip",
+                    fontWeight = FontWeight.Black
+                )
             }
         }
         Spacer(Modifier.height(40.dp))
