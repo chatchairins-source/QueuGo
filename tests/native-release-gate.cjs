@@ -81,6 +81,15 @@ for(const trigger of ["'tests/**'","'package.json'","'package-lock.json'"]){
 const nativePilotWorkflow=fs.readFileSync('.github/workflows/build-native-rider-pilot.yml','utf8');
 assert.ok(nativePilotWorkflow.includes("- 'work-native-**'"),'Native pilot CI must cover every work-native branch');
 
+const pageSizeVerifierPath='native-android/qa/verify-16kb-page-size.py';
+assert.ok(fs.existsSync(pageSizeVerifierPath),'16 KB page-size verifier must exist');
+const pageSizeVerifier=fs.readFileSync(pageSizeVerifierPath,'utf8');
+for(const token of ['"-P", "16"','MIN_ALIGNMENT = 0x4000','arm64-v8a','x86_64','readelf']){
+  assert.ok(pageSizeVerifier.includes(token),`16 KB verifier missing ${token}`);
+}
+assert.match(artifactVerifier,/PAGE_ALIGNMENT_16K/,'signed AAB verifier must require 16 KB page alignment');
+assert.ok(artifactVerifier.includes('"aab_page_alignment_16kb": True'),'signed artifact evidence must record 16 KB AAB alignment');
+
 const gradle=fs.readFileSync('native-android/build.gradle.kts','utf8');
 assert.match(gradle,/isDebuggable = false/);
 assert.match(gradle,/signingConfig = nativeReleaseSigning/);
