@@ -725,6 +725,7 @@ private fun MerchantShell(auth: NativeAuth, logout: () -> Unit) {
                 }
             }
         }
+        }
         QueueGoVoiceCallOverlay(
             state = voiceState,
             currentUserId = auth.user.id,
