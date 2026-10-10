@@ -14,7 +14,7 @@ ok(cert.includes('.github/workflows/build-native-rider-pilot.yml')&&cert.include
 ok(cert.includes('QG_CERTIFIED_NATIVE_PILOT_RUN_ID'),'certification must retain the attested Native Pilot run id');
 ok(cert.includes('actions/runs?head_sha=$GITHUB_SHA&status=success'),'certification must query successful workflow runs by exact HEAD directly');
 ok(cert.includes('queuego-native-release-evidence'),'certification must use the fixed private evidence bucket');
-ok(cert.includes('vars.QG_SUPABASE_URL'),'certification must source the Supabase project URL from Actions variables');
+ok(!cert.includes('vars.QG_SUPABASE_URL'),'certification must not depend on mutable Actions variables for the Production Supabase origin');
 ok(cert.includes('https://pkypiqhlrmzocysgeqew.supabase.co'),'certification must pin the QueueGo Production Supabase origin');
 ok(cert.includes('/storage/v1/bucket/$QG_EVIDENCE_BUCKET'),'certification must verify the evidence bucket metadata before download');
 ok(cert.includes('Release evidence bucket must remain private'),'certification must reject a public evidence bucket');
