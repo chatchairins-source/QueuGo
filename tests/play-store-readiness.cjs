@@ -133,6 +133,10 @@ ok(manifest?.android?.release_certification_bucket_public===false,'Release evide
 ok(Array.isArray(manifest?.android?.release_certification_bucket_allowed_mime_types)&&manifest.android.release_certification_bucket_allowed_mime_types.includes('application/zip'),'Release evidence bucket must remain ZIP-only');
 ok(manifest?.android?.release_certification_bucket_client_policies_present===false,'Release evidence bucket must remain server-side only with no client Storage policy');
 ok(manifest?.android?.release_certification_runtime_gate==='BLOCKED_SECRETS_AND_PHYSICAL_EVIDENCE','Certification runtime must remain blocked only on external credentials and real physical evidence after bucket provisioning');
+ok(manifest?.android?.release_gate_evidence_envelope_schema===true&&manifest?.android?.release_gate_evidence_envelope_version===1,'Release evidence must use the structured gate envelope schema');
+ok(manifest?.android?.release_gate_physical_device_id_hash_required===true&&manifest?.android?.release_gate_physical_role_binding===true,'Physical evidence must use hashed device identity and role binding');
+ok(manifest?.android?.release_gate_lifecycle_requires_all_roles===true,'Lifecycle certification must cover Customer Merchant and Rider');
+ok(manifest?.android?.release_gate_voice_requires_two_distinct_devices===true&&manifest?.android?.release_gate_voice_requires_two_distinct_networks===true,'Voice certification must require two devices and two networks');
 ok(manifest?.android?.release_certification_requires_exact_head_native_pilot_ci===true,'Release certification must require exact-HEAD Native Pilot CI');
 ok(manifest?.android?.release_certification_native_pilot_workflow==='.github/workflows/build-native-rider-pilot.yml','Recovery manifest must pin the Native Pilot workflow identity for certification');
 ok(manifest?.android?.release_certification_final_release_revalidates_native_pilot_run===true,'Final release must revalidate the Native Pilot run recorded by certification');
