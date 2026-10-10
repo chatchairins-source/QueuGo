@@ -277,6 +277,13 @@ jobs:
         run: |
           gradle -p native-android             :customer:assembleRelease :customer:bundleRelease             :merchant:assembleRelease :merchant:bundleRelease             :rider:assembleRelease :rider:bundleRelease             --no-build-cache --stacktrace
 
+      - name: Verify Android 16 KB page-size packaging
+        run: |
+          python3 native-android/qa/verify-16kb-page-size.py \
+            native-android/customer/build/outputs/apk/release/customer-release.apk \
+            native-android/merchant/build/outputs/apk/release/merchant-release.apk \
+            native-android/rider/build/outputs/apk/release/rider-release.apk
+
       - name: Verify signed Native release artifacts
         shell: bash
         run: |
