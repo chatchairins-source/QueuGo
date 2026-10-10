@@ -20,6 +20,29 @@ class NativeAuthApi(
         private const val TIMEOUT = 15000
     }
 
+    suspend fun registerCustomer(form: NativeCustomerRegistration, deviceId: String): NativeAuth {
+        form.validate()
+        val identifier = form.email?.trim() ?: form.phone.trim()
+        try { withContext(Dispatchers.IO) {
+            requestObject("POST", "/auth/v1/signup", null, JSONObject()
+                .put("email", form.email?.trim() ?: form.phone.filter(Char::isDigit) + "@auth.queuetech.local")
+                .put("password", form.password)
+                .put("data", JSONObject().put("name", form.name.trim())
+                    .put("phone", form.phone.trim()).put("role", "customer")
+                    .put("latitude", form.latitude).put("longitude", form.longitude)))
+        } } catch (failure: Exception) {
+            if (failure is kotlinx.coroutines.CancellationException) throw failure
+            if (failure is NativeAuthHttpException && failure.statusCode in 400..499) throw failure
+            throw NativeCustomerSignupUncertainException(failure)
+        }
+        return try {
+            signIn(identifier, form.password, "customer", deviceId)
+        } catch (failure: Exception) {
+            if (failure is kotlinx.coroutines.CancellationException) throw failure
+            throw NativeCustomerSignupCompletedException(failure)
+        }
+    }
+
     suspend fun signIn(
         identifier: String,
         password: String,

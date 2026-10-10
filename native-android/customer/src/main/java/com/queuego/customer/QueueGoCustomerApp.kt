@@ -102,7 +102,8 @@ private val homeDedicatedMarketCategories =
 
 @Composable
 fun QueueGoCustomerApp() {
-    QueueGoAuthHost(expectedRole = "customer", appLabel = "Customer") { auth, logout ->
+    QueueGoAuthHost(expectedRole = "customer", appLabel = "Customer",
+        entryScreen = { CustomerAuthenticationScreen(it) }) { auth, logout ->
         key(auth.user.id, auth.user.authUserId) { CustomerShell(auth, logout) }
     }
 }

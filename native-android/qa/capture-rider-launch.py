@@ -101,6 +101,50 @@ def capture_role_viewports():
                 item["native_registration_step_one"] = "PASS; no account/data submitted"
                 runtime = run(adb + ["logcat", "-d", "-s", "AndroidRuntime:E"], capture_output=True, text=True).stdout
                 assert "FATAL EXCEPTION" not in runtime, "Native registration crashed"
+            if role == "customer":
+                button = next((n for n in ui_nodes if n.get("text") == "สมัครสมาชิก"), None)
+                assert button is not None, f"Customer registration entry missing at {viewport}"
+                bounds = [int(x) for x in re.findall(r"\d+", button.get("bounds", ""))]
+                assert len(bounds) == 4
+                run(adb + ["shell", "input", "tap", str((bounds[0] + bounds[2]) // 2), str((bounds[1] + bounds[3]) // 2)])
+                time.sleep(2)
+                run(adb + ["shell", "uiautomator", "dump", "/sdcard/queuego-customer-registration.xml"])
+                registration_xml = directory / "registration.xml"
+                run(adb + ["pull", "/sdcard/queuego-customer-registration.xml", str(registration_xml)])
+                registration_nodes = list(ET.parse(registration_xml).getroot().iter("node"))
+                assert any("ชื่อ-นามสกุล" in (n.get("text", "") + n.get("content-desc", "")) for n in registration_nodes), "Customer signup form missing"
+                with (directory / "registration.png").open("wb") as png:
+                    run(adb + ["exec-out", "screencap", "-p"], stdout=png)
+                selector = next((n for n in registration_nodes if n.get("text") == "เบอร์โทรศัพท์"), None)
+                assert selector is not None, "Customer signup mode selector missing"
+                bounds = [int(x) for x in re.findall(r"\d+", selector.get("bounds", ""))]
+                run(adb + ["shell", "input", "tap", str((bounds[0] + bounds[2]) // 2), str((bounds[1] + bounds[3]) // 2)])
+                time.sleep(1)
+                run(adb + ["shell", "uiautomator", "dump", "/sdcard/queuego-customer-mode.xml"])
+                mode_xml = directory / "registration-mode.xml"
+                run(adb + ["pull", "/sdcard/queuego-customer-mode.xml", str(mode_xml)])
+                mode_nodes = list(ET.parse(mode_xml).getroot().iter("node"))
+                choice = next((n for n in mode_nodes if n.get("text") == "อีเมล"), None)
+                assert choice is not None, "Customer email signup choice missing"
+                bounds = [int(x) for x in re.findall(r"\d+", choice.get("bounds", ""))]
+                run(adb + ["shell", "input", "tap", str((bounds[0] + bounds[2]) // 2), str((bounds[1] + bounds[3]) // 2)])
+                time.sleep(1)
+                run(adb + ["shell", "uiautomator", "dump", "/sdcard/queuego-customer-email.xml"])
+                email_xml = directory / "registration-email.xml"
+                run(adb + ["pull", "/sdcard/queuego-customer-email.xml", str(email_xml)])
+                email_nodes = list(ET.parse(email_xml).getroot().iter("node"))
+                assert any(n.get("content-desc") == "อีเมล" and n.get("package") == pkg for n in email_nodes), "Customer email input missing"
+                with (directory / "registration-email.png").open("wb") as png:
+                    run(adb + ["exec-out", "screencap", "-p"], stdout=png)
+                run(adb + ["shell", "input", "keyevent", "4"])
+                time.sleep(1)
+                run(adb + ["shell", "uiautomator", "dump", "/sdcard/queuego-customer-return.xml"])
+                return_xml = directory / "registration-back.xml"
+                run(adb + ["pull", "/sdcard/queuego-customer-return.xml", str(return_xml)])
+                assert any(n.get("text") == "ยินดีต้อนรับสู่ QueueGo" for n in ET.parse(return_xml).getroot().iter("node")), "Customer Back did not restore login"
+                item["native_customer_signup_navigation"] = "PASS; phone/email mode and back; no account/data submitted"
+                runtime = run(adb + ["logcat", "-d", "-s", "AndroidRuntime:E"], capture_output=True, text=True).stdout
+                assert "FATAL EXCEPTION" not in runtime, "Customer registration navigation crashed"
             evidence.append(item)
     (output / "matrix-metadata.json").write_text(json.dumps(evidence, ensure_ascii=False, indent=2) + "\n")
     print("Actual three-role phone/small-phone/tablet fresh-session launch matrix PASS; authenticated E2E/visual parity remain unverified")

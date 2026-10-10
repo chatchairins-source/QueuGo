@@ -21,6 +21,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -31,10 +32,20 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
+data class NativeAuthEntry(
+    val busy: Boolean,
+    val error: String?,
+    val customerAccountCreated: Boolean,
+    val login: (String, String) -> Unit,
+    val registerCustomer: (NativeCustomerRegistration) -> Unit,
+    val clearError: () -> Unit
+)
+
 @Composable
 fun QueueGoAuthHost(
     expectedRole: String,
     appLabel: String,
+    entryScreen: (@Composable (NativeAuthEntry) -> Unit)? = null,
     content: @Composable (NativeAuth, () -> Unit) -> Unit
 ) {
     val context = LocalContext.current
@@ -47,6 +58,58 @@ fun QueueGoAuthHost(
     var error by remember { mutableStateOf<String?>(null) }
     var restoreAttempt by remember { mutableStateOf(0) }
     var recoveryRequired by remember { mutableStateOf(false) }
+    var customerAccountCreated by rememberSaveable { mutableStateOf(false) }
+    var customerSignupCheckpoint by rememberSaveable { mutableStateOf("") }
+
+    fun signIn(identifier: String, password: String) {
+        if (busy || identifier.isBlank() || password.isBlank()) return
+        busy = true
+        error = null
+        scope.launch {
+            try {
+                val signedIn = api.signIn(identifier, password, expectedRole, store.deviceId())
+                store.save(signedIn)
+                auth = signedIn
+            } catch (failure: Exception) {
+                if (failure is CancellationException) throw failure
+                error = failure.message ?: "เข้าสู่ระบบไม่สำเร็จ"
+            } finally { busy = false }
+        }
+    }
+
+    fun registerCustomer(form: NativeCustomerRegistration) {
+        if (busy || expectedRole != "customer") return
+        busy = true
+        error = null
+        customerAccountCreated = false
+        scope.launch {
+            try {
+                form.validate()
+                val identifier = form.email?.trim() ?: form.phone.trim()
+                // A lost signup reply is ambiguous. Recover through authentication,
+                // including after Activity restoration, rather than replaying signup.
+                val signedIn = if (customerSignupCheckpoint == identifier) {
+                    api.signIn(identifier, form.password, "customer", store.deviceId())
+                } else {
+                    customerSignupCheckpoint = identifier
+                    try { api.registerCustomer(form, store.deviceId()) }
+                    catch (failure: Exception) {
+                        if (failure is NativeAuthHttpException && failure.statusCode in 400..499)
+                            customerSignupCheckpoint = ""
+                        throw failure
+                    }
+                }
+                customerAccountCreated = true
+                store.save(signedIn)
+                auth = signedIn
+            } catch (failure: Exception) {
+                if (failure is CancellationException) throw failure
+                if (failure is NativeCustomerSignupCompletedException ||
+                    failure is NativeCustomerSignupUncertainException) customerAccountCreated = true
+                error = failure.message ?: "สมัครสมาชิกไม่สำเร็จ"
+            } finally { busy = false }
+        }
+    }
 
     LaunchedEffect(expectedRole, restoreAttempt) {
         restoring = true
@@ -114,22 +177,11 @@ fun QueueGoAuthHost(
                     Text("ลองใหม่")
                 }
             }
-            auth == null -> QueueGoLoginScreen(appLabel, busy, error) login@{ id, pass ->
-                if (busy || id.isBlank() || pass.isBlank()) return@login
-                busy = true
-                error = null
-                scope.launch {
-                    try {
-                        val signedIn = api.signIn(id, pass, expectedRole, store.deviceId())
-                        store.save(signedIn)
-                        auth = signedIn
-                    } catch (failure: Exception) {
-                        if (failure is CancellationException) throw failure
-                        error = failure.message ?: "เข้าสู่ระบบไม่สำเร็จ"
-                    } finally {
-                        busy = false
-                    }
-                }
+            auth == null -> {
+                if (entryScreen != null) entryScreen(NativeAuthEntry(
+                    busy, error, customerAccountCreated, ::signIn, ::registerCustomer,
+                    { if (!busy) error = null }
+                )) else QueueGoLoginScreen(appLabel, busy, error, ::signIn)
             }
             else -> content(auth!!) {
                 val current = auth!!
