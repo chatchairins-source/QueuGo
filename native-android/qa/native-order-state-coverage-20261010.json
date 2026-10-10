@@ -65,12 +65,8 @@
           "accepted",
           "cancel"
         ],
-        "accepted": [
-          "preparing"
-        ],
-        "searching_rider": [
-          "preparing"
-        ],
+        "accepted": [],
+        "searching_rider": [],
         "rider_assigned": [
           "preparing"
         ],
@@ -100,5 +96,6 @@
       "completed_history": true,
       "no_rider_available_not_applicable_before_assignment": true
     }
-  }
+  },
+  "production_transition_note": "Supabase Production queuego_shop_delivery_transition allows preparing only from rider_assigned with non-null rider_id; accepted/searching_rider remain wait states."
 }
