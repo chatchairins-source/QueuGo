@@ -1,6 +1,36 @@
 val qgVersionCode = providers.gradleProperty("QG_VERSION_CODE").orNull?.toIntOrNull()
 val qgVersionName = providers.gradleProperty("QG_VERSION_NAME").orNull
 val qgStoreFile = providers.gradleProperty("QG_STORE_FILE").orNull
+val qgStorePassword = providers.gradleProperty("QG_STORE_PASSWORD").orNull
+val qgKeyAlias = providers.gradleProperty("QG_KEY_ALIAS").orNull
+val qgKeyPassword = providers.gradleProperty("QG_KEY_PASSWORD").orNull
+val qgReleaseRequested = gradle.startParameter.taskNames.any {
+    it.contains("Release", ignoreCase = true)
+}
+
+if (qgReleaseRequested) {
+    require(qgVersionCode != null && qgVersionCode > 0) {
+        "QueueGo release build requires QG_VERSION_CODE"
+    }
+    require(!qgVersionName.isNullOrBlank()) {
+        "QueueGo release build requires QG_VERSION_NAME"
+    }
+    require(!qgStoreFile.isNullOrBlank()) {
+        "QueueGo release build requires QG_STORE_FILE"
+    }
+    require(!qgStorePassword.isNullOrBlank()) {
+        "QueueGo release build requires QG_STORE_PASSWORD"
+    }
+    require(!qgKeyAlias.isNullOrBlank()) {
+        "QueueGo release build requires QG_KEY_ALIAS"
+    }
+    require(!qgKeyPassword.isNullOrBlank()) {
+        "QueueGo release build requires QG_KEY_PASSWORD"
+    }
+    require(file("google-services.json").isFile) {
+        "QueueGo release build requires role-specific google-services.json"
+    }
+}
 
 plugins {
     id("com.android.application")
@@ -25,9 +55,9 @@ android {
         create("release") {
             if (qgStoreFile != null) {
                 storeFile = rootProject.file(qgStoreFile)
-                storePassword = providers.gradleProperty("QG_STORE_PASSWORD").orNull
-                keyAlias = providers.gradleProperty("QG_KEY_ALIAS").orNull
-                keyPassword = providers.gradleProperty("QG_KEY_PASSWORD").orNull
+                storePassword = qgStorePassword
+                keyAlias = qgKeyAlias
+                keyPassword = qgKeyPassword
             }
         }
     }
