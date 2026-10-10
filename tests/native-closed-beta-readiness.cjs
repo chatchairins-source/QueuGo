@@ -6,6 +6,7 @@ const workflow=read('.github/workflows/build-native-closed-beta.yml');
 const manifest=JSON.parse(read('docs/pilot-recovery-manifest.json'));
 const readiness=read('docs/play-closed-beta-readiness.md');
 const privacy=read('docs/privacy.html');
+const legacyWorkflow=read('.github/workflows/build-queuego-apks.yml');
 
 const checks=[];
 const ok=(name,value)=>{checks.push([name,Boolean(value)]);assert.ok(value,name);};
@@ -38,6 +39,8 @@ for(const role of ['customer','merchant','rider']){
   ok(role+' workflow versionCode property',/QG_VERSION_CODE/.test(gradle)&&/qgVersionCode/.test(gradle));
   ok(role+' workflow versionName property',/QG_VERSION_NAME/.test(gradle)&&/qgVersionName/.test(gradle));
   ok(role+' conditional release signing',/signingConfigs/.test(gradle)&&/QG_STORE_PASSWORD/.test(gradle)&&/QG_KEY_ALIAS/.test(gradle)&&/QG_KEY_PASSWORD/.test(gradle));
+  ok(role+' release tasks fail closed without release properties',/qgReleaseRequested/.test(gradle)&&/requires QG_VERSION_CODE/.test(gradle)&&/requires QG_VERSION_NAME/.test(gradle)&&/requires QG_STORE_FILE/.test(gradle)&&/requires QG_STORE_PASSWORD/.test(gradle)&&/requires QG_KEY_ALIAS/.test(gradle)&&/requires QG_KEY_PASSWORD/.test(gradle));
+  ok(role+' release tasks require Firebase config',/release build requires role-specific google-services\.json/.test(gradle));
   ok(role+' release non-debuggable',/isDebuggable = false/.test(gradle));
 
   const androidManifest=read(`native-android/${role}/src/main/AndroidManifest.xml`);
@@ -60,6 +63,7 @@ ok('Native release uploads only gated artifacts',/needs: validate/.test(workflow
 ok('Recovery manifest points to Native source',manifest?.android?.native_source_of_truth==='native-android/');
 ok('Recovery manifest points to Native release workflow',manifest?.android?.native_closed_beta_workflow==='.github/workflows/build-native-closed-beta.yml');
 ok('Legacy Capacitor release is historical only',/HISTORICAL_ONLY/.test(manifest?.android?.legacy_capacitor_release_policy||''));
+ok('legacy Capacitor workflow is hard-blocked',/Block historical Capacitor Android release/.test(legacyWorkflow)&&/Historical Capacitor\/WebView Android release is disabled/.test(legacyWorkflow)&&/exit 1/.test(legacyWorkflow));
 ok('Voice code gate PASS',manifest?.voice?.code_gate==='PASS');
 ok('TURN physical gate remains false until certified',manifest?.voice?.turn_relay_certified===false);
 ok('two-device voice gate remains false until certified',manifest?.voice?.two_device_audio_e2e_certified===false);
