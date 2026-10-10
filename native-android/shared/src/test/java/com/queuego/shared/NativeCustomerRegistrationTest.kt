@@ -100,3 +100,47 @@ class NativeCustomerRegistrationTest {
         }
     }
 }
+
+class NativeMerchantRegistrationTest {
+    private fun form(
+        category: String = "food",
+        shopping: Set<String> = emptySet(),
+        market: NativeMerchantMarketRegistration? = null
+    ) = NativeMerchantRegistration(
+        "เจ้าของร้าน", "ร้านทดสอบ", category, shopping, "0812345678",
+        "GoodPassword12!", "GoodPassword12!", true, true, market
+    )
+
+    @Test fun merchantValidationMatchesProductionRegistrationRules() {
+        listOf(
+            form().copy(shopName = " "),
+            form().copy(phone = "123"),
+            form().copy(password = "weak"),
+            form().copy(confirmation = "different"),
+            form().copy(truthConfirmed = false),
+            form("shopping"),
+            form("market")
+        ).forEach { invalid ->
+            assertThrows(IllegalArgumentException::class.java) { invalid.validate() }
+        }
+        form("shopping", setOf("computer_it", "toys")).validate()
+        form(
+            "market",
+            market = NativeMerchantMarketRegistration(
+                14.99, 103.10, "market-id", "A12", "ผัก", null, true, true
+            )
+        ).validate()
+    }
+
+    @Test fun merchantDistanceAndRadiusUseRealCoordinates() {
+        val distance = nativeDistanceKm(14.99, 103.10, 14.9901, 103.1001)
+        assertTrue(distance > 0)
+        assertTrue(
+            NativeRegistrationMarket(
+                "id", "ตลาด", null, "บุรีรัมย์", null, null,
+                14.9901, 103.1001, 3.0, distance
+            ).selectable
+        )
+    }
+}
+
