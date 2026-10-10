@@ -67,6 +67,16 @@ any requirement below is OPEN.
   Runtime certification remains BLOCKED on Actions credentials plus real
   physical evidence; bucket provisioning itself is no longer a blocker.
 
+- Native main HEAD `33e64430af4edb93cadcf2ae9f4c667d55da259a` completed
+  Native Pilot run `38070312765` successfully. Pilot APK artifact
+  `11677115695` has upload SHA-256
+  `8582db5df2fe59ab70f23c3fbbbf3f9e8468aea81e5391437e8ff421f6d145d9`;
+  Android runtime evidence artifact `11676896580` has upload SHA-256
+  `b376d69dd4e1bc1285249afd8bc48ae031762cdb7e7279681590f148ea806117`.
+  Three-role fresh-session launch, corrected Longdo map lifecycle and microphone
+  foreground-service lifecycle passed. The same runtime log explicitly leaves
+  authenticated E2E/visual parity, physical FCM and real voice audio OPEN.
+
 ## Structured physical evidence semantic contract v2
 
 Physical release evidence remains **OPEN** until real-device capture exists. The
