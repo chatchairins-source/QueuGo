@@ -53,7 +53,10 @@
     "notification_background_physical": "BLOCKED",
     "external_backup_pipeline": "READY",
     "ugc_chat_safety": "PASS",
-    "internal_source_readiness": "PASS"
+    "internal_source_readiness": "PASS",
+    "native_voice_code": "PASS",
+    "native_voice_physical": "BLOCKED",
+    "turn_relay_physical": "BLOCKED"
   },
   "production_evidence": {
     "recent_photo_only_completed_orders": 5,
@@ -74,8 +77,8 @@
     "database_version": "17.6.1.166",
     "region": "ap-southeast-2",
     "latest_migration": [
-      "20261007045535",
-      "remove_duplicate_notifications_update_policy"
+      "20261010074132",
+      "native_push_session_binding_v1"
     ],
     "edge_functions": [
       {
@@ -86,10 +89,10 @@
       },
       {
         "slug": "queuego-push",
-        "version": 12,
+        "version": 14,
         "status": "ACTIVE",
         "verify_jwt": false,
-        "ezbr_sha256": "ab62a45d7f757accb6e298d70261a0f219d1b4c4266a65b0d36e965cf3f36aac"
+        "ezbr_sha256": "aa3efb2afbffab68afacb68cd58f24a00114eb3b82abe293fa0ee95b77fa4363"
       },
       {
         "slug": "rider-web-push",
@@ -97,6 +100,13 @@
         "status": "ACTIVE",
         "verify_jwt": false,
         "retired": true
+      },
+      {
+        "slug": "queuego-turn",
+        "version": 2,
+        "status": "ACTIVE",
+        "verify_jwt": true,
+        "ezbr_sha256": "747116e17f5c4a2feb2852851e1e346b5a8e456c5a6b521682ab1a5f02ed894c"
       }
     ],
     "managed_daily_backup_certified": false,
@@ -142,9 +152,9 @@
     "native_push_tokens_in_production": 0,
     "physical_background_notification_certified": false,
     "blockers": [
-      "GitHub Actions secret QG_FIREBASE_GOOGLE_SERVICES_JSON_B64 has not been proven by an Android Release run.",
+      "GitHub Actions secret QG_FIREBASE_GOOGLE_SERVICES_JSON_B64 has not been proven by a Native Closed Beta run.",
       "Supabase Edge secret FIREBASE_SERVICE_ACCOUNT_JSON cannot be verified from the available connector.",
-      "No physical Android device has registered a native token and received a background notification yet."
+      "No physical Android Customer/Merchant/Rider device has registered a native token and received a background notification yet."
     ],
     "firebase_edge_secret_checked": true,
     "firebase_edge_secret_configured": false,
@@ -158,11 +168,11 @@
     ],
     "native_test_firebase_oauth_preflight": true,
     "native_test_preflight_behavior": "When a native token exists, the physical test validates FIREBASE_SERVICE_ACCOUNT_JSON via Google OAuth before creating a push_test notification.",
-    "edge_function_version": 12,
+    "edge_function_version": 14,
     "edge_source_matches_github": true,
     "edge_function_status": "ACTIVE",
     "edge_function_verify_jwt": false,
-    "edge_function_sha256": "ab62a45d7f757accb6e298d70261a0f219d1b4c4266a65b0d36e965cf3f36aac",
+    "edge_function_sha256": "aa3efb2afbffab68afacb68cd58f24a00114eb3b82abe293fa0ee95b77fa4363",
     "edge_deployed_at": "2026-10-07T12:10:26+07:00",
     "edge_post_deploy_log_check": {
       "checked": true,
@@ -228,7 +238,9 @@
     "visible_order_code_normalization": "QT-XXXX",
     "native_push_order_code_normalized": true,
     "web_push_order_code_normalized": true,
-    "unified_push_execution_path_only": true
+    "unified_push_execution_path_only": true,
+    "native_push_session_bound": true,
+    "native_push_session_binding_migration": "20261010074132_native_push_session_binding_v1"
   },
   "android": {
     "capacitor_version": "8.0.0",
@@ -330,8 +342,8 @@
       ".github/workflows/publish-approved-apks.yml"
     ],
     "allowed_android_build_workflows": [
-      ".github/workflows/build-queuego-pilot-apks.yml",
-      ".github/workflows/build-queuego-apks.yml"
+      ".github/workflows/build-native-rider-pilot.yml",
+      ".github/workflows/build-native-closed-beta.yml"
     ],
     "legacy_publish_retirement_commits": [
       "8100b9e7d87ca45290a83df6beb1c9c2d57506db",
@@ -345,7 +357,16 @@
       "queuego-android-rc-20261004-approved-icon",
       "queuego-customer-rc-20261001"
     ],
-    "legacy_release_policy": "HISTORICAL_ONLY_DO_NOT_USE_FOR_PILOT_OR_CLOSED_BETA"
+    "legacy_release_policy": "HISTORICAL_ONLY_DO_NOT_USE_FOR_PILOT_OR_CLOSED_BETA",
+    "native_source_of_truth": "native-android/",
+    "native_architecture": "KOTLIN_COMPOSE_NO_WEBVIEW",
+    "native_closed_beta_workflow": ".github/workflows/build-native-closed-beta.yml",
+    "native_pilot_workflow": ".github/workflows/build-native-rider-pilot.yml",
+    "hard_gate_blocks_build_without_voice_e2e": true,
+    "hard_gate_blocks_build_without_turn_relay_certification": true,
+    "microphone_permission_policy": "USER_INITIATED_IN_APP_CALL_ONLY",
+    "legacy_capacitor_release_workflow": ".github/workflows/build-queuego-apks.yml",
+    "legacy_capacitor_release_policy": "HISTORICAL_ONLY_DO_NOT_USE_FOR_NATIVE_CLOSED_BETA"
   },
   "security": {
     "code_surface_hardened": true,
@@ -486,15 +507,16 @@
   },
   "remaining_external_blockers": [
     "Configure QG_SUPABASE_DB_URL, QG_SUPABASE_SERVICE_ROLE_KEY and QG_BACKUP_PASSPHRASE, then pass QueueGo Encrypted Backup Restore Drill.",
-    "Configure QG_FIREBASE_GOOGLE_SERVICES_JSON_B64 and Supabase FIREBASE_SERVICE_ACCOUNT_JSON.",
-    "Configure Android release signing secrets.",
-    "Build Pilot APKs and certify native background notification on a physical Android device.",
-    "Enter finalized Data Safety answers in Play Console using Longdo location sharing = Yes for App functionality.",
+    "Configure QG_FIREBASE_GOOGLE_SERVICES_JSON_B64 with Android clients for com.queuego.customer, com.queuego.merchant and com.queuego.rider, and configure Supabase FIREBASE_SERVICE_ACCOUNT_JSON.",
+    "Configure Android release signing secrets QG_ANDROID_KEYSTORE_B64, QG_ANDROID_STORE_PASSWORD, QG_ANDROID_KEY_ALIAS and QG_ANDROID_KEY_PASSWORD.",
+    "Configure/verify Supabase CLOUDFLARE_TURN_KEY_ID and CLOUDFLARE_TURN_KEY_API_TOKEN, then certify a real two-device TURN/WebRTC audio call.",
+    "Build Native Pilot APKs and certify background notifications on physical Customer, Merchant and Rider Android devices, including logout token invalidation.",
+    "Enter finalized Data Safety answers in Play Console, including Longdo location sharing and user-initiated real-time voice transmission.",
     "Enter Contains Ads declarations in Play Console: Customer Yes, Merchant No, Rider No.",
     "Enter Target Audience in Play Console as 18+ only for Customer, Merchant and Rider, and enable Restrict Minor Access for Closed Beta.",
     "Confirm Google Play developer account type/date and any 12-testers/14-days requirement.",
-    "Create dedicated reusable Play reviewer accounts and capture real current-app screenshots.",
-    "Do not use the historical GitHub Release APKs from 2026-10-01/04 for Pilot or Closed Beta; only artifacts from the gated Pilot/Release workflows are valid."
+    "Create dedicated reusable Play reviewer accounts and capture real current Native-app screenshots.",
+    "Do not use historical Capacitor/WebView APK/AAB artifacts for Pilot or Closed Beta; only artifacts from the gated Native workflows are valid."
   ],
   "post_beta_recommendations": [
     "After upgrading Supabase to Pro, enable leaked-password protection and re-run Security Advisor; then promote security_platform_auth from PASS_FREE_PLAN_CONTROLS to PASS."
@@ -737,5 +759,25 @@
       "recent_with_pickup_proof": 5,
       "recent_with_delivery_proof": 5
     }
+  },
+  "voice": {
+    "in_app_audio_calls": true,
+    "implementation": "NATIVE_WEBRTC_AUDIO_ONLY",
+    "microphone_permission": "android.permission.RECORD_AUDIO",
+    "microphone_permission_policy": "USER_INITIATED_IN_APP_CALL_ONLY",
+    "background_microphone_capture": false,
+    "media_recorded_or_persisted": false,
+    "signaling": "PRIVATE_SUPABASE_REALTIME_BROADCAST",
+    "signaling_session_bound": true,
+    "turn_edge_function": "queuego-turn",
+    "turn_edge_function_version": 2,
+    "turn_edge_function_verify_jwt": true,
+    "turn_credentials": "SHORT_LIVED_SERVER_GENERATED",
+    "turn_relay_certified": false,
+    "two_device_audio_e2e_certified": false,
+    "code_gate": "PASS",
+    "production_schema_deployed": true,
+    "production_rpc_guarded": true,
+    "release_gate": "BLOCKED_EXTERNAL_TURN_AND_PHYSICAL_E2E"
   }
 }
