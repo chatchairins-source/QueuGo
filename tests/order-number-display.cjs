@@ -37,8 +37,9 @@ const tableQrHtml=read('table-order.html');
 const tableQr=read('table-order.js');
 const laundryCodeMigration=read('supabase/migrations/20261007043952_unify_laundry_visible_order_codes.sql');
 const posQrCodeMigration=read('supabase/migrations/20261007045146_unify_pos_qr_order_codes.sql');
-const release=read('.github/workflows/build-queuego-apks.yml');
-const pilot=read('.github/workflows/build-queuego-pilot-apks.yml');
+const nativeOrderNumberSource=read('native-android/shared/src/main/java/com/queuego/shared/NativeOrderNumber.kt');
+const nativeOrderNumberTest=read('native-android/shared/src/test/java/com/queuego/shared/NativeOrderNumberTest.kt');
+const nativeWorkflow=read('.github/workflows/build-native-rider-pilot.yml');
 const activeCodeGuard=read('supabase/migrations/20261007041346_enforce_active_visible_order_code_uniqueness.sql');
 const pushEdge=read('supabase/functions/queuego-push/index.ts');
 
@@ -71,10 +72,12 @@ assert(!rider.includes('#${esc(j.order_number||\'\')}'));
 assert(!rider.includes('<h2>#${esc(code)}</h2>'),'Rider offer/active cards must show QT-XXXX without a hash prefix');
 assert(rider.includes('qgShortOrder({order_number:o.order_number,id:o.order_id})'));
 assert(merchant.includes('escText(displayOrderNumber(o))'));
-for(const workflow of [release,pilot]){
-  assert(workflow.includes('../queuego-order-number.js'));
-  assert(workflow.includes("s=s.replace('../queuego-order-number.js','queuego-order-number.js')"));
+assert(nativeOrderNumberSource.includes('fun nativeOrderNumber(raw: String?)'),'Native Android must use the shared native visible-order formatter');
+for(const fixture of ['QT-20261006-2141','LW-20260930-112419-e26b','POS-32D8C1AD0747','QR-12DBF4E490AE']){
+  assert(nativeOrderNumberTest.includes(fixture),'Native visible-order unit test must retain fixture '+fixture);
 }
+assert(nativeOrderNumberSource.includes('return "QT-"'),'Native visible-order formatter must only emit QT codes');
+assert(nativeWorkflow.includes(':shared:testDebugUnitTest'),'Native CI must run shared order-number unit tests');
 for(const source of [customer,merchant,rider,admin]){
   assert(!source.includes('QT-YYYYMMDD-xxxx'));
 }
