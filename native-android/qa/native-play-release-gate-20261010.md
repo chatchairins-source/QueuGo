@@ -104,6 +104,21 @@ and the same certified signer identity is enforced across all three apps.
 Source readiness for this verifier does not close the signed-artifact gate; PASS
 requires the real release outputs.
 
+The active Native release workflow is `.github/workflows/build-native-signed-release.yml`.
+It is manual-only on `queuego-native-android-v1`, downloads a separately recorded
+`queuego-native-release-evidence` artifact, runs the hard gate verifier, builds
+release APK/AAB outputs for all three roles, runs the signed-artifact verifier,
+and stores the result only as an internal GitHub Actions artifact. It does not
+publish a GitHub Release or submit to Play automatically.
+
+The evidence artifact is created by `.github/workflows/native-release-evidence.yml`.
+That workflow records operator-certified PASS references and SHA-256 digests for
+every gate from the canonical verifier, plus exact source SHA and P0/P1=0. It
+does not infer physical behavior, Play Console state, Firebase delivery, TURN
+audio quality, Blueprint parity or any other external result. Unsupported PASS
+input remains prohibited; the operator is responsible for the evidence.
+Neither workflow has closed the external Release Gate in the current state.
+
 ## Native voice privacy and Data Safety preflight
 
 All three apps use RECORD_AUDIO for optional order-scoped audio-only calls.
