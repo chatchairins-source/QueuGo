@@ -26,5 +26,5 @@ dependencies {
     implementation("androidx.compose.ui:ui:1.11.4")
     implementation("androidx.compose.foundation:foundation:1.11.4")
     implementation("androidx.core:core-ktx:1.17.0")
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")\n    implementation("com.google.zxing:core:3.5.3")
 }
