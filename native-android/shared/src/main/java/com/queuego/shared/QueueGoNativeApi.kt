@@ -46,6 +46,9 @@ class QueueGoNativeApi {
     suspend fun rpc(name: String, token: String? = null, body: JSONObject = JSONObject()): Any =
         withContext(Dispatchers.IO) { request("POST", "/rest/v1/rpc/" + name, token, body) }
 
+    suspend fun function(name: String, token: String, body: JSONObject): Any =
+        withContext(Dispatchers.IO) { request("POST", "/functions/v1/" + name, token, body) }
+
     fun array(value: Any): JSONArray = value as? JSONArray ?: JSONArray()
     fun obj(value: Any): JSONObject = value as? JSONObject ?: JSONObject()
     fun enc(value: String): String = URLEncoder.encode(value, StandardCharsets.UTF_8.toString())
