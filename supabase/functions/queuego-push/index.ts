@@ -130,7 +130,7 @@ async function sendNativePush(deviceToken:string,user:any,n:any){
           },
           data,
           android:{
-            priority:user.role==='rider'?'high':'normal',
+            priority:(user.role==='rider'||n.type==='voice_call')?'high':'normal',
             notification:{channel_id:'queuego_orders',sound:'default'}
           }
         }
