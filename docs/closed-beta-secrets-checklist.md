@@ -101,5 +101,8 @@ Only after the physical-device test passes should `physical_background_notificat
 - Do not use `.github/workflows/build-queuego-apks.yml` or historical Capacitor/WebView artifacts for the current QueueGo Native release.
 - The only Closed Beta artifact workflow for the current source of truth is `.github/workflows/build-native-closed-beta.yml`.
 - The workflow is fail-closed: it will not build signed release artifacts while backup/restore, physical FCM, TURN relay, or two-device voice certification remains incomplete.
-- Gradle itself also fails closed for any Release task unless explicit release version properties, a role-specific Firebase config, and all signing properties are present.
-- The historical `.github/workflows/build-queuego-apks.yml` Capacitor/WebView release path is hard-blocked at runtime and cannot produce current QueueGo Android release artifacts.
+
+
+## Native Closed Beta dispatcher
+
+GitHub exposes `workflow_dispatch` from the repository default branch, which remains `main`. Therefore the finalized `.github/workflows/build-native-closed-beta.yml` must also exist on `main` as the dispatcher definition. The workflow itself always checks out `queuego-native-android-v1` explicitly for validation and build, and release evidence records the checked-out Native commit SHA rather than the default-branch SHA.
