@@ -1,5 +1,9 @@
 package com.queuego.shared
 
+import android.Manifest
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -65,6 +69,10 @@ fun QueueGoAuthHost(
     var customerSignupCheckpoint by rememberSaveable { mutableStateOf("") }
     var merchantAccountCreated by rememberSaveable { mutableStateOf(false) }
     var merchantSignupCheckpoint by rememberSaveable { mutableStateOf("") }
+    var pushPermissionAsked by rememberSaveable { mutableStateOf(false) }
+    val notificationPermission = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { pushPermissionAsked = true }
 
     fun signIn(identifier: String, password: String) {
         if (busy || identifier.isBlank() || password.isBlank()) return
@@ -204,6 +212,15 @@ fun QueueGoAuthHost(
 
     LaunchedEffect(auth?.session?.sessionId, expectedRole) {
         val current = auth ?: return@LaunchedEffect
+        if (
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            !pushPermissionAsked &&
+            !nativePushPermissionGranted(context) &&
+            nativeFirebaseConfigured(context)
+        ) {
+            pushPermissionAsked = true
+            notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
         runCatching {
             syncNativePush(
                 context = context,
