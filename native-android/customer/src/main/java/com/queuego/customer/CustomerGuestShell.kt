@@ -178,11 +178,13 @@ internal fun GuestCustomerShell(onLogin: (destination: String) -> Unit) {
             }
             return
         }
-        if (value.startsWith("https://", true) || value.startsWith("http://", true)) {
-            runCatching {
-                context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(value)))
-            }.onFailure { message = "เปิดลิงก์ไม่สำเร็จ" }
-        }
+        sanitizeBannerLink(value)
+            ?.takeIf { it.startsWith("https://", ignoreCase = true) }
+            ?.let { safeUrl ->
+                runCatching {
+                    context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(safeUrl)))
+                }.onFailure { message = "เปิดลิงก์ไม่สำเร็จ" }
+            }
     }
 
     BackHandler(screen != "home") {
