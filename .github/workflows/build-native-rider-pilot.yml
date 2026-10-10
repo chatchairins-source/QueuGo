@@ -10,6 +10,9 @@ on:
     paths:
       - 'native-android/**'
       - 'tests/native-android-source.cjs'
+      - 'tests/native-pos-edit-idempotency.cjs'
+      - 'supabase/migrations/*pos_edit_bill_idempotency.sql'
+      - 'ops/pos-edit-idempotency-schema-baseline-*.sql'
       - '.github/workflows/build-native-rider-pilot.yml'
 
 permissions:
