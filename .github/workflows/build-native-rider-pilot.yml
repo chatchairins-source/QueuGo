@@ -9,6 +9,7 @@ on:
       - work-native-voice-controller-v1-20261010
       - work-native-voice-turn-client-v1-20261010
       - work-native-voice-integration-v1-20261010
+      - work-native-voice-release-candidate-v1-20261010
       - work-native-customer-logout-integration-20261010
       - work-native-customer-location-integration-v2-20261010
       - work-native-printer-ticket-parity-20261010
@@ -25,6 +26,7 @@ on:
       - 'tests/native-pos-edit-idempotency.cjs'
       - 'tests/native-voice-call-contract.cjs'
       - 'tests/native-voice-turn-edge.cjs'
+      - 'tests/native-voice-ui-contract.cjs'
       - 'ops/native-voice-call-schema-proposal-*.sql'
       - 'supabase/functions/queuego-turn/**'
       - 'supabase/migrations/*pos_edit_bill_idempotency.sql'
@@ -92,6 +94,8 @@ jobs:
         run: node tests/native-voice-call-contract.cjs
       - name: Native voice TURN edge contracts
         run: node tests/native-voice-turn-edge.cjs
+      - name: Native voice UI contracts
+        run: node tests/native-voice-ui-contract.cjs
       - name: Source integrity
         run: node tests/native-android-source.cjs
       - name: Verify launcher asset family
