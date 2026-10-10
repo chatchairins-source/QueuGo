@@ -178,6 +178,7 @@ internal fun merchantRestaurantOptionState(rawJson: String): MerchantRestaurantO
     }
 
     val resolved = if (toppings.isNotEmpty()) toppings else listOf(
+        MerchantToppingOption("ใส่ไข่", 10.0, false),
         MerchantToppingOption("ไข่ดาว", 10.0, false),
         MerchantToppingOption("ไข่เจียว", 15.0, false),
         MerchantToppingOption("เพิ่มเนื้อ", 20.0, false),
