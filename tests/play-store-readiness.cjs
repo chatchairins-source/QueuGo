@@ -18,6 +18,14 @@ const manifest=JSON.parse(read('docs/pilot-recovery-manifest.json'));
 const releaseSecrets=read('.github/workflows/release-secret-readiness.yml');
 const releaseCertification=read('.github/workflows/native-release-certification.yml');
 const nativeRootGradle=read('native-android/build.gradle.kts');
+const nativeVoicePeer=read('native-android/shared/src/main/java/com/queuego/shared/NativeVoicePeer.kt');
+const nativeVoiceManifest=read('native-android/shared/src/main/AndroidManifest.xml');
+const nativeTurnEdge=read('supabase/functions/queuego-turn/index.ts');
+const nativeRoleManifests={
+  customer:read('native-android/customer/src/main/AndroidManifest.xml'),
+  merchant:read('native-android/merchant/src/main/AndroidManifest.xml'),
+  rider:read('native-android/rider/src/main/AndroidManifest.xml')
+};
 for(const role of ['customer','merchant','rider']){
   const appGradle=read(`native-android/${role}/build.gradle.kts`);
   ok(/compileSdk\s*=\s*36/.test(appGradle),role+' must compile against API 36');
@@ -64,6 +72,30 @@ ok(/Native Android Customer, Merchant, Rider apps/i.test(readiness),'Play readin
 ok(/RECORD_AUDIO for optional order-scoped audio calls/i.test(readiness),'Native voice microphone disclosure must remain explicit');
 ok(/FOREGROUND_SERVICE_MICROPHONE/i.test(readiness),'Native microphone foreground-service permission must remain documented');
 ok(/Incoming FCM does not start microphone access in the background/i.test(readiness),'Play readiness must preserve visible-user-action microphone start boundary');
+ok(/Play Console foreground-service declaration draft/i.test(readiness),'Play readiness must retain an explicit foreground-service declaration draft');
+ok(/Customer \/ Merchant \/ Rider — `microphone`/i.test(readiness),'All three Native apps must retain the microphone FGS declaration draft');
+ok(/Rider only — `specialUse`/i.test(readiness)&&/Active QueueGo Rider navigation return control/i.test(readiness),'Rider specialUse declaration must retain the reviewed subtype and use case');
+ok(/Required reviewer evidence:/i.test(readiness)&&/real-device video/i.test(readiness),'Foreground-service declaration must require real-device demo evidence');
+ok(/Play Console foreground-service declaration status remains \*\*BLOCKED\*\*/i.test(readiness),'FGS source readiness must not certify the external Play Console gate');
+ok(/Live voice media Data Safety boundary/i.test(readiness),'Play readiness must document the Native live voice Data Safety boundary');
+ok(/not separately declared as collected while the certified architecture remains peer-to-peer WebRTC media with end-to-end encryption/i.test(readiness),'Voice media must retain the Google Play E2EE not-in-scope boundary');
+ok(/Cloudflare Realtime TURN[\s\S]*cannot inspect media content/i.test(readiness),'Play readiness must document the Cloudflare encrypted-media boundary');
+ok(/recording, transcription, an SFU\/media server/i.test(readiness),'Voice Data Safety must require reassessment on readable-media architecture changes');
+for(const [role,manifestText] of Object.entries(nativeRoleManifests)){
+  ok(manifestText.includes('android.permission.RECORD_AUDIO'),role+' Native manifest must retain RECORD_AUDIO for the reviewed voice path');
+}
+ok(nativeVoiceManifest.includes('FOREGROUND_SERVICE_MICROPHONE')&&nativeVoiceManifest.includes('foregroundServiceType="microphone"'),'shared Native voice service must retain microphone FGS permission/type');
+ok(nativeRoleManifests.rider.includes('foregroundServiceType="specialUse"')&&nativeRoleManifests.rider.includes('Active QueueGo Rider navigation return control'),'Rider specialUse subtype must stay aligned with the Play declaration draft');
+ok(nativeVoicePeer.includes('PeerConnection.RTCConfiguration')&&nativeVoicePeer.includes('createAudioTrack("queuego-audio"'),'Data Safety E2EE boundary must remain tied to Native peer WebRTC audio');
+ok(nativeTurnEdge.includes('rtc.live.cloudflare.com/v1/turn/')&&nativeTurnEdge.includes('generate-ice-servers'),'Native voice relay must remain the reviewed Cloudflare TURN credential path');
+ok(!/MediaRecorder|FileOutputStream|recordToFile|transcrib|Realtime SFU|\/sfu\//i.test(nativeVoicePeer+'\n'+nativeTurnEdge),'Voice Data Safety E2EE boundary must fail if recording, transcription or SFU/server-media processing appears in the certified voice source');
+ok(manifest?.play?.voice_audio_data_safety==='E2EE_NOT_IN_COLLECTION_SCOPE_WHILE_PEER_ONLY_WEBRTC','Recovery manifest must preserve the reviewed live voice E2EE collection boundary');
+ok(Array.isArray(manifest?.play?.voice_audio_roles)&&manifest.play.voice_audio_roles.length===3,'Voice Data Safety review must cover all three Native roles');
+ok(manifest?.play?.voice_audio_media_readable_by_turn_provider===false,'Recovery manifest must preserve the reviewed encrypted TURN media boundary');
+ok(manifest?.play?.voice_audio_recording_present===false&&manifest?.play?.voice_audio_transcription_present===false&&manifest?.play?.voice_audio_sfu_or_server_media_processing_present===false,'Voice Data Safety manifest must preserve the no-recording/no-transcription/no-readable-media architecture');
+ok(manifest?.play?.voice_audio_reassessment_required_on_architecture_change===true,'Voice Data Safety must require reassessment on architecture changes');
+ok(manifest?.play?.cloudflare_turn_relay_metadata_review==='PENDING_FINAL_PLAY_CONSOLE_METADATA_CLASSIFICATION','Cloudflare TURN relay metadata must remain pending final Play classification');
+ok(manifest?.play?.foreground_service_declaration_draft_ready===true&&manifest?.play?.foreground_service_declaration_runtime_gate==='BLOCKED_REAL_DEVICE_VIDEO_AND_PLAY_CONSOLE_ENTRY','FGS draft readiness must not close the external Play Console/video gate');
 ok(!/Explicitly forbidden by the release workflow:[\s\S]{0,300}RECORD_AUDIO/i.test(readiness),'Legacy Capacitor RECORD_AUDIO prohibition must not return');
 ok(/Native CI rejects WebView/i.test(readiness),'Data Safety draft must use Native no-WebView certification scope');
 ok(!/data collected by the web application running inside Capacitor/i.test(readiness),'Legacy Capacitor Data Safety collection rule must not certify Native apps');
