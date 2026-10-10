@@ -37,6 +37,8 @@ ok(ui.includes('it.available && it.deliveryAvailable'),'Native substitute choose
 ok(ui.includes('draft.none { row -> !row.productId.isNullOrBlank() && row.productId == it.id }'),'Native substitute chooser must reject duplicate products');
 ok(ui.includes('draft.size < 30'),'Native editor must keep the backend 30-row maximum');
 ok(ui.includes('Text("เพิ่มสินค้าทดแทน")'),'Native editor must support adding a substitute');
+ok(ui.includes('substituteProducts.forEach { product ->')&&!ui.includes('substituteProducts.take('),
+  'Native substitute chooser must expose every eligible shop product like Production Web');
 ok(ui.includes('Text("ยอดค่าสินค้าใหม่"'),'Native editor must show the new merchandise subtotal');
 ok(ui.includes('Text("บันทึกการแก้ไข")'),'Native editor must require an explicit save action');
 ok(ui.includes('api.editOrderItems(auth, current.id, draft)'),'Merchant shell must send edits through the Production RPC wrapper');
