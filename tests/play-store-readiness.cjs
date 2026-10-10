@@ -54,11 +54,13 @@ ok(Array.isArray(manifest?.play?.service_provider_exceptions)&&manifest.play.ser
 ok(manifest?.android?.platform==='NATIVE_ANDROID','Recovery manifest Android platform must be Native Android');
 ok(manifest?.android?.native_ci_rejects_webview===true,'Recovery manifest must preserve Native no-WebView gate');
 ok(manifest?.android?.legacy_capacitor_build_workflows_retired===true,'Legacy Capacitor build workflows must remain retired');
-ok(Array.isArray(manifest?.android?.allowed_android_build_workflows)&&manifest.android.allowed_android_build_workflows.length===1&&manifest.android.allowed_android_build_workflows[0]==='.github/workflows/build-native-rider-pilot.yml','Only the Native Android pilot workflow may remain an active Android build workflow');
+ok(Array.isArray(manifest?.android?.allowed_android_build_workflows)&&manifest.android.allowed_android_build_workflows.length===2&&manifest.android.allowed_android_build_workflows.includes('.github/workflows/build-native-rider-pilot.yml')&&manifest.android.allowed_android_build_workflows.includes('.github/workflows/build-native-signed-release.yml'),'Only the Native pilot and fail-closed signed release workflows may build Android artifacts');
+ok(manifest?.android?.native_signed_release_manual_dispatch_only===true&&manifest?.android?.native_signed_release_requires_certified_evidence_artifact===true,'Native signed release must remain manual and evidence-gated');
+ok(manifest?.android?.native_signed_release_public_publish===false&&manifest?.android?.native_signed_release_internal_artifact_only===true,'Native signed release must remain internal until explicit release approval');
+ok(manifest?.android?.native_release_evidence_operator_certified===true&&manifest?.android?.native_release_evidence_auto_certifies_physical_or_play===false,'Release evidence record must not auto-certify physical or Play state');
 ok(manifest?.android?.release_version_code_strategy==='EXPLICIT_PER_APP_GT_OBSERVED_PLAY_MAX','Recovery manifest must preserve Play-history versionCode strategy');
 ok(manifest?.android?.release_gate_requires_backup_restore===true,'Recovery manifest must preserve Backup/Restore as a Native release hard gate');
 ok(manifest?.android?.native_scope==='Customer/Merchant/Rider','Recovery manifest must identify Native Android as the active release scope');
 ok(manifest?.android?.legacy_capacitor_release_workflows_retired===true,'Legacy Capacitor release workflows must remain retired');
 ok(!('capacitor_version' in (manifest.android||{}))&&!('push_plugin' in (manifest.android||{})),'Native recovery manifest must not treat Capacitor as the active Android runtime');
-ok(Array.isArray(manifest?.android?.allowed_android_build_workflows)&&manifest.android.allowed_android_build_workflows.length===1&&manifest.android.allowed_android_build_workflows[0]==='.github/workflows/build-native-rider-pilot.yml','Only the Native Android pilot workflow may remain an active Android build workflow');
 console.log(JSON.stringify({checks,failures:0,scope:'Play listing, app access, Data Safety, Contains Ads, 18+ Target Audience, privacy/account deletion and content-rating preparation'}));
