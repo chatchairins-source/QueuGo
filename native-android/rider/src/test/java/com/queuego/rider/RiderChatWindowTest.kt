@@ -3,6 +3,7 @@ package com.queuego.rider
 import org.junit.Assert.*
 import org.junit.Test
 import java.time.Instant
+import java.time.ZoneId
 
 class RiderChatWindowTest {
     private val delivered = "2026-10-09T06:00:00Z"
@@ -27,5 +28,11 @@ class RiderChatWindowTest {
         assertNull(active.deadline)
         assertTrue(active.isOpen(at + 90 * 60_000L))
         assertFalse(riderChatWindow("cancelled", delivered, delivered).isOpen(at))
+    }
+
+    @Test fun chatTimestampIsRenderedAsCompactClockTime() {
+        assertEquals("06:07", riderChatTimeLabel("2026-10-09T06:07:00Z", ZoneId.of("UTC")))
+        assertEquals("", riderChatTimeLabel("not-a-time", ZoneId.of("UTC")))
+        assertEquals("", riderChatTimeLabel(null, ZoneId.of("UTC")))
     }
 }

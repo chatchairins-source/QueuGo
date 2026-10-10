@@ -27,6 +27,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -78,6 +79,10 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.json.JSONArray
 import org.json.JSONObject
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 import java.util.UUID
 
 data class RiderChatModeration(
@@ -92,6 +97,15 @@ data class RiderChatMessage(
     val message: String,
     val createdAt: String?
 )
+
+internal fun riderChatTimeLabel(raw: String?, zoneId: ZoneId = ZoneId.systemDefault()): String {
+    if (raw.isNullOrBlank()) return ""
+    return runCatching {
+        DateTimeFormatter.ofPattern("HH:mm", Locale("th", "TH"))
+            .withZone(zoneId)
+            .format(Instant.parse(raw))
+    }.getOrDefault("")
+}
 
 class RiderChatApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
     private fun obj(raw: Any): JSONObject = when (raw) {
@@ -250,6 +264,7 @@ private fun RiderChatRoom(auth: QueueGoAuth, job: RiderJob, onBack: () -> Unit, 
     var readError by remember(auth.user.id, auth.session.sessionId, job.id) { mutableStateOf<String?>(null) }
     var reportMessageId by remember(auth.user.id, auth.session.sessionId, job.id) { mutableStateOf<String?>(null) }
     var reportDetails by remember(auth.user.id, auth.session.sessionId, job.id) { mutableStateOf("") }
+    val chatListState = rememberLazyListState()
 
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     val back by rememberUpdatedState(onBack)
@@ -308,6 +323,9 @@ private fun RiderChatRoom(auth: QueueGoAuth, job: RiderJob, onBack: () -> Unit, 
         }
     }
 
+    LaunchedEffect(messages.size, messages.lastOrNull()?.id) {
+        if (messages.isNotEmpty()) chatListState.scrollToItem(messages.lastIndex)
+    }
 
     val context = LocalContext.current
     val outbox = remember { RiderChatOutbox() }
@@ -388,7 +406,7 @@ private fun RiderChatRoom(auth: QueueGoAuth, job: RiderJob, onBack: () -> Unit, 
                     moderation?.accepted == false -> "กติกาการแชต"
                     else -> customerName ?: "ลูกค้า"
                 }, fontSize = 15.sp, fontWeight = FontWeight.Bold)
-                Text(job.numberLabel, color = Color(0xFF8A8387), fontSize = 8.sp)
+                Text(job.numberLabel, color = Color(0xFF8A8387), fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
             }
             IconButton(onClick = { showSafety = true }, enabled = moderation?.accepted == true,
                 modifier = Modifier.size(44.dp).semantics { contentDescription = "ความปลอดภัยแชต" }
@@ -467,53 +485,83 @@ private fun RiderChatRoom(auth: QueueGoAuth, job: RiderJob, onBack: () -> Unit, 
                 }
             }
             else -> {
-                LazyColumn(Modifier.weight(1f).fillMaxWidth().padding(14.dp)) {
+                LazyColumn(
+                    state = chatListState,
+                    modifier = Modifier.weight(1f).fillMaxWidth(),
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 14.dp),
+                    verticalArrangement = Arrangement.spacedBy(7.dp)
+                ) {
                     if (messages.isEmpty()) {
-                        item { Text("ยังไม่มีข้อความ", color = QgMuted) }
+                        item {
+                            Box(
+                                Modifier.fillMaxWidth().padding(top = 34.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    "ยังไม่มีข้อความ · เริ่มแชตกับลูกค้าได้เลย",
+                                    color = Color(0xFF9B9498),
+                                    fontSize = 12.sp
+                                )
+                            }
+                        }
                     } else {
                         items(messages, key = { it.id }) { chat ->
                             val mine = chat.senderId == auth.user.id
+                            val shape = if (mine) {
+                                RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp, bottomEnd = 5.dp, bottomStart = 18.dp)
+                            } else {
+                                RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp, bottomEnd = 18.dp, bottomStart = 5.dp)
+                            }
+                            val bubbleModifier = Modifier
+                                .fillMaxWidth(0.78f)
+                                .clip(shape)
+                                .background(if (mine) Color(0xFFFFE8EE) else Color.White)
+                                .then(
+                                    if (mine) Modifier
+                                    else Modifier.border(1.dp, Color(0xFFEEE6E8), shape)
+                                )
+                                .padding(horizontal = 12.dp, vertical = 10.dp)
+
                             Row(
-                                Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                                Modifier.fillMaxWidth(),
                                 horizontalArrangement = if (mine) Arrangement.End else Arrangement.Start
                             ) {
-                                Column(
-                                    Modifier
-                                        .fillMaxWidth(0.86f)
-                                        .background(
-                                            if (mine) Color(0xFFFFECEF) else Color.White,
-                                            RoundedCornerShape(16.dp)
-                                        )
-                                        .padding(11.dp)
-                                ) {
-                                    Text(
-                                        if (mine) "คุณ" else "ลูกค้า",
-                                        color = if (mine) QgRed else QgMuted,
-                                        fontWeight = FontWeight.Bold
-                                    )
+                                Column(bubbleModifier) {
                                     if (chat.message.startsWith("__IMG__")) {
                                         RiderChatImage(chat.message.removePrefix("__IMG__"))
-                                    } else Text(chat.message)
-                                    if (!chat.createdAt.isNullOrBlank()) {
+                                    } else {
                                         Text(
-                                            chat.createdAt!!,
-                                            color = QgMuted,
-                                            style = androidx.compose.material3.MaterialTheme.typography.labelSmall
+                                            chat.message,
+                                            color = Color(0xFF211E20),
+                                            fontSize = 14.sp,
+                                            lineHeight = 19.sp
                                         )
                                     }
-                                    if (!mine) {
-                                        Text(
-                                            "รายงานข้อความ",
-                                            color = QgRed,
-                                            modifier = Modifier
-                                                .padding(top = 5.dp)
-                                                .clickable {
-                                                    reportMessageId = chat.id
-                                                    reportDetails = ""
-                                                    reportReason = "harassment"
-                                                },
-                                            fontWeight = FontWeight.Bold
-                                        )
+                                    val timeLabel = riderChatTimeLabel(chat.createdAt)
+                                    if (timeLabel.isNotBlank() || !mine) {
+                                        Row(
+                                            Modifier.fillMaxWidth().padding(top = 5.dp),
+                                            horizontalArrangement = Arrangement.End,
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            if (timeLabel.isNotBlank()) {
+                                                Text(timeLabel, color = Color(0xFF9A9296), fontSize = 9.sp)
+                                            }
+                                            if (!mine) {
+                                                if (timeLabel.isNotBlank()) Spacer(Modifier.width(10.dp))
+                                                Text(
+                                                    "รายงาน",
+                                                    color = QgRed,
+                                                    fontSize = 9.sp,
+                                                    fontWeight = FontWeight.Bold,
+                                                    modifier = Modifier.clickable {
+                                                        reportMessageId = chat.id
+                                                        reportDetails = ""
+                                                        reportReason = "harassment"
+                                                    }
+                                                )
+                                            }
+                                        }
                                     }
                                 }
                             }
@@ -596,7 +644,14 @@ private fun RiderChatRoom(auth: QueueGoAuth, job: RiderJob, onBack: () -> Unit, 
                         shape = RoundedCornerShape(14.dp), contentPadding = PaddingValues(0.dp),
                         colors = ButtonDefaults.textButtonColors(containerColor = Color(0xFFFFF0F3), contentColor = QgRed),
                         enabled = !busy && !closed && window?.isOpen(System.currentTimeMillis()) == true
-                    ) { Text("ส่งรูป", fontSize = 9.sp) }
+                    ) {
+                        Icon(
+                            painterResource(R.drawable.qg_rider_chat_photo),
+                            contentDescription = "ส่งรูป",
+                            modifier = Modifier.size(21.dp),
+                            tint = QgRed
+                        )
+                    }
                     BasicTextField(
                         value = input, onValueChange = { if (it.length <= 500) input = it },
                         modifier = Modifier.weight(1f).height(46.dp)
@@ -618,7 +673,14 @@ private fun RiderChatRoom(auth: QueueGoAuth, job: RiderJob, onBack: () -> Unit, 
                         shape = RoundedCornerShape(14.dp), contentPadding = PaddingValues(0.dp),
                         colors = ButtonDefaults.textButtonColors(containerColor = Color(0xFFFFF0F3), contentColor = QgRed),
                         enabled = !busy && input.isNotBlank() && !closed && window?.isOpen(System.currentTimeMillis()) == true
-                    ) { Text("➤", fontSize = 22.sp, fontWeight = FontWeight.Black) }
+                    ) {
+                        Icon(
+                            painterResource(R.drawable.qg_rider_chat_send),
+                            contentDescription = "ส่ง",
+                            modifier = Modifier.size(22.dp),
+                            tint = QgRed
+                        )
+                    }
                 }
             }
         }
