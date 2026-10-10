@@ -293,8 +293,8 @@
     "signing_key_password_preflight": true,
     "signing_secrets_written_to_gradle_properties": false,
     "signing_secret_transport": "ORG_GRADLE_PROJECT environment variables",
-    "release_version_code_strategy": "GITHUB_WORKFLOW_RUN_NUMBER",
-    "release_version_name_strategy": "1.0.0-beta.<github.run_number>",
+    "release_version_code_strategy": "1000000_PLUS_NATIVE_CLOSED_BETA_WORKFLOW_RUN_NUMBER",
+    "release_version_name_strategy": "1.0.0-beta.<native_closed_beta_workflow_run_number>",
     "release_artifact_package_verification": true,
     "release_apk_non_debuggable_verification": true,
     "release_apk_signature_verification": "APKSIGNER",
@@ -366,12 +366,12 @@
     "hard_gate_blocks_build_without_turn_relay_certification": true,
     "microphone_permission_policy": "USER_INITIATED_IN_APP_CALL_ONLY",
     "legacy_capacitor_release_workflow": ".github/workflows/build-queuego-apks.yml",
-    "legacy_capacitor_release_policy": "HISTORICAL_ONLY_HARD_BLOCKED_DO_NOT_USE_FOR_NATIVE_CLOSED_BETA",
-    "legacy_capacitor_release_hard_blocked": true,
-    "native_release_gradle_fail_closed": true,
-    "native_release_requires_explicit_version_properties": true,
-    "native_release_requires_role_firebase_config": true,
-    "native_release_requires_signing_properties": true
+    "legacy_capacitor_release_policy": "HISTORICAL_ONLY_DO_NOT_USE_FOR_NATIVE_CLOSED_BETA",
+    "release_version_code_floor": 1000000,
+    "release_version_code_max": 2100000000,
+    "native_closed_beta_workflow_dispatch_host_branch": "main",
+    "native_closed_beta_checkout_ref": "queuego-native-android-v1",
+    "release_provenance_git_sha_source": "CHECKED_OUT_NATIVE_BRANCH_HEAD"
   },
   "security": {
     "code_surface_hardened": true,
@@ -487,7 +487,8 @@
     "data_safety_sharing": "YES_LONGDO_LOCATION_APP_FUNCTIONALITY",
     "service_provider_exceptions": [
       "Supabase",
-      "Firebase Cloud Messaging / Google"
+      "Firebase Cloud Messaging / Google",
+      "Cloudflare Realtime TURN"
     ],
     "longdo_service_provider_exception": false,
     "longdo_note": "Public Longdo terms reviewed do not establish a service-provider-only processing role. Declare location sharing for App functionality unless a QueueTech-Longdo DPA/commercial agreement later supports the exception.",
@@ -508,7 +509,11 @@
       "rider": "18_PLUS_ONLY"
     },
     "restrict_minor_access": "ENABLE_FOR_CLOSED_BETA",
-    "target_audience_console_entry": "PENDING_PLAY_CONSOLE_ENTRY"
+    "target_audience_console_entry": "PENDING_PLAY_CONSOLE_ENTRY",
+    "voice_data_safety": "COLLECTED_EPHEMERAL_REALTIME_AUDIO_NO_RECORDING",
+    "voice_turn_sharing_classification": "SERVICE_PROVIDER_EXCEPTION_SUBJECT_TO_QUEUEGO_CLOUDFLARE_DPA",
+    "cloudflare_turn_media_visibility": "ENCRYPTED_MEDIA_NOT_DECRYPTABLE_BY_TURN_RELAY",
+    "cloudflare_turn_policy_reviewed_at": "2026-10-10"
   },
   "remaining_external_blockers": [
     "Configure QG_SUPABASE_DB_URL, QG_SUPABASE_SERVICE_ROLE_KEY and QG_BACKUP_PASSPHRASE, then pass QueueGo Encrypted Backup Restore Drill.",
