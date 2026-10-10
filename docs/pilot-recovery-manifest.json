@@ -425,7 +425,11 @@
     "release_certification_supabase_url": "https://pkypiqhlrmzocysgeqew.supabase.co",
     "release_certification_bucket_private_required": true,
     "release_certification_bucket_observed_in_production": false,
-    "release_certification_bucket_last_checked_at": "2026-10-10T12:50:00Z"
+    "release_certification_bucket_last_checked_at": "2026-10-10T12:50:00Z",
+    "release_certification_requires_exact_head_native_pilot_ci": true,
+    "release_certification_native_pilot_workflow": ".github/workflows/build-native-rider-pilot.yml",
+    "release_certification_native_pilot_event": "push",
+    "release_certification_final_release_revalidates_native_pilot_run": true
   },
   "security": {
     "code_surface_hardened": true,
