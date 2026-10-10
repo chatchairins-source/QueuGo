@@ -86,7 +86,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          runs="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs?branch=queuego-native-android-v1&status=success&per_page=100")"
+          runs="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs?head_sha=$GITHUB_SHA&status=success&per_page=100")"
           pilot_run_id="$(jq -r --arg sha "$GITHUB_SHA" '
             [.workflow_runs[]
               | select(.head_sha == $sha)
