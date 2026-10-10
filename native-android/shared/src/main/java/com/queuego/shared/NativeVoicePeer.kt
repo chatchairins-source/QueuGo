@@ -128,7 +128,7 @@ class NativeVoicePeer(
     fun addRemoteIce(payload: JSONObject): Boolean {
         checkOpen()
         val candidate = IceCandidate(
-            payload.optString("sdpMid").takeIf { it.isNotBlank() },
+            if (payload.isNull("sdpMid")) null else payload.optString("sdpMid").takeIf { it.isNotBlank() },
             payload.getInt("sdpMLineIndex"),
             payload.getString("candidate")
         )
