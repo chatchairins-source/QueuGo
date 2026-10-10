@@ -57,9 +57,13 @@ non-debuggable, with no debug-keystore fallback. Signing inputs are environment-
 QG_ANDROID_KEYSTORE_PATH, QG_ANDROID_STORE_PASSWORD, QG_ANDROID_KEY_ALIAS,
 QG_ANDROID_KEY_PASSWORD. Keystore files/configs are ignored by git.
 
-Release requires QG_NATIVE_VERSION_NAME (x.y.z) and per-app advancing
-QG_CUSTOMER_VERSION_CODE, QG_MERCHANT_VERSION_CODE, QG_RIDER_VERSION_CODE.
-The Play preflight must also verify each code exceeds the actual Play history.
+Release requires QG_NATIVE_VERSION_NAME (x.y.z), per-app release codes
+QG_CUSTOMER_VERSION_CODE, QG_MERCHANT_VERSION_CODE, QG_RIDER_VERSION_CODE,
+and the observed highest Play Console codes
+QG_CUSTOMER_PLAY_MAX_VERSION_CODE, QG_MERCHANT_PLAY_MAX_VERSION_CODE,
+QG_RIDER_PLAY_MAX_VERSION_CODE. The verifier fails closed unless every release
+code is greater than the explicitly supplied Play maximum; it no longer trusts
+hard-coded historical versionCode values.
 
 Every application task containing Release, including direct internal packaging
 and signing tasks, depends on verifyNativeReleaseGate. The verifier fails closed without operator-certified
