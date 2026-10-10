@@ -10,14 +10,16 @@ for(const [role,surfaces] of Object.entries(matrix.roles)){
   ok(Array.isArray(surfaces)&&surfaces.length>=minimum[role],role+' source coverage surface count regressed');
   const seen=new Set();
   for(const entry of surfaces){
-    const [surface,path]=entry;
+    const [surface,path,kind='screen']=entry;
     ok(typeof surface==='string'&&surface.length>0,role+' surface name missing');
     ok(!seen.has(surface),role+' duplicate surface: '+surface); seen.add(surface);
+    ok(kind==='screen'||kind==='helper',role+' unsupported coverage kind: '+surface);
     ok(typeof path==='string'&&path.startsWith('native-android/'+role+'/src/main/java/'),role+' surface path outside Native role: '+surface);
     ok(fs.existsSync(path),role+' source surface missing: '+surface+' -> '+path);
     const source=fs.readFileSync(path,'utf8');
     ok(source.length>300,role+' source surface is unexpectedly empty/thin: '+surface);
-    ok(source.includes('@Composable'),role+' UI surface lost Compose implementation: '+surface);
+    if(kind==='screen') ok(source.includes('@Composable'),role+' UI surface lost Compose implementation: '+surface);
+    else ok(!source.includes('@Composable')&&source.includes('signMerchantGpSlip'),role+' GP slip helper coverage must retain private signer implementation');
   }
 }
 
