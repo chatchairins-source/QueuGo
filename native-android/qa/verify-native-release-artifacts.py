@@ -144,7 +144,7 @@ def verify() -> dict:
         signer_digests.add(cert_sha)
 
         run([jarsigner, "-verify", str(aab)])
-        aab_certificate = run([keytool, "-printcert", "-jarfile", str(aab)])
+        aab_certificate = run([keytool, "-J-Duser.language=en", "-J-Duser.country=US", "-printcert", "-jarfile", str(aab)])
         aab_cert_match = KEYTOOL_SHA256_RE.search(aab_certificate)
         if not aab_cert_match:
             raise ValueError(f"AAB signer certificate digest missing for {role}")
