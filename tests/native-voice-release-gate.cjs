@@ -18,12 +18,16 @@ has(customerManifest,/android\.permission\.POST_NOTIFICATIONS/,'Customer notific
 has(customerManifest,/QueueGoCustomerMessagingService/,'Customer FCM service missing');
 has(customerManifest,/queuego_orders/,'Customer notification channel id missing');
 has(riderManifest,/android\.permission\.RECORD_AUDIO/,'Rider microphone permission missing');
-assert(!/android\.permission\.RECORD_AUDIO/.test(merchantManifest),
-  'Merchant must not request microphone until a real Merchant voice surface exists');
+has(merchantManifest,/android\.permission\.RECORD_AUDIO/,'Merchant microphone permission missing for incoming shop calls');
+has(merchantManifest,/android\.permission\.POST_NOTIFICATIONS/,'Merchant notification permission missing');
+has(merchantManifest,/QueueGoMerchantMessagingService/,'Merchant FCM service missing');
 
 const customerGradle=read('native-android/customer/build.gradle.kts');
 has(customerGradle,/file\("google-services\.json"\)\.exists\(\)/,'Customer Google Services must be conditional');
 has(customerGradle,/firebase-messaging/,'Customer Firebase Messaging dependency missing');
+const merchantGradle=read('native-android/merchant/build.gradle.kts');
+has(merchantGradle,/file\("google-services\.json"\)\.exists\(\)/,'Merchant Google Services must be conditional');
+has(merchantGradle,/firebase-messaging/,'Merchant Firebase Messaging dependency missing');
 
 const push=read('native-android/customer/src/main/java/com/queuego/customer/CustomerPush.kt');
 has(push,/UUID\.randomUUID\(\)\.toString\(\)/,'Customer push device id must be a stable UUID');
@@ -34,6 +38,21 @@ has(push,/CATEGORY_CALL/,'Incoming voice push must use call notification categor
 has(push,/setTimeoutAfter\(50_000L\)/,'Incoming voice notification must expire with ringing window');
 assert(!/setFullScreenIntent/.test(push),'Voice push must not use full-screen intent');
 assert(!/ACTION_CALL|CALL_PHONE/.test(push),'Voice push must not invoke carrier calling');
+
+const merchantPush=read('native-android/merchant/src/main/java/com/queuego/merchant/MerchantPush.kt');
+has(merchantPush,/UUID\.randomUUID\(\)\.toString\(\)/,'Merchant push device id must be a stable UUID');
+has(merchantPush,/subscribe-native/,'Merchant native push subscription missing');
+has(merchantPush,/auth\.user\.role != "shop"/,'Merchant push must be restricted to shop role');
+has(merchantPush,/CATEGORY_CALL/,'Merchant incoming voice push must use call notification category');
+assert(!/setFullScreenIntent/.test(merchantPush),'Merchant voice push must not use full-screen intent');
+
+const merchantApp=read('native-android/merchant/src/main/java/com/queuego/merchant/QueueGoMerchantApp.kt');
+has(merchantApp,/voiceController\.refreshIncoming\(auth\)/,'Merchant incoming voice discovery missing');
+has(merchantApp,/QueueGoVoiceCallOverlay/,'Merchant voice overlay missing');
+has(merchantApp,/MerchantNativePushApi\(\)\.unsubscribe\(auth, merchantPushStore\.deviceId\(\)\)/,
+  'Merchant logout must unsubscribe native push');
+assert(!/voiceController\.startOutgoing/.test(merchantApp),
+  'Merchant v1 must remain incoming-only until an outgoing Merchant Blueprint action exists');
 
 const app=read('native-android/customer/src/main/java/com/queuego/customer/QueueGoCustomerApp.kt');
 has(app,/syncCustomerNativePush\(context, auth, customerPushStore\)/,'Customer login push sync missing');
@@ -111,5 +130,7 @@ const workflow=read('.github/workflows/build-native-rider-pilot.yml');
 has(workflow,/com\.queuego\.customer/,'CI must inspect optional Customer Firebase package');
 has(workflow,/Customer background-push physical certification remains open/,
   'CI must keep Customer background-push certification explicit when Firebase client is absent');
+has(workflow,/Merchant background-push physical certification remains open/,
+  'CI must keep Merchant background-push certification explicit when Firebase client is absent');
 
 console.log('Native voice release gate: PASS');
