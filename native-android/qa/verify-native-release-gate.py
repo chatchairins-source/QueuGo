@@ -10,6 +10,16 @@ import sys
 import tempfile
 
 ROOT = Path(__file__).resolve().parents[2]
+
+
+def sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
 GATES = (
     "full_native_ci", "production_backend", "backup_restore", "security_regression",
     "service_area", "ugc_chat_safety", "security_platform_auth",
@@ -56,7 +66,7 @@ def verify():
             raise ValueError(f"gate evidence escapes the certification bundle: {name}")
         if not path.is_file():
             raise ValueError(f"gate evidence file is unavailable: {name}")
-        if hashlib.sha256(path.read_bytes()).hexdigest() != str(digest).lower():
+        if sha256_file(path) != str(digest).lower():
             raise ValueError(f"evidence hash mismatch: {name}")
     if not re.fullmatch(r"\d+\.\d+\.\d+", os.environ.get("QG_NATIVE_VERSION_NAME", "")):
         raise ValueError("release versionName must be explicitly set to x.y.z")
