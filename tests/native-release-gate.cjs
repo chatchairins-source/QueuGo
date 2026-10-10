@@ -90,6 +90,13 @@ assert.ok(artifactVerifier.includes('QG_{role.upper()}_PLAY_MAX_VERSION_CODE'),'
 assert.match(artifactVerifier,/code <= play_max/,'post-build verifier must reject artifact versionCodes that do not advance Play history');
 assert.match(artifactVerifier,/git", "status", "--porcelain"/,'post-build verifier must require a clean source checkout for provenance');
 assert.match(artifactVerifier,/release artifact evidence must be written outside the source checkout/,'post-build evidence output must not dirty the certified source checkout');
+for(const token of ['QG_BUNDLETOOL_JAR','QG_BUNDLETOOL_SHA256','--xpath=/manifest/@package','--xpath=/manifest/@android:versionCode','--xpath=/manifest/@android:versionName','aab_manifest_metadata_verified']){
+  assert.ok(artifactVerifier.includes(token),`post-build verifier must retain pinned AAB metadata check: ${token}`);
+}
+assert.match(artifactVerifier,/sha256\(bundletool\) != bundletool_hash/,'post-build verifier must reject an unpinned bundletool jar');
+assert.match(artifactVerifier,/AAB package mismatch/,'post-build verifier must reject a role-mismatched AAB');
+assert.match(artifactVerifier,/AAB versionCode mismatch/,'post-build verifier must reject an AAB with the wrong versionCode');
+assert.match(artifactVerifier,/AAB versionName mismatch/,'post-build verifier must reject an AAB with the wrong versionName');
 assert.match(artifactVerifier,/len\(signer_digests\) != 1/,'all three release apps must use one certified signing identity');
 
 const nativeCi=fs.readFileSync('.github/workflows/build-native-rider-pilot.yml','utf8');
