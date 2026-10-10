@@ -10,6 +10,7 @@ on:
       - work-native-voice-turn-client-v1-20261010
       - work-native-voice-integration-v1-20261010
       - work-native-voice-ui-integration-v2-20261010
+      - work-native-customer-push-voice-v1-20261010
       - work-native-customer-logout-integration-20261010
       - work-native-customer-location-integration-v2-20261010
       - work-native-printer-ticket-parity-20261010
@@ -65,15 +66,16 @@ jobs:
         run: |
           set -euo pipefail
           if [ -z "${QG_FIREBASE_GOOGLE_SERVICES_JSON_B64:-}" ]; then
-            echo "::warning::Firebase config secret is absent; native Rider APK will build without physical background-push certification"
+            echo "::warning::Firebase config secret is absent; native Rider and Customer APKs will build without physical background-push certification"
             exit 0
           fi
           umask 077
-          printf '%s' "$QG_FIREBASE_GOOGLE_SERVICES_JSON_B64" | base64 --decode > native-android/rider/google-services.json
-          python3 - <<'PY'
-          import json
+          tmp_json="$(mktemp)"
+          printf '%s' "$QG_FIREBASE_GOOGLE_SERVICES_JSON_B64" | base64 --decode > "$tmp_json"
+          python3 - "$tmp_json" <<'PY'
+          import json, shutil, sys
           from pathlib import Path
-          p=Path('native-android/rider/google-services.json')
+          p=Path(sys.argv[1])
           data=json.loads(p.read_text())
           packages={
               c.get('client_info',{}).get('android_client_info',{}).get('package_name')
@@ -81,8 +83,15 @@ jobs:
           }
           if 'com.queuego.rider' not in packages:
               raise SystemExit('::error::Firebase config has no com.queuego.rider Android client')
+          shutil.copyfile(p,'native-android/rider/google-services.json')
           print('Native Rider Firebase config: valid')
+          if 'com.queuego.customer' in packages:
+              shutil.copyfile(p,'native-android/customer/google-services.json')
+              print('Native Customer Firebase config: valid')
+          else:
+              print('::warning::Firebase config has no com.queuego.customer Android client; Customer background-push physical certification remains open')
           PY
+          rm -f "$tmp_json"
       - name: Install regression dependencies
         run: npm ci
       - name: Full QueueGo regression
