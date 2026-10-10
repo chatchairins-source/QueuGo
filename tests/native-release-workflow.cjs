@@ -14,6 +14,11 @@ ok(workflow.includes('queuego-native-release-certification'),'release must downl
 ok(workflow.includes('native-release-evidence.json'),'release must require the certification report');
 ok(workflow.includes('run_head')&&workflow.includes('GITHUB_SHA'),'certification evidence must match exact release HEAD');
 ok(workflow.includes('run_conclusion')&&workflow.includes('success'),'certification run must have succeeded');
+const metadataAt=workflow.indexOf('Validate certified release metadata');
+const sdkAt=workflow.indexOf('Install Android SDK');
+ok(metadataAt>=0&&sdkAt>metadataAt,'release metadata must fail fast before Android SDK setup');
+ok(workflow.includes('release versionCode must exceed observed Play maximum'),'workflow must fail fast on stale Play versionCode history');
+ok(workflow.includes('signing_certificate_sha256 must be a 32-byte SHA-256 fingerprint'),'workflow must fail fast on malformed signing identity');
 for(const secret of [
   'QG_FIREBASE_GOOGLE_SERVICES_JSON_B64',
   'QG_ANDROID_KEYSTORE_B64',
