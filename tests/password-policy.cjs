@@ -23,8 +23,9 @@ ok(manifest?.security?.leaked_password_protection_enabled===false,'Manifest must
 ok(manifest?.security?.leaked_password_protection_plan_requirement==='PRO_OR_ABOVE','Manifest must record the Pro-only leaked-password requirement');
 ok(manifest?.security?.leaked_password_protection_release_blocker===false,'Pro-only leaked-password protection must be classified as post-Beta hardening on the Free-plan baseline');
 ok(manifest?.android?.auth_gate_accepts_free_plan_compensating_controls===true,'Android release gate must record the certified Free-plan Auth path');
-for(const wf of ['.github/workflows/build-queuego-pilot-apks.yml','.github/workflows/build-queuego-apks.yml']){
-  const s=fs.readFileSync(wf,'utf8');
-  ok(s.includes('queuego-password-policy.js'),'Android workflow must bundle password policy: '+wf);
-}
-console.log(JSON.stringify({checks,failures:0,scope:'shared 12-character password policy across Customer, Merchant, Rider and Android bundles'}));
+const nativeRegistration=fs.readFileSync('native-android/shared/src/main/java/com/queuego/shared/NativeCustomerRegistration.kt','utf8');
+const riderRegistration=fs.readFileSync('native-android/rider/src/main/java/com/queuego/rider/RiderRegistrationForm.kt','utf8');
+ok(nativeRegistration.includes('password.length >= 12')&&nativeRegistration.includes("it in 'a'..'z'")&&nativeRegistration.includes("it in 'A'..'Z'")&&nativeRegistration.includes("it in '0'..'9'"),'Native Customer/Merchant registration must enforce the shared 12-character complexity policy');
+ok(nativeRegistration.includes('requireNativeStrongPassword(password)'),'Native Customer/Merchant registration must call the shared strong-password guard');
+ok(riderRegistration.includes('password.length >= 12')&&riderRegistration.includes('Regex("[a-z]")')&&riderRegistration.includes('Regex("[A-Z]")')&&riderRegistration.includes('Regex("[0-9]")')&&riderRegistration.includes('Regex("[^A-Za-z0-9]")'),'Native Rider registration must enforce the same 12-character complexity policy');
+console.log(JSON.stringify({checks,failures:0,scope:'shared 12-character password policy across Web and Native Customer, Merchant and Rider registration'}));
