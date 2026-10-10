@@ -7,8 +7,10 @@ val qgKeyPassword = providers.gradleProperty("QG_KEY_PASSWORD").orNull
 val qgReleaseRequested = gradle.startParameter.taskNames.any {
     it.contains("Release", ignoreCase = true)
 }
+val qgInternalReleaseCompileOnly =
+    providers.gradleProperty("QG_INTERNAL_RELEASE_COMPILE_ONLY").orNull == "true"
 
-if (qgReleaseRequested) {
+if (qgReleaseRequested && !qgInternalReleaseCompileOnly) {
     require(qgVersionCode != null && qgVersionCode > 0) {
         "QueueGo release build requires QG_VERSION_CODE"
     }
