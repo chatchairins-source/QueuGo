@@ -39,5 +39,7 @@ ok(api.includes('/rest/v1/rider_profiles'),'Native Rider registration must persi
 ok(api.includes('"applicationStatus","pending"'),'Native Rider registration metadata must remain pending for Admin review');
 ok(api.includes('RIDER_DOCUMENTS.keys.forEachIndexed'),'Native Rider registration must persist all required document payloads');
 ok(api.includes('before.getJSONObject(0).optString("status") == "pending"'),'Resume/update must fail closed after Admin leaves pending state');
+ok((api.match(/throw RiderHttpException\\(code, message\\)/g)||[]).length >= 2,
+  'Native Rider HTTP transport must preserve response status for session recovery');
 
 console.log(JSON.stringify({checks,failures:0,scope:'Native Rider four-step registration, documents, resume and pending-review wiring'}));
