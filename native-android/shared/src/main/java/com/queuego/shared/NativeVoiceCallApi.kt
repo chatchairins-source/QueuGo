@@ -75,13 +75,20 @@ class NativeVoiceCallApi(private val http: QueueGoNativeApi = QueueGoNativeApi()
         )))
 
     suspend fun iceConfig(auth: NativeAuth, callId: String): List<NativeVoiceIceServer> {
-        val result = http.obj(http.rpc(
-            "qg_call_ice_config",
+        val result = http.obj(http.functionPost(
+            "queuego-turn",
             auth.session.accessToken,
-            JSONObject().put("p_call_id", callId).put("p_session_id", auth.session.sessionId)
+            JSONObject()
+                .put("callId", callId)
+                .put("sessionId", auth.session.sessionId)
         ))
-        val rows = result.optJSONArray("ice_servers") ?: return emptyList()
-        return buildList {
+        return parseIceConfig(result)
+    }
+
+    internal fun parseIceConfig(result: JSONObject): List<NativeVoiceIceServer> {
+        require(result.optBoolean("turnReady", false)) { "TURN relay ยังไม่พร้อม" }
+        val rows = result.optJSONArray("iceServers") ?: error("ไม่พบ TURN relay")
+        val parsed = buildList {
             for (index in 0 until rows.length()) {
                 val row = rows.optJSONObject(index) ?: continue
                 val urls = row.optJSONArray("urls")?.let { values ->
@@ -99,6 +106,10 @@ class NativeVoiceCallApi(private val http: QueueGoNativeApi = QueueGoNativeApi()
                 ))
             }
         }
+        require(parsed.any { server -> server.urls.any { it.startsWith("turn:") || it.startsWith("turns:") } }) {
+            "TURN relay ไม่พร้อมใช้งาน"
+        }
+        return parsed
     }
 
     suspend fun active(auth: NativeAuth, orderId: String): NativeVoiceCall? {
