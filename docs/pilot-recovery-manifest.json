@@ -569,7 +569,9 @@
     "physical_evidence_capture_external_output_required": true,
     "physical_evidence_capture_default_status": "DRAFT",
     "physical_evidence_capture_auto_certifies": false,
-    "physical_evidence_capture_operator_certify_required": true
+    "physical_evidence_capture_operator_certify_required": true,
+    "physical_evidence_capture_identity_hash_salt": "PER_CAPTURE_RANDOM_256_BIT_NOT_STORED",
+    "physical_evidence_capture_identity_hash_domain_separated": true
   },
   "security": {
     "code_surface_hardened": true,
