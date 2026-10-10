@@ -71,7 +71,8 @@ data class MerchantOrder(
     val createdAt: String?,
     val preparingAt: String?,
     val readyAt: String?,
-    val itemCount: Int = 0
+    val itemCount: Int = 0,
+    val riderArrivedCustomerAt: String? = null
 )
 
 data class MerchantOrderItem(
@@ -527,7 +528,7 @@ class MerchantApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
     suspend fun loadOrders(auth: NativeAuth): List<MerchantOrder> {
         val raw = http.rpc("get_my_shop_orders", auth.session.accessToken, JSONObject())
         val rows = http.array(raw)
-        return buildList {
+        val orders = buildList {
             for (i in 0 until rows.length()) {
                 val r = rows.optJSONObject(i) ?: continue
                 val id = r.optString("id").ifBlank { r.optString("order_id") }
@@ -548,6 +549,35 @@ class MerchantApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
                     )
                 )
             }
+        }
+        if (orders.isEmpty()) return orders
+
+        // The legacy shop RPC does not expose rider_arrived_customer_at. Read only
+        // the arrival column through the existing authenticated orders RLS once a
+        // Rider-owned delivery becomes visible to the shop; early states simply
+        // return no row and retain a null arrival timestamp.
+        val ids = orders.mapNotNull { order ->
+            runCatching { UUID.fromString(order.id).toString() }.getOrNull()
+        }
+        if (ids.isEmpty()) return orders
+        val arrivals = runCatching {
+            val arrivalRows = http.array(
+                http.get(
+                    "orders?select=id,rider_arrived_customer_at&id=in.(" + ids.joinToString(",") + ")",
+                    auth.session.accessToken
+                )
+            )
+            buildMap<String, String?> {
+                for (i in 0 until arrivalRows.length()) {
+                    val row = arrivalRows.optJSONObject(i) ?: continue
+                    val id = row.optString("id")
+                    if (id.isNotBlank()) put(id, row.optNullable("rider_arrived_customer_at"))
+                }
+            }
+        }.getOrDefault(emptyMap())
+
+        return orders.map { order ->
+            order.copy(riderArrivedCustomerAt = arrivals[order.id])
         }
     }
 
