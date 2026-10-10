@@ -51,6 +51,20 @@ any requirement below is OPEN.
   f6d47055e64c92546126bcbf797e93fca7ee6c31255eda4e127c62ae4f2deaf0.
   The runtime log explicitly leaves authenticated E2E/visual parity, physical
   FCM and real two-device voice audio unverified.
+- Native main HEAD 33e64430 completed QueueGo Native Android Pilot run
+  38070312765 successfully. Full regression, three-app Native build, Reject
+  WebView, launch/map lifecycle and microphone foreground-service runtime all
+  passed. APK artifact 11677115695 was saved with SHA256
+  8582db5df2fe59ab70f23c3fbbbf3f9e8468aea81e5391437e8ff421f6d145d9;
+  launch evidence artifact 11676896580 was saved with SHA256
+  b376d69dd4e1bc1285249afd8bc48ae031762cdb7e7279681590f148ea806117.
+  The runtime evidence still explicitly leaves authenticated E2E/visual parity,
+  physical FCM and real two-device voice audio unverified.
+- Production readiness was re-counted read-only on 2026-10-11 (Thailand time):
+  0 Native push tokens, 0 enabled Native push tokens, 0 web push subscriptions,
+  0 push-config rows, 0 push-outbox rows and 0 call sessions. Therefore neither
+  physical FCM delivery nor real voice/TURN behavior has been observed yet; the
+  corresponding physical gates remain OPEN.
 - Backup/Restore run 38039279454 failed at secret validation with
   QG_SUPABASE_DB_URL, QG_SUPABASE_SERVICE_ROLE_KEY and QG_BACKUP_PASSPHRASE
   absent from the Actions environment.
