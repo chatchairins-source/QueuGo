@@ -138,6 +138,7 @@ ok(manifest?.android?.release_gate_physical_device_id_hash_required===true&&mani
 ok(manifest?.android?.physical_evidence_capture_helper==='native-android/qa/capture-physical-release-evidence.py','Recovery manifest must point to the supported physical evidence helper');
 ok(manifest?.android?.physical_evidence_capture_default_status==='DRAFT'&&manifest?.android?.physical_evidence_capture_auto_certifies===false,'Physical evidence helper must never auto-certify release gates');
 ok(manifest?.android?.physical_evidence_capture_rejects_emulator===true&&manifest?.android?.physical_evidence_capture_external_output_required===true,'Physical evidence helper must reject emulator capture and keep evidence outside source');
+ok(manifest?.android?.physical_evidence_capture_identity_hash_salt==='PER_CAPTURE_RANDOM_256_BIT_NOT_STORED'&&manifest?.android?.physical_evidence_capture_identity_hash_domain_separated===true,'Physical evidence identity hashes must remain per-capture salted and domain-separated');
 ok(manifest?.android?.release_gate_lifecycle_requires_all_roles===true,'Lifecycle certification must cover Customer Merchant and Rider');
 ok(manifest?.android?.release_gate_voice_requires_two_distinct_devices===true&&manifest?.android?.release_gate_voice_requires_two_distinct_networks===true,'Voice certification must require two devices and two networks');
 ok(manifest?.android?.release_gate_full_native_ci_attested_run_binding===true,'full_native_ci evidence must bind the attested Native Pilot run');
