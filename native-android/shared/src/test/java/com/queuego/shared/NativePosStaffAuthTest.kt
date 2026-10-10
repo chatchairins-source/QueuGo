@@ -109,7 +109,8 @@ class NativePosStaffAuthTest {
     }
 
     @Test(expected = NativeSessionInvalidException::class)
-    fun suspendedPublicProfileCannotBypassThroughActivePosStaff() = runBlocking {
+    fun suspendedPublicProfileCannotBypassThroughActivePosStaff() {
+        runBlocking {
         val server = MockWebServer()
         server.start()
         try {
@@ -124,10 +125,12 @@ class NativePosStaffAuthTest {
         } finally {
             server.shutdown()
         }
+        }
     }
 
     @Test(expected = NativeSessionInvalidException::class)
-    fun inactiveStaffCannotEnterMerchantPos() = runBlocking {
+    fun inactiveStaffCannotEnterMerchantPos() {
+        runBlocking {
         val server = MockWebServer()
         server.start()
         try {
@@ -142,6 +145,7 @@ class NativePosStaffAuthTest {
                 .signInMerchantOrStaff("staff@example.com", "password123", "device")
         } finally {
             server.shutdown()
+        }
         }
     }
 }
