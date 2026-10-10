@@ -61,6 +61,8 @@ ok(/re-review if recording, transcription, SFU\/server media access or non-E2EE 
 ok(manifest?.play?.voice_audio_data_safety==='E2EE_EXCEPTION_WHILE_PEER_ONLY_WEBRTC','Recovery manifest must preserve the reviewed voice-media E2EE exception');
 ok(Array.isArray(manifest?.play?.voice_audio_roles)&&manifest.play.voice_audio_roles.length===3,'Voice Data Safety review must cover all three Native roles');
 ok(manifest?.play?.voice_audio_reassessment_required_on_architecture_change===true,'Voice Data Safety must require reassessment on architecture changes');
+ok(manifest?.play?.voice_audio_media_readable_by_turn_provider===false,'Recovery manifest must preserve the reviewed encrypted TURN media boundary');
+ok(manifest?.play?.cloudflare_turn_relay_metadata_review==='PENDING_FINAL_PLAY_CONSOLE_METADATA_CLASSIFICATION','Cloudflare TURN relay metadata must remain pending final Play classification');
 
 ok(manifest?.play?.provider_sharing_classification==='RESOLVED_CONSERVATIVE_LONGDO_LOCATION_SHARED','Provider sharing classification must not regress to pending');
 ok(manifest?.play?.data_safety_sharing==='YES_LONGDO_LOCATION_APP_FUNCTIONALITY','Manifest must lock Longdo location sharing for app functionality');
