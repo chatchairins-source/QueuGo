@@ -493,7 +493,16 @@
     "turn_edge_source_exact_match": true,
     "turn_edge_last_checked_at": "2026-10-10T14:09:00Z",
     "turn_runtime_secret_status": "UNVERIFIED_NO_PRODUCTION_REQUESTS_OBSERVED",
-    "turn_forced_relay_two_device_gate": "OPEN"
+    "turn_forced_relay_two_device_gate": "OPEN",
+    "physical_evidence_schema_version": 1,
+    "physical_evidence_manifest": "native-physical-evidence.json",
+    "physical_evidence_semantic_validator": "native-android/qa/verify_native_physical_evidence.py",
+    "physical_evidence_requires_two_real_devices": true,
+    "physical_evidence_requires_all_three_roles": true,
+    "physical_evidence_requires_forced_turn_relay": true,
+    "physical_evidence_requires_blueprint_zero_blocking_differences": true,
+    "physical_evidence_requires_lifecycle_matrix": true,
+    "physical_evidence_runtime_gate": "OPEN_PENDING_REAL_DEVICE_CAPTURE"
   },
   "security": {
     "code_surface_hardened": true,
