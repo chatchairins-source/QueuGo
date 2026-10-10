@@ -36,6 +36,8 @@ ok(api.includes('internal suspend fun registerRider'),'QueueGoApi must retain Na
 ok(api.includes('/auth/v1/signup'),'Native Rider registration must create Supabase Auth account when needed');
 ok(api.includes('"status","pending"'),'Native Rider registration must create a pending QueueGo user');
 ok(api.includes('/rest/v1/rider_profiles'),'Native Rider registration must persist rider profile data');
+ok(api.includes('/rest/v1/rider_profiles?select=id,rider_name,phone,vehicle_type,vehicle_plate,vehicle_status,vehicle_verified_at,metadata&user_id=eq.'),
+  'Rider snapshot must fetch every profile field rendered by the Native profile UI');
 ok(api.includes('"applicationStatus","pending"'),'Native Rider registration metadata must remain pending for Admin review');
 ok(api.includes('RIDER_DOCUMENTS.keys.forEachIndexed'),'Native Rider registration must persist all required document payloads');
 ok(api.includes('before.getJSONObject(0).optString("status") == "pending"'),'Resume/update must fail closed after Admin leaves pending state');
