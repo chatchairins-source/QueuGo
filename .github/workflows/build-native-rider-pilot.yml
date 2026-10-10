@@ -21,6 +21,8 @@ on:
       - 'tests/native-android-source.cjs'
       - 'tests/native-pos-edit-idempotency.cjs'
       - 'tests/native-customer-merchant-push.cjs'
+      - 'tests/native-push-session-binding.cjs'
+      - 'ops/native-push-session-binding-proposal-*.sql'
       - 'supabase/functions/queuego-push/**'
       - 'supabase/migrations/*pos_edit_bill_idempotency.sql'
       - 'ops/pos-edit-idempotency-schema-baseline-*.sql'
@@ -98,6 +100,8 @@ jobs:
         run: node tests/native-pos-edit-idempotency.cjs
       - name: Native Customer Merchant push contracts
         run: node tests/native-customer-merchant-push.cjs
+      - name: Native push session binding contracts
+        run: node tests/native-push-session-binding.cjs
       - name: Source integrity
         run: node tests/native-android-source.cjs
       - name: Verify launcher asset family
