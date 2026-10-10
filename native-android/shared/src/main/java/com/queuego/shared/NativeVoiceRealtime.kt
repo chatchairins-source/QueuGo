@@ -28,6 +28,19 @@ enum class NativeVoiceRealtimeState { CONNECTING, CONNECTED, CLOSED, FAILED }
 
 data class NativeVoiceSignal(val event: String, val payload: JSONObject)
 
+internal fun parseNativeVoiceBroadcast(
+    message: JSONObject,
+    expectedTopic: String
+): NativeVoiceSignal? {
+    if (message.optString("topic") != expectedTopic) return null
+    if (message.optString("event") != "broadcast") return null
+    val payload = message.optJSONObject("payload") ?: return null
+    val event = payload.optString("event")
+    val body = payload.optJSONObject("payload") ?: return null
+    if (event !in NativeVoiceRealtimeConnection.ALLOWED_EVENTS) return null
+    return NativeVoiceSignal(event, body)
+}
+
 class NativeVoiceRealtime internal constructor(
     private val endpoint: String,
     private val client: OkHttpClient
@@ -112,10 +125,8 @@ class NativeVoiceRealtimeConnection internal constructor(
                             } else fail(IOException("Voice Realtime subscription rejected"))
                         }
                         "broadcast" -> {
-                            val name = payload.optString("event")
-                            val body = payload.optJSONObject("payload")
-                            if (name in ALLOWED_EVENTS && body != null) {
-                                _signals.trySend(NativeVoiceSignal(name, body))
+                            parseNativeVoiceBroadcast(message, realtimeTopic)?.let { signal ->
+                                _signals.trySend(signal)
                             }
                         }
                         "system" -> if (payload.optString("status") == "error") {
