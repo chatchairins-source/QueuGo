@@ -384,7 +384,8 @@
       "aab_application_id",
       "aab_version_code",
       "aab_version_name",
-      "pinned_bundletool_sha256"
+      "pinned_bundletool_sha256",
+      "aab_page_alignment_16kb"
     ],
     "native_release_workflow": ".github/workflows/build-native-release.yml",
     "native_release_workflow_present": true,
@@ -400,7 +401,14 @@
     "release_bundletool_required": true,
     "release_bundletool_version": "1.18.3",
     "release_bundletool_sha256": "a099cfa1543f55593bc2ed16a70a7c67fe54b1747bb7301f37fdfd6d91028e29",
-    "release_artifact_evidence_external_to_source": true
+    "release_artifact_evidence_external_to_source": true,
+    "target_api_level": 36,
+    "compile_api_level": 36,
+    "android_gradle_plugin": "9.4.0",
+    "page_size_16kb_gate": true,
+    "page_size_16kb_apk_check": "zipalign_-P_16_and_64bit_ELF_LOAD_alignment_gte_0x4000",
+    "page_size_16kb_aab_check": "bundletool_PAGE_ALIGNMENT_16K",
+    "page_size_16kb_physical_runtime_still_required": true
   },
   "security": {
     "code_surface_hardened": true,
