@@ -1,7 +1,7 @@
 # QueueGo — Google Play Closed Beta Readiness
 
-Last reviewed: 2026-10-07  
-Scope: Android Customer, Merchant, Rider apps.
+Last reviewed: 2026-10-10  
+Scope: Native Android Customer, Merchant, Rider apps. Legacy Capacitor/Web build notes are historical context only and do not certify the Native release.
 
 ## Current release gate
 
@@ -10,12 +10,15 @@ Closed Beta release remains **BLOCKED** until every hard gate below passes:
 - Account deletion + privacy: PASS
 - Service area: PASS
 - Security code gate: PASS
-- Core production E2E: PASS
+- Core production backend/Web E2E: PASS
+- Native full physical E2E / Blueprint parity: BLOCKED — device evidence is incomplete
 - UGC / chat safety implementation: PASS
 - Android target API 36 static gate: PASS
+- Native microphone foreground-service source + accelerated Android lifecycle: PASS — physical two-device audio/TURN remains BLOCKED
 - Backup/Restore drill: BLOCKED — GitHub backup secrets not configured
 - Supabase Auth: PASS WITH FREE-PLAN CONTROLS — 12-character upper/lower/number/symbol signup policy is shared across all roles; leaked-password protection remains a Pro-only deferred hardening item
 - Native Firebase background notification physical test: BLOCKED — credentials/device test missing
+- Play Data Safety + foreground-service declarations: BLOCKED — Play Console certification/evidence not completed
 - Android release signing: BLOCKED — release signing secrets missing
 
 The release workflow is intentionally configured to fail while hard gates are not certified.
@@ -48,12 +51,12 @@ Google Play's User Data policy requires appropriate security measures for person
 
 For phone/tablet apps submitted after 2026-08-31, Google Play requires new apps and updates to target Android 16 / API 36 or newer.
 
-QueueGo uses Capacitor Android 8.x, whose supported target SDK is API 36. Both the Pilot APK and Closed Beta workflows verify the generated Android project has:
+The Native Android Customer, Merchant and Rider modules each use:
 
-- compileSdkVersion = 36
-- targetSdkVersion = 36
+- compileSdk = 36
+- targetSdk = 36
 
-Builds fail if the generated project is not API 36.
+The Native release gate and CI are the certification source. Earlier Capacitor-generated Android checks remain historical only and must not be used to certify the Native apps.
 
 Policy sources:
 - https://support.google.com/googleplay/android-developer/answer/11926878
@@ -61,27 +64,29 @@ Policy sources:
 
 ### Android permissions
 
-QueueGo release builds are limited to the permissions required by the active feature set:
+QueueGo Native release builds are limited to permissions required by the active feature set.
 
-Expected:
+Expected across the Native apps as applicable:
 - INTERNET
 - ACCESS_NETWORK_STATE
 - ACCESS_COARSE_LOCATION
 - ACCESS_FINE_LOCATION
-- VIBRATE
-- POST_NOTIFICATIONS (native push plugin)
+- POST_NOTIFICATIONS
+- RECORD_AUDIO for optional order-scoped audio calls
+- FOREGROUND_SERVICE and FOREGROUND_SERVICE_MICROPHONE for an active user-started voice call
 
-Explicitly forbidden by the release workflow:
+Rider additionally uses SYSTEM_ALERT_WINDOW and FOREGROUND_SERVICE_SPECIAL_USE for the approved Floating Q / active Rider return-control flow.
+
+Still forbidden unless a future reviewed feature explicitly requires them:
 - CAMERA
-- RECORD_AUDIO
 - READ_EXTERNAL_STORAGE
 - WRITE_EXTERNAL_STORAGE
 - READ_MEDIA_IMAGES
 - ACCESS_BACKGROUND_LOCATION
 
-Image selection uses the Android system picker / WebView file chooser instead of broad media-library permission.
+Image selection/upload uses the system picker or scoped file chooser rather than broad media-library access. QueueGo does not request background location.
 
-QueueGo does not request background location. Location is used only for foreground service functionality such as customer delivery location, shop coordinates, Rider location while using the work flow, service-area checks, distance calculations and navigation.
+The microphone foreground service is started only from visible outgoing/answer user actions before media creation. Incoming FCM does not start microphone access in the background. The service keeps an already-started call eligible through background lifecycle and stops on call/session termination. Physical two-device/background audio certification and the Play foreground-service declaration remain OPEN.
 
 Policy source:
 - https://support.google.com/googleplay/android-developer/answer/16558241
