@@ -83,6 +83,7 @@ for(const trigger of ["'tests/**'","'package.json'","'package-lock.json'"]){
 
 const nativePilotWorkflow=fs.readFileSync('.github/workflows/build-native-rider-pilot.yml','utf8');
 assert.ok(nativePilotWorkflow.includes("- 'work-native-**'"),'Native pilot CI must cover every work-native branch');
+assert.ok(nativePilotWorkflow.includes("'.github/workflows/native-release-certification.yml'"),'Native pilot CI must trigger directly on certification workflow changes');
 assert.ok(nativePilotWorkflow.includes('0918c23673ba6c7a349746f005525aca2ff3470f8e2966d5d2a4cb633ae5980c'),'Native pilot CI must pin the observed Longdo SDK SHA-256');
 assert.ok(nativePilotWorkflow.includes('sha256sum -c -'),'Native pilot Longdo integrity gate must use SHA-256');
 assert.doesNotMatch(nativePilotWorkflow,/md5sum -c -/,'Native pilot Longdo integrity gate must not fall back to MD5');
