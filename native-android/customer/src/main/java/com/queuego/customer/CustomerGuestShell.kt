@@ -54,6 +54,8 @@ internal fun GuestCustomerShell(onLogin: (destination: String) -> Unit) {
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
     val cartStore = remember { CustomerCartStore(context, "guest") }
+    val locationStore = remember { CustomerLocationStore(context) }
+    val savedLocation = remember { locationStore.load() }
     val shopCatalog = remember { CustomerShopCatalog(scope) }
     val catalogState by shopCatalog.state.collectAsState()
 
@@ -66,8 +68,9 @@ internal fun GuestCustomerShell(onLogin: (destination: String) -> Unit) {
     var serviceBanners by remember { mutableStateOf<Map<String, ServiceBanner>>(emptyMap()) }
     var selectedShop by remember { mutableStateOf<CustomerShop?>(null) }
     var cart by remember { mutableStateOf(cartStore.load()) }
-    var location by remember { mutableStateOf<CustomerLocation?>(null) }
-    var address by remember { mutableStateOf("") }
+    var location by remember { mutableStateOf(savedLocation) }
+    var address by remember { mutableStateOf(savedLocation?.address.orEmpty()) }
+    var locationBusy by remember { mutableStateOf(false) }
     var loading by remember { mutableStateOf(true) }
     var message by remember { mutableStateOf<String?>(null) }
 
@@ -261,14 +264,24 @@ internal fun GuestCustomerShell(onLogin: (destination: String) -> Unit) {
                 "location" -> CustomerLocationPickerScreen(
                     location = location,
                     address = address,
-                    busy = false,
+                    busy = locationBusy,
                     onGps = ::gps,
                     resolveAddress = { lat, lng -> api.reverseGeocode(lat, lng) },
-                    onSave = {
-                        location = it
-                        address = it.address
-                        message = "บันทึกที่อยู่ในเครื่องแล้ว"
-                        screen = "home"
+                    onSave = { picked ->
+                        if (!locationBusy) {
+                            locationBusy = true
+                            scope.launch {
+                                try {
+                                    locationStore.save(picked)
+                                    location = picked
+                                    address = picked.address
+                                    message = "บันทึกที่อยู่ในเครื่องแล้ว"
+                                    screen = "home"
+                                } catch (failure: CancellationException) { throw failure }
+                                catch (failure: Exception) { message = failure.message ?: "บันทึกที่อยู่ไม่สำเร็จ" }
+                                finally { locationBusy = false }
+                            }
+                        }
                     },
                     onBack = { screen = "home" }
                 )

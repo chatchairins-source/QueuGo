@@ -703,3 +703,10 @@ The user-supplied Rider reference screens are the acceptance reference for workf
 - Customer guest branch still requires full CI and real public/authenticated UI checks before integration. Build success alone is not visual/functional parity or release certification. No artifacts delivered.
 
 - Updated actual emulator matrix for the restored Customer guest entry: capture public Home, explicitly open login, retain signup/email/back checks, then verify one Back returns to guest Home. No login/account/order submission or fabricated catalog state. This runtime evidence is pending CI.
+
+
+## 2026-10-10 Customer guest delivery location continuity
+- Production public REST reads succeeded with the app publishable key and no account token: shop directory/open state, real shop products/reviews and market directories/catalog. Actual anon RLS read-only probe confirms one visible shop/product, two markets, one market-member shop, no market-stock/promotions, and both allowed banner settings. No records changed or synthetic catalog introduced.
+- Found the guest-selected pin/address disappeared at authentication and account-profile refresh could override a selected local pin. Production retains qg_customer_delivery_location across that transition. Added one shared Customer device-local cache with validated finite Thailand coordinates, used by guest and authenticated shells; profile location is only fallback when no valid local selection exists.
+- Guest save writes durable storage on IO before navigation; errors remain retryable, no success claimed after failed storage. Authenticated save retains Production metadata PATCH, then updates local cache; a cache failure cannot turn an acknowledged account save into a false server failure. Cancellation propagates and busy clears in finally.
+- Serialization/reopen, profile precedence, corrupt/missing cache and invalid-point tests added. Three-app compile/runtime CI pending on isolated work-native-customer-location-cache-20261010; no integration or full visual/device/E2E/Release certification.

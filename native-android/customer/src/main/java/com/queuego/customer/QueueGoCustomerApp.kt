@@ -158,6 +158,8 @@ private fun CustomerShell(
     val liveMutex = remember { Mutex() }
     val context = LocalContext.current
     val cartStore = remember(auth.user.id) { CustomerCartStore(context, auth.user.id) }
+    val locationStore = remember { CustomerLocationStore(context) }
+    val savedDeviceLocation = remember { locationStore.load() }
     val guestCartStore = remember { CustomerCartStore(context, "guest") }
     val initialCartMerge = remember(auth.user.id) {
         val saved = cartStore.load()
@@ -208,8 +210,8 @@ private fun CustomerShell(
     LaunchedEffect(screen) { if (screen != "shop") shopCatalog.close() }
     var orderItems by remember { mutableStateOf<List<CustomerOrderItem>>(emptyList()) }
     var cart by remember(auth.user.id) { mutableStateOf(initialCartMerge.first) }
-    var location by remember { mutableStateOf<CustomerLocation?>(null) }
-    var address by remember { mutableStateOf("") }
+    var location by remember { mutableStateOf(savedDeviceLocation) }
+    var address by remember { mutableStateOf(savedDeviceLocation?.address.orEmpty()) }
     var note by remember { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }
     var loading by remember { mutableStateOf(true) }
@@ -265,9 +267,10 @@ private fun CustomerShell(
                 marketTrips = runCatching { marketApi.trips(auth) }.getOrDefault(emptyList())
                 laundryOrders = runCatching { laundryApi.orders(auth) }.getOrDefault(emptyList())
                 val saved = api.loadSavedLocation(auth)
-                if (saved != null) {
-                    location = saved
-                    if (address.isBlank()) address = saved.address
+                val selected = preferredCustomerDeliveryLocation(location, saved)
+                if (selected != null && selected != location) {
+                    location = selected
+                    address = selected.address
                 }
                 banners = api.loadHomeBanners(auth)
                 serviceBanners = api.loadServiceBanners(auth)
@@ -555,15 +558,20 @@ private fun CustomerShell(
                         if (!busy) {
                             busy = true
                             scope.launch {
-                                runCatching { api.saveLocation(auth, picked) }
-                                    .onSuccess {
-                                        location = picked
-                                        address = picked.address
-                                        message = "บันทึกที่อยู่แล้ว"
-                                        screen = "home"
-                                    }
-                                    .onFailure { message = it.message ?: "บันทึกที่อยู่ไม่สำเร็จ" }
-                                busy = false
+                                try {
+                                    api.saveLocation(auth, picked)
+                                    location = picked
+                                    address = picked.address
+                                    // Account acknowledgement remains successful if the local cache fails.
+                                    val cacheFailure = try { locationStore.save(picked); null }
+                                        catch (failure: CancellationException) { throw failure }
+                                        catch (failure: Exception) { failure }
+                                    message = if (cacheFailure == null) "บันทึกที่อยู่แล้ว"
+                                        else "บันทึกที่อยู่ในบัญชีแล้ว แต่บันทึกในเครื่องไม่สำเร็จ"
+                                    screen = "home"
+                                } catch (failure: CancellationException) { throw failure }
+                                catch (failure: Exception) { message = failure.message ?: "บันทึกที่อยู่ไม่สำเร็จ" }
+                                finally { busy = false }
                             }
                         }
                     },
