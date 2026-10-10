@@ -171,8 +171,8 @@ class NativeAuthApi(
                         token,
                         JSONObject()
                             .put("p_market_id", market.marketId)
-                            .put("p_stall_no", market.stallNo?.takeIf { it.isNotBlank() })
-                            .put("p_zone", market.zone?.takeIf { it.isNotBlank() })
+                            .put("p_stall_no", market.stallNo?.takeIf { it.isNotBlank() } ?: JSONObject.NULL)
+                            .put("p_zone", market.zone?.takeIf { it.isNotBlank() } ?: JSONObject.NULL)
                             .put("p_confirmed", true)
                             .put("p_proof_path", JSONObject.NULL)
                     )
@@ -184,9 +184,9 @@ class NativeAuthApi(
                         JSONObject()
                             .put("p_name", request.name.trim())
                             .put("p_province", request.province.trim())
-                            .put("p_district", request.district?.trim()?.takeIf { it.isNotBlank() })
-                            .put("p_subdistrict", request.subdistrict?.trim()?.takeIf { it.isNotBlank() })
-                            .put("p_address", request.address?.trim()?.takeIf { it.isNotBlank() })
+                            .put("p_district", request.district?.trim()?.takeIf { it.isNotBlank() } ?: JSONObject.NULL)
+                            .put("p_subdistrict", request.subdistrict?.trim()?.takeIf { it.isNotBlank() } ?: JSONObject.NULL)
+                            .put("p_address", request.address?.trim()?.takeIf { it.isNotBlank() } ?: JSONObject.NULL)
                             .put("p_lat", market.latitude)
                             .put("p_lng", market.longitude)
                             .put(
