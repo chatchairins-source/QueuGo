@@ -10,6 +10,8 @@ ok(!/\n\s*push:/.test(cert),'release certification must never run from push');
 ok(cert.includes('refs/heads/queuego-native-android-v1'),'certification must be restricted to Native Source of Truth');
 ok(cert.includes('queuego-native-release-evidence'),'certification must use the fixed private evidence bucket');
 ok(cert.includes('vars.QG_SUPABASE_URL'),'certification must source the Supabase project URL from Actions variables');
+ok(cert.includes('docs/pilot-recovery-manifest.json')&&cert.includes('project_ref'),'certification must pin the Supabase URL to the Production project_ref');
+ok(cert.includes('evidence_object_path must be namespaced under the exact release GITHUB_SHA'),'evidence object path must be namespaced by exact source SHA');
 ok(cert.includes('secrets.QG_SUPABASE_SERVICE_ROLE_KEY'),'certification must use service role only from Actions secrets');
 ok(cert.includes('/storage/v1/object/authenticated/'),'certification must download evidence from private authenticated Storage');
 ok(cert.includes('Authorization: Bearer $QG_SUPABASE_SERVICE_ROLE_KEY')&&cert.includes('apikey: $QG_SUPABASE_SERVICE_ROLE_KEY'),'private evidence download must authenticate server-side');
@@ -21,6 +23,7 @@ ok(!cert.includes('--location'),'certification must not follow redirects while s
 ok(cert.includes('Evidence ZIP contains path traversal'),'certification must reject ZIP traversal');
 ok(cert.includes('Evidence ZIP contains duplicate paths'),'certification must reject duplicate ZIP entry paths');
 ok(cert.includes('Evidence ZIP contains non-portable backslash paths'),'certification must reject backslash ZIP paths');
+ok(cert.includes('Evidence ZIP may not contain hidden paths'),'certification must reject hidden ZIP paths that artifact upload could omit');
 ok(cert.includes('Evidence ZIP may not contain symlinks'),'certification must reject ZIP symlinks');
 ok(cert.includes('Evidence ZIP exceeds 4 GiB uncompressed limit'),'certification must bound extracted evidence size');
 ok(cert.includes('native-release-evidence.json must exist at the evidence bundle root'),'certification report must be at the bundle root');
