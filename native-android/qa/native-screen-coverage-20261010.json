@@ -131,8 +131,9 @@
         "native-android/merchant/src/main/java/com/queuego/merchant/MerchantPromotionScreen.kt"
       ],
       [
-        "gp_slip_viewer",
-        "native-android/merchant/src/main/java/com/queuego/merchant/MerchantGpSlipViewer.kt"
+        "gp_slip_private_signer",
+        "native-android/merchant/src/main/java/com/queuego/merchant/MerchantGpSlipViewer.kt",
+        "helper"
       ]
     ],
     "rider": [
