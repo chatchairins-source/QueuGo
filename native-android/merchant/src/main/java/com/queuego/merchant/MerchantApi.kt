@@ -642,13 +642,24 @@ class MerchantApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
                     .put("qty", item.quantity)
             )
         }
+        val normalizedReason = reason.trim().take(200).ifBlank { "สินค้าหมด / สินค้าทดแทน" }
+        val editPayload = JSONObject()
+            .put("p_order_id", orderId)
+            .put("p_items", payload)
+            .put("p_reason", normalizedReason)
+        val requestId = UUID.nameUUIDFromBytes(
+            (
+                "merchant-items:" + auth.user.id + ":" + orderId + ":" +
+                    payload.toString() + ":" + normalizedReason
+            ).toByteArray()
+        ).toString()
         val raw = http.rpc(
-            "qg_merchant_edit_order_items",
+            "qg_merchant_action_once",
             auth.session.accessToken,
             JSONObject()
-                .put("p_order_id", orderId)
-                .put("p_items", payload)
-                .put("p_reason", reason.trim().take(200).ifBlank { "สินค้าหมด / สินค้าทดแทน" })
+                .put("p_request_id", requestId)
+                .put("p_kind", "order_items")
+                .put("p_payload", editPayload)
         )
         val row = when (raw) {
             is JSONObject -> raw
