@@ -1,6 +1,7 @@
 package com.queuego.merchant
 
 import android.Manifest
+import android.content.pm.PackageManager
 import android.media.AudioManager
 import android.media.ToneGenerator
 import android.net.Uri
@@ -34,6 +35,8 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -56,6 +59,8 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import com.queuego.shared.NativeAuth
+import com.queuego.shared.NativeVoiceCallController
+import com.queuego.shared.QueueGoVoiceCallOverlay
 import com.queuego.shared.QgAccountDeletionSection
 import com.queuego.shared.QgBg
 import com.queuego.shared.QgBottomNav
@@ -72,6 +77,7 @@ import com.queuego.shared.QgSectionTitle
 import com.queuego.shared.QgStatusPill
 import com.queuego.shared.QueueGoAuthHost
 import com.queuego.shared.QueueGoBrand
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.time.Instant
@@ -112,6 +118,10 @@ private fun MerchantShell(auth: NativeAuth, logout: () -> Unit) {
     var busy by remember { mutableStateOf(false) }
     var message by remember { mutableStateOf<String?>(null) }
     val context = LocalContext.current
+    val merchantPushStore = remember(context) { MerchantPushStore(context) }
+    val voiceController = remember(auth.user.id) { NativeVoiceCallController(context) }
+    val voiceState by voiceController.state.collectAsState()
+    DisposableEffect(voiceController) { onDispose { voiceController.close() } }
     var setupLogoUri by remember { mutableStateOf<Uri?>(null) }
     var setupCoverUri by remember { mutableStateOf<Uri?>(null) }
     var merchantGpsPoint by remember { mutableStateOf<QgMapPoint?>(null) }
@@ -122,6 +132,67 @@ private fun MerchantShell(auth: NativeAuth, logout: () -> Unit) {
     }
     val coverPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) {
         if (it != null) setupCoverUri = it
+    }
+
+    var pendingVoiceAnswer by remember { mutableStateOf(false) }
+    val voicePermission = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted && pendingVoiceAnswer) {
+            voiceController.answerIncoming(auth)
+        } else if (!granted && pendingVoiceAnswer) {
+            message = "กรุณาอนุญาตไมโครโฟนเพื่อรับสาย QueueGo"
+        }
+        pendingVoiceAnswer = false
+    }
+    val notificationPermission = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { /* Android owns notification presentation after the user choice. */ }
+
+    fun answerVoiceCall() {
+        if (context.checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
+            voiceController.answerIncoming(auth)
+        } else {
+            pendingVoiceAnswer = true
+            voicePermission.launch(Manifest.permission.RECORD_AUDIO)
+        }
+    }
+
+    fun performLogout() {
+        scope.launch {
+            runCatching {
+                MerchantNativePushApi().unsubscribe(auth, merchantPushStore.deviceId())
+            }
+            logout()
+        }
+    }
+
+    LaunchedEffect(auth.user.id, auth.session.accessToken, auth.session.sessionId) {
+        runCatching { syncMerchantNativePush(context, auth, merchantPushStore) }
+        if (
+            android.os.Build.VERSION.SDK_INT >= 33 &&
+            merchantFirebaseConfigured(context) &&
+            context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED &&
+            !merchantPushStore.notificationPermissionAsked()
+        ) {
+            merchantPushStore.markNotificationPermissionAsked()
+            notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
+    }
+
+    LaunchedEffect(auth.session.accessToken, auth.session.sessionId, lifecycle) {
+        lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            while (true) {
+                try {
+                    voiceController.refreshIncoming(auth)
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (_: Exception) {
+                    // Native push plus foreground polling recover incoming calls without blocking shop work.
+                }
+                delay(3_000L)
+            }
+        }
     }
     fun updateMerchantGps() {
         val point = merchantLastKnownLocation(context)
@@ -251,7 +322,8 @@ private fun MerchantShell(auth: NativeAuth, logout: () -> Unit) {
         }
     }
 
-    Scaffold(
+    Box(Modifier.fillMaxSize()) {
+        Scaffold(
         containerColor = QgBg,
         bottomBar = {
             if (screen in setOf("home", "orders", "products", "promotions", "profile")) {
@@ -587,7 +659,7 @@ private fun MerchantShell(auth: NativeAuth, logout: () -> Unit) {
                         message = "ทดสอบเสียงแจ้งเตือนแล้ว"
                     },
                     onSupport = { screen = "support" },
-                    logout = logout
+                    logout = ::performLogout
                 )
                 "hours" -> {
                     val activeShop = shop
@@ -682,6 +754,16 @@ private fun MerchantShell(auth: NativeAuth, logout: () -> Unit) {
                 }
             }
         }
+        QueueGoVoiceCallOverlay(
+            state = voiceState,
+            currentUserId = auth.user.id,
+            onAnswer = ::answerVoiceCall,
+            onDecline = { voiceController.declineIncoming(auth) },
+            onHangUp = { voiceController.hangUp() },
+            onDismissEnded = { voiceController.dismissTerminal() },
+            onToggleMute = { voiceController.setMuted(it) },
+            onToggleSpeaker = { voiceController.setSpeakerEnabled(it) }
+        )
     }
 }
 
