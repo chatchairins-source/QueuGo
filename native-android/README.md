@@ -25,3 +25,4 @@ Latest native pilot head is release-gated by full QueueGo regression, native sou
 - Merchant keeps the approved store card / cover / KPI / menu-grid hierarchy.
 - Rider keeps the approved compact topbar, bottom job-card hierarchy, accept countdown on the accept button and single-page item-check + photo-proof flow.
 - Backend behavior remains governed by the existing Supabase Production RLS, RPCs and order state machine.
+
