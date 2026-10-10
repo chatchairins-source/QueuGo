@@ -36,7 +36,8 @@ subprojects {
             }
         }
         tasks.configureEach {
-            if (name in setOf("assembleRelease", "bundleRelease", "packageRelease", "validateSigningRelease")) {
+            // Guard direct internal release tasks too, not just assemble/bundle entry points.
+            if (name.contains("Release")) {
                 dependsOn(verifyNativeReleaseGate)
             }
         }

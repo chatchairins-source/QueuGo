@@ -15,7 +15,11 @@ any requirement below is OPEN.
   checks, 61 launcher checks and 12 banner checks passed.
 - Production push ACTIVE v15 (verify_jwt=false), TURN ACTIVE v2
   (verify_jwt=true). Both voice and push tables have RLS; anon/authenticated
-  direct SELECT is denied. Push v15 still needs the explicit-ID guard rollout.
+  direct SELECT is denied. Push was subsequently upgraded to ACTIVE v16 after
+  backup-native-push-v15-explicit-session-20261010 preserved its exact source
+  and metadata. v16 source matches the gated commit; unauthenticated POST
+  returned HTTP401. Security advisor categories/counts stayed at 1 INFO/3 WARN.
+  Authenticated physical registration/delivery remains untested.
 - Firebase Console redirected to Google sign-in; this browser received
   `502 Bad Gateway / Connection refused`. No Firebase project/config was read.
 - Local Firebase/TURN/signing credentials and adb/Android SDK are absent.
@@ -50,8 +54,8 @@ Release requires QG_NATIVE_VERSION_NAME (x.y.z) and per-app advancing
 QG_CUSTOMER_VERSION_CODE, QG_MERCHANT_VERSION_CODE, QG_RIDER_VERSION_CODE.
 The Play preflight must also verify each code exceeds the actual Play history.
 
-assembleRelease/bundleRelease/packageRelease/validateSigningRelease depend on
-verifyNativeReleaseGate. The verifier fails closed without operator-certified
+Every application task containing Release, including direct internal packaging
+and signing tasks, depends on verifyNativeReleaseGate. The verifier fails closed without operator-certified
 QG_NATIVE_RELEASE_EVIDENCE. The JSON report must reference the exact git HEAD,
 p0=0, p1=0, and every gate named in verify-native-release-gate.py, each with
 status=PASS, evidence_file and sha256 of the actual recorded evidence. No example
@@ -72,7 +76,7 @@ Supabase stores call/session/order/participant/status/timing metadata, not audio
 SDP or ICE candidates. Private Realtime carries ephemeral signaling; Firebase
 transports notifications. Cloudflare TURN is an infrastructure provider.
 
-Before release, publish a privacy disclosure covering microphone use, media
+Before release, publish the staged privacy disclosure covering microphone use, media
 transmission, call metadata and the Firebase/Cloudflare providers. Complete the
 Play Data Safety assessment for Native FCM and voice transmission, including
 whether ephemeral processing/processor exceptions apply under current Play

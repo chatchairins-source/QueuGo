@@ -11,6 +11,12 @@
 - Native-specific gate inventory is native-android/qa/native-play-release-gate-20261010.md. Legacy Capacitor/Web claims do not certify Native. Native voice microphone/media/call metadata disclosures and current Play Data Safety review remain OPEN; old RECORD_AUDIO prohibition must not be reused.
 - Firebase Console reached Google sign-in but returned 502 Connection refused in this environment. No Firebase project/config or credentials were obtained. Local Android SDK/adb and Firebase/TURN/signing secrets are absent; Supabase connector has no secrets operation. Production TURN secret presence is still unknown, not claimed absent.
 
+## 2026-10-10 strict explicit push-session rollout
+- Integration40660cad passed full Native CI38039619102 before PR10 merged to Native main3eecbc55. Native main Full CI38040292297 was then started; completion must be checked. Original62bff538/2353ca78 ancestry and post-deploy main documentation are preserved.
+- Exact Production push v15 source/metadata were backed up on backup-native-push-v15-explicit-session-20261010 under ops/backups/pre-native-push-explicit-session-guard-20261010/. After fresh version/source comparison, push v16 was deployed with the strict explicit-ID guard, retaining verify_jwt=false and the custom auth architecture. Readback confirms ACTIVE v16 and byte-identical gated source (apart from trailing newline); unauthenticated HTTP POST returns401. Security advisor categories/counts unchanged at1 INFO/3 WARN; this does not certify authenticated push or physical behavior.
+- Production voice RPC/private-topic helper anon EXECUTE remains false; authenticated guarded execution remains true. All four idempotent Production migration mirrors remain unchanged. No live order/account/token data was fabricated.
+- Native privacy disclosure is staged in docs/privacy.html for microphone/audio transmission/call metadata and Firebase/Cloudflare infrastructure. Publication on the Production web privacy URL and Native Play Data Safety review remain OPEN. GitHub secrets settings in this browser show logged-out Sign in/404; connector does not expose secrets APIs. No secret was configured or read.
+
 Updated: 2026-10-06 (Asia/Bangkok).
 
 ## User instruction

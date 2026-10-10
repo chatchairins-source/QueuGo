@@ -20,7 +20,7 @@ try{
 const gradle=fs.readFileSync('native-android/build.gradle.kts','utf8');
 assert.match(gradle,/isDebuggable = false/);
 assert.match(gradle,/signingConfig = nativeReleaseSigning/);
-assert.match(gradle,/"assembleRelease", "bundleRelease", "packageRelease", "validateSigningRelease"/);
+assert.match(gradle,/name\.contains\("Release"\)/,'direct internal release tasks must also require the gate');
 assert.match(gradle,/dependsOn\(verifyNativeReleaseGate\)/);
 assert(!/signingConfigs.getByName\("debug"\)/.test(gradle),'release must not use debug signing');
 console.log('Native release packaging guard: PASS (negative authorization checks; physical/signing certification remains OPEN)');
