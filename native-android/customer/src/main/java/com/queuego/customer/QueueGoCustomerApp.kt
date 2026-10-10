@@ -367,18 +367,13 @@ private fun CustomerShell(
     }
 
     BackHandler(enabled = screen != "home") {
-        if (screen == "checkout") {
-            screen = "cart"
-        } else if (screen == "shopping" && shoppingMode != "all") {
-            shoppingMode = "all"
-        } else {
-            screen = "home"
-            selectedOrder = null
-            trackingContext = null
-            selectedMarketTrip = null
-            selectedLaundryOrder = null
-            selectedShop = null
-        }
+        screen = "home"
+        shoppingMode = "all"
+        selectedOrder = null
+        trackingContext = null
+        selectedMarketTrip = null
+        selectedLaundryOrder = null
+        selectedShop = null
     }
 
     val permission = rememberLauncherForActivityResult(
