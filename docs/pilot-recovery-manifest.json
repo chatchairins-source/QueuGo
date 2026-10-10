@@ -517,7 +517,7 @@
     "release_certification_backup_artifact_live_required": true,
     "release_certification_final_release_revalidates_backup_restore_run": true,
     "release_gate_backup_restore_attested_run_binding": true,
-    "release_gate_physical_semantic_contract_version": 2,
+    "release_gate_physical_semantic_contract_version": 3,
     "release_gate_physical_operator_certification_required": true,
     "release_gate_physical_real_non_emulator_required": true,
     "release_gate_push_semantic_checks": [
@@ -560,7 +560,56 @@
       "stops_outside_active_work"
     ],
     "release_gate_blueprint_requires_zero_blocking_differences": true,
-    "release_gate_physical_semantic_runtime_gate": "OPEN_PENDING_REAL_DEVICE_CAPTURE"
+    "release_gate_physical_semantic_runtime_gate": "OPEN_PENDING_REAL_DEVICE_CAPTURE",
+    "release_gate_physical_operator_id_hash_required": true,
+    "release_gate_physical_native_pilot_run_binding": true,
+    "release_gate_physical_role_package_binding": true,
+    "release_gate_physical_app_source_sha_binding": true,
+    "release_gate_physical_build_metadata_required": true,
+    "release_gate_physical_artifact_kind_contract": {
+      "physical_push_customer": [
+        "screen_recording",
+        "notification_log"
+      ],
+      "physical_push_merchant": [
+        "screen_recording",
+        "notification_log"
+      ],
+      "physical_push_rider": [
+        "screen_recording",
+        "notification_log"
+      ],
+      "physical_voice_two_devices_two_networks": [
+        "screen_recording",
+        "call_log"
+      ],
+      "turn_relay": [
+        "network_trace"
+      ],
+      "voice_session_order_block_authorization": [
+        "screen_recording",
+        "auth_log"
+      ],
+      "rider_floating_q": [
+        "screen_recording"
+      ],
+      "customer_blueprint": [
+        "screenshot",
+        "pixel_diff"
+      ],
+      "merchant_blueprint": [
+        "screenshot",
+        "pixel_diff"
+      ],
+      "rider_blueprint": [
+        "screenshot",
+        "pixel_diff"
+      ],
+      "android_lifecycle_permissions_upload_location": [
+        "screen_recording",
+        "lifecycle_log"
+      ]
+    }
   },
   "security": {
     "code_surface_hardened": true,
