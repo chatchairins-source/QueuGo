@@ -57,6 +57,9 @@ assert.match(artifactVerifier,/APK\/AAB signer mismatch/,'release artifact verif
 assert.ok(artifactVerifier.includes('QG_ANDROID_EXPECTED_CERT_SHA256'),'post-build verifier must require the certified signing certificate fingerprint');
 assert.match(artifactVerifier,/cert_sha != expected_cert/,'post-build APK verifier must reject the wrong certified signer');
 assert.match(artifactVerifier,/aab_cert_sha != expected_cert/,'post-build AAB verifier must reject the wrong certified signer');
+assert.ok(artifactVerifier.includes('QG_{role.upper()}_PLAY_MAX_VERSION_CODE'),'post-build verifier must require observed Play version history');
+assert.match(artifactVerifier,/code <= play_max/,'post-build verifier must reject artifact versionCodes that do not advance Play history');
+assert.match(artifactVerifier,/git", "status", "--porcelain"/,'post-build verifier must require a clean source checkout for provenance');
 assert.match(artifactVerifier,/len\(signer_digests\) != 1/,'all three release apps must use one certified signing identity');
 
 const nativeCi=fs.readFileSync('.github/workflows/build-native-rider-pilot.yml','utf8');
