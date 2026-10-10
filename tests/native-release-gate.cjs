@@ -55,11 +55,9 @@ try{
   for(const gate of preceding){
     const envelope={
       gate,source_sha:head,status:'PASS',observed_at:observedAt,
-      checks:semanticChecks[gate]||{observed:true},
+      checks:{observed:true},
       artifacts:[{file:artifact,sha256:artifactSha,kind:'log'}]
     };
-    if(semanticChecks[gate]) envelope.operator_certified=true;
-    if(['customer_blueprint','merchant_blueprint','rider_blueprint'].includes(gate)) envelope.blocking_differences=0;
     const file=`${gate}.json`;
     fs.writeFileSync(path.join(evidenceDir,file),JSON.stringify(envelope));
     const sha=crypto.createHash('sha256').update(fs.readFileSync(path.join(evidenceDir,file))).digest('hex');
@@ -184,9 +182,11 @@ try{
   for(const gate of gateNames){
     const envelope={
       gate,source_sha:head,status:'PASS',observed_at:observedAt,
-      checks:{observed:true},
+      checks:semanticChecks[gate]||{observed:true},
       artifacts:[{file:artifact,sha256:artifactSha,kind:'log'}]
     };
+    if(semanticChecks[gate]) envelope.operator_certified=true;
+    if(['customer_blueprint','merchant_blueprint','rider_blueprint'].includes(gate)) envelope.blocking_differences=0;
     if(gate==='full_native_ci') envelope.github_run_id=456;
     if(gate==='backup_restore') envelope.github_run_id=456;
     if(gate==='production_backend') envelope.supabase_project_ref='pkypiqhlrmzocysgeqew';
