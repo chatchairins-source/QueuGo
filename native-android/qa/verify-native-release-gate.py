@@ -35,6 +35,11 @@ def verify():
         raise ValueError("release checkout must be clean; store evidence/credentials outside git")
     if any(type(report.get(key)) is not int or report[key] != 0 for key in ("p0", "p1")):
         raise ValueError("P0/P1 must both equal zero")
+    release_context = report.get("release_context", {})
+    certified_play_max = release_context.get("play_max_version_codes", {})
+    certified_signer = str(release_context.get("expected_signer_certificate_sha256") or "").replace(":", "").strip().lower()
+    if not re.fullmatch(r"[0-9a-f]{64}", certified_signer):
+        raise ValueError("release evidence has no certified signer certificate SHA-256")
     for name in GATES:
         item = report.get("gates", {}).get(name, {})
         status = item.get("status")
@@ -60,6 +65,11 @@ def verify():
             raise ValueError(f"{release_name} must be an explicit positive integer")
         if not re.fullmatch(r"\d+", play_max_raw):
             raise ValueError(f"{play_max_name} must be the observed highest Play versionCode")
+        certified_max = certified_play_max.get(role)
+        if type(certified_max) is not int or certified_max < 0 or certified_max > 2100000000:
+            raise ValueError(f"release evidence has invalid Play versionCode history for {role}")
+        if int(play_max_raw) != certified_max:
+            raise ValueError(f"{play_max_name} does not match certified Play history")
         version_code = int(release_raw)
         play_max = int(play_max_raw)
         if version_code <= 0 or version_code > 2100000000:
@@ -79,9 +89,14 @@ def verify():
             raise ValueError(f"Firebase config requires one complete client: {package}")
     if len(projects) != 1:
         raise ValueError("all Native Firebase configs must use the certified Production project")
-    required = ("QG_ANDROID_KEYSTORE_PATH", "QG_ANDROID_STORE_PASSWORD", "QG_ANDROID_KEY_ALIAS", "QG_ANDROID_KEY_PASSWORD")
+    required = ("QG_ANDROID_KEYSTORE_PATH", "QG_ANDROID_STORE_PASSWORD", "QG_ANDROID_KEY_ALIAS", "QG_ANDROID_KEY_PASSWORD", "QG_ANDROID_EXPECTED_SIGNER_SHA256")
     if any(not os.environ.get(key) for key in required):
         raise ValueError("Native release signing environment is incomplete")
+    expected_signer = os.environ["QG_ANDROID_EXPECTED_SIGNER_SHA256"].replace(":", "").strip().lower()
+    if not re.fullmatch(r"[0-9a-f]{64}", expected_signer):
+        raise ValueError("QG_ANDROID_EXPECTED_SIGNER_SHA256 must be a 64-character SHA-256 fingerprint")
+    if expected_signer != certified_signer:
+        raise ValueError("expected signing certificate does not match certified release evidence")
     if not Path(os.environ["QG_ANDROID_KEYSTORE_PATH"]).is_file():
         raise ValueError("Native release keystore is unavailable")
     # keytool reads the password from environment, never argv or logs.
@@ -90,6 +105,16 @@ def verify():
                    check=True, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True)
     if "PrivateKeyEntry" not in entry.stdout:
         raise ValueError("release alias is not a signing private-key entry")
+    certificate = subprocess.run(
+        ["keytool", "-exportcert", "-keystore", os.environ["QG_ANDROID_KEYSTORE_PATH"],
+         "-storepass:env", "QG_ANDROID_STORE_PASSWORD", "-alias", os.environ["QG_ANDROID_KEY_ALIAS"]],
+        check=True, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL
+    ).stdout
+    if not certificate:
+        raise ValueError("release signing certificate export is empty")
+    actual_signer = hashlib.sha256(certificate).hexdigest()
+    if actual_signer != expected_signer:
+        raise ValueError("release keystore certificate does not match certified signing identity")
     with tempfile.TemporaryDirectory(prefix="queuego-signing-check-") as directory:
         validation_env = dict(os.environ, QG_VALIDATION_PASSWORD=secrets.token_urlsafe(32))
         subprocess.run(["keytool", "-importkeystore", "-srckeystore", os.environ["QG_ANDROID_KEYSTORE_PATH"],
