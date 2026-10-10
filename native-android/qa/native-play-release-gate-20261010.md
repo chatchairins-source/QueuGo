@@ -135,6 +135,15 @@ Customer/Merchant/Rider push and Blueprint evidence must include the matching ap
 role; Floating Q requires Rider evidence; the lifecycle matrix must cover all
 three roles. The two-device/two-network voice gate requires two distinct device
 hashes plus two distinct network hashes and network types.
+The envelope is also cross-bound to machine-verified release metadata where that
+data is independently available: `full_native_ci.github_run_id` must equal the
+exact-HEAD Native Pilot run attested by GitHub Actions; `production_backend`
+must identify Production Supabase project `pkypiqhlrmzocysgeqew`;
+`firebase_three_packages.firebase_project_id` must match the loaded Firebase
+configuration; `play_store_preflight` must match release versionName, all three
+versionCodes and all three observed Play maxima; and
+`release_signing.signing_certificate_sha256` must match the certified keystore
+fingerprint. Mismatched but correctly hashed evidence is rejected.
 
 The verifier requires all three complete Firebase clients in one Production
 project plus the actual keystore. It verifies the keystore alias using keytool
