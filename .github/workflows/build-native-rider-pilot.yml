@@ -28,12 +28,15 @@ on:
       - 'tests/native-voice-call-contract.cjs'
       - 'tests/native-voice-turn-edge.cjs'
       - 'tests/native-voice-ui-contract.cjs'
+      - 'tests/native-backend-migration-sync.cjs'
       - 'supabase/functions/queuego-push/**'
       - 'ops/native-push-session-binding-proposal-*.sql'
       - 'tests/native-push-session-binding.cjs'
       - 'tests/background-push.cjs'
       - 'tests/native-customer-merchant-push.cjs'
       - 'ops/native-voice-call-schema-proposal-*.sql'
+      - 'supabase/migrations/*native_push_session_binding*.sql'
+      - 'supabase/migrations/*native_voice_call_backend*.sql'
       - 'supabase/functions/queuego-turn/**'
       - 'supabase/migrations/*pos_edit_bill_idempotency.sql'
       - 'ops/pos-edit-idempotency-schema-baseline-*.sql'
@@ -119,6 +122,8 @@ jobs:
         run: node tests/native-voice-turn-edge.cjs
       - name: Native voice UI contracts
         run: node tests/native-voice-ui-contract.cjs
+      - name: Native backend migration mirror
+        run: node tests/native-backend-migration-sync.cjs
       - name: Source integrity
         run: node tests/native-android-source.cjs
       - name: Verify launcher asset family
