@@ -1,5 +1,10 @@
 # QueueGo project memory
 
+## 2026-10-10 secure legacy push integration staging
+- Fetched Native main b267f4c2 and voice/push RC 2353ca78; RC full CI38038818671 / #504 independently confirmed successful. Three-way merge retains post-deploy documentation and all newer Native work. Backup branch backup-native-pre-secure-push-integration-20261010-0900 preserves main before integration.
+- RC permits an invalid explicitly supplied sessionId to enter legacy derivation. Staging hardens this: only an omitted property may derive exactly one live session; explicit malformed, empty, null or non-string sessionId fails closed with 400. Valid explicit IDs still require the user's non-revoked active session. Zero/multiple legacy sessions are rejected.
+- Full CI on this exact staging tree is required before main advances. Production push v15 still requires the same hardening after backup and successful CI. Firebase credentials, TURN secret presence, physical push/audio/overlay tests and release signing remain unverified; no release files or Play-ready claim.
+
 Updated: 2026-10-06 (Asia/Bangkok).
 
 ## User instruction
