@@ -113,6 +113,13 @@ ok(manifest?.play?.data_safety_sharing==='YES_LONGDO_LOCATION_APP_FUNCTIONALITY'
 ok(Array.isArray(manifest?.play?.service_provider_exceptions)&&manifest.play.service_provider_exceptions.includes('Supabase')&&manifest.play.service_provider_exceptions.includes('Firebase Cloud Messaging / Google'),'Manifest must retain Supabase/Firebase service-provider treatment');
 ok(manifest?.android?.platform==='NATIVE_ANDROID','Recovery manifest Android platform must be Native Android');
 ok(manifest?.android?.native_ci_rejects_webview===true,'Recovery manifest must preserve Native no-WebView gate');
+ok(manifest?.android?.release_gate_physical_semantic_contract_version===3,'Physical release evidence semantic contract must remain v3');
+ok(manifest?.android?.release_gate_physical_operator_id_hash_required===true,'Physical release evidence must identify the certifying operator by hash');
+ok(manifest?.android?.release_gate_physical_native_pilot_run_binding===true,'Physical release evidence must bind to the attested Native Pilot run');
+ok(manifest?.android?.release_gate_physical_role_package_binding===true&&manifest?.android?.release_gate_physical_app_source_sha_binding===true,'Physical release evidence must bind role/package and exact source SHA');
+ok(manifest?.android?.release_gate_physical_build_metadata_required===true,'Physical release evidence must record build metadata');
+ok(manifest?.android?.release_gate_physical_artifact_kind_contract?.turn_relay?.includes('network_trace'),'TURN physical evidence must retain a network-trace artifact contract');
+ok(manifest?.android?.release_gate_physical_artifact_kind_contract?.customer_blueprint?.includes('screenshot'),'Blueprint physical evidence must retain screenshot/pixel-diff artifact contract');
 ok(manifest?.android?.legacy_capacitor_build_workflows_retired===true,'Legacy Capacitor build workflows must remain retired');
 ok(Array.isArray(manifest?.android?.allowed_android_build_workflows)&&
   manifest.android.allowed_android_build_workflows.length===2&&
