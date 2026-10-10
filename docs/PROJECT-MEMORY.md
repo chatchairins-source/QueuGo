@@ -695,3 +695,9 @@ The user-supplied Rider reference screens are the acceptance reference for workf
 - Release Gate remains OPEN: complete three-role Production blueprint/authenticated E2E, live concurrency/RLS/session, physical Android/notification/GPS/printer/background matrix, signing and Play readiness. No APK/AAB/source/UI deliverable is sent to the owner. CI build evidence does not certify those gates.
 
 - Nullable RPC fix daa6ffaf: independent CI38024210955 PASS through checkout serialization unit tests, all three builds, Reject WebView and actual emulator/Longdo. Integrated only after that result; combined integration branch remains subject to its own full CI before Native main update.
+
+
+## 2026-10-10 native visible order number parity
+- Found native UUID-hash fallbacks and legacy Laundry/POS/QR conversions differing from Production queuego-order-number.js. Replaced Customer, Merchant, POS, Market, Laundry and Rider display conversions with one shared native formatter mirroring the Production numeric/hex/base36 rules. Missing/invalid server numbers use the same explicit unavailable marker as Production; no order code is fabricated from an ID.
+- Added shared JVM fixtures from the actual Production formatter regression (legacy Laundry/POS/QR, date-prefixed/current QT/QO, padded numeric, malformed UUID and absent number). Rider active job/offer/laundry labels now use the same formatter as Rider history.
+- Local source integrity 201/201 and Production order display regression 39/39 passed. Native shared tests/three compile/runtime CI pending. Main/release gate unchanged until full checks pass.

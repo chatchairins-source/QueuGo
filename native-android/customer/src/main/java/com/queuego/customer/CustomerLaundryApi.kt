@@ -1,5 +1,7 @@
 package com.queuego.customer
 
+import com.queuego.shared.nativeOrderNumber
+
 import com.queuego.shared.NativeAuth
 import com.queuego.shared.QueueGoNativeApi
 import org.json.JSONArray
@@ -214,10 +216,4 @@ class CustomerLaundryApi(private val http: QueueGoNativeApi = QueueGoNativeApi()
 }
 
 
-private fun laundryFormatNumber(raw: String?, id: String): String {
-    val clean = raw.orEmpty().trim()
-    if (clean.startsWith("QT-", true)) return clean.uppercase()
-    val digits = clean.filter { it.isDigit() }.takeLast(4)
-    if (digits.length == 4) return "QT-" + digits
-    return "QT-" + kotlin.math.abs(id.hashCode() % 10000).toString().padStart(4, '0')
-}
+private fun laundryFormatNumber(raw: String?, id: String): String = nativeOrderNumber(raw)

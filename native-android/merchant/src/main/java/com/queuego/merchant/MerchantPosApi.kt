@@ -1,5 +1,7 @@
 package com.queuego.merchant
 
+import com.queuego.shared.nativeOrderNumber
+
 import com.queuego.shared.NativeAuth
 import com.queuego.shared.nativePosPermissionAllowed
 import com.queuego.shared.QueueGoNativeApi
@@ -731,11 +733,5 @@ class MerchantPosApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
         else -> raw.toString().trim('"').takeIf { it.isNotBlank() && it != "null" }
     }
 
-    private fun orderNumber(raw: String?, id: String): String {
-        val clean = raw.orEmpty().trim()
-        if (clean.startsWith("QT-", true)) return clean.uppercase()
-        val digits = clean.filter(Char::isDigit).takeLast(4)
-        if (digits.length == 4) return "QT-" + digits
-        return "QT-" + kotlin.math.abs(id.hashCode() % 10000).toString().padStart(4, '0')
-    }
+    private fun orderNumber(raw: String?, id: String): String = nativeOrderNumber(raw)
 }
