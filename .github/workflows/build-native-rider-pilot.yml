@@ -5,6 +5,7 @@ on:
   push:
     branches:
       - queuego-native-android-v1
+      - work-native-customer-merchant-push-v1-20261010
       - work-native-customer-logout-integration-20261010
       - work-native-customer-location-integration-v2-20261010
       - work-native-printer-ticket-parity-20261010
@@ -50,7 +51,7 @@ jobs:
           mkdir -p native-android/rider/libs
           curl -fsSL "https://api.longdo.com/map-android-SDK/LongdoMapAndroidSDK_v0.1.8.aar" -o native-android/rider/libs/LongdoMapAndroidSDK_v0.1.8.aar
           echo "52d98e8deaaef4400f2623eebb212daa  native-android/rider/libs/LongdoMapAndroidSDK_v0.1.8.aar" | md5sum -c -
-      - name: Prepare native Rider Firebase config
+      - name: Prepare native Firebase configs
         env:
           QG_FIREBASE_GOOGLE_SERVICES_JSON_B64: ${{ secrets.QG_FIREBASE_GOOGLE_SERVICES_JSON_B64 }}
         run: |
@@ -60,20 +61,33 @@ jobs:
             exit 0
           fi
           umask 077
-          printf '%s' "$QG_FIREBASE_GOOGLE_SERVICES_JSON_B64" | base64 --decode > native-android/rider/google-services.json
-          python3 - <<'PY'
-          import json
+          tmp="$(mktemp)"
+          printf '%s' "$QG_FIREBASE_GOOGLE_SERVICES_JSON_B64" | base64 --decode > "$tmp"
+          QG_FIREBASE_CONFIG="$tmp" python3 - <<'PY'
+          import json, os, shutil
           from pathlib import Path
-          p=Path('native-android/rider/google-services.json')
+          p=Path(os.environ['QG_FIREBASE_CONFIG'])
           data=json.loads(p.read_text())
           packages={
               c.get('client_info',{}).get('android_client_info',{}).get('package_name')
               for c in (data.get('client') or [])
           }
+          targets={
+              'com.queuego.customer': Path('native-android/customer/google-services.json'),
+              'com.queuego.merchant': Path('native-android/merchant/google-services.json'),
+              'com.queuego.rider': Path('native-android/rider/google-services.json'),
+          }
           if 'com.queuego.rider' not in packages:
               raise SystemExit('::error::Firebase config has no com.queuego.rider Android client')
-          print('Native Rider Firebase config: valid')
+          for package,target in targets.items():
+              if package in packages:
+                  shutil.copyfile(p,target)
+                  os.chmod(target,0o600)
+                  print(f'Native Firebase config: {package} valid')
+              else:
+                  print(f'::warning::Firebase config has no {package} Android client; that app will build without physical background-push certification')
           PY
+          rm -f "$tmp"
       - name: Install regression dependencies
         run: npm ci
       - name: Full QueueGo regression
