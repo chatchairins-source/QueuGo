@@ -695,3 +695,9 @@ The user-supplied Rider reference screens are the acceptance reference for workf
 - Release Gate remains OPEN: complete three-role Production blueprint/authenticated E2E, live concurrency/RLS/session, physical Android/notification/GPS/printer/background matrix, signing and Play readiness. No APK/AAB/source/UI deliverable is sent to the owner. CI build evidence does not certify those gates.
 
 - Nullable RPC fix daa6ffaf: independent CI38024210955 PASS through checkout serialization unit tests, all three builds, Reject WebView and actual emulator/Longdo. Integrated only after that result; combined integration branch remains subject to its own full CI before Native main update.
+
+
+## 2026-10-10 logout request lifecycle
+- POS staff logout previously only cleared local storage and did not call the deployed revoke_active_session RPC. It now captures the session before clearing and submits revocation on the Activity lifecycle scope.
+- Shared native logout hosts likewise use the Activity scope (resolving wrapped contexts), preventing removal of the authentication composable from cancelling its own revocation job. Local logout remains immediate. Existing fallback is retained for non-Activity hosts; offline/backend failures remain best effort and authenticated/physical revocation is not certified.
+- No RLS, RPC, Auth provider or cash/order state changes. CI pending before integration. Full release gate remains open.

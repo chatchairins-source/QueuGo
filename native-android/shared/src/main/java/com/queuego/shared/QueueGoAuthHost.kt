@@ -54,6 +54,7 @@ fun QueueGoAuthHost(
     val api = remember { NativeAuthApi() }
     val store = remember { SecureRoleSessionStore(context, expectedRole) }
     val scope = rememberCoroutineScope()
+    val logoutScope = remember(context) { nativeLogoutScope(context, scope) }
     var auth by remember { mutableStateOf<NativeAuth?>(null) }
     var restoring by remember { mutableStateOf(true) }
     var busy by remember { mutableStateOf(false) }
@@ -228,7 +229,7 @@ fun QueueGoAuthHost(
             }
             else -> content(auth!!) {
                 val current = auth!!
-                scope.launch { api.revoke(current.session) }
+                logoutScope.launch { api.revoke(current.session) }
                 store.clear()
                 auth = null
             }
