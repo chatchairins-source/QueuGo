@@ -50,8 +50,8 @@ private class ShopExtrasApi(private val http: QueueGoNativeApi = QueueGoNativeAp
         if (rows.length() > 0) http.delete("qg_customer_favorites?id=eq." + http.enc(rows.getJSONObject(0).getString("id")) + "&$owner", auth.session.accessToken)
         else http.post("qg_customer_favorites", auth.session.accessToken, JSONObject().put("user_id", auth.user.id).put("${kind}_id", id))
     }
-    suspend fun reviews(auth: NativeAuth, shop: String): ShopReviews {
-        val data = http.obj(http.rpc("qg_public_shop_reviews", auth.session.accessToken, JSONObject().put("p_shop_id", shop)))
+    suspend fun reviews(auth: NativeAuth?, shop: String): ShopReviews {
+        val data = http.obj(http.rpc("qg_public_shop_reviews", auth?.session?.accessToken, JSONObject().put("p_shop_id", shop)))
         val rows = data.optJSONArray("items")
         val items = (0 until (rows?.length() ?: 0)).map { i -> rows!!.getJSONObject(i).let {
             ShopReview(it.optString("customer_name").ifBlank { "ลูกค้า" }, it.optInt("rating"), it.optString("comment"), it.optString("updated_at"))
@@ -61,18 +61,23 @@ private class ShopExtrasApi(private val http: QueueGoNativeApi = QueueGoNativeAp
 }
 
 @Composable
-internal fun ShopScreen(auth: NativeAuth, shop: CustomerShop?, products: List<CustomerProduct>, cart: List<CartLine>,
+internal fun ShopScreen(auth: NativeAuth?, shop: CustomerShop?, products: List<CustomerProduct>, cart: List<CartLine>,
     productsLoading: Boolean, productsError: String?, onRetryProducts: () -> Unit,
-    onBack: () -> Unit, onAdd: (CustomerProduct) -> Unit, onCart: () -> Unit) {
+    onBack: () -> Unit, onAdd: (CustomerProduct) -> Unit, onCart: () -> Unit,
+    onRequireLogin: () -> Unit = {}) {
     if (shop == null) { Text("ไม่พบร้านค้า", Modifier.padding(35.dp), color = QgMuted); return }
-    // A keyed subtree cancels requests and discards state when the actor or shop changes.
-    key(auth.user.id, shop.id) { ShopBody(auth, shop, products, cart, productsLoading, productsError, onRetryProducts, onBack, onAdd, onCart) }
+    // Guest and signed-in shop views use the same Production-derived renderer.
+    key(auth?.user?.id ?: "guest", shop.id) {
+        ShopBody(auth, shop, products, cart, productsLoading, productsError, onRetryProducts,
+            onBack, onAdd, onCart, onRequireLogin)
+    }
 }
 
 @Composable
-private fun ShopBody(auth: NativeAuth, shop: CustomerShop, products: List<CustomerProduct>, cart: List<CartLine>,
+private fun ShopBody(auth: NativeAuth?, shop: CustomerShop, products: List<CustomerProduct>, cart: List<CartLine>,
     productsLoading: Boolean, productsError: String?, onRetryProducts: () -> Unit,
-    onBack: () -> Unit, onAdd: (CustomerProduct) -> Unit, onCart: () -> Unit) {
+    onBack: () -> Unit, onAdd: (CustomerProduct) -> Unit, onCart: () -> Unit,
+    onRequireLogin: () -> Unit) {
     val api = remember { ShopExtrasApi() }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
@@ -87,18 +92,25 @@ private fun ShopBody(auth: NativeAuth, shop: CustomerShop, products: List<Custom
     var busyFavorites by remember { mutableStateOf<Set<String>>(emptySet()) }
     var expanded by remember { mutableStateOf(false) }
     var reload by remember { mutableIntStateOf(0) }
-    LaunchedEffect(reload, auth.session.accessToken) {
+    LaunchedEffect(reload, auth?.session?.accessToken, shop.id) {
         loadError = false
-        try { favorites = api.favorites(auth); reviews = api.reviews(auth, shop.id) }
-        catch (e: CancellationException) { throw e }
+        try {
+            favorites = if (auth == null) emptyList() else api.favorites(auth)
+            reviews = api.reviews(auth, shop.id)
+        } catch (e: CancellationException) { throw e }
         catch (_: Exception) { loadError = true }
     }
     fun favorite(kind: String, id: String) {
+        val liveAuth = auth
+        if (liveAuth == null) {
+            onRequireLogin()
+            return
+        }
         val identity = "$kind:$id"
         if (identity in busyFavorites) return
         busyFavorites = busyFavorites + identity
         scope.launch {
-            try { api.toggle(auth, kind, id); favorites = api.favorites(auth) }
+            try { api.toggle(liveAuth, kind, id); favorites = api.favorites(liveAuth) }
             catch (e: CancellationException) { throw e }
             catch (_: Exception) { actionError = "บันทึกรายการโปรดไม่สำเร็จ" }
             finally { busyFavorites = busyFavorites - identity }
