@@ -39,6 +39,7 @@ ok(releaseSecrets.includes('vars.QG_SUPABASE_URL')&&releaseSecrets.includes('QG_
 ok(releaseSecrets.includes('/storage/v1/object/list/queuego-native-release-evidence'),'Release preflight must verify private evidence bucket access');
 ok(releaseSecrets.includes('https://pkypiqhlrmzocysgeqew.supabase.co'),'Release preflight must pin the QueueGo Production Supabase origin');
 ok(releaseSecrets.includes('/storage/v1/bucket/queuego-native-release-evidence')&&releaseSecrets.includes('Release evidence bucket must remain private'),'Release preflight must verify the fixed evidence bucket exists and remains private');
+ok(releaseSecrets.includes("--proto '=https'")&&releaseSecrets.includes('--tlsv1.2'),'Release evidence Storage preflight must require HTTPS/TLS');
 ok(releaseCertification.includes('/storage/v1/object/authenticated/')&&releaseCertification.includes('queuego-native-release-evidence'),'Release certification must download evidence only from the fixed private Storage bucket');
 ok(releaseCertification.includes('sha256sum -c -')&&releaseCertification.includes('Evidence ZIP contains path traversal'),'Release certification must verify bundle integrity and reject ZIP traversal');
 ok(releaseCertification.includes('certified-release-metadata.json'),'Release certification must bind exact release metadata');
@@ -88,7 +89,11 @@ ok(manifest?.android?.release_bundletool_sha256==='a099cfa1543f55593bc2ed16a70a7
 ok(manifest?.android?.release_artifact_evidence_external_to_source===true,'Release artifact evidence must remain outside the source checkout');
 ok(manifest?.android?.release_certification_workflow==='.github/workflows/native-release-certification.yml','Recovery manifest must identify the trusted Native certification producer');
 ok(manifest?.android?.release_certification_private_bucket==='queuego-native-release-evidence','Recovery manifest must pin the private evidence bucket');
-ok(manifest?.android?.release_certification_runtime_gate==='BLOCKED_BUCKET_AND_SECRETS_AND_PHYSICAL_EVIDENCE','Recovery manifest must keep certification runtime blocked until real evidence infrastructure exists');
+ok(manifest?.android?.release_certification_private_bucket_present===true&&manifest?.android?.release_certification_bucket_observed_in_production===true,'Recovery manifest must record the observed Production evidence bucket');
+ok(manifest?.android?.release_certification_bucket_public===false,'Release evidence bucket must remain private');
+ok(Array.isArray(manifest?.android?.release_certification_bucket_allowed_mime_types)&&manifest.android.release_certification_bucket_allowed_mime_types.includes('application/zip'),'Release evidence bucket must remain ZIP-only');
+ok(manifest?.android?.release_certification_bucket_client_policies_present===false,'Release evidence bucket must remain server-side only with no client Storage policy');
+ok(manifest?.android?.release_certification_runtime_gate==='BLOCKED_SECRETS_AND_PHYSICAL_EVIDENCE','Certification runtime must remain blocked only on external credentials and real physical evidence after bucket provisioning');
 ok(manifest?.android?.release_certification_requires_exact_head_native_pilot_ci===true,'Release certification must require exact-HEAD Native Pilot CI');
 ok(manifest?.android?.release_certification_native_pilot_workflow==='.github/workflows/build-native-rider-pilot.yml','Recovery manifest must pin the Native Pilot workflow identity for certification');
 ok(manifest?.android?.release_certification_final_release_revalidates_native_pilot_run===true,'Final release must revalidate the Native Pilot run recorded by certification');

@@ -4,6 +4,7 @@ let checks=0;const ok=(v,m)=>{assert.ok(v,m);checks++};
 
 const cert=read('.github/workflows/native-release-certification.yml');
 const release=read('.github/workflows/build-native-release.yml');
+const bucketConfig=JSON.parse(read('native-android/qa/release-evidence-storage.json'));
 
 ok(/workflow_dispatch:/.test(cert),'release certification must be manual only');
 ok(!/\n\s*push:/.test(cert),'release certification must never run from push');
@@ -13,6 +14,12 @@ ok(cert.includes('Require successful exact-HEAD Native Pilot CI'),'certification
 ok(cert.includes('.github/workflows/build-native-rider-pilot.yml')&&cert.includes('.event == "push"')&&cert.includes('.conclusion == "success"'),'certification must pin the successful main-branch Native Pilot workflow identity');
 ok(cert.includes('QG_CERTIFIED_NATIVE_PILOT_RUN_ID'),'certification must retain the attested Native Pilot run id');
 ok(cert.includes('queuego-native-release-evidence'),'certification must use the fixed private evidence bucket');
+ok(bucketConfig.project_ref==='pkypiqhlrmzocysgeqew'&&bucketConfig.bucket_id==='queuego-native-release-evidence','Source mirror must pin the Production release evidence bucket');
+ok(bucketConfig.public===false&&bucketConfig.client_storage_policies_present===false,'Source mirror must record private server-side-only Storage access');
+ok(Array.isArray(bucketConfig.allowed_mime_types)&&bucketConfig.allowed_mime_types.includes('application/zip'),'Source mirror must keep release evidence ZIP-only');
+ok(bucketConfig.provisioning_mode==='SUPABASE_STORAGE_API_OR_DASHBOARD_ONLY'&&bucketConfig.storage_schema_sql_mutation_forbidden===true,'Release evidence bucket provisioning must not mutate the Supabase storage schema through SQL');
+ok(Array.isArray(bucketConfig.runtime_verification)&&bucketConfig.runtime_verification.includes('.github/workflows/native-release-certification.yml')&&bucketConfig.runtime_verification.includes('.github/workflows/release-secret-readiness.yml'),'Bucket source mirror must retain runtime verification in certification and readiness workflows');
+ok(!fs.existsSync('supabase/migrations/20261010133000_native_release_evidence_bucket.sql'),'Unsafe direct storage-schema migration must stay retired');
 ok(cert.includes('vars.QG_SUPABASE_URL'),'certification must source the Supabase project URL from Actions variables');
 ok(cert.includes('https://pkypiqhlrmzocysgeqew.supabase.co'),'certification must pin the QueueGo Production Supabase origin');
 ok(cert.includes('/storage/v1/bucket/$QG_EVIDENCE_BUCKET'),'certification must verify the evidence bucket metadata before download');
@@ -21,7 +28,11 @@ ok(cert.includes('secrets.QG_SUPABASE_SERVICE_ROLE_KEY'),'certification must use
 ok(cert.includes('/storage/v1/object/authenticated/'),'certification must download evidence from private authenticated Storage');
 ok(cert.includes('Authorization: Bearer $QG_SUPABASE_SERVICE_ROLE_KEY')&&cert.includes('apikey: $QG_SUPABASE_SERVICE_ROLE_KEY'),'private evidence download must authenticate server-side');
 ok(cert.includes('evidence_bundle_sha256')&&cert.includes('sha256sum -c -'),'certification must verify the evidence ZIP SHA-256 before extraction');
+ok(cert.includes("--proto '=https'")&&cert.includes('--tlsv1.2'),'certification Storage requests must require HTTPS/TLS');
+ok(!cert.includes('--location'),'certification must not follow redirects while sending service-role headers');
 ok(cert.includes('Evidence ZIP contains path traversal'),'certification must reject ZIP traversal');
+ok(cert.includes('Evidence ZIP contains duplicate paths'),'certification must reject duplicate ZIP entry paths');
+ok(cert.includes('Evidence ZIP contains non-portable backslash paths'),'certification must reject backslash ZIP paths');
 ok(cert.includes('Evidence ZIP may not contain symlinks'),'certification must reject ZIP symlinks');
 ok(cert.includes('Evidence ZIP exceeds 4 GiB uncompressed limit'),'certification must bound extracted evidence size');
 ok(cert.includes('native-release-evidence.json must exist at the evidence bundle root'),'certification report must be at the bundle root');
