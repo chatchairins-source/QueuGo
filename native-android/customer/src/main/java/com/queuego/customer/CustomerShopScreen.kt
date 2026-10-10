@@ -76,7 +76,7 @@ internal fun ShopScreen(auth: NativeAuth?, shop: CustomerShop?, products: List<C
 @Composable
 private fun ShopBody(auth: NativeAuth?, shop: CustomerShop, products: List<CustomerProduct>, cart: List<CartLine>,
     productsLoading: Boolean, productsError: String?, onRetryProducts: () -> Unit,
-    onBack: () -> Unit, onAdd: (CustomerProduct) -> Unit, onCart: () -> Unit,
+    onBack: () -> Unit, onAdd: (CustomerProduct, List<CustomerMenuSelection>) -> Unit, onCart: () -> Unit,
     onRequireLogin: () -> Unit) {
     val api = remember { ShopExtrasApi() }
     val scope = rememberCoroutineScope()
