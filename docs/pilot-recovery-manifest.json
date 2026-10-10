@@ -409,8 +409,8 @@
     "release_certification_workflow_present": true,
     "release_certification_manual_only": true,
     "release_certification_private_bucket": "queuego-native-release-evidence",
-    "release_certification_private_bucket_present": false,
-    "release_certification_private_bucket_checked_at": "2026-10-10",
+    "release_certification_private_bucket_present": true,
+    "release_certification_private_bucket_checked_at": "2026-10-10T13:26:52Z",
     "release_certification_supabase_url_variable": "QG_SUPABASE_URL",
     "release_certification_service_role_secret": "QG_SUPABASE_SERVICE_ROLE_KEY",
     "release_certification_bundle_sha256_required": true,
@@ -418,15 +418,15 @@
     "release_certification_exact_head_required": true,
     "release_certification_exact_release_metadata_binding": true,
     "release_certification_final_release_workflow_identity_pin": true,
-    "release_certification_runtime_gate": "BLOCKED_BUCKET_AND_SECRETS_AND_PHYSICAL_EVIDENCE",
+    "release_certification_runtime_gate": "BLOCKED_SECRETS_AND_PHYSICAL_EVIDENCE",
     "release_secret_preflight_validates_evidence_storage_access": true,
     "release_secret_preflight_requires_supabase_url_variable": true,
     "release_secret_preflight_requires_supabase_service_role": true,
     "release_certification_supabase_project_ref": "pkypiqhlrmzocysgeqew",
     "release_certification_supabase_url": "https://pkypiqhlrmzocysgeqew.supabase.co",
     "release_certification_bucket_private_required": true,
-    "release_certification_bucket_observed_in_production": false,
-    "release_certification_bucket_last_checked_at": "2026-10-10T12:50:00Z",
+    "release_certification_bucket_observed_in_production": true,
+    "release_certification_bucket_last_checked_at": "2026-10-10T13:26:52Z",
     "release_certification_requires_exact_head_native_pilot_ci": true,
     "release_certification_native_pilot_workflow": ".github/workflows/build-native-rider-pilot.yml",
     "release_certification_native_pilot_event": "push",
@@ -453,7 +453,15 @@
       "actions/setup-node": "49933ea5288caeca8642d1e84afbd3f7d6820020",
       "gradle/actions/setup-gradle": "ed408507eac070d1f99cc633dbcf757c94c7933a",
       "actions/upload-artifact": "ea165f8d65b6e75b540449e92b4886f43607fa02"
-    }
+    },
+    "release_certification_bucket_public": false,
+    "release_certification_bucket_allowed_mime_types": [
+      "application/zip",
+      "application/x-zip-compressed"
+    ],
+    "release_certification_bucket_client_policies_present": false,
+    "release_certification_bucket_source_mirror": "native-android/qa/release-evidence-storage.json",
+    "release_certification_bucket_provisioning_mode": "SUPABASE_STORAGE_API_OR_DASHBOARD_ONLY"
   },
   "security": {
     "code_surface_hardened": true,
