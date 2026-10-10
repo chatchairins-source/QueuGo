@@ -11,8 +11,7 @@ const checks=[];
 const ok=(name,value)=>{checks.push([name,Boolean(value)]);assert.ok(value,name);};
 
 ok('Native Closed Beta workflow exists',/name: QueueGo Native Android Closed Beta/.test(workflow));
-ok('Native Closed Beta is manual only',/workflow_dispatch:/.test(workflow)&&!/
-push:/.test(workflow));
+ok('Native Closed Beta is manual only',/workflow_dispatch:/.test(workflow)&&!/^\s*push:\s*$/m.test(workflow));
 ok('Native Closed Beta requires Native branch',/queuego-native-android-v1/.test(workflow)&&/Closed Beta may only build from queuego-native-android-v1/.test(workflow));
 ok('Native Closed Beta does not use legacy Capacitor build dir',!/android-build//.test(workflow));
 ok('Native Closed Beta requires restore drill',/restore_drill_certified/.test(workflow)&&/Backup\/Restore drill is not certified/.test(workflow));
