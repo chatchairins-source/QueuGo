@@ -197,7 +197,7 @@ class CustomerMarketApi(private val http: QueueGoNativeApi = QueueGoNativeApi())
         )
     }
 
-    suspend fun preparePlace(
+    internal suspend fun preparePlace(
         auth: NativeAuth,
         lines: List<MarketCartLine>,
         location: CustomerLocation,
@@ -243,7 +243,7 @@ class CustomerMarketApi(private val http: QueueGoNativeApi = QueueGoNativeApi())
         }
     }
 
-    suspend fun sendPrepared(auth: NativeAuth, pending: PreparedMarketCheckout): JSONObject {
+    internal suspend fun sendPrepared(auth: NativeAuth, pending: PreparedMarketCheckout): JSONObject {
         require(pending.rpc in setOf("queuego_place_market_order", "queuego_add_market_order_shops")) {
             "คำขอ Market Trip ไม่ถูกต้อง"
         }
