@@ -5,6 +5,7 @@ import java.io.Closeable
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
@@ -225,7 +226,7 @@ class NativeVoiceCallController(
         peer = voicePeer
 
         signalJob?.cancel()
-        signalJob = scope.launch {
+        signalJob = scope.launch(start = CoroutineStart.UNDISPATCHED) {
             try {
                 connection.signals.collect { signal ->
                     if (signal.payload.optString("call_id") != call.id) return@collect
