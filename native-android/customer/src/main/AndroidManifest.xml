@@ -5,11 +5,14 @@
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <application
-        tools:replace="android:label"
+        tools:replace="android:label,android:allowBackup,android:fullBackupContent,android:dataExtractionRules"
         android:label="QueueGo"
         android:icon="@mipmap/ic_queuego_launcher"
         android:roundIcon="@mipmap/ic_queuego_launcher"
         android:theme="@style/AppTheme"
+        android:allowBackup="false"
+        android:fullBackupContent="@xml/queuego_backup_rules"
+        android:dataExtractionRules="@xml/queuego_data_extraction_rules"
         android:usesCleartextTraffic="false">
         <meta-data android:name="longdo.map.key" android:value="347649ca13f49db0d8a599ae35f8de2b" />
         <meta-data android:name="com.google.firebase.messaging.default_notification_icon" android:resource="@drawable/qg_notification" />
