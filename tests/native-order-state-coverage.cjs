@@ -61,14 +61,25 @@ ok(merchantUi.includes('"no_rider_available" -> QgCard')&&merchantUi.includes('�
   'Merchant detail must render a terminal no-rider state');
 ok(merchantUi.includes('"cancelled" -> QgCard')&&merchantUi.includes('ออเดอร์ถูกยกเลิก'),
   'Merchant detail must render cancelled as a terminal state');
-ok(merchantUi.includes('"pending" -> {')&&merchantUi.includes('onAction("accepted", null)')&&merchantUi.includes('onAction("cancel",'),
-  'Merchant pending state must expose accept/reject only');
-ok(merchantUi.includes('"accepted", "searching_rider" -> QgCard')&&merchantUi.includes('รอ Rider รับงานก่อนเริ่มเตรียมออเดอร์'),
-  'Merchant accepted/searching states must wait for Rider assignment before preparation');
-ok(merchantUi.includes('"rider_assigned", "assigned" -> {')&&merchantUi.includes('onAction("preparing", null)'),
-  'Merchant may enter preparation only after Rider assignment');
+ok(merchantUi.includes('"pending" -> {')&&merchantUi.includes('onAction("accepted", null)')&&merchantUi.includes('Text("ปฏิเสธออเดอร์")'),
+  'Merchant pending state must expose accept plus guarded rejection');
+ok(merchantUi.includes('"accepted" -> {')&&merchantUi.includes('ร้านรับออเดอร์แล้ว · รอระบบจัดหา Rider')&&merchantUi.includes('Text("ยกเลิกออเดอร์")'),
+  'Merchant accepted compatibility state must wait and retain guarded cancellation');
+ok(merchantUi.includes('"searching_rider" -> QgCard')&&merchantUi.includes('รอ Rider รับงานก่อนเริ่มเตรียมออเดอร์'),
+  'Merchant searching_rider must remain a wait-only state');
+ok(merchantUi.includes('"rider_assigned", "assigned" -> {')&&merchantUi.includes('onAction("preparing", null)')&&merchantUi.includes('Text("ยกเลิกออเดอร์")'),
+  'Merchant rider-assigned state must expose prepare plus guarded cancellation');
 ok(merchantUi.includes('"preparing" -> {')&&merchantUi.includes('onAction("ready", null)'),
   'Merchant preparing state must move to ready');
+ok(merchantUi.includes('private fun MerchantCancelGuard('),'Merchant must keep a dedicated cancellation guard');
+for(const reason of ['สินค้าหมด','ร้านไม่สามารถจัดเตรียมสินค้าได้','ร้านปิดหรือมีเหตุฉุกเฉิน','ลูกค้าขอให้ยกเลิก','อื่น ๆ']){
+  ok(merchantUi.includes('"'+reason+'"'),'Merchant cancellation guard missing reason: '+reason);
+}
+ok(merchantUi.includes('ฉันตรวจสอบออเดอร์นี้แล้ว')&&merchantUi.includes('Slider(')&&merchantUi.includes('slide >= 95f && ready'),
+  'Merchant cancellation must require acknowledgement plus near-complete slide confirmation');
+ok(merchantUi.includes('otherReason = it.take(420)'),'Merchant custom cancellation reason must remain length-bounded');
+ok(!/"preparing" -> \{[\s\S]{0,900}Text\("ยกเลิกออเดอร์"\)/.test(merchantUi),
+  'Merchant cancellation control must stay absent after preparation starts');
 ok(!merchantApi.includes('status=in.(arrived')&&!merchantApi.includes(',arrived'),
   'Merchant must never query arrived as a database order state');
 
