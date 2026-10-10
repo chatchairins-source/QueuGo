@@ -1006,7 +1006,7 @@ class QueueGoApi {
             if (code !in 200..299) {
                 val message = runCatching { JSONObject(text).optString("message") }.getOrNull()
                     ?.takeIf { it.isNotBlank() } ?: "HTTP " + code
-                error(message)
+                throw RiderHttpException(code, message)
             }
 
             if (text.isBlank()) return JSONObject()
