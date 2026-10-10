@@ -2,12 +2,25 @@ package com.queuego.merchant
 
 import java.nio.file.Files
 import java.util.UUID
+import org.json.JSONObject
+import org.json.JSONArray
 import org.junit.Assert.*
 import org.junit.Test
 
 class MerchantPosPendingStoreTest {
     private fun intent() = PosEditIntent(UUID.randomUUID().toString(), UUID.randomUUID().toString(),
         "TAKEAWAY", null, UUID.randomUUID().toString(), 1, "ไม่เผ็ด")
+
+    @Test fun acknowledgementAcceptsRealUuidShapesAndRejectsWrongOrMalformedResults() {
+        val id = UUID.randomUUID().toString()
+        for (raw in listOf(id, JSONObject().put("pos_edit_bill_once", id),
+            JSONArray().put(JSONObject().put("pos_create_bill_once", id)))) {
+            assertEquals(id, merchantPosReplayOrderId(raw, id))
+        }
+        for (raw in listOf<Any>(false, "null", "true", JSONObject(), UUID.randomUUID().toString())) {
+            assertThrows(IllegalStateException::class.java) { merchantPosReplayOrderId(raw, id) }
+        }
+    }
 
     @Test fun reopeningStoreReusesOriginalRequestAndWirePayload() {
         val root = Files.createTempDirectory("pos-pending-test").toFile()

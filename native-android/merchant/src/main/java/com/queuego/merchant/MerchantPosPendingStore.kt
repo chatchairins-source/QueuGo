@@ -7,6 +7,7 @@ import java.nio.file.StandardCopyOption
 import java.security.MessageDigest
 import java.util.UUID
 import org.json.JSONObject
+import org.json.JSONArray
 
 data class PosEditIntent(
     val requestId: String,
@@ -82,4 +83,19 @@ class MerchantPosPendingStore(private val root: File) {
         require(intent.note.length <= 500 && intent.note == intent.note.trim())
         require(intent.type != "TAKEAWAY" || intent.tableId == null)
     }
+}
+
+/** Only a canonical server order UUID is an acknowledgement of a pending mutation. */
+internal fun merchantPosReplayOrderId(raw: Any, expectedBillId: String?): String {
+    fun value(item: Any?): String? = when (item) {
+        is String -> item.trim().trim('"')
+        is JSONObject -> listOf("id", "pos_create_bill_once", "pos_edit_bill_once")
+            .firstNotNullOfOrNull { key -> (item.opt(key) as? String)?.takeIf { it.isNotBlank() } }
+        is JSONArray -> value(item.opt(0))
+        else -> null
+    }
+    val id = value(raw)
+    check(id != null && runCatching { UUID.fromString(id).toString() == id }.getOrDefault(false)
+        && (expectedBillId == null || id == expectedBillId)) { "Server ยังไม่ยืนยันรายการ POS เดิม" }
+    return id
 }

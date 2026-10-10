@@ -171,8 +171,7 @@ class MerchantPosApi(
             }
             throw failure
         }
-        val id = scalarId(raw)
-        check(id != null && (pending.billId == null || id == pending.billId)) { "Server ยังไม่ยืนยันรายการ POS เดิม" }
+        val id = merchantPosReplayOrderId(raw, pending.billId)
         pendingStore.clear(auth.session.authUserId, pending.requestId)
         return id
     }
