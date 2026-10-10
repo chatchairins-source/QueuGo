@@ -103,11 +103,15 @@ without logging secrets. Debug CI remains usable while physical certification is
 pending. Final signed build/inspection and Play Console submission remain gated.
 
 After the hard gate authorizes release packaging, `verify-native-release-artifacts.py`
-must inspect the actual signed Customer/Merchant/Rider APK/AAB outputs. It checks
-the expected applicationId, per-app versionCode, shared versionName, non-debuggable
-APK state, APK signing certificate, AAB JAR signature, SHA-256 for both artifacts,
-and the AAB signer certificate fingerprint. Each role's APK/AAB signer must match,
-and the same certified signer identity is enforced across all three apps.
+must inspect the actual signed Customer/Merchant/Rider APK/AAB outputs. APK
+applicationId/versionCode/versionName/non-debuggable state are checked with Android
+build tools. Each AAB is independently inspected with bundletool 1.18.3 pinned to
+SHA-256 `a099cfa1543f55593bc2ed16a70a7c67fe54b1747bb7301f37fdfd6d91028e29`
+to confirm applicationId, versionCode and versionName. The verifier also re-checks
+each release versionCode against the supplied Play maximum, requires a clean source
+checkout, verifies APK/AAB signatures and SHA-256 hashes, requires both artifact
+signers to match `QG_ANDROID_SIGNING_CERT_SHA256`, and writes release evidence
+outside the source checkout.
 Source readiness for this verifier does not close the signed-artifact gate; PASS
 requires the real release outputs.
 
