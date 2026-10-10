@@ -6,6 +6,7 @@ import okhttp3.mockwebserver.MockWebServer
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
+import org.junit.Assert.assertThrows
 import org.junit.Test
 
 class NativePosStaffAuthTest {
@@ -108,44 +109,50 @@ class NativePosStaffAuthTest {
         }
     }
 
-    @Test(expected = NativeSessionInvalidException::class)
+    @Test
     fun suspendedPublicProfileCannotBypassThroughActivePosStaff() {
-        runBlocking {
-        val server = MockWebServer()
-        server.start()
-        try {
-            server.enqueue(MockResponse().setBody(
-                """{"access_token":"token","user":{"id":"auth-staff"}}"""
-            ))
-            server.enqueue(MockResponse().setBody(
-                """[{"id":"user-id","name":"ระงับ","role":"customer","status":"suspended","auth_user_id":"auth-staff"}]"""
-            ))
-            NativeAuthApi(server.url("/").toString())
-                .signInMerchantOrStaff("staff@example.com", "password123", "device")
-        } finally {
-            server.shutdown()
+        val error = assertThrows(NativeSessionInvalidException::class.java) {
+            runBlocking {
+                val server = MockWebServer()
+                server.start()
+                try {
+                    server.enqueue(MockResponse().setBody(
+                        """{"access_token":"token","user":{"id":"auth-staff"}}"""
+                    ))
+                    server.enqueue(MockResponse().setBody(
+                        """[{"id":"user-id","name":"ระงับ","role":"customer","status":"suspended","auth_user_id":"auth-staff"}]"""
+                    ))
+                    NativeAuthApi(server.url("/").toString())
+                        .signInMerchantOrStaff("staff@example.com", "password123", "device")
+                } finally {
+                    server.shutdown()
+                }
+            }
         }
-        }
+        assertTrue(error.message!!.contains("ระงับ"))
     }
 
-    @Test(expected = NativeSessionInvalidException::class)
+    @Test
     fun inactiveStaffCannotEnterMerchantPos() {
-        runBlocking {
-        val server = MockWebServer()
-        server.start()
-        try {
-            server.enqueue(MockResponse().setBody(
-                """{"access_token":"token","user":{"id":"auth-staff"}}"""
-            ))
-            server.enqueue(MockResponse().setBody("[]"))
-            server.enqueue(MockResponse().setBody(
-                """[{"user_id":"auth-staff","shop_id":"shop-id","display_name":"ปิด","active":false}]"""
-            ))
-            NativeAuthApi(server.url("/").toString())
-                .signInMerchantOrStaff("staff@example.com", "password123", "device")
-        } finally {
-            server.shutdown()
+        val error = assertThrows(NativeSessionInvalidException::class.java) {
+            runBlocking {
+                val server = MockWebServer()
+                server.start()
+                try {
+                    server.enqueue(MockResponse().setBody(
+                        """{"access_token":"token","user":{"id":"auth-staff"}}"""
+                    ))
+                    server.enqueue(MockResponse().setBody("[]"))
+                    server.enqueue(MockResponse().setBody(
+                        """[{"user_id":"auth-staff","shop_id":"shop-id","display_name":"ปิด","active":false}]"""
+                    ))
+                    NativeAuthApi(server.url("/").toString())
+                        .signInMerchantOrStaff("staff@example.com", "password123", "device")
+                } finally {
+                    server.shutdown()
+                }
+            }
         }
-        }
+        assertTrue(error.message!!.contains("ปิดสิทธิ์"))
     }
 }
