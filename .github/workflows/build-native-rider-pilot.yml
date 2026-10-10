@@ -8,6 +8,7 @@ on:
       - work-native-voice-call-v1-20261010
       - work-native-voice-controller-v1-20261010
       - work-native-voice-turn-client-v1-20261010
+      - work-native-voice-ui-v1-20261010
       - work-native-customer-logout-integration-20261010
       - work-native-customer-location-integration-v2-20261010
       - work-native-printer-ticket-parity-20261010
