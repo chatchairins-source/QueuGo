@@ -63,6 +63,8 @@ data class LaundryEvent(
     val createdAt: String?
 )
 
+internal data class PreparedLaundryCheckout(val body: JSONObject)
+
 class CustomerLaundryApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
     suspend fun catalog(auth: NativeAuth): LaundryCatalog {
         val enabledRaw = http.rpc(
@@ -184,27 +186,30 @@ class CustomerLaundryApi(private val http: QueueGoNativeApi = QueueGoNativeApi()
         }
     }
 
-    suspend fun place(
-        auth: NativeAuth,
+    fun preparePlace(
         hub: LaundryHub,
         service: LaundryService,
         location: CustomerLocation,
         estimatedQuantity: Double?,
         note: String?
-    ): JSONObject {
-        val raw = http.rpc(
-            "queuego_place_laundry_order_v2",
-            auth.session.accessToken,
-            JSONObject()
-                .put("p_request_id", UUID.randomUUID().toString())
-                .put("p_hub_id", hub.id)
-                .put("p_service_id", service.id)
-                .put("p_pickup_address", location.address)
-                .put("p_pickup_latitude", location.latitude)
-                .put("p_pickup_longitude", location.longitude)
-                .put("p_estimated_quantity", estimatedQuantity)
-                .put("p_note", note?.trim()?.takeIf { it.isNotBlank() })
-        )
+    ): PreparedLaundryCheckout = PreparedLaundryCheckout(
+        JSONObject()
+            .put("p_request_id", UUID.randomUUID().toString())
+            .put("p_hub_id", hub.id)
+            .put("p_service_id", service.id)
+            .put("p_pickup_address", location.address)
+            .put("p_pickup_latitude", location.latitude)
+            .put("p_pickup_longitude", location.longitude)
+            .put("p_estimated_quantity", estimatedQuantity)
+            .put("p_note", note?.trim()?.takeIf { it.isNotBlank() })
+    )
+
+    suspend fun sendPrepared(auth: NativeAuth, pending: PreparedLaundryCheckout): JSONObject {
+        val body = pending.body
+        UUID.fromString(body.getString("p_request_id"))
+        UUID.fromString(body.getString("p_hub_id"))
+        UUID.fromString(body.getString("p_service_id"))
+        val raw = http.rpc("queuego_place_laundry_order_v2", auth.session.accessToken, body)
         return when (raw) {
             is JSONObject -> raw
             is JSONArray -> raw.optJSONObject(0) ?: JSONObject()
@@ -213,6 +218,15 @@ class CustomerLaundryApi(private val http: QueueGoNativeApi = QueueGoNativeApi()
             if (it.length() == 0) error("ระบบยังไม่ยืนยันคำขอฝากซัก")
         }
     }
+
+    suspend fun place(
+        auth: NativeAuth,
+        hub: LaundryHub,
+        service: LaundryService,
+        location: CustomerLocation,
+        estimatedQuantity: Double?,
+        note: String?
+    ): JSONObject = sendPrepared(auth, preparePlace(hub, service, location, estimatedQuantity, note))
 }
 
 
