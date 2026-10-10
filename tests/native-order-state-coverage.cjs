@@ -63,8 +63,10 @@ ok(merchantUi.includes('"cancelled" -> QgCard')&&merchantUi.includes('ออเ�
   'Merchant detail must render cancelled as a terminal state');
 ok(merchantUi.includes('"pending" -> {')&&merchantUi.includes('onAction("accepted", null)')&&merchantUi.includes('onAction("cancel",'),
   'Merchant pending state must expose accept/reject only');
-ok(merchantUi.includes('"accepted", "searching_rider", "rider_assigned", "assigned" -> {')&&merchantUi.includes('onAction("preparing", null)'),
-  'Merchant accepted/searching/assigned states must enter preparation');
+ok(merchantUi.includes('"accepted", "searching_rider" -> QgCard')&&merchantUi.includes('รอ Rider รับงานก่อนเริ่มเตรียมออเดอร์'),
+  'Merchant accepted/searching states must wait for Rider assignment before preparation');
+ok(merchantUi.includes('"rider_assigned", "assigned" -> {')&&merchantUi.includes('onAction("preparing", null)'),
+  'Merchant may enter preparation only after Rider assignment');
 ok(merchantUi.includes('"preparing" -> {')&&merchantUi.includes('onAction("ready", null)'),
   'Merchant preparing state must move to ready');
 ok(!merchantApi.includes('status=in.(arrived')&&!merchantApi.includes(',arrived'),
