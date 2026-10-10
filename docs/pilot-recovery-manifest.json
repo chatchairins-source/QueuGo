@@ -175,13 +175,13 @@
     "edge_function_sha256": "5be59f1ba299d302bb1dd929eb97c8e7d4a92549b8d3e89a324bddceea8a33b5",
     "edge_deployed_at": "2026-10-10T15:42:42+07:00",
     "edge_post_deploy_log_check": {
-      "checked": true,
+      "checked": false,
       "checked_after_version": 15,
       "error_events_observed": 0,
-      "status": "CLEAN_NO_FUNCTION_REQUESTS_OBSERVED",
+      "status": "PENDING_POST_V15_RUNTIME_EVIDENCE",
       "checked_window_start": "2026-10-10T15:42:42+07:00",
-      "checked_window_end": "2026-10-10T15:41:00+07:00",
-      "note": "Version 15 source was read back from Supabase and matched GitHub byte-for-byte. No queuego-push or queuego-turn request was observed in the checked post-deploy log window, so physical background push and TURN runtime remain uncertified."
+      "checked_window_end": null,
+      "note": "queuego-push v15 source matches GitHub byte-for-byte, but no post-v15 physical/runtime request has been certified yet. Do not treat this as a notification or TURN runtime pass."
     },
     "push_retry_cron": {
       "job_name": "queuego-push-retry",
