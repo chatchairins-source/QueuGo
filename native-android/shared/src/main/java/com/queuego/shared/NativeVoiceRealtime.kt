@@ -10,9 +10,10 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import okhttp3.OkHttpClient
@@ -49,14 +50,14 @@ class NativeVoiceRealtimeConnection internal constructor(
 ) : Closeable {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val _state = MutableStateFlow(NativeVoiceRealtimeState.CONNECTING)
-    private val _signals = MutableSharedFlow<NativeVoiceSignal>(extraBufferCapacity = 64)
+    private val _signals = Channel<NativeVoiceSignal>(Channel.BUFFERED)
     private val refs = AtomicLong(2)
     private val lastHeartbeatReply = AtomicLong(System.nanoTime())
     private val realtimeTopic = "realtime:$topic"
     private var heartbeat: Job? = null
 
     val state: StateFlow<NativeVoiceRealtimeState> = _state
-    val signals: SharedFlow<NativeVoiceSignal> = _signals
+    val signals: Flow<NativeVoiceSignal> = _signals.receiveAsFlow()
 
     private val socket: WebSocket = client.newWebSocket(
         Request.Builder().url(endpoint).build(),
@@ -114,7 +115,7 @@ class NativeVoiceRealtimeConnection internal constructor(
                             val name = payload.optString("event")
                             val body = payload.optJSONObject("payload")
                             if (name in ALLOWED_EVENTS && body != null) {
-                                _signals.tryEmit(NativeVoiceSignal(name, body))
+                                _signals.trySend(NativeVoiceSignal(name, body))
                             }
                         }
                         "system" -> if (payload.optString("status") == "error") {
@@ -183,6 +184,7 @@ class NativeVoiceRealtimeConnection internal constructor(
             _state.value = NativeVoiceRealtimeState.CLOSED
         }
         heartbeat?.cancel()
+        _signals.close()
         scope.cancel()
     }
 
