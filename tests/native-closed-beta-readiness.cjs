@@ -1,3 +1,4 @@
+// Closed Beta v2 gate: latest Native main + verified push compatibility + release policy.
 const fs=require('fs');
 const assert=require('assert');
 
