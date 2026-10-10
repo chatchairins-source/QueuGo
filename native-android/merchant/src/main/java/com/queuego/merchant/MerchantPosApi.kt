@@ -125,7 +125,58 @@ data class PosSnapshot(
 
 class PosAccessDeniedException(message: String) : IllegalStateException(message)
 
-class MerchantPosApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
+class MerchantPosApi(
+    private val pendingStore: MerchantPosPendingStore,
+    private val http: QueueGoNativeApi = QueueGoNativeApi()
+) {
+    fun pendingEdit(auth: NativeAuth): PosEditIntent? = pendingStore.load(auth.session.authUserId)
+
+    private fun requireNoPendingEdit(auth: NativeAuth) {
+        check(pendingEdit(auth) == null) { "กรุณากดตรวจรายการ POS ค้างก่อนทำรายการอื่น" }
+    }
+
+    suspend fun retryPendingEdit(auth: NativeAuth): String {
+        val pending = pendingEdit(auth) ?: error("ไม่พบรายการ POS ค้าง")
+        return submitPendingEdit(auth, pending)
+    }
+
+    private suspend fun submitPendingEdit(auth: NativeAuth, intent: PosEditIntent): String {
+        val pending = pendingStore.prepare(auth.session.authUserId, intent)
+        val raw = try {
+            if (pending.billId == null) {
+                val sessionResult = http.rpc("check_active_session", auth.session.accessToken,
+                    JSONObject().put("p_session_id", auth.session.sessionId))
+                val active = when (sessionResult) {
+                    is Boolean -> sessionResult
+                    is JSONObject -> sessionResult.opt("check_active_session")
+                    is JSONArray -> sessionResult.opt(0).let { first ->
+                        if (first is JSONObject) first.opt("check_active_session") else first
+                    }
+                    else -> null
+                }
+                if (active != true) throw PosAccessDeniedException("Session POS ไม่พร้อมใช้งาน กรุณาเข้าสู่ระบบใหม่")
+                http.rpc("pos_create_bill_once", auth.session.accessToken, JSONObject()
+                    .put("p_request", pending.requestId).put("p_type", pending.type)
+                    .put("p_table", pending.tableId ?: JSONObject.NULL)
+                    .put("p_product", pending.productId).put("p_note", pending.note))
+            } else http.rpc("pos_edit_bill_once", auth.session.accessToken, pending.body()
+                .put("p_session_id", auth.session.sessionId))
+        } catch (failure: com.queuego.shared.QueueGoHttpException) {
+            // These errors originate in pos_edit_bill after the replay ledger lookup.
+            // They prove the request did not commit. Auth/ownership/transport failures keep the key.
+            val rejectedEdit = listOf("product unavailable", "bill not editable", "invalid kitchen state",
+                "bill identity cannot change", "sent items cannot be reduced", "cannot reduce this line")
+            if (failure.statusCode == 400 && rejectedEdit.any { failure.message.orEmpty().contains(it) }) {
+                pendingStore.clear(auth.session.authUserId, pending.requestId)
+            }
+            throw failure
+        }
+        val id = scalarId(raw)
+        check(id != null && (pending.billId == null || id == pending.billId)) { "Server ยังไม่ยืนยันรายการ POS เดิม" }
+        pendingStore.clear(auth.session.authUserId, pending.requestId)
+        return id
+    }
+
     suspend fun snapshot(auth: NativeAuth): PosSnapshot {
         val rawShop = http.rpc("pos_my_shop", auth.session.accessToken, JSONObject())
         val shopId = scalarText(rawShop)
@@ -297,31 +348,8 @@ class MerchantPosApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
         note: String,
         requestId: String = UUID.randomUUID().toString()
     ): String {
-        val raw = if (currentBillId.isNullOrBlank()) {
-            http.rpc(
-                "pos_create_bill_once",
-                auth.session.accessToken,
-                JSONObject()
-                    .put("p_request", requestId)
-                    .put("p_type", type)
-                    .put("p_table", tableId ?: JSONObject.NULL)
-                    .put("p_product", productId)
-                    .put("p_note", note.trim())
-            )
-        } else {
-            http.rpc(
-                "pos_edit_bill",
-                auth.session.accessToken,
-                JSONObject()
-                    .put("p_order", currentBillId)
-                    .put("p_type", type)
-                    .put("p_table", tableId ?: JSONObject.NULL)
-                    .put("p_product", productId)
-                    .put("p_quantity", 1)
-                    .put("p_note", note.trim())
-            )
-        }
-        return scalarId(raw) ?: currentBillId ?: error("Server ยังไม่ยืนยันบิล")
+        return submitPendingEdit(auth, PosEditIntent(requestId, currentBillId?.takeIf { it.isNotBlank() },
+            type, tableId, productId, 1, note.trim()))
     }
 
     suspend fun reduceProduct(
@@ -332,20 +360,12 @@ class MerchantPosApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
         productId: String,
         note: String?
     ) {
-        http.rpc(
-            "pos_edit_bill",
-            auth.session.accessToken,
-            JSONObject()
-                .put("p_order", billId)
-                .put("p_type", type)
-                .put("p_table", tableId ?: JSONObject.NULL)
-                .put("p_product", productId)
-                .put("p_quantity", -1)
-                .put("p_note", note ?: "")
-        )
+        submitPendingEdit(auth, PosEditIntent(UUID.randomUUID().toString(), billId, type,
+            tableId, productId, -1, note.orEmpty().trim()))
     }
 
     suspend fun billAction(auth: NativeAuth, billId: String, action: String) {
+        requireNoPendingEdit(auth)
         http.rpc(
             "pos_bill_action",
             auth.session.accessToken,
@@ -357,6 +377,7 @@ class MerchantPosApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
     }
 
     suspend fun cancelBill(auth: NativeAuth, billId: String, reason: String) {
+        requireNoPendingEdit(auth)
         require(reason.trim().length in 3..500) { "กรุณาระบุเหตุผลที่ยกเลิกอย่างน้อย 3 ตัวอักษร" }
         http.rpc(
             "pos_cancel_bill",
@@ -371,6 +392,7 @@ class MerchantPosApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
         method: String,
         cashReceived: Double? = null
     ): String {
+        requireNoPendingEdit(auth)
         require(method in setOf("cash", "bank_transfer", "promptpay", "card", "other")) {
             "วิธีชำระเงินไม่ถูกต้อง"
         }
@@ -389,6 +411,7 @@ class MerchantPosApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
         takePayment(auth, billId, "cash", received)
 
     suspend fun applyDiscount(auth: NativeAuth, billId: String, amount: Double) {
+        requireNoPendingEdit(auth)
         require(amount >= 0.0) { "ส่วนลดต้องไม่ติดลบ" }
         http.rpc(
             "pos_apply_discount",
