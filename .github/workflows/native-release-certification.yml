@@ -98,8 +98,13 @@ jobs:
 
           base = os.environ.get("QG_SUPABASE_URL", "")
           parsed = urlparse(base)
-          if parsed.scheme != "https" or not re.fullmatch(r"[a-z0-9]+\.supabase\.co", parsed.hostname or ""):
-              raise SystemExit("::error::QG_SUPABASE_URL must be the trusted https://<project-ref>.supabase.co origin")
+          manifest = __import__("json").loads(open("docs/pilot-recovery-manifest.json").read())
+          project_ref = manifest.get("supabase", {}).get("project_ref", "")
+          expected_host = f"{project_ref}.supabase.co"
+          if not re.fullmatch(r"[a-z0-9]+", project_ref):
+              raise SystemExit("::error::Recovery manifest Supabase project_ref is invalid")
+          if parsed.scheme != "https" or parsed.hostname != expected_host:
+              raise SystemExit("::error::QG_SUPABASE_URL does not match the Production project_ref in recovery manifest")
           if parsed.path not in ("", "/") or parsed.query or parsed.fragment:
               raise SystemExit("::error::QG_SUPABASE_URL must not contain path/query/fragment")
 
@@ -109,8 +114,11 @@ jobs:
           obj = os.environ.get("EVIDENCE_OBJECT_PATH", "")
           if len(obj) > 512 or obj.startswith("/") or not obj.endswith(".zip"):
               raise SystemExit("::error::evidence_object_path must be a relative .zip object path")
-          if ".." in obj.split("/") or not re.fullmatch(r"[A-Za-z0-9._/-]+", obj):
+          parts = obj.split("/")
+          if ".." in parts or not re.fullmatch(r"[A-Za-z0-9._/-]+", obj):
               raise SystemExit("::error::evidence_object_path contains unsafe characters or traversal")
+          if len(parts) < 2 or parts[0] != os.environ.get("GITHUB_SHA", ""):
+              raise SystemExit("::error::evidence_object_path must be namespaced under the exact release GITHUB_SHA")
 
           digest = os.environ.get("EVIDENCE_BUNDLE_SHA256", "")
           if not re.fullmatch(r"[0-9a-fA-F]{64}", digest):
@@ -207,6 +215,8 @@ jobs:
                   rel = Path(info.filename)
                   if rel.is_absolute() or ".." in rel.parts:
                       raise SystemExit("::error::Evidence ZIP contains path traversal")
+                  if any(part.startswith(".") for part in rel.parts if part not in ("", ".")):
+                      raise SystemExit("::error::Evidence ZIP may not contain hidden paths")
                   normalized = rel.as_posix().rstrip("/")
                   if normalized:
                       if normalized in seen:
