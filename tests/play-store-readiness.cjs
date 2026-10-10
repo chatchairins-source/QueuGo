@@ -49,6 +49,13 @@ ok(!/Explicitly forbidden by the release workflow:[\s\S]{0,300}RECORD_AUDIO/i.te
 ok(/Native CI rejects WebView/i.test(readiness),'Data Safety draft must use Native no-WebView certification scope');
 ok(!/data collected by the web application running inside Capacitor/i.test(readiness),'Legacy Capacitor Data Safety collection rule must not certify Native apps');
 ok(!/android-build\/package\.json[^\n]*Capacitor Push Notifications/i.test(readiness),'Legacy Capacitor push inventory must not remain Native Play evidence');
+ok((readiness.match(/\| Voice or sound recordings \|/g)||[]).length===3,'Customer, Merchant and Rider Data Safety tables must each review Native voice media');
+ok(/end-to-end-encryption exception remains satisfied/i.test(readiness),'Native voice media must retain the Google Play E2EE collection-exception boundary');
+ok(/Cloudflare Realtime TURN[\s\S]*cannot inspect media content/i.test(readiness),'Play readiness must document Cloudflare TURN encrypted-media boundary');
+ok(/re-review if recording, transcription, SFU\/server media access or non-E2EE transport is introduced/i.test(readiness),'Voice Data Safety exception must fail closed on media architecture changes');
+ok(manifest?.play?.voice_audio_data_safety==='E2EE_EXCEPTION_WHILE_PEER_ONLY_WEBRTC','Recovery manifest must preserve the reviewed voice-media E2EE exception');
+ok(Array.isArray(manifest?.play?.voice_audio_roles)&&manifest.play.voice_audio_roles.length===3,'Voice Data Safety review must cover all three Native roles');
+ok(manifest?.play?.voice_audio_reassessment_required_on_architecture_change===true,'Voice Data Safety must require reassessment on architecture changes');
 
 ok(manifest?.play?.provider_sharing_classification==='RESOLVED_CONSERVATIVE_LONGDO_LOCATION_SHARED','Provider sharing classification must not regress to pending');
 ok(manifest?.play?.data_safety_sharing==='YES_LONGDO_LOCATION_APP_FUNCTIONALITY','Manifest must lock Longdo location sharing for app functionality');
