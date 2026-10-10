@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-07T15:59:26+07:00",
+  "generated_at": "2026-10-11T00:21:00+07:00",
   "github": {
     "repository": "chatchairins-source/QueuGo",
     "source_of_truth": "main",
@@ -241,8 +241,10 @@
       "web_subscriptions_total": 0,
       "web_subscriptions_enabled": 0,
       "outbox_total": 0,
+      "outbox_pending": 0,
+      "outbox_failed": 0,
       "config_rows": 0,
-      "observed_at": "2026-10-10"
+      "observed_at": "2026-10-11T00:21:00+07:00"
     },
     "firebase_edge_runtime_status": "UNVERIFIED_NO_NATIVE_TOKEN_OR_SUCCESSFUL_FCM_SEND_EVIDENCE"
   },
@@ -355,9 +357,9 @@
       "rider"
     ],
     "native_pilot_workflow": ".github/workflows/build-native-rider-pilot.yml",
-    "native_pilot_latest_certified_run": 38043983595,
-    "native_pilot_latest_certified_head": "559ea783e77a68678f168af2388d5cda660a859a",
-    "native_pilot_latest_launch_evidence_artifact": 11667161963,
+    "native_pilot_latest_certified_run": 38070312765,
+    "native_pilot_latest_certified_head": "33e64430af4edb93cadcf2ae9f4c667d55da259a",
+    "native_pilot_latest_launch_evidence_artifact": 11676896580,
     "native_ci_rejects_webview": true,
     "legacy_capacitor_build_workflows_retired": true,
     "retired_legacy_capacitor_build_workflows": [
@@ -492,7 +494,7 @@
     "turn_edge_bundle_sha256": "747116e17f5c4a2feb2852851e1e346b5a8e456c5a6b521682ab1a5f02ed894c",
     "turn_edge_source_exact_match": true,
     "turn_edge_last_checked_at": "2026-10-10T14:09:00Z",
-    "turn_runtime_secret_status": "UNVERIFIED_NO_PRODUCTION_REQUESTS_OBSERVED",
+    "turn_runtime_secret_status": "UNVERIFIED_NO_AUTHORIZED_PRODUCTION_CALL_EVIDENCE",
     "turn_forced_relay_two_device_gate": "OPEN",
     "release_gate_evidence_envelope_schema": true,
     "release_gate_evidence_envelope_version": 1,
@@ -560,7 +562,22 @@
       "stops_outside_active_work"
     ],
     "release_gate_blueprint_requires_zero_blocking_differences": true,
-    "release_gate_physical_semantic_runtime_gate": "OPEN_PENDING_REAL_DEVICE_CAPTURE"
+    "release_gate_physical_semantic_runtime_gate": "OPEN_PENDING_REAL_DEVICE_CAPTURE",
+    "native_pilot_latest_apk_artifact": 11677115695,
+    "native_pilot_latest_apk_artifact_sha256": "8582db5df2fe59ab70f23c3fbbbf3f9e8468aea81e5391437e8ff421f6d145d9",
+    "native_pilot_latest_launch_evidence_sha256": "b376d69dd4e1bc1285249afd8bc48ae031762cdb7e7279681590f148ea806117",
+    "native_pilot_latest_certified_at": "2026-10-11T00:15:32+07:00",
+    "production_physical_runtime_snapshot": {
+      "native_push_tokens_total": 0,
+      "native_push_tokens_enabled": 0,
+      "push_config_rows": 0,
+      "push_outbox_total": 0,
+      "call_sessions_total": 0,
+      "call_sessions_last_24h": 0,
+      "call_sessions_answered_last_24h": 0,
+      "observed_at": "2026-10-11T00:21:00+07:00",
+      "verdict": "PHYSICAL_PUSH_AND_VOICE_NOT_YET_OBSERVED"
+    }
   },
   "security": {
     "code_surface_hardened": true,
