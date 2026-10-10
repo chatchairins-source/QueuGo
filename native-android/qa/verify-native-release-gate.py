@@ -180,6 +180,7 @@ def verify():
         raise ValueError("release checkout must be clean; store evidence/credentials outside git")
     if any(type(report.get(key)) is not int or report[key] != 0 for key in ("p0", "p1")):
         raise ValueError("P0/P1 must both equal zero")
+    envelopes = {}
     for name in GATES:
         item = report.get("gates", {}).get(name, {})
         status = item.get("status")
@@ -196,9 +197,21 @@ def verify():
         path = bundle_file(bundle_root, str(evidence), f"gate evidence {name}")
         if sha256_file(path) != str(digest).lower():
             raise ValueError(f"evidence hash mismatch: {name}")
-        verify_gate_envelope(path, bundle_root, name, head, status)
-    if not re.fullmatch(r"\d+\.\d+\.\d+", os.environ.get("QG_NATIVE_VERSION_NAME", "")):
+        envelopes[name] = verify_gate_envelope(path, bundle_root, name, head, status)
+
+    pilot_run_raw = os.environ.get("QG_CERTIFIED_NATIVE_PILOT_RUN_ID", "")
+    if not re.fullmatch(r"\d+", pilot_run_raw):
+        raise ValueError("QG_CERTIFIED_NATIVE_PILOT_RUN_ID must come from exact-HEAD GitHub attestation")
+    if envelopes["full_native_ci"].get("github_run_id") != int(pilot_run_raw):
+        raise ValueError("full_native_ci evidence does not match the attested Native Pilot run")
+    if envelopes["production_backend"].get("supabase_project_ref") != "pkypiqhlrmzocysgeqew":
+        raise ValueError("production_backend evidence must identify QueueGo Production Supabase")
+
+    version_name = os.environ.get("QG_NATIVE_VERSION_NAME", "")
+    if not re.fullmatch(r"\d+\.\d+\.\d+", version_name):
         raise ValueError("release versionName must be explicitly set to x.y.z")
+    release_codes = {}
+    play_max_codes = {}
     projects = set()
     for role in ("customer", "merchant", "rider"):
         release_name = f"QG_{role.upper()}_VERSION_CODE"
@@ -215,6 +228,8 @@ def verify():
             raise ValueError(f"release versionCode is out of range for {role}")
         if version_code <= play_max:
             raise ValueError(f"release versionCode must exceed observed Play history for {role}")
+        release_codes[role] = version_code
+        play_max_codes[role] = play_max
         path = ROOT / "native-android" / role / "google-services.json"
         config = json.loads(path.read_text())
         project_id = config.get("project_info", {}).get("project_id")
@@ -228,6 +243,18 @@ def verify():
             raise ValueError(f"Firebase config requires one complete client: {package}")
     if len(projects) != 1:
         raise ValueError("all Native Firebase configs must use the certified Production project")
+    firebase_project_id = next(iter(projects))
+    if envelopes["firebase_three_packages"].get("firebase_project_id") != firebase_project_id:
+        raise ValueError("firebase_three_packages evidence does not match the loaded Firebase project")
+
+    play_envelope = envelopes["play_store_preflight"]
+    if play_envelope.get("version_name") != version_name:
+        raise ValueError("play_store_preflight evidence versionName mismatch")
+    if play_envelope.get("release_version_codes") != release_codes:
+        raise ValueError("play_store_preflight evidence release versionCodes mismatch")
+    if play_envelope.get("observed_play_max_version_codes") != play_max_codes:
+        raise ValueError("play_store_preflight evidence Play history mismatch")
+
     required = (
         "QG_ANDROID_KEYSTORE_PATH", "QG_ANDROID_STORE_PASSWORD",
         "QG_ANDROID_KEY_ALIAS", "QG_ANDROID_KEY_PASSWORD",
@@ -249,6 +276,9 @@ def verify():
     expected_cert = re.sub(r"[^0-9a-fA-F]", "", os.environ["QG_ANDROID_SIGNING_CERT_SHA256"]).lower()
     if not re.fullmatch(r"[0-9a-f]{64}", expected_cert):
         raise ValueError("QG_ANDROID_SIGNING_CERT_SHA256 must be a 32-byte SHA-256 fingerprint")
+    signing_evidence_cert = re.sub(r"[^0-9a-fA-F]", "", str(envelopes["release_signing"].get("signing_certificate_sha256", ""))).lower()
+    if signing_evidence_cert != expected_cert:
+        raise ValueError("release_signing evidence does not match the certified signing identity")
     fingerprint = re.search(r"SHA256:\s*([0-9A-Fa-f:]+)", entry.stdout)
     if not fingerprint:
         raise ValueError("release signing certificate SHA-256 is unavailable")
