@@ -727,3 +727,9 @@ The user-supplied Rider reference screens are the acceptance reference for workf
 - Added focused recency/clock-correction test. CI compile/runtime pending; no main merge until green.
 
 - Durable print-history df0bf6b7 passed CI38026266057 including shared suspend queue tests, Merchant recency test, three builds and emulator/Longdo before inclusion. Combined tree awaits its own CI; logout-session branch remains isolated pending CI.
+
+
+## 2026-10-10 Customer guest/location integration on latest Native baseline
+- Customer guest browsing and explicit login/register navigation from work-native-customer-guest-20261010 were carried onto current Native without overwriting newer POS/printer/order-number work. Public shop/product/home/service-banner and Market public reads remain real Production reads; checkout still requires authenticated Production state.
+- Customer delivery selection persistence from work-native-customer-location-cache-20261010 was included so guest login/profile refresh does not discard the chosen delivery location. Its isolated branch had passed regression/source/build and was still completing Android runtime capture at integration time.
+- CustomerApi and CustomerMarketApi were merged three-way: guest/public read support is preserved together with current shared nativeOrderNumber parity. Full latest-HEAD CI on this staging tree is mandatory before any Native main update.
