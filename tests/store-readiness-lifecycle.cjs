@@ -76,6 +76,9 @@ ok(currentShopOrders.includes("and sp.archived_at is null"),'Merchant order RPC 
 ok(currentShopOrders.includes("order by sp.created_at desc"),'Merchant order RPC must resolve the newest current shop profile');
 ok(currentShopOrders.includes("merchant_current_shop_rpc_backup_20261011")&&currentShopOrders.includes("pg_get_functiondef"),'Merchant order RPC definition must be backed up before replacement');
 ok(currentShopOrders.includes('GET_MY_SHOP_ORDERS_UNEXPECTED_DEFINITION'),'Merchant order RPC patch must fail closed on an unexpected Production definition');
+ok(currentShopOrders.includes('queuego_laundry_merchant_state')&&currentShopOrders.includes('queuego_laundry_save_service')&&currentShopOrders.includes('queuego_laundry_save_settings'),'Laundry Merchant RPCs must share the current-shop lifecycle hardening');
+ok(currentShopOrders.includes("where user_id=v_user and archived_at is null order by created_at desc limit 1;"),'Laundry Merchant state must resolve only the newest non-archived shop');
+ok(currentShopOrders.includes("where s.user_id=v_user and s.archived_at is null")&&currentShopOrders.includes("order by h.created_at desc"),'Laundry Merchant writes must never fall back to an archived shop hub');
 
 // Suspension/restore must respect lifecycle instead of bypassing approval or mutating archived history.
 ok(statusBackup.includes('store_status_cascade_backup_20261008'),'Status cascade definitions must be backed up before replacement');
