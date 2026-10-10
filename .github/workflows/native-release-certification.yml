@@ -133,6 +133,29 @@ jobs:
               raise SystemExit("::error::signing_certificate_sha256 must be a 32-byte SHA-256 fingerprint")
           PY
 
+      - name: Verify private release evidence bucket
+        shell: bash
+        env:
+          QG_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.QG_SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          set -euo pipefail
+          metadata="$RUNNER_TEMP/queuego-evidence-bucket.json"
+          curl --fail --silent --show-error --proto '=https' --tlsv1.2 \
+            -H "Authorization: Bearer $QG_SUPABASE_SERVICE_ROLE_KEY" \
+            -H "apikey: $QG_SUPABASE_SERVICE_ROLE_KEY" \
+            "${QG_SUPABASE_URL%/}/storage/v1/bucket/$QG_EVIDENCE_BUCKET" -o "$metadata"
+          QG_BUCKET_METADATA="$metadata" python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+
+          data=json.loads(Path(os.environ["QG_BUCKET_METADATA"]).read_text())
+          if data.get("id") != "queuego-native-release-evidence" or data.get("name") != "queuego-native-release-evidence":
+              raise SystemExit("::error::Unexpected release evidence bucket identity")
+          if data.get("public") is not False:
+              raise SystemExit("::error::Release evidence bucket must remain private")
+          print("Private release evidence bucket identity: verified")
+          PY
+
       - name: Download private physical evidence bundle
         shell: bash
         env:
@@ -149,7 +172,7 @@ jobs:
           PY
           )"
           url="${QG_SUPABASE_URL%/}/storage/v1/object/authenticated/$QG_EVIDENCE_BUCKET/$encoded_path"
-          curl --fail --silent --show-error --location \
+          curl --fail --silent --show-error --proto '=https' --tlsv1.2 \
             -H "Authorization: Bearer $QG_SUPABASE_SERVICE_ROLE_KEY" \
             -H "apikey: $QG_SUPABASE_SERVICE_ROLE_KEY" \
             "$url" -o "$bundle"
@@ -172,15 +195,23 @@ jobs:
           max_files = 1000
           max_total = 4 * 1024 * 1024 * 1024
           total = 0
+          seen = set()
 
           with zipfile.ZipFile(archive) as zf:
               infos = zf.infolist()
               if len(infos) > max_files:
                   raise SystemExit("::error::Evidence ZIP contains too many entries")
               for info in infos:
+                  if "\\" in info.filename:
+                      raise SystemExit("::error::Evidence ZIP contains non-portable backslash paths")
                   rel = Path(info.filename)
                   if rel.is_absolute() or ".." in rel.parts:
                       raise SystemExit("::error::Evidence ZIP contains path traversal")
+                  normalized = rel.as_posix().rstrip("/")
+                  if normalized:
+                      if normalized in seen:
+                          raise SystemExit("::error::Evidence ZIP contains duplicate paths")
+                      seen.add(normalized)
                   mode = (info.external_attr >> 16) & 0o170000
                   if mode == stat.S_IFLNK:
                       raise SystemExit("::error::Evidence ZIP may not contain symlinks")
@@ -302,4 +333,5 @@ jobs:
           rm -f "$RUNNER_TEMP/queuego-google-services.json"
           rm -f "$RUNNER_TEMP/queuego-release.keystore"
           rm -f "$RUNNER_TEMP/queuego-native-physical-evidence.zip"
+          rm -f "$RUNNER_TEMP/queuego-evidence-bucket.json"
           rm -rf "$RUNNER_TEMP/queuego-native-release-certification"
