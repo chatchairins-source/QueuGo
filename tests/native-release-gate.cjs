@@ -17,6 +17,12 @@ try{
   assert.equal(result.status,1,'stale certification must fail');
   assert.match(result.stderr,/exact release HEAD/);
 }finally{fs.rmSync(dir,{recursive:true,force:true});}
+const verifier=fs.readFileSync(script,'utf8');
+for(const role of ['CUSTOMER','MERCHANT','RIDER']){
+  assert.ok(verifier.includes(`QG_${role}_PLAY_MAX_VERSION_CODE`),`release verifier must require observed Play version history for ${role}`);
+}
+assert.doesNotMatch(verifier,/for role, previous_code in/,'release verifier must not trust hard-coded prior Play versionCodes');
+
 const gradle=fs.readFileSync('native-android/build.gradle.kts','utf8');
 assert.match(gradle,/isDebuggable = false/);
 assert.match(gradle,/signingConfig = nativeReleaseSigning/);
