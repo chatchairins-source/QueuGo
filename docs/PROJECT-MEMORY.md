@@ -727,3 +727,9 @@ The user-supplied Rider reference screens are the acceptance reference for workf
 - Added focused recency/clock-correction test. CI compile/runtime pending; no main merge until green.
 
 - Durable print-history df0bf6b7 passed CI38026266057 including shared suspend queue tests, Merchant recency test, three builds and emulator/Longdo before inclusion. Combined tree awaits its own CI; logout-session branch remains isolated pending CI.
+
+
+## 2026-10-10 logout recovery rebased on latest Native HEAD
+- Recovered the independently CI-passing logout lifecycle fix from work-native-session-logout-recovery-20261010 without merging its stale base. The replacement work branch starts from Native e9401e26 and preserves all newer POS/printer/order-number changes.
+- POS staff and shared native logout now submit revoke_active_session from the Activity lifecycle scope before local auth UI disappears; local logout remains immediate and backend/offline revocation remains best effort.
+- Backup backup-native-before-logout-recovery-20261010-e9401e2 created before this work. Full combined CI on the rebased tree is required before Native main can advance; release gate remains open.
