@@ -32,6 +32,24 @@ for(const legacy of ['.github/workflows/build-queuego-apks.yml','.github/workflo
   assert.equal(fs.existsSync(legacy),false,`legacy Capacitor Android build workflow must stay retired: ${legacy}`);
 }
 
+const artifactVerifierPath='native-android/qa/verify-native-release-artifacts.py';
+assert.ok(fs.existsSync(artifactVerifierPath),'signed Native release artifact verifier must exist');
+const artifactVerifier=fs.readFileSync(artifactVerifierPath,'utf8');
+for(const token of [
+  '"customer": "com.queuego.customer"',
+  '"merchant": "com.queuego.merchant"',
+  '"rider": "com.queuego.rider"',
+  '"application-debuggable"',
+  '"--print-certs"',
+  '"-verify", "-strict"',
+  '"apk_sha256"',
+  '"aab_sha256"',
+  '"signer_certificate_sha256"'
+]){
+  assert.ok(artifactVerifier.includes(token),`signed artifact verifier missing required check: ${token}`);
+}
+assert.match(artifactVerifier,/len\(signer_digests\) != 1/,'all three release apps must use one certified signing identity');
+
 const gradle=fs.readFileSync('native-android/build.gradle.kts','utf8');
 assert.match(gradle,/isDebuggable = false/);
 assert.match(gradle,/signingConfig = nativeReleaseSigning/);
