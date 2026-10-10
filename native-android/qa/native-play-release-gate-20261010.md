@@ -54,6 +54,13 @@ any requirement below is OPEN.
   bucket identity/privacy before use and fail closed on any other project.
   Runtime certification remains BLOCKED on Actions credentials plus real
   physical evidence; bucket provisioning itself is no longer a blocker.
+- Production `queuego-turn` was re-checked live on 2026-10-10: ACTIVE version 2,
+  `verify_jwt=true`, bundle SHA-256
+  `747116e17f5c4a2feb2852851e1e346b5a8e456c5a6b521682ab1a5f02ed894c`,
+  and deployed `index.ts` exactly matches the GitHub Source of Truth. No
+  `queuego-turn` request was observed in the reviewed 24-hour Production log
+  window, so TURN credential readiness, forced-relay behavior and real
+  two-device bidirectional audio remain OPEN and are not inferred from deployment.
 
 ## Still OPEN
 
