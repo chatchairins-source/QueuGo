@@ -493,7 +493,18 @@
     "turn_edge_source_exact_match": true,
     "turn_edge_last_checked_at": "2026-10-10T14:09:00Z",
     "turn_runtime_secret_status": "UNVERIFIED_NO_PRODUCTION_REQUESTS_OBSERVED",
-    "turn_forced_relay_two_device_gate": "OPEN"
+    "turn_forced_relay_two_device_gate": "OPEN",
+    "release_gate_evidence_envelope_schema": true,
+    "release_gate_evidence_envelope_version": 1,
+    "release_gate_evidence_exact_gate_binding": true,
+    "release_gate_evidence_exact_head_binding": true,
+    "release_gate_evidence_all_true_checks_required": true,
+    "release_gate_evidence_hashed_artifacts_required": true,
+    "release_gate_physical_device_id_hash_required": true,
+    "release_gate_physical_role_binding": true,
+    "release_gate_lifecycle_requires_all_roles": true,
+    "release_gate_voice_requires_two_distinct_devices": true,
+    "release_gate_voice_requires_two_distinct_networks": true
   },
   "security": {
     "code_surface_hardened": true,
