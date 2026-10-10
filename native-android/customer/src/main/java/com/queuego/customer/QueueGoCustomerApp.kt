@@ -56,6 +56,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -83,6 +84,7 @@ import com.queuego.shared.QgSectionTitle
 import com.queuego.shared.QgStatusPill
 import com.queuego.shared.QueueGoAuthHost
 import com.queuego.shared.QueueGoBrand
+import com.queuego.shared.SecureRoleSessionStore
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.util.UUID
@@ -102,14 +104,45 @@ private val homeDedicatedMarketCategories =
 
 @Composable
 fun QueueGoCustomerApp() {
-    QueueGoAuthHost(expectedRole = "customer", appLabel = "Customer",
-        entryScreen = { CustomerAuthenticationScreen(it) }) { auth, logout ->
-        key(auth.user.id, auth.user.authUserId) { CustomerShell(auth, logout) }
+    val context = LocalContext.current
+    val store = remember { SecureRoleSessionStore(context, "customer") }
+    var authRequested by rememberSaveable { mutableStateOf(store.load() != null) }
+    var destinationAfterLogin by rememberSaveable { mutableStateOf("home") }
+
+    if (!authRequested) {
+        GuestCustomerShell(
+            onLogin = { destination ->
+                destinationAfterLogin = destination
+                authRequested = true
+            }
+        )
+    } else {
+        QueueGoAuthHost(
+            expectedRole = "customer",
+            appLabel = "Customer",
+            entryScreen = { CustomerAuthenticationScreen(it) }
+        ) { auth, logout ->
+            key(auth.user.id, auth.user.authUserId) {
+                CustomerShell(
+                    auth = auth,
+                    logout = {
+                        logout()
+                        destinationAfterLogin = "home"
+                        authRequested = false
+                    },
+                    initialScreen = destinationAfterLogin
+                )
+            }
+        }
     }
 }
 
 @Composable
-private fun CustomerShell(auth: NativeAuth, logout: () -> Unit) {
+private fun CustomerShell(
+    auth: NativeAuth,
+    logout: () -> Unit,
+    initialScreen: String = "home"
+) {
     val api = remember { CustomerApi() }
     val marketApi = remember { CustomerMarketApi() }
     val laundryApi = remember { CustomerLaundryApi() }
@@ -120,8 +153,34 @@ private fun CustomerShell(auth: NativeAuth, logout: () -> Unit) {
     val liveMutex = remember { Mutex() }
     val context = LocalContext.current
     val cartStore = remember(auth.user.id) { CustomerCartStore(context, auth.user.id) }
+    val guestCartStore = remember { CustomerCartStore(context, "guest") }
+    val initialCartMerge = remember(auth.user.id) {
+        val saved = cartStore.load()
+        val guest = guestCartStore.load()
+        when {
+            guest.isEmpty() -> saved to false
+            saved.isEmpty() -> {
+                cartStore.save(guest)
+                guestCartStore.save(emptyList())
+                guest to false
+            }
+            saved.firstOrNull()?.product?.shopId == guest.firstOrNull()?.product?.shopId -> {
+                val merged = (saved + guest)
+                    .groupBy { it.product.id }
+                    .values
+                    .map { rows ->
+                        val freshest = rows.last().product
+                        CartLine(freshest, rows.sumOf { it.quantity }.coerceAtMost(99))
+                    }
+                cartStore.save(merged)
+                guestCartStore.save(emptyList())
+                merged to false
+            }
+            else -> saved to true
+        }
+    }
 
-    var screen by remember { mutableStateOf("home") }
+    var screen by remember(auth.user.id) { mutableStateOf(initialScreen) }
     var shopReturnScreen by remember { mutableStateOf("home") }
     var category by remember { mutableStateOf("all") }
     var shoppingMode by remember { mutableStateOf("all") }
@@ -143,13 +202,19 @@ private fun CustomerShell(auth: NativeAuth, logout: () -> Unit) {
     DisposableEffect(shopCatalog) { onDispose { shopCatalog.close() } }
     LaunchedEffect(screen) { if (screen != "shop") shopCatalog.close() }
     var orderItems by remember { mutableStateOf<List<CustomerOrderItem>>(emptyList()) }
-    var cart by remember(auth.user.id) { mutableStateOf(cartStore.load()) }
+    var cart by remember(auth.user.id) { mutableStateOf(initialCartMerge.first) }
     var location by remember { mutableStateOf<CustomerLocation?>(null) }
     var address by remember { mutableStateOf("") }
     var note by remember { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }
     var loading by remember { mutableStateOf(true) }
-    var message by remember { mutableStateOf<String?>(null) }
+    var message by remember {
+        mutableStateOf<String?>(
+            if (initialCartMerge.second)
+                "ตะกร้าก่อนเข้าสู่ระบบเป็นคนละร้านกับตะกร้าบัญชีเดิม จึงเก็บไว้แยกกัน"
+            else null
+        )
+    }
     val checkoutJournal = remember(cartStore) { cartStore.journal() }
     val checkoutRecovery = remember(checkoutJournal) { CustomerCheckoutRecovery<PendingCustomerCheckout, CustomerOrder>(checkoutJournal) }
     var pendingCheckoutRecord by remember { mutableStateOf(runCatching { checkoutJournal.read() }.getOrNull()) }
@@ -990,7 +1055,7 @@ private fun CustomerTopAction(
 }
 
 @Composable
-private fun CustomerHome(
+internal fun CustomerHome(
     loading: Boolean,
     banners: List<HomeBanner>,
     location: CustomerLocation?,
@@ -1451,11 +1516,11 @@ private fun categoryLabel(category: String): String = when (category.lowercase()
     else -> "ร้านค้า"
 }
 
-private fun hasLocation(context: Context): Boolean =
+internal fun hasLocation(context: Context): Boolean =
     context.checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED ||
         context.checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
 
-private fun lastKnownLocation(context: Context): Pair<Double, Double>? {
+internal fun lastKnownLocation(context: Context): Pair<Double, Double>? {
     if (!hasLocation(context)) return null
     val manager = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
     return runCatching {
