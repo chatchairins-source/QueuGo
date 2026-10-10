@@ -15,6 +15,7 @@ ok(quick.includes('"จัดการข้อความด่วน"'),'Quic
 
 ok(chat.includes('fillMaxWidth(0.78f)'),'Rider chat bubbles must remain compact rather than full-width cards');
 ok(chat.includes('riderChatTimeLabel(chat.createdAt)'),'Rider chat must show compact local clock labels instead of raw server timestamps');
+ok(!/scrollToItem\(|animateScrollToItem\(|rememberLazyListState/.test(chat),'Rider chat must not auto-scroll when realtime messages change');
 ok(chat.includes('rememberLazyListState()')&&chat.includes('scrollToItem(messages.lastIndex)'),'Rider chat must move to the newest message when a new message arrives');
 ok(chat.includes('LaunchedEffect(messages.size, messages.lastOrNull()?.id)'),'Rider chat auto-scroll must react only to actual tail-message changes');
 ok(chat.includes('RoundedCornerShape(topStart = 18.dp'),'Rider chat bubbles must retain directional bubble corners');
