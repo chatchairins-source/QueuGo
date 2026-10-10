@@ -733,3 +733,9 @@ The user-supplied Rider reference screens are the acceptance reference for workf
 - Customer guest browsing and explicit login/register navigation from work-native-customer-guest-20261010 were carried onto current Native without overwriting newer POS/printer/order-number work. Public shop/product/home/service-banner and Market public reads remain real Production reads; checkout still requires authenticated Production state.
 - Customer delivery selection persistence from work-native-customer-location-cache-20261010 was included so guest login/profile refresh does not discard the chosen delivery location. Its isolated branch had passed regression/source/build and was still completing Android runtime capture at integration time.
 - CustomerApi and CustomerMarketApi were merged three-way: guest/public read support is preserved together with current shared nativeOrderNumber parity. Full latest-HEAD CI on this staging tree is mandatory before any Native main update.
+
+
+## 2026-10-10 combined Customer continuity and logout lifecycle staging
+- Combined the latest-HEAD Customer guest browsing/location persistence staging with the independently isolated lifecycle-safe logout revocation fix. This staging tree still includes all Native e9401e26 POS idempotency, printer durability and canonical order-number work.
+- Logout revocation is launched from the Activity lifecycle for POS staff and shared native auth hosts so clearing local UI/session state cannot cancel the backend revoke request. Local logout remains immediate; offline revoke remains best effort.
+- No Production schema, RLS, order state machine or cash-flow changes in this integration. Full CI on this exact combined tree is required before advancing queuego-native-android-v1.
