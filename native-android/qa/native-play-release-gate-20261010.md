@@ -13,13 +13,26 @@ any requirement below is OPEN.
   omitted ID may derive exactly one non-revoked session.
 - Local full regression, Native voice/push/migration contracts, 207 source
   checks, 61 launcher checks and 12 banner checks passed.
-- Production push ACTIVE v15 (verify_jwt=false), TURN ACTIVE v2
-  (verify_jwt=true). Both voice and push tables have RLS; anon/authenticated
-  direct SELECT is denied. Push was subsequently upgraded to ACTIVE v16 after
-  backup-native-push-v15-explicit-session-20261010 preserved its exact source
-  and metadata. v16 source matches the gated commit; unauthenticated POST
-  returned HTTP401. Security advisor categories/counts stayed at 1 INFO/3 WARN.
-  Authenticated physical registration/delivery remains untested.
+- Production `queuego-push` was checked live on 2026-10-10: ACTIVE
+  version 16, `verify_jwt=false`, Edge bundle SHA-256
+  `e1ae93f6cc142a77fa7408b894703ed9ac8ad7f9fdaa9b32d40cee2a28758079`,
+  and deployed `index.ts` exactly matches the GitHub Source of Truth.
+  `verify_jwt=false` remains bounded by the function's custom authentication:
+  server dispatch requires the QueueGo worker token; user actions resolve Bearer
+  auth, require an active QueueGo role, and Native token registration binds an
+  active app session. Production currently has 0 Native tokens, 0 enabled Native
+  tokens, 0 web subscriptions, 0 push outbox rows and 0 push config rows, so
+  Firebase Edge-secret readiness and real FCM delivery remain UNVERIFIED and the
+  physical push gate stays OPEN.
+- Production `queuego-turn` was checked live on 2026-10-10: ACTIVE version 2,
+  `verify_jwt=true`, Edge bundle SHA-256
+  `747116e17f5c4a2feb2852851e1e346b5a8e456c5a6b521682ab1a5f02ed894c`,
+  and deployed `index.ts` exactly matches the GitHub Source of Truth. No
+  `queuego-turn` request was observed in the reviewed Production log window,
+  so TURN secret readiness, forced-relay behavior and real two-device
+  bidirectional audio remain OPEN and must not be inferred from deployment alone.
+  Both voice and push tables keep RLS; direct client access remains separately
+  covered by the security regression gates.
 - Firebase Console redirected to Google sign-in; this browser received
   `502 Bad Gateway / Connection refused`. No Firebase project/config was read.
 - Local Firebase/TURN/signing credentials and adb/Android SDK are absent.
