@@ -11,6 +11,12 @@ import android.net.Uri
 import android.os.Build
 import android.provider.Settings
 import com.queuego.shared.QueueGoTheme
+import com.queuego.shared.QueueGoVoiceCallOverlay
+import com.queuego.shared.NativeVoiceCallController
+import com.queuego.shared.NativeVoiceControllerState
+import com.queuego.shared.NativeUser
+import com.queuego.shared.NativeSession
+import com.queuego.shared.NativeAuth
 import com.queuego.shared.QgAccountDeletionSection
 import com.queuego.shared.QueueGoBrand
 import com.queuego.shared.QgStatusPill
@@ -57,6 +63,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -66,6 +73,7 @@ import com.queuego.shared.riderRealtimeSubscriptions
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -277,6 +285,43 @@ private fun LoginScreen(
     RiderLoginScreen(modifier, busy, error, onLogin, onRegister)
 }
 
+
+private fun QueueGoAuth.asNativeVoiceAuth(): NativeAuth = NativeAuth(
+    session = NativeSession(
+        authUserId = session.authUserId,
+        accessToken = session.accessToken,
+        refreshToken = session.refreshToken,
+        expiresAtMs = session.expiresAtMs,
+        sessionId = session.sessionId
+    ),
+    user = NativeUser(
+        id = user.id,
+        authUserId = session.authUserId,
+        name = user.name,
+        role = user.role,
+        status = user.status
+    )
+)
+
+@Composable
+private fun RiderVoiceOverlay(
+    state: NativeVoiceControllerState,
+    auth: NativeAuth,
+    controller: NativeVoiceCallController,
+    onAnswer: () -> Unit
+) {
+    QueueGoVoiceCallOverlay(
+        state = state,
+        currentUserId = auth.user.id,
+        onAnswer = onAnswer,
+        onDecline = { controller.declineIncoming(auth) },
+        onHangUp = { controller.hangUp() },
+        onDismissEnded = { controller.dismissTerminal() },
+        onToggleMute = { controller.setMuted(it) },
+        onToggleSpeaker = { controller.setSpeakerEnabled(it) }
+    )
+}
+
 @Composable
 private fun RiderHome(
     modifier: Modifier,
@@ -286,6 +331,15 @@ private fun RiderHome(
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    val nativeVoiceAuth = remember(
+        auth.user.id,
+        auth.session.accessToken,
+        auth.session.sessionId,
+        auth.session.expiresAtMs
+    ) { auth.asNativeVoiceAuth() }
+    val voiceController = remember(auth.user.id) { NativeVoiceCallController(context) }
+    val voiceState by voiceController.state.collectAsState()
+    DisposableEffect(voiceController) { onDispose { voiceController.close() } }
     val pushStore = remember(context) { SessionStore(context) }
     val realtime = remember { NativeOrderRealtime() }
     val lifecycle = LocalLifecycleOwner.current.lifecycle
@@ -310,6 +364,45 @@ private fun RiderHome(
     var pendingCameraUri by remember { mutableStateOf<Uri?>(null) }
     var lastOfferAlertKey by remember { mutableStateOf<String?>(null) }
     var activeTab by remember { mutableStateOf("home") }
+    var pendingVoiceOrderId by remember { mutableStateOf<String?>(null) }
+    var pendingVoiceAnswer by remember { mutableStateOf(false) }
+    val voicePermission = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted) {
+            if (pendingVoiceAnswer) {
+                voiceController.answerIncoming(nativeVoiceAuth)
+            } else {
+                pendingVoiceOrderId?.let { orderId ->
+                    voiceController.startOutgoing(nativeVoiceAuth, orderId, "customer")
+                }
+            }
+        } else {
+            actionMessage = "กรุณาอนุญาตไมโครโฟนเพื่อโทรผ่าน QueueGo"
+        }
+        pendingVoiceOrderId = null
+        pendingVoiceAnswer = false
+    }
+
+    fun startCustomerVoice(orderId: String) {
+        if (context.checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
+            voiceController.startOutgoing(nativeVoiceAuth, orderId, "customer")
+        } else {
+            pendingVoiceOrderId = orderId
+            pendingVoiceAnswer = false
+            voicePermission.launch(Manifest.permission.RECORD_AUDIO)
+        }
+    }
+
+    fun answerVoiceCall() {
+        if (context.checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
+            voiceController.answerIncoming(nativeVoiceAuth)
+        } else {
+            pendingVoiceOrderId = null
+            pendingVoiceAnswer = true
+            voicePermission.launch(Manifest.permission.RECORD_AUDIO)
+        }
+    }
 
     val badgePreferences = remember(context) { context.getSharedPreferences("rider_chat_seen", Context.MODE_PRIVATE) }
     val badgeTracker = remember(auth.user.id, auth.session.sessionId) { RiderMessageBadgeTracker(auth.user.id) }
@@ -569,20 +662,47 @@ private fun RiderHome(
             }
         }
     }
+    LaunchedEffect(
+        nativeVoiceAuth.session.accessToken,
+        nativeVoiceAuth.session.sessionId,
+        lifecycle
+    ) {
+        lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            while (true) {
+                try {
+                    voiceController.refreshIncoming(nativeVoiceAuth)
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (_: Exception) {
+                    // Native push plus foreground polling provide recovery without blocking Rider work.
+                }
+                delay(3_000)
+            }
+        }
+    }
 
     if (chatJob != null) {
-        RiderChatScreen(
-            auth = auth,
-            job = chatJob!!,
-            onBack = { chatJob = null },
-            modifier = modifier
-        )
+        Box(modifier.fillMaxSize()) {
+            RiderChatScreen(
+                auth = auth,
+                job = chatJob!!,
+                onBack = { chatJob = null },
+                modifier = Modifier.fillMaxSize()
+            )
+            RiderVoiceOverlay(
+                state = voiceState,
+                auth = nativeVoiceAuth,
+                controller = voiceController,
+                onAnswer = ::answerVoiceCall
+            )
+        }
         return
     }
 
     if (verifyMode != null && verifyJob != null) {
+        Box(modifier.fillMaxSize()) {
         VerificationScreen(
-            modifier = modifier,
+            modifier = Modifier.fillMaxSize(),
             mode = verifyMode!!,
             job = verifyJob!!,
             marketPickup = verifyMarketPickup,
@@ -594,6 +714,9 @@ private fun RiderHome(
             onBack = { closeVerification() },
             onCamera = { openCamera() },
             onChat = { val job = verifyJob; closeVerification(); chatJob = job },
+            onCallCustomer = {
+                verifyJob?.id?.let(::startCustomerVoice)
+            },
             onConfirm = {
                 val job = verifyJob ?: return@VerificationScreen
                 val uri = photoUri ?: run {
@@ -655,6 +778,13 @@ private fun RiderHome(
                 }
             }
         )
+        RiderVoiceOverlay(
+            state = voiceState,
+            auth = nativeVoiceAuth,
+            controller = voiceController,
+            onAnswer = ::answerVoiceCall
+        )
+        }
         return
     }
 
@@ -694,6 +824,12 @@ private fun RiderHome(
                 modifier = Modifier.align(Alignment.BottomCenter)
             )
             messageNotice?.let { RiderMessageNotice(it, Modifier.align(Alignment.TopCenter)) }
+            RiderVoiceOverlay(
+                state = voiceState,
+                auth = nativeVoiceAuth,
+                controller = voiceController,
+                onAnswer = ::answerVoiceCall
+            )
         }
         return
     }
@@ -1177,6 +1313,12 @@ private fun RiderHome(
             modifier = Modifier.align(Alignment.BottomCenter)
         )
         messageNotice?.let { RiderMessageNotice(it, Modifier.align(Alignment.TopCenter)) }
+        RiderVoiceOverlay(
+            state = voiceState,
+            auth = nativeVoiceAuth,
+            controller = voiceController,
+            onAnswer = ::answerVoiceCall
+        )
     }
 }
 
@@ -1957,9 +2099,9 @@ private fun VerificationScreen(
     onBack: () -> Unit,
     onCamera: () -> Unit,
     onChat: () -> Unit,
+    onCallCustomer: () -> Unit,
     onConfirm: () -> Unit
 ) {
-    val context = LocalContext.current
     val pickup = mode == "pickup"
     val marketPickupMode = mode == "marketPickup"
     var previewReady by remember(photoUri) { mutableStateOf(false) }
@@ -2015,10 +2157,12 @@ private fun VerificationScreen(
                                 Text("ลูกค้า", fontSize = 8.sp, color = QgMuted)
                                 Text(details?.customerName ?: "ลูกค้า", fontSize = 16.sp, fontWeight = FontWeight.Bold)
                             }
-                            val phone = details?.customerPhone?.filter { it.isDigit() || it == '+' }?.takeIf { it.isNotBlank() }
-                            if (phone != null) RiderProofContact(R.drawable.qg_rider_flow_phone, "โทรหาลูกค้า", !busy) {
-                                runCatching { context.startActivity(Intent(Intent.ACTION_DIAL, Uri.fromParts("tel", phone, null))) }
-                            }
+                            RiderProofContact(
+                                R.drawable.qg_rider_flow_phone,
+                                "โทรหาลูกค้า",
+                                !busy,
+                                onCallCustomer
+                            )
                             RiderProofContact(R.drawable.qg_rider_nav_chat, "แชต", !busy, onChat)
                         }
                     }
