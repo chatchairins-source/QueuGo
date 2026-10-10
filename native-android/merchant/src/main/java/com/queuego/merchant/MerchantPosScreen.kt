@@ -59,9 +59,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.repeatOnLifecycle
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.MultiFormatWriter
 import com.queuego.shared.NativeAuth
+import com.queuego.shared.NativeOrderRealtime
+import com.queuego.shared.NativeRealtimeSubscription
 import com.queuego.shared.QgCard
 import com.queuego.shared.QgGreen
 import com.queuego.shared.QgMuted
@@ -69,7 +74,10 @@ import com.queuego.shared.QgRed
 import com.queuego.shared.QgRemoteImage
 import com.queuego.shared.QgSectionTitle
 import com.queuego.shared.QgStatusPill
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import java.time.LocalDate
 import java.time.ZoneId
 import java.util.Locale
@@ -96,6 +104,9 @@ fun MerchantPosScreen(
     backLabel: String = "ย้อนกลับ"
 ) {
     val api = remember { MerchantPosApi() }
+    val realtime = remember { NativeOrderRealtime() }
+    val refreshMutex = remember { Mutex() }
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
 
@@ -154,19 +165,21 @@ fun MerchantPosScreen(
         return s.owner || s.currentStaff?.allows(permission) == true
     }
 
-    fun reload(select: String? = selectedBillId) {
-        scope.launch {
-            runCatching { api.snapshot(auth) }
-                .onSuccess { fresh ->
-                    snapshot = fresh
-                    selectedBillId = select?.takeIf { id -> fresh.bills.any { it.id == id && it.open } }
-                    if (selectedBillId == null && mode == "DINE_IN" && tableId != null) {
-                        selectedBillId = fresh.bills.firstOrNull { it.open && it.tableId == tableId }?.id
-                    }
-                    qrTable = qrTable?.let { old -> fresh.tables.firstOrNull { it.id == old.id } ?: old }
+    suspend fun refreshSnapshot(select: String? = selectedBillId) = refreshMutex.withLock {
+        runCatching { api.snapshot(auth) }
+            .onSuccess { fresh ->
+                snapshot = fresh
+                selectedBillId = select?.takeIf { id -> fresh.bills.any { it.id == id && it.open } }
+                if (selectedBillId == null && mode == "DINE_IN" && tableId != null) {
+                    selectedBillId = fresh.bills.firstOrNull { it.open && it.tableId == tableId }?.id
                 }
-                .onFailure { message = it.message ?: "โหลด POS ไม่สำเร็จ" }
-        }
+                qrTable = qrTable?.let { old -> fresh.tables.firstOrNull { it.id == old.id } ?: old }
+            }
+            .onFailure { message = it.message ?: "โหลด POS ไม่สำเร็จ" }
+    }
+
+    fun reload(select: String? = selectedBillId) {
+        scope.launch { refreshSnapshot(select) }
     }
 
     fun runMutation(
@@ -277,7 +290,28 @@ fun MerchantPosScreen(
         addPosProduct(product)
     }
 
-    LaunchedEffect(auth.session.accessToken) { reload() }
+    LaunchedEffect(auth.session.accessToken) {
+        refreshSnapshot()
+    }
+
+    LaunchedEffect(auth.session.accessToken, snapshot?.shopId, lifecycle) {
+        val shopId = snapshot?.shopId ?: return@LaunchedEffect
+        lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            realtime.changes(
+                auth.session.accessToken,
+                listOf(NativeRealtimeSubscription("orders", "shop_id=eq.$shopId"))
+            ).collect {
+                refreshSnapshot()
+            }
+        }
+    }
+
+    LaunchedEffect(auth.session.accessToken) {
+        while (true) {
+            delay(5_000L)
+            if (!busy) refreshSnapshot()
+        }
+    }
 
     LaunchedEffect(view, reportDays, snapshot?.shopId) {
         if (view == "reports" && snapshot?.owner == true) {
