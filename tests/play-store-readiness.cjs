@@ -139,6 +139,10 @@ ok(manifest?.android?.physical_evidence_capture_helper==='native-android/qa/capt
 ok(manifest?.android?.physical_evidence_capture_default_status==='DRAFT'&&manifest?.android?.physical_evidence_capture_auto_certifies===false,'Physical evidence helper must never auto-certify release gates');
 ok(manifest?.android?.physical_evidence_capture_rejects_emulator===true&&manifest?.android?.physical_evidence_capture_external_output_required===true,'Physical evidence helper must reject emulator capture and keep evidence outside source');
 ok(manifest?.android?.physical_evidence_capture_identity_hash_salt==='PER_CAPTURE_RANDOM_256_BIT_NOT_STORED'&&manifest?.android?.physical_evidence_capture_identity_hash_domain_separated===true,'Physical evidence identity hashes must remain per-capture salted and domain-separated');
+ok(manifest?.android?.release_evidence_bundler==='native-android/qa/finalize-native-release-evidence.py','Recovery manifest must point to the supported release evidence bundler');
+ok(manifest?.android?.release_evidence_bundler_requires_p0_p1_zero===true&&manifest?.android?.release_evidence_bundler_auto_certifies===false,'Evidence bundler must never bypass P0/P1 or auto-certify gates');
+ok(manifest?.android?.release_evidence_bundler_max_files===1000&&manifest?.android?.release_evidence_bundler_max_uncompressed_bytes===4294967296,'Evidence bundler limits must match certification extraction bounds');
+ok(manifest?.android?.release_evidence_bundler_output_status==='READY_FOR_PRIVATE_STORAGE_UPLOAD','Bundler output must remain upload-ready rather than release-certified');
 ok(manifest?.android?.release_gate_lifecycle_requires_all_roles===true,'Lifecycle certification must cover Customer Merchant and Rider');
 ok(manifest?.android?.release_gate_voice_requires_two_distinct_devices===true&&manifest?.android?.release_gate_voice_requires_two_distinct_networks===true,'Voice certification must require two devices and two networks');
 ok(manifest?.android?.release_gate_full_native_ci_attested_run_binding===true,'full_native_ci evidence must bind the attested Native Pilot run');
