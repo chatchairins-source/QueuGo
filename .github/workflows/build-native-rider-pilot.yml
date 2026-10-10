@@ -5,6 +5,7 @@ on:
   push:
     branches:
       - queuego-native-android-v1
+      - work-native-rpc-null-contract-20261010
     paths:
       - 'native-android/**'
       - 'tests/native-android-source.cjs'

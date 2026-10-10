@@ -125,7 +125,7 @@ class CustomerExtrasApi(private val http: QueueGoNativeApi = QueueGoNativeApi())
     ) {
         val body = JSONObject()
             .put("p_ticket_id", ticketId)
-            .put("p_order_id", orderId)
+            .put("p_order_id", orderId ?: JSONObject.NULL)
             .put("p_category", category)
             .put("p_details", details.trim())
             .put("p_evidence_path", JSONObject.NULL)
