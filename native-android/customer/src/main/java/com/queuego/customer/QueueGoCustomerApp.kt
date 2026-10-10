@@ -6,6 +6,7 @@ import android.content.Intent
 import android.net.Uri
 import android.content.pm.PackageManager
 import android.location.LocationManager
+import android.os.Build
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -87,6 +88,7 @@ import com.queuego.shared.QgStatusPill
 import com.queuego.shared.QueueGoAuthHost
 import com.queuego.shared.QueueGoBrand
 import com.queuego.shared.SecureRoleSessionStore
+import com.queuego.shared.nativeLogoutScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.util.UUID
@@ -162,6 +164,10 @@ private fun CustomerShell(
     val voiceController = remember(auth.user.id) { NativeVoiceCallController(context) }
     val voiceState by voiceController.state.collectAsState()
     DisposableEffect(voiceController) { onDispose { voiceController.close() } }
+    val pushLogoutScope = remember(context) { nativeLogoutScope(context, scope) }
+    val notificationPermission = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { }
     val cartStore = remember(auth.user.id) { CustomerCartStore(context, auth.user.id) }
     val locationStore = remember { CustomerLocationStore(context) }
     val savedDeviceLocation = remember { locationStore.load() }
@@ -272,6 +278,11 @@ private fun CustomerShell(
     var checkoutPending by remember { mutableStateOf(pendingCheckoutRecord != null) }
 
     var lastCheckoutReceipt by remember { mutableStateOf<String?>(null) }
+
+    fun logoutWithPushCleanup() {
+        pushLogoutScope.launch { disableCustomerNativePush(context, auth) }
+        logout()
+    }
 
     fun showPlacedOrder(order: CustomerOrder) {
         lastCheckoutReceipt = order.id
@@ -441,6 +452,18 @@ private fun CustomerShell(
     }
 
     LaunchedEffect(auth.user.id) { refresh() }
+    LaunchedEffect(auth.session.sessionId, auth.session.accessToken) {
+        if (customerFirebaseConfigured(context)) {
+            ensureCustomerPushChannel(context)
+            if (
+                Build.VERSION.SDK_INT >= 33 &&
+                context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+            ) {
+                notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+            }
+            runCatching { syncCustomerNativePush(context, auth) }
+        }
+    }
     LaunchedEffect(auth.session.accessToken, lifecycle) {
         lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
             while (true) {
@@ -1008,7 +1031,7 @@ private fun CustomerShell(
                         supportInitialOrderId = null
                         screen = "support"
                     },
-                    logout = logout
+                    logout = ::logoutWithPushCleanup
                 )
             }
         }
