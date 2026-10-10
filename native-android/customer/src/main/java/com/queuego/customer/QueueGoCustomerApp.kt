@@ -6,6 +6,7 @@ import android.content.Intent
 import android.net.Uri
 import android.content.pm.PackageManager
 import android.location.LocationManager
+import android.os.Build
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -69,6 +70,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.queuego.shared.NativeAuth
+import com.queuego.shared.NativePushApi
+import com.queuego.shared.NativePushDeviceStore
+import com.queuego.shared.nativeLogoutScope
 import com.queuego.shared.QgAccountDeletionSection
 import com.queuego.shared.QgBg
 import com.queuego.shared.QgBottomNav
@@ -157,6 +161,37 @@ private fun CustomerShell(
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     val liveMutex = remember { Mutex() }
     val context = LocalContext.current
+    val pushStore = remember { NativePushDeviceStore(context, "customer") }
+    val pushApi = remember { NativePushApi() }
+    val pushLogoutScope = remember(context) { nativeLogoutScope(context, scope) }
+    var pushPermissionRequested by remember(auth.user.id) { mutableStateOf(false) }
+    val pushPermission = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted) {
+            scope.launch {
+                runCatching { syncCustomerNativePush(context, auth) }
+            }
+        }
+    }
+    fun logoutWithPushCleanup() {
+        pushLogoutScope.launch {
+            runCatching { pushApi.unsubscribe(auth, pushStore.deviceId()) }
+        }
+        logout()
+    }
+    LaunchedEffect(auth.user.id, auth.session.accessToken, auth.session.sessionId) {
+        ensureCustomerNotificationChannel(context)
+        if (
+            Build.VERSION.SDK_INT < 33 ||
+            context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
+        ) {
+            runCatching { syncCustomerNativePush(context, auth) }
+        } else if (!pushPermissionRequested) {
+            pushPermissionRequested = true
+            pushPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
+    }
     val cartStore = remember(auth.user.id) { CustomerCartStore(context, auth.user.id) }
     val locationStore = remember { CustomerLocationStore(context) }
     val savedDeviceLocation = remember { locationStore.load() }
@@ -943,7 +978,7 @@ private fun CustomerShell(
                         supportInitialOrderId = null
                         screen = "support"
                     },
-                    logout = logout
+                    logout = ::logoutWithPushCleanup
                 )
             }
         }
