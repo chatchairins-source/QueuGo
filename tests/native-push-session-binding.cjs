@@ -12,8 +12,10 @@ function has(text,re,msg){assert(re.test(text),msg)}
 has(shared,/\.put\("sessionId", auth\.session\.sessionId\)/,'shared native push must send sessionId');
 has(rider,/\.put\("sessionId", auth\.session\.sessionId\)/,'Rider native push must send sessionId');
 
-has(edge,/const sessionId=String\(input\.sessionId\|\|''\)\.trim\(\)/,'Edge must parse native push sessionId');
-has(edge,/if\(!uuid\(sessionId\)\).*invalid session/s,'Edge must reject invalid native sessionId');
+has(edge,/let sessionId=String\(input\.sessionId\|\|''\)\.trim\(\)/,'Edge must parse native push sessionId');
+has(edge,/if\(uuid\(sessionId\)\)/,'Edge must validate explicit native sessionId when provided');
+has(edge,/legacySessions[\s\S]*limit\(2\)[\s\S]*length!==1[\s\S]*active session required/s,
+  'legacy native clients may derive a session only when exactly one live session exists');
 has(edge,/user_active_sessions[\s\S]*eq\('user_id',auth\.data\.user\.id\)[\s\S]*eq\('session_id',sessionId\)[\s\S]*is\('revoked_at',null\)/,
   'Edge registration must require current active session');
 has(edge,/session_id:sessionId/,'Edge must persist session binding on native token');
