@@ -597,7 +597,6 @@ private fun MerchantNativeAuthentication(
                     onClick = {
                         staffJoin = true
                         register = false
-                        staffJoin = false
                         error = null
                         message = null
                         loginPassword = ""
