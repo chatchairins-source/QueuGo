@@ -368,12 +368,12 @@ class CustomerApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
             for (i in 0 until slides.length().coerceAtMost(3)) {
                 val slide = slides.optJSONObject(i) ?: continue
                 if (!slide.optBoolean("active", true)) continue
-                val image = slide.optString("image_url").ifBlank { slide.optString("image_data") }.trim()
-                if (!(image.startsWith("data:image/") || image.startsWith("http://", true) || image.startsWith("https://", true))) continue
-                val linkValue = slide.optString("link").ifBlank { slide.optString("link_target") }.trim()
-                val link = linkValue.takeIf {
-                    it.startsWith("#") || it.startsWith("http://", true) || it.startsWith("https://", true)
-                }
+                val image = sanitizeBannerImage(
+                    slide.optString("image_url").ifBlank { slide.optString("image_data") }
+                ) ?: continue
+                val link = sanitizeBannerLink(
+                    slide.optString("link").ifBlank { slide.optString("link_target") }
+                )
                 add(
                     HomeBanner(
                         image = image,
@@ -402,12 +402,12 @@ class CustomerApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
         return buildMap {
             value.keys().forEach { key ->
                 val item = value.optJSONObject(key) ?: return@forEach
-                val image = item.optString("image_url").ifBlank { item.optString("image_data") }
-                    .takeIf { it.isNotBlank() }
-                val rawLink = item.optString("link").ifBlank { item.optString("link_target") }.trim()
-                val link = rawLink.takeIf {
-                    it.startsWith("#") || it.startsWith("http://", true) || it.startsWith("https://", true)
-                }
+                val image = sanitizeBannerImage(
+                    item.optString("image_url").ifBlank { item.optString("image_data") }
+                )
+                val link = sanitizeBannerLink(
+                    item.optString("link").ifBlank { item.optString("link_target") }
+                )
                 put(key, ServiceBanner(
                     key,
                     image,
@@ -498,6 +498,20 @@ class CustomerApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
     }
 
     private fun orderNumber(raw: String?, id: String): String = nativeOrderNumber(raw)
+}
+
+internal fun sanitizeBannerImage(raw: String?): String? {
+    val value = raw?.trim().orEmpty()
+    return value.takeIf {
+        it.startsWith("data:image/") || it.startsWith("https://", ignoreCase = true)
+    }
+}
+
+internal fun sanitizeBannerLink(raw: String?): String? {
+    val value = raw?.trim().orEmpty()
+    return value.takeIf {
+        it.startsWith("#") || it.startsWith("https://", ignoreCase = true)
+    }
 }
 
 private fun JSONObject.optNullable(key: String): String? =
