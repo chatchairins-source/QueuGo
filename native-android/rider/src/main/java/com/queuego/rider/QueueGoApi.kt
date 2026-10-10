@@ -1,5 +1,7 @@
 package com.queuego.rider
 
+import com.queuego.shared.nativeOrderNumber
+
 import android.content.Context
 import android.net.Uri
 import kotlinx.coroutines.Dispatchers
@@ -359,11 +361,7 @@ class QueueGoApi {
                     val r = rows.optJSONObject(i) ?: continue
                     val id = r.optString("id")
                     val raw = r.optString("order_number")
-                    val number = when {
-                        raw.startsWith("QT-", true) -> raw.uppercase()
-                        raw.filter(Char::isDigit).length >= 4 -> "QT-" + raw.filter(Char::isDigit).takeLast(4)
-                        else -> "QT-" + kotlin.math.abs(id.hashCode() % 10000).toString().padStart(4, '0')
-                    }
+                    val number = nativeOrderNumber(raw)
                     add(
                         RiderHistoryOrder(
                             id = id,

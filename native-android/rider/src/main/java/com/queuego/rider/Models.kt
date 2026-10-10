@@ -1,5 +1,7 @@
 package com.queuego.rider
 
+import com.queuego.shared.nativeOrderNumber
+
 data class QueueGoUser(
     val id: String,
     val name: String,
@@ -74,7 +76,7 @@ data class RiderJob(
     val customerCash: Double? = null
 ) {
     val numberLabel: String
-        get() = orderNumber?.let { if (it.startsWith("QT-")) it else "QT-" + it } ?: "QT-----"
+        get() = nativeOrderNumber(orderNumber)
 
     val isDelivering: Boolean
         get() = status == "picked_up" || status == "in_progress"
@@ -127,7 +129,7 @@ data class RiderLaundryJob(
     val createdAt: String? = null
 ) {
     val numberLabel: String
-        get() = orderNumber?.let { if (it.startsWith("QT-")) it else "QT-" + it } ?: "QT-----"
+        get() = nativeOrderNumber(orderNumber)
 
     val isCollected: Boolean
         get() = jobStatus == "collected"
@@ -170,7 +172,7 @@ data class RiderCashLedgerEntry(
     val createdAt: String?
 ) {
     val numberLabel: String
-        get() = orderNumber?.let { if (it.startsWith("QT-")) it else "QT-" + it } ?: "QT-----"
+        get() = nativeOrderNumber(orderNumber)
 }
 
 data class RiderSnapshot(
