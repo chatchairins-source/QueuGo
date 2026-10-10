@@ -167,7 +167,14 @@
       ],
       [
         "order_chat",
-        "native-android/rider/src/main/java/com/queuego/rider/RiderChatWindow.kt"
+        "native-android/rider/src/main/java/com/queuego/rider/RiderChat.kt",
+        "screen"
+      ],
+      [
+        "order_chat_window_policy",
+        "native-android/rider/src/main/java/com/queuego/rider/RiderChatWindow.kt",
+        "helper",
+        "riderChatWindow"
       ],
       [
         "messages",
