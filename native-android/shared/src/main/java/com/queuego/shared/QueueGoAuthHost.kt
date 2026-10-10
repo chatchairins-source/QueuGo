@@ -37,9 +37,12 @@ data class NativeAuthEntry(
     val error: String?,
     val customerAccountCreated: Boolean,
     val merchantAccountCreated: Boolean,
+    val merchantMessage: String?,
     val login: (String, String) -> Unit,
     val registerCustomer: (NativeCustomerRegistration) -> Unit,
     val registerMerchant: (NativeMerchantRegistration) -> Unit,
+    val recoverMerchantPassword: (String) -> Unit,
+    val joinMerchantStaff: (String, String, String, String) -> Unit,
     val clearError: () -> Unit
 )
 
@@ -65,6 +68,7 @@ fun QueueGoAuthHost(
     var customerSignupCheckpoint by rememberSaveable { mutableStateOf("") }
     var merchantAccountCreated by rememberSaveable { mutableStateOf(false) }
     var merchantSignupCheckpoint by rememberSaveable { mutableStateOf("") }
+    var merchantMessage by remember { mutableStateOf<String?>(null) }
 
     fun signIn(identifier: String, password: String) {
         if (busy || identifier.isBlank() || password.isBlank()) return
@@ -72,7 +76,9 @@ fun QueueGoAuthHost(
         error = null
         scope.launch {
             try {
-                val signedIn = api.signIn(identifier, password, expectedRole, store.deviceId())
+                val signedIn = if (expectedRole == "shop")
+                    api.signInMerchantOrStaff(identifier, password, store.deviceId())
+                else api.signIn(identifier, password, expectedRole, store.deviceId())
                 store.save(signedIn)
                 auth = signedIn
             } catch (failure: Exception) {
@@ -121,6 +127,7 @@ fun QueueGoAuthHost(
         busy = true
         error = null
         merchantAccountCreated = false
+        merchantMessage = null
         scope.launch {
             try {
                 form.validate()
@@ -149,12 +156,47 @@ fun QueueGoAuthHost(
         }
     }
 
+    fun recoverMerchantPassword(email: String) {
+        if (busy || expectedRole != "shop") return
+        busy = true
+        error = null
+        merchantMessage = null
+        scope.launch {
+            try {
+                api.recoverPassword(email)
+                merchantMessage = "ส่งลิงก์ตั้งรหัสผ่านใหม่แล้ว กรุณาตรวจอีเมล"
+            } catch (failure: Exception) {
+                if (failure is CancellationException) throw failure
+                error = failure.message ?: "ส่งลิงก์ตั้งรหัสผ่านใหม่ไม่สำเร็จ"
+            } finally { busy = false }
+        }
+    }
+
+    fun joinMerchantStaff(displayName: String, email: String, password: String, secret: String) {
+        if (busy || expectedRole != "shop") return
+        busy = true
+        error = null
+        merchantMessage = null
+        scope.launch {
+            try {
+                val signedIn = api.joinPosStaff(displayName, email, password, secret)
+                store.save(signedIn)
+                auth = signedIn
+            } catch (failure: Exception) {
+                if (failure is CancellationException) throw failure
+                error = failure.message ?: "เข้าร่วมร้านไม่สำเร็จ"
+            } finally { busy = false }
+        }
+    }
+
     LaunchedEffect(expectedRole, restoreAttempt) {
         restoring = true
         try {
             val cached = store.load()
             if (cached != null) {
-                val validated = api.validate(cached, expectedRole) { store.save(it) }
+                val validated = if (expectedRole == "shop" && cached.user.role == "pos_staff")
+                    api.validatePosStaff(cached) { store.save(it) }
+                else api.validate(cached, expectedRole) { store.save(it) }
                 store.save(validated)
                 auth = validated
             }
@@ -178,14 +220,21 @@ fun QueueGoAuthHost(
             delay(25_000)
             val current = auth ?: break
             try {
-                val validated = api.validate(current, expectedRole) { refreshed ->
-                    store.save(refreshed)
-                    auth = refreshed
+                val validated = if (expectedRole == "shop" && current.user.role == "pos_staff") {
+                    api.validatePosStaff(current) { refreshed ->
+                        store.save(refreshed)
+                        auth = refreshed
+                    }
+                } else {
+                    api.validate(current, expectedRole) { refreshed ->
+                        store.save(refreshed)
+                        auth = refreshed
+                    }
                 }
                 // Persist rotated refresh tokens before the independent heartbeat can fail.
                 store.save(validated)
                 auth = validated
-                api.touch(validated.session)
+                if (validated.user.role != "pos_staff") api.touch(validated.session)
             } catch (failure: Exception) {
                 if (failure is CancellationException) throw failure
                 if (shouldClearNativeSession(failure)) {
@@ -221,15 +270,18 @@ fun QueueGoAuthHost(
                     error = error,
                     customerAccountCreated = customerAccountCreated,
                     merchantAccountCreated = merchantAccountCreated,
+                    merchantMessage = merchantMessage,
                     login = ::signIn,
                     registerCustomer = ::registerCustomer,
                     registerMerchant = ::registerMerchant,
-                    clearError = { if (!busy) error = null }
+                    recoverMerchantPassword = ::recoverMerchantPassword,
+                    joinMerchantStaff = ::joinMerchantStaff,
+                    clearError = { if (!busy) { error = null; merchantMessage = null } }
                 )) else QueueGoLoginScreen(appLabel, busy, error, ::signIn)
             }
             else -> content(auth!!) {
                 val current = auth!!
-                logoutScope.launch { api.revoke(current.session) }
+                if (current.user.role != "pos_staff") logoutScope.launch { api.revoke(current.session) }
                 store.clear()
                 auth = null
             }
