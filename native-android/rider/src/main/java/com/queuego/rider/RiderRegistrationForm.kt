@@ -1,5 +1,8 @@
 package com.queuego.rider
 
+import com.queuego.shared.NATIVE_PASSWORD_POLICY_MESSAGE
+import com.queuego.shared.isNativeStrongPassword
+
 internal data class RiderRegistrationForm(
     val name: String = "", val phone: String = "", val email: String = "",
     val vehicle: String = "motorcycle", val capacity: String = "", val plate: String = "",
@@ -11,7 +14,7 @@ internal data class RiderRegistrationForm(
         if (step == 0) {
             if (name.isBlank() || phone.isBlank() || (!resuming && password.isBlank())) return "กรุณากรอกข้อมูลส่วนตัวให้ครบ"
             if (!normalizedPhone.matches(Regex("0[0-9]{9}"))) return "กรุณากรอกเบอร์โทรศัพท์ 10 หลัก"
-            if (!resuming && !strongRiderPassword(password)) return RIDER_PASSWORD_MESSAGE
+            if (!resuming && !isNativeStrongPassword(password)) return NATIVE_PASSWORD_POLICY_MESSAGE
             if (email.isNotBlank() && !email.matches(Regex("[^\\s@]+@[^\\s@]+\\.[^\\s@]+"))) return "กรุณากรอกอีเมลให้ถูกต้อง"
             if ("rr-photo" !in documents) return "กรุณาอัปโหลดรูปถ่ายหน้าตรง"
         }
@@ -24,10 +27,6 @@ internal data class RiderRegistrationForm(
         return null
     }
 }
-internal const val RIDER_PASSWORD_MESSAGE = "รหัสผ่านต้องมีอย่างน้อย 12 ตัว และมี A-Z, a-z, ตัวเลข และสัญลักษณ์"
-internal fun strongRiderPassword(password: String): Boolean = password.length >= 12 &&
-    Regex("[a-z]").containsMatchIn(password) && Regex("[A-Z]").containsMatchIn(password) &&
-    Regex("[0-9]").containsMatchIn(password) && Regex("[^A-Za-z0-9]").containsMatchIn(password)
 internal val RIDER_DOCUMENTS = linkedMapOf(
     "rr-photo" to "รูปถ่ายหน้าตรง", "rr-id-front" to "บัตรประชาชนด้านหน้า",
     "rr-id-back" to "บัตรประชาชนด้านหลัง", "rr-license" to "ใบขับขี่",
