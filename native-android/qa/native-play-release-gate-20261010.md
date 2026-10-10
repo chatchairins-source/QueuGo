@@ -85,6 +85,32 @@ any requirement below is OPEN.
    service declaration evidence, and store preflight.
 8. P0/P1 zero based on observed evidence, not static source checks.
 
+## Physical evidence semantic contract
+
+The certification bundle must contain `native-physical-evidence.json` schema v1.
+All physical release gates reference this one manifest by SHA-256, while the manifest
+in turn hashes the captured screenshots/videos/logs. The semantic validator rejects
+incomplete bundles before signing/release checks run. It requires:
+
+- at least two distinct real non-emulator Android devices and role coverage for
+  Customer, Merchant and Rider;
+- per-role foreground/background/killed push, login/refresh, logout revocation,
+  stale-token exclusion, order and call notification observations;
+- real two-device/two-network bidirectional voice, forced TURN relay,
+  foreground/background continuity, controls, hang-up cleanup and session/order/
+  block authorization;
+- Rider Floating Q with overlay-granted and overlay-denied paths, notification
+  return, tap-to-return and stop-outside-active-work evidence;
+- Customer/Merchant/Rider Blueprint coverage for all required screens/states with
+  reviewed pixel differences and zero blocking differences;
+- per-role permissions, single-back-to-Home, upload, location, session persistence,
+  offline/timeout, reconnect and background/foreground lifecycle evidence;
+- real order/session/block/private-topic revocation evidence and P0/P1 = 0.
+
+This schema validates completeness and file identity; it does not infer that a video
+or screenshot is truthful. The operator remains responsible for physical observation
+and certification.
+
 ## Android 16 KB page-size readiness
 
 All three Native apps compile and target API 36 on AGP 9.4.0. CI must still
