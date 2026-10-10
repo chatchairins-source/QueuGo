@@ -5,6 +5,7 @@ on:
   push:
     branches:
       - queuego-native-android-v1
+      - 'work-native-**'
       - work-native-release-integration-20261010
       - work-native-release-preflight-20261010
       - work-native-voice-background-20261010
