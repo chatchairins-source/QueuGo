@@ -74,6 +74,12 @@
       [
         "promotion",
         "native-android/customer/src/main/java/com/queuego/customer/CustomerPromotionScreen.kt"
+      ],
+      [
+        "tracking_map_component",
+        "native-android/customer/src/main/java/com/queuego/customer/CustomerTrackingMap.kt",
+        "helper",
+        "CustomerTrackingMap"
       ]
     ],
     "merchant": [
@@ -142,6 +148,11 @@
         "native-android/merchant/src/main/java/com/queuego/merchant/MerchantGpSlipViewer.kt",
         "helper",
         "signMerchantGpSlip"
+      ],
+      [
+        "app_shell",
+        "native-android/merchant/src/main/java/com/queuego/merchant/QueueGoMerchantApp.kt",
+        "screen"
       ]
     ],
     "rider": [
@@ -199,7 +210,14 @@
       [
         "history",
         "native-android/rider/src/main/java/com/queuego/rider/RiderHistoryCard.kt"
+      ],
+      [
+        "chat_image_component",
+        "native-android/rider/src/main/java/com/queuego/rider/RiderChatImage.kt",
+        "helper",
+        "RiderChatImage"
       ]
     ]
-  }
+  },
+  "audit_note": "All remaining Screen/App/Map/Chat-named Kotlin candidates were reviewed; API/store/model/validation-only files are intentionally excluded from UI surface coverage."
 }
