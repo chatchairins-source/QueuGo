@@ -322,6 +322,7 @@ private fun CustomerShell(
                 route == "orders" -> screen = "orders"
                 route == "map" -> screen = "location"
                 route == "market" -> screen = "market"
+                route == "promotion" -> screen = "promotion"
                 route == "laundry" -> screen = "laundry"
                 route == "shopping" -> {
                     shoppingMode = "all"
@@ -645,6 +646,12 @@ private fun CustomerShell(
                             orders = runCatching { api.loadOrders(auth) }.getOrDefault(orders)
                             screen = "orders"
                         }
+                    }
+                )
+                "promotion" -> CustomerPromotionScreen(
+                    onBack = { screen = "home" },
+                    onOpenShop = { shopId ->
+                        shops.find { it.id == shopId }?.let { openShopFromHome(it, "promotion") }
                     }
                 )
                 "shop" -> ShopScreen(
