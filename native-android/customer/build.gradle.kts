@@ -13,9 +13,30 @@ android {
         applicationId = "com.queuego.customer"
         minSdk = 26
         targetSdk = 36
-        versionCode = 3
-        versionName = "0.3.0-visual-blueprint"
+        versionCode = providers.gradleProperty("QG_VERSION_CODE").orNull?.toIntOrNull() ?: 3
+        versionName = providers.gradleProperty("QG_VERSION_NAME").orNull ?: "0.3.0-visual-blueprint"
     }
+    val releaseStoreFile = providers.gradleProperty("QG_RELEASE_STORE_FILE").orNull
+    val releaseStorePassword = providers.gradleProperty("QG_STORE_PASSWORD").orNull
+    val releaseKeyAlias = providers.gradleProperty("QG_KEY_ALIAS").orNull
+    val releaseKeyPassword = providers.gradleProperty("QG_KEY_PASSWORD").orNull
+    if (listOf(releaseStoreFile, releaseStorePassword, releaseKeyAlias, releaseKeyPassword).all { !it.isNullOrBlank() }) {
+        signingConfigs {
+            create("queuegoRelease") {
+                storeFile = file(requireNotNull(releaseStoreFile))
+                storePassword = releaseStorePassword
+                keyAlias = releaseKeyAlias
+                keyPassword = releaseKeyPassword
+            }
+        }
+        buildTypes {
+            named("release") {
+                signingConfig = signingConfigs.getByName("queuegoRelease")
+                isDebuggable = false
+            }
+        }
+    }
+
     buildFeatures { compose = true }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
