@@ -47,6 +47,7 @@ class NativeVoiceCallController(
     private var peer: NativeVoicePeer? = null
     private var operationJob: Job? = null
     private var signalJob: Job? = null
+    private var authorizationJob: Job? = null
     private val offerSent = AtomicBoolean(false)
     private val closed = AtomicBoolean(false)
 
@@ -215,7 +216,7 @@ class NativeVoiceCallController(
                             error = null
                         )
                     NativeVoicePeerState.FAILED ->
-                        fail(IllegalStateException("การเชื่อมต่อเสียงล้มเหลว"))
+                        scope.launch { fail(IllegalStateException("การเชื่อมต่อเสียงล้มเหลว")) }
                     NativeVoicePeerState.CLOSED -> Unit
                     else -> Unit
                 }
@@ -271,6 +272,44 @@ class NativeVoiceCallController(
         check(connection.send("ready", JSONObject().put("call_id", call.id))) {
             "แจ้งความพร้อมสายโทรไม่สำเร็จ"
         }
+
+        authorizationJob?.cancel()
+        authorizationJob = scope.launch {
+            var transientFailures = 0
+            while (true) {
+                delay(10_000L)
+                val latestAuth = auth ?: run {
+                    finishLocal(NativeVoicePhase.ENDED, "Session สิ้นสุดแล้ว")
+                    return@launch
+                }
+                try {
+                    val active = api.active(latestAuth, call.orderId)
+                    transientFailures = 0
+                    if (active?.id != call.id || active.status != "accepted") {
+                        connection.send("hangup", JSONObject().put("call_id", call.id))
+                        finishLocal(NativeVoicePhase.ENDED, null)
+                        return@launch
+                    }
+                    connection.updateAccessToken(latestAuth.session.accessToken)
+                } catch (failure: QueueGoHttpException) {
+                    if (failure.statusCode in 400..499) {
+                        finishLocal(
+                            NativeVoicePhase.ENDED,
+                            failure.message ?: "สิทธิ์สายโทรสิ้นสุดแล้ว"
+                        )
+                        return@launch
+                    }
+                    transientFailures += 1
+                } catch (failure: Exception) {
+                    if (failure is CancellationException) throw failure
+                    transientFailures += 1
+                }
+                if (transientFailures >= 3) {
+                    fail(IllegalStateException("ตรวจสอบสิทธิ์สายโทรไม่สำเร็จ"))
+                    return@launch
+                }
+            }
+        }
     }
 
     private fun cancelOperationOnly() {
@@ -279,6 +318,8 @@ class NativeVoiceCallController(
     }
 
     private fun closeTransport() {
+        authorizationJob?.cancel()
+        authorizationJob = null
         signalJob?.cancel()
         signalJob = null
         runCatching { realtimeConnection?.close() }
