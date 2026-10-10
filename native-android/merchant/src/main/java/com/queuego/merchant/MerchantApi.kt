@@ -556,7 +556,9 @@ class MerchantApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
         // the arrival column through the existing authenticated orders RLS once a
         // Rider-owned delivery becomes visible to the shop; early states simply
         // return no row and retain a null arrival timestamp.
-        val ids = orders.map { it.id }.filter { it.matches(Regex("[0-9a-fA-F-]{36}")) }
+        val ids = orders.mapNotNull { order ->
+            runCatching { UUID.fromString(order.id).toString() }.getOrNull()
+        }
         if (ids.isEmpty()) return orders
         val arrivals = runCatching {
             val arrivalRows = http.array(
