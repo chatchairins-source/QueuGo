@@ -18,6 +18,7 @@ ok(bucketConfig.project_ref==='pkypiqhlrmzocysgeqew'&&bucketConfig.bucket_id==='
 ok(bucketConfig.public===false&&bucketConfig.client_storage_policies_present===false,'Source mirror must record private server-side-only Storage access');
 ok(Array.isArray(bucketConfig.allowed_mime_types)&&bucketConfig.allowed_mime_types.includes('application/zip'),'Source mirror must keep release evidence ZIP-only');
 ok(bucketConfig.provisioning_mode==='SUPABASE_STORAGE_API_OR_DASHBOARD_ONLY'&&bucketConfig.storage_schema_sql_mutation_forbidden===true,'Release evidence bucket provisioning must not mutate the Supabase storage schema through SQL');
+ok(Array.isArray(bucketConfig.runtime_verification)&&bucketConfig.runtime_verification.includes('.github/workflows/native-release-certification.yml')&&bucketConfig.runtime_verification.includes('.github/workflows/release-secret-readiness.yml'),'Bucket source mirror must retain runtime verification in certification and readiness workflows');
 ok(!fs.existsSync('supabase/migrations/20261010133000_native_release_evidence_bucket.sql'),'Unsafe direct storage-schema migration must stay retired');
 ok(cert.includes('vars.QG_SUPABASE_URL'),'certification must source the Supabase project URL from Actions variables');
 ok(cert.includes('https://pkypiqhlrmzocysgeqew.supabase.co'),'certification must pin the QueueGo Production Supabase origin');
