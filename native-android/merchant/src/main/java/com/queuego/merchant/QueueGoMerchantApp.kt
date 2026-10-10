@@ -5,6 +5,7 @@ import android.content.pm.PackageManager
 import android.media.AudioManager
 import android.media.ToneGenerator
 import android.net.Uri
+import android.os.Build
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -77,6 +78,7 @@ import com.queuego.shared.QgSectionTitle
 import com.queuego.shared.QgStatusPill
 import com.queuego.shared.QueueGoAuthHost
 import com.queuego.shared.QueueGoBrand
+import com.queuego.shared.nativeLogoutScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.time.Instant
@@ -120,6 +122,10 @@ private fun MerchantShell(auth: NativeAuth, logout: () -> Unit) {
     val voiceController = remember(auth.user.id) { NativeVoiceCallController(context) }
     val voiceState by voiceController.state.collectAsState()
     DisposableEffect(voiceController) { onDispose { voiceController.close() } }
+    val pushLogoutScope = remember(context) { nativeLogoutScope(context, scope) }
+    val notificationPermission = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { }
     var pendingVoiceAnswer by remember { mutableStateOf(false) }
     val voicePermission = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -151,6 +157,11 @@ private fun MerchantShell(auth: NativeAuth, logout: () -> Unit) {
     val coverPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) {
         if (it != null) setupCoverUri = it
     }
+    fun logoutWithPushCleanup() {
+        pushLogoutScope.launch { disableMerchantNativePush(context, auth) }
+        logout()
+    }
+
     fun updateMerchantGps() {
         val point = merchantLastKnownLocation(context)
         if (point != null) {
@@ -243,6 +254,22 @@ private fun MerchantShell(auth: NativeAuth, logout: () -> Unit) {
     }
 
     LaunchedEffect(auth.user.id) { refreshAll() }
+    LaunchedEffect(auth.session.sessionId, auth.session.accessToken, auth.user.status) {
+        if (
+            auth.user.role == "shop" &&
+            auth.user.status == "active" &&
+            merchantFirebaseConfigured(context)
+        ) {
+            ensureMerchantPushChannel(context)
+            if (
+                Build.VERSION.SDK_INT >= 33 &&
+                context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+            ) {
+                notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+            }
+            runCatching { syncMerchantNativePush(context, auth) }
+        }
+    }
     LaunchedEffect(auth.session.accessToken, auth.session.sessionId, lifecycle) {
         lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
             while (true) {
@@ -630,7 +657,7 @@ private fun MerchantShell(auth: NativeAuth, logout: () -> Unit) {
                         message = "ทดสอบเสียงแจ้งเตือนแล้ว"
                     },
                     onSupport = { screen = "support" },
-                    logout = logout
+                    logout = ::logoutWithPushCleanup
                 )
                 "hours" -> {
                     val activeShop = shop
