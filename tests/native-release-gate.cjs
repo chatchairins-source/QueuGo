@@ -30,6 +30,8 @@ assert.match(verifier,/PASS_FREE_PLAN_CONTROLS/,'Native release verifier must ho
 assert.match(verifier,/name == "security_platform_auth"/,'PASS_FREE_PLAN_CONTROLS exception must be scoped only to the Auth gate');
 assert.ok(verifier.includes('QG_ANDROID_EXPECTED_CERT_SHA256'),'pre-build release verifier must require the certified signing certificate fingerprint');
 assert.match(verifier,/actual_cert != expected_cert/,'pre-build release verifier must reject the wrong signing certificate');
+assert.match(verifier,/release evidence bundle must be stored outside the source checkout/,'release evidence must remain external to source');
+assert.match(verifier,/path\.relative_to\(evidence_root\)/,'release gate evidence paths must stay inside the certified evidence bundle');
 for(const legacy of ['.github/workflows/build-queuego-apks.yml','.github/workflows/build-queuego-pilot-apks.yml']){
   assert.equal(fs.existsSync(legacy),false,`legacy Capacitor Android build workflow must stay retired: ${legacy}`);
 }
@@ -60,6 +62,7 @@ assert.match(artifactVerifier,/aab_cert_sha != expected_cert/,'post-build AAB ve
 assert.ok(artifactVerifier.includes('QG_{role.upper()}_PLAY_MAX_VERSION_CODE'),'post-build verifier must require observed Play version history');
 assert.match(artifactVerifier,/code <= play_max/,'post-build verifier must reject artifact versionCodes that do not advance Play history');
 assert.match(artifactVerifier,/git", "status", "--porcelain"/,'post-build verifier must require a clean source checkout for provenance');
+assert.match(artifactVerifier,/release artifact evidence must be written outside the source checkout/,'post-build evidence output must not dirty the certified source checkout');
 assert.match(artifactVerifier,/len\(signer_digests\) != 1/,'all three release apps must use one certified signing identity');
 
 const nativeCi=fs.readFileSync('.github/workflows/build-native-rider-pilot.yml','utf8');
