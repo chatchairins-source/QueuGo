@@ -120,7 +120,12 @@ fun QueueGoCustomerApp() {
         QueueGoAuthHost(
             expectedRole = "customer",
             appLabel = "Customer",
-            entryScreen = { CustomerAuthenticationScreen(it) }
+            entryScreen = {
+                CustomerAuthenticationScreen(it) {
+                    destinationAfterLogin = "home"
+                    authRequested = false
+                }
+            }
         ) { auth, logout ->
             key(auth.user.id, auth.user.authUserId) {
                 CustomerShell(
