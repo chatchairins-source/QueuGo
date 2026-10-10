@@ -3,6 +3,8 @@ package com.queuego.shared
 import java.util.UUID
 import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.TimeUnit
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
@@ -20,11 +22,11 @@ class NativeVoiceRealtimeTest {
         val server = MockWebServer()
         val received = LinkedBlockingQueue<JSONObject>()
         server.enqueue(MockResponse().withWebSocketUpgrade(object : WebSocketListener() {
-            override fun onMessage(socket: WebSocket, text: String) {
+            override fun onMessage(webSocket: WebSocket, text: String) {
                 val message = JSONObject(text)
                 received.add(message)
                 when (message.optString("event")) {
-                    "phx_join" -> socket.send(
+                    "phx_join" -> webSocket.send(
                         JSONObject()
                             .put("topic", message.getString("topic"))
                             .put("event", "phx_reply")
@@ -33,7 +35,7 @@ class NativeVoiceRealtimeTest {
                             .put("payload", JSONObject().put("status", "ok").put("response", JSONObject()))
                             .toString()
                     )
-                    "broadcast" -> socket.send(
+                    "broadcast" -> webSocket.send(
                         JSONObject()
                             .put("topic", message.getString("topic"))
                             .put("event", "broadcast")
@@ -65,6 +67,9 @@ class NativeVoiceRealtimeTest {
             assertFalse(config.getJSONObject("broadcast").getBoolean("self"))
             assertEquals(0, config.getJSONArray("postgres_changes").length())
 
+            val inboundDeferred = async(start = CoroutineStart.UNDISPATCHED) {
+                withTimeout(5_000) { connection.signals.first() }
+            }
             assertTrue(connection.send("offer", JSONObject().put("sdp", "offer-sdp")))
             val outbound = received.poll(1, TimeUnit.SECONDS)
             assertEquals("broadcast", outbound.getString("event"))
@@ -72,7 +77,7 @@ class NativeVoiceRealtimeTest {
             assertEquals("offer-sdp", outbound.getJSONObject("payload")
                 .getJSONObject("payload").getString("sdp"))
 
-            val inbound = withTimeout(5_000) { connection.signals.first() }
+            val inbound = inboundDeferred.await()
             assertEquals("answer", inbound.event)
             assertEquals("answer-sdp", inbound.payload.getString("sdp"))
 
@@ -91,7 +96,7 @@ class NativeVoiceRealtimeTest {
     @Test fun rejectedPrivateJoinFailsClosedAndCannotSendSignals() = runBlocking {
         val server = MockWebServer()
         server.enqueue(MockResponse().withWebSocketUpgrade(object : WebSocketListener() {
-            override fun onMessage(socket: WebSocket, text: String) {
+            override fun onMessage(webSocket: WebSocket, text: String) {
                 val message = JSONObject(text)
                 if (message.optString("event") == "phx_join") {
                     socket.send(
