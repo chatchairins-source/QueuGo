@@ -122,6 +122,7 @@ try{
       artifacts:[{file:artifact,sha256:artifactSha,kind:'log'}]
     };
     if(gate==='full_native_ci') envelope.github_run_id=456;
+    if(gate==='backup_restore') envelope.github_run_id=456;
     if(gate==='production_backend') envelope.supabase_project_ref='pkypiqhlrmzocysgeqew';
     if(gate==='firebase_three_packages') envelope.firebase_project_id='placeholder-project';
     if(gate==='play_store_preflight'){
@@ -151,11 +152,24 @@ try{
   const report=path.join(bindingDir,'native-release-evidence.json');
   fs.writeFileSync(report,JSON.stringify({source_sha:head,p0:0,p1:0,gates}));
   const result=spawnSync('python3',[script],{
-    env:{...env,QG_NATIVE_RELEASE_EVIDENCE:report,QG_CERTIFIED_NATIVE_PILOT_RUN_ID:'123'},
+    env:{...env,QG_NATIVE_RELEASE_EVIDENCE:report,QG_CERTIFIED_NATIVE_PILOT_RUN_ID:'123',QG_CERTIFIED_BACKUP_RESTORE_RUN_ID:'789'},
     encoding:'utf8'
   });
   assert.equal(result.status,1,'full_native_ci evidence must be bound to the attested Native Pilot run');
   assert.match(result.stderr,/full_native_ci evidence does not match the attested Native Pilot run/);
+
+  const fullNativeEnvelope=JSON.parse(fs.readFileSync(path.join(bindingDir,'full_native_ci.json'),'utf8'));
+  fullNativeEnvelope.github_run_id=123;
+  fs.writeFileSync(path.join(bindingDir,'full_native_ci.json'),JSON.stringify(fullNativeEnvelope));
+  const fullNativeSha=crypto.createHash('sha256').update(fs.readFileSync(path.join(bindingDir,'full_native_ci.json'))).digest('hex');
+  gates.full_native_ci={status:'PASS',evidence_file:'full_native_ci.json',sha256:fullNativeSha};
+  fs.writeFileSync(report,JSON.stringify({source_sha:head,p0:0,p1:0,gates}));
+  const backupResult=spawnSync('python3',[script],{
+    env:{...env,QG_NATIVE_RELEASE_EVIDENCE:report,QG_CERTIFIED_NATIVE_PILOT_RUN_ID:'123',QG_CERTIFIED_BACKUP_RESTORE_RUN_ID:'789'},
+    encoding:'utf8'
+  });
+  assert.equal(backupResult.status,1,'backup_restore evidence must be bound to the attested Backup Restore Drill');
+  assert.match(backupResult.stderr,/backup_restore evidence does not match the attested Backup Restore Drill/);
 }finally{fs.rmSync(bindingDir,{recursive:true,force:true});}
 
 const verifier=fs.readFileSync(script,'utf8');
@@ -191,6 +205,8 @@ assert.match(verifier,/physical gate evidence is missing required roles/,'physic
 assert.match(verifier,/physical voice gate requires two distinct devices/,'voice certification must require two distinct devices');
 assert.match(verifier,/physical voice gate requires two distinct networks/,'voice certification must require two distinct networks');
 assert.match(verifier,/QG_CERTIFIED_NATIVE_PILOT_RUN_ID/,'release evidence must bind full_native_ci to the attested Native Pilot run');
+assert.match(verifier,/QG_CERTIFIED_BACKUP_RESTORE_RUN_ID/,'release evidence must bind backup_restore to the attested restore drill');
+assert.match(verifier,/backup_restore evidence does not match the attested Backup Restore Drill/,'backup evidence must reject a mismatched restore-drill run');
 assert.match(verifier,/production_backend evidence must identify QueueGo Production Supabase/,'production backend evidence must bind the Production Supabase project');
 assert.match(verifier,/firebase_three_packages evidence does not match the loaded Firebase project/,'Firebase evidence must bind the loaded project identity');
 assert.match(verifier,/play_store_preflight evidence versionName mismatch/,'Play evidence must bind certified versionName');
