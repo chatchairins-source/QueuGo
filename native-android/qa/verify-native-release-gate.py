@@ -40,6 +40,26 @@ PHYSICAL_GATES = {
     "android_lifecycle_permissions_upload_location",
 }
 
+PHYSICAL_ROLE_PACKAGES = {
+    "customer": "com.queuego.customer",
+    "merchant": "com.queuego.merchant",
+    "rider": "com.queuego.rider",
+}
+
+PHYSICAL_GATE_REQUIRED_ARTIFACT_KINDS = {
+    "physical_push_customer": {"screen_recording", "notification_log"},
+    "physical_push_merchant": {"screen_recording", "notification_log"},
+    "physical_push_rider": {"screen_recording", "notification_log"},
+    "physical_voice_two_devices_two_networks": {"screen_recording", "call_log"},
+    "turn_relay": {"network_trace"},
+    "voice_session_order_block_authorization": {"screen_recording", "auth_log"},
+    "rider_floating_q": {"screen_recording"},
+    "customer_blueprint": {"screenshot", "pixel_diff"},
+    "merchant_blueprint": {"screenshot", "pixel_diff"},
+    "rider_blueprint": {"screenshot", "pixel_diff"},
+    "android_lifecycle_permissions_upload_location": {"screen_recording", "lifecycle_log"},
+}
+
 PHYSICAL_GATE_REQUIRED_ROLES = {
     "physical_push_customer": {"customer"},
     "physical_push_merchant": {"merchant"},
@@ -180,6 +200,7 @@ def verify_gate_envelope(path: Path, bundle_root: Path, gate: str, head: str, ex
     if not isinstance(artifacts, list) or not artifacts:
         raise ValueError(f"gate evidence must reference at least one artifact: {gate}")
     seen_artifacts = set()
+    artifact_kinds = set()
     for index, artifact in enumerate(artifacts):
         if not isinstance(artifact, dict):
             raise ValueError(f"gate artifact entry must be an object: {gate}")
@@ -193,6 +214,7 @@ def verify_gate_envelope(path: Path, bundle_root: Path, gate: str, head: str, ex
         seen_artifacts.add(artifact_rel)
         if not isinstance(artifact_kind, str) or not re.fullmatch(r"[a-z0-9_-]{2,40}", artifact_kind):
             raise ValueError(f"gate artifact kind is invalid: {gate}")
+        artifact_kinds.add(artifact_kind)
         if not re.fullmatch(r"[0-9a-f]{64}", artifact_digest):
             raise ValueError(f"gate artifact SHA-256 is malformed: {gate}")
         artifact_path = bundle_file(bundle_root, artifact_rel, f"gate artifact {gate}[{index}]")
@@ -200,6 +222,20 @@ def verify_gate_envelope(path: Path, bundle_root: Path, gate: str, head: str, ex
             raise ValueError(f"gate artifact hash mismatch: {gate}")
 
     if gate in PHYSICAL_GATES:
+        operator_hash = str(envelope.get("operator_id_hash", "")).lower()
+        if not re.fullmatch(r"[0-9a-f]{64}", operator_hash):
+            raise ValueError(f"physical gate operator_id_hash is invalid: {gate}")
+        expected_pilot_raw = os.environ.get("QG_CERTIFIED_NATIVE_PILOT_RUN_ID", "")
+        if not re.fullmatch(r"\d+", expected_pilot_raw):
+            raise ValueError("QG_CERTIFIED_NATIVE_PILOT_RUN_ID must be available while validating physical evidence")
+        pilot_run_id = envelope.get("native_pilot_run_id")
+        if type(pilot_run_id) is not int or pilot_run_id != int(expected_pilot_raw):
+            raise ValueError(f"physical gate Native Pilot run mismatch: {gate}")
+        allowed_kinds = PHYSICAL_GATE_REQUIRED_ARTIFACT_KINDS.get(gate, set())
+        if allowed_kinds and artifact_kinds.isdisjoint(allowed_kinds):
+            expected = ", ".join(sorted(allowed_kinds))
+            raise ValueError(f"physical gate requires an appropriate artifact kind ({expected}): {gate}")
+
         devices = envelope.get("devices")
         if not isinstance(devices, list) or not devices:
             raise ValueError(f"physical gate evidence must identify at least one device: {gate}")
@@ -222,6 +258,18 @@ def verify_gate_envelope(path: Path, bundle_root: Path, gate: str, head: str, ex
                 raise ValueError(f"physical gate device role is invalid: {gate}")
             if device.get("physical") is not True or device.get("emulator") is not False:
                 raise ValueError(f"physical gate device must be a real non-emulator device: {gate}")
+            if device.get("package_name") != PHYSICAL_ROLE_PACKAGES[role]:
+                raise ValueError(f"physical gate device package_name does not match role: {gate}")
+            if device.get("app_source_sha") != head:
+                raise ValueError(f"physical gate device app_source_sha mismatch: {gate}")
+            if device.get("build_type") not in {"debug", "release"}:
+                raise ValueError(f"physical gate device build_type is invalid: {gate}")
+            version_name = device.get("app_version_name")
+            version_code = device.get("app_version_code")
+            if not isinstance(version_name, str) or not version_name.strip() or len(version_name) > 80:
+                raise ValueError(f"physical gate device app_version_name is invalid: {gate}")
+            if type(version_code) is not int or version_code <= 0 or version_code > 2100000000:
+                raise ValueError(f"physical gate device app_version_code is invalid: {gate}")
             device_ids.add(device_hash)
             observed_roles.add(role)
         required_roles = PHYSICAL_GATE_REQUIRED_ROLES.get(gate, set())
