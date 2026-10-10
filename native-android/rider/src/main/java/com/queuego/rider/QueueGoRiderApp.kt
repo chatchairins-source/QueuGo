@@ -685,6 +685,9 @@ private fun RiderHome(
             onBack = { closeVerification() },
             onCamera = { openCamera() },
             onChat = { val job = verifyJob; closeVerification(); chatJob = job },
+            onCallCustomer = {
+                verifyJob?.id?.let(::startCustomerVoice)
+            },
             onConfirm = {
                 val job = verifyJob ?: return@VerificationScreen
                 val uri = photoUri ?: run {
@@ -2048,9 +2051,9 @@ private fun VerificationScreen(
     onBack: () -> Unit,
     onCamera: () -> Unit,
     onChat: () -> Unit,
+    onCallCustomer: () -> Unit,
     onConfirm: () -> Unit
 ) {
-    val context = LocalContext.current
     val pickup = mode == "pickup"
     val marketPickupMode = mode == "marketPickup"
     var previewReady by remember(photoUri) { mutableStateOf(false) }
@@ -2106,10 +2109,12 @@ private fun VerificationScreen(
                                 Text("ลูกค้า", fontSize = 8.sp, color = QgMuted)
                                 Text(details?.customerName ?: "ลูกค้า", fontSize = 16.sp, fontWeight = FontWeight.Bold)
                             }
-                            val phone = details?.customerPhone?.filter { it.isDigit() || it == '+' }?.takeIf { it.isNotBlank() }
-                            if (phone != null) RiderProofContact(R.drawable.qg_rider_flow_phone, "โทรหาลูกค้า", !busy) {
-                                runCatching { context.startActivity(Intent(Intent.ACTION_DIAL, Uri.fromParts("tel", phone, null))) }
-                            }
+                            RiderProofContact(
+                                R.drawable.qg_rider_flow_phone,
+                                "โทรหาลูกค้า",
+                                !busy,
+                                onCallCustomer
+                            )
                             RiderProofContact(R.drawable.qg_rider_nav_chat, "แชต", !busy, onChat)
                         }
                     }
