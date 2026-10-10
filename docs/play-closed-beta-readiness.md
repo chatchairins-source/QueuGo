@@ -60,7 +60,6 @@ The Native release gate and CI are the certification source. Earlier Capacitor-g
 
 Policy sources:
 - https://support.google.com/googleplay/android-developer/answer/11926878
-- https://next.capacitorjs.com/docs/next/android/setting-target-sdk
 
 ### Android permissions
 
@@ -88,8 +87,9 @@ Image selection/upload uses the system picker or scoped file chooser rather than
 
 The microphone foreground service is started only from visible outgoing/answer user actions before media creation. Incoming FCM does not start microphone access in the background. The service keeps an already-started call eligible through background lifecycle and stops on call/session termination. Physical two-device/background audio certification and the Play foreground-service declaration remain OPEN.
 
-Policy source:
+Policy sources:
 - https://support.google.com/googleplay/android-developer/answer/16558241
+- https://developer.android.com/develop/background-work/services/fgs/restrictions-bg-start
 
 ### Account deletion
 
