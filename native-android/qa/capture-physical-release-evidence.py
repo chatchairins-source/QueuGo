@@ -168,6 +168,9 @@ def main() -> int:
             raise ValueError(f"cannot certify {gate}; missing checks: {', '.join(sorted(missing_checks))}")
 
     output = Path(args.output).resolve()
+    source_root = ROOT.resolve()
+    if output == source_root or source_root in output.parents:
+        raise ValueError("physical evidence output must be outside the source checkout")
     bundle_root = output.parent
     bundle_root.mkdir(parents=True, exist_ok=True)
 
@@ -186,7 +189,9 @@ def main() -> int:
     artifacts = []
     artifact_index = 1
     for raw in args.artifact:
-        kind, path_value = parse_pair(raw, set(re.findall(r"[a-z0-9_-]{2,40}", raw.split(":", 1)[0])), "artifact")
+        kind, sep, path_value = raw.partition(":")
+        if not sep or not KIND_RE.fullmatch(kind) or not path_value:
+            raise ValueError("artifact must be KIND:PATH using a lowercase evidence kind")
         artifacts.append(copy_artifact(Path(path_value), kind, bundle_root, artifact_index))
         artifact_index += 1
 
