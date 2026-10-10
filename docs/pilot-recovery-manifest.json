@@ -375,11 +375,18 @@
       "same_signer_all_three_apps",
       "aab_signer_certificate_sha256",
       "apk_aab_signer_match",
-      "certified_signer_fingerprint_match"
+      "certified_signer_fingerprint_match",
+      "aab_application_id",
+      "aab_version_code",
+      "aab_version_name",
+      "pinned_bundletool_sha256"
     ],
     "release_signing_expected_certificate_variable": "QG_ANDROID_EXPECTED_CERT_SHA256",
     "release_signing_expected_certificate_status": "PENDING_EXTERNAL_CONFIGURATION",
-    "release_signing_cert_fingerprint_gate": true
+    "release_signing_cert_fingerprint_gate": true,
+    "release_bundletool_required": true,
+    "release_bundletool_path_variable": "QG_BUNDLETOOL_JAR",
+    "release_bundletool_sha256_variable": "QG_BUNDLETOOL_SHA256"
   },
   "security": {
     "code_surface_hardened": true,
