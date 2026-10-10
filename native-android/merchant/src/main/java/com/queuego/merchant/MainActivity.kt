@@ -11,6 +11,8 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -52,8 +54,13 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -372,46 +379,59 @@ private fun MerchantNativeAuthentication(
             .imePadding()
             .verticalScroll(rememberScrollState())
     ) {
-        Column(
+        Box(
             Modifier
                 .fillMaxWidth()
                 .height(if (register) 250.dp else 360.dp)
-                .background(Color(0xFF18110F))
-                .padding(horizontal = 24.dp, vertical = 32.dp),
-            verticalArrangement = Arrangement.Center
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                    Modifier
-                        .size(42.dp)
-                        .border(6.dp, Color(0xFFEC092E), RoundedCornerShape(50))
+            Image(
+                painter = painterResource(R.drawable.qgm_merchant_photo),
+                contentDescription = null,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop,
+                alignment = Alignment.Center
+            )
+            Box(
+                Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.46f))
+            )
+            Column(
+                Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 24.dp, vertical = 32.dp),
+                verticalArrangement = Arrangement.Center
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    MerchantQueueGoMark(Modifier.size(42.dp))
+                    Spacer(Modifier.size(8.dp))
+                    Text("Queue", color = Color.White, fontSize = 25.sp, fontWeight = FontWeight.ExtraBold)
+                    Text("Go", color = Color(0xFFF0092D), fontSize = 25.sp, fontWeight = FontWeight.ExtraBold)
+                }
+                Spacer(Modifier.height(28.dp))
+                Text(
+                    if (register) "สมัครร้านค้ากับ QueueGo" else "เข้าสู่ระบบร้านค้า",
+                    color = Color.White,
+                    fontSize = 27.sp,
+                    fontWeight = FontWeight.ExtraBold
                 )
-                Spacer(Modifier.size(8.dp))
-                Text("Queue", color = Color.White, fontSize = 25.sp, fontWeight = FontWeight.ExtraBold)
-                Text("Go", color = Color(0xFFF0092D), fontSize = 25.sp, fontWeight = FontWeight.ExtraBold)
+                Spacer(Modifier.height(7.dp))
+                Text(
+                    if (register)
+                        "ลงทะเบียนร้านไว้ล่วงหน้า\nเพื่อเตรียมสินค้าให้พร้อมก่อนเปิดบริการ"
+                    else
+                        "จัดการคิวร้านของคุณ\nให้ง่ายขึ้น ในทุก ๆ วัน",
+                    color = Color.White,
+                    fontSize = 14.sp,
+                    lineHeight = 21.sp
+                )
             }
-            Spacer(Modifier.height(28.dp))
-            Text(
-                if (register) "สมัครร้านค้ากับ QueueGo" else "เข้าสู่ระบบร้านค้า",
-                color = Color.White,
-                fontSize = 27.sp,
-                fontWeight = FontWeight.ExtraBold
-            )
-            Spacer(Modifier.height(7.dp))
-            Text(
-                if (register)
-                    "ลงทะเบียนร้านไว้ล่วงหน้า\nเพื่อเตรียมสินค้าให้พร้อมก่อนเปิดบริการ"
-                else
-                    "จัดการคิวร้านของคุณ\nให้ง่ายขึ้น ในทุก ๆ วัน",
-                color = Color.White,
-                fontSize = 14.sp,
-                lineHeight = 21.sp
-            )
         }
 
         Column(
             Modifier
                 .fillMaxWidth()
+                .offset(y = (-16).dp)
                 .background(Color.White, RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp))
                 .padding(horizontal = 20.dp, vertical = 24.dp)
         ) {
@@ -676,6 +696,28 @@ private fun MerchantNativeAuthentication(
             }
             Spacer(Modifier.height(20.dp))
         }
+    }
+}
+
+@Composable
+private fun MerchantQueueGoMark(modifier: Modifier = Modifier) {
+    Canvas(modifier) {
+        val strokeWidth = size.minDimension * 0.16f
+        val center = Offset(size.width * 0.47f, size.height * 0.47f)
+        val radius = size.minDimension * 0.31f
+        drawCircle(
+            color = Color(0xFFEC092E),
+            radius = radius,
+            center = center,
+            style = Stroke(width = strokeWidth)
+        )
+        drawLine(
+            color = Color(0xFFEC092E),
+            start = Offset(size.width * 0.55f, size.height * 0.57f),
+            end = Offset(size.width * 0.82f, size.height * 0.84f),
+            strokeWidth = strokeWidth,
+            cap = StrokeCap.Round
+        )
     }
 }
 
