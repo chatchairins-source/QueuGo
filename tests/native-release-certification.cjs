@@ -4,6 +4,7 @@ let checks=0;const ok=(v,m)=>{assert.ok(v,m);checks++};
 
 const cert=read('.github/workflows/native-release-certification.yml');
 const release=read('.github/workflows/build-native-release.yml');
+const bucketMigration=read('supabase/migrations/20261010133000_native_release_evidence_bucket.sql');
 
 ok(/workflow_dispatch:/.test(cert),'release certification must be manual only');
 ok(!/\n\s*push:/.test(cert),'release certification must never run from push');
@@ -13,6 +14,8 @@ ok(cert.includes('Require successful exact-HEAD Native Pilot CI'),'certification
 ok(cert.includes('.github/workflows/build-native-rider-pilot.yml')&&cert.includes('.event == "push"')&&cert.includes('.conclusion == "success"'),'certification must pin the successful main-branch Native Pilot workflow identity');
 ok(cert.includes('QG_CERTIFIED_NATIVE_PILOT_RUN_ID'),'certification must retain the attested Native Pilot run id');
 ok(cert.includes('queuego-native-release-evidence'),'certification must use the fixed private evidence bucket');
+ok(bucketMigration.includes("'queuego-native-release-evidence'")&&bucketMigration.includes('false')&&bucketMigration.includes("'application/zip'"),'Source migration must mirror the private ZIP-only release evidence bucket');
+ok(!/create\s+policy/i.test(bucketMigration),'Release evidence bucket migration must not create client Storage policies');
 ok(cert.includes('vars.QG_SUPABASE_URL'),'certification must source the Supabase project URL from Actions variables');
 ok(cert.includes('https://pkypiqhlrmzocysgeqew.supabase.co'),'certification must pin the QueueGo Production Supabase origin');
 ok(cert.includes('/storage/v1/bucket/$QG_EVIDENCE_BUCKET'),'certification must verify the evidence bucket metadata before download');
