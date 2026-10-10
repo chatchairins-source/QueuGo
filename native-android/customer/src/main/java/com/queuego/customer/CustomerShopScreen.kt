@@ -63,7 +63,7 @@ private class ShopExtrasApi(private val http: QueueGoNativeApi = QueueGoNativeAp
 @Composable
 internal fun ShopScreen(auth: NativeAuth?, shop: CustomerShop?, products: List<CustomerProduct>, cart: List<CartLine>,
     productsLoading: Boolean, productsError: String?, onRetryProducts: () -> Unit,
-    onBack: () -> Unit, onAdd: (CustomerProduct) -> Unit, onCart: () -> Unit,
+    onBack: () -> Unit, onAdd: (CustomerProduct, List<CustomerMenuSelection>) -> Unit, onCart: () -> Unit,
     onRequireLogin: () -> Unit = {}) {
     if (shop == null) { Text("ไม่พบร้านค้า", Modifier.padding(35.dp), color = QgMuted); return }
     // Guest and signed-in shop views use the same Production-derived renderer.
@@ -92,6 +92,7 @@ private fun ShopBody(auth: NativeAuth?, shop: CustomerShop, products: List<Custo
     var busyFavorites by remember { mutableStateOf<Set<String>>(emptySet()) }
     var expanded by remember { mutableStateOf(false) }
     var reload by remember { mutableIntStateOf(0) }
+    var optionProduct by remember { mutableStateOf<CustomerProduct?>(null) }
     LaunchedEffect(reload, auth?.session?.accessToken, shop.id) {
         loadError = false
         try {
@@ -171,7 +172,13 @@ private fun ShopBody(auth: NativeAuth?, shop: CustomerShop, products: List<Custo
                         }
                         Favorite("product", product.id)
                         if (!product.available) Text("หมด", color = QgMuted, fontSize = 11.sp)
-                        else ShopIcon(R.drawable.qg_shop_plus, "เพิ่ม", Modifier.size(36.dp).clip(CircleShape).background(if (shop.open) QgRed else Color(0xFFC9CCD1)), Color.White, shop.open) { onAdd(product) }
+                        else ShopIcon(R.drawable.qg_shop_plus, "เพิ่ม", Modifier.size(36.dp).clip(CircleShape).background(if (shop.open) QgRed else Color(0xFFC9CCD1)), Color.White, shop.open) {
+                            if (customerMenuOptionGroups(product.variantsJson).isEmpty()) {
+                                onAdd(product, emptyList())
+                            } else {
+                                optionProduct = product
+                            }
+                        }
                     }
                     HorizontalDivider(color = QgLine)
                 }
@@ -203,9 +210,124 @@ private fun ShopBody(auth: NativeAuth?, shop: CustomerShop, products: List<Custo
         val shopCart = cart.filter { it.product.shopId == shop.id }
         if (shopCart.isNotEmpty()) Row(Modifier.align(Alignment.BottomCenter).padding(horizontal = 10.dp, vertical = 12.dp).fillMaxWidth().clip(RoundedCornerShape(15.dp)).background(QgRed).clickable(onClick = onCart).padding(horizontal = 13.dp, vertical = 10.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             Text("ดูตะกร้า · ${shopCart.sumOf { it.quantity }} รายการ", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color.White)
-            Text("฿" + "%.0f".format(shopCart.sumOf { it.product.deliveryPrice * it.quantity }), fontSize = 12.sp, color = Color.White)
+            Text("฿" + "%.0f".format(shopCart.sumOf { customerCartLineUnitPrice(it) * it.quantity }), fontSize = 12.sp, color = Color.White)
+        }
+        optionProduct?.let { product ->
+            CustomerProductOptionsDialog(
+                product = product,
+                onDismiss = { optionProduct = null },
+                onConfirm = { selections ->
+                    onAdd(product, selections)
+                    optionProduct = null
+                }
+            )
         }
     }
+}
+
+@Composable
+private fun CustomerProductOptionsDialog(
+    product: CustomerProduct,
+    onDismiss: () -> Unit,
+    onConfirm: (List<CustomerMenuSelection>) -> Unit
+) {
+    val groups = remember(product.id, product.variantsJson) {
+        customerMenuOptionGroups(product.variantsJson)
+    }
+    var selected by remember(product.id, product.variantsJson) {
+        mutableStateOf(customerDefaultMenuSelections(product))
+    }
+    val canonical = runCatching { customerCanonicalMenuSelections(product, selected) }.getOrNull()
+    val resolved = canonical?.let { runCatching { customerResolveMenuSelections(product, it) }.getOrNull() }
+    val unitPrice = product.deliveryPrice + (resolved?.sumOf { it.priceDelta } ?: 0.0)
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Column {
+                Text(product.name, fontWeight = FontWeight.ExtraBold)
+                Text(
+                    "เลือกตัวเลือกเมนู",
+                    fontSize = 12.sp,
+                    color = QgMuted,
+                    modifier = Modifier.padding(top = 3.dp)
+                )
+            }
+        },
+        text = {
+            Column(
+                Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = 430.dp)
+                    .verticalScroll(rememberScrollState())
+            ) {
+                groups.forEach { group ->
+                    Text(
+                        group.name,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        modifier = Modifier.padding(top = 10.dp, bottom = 4.dp)
+                    )
+                    group.options.forEach { option ->
+                        val active = selected.any {
+                            it.groupKey == group.key && it.optionKey == option.key
+                        }
+                        Row(
+                            Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    selected = if (group.type == "single") {
+                                        selected.filterNot { it.groupKey == group.key } +
+                                            CustomerMenuSelection(group.key, option.key)
+                                    } else if (active) {
+                                        selected.filterNot {
+                                            it.groupKey == group.key && it.optionKey == option.key
+                                        }
+                                    } else {
+                                        selected + CustomerMenuSelection(group.key, option.key)
+                                    }
+                                }
+                                .padding(vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            if (group.type == "single") {
+                                RadioButton(selected = active, onClick = null)
+                            } else {
+                                Checkbox(checked = active, onCheckedChange = null)
+                            }
+                            Text(option.name, modifier = Modifier.weight(1f))
+                            if (option.priceDelta > 0.0) {
+                                Text(
+                                    "+฿" + "%.0f".format(option.priceDelta),
+                                    color = QgRed,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+                    }
+                }
+                HorizontalDivider(Modifier.padding(top = 10.dp))
+                Row(
+                    Modifier.fillMaxWidth().padding(top = 10.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text("ราคาต่อรายการ", color = QgMuted)
+                    Text("฿" + "%.0f".format(unitPrice), fontWeight = FontWeight.ExtraBold)
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                enabled = canonical != null,
+                onClick = { canonical?.let(onConfirm) }
+            ) {
+                Text("เพิ่มลงตะกร้า")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("ยกเลิก") }
+        }
+    )
 }
 
 @Composable
