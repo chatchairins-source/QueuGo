@@ -212,11 +212,18 @@ private fun CustomerShell(
             }
             saved.firstOrNull()?.product?.shopId == guest.firstOrNull()?.product?.shopId -> {
                 val merged = (saved + guest)
-                    .groupBy { it.product.id }
+                    .groupBy { line ->
+                        runCatching { customerCartLineKey(line) }
+                            .getOrDefault(line.product.id + "|")
+                    }
                     .values
                     .map { rows ->
-                        val freshest = rows.last().product
-                        CartLine(freshest, rows.sumOf { it.quantity }.coerceAtMost(99))
+                        val freshest = rows.last()
+                        CartLine(
+                            product = freshest.product,
+                            quantity = rows.sumOf { it.quantity }.coerceAtMost(99),
+                            selections = freshest.selections
+                        )
                     }
                 cartStore.save(merged)
                 guestCartStore.save(emptyList())
@@ -769,17 +776,32 @@ private fun CustomerShell(
                     onRetryProducts = { selectedShop?.let { shop -> shopCatalog.open(shop.id) { api.loadProducts(auth, shop.id) } } },
                     cart = cart,
                     onBack = { screen = shopReturnScreen },
-                    onAdd = { product ->
+                    onAdd = { product, rawSelections ->
                         val currentShopId = cart.firstOrNull()?.product?.shopId
                         if (checkoutPending) {
                             message = "กรุณาตรวจผลคำสั่งซื้อเดิมก่อนแก้ตะกร้า"
                         } else if (currentShopId != null && currentShopId != product.shopId) {
                             message = "หนึ่งตะกร้าสั่งได้จากร้านเดียว กรุณาสั่งร้านเดิมให้เสร็จก่อน"
                         } else {
-                            val existing = cart.find { it.product.id == product.id }
-                            cart = if (existing == null) cart + CartLine(product, 1)
-                            else cart.map { if (it.product.id == product.id) it.copy(quantity = it.quantity + 1) else it }
-                            message = "เพิ่มลงตะกร้าแล้ว"
+                            runCatching {
+                                val selections = customerCanonicalMenuSelections(product, rawSelections)
+                                val key = customerCartLineKey(product, selections)
+                                val existing = cart.find {
+                                    runCatching { customerCartLineKey(it) }.getOrNull() == key
+                                }
+                                cart = if (existing == null) {
+                                    cart + CartLine(product, 1, selections)
+                                } else {
+                                    cart.map {
+                                        if (runCatching { customerCartLineKey(it) }.getOrNull() == key) {
+                                            it.copy(quantity = (it.quantity + 1).coerceAtMost(99))
+                                        } else it
+                                    }
+                                }
+                                message = "เพิ่มลงตะกร้าแล้ว"
+                            }.onFailure {
+                                message = it.message ?: "ตัวเลือกเมนูไม่ถูกต้อง"
+                            }
                         }
                     },
                     onCart = { screen = "cart" }
@@ -789,19 +811,23 @@ private fun CustomerShell(
                     busy = busy,
                     checkoutPending = checkoutPending,
                     onBack = { screen = "home" },
-                    onMinus = { id ->
+                    onMinus = { lineKey ->
                         if (!checkoutPending) cart = cart.mapNotNull {
-                            if (it.product.id != id) it
+                            if (runCatching { customerCartLineKey(it) }.getOrNull() != lineKey) it
                             else if (it.quantity <= 1) null else it.copy(quantity = it.quantity - 1)
                         }
                     },
-                    onPlus = { id ->
+                    onPlus = { lineKey ->
                         if (!checkoutPending) cart = cart.map {
-                            if (it.product.id == id) it.copy(quantity = (it.quantity + 1).coerceAtMost(99)) else it
+                            if (runCatching { customerCartLineKey(it) }.getOrNull() == lineKey) {
+                                it.copy(quantity = (it.quantity + 1).coerceAtMost(99))
+                            } else it
                         }
                     },
-                    onRemove = { id ->
-                        if (!checkoutPending) cart = cart.filterNot { it.product.id == id }
+                    onRemove = { lineKey ->
+                        if (!checkoutPending) cart = cart.filterNot {
+                            runCatching { customerCartLineKey(it) }.getOrNull() == lineKey
+                        }
                     },
                     onCheckout = {
                         if (checkoutPending) {
@@ -825,11 +851,14 @@ private fun CustomerShell(
                                     var changed = false
                                     val reconciled = current.map { line ->
                                         val latest = byId.getValue(line.product.id)
+                                        val selections = customerCanonicalMenuSelections(latest, line.selections)
                                         if (latest.deliveryPrice != line.product.deliveryPrice ||
                                             latest.name != line.product.name ||
-                                            latest.image != line.product.image
+                                            latest.image != line.product.image ||
+                                            latest.variantsJson != line.product.variantsJson ||
+                                            selections != line.selections
                                         ) changed = true
-                                        line.copy(product = latest)
+                                        line.copy(product = latest, selections = selections)
                                     }
                                     cart = reconciled
                                     if (changed) {
