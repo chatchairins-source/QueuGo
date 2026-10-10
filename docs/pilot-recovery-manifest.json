@@ -377,7 +377,14 @@
       "aab_signer_certificate_sha256",
       "apk_aab_signer_match",
       "github_run_id",
-      "certification_run_id"
+      "certification_run_id",
+      "certified_signer_fingerprint_match",
+      "observed_play_max_version_code",
+      "clean_source_checkout",
+      "aab_application_id",
+      "aab_version_code",
+      "aab_version_name",
+      "pinned_bundletool_sha256"
     ],
     "native_release_workflow": ".github/workflows/build-native-release.yml",
     "native_release_workflow_present": true,
@@ -389,7 +396,11 @@
     "release_artifact_verifier_records_certification_run": true,
     "release_signing_certificate_pin_required": true,
     "release_signing_certificate_env": "QG_ANDROID_SIGNING_CERT_SHA256",
-    "release_secret_preflight_surfaces_certificate_sha256": true
+    "release_secret_preflight_surfaces_certificate_sha256": true,
+    "release_bundletool_required": true,
+    "release_bundletool_version": "1.18.3",
+    "release_bundletool_sha256": "a099cfa1543f55593bc2ed16a70a7c67fe54b1747bb7301f37fdfd6d91028e29",
+    "release_artifact_evidence_external_to_source": true
   },
   "security": {
     "code_surface_hardened": true,

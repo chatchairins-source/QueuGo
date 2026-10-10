@@ -63,6 +63,9 @@ ok(Array.isArray(manifest?.android?.allowed_android_build_workflows)&&
   'Only the Native pilot and fail-closed certified release workflows may be active Android build workflows');
 ok(manifest?.android?.release_version_code_strategy==='EXPLICIT_PER_APP_GT_OBSERVED_PLAY_MAX','Recovery manifest must preserve Play-history versionCode strategy');
 ok(manifest?.android?.release_gate_requires_backup_restore===true,'Recovery manifest must preserve Backup/Restore as a Native release hard gate');
+ok(manifest?.android?.release_bundletool_required===true&&manifest?.android?.release_bundletool_version==='1.18.3','Recovery manifest must require pinned bundletool AAB verification');
+ok(manifest?.android?.release_bundletool_sha256==='a099cfa1543f55593bc2ed16a70a7c67fe54b1747bb7301f37fdfd6d91028e29','Recovery manifest must pin the certified bundletool SHA-256');
+ok(manifest?.android?.release_artifact_evidence_external_to_source===true,'Release artifact evidence must remain outside the source checkout');
 ok(manifest?.android?.native_scope==='Customer/Merchant/Rider','Recovery manifest must identify Native Android as the active release scope');
 ok(manifest?.android?.legacy_capacitor_release_workflows_retired===true,'Legacy Capacitor release workflows must remain retired');
 ok(!('capacitor_version' in (manifest.android||{}))&&!('push_plugin' in (manifest.android||{})),'Native recovery manifest must not treat Capacitor as the active Android runtime');

@@ -173,6 +173,16 @@ jobs:
           curl -fsSL "https://api.longdo.com/map-android-SDK/LongdoMapAndroidSDK_v0.1.8.aar"             -o native-android/rider/libs/LongdoMapAndroidSDK_v0.1.8.aar
           echo "52d98e8deaaef4400f2623eebb212daa  native-android/rider/libs/LongdoMapAndroidSDK_v0.1.8.aar" | md5sum -c -
 
+      - name: Download verified Android bundletool
+        shell: bash
+        run: |
+          set -euo pipefail
+          bundletool="$RUNNER_TEMP/bundletool-all-1.18.3.jar"
+          curl -fsSL "https://github.com/google/bundletool/releases/download/1.18.3/bundletool-all-1.18.3.jar" -o "$bundletool"
+          echo "a099cfa1543f55593bc2ed16a70a7c67fe54b1747bb7301f37fdfd6d91028e29  $bundletool" | sha256sum -c -
+          echo "QG_BUNDLETOOL_JAR=$bundletool" >> "$GITHUB_ENV"
+          echo "QG_BUNDLETOOL_SHA256=a099cfa1543f55593bc2ed16a70a7c67fe54b1747bb7301f37fdfd6d91028e29" >> "$GITHUB_ENV"
+
       - name: Prepare certified Firebase and signing inputs
         shell: bash
         env:
@@ -285,4 +295,5 @@ jobs:
           rm -f native-android/rider/google-services.json
           rm -f "$RUNNER_TEMP/queuego-google-services.json"
           rm -f "$RUNNER_TEMP/queuego-release.keystore"
+          rm -f "$RUNNER_TEMP/bundletool-all-1.18.3.jar"
           rm -rf "$RUNNER_TEMP/queuego-native-release-certification"
