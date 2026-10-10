@@ -27,7 +27,7 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
-internal const val CUSTOMER_NOTIFICATION_CHANNEL = "queuego_orders"
+internal const val MERCHANT_NOTIFICATION_CHANNEL = "queuego_orders"
 
 internal fun ensureMerchantNotificationChannel(context: Context) {
     if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
@@ -36,7 +36,7 @@ internal fun ensureMerchantNotificationChannel(context: Context) {
     val attributes = AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_NOTIFICATION).build()
     manager.createNotificationChannel(
         NotificationChannel(
-            CUSTOMER_NOTIFICATION_CHANNEL,
+            MERCHANT_NOTIFICATION_CHANNEL,
             "การแจ้งเตือน QueueGo",
             NotificationManager.IMPORTANCE_HIGH
         ).apply {
@@ -119,7 +119,7 @@ class QueueGoMerchantMessagingService : FirebaseMessagingService() {
             intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
-        val notification = NotificationCompat.Builder(this, CUSTOMER_NOTIFICATION_CHANNEL)
+        val notification = NotificationCompat.Builder(this, MERCHANT_NOTIFICATION_CHANNEL)
             .setSmallIcon(R.drawable.qg_notification)
             .setContentTitle(title.take(80))
             .setContentText(body.take(220))
