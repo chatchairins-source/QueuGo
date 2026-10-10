@@ -39,6 +39,7 @@ ok(releaseSecrets.includes('vars.QG_SUPABASE_URL')&&releaseSecrets.includes('QG_
 ok(releaseSecrets.includes('/storage/v1/object/list/queuego-native-release-evidence'),'Release preflight must verify private evidence bucket access');
 ok(releaseSecrets.includes('https://pkypiqhlrmzocysgeqew.supabase.co'),'Release preflight must pin the QueueGo Production Supabase origin');
 ok(releaseSecrets.includes('/storage/v1/bucket/queuego-native-release-evidence')&&releaseSecrets.includes('Release evidence bucket must remain private'),'Release preflight must verify the fixed evidence bucket exists and remains private');
+ok(releaseSecrets.includes("--proto '=https'")&&releaseSecrets.includes('--tlsv1.2'),'Release evidence Storage preflight must require HTTPS/TLS');
 ok(releaseCertification.includes('/storage/v1/object/authenticated/')&&releaseCertification.includes('queuego-native-release-evidence'),'Release certification must download evidence only from the fixed private Storage bucket');
 ok(releaseCertification.includes('sha256sum -c -')&&releaseCertification.includes('Evidence ZIP contains path traversal'),'Release certification must verify bundle integrity and reject ZIP traversal');
 ok(releaseCertification.includes('certified-release-metadata.json'),'Release certification must bind exact release metadata');
