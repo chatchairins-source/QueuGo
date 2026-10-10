@@ -1,3 +1,4 @@
+// CI validation branch only; production source logic is unchanged from PR #81 head.
 const fs=require('fs'),assert=require('assert'),{spawnSync}=require('child_process');
 const script='native-android/qa/capture-physical-release-evidence.py';
 assert.ok(fs.existsSync(script),'physical evidence capture helper must exist');
