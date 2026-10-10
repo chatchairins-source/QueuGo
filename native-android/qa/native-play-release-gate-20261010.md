@@ -31,6 +31,21 @@ any requirement below is OPEN.
   artifact 11666493683 was saved. This closes the software/CI staging gate for
   the microphone foreground service only. Physical two-device background audio
   and Play foreground-service declaration evidence remain OPEN.
+- Native main HEAD 559ea783 completed QueueGo Native Android Pilot run
+  38043983595 successfully. Three-role fresh-session phone/small-phone/tablet
+  launch matrix passed; corrected Longdo Home map mount/background/recreation
+  passed; microphone foreground-service background/owned cleanup passed.
+  Launch evidence artifact 11667161963 was saved with SHA256
+  f6d47055e64c92546126bcbf797e93fca7ee6c31255eda4e127c62ae4f2deaf0.
+  The runtime log explicitly leaves authenticated E2E/visual parity, physical
+  FCM and real two-device voice audio unverified.
+- Backup/Restore run 38039279454 failed at secret validation with
+  QG_SUPABASE_DB_URL, QG_SUPABASE_SERVICE_ROLE_KEY and QG_BACKUP_PASSPHRASE
+  absent from the Actions environment.
+- Release Secret Readiness run 38039197325 failed with
+  QG_FIREBASE_GOOGLE_SERVICES_JSON_B64, QG_ANDROID_KEYSTORE_B64,
+  QG_ANDROID_STORE_PASSWORD, QG_ANDROID_KEY_ALIAS and
+  QG_ANDROID_KEY_PASSWORD absent from the Actions environment.
 
 ## Still OPEN
 
