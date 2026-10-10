@@ -79,6 +79,9 @@ def verify() -> dict:
     version_name = os.environ.get("QG_NATIVE_VERSION_NAME", "")
     if not re.fullmatch(r"\d+\.\d+\.\d+", version_name):
         raise ValueError("QG_NATIVE_VERSION_NAME must be the certified x.y.z release value")
+    expected_signer = os.environ.get("QG_ANDROID_EXPECTED_SIGNER_SHA256", "").replace(":", "").strip().lower()
+    if not re.fullmatch(r"[0-9a-f]{64}", expected_signer):
+        raise ValueError("QG_ANDROID_EXPECTED_SIGNER_SHA256 must be the certified 64-character signing fingerprint")
 
     expected_codes: dict[str, int] = {}
     for role in ROLES:
@@ -155,11 +158,14 @@ def verify() -> dict:
 
     if len(signer_digests) != 1:
         raise ValueError("all three QueueGo Native release apps must use the certified signing identity")
+    actual_signer = next(iter(signer_digests))
+    if actual_signer != expected_signer:
+        raise ValueError("signed release artifacts do not match the certified signing identity")
 
     result = {
         "source_sha": source_sha,
         "version_name": version_name,
-        "signer_certificate_sha256": next(iter(signer_digests)),
+        "signer_certificate_sha256": actual_signer,
         "roles": artifacts,
         "result": "PASS",
     }
