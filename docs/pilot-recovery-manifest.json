@@ -509,7 +509,14 @@
     "release_gate_production_supabase_project_ref": "pkypiqhlrmzocysgeqew",
     "release_gate_firebase_project_binding": true,
     "release_gate_play_version_metadata_binding": true,
-    "release_gate_signing_certificate_binding": true
+    "release_gate_signing_certificate_binding": true,
+    "release_certification_requires_exact_head_backup_restore": true,
+    "release_certification_backup_restore_workflow": ".github/workflows/backup-restore-drill.yml",
+    "release_certification_backup_restore_event": "workflow_dispatch",
+    "release_certification_backup_artifact_prefix": "queuego-backup-",
+    "release_certification_backup_artifact_live_required": true,
+    "release_certification_final_release_revalidates_backup_restore_run": true,
+    "release_gate_backup_restore_attested_run_binding": true
   },
   "security": {
     "code_surface_hardened": true,
