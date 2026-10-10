@@ -49,8 +49,8 @@ for(const role of ['customer','merchant','rider']){
   ok(role+' no broad storage permission',!/READ_EXTERNAL_STORAGE|WRITE_EXTERNAL_STORAGE|READ_MEDIA_IMAGES/.test(androidManifest));
 }
 
-ok('Native release versionCode comes from workflow run',/QG_VERSION_CODE: \$\{\{ github\.run_number \}\}/.test(workflow));
-ok('Native release versionName is deterministic beta',/QG_VERSION_NAME: 1\.0\.0-beta\.\$\{\{ github\.run_number \}\}/.test(workflow));
+ok('Native release versionCode uses monotonic floor',/version_code=\$\(\(1000000 \+ GITHUB_RUN_NUMBER\)\)/.test(workflow)&&/2100000000/.test(workflow)&&/ORG_GRADLE_PROJECT_QG_VERSION_CODE/.test(workflow));
+ok('Native release versionName is deterministic beta',/version_name="1\.0\.0-beta\.\$GITHUB_RUN_NUMBER"/.test(workflow)&&/ORG_GRADLE_PROJECT_QG_VERSION_NAME/.test(workflow));
 ok('Native release verifies package/version',/aapt/.test(workflow)&&/versionCode/.test(workflow)&&/versionName/.test(workflow));
 ok('Native release rejects debuggable APK',/release APK is debuggable/.test(workflow));
 ok('Native release verifies APK signature',/apksigner/.test(workflow)&&/--print-certs/.test(workflow));
@@ -64,6 +64,7 @@ ok('Pilot does not upload internal release variants',!pilotWorkflow.includes('qu
 
 ok('Recovery manifest points to Native source',manifest?.android?.native_source_of_truth==='native-android/');
 ok('Recovery manifest points to Native release workflow',manifest?.android?.native_closed_beta_workflow==='.github/workflows/build-native-closed-beta.yml');
+ok('Recovery manifest locks Native versionCode floor',manifest?.android?.release_version_code_strategy==='1000000_PLUS_NATIVE_CLOSED_BETA_WORKFLOW_RUN_NUMBER'&&manifest?.android?.release_version_code_floor===1000000);
 ok('Legacy Capacitor release is historical only',/HISTORICAL_ONLY/.test(manifest?.android?.legacy_capacitor_release_policy||''));
 ok('Voice code gate PASS',manifest?.voice?.code_gate==='PASS');
 ok('TURN physical gate remains false until certified',manifest?.voice?.turn_relay_certified===false);
