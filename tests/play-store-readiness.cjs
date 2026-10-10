@@ -77,6 +77,9 @@ ok(manifest?.android?.release_artifact_evidence_external_to_source===true,'Relea
 ok(manifest?.android?.release_certification_workflow==='.github/workflows/native-release-certification.yml','Recovery manifest must identify the trusted Native certification producer');
 ok(manifest?.android?.release_certification_private_bucket==='queuego-native-release-evidence','Recovery manifest must pin the private evidence bucket');
 ok(manifest?.android?.release_certification_runtime_gate==='BLOCKED_BUCKET_AND_SECRETS_AND_PHYSICAL_EVIDENCE','Recovery manifest must keep certification runtime blocked until real evidence infrastructure exists');
+ok(manifest?.android?.release_certification_requires_exact_head_native_pilot_ci===true,'Release certification must require exact-HEAD Native Pilot CI');
+ok(manifest?.android?.release_certification_native_pilot_workflow==='.github/workflows/build-native-rider-pilot.yml','Recovery manifest must pin the Native Pilot workflow identity for certification');
+ok(manifest?.android?.release_certification_final_release_revalidates_native_pilot_run===true,'Final release must revalidate the Native Pilot run recorded by certification');
 ok(manifest?.android?.native_scope==='Customer/Merchant/Rider','Recovery manifest must identify Native Android as the active release scope');
 ok(manifest?.android?.legacy_capacitor_release_workflows_retired===true,'Legacy Capacitor release workflows must remain retired');
 ok(!('capacitor_version' in (manifest.android||{}))&&!('push_plugin' in (manifest.android||{})),'Native recovery manifest must not treat Capacitor as the active Android runtime');
