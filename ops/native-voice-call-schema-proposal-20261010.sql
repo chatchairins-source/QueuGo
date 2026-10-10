@@ -127,6 +127,22 @@ begin
         where o.id=c.order_id
           and lower(o.status) not in ('cancelled','completed','no_rider_available')
       )
+      and exists(
+        select 1
+        from public.users cu
+        join public.user_active_sessions cs on cs.user_id=cu.auth_user_id
+        where cu.id=c.caller_user_id
+          and cs.session_id=c.caller_session_id
+          and cs.revoked_at is null
+      )
+      and exists(
+        select 1
+        from public.users ru
+        join public.user_active_sessions rs on rs.user_id=ru.auth_user_id
+        where ru.id=c.callee_user_id
+          and rs.session_id=c.callee_session_id
+          and rs.revoked_at is null
+      )
       and (
         (c.caller_user_id=v_queuego_user and c.caller_session_id=v_current_session)
         or
@@ -323,6 +339,28 @@ begin
        select 1 from public.orders o
        where o.id=c.order_id
          and lower(o.status) not in ('cancelled','completed','no_rider_available')
+     );
+
+  update public.qg_call_sessions c
+     set status='ended',ended_at=coalesce(ended_at,now())
+   where c.status='accepted'
+     and (
+       not exists(
+         select 1
+         from public.users cu
+         join public.user_active_sessions cs on cs.user_id=cu.auth_user_id
+         where cu.id=c.caller_user_id
+           and cs.session_id=c.caller_session_id
+           and cs.revoked_at is null
+       )
+       or not exists(
+         select 1
+         from public.users ru
+         join public.user_active_sessions rs on rs.user_id=ru.auth_user_id
+         where ru.id=c.callee_user_id
+           and rs.session_id=c.callee_session_id
+           and rs.revoked_at is null
+       )
      );
 
   select c.id into v_call_id
