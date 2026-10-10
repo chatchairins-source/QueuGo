@@ -18,7 +18,7 @@ on:
         default: '0'
         type: string
       certification_json:
-        description: JSON object keyed by every Native release gate with status PASS, evidence_ref and evidence_sha256
+        description: JSON keyed by every Native release gate; status PASS except security_platform_auth may use PASS_FREE_PLAN_CONTROLS, plus evidence_ref and evidence_sha256
         required: true
         type: string
 
@@ -92,8 +92,12 @@ jobs:
 
           for name in gates:
               item=supplied[name]
-              if not isinstance(item,dict) or item.get('status') != 'PASS':
-                  raise SystemExit(f'::error::Gate {name} must be explicitly operator-certified PASS')
+              if not isinstance(item,dict):
+                  raise SystemExit(f'::error::Gate {name} must be an object')
+              status=str(item.get('status') or '').strip()
+              allowed={'PASS','PASS_FREE_PLAN_CONTROLS'} if name == 'security_platform_auth' else {'PASS'}
+              if status not in allowed:
+                  raise SystemExit(f'::error::Gate {name} has uncertified status {status!r}')
               ref=str(item.get('evidence_ref') or '').strip()
               digest=str(item.get('evidence_sha256') or '').strip().lower()
               note=str(item.get('note') or '').strip()
@@ -104,7 +108,7 @@ jobs:
               record={
                   'gate': name,
                   'source_sha': source,
-                  'status': 'PASS',
+                  'status': status,
                   'evidence_ref': ref,
                   'evidence_sha256': digest,
               }
@@ -115,7 +119,7 @@ jobs:
               path.write_text(payload)
               local_digest=hashlib.sha256(path.read_bytes()).hexdigest()
               report['gates'][name]={
-                  'status':'PASS',
+                  'status':status,
                   'evidence_file':f'evidence/{name}.json',
                   'sha256':local_digest,
               }
