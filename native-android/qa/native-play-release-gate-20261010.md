@@ -25,24 +25,30 @@ any requirement below is OPEN.
 - Local Firebase/TURN/signing credentials and adb/Android SDK are absent.
   Supabase connector exposes no secret read/write operation. These facts do
   not prove secrets absent in Production.
+- Native main HEAD 28663031 completed QueueGo Native Android Pilot run
+  38042432314 successfully. The Native voice background lifecycle source
+  contract and accelerated Android runtime step both passed; launch evidence
+  artifact 11666493683 was saved. This closes the software/CI staging gate for
+  the microphone foreground service only. Physical two-device background audio
+  and Play foreground-service declaration evidence remain OPEN.
 
 ## Still OPEN
 
-1. Background microphone service staging Full Native CI and post-merge main CI.
-   Prior push integration main CI38040292297 and signing branch CI38040460644 passed.
-2. Real Firebase project with complete Customer/Merchant/Rider clients and
+1. Real Firebase project with complete Customer/Merchant/Rider clients and
    QG_FIREBASE_GOOGLE_SERVICES_JSON_B64 configured in GitHub Actions. All three
    packages become required for release; warning-mode debug CI is not certification.
-3. Cloudflare TURN environment secret verification and real two-device,
-   two-network bidirectional audio, forced relay and complete voice controls.
-4. Physical foreground/background/killed push, refresh/login/logout/revocation,
+2. Cloudflare TURN environment secret verification and real two-device,
+   two-network bidirectional audio, forced relay and complete voice controls,
+   including physical foreground/background behavior.
+3. Physical foreground/background/killed push, refresh/login/logout/revocation,
    call/order notifications and stale-token exclusion for all three apps.
-5. Real order/session/block/private-topic revocation and physical Floating Q.
-6. Every Native screen/status compared to live Production Blueprint.
-7. Physical permission, back, upload, location, persistence, timeout and lifecycle QA.
-8. Actual upload keystore identity/passwords, Play versionCode history, three
-   package app names/icons, Data Safety/privacy/account deletion, store preflight.
-9. P0/P1 zero based on observed evidence, not static source checks.
+4. Real order/session/block/private-topic revocation and physical Floating Q.
+5. Every Native screen/status compared to live Production Blueprint.
+6. Physical permission, back, upload, location, persistence, timeout and lifecycle QA.
+7. Actual upload keystore identity/passwords, Play versionCode history, three
+   package app names/icons, Data Safety/privacy/account deletion, foreground
+   service declaration evidence, and store preflight.
+8. P0/P1 zero based on observed evidence, not static source checks.
 
 ## Native release packaging protection
 
