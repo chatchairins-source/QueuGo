@@ -151,8 +151,8 @@ fun QueueGoAuthHost(
 
     LaunchedEffect(expectedRole, restoreAttempt) {
         restoring = true
+        val cached = store.load()
         try {
-            val cached = store.load()
             if (cached != null) {
                 val validated = api.validate(cached, expectedRole) { store.save(it) }
                 store.save(validated)
@@ -163,6 +163,7 @@ fun QueueGoAuthHost(
         } catch (failure: Exception) {
             if (failure is CancellationException) throw failure
             if (shouldClearNativeSession(failure)) {
+                if (cached != null) runCatching { disableNativePush(cached, store) }
                 store.clear()
                 recoveryRequired = false
             } else recoveryRequired = true
@@ -189,6 +190,7 @@ fun QueueGoAuthHost(
             } catch (failure: Exception) {
                 if (failure is CancellationException) throw failure
                 if (shouldClearNativeSession(failure)) {
+                    runCatching { disableNativePush(current, store) }
                     store.clear()
                     auth = null
                     error = "Session นี้ถูกยกเลิก หมดอายุ หรือเปิดจากอุปกรณ์อื่น"
@@ -197,6 +199,21 @@ fun QueueGoAuthHost(
                 // A failed network read does not revoke a previously validated session.
                 // Try again on the next tick; protected writes remain server-authorized.
             }
+        }
+    }
+
+    LaunchedEffect(auth?.session?.sessionId, expectedRole) {
+        val current = auth ?: return@LaunchedEffect
+        runCatching {
+            syncNativePush(
+                context = context,
+                auth = current,
+                expectedRole = expectedRole,
+                store = store,
+                channelName = if (expectedRole == "shop") "QueueGo Merchant" else "QueueGo",
+                channelDescription = "แจ้งเตือนออเดอร์ ข้อความ และสถานะจาก QueueGo",
+                highImportance = expectedRole == "shop"
+            )
         }
     }
 
@@ -229,7 +246,10 @@ fun QueueGoAuthHost(
             }
             else -> content(auth!!) {
                 val current = auth!!
-                logoutScope.launch { api.revoke(current.session) }
+                logoutScope.launch {
+                    runCatching { disableNativePush(current, store) }
+                    api.revoke(current.session)
+                }
                 store.clear()
                 auth = null
             }
