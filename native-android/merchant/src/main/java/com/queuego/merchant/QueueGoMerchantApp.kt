@@ -1114,7 +1114,7 @@ private fun MerchantOrderCard(order: MerchantOrder, onOpen: (MerchantOrder) -> U
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Text(order.number, fontWeight = FontWeight.Black, style = MaterialTheme.typography.titleMedium)
                 Spacer(Modifier.weight(1f))
-                QgStatusPill(merchantStatus(order.status), order.status != "cancelled")
+                QgStatusPill(merchantStatus(order.status, order.riderArrivedCustomerAt), order.status !in setOf("cancelled", "no_rider_available"))
             }
             Spacer(Modifier.height(6.dp))
             Text("ยอดสินค้า ฿" + "%.0f".format(order.subtotal), fontWeight = FontWeight.Bold)
@@ -1218,11 +1218,24 @@ private fun MerchantOrderDetail(
             "ready" -> QgCard(Modifier.fillMaxWidth()) {
                 Text("พร้อมส่งแล้ว · รอ Rider มารับสินค้า", fontWeight = FontWeight.ExtraBold)
             }
-            "picked_up", "in_progress" -> QgCard(Modifier.fillMaxWidth()) {
+            "picked_up" -> QgCard(Modifier.fillMaxWidth()) {
                 Text("Rider รับสินค้าออกจากร้านแล้ว", fontWeight = FontWeight.ExtraBold)
+            }
+            "in_progress" -> QgCard(Modifier.fillMaxWidth()) {
+                Text(
+                    if (order.riderArrivedCustomerAt.isNullOrBlank()) "Rider กำลังจัดส่ง"
+                    else "Rider ถึงลูกค้าแล้ว · รอส่งมอบ",
+                    fontWeight = FontWeight.ExtraBold
+                )
             }
             "completed" -> QgCard(Modifier.fillMaxWidth()) {
                 Text("ออเดอร์เสร็จสมบูรณ์", color = QgGreen, fontWeight = FontWeight.ExtraBold)
+            }
+            "cancelled" -> QgCard(Modifier.fillMaxWidth()) {
+                Text("ออเดอร์ถูกยกเลิก", color = QgMuted, fontWeight = FontWeight.ExtraBold)
+            }
+            "no_rider_available" -> QgCard(Modifier.fillMaxWidth()) {
+                Text("ไม่พบ Rider · ออเดอร์สิ้นสุดแล้ว", color = QgMuted, fontWeight = FontWeight.ExtraBold)
             }
         }
         Spacer(Modifier.height(30.dp))
@@ -1522,18 +1535,25 @@ private fun merchantCategoryLabel(category: String?): String = when (category?.l
     else -> "ร้านค้า"
 }
 
-private fun merchantStatus(status: String): String = when (status.lowercase()) {
-    "pending" -> "ออเดอร์ใหม่"
-    "accepted" -> "รับแล้ว"
-    "searching_rider" -> "กำลังหา Rider"
-    "rider_assigned", "assigned" -> "Rider รับงานแล้ว"
-    "preparing" -> "กำลังเตรียม"
-    "ready" -> "พร้อมส่ง"
-    "picked_up" -> "Rider รับสินค้าแล้ว"
-    "in_progress" -> "กำลังจัดส่ง"
-    "completed" -> "สำเร็จ"
-    "cancelled" -> "ยกเลิก"
-    else -> status
+private fun merchantStatus(status: String, riderArrivedCustomerAt: String? = null): String {
+    val normalized = status.lowercase()
+    if (normalized in setOf("in_progress", "delivering", "rider_to_customer") &&
+        !riderArrivedCustomerAt.isNullOrBlank()
+    ) return "Rider ถึงลูกค้าแล้ว"
+    return when (normalized) {
+        "pending" -> "ออเดอร์ใหม่"
+        "accepted" -> "รับแล้ว"
+        "searching_rider" -> "กำลังหา Rider"
+        "rider_assigned", "assigned" -> "Rider รับงานแล้ว"
+        "preparing" -> "กำลังเตรียม"
+        "ready" -> "พร้อมส่ง"
+        "picked_up" -> "Rider รับสินค้าแล้ว"
+        "in_progress", "delivering", "rider_to_customer" -> "กำลังจัดส่ง"
+        "completed" -> "สำเร็จ"
+        "cancelled" -> "ยกเลิก"
+        "no_rider_available" -> "ไม่พบ Rider"
+        else -> status
+    }
 }
 
 private fun preparationLeft(preparingAt: String?, now: Long): Int {
