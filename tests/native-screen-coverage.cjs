@@ -10,7 +10,7 @@ for(const [role,surfaces] of Object.entries(matrix.roles)){
   ok(Array.isArray(surfaces)&&surfaces.length>=minimum[role],role+' source coverage surface count regressed');
   const seen=new Set();
   for(const entry of surfaces){
-    const [surface,path,kind='screen']=entry;
+    const [surface,path,kind='screen',requiredToken]=entry;
     ok(typeof surface==='string'&&surface.length>0,role+' surface name missing');
     ok(!seen.has(surface),role+' duplicate surface: '+surface); seen.add(surface);
     ok(kind==='screen'||kind==='helper',role+' unsupported coverage kind: '+surface);
@@ -19,7 +19,10 @@ for(const [role,surfaces] of Object.entries(matrix.roles)){
     const source=fs.readFileSync(path,'utf8');
     ok(source.length>300,role+' source surface is unexpectedly empty/thin: '+surface);
     if(kind==='screen') ok(source.includes('@Composable'),role+' UI surface lost Compose implementation: '+surface);
-    else ok(!source.includes('@Composable')&&source.includes('signMerchantGpSlip'),role+' GP slip helper coverage must retain private signer implementation');
+    else {
+      ok(typeof requiredToken==='string'&&requiredToken.length>0,role+' helper coverage requires a source token: '+surface);
+      ok(source.includes(requiredToken),role+' helper coverage token missing: '+surface+' -> '+requiredToken);
+    }
   }
 }
 
