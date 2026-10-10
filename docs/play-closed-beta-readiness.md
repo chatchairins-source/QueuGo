@@ -1,6 +1,6 @@
 # QueueGo — Google Play Closed Beta Readiness
 
-Last reviewed: 2026-10-10  
+Last reviewed: 2026-10-07  
 Scope: Android Customer, Merchant, Rider apps.
 
 ## Current release gate
@@ -58,8 +58,9 @@ QueueGo Closed Beta now uses the real Kotlin/Compose Native Android apps under `
 
 Builds fail if the generated project is not API 36.
 
-Policy source:
+Policy sources:
 - https://support.google.com/googleplay/android-developer/answer/11926878
+- https://next.capacitorjs.com/docs/next/android/setting-target-sdk
 
 ### Android permissions
 
@@ -157,9 +158,9 @@ Policy source:
 
 ## Data Safety draft
 
-Google Play Data Safety requires QueueGo to disclose applicable user data collected or shared by the released app. QueueGo Closed Beta uses the Kotlin/Compose Native apps under `native-android/` and does not ship a WebView/Capacitor Android release. Data transmitted off-device by Native features such as account/auth, orders, location, chat, push notifications, proof images and optional real-time voice must therefore be classified from the Native implementation.
+Google Play treats user data transmitted off-device by the app or its SDKs/libraries as collection. QueueGo Closed Beta is now Native Kotlin/Compose, so the Data Safety form must reflect the actual Native app transports: Supabase, Firebase Cloud Messaging, Longdo and WebRTC/TURN voice transport.
 
-Google Play also states that transfers to qualifying service providers, legal-purpose transfers, and some user-initiated transfers are not necessarily declared as "sharing." QueueTech must confirm the contractual role of infrastructure/map/TURN providers before final submission.
+Google Play also states that transfers to qualifying service providers, legal-purpose transfers, and some user-initiated transfers are not necessarily declared as "sharing." QueueTech must confirm the contractual role of each infrastructure/map/relay provider before final submission.
 
 Policy source:
 - https://support.google.com/googleplay/android-developer/answer/10787469
@@ -217,7 +218,7 @@ Policy source:
 
 ### Provider sharing classification — conservative submission decision (2026-10-07)
 
-Google Play defines "sharing" based on transfers of user data to third parties. A transfer to a qualifying service provider that processes data on the developer's behalf and instructions does not have to be declared as sharing.
+Google Play defines "sharing" as transferring user data to a third party, including transfers from an app-controlled WebView. A transfer to a qualifying service provider that processes data on the developer's behalf and instructions does not have to be declared as sharing.
 
 Current QueueGo decision:
 
@@ -225,6 +226,7 @@ Current QueueGo decision:
 |---|---|---|---|
 | Supabase | Auth, database, Storage, Realtime, account/order/location/chat/support data | Supabase DPA states Supabase acts as processor/service provider and processes Covered Data on behalf of and under Customer instructions | **Collected: Yes. Shared: service-provider exception may be used** for Supabase processing under the applicable Supabase agreement/DPA |
 | Firebase Cloud Messaging / Google | Native push transport; FCM/Installations SDK metadata, installation ID/token and app version as applicable | Firebase Data Processing and Security Terms govern Customer Data; Firebase privacy guidance states Google generally operates as processor/service provider for Firebase customer data | **Collected: Yes** for applicable FCM/Installations data. **Shared: service-provider exception may be used** for Firebase processing covered by those terms |
+| Cloudflare Realtime TURN | Relay path for encrypted WebRTC audio when direct peer connectivity is unavailable; Cloudflare processes relay metadata such as client IP/port/session timing | Cloudflare DPA applies where Cloudflare acts as processor/service provider under the applicable Self-Serve/Enterprise agreement; Cloudflare TURN documentation states relayed WebRTC media stays DTLS-encrypted end-to-end and Cloudflare cannot decrypt the media contents | **Collected: Yes** for the app's real-time voice transmission. **Shared: service-provider exception may be used** for Cloudflare TURN processing under the applicable QueueTech–Cloudflare agreement/DPA; revalidate the account terms before Play submission |
 | Longdo Map / Metamedia Technology | Customer reverse geocoding, map rendering, merchant/shop pins, Rider route calculation; exact origin/destination coordinates are sent to Longdo endpoints | Public Longdo API terms point to Longdo privacy policy. The public privacy policy says Longdo may collect IP/usage/location data, but the public terms reviewed do not establish that all API personal-data processing is solely on QueueTech's behalf/instructions | **Conservative answer: Shared = Yes for location, purpose App functionality.** Do not claim the service-provider exception unless a QueueTech–Longdo commercial agreement/DPA explicitly supports it |
 | External navigation app opened by the user | Explicit "navigate" action where the user chooses to open an external navigation service | Google Play has a user-initiated-transfer exception when the user reasonably expects the transfer | Can rely on the user-initiated exception for that explicit navigation handoff, but this does **not** remove the Longdo sharing declaration above |
 
@@ -232,13 +234,16 @@ Code evidence:
 - Customer loads Longdo Map and sends selected latitude/longitude to Longdo reverse-geocoding.
 - Rider loads Longdo Map and sends current Rider coordinates plus destination coordinates to Longdo RouteService.
 - Merchant loads Longdo Map for shop location/pin workflows.
-- `native-android/customer`, `native-android/merchant` and `native-android/rider` use Firebase Cloud Messaging for push transport. The reviewed Native Gradle dependency set does not include Firebase Analytics or Crashlytics.
+- Native Customer/Merchant/Rider use Firebase Messaging only; no Firebase Analytics or Crashlytics dependency is declared in the Native Gradle modules.
+- Native voice uses audio-only WebRTC. QueueGo stores call authorization/signaling state but does not persist media; TURN credentials are short-lived and generated server-side.
 
 Current public-policy sources reviewed:
 - Google Play Data Safety: https://support.google.com/googleplay/android-developer/answer/10787469
 - Supabase DPA: https://supabase.com/legal/customer-resources/data-processing-addendum
 - Firebase Data Processing terms: https://firebase.google.com/terms/data-processing-terms
 - Firebase Play Data disclosure: https://firebase.google.com/docs/android/play-data-disclosure
+- Cloudflare DPA: https://www.cloudflare.com/cloudflare-customer-dpa/
+- Cloudflare Realtime TURN privacy/architecture FAQ: https://developers.cloudflare.com/realtime/turn/faq/
 - Longdo API terms: https://map.longdo.com/api/terms/
 - Longdo privacy policy: https://www.longdo.com/en/privacy
 
@@ -247,8 +252,8 @@ Current public-policy sources reviewed:
 - **Customer:** declare Approximate/Precise location as shared with Longdo for App functionality where applicable.
 - **Merchant:** conservatively declare location/shop-coordinate transfer as shared with Longdo for App functionality because a shop location may be linked to an individual/sole proprietor.
 - **Rider:** declare Approximate/Precise location as shared with Longdo for App functionality because route requests transmit the Rider origin and delivery destination.
-- Supabase/Firebase transfers still count as **collection** where applicable even when the service-provider sharing exception is used.
-- Recheck the Firebase Play Data disclosure page whenever the native SDK/plugin version changes.
+- Supabase/Firebase/Cloudflare TURN transfers still count as **collection** where applicable even when the service-provider sharing exception is used.
+- Recheck Firebase and Cloudflare contractual/privacy documentation whenever the Native SDK/relay implementation or account terms change.
 
 ## Encryption and deletion answers
 
@@ -257,7 +262,7 @@ Current code/release controls support these intended Play answers, subject to fi
 - Data encrypted in transit: **Yes** — release client endpoints use HTTPS and cleartext Android traffic is blocked.
 - Users can request deletion: **Yes** — in-app and external deletion path exist.
 - Data collection: **Yes** — QueueGo necessarily collects account/order/location/service data. The Data Safety form must also account for real-time microphone audio transmitted off-device during optional in-app calls; the media is not recorded or persisted by QueueGo.
-- Data sharing: **Yes (conservative)** — declare location sharing with Longdo for App functionality. Supabase/Firebase processing may use the service-provider exception where the current agreements apply. Voice media is user-initiated WebRTC traffic and may traverse the configured TURN provider as a network relay.
+- Data sharing: **Yes (conservative)** — declare location sharing with Longdo for App functionality. Supabase/Firebase/Cloudflare TURN processing may use the service-provider exception where the applicable agreements/DPA cover the processing. Voice media is user-initiated WebRTC traffic; when TURN is used, Cloudflare relays encrypted packets and does not decrypt the media content.
 
 ## Contains Ads declaration
 
