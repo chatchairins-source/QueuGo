@@ -40,9 +40,8 @@ internal fun webServiceCategory(category: String): WebServiceCategory? = when (c
     else -> null
 }
 
-internal fun webBannerImage(banner: ServiceBanner?): String? = banner?.image?.trim()?.takeIf {
-    it.startsWith("data:image/") || it.startsWith("https://", true) || it.startsWith("http://", true)
-}
+internal fun webBannerImage(banner: ServiceBanner?): String? =
+    sanitizeBannerImage(banner?.image)
 
 @Composable
 internal fun ServiceCategoryScreen(loading: Boolean, category: String, serviceBanner: ServiceBanner?,
