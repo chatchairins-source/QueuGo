@@ -18,6 +18,12 @@ const manifest=JSON.parse(read('docs/pilot-recovery-manifest.json'));
 const releaseSecrets=read('.github/workflows/release-secret-readiness.yml');
 const nativeVoicePeer=read('native-android/shared/src/main/java/com/queuego/shared/NativeVoicePeer.kt');
 const nativeTurnEdge=read('supabase/functions/queuego-turn/index.ts');
+const sharedVoiceManifest=read('native-android/shared/src/main/AndroidManifest.xml');
+const roleVoiceManifests={
+  customer:read('native-android/customer/src/main/AndroidManifest.xml'),
+  merchant:read('native-android/merchant/src/main/AndroidManifest.xml'),
+  rider:read('native-android/rider/src/main/AndroidManifest.xml')
+};
 const releaseCertification=read('.github/workflows/native-release-certification.yml');
 const nativeRootGradle=read('native-android/build.gradle.kts');
 for(const role of ['customer','merchant','rider']){
@@ -86,6 +92,11 @@ ok(manifest?.android?.turn_forced_relay_two_device_gate==='OPEN','Real two-devic
 ok(nativeVoicePeer.includes('PeerConnection.RTCConfiguration')&&nativeVoicePeer.includes('createAudioTrack("queuego-audio"'),'Data Safety E2EE exception must remain tied to the Native peer-to-peer WebRTC audio path');
 ok(nativeTurnEdge.includes('rtc.live.cloudflare.com/v1/turn/')&&nativeTurnEdge.includes('generate-ice-servers'),'Native voice relay must remain the reviewed Cloudflare TURN credential path');
 ok(!/MediaRecorder|FileOutputStream|recordToFile|transcription|Realtime SFU|\/sfu\//i.test(nativeVoicePeer+'\n'+nativeTurnEdge),'Voice Data Safety E2EE exception must fail if media recording, transcription or SFU/server media processing appears in the certified source');
+for(const [role,manifestText] of Object.entries(roleVoiceManifests)){
+  ok(manifestText.includes('android.permission.RECORD_AUDIO'),role+' Native manifest must retain RECORD_AUDIO for the reviewed voice path');
+}
+ok(sharedVoiceManifest.includes('android.permission.FOREGROUND_SERVICE_MICROPHONE')&&sharedVoiceManifest.includes('android:foregroundServiceType="microphone"'),'shared Native voice service must retain microphone FGS permission/type');
+ok(roleVoiceManifests.rider.includes('android:foregroundServiceType="specialUse"')&&roleVoiceManifests.rider.includes('Active QueueGo Rider navigation return control'),'Rider specialUse subtype must stay aligned with the Play declaration');
 ok(!/Explicitly forbidden by the release workflow:[\s\S]{0,300}RECORD_AUDIO/i.test(readiness),'Legacy Capacitor RECORD_AUDIO prohibition must not return');
 ok(/Native CI rejects WebView/i.test(readiness),'Data Safety draft must use Native no-WebView certification scope');
 ok(!/data collected by the web application running inside Capacitor/i.test(readiness),'Legacy Capacitor Data Safety collection rule must not certify Native apps');
