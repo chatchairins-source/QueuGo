@@ -428,9 +428,31 @@ private fun MerchantShell(auth: NativeAuth, logout: () -> Unit) {
                 "order" -> MerchantOrderDetail(
                     order = selectedOrder,
                     items = orderItems,
+                    products = products,
                     busy = busy,
                     onBack = { screen = "orders" },
-                    onAction = { action, reason -> selectedOrder?.let { runAction(it, action, reason) } }
+                    onAction = { action, reason -> selectedOrder?.let { runAction(it, action, reason) } },
+                    onSaveItems = { draft ->
+                        val current = selectedOrder
+                        if (current != null && !busy) {
+                            busy = true
+                            scope.launch {
+                                runCatching {
+                                    api.editOrderItems(auth, current.id, draft)
+                                    val freshOrders = api.loadOrders(auth)
+                                    val freshItems = api.loadOrderItems(auth, current.id)
+                                    orders = freshOrders
+                                    selectedOrder = freshOrders.find { it.id == current.id } ?: current
+                                    orderItems = freshItems
+                                }.onSuccess {
+                                    message = "อัปเดตรายการสินค้าแล้ว"
+                                }.onFailure {
+                                    message = it.message ?: "แก้ไขออเดอร์ไม่สำเร็จ"
+                                }
+                                busy = false
+                            }
+                        }
+                    }
                 )
                 "products" -> MerchantProductsScreen(
                     products = products,
@@ -1131,12 +1153,15 @@ private fun MerchantOrderCard(order: MerchantOrder, onOpen: (MerchantOrder) -> U
 private fun MerchantOrderDetail(
     order: MerchantOrder?,
     items: List<MerchantOrderItem>,
+    products: List<MerchantProduct>,
     busy: Boolean,
     onBack: () -> Unit,
-    onAction: (String, String?) -> Unit
+    onAction: (String, String?) -> Unit,
+    onSaveItems: (List<MerchantOrderEditItem>) -> Unit
 ) {
     var now by remember { mutableStateOf(System.currentTimeMillis()) }
     var cancelOpen by remember(order?.id) { mutableStateOf(false) }
+    var editOpen by remember(order?.id) { mutableStateOf(false) }
     LaunchedEffect(order?.status, order?.preparingAt) {
         while (order?.status == "preparing") {
             now = System.currentTimeMillis()
@@ -1219,6 +1244,12 @@ private fun MerchantOrderDetail(
                 ) { Text("เริ่มเตรียมออเดอร์", fontWeight = FontWeight.ExtraBold) }
                 Spacer(Modifier.height(8.dp))
                 OutlinedButton(
+                    onClick = { editOpen = true },
+                    enabled = !busy && items.isNotEmpty(),
+                    modifier = Modifier.fillMaxWidth()
+                ) { Text("แก้ไขรายการ") }
+                Spacer(Modifier.height(8.dp))
+                OutlinedButton(
                     onClick = { cancelOpen = true },
                     enabled = !busy,
                     modifier = Modifier.fillMaxWidth()
@@ -1266,6 +1297,20 @@ private fun MerchantOrderDetail(
         Spacer(Modifier.height(30.dp))
     }
 
+    if (editOpen && order != null) {
+        MerchantOrderItemEditor(
+            order = order,
+            currentItems = items,
+            products = products,
+            busy = busy,
+            onDismiss = { editOpen = false },
+            onSave = { draft ->
+                editOpen = false
+                onSaveItems(draft)
+            }
+        )
+    }
+
     if (cancelOpen && order != null) {
         MerchantCancelGuard(
             order = order,
@@ -1277,6 +1322,201 @@ private fun MerchantOrderDetail(
             }
         )
     }
+}
+
+private data class MerchantOrderEditDraftRow(
+    val itemId: String?,
+    val productId: String?,
+    val name: String,
+    val image: String?,
+    val unitPrice: Double,
+    val quantity: Int
+)
+
+@Composable
+private fun MerchantOrderItemEditor(
+    order: MerchantOrder,
+    currentItems: List<MerchantOrderItem>,
+    products: List<MerchantProduct>,
+    busy: Boolean,
+    onDismiss: () -> Unit,
+    onSave: (List<MerchantOrderEditItem>) -> Unit
+) {
+    var draft by remember(order.id) {
+        mutableStateOf(
+            currentItems.map {
+                MerchantOrderEditDraftRow(
+                    itemId = it.id.takeIf(String::isNotBlank),
+                    productId = it.productId,
+                    name = it.name,
+                    image = it.image,
+                    unitPrice = it.unitPrice,
+                    quantity = it.quantity.coerceIn(1, 99)
+                )
+            }
+        )
+    }
+    var substituteId by remember(order.id) { mutableStateOf("") }
+    val substituteProducts = products.filter {
+        it.available && it.deliveryAvailable &&
+            draft.none { row -> !row.productId.isNullOrBlank() && row.productId == it.id }
+    }
+    val newSubtotal = draft.sumOf { it.unitPrice * it.quantity }
+    val canSave = !busy && draft.isNotEmpty() && draft.size <= 30 &&
+        draft.all { it.quantity in 1..99 }
+
+    LaunchedEffect(order.status) {
+        if (order.status !in setOf("rider_assigned", "assigned")) onDismiss()
+    }
+
+    AlertDialog(
+        onDismissRequest = { if (!busy) onDismiss() },
+        title = {
+            Column {
+                Text("แก้ไขรายการสินค้า", fontWeight = FontWeight.Black)
+                Text(order.number, color = QgMuted, style = MaterialTheme.typography.bodySmall)
+            }
+        },
+        text = {
+            Column(Modifier.verticalScroll(rememberScrollState())) {
+                QgCard(Modifier.fillMaxWidth()) {
+                    Column {
+                        Text("กรณีสินค้าหมด", fontWeight = FontWeight.ExtraBold)
+                        Text(
+                            "ลดจำนวน ลบ หรือเลือกสินค้าทดแทนจากร้านได้ก่อนเริ่มเตรียมสินค้า ยอดใหม่จะไม่เกินยอดที่ลูกค้าสั่งไว้",
+                            color = QgMuted,
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+                }
+                Spacer(Modifier.height(10.dp))
+                draft.forEachIndexed { index, row ->
+                    QgCard(Modifier.fillMaxWidth().padding(bottom = 7.dp)) {
+                        Column {
+                            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                                QgRemoteImage(row.image, Modifier.size(44.dp), row.name)
+                                Spacer(Modifier.width(8.dp))
+                                Column(Modifier.weight(1f)) {
+                                    Text(row.name, fontWeight = FontWeight.Bold)
+                                    Text(
+                                        "%.0f บาท/ชิ้น".format(row.unitPrice),
+                                        color = QgMuted,
+                                        style = MaterialTheme.typography.bodySmall
+                                    )
+                                }
+                                OutlinedButton(
+                                    onClick = {
+                                        draft = draft.filterIndexed { i, _ -> i != index }
+                                    },
+                                    enabled = !busy
+                                ) { Text("ลบ") }
+                            }
+                            Spacer(Modifier.height(6.dp))
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                OutlinedButton(
+                                    onClick = {
+                                        draft = draft.mapIndexed { i, item ->
+                                            if (i == index) item.copy(quantity = (item.quantity - 1).coerceAtLeast(1))
+                                            else item
+                                        }
+                                    },
+                                    enabled = !busy && row.quantity > 1
+                                ) { Text("−") }
+                                Text(
+                                    row.quantity.toString(),
+                                    modifier = Modifier.padding(horizontal = 14.dp),
+                                    fontWeight = FontWeight.Black
+                                )
+                                OutlinedButton(
+                                    onClick = {
+                                        draft = draft.mapIndexed { i, item ->
+                                            if (i == index) item.copy(quantity = (item.quantity + 1).coerceAtMost(99))
+                                            else item
+                                        }
+                                    },
+                                    enabled = !busy && row.quantity < 99
+                                ) { Text("+") }
+                            }
+                        }
+                    }
+                }
+                if (draft.isEmpty()) {
+                    Text("ต้องเหลือสินค้าอย่างน้อย 1 รายการ", color = QgRed, fontWeight = FontWeight.Bold)
+                }
+                Spacer(Modifier.height(8.dp))
+                Text("เลือกสินค้าทดแทน", fontWeight = FontWeight.ExtraBold)
+                if (substituteProducts.isEmpty()) {
+                    Text("ไม่มีสินค้าทดแทนที่เปิดขาย Delivery", color = QgMuted, style = MaterialTheme.typography.bodySmall)
+                } else {
+                    substituteProducts.take(12).forEach { product ->
+                        Row(
+                            Modifier
+                                .fillMaxWidth()
+                                .clickable(enabled = !busy) { substituteId = product.id }
+                                .padding(vertical = 3.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            RadioButton(
+                                selected = substituteId == product.id,
+                                onClick = { substituteId = product.id },
+                                enabled = !busy
+                            )
+                            Text(
+                                product.name + " · " + "%.0f บาท".format(product.deliveryPrice),
+                                Modifier.weight(1f)
+                            )
+                        }
+                    }
+                    OutlinedButton(
+                        onClick = {
+                            val product = substituteProducts.find { it.id == substituteId }
+                            if (product != null && draft.size < 30) {
+                                draft = draft + MerchantOrderEditDraftRow(
+                                    itemId = null,
+                                    productId = product.id,
+                                    name = product.name,
+                                    image = product.image,
+                                    unitPrice = product.deliveryPrice,
+                                    quantity = 1
+                                )
+                                substituteId = ""
+                            }
+                        },
+                        enabled = !busy && substituteId.isNotBlank() && draft.size < 30,
+                        modifier = Modifier.fillMaxWidth()
+                    ) { Text("เพิ่มสินค้าทดแทน") }
+                }
+                Spacer(Modifier.height(10.dp))
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Text("ยอดค่าสินค้าใหม่", Modifier.weight(1f), color = QgMuted)
+                    Text(
+                        "฿" + "%.0f".format(newSubtotal),
+                        color = QgRed,
+                        fontWeight = FontWeight.Black
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    onSave(
+                        draft.map {
+                            MerchantOrderEditItem(
+                                itemId = it.itemId,
+                                productId = if (it.itemId == null) it.productId else null,
+                                quantity = it.quantity
+                            )
+                        }
+                    )
+                },
+                enabled = canSave
+            ) { Text("บันทึกการแก้ไข") }
+        },
+        dismissButton = {
+            OutlinedButton(onClick = onDismiss, enabled = !busy) { Text("ปิด") }
+        }
+    )
 }
 
 @Composable
