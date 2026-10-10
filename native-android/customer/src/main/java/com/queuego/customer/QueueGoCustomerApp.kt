@@ -69,6 +69,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.queuego.shared.NativeAuth
+import com.queuego.shared.QueueGoVoiceCallOverlay
+import com.queuego.shared.NativeVoiceCallController
 import com.queuego.shared.QgAccountDeletionSection
 import com.queuego.shared.QgBg
 import com.queuego.shared.QgBottomNav
@@ -157,6 +159,9 @@ private fun CustomerShell(
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     val liveMutex = remember { Mutex() }
     val context = LocalContext.current
+    val voiceController = remember(auth.user.id) { NativeVoiceCallController(context) }
+    val voiceState by voiceController.state.collectAsState()
+    DisposableEffect(voiceController) { onDispose { voiceController.close() } }
     val cartStore = remember(auth.user.id) { CustomerCartStore(context, auth.user.id) }
     val locationStore = remember { CustomerLocationStore(context) }
     val savedDeviceLocation = remember { locationStore.load() }
@@ -221,6 +226,45 @@ private fun CustomerShell(
                 "ตะกร้าก่อนเข้าสู่ระบบเป็นคนละร้านกับตะกร้าบัญชีเดิม จึงเก็บไว้แยกกัน"
             else null
         )
+    }
+    var pendingVoiceCall by remember { mutableStateOf<Pair<String, String>?>(null) }
+    var pendingVoiceAnswer by remember { mutableStateOf(false) }
+    val voicePermission = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted) {
+            if (pendingVoiceAnswer) {
+                voiceController.answerIncoming(auth)
+            } else {
+                pendingVoiceCall?.let { (orderId, target) ->
+                    voiceController.startOutgoing(auth, orderId, target)
+                }
+            }
+        } else {
+            message = "กรุณาอนุญาตไมโครโฟนเพื่อโทรผ่าน QueueGo"
+        }
+        pendingVoiceCall = null
+        pendingVoiceAnswer = false
+    }
+
+    fun startVoiceCall(orderId: String, target: String) {
+        if (context.checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
+            voiceController.startOutgoing(auth, orderId, target)
+        } else {
+            pendingVoiceCall = orderId to target
+            pendingVoiceAnswer = false
+            voicePermission.launch(Manifest.permission.RECORD_AUDIO)
+        }
+    }
+
+    fun answerVoiceCall() {
+        if (context.checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
+            voiceController.answerIncoming(auth)
+        } else {
+            pendingVoiceCall = null
+            pendingVoiceAnswer = true
+            voicePermission.launch(Manifest.permission.RECORD_AUDIO)
+        }
     }
     val checkoutJournal = remember(cartStore) { cartStore.journal() }
     val checkoutRecovery = remember(checkoutJournal) { CustomerCheckoutRecovery<PendingCustomerCheckout, CustomerOrder>(checkoutJournal) }
@@ -405,6 +449,20 @@ private fun CustomerShell(
             }
         }
     }
+    LaunchedEffect(auth.session.accessToken, auth.session.sessionId, lifecycle) {
+        lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            while (true) {
+                try {
+                    voiceController.refreshIncoming(auth)
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (_: Exception) {
+                    // Push/poll recovery remains non-fatal while the app is foregrounded.
+                }
+                delay(3_000)
+            }
+        }
+    }
     // Key the closure to detail visits, so a reopened closed order gets one final snapshot.
     LaunchedEffect(auth.session.accessToken, selectedOrder?.id, lifecycle) {
         lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
@@ -427,7 +485,8 @@ private fun CustomerShell(
         }
     }
 
-    Scaffold(
+    Box(Modifier.fillMaxSize()) {
+        Scaffold(
         containerColor = QgBg,
         bottomBar = {
             CustomerBottomNavigation(screen, cart.sumOf { it.quantity }) { screen = it }
@@ -893,6 +952,12 @@ private fun CustomerShell(
                     context = trackingContext,
                     shopCategory = selectedOrder?.shopId?.let { id -> shops.find { it.id == id }?.category },
                     busy = busy,
+                    onCallShop = {
+                        selectedOrder?.id?.let { startVoiceCall(it, "shop") }
+                    },
+                    onCallRider = {
+                        selectedOrder?.id?.let { startVoiceCall(it, "rider") }
+                    },
                     onChat = { screen = "chat" },
                     onSupport = {
                         supportInitialOrderId = selectedOrder?.id
@@ -947,6 +1012,16 @@ private fun CustomerShell(
                 )
             }
         }
+        QueueGoVoiceCallOverlay(
+            state = voiceState,
+            currentUserId = auth.user.id,
+            onAnswer = ::answerVoiceCall,
+            onDecline = { voiceController.declineIncoming(auth) },
+            onHangUp = { voiceController.hangUp() },
+            onDismissEnded = { voiceController.dismissTerminal() },
+            onToggleMute = { voiceController.setMuted(it) },
+            onToggleSpeaker = { voiceController.setSpeakerEnabled(it) }
+        )
     }
 }
 
