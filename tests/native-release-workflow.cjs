@@ -45,6 +45,9 @@ const buildAt=workflow.indexOf(':customer:assembleRelease');
 const artifactAt=workflow.indexOf('python3 native-android/qa/verify-native-release-artifacts.py');
 ok(gateAt>=0&&buildAt>gateAt,'hard release gate must run before release packaging');
 ok(artifactAt>buildAt,'signed artifact verifier must run after packaging');
+ok(workflow.includes('bundletool-all-1.18.3.jar'),'release workflow must pin bundletool 1.18.3');
+ok(workflow.includes('a099cfa1543f55593bc2ed16a70a7c67fe54b1747bb7301f37fdfd6d91028e29'),'release workflow must pin the certified bundletool SHA-256');
+ok(workflow.includes('QG_BUNDLETOOL_JAR')&&workflow.includes('QG_BUNDLETOOL_SHA256'),'release workflow must pass pinned bundletool identity to artifact verification');
 for(const task of [
   ':customer:assembleRelease',':customer:bundleRelease',
   ':merchant:assembleRelease',':merchant:bundleRelease',
