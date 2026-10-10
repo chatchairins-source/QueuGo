@@ -27,6 +27,8 @@ ok(releaseSecrets.includes('keytool -list')&&releaseSecrets.includes('keytool -i
 ok(releaseSecrets.includes('-storepass:env QG_ANDROID_STORE_PASSWORD')&&releaseSecrets.includes('-srcstorepass:env QG_ANDROID_STORE_PASSWORD')&&releaseSecrets.includes('-srckeypass:env QG_ANDROID_KEY_PASSWORD'),'Release preflight must keep signing passwords out of keytool argv values');
 ok(releaseSecrets.includes('PrivateKeyEntry'),'Release preflight must reject aliases that are not signing private-key entries');
 ok(releaseSecrets.includes('QG_VALIDATION_PASSWORD')&&releaseSecrets.includes('secrets.token_urlsafe(32)'),'Release preflight must use an ephemeral random validation password');
+ok(releaseSecrets.includes('vars.QG_ANDROID_EXPECTED_CERT_SHA256'),'Certified signing fingerprint must come from an explicit GitHub Actions variable');
+ok(releaseSecrets.includes('Android release certificate does not match QG_ANDROID_EXPECTED_CERT_SHA256'),'Release preflight must fail closed on the wrong signing certificate');
 ok(releaseSecrets.includes('Clean temporary credentials'),'Release preflight must remove decoded credentials from the runner');
 ok(/dedicated Play-review accounts/i.test(access),'Reviewer access must use dedicated reusable accounts');
 ok(/Do not use an actual customer/i.test(access),'Reviewer access must forbid real-user credentials');
