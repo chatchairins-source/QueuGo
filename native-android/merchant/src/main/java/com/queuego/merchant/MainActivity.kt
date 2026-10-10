@@ -253,7 +253,11 @@ private fun MerchantNativeAuthentication(
     )
 
     fun login() {
-        if (busy || loginId.isBlank() || loginPassword.isBlank()) return
+        if (busy) return
+        if (loginId.isBlank() || loginPassword.isBlank()) {
+            error = "กรุณากรอกเบอร์โทรศัพท์หรืออีเมลและรหัสผ่าน"
+            return
+        }
         busy = true
         error = null
         message = null
@@ -464,6 +468,21 @@ private fun MerchantNativeAuthentication(
         )
     }
 
+    if (!register && !staffJoin) {
+        MerchantProductionLogin(
+            loginId, { loginId = it }, loginPassword, { loginPassword = it },
+            showLoginPassword, { showLoginPassword = !showLoginPassword }, busy, error, message,
+            onLogin = ::login,
+            onForgot = {
+                forgotEmail = loginId.takeIf { it.contains("@") }.orEmpty()
+                forgotDialog = true
+            },
+            onRegister = { register = true; staffJoin = false; error = null; message = null; loginPassword = "" },
+            onStaff = { staffJoin = true; register = false; error = null; message = null; loginPassword = "" }
+        )
+        return
+    }
+
     Column(
         Modifier
             .fillMaxSize()
@@ -532,78 +551,7 @@ private fun MerchantNativeAuthentication(
                 .background(Color.White, RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp))
                 .padding(horizontal = 20.dp, vertical = 24.dp)
         ) {
-            if (!register && !staffJoin) {
-                OutlinedTextField(
-                    loginId,
-                    { loginId = it },
-                    enabled = !busy,
-                    label = { Text("เบอร์โทรศัพท์ / อีเมล") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-                Spacer(Modifier.height(12.dp))
-                OutlinedTextField(
-                    loginPassword,
-                    { loginPassword = it },
-                    enabled = !busy,
-                    label = { Text("รหัสผ่าน") },
-                    visualTransformation = if (showLoginPassword) VisualTransformation.None
-                        else PasswordVisualTransformation(),
-                    trailingIcon = {
-                        Text(
-                            if (showLoginPassword) "ซ่อน" else "แสดง",
-                            color = QgMuted,
-                            modifier = Modifier.clickable(enabled = !busy) {
-                                showLoginPassword = !showLoginPassword
-                            }
-                        )
-                    },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-                Spacer(Modifier.height(16.dp))
-                Button(
-                    onClick = ::login,
-                    enabled = !busy && loginId.isNotBlank() && loginPassword.isNotBlank(),
-                    modifier = Modifier.fillMaxWidth().height(54.dp),
-                    shape = RoundedCornerShape(13.dp)
-                ) {
-                    if (busy) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
-                    else Text("เข้าสู่ระบบ", fontWeight = FontWeight.Bold)
-                }
-                TextButton(
-                    enabled = !busy,
-                    onClick = {
-                        forgotEmail = loginId.takeIf { it.contains("@") }.orEmpty()
-                        forgotDialog = true
-                    },
-                    modifier = Modifier.align(Alignment.CenterHorizontally)
-                ) { Text("ลืมรหัสผ่าน?", color = QgRed) }
-                MerchantEntryDivider("หรือ")
-                OutlinedButton(
-                    onClick = {
-                        register = true
-                        staffJoin = false
-                        error = null
-                        message = null
-                        loginPassword = ""
-                    },
-                    enabled = !busy,
-                    modifier = Modifier.fillMaxWidth().height(52.dp)
-                ) { Text("สมัครร้านค้าใหม่", color = QgRed, fontWeight = FontWeight.Bold) }
-                Spacer(Modifier.height(10.dp))
-                OutlinedButton(
-                    onClick = {
-                        staffJoin = true
-                        register = false
-                        error = null
-                        message = null
-                        loginPassword = ""
-                    },
-                    enabled = !busy,
-                    modifier = Modifier.fillMaxWidth().height(52.dp)
-                ) { Text("พนักงานหน้าร้าน: สมัคร / ใส่รหัสเชิญ", fontWeight = FontWeight.Bold) }
-            } else if (staffJoin) {
+            if (staffJoin) {
                 MerchantEntrySection(
                     "เข้าร่วมร้านค้า",
                     "ใช้บัญชีพนักงานของคุณเองและรหัสเชิญจากเจ้าของร้าน"
@@ -844,11 +792,11 @@ private fun MerchantNativeAuthentication(
 }
 
 @Composable
-private fun MerchantQueueGoMark(modifier: Modifier = Modifier) {
+internal fun MerchantQueueGoMark(modifier: Modifier = Modifier) {
     Canvas(modifier) {
-        val strokeWidth = size.minDimension * 0.16f
-        val center = Offset(size.width * 0.47f, size.height * 0.47f)
-        val radius = size.minDimension * 0.31f
+        val strokeWidth = size.minDimension * (8f / 48f)
+        val center = Offset(size.width * (23f / 48f), size.height * (23f / 48f))
+        val radius = size.minDimension * (16f / 48f)
         drawCircle(
             color = Color(0xFFEC092E),
             radius = radius,
@@ -857,8 +805,8 @@ private fun MerchantQueueGoMark(modifier: Modifier = Modifier) {
         )
         drawLine(
             color = Color(0xFFEC092E),
-            start = Offset(size.width * 0.55f, size.height * 0.57f),
-            end = Offset(size.width * 0.82f, size.height * 0.84f),
+            start = Offset(size.width * (26f / 48f), size.height * (27f / 48f)),
+            end = Offset(size.width * (38f / 48f), size.height * (39f / 48f)),
             strokeWidth = strokeWidth,
             cap = StrokeCap.Round
         )

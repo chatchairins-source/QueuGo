@@ -101,6 +101,41 @@ def capture_role_viewports():
                 item["native_registration_step_one"] = "PASS; no account/data submitted"
                 runtime = run(adb + ["logcat", "-d", "-s", "AndroidRuntime:E"], capture_output=True, text=True).stdout
                 assert "FATAL EXCEPTION" not in runtime, "Native registration crashed"
+            if role == "merchant":
+                button = next((n for n in ui_nodes if n.get("text") == "สมัครร้านค้าใหม่"), None)
+                assert button is not None, f"Merchant registration entry missing at {viewport}"
+                bounds = [int(x) for x in re.findall(r"\d+", button.get("bounds", ""))]
+                assert len(bounds) == 4
+                run(adb + ["shell", "input", "tap", str((bounds[0] + bounds[2]) // 2), str((bounds[1] + bounds[3]) // 2)])
+                time.sleep(1)
+                run(adb + ["shell", "uiautomator", "dump", "/sdcard/queuego-merchant-register.xml"])
+                form_xml = directory / "registration.xml"
+                run(adb + ["pull", "/sdcard/queuego-merchant-register.xml", str(form_xml)])
+                nodes = list(ET.parse(form_xml).getroot().iter("node"))
+                assert any("ชื่อร้าน" in (n.get("text", "") + n.get("content-desc", "")) for n in nodes), "Merchant signup form missing"
+                with (directory / "registration.png").open("wb") as png:
+                    run(adb + ["exec-out", "screencap", "-p"], stdout=png)
+                run(adb + ["shell", "input", "keyevent", "4"])
+                time.sleep(1)
+                run(adb + ["shell", "uiautomator", "dump", "/sdcard/queuego-merchant-back.xml"])
+                back_xml = directory / "registration-back.xml"
+                run(adb + ["pull", "/sdcard/queuego-merchant-back.xml", str(back_xml)])
+                nodes = list(ET.parse(back_xml).getroot().iter("node"))
+                assert any(n.get("text") == "เข้าสู่ระบบร้านค้า" for n in nodes), "Merchant single Back did not restore login"
+                staff = next((n for n in nodes if n.get("text") == "พนักงานหน้าร้าน: สมัคร / ใส่รหัสเชิญ"), None)
+                assert staff is not None, "Merchant staff entry missing"
+                bounds = [int(x) for x in re.findall(r"\d+", staff.get("bounds", ""))]
+                run(adb + ["shell", "input", "tap", str((bounds[0] + bounds[2]) // 2), str((bounds[1] + bounds[3]) // 2)])
+                time.sleep(1)
+                run(adb + ["shell", "uiautomator", "dump", "/sdcard/queuego-merchant-staff.xml"])
+                staff_xml = directory / "staff-join.xml"
+                run(adb + ["pull", "/sdcard/queuego-merchant-staff.xml", str(staff_xml)])
+                assert any("เข้าร่วมร้านค้า" in n.get("text", "") for n in ET.parse(staff_xml).getroot().iter("node")), "Merchant staff join not rendered"
+                with (directory / "staff-join.png").open("wb") as png:
+                    run(adb + ["exec-out", "screencap", "-p"], stdout=png)
+                item["native_merchant_signup_navigation"] = "PASS; signup, single Back, staff invite entry; no account/data submitted"
+                runtime = run(adb + ["logcat", "-d", "-s", "AndroidRuntime:E"], capture_output=True, text=True).stdout
+                assert "FATAL EXCEPTION" not in runtime, "Merchant registration navigation crashed"
             if role == "customer":
                 button = next((n for n in ui_nodes if n.get("text") == "สมัครสมาชิก"), None)
                 assert button is not None, f"Customer registration entry missing at {viewport}"
