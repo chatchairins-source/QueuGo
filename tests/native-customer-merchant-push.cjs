@@ -23,18 +23,18 @@ for(const [role,src,app,manifest,service] of [
   ['customer',customer,customerApp,customerManifest,'QueueGoCustomerMessagingService'],
   ['merchant',merchant,merchantApp,merchantManifest,'QueueGoMerchantMessagingService'],
 ]){
-  has(src,/FirebaseMessagingService/,\`\${role} FCM service missing\`);
-  has(src,/onNewToken/,\`\${role} token rotation handling missing\`);
-  has(src,/onMessageReceived/,\`\${role} foreground push handling missing\`);
-  has(src,/NativePushApi\(\)\.subscribe/,\`\${role} backend token registration missing\`);
-  has(src,/NativePushApi\(\)\.unsubscribe|api\.unsubscribe/,\`\${role} backend token cleanup missing\`);
-  has(src,/CATEGORY_CALL/,\`\${role} voice call notification category missing\`);
-  has(app,/POST_NOTIFICATIONS/,\`\${role} notification runtime permission missing\`);
-  has(app,/nativeLogoutScope/,\`\${role} lifecycle-safe logout cleanup missing\`);
-  has(app,/unsubscribe\(auth, pushStore\.deviceId\(\)\)/,\`\${role} logout must unsubscribe device\`);
-  has(manifest,/android\.permission\.POST_NOTIFICATIONS/,\`\${role} manifest notification permission missing\`);
-  has(manifest,new RegExp(service),\`\${role} messaging service not registered\`);
-  has(manifest,/queuego_orders/,\`\${role} notification channel metadata missing\`);
+  has(src,/FirebaseMessagingService/,`${role} FCM service missing`);
+  has(src,/onNewToken/,`${role} token rotation handling missing`);
+  has(src,/onMessageReceived/,`${role} foreground push handling missing`);
+  has(src,/NativePushApi\(\)\.subscribe/,`${role} backend token registration missing`);
+  has(src,/NativePushApi\(\)\.unsubscribe|api\.unsubscribe/,`${role} backend token cleanup missing`);
+  has(src,/CATEGORY_CALL/,`${role} voice call notification category missing`);
+  has(app,/POST_NOTIFICATIONS/,`${role} notification runtime permission missing`);
+  has(app,/nativeLogoutScope/,`${role} lifecycle-safe logout cleanup missing`);
+  has(app,/unsubscribe\(auth, pushStore\.deviceId\(\)\)/,`${role} logout must unsubscribe device`);
+  has(manifest,/android\.permission\.POST_NOTIFICATIONS/,`${role} manifest notification permission missing`);
+  has(manifest,new RegExp(service),`${role} messaging service not registered`);
+  has(manifest,/queuego_orders/,`${role} notification channel metadata missing`);
 }
 has(customer,/auth\.user\.role != "customer"/,'Customer role guard missing');
 has(merchant,/auth\.user\.role != "shop"/,'Merchant role guard missing');
