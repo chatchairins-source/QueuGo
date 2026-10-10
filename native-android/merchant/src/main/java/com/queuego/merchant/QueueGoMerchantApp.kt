@@ -4,6 +4,8 @@ import android.Manifest
 import android.media.AudioManager
 import android.media.ToneGenerator
 import android.net.Uri
+import android.os.Build
+import android.content.pm.PackageManager
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -56,6 +58,9 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import com.queuego.shared.NativeAuth
+import com.queuego.shared.NativePushApi
+import com.queuego.shared.NativePushDeviceStore
+import com.queuego.shared.nativeLogoutScope
 import com.queuego.shared.QgAccountDeletionSection
 import com.queuego.shared.QgBg
 import com.queuego.shared.QgBottomNav
@@ -112,6 +117,37 @@ private fun MerchantShell(auth: NativeAuth, logout: () -> Unit) {
     var busy by remember { mutableStateOf(false) }
     var message by remember { mutableStateOf<String?>(null) }
     val context = LocalContext.current
+    val pushStore = remember { NativePushDeviceStore(context, "shop") }
+    val pushApi = remember { NativePushApi() }
+    val pushLogoutScope = remember(context) { nativeLogoutScope(context, scope) }
+    var pushPermissionRequested by remember(auth.user.id) { mutableStateOf(false) }
+    val pushPermission = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted) {
+            scope.launch {
+                runCatching { syncMerchantNativePush(context, auth) }
+            }
+        }
+    }
+    fun logoutWithPushCleanup() {
+        pushLogoutScope.launch {
+            runCatching { pushApi.unsubscribe(auth, pushStore.deviceId()) }
+        }
+        logout()
+    }
+    LaunchedEffect(auth.user.id, auth.session.accessToken, auth.session.sessionId) {
+        ensureMerchantNotificationChannel(context)
+        if (
+            Build.VERSION.SDK_INT < 33 ||
+            context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
+        ) {
+            runCatching { syncMerchantNativePush(context, auth) }
+        } else if (!pushPermissionRequested) {
+            pushPermissionRequested = true
+            pushPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
+    }
     var setupLogoUri by remember { mutableStateOf<Uri?>(null) }
     var setupCoverUri by remember { mutableStateOf<Uri?>(null) }
     var merchantGpsPoint by remember { mutableStateOf<QgMapPoint?>(null) }
@@ -587,7 +623,7 @@ private fun MerchantShell(auth: NativeAuth, logout: () -> Unit) {
                         message = "ทดสอบเสียงแจ้งเตือนแล้ว"
                     },
                     onSupport = { screen = "support" },
-                    logout = logout
+                    logout = ::logoutWithPushCleanup
                 )
                 "hours" -> {
                     val activeShop = shop
