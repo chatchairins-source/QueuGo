@@ -47,7 +47,9 @@ for(const token of [
   '"aab_sha256"',
   '"signer_certificate_sha256"',
   '"aab_signer_certificate_sha256"',
-  '"apk_aab_signer_match"'
+  '"apk_aab_signer_match"',
+  '"github_run_id"',
+  '"certification_run_id"'
 ]){
   assert.ok(artifactVerifier.includes(token),`signed artifact verifier missing required check: ${token}`);
 }
