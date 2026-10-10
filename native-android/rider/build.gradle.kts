@@ -16,8 +16,8 @@ android {
         minSdk = 26
         targetSdk = 36
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-        versionCode = 5
-        versionName = "0.4.1-rider-map"
+        versionCode = providers.environmentVariable("QG_RIDER_VERSION_CODE").orNull?.toInt() ?: 5
+        versionName = providers.environmentVariable("QG_NATIVE_VERSION_NAME").orNull ?: "0.4.1-rider-map"
     }
 
     buildFeatures { compose = true }

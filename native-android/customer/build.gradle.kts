@@ -13,8 +13,8 @@ android {
         applicationId = "com.queuego.customer"
         minSdk = 26
         targetSdk = 36
-        versionCode = 3
-        versionName = "0.3.0-visual-blueprint"
+        versionCode = providers.environmentVariable("QG_CUSTOMER_VERSION_CODE").orNull?.toInt() ?: 3
+        versionName = providers.environmentVariable("QG_NATIVE_VERSION_NAME").orNull ?: "0.3.0-visual-blueprint"
     }
     buildFeatures { compose = true }
     compileOptions {

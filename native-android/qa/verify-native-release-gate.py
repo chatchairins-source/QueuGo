@@ -1,0 +1,95 @@
+"""Fail closed before Native release packaging; never manufacture certification."""
+import hashlib
+import json
+import os
+import re
+import secrets
+from pathlib import Path
+import subprocess
+import sys
+import tempfile
+
+ROOT = Path(__file__).resolve().parents[2]
+GATES = (
+    "full_native_ci", "production_backend", "security_regression",
+    "firebase_three_packages", "physical_push_customer", "physical_push_merchant",
+    "physical_push_rider", "physical_voice_two_devices_two_networks", "turn_relay",
+    "voice_session_order_block_authorization", "rider_floating_q",
+    "customer_blueprint", "merchant_blueprint", "rider_blueprint",
+    "android_lifecycle_permissions_upload_location", "privacy_data_safety_account_deletion",
+    "play_store_preflight", "release_signing",
+)
+
+
+def verify():
+    report_path = os.environ.get("QG_NATIVE_RELEASE_EVIDENCE")
+    if not report_path:
+        raise ValueError("QG_NATIVE_RELEASE_EVIDENCE absent; physical and Play gates remain OPEN")
+    report_file = Path(report_path).resolve()
+    report = json.loads(report_file.read_text())
+    head = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip()
+    if report.get("source_sha") != head:
+        raise ValueError("certification source_sha must match the exact release HEAD")
+    if subprocess.check_output(["git", "status", "--porcelain", "--untracked-files=normal"], cwd=ROOT, text=True).strip():
+        raise ValueError("release checkout must be clean; store evidence/credentials outside git")
+    if any(type(report.get(key)) is not int or report[key] != 0 for key in ("p0", "p1")):
+        raise ValueError("P0/P1 must both equal zero")
+    for name in GATES:
+        item = report.get("gates", {}).get(name, {})
+        if item.get("status") != "PASS":
+            raise ValueError(f"uncertified gate: {name}")
+        evidence = item.get("evidence_file")
+        digest = item.get("sha256")
+        if not evidence or not digest:
+            raise ValueError(f"gate has no verifiable evidence: {name}")
+        path = (report_file.parent / evidence).resolve()
+        if hashlib.sha256(path.read_bytes()).hexdigest() != digest:
+            raise ValueError(f"evidence hash mismatch: {name}")
+    if not re.fullmatch(r"\d+\.\d+\.\d+", os.environ.get("QG_NATIVE_VERSION_NAME", "")):
+        raise ValueError("release versionName must be explicitly set to x.y.z")
+    projects = set()
+    for role, previous_code in (("customer", 3), ("merchant", 3), ("rider", 5)):
+        version_code = int(os.environ.get(f"QG_{role.upper()}_VERSION_CODE", "0"))
+        if version_code <= previous_code or version_code > 2100000000:
+            raise ValueError(f"release versionCode must advance for {role}")
+        path = ROOT / "native-android" / role / "google-services.json"
+        config = json.loads(path.read_text())
+        project_id = config.get("project_info", {}).get("project_id")
+        if not project_id:
+            raise ValueError(f"Firebase project identity is missing for {role}")
+        projects.add(project_id)
+        clients = config.get("client", [])
+        package = f"com.queuego.{role}"
+        matches = [c for c in clients if c.get("client_info", {}).get("android_client_info", {}).get("package_name") == package]
+        if len(matches) != 1 or not matches[0].get("client_info", {}).get("mobilesdk_app_id"):
+            raise ValueError(f"Firebase config requires one complete client: {package}")
+    if len(projects) != 1:
+        raise ValueError("all Native Firebase configs must use the certified Production project")
+    required = ("QG_ANDROID_KEYSTORE_PATH", "QG_ANDROID_STORE_PASSWORD", "QG_ANDROID_KEY_ALIAS", "QG_ANDROID_KEY_PASSWORD")
+    if any(not os.environ.get(key) for key in required):
+        raise ValueError("Native release signing environment is incomplete")
+    if not Path(os.environ["QG_ANDROID_KEYSTORE_PATH"]).is_file():
+        raise ValueError("Native release keystore is unavailable")
+    # keytool reads the password from environment, never argv or logs.
+    entry = subprocess.run(["keytool", "-J-Duser.language=en", "-J-Duser.country=US", "-list", "-keystore", os.environ["QG_ANDROID_KEYSTORE_PATH"],
+                    "-storepass:env", "QG_ANDROID_STORE_PASSWORD", "-alias", os.environ["QG_ANDROID_KEY_ALIAS"]],
+                   check=True, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True)
+    if "PrivateKeyEntry" not in entry.stdout:
+        raise ValueError("release alias is not a signing private-key entry")
+    with tempfile.TemporaryDirectory(prefix="queuego-signing-check-") as directory:
+        validation_env = dict(os.environ, QG_VALIDATION_PASSWORD=secrets.token_urlsafe(32))
+        subprocess.run(["keytool", "-importkeystore", "-srckeystore", os.environ["QG_ANDROID_KEYSTORE_PATH"],
+                        "-srcstorepass:env", "QG_ANDROID_STORE_PASSWORD", "-srcalias", os.environ["QG_ANDROID_KEY_ALIAS"],
+                        "-srckeypass:env", "QG_ANDROID_KEY_PASSWORD", "-destkeystore", str(Path(directory)/"check.p12"),
+                        "-deststoretype", "PKCS12", "-deststorepass:env", "QG_VALIDATION_PASSWORD",
+                        "-destkeypass:env", "QG_VALIDATION_PASSWORD", "-noprompt"],
+                       env=validation_env, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    print("Native release evidence and prerequisites verified; physical evidence is operator-certified, not inferred from CI")
+
+
+if __name__ == "__main__":
+    try:
+        verify()
+    except (ValueError, OSError, KeyError, subprocess.CalledProcessError) as error:
+        print(f"Native release BLOCKED: {error}", file=sys.stderr)
+        sys.exit(1)
