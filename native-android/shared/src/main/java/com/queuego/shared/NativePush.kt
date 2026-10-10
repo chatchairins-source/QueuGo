@@ -35,6 +35,7 @@ class NativePushApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
                 .put("deviceId", deviceId)
                 .put("platform", "android")
                 .put("token", token)
+                .put("sessionId", auth.session.sessionId)
         )
     }
 
