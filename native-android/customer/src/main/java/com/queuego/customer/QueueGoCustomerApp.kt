@@ -85,6 +85,11 @@ import com.queuego.shared.QgStatusPill
 import com.queuego.shared.QueueGoAuthHost
 import com.queuego.shared.QueueGoBrand
 import com.queuego.shared.SecureRoleSessionStore
+import com.queuego.shared.nativeFirebaseConfigured
+import com.queuego.shared.nativePushPermissionGranted
+import com.queuego.shared.openNativeNotificationSettings
+import com.queuego.shared.syncNativePush
+import com.queuego.shared.testNativePush
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.util.UUID
@@ -1501,6 +1506,12 @@ private fun ProfileScreen(
     onSupport: () -> Unit,
     logout: () -> Unit
 ) {
+    val context = LocalContext.current
+    val pushStore = remember { SecureRoleSessionStore(context, "customer") }
+    val pushScope = rememberCoroutineScope()
+    var pushBusy by remember { mutableStateOf(false) }
+    var pushStatus by remember { mutableStateOf<String?>(null) }
+
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(14.dp)) {
         QgSectionTitle("บัญชีของฉัน")
         Spacer(Modifier.height(12.dp))
@@ -1515,6 +1526,62 @@ private fun ProfileScreen(
             Column {
                 Text("QueueGo Production", fontWeight = FontWeight.ExtraBold)
                 Text("บัญชีนี้ใช้ Session และ RLS ของระบบจริง", color = QgMuted)
+            }
+        }
+        Spacer(Modifier.height(10.dp))
+        QgCard(Modifier.fillMaxWidth()) {
+            Column {
+                Text("การแจ้งเตือนเบื้องหลัง", fontWeight = FontWeight.ExtraBold)
+                Text(
+                    when {
+                        !nativeFirebaseConfigured(context) -> "อุปกรณ์นี้ยังไม่มี Firebase config สำหรับ QueueGo Customer"
+                        nativePushPermissionGranted(context) -> "เปิดสิทธิ์แจ้งเตือนแล้ว สามารถทดสอบการส่งจริงได้"
+                        else -> "ปิดสิทธิ์แจ้งเตือนอยู่ แตะเพื่อเปิดการตั้งค่าของแอป"
+                    },
+                    color = QgMuted,
+                    style = MaterialTheme.typography.bodySmall
+                )
+                if (!pushStatus.isNullOrBlank()) {
+                    Spacer(Modifier.height(6.dp))
+                    Text(pushStatus!!, color = QgMuted, style = MaterialTheme.typography.bodySmall)
+                }
+                Spacer(Modifier.height(8.dp))
+                OutlinedButton(
+                    enabled = !pushBusy,
+                    onClick = {
+                        when {
+                            !nativeFirebaseConfigured(context) ->
+                                pushStatus = "ยังทดสอบไม่ได้จนกว่า Firebase config ของ Customer จะพร้อม"
+                            !nativePushPermissionGranted(context) ->
+                                openNativeNotificationSettings(context)
+                            else -> {
+                                pushBusy = true
+                                pushScope.launch {
+                                    runCatching {
+                                        val synced = syncNativePush(
+                                            context = context,
+                                            auth = auth,
+                                            expectedRole = "customer",
+                                            store = pushStore,
+                                            channelName = "QueueGo",
+                                            channelDescription = "แจ้งเตือนออเดอร์ ข้อความ และสถานะจาก QueueGo"
+                                        )
+                                        check(synced) { "ลงทะเบียนอุปกรณ์แจ้งเตือนไม่สำเร็จ" }
+                                        testNativePush(auth)
+                                    }.onSuccess {
+                                        pushStatus = "ส่งคำขอทดสอบแล้ว ระบบจะส่งแจ้งเตือนจริงมายังอุปกรณ์นี้"
+                                    }.onFailure {
+                                        pushStatus = it.message ?: "ทดสอบการแจ้งเตือนไม่สำเร็จ"
+                                    }
+                                    pushBusy = false
+                                }
+                            }
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(if (nativePushPermissionGranted(context)) "ทดสอบการแจ้งเตือนจริง" else "เปิดการตั้งค่าแจ้งเตือน")
+                }
             }
         }
         Spacer(Modifier.height(10.dp))
