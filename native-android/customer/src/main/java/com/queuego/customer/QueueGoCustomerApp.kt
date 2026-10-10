@@ -309,7 +309,11 @@ private fun CustomerShell(
 
     fun showPlacedOrder(order: CustomerOrder) {
         lastCheckoutReceipt = order.id
-        cart = cartStore.load()
+        // A confirmed server order owns the submitted cart. Clear the visible
+        // cart immediately even if durable journal cleanup failed. The pending
+        // journal remains available for exact-request reconciliation next launch.
+        cart = emptyList()
+        runCatching { cartStore.save(emptyList()) }
         note = ""
         selectedOrder = order
         orderItems = emptyList()
