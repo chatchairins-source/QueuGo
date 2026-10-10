@@ -420,7 +420,12 @@
     "release_certification_runtime_gate": "BLOCKED_BUCKET_AND_SECRETS_AND_PHYSICAL_EVIDENCE",
     "release_secret_preflight_validates_evidence_storage_access": true,
     "release_secret_preflight_requires_supabase_url_variable": true,
-    "release_secret_preflight_requires_supabase_service_role": true
+    "release_secret_preflight_requires_supabase_service_role": true,
+    "release_certification_supabase_project_ref": "pkypiqhlrmzocysgeqew",
+    "release_certification_supabase_url": "https://pkypiqhlrmzocysgeqew.supabase.co",
+    "release_certification_bucket_private_required": true,
+    "release_certification_bucket_observed_in_production": false,
+    "release_certification_bucket_last_checked_at": "2026-10-10T12:50:00Z"
   },
   "security": {
     "code_surface_hardened": true,

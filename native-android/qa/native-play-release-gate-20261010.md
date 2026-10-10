@@ -46,11 +46,13 @@ any requirement below is OPEN.
   QG_FIREBASE_GOOGLE_SERVICES_JSON_B64, QG_ANDROID_KEYSTORE_B64,
   QG_ANDROID_STORE_PASSWORD, QG_ANDROID_KEY_ALIAS and
   QG_ANDROID_KEY_PASSWORD absent from the Actions environment.
-- Production Supabase was checked read-only on 2026-10-10: private Storage bucket
-  `queuego-native-release-evidence` is not present yet. Trusted certification
-  intake source now exists, but runtime certification remains BLOCKED until this
-  private bucket, QG_SUPABASE_URL, QG_SUPABASE_SERVICE_ROLE_KEY and real physical
-  evidence are configured.
+- Production Supabase project `pkypiqhlrmzocysgeqew` was checked read-only
+  on 2026-10-10: private Storage bucket `queuego-native-release-evidence` is not
+  present yet. Certification and release-readiness workflows now require
+  `QG_SUPABASE_URL=https://pkypiqhlrmzocysgeqew.supabase.co`, verify that the
+  fixed bucket exists and remains private, and fail closed on any other project.
+  Runtime certification remains BLOCKED until the bucket,
+  QG_SUPABASE_SERVICE_ROLE_KEY and real physical evidence are configured.
 
 ## Still OPEN
 
