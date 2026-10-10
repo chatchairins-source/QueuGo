@@ -14,6 +14,7 @@ const statusBackup=read('supabase/migrations/20261008040547_store_status_cascade
 const v7=read('supabase/migrations/20261008040628_store_lifecycle_status_cascade_hardening_v7.sql');
 const unopenedBackup=read('supabase/migrations/20261008041244_unopened_shop_users_backup_20261008.sql');
 const v8=read('supabase/migrations/20261008041312_unopened_shop_cleanup_v8.sql');
+const currentShopOrders=read('supabase/migrations/20261011063000_merchant_current_shop_order_resolution.sql');
 let checks=0;const ok=(v,m)=>{assert.ok(v,m);checks++};
 
 // Case A/B: readiness is based on real store data, media, location and sellable catalog — never a fake/test order.
@@ -71,6 +72,9 @@ ok(admin.includes("shop_profiles?select=id&user_id=eq.'+encodeURIComponent(id)+'
 ok(adminLocations.includes("kind==='shop_user'?'&archived_at=is.null&order=created_at.desc':''"),'Admin location editor must resolve the current profile for a merchant user');
 ok(adminMarket.includes('market_membership_status=eq.pending&archived_at=is.null'),'Market review must ignore archived merchant profiles');
 ok(merchant.includes("shop_profiles?select=user_id,shop_name&user_id=in.('+ids.map(encodeURIComponent).join(',')+')&archived_at=is.null"),'Merchant support lookup must use the current store name');
+ok(currentShopOrders.includes("and sp.archived_at is null"),'Merchant order RPC must ignore archived shop profiles after reapplication');
+ok(currentShopOrders.includes("order by sp.created_at desc"),'Merchant order RPC must resolve the newest current shop profile');
+ok(currentShopOrders.includes("merchant_current_shop_rpc_backup_20261011")&&currentShopOrders.includes("pg_get_functiondef"),'Merchant order RPC definition must be backed up before replacement');
 
 // Suspension/restore must respect lifecycle instead of bypassing approval or mutating archived history.
 ok(statusBackup.includes('store_status_cascade_backup_20261008'),'Status cascade definitions must be backed up before replacement');
