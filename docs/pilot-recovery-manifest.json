@@ -374,8 +374,12 @@
       "signer_certificate_sha256",
       "same_signer_all_three_apps",
       "aab_signer_certificate_sha256",
-      "apk_aab_signer_match"
-    ]
+      "apk_aab_signer_match",
+      "certified_signer_fingerprint_match"
+    ],
+    "release_signing_expected_certificate_variable": "QG_ANDROID_EXPECTED_CERT_SHA256",
+    "release_signing_expected_certificate_status": "PENDING_EXTERNAL_CONFIGURATION",
+    "release_signing_cert_fingerprint_gate": true
   },
   "security": {
     "code_surface_hardened": true,
