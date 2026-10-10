@@ -83,7 +83,8 @@ data class MerchantOrderItem(
     val image: String?,
     val id: String = "",
     val productId: String? = null,
-    val unitPrice: Double = 0.0
+    val unitPrice: Double = 0.0,
+    val optionSummary: String? = null
 )
 
 data class MerchantOrderEditItem(
@@ -598,7 +599,7 @@ class MerchantApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
 
     suspend fun loadOrderItems(auth: NativeAuth, orderId: String): List<MerchantOrderItem> {
         val rows = http.array(http.get(
-            "order_items?select=id,product_id,item_name,description,quantity,unit_price,total_price,item_image" +
+            "order_items?select=id,product_id,item_name,description,quantity,unit_price,total_price,item_image,selected_options" +
                 "&order_id=eq." + http.enc(orderId) + "&order=created_at.asc",
             auth.session.accessToken
         ))
@@ -616,7 +617,8 @@ class MerchantApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
                     unitPrice = r.optDouble(
                         "unit_price",
                         r.optDouble("total_price", 0.0) / r.optInt("quantity", 1).coerceAtLeast(1)
-                    )
+                    ),
+                    optionSummary = merchantSelectedOptionsLabel(r.opt("selected_options"))
                 ))
             }
         }
@@ -1205,6 +1207,22 @@ private fun merchantProductFromRow(r: JSONObject): MerchantProduct? {
         posPrice = r.optDoubleOrNull("pos_price") ?: price,
         deliveryRestriction = restriction
     )
+}
+
+internal fun merchantSelectedOptionsLabel(raw: Any?): String? {
+    val rows = when (raw) {
+        null, JSONObject.NULL -> JSONArray()
+        is JSONArray -> raw
+        is String -> runCatching { JSONArray(raw) }.getOrElse { JSONArray() }
+        else -> JSONArray()
+    }
+    val names = buildList {
+        for (i in 0 until rows.length()) {
+            val row = rows.optJSONObject(i) ?: continue
+            row.optString("option_name").trim().takeIf(String::isNotBlank)?.let(::add)
+        }
+    }
+    return names.takeIf { it.isNotEmpty() }?.joinToString(" · ")
 }
 
 internal fun merchantVariantsJson(raw: Any?): String = when (raw) {
