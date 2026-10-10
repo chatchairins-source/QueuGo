@@ -82,13 +82,47 @@ fun MarketNativeScreen(
             shops = if (auth == null) api.loadShopsPublic() else api.loadShops(auth)
             catalog = if (auth == null) api.loadCatalogPublic() else api.loadCatalog(auth)
             if (!restoredCart) {
-                val saved = cartStore.load()
-                cart = saved.mapNotNull { line ->
-                    catalog.find { it.id == line.productId && it.availablePacks > 0 }?.let { fresh ->
-                        MarketCartLine(fresh, line.quantity.coerceAtMost(fresh.availablePacks).coerceAtLeast(1))
+                fun restore(saved: List<MarketCartStore.Saved>): List<MarketCartLine> =
+                    saved.mapNotNull { line ->
+                        catalog.find { it.id == line.productId && it.availablePacks > 0 }?.let { fresh ->
+                            MarketCartLine(
+                                fresh,
+                                line.quantity.coerceAtMost(fresh.availablePacks).coerceAtLeast(1)
+                            )
+                        }
+                    }.let { restored ->
+                        if (restored.map { it.product.marketId }.toSet().size <= 1) restored else emptyList()
                     }
-                }.let { restored ->
-                    if (restored.map { it.product.marketId }.toSet().size <= 1) restored else emptyList()
+
+                val accountCart = restore(cartStore.load())
+                val guestStore = if (auth == null) null else MarketCartStore(context, "guest")
+                val guestCart = guestStore?.let { restore(it.load()) }.orEmpty()
+                cart = when {
+                    guestCart.isEmpty() -> accountCart
+                    accountCart.isEmpty() -> {
+                        guestStore?.save(emptyList())
+                        guestCart
+                    }
+                    accountCart.first().product.marketId == guestCart.first().product.marketId -> {
+                        val merged = (accountCart + guestCart)
+                            .groupBy { it.product.id }
+                            .values
+                            .map { rows ->
+                                val product = rows.last().product
+                                MarketCartLine(
+                                    product,
+                                    rows.sumOf { it.quantity }
+                                        .coerceAtMost(product.availablePacks)
+                                        .coerceAtLeast(1)
+                                )
+                            }
+                        guestStore?.save(emptyList())
+                        merged
+                    }
+                    else -> {
+                        message = "ตะกร้าตลาดสดก่อนเข้าสู่ระบบเป็นคนละตลาด จึงเก็บไว้แยกกัน"
+                        accountCart
+                    }
                 }
                 restoredCart = true
             }
