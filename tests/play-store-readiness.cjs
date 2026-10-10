@@ -28,7 +28,7 @@ ok(/keytool[\s\S]{0,180}-list -v/.test(releaseSecrets)&&releaseSecrets.includes(
 ok(releaseSecrets.includes('-storepass:env QG_ANDROID_STORE_PASSWORD')&&releaseSecrets.includes('-srckeypass:env QG_ANDROID_KEY_PASSWORD'),'Signing passwords must stay out of keytool argv');
 ok(releaseSecrets.includes('Android signing certificate SHA-256: $fingerprint'),'Release preflight must expose only the signing certificate fingerprint for identity pinning');
 ok(releaseSecrets.includes('Clean temporary credentials'),'Release preflight must remove decoded credentials from the runner');
-ok(releaseSecrets.includes('vars.QG_SUPABASE_URL')&&releaseSecrets.includes('QG_SUPABASE_SERVICE_ROLE_KEY'),'Release preflight must require the private evidence Storage origin and server-side credential');
+ok(!releaseSecrets.includes('vars.QG_SUPABASE_URL')&&releaseSecrets.includes('https://pkypiqhlrmzocysgeqew.supabase.co')&&releaseSecrets.includes('QG_SUPABASE_SERVICE_ROLE_KEY'),'Release preflight must pin the Production evidence Storage origin and require only the server-side credential');
 ok(releaseSecrets.includes('/storage/v1/object/list/queuego-native-release-evidence'),'Release preflight must verify private evidence bucket access');
 ok(releaseSecrets.includes('https://pkypiqhlrmzocysgeqew.supabase.co'),'Release preflight must pin the QueueGo Production Supabase origin');
 ok(releaseSecrets.includes('/storage/v1/bucket/queuego-native-release-evidence')&&releaseSecrets.includes('Release evidence bucket must remain private'),'Release preflight must verify the fixed evidence bucket exists and remains private');
