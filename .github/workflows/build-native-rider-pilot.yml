@@ -28,6 +28,8 @@ on:
       - 'docs/pilot-recovery-manifest.json'
       - 'docs/privacy.html'
       - 'docs/play-closed-beta-readiness.md'
+      - 'docs/play-app-access-content-rating.md'
+      - 'docs/closed-beta-secrets-checklist.md'
       - '.github/workflows/build-native-closed-beta.yml'
       - 'tests/native-closed-beta-readiness.cjs'
       - 'tests/native-android-source.cjs'
