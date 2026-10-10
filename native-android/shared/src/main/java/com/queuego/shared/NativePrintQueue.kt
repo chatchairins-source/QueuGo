@@ -11,7 +11,7 @@ class NativePrintQueue {
         key: String?,
         force: Boolean = false,
         wasPrinted: (String) -> Boolean,
-        markPrinted: (String) -> Unit,
+        markPrinted: suspend (String) -> Unit,
         send: suspend () -> Unit
     ): Boolean = mutex.withLock {
         if (key != null && !force && wasPrinted(key)) return@withLock false

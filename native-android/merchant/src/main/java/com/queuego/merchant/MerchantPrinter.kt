@@ -49,11 +49,18 @@ class MerchantPrinterStore(context: Context) {
     fun wasPrinted(key: String): Boolean =
         prefs.getStringSet("printed_keys", emptySet()).orEmpty().contains(key)
 
-    fun markPrinted(key: String) {
+    suspend fun markPrinted(key: String) = withContext(Dispatchers.IO) {
         val old = prefs.getStringSet("printed_keys", emptySet()).orEmpty()
-        val next = (old + key).toList().takeLast(300).toSet()
-        prefs.edit().putStringSet("printed_keys", next).apply()
+            .associateWith { 0L }.toMutableMap()
+        runCatching { JSONObject(prefs.getString("printed_history", "{}").orEmpty()) }.getOrNull()?.let { stored ->
+            stored.keys().forEach { savedKey -> old[savedKey] = stored.optLong(savedKey, 0L) }
+        }
+        val next = merchantPrintHistory(old, key, System.currentTimeMillis())
+        val persisted = prefs.edit().putString("printed_history", JSONObject(next).toString())
+            .putStringSet("printed_keys", next.keys.toSet()).commit()
+        check(persisted) { "ส่งพิมพ์แล้ว แต่บันทึกสถานะไม่สำเร็จ กรุณาตรวจเครื่องพิมพ์ก่อนพิมพ์ซ้ำ" }
     }
+
 }
 
 class MerchantPrintBridge {
@@ -182,3 +189,11 @@ private fun merchantPrintTicket(snapshot: PosSnapshot, bill: PosBill, lines: Lis
 
 private fun merchantPrinterMoney(value: Double): String =
     String.format(java.util.Locale.US, "%,.2f ฿", value)
+
+internal fun merchantPrintHistory(previous: Map<String, Long>, key: String, printedAt: Long): Map<String, Long> {
+    val next = previous.toMutableMap()
+    // A device clock correction must not evict the just-acknowledged job.
+    next[key] = maxOf(printedAt, (previous.values.maxOrNull() ?: 0L) + 1L)
+    return next.entries.sortedWith(compareByDescending<Map.Entry<String, Long>> { it.value }.thenBy { it.key })
+        .take(300).associate { it.key to it.value }
+}

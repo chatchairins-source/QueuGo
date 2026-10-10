@@ -42,6 +42,18 @@ class MerchantPrinterTest {
         assertNull(merchantReceiptPrintKey(snapshot(refunded), refunded))
         assertNull(merchantKitchenPrintKey(snapshot(refunded), refunded))
     }
+    @Test fun printHistoryRetainsTheMostRecentJobsAfterRestoreAndClockCorrection() {
+        val old = (0..299).associate { "receipt:$it" to it.toLong() }
+        val next = merchantPrintHistory(old, "receipt:new", 10L)
+        assertEquals(300, next.size)
+        assertFalse(next.containsKey("receipt:0"))
+        assertTrue(next.containsKey("receipt:new"))
+        assertEquals(300L, next["receipt:new"])
+        val reprint = merchantPrintHistory(next, "receipt:1", 20L)
+        assertEquals(300, reprint.size)
+        assertEquals(301L, reprint["receipt:1"])
+    }
+
     @Test fun bridgeSettingsRejectCleartextCredentialsAndFragments() {
         for (url in listOf("http://192.168.1.2/print", "https://user:pass@printer.example/print", "https://printer.example/print#x", "https:/print")) {
             assertThrows(IllegalArgumentException::class.java) { validateMerchantPrintBridgeUrl(url) }

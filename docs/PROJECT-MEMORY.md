@@ -701,3 +701,9 @@ The user-supplied Rider reference screens are the acceptance reference for workf
 - Read actual main merchant/printer-v1.js ticket builder. Native ticket previously added labels/subtotals and omitted creation time, receipt notes and Production feed spacing.
 - Native kitchen/receipt now follow Production heading, order/table/time, note lines, totals/discount/payment tokens/cash change and trailing feed spacing. Date uses Thai Buddhist year with the device timezone, matching the Production browser locale. Missing/unparseable server timestamps remain explicit rather than fabricated. Existing kitchen batch isolation and replay keys retained.
 - Focused receipt regression updated for Buddhist year, description and feed spacing. CI/physical printer verification pending; this branch is not merged until green. Full release gate remains open.
+
+
+## 2026-10-10 acknowledged print durability
+- Printer completion markers previously used asynchronous SharedPreferences.apply and arbitrarily retained HashSet iteration order. Changed acknowledgement persistence to synchronous commit on Dispatchers.IO while the print queue lock is held. Kept original keys through a compatible timestamp-history upgrade; most recent 300 acknowledged jobs are retained deterministically, including clock corrections.
+- Queue completion callback is suspendable so durable disk persistence never blocks the UI thread. Bridge failures remain unacknowledged; explicit reprint remains available. A successful bridge response followed by disk failure reports that printing occurred and asks the operator to inspect before reprinting. Bridge-side exactly-once guarantees and physical-device validation remain unproven.
+- Added focused recency/clock-correction test. CI compile/runtime pending; no main merge until green.
