@@ -270,18 +270,17 @@ fun MerchantPosScreen(
         busy = true
         message = null
         scope.launch {
-            runCatching { block() }
-                .onSuccess {
-                    message = success
-                    val fresh = runCatching { api.snapshot(auth) }.getOrNull()
-                    if (fresh != null) {
-                        snapshot = fresh
-                        selectedBillId = select?.takeIf { id -> fresh.bills.any { it.id == id && it.open } }
-                        qrTable = qrTable?.let { old -> fresh.tables.firstOrNull { it.id == old.id } ?: old }
-                    }
-                }
-                .onFailure { message = it.message ?: "บันทึกไม่สำเร็จ" }
-            busy = false
+            try {
+                block()
+                message = success
+                refreshSnapshot(select)
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (failure: Exception) {
+                message = failure.message ?: "บันทึกไม่สำเร็จ"
+            } finally {
+                busy = false
+            }
         }
     }
 
@@ -624,107 +623,31 @@ fun MerchantPosScreen(
                         cancelOpen = true
                     },
                     onPay = {
-                        view = "bills"
-                    },
-                    onEditPrice = { product ->
-                        priceTarget = product
-                        priceText = product.price.toString()
-                    }
-                )
-
-                "tables" -> PosTablesView(
-                    snapshot = snap,
-                    busy = busy,
-                    canManage = can("manage_staff"),
-                    onOpen = { table ->
-                        mode = "DINE_IN"
-                        tableId = table.id
-                        noTable = false
-                        selectedBillId = openBills.firstOrNull { it.tableId == table.id }?.id
-                        view = "counter"
-                    },
-                    onNoTable = {
-                        mode = "DINE_IN"
-                        tableId = null
-                        noTable = true
-                        selectedBillId = openBills.firstOrNull {
-                            it.type == "DINE_IN" && it.tableId == null
-                        }?.id
-                        view = "counter"
-                    },
-                    onAdd = {
-                        editingTable = null
-                        tableLabel = ""
-                        tableActive = true
-                        tableDialog = true
-                    },
-                    onEdit = { table ->
-                        editingTable = table
-                        tableLabel = table.label
-                        tableActive = table.active
-                        tableDialog = true
-                    },
-                    onQr = { qrTable = it },
-                    onDelete = { table ->
-                        runMutation("ลบ " + table.label + " แล้ว", null) {
-                            api.deleteTable(auth, table.id)
-                        }
-                    }
-                )
-
-                "kitchen" -> PosKitchenView(
-                    snapshot = snap,
-                    busy = busy,
-                    can = ::can,
-                    onPosAction = { bill, action, label ->
-                        runMutation(label + "แล้ว", bill.id) {
-                            api.billAction(auth, bill.id, action)
-                        }
-                    },
-                    onDeliveryAction = { order, action, label ->
-                        runMutation(label + "แล้ว", null) {
-                            api.deliveryAction(auth, order.id, action)
-                        }
-                    }
-                )
-
-                "bills" -> PosBillsView(
-                    bills = openBills.filter { it.kitchenStatus in setOf("READY", "SERVED") },
-                    selected = selectedBill,
-                    paymentMethod = paymentMethod,
-                    paymentMethodMenu = paymentMethodMenu,
-                    cashReceived = cashReceived,
-                    busy = busy,
-                    canClose = can("close_bill"),
-                    onSelect = { selectedBillId = it.id },
-                    onPaymentMenu = { paymentMethodMenu = it },
-                    onPaymentMethod = {
-                        paymentMethod = it
-                        paymentMethodMenu = false
-                        if (it != "cash") cashReceived = ""
-                    },
-                    onCash = { cashReceived = it.filter { ch -> ch.isDigit() || ch == '.' } },
-                    onPay = {
                         val bill = selectedBill
-                        if (bill != null) {
-                            val cash = cashReceived.toDoubleOrNull()
-                            if (paymentMethod == "cash" && (cash == null || cash < bill.total)) {
+                        val method = paymentMethod
+                        if (!busy && bill != null && can("close_bill")) {
+                            val cash = if (method == "cash") cashReceived.toDoubleOrNull() else null
+                            if (method == "cash" && (cash == null || !cash.isFinite() || cash < bill.total)) {
                                 message = "เงินสดที่รับต้องไม่น้อยกว่ายอดบิล"
                             } else {
                                 busy = true
                                 scope.launch {
-                                    runCatching {
-                                        api.takePayment(auth, bill.id, paymentMethod, cash)
-                                    }.onSuccess {
-                                        val change = if (paymentMethod == "cash" && cash != null) {
+                                    try {
+                                        api.takePayment(auth, bill.id, method, cash)
+                                        val change = if (method == "cash" && cash != null) {
                                             " · เงินทอน ฿" + money(cash - bill.total)
                                         } else ""
-                                        snapshot = api.snapshot(auth)
                                         selectedBillId = null
                                         cashReceived = ""
                                         message = "ปิดบิลแล้ว" + change
-                                    }.onFailure { message = it.message ?: "ปิดบิลไม่สำเร็จ" }
-                                    busy = false
+                                        refreshSnapshot(null)
+                                    } catch (cancelled: CancellationException) {
+                                        throw cancelled
+                                    } catch (failure: Exception) {
+                                        message = failure.message ?: "ปิดบิลไม่สำเร็จ"
+                                    } finally {
+                                        busy = false
+                                    }
                                 }
                             }
                         }
@@ -1083,17 +1006,8 @@ fun MerchantPosScreen(
                 TextButton(
                     enabled = !busy,
                     onClick = {
-                        busy = true
-                        scope.launch {
-                            runCatching { api.rotateTableQr(auth, table.id) }
-                                .onSuccess {
-                                    val fresh = api.snapshot(auth)
-                                    snapshot = fresh
-                                    qrTable = fresh.tables.firstOrNull { it.id == table.id }
-                                    message = if (table.qrToken == null) "สร้าง QR Code แล้ว" else "สร้าง QR Code ใหม่แล้ว"
-                                }
-                                .onFailure { message = it.message ?: "สร้าง QR Code ไม่สำเร็จ" }
-                            busy = false
+                        runMutation(if (table.qrToken == null) "สร้าง QR Code แล้ว" else "สร้าง QR Code ใหม่แล้ว") {
+                            api.rotateTableQr(auth, table.id)
                         }
                     }
                 ) { Text(if (table.qrToken == null) "สร้าง QR Code" else "สร้าง QR ใหม่") }

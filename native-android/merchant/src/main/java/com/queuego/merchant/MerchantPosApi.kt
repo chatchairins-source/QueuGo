@@ -243,8 +243,7 @@ class MerchantPosApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
                     PosTable(
                         id = r.optString("id"),
                         label = r.optString("label").ifBlank { "โต๊ะ" },
-                        active = r.optBoolean("active", false),
-                    deniedPermissions = deniedPermissions,
+                        active = r.optBoolean("active", true),
                         qrToken = nullableString(r, "qr_token")
                     )
                 )
