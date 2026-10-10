@@ -71,6 +71,10 @@ One root Gradle signing configuration covers all three apps. Release is explicit
 non-debuggable, with no debug-keystore fallback. Signing inputs are environment-only:
 QG_ANDROID_KEYSTORE_PATH, QG_ANDROID_STORE_PASSWORD, QG_ANDROID_KEY_ALIAS,
 QG_ANDROID_KEY_PASSWORD. Keystore files/configs are ignored by git.
+The final release also requires QG_ANDROID_SIGNING_CERT_SHA256 and rejects a
+keystore whose actual certificate fingerprint does not match that certified
+identity. The release-secret preflight prints this non-secret SHA-256 fingerprint
+after validating the store password, alias and key password.
 
 Release requires QG_NATIVE_VERSION_NAME (x.y.z), per-app release codes
 QG_CUSTOMER_VERSION_CODE, QG_MERCHANT_VERSION_CODE, QG_RIDER_VERSION_CODE,
