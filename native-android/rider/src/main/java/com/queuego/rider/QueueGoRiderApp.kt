@@ -13,6 +13,7 @@ import android.provider.Settings
 import com.queuego.shared.QueueGoTheme
 import com.queuego.shared.QueueGoVoiceCallOverlay
 import com.queuego.shared.NativeVoiceCallController
+import com.queuego.shared.NativeVoiceControllerState
 import com.queuego.shared.NativeUser
 import com.queuego.shared.NativeSession
 import com.queuego.shared.NativeAuth
@@ -301,6 +302,25 @@ private fun QueueGoAuth.asNativeVoiceAuth(): NativeAuth = NativeAuth(
         status = user.status
     )
 )
+
+@Composable
+private fun RiderVoiceOverlay(
+    state: NativeVoiceControllerState,
+    auth: NativeAuth,
+    controller: NativeVoiceCallController,
+    onAnswer: () -> Unit
+) {
+    QueueGoVoiceCallOverlay(
+        state = state,
+        currentUserId = auth.user.id,
+        onAnswer = onAnswer,
+        onDecline = { controller.declineIncoming(auth) },
+        onHangUp = { controller.hangUp() },
+        onDismissEnded = { controller.dismissTerminal() },
+        onToggleMute = { controller.setMuted(it) },
+        onToggleSpeaker = { controller.setSpeakerEnabled(it) }
+    )
+}
 
 @Composable
 private fun RiderHome(
@@ -662,18 +682,27 @@ private fun RiderHome(
     }
 
     if (chatJob != null) {
-        RiderChatScreen(
-            auth = auth,
-            job = chatJob!!,
-            onBack = { chatJob = null },
-            modifier = modifier
-        )
+        Box(modifier.fillMaxSize()) {
+            RiderChatScreen(
+                auth = auth,
+                job = chatJob!!,
+                onBack = { chatJob = null },
+                modifier = Modifier.fillMaxSize()
+            )
+            RiderVoiceOverlay(
+                state = voiceState,
+                auth = nativeVoiceAuth,
+                controller = voiceController,
+                onAnswer = ::answerVoiceCall
+            )
+        }
         return
     }
 
     if (verifyMode != null && verifyJob != null) {
+        Box(modifier.fillMaxSize()) {
         VerificationScreen(
-            modifier = modifier,
+            modifier = Modifier.fillMaxSize(),
             mode = verifyMode!!,
             job = verifyJob!!,
             marketPickup = verifyMarketPickup,
@@ -749,6 +778,13 @@ private fun RiderHome(
                 }
             }
         )
+        RiderVoiceOverlay(
+            state = voiceState,
+            auth = nativeVoiceAuth,
+            controller = voiceController,
+            onAnswer = ::answerVoiceCall
+        )
+        }
         return
     }
 
@@ -788,6 +824,12 @@ private fun RiderHome(
                 modifier = Modifier.align(Alignment.BottomCenter)
             )
             messageNotice?.let { RiderMessageNotice(it, Modifier.align(Alignment.TopCenter)) }
+            RiderVoiceOverlay(
+                state = voiceState,
+                auth = nativeVoiceAuth,
+                controller = voiceController,
+                onAnswer = ::answerVoiceCall
+            )
         }
         return
     }
@@ -1271,6 +1313,12 @@ private fun RiderHome(
             modifier = Modifier.align(Alignment.BottomCenter)
         )
         messageNotice?.let { RiderMessageNotice(it, Modifier.align(Alignment.TopCenter)) }
+        RiderVoiceOverlay(
+            state = voiceState,
+            auth = nativeVoiceAuth,
+            controller = voiceController,
+            onAnswer = ::answerVoiceCall
+        )
     }
 }
 
