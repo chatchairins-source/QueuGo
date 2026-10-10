@@ -165,7 +165,7 @@ jobs:
         run: |
           set -euo pipefail
           response="$(mktemp)"
-          code="$(curl --silent --show-error --output "$response" --write-out '%{http_code}' \
+          code="$(curl --silent --show-error --proto '=https' --tlsv1.2 --output "$response" --write-out '%{http_code}' \
             "${QG_SUPABASE_URL%/}/storage/v1/bucket/$QG_EVIDENCE_BUCKET" \
             -H "Authorization: Bearer $QG_SUPABASE_SERVICE_ROLE_KEY" \
             -H "apikey: $QG_SUPABASE_SERVICE_ROLE_KEY")"
@@ -201,7 +201,7 @@ jobs:
           PY
           )"
           url="${QG_SUPABASE_URL%/}/storage/v1/object/authenticated/$QG_EVIDENCE_BUCKET/$encoded_path"
-          curl --fail --silent --show-error --location \
+          curl --fail --silent --show-error --proto '=https' --tlsv1.2 \
             -H "Authorization: Bearer $QG_SUPABASE_SERVICE_ROLE_KEY" \
             -H "apikey: $QG_SUPABASE_SERVICE_ROLE_KEY" \
             "$url" -o "$bundle"
@@ -224,15 +224,23 @@ jobs:
           max_files = 1000
           max_total = 4 * 1024 * 1024 * 1024
           total = 0
+          seen = set()
 
           with zipfile.ZipFile(archive) as zf:
               infos = zf.infolist()
               if len(infos) > max_files:
                   raise SystemExit("::error::Evidence ZIP contains too many entries")
               for info in infos:
+                  if "\\" in info.filename:
+                      raise SystemExit("::error::Evidence ZIP contains non-portable backslash paths")
                   rel = Path(info.filename)
                   if rel.is_absolute() or ".." in rel.parts:
                       raise SystemExit("::error::Evidence ZIP contains path traversal")
+                  normalized = rel.as_posix().rstrip("/")
+                  if normalized:
+                      if normalized in seen:
+                          raise SystemExit("::error::Evidence ZIP contains duplicate paths")
+                      seen.add(normalized)
                   mode = (info.external_attr >> 16) & 0o170000
                   if mode == stat.S_IFLNK:
                       raise SystemExit("::error::Evidence ZIP may not contain symlinks")
