@@ -172,6 +172,8 @@ ok(source.includes('PosTabs(')&&source.includes('"reports" to "ยอดขา�
 ok(source.includes('pendingPosRequestId')&&source.includes('ตรวจบิลเดิม')&&source.includes('requestId = requestId'),'Merchant native POS must preserve idempotent new-bill recovery after uncertain network results');
 ok(source.includes('NativeRealtimeSubscription("orders", "shop_id=eq.$shopId")')&&source.includes('repeatOnLifecycle(Lifecycle.State.STARTED)')&&source.includes('delay(5_000L)'),'Merchant native POS must refresh Production orders from Realtime with polling fallback');
 ok(source.includes('table-order.html#scan/')&&merchantGradle.includes('com.google.zxing:core:3.5.3'),'Merchant native POS must render Production table QR links without a WebView');
+ok(source.includes('MerchantPrintBridge')&&source.includes('HttpsURLConnection')&&source.includes('Android อนุญาตเฉพาะ HTTPS Print Bridge'),'Merchant native printer must use HTTPS Print Bridge instead of unsupported Web Bluetooth or USB');
+ok(source.includes('"printer" to "เครื่องพิมพ์"')&&source.includes('autoKitchen')&&source.includes('autoReceipt')&&source.includes('merchantKitchenTicket')&&source.includes('merchantReceiptTicket'),'Merchant native POS must preserve printer settings auto-print and reprint flows');
 
 ok(source.includes('get_my_shop_orders'),'Merchant native Orders must use production order source');
 ok(source.includes('ToneGenerator')&&source.includes('STREAM_NOTIFICATION'),'Merchant native must alert on new orders');
