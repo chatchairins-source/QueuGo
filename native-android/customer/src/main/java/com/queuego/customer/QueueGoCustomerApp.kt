@@ -1045,6 +1045,7 @@ private fun CustomerShell(
                 )
             }
         }
+        }
         QueueGoVoiceCallOverlay(
             state = voiceState,
             currentUserId = auth.user.id,
