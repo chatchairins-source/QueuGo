@@ -483,7 +483,7 @@ private fun MerchantShell(auth: NativeAuth, logout: () -> Unit) {
                         )
                     }
                 }
-                "pos" -> MerchantPosScreen(auth) { screen = "home" }
+                "pos" -> MerchantPosScreen(auth = auth, onBack = { screen = "home" })
                 "laundry" -> MerchantLaundryScreen(auth)
                 "revenue" -> MerchantRevenueScreen(
                     auth = auth,

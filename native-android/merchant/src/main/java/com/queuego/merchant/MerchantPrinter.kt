@@ -51,7 +51,7 @@ class MerchantPrinterStore(context: Context) {
 
     fun markPrinted(key: String) {
         val old = prefs.getStringSet("printed_keys", emptySet()).orEmpty()
-        val next = (old + key).takeLast(300).toSet()
+        val next = (old + key).toList().takeLast(300).toSet()
         prefs.edit().putStringSet("printed_keys", next).apply()
     }
 }

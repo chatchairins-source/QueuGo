@@ -5,6 +5,7 @@ on:
   push:
     branches:
       - queuego-native-android-v1
+      - work-native-merchant-printer-20261010
     paths:
       - 'native-android/**'
       - 'tests/native-android-source.cjs'
