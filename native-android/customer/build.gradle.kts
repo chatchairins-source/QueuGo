@@ -1,3 +1,7 @@
+val qgVersionCode = providers.gradleProperty("QG_VERSION_CODE").orNull?.toIntOrNull()
+val qgVersionName = providers.gradleProperty("QG_VERSION_NAME").orNull
+val qgStoreFile = providers.gradleProperty("QG_STORE_FILE").orNull
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.plugin.compose")
@@ -13,10 +17,28 @@ android {
         applicationId = "com.queuego.customer"
         minSdk = 26
         targetSdk = 36
-        versionCode = 3
-        versionName = "0.3.0-visual-blueprint"
+        versionCode = qgVersionCode ?: 3
+        versionName = qgVersionName ?: "0.3.0-visual-blueprint"
     }
     buildFeatures { compose = true }
+    signingConfigs {
+        create("release") {
+            if (qgStoreFile != null) {
+                storeFile = rootProject.file(qgStoreFile)
+                storePassword = providers.gradleProperty("QG_STORE_PASSWORD").orNull
+                keyAlias = providers.gradleProperty("QG_KEY_ALIAS").orNull
+                keyPassword = providers.gradleProperty("QG_KEY_PASSWORD").orNull
+            }
+        }
+    }
+    buildTypes {
+        getByName("release") {
+            if (qgStoreFile != null) {
+                signingConfig = signingConfigs.getByName("release")
+            }
+            isDebuggable = false
+        }
+    }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
