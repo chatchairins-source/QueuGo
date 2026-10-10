@@ -212,6 +212,7 @@ jobs:
             echo "::error::Certification references an invalid Native Pilot CI run"
             exit 1
           fi
+          echo "QG_CERTIFIED_NATIVE_PILOT_RUN_ID=$pilot_run_id" >> "$GITHUB_ENV"
           echo "QG_NATIVE_RELEASE_EVIDENCE=$report" >> "$GITHUB_ENV"
 
       - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
