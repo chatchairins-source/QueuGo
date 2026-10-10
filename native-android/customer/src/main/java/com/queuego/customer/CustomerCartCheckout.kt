@@ -92,8 +92,13 @@ internal fun CustomerCartScreen(
                             maxLines = 2
                         )
                         Spacer(Modifier.height(3.dp))
+                        val optionLabel = runCatching { customerCartLineOptionsLabel(line) }.getOrDefault("")
+                        if (optionLabel.isNotBlank()) {
+                            Text(optionLabel, fontSize = 10.sp, color = QgMuted, maxLines = 2)
+                            Spacer(Modifier.height(2.dp))
+                        }
                         Text(
-                            "฿" + "%.0f".format(line.product.deliveryPrice),
+                            "฿" + "%.0f".format(customerCartLineUnitPrice(line)),
                             fontSize = 14.sp,
                             fontWeight = FontWeight.ExtraBold
                         )
@@ -102,7 +107,7 @@ internal fun CustomerCartScreen(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            CustomerQtyButton("−", enabled = !checkoutPending) { onMinus(line.product.id) }
+                            CustomerQtyButton("−", enabled = !checkoutPending) { onMinus(customerCartLineKey(line)) }
                             Text(
                                 line.quantity.toString(),
                                 modifier = Modifier.widthIn(min = 18.dp),
@@ -110,15 +115,15 @@ internal fun CustomerCartScreen(
                                 fontWeight = FontWeight.Bold,
                                 textAlign = androidx.compose.ui.text.style.TextAlign.Center
                             )
-                            CustomerQtyButton("+", enabled = !checkoutPending) { onPlus(line.product.id) }
-                            CustomerQtyButton("ลบ", compact = true, enabled = !checkoutPending) { onRemove(line.product.id) }
+                            CustomerQtyButton("+", enabled = !checkoutPending) { onPlus(customerCartLineKey(line)) }
+                            CustomerQtyButton("ลบ", compact = true, enabled = !checkoutPending) { onRemove(customerCartLineKey(line)) }
                         }
                     }
                 }
                 HorizontalDivider(thickness = 1.dp, color = QgLine)
             }
 
-            val subtotal = cart.sumOf { it.product.deliveryPrice * it.quantity }
+            val subtotal = cart.sumOf { customerCartLineUnitPrice(it) * it.quantity }
             Spacer(Modifier.height(10.dp))
             CustomerSummaryCard(
                 rows = listOf("ค่าอาหาร" to subtotal),
@@ -207,7 +212,7 @@ internal fun CustomerCheckoutScreen(
 
     val subtotal = pendingBody?.optDouble("p_expected_subtotal")
         ?.takeIf { it.isFinite() }
-        ?: cart.sumOf { it.product.deliveryPrice * it.quantity }
+        ?: cart.sumOf { customerCartLineUnitPrice(it) * it.quantity }
     val fee = if (checkoutPending) {
         pendingBody?.optDouble("p_expected_delivery_fee")?.takeIf { it.isFinite() }
     } else {
