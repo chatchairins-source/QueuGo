@@ -560,7 +560,18 @@
       "stops_outside_active_work"
     ],
     "release_gate_blueprint_requires_zero_blocking_differences": true,
-    "release_gate_physical_semantic_runtime_gate": "OPEN_PENDING_REAL_DEVICE_CAPTURE"
+    "release_gate_physical_semantic_runtime_gate": "OPEN_PENDING_REAL_DEVICE_CAPTURE",
+    "physical_evidence_capture_helper": "native-android/qa/capture-physical-release-evidence.py",
+    "physical_evidence_capture_uses_canonical_contract": true,
+    "physical_evidence_capture_rejects_emulator": true,
+    "physical_evidence_capture_hashes_device_identity": true,
+    "physical_evidence_capture_hashes_artifacts": true,
+    "physical_evidence_capture_external_output_required": true,
+    "physical_evidence_capture_default_status": "DRAFT",
+    "physical_evidence_capture_auto_certifies": false,
+    "physical_evidence_capture_operator_certify_required": true,
+    "physical_evidence_capture_identity_hash_salt": "PER_CAPTURE_RANDOM_256_BIT_NOT_STORED",
+    "physical_evidence_capture_identity_hash_domain_separated": true
   },
   "security": {
     "code_surface_hardened": true,
