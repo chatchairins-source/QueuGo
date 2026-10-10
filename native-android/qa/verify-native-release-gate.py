@@ -27,6 +27,10 @@ def verify():
     if not report_path:
         raise ValueError("QG_NATIVE_RELEASE_EVIDENCE absent; physical and Play gates remain OPEN")
     report_file = Path(report_path).resolve()
+    source_root = ROOT.resolve()
+    if report_file == source_root or source_root in report_file.parents:
+        raise ValueError("release evidence bundle must be stored outside the source checkout")
+    evidence_root = report_file.parent
     report = json.loads(report_file.read_text())
     head = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip()
     if report.get("source_sha") != head:
@@ -45,7 +49,13 @@ def verify():
         digest = item.get("sha256")
         if not evidence or not digest:
             raise ValueError(f"gate has no verifiable evidence: {name}")
-        path = (report_file.parent / evidence).resolve()
+        path = (evidence_root / evidence).resolve()
+        try:
+            path.relative_to(evidence_root)
+        except ValueError:
+            raise ValueError(f"gate evidence escapes the certified bundle: {name}")
+        if not path.is_file():
+            raise ValueError(f"gate evidence file is missing: {name}")
         if hashlib.sha256(path.read_bytes()).hexdigest() != digest:
             raise ValueError(f"evidence hash mismatch: {name}")
     if not re.fullmatch(r"\d+\.\d+\.\d+", os.environ.get("QG_NATIVE_VERSION_NAME", "")):
