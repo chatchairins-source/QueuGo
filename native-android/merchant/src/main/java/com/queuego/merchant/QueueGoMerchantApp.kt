@@ -27,6 +27,10 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.Slider
+import androidx.compose.material3.RadioButton
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
@@ -1132,6 +1136,7 @@ private fun MerchantOrderDetail(
     onAction: (String, String?) -> Unit
 ) {
     var now by remember { mutableStateOf(System.currentTimeMillis()) }
+    var cancelOpen by remember(order?.id) { mutableStateOf(false) }
     LaunchedEffect(order?.status, order?.preparingAt) {
         while (order?.status == "preparing") {
             now = System.currentTimeMillis()
@@ -1187,12 +1192,23 @@ private fun MerchantOrderDetail(
                 ) { Text("รับออเดอร์", fontWeight = FontWeight.ExtraBold) }
                 Spacer(Modifier.height(8.dp))
                 OutlinedButton(
-                    onClick = { onAction("cancel", "ร้านไม่สะดวกรับออเดอร์") },
+                    onClick = { cancelOpen = true },
                     enabled = !busy,
                     modifier = Modifier.fillMaxWidth()
                 ) { Text("ปฏิเสธออเดอร์") }
             }
-            "accepted", "searching_rider" -> QgCard(Modifier.fillMaxWidth()) {
+            "accepted" -> {
+                QgCard(Modifier.fillMaxWidth()) {
+                    Text("ร้านรับออเดอร์แล้ว · รอระบบจัดหา Rider", fontWeight = FontWeight.ExtraBold)
+                }
+                Spacer(Modifier.height(8.dp))
+                OutlinedButton(
+                    onClick = { cancelOpen = true },
+                    enabled = !busy,
+                    modifier = Modifier.fillMaxWidth()
+                ) { Text("ยกเลิกออเดอร์") }
+            }
+            "searching_rider" -> QgCard(Modifier.fillMaxWidth()) {
                 Text("กำลังหา Rider · รอ Rider รับงานก่อนเริ่มเตรียมออเดอร์", fontWeight = FontWeight.ExtraBold)
             }
             "rider_assigned", "assigned" -> {
@@ -1201,6 +1217,12 @@ private fun MerchantOrderDetail(
                     enabled = !busy,
                     modifier = Modifier.fillMaxWidth().height(54.dp)
                 ) { Text("เริ่มเตรียมออเดอร์", fontWeight = FontWeight.ExtraBold) }
+                Spacer(Modifier.height(8.dp))
+                OutlinedButton(
+                    onClick = { cancelOpen = true },
+                    enabled = !busy,
+                    modifier = Modifier.fillMaxWidth()
+                ) { Text("ยกเลิกออเดอร์") }
             }
             "preparing" -> {
                 val left = preparationLeft(order.preparingAt, now)
@@ -1243,6 +1265,166 @@ private fun MerchantOrderDetail(
         }
         Spacer(Modifier.height(30.dp))
     }
+
+    if (cancelOpen && order != null) {
+        MerchantCancelGuard(
+            order = order,
+            busy = busy,
+            onDismiss = { cancelOpen = false },
+            onConfirm = { reason ->
+                cancelOpen = false
+                onAction("cancel", reason)
+            }
+        )
+    }
+}
+
+@Composable
+private fun MerchantCancelGuard(
+    order: MerchantOrder,
+    busy: Boolean,
+    onDismiss: () -> Unit,
+    onConfirm: (String) -> Unit
+) {
+    val reasons = remember {
+        listOf(
+            "สินค้าหมด",
+            "ร้านไม่สามารถจัดเตรียมสินค้าได้",
+            "ร้านปิดหรือมีเหตุฉุกเฉิน",
+            "ลูกค้าขอให้ยกเลิก",
+            "อื่น ๆ"
+        )
+    }
+    var selectedReason by remember(order.id) { mutableStateOf("") }
+    var otherReason by remember(order.id) { mutableStateOf("") }
+    var acknowledged by remember(order.id) { mutableStateOf(false) }
+    var slide by remember(order.id) { mutableStateOf(0f) }
+    val cancellable = order.status in setOf("pending", "accepted", "rider_assigned", "assigned")
+    val accepted = order.status != "pending"
+    LaunchedEffect(order.status) {
+        if (!cancellable) onDismiss()
+    }
+    val reason = when {
+        selectedReason == "อื่น ๆ" && otherReason.trim().isNotBlank() -> "อื่น ๆ: " + otherReason.trim()
+        selectedReason == "อื่น ๆ" -> ""
+        else -> selectedReason
+    }
+    val ready = cancellable && reason.isNotBlank() && acknowledged && !busy
+
+    AlertDialog(
+        onDismissRequest = { if (!busy) onDismiss() },
+        title = {
+            Text(
+                if (accepted) "ยกเลิกออเดอร์" else "ปฏิเสธออเดอร์",
+                fontWeight = FontWeight.Black
+            )
+        },
+        text = {
+            Column {
+                QgCard(Modifier.fillMaxWidth()) {
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            Text("คำสั่งซื้อ", color = QgMuted, style = MaterialTheme.typography.bodySmall)
+                            Text(order.number, fontWeight = FontWeight.ExtraBold)
+                        }
+                        Text("฿" + "%.0f".format(order.subtotal), color = QgRed, fontWeight = FontWeight.Black)
+                    }
+                }
+                Spacer(Modifier.height(10.dp))
+                Text(
+                    if (accepted)
+                        "ร้านรับออเดอร์นี้แล้ว การยกเลิกจะถูกบันทึกและแจ้งลูกค้า และอาจกระทบ Rider กรุณายกเลิกเฉพาะเมื่อจำเป็นจริง"
+                    else
+                        "หากปฏิเสธ ออเดอร์นี้จะถูกยกเลิกและแจ้งลูกค้าทันที",
+                    color = QgRed,
+                    style = MaterialTheme.typography.bodySmall
+                )
+                Spacer(Modifier.height(10.dp))
+                Text("เลือกเหตุผล", fontWeight = FontWeight.ExtraBold)
+                reasons.forEach { item ->
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .clickable(enabled = !busy) {
+                                selectedReason = item
+                                slide = 0f
+                            }
+                            .padding(vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        RadioButton(
+                            selected = selectedReason == item,
+                            onClick = {
+                                selectedReason = item
+                                slide = 0f
+                            },
+                            enabled = !busy
+                        )
+                        Text(item)
+                    }
+                }
+                if (selectedReason == "อื่น ๆ") {
+                    OutlinedTextField(
+                        value = otherReason,
+                        onValueChange = {
+                            otherReason = it.take(420)
+                            slide = 0f
+                        },
+                        enabled = !busy,
+                        label = { Text("ระบุเหตุผลเพิ่มเติม") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .clickable(enabled = !busy) {
+                            acknowledged = !acknowledged
+                            slide = 0f
+                        }
+                        .padding(vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Checkbox(
+                        checked = acknowledged,
+                        onCheckedChange = {
+                            acknowledged = it
+                            slide = 0f
+                        },
+                        enabled = !busy
+                    )
+                    Text(
+                        if (accepted)
+                            "ฉันตรวจสอบออเดอร์นี้แล้ว และเข้าใจว่าการยกเลิกจะกระทบลูกค้าและอาจกระทบ Rider"
+                        else
+                            "ฉันตรวจสอบออเดอร์นี้แล้ว และเข้าใจว่าการปฏิเสธจะกระทบลูกค้า",
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+                Text(
+                    if (!ready) "เลือกเหตุผลและยืนยันก่อน"
+                    else if (slide >= 95f) "ปล่อยเพื่อยืนยัน"
+                    else "เลื่อนไปทางขวาเพื่อยืนยัน " + if (accepted) "ยกเลิก" else "ปฏิเสธ",
+                    color = QgMuted,
+                    style = MaterialTheme.typography.bodySmall
+                )
+                Slider(
+                    value = slide,
+                    onValueChange = { slide = it },
+                    onValueChangeFinished = {
+                        if (slide >= 95f && ready) onConfirm(reason)
+                        slide = 0f
+                    },
+                    enabled = ready,
+                    valueRange = 0f..100f
+                )
+            }
+        },
+        confirmButton = {},
+        dismissButton = {
+            OutlinedButton(onClick = onDismiss, enabled = !busy) { Text("ปิด") }
+        }
+    )
 }
 
 @Composable
