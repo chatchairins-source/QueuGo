@@ -158,6 +158,9 @@ def verify() -> dict:
 
     result = {
         "source_sha": source_sha,
+        "github_run_id": os.environ.get("GITHUB_RUN_ID"),
+        "github_run_attempt": os.environ.get("GITHUB_RUN_ATTEMPT"),
+        "certification_run_id": os.environ.get("QG_NATIVE_CERTIFICATION_RUN_ID"),
         "version_name": version_name,
         "signer_certificate_sha256": next(iter(signer_digests)),
         "roles": artifacts,
