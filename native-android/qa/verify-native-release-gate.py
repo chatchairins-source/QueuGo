@@ -204,6 +204,11 @@ def verify():
         raise ValueError("QG_CERTIFIED_NATIVE_PILOT_RUN_ID must come from exact-HEAD GitHub attestation")
     if envelopes["full_native_ci"].get("github_run_id") != int(pilot_run_raw):
         raise ValueError("full_native_ci evidence does not match the attested Native Pilot run")
+    backup_run_raw = os.environ.get("QG_CERTIFIED_BACKUP_RESTORE_RUN_ID", "")
+    if not re.fullmatch(r"\d+", backup_run_raw):
+        raise ValueError("QG_CERTIFIED_BACKUP_RESTORE_RUN_ID must come from exact-HEAD GitHub attestation")
+    if envelopes["backup_restore"].get("github_run_id") != int(backup_run_raw):
+        raise ValueError("backup_restore evidence does not match the attested Backup Restore Drill")
     if envelopes["production_backend"].get("supabase_project_ref") != "pkypiqhlrmzocysgeqew":
         raise ValueError("production_backend evidence must identify QueueGo Production Supabase")
 
