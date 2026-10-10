@@ -66,6 +66,7 @@ import com.google.zxing.MultiFormatWriter
 import com.queuego.shared.NativeAuth
 import com.queuego.shared.NativeOrderRealtime
 import com.queuego.shared.NativePrintQueue
+import com.queuego.shared.QueueGoHttpException
 import com.queuego.shared.NativeRealtimeSubscription
 import com.queuego.shared.QgCard
 import com.queuego.shared.QgGreen
@@ -115,6 +116,7 @@ fun MerchantPosScreen(
     val printBridge = remember { MerchantPrintBridge() }
 
     var snapshot by remember { mutableStateOf<PosSnapshot?>(null) }
+    var snapshotLoading by remember { mutableStateOf(true) }
     var selectedBillId by rememberSaveable { mutableStateOf<String?>(null) }
     var view by rememberSaveable { mutableStateOf("counter") }
     var mode by rememberSaveable { mutableStateOf("TAKEAWAY") }
@@ -232,16 +234,27 @@ fun MerchantPosScreen(
     }
 
     suspend fun refreshSnapshot(select: String? = selectedBillId) = refreshMutex.withLock {
-        runCatching { api.snapshot(auth) }
-            .onSuccess { fresh ->
-                snapshot = fresh
-                selectedBillId = select?.takeIf { id -> fresh.bills.any { it.id == id && it.open } }
-                if (selectedBillId == null && mode == "DINE_IN" && tableId != null) {
-                    selectedBillId = fresh.bills.firstOrNull { it.open && it.tableId == tableId }?.id
-                }
-                qrTable = qrTable?.let { old -> fresh.tables.firstOrNull { it.id == old.id } ?: old }
+        if (snapshot == null) snapshotLoading = true
+        try {
+            val fresh = api.snapshot(auth)
+            snapshot = fresh
+            selectedBillId = select?.takeIf { id -> fresh.bills.any { it.id == id && it.open } }
+            if (selectedBillId == null && mode == "DINE_IN" && tableId != null) {
+                selectedBillId = fresh.bills.firstOrNull { it.open && it.tableId == tableId }?.id
             }
-            .onFailure { message = it.message ?: "โหลด POS ไม่สำเร็จ" }
+            qrTable = qrTable?.let { old -> fresh.tables.firstOrNull { it.id == old.id } }
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (failure: Exception) {
+            if (failure is PosAccessDeniedException ||
+                (failure is QueueGoHttpException && failure.statusCode in setOf(401, 403))) {
+                snapshot = null
+                qrTable = null
+            }
+            message = failure.message ?: "โหลด POS ไม่สำเร็จ"
+        } finally {
+            snapshotLoading = false
+        }
     }
 
     fun reload(select: String? = selectedBillId) {
@@ -308,34 +321,40 @@ fun MerchantPosScreen(
             }
         } else UUID.randomUUID().toString()
 
+        val currentBillId = selectedBillId
+        val requestType = mode
+        val requestNote = note
         busy = true
         scope.launch {
-            runCatching {
-                api.addProduct(
+            try {
+                val id = api.addProduct(
                     auth = auth,
-                    currentBillId = selectedBillId,
-                    type = mode,
+                    currentBillId = currentBillId,
+                    type = requestType,
                     tableId = targetTable,
                     productId = product.id,
-                    note = note,
+                    note = requestNote,
                     requestId = requestId
                 )
-            }.onSuccess { id ->
+                // Commit acknowledgement must not be undone by a subsequent refresh failure.
                 selectedBillId = id
-                snapshot = api.snapshot(auth)
                 pendingPosRequestId = null
                 pendingPosProductId = null
                 pendingPosType = null
                 pendingPosTableId = null
                 pendingPosNote = null
                 message = "เพิ่มสินค้าแล้ว"
-            }.onFailure {
+                refreshSnapshot(id)
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (failure: Exception) {
                 message = if (newBill) {
                     "ผลเปิดบิลยังไม่แน่ชัด · กดตรวจบิลเดิมก่อนทำรายการอื่น: " +
-                        (it.message ?: "เชื่อมต่อไม่สำเร็จ")
-                } else it.message ?: "เพิ่มสินค้าไม่สำเร็จ"
+                        (failure.message ?: "เชื่อมต่อไม่สำเร็จ")
+                } else failure.message ?: "เพิ่มสินค้าไม่สำเร็จ"
+            } finally {
+                busy = false
             }
-            busy = false
         }
     }
 
@@ -500,7 +519,19 @@ fun MerchantPosScreen(
 
         if (snap == null) {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator()
+                if (snapshotLoading) {
+                    Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        repeat(4) {
+                            Box(Modifier.fillMaxWidth().height(64.dp).background(QgMuted.copy(alpha = 0.12f), RoundedCornerShape(12.dp)))
+                        }
+                    }
+                } else {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text("ยังโหลดข้อมูล POS ไม่สำเร็จ", color = QgMuted)
+                        Spacer(Modifier.height(8.dp))
+                        OutlinedButton(onClick = { reload() }) { Text("ลองอีกครั้ง") }
+                    }
+                }
             }
             return@Column
         }

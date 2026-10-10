@@ -123,11 +123,15 @@ data class PosSnapshot(
     val deliveryLinesByOrder: Map<String, List<PosLine>>
 )
 
+class PosAccessDeniedException(message: String) : IllegalStateException(message)
+
 class MerchantPosApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
     suspend fun snapshot(auth: NativeAuth): PosSnapshot {
         val rawShop = http.rpc("pos_my_shop", auth.session.accessToken, JSONObject())
         val shopId = scalarText(rawShop)
-        require(shopId.isNotBlank() && shopId != "null") { "บัญชีนี้ยังไม่มีสิทธิ์ POS ของร้าน" }
+        if (shopId.isBlank() || shopId == "null") {
+            throw PosAccessDeniedException("บัญชีนี้ยังไม่มีสิทธิ์ POS ของร้าน")
+        }
 
         val owner = scalarBoolean(
             http.rpc("pos_is_owner", auth.session.accessToken, JSONObject()),
@@ -201,6 +205,10 @@ class MerchantPosApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
         ))
 
         val staff = parseStaff(staffRaw)
+        val currentStaff = staff.firstOrNull { it.userId == auth.session.authUserId }
+        if (!owner && currentStaff?.active != true) {
+            throw PosAccessDeniedException("บัญชีพนักงานนี้ไม่มีสิทธิ์ POS ที่เปิดใช้งาน")
+        }
         val products = buildList {
             for (i in 0 until productsRaw.length()) {
                 val r = productsRaw.optJSONObject(i) ?: continue
@@ -270,7 +278,7 @@ class MerchantPosApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
             shopId = shopId,
             shopName = shopName,
             owner = owner,
-            currentStaff = staff.firstOrNull { it.userId == auth.session.authUserId },
+            currentStaff = currentStaff,
             staff = staff,
             products = products,
             tables = tables,
