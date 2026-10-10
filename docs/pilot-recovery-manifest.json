@@ -437,7 +437,9 @@
       "gradle/actions/setup-gradle": "ed408507eac070d1f99cc633dbcf757c94c7933a",
       "actions/upload-artifact": "ea165f8d65b6e75b540449e92b4886f43607fa02",
       "actions/setup-node": "49933ea5288caeca8642d1e84afbd3f7d6820020"
-    }
+    },
+    "release_certification_supabase_url_source": "SOURCE_PINNED",
+    "release_certification_supabase_url_requires_actions_variable": false
   },
   "security": {
     "code_surface_hardened": true,
