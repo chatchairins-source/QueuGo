@@ -1,0 +1,104 @@
+{
+  "reviewed_at": "2026-10-10",
+  "scope": "Native normal shopping order-state source coverage; special Market/Laundry flows keep their dedicated state tests; physical state/visual parity remains OPEN",
+  "physical_state_parity": "OPEN",
+  "canonical_db_states": [
+    "pending",
+    "accepted",
+    "searching_rider",
+    "rider_assigned",
+    "preparing",
+    "ready",
+    "picked_up",
+    "in_progress",
+    "completed",
+    "cancelled",
+    "no_rider_available"
+  ],
+  "compatibility_aliases": {
+    "assigned": "rider_assigned",
+    "rider_to_customer": "in_progress",
+    "delivering": "in_progress"
+  },
+  "presentation_only": {
+    "arrived": "Derived only from in_progress/delivery state plus rider_arrived_customer_at; never written as an order DB status"
+  },
+  "roles": {
+    "customer": {
+      "active_query_source": "native-android/customer/src/main/java/com/queuego/customer/CustomerApi.kt",
+      "tracking_source": "native-android/customer/src/main/java/com/queuego/customer/CustomerOrderTrackingScreen.kt",
+      "terminal_policy_source": "native-android/customer/src/main/java/com/queuego/customer/CustomerTrackingPolicy.kt",
+      "required_visible_states": [
+        "pending",
+        "accepted",
+        "searching_rider",
+        "rider_assigned",
+        "preparing",
+        "ready",
+        "picked_up",
+        "in_progress",
+        "arrived",
+        "completed",
+        "cancelled",
+        "no_rider_available"
+      ]
+    },
+    "merchant": {
+      "order_source": "native-android/merchant/src/main/java/com/queuego/merchant/MerchantApi.kt",
+      "ui_source": "native-android/merchant/src/main/java/com/queuego/merchant/QueueGoMerchantApp.kt",
+      "required_visible_states": [
+        "pending",
+        "accepted",
+        "searching_rider",
+        "rider_assigned",
+        "preparing",
+        "ready",
+        "picked_up",
+        "in_progress",
+        "arrived",
+        "completed",
+        "cancelled",
+        "no_rider_available"
+      ],
+      "required_actions": {
+        "pending": [
+          "accepted",
+          "cancel"
+        ],
+        "accepted": [
+          "preparing"
+        ],
+        "searching_rider": [
+          "preparing"
+        ],
+        "rider_assigned": [
+          "preparing"
+        ],
+        "preparing": [
+          "ready"
+        ],
+        "ready": [],
+        "picked_up": [],
+        "in_progress": [],
+        "completed": [],
+        "cancelled": [],
+        "no_rider_available": []
+      }
+    },
+    "rider": {
+      "snapshot_source": "native-android/rider/src/main/java/com/queuego/rider/QueueGoApi.kt",
+      "ui_source": "native-android/rider/src/main/java/com/queuego/rider/QueueGoRiderApp.kt",
+      "model_source": "native-android/rider/src/main/java/com/queuego/rider/Models.kt",
+      "required_active_states": [
+        "rider_assigned",
+        "preparing",
+        "ready",
+        "picked_up",
+        "in_progress"
+      ],
+      "arrival_presentation": "rider_arrived_shop_at/rider_arrived_customer_at timestamps; no arrived DB pseudo-state",
+      "completed_history": true,
+      "no_rider_available_not_applicable_before_assignment": true
+    }
+  }
+}
