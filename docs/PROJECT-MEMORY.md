@@ -701,3 +701,5 @@ The user-supplied Rider reference screens are the acceptance reference for workf
 - Read failed run38014547015 job114101873806: CustomerGuestShell and CustomerPromotionScreen imported inaccessible Compose weight. Removed those imports while retaining Row/Column scope weight calls.
 - Backed up remote guest5d50b58 before merging current verified Native db863c6, preserving all guest public catalog/cart/promotions work and all newer auth/printer/RPC fixes. Resolved workflow branch union and retained the newer staff authorization test assertions.
 - Customer guest branch still requires full CI and real public/authenticated UI checks before integration. Build success alone is not visual/functional parity or release certification. No artifacts delivered.
+
+- Updated actual emulator matrix for the restored Customer guest entry: capture public Home, explicitly open login, retain signup/email/back checks, then verify one Back returns to guest Home. No login/account/order submission or fabricated catalog state. This runtime evidence is pending CI.

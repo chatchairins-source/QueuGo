@@ -75,6 +75,22 @@ def capture_role_viewports():
             ui_path = directory / "launch.xml"
             run(adb + ["pull", "/sdcard/queuego-launch.xml", str(ui_path)])
             ui_nodes = list(ET.parse(ui_path).getroot().iter("node"))
+            if role == "customer":
+                # The actual fresh Customer entry is public Home; authentication is explicit.
+                assert any(n.get("text") == "ตะกร้า" for n in ui_nodes), "Customer guest Home navigation missing"
+                assert not any(n.get("text") == "ยินดีต้อนรับสู่ QueueGo" for n in ui_nodes), "Customer still forces login at launch"
+                with (directory / "guest-home.png").open("wb") as png:
+                    run(adb + ["exec-out", "screencap", "-p"], stdout=png)
+                login = next((n for n in ui_nodes if n.get("text") == "เข้าสู่ระบบ" and n.get("package") == pkg), None)
+                assert login is not None, "Customer guest login entry missing"
+                bounds = [int(x) for x in re.findall(r"\d+", login.get("bounds", ""))]
+                assert len(bounds) == 4
+                run(adb + ["shell", "input", "tap", str((bounds[0] + bounds[2]) // 2), str((bounds[1] + bounds[3]) // 2)])
+                time.sleep(1)
+                run(adb + ["shell", "uiautomator", "dump", "/sdcard/queuego-customer-login.xml"])
+                run(adb + ["pull", "/sdcard/queuego-customer-login.xml", str(directory / "login.xml")])
+                ui_nodes = list(ET.parse(directory / "login.xml").getroot().iter("node"))
+                assert any(n.get("text") == "ยินดีต้อนรับสู่ QueueGo" for n in ui_nodes), "Customer guest action did not open real login"
             assert any(n.get("package") == pkg and "เข้าสู่ระบบ" in (n.get("text", "") + n.get("content-desc", "")) for n in ui_nodes), f"{role} {viewport} login not rendered"
             screenshot = directory / "login.png"
             with screenshot.open("wb") as png:
@@ -177,6 +193,14 @@ def capture_role_viewports():
                 return_xml = directory / "registration-back.xml"
                 run(adb + ["pull", "/sdcard/queuego-customer-return.xml", str(return_xml)])
                 assert any(n.get("text") == "ยินดีต้อนรับสู่ QueueGo" for n in ET.parse(return_xml).getroot().iter("node")), "Customer Back did not restore login"
+                run(adb + ["shell", "input", "keyevent", "4"])
+                time.sleep(1)
+                run(adb + ["shell", "uiautomator", "dump", "/sdcard/queuego-customer-guest-back.xml"])
+                run(adb + ["pull", "/sdcard/queuego-customer-guest-back.xml", str(directory / "guest-back.xml")])
+                returned = list(ET.parse(directory / "guest-back.xml").getroot().iter("node"))
+                assert any(n.get("text") == "ตะกร้า" for n in returned), "Customer login Back did not return to guest Home"
+                assert not any(n.get("text") == "ยินดีต้อนรับสู่ QueueGo" for n in returned), "Customer login Back stayed on auth"
+                item["native_customer_guest_navigation"] = "PASS; public Home, explicit login, single Back to Home; no account/data submitted"
                 item["native_customer_signup_navigation"] = "PASS; phone/email mode and back; no account/data submitted"
                 runtime = run(adb + ["logcat", "-d", "-s", "AndroidRuntime:E"], capture_output=True, text=True).stdout
                 assert "FATAL EXCEPTION" not in runtime, "Customer registration navigation crashed"
