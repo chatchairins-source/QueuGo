@@ -427,7 +427,12 @@
     "release_certification_tls_only": true,
     "release_certification_rejects_duplicate_zip_paths": true,
     "release_certification_rejects_backslash_zip_paths": true,
-    "release_evidence_hashing": "STREAMING_SHA256_1_MIB_CHUNKS"
+    "release_evidence_hashing": "STREAMING_SHA256_1_MIB_CHUNKS",
+    "release_certification_supabase_project_ref_source": "docs/pilot-recovery-manifest.json#supabase.project_ref",
+    "release_certification_supabase_url_must_match_project_ref": true,
+    "release_certification_object_path_namespaced_by_source_sha": true,
+    "release_certification_rejects_hidden_zip_paths": true,
+    "native_ci_direct_certification_workflow_trigger": true
   },
   "security": {
     "code_surface_hardened": true,
