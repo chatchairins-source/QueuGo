@@ -22,10 +22,27 @@ class CustomerCartStore(context: Context, userId: String) {
                     price = r.optDouble("price", 0.0),
                     deliveryPrice = r.optDouble("deliveryPrice", r.optDouble("price", 0.0)),
                     image = r.optString("image").takeIf { it.isNotBlank() && it != "null" },
-                    available = true
+                    available = true,
+                    variantsJson = customerVariantsJson(r.opt("variants"))
                 )
                 val qty = r.optInt("quantity", 1).coerceIn(1, 99)
-                if (product.id.isNotBlank() && product.shopId.isNotBlank()) add(CartLine(product, qty))
+                val rawSelections = buildList {
+                    val selected = r.optJSONArray("selections") ?: JSONArray()
+                    for (j in 0 until selected.length()) {
+                        val item = selected.optJSONObject(j) ?: continue
+                        val groupKey = item.optString("group_key").trim()
+                        val optionKey = item.optString("option_key").trim()
+                        if (groupKey.isNotBlank() && optionKey.isNotBlank()) {
+                            add(CustomerMenuSelection(groupKey, optionKey))
+                        }
+                    }
+                }
+                val selections = runCatching {
+                    customerCanonicalMenuSelections(product, rawSelections)
+                }.getOrDefault(emptyList())
+                if (product.id.isNotBlank() && product.shopId.isNotBlank()) {
+                    add(CartLine(product, qty, selections))
+                }
             }
         }
     }.getOrDefault(emptyList())
@@ -42,6 +59,8 @@ class CustomerCartStore(context: Context, userId: String) {
                     .put("price", line.product.price)
                     .put("deliveryPrice", line.product.deliveryPrice)
                     .put("image", line.product.image)
+                    .put("variants", runCatching { JSONArray(line.product.variantsJson) }.getOrDefault(JSONArray()))
+                    .put("selections", customerMenuSelectionPayload(customerCanonicalMenuSelections(line.product, line.selections)))
                     .put("quantity", line.quantity)
             )
         }
