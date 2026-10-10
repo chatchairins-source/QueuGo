@@ -61,6 +61,13 @@ fun MarketNativeScreen(
     val context = LocalContext.current
     val actorId = auth?.user?.id ?: "guest"
     val cartStore = remember(actorId) { MarketCartStore(context, actorId) }
+    val checkoutJournal = remember(cartStore) { cartStore.journal() }
+    val checkoutRecovery = remember(checkoutJournal) {
+        CustomerCheckoutRecovery<PendingMarketCheckout, org.json.JSONObject>(checkoutJournal)
+    }
+    var pendingCheckoutRecord by remember(actorId) {
+        mutableStateOf(runCatching { checkoutJournal.read() }.getOrNull())
+    }
     var markets by remember { mutableStateOf<List<MarketInfo>>(emptyList()) }
     var shops by remember { mutableStateOf<List<MarketShop>>(emptyList()) }
     var catalog by remember { mutableStateOf<List<MarketProduct>>(emptyList()) }
@@ -73,6 +80,7 @@ fun MarketNativeScreen(
     var busy by remember { mutableStateOf(false) }
     var loading by remember { mutableStateOf(true) }
     var message by remember { mutableStateOf<String?>(null) }
+    val checkoutPending = pendingCheckoutRecord != null
 
     LaunchedEffect(actorId, location?.latitude, location?.longitude) {
         loading = true
@@ -136,6 +144,26 @@ fun MarketNativeScreen(
 
     LaunchedEffect(cart, restoredCart) {
         if (restoredCart) cartStore.save(cart)
+    }
+
+    LaunchedEffect(auth?.session?.accessToken, restoredCart, pendingCheckoutRecord?.body?.toString()) {
+        val currentAuth = auth ?: return@LaunchedEffect
+        if (!restoredCart || pendingCheckoutRecord == null || busy) return@LaunchedEffect
+        busy = true
+        runCatching {
+            checkoutRecovery.reconcile { api.sendPrepared(currentAuth, it.prepared()) }
+        }.onSuccess { receipt ->
+            if (receipt != null) {
+                cart = emptyList()
+                pendingCheckoutRecord = null
+                message = "ตรวจพบ Market Trip ที่ยืนยันแล้ว"
+                onDone()
+            }
+        }.onFailure {
+            message = "มีคำขอ Market Trip เดิมรอตรวจสอบ · กดตรวจผลเมื่อเชื่อมต่อได้"
+        }
+        pendingCheckoutRecord = runCatching { checkoutJournal.read() }.getOrNull()
+        busy = false
     }
 
     val market = markets.find { it.id == selectedMarket }
