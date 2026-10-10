@@ -51,6 +51,12 @@ ok(!/android-build\/package\.json[^\n]*Capacitor Push Notifications/i.test(readi
 ok(manifest?.play?.provider_sharing_classification==='RESOLVED_CONSERVATIVE_LONGDO_LOCATION_SHARED','Provider sharing classification must not regress to pending');
 ok(manifest?.play?.data_safety_sharing==='YES_LONGDO_LOCATION_APP_FUNCTIONALITY','Manifest must lock Longdo location sharing for app functionality');
 ok(Array.isArray(manifest?.play?.service_provider_exceptions)&&manifest.play.service_provider_exceptions.includes('Supabase')&&manifest.play.service_provider_exceptions.includes('Firebase Cloud Messaging / Google'),'Manifest must retain Supabase/Firebase service-provider treatment');
+ok(manifest?.android?.platform==='NATIVE_ANDROID','Recovery manifest Android platform must be Native Android');
+ok(manifest?.android?.native_ci_rejects_webview===true,'Recovery manifest must preserve Native no-WebView gate');
+ok(manifest?.android?.legacy_capacitor_build_workflows_retired===true,'Legacy Capacitor build workflows must remain retired');
+ok(Array.isArray(manifest?.android?.allowed_android_build_workflows)&&manifest.android.allowed_android_build_workflows.length===1&&manifest.android.allowed_android_build_workflows[0]==='.github/workflows/build-native-rider-pilot.yml','Only the Native Android pilot workflow may remain an active Android build workflow');
+ok(manifest?.android?.release_version_code_strategy==='EXPLICIT_PER_APP_GT_OBSERVED_PLAY_MAX','Recovery manifest must preserve Play-history versionCode strategy');
+ok(manifest?.android?.release_gate_requires_backup_restore===true,'Recovery manifest must preserve Backup/Restore as a Native release hard gate');
 ok(manifest?.android?.native_scope==='Customer/Merchant/Rider','Recovery manifest must identify Native Android as the active release scope');
 ok(manifest?.android?.legacy_capacitor_release_workflows_retired===true,'Legacy Capacitor release workflows must remain retired');
 ok(!('capacitor_version' in (manifest.android||{}))&&!('push_plugin' in (manifest.android||{})),'Native recovery manifest must not treat Capacitor as the active Android runtime');
