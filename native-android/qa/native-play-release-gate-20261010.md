@@ -95,6 +95,14 @@ project plus the actual keystore. It verifies the keystore alias using keytool
 without logging secrets. Debug CI remains usable while physical certification is
 pending. Final signed build/inspection and Play Console submission remain gated.
 
+After the hard gate authorizes release packaging, `verify-native-release-artifacts.py`
+must inspect the actual signed Customer/Merchant/Rider APK/AAB outputs. It checks
+the expected applicationId, per-app versionCode, shared versionName, non-debuggable
+APK state, APK signing certificate, strict AAB JAR signature, SHA-256 for both
+artifacts, and enforces the same certified signer identity across all three apps.
+Source readiness for this verifier does not close the signed-artifact gate; PASS
+requires the real release outputs.
+
 ## Native voice privacy and Data Safety preflight
 
 All three apps use RECORD_AUDIO for optional order-scoped audio-only calls.
