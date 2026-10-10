@@ -2,6 +2,7 @@ package com.queuego.merchant
 
 import android.Manifest
 import android.content.Context
+import android.content.Intent
 import android.location.Location
 import android.location.LocationListener
 import android.location.LocationManager
@@ -90,14 +91,38 @@ import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
 class MainActivity : ComponentActivity() {
+    private var pushReferenceId by mutableStateOf<String?>(null)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContent { MerchantNativeEntryGate() }
+        readPushIntent(intent)
+        setContent {
+            MerchantNativeEntryGate(
+                pushReferenceId = pushReferenceId,
+                onPushConsumed = { pushReferenceId = null }
+            )
+        }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        readPushIntent(intent)
+    }
+
+    private fun readPushIntent(intent: Intent?) {
+        val reference = intent?.getStringExtra("queuego_push_reference_id")
+            ?: intent?.getStringExtra("referenceId")
+            ?: intent?.getStringExtra("reference_id")
+        pushReferenceId = reference?.trim()?.takeIf { it.isNotEmpty() }
     }
 }
 
 @Composable
-private fun MerchantNativeEntryGate() {
+private fun MerchantNativeEntryGate(
+    pushReferenceId: String? = null,
+    onPushConsumed: () -> Unit = {}
+) {
     val context = LocalContext.current
     val store = remember { SecureRoleSessionStore(context, "shop") }
     val api = remember { NativeAuthApi() }
@@ -127,7 +152,10 @@ private fun MerchantNativeEntryGate() {
                 }
             )
         }
-        current != null -> QueueGoMerchantApp()
+        current != null -> QueueGoMerchantApp(
+            pushReferenceId = pushReferenceId,
+            onPushConsumed = onPushConsumed
+        )
         else -> QueueGoTheme {
             MerchantNativeAuthentication(
                 store = store,
