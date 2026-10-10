@@ -32,8 +32,9 @@ for(const env of [
   'QG_RIDER_VERSION_CODE',
   'QG_CUSTOMER_PLAY_MAX_VERSION_CODE',
   'QG_MERCHANT_PLAY_MAX_VERSION_CODE',
-  'QG_RIDER_PLAY_MAX_VERSION_CODE'
-]) ok(workflow.includes(env),'release workflow missing certified version input '+env);
+  'QG_RIDER_PLAY_MAX_VERSION_CODE',
+  'QG_ANDROID_SIGNING_CERT_SHA256'
+]) ok(workflow.includes(env),'release workflow missing certified version/signing input '+env);
 const gateAt=workflow.indexOf('python3 native-android/qa/verify-native-release-gate.py');
 const buildAt=workflow.indexOf(':customer:assembleRelease');
 const artifactAt=workflow.indexOf('python3 native-android/qa/verify-native-release-artifacts.py');
