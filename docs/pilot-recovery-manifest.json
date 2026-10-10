@@ -482,7 +482,8 @@
     "data_safety_sharing": "YES_LONGDO_LOCATION_APP_FUNCTIONALITY",
     "service_provider_exceptions": [
       "Supabase",
-      "Firebase Cloud Messaging / Google"
+      "Firebase Cloud Messaging / Google",
+      "Cloudflare Realtime TURN"
     ],
     "longdo_service_provider_exception": false,
     "longdo_note": "Public Longdo terms reviewed do not establish a service-provider-only processing role. Declare location sharing for App functionality unless a QueueTech-Longdo DPA/commercial agreement later supports the exception.",
@@ -503,7 +504,11 @@
       "rider": "18_PLUS_ONLY"
     },
     "restrict_minor_access": "ENABLE_FOR_CLOSED_BETA",
-    "target_audience_console_entry": "PENDING_PLAY_CONSOLE_ENTRY"
+    "target_audience_console_entry": "PENDING_PLAY_CONSOLE_ENTRY",
+    "voice_data_safety": "COLLECTED_EPHEMERAL_REALTIME_AUDIO_NO_RECORDING",
+    "voice_turn_sharing_classification": "SERVICE_PROVIDER_EXCEPTION_SUBJECT_TO_QUEUEGO_CLOUDFLARE_DPA",
+    "cloudflare_turn_media_visibility": "ENCRYPTED_MEDIA_NOT_DECRYPTABLE_BY_TURN_RELAY",
+    "cloudflare_turn_policy_reviewed_at": "2026-10-10"
   },
   "remaining_external_blockers": [
     "Configure QG_SUPABASE_DB_URL, QG_SUPABASE_SERVICE_ROLE_KEY and QG_BACKUP_PASSPHRASE, then pass QueueGo Encrypted Backup Restore Drill.",
