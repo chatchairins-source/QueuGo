@@ -107,8 +107,12 @@ data class ServiceBanner(
 data class CartLine(val product: CustomerProduct, val quantity: Int)
 
 class CustomerApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
-    suspend fun loadShops(auth: NativeAuth): List<CustomerShop> {
-        val token = auth.session.accessToken
+    suspend fun loadShops(auth: NativeAuth): List<CustomerShop> =
+        loadShopsWithToken(auth.session.accessToken)
+
+    suspend fun loadShopsPublic(): List<CustomerShop> = loadShopsWithToken(null)
+
+    private suspend fun loadShopsWithToken(token: String?): List<CustomerShop> {
         val rows = http.array(http.get(
             "shop_profiles?select=id,shop_name,public_category,public_subcategories,public_logo,public_cover,public_description,address,latitude,longitude,status,public_open_time,public_close_time&status=eq.active",
             token
@@ -145,10 +149,16 @@ class CustomerApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
         }
     }
 
-    suspend fun loadProducts(auth: NativeAuth, shopId: String): List<CustomerProduct> {
+    suspend fun loadProducts(auth: NativeAuth, shopId: String): List<CustomerProduct> =
+        loadProductsWithToken(auth.session.accessToken, shopId)
+
+    suspend fun loadProductsPublic(shopId: String): List<CustomerProduct> =
+        loadProductsWithToken(null, shopId)
+
+    private suspend fun loadProductsWithToken(token: String?, shopId: String): List<CustomerProduct> {
         val path = "products?select=id,shop_id,name,description,price,delivery_price,image,available,delivery_available" +
             "&shop_id=eq." + http.enc(shopId) + "&delivery_available=eq.true&order=name.asc"
-        val rows = http.array(http.get(path, auth.session.accessToken))
+        val rows = http.array(http.get(path, token))
         return buildList {
             for (i in 0 until rows.length()) {
                 val r = rows.optJSONObject(i) ?: continue
@@ -340,9 +350,14 @@ class CustomerApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
         }
     }
 
-    suspend fun loadHomeBanners(auth: NativeAuth): List<HomeBanner> {
+    suspend fun loadHomeBanners(auth: NativeAuth): List<HomeBanner> =
+        loadHomeBannersWithToken(auth.session.accessToken)
+
+    suspend fun loadHomeBannersPublic(): List<HomeBanner> = loadHomeBannersWithToken(null)
+
+    private suspend fun loadHomeBannersWithToken(token: String?): List<HomeBanner> {
         val rows = runCatching {
-            http.array(http.get("system_settings?select=value&key=eq.home_service_banner&limit=1", auth.session.accessToken))
+            http.array(http.get("system_settings?select=value&key=eq.home_service_banner&limit=1", token))
         }.getOrElse { return emptyList() }
         val value = rows.optJSONObject(0)?.optJSONObject("value") ?: return emptyList()
         val slides = value.optJSONArray("slides") ?: return emptyList()
@@ -371,9 +386,15 @@ class CustomerApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
         }
     }
 
-    suspend fun loadServiceBanners(auth: NativeAuth): Map<String, ServiceBanner> {
+    suspend fun loadServiceBanners(auth: NativeAuth): Map<String, ServiceBanner> =
+        loadServiceBannersWithToken(auth.session.accessToken)
+
+    suspend fun loadServiceBannersPublic(): Map<String, ServiceBanner> =
+        loadServiceBannersWithToken(null)
+
+    private suspend fun loadServiceBannersWithToken(token: String?): Map<String, ServiceBanner> {
         val rows = runCatching {
-            http.array(http.get("system_settings?select=value&key=eq.service_banners&limit=1", auth.session.accessToken))
+            http.array(http.get("system_settings?select=value&key=eq.service_banners&limit=1", token))
         }.getOrElse { return emptyMap() }
         val value = rows.optJSONObject(0)?.optJSONObject("value") ?: return emptyMap()
         return buildMap {
