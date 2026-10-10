@@ -75,6 +75,33 @@ jobs:
             exit 1
           fi
 
+      - name: Validate certified release metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import os, re
+
+          version = os.environ.get("QG_NATIVE_VERSION_NAME", "")
+          if not re.fullmatch(r"\d+\.\d+\.\d+", version):
+              raise SystemExit("::error::version_name must be x.y.z")
+
+          for role in ("CUSTOMER", "MERCHANT", "RIDER"):
+              release_raw = os.environ.get(f"QG_{role}_VERSION_CODE", "")
+              play_raw = os.environ.get(f"QG_{role}_PLAY_MAX_VERSION_CODE", "")
+              if not release_raw.isdigit() or not play_raw.isdigit():
+                  raise SystemExit(f"::error::{role} versionCode inputs must be non-negative integers")
+              release_code, play_max = int(release_raw), int(play_raw)
+              if release_code <= 0 or release_code > 2100000000:
+                  raise SystemExit(f"::error::{role} release versionCode is out of range")
+              if release_code <= play_max:
+                  raise SystemExit(f"::error::{role} release versionCode must exceed observed Play maximum")
+
+          cert = re.sub(r"[^0-9a-fA-F]", "", os.environ.get("QG_ANDROID_SIGNING_CERT_SHA256", ""))
+          if not re.fullmatch(r"[0-9a-fA-F]{64}", cert):
+              raise SystemExit("::error::signing_certificate_sha256 must be a 32-byte SHA-256 fingerprint")
+          PY
+
       - name: Require external release secrets
         shell: bash
         env:
