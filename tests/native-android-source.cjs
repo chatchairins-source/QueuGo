@@ -25,6 +25,8 @@ for(const p of [
   'rider/src/main/java/com/queuego/rider/RiderSupportScreen.kt',
   'customer/src/main/java/com/queuego/customer/QueueGoCustomerApp.kt',
   'customer/src/main/java/com/queuego/customer/CustomerApi.kt',
+  'customer/src/main/java/com/queuego/customer/CustomerGuestShell.kt',
+  'customer/src/main/java/com/queuego/customer/CustomerPromotionScreen.kt',
   'customer/src/main/java/com/queuego/customer/CustomerOrderTrackingScreen.kt',
   'customer/src/main/java/com/queuego/customer/CustomerCartCheckout.kt',
   'customer/src/main/java/com/queuego/customer/CustomerMarketApi.kt',
@@ -102,6 +104,10 @@ ok(source.includes('qg_chat_moderation_state')&&source.includes('qg_accept_ugc_t
 ok(source.includes('order_chat_messages?select=id,sender_id,message,created_at'),'Customer native chat must use production chat table');
 ok(source.includes('qg_customer_save_review')&&source.includes('reviews?select=id,rating,food_rating,rider_rating,comment'),'Customer native completed orders must preserve review RPC');
 ok(source.includes('\"search\" -> CustomerSearchScreen')&&source.includes('CustomerBottomNavigation(screen, cart.sumOf')&&source.includes('Triple(\"search\", \"ค้นหา\", R.drawable.qg_nav_search)')&&source.includes('onSelect(key)'),'Customer native must preserve global search navigation');
+ok(source.includes('GuestCustomerShell(')&&source.includes('loadShopsPublic()')&&source.includes('loadProductsPublic(')&&source.includes('เข้าสู่ระบบเพื่อสั่งซื้อ'),'Customer native must preserve Production guest Home/catalog/cart/Market browsing before authentication');
+ok(source.includes('CustomerCartStore(context, "guest")')&&source.includes('destinationAfterLogin')&&source.includes('onCheckout = { onLogin("checkout") }'),'Customer native guest cart must persist locally and return to checkout after authentication');
+ok(source.includes('CustomerPromotionScreen(')&&source.includes('qg_public_promotions'),'Customer native guest routing must preserve public promotion browsing');
+ok(source.includes('auth: NativeAuth?')&&source.includes('onRequireLogin'),'Customer public shop/Market renderers must share native implementations without fake authenticated actors');
 ok(source.includes('ServiceCategoryScreen')&&source.includes('"category" -> ServiceCategoryScreen'),'Food Drink Grocery Shopping must use dedicated native category pages');
 
 ok(source.includes('CustomerCategoryButton')&&source.includes('.size(54.dp)')&&source.includes('Modifier.size(92.dp)')&&source.includes('top = 13.dp, bottom = 10.dp')&&source.includes('fontSize = 18.sp'),'Customer native Home must preserve approved web location, category, heading and shop-card proportions');
