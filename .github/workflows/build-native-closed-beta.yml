@@ -22,13 +22,15 @@ jobs:
       QG_ANDROID_KEY_PASSWORD: ${{ secrets.QG_ANDROID_KEY_PASSWORD }}
     steps:
       - uses: actions/checkout@v4
-      - name: Require Native source branch
+        with:
+          ref: queuego-native-android-v1
+      - name: Capture Native source identity
         run: |
           set -euo pipefail
-          test "${GITHUB_REF}" = "refs/heads/queuego-native-android-v1" || {
-            echo "::error::Closed Beta may only build from queuego-native-android-v1"
-            exit 1
-          }
+          native_sha="$(git rev-parse HEAD)"
+          test -n "$native_sha"
+          echo "QG_NATIVE_GIT_SHA=$native_sha" >> "$GITHUB_ENV"
+          echo "Closed Beta source: queuego-native-android-v1 @ $native_sha"
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
@@ -122,7 +124,6 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 40
     env:
-      QG_GIT_SHA: ${{ github.sha }}
       QG_RUN_ID: ${{ github.run_id }}
       QG_FIREBASE_GOOGLE_SERVICES_JSON_B64: ${{ secrets.QG_FIREBASE_GOOGLE_SERVICES_JSON_B64 }}
       ORG_GRADLE_PROJECT_QG_STORE_FILE: queuego-release.jks
@@ -131,6 +132,12 @@ jobs:
       ORG_GRADLE_PROJECT_QG_KEY_PASSWORD: ${{ secrets.QG_ANDROID_KEY_PASSWORD }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: queuego-native-android-v1
+      - name: Capture Native artifact provenance
+        run: |
+          set -euo pipefail
+          echo "QG_GIT_SHA=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
       - uses: actions/setup-java@v5
         with:
           distribution: temurin
