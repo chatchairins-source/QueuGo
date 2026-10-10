@@ -79,6 +79,8 @@ assert.match(evidenceWorkflow,/workflow_dispatch:/,'release evidence must be man
 assert.match(evidenceWorkflow,/refs\/heads\/queuego-native-android-v1/,'release evidence must only certify Native main');
 assert.match(evidenceWorkflow,/verify-native-release-gate\.py/,'evidence recorder must derive the canonical gate list from the verifier');
 assert.match(evidenceWorkflow,/evidence_sha256/,'evidence recorder must require immutable evidence digests');
+assert.match(evidenceWorkflow,/security_platform_auth/,'evidence recorder must preserve the explicit Auth gate exception');
+assert.match(evidenceWorkflow,/PASS_FREE_PLAN_CONTROLS/,'evidence recorder must support the verifier\'s documented Free-plan Auth status only for that gate');
 assert.match(evidenceWorkflow,/QG_CERT_P0[^\n]*\$\{\{ inputs\.p0 \}\}/,'evidence recorder must bind the operator P0 count');
 assert.match(evidenceWorkflow,/QG_CERT_P1[^\n]*\$\{\{ inputs\.p1 \}\}/,'evidence recorder must bind the operator P1 count');
 assert.match(evidenceWorkflow,/queuego-native-release-evidence/,'evidence recorder must upload one durable evidence artifact');
