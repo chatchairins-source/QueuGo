@@ -92,6 +92,17 @@ devices with role binding, and include the exact observed checks for that gate.
 These checks validate semantic completeness and evidence identity only; they do
 not infer that screenshots/videos are truthful and do not close any physical gate.
 
+`native-android/qa/capture-physical-release-evidence.py` is the supported
+real-device capture helper. It imports the canonical gate roles/checks directly
+from `verify-native-release-gate.py`, rejects emulator identities, hashes device
+and network identifiers with a per-capture random 256-bit salt that is not stored,
+copies/hashes evidence artifacts and can capture an ADB
+screenshot. It writes `status=DRAFT` and `operator_certified=false` by default;
+`--certify` is accepted only after every canonical check for that gate is
+explicitly supplied. Evidence output is required outside the source checkout.
+The helper reduces formatting/capture mistakes; it does not observe semantics on
+behalf of the operator and therefore does not make a physical gate PASS by itself.
+
 ## Still OPEN
 
 1. Real Firebase project with complete Customer/Merchant/Rider clients and
