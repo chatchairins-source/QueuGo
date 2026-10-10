@@ -54,6 +54,11 @@ for(const token of [
 assert.match(artifactVerifier,/APK\/AAB signer mismatch/,'release artifact verifier must reject per-role APK/AAB signer mismatch');
 assert.match(artifactVerifier,/len\(signer_digests\) != 1/,'all three release apps must use one certified signing identity');
 
+const nativeCi=fs.readFileSync('.github/workflows/build-native-rider-pilot.yml','utf8');
+for(const trigger of ["'tests/**'","'package.json'","'package-lock.json'"]){
+  assert.ok(nativeCi.includes(trigger),`Native CI path trigger must cover ${trigger}`);
+}
+
 const gradle=fs.readFileSync('native-android/build.gradle.kts','utf8');
 assert.match(gradle,/isDebuggable = false/);
 assert.match(gradle,/signingConfig = nativeReleaseSigning/);
