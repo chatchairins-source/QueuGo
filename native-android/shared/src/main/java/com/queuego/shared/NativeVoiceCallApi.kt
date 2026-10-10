@@ -24,6 +24,10 @@ data class NativeVoiceCall(
     val status: String,
     val callerUserId: String,
     val calleeUserId: String,
+    val callerName: String? = null,
+    val calleeName: String? = null,
+    val callerRole: String? = null,
+    val calleeRole: String? = null,
     val createdAt: String?,
     val expiresAt: String?
 ) {
@@ -51,6 +55,18 @@ class NativeVoiceCallApi(private val http: QueueGoNativeApi = QueueGoNativeApi()
                 .put("p_target", target)
                 .put("p_session_id", auth.session.sessionId)
         )))
+    }
+
+    suspend fun incoming(auth: NativeAuth): NativeVoiceCall? {
+        val value = http.rpc(
+            "qg_call_incoming",
+            auth.session.accessToken,
+            JSONObject().put("p_session_id", auth.session.sessionId)
+        )
+        if (value === JSONObject.NULL) return null
+        val obj = http.obj(value)
+        if (obj.length() == 0 || obj.optBoolean("none", false)) return null
+        return parse(obj)
     }
 
     suspend fun answer(auth: NativeAuth, callId: String): NativeVoiceCall =
@@ -132,6 +148,10 @@ class NativeVoiceCallApi(private val http: QueueGoNativeApi = QueueGoNativeApi()
         status = row.getString("status"),
         callerUserId = row.getString("caller_user_id"),
         calleeUserId = row.getString("callee_user_id"),
+        callerName = row.optString("caller_name").takeIf { it.isNotBlank() && it != "null" },
+        calleeName = row.optString("callee_name").takeIf { it.isNotBlank() && it != "null" },
+        callerRole = row.optString("caller_role").takeIf { it.isNotBlank() && it != "null" },
+        calleeRole = row.optString("callee_role").takeIf { it.isNotBlank() && it != "null" },
         createdAt = row.optString("created_at").takeIf { it.isNotBlank() && it != "null" },
         expiresAt = row.optString("expires_at").takeIf { it.isNotBlank() && it != "null" }
     )
