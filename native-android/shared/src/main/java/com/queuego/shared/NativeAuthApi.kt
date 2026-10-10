@@ -287,6 +287,18 @@ class NativeAuthApi(
         val grant = passwordGrant(identifier, password)
         val token = grant.getString("access_token")
         val authUserId = grant.getJSONObject("user").getString("id")
+        val rows = requestArray(
+            "GET",
+            "/rest/v1/users?select=id,name,role,status,auth_user_id&auth_user_id=eq." + enc(authUserId),
+            token
+        )
+        val row = rows.optJSONObject(0)
+        if (row?.optString("role") == "admin") {
+            throw NativeSessionInvalidException("บัญชีนี้เป็นบัญชี Admin กรุณาเข้าสู่ระบบที่หน้า Admin")
+        }
+        if (row != null && row.optString("status") in setOf("suspended", "deleted")) {
+            throw NativeSessionInvalidException("บัญชีถูกระงับหรือปิดใช้งาน")
+        }
         val staffRows = requestArray(
             "GET",
             "/rest/v1/pos_staff?select=user_id,shop_id,display_name,active&user_id=eq." +
@@ -300,24 +312,8 @@ class NativeAuthApi(
             }
             return@withContext posStaffAuth(grant, staff)
         }
-
-        val rows = requestArray(
-            "GET",
-            "/rest/v1/users?select=id,name,role,status,auth_user_id&auth_user_id=eq." + enc(authUserId),
-            token
-        )
-        if (rows.length() == 0) {
+        if (row == null || row.optString("role") != "shop") {
             throw NativeSessionInvalidException("บัญชีนี้ยังไม่ได้เข้าร่วมร้านค้า กรุณาใส่รหัสเชิญ")
-        }
-        val row = rows.getJSONObject(0)
-        if (row.optString("role") == "admin") {
-            throw NativeSessionInvalidException("บัญชีนี้เป็นบัญชี Admin กรุณาเข้าสู่ระบบที่หน้า Admin")
-        }
-        if (row.optString("role") != "shop") {
-            throw NativeSessionInvalidException("บัญชีนี้ยังไม่ได้เข้าร่วมร้านค้า กรุณาใส่รหัสเชิญ")
-        }
-        if (row.optString("status") in setOf("suspended", "deleted")) {
-            throw NativeSessionInvalidException("บัญชีถูกระงับหรือปิดใช้งาน")
         }
         val sessionId = UUID.randomUUID().toString()
         val claim = rpc(
