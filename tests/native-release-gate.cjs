@@ -34,6 +34,9 @@ assert.match(verifier,/evidence_rel\.is_absolute\(\)/,'release evidence must rej
 assert.match(verifier,/"\.\." in evidence_rel\.parts/,'release evidence must reject parent traversal');
 assert.match(verifier,/\[0-9a-fA-F\]\{64\}/,'release evidence must require a SHA-256 digest');
 assert.match(verifier,/gate evidence file is unavailable/,'release evidence must require a regular evidence file');
+assert.match(verifier,/def sha256_file\(path: Path\)/,'release evidence hashing must stream through a dedicated file helper');
+assert.match(verifier,/handle\.read\(1024 \* 1024\)/,'release evidence hashing must use bounded streaming chunks');
+assert.doesNotMatch(verifier,/path\.read_bytes\(\)/,'release evidence verifier must not load large evidence files fully into RAM');
 for(const legacy of ['.github/workflows/build-queuego-apks.yml','.github/workflows/build-queuego-pilot-apks.yml']){
   assert.equal(fs.existsSync(legacy),false,`legacy Capacitor Android build workflow must stay retired: ${legacy}`);
 }
