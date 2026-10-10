@@ -71,6 +71,10 @@ One root Gradle signing configuration covers all three apps. Release is explicit
 non-debuggable, with no debug-keystore fallback. Signing inputs are environment-only:
 QG_ANDROID_KEYSTORE_PATH, QG_ANDROID_STORE_PASSWORD, QG_ANDROID_KEY_ALIAS,
 QG_ANDROID_KEY_PASSWORD. Keystore files/configs are ignored by git.
+The final release also requires QG_ANDROID_SIGNING_CERT_SHA256 and rejects a
+keystore whose actual certificate fingerprint does not match that certified
+identity. The release-secret preflight prints this non-secret SHA-256 fingerprint
+after validating the store password, alias and key password.
 
 Release requires QG_NATIVE_VERSION_NAME (x.y.z), per-app release codes
 QG_CUSTOMER_VERSION_CODE, QG_MERCHANT_VERSION_CODE, QG_RIDER_VERSION_CODE,
@@ -103,6 +107,16 @@ and the AAB signer certificate fingerprint. Each role's APK/AAB signer must matc
 and the same certified signer identity is enforced across all three apps.
 Source readiness for this verifier does not close the signed-artifact gate; PASS
 requires the real release outputs.
+
+The final packaging entry point is `.github/workflows/build-native-release.yml`.
+It is manual-only and does not publish a GitHub Release. Before any APK/AAB task
+runs it requires a successful `queuego-native-release-certification` artifact
+from a workflow run on the exact same git HEAD, verifies all release evidence
+with `verify-native-release-gate.py`, requires complete Firebase/signing inputs,
+and requires each release versionCode to exceed the explicitly supplied observed
+Play Console maximum. Signed outputs remain internal Actions artifacts until the
+Play submission gate is separately completed. The workflow source being present
+does not change the current BLOCKED runtime state.
 
 ## Native voice privacy and Data Safety preflight
 

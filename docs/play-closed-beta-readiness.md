@@ -21,7 +21,7 @@ Closed Beta release remains **BLOCKED** until every hard gate below passes:
 - Play Data Safety + foreground-service declarations: BLOCKED — Play Console certification/evidence not completed
 - Android release signing: BLOCKED — run 38039197325 confirmed QG_ANDROID_KEYSTORE_B64, QG_ANDROID_STORE_PASSWORD, QG_ANDROID_KEY_ALIAS and QG_ANDROID_KEY_PASSWORD absent; the same run also confirmed QG_FIREBASE_GOOGLE_SERVICES_JSON_B64 absent
 
-The release workflow is intentionally configured to fail while hard gates are not certified.
+The final Native release workflow is manual-only and fail-closed. It cannot package signed APK/AAB outputs until an exact-HEAD certification artifact, complete Firebase/signing secrets, observed Play versionCode history, Backup/Restore certification, physical push/voice/lifecycle evidence, Blueprint parity, Play declarations and P0/P1=0 are all certified. Its source readiness does not make Closed Beta unblocked.
 
 ### Supabase Auth / password hardening
 

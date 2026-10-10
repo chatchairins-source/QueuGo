@@ -129,7 +129,10 @@ def verify() -> dict:
         signer_digests.add(cert_sha)
 
         run([jarsigner, "-verify", str(aab)])
-        aab_certificate = run([keytool, "-printcert", "-jarfile", str(aab)])
+        aab_certificate = run([
+            keytool, "-J-Duser.language=en", "-J-Duser.country=US",
+            "-printcert", "-jarfile", str(aab)
+        ])
         aab_cert_match = KEYTOOL_SHA256_RE.search(aab_certificate)
         if not aab_cert_match:
             raise ValueError(f"AAB signer certificate digest missing for {role}")
@@ -158,6 +161,9 @@ def verify() -> dict:
 
     result = {
         "source_sha": source_sha,
+        "github_run_id": os.environ.get("GITHUB_RUN_ID"),
+        "github_run_attempt": os.environ.get("GITHUB_RUN_ATTEMPT"),
+        "certification_run_id": os.environ.get("QG_NATIVE_CERTIFICATION_RUN_ID"),
         "version_name": version_name,
         "signer_certificate_sha256": next(iter(signer_digests)),
         "roles": artifacts,

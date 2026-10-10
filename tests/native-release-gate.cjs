@@ -28,6 +28,8 @@ for(const gate of ['service_area','ugc_chat_safety','security_platform_auth']){
 }
 assert.match(verifier,/PASS_FREE_PLAN_CONTROLS/,'Native release verifier must honor the documented Free-plan Auth compensating-control status');
 assert.match(verifier,/name == "security_platform_auth"/,'PASS_FREE_PLAN_CONTROLS exception must be scoped only to the Auth gate');
+assert.match(verifier,/QG_ANDROID_SIGNING_CERT_SHA256/,'Native release must require the certified signing certificate fingerprint');
+assert.match(verifier,/release signing certificate does not match the certified identity/,'Native release must reject the wrong signing identity');
 for(const legacy of ['.github/workflows/build-queuego-apks.yml','.github/workflows/build-queuego-pilot-apks.yml']){
   assert.equal(fs.existsSync(legacy),false,`legacy Capacitor Android build workflow must stay retired: ${legacy}`);
 }
@@ -47,7 +49,9 @@ for(const token of [
   '"aab_sha256"',
   '"signer_certificate_sha256"',
   '"aab_signer_certificate_sha256"',
-  '"apk_aab_signer_match"'
+  '"apk_aab_signer_match"',
+  '"github_run_id"',
+  '"certification_run_id"'
 ]){
   assert.ok(artifactVerifier.includes(token),`signed artifact verifier missing required check: ${token}`);
 }
