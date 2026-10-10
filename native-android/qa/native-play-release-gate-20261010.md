@@ -90,7 +90,9 @@ p0=0, p1=0, and every gate named in verify-native-release-gate.py with
 evidence_file and sha256 of the actual recorded evidence. Every gate requires
 status=PASS except security_platform_auth, which may use the documented
 PASS_FREE_PLAN_CONTROLS status while QueueGo remains on the Supabase Free plan.
-No example PASS report is supplied. Files/hashes prove evidence identity; they do not prove
+No example PASS report is supplied. The evidence report and its referenced files
+must live in one external bundle outside the source checkout; evidence paths may
+not escape that bundle. Files/hashes prove evidence identity; they do not prove
 physical behavior. The operator remains responsible for truthful certification.
 
 The verifier requires all three complete Firebase clients in one Production
