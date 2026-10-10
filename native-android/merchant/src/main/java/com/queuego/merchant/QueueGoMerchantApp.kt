@@ -1190,6 +1190,9 @@ private fun MerchantOrderDetail(
                         Column(Modifier.weight(1f)) {
                             Text(it.name, fontWeight = FontWeight.Bold)
                             if (!it.description.isNullOrBlank()) Text(it.description!!, color = QgMuted, style = MaterialTheme.typography.bodySmall)
+                            if (!it.optionSummary.isNullOrBlank()) {
+                                Text(it.optionSummary!!, color = QgRed, style = MaterialTheme.typography.bodySmall)
+                            }
                             Text("จำนวน " + it.quantity)
                         }
                         Text("฿" + "%.0f".format(it.totalPrice), fontWeight = FontWeight.Bold)
