@@ -6,6 +6,7 @@ on:
     branches:
       - queuego-native-android-v1
       - work-native-voice-call-v1-20261010
+      - work-native-voice-backend-v1-20261010
       - work-native-customer-logout-integration-20261010
       - work-native-customer-location-integration-v2-20261010
       - work-native-printer-ticket-parity-20261010
@@ -20,6 +21,8 @@ on:
       - 'native-android/**'
       - 'tests/native-android-source.cjs'
       - 'tests/native-pos-edit-idempotency.cjs'
+      - 'tests/native-voice-call-contract.cjs'
+      - 'ops/native-voice-call-schema-proposal-*.sql'
       - 'supabase/migrations/*pos_edit_bill_idempotency.sql'
       - 'ops/pos-edit-idempotency-schema-baseline-*.sql'
       - '.github/workflows/build-native-rider-pilot.yml'
@@ -81,6 +84,8 @@ jobs:
         run: npm test
       - name: Native POS edit idempotency SQL contracts
         run: node tests/native-pos-edit-idempotency.cjs
+      - name: Native voice call SQL contracts
+        run: node tests/native-voice-call-contract.cjs
       - name: Source integrity
         run: node tests/native-android-source.cjs
       - name: Verify launcher asset family
