@@ -386,7 +386,10 @@
     "native_release_workflow_packages_only_after_gate": true,
     "native_release_workflow_public_publish": false,
     "release_artifact_verifier_records_workflow_provenance": true,
-    "release_artifact_verifier_records_certification_run": true
+    "release_artifact_verifier_records_certification_run": true,
+    "release_signing_certificate_pin_required": true,
+    "release_signing_certificate_env": "QG_ANDROID_SIGNING_CERT_SHA256",
+    "release_secret_preflight_surfaces_certificate_sha256": true
   },
   "security": {
     "code_surface_hardened": true,
