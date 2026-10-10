@@ -159,6 +159,7 @@ private fun CustomerShell(
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     val liveMutex = remember { Mutex() }
     val context = LocalContext.current
+    val customerPushStore = remember(context) { CustomerPushStore(context) }
     val voiceController = remember(auth.user.id) { NativeVoiceCallController(context) }
     val voiceState by voiceController.state.collectAsState()
     DisposableEffect(voiceController) { onDispose { voiceController.close() } }
@@ -227,6 +228,38 @@ private fun CustomerShell(
             else null
         )
     }
+    val notificationPermission = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { /* Registration remains valid; Android decides whether notifications are displayed. */ }
+
+    LaunchedEffect(
+        auth.user.id,
+        auth.session.accessToken,
+        auth.session.sessionId
+    ) {
+        runCatching {
+            syncCustomerNativePush(context, auth, customerPushStore)
+        }
+        if (
+            android.os.Build.VERSION.SDK_INT >= 33 &&
+            customerFirebaseConfigured(context) &&
+            context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED &&
+            !customerPushStore.notificationPermissionAsked()
+        ) {
+            customerPushStore.markNotificationPermissionAsked()
+            notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
+    }
+
+    fun performLogout() {
+        scope.launch {
+            runCatching {
+                CustomerNativePushApi().unsubscribe(auth, customerPushStore.deviceId())
+            }
+            logout()
+        }
+    }
+
     var pendingVoiceCall by remember { mutableStateOf<Pair<String, String>?>(null) }
     var pendingVoiceAnswer by remember { mutableStateOf(false) }
     val voicePermission = rememberLauncherForActivityResult(
@@ -1008,7 +1041,7 @@ private fun CustomerShell(
                         supportInitialOrderId = null
                         screen = "support"
                     },
-                    logout = logout
+                    logout = ::performLogout
                 )
             }
         }
