@@ -110,8 +110,10 @@ Google Play requires Android 14+ apps to declare each foreground-service type in
 Play Console declaration status remains **BLOCKED** until these real-device videos and final Console entries exist.
 
 Policy sources:
-- https://support.google.com/googleplay/android-developer/answer/16558241
-- https://developer.android.com/develop/background-work/services/fgs/restrictions-bg-start
+- https://support.google.com/googleplay/android-developer/answer/13392821
+- https://support.google.com/googleplay/android-developer/answer/16559646
+- https://developer.android.com/about/versions/14/changes/fgs-types-required
+- https://developer.android.com/develop/background-work/services/fgs/service-types
 
 ### Account deletion
 
