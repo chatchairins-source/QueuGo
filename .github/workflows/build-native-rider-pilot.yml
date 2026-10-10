@@ -22,6 +22,8 @@ on:
       - 'tests/native-android-source.cjs'
       - 'tests/native-pos-edit-idempotency.cjs'
       - 'tests/native-voice-call-contract.cjs'
+      - 'tests/native-voice-turn-edge.cjs'
+      - 'supabase/functions/queuego-turn/**'
       - 'ops/native-voice-call-schema-proposal-*.sql'
       - 'supabase/migrations/*pos_edit_bill_idempotency.sql'
       - 'ops/pos-edit-idempotency-schema-baseline-*.sql'
@@ -86,6 +88,8 @@ jobs:
         run: node tests/native-pos-edit-idempotency.cjs
       - name: Native voice call SQL contracts
         run: node tests/native-voice-call-contract.cjs
+      - name: Native voice TURN edge contracts
+        run: node tests/native-voice-turn-edge.cjs
       - name: Source integrity
         run: node tests/native-android-source.cjs
       - name: Verify launcher asset family
