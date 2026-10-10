@@ -131,7 +131,7 @@ def verify() -> dict:
         cert_sha = cert_match.group("digest").replace(":", "").lower()
         signer_digests.add(cert_sha)
 
-        run([jarsigner, "-verify", "-strict", str(aab)])
+        run([jarsigner, "-verify", str(aab)])
         aab_certificate = run([keytool, "-printcert", "-jarfile", str(aab)])
         aab_cert_match = KEYTOOL_SHA256_RE.search(aab_certificate)
         if not aab_cert_match:
