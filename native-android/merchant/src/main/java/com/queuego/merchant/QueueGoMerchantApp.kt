@@ -1448,7 +1448,7 @@ private fun MerchantOrderItemEditor(
                 if (substituteProducts.isEmpty()) {
                     Text("ไม่มีสินค้าทดแทนที่เปิดขาย Delivery", color = QgMuted, style = MaterialTheme.typography.bodySmall)
                 } else {
-                    substituteProducts.take(12).forEach { product ->
+                    substituteProducts.forEach { product ->
                         Row(
                             Modifier
                                 .fillMaxWidth()
