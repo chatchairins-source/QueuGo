@@ -420,7 +420,14 @@
     "release_certification_runtime_gate": "BLOCKED_BUCKET_AND_SECRETS_AND_PHYSICAL_EVIDENCE",
     "release_secret_preflight_validates_evidence_storage_access": true,
     "release_secret_preflight_requires_supabase_url_variable": true,
-    "release_secret_preflight_requires_supabase_service_role": true
+    "release_secret_preflight_requires_supabase_service_role": true,
+    "release_certification_requires_private_bucket_metadata": true,
+    "release_certification_rejects_public_bucket": true,
+    "release_certification_redirect_following": false,
+    "release_certification_tls_only": true,
+    "release_certification_rejects_duplicate_zip_paths": true,
+    "release_certification_rejects_backslash_zip_paths": true,
+    "release_evidence_hashing": "STREAMING_SHA256_1_MIB_CHUNKS"
   },
   "security": {
     "code_surface_hardened": true,
