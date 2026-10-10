@@ -39,8 +39,8 @@ begin
     return;
   end if;
 
-  if position('and u.role = ''shop''' in v_before) = 0
-     or position('order by sp.created_at asc' in v_before) = 0 then
+  if (length(v_before)-length(replace(v_before,'and u.role = ''shop''','')))/length('and u.role = ''shop''') <> 1
+     or (length(v_before)-length(replace(v_before,'order by sp.created_at asc','')))/length('order by sp.created_at asc') <> 1 then
     raise exception 'GET_MY_SHOP_ORDERS_UNEXPECTED_DEFINITION';
   end if;
 
@@ -70,7 +70,7 @@ begin
   if v_before is null then raise exception 'LAUNDRY_MERCHANT_STATE_NOT_FOUND'; end if;
 
   if position(v_new in v_before) > 0 then return; end if;
-  if position(v_old in v_before) = 0 then
+  if (length(v_before)-length(replace(v_before,v_old,'')))/length(v_old) <> 1 then
     raise exception 'LAUNDRY_MERCHANT_STATE_UNEXPECTED_DEFINITION';
   end if;
 
@@ -99,8 +99,8 @@ begin
       continue;
     end if;
 
-    if position('where s.user_id=v_user' in v_before) = 0
-       or position('order by h.created_at' in v_before) = 0
+    if (length(v_before)-length(replace(v_before,'where s.user_id=v_user','')))/length('where s.user_id=v_user') <> 1
+       or (length(v_before)-length(replace(v_before,'order by h.created_at','')))/length('order by h.created_at') <> 1
        or position('order by h.created_at desc' in v_before) > 0 then
       raise exception 'LAUNDRY_WRITE_RPC_UNEXPECTED_DEFINITION: %',v_signature;
     end if;
