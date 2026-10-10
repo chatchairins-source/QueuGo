@@ -231,8 +231,6 @@
     "unified_push_execution_path_only": true
   },
   "android": {
-    "capacitor_version": "8.0.0",
-    "push_plugin": "@capacitor/push-notifications@8.0.0",
     "release_workflow_has_run": false,
     "hard_gate_blocks_build_without_restore_certification": true,
     "hard_gate_blocks_build_without_firebase_config": true,
@@ -240,7 +238,7 @@
     "hard_gate_blocks_build_without_physical_notification_certification": true,
     "release_secret_readiness": {
       "checked_by_github_actions": true,
-      "run_id": 37553473151,
+      "run_id": 38039197325,
       "ready": false,
       "missing": [
         "QG_FIREBASE_GOOGLE_SERVICES_JSON_B64",
@@ -249,11 +247,11 @@
         "QG_ANDROID_KEY_ALIAS",
         "QG_ANDROID_KEY_PASSWORD"
       ],
-      "run_attempt": 8,
-      "checked_at": "2026-10-07T15:54:11+07:00",
+      "run_attempt": 2,
+      "checked_at": "2026-10-10T10:22:14Z",
       "latest_validation_result": "FAIL"
     },
-    "pilot_test_workflow": ".github/workflows/build-queuego-pilot-apks.yml",
+    "pilot_test_workflow": ".github/workflows/build-native-rider-pilot.yml",
     "pilot_test_apk_ready_when_firebase_secret_present": true,
     "pilot_test_build_type": "debug",
     "closed_beta_build_type": "release",
@@ -280,18 +278,18 @@
     "signing_alias_preflight": true,
     "signing_key_password_preflight": true,
     "signing_secrets_written_to_gradle_properties": false,
-    "signing_secret_transport": "ORG_GRADLE_PROJECT environment variables",
-    "release_version_code_strategy": "GITHUB_WORKFLOW_RUN_NUMBER",
-    "release_version_name_strategy": "1.0.0-beta.<github.run_number>",
-    "release_artifact_package_verification": true,
-    "release_apk_non_debuggable_verification": true,
-    "release_apk_signature_verification": "APKSIGNER",
-    "release_aab_signature_verification": "JARSIGNER_STRICT",
-    "release_evidence_includes_git_sha": true,
-    "release_evidence_includes_github_run_id": true,
-    "release_evidence_includes_signing_certificate_sha256": true,
-    "release_evidence_includes_artifact_sha256": true,
-    "release_provenance_gate": "PASS",
+    "signing_secret_transport": "QG_ANDROID_* environment variables",
+    "release_version_code_strategy": "EXPLICIT_PER_APP_ENV_GT_OBSERVED_PLAY_MAX",
+    "release_version_name_strategy": "QG_NATIVE_VERSION_NAME_X_Y_Z",
+    "release_artifact_package_verification": false,
+    "release_apk_non_debuggable_verification": false,
+    "release_apk_signature_verification": "PENDING_SIGNED_NATIVE_RELEASE",
+    "release_aab_signature_verification": "PENDING_SIGNED_NATIVE_RELEASE",
+    "release_evidence_includes_git_sha": false,
+    "release_evidence_includes_github_run_id": false,
+    "release_evidence_includes_signing_certificate_sha256": false,
+    "release_evidence_includes_artifact_sha256": false,
+    "release_provenance_gate": "BLOCKED_EXTERNAL_EVIDENCE",
     "release_provenance_evidence": [
       "application_id",
       "version_code",
@@ -327,15 +325,18 @@
     "legacy_ungated_publish_workflows_removed": true,
     "removed_legacy_workflows": [
       ".github/workflows/publish-approved-icon-rc.yml",
-      ".github/workflows/publish-approved-apks.yml"
+      ".github/workflows/publish-approved-apks.yml",
+      ".github/workflows/build-queuego-apks.yml",
+      ".github/workflows/build-queuego-pilot-apks.yml"
     ],
     "allowed_android_build_workflows": [
-      ".github/workflows/build-queuego-pilot-apks.yml",
-      ".github/workflows/build-queuego-apks.yml"
+      ".github/workflows/build-native-rider-pilot.yml"
     ],
     "legacy_publish_retirement_commits": [
       "8100b9e7d87ca45290a83df6beb1c9c2d57506db",
-      "de253e5be9c09ee17b1f4e9274010e52e7231801"
+      "de253e5be9c09ee17b1f4e9274010e52e7231801",
+      "f6663b64117ca5cd6c5e5c82107dee9ab8bf957e",
+      "86823853fa2ad6e70186ce51c8bc7c175c65d4ec"
     ],
     "legacy_publish_regression_guard_commit": "6dda59b3b22b11aad682d4733cd36ab998087531",
     "legacy_github_release_assets_present": true,
@@ -345,7 +346,12 @@
       "queuego-android-rc-20261004-approved-icon",
       "queuego-customer-rc-20261001"
     ],
-    "legacy_release_policy": "HISTORICAL_ONLY_DO_NOT_USE_FOR_PILOT_OR_CLOSED_BETA"
+    "legacy_release_policy": "HISTORICAL_ONLY_DO_NOT_USE_FOR_PILOT_OR_CLOSED_BETA",
+    "native_scope": "Customer/Merchant/Rider",
+    "native_build_system": "Gradle multi-module",
+    "legacy_capacitor_release_workflows_retired": true,
+    "pilot_builds_without_firebase_in_warning_mode": true,
+    "physical_push_certification_requires_firebase_secret": true
   },
   "security": {
     "code_surface_hardened": true,
