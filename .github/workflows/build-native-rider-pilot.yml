@@ -6,6 +6,7 @@ on:
     branches:
       - queuego-native-android-v1
       - work-native-merchant-printer-20261010
+      - work-native-pos-edit-idempotency-20261010
     paths:
       - 'native-android/**'
       - 'tests/native-android-source.cjs'
@@ -66,6 +67,8 @@ jobs:
         run: npm ci
       - name: Full QueueGo regression
         run: npm test
+      - name: Native POS edit idempotency SQL contracts
+        run: node tests/native-pos-edit-idempotency.cjs
       - name: Source integrity
         run: node tests/native-android-source.cjs
       - name: Verify launcher asset family
