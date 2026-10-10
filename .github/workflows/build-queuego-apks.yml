@@ -8,6 +8,10 @@ jobs:
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
+      - name: Block historical Capacitor Android release
+        run: |
+          echo "::error::Historical Capacitor/WebView Android release is disabled. Use QueueGo Native Android Closed Beta from queuego-native-android-v1."
+          exit 1
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
