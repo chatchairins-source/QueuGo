@@ -183,8 +183,8 @@ private fun MerchantLoginField(value: String, change: (String) -> Unit, hint: St
             val color = Color(0xFF59616C)
             // The Production password toggle keeps this exact SVG on both visibility states.
             val path = PathParser.createPathFromPathData(
-                "M3 3l18 18M10.6 10.7a2 2 0 002.7 2.7 " +
-                "M8.4 5.5A10.5 10.5 0 0112 5c5 0 8.5 4.5 9 7a10 10 0 01-2.3 4.2 " +
+                "M3 3l18 18M10.6 10.7a2 2 0 0 0 2.7 2.7 " +
+                "M8.4 5.5A10.5 10.5 0 0 1 12 5c5 0 8.5 4.5 9 7a10 10 0 0 1 -2.3 4.2 " +
                 "M6.1 6.1C4.5 7.3 3.4 9 3 12c.5 2.5 4 7 9 7 1.2 0 2.4-.3 3.4-.7"
             )?.asComposePath()
             if (path != null) scale(iconScale, iconScale, pivot = Offset.Zero) {
