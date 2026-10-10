@@ -9,6 +9,8 @@ import subprocess
 import sys
 import tempfile
 
+from verify_native_physical_evidence import verify_physical_evidence
+
 ROOT = Path(__file__).resolve().parents[2]
 
 
@@ -68,6 +70,9 @@ def verify():
             raise ValueError(f"gate evidence file is unavailable: {name}")
         if sha256_file(path) != str(digest).lower():
             raise ValueError(f"evidence hash mismatch: {name}")
+
+    verify_physical_evidence(report, report_file, head)
+
     if not re.fullmatch(r"\d+\.\d+\.\d+", os.environ.get("QG_NATIVE_VERSION_NAME", "")):
         raise ValueError("release versionName must be explicitly set to x.y.z")
     projects = set()
