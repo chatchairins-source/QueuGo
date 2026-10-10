@@ -104,6 +104,16 @@ and the same certified signer identity is enforced across all three apps.
 Source readiness for this verifier does not close the signed-artifact gate; PASS
 requires the real release outputs.
 
+The final packaging entry point is `.github/workflows/build-native-release.yml`.
+It is manual-only and does not publish a GitHub Release. Before any APK/AAB task
+runs it requires a successful `queuego-native-release-certification` artifact
+from a workflow run on the exact same git HEAD, verifies all release evidence
+with `verify-native-release-gate.py`, requires complete Firebase/signing inputs,
+and requires each release versionCode to exceed the explicitly supplied observed
+Play Console maximum. Signed outputs remain internal Actions artifacts until the
+Play submission gate is separately completed. The workflow source being present
+does not change the current BLOCKED runtime state.
+
 ## Native voice privacy and Data Safety preflight
 
 All three apps use RECORD_AUDIO for optional order-scoped audio-only calls.
