@@ -2,6 +2,20 @@ package com.queuego.shared
 
 import org.json.JSONObject
 
+data class NativeVoiceIceServer(
+    val urls: List<String>,
+    val username: String? = null,
+    val credential: String? = null
+) {
+    init {
+        require(urls.isNotEmpty())
+        require(urls.all { url ->
+            url.startsWith("stun:") || url.startsWith("stuns:") ||
+                url.startsWith("turn:") || url.startsWith("turns:")
+        }) { "ICE server URL ไม่ถูกต้อง" }
+    }
+}
+
 data class NativeVoiceCall(
     val id: String,
     val orderId: String,
@@ -59,6 +73,33 @@ class NativeVoiceCallApi(private val http: QueueGoNativeApi = QueueGoNativeApi()
             auth.session.accessToken,
             JSONObject().put("p_call_id", callId).put("p_session_id", auth.session.sessionId)
         )))
+
+    suspend fun iceConfig(auth: NativeAuth, callId: String): List<NativeVoiceIceServer> {
+        val result = http.obj(http.rpc(
+            "qg_call_ice_config",
+            auth.session.accessToken,
+            JSONObject().put("p_call_id", callId).put("p_session_id", auth.session.sessionId)
+        ))
+        val rows = result.optJSONArray("ice_servers") ?: return emptyList()
+        return buildList {
+            for (index in 0 until rows.length()) {
+                val row = rows.optJSONObject(index) ?: continue
+                val urls = row.optJSONArray("urls")?.let { values ->
+                    buildList {
+                        for (i in 0 until values.length()) {
+                            values.optString(i).takeIf { it.isNotBlank() }?.let(::add)
+                        }
+                    }
+                }.orEmpty()
+                if (urls.isEmpty()) continue
+                add(NativeVoiceIceServer(
+                    urls = urls,
+                    username = row.optString("username").takeIf { it.isNotBlank() },
+                    credential = row.optString("credential").takeIf { it.isNotBlank() }
+                ))
+            }
+        }
+    }
 
     suspend fun active(auth: NativeAuth, orderId: String): NativeVoiceCall? {
         val value = http.rpc(
