@@ -84,14 +84,22 @@ def verify() -> dict:
         raise ValueError("QG_ANDROID_EXPECTED_CERT_SHA256 must be the certified 64-hex SHA-256 fingerprint")
 
     expected_codes: dict[str, int] = {}
+    observed_play_max: dict[str, int] = {}
     for role in ROLES:
         raw = os.environ.get(f"QG_{role.upper()}_VERSION_CODE", "")
+        play_raw = os.environ.get(f"QG_{role.upper()}_PLAY_MAX_VERSION_CODE", "")
         if not re.fullmatch(r"\d+", raw):
             raise ValueError(f"QG_{role.upper()}_VERSION_CODE must be an explicit positive integer")
+        if not re.fullmatch(r"\d+", play_raw):
+            raise ValueError(f"QG_{role.upper()}_PLAY_MAX_VERSION_CODE must be the observed highest Play versionCode")
         code = int(raw)
+        play_max = int(play_raw)
         if code <= 0 or code > 2100000000:
             raise ValueError(f"release versionCode is out of range for {role}")
+        if code <= play_max:
+            raise ValueError(f"release artifact versionCode must exceed observed Play history for {role}")
         expected_codes[role] = code
+        observed_play_max[role] = play_max
 
     aapt = android_build_tool("aapt")
     apksigner = android_build_tool("apksigner")
@@ -101,6 +109,8 @@ def verify() -> dict:
         raise ValueError("jarsigner and keytool are required from a JDK")
 
     source_sha = run(["git", "rev-parse", "HEAD"]).strip()
+    if run(["git", "status", "--porcelain", "--untracked-files=normal"]).strip():
+        raise ValueError("release artifact verification requires a clean source checkout")
     artifacts: dict[str, dict] = {}
     signer_digests: set[str] = set()
 
@@ -147,6 +157,7 @@ def verify() -> dict:
         artifacts[role] = {
             "application_id": package,
             "version_code": expected_codes[role],
+            "observed_play_max_version_code": observed_play_max[role],
             "version_name": version_name,
             "apk": str(apk.relative_to(ROOT)),
             "apk_sha256": sha256(apk),
