@@ -196,6 +196,9 @@ jobs:
           pilot_run_id = data.get("native_pilot_run_id")
           if type(pilot_run_id) is not int or pilot_run_id <= 0:
               raise SystemExit("::error::Certification Native Pilot run id is missing or invalid")
+          backup_run_id = data.get("backup_restore_run_id")
+          if type(backup_run_id) is not int or backup_run_id <= 0:
+              raise SystemExit("::error::Certification Backup Restore run id is missing or invalid")
           PY
           pilot_run_id="$(jq -r '.native_pilot_run_id // empty' "$certification_metadata")"
           pilot_meta="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$pilot_run_id")"
@@ -213,6 +216,32 @@ jobs:
             exit 1
           fi
           echo "QG_CERTIFIED_NATIVE_PILOT_RUN_ID=$pilot_run_id" >> "$GITHUB_ENV"
+
+          backup_run_id="$(jq -r '.backup_restore_run_id // empty' "$certification_metadata")"
+          backup_meta="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$backup_run_id")"
+          backup_head="$(jq -r '.head_sha // empty' <<<"$backup_meta")"
+          backup_path="$(jq -r '.path // empty' <<<"$backup_meta")"
+          backup_branch="$(jq -r '.head_branch // empty' <<<"$backup_meta")"
+          backup_event="$(jq -r '.event // empty' <<<"$backup_meta")"
+          backup_conclusion="$(jq -r '.conclusion // empty' <<<"$backup_meta")"
+          if [ "$backup_head" != "$GITHUB_SHA" ] || \
+             [ "$backup_path" != ".github/workflows/backup-restore-drill.yml" ] || \
+             [ "$backup_branch" != "queuego-native-android-v1" ] || \
+             [ "$backup_event" != "workflow_dispatch" ] || \
+             [ "$backup_conclusion" != "success" ]; then
+            echo "::error::Certification references an invalid Backup Restore Drill run"
+            exit 1
+          fi
+          backup_artifacts="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$backup_run_id/artifacts?per_page=100")"
+          valid_backup_count="$(jq '[.artifacts[]
+            | select(.expired == false)
+            | select(.size_in_bytes > 0)
+            | select(.name | startswith("queuego-backup-"))] | length' <<<"$backup_artifacts")"
+          if [ "$valid_backup_count" -lt 1 ]; then
+            echo "::error::Certification Backup Restore Drill artifact is unavailable or expired"
+            exit 1
+          fi
+          echo "QG_CERTIFIED_BACKUP_RESTORE_RUN_ID=$backup_run_id" >> "$GITHUB_ENV"
           echo "QG_NATIVE_RELEASE_EVIDENCE=$report" >> "$GITHUB_ENV"
 
       - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
