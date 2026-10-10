@@ -355,7 +355,7 @@ class NativeAuthApi(
         require(Regex("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$").matches(cleanEmail)) {
             "กรุณากรอกอีเมลให้ถูกต้อง"
         }
-        require(password.length >= 8) { "รหัสผ่านต้องมีอย่างน้อย 8 ตัว" }
+        requireNativeStrongPassword(password)
         require(cleanSecret.isNotBlank()) { "กรุณากรอกรหัสเชิญ" }
 
         val grant = try {
