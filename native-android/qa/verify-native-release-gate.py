@@ -132,6 +132,11 @@ def verify_physical_gate_semantics(envelope: dict, gate: str) -> None:
         blocking = envelope.get("blocking_differences")
         if type(blocking) is not int or blocking != 0:
             raise ValueError(f"physical blueprint blocking_differences must equal zero: {gate}")
+        matrix_path = ROOT / "native-android" / "qa" / "native-screen-coverage-20261010.json"
+        expected_matrix_sha = sha256_file(matrix_path)
+        observed_matrix_sha = str(envelope.get("coverage_matrix_sha256", "")).lower()
+        if observed_matrix_sha != expected_matrix_sha:
+            raise ValueError(f"physical blueprint coverage matrix SHA-256 mismatch: {gate}")
 
 
 def bundle_file(bundle_root: Path, relative: str, label: str) -> Path:
