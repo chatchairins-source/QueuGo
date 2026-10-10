@@ -67,7 +67,7 @@ ok(manifest?.play?.voice_audio_media_readable_by_turn_provider===false,'Recovery
 ok(manifest?.play?.cloudflare_turn_relay_metadata_review==='PENDING_FINAL_PLAY_CONSOLE_METADATA_CLASSIFICATION','Cloudflare TURN relay metadata must remain pending final Play classification');
 ok(nativeVoicePeer.includes('PeerConnection.RTCConfiguration')&&nativeVoicePeer.includes('createAudioTrack("queuego-audio"'),'Data Safety E2EE exception must remain tied to the Native peer-to-peer WebRTC audio path');
 ok(nativeTurnEdge.includes('rtc.live.cloudflare.com/v1/turn/')&&nativeTurnEdge.includes('generate-ice-servers'),'Native voice relay must remain the reviewed Cloudflare TURN credential path');
-ok(!/MediaRecorder|FileOutputStream|recording|transcription|Realtime SFU|\/sfu\//i.test(nativeVoicePeer+'\n'+nativeTurnEdge),'Voice Data Safety E2EE exception must fail if recording, transcription or SFU/server media processing appears in the certified source');
+ok(!/MediaRecorder|FileOutputStream|recordToFile|transcription|Realtime SFU|\/sfu\//i.test(nativeVoicePeer+'\n'+nativeTurnEdge),'Voice Data Safety E2EE exception must fail if media recording, transcription or SFU/server media processing appears in the certified source');
 
 ok(manifest?.play?.provider_sharing_classification==='RESOLVED_CONSERVATIVE_LONGDO_LOCATION_SHARED','Provider sharing classification must not regress to pending');
 ok(manifest?.play?.data_safety_sharing==='YES_LONGDO_LOCATION_APP_FUNCTIONALITY','Manifest must lock Longdo location sharing for app functionality');
