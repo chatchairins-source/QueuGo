@@ -5,6 +5,9 @@ on:
   push:
     branches:
       - queuego-native-android-v1
+      - work-native-closed-beta-release-v1-20261010
+      - work-native-closed-beta-finalize-v1-20261010
+      - work-native-closed-beta-integration-v1-20261010
       - work-native-voice-call-v1-20261010
       - work-native-voice-controller-v1-20261010
       - work-native-voice-turn-client-v1-20261010
@@ -23,6 +26,13 @@ on:
       - work-native-pos-edit-idempotency-20261010
     paths:
       - 'native-android/**'
+      - 'docs/pilot-recovery-manifest.json'
+      - 'docs/privacy.html'
+      - 'docs/play-closed-beta-readiness.md'
+      - 'docs/play-app-access-content-rating.md'
+      - 'docs/closed-beta-secrets-checklist.md'
+      - '.github/workflows/build-native-closed-beta.yml'
+      - 'tests/native-closed-beta-readiness.cjs'
       - 'tests/native-android-source.cjs'
       - 'tests/native-pos-edit-idempotency.cjs'
       - 'tests/native-voice-call-contract.cjs'
@@ -124,6 +134,8 @@ jobs:
         run: node tests/native-voice-ui-contract.cjs
       - name: Native backend migration mirror
         run: node tests/native-backend-migration-sync.cjs
+      - name: Native Closed Beta readiness
+        run: node tests/native-closed-beta-readiness.cjs
       - name: Source integrity
         run: node tests/native-android-source.cjs
       - name: Verify launcher asset family
@@ -140,6 +152,18 @@ jobs:
           cp native-android/rider/build/outputs/apk/androidTest/debug/rider-debug-androidTest.apk artifacts/native-rider-launch/baseline/rider-test.apk
       - name: Build three native APKs
         run: gradle -p native-android :customer:assembleDebug :merchant:assembleDebug :rider:assembleDebug :rider:assembleDebugAndroidTest --no-build-cache --stacktrace
+      - name: Compile three native release variants without publishing
+        env:
+          ORG_GRADLE_PROJECT_QG_VERSION_CODE: ${{ github.run_number }}
+          ORG_GRADLE_PROJECT_QG_VERSION_NAME: 1.0.0-ci.${{ github.run_number }}
+          ORG_GRADLE_PROJECT_QG_INTERNAL_RELEASE_COMPILE_ONLY: "true"
+        run: |
+          gradle -p native-android \
+            :customer:assembleRelease :customer:bundleRelease \
+            :merchant:assembleRelease :merchant:bundleRelease \
+            :rider:assembleRelease :rider:bundleRelease \
+            --no-build-cache --stacktrace
+          echo "Release variants compiled for CI verification only; no release APK/AAB is uploaded by this workflow."
       - name: Reject WebView
         run: |
           if grep -R -E 'android\.webkit\.WebView|<WebView\b|loadUrl\(' native-android; then
