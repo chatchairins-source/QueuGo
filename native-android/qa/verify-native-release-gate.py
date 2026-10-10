@@ -12,6 +12,7 @@ import tempfile
 ROOT = Path(__file__).resolve().parents[2]
 GATES = (
     "full_native_ci", "production_backend", "backup_restore", "security_regression",
+    "service_area", "ugc_chat_safety", "security_platform_auth",
     "firebase_three_packages", "physical_push_customer", "physical_push_merchant",
     "physical_push_rider", "physical_voice_two_devices_two_networks", "turn_relay",
     "voice_session_order_block_authorization", "rider_floating_q",
