@@ -17,6 +17,33 @@ try{
   assert.equal(result.status,1,'stale certification must fail');
   assert.match(result.stderr,/exact release HEAD/);
 }finally{fs.rmSync(dir,{recursive:true,force:true});}
+
+const traversalDir=fs.mkdtempSync(path.join(os.tmpdir(),'qg-release-traversal-'));
+try{
+  const outside=path.join(path.dirname(traversalDir),'qg-release-outside-evidence.txt');
+  fs.writeFileSync(outside,'not certified bundle evidence');
+  const digest=require('node:crypto').createHash('sha256').update(fs.readFileSync(outside)).digest('hex');
+  const head=spawnSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).stdout.trim();
+  const gateNames=[
+    'full_native_ci','production_backend','backup_restore','security_regression',
+    'service_area','ugc_chat_safety','security_platform_auth','firebase_three_packages',
+    'physical_push_customer','physical_push_merchant','physical_push_rider',
+    'physical_voice_two_devices_two_networks','turn_relay','voice_session_order_block_authorization',
+    'rider_floating_q','customer_blueprint','merchant_blueprint','rider_blueprint',
+    'android_lifecycle_permissions_upload_location','privacy_data_safety_account_deletion',
+    'play_store_preflight','release_signing'
+  ];
+  const gates={};
+  for(const name of gateNames){
+    gates[name]={status:name==='security_platform_auth'?'PASS_FREE_PLAN_CONTROLS':'PASS',evidence_file:'../'+path.basename(outside),sha256:digest};
+  }
+  const report=path.join(traversalDir,'report.json');
+  fs.writeFileSync(report,JSON.stringify({source_sha:head,p0:0,p1:0,gates}));
+  const traversal=spawnSync('python3',[script],{env:{...env,QG_NATIVE_RELEASE_EVIDENCE:report},encoding:'utf8'});
+  assert.equal(traversal.status,1,'release evidence traversal must fail');
+  assert.match(traversal.stderr,/escapes the certified bundle/);
+  fs.rmSync(outside,{force:true});
+}finally{fs.rmSync(traversalDir,{recursive:true,force:true});}
 const verifier=fs.readFileSync(script,'utf8');
 assert.ok(verifier.includes('for role in ("customer", "merchant", "rider")'),'release verifier must apply Play history checks to Customer, Merchant and Rider');
 assert.ok(verifier.includes('play_max_name = f"QG_{role.upper()}_PLAY_MAX_VERSION_CODE"'),'release verifier must derive the per-role observed Play max environment name');
