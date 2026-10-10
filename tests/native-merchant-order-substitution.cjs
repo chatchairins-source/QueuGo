@@ -20,7 +20,7 @@ ok(migration.includes("'ร้านปรับรายการสินค�
 
 ok(api.includes('select=id,product_id,item_name,description,quantity,unit_price,total_price,item_image'),'Native Merchant must load editable item identity and unit price');
 ok(api.includes('data class MerchantOrderEditItem'),'Native Merchant must model edit payloads');
-ok(api.includes('qg_merchant_edit_order_items'),'Native Merchant must call the Production substitution RPC');
+ok(api.includes('qg_merchant_action_once')&&api.includes('.put("p_kind", "order_items")'),'Native Merchant substitution must use the shared idempotent Merchant wrapper');
 ok(api.includes('require(items.size in 1..30)'),'Native API must mirror item-count bounds before network');
 ok(api.includes('require(item.quantity in 1..99)'),'Native API must mirror quantity bounds before network');
 ok(api.includes('(item.itemId.isNullOrBlank()) xor (item.productId.isNullOrBlank())'),'Each edit row must identify exactly an existing item or a substitute product');
