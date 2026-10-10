@@ -34,7 +34,7 @@ for(const [role,label] of roles){
   assert.match(appGradle,new RegExp(`namespace\\s*=\\s*"com\\.queuego\\.${role}"`));
   assert.match(appGradle,new RegExp(`applicationId\\s*=\\s*"com\\.queuego\\.${role}"`));
   const manifest=fs.readFileSync(`native-android/${role}/src/main/AndroidManifest.xml`,'utf8');
-  assert.match(manifest,new RegExp(`android:label="${label.replace(/[.*+?^{}()|[\\]\\\\]/g,'\\\\console.log('Native release packaging guard: PASS (negative authorization checks; physical/signing certification remains OPEN)');')}"`));
+  assert.match(manifest,new RegExp(`android:label="${label}"`));
   assert.match(manifest,/android:icon="@mipmap\/ic_queuego_launcher"/);
   assert.match(manifest,/android:roundIcon="@mipmap\/ic_queuego_launcher"/);
   assert.ok(fs.existsSync(`native-android/branding/${role}-play-store-512.png`),`${role} Play Store 512px icon missing`);
