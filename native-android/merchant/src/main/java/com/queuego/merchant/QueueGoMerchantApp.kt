@@ -1147,7 +1147,7 @@ private fun MerchantOrderDetail(
         }
         Text(order.number, fontWeight = FontWeight.Black, style = MaterialTheme.typography.headlineSmall)
         Spacer(Modifier.height(6.dp))
-        QgStatusPill(merchantStatus(order.status), order.status != "cancelled")
+        QgStatusPill(merchantStatus(order.status, order.riderArrivedCustomerAt), order.status !in setOf("cancelled", "no_rider_available"))
         Spacer(Modifier.height(12.dp))
         QgCard(Modifier.fillMaxWidth()) {
             Column {
