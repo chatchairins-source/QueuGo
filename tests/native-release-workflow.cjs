@@ -61,7 +61,7 @@ for(const task of [
   ':merchant:assembleRelease',':merchant:bundleRelease',
   ':rider:assembleRelease',':rider:bundleRelease'
 ]) ok(workflow.includes(task),'release workflow missing task '+task);
-ok(workflow.includes('actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02'),'certified outputs must remain internal Actions artifacts through the reviewed pinned action');
+ok(workflow.includes('actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9'),'certified outputs must remain internal Actions artifacts through the reviewed pinned action');
 ok(!/gh release|create-release|softprops\/action-gh-release|ncipollo\/release-action/i.test(workflow),'workflow must not publish a GitHub Release');
 ok(workflow.includes('if: always()')&&workflow.includes('queuego-release.keystore'),'decoded release credentials must be cleaned on every exit');
 ok(!/assembleDebug|bundleDebug/.test(workflow),'certified release workflow must not package debug artifacts');
