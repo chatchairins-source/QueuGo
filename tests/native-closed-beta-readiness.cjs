@@ -81,7 +81,7 @@ ok('Cloudflare TURN is retained as service provider',(manifest?.play?.service_pr
 ok('Cloudflare TURN media remains encrypted',manifest?.play?.cloudflare_turn_media_visibility==='ENCRYPTED_MEDIA_NOT_DECRYPTABLE_BY_TURN_RELAY');
 ok('Play readiness allows user-initiated RECORD_AUDIO',/RECORD_AUDIO[^\n]*user-initiated|RECORD_AUDIO[^\n]*QueueGo in-app voice/i.test(readiness));
 ok('Play readiness no longer describes active Android release as WebView',!/data transmitted off-device from an app-controlled WebView/i.test(readiness)&&!/web application running inside Capacitor/i.test(readiness));
-ok('Play readiness uses Native Firebase dependency evidence',/native-android\/customer[\s\S]*Firebase Cloud Messaging/.test(readiness)&&!/android-build\/package\.json[^\n]*Capacitor Push Notifications/i.test(readiness));
+ok('Play readiness uses Native Firebase dependency evidence',/Native Customer\/Merchant\/Rider use Firebase Messaging only/i.test(readiness)&&!/android-build\/package\.json[^\n]*Capacitor Push Notifications/i.test(readiness));
 ok('Play readiness still forbids background location',/ACCESS_BACKGROUND_LOCATION/.test(readiness));
 ok('Play Data Safety includes real-time voice audio',/Voice or sound recordings/.test(readiness)&&/Real-time microphone audio/.test(readiness));
 ok('Play readiness documents Cloudflare TURN processor',/Cloudflare Realtime TURN/.test(readiness)&&/Cloudflare DPA/.test(readiness)&&/cannot decrypt the media/i.test(readiness));
