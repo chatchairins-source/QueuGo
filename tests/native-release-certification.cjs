@@ -14,7 +14,13 @@ ok(cert.includes('secrets.QG_SUPABASE_SERVICE_ROLE_KEY'),'certification must use
 ok(cert.includes('/storage/v1/object/authenticated/'),'certification must download evidence from private authenticated Storage');
 ok(cert.includes('Authorization: Bearer $QG_SUPABASE_SERVICE_ROLE_KEY')&&cert.includes('apikey: $QG_SUPABASE_SERVICE_ROLE_KEY'),'private evidence download must authenticate server-side');
 ok(cert.includes('evidence_bundle_sha256')&&cert.includes('sha256sum -c -'),'certification must verify the evidence ZIP SHA-256 before extraction');
+ok(cert.includes('/storage/v1/bucket/$QG_EVIDENCE_BUCKET'),'certification must verify bucket metadata before object download');
+ok(cert.includes('Release evidence bucket must remain private'),'certification must reject a public evidence bucket');
+ok(cert.includes("--proto '=https'")&&cert.includes('--tlsv1.2'),'certification Storage requests must require HTTPS/TLS');
+ok(!cert.includes('--location'),'certification must not follow redirects while sending service-role headers');
 ok(cert.includes('Evidence ZIP contains path traversal'),'certification must reject ZIP traversal');
+ok(cert.includes('Evidence ZIP contains duplicate paths'),'certification must reject duplicate ZIP entry paths');
+ok(cert.includes('Evidence ZIP contains non-portable backslash paths'),'certification must reject backslash ZIP paths');
 ok(cert.includes('Evidence ZIP may not contain symlinks'),'certification must reject ZIP symlinks');
 ok(cert.includes('Evidence ZIP exceeds 4 GiB uncompressed limit'),'certification must bound extracted evidence size');
 ok(cert.includes('native-release-evidence.json must exist at the evidence bundle root'),'certification report must be at the bundle root');
