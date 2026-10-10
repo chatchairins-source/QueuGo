@@ -20,6 +20,7 @@ const releaseCertification=read('.github/workflows/native-release-certification.
 const nativeRootGradle=read('native-android/build.gradle.kts');
 const nativeVoicePeer=read('native-android/shared/src/main/java/com/queuego/shared/NativeVoicePeer.kt');
 const nativeTurnEdge=read('supabase/functions/queuego-turn/index.ts');
+const productionPush=read('supabase/functions/queuego-push/index.ts');
 const sharedManifest=read('native-android/shared/src/main/AndroidManifest.xml');
 const riderManifest=read('native-android/rider/src/main/AndroidManifest.xml');
 for(const role of ['customer','merchant','rider']){
@@ -86,6 +87,20 @@ ok(manifest?.play?.foreground_service_declaration_draft_ready===true&&manifest?.
 ok(nativeVoicePeer.includes('PeerConnection.RTCConfiguration')&&nativeVoicePeer.includes('createAudioTrack("queuego-audio"'),'Data Safety E2EE exception must remain tied to the Native peer-to-peer WebRTC audio path');
 ok(nativeTurnEdge.includes('rtc.live.cloudflare.com/v1/turn/')&&nativeTurnEdge.includes('generate-ice-servers'),'Native voice relay must remain the reviewed Cloudflare TURN credential path');
 ok(!/MediaRecorder|FileOutputStream|recordToFile|transcription|Realtime SFU|\/sfu\//i.test(nativeVoicePeer+'\n'+nativeTurnEdge),'Voice Data Safety E2EE exception must fail if media recording, transcription or SFU/server media processing appears in the certified source');
+ok(manifest?.notifications?.edge_function_version===16&&manifest?.notifications?.edge_function_status==='ACTIVE'&&manifest?.notifications?.edge_source_matches_github===true,'Recovery manifest must retain verified Production queuego-push v16 deployment');
+ok(manifest?.notifications?.edge_function_bundle_sha256==='e1ae93f6cc142a77fa7408b894703ed9ac8ad7f9fdaa9b32d40cee2a28758079','Recovery manifest must pin observed Production push Edge bundle SHA-256');
+ok(manifest?.notifications?.edge_function_verify_jwt===false&&manifest?.notifications?.edge_custom_auth_mode==='WORKER_TOKEN_OR_AUTHENTICATED_ACTIVE_USER','verify_jwt=false must remain paired with reviewed custom push authentication');
+ok(manifest?.notifications?.edge_dispatch_requires_worker_token===true&&manifest?.notifications?.edge_user_actions_verify_auth_user===true&&manifest?.notifications?.edge_native_registration_requires_active_session_binding===true,'Production push custom auth must retain worker/user/session checks');
+ok(manifest?.notifications?.firebase_edge_runtime_status==='UNVERIFIED_NO_NATIVE_TOKEN_OR_SUCCESSFUL_FCM_SEND_EVIDENCE','Production push deployment must not certify Firebase runtime without real Native token/send evidence');
+ok(manifest?.notifications?.physical_background_notification_certified===false,'Physical background push gate must stay open until real Android evidence exists');
+ok(productionPush.includes("req.headers.get('x-queuego-worker')!==c.worker_token"),'queuego-push server dispatch must retain worker-token authentication');
+ok(productionPush.includes('admin.auth.getUser(token)')&&productionPush.includes("user.status!=='active'"),'queuego-push user actions must retain authenticated active-user enforcement');
+ok(productionPush.includes("admin.from('user_active_sessions')")&&productionPush.includes(".eq('session_id',sessionId)"),'Native push registration must retain active-session binding');
+ok(manifest?.android?.turn_edge_production_deployed===true&&manifest?.android?.turn_edge_production_status==='ACTIVE'&&manifest?.android?.turn_edge_production_version===2,'Recovery manifest must retain verified Production queuego-turn deployment');
+ok(manifest?.android?.turn_edge_verify_jwt===true&&manifest?.android?.turn_edge_source_exact_match===true,'Production queuego-turn must stay JWT-protected and source-identical to GitHub');
+ok(manifest?.android?.turn_edge_bundle_sha256==='747116e17f5c4a2feb2852851e1e346b5a8e456c5a6b521682ab1a5f02ed894c','Recovery manifest must pin observed Production TURN Edge bundle SHA-256');
+ok(manifest?.android?.turn_runtime_secret_status==='UNVERIFIED_NO_PRODUCTION_REQUESTS_OBSERVED','TURN secret readiness must not be inferred without Production request evidence');
+ok(manifest?.android?.turn_forced_relay_two_device_gate==='OPEN','Real two-device forced TURN relay gate must remain open until physical evidence exists');
 ok(sharedManifest.includes('android:foregroundServiceType="microphone"')&&sharedManifest.includes('android.permission.FOREGROUND_SERVICE_MICROPHONE'),'Shared Native voice FGS manifest contract must remain microphone-scoped');
 ok(riderManifest.includes('android:foregroundServiceType="specialUse"')&&riderManifest.includes('Active QueueGo Rider navigation return control'),'Rider specialUse FGS declaration must remain tied to its reviewed subtype');
 ok(!/Explicitly forbidden by the release workflow:[\s\S]{0,300}RECORD_AUDIO/i.test(readiness),'Legacy Capacitor RECORD_AUDIO prohibition must not return');
