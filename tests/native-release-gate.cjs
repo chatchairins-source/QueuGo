@@ -18,9 +18,9 @@ try{
   assert.match(result.stderr,/exact release HEAD/);
 }finally{fs.rmSync(dir,{recursive:true,force:true});}
 const verifier=fs.readFileSync(script,'utf8');
-for(const role of ['CUSTOMER','MERCHANT','RIDER']){
-  assert.ok(verifier.includes(`QG_${role}_PLAY_MAX_VERSION_CODE`),`release verifier must require observed Play version history for ${role}`);
-}
+assert.ok(verifier.includes('for role in ("customer", "merchant", "rider")'),'release verifier must apply Play history checks to Customer, Merchant and Rider');
+assert.ok(verifier.includes('play_max_name = f"QG_{role.upper()}_PLAY_MAX_VERSION_CODE"'),'release verifier must derive the per-role observed Play max environment name');
+assert.ok(verifier.includes('version_code <= play_max'),'release verifier must reject a versionCode that does not exceed observed Play history');
 assert.doesNotMatch(verifier,/for role, previous_code in/,'release verifier must not trust hard-coded prior Play versionCodes');
 assert.match(verifier,/"backup_restore"/,'Native release must require certified Backup/Restore evidence');
 for(const gate of ['service_area','ugc_chat_safety','security_platform_auth']){
@@ -53,6 +53,36 @@ for(const token of [
 }
 assert.match(artifactVerifier,/APK\/AAB signer mismatch/,'release artifact verifier must reject per-role APK/AAB signer mismatch');
 assert.match(artifactVerifier,/len\(signer_digests\) != 1/,'all three release apps must use one certified signing identity');
+
+const signedWorkflowPath='.github/workflows/build-native-signed-release.yml';
+const evidenceWorkflowPath='.github/workflows/native-release-evidence.yml';
+for(const path of [signedWorkflowPath,evidenceWorkflowPath]){
+  assert.ok(fs.existsSync(path),`Native release workflow missing: ${path}`);
+}
+const signedWorkflow=fs.readFileSync(signedWorkflowPath,'utf8');
+const evidenceWorkflow=fs.readFileSync(evidenceWorkflowPath,'utf8');
+assert.match(signedWorkflow,/workflow_dispatch:/,'signed release must be manually dispatched');
+assert.match(signedWorkflow,/refs\/heads\/queuego-native-android-v1/,'signed release must only run from Native main');
+assert.match(signedWorkflow,/actions\/download-artifact@v4/,'signed release must consume certified evidence artifact');
+assert.match(signedWorkflow,/verify-native-release-gate\.py/,'signed release must run the hard release verifier');
+assert.match(signedWorkflow,/verify-native-release-artifacts\.py/,'signed release must verify the actual signed outputs');
+for(const task of [':customer:bundleRelease',':customer:assembleRelease',':merchant:bundleRelease',':merchant:assembleRelease',':rider:bundleRelease',':rider:assembleRelease']){
+  assert.ok(signedWorkflow.includes(task),`signed release workflow missing ${task}`);
+}
+for(const secret of ['QG_FIREBASE_GOOGLE_SERVICES_JSON_B64','QG_ANDROID_KEYSTORE_B64','QG_ANDROID_STORE_PASSWORD','QG_ANDROID_KEY_ALIAS','QG_ANDROID_KEY_PASSWORD']){
+  assert.ok(signedWorkflow.includes(secret),`signed release workflow missing protected input ${secret}`);
+}
+assert.doesNotMatch(signedWorkflow,/assembleDebug|bundleDebug/,'signed release workflow must not emit debug packages');
+assert.doesNotMatch(signedWorkflow,/gh\s+release|create-release|releases\/assets|softprops\/action-gh-release/i,'signed release workflow must keep artifacts internal until release approval');
+assert.match(signedWorkflow,/Clean temporary release credentials/,'signed release workflow must clean temporary credentials');
+assert.match(evidenceWorkflow,/workflow_dispatch:/,'release evidence must be manually recorded');
+assert.match(evidenceWorkflow,/refs\/heads\/queuego-native-android-v1/,'release evidence must only certify Native main');
+assert.match(evidenceWorkflow,/verify-native-release-gate\.py/,'evidence recorder must derive the canonical gate list from the verifier');
+assert.match(evidenceWorkflow,/evidence_sha256/,'evidence recorder must require immutable evidence digests');
+assert.match(evidenceWorkflow,/QG_CERT_P0[^\n]*\$\{\{ inputs\.p0 \}\}/,'evidence recorder must bind the operator P0 count');
+assert.match(evidenceWorkflow,/QG_CERT_P1[^\n]*\$\{\{ inputs\.p1 \}\}/,'evidence recorder must bind the operator P1 count');
+assert.match(evidenceWorkflow,/queuego-native-release-evidence/,'evidence recorder must upload one durable evidence artifact');
+assert.match(evidenceWorkflow,/does not infer or auto-certify physical behavior or Play Console state/,'evidence recorder must preserve the operator-certification boundary');
 
 const gradle=fs.readFileSync('native-android/build.gradle.kts','utf8');
 assert.match(gradle,/isDebuggable = false/);
