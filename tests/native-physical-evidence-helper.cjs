@@ -24,9 +24,12 @@ assert.ok(source.includes('"status": "PASS" if args.certify else "DRAFT"'),'help
 assert.ok(source.includes('"operator_certified": bool(args.certify)'),'operator certification must be explicit');
 assert.ok(source.includes('physical evidence output must be outside the source checkout'),'evidence must stay outside source');
 assert.ok(source.includes('sha256_file(target)'),'captured artifacts must be SHA-256 bound');
+assert.ok(source.includes('secrets.token_bytes(32)'),'device/network identity hashes must use a per-capture random salt');
+assert.ok(source.includes('identity_salt + b"\\0device\\0"'),'device identity hash must be domain-separated and salted');
+assert.ok(source.includes('identity_salt + b"\\0network\\0"'),'network identity hash must be domain-separated and salted');
 assert.ok(source.includes('exec-out", "screencap", "-p"'),'helper must support direct physical-device screenshot capture');
 assert.ok(source.includes('requires two distinct physical devices'),'voice/TURN evidence must reject one-device capture');
 assert.ok(source.includes('requires two distinct network labels'),'voice/TURN evidence must reject one-network capture');
 assert.ok(source.includes('cannot certify blueprint evidence with blocking differences'),'Blueprint PASS must require zero blocking differences');
 
-console.log(JSON.stringify({checks:22,failures:0,scope:'Fail-closed real-device physical evidence capture helper'}));
+console.log(JSON.stringify({checks:25,failures:0,scope:'Fail-closed real-device physical evidence capture helper'}));
