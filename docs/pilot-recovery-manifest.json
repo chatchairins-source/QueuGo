@@ -156,7 +156,7 @@
     ],
     "native_test_firebase_oauth_preflight": true,
     "native_test_preflight_behavior": "When a native token exists, the physical test validates FIREBASE_SERVICE_ACCOUNT_JSON via Google OAuth before creating a push_test notification.",
-    "edge_function_version": 12,
+    "edge_function_version": 16,
     "edge_source_matches_github": true,
     "edge_function_status": "ACTIVE",
     "edge_function_verify_jwt": false,
@@ -226,7 +226,25 @@
     "visible_order_code_normalization": "QT-XXXX",
     "native_push_order_code_normalized": true,
     "web_push_order_code_normalized": true,
-    "unified_push_execution_path_only": true
+    "unified_push_execution_path_only": true,
+    "edge_function_bundle_sha256": "e1ae93f6cc142a77fa7408b894703ed9ac8ad7f9fdaa9b32d40cee2a28758079",
+    "edge_source_last_checked_at": "2026-10-10",
+    "edge_custom_auth_mode": "WORKER_TOKEN_OR_AUTHENTICATED_ACTIVE_USER",
+    "edge_dispatch_requires_worker_token": true,
+    "edge_user_actions_require_bearer_auth": true,
+    "edge_user_actions_verify_auth_user": true,
+    "edge_user_actions_require_active_queuego_role": true,
+    "edge_native_registration_requires_active_session_binding": true,
+    "production_runtime_snapshot": {
+      "native_tokens_total": 0,
+      "native_tokens_enabled": 0,
+      "web_subscriptions_total": 0,
+      "web_subscriptions_enabled": 0,
+      "outbox_total": 0,
+      "config_rows": 0,
+      "observed_at": "2026-10-10"
+    },
+    "firebase_edge_runtime_status": "UNVERIFIED_NO_NATIVE_TOKEN_OR_SUCCESSFUL_FCM_SEND_EVIDENCE"
   },
   "android": {
     "release_workflow_has_run": false,
