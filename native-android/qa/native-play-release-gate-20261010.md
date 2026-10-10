@@ -83,9 +83,11 @@ hard-coded historical versionCode values.
 Every application task containing Release, including direct internal packaging
 and signing tasks, depends on verifyNativeReleaseGate. The verifier fails closed without operator-certified
 QG_NATIVE_RELEASE_EVIDENCE. The JSON report must reference the exact git HEAD,
-p0=0, p1=0, and every gate named in verify-native-release-gate.py, each with
-status=PASS, evidence_file and sha256 of the actual recorded evidence. No example
-PASS report is supplied. Files/hashes prove evidence identity; they do not prove
+p0=0, p1=0, and every gate named in verify-native-release-gate.py with
+evidence_file and sha256 of the actual recorded evidence. Every gate requires
+status=PASS except security_platform_auth, which may use the documented
+PASS_FREE_PLAN_CONTROLS status while QueueGo remains on the Supabase Free plan.
+No example PASS report is supplied. Files/hashes prove evidence identity; they do not prove
 physical behavior. The operator remains responsible for truthful certification.
 
 The verifier requires all three complete Firebase clients in one Production
