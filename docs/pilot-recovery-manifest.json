@@ -372,7 +372,9 @@
       "aab_signature",
       "artifact_sha256",
       "signer_certificate_sha256",
-      "same_signer_all_three_apps"
+      "same_signer_all_three_apps",
+      "aab_signer_certificate_sha256",
+      "apk_aab_signer_match"
     ]
   },
   "security": {

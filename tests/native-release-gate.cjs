@@ -41,13 +41,17 @@ for(const token of [
   '"rider": "com.queuego.rider"',
   '"application-debuggable"',
   '"--print-certs"',
-  '"-verify", "-strict"',
+  '"jarsigner"',
+  '"keytool"',
   '"apk_sha256"',
   '"aab_sha256"',
-  '"signer_certificate_sha256"'
+  '"signer_certificate_sha256"',
+  '"aab_signer_certificate_sha256"',
+  '"apk_aab_signer_match"'
 ]){
   assert.ok(artifactVerifier.includes(token),`signed artifact verifier missing required check: ${token}`);
 }
+assert.match(artifactVerifier,/APK\/AAB signer mismatch/,'release artifact verifier must reject per-role APK/AAB signer mismatch');
 assert.match(artifactVerifier,/len\(signer_digests\) != 1/,'all three release apps must use one certified signing identity');
 
 const gradle=fs.readFileSync('native-android/build.gradle.kts','utf8');

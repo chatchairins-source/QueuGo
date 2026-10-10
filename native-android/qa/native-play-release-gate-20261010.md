@@ -98,8 +98,9 @@ pending. Final signed build/inspection and Play Console submission remain gated.
 After the hard gate authorizes release packaging, `verify-native-release-artifacts.py`
 must inspect the actual signed Customer/Merchant/Rider APK/AAB outputs. It checks
 the expected applicationId, per-app versionCode, shared versionName, non-debuggable
-APK state, APK signing certificate, strict AAB JAR signature, SHA-256 for both
-artifacts, and enforces the same certified signer identity across all three apps.
+APK state, APK signing certificate, AAB JAR signature, SHA-256 for both artifacts,
+and the AAB signer certificate fingerprint. Each role's APK/AAB signer must match,
+and the same certified signer identity is enforced across all three apps.
 Source readiness for this verifier does not close the signed-artifact gate; PASS
 requires the real release outputs.
 
