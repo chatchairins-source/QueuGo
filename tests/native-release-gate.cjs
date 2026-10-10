@@ -22,6 +22,11 @@ assert.ok(verifier.includes('for role in ("customer", "merchant", "rider")'),'re
 assert.ok(verifier.includes('play_max_name = f"QG_{role.upper()}_PLAY_MAX_VERSION_CODE"'),'release verifier must derive the per-role observed Play max environment name');
 assert.ok(verifier.includes('version_code <= play_max'),'release verifier must reject a versionCode that does not exceed observed Play history');
 assert.doesNotMatch(verifier,/for role, previous_code in/,'release verifier must not trust hard-coded prior Play versionCodes');
+assert.ok(verifier.includes('certified_play_max = release_context.get("play_max_version_codes", {})'),'release verifier must bind Play history to the certified evidence context');
+assert.ok(verifier.includes('QG_ANDROID_EXPECTED_SIGNER_SHA256'),'release verifier must require the certified signing fingerprint');
+assert.ok(verifier.includes('"-exportcert"'),'release verifier must export the actual keystore certificate');
+assert.ok(verifier.includes('hashlib.sha256(certificate).hexdigest()'),'release verifier must hash the actual keystore certificate');
+assert.ok(verifier.includes('actual_signer != expected_signer'),'release verifier must reject a keystore that does not match certified signing identity');
 assert.match(verifier,/"backup_restore"/,'Native release must require certified Backup/Restore evidence');
 for(const gate of ['service_area','ugc_chat_safety','security_platform_auth']){
   assert.match(verifier,new RegExp(`"${gate}"`),`Native release must require explicit ${gate} evidence`);
@@ -53,6 +58,8 @@ for(const token of [
 }
 assert.match(artifactVerifier,/APK\/AAB signer mismatch/,'release artifact verifier must reject per-role APK/AAB signer mismatch');
 assert.match(artifactVerifier,/len\(signer_digests\) != 1/,'all three release apps must use one certified signing identity');
+assert.ok(artifactVerifier.includes('QG_ANDROID_EXPECTED_SIGNER_SHA256'),'signed artifact verifier must consume the certified signer fingerprint');
+assert.ok(artifactVerifier.includes('actual_signer != expected_signer'),'signed artifact verifier must reject artifacts signed by a different identity');
 
 const signedWorkflowPath='.github/workflows/build-native-signed-release.yml';
 const evidenceWorkflowPath='.github/workflows/native-release-evidence.yml';
@@ -64,6 +71,9 @@ const evidenceWorkflow=fs.readFileSync(evidenceWorkflowPath,'utf8');
 assert.match(signedWorkflow,/workflow_dispatch:/,'signed release must be manually dispatched');
 assert.match(signedWorkflow,/refs\/heads\/queuego-native-android-v1/,'signed release must only run from Native main');
 assert.match(signedWorkflow,/actions\/download-artifact@v4/,'signed release must consume certified evidence artifact');
+assert.match(signedWorkflow,/release_context/,'signed release must derive Play history and signer identity from certified evidence');
+assert.match(signedWorkflow,/QG_ANDROID_EXPECTED_SIGNER_SHA256/,'signed release must export the certified signing fingerprint');
+assert.doesNotMatch(signedWorkflow,/inputs\.customer_play_max_version_code|inputs\.merchant_play_max_version_code|inputs\.rider_play_max_version_code/,'signed release must not accept Play history as a separate build-time override');
 assert.match(signedWorkflow,/verify-native-release-gate\.py/,'signed release must run the hard release verifier');
 assert.match(signedWorkflow,/verify-native-release-artifacts\.py/,'signed release must verify the actual signed outputs');
 for(const task of [':customer:bundleRelease',':customer:assembleRelease',':merchant:bundleRelease',':merchant:assembleRelease',':rider:bundleRelease',':rider:assembleRelease']){
@@ -81,6 +91,11 @@ assert.match(evidenceWorkflow,/verify-native-release-gate\.py/,'evidence recorde
 assert.match(evidenceWorkflow,/evidence_sha256/,'evidence recorder must require immutable evidence digests');
 assert.match(evidenceWorkflow,/security_platform_auth/,'evidence recorder must preserve the explicit Auth gate exception');
 assert.match(evidenceWorkflow,/PASS_FREE_PLAN_CONTROLS/,'evidence recorder must support the verifier\'s documented Free-plan Auth status only for that gate');
+for(const input of ['customer_play_max_version_code','merchant_play_max_version_code','rider_play_max_version_code','expected_signer_certificate_sha256']){
+  assert.ok(evidenceWorkflow.includes(input),`evidence recorder must capture certified release context input ${input}`);
+}
+assert.match(evidenceWorkflow,/play_max_version_codes/,'evidence recorder must persist observed Play history in release_context');
+assert.match(evidenceWorkflow,/expected_signer_certificate_sha256/,'evidence recorder must persist the certified signer fingerprint');
 assert.match(evidenceWorkflow,/QG_CERT_P0[^\n]*\$\{\{ inputs\.p0 \}\}/,'evidence recorder must bind the operator P0 count');
 assert.match(evidenceWorkflow,/QG_CERT_P1[^\n]*\$\{\{ inputs\.p1 \}\}/,'evidence recorder must bind the operator P1 count');
 assert.match(evidenceWorkflow,/queuego-native-release-evidence/,'evidence recorder must upload one durable evidence artifact');
