@@ -36,8 +36,10 @@ data class NativeAuthEntry(
     val busy: Boolean,
     val error: String?,
     val customerAccountCreated: Boolean,
+    val merchantAccountCreated: Boolean,
     val login: (String, String) -> Unit,
     val registerCustomer: (NativeCustomerRegistration) -> Unit,
+    val registerMerchant: (NativeMerchantRegistration) -> Unit,
     val clearError: () -> Unit
 )
 
@@ -60,6 +62,8 @@ fun QueueGoAuthHost(
     var recoveryRequired by remember { mutableStateOf(false) }
     var customerAccountCreated by rememberSaveable { mutableStateOf(false) }
     var customerSignupCheckpoint by rememberSaveable { mutableStateOf("") }
+    var merchantAccountCreated by rememberSaveable { mutableStateOf(false) }
+    var merchantSignupCheckpoint by rememberSaveable { mutableStateOf("") }
 
     fun signIn(identifier: String, password: String) {
         if (busy || identifier.isBlank() || password.isBlank()) return
@@ -107,6 +111,39 @@ fun QueueGoAuthHost(
                 if (failure is NativeCustomerSignupCompletedException ||
                     failure is NativeCustomerSignupUncertainException) customerAccountCreated = true
                 error = failure.message ?: "สมัครสมาชิกไม่สำเร็จ"
+            } finally { busy = false }
+        }
+    }
+
+    fun registerMerchant(form: NativeMerchantRegistration) {
+        if (busy || expectedRole != "shop") return
+        busy = true
+        error = null
+        merchantAccountCreated = false
+        scope.launch {
+            try {
+                form.validate()
+                val identifier = form.normalizedPhone
+                val skipSignup = merchantSignupCheckpoint == identifier
+                if (!skipSignup) merchantSignupCheckpoint = identifier
+                val signedIn = try {
+                    api.registerMerchant(form, store.deviceId(), skipSignup)
+                } catch (failure: Exception) {
+                    if (!skipSignup &&
+                        failure is NativeAuthHttpException &&
+                        failure.statusCode in 400..499
+                    ) merchantSignupCheckpoint = ""
+                    throw failure
+                }
+                merchantAccountCreated = true
+                store.save(signedIn)
+                auth = signedIn
+            } catch (failure: Exception) {
+                if (failure is CancellationException) throw failure
+                if (failure is NativeMerchantSignupCompletedException ||
+                    failure is NativeMerchantSignupUncertainException
+                ) merchantAccountCreated = true
+                error = failure.message ?: "สมัครร้านค้าไม่สำเร็จ"
             } finally { busy = false }
         }
     }
@@ -179,8 +216,14 @@ fun QueueGoAuthHost(
             }
             auth == null -> {
                 if (entryScreen != null) entryScreen(NativeAuthEntry(
-                    busy, error, customerAccountCreated, ::signIn, ::registerCustomer,
-                    { if (!busy) error = null }
+                    busy = busy,
+                    error = error,
+                    customerAccountCreated = customerAccountCreated,
+                    merchantAccountCreated = merchantAccountCreated,
+                    login = ::signIn,
+                    registerCustomer = ::registerCustomer,
+                    registerMerchant = ::registerMerchant,
+                    clearError = { if (!busy) error = null }
                 )) else QueueGoLoginScreen(appLabel, busy, error, ::signIn)
             }
             else -> content(auth!!) {
