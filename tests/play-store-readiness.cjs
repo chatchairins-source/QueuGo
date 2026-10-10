@@ -16,6 +16,13 @@ const access=read('docs/play-app-access-content-rating.md');
 const readiness=read('docs/play-closed-beta-readiness.md');
 const manifest=JSON.parse(read('docs/pilot-recovery-manifest.json'));
 const releaseSecrets=read('.github/workflows/release-secret-readiness.yml');
+const nativeRootGradle=read('native-android/build.gradle.kts');
+for(const role of ['customer','merchant','rider']){
+  const appGradle=read(`native-android/${role}/build.gradle.kts`);
+  ok(/compileSdk\s*=\s*36/.test(appGradle),role+' must compile against API 36');
+  ok(/targetSdk\s*=\s*36/.test(appGradle),role+' must target API 36 for current Google Play submissions');
+}
+ok(/com\.android\.application"\) version "9\.4\.0"/.test(nativeRootGradle),'Native Android must retain an AGP release with 16 KB packaging support');
 for(const id of ['com.queuego.customer','com.queuego.merchant','com.queuego.rider'])ok(access.includes(id),'App Access draft must cover '+id);
 ok(/workflow_dispatch/.test(releaseSecrets),'Release secret preflight must be manually runnable after owner configures secrets');
 for(const id of ['com.queuego.customer','com.queuego.merchant','com.queuego.rider'])ok(releaseSecrets.includes(id),'Firebase preflight must require Android client '+id);
@@ -63,6 +70,8 @@ ok(Array.isArray(manifest?.android?.allowed_android_build_workflows)&&
   'Only the Native pilot and fail-closed certified release workflows may be active Android build workflows');
 ok(manifest?.android?.release_version_code_strategy==='EXPLICIT_PER_APP_GT_OBSERVED_PLAY_MAX','Recovery manifest must preserve Play-history versionCode strategy');
 ok(manifest?.android?.release_gate_requires_backup_restore===true,'Recovery manifest must preserve Backup/Restore as a Native release hard gate');
+ok(manifest?.android?.target_api_level===36,'Recovery manifest must record Native target API 36');
+ok(manifest?.android?.page_size_16kb_gate===true,'Recovery manifest must preserve the Native 16 KB page-size gate');
 ok(manifest?.android?.release_bundletool_required===true&&manifest?.android?.release_bundletool_version==='1.18.3','Recovery manifest must require pinned bundletool AAB verification');
 ok(manifest?.android?.release_bundletool_sha256==='a099cfa1543f55593bc2ed16a70a7c67fe54b1747bb7301f37fdfd6d91028e29','Recovery manifest must pin the certified bundletool SHA-256');
 ok(manifest?.android?.release_artifact_evidence_external_to_source===true,'Release artifact evidence must remain outside the source checkout');
