@@ -21,6 +21,7 @@ on:
       - 'tests/native-android-source.cjs'
       - 'tests/native-pos-edit-idempotency.cjs'
       - 'tests/native-customer-merchant-push.cjs'
+      - 'tests/background-push.cjs'
       - 'tests/native-push-session-binding.cjs'
       - 'ops/native-push-session-binding-proposal-*.sql'
       - 'supabase/functions/queuego-push/**'
