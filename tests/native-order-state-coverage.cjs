@@ -78,6 +78,10 @@ for(const reason of ['สินค้าหมด','ร้านไม่สา�
 ok(merchantUi.includes('ฉันตรวจสอบออเดอร์นี้แล้ว')&&merchantUi.includes('Slider(')&&merchantUi.includes('slide >= 95f && ready'),
   'Merchant cancellation must require acknowledgement plus near-complete slide confirmation');
 ok(merchantUi.includes('otherReason = it.take(420)'),'Merchant custom cancellation reason must remain length-bounded');
+ok(merchantUi.includes('order.status in setOf("pending", "accepted", "rider_assigned", "assigned")'),
+  'Merchant cancellation guard must fail closed outside Web-allowed pre-preparation states');
+ok(merchantUi.includes('LaunchedEffect(order.status)')&&merchantUi.includes('if (!cancellable) onDismiss()'),
+  'Realtime status advancement must dismiss a stale Merchant cancellation guard');
 ok(!/"preparing" -> \{[\s\S]{0,900}Text\("ยกเลิกออเดอร์"\)/.test(merchantUi),
   'Merchant cancellation control must stay absent after preparation starts');
 ok(!merchantApi.includes('status=in.(arrived')&&!merchantApi.includes(',arrived'),
