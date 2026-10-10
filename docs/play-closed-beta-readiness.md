@@ -15,11 +15,11 @@ Closed Beta release remains **BLOCKED** until every hard gate below passes:
 - UGC / chat safety implementation: PASS
 - Android target API 36 static gate: PASS
 - Native microphone foreground-service source + accelerated Android lifecycle: PASS — physical two-device audio/TURN remains BLOCKED
-- Backup/Restore drill: BLOCKED — GitHub backup secrets not configured
+- Backup/Restore drill: BLOCKED — run 38039279454 failed because QG_SUPABASE_DB_URL, QG_SUPABASE_SERVICE_ROLE_KEY and QG_BACKUP_PASSPHRASE were absent
 - Supabase Auth: PASS WITH FREE-PLAN CONTROLS — 12-character upper/lower/number/symbol signup policy is shared across all roles; leaked-password protection remains a Pro-only deferred hardening item
 - Native Firebase background notification physical test: BLOCKED — credentials/device test missing
 - Play Data Safety + foreground-service declarations: BLOCKED — Play Console certification/evidence not completed
-- Android release signing: BLOCKED — release signing secrets missing
+- Android release signing: BLOCKED — run 38039197325 confirmed QG_ANDROID_KEYSTORE_B64, QG_ANDROID_STORE_PASSWORD, QG_ANDROID_KEY_ALIAS and QG_ANDROID_KEY_PASSWORD absent; the same run also confirmed QG_FIREBASE_GOOGLE_SERVICES_JSON_B64 absent
 
 The release workflow is intentionally configured to fail while hard gates are not certified.
 
