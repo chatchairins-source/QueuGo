@@ -31,6 +31,29 @@ data class CustomerResolvedMenuOption(
     val priceDelta: Double
 )
 
+internal fun customerVariantsJson(raw: Any?): String = when (raw) {
+    null, JSONObject.NULL -> "[]"
+    is JSONArray -> raw.toString()
+    is String -> runCatching { JSONArray(raw).toString() }.getOrDefault("[]")
+    else -> "[]"
+}
+
+internal fun customerSelectedOptionsLabel(raw: Any?): String? {
+    val rows = when (raw) {
+        null, JSONObject.NULL -> JSONArray()
+        is JSONArray -> raw
+        is String -> runCatching { JSONArray(raw) }.getOrElse { JSONArray() }
+        else -> JSONArray()
+    }
+    val names = buildList {
+        for (i in 0 until rows.length()) {
+            val item = rows.optJSONObject(i) ?: continue
+            item.optString("option_name").trim().takeIf(String::isNotBlank)?.let(::add)
+        }
+    }
+    return names.takeIf { it.isNotEmpty() }?.joinToString(" · ")
+}
+
 internal fun customerMenuOptionGroups(rawJson: String): List<CustomerMenuOptionGroup> {
     val rows = runCatching { JSONArray(rawJson.ifBlank { "[]" }) }.getOrElse { JSONArray() }
     return buildList {
