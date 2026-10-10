@@ -86,6 +86,10 @@ devices with role binding, and include the exact observed checks for that gate.
   and automatic stop outside active work.
 - Blueprint: all required screens/states observed, pixel-diff reviewed and
   blocking_differences = 0 for Customer, Merchant and Rider.
+  Each Blueprint envelope must also carry `coverage_matrix_sha256` equal to the
+  SHA-256 of `native-android/qa/native-screen-coverage-20261010.json` from the
+  exact certified HEAD, so visual evidence cannot certify a stale/incomplete
+  source-surface inventory.
 - Lifecycle: permissions, single-back-to-Home, upload, location, session
   persistence, offline/timeout, reconnect and background/foreground for all 3 roles.
 
