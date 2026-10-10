@@ -137,8 +137,12 @@ three roles. The two-device/two-network voice gate requires two distinct device
 hashes plus two distinct network hashes and network types.
 The envelope is also cross-bound to machine-verified release metadata where that
 data is independently available: `full_native_ci.github_run_id` must equal the
-exact-HEAD Native Pilot run attested by GitHub Actions; `production_backend`
-must identify Production Supabase project `pkypiqhlrmzocysgeqew`;
+exact-HEAD Native Pilot run attested by GitHub Actions;
+`backup_restore.github_run_id` must equal a successful exact-HEAD
+`QueueGo Encrypted Backup Restore Drill` manually dispatched from Native main
+whose non-expired non-empty `queuego-backup-*` encrypted artifact still exists;
+`production_backend` must identify Production Supabase project
+`pkypiqhlrmzocysgeqew`;
 `firebase_three_packages.firebase_project_id` must match the loaded Firebase
 configuration; `play_store_preflight` must match release versionName, all three
 versionCodes and all three observed Play maxima; and
@@ -181,6 +185,12 @@ push run from `.github/workflows/build-native-rider-pilot.yml` on the exact same
 git HEAD. That Native Pilot run ID is embedded into certification metadata, and
 the final release independently resolves the run again and re-checks HEAD,
 workflow path, branch, event and success conclusion.
+It also requires a successful exact-HEAD
+`.github/workflows/backup-restore-drill.yml` `workflow_dispatch` run and verifies
+that at least one live non-empty encrypted `queuego-backup-*` Actions artifact
+exists. The Backup Restore run ID is embedded into certification metadata. Final
+release resolves that run again, re-checks HEAD/workflow/branch/event/success and
+re-checks that the encrypted backup artifact has not expired before packaging.
 The final release re-checks that versionName, all three release versionCodes,
 all three observed Play maxima and the signing certificate fingerprint match the
 certified metadata exactly before packaging. Signed outputs remain internal
