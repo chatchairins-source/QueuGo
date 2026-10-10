@@ -102,6 +102,27 @@
         "acknowledgement_required": true,
         "slide_threshold_percent": 95,
         "custom_reason_max_chars": 420
+      },
+      "order_item_substitution": {
+        "production_web_parity": true,
+        "ordinary_food_delivery_only": true,
+        "allowed_statuses": [
+          "rider_assigned",
+          "assigned"
+        ],
+        "disabled_from_preparing_onward": true,
+        "production_rpc": "qg_merchant_edit_order_items",
+        "native_dispatch": "qg_merchant_action_once:order_items",
+        "item_count_min": 1,
+        "item_count_max": 30,
+        "quantity_min": 1,
+        "quantity_max": 99,
+        "same_shop_delivery_products_only": true,
+        "duplicate_product_rejected": true,
+        "customer_authorized_subtotal_ceiling": true,
+        "adjustment_audit_required": true,
+        "customer_rider_notifications": true,
+        "realtime_status_fail_close": true
       }
     },
     "rider": {
