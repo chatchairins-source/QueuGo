@@ -1,6 +1,6 @@
 # Rider login blueprint correction — 2026-10-09
 
-Status: **Visual parity NOT CERTIFIED; functional registration parity FAIL.**
+Status: **Visual parity NOT CERTIFIED; Native registration source flow IMPLEMENTED, physical/rendered parity still OPEN.**
 
 Owner identified the fresh Native login screenshot as visibly different from Production. Previous source/build gates never established rendered parity. Fetched596d5e9, preserved history; backup-native-before-rider-login-blueprint-20261009 created locally/GitHub before source edits.
 
@@ -14,9 +14,11 @@ Production media rule max-width800 hides the brand/hero panel, retains card widt
 
 RiderLoginScreen uses actual Production mobile breakpoint, gradient stops160deg/54%, card/control/text dimensions and exact labels/phone placeholder/Beta footer. Labels are above native BasicTextFields, primary action validates empty fields without sending a request, busy submission remains gated, and existing signIn/session/role/backend logic is unchanged. Scrolling and Android safe area/keyboard handling remain native; no WebView.
 
-**Registration remains a real functional gap:** signup now opens the existing Production Rider site in an external browser; the user must choose signup there. This is a temporary existing-service access path, not a native registration implementation or one-to-one flow. Do not certify this page's full functional parity until the native four-step registration/documents/confirmation/pending flow exists and is tested. No new signup backend/data submission is introduced in this UI batch.
+**2026-10-10 registration correction:** the temporary external-browser signup path has been retired. The login button now opens the Native `RiderRegistrationScreen` directly. The Native flow contains the four Production steps (ส่วนตัว → รถและพื้นที่ → เอกสาร → ยืนยัน), uses the system document picker, requires the six Rider document slots, uses the shared Native strong-password policy, stores a resumable local draft/checkpoint, creates or resumes the Rider authentication account, writes the pending `rider_profiles` application, and returns pending applicants to the Native registration/pending-account path. `tests/native-rider-registration.cjs` now fails if signup regresses to `Intent`/`ACTION_VIEW`/external-browser navigation or if the four-step/documents/pending-review wiring disappears.
 
-Local Gradle shared/customer/rider JVM tests and Customer/Merchant/Rider build PASS (144tasks; Rider compile/test rebuilt). Source191/launcher61/category12/whitespace PASS. Full regression/CI and actual corrected Native capture pending their actual results.
+This closes the old **missing Native registration implementation** source gap only. It does **not** certify pixel parity, real document uploads, Production signup writes, Admin approval handoff, device lifecycle, or the complete physical Rider onboarding flow. Those remain observed-device/E2E gates.
+
+The original 2026-10-09 login correction passed its then-current local Gradle/source checks. The 2026-10-10 Native registration correction adds a dedicated source regression and must still pass the current branch/full Native CI before merge. Actual matched Production-mobile ↔ Native registration screenshots remain pending.
 
 ## Evidence limits
 
