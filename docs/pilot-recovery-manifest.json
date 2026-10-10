@@ -314,7 +314,8 @@
     "release_secret_preflight_validates_keystore_key_password": true,
     "release_secret_preflight_cleans_decoded_credentials": true,
     "allowed_android_build_workflows": [
-      ".github/workflows/build-native-rider-pilot.yml"
+      ".github/workflows/build-native-rider-pilot.yml",
+      ".github/workflows/build-native-signed-release.yml"
     ],
     "legacy_github_release_assets_present": true,
     "legacy_github_release_tags": [
@@ -375,7 +376,20 @@
       "same_signer_all_three_apps",
       "aab_signer_certificate_sha256",
       "apk_aab_signer_match"
-    ]
+    ],
+    "native_signed_release_workflow": ".github/workflows/build-native-signed-release.yml",
+    "native_release_evidence_workflow": ".github/workflows/native-release-evidence.yml",
+    "native_signed_release_manual_dispatch_only": true,
+    "native_signed_release_requires_certified_evidence_artifact": true,
+    "native_signed_release_runs_hard_gate_verifier": true,
+    "native_signed_release_runs_artifact_verifier": true,
+    "native_signed_release_public_publish": false,
+    "native_signed_release_internal_artifact_only": true,
+    "native_release_evidence_operator_certified": true,
+    "native_release_evidence_auto_certifies_physical_or_play": false,
+    "native_release_evidence_requires_external_sha256": true,
+    "native_signed_release_latest_run": null,
+    "native_signed_release_latest_result": "NOT_RUN_GATE_BLOCKED"
   },
   "security": {
     "code_surface_hardened": true,
