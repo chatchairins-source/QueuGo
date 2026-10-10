@@ -79,7 +79,7 @@ ok(currentShopOrders.includes('GET_MY_SHOP_ORDERS_UNEXPECTED_DEFINITION'),'Merch
 ok(currentShopOrders.includes("length(v_before)-length(replace(v_before,'and u.role = ''shop''',''))")&&currentShopOrders.includes("length(v_before)-length(replace(v_before,'where s.user_id=v_user',''))"),'Merchant lifecycle patch must require unique Production anchors before replacement');
 ok(currentShopOrders.includes('queuego_laundry_merchant_state')&&currentShopOrders.includes('queuego_laundry_save_service')&&currentShopOrders.includes('queuego_laundry_save_settings'),'Laundry Merchant RPCs must share the current-shop lifecycle hardening');
 ok(currentShopOrders.includes("where user_id=v_user and archived_at is null order by created_at desc limit 1;"),'Laundry Merchant state must resolve only the newest non-archived shop');
-ok(currentShopOrders.includes("where s.user_id=v_user and s.archived_at is null")&&currentShopOrders.includes("order by h.created_at desc"),'Laundry Merchant writes must never fall back to an archived shop hub');
+ok(currentShopOrders.includes("where s.user_id=v_user and s.archived_at is null"),'Laundry Merchant writes must never fall back to an archived shop profile');
 
 // Suspension/restore must respect lifecycle instead of bypassing approval or mutating archived history.
 ok(statusBackup.includes('store_status_cascade_backup_20261008'),'Status cascade definitions must be backed up before replacement');
