@@ -117,7 +117,7 @@ Features present:
 - User accounts
 - Real-world commerce/order transactions
 - Location
-- 1:1 user communication
+- 1:1 user communication by chat and user-initiated in-app voice calls
 - User-generated text/images
 - Reporting/blocking/moderation
 - Merchant promotions may be shown
@@ -135,12 +135,13 @@ Expected declarations to review carefully:
 Features present:
 - Business/shop management
 - Orders and commerce data
+- Customer ↔ Shop user-initiated in-app voice calls on active orders
 - Merchant ↔ QueueGo support messages
 - Shop/product images
 - Promotion-management feature
 
 Review carefully:
-- Communication: Yes where support messaging is treated as communication
+- Communication: Yes — Merchant can receive QueueGo voice calls from an active-order Customer and also has support messaging
 - UGC: product/shop content is merchant-generated; answer IARC wording accurately
 - Purchases/commerce: real-world commerce management
 - Ads: **No** for the current Merchant app — it manages a merchant's own Promote requests but does not display third-party ads to the merchant
@@ -151,6 +152,7 @@ Features present:
 - Real-world work/delivery
 - Location
 - Customer ↔ Rider 1:1 chat
+- Customer ↔ Rider user-initiated in-app voice calls
 - User-generated text/images
 - Proof photos
 - Report/block controls
@@ -221,7 +223,8 @@ For each of the three apps:
 - [ ] Target Audience entered in Play Console: **18+ only** for Customer, Merchant and Rider; enable **Restrict Minor Access** for Closed Beta
 - [ ] IARC questionnaire completed
 - [ ] Contains Ads entered in Play Console: Customer **Yes**, Merchant **No**, Rider **No** (revalidate if submitted behavior changes)
-- [ ] UGC declarations match actual chat/content features
+- [ ] UGC/communication declarations match actual chat and in-app voice features
+- [ ] Microphone permission declaration matches user-initiated QueueGo voice calls only; no call recording/background capture
 - [ ] Store listing screenshots match current production UI
 - [ ] Account deletion path verified
 - [ ] App access does not depend on QueueTech replying during review
