@@ -366,7 +366,12 @@
     "hard_gate_blocks_build_without_turn_relay_certification": true,
     "microphone_permission_policy": "USER_INITIATED_IN_APP_CALL_ONLY",
     "legacy_capacitor_release_workflow": ".github/workflows/build-queuego-apks.yml",
-    "legacy_capacitor_release_policy": "HISTORICAL_ONLY_DO_NOT_USE_FOR_NATIVE_CLOSED_BETA"
+    "legacy_capacitor_release_policy": "HISTORICAL_ONLY_HARD_BLOCKED_DO_NOT_USE_FOR_NATIVE_CLOSED_BETA",
+    "legacy_capacitor_release_hard_blocked": true,
+    "native_release_gradle_fail_closed": true,
+    "native_release_requires_explicit_version_properties": true,
+    "native_release_requires_role_firebase_config": true,
+    "native_release_requires_signing_properties": true
   },
   "security": {
     "code_surface_hardened": true,
