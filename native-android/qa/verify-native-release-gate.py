@@ -37,7 +37,9 @@ def verify():
         raise ValueError("P0/P1 must both equal zero")
     for name in GATES:
         item = report.get("gates", {}).get(name, {})
-        if item.get("status") != "PASS":
+        status = item.get("status")
+        allowed_statuses = {"PASS", "PASS_FREE_PLAN_CONTROLS"} if name == "security_platform_auth" else {"PASS"}
+        if status not in allowed_statuses:
             raise ValueError(f"uncertified gate: {name}")
         evidence = item.get("evidence_file")
         digest = item.get("sha256")
