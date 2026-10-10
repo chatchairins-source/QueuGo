@@ -360,7 +360,20 @@
     "release_gate_requires_p0_p1_zero": true,
     "release_secret_preflight_latest_run": 38039197325,
     "release_secret_preflight_latest_result": "FAIL_MISSING_SECRETS",
-    "release_secret_preflight_latest_checked_at": "2026-10-10T10:22:14Z"
+    "release_secret_preflight_latest_checked_at": "2026-10-10T10:22:14Z",
+    "release_artifact_verifier": "native-android/qa/verify-native-release-artifacts.py",
+    "release_artifact_verifier_present": true,
+    "release_artifact_checks": [
+      "application_id",
+      "version_code",
+      "version_name",
+      "non_debuggable",
+      "apk_signature",
+      "aab_signature",
+      "artifact_sha256",
+      "signer_certificate_sha256",
+      "same_signer_all_three_apps"
+    ]
   },
   "security": {
     "code_surface_hardened": true,
