@@ -80,24 +80,50 @@ def verify() -> dict:
     if not re.fullmatch(r"\d+\.\d+\.\d+", version_name):
         raise ValueError("QG_NATIVE_VERSION_NAME must be the certified x.y.z release value")
 
+    expected_cert = re.sub(r"[^0-9a-fA-F]", "", os.environ.get("QG_ANDROID_SIGNING_CERT_SHA256", "")).lower()
+    if not re.fullmatch(r"[0-9a-f]{64}", expected_cert):
+        raise ValueError("QG_ANDROID_SIGNING_CERT_SHA256 must be the certified 64-hex SHA-256 fingerprint")
+
     expected_codes: dict[str, int] = {}
+    observed_play_max: dict[str, int] = {}
     for role in ROLES:
         raw = os.environ.get(f"QG_{role.upper()}_VERSION_CODE", "")
+        play_raw = os.environ.get(f"QG_{role.upper()}_PLAY_MAX_VERSION_CODE", "")
         if not re.fullmatch(r"\d+", raw):
             raise ValueError(f"QG_{role.upper()}_VERSION_CODE must be an explicit positive integer")
+        if not re.fullmatch(r"\d+", play_raw):
+            raise ValueError(f"QG_{role.upper()}_PLAY_MAX_VERSION_CODE must be the observed highest Play versionCode")
         code = int(raw)
+        play_max = int(play_raw)
         if code <= 0 or code > 2100000000:
             raise ValueError(f"release versionCode is out of range for {role}")
+        if code <= play_max:
+            raise ValueError(f"release artifact versionCode must exceed observed Play history for {role}")
         expected_codes[role] = code
+        observed_play_max[role] = play_max
 
     aapt = android_build_tool("aapt")
     apksigner = android_build_tool("apksigner")
     jarsigner = shutil.which("jarsigner")
     keytool = shutil.which("keytool")
-    if not jarsigner or not keytool:
-        raise ValueError("jarsigner and keytool are required from a JDK")
+    java = shutil.which("java")
+    if not jarsigner or not keytool or not java:
+        raise ValueError("java, jarsigner and keytool are required from a JDK")
+    bundletool_raw = os.environ.get("QG_BUNDLETOOL_JAR", "")
+    bundletool_hash = re.sub(r"[^0-9a-fA-F]", "", os.environ.get("QG_BUNDLETOOL_SHA256", "")).lower()
+    if not bundletool_raw:
+        raise ValueError("QG_BUNDLETOOL_JAR must point to the certified bundletool jar")
+    if not re.fullmatch(r"[0-9a-f]{64}", bundletool_hash):
+        raise ValueError("QG_BUNDLETOOL_SHA256 must be the certified 64-hex bundletool digest")
+    bundletool = Path(bundletool_raw).resolve()
+    if not bundletool.is_file():
+        raise ValueError("certified bundletool jar is unavailable")
+    if sha256(bundletool) != bundletool_hash:
+        raise ValueError("bundletool SHA-256 does not match QG_BUNDLETOOL_SHA256")
 
     source_sha = run(["git", "rev-parse", "HEAD"]).strip()
+    if run(["git", "status", "--porcelain", "--untracked-files=normal"]).strip():
+        raise ValueError("release artifact verification requires a clean source checkout")
     artifacts: dict[str, dict] = {}
     signer_digests: set[str] = set()
 
@@ -126,7 +152,19 @@ def verify() -> dict:
         if not cert_match:
             raise ValueError(f"APK signer certificate digest missing for {role}")
         cert_sha = cert_match.group("digest").replace(":", "").lower()
+        if cert_sha != expected_cert:
+            raise ValueError(f"APK signer does not match certified release certificate for {role}")
         signer_digests.add(cert_sha)
+
+        aab_package = run([java, "-jar", str(bundletool), "dump", "manifest", f"--bundle={aab}", "--xpath=/manifest/@package"]).strip()
+        aab_code = run([java, "-jar", str(bundletool), "dump", "manifest", f"--bundle={aab}", "--xpath=/manifest/@android:versionCode"]).strip()
+        aab_name = run([java, "-jar", str(bundletool), "dump", "manifest", f"--bundle={aab}", "--xpath=/manifest/@android:versionName"]).strip()
+        if aab_package != package:
+            raise ValueError(f"AAB package mismatch for {role}")
+        if aab_code != str(expected_codes[role]):
+            raise ValueError(f"AAB versionCode mismatch for {role}")
+        if aab_name != version_name:
+            raise ValueError(f"AAB versionName mismatch for {role}")
 
         run([jarsigner, "-verify", str(aab)])
         aab_certificate = run([
@@ -139,15 +177,20 @@ def verify() -> dict:
         aab_cert_sha = aab_cert_match.group("digest").replace(":", "").lower()
         if aab_cert_sha != cert_sha:
             raise ValueError(f"APK/AAB signer mismatch for {role}")
+        if aab_cert_sha != expected_cert:
+            raise ValueError(f"AAB signer does not match certified release certificate for {role}")
 
         artifacts[role] = {
             "application_id": package,
             "version_code": expected_codes[role],
+            "observed_play_max_version_code": observed_play_max[role],
             "version_name": version_name,
             "apk": str(apk.relative_to(ROOT)),
             "apk_sha256": sha256(apk),
             "aab": str(aab.relative_to(ROOT)),
             "aab_sha256": sha256(aab),
+            "aab_manifest_metadata_verified": True,
+            "bundletool_sha256": bundletool_hash,
             "signer_certificate_sha256": cert_sha,
             "aab_signer_certificate_sha256": aab_cert_sha,
             "apk_non_debuggable": True,
@@ -171,7 +214,10 @@ def verify() -> dict:
     }
     output = os.environ.get("QG_NATIVE_RELEASE_ARTIFACT_EVIDENCE")
     if output:
-        target = Path(output)
+        target = Path(output).resolve()
+        source_root = ROOT.resolve()
+        if target == source_root or source_root in target.parents:
+            raise ValueError("release artifact evidence must be written outside the source checkout")
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text(json.dumps(result, indent=2) + "\n")
     return result
