@@ -1192,7 +1192,10 @@ private fun MerchantOrderDetail(
                     modifier = Modifier.fillMaxWidth()
                 ) { Text("ปฏิเสธออเดอร์") }
             }
-            "accepted", "searching_rider", "rider_assigned", "assigned" -> {
+            "accepted", "searching_rider" -> QgCard(Modifier.fillMaxWidth()) {
+                Text("กำลังหา Rider · รอ Rider รับงานก่อนเริ่มเตรียมออเดอร์", fontWeight = FontWeight.ExtraBold)
+            }
+            "rider_assigned", "assigned" -> {
                 Button(
                     onClick = { onAction("preparing", null) },
                     enabled = !busy,
