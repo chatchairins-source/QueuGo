@@ -92,6 +92,86 @@ try{
   assert.match(wrongRoleResult.stderr,/physical gate evidence is missing required roles \(customer\): physical_push_customer/);
 }finally{fs.rmSync(evidenceDir,{recursive:true,force:true});}
 
+const bindingDir=fs.mkdtempSync(path.join(os.tmpdir(),'qg-release-binding-'));
+try{
+  const head=spawnSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).stdout.trim();
+  const artifact='artifact.txt';
+  fs.writeFileSync(path.join(bindingDir,artifact),'binding evidence');
+  const artifactSha=crypto.createHash('sha256').update(fs.readFileSync(path.join(bindingDir,artifact))).digest('hex');
+  const observedAt='2026-10-10T00:00:00Z';
+  const gateNames=[
+    'full_native_ci','production_backend','backup_restore','security_regression',
+    'service_area','ugc_chat_safety','security_platform_auth','firebase_three_packages',
+    'physical_push_customer','physical_push_merchant','physical_push_rider',
+    'physical_voice_two_devices_two_networks','turn_relay','voice_session_order_block_authorization',
+    'rider_floating_q','customer_blueprint','merchant_blueprint','rider_blueprint',
+    'android_lifecycle_permissions_upload_location','privacy_data_safety_account_deletion',
+    'play_store_preflight','release_signing'
+  ];
+  const physical=new Set([
+    'physical_push_customer','physical_push_merchant','physical_push_rider',
+    'physical_voice_two_devices_two_networks','rider_floating_q',
+    'customer_blueprint','merchant_blueprint','rider_blueprint',
+    'android_lifecycle_permissions_upload_location'
+  ]);
+  const gates={};
+  for(const gate of gateNames){
+    const envelope={
+      gate,source_sha:head,status:'PASS',observed_at:observedAt,
+      checks:{observed:true},
+      artifacts:[{file:artifact,sha256:artifactSha,kind:'log'}]
+    };
+    if(gate==='full_native_ci') envelope.github_run_id=456;
+    if(gate==='backup_restore') envelope.github_run_id=456;
+    if(gate==='production_backend') envelope.supabase_project_ref='pkypiqhlrmzocysgeqew';
+    if(gate==='firebase_three_packages') envelope.firebase_project_id='placeholder-project';
+    if(gate==='play_store_preflight'){
+      envelope.version_name='1.0.0';
+      envelope.release_version_codes={customer:1,merchant:1,rider:1};
+      envelope.observed_play_max_version_codes={customer:0,merchant:0,rider:0};
+    }
+    if(gate==='release_signing') envelope.signing_certificate_sha256='b'.repeat(64);
+    if(physical.has(gate)){
+      envelope.devices=[
+        {device_id_hash:'1'.repeat(64),android_api:36,model:'Customer Device',role:'customer'},
+        {device_id_hash:'2'.repeat(64),android_api:36,model:'Merchant Device',role:'merchant'},
+        {device_id_hash:'3'.repeat(64),android_api:36,model:'Rider Device',role:'rider'}
+      ];
+    }
+    if(gate==='physical_voice_two_devices_two_networks'){
+      envelope.networks=[
+        {network_id_hash:'4'.repeat(64),type:'wifi'},
+        {network_id_hash:'5'.repeat(64),type:'mobile'}
+      ];
+    }
+    const file=`${gate}.json`;
+    fs.writeFileSync(path.join(bindingDir,file),JSON.stringify(envelope));
+    const sha=crypto.createHash('sha256').update(fs.readFileSync(path.join(bindingDir,file))).digest('hex');
+    gates[gate]={status:'PASS',evidence_file:file,sha256:sha};
+  }
+  const report=path.join(bindingDir,'native-release-evidence.json');
+  fs.writeFileSync(report,JSON.stringify({source_sha:head,p0:0,p1:0,gates}));
+  const result=spawnSync('python3',[script],{
+    env:{...env,QG_NATIVE_RELEASE_EVIDENCE:report,QG_CERTIFIED_NATIVE_PILOT_RUN_ID:'123',QG_CERTIFIED_BACKUP_RESTORE_RUN_ID:'789'},
+    encoding:'utf8'
+  });
+  assert.equal(result.status,1,'full_native_ci evidence must be bound to the attested Native Pilot run');
+  assert.match(result.stderr,/full_native_ci evidence does not match the attested Native Pilot run/);
+
+  const fullNativeEnvelope=JSON.parse(fs.readFileSync(path.join(bindingDir,'full_native_ci.json'),'utf8'));
+  fullNativeEnvelope.github_run_id=123;
+  fs.writeFileSync(path.join(bindingDir,'full_native_ci.json'),JSON.stringify(fullNativeEnvelope));
+  const fullNativeSha=crypto.createHash('sha256').update(fs.readFileSync(path.join(bindingDir,'full_native_ci.json'))).digest('hex');
+  gates.full_native_ci={status:'PASS',evidence_file:'full_native_ci.json',sha256:fullNativeSha};
+  fs.writeFileSync(report,JSON.stringify({source_sha:head,p0:0,p1:0,gates}));
+  const backupResult=spawnSync('python3',[script],{
+    env:{...env,QG_NATIVE_RELEASE_EVIDENCE:report,QG_CERTIFIED_NATIVE_PILOT_RUN_ID:'123',QG_CERTIFIED_BACKUP_RESTORE_RUN_ID:'789'},
+    encoding:'utf8'
+  });
+  assert.equal(backupResult.status,1,'backup_restore evidence must be bound to the attested Backup Restore Drill');
+  assert.match(backupResult.stderr,/backup_restore evidence does not match the attested Backup Restore Drill/);
+}finally{fs.rmSync(bindingDir,{recursive:true,force:true});}
+
 const verifier=fs.readFileSync(script,'utf8');
 assert.ok(verifier.includes('for role in ("customer", "merchant", "rider")'),'release verifier must apply Play history checks to Customer, Merchant and Rider');
 assert.ok(verifier.includes('play_max_name = f"QG_{role.upper()}_PLAY_MAX_VERSION_CODE"'),'release verifier must derive the per-role observed Play max environment name');
@@ -124,6 +204,15 @@ assert.match(verifier,/physical gate device role is invalid/,'physical evidence 
 assert.match(verifier,/physical gate evidence is missing required roles/,'physical evidence must fail when a required app role is absent');
 assert.match(verifier,/physical voice gate requires two distinct devices/,'voice certification must require two distinct devices');
 assert.match(verifier,/physical voice gate requires two distinct networks/,'voice certification must require two distinct networks');
+assert.match(verifier,/QG_CERTIFIED_NATIVE_PILOT_RUN_ID/,'release evidence must bind full_native_ci to the attested Native Pilot run');
+assert.match(verifier,/QG_CERTIFIED_BACKUP_RESTORE_RUN_ID/,'release evidence must bind backup_restore to the attested restore drill');
+assert.match(verifier,/backup_restore evidence does not match the attested Backup Restore Drill/,'backup evidence must reject a mismatched restore-drill run');
+assert.match(verifier,/production_backend evidence must identify QueueGo Production Supabase/,'production backend evidence must bind the Production Supabase project');
+assert.match(verifier,/firebase_three_packages evidence does not match the loaded Firebase project/,'Firebase evidence must bind the loaded project identity');
+assert.match(verifier,/play_store_preflight evidence versionName mismatch/,'Play evidence must bind certified versionName');
+assert.match(verifier,/play_store_preflight evidence release versionCodes mismatch/,'Play evidence must bind release versionCodes');
+assert.match(verifier,/play_store_preflight evidence Play history mismatch/,'Play evidence must bind observed Play version history');
+assert.match(verifier,/release_signing evidence does not match the certified signing identity/,'signing evidence must bind the certified certificate fingerprint');
 for(const legacy of ['.github/workflows/build-queuego-apks.yml','.github/workflows/build-queuego-pilot-apks.yml']){
   assert.equal(fs.existsSync(legacy),false,`legacy Capacitor Android build workflow must stay retired: ${legacy}`);
 }

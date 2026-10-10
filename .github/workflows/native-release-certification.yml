@@ -104,6 +104,39 @@ jobs:
           echo "Certified exact-HEAD Native Pilot CI run: $pilot_run_id"
           echo "QG_CERTIFIED_NATIVE_PILOT_RUN_ID=$pilot_run_id" >> "$GITHUB_ENV"
 
+      - name: Require successful exact-HEAD Backup Restore Drill
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          runs="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs?branch=queuego-native-android-v1&status=success&per_page=100")"
+          backup_run_id="$(jq -r --arg sha "$GITHUB_SHA" '
+            [.workflow_runs[]
+              | select(.head_sha == $sha)
+              | select(.head_branch == "queuego-native-android-v1")
+              | select(.path == ".github/workflows/backup-restore-drill.yml")
+              | select(.event == "workflow_dispatch")
+              | select(.conclusion == "success")]
+            | sort_by(.run_number)
+            | last
+            | .id // empty
+          ' <<<"$runs")"
+          case "$backup_run_id" in
+            ''|*[!0-9]*) echo "::error::Exact-HEAD successful Backup Restore Drill is required before release certification"; exit 1 ;;
+          esac
+          artifacts="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$backup_run_id/artifacts?per_page=100")"
+          valid_backup_count="$(jq '[.artifacts[]
+            | select(.expired == false)
+            | select(.size_in_bytes > 0)
+            | select(.name | startswith("queuego-backup-"))] | length' <<<"$artifacts")"
+          if [ "$valid_backup_count" -lt 1 ]; then
+            echo "::error::Certified Backup Restore Drill has no live encrypted backup artifact"
+            exit 1
+          fi
+          echo "Certified exact-HEAD Backup Restore Drill run: $backup_run_id"
+          echo "QG_CERTIFIED_BACKUP_RESTORE_RUN_ID=$backup_run_id" >> "$GITHUB_ENV"
+
       - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
         with:
           distribution: temurin
@@ -330,6 +363,7 @@ jobs:
               "certification_run_id": os.environ["GITHUB_RUN_ID"],
               "certification_workflow": ".github/workflows/native-release-certification.yml",
               "native_pilot_run_id": int(os.environ["QG_CERTIFIED_NATIVE_PILOT_RUN_ID"]),
+              "backup_restore_run_id": int(os.environ["QG_CERTIFIED_BACKUP_RESTORE_RUN_ID"]),
               "evidence_object_path": os.environ["EVIDENCE_OBJECT_PATH"],
               "evidence_bundle_sha256": os.environ["EVIDENCE_BUNDLE_SHA256"].lower(),
               "version_name": os.environ["QG_NATIVE_VERSION_NAME"],
