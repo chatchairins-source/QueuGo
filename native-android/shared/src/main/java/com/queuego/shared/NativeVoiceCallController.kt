@@ -103,6 +103,34 @@ class NativeVoiceCallController(
         }
     }
 
+    suspend fun refreshIncoming(nextAuth: NativeAuth): NativeVoiceCall? {
+        checkOpen()
+        updateAuth(nextAuth)
+        if (_state.value.phase in setOf(
+                NativeVoicePhase.RINGING_OUT,
+                NativeVoicePhase.CONNECTING,
+                NativeVoicePhase.CONNECTED
+            )
+        ) return _state.value.call
+        val incoming = api.incoming(nextAuth)
+        if (incoming == null) {
+            if (_state.value.phase == NativeVoicePhase.INCOMING) {
+                finishLocal(NativeVoicePhase.IDLE, null)
+            }
+            return null
+        }
+        check(incoming.calleeUserId == nextAuth.user.id) {
+            "สิทธิ์ผู้รับสายไม่ตรงกับ Session"
+        }
+        setState(
+            NativeVoiceControllerState(
+                phase = NativeVoicePhase.INCOMING,
+                call = incoming
+            )
+        )
+        return incoming
+    }
+
     suspend fun refreshActive(nextAuth: NativeAuth, orderId: String): NativeVoiceCall? {
         checkOpen()
         updateAuth(nextAuth)
