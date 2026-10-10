@@ -1,6 +1,6 @@
 # QueueGo — Google Play Closed Beta Readiness
 
-Last reviewed: 2026-10-07  
+Last reviewed: 2026-10-10  
 Scope: Android Customer, Merchant, Rider apps.
 
 ## Current release gate
@@ -58,9 +58,8 @@ QueueGo Closed Beta now uses the real Kotlin/Compose Native Android apps under `
 
 Builds fail if the generated project is not API 36.
 
-Policy sources:
+Policy source:
 - https://support.google.com/googleplay/android-developer/answer/11926878
-- https://next.capacitorjs.com/docs/next/android/setting-target-sdk
 
 ### Android permissions
 
@@ -158,9 +157,9 @@ Policy source:
 
 ## Data Safety draft
 
-Google Play treats data transmitted off-device from an app-controlled WebView as app collection. QueueGo must therefore declare data collected by the web application running inside Capacitor.
+Google Play Data Safety requires QueueGo to disclose applicable user data collected or shared by the released app. QueueGo Closed Beta uses the Kotlin/Compose Native apps under `native-android/` and does not ship a WebView/Capacitor Android release. Data transmitted off-device by Native features such as account/auth, orders, location, chat, push notifications, proof images and optional real-time voice must therefore be classified from the Native implementation.
 
-Google Play also states that transfers to qualifying service providers, legal-purpose transfers, and some user-initiated transfers are not necessarily declared as "sharing." QueueTech must confirm the contractual role of infrastructure/map providers before final submission.
+Google Play also states that transfers to qualifying service providers, legal-purpose transfers, and some user-initiated transfers are not necessarily declared as "sharing." QueueTech must confirm the contractual role of infrastructure/map/TURN providers before final submission.
 
 Policy source:
 - https://support.google.com/googleplay/android-developer/answer/10787469
@@ -218,7 +217,7 @@ Policy source:
 
 ### Provider sharing classification — conservative submission decision (2026-10-07)
 
-Google Play defines "sharing" as transferring user data to a third party, including transfers from an app-controlled WebView. A transfer to a qualifying service provider that processes data on the developer's behalf and instructions does not have to be declared as sharing.
+Google Play defines "sharing" based on transfers of user data to third parties. A transfer to a qualifying service provider that processes data on the developer's behalf and instructions does not have to be declared as sharing.
 
 Current QueueGo decision:
 
@@ -233,7 +232,7 @@ Code evidence:
 - Customer loads Longdo Map and sends selected latitude/longitude to Longdo reverse-geocoding.
 - Rider loads Longdo Map and sends current Rider coordinates plus destination coordinates to Longdo RouteService.
 - Merchant loads Longdo Map for shop location/pin workflows.
-- `android-build/package.json` includes Capacitor Push Notifications 8.0.0 and does not declare Firebase Analytics or Crashlytics.
+- `native-android/customer`, `native-android/merchant` and `native-android/rider` use Firebase Cloud Messaging for push transport. The reviewed Native Gradle dependency set does not include Firebase Analytics or Crashlytics.
 
 Current public-policy sources reviewed:
 - Google Play Data Safety: https://support.google.com/googleplay/android-developer/answer/10787469
