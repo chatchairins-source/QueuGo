@@ -1299,13 +1299,17 @@ private fun MerchantCancelGuard(
     var otherReason by remember(order.id) { mutableStateOf("") }
     var acknowledged by remember(order.id) { mutableStateOf(false) }
     var slide by remember(order.id) { mutableStateOf(0f) }
-    val accepted = order.status !in setOf("pending")
+    val cancellable = order.status in setOf("pending", "accepted", "rider_assigned", "assigned")
+    val accepted = order.status != "pending"
+    LaunchedEffect(order.status) {
+        if (!cancellable) onDismiss()
+    }
     val reason = when {
         selectedReason == "อื่น ๆ" && otherReason.trim().isNotBlank() -> "อื่น ๆ: " + otherReason.trim()
         selectedReason == "อื่น ๆ" -> ""
         else -> selectedReason
     }
-    val ready = reason.isNotBlank() && acknowledged && !busy
+    val ready = cancellable && reason.isNotBlank() && acknowledged && !busy
 
     AlertDialog(
         onDismissRequest = { if (!busy) onDismiss() },
