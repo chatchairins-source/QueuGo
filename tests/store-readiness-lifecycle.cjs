@@ -75,6 +75,7 @@ ok(merchant.includes("shop_profiles?select=user_id,shop_name&user_id=in.('+ids.m
 ok(currentShopOrders.includes("and sp.archived_at is null"),'Merchant order RPC must ignore archived shop profiles after reapplication');
 ok(currentShopOrders.includes("order by sp.created_at desc"),'Merchant order RPC must resolve the newest current shop profile');
 ok(currentShopOrders.includes("merchant_current_shop_rpc_backup_20261011")&&currentShopOrders.includes("pg_get_functiondef"),'Merchant order RPC definition must be backed up before replacement');
+ok(currentShopOrders.includes('GET_MY_SHOP_ORDERS_UNEXPECTED_DEFINITION'),'Merchant order RPC patch must fail closed on an unexpected Production definition');
 
 // Suspension/restore must respect lifecycle instead of bypassing approval or mutating archived history.
 ok(statusBackup.includes('store_status_cascade_backup_20261008'),'Status cascade definitions must be backed up before replacement');
