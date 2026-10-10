@@ -1,5 +1,10 @@
 # QueueGo project memory
 
+## 2026-10-10 Native voice privacy disclosure
+- Added factual privacy disclosures for Native optional microphone permission, order-scoped audio-only WebRTC transmission, no audio recording/storage, call status/timing/participant metadata, transient Supabase signaling and Firebase/Cloudflare infrastructure. No new order flow, UI redesign or permissions are introduced on the web.
+- Backup before publication: backup-web-pre-native-voice-privacy-20261010 at a03eb794. Historical Capacitor Android release remains hard-blocked. Native app source of truth remains queuego-native-android-v1; physical push/voice, secret configuration, signing and Play Data Safety certification remain OPEN.
+- Full web regression and live published privacy readback are required before calling publication verified. This disclosure does not certify physical audio, TURN or notification delivery.
+
 Updated: 2026-10-06 (Asia/Bangkok).
 
 ## User instruction
