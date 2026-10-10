@@ -109,7 +109,7 @@ assert.match(verifier,/def bundle_file\(bundle_root: Path, relative: str, label:
 assert.match(verifier,/rel\.is_absolute\(\)/,'release evidence must reject absolute paths');
 assert.match(verifier,/"\.\." in rel\.parts/,'release evidence must reject parent traversal');
 assert.match(verifier,/\[0-9a-fA-F\]\{64\}/,'release evidence must require a SHA-256 digest');
-assert.match(verifier,/gate evidence file is unavailable/,'release evidence must require a regular evidence file');
+assert.match(verifier,/\{label\} file is unavailable/,'release evidence helper must require a regular evidence file');
 assert.match(verifier,/def sha256_file\(path: Path\)/,'release evidence hashing must stream through a dedicated file helper');
 assert.match(verifier,/handle\.read\(1024 \* 1024\)/,'release evidence hashing must use bounded streaming chunks');
 assert.doesNotMatch(verifier,/path\.read_bytes\(\)/,'release evidence verifier must not load large evidence files fully into RAM');
