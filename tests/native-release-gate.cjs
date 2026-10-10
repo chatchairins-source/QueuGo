@@ -22,6 +22,10 @@ for(const role of ['CUSTOMER','MERCHANT','RIDER']){
   assert.ok(verifier.includes(`QG_${role}_PLAY_MAX_VERSION_CODE`),`release verifier must require observed Play version history for ${role}`);
 }
 assert.doesNotMatch(verifier,/for role, previous_code in/,'release verifier must not trust hard-coded prior Play versionCodes');
+assert.match(verifier,/"backup_restore"/,'Native release must require certified Backup/Restore evidence');
+for(const legacy of ['.github/workflows/build-queuego-apks.yml','.github/workflows/build-queuego-pilot-apks.yml']){
+  assert.equal(fs.existsSync(legacy),false,`legacy Capacitor Android build workflow must stay retired: ${legacy}`);
+}
 
 const gradle=fs.readFileSync('native-android/build.gradle.kts','utf8');
 assert.match(gradle,/isDebuggable = false/);
