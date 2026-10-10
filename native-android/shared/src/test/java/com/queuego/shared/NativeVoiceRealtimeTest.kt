@@ -156,6 +156,39 @@ class NativeVoiceRealtimeTest {
             NativeVoiceRealtimeConnection.ALLOWED_EVENTS)
     }
 
+    @Test fun turnParserRejectsStunOnlyAndRequiresRelayCredentials() {
+        val api = NativeVoiceCallApi()
+        val stunOnly = JSONObject()
+            .put("turnReady", false)
+            .put("iceServers", org.json.JSONArray().put(
+                JSONObject().put("urls", org.json.JSONArray().put("stun:stun.cloudflare.com:3478"))
+            ))
+        assertThrows(IllegalArgumentException::class.java) { api.parseIceConfig(stunOnly) }
+
+        val noRelay = JSONObject()
+            .put("turnReady", true)
+            .put("iceServers", org.json.JSONArray().put(
+                JSONObject().put("urls", org.json.JSONArray().put("stun:stun.cloudflare.com:3478"))
+            ))
+        assertThrows(IllegalArgumentException::class.java) { api.parseIceConfig(noRelay) }
+
+        val ready = JSONObject()
+            .put("turnReady", true)
+            .put("iceServers", org.json.JSONArray()
+                .put(JSONObject().put("urls", org.json.JSONArray().put("stun:stun.cloudflare.com:3478")))
+                .put(JSONObject()
+                    .put("urls", org.json.JSONArray()
+                        .put("turn:turn.cloudflare.com:3478?transport=udp")
+                        .put("turns:turn.cloudflare.com:443?transport=tcp"))
+                    .put("username", "short-user")
+                    .put("credential", "short-secret")))
+        val parsed = api.parseIceConfig(ready)
+        assertEquals(2, parsed.size)
+        assertTrue(parsed.any { it.urls.any { url -> url.startsWith("turn:") } })
+        assertEquals("short-user", parsed.last().username)
+        assertEquals("short-secret", parsed.last().credential)
+    }
+
     @Test fun callApiParserRejectsFabricatedTargetsAndTopics() {
         val api = NativeVoiceCallApi()
         val row = JSONObject()
