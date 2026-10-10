@@ -425,7 +425,7 @@
     "release_certification_supabase_url": "https://pkypiqhlrmzocysgeqew.supabase.co",
     "release_certification_bucket_private_required": true,
     "release_certification_bucket_observed_in_production": false,
-    "release_certification_bucket_last_checked_at": "2026-10-10T12:00:00Z"
+    "release_certification_bucket_last_checked_at": "2026-10-10T12:50:00Z"
   },
   "security": {
     "code_surface_hardened": true,
