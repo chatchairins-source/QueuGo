@@ -24,7 +24,7 @@ class CustomerCheckoutRpcContractTest {
         for (note in listOf(null, "", "   ")) {
             val payload = JSONObject(body(note).toString())
             assertEquals(setOf("p_order_id", "p_shop_id", "p_items", "p_delivery_lat", "p_delivery_lng",
-                "p_delivery_address", "p_expected_subtotal", "p_expected_delivery_fee", "p_note"), payload.keySet())
+                "p_delivery_address", "p_expected_subtotal", "p_expected_delivery_fee", "p_note"), payload.keys().asSequence().toSet())
             assertTrue(payload.has("p_note"))
             assertTrue(payload.isNull("p_note"))
             assertEquals("request", payload.getString("p_order_id"))
