@@ -326,7 +326,7 @@ assert.match(artifactVerifier,/release artifact evidence must be written outside
 const runtime16kPath='native-android/qa/capture-16kb-runtime.py';
 assert.ok(fs.existsSync(runtime16kPath),'16 KB Native emulator runtime script must exist');
 const runtime16k=fs.readFileSync(runtime16kPath,'utf8');
-for(const token of ['system-images;android-35;google_apis_ps16k;x86_64','getconf", "PAGE_SIZE"','page_size == "16384"','com.queuego.customer','com.queuego.merchant','com.queuego.rider','PASS_SOFTWARE_16KB_RUNTIME_ONLY']){
+for(const token of ['system-images;android-35;google_apis_ps16k;x86_64','getconf", "PAGE_SIZE"','page_size == "16384"','roles = ("customer", "merchant", "rider")','pkg = f"com.queuego.{role}"','PASS_SOFTWARE_16KB_RUNTIME_ONLY']){
   assert.ok(runtime16k.includes(token),`16 KB runtime smoke missing ${token}`);
 }
 assert.ok(runtime16k.includes('"physical_device": False')&&runtime16k.includes('"physical_gate_certified": False'),'16 KB emulator evidence must never certify a physical gate');
