@@ -65,10 +65,13 @@
           "accepted",
           "cancel"
         ],
-        "accepted": [],
+        "accepted": [
+          "cancel"
+        ],
         "searching_rider": [],
         "rider_assigned": [
-          "preparing"
+          "preparing",
+          "cancel"
         ],
         "preparing": [
           "ready"
@@ -79,6 +82,26 @@
         "completed": [],
         "cancelled": [],
         "no_rider_available": []
+      },
+      "cancellation_guard": {
+        "production_web_parity": true,
+        "allowed_before_preparing": [
+          "pending",
+          "accepted",
+          "rider_assigned"
+        ],
+        "searching_rider_wait_only": true,
+        "disabled_from_preparing_onward": true,
+        "reasons": [
+          "สินค้าหมด",
+          "ร้านไม่สามารถจัดเตรียมสินค้าได้",
+          "ร้านปิดหรือมีเหตุฉุกเฉิน",
+          "ลูกค้าขอให้ยกเลิก",
+          "อื่น ๆ"
+        ],
+        "acknowledgement_required": true,
+        "slide_threshold_percent": 95,
+        "custom_reason_max_chars": 420
       }
     },
     "rider": {
