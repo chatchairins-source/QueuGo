@@ -88,8 +88,32 @@ Image selection/upload uses the system picker or scoped file chooser rather than
 
 The microphone foreground service is started only from visible outgoing/answer user actions before media creation. Incoming FCM does not start microphone access in the background. The service keeps an already-started call eligible through background lifecycle and stops on call/session termination. Physical two-device/background audio certification and the Play foreground-service declaration remain OPEN.
 
+#### Play Console foreground-service declaration draft
+
+Google Play requires Android 14+ apps to declare each foreground-service type in Play Console, describe the feature and user impact if the task is deferred/interrupted, and provide a demo video showing how the user triggers the feature. Source readiness below does not complete the Console declaration.
+
+**Customer / Merchant / Rider — `microphone`**
+- Functionality: order-scoped in-app WebRTC audio call between authorized QueueGo order participants.
+- User initiation/perception: starts only after the user taps the visible call/answer action; an ongoing QueueGo call notification remains visible and offers hang-up.
+- Why immediate: deferring or interrupting the service would stop microphone capture and break the real-time call the user explicitly started or answered.
+- Stop boundary: service ends with call/session termination; incoming FCM alone never starts microphone capture.
+- Required reviewer evidence: real-device video showing the visible call/answer action, Android microphone permission where applicable, active-call UI, foreground notification, backgrounding the app while the already-started call remains active, and user hang-up returning the service to stopped state.
+
+**Rider only — `specialUse`**
+- Manifest subtype: `Active QueueGo Rider navigation return control`.
+- Functionality: while an authenticated Rider account is active and the Rider leaves QueueGo for navigation/work context, `RiderReturnService` keeps a visible notification and optional Floating Q overlay that returns the Rider to the active QueueGo work screen.
+- User perception: persistent notification provides tap-to-return; Floating Q is shown only when overlay permission is granted.
+- Why immediate: if interrupted while the Rider is actively navigating/working, the explicit return control disappears and the Rider loses the user-visible shortcut back to the live job.
+- Stop boundary: the service is non-sticky, refuses invalid/inactive Rider state, and removes its overlay on destroy.
+- Required reviewer evidence: real-device video showing active Rider state, navigation/work handoff, foreground notification, optional Floating Q, tap-to-return, and the service/overlay stopping when the Rider leaves the active work boundary.
+
+Play Console foreground-service declaration status remains **BLOCKED** until the real-device videos and final Console entries exist.
+
 Policy sources:
-- https://support.google.com/googleplay/android-developer/answer/16558241
+- https://support.google.com/googleplay/android-developer/answer/16559646
+- https://support.google.com/googleplay/android-developer/answer/13392821
+- https://developer.android.com/about/versions/14/changes/fgs-types-required
+- https://developer.android.com/develop/background-work/services/fgs/service-types
 - https://developer.android.com/develop/background-work/services/fgs/restrictions-bg-start
 
 ### Account deletion
@@ -214,6 +238,25 @@ Policy source:
 | Photos | Pickup/delivery proof and chat/evidence images | App functionality, safety | Required for proof steps / optional for chat |
 | Device or other IDs | Push token, session/device identifiers | Notifications, security | Optional/functional |
 
+### Live voice media Data Safety boundary
+
+QueueGo Native voice calls use the shared audio-only WebRTC peer path. Under Google Play's Data Safety rules, user data sent off-device does not need to be disclosed as collected when it remains end-to-end encrypted and unreadable by the developer or any intermediary other than the sender and recipient. Current Cloudflare Realtime TURN documentation states that when TURN is used with WebRTC, Cloudflare relays encrypted packets and cannot decrypt or inspect the media content; it still processes relay metadata such as client IP addresses, ports and session timing.
+
+Current QueueGo treatment:
+- **Live microphone media:** not separately declared as collected while the certified architecture remains peer-to-peer WebRTC media with end-to-end encryption and no intermediary/developer access to media content.
+- **No recording claim:** this exception is about live encrypted media transport; QueueGo does not record/store/transcribe the call media in the reviewed Native source.
+- **TURN relay metadata:** remains subject to Data Safety review separately from the media content; final Play Console classification stays pending.
+- **Fail-closed reassessment:** if QueueGo adds recording, transcription, an SFU/media server that can read media, server-side media processing, or any transport where an intermediary can decrypt media, the Data Safety answer must be reviewed again before release.
+
+Code evidence:
+- `NativeVoicePeer` creates an audio-only WebRTC peer and audio track.
+- `queuego-turn` obtains authorized STUN/TURN ICE servers from Cloudflare Realtime TURN.
+- The reviewed voice/TURN source contains no media recording, transcription or SFU/server-media path.
+
+Policy/provider sources:
+- https://support.google.com/googleplay/android-developer/answer/10787469
+- https://developers.cloudflare.com/realtime/turn/faq/
+
 ### Provider sharing classification — conservative submission decision (2026-10-07)
 
 Google Play defines "sharing" as transferring user data to a third party. A transfer to a qualifying service provider that processes data on the developer's behalf and instructions does not have to be declared as sharing. QueueGo applies this definition to the Native Android data flows below.
@@ -224,6 +267,7 @@ Current QueueGo decision:
 |---|---|---|---|
 | Supabase | Auth, database, Storage, Realtime, account/order/location/chat/support data | Supabase DPA states Supabase acts as processor/service provider and processes Covered Data on behalf of and under Customer instructions | **Collected: Yes. Shared: service-provider exception may be used** for Supabase processing under the applicable Supabase agreement/DPA |
 | Firebase Cloud Messaging / Google | Native push transport; FCM/Installations SDK metadata, installation ID/token and app version as applicable | Firebase Data Processing and Security Terms govern Customer Data; Firebase privacy guidance states Google generally operates as processor/service provider for Firebase customer data | **Collected: Yes** for applicable FCM/Installations data. **Shared: service-provider exception may be used** for Firebase processing covered by those terms |
+| Cloudflare Realtime TURN | Relay fallback for Native WebRTC voice calls; encrypted media packets plus relay metadata | Cloudflare documents that WebRTC media is encrypted end-to-end between peers and that TURN cannot inspect media content; TURN still processes client IP addresses, ports and session timing | **Media content:** not treated as collected while the Google Play E2EE exception conditions remain satisfied. **Relay metadata:** keep under final Data Safety classification review before Console submission |
 | Longdo Map / Metamedia Technology | Customer reverse geocoding, map rendering, merchant/shop pins, Rider route calculation; exact origin/destination coordinates are sent to Longdo endpoints | Public Longdo API terms point to Longdo privacy policy. The public privacy policy says Longdo may collect IP/usage/location data, but the public terms reviewed do not establish that all API personal-data processing is solely on QueueTech's behalf/instructions | **Conservative answer: Shared = Yes for location, purpose App functionality.** Do not claim the service-provider exception unless a QueueTech–Longdo commercial agreement/DPA explicitly supports it |
 | External navigation app opened by the user | Explicit "navigate" action where the user chooses to open an external navigation service | Google Play has a user-initiated-transfer exception when the user reasonably expects the transfer | Can rely on the user-initiated exception for that explicit navigation handoff, but this does **not** remove the Longdo sharing declaration above |
 
@@ -231,6 +275,9 @@ Code evidence:
 - Customer loads Longdo Map and sends selected latitude/longitude to Longdo reverse-geocoding.
 - Rider loads Longdo Map and sends current Rider coordinates plus destination coordinates to Longdo RouteService.
 - Merchant loads Longdo Map for shop location/pin workflows.
+- Customer, Merchant and Rider all declare `RECORD_AUDIO` and use the shared `NativeVoicePeer` WebRTC audio path.
+- `NativeVoicePeer` creates an audio-only WebRTC peer and authorized ICE configuration; `queuego-turn` obtains Cloudflare TURN credentials without receiving call media.
+- The reviewed Native voice/TURN source contains no recording, transcription or SFU/server-side media processing.
 - Native Android release CI rejects WebView and validates the three production package IDs; FCM configuration remains a hard release gate and Firebase Analytics/Crashlytics are not used as certification evidence.
 
 Current public-policy sources reviewed:
@@ -238,6 +285,7 @@ Current public-policy sources reviewed:
 - Supabase DPA: https://supabase.com/legal/customer-resources/data-processing-addendum
 - Firebase Data Processing terms: https://firebase.google.com/terms/data-processing-terms
 - Firebase Play Data disclosure: https://firebase.google.com/docs/android/play-data-disclosure
+- Cloudflare Realtime TURN FAQ: https://developers.cloudflare.com/realtime/turn/faq/
 - Longdo API terms: https://map.longdo.com/api/terms/
 - Longdo privacy policy: https://www.longdo.com/en/privacy
 
