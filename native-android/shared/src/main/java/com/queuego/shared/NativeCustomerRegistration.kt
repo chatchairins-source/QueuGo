@@ -27,12 +27,13 @@ data class NativeCustomerRegistration(
 const val NATIVE_PASSWORD_POLICY_MESSAGE =
     "รหัสผ่านต้องมีอย่างน้อย 12 ตัว และมี A-Z, a-z, ตัวเลข และสัญลักษณ์"
 
-fun requireNativeStrongPassword(password: String) {
-    require(password.length >= 12 && password.any { it in 'a'..'z' } &&
+fun isNativeStrongPassword(password: String): Boolean =
+    password.length >= 12 && password.any { it in 'a'..'z' } &&
         password.any { it in 'A'..'Z' } && password.any { it in '0'..'9' } &&
-        password.any { it !in 'a'..'z' && it !in 'A'..'Z' && it !in '0'..'9' }) {
-        NATIVE_PASSWORD_POLICY_MESSAGE
-    }
+        password.any { it !in 'a'..'z' && it !in 'A'..'Z' && it !in '0'..'9' }
+
+fun requireNativeStrongPassword(password: String) {
+    require(isNativeStrongPassword(password)) { NATIVE_PASSWORD_POLICY_MESSAGE }
 }
 
 /** Account creation succeeded: recover by signing in, never automatically repeat signup. */
