@@ -135,6 +135,9 @@ ok(manifest?.android?.release_certification_bucket_client_policies_present===fal
 ok(manifest?.android?.release_certification_runtime_gate==='BLOCKED_SECRETS_AND_PHYSICAL_EVIDENCE','Certification runtime must remain blocked only on external credentials and real physical evidence after bucket provisioning');
 ok(manifest?.android?.release_gate_evidence_envelope_schema===true&&manifest?.android?.release_gate_evidence_envelope_version===1,'Release evidence must use the structured gate envelope schema');
 ok(manifest?.android?.release_gate_physical_device_id_hash_required===true&&manifest?.android?.release_gate_physical_role_binding===true,'Physical evidence must use hashed device identity and role binding');
+ok(manifest?.android?.physical_evidence_capture_helper==='native-android/qa/capture-physical-release-evidence.py','Recovery manifest must point to the supported physical evidence helper');
+ok(manifest?.android?.physical_evidence_capture_default_status==='DRAFT'&&manifest?.android?.physical_evidence_capture_auto_certifies===false,'Physical evidence helper must never auto-certify release gates');
+ok(manifest?.android?.physical_evidence_capture_rejects_emulator===true&&manifest?.android?.physical_evidence_capture_external_output_required===true,'Physical evidence helper must reject emulator capture and keep evidence outside source');
 ok(manifest?.android?.release_gate_lifecycle_requires_all_roles===true,'Lifecycle certification must cover Customer Merchant and Rider');
 ok(manifest?.android?.release_gate_voice_requires_two_distinct_devices===true&&manifest?.android?.release_gate_voice_requires_two_distinct_networks===true,'Voice certification must require two devices and two networks');
 ok(manifest?.android?.release_gate_full_native_ci_attested_run_binding===true,'full_native_ci evidence must bind the attested Native Pilot run');
