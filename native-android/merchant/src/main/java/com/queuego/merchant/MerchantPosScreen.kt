@@ -623,6 +623,87 @@ fun MerchantPosScreen(
                         cancelOpen = true
                     },
                     onPay = {
+                        view = "bills"
+                    },
+                    onEditPrice = { product ->
+                        priceTarget = product
+                        priceText = product.price.toString()
+                    }
+                )
+
+                "tables" -> PosTablesView(
+                    snapshot = snap,
+                    busy = busy,
+                    canManage = can("manage_staff"),
+                    onOpen = { table ->
+                        mode = "DINE_IN"
+                        tableId = table.id
+                        noTable = false
+                        selectedBillId = openBills.firstOrNull { it.tableId == table.id }?.id
+                        view = "counter"
+                    },
+                    onNoTable = {
+                        mode = "DINE_IN"
+                        tableId = null
+                        noTable = true
+                        selectedBillId = openBills.firstOrNull {
+                            it.type == "DINE_IN" && it.tableId == null
+                        }?.id
+                        view = "counter"
+                    },
+                    onAdd = {
+                        editingTable = null
+                        tableLabel = ""
+                        tableActive = true
+                        tableDialog = true
+                    },
+                    onEdit = { table ->
+                        editingTable = table
+                        tableLabel = table.label
+                        tableActive = table.active
+                        tableDialog = true
+                    },
+                    onQr = { qrTable = it },
+                    onDelete = { table ->
+                        runMutation("ลบ " + table.label + " แล้ว", null) {
+                            api.deleteTable(auth, table.id)
+                        }
+                    }
+                )
+
+                "kitchen" -> PosKitchenView(
+                    snapshot = snap,
+                    busy = busy,
+                    can = ::can,
+                    onPosAction = { bill, action, label ->
+                        runMutation(label + "แล้ว", bill.id) {
+                            api.billAction(auth, bill.id, action)
+                        }
+                    },
+                    onDeliveryAction = { order, action, label ->
+                        runMutation(label + "แล้ว", null) {
+                            api.deliveryAction(auth, order.id, action)
+                        }
+                    }
+                )
+
+                "bills" -> PosBillsView(
+                    bills = openBills.filter { it.kitchenStatus in setOf("READY", "SERVED") },
+                    selected = selectedBill,
+                    paymentMethod = paymentMethod,
+                    paymentMethodMenu = paymentMethodMenu,
+                    cashReceived = cashReceived,
+                    busy = busy,
+                    canClose = can("close_bill"),
+                    onSelect = { selectedBillId = it.id },
+                    onPaymentMenu = { paymentMethodMenu = it },
+                    onPaymentMethod = {
+                        paymentMethod = it
+                        paymentMethodMenu = false
+                        if (it != "cash") cashReceived = ""
+                    },
+                    onCash = { cashReceived = it.filter { ch -> ch.isDigit() || ch == '.' } },
+                    onPay = {
                         val bill = selectedBill
                         val method = paymentMethod
                         if (!busy && bill != null && can("close_bill")) {
@@ -653,6 +734,7 @@ fun MerchantPosScreen(
                         }
                     }
                 )
+
 
                 "reports" -> PosReportsView(
                     snapshot = snap,
