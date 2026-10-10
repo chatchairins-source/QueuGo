@@ -47,12 +47,14 @@ any requirement below is OPEN.
   QG_ANDROID_STORE_PASSWORD, QG_ANDROID_KEY_ALIAS and
   QG_ANDROID_KEY_PASSWORD absent from the Actions environment.
 - Production Supabase project `pkypiqhlrmzocysgeqew` was checked read-only
-  on 2026-10-10: private Storage bucket `queuego-native-release-evidence` is not
-  present yet. Certification and release-readiness workflows now require
-  `QG_SUPABASE_URL=https://pkypiqhlrmzocysgeqew.supabase.co`, verify that the
-  fixed bucket exists and remains private, and fail closed on any other project.
-  Runtime certification remains BLOCKED until the bucket,
-  QG_SUPABASE_SERVICE_ROLE_KEY and real physical evidence are configured.
+  on 2026-10-10 and the fixed Storage bucket `queuego-native-release-evidence`
+  is now present with `public=false`. It is restricted to ZIP MIME types
+  (`application/zip`, `application/x-zip-compressed`). Certification and
+  release-readiness workflows require
+  `QG_SUPABASE_URL=https://pkypiqhlrmzocysgeqew.supabase.co`, verify this exact
+  bucket remains private, and fail closed on any other project. The bucket
+  infrastructure gate is therefore closed; runtime certification remains
+  BLOCKED on GitHub Actions credentials/readiness and real physical evidence.
 
 ## Still OPEN
 
