@@ -63,6 +63,7 @@ ok(Array.isArray(manifest?.android?.allowed_android_build_workflows)&&manifest.a
 ok(manifest?.android?.release_version_code_strategy==='EXPLICIT_PER_APP_GT_OBSERVED_PLAY_MAX','Recovery manifest must preserve Play-history versionCode strategy');
 ok(manifest?.android?.release_gate_requires_backup_restore===true,'Recovery manifest must preserve Backup/Restore as a Native release hard gate');
 ok(manifest?.android?.release_signing_cert_fingerprint_gate===true&&manifest?.android?.release_signing_expected_certificate_variable==='QG_ANDROID_EXPECTED_CERT_SHA256','Recovery manifest must require an explicit certified Native signing fingerprint');
+ok(manifest?.android?.release_bundletool_required===true&&manifest?.android?.release_bundletool_path_variable==='QG_BUNDLETOOL_JAR'&&manifest?.android?.release_bundletool_sha256_variable==='QG_BUNDLETOOL_SHA256','Recovery manifest must require a pinned bundletool for signed AAB metadata verification');
 ok(manifest?.android?.native_scope==='Customer/Merchant/Rider','Recovery manifest must identify Native Android as the active release scope');
 ok(manifest?.android?.legacy_capacitor_release_workflows_retired===true,'Legacy Capacitor release workflows must remain retired');
 ok(!('capacitor_version' in (manifest.android||{}))&&!('push_plugin' in (manifest.android||{})),'Native recovery manifest must not treat Capacitor as the active Android runtime');
