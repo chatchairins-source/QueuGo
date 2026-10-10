@@ -18,9 +18,9 @@ try{
   assert.match(result.stderr,/exact release HEAD/);
 }finally{fs.rmSync(dir,{recursive:true,force:true});}
 const verifier=fs.readFileSync(script,'utf8');
-for(const role of ['CUSTOMER','MERCHANT','RIDER']){
-  assert.ok(verifier.includes(`QG_${role}_PLAY_MAX_VERSION_CODE`),`release verifier must require observed Play version history for ${role}`);
-}
+assert.ok(verifier.includes('for role in ("customer", "merchant", "rider")'),'release verifier must apply Play history checks to Customer, Merchant and Rider');
+assert.ok(verifier.includes('play_max_name = f"QG_{role.upper()}_PLAY_MAX_VERSION_CODE"'),'release verifier must derive the per-role observed Play max environment name');
+assert.ok(verifier.includes('version_code <= play_max'),'release verifier must reject a versionCode that does not exceed observed Play history');
 assert.doesNotMatch(verifier,/for role, previous_code in/,'release verifier must not trust hard-coded prior Play versionCodes');
 assert.match(verifier,/"backup_restore"/,'Native release must require certified Backup/Restore evidence');
 for(const gate of ['service_area','ugc_chat_safety','security_platform_auth']){
