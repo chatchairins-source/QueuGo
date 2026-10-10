@@ -5,22 +5,27 @@ let checks=0;const ok=(v,m)=>{assert.ok(v,m);checks++};
 
 const runtime=read('queuego-push.js');
 const sw=read('queuego-push-sw.js');
-const native=read('queuego-native-push.js');
 const customer=read('index.html');
 const customerFeatures=read('customer-features.js');
 const merchant=read('merchant/index.html');
 const rider=read('rider/index.html');
-const workflow=read('.github/workflows/build-queuego-apks.yml');
 const sql=read('supabase/migrations/20261006170833_queuego_background_push_unified.sql');
 const nativeSql=read('supabase/migrations/20261006173656_queuego_native_push_transport.sql');
 const retireLegacy=read('supabase/migrations/20261007043258_retire_legacy_rider_push_rpc_surface.sql');
 const cronFix=read('supabase/migrations/20261007034201_switch_push_retry_cron_to_unified_worker.sql');
-const androidPkg=JSON.parse(read('android-build/package.json'));
-const capacitor=JSON.parse(read('android-build/capacitor.config.json'));
 const edge=read('supabase/functions/queuego-push/index.ts');
 const retired=read('supabase/functions/rider-web-push/index.ts');
 const deletion=read('QueueGo-Pilot-Account-Deletion-Privacy.sql');
 const riderOfferNotify=read('supabase/migrations/20261007152746_rider_offer_notify_and_retry_expired.sql');
+
+const nativeWorkflow=read('.github/workflows/build-native-rider-pilot.yml');
+const nativeSharedPush=read('native-android/shared/src/main/java/com/queuego/shared/NativePush.kt');
+const nativeCustomerPush=read('native-android/customer/src/main/java/com/queuego/customer/CustomerPush.kt');
+const nativeMerchantPush=read('native-android/merchant/src/main/java/com/queuego/merchant/MerchantPush.kt');
+const nativeRiderPush=read('native-android/rider/src/main/java/com/queuego/rider/RiderPush.kt');
+const nativeCustomerManifest=read('native-android/customer/src/main/AndroidManifest.xml');
+const nativeMerchantManifest=read('native-android/merchant/src/main/AndroidManifest.xml');
+const nativeRiderManifest=read('native-android/rider/src/main/AndroidManifest.xml');
 
 ok(runtime.includes("navigator.serviceWorker.register"),'shared runtime must register a Service Worker');
 ok(runtime.includes("pushManager.subscribe"),'shared runtime must create a push subscription');
@@ -30,11 +35,6 @@ ok(runtime.includes("unsubscribeLocal"),'shared runtime must support local clean
 ok(sw.includes("addEventListener('push'"),'service worker must receive background push events');
 ok(sw.includes("showNotification"),'service worker must display a system notification');
 ok(sw.includes("notificationclick"),'service worker must route notification taps back into QueueGo');
-ok(runtime.includes('nativeSupported')&&runtime.includes('QueueGoNativePush.enable'),'shared QueueGoPush interface must delegate to native transport in Capacitor');
-ok(native.includes("checkPermissions")&&native.includes("requestPermissions"),'native transport must enforce Android notification permission flow');
-ok(native.includes("plugin().register()")&&native.includes("plugin().unregister()"),'native transport must register and revoke the Firebase token');
-ok(native.includes("subscribe-native")&&native.includes("unsubscribe-native"),'native transport must bind tokens to the authenticated QueueGo account');
-ok(native.includes("createChannel")&&native.includes("queuego_orders"),'native Android notifications must use an explicit channel');
 
 ok(customer.includes("QueueGoPush.configure({role:'customer'"),'Customer must configure unified push');
 ok(customerFeatures.includes('การแจ้งเตือนเบื้องหลัง'),'Customer profile must expose background push control');
@@ -87,21 +87,26 @@ ok(riderOfferNotify.includes("insert into public.notifications(user_id,title,mes
 ok(riderOfferNotify.includes("h.outcome='expired' and h.resolved_at>now()-interval '30 seconds'"),'expired Rider offers must retry without the old 10-minute dead zone');
 ok(riderOfferNotify.includes("h.outcome='declined' and h.resolved_at>now()-interval '10 minutes'"),'explicit Rider declines must keep the longer cooldown');
 
-for(const asset of ['customer-features.js','customer-features.css','customer-laundry.js','account-deletion.js','queuego-ugc.js','queuego-native-push.js','queuego-push.js','queuego-push-sw.js']){
-  ok(workflow.includes(asset),'Customer Android bundle must include '+asset);
+for(const [role,src,manifest,service] of [
+  ['customer',nativeCustomerPush,nativeCustomerManifest,'QueueGoCustomerMessagingService'],
+  ['merchant',nativeMerchantPush,nativeMerchantManifest,'QueueGoMerchantMessagingService'],
+  ['rider',nativeRiderPush,nativeRiderManifest,'QueueGoRiderMessagingService'],
+]){
+  ok(src.includes('FirebaseMessagingService'),role+' Native app must use FirebaseMessagingService');
+  ok(src.includes('onNewToken'),role+' Native app must handle FCM token rotation');
+  ok(src.includes('onMessageReceived'),role+' Native app must handle foreground/data push');
+  ok(manifest.includes('android.permission.POST_NOTIFICATIONS'),role+' Native manifest must declare notification permission');
+  ok(manifest.includes(service),role+' Native manifest must register its FCM service');
+  ok(manifest.includes('queuego_orders'),role+' Native manifest must retain the QueueGo notification channel');
 }
-const copyLines=workflow.split('\n').filter(line=>line.trim().startsWith('cp '));
-const merchantCopy=copyLines.find(line=>line.includes('../role-realtime.js'))||'';
-const riderCopy=copyLines.find(line=>line.includes('../queuego-native-push.js')&&!line.includes('../role-realtime.js')&&!line.includes('../customer-features.js'))||'';
-for(const asset of ['../queuego-password-policy.js','../account-deletion.js','../queuego-ugc.js','../queuego-native-push.js','../queuego-push.js','../queuego-push-sw.js']){
-  ok(merchantCopy.includes(asset),'Merchant Android bundle must copy '+asset);
-  ok(riderCopy.includes(asset),'Rider Android bundle must copy '+asset);
+ok(nativeSharedPush.includes('"subscribe-native"')&&nativeSharedPush.includes('"unsubscribe-native"'),'Native shared push client must bind and revoke FCM tokens through queuego-push');
+ok(nativeSharedPush.includes('.put("sessionId", auth.session.sessionId)'),'Native push token registration must remain bound to the active app session');
+ok(nativeWorkflow.includes('QG_FIREBASE_GOOGLE_SERVICES_JSON_B64'),'Native CI must consume Firebase config from the external Actions secret');
+for(const id of ['com.queuego.customer','com.queuego.merchant','com.queuego.rider']){
+  ok(nativeWorkflow.includes(id),'Native CI must validate Firebase client package '+id);
 }
-ok(workflow.includes("s=s.replace('../queuego-password-policy.js','queuego-password-policy.js')")&&workflow.includes("s=s.replace('../queuego-ugc.js','queuego-ugc.js')")&&workflow.includes("s=s.replace('../queuego-native-push.js','queuego-native-push.js')")&&workflow.includes("s=s.replace('../queuego-push.js','queuego-push.js')"),'Android nested role bundles must rewrite shared UGC/push/password paths');
-ok(workflow.includes('QG_FIREBASE_GOOGLE_SERVICES_JSON_B64')&&workflow.includes('android/app/google-services.json'),'Android release must inject Firebase app configuration securely');
-ok(androidPkg.dependencies?.['@capacitor/push-notifications']==='8.0.0','Android build must install Capacitor 8 Push Notifications');
-ok(Array.isArray(capacitor.plugins?.PushNotifications?.presentationOptions),'Capacitor config must enable native push presentation options');
+ok(nativeWorkflow.includes('Reject WebView'),'Native Android pipeline must retain the no-WebView gate');
 ok(deletion.includes('delete from public.qg_push_subscriptions where user_id=v_user.id;'),'privacy source must remove unified web push subscriptions');
 ok(deletion.includes('delete from public.qg_native_push_tokens where user_id=v_user.id;'),'privacy source must remove native push tokens');
 
-console.log(JSON.stringify({checks,failures:0,scope:'Unified Customer/Merchant/Rider Web Push + Capacitor FCM lifecycle, shared outbox, privacy cleanup and Android bundle assets'}));
+console.log(JSON.stringify({checks,failures:0,scope:'Unified Web Push + Native Android FCM lifecycle, shared outbox, privacy cleanup and Native package gates'}));
