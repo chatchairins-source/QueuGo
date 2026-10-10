@@ -136,6 +136,12 @@ ok(manifest?.android?.release_certification_runtime_gate==='BLOCKED_SECRETS_AND_
 ok(manifest?.android?.release_certification_requires_exact_head_native_pilot_ci===true,'Release certification must require exact-HEAD Native Pilot CI');
 ok(manifest?.android?.release_certification_native_pilot_workflow==='.github/workflows/build-native-rider-pilot.yml','Recovery manifest must pin the Native Pilot workflow identity for certification');
 ok(manifest?.android?.release_certification_final_release_revalidates_native_pilot_run===true,'Final release must revalidate the Native Pilot run recorded by certification');
+ok(manifest?.android?.physical_evidence_schema_version===1&&manifest?.android?.physical_evidence_manifest==='native-physical-evidence.json','Recovery manifest must pin the semantic Native physical evidence schema');
+ok(manifest?.android?.physical_evidence_semantic_validator==='native-android/qa/verify_native_physical_evidence.py','Recovery manifest must retain the semantic physical evidence validator');
+ok(manifest?.android?.physical_evidence_requires_two_real_devices===true&&manifest?.android?.physical_evidence_requires_all_three_roles===true,'Physical certification must require two real devices and all three Native roles');
+ok(manifest?.android?.physical_evidence_requires_forced_turn_relay===true,'Physical voice certification must require observed forced TURN relay');
+ok(manifest?.android?.physical_evidence_requires_blueprint_zero_blocking_differences===true&&manifest?.android?.physical_evidence_requires_lifecycle_matrix===true,'Physical certification must retain Blueprint and lifecycle completeness gates');
+ok(manifest?.android?.physical_evidence_runtime_gate==='OPEN_PENDING_REAL_DEVICE_CAPTURE','Semantic source readiness must not close the real-device physical gate');
 ok(manifest?.android?.native_scope==='Customer/Merchant/Rider','Recovery manifest must identify Native Android as the active release scope');
 ok(manifest?.android?.legacy_capacitor_release_workflows_retired===true,'Legacy Capacitor release workflows must remain retired');
 ok(!('capacitor_version' in (manifest.android||{}))&&!('push_plugin' in (manifest.android||{})),'Native recovery manifest must not treat Capacitor as the active Android runtime');
