@@ -79,22 +79,25 @@ class NativeVoiceCallController(
                     phase = NativeVoicePhase.RINGING_OUT,
                     call = call
                 ))
-                val accepted: NativeVoiceCall? = withTimeoutOrNull<NativeVoiceCall?>(50_000L) {
-                    while (true) {
+                var accepted: NativeVoiceCall? = null
+                val remainedAvailable = withTimeoutOrNull(50_000L) {
+                    while (accepted == null) {
                         delay(900L)
                         val currentAuth = auth ?: throw IllegalStateException("Session สิ้นสุดแล้ว")
                         val active = api.active(currentAuth, orderId)
-                        if (active == null) return@withTimeoutOrNull null
+                        if (active == null) return@withTimeoutOrNull false
                         if (active.id != call.id) throw IllegalStateException("พบสายอื่นในออเดอร์เดียวกัน")
-                        if (active.status == "accepted") return@withTimeoutOrNull active
+                        if (active.status == "accepted") accepted = active
                     }
-                }
-                if (accepted == null) {
+                    true
+                } ?: false
+                val confirmed = accepted
+                if (!remainedAvailable || confirmed == null) {
                     runCatching { auth?.let { api.end(it, call.id) } }
                     finishLocal(NativeVoicePhase.ENDED, "ไม่มีผู้รับสาย")
                     return@launch
                 }
-                connect(accepted, caller = true)
+                connect(confirmed, caller = true)
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (failure: Exception) {
