@@ -257,6 +257,23 @@ def verify_real_home_map_runtime():
     print("Actual Longdo crash before fix reproduced; corrected native Home map mount/background/recreation PASS")
 
 
+def verify_voice_foreground_runtime():
+    runner = "com.queuego.rider.test/androidx.test.runner.AndroidJUnitRunner"
+    result = run(adb + ["shell", "am", "instrument", "-w", "-r", "-e", "class",
+                       "com.queuego.rider.NativeVoiceForegroundRuntimeTest", runner],
+                 capture_output=True, text=True, timeout=120)
+    (output / "voice-foreground-runtime.txt").write_text(result.stdout + result.stderr)
+    assert "OK (1 test)" in result.stdout, "Microphone foreground service lifecycle failed"
+    (output / "voice-foreground-metadata.json").write_text(json.dumps({
+        "source_head": os.environ["GITHUB_SHA"],
+        "workflow_run": os.environ["GITHUB_RUN_ID"],
+        "microphone_service_home_background_and_owned_cleanup": "PASS",
+        "physical_device": False, "voice_audio_certified": False,
+        "production_account_or_order_writes": False,
+    }, indent=2) + "\n")
+    print("Microphone foreground service background/owned cleanup PASS; real voice audio remains unverified")
+
+
 with (output / "emulator.log").open("w") as log:
     emulator = subprocess.Popen([emulator_bin, "-avd", name, "-port", "5554", "-accel", "on", "-no-window", "-no-snapshot", "-no-audio", "-gpu", "swiftshader", "-memory", "2048", "-cores", "2"], stdout=log, stderr=subprocess.STDOUT)
     try:
@@ -318,6 +335,7 @@ with (output / "emulator.log").open("w") as log:
         print("Actual Rider unauthenticated launch PASS; Home visual / E2E / physical FCM remain unverified")
         capture_role_viewports()
         verify_real_home_map_runtime()
+        verify_voice_foreground_runtime()
     finally:
         for arguments, filename in [(["logcat", "-d", "-s", "AndroidRuntime:E"], "android-runtime.txt"), (["logcat", "-b", "crash", "-d"], "crash-buffer.txt")]:
             try:

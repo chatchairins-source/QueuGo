@@ -2,6 +2,8 @@ package com.queuego.shared
 
 import android.content.Context
 import java.io.Closeable
+import java.util.UUID
+import kotlinx.coroutines.Deferred
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -51,6 +53,8 @@ class NativeVoiceCallController(
     private var authorizationJob: Job? = null
     private val offerSent = AtomicBoolean(false)
     private val closed = AtomicBoolean(false)
+    private var foregroundOwner: String? = null
+    private var foregroundReady: Deferred<Unit>? = null
 
     val state: StateFlow<NativeVoiceControllerState> = _state
 
@@ -71,6 +75,10 @@ class NativeVoiceCallController(
         require(target in setOf("shop", "rider", "customer"))
         cancelOperationOnly()
         updateAuth(nextAuth)
+        try { prepareForeground() } catch (failure: Exception) {
+            fail(failure)
+            return
+        }
         operationJob = scope.launch {
             try {
                 val call = api.start(nextAuth, orderId, target)
@@ -155,6 +163,10 @@ class NativeVoiceCallController(
         if (_state.value.phase != NativeVoicePhase.INCOMING) return
         cancelOperationOnly()
         updateAuth(nextAuth)
+        try { prepareForeground() } catch (failure: Exception) {
+            fail(failure)
+            return
+        }
         operationJob = scope.launch {
             try {
                 check(current.calleeUserId == nextAuth.user.id) { "สิทธิ์ผู้รับสายไม่ตรงกับ Session" }
@@ -212,7 +224,8 @@ class NativeVoiceCallController(
                 (!caller && call.calleeUserId == currentAuth.user.id)
         ) { "สิทธิ์สายโทรไม่ตรงกับ Session" }
 
-        closeTransport()
+        closeTransport(releaseForeground = false)
+        withTimeout(10_000L) { prepareForeground().await() }
         offerSent.set(false)
         setState(NativeVoiceControllerState(
             phase = NativeVoicePhase.CONNECTING,
@@ -354,7 +367,27 @@ class NativeVoiceCallController(
         operationJob = null
     }
 
-    private fun closeTransport() {
+    private fun prepareForeground(): Deferred<Unit> {
+        foregroundReady?.let { return it }
+        checkOpen()
+        val owner = UUID.randomUUID().toString()
+        foregroundOwner = owner
+        return try {
+            NativeVoiceForegroundService.prepare(appContext, owner) { failure ->
+                scope.launch {
+                    if (foregroundOwner == owner) {
+                        hangUp()
+                        if (failure != null) fail(failure)
+                    }
+                }
+            }.also { foregroundReady = it }
+        } catch (failure: Exception) {
+            foregroundOwner = null
+            throw failure
+        }
+    }
+
+    private fun closeTransport(releaseForeground: Boolean = true) {
         authorizationJob?.cancel()
         authorizationJob = null
         signalJob?.cancel()
@@ -363,6 +396,11 @@ class NativeVoiceCallController(
         realtimeConnection = null
         runCatching { peer?.close() }
         peer = null
+        if (releaseForeground) {
+            foregroundOwner?.let { NativeVoiceForegroundService.stop(appContext, it) }
+            foregroundOwner = null
+            foregroundReady = null
+        }
     }
 
     private fun finishLocal(phase: NativeVoicePhase, message: String?) {
