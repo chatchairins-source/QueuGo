@@ -84,6 +84,29 @@ assert.ok(nativePilotWorkflow.includes('0918c23673ba6c7a349746f005525aca2ff3470f
 assert.ok(nativePilotWorkflow.includes('sha256sum -c -'),'Native pilot Longdo integrity gate must use SHA-256');
 assert.doesNotMatch(nativePilotWorkflow,/md5sum -c -/,'Native pilot Longdo integrity gate must not fall back to MD5');
 
+const actionPins={
+  'actions/checkout':'11d5960a326750d5838078e36cf38b85af677262',
+  'actions/setup-java':'b6effb05e454b25005698d916606bdc6ffcbf961',
+  'actions/setup-node':'49933ea5288caeca8642d1e84afbd3f7d6820020',
+  'actions/upload-artifact':'ea165f8d65b6e75b540449e92b4886f43607fa02',
+  'gradle/actions/setup-gradle':'ed408507eac070d1f99cc633dbcf757c94c7933a',
+};
+for(const workflowPath of [
+  '.github/workflows/build-native-rider-pilot.yml',
+  '.github/workflows/build-native-release.yml',
+  '.github/workflows/native-release-certification.yml',
+  '.github/workflows/backup-restore-drill.yml',
+  '.github/workflows/rc-tests.yml'
+]){
+  const workflowText=fs.readFileSync(workflowPath,'utf8');
+  for(const [action,sha] of Object.entries(actionPins)){
+    if(workflowText.includes(action+'@')){
+      assert.ok(workflowText.includes(action+'@'+sha),`${workflowPath} must pin ${action} to the certified commit SHA`);
+    }
+  }
+  assert.doesNotMatch(workflowText,/uses:\s+(?:actions\/(?:checkout|setup-java|setup-node|upload-artifact)|gradle\/actions\/setup-gradle)@v\d+/,`${workflowPath} must not use floating major action tags`);
+}
+
 const gradle=fs.readFileSync('native-android/build.gradle.kts','utf8');
 assert.match(gradle,/isDebuggable = false/);
 assert.match(gradle,/signingConfig = nativeReleaseSigning/);
