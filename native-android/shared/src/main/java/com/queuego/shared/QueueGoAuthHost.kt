@@ -171,7 +171,9 @@ fun QueueGoAuthHost(
         } catch (failure: Exception) {
             if (failure is CancellationException) throw failure
             if (shouldClearNativeSession(failure)) {
-                if (cached != null) runCatching { disableNativePush(cached, store) }
+                if (cached != null) logoutScope.launch {
+                    runCatching { disableNativePush(cached, store) }
+                }
                 store.clear()
                 recoveryRequired = false
             } else recoveryRequired = true
@@ -198,7 +200,9 @@ fun QueueGoAuthHost(
             } catch (failure: Exception) {
                 if (failure is CancellationException) throw failure
                 if (shouldClearNativeSession(failure)) {
-                    runCatching { disableNativePush(current, store) }
+                    logoutScope.launch {
+                        runCatching { disableNativePush(current, store) }
+                    }
                     store.clear()
                     auth = null
                     error = "Session นี้ถูกยกเลิก หมดอายุ หรือเปิดจากอุปกรณ์อื่น"
@@ -263,10 +267,8 @@ fun QueueGoAuthHost(
             }
             else -> content(auth!!) {
                 val current = auth!!
-                logoutScope.launch {
-                    runCatching { disableNativePush(current, store) }
-                    api.revoke(current.session)
-                }
+                logoutScope.launch { runCatching { disableNativePush(current, store) } }
+                logoutScope.launch { api.revoke(current.session) }
                 store.clear()
                 auth = null
             }
