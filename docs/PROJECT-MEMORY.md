@@ -739,3 +739,25 @@ The user-supplied Rider reference screens are the acceptance reference for workf
 - Combined the latest-HEAD Customer guest browsing/location persistence staging with the independently isolated lifecycle-safe logout revocation fix. This staging tree still includes all Native e9401e26 POS idempotency, printer durability and canonical order-number work.
 - Logout revocation is launched from the Activity lifecycle for POS staff and shared native auth hosts so clearing local UI/session state cannot cancel the backend revoke request. Local logout remains immediate; offline revoke remains best effort.
 - No Production schema, RLS, order state machine or cash-flow changes in this integration. Full CI on this exact combined tree is required before advancing queuego-native-android-v1.
+
+
+## 2026-10-10 native voice call foundation
+- Confirmed existing Customer/Rider call buttons still use Android ACTION_DIAL/tel and are not in-app calls. Rider floating Q is already implemented and wired to Google Maps navigation with overlay permission handling; do not duplicate it.
+- Voice work is isolated on work-native-voice-call-v1-20261010 from the combined Customer/logout staging head. Shared voice signaling reuses the existing publishable key, authenticated JWT and OkHttp WebSocket stack; no duplicate auth system or WebView.
+- Added strict order-call RPC client contracts and private qg-call:<uuid> Realtime signaling with heartbeat, token refresh, event allowlist and fail-closed join behavior. WebRTC Android dependency is pinned to io.github.webrtc-sdk:android:150.7871.01. MockWebServer tests cover private join, JWT, broadcast, rejection and topic/event validation.
+- No Production call tables/policies/RPCs have been deployed yet. No UI tel: path is replaced until backend + WebRTC audio engine + permission/error flow pass CI and security checks.
+
+
+## 2026-10-10 native voice controller
+- Peer/signaling checkpoint c83901bd passed full Native CI38029113921 including shared/customer/merchant/rider unit tests, all three APK builds, Reject WebView and accelerated Android runtime/Longdo.
+- Voice controller is isolated on work-native-voice-controller-v1-20261010. It coordinates order-scoped call RPCs, private Realtime ready/offer/answer/ICE/hangup signaling and audio-only WebRTC without changing current UI yet.
+- Ready handshake prevents an offer from being broadcast before both participants have joined. Signals carry call_id and mismatched-call payloads are ignored. Token rotation updates the private channel; app-session change terminates the local call.
+- Nullable ICE sdpMid is preserved as null instead of the literal string "null". Production voice schema is still not deployed and tel: buttons are still untouched until backend/controller gates pass.
+
+
+## 2026-10-10 native voice + session-bound push Production checkpoint
+- Combined voice/push tree passed CI run 38034554440 (full regression, voice/push contracts, all Native unit tests, Customer/Merchant/Rider APK builds, Reject WebView and accelerated Rider runtime capture) before Production rollout. Voice-only and push-only source branches also passed their independent gates.
+- Production backup branch: backup-pre-native-voice-push-20261010-1436 from Native main 1e7c8195. Production queuego-push v12 source/database metadata and pre-rollout migration history are preserved under ops/backups/pre-native-voice-push-prod-20261010/.
+- Production migrations native_voice_call_backend_v1 and native_push_session_binding_v1 are live. Two idempotent copies of each migration appear in remote history because concurrent workers applied the same gated SQL; all four GitHub migration mirrors are retained to match Production history exactly. qg_call_sessions remains empty at deployment checkpoint and native push token table had zero rows.
+- Production queuego-turn and queuego-push are ACTIVE and their deployed index.ts sources match the gated GitHub sources byte-for-byte. Call table is server-only; anon cannot execute call RPCs; authenticated users can execute only the guarded RPC surface. Native push enqueue now requires a live app session.
+- Release Gate remains OPEN. GitHub Actions does not currently have QG_FIREBASE_GOOGLE_SERVICES_JSON_B64, so physical Customer/Merchant/Rider FCM background-push certification is not available. TURN environment secret presence and real two-device audio relay have not been certified because no real accepted Production call was fabricated for testing. Do not publish APK/AAB or claim Play-ready until those physical/background/voice E2E gates pass.

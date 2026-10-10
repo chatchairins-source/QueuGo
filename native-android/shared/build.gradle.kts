@@ -17,6 +17,7 @@ dependencies {
     testImplementation("org.json:json:20240303")
     testImplementation("com.squareup.okhttp3:mockwebserver:4.12.0")
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
+    implementation("io.github.webrtc-sdk:android:150.7871.01")
     api(files("../rider/libs/LongdoMapAndroidSDK_v0.1.8.aar"))
     implementation("androidx.lifecycle:lifecycle-runtime:2.9.4")
     implementation("androidx.compose.material3:material3:1.4.0")
