@@ -72,6 +72,17 @@ any requirement below is OPEN.
    service declaration evidence, and store preflight.
 8. P0/P1 zero based on observed evidence, not static source checks.
 
+## Android 16 KB page-size readiness
+
+All three Native apps compile and target API 36 on AGP 9.4.0. CI must still
+verify the packaged artifacts rather than infer compatibility from the toolchain.
+`verify-16kb-page-size.py` runs Android build-tools `zipalign -P 16` and
+checks every 64-bit arm64-v8a/x86_64 shared library LOAD segment for alignment
+of at least 0x4000. The signed AAB verifier independently requires bundletool
+to report `PAGE_ALIGNMENT_16K`. Emulator/physical runtime on a 16 KB page-size
+device remains separate observed evidence and is not certified by these static
+packaging checks.
+
 ## Native release packaging protection
 
 One root Gradle signing configuration covers all three apps. Release is explicitly
