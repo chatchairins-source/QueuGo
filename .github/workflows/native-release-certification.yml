@@ -46,6 +46,7 @@ on:
 
 permissions:
   contents: read
+  actions: read
 
 concurrency:
   group: queuego-native-release-certification
@@ -78,6 +79,30 @@ jobs:
             echo "::error::Release certification may run only from queuego-native-android-v1"
             exit 1
           fi
+
+      - name: Require successful exact-HEAD Native Pilot CI
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          runs="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs?branch=queuego-native-android-v1&status=success&per_page=100")"
+          pilot_run_id="$(jq -r --arg sha "$GITHUB_SHA" '
+            [.workflow_runs[]
+              | select(.head_sha == $sha)
+              | select(.head_branch == "queuego-native-android-v1")
+              | select(.path == ".github/workflows/build-native-rider-pilot.yml")
+              | select(.event == "push")
+              | select(.conclusion == "success")]
+            | sort_by(.run_number)
+            | last
+            | .id // empty
+          ' <<<"$runs")"
+          case "$pilot_run_id" in
+            ''|*[!0-9]*) echo "::error::Exact-HEAD successful Native Pilot CI run is required before release certification"; exit 1 ;;
+          esac
+          echo "Certified exact-HEAD Native Pilot CI run: $pilot_run_id"
+          echo "QG_CERTIFIED_NATIVE_PILOT_RUN_ID=$pilot_run_id" >> "$GITHUB_ENV"
 
       - uses: actions/setup-java@v5
         with:
@@ -296,6 +321,7 @@ jobs:
               "source_sha": os.environ["GITHUB_SHA"],
               "certification_run_id": os.environ["GITHUB_RUN_ID"],
               "certification_workflow": ".github/workflows/native-release-certification.yml",
+              "native_pilot_run_id": int(os.environ["QG_CERTIFIED_NATIVE_PILOT_RUN_ID"]),
               "evidence_object_path": os.environ["EVIDENCE_OBJECT_PATH"],
               "evidence_bundle_sha256": os.environ["EVIDENCE_BUNDLE_SHA256"].lower(),
               "version_name": os.environ["QG_NATIVE_VERSION_NAME"],
