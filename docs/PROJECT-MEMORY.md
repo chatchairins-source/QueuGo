@@ -746,3 +746,10 @@ The user-supplied Rider reference screens are the acceptance reference for workf
 - Voice work is isolated on work-native-voice-call-v1-20261010 from the combined Customer/logout staging head. Shared voice signaling reuses the existing publishable key, authenticated JWT and OkHttp WebSocket stack; no duplicate auth system or WebView.
 - Added strict order-call RPC client contracts and private qg-call:<uuid> Realtime signaling with heartbeat, token refresh, event allowlist and fail-closed join behavior. WebRTC Android dependency is pinned to io.github.webrtc-sdk:android:150.7871.01. MockWebServer tests cover private join, JWT, broadcast, rejection and topic/event validation.
 - No Production call tables/policies/RPCs have been deployed yet. No UI tel: path is replaced until backend + WebRTC audio engine + permission/error flow pass CI and security checks.
+
+
+## 2026-10-10 native voice controller
+- Peer/signaling checkpoint c83901bd passed full Native CI38029113921 including shared/customer/merchant/rider unit tests, all three APK builds, Reject WebView and accelerated Android runtime/Longdo.
+- Voice controller is isolated on work-native-voice-controller-v1-20261010. It coordinates order-scoped call RPCs, private Realtime ready/offer/answer/ICE/hangup signaling and audio-only WebRTC without changing current UI yet.
+- Ready handshake prevents an offer from being broadcast before both participants have joined. Signals carry call_id and mismatched-call payloads are ignored. Token rotation updates the private channel; app-session change terminates the local call.
+- Nullable ICE sdpMid is preserved as null instead of the literal string "null". Production voice schema is still not deployed and tel: buttons are still untouched until backend/controller gates pass.
