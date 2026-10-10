@@ -39,6 +39,17 @@ PHYSICAL_GATES = {
     "android_lifecycle_permissions_upload_location",
 }
 
+PHYSICAL_GATE_REQUIRED_ROLES = {
+    "physical_push_customer": {"customer"},
+    "physical_push_merchant": {"merchant"},
+    "physical_push_rider": {"rider"},
+    "rider_floating_q": {"rider"},
+    "customer_blueprint": {"customer"},
+    "merchant_blueprint": {"merchant"},
+    "rider_blueprint": {"rider"},
+    "android_lifecycle_permissions_upload_location": {"customer", "merchant", "rider"},
+}
+
 
 def bundle_file(bundle_root: Path, relative: str, label: str) -> Path:
     rel = Path(str(relative))
@@ -110,19 +121,28 @@ def verify_gate_envelope(path: Path, bundle_root: Path, gate: str, head: str, ex
         if not isinstance(devices, list) or not devices:
             raise ValueError(f"physical gate evidence must identify at least one device: {gate}")
         device_ids = set()
+        observed_roles = set()
         for device in devices:
             if not isinstance(device, dict):
                 raise ValueError(f"physical gate device entry must be an object: {gate}")
             device_hash = str(device.get("device_id_hash", "")).lower()
             api = device.get("android_api")
             model = device.get("model")
+            role = device.get("role")
             if not re.fullmatch(r"[0-9a-f]{64}", device_hash):
                 raise ValueError(f"physical gate device_id_hash is invalid: {gate}")
             if type(api) is not int or api < 23 or api > 100:
                 raise ValueError(f"physical gate android_api is invalid: {gate}")
             if not isinstance(model, str) or not model.strip():
                 raise ValueError(f"physical gate device model is missing: {gate}")
+            if role not in {"customer", "merchant", "rider"}:
+                raise ValueError(f"physical gate device role is invalid: {gate}")
             device_ids.add(device_hash)
+            observed_roles.add(role)
+        required_roles = PHYSICAL_GATE_REQUIRED_ROLES.get(gate, set())
+        if not required_roles.issubset(observed_roles):
+            missing_roles = ", ".join(sorted(required_roles - observed_roles))
+            raise ValueError(f"physical gate evidence is missing required roles ({missing_roles}): {gate}")
         if gate == "physical_voice_two_devices_two_networks":
             if len(device_ids) < 2:
                 raise ValueError("physical voice gate requires two distinct devices")
