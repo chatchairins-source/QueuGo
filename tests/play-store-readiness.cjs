@@ -79,6 +79,7 @@ ok(manifest?.android?.release_certification_private_bucket==='queuego-native-rel
 ok(manifest?.android?.release_certification_runtime_gate==='BLOCKED_BUCKET_AND_SECRETS_AND_PHYSICAL_EVIDENCE','Recovery manifest must keep certification runtime blocked until real evidence infrastructure exists');
 ok(manifest?.android?.release_certification_requires_exact_head_native_pilot_ci===true,'Release certification must require exact-HEAD Native Pilot CI');
 ok(manifest?.android?.release_certification_native_pilot_workflow==='.github/workflows/build-native-rider-pilot.yml','Recovery manifest must pin the Native Pilot workflow identity for certification');
+ok(manifest?.android?.release_certification_supabase_url_source==='SOURCE_PINNED'&&manifest?.android?.release_certification_supabase_url_requires_actions_variable===false,'Recovery manifest must keep the Production certification origin source-pinned');
 ok(manifest?.android?.release_certification_final_release_revalidates_native_pilot_run===true,'Final release must revalidate the Native Pilot run recorded by certification');
 ok(manifest?.android?.native_scope==='Customer/Merchant/Rider','Recovery manifest must identify Native Android as the active release scope');
 ok(manifest?.android?.legacy_capacitor_release_workflows_retired===true,'Legacy Capacitor release workflows must remain retired');
