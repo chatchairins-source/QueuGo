@@ -77,6 +77,10 @@ as $$
     'status',c.status,
     'caller_user_id',c.caller_user_id,
     'callee_user_id',c.callee_user_id,
+    'caller_name',(select u.name from public.users u where u.id=c.caller_user_id),
+    'callee_name',(select u.name from public.users u where u.id=c.callee_user_id),
+    'caller_role',(select u.role from public.users u where u.id=c.caller_user_id),
+    'callee_role',(select u.role from public.users u where u.id=c.callee_user_id),
     'created_at',c.created_at,
     'expires_at',c.expires_at
   )
@@ -383,6 +387,73 @@ begin
 end;
 $$;
 
+
+create or replace function public.qg_call_incoming(
+  p_session_id uuid
+) returns jsonb
+language plpgsql
+security definer
+set search_path='public','pg_temp'
+as $$
+declare
+  v_actor uuid:=public.get_my_user_id();
+  v_call_id uuid;
+begin
+  if p_session_id is null
+     or not coalesce(public.check_active_session(p_session_id),false)
+     or v_actor is null then
+    raise exception 'active QueueGo session required' using errcode='42501';
+  end if;
+
+  update public.qg_call_sessions c
+     set status='missed',ended_at=coalesce(c.ended_at,now())
+   where c.callee_user_id=v_actor
+     and c.status='ringing'
+     and c.ring_expires_at<=now();
+
+  update public.qg_call_sessions c
+     set status='ended',ended_at=coalesce(c.ended_at,now())
+   where c.callee_user_id=v_actor
+     and c.status='ringing'
+     and (
+       not exists(
+         select 1 from public.orders o
+         where o.id=c.order_id
+           and lower(o.status) not in ('cancelled','completed','no_rider_available')
+       )
+       or not exists(
+         select 1
+         from public.users cu
+         join public.user_active_sessions cs on cs.user_id=cu.auth_user_id
+         where cu.id=c.caller_user_id
+           and cs.session_id=c.caller_session_id
+           and cs.revoked_at is null
+       )
+       or exists(
+         select 1 from public.qg_user_blocks b
+         where (b.blocker_user_id=c.caller_user_id and b.blocked_user_id=c.callee_user_id)
+            or (b.blocker_user_id=c.callee_user_id and b.blocked_user_id=c.caller_user_id)
+       )
+     );
+
+  select c.id into v_call_id
+  from public.qg_call_sessions c
+  where c.callee_user_id=v_actor
+    and c.status='ringing'
+    and c.ring_expires_at>now()
+    and exists(
+      select 1 from public.orders o
+      where o.id=c.order_id
+        and lower(o.status) not in ('cancelled','completed','no_rider_available')
+    )
+  order by c.created_at desc
+  limit 1;
+
+  if v_call_id is null then return jsonb_build_object('none',true); end if;
+  return qg_private.qg_voice_call_json(v_call_id);
+end;
+$$;
+
 create or replace function public.qg_call_answer(
   p_call_id uuid,
   p_session_id uuid
@@ -571,6 +642,7 @@ $$;
 
 revoke all on function public.qg_call_start(uuid,text,uuid) from public,anon;
 revoke all on function public.qg_call_active(uuid,uuid) from public,anon;
+revoke all on function public.qg_call_incoming(uuid) from public,anon;
 revoke all on function public.qg_call_answer(uuid,uuid) from public,anon;
 revoke all on function public.qg_call_decline(uuid,uuid) from public,anon;
 revoke all on function public.qg_call_end(uuid,uuid) from public,anon;
@@ -578,6 +650,7 @@ revoke all on function public.qg_call_ice_config(uuid,uuid) from public,anon;
 
 grant execute on function public.qg_call_start(uuid,text,uuid) to authenticated,service_role;
 grant execute on function public.qg_call_active(uuid,uuid) to authenticated,service_role;
+grant execute on function public.qg_call_incoming(uuid) to authenticated,service_role;
 grant execute on function public.qg_call_answer(uuid,uuid) to authenticated,service_role;
 grant execute on function public.qg_call_decline(uuid,uuid) to authenticated,service_role;
 grant execute on function public.qg_call_end(uuid,uuid) to authenticated,service_role;
