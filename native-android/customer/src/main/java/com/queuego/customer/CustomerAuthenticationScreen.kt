@@ -55,7 +55,10 @@ import kotlin.coroutines.resumeWithException
 
 /** index.html V.login/V.register and bind(register), using real Supabase and a fresh OS location. */
 @Composable
-fun CustomerAuthenticationScreen(entry: NativeAuthEntry) {
+fun CustomerAuthenticationScreen(
+    entry: NativeAuthEntry,
+    onBackToGuest: (() -> Unit)? = null
+) {
     var registering by rememberSaveable { mutableStateOf(false) }
     var identifier by rememberSaveable { mutableStateOf("") }
     var name by rememberSaveable { mutableStateOf("") }
@@ -129,7 +132,15 @@ fun CustomerAuthenticationScreen(entry: NativeAuthEntry) {
             confirmation = ""
         }
     }
-    BackHandler(registering && !busy) { registering = false; localError = null; entry.clearError() }
+    BackHandler(enabled = !busy) {
+        if (registering) {
+            registering = false
+            localError = null
+            entry.clearError()
+        } else {
+            onBackToGuest?.invoke()
+        }
+    }
 
     Column(Modifier.fillMaxSize().background(QgBg).imePadding()) {
         Row(Modifier.fillMaxWidth().background(Color.White).padding(horizontal = 12.dp, vertical = 6.dp),
