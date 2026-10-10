@@ -45,6 +45,10 @@ has(/create or replace function qg_private\.qg_voice_realtime_allowed/i, 'privat
 has(/user_active_sessions[\s\S]*revoked_at is null/i, 'realtime must require a live app session');
 has(/caller_session_id=v_current_session/i, 'caller realtime must bind to stored caller session');
 has(/callee_session_id=v_current_session/i, 'callee realtime must bind to stored callee session');
+assert((lower.match(/lower\(o\.status\) not in \('cancelled','completed','no_rider_available'\)/g) || []).length >= 4,
+  'call authorization must be scoped to active orders');
+has(/status in \('ringing','accepted'\)[\s\S]*not exists\([\s\S]*public\.orders/i,
+  'terminal orders must end active calls');
 has(/create policy qg_voice_realtime_select[\s\S]*extension='broadcast'[\s\S]*qg_private\.qg_voice_realtime_allowed/i,
   'private realtime select policy missing');
 has(/create policy qg_voice_realtime_insert[\s\S]*extension='broadcast'[\s\S]*qg_private\.qg_voice_realtime_allowed/i,
