@@ -17,6 +17,7 @@ const readiness=read('docs/play-closed-beta-readiness.md');
 const manifest=JSON.parse(read('docs/pilot-recovery-manifest.json'));
 const releaseSecrets=read('.github/workflows/release-secret-readiness.yml');
 const releaseCertification=read('.github/workflows/native-release-certification.yml');
+const nativeTurnEdge=read('supabase/functions/queuego-turn/index.ts');
 const nativeRootGradle=read('native-android/build.gradle.kts');
 for(const role of ['customer','merchant','rider']){
   const appGradle=read(`native-android/${role}/build.gradle.kts`);
@@ -64,6 +65,12 @@ ok(/Native Android Customer, Merchant, Rider apps/i.test(readiness),'Play readin
 ok(/RECORD_AUDIO for optional order-scoped audio calls/i.test(readiness),'Native voice microphone disclosure must remain explicit');
 ok(/FOREGROUND_SERVICE_MICROPHONE/i.test(readiness),'Native microphone foreground-service permission must remain documented');
 ok(/Incoming FCM does not start microphone access in the background/i.test(readiness),'Play readiness must preserve visible-user-action microphone start boundary');
+ok(manifest?.android?.turn_edge_production_deployed===true&&manifest?.android?.turn_edge_production_status==='ACTIVE'&&manifest?.android?.turn_edge_production_version===2,'Recovery manifest must retain the verified Production queuego-turn deployment');
+ok(manifest?.android?.turn_edge_verify_jwt===true&&manifest?.android?.turn_edge_source_exact_match===true,'Production queuego-turn must stay JWT-protected and source-identical to GitHub');
+ok(manifest?.android?.turn_edge_bundle_sha256==='747116e17f5c4a2feb2852851e1e346b5a8e456c5a6b521682ab1a5f02ed894c','Recovery manifest must pin the observed Production TURN Edge bundle SHA-256');
+ok(manifest?.android?.turn_runtime_secret_status==='UNVERIFIED_NO_PRODUCTION_REQUESTS_OBSERVED','TURN secret readiness must not be inferred without Production request evidence');
+ok(manifest?.android?.turn_forced_relay_two_device_gate==='OPEN','Real two-device forced TURN relay gate must remain open until physical evidence exists');
+ok(nativeTurnEdge.includes('rtc.live.cloudflare.com/v1/turn/')&&nativeTurnEdge.includes('generate-ice-servers'),'GitHub TURN source must retain the observed Cloudflare credential path');
 ok(!/Explicitly forbidden by the release workflow:[\s\S]{0,300}RECORD_AUDIO/i.test(readiness),'Legacy Capacitor RECORD_AUDIO prohibition must not return');
 ok(/Native CI rejects WebView/i.test(readiness),'Data Safety draft must use Native no-WebView certification scope');
 ok(!/data collected by the web application running inside Capacitor/i.test(readiness),'Legacy Capacitor Data Safety collection rule must not certify Native apps');
