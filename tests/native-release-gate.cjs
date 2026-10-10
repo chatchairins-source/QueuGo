@@ -80,6 +80,8 @@ for(const trigger of ["'tests/**'","'package.json'","'package-lock.json'"]){
 
 const nativePilotWorkflow=fs.readFileSync('.github/workflows/build-native-rider-pilot.yml','utf8');
 assert.ok(nativePilotWorkflow.includes("- 'work-native-**'"),'Native pilot CI must cover every work-native branch');
+assert.ok(nativePilotWorkflow.includes('0918c23673ba6c7a349746f005525aca2ff3470f8e2966d5d2a4cb633ae5980c'),'Native pilot must pin Longdo Android SDK by SHA-256');
+assert.ok(!nativePilotWorkflow.includes('md5sum -c -'),'Native pilot must not rely on MD5 for Longdo SDK integrity');
 
 const pageSizeVerifierPath='native-android/qa/verify-16kb-page-size.py';
 assert.ok(fs.existsSync(pageSizeVerifierPath),'16 KB page-size verifier must exist');
