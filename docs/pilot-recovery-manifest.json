@@ -560,7 +560,11 @@
       "stops_outside_active_work"
     ],
     "release_gate_blueprint_requires_zero_blocking_differences": true,
-    "release_gate_physical_semantic_runtime_gate": "OPEN_PENDING_REAL_DEVICE_CAPTURE"
+    "release_gate_physical_semantic_runtime_gate": "OPEN_PENDING_REAL_DEVICE_CAPTURE",
+    "release_gate_blueprint_coverage_matrix": "native-android/qa/native-screen-coverage-20261010.json",
+    "release_gate_blueprint_coverage_matrix_sha256_required": true,
+    "release_gate_blueprint_matrix_binding_scope": "exact certified HEAD",
+    "release_gate_blueprint_physical_runtime_gate": "OPEN_PENDING_REAL_DEVICE_CAPTURE"
   },
   "security": {
     "code_surface_hardened": true,
