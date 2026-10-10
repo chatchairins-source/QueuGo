@@ -4,7 +4,7 @@ const read=p=>fs.readFileSync(path.join(root,p),'utf8');
 let checks=0;const ok=(v,m)=>{assert.ok(v,m);checks++};
 
 const workflow=read('.github/workflows/backup-restore-drill.yml');
-const release=read('.github/workflows/build-queuego-apks.yml');
+const nativeReleaseVerifier=read('native-android/qa/verify-native-release-gate.py');
 const exporter=read('ops/backup-storage.mjs');
 const restorer=read('ops/restore-storage.mjs');
 const inventory=read('ops/backup-inventory.sql');
@@ -31,6 +31,6 @@ ok(verify.includes("public.qg_chat_moderation_post_allowed(uuid,uuid)")&&verify.
 ok(verify.includes("content_snapshot")&&verify.includes("qg_ugc_reports"),'restore must verify UGC moderation evidence snapshot');
 ok(verify.includes('queuego_restore_verification_ok'),'restore SQL must emit a success sentinel');
 ok(verify.includes('qg_notifications_queuego_push'),'restore must verify unified notification trigger');
-ok(/restore_drill_certified/.test(release),'Closed Beta release must depend on restore certification');
+ok(/"backup_restore"/.test(nativeReleaseVerifier),'Native Closed Beta release must depend on certified Backup/Restore evidence');
 
 console.log(JSON.stringify({checks,failures:0,scope:'Encrypted external database + Storage backup and local restore drill'}));
