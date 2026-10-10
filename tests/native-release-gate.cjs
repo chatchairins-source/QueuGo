@@ -76,6 +76,20 @@ try{
   const physicalResult=spawnSync('python3',[script],{env:{...env,QG_NATIVE_RELEASE_EVIDENCE:physicalReport},encoding:'utf8'});
   assert.equal(physicalResult.status,1,'physical gate without device identity must fail');
   assert.match(physicalResult.stderr,/physical gate evidence must identify at least one device: physical_push_customer/);
+
+  physicalEnvelope.devices=[{
+    device_id_hash:'a'.repeat(64),
+    android_api:36,
+    model:'Test Android Device',
+    role:'rider'
+  }];
+  fs.writeFileSync(path.join(evidenceDir,'physical_push_customer.json'),JSON.stringify(physicalEnvelope));
+  const wrongRoleSha=crypto.createHash('sha256').update(fs.readFileSync(path.join(evidenceDir,'physical_push_customer.json'))).digest('hex');
+  gates.physical_push_customer={status:'PASS',evidence_file:'physical_push_customer.json',sha256:wrongRoleSha};
+  fs.writeFileSync(physicalReport,JSON.stringify({source_sha:head,p0:0,p1:0,gates}));
+  const wrongRoleResult=spawnSync('python3',[script],{env:{...env,QG_NATIVE_RELEASE_EVIDENCE:physicalReport},encoding:'utf8'});
+  assert.equal(wrongRoleResult.status,1,'Customer push evidence with only a Rider device must fail');
+  assert.match(wrongRoleResult.stderr,/physical gate evidence is missing required roles \(customer\): physical_push_customer/);
 }finally{fs.rmSync(evidenceDir,{recursive:true,force:true});}
 
 const verifier=fs.readFileSync(script,'utf8');
@@ -105,6 +119,9 @@ assert.match(verifier,/gate evidence observed_at must be UTC ISO-8601 seconds/,'
 assert.match(verifier,/gate evidence checks must be non-empty and all true/,'gate evidence must record explicit successful checks');
 assert.match(verifier,/gate evidence must reference at least one artifact/,'gate evidence must reference hashed artifacts');
 assert.match(verifier,/physical gate evidence must identify at least one device/,'physical evidence must identify a device');
+assert.match(verifier,/PHYSICAL_GATE_REQUIRED_ROLES/,'physical evidence must bind gates to the expected app roles');
+assert.match(verifier,/physical gate device role is invalid/,'physical evidence must use Customer Merchant or Rider role identity');
+assert.match(verifier,/physical gate evidence is missing required roles/,'physical evidence must fail when a required app role is absent');
 assert.match(verifier,/physical voice gate requires two distinct devices/,'voice certification must require two distinct devices');
 assert.match(verifier,/physical voice gate requires two distinct networks/,'voice certification must require two distinct networks');
 for(const legacy of ['.github/workflows/build-queuego-apks.yml','.github/workflows/build-queuego-pilot-apks.yml']){
