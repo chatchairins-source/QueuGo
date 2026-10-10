@@ -6,6 +6,7 @@ on:
     branches:
       - queuego-native-android-v1
       - work-native-release-integration-20261010
+      - work-native-release-preflight-20261010
       - work-native-voice-call-v1-20261010
       - work-native-voice-controller-v1-20261010
       - work-native-voice-turn-client-v1-20261010
@@ -33,6 +34,7 @@ on:
       - 'supabase/functions/queuego-push/**'
       - 'ops/native-push-session-binding-proposal-*.sql'
       - 'tests/native-push-session-binding.cjs'
+      - 'tests/native-release-gate.cjs'
       - 'tests/background-push.cjs'
       - 'tests/native-customer-merchant-push.cjs'
       - 'ops/native-voice-call-schema-proposal-*.sql'
@@ -117,6 +119,8 @@ jobs:
         run: node tests/native-customer-merchant-push.cjs
       - name: Native push session binding contracts
         run: node tests/native-push-session-binding.cjs
+      - name: Native release packaging guard
+        run: node tests/native-release-gate.cjs
       - name: Native voice call SQL contracts
         run: node tests/native-voice-call-contract.cjs
       - name: Native voice TURN edge contracts

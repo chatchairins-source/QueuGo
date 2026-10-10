@@ -6,3 +6,7 @@ native-android/**/.kotlin/
 native-android/rider/libs/*.aar
 
 native-android/**/google-services.json
+native-android/**/*.jks
+native-android/**/*.keystore
+native-android/**/keystore.properties
+native-android/**/__pycache__/

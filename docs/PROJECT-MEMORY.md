@@ -5,6 +5,12 @@
 - RC permits an invalid explicitly supplied sessionId to enter legacy derivation. Staging hardens this: only an omitted property may derive exactly one live session; explicit malformed, empty, null or non-string sessionId fails closed with 400. Valid explicit IDs still require the user's non-revoked active session. Zero/multiple legacy sessions are rejected.
 - Full CI on this exact staging tree is required before main advances. Production push v15 still requires the same hardening after backup and successful CI. Firebase credentials, TURN secret presence, physical push/audio/overlay tests and release signing remain unverified; no release files or Play-ready claim.
 
+## 2026-10-10 Native release packaging preflight staging
+- Native root Gradle now has one environment-only signing configuration for all three apps, explicitly non-debuggable release, no debug signing fallback and a required release-evidence verifier on packaging tasks. No keystore or certificate identity was fabricated. Explicit release version/name overrides are supported; actual Play version history remains an external gate.
+- Release verifier requires exact clean source HEAD, every named gate PASS with recorded evidence file/hash, P0/P1 zero, all three complete Firebase clients in one project and actual keystore/alias/key passwords. Operator-certified physical evidence is still required; hashes are evidence identity only. Missing or stale evidence fails closed in regression.
+- Native-specific gate inventory is native-android/qa/native-play-release-gate-20261010.md. Legacy Capacitor/Web claims do not certify Native. Native voice microphone/media/call metadata disclosures and current Play Data Safety review remain OPEN; old RECORD_AUDIO prohibition must not be reused.
+- Firebase Console reached Google sign-in but returned 502 Connection refused in this environment. No Firebase project/config or credentials were obtained. Local Android SDK/adb and Firebase/TURN/signing secrets are absent; Supabase connector has no secrets operation. Production TURN secret presence is still unknown, not claimed absent.
+
 Updated: 2026-10-06 (Asia/Bangkok).
 
 ## User instruction
