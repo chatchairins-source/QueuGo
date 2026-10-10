@@ -207,14 +207,7 @@ private fun MerchantShell(auth: NativeAuth, logout: () -> Unit) {
     }
 
     BackHandler(enabled = screen != "home") {
-        screen = when (screen) {
-            "shop-setup", "hours", "support" -> "profile"
-            "notifications", "media", "modules", "market-stock" -> "home"
-            "catalog" -> "products"
-            "product" -> productReturnScreen
-            "order" -> "orders"
-            else -> "home"
-        }
+        screen = "home"
         selectedOrder = null
     }
 
