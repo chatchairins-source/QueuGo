@@ -114,7 +114,8 @@ fun QueueGoAuthHost(
                     Text("ลองใหม่")
                 }
             }
-            auth == null -> QueueGoLoginScreen(appLabel, busy, error) { id, pass ->
+            auth == null -> QueueGoLoginScreen(appLabel, busy, error) login@{ id, pass ->
+                if (busy || id.isBlank() || pass.isBlank()) return@login
                 busy = true
                 error = null
                 scope.launch {
