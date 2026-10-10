@@ -36,4 +36,31 @@ class CustomerCheckoutRpcContractTest {
     @Test fun enteredNoteSurvivesSerializationAndTrimming() {
         assertEquals("ไม่เผ็ด", JSONObject(body("  ไม่เผ็ด  ").toString()).getString("p_note"))
     }
+    @Test fun optionSelectionsAreSerializedAndIncludedInExpectedSubtotal() {
+        val variants = """[
+          {"key":"portion","name":"ขนาด","type":"single","required":true,
+           "options":[{"key":"normal","name":"ธรรมดา","price_delta":0},{"key":"special","name":"พิเศษ","price_delta":15}]},
+          {"key":"toppings","name":"ท็อปปิ้ง","type":"multi","required":false,
+           "options":[{"key":"egg","name":"ใส่ไข่","price_delta":10}]}
+        ]"""
+        val configured = product.copy(variantsJson = variants)
+        val selections = listOf(
+            CustomerMenuSelection("portion", "special"),
+            CustomerMenuSelection("toppings", "egg")
+        )
+        val payload = api.checkoutBody(
+            auth,
+            "request-options",
+            shop,
+            listOf(CartLine(configured, 2, selections)),
+            CustomerLocation(15.0, 103.0, "address"),
+            null
+        )
+        assertEquals(150.0, payload.getDouble("p_expected_subtotal"), 0.0)
+        val item = payload.getJSONArray("p_items").getJSONObject(0)
+        assertEquals(2, item.getJSONArray("options").length())
+        assertEquals("special", item.getJSONArray("options").getJSONObject(0).getString("option_key"))
+        assertEquals("egg", item.getJSONArray("options").getJSONObject(1).getString("option_key"))
+    }
+
 }
