@@ -607,7 +607,32 @@
       "rider": "18_PLUS_ONLY"
     },
     "restrict_minor_access": "ENABLE_FOR_CLOSED_BETA",
-    "target_audience_console_entry": "PENDING_PLAY_CONSOLE_ENTRY"
+    "target_audience_console_entry": "PENDING_PLAY_CONSOLE_ENTRY",
+    "voice_audio_data_safety": "E2EE_EXCEPTION_WHILE_PEER_ONLY_WEBRTC",
+    "voice_audio_roles": [
+      "customer",
+      "merchant",
+      "rider"
+    ],
+    "voice_audio_provider": "Cloudflare Realtime TURN fallback",
+    "voice_audio_media_readable_by_turn_provider": false,
+    "voice_audio_exception_conditions": [
+      "peer-to-peer WebRTC media remains end-to-end encrypted between call participants",
+      "no recording",
+      "no transcription",
+      "no SFU or server-side media access",
+      "no non-E2EE voice transport"
+    ],
+    "voice_audio_reassessment_required_on_architecture_change": true,
+    "cloudflare_turn_relay_metadata_review": "PENDING_FINAL_PLAY_CONSOLE_METADATA_CLASSIFICATION",
+    "foreground_service_declaration_draft_ready": true,
+    "foreground_service_console_status": "BLOCKED_PENDING_REAL_DEVICE_VIDEO_AND_PLAY_ENTRY",
+    "foreground_service_microphone_roles": [
+      "customer",
+      "merchant",
+      "rider"
+    ],
+    "foreground_service_special_use_rider_subtype": "Active QueueGo Rider navigation return control"
   },
   "remaining_external_blockers": [
     "Configure QG_SUPABASE_DB_URL, QG_SUPABASE_SERVICE_ROLE_KEY and QG_BACKUP_PASSPHRASE, then pass QueueGo Encrypted Backup Restore Drill.",
