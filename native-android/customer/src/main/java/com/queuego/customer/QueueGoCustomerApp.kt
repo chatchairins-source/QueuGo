@@ -181,6 +181,7 @@ private fun CustomerShell(
         logout()
     }
     LaunchedEffect(auth.user.id, auth.session.accessToken, auth.session.sessionId) {
+        if (!customerFirebaseConfigured(context)) return@LaunchedEffect
         ensureCustomerNotificationChannel(context)
         if (
             Build.VERSION.SDK_INT < 33 ||
