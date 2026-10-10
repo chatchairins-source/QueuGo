@@ -183,7 +183,10 @@ def verify() -> dict:
     }
     output = os.environ.get("QG_NATIVE_RELEASE_ARTIFACT_EVIDENCE")
     if output:
-        target = Path(output)
+        target = Path(output).resolve()
+        source_root = ROOT.resolve()
+        if target == source_root or source_root in target.parents:
+            raise ValueError("release artifact evidence must be written outside the source checkout")
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text(json.dumps(result, indent=2) + "\n")
     return result
