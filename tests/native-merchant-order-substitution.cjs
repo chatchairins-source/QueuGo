@@ -24,7 +24,7 @@ ok(api.includes('qg_merchant_action_once')&&api.includes('.put("p_kind", "order_
 ok(api.includes('require(items.size in 1..30)'),'Native API must mirror item-count bounds before network');
 ok(api.includes('require(item.quantity in 1..99)'),'Native API must mirror quantity bounds before network');
 ok(api.includes('(item.itemId.isNullOrBlank()) xor (item.productId.isNullOrBlank())'),'Each edit row must identify exactly an existing item or a substitute product');
-ok(api.includes('"p_reason", reason.trim().take(200)'),'Native API must keep substitution reason bounded');
+ok(api.includes('val normalizedReason = reason.trim().take(200)')&&api.includes('.put("p_reason", normalizedReason)'),'Native API must keep substitution reason bounded before idempotent dispatch');
 
 ok(ui.includes('private fun MerchantOrderItemEditor('),'Native Merchant must expose an order-item editor');
 ok(ui.includes('Text("แก้ไขรายการ")'),'Assigned Merchant order must expose the editor entry point');
