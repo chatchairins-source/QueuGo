@@ -349,6 +349,16 @@ internal fun CustomerOrderTrackingScreen(
                                 lineHeight = 17.sp,
                                 fontWeight = FontWeight.Bold
                             )
+                            if (!item.optionSummary.isNullOrBlank()) {
+                                Spacer(Modifier.height(2.dp))
+                                Text(
+                                    item.optionSummary!!,
+                                    color = QgMuted,
+                                    fontSize = 9.sp,
+                                    lineHeight = 12.sp,
+                                    maxLines = 2
+                                )
+                            }
                             Spacer(Modifier.height(2.dp))
                             Text(
                                 "จำนวน " + item.quantity,
