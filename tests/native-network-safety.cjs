@@ -44,7 +44,7 @@ const forbidden=[
 for(const file of files){
   let source=fs.readFileSync(file,'utf8');
   // Android's XML namespace is an identifier, not a network endpoint.
-  source=source.replaceAll('http://schemas.android.com/apk/res/android','ANDROID_XML_NAMESPACE');
+  source=source.replace(/http:\/\/schemas\.android\.com\/[A-Za-z0-9_./-]+/g,'ANDROID_XML_NAMESPACE');
   if(/http:\/\//i.test(source)){
     throw new Error(`Native runtime source contains cleartext URL: ${file}`);
   }
