@@ -178,6 +178,7 @@ Policy source:
 | Precise location | Delivery point, service-area and distance checks | App functionality | Required when using location-assisted delivery |
 | Purchase history | Orders and transaction history | App functionality, fraud prevention, accounting | Required when ordering |
 | Other in-app messages | Customer ↔ Rider order chat | App functionality, safety | Optional |
+| Voice or sound recordings | In-app order voice calls use peer-to-peer WebRTC media encrypted end-to-end between call participants | App functionality | **Not declared as collected while the Google Play end-to-end-encryption exception remains satisfied**; re-review if recording, transcription, SFU/server media access or non-E2EE transport is introduced |
 | Photos | Chat images, delivery/support evidence | App functionality, safety/support | Optional |
 | Other user-generated content | Reviews, notes, support descriptions | App functionality, safety/support | Optional |
 | Device or other IDs | Push token, session/device identifiers | Notifications, security/fraud prevention | Optional/functional |
@@ -195,6 +196,7 @@ Policy source:
 | Purchase history | Orders/merchant transactions | App functionality, accounting | Required |
 | Other financial info | GP, cash settlement/receipt state where applicable | Accounting, app functionality | Functional |
 | Other in-app messages | Merchant ↔ Admin support | App functionality/support | Optional |
+| Voice or sound recordings | In-app order voice calls use peer-to-peer WebRTC media encrypted end-to-end between call participants | App functionality | **Not declared as collected while the Google Play end-to-end-encryption exception remains satisfied**; re-review if recording, transcription, SFU/server media access or non-E2EE transport is introduced |
 | Photos | Shop media, evidence, GP slip where used | App functionality/accounting/support | Optional |
 | Device or other IDs | Push/session identifiers | Notifications, security | Optional/functional |
 
@@ -210,6 +212,7 @@ Policy source:
 | Approximate / Precise location | Availability, assignment, route and delivery workflow | App functionality | Required while using Rider work flow |
 | Other financial info | Rider earnings/cash advance/accounting records where applicable | App functionality/accounting | Functional |
 | Other in-app messages | Customer ↔ Rider order chat | App functionality, safety | Optional |
+| Voice or sound recordings | In-app order voice calls use peer-to-peer WebRTC media encrypted end-to-end between call participants | App functionality | **Not declared as collected while the Google Play end-to-end-encryption exception remains satisfied**; re-review if recording, transcription, SFU/server media access or non-E2EE transport is introduced |
 | Photos | Pickup/delivery proof and chat/evidence images | App functionality, safety | Required for proof steps / optional for chat |
 | Device or other IDs | Push token, session/device identifiers | Notifications, security | Optional/functional |
 
@@ -223,6 +226,7 @@ Current QueueGo decision:
 |---|---|---|---|
 | Supabase | Auth, database, Storage, Realtime, account/order/location/chat/support data | Supabase DPA states Supabase acts as processor/service provider and processes Covered Data on behalf of and under Customer instructions | **Collected: Yes. Shared: service-provider exception may be used** for Supabase processing under the applicable Supabase agreement/DPA |
 | Firebase Cloud Messaging / Google | Native push transport; FCM/Installations SDK metadata, installation ID/token and app version as applicable | Firebase Data Processing and Security Terms govern Customer Data; Firebase privacy guidance states Google generally operates as processor/service provider for Firebase customer data | **Collected: Yes** for applicable FCM/Installations data. **Shared: service-provider exception may be used** for Firebase processing covered by those terms |
+| Cloudflare Realtime TURN | TURN fallback for Native WebRTC voice calls. WebRTC media remains DTLS/SRTP end-to-end encrypted between participants; Cloudflare documents that it relays encrypted packets and cannot inspect media content. Cloudflare still processes relay metadata such as client IP addresses, ports and session timing. | Cloudflare Realtime TURN FAQ documents the media-encryption and relay-metadata boundary | **Voice media:** use the Google Play end-to-end-encryption collection exception while this architecture remains unchanged. **Relay metadata:** include in the app's applicable device/network metadata assessment and re-review Cloudflare contractual/service-provider treatment before Play submission. |
 | Longdo Map / Metamedia Technology | Customer reverse geocoding, map rendering, merchant/shop pins, Rider route calculation; exact origin/destination coordinates are sent to Longdo endpoints | Public Longdo API terms point to Longdo privacy policy. The public privacy policy says Longdo may collect IP/usage/location data, but the public terms reviewed do not establish that all API personal-data processing is solely on QueueTech's behalf/instructions | **Conservative answer: Shared = Yes for location, purpose App functionality.** Do not claim the service-provider exception unless a QueueTech–Longdo commercial agreement/DPA explicitly supports it |
 | External navigation app opened by the user | Explicit "navigate" action where the user chooses to open an external navigation service | Google Play has a user-initiated-transfer exception when the user reasonably expects the transfer | Can rely on the user-initiated exception for that explicit navigation handoff, but this does **not** remove the Longdo sharing declaration above |
 
@@ -230,6 +234,9 @@ Code evidence:
 - Customer loads Longdo Map and sends selected latitude/longitude to Longdo reverse-geocoding.
 - Rider loads Longdo Map and sends current Rider coordinates plus destination coordinates to Longdo RouteService.
 - Merchant loads Longdo Map for shop location/pin workflows.
+- Customer, Merchant and Rider all declare RECORD_AUDIO and use the shared NativeVoicePeer WebRTC audio path.
+- NativeVoicePeer creates an audio-only WebRTC peer and obtains authorized STUN/TURN ICE servers from queuego-turn; no recording, transcription or server-side media processing exists in the certified Native source.
+- Cloudflare Realtime TURN documents that WebRTC media remains end-to-end encrypted between call peers and that Cloudflare cannot inspect the media content.
 - Native Android release CI rejects WebView and validates the three production package IDs; FCM configuration remains a hard release gate and Firebase Analytics/Crashlytics are not used as certification evidence.
 
 Current public-policy sources reviewed:
@@ -237,6 +244,7 @@ Current public-policy sources reviewed:
 - Supabase DPA: https://supabase.com/legal/customer-resources/data-processing-addendum
 - Firebase Data Processing terms: https://firebase.google.com/terms/data-processing-terms
 - Firebase Play Data disclosure: https://firebase.google.com/docs/android/play-data-disclosure
+- Cloudflare Realtime TURN FAQ: https://developers.cloudflare.com/realtime/turn/faq/
 - Longdo API terms: https://map.longdo.com/api/terms/
 - Longdo privacy policy: https://www.longdo.com/en/privacy
 
