@@ -1,10 +1,13 @@
 {
-  "version": 1,
-  "reviewed_at": "2026-10-07T08:42:00+07:00",
+  "version": 2,
+  "reviewed_at": "2026-10-10T11:00:57.307Z",
   "production_project": "pkypiqhlrmzocysgeqew",
-  "authenticated_security_definer_total": 123,
-  "direct_identity_or_role_guard_count": 113,
-  "no_direct_identity_guard_count": 10,
+  "live_advisor_observed_at": "2026-10-10T11:00:57.307Z",
+  "authenticated_security_definer_total": 142,
+  "direct_identity_or_role_guard_count": 118,
+  "direct_auth_uid_count": 76,
+  "helper_guarded_without_direct_auth_uid_count": 42,
+  "no_direct_identity_guard_count": 24,
   "classification": {
     "intentional_public_or_guest": [
       "market_public_catalog_v2()",
@@ -31,7 +34,43 @@
           "service-area route assertion"
         ]
       }
-    ]
+    ],
+    "downstream_guarded_pos_or_table_wrappers": [
+      "pos_apply_discount(uuid,numeric)",
+      "pos_bill_action(uuid,text,text)",
+      "pos_change_price(uuid,numeric)",
+      "pos_create_invite(text,jsonb)",
+      "pos_create_role_invite(text,text)",
+      "pos_delete_table(uuid)",
+      "pos_enable_delivery()",
+      "pos_owner_dashboard(integer)",
+      "pos_refund_bill(uuid,text)",
+      "pos_sales_report(integer)",
+      "pos_save_table(uuid,text,boolean)",
+      "pos_set_staff_role(uuid,text,boolean)",
+      "pos_take_payment(uuid,text,numeric)",
+      "qg_table_rotate_qr(uuid)"
+    ],
+    "pos_authorization_helpers": {
+      "helpers": [
+        "pos_allowed(text)",
+        "pos_is_owner()",
+        "pos_my_shop()"
+      ],
+      "controls": [
+        "pos_is_owner binds auth.uid() to an active shop owner and active shop profile",
+        "pos_my_shop returns only an active owned shop or an active POS staff shop for auth.uid()",
+        "pos_allowed requires owner access or active staff role/permission in pos_my_shop()",
+        "mutating POS/table wrappers additionally scope target rows to pos_my_shop()"
+      ],
+      "source_files": [
+        "QueueGo-POS-Migration.sql",
+        "QueueGo-POS-Workflow-Migration.sql",
+        "QueueGo-POS-Delivery-Opt-In-Migration.sql",
+        "QueueGo-POS-Payment-Retry-Migration.sql",
+        "QueueGo-Table-QR-v1-Migration.sql"
+      ]
+    }
   },
   "hardening_applied": [
     {
@@ -47,11 +86,20 @@
       "action": "authenticated EXECUTE revoked; unused helper is service-role only"
     }
   ],
+  "live_review": {
+    "no_direct_guard_accounting": "9 intentional public/guest + 14 POS/table helper-guarded wrappers + 1 cash-order core-guarded wrapper = 24",
+    "anonymous_allowlist_exact_match": true,
+    "anonymous_allowlist_count": 9,
+    "unexpected_anonymous_security_definers": [],
+    "database_changes_required": false,
+    "note": "Production definitions were reviewed live. The authenticated advisor total changed from the 2026-10-07 snapshot, so the current 142-function surface replaces the stale count rather than assuming every count delta represents a newly created function."
+  },
   "advisor_after_review": {
+    "rls_enabled_no_policy_info": 6,
     "anonymous_security_definer_executable": 9,
-    "authenticated_security_definer_executable": 123,
+    "authenticated_security_definer_executable": 142,
     "leaked_password_protection": 1
   },
-  "conclusion": "PASS_CODE_DATABASE_REVIEW",
-  "boundary": "Supabase Auth leaked-password protection is a separate platform gate and remains blocked until enabled in the Supabase dashboard."
+  "conclusion": "PASS_CODE_DATABASE_REVIEW_CURRENT_SURFACE",
+  "boundary": "Supabase Auth leaked-password protection remains a separate Free-plan platform warning. This code/database review does not certify physical Android, Firebase, TURN, signing, Backup/Restore, or Play Console gates."
 }
