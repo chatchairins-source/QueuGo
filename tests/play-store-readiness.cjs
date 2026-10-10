@@ -142,6 +142,11 @@ ok(manifest?.android?.release_gate_production_supabase_project_ref==='pkypiqhlrm
 ok(manifest?.android?.release_gate_firebase_project_binding===true,'Firebase evidence must bind the loaded Production Firebase project');
 ok(manifest?.android?.release_gate_play_version_metadata_binding===true,'Play preflight evidence must bind release version metadata and observed history');
 ok(manifest?.android?.release_gate_signing_certificate_binding===true,'Release signing evidence must bind the certified certificate fingerprint');
+ok(manifest?.android?.release_certification_requires_exact_head_backup_restore===true,'Release certification must require exact-HEAD Backup Restore');
+ok(manifest?.android?.release_certification_backup_restore_workflow==='.github/workflows/backup-restore-drill.yml','Recovery manifest must pin the Backup Restore workflow identity');
+ok(manifest?.android?.release_certification_backup_artifact_live_required===true&&manifest?.android?.release_certification_backup_artifact_prefix==='queuego-backup-','Certification must require a live encrypted backup artifact');
+ok(manifest?.android?.release_certification_final_release_revalidates_backup_restore_run===true,'Final release must revalidate the Backup Restore run recorded by certification');
+ok(manifest?.android?.release_gate_backup_restore_attested_run_binding===true,'backup_restore gate evidence must bind the attested restore-drill run');
 ok(manifest?.android?.release_certification_requires_exact_head_native_pilot_ci===true,'Release certification must require exact-HEAD Native Pilot CI');
 ok(manifest?.android?.release_certification_native_pilot_workflow==='.github/workflows/build-native-rider-pilot.yml','Recovery manifest must pin the Native Pilot workflow identity for certification');
 ok(manifest?.android?.release_certification_final_release_revalidates_native_pilot_run===true,'Final release must revalidate the Native Pilot run recorded by certification');
