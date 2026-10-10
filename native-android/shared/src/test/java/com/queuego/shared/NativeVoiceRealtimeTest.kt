@@ -84,7 +84,7 @@ class NativeVoiceRealtimeTest {
             connection.close()
             client.dispatcher.executorService.shutdown()
             client.connectionPool.evictAll()
-            server.shutdown()
+            runCatching { server.shutdown() }
         }
     }
 
@@ -122,7 +122,7 @@ class NativeVoiceRealtimeTest {
             connection.close()
             client.dispatcher.executorService.shutdown()
             client.connectionPool.evictAll()
-            server.shutdown()
+            runCatching { server.shutdown() }
         }
     }
 
