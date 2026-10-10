@@ -79,6 +79,9 @@ def verify() -> dict:
     version_name = os.environ.get("QG_NATIVE_VERSION_NAME", "")
     if not re.fullmatch(r"\d+\.\d+\.\d+", version_name):
         raise ValueError("QG_NATIVE_VERSION_NAME must be the certified x.y.z release value")
+    expected_cert = re.sub(r"[^0-9a-fA-F]", "", os.environ.get("QG_ANDROID_EXPECTED_CERT_SHA256", "")).lower()
+    if not re.fullmatch(r"[0-9a-f]{64}", expected_cert):
+        raise ValueError("QG_ANDROID_EXPECTED_CERT_SHA256 must be the certified 64-hex SHA-256 fingerprint")
 
     expected_codes: dict[str, int] = {}
     for role in ROLES:
@@ -126,6 +129,8 @@ def verify() -> dict:
         if not cert_match:
             raise ValueError(f"APK signer certificate digest missing for {role}")
         cert_sha = cert_match.group("digest").replace(":", "").lower()
+        if cert_sha != expected_cert:
+            raise ValueError(f"APK signer does not match certified release certificate for {role}")
         signer_digests.add(cert_sha)
 
         run([jarsigner, "-verify", str(aab)])
@@ -136,6 +141,8 @@ def verify() -> dict:
         aab_cert_sha = aab_cert_match.group("digest").replace(":", "").lower()
         if aab_cert_sha != cert_sha:
             raise ValueError(f"APK/AAB signer mismatch for {role}")
+        if aab_cert_sha != expected_cert:
+            raise ValueError(f"AAB signer does not match certified release certificate for {role}")
 
         artifacts[role] = {
             "application_id": package,
