@@ -156,6 +156,10 @@ def verify() -> dict:
             raise ValueError(f"APK signer does not match certified release certificate for {role}")
         signer_digests.add(cert_sha)
 
+        aab_config = run([java, "-jar", str(bundletool), "dump", "config", f"--bundle={aab}"])
+        if "PAGE_ALIGNMENT_16K" not in aab_config:
+            raise ValueError(f"AAB is not configured for 16 KB page alignment: {role}")
+
         aab_package = run([java, "-jar", str(bundletool), "dump", "manifest", f"--bundle={aab}", "--xpath=/manifest/@package"]).strip()
         aab_code = run([java, "-jar", str(bundletool), "dump", "manifest", f"--bundle={aab}", "--xpath=/manifest/@android:versionCode"]).strip()
         aab_name = run([java, "-jar", str(bundletool), "dump", "manifest", f"--bundle={aab}", "--xpath=/manifest/@android:versionName"]).strip()
@@ -190,6 +194,7 @@ def verify() -> dict:
             "aab": str(aab.relative_to(ROOT)),
             "aab_sha256": sha256(aab),
             "aab_manifest_metadata_verified": True,
+            "aab_page_alignment_16kb": True,
             "bundletool_sha256": bundletool_hash,
             "signer_certificate_sha256": cert_sha,
             "aab_signer_certificate_sha256": aab_cert_sha,
