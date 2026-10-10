@@ -44,6 +44,9 @@ ok(releaseCertification.includes('sha256sum -c -')&&releaseCertification.include
 ok(releaseCertification.includes('certified-release-metadata.json'),'Release certification must bind exact release metadata');
 ok(/dedicated Play-review accounts/i.test(access),'Reviewer access must use dedicated reusable accounts');
 ok(/Do not use an actual customer/i.test(access),'Reviewer access must forbid real-user credentials');
+ok(access.includes('native-android/customer/src/main/java/com/queuego/customer/CustomerChat.kt'),'Play reviewer evidence must include Native Customer chat safety');
+ok(access.includes('native-android/rider/src/main/java/com/queuego/rider/RiderChat.kt'),'Play reviewer evidence must include Native Rider chat safety');
+ok(/actual current Native Android app/i.test(listing)&&!/Screenshots must be from the actual current app, not mock UI/.test(listing),'Store screenshot guidance must target Native Android, not legacy build wording');
 ok(/Contains ads.*RESOLVED FOR CURRENT BUILD/is.test(access),'Contains Ads decision must remain resolved for current build');
 ok(/QueueGo Customer[\s\S]*Yes — Contains ads/i.test(access),'Customer app must declare Contains ads = Yes');
 ok(/QueueGo Merchant[\s\S]*No\./i.test(access),'Merchant app must declare Contains ads = No');

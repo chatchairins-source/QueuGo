@@ -1,6 +1,6 @@
 # QueueGo — Play App Access, Target Audience & Content Rating Draft
 
-Last reviewed: 2026-10-07
+Last reviewed: 2026-10-10
 
 This document is a Play Console preparation sheet. Do not place real passwords, production-user credentials, service-role keys, signing passwords, or personal data in this file.
 
@@ -207,7 +207,9 @@ For Customer ↔ Rider order chat:
 Evidence:
 - `docs/community-guidelines.html`
 - `docs/privacy.html`
-- `queuego-ugc.js`
+- `native-android/customer/src/main/java/com/queuego/customer/CustomerChat.kt`
+- `native-android/rider/src/main/java/com/queuego/rider/RiderChat.kt`
+- `queuego-ugc.js` for the retained Web/Admin moderation surface
 - `tests/ugc-chat-safety.cjs`
 
 ## 7. Before Play submission
@@ -222,7 +224,7 @@ For each of the three apps:
 - [ ] IARC questionnaire completed
 - [ ] Contains Ads entered in Play Console: Customer **Yes**, Merchant **No**, Rider **No** (revalidate if submitted behavior changes)
 - [ ] UGC declarations match actual chat/content features
-- [ ] Store listing screenshots match current production UI
+- [ ] Store listing screenshots are captured from the actual current Native Android apps and match the approved Production Blueprint
 - [ ] Account deletion path verified
 - [ ] App access does not depend on QueueTech replying during review
 

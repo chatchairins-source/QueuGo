@@ -1,6 +1,6 @@
 # QueueGo — Google Play Store Listing Draft
 
-Last reviewed: 2026-10-07
+Last reviewed: 2026-10-10
 
 Google Play limits used here:
 - App name: max 30 characters
@@ -104,7 +104,7 @@ QueueGo Merchant ใช้ตำแหน่งร้านเพื่อกา
 - ปรับ KDS และสถานะเตรียม/พร้อมรับ
 - เพิ่ม Account Deletion และ Privacy
 - เพิ่ม Background Notification foundation
-- ปรับ Android bundle และ session persistence
+- ปรับ Native Android session persistence และการแจ้งเตือน
 - ปรับ server idempotency และ order routing
 
 ### Tester focus
@@ -113,7 +113,7 @@ QueueGo Merchant ใช้ตำแหน่งร้านเพื่อกา
 2. รับออเดอร์ด้วยการกดครั้งเดียว
 3. ปฏิเสธออเดอร์และตรวจสถานะฝั่ง Customer
 4. เปลี่ยน Preparing → Ready และตรวจ realtime
-5. ทดสอบเสียง/notification
+5. ทดสอบการแจ้งเตือนออเดอร์และสถานะสำคัญ
 6. ตรวจสินค้า ราคา สต๊อก และสถานะเปิดปิด
 7. ทดสอบ offline → reconnect
 8. ลอง logout/login และตรวจ session isolation
@@ -181,7 +181,7 @@ QueueGo Rider ใช้ตำแหน่งขณะใช้ workflow งา�
 For each app:
 - 512×512 Play Store icon, PNG, no ranking/price/download badges
 - At least 2 representative phone screenshots
-- Screenshots must be from the actual current app, not mock UI
+- Screenshots must be captured from the actual current Native Android app, not mock UI or the legacy Web/Capacitor build
 - Feature graphic if required by the selected listing setup
 - Privacy policy URL
 - Account deletion URL where applicable
