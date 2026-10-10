@@ -18,6 +18,7 @@ const manifest=JSON.parse(read('docs/pilot-recovery-manifest.json'));
 const releaseSecrets=read('.github/workflows/release-secret-readiness.yml');
 const releaseCertification=read('.github/workflows/native-release-certification.yml');
 const nativeRootGradle=read('native-android/build.gradle.kts');
+const productionPush=read('supabase/functions/queuego-push/index.ts');
 for(const role of ['customer','merchant','rider']){
   const appGradle=read(`native-android/${role}/build.gradle.kts`);
   ok(/compileSdk\s*=\s*36/.test(appGradle),role+' must compile against API 36');
@@ -97,6 +98,15 @@ ok(manifest?.android?.release_certification_runtime_gate==='BLOCKED_SECRETS_AND_
 ok(manifest?.android?.release_certification_requires_exact_head_native_pilot_ci===true,'Release certification must require exact-HEAD Native Pilot CI');
 ok(manifest?.android?.release_certification_native_pilot_workflow==='.github/workflows/build-native-rider-pilot.yml','Recovery manifest must pin the Native Pilot workflow identity for certification');
 ok(manifest?.android?.release_certification_final_release_revalidates_native_pilot_run===true,'Final release must revalidate the Native Pilot run recorded by certification');
+ok(manifest?.notifications?.edge_function_version===16&&manifest?.notifications?.edge_function_status==='ACTIVE'&&manifest?.notifications?.edge_source_matches_github===true,'Recovery manifest must retain the verified Production queuego-push v16 deployment');
+ok(manifest?.notifications?.edge_function_bundle_sha256==='e1ae93f6cc142a77fa7408b894703ed9ac8ad7f9fdaa9b32d40cee2a28758079','Recovery manifest must pin the observed Production push Edge bundle SHA-256');
+ok(manifest?.notifications?.edge_function_verify_jwt===false&&manifest?.notifications?.edge_custom_auth_mode==='WORKER_TOKEN_OR_AUTHENTICATED_ACTIVE_USER','verify_jwt=false must remain paired with the reviewed custom push authentication boundary');
+ok(manifest?.notifications?.edge_dispatch_requires_worker_token===true&&manifest?.notifications?.edge_user_actions_verify_auth_user===true&&manifest?.notifications?.edge_native_registration_requires_active_session_binding===true,'Production push custom auth must retain worker/user/session checks');
+ok(manifest?.notifications?.firebase_edge_runtime_status==='UNVERIFIED_NO_NATIVE_TOKEN_OR_SUCCESSFUL_FCM_SEND_EVIDENCE','Production push deployment evidence must not certify Firebase runtime without a real Native token/send');
+ok(manifest?.notifications?.physical_background_notification_certified===false,'Physical background push certification must remain open until observed on real Android');
+ok(productionPush.includes("req.headers.get('x-queuego-worker')!==c.worker_token"),'queuego-push dispatch must retain worker-token authentication');
+ok(productionPush.includes('admin.auth.getUser(token)')&&productionPush.includes("user.status!=='active'"),'queuego-push user actions must retain authenticated active-user enforcement');
+ok(productionPush.includes("admin.from('user_active_sessions')")&&productionPush.includes(".eq('session_id',sessionId)"),'Native push registration must retain active-session binding');
 ok(manifest?.android?.native_scope==='Customer/Merchant/Rider','Recovery manifest must identify Native Android as the active release scope');
 ok(manifest?.android?.legacy_capacitor_release_workflows_retired===true,'Legacy Capacitor release workflows must remain retired');
 ok(!('capacitor_version' in (manifest.android||{}))&&!('push_plugin' in (manifest.android||{})),'Native recovery manifest must not treat Capacitor as the active Android runtime');
