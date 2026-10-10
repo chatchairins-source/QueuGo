@@ -139,9 +139,12 @@ It is manual-only and does not publish a GitHub Release. Before any APK/AAB task
 runs it requires a successful `queuego-native-release-certification` artifact
 from the dedicated `.github/workflows/native-release-certification.yml` workflow
 on the exact same git HEAD, manually dispatched from `queuego-native-android-v1`.
-That certification workflow downloads an operator-produced evidence ZIP only from
-the fixed private Supabase Storage bucket `queuego-native-release-evidence`,
-verifies its supplied SHA-256, safely rejects ZIP traversal/symlinks, runs
+That certification workflow verifies that the fixed Supabase Storage bucket
+`queuego-native-release-evidence` exists and remains `public=false`, then
+downloads the operator-produced evidence ZIP over HTTPS/TLS without following
+redirects while service-role headers are present. It verifies the supplied bundle
+SHA-256, safely rejects ZIP traversal, symlinks, duplicate paths and backslash
+paths, streams per-file SHA-256 verification in bounded 1 MiB chunks, runs
 `verify-native-release-gate.py`, and writes `certified-release-metadata.json`.
 Before the certification artifact is produced, the certification workflow also
 queries GitHub Actions and requires a successful `QueueGo Native Android Pilot`
