@@ -105,13 +105,13 @@ fun MerchantPosScreen(
     onBack: () -> Unit,
     backLabel: String = "ย้อนกลับ"
 ) {
-    val api = remember { MerchantPosApi() }
+    val context = LocalContext.current
+    val api = remember { MerchantPosApi(MerchantPosPendingStore(context.noBackupFilesDir.resolve("queuego-pos-edit-pending"))) }
     val realtime = remember { NativeOrderRealtime() }
     val refreshMutex = remember { Mutex() }
     val printQueue = remember { NativePrintQueue() }
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     val scope = rememberCoroutineScope()
-    val context = LocalContext.current
     val printerStore = remember { MerchantPrinterStore(context) }
     val printBridge = remember { MerchantPrintBridge() }
 
@@ -126,6 +126,19 @@ fun MerchantPosScreen(
     var search by rememberSaveable { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }
     var message by remember { mutableStateOf<String?>(null) }
+    var pendingEdit by remember { mutableStateOf<PosEditIntent?>(null) }
+    var pendingEditError by remember { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(auth.session.authUserId, busy) {
+        if (!busy) {
+            try {
+                pendingEdit = api.pendingEdit(auth)
+                pendingEditError = null
+            } catch (failure: Exception) {
+                pendingEditError = failure.message ?: "อ่านรายการ POS ค้างไม่สำเร็จ"
+            }
+        }
+    }
 
     var pendingPosRequestId by rememberSaveable { mutableStateOf<String?>(null) }
     var pendingPosProductId by rememberSaveable { mutableStateOf<String?>(null) }
@@ -267,6 +280,10 @@ fun MerchantPosScreen(
         block: suspend () -> Unit
     ) {
         if (busy) return
+        if (pendingEdit != null || pendingEditError != null) {
+            message = "กรุณากดตรวจรายการ POS ค้างก่อนทำรายการอื่น"
+            return
+        }
         busy = true
         message = null
         scope.launch {
@@ -514,6 +531,37 @@ fun MerchantPosScreen(
                 modifier = Modifier.padding(horizontal = 14.dp, vertical = 4.dp),
                 fontSize = 12.sp
             )
+        }
+
+        if (pendingEdit != null || pendingEditError != null) {
+            Column(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 8.dp)) {
+                Text(pendingEditError ?: "มีรายการ POS ที่ยังไม่ทราบผล ระบบเก็บรายการเดิมไว้แล้ว",
+                    color = MaterialTheme.colorScheme.error, fontSize = 12.sp)
+                OutlinedButton(enabled = !busy, onClick = {
+                    if (!busy) {
+                        busy = true
+                        scope.launch {
+                            try {
+                                val id = api.retryPendingEdit(auth)
+                                pendingEdit = null
+                                pendingEditError = null
+                                pendingPosRequestId = null
+                                pendingPosProductId = null
+                                pendingPosType = null
+                                pendingPosTableId = null
+                                pendingPosNote = null
+                                selectedBillId = id
+                                message = "ตรวจรายการ POS เดิมแล้ว"
+                                refreshSnapshot(id)
+                            } catch (cancelled: CancellationException) {
+                                throw cancelled
+                            } catch (failure: Exception) {
+                                message = failure.message ?: "ยังตรวจรายการ POS เดิมไม่สำเร็จ"
+                            } finally { busy = false }
+                        }
+                    }
+                }) { Text("ตรวจรายการค้าง") }
+            }
         }
 
         if (snap == null) {

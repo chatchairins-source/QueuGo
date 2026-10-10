@@ -5,13 +5,18 @@ on:
   push:
     branches:
       - queuego-native-android-v1
+      - work-native-printer-ticket-parity-20261010
       - work-native-merchant-printer-20261010
       - work-native-merchant-login-parity-20261010
       - work-native-verified-integration-20261010
       - work-native-rpc-null-contract-20261010
+      - work-native-pos-edit-idempotency-20261010
     paths:
       - 'native-android/**'
       - 'tests/native-android-source.cjs'
+      - 'tests/native-pos-edit-idempotency.cjs'
+      - 'supabase/migrations/*pos_edit_bill_idempotency.sql'
+      - 'ops/pos-edit-idempotency-schema-baseline-*.sql'
       - '.github/workflows/build-native-rider-pilot.yml'
 
 permissions:
@@ -69,6 +74,8 @@ jobs:
         run: npm ci
       - name: Full QueueGo regression
         run: npm test
+      - name: Native POS edit idempotency SQL contracts
+        run: node tests/native-pos-edit-idempotency.cjs
       - name: Source integrity
         run: node tests/native-android-source.cjs
       - name: Verify launcher asset family

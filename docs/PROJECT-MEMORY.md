@@ -695,3 +695,21 @@ The user-supplied Rider reference screens are the acceptance reference for workf
 - Release Gate remains OPEN: complete three-role Production blueprint/authenticated E2E, live concurrency/RLS/session, physical Android/notification/GPS/printer/background matrix, signing and Play readiness. No APK/AAB/source/UI deliverable is sent to the owner. CI build evidence does not certify those gates.
 
 - Nullable RPC fix daa6ffaf: independent CI38024210955 PASS through checkout serialization unit tests, all three builds, Reject WebView and actual emulator/Longdo. Integrated only after that result; combined integration branch remains subject to its own full CI before Native main update.
+
+
+## 2026-10-10 printer ticket Production text parity
+- Read actual main merchant/printer-v1.js ticket builder. Native ticket previously added labels/subtotals and omitted creation time, receipt notes and Production feed spacing.
+- Native kitchen/receipt now follow Production heading, order/table/time, note lines, totals/discount/payment tokens/cash change and trailing feed spacing. Date uses Thai Buddhist year with the device timezone, matching the Production browser locale. Missing/unparseable server timestamps remain explicit rather than fabricated. Existing kitchen batch isolation and replay keys retained.
+- Focused receipt regression updated for Buddhist year, description and feed spacing. CI/physical printer verification pending; this branch is not merged until green. Full release gate remains open.
+## 2026-10-10 POS durable retry and Production replay migration
+- Verified integration db863c6 passed CI 38024898173 (three APKs, regression, source integrity, no WebView, emulator login and Longdo checks). Native main advanced safely from 7e0af34 to db863c6 after backup; main CI 38025492125 pending at this checkpoint.
+- Additive pos_edit_bill_once and server-only pos_edit_request_keys deployed to Production after original core POS function/session predicate backup and 17 isolated SQL checks. Existing POS edit/create functions remain unchanged. Wrapper checks active app session, current POS access, bill ownership and exact actor/payload, and serializes request replay with transaction advisory locking.
+- Live verification: RLS true; direct authenticated ledger SELECT false; anon RPC EXECUTE false; authenticated EXECUTE true; ledger empty. Unauthenticated/null-session invocation rejected by active-session guard. Advisor categories match baseline; intentional authenticated definer surface still requires ongoing audit.
+- Native pending intent now written to app-private no-backup storage before create/edit RPC, retained across process recreation and transport ambiguity, scoped by actor, and cleared only after matching acknowledgement or verified transaction rejection. Recovery is explicit and keeps the original request/payload. Current session is supplied afresh to the deployed edit wrapper. New-bill calls retain deployed pos_create_bill_once with client active-session check.
+- Client compile/runtime CI not yet certified at this checkpoint. No live customer orders or fake Production records created. Authenticated E2E, simultaneous-client concurrency, physical-device printing/background notifications and full release gate remain OPEN. No release deliverables authorized.
+
+
+## 2026-10-10 verified POS and printer integration
+- Native main db863c6 independently passed CI38025492125 after integration. POS durable retry/strict UUID acknowledgement99008a4 passed CI38025806490 (shared/merchant/customer/rider tests, additive SQL checks, three APKs, regression/integrity/no WebView and actual emulator/Longdo). Production wrapper deployment verified before client publication.
+- Printer text parity fa1d7b7 passed CI38025704483, including receipt date/note/feed tests, all builds and emulator. Only these fully passing commits are combined here. New order-number and durable-print-history branches remain isolated until their own CI passes.
+- Authenticated Production E2E, live simultaneous requests, physical devices/printer/background notifications and release/signing still unverified. The combined tree requires its own CI before Native main advances. No release deliverables.
