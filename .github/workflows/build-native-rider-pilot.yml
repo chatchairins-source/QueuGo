@@ -26,6 +26,9 @@ on:
       - work-native-pos-edit-idempotency-20261010
     paths:
       - 'native-android/**'
+      - 'tests/**'
+      - 'package.json'
+      - 'package-lock.json'
       - 'tests/native-android-source.cjs'
       - 'tests/native-pos-edit-idempotency.cjs'
       - 'tests/native-voice-call-contract.cjs'
