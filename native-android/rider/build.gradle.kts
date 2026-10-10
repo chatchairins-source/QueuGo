@@ -1,3 +1,7 @@
+val qgVersionCode = providers.gradleProperty("QG_VERSION_CODE").orNull?.toIntOrNull()
+val qgVersionName = providers.gradleProperty("QG_VERSION_NAME").orNull
+val qgStoreFile = providers.gradleProperty("QG_STORE_FILE").orNull
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.plugin.compose")
@@ -16,11 +20,29 @@ android {
         minSdk = 26
         targetSdk = 36
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-        versionCode = 5
-        versionName = "0.4.1-rider-map"
+        versionCode = qgVersionCode ?: 5
+        versionName = qgVersionName ?: "0.4.1-rider-map"
     }
 
     buildFeatures { compose = true }
+    signingConfigs {
+        create("release") {
+            if (qgStoreFile != null) {
+                storeFile = rootProject.file(qgStoreFile)
+                storePassword = providers.gradleProperty("QG_STORE_PASSWORD").orNull
+                keyAlias = providers.gradleProperty("QG_KEY_ALIAS").orNull
+                keyPassword = providers.gradleProperty("QG_KEY_PASSWORD").orNull
+            }
+        }
+    }
+    buildTypes {
+        getByName("release") {
+            if (qgStoreFile != null) {
+                signingConfig = signingConfigs.getByName("release")
+            }
+            isDebuggable = false
+        }
+    }
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
