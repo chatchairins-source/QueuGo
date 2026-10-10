@@ -1,6 +1,7 @@
 package com.queuego.merchant
 
 import android.Manifest
+import android.content.pm.PackageManager
 import android.media.AudioManager
 import android.media.ToneGenerator
 import android.net.Uri
@@ -34,7 +35,9 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.mutableIntStateOf
@@ -56,6 +59,8 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import com.queuego.shared.NativeAuth
+import com.queuego.shared.QueueGoVoiceCallOverlay
+import com.queuego.shared.NativeVoiceCallController
 import com.queuego.shared.QgAccountDeletionSection
 import com.queuego.shared.QgBg
 import com.queuego.shared.QgBottomNav
@@ -112,6 +117,29 @@ private fun MerchantShell(auth: NativeAuth, logout: () -> Unit) {
     var busy by remember { mutableStateOf(false) }
     var message by remember { mutableStateOf<String?>(null) }
     val context = LocalContext.current
+    val voiceController = remember(auth.user.id) { NativeVoiceCallController(context) }
+    val voiceState by voiceController.state.collectAsState()
+    DisposableEffect(voiceController) { onDispose { voiceController.close() } }
+    var pendingVoiceAnswer by remember { mutableStateOf(false) }
+    val voicePermission = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted && pendingVoiceAnswer) {
+            voiceController.answerIncoming(auth)
+        } else if (!granted) {
+            message = "กรุณาอนุญาตไมโครโฟนเพื่อรับสายผ่าน QueueGo"
+        }
+        pendingVoiceAnswer = false
+    }
+
+    fun answerVoiceCall() {
+        if (context.checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
+            voiceController.answerIncoming(auth)
+        } else {
+            pendingVoiceAnswer = true
+            voicePermission.launch(Manifest.permission.RECORD_AUDIO)
+        }
+    }
     var setupLogoUri by remember { mutableStateOf<Uri?>(null) }
     var setupCoverUri by remember { mutableStateOf<Uri?>(null) }
     var merchantGpsPoint by remember { mutableStateOf<QgMapPoint?>(null) }
@@ -215,6 +243,20 @@ private fun MerchantShell(auth: NativeAuth, logout: () -> Unit) {
     }
 
     LaunchedEffect(auth.user.id) { refreshAll() }
+    LaunchedEffect(auth.session.accessToken, auth.session.sessionId, lifecycle) {
+        lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            while (true) {
+                try {
+                    voiceController.refreshIncoming(auth)
+                } catch (e: kotlinx.coroutines.CancellationException) {
+                    throw e
+                } catch (_: Exception) {
+                    // Foreground polling complements push without blocking Merchant operations.
+                }
+                delay(3_000)
+            }
+        }
+    }
     LaunchedEffect(screen) {
         if (screen == "home" || screen == "orders" || screen == "order") {
             while (true) {
@@ -251,7 +293,8 @@ private fun MerchantShell(auth: NativeAuth, logout: () -> Unit) {
         }
     }
 
-    Scaffold(
+    Box(Modifier.fillMaxSize()) {
+        Scaffold(
         containerColor = QgBg,
         bottomBar = {
             if (screen in setOf("home", "orders", "products", "promotions", "profile")) {
@@ -682,6 +725,16 @@ private fun MerchantShell(auth: NativeAuth, logout: () -> Unit) {
                 }
             }
         }
+        QueueGoVoiceCallOverlay(
+            state = voiceState,
+            currentUserId = auth.user.id,
+            onAnswer = ::answerVoiceCall,
+            onDecline = { voiceController.declineIncoming(auth) },
+            onHangUp = { voiceController.hangUp() },
+            onDismissEnded = { voiceController.dismissTerminal() },
+            onToggleMute = { voiceController.setMuted(it) },
+            onToggleSpeaker = { voiceController.setSpeakerEnabled(it) }
+        )
     }
 }
 
