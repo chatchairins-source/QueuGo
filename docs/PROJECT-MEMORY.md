@@ -1,3 +1,16 @@
+## 2026-10-11 approved shop-managed Laundry implementation staging
+- Owner confirmed the laundry shop uses its own employees for pickup and return, entirely in Merchant. This supersedes all platform Rider-Laundry requirements. No employee app/account is required in the first version; shop account records staff names per leg.
+- Flow: pending → accepted → pickup_assigned → picked_up → at_hub → washing → ready_return → out_for_return → completed. Customer tracks shop updates; shop sets pickup/return fees. Existing order IDs, price snapshots, history and audit records are retained.
+- Production inspection found 3 pending Laundry orders and zero laundry_rider_jobs. Current placement requires linked Riders and current accept/ready-return creates Rider jobs; the staged SQL removes those dependencies without deleting data.
+- Merchant Web staging adds staff assignment, owned customer contact/navigation and full pickup/return actions. Customer labels identify shop employees. Rider Web no longer loads, renders or mutates Laundry work. Native equivalent is staged in PR140.
+- QueueGo-Laundry-Shop-Transport.sql is staged and NOT deployed. It adds staff-name fields, one ownership-guarded state machine with row lock, expected-status checks and repeat-safe actions; old action endpoints delegate to it. Placement keeps route/pricing/idempotency guards while removing the linked-Rider prerequisite. Backed up exact Production function definitions in ops/backups/laundry-shop-transport-20261011.sql.
+- Remaining: SQL database validation, retire old Rider RPC access, full relevant regression updates, authenticated shop/customer end-to-end test, visual QA and coordinated backend/Web rollout. Native compilation/physical-device tests remain OPEN. Do not claim Production changed, full parity or Play readiness.
+
+## 2026-10-11 approved shop employee Laundry flow
+- Owner explicitly confirmed: shop employees handle both pickup and return entirely in Merchant; no platform Rider app, eligibility switch, invitation, pool or dispatch. First version uses the shop account and records employee names per leg, with no separate employee app/account.
+- Approved flow: pending → accepted → pickup_assigned (shop employee) → picked_up → at_hub → washing → ready_return → out_for_return (shop employee) → completed. Shop sets pickup/return fees, sees owned customer address/contact/navigation, and Customer sees status updates. Different employees may handle the two legs.
+- Production inspection: 3 pending Laundry orders, zero laundry_rider_jobs. Current placement still requires laundry_hub_riders; accept/ready-return creates Rider jobs. These dependencies must be retired with Merchant controls before calling the flow complete. Preserve the existing orders, price snapshots and audit trail.
+
 ## 2026-10-11 UI parity first / shop-managed Laundry override
 - Owner explicitly corrected Laundry: the laundry shop handles pickup and return itself; platform Riders must have no Laundry availability switch, invitations, pool, active-work UI or navigation. This supersedes prior Rider-Laundry requirements and the earlier instruction in this mission to move its toggle to Profile.
 - Owner clarified responsive UI must work across all screen sizes. Production proportions and bounded centered content remain the blueprint.

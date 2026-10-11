@@ -24,6 +24,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import android.content.Intent
+import android.net.Uri
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -79,7 +82,7 @@ fun MerchantLaundryScreen(auth: NativeAuth) {
 
     val current = state
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(14.dp)) {
-        QgSectionTitle("ฝากซัก", "บริการร้าน + เรียก Express รับและส่งคืนได้คนละ Rider")
+        QgSectionTitle("ฝากซัก", "ร้านจัดพนักงานรับผ้าและส่งคืนเอง")
         val visibleMessage = loadError ?: message
         if (!visibleMessage.isNullOrBlank()) {
             Spacer(Modifier.height(8.dp))
@@ -166,7 +169,7 @@ fun MerchantLaundryScreen(auth: NativeAuth) {
         )
 
         Spacer(Modifier.height(12.dp))
-        QgSectionTitle("งานฝากซักล่าสุด", "ไม่ผูก Rider คนเดิมระหว่างขารับและขาส่งคืน")
+        QgSectionTitle("งานฝากซักล่าสุด", "ติดตามการรับผ้า ซัก และส่งคืนโดยพนักงานของร้าน")
         Spacer(Modifier.height(8.dp))
         if (current.orders.isEmpty()) {
             QgCard(Modifier.fillMaxWidth()) { Text("ยังไม่มีงานฝากซัก", color = QgMuted) }
@@ -174,12 +177,12 @@ fun MerchantLaundryScreen(auth: NativeAuth) {
             LaundryOrderCard(
                 order = order,
                 busy = busy,
-                onAction = { action, qty, note ->
+                onAction = { action, qty, note, staff ->
                     if (busy) return@LaundryOrderCard
                     busy = true
                     scope.launch {
                         try {
-                            runCatching { api.orderAction(auth, order.id, action, qty, note) }
+                            runCatching { api.orderAction(auth, order.id, action, qty, note, order.status, staff) }
                                 .onSuccess { reload(); message = "อัปเดตงานฝากซักแล้ว" }
                                 .onFailure { if (it is CancellationException) throw it; message = it.message }
                         } finally { busy = false }
@@ -340,8 +343,10 @@ private fun LaundryServicesCard(
 private fun LaundryOrderCard(
     order: MerchantLaundryOrder,
     busy: Boolean,
-    onAction: (String, Double?, String?) -> Unit
+    onAction: (String, Double?, String?, String?) -> Unit
 ) {
+    val context = LocalContext.current
+    var staff by remember(order.id, order.status) { mutableStateOf("") }
     var qty by remember(order.id, order.status) { mutableStateOf("") }
     var reason by remember(order.id, order.status) { mutableStateOf("") }
     QgCard(Modifier.fillMaxWidth()) {
@@ -356,25 +361,47 @@ private fun LaundryOrderCard(
             if (total != null) Text("ยอด " + (if (order.finalTotal != null) "จริง" else "ประมาณ") + " ฿" + "%.0f".format(total), color = QgRed, fontWeight = FontWeight.Black)
             if (!order.note.isNullOrBlank()) Text("หมายเหตุ: " + order.note, color = QgMuted)
 
+            order.customerName?.let { Text("ลูกค้า: " + it, fontWeight = FontWeight.Bold) }
+            order.pickupStaffName?.let { Text("พนักงานรับผ้า: " + it, color = QgMuted) }
+            order.returnStaffName?.let { Text("พนักงานส่งคืน: " + it, color = QgMuted) }
+            if (order.status !in listOf("completed", "cancelled")) {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    order.customerPhone?.let { phone ->
+                        OutlinedButton(onClick = { context.startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:" + phone))) }) { Text("โทรลูกค้า") }
+                    }
+                    if (order.latitude != null && order.longitude != null) {
+                        OutlinedButton(onClick = {
+                            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://www.google.com/maps/dir/?api=1&destination=${order.latitude},${order.longitude}")))
+                        }) { Text("นำทาง") }
+                    }
+                }
+            }
             Spacer(Modifier.height(8.dp))
             when (order.status) {
                 "pending" -> {
-                    Button(onClick = { onAction("accept", null, null) }, enabled = !busy, modifier = Modifier.fillMaxWidth()) {
+                    Button(onClick = { onAction("accept", null, null, null) }, enabled = !busy, modifier = Modifier.fillMaxWidth()) {
                         Text("รับคำขอ")
                     }
                     Spacer(Modifier.height(6.dp))
                     OutlinedTextField(reason, { reason = it }, label = { Text("เหตุผลหากปฏิเสธ") }, modifier = Modifier.fillMaxWidth())
                     OutlinedButton(
-                        onClick = { if (reason.isNotBlank()) onAction("cancel", null, reason) },
+                        onClick = { if (reason.isNotBlank()) onAction("cancel", null, reason, null) },
                         enabled = !busy && reason.isNotBlank(),
                         modifier = Modifier.fillMaxWidth()
                     ) { Text("ปฏิเสธ") }
                 }
-                "accepted", "pickup_assigned", "picked_up" -> {
-                    Text("รอผ้าถึงร้าน · งานรับผ้าใช้ Express/Rider ที่ถูกเรียกในรอบนี้", color = QgMuted)
+                "accepted", "ready_return", "return_assigned" -> {
+                    val pickup = order.status == "accepted"
+                    OutlinedTextField(staff, { staff = it.take(100) }, label = { Text(if (pickup) "ชื่อพนักงานไปรับผ้า" else "ชื่อพนักงานส่งคืน") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
+                    Button(onClick = { onAction(if (pickup) "start_pickup" else "start_return", null, null, staff) },
+                        enabled = !busy && staff.isNotBlank(), modifier = Modifier.fillMaxWidth()) {
+                        Text(if (pickup) "มอบหมาย · กำลังไปรับผ้า" else "มอบหมาย · กำลังส่งคืน")
+                    }
                 }
+                "pickup_assigned" -> Button(onClick = { onAction("pickup_collected", null, null, null) }, enabled = !busy, modifier = Modifier.fillMaxWidth()) { Text("รับผ้าจากลูกค้าแล้ว") }
+                "picked_up" -> Button(onClick = { onAction("receive_at_shop", null, null, null) }, enabled = !busy, modifier = Modifier.fillMaxWidth()) { Text("ผ้าถึงร้านแล้ว") }
                 "at_hub" -> Button(
-                    onClick = { onAction("start_washing", null, null) },
+                    onClick = { onAction("start_washing", null, null, null) },
                     enabled = !busy,
                     modifier = Modifier.fillMaxWidth()
                 ) { Text("เริ่มซัก / ทำความสะอาด") }
@@ -389,14 +416,12 @@ private fun LaundryOrderCard(
                         Spacer(Modifier.height(6.dp))
                     }
                     Button(
-                        onClick = { onAction("ready_return", qty.toDoubleOrNull(), null) },
+                        onClick = { onAction("ready_return", qty.toDoubleOrNull(), null, null) },
                         enabled = !busy && (order.pricingType == "fixed" || qty.toDoubleOrNull()?.let { it > 0 } == true),
                         modifier = Modifier.fillMaxWidth()
-                    ) { Text("งานเสร็จ · พร้อมเรียก Express ส่งคืน") }
+                    ) { Text("งานเสร็จ · พร้อมส่งคืน") }
                 }
-                "ready_return", "return_assigned", "out_for_return" -> {
-                    Text("พร้อมส่งคืน / กำลังส่งคืน · สามารถเป็น Rider คนละคนกับขารับ", color = QgMuted)
-                }
+                "out_for_return" -> Button(onClick = { onAction("complete_return", null, null, null) }, enabled = !busy, modifier = Modifier.fillMaxWidth()) { Text("ส่งผ้าคืนลูกค้าสำเร็จ") }
                 "completed" -> Text("ส่งคืนสำเร็จ", color = QgGreen, fontWeight = FontWeight.ExtraBold)
             }
         }
@@ -416,12 +441,12 @@ private fun laundryMerchantUnit(type: String): String = when (type) {
 private fun merchantLaundryStatus(status: String): String = when (status) {
     "pending" -> "รอร้านรับ"
     "accepted" -> "รอรับผ้า"
-    "pickup_assigned" -> "Express ไปรับผ้า"
+    "pickup_assigned" -> "พนักงานกำลังไปรับผ้า"
     "picked_up" -> "กำลังนำผ้ามาร้าน"
     "at_hub" -> "ผ้าถึงร้าน"
     "washing" -> "กำลังซัก"
     "ready_return" -> "พร้อมส่งคืน"
-    "return_assigned" -> "Express รับงานส่งคืน"
+    "return_assigned" -> "ร้านเตรียมส่งคืน"
     "out_for_return" -> "กำลังส่งคืน"
     "completed" -> "เสร็จแล้ว"
     "cancelled" -> "ยกเลิก"

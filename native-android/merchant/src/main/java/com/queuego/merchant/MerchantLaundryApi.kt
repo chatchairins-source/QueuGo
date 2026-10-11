@@ -37,7 +37,13 @@ data class MerchantLaundryOrder(
     val estimatedTotal: Double?,
     val finalTotal: Double?,
     val pickupAddress: String?,
-    val note: String?
+    val note: String?,
+    val pickupStaffName: String? = null,
+    val returnStaffName: String? = null,
+    val latitude: Double? = null,
+    val longitude: Double? = null,
+    val customerName: String? = null,
+    val customerPhone: String? = null
 )
 
 data class MerchantLaundryState(
@@ -88,9 +94,13 @@ class MerchantLaundryApi(private val http: QueueGoNativeApi = QueueGoNativeApi()
             }
         }
 
+        val contacts = if (hubId == null) JSONArray() else http.array(http.rpc(
+            "queuego_laundry_shop_contacts", auth.session.accessToken, JSONObject().put("p_hub_id", hubId)))
+        val contactByOrder = (0 until contacts.length()).mapNotNull { contacts.optJSONObject(it) }
+            .associateBy { it.optString("order_id") }
         val orders = if (hubId == null) emptyList() else {
             val rows = http.array(http.get(
-                "laundry_orders?select=id,order_number,status,service_name_snapshot,pricing_type_snapshot,estimated_quantity,actual_quantity,estimated_total_amount,final_total_amount,pickup_address,note" +
+                "laundry_orders?select=id,order_number,status,service_name_snapshot,pricing_type_snapshot,estimated_quantity,actual_quantity,estimated_total_amount,final_total_amount,pickup_address,note,pickup_staff_name,return_staff_name,pickup_latitude,pickup_longitude" +
                     "&hub_id=eq." + http.enc(hubId) + "&order=created_at.desc&limit=100",
                 auth.session.accessToken
             ))
@@ -110,7 +120,12 @@ class MerchantLaundryApi(private val http: QueueGoNativeApi = QueueGoNativeApi()
                         r.optDoubleNullable("estimated_total_amount"),
                         r.optDoubleNullable("final_total_amount"),
                         r.optString("pickup_address").takeIf { it.isNotBlank() && it != "null" },
-                        r.optString("note").takeIf { it.isNotBlank() && it != "null" }
+                        r.optString("note").takeIf { it.isNotBlank() && it != "null" },
+                        r.optString("pickup_staff_name").takeIf { it.isNotBlank() && it != "null" },
+                        r.optString("return_staff_name").takeIf { it.isNotBlank() && it != "null" },
+                        r.optDoubleNullable("pickup_latitude"), r.optDoubleNullable("pickup_longitude"),
+                        contactByOrder[id]?.optString("customer_name")?.takeIf { it.isNotBlank() && it != "null" },
+                        contactByOrder[id]?.optString("customer_phone")?.takeIf { it.isNotBlank() && it != "null" }
                     ))
                 }
             }
@@ -180,16 +195,20 @@ class MerchantLaundryApi(private val http: QueueGoNativeApi = QueueGoNativeApi()
         orderId: String,
         action: String,
         actualQuantity: Double? = null,
-        note: String? = null
+        note: String? = null,
+        expectedStatus: String,
+        staffName: String? = null
     ) {
         http.rpc(
-            "queuego_laundry_shop_action_v2",
+            "queuego_laundry_shop_manage",
             auth.session.accessToken,
             JSONObject()
                 .put("p_order_id", orderId)
                 .put("p_action", action)
-                .put("p_actual_quantity", actualQuantity)
-                .put("p_note", note?.trim()?.takeIf { it.isNotBlank() })
+                .put("p_actual_quantity", actualQuantity ?: JSONObject.NULL)
+                .put("p_note", note?.trim()?.takeIf { it.isNotBlank() } ?: JSONObject.NULL)
+                .put("p_expected_status", expectedStatus)
+                .put("p_staff_name", staffName?.trim()?.takeIf { it.isNotBlank() } ?: JSONObject.NULL)
         )
     }
 }
