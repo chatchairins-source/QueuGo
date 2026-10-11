@@ -27,7 +27,9 @@ data class MarketShop(
     val logo: String?,
     val cover: String?,
     val description: String?,
-    val deliveryEnabled: Boolean
+    val deliveryEnabled: Boolean,
+    val latitude: Double?,
+    val longitude: Double?
 )
 
 data class MarketProduct(
@@ -43,6 +45,14 @@ data class MarketProduct(
     val price: Double,
     val unit: String?,
     val availablePacks: Int
+)
+
+data class MarketRules(
+    val multiShopEnabled: Boolean = true,
+    val secondShopFee: Double = 10.0,
+    val additionalShopFee: Double = 5.0,
+    val baseDeliveryFee: Double = 30.0,
+    val distanceStepFee: Double = 10.0
 )
 
 data class MarketCartLine(val product: MarketProduct, val quantity: Int)
@@ -120,7 +130,9 @@ class CustomerMarketApi(private val http: QueueGoNativeApi = QueueGoNativeApi())
                     r.optString("shop_logo").takeIf { it.isNotBlank() && it != "null" },
                     r.optString("shop_cover").takeIf { it.isNotBlank() && it != "null" },
                     r.optString("description").takeIf { it.isNotBlank() && it != "null" },
-                    r.optBoolean("delivery_enabled", false)
+                    r.optBoolean("delivery_enabled", false),
+                    r.optDoubleOrNull("latitude"),
+                    r.optDoubleOrNull("longitude")
                 ))
             }
         }
@@ -154,6 +166,67 @@ class CustomerMarketApi(private val http: QueueGoNativeApi = QueueGoNativeApi())
                 ))
             }
         }
+    }
+
+    suspend fun loadRules(auth: NativeAuth?): MarketRules {
+        val token = auth?.session?.accessToken
+        val rows = runCatching {
+            http.array(
+                http.get(
+                    "queuego_platform_rules?select=rule_key,value,effective_from,created_at&order=effective_from.desc",
+                    token
+                )
+            )
+        }.getOrElse { return MarketRules() }
+
+        fun latest(key: String): Any? {
+            var bestEffective = ""
+            var bestCreated = ""
+            var best: Any? = null
+            val now = java.time.Instant.now()
+            for (i in 0 until rows.length()) {
+                val row = rows.optJSONObject(i) ?: continue
+                if (row.optString("rule_key") != key) continue
+                val effective = row.optString("effective_from")
+                val effectiveInstant = runCatching { java.time.Instant.parse(effective) }.getOrNull() ?: continue
+                if (effectiveInstant.isAfter(now)) continue
+                val created = row.optString("created_at")
+                if (effective > bestEffective || (effective == bestEffective && created > bestCreated)) {
+                    bestEffective = effective
+                    bestCreated = created
+                    best = row.opt("value")
+                }
+            }
+            return best
+        }
+
+        fun number(key: String, fallback: Double): Double {
+            val raw = latest(key) ?: return fallback
+            return when (raw) {
+                is Number -> raw.toDouble()
+                else -> raw.toString().toDoubleOrNull() ?: fallback
+            }
+        }
+
+        fun bool(key: String, fallback: Boolean): Boolean {
+            val raw = latest(key) ?: return fallback
+            return when (raw) {
+                is Boolean -> raw
+                else -> when (raw.toString().lowercase()) {
+                    "true", "1" -> true
+                    "false", "0" -> false
+                    else -> fallback
+                }
+            }
+        }
+
+        return MarketRules(
+            multiShopEnabled = bool("feature.market_multi_shop", true),
+            secondShopFee = number("pricing.market_second_shop_fee", 10.0),
+            additionalShopFee = number("pricing.market_additional_shop_fee", 5.0),
+            baseDeliveryFee = number("pricing.market_base_fee", 30.0),
+            distanceStepFee = number("pricing.market_distance_step_fee", 10.0)
+        )
     }
 
     suspend fun activeTrip(auth: NativeAuth): ActiveMarketTrip? {
