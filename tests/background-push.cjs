@@ -121,9 +121,13 @@ for(const [role,activity] of [['customer',customerMainActivity],['merchant',merc
      activity.includes('removeExtra("referenceId")')&&activity.includes('removeExtra("type")'),
      'Native '+role+' must consume both local and automatic FCM push extras exactly once across activity recreation');
 }
-ok(customerNativeApp.includes('LaunchedEffect(pushTarget?.eventId, loading)')&&
-   customerNativeApp.includes('api.loadOrders(auth)')&&customerNativeApp.includes('screen = "order"'),
-   'Native Customer system push tap must resolve the referenced order after initial data load');
+ok(customerNativeApp.includes('LaunchedEffect(pushTarget?.eventId, auth.user.id)')&&
+   customerNativeApp.includes('api.loadOrderById(auth, target.referenceId)')&&
+   customerNativeApp.includes('marketApi.trip(auth, target.referenceId)')&&
+   customerNativeApp.includes('laundryApi.order(auth, target.referenceId)')&&
+   customerNativeApp.includes('lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED)')&&
+   customerNativeApp.includes('screen = "order"'),
+   'Native Customer system push tap must resolve owner-filtered normal/Market/Laundry references with foreground recovery');
 ok(merchantNativeApp.includes('LaunchedEffect(pushTarget?.eventId, loading)')&&
    merchantNativeApp.includes('api.loadOrders(auth)')&&merchantNativeApp.includes('screen = "order"'),
    'Native Merchant system push tap must resolve the referenced order after initial data load');

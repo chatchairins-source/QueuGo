@@ -874,6 +874,12 @@ The user-supplied Rider reference screens are the acceptance reference for workf
 - Production standalone laundry/index.html has its own sticky header and no main QueueGo header/bottom nav. Hide main shell chrome only for the existing laundry route, preserving the Native Laundry header and all other routes/navigation. No new renderer or route/storage. Full regression/Pilot and authenticated rendered comparison remain required.
 
 
+## 2026-10-11 Customer notification authoritative recovery staging
+- Verified Native main e6fb501 and Production main03803ab; reviewed open PR130 and independently confirmed Pilot38135273197 SUCCESS. Integration1a55ab1 has the identical tested tree ee54ade4; backed up e6fb501 and merged PR130 to66124a50.
+- Customer push and inbox previously resolved only normal orders in the recent100 list. Both now share exact-reference lookup through existing owner-filtered normal/Market/Laundry APIs, with explicit missing state only after all reads succeed. Ordinary detail also refreshes directly by ID so orders outside the recent list retain their map coordinates, arrival timestamp and current status. Transport failures retain the reference for STARTED retry; token changes cancel the old read, leaving Notifications cancels navigation recovery, and read-acknowledgement failure does not block detail navigation. No DB/RPC/RLS changes or Production records written.
+- JVM cases cover old/direct references, Market/Laundry fallback, partial domain failure, missing vs timeout, retry and cancellation. Full exact-head Pilot pending; no merge until green. Physical FCM/two-device voice, authenticated rendered parity, Production E2E and release/signing/Play evidence remain OPEN.
+
+
 ## 2026-10-11 Merchant Laundry read lifecycle staging
 - Existing Merchant Laundry polling was not bound to Android lifecycle/token rotation and swallowed CancellationException. Bind reads to STARTED with current actor/access token, preserve the existing5-second foreground refresh, serialize read/post-action refresh through one actor-scoped Mutex and retain the last successful snapshot on read failure. Owner-keyed state prevents reusing another merchant snapshot.
 - Separate read errors from mutation acknowledgement messages; recovered reads clear their own error. Existing accepted actions propagate cancellation and release busy in finally. No new request/replay/RPC/storage or automatic mutation retries; layout and all business actions retained.
