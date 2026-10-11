@@ -857,3 +857,8 @@ The user-supplied Rider reference screens are the acceptance reference for workf
 ## 2026-10-11 Market Trip rendered actions/cost staging
 - Current rendered main V['market-order'] exposes shop names, snapshot subtotal/delivery/multi-shop fees, buy-more-from-same-market, unlocked cancellation and active-child Rider tracking. Native now matches those actions/text, reads fee fields from the parent, resolves child tracking via direct owner/id API and reuses qg_customer_cancel_market_order with confirmation, duplicate-tap guard and acknowledged receipt validation.
 - Reviewed current Production cancellation definition read-only: active customer/owner row lock and child rider/status constraints remain authoritative; client unlock visibility follows current Web. No DB/RPC/state/RLS changes or real cancellations performed. Full regression/Pilot and authenticated screenshots/E2E remain required.
+
+
+## 2026-10-11 Customer guest theme from actual emulator evidence
+- Inspected actual Pilot38133542351 Market browse captures for phone/small-phone/tablet. Guest selected category used default Material purple because GuestCustomerShell bypassed QueueGoAuthHost's QueueGoTheme. Wrap only the public guest branch in the existing shared QueueGoTheme. Production main --red is #ef3340, matching QgRed. No new theme or redesign.
+- Full Pilot and repeat real captures required. Screenshots still expose other geometry/details for follow-up; no full visual parity certification.

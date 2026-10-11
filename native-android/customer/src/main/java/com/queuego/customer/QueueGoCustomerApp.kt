@@ -84,6 +84,7 @@ import com.queuego.shared.QgIconButton
 import com.queuego.shared.QgIcon
 import com.queuego.shared.QgMuted
 import com.queuego.shared.QgNavItem
+import com.queuego.shared.QueueGoTheme
 import com.queuego.shared.QgRed
 import com.queuego.shared.QgRemoteImage
 import com.queuego.shared.QgSectionTitle
@@ -117,6 +118,7 @@ fun QueueGoCustomerApp(pushTarget: NativePushLaunchTarget? = null) {
     var guestStartDestination by rememberSaveable { mutableStateOf("home") }
 
     if (!authRequested) {
+        QueueGoTheme {
         GuestCustomerShell(
             initialScreen = guestStartDestination,
             onLogin = { destination ->
@@ -124,6 +126,7 @@ fun QueueGoCustomerApp(pushTarget: NativePushLaunchTarget? = null) {
                 authRequested = true
             }
         )
+        }
     } else {
         QueueGoAuthHost(
             expectedRole = "customer",
