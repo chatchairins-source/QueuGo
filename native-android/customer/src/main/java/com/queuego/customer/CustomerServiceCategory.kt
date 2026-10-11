@@ -46,15 +46,26 @@ internal fun webBannerImage(banner: ServiceBanner?): String? = banner?.image?.tr
 
 @Composable
 internal fun ServiceCategoryScreen(loading: Boolean, category: String, serviceBanner: ServiceBanner?,
-    shops: List<CustomerShop>, onBack: () -> Unit, onShop: (CustomerShop) -> Unit,
+    shops: List<CustomerShop>, location: CustomerLocation?, onBack: () -> Unit, onShop: (CustomerShop) -> Unit,
     onBannerLink: (String) -> Unit = {}) {
     val spec = webServiceCategory(category)
     if (spec == null) return
-    val visible = shops.filter { when(category) {
-        "food" -> it.category in setOf("food", "restaurant")
-        "cafe" -> it.category in setOf("cafe", "drink", "beverage")
-        else -> it.category in setOf("grocery", "convenience")
-    } }
+    val visible = shops.filter {
+        it.category.lowercase() == category
+    }.sortedWith(
+        compareBy<CustomerShop> { shop ->
+            if (location == null || shop.latitude == null || shop.longitude == null) {
+                Double.POSITIVE_INFINITY
+            } else {
+                qgCategoryDistanceKm(
+                    location.latitude,
+                    location.longitude,
+                    shop.latitude,
+                    shop.longitude
+                )
+            }
+        }.thenBy { it.name }
+    )
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 12.dp)) {
         Row(Modifier.padding(top = 7.dp, bottom = 10.dp), verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.size(38.dp).clip(RoundedCornerShape(12.dp)).background(Color.White).clickable(onClick = onBack),
@@ -175,4 +186,20 @@ internal fun CustomerServiceBanner(
             }
         }
     }
+}
+
+
+private fun qgCategoryDistanceKm(
+    aLat: Double,
+    aLng: Double,
+    bLat: Double,
+    bLng: Double
+): Double {
+    val r = 6371.0
+    val dLat = Math.toRadians(bLat - aLat)
+    val dLng = Math.toRadians(bLng - aLng)
+    val a = kotlin.math.sin(dLat / 2) * kotlin.math.sin(dLat / 2) +
+        kotlin.math.cos(Math.toRadians(aLat)) * kotlin.math.cos(Math.toRadians(bLat)) *
+        kotlin.math.sin(dLng / 2) * kotlin.math.sin(dLng / 2)
+    return r * 2 * kotlin.math.atan2(kotlin.math.sqrt(a), kotlin.math.sqrt(1 - a))
 }
