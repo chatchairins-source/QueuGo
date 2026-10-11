@@ -260,6 +260,7 @@ Code evidence:
 - Merchant loads Longdo Map for shop location/pin workflows.
 - Customer, Merchant and Rider declare RECORD_AUDIO and use the shared NativeVoicePeer WebRTC audio path.
 - NativeVoicePeer creates an audio-only peer connection and obtains authorized STUN/TURN ICE servers from queuego-turn; no recording, transcription or server-side media processing exists in the reviewed Native source.
+- Production call metadata retention is now enforced: `qg_call_sessions` rows and `notifications.type='voice_call'` rows older than 30 days are purged automatically every day by the active `queuego-voice-call-retention` pg_cron job. The purge function is `SECURITY INVOKER`; app roles cannot execute it directly. This closes the backend retention-policy gap only; final Play Console Data Safety entry remains BLOCKED until the external questionnaire/evidence is completed.
 - Cloudflare Realtime TURN documents that WebRTC media remains end-to-end encrypted between call peers and that the relay cannot inspect media content.
 - Native Android release CI rejects WebView and validates the three production package IDs; FCM configuration remains a hard release gate and Firebase Analytics/Crashlytics are not used as certification evidence.
 
