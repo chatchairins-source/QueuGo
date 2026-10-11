@@ -219,7 +219,7 @@ internal fun CustomerProfileScreen(
             CustomerProfileStateRow(
                 icon = "bell",
                 title = "การแจ้งเตือนเบื้องหลัง",
-                subtitle = "รับสถานะออเดอร์แม้ไม่ได้เปิดแอป",
+                subtitle = "รับสถานะออเดอร์แม้ไม่ได้เปิดหน้านี้",
                 state = if (pushEnabled) "เปิด" else "ปิด",
                 on = pushEnabled,
                 enabled = !busy
@@ -265,11 +265,11 @@ internal fun CustomerProfileScreen(
             CustomerProfileActionRow(
                 icon = "bell",
                 title = "ทดสอบการแจ้งเตือน",
-                subtitle = "ส่งแจ้งเตือนทดสอบหลังประมาณ 7 วินาที",
+                subtitle = "ตรวจว่าแจ้งเตือนเข้าเมื่อแอปอยู่เบื้องหลัง",
                 enabled = !busy
             ) {
                 busy = true
-                message = "ระบบจะส่งแจ้งเตือนทดสอบหลังประมาณ 7 วินาที"
+                message = "ระบบจะส่งแจ้งเตือนใน 7 วินาที กด Home เพื่อทดสอบได้เลย"
                 scope.launch {
                     runCatching { pushApi.test(auth) }
                         .onFailure { message = it.message ?: "ทดสอบการแจ้งเตือนไม่สำเร็จ" }
