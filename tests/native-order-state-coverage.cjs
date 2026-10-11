@@ -43,10 +43,12 @@ ok(!customerApi.includes('status=in.(arrived')&&!customerApi.includes(',arrived'
 // Merchant
 ok(merchantApi.includes('val riderArrivedCustomerAt: String? = null'),
   'Merchant order model must carry customer arrival timestamp');
-ok(merchantApi.includes('orders?select=id,rider_arrived_customer_at&id=in.('),
-  'Merchant must enrich arrival from the existing authenticated orders RLS path');
-ok(merchantApi.includes('order.copy(riderArrivedCustomerAt = arrivals[order.id])'),
-  'Merchant loaded orders must receive the arrival timestamp');
+ok(merchantApi.includes('orders?select=id,rider_arrived_customer_at,rider_arrived_shop_at,delivery_address&id=in.('),
+  'Merchant must enrich arrival and delivery context from the existing authenticated orders RLS path');
+ok(merchantApi.includes('riderArrivedCustomerAt = context?.first ?: order.riderArrivedCustomerAt')&&
+   merchantApi.includes('riderArrivedShopAt = context?.second ?: order.riderArrivedShopAt')&&
+   merchantApi.includes('deliveryAddress = context?.third ?: order.deliveryAddress'),
+  'Merchant loaded orders must receive customer/shop arrival and delivery-address context');
 for(const state of matrix.roles.merchant.required_visible_states.filter(s=>s!=='arrived')){
   ok(merchantUi.includes('"'+state+'"'), 'Merchant Native UI missing visible state: '+state);
 }
@@ -57,17 +59,18 @@ ok((merchantUi.match(/merchantStatus\(order\.status, order\.riderArrivedCustomer
   'Merchant order card and detail must both use derived arrival status');
 ok(merchantUi.includes('"no_rider_available" -> "ไม่พบ Rider"'),
   'Merchant must translate no_rider_available instead of exposing a raw status');
-ok(merchantUi.includes('"no_rider_available" -> QgCard')&&merchantUi.includes('ไม่พบ Rider · ออเดอร์สิ้นสุดแล้ว'),
+ok(merchantUi.includes('"no_rider_available" -> {')&&merchantUi.includes('ไม่พบ Rider · ออเดอร์สิ้นสุดแล้ว'),
   'Merchant detail must render a terminal no-rider state');
-ok(merchantUi.includes('"cancelled" -> QgCard')&&merchantUi.includes('ออเดอร์ถูกยกเลิก'),
+ok(merchantUi.includes('"cancelled" -> {')&&merchantUi.includes('ออเดอร์ถูกยกเลิก'),
   'Merchant detail must render cancelled as a terminal state');
-ok(merchantUi.includes('"pending" -> {')&&merchantUi.includes('onAction("accepted", null)')&&merchantUi.includes('Text("ปฏิเสธออเดอร์")'),
+ok(merchantUi.includes('"pending", "pending_shop" -> {')&&merchantUi.includes('onAction("accepted", null)')&&merchantUi.includes('Text("ปฏิเสธออเดอร์")'),
   'Merchant pending state must expose accept plus guarded rejection');
-ok(merchantUi.includes('"accepted" -> {')&&merchantUi.includes('ร้านรับออเดอร์แล้ว · รอระบบจัดหา Rider')&&merchantUi.includes('Text("ยกเลิกออเดอร์")'),
+ok(merchantUi.includes('"accepted", "shop_accepted" -> {')&&merchantUi.includes('ร้านรับออเดอร์แล้ว · รอระบบจัดหา Rider')&&merchantUi.includes('Text("ยกเลิกออเดอร์")'),
   'Merchant accepted compatibility state must wait and retain guarded cancellation');
-ok(merchantUi.includes('"searching_rider" -> QgCard')&&merchantUi.includes('รอ Rider รับงานก่อนเริ่มเตรียมออเดอร์'),
+ok(merchantUi.includes('"searching_rider" -> {')&&merchantUi.includes('กำลังค้นหา Rider ให้กับออเดอร์นี้')&&
+   !/"searching_rider" -> \{[\s\S]{0,600}onAction\("preparing"/.test(merchantUi),
   'Merchant searching_rider must remain a wait-only state');
-ok(merchantUi.includes('"rider_assigned", "assigned" -> {')&&merchantUi.includes('onAction("preparing", null)')&&merchantUi.includes('Text("ยกเลิกออเดอร์")'),
+ok(merchantUi.includes('"rider_assigned", "assigned", "rider_to_shop" -> {')&&merchantUi.includes('onAction("preparing", null)')&&merchantUi.includes('Text("ยกเลิกออเดอร์")'),
   'Merchant rider-assigned state must expose prepare plus guarded cancellation');
 ok(merchantUi.includes('"preparing" -> {')&&merchantUi.includes('onAction("ready", null)'),
   'Merchant preparing state must move to ready');
