@@ -63,7 +63,7 @@ internal fun GuestCustomerShell(
     val catalogState by shopCatalog.state.collectAsState()
 
     var screen by remember(initialScreen) {
-        mutableStateOf(initialScreen.takeIf { it in setOf("home", "search", "cart", "market", "shopping") } ?: "home")
+        mutableStateOf(initialScreen.takeIf { it in setOf("home", "search", "cart", "market", "market-cart", "shopping") } ?: "home")
     }
     var returnScreen by remember { mutableStateOf("home") }
     var category by remember { mutableStateOf("all") }
@@ -162,7 +162,7 @@ internal fun GuestCustomerShell(
                     if (route == "checkout") "checkout" else "home"
                 )
                 route == "map" -> screen = "location"
-                route == "market" || route == "market-cart" -> screen = "market"
+                route == "market" || route == "market-cart" -> screen = route
                 route == "promotion" -> screen = "promotion"
                 route == "shopping" -> {
                     shoppingMode = "all"
@@ -192,6 +192,7 @@ internal fun GuestCustomerShell(
 
     BackHandler(screen != "home") {
         screen = when {
+            screen == "market-cart" -> "market"
             screen == "shop" -> returnScreen
             screen == "shopping" && shoppingMode != "all" -> {
                 shoppingMode = "all"
@@ -373,7 +374,10 @@ internal fun GuestCustomerShell(
                     onCheckout = { onLogin("checkout") }
                 )
 
-                "market" -> MarketNativeScreen(
+                "market", "market-cart" -> MarketNativeScreen(
+                    cartPage = screen == "market-cart",
+                    onOpenCart = { screen = "market-cart" },
+                    onBrowse = { screen = "market" },
                     auth = null,
                     location = location,
                     address = address,
@@ -385,7 +389,7 @@ internal fun GuestCustomerShell(
                     serviceBanner = serviceBanners["market"],
                     onBack = { screen = "home" },
                     onDone = { screen = "home" },
-                    onRequireLogin = { onLogin("home") },
+                    onRequireLogin = { onLogin("market-cart") },
                     onBannerLink = ::openBannerLink
                 )
 
