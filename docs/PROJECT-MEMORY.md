@@ -1,3 +1,19 @@
+## 2026-10-11 Laundry shop pricing and QueueGo GP 10%
+- Owner sets laundry service pricing: shop-defined per-kg prices and fixed packages such as 10 kg are supported using existing service pricing types. No platform-fixed laundry unit price is introduced.
+- QueueGo GP is 10% of the entire Laundry order total, including service/pickup/return charges. Shop net is total less the rounded GP amount (90%); the retained Rider route view has no fare or platform income.
+- Save the GP rate and final fee/net as Laundry order snapshots. Do not add a wallet/top-up system or reinterpret this fee as an automatic cash collection/settlement; merchant GP credit remains deferred. Other category GP policies must not be silently overwritten by the Laundry implementation.
+
+## 2026-10-11 final clarification: retained Rider sees transport points only
+- Owner clarified that a QueueGo Rider specifically retained/assigned by the laundry shop sees pickup and dropoff points/navigation only for that shop assignment. No Laundry fee, fare, earnings card or income is shown or added to platform Rider income/settlements.
+- Shop retains all Laundry service/pickup/return pricing and manages operational statuses in Merchant. This does not imply staff work is unpaid; outside-app employee compensation is not a platform Rider ledger.
+- No general Rider availability switch, invitation/pool or automatic dispatch is restored. A dedicated authenticated assignment view must be restricted to the shop-selected person and owned pickup/dropoff points; it must not expose other Laundry orders, customer account details or platform earnings.
+- This supersedes the broader earlier wording that no Rider app view is ever involved: ordinary Rider Laundry integration stays removed, while a specifically assigned route-only view is now requested and remains to be implemented. Do not reuse the former fee-bearing Laundry job cards/API as that view.
+
+## 2026-10-11 clarification: shop transport may use a specifically retained QueueGo Rider
+- Owner reiterated: cut Laundry out of ordinary/platform Rider dispatch completely. Shops provide their own pickup/return, using their own employees or a QueueGo Rider they specifically engage as their shop transport worker.
+- Being a QueueGo Rider does not cause a Laundry order to enter the general offer queue or require ordinary Riders to collect/return clothes. Work remains assigned and controlled in Merchant. The current first-version staff-name assignment supports either person; no duplicated Rider flow, new employee app, or general Laundry availability switch is introduced.
+- Optional shop-retained Rider linkage is not permission to automatically enroll a Rider, change Rider availability, or create a platform dispatch job. Existing staging removes all general Rider Laundry API/UI/pool paths.
+
 ## 2026-10-11 approved shop-managed Laundry implementation staging
 - Owner confirmed the laundry shop uses its own employees for pickup and return, entirely in Merchant. This supersedes all platform Rider-Laundry requirements. No employee app/account is required in the first version; shop account records staff names per leg.
 - Flow: pending → accepted → pickup_assigned → picked_up → at_hub → washing → ready_return → out_for_return → completed. Customer tracks shop updates; shop sets pickup/return fees. Existing order IDs, price snapshots, history and audit records are retained.

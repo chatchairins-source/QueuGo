@@ -15,7 +15,7 @@ async function loadState(){
   const data=await rpc('queuego_laundry_merchant_state',{});
   let orders=[];
   if(data?.hub?.id){
-    orders=await request('laundry_orders?select=id,order_number,status,service_id,service_type,service_name_snapshot,pricing_type_snapshot,unit_price_snapshot,estimated_quantity,actual_quantity,estimated_amount,final_amount,delivery_fee_total_snapshot,estimated_total_amount,final_total_amount,pickup_address,pickup_latitude,pickup_longitude,pickup_staff_name,return_staff_name,note,created_at,updated_at&hub_id=eq.'+encodeURIComponent(data.hub.id)+'&order=created_at.desc&limit=100');
+    orders=await request('laundry_orders?select=id,order_number,status,service_id,service_type,service_name_snapshot,pricing_type_snapshot,unit_price_snapshot,estimated_quantity,actual_quantity,estimated_amount,final_amount,delivery_fee_total_snapshot,estimated_total_amount,final_total_amount,pickup_address,pickup_latitude,pickup_longitude,pickup_staff_name,return_staff_name,gp_rate_snapshot,platform_fee_amount,shop_net_amount,note,created_at,updated_at&hub_id=eq.'+encodeURIComponent(data.hub.id)+'&order=created_at.desc&limit=100');
   }
   if(data?.hub?.id){
     const contacts=await rpc('queuego_laundry_shop_contacts',{p_hub_id:data.hub.id});
@@ -25,7 +25,10 @@ async function loadState(){
   state.data=data||{};state.orders=Array.isArray(orders)?orders:[];state.feature=await feature();
 }
 function contactHtml(o){
-  let html=o.pickup_staff_name?'<small>ผู้รับผ้า: '+esc(o.pickup_staff_name)+'</small>':'';
+  let html='<small>GP QueueGo '+money(Number(o.gp_rate_snapshot??0.10)*100)+'% จากค่าซักและค่ารับ–ส่ง</small>';
+  if(o.platform_fee_amount!=null)html+='<small>ค่า GP ฿'+money(o.platform_fee_amount)+'</small>';
+  if(o.shop_net_amount!=null)html+='<small>รายได้สุทธิร้าน ฿'+money(o.shop_net_amount)+'</small>';
+  html+=o.pickup_staff_name?'<small>ผู้รับผ้า: '+esc(o.pickup_staff_name)+'</small>':'';
   if(o.return_staff_name)html+='<small>ผู้ส่งคืน: '+esc(o.return_staff_name)+'</small>';
   if(['completed','cancelled'].includes(o.status))return html;
   if(o.customer_name)html+='<small>ลูกค้า: '+esc(o.customer_name)+'</small>';
@@ -64,7 +67,7 @@ function serviceFormHtml(){
 }
 function render(){
   const d=state.data||{},hub=d.hub,settings=d.settings||{},services=Array.isArray(d.services)?d.services:[],orders=state.orders||[];
-  let body='<div class="qgl-head"><button class="qgm-iconbtn" type="button" onclick="navigate(\'shop-modules\')">←</button><div><h2>ฝากซัก</h2><small>ร้านจัดพนักงานรับผ้าและส่งคืนเอง</small></div></div>';
+  let body='<div class="qgl-head"><button class="qgm-iconbtn" type="button" onclick="navigate(\'shop-modules\')">←</button><div><h2>ฝากซัก</h2><small>ร้านจัดพนักงานรับ–ส่งเอง · GP 10% ของยอดรวม</small></div></div>';
   if(!state.feature)body+='<div class="qgl-banner">ระบบฝากซักยังปิดจาก Admin สำหรับลูกค้า แต่ร้านสามารถตั้งค่าให้พร้อมก่อนเปิดจริงได้</div>';
   if(!hub){
     body+='<section class="qgm-card qgl-card"><h3>เริ่มใช้ฝากซัก</h3><p>สร้าง Laundry Hub จากร้านปัจจุบัน โดยใช้ข้อมูลร้านจริงที่มีอยู่แล้ว</p><button class="qgm-primary" id="qgl-setup" type="button">เปิดตั้งค่าฝากซักของร้านนี้</button></section>';
@@ -81,7 +84,7 @@ function render(){
     '</div><p class="qgl-note">หากเลือก “ค่ารับส่งรวม” ค่ารับ–ส่งเป็นค่าบริการของร้าน และบันทึกราคาไว้กับออเดอร์</p>'+
     '<button class="qgm-primary" id="qgl-save-settings" type="button">บันทึกค่าฝากซัก</button></section>';
 
-  body+='<section class="qgm-card qgl-card"><div class="qgl-section-head"><div><h3>บริการของร้าน</h3><small>รองรับต่อกก. / ต่อชิ้น / ต่อชุด / เหมาจ่าย</small></div><button class="qgm-outline" id="qgl-new-service" type="button">+ เพิ่มบริการ</button></div>'+
+  body+='<section class="qgm-card qgl-card"><div class="qgl-section-head"><div><h3>บริการของร้าน</h3><small>ร้านตั้งราคาต่อกก. หรือแพ็กเกจ เช่น 10 กก. ได้เอง</small></div><button class="qgm-outline" id="qgl-new-service" type="button">+ เพิ่มบริการ</button></div>'+
     serviceFormHtml()+
     '<div class="qgl-list">'+(services.length?services.map(s=>'<article><div><b>'+esc(s.name)+'</b><small>'+unit(s.pricing_type)+' · ฿'+money(s.price)+(s.estimated_minutes?' · '+Number(s.estimated_minutes)+' นาที':'')+' · '+(s.active?'เปิด':'ปิด')+'</small><small>'+esc(s.description||'')+'</small></div><button class="qgm-outline" data-edit-service="'+esc(s.id)+'">แก้ไข</button></article>').join(''):'<p class="qgl-empty">ยังไม่มีบริการ</p>')+'</div></section>';
 

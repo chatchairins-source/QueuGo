@@ -2,6 +2,9 @@
 begin;
 alter table public.laundry_orders add column if not exists pickup_staff_name text;
 alter table public.laundry_orders add column if not exists return_staff_name text;
+alter table public.laundry_orders add column if not exists gp_rate_snapshot numeric not null default 0.10;
+alter table public.laundry_orders add column if not exists platform_fee_amount numeric;
+alter table public.laundry_orders add column if not exists shop_net_amount numeric;
 
 create or replace function public.queuego_laundry_shop_manage(
  p_order_id uuid,p_action text,p_expected_status text,p_staff_name text,
@@ -64,6 +67,8 @@ begin
  actual_kg=case when p_action='ready_return' and pricing_type_snapshot='per_kg' then p_actual_quantity else actual_kg end,
  final_amount=case when p_action='ready_return' then v_service else final_amount end,
  final_total_amount=case when p_action='ready_return' then v_service+coalesce(delivery_fee_total_snapshot,0) else final_total_amount end,
+ platform_fee_amount=case when p_action='ready_return' then round((v_service+coalesce(delivery_fee_total_snapshot,0))*gp_rate_snapshot,2) else platform_fee_amount end,
+ shop_net_amount=case when p_action='ready_return' then v_service+coalesce(delivery_fee_total_snapshot,0)-round((v_service+coalesce(delivery_fee_total_snapshot,0))*gp_rate_snapshot,2) else shop_net_amount end,
  updated_at=now() where id=v_order.id;
  insert into public.laundry_order_events(laundry_order_id,from_status,to_status,actor_auth_user_id,actor_role,note)
  values(v_order.id,v_order.status,v_target,auth.uid(),'shop',coalesce(v_note,case when v_staff is not null then 'ผู้รับผิดชอบ: '||v_staff end));
