@@ -78,7 +78,7 @@ for(const check of ['developer_identity_verified','customer_package_registered',
 for(const id of ['com.queuego.customer','com.queuego.merchant','com.queuego.rider']){
   ok(readiness.includes(id),'Android developer verification guidance must name package '+id);
 }
-ok(/public signing certificate SHA-256/i.test(readiness)&&/QG_ANDROID_SIGNING_CERT_SHA256/.test(readiness),'Play package registration evidence must bind registered public certificates to the certified release signing identity');
+ok(/public signing-certificate SHA-256 fingerprint\(s\)/i.test(readiness)&&/Do \*\*not\*\* force those fingerprints to equal QueueGo's upload-keystore fingerprint/i.test(readiness),'Play package registration evidence must retain the Play App Signing key boundary');
 ok(nativeReleaseGate.includes('registered_packages')&&nativeReleaseGate.includes('expected_play_packages'),'Play gate must structurally bind registration evidence to exact package names');
 ok(/Customer \/ Merchant \/ Rider — `microphone`/i.test(readiness),'All three Native apps must have a microphone FGS declaration draft');
 ok(/Rider only — `specialUse`/i.test(readiness)&&/Active QueueGo Rider navigation return control/i.test(readiness),'Rider specialUse declaration must retain the reviewed subtype and use case');
@@ -165,11 +165,13 @@ ok(manifest?.play?.android_package_registration==='BLOCKED_PENDING_PLAY_CONSOLE_
 ok(Array.isArray(manifest?.play?.android_registered_packages_required)&&manifest.play.android_registered_packages_required.length===3&&
   ['com.queuego.customer','com.queuego.merchant','com.queuego.rider'].every(id=>manifest.play.android_registered_packages_required.includes(id)),
   'Recovery manifest must require all three QueueGo package registrations');
-ok(manifest?.play?.android_package_registration_signing_certificate_binding_required===true,'Recovery manifest must require Play package certificate binding');
+ok(manifest?.play?.android_package_registration_key_fingerprint_evidence_required===true&&manifest?.play?.android_package_registration_multiple_keys_supported===true,'Recovery manifest must require registered-key evidence and support multiple Play signing keys');
+ok(manifest?.play?.android_package_registration_keys_may_differ_from_release_upload_key===true,'Recovery manifest must not conflate Play App Signing keys with the upload key');
 ok(manifest?.android?.release_gate_play_developer_identity_verification_required===true&&
    manifest?.android?.release_gate_play_package_registration_required===true&&
-   manifest?.android?.release_gate_play_package_signing_certificate_binding===true,
-   'Native release gate recovery metadata must preserve developer verification package registration and signing-certificate binding');
+   manifest?.android?.release_gate_play_package_registration_key_evidence_required===true,
+   'Native release gate recovery metadata must preserve developer verification package registration and registered-key evidence');
+ok(manifest?.android?.release_gate_play_registration_upload_key_equality_required===false,'Native release gate must not require Play registration keys to equal the release upload key');
 ok(manifest?.android?.release_gate_signing_certificate_binding===true,'Release signing evidence must bind the certified certificate fingerprint');
 ok(manifest?.android?.release_certification_requires_exact_head_backup_restore===true,'Release certification must require exact-HEAD Backup Restore');
 ok(manifest?.android?.release_certification_backup_restore_workflow==='.github/workflows/backup-restore-drill.yml','Recovery manifest must pin the Backup Restore workflow identity');
