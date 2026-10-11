@@ -28,6 +28,16 @@ import com.queuego.shared.QgMuted
 import com.queuego.shared.QgRed
 import com.queuego.shared.QgStatusPill
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.CancellationException
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.repeatOnLifecycle
+import java.text.NumberFormat
+import java.util.Locale
+import java.time.OffsetDateTime
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.time.chrono.ThaiBuddhistChronology
 
 @Composable
 fun MarketTripDetailScreen(
@@ -37,33 +47,50 @@ fun MarketTripDetailScreen(
 ) {
     val api = remember { CustomerMarketApi() }
     var children by remember { mutableStateOf<List<MarketTripChild>>(emptyList()) }
-    var error by remember { mutableStateOf<String?>(null) }
+    var error by remember(auth.user.id, trip.id) { mutableStateOf<String?>(null) }
+    var current by remember(auth.user.id, trip.id) { mutableStateOf(trip) }
+    var missing by remember(auth.user.id, trip.id) { mutableStateOf(false) }
+    var reload by remember { mutableStateOf(0) }
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
 
-    LaunchedEffect(trip.id) {
-        while (true) {
-            runCatching { api.tripChildren(auth, trip.id) }
-                .onSuccess { children = it; error = null }
-                .onFailure { error = it.message }
-            delay(3_000)
+    LaunchedEffect(auth.user.id, auth.session.accessToken, trip.id, lifecycle, reload) {
+        lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            while (true) {
+                try {
+                    val fresh = api.trip(auth, trip.id)
+                    missing = fresh == null
+                    if (fresh == null) { children = emptyList(); error = "ไม่พบ Market Trip ของบัญชีนี้" }
+                    else {
+                        current = fresh
+                        children = api.tripChildren(auth, trip.id)
+                        error = null
+                    }
+                } catch (cancelled: CancellationException) { throw cancelled }
+                catch (e: Exception) { error = e.message ?: "โหลดสถานะล่าสุดไม่สำเร็จ" }
+                delay(3_000)
+            }
         }
     }
 
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(14.dp)) {
         OutlinedButton(onClick = onBack) { Text("ย้อนกลับ") }
+        OutlinedButton(onClick = { reload++ }) { Text("โหลดสถานะล่าสุด") }
+        error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+        if (missing) return@Column
         Spacer(Modifier.height(12.dp))
         Text("Market Trip", fontWeight = FontWeight.Black, style = MaterialTheme.typography.headlineSmall)
-        Text(trip.shopCount.toString() + " ร้าน", color = QgMuted)
+        Text(current.shopCount.toString() + " ร้าน", color = QgMuted)
         Spacer(Modifier.height(8.dp))
-        QgStatusPill(marketTripStatus(trip.status), trip.status.uppercase() != "CANCELLED")
+        QgStatusPill(marketTripStatus(current.status), current.status.uppercase() != "CANCELLED")
         Spacer(Modifier.height(12.dp))
         QgCard(Modifier.fillMaxWidth()) {
             Column {
                 Text("จุดจัดส่ง", fontWeight = FontWeight.ExtraBold)
-                Text(trip.deliveryAddress ?: "-", color = QgMuted)
+                Text(current.deliveryAddress ?: "-", color = QgMuted)
                 Spacer(Modifier.height(8.dp))
                 Row(Modifier.fillMaxWidth()) {
                     Text("ยอดรวม", Modifier.weight(1f))
-                    Text("฿" + "%.0f".format(trip.total), color = QgRed, fontWeight = FontWeight.Black)
+                    Text(specialMoney(current.total), color = QgRed, fontWeight = FontWeight.Black)
                 }
             }
         }
@@ -79,7 +106,7 @@ fun MarketTripDetailScreen(
                             Text(child.number, fontWeight = FontWeight.Black)
                             Text(customerStatusLabel(child.status), color = QgMuted)
                         }
-                        Text("฿" + "%.0f".format(child.total), fontWeight = FontWeight.Bold)
+                        Text(specialMoney(child.total), fontWeight = FontWeight.Bold)
                     }
                     HorizontalDivider()
                 }
@@ -97,20 +124,38 @@ fun LaundryOrderDetailScreen(
 ) {
     val api = remember { CustomerLaundryApi() }
     var events by remember { mutableStateOf<List<LaundryEvent>>(emptyList()) }
-    var current by remember { mutableStateOf(order) }
+    var current by remember(auth.user.id, order.id) { mutableStateOf(order) }
+    var details by remember(auth.user.id, order.id) { mutableStateOf<LaundryOrderDetails?>(null) }
+    var error by remember(auth.user.id, order.id) { mutableStateOf<String?>(null) }
+    var missing by remember(auth.user.id, order.id) { mutableStateOf(false) }
+    var reload by remember { mutableStateOf(0) }
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
 
-    LaunchedEffect(order.id) {
-        while (true) {
-            runCatching { api.orders(auth) }.onSuccess { rows ->
-                current = rows.find { it.id == order.id } ?: current
+    LaunchedEffect(auth.user.id, auth.session.accessToken, order.id, lifecycle, reload) {
+        lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            while (true) {
+                try {
+                    val fresh = api.order(auth, order.id)
+                    missing = fresh == null
+                    if (fresh == null) { details = null; events = emptyList(); error = "ไม่พบงานฝากซักของบัญชีนี้" }
+                    else {
+                        current = fresh.summary
+                        details = fresh
+                        events = api.events(auth, order.id)
+                        error = null
+                    }
+                } catch (cancelled: CancellationException) { throw cancelled }
+                catch (e: Exception) { error = e.message ?: "โหลดสถานะล่าสุดไม่สำเร็จ" }
+                delay(4_000)
             }
-            runCatching { api.events(auth, order.id) }.onSuccess { events = it }
-            delay(4_000)
         }
     }
 
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(14.dp)) {
         OutlinedButton(onClick = onBack) { Text("ย้อนกลับ") }
+        OutlinedButton(onClick = { reload++ }) { Text("โหลดสถานะล่าสุด") }
+        error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+        if (missing) return@Column
         Spacer(Modifier.height(12.dp))
         Text(current.number, fontWeight = FontWeight.Black, style = MaterialTheme.typography.headlineSmall)
         Text("ฝากซัก · " + current.serviceName, color = QgMuted)
@@ -121,21 +166,27 @@ fun LaundryOrderDetailScreen(
             Column {
                 Text("จุดรับ/ส่งผ้า", fontWeight = FontWeight.ExtraBold)
                 Text(current.pickupAddress ?: "-", color = QgMuted)
-                Spacer(Modifier.height(8.dp))
-                Row(Modifier.fillMaxWidth()) {
-                    Text(if (current.finalTotal != null) "ยอดรวม" else "ยอดประมาณ", Modifier.weight(1f))
-                    Text(
-                        current.finalTotal?.let { "฿" + "%.0f".format(it) }
-                            ?: current.estimatedTotal?.let { "฿" + "%.0f".format(it) }
-                            ?: "รอสรุป",
-                        color = QgRed,
-                        fontWeight = FontWeight.Black
-                    )
+
+            }
+        }
+        Spacer(Modifier.height(10.dp))
+        details?.let { d ->
+            QgCard(Modifier.fillMaxWidth()) {
+                Column {
+                    Text("สรุปราคา", fontWeight = FontWeight.ExtraBold)
+                    val unit = when (d.pricingType) { "per_kg" -> "กก."; "per_item" -> "ชิ้น"; "per_set" -> "ชุด"; else -> "" }
+                    SpecialSummary("รูปแบบราคา", if (d.pricingType == "fixed") "เหมาจ่าย" else d.unitPrice?.let { specialMoney(it) + " / " + unit } ?: "-")
+                    d.quantity?.let { SpecialSummary(if (d.actualQuantity) "จำนวนจริง" else "จำนวนประมาณ", specialNumber(it) + " " + unit) }
+                    SpecialSummary("ค่าบริการ", d.serviceAmount?.let(::specialMoney) ?: "รอร้านชั่ง/นับจริง")
+                    SpecialSummary("ค่ารับผ้า", specialMoney(d.pickupFee))
+                    SpecialSummary("ค่าส่งคืน", specialMoney(d.returnFee))
+                    SpecialSummary(if (current.finalTotal != null) "รวม" else "รวมโดยประมาณ", (current.finalTotal ?: current.estimatedTotal)?.let(::specialMoney) ?: "รอสรุป")
                 }
             }
         }
         Spacer(Modifier.height(10.dp))
-        QgCard(Modifier.fillMaxWidth()) {
+        if (current.status == "cancelled") Text("งานนี้ถูกยกเลิก", color = MaterialTheme.colorScheme.error)
+        else QgCard(Modifier.fillMaxWidth()) {
             Column {
                 Text("ขั้นตอนงาน", fontWeight = FontWeight.ExtraBold)
                 laundryFlow.forEach { status ->
@@ -155,6 +206,11 @@ fun LaundryOrderDetailScreen(
                     events.forEach { event ->
                         Column(Modifier.fillMaxWidth().padding(vertical = 7.dp)) {
                             Text(laundryStatus(event.status), fontWeight = FontWeight.Bold)
+                            event.createdAt?.let { raw ->
+                                val date = runCatching { OffsetDateTime.parse(raw).atZoneSameInstant(ZoneId.systemDefault()).format(
+                                    DateTimeFormatter.ofPattern("d/M/yyyy HH:mm:ss", Locale("th", "TH")).withChronology(ThaiBuddhistChronology.INSTANCE)) }.getOrDefault(raw)
+                                Text(date, color = QgMuted, style = MaterialTheme.typography.bodySmall)
+                            }
                             if (!event.note.isNullOrBlank()) Text(event.note!!, color = QgMuted, style = MaterialTheme.typography.bodySmall)
                         }
                         HorizontalDivider()
@@ -211,4 +267,10 @@ fun customerStatusLabel(status: String): String = when (status.lowercase()) {
     "completed" -> "ส่งสำเร็จ"
     "cancelled" -> "ยกเลิก"
     else -> status
+}
+
+private fun specialNumber(value: Double): String = NumberFormat.getNumberInstance(Locale("th", "TH")).apply { maximumFractionDigits = 2 }.format(value)
+private fun specialMoney(value: Double) = specialNumber(value) + " บาท"
+@Composable private fun SpecialSummary(label: String, value: String) {
+    Row(Modifier.fillMaxWidth().padding(vertical = 4.dp)) { Text(label, Modifier.weight(1f)); Text(value, fontWeight = FontWeight.Bold) }
 }

@@ -847,3 +847,8 @@ The user-supplied Rider reference screens are the acceptance reference for workf
 - Preserve pending checkout, pack revalidation and cross-market separation. JVM fixtures cover destination disk failure (guest untouched) and interruption before guest cleanup (no double merge after restart). No new cart store/DB/RPC or Production rows. Full regression/Pilot required before merge.
 
 - Flush the source cart/revision synchronously before the destination merge as well, so an earlier asynchronous guest save cannot restart with a different old revision after the destination has committed. Pending checkout skips this source flush.
+
+
+## 2026-10-11 Special-order authoritative detail staging
+- Current main customer-laundry.js renders owner-filtered direct order reads, snapshot pricing/quantities, pickup/return fees and manual latest-status action. Native previously polled only the last50 list and Market parent status/total never refreshed. Add direct owner/id reads for Market/Laundry detail, lifecycle STARTED polling with cancellation propagation, manual refresh, explicit missing/error states and current parent status/total/count.
+- Laundry detail now displays current Production snapshot price type/unit price, actual-or-estimated quantity, service amount, pickup/return fees and total fallback; canceled orders no longer show a false active progress step. Verified current Production columns read-only. No DB/RPC changes or fake rows. Full regression/Pilot and authenticated rendered/live evidence remain required.

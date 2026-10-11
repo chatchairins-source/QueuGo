@@ -261,28 +261,21 @@ class CustomerMarketApi(private val http: QueueGoNativeApi = QueueGoNativeApi())
         return result
     }
 
+    private fun parseTrip(r: JSONObject) = MarketTripSummary(r.getString("id"), r.optString("market_id"),
+        r.optString("status"), r.optInt("shop_count", 0), r.optDouble("total_amount", 0.0),
+        r.optString("delivery_address").takeIf { it.isNotBlank() && it != "null" },
+        r.optString("created_at").takeIf { it.isNotBlank() && it != "null" })
+
     suspend fun trips(auth: NativeAuth): List<MarketTripSummary> {
-        val rows = http.array(http.get(
-            "market_orders?select=id,market_id,status,shop_count,total_amount,delivery_address,created_at" +
-                "&customer_id=eq." + http.enc(auth.user.id) + "&order=created_at.desc&limit=50",
-            auth.session.accessToken
-        ))
-        return buildList {
-            for (i in 0 until rows.length()) {
-                val r = rows.optJSONObject(i) ?: continue
-                val id = r.optString("id")
-                if (id.isBlank()) continue
-                add(MarketTripSummary(
-                    id,
-                    r.optString("market_id"),
-                    r.optString("status"),
-                    r.optInt("shop_count", 0),
-                    r.optDouble("total_amount", 0.0),
-                    r.optString("delivery_address").takeIf { it.isNotBlank() && it != "null" },
-                    r.optString("created_at").takeIf { it.isNotBlank() && it != "null" }
-                ))
-            }
-        }
+        val rows = http.array(http.get("market_orders?select=id,market_id,status,shop_count,total_amount,delivery_address,created_at" +
+            "&customer_id=eq." + http.enc(auth.user.id) + "&order=created_at.desc&limit=50", auth.session.accessToken))
+        return (0 until rows.length()).mapNotNull { rows.optJSONObject(it)?.let(::parseTrip) }
+    }
+
+    internal suspend fun trip(auth: NativeAuth, tripId: String): MarketTripSummary? {
+        val rows = http.array(http.get("market_orders?select=id,market_id,status,shop_count,total_amount,delivery_address,created_at" +
+            "&id=eq." + http.enc(tripId) + "&customer_id=eq." + http.enc(auth.user.id) + "&limit=1", auth.session.accessToken))
+        return rows.optJSONObject(0)?.let(::parseTrip)
     }
 
     suspend fun tripChildren(auth: NativeAuth, tripId: String): List<MarketTripChild> {
