@@ -109,7 +109,7 @@ private val homeDedicatedMarketCategories =
     setOf("market", "fresh", "fresh_market", "meat", "fish", "vegetable", "fruit")
 
 @Composable
-fun QueueGoCustomerApp() {
+fun QueueGoCustomerApp(pushTarget: NativePushLaunchTarget? = null) {
     val context = LocalContext.current
     val store = remember { SecureRoleSessionStore(context, "customer") }
     var authRequested by rememberSaveable { mutableStateOf(store.load() != null) }
@@ -141,7 +141,8 @@ fun QueueGoCustomerApp() {
                         destinationAfterLogin = "home"
                         authRequested = false
                     },
-                    initialScreen = destinationAfterLogin
+                    initialScreen = destinationAfterLogin,
+                    pushTarget = pushTarget
                 )
             }
         }
@@ -152,7 +153,8 @@ fun QueueGoCustomerApp() {
 private fun CustomerShell(
     auth: NativeAuth,
     logout: () -> Unit,
-    initialScreen: String = "home"
+    initialScreen: String = "home",
+    pushTarget: NativePushLaunchTarget? = null
 ) {
     val api = remember { CustomerApi() }
     val marketApi = remember { CustomerMarketApi() }
@@ -479,6 +481,25 @@ private fun CustomerShell(
     }
 
     LaunchedEffect(auth.user.id) { refresh() }
+    LaunchedEffect(pushTarget?.eventId, loading) {
+        val target = pushTarget ?: return@LaunchedEffect
+        if (loading) return@LaunchedEffect
+        if (target.referenceId.isBlank()) {
+            screen = "notifications"
+            return@LaunchedEffect
+        }
+        val fresh = runCatching { api.loadOrders(auth) }.getOrDefault(orders)
+        orders = fresh
+        val order = fresh.find { it.id == target.referenceId }
+        if (order != null) {
+            selectedOrder = order
+            trackingContext = null
+            orderItems = runCatching { api.loadOrderItems(auth, order.id) }.getOrDefault(emptyList())
+            screen = "order"
+        } else {
+            screen = if (target.type == "voice_call") "orders" else "notifications"
+        }
+    }
     LaunchedEffect(auth.session.accessToken, lifecycle) {
         lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
             while (true) {

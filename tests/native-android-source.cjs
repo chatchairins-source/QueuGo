@@ -79,8 +79,8 @@ ok(!/android\.webkit\.WebView|<WebView\b|loadUrl\(/.test(source),'native apps mu
 ok(source.includes('expectedRole = "customer"')&&source.includes('expectedRole = "shop"'),'Customer/Merchant must validate real QueueGo roles');
 const customerMain=read('customer/src/main/java/com/queuego/customer/MainActivity.kt');
 const merchantMain=read('merchant/src/main/java/com/queuego/merchant/MainActivity.kt');
-ok(customerMain.includes('QueueGoCustomerApp()')&&!customerMain.includes('QueueGoRoleNativeApp'),'Customer must launch full native app, not role shell');
-ok(merchantMain.includes('QueueGoMerchantApp()')&&!merchantMain.includes('QueueGoRoleNativeApp'),'Merchant must launch full native app, not role shell');
+ok(customerMain.includes('QueueGoCustomerApp(')&&customerMain.includes('setContent')&&!customerMain.includes('QueueGoRoleNativeApp'),'Customer must launch full native app, not role shell');
+ok(merchantMain.includes('QueueGoMerchantApp(')&&merchantMain.includes('setContent')&&!merchantMain.includes('QueueGoRoleNativeApp'),'Merchant must launch full native app, not role shell');
 ok(source.includes('queuego_place_cash_order'),'Customer native checkout must use production cash-order RPC');
 const customerCartCheckout=read('customer/src/main/java/com/queuego/customer/CustomerCartCheckout.kt');
 ok(source.includes('"cart" -> CustomerCartScreen')&&source.includes('"checkout" -> CustomerCheckoutScreen')&&customerCartCheckout.includes('"ตะกร้าสินค้า"')&&customerCartCheckout.includes('"ไปชำระเงิน"')&&customerCartCheckout.includes('"ยืนยันคำสั่งซื้อ"')&&customerCartCheckout.includes('height(115.dp)')&&customerCartCheckout.includes('QgLongdoLocationPickerMap')&&customerCartCheckout.includes('"ยืนยันสั่งซื้อ"'),'Customer native must preserve separate Production cart and checkout screens with checkout Longdo map and fixed action dock');

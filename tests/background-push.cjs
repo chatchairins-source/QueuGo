@@ -15,6 +15,12 @@ const nativeSharedPush=read('native-android/shared/src/main/java/com/queuego/sha
 const customerNativePush=read('native-android/customer/src/main/java/com/queuego/customer/CustomerPush.kt');
 const merchantNativePush=read('native-android/merchant/src/main/java/com/queuego/merchant/MerchantPush.kt');
 const riderNativePush=read('native-android/rider/src/main/java/com/queuego/rider/RiderPush.kt');
+const customerMainActivity=read('native-android/customer/src/main/java/com/queuego/customer/MainActivity.kt');
+const merchantMainActivity=read('native-android/merchant/src/main/java/com/queuego/merchant/MainActivity.kt');
+const riderMainActivity=read('native-android/rider/src/main/java/com/queuego/rider/MainActivity.kt');
+const customerNativeApp=read('native-android/customer/src/main/java/com/queuego/customer/QueueGoCustomerApp.kt');
+const merchantNativeApp=read('native-android/merchant/src/main/java/com/queuego/merchant/QueueGoMerchantApp.kt');
+const riderNativeApp=read('native-android/rider/src/main/java/com/queuego/rider/QueueGoRiderApp.kt');
 const nativeBuilds=[
   read('native-android/customer/build.gradle.kts'),
   read('native-android/merchant/build.gradle.kts'),
@@ -106,6 +112,27 @@ for(const [role,source] of [['customer',customerNativePush],['merchant',merchant
   ok(source.includes('queuego_orders_v2'),'Native '+role+' push must use the audible QueueGo orders v2 notification channel');
   ok(source.includes('RingtoneManager.TYPE_NOTIFICATION')&&source.includes('setSound(sound, attributes)'),'Native '+role+' channel must explicitly use notification sound');
 }
+for(const [role,activity] of [['customer',customerMainActivity],['merchant',merchantMainActivity],['rider',riderMainActivity]]){
+  ok(activity.includes('override fun onNewIntent(intent: Intent)'),'Native '+role+' must handle notification taps while the activity is already open');
+  ok(activity.includes('acceptPushIntent(intent)'),'Native '+role+' must consume push routing on cold launch and warm intent delivery');
+  ok(activity.includes('queuego_push_reference_id')&&activity.includes('queuego_push_type'),'Native '+role+' must read locally-created push reference and type extras');
+  ok(activity.includes('referenceId')&&activity.includes('getStringExtra("type")'),'Native '+role+' must also read Firebase automatic notification data extras');
+  ok(activity.includes('removeExtra("queuego_push_reference_id")')&&activity.includes('removeExtra("queuego_push_type")')&&
+     activity.includes('removeExtra("referenceId")')&&activity.includes('removeExtra("type")'),
+     'Native '+role+' must consume both local and automatic FCM push extras exactly once across activity recreation');
+}
+ok(customerNativeApp.includes('LaunchedEffect(pushTarget?.eventId, loading)')&&
+   customerNativeApp.includes('api.loadOrders(auth)')&&customerNativeApp.includes('screen = "order"'),
+   'Native Customer system push tap must resolve the referenced order after initial data load');
+ok(merchantNativeApp.includes('LaunchedEffect(pushTarget?.eventId, loading)')&&
+   merchantNativeApp.includes('api.loadOrders(auth)')&&merchantNativeApp.includes('screen = "order"'),
+   'Native Merchant system push tap must resolve the referenced order after initial data load');
+ok(riderNativeApp.includes('LaunchedEffect(pushTarget?.eventId)')&&
+   riderNativeApp.includes('activeTab = "home"')&&riderNativeApp.includes('refreshSnapshot()'),
+   'Native Rider system push tap must return to live work and refresh the authoritative snapshot');
+ok(riderNativePush.includes('if (type == "voice_call") NotificationCompat.CATEGORY_CALL')&&
+   riderNativePush.includes('else NotificationCompat.CATEGORY_MESSAGE'),
+   'Native Rider voice_call push must retain call notification semantics while job pushes remain messages');
 for(const [role,manifest] of [['customer',nativeManifests[0]],['merchant',nativeManifests[1]],['rider',nativeManifests[2]]]){
   ok(manifest.includes('android.permission.POST_NOTIFICATIONS'),'Native '+role+' manifest must request POST_NOTIFICATIONS');
   ok(manifest.includes('com.google.firebase.MESSAGING_EVENT'),'Native '+role+' manifest must register an FCM messaging service');
