@@ -22,7 +22,7 @@ import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 import kotlinx.coroutines.suspendCancellableCoroutine
 
-private const val RIDER_ORDER_CHANNEL = "queuego_orders"
+private const val RIDER_ORDER_CHANNEL = "queuego_orders_v2"
 private const val RIDER_ORDER_CHANNEL_NAME = "งาน QueueGo Rider"
 
 internal fun ensureRiderOrderChannel(context: Context) {
