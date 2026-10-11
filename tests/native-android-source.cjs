@@ -114,6 +114,10 @@ ok(source.includes('\"search\" -> CustomerSearchScreen')&&source.includes('Custo
 ok(source.includes('GuestCustomerShell(')&&source.includes('loadShopsPublic()')&&source.includes('loadProductsPublic(')&&source.includes('เข้าสู่ระบบเพื่อสั่งซื้อ'),'Customer native must preserve Production guest Home/catalog/cart/Market browsing before authentication');
 ok(source.includes('CustomerCartStore(context, "guest")')&&source.includes('destinationAfterLogin')&&source.includes('onCheckout = { onLogin("checkout") }'),'Customer native guest cart must persist locally and return to checkout after authentication');
 ok(source.includes('CustomerPromotionScreen(')&&source.includes('qg_public_promotions'),'Customer native guest routing must preserve public promotion browsing');
+const customerFavoritesScreen=read('customer/src/main/java/com/queuego/customer/CustomerFavoritesScreen.kt');
+ok(customerFavoritesScreen.includes('"qg_customer_favorites?select=id,shop_id,product_id"')&&customerFavoritesScreen.includes('&available=eq.true&id=in.('),'Customer native Favorites must use the same saved rows and available-product lookup as Production web');
+ok(customerFavoritesScreen.includes('"รายการนี้ยังไม่พร้อมให้บริการ"')&&customerFavoritesScreen.includes('targetShopId: String?')&&customerFavoritesScreen.includes('.clickable(enabled = row.targetShopId != null)'),'Customer native Favorites must preserve unavailable saved rows and disable their shop link');
+ok(customerFavoritesScreen.includes('"♥"')&&customerFavoritesScreen.includes('api.remove(auth, row.favoriteId)')&&customerFavoritesScreen.includes('row.price?.let'),'Customer native Favorites must preserve active-heart removal and product price presentation');
 ok(source.includes('auth: NativeAuth?')&&source.includes('onRequireLogin'),'Customer public shop/Market renderers must share native implementations without fake authenticated actors');
 ok(source.includes('ServiceCategoryScreen')&&source.includes('"category" -> ServiceCategoryScreen'),'Food Drink Grocery Shopping must use dedicated native category pages');
 
