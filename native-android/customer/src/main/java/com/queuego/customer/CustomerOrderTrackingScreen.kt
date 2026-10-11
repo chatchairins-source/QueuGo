@@ -299,7 +299,7 @@ internal fun CustomerOrderTrackingScreen(
                     if (order.chatAvailable()) {
                         CustomerTrackingAction(
                             label = if (order.status.equals("completed", true))
-                                "แชทกับ Rider (ภายใน 30 นาที)"
+                                "แชทต่อได้อีก " + order.chatMinutesLeft() + " นาที"
                             else "แชทกับ Rider",
                             modifier = Modifier.weight(1f),
                             filled = true,
