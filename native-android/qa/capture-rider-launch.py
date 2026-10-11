@@ -126,7 +126,11 @@ def capture_customer_market(directory: Path, dimensions: str):
     bounds = [int(x) for x in re.findall(r"\d+", target.get("bounds", ""))]
     assert len(bounds) == 4 and bounds[2] > bounds[0] and bounds[3] > bounds[1]
     run(adb + ["shell", "input", "tap", str((bounds[0] + bounds[2]) // 2), str((bounds[1] + bounds[3]) // 2)])
-    nodes = wait_ui(directory / "market-browse.xml", lambda ns: any(n.get("text") == "เลือกตลาด" for n in ns))
+    nodes = wait_ui(directory / "market-browse.xml", lambda ns:
+        any(n.get("text") == "เลือกตลาด" for n in ns) and
+        any(n.get("clickable") == "true" and n.get("enabled") == "true" and
+            any("⌄" in (child.get("text", "") + child.get("content-desc", "")) for child in n.iter("node"))
+            for n in ns))
     assert not any(n.get("text") in ("ที่อยู่ / จุดสังเกต", "ยืนยันสั่งซื้อ") for n in nodes), "Market browse leaked checkout form"
     assert not any(n.get("class") == "android.widget.EditText" for n in nodes), "Market browse added a search/checkout field"
     with (directory / "market-browse.png").open("wb") as png:
