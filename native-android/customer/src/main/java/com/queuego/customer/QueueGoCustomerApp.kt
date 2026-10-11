@@ -485,6 +485,14 @@ private fun CustomerShell(
                 laundryOrders = fresh
                 selectedLaundryOrder = selectedLaundryOrder?.let { old -> fresh.find { it.id == old.id } ?: old }
             }
+        val detailId = selectedOrder?.id?.takeIf { screen == "order" }
+        if (detailId != null) {
+            runCatching { api.loadOrderById(auth, detailId) }
+                .onFailure { if (it is CancellationException) throw it }
+                .onSuccess { fresh ->
+                    if (fresh != null && screen == "order" && selectedOrder?.id == detailId) selectedOrder = fresh
+                }
+        }
         val detail = selectedOrder?.takeIf { screen == "order" }
         if (detail != null && contextRefreshGate.shouldFetch(detail)) {
             runCatching { api.loadOrderItems(auth, detail.id) }
@@ -515,7 +523,7 @@ private fun CustomerShell(
             while (pendingNotification == target) {
                 try {
                     val destination = lookupCustomerNotification<CustomerNotificationDestination>(listOf(
-                        { api.findPlacedOrder(auth, target.referenceId)?.let { CustomerNotificationDestination.Order(it) } },
+                        { api.loadOrderById(auth, target.referenceId)?.let { CustomerNotificationDestination.Order(it) } },
                         { marketApi.trip(auth, target.referenceId)?.let { CustomerNotificationDestination.Market(it) } },
                         { laundryApi.order(auth, target.referenceId)?.summary?.let { CustomerNotificationDestination.Laundry(it) } }
                     ))

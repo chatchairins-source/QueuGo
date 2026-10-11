@@ -122,7 +122,7 @@ for(const [role,activity] of [['customer',customerMainActivity],['merchant',merc
      'Native '+role+' must consume both local and automatic FCM push extras exactly once across activity recreation');
 }
 ok(customerNativeApp.includes('LaunchedEffect(pushTarget?.eventId, auth.user.id)')&&
-   customerNativeApp.includes('api.findPlacedOrder(auth, target.referenceId)')&&
+   customerNativeApp.includes('api.loadOrderById(auth, target.referenceId)')&&
    customerNativeApp.includes('marketApi.trip(auth, target.referenceId)')&&
    customerNativeApp.includes('laundryApi.order(auth, target.referenceId)')&&
    customerNativeApp.includes('lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED)')&&
