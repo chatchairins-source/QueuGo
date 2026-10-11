@@ -72,7 +72,11 @@ data class MerchantOrder(
     val preparingAt: String?,
     val readyAt: String?,
     val itemCount: Int = 0,
-    val riderArrivedCustomerAt: String? = null
+    val riderArrivedCustomerAt: String? = null,
+    val customerId: String? = null,
+    val customerName: String? = null,
+    val deliveryAddress: String? = null,
+    val riderArrivedShopAt: String? = null
 )
 
 data class MerchantOrderItem(
@@ -560,7 +564,12 @@ class MerchantApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
                         r.optNullable("created_at"),
                         r.optNullable("preparing_at"),
                         r.optNullable("ready_at"),
-                        r.optJSONArray("items")?.length() ?: 0
+                        r.optJSONArray("items")?.length() ?: 0,
+                        null,
+                        r.optNullable("customer_id"),
+                        r.optNullable("customer_name"),
+                        r.optNullable("delivery_address"),
+                        r.optNullable("rider_arrived_shop_at")
                     )
                 )
             }
@@ -578,21 +587,35 @@ class MerchantApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
         val arrivals = runCatching {
             val arrivalRows = http.array(
                 http.get(
-                    "orders?select=id,rider_arrived_customer_at&id=in.(" + ids.joinToString(",") + ")",
+                    "orders?select=id,rider_arrived_customer_at,rider_arrived_shop_at,delivery_address&id=in.(" + ids.joinToString(",") + ")",
                     auth.session.accessToken
                 )
             )
-            buildMap<String, String?> {
+            buildMap<String, Triple<String?, String?, String?>> {
                 for (i in 0 until arrivalRows.length()) {
                     val row = arrivalRows.optJSONObject(i) ?: continue
                     val id = row.optString("id")
-                    if (id.isNotBlank()) put(id, row.optNullable("rider_arrived_customer_at"))
+                    if (id.isNotBlank()) {
+                        put(
+                            id,
+                            Triple(
+                                row.optNullable("rider_arrived_customer_at"),
+                                row.optNullable("rider_arrived_shop_at"),
+                                row.optNullable("delivery_address")
+                            )
+                        )
+                    }
                 }
             }
         }.getOrDefault(emptyMap())
 
         return orders.map { order ->
-            order.copy(riderArrivedCustomerAt = arrivals[order.id])
+            val context = arrivals[order.id]
+            order.copy(
+                riderArrivedCustomerAt = context?.first ?: order.riderArrivedCustomerAt,
+                riderArrivedShopAt = context?.second ?: order.riderArrivedShopAt,
+                deliveryAddress = context?.third ?: order.deliveryAddress
+            )
         }
     }
 
