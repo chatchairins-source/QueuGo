@@ -118,6 +118,11 @@ const customerFavoritesScreen=read('customer/src/main/java/com/queuego/customer/
 ok(customerFavoritesScreen.includes('"qg_customer_favorites?select=id,shop_id,product_id"')&&customerFavoritesScreen.includes('&available=eq.true&id=in.('),'Customer native Favorites must use the same saved rows and available-product lookup as Production web');
 ok(customerFavoritesScreen.includes('"รายการนี้ยังไม่พร้อมให้บริการ"')&&customerFavoritesScreen.includes('targetShopId: String?')&&customerFavoritesScreen.includes('.clickable(enabled = row.targetShopId != null)'),'Customer native Favorites must preserve unavailable saved rows and disable their shop link');
 ok(customerFavoritesScreen.includes('"♥"')&&customerFavoritesScreen.includes('api.remove(auth, row.favoriteId)')&&customerFavoritesScreen.includes('row.price?.let'),'Customer native Favorites must preserve active-heart removal and product price presentation');
+const customerPromotionScreen=read('customer/src/main/java/com/queuego/customer/CustomerPromotionScreen.kt');
+ok(customerPromotionScreen.includes('"qg_public_promotions"')&&customerPromotionScreen.includes('"โปรโมชั่นจากร้าน"')&&customerPromotionScreen.includes('onOpenShop(promotion.shopId)'),'Customer native Promotions must preserve Production public promotion RPC and shop-link card flow');
+const customerExtras=read('customer/src/main/java/com/queuego/customer/CustomerExtras.kt');
+ok(customerExtras.includes('val unreadCount = notifications.count { !it.read }')&&customerExtras.includes('if (unreadCount > 0 && !busy) onMarkAll()'),'Customer native notification center must acknowledge unread rows on open like Production web');
+ok(customerExtras.includes('"อ่านทั้งหมด"')&&customerExtras.includes('"ยังไม่มีการแจ้งเตือน"')&&customerExtras.includes('onOpen(notification)'),'Customer native notification center must preserve Production read-all, empty and open-notification actions');
 ok(source.includes('auth: NativeAuth?')&&source.includes('onRequireLogin'),'Customer public shop/Market renderers must share native implementations without fake authenticated actors');
 ok(source.includes('ServiceCategoryScreen')&&source.includes('"category" -> ServiceCategoryScreen'),'Food Drink Grocery Shopping must use dedicated native category pages');
 
