@@ -38,19 +38,15 @@ REVOKE ALL ON FUNCTION qg_private.qg_purge_call_sessions() FROM anon;
 REVOKE ALL ON FUNCTION qg_private.qg_purge_call_sessions() FROM authenticated;
 GRANT EXECUTE ON FUNCTION qg_private.qg_purge_call_sessions() TO service_role;
 
-DO $$
+DO $
 DECLARE
   v_jobid bigint;
 BEGIN
-  SELECT jobid INTO v_jobid
-  FROM cron.job
-  WHERE jobname='queuego-voice-call-retention'
-  ORDER BY jobid DESC
-  LIMIT 1;
-
-  IF v_jobid IS NOT NULL THEN
+  FOR v_jobid IN
+    SELECT jobid FROM cron.job WHERE jobname='queuego-voice-call-retention'
+  LOOP
     PERFORM cron.unschedule(v_jobid);
-  END IF;
+  END LOOP;
 
   PERFORM cron.schedule(
     'queuego-voice-call-retention',
@@ -58,4 +54,7 @@ BEGIN
     'select qg_private.qg_purge_call_sessions();'
   );
 END
-$$;
+$;
+
+-- Apply the retention cutoff immediately on deployment as well as daily.
+SELECT qg_private.qg_purge_call_sessions();
