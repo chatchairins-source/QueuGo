@@ -2,6 +2,9 @@
 -- Audio, SDP and ICE candidates are never stored. Keep only call/session/order
 -- metadata for a bounded support/security window, then purge automatically.
 
+CREATE INDEX IF NOT EXISTS qg_call_sessions_created_idx
+  ON public.qg_call_sessions(created_at);
+
 CREATE OR REPLACE FUNCTION qg_private.qg_purge_call_sessions()
 RETURNS bigint
 LANGUAGE plpgsql
