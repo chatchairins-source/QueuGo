@@ -302,17 +302,10 @@ internal fun CustomerProfileScreen(
             accessToken = auth.session.accessToken,
             onDeleted = onLogout,
             pendingChatUserId = auth.user.id,
-            showHeader = false
+            showHeader = false,
+            onLogout = onLogout,
+            logoutSubtitle = "ออกจากบัญชีในอุปกรณ์นี้"
         )
-        Spacer(Modifier.height(8.dp))
-        CustomerProfileCard {
-            CustomerProfileActionRow(
-                icon = "logout",
-                title = "ออกจากระบบ",
-                subtitle = null,
-                onClick = onLogout
-            )
-        }
         Spacer(Modifier.height(28.dp))
     }
 }
