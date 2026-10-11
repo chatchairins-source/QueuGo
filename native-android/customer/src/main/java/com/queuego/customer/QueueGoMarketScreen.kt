@@ -1,5 +1,6 @@
 package com.queuego.customer
 
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
@@ -15,6 +16,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
@@ -33,14 +35,22 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.queuego.shared.NativeAuth
 import com.queuego.shared.QgCard
+import com.queuego.shared.QgIcon
+import com.queuego.shared.QgInk
+import com.queuego.shared.QgLine
 import com.queuego.shared.QgMuted
 import com.queuego.shared.QgRed
+import com.queuego.shared.QgRedDark
+import com.queuego.shared.QgRedSoft
 import com.queuego.shared.QgRemoteImage
 import com.queuego.shared.QgSectionTitle
 import kotlinx.coroutines.launch
@@ -154,26 +164,33 @@ fun MarketNativeScreen(
 
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(12.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            OutlinedButton(onClick = onBack) { Text("ย้อนกลับ") }
-            Spacer(Modifier.width(10.dp))
-            Column {
-                Text("QueueGo Market", fontWeight = FontWeight.Black, style = MaterialTheme.typography.titleLarge)
-                Text("ตลาดสดใกล้คุณ · สดใหม่ทุกวัน", color = QgMuted, style = MaterialTheme.typography.bodySmall)
+            OutlinedButton(
+                onClick = onBack,
+                shape = RoundedCornerShape(14.dp),
+                contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 12.dp, vertical = 8.dp)
+            ) {
+                QgIcon("back", Modifier.size(16.dp), QgInk)
+                Spacer(Modifier.width(6.dp))
+                Text("ย้อนกลับ", color = QgInk, fontWeight = FontWeight.Bold)
+            }
+            Spacer(Modifier.width(12.dp))
+            Column(Modifier.weight(1f)) {
+                Text(
+                    "QueueGo Market",
+                    fontWeight = FontWeight.Black,
+                    style = MaterialTheme.typography.titleLarge,
+                    color = QgInk
+                )
+                Text(
+                    "ตลาดสดใกล้คุณ · สดใหม่ทุกวัน",
+                    color = QgMuted,
+                    style = MaterialTheme.typography.bodySmall
+                )
             }
         }
         Spacer(Modifier.height(12.dp))
 
-        Box(
-            Modifier.fillMaxWidth().height(142.dp)
-                .background(QgRed, RoundedCornerShape(20.dp))
-                .padding(18.dp),
-            contentAlignment = Alignment.BottomStart
-        ) {
-            Column {
-                Text("ตลาดสดใกล้คุณ", color = Color.White, fontWeight = FontWeight.Black, style = MaterialTheme.typography.headlineSmall)
-                Text("เลือกร้านก่อน แล้วเลือกสินค้าได้หลายร้านในตลาดเดียวกัน", color = Color.White)
-            }
-        }
+        MarketHeroBanner()
 
         if (!message.isNullOrBlank()) {
             Spacer(Modifier.height(8.dp))
@@ -219,7 +236,32 @@ fun MarketNativeScreen(
 
         when {
             loading -> CircularProgressIndicator()
-            marketShops.isEmpty() -> QgCard(Modifier.fillMaxWidth()) { Text("ยังไม่พบร้านในตลาดนี้", color = QgMuted) }
+            marketShops.isEmpty() -> QgCard(Modifier.fillMaxWidth()) {
+                Row(
+                    Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        Modifier.size(52.dp).background(QgRedSoft, CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        QgIcon("market", Modifier.size(27.dp), QgRed)
+                    }
+                    Spacer(Modifier.width(12.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text(
+                            "ยังไม่มีร้านที่เปิดขายในตลาดนี้",
+                            color = QgInk,
+                            fontWeight = FontWeight.ExtraBold
+                        )
+                        Text(
+                            "เมื่อร้านผ่านการอนุมัติและเปิด Delivery ร้านจะปรากฏที่นี่อัตโนมัติ",
+                            color = QgMuted,
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+                }
+            }
             else -> marketShops.forEach { s ->
                 val count = catalog.count { it.shopId == s.id && it.marketId == selectedMarket && it.availablePacks > 0 }
                 QgCard(
@@ -389,6 +431,107 @@ fun MarketNativeScreen(
             }
         }
         Spacer(Modifier.height(40.dp))
+    }
+}
+
+
+@Composable
+private fun MarketHeroBanner() {
+    Box(
+        Modifier
+            .fillMaxWidth()
+            .height(156.dp)
+            .background(
+                Brush.horizontalGradient(
+                    listOf(
+                        Color(0xFFF04455),
+                        QgRed,
+                        QgRedDark
+                    )
+                ),
+                RoundedCornerShape(22.dp)
+            )
+    ) {
+        Canvas(
+            Modifier
+                .align(Alignment.CenterEnd)
+                .padding(end = 10.dp)
+                .size(width = 154.dp, height = 132.dp)
+        ) {
+            val white = Color.White.copy(alpha = 0.96f)
+            val soft = Color.White.copy(alpha = 0.20f)
+            val shadow = Color(0x33000000)
+
+            drawCircle(soft, radius = size.minDimension * 0.40f, center = Offset(size.width * .72f, size.height * .50f))
+            drawRoundRect(
+                color = shadow,
+                topLeft = Offset(size.width * .22f, size.height * .30f),
+                size = Size(size.width * .68f, size.height * .56f),
+                cornerRadius = androidx.compose.ui.geometry.CornerRadius(18f, 18f)
+            )
+            drawRoundRect(
+                color = white,
+                topLeft = Offset(size.width * .18f, size.height * .25f),
+                size = Size(size.width * .68f, size.height * .56f),
+                cornerRadius = androidx.compose.ui.geometry.CornerRadius(18f, 18f)
+            )
+            drawRect(
+                color = QgRedSoft,
+                topLeft = Offset(size.width * .18f, size.height * .25f),
+                size = Size(size.width * .68f, size.height * .18f)
+            )
+            val awningY = size.height * .25f
+            val stripeW = size.width * .68f / 6f
+            repeat(6) { index ->
+                drawRect(
+                    color = if (index % 2 == 0) Color.White else QgRed.copy(alpha = .88f),
+                    topLeft = Offset(size.width * .18f + stripeW * index, awningY),
+                    size = Size(stripeW, size.height * .14f)
+                )
+            }
+            drawRect(
+                color = Color(0xFFF6E7D5),
+                topLeft = Offset(size.width * .26f, size.height * .50f),
+                size = Size(size.width * .52f, size.height * .20f)
+            )
+            listOf(
+                Triple(.34f, .56f, Color(0xFFFFC857)),
+                Triple(.45f, .60f, Color(0xFF6BCB77)),
+                Triple(.56f, .56f, Color(0xFFFF6B6B)),
+                Triple(.67f, .60f, Color(0xFF4D96FF))
+            ).forEach { (x, y, color) ->
+                drawCircle(
+                    color = color,
+                    radius = size.minDimension * .055f,
+                    center = Offset(size.width * x, size.height * y)
+                )
+            }
+            drawRect(
+                color = Color(0xFFD8B28B),
+                topLeft = Offset(size.width * .30f, size.height * .70f),
+                size = Size(size.width * .44f, size.height * .08f)
+            )
+        }
+
+        Column(
+            Modifier
+                .align(Alignment.CenterStart)
+                .fillMaxWidth(0.64f)
+                .padding(start = 18.dp, end = 6.dp)
+        ) {
+            Text(
+                "ตลาดสดใกล้คุณ",
+                color = Color.White,
+                fontWeight = FontWeight.Black,
+                style = MaterialTheme.typography.headlineSmall
+            )
+            Spacer(Modifier.height(6.dp))
+            Text(
+                "เลือกร้านก่อน แล้วเลือกสินค้าได้หลายร้านในตลาดเดียวกัน",
+                color = Color.White.copy(alpha = .95f),
+                style = MaterialTheme.typography.bodyMedium
+            )
+        }
     }
 }
 
