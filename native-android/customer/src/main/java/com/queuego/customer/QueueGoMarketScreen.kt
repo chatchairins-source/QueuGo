@@ -50,6 +50,7 @@ import com.queuego.shared.QgMuted
 import com.queuego.shared.QgRed
 import com.queuego.shared.QgRemoteImage
 import com.queuego.shared.QgSectionTitle
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.CancellationException
 import com.queuego.shared.QueueGoHttpException
@@ -94,6 +95,12 @@ fun MarketNativeScreen(
     var loadFailed by remember { mutableStateOf(false) }
     var loading by remember { mutableStateOf(true) }
     var message by remember { mutableStateOf<String?>(null) }
+
+    var hasResumed by remember(actorId) { mutableStateOf(false) }
+    LifecycleResumeEffect(actorId) {
+        if (hasResumed) reload++ else hasResumed = true
+        onPauseOrDispose { }
+    }
 
     LaunchedEffect(actorId, location?.latitude, location?.longitude, reload) {
         loading = true
@@ -334,7 +341,7 @@ fun MarketNativeScreen(
                         } else {
                             val old = cart.find { it.product.id == p.id }
                             cart = if (old == null) cart + MarketCartLine(p, 1)
-                            else if (old.quantity < p.availablePacks) {
+                            else if (old.quantity < minOf(99, p.availablePacks)) {
                                 cart.map { if (it.product.id == p.id) it.copy(quantity = it.quantity + 1) else it }
                             } else cart
                             message = "เพิ่มลงตะกร้าตลาดสดแล้ว"
@@ -377,8 +384,8 @@ fun MarketNativeScreen(
                                             }
                                         }) { Text("−") }
                                         Text(line.quantity.toString(), Modifier.padding(horizontal = 8.dp), fontWeight = FontWeight.Bold)
-                                        OutlinedButton(enabled = !busy && !checkoutPending && line.quantity < line.product.availablePacks, onClick = {
-                                            if (line.quantity < line.product.availablePacks) {
+                                        OutlinedButton(enabled = !busy && !checkoutPending && line.quantity < minOf(99, line.product.availablePacks), onClick = {
+                                            if (line.quantity < minOf(99, line.product.availablePacks)) {
                                                 cart = cart.map { if (it.product.id == line.product.id) it.copy(quantity = it.quantity + 1) else it }
                                             }
                                         }) { Text("+") }
