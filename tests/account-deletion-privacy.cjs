@@ -12,6 +12,7 @@ const rider=read('rider/index.html');
 const privacy=read('docs/privacy.html');
 const deletion=read('docs/account-deletion.html');
 const sql=read('QueueGo-Pilot-Account-Deletion-Privacy.sql');
+const accountDeletionVoiceCleanup=read('supabase/migrations/20261011071500_account_deletion_voice_metadata_cleanup.sql');
 
 must(shared.includes('/functions/v1/account-delete'),'shared client must call account-delete edge function');
 must(shared.includes("confirm: 'DELETE_ACCOUNT'"),'shared client must require destructive confirmation token');
@@ -29,6 +30,9 @@ must(deletion.includes('เข้าสู่ระบบเพื่อยื�
 must(sql.includes('queuego_account_deletion_eligibility'),'SQL source must include eligibility gate');
 must(sql.includes("delivery_address='ข้อมูลถูกลบตามคำขอเจ้าของบัญชี'"),'market order PII scrub must respect NOT NULL');
 must(!sql.includes('set delivery_address=null,delivery_latitude=null,delivery_longitude=null\n     where customer_id=v_user.id;'),'market order scrub must not null NOT NULL columns');
+must(sql.includes('delete from public.qg_call_sessions where caller_user_id=v_user.id or callee_user_id=v_user.id;'),'account deletion must immediately remove voice call session metadata');
+must(accountDeletionVoiceCleanup.includes('account_deletion_voice_rpc_backup_20261011')&&accountDeletionVoiceCleanup.includes('pg_get_functiondef'),'voice cleanup migration must back up the live account-deletion RPC definition');
+must(accountDeletionVoiceCleanup.includes('ACCOUNT_DELETION_FINALIZE_UNEXPECTED_DEFINITION'),'voice cleanup migration must fail closed on an unexpected Production function definition');
 must(sql.includes('delete from public.qg_ugc_terms_acceptances where user_id=v_user.id;'),'account deletion must remove UGC terms acceptance');
 must(sql.includes('delete from public.qg_user_blocks where blocker_user_id=v_user.id or blocked_user_id=v_user.id;'),'account deletion must remove UGC blocks');
 must(sql.includes('content_snapshot=case when reporter_user_id=v_user.id or reported_user_id=v_user.id then null else content_snapshot end'),'account deletion must scrub reported chat snapshots');
