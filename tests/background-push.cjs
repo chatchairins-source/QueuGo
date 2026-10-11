@@ -103,7 +103,11 @@ for(const [role,source] of [['customer',customerNativePush],['merchant',merchant
   ok(source.includes('FirebaseMessagingService'),'Native '+role+' push must use FirebaseMessagingService');
   ok(source.includes('onNewToken'),'Native '+role+' push must rotate Firebase tokens');
   ok(source.includes('queuego_orders'),'Native '+role+' push must use the QueueGo orders notification channel');
+  ok(source.includes('setSound(sound, attributes)'),'Native '+role+' push channel must retain an audible default notification sound');
 }
+ok(riderNativePush.includes('if (type == "voice_call") NotificationCompat.CATEGORY_CALL')&&
+   riderNativePush.includes('else NotificationCompat.CATEGORY_MESSAGE'),
+   'Native Rider voice_call push must use call notification semantics while normal jobs remain messages');
 for(const [role,manifest] of [['customer',nativeManifests[0]],['merchant',nativeManifests[1]],['rider',nativeManifests[2]]]){
   ok(manifest.includes('android.permission.POST_NOTIFICATIONS'),'Native '+role+' manifest must request POST_NOTIFICATIONS');
   ok(manifest.includes('com.google.firebase.MESSAGING_EVENT'),'Native '+role+' manifest must register an FCM messaging service');
