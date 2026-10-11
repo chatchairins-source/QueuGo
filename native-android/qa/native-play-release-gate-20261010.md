@@ -69,10 +69,14 @@ any requirement below is OPEN.
   push/session/release/voice contracts, source integrity, tracking tests,
   untransformed Longdo crash baseline, all three Native APK builds, Android
   16 KB page-size packaging, Reject WebView, and accelerated Android
-  launch/map/voice-service lifecycle all passed on that exact HEAD. This closes
-  the current software/CI evidence for the v20 push source and notification-tap
-  routing only; physical Firebase receipt, authenticated Blueprint parity and
-  real two-device voice/TURN evidence remain OPEN.
+  launch/map/voice-service lifecycle all passed on that exact HEAD. APK artifact
+  11697027180 has digest
+  `sha256:6061299cca195db655f75fc78fb04cdc2fb3dbfb2fe7e37f2f617cf50dbf7473`;
+  launch-evidence artifact 11696897757 has digest
+  `sha256:daa053a68f7e2f4d5dc6216c6917a2995b596b845030b35731771cc4bd15db68`.
+  This closes the current software/CI evidence for the v20 push source and
+  notification-tap routing only; physical Firebase receipt, authenticated
+  Blueprint parity and real two-device voice/TURN evidence remain OPEN.
 - Backup/Restore run 38039279454 failed at secret validation with
   QG_SUPABASE_DB_URL, QG_SUPABASE_SERVICE_ROLE_KEY and QG_BACKUP_PASSPHRASE
   absent from the Actions environment.
