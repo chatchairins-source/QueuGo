@@ -1,12 +1,43 @@
 package com.queuego.customer
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+
+internal data class NativePushLaunchTarget(
+    val referenceId: String,
+    val type: String,
+    val eventId: Long
+)
 
 class MainActivity : ComponentActivity() {
+    private var pushTarget by mutableStateOf<NativePushLaunchTarget?>(null)
+    private var pushEventId = 0L
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContent { QueueGoCustomerApp() }
+        acceptPushIntent(intent)
+        setContent { QueueGoCustomerApp(pushTarget = pushTarget) }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        acceptPushIntent(intent)
+    }
+
+    private fun acceptPushIntent(source: Intent?) {
+        if (source == null) return
+        val referenceId = source.getStringExtra("queuego_push_reference_id").orEmpty().trim()
+        val type = source.getStringExtra("queuego_push_type").orEmpty().trim()
+        source.removeExtra("queuego_push_reference_id")
+        source.removeExtra("queuego_push_type")
+        if (referenceId.isBlank() && type.isBlank()) return
+        pushEventId += 1
+        pushTarget = NativePushLaunchTarget(referenceId, type, pushEventId)
     }
 }
