@@ -23,6 +23,7 @@ for(const p of [
   'rider/src/main/java/com/queuego/rider/RiderEarningsScreen.kt',
   'rider/src/main/java/com/queuego/rider/RiderProfileScreen.kt',
   'rider/src/main/java/com/queuego/rider/RiderSupportScreen.kt',
+  'qa/capture-rider-launch.py',
   'customer/src/main/java/com/queuego/customer/QueueGoCustomerApp.kt',
   'customer/src/main/java/com/queuego/customer/CustomerApi.kt',
   'customer/src/main/java/com/queuego/customer/CustomerGuestShell.kt',
@@ -122,6 +123,7 @@ const riderPush=read('rider/src/main/java/com/queuego/rider/RiderPush.kt');
 const riderSessionStore=read('rider/src/main/java/com/queuego/rider/SessionStore.kt');
 const riderManifest=read('rider/src/main/AndroidManifest.xml');
 const nativeRootGradle=read('build.gradle.kts');
+const runtimeCapture=read('qa/capture-rider-launch.py');
 const pilotWorkflow=fs.readFileSync(path.resolve(root,'..','.github','workflows','build-native-rider-pilot.yml'),'utf8');
 ok(riderApi.includes('qg_get_my_rider_offer')&&!riderApi.includes('rpcArray("get_rider_delivery_pool"'),'Rider native must show only the server-selected live offer, never a shared delivery pool');
 ok(riderApi.includes('qg_rider_decline_offer')&&riderApi.includes('qg_rider_action_once'),'Rider native offer accept/decline must stay on guarded Production RPCs');
