@@ -31,6 +31,9 @@ must(sql.includes('queuego_account_deletion_eligibility'),'SQL source must inclu
 must(sql.includes("delivery_address='ข้อมูลถูกลบตามคำขอเจ้าของบัญชี'"),'market order PII scrub must respect NOT NULL');
 must(!sql.includes('set delivery_address=null,delivery_latitude=null,delivery_longitude=null\n     where customer_id=v_user.id;'),'market order scrub must not null NOT NULL columns');
 must(sql.includes("delete from public.notifications n")&&sql.includes("n.id=c.id")&&sql.includes("n.type='voice_call'"),'account deletion must remove the exact counterpart voice notification bound to the call UUID');
+const voiceNotificationCleanupPos=sql.indexOf('delete from public.notifications n');
+const voiceSessionCleanupPos=sql.indexOf('delete from public.qg_call_sessions where caller_user_id=v_user.id or callee_user_id=v_user.id;');
+must(voiceNotificationCleanupPos>=0&&voiceSessionCleanupPos>voiceNotificationCleanupPos,'counterpart voice notification must be removed before its call-session identity row is deleted');
 must(sql.includes('delete from public.qg_call_sessions where caller_user_id=v_user.id or callee_user_id=v_user.id;'),'account deletion must immediately remove voice call session metadata');
 must(accountDeletionVoiceCleanup.includes("v_new_header text := 'insert into public.notifications(id,user_id,title,message,type,reference_id)'")&&accountDeletionVoiceCleanup.includes("v_new_values text := E'  values(\\n    v_call_id,\\n    v_callee_id,'"),'incremental voice migration must bind incoming notification UUID to the call UUID for exact privacy cleanup');
 must(accountDeletionVoiceCleanup.includes("'public.qg_call_start(uuid,text,uuid)'::regprocedure"),'voice cleanup migration must back up and patch qg_call_start together with account deletion');
