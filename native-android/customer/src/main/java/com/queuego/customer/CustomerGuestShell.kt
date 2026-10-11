@@ -382,9 +382,11 @@ internal fun GuestCustomerShell(
                         location = location?.copy(address = it)
                     },
                     onGps = ::gps,
+                    serviceBanner = serviceBanners["market"],
                     onBack = { screen = "home" },
                     onDone = { screen = "home" },
-                    onRequireLogin = { onLogin("home") }
+                    onRequireLogin = { onLogin("home") },
+                    onBannerLink = ::openBannerLink
                 )
 
                 "promotion" -> CustomerPromotionScreen(
