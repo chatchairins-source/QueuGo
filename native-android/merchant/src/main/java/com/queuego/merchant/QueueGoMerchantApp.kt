@@ -892,7 +892,7 @@ private fun DashboardScreen(
             ) {
                 QgRemoteImage(
                     source = shop.logo ?: shop.cover,
-                    modifier = Modifier.size(52.dp),
+                    modifier = Modifier.size(48.dp),
                     fallback = shop.name,
                     cornerRadius = 14.dp
                 )
@@ -901,8 +901,8 @@ private fun DashboardScreen(
                     Text(
                         shop.name,
                         color = Color(0xFF15171A),
-                        fontSize = 13.sp,
-                        lineHeight = 16.sp,
+                        fontSize = 15.sp,
+                        lineHeight = 18.sp,
                         fontWeight = FontWeight.Black,
                         maxLines = 1
                     )
@@ -910,7 +910,7 @@ private fun DashboardScreen(
                     Text(
                         if (shopOpen) "● เปิดร้านอยู่" else "● ปิดร้านอยู่",
                         color = if (shopOpen) Color(0xFF17A779) else Color(0xFF8B929C),
-                        fontSize = 9.sp,
+                        fontSize = 11.sp,
                         fontWeight = FontWeight.Bold
                     )
                 }
@@ -1261,32 +1261,33 @@ private fun MerchantMetricCard(
     icon: String,
     modifier: Modifier
 ) {
-    Row(
+    Column(
         modifier
+            .heightIn(min = 87.dp)
             .background(Color.White, RoundedCornerShape(15.dp))
             .border(1.dp, Color(0xFFE8EAEE), RoundedCornerShape(15.dp))
-            .padding(9.dp),
-        verticalAlignment = Alignment.CenterVertically
+            .padding(11.dp),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.Start
     ) {
         Box(
             Modifier
-                .size(32.dp)
-                .background(Color(0xFFFFF0F3), RoundedCornerShape(10.dp)),
+                .size(30.dp)
+                .background(Color(0xFFFFF0F3), RoundedCornerShape(9.dp)),
             contentAlignment = Alignment.Center
         ) {
             QgIcon(icon, Modifier.size(17.dp), QgRed)
         }
-        Spacer(Modifier.width(8.dp))
-        Column {
-            Text(
-                value,
-                color = Color(0xFF1D2025),
-                fontSize = 16.sp,
-                lineHeight = 19.sp,
-                fontWeight = FontWeight.Black
-            )
-            Text(label, color = Color(0xFF8A9098), fontSize = 8.5.sp)
-        }
+        Spacer(Modifier.height(5.dp))
+        Text(
+            value,
+            color = Color(0xFF1D2025),
+            fontSize = 20.sp,
+            lineHeight = 20.sp,
+            fontWeight = FontWeight.Black
+        )
+        Spacer(Modifier.height(3.dp))
+        Text(label, color = Color(0xFF8A9098), fontSize = 10.sp)
     }
 }
 
@@ -1299,7 +1300,7 @@ private fun MerchantMenuTile(
 ) {
     Column(
         modifier
-            .height(72.dp)
+            .height(85.dp)
             .background(Color.White, RoundedCornerShape(15.dp))
             .border(1.dp, Color(0xFFE8EAEE), RoundedCornerShape(15.dp))
             .clickable(onClick = onClick),
@@ -1308,8 +1309,8 @@ private fun MerchantMenuTile(
     ) {
         Box(
             Modifier
-                .size(32.dp)
-                .background(Color(0xFFFFF0F3), RoundedCornerShape(10.dp)),
+                .size(36.dp)
+                .background(Color(0xFFFFF0F3), RoundedCornerShape(12.dp)),
             contentAlignment = Alignment.Center
         ) {
             QgIcon(icon, Modifier.size(17.dp), QgRed)
@@ -1318,8 +1319,8 @@ private fun MerchantMenuTile(
         Text(
             label,
             color = Color(0xFF30343A),
-            fontSize = 9.sp,
-            lineHeight = 11.sp,
+            fontSize = 10.sp,
+            lineHeight = 12.5.sp,
             fontWeight = FontWeight.Bold,
             maxLines = 2
         )
