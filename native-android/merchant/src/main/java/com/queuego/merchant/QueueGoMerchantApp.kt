@@ -1370,138 +1370,419 @@ private fun MerchantOrderDetail(
     var now by remember { mutableStateOf(System.currentTimeMillis()) }
     var cancelOpen by remember(order?.id) { mutableStateOf(false) }
     var editOpen by remember(order?.id) { mutableStateOf(false) }
+
     LaunchedEffect(order?.status, order?.preparingAt) {
         while (order?.status == "preparing") {
             now = System.currentTimeMillis()
             delay(1_000)
         }
     }
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(14.dp)) {
-        OutlinedButton(onClick = onBack) { Text("ย้อนกลับ") }
-        Spacer(Modifier.height(12.dp))
-        if (order == null) {
-            Text("ไม่พบออเดอร์")
-            return
-        }
-        Text(order.number, fontWeight = FontWeight.Black, style = MaterialTheme.typography.headlineSmall)
-        Spacer(Modifier.height(6.dp))
-        QgStatusPill(merchantStatus(order.status, order.riderArrivedCustomerAt), order.status !in setOf("cancelled", "no_rider_available"))
-        Spacer(Modifier.height(12.dp))
-        QgCard(Modifier.fillMaxWidth()) {
+
+    Column(
+        Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 14.dp, vertical = 10.dp)
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                Modifier
+                    .size(44.dp)
+                    .background(Color.White, RoundedCornerShape(14.dp))
+                    .border(1.dp, Color(0xFFE7E9EC), RoundedCornerShape(14.dp))
+                    .clickable(onClick = onBack),
+                contentAlignment = Alignment.Center
+            ) {
+                QgIcon("back", Modifier.size(20.dp), Color(0xFF202329))
+            }
+            Spacer(Modifier.width(9.dp))
             Column {
-                Text("รายการสินค้า", fontWeight = FontWeight.ExtraBold)
-                if (items.isEmpty()) Text("กำลังโหลดรายการ...", color = QgMuted)
-                else items.forEach {
-                    Row(Modifier.fillMaxWidth().padding(vertical = 7.dp), verticalAlignment = Alignment.CenterVertically) {
-                        QgRemoteImage(it.image, Modifier.size(48.dp), it.name)
-                        Spacer(Modifier.width(8.dp))
-                        Column(Modifier.weight(1f)) {
-                            Text(it.name, fontWeight = FontWeight.Bold)
-                            if (!it.description.isNullOrBlank()) Text(it.description!!, color = QgMuted, style = MaterialTheme.typography.bodySmall)
-                            Text("จำนวน " + it.quantity)
-                        }
-                        Text("฿" + "%.0f".format(it.totalPrice), fontWeight = FontWeight.Bold)
-                    }
-                    HorizontalDivider()
-                }
+                Text(
+                    "รายละเอียดคำสั่งซื้อ",
+                    color = Color(0xFF1D2025),
+                    fontSize = 18.sp,
+                    lineHeight = 22.sp,
+                    fontWeight = FontWeight.Black
+                )
+                Text(
+                    "สถานะ รายการสินค้า และการจัดการออเดอร์",
+                    color = Color(0xFF8E949C),
+                    fontSize = 9.5.sp
+                )
             }
         }
         Spacer(Modifier.height(10.dp))
-        QgCard(Modifier.fillMaxWidth()) {
-            Column {
-                Text("ยอดที่ร้านได้รับจาก Rider", color = QgMuted)
-                Text("฿" + "%.0f".format(order.subtotal), color = QgRed, fontWeight = FontWeight.Black, style = MaterialTheme.typography.headlineMedium)
-                Text("แสดงยอดเงินสดเท่านั้น ไม่มีขั้นตอนยืนยันรับเงินซ้ำ", color = QgMuted, style = MaterialTheme.typography.bodySmall)
+
+        if (order == null) {
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    .background(Color.White, RoundedCornerShape(17.dp))
+                    .border(1.dp, Color(0xFFE7E9EC), RoundedCornerShape(17.dp))
+                    .padding(vertical = 28.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text("ไม่พบออเดอร์", color = QgMuted)
+            }
+            return
+        }
+
+        val state = order.status.lowercase()
+        val stage = merchantOrderProgressStage(order)
+        val created = merchantOrderTime(order.createdAt)
+        val itemCount = items.sumOf { it.quantity }
+        val cashVisible = state !in setOf("pending", "pending_shop", "cancelled")
+        val canCancel = state in setOf(
+            "accepted", "shop_accepted", "rider_assigned", "assigned", "rider_to_shop"
+        )
+
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .background(Color.White, RoundedCornerShape(18.dp))
+                .border(1.dp, Color(0xFFE7E9EC), RoundedCornerShape(18.dp))
+                .padding(14.dp)
+        ) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        "ออเดอร์ของร้าน",
+                        color = QgRed,
+                        fontSize = 8.5.sp,
+                        fontWeight = FontWeight.ExtraBold
+                    )
+                    Spacer(Modifier.height(3.dp))
+                    Text(
+                        order.number,
+                        color = Color(0xFF1D2025),
+                        fontSize = 22.sp,
+                        lineHeight = 26.sp,
+                        fontWeight = FontWeight.Black
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        merchantStatus(order.status, order.riderArrivedCustomerAt),
+                        color = Color(0xFF1D2025),
+                        fontSize = 18.sp,
+                        lineHeight = 22.sp,
+                        fontWeight = FontWeight.Black
+                    )
+                }
+                if (created.isNotBlank()) {
+                    Box(
+                        Modifier
+                            .background(Color(0xFFF7F8F9), RoundedCornerShape(99.dp))
+                            .padding(horizontal = 8.dp, vertical = 5.dp)
+                    ) {
+                        Text(
+                            "สั่งเมื่อ " + created,
+                            color = Color(0xFF7B828B),
+                            fontSize = 8.5.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+            }
+
+            if (state != "cancelled") {
+                Spacer(Modifier.height(12.dp))
+                MerchantOrderProgress(stage)
+            }
+
+            if (!order.riderArrivedShopAt.isNullOrBlank()) {
+                Spacer(Modifier.height(10.dp))
+                Box(
+                    Modifier
+                        .fillMaxWidth()
+                        .background(Color(0xFFFFF7E8), RoundedCornerShape(13.dp))
+                        .padding(horizontal = 10.dp, vertical = 8.dp)
+                ) {
+                    Text(
+                        "Rider ถึงร้านแล้ว · " +
+                            merchantOrderTime(order.riderArrivedShopAt).ifBlank { "ล่าสุด" },
+                        color = Color(0xFF9A6A10),
+                        fontSize = 9.5.sp,
+                        fontWeight = FontWeight.ExtraBold
+                    )
+                }
             }
         }
-        Spacer(Modifier.height(12.dp))
 
-        when (order.status) {
-            "pending" -> {
+        Spacer(Modifier.height(8.dp))
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .background(Color.White, RoundedCornerShape(17.dp))
+                .border(1.dp, Color(0xFFE7E9EC), RoundedCornerShape(17.dp))
+                .padding(horizontal = 12.dp)
+        ) {
+            MerchantDetailInfoRow(
+                label = "ลูกค้า",
+                value = order.customerName ?: "ลูกค้า"
+            )
+            HorizontalDivider(color = Color(0xFFECEEF1))
+            MerchantDetailInfoRow(
+                label = "ที่อยู่จัดส่ง",
+                value = order.deliveryAddress?.takeIf { it.isNotBlank() } ?: "-"
+            )
+        }
+
+        Spacer(Modifier.height(10.dp))
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = 2.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                "รายการสินค้า",
+                modifier = Modifier.weight(1f),
+                color = Color(0xFF1D2025),
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Black
+            )
+            Text(
+                itemCount.toString() + " ชิ้น",
+                color = Color(0xFF8A9098),
+                fontSize = 9.sp
+            )
+        }
+        Spacer(Modifier.height(6.dp))
+
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .background(Color.White, RoundedCornerShape(17.dp))
+                .border(1.dp, Color(0xFFE7E9EC), RoundedCornerShape(17.dp))
+                .padding(horizontal = 11.dp, vertical = 4.dp)
+        ) {
+            if (items.isEmpty()) {
+                Text(
+                    "กำลังโหลดรายการ...",
+                    color = QgMuted,
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 22.dp),
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                )
+            } else {
+                items.forEachIndexed { index, item ->
+                    Row(
+                        Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        if (!item.image.isNullOrBlank()) {
+                            QgRemoteImage(
+                                item.image,
+                                Modifier.size(46.dp),
+                                item.name,
+                                cornerRadius = 11.dp
+                            )
+                        } else {
+                            Box(
+                                Modifier
+                                    .size(46.dp)
+                                    .background(Color(0xFFF7F8F9), RoundedCornerShape(11.dp)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                QgIcon("box", Modifier.size(20.dp), Color(0xFF8A9098))
+                            }
+                        }
+                        Spacer(Modifier.width(8.dp))
+                        Column(Modifier.weight(1f)) {
+                            Text(
+                                item.name,
+                                color = Color(0xFF1D2025),
+                                fontSize = 11.5.sp,
+                                fontWeight = FontWeight.ExtraBold
+                            )
+                            Spacer(Modifier.height(2.dp))
+                            Text(
+                                item.quantity.toString() + " × " +
+                                    "%.0f".format(item.unitPrice) + " บาท",
+                                color = Color(0xFF8A9098),
+                                fontSize = 8.5.sp
+                            )
+                        }
+                        Text(
+                            "%.0f".format(item.totalPrice) + " บาท",
+                            color = Color(0xFF1D2025),
+                            fontSize = 10.5.sp,
+                            fontWeight = FontWeight.ExtraBold
+                        )
+                    }
+                    if (index != items.lastIndex) {
+                        HorizontalDivider(color = Color(0xFFF0EAEC))
+                    }
+                }
+            }
+
+            HorizontalDivider(color = Color(0xFFECEEF1))
+            Column(Modifier.padding(vertical = 8.dp)) {
+                MerchantOrderSummaryRow("รวมค่าสินค้า", "%.0f".format(order.subtotal) + " บาท")
+                Spacer(Modifier.height(4.dp))
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        "ยอดที่ร้านได้รับ",
+                        modifier = Modifier.weight(1f),
+                        color = Color(0xFF1D2025),
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Black
+                    )
+                    Text(
+                        "%.0f".format(order.subtotal) + " บาท",
+                        color = QgRed,
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Black
+                    )
+                }
+                if (cashVisible) {
+                    Spacer(Modifier.height(8.dp))
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .background(Color(0xFFFFF8F9), RoundedCornerShape(13.dp))
+                            .padding(horizontal = 10.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            "เงินสดที่ Rider จ่ายร้านเมื่อรับสินค้า",
+                            modifier = Modifier.weight(1f),
+                            color = Color(0xFF8A9098),
+                            fontSize = 8.5.sp
+                        )
+                        Text(
+                            "%.0f".format(order.subtotal) + " บาท",
+                            color = Color(0xFF1D2025),
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.ExtraBold
+                        )
+                    }
+                }
+            }
+        }
+
+        when (state) {
+            "searching_rider" -> {
+                Spacer(Modifier.height(8.dp))
+                MerchantOrderActionNote("กำลังค้นหา Rider ให้กับออเดอร์นี้")
+            }
+            "ready", "waiting_rider" -> {
+                Spacer(Modifier.height(8.dp))
+                MerchantOrderActionNote("สินค้าพร้อมแล้ว · รอ Rider มารับสินค้า")
+            }
+        }
+
+        Spacer(Modifier.height(8.dp))
+        when (state) {
+            "pending", "pending_shop" -> {
                 Button(
                     onClick = { onAction("accepted", null) },
                     enabled = !busy,
-                    modifier = Modifier.fillMaxWidth().height(54.dp)
-                ) { Text("รับออเดอร์", fontWeight = FontWeight.ExtraBold) }
-                Spacer(Modifier.height(8.dp))
-                OutlinedButton(
-                    onClick = { cancelOpen = true },
-                    enabled = !busy,
-                    modifier = Modifier.fillMaxWidth()
-                ) { Text("ปฏิเสธออเดอร์") }
-            }
-            "accepted" -> {
-                QgCard(Modifier.fillMaxWidth()) {
-                    Text("ร้านรับออเดอร์แล้ว · รอระบบจัดหา Rider", fontWeight = FontWeight.ExtraBold)
+                    modifier = Modifier.fillMaxWidth().height(46.dp),
+                    shape = RoundedCornerShape(14.dp)
+                ) {
+                    Text("รับออเดอร์", fontWeight = FontWeight.Black)
                 }
-                Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(7.dp))
                 OutlinedButton(
                     onClick = { cancelOpen = true },
                     enabled = !busy,
-                    modifier = Modifier.fillMaxWidth()
-                ) { Text("ยกเลิกออเดอร์") }
+                    modifier = Modifier.fillMaxWidth().height(46.dp),
+                    shape = RoundedCornerShape(14.dp)
+                ) {
+                    Text("ปฏิเสธออเดอร์")
+                }
             }
-            "searching_rider" -> QgCard(Modifier.fillMaxWidth()) {
-                Text("กำลังหา Rider · รอ Rider รับงานก่อนเริ่มเตรียมออเดอร์", fontWeight = FontWeight.ExtraBold)
+            "accepted", "shop_accepted" -> {
+                MerchantOrderActionNote("ร้านรับออเดอร์แล้ว · รอระบบจัดหา Rider")
+                Spacer(Modifier.height(7.dp))
+                OutlinedButton(
+                    onClick = { cancelOpen = true },
+                    enabled = !busy,
+                    modifier = Modifier.fillMaxWidth().height(46.dp),
+                    shape = RoundedCornerShape(14.dp)
+                ) {
+                    Text("ยกเลิกออเดอร์")
+                }
             }
-            "rider_assigned", "assigned" -> {
+            "rider_assigned", "assigned", "rider_to_shop" -> {
                 Button(
                     onClick = { onAction("preparing", null) },
                     enabled = !busy,
-                    modifier = Modifier.fillMaxWidth().height(54.dp)
-                ) { Text("เริ่มเตรียมออเดอร์", fontWeight = FontWeight.ExtraBold) }
-                Spacer(Modifier.height(8.dp))
+                    modifier = Modifier.fillMaxWidth().height(46.dp),
+                    shape = RoundedCornerShape(14.dp)
+                ) {
+                    Text("เริ่มเตรียมสินค้า", fontWeight = FontWeight.Black)
+                }
+                Spacer(Modifier.height(7.dp))
                 OutlinedButton(
                     onClick = { editOpen = true },
                     enabled = !busy && items.isNotEmpty(),
-                    modifier = Modifier.fillMaxWidth()
-                ) { Text("แก้ไขรายการ") }
-                Spacer(Modifier.height(8.dp))
-                OutlinedButton(
-                    onClick = { cancelOpen = true },
-                    enabled = !busy,
-                    modifier = Modifier.fillMaxWidth()
-                ) { Text("ยกเลิกออเดอร์") }
+                    modifier = Modifier.fillMaxWidth().height(46.dp),
+                    shape = RoundedCornerShape(14.dp)
+                ) {
+                    Text("แก้ไขรายการ")
+                }
+                if (canCancel) {
+                    Spacer(Modifier.height(7.dp))
+                    OutlinedButton(
+                        onClick = { cancelOpen = true },
+                        enabled = !busy,
+                        modifier = Modifier.fillMaxWidth().height(46.dp),
+                        shape = RoundedCornerShape(14.dp)
+                    ) {
+                        Text("ยกเลิกออเดอร์")
+                    }
+                }
             }
             "preparing" -> {
                 val left = preparationLeft(order.preparingAt, now)
                 Button(
                     onClick = { onAction("ready", null) },
                     enabled = !busy,
-                    modifier = Modifier.fillMaxWidth().height(58.dp)
+                    modifier = Modifier.fillMaxWidth().height(58.dp),
+                    shape = RoundedCornerShape(14.dp)
                 ) {
-                    Text(
-                        if (left > 0) "พร้อมส่ง · เหลือ " + formatSeconds(left)
-                        else "พร้อมส่ง · ถึงเวลาแล้ว",
-                        fontWeight = FontWeight.Black
-                    )
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            if (left > 0) "กำลังเตรียมสินค้า" else "สินค้าพร้อมส่ง",
+                            fontWeight = FontWeight.Black
+                        )
+                        if (!order.preparingAt.isNullOrBlank()) {
+                            Text(
+                                formatSeconds(left),
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Black
+                            )
+                        }
+                    }
                 }
-                Spacer(Modifier.height(6.dp))
-                Text("ตัวนับเวลาอยู่บนปุ่มตาม Flow ร้านค้า", color = QgMuted, style = MaterialTheme.typography.bodySmall)
             }
-            "ready" -> QgCard(Modifier.fillMaxWidth()) {
-                Text("พร้อมส่งแล้ว · รอ Rider มารับสินค้า", fontWeight = FontWeight.ExtraBold)
+            "picked_up" -> {
+                Spacer(Modifier.height(2.dp))
+                MerchantOrderActionNote("Rider รับสินค้าออกจากร้านแล้ว")
             }
-            "picked_up" -> QgCard(Modifier.fillMaxWidth()) {
-                Text("Rider รับสินค้าออกจากร้านแล้ว", fontWeight = FontWeight.ExtraBold)
-            }
-            "in_progress" -> QgCard(Modifier.fillMaxWidth()) {
-                Text(
-                    if (order.riderArrivedCustomerAt.isNullOrBlank()) "Rider กำลังจัดส่ง"
-                    else "Rider ถึงลูกค้าแล้ว · รอส่งมอบ",
-                    fontWeight = FontWeight.ExtraBold
+            "in_progress", "delivering", "rider_to_customer" -> {
+                Spacer(Modifier.height(2.dp))
+                MerchantOrderActionNote(
+                    if (order.riderArrivedCustomerAt.isNullOrBlank()) {
+                        "Rider กำลังจัดส่ง"
+                    } else {
+                        "Rider ถึงลูกค้าแล้ว · รอส่งมอบ"
+                    }
                 )
             }
-            "completed" -> QgCard(Modifier.fillMaxWidth()) {
-                Text("ออเดอร์เสร็จสมบูรณ์", color = QgGreen, fontWeight = FontWeight.ExtraBold)
+            "completed", "delivered" -> {
+                Spacer(Modifier.height(2.dp))
+                MerchantOrderActionNote("ออเดอร์เสร็จสมบูรณ์", success = true)
             }
-            "cancelled" -> QgCard(Modifier.fillMaxWidth()) {
-                Text("ออเดอร์ถูกยกเลิก", color = QgMuted, fontWeight = FontWeight.ExtraBold)
+            "cancelled" -> {
+                Spacer(Modifier.height(2.dp))
+                MerchantOrderActionNote("ออเดอร์ถูกยกเลิก")
             }
-            "no_rider_available" -> QgCard(Modifier.fillMaxWidth()) {
-                Text("ไม่พบ Rider · ออเดอร์สิ้นสุดแล้ว", color = QgMuted, fontWeight = FontWeight.ExtraBold)
+            "no_rider_available" -> {
+                Spacer(Modifier.height(2.dp))
+                MerchantOrderActionNote("ไม่พบ Rider · ออเดอร์สิ้นสุดแล้ว")
             }
         }
+
         Spacer(Modifier.height(30.dp))
     }
 
@@ -1529,6 +1810,96 @@ private fun MerchantOrderDetail(
                 onAction("cancel", reason)
             }
         )
+    }
+}
+
+@Composable
+private fun MerchantOrderProgress(stage: Int) {
+    val labels = listOf("ออเดอร์เข้า", "ร้านรับ", "เตรียมสินค้า", "กำลังจัดส่ง", "สำเร็จ")
+    Row(
+        Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        labels.forEachIndexed { index, label ->
+            Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
+                Box(
+                    Modifier
+                        .fillMaxWidth()
+                        .height(4.dp)
+                        .background(
+                            if (index <= stage) QgRed else Color(0xFFECEEF1),
+                            RoundedCornerShape(99.dp)
+                        )
+                )
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    label,
+                    color = if (index <= stage) Color(0xFF1D2025) else Color(0xFF9A9FA6),
+                    fontSize = 7.5.sp,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                    maxLines = 1
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun MerchantDetailInfoRow(label: String, value: String) {
+    Column(Modifier.fillMaxWidth().padding(vertical = 10.dp)) {
+        Text(label, color = Color(0xFF959AA1), fontSize = 8.5.sp, fontWeight = FontWeight.Bold)
+        Spacer(Modifier.height(2.dp))
+        Text(
+            value,
+            color = Color(0xFF202329),
+            fontSize = 11.5.sp,
+            lineHeight = 15.5.sp,
+            fontWeight = FontWeight.ExtraBold
+        )
+    }
+}
+
+@Composable
+private fun MerchantOrderSummaryRow(label: String, value: String) {
+    Row(Modifier.fillMaxWidth()) {
+        Text(label, modifier = Modifier.weight(1f), color = Color(0xFF7B828B), fontSize = 9.5.sp)
+        Text(value, color = Color(0xFF1D2025), fontSize = 10.sp, fontWeight = FontWeight.Bold)
+    }
+}
+
+@Composable
+private fun MerchantOrderActionNote(text: String, success: Boolean = false) {
+    Box(
+        Modifier
+            .fillMaxWidth()
+            .background(
+                if (success) Color(0xFFEAF9F1) else Color(0xFFF7F8F9),
+                RoundedCornerShape(13.dp)
+            )
+            .border(
+                1.dp,
+                if (success) Color(0xFFCDEEDC) else Color(0xFFE7E9EC),
+                RoundedCornerShape(13.dp)
+            )
+            .padding(horizontal = 11.dp, vertical = 9.dp)
+    ) {
+        Text(
+            text,
+            color = if (success) Color(0xFF0A9660) else Color(0xFF5E646D),
+            fontSize = 9.5.sp,
+            fontWeight = FontWeight.ExtraBold
+        )
+    }
+}
+
+private fun merchantOrderProgressStage(order: MerchantOrder): Int {
+    val state = order.status.lowercase()
+    return when {
+        state in setOf("completed", "delivered") -> 4
+        state in setOf("picked_up", "in_progress", "delivering", "rider_to_customer", "arrived") -> 3
+        state in setOf("rider_assigned", "assigned", "rider_to_shop", "preparing", "ready", "waiting_rider") -> 2
+        state in setOf("accepted", "shop_accepted", "searching_rider") -> 1
+        else -> 0
     }
 }
 
