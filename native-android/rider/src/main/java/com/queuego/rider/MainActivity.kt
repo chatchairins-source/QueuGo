@@ -37,10 +37,20 @@ class MainActivity : ComponentActivity() {
 
     private fun acceptPushIntent(source: Intent?) {
         if (source == null) return
-        val referenceId = source.getStringExtra("queuego_push_reference_id").orEmpty().trim()
-        val type = source.getStringExtra("queuego_push_type").orEmpty().trim()
+        val referenceId = (
+            source.getStringExtra("queuego_push_reference_id")
+                ?: source.getStringExtra("referenceId")
+                ?: source.getStringExtra("reference_id")
+            ).orEmpty().trim()
+        val type = (
+            source.getStringExtra("queuego_push_type")
+                ?: source.getStringExtra("type")
+            ).orEmpty().trim()
         source.removeExtra("queuego_push_reference_id")
         source.removeExtra("queuego_push_type")
+        source.removeExtra("referenceId")
+        source.removeExtra("reference_id")
+        source.removeExtra("type")
         if (referenceId.isBlank() && type.isBlank()) return
         pushEventId += 1
         pushTarget = NativePushLaunchTarget(referenceId, type, pushEventId)
