@@ -1,0 +1,208 @@
+name: QueueGo Native Android Pilot
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - queuego-native-android-v1
+      - 'work-native-**'
+      - work-native-release-integration-20261010
+      - work-native-release-preflight-20261010
+      - work-native-voice-background-20261010
+      - work-native-voice-call-v1-20261010
+      - work-native-voice-controller-v1-20261010
+      - work-native-voice-turn-client-v1-20261010
+      - work-native-voice-integration-v1-20261010
+      - work-native-voice-release-candidate-v1-20261010
+      - work-native-voice-push-release-candidate-v1-20261010
+      - work-native-customer-logout-integration-20261010
+      - work-native-customer-location-integration-v2-20261010
+      - work-native-printer-ticket-parity-20261010
+      - work-native-order-number-parity-20261010
+      - work-native-printer-durable-history-20261010
+      - work-native-merchant-printer-20261010
+      - work-native-merchant-login-parity-20261010
+      - work-native-verified-integration-20261010
+      - work-native-rpc-null-contract-20261010
+      - work-native-pos-edit-idempotency-20261010
+    paths:
+      - 'native-android/**'
+      - 'tests/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'tests/native-android-source.cjs'
+      - 'tests/native-pos-edit-idempotency.cjs'
+      - 'tests/native-voice-call-contract.cjs'
+      - 'tests/native-voice-turn-edge.cjs'
+      - 'tests/native-voice-ui-contract.cjs'
+      - 'tests/native-voice-background.cjs'
+      - 'tests/native-backend-migration-sync.cjs'
+      - 'supabase/functions/queuego-push/**'
+      - 'ops/native-push-session-binding-proposal-*.sql'
+      - 'tests/native-push-session-binding.cjs'
+      - 'tests/native-release-gate.cjs'
+      - 'tests/native-release-workflow.cjs'
+      - '.github/workflows/build-native-release.yml'
+      - 'tests/play-store-readiness.cjs'
+      - 'tests/security-auth-definer-review.cjs'
+      - 'docs/security-auth-definer-review.json'
+      - 'docs/security-anon-definer-allowlist.json'
+      - 'docs/play-closed-beta-readiness.md'
+      - 'docs/play-store-listing-draft.md'
+      - 'docs/play-app-access-content-rating.md'
+      - 'docs/pilot-recovery-manifest.json'
+      - 'docs/privacy.html'
+      - 'docs/account-deletion.html'
+      - '.github/workflows/release-secret-readiness.yml'
+      - 'tests/background-push.cjs'
+      - 'tests/native-customer-merchant-push.cjs'
+      - 'ops/native-voice-call-schema-proposal-*.sql'
+      - 'supabase/migrations/*native_push_session_binding*.sql'
+      - 'supabase/migrations/*native_voice_call_backend*.sql'
+      - 'supabase/functions/queuego-turn/**'
+      - 'supabase/migrations/*pos_edit_bill_idempotency.sql'
+      - 'ops/pos-edit-idempotency-schema-baseline-*.sql'
+      - '.github/workflows/build-native-rider-pilot.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: queuego-native-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  native-pilot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Install Android SDK
+        run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-36" "build-tools;36.0.0" >/dev/null
+      - uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a # v4
+        with:
+          gradle-version: '9.6.0'
+      - name: Download verified Longdo Android SDK
+        run: |
+          mkdir -p native-android/rider/libs
+          curl -fsSL "https://api.longdo.com/map-android-SDK/LongdoMapAndroidSDK_v0.1.8.aar" -o native-android/rider/libs/LongdoMapAndroidSDK_v0.1.8.aar
+          echo "0918c23673ba6c7a349746f005525aca2ff3470f8e2966d5d2a4cb633ae5980c  native-android/rider/libs/LongdoMapAndroidSDK_v0.1.8.aar" | sha256sum -c -
+      - name: Prepare native Firebase configs
+        env:
+          QG_FIREBASE_GOOGLE_SERVICES_JSON_B64: ${{ secrets.QG_FIREBASE_GOOGLE_SERVICES_JSON_B64 }}
+        run: |
+          set -euo pipefail
+          if [ -z "${QG_FIREBASE_GOOGLE_SERVICES_JSON_B64:-}" ]; then
+            echo "::warning::Firebase config secret is absent; native Rider APK will build without physical background-push certification"
+            exit 0
+          fi
+          umask 077
+          tmp="$(mktemp)"
+          printf '%s' "$QG_FIREBASE_GOOGLE_SERVICES_JSON_B64" | base64 --decode > "$tmp"
+          QG_FIREBASE_CONFIG="$tmp" python3 - <<'PY'
+          import json, os, shutil
+          from pathlib import Path
+          p=Path(os.environ['QG_FIREBASE_CONFIG'])
+          data=json.loads(p.read_text())
+          packages={
+              c.get('client_info',{}).get('android_client_info',{}).get('package_name')
+              for c in (data.get('client') or [])
+          }
+          targets={
+              'com.queuego.customer': Path('native-android/customer/google-services.json'),
+              'com.queuego.merchant': Path('native-android/merchant/google-services.json'),
+              'com.queuego.rider': Path('native-android/rider/google-services.json'),
+          }
+          if 'com.queuego.rider' not in packages:
+              raise SystemExit('::error::Firebase config has no com.queuego.rider Android client')
+          for package,target in targets.items():
+              if package in packages:
+                  shutil.copyfile(p,target)
+                  os.chmod(target,0o600)
+                  print(f'Native Firebase config: {package} valid')
+              else:
+                  print(f'::warning::Firebase config has no {package} Android client; that app will build without physical background-push certification')
+          PY
+          rm -f "$tmp"
+      - name: Install regression dependencies
+        run: npm ci
+      - name: Full QueueGo regression
+        run: npm test
+      - name: Native POS edit idempotency SQL contracts
+        run: node tests/native-pos-edit-idempotency.cjs
+      - name: Native Customer Merchant push contracts
+        run: node tests/native-customer-merchant-push.cjs
+      - name: Native push session binding contracts
+        run: node tests/native-push-session-binding.cjs
+      - name: Native release packaging guard
+        run: node tests/native-release-gate.cjs
+      - name: Native voice call SQL contracts
+        run: node tests/native-voice-call-contract.cjs
+      - name: Native voice TURN edge contracts
+        run: node tests/native-voice-turn-edge.cjs
+      - name: Native voice UI contracts
+        run: node tests/native-voice-ui-contract.cjs
+      - name: Native voice background lifecycle contracts
+        run: node tests/native-voice-background.cjs
+      - name: Native backend migration mirror
+        run: node tests/native-backend-migration-sync.cjs
+      - name: Source integrity
+        run: node tests/native-android-source.cjs
+      - name: Verify launcher asset family
+        run: node tests/native-launcher-assets.cjs
+      - name: Verify Production category banner assets
+        run: node tests/native-category-assets.cjs
+      - name: Tracking coordinate and terminal-state unit tests
+        run: gradle -p native-android :shared:testDebugUnitTest :merchant:testDebugUnitTest :customer:testDebugUnitTest :rider:testDebugUnitTest --no-build-cache --stacktrace
+      - name: Build untransformed Longdo crash regression baseline
+        run: |
+          gradle -p native-android :rider:assembleDebug :rider:assembleDebugAndroidTest -Pandroid.enableJetifier=false --stacktrace
+          mkdir -p artifacts/native-rider-launch/baseline
+          cp native-android/rider/build/outputs/apk/debug/rider-debug.apk artifacts/native-rider-launch/baseline/rider-untransformed.apk
+          cp native-android/rider/build/outputs/apk/androidTest/debug/rider-debug-androidTest.apk artifacts/native-rider-launch/baseline/rider-test.apk
+      - name: Build three native APKs
+        run: gradle -p native-android :customer:assembleDebug :merchant:assembleDebug :rider:assembleDebug :rider:assembleDebugAndroidTest --no-build-cache --stacktrace
+      - name: Verify Android 16 KB page-size packaging
+        run: |
+          python3 native-android/qa/verify-16kb-page-size.py \
+            native-android/customer/build/outputs/apk/debug/customer-debug.apk \
+            native-android/merchant/build/outputs/apk/debug/merchant-debug.apk \
+            native-android/rider/build/outputs/apk/debug/rider-debug.apk
+      - name: Reject WebView
+        run: |
+          if grep -R -E 'android\.webkit\.WebView|<WebView\b|loadUrl\(' native-android; then
+            echo "WebView is forbidden in QueueGo native apps"
+            exit 1
+          fi
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: queuego-native-pilot-apks
+          path: |
+            native-android/customer/build/outputs/apk/debug/customer-debug.apk
+            native-android/merchant/build/outputs/apk/debug/merchant-debug.apk
+            native-android/rider/build/outputs/apk/debug/rider-debug.apk
+          if-no-files-found: error
+      - name: Enable runner-only access to Android acceleration
+        run: |
+          set -euo pipefail
+          test -c /dev/kvm
+          if [ ! -r /dev/kvm ] || [ ! -w /dev/kvm ]; then
+            sudo chown "$(id -u):$(id -g)" /dev/kvm
+          fi
+      - name: Capture native launch, map and voice service lifecycle on Android
+        timeout-minutes: 12
+        run: python3 native-android/qa/capture-rider-launch.py
+      - name: Save real Android launch evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: queuego-rider-native-launch-evidence
+          path: artifacts/native-rider-launch/
+          if-no-files-found: warn
+          retention-days: 14
+      # Mission 2026-10-10: incomplete builds and evidence remain internal.
+      # Public APK/AAB delivery requires the full three-role Release Gate.
