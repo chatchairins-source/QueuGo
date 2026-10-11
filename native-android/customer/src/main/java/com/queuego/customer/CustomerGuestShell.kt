@@ -49,7 +49,10 @@ import kotlinx.coroutines.launch
  * Protected checkout/orders/laundry/favorites route to the same native Customer authentication.
  */
 @Composable
-internal fun GuestCustomerShell(onLogin: (destination: String) -> Unit) {
+internal fun GuestCustomerShell(
+    initialScreen: String = "home",
+    onLogin: (destination: String) -> Unit
+) {
     val api = remember { CustomerApi() }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
@@ -59,7 +62,9 @@ internal fun GuestCustomerShell(onLogin: (destination: String) -> Unit) {
     val shopCatalog = remember { CustomerShopCatalog(scope) }
     val catalogState by shopCatalog.state.collectAsState()
 
-    var screen by remember { mutableStateOf("home") }
+    var screen by remember(initialScreen) {
+        mutableStateOf(initialScreen.takeIf { it in setOf("home", "search", "cart", "market", "shopping") } ?: "home")
+    }
     var returnScreen by remember { mutableStateOf("home") }
     var category by remember { mutableStateOf("all") }
     var shoppingMode by remember { mutableStateOf("all") }
