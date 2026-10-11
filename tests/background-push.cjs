@@ -115,8 +115,11 @@ for(const [role,source] of [['customer',customerNativePush],['merchant',merchant
 for(const [role,activity] of [['customer',customerMainActivity],['merchant',merchantMainActivity],['rider',riderMainActivity]]){
   ok(activity.includes('override fun onNewIntent(intent: Intent)'),'Native '+role+' must handle notification taps while the activity is already open');
   ok(activity.includes('acceptPushIntent(intent)'),'Native '+role+' must consume push routing on cold launch and warm intent delivery');
-  ok(activity.includes('queuego_push_reference_id')&&activity.includes('queuego_push_type'),'Native '+role+' must read the push reference and type extras');
-  ok(activity.includes('removeExtra("queuego_push_reference_id")')&&activity.includes('removeExtra("queuego_push_type")'),'Native '+role+' must consume push extras exactly once across activity recreation');
+  ok(activity.includes('queuego_push_reference_id')&&activity.includes('queuego_push_type'),'Native '+role+' must read locally-created push reference and type extras');
+  ok(activity.includes('referenceId')&&activity.includes('getStringExtra("type")'),'Native '+role+' must also read Firebase automatic notification data extras');
+  ok(activity.includes('removeExtra("queuego_push_reference_id")')&&activity.includes('removeExtra("queuego_push_type")')&&
+     activity.includes('removeExtra("referenceId")')&&activity.includes('removeExtra("type")'),
+     'Native '+role+' must consume both local and automatic FCM push extras exactly once across activity recreation');
 }
 ok(customerNativeApp.includes('LaunchedEffect(pushTarget?.eventId, loading)')&&
    customerNativeApp.includes('api.loadOrders(auth)')&&customerNativeApp.includes('screen = "order"'),
