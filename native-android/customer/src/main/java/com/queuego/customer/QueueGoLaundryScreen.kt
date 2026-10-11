@@ -1,5 +1,6 @@
 package com.queuego.customer
 
+import android.content.Context
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -34,6 +35,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.queuego.shared.NativeAuth
@@ -42,6 +44,7 @@ import com.queuego.shared.QgMuted
 import com.queuego.shared.QgRed
 import com.queuego.shared.QgSectionTitle
 import kotlinx.coroutines.launch
+import java.util.UUID
 
 @Composable
 fun LaundryNativeScreen(
@@ -55,6 +58,13 @@ fun LaundryNativeScreen(
 ) {
     val api = remember { CustomerLaundryApi() }
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
+    val pendingPrefs = remember(auth.user.id) {
+        context.getSharedPreferences(
+            "qg_laundry_pending_" + auth.user.id,
+            Context.MODE_PRIVATE
+        )
+    }
     var catalog by remember { mutableStateOf<LaundryCatalog?>(null) }
     var selectedHub by remember { mutableStateOf<LaundryHub?>(null) }
     var services by remember { mutableStateOf<List<LaundryService>>(emptyList()) }
@@ -100,13 +110,36 @@ fun LaundryNativeScreen(
     val deliveryFee = cfg?.deliveryFee ?: 0.0
     val estimatedTotal = serviceAmount?.plus(deliveryFee)
 
+    fun pendingRequestId(hub: LaundryHub, service: LaundryService, qtyValue: Double?): String {
+        val qtyKey = qtyValue?.toString().orEmpty()
+        val savedId = pendingPrefs.getString("request_id", null)
+        val matches = pendingPrefs.getString("hub_id", null) == hub.id &&
+            pendingPrefs.getString("service_id", null) == service.id &&
+            pendingPrefs.getString("qty", "") == qtyKey &&
+            savedId != null &&
+            runCatching { UUID.fromString(savedId) }.isSuccess
+        if (matches) return savedId!!
+        val fresh = UUID.randomUUID().toString()
+        pendingPrefs.edit()
+            .putString("request_id", fresh)
+            .putString("hub_id", hub.id)
+            .putString("service_id", service.id)
+            .putString("qty", qtyKey)
+            .apply()
+        return fresh
+    }
+
+    fun clearPendingRequest() {
+        pendingPrefs.edit().clear().apply()
+    }
+
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(12.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             OutlinedButton(onClick = onBack) { Text("ย้อนกลับ") }
             Spacer(Modifier.width(10.dp))
             Column {
                 Text("ฝากซัก", fontWeight = FontWeight.Black, style = MaterialTheme.typography.titleLarge)
-                Text("เลือกร้านและบริการ แล้วเรียกไรเดอร์รับ-ส่งถึงที่", color = QgMuted, style = MaterialTheme.typography.bodySmall)
+                Text("เลือกร้านและบริการ ร้านยืนยันก่อน แล้ว Rider ไปรับผ้าถึงที่และส่งคืนเมื่อเสร็จ", color = QgMuted, style = MaterialTheme.typography.bodySmall)
             }
         }
 
@@ -118,8 +151,8 @@ fun LaundryNativeScreen(
             contentAlignment = Alignment.BottomStart
         ) {
             Column {
-                Text("QueueGo Laundry", color = Color.White, fontWeight = FontWeight.Black, style = MaterialTheme.typography.headlineSmall)
-                Text("รับผ้า → ร้านซัก → ส่งคืน · ไรเดอร์ขาไปและขากลับไม่จำเป็นต้องเป็นคนเดิม", color = Color.White)
+                Text("ฝากซัก", color = Color.White, fontWeight = FontWeight.Black, style = MaterialTheme.typography.headlineSmall)
+                Text("เลือกร้านและบริการ ร้านยืนยันก่อน แล้ว Rider ไปรับผ้าถึงที่และส่งคืนเมื่อเสร็จ", color = Color.White)
             }
         }
 
@@ -133,8 +166,8 @@ fun LaundryNativeScreen(
             loading -> CircularProgressIndicator()
             catalog?.featureEnabled == false -> QgCard(Modifier.fillMaxWidth()) {
                 Column {
-                    Text("ฝากซักยังปิดทดสอบ", fontWeight = FontWeight.ExtraBold)
-                    Text("Admin ยังไม่ได้เปิด feature สำหรับลูกค้า", color = QgMuted)
+                    Text("ฝากซักอยู่ในโหมดปิดทดสอบ", fontWeight = FontWeight.ExtraBold)
+                    Text("ระบบจะเปิดใช้งานเมื่อผ่าน Regression และ Admin เปิดสวิตช์", color = QgMuted)
                 }
             }
             catalog?.hubs.isNullOrEmpty() -> QgCard(Modifier.fillMaxWidth()) {
@@ -157,8 +190,7 @@ fun LaundryNativeScreen(
                             Column(Modifier.weight(1f)) {
                                 Text(hub.name, fontWeight = FontWeight.ExtraBold)
                                 Text(
-                                    "รับผ้า ฿" + "%.0f".format(settings?.pickupFee ?: 0.0) +
-                                        " · ส่งคืน ฿" + "%.0f".format(settings?.returnFee ?: 0.0),
+                                    "Rider รับผ้าและส่งคืนถึงที่",
                                     color = QgMuted,
                                     style = MaterialTheme.typography.bodySmall
                                 )
@@ -221,13 +253,17 @@ fun LaundryNativeScreen(
                 QgCard(Modifier.fillMaxWidth()) {
                     Column {
                         Text("สรุปราคา", fontWeight = FontWeight.ExtraBold)
-                        LaundrySummary("ค่าบริการ", serviceAmount, serviceAmount == null)
                         if (cfg?.deliveryFeeMode == "round_trip") {
                             LaundrySummary("ค่ารับ-ส่งรวม", cfg.roundTripFee)
                         } else {
                             LaundrySummary("ค่ารับผ้า", cfg?.pickupFee ?: 0.0)
                             LaundrySummary("ค่าส่งคืน", cfg?.returnFee ?: 0.0)
                         }
+                        LaundrySummary(
+                            if (serviceAmount == null) "ค่าบริการ (สรุปตามจำนวนจริง)" else "ค่าบริการ",
+                            serviceAmount,
+                            serviceAmount == null
+                        )
                         HorizontalDivider(Modifier.padding(vertical = 8.dp))
                         LaundrySummary("ยอดประมาณ", estimatedTotal, estimatedTotal == null, true)
                     }
@@ -275,15 +311,28 @@ fun LaundryNativeScreen(
                         } else {
                             busy = true
                             scope.launch {
-                                runCatching { api.place(auth, hub, service, loc, qty, note) }
+                                val requestId = pendingRequestId(hub, service, qty)
+                                runCatching {
+                                    api.place(auth, requestId, hub, service, loc, qty, note)
+                                }
                                     .onSuccess {
-                                        message = "ส่งคำขอฝากซักแล้ว"
+                                        clearPendingRequest()
+                                        message = "ส่งคำขอฝากซักแล้ว รอร้านกดรับคำขอ"
                                         onDone()
                                     }
                                     .onFailure { e ->
+                                        val raw = e.message.orEmpty()
+                                        if (
+                                            Regex(
+                                                "disabled|unavailable|invalid|active customer|Rider unavailable|OUTSIDE_SERVICE_AREA|DELIVERY_DISTANCE_EXCEEDED",
+                                                RegexOption.IGNORE_CASE
+                                            ).containsMatchIn(raw)
+                                        ) {
+                                            clearPendingRequest()
+                                        }
                                         message = when {
-                                            e.message?.contains("OUTSIDE_SERVICE_AREA") == true -> "ตำแหน่งรับผ้าอยู่นอกพื้นที่ให้บริการ"
-                                            e.message?.contains("DELIVERY_DISTANCE_EXCEEDED") == true -> "ร้านซักและจุดรับผ้าอยู่ไกลเกินขอบเขต"
+                                            raw.contains("OUTSIDE_SERVICE_AREA") -> "ตำแหน่งรับผ้าอยู่นอกพื้นที่ให้บริการ QueueGo Pilot"
+                                            raw.contains("DELIVERY_DISTANCE_EXCEEDED") -> "ร้านซักและจุดรับผ้าอยู่ห่างเกินขอบเขตที่ QueueGo Pilot ให้บริการ"
                                             else -> e.message ?: "ส่งคำขอฝากซักไม่สำเร็จ"
                                         }
                                     }
@@ -297,6 +346,12 @@ fun LaundryNativeScreen(
                     if (busy) CircularProgressIndicator(Modifier.size(22.dp), strokeWidth = 2.dp)
                     else Text("ส่งคำขอฝากซัก", fontWeight = FontWeight.Black)
                 }
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    "ราคาและค่ารับส่งจะถูกบันทึกกับออเดอร์ทันที ร้านเปลี่ยนราคาในภายหลังจะไม่ย้อนมาเปลี่ยนออเดอร์นี้",
+                    color = QgMuted,
+                    style = MaterialTheme.typography.bodySmall
+                )
             }
         }
         Spacer(Modifier.height(40.dp))
