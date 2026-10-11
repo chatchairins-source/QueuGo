@@ -302,6 +302,7 @@ internal fun GuestCustomerShell(onLogin: (destination: String) -> Unit) {
                     category = category,
                     serviceBanner = serviceBanners[category],
                     shops = shops,
+                    location = location,
                     onBack = {
                         category = "all"
                         screen = "home"
