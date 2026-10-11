@@ -1861,11 +1861,10 @@ private fun MerchantProfileScreen(
             MerchantProfileActionRow(
                 icon = "bell",
                 title = "ทดสอบการแจ้งเตือน",
-                subtitle = "ส่งแจ้งเตือนทดสอบหลังประมาณ 7 วินาที",
+                subtitle = "ตรวจว่าแจ้งเตือนเข้าเมื่อแอปอยู่เบื้องหลัง",
                 enabled = !pushBusy
             ) {
-                onTestSound()
-                profileNotice = "ระบบจะส่งแจ้งเตือนทดสอบหลังประมาณ 7 วินาที"
+                profileNotice = "ระบบจะส่งแจ้งเตือนใน 7 วินาที กด Home เพื่อทดสอบได้เลย"
                 pushBusy = true
                 scope.launch {
                     runCatching { NativePushApi().test(auth) }
