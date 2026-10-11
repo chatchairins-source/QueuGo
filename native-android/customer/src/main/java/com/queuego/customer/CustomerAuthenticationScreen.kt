@@ -228,6 +228,7 @@ fun CustomerAuthenticationScreen(
                 Spacer(Modifier.height(92.dp))
             }
         }
+        }
         Box(Modifier.align(Alignment.BottomCenter)) {
             CustomerBottomNavigation(screen = "login", cartCount = guestCartCount) { target ->
                 if (!busy && target != "orders") onGuestNavigate?.invoke(target)
