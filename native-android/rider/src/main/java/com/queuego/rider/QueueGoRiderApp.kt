@@ -106,7 +106,7 @@ import java.io.File
 import java.time.Instant
 
 @Composable
-fun QueueGoRiderApp() {
+fun QueueGoRiderApp(pushTarget: NativePushLaunchTarget? = null) {
     val context = LocalContext.current
     val api = remember { QueueGoApi() }
     val store = remember { SessionStore(context) }
@@ -247,6 +247,7 @@ fun QueueGoRiderApp() {
                     modifier = Modifier.padding(insets),
                     auth = auth!!,
                     api = api,
+                    pushTarget = pushTarget,
                     onLogout = {
                         val current = auth!!
                         RiderReturnService.stop(context)
@@ -327,6 +328,7 @@ private fun RiderHome(
     modifier: Modifier,
     auth: QueueGoAuth,
     api: QueueGoApi,
+    pushTarget: NativePushLaunchTarget? = null,
     onLogout: () -> Unit
 ) {
     val context = LocalContext.current
@@ -642,6 +644,14 @@ private fun RiderHome(
                 if (it is CancellationException) throw it
                 loadError = it.message ?: "โหลดงานไม่สำเร็จ"
             }
+    }
+
+    LaunchedEffect(pushTarget?.eventId) {
+        if (pushTarget == null) return@LaunchedEffect
+        chatJob = null
+        closeVerification()
+        activeTab = "home"
+        refreshSnapshot()
     }
 
     BackHandler(enabled = activeTab != "home" && chatJob == null && verifyMode == null) {
