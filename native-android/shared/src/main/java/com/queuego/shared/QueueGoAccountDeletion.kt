@@ -14,10 +14,12 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -102,7 +104,7 @@ fun QgAccountDeletionSection(
     val api = remember { QueueGoAccountDeletionApi() }
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    var armed by remember { mutableStateOf(false) }
+    var confirmStage by remember { mutableStateOf(0) }
     var busy by remember { mutableStateOf(false) }
     var message by remember { mutableStateOf<String?>(null) }
 
@@ -140,62 +142,18 @@ fun QgAccountDeletionSection(
                 }
             )
             HorizontalDivider(color = QgLine)
-            if (!armed) {
-                AccountSettingsRow(
-                    icon = "close",
-                    title = "ลบบัญชีถาวร",
-                    subtitle = deleteSubtitle,
-                    danger = true,
-                    onClick = {
-                        armed = true
-                        message = "การลบบัญชีถาวรและย้อนกลับไม่ได้ กรุณายืนยันอีกครั้ง"
-                    }
-                )
-            } else {
-                Column(Modifier.padding(horizontal = 12.dp, vertical = 10.dp)) {
-                    Text("ยืนยันลบบัญชีถาวร", color = QgRed, fontWeight = FontWeight.ExtraBold)
-                    Text(
-                        "การลบบัญชีไม่สามารถย้อนกลับได้",
-                        color = QgMuted
-                    )
-                    Spacer(Modifier.height(9.dp))
-                    Row(Modifier.fillMaxWidth()) {
-                        OutlinedButton(
-                            onClick = {
-                                armed = false
-                                message = null
-                            },
-                            enabled = !busy,
-                            modifier = Modifier.weight(1f)
-                        ) { Text("ยกเลิก") }
-                        Spacer(Modifier.width(8.dp))
-                        Button(
-                            onClick = {
-                                if (busy) return@Button
-                                busy = true
-                                scope.launch {
-                                    runCatching { api.delete(accessToken) }
-                                        .onSuccess {
-                                            pendingChatUserId?.let { userId ->
-                                                withContext(Dispatchers.IO) {
-                                                    NativeChatPendingStore.clearUser(
-                                                        File(context.noBackupFilesDir, "customer-chat-pending"),
-                                                        userId
-                                                    )
-                                                }
-                                            }
-                                            onDeleted()
-                                        }
-                                        .onFailure { message = it.message ?: "ลบบัญชีไม่สำเร็จ" }
-                                    busy = false
-                                }
-                            },
-                            enabled = !busy,
-                            modifier = Modifier.weight(1f)
-                        ) { Text(if (busy) "กำลังลบ..." else "ยืนยันลบ") }
+            AccountSettingsRow(
+                icon = "close",
+                title = "ลบบัญชีถาวร",
+                subtitle = deleteSubtitle,
+                danger = true,
+                onClick = {
+                    if (!busy) {
+                        message = null
+                        confirmStage = 1
                     }
                 }
-            }
+            )
             if (onLogout != null) {
                 HorizontalDivider(color = QgLine)
                 AccountSettingsRow(
@@ -209,8 +167,77 @@ fun QgAccountDeletionSection(
         }
         if (!message.isNullOrBlank()) {
             Spacer(Modifier.height(7.dp))
-            Text(message!!, color = if (armed) QgRed else QgMuted)
+            Text(message!!, color = QgMuted)
         }
+    }
+
+    if (confirmStage == 1) {
+        AlertDialog(
+            onDismissRequest = { if (!busy) confirmStage = 0 },
+            title = { Text("ลบบัญชี QueueGo") },
+            text = { Text("ต้องการลบบัญชี QueueGo และข้อมูลส่วนบุคคลถาวรใช่หรือไม่?") },
+            confirmButton = {
+                TextButton(
+                    onClick = { confirmStage = 2 },
+                    enabled = !busy
+                ) { Text("ดำเนินการต่อ", color = QgRed, fontWeight = FontWeight.Bold) }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { confirmStage = 0 },
+                    enabled = !busy
+                ) { Text("ยกเลิก") }
+            }
+        )
+    }
+
+    if (confirmStage == 2) {
+        AlertDialog(
+            onDismissRequest = { if (!busy) confirmStage = 0 },
+            title = { Text("ยืนยันครั้งสุดท้าย") },
+            text = { Text("การลบบัญชีไม่สามารถย้อนกลับได้") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        if (busy) return@TextButton
+                        busy = true
+                        scope.launch {
+                            runCatching { api.delete(accessToken) }
+                                .onSuccess {
+                                    pendingChatUserId?.let { userId ->
+                                        withContext(Dispatchers.IO) {
+                                            NativeChatPendingStore.clearUser(
+                                                File(context.noBackupFilesDir, "customer-chat-pending"),
+                                                userId
+                                            )
+                                        }
+                                    }
+                                    confirmStage = 0
+                                    onDeleted()
+                                }
+                                .onFailure {
+                                    confirmStage = 0
+                                    message = it.message ?: "ลบบัญชีไม่สำเร็จ"
+                                }
+                            busy = false
+                        }
+                    },
+                    enabled = !busy
+                ) {
+                    Text(
+                        if (busy) "กำลังลบ..." else "ยืนยันลบบัญชี",
+                        color = QgRed,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { confirmStage = 0 },
+                    enabled = !busy
+                ) { Text("ยกเลิก") }
+            }
+        )
     }
 }
 
