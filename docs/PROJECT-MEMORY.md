@@ -819,3 +819,8 @@ The user-supplied Rider reference screens are the acceptance reference for workf
 - Pricing JVM fixtures cover 1/2/3/4 shops, distance step boundaries, future rules and effective/created precedence. Full exact-tree Pilot/build/runtime and screenshots are required before merge. Remaining work includes lifecycle resume refresh, all Customer/Laundry/Merchant/Rider Blueprint screens and physical/signing/Play evidence.
 
 - Quote staging follow-up: Market refreshes authoritative catalog/trip/rules after background→foreground, with the pending journal preserved. Add/+ controls are bounded by both actual available packs and the existing Production RPC maximum quantity99. Anonymous GET verification returned200 for all three public Market RPCs and pricing read (2 markets/1 shop/0 products/4 pricing rows); no Production write.
+
+
+## 2026-10-11 Native Laundry catalog/service read recovery staging
+- Compared current main laundry/index.html and current Production queuego_place_laundry_order_v2 definition read-only. Native service reads previously ran in unbound jobs, allowing an old shop response to replace the newly selected shop. Bind service reads to auth/hub/retry LaunchedEffect, propagate cancellation, show distinct loading/error/empty states and explicit retry for catalog/services. Prevent duplicate taps and service/location edits while submitting.
+- This is a reliability patch, not a full Laundry visual parity claim. Production uses a durable request key; Native Laundry still needs durable exact-payload retry before checkout gate can pass. No DB writes, fake rows or new RPC. Full Pilot must pass before merge; physical gates remain open.
