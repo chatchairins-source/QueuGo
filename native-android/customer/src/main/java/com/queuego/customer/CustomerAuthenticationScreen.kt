@@ -57,7 +57,8 @@ import kotlin.coroutines.resumeWithException
 @Composable
 fun CustomerAuthenticationScreen(
     entry: NativeAuthEntry,
-    onBackToGuest: (() -> Unit)? = null
+    onBackToGuest: (() -> Unit)? = null,
+    onGuestNavigate: ((String) -> Unit)? = null
 ) {
     var registering by rememberSaveable { mutableStateOf(false) }
     var identifier by rememberSaveable { mutableStateOf("") }
@@ -76,6 +77,9 @@ fun CustomerAuthenticationScreen(
     val keyboard = LocalSoftwareKeyboardController.current
     val busy = entry.busy || locating
     val red = Color(0xFFF04455)
+    val guestCartCount = remember(context) {
+        CustomerCartStore(context, "guest").load().sumOf { it.quantity }
+    }
 
     fun submitLogin() {
         if (busy) return
@@ -142,8 +146,11 @@ fun CustomerAuthenticationScreen(
         }
     }
 
-    Column(Modifier.fillMaxSize().background(QgBg).imePadding()) {
-        Row(Modifier.fillMaxWidth().background(Color.White).padding(horizontal = 12.dp, vertical = 6.dp),
+    Box(Modifier.fillMaxSize().background(QgBg)) {
+        Column(Modifier.fillMaxSize().imePadding()) {
+            Row(Modifier.fillMaxWidth().background(Color.White)
+                .windowInsetsPadding(WindowInsets.statusBars)
+                .padding(horizontal = 12.dp, vertical = 6.dp),
             verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
             Row { Text("Queue", fontSize = 18.sp, fontWeight = FontWeight.ExtraBold, color = QgInk)
                 Text("Go", fontSize = 18.sp, fontWeight = FontWeight.ExtraBold, color = QgRed) }
@@ -216,6 +223,11 @@ fun CustomerAuthenticationScreen(
                     }
                 }
                 Spacer(Modifier.height(92.dp))
+            }
+        }
+        Box(Modifier.align(Alignment.BottomCenter)) {
+            CustomerBottomNavigation(screen = "login", cartCount = guestCartCount) { target ->
+                if (!busy && target != "orders") onGuestNavigate?.invoke(target)
             }
         }
     }
