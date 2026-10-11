@@ -1,0 +1,47 @@
+-- QueueGo native voice-call metadata retention.
+-- Audio, SDP and ICE candidates are never stored. Keep only call/session/order
+-- metadata for a bounded support/security window, then purge automatically.
+
+CREATE OR REPLACE FUNCTION qg_private.qg_purge_call_sessions()
+RETURNS bigint
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path=''
+AS $function$
+DECLARE
+  v_deleted bigint;
+BEGIN
+  DELETE FROM public.qg_call_sessions
+  WHERE created_at < now() - interval '30 days';
+
+  GET DIAGNOSTICS v_deleted = ROW_COUNT;
+  RETURN v_deleted;
+END
+$function$;
+
+REVOKE ALL ON FUNCTION qg_private.qg_purge_call_sessions() FROM PUBLIC;
+REVOKE ALL ON FUNCTION qg_private.qg_purge_call_sessions() FROM anon;
+REVOKE ALL ON FUNCTION qg_private.qg_purge_call_sessions() FROM authenticated;
+GRANT EXECUTE ON FUNCTION qg_private.qg_purge_call_sessions() TO service_role;
+
+DO $$
+DECLARE
+  v_jobid bigint;
+BEGIN
+  SELECT jobid INTO v_jobid
+  FROM cron.job
+  WHERE jobname='queuego-voice-call-retention'
+  ORDER BY jobid DESC
+  LIMIT 1;
+
+  IF v_jobid IS NOT NULL THEN
+    PERFORM cron.unschedule(v_jobid);
+  END IF;
+
+  PERFORM cron.schedule(
+    'queuego-voice-call-retention',
+    '17 3 * * *',
+    'select qg_private.qg_purge_call_sessions();'
+  );
+END
+$$;
