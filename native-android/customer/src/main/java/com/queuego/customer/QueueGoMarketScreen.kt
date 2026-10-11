@@ -33,12 +33,15 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.queuego.shared.NativeAuth
 import com.queuego.shared.QgCard
+import com.queuego.shared.QgIcon
 import com.queuego.shared.QgMuted
 import com.queuego.shared.QgRed
 import com.queuego.shared.QgRemoteImage
@@ -52,9 +55,11 @@ fun MarketNativeScreen(
     address: String,
     onAddress: (String) -> Unit,
     onGps: () -> Unit,
+    serviceBanner: ServiceBanner? = null,
     onBack: () -> Unit,
     onDone: () -> Unit,
-    onRequireLogin: () -> Unit = {}
+    onRequireLogin: () -> Unit = {},
+    onBannerLink: (String) -> Unit = {}
 ) {
     val api = remember { CustomerMarketApi() }
     val scope = rememberCoroutineScope()
@@ -152,28 +157,32 @@ fun MarketNativeScreen(
         else -> 10.0 + (shopCount - 2) * 5.0
     }
 
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(12.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            OutlinedButton(onClick = onBack) { Text("ย้อนกลับ") }
-            Spacer(Modifier.width(10.dp))
-            Column {
-                Text("QueueGo Market", fontWeight = FontWeight.Black, style = MaterialTheme.typography.titleLarge)
-                Text("ตลาดสดใกล้คุณ · สดใหม่ทุกวัน", color = QgMuted, style = MaterialTheme.typography.bodySmall)
-            }
-        }
-        Spacer(Modifier.height(12.dp))
-
-        Box(
-            Modifier.fillMaxWidth().height(142.dp)
-                .background(QgRed, RoundedCornerShape(20.dp))
-                .padding(18.dp),
-            contentAlignment = Alignment.BottomStart
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 12.dp)) {
+        Row(
+            Modifier.padding(top = 7.dp, bottom = 10.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Column {
-                Text("ตลาดสดใกล้คุณ", color = Color.White, fontWeight = FontWeight.Black, style = MaterialTheme.typography.headlineSmall)
-                Text("เลือกร้านก่อน แล้วเลือกสินค้าได้หลายร้านในตลาดเดียวกัน", color = Color.White)
+            Box(
+                Modifier
+                    .size(38.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(Color.White)
+                    .clickable(onClick = onBack),
+                contentAlignment = Alignment.Center
+            ) {
+                QgIcon("back", Modifier.size(20.dp), Color(0xFF17191D))
             }
+            Spacer(Modifier.width(8.dp))
+            Text("ตลาดสด", fontSize = 20.sp, lineHeight = 30.sp, fontWeight = FontWeight.Bold)
         }
+
+        CustomerServiceBanner(
+            banner = serviceBanner,
+            fallbackDrawable = R.drawable.qg_market_banner,
+            fallbackTitle = "ตลาดสด",
+            fallbackSubtitle = "ตลาดสดใกล้คุณ สดใหม่ทุกวัน",
+            onLink = onBannerLink
+        )
 
         if (!message.isNullOrBlank()) {
             Spacer(Modifier.height(8.dp))

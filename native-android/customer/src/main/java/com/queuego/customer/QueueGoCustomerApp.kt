@@ -783,13 +783,15 @@ private fun CustomerShell(
                             ))
                         }
                     },
+                    serviceBanner = serviceBanners["market"],
                     onBack = { screen = "home" },
                     onDone = {
                         scope.launch {
                             orders = runCatching { api.loadOrders(auth) }.getOrDefault(orders)
                             screen = "orders"
                         }
-                    }
+                    },
+                    onBannerLink = ::openHomeBannerLink
                 )
                 "promotion" -> CustomerPromotionScreen(
                     onBack = { screen = "home" },
