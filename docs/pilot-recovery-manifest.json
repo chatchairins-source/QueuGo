@@ -246,7 +246,7 @@
       "web_subscriptions_enabled": 0,
       "outbox_total": 0,
       "config_rows": 0,
-      "observed_at": "2026-10-10"
+      "observed_at": "2026-10-11"
     },
     "firebase_edge_runtime_status": "UNVERIFIED_NO_NATIVE_TOKEN_OR_SUCCESSFUL_FCM_SEND_EVIDENCE"
   },
