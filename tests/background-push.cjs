@@ -70,6 +70,7 @@ ok(retireLegacy.includes("LEGACY_PUSH_RETIRED_USE_QUEUEGO_PUSH"),'legacy Rider p
 ok(/revoke all on function public\.qg_lease_rider_push\(\) from public, anon, authenticated, service_role/i.test(retireLegacy),'legacy Rider lease RPC must not remain executable');
 ok(/revoke all on function public\.qg_finish_rider_push\(uuid,uuid,integer\) from public, anon, authenticated, service_role/i.test(retireLegacy),'legacy Rider finish RPC must not remain executable');
 ok(edge.includes("FIREBASE_SERVICE_ACCOUNT_JSON")&&edge.includes("sendNativePush"),'edge worker must support authenticated FCM HTTP v1 delivery');
+ok(edge.includes("channel_id:'queuego_orders_v2'")&&edge.includes("sound:'default'"),'Native FCM must request the audible v2 channel with default sound');
 ok(edge.includes("function visibleOrderText"),'push worker must share visible QT-XXXX text normalization');
 ok(edge.includes("title:visibleOrderText")&&edge.includes("body:visibleOrderText")&&edge.includes("message:visibleOrderText"),'push delivery must shorten canonical order numbers for native and web push');
 ok(edge.includes("function visibleFour")&&edge.includes("parseInt(upper,16)%10000"),'Laundry legacy order numbers must normalize to numeric QT-XXXX in push');
@@ -102,11 +103,13 @@ ok(riderOfferNotify.includes("h.outcome='declined' and h.resolved_at>now()-inter
 for(const [role,source] of [['customer',customerNativePush],['merchant',merchantNativePush],['rider',riderNativePush]]){
   ok(source.includes('FirebaseMessagingService'),'Native '+role+' push must use FirebaseMessagingService');
   ok(source.includes('onNewToken'),'Native '+role+' push must rotate Firebase tokens');
-  ok(source.includes('queuego_orders'),'Native '+role+' push must use the QueueGo orders notification channel');
+  ok(source.includes('queuego_orders_v2'),'Native '+role+' push must use the audible QueueGo orders v2 notification channel');
+  ok(source.includes('RingtoneManager.TYPE_NOTIFICATION')&&source.includes('setSound(sound, attributes)'),'Native '+role+' channel must explicitly use notification sound');
 }
 for(const [role,manifest] of [['customer',nativeManifests[0]],['merchant',nativeManifests[1]],['rider',nativeManifests[2]]]){
   ok(manifest.includes('android.permission.POST_NOTIFICATIONS'),'Native '+role+' manifest must request POST_NOTIFICATIONS');
   ok(manifest.includes('com.google.firebase.MESSAGING_EVENT'),'Native '+role+' manifest must register an FCM messaging service');
+  ok(manifest.includes('queuego_orders_v2'),'Native '+role+' manifest default FCM channel must be v2');
   ok(/MessagingService"[\s\S]{0,220}android:exported="false"/.test(manifest),'Native '+role+' FCM service must not be exported');
 }
 for(const [role,gradle] of [['customer',nativeBuilds[0]],['merchant',nativeBuilds[1]],['rider',nativeBuilds[2]]]){
