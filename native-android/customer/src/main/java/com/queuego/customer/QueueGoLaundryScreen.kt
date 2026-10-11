@@ -145,7 +145,7 @@ fun LaundryNativeScreen(
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (e: Exception) {
-                message = e.message ?: "ส่งคำขอฝากซักไม่สำเร็จ"
+                message = laundryCheckoutMessage(e.message)
             } finally {
                 checkoutPending = journal.hasPending()
                 busy = false
@@ -265,7 +265,7 @@ fun LaundryNativeScreen(
                                 }
                             }
                             Text(
-                                "฿" + "%.0f".format(service.price) +
+                                laundryMoney(service.price) +
                                     if (service.pricingType == "fixed") "" else " / " + laundryUnit(service.pricingType),
                                 fontWeight = FontWeight.Black
                             )
@@ -289,13 +289,13 @@ fun LaundryNativeScreen(
                 QgCard(Modifier.fillMaxWidth()) {
                     Column {
                         Text("สรุปราคา", fontWeight = FontWeight.ExtraBold)
-                        LaundrySummary("ค่าบริการ", serviceAmount, serviceAmount == null)
                         if (cfg?.deliveryFeeMode == "round_trip") {
                             LaundrySummary("ค่ารับ-ส่งรวม", cfg.roundTripFee)
                         } else {
                             LaundrySummary("ค่ารับผ้า", cfg?.pickupFee ?: 0.0)
                             LaundrySummary("ค่าส่งคืน", cfg?.returnFee ?: 0.0)
                         }
+                        LaundrySummary(if (serviceAmount == null) "ค่าบริการ (สรุปตามจำนวนจริง)" else "ค่าบริการ", serviceAmount, serviceAmount == null)
                         HorizontalDivider(Modifier.padding(vertical = 8.dp))
                         LaundrySummary("ยอดประมาณ", estimatedTotal, estimatedTotal == null, true)
                     }
@@ -324,6 +324,7 @@ fun LaundryNativeScreen(
                         Spacer(Modifier.height(8.dp))
                         OutlinedTextField(
                             enabled = !busy && !checkoutPending,
+                            minLines = 3,
                             value = note,
                             onValueChange = { note = it.take(500) },
                             label = { Text("หมายเหตุ เช่น โทรก่อนถึง / มีผ้าสีตก") },
@@ -341,6 +342,7 @@ fun LaundryNativeScreen(
                     if (busy) CircularProgressIndicator(Modifier.size(22.dp), strokeWidth = 2.dp)
                     else Text("ส่งคำขอฝากซัก", fontWeight = FontWeight.Black)
                 }
+                Text("ราคาและค่ารับส่งจะถูกบันทึกกับออเดอร์ทันที ร้านเปลี่ยนราคาในภายหลังจะไม่ย้อนมาเปลี่ยนออเดอร์นี้", color = QgMuted, style = MaterialTheme.typography.bodySmall)
             }
         }
         Spacer(Modifier.height(40.dp))
@@ -354,7 +356,7 @@ private fun LaundrySummary(label: String, value: Double?, pending: Boolean = fal
     Row(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
         Text(label, Modifier.weight(1f), fontWeight = if (strong) FontWeight.ExtraBold else FontWeight.Normal)
         Text(
-            if (pending || value == null) "รอสรุป" else "฿" + "%.0f".format(value),
+            if (pending || value == null) "รอสรุป" else laundryMoney(value),
             fontWeight = if (strong) FontWeight.Black else FontWeight.Bold
         )
     }

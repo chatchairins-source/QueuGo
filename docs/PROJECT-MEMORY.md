@@ -862,3 +862,8 @@ The user-supplied Rider reference screens are the acceptance reference for workf
 ## 2026-10-11 Customer guest theme from actual emulator evidence
 - Inspected actual Pilot38133542351 Market browse captures for phone/small-phone/tablet. Guest selected category used default Material purple because GuestCustomerShell bypassed QueueGoAuthHost's QueueGoTheme. Wrap only the public guest branch in the existing shared QueueGoTheme. Production main --red is #ef3340, matching QgRed. No new theme or redesign.
 - Full Pilot and repeat real captures required. Screenshots still expose other geometry/details for follow-up; no full visual parity certification.
+
+
+## 2026-10-11 Market/Laundry fractional money display parity staging
+- Current Web main baht uses Thai locale/default3 fractional digits; standalone Laundry feeText uses max2 and บาท suffix. Native Market browse/cart and Laundry service form previously used %.0f, silently dropping fractional prices/fees. Add shared Customer display-only number/baht formatters, apply current page-specific formats and preserve invalid values as pending text rather than a fabricated0. Server calculation/RPC payloads unchanged.
+- Laundry now restores current Thai service-area rejection copy, fee/service row order, three-line note and snapshot-price footer. Snapshot detail uses Web ฿ prefix; quantities preserve default3 decimals. JVM fixtures cover fractional prices, grouping, rounding, floating-point display, invalid values and Thai rejection copy. Full regression/Pilot required before merge.
