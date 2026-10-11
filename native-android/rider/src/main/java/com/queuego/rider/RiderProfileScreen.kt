@@ -318,17 +318,10 @@ fun RiderProfileScreen(
             onDeleted = onLogout,
             showHeader = false,
             privacySubtitle = "การใช้ข้อมูลและการลบบัญชี",
-            deleteSubtitle = "ลบ Auth และข้อมูลส่วนบุคคล"
+            deleteSubtitle = "ลบ Auth และข้อมูลส่วนบุคคล",
+            onLogout = onLogout,
+            logoutSubtitle = "ออกจากบัญชีในอุปกรณ์นี้"
         )
-        Spacer(Modifier.height(8.dp))
-        RiderProfileSection("") {
-            RiderProfileActionRow(
-                icon = "back",
-                title = "ออกจากระบบ",
-                subtitle = "ออกจากบัญชีในอุปกรณ์นี้",
-                onClick = onLogout
-            )
-        }
         Spacer(Modifier.height(86.dp))
     }
 }
