@@ -2,6 +2,7 @@ package com.queuego.merchant
 
 import android.Manifest
 import android.content.Context
+import android.content.Intent
 import android.location.Location
 import android.location.LocationListener
 import android.location.LocationManager
@@ -89,15 +90,42 @@ import kotlinx.coroutines.withTimeout
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
+internal data class NativePushLaunchTarget(
+    val referenceId: String,
+    val type: String,
+    val eventId: Long
+)
+
 class MainActivity : ComponentActivity() {
+    private var pushTarget by mutableStateOf<NativePushLaunchTarget?>(null)
+    private var pushEventId = 0L
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContent { MerchantNativeEntryGate() }
+        acceptPushIntent(intent)
+        setContent { MerchantNativeEntryGate(pushTarget) }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        acceptPushIntent(intent)
+    }
+
+    private fun acceptPushIntent(source: Intent?) {
+        if (source == null) return
+        val referenceId = source.getStringExtra("queuego_push_reference_id").orEmpty().trim()
+        val type = source.getStringExtra("queuego_push_type").orEmpty().trim()
+        source.removeExtra("queuego_push_reference_id")
+        source.removeExtra("queuego_push_type")
+        if (referenceId.isBlank() && type.isBlank()) return
+        pushEventId += 1
+        pushTarget = NativePushLaunchTarget(referenceId, type, pushEventId)
     }
 }
 
 @Composable
-private fun MerchantNativeEntryGate() {
+private fun MerchantNativeEntryGate(pushTarget: NativePushLaunchTarget?) {
     val context = LocalContext.current
     val store = remember { SecureRoleSessionStore(context, "shop") }
     val api = remember { NativeAuthApi() }
@@ -127,7 +155,7 @@ private fun MerchantNativeEntryGate() {
                 }
             )
         }
-        current != null -> QueueGoMerchantApp()
+        current != null -> QueueGoMerchantApp(pushTarget = pushTarget)
         else -> QueueGoTheme {
             MerchantNativeAuthentication(
                 store = store,
