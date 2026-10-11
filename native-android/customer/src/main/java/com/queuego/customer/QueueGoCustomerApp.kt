@@ -565,7 +565,7 @@ private fun CustomerShell(
         Scaffold(
         containerColor = QgBg,
         bottomBar = {
-            CustomerBottomNavigation(screen, cart.sumOf { it.quantity }) { screen = it }
+            if (screen != "laundry") CustomerBottomNavigation(screen, cart.sumOf { it.quantity }) { screen = it }
         }
     ) { insets ->
         Column(
@@ -573,7 +573,7 @@ private fun CustomerShell(
                 .padding(insets)
                 .background(QgBg)
         ) {
-            CustomerTopBar(
+            if (screen != "laundry") CustomerTopBar(
                 home = screen == "home",
                 cartCount = cart.sumOf { it.quantity },
                 unreadCount = notifications.count { !it.read },
