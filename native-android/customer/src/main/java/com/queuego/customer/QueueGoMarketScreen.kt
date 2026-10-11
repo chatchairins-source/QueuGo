@@ -18,6 +18,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
@@ -75,6 +77,8 @@ fun MarketNativeScreen(
     val cartStore = remember(actorId) { MarketCartStore(context, actorId) }
     val checkout = remember(actorId) { CustomerCheckoutRecovery<PendingMarketCheckout, org.json.JSONObject>(cartStore.journal()) }
     var checkoutPending by remember(actorId) { mutableStateOf(cartStore.hasPendingCheckout()) }
+    var pricing by remember { mutableStateOf<MarketPricing?>(null) }
+    var marketMenuOpen by remember { mutableStateOf(false) }
     var markets by remember { mutableStateOf<List<MarketInfo>>(emptyList()) }
     var shops by remember { mutableStateOf<List<MarketShop>>(emptyList()) }
     var catalog by remember { mutableStateOf<List<MarketProduct>>(emptyList()) }
@@ -94,6 +98,7 @@ fun MarketNativeScreen(
     LaunchedEffect(actorId, location?.latitude, location?.longitude, reload) {
         loading = true
         loadFailed = false
+        pricing = null
         runCatching {
             val m = if (auth == null) api.loadMarketsPublic() else api.loadMarkets(auth)
             markets = m
@@ -144,13 +149,22 @@ fun MarketNativeScreen(
                 }
                 restoredCart = true
             }
+            if (restoredCart && !checkoutPending) {
+                cart = cart.mapNotNull { line ->
+                    catalog.find { it.id == line.product.id && it.marketId == line.product.marketId && it.availablePacks > 0 }
+                        ?.let { fresh -> MarketCartLine(fresh, line.quantity.coerceAtMost(fresh.availablePacks).coerceAtMost(99)) }
+                }
+            }
             activeTrip = if (auth == null) null else api.activeTrip(auth)
             if (selectedMarket == null) {
                 selectedMarket = activeTrip?.marketId ?: cart.firstOrNull()?.product?.marketId ?: api.nearest(m, location)?.id
             }
+            pricing = api.loadPricing(auth)
         }.onFailure { if (it is CancellationException) throw it; loadFailed = true; message = it.message ?: "โหลดตลาดสดไม่สำเร็จ" }
         loading = false
     }
+
+    LaunchedEffect(cartPage) { if (cartPage) reload++ }
 
     LaunchedEffect(cart, restoredCart, checkoutPending) {
         if (restoredCart && !checkoutPending) cartStore.save(cart)
@@ -165,11 +179,13 @@ fun MarketNativeScreen(
     }
     val shopCount = cart.map { it.product.shopId }.toSet().size
     val subtotal = cart.sumOf { it.product.price * it.quantity }
-    val serviceFee = when {
-        shopCount <= 1 -> 0.0
-        shopCount == 2 -> 10.0
-        else -> 10.0 + (shopCount - 2) * 5.0
-    }
+    val serviceFee = pricing?.multiShopFee(shopCount)
+    val tripBlocksCart = activeTrip?.let { it.locked || (cart.isNotEmpty() && it.marketId != cart.first().product.marketId) } == true
+    val firstShop = cart.firstOrNull()?.product?.shopId?.let { id -> shops.find { it.id == id } }
+    val deliveryEstimate = if (location != null && firstShop?.latitude != null && firstShop.longitude != null) {
+        pricing?.deliveryEstimate(api.distanceKm(firstShop.latitude, firstShop.longitude, location.latitude, location.longitude))
+    } else null
+
 
     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
     key(cartPage) {
@@ -212,22 +228,27 @@ fun MarketNativeScreen(
 
         if (!cartPage) {
         Spacer(Modifier.height(14.dp))
-        QgSectionTitle("เลือกตลาด", "ระบบแนะนำตลาดที่ใกล้ตำแหน่งของคุณ")
-        Spacer(Modifier.height(8.dp))
-        Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            markets.forEach { m ->
-                if (m.id == selectedMarket) {
-                    Button(onClick = {
-                        selectedMarket = m.id
-                        selectedShop = null
-                        selectedCategory = "all"
-                    }) { Text(m.name) }
-                } else {
-                    OutlinedButton(onClick = {
-                        selectedMarket = m.id
-                        selectedShop = null
-                        selectedCategory = "all"
-                    }) { Text(m.name) }
+        QgCard(Modifier.fillMaxWidth()) {
+            Column {
+                Text("เลือกตลาด")
+                Box {
+                    OutlinedButton(onClick = { marketMenuOpen = true }, enabled = !loading, modifier = Modifier.fillMaxWidth()) {
+                        Text(market?.name ?: "ยังไม่มีตลาดที่เปิดใช้งาน", Modifier.weight(1f))
+                        Text("⌄")
+                    }
+                    DropdownMenu(expanded = marketMenuOpen, onDismissRequest = { marketMenuOpen = false }) {
+                        markets.forEach { m ->
+                            DropdownMenuItem(text = { Text(m.name) }, onClick = {
+                                selectedMarket = m.id
+                                selectedShop = null
+                                selectedCategory = "all"
+                                marketMenuOpen = false
+                            })
+                        }
+                    }
+                }
+                if (location != null && market?.latitude != null && market.longitude != null) {
+                    Text("เลือกตลาดใกล้ตำแหน่งคุณก่อน · " + "%.1f".format(api.distanceKm(location.latitude, location.longitude, market.latitude, market.longitude)) + " กม.", color = QgMuted, style = MaterialTheme.typography.bodySmall)
                 }
             }
         }
@@ -371,10 +392,13 @@ fun MarketNativeScreen(
                     }
                     HorizontalDivider(Modifier.padding(vertical = 8.dp))
                     MarketSummary("ค่าสินค้า", subtotal)
-                    MarketSummary("ค่ารับหลายร้าน", serviceFee)
-                    Row(Modifier.fillMaxWidth().padding(vertical = 3.dp)) {
-                        Text("ค่าส่ง", Modifier.weight(1f))
-                        Text("คำนวณโดยระบบ", color = QgMuted)
+                    if (activeTrip != null) {
+                        Text("ค่ารับหลายร้าน · คำนวณจากราคาที่ล็อกไว้ใน Trip เดิม", color = QgMuted)
+                    } else {
+                        serviceFee?.let { MarketSummary("ค่ารับหลายร้าน", it) }
+                            ?: Text("ยังไม่ได้รับค่าบริการล่าสุด", color = QgMuted)
+                        deliveryEstimate?.let { MarketSummary("ค่ารอบ/จัดส่งโดยประมาณ", it) }
+                            ?: Text("ค่ารอบ/จัดส่งโดยประมาณ · เลือกที่อยู่จัดส่ง", color = QgMuted)
                     }
                 }
             }
@@ -410,6 +434,7 @@ fun MarketNativeScreen(
                 }
             }
             Spacer(Modifier.height(10.dp))
+            if (tripBlocksCart && !checkoutPending) Text("มี Market Trip ที่ยังไม่จบ หรือ Rider ออกจากตลาดแล้ว จึงเริ่ม/เพิ่มร้านไม่ได้", color = QgRed)
             Button(
                 onClick = {
                     if (busy) return@Button
@@ -449,7 +474,7 @@ fun MarketNativeScreen(
                         }
                     }
                 },
-                enabled = !busy && (checkoutPending || (location != null && address.isNotBlank())),
+                enabled = !busy && (checkoutPending || (!loading && !loadFailed && !tripBlocksCart && location != null && address.isNotBlank())),
                 modifier = Modifier.fillMaxWidth().height(56.dp)
             ) {
                 if (busy) CircularProgressIndicator(Modifier.size(22.dp), strokeWidth = 2.dp)

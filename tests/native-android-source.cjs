@@ -299,4 +299,8 @@ ok(marketStore.includes('pending_checkout')&&marketStore.includes('pending.encod
 ok(marketApi.includes('http.rpc(pending.rpc, auth.session.accessToken, pending.body)')&&!marketApi.slice(marketApi.indexOf('internal suspend fun sendCheckout'),marketApi.indexOf('suspend fun trips')).includes('UUID.randomUUID'),'Market retries must send the frozen RPC/body, never generate a new order or add-shop ID');
 ok(customerMarketScreen.includes('!busy && !checkoutPending')&&customerMarketScreen.includes('restoredCart && !checkoutPending')&&customerMarketScreen.includes('catch (cancelled: CancellationException)'),'Pending Market checkout must freeze cart mutations and survive navigation cancellation');
 
+
+
+ok(marketApi.includes('queuego_platform_rules?select=id,rule_key,value,effective_from,created_at')&&customerMarketScreen.includes('pricing?.deliveryEstimate(api.distanceKm('),'Market cart estimates must hydrate current Production rules and actual shop/customer coordinates');
+ok(customerMarketScreen.includes('คำนวณจากราคาที่ล็อกไว้ใน Trip เดิม')&&customerMarketScreen.includes('catalog.find { it.id == line.product.id && it.marketId == line.product.marketId && it.availablePacks > 0 }'),'Market add mode must preserve locked-trip pricing and refresh available packs before new checkout');
 console.log(JSON.stringify({checks,failures:0,scope:'QueueGo Customer Merchant Rider native Android source'}));
