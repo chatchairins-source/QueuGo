@@ -187,11 +187,74 @@ private fun CustomerShell(
     val pushApi = remember { NativePushApi() }
     val pushLogoutScope = remember(context) { nativeLogoutScope(context, scope) }
     var pushPermissionRequested by remember(auth.user.id) { mutableStateOf(false) }
+    var pushActionBusy by remember(auth.user.id) { mutableStateOf(false) }
+    var pendingPushProfileAction by remember(auth.user.id) { mutableStateOf<Boolean?>(null) }
+
+    suspend fun runCustomerPushProfileAction(testNotification: Boolean) {
+        val enabled = syncCustomerNativePush(context, auth)
+        if (!enabled) {
+            message = "ยังไม่ได้ตั้งค่า Firebase สำหรับการแจ้งเตือนบนเครื่องนี้"
+            return
+        }
+        if (testNotification) {
+            message = "ระบบจะส่งแจ้งเตือนทดสอบ กรุณากด Home เพื่อตรวจสอบ"
+            pushApi.test(auth)
+            message = "ส่งคำขอทดสอบการแจ้งเตือนแล้ว"
+        } else {
+            message = "เปิดการแจ้งเตือนเบื้องหลังแล้ว"
+        }
+    }
+
     val pushPermission = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { granted ->
+        val profileAction = pendingPushProfileAction
+        pendingPushProfileAction = null
         if (granted) {
-            scope.launch { runCatching { syncCustomerNativePush(context, auth) } }
+            if (profileAction != null) pushActionBusy = true
+            scope.launch {
+                try {
+                    if (profileAction != null) runCustomerPushProfileAction(profileAction)
+                    else syncCustomerNativePush(context, auth)
+                } catch (failure: CancellationException) {
+                    throw failure
+                } catch (failure: Exception) {
+                    message = failure.message ?: "เปิดการแจ้งเตือนไม่สำเร็จ"
+                } finally {
+                    if (profileAction != null) pushActionBusy = false
+                }
+            }
+        } else if (profileAction != null) {
+            message = "กรุณาอนุญาตการแจ้งเตือนเพื่อรับสถานะออเดอร์เบื้องหลัง"
+        }
+    }
+
+    fun launchCustomerPushProfileAction(testNotification: Boolean) {
+        if (pushActionBusy) return
+        if (
+            Build.VERSION.SDK_INT >= 33 &&
+            context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+        ) {
+            pendingPushProfileAction = testNotification
+            pushPermissionRequested = true
+            pushPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+            return
+        }
+        pushActionBusy = true
+        scope.launch {
+            try {
+                runCustomerPushProfileAction(testNotification)
+            } catch (failure: CancellationException) {
+                throw failure
+            } catch (failure: Exception) {
+                message = failure.message ?: if (testNotification) {
+                    "ทดสอบการแจ้งเตือนไม่สำเร็จ"
+                } else {
+                    "เปิดการแจ้งเตือนไม่สำเร็จ"
+                }
+            } finally {
+                pushActionBusy = false
+            }
         }
     }
     fun logoutWithPushCleanup() {
