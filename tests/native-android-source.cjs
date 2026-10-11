@@ -91,6 +91,12 @@ ok(source.includes('if (checkoutPending) {')&&source.includes('กรุณา�
 ok(source.includes('market_public_catalog_v2')&&source.includes('queuego_place_market_order'),'Customer native Market must use production market RPCs');
 ok(source.includes('queuego_add_market_order_shops'),'Customer native Market must preserve add-shop flow');
 ok(source.includes('queuego_place_laundry_order_v2'),'Customer native Laundry must use production laundry order RPC');
+const customerLaundryApi=read('customer/src/main/java/com/queuego/customer/CustomerLaundryApi.kt');
+const customerLaundryScreen=read('customer/src/main/java/com/queuego/customer/QueueGoLaundryScreen.kt');
+ok(customerLaundryApi.includes('requestId: String')&&customerLaundryApi.includes('.put("p_request_id", requestId)'),'Customer native Laundry must preserve the same request id across ambiguous checkout retries');
+ok(customerLaundryScreen.includes('"qg_laundry_pending_"')&&customerLaundryScreen.includes('"request_id"')&&customerLaundryScreen.includes('UUID.randomUUID().toString()'),'Customer native Laundry must durably persist one request id per pending quote');
+ok(customerLaundryScreen.includes('"Rider รับผ้าและส่งคืนถึงที่"')&&customerLaundryScreen.includes('"ราคาและค่ารับส่งจะถูกบันทึกกับออเดอร์ทันที')&&customerLaundryScreen.includes('onChooseAddress'),'Customer native Laundry must preserve Production shop copy, immutable-price notice and saved-address flow');
+ok(source.includes('if (screen != "laundry")')&&source.includes('"laundry" -> LaundryNativeScreen'),'Customer native Laundry must keep its dedicated Production shell without the normal Customer chrome');
 ok(source.includes('notifications?select=id,title,message,type,reference_id,is_read,created_at'),'Customer native notifications must use production notifications table');
 ok(source.includes('qg_support_tickets?select=id,category,details,status,order_id,admin_note,created_at')&&source.includes('qg_create_ticket'),'Customer native support must use production ticket RPC');
 ok(source.includes('qg_customer_order_context')&&source.includes('CustomerTrackingRider'),'Customer native tracking must use production order context');
