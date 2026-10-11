@@ -219,6 +219,7 @@ ok(source.includes('saveShopSetup(')&&source.includes('shop_profiles?id=eq.')&&s
 const merchantHours=read('merchant/src/main/java/com/queuego/merchant/MerchantHoursScreen.kt');
 ok(source.includes('merchant_save_hours')&&source.includes('shop_business_hours?select=weekday,opens_at,closes_at,is_closed')&&source.includes('shop_special_hours?select=day,is_closed,opens_at,closes_at'),'Merchant native hours must reuse Production hours tables and RPC');
 ok(merchantHours.includes('อาทิตย์')&&merchantHours.includes('เสาร์')&&merchantHours.includes('วันหยุดหรือเวลาพิเศษ')&&merchantHours.includes('บันทึกเวลาทำการ'),'Merchant native hours must preserve seven-day and special-day web flow');
+ok(merchantHours.includes('Modifier.width(70.dp)')&&merchantHours.includes('Modifier.width(50.dp)')&&merchantHours.includes('RoundedCornerShape(8.dp)')&&merchantHours.includes('Color(0xFFD7E7DC)')&&merchantHours.includes('fontSize = 19.sp')&&merchantHours.includes('fontSize = 12.sp'),'Merchant native hours must preserve Production compact grid, input and heading proportions');
 ok(source.includes('MerchantProfileSectionTitle("ข้อมูลร้าน")')&&source.includes('MerchantProfileSectionTitle("จัดการร้าน")')&&source.includes('แก้ไขข้อมูลร้าน')&&source.includes('เวลาทำการและวันหยุด'),'Merchant native account must preserve compact grouped web structure');
 const merchantRevenue=read('merchant/src/main/java/com/queuego/merchant/MerchantRevenueScreen.kt');
 const merchantGpSlip=read('merchant/src/main/java/com/queuego/merchant/MerchantGpSlipUpload.kt');
