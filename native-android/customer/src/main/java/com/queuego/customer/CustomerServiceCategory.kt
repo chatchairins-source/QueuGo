@@ -64,7 +64,7 @@ internal fun ServiceCategoryScreen(loading: Boolean, category: String, serviceBa
                     shop.longitude
                 )
             }
-        }.thenBy { it.name }
+        }
     )
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 12.dp)) {
         Row(Modifier.padding(top = 7.dp, bottom = 10.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -104,7 +104,7 @@ internal fun WebCategoryShopCard(shop: CustomerShop, categoryLabel: String, onCl
     val radius = RoundedCornerShape(16.dp)
     Row(Modifier.fillMaxWidth().shadow(4.dp, radius, ambientColor = Color(0x0914181E), spotColor = Color(0x0914181E))
         .clip(radius).background(Color.White).border(1.dp, Color(0xFFECEEF1), radius)
-        .clickable(onClick = onClick).padding(9.dp), verticalAlignment = Alignment.CenterVertically) {
+        .clickable(onClick = onClick).padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
         QgRemoteImage(shop.logo ?: shop.cover, Modifier.size(imageSize), shop.name, cornerRadius = 13.dp)
         Spacer(Modifier.width(9.dp))
         Column(Modifier.weight(1f)) {
