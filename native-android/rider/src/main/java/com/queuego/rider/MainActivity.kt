@@ -8,7 +8,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 
-internal data class NativePushLaunchTarget(
+data class NativePushLaunchTarget(
     val referenceId: String,
     val type: String,
     val eventId: Long
