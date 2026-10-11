@@ -129,7 +129,10 @@ only `READY_FOR_PRIVATE_STORAGE_UPLOAD`.
 7. Actual upload keystore identity/passwords, Play versionCode history, three
    package app names/icons, Data Safety/privacy/account deletion, foreground
    service declaration evidence, and store preflight.
-8. P0/P1 zero based on observed evidence, not static source checks.
+8. Play developer identity verification plus registration of all three QueueGo
+   package names, with the Play-registered public signing-certificate SHA-256
+   bound to the same certified release signing identity used by the APK/AAB build.
+9. P0/P1 zero based on observed evidence, not static source checks.
 
 ## Android 16 KB page-size readiness
 
