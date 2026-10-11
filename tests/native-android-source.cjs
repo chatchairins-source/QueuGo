@@ -123,6 +123,10 @@ ok(customerPromotionScreen.includes('"qg_public_promotions"')&&customerPromotion
 const customerExtras=read('customer/src/main/java/com/queuego/customer/CustomerExtras.kt');
 ok(customerExtras.includes('val unreadCount = notifications.count { !it.read }')&&customerExtras.includes('if (unreadCount > 0 && !busy) onMarkAll()'),'Customer native notification center must acknowledge unread rows on open like Production web');
 ok(customerExtras.includes('"อ่านทั้งหมด"')&&customerExtras.includes('"ยังไม่มีการแจ้งเตือน"')&&customerExtras.includes('onOpen(notification)'),'Customer native notification center must preserve Production read-all, empty and open-notification actions');
+const customerProfile=read('customer/src/main/java/com/queuego/customer/CustomerProfileScreen.kt');
+ok(customerProfile.includes('CustomerProfileActionRow("ที่อยู่จัดส่ง"')&&customerProfile.includes('showRowIcons = false')&&customerProfile.includes('privacySubtitle = ""')&&customerProfile.includes('logoutSubtitle = ""'),'Customer native profile must preserve Production icon-free account/privacy rows and compact copy');
+ok(customerProfile.includes('CustomerProfileStateRow(\n                title = "เสียงแจ้งเตือนเมื่อ Rider ถึง"')&&customerProfile.includes('title = "การแจ้งเตือนเบื้องหลัง"')&&customerProfile.includes('subtitle = "รับสถานะออเดอร์แม้ไม่ได้เปิดหน้านี้"'),'Customer native profile must keep only Rider-arrival as a state row and background push as a chevron row');
+ok(source.includes('if (!notification.read)')&&source.includes('extrasApi.markRead(auth, notification.id)')&&source.includes('"เปิดการแจ้งเตือนไม่สำเร็จ"'),'Customer notification open must fail closed if read acknowledgement or target load fails');
 ok(source.includes('auth: NativeAuth?')&&source.includes('onRequireLogin'),'Customer public shop/Market renderers must share native implementations without fake authenticated actors');
 ok(source.includes('ServiceCategoryScreen')&&source.includes('"category" -> ServiceCategoryScreen'),'Food Drink Grocery Shopping must use dedicated native category pages');
 
