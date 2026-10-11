@@ -18,3 +18,10 @@ internal data class PendingMarketCheckout(val rpc: String, val body: JSONObject,
         }
     }
 }
+
+// Persist the destination and consumed guest revision in one commit before
+// clearing the source. Reopening after source cleanup failure skips re-merging.
+internal fun commitMarketGuestMerge(alreadyMerged: Boolean, persistMerged: () -> Unit, clearGuest: () -> Unit) {
+    if (!alreadyMerged) persistMerged()
+    clearGuest()
+}

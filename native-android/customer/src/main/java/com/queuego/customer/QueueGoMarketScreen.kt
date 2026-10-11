@@ -126,11 +126,16 @@ fun MarketNativeScreen(
 
                 val accountCart = restore(cartStore.load())
                 val guestStore = if (auth == null) null else MarketCartStore(context, "guest")
-                val guestCart = if (checkoutPending) emptyList() else guestStore?.let { restore(it.load()) }.orEmpty()
+                val guestRevision = if (checkoutPending) null else guestStore?.revisionForMerge()
+                val alreadyMerged = guestRevision != null && cartStore.hasMergedGuest(guestRevision)
+                val guestCart = if (checkoutPending || alreadyMerged) emptyList() else guestStore?.let { restore(it.load()) }.orEmpty()
+                if (!checkoutPending && alreadyMerged) {
+                    commitMarketGuestMerge(true, { }, { guestStore?.clearMergedGuest() })
+                }
                 cart = when {
                     guestCart.isEmpty() -> accountCart
                     accountCart.isEmpty() -> {
-                        guestStore?.save(emptyList())
+                        commitMarketGuestMerge(false, { cartStore.persistGuestMerge(guestCart, requireNotNull(guestRevision)) }, { guestStore?.clearMergedGuest() })
                         guestCart
                     }
                     accountCart.first().product.marketId == guestCart.first().product.marketId -> {
@@ -146,7 +151,7 @@ fun MarketNativeScreen(
                                         .coerceAtLeast(1)
                                 )
                             }
-                        guestStore?.save(emptyList())
+                        commitMarketGuestMerge(false, { cartStore.persistGuestMerge(merged, requireNotNull(guestRevision)) }, { guestStore?.clearMergedGuest() })
                         merged
                     }
                     else -> {

@@ -840,3 +840,10 @@ The user-supplied Rider reference screens are the acceptance reference for workf
 ## 2026-10-11 Market public emulator capture staging
 - Extend actual Customer phone/small-phone/tablet viewport evidence with Home→Market UI taps, horizontal category scrolling derived from rendered label bounds, browse XML/screenshot, no checkout/search fields in Browse and a single system Back to Home. Existing Production RPCs remain the data source; no test rows/login/order/cart writes.
 - Capture metadata explicitly leaves populated cart E2E and visual parity unverified. This only captures public entry/navigation; current ready catalog remains empty. Full Pilot must pass before merge.
+
+
+## 2026-10-11 Market guest/account merge durability staging
+- Existing Market guest merge cleared the source before destination persistence. Extend only MarketCartStore: commit merged cart plus consumed guest revision synchronously before clearing the guest cart. A repeated launch seeing the consumed revision clears the leftover source without adding quantities again; each later guest cart save has a fresh revision. Existing legacy carts derive a stable revision from their stored content.
+- Preserve pending checkout, pack revalidation and cross-market separation. JVM fixtures cover destination disk failure (guest untouched) and interruption before guest cleanup (no double merge after restart). No new cart store/DB/RPC or Production rows. Full regression/Pilot required before merge.
+
+- Flush the source cart/revision synchronously before the destination merge as well, so an earlier asynchronous guest save cannot restart with a different old revision after the destination has committed. Pending checkout skips this source flush.

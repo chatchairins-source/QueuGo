@@ -3,6 +3,7 @@ package com.queuego.customer
 import android.content.Context
 import org.json.JSONArray
 import org.json.JSONObject
+import java.util.UUID
 
 class MarketCartStore(context: Context, userId: String) {
     private val prefs = context.getSharedPreferences("queuego_market_cart_" + userId, Context.MODE_PRIVATE)
@@ -27,7 +28,25 @@ class MarketCartStore(context: Context, userId: String) {
         }
         return rows.toString()
     }
-    fun save(lines: List<MarketCartLine>) { prefs.edit().putString("cart", serialize(lines)).apply() }
+    fun save(lines: List<MarketCartLine>) {
+        prefs.edit().putString("cart", serialize(lines)).putString("cart_revision", UUID.randomUUID().toString()).apply()
+    }
+    internal fun revision(): String = prefs.getString("cart_revision", null)
+        ?: UUID.nameUUIDFromBytes((prefs.getString("cart", "[]") ?: "[]").toByteArray(Charsets.UTF_8)).toString()
+    internal fun revisionForMerge(): String {
+        val current = revision()
+        check(prefs.edit().putString("cart", prefs.getString("cart", "[]") ?: "[]")
+            .putString("cart_revision", current).commit()) { "บันทึกตะกร้าก่อนเข้าสู่ระบบไม่สำเร็จ" }
+        return current
+    }
+    internal fun hasMergedGuest(revision: String) = prefs.getString("merged_guest_revision", null) == revision
+    internal fun persistGuestMerge(lines: List<MarketCartLine>, guestRevision: String) {
+        check(prefs.edit().putString("cart", serialize(lines)).putString("merged_guest_revision", guestRevision)
+            .putString("cart_revision", UUID.randomUUID().toString()).commit()) { "บันทึกตะกร้าหลังเข้าสู่ระบบไม่สำเร็จ" }
+    }
+    internal fun clearMergedGuest() {
+        check(prefs.edit().putString("cart", "[]").putString("cart_revision", UUID.randomUUID().toString()).commit())
+    }
 
     internal fun hasPendingCheckout(): Boolean = prefs.contains("pending_checkout")
     internal fun pending(rpc: String, body: JSONObject, lines: List<MarketCartLine>) =
