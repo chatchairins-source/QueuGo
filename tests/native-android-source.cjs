@@ -247,6 +247,7 @@ ok(merchantProductsScreen.includes('จำนวนในสต็อก *')&&me
 ok(source.includes('"product" ->')&&!source.includes('private fun ProductsScreen(')&&!source.includes('MerchantProductsScreen('),'Merchant native must remove legacy duplicate product list implementations');
 const merchantCatalog=read('merchant/src/main/java/com/queuego/merchant/MerchantCatalogScreen.kt');
 ok(source.includes('"products" ->')&&source.includes('MerchantCatalogScreen(')&&!source.includes('"catalog" ->')&&merchantCatalog.includes('เพิ่มสินค้าจากคลังสินค้า')&&merchantCatalog.includes('ค้นหาเมนูในร้าน...')&&merchantCatalog.includes('ดูและแก้ไข'),'Merchant native Products route must use the single Production catalog page');
+ok(merchantCatalog.includes('rows.chunked(3)')&&merchantCatalog.includes('categories.chunked(3)')&&merchantCatalog.includes('aspectRatio(1f)')&&merchantCatalog.includes('heightIn(min = 52.dp)'),'Merchant native catalog must preserve Production three-column category/product grids and add action proportions');
 const merchantMedia=read('merchant/src/main/java/com/queuego/merchant/MerchantMediaScreen.kt');
 const merchantModules=read('merchant/src/main/java/com/queuego/merchant/MerchantModulesScreen.kt');
 ok(merchantMedia.includes('/storage/v1/object/list/merchant-media')&&merchantMedia.includes('auth.session.authUserId + "/"')&&merchantMedia.includes('เพิ่มรูปจากเครื่อง'),'Merchant native media library must list and upload only the signed-in shop prefix');
