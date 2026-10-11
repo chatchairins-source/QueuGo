@@ -20,6 +20,7 @@ const releaseCertification=read('.github/workflows/native-release-certification.
 const nativeRootGradle=read('native-android/build.gradle.kts');
 const nativeVoicePeer=read('native-android/shared/src/main/java/com/queuego/shared/NativeVoicePeer.kt');
 const nativeTurnEdge=read('supabase/functions/queuego-turn/index.ts');
+const nativeReleaseVerifier=read('native-android/qa/verify-native-release-gate.py');
 const productionPush=read('supabase/functions/queuego-push/index.ts');
 const sharedManifest=read('native-android/shared/src/main/AndroidManifest.xml');
 const riderManifest=read('native-android/rider/src/main/AndroidManifest.xml');
@@ -72,6 +73,14 @@ ok(/RECORD_AUDIO for optional order-scoped audio calls/i.test(readiness),'Native
 ok(/FOREGROUND_SERVICE_MICROPHONE/i.test(readiness),'Native microphone foreground-service permission must remain documented');
 ok(/Incoming FCM does not start microphone access in the background/i.test(readiness),'Play readiness must preserve visible-user-action microphone start boundary');
 ok(/Play Console foreground-service declaration draft/i.test(readiness),'Play readiness must retain an explicit foreground-service declaration draft');
+ok(/Android developer verification \/ package registration/i.test(readiness),'Play readiness must cover the active Android developer verification requirement');
+for(const check of ['developer_identity_verified','customer_package_registered','merchant_package_registered','rider_package_registered']){
+  ok(nativeReleaseVerifier.includes('"'+check+'"'),'Play preflight gate must require '+check);
+}
+for(const id of ['com.queuego.customer','com.queuego.merchant','com.queuego.rider']){
+  ok(readiness.includes(id),'Android developer verification guidance must name package '+id);
+}
+ok(nativeReleaseVerifier.includes('registered_packages')&&nativeReleaseVerifier.includes('expected_play_packages'),'Play gate must structurally bind registration evidence to exact package names');
 ok(/Customer \/ Merchant \/ Rider — `microphone`/i.test(readiness),'All three Native apps must have a microphone FGS declaration draft');
 ok(/Rider only — `specialUse`/i.test(readiness)&&/Active QueueGo Rider navigation return control/i.test(readiness),'Rider specialUse declaration must retain the reviewed subtype and use case');
 ok(/Demo video evidence required/i.test(readiness),'Foreground-service declaration must require real-device demo video evidence');
