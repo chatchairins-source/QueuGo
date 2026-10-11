@@ -194,7 +194,11 @@ whose non-expired non-empty `queuego-backup-*` encrypted artifact still exists;
 `pkypiqhlrmzocysgeqew`;
 `firebase_three_packages.firebase_project_id` must match the loaded Firebase
 configuration; `play_store_preflight` must match release versionName, all three
-versionCodes and all three observed Play maxima; and
+versionCodes and all three observed Play maxima. It must also identify exactly
+`com.queuego.customer`, `com.queuego.merchant` and `com.queuego.rider` as the
+registered Play package names and record the Play-registered public signing
+certificate SHA-256 for each package. Those three registered fingerprints must
+match the same certified Native release signing identity. Finally,
 `release_signing.signing_certificate_sha256` must match the certified keystore
 fingerprint. Mismatched but correctly hashed evidence is rejected.
 
