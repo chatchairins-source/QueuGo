@@ -20,7 +20,7 @@ const releaseCertification=read('.github/workflows/native-release-certification.
 const nativeRootGradle=read('native-android/build.gradle.kts');
 const nativeVoicePeer=read('native-android/shared/src/main/java/com/queuego/shared/NativeVoicePeer.kt');
 const nativeTurnEdge=read('supabase/functions/queuego-turn/index.ts');
-const nativeReleaseGate=read('native-android/qa/verify-native-release-gate.py');
+const nativeReleaseVerifier=read('native-android/qa/verify-native-release-gate.py');
 const productionPush=read('supabase/functions/queuego-push/index.ts');
 const sharedManifest=read('native-android/shared/src/main/AndroidManifest.xml');
 const riderManifest=read('native-android/rider/src/main/AndroidManifest.xml');
@@ -80,7 +80,7 @@ for(const check of ['developer_identity_verified','customer_package_registered',
 for(const id of ['com.queuego.customer','com.queuego.merchant','com.queuego.rider']){
   ok(readiness.includes(id),'Android developer verification guidance must name package '+id);
 }
-ok(nativeReleaseGate.includes('registered_packages')&&nativeReleaseGate.includes('expected_play_packages'),'Play gate must structurally bind registration evidence to exact package names');
+ok(nativeReleaseVerifier.includes('registered_packages')&&nativeReleaseVerifier.includes('expected_play_packages'),'Play gate must structurally bind registration evidence to exact package names');
 ok(/Customer \/ Merchant \/ Rider — `microphone`/i.test(readiness),'All three Native apps must have a microphone FGS declaration draft');
 ok(/Rider only — `specialUse`/i.test(readiness)&&/Active QueueGo Rider navigation return control/i.test(readiness),'Rider specialUse declaration must retain the reviewed subtype and use case');
 ok(/Demo video evidence required/i.test(readiness),'Foreground-service declaration must require real-device demo video evidence');
