@@ -8,7 +8,7 @@ CREATE INDEX IF NOT EXISTS qg_call_sessions_created_idx
 CREATE OR REPLACE FUNCTION qg_private.qg_purge_call_sessions()
 RETURNS bigint
 LANGUAGE plpgsql
-SECURITY DEFINER
+SECURITY INVOKER
 SET search_path=''
 AS $function$
 DECLARE
