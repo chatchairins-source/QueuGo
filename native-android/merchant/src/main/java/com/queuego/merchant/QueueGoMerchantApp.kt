@@ -128,6 +128,8 @@ private fun MerchantShell(
     var loading by remember { mutableStateOf(true) }
     var busy by remember { mutableStateOf(false) }
     var message by remember { mutableStateOf<String?>(null) }
+    var handledPushEventId by remember { mutableStateOf<Long?>(null) }
+    var pushRetrySignal by remember { mutableIntStateOf(0) }
     val context = LocalContext.current
     val voiceController = remember(auth.user.id) { NativeVoiceCallController(context) }
     val voiceState by voiceController.state.collectAsState()
@@ -285,22 +287,37 @@ private fun MerchantShell(
     }
 
     LaunchedEffect(auth.user.id) { refreshAll() }
-    LaunchedEffect(pushTarget?.eventId, loading) {
+    LaunchedEffect(pushTarget?.eventId, loading, pushRetrySignal, auth.session.accessToken) {
         val target = pushTarget ?: return@LaunchedEffect
-        if (loading) return@LaunchedEffect
+        if (loading || handledPushEventId == target.eventId) return@LaunchedEffect
         if (target.referenceId.isBlank()) {
+            handledPushEventId = target.eventId
             screen = "notifications"
             return@LaunchedEffect
         }
-        val fresh = runCatching { api.loadOrders(auth) }.getOrDefault(orders)
-        orders = fresh
-        val order = fresh.find { it.id == target.referenceId }
-        if (order != null) {
-            selectedOrder = order
-            orderItems = runCatching { api.loadOrderItems(auth, order.id) }.getOrDefault(emptyList())
-            screen = "order"
-        } else {
-            screen = if (target.type == "voice_call") "orders" else "notifications"
+        try {
+            val lookup = lookupMerchantNotificationOrder(
+                referenceId = target.referenceId,
+                current = orders,
+                idOf = { it.id },
+                refresh = { api.loadOrders(auth) }
+            )
+            orders = lookup.snapshot
+            val order = lookup.order
+            handledPushEventId = target.eventId
+            if (order != null) {
+                selectedOrder = order
+                orderItems = runCatching { api.loadOrderItems(auth, order.id) }.getOrDefault(emptyList())
+                screen = "order"
+            } else {
+                screen = if (target.type == "voice_call") "orders" else "notifications"
+            }
+        } catch (failure: kotlinx.coroutines.CancellationException) {
+            throw failure
+        } catch (_: Exception) {
+            message = "กำลังเชื่อมต่อเพื่อเปิดรายการจากการแจ้งเตือน"
+            delay(3_000)
+            pushRetrySignal += 1
         }
     }
     LaunchedEffect(auth.session.accessToken, auth.session.sessionId, lifecycle) {
@@ -648,19 +665,28 @@ private fun MerchantShell(
                     },
                     onOpenOrder = { orderId ->
                         scope.launch {
-                            val current = orders.find { it.id == orderId }
-                                ?: runCatching { api.loadOrders(auth) }
-                                    .getOrNull()
-                                    ?.also { orders = it }
-                                    ?.find { it.id == orderId }
-                            if (current != null) {
-                                selectedOrder = current
-                                orderItems = runCatching { api.loadOrderItems(auth, current.id) }
-                                    .getOrDefault(emptyList())
-                                screen = "order"
-                            } else {
-                                message = "ไม่พบออเดอร์ที่อ้างอิงจากการแจ้งเตือน"
-                                screen = "orders"
+                            try {
+                                val lookup = lookupMerchantNotificationOrder(
+                                    referenceId = orderId,
+                                    current = orders,
+                                    idOf = { it.id },
+                                    refresh = { api.loadOrders(auth) }
+                                )
+                                orders = lookup.snapshot
+                                val current = lookup.order
+                                if (current != null) {
+                                    selectedOrder = current
+                                    orderItems = runCatching { api.loadOrderItems(auth, current.id) }
+                                        .getOrDefault(emptyList())
+                                    screen = "order"
+                                } else {
+                                    message = "ไม่พบออเดอร์ที่อ้างอิงจากการแจ้งเตือน"
+                                    screen = "orders"
+                                }
+                            } catch (failure: kotlinx.coroutines.CancellationException) {
+                                throw failure
+                            } catch (_: Exception) {
+                                message = "เชื่อมต่อออเดอร์ไม่สำเร็จ กรุณาแตะการแจ้งเตือนอีกครั้ง"
                             }
                         }
                     }
