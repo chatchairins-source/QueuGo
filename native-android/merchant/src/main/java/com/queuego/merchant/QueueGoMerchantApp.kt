@@ -254,23 +254,29 @@ private fun MerchantShell(
     }
 
     suspend fun refreshOrders() = ordersMutex.withLock {
-        runCatching { api.loadOrders(auth) }.onSuccess { fresh ->
-            val pendingNow = fresh.filter { it.status == "pending" }.map { it.id }.toSet()
-            val before = knownPendingIds
-            if (before != null && pendingNow.any { it !in before }) {
-                playMerchantNotificationSound()
+        runCatching { api.loadOrders(auth) }
+            .onFailure { if (it is kotlinx.coroutines.CancellationException) throw it }
+            .onSuccess { fresh ->
+                val pendingNow = fresh.filter { it.status == "pending" }.map { it.id }.toSet()
+                val before = knownPendingIds
+                if (before != null && pendingNow.any { it !in before }) {
+                    playMerchantNotificationSound()
+                }
+                knownPendingIds = pendingNow
+                orders = fresh
+                selectedOrder = selectedOrder?.let { old -> fresh.find { it.id == old.id } ?: old }
             }
-            knownPendingIds = pendingNow
-            orders = fresh
-            selectedOrder = selectedOrder?.let { old -> fresh.find { it.id == old.id } ?: old }
-        }
         if (screen == "order" && selectedOrder != null) {
-            runCatching { api.loadOrderItems(auth, selectedOrder!!.id) }.onSuccess { orderItems = it }
+            runCatching { api.loadOrderItems(auth, selectedOrder!!.id) }
+                .onFailure { if (it is kotlinx.coroutines.CancellationException) throw it }
+                .onSuccess { orderItems = it }
         }
     }
 
     suspend fun refreshNotifications() = notificationsMutex.withLock {
-        runCatching { api.loadNotifications(auth) }.onSuccess { notifications = it }
+        runCatching { api.loadNotifications(auth) }
+            .onFailure { if (it is kotlinx.coroutines.CancellationException) throw it }
+            .onSuccess { notifications = it }
     }
 
     LaunchedEffect(auth.session.accessToken, shop?.id, lifecycle) {
@@ -334,16 +340,18 @@ private fun MerchantShell(
             }
         }
     }
-    LaunchedEffect(screen) {
-        if (screen == "home" || screen == "orders" || screen == "order") {
-            while (true) {
-                refreshOrders()
-                delay(3_000)
-            }
-        } else if (screen == "notifications") {
-            while (true) {
-                refreshNotifications()
-                delay(10_000)
+    LaunchedEffect(screen, auth.session.accessToken, lifecycle) {
+        lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            if (screen == "home" || screen == "orders" || screen == "order") {
+                while (true) {
+                    refreshOrders()
+                    delay(3_000)
+                }
+            } else if (screen == "notifications") {
+                while (true) {
+                    refreshNotifications()
+                    delay(10_000)
+                }
             }
         }
     }
