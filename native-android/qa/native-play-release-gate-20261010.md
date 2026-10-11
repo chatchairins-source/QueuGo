@@ -103,6 +103,16 @@ explicitly supplied. Evidence output is required outside the source checkout.
 The helper reduces formatting/capture mistakes; it does not observe semantics on
 behalf of the operator and therefore does not make a physical gate PASS by itself.
 
+After every gate envelope has been independently certified,
+`native-android/qa/finalize-native-release-evidence.py` is the supported bundle
+finalizer. It requires a clean exact-source checkout, P0=0/P1=0, derives the full
+gate list from the canonical verifier, re-validates every envelope and referenced
+artifact, rejects symlinks and reserved certification output, enforces the same
+1000-file / 4 GiB bounds as certification, writes `native-release-evidence.json`
+and creates the external ZIP plus SHA-256 required by the private Storage intake.
+It never promotes DRAFT evidence or invents a gate PASS; its successful output is
+only `READY_FOR_PRIVATE_STORAGE_UPLOAD`.
+
 ## Still OPEN
 
 1. Real Firebase project with complete Customer/Merchant/Rider clients and
