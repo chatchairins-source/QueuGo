@@ -331,7 +331,7 @@ fun RiderProfileScreen(
             RiderProfileStateRow(
                 icon = "chat",
                 title = "การแจ้งเตือนเบื้องหลัง",
-                subtitle = "รับงานและสถานะสำคัญแม้ไม่ได้เปิดแอป",
+                subtitle = "รับงานและสถานะสำคัญแม้ไม่ได้เปิดหน้านี้",
                 state = if (profilePushEnabled) "เปิด" else "ปิด",
                 on = profilePushEnabled,
                 enabled = !busy
@@ -377,11 +377,11 @@ fun RiderProfileScreen(
             RiderProfileActionRow(
                 icon = "chat",
                 title = "ทดสอบการแจ้งเตือน",
-                subtitle = "ส่งแจ้งเตือนทดสอบหลังประมาณ 7 วินาที",
+                subtitle = "ส่งแจ้งเตือนทดสอบหลัง 7 วินาที",
                 enabled = !busy
             ) {
                 busy = true
-                message = "ระบบจะส่งแจ้งเตือนทดสอบหลังประมาณ 7 วินาที"
+                message = "ระบบจะส่งแจ้งเตือนใน 7 วินาที กด Home เพื่อทดสอบได้เลย"
                 scope.launch {
                     runCatching { api.testNativePush(auth) }
                         .onFailure { message = it.message ?: "ทดสอบการแจ้งเตือนไม่สำเร็จ" }
