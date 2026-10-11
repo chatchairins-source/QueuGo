@@ -47,11 +47,11 @@ def ensure_external(path: Path, label: str) -> Path:
 
 
 def git_head() -> str:
-    return run(["git", "rev-parse", "HEAD"])
+    return run(["git", "-C", str(ROOT), "rev-parse", "HEAD"])
 
 
 def require_clean_checkout() -> None:
-    dirty = run(["git", "status", "--porcelain", "--untracked-files=normal"])
+    dirty = run(["git", "-C", str(ROOT), "status", "--porcelain", "--untracked-files=normal"])
     if dirty:
         raise ValueError("release evidence finalization requires a clean source checkout")
 
