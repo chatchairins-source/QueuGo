@@ -3,8 +3,14 @@ package com.queuego.rider
 import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
 import android.provider.Settings
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -17,6 +23,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.queuego.shared.QgAccountDeletionSection
+import com.queuego.shared.QgIcon
 import com.queuego.shared.QgMuted
 import com.queuego.shared.QgRed
 import com.queuego.shared.QgStatusPill
@@ -43,6 +50,30 @@ fun RiderProfileScreen(
     var busy by remember { mutableStateOf(false) }
     var message by remember { mutableStateOf<String?>(null) }
     var showSupport by remember { mutableStateOf(false) }
+    var profilePushEnabled by remember { mutableStateOf(riderPushEnabled(context)) }
+    val profilePushPermission = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (!granted) {
+            message = "Android ยังไม่ได้อนุญาตการแจ้งเตือน"
+        } else {
+            busy = true
+            scope.launch {
+                runCatching {
+                    setRiderPushEnabled(context, true)
+                    syncRiderNativePush(context, auth, api, SessionStore(context))
+                }.onSuccess {
+                    profilePushEnabled = true
+                    message = "เปิดการแจ้งเตือนเบื้องหลังแล้ว"
+                }.onFailure {
+                    setRiderPushEnabled(context, false)
+                    profilePushEnabled = false
+                    message = it.message ?: "เปิดการแจ้งเตือนไม่สำเร็จ"
+                }
+                busy = false
+            }
+        }
+    }
 
     fun refresh() {
         scope.launch {
@@ -194,52 +225,111 @@ fun RiderProfileScreen(
                     ) { Text("บันทึก") }
                 }
             } else {
-                OutlinedButton(onClick = { editing = true }, modifier = Modifier.fillMaxWidth()) { Text("ตั้งค่าบัญชี") }
-                Spacer(Modifier.height(8.dp))
-                OutlinedButton(onClick = { showSupport = true }, modifier = Modifier.fillMaxWidth()) {
-                    Text("แจ้งปัญหา / ติดตามเรื่อง")
-                }
+                RiderProfileActionRow(
+                    icon = "user",
+                    title = "ตั้งค่าบัญชี",
+                    subtitle = "ชื่อ เบอร์โทร และข้อมูลบัญชี",
+                    onClick = { editing = true }
+                )
+                HorizontalDivider(color = Color(0xFFECEEF1))
+                RiderProfileActionRow(
+                    icon = "chat",
+                    title = "แจ้งปัญหา / ติดตามเรื่อง",
+                    subtitle = "ติดต่อฝ่ายดูแล QueueGo",
+                    onClick = { showSupport = true }
+                )
             }
         }
 
         Spacer(Modifier.height(12.dp))
         RiderProfileSection("การแจ้งเตือน") {
-            OutlinedButton(
-                onClick = {
-                    if (Build.VERSION.SDK_INT >= 26) {
-                        val intent = Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
-                            .putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
-                        runCatching { context.startActivity(intent) }
-                    }
-                },
-                modifier = Modifier.fillMaxWidth()
-            ) { Text("การแจ้งเตือนเบื้องหลัง") }
-            Spacer(Modifier.height(8.dp))
-            OutlinedButton(
-                onClick = {
+            RiderProfileStateRow(
+                icon = "chat",
+                title = "การแจ้งเตือนเบื้องหลัง",
+                subtitle = "รับงานและสถานะสำคัญแม้ไม่ได้เปิดแอป",
+                state = if (profilePushEnabled) "เปิด" else "ปิด",
+                on = profilePushEnabled,
+                enabled = !busy
+            ) {
+                if (profilePushEnabled) {
                     busy = true
-                    message = "ระบบจะส่งแจ้งเตือนทดสอบหลังประมาณ 7 วินาที"
                     scope.launch {
-                        runCatching { api.testNativePush(auth) }
-                            .onFailure { message = it.message ?: "ทดสอบการแจ้งเตือนไม่สำเร็จ" }
+                        runCatching {
+                            disableRiderNativePush(auth, api, SessionStore(context))
+                            setRiderPushEnabled(context, false)
+                        }.onSuccess {
+                            profilePushEnabled = false
+                            message = "ปิดการแจ้งเตือนเบื้องหลังแล้ว"
+                        }.onFailure {
+                            message = it.message ?: "ปิดการแจ้งเตือนไม่สำเร็จ"
+                        }
                         busy = false
                     }
-                },
-                enabled = !busy, modifier = Modifier.fillMaxWidth()
-            ) { Text("ทดสอบการแจ้งเตือน") }
-            if (Build.VERSION.SDK_INT >= 33 &&
-                context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+                } else if (
+                    Build.VERSION.SDK_INT >= 33 &&
+                    context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+                ) {
+                    profilePushPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+                } else {
+                    busy = true
+                    scope.launch {
+                        runCatching {
+                            setRiderPushEnabled(context, true)
+                            syncRiderNativePush(context, auth, api, SessionStore(context))
+                        }.onSuccess {
+                            profilePushEnabled = true
+                            message = "เปิดการแจ้งเตือนเบื้องหลังแล้ว"
+                        }.onFailure {
+                            setRiderPushEnabled(context, false)
+                            profilePushEnabled = false
+                            message = it.message ?: "เปิดการแจ้งเตือนไม่สำเร็จ"
+                        }
+                        busy = false
+                    }
+                }
+            }
+            HorizontalDivider(color = Color(0xFFECEEF1))
+            RiderProfileActionRow(
+                icon = "chat",
+                title = "ทดสอบการแจ้งเตือน",
+                subtitle = "ส่งแจ้งเตือนทดสอบหลังประมาณ 7 วินาที",
+                enabled = !busy
             ) {
-                Spacer(Modifier.height(6.dp))
-                Text("Android ยังไม่ได้อนุญาตการแจ้งเตือน", color = QgRed)
+                busy = true
+                message = "ระบบจะส่งแจ้งเตือนทดสอบหลังประมาณ 7 วินาที"
+                scope.launch {
+                    runCatching { api.testNativePush(auth) }
+                        .onFailure { message = it.message ?: "ทดสอบการแจ้งเตือนไม่สำเร็จ" }
+                    busy = false
+                }
             }
         }
 
         Spacer(Modifier.height(12.dp))
         RiderProfileSection("ความเป็นส่วนตัวและบัญชี") {
+            RiderProfileActionRow(
+                icon = "chat",
+                title = "นโยบายความเป็นส่วนตัว",
+                subtitle = "การใช้ข้อมูลและการลบบัญชี"
+            ) {
+                runCatching {
+                    context.startActivity(
+                        Intent(
+                            Intent.ACTION_VIEW,
+                            Uri.parse("https://chatchairins-source.github.io/QueuGo/docs/privacy.html")
+                        )
+                    )
+                }.onFailure { message = "เปิดนโยบายความเป็นส่วนตัวไม่สำเร็จ" }
+            }
+            HorizontalDivider(color = Color(0xFFECEEF1))
             QgAccountDeletionSection(accessToken = auth.session.accessToken, onDeleted = onLogout)
             Spacer(Modifier.height(8.dp))
-            OutlinedButton(onClick = onLogout, modifier = Modifier.fillMaxWidth()) { Text("ออกจากระบบ") }
+            RiderProfileActionRow(
+                icon = "back",
+                title = "ออกจากระบบ",
+                subtitle = "ออกจากบัญชีในอุปกรณ์นี้",
+                onClick = onLogout
+            )
         }
         Spacer(Modifier.height(86.dp))
     }
@@ -248,10 +338,99 @@ fun RiderProfileScreen(
 @Composable
 private fun RiderProfileSection(title: String, content: @Composable () -> Unit) {
     Column {
-        Text(title, color = QgMuted, fontWeight = FontWeight.Bold)
-        Spacer(Modifier.height(5.dp))
-        Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = Color.White)) {
-            Column(Modifier.padding(10.dp)) { content() }
+        Text(
+            title,
+            color = Color(0xFF777D85),
+            fontWeight = FontWeight.ExtraBold,
+            style = MaterialTheme.typography.labelSmall
+        )
+        Spacer(Modifier.height(6.dp))
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .background(Color.White, RoundedCornerShape(16.dp))
+                .border(1.dp, Color(0xFFECEEF1), RoundedCornerShape(16.dp))
+        ) { content() }
+    }
+}
+
+
+@Composable
+private fun RiderProfileActionRow(
+    icon: String,
+    title: String,
+    subtitle: String,
+    enabled: Boolean = true,
+    onClick: () -> Unit
+) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .clickable(enabled = enabled, onClick = onClick)
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+    ) {
+        Box(
+            Modifier
+                .size(34.dp)
+                .background(Color(0xFFF5F5F6), RoundedCornerShape(11.dp)),
+            contentAlignment = androidx.compose.ui.Alignment.Center
+        ) {
+            QgIcon(icon, Modifier.size(17.dp), Color(0xFF737982))
+        }
+        Spacer(Modifier.width(9.dp))
+        Column(Modifier.weight(1f)) {
+            Text(title, fontWeight = FontWeight.ExtraBold, color = Color(0xFF202329))
+            Text(subtitle, color = Color(0xFF8A8F96), style = MaterialTheme.typography.labelSmall)
+        }
+        Text("›", color = Color(0xFFAFB3B9), style = MaterialTheme.typography.headlineSmall)
+    }
+}
+
+@Composable
+private fun RiderProfileStateRow(
+    icon: String,
+    title: String,
+    subtitle: String,
+    state: String,
+    on: Boolean,
+    enabled: Boolean,
+    onClick: () -> Unit
+) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .clickable(enabled = enabled, onClick = onClick)
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+    ) {
+        Box(
+            Modifier
+                .size(34.dp)
+                .background(Color(0xFFF5F5F6), RoundedCornerShape(11.dp)),
+            contentAlignment = androidx.compose.ui.Alignment.Center
+        ) {
+            QgIcon(icon, Modifier.size(17.dp), Color(0xFF737982))
+        }
+        Spacer(Modifier.width(9.dp))
+        Column(Modifier.weight(1f)) {
+            Text(title, fontWeight = FontWeight.ExtraBold, color = Color(0xFF202329))
+            Text(subtitle, color = Color(0xFF8A8F96), style = MaterialTheme.typography.labelSmall)
+        }
+        Box(
+            Modifier
+                .background(
+                    if (on) Color(0xFFE9FAF2) else Color(0xFFF1F2F4),
+                    RoundedCornerShape(99.dp)
+                )
+                .padding(horizontal = 8.dp, vertical = 5.dp)
+        ) {
+            Text(
+                state,
+                color = if (on) Color(0xFF0A9660) else Color(0xFF7D8289),
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.ExtraBold
+            )
         }
     }
 }
