@@ -176,6 +176,12 @@ try{
       merchant_session_persistence:true,merchant_offline_timeout:true,merchant_reconnect:true,merchant_background_foreground:true,
       rider_permissions:true,rider_single_back_to_home:true,rider_upload:true,rider_location:true,
       rider_session_persistence:true,rider_offline_timeout:true,rider_reconnect:true,rider_background_foreground:true
+    },
+    play_store_preflight:{
+      developer_identity_verified:true,
+      customer_package_registered:true,
+      merchant_package_registered:true,
+      rider_package_registered:true
     }
   };
   const gates={};
@@ -185,7 +191,7 @@ try{
       checks:semanticChecks[gate]||{observed:true},
       artifacts:[{file:artifact,sha256:artifactSha,kind:'log'}]
     };
-    if(semanticChecks[gate]) envelope.operator_certified=true;
+    if(physical.has(gate)) envelope.operator_certified=true;
     if(['customer_blueprint','merchant_blueprint','rider_blueprint'].includes(gate)) envelope.blocking_differences=0;
     if(gate==='full_native_ci') envelope.github_run_id=456;
     if(gate==='backup_restore') envelope.github_run_id=456;
@@ -195,6 +201,7 @@ try{
       envelope.version_name='1.0.0';
       envelope.release_version_codes={customer:1,merchant:1,rider:1};
       envelope.observed_play_max_version_codes={customer:0,merchant:0,rider:0};
+      envelope.registered_packages=['com.queuego.customer','com.queuego.merchant','com.queuego.rider'];
     }
     if(gate==='release_signing') envelope.signing_certificate_sha256='b'.repeat(64);
     if(physical.has(gate)){
@@ -217,6 +224,33 @@ try{
   }
   const report=path.join(bindingDir,'native-release-evidence.json');
   fs.writeFileSync(report,JSON.stringify({source_sha:head,p0:0,p1:0,gates}));
+
+  const playEnvelopePath=path.join(bindingDir,'play_store_preflight.json');
+  const playEnvelope=JSON.parse(fs.readFileSync(playEnvelopePath,'utf8'));
+  delete playEnvelope.checks.rider_package_registered;
+  fs.writeFileSync(playEnvelopePath,JSON.stringify(playEnvelope));
+  gates.play_store_preflight={
+    status:'PASS',
+    evidence_file:'play_store_preflight.json',
+    sha256:crypto.createHash('sha256').update(fs.readFileSync(playEnvelopePath)).digest('hex')
+  };
+  fs.writeFileSync(report,JSON.stringify({source_sha:head,p0:0,p1:0,gates}));
+  const missingPlayRegistration=spawnSync('python3',[script],{
+    env:{...env,QG_NATIVE_RELEASE_EVIDENCE:report,QG_CERTIFIED_NATIVE_PILOT_RUN_ID:'456',QG_CERTIFIED_BACKUP_RESTORE_RUN_ID:'456'},
+    encoding:'utf8'
+  });
+  assert.equal(missingPlayRegistration.status,1,'Play preflight must fail if one QueueGo package registration is uncertified');
+  assert.match(missingPlayRegistration.stderr,/gate required check missing: play_store_preflight\.rider_package_registered/);
+
+  playEnvelope.checks.rider_package_registered=true;
+  fs.writeFileSync(playEnvelopePath,JSON.stringify(playEnvelope));
+  gates.play_store_preflight={
+    status:'PASS',
+    evidence_file:'play_store_preflight.json',
+    sha256:crypto.createHash('sha256').update(fs.readFileSync(playEnvelopePath)).digest('hex')
+  };
+  fs.writeFileSync(report,JSON.stringify({source_sha:head,p0:0,p1:0,gates}));
+
   const result=spawnSync('python3',[script],{
     env:{...env,QG_NATIVE_RELEASE_EVIDENCE:report,QG_CERTIFIED_NATIVE_PILOT_RUN_ID:'123',QG_CERTIFIED_BACKUP_RESTORE_RUN_ID:'789'},
     encoding:'utf8'
@@ -283,6 +317,7 @@ assert.match(verifier,/firebase_three_packages evidence does not match the loade
 assert.match(verifier,/play_store_preflight evidence versionName mismatch/,'Play evidence must bind certified versionName');
 assert.match(verifier,/play_store_preflight evidence release versionCodes mismatch/,'Play evidence must bind release versionCodes');
 assert.match(verifier,/play_store_preflight evidence Play history mismatch/,'Play evidence must bind observed Play version history');
+assert.match(verifier,/play_store_preflight evidence registered package names mismatch/,'Play evidence must bind exact QueueGo package names');
 assert.match(verifier,/release_signing evidence does not match the certified signing identity/,'signing evidence must bind the certified certificate fingerprint');
 for(const legacy of ['.github/workflows/build-queuego-apks.yml','.github/workflows/build-queuego-pilot-apks.yml']){
   assert.equal(fs.existsSync(legacy),false,`legacy Capacitor Android build workflow must stay retired: ${legacy}`);
