@@ -195,9 +195,9 @@ internal fun MerchantRevenueScreen(
 
         Text(
             "เงินสดค่าสินค้า: ไรเดอร์จ่ายร้านตอนรับสินค้า แล้วเก็บจากลูกค้าเอง · GP คือค่าบริการร้าน",
-            color = Color(0xFF607E6E),
-            fontSize = 11.sp,
-            lineHeight = 16.sp,
+            color = Color(0xFF7B828B),
+            fontSize = 9.5.sp,
+            lineHeight = 14.sp,
             modifier = Modifier.padding(horizontal = 2.dp, vertical = 4.dp)
         )
 
@@ -213,7 +213,15 @@ internal fun MerchantRevenueScreen(
             Spacer(Modifier.height(7.dp))
             OutlinedTextField(
                 value = selectedDate,
-                onValueChange = { selectedDate = it.take(10) },
+                onValueChange = { value ->
+                    selectedDate = value.take(10)
+                    if (
+                        selectedDate.matches(Regex("\\d{4}-\\d{2}-\\d{2}")) &&
+                        runCatching { !LocalDate.parse(selectedDate).isAfter(today) }.getOrDefault(false)
+                    ) {
+                        scope.launch { load(1, selectedDate) }
+                    }
+                },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
                 placeholder = { Text("YYYY-MM-DD") }
@@ -234,10 +242,6 @@ internal fun MerchantRevenueScreen(
                 }
             }
             Spacer(Modifier.height(8.dp))
-            OutlinedButton(
-                onClick = { scope.launch { load(1, selectedDate) } },
-                modifier = Modifier.fillMaxWidth()
-            ) { Text("โหลดวันที่เลือก") }
             OutlinedButton(
                 onClick = { exportThirtyDays() },
                 modifier = Modifier.fillMaxWidth()
@@ -414,12 +418,13 @@ private fun AnalyticsGrid(items: List<Pair<String, String>>) {
 private fun RevenueQuickButton(label: String, onClick: () -> Unit) {
     Box(
         Modifier
+            .heightIn(min = 32.dp)
             .background(Color.White, RoundedCornerShape(20.dp))
             .border(1.dp, Color(0xFFD6EADF), RoundedCornerShape(20.dp))
             .clickable(onClick = onClick)
-            .padding(horizontal = 10.dp, vertical = 8.dp)
+            .padding(horizontal = 9.dp, vertical = 6.dp)
     ) {
-        Text(label, color = Color(0xFF447263), fontSize = 10.sp, fontWeight = FontWeight.Bold)
+        Text(label, color = Color(0xFF447263), fontSize = 9.sp, fontWeight = FontWeight.Bold)
     }
 }
 
@@ -496,8 +501,8 @@ private fun RevenueReportCard(content: @Composable ColumnScope.() -> Unit) {
         Modifier
             .fillMaxWidth()
             .padding(top = 10.dp)
-            .background(Color.White, RoundedCornerShape(14.dp))
-            .border(1.dp, Color(0xFFE5EEE8), RoundedCornerShape(14.dp))
+            .background(Color.White, RoundedCornerShape(16.dp))
+            .border(1.dp, Color(0xFFE7E9EC), RoundedCornerShape(16.dp))
             .padding(12.dp),
         content = content
     )
@@ -511,12 +516,12 @@ private fun RevenueGrid(items: List<Pair<String, String>>) {
                 Column(
                     Modifier
                         .weight(1f)
-                        .background(Color(0xFFF4FAF6), RoundedCornerShape(10.dp))
-                        .padding(10.dp)
+                        .background(Color(0xFFF7F8F9), RoundedCornerShape(11.dp))
+                        .padding(9.dp)
                 ) {
-                    Text(label, color = Color(0xFF688478), fontSize = 9.sp, lineHeight = 12.sp)
+                    Text(label, color = Color(0xFF8A9098), fontSize = 9.sp, lineHeight = 12.sp)
                     Spacer(Modifier.height(3.dp))
-                    Text(value, color = Color(0xFF173C31), fontSize = 15.sp, fontWeight = FontWeight.ExtraBold)
+                    Text(value, color = Color(0xFF1D2025), fontSize = 15.sp, fontWeight = FontWeight.ExtraBold)
                 }
             }
             if (row.size == 1) Spacer(Modifier.weight(1f))
