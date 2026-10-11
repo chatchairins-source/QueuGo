@@ -180,7 +180,7 @@ internal fun CustomerOrderTrackingScreen(
                     val shopLine = buildString {
                         append("ร้าน ")
                         append(context?.shop?.name ?: "ร้านค้า")
-                        val note = order.note?.trim().orEmpty()
+                        val note = customerVisibleOrderNote(order.note)
                         if (note.isNotBlank()) append(" · ").append(note)
                     }
                     Text(
@@ -695,6 +695,11 @@ private fun CustomerTrackingSummaryRow(label: String, amount: Double) {
         Text("฿" + "%.0f".format(amount), color = Color(0xFF5F585C), fontSize = 11.sp)
     }
 }
+
+private fun customerVisibleOrderNote(raw: String?): String =
+    raw.orEmpty()
+        .replace(Regex("^__QT_ORDER_STATUS__=[^\\n\\\\]*(?:\\\\n|\\n|$)"), "")
+        .trim()
 
 private fun customerRiderSearchElapsed(startedAt: String?, now: Long): String {
     val start = startedAt?.let { runCatching { Instant.parse(it).toEpochMilli() }.getOrNull() }
