@@ -892,7 +892,6 @@ private fun RiderHome(
                 .padding(horizontal = 10.dp, vertical = 7.dp)
         ) {
             RiderBlueprintTopBar(
-                name = auth.user.name,
                 active = auth.user.status == "active",
                 online = snapshot?.online == true,
                 enabled = !actionBusy && snapshot != null && snapshot?.activeJob == null,
@@ -1616,35 +1615,12 @@ private fun ActiveJobCard(
 }
 
 @Composable
-private fun RiderBlueprintTopBar(name: String, active: Boolean, online: Boolean, enabled: Boolean, onToggle: () -> Unit) {
+private fun RiderBlueprintTopBar(active: Boolean, online: Boolean, enabled: Boolean, onToggle: () -> Unit) {
     Row(
         Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
+        horizontalArrangement = Arrangement.End,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Card(
-            Modifier.widthIn(max = 250.dp).weight(1f, fill = false),
-            shape = RoundedCornerShape(18.dp),
-            colors = CardDefaults.cardColors(containerColor = Color(0xFAFFFFFF)),
-            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFEEE7E9))
-        ) {
-            Row(Modifier.padding(5.dp), verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                    Modifier
-                        .size(34.dp)
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(QgRed),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text("Q", color = Color.White, fontWeight = FontWeight.Black, style = MaterialTheme.typography.titleMedium)
-                }
-                Spacer(Modifier.width(7.dp))
-                Column {
-                    Text("QueueGo", fontSize = 15.sp, fontWeight = FontWeight.Black)
-                    Text(name, color = QgMuted, fontSize = 9.sp, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
-                }
-            }
-        }
         Card(
             shape = RoundedCornerShape(18.dp),
             colors = CardDefaults.cardColors(containerColor = Color(0xFAFFFFFF)),
