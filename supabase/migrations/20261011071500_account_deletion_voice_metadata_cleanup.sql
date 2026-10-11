@@ -26,6 +26,7 @@ declare
   v_before text;
   v_after text;
   v_anchor text := 'delete from public.notifications where user_id=v_user.id;';
+  v_notification_cleanup text := 'delete from public.notifications n using public.qg_call_sessions c where n.type=''voice_call'' and n.reference_id=c.order_id and n.user_id=c.callee_user_id and n.created_at=c.created_at and (c.caller_user_id=v_user.id or c.callee_user_id=v_user.id);';
   v_cleanup text := 'delete from public.qg_call_sessions where caller_user_id=v_user.id or callee_user_id=v_user.id;';
 begin
   select pg_get_functiondef('public.queuego_account_deletion_finalize(uuid,uuid)'::regprocedure)
@@ -35,7 +36,8 @@ begin
     raise exception 'ACCOUNT_DELETION_FINALIZE_NOT_FOUND';
   end if;
 
-  if position(v_cleanup in v_before) > 0 then
+  if position(v_notification_cleanup in v_before) > 0
+     and position(v_cleanup in v_before) > 0 then
     return;
   end if;
 
@@ -43,7 +45,11 @@ begin
     raise exception 'ACCOUNT_DELETION_FINALIZE_UNEXPECTED_DEFINITION';
   end if;
 
-  v_after := replace(v_before,v_anchor,v_anchor || E'\n  ' || v_cleanup);
+  v_after := replace(
+    v_before,
+    v_anchor,
+    v_anchor || E'\n  ' || v_notification_cleanup || E'\n  ' || v_cleanup
+  );
   if v_after = v_before then
     raise exception 'ACCOUNT_DELETION_VOICE_CLEANUP_PATCH_NOT_APPLIED';
   end if;
@@ -58,6 +64,13 @@ declare
 begin
   select pg_get_functiondef('public.queuego_account_deletion_finalize(uuid,uuid)'::regprocedure)
     into v_definition;
+
+  if position(
+    'delete from public.notifications n using public.qg_call_sessions c where n.type=''voice_call'' and n.reference_id=c.order_id and n.user_id=c.callee_user_id and n.created_at=c.created_at and (c.caller_user_id=v_user.id or c.callee_user_id=v_user.id);'
+    in v_definition
+  ) = 0 then
+    raise exception 'ACCOUNT_DELETION_VOICE_NOTIFICATION_CLEANUP_MISSING';
+  end if;
 
   if position(
     'delete from public.qg_call_sessions where caller_user_id=v_user.id or callee_user_id=v_user.id;'
