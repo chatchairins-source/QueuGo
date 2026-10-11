@@ -27,6 +27,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.repeatOnLifecycle
 import com.queuego.shared.NativeAuth
 import com.queuego.shared.QgCard
 import com.queuego.shared.QgGreen
@@ -34,6 +37,9 @@ import com.queuego.shared.QgMuted
 import com.queuego.shared.QgRed
 import com.queuego.shared.QgSectionTitle
 import com.queuego.shared.QgStatusPill
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -41,33 +47,43 @@ import kotlinx.coroutines.launch
 fun MerchantLaundryScreen(auth: NativeAuth) {
     val api = remember { MerchantLaundryApi() }
     val scope = rememberCoroutineScope()
-    var state by remember { mutableStateOf<MerchantLaundryState?>(null) }
-    var loading by remember { mutableStateOf(true) }
-    var busy by remember { mutableStateOf(false) }
-    var message by remember { mutableStateOf<String?>(null) }
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
+    val readMutex = remember(auth.user.id) { Mutex() }
+    var state by remember(auth.user.id) { mutableStateOf<MerchantLaundryState?>(null) }
+    var loading by remember(auth.user.id) { mutableStateOf(true) }
+    var busy by remember(auth.user.id) { mutableStateOf(false) }
+    var message by remember(auth.user.id) { mutableStateOf<String?>(null) }
+    var loadError by remember(auth.user.id) { mutableStateOf<String?>(null) }
 
-    suspend fun reload() {
-        loading = true
-        runCatching { api.load(auth) }
-            .onSuccess { state = it; message = null }
-            .onFailure { message = it.message ?: "โหลดฝากซักไม่สำเร็จ" }
-        loading = false
+    suspend fun readLatest(showLoading: Boolean) = readMutex.withLock {
+        if (showLoading) loading = true
+        try {
+            state = api.load(auth)
+            loadError = null
+            if (showLoading) message = null
+        } catch (e: CancellationException) { throw e }
+        catch (e: Exception) { loadError = e.message ?: "โหลดฝากซักไม่สำเร็จ" }
+        finally { loading = false }
     }
 
-    LaunchedEffect(auth.user.id) {
-        reload()
-        while (true) {
-            delay(5_000)
-            if (!busy) runCatching { api.load(auth) }.onSuccess { state = it }
+    suspend fun reload() = readLatest(true)
+
+    LaunchedEffect(auth.user.id, auth.session.accessToken, lifecycle) {
+        lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            while (true) {
+                if (!busy) readLatest(state == null)
+                delay(5_000)
+            }
         }
     }
 
     val current = state
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(14.dp)) {
         QgSectionTitle("ฝากซัก", "บริการร้าน + เรียก Express รับและส่งคืนได้คนละ Rider")
-        if (!message.isNullOrBlank()) {
+        val visibleMessage = loadError ?: message
+        if (!visibleMessage.isNullOrBlank()) {
             Spacer(Modifier.height(8.dp))
-            Text(message!!, color = MaterialTheme.colorScheme.error)
+            Text(visibleMessage, color = MaterialTheme.colorScheme.error)
         }
         Spacer(Modifier.height(10.dp))
 
@@ -101,10 +117,11 @@ fun MerchantLaundryScreen(auth: NativeAuth) {
                             if (busy) return@Button
                             busy = true
                             scope.launch {
-                                runCatching { api.setup(auth) }
-                                    .onSuccess { reload(); message = "เปิดระบบฝากซักแล้ว" }
-                                    .onFailure { message = it.message }
-                                busy = false
+                                try {
+                                    runCatching { api.setup(auth) }
+                                        .onSuccess { reload(); message = "เปิดระบบฝากซักแล้ว" }
+                                        .onFailure { if (it is CancellationException) throw it; message = it.message }
+                                } finally { busy = false }
                             }
                         },
                         enabled = !busy,
@@ -122,10 +139,11 @@ fun MerchantLaundryScreen(auth: NativeAuth) {
                 if (busy) return@LaundrySettingsCard
                 busy = true
                 scope.launch {
-                    runCatching { api.saveSettings(auth, next) }
-                        .onSuccess { reload(); message = "บันทึกค่าฝากซักแล้ว" }
-                        .onFailure { message = it.message }
-                    busy = false
+                    try {
+                        runCatching { api.saveSettings(auth, next) }
+                            .onSuccess { reload(); message = "บันทึกค่าฝากซักแล้ว" }
+                            .onFailure { if (it is CancellationException) throw it; message = it.message }
+                    } finally { busy = false }
                 }
             }
         )
@@ -138,10 +156,11 @@ fun MerchantLaundryScreen(auth: NativeAuth) {
                 if (busy) return@LaundryServicesCard
                 busy = true
                 scope.launch {
-                    runCatching { api.saveService(auth, id, name, desc, type, price, minutes, active) }
-                        .onSuccess { reload(); message = "บันทึกบริการแล้ว" }
-                        .onFailure { message = it.message }
-                    busy = false
+                    try {
+                        runCatching { api.saveService(auth, id, name, desc, type, price, minutes, active) }
+                            .onSuccess { reload(); message = "บันทึกบริการแล้ว" }
+                            .onFailure { if (it is CancellationException) throw it; message = it.message }
+                    } finally { busy = false }
                 }
             }
         )
@@ -159,10 +178,11 @@ fun MerchantLaundryScreen(auth: NativeAuth) {
                     if (busy) return@LaundryOrderCard
                     busy = true
                     scope.launch {
-                        runCatching { api.orderAction(auth, order.id, action, qty, note) }
-                            .onSuccess { reload(); message = "อัปเดตงานฝากซักแล้ว" }
-                            .onFailure { message = it.message }
-                        busy = false
+                        try {
+                            runCatching { api.orderAction(auth, order.id, action, qty, note) }
+                                .onSuccess { reload(); message = "อัปเดตงานฝากซักแล้ว" }
+                                .onFailure { if (it is CancellationException) throw it; message = it.message }
+                        } finally { busy = false }
                     }
                 }
             )
