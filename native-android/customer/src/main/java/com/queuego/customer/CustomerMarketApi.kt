@@ -27,7 +27,9 @@ data class MarketShop(
     val logo: String?,
     val cover: String?,
     val description: String?,
-    val deliveryEnabled: Boolean
+    val deliveryEnabled: Boolean,
+    val latitude: Double? = null,
+    val longitude: Double? = null
 )
 
 data class MarketProduct(
@@ -120,7 +122,9 @@ class CustomerMarketApi(private val http: QueueGoNativeApi = QueueGoNativeApi())
                     r.optString("shop_logo").takeIf { it.isNotBlank() && it != "null" },
                     r.optString("shop_cover").takeIf { it.isNotBlank() && it != "null" },
                     r.optString("description").takeIf { it.isNotBlank() && it != "null" },
-                    r.optBoolean("delivery_enabled", false)
+                    r.optBoolean("delivery_enabled", false),
+                    r.optDoubleOrNull("latitude"),
+                    r.optDoubleOrNull("longitude")
                 ))
             }
         }
@@ -154,6 +158,11 @@ class CustomerMarketApi(private val http: QueueGoNativeApi = QueueGoNativeApi())
                 ))
             }
         }
+    }
+
+    internal suspend fun loadPricing(auth: NativeAuth?): MarketPricing {
+        val response = http.get("queuego_platform_rules?select=id,rule_key,value,effective_from,created_at&rule_key=in.(pricing.market_base_fee,pricing.market_distance_step_fee,pricing.market_second_shop_fee,pricing.market_additional_shop_fee)&order=effective_from.desc,created_at.desc,id.desc", auth?.session?.accessToken)
+        return MarketPricing.fromRows(response as? JSONArray ?: error("โหลดค่าบริการตลาดสดไม่สำเร็จ"))
     }
 
     suspend fun activeTrip(auth: NativeAuth): ActiveMarketTrip? {
@@ -302,11 +311,11 @@ class CustomerMarketApi(private val http: QueueGoNativeApi = QueueGoNativeApi())
         if (markets.isEmpty()) return null
         if (location == null) return markets.firstOrNull()
         return markets.filter { it.latitude != null && it.longitude != null }
-            .minByOrNull { haversine(location.latitude, location.longitude, it.latitude!!, it.longitude!!) }
+            .minByOrNull { distanceKm(location.latitude, location.longitude, it.latitude!!, it.longitude!!) }
             ?: markets.firstOrNull()
     }
 
-    private fun haversine(aLat: Double, aLng: Double, bLat: Double, bLng: Double): Double {
+    fun distanceKm(aLat: Double, aLng: Double, bLat: Double, bLng: Double): Double {
         val r = 6371.0
         val dLat = Math.toRadians(bLat - aLat)
         val dLng = Math.toRadians(bLng - aLng)
