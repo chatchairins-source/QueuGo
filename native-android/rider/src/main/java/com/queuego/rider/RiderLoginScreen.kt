@@ -160,6 +160,7 @@ internal fun RiderLoginScreen(
 @Composable
 private fun LoginField(label: String, placeholder: String, value: String, change: (String) -> Unit, secret: Boolean, busy: Boolean, submit: () -> Unit) {
     var focused by remember { mutableStateOf(false) }
+    val focus = LocalFocusManager.current
     Column {
         Text(label, style = authText(11, 17, FontWeight(850)))
         Spacer(Modifier.height(7.dp))
