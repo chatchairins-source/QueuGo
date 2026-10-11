@@ -314,10 +314,8 @@ begin
   delete from public.notifications where user_id=v_user.id;
   delete from public.notifications n
   using public.qg_call_sessions c
-  where n.type='voice_call'
-    and n.reference_id=c.order_id
-    and n.user_id=c.callee_user_id
-    and n.created_at=c.created_at
+  where n.id=c.id
+    and n.type='voice_call'
     and (c.caller_user_id=v_user.id or c.callee_user_id=v_user.id);
   delete from public.qg_call_sessions where caller_user_id=v_user.id or callee_user_id=v_user.id;
   delete from public.qg_customer_favorites where user_id=v_user.id;
