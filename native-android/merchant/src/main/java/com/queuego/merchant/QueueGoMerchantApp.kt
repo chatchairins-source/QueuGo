@@ -1809,36 +1809,6 @@ private fun MerchantProfileScreen(
             )
         }
 
-        if (readiness != null) {
-            Spacer(Modifier.height(12.dp))
-            MerchantProfileSectionTitle("ความพร้อมร้าน")
-            MerchantProfileCard {
-                val labels = listOf(
-                    "shop_info" to "ข้อมูลร้าน",
-                    "storefront_image" to "รูปหน้าร้าน",
-                    "cover_image" to "รูปหน้าปก",
-                    "location" to "ตำแหน่งร้าน",
-                    "catalog" to "สินค้า/บริการ"
-                )
-                labels.forEachIndexed { index, (key, label) ->
-                    Row(
-                        Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(label, Modifier.weight(1f), fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                        val ready = readiness.checks.optBoolean(key, false)
-                        Text(
-                            if (ready) "พร้อม" else "ยังไม่ครบ",
-                            color = if (ready) QgGreen else QgRed,
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.ExtraBold
-                        )
-                    }
-                    if (index != labels.lastIndex) HorizontalDivider(color = Color(0xFFECEEF1))
-                }
-            }
-        }
-
         Spacer(Modifier.height(12.dp))
         MerchantProfileSectionTitle("การแจ้งเตือน")
         MerchantProfileCard {
@@ -1910,6 +1880,18 @@ private fun MerchantProfileScreen(
         }
 
         Spacer(Modifier.height(12.dp))
+        MerchantProfileSectionTitle("ความเป็นส่วนตัวและบัญชี")
+        QgAccountDeletionSection(
+            accessToken = auth.session.accessToken,
+            onDeleted = logout,
+            showHeader = false,
+            privacySubtitle = "ข้อมูลเกี่ยวกับการเก็บและใช้ข้อมูลส่วนบุคคล",
+            deleteSubtitle = "ลบบัญชีและข้อมูลร้านตามขั้นตอนที่กำหนด",
+            onLogout = logout,
+            logoutSubtitle = "ออกจากบัญชีร้านค้าบนอุปกรณ์นี้"
+        )
+
+        Spacer(Modifier.height(12.dp))
         MerchantProfileSectionTitle("ช่วยเหลือ")
         MerchantProfileCard {
             MerchantProfileActionRow(
@@ -1917,25 +1899,6 @@ private fun MerchantProfileScreen(
                 title = "แจ้งปัญหา / ติดตามเรื่อง",
                 subtitle = "ติดต่อทีมงาน QueueGo เมื่อพบปัญหาการใช้งาน",
                 onClick = onSupport
-            )
-        }
-
-        Spacer(Modifier.height(12.dp))
-        MerchantProfileSectionTitle("ความเป็นส่วนตัวและบัญชี")
-        QgAccountDeletionSection(
-            accessToken = auth.session.accessToken,
-            onDeleted = logout,
-            showHeader = false,
-            privacySubtitle = "ข้อมูลเกี่ยวกับการเก็บและใช้ข้อมูลส่วนบุคคล",
-            deleteSubtitle = "ลบบัญชีและข้อมูลร้านตามขั้นตอนที่กำหนด"
-        )
-        Spacer(Modifier.height(8.dp))
-        MerchantProfileCard {
-            MerchantProfileActionRow(
-                icon = "back",
-                title = "ออกจากระบบ",
-                subtitle = "ออกจากบัญชีร้านค้าบนอุปกรณ์นี้",
-                onClick = logout
             )
         }
         Spacer(Modifier.height(28.dp))
