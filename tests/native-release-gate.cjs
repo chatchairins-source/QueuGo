@@ -176,6 +176,12 @@ try{
       merchant_session_persistence:true,merchant_offline_timeout:true,merchant_reconnect:true,merchant_background_foreground:true,
       rider_permissions:true,rider_single_back_to_home:true,rider_upload:true,rider_location:true,
       rider_session_persistence:true,rider_offline_timeout:true,rider_reconnect:true,rider_background_foreground:true
+    },
+    play_store_preflight:{
+      developer_identity_verified:true,
+      customer_package_registered:true,
+      merchant_package_registered:true,
+      rider_package_registered:true
     }
   };
   const gates={};
