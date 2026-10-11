@@ -48,5 +48,6 @@ must(sql.includes('content_snapshot=case when reporter_user_id=v_user.id or repo
 must(privacy.includes('รายงานหรือบล็อกคู่สนทนา'),'privacy policy must disclose chat report/block rights');
 must(privacy.includes('สำเนาเนื้อหา'),'privacy policy must disclose moderation snapshot retention and cleanup');
 must(privacy.includes('อายุเกิน 30 วันโดยอัตโนมัติทุกวัน'),'privacy policy must disclose the enforced daily purge of voice-call metadata older than 30 days');
+must(privacy.includes('ข้อมูลสถานะการโทรและการแจ้งเตือนสายเรียกเข้าที่เชื่อมโยงกับบัญชี'),'privacy policy must disclose immediate account-deletion cleanup of voice metadata');
 
 console.log('account deletion/privacy gate checks passed');
