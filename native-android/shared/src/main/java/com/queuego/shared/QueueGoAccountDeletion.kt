@@ -99,7 +99,8 @@ fun QgAccountDeletionSection(
     privacySubtitle: String = "การใช้ข้อมูลและการลบบัญชี",
     deleteSubtitle: String = "ลบ Auth และข้อมูลส่วนบุคคล",
     onLogout: (() -> Unit)? = null,
-    logoutSubtitle: String = "ออกจากบัญชีในอุปกรณ์นี้"
+    logoutSubtitle: String = "ออกจากบัญชีในอุปกรณ์นี้",
+    showRowIcons: Boolean = true
 ) {
     val api = remember { QueueGoAccountDeletionApi() }
     val context = LocalContext.current
@@ -125,6 +126,7 @@ fun QgAccountDeletionSection(
         ) {
             AccountSettingsRow(
                 icon = "gear",
+                showIcon = showRowIcons,
                 title = "นโยบายความเป็นส่วนตัว",
                 subtitle = privacySubtitle,
                 danger = false,
@@ -144,6 +146,7 @@ fun QgAccountDeletionSection(
             HorizontalDivider(color = QgLine)
             AccountSettingsRow(
                 icon = "close",
+                showIcon = showRowIcons,
                 title = "ลบบัญชีถาวร",
                 subtitle = deleteSubtitle,
                 danger = true,
@@ -158,6 +161,7 @@ fun QgAccountDeletionSection(
                 HorizontalDivider(color = QgLine)
                 AccountSettingsRow(
                     icon = "back",
+                showIcon = showRowIcons,
                     title = "ออกจากระบบ",
                     subtitle = logoutSubtitle,
                     danger = false,
@@ -244,6 +248,7 @@ fun QgAccountDeletionSection(
 @Composable
 private fun AccountSettingsRow(
     icon: String,
+    showIcon: Boolean = true,
     title: String,
     subtitle: String,
     danger: Boolean,
@@ -256,22 +261,24 @@ private fun AccountSettingsRow(
             .padding(horizontal = 12.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Box(
-            Modifier
-                .size(34.dp)
-                .background(
-                    if (danger) Color(0xFFFFF0F3) else Color(0xFFF5F5F6),
-                    RoundedCornerShape(11.dp)
-                ),
-            contentAlignment = Alignment.Center
-        ) {
-            QgIcon(
-                icon,
-                Modifier.size(17.dp),
-                if (danger) QgRed else Color(0xFF737982)
-            )
+        if (showIcon) {
+            Box(
+                Modifier
+                    .size(34.dp)
+                    .background(
+                        if (danger) Color(0xFFFFF0F3) else Color(0xFFF5F5F6),
+                        RoundedCornerShape(11.dp)
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                QgIcon(
+                    icon,
+                    Modifier.size(17.dp),
+                    if (danger) QgRed else Color(0xFF737982)
+                )
+            }
+            Spacer(Modifier.width(9.dp))
         }
-        Spacer(Modifier.width(9.dp))
         Column(Modifier.weight(1f)) {
             Text(
                 title,
