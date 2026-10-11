@@ -1,6 +1,9 @@
 package com.queuego.customer
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -10,22 +13,27 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.queuego.shared.NativeAuth
 import com.queuego.shared.QgCard
+import com.queuego.shared.QgIcon
 import com.queuego.shared.QgMuted
 import com.queuego.shared.QgRed
 import com.queuego.shared.QgRemoteImage
@@ -155,54 +163,102 @@ fun CustomerNotificationsScreen(
     onMarkAll: () -> Unit,
     onOpen: (CustomerNotification) -> Unit
 ) {
+    val unreadCount = notifications.count { !it.read }
+
+    // Production Web acknowledges unread rows when the notification center opens.
+    LaunchedEffect(unreadCount) {
+        if (unreadCount > 0 && !busy) onMarkAll()
+    }
+
     Column(
-        Modifier.fillMaxSize()
+        Modifier
+            .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(14.dp)
+            .padding(horizontal = 12.dp)
     ) {
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            OutlinedButton(onClick = onBack) { Text("ย้อนกลับ") }
-            Spacer(Modifier.weight(1f))
-            if (notifications.any { !it.read }) {
-                OutlinedButton(onClick = onMarkAll, enabled = !busy) { Text("อ่านทั้งหมด") }
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .padding(top = 7.dp, bottom = 10.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                Modifier
+                    .size(38.dp)
+                    .background(Color.White, RoundedCornerShape(12.dp))
+                    .clickable(onClick = onBack),
+                contentAlignment = Alignment.Center
+            ) {
+                QgIcon("back", Modifier.size(20.dp), Color(0xFF17191D))
             }
+            Spacer(Modifier.size(8.dp))
+            Text(
+                "แจ้งเตือน",
+                modifier = Modifier.weight(1f),
+                color = Color(0xFF17191D),
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Bold
+            )
         }
-        Spacer(Modifier.height(12.dp))
-        QgSectionTitle("แจ้งเตือน", "อัปเดตจากออเดอร์ ร้าน และ Rider")
-        Spacer(Modifier.height(10.dp))
+
+        Text(
+            "อ่านทั้งหมด",
+            color = QgRed,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier
+                .clickable(enabled = !busy, onClick = onMarkAll)
+                .padding(horizontal = 4.dp, vertical = 8.dp)
+        )
+        Spacer(Modifier.height(4.dp))
+
         if (notifications.isEmpty()) {
-            QgCard(Modifier.fillMaxWidth()) {
-                Text("ยังไม่มีการแจ้งเตือน", color = QgMuted)
-            }
+            Text(
+                "ยังไม่มีการแจ้งเตือน",
+                color = QgMuted,
+                modifier = Modifier.fillMaxWidth().padding(vertical = 35.dp)
+            )
         } else {
-            notifications.forEach { n ->
-                QgCard(
-                    Modifier.fillMaxWidth()
-                        .padding(bottom = 8.dp)
-                        .clickable { onOpen(n) }
+            notifications.forEach { notification ->
+                Column(
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 10.dp)
+                        .background(Color.White, RoundedCornerShape(16.dp))
+                        .border(
+                            1.dp,
+                            if (notification.read) Color(0xFFECEEF1) else Color(0xFFFFD9DE),
+                            RoundedCornerShape(16.dp)
+                        )
+                        .clickable(enabled = !busy) { onOpen(notification) }
+                        .padding(13.dp)
                 ) {
-                    Column {
-                        Row(Modifier.fillMaxWidth()) {
-                            Text(
-                                if (n.read) n.title else "●  " + n.title,
-                                modifier = Modifier.weight(1f),
-                                color = if (n.read) androidx.compose.ui.graphics.Color.Unspecified else QgRed,
-                                fontWeight = FontWeight.ExtraBold
-                            )
-                        }
-                        if (n.message.isNotBlank()) {
-                            Spacer(Modifier.height(4.dp))
-                            Text(n.message, color = QgMuted)
-                        }
-                        if (!n.createdAt.isNullOrBlank()) {
-                            Spacer(Modifier.height(5.dp))
-                            Text(n.createdAt!!, color = QgMuted, style = androidx.compose.material3.MaterialTheme.typography.labelSmall)
-                        }
+                    Text(
+                        notification.title,
+                        color = Color(0xFF17191D),
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.ExtraBold
+                    )
+                    if (notification.message.isNotBlank()) {
+                        Spacer(Modifier.height(5.dp))
+                        Text(
+                            notification.message,
+                            color = Color(0xFF55585E),
+                            fontSize = 12.sp
+                        )
+                    }
+                    if (!notification.createdAt.isNullOrBlank()) {
+                        Spacer(Modifier.height(6.dp))
+                        Text(
+                            notification.createdAt.orEmpty(),
+                            color = QgMuted,
+                            fontSize = 10.sp
+                        )
                     }
                 }
             }
         }
-        Spacer(Modifier.height(24.dp))
+        Spacer(Modifier.height(28.dp))
     }
 }
 
