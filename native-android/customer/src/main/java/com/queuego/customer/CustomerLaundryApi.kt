@@ -184,35 +184,38 @@ class CustomerLaundryApi(private val http: QueueGoNativeApi = QueueGoNativeApi()
         }
     }
 
-    suspend fun place(
-        auth: NativeAuth,
+    internal fun prepareCheckout(
         hub: LaundryHub,
         service: LaundryService,
         location: CustomerLocation,
         estimatedQuantity: Double?,
         note: String?
-    ): JSONObject {
-        val raw = http.rpc(
-            "queuego_place_laundry_order_v2",
-            auth.session.accessToken,
-            JSONObject()
-                .put("p_request_id", UUID.randomUUID().toString())
-                .put("p_hub_id", hub.id)
-                .put("p_service_id", service.id)
-                .put("p_pickup_address", location.address)
-                .put("p_pickup_latitude", location.latitude)
-                .put("p_pickup_longitude", location.longitude)
-                .put("p_estimated_quantity", estimatedQuantity)
-                .put("p_note", note?.trim()?.takeIf { it.isNotBlank() })
-        )
-        return when (raw) {
+    ) = PendingLaundryCheckout(JSONObject()
+        .put("p_request_id", UUID.randomUUID().toString())
+        .put("p_hub_id", hub.id).put("p_service_id", service.id)
+        .put("p_pickup_address", location.address.trim())
+        .put("p_pickup_latitude", location.latitude).put("p_pickup_longitude", location.longitude)
+        .put("p_estimated_quantity", estimatedQuantity ?: JSONObject.NULL)
+        .put("p_note", note?.trim()?.takeIf { it.isNotBlank() } ?: JSONObject.NULL))
+
+    internal suspend fun sendCheckout(auth: NativeAuth, pending: PendingLaundryCheckout): JSONObject {
+        val raw = http.rpc("queuego_place_laundry_order_v2", auth.session.accessToken, pending.body)
+        val receipt = when (raw) {
             is JSONObject -> raw
             is JSONArray -> raw.optJSONObject(0) ?: JSONObject()
             else -> JSONObject()
-        }.also {
-            if (it.length() == 0) error("ระบบยังไม่ยืนยันคำขอฝากซัก")
         }
+        runCatching { UUID.fromString(receipt.getString("id")) }
+            .getOrElse { error("ระบบยังไม่ยืนยันคำขอฝากซัก กรุณาลองตรวจผลอีกครั้ง") }
+        return receipt
     }
+
+    internal suspend fun recoverCheckout(auth: NativeAuth, pending: PendingLaundryCheckout): JSONObject? {
+        val rows = http.array(http.get("laundry_orders?select=id,order_number,status&customer_id=eq." +
+            http.enc(auth.user.id) + "&request_key=eq." + http.enc(pending.body.getString("p_request_id")) + "&limit=1", auth.session.accessToken))
+        return rows.optJSONObject(0)?.also { UUID.fromString(it.getString("id")) }
+    }
+
 }
 
 

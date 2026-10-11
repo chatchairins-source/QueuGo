@@ -33,6 +33,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -56,6 +57,10 @@ fun LaundryNativeScreen(
 ) {
     val api = remember { CustomerLaundryApi() }
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
+    val journal = remember(auth.user.id) { LaundryCheckoutJournal(context, auth.user.id) }
+    val checkout = remember(auth.user.id) { CustomerCheckoutRecovery<PendingLaundryCheckout, org.json.JSONObject>(journal) }
+    var checkoutPending by remember(auth.user.id) { mutableStateOf(journal.hasPending()) }
     var catalog by remember { mutableStateOf<LaundryCatalog?>(null) }
     var selectedHub by remember { mutableStateOf<LaundryHub?>(null) }
     var services by remember { mutableStateOf<List<LaundryService>>(emptyList()) }
@@ -81,7 +86,7 @@ fun LaundryNativeScreen(
     }
 
     fun chooseHub(hub: LaundryHub) {
-        if (busy) return
+        if (busy || checkoutPending) return
         selectedHub = hub
         services = emptyList()
         selectedService = null
@@ -105,6 +110,40 @@ fun LaundryNativeScreen(
             message = e.message ?: "โหลดบริการของร้านไม่สำเร็จ"
         } finally {
             servicesLoading = false
+        }
+    }
+
+    fun submitCheckout() {
+        if (busy) return
+        busy = true
+        scope.launch {
+            var confirmedAbsent = false
+            try {
+                checkout.submit(
+                    create = {
+                        val hub = selectedHub ?: error("กรุณาเลือกร้าน")
+                        val service = selectedService ?: error("กรุณาเลือกบริการ")
+                        val loc = location?.copy(address = address.trim()) ?: error("กรุณาเลือกตำแหน่งรับผ้า")
+                        val qty = quantity.takeIf { it.isNotBlank() }?.let {
+                            it.toDoubleOrNull()?.takeIf { value -> value.isFinite() && value > 0 && value <= 1000 }
+                                ?: error("กรุณาระบุจำนวนมากกว่า 0 และไม่เกิน 1,000")
+                        }
+                        api.prepareCheckout(hub, service, loc, qty, note)
+                    },
+                    send = { api.sendCheckout(auth, it) },
+                    recover = { pending -> api.recoverCheckout(auth, pending).also { confirmedAbsent = it == null } },
+                    definitiveRejection = { isDefinitiveLaundryRejection(it, confirmedAbsent) }
+                )
+                message = "ส่งคำขอฝากซักแล้ว"
+                onDone()
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (e: Exception) {
+                message = e.message ?: "ส่งคำขอฝากซักไม่สำเร็จ"
+            } finally {
+                checkoutPending = journal.hasPending()
+                busy = false
+            }
         }
     }
 
@@ -148,6 +187,12 @@ fun LaundryNativeScreen(
             Text(message!!, color = MaterialTheme.colorScheme.error)
         }
 
+        if (checkoutPending) {
+            Text("มีคำขอฝากซักที่รอตรวจผล ระบบจะใช้คำขอเดิมเพื่อป้องกันรายการซ้ำ", color = QgMuted)
+            Button(enabled = !busy, onClick = { submitCheckout() }, modifier = Modifier.fillMaxWidth()) {
+                Text(if (busy) "กำลังตรวจผล..." else "ตรวจผลคำขอเดิม")
+            }
+        }
         Spacer(Modifier.height(14.dp))
         when {
             loading -> CircularProgressIndicator()
@@ -190,7 +235,7 @@ fun LaundryNativeScreen(
                 }
             }
             else -> {
-                OutlinedButton(enabled = !busy, onClick = { selectedHub = null; services = emptyList(); selectedService = null }) {
+                OutlinedButton(enabled = !busy && !checkoutPending, onClick = { selectedHub = null; services = emptyList(); selectedService = null }) {
                     Text("เปลี่ยนร้าน")
                 }
                 Spacer(Modifier.height(10.dp))
@@ -205,12 +250,12 @@ fun LaundryNativeScreen(
                     QgCard(Modifier.fillMaxWidth()) { Text("ร้านนี้ยังไม่มีบริการที่เปิดขาย", color = QgMuted) }
                 } else services.forEach { service ->
                     QgCard(Modifier.fillMaxWidth().padding(bottom = 8.dp).clickable {
-                        if (!busy) { selectedService = service; quantity = "" }
+                        if (!busy && !checkoutPending) { selectedService = service; quantity = "" }
                     }) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             RadioButton(
                                 selected = selectedService?.id == service.id,
-                                enabled = !busy,
+                                enabled = !busy && !checkoutPending,
                                 onClick = { selectedService = service; quantity = "" }
                             )
                             Column(Modifier.weight(1f)) {
@@ -234,7 +279,7 @@ fun LaundryNativeScreen(
                 if (svc != null && svc.pricingType != "fixed") {
                     Spacer(Modifier.height(8.dp))
                     OutlinedTextField(
-                        enabled = !busy,
+                        enabled = !busy && !checkoutPending,
                         value = quantity,
                         onValueChange = { quantity = it.filter { ch -> ch.isDigit() || ch == '.' } },
                         label = { Text(laundryQuantityLabel(svc.pricingType)) },
@@ -270,10 +315,10 @@ fun LaundryNativeScreen(
                             style = MaterialTheme.typography.bodySmall
                         )
                         Spacer(Modifier.height(8.dp))
-                        OutlinedButton(enabled = !busy, onClick = onGps, modifier = Modifier.fillMaxWidth()) { Text("ใช้ตำแหน่งปัจจุบัน") }
+                        OutlinedButton(enabled = !busy && !checkoutPending, onClick = onGps, modifier = Modifier.fillMaxWidth()) { Text("ใช้ตำแหน่งปัจจุบัน") }
                         Spacer(Modifier.height(8.dp))
                         OutlinedTextField(
-                            enabled = !busy,
+                            enabled = !busy && !checkoutPending,
                             value = address,
                             onValueChange = onAddress,
                             label = { Text("ที่อยู่ / จุดสังเกต") },
@@ -281,7 +326,7 @@ fun LaundryNativeScreen(
                         )
                         Spacer(Modifier.height(8.dp))
                         OutlinedTextField(
-                            enabled = !busy,
+                            enabled = !busy && !checkoutPending,
                             value = note,
                             onValueChange = { note = it.take(500) },
                             label = { Text("หมายเหตุ เช่น โทรก่อนถึง / มีผ้าสีตก") },
@@ -292,36 +337,8 @@ fun LaundryNativeScreen(
 
                 Spacer(Modifier.height(10.dp))
                 Button(
-                    onClick = {
-                        if (busy || servicesLoading || servicesFailed) return@Button
-                        val hub = selectedHub
-                        val service = selectedService
-                        val loc = location?.copy(address = address.trim())
-                        if (hub == null || service == null) {
-                            message = "กรุณาเลือกบริการ"
-                        } else if (loc == null || address.isBlank()) {
-                            message = "กรุณาเลือกตำแหน่งและกรอกที่อยู่รับผ้า"
-                        } else {
-                            busy = true
-                            scope.launch {
-                                runCatching { api.place(auth, hub, service, loc, qty, note) }
-                                    .onSuccess {
-                                        message = "ส่งคำขอฝากซักแล้ว"
-                                        onDone()
-                                    }
-                                    .onFailure { e ->
-                                        if (e is CancellationException) throw e
-                                        message = when {
-                                            e.message?.contains("OUTSIDE_SERVICE_AREA") == true -> "ตำแหน่งรับผ้าอยู่นอกพื้นที่ให้บริการ"
-                                            e.message?.contains("DELIVERY_DISTANCE_EXCEEDED") == true -> "ร้านซักและจุดรับผ้าอยู่ไกลเกินขอบเขต"
-                                            else -> e.message ?: "ส่งคำขอฝากซักไม่สำเร็จ"
-                                        }
-                                    }
-                                busy = false
-                            }
-                        }
-                    },
-                    enabled = !busy && !servicesLoading && !servicesFailed && selectedService != null && location != null && address.isNotBlank(),
+                    onClick = { submitCheckout() },
+                    enabled = !busy && !checkoutPending && !servicesLoading && !servicesFailed && selectedService != null && location != null && address.isNotBlank(),
                     modifier = Modifier.fillMaxWidth().height(56.dp)
                 ) {
                     if (busy) CircularProgressIndicator(Modifier.size(22.dp), strokeWidth = 2.dp)
