@@ -22,7 +22,7 @@ import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 import kotlinx.coroutines.suspendCancellableCoroutine
 
-private const val RIDER_ORDER_CHANNEL = "queuego_orders"
+private const val RIDER_ORDER_CHANNEL = "queuego_orders_v2"
 private const val RIDER_ORDER_CHANNEL_NAME = "งาน QueueGo Rider"
 
 internal fun ensureRiderOrderChannel(context: Context) {
@@ -39,6 +39,8 @@ internal fun ensureRiderOrderChannel(context: Context) {
     ).apply {
         description = "แจ้งเตือนงานใหม่และสถานะงานของ QueueGo Rider"
         enableVibration(true)
+        vibrationPattern = longArrayOf(0L, 360L, 160L, 360L)
+        setShowBadge(true)
         setSound(sound, attributes)
     }
     manager.createNotificationChannel(channel)
@@ -148,6 +150,8 @@ class QueueGoRiderMessagingService : FirebaseMessagingService() {
             .setContentText(body.take(220))
             .setStyle(NotificationCompat.BigTextStyle().bigText(body.take(220)))
             .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setSound(RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION))
+            .setVibrate(longArrayOf(0L, 360L, 160L, 360L))
             .setCategory(NotificationCompat.CATEGORY_MESSAGE)
             .setAutoCancel(true)
             .setContentIntent(pendingIntent)
