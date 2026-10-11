@@ -195,12 +195,13 @@ class CustomerMarketApi(private val http: QueueGoNativeApi = QueueGoNativeApi())
         )
     }
 
-    suspend fun place(
+    internal suspend fun prepareCheckout(
         auth: NativeAuth,
         lines: List<MarketCartLine>,
         location: CustomerLocation,
-        note: String?
-    ): Any {
+        note: String?,
+        store: MarketCartStore
+    ): PendingMarketCheckout {
         require(lines.isNotEmpty()) { "ตะกร้าตลาดสดว่าง" }
         val marketId = lines.first().product.marketId
         require(lines.all { it.product.marketId == marketId }) { "ตะกร้าตลาดสดซื้อข้ามตลาดไม่ได้" }
@@ -214,32 +215,41 @@ class CustomerMarketApi(private val http: QueueGoNativeApi = QueueGoNativeApi())
         }
 
         return if (active == null) {
-            http.rpc(
+            store.pending(
                 "queuego_place_market_order",
-                auth.session.accessToken,
                 JSONObject()
                     .put("p_market_order_id", UUID.randomUUID().toString())
                     .put("p_items", items)
                     .put("p_delivery_lat", location.latitude)
                     .put("p_delivery_lng", location.longitude)
                     .put("p_delivery_address", location.address)
-                    .put("p_note", note?.trim()?.takeIf { it.isNotBlank() })
+                    .put("p_note", note?.trim()?.takeIf { it.isNotBlank() }),
+                lines
             )
         } else {
             val incomingShops = lines.map { it.product.shopId }.toSet()
             if (incomingShops.any { it in active.shopIds }) {
                 error("ร้านนี้อยู่ใน Market Trip แล้ว")
             }
-            http.rpc(
+            store.pending(
                 "queuego_add_market_order_shops",
-                auth.session.accessToken,
                 JSONObject()
                     .put("p_request_id", UUID.randomUUID().toString())
                     .put("p_market_order_id", active.id)
                     .put("p_items", items)
-                    .put("p_note", note?.trim()?.takeIf { it.isNotBlank() })
+                    .put("p_note", note?.trim()?.takeIf { it.isNotBlank() }),
+                lines
             )
         }
+    }
+
+    internal suspend fun sendCheckout(auth: NativeAuth, pending: PendingMarketCheckout): JSONObject {
+        val result = http.rpc(pending.rpc, auth.session.accessToken, pending.body) as? JSONObject
+            ?: error("ไม่ได้รับผลยืนยัน Market Trip")
+        check(result.optString("market_order_id") == pending.body.getString("p_market_order_id")) {
+            "ไม่ได้รับเลข Market Trip ที่ตรงกับคำขอเดิม"
+        }
+        return result
     }
 
     suspend fun trips(auth: NativeAuth): List<MarketTripSummary> {

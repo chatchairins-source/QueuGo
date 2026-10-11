@@ -790,10 +790,16 @@ private fun CustomerShell(
                     },
                     serviceBanner = serviceBanners["market"],
                     onBack = { screen = "home" },
-                    onDone = {
+                    onDone = { tripId ->
+                        screen = "orders"
                         scope.launch {
-                            orders = runCatching { api.loadOrders(auth) }.getOrDefault(orders)
-                            screen = "orders"
+                            runCatching { CustomerMarketApi().trips(auth) }.onSuccess { fresh ->
+                                marketTrips = fresh
+                                fresh.find { it.id == tripId }?.let { trip ->
+                                    selectedMarketTrip = trip
+                                    if (screen == "orders") screen = "market-trip"
+                                }
+                            }
                         }
                     },
                     onBannerLink = ::openHomeBannerLink

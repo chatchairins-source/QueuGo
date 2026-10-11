@@ -49,6 +49,8 @@ import com.queuego.shared.QgRed
 import com.queuego.shared.QgRemoteImage
 import com.queuego.shared.QgSectionTitle
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.CancellationException
+import com.queuego.shared.QueueGoHttpException
 
 @Composable
 fun MarketNativeScreen(
@@ -62,7 +64,7 @@ fun MarketNativeScreen(
     onOpenCart: () -> Unit,
     onBrowse: () -> Unit,
     onBack: () -> Unit,
-    onDone: () -> Unit,
+    onDone: (String) -> Unit,
     onRequireLogin: () -> Unit = {},
     onBannerLink: (String) -> Unit = {}
 ) {
@@ -71,6 +73,8 @@ fun MarketNativeScreen(
     val context = LocalContext.current
     val actorId = auth?.user?.id ?: "guest"
     val cartStore = remember(actorId) { MarketCartStore(context, actorId) }
+    val checkout = remember(actorId) { CustomerCheckoutRecovery<PendingMarketCheckout, org.json.JSONObject>(cartStore.journal()) }
+    var checkoutPending by remember(actorId) { mutableStateOf(cartStore.hasPendingCheckout()) }
     var markets by remember { mutableStateOf<List<MarketInfo>>(emptyList()) }
     var shops by remember { mutableStateOf<List<MarketShop>>(emptyList()) }
     var catalog by remember { mutableStateOf<List<MarketProduct>>(emptyList()) }
@@ -110,7 +114,7 @@ fun MarketNativeScreen(
 
                 val accountCart = restore(cartStore.load())
                 val guestStore = if (auth == null) null else MarketCartStore(context, "guest")
-                val guestCart = guestStore?.let { restore(it.load()) }.orEmpty()
+                val guestCart = if (checkoutPending) emptyList() else guestStore?.let { restore(it.load()) }.orEmpty()
                 cart = when {
                     guestCart.isEmpty() -> accountCart
                     accountCart.isEmpty() -> {
@@ -144,12 +148,12 @@ fun MarketNativeScreen(
             if (selectedMarket == null) {
                 selectedMarket = activeTrip?.marketId ?: cart.firstOrNull()?.product?.marketId ?: api.nearest(m, location)?.id
             }
-        }.onFailure { loadFailed = true; message = it.message ?: "โหลดตลาดสดไม่สำเร็จ" }
+        }.onFailure { if (it is CancellationException) throw it; loadFailed = true; message = it.message ?: "โหลดตลาดสดไม่สำเร็จ" }
         loading = false
     }
 
-    LaunchedEffect(cart, restoredCart) {
-        if (restoredCart) cartStore.save(cart)
+    LaunchedEffect(cart, restoredCart, checkoutPending) {
+        if (restoredCart && !checkoutPending) cartStore.save(cart)
     }
 
     val market = markets.find { it.id == selectedMarket }
@@ -197,6 +201,9 @@ fun MarketNativeScreen(
             onLink = onBannerLink
         )
 
+        if (checkoutPending) {
+            Text("กรุณาตรวจผล Market Trip เดิมก่อนแก้ตะกร้า · ระบบใช้รายการ ที่อยู่ และหมายเหตุเดิม", color = QgRed, modifier = Modifier.padding(vertical = 8.dp))
+        }
         if (!message.isNullOrBlank()) {
             Spacer(Modifier.height(8.dp))
             if (loadFailed) OutlinedButton(onClick = { reload++ }, enabled = !loading) { Text("ลองอีกครั้ง") }
@@ -297,7 +304,7 @@ fun MarketNativeScreen(
                         Text("฿" + "%.0f".format(p.price) + (p.unit?.let { " / $it" } ?: ""), fontWeight = FontWeight.ExtraBold)
                         Text("พร้อมขาย " + p.availablePacks, color = QgMuted, style = MaterialTheme.typography.labelSmall)
                     }
-                    Button(onClick = {
+                    Button(enabled = !busy && !checkoutPending, onClick = {
                         val sameMarket = cart.isEmpty() || cart.first().product.marketId == p.marketId
                         if (!sameMarket) {
                             message = "ตะกร้าตลาดสดซื้อข้ามตลาดไม่ได้"
@@ -320,11 +327,11 @@ fun MarketNativeScreen(
         } // Browse: checkout fields belong only to market-cart.
 
         if (cartPage && loading) CircularProgressIndicator()
-        if (cartPage && !loading && cart.isEmpty()) {
+        if (cartPage && !loading && cart.isEmpty() && !checkoutPending) {
             Text("ตะกร้าตลาดสดว่าง", color = QgMuted, modifier = Modifier.padding(vertical = 24.dp))
             Button(onClick = onBrowse, modifier = Modifier.fillMaxWidth()) { Text("เลือกสินค้าในตลาด") }
         }
-        if (cartPage && cart.isNotEmpty()) {
+        if (cartPage && (cart.isNotEmpty() || checkoutPending)) {
             Spacer(Modifier.height(16.dp))
             QgCard(Modifier.fillMaxWidth()) {
                 Column {
@@ -342,20 +349,20 @@ fun MarketNativeScreen(
                                     Text(line.product.name, fontWeight = FontWeight.Bold)
                                     Text("฿" + "%.0f".format(line.product.price) + (line.product.unit?.let { " / $it" } ?: ""), color = QgRed)
                                     Row(verticalAlignment = Alignment.CenterVertically) {
-                                        OutlinedButton(enabled = !busy, onClick = {
+                                        OutlinedButton(enabled = !busy && !checkoutPending, onClick = {
                                             cart = cart.mapNotNull {
                                                 if (it.product.id != line.product.id) it
                                                 else if (it.quantity <= 1) null else it.copy(quantity = it.quantity - 1)
                                             }
                                         }) { Text("−") }
                                         Text(line.quantity.toString(), Modifier.padding(horizontal = 8.dp), fontWeight = FontWeight.Bold)
-                                        OutlinedButton(enabled = !busy && line.quantity < line.product.availablePacks, onClick = {
+                                        OutlinedButton(enabled = !busy && !checkoutPending && line.quantity < line.product.availablePacks, onClick = {
                                             if (line.quantity < line.product.availablePacks) {
                                                 cart = cart.map { if (it.product.id == line.product.id) it.copy(quantity = it.quantity + 1) else it }
                                             }
                                         }) { Text("+") }
                                     }
-                                    Text("ลบรายการ", color = QgMuted, modifier = Modifier.clickable(enabled = !busy) {
+                                    Text("ลบรายการ", color = QgMuted, modifier = Modifier.clickable(enabled = !busy && !checkoutPending) {
                                         cart = cart.filterNot { it.product.id == line.product.id }
                                     }.padding(vertical = 8.dp))
                                 }
@@ -383,9 +390,10 @@ fun MarketNativeScreen(
                         style = MaterialTheme.typography.bodySmall
                     )
                     Spacer(Modifier.height(8.dp))
-                    OutlinedButton(onClick = onGps, modifier = Modifier.fillMaxWidth()) { Text("ใช้ตำแหน่งปัจจุบัน") }
+                    OutlinedButton(onClick = onGps, enabled = !busy && !checkoutPending, modifier = Modifier.fillMaxWidth()) { Text("ใช้ตำแหน่งปัจจุบัน") }
                     Spacer(Modifier.height(8.dp))
                     OutlinedTextField(
+                        enabled = !busy && !checkoutPending,
                         value = address,
                         onValueChange = onAddress,
                         label = { Text("ที่อยู่ / จุดสังเกต") },
@@ -393,6 +401,7 @@ fun MarketNativeScreen(
                     )
                     Spacer(Modifier.height(8.dp))
                     OutlinedTextField(
+                        enabled = !busy && !checkoutPending,
                         value = note,
                         onValueChange = { note = it.take(500) },
                         label = { Text("หมายเหตุ (ถ้ามี)") },
@@ -405,51 +414,66 @@ fun MarketNativeScreen(
                 onClick = {
                     if (busy) return@Button
                     val loc = location?.copy(address = address.trim())
-                    if (loc == null || address.isBlank()) {
+                    if (!checkoutPending && (loc == null || address.isBlank())) {
                         message = "กรุณาเลือกตำแหน่งและกรอกที่อยู่จัดส่ง"
-                    } else if (activeTrip?.locked == true) {
+                    } else if (!checkoutPending && activeTrip?.locked == true) {
                         message = "Rider ออกจากตลาดแล้ว ไม่สามารถเพิ่มร้านได้"
                     } else if (auth == null) {
                         onRequireLogin()
                     } else {
                         busy = true
                         scope.launch {
-                            runCatching { api.place(auth, cart, loc, note) }
-                                .onSuccess {
-                                    cartStore.save(emptyList())
-                                    cart = emptyList()
-                                    message = "สร้าง Market Trip สำเร็จ"
-                                    onDone()
-                                }
-                                .onFailure { message = it.message ?: "ยืนยันตลาดสดไม่สำเร็จ" }
-                            busy = false
+                            try {
+                                val receipt = checkout.submit(
+                                    create = { api.prepareCheckout(auth, cart, requireNotNull(loc), note, cartStore) },
+                                    send = { pending ->
+                                        checkoutPending = true
+                                        api.sendCheckout(auth, pending)
+                                    },
+                                    // Add-request receipts are server-only. Retry replays the same RPC/IDs;
+                                    // never infer success from an active trip or manufacture a receipt.
+                                    recover = { null },
+                                    definitiveRejection = { e -> e is QueueGoHttpException && e.statusCode in setOf(400, 422) }
+                                )
+                                cart = emptyList()
+                                message = "สร้าง Market Trip สำเร็จ"
+                                onDone(receipt.getString("market_order_id"))
+                            } catch (cancelled: CancellationException) {
+                                throw cancelled
+                            } catch (e: Exception) {
+                                message = e.message ?: "ยืนยันตลาดสดไม่สำเร็จ"
+                            } finally {
+                                checkoutPending = cartStore.hasPendingCheckout()
+                                busy = false
+                            }
                         }
                     }
                 },
-                enabled = !busy && location != null && address.isNotBlank(),
+                enabled = !busy && (checkoutPending || (location != null && address.isNotBlank())),
                 modifier = Modifier.fillMaxWidth().height(56.dp)
             ) {
                 if (busy) CircularProgressIndicator(Modifier.size(22.dp), strokeWidth = 2.dp)
                 else Text(
-                    if (auth == null) "เข้าสู่ระบบเพื่อสั่งซื้อ"
+                    if (checkoutPending) "ตรวจผล Market Trip เดิม"
+                    else if (auth == null) "เข้าสู่ระบบเพื่อสั่งซื้อ"
                     else if (activeTrip == null) "ยืนยัน Market Trip"
                     else "เพิ่มร้านเข้า Market Trip",
                     fontWeight = FontWeight.Black
                 )
             }
         }
-        Spacer(Modifier.height(if (!cartPage && cart.isNotEmpty()) 100.dp else 40.dp))
+        Spacer(Modifier.height(if (!cartPage && (cart.isNotEmpty() || checkoutPending)) 100.dp else 40.dp))
     }
     }
-    if (!cartPage && cart.isNotEmpty()) {
+    if (!cartPage && (cart.isNotEmpty() || checkoutPending)) {
         Button(
             onClick = onOpenCart,
             modifier = Modifier.align(Alignment.BottomCenter).widthIn(max = 720.dp)
                 .fillMaxWidth().padding(horizontal = 12.dp, vertical = 12.dp).height(56.dp),
             shape = RoundedCornerShape(16.dp)
         ) {
-            Text("ตะกร้าตลาดสด · $shopCount ร้าน · ${cart.sumOf { it.quantity }} รายการ", Modifier.weight(1f), fontWeight = FontWeight.Bold)
-            Text("฿" + "%.0f".format(subtotal), fontWeight = FontWeight.Bold)
+            Text(if (checkoutPending) "ตรวจผล Market Trip เดิม" else "ตะกร้าตลาดสด · $shopCount ร้าน · ${cart.sumOf { it.quantity }} รายการ", Modifier.weight(1f), fontWeight = FontWeight.Bold)
+            if (!checkoutPending) Text("฿" + "%.0f".format(subtotal), fontWeight = FontWeight.Bold)
         }
     }
     }
