@@ -580,7 +580,11 @@
     "release_evidence_bundler_max_files": 1000,
     "release_evidence_bundler_max_uncompressed_bytes": 4294967296,
     "release_evidence_bundler_output_status": "READY_FOR_PRIVATE_STORAGE_UPLOAD",
-    "release_evidence_bundler_auto_certifies": false
+    "release_evidence_bundler_auto_certifies": false,
+    "voice_call_metadata_retention_migration": "supabase/migrations/20261011070000_native_voice_call_metadata_retention.sql",
+    "voice_call_metadata_retention_function": "qg_private.qg_purge_call_sessions()",
+    "voice_call_metadata_retention_security": "SECURITY_INVOKER_SERVICE_ROLE_ONLY",
+    "voice_call_metadata_retention_production_verified": true
   },
   "security": {
     "code_surface_hardened": true,
@@ -746,7 +750,12 @@
       "merchant",
       "rider"
     ],
-    "foreground_service_special_use_rider_subtype": "Active QueueGo Rider navigation return control"
+    "foreground_service_special_use_rider_subtype": "Active QueueGo Rider navigation return control",
+    "voice_call_metadata_retention_status": "PRODUCTION_ENFORCED_DAILY_DELETE_OLDER_THAN_30_DAYS",
+    "voice_call_session_metadata_retention_days": 30,
+    "voice_call_notification_metadata_retention_days": 30,
+    "voice_call_metadata_retention_cron": "queuego-voice-call-retention",
+    "voice_call_metadata_retention_verified_at": "2026-10-11"
   },
   "remaining_external_blockers": [
     "Configure QG_SUPABASE_DB_URL, QG_SUPABASE_SERVICE_ROLE_KEY and QG_BACKUP_PASSPHRASE, then pass QueueGo Encrypted Backup Restore Drill.",
