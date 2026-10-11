@@ -223,6 +223,33 @@ try{
   }
   const report=path.join(bindingDir,'native-release-evidence.json');
   fs.writeFileSync(report,JSON.stringify({source_sha:head,p0:0,p1:0,gates}));
+
+  const playEnvelopePath=path.join(bindingDir,'play_store_preflight.json');
+  const playEnvelope=JSON.parse(fs.readFileSync(playEnvelopePath,'utf8'));
+  delete playEnvelope.checks.rider_package_registered;
+  fs.writeFileSync(playEnvelopePath,JSON.stringify(playEnvelope));
+  gates.play_store_preflight={
+    status:'PASS',
+    evidence_file:'play_store_preflight.json',
+    sha256:crypto.createHash('sha256').update(fs.readFileSync(playEnvelopePath)).digest('hex')
+  };
+  fs.writeFileSync(report,JSON.stringify({source_sha:head,p0:0,p1:0,gates}));
+  const missingPlayRegistration=spawnSync('python3',[script],{
+    env:{...env,QG_NATIVE_RELEASE_EVIDENCE:report,QG_CERTIFIED_NATIVE_PILOT_RUN_ID:'456',QG_CERTIFIED_BACKUP_RESTORE_RUN_ID:'456'},
+    encoding:'utf8'
+  });
+  assert.equal(missingPlayRegistration.status,1,'Play preflight must fail if one QueueGo package registration is uncertified');
+  assert.match(missingPlayRegistration.stderr,/gate required check missing: play_store_preflight\.rider_package_registered/);
+
+  playEnvelope.checks.rider_package_registered=true;
+  fs.writeFileSync(playEnvelopePath,JSON.stringify(playEnvelope));
+  gates.play_store_preflight={
+    status:'PASS',
+    evidence_file:'play_store_preflight.json',
+    sha256:crypto.createHash('sha256').update(fs.readFileSync(playEnvelopePath)).digest('hex')
+  };
+  fs.writeFileSync(report,JSON.stringify({source_sha:head,p0:0,p1:0,gates}));
+
   const result=spawnSync('python3',[script],{
     env:{...env,QG_NATIVE_RELEASE_EVIDENCE:report,QG_CERTIFIED_NATIVE_PILOT_RUN_ID:'123',QG_CERTIFIED_BACKUP_RESTORE_RUN_ID:'789'},
     encoding:'utf8'
