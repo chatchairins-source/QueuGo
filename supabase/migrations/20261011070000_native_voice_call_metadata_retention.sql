@@ -5,6 +5,10 @@
 CREATE INDEX IF NOT EXISTS qg_call_sessions_created_idx
   ON public.qg_call_sessions(created_at);
 
+CREATE INDEX IF NOT EXISTS notifications_voice_call_retention_idx
+  ON public.notifications(created_at)
+  WHERE type='voice_call';
+
 CREATE OR REPLACE FUNCTION qg_private.qg_purge_call_sessions()
 RETURNS bigint
 LANGUAGE plpgsql
@@ -13,12 +17,19 @@ SET search_path=''
 AS $function$
 DECLARE
   v_deleted bigint;
+  v_notification_deleted bigint;
 BEGIN
   DELETE FROM public.qg_call_sessions
   WHERE created_at < now() - interval '30 days';
 
   GET DIAGNOSTICS v_deleted = ROW_COUNT;
-  RETURN v_deleted;
+
+  DELETE FROM public.notifications
+  WHERE type='voice_call'
+    AND created_at < now() - interval '30 days';
+
+  GET DIAGNOSTICS v_notification_deleted = ROW_COUNT;
+  RETURN v_deleted + v_notification_deleted;
 END
 $function$;
 
