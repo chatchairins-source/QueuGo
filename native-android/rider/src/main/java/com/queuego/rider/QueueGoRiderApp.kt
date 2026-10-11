@@ -806,6 +806,7 @@ private fun RiderHome(
                 "earn" -> RiderEarningsScreen(
                     auth = auth,
                     api = api,
+                    onBack = { activeTab = "home" },
                     modifier = Modifier.fillMaxSize()
                 )
                 "profile" -> RiderProfileScreen(
