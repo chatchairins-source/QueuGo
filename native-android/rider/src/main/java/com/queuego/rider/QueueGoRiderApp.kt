@@ -468,10 +468,16 @@ private fun RiderHome(
         ActivityResultContracts.RequestPermission()
     ) { granted ->
         actionMessage = if (granted) {
-            "อนุญาตการแจ้งเตือนแล้ว"
+            null
         } else {
             "ยังไม่ได้อนุญาตการแจ้งเตือน งานใหม่จะไม่เด้งเมื่อแอปอยู่เบื้องหลัง"
         }
+    }
+
+    LaunchedEffect(actionMessage) {
+        val shown = actionMessage ?: return@LaunchedEffect
+        delay(3_800)
+        if (actionMessage == shown) actionMessage = null
     }
 
     LaunchedEffect(auth.user.id) {
@@ -866,6 +872,7 @@ private fun RiderHome(
         Column(
             Modifier
                 .align(Alignment.TopCenter)
+                .widthIn(max = 720.dp)
                 .fillMaxWidth()
                 .padding(horizontal = 10.dp, vertical = 7.dp)
         ) {
@@ -877,7 +884,10 @@ private fun RiderHome(
             if (actionMessage != null) {
                 Spacer(Modifier.height(7.dp))
                 Card(
-                    Modifier.fillMaxWidth(),
+                    Modifier
+                        .align(Alignment.CenterHorizontally)
+                        .widthIn(max = 520.dp)
+                        .fillMaxWidth(),
                     shape = RoundedCornerShape(14.dp),
                     colors = CardDefaults.cardColors(containerColor = Color(0xEE171519))
                 ) {
@@ -924,8 +934,9 @@ private fun RiderHome(
         Column(
             Modifier
                 .align(Alignment.BottomCenter)
+                .widthIn(max = 660.dp)
                 .fillMaxWidth()
-                .heightIn(max = maxHeight * 0.62f)
+                .heightIn(max = maxHeight - 132.dp)
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 8.dp, vertical = 8.dp)
                 .padding(bottom = 66.dp)
@@ -947,6 +958,11 @@ private fun RiderHome(
                 val marketVehicleReady = current.profile?.let {
                     it.vehicleStatus == "active" && !it.vehicleVerifiedAt.isNullOrBlank()
                 } == true
+                val idleWaiting =
+                    current.activeJob == null &&
+                    current.laundry.activeJob == null &&
+                    current.offeredJob == null
+                if (!idleWaiting) {
                 Row(Modifier.fillMaxWidth(), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
                     Text(
                         when {
@@ -969,72 +985,8 @@ private fun RiderHome(
                     )
                 }
                 Spacer(Modifier.height(8.dp))
-                if (current.activeJob == null && current.laundry.activeJob == null) {
-                    if (current.online) {
-                        OutlinedButton(
-                            onClick = {
-                                if (actionBusy) return@OutlinedButton
-                                actionBusy = true
-                                scope.launch {
-                                    val loc = lastKnownLocation(context)
-                                    runCatching { api.setOnline(auth, false, loc?.first, loc?.second) }
-                                        .onSuccess {
-                                            actionMessage = "ปิดรับงานแล้ว"
-                                            snapshot = runCatching { api.riderSnapshot(auth) }.getOrNull()
-                                        }
-                                        .onFailure { actionMessage = it.message ?: "ปิดรับงานไม่สำเร็จ" }
-                                    actionBusy = false
-                                }
-                            },
-                            enabled = !actionBusy,
-                            modifier = Modifier.fillMaxWidth()
-                        ) { Text("ปิดรับงาน") }
-                    } else {
-                        Button(
-                            onClick = {
-                                if (!ensureLocationPermission()) return@Button
-                                if (actionBusy) return@Button
-                                actionBusy = true
-                                scope.launch {
-                                    val loc = lastKnownLocation(context)
-                                    runCatching { api.setOnline(auth, true, loc?.first, loc?.second) }
-                                        .onSuccess {
-                                            actionMessage = "เปิดรับงานแล้ว"
-                                            snapshot = runCatching { api.riderSnapshot(auth) }.getOrNull()
-                                        }
-                                        .onFailure { actionMessage = it.message ?: "เปิดรับงานไม่สำเร็จ" }
-                                    actionBusy = false
-                                }
-                            },
-                            enabled = !actionBusy,
-                            modifier = Modifier.fillMaxWidth()
-                        ) { Text("เปิดรับงาน", fontWeight = FontWeight.Black) }
-                    }
-                    val summary = todaySummary
-                    if (summary != null) {
-                        Spacer(Modifier.height(10.dp))
-                        Card(
-                            Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(18.dp),
-                            colors = CardDefaults.cardColors(containerColor = Color.White)
-                        ) {
-                            Row(Modifier.fillMaxWidth().padding(14.dp)) {
-                                Column(Modifier.weight(1f)) {
-                                    Text("วันนี้", color = QgMuted, style = MaterialTheme.typography.labelSmall)
-                                    Text(summary.jobs.toString() + " งาน", fontWeight = FontWeight.Black)
-                                }
-                                Column(Modifier.weight(1f)) {
-                                    Text("รายได้", color = QgMuted, style = MaterialTheme.typography.labelSmall)
-                                    Text("฿" + "%.0f".format(summary.income), fontWeight = FontWeight.Black)
-                                }
-                                Column(Modifier.weight(1f)) {
-                                    Text("ออนไลน์", color = QgMuted, style = MaterialTheme.typography.labelSmall)
-                                    Text("%.1f ชม.".format(summary.onlineHours), fontWeight = FontWeight.Black)
-                                }
-                            }
-                        }
-                    }
                 }
+
                 Spacer(Modifier.height(12.dp))
                 when {
                     current.activeJob != null -> {
@@ -1241,14 +1193,30 @@ private fun RiderHome(
                         )
                     }
                     else -> {
-                        Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(21.dp), colors = CardDefaults.cardColors(containerColor = Color.White)) {
-                            Column(Modifier.padding(18.dp)) {
-                                Text("พร้อมรับงาน", color = QgRed, fontWeight = FontWeight.Black, style = MaterialTheme.typography.titleLarge)
-                                Spacer(Modifier.height(5.dp))
-                                Text("ระบบกำลังหางานและจัดให้คุณอัตโนมัติ", fontWeight = FontWeight.Bold)
-                                Text("เมื่อ Server เลือกคุณ งานจะขึ้นเฉพาะเครื่องนี้ 30 วินาที ไม่มีการแย่งงานกับ Rider คนอื่น", color = QgMuted, style = MaterialTheme.typography.bodySmall)
+                        RiderWaitingHomeCard(
+                            online = current.online,
+                            marketVehicleReady = marketVehicleReady,
+                            locationAvailable = lastKnownLocation(context) != null,
+                            summary = todaySummary,
+                            busy = actionBusy,
+                            onToggleOnline = { targetOnline ->
+                                if (targetOnline && !ensureLocationPermission()) return@RiderWaitingHomeCard
+                                if (actionBusy) return@RiderWaitingHomeCard
+                                actionBusy = true
+                                scope.launch {
+                                    val loc = lastKnownLocation(context)
+                                    runCatching { api.setOnline(auth, targetOnline, loc?.first, loc?.second) }
+                                        .onSuccess {
+                                            actionMessage = if (targetOnline) "เปิดรับงานแล้ว" else "ปิดรับงานแล้ว"
+                                            snapshot = runCatching { api.riderSnapshot(auth) }.getOrNull()
+                                        }
+                                        .onFailure {
+                                            actionMessage = it.message ?: if (targetOnline) "เปิดรับงานไม่สำเร็จ" else "ปิดรับงานไม่สำเร็จ"
+                                        }
+                                    actionBusy = false
+                                }
                             }
-                        }
+                        )
                     }
                 }
 
@@ -1283,51 +1251,10 @@ private fun RiderHome(
                     )
                 }
 
-                Spacer(Modifier.height(10.dp))
-                RiderLaundryModeCard(
-                    enabled = current.laundry.modeEnabled,
-                    invites = current.laundry.invites,
-                    busy = actionBusy,
-                    onToggle = { enabled ->
-                        if (actionBusy) return@RiderLaundryModeCard
-                        actionBusy = true
-                        scope.launch {
-                            runCatching { api.setLaundryMode(auth, enabled) }
-                                .onSuccess {
-                                    actionMessage = if (enabled) "เปิดรับงานฝากซักแล้ว" else "ปิดรับงานฝากซักแล้ว"
-                                    snapshot = runCatching { api.riderSnapshot(auth) }.getOrNull()
-                                }
-                                .onFailure {
-                                    actionMessage = it.message ?: "เปลี่ยนโหมดฝากซักไม่สำเร็จ"
-                                }
-                            actionBusy = false
-                        }
-                    },
-                    onInvite = { invite, accept ->
-                        if (actionBusy) return@RiderLaundryModeCard
-                        actionBusy = true
-                        scope.launch {
-                            runCatching { api.laundryInviteAction(auth, invite.inviteId, accept) }
-                                .onSuccess {
-                                    actionMessage = if (accept) {
-                                        "ยอมรับเป็น Rider รับ-ส่งผ้าของร้านแล้ว"
-                                    } else {
-                                        "ปฏิเสธคำเชิญแล้ว"
-                                    }
-                                    snapshot = runCatching { api.riderSnapshot(auth) }.getOrNull()
-                                }
-                                .onFailure {
-                                    actionMessage = it.message ?: "ตอบคำเชิญไม่สำเร็จ"
-                                }
-                            actionBusy = false
-                        }
-                    }
-                )
+
             }
         }
 
-        Spacer(Modifier.height(14.dp))
-        RiderRecentHistoryCard(recentHistory)
         Spacer(Modifier.height(18.dp))
         }
 
@@ -1987,6 +1914,125 @@ private fun ActiveJobCard(
                             shape = RoundedCornerShape(18.dp)
                         ) { Text("ตรวจสอบและส่งมอบสินค้า", fontWeight = FontWeight.Black) }
                     }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun RiderWaitingHomeCard(
+    online: Boolean,
+    marketVehicleReady: Boolean,
+    locationAvailable: Boolean,
+    summary: RiderPeriodSummary?,
+    busy: Boolean,
+    onToggleOnline: (Boolean) -> Unit
+) {
+    Card(
+        Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(21.dp),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFFFEFDFD)),
+        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFEEE5E8)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 5.dp)
+    ) {
+        Column(Modifier.padding(12.dp)) {
+            Row(
+                Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.Top,
+                horizontalArrangement = Arrangement.spacedBy(9.dp)
+            ) {
+                Box(
+                    Modifier
+                        .size(44.dp)
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(QgRedSoft),
+                    contentAlignment = Alignment.Center
+                ) {
+                    QgIcon(if (online) "home" else "location", Modifier.size(24.dp), QgRed)
+                }
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        if (online) "พร้อมรับงานแล้ว" else "พร้อมรับงานเมื่อคุณพร้อม",
+                        fontSize = 18.sp,
+                        lineHeight = 21.sp,
+                        fontWeight = FontWeight.Black
+                    )
+                    Spacer(Modifier.height(2.dp))
+                    Text(
+                        when {
+                            !online -> "เปิดรับงานแล้วระบบจะค้นหางานใกล้ตำแหน่งปัจจุบัน"
+                            !locationAvailable -> "กำลังรอตำแหน่ง GPS"
+                            !marketVehicleReady -> "กำลังค้นหางานอาหารใกล้คุณ"
+                            else -> "กำลังค้นหางานใกล้คุณ"
+                        },
+                        color = QgMuted,
+                        fontSize = 10.sp,
+                        lineHeight = 15.sp
+                    )
+                }
+            }
+
+            if (online) {
+                val values = listOf(
+                    "วันนี้" to ((summary?.jobs ?: 0).toString() + " งาน"),
+                    "รายได้" to ("฿" + "%.0f".format(summary?.income ?: 0.0)),
+                    "ออนไลน์" to (summary?.let { "%.1f ชม.".format(it.onlineHours) } ?: "— ชม.")
+                )
+                Spacer(Modifier.height(9.dp))
+                Row(
+                    Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    values.forEach { (label, value) ->
+                        Column(
+                            Modifier
+                                .weight(1f)
+                                .background(Color(0xFFFAF6F7), RoundedCornerShape(15.dp))
+                                .padding(horizontal = 6.dp, vertical = 8.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text(label, color = QgMuted, fontSize = 8.sp, lineHeight = 11.sp)
+                            Spacer(Modifier.height(3.dp))
+                            Text(value, fontSize = 13.sp, lineHeight = 16.sp, fontWeight = FontWeight.Black)
+                        }
+                    }
+                }
+            }
+
+            Spacer(Modifier.height(8.dp))
+            if (online) {
+                OutlinedButton(
+                    onClick = { onToggleOnline(false) },
+                    enabled = !busy,
+                    modifier = Modifier.fillMaxWidth().height(46.dp),
+                    shape = RoundedCornerShape(15.dp)
+                ) {
+                    Text("ปิดรับงาน", fontWeight = FontWeight.Bold)
+                }
+                Spacer(Modifier.height(7.dp))
+                Text(
+                    if (marketVehicleReady) {
+                        "อยู่ใกล้ย่านร้านอาหาร ตลาด และร้านค้าที่เข้าร่วม จะช่วยให้ได้รับงานเร็วขึ้น"
+                    } else {
+                        "งานตลาด/ของชำรอตรวจสอบยานพาหนะ · งานอาหารยังรับได้ตามปกติ"
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(Color(0xFFFFF4F6), RoundedCornerShape(14.dp))
+                        .padding(horizontal = 10.dp, vertical = 8.dp),
+                    color = Color(0xFF7B6870),
+                    fontSize = 9.sp,
+                    lineHeight = 13.sp
+                )
+            } else {
+                Button(
+                    onClick = { onToggleOnline(true) },
+                    enabled = !busy,
+                    modifier = Modifier.fillMaxWidth().height(46.dp),
+                    shape = RoundedCornerShape(15.dp)
+                ) {
+                    Text("เปิดรับงาน", fontWeight = FontWeight.Black)
                 }
             }
         }
