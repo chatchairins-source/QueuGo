@@ -130,8 +130,10 @@ only `READY_FOR_PRIVATE_STORAGE_UPLOAD`.
    package app names/icons, Data Safety/privacy/account deletion, foreground
    service declaration evidence, and store preflight.
 8. Play developer identity verification plus registration of all three QueueGo
-   package names, with the Play-registered public signing-certificate SHA-256
-   bound to the same certified release signing identity used by the APK/AAB build.
+   package names, with current Play-registered public signing-certificate
+   fingerprint evidence for each package. Play App Signing keys may differ from
+   the release upload key and a package may have multiple registered keys; the
+   upload signing identity is certified separately by the release-signing gate.
 9. P0/P1 zero based on observed evidence, not static source checks.
 
 ## Android 16 KB page-size readiness
@@ -196,11 +198,13 @@ whose non-expired non-empty `queuego-backup-*` encrypted artifact still exists;
 configuration; `play_store_preflight` must match release versionName, all three
 versionCodes and all three observed Play maxima. It must also identify exactly
 `com.queuego.customer`, `com.queuego.merchant` and `com.queuego.rider` as the
-registered Play package names and record the Play-registered public signing
-certificate SHA-256 for each package. Those three registered fingerprints must
-match the same certified Native release signing identity. Finally,
-`release_signing.signing_certificate_sha256` must match the certified keystore
-fingerprint. Mismatched but correctly hashed evidence is rejected.
+registered Play package names and record at least one current Play-registered
+public signing-certificate SHA-256 fingerprint for each package. These
+registration keys are evidence of Play package ownership/registration and are
+not assumed to equal the upload keystore because Play App Signing may use a
+Google-managed app signing key and multiple keys can be registered. Separately,
+`release_signing.signing_certificate_sha256` must match the certified release
+upload keystore fingerprint. Mismatched but correctly hashed evidence is rejected.
 
 The verifier requires all three complete Firebase clients in one Production
 project plus the actual keystore. It verifies the keystore alias using keytool
