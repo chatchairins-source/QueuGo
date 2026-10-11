@@ -88,9 +88,11 @@ fun MarketNativeScreen(
         loading = true
         runCatching {
             val m = if (auth == null) api.loadMarketsPublic() else api.loadMarkets(auth)
+            val loadedShops = if (auth == null) api.loadShopsPublic() else api.loadShops(auth)
+            val loadedCatalog = if (auth == null) api.loadCatalogPublic() else api.loadCatalog(auth)
             markets = m
-            shops = if (auth == null) api.loadShopsPublic() else api.loadShops(auth)
-            catalog = if (auth == null) api.loadCatalogPublic() else api.loadCatalog(auth)
+            shops = loadedShops
+            catalog = loadedCatalog
             if (!restoredCart) {
                 fun restore(saved: List<MarketCartStore.Saved>): List<MarketCartLine> =
                     saved.mapNotNull { line ->
@@ -138,7 +140,21 @@ fun MarketNativeScreen(
             }
             activeTrip = if (auth == null) null else api.activeTrip(auth)
             if (selectedMarket == null) {
-                selectedMarket = activeTrip?.marketId ?: api.nearest(m, location)?.id
+                val availableMarketIds = loadedShops.asSequence()
+                    .filter { it.deliveryEnabled }
+                    .map { it.marketId }
+                    .toSet()
+                val marketsWithReadyProducts = m.filter { market ->
+                    market.id in availableMarketIds &&
+                        loadedCatalog.any {
+                            it.marketId == market.id && it.availablePacks > 0
+                        }
+                }
+                selectedMarket = activeTrip?.marketId
+                    ?: api.nearest(
+                        if (marketsWithReadyProducts.isNotEmpty()) marketsWithReadyProducts else m,
+                        location
+                    )?.id
             }
         }.onFailure { message = it.message ?: "โหลดตลาดสดไม่สำเร็จ" }
         loading = false
