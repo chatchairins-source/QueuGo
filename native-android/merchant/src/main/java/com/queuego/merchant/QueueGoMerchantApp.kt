@@ -1922,30 +1922,21 @@ private fun MerchantProfileScreen(
 
         Spacer(Modifier.height(12.dp))
         MerchantProfileSectionTitle("ความเป็นส่วนตัวและบัญชี")
-        MerchantProfileCard {
-            MerchantProfileActionRow(
-                icon = "gear",
-                title = "นโยบายความเป็นส่วนตัว",
-                subtitle = "ข้อมูลเกี่ยวกับการเก็บและใช้ข้อมูลส่วนบุคคล"
-            ) {
-                runCatching {
-                    context.startActivity(
-                        Intent(
-                            Intent.ACTION_VIEW,
-                            Uri.parse("https://chatchairins-source.github.io/QueuGo/docs/privacy.html")
-                        )
-                    )
-                }.onFailure { profileNotice = "เปิดนโยบายความเป็นส่วนตัวไม่สำเร็จ" }
-            }
-        }
-        Spacer(Modifier.height(8.dp))
         QgAccountDeletionSection(
             accessToken = auth.session.accessToken,
-            onDeleted = logout
+            onDeleted = logout,
+            showHeader = false,
+            privacySubtitle = "ข้อมูลเกี่ยวกับการเก็บและใช้ข้อมูลส่วนบุคคล",
+            deleteSubtitle = "ลบบัญชีและข้อมูลร้านตามขั้นตอนที่กำหนด"
         )
         Spacer(Modifier.height(8.dp))
-        OutlinedButton(onClick = logout, modifier = Modifier.fillMaxWidth().height(46.dp)) {
-            Text("ออกจากระบบ", fontWeight = FontWeight.Bold)
+        MerchantProfileCard {
+            MerchantProfileActionRow(
+                icon = "back",
+                title = "ออกจากระบบ",
+                subtitle = "ออกจากบัญชีร้านค้าบนอุปกรณ์นี้",
+                onClick = logout
+            )
         }
         Spacer(Modifier.height(28.dp))
     }
