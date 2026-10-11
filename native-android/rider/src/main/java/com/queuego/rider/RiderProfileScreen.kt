@@ -97,6 +97,9 @@ fun RiderProfileScreen(
         }
     }
 
+    suspend fun saveAccount(name: String, phone: String) =
+        api.updateAccount(auth, name, phone)
+
     if (showSupport) {
         RiderSupportScreen(
             auth = auth,
@@ -422,7 +425,7 @@ fun RiderProfileScreen(
                     else -> {
                         busy = true
                         scope.launch {
-                            runCatching { api.updateAccount(auth, nextName, nextPhone) }
+                            runCatching { saveAccount(nextName, nextPhone) }
                                 .onSuccess {
                                     name = nextName
                                     phone = nextPhone
