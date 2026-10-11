@@ -594,18 +594,29 @@ private fun CustomerShell(
                         if (!busy) {
                             busy = true
                             scope.launch {
-                                runCatching { extrasApi.markRead(auth, notification.id) }
-                                notifications = notifications.map {
-                                    if (it.id == notification.id) it.copy(read = true) else it
+                                try {
+                                    if (!notification.read) {
+                                        extrasApi.markRead(auth, notification.id)
+                                        notifications = notifications.map {
+                                            if (it.id == notification.id) it.copy(read = true) else it
+                                        }
+                                    }
+                                    val ref = notification.referenceId
+                                    val target = if (!ref.isNullOrBlank()) {
+                                        orders.find { it.id == ref }
+                                    } else null
+                                    if (target != null) {
+                                        selectedOrder = target
+                                        orderItems = api.loadOrderItems(auth, target.id)
+                                        screen = "order"
+                                    }
+                                } catch (failure: CancellationException) {
+                                    throw failure
+                                } catch (failure: Exception) {
+                                    message = failure.message ?: "เปิดการแจ้งเตือนไม่สำเร็จ"
+                                } finally {
+                                    busy = false
                                 }
-                                val ref = notification.referenceId
-                                val target = if (!ref.isNullOrBlank()) orders.find { it.id == ref } else null
-                                if (target != null) {
-                                    selectedOrder = target
-                                    orderItems = runCatching { api.loadOrderItems(auth, target.id) }.getOrDefault(emptyList())
-                                    screen = "order"
-                                }
-                                busy = false
                             }
                         }
                     }
