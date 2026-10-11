@@ -73,7 +73,7 @@ assert(!/stun:|turn:turn\./i.test(sql.match(
 )?.[0]||''), 'ICE RPC must not own relay configuration');
 assert(/qg_call_sessions_created_idx/.test(retention)&&/qg_call_sessions\(created_at\)/.test(retention),'voice retention purge must have a leading created_at index');
 assert(/qg_purge_call_sessions/.test(retention),'voice metadata retention purge function missing');
-assert(/created_at < now\(\) - interval '30 days'/.test(retention),'voice metadata must have a fixed 30-day maximum retention');
+assert(/created_at < now\(\) - interval '30 days'/.test(retention),'voice metadata purge must use a fixed 30-day age cutoff');
 assert(/queuego-voice-call-retention/.test(retention)&&/cron\.schedule/.test(retention),'voice metadata purge must run automatically on pg_cron');
 assert(/REVOKE ALL ON FUNCTION qg_private\.qg_purge_call_sessions\(\) FROM authenticated/.test(retention),'voice retention purge must not be callable by app users');
 assert(!/\b(audio|sdp|ice_candidate|signal_payload)\b/i.test(retention.replace(/^--.*$/gm,'')),'retention migration must not introduce media/signaling storage');
