@@ -388,7 +388,7 @@ internal fun GuestCustomerShell(
                     onGps = ::gps,
                     serviceBanner = serviceBanners["market"],
                     onBack = { screen = "home" },
-                    onDone = { screen = "home" },
+                    onDone = { _ -> screen = "home" },
                     onRequireLogin = { onLogin("market-cart") },
                     onBannerLink = ::openBannerLink
                 )

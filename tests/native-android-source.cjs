@@ -95,7 +95,7 @@ ok(customerMarketScreen.includes('Text("ตลาดสด", fontSize = 20.sp')&
 ok(customerMarketScreen.includes('CustomerServiceBanner(')&&customerMarketScreen.includes('R.drawable.qg_market_banner')&&customerMarketScreen.includes('fallbackSubtitle = "ตลาดสดใกล้คุณ สดใหม่ทุกวัน"'),'Customer Native Market must reuse the managed Production service-banner renderer and exact fallback asset');
 ok(source.includes('serviceBanner = serviceBanners["market"]')&&source.includes('onBannerLink = ::openBannerLink')&&source.includes('onBannerLink = ::openHomeBannerLink'),'Customer Native Market banner must stay managed and link-aware for guest and authenticated flows');
 ok(!customerMarketScreen.includes('height(142.dp)')&&!customerMarketScreen.includes('background(QgRed, RoundedCornerShape(20.dp))'),'Customer Native Market must not regress to the legacy red placeholder banner');
-ok(customerMarketScreen.includes('if (!cartPage) {')&&customerMarketScreen.includes('if (cartPage && cart.isNotEmpty())')&&customerMarketScreen.includes('onClick = onOpenCart'),'Market Browse and Cart must separate checkout fields and expose a floating cart route');
+ok(customerMarketScreen.includes('if (!cartPage) {')&&customerMarketScreen.includes('if (cartPage && (cart.isNotEmpty() || checkoutPending))')&&customerMarketScreen.includes('onClick = onOpenCart'),'Market Browse and Cart must separate checkout fields and expose a floating cart route');
 ok(customerMarketScreen.includes('cart.groupBy { it.product.shopId }')&&customerMarketScreen.includes('line.quantity < line.product.availablePacks'),'Market cart must group shops and cap quantities by available packs');
 ok(!customerMarketScreen.includes('cart.first().product.marketId != m.id) cart = emptyList()'),'Browsing a different market must never destroy a persisted cart');
 ok(source.includes('"market", "market-cart" -> MarketNativeScreen(')&&source.includes('onLogin("market-cart")'),'Guest Market checkout must resume at the same cart after login');
@@ -291,4 +291,12 @@ ok(runtimeCapture.includes('"--pid=" + pid')&&(runtimeCapture.match(/android_run
 ok(runtimeCapture.includes('def full_crash_buffer()')&&runtimeCapture.includes('["logcat", "-b", "crash", "-d"]'),'full emulator crash buffer must remain preserved as diagnostic evidence');
 ok(runtimeCapture.includes('def package_crash_blocks(crash_text: str, pkg: str)')&&runtimeCapture.includes('if f"Process: {pkg}," in window'),'crash-buffer gate must attribute FATAL EXCEPTION blocks to the tested QueueGo package');
 ok((runtimeCapture.match(/assert_no_package_crash\(/g)||[]).length>=3,'runtime gate must pair PID-scoped checks with QueueGo package-scoped crash-buffer checks');
+
+
+const marketStore=read('customer/src/main/java/com/queuego/customer/MarketCartStore.kt');
+const marketApi=read('customer/src/main/java/com/queuego/customer/CustomerMarketApi.kt');
+ok(marketStore.includes('pending_checkout')&&marketStore.includes('pending.encode()).putString("cart", pending.cartSnapshot).commit()')&&customerMarketScreen.includes('CustomerCheckoutRecovery<PendingMarketCheckout'),'Market checkout must reuse durable recovery and existing cart storage');
+ok(marketApi.includes('http.rpc(pending.rpc, auth.session.accessToken, pending.body)')&&!marketApi.slice(marketApi.indexOf('internal suspend fun sendCheckout'),marketApi.indexOf('suspend fun trips')).includes('UUID.randomUUID'),'Market retries must send the frozen RPC/body, never generate a new order or add-shop ID');
+ok(customerMarketScreen.includes('!busy && !checkoutPending')&&customerMarketScreen.includes('restoredCart && !checkoutPending')&&customerMarketScreen.includes('catch (cancelled: CancellationException)'),'Pending Market checkout must freeze cart mutations and survive navigation cancellation');
+
 console.log(JSON.stringify({checks,failures:0,scope:'QueueGo Customer Merchant Rider native Android source'}));
