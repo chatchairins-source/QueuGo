@@ -329,12 +329,10 @@ fun RiderProfileScreen(
 
         Spacer(Modifier.height(12.dp))
         RiderProfileSection("การแจ้งเตือน") {
-            RiderProfileStateRow(
+            RiderProfileActionRow(
                 icon = "chat",
                 title = "การแจ้งเตือนเบื้องหลัง",
                 subtitle = "รับงานและสถานะสำคัญแม้ไม่ได้เปิดหน้านี้",
-                state = if (profilePushEnabled) "เปิด" else "ปิด",
-                on = profilePushEnabled,
                 enabled = !busy
             ) {
                 if (profilePushEnabled) {
