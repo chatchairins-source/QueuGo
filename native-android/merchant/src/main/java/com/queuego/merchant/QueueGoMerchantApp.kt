@@ -138,11 +138,73 @@ private fun MerchantShell(
     val pushApi = remember { NativePushApi() }
     val pushLogoutScope = remember(context) { nativeLogoutScope(context, scope) }
     var pushPermissionRequested by remember(auth.user.id) { mutableStateOf(false) }
+    var pushActionBusy by remember(auth.user.id) { mutableStateOf(false) }
+    var pendingPushTestAfterPermission by remember(auth.user.id) { mutableStateOf(false) }
+
+    suspend fun runMerchantPushProfileAction(testNotification: Boolean) {
+        val enabled = syncMerchantNativePush(context, auth)
+        if (!enabled) {
+            message = "ยังไม่ได้ตั้งค่า Firebase สำหรับการแจ้งเตือนบนเครื่องนี้"
+            return
+        }
+        if (testNotification) {
+            message = "ระบบจะส่งแจ้งเตือนทดสอบ กรุณากด Home เพื่อตรวจสอบ"
+            pushApi.test(auth)
+            message = "ส่งคำขอทดสอบการแจ้งเตือนแล้ว"
+        } else {
+            message = "เปิดการแจ้งเตือนเบื้องหลังแล้ว"
+        }
+    }
+
     val pushPermission = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { granted ->
+        val shouldTest = pendingPushTestAfterPermission
+        pendingPushTestAfterPermission = false
         if (granted) {
-            scope.launch { runCatching { syncMerchantNativePush(context, auth) } }
+            pushActionBusy = true
+            scope.launch {
+                try {
+                    runMerchantPushProfileAction(shouldTest)
+                } catch (failure: kotlinx.coroutines.CancellationException) {
+                    throw failure
+                } catch (failure: Exception) {
+                    message = failure.message ?: "เปิดการแจ้งเตือนไม่สำเร็จ"
+                } finally {
+                    pushActionBusy = false
+                }
+            }
+        } else {
+            message = "กรุณาอนุญาตการแจ้งเตือนเพื่อรับออเดอร์และสถานะสำคัญเบื้องหลัง"
+        }
+    }
+
+    fun launchMerchantPushProfileAction(testNotification: Boolean) {
+        if (pushActionBusy) return
+        if (
+            Build.VERSION.SDK_INT >= 33 &&
+            context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+        ) {
+            pendingPushTestAfterPermission = testNotification
+            pushPermissionRequested = true
+            pushPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+            return
+        }
+        pushActionBusy = true
+        scope.launch {
+            try {
+                runMerchantPushProfileAction(testNotification)
+            } catch (failure: kotlinx.coroutines.CancellationException) {
+                throw failure
+            } catch (failure: Exception) {
+                message = failure.message ?: if (testNotification) {
+                    "ทดสอบการแจ้งเตือนไม่สำเร็จ"
+                } else {
+                    "เปิดการแจ้งเตือนไม่สำเร็จ"
+                }
+            } finally {
+                pushActionBusy = false
+            }
         }
     }
     fun logoutWithPushCleanup() {
@@ -741,9 +803,12 @@ private fun MerchantShell(
                     onHours = { screen = "hours" },
                     onProducts = { screen = "products" },
                     onNotifications = { screen = "notifications" },
-                    onTestSound = {
-                        playMerchantNotificationSound()
-                        message = "ทดสอบเสียงแจ้งเตือนแล้ว"
+                    pushBusy = pushActionBusy,
+                    onEnableBackgroundNotifications = {
+                        launchMerchantPushProfileAction(false)
+                    },
+                    onTestNotification = {
+                        launchMerchantPushProfileAction(true)
                     },
                     onSupport = { screen = "support" },
                     logout = ::logoutWithPushCleanup
@@ -1733,7 +1798,9 @@ private fun MerchantProfileScreen(
     onHours: () -> Unit,
     onProducts: () -> Unit,
     onNotifications: () -> Unit,
-    onTestSound: () -> Unit,
+    pushBusy: Boolean,
+    onEnableBackgroundNotifications: () -> Unit,
+    onTestNotification: () -> Unit,
     onSupport: () -> Unit,
     logout: () -> Unit
 ) {
@@ -1876,9 +1943,18 @@ private fun MerchantProfileScreen(
             HorizontalDivider(color = Color(0xFFECEEF1))
             MerchantProfileActionRow(
                 icon = "bell",
-                title = "ทดสอบเสียงแจ้งเตือน",
-                subtitle = "ตรวจว่าอุปกรณ์เปิดเสียงสำหรับออเดอร์ใหม่",
-                onClick = onTestSound
+                title = "การแจ้งเตือนเบื้องหลัง",
+                subtitle = "รับออเดอร์และสถานะสำคัญแม้ไม่ได้เปิดหน้านี้",
+                enabled = !pushBusy,
+                onClick = onEnableBackgroundNotifications
+            )
+            HorizontalDivider(color = Color(0xFFECEEF1))
+            MerchantProfileActionRow(
+                icon = "bell",
+                title = "ทดสอบการแจ้งเตือน",
+                subtitle = "ตรวจว่าแจ้งเตือนเข้าเมื่อแอปอยู่เบื้องหลัง",
+                enabled = !pushBusy,
+                onClick = onTestNotification
             )
         }
 
