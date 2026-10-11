@@ -38,7 +38,7 @@ REVOKE ALL ON FUNCTION qg_private.qg_purge_call_sessions() FROM anon;
 REVOKE ALL ON FUNCTION qg_private.qg_purge_call_sessions() FROM authenticated;
 GRANT EXECUTE ON FUNCTION qg_private.qg_purge_call_sessions() TO service_role;
 
-DO $
+DO $$
 DECLARE
   v_jobid bigint;
 BEGIN
@@ -54,7 +54,7 @@ BEGIN
     'select qg_private.qg_purge_call_sessions();'
   );
 END
-$;
+$$;
 
 -- Apply the retention cutoff immediately on deployment as well as daily.
 SELECT qg_private.qg_purge_call_sessions();
