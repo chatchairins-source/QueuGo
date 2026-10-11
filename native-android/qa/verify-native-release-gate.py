@@ -176,6 +176,18 @@ def verify_gate_envelope(path: Path, bundle_root: Path, gate: str, head: str, ex
     if not isinstance(checks, dict) or not checks or any(value is not True for value in checks.values()):
         raise ValueError(f"gate evidence checks must be non-empty and all true: {gate}")
 
+    for key in GATE_REQUIRED_CHECKS.get(gate, ()):
+        if checks.get(key) is not True:
+            raise ValueError(f"gate required check missing: {gate}.{key}")
+
+    if gate == "play_store_preflight":
+        expected_packages = {
+            "com.queuego.customer", "com.queuego.merchant", "com.queuego.rider"
+        }
+        registered_packages = envelope.get("registered_packages")
+        if not isinstance(registered_packages, list) or set(registered_packages) != expected_packages:
+            raise ValueError("play_store_preflight evidence registered package names mismatch")
+
     artifacts = envelope.get("artifacts")
     if not isinstance(artifacts, list) or not artifacts:
         raise ValueError(f"gate evidence must reference at least one artifact: {gate}")
