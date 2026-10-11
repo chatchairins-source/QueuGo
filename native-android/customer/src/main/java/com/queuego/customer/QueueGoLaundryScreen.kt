@@ -13,6 +13,12 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.painterResource
+import androidx.compose.material3.Icon
+import com.queuego.shared.QgIcon
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -160,27 +166,24 @@ fun LaundryNativeScreen(
     val deliveryFee = cfg?.deliveryFee ?: 0.0
     val estimatedTotal = serviceAmount?.plus(deliveryFee)
 
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(12.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            OutlinedButton(onClick = onBack) { Text("ย้อนกลับ") }
-            Spacer(Modifier.width(10.dp))
-            Column {
-                Text("ฝากซัก", fontWeight = FontWeight.Black, style = MaterialTheme.typography.titleLarge)
-                Text("เลือกร้านและบริการ แล้วเรียกไรเดอร์รับ-ส่งถึงที่", color = QgMuted, style = MaterialTheme.typography.bodySmall)
+    Column(Modifier.fillMaxSize().background(Color(0xFFF6F7F9))) {
+        Row(Modifier.fillMaxWidth().background(Color.White).padding(start = 18.dp, end = 18.dp, top = 18.dp, bottom = 14.dp), verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.size(42.dp).clip(RoundedCornerShape(14.dp)).background(Color(0xFFF2F3F5)).clickable { onBack() }, contentAlignment = Alignment.Center) {
+                QgIcon("back", Modifier.size(25.dp), Color(0xFF17181A))
             }
+            Spacer(Modifier.width(14.dp))
+            Text("ฝากซัก", fontSize = 23.sp, fontWeight = FontWeight.ExtraBold)
         }
-
-        Spacer(Modifier.height(12.dp))
-        Box(
-            Modifier.fillMaxWidth().height(142.dp)
-                .background(QgRed, RoundedCornerShape(20.dp))
-                .padding(18.dp),
-            contentAlignment = Alignment.BottomStart
-        ) {
-            Column {
-                Text("QueueGo Laundry", color = Color.White, fontWeight = FontWeight.Black, style = MaterialTheme.typography.headlineSmall)
-                Text("รับผ้า → ร้านซัก → ส่งคืน · ไรเดอร์ขาไปและขากลับไม่จำเป็นต้องเป็นคนเดิม", color = Color.White)
+        HorizontalDivider(color = Color(0xFFEEEEEE))
+        Box(Modifier.fillMaxWidth().weight(1f), contentAlignment = Alignment.TopCenter) {
+        Column(Modifier.widthIn(max = 680.dp).fillMaxWidth().verticalScroll(rememberScrollState()).padding(18.dp)) {
+        if (selectedHub == null) {
+            Column(Modifier.fillMaxWidth().background(Color(0xFFE6002D), RoundedCornerShape(24.dp)).padding(22.dp)) {
+                Text("ฝากซัก", color = Color.White, fontSize = 25.sp, fontWeight = FontWeight.ExtraBold)
+                Spacer(Modifier.height(6.dp))
+                Text("เลือกร้านและบริการ ร้านยืนยันก่อน แล้ว Rider ไปรับผ้าถึงที่และส่งคืนเมื่อเสร็จ", color = Color.White.copy(alpha = 0.9f))
             }
+            Spacer(Modifier.height(18.dp))
         }
 
         if (!message.isNullOrBlank()) {
@@ -211,24 +214,18 @@ fun LaundryNativeScreen(
                 QgSectionTitle("เลือกร้านฝากซัก")
                 Spacer(Modifier.height(8.dp))
                 catalog!!.hubs.forEach { hub ->
-                    val settings = catalog!!.settings[hub.id]
                     QgCard(Modifier.fillMaxWidth().padding(bottom = 8.dp).clickable { chooseHub(hub) }) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Box(
                                 Modifier.size(54.dp).background(Color(0xFFFFF0F2), RoundedCornerShape(17.dp)),
                                 contentAlignment = Alignment.Center
                             ) {
-                                Text("◎", color = QgRed, fontWeight = FontWeight.Black, style = MaterialTheme.typography.headlineSmall)
+                                Icon(painterResource(R.drawable.qg_laundry_washer), "ร้านฝากซัก", Modifier.size(30.dp), tint = QgRed)
                             }
                             Spacer(Modifier.width(12.dp))
                             Column(Modifier.weight(1f)) {
-                                Text(hub.name, fontWeight = FontWeight.ExtraBold)
-                                Text(
-                                    "รับผ้า ฿" + "%.0f".format(settings?.pickupFee ?: 0.0) +
-                                        " · ส่งคืน ฿" + "%.0f".format(settings?.returnFee ?: 0.0),
-                                    color = QgMuted,
-                                    style = MaterialTheme.typography.bodySmall
-                                )
+                                Text(hub.name, fontSize = 18.sp, fontWeight = FontWeight.ExtraBold)
+                                Text("Rider รับผ้าและส่งคืนถึงที่", color = QgMuted, style = MaterialTheme.typography.bodySmall)
                             }
                             Text("›", color = QgMuted, style = MaterialTheme.typography.headlineSmall)
                         }
@@ -348,6 +345,8 @@ fun LaundryNativeScreen(
             }
         }
         Spacer(Modifier.height(40.dp))
+        }
+        }
     }
 }
 

@@ -829,3 +829,8 @@ The user-supplied Rider reference screens are the acceptance reference for workf
 ## 2026-10-11 Laundry durable request recovery staging
 - Current Production queuego_place_laundry_order_v2 uses customer-owned request_key and advisory-lock replay. Native now reuses CustomerCheckoutRecovery with a per-customer Laundry pending journal, synchronously persisted before sending. Hub/service/request IDs, address/GPS, optional quantity and note stay frozen across timeout/navigation/process restart; retry is available even before catalog loads. All uncertain failures retain the journal. Owner-filtered laundry_orders request_key read can recover an already committed order.
 - Local validation follows current server bounds; only a valid acknowledged order id completes the journal. Pending state disables form edits and new hub selection. JVM fixtures cover lost response/restart and invalid inputs. Full Pilot remains required; Laundry rendered visual/physical gates remain open. No new DB/RPC or Production writes.
+
+
+## 2026-10-11 Laundry list/header Blueprint staging
+- Latest Production main laundry/index.html defines sticky white header/back42/radius14/title23, wrap max680/padding18, content-sized red hero/radius24/padding22 and washer SVG in shop rows. Native now applies these measured source values and exact visible copy, shows hero only on shop list and uses a vector transcription of the current SVG instead of a decorative circle. No generated imagery/redesign.
+- Full authenticated rendered screenshot comparison and all Laundry order/service/inspection/return screens remain required; this patch does not certify full parity. Full regression/Pilot are pending before merge.
