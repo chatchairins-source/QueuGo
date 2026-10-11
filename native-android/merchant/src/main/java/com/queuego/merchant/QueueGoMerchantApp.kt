@@ -1815,9 +1815,7 @@ private fun MerchantProfileScreen(
             MerchantProfileActionRow(
                 icon = "bell",
                 title = "การแจ้งเตือนเบื้องหลัง",
-                subtitle = "รับออเดอร์และสถานะสำคัญแม้ไม่ได้เปิดแอป",
-                trailing = if (profilePushEnabled) "เปิด" else "ปิด",
-                trailingOn = profilePushEnabled,
+                subtitle = "รับออเดอร์และสถานะสำคัญแม้ไม่ได้เปิดหน้านี้",
                 enabled = !pushBusy
             ) {
                 if (profilePushEnabled) {
