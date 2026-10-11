@@ -934,7 +934,7 @@ private fun RiderHome(
             } else if (loadError != null) {
                 Text(loadError!!, color = MaterialTheme.colorScheme.error)
             } else if (current != null) {
-                val marketVehicleReady = current.profileInfo?.let {
+                val marketVehicleReady = current.profile?.let {
                     it.vehicleStatus == "active" && !it.vehicleVerifiedAt.isNullOrBlank()
                 } == true
                 Row(Modifier.fillMaxWidth(), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
