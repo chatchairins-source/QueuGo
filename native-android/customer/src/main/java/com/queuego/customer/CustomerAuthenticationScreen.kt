@@ -28,7 +28,9 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusDirection
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
@@ -148,19 +150,36 @@ fun CustomerAuthenticationScreen(
 
     Box(Modifier.fillMaxSize().background(QgBg)) {
         Column(Modifier.fillMaxSize().imePadding()) {
-            Row(
+            Box(
                 Modifier
                     .fillMaxWidth()
                     .background(Color.White)
                     .windowInsetsPadding(WindowInsets.statusBars)
-                    .padding(horizontal = 12.dp, vertical = 6.dp),
-            verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
-            Row { Text("Queue", fontSize = 18.sp, fontWeight = FontWeight.ExtraBold, color = QgInk)
-                Text("Go", fontSize = 18.sp, fontWeight = FontWeight.ExtraBold, color = QgRed) }
-            Text("เข้าสู่ระบบ", color = QgRed, fontSize = 13.sp, fontWeight = FontWeight.Bold,
-                modifier = Modifier.clickable(enabled = !busy) { registering = false; localError = null; entry.clearError() })
-        }
-        HorizontalDivider(color = Color(0x0D000000))
+            ) {
+                Row(
+                    Modifier
+                        .widthIn(max = 720.dp)
+                        .fillMaxWidth()
+                        .align(Alignment.Center)
+                        .padding(horizontal = 12.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Row {
+                        Text("Queue", fontSize = 18.sp, fontWeight = FontWeight.ExtraBold,
+                            letterSpacing = (-0.4).sp, color = QgInk)
+                        Text("Go", fontSize = 18.sp, fontWeight = FontWeight.ExtraBold,
+                            letterSpacing = (-0.4).sp, color = QgRed)
+                    }
+                    Text("เข้าสู่ระบบ", color = QgRed, fontSize = 13.sp, fontWeight = FontWeight.Bold,
+                        modifier = Modifier.clickable(enabled = !busy) {
+                            registering = false
+                            localError = null
+                            entry.clearError()
+                        })
+                }
+            }
+            HorizontalDivider(color = Color(0x0D000000))
         BoxWithConstraints(Modifier.fillMaxWidth().weight(1f)) {
             val side = if (maxWidth <= 420.dp) 10.dp else 12.dp
             Column(Modifier.widthIn(max = 720.dp).fillMaxWidth().align(Alignment.TopCenter)
@@ -241,16 +260,22 @@ fun CustomerAuthenticationScreen(
 private fun CustomerAuthInput(value: String, change: (String) -> Unit, hint: String, busy: Boolean,
     password: Boolean = false, type: KeyboardType = KeyboardType.Text, done: (() -> Unit)? = null) {
     val focus = LocalFocusManager.current
+    var focused by remember { mutableStateOf(false) }
     BasicTextField(value = value, onValueChange = change, enabled = !busy, singleLine = true,
-        modifier = Modifier.fillMaxWidth().height(52.dp).semantics { contentDescription = hint },
+        modifier = Modifier.fillMaxWidth().height(52.dp)
+            .onFocusChanged { focused = it.isFocused }
+            .semantics { contentDescription = hint },
         textStyle = TextStyle(fontSize = 16.sp, color = QgInk),
+        cursorBrush = SolidColor(QgRed),
         visualTransformation = if (password) PasswordVisualTransformation() else VisualTransformation.None,
         keyboardOptions = KeyboardOptions(keyboardType = if (password) KeyboardType.Password else type,
             imeAction = if (done == null) ImeAction.Next else ImeAction.Done),
         keyboardActions = KeyboardActions(onNext = { focus.moveFocus(FocusDirection.Down) }, onDone = { done?.invoke() }),
         decorationBox = { inner ->
-            Box(Modifier.fillMaxSize().border(BorderStroke(1.dp, QgLine), RoundedCornerShape(16.dp))
-                .background(Color.White, RoundedCornerShape(16.dp)).padding(horizontal = 15.dp), contentAlignment = Alignment.CenterStart) {
+            Box(Modifier.fillMaxSize()
+                .border(BorderStroke(1.dp, if (focused) QgRed else QgLine), RoundedCornerShape(16.dp))
+                .background(Color.White, RoundedCornerShape(16.dp))
+                .padding(horizontal = 15.dp), contentAlignment = Alignment.CenterStart) {
                 if (value.isEmpty()) Text(hint, color = Color(0xFF757575), fontSize = 16.sp, maxLines = 1)
                 inner()
             }
