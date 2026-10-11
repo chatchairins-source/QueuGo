@@ -132,7 +132,23 @@ internal fun RiderLoginScreen(
             }
         }
         if (!wide) {
-            Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 17.dp, vertical = 24.dp), horizontalAlignment = Alignment.CenterHorizontally) { card() }
+            if (maxHeight >= 620.dp) {
+                Box(
+                    Modifier.fillMaxSize().padding(horizontal = 17.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    card()
+                }
+            } else {
+                Column(
+                    Modifier.fillMaxSize()
+                        .verticalScroll(rememberScrollState())
+                        .padding(horizontal = 17.dp, vertical = 24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    card()
+                }
+            }
         } else {
             Row(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
                 Column(Modifier.weight(1.05f).heightIn(min = viewportHeight).background(Color(0xFFFFF5F7)).padding(brandPadding), verticalArrangement = Arrangement.SpaceBetween) {
