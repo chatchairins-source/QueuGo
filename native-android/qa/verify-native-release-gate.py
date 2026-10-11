@@ -117,6 +117,16 @@ PHYSICAL_GATE_REQUIRED_CHECKS = {
 
 BLUEPRINT_GATES = {"customer_blueprint", "merchant_blueprint", "rider_blueprint"}
 
+GATE_REQUIRED_CHECKS = {
+    "play_store_preflight": (
+        "developer_identity_verified",
+        "customer_package_registered",
+        "merchant_package_registered",
+        "rider_package_registered",
+    ),
+}
+
+
 
 def verify_physical_gate_semantics(envelope: dict, gate: str) -> None:
     required_checks = PHYSICAL_GATE_REQUIRED_CHECKS.get(gate)
@@ -175,6 +185,10 @@ def verify_gate_envelope(path: Path, bundle_root: Path, gate: str, head: str, ex
     checks = envelope.get("checks")
     if not isinstance(checks, dict) or not checks or any(value is not True for value in checks.values()):
         raise ValueError(f"gate evidence checks must be non-empty and all true: {gate}")
+
+    for key in GATE_REQUIRED_CHECKS.get(gate, ()):
+        if checks.get(key) is not True:
+            raise ValueError(f"gate required check missing: {gate}.{key}")
 
     artifacts = envelope.get("artifacts")
     if not isinstance(artifacts, list) or not artifacts:
