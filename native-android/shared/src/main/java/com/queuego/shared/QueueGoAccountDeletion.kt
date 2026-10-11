@@ -5,11 +5,13 @@ import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Button
 import androidx.compose.material3.HorizontalDivider
@@ -92,7 +94,9 @@ fun QgAccountDeletionSection(
     pendingChatUserId: String? = null,
     showHeader: Boolean = true,
     privacySubtitle: String = "การใช้ข้อมูลและการลบบัญชี",
-    deleteSubtitle: String = "ลบ Auth และข้อมูลส่วนบุคคล"
+    deleteSubtitle: String = "ลบ Auth และข้อมูลส่วนบุคคล",
+    onLogout: (() -> Unit)? = null,
+    logoutSubtitle: String = "ออกจากบัญชีในอุปกรณ์นี้"
 ) {
     val api = remember { QueueGoAccountDeletionApi() }
     val context = LocalContext.current
@@ -117,6 +121,7 @@ fun QgAccountDeletionSection(
                 .border(1.dp, QgLine, RoundedCornerShape(16.dp))
         ) {
             AccountSettingsRow(
+                icon = "gear",
                 title = "นโยบายความเป็นส่วนตัว",
                 subtitle = privacySubtitle,
                 danger = false,
@@ -136,6 +141,7 @@ fun QgAccountDeletionSection(
             HorizontalDivider(color = QgLine)
             if (!armed) {
                 AccountSettingsRow(
+                    icon = "close",
                     title = "ลบบัญชีถาวร",
                     subtitle = deleteSubtitle,
                     danger = true,
@@ -189,6 +195,16 @@ fun QgAccountDeletionSection(
                     }
                 }
             }
+            if (onLogout != null) {
+                HorizontalDivider(color = QgLine)
+                AccountSettingsRow(
+                    icon = "back",
+                    title = "ออกจากระบบ",
+                    subtitle = logoutSubtitle,
+                    danger = false,
+                    onClick = onLogout
+                )
+            }
         }
         if (!message.isNullOrBlank()) {
             Spacer(Modifier.height(7.dp))
@@ -199,6 +215,7 @@ fun QgAccountDeletionSection(
 
 @Composable
 private fun AccountSettingsRow(
+    icon: String,
     title: String,
     subtitle: String,
     danger: Boolean,
@@ -211,6 +228,22 @@ private fun AccountSettingsRow(
             .padding(horizontal = 12.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
+        Box(
+            Modifier
+                .size(34.dp)
+                .background(
+                    if (danger) Color(0xFFFFF0F3) else Color(0xFFF5F5F6),
+                    RoundedCornerShape(11.dp)
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            QgIcon(
+                icon,
+                Modifier.size(17.dp),
+                if (danger) QgRed else Color(0xFF737982)
+            )
+        }
+        Spacer(Modifier.width(9.dp))
         Column(Modifier.weight(1f)) {
             Text(
                 title,
