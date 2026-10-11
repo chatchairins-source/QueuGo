@@ -707,6 +707,7 @@ private fun CustomerShell(
                     category = category,
                     serviceBanner = serviceBanners[category],
                     shops = shops,
+                    location = location,
                     onBack = {
                         category = "all"
                         screen = "home"
