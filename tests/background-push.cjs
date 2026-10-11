@@ -58,11 +58,18 @@ ok(retireLegacy.includes("LEGACY_PUSH_RETIRED_USE_QUEUEGO_PUSH"),'legacy Rider p
 ok(/revoke all on function public\.qg_lease_rider_push\(\) from public, anon, authenticated, service_role/i.test(retireLegacy),'legacy Rider lease RPC must not remain executable');
 ok(/revoke all on function public\.qg_finish_rider_push\(uuid,uuid,integer\) from public, anon, authenticated, service_role/i.test(retireLegacy),'legacy Rider finish RPC must not remain executable');
 ok(edge.includes("FIREBASE_SERVICE_ACCOUNT_JSON")&&edge.includes("sendNativePush"),'edge worker must support authenticated FCM HTTP v1 delivery');
+ok(edge.includes("channel_id:'queuego_orders_v2'")&&edge.includes("sound:'default'"),'Native FCM must target the audible v2 channel with default sound');
 ok(edge.includes("function visibleOrderText"),'push worker must share visible QT-XXXX text normalization');
 ok(edge.includes("title:visibleOrderText")&&edge.includes("body:visibleOrderText")&&edge.includes("message:visibleOrderText"),'push delivery must shorten canonical order numbers for native and web push');
 ok(edge.includes("function visibleFour")&&edge.includes("parseInt(upper,16)%10000"),'Laundry legacy order numbers must normalize to numeric QT-XXXX in push');
 ok(edge.includes("subscribe-native")&&edge.includes("unsubscribe-native"),'edge worker must own native token lifecycle');
-ok(/input\.action==='subscribe-native'[\s\S]{0,900}await config\(\)/.test(edge),'native subscription must bootstrap unified worker config before persisting an FCM token');
+{
+  const subscribeStart=edge.indexOf("input.action==='subscribe-native'");
+  const configAt=edge.indexOf('await config()',subscribeStart);
+  const nativeUpsertAt=edge.indexOf("admin.from('qg_native_push_tokens').upsert",subscribeStart);
+  ok(subscribeStart>=0&&configAt>subscribeStart&&nativeUpsertAt>configAt,
+    'native subscription must bootstrap unified worker config before persisting an FCM token');
+}
 ok(edge.includes("input.action==='test'")&&edge.includes("type:'push_test'"),'edge worker must provide a rate-limited physical notification test');
 ok(edge.includes("if((nativeCount||0)>0)")&&edge.includes("await firebaseAccess()")&&edge.includes("ระบบแจ้งเตือน Android ยังไม่พร้อม"),'native physical test must validate Firebase OAuth before scheduling a test notification');
 ok(edge.includes("setTimeout(resolve,7000)"),'physical notification test must delay delivery long enough to background the app');

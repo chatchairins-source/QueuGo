@@ -15,6 +15,10 @@ const allowedRoles=new Set(['customer','shop','rider']);
 const allowedPlatforms=new Set(['android','ios']);
 let firebaseCache:{accessToken:string;expiresAt:number;projectId:string}|null=null;
 
+function uuid(value:unknown){
+  return typeof value==='string'&&/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+}
+
 function endpointOK(value:string){
   try{
     const u=new URL(value);
@@ -130,8 +134,8 @@ async function sendNativePush(deviceToken:string,user:any,n:any){
           },
           data,
           android:{
-            priority:user.role==='rider'?'high':'normal',
-            notification:{channel_id:'queuego_orders',sound:'default'}
+            priority:(user.role==='rider'||n.type==='voice_call')?'high':'normal',
+            notification:{channel_id:'queuego_orders_v2',sound:'default'}
           }
         }
       }),
@@ -197,9 +201,19 @@ Deno.serve(async(req)=>{
               status=410;
             }else{
               const context=await notificationAndUser(t.user_id,job.notification_id);
-              status=!context||context.user.role!==t.role
-                ?410
-                :await sendNativePush(t.token,context.user,context.n);
+              if(!context||context.user.role!==t.role||!uuid(t.session_id)){
+                status=410;
+              }else{
+                const active=await admin.from('user_active_sessions')
+                  .select('session_id')
+                  .eq('user_id',context.user.auth_user_id)
+                  .eq('session_id',t.session_id)
+                  .is('revoked_at',null)
+                  .maybeSingle();
+                status=active.error||!active.data
+                  ?410
+                  :await sendNativePush(t.token,context.user,context.n);
+              }
             }
           }else{
             const {data:s}=await admin.from('qg_push_subscriptions').select('*').eq('id',job.subscription_id).single();
@@ -315,8 +329,34 @@ Deno.serve(async(req)=>{
     if(input.action==='subscribe-native'){
       const nativeToken=String(input.token||'').trim();
       const platform=String(input.platform||'').toLowerCase();
+      let sessionId=String(input.sessionId||'').trim();
       if(nativeToken.length<16||nativeToken.length>4096||!allowedPlatforms.has(platform)){
         return respond({error:'invalid native token'},400);
+      }
+      if(Object.prototype.hasOwnProperty.call(input,'sessionId')){
+        if(typeof input.sessionId!=='string'||!uuid(sessionId))return respond({error:'invalid session'},400);
+        const activeSession=await admin.from('user_active_sessions')
+          .select('session_id')
+          .eq('user_id',auth.data.user.id)
+          .eq('session_id',sessionId)
+          .is('revoked_at',null)
+          .maybeSingle();
+        if(activeSession.error)throw activeSession.error;
+        if(!activeSession.data)return respond({error:'active session required'},403);
+      }else{
+        // Backward compatibility for already-installed Native clients that predate
+        // sessionId. Derive only when the authenticated user has exactly one live
+        // app session; never guess when session ownership is ambiguous.
+        const legacySessions=await admin.from('user_active_sessions')
+          .select('session_id')
+          .eq('user_id',auth.data.user.id)
+          .is('revoked_at',null)
+          .order('last_seen_at',{ascending:false})
+          .limit(2);
+        if(legacySessions.error)throw legacySessions.error;
+        if((legacySessions.data||[]).length!==1)return respond({error:'active session required'},403);
+        sessionId=String(legacySessions.data![0].session_id||'');
+        if(!uuid(sessionId))return respond({error:'active session required'},403);
       }
       // Native FCM registration must bootstrap qg_push_config as well.
       // qg_wake_push() reads its worker_token from this row before it can invoke the worker.
@@ -334,6 +374,7 @@ Deno.serve(async(req)=>{
         role:user.role,
         platform,
         token:nativeToken,
+        session_id:sessionId,
         enabled:true,
         updated_at:new Date().toISOString()
       },{onConflict:'id'});
