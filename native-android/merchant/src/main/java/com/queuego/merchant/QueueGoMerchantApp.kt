@@ -1,11 +1,13 @@
 package com.queuego.merchant
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.media.AudioManager
 import android.media.ToneGenerator
 import android.net.Uri
 import android.os.Build
+import android.provider.Settings
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -1681,6 +1683,35 @@ private fun MerchantProfileScreen(
     onSupport: () -> Unit,
     logout: () -> Unit
 ) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var profileNotice by remember { mutableStateOf<String?>(null) }
+    var pushBusy by remember { mutableStateOf(false) }
+    var profilePushEnabled by remember { mutableStateOf(merchantPushEnabled(context)) }
+    val profilePushPermission = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (!granted) {
+            profileNotice = "Android ยังไม่ได้อนุญาตการแจ้งเตือน"
+        } else {
+            pushBusy = true
+            scope.launch {
+                runCatching {
+                    setMerchantPushEnabled(context, true)
+                    syncMerchantNativePush(context, auth)
+                }.onSuccess {
+                    profilePushEnabled = true
+                    profileNotice = "เปิดการแจ้งเตือนเบื้องหลังแล้ว"
+                }.onFailure {
+                    setMerchantPushEnabled(context, false)
+                    profilePushEnabled = false
+                    profileNotice = it.message ?: "เปิดการแจ้งเตือนไม่สำเร็จ"
+                }
+                pushBusy = false
+            }
+        }
+    }
+
     Column(
         Modifier
             .fillMaxSize()
@@ -1813,17 +1844,69 @@ private fun MerchantProfileScreen(
         MerchantProfileCard {
             MerchantProfileActionRow(
                 icon = "bell",
-                title = "ศูนย์การแจ้งเตือน",
-                subtitle = "ดูออเดอร์ สถานะระบบ และข่าวสารของร้าน",
-                onClick = onNotifications
-            )
+                title = "การแจ้งเตือนเบื้องหลัง",
+                subtitle = "รับออเดอร์และสถานะสำคัญแม้ไม่ได้เปิดแอป",
+                trailing = if (profilePushEnabled) "เปิด" else "ปิด",
+                trailingOn = profilePushEnabled,
+                enabled = !pushBusy
+            ) {
+                if (profilePushEnabled) {
+                    pushBusy = true
+                    scope.launch {
+                        runCatching {
+                            disableMerchantNativePush(context, auth)
+                            setMerchantPushEnabled(context, false)
+                        }.onSuccess {
+                            profilePushEnabled = false
+                            profileNotice = "ปิดการแจ้งเตือนเบื้องหลังแล้ว"
+                        }.onFailure {
+                            profileNotice = it.message ?: "ปิดการแจ้งเตือนไม่สำเร็จ"
+                        }
+                        pushBusy = false
+                    }
+                } else if (
+                    Build.VERSION.SDK_INT >= 33 &&
+                    context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+                ) {
+                    profilePushPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+                } else {
+                    pushBusy = true
+                    scope.launch {
+                        runCatching {
+                            setMerchantPushEnabled(context, true)
+                            syncMerchantNativePush(context, auth)
+                        }.onSuccess {
+                            profilePushEnabled = true
+                            profileNotice = "เปิดการแจ้งเตือนเบื้องหลังแล้ว"
+                        }.onFailure {
+                            setMerchantPushEnabled(context, false)
+                            profilePushEnabled = false
+                            profileNotice = it.message ?: "เปิดการแจ้งเตือนไม่สำเร็จ"
+                        }
+                        pushBusy = false
+                    }
+                }
+            }
             HorizontalDivider(color = Color(0xFFECEEF1))
             MerchantProfileActionRow(
                 icon = "bell",
-                title = "ทดสอบเสียงแจ้งเตือน",
-                subtitle = "ตรวจว่าอุปกรณ์เปิดเสียงสำหรับออเดอร์ใหม่",
-                onClick = onTestSound
-            )
+                title = "ทดสอบการแจ้งเตือน",
+                subtitle = "ส่งแจ้งเตือนทดสอบหลังประมาณ 7 วินาที",
+                enabled = !pushBusy
+            ) {
+                onTestSound()
+                profileNotice = "ระบบจะส่งแจ้งเตือนทดสอบหลังประมาณ 7 วินาที"
+                pushBusy = true
+                scope.launch {
+                    runCatching { NativePushApi().test(auth) }
+                        .onFailure { profileNotice = it.message ?: "ทดสอบการแจ้งเตือนไม่สำเร็จ" }
+                    pushBusy = false
+                }
+            }
+        }
+        if (!profileNotice.isNullOrBlank()) {
+            Spacer(Modifier.height(7.dp))
+            Text(profileNotice!!, color = QgMuted, fontSize = 10.sp)
         }
 
         Spacer(Modifier.height(12.dp))
@@ -1839,6 +1922,23 @@ private fun MerchantProfileScreen(
 
         Spacer(Modifier.height(12.dp))
         MerchantProfileSectionTitle("ความเป็นส่วนตัวและบัญชี")
+        MerchantProfileCard {
+            MerchantProfileActionRow(
+                icon = "gear",
+                title = "นโยบายความเป็นส่วนตัว",
+                subtitle = "ข้อมูลเกี่ยวกับการเก็บและใช้ข้อมูลส่วนบุคคล"
+            ) {
+                runCatching {
+                    context.startActivity(
+                        Intent(
+                            Intent.ACTION_VIEW,
+                            Uri.parse("https://chatchairins-source.github.io/QueuGo/docs/privacy.html")
+                        )
+                    )
+                }.onFailure { profileNotice = "เปิดนโยบายความเป็นส่วนตัวไม่สำเร็จ" }
+            }
+        }
+        Spacer(Modifier.height(8.dp))
         QgAccountDeletionSection(
             accessToken = auth.session.accessToken,
             onDeleted = logout
@@ -1906,6 +2006,8 @@ private fun MerchantProfileActionRow(
     subtitle: String,
     primary: Boolean = false,
     enabled: Boolean = true,
+    trailing: String? = null,
+    trailingOn: Boolean = false,
     onClick: () -> Unit
 ) {
     Row(
@@ -1946,7 +2048,25 @@ private fun MerchantProfileActionRow(
                 lineHeight = 12.sp
             )
         }
-        Text("›", color = Color(0xFFB4B8BE), fontSize = 21.sp)
+        if (trailing != null) {
+            Box(
+                Modifier
+                    .background(
+                        if (trailingOn) Color(0xFFE9FAF2) else Color(0xFFF1F2F4),
+                        RoundedCornerShape(99.dp)
+                    )
+                    .padding(horizontal = 8.dp, vertical = 5.dp)
+            ) {
+                Text(
+                    trailing,
+                    color = if (trailingOn) Color(0xFF0A9660) else Color(0xFF7D8289),
+                    fontSize = 9.sp,
+                    fontWeight = FontWeight.ExtraBold
+                )
+            }
+        } else {
+            Text("›", color = Color(0xFFB4B8BE), fontSize = 21.sp)
+        }
     }
 }
 
