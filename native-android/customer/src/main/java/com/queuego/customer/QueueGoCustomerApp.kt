@@ -229,6 +229,7 @@ private fun CustomerShell(
     }
 
     var screen by remember(auth.user.id) { mutableStateOf(initialScreen) }
+    var locationReturnScreen by remember(auth.user.id) { mutableStateOf("home") }
     var shopReturnScreen by remember { mutableStateOf("home") }
     var category by remember { mutableStateOf("all") }
     var shoppingMode by remember { mutableStateOf("all") }
@@ -412,7 +413,10 @@ private fun CustomerShell(
                 route == "search" -> screen = "search"
                 route == "cart" -> screen = "cart"
                 route == "orders" -> screen = "orders"
-                route == "map" -> screen = "location"
+                route == "map" -> {
+                    locationReturnScreen = "home"
+                    screen = "location"
+                }
                 route == "market" -> screen = "market"
                 route == "promotion" -> screen = "promotion"
                 route == "laundry" -> screen = "laundry"
@@ -608,7 +612,10 @@ private fun CustomerShell(
                     location = location,
                     deliveryAddress = address,
                     shops = shops,
-                    onLocation = { screen = "location" },
+                    onLocation = {
+                        locationReturnScreen = "home"
+                        screen = "location"
+                    },
                     onSearch = { screen = "search" },
                     onCategory = {
                         when (it) {
@@ -667,14 +674,18 @@ private fun CustomerShell(
                                         catch (failure: Exception) { failure }
                                     message = if (cacheFailure == null) "บันทึกที่อยู่แล้ว"
                                         else "บันทึกที่อยู่ในบัญชีแล้ว แต่บันทึกในเครื่องไม่สำเร็จ"
-                                    screen = "home"
+                                    screen = locationReturnScreen
+                                    locationReturnScreen = "home"
                                 } catch (failure: CancellationException) { throw failure }
                                 catch (failure: Exception) { message = failure.message ?: "บันทึกที่อยู่ไม่สำเร็จ" }
                                 finally { busy = false }
                             }
                         }
                     },
-                    onBack = { screen = "home" }
+                    onBack = {
+                        screen = locationReturnScreen
+                        locationReturnScreen = "home"
+                    }
                 )
                 "category" -> ServiceCategoryScreen(
                     loading = loading,
@@ -734,6 +745,7 @@ private fun CustomerShell(
                     auth = auth,
                     location = location,
                     address = address,
+                    serviceBanner = serviceBanners["market"],
                     onAddress = {
                         address = it
                         location = location?.copy(address = it)
@@ -752,6 +764,11 @@ private fun CustomerShell(
                             ))
                         }
                     },
+                    onChooseAddress = {
+                        locationReturnScreen = "market"
+                        screen = "location"
+                    },
+                    onBannerLink = ::openHomeBannerLink,
                     onBack = { screen = "home" },
                     onDone = {
                         scope.launch {
@@ -1053,7 +1070,10 @@ private fun CustomerShell(
                 )
                 "profile" -> CustomerProfileScreen(
                     auth = auth,
-                    onAddress = { screen = "location" },
+                    onAddress = {
+                        locationReturnScreen = "profile"
+                        screen = "location"
+                    },
                     onOrders = { screen = "orders" },
                     onNotifications = { screen = "notifications" },
                     onFavorites = { screen = "favorites" },
