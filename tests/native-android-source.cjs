@@ -136,6 +136,11 @@ ok(merchantAppSource.includes('LaunchedEffect(screen, auth.session.accessToken, 
    merchantAppSource.includes('lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED)')&&
    merchantAppSource.includes('.onFailure { if (it is kotlinx.coroutines.CancellationException) throw it }'),
    'Merchant order and notification polling must stop outside foreground lifecycle and preserve cancellation');
+ok(merchantAppSource.includes('runMerchantPushProfileAction')&&
+   merchantAppSource.includes('pushApi.test(auth)')&&
+   merchantAppSource.includes('title = "การแจ้งเตือนเบื้องหลัง"')&&
+   merchantAppSource.includes('title = "ทดสอบการแจ้งเตือน"'),
+   'Merchant profile must use the real native push subscription and server test path rather than a local-only sound check');
 ok(source.includes('MerchantMenuTile')&&source.includes('height(128.dp)')&&source.includes('"จัดการร้าน"'),'Merchant native dashboard must preserve store cover KPI and menu-grid blueprint');
 ok(source.includes('RiderBlueprintTopBar')&&source.includes('RoundedCornerShape(21.dp)')&&source.includes('"รับงาน · " + secondsLeft + " วิ"'),'Rider native must preserve approved topbar job-card and accept-countdown blueprint');
 ok(source.includes('val marketVehicleReady = current.profile?.let')&&source.includes('it.vehicleStatus == "active" && !it.vehicleVerifiedAt.isNullOrBlank()'),'Rider Home must derive Market/Grocery eligibility from the same verified-vehicle state enforced by Production dispatch');
