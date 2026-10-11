@@ -580,7 +580,10 @@
     "release_evidence_bundler_max_files": 1000,
     "release_evidence_bundler_max_uncompressed_bytes": 4294967296,
     "release_evidence_bundler_output_status": "READY_FOR_PRIVATE_STORAGE_UPLOAD",
-    "release_evidence_bundler_auto_certifies": false
+    "release_evidence_bundler_auto_certifies": false,
+    "release_gate_play_developer_identity_verification_required": true,
+    "release_gate_play_package_registration_required": true,
+    "release_gate_play_package_signing_certificate_binding": true
   },
   "security": {
     "code_surface_hardened": true,
@@ -746,7 +749,16 @@
       "merchant",
       "rider"
     ],
-    "foreground_service_special_use_rider_subtype": "Active QueueGo Rider navigation return control"
+    "foreground_service_special_use_rider_subtype": "Active QueueGo Rider navigation return control",
+    "android_developer_verification_effective_date_thailand": "2026-09-30",
+    "android_developer_identity_verification": "BLOCKED_PENDING_PLAY_CONSOLE_EVIDENCE",
+    "android_package_registration": "BLOCKED_PENDING_PLAY_CONSOLE_EVIDENCE",
+    "android_registered_packages_required": [
+      "com.queuego.customer",
+      "com.queuego.merchant",
+      "com.queuego.rider"
+    ],
+    "android_package_registration_signing_certificate_binding_required": true
   },
   "remaining_external_blockers": [
     "Configure QG_SUPABASE_DB_URL, QG_SUPABASE_SERVICE_ROLE_KEY and QG_BACKUP_PASSPHRASE, then pass QueueGo Encrypted Backup Restore Drill.",
