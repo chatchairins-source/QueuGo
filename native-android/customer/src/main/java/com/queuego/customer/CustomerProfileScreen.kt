@@ -216,12 +216,10 @@ internal fun CustomerProfileScreen(
                 prefs.edit().putBoolean("arrival_sound", arrivalSound).apply()
             }
             HorizontalDivider(color = Color(0xFFECEEF1))
-            CustomerProfileStateRow(
+            CustomerProfileActionRow(
                 icon = "bell",
                 title = "การแจ้งเตือนเบื้องหลัง",
                 subtitle = "รับสถานะออเดอร์แม้ไม่ได้เปิดหน้านี้",
-                state = if (pushEnabled) "เปิด" else "ปิด",
-                on = pushEnabled,
                 enabled = !busy
             ) {
                 if (pushEnabled) {
