@@ -1,5 +1,7 @@
 package com.queuego.shared
 
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -96,6 +98,24 @@ fun QgAccountDeletionSection(
                 "คุณสามารถขอลบบัญชี QueueGo และข้อมูลส่วนบุคคลได้จากแอป",
                 color = QgMuted
             )
+            Spacer(Modifier.height(10.dp))
+            OutlinedButton(
+                onClick = {
+                    runCatching {
+                        context.startActivity(
+                            Intent(
+                                Intent.ACTION_VIEW,
+                                Uri.parse("https://chatchairins-source.github.io/QueuGo/docs/privacy.html")
+                            )
+                        )
+                    }.onFailure {
+                        message = "เปิดนโยบายความเป็นส่วนตัวไม่สำเร็จ"
+                    }
+                },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("นโยบายความเป็นส่วนตัว")
+            }
             if (!message.isNullOrBlank()) {
                 Spacer(Modifier.height(7.dp))
                 Text(message!!, color = QgRed)
