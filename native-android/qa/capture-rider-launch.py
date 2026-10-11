@@ -87,6 +87,58 @@ def assert_no_package_crash(pkg: str, evidence_path: Path):
     assert not relevant, f"{pkg} crashed; inspect {evidence_path.name}"
 
 
+def read_ui(path: Path):
+    run(adb + ["shell", "uiautomator", "dump", "/sdcard/queuego-current.xml"], timeout=15)
+    run(adb + ["pull", "/sdcard/queuego-current.xml", str(path)], timeout=15)
+    return list(ET.parse(path).getroot().iter("node"))
+
+
+def wait_ui(path: Path, predicate, timeout_seconds=30):
+    deadline = time.monotonic() + timeout_seconds
+    while time.monotonic() < deadline:
+        nodes = read_ui(path)
+        if predicate(nodes):
+            return nodes
+        time.sleep(0.4)
+    raise AssertionError(f"Native UI did not reach expected state: {path.name}")
+
+
+def capture_customer_market(directory: Path, dimensions: str):
+    """Public Production reads and actual UI taps; no account/cart/order inserted."""
+    width, height = map(int, dimensions.split("x"))
+    path = directory / "market-home-navigation.xml"
+    nodes = read_ui(path)
+    target = None
+    for _ in range(6):
+        target = next((n for n in nodes if n.get("text") == "ตลาดสด"), None)
+        if target is not None:
+            break
+        # The current Home category row scrolls horizontally. Derive its y from
+        # a rendered category label instead of using guessed screen coordinates.
+        anchor = next((n for n in nodes if n.get("text") in ("อาหาร", "เครื่องดื่ม", "ของใช้", "ฝากซัก")), None)
+        assert anchor is not None, "Customer category row missing"
+        bounds = [int(x) for x in re.findall(r"\d+", anchor.get("bounds", ""))]
+        assert len(bounds) == 4 and 0 <= bounds[1] < bounds[3] <= height
+        y = (bounds[1] + bounds[3]) // 2
+        run(adb + ["shell", "input", "swipe", str(width - 40), str(y), "40", str(y), "350"])
+        nodes = read_ui(path)
+    assert target is not None, "Market category did not become visible after bounded swipes"
+    bounds = [int(x) for x in re.findall(r"\d+", target.get("bounds", ""))]
+    assert len(bounds) == 4 and bounds[2] > bounds[0] and bounds[3] > bounds[1]
+    run(adb + ["shell", "input", "tap", str((bounds[0] + bounds[2]) // 2), str((bounds[1] + bounds[3]) // 2)])
+    nodes = wait_ui(directory / "market-browse.xml", lambda ns: any(n.get("text") == "เลือกตลาด" for n in ns))
+    assert not any(n.get("text") in ("ที่อยู่ / จุดสังเกต", "ยืนยันสั่งซื้อ") for n in nodes), "Market browse leaked checkout form"
+    assert not any(n.get("class") == "android.widget.EditText" for n in nodes), "Market browse added a search/checkout field"
+    with (directory / "market-browse.png").open("wb") as png:
+        run(adb + ["exec-out", "screencap", "-p"], stdout=png)
+    run(adb + ["shell", "input", "keyevent", "4"])
+    wait_ui(directory / "market-back.xml", lambda ns: any(n.get("text") == "ค้นหาร้านค้าจากทุกหมวด" for n in ns))
+    return {"state": "guest Market browse", "single_back_to_home": "PASS",
+            "data_source": "existing Production public RPCs; no rows submitted",
+            "screenshot_sha256": hashlib.sha256((directory / "market-browse.png").read_bytes()).hexdigest(),
+            "populated_cart_e2e_certified": False, "visual_parity_certified": False}
+
+
 def capture_role_viewports():
     """Real Android display configurations; no authenticated state or sample orders."""
     evidence = []
@@ -246,6 +298,7 @@ def capture_role_viewports():
                 returned = list(ET.parse(directory / "guest-back.xml").getroot().iter("node"))
                 assert any(n.get("text") == "ตะกร้า" for n in returned), "Customer login Back did not return to guest Home"
                 assert not any(n.get("text") == "ยินดีต้อนรับสู่ QueueGo" for n in returned), "Customer login Back stayed on auth"
+                item["native_customer_market_browse"] = capture_customer_market(directory, dimensions)
                 item["native_customer_guest_navigation"] = "PASS; public Home, explicit login, single Back to Home; no account/data submitted"
                 item["native_customer_signup_navigation"] = "PASS; phone/email mode and back; no account/data submitted"
                 runtime = android_runtime_for_pids(role_pids)
