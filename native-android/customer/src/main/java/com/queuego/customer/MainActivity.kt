@@ -7,6 +7,7 @@ import androidx.activity.compose.setContent
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import com.queuego.shared.QueueGoLongdoPermissionBridge
 
 data class NativePushLaunchTarget(
     val referenceId: String,
@@ -28,6 +29,16 @@ class MainActivity : ComponentActivity() {
         super.onNewIntent(intent)
         setIntent(intent)
         acceptPushIntent(intent)
+    }
+
+    @Deprecated("Android permission callback retained for Longdo SDK compatibility")
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
+        QueueGoLongdoPermissionBridge.onRequestPermissionResult()
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
     }
 
     private fun acceptPushIntent(source: Intent?) {
