@@ -1051,9 +1051,9 @@ private fun CustomerShell(
                         else message = "ไม่พบร้านที่บันทึกไว้"
                     }
                 )
-                "profile" -> ProfileScreen(
+                "profile" -> CustomerProfileScreen(
                     auth = auth,
-                    onLocation = { screen = "location" },
+                    onAddress = { screen = "location" },
                     onOrders = { screen = "orders" },
                     onNotifications = { screen = "notifications" },
                     onFavorites = { screen = "favorites" },
@@ -1062,7 +1062,7 @@ private fun CustomerShell(
                         supportInitialOrderId = null
                         screen = "support"
                     },
-                    logout = ::logoutWithPushCleanup
+                    onLogout = ::logoutWithPushCleanup
                 )
             }
         }
@@ -1600,213 +1600,6 @@ private fun OrdersScreen(
             }
         }
         Spacer(Modifier.height(30.dp))
-    }
-}
-
-@Composable
-private fun ProfileScreen(
-    auth: NativeAuth,
-    onLocation: () -> Unit,
-    onOrders: () -> Unit,
-    onNotifications: () -> Unit,
-    onFavorites: () -> Unit,
-    onPromotion: () -> Unit,
-    onSupport: () -> Unit,
-    logout: () -> Unit
-) {
-    val context = LocalContext.current
-    val scope = rememberCoroutineScope()
-    val prefs = remember(auth.user.id) {
-        context.getSharedPreferences("queuego_customer_profile_" + auth.user.id, Context.MODE_PRIVATE)
-    }
-    var soundOn by remember(auth.user.id) { mutableStateOf(prefs.getBoolean("arrival_sound", false)) }
-    var notice by remember { mutableStateOf<String?>(null) }
-
-    Column(
-        Modifier.fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 14.dp, vertical = 4.dp)
-    ) {
-        Row(
-            Modifier.fillMaxWidth().padding(horizontal = 2.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Box(
-                Modifier.size(60.dp)
-                    .background(Color(0xFFE9EAEC), RoundedCornerShape(20.dp)),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    auth.user.name.trim().take(1).ifBlank { "ล" }.uppercase(),
-                    color = Color(0xFF989DA5),
-                    fontSize = 22.sp,
-                    fontWeight = FontWeight.ExtraBold
-                )
-            }
-            Spacer(Modifier.width(12.dp))
-            Column(Modifier.weight(1f)) {
-                Text(
-                    auth.user.name.ifBlank { "ลูกค้า" },
-                    fontSize = 20.sp,
-                    lineHeight = 23.sp,
-                    fontWeight = FontWeight.Black,
-                    color = Color(0xFF17191D)
-                )
-                Spacer(Modifier.height(3.dp))
-                Text("QueueGo Customer", color = QgMuted, fontSize = 11.sp)
-                Spacer(Modifier.height(5.dp))
-                Box(
-                    Modifier.background(Color(0xFFEAFaf3), RoundedCornerShape(99.dp))
-                        .padding(horizontal = 7.dp, vertical = 4.dp)
-                ) {
-                    Text("บัญชีลูกค้า", color = Color(0xFF0A9660), fontSize = 9.sp, fontWeight = FontWeight.ExtraBold)
-                }
-            }
-        }
-
-        CustomerProfileSectionTitle("บัญชีและการใช้งาน")
-        CustomerProfileCard {
-            CustomerProfileActionRow("ที่อยู่จัดส่ง", null, onClick = onLocation)
-            HorizontalDivider(color = QgLine)
-            CustomerProfileActionRow("ออเดอร์ของฉัน", null, onClick = onOrders)
-            HorizontalDivider(color = QgLine)
-            CustomerProfileActionRow("การแจ้งเตือน", null, onClick = onNotifications)
-            HorizontalDivider(color = QgLine)
-            CustomerProfileActionRow("รายการโปรด", null, onClick = onFavorites)
-            HorizontalDivider(color = QgLine)
-            CustomerProfileActionRow("โปรโมชั่นจากร้าน", null, onClick = onPromotion)
-            HorizontalDivider(color = QgLine)
-            CustomerProfileActionRow("ติดต่อฝ่ายช่วยเหลือ", null, onClick = onSupport)
-        }
-
-        Spacer(Modifier.height(10.dp))
-        CustomerProfileSectionTitle("การแจ้งเตือน")
-        CustomerProfileCard {
-            CustomerProfileActionRow(
-                title = "เสียงแจ้งเตือนเมื่อ Rider ถึง",
-                subtitle = "เสียงเตือนเมื่อ Rider มาถึงจุดส่ง",
-                trailing = if (soundOn) "เปิด" else "ปิด",
-                trailingOn = soundOn
-            ) {
-                soundOn = !soundOn
-                prefs.edit().putBoolean("arrival_sound", soundOn).apply()
-                notice = if (soundOn) "เปิดเสียงแจ้งเตือนเมื่อ Rider ถึงแล้ว" else "ปิดเสียงแจ้งเตือนเมื่อ Rider ถึงแล้ว"
-            }
-            HorizontalDivider(color = QgLine)
-            CustomerProfileActionRow(
-                title = "การแจ้งเตือนเบื้องหลัง",
-                subtitle = "รับสถานะออเดอร์แม้ไม่ได้เปิดหน้านี้"
-            ) {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                    runCatching {
-                        context.startActivity(
-                            Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
-                                .putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
-                        )
-                    }.onFailure { notice = "เปิดการตั้งค่าแจ้งเตือนไม่สำเร็จ" }
-                }
-            }
-            HorizontalDivider(color = QgLine)
-            CustomerProfileActionRow(
-                title = "ทดสอบการแจ้งเตือน",
-                subtitle = "ตรวจว่าแจ้งเตือนเข้าเมื่อแอปอยู่เบื้องหลัง"
-            ) {
-                notice = "ระบบจะส่งแจ้งเตือนทดสอบหลังประมาณ 7 วินาที"
-                scope.launch {
-                    runCatching { NativePushApi().test(auth) }
-                        .onFailure { notice = it.message ?: "ทดสอบการแจ้งเตือนไม่สำเร็จ" }
-                }
-            }
-        }
-        Row(
-            Modifier.fillMaxWidth()
-                .padding(top = 7.dp)
-                .background(Color(0xFFF7F7F8), RoundedCornerShape(12.dp))
-                .padding(horizontal = 10.dp, vertical = 8.dp),
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Text("การชำระเงิน", color = Color(0xFF5D6269), fontSize = 10.sp, fontWeight = FontWeight.Bold)
-            Text("ชำระเงินสดเมื่อรับสินค้า", color = QgMuted, fontSize = 9.5.sp)
-        }
-
-        if (!notice.isNullOrBlank()) {
-            Spacer(Modifier.height(8.dp))
-            Text(notice!!, color = QgMuted, fontSize = 10.sp)
-        }
-
-        Spacer(Modifier.height(10.dp))
-        CustomerProfileSectionTitle("ความเป็นส่วนตัวและบัญชี")
-        QgAccountDeletionSection(
-            accessToken = auth.session.accessToken,
-            onDeleted = logout,
-            pendingChatUserId = auth.user.id
-        )
-        Spacer(Modifier.height(8.dp))
-        CustomerProfileCard {
-            CustomerProfileActionRow("ออกจากระบบ", null, onClick = logout)
-        }
-        Spacer(Modifier.height(86.dp))
-    }
-}
-
-@Composable
-private fun CustomerProfileSectionTitle(text: String) {
-    Text(
-        text,
-        color = Color(0xFF777D85),
-        fontSize = 10.sp,
-        fontWeight = FontWeight.ExtraBold,
-        modifier = Modifier.padding(horizontal = 2.dp, vertical = 6.dp)
-    )
-}
-
-@Composable
-private fun CustomerProfileCard(content: @Composable () -> Unit) {
-    Column(
-        Modifier.fillMaxWidth()
-            .background(Color.White, RoundedCornerShape(16.dp))
-            .border(1.dp, QgLine, RoundedCornerShape(16.dp))
-    ) { content() }
-}
-
-@Composable
-private fun CustomerProfileActionRow(
-    title: String,
-    subtitle: String?,
-    trailing: String? = null,
-    trailingOn: Boolean = false,
-    onClick: () -> Unit
-) {
-    Row(
-        Modifier.fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(horizontal = 12.dp, vertical = 10.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Column(Modifier.weight(1f)) {
-            Text(title, color = Color(0xFF17191D), fontSize = 13.sp, lineHeight = 16.sp, fontWeight = FontWeight.ExtraBold)
-            if (!subtitle.isNullOrBlank()) {
-                Spacer(Modifier.height(2.dp))
-                Text(subtitle, color = Color(0xFF8A8F96), fontSize = 9.5.sp, lineHeight = 13.sp)
-            }
-        }
-        if (trailing != null) {
-            Box(
-                Modifier.background(
-                    if (trailingOn) Color(0xFFE9FAF2) else Color(0xFFF1F2F4),
-                    RoundedCornerShape(99.dp)
-                ).padding(horizontal = 7.dp, vertical = 4.dp)
-            ) {
-                Text(
-                    trailing,
-                    color = if (trailingOn) Color(0xFF0A9660) else Color(0xFF7D8289),
-                    fontSize = 9.sp,
-                    fontWeight = FontWeight.ExtraBold
-                )
-            }
-        } else {
-            Text("›", color = Color(0xFFAFB3B9), fontSize = 22.sp)
-        }
     }
 }
 
