@@ -13,6 +13,11 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -30,6 +35,7 @@ import com.queuego.shared.QgLine
 import com.queuego.shared.QgMuted
 import com.queuego.shared.QgRed
 import com.queuego.shared.QgRemoteImage
+import kotlinx.coroutines.delay
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -223,7 +229,9 @@ internal fun CustomerOrderTrackingScreen(
 
         if (order.status.equals("searching_rider", true)) {
             Spacer(Modifier.height(8.dp))
-            CustomerSearchingRiderCard()
+            CustomerSearchingRiderCard(
+                startedAt = order.riderSearchStartedAt ?: order.updatedAt ?: order.createdAt
+            )
         }
 
         context?.rider?.let { rider ->
@@ -514,7 +522,15 @@ private fun CustomerTrackingProgress(stage: Int) {
 }
 
 @Composable
-private fun CustomerSearchingRiderCard() {
+private fun CustomerSearchingRiderCard(startedAt: String?) {
+    var now by remember(startedAt) { mutableLongStateOf(System.currentTimeMillis()) }
+    LaunchedEffect(startedAt) {
+        while (true) {
+            now = System.currentTimeMillis()
+            delay(1_000)
+        }
+    }
+    val elapsed = customerRiderSearchElapsed(startedAt, now)
     CustomerTrackingCard {
         Row(
             Modifier.fillMaxWidth(),
@@ -568,7 +584,18 @@ private fun CustomerSearchingRiderCard() {
         CustomerSearchStep(3, "ส่งต่อให้ Rider คนถัดไปอัตโนมัติ", "หากปฏิเสธหรือหมดเวลา ระบบจะดำเนินการต่อเอง", false)
         Spacer(Modifier.height(8.dp))
         Row(Modifier.fillMaxWidth()) {
-            Text("ระบบเสนอ Rider ทีละคน", modifier = Modifier.weight(1f), color = QgMuted, fontSize = 9.sp)
+            Text(
+                "ค้นหามา ",
+                color = QgMuted,
+                fontSize = 9.sp
+            )
+            Text(
+                elapsed,
+                modifier = Modifier.weight(1f),
+                color = Color(0xFF5F585C),
+                fontSize = 9.sp,
+                fontWeight = FontWeight.ExtraBold
+            )
             Text("หน้านี้อัปเดตอัตโนมัติ", color = QgMuted, fontSize = 9.sp)
         }
     }
@@ -667,6 +694,15 @@ private fun CustomerTrackingSummaryRow(label: String, amount: Double) {
         Text(label, modifier = Modifier.weight(1f), color = Color(0xFF5F585C), fontSize = 11.sp)
         Text("฿" + "%.0f".format(amount), color = Color(0xFF5F585C), fontSize = 11.sp)
     }
+}
+
+private fun customerRiderSearchElapsed(startedAt: String?, now: Long): String {
+    val start = startedAt?.let { runCatching { Instant.parse(it).toEpochMilli() }.getOrNull() }
+        ?: return "กำลังค้นหา"
+    val seconds = ((now - start).coerceAtLeast(0L) / 1_000L)
+    val minutes = seconds / 60L
+    val remain = seconds % 60L
+    return "%02d:%02d".format(Locale.US, minutes, remain)
 }
 
 private fun customerOrderStage(status: String): Int = when (status.lowercase()) {
