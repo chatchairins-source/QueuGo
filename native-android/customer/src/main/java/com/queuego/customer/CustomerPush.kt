@@ -27,7 +27,7 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
-internal const val CUSTOMER_NOTIFICATION_CHANNEL = "queuego_orders"
+internal const val CUSTOMER_NOTIFICATION_CHANNEL = "queuego_orders_v2"
 
 internal fun ensureCustomerNotificationChannel(context: Context) {
     if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
@@ -42,6 +42,8 @@ internal fun ensureCustomerNotificationChannel(context: Context) {
         ).apply {
             description = "ออเดอร์ สถานะการจัดส่ง แชต และสายเรียกเข้า QueueGo"
             enableVibration(true)
+            vibrationPattern = longArrayOf(0L, 280L, 140L, 280L)
+            setShowBadge(true)
             setSound(sound, attributes)
         }
     )
@@ -125,6 +127,8 @@ class QueueGoCustomerMessagingService : FirebaseMessagingService() {
             .setContentText(body.take(220))
             .setStyle(NotificationCompat.BigTextStyle().bigText(body.take(220)))
             .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setSound(RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION))
+            .setVibrate(longArrayOf(0L, 280L, 140L, 280L))
             .setCategory(
                 if (type == "voice_call") NotificationCompat.CATEGORY_CALL
                 else NotificationCompat.CATEGORY_MESSAGE
