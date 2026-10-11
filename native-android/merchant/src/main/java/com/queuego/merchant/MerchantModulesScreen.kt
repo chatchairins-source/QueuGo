@@ -56,7 +56,7 @@ internal fun MerchantModulesScreen(
             .padding(horizontal = 12.dp)
     ) {
         Row(
-            Modifier.padding(top = 2.dp, bottom = 10.dp),
+            Modifier.padding(top = 4.dp, bottom = 16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Box(
@@ -73,7 +73,7 @@ internal fun MerchantModulesScreen(
             Column {
                 Text(
                     "ตั้งค่าร้านค้า",
-                    fontSize = 18.sp,
+                    fontSize = 20.sp,
                     lineHeight = 22.sp,
                     fontWeight = FontWeight.Black
                 )
@@ -89,8 +89,8 @@ internal fun MerchantModulesScreen(
         Column(
             Modifier
                 .fillMaxWidth()
-                .background(Color.White, RoundedCornerShape(16.dp))
-                .border(1.dp, QgLine, RoundedCornerShape(16.dp))
+                .background(Color.White, RoundedCornerShape(18.dp))
+                .border(1.dp, QgLine, RoundedCornerShape(18.dp))
         ) {
             MerchantSettingsLink("ข้อมูลและตำแหน่งร้าน", onSetup)
             MerchantSettingsDivider()
@@ -99,7 +99,7 @@ internal fun MerchantModulesScreen(
             MerchantSettingsLink("ฝากซัก · บริการ ราคา และ Rider", onLaundry)
         }
 
-        Spacer(Modifier.height(10.dp))
+        Spacer(Modifier.height(18.dp))
         Text(
             "โมดูลร้านค้า",
             fontSize = 16.sp,
@@ -128,10 +128,10 @@ internal fun MerchantModulesScreen(
                 Row(
                     Modifier
                         .fillMaxWidth()
-                        .padding(bottom = 7.dp)
-                        .background(Color.White, RoundedCornerShape(16.dp))
-                        .border(1.dp, QgLine, RoundedCornerShape(16.dp))
-                        .padding(horizontal = 11.dp, vertical = 10.dp),
+                        .padding(bottom = 10.dp)
+                        .background(Color.White, RoundedCornerShape(18.dp))
+                        .border(1.dp, QgLine, RoundedCornerShape(18.dp))
+                        .padding(14.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Column(Modifier.weight(1f)) {
@@ -163,7 +163,7 @@ internal fun MerchantModulesScreen(
                             }
                         },
                         enabled = busyKey == null,
-                        modifier = Modifier.height(38.dp).widthIn(min = 96.dp)
+                        modifier = Modifier.height(38.dp).widthIn(min = 112.dp)
                     ) {
                         if (busyKey == key) {
                             CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
@@ -192,11 +192,11 @@ private fun MerchantSettingsLink(label: String, onClick: () -> Unit) {
         Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
-            .heightIn(min = 50.dp)
-            .padding(horizontal = 12.dp),
+            .heightIn(min = 54.dp)
+            .padding(horizontal = 16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(label, Modifier.weight(1f), fontSize = 12.5.sp, fontWeight = FontWeight.Bold)
+        Text(label, Modifier.weight(1f), fontSize = 14.sp, fontWeight = FontWeight.Bold)
         Text("›", color = Color(0xFFA3A7AD), fontSize = 20.sp)
     }
 }
