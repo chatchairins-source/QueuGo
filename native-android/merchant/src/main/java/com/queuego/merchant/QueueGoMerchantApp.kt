@@ -146,7 +146,7 @@ private fun MerchantShell(auth: NativeAuth, logout: () -> Unit) {
         logout()
     }
     LaunchedEffect(auth.user.id, auth.session.accessToken, auth.session.sessionId) {
-        if (!merchantFirebaseConfigured(context)) return@LaunchedEffect
+        if (!merchantFirebaseConfigured(context) || !merchantPushEnabled(context)) return@LaunchedEffect
         ensureMerchantNotificationChannel(context)
         if (
             Build.VERSION.SDK_INT < 33 ||
