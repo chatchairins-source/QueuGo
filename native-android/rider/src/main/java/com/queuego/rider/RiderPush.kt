@@ -24,6 +24,21 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 
 private const val RIDER_ORDER_CHANNEL = "queuego_orders_v2"
 private const val RIDER_ORDER_CHANNEL_NAME = "งาน QueueGo Rider"
+private const val RIDER_PUSH_PREFS = "queuego_rider_push_preferences"
+private const val RIDER_PUSH_ENABLED = "push_enabled"
+
+internal fun riderPushEnabled(context: Context): Boolean =
+    context.applicationContext
+        .getSharedPreferences(RIDER_PUSH_PREFS, Context.MODE_PRIVATE)
+        .getBoolean(RIDER_PUSH_ENABLED, true)
+
+internal fun setRiderPushEnabled(context: Context, enabled: Boolean) {
+    context.applicationContext
+        .getSharedPreferences(RIDER_PUSH_PREFS, Context.MODE_PRIVATE)
+        .edit()
+        .putBoolean(RIDER_PUSH_ENABLED, enabled)
+        .apply()
+}
 
 internal fun ensureRiderOrderChannel(context: Context) {
     if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
@@ -65,6 +80,7 @@ internal suspend fun syncRiderNativePush(
     api: QueueGoApi,
     store: SessionStore
 ): Boolean {
+    if (!riderPushEnabled(context)) return false
     // Only an approved/active Rider may register a device for job notifications.
     // This guard is intentionally below the UI layer so pending/suspended accounts
     // cannot become push-eligible through a stale screen or lifecycle callback.
@@ -94,6 +110,7 @@ class QueueGoRiderMessagingService : FirebaseMessagingService() {
     override fun onNewToken(token: String) {
         super.onNewToken(token)
         if (token.length < 16) return
+        if (!riderPushEnabled(applicationContext)) return
         val store = SessionStore(applicationContext)
         val cached = store.load() ?: return
         serviceScope.launch {
