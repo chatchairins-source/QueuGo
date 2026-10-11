@@ -90,7 +90,7 @@ import kotlinx.coroutines.withTimeout
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
-internal data class NativePushLaunchTarget(
+data class NativePushLaunchTarget(
     val referenceId: String,
     val type: String,
     val eventId: Long
