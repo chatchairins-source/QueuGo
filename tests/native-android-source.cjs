@@ -270,5 +270,7 @@ ok(!/cash-confirm|ยืนยันชำระเงินให้ร้า�
 ok(!/service_role|sb_secret_/i.test(source),'no privileged Supabase secret');
 ok(runtimeCapture.includes('def package_pids(pkg: str)')&&runtimeCapture.includes('def android_runtime_for_pids(pids)'),'Android runtime evidence must resolve the tested QueueGo process IDs');
 ok(runtimeCapture.includes('"--pid=" + pid')&&(runtimeCapture.match(/android_runtime_for_pids\(/g)||[]).length>=6,'runtime crash gate must read AndroidRuntime by QueueGo process PID instead of failing on unrelated system-process crashes');
-ok(runtimeCapture.includes('["logcat", "-b", "crash", "-d"]'),'full emulator crash buffer must remain preserved as diagnostic evidence');
+ok(runtimeCapture.includes('def full_crash_buffer()')&&runtimeCapture.includes('["logcat", "-b", "crash", "-d"]'),'full emulator crash buffer must remain preserved as diagnostic evidence');
+ok(runtimeCapture.includes('def package_crash_blocks(crash_text: str, pkg: str)')&&runtimeCapture.includes('if f"Process: {pkg}," in window'),'crash-buffer gate must attribute FATAL EXCEPTION blocks to the tested QueueGo package');
+ok((runtimeCapture.match(/assert_no_package_crash\(/g)||[]).length>=3,'runtime gate must pair PID-scoped checks with QueueGo package-scoped crash-buffer checks');
 console.log(JSON.stringify({checks,failures:0,scope:'QueueGo Customer Merchant Rider native Android source'}));
