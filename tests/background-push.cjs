@@ -128,9 +128,12 @@ ok(customerNativeApp.includes('LaunchedEffect(pushTarget?.eventId, auth.user.id)
    customerNativeApp.includes('lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED)')&&
    customerNativeApp.includes('screen = "order"'),
    'Native Customer system push tap must resolve owner-filtered normal/Market/Laundry references with foreground recovery');
-ok(merchantNativeApp.includes('LaunchedEffect(pushTarget?.eventId, loading)')&&
-   merchantNativeApp.includes('api.loadOrders(auth)')&&merchantNativeApp.includes('screen = "order"'),
-   'Native Merchant system push tap must resolve the referenced order after initial data load');
+ok(merchantNativeApp.includes('LaunchedEffect(pushTarget?.eventId, loading, pushRetrySignal, auth.session.accessToken)')&&
+   merchantNativeApp.includes('lookupMerchantNotificationOrder(')&&
+   merchantNativeApp.includes('handledPushEventId = target.eventId')&&
+   merchantNativeApp.includes('delay(3_000)')&&merchantNativeApp.includes('pushRetrySignal += 1')&&
+   merchantNativeApp.includes('screen = "order"'),
+   'Native Merchant system push tap must preserve the referenced order across transient refresh failure and retry after initial data load');
 ok(riderNativeApp.includes('LaunchedEffect(pushTarget?.eventId)')&&
    riderNativeApp.includes('activeTab = "home"')&&riderNativeApp.includes('refreshSnapshot()'),
    'Native Rider system push tap must return to live work and refresh the authoritative snapshot');
