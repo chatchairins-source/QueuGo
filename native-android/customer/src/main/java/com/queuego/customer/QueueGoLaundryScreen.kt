@@ -42,6 +42,7 @@ import com.queuego.shared.QgMuted
 import com.queuego.shared.QgRed
 import com.queuego.shared.QgSectionTitle
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.CancellationException
 
 @Composable
 fun LaundryNativeScreen(
@@ -64,27 +65,46 @@ fun LaundryNativeScreen(
     var loading by remember { mutableStateOf(true) }
     var busy by remember { mutableStateOf(false) }
     var message by remember { mutableStateOf<String?>(null) }
+    var catalogFailed by remember { mutableStateOf(false) }
+    var servicesLoading by remember { mutableStateOf(false) }
+    var servicesFailed by remember { mutableStateOf(false) }
+    var catalogReload by remember { mutableStateOf(0) }
+    var servicesReload by remember { mutableStateOf(0) }
 
-    LaunchedEffect(auth.user.id) {
+    LaunchedEffect(auth.user.id, catalogReload) {
         loading = true
+        catalogFailed = false
         runCatching { api.catalog(auth) }
             .onSuccess { catalog = it }
-            .onFailure { message = it.message ?: "โหลดบริการฝากซักไม่สำเร็จ" }
+            .onFailure { if (it is CancellationException) throw it; catalogFailed = true; message = it.message ?: "โหลดบริการฝากซักไม่สำเร็จ" }
         loading = false
     }
 
     fun chooseHub(hub: LaundryHub) {
+        if (busy) return
         selectedHub = hub
         services = emptyList()
         selectedService = null
         quantity = ""
-        scope.launch {
-            runCatching { api.services(auth, hub.id) }
-                .onSuccess {
-                    services = it
-                    selectedService = it.firstOrNull()
-                }
-                .onFailure { message = it.message ?: "โหลดบริการของร้านไม่สำเร็จ" }
+    }
+
+    // Changing shops cancels the old read before another shop can own its result.
+    LaunchedEffect(auth.user.id, selectedHub?.id, servicesReload) {
+        val hub = selectedHub ?: return@LaunchedEffect
+        servicesLoading = true
+        servicesFailed = false
+        services = emptyList()
+        selectedService = null
+        try {
+            services = api.services(auth, hub.id)
+            selectedService = services.firstOrNull()
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (e: Exception) {
+            servicesFailed = true
+            message = e.message ?: "โหลดบริการของร้านไม่สำเร็จ"
+        } finally {
+            servicesLoading = false
         }
     }
 
@@ -131,6 +151,7 @@ fun LaundryNativeScreen(
         Spacer(Modifier.height(14.dp))
         when {
             loading -> CircularProgressIndicator()
+            catalogFailed -> OutlinedButton(onClick = { catalogReload++ }) { Text("ลองโหลดร้านอีกครั้ง") }
             catalog?.featureEnabled == false -> QgCard(Modifier.fillMaxWidth()) {
                 Column {
                     Text("ฝากซักยังปิดทดสอบ", fontWeight = FontWeight.ExtraBold)
@@ -169,23 +190,27 @@ fun LaundryNativeScreen(
                 }
             }
             else -> {
-                OutlinedButton(onClick = { selectedHub = null; services = emptyList(); selectedService = null }) {
+                OutlinedButton(enabled = !busy, onClick = { selectedHub = null; services = emptyList(); selectedService = null }) {
                     Text("เปลี่ยนร้าน")
                 }
                 Spacer(Modifier.height(10.dp))
                 QgSectionTitle(selectedHub!!.name, "เลือกบริการ")
                 Spacer(Modifier.height(8.dp))
 
-                if (services.isEmpty()) {
+                if (servicesLoading) {
+                    CircularProgressIndicator()
+                } else if (servicesFailed) {
+                    OutlinedButton(onClick = { servicesReload++ }) { Text("ลองโหลดบริการอีกครั้ง") }
+                } else if (services.isEmpty()) {
                     QgCard(Modifier.fillMaxWidth()) { Text("ร้านนี้ยังไม่มีบริการที่เปิดขาย", color = QgMuted) }
                 } else services.forEach { service ->
                     QgCard(Modifier.fillMaxWidth().padding(bottom = 8.dp).clickable {
-                        selectedService = service
-                        quantity = ""
+                        if (!busy) { selectedService = service; quantity = "" }
                     }) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             RadioButton(
                                 selected = selectedService?.id == service.id,
+                                enabled = !busy,
                                 onClick = { selectedService = service; quantity = "" }
                             )
                             Column(Modifier.weight(1f)) {
@@ -209,6 +234,7 @@ fun LaundryNativeScreen(
                 if (svc != null && svc.pricingType != "fixed") {
                     Spacer(Modifier.height(8.dp))
                     OutlinedTextField(
+                        enabled = !busy,
                         value = quantity,
                         onValueChange = { quantity = it.filter { ch -> ch.isDigit() || ch == '.' } },
                         label = { Text(laundryQuantityLabel(svc.pricingType)) },
@@ -244,9 +270,10 @@ fun LaundryNativeScreen(
                             style = MaterialTheme.typography.bodySmall
                         )
                         Spacer(Modifier.height(8.dp))
-                        OutlinedButton(onClick = onGps, modifier = Modifier.fillMaxWidth()) { Text("ใช้ตำแหน่งปัจจุบัน") }
+                        OutlinedButton(enabled = !busy, onClick = onGps, modifier = Modifier.fillMaxWidth()) { Text("ใช้ตำแหน่งปัจจุบัน") }
                         Spacer(Modifier.height(8.dp))
                         OutlinedTextField(
+                            enabled = !busy,
                             value = address,
                             onValueChange = onAddress,
                             label = { Text("ที่อยู่ / จุดสังเกต") },
@@ -254,6 +281,7 @@ fun LaundryNativeScreen(
                         )
                         Spacer(Modifier.height(8.dp))
                         OutlinedTextField(
+                            enabled = !busy,
                             value = note,
                             onValueChange = { note = it.take(500) },
                             label = { Text("หมายเหตุ เช่น โทรก่อนถึง / มีผ้าสีตก") },
@@ -265,6 +293,7 @@ fun LaundryNativeScreen(
                 Spacer(Modifier.height(10.dp))
                 Button(
                     onClick = {
+                        if (busy || servicesLoading || servicesFailed) return@Button
                         val hub = selectedHub
                         val service = selectedService
                         val loc = location?.copy(address = address.trim())
@@ -281,6 +310,7 @@ fun LaundryNativeScreen(
                                         onDone()
                                     }
                                     .onFailure { e ->
+                                        if (e is CancellationException) throw e
                                         message = when {
                                             e.message?.contains("OUTSIDE_SERVICE_AREA") == true -> "ตำแหน่งรับผ้าอยู่นอกพื้นที่ให้บริการ"
                                             e.message?.contains("DELIVERY_DISTANCE_EXCEEDED") == true -> "ร้านซักและจุดรับผ้าอยู่ไกลเกินขอบเขต"
@@ -291,7 +321,7 @@ fun LaundryNativeScreen(
                             }
                         }
                     },
-                    enabled = !busy && selectedService != null && location != null && address.isNotBlank(),
+                    enabled = !busy && !servicesLoading && !servicesFailed && selectedService != null && location != null && address.isNotBlank(),
                     modifier = Modifier.fillMaxWidth().height(56.dp)
                 ) {
                     if (busy) CircularProgressIndicator(Modifier.size(22.dp), strokeWidth = 2.dp)
