@@ -43,7 +43,6 @@ import androidx.compose.ui.unit.sp
 import com.queuego.shared.NativeAuth
 import com.queuego.shared.NativePushApi
 import com.queuego.shared.QgAccountDeletionSection
-import com.queuego.shared.QgIcon
 import com.queuego.shared.QgMuted
 import com.queuego.shared.QgRed
 import com.queuego.shared.QgRemoteImage
@@ -369,13 +368,6 @@ private fun CustomerProfileStateRow(
             .padding(horizontal = 12.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Box(
-            Modifier.size(34.dp).background(Color(0xFFF5F5F6), RoundedCornerShape(11.dp)),
-            contentAlignment = Alignment.Center
-        ) {
-            QgIcon(icon, Modifier.size(17.dp), Color(0xFF737982))
-        }
-        Spacer(Modifier.size(9.dp))
         Column(Modifier.weight(1f)) {
             Text(title, color = Color(0xFF202329), fontSize = 13.sp, fontWeight = FontWeight.ExtraBold)
             Spacer(Modifier.height(2.dp))
