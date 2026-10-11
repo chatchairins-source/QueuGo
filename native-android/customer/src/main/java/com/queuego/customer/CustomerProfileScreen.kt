@@ -19,8 +19,10 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -36,6 +38,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -109,6 +112,7 @@ internal fun CustomerProfileScreen(
     var busy by remember { mutableStateOf(false) }
     var arrivalSound by remember { mutableStateOf(prefs.getBoolean("arrival_sound", false)) }
     var pushEnabled by remember { mutableStateOf(customerPushEnabled(context)) }
+    val compactProfile = LocalConfiguration.current.screenWidthDp <= 380
 
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -146,7 +150,7 @@ internal fun CustomerProfileScreen(
     ) {
         Spacer(Modifier.height(8.dp))
         Row(
-            Modifier.fillMaxWidth().padding(horizontal = 2.dp, vertical = 8.dp),
+            Modifier.fillMaxWidth().padding(horizontal = 2.dp, vertical = 0.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             QgRemoteImage(
@@ -161,7 +165,7 @@ internal fun CustomerProfileScreen(
                     profile.name.ifBlank { "ลูกค้า" },
                     fontSize = 20.sp,
                     lineHeight = 23.sp,
-                    fontWeight = FontWeight.Black,
+                    fontWeight = FontWeight.ExtraBold,
                     color = Color(0xFF202329)
                 )
                 val contact = profile.phone ?: profile.email.orEmpty()
@@ -173,7 +177,7 @@ internal fun CustomerProfileScreen(
                 Box(
                     Modifier
                         .background(Color(0xFFEAF9F1), RoundedCornerShape(99.dp))
-                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                        .padding(horizontal = 7.dp, vertical = 3.dp)
                 ) {
                     Text(
                         "บัญชีลูกค้า",
@@ -187,17 +191,17 @@ internal fun CustomerProfileScreen(
 
         CustomerProfileSectionTitle("บัญชีและการใช้งาน")
         CustomerProfileCard {
-            CustomerProfileActionRow("ที่อยู่จัดส่ง", null, onClick = onAddress)
+            CustomerProfileActionRow("ที่อยู่จัดส่ง", null, compactProfile, onClick = onAddress)
             HorizontalDivider(color = Color(0xFFECEEF1))
-            CustomerProfileActionRow("ออเดอร์ของฉัน", null, onClick = onOrders)
+            CustomerProfileActionRow("ออเดอร์ของฉัน", null, compactProfile, onClick = onOrders)
             HorizontalDivider(color = Color(0xFFECEEF1))
-            CustomerProfileActionRow("การแจ้งเตือน", null, onClick = onNotifications)
+            CustomerProfileActionRow("การแจ้งเตือน", null, compactProfile, onClick = onNotifications)
             HorizontalDivider(color = Color(0xFFECEEF1))
-            CustomerProfileActionRow("รายการโปรด", null, onClick = onFavorites)
+            CustomerProfileActionRow("รายการโปรด", null, compactProfile, onClick = onFavorites)
             HorizontalDivider(color = Color(0xFFECEEF1))
-            CustomerProfileActionRow("โปรโมชั่นจากร้าน", null, onClick = onPromotion)
+            CustomerProfileActionRow("โปรโมชั่นจากร้าน", null, compactProfile, onClick = onPromotion)
             HorizontalDivider(color = Color(0xFFECEEF1))
-            CustomerProfileActionRow("ติดต่อฝ่ายช่วยเหลือ", null, onClick = onSupport)
+            CustomerProfileActionRow("ติดต่อฝ่ายช่วยเหลือ", null, compactProfile, onClick = onSupport)
         }
 
         Spacer(Modifier.height(12.dp))
@@ -208,7 +212,8 @@ internal fun CustomerProfileScreen(
                 subtitle = "เสียงเตือนเมื่อ Rider มาถึงจุดส่ง",
                 state = if (arrivalSound) "เปิด" else "ปิด",
                 on = arrivalSound,
-                enabled = !busy
+                enabled = !busy,
+                compact = compactProfile
             ) {
                 arrivalSound = !arrivalSound
                 prefs.edit().putBoolean("arrival_sound", arrivalSound).apply()
@@ -217,6 +222,7 @@ internal fun CustomerProfileScreen(
             CustomerProfileActionRow(
                 title = "การแจ้งเตือนเบื้องหลัง",
                 subtitle = "รับสถานะออเดอร์แม้ไม่ได้เปิดหน้านี้",
+                compact = compactProfile,
                 enabled = !busy
             ) {
                 if (pushEnabled) {
@@ -260,6 +266,7 @@ internal fun CustomerProfileScreen(
             CustomerProfileActionRow(
                 title = "ทดสอบการแจ้งเตือน",
                 subtitle = "ตรวจว่าแจ้งเตือนเข้าเมื่อแอปอยู่เบื้องหลัง",
+                compact = compactProfile,
                 enabled = !busy
             ) {
                 busy = true
@@ -331,6 +338,7 @@ private fun CustomerProfileCard(content: @Composable () -> Unit) {
 private fun CustomerProfileActionRow(
     title: String,
     subtitle: String?,
+    compact: Boolean = false,
     enabled: Boolean = true,
     onClick: () -> Unit
 ) {
@@ -338,14 +346,30 @@ private fun CustomerProfileActionRow(
         Modifier
             .fillMaxWidth()
             .clickable(enabled = enabled, onClick = onClick)
-            .padding(horizontal = 12.dp, vertical = 10.dp),
+            .heightIn(min = 50.dp)
+            .padding(
+                horizontal = if (compact) 10.dp else 12.dp,
+                vertical = if (compact) 9.dp else 10.dp
+            ),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Column(Modifier.weight(1f)) {
-            Text(title, color = Color(0xFF202329), fontSize = 13.sp, fontWeight = FontWeight.ExtraBold)
+            Text(
+                title,
+                color = Color(0xFF202329),
+                fontSize = if (compact) 12.5.sp else 13.sp,
+                lineHeight = if (compact) 15.5.sp else 16.25.sp,
+                fontWeight = FontWeight.ExtraBold
+            )
             if (!subtitle.isNullOrBlank()) {
                 Spacer(Modifier.height(2.dp))
-                Text(subtitle, color = Color(0xFF8A8F96), fontSize = 9.5.sp, lineHeight = 13.sp)
+                Text(
+                    subtitle,
+                    color = Color(0xFF8A8F96),
+                    fontSize = if (compact) 9.sp else 9.5.sp,
+                    lineHeight = if (compact) 12.sp else 13.sp,
+                    fontWeight = FontWeight.SemiBold
+                )
             }
         }
         Text("›", color = Color(0xFFAFB3B9), fontSize = 22.sp)
@@ -359,19 +383,36 @@ private fun CustomerProfileStateRow(
     state: String,
     on: Boolean,
     enabled: Boolean,
+    compact: Boolean = false,
     onClick: () -> Unit
 ) {
     Row(
         Modifier
             .fillMaxWidth()
             .clickable(enabled = enabled, onClick = onClick)
-            .padding(horizontal = 12.dp, vertical = 10.dp),
+            .heightIn(min = 50.dp)
+            .padding(
+                horizontal = if (compact) 10.dp else 12.dp,
+                vertical = if (compact) 9.dp else 10.dp
+            ),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Column(Modifier.weight(1f)) {
-            Text(title, color = Color(0xFF202329), fontSize = 13.sp, fontWeight = FontWeight.ExtraBold)
+            Text(
+                title,
+                color = Color(0xFF202329),
+                fontSize = if (compact) 12.5.sp else 13.sp,
+                lineHeight = if (compact) 15.5.sp else 16.25.sp,
+                fontWeight = FontWeight.ExtraBold
+            )
             Spacer(Modifier.height(2.dp))
-            Text(subtitle, color = Color(0xFF8A8F96), fontSize = 9.5.sp, lineHeight = 13.sp)
+            Text(
+                subtitle,
+                color = Color(0xFF8A8F96),
+                fontSize = if (compact) 9.sp else 9.5.sp,
+                lineHeight = if (compact) 12.sp else 13.sp,
+                fontWeight = FontWeight.SemiBold
+            )
         }
         Box(
             Modifier
@@ -379,7 +420,8 @@ private fun CustomerProfileStateRow(
                     if (on) Color(0xFFE9FAF2) else Color(0xFFF1F2F4),
                     RoundedCornerShape(99.dp)
                 )
-                .padding(horizontal = 8.dp, vertical = 5.dp)
+                .widthIn(min = 38.dp)
+                .padding(horizontal = 7.dp, vertical = 4.dp)
         ) {
             Text(
                 state,
