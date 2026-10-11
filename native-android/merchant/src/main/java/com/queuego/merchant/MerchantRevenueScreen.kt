@@ -9,11 +9,13 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -47,6 +49,23 @@ internal fun MerchantRevenueScreen(
     var submittingSlip by remember { mutableStateOf(false) }
     var message by remember { mutableStateOf<String?>(null) }
     var csvPayload by remember { mutableStateOf<String?>(null) }
+    var analyticsOpen by remember { mutableStateOf(false) }
+    var analyticsDays by remember { mutableStateOf(1) }
+    var analyticsLoading by remember { mutableStateOf(false) }
+    var analytics by remember { mutableStateOf<MerchantAnalytics?>(null) }
+    var analyticsError by remember { mutableStateOf<String?>(null) }
+
+    fun loadAnalytics(days: Int) {
+        analyticsDays = days
+        analyticsLoading = true
+        analyticsError = null
+        scope.launch {
+            runCatching { api.analytics(auth, days) }
+                .onSuccess { analytics = it }
+                .onFailure { analyticsError = "โหลดสถิติไม่สำเร็จ: " + (it.message ?: "เกิดข้อผิดพลาด") }
+            analyticsLoading = false
+        }
+    }
 
     suspend fun load(days: Int, endDate: String) {
         loading = true
@@ -163,6 +182,17 @@ internal fun MerchantRevenueScreen(
             )
         }
 
+        OutlinedButton(
+            onClick = {
+                analyticsOpen = true
+                loadAnalytics(1)
+            },
+            modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp)
+        ) {
+            Text("วิเคราะห์ร้านค้า", fontWeight = FontWeight.Bold)
+        }
+        Spacer(Modifier.height(6.dp))
+
         Text(
             "เงินสดค่าสินค้า: ไรเดอร์จ่ายร้านตอนรับสินค้า แล้วเก็บจากลูกค้าเอง · GP คือค่าบริการร้าน",
             color = Color(0xFF607E6E),
@@ -259,6 +289,124 @@ internal fun MerchantRevenueScreen(
         }
 
         Spacer(Modifier.height(28.dp))
+    }
+
+    if (analyticsOpen) {
+        AlertDialog(
+            onDismissRequest = { analyticsOpen = false },
+            title = { Text("วิเคราะห์ร้านค้า", fontWeight = FontWeight.ExtraBold) },
+            text = {
+                Column(Modifier.fillMaxWidth()) {
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(7.dp)
+                    ) {
+                        listOf(1 to "วันนี้", 7 to "7 วัน", 30 to "30 วัน").forEach { (days, label) ->
+                            val active = analyticsDays == days
+                            Box(
+                                Modifier
+                                    .weight(1f)
+                                    .background(
+                                        if (active) Color(0xFFE6F8ED) else Color.White,
+                                        RoundedCornerShape(10.dp)
+                                    )
+                                    .border(
+                                        1.dp,
+                                        Color(0xFFCEEAD8),
+                                        RoundedCornerShape(10.dp)
+                                    )
+                                    .clickable(enabled = !analyticsLoading) {
+                                        loadAnalytics(days)
+                                    }
+                                    .padding(vertical = 9.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    label,
+                                    color = Color(0xFF146E51),
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+                    }
+                    Spacer(Modifier.height(11.dp))
+                    when {
+                        analyticsLoading -> Box(
+                            Modifier.fillMaxWidth().height(90.dp),
+                            contentAlignment = Alignment.Center
+                        ) { CircularProgressIndicator() }
+
+                        analyticsError != null -> Text(
+                            analyticsError.orEmpty(),
+                            color = QgRed,
+                            fontSize = 11.sp
+                        )
+
+                        analytics != null -> {
+                            val value = analytics!!
+                            AnalyticsGrid(
+                                listOf(
+                                    "ยอดขาย" to money(value.sales),
+                                    "จำนวนออเดอร์" to value.orders.toString(),
+                                    "มูลค่าเฉลี่ย" to money(value.averageOrderValue),
+                                    "ยกเลิก" to (value.cancelled.toString() + " (" +
+                                        String.format(Locale.US, "%.2f", value.cancellationRate) + "%)"),
+                                    "เตรียมสินค้าเฉลี่ย" to (
+                                        value.avgPrepMinutes?.let {
+                                            String.format(Locale.US, "%.1f นาที", it)
+                                        } ?: "ยังไม่มีข้อมูล"
+                                    )
+                                )
+                            )
+                            Spacer(Modifier.height(12.dp))
+                            Text("เมนูขายดี", fontSize = 13.sp, fontWeight = FontWeight.ExtraBold)
+                            Spacer(Modifier.height(5.dp))
+                            if (value.topItems.isEmpty()) {
+                                Text("ยังไม่มีข้อมูล", color = QgMuted, fontSize = 10.sp)
+                            } else {
+                                value.topItems.forEach { item ->
+                                    Text(
+                                        item.name + " · " + item.quantity + " ชิ้น",
+                                        fontSize = 10.5.sp,
+                                        modifier = Modifier.padding(vertical = 3.dp)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { analyticsOpen = false }) {
+                    Text("ปิด", color = QgRed, fontWeight = FontWeight.Bold)
+                }
+            }
+        )
+    }
+}
+
+@Composable
+private fun AnalyticsGrid(items: List<Pair<String, String>>) {
+    items.chunked(2).forEach { row ->
+        Row(
+            Modifier.fillMaxWidth().padding(bottom = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            row.forEach { (label, value) ->
+                Column(
+                    Modifier
+                        .weight(1f)
+                        .border(1.dp, Color(0xFFD9EEE3), RoundedCornerShape(10.dp))
+                        .padding(10.dp)
+                ) {
+                    Text(label, color = QgMuted, fontSize = 9.sp)
+                    Spacer(Modifier.height(3.dp))
+                    Text(value, fontSize = 17.sp, fontWeight = FontWeight.ExtraBold)
+                }
+            }
+            if (row.size == 1) Spacer(Modifier.weight(1f))
+        }
     }
 }
 
