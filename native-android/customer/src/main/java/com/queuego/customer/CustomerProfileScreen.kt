@@ -298,8 +298,9 @@ internal fun CustomerProfileScreen(
             onDeleted = onLogout,
             pendingChatUserId = auth.user.id,
             showHeader = false,
+            privacySubtitle = "",
             onLogout = onLogout,
-            logoutSubtitle = "ออกจากบัญชีในอุปกรณ์นี้",
+            logoutSubtitle = "",
             showRowIcons = false
         )
         Spacer(Modifier.height(28.dp))
