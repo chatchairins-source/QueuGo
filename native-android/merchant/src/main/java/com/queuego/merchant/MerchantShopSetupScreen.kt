@@ -109,7 +109,7 @@ internal fun MerchantShopSetupScreen(
         recenterToken = gpsSignal
     }
 
-    val compact = LocalConfiguration.current.screenWidthDp <= 380
+    val compact = LocalConfiguration.current.screenWidthDp <= 430
     val currentPoint = if (latitude != null && longitude != null &&
         merchantCoordinateValid(latitude!!, longitude!!)
     ) QgMapPoint(latitude!!, longitude!!, 0) else null
@@ -130,13 +130,22 @@ internal fun MerchantShopSetupScreen(
                 contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 12.dp)
             ) { Text("กลับ") }
             Spacer(Modifier.width(10.dp))
-            Column {
-                Text("แก้ไขข้อมูลร้าน", fontSize = 20.sp, lineHeight = 26.sp, fontWeight = FontWeight.ExtraBold)
-                Text("ข้อมูลและตำแหน่งร้าน", color = QgMuted, fontSize = 11.sp)
-            }
+            Text(
+                "แก้ไขข้อมูลร้าน",
+                fontSize = 20.sp,
+                lineHeight = 26.sp,
+                fontWeight = FontWeight.ExtraBold
+            )
         }
 
-        SetupField("ชื่อร้าน") {
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .background(Color.White, RoundedCornerShape(17.dp))
+                .border(1.dp, Color(0xFFE7E9EC), RoundedCornerShape(17.dp))
+                .padding(12.dp)
+        ) {
+            SetupField("ชื่อร้าน") {
             OutlinedTextField(name, { name = it }, Modifier.fillMaxWidth(), singleLine = true)
         }
         SetupField("ชื่อผู้ติดต่อ") {
@@ -264,8 +273,18 @@ internal fun MerchantShopSetupScreen(
                 }
             }
             Spacer(Modifier.height(10.dp))
-            OutlinedButton(onClick = onGps, modifier = Modifier.height(38.dp)) {
-                Text("ใช้ตำแหน่ง GPS ปัจจุบัน", fontSize = 12.sp)
+            OutlinedButton(
+                onClick = onGps,
+                modifier = Modifier.heightIn(min = 36.dp),
+                shape = RoundedCornerShape(10.dp),
+                colors = androidx.compose.material3.ButtonDefaults.outlinedButtonColors(
+                    containerColor = Color(0xFFE8FAF1),
+                    contentColor = Color(0xFF10855E)
+                ),
+                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF97DEC1)),
+                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 7.dp)
+            ) {
+                Text("ใช้ตำแหน่ง GPS ปัจจุบัน", fontSize = 12.sp, fontWeight = FontWeight.Bold)
             }
             Spacer(Modifier.height(7.dp))
             Text(
@@ -316,32 +335,34 @@ internal fun MerchantShopSetupScreen(
             )
         }
 
-        Spacer(Modifier.height(12.dp))
-        Button(
-            onClick = {
-                onSave(
-                    MerchantShopSetupDraft(
-                        shopName = name,
-                        contactName = contact,
-                        phone = phone,
-                        category = category,
-                        shoppingSubcategories = subcategories,
-                        address = address,
-                        latitude = latitude,
-                        longitude = longitude,
-                        openTime = openTime,
-                        closeTime = closeTime,
-                        description = description,
-                        logo = null,
-                        cover = null
+            Spacer(Modifier.height(12.dp))
+            Button(
+                onClick = {
+                    onSave(
+                        MerchantShopSetupDraft(
+                            shopName = name,
+                            contactName = contact,
+                            phone = phone,
+                            category = category,
+                            shoppingSubcategories = subcategories,
+                            address = address,
+                            latitude = latitude,
+                            longitude = longitude,
+                            openTime = openTime,
+                            closeTime = closeTime,
+                            description = description,
+                            logo = null,
+                            cover = null
+                        )
                     )
-                )
-            },
-            enabled = !busy,
-            modifier = Modifier.fillMaxWidth().height(48.dp)
-        ) {
-            if (busy) CircularProgressIndicator(Modifier.size(22.dp), strokeWidth = 2.dp)
-            else Text("บันทึกข้อมูลร้าน", fontWeight = FontWeight.ExtraBold)
+                },
+                enabled = !busy,
+                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+                shape = RoundedCornerShape(13.dp)
+            ) {
+                if (busy) CircularProgressIndicator(Modifier.size(22.dp), strokeWidth = 2.dp)
+                else Text("บันทึกข้อมูลร้าน", fontWeight = FontWeight.ExtraBold)
+            }
         }
         Spacer(Modifier.height(28.dp))
     }
@@ -353,7 +374,12 @@ private fun SetupField(
     content: @Composable () -> Unit
 ) {
     Column(Modifier.fillMaxWidth().padding(vertical = 5.dp)) {
-        Text(label, fontSize = 10.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 5.dp))
+        Text(
+            label,
+            fontSize = 10.sp,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(bottom = 5.dp)
+        )
         content()
     }
 }
