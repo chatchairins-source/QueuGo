@@ -2,6 +2,9 @@ package com.queuego.shared
 
 import android.content.Intent
 import android.net.Uri
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -9,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Button
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -19,8 +23,11 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import java.io.File
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -82,7 +89,10 @@ class QueueGoAccountDeletionApi {
 fun QgAccountDeletionSection(
     accessToken: String,
     onDeleted: () -> Unit,
-    pendingChatUserId: String? = null
+    pendingChatUserId: String? = null,
+    showHeader: Boolean = true,
+    privacySubtitle: String = "การใช้ข้อมูลและการลบบัญชี",
+    deleteSubtitle: String = "ลบ Auth และข้อมูลส่วนบุคคล"
 ) {
     val api = remember { QueueGoAccountDeletionApi() }
     val context = LocalContext.current
@@ -91,15 +101,25 @@ fun QgAccountDeletionSection(
     var busy by remember { mutableStateOf(false) }
     var message by remember { mutableStateOf<String?>(null) }
 
-    QgCard(Modifier.fillMaxWidth()) {
-        Column {
+    Column {
+        if (showHeader) {
             Text("ความเป็นส่วนตัวและบัญชี", fontWeight = FontWeight.ExtraBold)
             Text(
-                "คุณสามารถขอลบบัญชี QueueGo และข้อมูลส่วนบุคคลได้จากแอป",
+                "คุณสามารถดูนโยบายความเป็นส่วนตัวและขอลบบัญชี QueueGo ได้จากแอป",
                 color = QgMuted
             )
-            Spacer(Modifier.height(10.dp))
-            OutlinedButton(
+            Spacer(Modifier.height(8.dp))
+        }
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .background(Color.White, RoundedCornerShape(16.dp))
+                .border(1.dp, QgLine, RoundedCornerShape(16.dp))
+        ) {
+            AccountSettingsRow(
+                title = "นโยบายความเป็นส่วนตัว",
+                subtitle = privacySubtitle,
+                danger = false,
                 onClick = {
                     runCatching {
                         context.startActivity(
@@ -111,62 +131,94 @@ fun QgAccountDeletionSection(
                     }.onFailure {
                         message = "เปิดนโยบายความเป็นส่วนตัวไม่สำเร็จ"
                     }
-                },
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text("นโยบายความเป็นส่วนตัว")
-            }
-            if (!message.isNullOrBlank()) {
-                Spacer(Modifier.height(7.dp))
-                Text(message!!, color = QgRed)
-            }
-            Spacer(Modifier.height(10.dp))
+                }
+            )
+            HorizontalDivider(color = QgLine)
             if (!armed) {
-                OutlinedButton(
+                AccountSettingsRow(
+                    title = "ลบบัญชีถาวร",
+                    subtitle = deleteSubtitle,
+                    danger = true,
                     onClick = {
                         armed = true
                         message = "การลบบัญชีถาวรและย้อนกลับไม่ได้ กรุณายืนยันอีกครั้ง"
-                    },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text("ลบบัญชี QueueGo")
-                }
-            } else {
-                Row(Modifier.fillMaxWidth()) {
-                    OutlinedButton(
-                        onClick = {
-                            armed = false
-                            message = null
-                        },
-                        enabled = !busy,
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text("ยกเลิก")
                     }
-                    Spacer(Modifier.width(8.dp))
-                    Button(
-                        onClick = {
-                            if (busy) return@Button
-                            busy = true
-                            scope.launch {
-                                runCatching { api.delete(accessToken) }
-                                    .onSuccess {
-                                        pendingChatUserId?.let { userId ->
-                                            withContext(Dispatchers.IO) { NativeChatPendingStore.clearUser(File(context.noBackupFilesDir, "customer-chat-pending"), userId) }
+                )
+            } else {
+                Column(Modifier.padding(horizontal = 12.dp, vertical = 10.dp)) {
+                    Text("ยืนยันลบบัญชีถาวร", color = QgRed, fontWeight = FontWeight.ExtraBold)
+                    Text(
+                        "การลบบัญชีไม่สามารถย้อนกลับได้",
+                        color = QgMuted
+                    )
+                    Spacer(Modifier.height(9.dp))
+                    Row(Modifier.fillMaxWidth()) {
+                        OutlinedButton(
+                            onClick = {
+                                armed = false
+                                message = null
+                            },
+                            enabled = !busy,
+                            modifier = Modifier.weight(1f)
+                        ) { Text("ยกเลิก") }
+                        Spacer(Modifier.width(8.dp))
+                        Button(
+                            onClick = {
+                                if (busy) return@Button
+                                busy = true
+                                scope.launch {
+                                    runCatching { api.delete(accessToken) }
+                                        .onSuccess {
+                                            pendingChatUserId?.let { userId ->
+                                                withContext(Dispatchers.IO) {
+                                                    NativeChatPendingStore.clearUser(
+                                                        File(context.noBackupFilesDir, "customer-chat-pending"),
+                                                        userId
+                                                    )
+                                                }
+                                            }
+                                            onDeleted()
                                         }
-                                        onDeleted()
-                                    }
-                                    .onFailure { message = it.message ?: "ลบบัญชีไม่สำเร็จ" }
-                                busy = false
-                            }
-                        },
-                        enabled = !busy,
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text(if (busy) "กำลังลบ..." else "ยืนยันลบบัญชี")
+                                        .onFailure { message = it.message ?: "ลบบัญชีไม่สำเร็จ" }
+                                    busy = false
+                                }
+                            },
+                            enabled = !busy,
+                            modifier = Modifier.weight(1f)
+                        ) { Text(if (busy) "กำลังลบ..." else "ยืนยันลบ") }
                     }
                 }
             }
         }
+        if (!message.isNullOrBlank()) {
+            Spacer(Modifier.height(7.dp))
+            Text(message!!, color = if (armed) QgRed else QgMuted)
+        }
+    }
+}
+
+@Composable
+private fun AccountSettingsRow(
+    title: String,
+    subtitle: String,
+    danger: Boolean,
+    onClick: () -> Unit
+) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text(
+                title,
+                color = if (danger) Color(0xFFD92F3E) else Color(0xFF17191D),
+                fontWeight = FontWeight.ExtraBold
+            )
+            Text(subtitle, color = Color(0xFF8A8F96))
+        }
+        Text("›", color = Color(0xFFAFB3B9))
     }
 }
