@@ -60,6 +60,7 @@ internal fun GuestCustomerShell(onLogin: (destination: String) -> Unit) {
     val catalogState by shopCatalog.state.collectAsState()
 
     var screen by remember { mutableStateOf("home") }
+    var locationReturnScreen by remember { mutableStateOf("home") }
     var returnScreen by remember { mutableStateOf("home") }
     var category by remember { mutableStateOf("all") }
     var shoppingMode by remember { mutableStateOf("all") }
@@ -156,7 +157,10 @@ internal fun GuestCustomerShell(onLogin: (destination: String) -> Unit) {
                 route == "orders" || route == "laundry" || route == "checkout" -> onLogin(
                     if (route == "checkout") "checkout" else "home"
                 )
-                route == "map" -> screen = "location"
+                route == "map" -> {
+                    locationReturnScreen = "home"
+                    screen = "location"
+                }
                 route == "market" || route == "market-cart" -> screen = "market"
                 route == "promotion" -> screen = "promotion"
                 route == "shopping" -> {
@@ -234,7 +238,10 @@ internal fun GuestCustomerShell(onLogin: (destination: String) -> Unit) {
                     location = location,
                     deliveryAddress = address,
                     shops = shops,
-                    onLocation = { screen = "location" },
+                    onLocation = {
+                        locationReturnScreen = "home"
+                        screen = "location"
+                    },
                     onSearch = { screen = "search" },
                     onCategory = { selected ->
                         when (selected) {
@@ -276,14 +283,18 @@ internal fun GuestCustomerShell(onLogin: (destination: String) -> Unit) {
                                     location = picked
                                     address = picked.address
                                     message = "บันทึกที่อยู่ในเครื่องแล้ว"
-                                    screen = "home"
+                                    screen = locationReturnScreen
+                                    locationReturnScreen = "home"
                                 } catch (failure: CancellationException) { throw failure }
                                 catch (failure: Exception) { message = failure.message ?: "บันทึกที่อยู่ไม่สำเร็จ" }
                                 finally { locationBusy = false }
                             }
                         }
                     },
-                    onBack = { screen = "home" }
+                    onBack = {
+                        screen = locationReturnScreen
+                        locationReturnScreen = "home"
+                    }
                 )
 
                 "category" -> ServiceCategoryScreen(
@@ -372,11 +383,17 @@ internal fun GuestCustomerShell(onLogin: (destination: String) -> Unit) {
                     auth = null,
                     location = location,
                     address = address,
+                    serviceBanner = serviceBanners["market"],
                     onAddress = {
                         address = it
                         location = location?.copy(address = it)
                     },
                     onGps = ::gps,
+                    onChooseAddress = {
+                        locationReturnScreen = "market"
+                        screen = "location"
+                    },
+                    onBannerLink = ::openBannerLink,
                     onBack = { screen = "home" },
                     onDone = { screen = "home" },
                     onRequireLogin = { onLogin("home") }
