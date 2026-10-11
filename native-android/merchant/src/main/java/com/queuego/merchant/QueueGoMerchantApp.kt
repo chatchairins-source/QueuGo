@@ -14,6 +14,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -92,6 +93,8 @@ import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 
 @Composable
 fun QueueGoMerchantApp() {
@@ -1124,31 +1127,234 @@ private fun MerchantMenuTile(
 }
 
 @Composable
-private fun MerchantOrdersScreen(orders: List<MerchantOrder>, loading: Boolean, onOpen: (MerchantOrder) -> Unit) {
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(14.dp)) {
-        QgSectionTitle("ออเดอร์", "รับ → เตรียม → พร้อมส่ง")
+private fun MerchantOrdersScreen(
+    orders: List<MerchantOrder>,
+    loading: Boolean,
+    onOpen: (MerchantOrder) -> Unit
+) {
+    var filter by remember { mutableStateOf("all") }
+    var query by remember { mutableStateOf("") }
+    val normalizedQuery = query.trim().lowercase(Locale("th", "TH"))
+    val visible = orders.filter { order ->
+        val statusMatches = filter == "all" || merchantOrderStatusKey(order) == filter
+        val searchText = (order.number + " " + (order.customerName ?: "ลูกค้า"))
+            .lowercase(Locale("th", "TH"))
+        statusMatches && (normalizedQuery.isBlank() || searchText.contains(normalizedQuery))
+    }
+
+    Column(
+        Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 14.dp, vertical = 10.dp)
+    ) {
+        Text(
+            "คำสั่งซื้อ",
+            color = Color(0xFF1D2025),
+            fontSize = 18.sp,
+            lineHeight = 22.sp,
+            fontWeight = FontWeight.Black
+        )
+        Spacer(Modifier.height(2.dp))
+        Text(
+            "ดูสถานะและจัดการออเดอร์ของร้าน",
+            color = Color(0xFF8E949C),
+            fontSize = 9.5.sp,
+            lineHeight = 13.sp
+        )
+
         Spacer(Modifier.height(10.dp))
-        if (loading && orders.isEmpty()) CircularProgressIndicator()
-        else if (orders.isEmpty()) QgCard(Modifier.fillMaxWidth()) { Text("ยังไม่มีออเดอร์", color = QgMuted) }
-        else orders.forEach { MerchantOrderCard(it, onOpen) }
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            listOf(
+                "all" to "ทั้งหมด",
+                "pending" to "รอรับ",
+                "preparing" to "กำลังเตรียม",
+                "searching" to "กำลังหาไรเดอร์",
+                "delivering" to "กำลังส่ง",
+                "done" to "สำเร็จ"
+            ).forEach { (key, label) ->
+                val active = filter == key
+                Box(
+                    Modifier
+                        .height(34.dp)
+                        .background(
+                            if (active) Color(0xFFFFF0F3) else Color.White,
+                            RoundedCornerShape(99.dp)
+                        )
+                        .border(
+                            1.dp,
+                            if (active) QgRed else Color(0xFFE7E9EC),
+                            RoundedCornerShape(99.dp)
+                        )
+                        .clickable { filter = key }
+                        .padding(horizontal = 11.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        label,
+                        color = if (active) Color(0xFFD90D2D) else Color(0xFF777E87),
+                        fontSize = 9.5.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+        }
+
+        Spacer(Modifier.height(8.dp))
+        OutlinedTextField(
+            value = query,
+            onValueChange = { query = it },
+            modifier = Modifier.fillMaxWidth().height(44.dp),
+            singleLine = true,
+            leadingIcon = { QgIcon("search", Modifier.size(18.dp), Color(0xFF8A9098)) },
+            placeholder = {
+                Text(
+                    "ค้นหาด้วยเลขออเดอร์ หรือชื่อลูกค้า",
+                    color = Color(0xFF8A9098),
+                    fontSize = 12.sp
+                )
+            },
+            shape = RoundedCornerShape(14.dp)
+        )
+
+        Spacer(Modifier.height(9.dp))
+        when {
+            loading && orders.isEmpty() -> CircularProgressIndicator()
+            visible.isEmpty() -> Box(
+                Modifier
+                    .fillMaxWidth()
+                    .background(Color.White, RoundedCornerShape(16.dp))
+                    .border(1.dp, Color(0xFFE7E9EC), RoundedCornerShape(16.dp))
+                    .padding(vertical = 28.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text("ยังไม่มีคำสั่งซื้อ", color = QgMuted)
+            }
+            else -> visible.forEach { order ->
+                MerchantOrderCard(order, onOpen)
+                Spacer(Modifier.height(7.dp))
+            }
+        }
         Spacer(Modifier.height(30.dp))
     }
 }
 
 @Composable
 private fun MerchantOrderCard(order: MerchantOrder, onOpen: (MerchantOrder) -> Unit) {
-    QgCard(Modifier.fillMaxWidth().padding(bottom = 8.dp).clickable { onOpen(order) }) {
-        Column {
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Text(order.number, fontWeight = FontWeight.Black, style = MaterialTheme.typography.titleMedium)
-                Spacer(Modifier.weight(1f))
-                QgStatusPill(merchantStatus(order.status, order.riderArrivedCustomerAt), order.status !in setOf("cancelled", "no_rider_available"))
+    val key = merchantOrderStatusKey(order)
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .background(Color.White, RoundedCornerShape(16.dp))
+            .border(1.dp, Color(0xFFE7E9EC), RoundedCornerShape(16.dp))
+            .clickable { onOpen(order) }
+            .padding(9.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        if (!order.firstItemImage.isNullOrBlank()) {
+            QgRemoteImage(
+                source = order.firstItemImage,
+                modifier = Modifier.size(54.dp),
+                fallback = order.number,
+                cornerRadius = 12.dp
+            )
+        } else {
+            Box(
+                Modifier
+                    .size(54.dp)
+                    .background(Color(0xFFF7F8F9), RoundedCornerShape(12.dp)),
+                contentAlignment = Alignment.Center
+            ) {
+                QgIcon("orders", Modifier.size(23.dp), Color(0xFF8A9098))
             }
-            Spacer(Modifier.height(6.dp))
-            Text("ยอดสินค้า ฿" + "%.0f".format(order.subtotal), fontWeight = FontWeight.Bold)
-            if (!order.note.isNullOrBlank()) Text(order.note!!, color = QgMuted, style = MaterialTheme.typography.bodySmall)
+        }
+        Spacer(Modifier.width(9.dp))
+        Column(Modifier.weight(1f)) {
+            Text(
+                order.number,
+                color = Color(0xFF1D2025),
+                fontSize = 12.5.sp,
+                lineHeight = 15.5.sp,
+                fontWeight = FontWeight.Black
+            )
+            Spacer(Modifier.height(2.dp))
+            Text(
+                "ลูกค้า: " + (order.customerName ?: "ลูกค้า"),
+                color = Color(0xFF8A9098),
+                fontSize = 9.sp
+            )
+            Text(
+                order.itemCount.toString() + " รายการ • " +
+                    "%.0f".format(order.subtotal) + " บาท",
+                color = Color(0xFF8A9098),
+                fontSize = 9.sp
+            )
+        }
+        Column(
+            horizontalAlignment = Alignment.End,
+            verticalArrangement = Arrangement.spacedBy(5.dp)
+        ) {
+            MerchantOrderStatusPill(key, merchantStatus(order.status, order.riderArrivedCustomerAt))
+            Text(
+                merchantOrderTime(order.createdAt),
+                color = Color(0xFF8A9098),
+                fontSize = 8.5.sp
+            )
         }
     }
+}
+
+@Composable
+private fun MerchantOrderStatusPill(key: String, label: String) {
+    val colors = when (key) {
+        "pending" -> Color(0xFFFFF0F3) to Color(0xFFD90D2D)
+        "searching", "ready" -> Color(0xFFFFF6DC) to Color(0xFFA76B00)
+        "preparing" -> Color(0xFFF3F8FF) to Color(0xFF2F6EAB)
+        "delivering" -> Color(0xFFF2F0FF) to Color(0xFF7057D8)
+        "done" -> Color(0xFFEAF9F1) to Color(0xFF0A9660)
+        else -> Color(0xFFF2F2F3) to Color(0xFF777D85)
+    }
+    Box(
+        Modifier
+            .background(colors.first, RoundedCornerShape(99.dp))
+            .padding(horizontal = 7.dp, vertical = 4.dp)
+    ) {
+        Text(
+            label,
+            color = colors.second,
+            fontSize = 8.5.sp,
+            fontWeight = FontWeight.ExtraBold,
+            maxLines = 1
+        )
+    }
+}
+
+private fun merchantOrderStatusKey(order: MerchantOrder): String {
+    val raw = order.status.lowercase()
+    if (raw in setOf("in_progress", "delivering", "rider_to_customer") &&
+        !order.riderArrivedCustomerAt.isNullOrBlank()
+    ) return "delivering"
+    return when (raw) {
+        "pending", "pending_shop" -> "pending"
+        "searching_rider" -> "searching"
+        "accepted", "shop_accepted", "rider_assigned", "assigned",
+        "rider_to_shop", "preparing" -> "preparing"
+        "ready", "waiting_rider" -> "ready"
+        "picked_up", "in_progress", "delivering", "rider_to_customer", "arrived" -> "delivering"
+        "completed", "delivered" -> "done"
+        else -> "cancelled"
+    }
+}
+
+private fun merchantOrderTime(value: String?): String {
+    val instant = value?.let { runCatching { Instant.parse(it) }.getOrNull() } ?: return ""
+    return instant.atZone(ZoneId.of("Asia/Bangkok"))
+        .format(DateTimeFormatter.ofPattern("HH:mm 'น.'", Locale("th", "TH")))
 }
 
 @Composable
