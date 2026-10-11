@@ -67,6 +67,7 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -1665,17 +1666,17 @@ private fun ProfileScreen(
 
         CustomerProfileSectionTitle("บัญชีและการใช้งาน")
         CustomerProfileCard {
-            CustomerProfileActionRow("ที่อยู่จัดส่ง", null, onLocation)
+            CustomerProfileActionRow("ที่อยู่จัดส่ง", null, onClick = onLocation)
             HorizontalDivider(color = QgLine)
-            CustomerProfileActionRow("ออเดอร์ของฉัน", null, onOrders)
+            CustomerProfileActionRow("ออเดอร์ของฉัน", null, onClick = onOrders)
             HorizontalDivider(color = QgLine)
-            CustomerProfileActionRow("การแจ้งเตือน", null, onNotifications)
+            CustomerProfileActionRow("การแจ้งเตือน", null, onClick = onNotifications)
             HorizontalDivider(color = QgLine)
-            CustomerProfileActionRow("รายการโปรด", null, onFavorites)
+            CustomerProfileActionRow("รายการโปรด", null, onClick = onFavorites)
             HorizontalDivider(color = QgLine)
-            CustomerProfileActionRow("โปรโมชั่นจากร้าน", null, onPromotion)
+            CustomerProfileActionRow("โปรโมชั่นจากร้าน", null, onClick = onPromotion)
             HorizontalDivider(color = QgLine)
-            CustomerProfileActionRow("ติดต่อฝ่ายช่วยเหลือ", null, onSupport)
+            CustomerProfileActionRow("ติดต่อฝ่ายช่วยเหลือ", null, onClick = onSupport)
         }
 
         Spacer(Modifier.height(10.dp))
@@ -1742,7 +1743,7 @@ private fun ProfileScreen(
         )
         Spacer(Modifier.height(8.dp))
         CustomerProfileCard {
-            CustomerProfileActionRow("ออกจากระบบ", null, logout)
+            CustomerProfileActionRow("ออกจากระบบ", null, onClick = logout)
         }
         Spacer(Modifier.height(86.dp))
     }
