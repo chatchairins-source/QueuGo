@@ -44,17 +44,29 @@ internal fun webBannerImage(banner: ServiceBanner?): String? = banner?.image?.tr
     it.startsWith("data:image/") || it.startsWith("https://", true) || it.startsWith("http://", true)
 }
 
+internal fun serviceCategoryRows(
+    category: String,
+    shops: List<CustomerShop>,
+    location: CustomerLocation?
+): List<CustomerShop> {
+    val visible = shops.filter {
+        when (category) {
+            "food" -> it.category in setOf("food", "restaurant")
+            "cafe" -> it.category in setOf("cafe", "drink", "beverage")
+            "grocery" -> it.category in setOf("grocery", "convenience")
+            else -> false
+        }
+    }
+    return if (location == null) visible else visible.sortedBy { customerDistanceKm(location, it) }
+}
+
 @Composable
 internal fun ServiceCategoryScreen(loading: Boolean, category: String, serviceBanner: ServiceBanner?,
-    shops: List<CustomerShop>, onBack: () -> Unit, onShop: (CustomerShop) -> Unit,
-    onBannerLink: (String) -> Unit = {}) {
+    shops: List<CustomerShop>, location: CustomerLocation?, onBack: () -> Unit,
+    onShop: (CustomerShop) -> Unit, onBannerLink: (String) -> Unit = {}) {
     val spec = webServiceCategory(category)
     if (spec == null) return
-    val visible = shops.filter { when(category) {
-        "food" -> it.category in setOf("food", "restaurant")
-        "cafe" -> it.category in setOf("cafe", "drink", "beverage")
-        else -> it.category in setOf("grocery", "convenience")
-    } }
+    val visible = serviceCategoryRows(category, shops, location)
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 12.dp)) {
         Row(Modifier.padding(top = 7.dp, bottom = 10.dp), verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.size(38.dp).clip(RoundedCornerShape(12.dp)).background(Color.White).clickable(onClick = onBack),
