@@ -59,6 +59,10 @@ The `play_store_preflight` evidence envelope must explicitly certify all four ch
 - `merchant_package_registered` for `com.queuego.merchant`
 - `rider_package_registered` for `com.queuego.rider`
 
+It must also bind `registered_packages` to exactly:
+`["com.queuego.customer","com.queuego.merchant","com.queuego.rider"]`.
+The evidence artifact should be a current Play Console export or screenshot set that shows the verified developer/account state and the package registration state; the envelope must keep the exact release `version_name`, release versionCodes, observed Play maximum versionCodes, UTC observation timestamp, and SHA-256-hashed artifact references required by the canonical release gate.
+
 Official references:
 - https://support.google.com/googleplay/android-developer/answer/16984799
 - https://developer.android.com/developer-verification
