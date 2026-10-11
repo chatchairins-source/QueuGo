@@ -1,3 +1,11 @@
+## 2026-10-11 UI parity first / shop-managed Laundry override
+- Owner explicitly corrected Laundry: the laundry shop handles pickup and return itself; platform Riders must have no Laundry availability switch, invitations, pool, active-work UI or navigation. This supersedes prior Rider-Laundry requirements and the earlier instruction in this mission to move its toggle to Profile.
+- Owner clarified responsive UI must work across all screen sizes. Production proportions and bounded centered content remain the blueprint.
+- Working branch work-rider-ui-parity-20261011 starts from fetched Native HEAD 9f675d0755b5be34105c6180bc3a8ed7d45cdafc; Production main 03803ab91bd7a418251c288ce9a09cc7c0660564. All remote branches fetched; open PR138 Merchant privacy retained. Backup branch backup-native-pre-ui-parity-20261011 preserves source HEAD.
+- Rider Home staging consolidates idle title/stats/offline action/tip into one card, removes duplicate online headers, bounds dock/topbar/nav, restores compact online switch, moves recent history to Earnings and expires transient action feedback after four seconds.
+- Native Rider Laundry UI, API polling/mutations, map pins/navigation and realtime subscriptions removed. Database historical records/schema preserved. Production Web and backend dispatch retirement still pending; do not claim the whole system has been corrected.
+- Visual comparison on running Native phone/large screen and physical Android GPS crash verification remain OPEN. This environment has no Java/Gradle/Android SDK/adb or physical device. No full parity, compile success or release certification claimed; no APK/AAB delivered.
+
 # QueueGo project memory
 
 ## 2026-10-10 secure legacy push integration staging

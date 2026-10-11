@@ -28,7 +28,6 @@ private class RiderLongdoHolder {
     fun refreshOverlays(
         context: android.content.Context,
         job: RiderJob?,
-        laundryJob: RiderLaundryJob?,
         pickups: List<MarketPickup>
     ) {
         val ldmap = map ?: return
@@ -40,10 +39,6 @@ private class RiderLongdoHolder {
             append(job?.pickupLat).append(",").append(job?.pickupLng)
             append("|")
             append(job?.deliveryLat).append(",").append(job?.deliveryLng)
-            append("|laundry:")
-            append(laundryJob?.jobId ?: "none").append(":").append(laundryJob?.jobStatus ?: "")
-            append(":").append(laundryJob?.fromLatitude).append(",").append(laundryJob?.fromLongitude)
-            append(":").append(laundryJob?.toLatitude).append(",").append(laundryJob?.toLongitude)
             append("|")
             pickups.forEach { append(it.pickupId).append(":").append(it.status).append(";") }
         }
@@ -77,20 +72,8 @@ private class RiderLongdoHolder {
             }
         }
 
-        if (job == null && laundryJob == null) {
+        if (job == null) {
             centerOnDevice(context)
-            return
-        }
-
-        if (job == null && laundryJob != null) {
-            addPin(laundryJob.fromLatitude, laundryJob.fromLongitude)
-            addPin(laundryJob.toLatitude, laundryJob.toLongitude)
-            val target = laundryJob.navigationTarget
-            if (target != null) {
-                runCatching { ldmap.setLocation(MapLocation(target.second, target.first)) }
-            } else {
-                centerOnDevice(context)
-            }
             return
         }
 
@@ -131,7 +114,6 @@ private class RiderLongdoHolder {
 fun RiderLongdoMap(
     modifier: Modifier = Modifier,
     job: RiderJob?,
-    laundryJob: RiderLaundryJob? = null,
     marketPickups: List<MarketPickup>,
     recenterSignal: Int,
     onMapReady: (Boolean) -> Unit
@@ -139,10 +121,8 @@ fun RiderLongdoMap(
     val context = LocalContext.current
     val holder = remember { RiderLongdoHolder() }
     val latestJob: MutableState<RiderJob?> = remember { mutableStateOf(job) }
-    val latestLaundryJob: MutableState<RiderLaundryJob?> = remember { mutableStateOf(laundryJob) }
     val latestPickups = remember { mutableStateOf(marketPickups) }
     latestJob.value = job
-    latestLaundryJob.value = laundryJob
     latestPickups.value = marketPickups
 
     AndroidView(
@@ -158,7 +138,7 @@ fun RiderLongdoMap(
                         map.setBase(LongdoLayer(ctx, "gray", 0, 1, 20))
                     }
                     holder.centerOnDevice(ctx)
-                    holder.refreshOverlays(ctx, latestJob.value, latestLaundryJob.value, latestPickups.value)
+                    holder.refreshOverlays(ctx, latestJob.value, latestPickups.value)
                     onMapReady(true)
                 }
             })
@@ -166,12 +146,12 @@ fun RiderLongdoMap(
             view
         },
         update = {
-            holder.refreshOverlays(context, job, laundryJob, marketPickups)
+            holder.refreshOverlays(context, job, marketPickups)
         }
     )
 
-    LaunchedEffect(job?.id, job?.status, job?.pickupLat, job?.pickupLng, job?.deliveryLat, job?.deliveryLng, laundryJob?.jobId, laundryJob?.jobStatus, marketPickups) {
-        holder.refreshOverlays(context, job, laundryJob, marketPickups)
+    LaunchedEffect(job?.id, job?.status, job?.pickupLat, job?.pickupLng, job?.deliveryLat, job?.deliveryLng, marketPickups) {
+        holder.refreshOverlays(context, job, marketPickups)
     }
 
     LaunchedEffect(recenterSignal) {

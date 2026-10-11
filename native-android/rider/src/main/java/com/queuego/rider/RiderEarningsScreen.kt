@@ -39,6 +39,7 @@ import java.time.ZoneId
 fun RiderEarningsScreen(
     auth: QueueGoAuth,
     api: QueueGoApi,
+    history: List<RiderHistoryOrder> = emptyList(),
     modifier: Modifier = Modifier
 ) {
     var days by remember { mutableIntStateOf(1) }
@@ -178,6 +179,7 @@ fun RiderEarningsScreen(
                 }
             }
         }
+        RiderRecentHistoryCard(history)
         Spacer(Modifier.height(86.dp))
     }
 }

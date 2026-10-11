@@ -91,10 +91,7 @@ class NativeOrderRealtimeTest {
             riderRealtimeSubscriptions("user-1", null))
         assertEquals(listOf(
             NativeRealtimeSubscription("notifications", "user_id=eq.user-1"),
-            NativeRealtimeSubscription("orders", "rider_id=eq.profile-2"),
-            NativeRealtimeSubscription("laundry_rider_jobs", "rider_id=eq.profile-2"),
-            NativeRealtimeSubscription("laundry_rider_invites", "rider_id=eq.profile-2"),
-            NativeRealtimeSubscription("laundry_rider_preferences", "rider_id=eq.profile-2")),
+            NativeRealtimeSubscription("orders", "rider_id=eq.profile-2")),
             riderRealtimeSubscriptions("user-1", "profile-2"))
         assertThrows(IllegalArgumentException::class.java) { NativeRealtimeSubscription("orders", "") }
     }

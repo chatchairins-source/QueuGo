@@ -99,7 +99,7 @@ fun RiderProfileScreen(
             RiderProfileToggleRow(
                 "สถานะรับงาน", "เปิดหรือปิดการรับงานจัดส่ง",
                 snapshot?.online == true,
-                !busy && snapshot?.activeJob == null && snapshot?.laundry?.activeJob == null
+                !busy && snapshot?.activeJob == null
             ) { enabled ->
                 busy = true
                 scope.launch {
@@ -110,59 +110,6 @@ fun RiderProfileScreen(
                         }
                         .onFailure { message = it.message ?: "เปลี่ยนสถานะไม่สำเร็จ" }
                     busy = false
-                }
-            }
-            RiderProfileToggleRow(
-                "รับงานฝากซัก", "งานรับ–ส่งผ้าจากร้านที่เข้าร่วม",
-                snapshot?.laundry?.modeEnabled == true, !busy
-            ) { enabled ->
-                busy = true
-                scope.launch {
-                    runCatching { api.setLaundryMode(auth, enabled) }
-                        .onSuccess {
-                            message = if (enabled) "เปิดรับงานฝากซักแล้ว" else "ปิดรับงานฝากซักแล้ว"
-                            runCatching { api.riderSnapshot(auth) }.getOrNull()?.let(onSnapshot)
-                        }
-                        .onFailure { message = it.message ?: "เปลี่ยนโหมดฝากซักไม่สำเร็จ" }
-                    busy = false
-                }
-            }
-        }
-
-        snapshot?.laundry?.invites.orEmpty().forEach { invite ->
-            Spacer(Modifier.height(10.dp))
-            Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(17.dp), colors = CardDefaults.cardColors(containerColor = Color.White)) {
-                Column(Modifier.padding(12.dp)) {
-                    Text("คำเชิญงานฝากซัก", color = QgRed, fontWeight = FontWeight.Bold)
-                    Text(invite.shopName, fontWeight = FontWeight.Black)
-                    Text(invite.hubName, color = QgMuted)
-                    Spacer(Modifier.height(8.dp))
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        OutlinedButton(
-                            onClick = {
-                                busy = true
-                                scope.launch {
-                                    runCatching { api.laundryInviteAction(auth, invite.inviteId, false) }
-                                        .onSuccess { refresh() }
-                                        .onFailure { message = it.message ?: "ตอบคำเชิญไม่สำเร็จ" }
-                                    busy = false
-                                }
-                            },
-                            enabled = !busy, modifier = Modifier.weight(1f)
-                        ) { Text("ปฏิเสธ") }
-                        Button(
-                            onClick = {
-                                busy = true
-                                scope.launch {
-                                    runCatching { api.laundryInviteAction(auth, invite.inviteId, true) }
-                                        .onSuccess { refresh() }
-                                        .onFailure { message = it.message ?: "ตอบคำเชิญไม่สำเร็จ" }
-                                    busy = false
-                                }
-                            },
-                            enabled = !busy, modifier = Modifier.weight(1f)
-                        ) { Text("ยอมรับ") }
-                    }
                 }
             }
         }

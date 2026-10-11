@@ -30,7 +30,6 @@ import com.queuego.shared.QgRedSoft
 import com.queuego.shared.QgRiderBg
 import androidx.compose.ui.graphics.Color
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Switch
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -356,6 +355,12 @@ private fun RiderHome(
     var loadError by remember { mutableStateOf<String?>(null) }
     var actionBusy by remember { mutableStateOf(false) }
     var actionMessage by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(actionMessage) {
+        if (actionMessage != null) {
+            delay(4_000)
+            actionMessage = null
+        }
+    }
     var chatJob by remember { mutableStateOf<RiderJob?>(null) }
     var verifyMode by remember { mutableStateOf<String?>(null) }
     var verifyJob by remember { mutableStateOf<RiderJob?>(null) }
@@ -815,7 +820,8 @@ private fun RiderHome(
                 "earn" -> RiderEarningsScreen(
                     auth = auth,
                     api = api,
-                    modifier = Modifier.fillMaxSize()
+                    history = recentHistory,
+                    modifier = Modifier.align(Alignment.TopCenter).widthIn(max = 748.dp).fillMaxSize()
                 )
                 "profile" -> RiderProfileScreen(
                     auth = auth,
@@ -824,7 +830,7 @@ private fun RiderHome(
                     api = api,
                     onSnapshot = { snapshot = it },
                     onLogout = onLogout,
-                    modifier = Modifier.fillMaxSize()
+                    modifier = Modifier.align(Alignment.TopCenter).widthIn(max = 748.dp).fillMaxSize()
                 )
             }
             RiderBottomNavigation(
@@ -844,10 +850,26 @@ private fun RiderHome(
         return
     }
 
+    fun changeOnline(enabled: Boolean) {
+        if (actionBusy || snapshot?.activeJob != null || snapshot == null) return
+        if (enabled && !ensureLocationPermission()) return
+        actionBusy = true
+        scope.launch {
+            val loc = lastKnownLocation(context)
+            runCatching { api.setOnline(auth, enabled, loc?.first, loc?.second) }
+                .onSuccess {
+                    actionMessage = if (enabled) "เปิดรับงานแล้ว" else "ปิดรับงานแล้ว"
+                    runCatching { api.riderSnapshot(auth) }.onSuccess { snapshot = it }
+                        .onFailure { actionMessage = it.message ?: "โหลดสถานะรับงานไม่สำเร็จ" }
+                }
+                .onFailure { actionMessage = it.message ?: "เปลี่ยนสถานะรับงานไม่สำเร็จ" }
+            actionBusy = false
+        }
+    }
+
     var recenterSignal by remember { mutableStateOf(0) }
     var mapReady by remember { mutableStateOf(false) }
     val mapJob = snapshot?.activeJob ?: snapshot?.offeredJob
-    val mapLaundryJob = if (snapshot?.activeJob == null) snapshot?.laundry?.activeJob else null
 
     BoxWithConstraints(
         modifier
@@ -857,7 +879,6 @@ private fun RiderHome(
         RiderLongdoMap(
             modifier = Modifier.fillMaxSize(),
             job = mapJob,
-            laundryJob = mapLaundryJob,
             marketPickups = snapshot?.marketPickups.orEmpty(),
             recenterSignal = recenterSignal,
             onMapReady = { mapReady = it }
@@ -866,13 +887,16 @@ private fun RiderHome(
         Column(
             Modifier
                 .align(Alignment.TopCenter)
+                .widthIn(max = 740.dp)
                 .fillMaxWidth()
                 .padding(horizontal = 10.dp, vertical = 7.dp)
         ) {
             RiderBlueprintTopBar(
                 name = auth.user.name,
                 active = auth.user.status == "active",
-                online = snapshot?.online == true
+                online = snapshot?.online == true,
+                enabled = !actionBusy && snapshot != null && snapshot?.activeJob == null,
+                onToggle = { changeOnline(snapshot?.online != true) }
             )
             if (actionMessage != null) {
                 Spacer(Modifier.height(7.dp))
@@ -924,11 +948,12 @@ private fun RiderHome(
         Column(
             Modifier
                 .align(Alignment.BottomCenter)
+                .padding(bottom = 68.dp)
+                .widthIn(max = 676.dp)
                 .fillMaxWidth()
-                .heightIn(max = maxHeight * 0.62f)
+                .heightIn(max = (maxHeight - 132.dp).coerceAtLeast(0.dp))
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 8.dp, vertical = 8.dp)
-                .padding(bottom = 66.dp)
+                .padding(horizontal = 8.dp)
         ) {
         if (auth.user.status != "active") {
             Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(21.dp), colors = CardDefaults.cardColors(containerColor = Color.White)) {
@@ -944,95 +969,47 @@ private fun RiderHome(
             } else if (loadError != null) {
                 Text(loadError!!, color = MaterialTheme.colorScheme.error)
             } else if (current != null) {
-                val marketVehicleReady = current.profile?.let {
-                    it.vehicleStatus == "active" && !it.vehicleVerifiedAt.isNullOrBlank()
-                } == true
-                Row(Modifier.fillMaxWidth(), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
-                    Text(
-                        when {
-                            !current.online -> "ออฟไลน์"
-                            marketVehicleReady -> "ออนไลน์ · พร้อมรับงาน"
-                            else -> "ออนไลน์ · พร้อมรับงานอาหาร"
-                        },
-                        fontWeight = FontWeight.Black,
-                        style = MaterialTheme.typography.titleMedium,
-                        modifier = Modifier.weight(1f)
-                    )
-                    QgStatusPill(if (current.online) "ONLINE" else "OFFLINE", current.online)
-                }
-                if (current.online && !marketVehicleReady) {
-                    Spacer(Modifier.height(4.dp))
-                    Text(
-                        "งานตลาด/ของชำรอตรวจสอบยานพาหนะ",
-                        color = QgMuted,
-                        style = MaterialTheme.typography.labelSmall
-                    )
-                }
-                Spacer(Modifier.height(8.dp))
-                if (current.activeJob == null && current.laundry.activeJob == null) {
-                    if (current.online) {
-                        OutlinedButton(
-                            onClick = {
-                                if (actionBusy) return@OutlinedButton
-                                actionBusy = true
-                                scope.launch {
-                                    val loc = lastKnownLocation(context)
-                                    runCatching { api.setOnline(auth, false, loc?.first, loc?.second) }
-                                        .onSuccess {
-                                            actionMessage = "ปิดรับงานแล้ว"
-                                            snapshot = runCatching { api.riderSnapshot(auth) }.getOrNull()
-                                        }
-                                        .onFailure { actionMessage = it.message ?: "ปิดรับงานไม่สำเร็จ" }
-                                    actionBusy = false
-                                }
-                            },
-                            enabled = !actionBusy,
-                            modifier = Modifier.fillMaxWidth()
-                        ) { Text("ปิดรับงาน") }
-                    } else {
-                        Button(
-                            onClick = {
-                                if (!ensureLocationPermission()) return@Button
-                                if (actionBusy) return@Button
-                                actionBusy = true
-                                scope.launch {
-                                    val loc = lastKnownLocation(context)
-                                    runCatching { api.setOnline(auth, true, loc?.first, loc?.second) }
-                                        .onSuccess {
-                                            actionMessage = "เปิดรับงานแล้ว"
-                                            snapshot = runCatching { api.riderSnapshot(auth) }.getOrNull()
-                                        }
-                                        .onFailure { actionMessage = it.message ?: "เปิดรับงานไม่สำเร็จ" }
-                                    actionBusy = false
-                                }
-                            },
-                            enabled = !actionBusy,
-                            modifier = Modifier.fillMaxWidth()
-                        ) { Text("เปิดรับงาน", fontWeight = FontWeight.Black) }
-                    }
-                    val summary = todaySummary
-                    if (summary != null) {
-                        Spacer(Modifier.height(10.dp))
-                        Card(
-                            Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(18.dp),
-                            colors = CardDefaults.cardColors(containerColor = Color.White)
-                        ) {
-                            Row(Modifier.fillMaxWidth().padding(14.dp)) {
-                                Column(Modifier.weight(1f)) {
-                                    Text("วันนี้", color = QgMuted, style = MaterialTheme.typography.labelSmall)
-                                    Text(summary.jobs.toString() + " งาน", fontWeight = FontWeight.Black)
-                                }
-                                Column(Modifier.weight(1f)) {
-                                    Text("รายได้", color = QgMuted, style = MaterialTheme.typography.labelSmall)
-                                    Text("฿" + "%.0f".format(summary.income), fontWeight = FontWeight.Black)
-                                }
-                                Column(Modifier.weight(1f)) {
-                                    Text("ออนไลน์", color = QgMuted, style = MaterialTheme.typography.labelSmall)
-                                    Text("%.1f ชม.".format(summary.onlineHours), fontWeight = FontWeight.Black)
+                if (current.activeJob == null && current.offeredJob == null) {
+                    Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(21.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFCFFFFFF)),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFEEE5E8))) {
+                    Column(Modifier.padding(12.dp)) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(9.dp)) {
+                            Box(Modifier.size(44.dp).background(QgRedSoft, RoundedCornerShape(14.dp)), contentAlignment = Alignment.Center) {
+                                QgIcon("home", Modifier.size(24.dp), QgRed)
+                            }
+                            Column {
+                                Text(if (current.online) "พร้อมรับงานแล้ว" else "คุณกำลังออฟไลน์", fontSize = 18.sp, lineHeight = 22.sp, fontWeight = FontWeight.Black)
+                                Text(if (current.online) {
+                                    if (lastKnownLocation(context) != null) "กำลังค้นหางานใกล้คุณ" else "กำลังรอตำแหน่ง GPS"
+                                } else "เปิดรับงานเพื่อเริ่มต้นจัดส่ง", color = QgMuted, fontSize = 10.sp)
+                            }
+                        }
+                        Spacer(Modifier.height(9.dp))
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            listOf("วันนี้" to (todaySummary?.jobs?.let { "$it งาน" } ?: "— งาน"),
+                                "รายได้" to (todaySummary?.income?.let { "฿%.0f".format(it) } ?: "฿—"),
+                                "ออนไลน์" to (todaySummary?.onlineHours?.let { "%.1f ชม.".format(it) } ?: "— ชม.")
+                            ).forEach { (label, value) ->
+                                Column(Modifier.weight(1f).background(Color(0xFFFAF6F7), RoundedCornerShape(15.dp)).padding(horizontal = 6.dp, vertical = 8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Text(label, fontSize = 8.sp, color = QgMuted)
+                                    Text(value, fontSize = 13.sp, fontWeight = FontWeight.Black)
                                 }
                             }
                         }
+                    if (current.online) {
+                        OutlinedButton(onClick = { changeOnline(false) }, enabled = !actionBusy,
+                            modifier = Modifier.fillMaxWidth().padding(top = 8.dp).heightIn(min = 46.dp),
+                            shape = RoundedCornerShape(15.dp)) { Text("ปิดรับงาน", fontSize = 12.sp, fontWeight = FontWeight.Black) }
+                    } else {
+                        Button(onClick = { changeOnline(true) }, enabled = !actionBusy,
+                            modifier = Modifier.fillMaxWidth().padding(top = 8.dp).heightIn(min = 46.dp),
+                            shape = RoundedCornerShape(15.dp)) { Text("เปิดรับงาน", fontSize = 12.sp, fontWeight = FontWeight.Black) }
+                    }
+                    Text("อยู่ใกล้ย่านร้านอาหาร ตลาด และร้านค้าที่เข้าร่วม จะช่วยให้ได้รับงานเร็วขึ้น",
+                        modifier = Modifier.fillMaxWidth().padding(top = 7.dp).background(Color(0xFFFFF4F6), RoundedCornerShape(14.dp)).padding(horizontal = 10.dp, vertical = 8.dp),
+                        color = Color(0xFF7B6870), fontSize = 9.sp, lineHeight = 13.sp)
+                    }
                     }
                 }
                 Spacer(Modifier.height(12.dp))
@@ -1160,44 +1137,6 @@ private fun RiderHome(
                             }
                         )
                     }
-                    current.laundry.activeJob != null -> {
-                        val laundryJob = current.laundry.activeJob
-                        ReturnControlCard(
-                            overlayAllowed = Settings.canDrawOverlays(context),
-                            onConfigure = { configureReturnControl() }
-                        )
-                        Spacer(Modifier.height(10.dp))
-                        RiderLaundryActiveCard(
-                            job = laundryJob,
-                            busy = actionBusy,
-                            onNavigate = { openLaundryNavigation(context, laundryJob) },
-                            onAction = { action ->
-                                if (actionBusy) return@RiderLaundryActiveCard
-                                actionBusy = true
-                                scope.launch {
-                                    runCatching { api.laundryAction(auth, laundryJob.jobId, action) }
-                                        .onSuccess {
-                                            actionMessage = when (action) {
-                                                "arrive" -> "ถึงจุดรับแล้ว"
-                                                "collect" -> "รับผ้าแล้ว · กำลังเปิดนำทางไปปลายทาง"
-                                                else -> "ส่งมอบงานฝากซักเรียบร้อย"
-                                            }
-                                            val updated = runCatching { api.riderSnapshot(auth) }.getOrNull()
-                                            if (updated != null) snapshot = updated
-                                            if (action == "collect") {
-                                                updated?.laundry?.activeJob?.let {
-                                                    openLaundryNavigation(context, it)
-                                                }
-                                            }
-                                        }
-                                        .onFailure {
-                                            actionMessage = it.message ?: "อัปเดตงานฝากซักไม่สำเร็จ"
-                                        }
-                                    actionBusy = false
-                                }
-                            }
-                        )
-                    }
                     current.offeredJob != null -> {
                         OfferCard(
                             job = current.offeredJob,
@@ -1240,95 +1179,13 @@ private fun RiderHome(
                             }
                         )
                     }
-                    else -> {
-                        Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(21.dp), colors = CardDefaults.cardColors(containerColor = Color.White)) {
-                            Column(Modifier.padding(18.dp)) {
-                                Text("พร้อมรับงาน", color = QgRed, fontWeight = FontWeight.Black, style = MaterialTheme.typography.titleLarge)
-                                Spacer(Modifier.height(5.dp))
-                                Text("ระบบกำลังหางานและจัดให้คุณอัตโนมัติ", fontWeight = FontWeight.Bold)
-                                Text("เมื่อ Server เลือกคุณ งานจะขึ้นเฉพาะเครื่องนี้ 30 วินาที ไม่มีการแย่งงานกับ Rider คนอื่น", color = QgMuted, style = MaterialTheme.typography.bodySmall)
-                            }
-                        }
-                    }
+                    else -> Unit
                 }
 
-                if (
-                    current.activeJob == null &&
-                    current.laundry.activeJob == null &&
-                    current.laundry.pool.isNotEmpty()
-                ) {
-                    Spacer(Modifier.height(10.dp))
-                    RiderLaundryPoolCard(
-                        jobs = current.laundry.pool,
-                        busy = actionBusy,
-                        onClaim = { job ->
-                            if (actionBusy) return@RiderLaundryPoolCard
-                            actionBusy = true
-                            scope.launch {
-                                runCatching { api.claimLaundryJob(auth, job.jobId) }
-                                    .onSuccess {
-                                        actionMessage = "รับงานฝากซักแล้ว · กำลังเปิดนำทาง"
-                                        val updated = runCatching { api.riderSnapshot(auth) }.getOrNull()
-                                        if (updated != null) snapshot = updated
-                                        updated?.laundry?.activeJob?.let {
-                                            openLaundryNavigation(context, it)
-                                        }
-                                    }
-                                    .onFailure {
-                                        actionMessage = it.message ?: "รับงานฝากซักไม่สำเร็จ"
-                                    }
-                                actionBusy = false
-                            }
-                        }
-                    )
-                }
 
-                Spacer(Modifier.height(10.dp))
-                RiderLaundryModeCard(
-                    enabled = current.laundry.modeEnabled,
-                    invites = current.laundry.invites,
-                    busy = actionBusy,
-                    onToggle = { enabled ->
-                        if (actionBusy) return@RiderLaundryModeCard
-                        actionBusy = true
-                        scope.launch {
-                            runCatching { api.setLaundryMode(auth, enabled) }
-                                .onSuccess {
-                                    actionMessage = if (enabled) "เปิดรับงานฝากซักแล้ว" else "ปิดรับงานฝากซักแล้ว"
-                                    snapshot = runCatching { api.riderSnapshot(auth) }.getOrNull()
-                                }
-                                .onFailure {
-                                    actionMessage = it.message ?: "เปลี่ยนโหมดฝากซักไม่สำเร็จ"
-                                }
-                            actionBusy = false
-                        }
-                    },
-                    onInvite = { invite, accept ->
-                        if (actionBusy) return@RiderLaundryModeCard
-                        actionBusy = true
-                        scope.launch {
-                            runCatching { api.laundryInviteAction(auth, invite.inviteId, accept) }
-                                .onSuccess {
-                                    actionMessage = if (accept) {
-                                        "ยอมรับเป็น Rider รับ-ส่งผ้าของร้านแล้ว"
-                                    } else {
-                                        "ปฏิเสธคำเชิญแล้ว"
-                                    }
-                                    snapshot = runCatching { api.riderSnapshot(auth) }.getOrNull()
-                                }
-                                .onFailure {
-                                    actionMessage = it.message ?: "ตอบคำเชิญไม่สำเร็จ"
-                                }
-                            actionBusy = false
-                        }
-                    }
-                )
             }
         }
 
-        Spacer(Modifier.height(14.dp))
-        RiderRecentHistoryCard(recentHistory)
-        Spacer(Modifier.height(18.dp))
         }
 
         RiderBottomNavigation(
@@ -1372,6 +1229,7 @@ private fun RiderBottomNavigation(
 ) {
     Card(
         modifier
+            .widthIn(max = 736.dp)
             .fillMaxWidth()
             .padding(horizontal = 8.dp, vertical = 6.dp)
             .height(58.dp),
@@ -1433,242 +1291,6 @@ private fun RiderBottomNavigation(
                         fontSize = 8.sp,
                         lineHeight = 10.sp
                     )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun RiderLaundryActiveCard(
-    job: RiderLaundryJob,
-    busy: Boolean,
-    onNavigate: () -> Unit,
-    onAction: (String) -> Unit
-) {
-    val action = when (job.jobStatus) {
-        "assigned" -> "arrive"
-        "arrived" -> "collect"
-        "collected" -> "deliver"
-        else -> null
-    }
-    val actionLabel = when (action) {
-        "arrive" -> "ถึงจุดรับแล้ว"
-        "collect" -> "รับผ้าแล้ว"
-        "deliver" -> "ส่งถึงปลายทางแล้ว"
-        else -> "กำลังอัปเดต"
-    }
-    val currentAddress = if (job.isCollected) job.toAddress else job.fromAddress
-
-    Card(
-        Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(21.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFEEE5E8)),
-        elevation = CardDefaults.cardElevation(defaultElevation = 5.dp)
-    ) {
-        Column(Modifier.padding(14.dp)) {
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
-                Column(Modifier.weight(1f)) {
-                    Text(
-                        "งานฝากซัก",
-                        color = QgRed,
-                        fontWeight = FontWeight.ExtraBold,
-                        style = MaterialTheme.typography.labelMedium
-                    )
-                    Text(job.numberLabel, fontWeight = FontWeight.Black, style = MaterialTheme.typography.headlineSmall)
-                    Text(
-                        job.shopName ?: job.hubName ?: "ร้านซัก",
-                        color = QgMuted,
-                        style = MaterialTheme.typography.bodySmall
-                    )
-                }
-                Box(
-                    Modifier
-                        .clip(RoundedCornerShape(13.dp))
-                        .background(QgRedSoft)
-                        .padding(horizontal = 9.dp, vertical = 6.dp)
-                ) {
-                    Text("฿" + "%.0f".format(job.jobFee), color = QgRed, fontWeight = FontWeight.Black)
-                }
-            }
-
-            Spacer(Modifier.height(9.dp))
-            Text(job.routeLabel, fontWeight = FontWeight.Bold)
-            Text(
-                currentAddress ?: "พิกัดปลายทางยังไม่พร้อม",
-                color = QgMuted,
-                style = MaterialTheme.typography.bodySmall
-            )
-
-            Spacer(Modifier.height(9.dp))
-            Card(
-                Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(14.dp),
-                colors = CardDefaults.cardColors(containerColor = Color(0xFFFAF6F7))
-            ) {
-                Column(Modifier.padding(10.dp)) {
-                    Text("เส้นทางงาน", color = QgMuted, style = MaterialTheme.typography.labelSmall)
-                    Text(
-                        (job.fromAddress ?: "-") + " → " + (job.toAddress ?: "-"),
-                        fontWeight = FontWeight.Bold,
-                        style = MaterialTheme.typography.bodySmall
-                    )
-                    job.serviceName?.let {
-                        Spacer(Modifier.height(3.dp))
-                        Text(it, color = QgMuted, style = MaterialTheme.typography.labelSmall)
-                    }
-                }
-            }
-
-            Spacer(Modifier.height(9.dp))
-            Row(
-                Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                OutlinedButton(
-                    onClick = onNavigate,
-                    enabled = !busy && job.navigationTarget != null,
-                    modifier = Modifier.weight(1f).height(50.dp),
-                    shape = RoundedCornerShape(18.dp)
-                ) {
-                    QgIcon("location", Modifier.size(18.dp), QgRed)
-                    Spacer(Modifier.width(6.dp))
-                    Text("นำทาง", fontWeight = FontWeight.Bold)
-                }
-                Button(
-                    onClick = { action?.let(onAction) },
-                    enabled = !busy && action != null,
-                    modifier = Modifier.weight(1.25f).height(50.dp),
-                    shape = RoundedCornerShape(18.dp)
-                ) {
-                    Text(actionLabel, fontWeight = FontWeight.Black)
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun RiderLaundryPoolCard(
-    jobs: List<RiderLaundryJob>,
-    busy: Boolean,
-    onClaim: (RiderLaundryJob) -> Unit
-) {
-    Card(
-        Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(21.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFEEE5E8))
-    ) {
-        Column(Modifier.padding(14.dp)) {
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) {
-                    Text("งานฝากซักที่รับได้", fontWeight = FontWeight.Black)
-                    Text(
-                        "เฉพาะร้านที่คุณยอมรับเป็น Rider แล้ว",
-                        color = QgMuted,
-                        style = MaterialTheme.typography.labelSmall
-                    )
-                }
-                QgStatusPill(jobs.size.toString() + " งาน", true)
-            }
-
-            jobs.take(5).forEachIndexed { index, job ->
-                if (index > 0) {
-                    Spacer(Modifier.height(10.dp))
-                    androidx.compose.material3.HorizontalDivider(color = QgLine)
-                    Spacer(Modifier.height(10.dp))
-                }
-                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    Column(Modifier.weight(1f)) {
-                        Text(
-                            (if (job.leg == "pickup") "รับผ้าจากลูกค้า" else "ส่งผ้าคืนลูกค้า") +
-                                " · " + job.numberLabel,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Text(
-                            (job.shopName ?: job.hubName ?: "ร้านซัก") +
-                                " · " + (job.serviceName ?: "บริการฝากซัก"),
-                            color = QgMuted,
-                            style = MaterialTheme.typography.labelSmall
-                        )
-                        Text(
-                            (job.fromAddress ?: "-") + " → " + (job.toAddress ?: "-"),
-                            color = QgMuted,
-                            style = MaterialTheme.typography.labelSmall,
-                            maxLines = 2
-                        )
-                    }
-                    Spacer(Modifier.width(8.dp))
-                    Column(horizontalAlignment = Alignment.End) {
-                        Text("฿" + "%.0f".format(job.jobFee), color = QgRed, fontWeight = FontWeight.Black)
-                        Button(
-                            onClick = { onClaim(job) },
-                            enabled = !busy,
-                            shape = RoundedCornerShape(14.dp)
-                        ) {
-                            Text("รับงาน", fontWeight = FontWeight.Bold)
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun RiderLaundryModeCard(
-    enabled: Boolean,
-    invites: List<RiderLaundryInvite>,
-    busy: Boolean,
-    onToggle: (Boolean) -> Unit,
-    onInvite: (RiderLaundryInvite, Boolean) -> Unit
-) {
-    Card(
-        Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(21.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFEEE5E8))
-    ) {
-        Column(Modifier.padding(14.dp)) {
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) {
-                    Text("โหมดงานฝากซัก", fontWeight = FontWeight.Black)
-                    Text(
-                        if (enabled) "พร้อมรับงานรับ-ส่งผ้าจากร้านที่เชื่อมไว้" else "ปิดรับงานฝากซักอยู่",
-                        color = QgMuted,
-                        style = MaterialTheme.typography.labelSmall
-                    )
-                }
-                Switch(
-                    checked = enabled,
-                    onCheckedChange = { onToggle(it) },
-                    enabled = !busy
-                )
-            }
-
-            invites.forEach { invite ->
-                Spacer(Modifier.height(10.dp))
-                androidx.compose.material3.HorizontalDivider(color = QgLine)
-                Spacer(Modifier.height(10.dp))
-                Text("คำเชิญงานฝากซัก", color = QgRed, fontWeight = FontWeight.Bold)
-                Text(invite.shopName.ifBlank { invite.hubName }, fontWeight = FontWeight.Bold)
-                Text(invite.hubName, color = QgMuted, style = MaterialTheme.typography.labelSmall)
-                Spacer(Modifier.height(7.dp))
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedButton(
-                        onClick = { onInvite(invite, false) },
-                        enabled = !busy,
-                        modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(14.dp)
-                    ) { Text("ปฏิเสธ") }
-                    Button(
-                        onClick = { onInvite(invite, true) },
-                        enabled = !busy,
-                        modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(14.dp)
-                    ) { Text("ยอมรับ", fontWeight = FontWeight.Bold) }
                 }
             }
         }
@@ -1994,14 +1616,14 @@ private fun ActiveJobCard(
 }
 
 @Composable
-private fun RiderBlueprintTopBar(name: String, active: Boolean, online: Boolean) {
+private fun RiderBlueprintTopBar(name: String, active: Boolean, online: Boolean, enabled: Boolean, onToggle: () -> Unit) {
     Row(
         Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
         Card(
-            Modifier.weight(1f),
+            Modifier.widthIn(max = 250.dp).weight(1f, fill = false),
             shape = RoundedCornerShape(18.dp),
             colors = CardDefaults.cardColors(containerColor = Color(0xFAFFFFFF)),
             border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFEEE7E9))
@@ -2018,8 +1640,8 @@ private fun RiderBlueprintTopBar(name: String, active: Boolean, online: Boolean)
                 }
                 Spacer(Modifier.width(7.dp))
                 Column {
-                    QueueGoBrand()
-                    Text(name, color = QgMuted, style = MaterialTheme.typography.labelSmall, maxLines = 1)
+                    Text("QueueGo", fontSize = 15.sp, fontWeight = FontWeight.Black)
+                    Text(name, color = QgMuted, fontSize = 9.sp, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
                 }
             }
         }
@@ -2029,7 +1651,7 @@ private fun RiderBlueprintTopBar(name: String, active: Boolean, online: Boolean)
             border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFEEE7E9))
         ) {
             Row(
-                Modifier.padding(horizontal = 10.dp, vertical = 9.dp),
+                Modifier.heightIn(min = 44.dp).padding(start = 10.dp, end = 5.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Box(
@@ -2043,8 +1665,15 @@ private fun RiderBlueprintTopBar(name: String, active: Boolean, online: Boolean)
                     if (online && active) "ออนไลน์" else "ออฟไลน์",
                     color = Color(0xFF756E72),
                     fontWeight = FontWeight.Black,
-                    style = MaterialTheme.typography.labelSmall
+                    fontSize = 10.sp
                 )
+                Spacer(Modifier.width(6.dp))
+                Box(Modifier.size(width = 43.dp, height = 29.dp).clip(RoundedCornerShape(99.dp))
+                    .background(if (online) Color(0xFF1FBE70) else Color(0xFFD9D5D7))
+                    .clickable(enabled = enabled, role = androidx.compose.ui.semantics.Role.Switch, onClick = onToggle),
+                    contentAlignment = if (online) Alignment.CenterEnd else Alignment.CenterStart) {
+                    Box(Modifier.padding(horizontal = 3.dp).size(23.dp).background(Color.White, androidx.compose.foundation.shape.CircleShape))
+                }
             }
         }
     }
@@ -2343,25 +1972,6 @@ private fun createEvidenceUri(context: Context): Uri {
         context.packageName + ".fileprovider",
         file
     )
-}
-
-private fun openLaundryNavigation(context: Context, job: RiderLaundryJob) {
-    val target = job.navigationTarget ?: return
-    RiderReturnService.start(context)
-    val navigation = Uri.parse(
-        "google.navigation:q=" + target.first + "," + target.second + "&mode=d"
-    )
-    val mapsIntent = Intent(Intent.ACTION_VIEW, navigation).apply {
-        setPackage("com.google.android.apps.maps")
-    }
-    val opened = runCatching { context.startActivity(mapsIntent) }.isSuccess
-    if (!opened) {
-        val web = Uri.parse(
-            "https://www.google.com/maps/dir/?api=1&destination=" +
-                target.first + "," + target.second
-        )
-        runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, web)) }
-    }
 }
 
 private fun openNavigation(context: Context, job: RiderJob) {
