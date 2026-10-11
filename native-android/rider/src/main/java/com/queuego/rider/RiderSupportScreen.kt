@@ -16,6 +16,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.queuego.shared.NativeEvidenceStorage
 import com.queuego.shared.QgMuted
 import com.queuego.shared.QgRed
 import com.queuego.shared.QueueGoNativeApi
@@ -71,70 +72,21 @@ private class RiderSupportApi(private val http: QueueGoNativeApi = QueueGoNative
         context: Context,
         auth: QueueGoAuth,
         uri: Uri
-    ): String = withContext(Dispatchers.IO) {
-        val resolver = context.contentResolver
-        val type = resolver.getType(uri).orEmpty()
-        require(type in setOf("image/jpeg", "image/png", "image/webp")) {
-            "หลักฐานต้องเป็น JPG, PNG หรือ WebP"
-        }
-        val bytes = resolver.openInputStream(uri)?.use { it.readBytes() } ?: error("อ่านรูปหลักฐานไม่สำเร็จ")
-        require(bytes.size <= 5 * 1024 * 1024) { "รูปหลักฐานต้องไม่เกิน 5 MB" }
-        val ext = when (type) {
-            "image/png" -> "png"
-            "image/webp" -> "webp"
-            else -> "jpg"
-        }
-        val objectPath = auth.session.authUserId + "/" + UUID.randomUUID() + "." + ext
-        val url = URL(
-            QueueGoNativeApi.BASE_URL + "/storage/v1/object/qg-evidence/" +
-                objectPath
-        )
-        val connection = url.openConnection() as HttpURLConnection
-        try {
-            connection.requestMethod = "POST"
-            connection.connectTimeout = 15000
-            connection.readTimeout = 15000
-            connection.doOutput = true
-            connection.setRequestProperty("apikey", QueueGoNativeApi.PUBLISHABLE_KEY)
-            connection.setRequestProperty("Authorization", "Bearer " + auth.session.accessToken)
-            connection.setRequestProperty("Content-Type", type)
-            connection.setRequestProperty("x-upsert", "false")
-            connection.outputStream.use { it.write(bytes) }
-            if (connection.responseCode !in 200..299) error("อัปโหลดหลักฐานไม่สำเร็จ")
-        } finally {
-            connection.disconnect()
-        }
-        objectPath
-    }
+    ): String = NativeEvidenceStorage.uploadImage(
+        context = context,
+        accessToken = auth.session.accessToken,
+        ownerPrefix = auth.session.authUserId,
+        uri = uri
+    )
 
-    suspend fun signedEvidenceUrl(auth: QueueGoAuth, path: String): String = withContext(Dispatchers.IO) {
-        require(path.isNotBlank()) { "ไม่พบรูปหลักฐาน" }
-        val url = URL(
-            QueueGoNativeApi.BASE_URL + "/storage/v1/object/sign/qg-evidence/" + path
-        )
-        val connection = url.openConnection() as HttpURLConnection
-        try {
-            connection.requestMethod = "POST"
-            connection.connectTimeout = 15000
-            connection.readTimeout = 15000
-            connection.doOutput = true
-            connection.setRequestProperty("apikey", QueueGoNativeApi.PUBLISHABLE_KEY)
-            connection.setRequestProperty("Authorization", "Bearer " + auth.session.accessToken)
-            connection.setRequestProperty("Content-Type", "application/json")
-            connection.outputStream.use {
-                it.write(JSONObject().put("expiresIn", 300).toString().toByteArray(Charsets.UTF_8))
-            }
-            if (connection.responseCode !in 200..299) error("เปิดหลักฐานไม่สำเร็จ")
-            val body = connection.inputStream.bufferedReader().use { it.readText() }
-            val signed = JSONObject(body).optString("signedURL")
-                .ifBlank { JSONObject(body).optString("signedUrl") }
-            require(signed.isNotBlank()) { "เปิดหลักฐานไม่สำเร็จ" }
-            if (signed.startsWith("http")) signed
-            else QueueGoNativeApi.BASE_URL + "/storage/v1" + signed
-        } finally {
-            connection.disconnect()
-        }
-    }
+    suspend fun signedEvidenceUrl(
+        auth: QueueGoAuth,
+        path: String
+    ): String = NativeEvidenceStorage.signedImageUrl(
+        accessToken = auth.session.accessToken,
+        path = path,
+        expiresInSeconds = 300
+    )
 
     suspend fun create(
         auth: QueueGoAuth,
