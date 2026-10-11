@@ -223,60 +223,63 @@ internal fun CustomerFavoritesScreen(
             )
 
             else -> rows.forEach { row ->
-                Row(
+                Column(
                     Modifier
                         .fillMaxWidth()
                         .padding(bottom = 10.dp)
                         .background(Color.White, RoundedCornerShape(16.dp))
                         .border(1.dp, Color(0xFFECEEF1), RoundedCornerShape(16.dp))
-                        .padding(horizontal = 13.dp, vertical = 12.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                        .padding(horizontal = 13.dp, vertical = 12.dp)
                 ) {
-                    Text(
-                        row.title,
-                        color = if (row.targetShopId == null) QgMuted else QgRed,
-                        fontWeight = FontWeight.ExtraBold,
-                        fontSize = 13.sp,
-                        modifier = Modifier
-                            .weight(1f)
-                            .clickable(enabled = row.targetShopId != null) {
-                                row.targetShopId?.let(onOpenShop)
-                            }
-                            .padding(vertical = 6.dp)
-                    )
-                    Text(
-                        "♥",
-                        color = QgRed,
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.Black,
-                        modifier = Modifier
-                            .clickable(enabled = busyId != row.favoriteId) {
-                                busyId = row.favoriteId
-                                error = null
-                                scope.launch {
-                                    runCatching { api.remove(auth, row.favoriteId) }
-                                        .onSuccess {
-                                            rows = rows.filterNot {
-                                                it.favoriteId == row.favoriteId
-                                            }
-                                        }
-                                        .onFailure {
-                                            error = it.message
-                                                ?: "บันทึกรายการโปรดไม่สำเร็จ"
-                                        }
-                                    busyId = null
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            row.title,
+                            color = if (row.targetShopId == null) QgMuted else QgRed,
+                            fontWeight = FontWeight.ExtraBold,
+                            fontSize = 13.sp,
+                            modifier = Modifier
+                                .weight(1f)
+                                .clickable(enabled = row.targetShopId != null) {
+                                    row.targetShopId?.let(onOpenShop)
                                 }
-                            }
-                            .padding(8.dp)
-                    )
-                }
-                row.price?.let { price ->
-                    Text(
-                        "฿" + "%.0f".format(price),
-                        fontWeight = FontWeight.ExtraBold,
-                        color = Color(0xFF17191D),
-                        modifier = Modifier.padding(start = 13.dp, top = (-7).dp, bottom = 10.dp)
-                    )
+                                .padding(vertical = 6.dp)
+                        )
+                        Text(
+                            "♥",
+                            color = QgRed,
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.Black,
+                            modifier = Modifier
+                                .clickable(enabled = busyId != row.favoriteId) {
+                                    busyId = row.favoriteId
+                                    error = null
+                                    scope.launch {
+                                        runCatching { api.remove(auth, row.favoriteId) }
+                                            .onSuccess {
+                                                rows = rows.filterNot {
+                                                    it.favoriteId == row.favoriteId
+                                                }
+                                            }
+                                            .onFailure {
+                                                error = it.message
+                                                    ?: "บันทึกรายการโปรดไม่สำเร็จ"
+                                            }
+                                        busyId = null
+                                    }
+                                }
+                                .padding(8.dp)
+                        )
+                    }
+                    row.price?.let { price ->
+                        Text(
+                            "฿" + "%.0f".format(price),
+                            fontWeight = FontWeight.ExtraBold,
+                            color = Color(0xFF17191D)
+                        )
+                    }
                 }
             }
         }
