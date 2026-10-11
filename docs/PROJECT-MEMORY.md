@@ -1,3 +1,7 @@
+## 2026-10-11 Rider Home Q/QueueGo bar removal
+- Owner explicitly requested removing the Q/QueueGo bar from Rider, including the Web blueprint. Remove the Home brand pill DOM/Compose card directly in both surfaces; keep compact availability and recenter controls. This supersedes the earlier requirement to copy that brand pill.
+- Rider UI/function parity remains a primary active mission alongside the shop-delivery staff account/per-km/multi-stop requirements. Do not claim all parity is complete from Home-source changes alone.
+
 ## 2026-10-11 shop-issued delivery staff IDs, per-km fees and multi-stop runs
 - Owner now requires shop-issued staff IDs that authenticate in the existing Rider app. This supersedes the earlier first-version plan of names only/no staff account. Merchant creates/manages/revokes its own delivery employees; staff mode is distinct from ordinary platform Rider mode and sees only its own shop-assigned pickup/dropoff/navigation.
 - Staff mode has no earnings tab, income/GP/fare/cash summaries, platform job offers, shared Laundry pool or general Rider availability toggle. Ordinary Rider mode keeps its existing delivery work and income features; never remove those for all Riders.
