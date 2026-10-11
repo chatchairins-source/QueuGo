@@ -167,24 +167,38 @@ internal fun MerchantMediaScreen(
                     .background(Color(0xFFFFEDF0), RoundedCornerShape(15.dp)),
                 contentAlignment = Alignment.Center
             ) {
-                QgIcon("gallery", Modifier.size(24.dp), QgRed)
+                QgIcon("gallery", Modifier.size(22.dp), QgRed)
             }
             Spacer(Modifier.width(10.dp))
             Column {
                 Text("คลังรูปภาพร้าน", fontSize = 18.sp, fontWeight = FontWeight.ExtraBold)
-                Text("รูปหน้าร้าน โลโก้ และรูปสินค้า", color = QgMuted, fontSize = 10.sp)
+                Text("รูปหน้าร้าน โลโก้ และรูปสินค้า", color = QgMuted, fontSize = 12.sp)
             }
         }
 
-        Button(
+        OutlinedButton(
             onClick = { picker.launch("image/*") },
             enabled = !uploading,
-            modifier = Modifier.fillMaxWidth().height(46.dp)
+            modifier = Modifier.fillMaxWidth().heightIn(min = 46.dp),
+            shape = RoundedCornerShape(12.dp),
+            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE7092B)),
+            colors = androidx.compose.material3.ButtonDefaults.outlinedButtonColors(
+                containerColor = Color.White,
+                contentColor = Color(0xFFD5092B)
+            ),
+            contentPadding = PaddingValues(horizontal = 15.dp, vertical = 10.dp)
         ) {
-            QgIcon("gallery", Modifier.size(19.dp), Color.White)
-            Spacer(Modifier.width(7.dp))
-            if (uploading) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
-            else Text("เพิ่มรูปจากเครื่อง", fontWeight = FontWeight.ExtraBold)
+            QgIcon("gallery", Modifier.size(22.dp), Color(0xFFD5092B))
+            Spacer(Modifier.width(8.dp))
+            if (uploading) {
+                CircularProgressIndicator(
+                    Modifier.size(20.dp),
+                    strokeWidth = 2.dp,
+                    color = Color(0xFFD5092B)
+                )
+            } else {
+                Text("เพิ่มรูปจากเครื่อง", fontWeight = FontWeight.ExtraBold)
+            }
         }
 
         if (!message.isNullOrBlank()) {
@@ -206,12 +220,10 @@ internal fun MerchantMediaScreen(
             rows.isEmpty() -> Box(
                 Modifier
                     .fillMaxWidth()
-                    .background(Color.White, RoundedCornerShape(16.dp))
-                    .border(1.dp, QgLine, RoundedCornerShape(16.dp))
-                    .padding(vertical = 34.dp),
+                    .padding(vertical = 36.dp),
                 contentAlignment = Alignment.Center
             ) {
-                Text("ยังไม่มีรูปในคลัง", color = QgMuted)
+                Text("ยังไม่มีรูปในคลัง", color = QgMuted, fontSize = 11.sp)
             }
 
             else -> rows.chunked(3).forEach { row ->
