@@ -28,10 +28,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusDirection
-import androidx.compose.ui.focus.onFocusChanged
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
@@ -145,97 +142,31 @@ fun CustomerAuthenticationScreen(
         }
     }
 
-    Column(
-        Modifier
-            .fillMaxSize()
-            .background(
-                if (registering) Brush.verticalGradient(listOf(QgBg, QgBg))
-                else Brush.verticalGradient(
-                    listOf(
-                        Color.White,
-                        Color(0xFFFFF8F9),
-                        Color(0xFFFCECEF)
-                    )
-                )
-            )
-            .imePadding()
-    ) {
-        Row(
-            Modifier.fillMaxWidth().background(Color.White)
-                .padding(horizontal = 16.dp, vertical = 11.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("Queue", fontSize = 22.sp, fontWeight = FontWeight.ExtraBold, color = QgInk)
-                Text("Go", fontSize = 22.sp, fontWeight = FontWeight.ExtraBold, color = QgRed)
-            }
-            Text(
-                "เข้าสู่ระบบ",
-                color = QgRed,
-                fontSize = 14.sp,
-                fontWeight = FontWeight.ExtraBold,
-                modifier = Modifier.clickable(enabled = !busy) {
-                    registering = false
-                    localError = null
-                    entry.clearError()
-                }
-            )
+    Column(Modifier.fillMaxSize().background(QgBg).imePadding()) {
+        Row(Modifier.fillMaxWidth().background(Color.White).padding(horizontal = 12.dp, vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
+            Row { Text("Queue", fontSize = 18.sp, fontWeight = FontWeight.ExtraBold, color = QgInk)
+                Text("Go", fontSize = 18.sp, fontWeight = FontWeight.ExtraBold, color = QgRed) }
+            Text("เข้าสู่ระบบ", color = QgRed, fontSize = 13.sp, fontWeight = FontWeight.Bold,
+                modifier = Modifier.clickable(enabled = !busy) { registering = false; localError = null; entry.clearError() })
         }
         HorizontalDivider(color = Color(0x0D000000))
         BoxWithConstraints(Modifier.fillMaxWidth().weight(1f)) {
-            val side = if (maxWidth <= 420.dp) 16.dp else 20.dp
-            val cardMaxWidth = if (registering) 720.dp else 430.dp
-            val cardRadius = if (registering) 20.dp else 28.dp
-            val cardPadding = if (registering) 16.dp else 24.dp
-            Column(
-                Modifier
-                    .widthIn(max = cardMaxWidth)
-                    .fillMaxWidth()
-                    .align(if (registering) Alignment.TopCenter else Alignment.Center)
-                    .verticalScroll(rememberScrollState())
-                    .padding(horizontal = side, vertical = if (registering) 12.dp else 8.dp)
-            ) {
-                Column(
-                    Modifier
-                        .fillMaxWidth()
-                        .border(1.dp, QgLine, RoundedCornerShape(cardRadius))
-                        .background(Color.White, RoundedCornerShape(cardRadius))
-                        .padding(cardPadding)
-                ) {
-                    Text(
-                        if (registering) "สมัครสมาชิก" else "เข้าสู่ระบบ",
-                        fontSize = if (registering) 26.sp else 29.sp,
-                        fontWeight = FontWeight.Black,
-                        color = QgInk
-                    )
+            val side = if (maxWidth <= 420.dp) 10.dp else 12.dp
+            Column(Modifier.widthIn(max = 720.dp).fillMaxWidth().align(Alignment.TopCenter)
+                .verticalScroll(rememberScrollState()).padding(horizontal = side, vertical = 12.dp)) {
+                Column(Modifier.fillMaxWidth().border(1.dp, QgLine, RoundedCornerShape(16.dp))
+                    .background(Color.White, RoundedCornerShape(16.dp)).padding(13.dp)) {
+                    Text(if (registering) "สมัครสมาชิก" else "เข้าสู่ระบบ", fontSize = 24.sp,
+                        fontWeight = FontWeight.Bold, color = QgInk)
                     if (!registering) {
-                        Spacer(Modifier.height(5.dp))
-                        Text(
-                            "ใช้เบอร์โทรศัพท์หรืออีเมลที่สมัครไว้",
-                            fontSize = 12.sp,
-                            color = QgMuted
-                        )
-                        Spacer(Modifier.height(20.dp))
-                        CustomerLoginField(
-                            label = "เบอร์โทรศัพท์ / อีเมล",
-                            placeholder = "0812345678",
-                            value = identifier,
-                            change = { identifier = it },
-                            busy = busy,
-                            type = KeyboardType.Phone
-                        )
-                        Spacer(Modifier.height(13.dp))
-                        CustomerLoginField(
-                            label = "รหัสผ่าน",
-                            placeholder = "รหัสผ่าน",
-                            value = password,
-                            change = { password = it },
-                            busy = busy,
-                            password = true,
-                            done = ::submitLogin
-                        )
-                        Spacer(Modifier.height(13.dp))
+                        Spacer(Modifier.height(4.dp))
+                        Text("ยินดีต้อนรับสู่ QueueGo", fontSize = 10.5.sp, color = QgMuted)
+                        Spacer(Modifier.height(16.dp))
+                        CustomerAuthInput(identifier, { identifier = it }, "เบอร์โทรหรืออีเมล", busy,
+                            type = KeyboardType.Phone)
+                        CustomerAuthInput(password, { password = it }, "รหัสผ่าน", busy,
+                            password = true, done = ::submitLogin)
                     } else {
                         Spacer(Modifier.height(16.dp))
                         CustomerAuthInput(name, { name = it }, "ชื่อ-นามสกุล", busy)
@@ -268,137 +199,25 @@ fun CustomerAuthenticationScreen(
                         Spacer(Modifier.height(10.dp))
                     }
                     Button(onClick = { if (registering) submitRegistration() else submitLogin() }, enabled = !busy,
-                        modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp), shape = RoundedCornerShape(17.dp),
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp), shape = RoundedCornerShape(15.dp),
                         contentPadding = PaddingValues(horizontal = 12.dp, vertical = 10.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = red)) {
                         if (busy) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp, color = Color.White)
                         else Text(if (registering) "สมัครและเข้าสู่ระบบ" else "เข้าสู่ระบบ", fontWeight = FontWeight.ExtraBold)
                     }
-                    if (!registering) {
-                        Spacer(Modifier.height(10.dp))
-                        OutlinedButton(
-                            onClick = {
-                                registering = true
-                                localError = null
-                                entry.clearError()
-                                password = ""
-                                confirmation = ""
-                            },
-                            enabled = !busy,
-                            modifier = Modifier.fillMaxWidth().height(52.dp),
-                            shape = RoundedCornerShape(17.dp),
-                            border = BorderStroke(1.dp, Color(0xFFF3C7D1)),
-                            colors = ButtonDefaults.outlinedButtonColors(
-                                containerColor = Color.White,
-                                contentColor = QgRed
-                            )
-                        ) {
-                            Text(
-                                "สมัครสมาชิก",
-                                color = QgRed,
-                                fontSize = 15.sp,
-                                fontWeight = FontWeight.Black
-                            )
-                        }
-                        Spacer(Modifier.height(14.dp))
-                        Text(
-                            "QueueGo Customer",
-                            color = Color(0xFFA29BA0),
-                            fontSize = 9.sp,
-                            modifier = Modifier.align(Alignment.CenterHorizontally)
-                        )
-                    } else {
-                        Row(
-                            Modifier.fillMaxWidth().padding(top = 16.dp),
-                            horizontalArrangement = Arrangement.Center
-                        ) {
-                            Text(
-                                "มีบัญชีแล้ว",
-                                color = QgRed,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 16.sp,
-                                modifier = Modifier.clickable(enabled = !busy) {
-                                    registering = false
-                                    localError = null
-                                    entry.clearError()
-                                    password = ""
-                                    confirmation = ""
-                                }
-                            )
-                        }
+                    Row(Modifier.fillMaxWidth().padding(top = 16.dp), horizontalArrangement = Arrangement.Center) {
+                        if (!registering) Text("ยังไม่มีบัญชี? ", color = QgMuted, fontSize = 16.sp)
+                        Text(if (registering) "มีบัญชีแล้ว" else "สมัครสมาชิก", color = QgRed,
+                            fontWeight = FontWeight.Bold, fontSize = 16.sp,
+                            modifier = Modifier.clickable(enabled = !busy) {
+                                registering = !registering; localError = null; entry.clearError()
+                                password = ""; confirmation = ""
+                            })
                     }
                 }
-                if (registering) Spacer(Modifier.height(92.dp))
+                Spacer(Modifier.height(92.dp))
             }
         }
-    }
-}
-
-@Composable
-private fun CustomerLoginField(
-    label: String,
-    placeholder: String,
-    value: String,
-    change: (String) -> Unit,
-    busy: Boolean,
-    password: Boolean = false,
-    type: KeyboardType = KeyboardType.Text,
-    done: (() -> Unit)? = null
-) {
-    var focused by remember { mutableStateOf(false) }
-    val focus = LocalFocusManager.current
-
-    Column {
-        Text(
-            label,
-            color = QgInk,
-            fontSize = 11.sp,
-            fontWeight = FontWeight.ExtraBold
-        )
-        Spacer(Modifier.height(7.dp))
-        BasicTextField(
-            value = value,
-            onValueChange = change,
-            enabled = !busy,
-            singleLine = true,
-            textStyle = TextStyle(fontSize = 16.sp, color = QgInk),
-            cursorBrush = SolidColor(QgRed),
-            visualTransformation = if (password) PasswordVisualTransformation() else VisualTransformation.None,
-            keyboardOptions = KeyboardOptions(
-                keyboardType = if (password) KeyboardType.Password else type,
-                imeAction = if (done == null) ImeAction.Next else ImeAction.Done
-            ),
-            keyboardActions = KeyboardActions(
-                onNext = { focus.moveFocus(FocusDirection.Down) },
-                onDone = { done?.invoke() }
-            ),
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(50.dp)
-                .onFocusChanged { focused = it.isFocused }
-                .semantics { contentDescription = label }
-                .border(
-                    1.dp,
-                    if (focused) Color(0x88E6002D) else Color(0xFFE6DFE2),
-                    RoundedCornerShape(15.dp)
-                ),
-            decorationBox = { inner ->
-                Box(
-                    Modifier.fillMaxSize().padding(horizontal = 14.dp),
-                    contentAlignment = Alignment.CenterStart
-                ) {
-                    if (value.isEmpty()) {
-                        Text(
-                            placeholder,
-                            color = Color(0xFF757575),
-                            fontSize = 16.sp,
-                            maxLines = 1
-                        )
-                    }
-                    inner()
-                }
-            }
-        )
     }
 }
 
