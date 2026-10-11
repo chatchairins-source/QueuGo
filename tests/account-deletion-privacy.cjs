@@ -27,6 +27,7 @@ must(privacy.includes('นโยบายความเป็นส่วนต
 must(privacy.includes('account-deletion.html'),'privacy policy must link deletion page');
 must(deletion.includes('../account-deletion.js'),'external deletion page must use same backend');
 must(deletion.includes('เข้าสู่ระบบเพื่อยืนยัน'),'external deletion page must authenticate account owner');
+must(deletion.includes('ข้อมูลสถานะการโทร')&&deletion.includes('การแจ้งเตือนสายเรียกเข้า')&&deletion.includes('ทันที'),'external deletion page must disclose immediate voice-call metadata cleanup');
 must(sql.includes('queuego_account_deletion_eligibility'),'SQL source must include eligibility gate');
 must(sql.includes("delivery_address='ข้อมูลถูกลบตามคำขอเจ้าของบัญชี'"),'market order PII scrub must respect NOT NULL');
 must(!sql.includes('set delivery_address=null,delivery_latitude=null,delivery_longitude=null\n     where customer_id=v_user.id;'),'market order scrub must not null NOT NULL columns');
@@ -47,5 +48,6 @@ must(sql.includes('content_snapshot=case when reporter_user_id=v_user.id or repo
 must(privacy.includes('รายงานหรือบล็อกคู่สนทนา'),'privacy policy must disclose chat report/block rights');
 must(privacy.includes('สำเนาเนื้อหา'),'privacy policy must disclose moderation snapshot retention and cleanup');
 must(privacy.includes('อายุเกิน 30 วันโดยอัตโนมัติทุกวัน'),'privacy policy must disclose the enforced daily purge of voice-call metadata older than 30 days');
+must(privacy.includes('ข้อมูลสถานะการโทรและการแจ้งเตือนสายเรียกเข้าที่เชื่อมโยงกับบัญชี'),'privacy policy must disclose immediate account-deletion cleanup of voice metadata');
 
 console.log('account deletion/privacy gate checks passed');
