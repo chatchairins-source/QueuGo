@@ -186,17 +186,19 @@ class CustomerLaundryApi(private val http: QueueGoNativeApi = QueueGoNativeApi()
 
     suspend fun place(
         auth: NativeAuth,
+        requestId: String,
         hub: LaundryHub,
         service: LaundryService,
         location: CustomerLocation,
         estimatedQuantity: Double?,
         note: String?
     ): JSONObject {
+        require(runCatching { UUID.fromString(requestId) }.isSuccess) { "รหัสคำขอฝากซักไม่ถูกต้อง" }
         val raw = http.rpc(
             "queuego_place_laundry_order_v2",
             auth.session.accessToken,
             JSONObject()
-                .put("p_request_id", UUID.randomUUID().toString())
+                .put("p_request_id", requestId)
                 .put("p_hub_id", hub.id)
                 .put("p_service_id", service.id)
                 .put("p_pickup_address", location.address)
