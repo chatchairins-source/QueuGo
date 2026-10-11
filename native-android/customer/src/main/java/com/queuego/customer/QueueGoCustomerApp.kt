@@ -519,6 +519,7 @@ private fun CustomerShell(
     }
     LaunchedEffect(pendingNotification, auth.user.id, auth.session.accessToken, lifecycle) {
         val target = pendingNotification ?: return@LaunchedEffect
+        message = "กำลังเปิดออเดอร์..."
         lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
             while (pendingNotification == target) {
                 try {
