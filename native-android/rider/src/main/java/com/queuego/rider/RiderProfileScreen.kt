@@ -3,6 +3,7 @@ package com.queuego.rider
 import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
 import android.provider.Settings
 import androidx.compose.foundation.layout.*
@@ -21,6 +22,8 @@ import com.queuego.shared.QgMuted
 import com.queuego.shared.QgRed
 import com.queuego.shared.QgStatusPill
 import kotlinx.coroutines.launch
+
+internal const val RIDER_PRIVACY_POLICY_URL = "https://chatchairins-source.github.io/QueuGo/docs/privacy.html"
 
 @Composable
 fun RiderProfileScreen(
@@ -237,6 +240,16 @@ fun RiderProfileScreen(
 
         Spacer(Modifier.height(12.dp))
         RiderProfileSection("ความเป็นส่วนตัวและบัญชี") {
+            OutlinedButton(
+                onClick = {
+                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(RIDER_PRIVACY_POLICY_URL))
+                        .addCategory(Intent.CATEGORY_BROWSABLE)
+                    runCatching { context.startActivity(intent) }
+                        .onFailure { message = "ไม่สามารถเปิดนโยบายความเป็นส่วนตัวได้" }
+                },
+                modifier = Modifier.fillMaxWidth()
+            ) { Text("นโยบายความเป็นส่วนตัว") }
+            Spacer(Modifier.height(8.dp))
             QgAccountDeletionSection(accessToken = auth.session.accessToken, onDeleted = onLogout)
             Spacer(Modifier.height(8.dp))
             OutlinedButton(onClick = onLogout, modifier = Modifier.fillMaxWidth()) { Text("ออกจากระบบ") }
