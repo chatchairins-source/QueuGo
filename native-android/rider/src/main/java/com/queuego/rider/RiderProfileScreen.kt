@@ -22,6 +22,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.queuego.shared.QgAccountDeletionSection
 import com.queuego.shared.QgIcon
 import com.queuego.shared.QgMuted
@@ -98,22 +99,99 @@ fun RiderProfileScreen(
         modifier.fillMaxSize().verticalScroll(rememberScrollState())
             .padding(horizontal = 12.dp, vertical = 10.dp)
     ) {
-        Text("โปรไฟล์", fontWeight = FontWeight.Black, style = MaterialTheme.typography.headlineSmall)
-        Spacer(Modifier.height(10.dp))
-        Card(
-            Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(18.dp),
-            colors = CardDefaults.cardColors(containerColor = Color.White)
+        Row(
+            Modifier.fillMaxWidth().padding(bottom = 14.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(Modifier.fillMaxWidth().padding(14.dp)) {
-                Column(Modifier.weight(1f)) {
-                    Text(auth.user.name, fontWeight = FontWeight.Black)
-                    Text(auth.user.phone ?: profile?.phone ?: "-", color = QgMuted)
-                    val vehicle = riderVehicleLabel(profile?.vehicleType)
-                    val plate = profile?.vehiclePlate?.takeIf { it.isNotBlank() }
-                    Text(if (plate == null) vehicle + " · QueueGo Rider" else vehicle + " · " + plate, color = QgMuted)
+            Spacer(Modifier.width(44.dp))
+            Text(
+                "โปรไฟล์",
+                modifier = Modifier.weight(1f),
+                fontSize = 26.sp,
+                fontWeight = FontWeight.Black,
+                color = Color(0xFF211E20),
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+            )
+            Text(
+                "QueueGo",
+                modifier = Modifier.width(64.dp),
+                color = QgRed,
+                fontSize = 9.sp,
+                fontWeight = FontWeight.Black,
+                textAlign = androidx.compose.ui.text.style.TextAlign.End
+            )
+        }
+
+        val online = snapshot?.online == true
+        val vehicle = riderVehicleLabel(profile?.vehicleType)
+        val plate = profile?.vehiclePlate?.takeIf { it.isNotBlank() }
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .background(Color.White, RoundedCornerShape(18.dp))
+                .border(1.dp, Color(0xFFEEE6E8), RoundedCornerShape(18.dp))
+                .padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                Modifier
+                    .size(58.dp)
+                    .background(Color(0xFFFFF0F3), RoundedCornerShape(18.dp)),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    auth.user.name.trim().take(1).uppercase().ifBlank { "R" },
+                    color = QgRed,
+                    fontSize = 22.sp,
+                    fontWeight = FontWeight.Black
+                )
+            }
+            Spacer(Modifier.width(11.dp))
+            Column(Modifier.weight(1f)) {
+                Text(
+                    auth.user.name,
+                    color = Color(0xFF211E20),
+                    fontSize = 19.sp,
+                    lineHeight = 23.sp,
+                    fontWeight = FontWeight.Black,
+                    maxLines = 1
+                )
+                Text(
+                    auth.user.phone ?: profile?.phone ?: "-",
+                    color = Color(0xFF8A8387),
+                    fontSize = 10.sp,
+                    maxLines = 1
+                )
+                Spacer(Modifier.height(5.dp))
+                Box(
+                    Modifier
+                        .background(Color(0xFFF7F3F4), RoundedCornerShape(99.dp))
+                        .padding(horizontal = 7.dp, vertical = 4.dp)
+                ) {
+                    Text(
+                        if (plate == null) vehicle + " · QueueGo Rider" else vehicle + " · " + plate,
+                        color = Color(0xFF746A6E),
+                        fontSize = 8.5.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        maxLines = 1
+                    )
                 }
-                QgStatusPill(if (snapshot?.online == true) "ออนไลน์" else "ออฟไลน์", snapshot?.online == true)
+            }
+            Spacer(Modifier.width(8.dp))
+            Box(
+                Modifier
+                    .background(
+                        if (online) Color(0xFFEEF8F2) else Color(0xFFF2F2F3),
+                        RoundedCornerShape(99.dp)
+                    )
+                    .padding(horizontal = 8.dp, vertical = 6.dp)
+            ) {
+                Text(
+                    if (online) "ออนไลน์" else "ออฟไลน์",
+                    color = if (online) Color(0xFF15955A) else Color(0xFF85878C),
+                    fontSize = 8.5.sp,
+                    fontWeight = FontWeight.Black
+                )
             }
         }
 
@@ -125,9 +203,12 @@ fun RiderProfileScreen(
         Spacer(Modifier.height(12.dp))
         RiderProfileSection("การรับงาน") {
             RiderProfileToggleRow(
-                "สถานะรับงาน", "เปิดหรือปิดการรับงานจัดส่ง",
-                snapshot?.online == true,
-                !busy && snapshot?.activeJob == null && snapshot?.laundry?.activeJob == null
+                icon = "pin",
+                title = "สถานะรับงาน",
+                detail = "เปิดหรือปิดการรับงานจัดส่ง",
+                checked = snapshot?.online == true,
+                enabled = !busy && snapshot?.activeJob == null && snapshot?.laundry?.activeJob == null,
+                activeLabel = "ออนไลน์"
             ) { enabled ->
                 busy = true
                 scope.launch {
@@ -140,9 +221,13 @@ fun RiderProfileScreen(
                     busy = false
                 }
             }
+            HorizontalDivider(color = Color(0xFFF0EAEC))
             RiderProfileToggleRow(
-                "รับงานฝากซัก", "งานรับ–ส่งผ้าจากร้านที่เข้าร่วม",
-                snapshot?.laundry?.modeEnabled == true, !busy
+                icon = "orders",
+                title = "รับงานฝากซัก",
+                detail = "งานรับ–ส่งผ้าจากร้านที่เข้าร่วม",
+                checked = snapshot?.laundry?.modeEnabled == true,
+                enabled = !busy
             ) { enabled ->
                 busy = true
                 scope.launch {
@@ -430,21 +515,66 @@ private fun RiderProfileStateRow(
 
 @Composable
 private fun RiderProfileToggleRow(
+    icon: String,
     title: String,
     detail: String,
     checked: Boolean,
     enabled: Boolean,
+    activeLabel: String = "เปิด",
     onChecked: (Boolean) -> Unit
 ) {
     Row(
-        Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
-        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+        Modifier
+            .fillMaxWidth()
+            .clickable(enabled = enabled) { onChecked(!checked) }
+            .padding(horizontal = 10.dp, vertical = 9.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Column(Modifier.weight(1f)) {
-            Text(title, fontWeight = FontWeight.ExtraBold, color = Color(0xFF202329))
-            Text(detail, color = Color(0xFF8A8F96), style = MaterialTheme.typography.labelSmall)
+        Box(
+            Modifier
+                .size(34.dp)
+                .background(
+                    if (checked) Color(0xFFEDF9F2) else Color(0xFFF7F4F5),
+                    RoundedCornerShape(11.dp)
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            QgIcon(
+                icon,
+                Modifier.size(17.dp),
+                if (checked) Color(0xFF14A35C) else Color(0xFF777177)
+            )
         }
-        Switch(checked = checked, onCheckedChange = onChecked, enabled = enabled)
+        Spacer(Modifier.width(9.dp))
+        Column(Modifier.weight(1f)) {
+            Text(
+                title,
+                color = Color(0xFF211E20),
+                fontSize = 12.sp,
+                fontWeight = FontWeight.ExtraBold
+            )
+            Text(
+                detail,
+                color = Color(0xFF8A8387),
+                fontSize = 8.5.sp,
+                lineHeight = 11.5.sp
+            )
+        }
+        Box(
+            Modifier
+                .background(
+                    if (checked) Color(0xFFEDF9F2) else Color(0xFFF2F2F3),
+                    RoundedCornerShape(99.dp)
+                )
+                .padding(horizontal = 7.dp, vertical = 4.dp)
+        ) {
+            Text(
+                if (checked) activeLabel else "ปิด",
+                color = if (checked) Color(0xFF14A35C) else Color(0xFF777B80),
+                fontSize = 8.5.sp,
+                fontWeight = FontWeight.Black
+            )
+        }
     }
 }
 
