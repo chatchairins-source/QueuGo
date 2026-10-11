@@ -123,6 +123,7 @@ fun LaundryNativeScreen(
         if (busy) return
         busy = true
         scope.launch {
+            var confirmedAbsent = false
             try {
                 checkout.submit(
                     create = {
@@ -136,10 +137,8 @@ fun LaundryNativeScreen(
                         api.prepareCheckout(hub, service, loc, qty, note)
                     },
                     send = { api.sendCheckout(auth, it) },
-                    recover = { api.recoverCheckout(auth, it) },
-                    // Keep the exact journal on all uncertain failures. A changed
-                    // feature/service must never turn a lost acknowledgement into a new ID.
-                    definitiveRejection = { false }
+                    recover = { pending -> api.recoverCheckout(auth, pending).also { confirmedAbsent = it == null } },
+                    definitiveRejection = { isDefinitiveLaundryRejection(it, confirmedAbsent) }
                 )
                 message = "ส่งคำขอฝากซักแล้ว"
                 onDone()

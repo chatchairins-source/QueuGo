@@ -1,6 +1,7 @@
 package com.queuego.customer
 
 import org.json.JSONObject
+import com.queuego.shared.QueueGoHttpException
 import org.junit.Assert.*
 import org.junit.Test
 import kotlinx.coroutines.runBlocking
@@ -33,6 +34,14 @@ class LaundryCheckoutRequestTest {
             { assertEquals(original.encode(), it.encode()); "receipt" }, { null }, { false })
         assertEquals("receipt", result)
         assertNull(disk)
+    }
+    @Test fun onlyConfirmedAbsentSqlRejectionsCanReleaseTheFrozenForm() {
+        val rejected = QueueGoHttpException(400, "OUTSIDE_SERVICE_AREA")
+        assertTrue(isDefinitiveLaundryRejection(rejected, true))
+        assertFalse(isDefinitiveLaundryRejection(rejected, false))
+        assertFalse(isDefinitiveLaundryRejection(IOException("timeout OUTSIDE_SERVICE_AREA"), true))
+        assertFalse(isDefinitiveLaundryRejection(QueueGoHttpException(500, "OUTSIDE_SERVICE_AREA"), true))
+        assertFalse(isDefinitiveLaundryRejection(QueueGoHttpException(400, "unrecognized error"), true))
     }
     @Test fun invalidQuantityCoordinatesAndIncompleteJournalFailBeforeSend() {
         for (raw in listOf("{}", pending().body.put("p_estimated_quantity", 1001).toString(),
