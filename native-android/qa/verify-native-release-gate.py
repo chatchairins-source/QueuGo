@@ -201,13 +201,20 @@ def verify_gate_envelope(path: Path, bundle_root: Path, gate: str, head: str, ex
             or set(registered_packages) != expected_packages
         ):
             raise ValueError("play_store_preflight evidence registered package names mismatch")
-        registered_certs = envelope.get("registered_package_signing_certificate_sha256")
+        registered_certs = envelope.get("registered_package_signing_certificates_sha256")
         if not isinstance(registered_certs, dict) or set(registered_certs) != expected_packages:
-            raise ValueError("play_store_preflight evidence registered signing certificates mismatch")
-        for package, digest in registered_certs.items():
-            normalized = re.sub(r"[^0-9a-fA-F]", "", str(digest)).lower()
-            if not re.fullmatch(r"[0-9a-f]{64}", normalized):
-                raise ValueError(f"play_store_preflight registered signing certificate is invalid: {package}")
+            raise ValueError("play_store_preflight evidence registered signing certificate sets mismatch")
+        for package, digests in registered_certs.items():
+            if not isinstance(digests, list) or not digests:
+                raise ValueError(f"play_store_preflight registered signing certificate evidence is missing: {package}")
+            normalized = []
+            for digest in digests:
+                value = re.sub(r"[^0-9a-fA-F]", "", str(digest)).lower()
+                if not re.fullmatch(r"[0-9a-f]{64}", value):
+                    raise ValueError(f"play_store_preflight registered signing certificate is invalid: {package}")
+                normalized.append(value)
+            if len(set(normalized)) != len(normalized):
+                raise ValueError(f"play_store_preflight registered signing certificate evidence contains duplicates: {package}")
 
     artifacts = envelope.get("artifacts")
     if not isinstance(artifacts, list) or not artifacts:
@@ -412,11 +419,6 @@ def verify():
     if signing_evidence_cert != expected_cert:
         raise ValueError("release_signing evidence does not match the certified signing identity")
 
-    registered_play_certs = play_envelope.get("registered_package_signing_certificate_sha256", {})
-    for package in ("com.queuego.customer", "com.queuego.merchant", "com.queuego.rider"):
-        registered_cert = re.sub(r"[^0-9a-fA-F]", "", str(registered_play_certs.get(package, ""))).lower()
-        if registered_cert != expected_cert:
-            raise ValueError(f"Play registered signing certificate does not match release signing identity: {package}")
     fingerprint = re.search(r"SHA256:\s*([0-9A-Fa-f:]+)", entry.stdout)
     if not fingerprint:
         raise ValueError("release signing certificate SHA-256 is unavailable")
