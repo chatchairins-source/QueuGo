@@ -254,6 +254,7 @@ private fun CustomerShell(
     var banners by remember { mutableStateOf<List<HomeBanner>>(emptyList()) }
     var serviceBanners by remember { mutableStateOf<Map<String, ServiceBanner>>(emptyMap()) }
     var notifications by remember { mutableStateOf<List<CustomerNotification>>(emptyList()) }
+    var pendingNotification by remember(auth.user.id) { mutableStateOf<NativePushLaunchTarget?>(null) }
     var selectedShop by remember { mutableStateOf<CustomerShop?>(null) }
     var selectedOrder by remember { mutableStateOf<CustomerOrder?>(null) }
     var trackingContext by remember { mutableStateOf<CustomerOrderContext?>(null) }
@@ -498,23 +499,53 @@ private fun CustomerShell(
     }
 
     LaunchedEffect(auth.user.id) { refresh() }
-    LaunchedEffect(pushTarget?.eventId, loading) {
+    LaunchedEffect(pushTarget?.eventId, auth.user.id) {
         val target = pushTarget ?: return@LaunchedEffect
-        if (loading) return@LaunchedEffect
-        if (target.referenceId.isBlank()) {
-            screen = "notifications"
-            return@LaunchedEffect
-        }
-        val fresh = runCatching { api.loadOrders(auth) }.getOrDefault(orders)
-        orders = fresh
-        val order = fresh.find { it.id == target.referenceId }
-        if (order != null) {
-            selectedOrder = order
-            trackingContext = null
-            orderItems = runCatching { api.loadOrderItems(auth, order.id) }.getOrDefault(emptyList())
-            screen = "order"
-        } else {
-            screen = if (target.type == "voice_call") "orders" else "notifications"
+        screen = "notifications"
+        pendingNotification = target.takeIf { it.referenceId.isNotBlank() }
+    }
+    // Leaving Notifications cancels recovery so a slow reply cannot pull the user
+    // back from another page. Backgrounding retains the reference for resume.
+    LaunchedEffect(screen) {
+        if (screen != "notifications") pendingNotification = null
+    }
+    LaunchedEffect(pendingNotification, auth.user.id, auth.session.accessToken, lifecycle) {
+        val target = pendingNotification ?: return@LaunchedEffect
+        lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            while (pendingNotification == target) {
+                try {
+                    val destination = lookupCustomerNotification<CustomerNotificationDestination>(listOf(
+                        { api.findPlacedOrder(auth, target.referenceId)?.let { CustomerNotificationDestination.Order(it) } },
+                        { marketApi.trip(auth, target.referenceId)?.let { CustomerNotificationDestination.Market(it) } },
+                        { laundryApi.order(auth, target.referenceId)?.summary?.let { CustomerNotificationDestination.Laundry(it) } }
+                    ))
+                    if (pendingNotification != target || screen != "notifications") return@repeatOnLifecycle
+                    pendingNotification = null
+                    message = null
+                    when (destination) {
+                        is CustomerNotificationDestination.Order -> {
+                            selectedOrder = destination.order
+                            trackingContext = null
+                            orderItems = emptyList()
+                            screen = "order"
+                        }
+                        is CustomerNotificationDestination.Market -> {
+                            selectedMarketTrip = destination.trip
+                            screen = "market-trip"
+                        }
+                        is CustomerNotificationDestination.Laundry -> {
+                            selectedLaundryOrder = destination.order
+                            screen = "laundry-order"
+                        }
+                        null -> message = "ไม่พบออเดอร์สำหรับบัญชีนี้"
+                    }
+                    return@repeatOnLifecycle
+                } catch (e: CancellationException) { throw e }
+                catch (_: Exception) {
+                    message = "โหลดออเดอร์ไม่สำเร็จ กำลังลองใหม่ หรือแตะการแจ้งเตือนอีกครั้ง"
+                }
+                delay(8_000)
+            }
         }
     }
     LaunchedEffect(auth.session.accessToken, lifecycle) {
@@ -619,22 +650,18 @@ private fun CustomerShell(
                         }
                     },
                     onOpen = { notification ->
-                        if (!busy) {
-                            busy = true
-                            scope.launch {
-                                runCatching { extrasApi.markRead(auth, notification.id) }
+                        screen = "notifications"
+                        pendingNotification = notification.referenceId?.takeIf { it.isNotBlank() }?.let {
+                            NativePushLaunchTarget(it, notification.type.orEmpty(), System.nanoTime())
+                        }
+                        scope.launch {
+                            try {
+                                extrasApi.markRead(auth, notification.id)
                                 notifications = notifications.map {
                                     if (it.id == notification.id) it.copy(read = true) else it
                                 }
-                                val ref = notification.referenceId
-                                val target = if (!ref.isNullOrBlank()) orders.find { it.id == ref } else null
-                                if (target != null) {
-                                    selectedOrder = target
-                                    orderItems = runCatching { api.loadOrderItems(auth, target.id) }.getOrDefault(emptyList())
-                                    screen = "order"
-                                }
-                                busy = false
-                            }
+                            } catch (e: CancellationException) { throw e }
+                            catch (_: Exception) { /* Detail navigation does not depend on read acknowledgement. */ }
                         }
                     }
                 )

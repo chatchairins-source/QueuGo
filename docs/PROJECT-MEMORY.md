@@ -872,3 +872,9 @@ The user-supplied Rider reference screens are the acceptance reference for workf
 ## 2026-10-11 Special-route shell Blueprint staging
 - Current main V['market-cart'] selects cart navigation; V['market-order'] and customer-laundry.js order detail select orders. Add these existing Native routes to the shared bottom-navigation selection mapping.
 - Production standalone laundry/index.html has its own sticky header and no main QueueGo header/bottom nav. Hide main shell chrome only for the existing laundry route, preserving the Native Laundry header and all other routes/navigation. No new renderer or route/storage. Full regression/Pilot and authenticated rendered comparison remain required.
+
+
+## 2026-10-11 Customer notification authoritative recovery staging
+- Verified Native main e6fb501 and Production main03803ab; reviewed open PR130 and independently confirmed Pilot38135273197 SUCCESS. Integration1a55ab1 has the identical tested tree ee54ade4; backed up e6fb501 and merged PR130 to66124a50.
+- Customer push and inbox previously resolved only normal orders in the recent50 list. Both now share exact-reference lookup through existing owner-filtered normal/Market/Laundry APIs, with explicit missing state only after all reads succeed. Transport failures retain the reference for STARTED retry; token changes cancel the old read, leaving Notifications cancels navigation recovery, and read-acknowledgement failure does not block detail navigation. No DB/RPC/RLS changes or Production records written.
+- JVM cases cover old/direct references, Market/Laundry fallback, partial domain failure, missing vs timeout, retry and cancellation. Full exact-head Pilot pending; no merge until green. Physical FCM/two-device voice, authenticated rendered parity, Production E2E and release/signing/Play evidence remain OPEN.
