@@ -14,6 +14,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -22,8 +23,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import com.queuego.shared.QgAccountDeletionSection
 import com.queuego.shared.QgIcon
 import com.queuego.shared.QgMuted
@@ -53,6 +57,14 @@ fun RiderProfileScreen(
     var message by remember { mutableStateOf<String?>(null) }
     var showSupport by remember { mutableStateOf(false) }
     var profilePushEnabled by remember { mutableStateOf(riderPushEnabled(context)) }
+
+    LaunchedEffect(profile?.riderName, profile?.phone, editing) {
+        if (!editing) {
+            name = profile?.riderName?.takeIf { it.isNotBlank() } ?: auth.user.name
+            phone = profile?.phone?.takeIf { it.isNotBlank() } ?: auth.user.phone.orEmpty()
+        }
+    }
+
     val profilePushPermission = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { granted ->
@@ -141,7 +153,7 @@ fun RiderProfileScreen(
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    auth.user.name.trim().take(1).uppercase().ifBlank { "R" },
+                    name.trim().take(1).uppercase().ifBlank { "R" },
                     color = QgRed,
                     fontSize = 22.sp,
                     fontWeight = FontWeight.Black
@@ -150,7 +162,7 @@ fun RiderProfileScreen(
             Spacer(Modifier.width(11.dp))
             Column(Modifier.weight(1f)) {
                 Text(
-                    auth.user.name,
+                    name.ifBlank { auth.user.name },
                     color = Color(0xFF211E20),
                     fontSize = 19.sp,
                     lineHeight = 23.sp,
@@ -158,7 +170,7 @@ fun RiderProfileScreen(
                     maxLines = 1
                 )
                 Text(
-                    auth.user.phone ?: profile?.phone ?: "-",
+                    phone.ifBlank { auth.user.phone ?: profile?.phone ?: "-" },
                     color = Color(0xFF8A8387),
                     fontSize = 10.sp,
                     maxLines = 1
@@ -283,48 +295,23 @@ fun RiderProfileScreen(
 
         Spacer(Modifier.height(12.dp))
         RiderProfileSection("บัญชีและช่วยเหลือ") {
-            if (editing) {
-                OutlinedTextField(name, { if (it.length <= 100) name = it }, Modifier.fillMaxWidth(), label = { Text("ชื่อที่แสดง") }, singleLine = true)
-                Spacer(Modifier.height(8.dp))
-                OutlinedTextField(phone, { phone = it.filter(Char::isDigit).take(10) }, Modifier.fillMaxWidth(), label = { Text("เบอร์โทรศัพท์") }, singleLine = true)
-                Spacer(Modifier.height(8.dp))
-                Text(
-                    "ข้อมูลรถที่อนุมัติ: " + riderVehicleLabel(profile?.vehicleType) +
-                        (profile?.vehiclePlate?.let { " · " + it } ?: ""),
-                    color = QgMuted
-                )
-                Text("แก้เฉพาะชื่อและเบอร์โทร ไม่เปลี่ยนข้อมูลรถหรือสถานะอนุมัติ", color = QgMuted, style = MaterialTheme.typography.labelSmall)
-                Spacer(Modifier.height(8.dp))
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedButton(onClick = { editing = false }, modifier = Modifier.weight(1f)) { Text("ยกเลิก") }
-                    Button(
-                        onClick = {
-                            busy = true
-                            scope.launch {
-                                runCatching { api.updateAccount(auth, name, phone) }
-                                    .onSuccess { message = "บันทึกการตั้งค่าแล้ว"; editing = false; refresh() }
-                                    .onFailure { message = it.message ?: "บันทึกการตั้งค่าไม่สำเร็จ" }
-                                busy = false
-                            }
-                        },
-                        enabled = !busy, modifier = Modifier.weight(1f)
-                    ) { Text("บันทึก") }
+            RiderProfileActionRow(
+                icon = "user",
+                title = "ตั้งค่าบัญชี",
+                subtitle = "ชื่อ เบอร์โทร และข้อมูลบัญชี",
+                onClick = {
+                    name = profile?.riderName?.takeIf { it.isNotBlank() } ?: auth.user.name
+                    phone = profile?.phone?.takeIf { it.isNotBlank() } ?: auth.user.phone.orEmpty()
+                    editing = true
                 }
-            } else {
-                RiderProfileActionRow(
-                    icon = "user",
-                    title = "ตั้งค่าบัญชี",
-                    subtitle = "ชื่อ เบอร์โทร และข้อมูลบัญชี",
-                    onClick = { editing = true }
-                )
-                HorizontalDivider(color = Color(0xFFECEEF1))
-                RiderProfileActionRow(
-                    icon = "chat",
-                    title = "แจ้งปัญหา / ติดตามเรื่อง",
-                    subtitle = "ติดต่อฝ่ายดูแล QueueGo",
-                    onClick = { showSupport = true }
-                )
-            }
+            )
+            HorizontalDivider(color = Color(0xFFF0EAEC))
+            RiderProfileActionRow(
+                icon = "chat",
+                title = "แจ้งปัญหา / ติดตามเรื่อง",
+                subtitle = "ติดต่อฝ่ายดูแล QueueGo",
+                onClick = { showSupport = true }
+            )
         }
 
         Spacer(Modifier.height(12.dp))
@@ -407,6 +394,189 @@ fun RiderProfileScreen(
             logoutSubtitle = "ออกจากบัญชีในอุปกรณ์นี้"
         )
         Spacer(Modifier.height(86.dp))
+    }
+
+    if (editing) {
+        RiderAccountSettingsDialog(
+            name = name,
+            phone = phone,
+            vehicleLabel = riderVehicleLabel(profile?.vehicleType),
+            vehiclePlate = profile?.vehiclePlate,
+            busy = busy,
+            onName = { if (it.length <= 100) name = it },
+            onPhone = { phone = it.filter(Char::isDigit).take(10) },
+            onDismiss = {
+                if (!busy) {
+                    name = profile?.riderName?.takeIf { it.isNotBlank() } ?: auth.user.name
+                    phone = profile?.phone?.takeIf { it.isNotBlank() } ?: auth.user.phone.orEmpty()
+                    editing = false
+                }
+            },
+            onSave = {
+                val nextName = name.trim()
+                val nextPhone = phone.filter(Char::isDigit)
+                when {
+                    nextName.length < 2 -> message = "กรุณาระบุชื่ออย่างน้อย 2 ตัวอักษร"
+                    !Regex("^0\\d{9}$").matches(nextPhone) ->
+                        message = "เบอร์โทรศัพท์ต้องมี 10 หลักและขึ้นต้นด้วย 0"
+                    else -> {
+                        busy = true
+                        scope.launch {
+                            runCatching { api.updateAccount(auth, nextName, nextPhone) }
+                                .onSuccess {
+                                    name = nextName
+                                    phone = nextPhone
+                                    message = "บันทึกการตั้งค่าแล้ว"
+                                    editing = false
+                                    refresh()
+                                }
+                                .onFailure {
+                                    message = "บันทึกการตั้งค่าไม่สำเร็จ: " +
+                                        (it.message ?: "กรุณาลองใหม่").take(140)
+                                }
+                            busy = false
+                        }
+                    }
+                }
+            }
+        )
+    }
+}
+
+@Composable
+private fun RiderAccountSettingsDialog(
+    name: String,
+    phone: String,
+    vehicleLabel: String,
+    vehiclePlate: String?,
+    busy: Boolean,
+    onName: (String) -> Unit,
+    onPhone: (String) -> Unit,
+    onDismiss: () -> Unit,
+    onSave: () -> Unit
+) {
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        Box(
+            Modifier
+                .fillMaxSize()
+                .background(Color(0x99171319))
+                .clickable(enabled = !busy, onClick = onDismiss),
+            contentAlignment = Alignment.Center
+        ) {
+            Column(
+                Modifier
+                    .padding(horizontal = 14.dp)
+                    .widthIn(max = 620.dp)
+                    .fillMaxWidth()
+                    .background(Color.White, RoundedCornerShape(22.dp))
+                    .border(1.dp, Color(0xFFEEE6E8), RoundedCornerShape(22.dp))
+                    .clickable(enabled = false) {}
+                    .padding(14.dp)
+            ) {
+                Row(
+                    Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(Modifier.weight(1f)) {
+                        Text(
+                            "ตั้งค่าบัญชี",
+                            color = Color(0xFF211E20),
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Black
+                        )
+                        Spacer(Modifier.height(2.dp))
+                        Text(
+                            "ข้อมูลที่ Rider ใช้ติดต่อและแสดงในระบบ",
+                            color = Color(0xFF8A8387),
+                            fontSize = 9.sp
+                        )
+                    }
+                    Box(
+                        Modifier
+                            .size(38.dp)
+                            .background(Color(0xFFFFF0F3), RoundedCornerShape(12.dp))
+                            .clickable(enabled = !busy, onClick = onDismiss),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text("✕", color = QgRed, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                    }
+                }
+
+                Spacer(Modifier.height(14.dp))
+                Text("ชื่อที่แสดง", fontSize = 10.sp, fontWeight = FontWeight.ExtraBold)
+                Spacer(Modifier.height(5.dp))
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = onName,
+                    enabled = !busy,
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 46.dp),
+                    shape = RoundedCornerShape(12.dp)
+                )
+
+                Spacer(Modifier.height(10.dp))
+                Text("เบอร์โทรศัพท์", fontSize = 10.sp, fontWeight = FontWeight.ExtraBold)
+                Spacer(Modifier.height(5.dp))
+                OutlinedTextField(
+                    value = phone,
+                    onValueChange = onPhone,
+                    enabled = !busy,
+                    singleLine = true,
+                    placeholder = { Text("08XXXXXXXX") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 46.dp),
+                    shape = RoundedCornerShape(12.dp)
+                )
+
+                Spacer(Modifier.height(12.dp))
+                Column(
+                    Modifier
+                        .fillMaxWidth()
+                        .background(Color(0xFFFAF7F8), RoundedCornerShape(14.dp))
+                        .padding(11.dp)
+                ) {
+                    Text("ข้อมูลรถที่อนุมัติ", color = Color(0xFF8A8387), fontSize = 8.5.sp)
+                    Spacer(Modifier.height(3.dp))
+                    Text(
+                        vehicleLabel + (vehiclePlate?.takeIf { it.isNotBlank() }?.let { " · " + it } ?: ""),
+                        color = Color(0xFF211E20),
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.ExtraBold
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        "หากต้องการเปลี่ยนรถหรือทะเบียน ให้แจ้งฝ่ายดูแลเพื่อป้องกันข้อมูลอนุมัติไม่ตรงกับรถที่ใช้งานจริง",
+                        color = Color(0xFF8A8387),
+                        fontSize = 8.5.sp,
+                        lineHeight = 12.sp
+                    )
+                }
+
+                Spacer(Modifier.height(9.dp))
+                Text(
+                    "หน้านี้แก้เฉพาะชื่อที่แสดงและเบอร์โทร ไม่เปลี่ยนสถานะอนุมัติ เอกสารยืนยันตัวตน ข้อมูลรถที่ผ่านการตรวจ หรือบัญชีการเงิน",
+                    color = Color(0xFF8A8387),
+                    fontSize = 8.5.sp,
+                    lineHeight = 12.sp
+                )
+
+                Spacer(Modifier.height(12.dp))
+                Button(
+                    onClick = onSave,
+                    enabled = !busy,
+                    modifier = Modifier.fillMaxWidth().height(48.dp),
+                    shape = RoundedCornerShape(14.dp)
+                ) {
+                    Text(
+                        if (busy) "กำลังบันทึก..." else "บันทึกการตั้งค่า",
+                        fontWeight = FontWeight.Black
+                    )
+                }
+            }
+        }
     }
 }
 
