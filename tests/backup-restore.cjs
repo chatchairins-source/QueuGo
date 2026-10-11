@@ -11,6 +11,8 @@ const inventory=read('ops/backup-inventory.sql');
 const verify=read('ops/restore-verify.sql');
 
 ok(/workflow_dispatch/.test(workflow),'backup drill must be manually runnable');
+ok(/actions\/checkout@11d5960a326750d5838078e36cf38b85af677262/.test(workflow),'backup drill must pin checkout by full commit SHA');
+ok(/actions\/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020/.test(workflow),'backup drill must pin setup-node by full commit SHA');
 ok(/supabase@2\.120\.0 db dump/.test(workflow),'backup drill must use pinned Supabase-aware database dump');
 ok(!/supabase@latest/.test(workflow),'backup workflow must pin Supabase CLI and never use @latest');
 ok(/--role-only/.test(workflow)&&/--data-only/.test(workflow)&&/--use-copy/.test(workflow),'backup must export roles, schema and data');
@@ -18,7 +20,7 @@ ok(/supabase@2\.120\.0 start/.test(workflow),'restore drill must start a clean l
 ok(/--single-transaction/.test(workflow)&&/ON_ERROR_STOP/.test(workflow),'database restore must be atomic and stop on errors');
 ok(/restore-storage\.mjs/.test(workflow),'Storage objects must be restored during the drill');
 ok(/aes-256-cbc/.test(workflow)&&/pbkdf2/.test(workflow),'off-site artifact must be encrypted before upload');
-ok(/upload-artifact@v4/.test(workflow)&&/\.tar\.gz\.enc/.test(workflow),'only encrypted backup artifact should be uploaded');
+ok(/actions\/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02/.test(workflow)&&/\.tar\.gz\.enc/.test(workflow),'only encrypted backup artifact should be uploaded through the reviewed pinned artifact action');
 ok(!/upload-artifact@[\s\S]{0,400}backup\/data\.sql/.test(workflow),'plaintext database dump must never be uploaded');
 ok(/QG_BACKUP_PASSPHRASE/.test(workflow)&&/QG_SUPABASE_DB_URL/.test(workflow)&&/QG_SUPABASE_SERVICE_ROLE_KEY/.test(workflow),'backup secrets must be externalized');
 ok(/missing=0[\s\S]*Missing required secret: \$name[\s\S]*missing=1[\s\S]*if \[ "\$missing" -ne 0 \]/.test(workflow),'backup secret preflight must report all missing secrets before failing');
