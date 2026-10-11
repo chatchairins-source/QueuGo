@@ -78,6 +78,7 @@ for(const check of ['developer_identity_verified','customer_package_registered',
 for(const id of ['com.queuego.customer','com.queuego.merchant','com.queuego.rider']){
   ok(readiness.includes(id),'Android developer verification guidance must name package '+id);
 }
+ok(/public signing certificate SHA-256/i.test(readiness)&&/QG_ANDROID_SIGNING_CERT_SHA256/.test(readiness),'Play package registration evidence must bind registered public certificates to the certified release signing identity');
 ok(nativeReleaseGate.includes('registered_packages')&&nativeReleaseGate.includes('expected_play_packages'),'Play gate must structurally bind registration evidence to exact package names');
 ok(/Customer \/ Merchant \/ Rider — `microphone`/i.test(readiness),'All three Native apps must have a microphone FGS declaration draft');
 ok(/Rider only — `specialUse`/i.test(readiness)&&/Active QueueGo Rider navigation return control/i.test(readiness),'Rider specialUse declaration must retain the reviewed subtype and use case');
@@ -158,6 +159,17 @@ ok(manifest?.android?.release_gate_full_native_ci_attested_run_binding===true,'f
 ok(manifest?.android?.release_gate_production_supabase_project_ref==='pkypiqhlrmzocysgeqew','Production backend evidence must pin the QueueGo Production project');
 ok(manifest?.android?.release_gate_firebase_project_binding===true,'Firebase evidence must bind the loaded Production Firebase project');
 ok(manifest?.android?.release_gate_play_version_metadata_binding===true,'Play preflight evidence must bind release version metadata and observed history');
+ok(manifest?.play?.android_developer_verification_effective_date_thailand==='2026-09-30','Recovery manifest must record the active Thailand Android developer verification deadline');
+ok(manifest?.play?.android_developer_identity_verification==='BLOCKED_PENDING_PLAY_CONSOLE_EVIDENCE','Developer identity verification must remain blocked until real Play Console evidence exists');
+ok(manifest?.play?.android_package_registration==='BLOCKED_PENDING_PLAY_CONSOLE_EVIDENCE','Package registration must remain blocked until real Play Console evidence exists');
+ok(Array.isArray(manifest?.play?.android_registered_packages_required)&&manifest.play.android_registered_packages_required.length===3&&
+  ['com.queuego.customer','com.queuego.merchant','com.queuego.rider'].every(id=>manifest.play.android_registered_packages_required.includes(id)),
+  'Recovery manifest must require all three QueueGo package registrations');
+ok(manifest?.play?.android_package_registration_signing_certificate_binding_required===true,'Recovery manifest must require Play package certificate binding');
+ok(manifest?.android?.release_gate_play_developer_identity_verification_required===true&&
+   manifest?.android?.release_gate_play_package_registration_required===true&&
+   manifest?.android?.release_gate_play_package_signing_certificate_binding===true,
+   'Native release gate recovery metadata must preserve developer verification package registration and signing-certificate binding');
 ok(manifest?.android?.release_gate_signing_certificate_binding===true,'Release signing evidence must bind the certified certificate fingerprint');
 ok(manifest?.android?.release_certification_requires_exact_head_backup_restore===true,'Release certification must require exact-HEAD Backup Restore');
 ok(manifest?.android?.release_certification_backup_restore_workflow==='.github/workflows/backup-restore-drill.yml','Recovery manifest must pin the Backup Restore workflow identity');
