@@ -114,9 +114,11 @@ fun QueueGoCustomerApp(pushTarget: NativePushLaunchTarget? = null) {
     val store = remember { SecureRoleSessionStore(context, "customer") }
     var authRequested by rememberSaveable { mutableStateOf(store.load() != null) }
     var destinationAfterLogin by rememberSaveable { mutableStateOf("home") }
+    var guestStartDestination by rememberSaveable { mutableStateOf("home") }
 
     if (!authRequested) {
         GuestCustomerShell(
+            initialScreen = guestStartDestination,
             onLogin = { destination ->
                 destinationAfterLogin = destination
                 authRequested = true
@@ -127,10 +129,19 @@ fun QueueGoCustomerApp(pushTarget: NativePushLaunchTarget? = null) {
             expectedRole = "customer",
             appLabel = "Customer",
             entryScreen = {
-                CustomerAuthenticationScreen(it) {
-                    destinationAfterLogin = "home"
-                    authRequested = false
-                }
+                CustomerAuthenticationScreen(
+                    entry = it,
+                    onBackToGuest = {
+                        guestStartDestination = "home"
+                        destinationAfterLogin = "home"
+                        authRequested = false
+                    },
+                    onGuestNavigate = { destination ->
+                        guestStartDestination = destination
+                        destinationAfterLogin = "home"
+                        authRequested = false
+                    }
+                )
             }
         ) { auth, logout ->
             key(auth.user.id, auth.user.authUserId) {
@@ -138,6 +149,7 @@ fun QueueGoCustomerApp(pushTarget: NativePushLaunchTarget? = null) {
                     auth = auth,
                     logout = {
                         logout()
+                        guestStartDestination = "home"
                         destinationAfterLogin = "home"
                         authRequested = false
                     },
