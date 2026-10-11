@@ -95,6 +95,11 @@ ok(customerMarketScreen.includes('Text("ตลาดสด", fontSize = 20.sp')&
 ok(customerMarketScreen.includes('CustomerServiceBanner(')&&customerMarketScreen.includes('R.drawable.qg_market_banner')&&customerMarketScreen.includes('fallbackSubtitle = "ตลาดสดใกล้คุณ สดใหม่ทุกวัน"'),'Customer Native Market must reuse the managed Production service-banner renderer and exact fallback asset');
 ok(source.includes('serviceBanner = serviceBanners["market"]')&&source.includes('onBannerLink = ::openBannerLink')&&source.includes('onBannerLink = ::openHomeBannerLink'),'Customer Native Market banner must stay managed and link-aware for guest and authenticated flows');
 ok(!customerMarketScreen.includes('height(142.dp)')&&!customerMarketScreen.includes('background(QgRed, RoundedCornerShape(20.dp))'),'Customer Native Market must not regress to the legacy red placeholder banner');
+ok(customerMarketScreen.includes('if (!cartPage) {')&&customerMarketScreen.includes('if (cartPage && cart.isNotEmpty())')&&customerMarketScreen.includes('onClick = onOpenCart'),'Market Browse and Cart must separate checkout fields and expose a floating cart route');
+ok(customerMarketScreen.includes('cart.groupBy { it.product.shopId }')&&customerMarketScreen.includes('line.quantity < line.product.availablePacks'),'Market cart must group shops and cap quantities by available packs');
+ok(!customerMarketScreen.includes('cart.first().product.marketId != m.id) cart = emptyList()'),'Browsing a different market must never destroy a persisted cart');
+ok(source.includes('"market", "market-cart" -> MarketNativeScreen(')&&source.includes('onLogin("market-cart")'),'Guest Market checkout must resume at the same cart after login');
+
 ok(source.includes('queuego_place_laundry_order_v2'),'Customer native Laundry must use production laundry order RPC');
 ok(source.includes('notifications?select=id,title,message,type,reference_id,is_read,created_at'),'Customer native notifications must use production notifications table');
 ok(source.includes('qg_support_tickets?select=id,category,details,status,order_id,admin_note,created_at')&&source.includes('qg_create_ticket'),'Customer native support must use production ticket RPC');

@@ -381,7 +381,9 @@ private fun CustomerShell(
     }
 
     BackHandler(enabled = screen != "home") {
-        if (screen == "checkout") {
+        if (screen == "market-cart") {
+            screen = "market"
+        } else if (screen == "checkout") {
             screen = "cart"
         } else if (screen == "shopping" && shoppingMode != "all") {
             shoppingMode = "all"
@@ -425,7 +427,7 @@ private fun CustomerShell(
                 route == "cart" -> screen = "cart"
                 route == "orders" -> screen = "orders"
                 route == "map" -> screen = "location"
-                route == "market" -> screen = "market"
+                route == "market" || route == "market-cart" -> screen = route
                 route == "promotion" -> screen = "promotion"
                 route == "laundry" -> screen = "laundry"
                 route == "shopping" -> {
@@ -761,7 +763,10 @@ private fun CustomerShell(
                         screen = "orders"
                     }
                 )
-                "market" -> MarketNativeScreen(
+                "market", "market-cart" -> MarketNativeScreen(
+                    cartPage = screen == "market-cart",
+                    onOpenCart = { screen = "market-cart" },
+                    onBrowse = { screen = "market" },
                     auth = auth,
                     location = location,
                     address = address,
