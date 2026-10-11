@@ -1,6 +1,6 @@
 # QueueGo — Google Play Closed Beta Readiness
 
-Last reviewed: 2026-10-10  
+Last reviewed: 2026-10-11  
 Scope: Native Android Customer, Merchant, Rider apps. Legacy Capacitor/Web build notes are historical context only and do not certify the Native release.
 
 ## Current release gate
