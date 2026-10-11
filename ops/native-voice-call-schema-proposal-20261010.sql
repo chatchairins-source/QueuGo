@@ -292,9 +292,8 @@ begin
     v_call_id,p_order_id,v_actor_id,v_callee_id,p_session_id,p_target,'qg-call:'||v_call_id::text
   );
 
-  insert into public.notifications(id,user_id,title,message,type,reference_id)
+  insert into public.notifications(user_id,title,message,type,reference_id)
   values(
-    v_call_id,
     v_callee_id,
     'สายเรียกเข้า QueueGo',
     coalesce(nullif(v_actor_name,''),'QueueGo')||' กำลังโทรผ่านออเดอร์ '||v_order.order_number,
