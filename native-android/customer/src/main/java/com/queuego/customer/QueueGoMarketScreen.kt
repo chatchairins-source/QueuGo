@@ -111,6 +111,22 @@ fun MarketNativeScreen(
     val api = remember { CustomerMarketApi() }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
+    val marketFallbackDataUri = remember {
+        context.resources.openRawResource(R.raw.qg_market_banner_data_uri)
+            .bufferedReader()
+            .use { it.readText() }
+    }
+    val effectiveMarketBanner = remember(serviceBanner, marketFallbackDataUri) {
+        ServiceBanner(
+            key = "market",
+            image = serviceBanner?.image?.takeIf { it.isNotBlank() } ?: marketFallbackDataUri,
+            title = serviceBanner?.title?.takeIf { it.isNotBlank() } ?: "ตลาดสด",
+            subtitle = serviceBanner?.subtitle?.takeIf { it.isNotBlank() }
+                ?: "ตลาดสดใกล้คุณ สดใหม่ทุกวัน",
+            active = serviceBanner?.active ?: true,
+            link = serviceBanner?.link
+        )
+    }
     val actorId = auth?.user?.id ?: "guest"
     val cartStore = remember(actorId) { MarketCartStore(context, actorId) }
 
@@ -368,7 +384,7 @@ fun MarketNativeScreen(
             }
 
             CustomerServiceBanner(
-                banner = serviceBanner,
+                banner = effectiveMarketBanner,
                 fallbackDrawable = null,
                 fallbackTitle = "ตลาดสด",
                 fallbackSubtitle = "ตลาดสดใกล้คุณ สดใหม่ทุกวัน",
