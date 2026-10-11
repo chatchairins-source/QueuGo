@@ -92,14 +92,18 @@ import java.time.LocalDate
 import java.time.ZoneId
 
 @Composable
-fun QueueGoMerchantApp() {
+fun QueueGoMerchantApp(pushTarget: NativePushLaunchTarget? = null) {
     QueueGoAuthHost(expectedRole = "shop", appLabel = "Merchant") { auth, logout ->
-        MerchantShell(auth, logout)
+        MerchantShell(auth, logout, pushTarget)
     }
 }
 
 @Composable
-private fun MerchantShell(auth: NativeAuth, logout: () -> Unit) {
+private fun MerchantShell(
+    auth: NativeAuth,
+    logout: () -> Unit,
+    pushTarget: NativePushLaunchTarget? = null
+) {
     val api = remember { MerchantApi() }
     val scope = rememberCoroutineScope()
     val realtime = remember { NativeOrderRealtime() }
@@ -281,6 +285,24 @@ private fun MerchantShell(auth: NativeAuth, logout: () -> Unit) {
     }
 
     LaunchedEffect(auth.user.id) { refreshAll() }
+    LaunchedEffect(pushTarget?.eventId, loading) {
+        val target = pushTarget ?: return@LaunchedEffect
+        if (loading) return@LaunchedEffect
+        if (target.referenceId.isBlank()) {
+            screen = "notifications"
+            return@LaunchedEffect
+        }
+        val fresh = runCatching { api.loadOrders(auth) }.getOrDefault(orders)
+        orders = fresh
+        val order = fresh.find { it.id == target.referenceId }
+        if (order != null) {
+            selectedOrder = order
+            orderItems = runCatching { api.loadOrderItems(auth, order.id) }.getOrDefault(emptyList())
+            screen = "order"
+        } else {
+            screen = if (target.type == "voice_call") "orders" else "notifications"
+        }
+    }
     LaunchedEffect(auth.session.accessToken, auth.session.sessionId, lifecycle) {
         lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
             while (true) {
