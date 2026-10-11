@@ -78,6 +78,7 @@ assert(/qg_purge_call_sessions\(\)[\s\S]*SECURITY INVOKER/.test(retention),'voic
 assert(/created_at < now\(\) - interval '30 days'/.test(retention),'voice metadata purge must use a fixed 30-day age cutoff');
 assert(/DELETE FROM public\.notifications[\s\S]*type='voice_call'[\s\S]*created_at < now\(\) - interval '30 days'/.test(retention),'voice call notification metadata must use the same 30-day cutoff');
 assert(/queuego-voice-call-retention/.test(retention)&&/cron\.schedule/.test(retention),'voice metadata purge must run automatically on pg_cron');
+assert(/DO \\$\\$[\\s\\S]*cron\\.schedule[\\s\\S]*\\$\\$;/.test(retention),'voice retention cron scheduling must use a valid PostgreSQL dollar-quoted DO block');
 assert(/FOR v_jobid IN[\s\S]*queuego-voice-call-retention[\s\S]*cron\.unschedule/.test(retention),'voice retention migration must remove every stale same-name cron job before scheduling');
 assert(/SELECT qg_private\.qg_purge_call_sessions\(\);/.test(retention),'voice retention cutoff must also be applied immediately at deployment');
 assert(/REVOKE ALL ON FUNCTION qg_private\.qg_purge_call_sessions\(\) FROM authenticated/.test(retention),'voice retention purge must not be callable by app users');
