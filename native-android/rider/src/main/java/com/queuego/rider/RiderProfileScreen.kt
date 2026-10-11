@@ -418,9 +418,9 @@ private fun RiderProfileSection(title: String, content: @Composable () -> Unit) 
         if (title.isNotBlank()) {
             Text(
                 title,
-                color = Color(0xFF777D85),
-                fontWeight = FontWeight.ExtraBold,
-                style = MaterialTheme.typography.labelSmall
+                color = Color(0xFF898287),
+                fontSize = 9.sp,
+                fontWeight = FontWeight.Black
             )
             Spacer(Modifier.height(6.dp))
         }
@@ -428,7 +428,7 @@ private fun RiderProfileSection(title: String, content: @Composable () -> Unit) 
             Modifier
                 .fillMaxWidth()
                 .background(Color.White, RoundedCornerShape(16.dp))
-                .border(1.dp, Color(0xFFECEEF1), RoundedCornerShape(16.dp))
+                .border(1.dp, Color(0xFFEEE6E8), RoundedCornerShape(16.dp))
         ) { content() }
     }
 }
@@ -446,23 +446,40 @@ private fun RiderProfileActionRow(
         Modifier
             .fillMaxWidth()
             .clickable(enabled = enabled, onClick = onClick)
-            .padding(horizontal = 12.dp, vertical = 10.dp),
+            .heightIn(min = 52.dp)
+            .padding(horizontal = 10.dp, vertical = 9.dp),
         verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
     ) {
         Box(
             Modifier
                 .size(34.dp)
-                .background(Color(0xFFF5F5F6), RoundedCornerShape(11.dp)),
+                .background(Color(0xFFF7F4F5), RoundedCornerShape(11.dp)),
             contentAlignment = androidx.compose.ui.Alignment.Center
         ) {
             QgIcon(icon, Modifier.size(17.dp), Color(0xFF737982))
         }
         Spacer(Modifier.width(9.dp))
         Column(Modifier.weight(1f)) {
-            Text(title, fontWeight = FontWeight.ExtraBold, color = Color(0xFF202329))
-            Text(subtitle, color = Color(0xFF8A8F96), style = MaterialTheme.typography.labelSmall)
+            Text(
+                title,
+                fontSize = 12.sp,
+                lineHeight = 15.sp,
+                fontWeight = FontWeight.ExtraBold,
+                color = Color(0xFF211E20)
+            )
+            Text(
+                subtitle,
+                color = Color(0xFF8A8387),
+                fontSize = 8.5.sp,
+                lineHeight = 11.5.sp
+            )
         }
-        Text("›", color = Color(0xFFAFB3B9), style = MaterialTheme.typography.headlineSmall)
+        Text(
+            "›",
+            color = Color(0xFFB4ADB1),
+            fontSize = 21.sp,
+            lineHeight = 21.sp
+        )
     }
 }
 
@@ -480,35 +497,46 @@ private fun RiderProfileStateRow(
         Modifier
             .fillMaxWidth()
             .clickable(enabled = enabled, onClick = onClick)
-            .padding(horizontal = 12.dp, vertical = 10.dp),
+            .heightIn(min = 52.dp)
+            .padding(horizontal = 10.dp, vertical = 9.dp),
         verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
     ) {
         Box(
             Modifier
                 .size(34.dp)
-                .background(Color(0xFFF5F5F6), RoundedCornerShape(11.dp)),
+                .background(Color(0xFFF7F4F5), RoundedCornerShape(11.dp)),
             contentAlignment = androidx.compose.ui.Alignment.Center
         ) {
             QgIcon(icon, Modifier.size(17.dp), Color(0xFF737982))
         }
         Spacer(Modifier.width(9.dp))
         Column(Modifier.weight(1f)) {
-            Text(title, fontWeight = FontWeight.ExtraBold, color = Color(0xFF202329))
-            Text(subtitle, color = Color(0xFF8A8F96), style = MaterialTheme.typography.labelSmall)
+            Text(
+                title,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.ExtraBold,
+                color = Color(0xFF211E20)
+            )
+            Text(
+                subtitle,
+                color = Color(0xFF8A8387),
+                fontSize = 8.5.sp,
+                lineHeight = 11.5.sp
+            )
         }
         Box(
             Modifier
                 .background(
-                    if (on) Color(0xFFE9FAF2) else Color(0xFFF1F2F4),
+                    if (on) Color(0xFFEDF9F2) else Color(0xFFF2F2F3),
                     RoundedCornerShape(99.dp)
                 )
                 .padding(horizontal = 8.dp, vertical = 5.dp)
         ) {
             Text(
                 state,
-                color = if (on) Color(0xFF0A9660) else Color(0xFF7D8289),
-                style = MaterialTheme.typography.labelSmall,
-                fontWeight = FontWeight.ExtraBold
+                color = if (on) Color(0xFF14A35C) else Color(0xFF777B80),
+                fontSize = 8.5.sp,
+                fontWeight = FontWeight.Black
             )
         }
     }
