@@ -29,18 +29,21 @@ for(const [role,src,app,manifest,service] of [
   has(src,/NativePushApi\(\)\.subscribe/,`${role} backend token registration missing`);
   has(src,/NativePushApi\(\)\.unsubscribe|api\.unsubscribe/,`${role} backend token cleanup missing`);
   has(src,/CATEGORY_CALL/,`${role} voice call notification category missing`);
+  has(src,/RingtoneManager\.TYPE_NOTIFICATION/,`${role} notification channel must use the system notification sound`);
+  has(src,/setSound\(sound, attributes\)/,`${role} notification channel must explicitly enable sound`);
   has(app,/POST_NOTIFICATIONS/,`${role} notification runtime permission missing`);
   has(app,/nativeLogoutScope/,`${role} lifecycle-safe logout cleanup missing`);
   has(app,/unsubscribe\(auth, pushStore\.deviceId\(\)\)/,`${role} logout must unsubscribe device`);
   has(manifest,/android\.permission\.POST_NOTIFICATIONS/,`${role} manifest notification permission missing`);
   has(manifest,new RegExp(service),`${role} messaging service not registered`);
-  has(manifest,/queuego_orders/,`${role} notification channel metadata missing`);
+  has(manifest,/queuego_orders_v2/,`${role} notification channel v2 metadata missing`);
 }
 has(customer,/auth\.user\.role != "customer"/,'Customer role guard missing');
 has(merchant,/auth\.user\.role != "shop"/,'Merchant role guard missing');
 has(customer,/auth\.user\.status != "active"/,'Customer active-status guard missing');
 has(merchant,/auth\.user\.status != "active"/,'Merchant active-status guard missing');
 has(pushEdge,/user\.role==='rider'\|\|n\.type==='voice_call'/,'voice_call push must be high priority for all roles');
+has(pushEdge,/channel_id:'queuego_orders_v2',sound:'default'/,'native FCM must target the audible v2 notification channel');
 has(workflow,/com\.queuego\.customer/,'CI must discover Customer Firebase client');
 has(workflow,/com\.queuego\.merchant/,'CI must discover Merchant Firebase client');
 has(workflow,/com\.queuego\.rider/,'CI must retain Rider Firebase client gate');

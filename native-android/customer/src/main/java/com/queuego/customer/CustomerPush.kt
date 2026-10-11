@@ -27,7 +27,7 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
-internal const val CUSTOMER_NOTIFICATION_CHANNEL = "queuego_orders"
+internal const val CUSTOMER_NOTIFICATION_CHANNEL = "queuego_orders_v2"
 
 internal fun ensureCustomerNotificationChannel(context: Context) {
     if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
