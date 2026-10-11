@@ -123,6 +123,7 @@ private fun MerchantShell(auth: NativeAuth, logout: () -> Unit) {
     var selectedOrder by remember { mutableStateOf<MerchantOrder?>(null) }
     var selectedProduct by remember { mutableStateOf<MerchantProduct?>(null) }
     var newProductCategory by remember { mutableStateOf<String?>(null) }
+    var productsReturnScreen by remember { mutableStateOf("home") }
     var productReturnScreen by remember { mutableStateOf("products") }
     var orderItems by remember { mutableStateOf<List<MerchantOrderItem>>(emptyList()) }
     var gpRate by remember { mutableStateOf(0.0) }
@@ -215,7 +216,7 @@ private fun MerchantShell(auth: NativeAuth, logout: () -> Unit) {
         screen = when (screen) {
             "shop-setup", "hours", "support" -> "profile"
             "notifications", "media", "modules", "market-stock" -> "home"
-            "catalog" -> "products"
+            "products" -> productsReturnScreen
             "product" -> productReturnScreen
             "order" -> "orders"
             else -> "home"
@@ -350,7 +351,10 @@ private fun MerchantShell(auth: NativeAuth, logout: () -> Unit) {
                         QgNavItem("promotions", "โปรโมชั่น", "tag"),
                         QgNavItem("profile", "บัญชี", "user")
                     )
-                ) { screen = it }
+                ) {
+                    if (it == "products") productsReturnScreen = "home"
+                    screen = it
+                }
             }
         }
     ) { insets ->
@@ -414,7 +418,10 @@ private fun MerchantShell(auth: NativeAuth, logout: () -> Unit) {
                     },
                     onPos = { screen = "pos" },
                     onOrders = { screen = "orders" },
-                    onProducts = { screen = "products" },
+                    onProducts = {
+                        productsReturnScreen = "home"
+                        screen = "products"
+                    },
                     onLaundry = { screen = "laundry" },
                     onRevenue = { screen = "revenue" },
                     onPromotion = { screen = "promotions" },
@@ -459,38 +466,7 @@ private fun MerchantShell(auth: NativeAuth, logout: () -> Unit) {
                         }
                     }
                 )
-                "products" -> MerchantProductsScreen(
-                    products = products,
-                    busy = busy,
-                    onToggle = { product, next ->
-                        if (!busy) {
-                            busy = true
-                            scope.launch {
-                                runCatching { api.setProductAvailable(auth, product.id, next) }
-                                    .onSuccess {
-                                        products = products.map {
-                                            if (it.id == product.id) it.copy(available = next) else it
-                                        }
-                                        message = if (next) "เปิดขายสินค้าแล้ว" else "ปิดขายสินค้าแล้ว"
-                                    }
-                                    .onFailure { message = it.message ?: "เปลี่ยนสถานะสินค้าไม่สำเร็จ" }
-                                busy = false
-                            }
-                        }
-                    },
-                    onOpen = { product ->
-                        selectedProduct = product
-                        newProductCategory = null
-                        productReturnScreen = "products"
-                        screen = "product"
-                    },
-                    onAdd = {
-                        selectedProduct = null
-                        newProductCategory = null
-                        screen = "catalog"
-                    }
-                )
-                "catalog" -> {
+                "products" -> {
                     val activeShop = shop
                     if (activeShop == null) {
                         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -503,16 +479,16 @@ private fun MerchantShell(auth: NativeAuth, logout: () -> Unit) {
                             onOpenProduct = { product ->
                                 selectedProduct = product
                                 newProductCategory = null
-                                productReturnScreen = "catalog"
+                                productReturnScreen = "products"
                                 screen = "product"
                             },
                             onAddProduct = { category ->
                                 selectedProduct = null
                                 newProductCategory = category
-                                productReturnScreen = "catalog"
+                                productReturnScreen = "products"
                                 screen = "product"
                             },
-                            onBack = { screen = "products" }
+                            onBack = { screen = productsReturnScreen }
                         )
                     }
                 }
@@ -688,7 +664,10 @@ private fun MerchantShell(auth: NativeAuth, logout: () -> Unit) {
                         screen = "shop-setup"
                     },
                     onHours = { screen = "hours" },
-                    onProducts = { screen = "products" },
+                    onProducts = {
+                        productsReturnScreen = "profile"
+                        screen = "products"
+                    },
                     onNotifications = { screen = "notifications" },
                     onTestSound = {
                         playMerchantNotificationSound()
