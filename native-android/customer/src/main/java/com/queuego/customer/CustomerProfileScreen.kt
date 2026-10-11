@@ -298,27 +298,11 @@ internal fun CustomerProfileScreen(
 
         Spacer(Modifier.height(12.dp))
         CustomerProfileSectionTitle("ความเป็นส่วนตัวและบัญชี")
-        CustomerProfileCard {
-            CustomerProfileActionRow(
-                icon = "gear",
-                title = "นโยบายความเป็นส่วนตัว",
-                subtitle = null
-            ) {
-                runCatching {
-                    context.startActivity(
-                        Intent(
-                            Intent.ACTION_VIEW,
-                            Uri.parse("https://chatchairins-source.github.io/QueuGo/docs/privacy.html")
-                        )
-                    )
-                }.onFailure { message = "เปิดนโยบายความเป็นส่วนตัวไม่สำเร็จ" }
-            }
-        }
-        Spacer(Modifier.height(8.dp))
         QgAccountDeletionSection(
             accessToken = auth.session.accessToken,
             onDeleted = onLogout,
-            pendingChatUserId = auth.user.id
+            pendingChatUserId = auth.user.id,
+            showHeader = false
         )
         Spacer(Modifier.height(8.dp))
         CustomerProfileCard {
