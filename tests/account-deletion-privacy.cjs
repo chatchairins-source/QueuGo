@@ -30,7 +30,9 @@ must(deletion.includes('เข้าสู่ระบบเพื่อยื�
 must(sql.includes('queuego_account_deletion_eligibility'),'SQL source must include eligibility gate');
 must(sql.includes("delivery_address='ข้อมูลถูกลบตามคำขอเจ้าของบัญชี'"),'market order PII scrub must respect NOT NULL');
 must(!sql.includes('set delivery_address=null,delivery_latitude=null,delivery_longitude=null\n     where customer_id=v_user.id;'),'market order scrub must not null NOT NULL columns');
+must(sql.includes("delete from public.notifications n")&&sql.includes("n.type='voice_call'")&&sql.includes('n.reference_id=c.order_id')&&sql.includes('n.user_id=c.callee_user_id')&&sql.includes('n.created_at=c.created_at'),'account deletion must remove the exact counterpart voice notification created with the call session');
 must(sql.includes('delete from public.qg_call_sessions where caller_user_id=v_user.id or callee_user_id=v_user.id;'),'account deletion must immediately remove voice call session metadata');
+must(accountDeletionVoiceCleanup.includes('ACCOUNT_DELETION_VOICE_NOTIFICATION_CLEANUP_MISSING'),'voice cleanup migration must verify counterpart notification cleanup');
 must(accountDeletionVoiceCleanup.includes('account_deletion_voice_rpc_backup_20261011')&&accountDeletionVoiceCleanup.includes('pg_get_functiondef'),'voice cleanup migration must back up the live account-deletion RPC definition');
 must(accountDeletionVoiceCleanup.includes('ACCOUNT_DELETION_FINALIZE_UNEXPECTED_DEFINITION'),'voice cleanup migration must fail closed on an unexpected Production function definition');
 must(sql.includes('delete from public.qg_ugc_terms_acceptances where user_id=v_user.id;'),'account deletion must remove UGC terms acceptance');
