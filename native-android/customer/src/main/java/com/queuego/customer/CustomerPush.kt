@@ -8,6 +8,9 @@ import android.content.Intent
 import android.media.AudioAttributes
 import android.media.RingtoneManager
 import android.os.Build
+import android.os.Handler
+import android.os.Looper
+import android.speech.tts.TextToSpeech
 import androidx.core.app.NotificationCompat
 import com.google.firebase.FirebaseApp
 import com.google.firebase.messaging.FirebaseMessaging
@@ -26,10 +29,39 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
+import java.util.Locale
 
 internal const val CUSTOMER_NOTIFICATION_CHANNEL = "queuego_orders_v2"
 private const val CUSTOMER_PUSH_PREFS = "queuego_customer_push_preferences"
 private const val CUSTOMER_PUSH_ENABLED = "push_enabled"
+private const val CUSTOMER_PROFILE_PREFS = "qg_customer_profile_preferences"
+private const val CUSTOMER_ARRIVAL_SOUND = "arrival_sound"
+
+internal fun customerArrivalSoundEnabled(context: Context): Boolean =
+    context.applicationContext
+        .getSharedPreferences(CUSTOMER_PROFILE_PREFS, Context.MODE_PRIVATE)
+        .getBoolean(CUSTOMER_ARRIVAL_SOUND, false)
+
+private fun announceCustomerArrival(context: Context, text: String) {
+    var speaker: TextToSpeech? = null
+    speaker = TextToSpeech(context.applicationContext) { status ->
+        if (status == TextToSpeech.SUCCESS) {
+            speaker?.language = Locale("th", "TH")
+            speaker?.speak(
+                text.take(120),
+                TextToSpeech.QUEUE_FLUSH,
+                null,
+                "queuego-rider-arrival"
+            )
+            Handler(Looper.getMainLooper()).postDelayed({
+                runCatching { speaker?.stop() }
+                runCatching { speaker?.shutdown() }
+            }, 6_000L)
+        } else {
+            runCatching { speaker?.shutdown() }
+        }
+    }
+}
 
 internal fun customerPushEnabled(context: Context): Boolean =
     context.applicationContext
@@ -157,6 +189,14 @@ class QueueGoCustomerMessagingService : FirebaseMessagingService() {
             (message.messageId ?: referenceId.ifBlank { System.currentTimeMillis().toString() }).hashCode(),
             notification
         )
+        val arrivalEvent = type.lowercase() in setOf(
+            "rider_arrived",
+            "rider_arrived_customer",
+            "arrival"
+        ) || Regex("มาถึง|ถึงจุดส่ง|ถึงลูกค้า").containsMatchIn(title + " " + body)
+        if (arrivalEvent && customerArrivalSoundEnabled(this)) {
+            announceCustomerArrival(this, title.ifBlank { "Rider มาถึงแล้ว" })
+        }
     }
 
     override fun onDestroy() {
