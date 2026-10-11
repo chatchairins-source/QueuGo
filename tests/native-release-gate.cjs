@@ -176,6 +176,12 @@ try{
       merchant_session_persistence:true,merchant_offline_timeout:true,merchant_reconnect:true,merchant_background_foreground:true,
       rider_permissions:true,rider_single_back_to_home:true,rider_upload:true,rider_location:true,
       rider_session_persistence:true,rider_offline_timeout:true,rider_reconnect:true,rider_background_foreground:true
+    },
+    play_store_preflight:{
+      developer_identity_verified:true,
+      customer_package_registered:true,
+      merchant_package_registered:true,
+      rider_package_registered:true
     }
   };
   const gates={};
@@ -185,7 +191,7 @@ try{
       checks:semanticChecks[gate]||{observed:true},
       artifacts:[{file:artifact,sha256:artifactSha,kind:'log'}]
     };
-    if(semanticChecks[gate]) envelope.operator_certified=true;
+    if(physical.has(gate)) envelope.operator_certified=true;
     if(['customer_blueprint','merchant_blueprint','rider_blueprint'].includes(gate)) envelope.blocking_differences=0;
     if(gate==='full_native_ci') envelope.github_run_id=456;
     if(gate==='backup_restore') envelope.github_run_id=456;
