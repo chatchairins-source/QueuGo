@@ -71,6 +71,7 @@ has(/return jsonb_build_object\('authorized',true\)/i,
 assert(!/stun:|turn:turn\./i.test(sql.match(
   /create or replace function public\.qg_call_ice_config[\s\S]*?\$\$;/
 )?.[0]||''), 'ICE RPC must not own relay configuration');
+assert(/qg_call_sessions_created_idx/.test(retention)&&/qg_call_sessions\(created_at\)/.test(retention),'voice retention purge must have a leading created_at index');
 assert(/qg_purge_call_sessions/.test(retention),'voice metadata retention purge function missing');
 assert(/created_at < now\(\) - interval '30 days'/.test(retention),'voice metadata must have a fixed 30-day maximum retention');
 assert(/queuego-voice-call-retention/.test(retention)&&/cron\.schedule/.test(retention),'voice metadata purge must run automatically on pg_cron');
