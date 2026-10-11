@@ -144,26 +144,14 @@ class CustomerLaundryApi(private val http: QueueGoNativeApi = QueueGoNativeApi()
     suspend fun orders(auth: NativeAuth): List<LaundryOrderSummary> {
         val rows = http.array(http.get(
             "laundry_orders?select=id,order_number,status,service_name_snapshot,estimated_total_amount,final_total_amount,pickup_address,created_at" +
-                "&customer_id=eq." + http.enc(auth.user.id) + "&order=created_at.desc&limit=50",
-            auth.session.accessToken
-        ))
-        return buildList {
-            for (i in 0 until rows.length()) {
-                val r = rows.optJSONObject(i) ?: continue
-                val id = r.optString("id")
-                if (id.isBlank()) continue
-                add(LaundryOrderSummary(
-                    id,
-                    laundryFormatNumber(r.optString("order_number"), id),
-                    r.optString("status"),
-                    r.optString("service_name_snapshot").ifBlank { "บริการฝากซัก" },
-                    r.optDoubleNullable("estimated_total_amount"),
-                    r.optDoubleNullable("final_total_amount"),
-                    r.optString("pickup_address").takeIf { it.isNotBlank() && it != "null" },
-                    r.optString("created_at").takeIf { it.isNotBlank() && it != "null" }
-                ))
-            }
-        }
+                "&customer_id=eq." + http.enc(auth.user.id) + "&order=created_at.desc&limit=50", auth.session.accessToken))
+        return (0 until rows.length()).mapNotNull { rows.optJSONObject(it)?.let(::parseLaundryOrderDetails)?.summary }
+    }
+
+    internal suspend fun order(auth: NativeAuth, orderId: String): LaundryOrderDetails? {
+        val rows = http.array(http.get("laundry_orders?select=id,order_number,status,service_name_snapshot,service_type,estimated_total_amount,final_total_amount,pickup_address,created_at,pricing_type_snapshot,unit_price_snapshot,actual_quantity,actual_kg,estimated_quantity,estimated_kg,final_amount,estimated_amount,pickup_fee_snapshot,return_fee_snapshot,delivery_fee_total_snapshot" +
+            "&id=eq." + http.enc(orderId) + "&customer_id=eq." + http.enc(auth.user.id) + "&limit=1", auth.session.accessToken))
+        return rows.optJSONObject(0)?.let(::parseLaundryOrderDetails)
     }
 
     suspend fun events(auth: NativeAuth, orderId: String): List<LaundryEvent> {
@@ -220,3 +208,27 @@ class CustomerLaundryApi(private val http: QueueGoNativeApi = QueueGoNativeApi()
 
 
 private fun laundryFormatNumber(raw: String?, id: String): String = nativeOrderNumber(raw)
+
+internal data class LaundryOrderDetails(val summary: LaundryOrderSummary, val pricingType: String,
+    val unitPrice: Double?, val quantity: Double?, val actualQuantity: Boolean,
+    val serviceAmount: Double?, val pickupFee: Double, val returnFee: Double)
+
+internal fun parseLaundryOrderDetails(row: JSONObject): LaundryOrderDetails {
+    val id = row.getString("id")
+    val pickup = row.optDoubleNullable("pickup_fee_snapshot") ?: 0.0
+    val returned = row.optDoubleNullable("return_fee_snapshot") ?: 0.0
+    val service = row.optDoubleNullable("final_amount") ?: row.optDoubleNullable("estimated_amount")
+    val delivery = row.optDoubleNullable("delivery_fee_total_snapshot") ?: (pickup + returned)
+    val finalTotal = row.optDoubleNullable("final_total_amount")
+    val estimatedTotal = row.optDoubleNullable("estimated_total_amount") ?: service?.plus(delivery)
+    return LaundryOrderDetails(LaundryOrderSummary(id, laundryFormatNumber(row.optString("order_number"), id),
+        row.optString("status"), row.optString("service_name_snapshot").takeIf { it.isNotBlank() && it != "null" }
+            ?: row.optString("service_type").takeIf { it.isNotBlank() && it != "null" } ?: "บริการฝากซัก",
+        estimatedTotal, finalTotal, row.optString("pickup_address").takeIf { it.isNotBlank() && it != "null" },
+        row.optString("created_at").takeIf { it.isNotBlank() && it != "null" }),
+        row.optString("pricing_type_snapshot"), row.optDoubleNullable("unit_price_snapshot"),
+        row.optDoubleNullable("actual_quantity") ?: row.optDoubleNullable("actual_kg")
+            ?: row.optDoubleNullable("estimated_quantity") ?: row.optDoubleNullable("estimated_kg"),
+        row.optDoubleNullable("actual_quantity") != null || row.optDoubleNullable("actual_kg") != null,
+        service, pickup, returned)
+}

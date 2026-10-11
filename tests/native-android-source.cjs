@@ -306,4 +306,7 @@ ok(customerMarketScreen.includes('คำนวณจากราคาที่�
 
 
 ok(customerMarketScreen.includes('LifecycleResumeEffect(actorId)')&&customerMarketScreen.includes('if (hasResumed) reload++')&&customerMarketScreen.includes('old.quantity < minOf(99, p.availablePacks)'), 'Market foreground recovery must refresh authoritative data and additions must obey the Production RPC 99-pack cap');
+const specialTracking=fs.readFileSync(path.join(root,'customer/src/main/java/com/queuego/customer/QueueGoSpecialTracking.kt'),'utf8');
+ok(specialTracking.includes('api.trip(auth, trip.id)')&&specialTracking.includes('api.order(auth, order.id)')&&specialTracking.includes('repeatOnLifecycle(Lifecycle.State.STARTED)')&&specialTracking.includes('catch (cancelled: CancellationException) { throw cancelled }'),'Market/Laundry detail must read authoritative owner/id snapshots and suspend polling in background');
+ok(specialTracking.includes('d.actualQuantity')&&specialTracking.includes('d.pickupFee')&&specialTracking.includes('d.returnFee')&&specialTracking.includes('งานนี้ถูกยกเลิก'),'Laundry details must preserve snapshot pricing/quantity/fees and explicit cancellation');
 console.log(JSON.stringify({checks,failures:0,scope:'QueueGo Customer Merchant Rider native Android source'}));
