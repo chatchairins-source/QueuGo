@@ -41,6 +41,52 @@ adb = [adb_bin, "-s", "emulator-5554"]
 package = "com.queuego.rider"
 component = package + "/.MainActivity"
 
+
+def package_pids(pkg: str):
+    result = run(adb + ["shell", "pidof", pkg], capture_output=True, text=True)
+    pids = [value for value in result.stdout.strip().split() if value.isdigit()]
+    assert pids, f"{pkg} process is not running"
+    return pids
+
+
+def android_runtime_for_pids(pids):
+    chunks = []
+    for pid in pids:
+        chunks.append(run(
+            adb + ["logcat", "-d", "--pid=" + pid, "-s", "AndroidRuntime:E"],
+            capture_output=True,
+            text=True,
+        ).stdout)
+    return "\n".join(chunks)
+
+
+def full_crash_buffer():
+    return run(
+        adb + ["logcat", "-b", "crash", "-d"],
+        capture_output=True,
+        text=True,
+    ).stdout
+
+
+def package_crash_blocks(crash_text: str, pkg: str):
+    lines = crash_text.splitlines()
+    blocks = []
+    for index, line in enumerate(lines):
+        if "FATAL EXCEPTION" not in line:
+            continue
+        window = "\n".join(lines[index:index + 16])
+        if f"Process: {pkg}," in window:
+            blocks.append(window)
+    return "\n\n".join(blocks)
+
+
+def assert_no_package_crash(pkg: str, evidence_path: Path):
+    crash_text = full_crash_buffer()
+    evidence_path.write_text(crash_text)
+    relevant = package_crash_blocks(crash_text, pkg)
+    assert not relevant, f"{pkg} crashed; inspect {evidence_path.name}"
+
+
 def capture_role_viewports():
     """Real Android display configurations; no authenticated state or sample orders."""
     evidence = []
@@ -65,10 +111,10 @@ def capture_role_viewports():
             (directory / "activity-start.txt").write_text(started.stdout + started.stderr)
             assert "Status: ok" in started.stdout, f"{role} {viewport} launch failed"
             time.sleep(5)
-            run(adb + ["shell", "pidof", pkg], capture_output=True)
+            role_pids = package_pids(pkg)
             activities = run(adb + ["shell", "dumpsys", "activity", "activities"], capture_output=True, text=True).stdout
             assert any("mResumedActivity" in line and activity_name in line for line in activities.splitlines()), f"{role} {viewport} not resumed"
-            runtime = run(adb + ["logcat", "-d", "-s", "AndroidRuntime:E"], capture_output=True, text=True).stdout
+            runtime = android_runtime_for_pids(role_pids)
             (directory / "android-runtime.txt").write_text(runtime)
             assert "FATAL EXCEPTION" not in runtime, f"{role} {viewport} crashed"
             run(adb + ["shell", "uiautomator", "dump", "/sdcard/queuego-launch.xml"])
@@ -115,7 +161,7 @@ def capture_role_viewports():
                 with (directory / "registration.png").open("wb") as png:
                     run(adb + ["exec-out", "screencap", "-p"], stdout=png)
                 item["native_registration_step_one"] = "PASS; no account/data submitted"
-                runtime = run(adb + ["logcat", "-d", "-s", "AndroidRuntime:E"], capture_output=True, text=True).stdout
+                runtime = android_runtime_for_pids(role_pids)
                 assert "FATAL EXCEPTION" not in runtime, "Native registration crashed"
             if role == "merchant":
                 button = next((n for n in ui_nodes if n.get("text") == "สมัครร้านค้าใหม่"), None)
@@ -150,7 +196,7 @@ def capture_role_viewports():
                 with (directory / "staff-join.png").open("wb") as png:
                     run(adb + ["exec-out", "screencap", "-p"], stdout=png)
                 item["native_merchant_signup_navigation"] = "PASS; signup, single Back, staff invite entry; no account/data submitted"
-                runtime = run(adb + ["logcat", "-d", "-s", "AndroidRuntime:E"], capture_output=True, text=True).stdout
+                runtime = android_runtime_for_pids(role_pids)
                 assert "FATAL EXCEPTION" not in runtime, "Merchant registration navigation crashed"
             if role == "customer":
                 button = next((n for n in ui_nodes if n.get("text") == "สมัครสมาชิก"), None)
@@ -202,8 +248,9 @@ def capture_role_viewports():
                 assert not any(n.get("text") == "ยินดีต้อนรับสู่ QueueGo" for n in returned), "Customer login Back stayed on auth"
                 item["native_customer_guest_navigation"] = "PASS; public Home, explicit login, single Back to Home; no account/data submitted"
                 item["native_customer_signup_navigation"] = "PASS; phone/email mode and back; no account/data submitted"
-                runtime = run(adb + ["logcat", "-d", "-s", "AndroidRuntime:E"], capture_output=True, text=True).stdout
+                runtime = android_runtime_for_pids(role_pids)
                 assert "FATAL EXCEPTION" not in runtime, "Customer registration navigation crashed"
+            assert_no_package_crash(pkg, directory / "crash-buffer.txt")
             evidence.append(item)
     (output / "matrix-metadata.json").write_text(json.dumps(evidence, ensure_ascii=False, indent=2) + "\n")
     print("Actual three-role phone/small-phone/tablet fresh-session launch matrix PASS; authenticated E2E/visual parity remain unverified")
@@ -291,12 +338,13 @@ with (output / "emulator.log").open("w") as log:
         (output / "activity-start.txt").write_text(start.stdout + start.stderr)
         assert "Status: ok" in start.stdout, "Activity launch did not succeed"
         time.sleep(10)
-        run(adb + ["shell", "pidof", package], capture_output=True)
+        rider_pids = package_pids(package)
         activity = run(adb + ["shell", "dumpsys", "activity", "activities"], capture_output=True, text=True).stdout
         assert any("mResumedActivity" in line and component in line for line in activity.splitlines()), "Rider is not the resumed activity"
-        runtime = run(adb + ["logcat", "-d", "-s", "AndroidRuntime:E"], capture_output=True, text=True).stdout
+        runtime = android_runtime_for_pids(rider_pids)
         (output / "android-runtime.txt").write_text(runtime)
-        assert "FATAL EXCEPTION" not in runtime, "Android runtime crash; inspect the evidence"
+        assert "FATAL EXCEPTION" not in runtime, "QueueGo Rider runtime crash; inspect the evidence"
+        assert_no_package_crash(package, output / "rider-crash-buffer.txt")
         run(adb + ["shell", "uiautomator", "dump", "/sdcard/queuego-rider-launch.xml"])
         ui = output / "rider-launch.xml"
         run(adb + ["pull", "/sdcard/queuego-rider-launch.xml", str(ui)])
