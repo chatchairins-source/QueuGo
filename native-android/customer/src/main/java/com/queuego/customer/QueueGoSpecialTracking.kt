@@ -36,7 +36,6 @@ import kotlinx.coroutines.CancellationException
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.repeatOnLifecycle
-import java.text.NumberFormat
 import java.util.Locale
 import java.time.OffsetDateTime
 import java.time.ZoneId
@@ -316,8 +315,8 @@ fun customerStatusLabel(status: String): String = when (status.lowercase()) {
     else -> status
 }
 
-private fun specialNumber(value: Double): String = NumberFormat.getNumberInstance(Locale("th", "TH")).apply { maximumFractionDigits = 2 }.format(value)
-private fun specialMoney(value: Double) = specialNumber(value) + " บาท"
+private fun specialNumber(value: Double): String = customerNumber(value)
+private fun specialMoney(value: Double) = customerBaht(value)
 @Composable private fun SpecialSummary(label: String, value: String) {
     Row(Modifier.fillMaxWidth().padding(vertical = 4.dp)) { Text(label, Modifier.weight(1f)); Text(value, fontWeight = FontWeight.Bold) }
 }

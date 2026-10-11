@@ -334,7 +334,7 @@ fun MarketNativeScreen(
                     Column(Modifier.weight(1f)) {
                         Text(p.name, fontWeight = FontWeight.Bold)
                         Text(p.shopName + " · " + marketCategories.getValue(marketCategoryKey(p.category, p.name)), color = QgMuted, style = MaterialTheme.typography.bodySmall)
-                        Text("฿" + "%.0f".format(p.price) + (p.unit?.let { " / $it" } ?: ""), fontWeight = FontWeight.ExtraBold)
+                        Text(customerBaht(p.price) + (p.unit?.let { " / $it" } ?: ""), fontWeight = FontWeight.ExtraBold)
                         Text("พร้อมขาย " + p.availablePacks, color = QgMuted, style = MaterialTheme.typography.labelSmall)
                     }
                     Button(enabled = !busy && !checkoutPending, onClick = {
@@ -380,7 +380,7 @@ fun MarketNativeScreen(
                                 Spacer(Modifier.width(9.dp))
                                 Column(Modifier.weight(1f)) {
                                     Text(line.product.name, fontWeight = FontWeight.Bold)
-                                    Text("฿" + "%.0f".format(line.product.price) + (line.product.unit?.let { " / $it" } ?: ""), color = QgRed)
+                                    Text(customerBaht(line.product.price) + (line.product.unit?.let { " / $it" } ?: ""), color = QgRed)
                                     Row(verticalAlignment = Alignment.CenterVertically) {
                                         OutlinedButton(enabled = !busy && !checkoutPending, onClick = {
                                             cart = cart.mapNotNull {
@@ -510,7 +510,7 @@ fun MarketNativeScreen(
             shape = RoundedCornerShape(16.dp)
         ) {
             Text(if (checkoutPending) "ตรวจผล Market Trip เดิม" else "ตะกร้าตลาดสด · $shopCount ร้าน · ${cart.sumOf { it.quantity }} รายการ", Modifier.weight(1f), fontWeight = FontWeight.Bold)
-            if (!checkoutPending) Text("฿" + "%.0f".format(subtotal), fontWeight = FontWeight.Bold)
+            if (!checkoutPending) Text(customerBaht(subtotal), fontWeight = FontWeight.Bold)
         }
     }
     }
@@ -520,6 +520,6 @@ fun MarketNativeScreen(
 private fun MarketSummary(label: String, value: Double) {
     Row(Modifier.fillMaxWidth().padding(vertical = 3.dp)) {
         Text(label, Modifier.weight(1f))
-        Text("฿" + "%.0f".format(value), fontWeight = FontWeight.Bold)
+        Text(customerBaht(value), fontWeight = FontWeight.Bold)
     }
 }
