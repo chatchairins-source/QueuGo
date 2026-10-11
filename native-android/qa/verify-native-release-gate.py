@@ -117,6 +117,15 @@ PHYSICAL_GATE_REQUIRED_CHECKS = {
 
 BLUEPRINT_GATES = {"customer_blueprint", "merchant_blueprint", "rider_blueprint"}
 
+GATE_REQUIRED_CHECKS = {
+    "play_store_preflight": (
+        "developer_identity_verified",
+        "customer_package_registered",
+        "merchant_package_registered",
+        "rider_package_registered",
+    ),
+}
+
 
 def verify_physical_gate_semantics(envelope: dict, gate: str) -> None:
     required_checks = PHYSICAL_GATE_REQUIRED_CHECKS.get(gate)
