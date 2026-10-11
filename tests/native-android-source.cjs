@@ -114,8 +114,8 @@ ok(source.includes('CustomerCategoryButton')&&source.includes('.size(54.dp)')&&s
 ok(source.includes('CustomerTopAction(')&&source.includes('R.drawable.qg_nav_bag')&&source.includes('R.drawable.qg_top_bell')&&source.includes('R.drawable.qg_top_user'),'Customer top actions must remain exact icon-first web vectors');
 ok(source.includes('MerchantMenuTile')&&source.includes('height(128.dp)')&&source.includes('"จัดการร้าน"'),'Merchant native dashboard must preserve store cover KPI and menu-grid blueprint');
 ok(source.includes('RiderBlueprintTopBar')&&source.includes('RoundedCornerShape(21.dp)')&&source.includes('"รับงาน · " + secondsLeft + " วิ"'),'Rider native must preserve approved topbar job-card and accept-countdown blueprint');
-ok(riderApp.includes('val marketVehicleReady = current.profileInfo?.let')&&riderApp.includes('it.vehicleStatus == "active" && !it.vehicleVerifiedAt.isNullOrBlank()'),'Rider Home must derive Market/Grocery eligibility from the same verified-vehicle state enforced by Production dispatch');
-ok(riderApp.includes('"ออนไลน์ · พร้อมรับงานอาหาร"')&&riderApp.includes('"งานตลาด/ของชำรอตรวจสอบยานพาหนะ"'),'Rider Home must not imply Market/Grocery eligibility while vehicle verification is still pending');
+ok(source.includes('val marketVehicleReady = current.profileInfo?.let')&&source.includes('it.vehicleStatus == "active" && !it.vehicleVerifiedAt.isNullOrBlank()'),'Rider Home must derive Market/Grocery eligibility from the same verified-vehicle state enforced by Production dispatch');
+ok(source.includes('"ออนไลน์ · พร้อมรับงานอาหาร"')&&source.includes('"งานตลาด/ของชำรอตรวจสอบยานพาหนะ"'),'Rider Home must not imply Market/Grocery eligibility while vehicle verification is still pending');
 const riderApi=read('rider/src/main/java/com/queuego/rider/QueueGoApi.kt');
 const riderApp=read('rider/src/main/java/com/queuego/rider/QueueGoRiderApp.kt');
 const riderPush=read('rider/src/main/java/com/queuego/rider/RiderPush.kt');
