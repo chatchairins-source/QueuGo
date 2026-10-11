@@ -19,6 +19,7 @@ Closed Beta release remains **BLOCKED** until every hard gate below passes:
 - Supabase Auth: PASS WITH FREE-PLAN CONTROLS — 12-character upper/lower/number/symbol signup policy is shared across all roles; leaked-password protection remains a Pro-only deferred hardening item
 - Native Firebase background notification physical test: BLOCKED — credentials/device test missing
 - Play Data Safety + foreground-service declarations: BLOCKED — Play Console certification/evidence not completed
+- Android developer verification + package registration: BLOCKED — Play Console evidence must confirm developer identity verification and registration of all three QueueGo package names
 - Android release signing: BLOCKED — run 38039197325 confirmed QG_ANDROID_KEYSTORE_B64, QG_ANDROID_STORE_PASSWORD, QG_ANDROID_KEY_ALIAS and QG_ANDROID_KEY_PASSWORD absent; the same run also confirmed QG_FIREBASE_GOOGLE_SERVICES_JSON_B64 absent
 - Native release certification intake: BLOCKED — Production private bucket `queuego-native-release-evidence` now exists on project `pkypiqhlrmzocysgeqew` and is ZIP-only with no client Storage policy; Actions evidence-storage credentials/readiness are still not configured and no physical evidence bundle is certified
 
@@ -47,6 +48,26 @@ Google Play's User Data policy requires appropriate security measures for person
 
 
 ## Google Play policy checkpoints
+
+### Android developer verification / package registration
+
+Effective 2026-09-30 in Thailand, Google Play developers must have a verified developer identity and Play package names must be registered for Android developer verification. Google may auto-register eligible Play apps, but QueueGo release evidence must confirm the actual Play Console state rather than infer it.
+
+The `play_store_preflight` evidence envelope must explicitly certify all four checks:
+- `developer_identity_verified`
+- `customer_package_registered` for `com.queuego.customer`
+- `merchant_package_registered` for `com.queuego.merchant`
+- `rider_package_registered` for `com.queuego.rider`
+
+It must also bind `registered_packages` to exactly:
+`["com.queuego.customer","com.queuego.merchant","com.queuego.rider"]`.
+The evidence artifact should be a current Play Console export or screenshot set that shows the verified developer/account state and the package registration state; the envelope must keep the exact release `version_name`, release versionCodes, observed Play maximum versionCodes, UTC observation timestamp, and SHA-256-hashed artifact references required by the canonical release gate.
+
+Official references:
+- https://support.google.com/googleplay/android-developer/answer/16984799
+- https://developer.android.com/developer-verification
+
+
 
 ### Target API
 
