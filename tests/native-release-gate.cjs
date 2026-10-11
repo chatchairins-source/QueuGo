@@ -201,6 +201,7 @@ try{
       envelope.version_name='1.0.0';
       envelope.release_version_codes={customer:1,merchant:1,rider:1};
       envelope.observed_play_max_version_codes={customer:0,merchant:0,rider:0};
+      envelope.registered_packages=['com.queuego.customer','com.queuego.merchant','com.queuego.rider'];
     }
     if(gate==='release_signing') envelope.signing_certificate_sha256='b'.repeat(64);
     if(physical.has(gate)){
@@ -316,6 +317,7 @@ assert.match(verifier,/firebase_three_packages evidence does not match the loade
 assert.match(verifier,/play_store_preflight evidence versionName mismatch/,'Play evidence must bind certified versionName');
 assert.match(verifier,/play_store_preflight evidence release versionCodes mismatch/,'Play evidence must bind release versionCodes');
 assert.match(verifier,/play_store_preflight evidence Play history mismatch/,'Play evidence must bind observed Play version history');
+assert.match(verifier,/play_store_preflight evidence registered package names mismatch/,'Play evidence must bind exact QueueGo package names');
 assert.match(verifier,/release_signing evidence does not match the certified signing identity/,'signing evidence must bind the certified certificate fingerprint');
 for(const legacy of ['.github/workflows/build-queuego-apks.yml','.github/workflows/build-queuego-pilot-apks.yml']){
   assert.equal(fs.existsSync(legacy),false,`legacy Capacitor Android build workflow must stay retired: ${legacy}`);
