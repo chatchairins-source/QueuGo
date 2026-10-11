@@ -23,6 +23,8 @@ const nativeTurnEdge=read('supabase/functions/queuego-turn/index.ts');
 const productionPush=read('supabase/functions/queuego-push/index.ts');
 const sharedManifest=read('native-android/shared/src/main/AndroidManifest.xml');
 const riderManifest=read('native-android/rider/src/main/AndroidManifest.xml');
+const privacy=read('docs/privacy.html');
+const nativeReleaseGate=read('native-android/qa/native-play-release-gate-20261010.md');
 for(const role of ['customer','merchant','rider']){
   const appGradle=read(`native-android/${role}/build.gradle.kts`);
   ok(/compileSdk\s*=\s*36/.test(appGradle),role+' must compile against API 36');
@@ -83,6 +85,15 @@ ok(Array.isArray(manifest?.play?.voice_audio_roles)&&manifest.play.voice_audio_r
 ok(manifest?.play?.voice_audio_reassessment_required_on_architecture_change===true,'Voice Data Safety must require reassessment on architecture changes');
 ok(manifest?.play?.voice_audio_media_readable_by_turn_provider===false,'Recovery manifest must preserve the reviewed encrypted TURN media boundary');
 ok(manifest?.play?.cloudflare_turn_relay_metadata_review==='PENDING_FINAL_PLAY_CONSOLE_METADATA_CLASSIFICATION','Cloudflare TURN relay metadata must remain pending final Play classification');
+ok(manifest?.play?.voice_call_metadata_retention_status==='PRODUCTION_ENFORCED_DAILY_DELETE_OLDER_THAN_30_DAYS','Recovery manifest must record Production-enforced voice metadata retention');
+ok(manifest?.play?.voice_call_session_metadata_retention_days===30&&manifest?.play?.voice_call_notification_metadata_retention_days===30,'Voice call session and notification metadata retention must remain 30 days');
+ok(manifest?.play?.voice_call_metadata_retention_cron==='queuego-voice-call-retention','Recovery manifest must pin the Production voice retention cron');
+ok(manifest?.android?.voice_call_metadata_retention_production_verified===true,'Native recovery metadata must record Production verification of voice retention');
+ok(manifest?.android?.voice_call_metadata_retention_security==='SECURITY_INVOKER_SERVICE_ROLE_ONLY','Voice retention purge must remain non-client SECURITY INVOKER');
+ok(/อายุเกิน 30 วันโดยอัตโนมัติทุกวัน/.test(privacy),'Published privacy source must disclose daily purge of voice-call metadata older than 30 days');
+ok(/Production call metadata retention is now enforced/.test(readiness)&&/queuego-voice-call-retention/.test(readiness),'Play readiness must document the active Production retention job');
+ok(/backend retention-policy[\s\S]*CLOSED/.test(nativeReleaseGate),'Native release gate must close only the backend retention-policy gap');
+ok(/Final Data Safety and Play Console declarations remain OPEN/.test(nativeReleaseGate),'Retention policy completion must not auto-certify the Play Data Safety gate');
 ok(manifest?.play?.foreground_service_declaration_draft_ready===true&&manifest?.play?.foreground_service_console_status==='BLOCKED_PENDING_REAL_DEVICE_VIDEO_AND_PLAY_ENTRY','FGS declaration source readiness must stay separate from external Play completion');
 ok(nativeVoicePeer.includes('PeerConnection.RTCConfiguration')&&nativeVoicePeer.includes('createAudioTrack("queuego-audio"'),'Data Safety E2EE exception must remain tied to the Native peer-to-peer WebRTC audio path');
 ok(nativeTurnEdge.includes('rtc.live.cloudflare.com/v1/turn/')&&nativeTurnEdge.includes('generate-ice-servers'),'Native voice relay must remain the reviewed Cloudflare TURN credential path');
