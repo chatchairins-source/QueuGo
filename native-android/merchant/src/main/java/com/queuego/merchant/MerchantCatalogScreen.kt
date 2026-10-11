@@ -113,35 +113,52 @@ internal fun MerchantCatalogScreen(
 
         if (showCategoryGrid) {
             Spacer(Modifier.height(10.dp))
-            Row(
-                Modifier.horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(7.dp)
-            ) {
-                categories.forEach { option ->
-                    val active = category == option
-                    Box(
-                        Modifier
-                            .background(
-                                if (active) Color(0xFFFFF0F3) else Color.White,
-                                RoundedCornerShape(15.dp)
-                            )
-                            .border(
-                                1.dp,
-                                if (active) QgRed else Color(0xFFE5E7EA),
-                                RoundedCornerShape(15.dp)
-                            )
-                            .clickable {
-                                category = if (active) "" else option
+            categories.chunked(3).forEach { rowItems ->
+                Row(
+                    Modifier.fillMaxWidth().padding(bottom = 9.dp),
+                    horizontalArrangement = Arrangement.spacedBy(9.dp)
+                ) {
+                    rowItems.forEach { option ->
+                        val active = category == option
+                        Column(
+                            Modifier
+                                .weight(1f)
+                                .heightIn(min = 82.dp)
+                                .background(
+                                    if (active) Color(0xFFFFF5F7) else Color.White,
+                                    RoundedCornerShape(14.dp)
+                                )
+                                .border(
+                                    if (active) 2.dp else 1.dp,
+                                    if (active) QgRed else QgLine,
+                                    RoundedCornerShape(14.dp)
+                                )
+                                .clickable {
+                                    category = if (active) "" else option
+                                }
+                                .padding(horizontal = 5.dp, vertical = 13.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Box(
+                                Modifier
+                                    .size(36.dp)
+                                    .background(Color(0xFFFFF0F3), RoundedCornerShape(12.dp)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                QgIcon("box", Modifier.size(20.dp), QgRed)
                             }
-                            .padding(horizontal = 11.dp, vertical = 9.dp)
-                    ) {
-                        Text(
-                            option,
-                            color = if (active) Color(0xFFD90D2D) else Color(0xFF555B63),
-                            fontSize = 9.5.sp,
-                            fontWeight = FontWeight.Bold
-                        )
+                            Spacer(Modifier.height(6.dp))
+                            Text(
+                                option,
+                                color = if (active) Color(0xFFE5092C) else Color(0xFF20242A),
+                                fontSize = 10.sp,
+                                lineHeight = 12.5.sp,
+                                fontWeight = FontWeight.Bold,
+                                maxLines = 2
+                            )
+                        }
                     }
+                    repeat(3 - rowItems.size) { Spacer(Modifier.weight(1f)) }
                 }
             }
         }
@@ -176,49 +193,57 @@ internal fun MerchantCatalogScreen(
                 )
             }
         } else {
-            rows.chunked(2).forEach { pair ->
+            rows.chunked(3).forEach { rowItems ->
                 Row(
-                    Modifier.fillMaxWidth().padding(bottom = 9.dp),
-                    horizontalArrangement = Arrangement.spacedBy(9.dp)
+                    Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    pair.forEach { product ->
+                    rowItems.forEach { product ->
                         Column(
                             Modifier
                                 .weight(1f)
-                                .background(Color.White, RoundedCornerShape(16.dp))
-                                .border(1.dp, QgLine, RoundedCornerShape(16.dp))
-                                .clickable { onOpenProduct(product) }
-                                .padding(8.dp)
+                                .background(Color.White, RoundedCornerShape(14.dp))
+                                .border(1.dp, QgLine, RoundedCornerShape(14.dp))
+                                .padding(7.dp)
                         ) {
                             QgRemoteImage(
                                 product.image,
-                                Modifier.fillMaxWidth().aspectRatio(1.35f),
+                                Modifier.fillMaxWidth().aspectRatio(1f),
                                 product.name,
-                                cornerRadius = 11.dp
+                                cornerRadius = 10.dp
                             )
-                            Spacer(Modifier.height(7.dp))
+                            Spacer(Modifier.height(6.dp))
                             Text(
                                 product.name,
-                                fontSize = 11.sp,
+                                fontSize = 10.sp,
                                 fontWeight = FontWeight.ExtraBold,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
                             )
                             Text(
                                 "%.0f บาท".format(product.posPrice ?: product.price),
-                                color = QgMuted,
-                                fontSize = 9.5.sp
+                                color = Color(0xFF7D8289),
+                                fontSize = 9.sp
                             )
-                            Spacer(Modifier.height(5.dp))
-                            Text(
-                                "ดูและแก้ไข",
-                                color = QgRed,
-                                fontSize = 9.sp,
-                                fontWeight = FontWeight.ExtraBold
-                            )
+                            Spacer(Modifier.height(6.dp))
+                            Box(
+                                Modifier
+                                    .fillMaxWidth()
+                                    .background(QgRed, RoundedCornerShape(99.dp))
+                                    .clickable { onOpenProduct(product) }
+                                    .padding(vertical = 6.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    "ดูและแก้ไข",
+                                    color = Color.White,
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
                         }
                     }
-                    if (pair.size == 1) Spacer(Modifier.weight(1f))
+                    repeat(3 - rowItems.size) { Spacer(Modifier.weight(1f)) }
                 }
             }
         }
@@ -226,11 +251,13 @@ internal fun MerchantCatalogScreen(
         Spacer(Modifier.height(8.dp))
         Button(
             onClick = { onAddProduct(category.takeIf { it.isNotBlank() }) },
-            modifier = Modifier.fillMaxWidth().height(48.dp)
+            modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
+            shape = RoundedCornerShape(14.dp)
         ) {
             Text(
                 if (category.isNotBlank()) "เพิ่มสินค้าใหม่ในหมวด $category"
                 else if (food) "เพิ่มเมนูใหม่" else "เพิ่มสินค้าใหม่เข้าร้าน",
+                fontSize = 16.sp,
                 fontWeight = FontWeight.ExtraBold
             )
         }
