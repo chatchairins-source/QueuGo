@@ -178,16 +178,7 @@ class CustomerApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
         }
     }
 
-    suspend fun loadOrders(auth: NativeAuth): List<CustomerOrder> {
-        val rows = http.array(http.get(
-            "orders?select=id,order_number,shop_id,status,subtotal,delivery_fee,total_amount,delivery_address,created_at,rider_id,completed_at,updated_at,pickup_latitude,pickup_longitude,delivery_latitude,delivery_longitude,note,rider_arrived_customer_at,bundle_customer_savings" +
-                "&customer_id=eq." + http.enc(auth.user.id) + "&order=created_at.desc&limit=100",
-            auth.session.accessToken
-        ))
-        return buildList {
-            for (i in 0 until rows.length()) {
-                val r = rows.optJSONObject(i) ?: continue
-                add(CustomerOrder(
+    private fun parseCustomerOrder(r: JSONObject) = CustomerOrder(
                     r.optString("id"),
                     orderNumber(r.optString("order_number"), r.optString("id")),
                     r.optNullable("shop_id"),
@@ -207,9 +198,21 @@ class CustomerApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
                     r.optNullable("note"),
                     r.optNullable("rider_arrived_customer_at"),
                     r.optDouble("bundle_customer_savings", 0.0)
-                ))
-            }
-        }
+                )
+
+    suspend fun loadOrders(auth: NativeAuth): List<CustomerOrder> {
+        val rows = http.array(http.get(
+            "orders?select=id,order_number,shop_id,status,subtotal,delivery_fee,total_amount,delivery_address,created_at,rider_id,completed_at,updated_at,pickup_latitude,pickup_longitude,delivery_latitude,delivery_longitude,note,rider_arrived_customer_at,bundle_customer_savings" +
+                "&customer_id=eq." + http.enc(auth.user.id) + "&order=created_at.desc&limit=100",
+            auth.session.accessToken
+        ))
+        return (0 until rows.length()).mapNotNull { rows.optJSONObject(it)?.let(::parseCustomerOrder) }
+    }
+
+    suspend fun loadOrderById(auth: NativeAuth, orderId: String): CustomerOrder? {
+        val rows = http.array(http.get("orders?select=id,order_number,shop_id,status,subtotal,delivery_fee,total_amount,delivery_address,created_at,rider_id,completed_at,updated_at,pickup_latitude,pickup_longitude,delivery_latitude,delivery_longitude,note,rider_arrived_customer_at,bundle_customer_savings" +
+            "&id=eq." + http.enc(orderId) + "&customer_id=eq." + http.enc(auth.user.id) + "&limit=1", auth.session.accessToken))
+        return rows.optJSONObject(0)?.let(::parseCustomerOrder)
     }
 
     suspend fun loadActiveOrder(auth: NativeAuth): CustomerOrder? {

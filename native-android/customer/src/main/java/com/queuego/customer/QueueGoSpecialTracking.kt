@@ -13,11 +13,14 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -27,6 +30,7 @@ import com.queuego.shared.QgCard
 import com.queuego.shared.QgMuted
 import com.queuego.shared.QgRed
 import com.queuego.shared.QgStatusPill
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.CancellationException
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -43,9 +47,16 @@ import java.time.chrono.ThaiBuddhistChronology
 fun MarketTripDetailScreen(
     auth: NativeAuth,
     trip: MarketTripSummary,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    onBrowse: () -> Unit,
+    onTrackChild: (String) -> Unit,
+    trackingBusy: Boolean
 ) {
     val api = remember { CustomerMarketApi() }
+    val scope = rememberCoroutineScope()
+    var shops by remember(auth.user.id, trip.id) { mutableStateOf<List<MarketShop>>(emptyList()) }
+    var cancelling by remember { mutableStateOf(false) }
+    var confirmCancel by remember { mutableStateOf(false) }
     var children by remember { mutableStateOf<List<MarketTripChild>>(emptyList()) }
     var error by remember(auth.user.id, trip.id) { mutableStateOf<String?>(null) }
     var current by remember(auth.user.id, trip.id) { mutableStateOf(trip) }
@@ -63,6 +74,7 @@ fun MarketTripDetailScreen(
                     else {
                         current = fresh
                         children = api.tripChildren(auth, trip.id)
+                        shops = api.loadShops(auth)
                         error = null
                     }
                 } catch (cancelled: CancellationException) { throw cancelled }
@@ -72,6 +84,22 @@ fun MarketTripDetailScreen(
         }
     }
 
+    val locked = current.status.uppercase() in setOf("IN_PROGRESS", "COMPLETED", "CANCELLED")
+    if (confirmCancel) AlertDialog(
+        onDismissRequest = { if (!cancelling) confirmCancel = false },
+        title = { Text("ยกเลิก Market Trip") }, text = { Text("ยกเลิกคำสั่งซื้อนี้?") },
+        confirmButton = { TextButton(enabled = !cancelling, onClick = {
+            if (cancelling) return@TextButton
+            cancelling = true
+            scope.launch {
+                try { api.cancelTrip(auth, trip.id); confirmCancel = false; reload++ }
+                catch (cancelled: CancellationException) { throw cancelled }
+                catch (e: Exception) { error = e.message ?: "ยกเลิกไม่สำเร็จ"; confirmCancel = false; reload++ }
+                finally { cancelling = false }
+            }
+        }) { Text(if (cancelling) "กำลังยกเลิก..." else "ยืนยันยกเลิก") } },
+        dismissButton = { TextButton(enabled = !cancelling, onClick = { confirmCancel = false }) { Text("กลับ") } }
+    )
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(14.dp)) {
         OutlinedButton(onClick = onBack) { Text("ย้อนกลับ") }
         OutlinedButton(onClick = { reload++ }) { Text("โหลดสถานะล่าสุด") }
@@ -82,6 +110,14 @@ fun MarketTripDetailScreen(
         Text(current.shopCount.toString() + " ร้าน", color = QgMuted)
         Spacer(Modifier.height(8.dp))
         QgStatusPill(marketTripStatus(current.status), current.status.uppercase() != "CANCELLED")
+        Text(if (locked) "ล็อกการเพิ่มร้านแล้ว" else "ยังเพิ่มร้านใหม่ได้จนกว่า Rider จะออกจากตลาด", color = QgMuted)
+        if (!locked) {
+            OutlinedButton(enabled = !cancelling && !trackingBusy, onClick = onBrowse) { Text("ซื้อเพิ่มจากตลาดเดิม") }
+            OutlinedButton(enabled = !cancelling && !trackingBusy, onClick = { confirmCancel = true }) { Text("ยกเลิก Market Trip") }
+        }
+        children.firstOrNull { it.status.lowercase() !in setOf("completed", "cancelled") }?.let { child ->
+            OutlinedButton(enabled = !cancelling && !trackingBusy, onClick = { onTrackChild(child.id) }) { Text(if (trackingBusy) "กำลังโหลดการติดตาม..." else "ติดตาม Rider / ติดต่อ") }
+        }
         Spacer(Modifier.height(12.dp))
         QgCard(Modifier.fillMaxWidth()) {
             Column {
@@ -103,6 +139,7 @@ fun MarketTripDetailScreen(
                 } else children.forEach { child ->
                     Row(Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
                         Column(Modifier.weight(1f)) {
+                            Text(shops.find { it.id == child.shopId }?.name ?: "ร้านค้า", fontWeight = FontWeight.Bold)
                             Text(child.number, fontWeight = FontWeight.Black)
                             Text(customerStatusLabel(child.status), color = QgMuted)
                         }
@@ -110,6 +147,16 @@ fun MarketTripDetailScreen(
                     }
                     HorizontalDivider()
                 }
+            }
+        }
+        Spacer(Modifier.height(10.dp))
+        QgCard(Modifier.fillMaxWidth()) {
+            Column {
+                Text("สรุปค่าใช้จ่าย", fontWeight = FontWeight.ExtraBold)
+                SpecialSummary("ค่าสินค้า", current.subtotal?.let(::specialMoney) ?: "รอโหลด")
+                SpecialSummary("ค่ารอบ/จัดส่ง", current.deliveryFee?.let(::specialMoney) ?: "รอโหลด")
+                SpecialSummary("ค่ารับหลายร้าน", current.multiShopFee?.let(::specialMoney) ?: "รอโหลด")
+                SpecialSummary("รวม", specialMoney(current.total))
             }
         }
         Spacer(Modifier.height(30.dp))
