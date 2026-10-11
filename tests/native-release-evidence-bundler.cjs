@@ -22,6 +22,14 @@ try{
   const missing=spawnSync('python3',[script,'--bundle-dir',bundle,'--zip-output',zip,'--p0','0','--p1','0'],{encoding:'utf8'});
   assert.equal(missing.status,1,'missing gate envelopes must block bundle finalization');
   assert.match(missing.stderr,/missing gate envelope:/);
+
+  const outside=path.join(root,'outside-cwd');
+  fs.mkdirSync(outside);
+  const outsideBundle=path.join(root,'outside-bundle');
+  fs.mkdirSync(outsideBundle);
+  const outsideRun=spawnSync('python3',[path.resolve(script),'--bundle-dir',outsideBundle,'--zip-output',path.join(root,'outside.zip'),'--p0','0','--p1','0'],{cwd:outside,encoding:'utf8'});
+  assert.equal(outsideRun.status,1,'alternate working directory must still validate QueueGo source provenance');
+  assert.match(outsideRun.stderr,/missing gate envelope:/,'alternate working directory must not switch git provenance');
 }finally{
   fs.rmSync(root,{recursive:true,force:true});
 }
@@ -30,6 +38,8 @@ const source=fs.readFileSync(script,'utf8');
 assert.ok(source.includes('contract.verify_gate_envelope'),'bundler must use the canonical gate envelope validator');
 assert.ok(source.includes('for gate in contract.GATES'),'bundler must derive required gates from the canonical verifier');
 assert.ok(source.includes('release evidence finalization requires a clean source checkout'),'bundler must require clean exact-source provenance');
+assert.ok(source.includes('["git", "-C", str(ROOT), "rev-parse", "HEAD"]'),'bundler must bind source SHA to the QueueGo checkout regardless of caller cwd');
+assert.ok(source.includes('["git", "-C", str(ROOT), "status", "--porcelain", "--untracked-files=normal"]'),'bundler must check cleanliness on the QueueGo checkout regardless of caller cwd');
 assert.ok(source.includes('must be outside the source checkout'),'bundle and ZIP output must stay outside source');
 assert.ok(source.includes('cannot finalize release evidence while P0 or P1 is non-zero'),'bundler must hard-block known P0/P1 defects');
 assert.ok(source.includes('evidence bundle may not contain symlinks'),'bundler must reject symlink evidence');
@@ -39,4 +49,4 @@ assert.ok(source.includes('certified-release-metadata.json'),'bundler must reser
 assert.ok(source.includes('READY_FOR_PRIVATE_STORAGE_UPLOAD'),'bundler must identify output as upload-ready, not release-certified');
 assert.ok(source.includes('zip_sha256'),'bundler must surface the ZIP digest required by certification');
 
-console.log(JSON.stringify({checks:24,failures:0,scope:'Fail-closed Native release evidence bundle finalization'}));
+console.log(JSON.stringify({checks:28,failures:0,scope:'Fail-closed Native release evidence bundle finalization'}));
