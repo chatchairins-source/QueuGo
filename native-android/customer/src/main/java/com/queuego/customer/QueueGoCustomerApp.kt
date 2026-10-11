@@ -533,7 +533,9 @@ private fun CustomerShell(
         Scaffold(
         containerColor = QgBg,
         bottomBar = {
-            CustomerBottomNavigation(screen, cart.sumOf { it.quantity }) { screen = it }
+            if (screen != "laundry") {
+                CustomerBottomNavigation(screen, cart.sumOf { it.quantity }) { screen = it }
+            }
         }
     ) { insets ->
         Column(
@@ -541,16 +543,18 @@ private fun CustomerShell(
                 .padding(insets)
                 .background(QgBg)
         ) {
-            CustomerTopBar(
-                home = screen == "home",
-                cartCount = cart.sumOf { it.quantity },
-                unreadCount = notifications.count { !it.read },
-                onHome = { screen = "home" },
-                onCart = { screen = "cart" },
-                onNotifications = { screen = "notifications" },
-                onProfile = { screen = "profile" }
-            )
-            if (message != null) {
+            if (screen != "laundry") {
+                CustomerTopBar(
+                    home = screen == "home",
+                    cartCount = cart.sumOf { it.quantity },
+                    unreadCount = notifications.count { !it.read },
+                    onHome = { screen = "home" },
+                    onCart = { screen = "cart" },
+                    onNotifications = { screen = "notifications" },
+                    onProfile = { screen = "profile" }
+                )
+            }
+            if (message != null && screen != "laundry") {
                 Text(
                     message!!,
                     color = if (message!!.contains("สำเร็จ") || message!!.contains("แล้ว")) QgRed else MaterialTheme.colorScheme.error,
@@ -717,28 +721,18 @@ private fun CustomerShell(
                     auth = auth,
                     location = location,
                     address = address,
-                    onAddress = {
-                        address = it
-                        location = location?.copy(address = it)
-                    },
-                    onGps = {
-                        if (hasLocation(context)) {
-                            val p = lastKnownLocation(context)
-                            if (p != null) {
-                                location = CustomerLocation(p.first, p.second, address)
-                                message = "ใช้ตำแหน่งปัจจุบันแล้ว"
-                            } else message = "ยังอ่านตำแหน่ง GPS ไม่ได้"
-                        } else {
-                            permission.launch(arrayOf(
-                                Manifest.permission.ACCESS_FINE_LOCATION,
-                                Manifest.permission.ACCESS_COARSE_LOCATION
-                            ))
-                        }
+                    onChooseAddress = {
+                        locationReturnScreen = "laundry"
+                        screen = "location"
                     },
                     onBack = { screen = "home" },
                     onDone = {
-                        message = "ส่งคำขอฝากซักแล้ว"
-                        screen = "orders"
+                        scope.launch {
+                            laundryOrders = runCatching { laundryApi.orders(auth) }
+                                .getOrDefault(laundryOrders)
+                            message = "ส่งคำขอฝากซักแล้ว รอร้านกดรับคำขอ"
+                            screen = "orders"
+                        }
                     }
                 )
                 "market" -> MarketNativeScreen(
