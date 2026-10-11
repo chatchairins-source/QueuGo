@@ -91,6 +91,7 @@ import com.queuego.shared.QgSectionTitle
 import com.queuego.shared.QgStatusPill
 import com.queuego.shared.QueueGoAuthHost
 import com.queuego.shared.QueueGoBrand
+import com.queuego.shared.QueueGoLongdoPermissionBridge
 import com.queuego.shared.SecureRoleSessionStore
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -404,6 +405,7 @@ private fun CustomerShell(
     val permission = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { grants ->
+        QueueGoLongdoPermissionBridge.onRequestPermissionResult()
         if (grants.values.any { it }) {
             val p = lastKnownLocation(context)
             if (p != null) {
