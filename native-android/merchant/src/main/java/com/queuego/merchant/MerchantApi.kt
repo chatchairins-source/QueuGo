@@ -60,6 +60,21 @@ data class MerchantRevenueDay(
     val gpStatus: String
 )
 
+data class MerchantAnalyticsItem(
+    val name: String,
+    val quantity: Int
+)
+
+data class MerchantAnalytics(
+    val sales: Double,
+    val orders: Int,
+    val averageOrderValue: Double,
+    val cancelled: Int,
+    val cancellationRate: Double,
+    val avgPrepMinutes: Double?,
+    val topItems: List<MerchantAnalyticsItem>
+)
+
 data class MerchantOrder(
     val id: String,
     val number: String,
@@ -517,6 +532,46 @@ class MerchantApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
                 )
             }
         }
+    }
+
+    suspend fun analytics(auth: NativeAuth, days: Int): MerchantAnalytics {
+        require(days in setOf(1, 7, 30)) { "ช่วงเวลาวิเคราะห์ไม่ถูกต้อง" }
+        val raw = http.rpc(
+            "qg_merchant_analytics",
+            auth.session.accessToken,
+            JSONObject().put("p_days", days)
+        )
+        val obj = when (raw) {
+            is JSONObject -> raw
+            is JSONArray -> raw.optJSONObject(0)
+            else -> null
+        } ?: error("ไม่พบข้อมูลวิเคราะห์ร้านค้า")
+
+        val top = obj.optJSONArray("top_items") ?: JSONArray()
+        val items = buildList {
+            for (i in 0 until top.length()) {
+                val row = top.optJSONObject(i) ?: continue
+                val name = row.optString("name").trim()
+                if (name.isBlank()) continue
+                add(
+                    MerchantAnalyticsItem(
+                        name = name,
+                        quantity = row.optInt("quantity", 0)
+                    )
+                )
+            }
+        }
+        val prep = if (obj.isNull("avg_prep_minutes")) null
+            else obj.optDouble("avg_prep_minutes").takeIf { it.isFinite() }
+        return MerchantAnalytics(
+            sales = obj.optDouble("sales", 0.0),
+            orders = obj.optInt("orders", 0),
+            averageOrderValue = obj.optDouble("average_order_value", 0.0),
+            cancelled = obj.optInt("cancelled", 0),
+            cancellationRate = obj.optDouble("cancellation_rate", 0.0),
+            avgPrepMinutes = prep,
+            topItems = items
+        )
     }
 
     suspend fun reportGpSlip(auth: NativeAuth, date: String, slipPath: String) {
