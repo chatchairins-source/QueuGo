@@ -1,5 +1,7 @@
 # Native Google Play gate — 2026-10-10
 
+Evidence refreshed: 2026-10-11
+
 This is the Native Customer/Merchant/Rider gate. Earlier Capacitor/Web E2E or
 permission declarations in docs/play-closed-beta-readiness.md do not certify
 these Native applications. No signed release may be packaged or delivered while
@@ -13,11 +15,19 @@ any requirement below is OPEN.
   omitted ID may derive exactly one non-revoked session.
 - Local full regression, Native voice/push/migration contracts, 207 source
   checks, 61 launcher checks and 12 banner checks passed.
-- Production push is ACTIVE v16. Its deployed `index.ts` was read back on
-  2026-10-10 and matches the GitHub Source of Truth byte-for-byte; the observed
+- Production push is ACTIVE v20. Its deployed `index.ts` was read back on
+  2026-10-11 and matches the GitHub Source of Truth byte-for-byte; the observed
   Edge bundle SHA-256 is
-  `e1ae93f6cc142a77fa7408b894703ed9ac8ad7f9fdaa9b32d40cee2a28758079`.
-  `verify_jwt=false` is intentional because the function implements custom
+  `79f649287d18136b43f9a79c9ac289ebac118617fd52f85a83195e6b2d4e0b57`.
+  Android delivery is bound to the audible `queuego_orders_v2` channel.
+  Customer, Merchant and Rider now consume system notification taps on both cold
+  launch and `onNewIntent`; the activities accept the local
+  `queuego_push_reference_id/queuego_push_type` extras and Firebase automatic
+  background `referenceId/type` data extras. Customer/Merchant resolve the
+  referenced real order before opening detail; Rider returns to live work and
+  refreshes its authoritative snapshot. Rider `voice_call` foreground/data-only
+  notifications use call-category semantics while normal jobs remain messages.
+  `verify_jwt=false` remains intentional because the function implements custom
   authentication: dispatch requires the server worker token; user actions require
   Bearer auth resolved through `admin.auth.getUser`, an active QueueGo role, and
   Native token registration binds an active app session. Production currently has
@@ -34,9 +44,12 @@ any requirement below is OPEN.
   Both voice and push tables retain RLS; anon/authenticated direct SELECT is denied.
 - Firebase Console redirected to Google sign-in; this browser received
   `502 Bad Gateway / Connection refused`. No Firebase project/config was read.
-- Local Firebase/TURN/signing credentials and adb/Android SDK are absent.
-  Supabase connector exposes no secret read/write operation. These facts do
-  not prove secrets absent in Production.
+- Release Secret Readiness run 38039197325 remains the authoritative evidence
+  that Firebase config and Android signing inputs were absent from that Actions
+  environment. Native Pilot CI itself now has Android SDK/emulator coverage and
+  repeatedly builds all three APKs, but that does not supply Production Firebase
+  credentials or release signing identity. Supabase connector exposes no secret
+  read/write operation, so Production secret presence is not inferred.
 - Native main HEAD 28663031 completed QueueGo Native Android Pilot run
   38042432314 successfully. The Native voice background lifecycle source
   contract and accelerated Android runtime step both passed; launch evidence
@@ -51,6 +64,15 @@ any requirement below is OPEN.
   f6d47055e64c92546126bcbf797e93fca7ee6c31255eda4e127c62ae4f2deaf0.
   The runtime log explicitly leaves authenticated E2E/visual parity, physical
   FCM and real two-device voice audio unverified.
+- Native main HEAD b3a35713 completed QueueGo Native Android Pilot run
+  38125731408 successfully on 2026-10-11. Full QueueGo regression, Native
+  push/session/release/voice contracts, source integrity, tracking tests,
+  untransformed Longdo crash baseline, all three Native APK builds, Android
+  16 KB page-size packaging, Reject WebView, and accelerated Android
+  launch/map/voice-service lifecycle all passed on that exact HEAD. This closes
+  the current software/CI evidence for the v20 push source and notification-tap
+  routing only; physical Firebase receipt, authenticated Blueprint parity and
+  real two-device voice/TURN evidence remain OPEN.
 - Backup/Restore run 38039279454 failed at secret validation with
   QG_SUPABASE_DB_URL, QG_SUPABASE_SERVICE_ROLE_KEY and QG_BACKUP_PASSPHRASE
   absent from the Actions environment.
