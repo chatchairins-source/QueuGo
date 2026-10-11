@@ -57,7 +57,7 @@ internal fun MerchantProductEditorScreen(
     val requestId = remember(product?.id) { product?.id ?: UUID.randomUUID().toString() }
 
     var name by remember(product?.id) { mutableStateOf(product?.name.orEmpty()) }
-    var description by remember(product?.id) { mutableStateOf(product?.description.orEmpty()) }
+    val description = product?.description.orEmpty()
     var category by remember(product?.id, initialCategory) {
         mutableStateOf(
             product?.category?.takeIf { it in categories }
@@ -124,22 +124,22 @@ internal fun MerchantProductEditorScreen(
         Column(
             Modifier
                 .fillMaxWidth()
-                .background(Color.White, RoundedCornerShape(16.dp))
-                .border(1.dp, QgLine, RoundedCornerShape(16.dp))
+                .background(Color.White, RoundedCornerShape(17.dp))
+                .border(1.dp, QgLine, RoundedCornerShape(17.dp))
                 .padding(12.dp)
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 if (imageUri != null) {
                     MerchantProductLocalImage(
                         imageUri!!,
-                        Modifier.size(70.dp)
+                        Modifier.size(58.dp)
                     )
                 } else {
                     QgRemoteImage(
                         product?.image,
-                        Modifier.size(70.dp),
+                        Modifier.size(58.dp),
                         product?.name ?: "สินค้า",
-                        cornerRadius = 13.dp
+                        cornerRadius = 12.dp
                     )
                 }
                 Spacer(Modifier.width(10.dp))
@@ -172,7 +172,7 @@ internal fun MerchantProductEditorScreen(
             Box(Modifier.fillMaxWidth()) {
                 OutlinedButton(
                     onClick = { categoryOpen = true },
-                    modifier = Modifier.fillMaxWidth().height(46.dp)
+                    modifier = Modifier.fillMaxWidth().height(44.dp)
                 ) {
                     Text(category.ifBlank { "เลือกหมวดหมู่สินค้า" })
                 }
@@ -194,7 +194,7 @@ internal fun MerchantProductEditorScreen(
             }
 
             Spacer(Modifier.height(8.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
                 OutlinedTextField(
                     value = price,
                     onValueChange = { price = it.filter { ch -> ch.isDigit() || ch == '.' } },
@@ -208,36 +208,6 @@ internal fun MerchantProductEditorScreen(
                     modifier = Modifier.weight(1f),
                     label = { Text("จำนวนในสต็อก *") },
                     singleLine = true
-                )
-            }
-
-            Spacer(Modifier.height(8.dp))
-            Column(
-                Modifier
-                    .fillMaxWidth()
-                    .background(Color(0xFFF7F8F9), RoundedCornerShape(12.dp))
-                    .padding(10.dp)
-            ) {
-                Row {
-                    Text("ราคา Delivery", fontSize = 10.sp, fontWeight = FontWeight.Bold)
-                    Spacer(Modifier.weight(1f))
-                    Text(
-                        "+ GP " + "%.2f".format(gpRate) + "%",
-                        color = QgRed,
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.ExtraBold
-                    )
-                }
-                Text(
-                    deliveryPrice?.let { "฿" + "%.2f".format(it) } ?: "กรอกราคาหน้าร้าน",
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.ExtraBold,
-                    modifier = Modifier.padding(top = 3.dp)
-                )
-                Text(
-                    "ระบบบวก GP จากราคาหน้าร้านอัตโนมัติ ร้านค้าแก้ไขราคานี้ไม่ได้",
-                    color = QgMuted,
-                    fontSize = 8.5.sp
                 )
             }
 
@@ -256,6 +226,47 @@ internal fun MerchantProductEditorScreen(
                 fontSize = 8.5.sp,
                 modifier = Modifier.padding(top = 3.dp)
             )
+            if (imageUri != null || !product?.image.isNullOrBlank()) {
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(top = 7.dp)
+                        .background(Color(0xFFF7F8F9), RoundedCornerShape(11.dp))
+                        .border(1.dp, QgLine, RoundedCornerShape(11.dp))
+                        .padding(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    if (imageUri != null) {
+                        MerchantProductLocalImage(imageUri!!, Modifier.size(42.dp))
+                    } else {
+                        QgRemoteImage(
+                            product?.image,
+                            Modifier.size(42.dp),
+                            product?.name ?: "สินค้า",
+                            cornerRadius = 9.dp
+                        )
+                    }
+                    Spacer(Modifier.width(8.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text(
+                            if (imageUri != null) "รูปสินค้าที่เลือก" else "รูปสินค้าปัจจุบัน",
+                            fontSize = 9.5.sp,
+                            fontWeight = FontWeight.ExtraBold
+                        )
+                        Text(
+                            if (imageUri != null) "รองรับ JPG, PNG, WEBP" else "มีรูปบันทึกอยู่แล้ว",
+                            color = QgMuted,
+                            fontSize = 8.5.sp
+                        )
+                        Text(
+                            if (imageUri != null) "เลือกรูปแล้วกดบันทึกเพื่ออัปโหลด" else "บันทึกอยู่ในระบบแล้ว",
+                            color = Color(0xFF0A9660),
+                            fontSize = 8.5.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+            }
 
             Spacer(Modifier.height(8.dp))
             ProductSwitchRow("สถานะการขาย", "เปิดขายสินค้าในร้าน", available) { available = it }
@@ -346,14 +357,45 @@ internal fun MerchantProductEditorScreen(
                 effectiveDelivery,
                 enabled = restriction == "none"
             ) { deliveryAvailable = it }
+            if (restriction != "none") {
+                Text(
+                    "สินค้ากลุ่ม " + merchantDeliveryRestrictionLabel(restriction) +
+                        " ขายหน้าร้าน POS ได้ แต่ QueueGo จะไม่เปิดขายผ่าน Delivery",
+                    color = QgRed,
+                    fontSize = 8.5.sp,
+                    lineHeight = 12.sp,
+                    modifier = Modifier.padding(top = 4.dp)
+                )
+            }
             Spacer(Modifier.height(8.dp))
-            OutlinedTextField(
-                value = description,
-                onValueChange = { description = it },
-                modifier = Modifier.fillMaxWidth(),
-                label = { Text("รายละเอียด") },
-                minLines = 2
-            )
+            Column(
+                Modifier
+                    .fillMaxWidth()
+                    .background(Color(0xFFF7F8F9), RoundedCornerShape(12.dp))
+                    .padding(10.dp)
+            ) {
+                Row {
+                    Text("ราคา Delivery", fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                    Spacer(Modifier.weight(1f))
+                    Text(
+                        "+ GP " + "%.2f".format(gpRate) + "%",
+                        color = QgRed,
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.ExtraBold
+                    )
+                }
+                Text(
+                    deliveryPrice?.let { "฿" + "%.2f".format(it) } ?: "กำลังคำนวณ",
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    modifier = Modifier.padding(top = 3.dp)
+                )
+                Text(
+                    "ระบบบวก GP จากราคาหน้าร้านอัตโนมัติ ร้านค้าแก้ไขราคานี้ไม่ได้",
+                    color = QgMuted,
+                    fontSize = 8.5.sp
+                )
+            }
 
             if (!localError.isNullOrBlank()) {
                 Text(
