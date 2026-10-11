@@ -1,6 +1,6 @@
 # QueueGo — Google Play Closed Beta Readiness
 
-Last reviewed: 2026-10-10  
+Last reviewed: 2026-10-11  
 Scope: Native Android Customer, Merchant, Rider apps. Legacy Capacitor/Web build notes are historical context only and do not certify the Native release.
 
 ## Current release gate
@@ -17,11 +17,13 @@ Closed Beta release remains **BLOCKED** until every hard gate below passes:
 - Native microphone foreground-service source + accelerated Android lifecycle: PASS — physical two-device audio/TURN remains BLOCKED
 - Backup/Restore drill: BLOCKED — run 38039279454 failed because QG_SUPABASE_DB_URL, QG_SUPABASE_SERVICE_ROLE_KEY and QG_BACKUP_PASSPHRASE were absent
 - Supabase Auth: PASS WITH FREE-PLAN CONTROLS — 12-character upper/lower/number/symbol signup policy is shared across all roles; leaked-password protection remains a Pro-only deferred hardening item
-- Native Firebase background notification physical test: BLOCKED — credentials/device test missing
+- Native Firebase push source/transport + system notification tap routing: PASS — Production `queuego-push` v20 is ACTIVE and source-identical to GitHub, Android uses audible `queuego_orders_v2`, and Customer/Merchant/Rider cold/warm notification tap routing passes Native Pilot; physical background receipt remains BLOCKED because Firebase credentials and a real registered Android token/device test are still missing
 - Play Data Safety + foreground-service declarations: BLOCKED — Play Console certification/evidence not completed
 - Android developer verification + package registration: BLOCKED — Play Console evidence must confirm developer identity verification and registration of all three QueueGo package names
 - Android release signing: BLOCKED — run 38039197325 confirmed QG_ANDROID_KEYSTORE_B64, QG_ANDROID_STORE_PASSWORD, QG_ANDROID_KEY_ALIAS and QG_ANDROID_KEY_PASSWORD absent; the same run also confirmed QG_FIREBASE_GOOGLE_SERVICES_JSON_B64 absent
 - Native release certification intake: BLOCKED — Production private bucket `queuego-native-release-evidence` now exists on project `pkypiqhlrmzocysgeqew` and is ZIP-only with no client Storage policy; Actions evidence-storage credentials/readiness are still not configured and no physical evidence bundle is certified
+
+Current Production push evidence (2026-10-11): `queuego-push` version 20 is ACTIVE with `verify_jwt=false` under the reviewed worker-token/authenticated-user custom boundary; its deployed source matches GitHub byte-for-byte. Native Android system notification taps now handle both locally rendered FirebaseMessagingService notifications and Firebase's automatic background `notification + data` intent extras, routing Customer/Merchant to the referenced order and Rider back to live work. Production still has zero Native push tokens, so this closes the source/runtime-routing gap only and does **not** certify physical background delivery.
 
 The final Native release workflow is manual-only and fail-closed. It cannot package signed APK/AAB outputs until a trusted exact-HEAD certification artifact, complete Firebase/signing secrets, observed Play versionCode history, Backup/Restore certification, physical push/voice/lifecycle evidence, Blueprint parity, Play declarations and P0/P1=0 are all certified. The trusted producer is `.github/workflows/native-release-certification.yml`; it accepts only a SHA-256-pinned bundle from private Supabase Storage, validates every gate, and binds release metadata before `.github/workflows/build-native-release.yml` can package. Source readiness does not make Closed Beta unblocked.
 
