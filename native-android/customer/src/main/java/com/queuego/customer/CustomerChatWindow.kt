@@ -15,3 +15,9 @@ fun CustomerOrder.chatAvailable(now: Long = System.currentTimeMillis()): Boolean
     return (chatDeadlineMs() ?: 0L) > now
 }
 
+
+
+fun CustomerOrder.chatMinutesLeft(now: Long = System.currentTimeMillis()): Int {
+    val deadline = chatDeadlineMs() ?: return 0
+    return kotlin.math.max(0, kotlin.math.ceil((deadline - now) / 60_000.0).toInt())
+}
