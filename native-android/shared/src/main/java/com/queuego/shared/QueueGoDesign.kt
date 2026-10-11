@@ -368,6 +368,35 @@ fun QgIcon(name: String, modifier: Modifier = Modifier, color: Color = QgRed) {
                 line(.38f,.71f,.27f,.84f); line(.27f,.84f,.27f,.71f)
                 line(.33f,.42f,.67f,.42f); line(.33f,.55f,.54f,.55f)
             }
+            "heart" -> {
+                val path = androidx.compose.ui.graphics.Path().apply {
+                    moveTo(w*.50f, h*.82f)
+                    cubicTo(w*.43f,h*.74f,w*.18f,h*.58f,w*.18f,h*.37f)
+                    cubicTo(w*.18f,h*.22f,w*.28f,h*.14f,w*.40f,h*.14f)
+                    cubicTo(w*.47f,h*.14f,w*.52f,h*.18f,w*.50f,h*.22f)
+                    cubicTo(w*.56f,h*.16f,w*.63f,h*.14f,w*.70f,h*.14f)
+                    cubicTo(w*.82f,h*.14f,w*.90f,h*.24f,w*.90f,h*.37f)
+                    cubicTo(w*.90f,h*.58f,w*.64f,h*.74f,w*.50f,h*.82f)
+                }
+                drawPath(path, color = color, style = stroke)
+            }
+            "gift" -> {
+                drawRoundRect(color, Offset(w*.18f,h*.36f), Size(w*.64f,h*.48f), CornerRadius(w*.04f), style=stroke)
+                line(.18f,.50f,.82f,.50f); line(.50f,.36f,.50f,.84f)
+                drawRoundRect(color, Offset(w*.14f,h*.28f), Size(w*.72f,h*.18f), CornerRadius(w*.04f), style=stroke)
+                drawArc(color, 210f, 150f, false, Offset(w*.26f,h*.12f), Size(w*.23f,h*.22f), style=stroke)
+                drawArc(color, 180f, 150f, false, Offset(w*.51f,h*.12f), Size(w*.23f,h*.22f), style=stroke)
+            }
+            "chat" -> {
+                drawRoundRect(color, Offset(w*.15f,h*.18f), Size(w*.70f,h*.52f), CornerRadius(w*.09f), style=stroke)
+                line(.34f,.70f,.25f,.84f); line(.25f,.84f,.25f,.70f)
+                line(.31f,.38f,.69f,.38f); line(.31f,.51f,.58f,.51f)
+            }
+            "logout" -> {
+                line(.14f,.20f,.14f,.80f); line(.14f,.20f,.48f,.20f); line(.14f,.80f,.48f,.80f)
+                line(.46f,.50f,.86f,.50f)
+                line(.70f,.34f,.86f,.50f); line(.70f,.66f,.86f,.50f)
+            }
             "megaphone" -> {
                 line(.13f,.46f,.71f,.21f); line(.71f,.21f,.71f,.79f)
                 line(.71f,.79f,.13f,.54f); line(.13f,.54f,.13f,.46f)
