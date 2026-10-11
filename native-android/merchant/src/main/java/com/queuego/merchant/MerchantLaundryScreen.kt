@@ -82,7 +82,7 @@ fun MerchantLaundryScreen(auth: NativeAuth) {
 
     val current = state
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(14.dp)) {
-        QgSectionTitle("ฝากซัก", "ร้านจัดพนักงานรับผ้าและส่งคืนเอง")
+        QgSectionTitle("ฝากซัก", "ร้านจัดพนักงานรับ–ส่งเอง · GP 10% ของยอดรวม")
         val visibleMessage = loadError ?: message
         if (!visibleMessage.isNullOrBlank()) {
             Spacer(Modifier.height(8.dp))
@@ -359,6 +359,9 @@ private fun LaundryOrderCard(
             if (!order.pickupAddress.isNullOrBlank()) Text(order.pickupAddress!!, color = QgMuted, style = MaterialTheme.typography.bodySmall)
             val total = order.finalTotal ?: order.estimatedTotal
             if (total != null) Text("ยอด " + (if (order.finalTotal != null) "จริง" else "ประมาณ") + " ฿" + "%.0f".format(total), color = QgRed, fontWeight = FontWeight.Black)
+            Text("GP QueueGo " + "%.0f%%".format(order.gpRate * 100) + " จากค่าซักและค่ารับ–ส่ง", color = QgMuted, style = MaterialTheme.typography.bodySmall)
+            order.platformFee?.let { Text("ค่า GP ฿" + "%.2f".format(it), color = QgMuted) }
+            order.shopNet?.let { Text("รายได้สุทธิร้าน ฿" + "%.2f".format(it), color = QgGreen, fontWeight = FontWeight.Bold) }
             if (!order.note.isNullOrBlank()) Text("หมายเหตุ: " + order.note, color = QgMuted)
 
             order.customerName?.let { Text("ลูกค้า: " + it, fontWeight = FontWeight.Bold) }

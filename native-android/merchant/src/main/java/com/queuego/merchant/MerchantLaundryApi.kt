@@ -43,7 +43,10 @@ data class MerchantLaundryOrder(
     val latitude: Double? = null,
     val longitude: Double? = null,
     val customerName: String? = null,
-    val customerPhone: String? = null
+    val customerPhone: String? = null,
+    val gpRate: Double = 0.10,
+    val platformFee: Double? = null,
+    val shopNet: Double? = null
 )
 
 data class MerchantLaundryState(
@@ -100,7 +103,7 @@ class MerchantLaundryApi(private val http: QueueGoNativeApi = QueueGoNativeApi()
             .associateBy { it.optString("order_id") }
         val orders = if (hubId == null) emptyList() else {
             val rows = http.array(http.get(
-                "laundry_orders?select=id,order_number,status,service_name_snapshot,pricing_type_snapshot,estimated_quantity,actual_quantity,estimated_total_amount,final_total_amount,pickup_address,note,pickup_staff_name,return_staff_name,pickup_latitude,pickup_longitude" +
+                "laundry_orders?select=id,order_number,status,service_name_snapshot,pricing_type_snapshot,estimated_quantity,actual_quantity,estimated_total_amount,final_total_amount,pickup_address,note,pickup_staff_name,return_staff_name,pickup_latitude,pickup_longitude,gp_rate_snapshot,platform_fee_amount,shop_net_amount" +
                     "&hub_id=eq." + http.enc(hubId) + "&order=created_at.desc&limit=100",
                 auth.session.accessToken
             ))
@@ -125,7 +128,8 @@ class MerchantLaundryApi(private val http: QueueGoNativeApi = QueueGoNativeApi()
                         r.optString("return_staff_name").takeIf { it.isNotBlank() && it != "null" },
                         r.optDoubleNullable("pickup_latitude"), r.optDoubleNullable("pickup_longitude"),
                         contactByOrder[id]?.optString("customer_name")?.takeIf { it.isNotBlank() && it != "null" },
-                        contactByOrder[id]?.optString("customer_phone")?.takeIf { it.isNotBlank() && it != "null" }
+                        contactByOrder[id]?.optString("customer_phone")?.takeIf { it.isNotBlank() && it != "null" },
+                        r.optDouble("gp_rate_snapshot", 0.10), r.optDoubleNullable("platform_fee_amount"), r.optDoubleNullable("shop_net_amount")
                     ))
                 }
             }
