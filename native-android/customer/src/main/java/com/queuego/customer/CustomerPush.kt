@@ -28,6 +28,21 @@ import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
 internal const val CUSTOMER_NOTIFICATION_CHANNEL = "queuego_orders_v2"
+private const val CUSTOMER_PUSH_PREFS = "queuego_customer_push_preferences"
+private const val CUSTOMER_PUSH_ENABLED = "push_enabled"
+
+internal fun customerPushEnabled(context: Context): Boolean =
+    context.applicationContext
+        .getSharedPreferences(CUSTOMER_PUSH_PREFS, Context.MODE_PRIVATE)
+        .getBoolean(CUSTOMER_PUSH_ENABLED, true)
+
+internal fun setCustomerPushEnabled(context: Context, enabled: Boolean) {
+    context.applicationContext
+        .getSharedPreferences(CUSTOMER_PUSH_PREFS, Context.MODE_PRIVATE)
+        .edit()
+        .putBoolean(CUSTOMER_PUSH_ENABLED, enabled)
+        .apply()
+}
 
 internal fun ensureCustomerNotificationChannel(context: Context) {
     if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
@@ -59,6 +74,7 @@ private suspend fun customerFirebaseToken(): String = suspendCancellableCoroutin
 }
 
 internal suspend fun syncCustomerNativePush(context: Context, auth: NativeAuth): Boolean {
+    if (!customerPushEnabled(context)) return false
     val store = NativePushDeviceStore(context, "customer")
     val api = NativePushApi()
     if (auth.user.role != "customer" || auth.user.status != "active") {
@@ -85,6 +101,7 @@ class QueueGoCustomerMessagingService : FirebaseMessagingService() {
     override fun onNewToken(token: String) {
         super.onNewToken(token)
         if (token.length < 16) return
+        if (!customerPushEnabled(applicationContext)) return
         val sessionStore = SecureRoleSessionStore(applicationContext, "customer")
         val cached = sessionStore.load() ?: return
         serviceScope.launch {
