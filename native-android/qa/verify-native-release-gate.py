@@ -347,6 +347,13 @@ def verify():
     if play_envelope.get("observed_play_max_version_codes") != play_max_codes:
         raise ValueError("play_store_preflight evidence Play history mismatch")
 
+    expected_play_packages = {
+        "com.queuego.customer", "com.queuego.merchant", "com.queuego.rider"
+    }
+    registered_packages = play_envelope.get("registered_packages")
+    if not isinstance(registered_packages, list) or set(registered_packages) != expected_play_packages:
+        raise ValueError("play_store_preflight evidence registered package names mismatch")
+
     required = (
         "QG_ANDROID_KEYSTORE_PATH", "QG_ANDROID_STORE_PASSWORD",
         "QG_ANDROID_KEY_ALIAS", "QG_ANDROID_KEY_PASSWORD",
