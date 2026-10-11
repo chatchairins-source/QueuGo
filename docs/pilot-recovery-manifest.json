@@ -583,7 +583,8 @@
     "release_evidence_bundler_auto_certifies": false,
     "release_gate_play_developer_identity_verification_required": true,
     "release_gate_play_package_registration_required": true,
-    "release_gate_play_package_signing_certificate_binding": true
+    "release_gate_play_package_registration_key_evidence_required": true,
+    "release_gate_play_registration_upload_key_equality_required": false
   },
   "security": {
     "code_surface_hardened": true,
@@ -758,7 +759,9 @@
       "com.queuego.merchant",
       "com.queuego.rider"
     ],
-    "android_package_registration_signing_certificate_binding_required": true
+    "android_package_registration_key_fingerprint_evidence_required": true,
+    "android_package_registration_multiple_keys_supported": true,
+    "android_package_registration_keys_may_differ_from_release_upload_key": true
   },
   "remaining_external_blockers": [
     "Configure QG_SUPABASE_DB_URL, QG_SUPABASE_SERVICE_ROLE_KEY and QG_BACKUP_PASSPHRASE, then pass QueueGo Encrypted Backup Restore Drill.",
