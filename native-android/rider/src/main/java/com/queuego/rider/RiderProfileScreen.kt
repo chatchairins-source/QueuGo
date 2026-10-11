@@ -306,24 +306,22 @@ fun RiderProfileScreen(
         }
 
         Spacer(Modifier.height(12.dp))
-        RiderProfileSection("ความเป็นส่วนตัวและบัญชี") {
-            RiderProfileActionRow(
-                icon = "chat",
-                title = "นโยบายความเป็นส่วนตัว",
-                subtitle = "การใช้ข้อมูลและการลบบัญชี"
-            ) {
-                runCatching {
-                    context.startActivity(
-                        Intent(
-                            Intent.ACTION_VIEW,
-                            Uri.parse("https://chatchairins-source.github.io/QueuGo/docs/privacy.html")
-                        )
-                    )
-                }.onFailure { message = "เปิดนโยบายความเป็นส่วนตัวไม่สำเร็จ" }
-            }
-            HorizontalDivider(color = Color(0xFFECEEF1))
-            QgAccountDeletionSection(accessToken = auth.session.accessToken, onDeleted = onLogout)
-            Spacer(Modifier.height(8.dp))
+        Text(
+            "ความเป็นส่วนตัวและบัญชี",
+            color = Color(0xFF777D85),
+            fontWeight = FontWeight.ExtraBold,
+            style = MaterialTheme.typography.labelSmall
+        )
+        Spacer(Modifier.height(6.dp))
+        QgAccountDeletionSection(
+            accessToken = auth.session.accessToken,
+            onDeleted = onLogout,
+            showHeader = false,
+            privacySubtitle = "การใช้ข้อมูลและการลบบัญชี",
+            deleteSubtitle = "ลบ Auth และข้อมูลส่วนบุคคล"
+        )
+        Spacer(Modifier.height(8.dp))
+        RiderProfileSection("") {
             RiderProfileActionRow(
                 icon = "back",
                 title = "ออกจากระบบ",
@@ -338,13 +336,15 @@ fun RiderProfileScreen(
 @Composable
 private fun RiderProfileSection(title: String, content: @Composable () -> Unit) {
     Column {
-        Text(
-            title,
-            color = Color(0xFF777D85),
-            fontWeight = FontWeight.ExtraBold,
-            style = MaterialTheme.typography.labelSmall
-        )
-        Spacer(Modifier.height(6.dp))
+        if (title.isNotBlank()) {
+            Text(
+                title,
+                color = Color(0xFF777D85),
+                fontWeight = FontWeight.ExtraBold,
+                style = MaterialTheme.typography.labelSmall
+            )
+            Spacer(Modifier.height(6.dp))
+        }
         Column(
             Modifier
                 .fillMaxWidth()
@@ -443,10 +443,13 @@ private fun RiderProfileToggleRow(
     enabled: Boolean,
     onChecked: (Boolean) -> Unit
 ) {
-    Row(Modifier.fillMaxWidth().padding(vertical = 5.dp)) {
+    Row(
+        Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
+        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+    ) {
         Column(Modifier.weight(1f)) {
-            Text(title, fontWeight = FontWeight.Bold)
-            Text(detail, color = QgMuted, style = MaterialTheme.typography.labelSmall)
+            Text(title, fontWeight = FontWeight.ExtraBold, color = Color(0xFF202329))
+            Text(detail, color = Color(0xFF8A8F96), style = MaterialTheme.typography.labelSmall)
         }
         Switch(checked = checked, onCheckedChange = onChecked, enabled = enabled)
     }
