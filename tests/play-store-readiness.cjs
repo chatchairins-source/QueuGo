@@ -80,7 +80,7 @@ for(const check of ['developer_identity_verified','customer_package_registered',
 for(const id of ['com.queuego.customer','com.queuego.merchant','com.queuego.rider']){
   ok(readiness.includes(id),'Android developer verification guidance must name package '+id);
 }
-ok(nativeReleaseVerifier.includes('registered_packages')&&nativeReleaseVerifier.includes('expected_play_packages'),'Play gate must structurally bind registration evidence to exact package names');
+ok(nativeReleaseVerifier.includes('registered_packages')&&nativeReleaseVerifier.includes('set(registered_packages) != expected_packages')&&['com.queuego.customer','com.queuego.merchant','com.queuego.rider'].every(id=>nativeReleaseVerifier.includes(id)),'Play gate must structurally bind registration evidence to exact package names');
 ok(/Customer \/ Merchant \/ Rider — `microphone`/i.test(readiness),'All three Native apps must have a microphone FGS declaration draft');
 ok(/Rider only — `specialUse`/i.test(readiness)&&/Active QueueGo Rider navigation return control/i.test(readiness),'Rider specialUse declaration must retain the reviewed subtype and use case');
 ok(/Demo video evidence required/i.test(readiness),'Foreground-service declaration must require real-device demo video evidence');
