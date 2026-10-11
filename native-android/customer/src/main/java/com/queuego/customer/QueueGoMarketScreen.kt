@@ -284,6 +284,7 @@ fun MarketNativeScreen(
             note = note,
             busy = busy,
             message = message,
+            requireLogin = auth == null,
             shops = shops,
             onBack = { showCart = false },
             onChangeQuantity = { productId, delta ->
@@ -703,6 +704,7 @@ private fun MarketCartView(
     note: String,
     busy: Boolean,
     message: String?,
+    requireLogin: Boolean,
     shops: List<MarketShop>,
     onBack: () -> Unit,
     onChangeQuantity: (String, Int) -> Unit,
@@ -905,7 +907,11 @@ private fun MarketCartView(
                 )
             } else {
                 Text(
-                    if (addMode) "เพิ่มร้านเข้า Market Trip" else "ยืนยัน Market Trip",
+                    when {
+                        requireLogin -> "เข้าสู่ระบบเพื่อสั่งซื้อ"
+                        addMode -> "เพิ่มร้านเข้า Market Trip"
+                        else -> "ยืนยัน Market Trip"
+                    },
                     fontWeight = FontWeight.ExtraBold
                 )
             }
