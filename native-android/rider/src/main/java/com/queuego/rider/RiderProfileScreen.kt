@@ -6,12 +6,17 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.provider.Settings
+import androidx.compose.foundation.background
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
@@ -19,6 +24,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.queuego.shared.QgAccountDeletionSection
 import com.queuego.shared.QgMuted
+import com.queuego.shared.QgRedSoft
 import com.queuego.shared.QgRed
 import com.queuego.shared.QgStatusPill
 import kotlinx.coroutines.launch
@@ -32,6 +38,7 @@ fun RiderProfileScreen(
     history: List<RiderHistoryOrder>,
     api: QueueGoApi,
     onSnapshot: (RiderSnapshot) -> Unit,
+    onNavigationSettings: () -> Unit,
     onLogout: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -70,22 +77,38 @@ fun RiderProfileScreen(
         modifier.fillMaxSize().verticalScroll(rememberScrollState())
             .padding(horizontal = 12.dp, vertical = 10.dp)
     ) {
-        Text("โปรไฟล์", fontWeight = FontWeight.Black, style = MaterialTheme.typography.headlineSmall)
-        Spacer(Modifier.height(10.dp))
+        Row(Modifier.fillMaxWidth().padding(bottom = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+            Spacer(Modifier.weight(1f))
+            Text("โปรไฟล์", fontWeight = FontWeight.Black, fontSize = 27.sp)
+            Box(Modifier.weight(1f), contentAlignment = Alignment.CenterEnd) {
+                Text("QueueGo", color = QgRed, fontSize = 12.sp, fontWeight = FontWeight.Black)
+            }
+        }
         Card(
             Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(18.dp),
+            border = BorderStroke(1.dp, Color(0xFFEEE6E8)),
             colors = CardDefaults.cardColors(containerColor = Color.White)
         ) {
-            Row(Modifier.fillMaxWidth().padding(14.dp)) {
+            val smallScreen = LocalConfiguration.current.screenWidthDp <= 360
+            Row(Modifier.fillMaxWidth().padding(if (smallScreen) 10.dp else 12.dp),
+                verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(11.dp)) {
+                Box(Modifier.size(if (smallScreen) 52.dp else 58.dp).background(QgRedSoft, RoundedCornerShape(if (smallScreen) 16.dp else 18.dp)), contentAlignment = Alignment.Center) {
+                    Text(auth.user.name.take(1).uppercase(), color = QgRed, fontSize = 22.sp, fontWeight = FontWeight.Black)
+                }
                 Column(Modifier.weight(1f)) {
-                    Text(auth.user.name, fontWeight = FontWeight.Black)
-                    Text(auth.user.phone ?: profile?.phone ?: "-", color = QgMuted)
+                    Text(auth.user.name, fontWeight = FontWeight.Black, fontSize = if (smallScreen) 17.sp else 19.sp)
+                    Text(auth.user.phone ?: profile?.phone ?: "-", color = Color(0xFF8A8387), fontSize = 10.sp, modifier = Modifier.padding(top = 3.dp))
                     val vehicle = riderVehicleLabel(profile?.vehicleType)
                     val plate = profile?.vehiclePlate?.takeIf { it.isNotBlank() }
-                    Text(if (plate == null) vehicle + " · QueueGo Rider" else vehicle + " · " + plate, color = QgMuted)
+                    Text(if (plate == null) vehicle + " · QueueGo Rider" else vehicle + " · " + plate,
+                        color = Color(0xFF746A6E), fontSize = 8.5.sp,
+                        modifier = Modifier.padding(top = 5.dp).background(Color(0xFFF7F3F4), RoundedCornerShape(99.dp)).padding(horizontal = 7.dp, vertical = 4.dp))
                 }
-                QgStatusPill(if (snapshot?.online == true) "ออนไลน์" else "ออฟไลน์", snapshot?.online == true)
+                val online = snapshot?.online == true
+                Text(if (online) "ออนไลน์" else "ออฟไลน์", fontSize = 8.5.sp, fontWeight = FontWeight.ExtraBold,
+                    color = if (online) Color(0xFF15955A) else Color(0xFF85878C),
+                    modifier = Modifier.background(if (online) Color(0xFFEEF8F2) else Color(0xFFF2F2F3), RoundedCornerShape(99.dp)).padding(horizontal = 7.dp, vertical = 4.dp))
             }
         }
 
@@ -177,6 +200,10 @@ fun RiderProfileScreen(
                 },
                 enabled = !busy, modifier = Modifier.fillMaxWidth()
             ) { Text("ทดสอบการแจ้งเตือน") }
+            Spacer(Modifier.height(8.dp))
+            OutlinedButton(onClick = onNavigationSettings, modifier = Modifier.fillMaxWidth()) {
+                Text("สิทธิ์กลับจากแอปนำทาง")
+            }
             if (Build.VERSION.SDK_INT >= 33 &&
                 context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
             ) {
@@ -208,9 +235,9 @@ fun RiderProfileScreen(
 @Composable
 private fun RiderProfileSection(title: String, content: @Composable () -> Unit) {
     Column {
-        Text(title, color = QgMuted, fontWeight = FontWeight.Bold)
+        Text(title, color = Color(0xFF898287), fontWeight = FontWeight.Black, fontSize = 9.sp, modifier = Modifier.padding(horizontal = 2.dp))
         Spacer(Modifier.height(5.dp))
-        Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = Color.White)) {
+        Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp), border = BorderStroke(1.dp, Color(0xFFEEE6E8)), colors = CardDefaults.cardColors(containerColor = Color.White)) {
             Column(Modifier.padding(10.dp)) { content() }
         }
     }

@@ -361,6 +361,20 @@ private fun RiderHome(
             actionMessage = null
         }
     }
+    var detailJob by remember { mutableStateOf<RiderJob?>(null) }
+    var homeDetails by remember { mutableStateOf<RiderVerificationDetails?>(null) }
+    LaunchedEffect(snapshot?.activeJob?.id, auth.session.accessToken) {
+        homeDetails = null
+        snapshot?.activeJob?.let { job ->
+            try {
+                homeDetails = api.verificationDetails(auth, job.id)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                // Work controls remain available if metadata fails.
+            }
+        }
+    }
     var chatJob by remember { mutableStateOf<RiderJob?>(null) }
     var verifyMode by remember { mutableStateOf<String?>(null) }
     var verifyJob by remember { mutableStateOf<RiderJob?>(null) }
@@ -829,6 +843,7 @@ private fun RiderHome(
                     history = recentHistory,
                     api = api,
                     onSnapshot = { snapshot = it },
+                    onNavigationSettings = { configureReturnControl() },
                     onLogout = onLogout,
                     modifier = Modifier.align(Alignment.TopCenter).widthIn(max = 748.dp).fillMaxSize()
                 )
@@ -839,6 +854,7 @@ private fun RiderHome(
                 onSelect = { activeTab = it },
                 modifier = Modifier.align(Alignment.BottomCenter)
             )
+            actionMessage?.let { RiderFeedbackToast(it, Modifier.align(Alignment.BottomCenter)) }
             messageNotice?.let { RiderMessageNotice(it, Modifier.align(Alignment.TopCenter)) }
             RiderVoiceOverlay(
                 state = voiceState,
@@ -869,6 +885,7 @@ private fun RiderHome(
 
     var recenterSignal by remember { mutableStateOf(0) }
     var mapReady by remember { mutableStateOf(false) }
+    val shortHome = LocalConfiguration.current.screenHeightDp <= 760
     val mapJob = snapshot?.activeJob ?: snapshot?.offeredJob
 
     BoxWithConstraints(
@@ -897,21 +914,6 @@ private fun RiderHome(
                 enabled = !actionBusy && snapshot != null && snapshot?.activeJob == null,
                 onToggle = { changeOnline(snapshot?.online != true) }
             )
-            if (actionMessage != null) {
-                Spacer(Modifier.height(7.dp))
-                Card(
-                    Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(14.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color(0xEE171519))
-                ) {
-                    Text(
-                        actionMessage!!,
-                        color = Color.White,
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 9.dp),
-                        style = MaterialTheme.typography.bodySmall
-                    )
-                }
-            }
             if (!mapReady) {
                 Spacer(Modifier.height(7.dp))
                 Card(
@@ -931,7 +933,7 @@ private fun RiderHome(
         Card(
             modifier = Modifier
                 .align(Alignment.TopEnd)
-                .padding(top = 70.dp, end = 10.dp)
+                .padding(top = 64.dp, end = 10.dp)
                 .size(44.dp)
                 .clickable { recenterSignal += 1 },
             shape = androidx.compose.foundation.shape.CircleShape,
@@ -972,19 +974,20 @@ private fun RiderHome(
                     Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(21.dp),
                         colors = CardDefaults.cardColors(containerColor = Color(0xFCFFFFFF)),
                         border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFEEE5E8))) {
-                    Column(Modifier.padding(12.dp)) {
+                    Column(Modifier.padding(if (shortHome) 10.dp else 12.dp)) {
                         Row(horizontalArrangement = Arrangement.spacedBy(9.dp)) {
                             Box(Modifier.size(44.dp).background(QgRedSoft, RoundedCornerShape(14.dp)), contentAlignment = Alignment.Center) {
-                                QgIcon("home", Modifier.size(24.dp), QgRed)
+                                QgIcon(if (current.online) "home" else "location", Modifier.size(24.dp), QgRed)
                             }
                             Column {
-                                Text(if (current.online) "พร้อมรับงานแล้ว" else "คุณกำลังออฟไลน์", fontSize = 18.sp, lineHeight = 22.sp, fontWeight = FontWeight.Black)
+                                Text(if (current.online) "พร้อมรับงานแล้ว" else "พร้อมรับงานเมื่อคุณพร้อม", fontSize = 18.sp, lineHeight = 22.sp, fontWeight = FontWeight.Black)
                                 Text(if (current.online) {
                                     if (lastKnownLocation(context) != null) "กำลังค้นหางานใกล้คุณ" else "กำลังรอตำแหน่ง GPS"
-                                } else "เปิดรับงานเพื่อเริ่มต้นจัดส่ง", color = QgMuted, fontSize = 10.sp)
+                                } else "เปิดรับงานแล้วระบบจะค้นหางานใกล้ตำแหน่งปัจจุบัน", color = QgMuted, fontSize = 10.sp)
                             }
                         }
-                        Spacer(Modifier.height(9.dp))
+                        if (current.online) {
+                        Spacer(Modifier.height(if (shortHome) 7.dp else 9.dp))
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                             listOf("วันนี้" to (todaySummary?.jobs?.let { "$it งาน" } ?: "— งาน"),
                                 "รายได้" to (todaySummary?.income?.let { "฿%.0f".format(it) } ?: "฿—"),
@@ -996,16 +999,17 @@ private fun RiderHome(
                                 }
                             }
                         }
+                        }
                     if (current.online) {
                         OutlinedButton(onClick = { changeOnline(false) }, enabled = !actionBusy,
                             modifier = Modifier.fillMaxWidth().padding(top = 8.dp).heightIn(min = 46.dp),
-                            shape = RoundedCornerShape(15.dp)) { Text("ปิดรับงาน", fontSize = 12.sp, fontWeight = FontWeight.Black) }
+                            shape = RoundedCornerShape(15.dp)) { Text("ปิดรับงาน", fontSize = 15.sp, fontWeight = FontWeight.Black) }
                     } else {
                         Button(onClick = { changeOnline(true) }, enabled = !actionBusy,
                             modifier = Modifier.fillMaxWidth().padding(top = 8.dp).heightIn(min = 46.dp),
-                            shape = RoundedCornerShape(15.dp)) { Text("เปิดรับงาน", fontSize = 12.sp, fontWeight = FontWeight.Black) }
+                            shape = RoundedCornerShape(15.dp)) { Text("เปิดรับงาน", fontSize = 15.sp, fontWeight = FontWeight.Black) }
                     }
-                    Text("อยู่ใกล้ย่านร้านอาหาร ตลาด และร้านค้าที่เข้าร่วม จะช่วยให้ได้รับงานเร็วขึ้น",
+                    if (current.online) Text("อยู่ใกล้ย่านร้านอาหาร ตลาด และร้านค้าที่เข้าร่วม จะช่วยให้ได้รับงานเร็วขึ้น",
                         modifier = Modifier.fillMaxWidth().padding(top = 7.dp).background(Color(0xFFFFF4F6), RoundedCornerShape(14.dp)).padding(horizontal = 10.dp, vertical = 8.dp),
                         color = Color(0xFF7B6870), fontSize = 9.sp, lineHeight = 13.sp)
                     }
@@ -1015,11 +1019,6 @@ private fun RiderHome(
                 when {
                     current.activeJob != null -> {
                         val activeJob = current.activeJob
-                        ReturnControlCard(
-                            overlayAllowed = Settings.canDrawOverlays(context),
-                            onConfigure = { configureReturnControl() }
-                        )
-                        Spacer(Modifier.height(10.dp))
                         if (activeJob.marketOrderId != null && activeJob.status != "in_progress") {
                             MarketPickupPanel(
                                 job = activeJob,
@@ -1065,9 +1064,17 @@ private fun RiderHome(
                                 current.marketPickups.isNotEmpty() &&
                                 current.marketPickups.all { it.done }
                             ) activeJob.copy(status = "picked_up") else activeJob,
+                            details = homeDetails,
                             busy = actionBusy,
+                            onDetails = { detailJob = current.activeJob },
                             onChat = { chatJob = current.activeJob },
-                            onNavigate = { openNavigation(context, current.activeJob) },
+                            onNavigate = {
+                                val next = current.marketPickups.firstOrNull { !it.done }
+                                val target = if (activeJob.marketOrderId != null && !activeJob.isDelivering && next != null)
+                                    activeJob.copy(pickupAddress = next.shopAddress, pickupLat = next.latitude, pickupLng = next.longitude)
+                                else current.activeJob
+                                openNavigation(context, target)
+                            },
                             onArriveShop = {
                                 if (!ensureLocationPermission()) return@ActiveJobCard
                                 val loc = lastKnownLocation(context)
@@ -1139,6 +1146,7 @@ private fun RiderHome(
                     current.offeredJob != null -> {
                         OfferCard(
                             job = current.offeredJob,
+                            riderLocation = lastKnownLocation(context),
                             busy = actionBusy,
                             onAccept = {
                                 actionBusy = true
@@ -1193,6 +1201,10 @@ private fun RiderHome(
             onSelect = { activeTab = it },
             modifier = Modifier.align(Alignment.BottomCenter)
         )
+        detailJob?.let { job ->
+            RiderOrderDetailsSheet(auth, job, api, onDismiss = { detailJob = null })
+        }
+        actionMessage?.let { RiderFeedbackToast(it, Modifier.align(Alignment.BottomCenter)) }
         messageNotice?.let { RiderMessageNotice(it, Modifier.align(Alignment.TopCenter)) }
         RiderVoiceOverlay(
             state = voiceState,
@@ -1200,6 +1212,14 @@ private fun RiderHome(
             controller = voiceController,
             onAnswer = ::answerVoiceCall
         )
+    }
+}
+
+@Composable
+private fun RiderFeedbackToast(message: String, modifier: Modifier) {
+    Box(modifier.padding(horizontal = 16.dp, vertical = 82.dp).widthIn(max = 430.dp)
+        .clip(RoundedCornerShape(14.dp)).background(Color(0xFF19171A)).padding(horizontal = 15.dp, vertical = 11.dp)) {
+        Text(message, color = Color.White, fontSize = 12.sp)
     }
 }
 
@@ -1231,7 +1251,7 @@ private fun RiderBottomNavigation(
             .widthIn(max = 736.dp)
             .fillMaxWidth()
             .padding(horizontal = 8.dp, vertical = 6.dp)
-            .height(58.dp),
+            .height(if (LocalConfiguration.current.screenHeightDp <= 760) 54.dp else 58.dp),
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(containerColor = Color(0xFAFFFFFF)),
         border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFEEE6E8)),
@@ -1297,36 +1317,16 @@ private fun RiderBottomNavigation(
 }
 
 @Composable
-private fun ReturnControlCard(
-    overlayAllowed: Boolean,
-    onConfigure: () -> Unit
-) {
-    Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(21.dp), colors = CardDefaults.cardColors(containerColor = Color.White)) {
-        Column(Modifier.padding(14.dp)) {
-            Text("ปุ่ม Q กลับ QueueGo", fontWeight = FontWeight.Bold)
-            Text(
-                if (overlayAllowed) {
-                    "พร้อมแสดงปุ่มลอยขณะเปิด Google Maps"
-                } else {
-                    "ยังไม่ได้เปิดสิทธิ์ปุ่มลอย · หากไม่เปิดจะใช้การแจ้งเตือนเป็นทางกลับ"
-                }
-            )
-            Spacer(Modifier.height(8.dp))
-            OutlinedButton(onClick = onConfigure, modifier = Modifier.fillMaxWidth()) {
-                Text(if (overlayAllowed) "ตรวจการตั้งค่าปุ่มลอย" else "เปิดปุ่มลอย")
-            }
-        }
-    }
-}
-
-@Composable
 private fun OfferCard(
     job: RiderJob,
+    riderLocation: Pair<Double, Double>?,
     busy: Boolean,
     onAccept: () -> Unit,
     onDecline: () -> Unit,
     onExpired: () -> Unit
 ) {
+    val pickupKm = riderDistanceKm(riderLocation?.first, riderLocation?.second, job.pickupLat, job.pickupLng)
+    val deliveryKm = riderDistanceKm(job.pickupLat, job.pickupLng, job.deliveryLat, job.deliveryLng)
     var secondsLeft by remember(job.id, job.offerExpiresAt) { mutableStateOf(30) }
 
     LaunchedEffect(job.id, job.offerExpiresAt) {
@@ -1349,11 +1349,11 @@ private fun OfferCard(
         elevation = CardDefaults.cardElevation(defaultElevation = 5.dp),
         border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFEEE5E8))
     ) {
-        Column(Modifier.padding(12.dp)) {
+        Column(Modifier.padding(if (LocalConfiguration.current.screenHeightDp <= 760) 10.dp else 12.dp)) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
                 Column(Modifier.weight(1f)) {
-                    Text("งานใหม่", color = QgRed, fontWeight = FontWeight.ExtraBold, style = MaterialTheme.typography.labelMedium)
-                    Text(job.numberLabel, fontWeight = FontWeight.Black, style = MaterialTheme.typography.headlineSmall)
+                    Text("งานใหม่ใกล้คุณ", color = QgRed, fontWeight = FontWeight.ExtraBold, fontSize = 11.sp)
+                    Text(job.numberLabel, fontWeight = FontWeight.Black, fontSize = 24.sp)
                 }
                 Box(
                     Modifier
@@ -1376,9 +1376,9 @@ private fun OfferCard(
                 Modifier.fillMaxWidth().padding(top = 8.dp),
                 horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
-                RiderOfferMetric("ค่ารอบ", "฿" + "%.0f".format(job.deliveryFee ?: 0.0), Modifier.weight(1f))
-                RiderOfferMetric("จ่ายร้าน", job.shopCash?.let { "฿" + "%.0f".format(it) } ?: "—", Modifier.weight(1f))
-                RiderOfferMetric("เก็บลูกค้า", job.customerCash?.let { "฿" + "%.0f".format(it) } ?: "—", Modifier.weight(1f))
+                RiderOfferMetric("ระยะทาง", (pickupKm?.let { "%.1f".format(it) } ?: "—") + " กม.", Modifier.weight(1f))
+                RiderOfferMetric("เวลาประมาณ", (deliveryKm?.let { kotlin.math.ceil(it / 25.0 * 60.0).toInt().coerceAtLeast(1).toString() } ?: "—") + " นาที", Modifier.weight(1f))
+                RiderOfferMetric("รายได้", job.deliveryFee?.let { "฿" + "%.0f".format(it) } ?: "฿—", Modifier.weight(1f), highlight = true)
             }
 
             Row(
@@ -1391,7 +1391,7 @@ private fun OfferCard(
                     modifier = Modifier.weight(1f).height(50.dp),
                     shape = RoundedCornerShape(18.dp)
                 ) {
-                    Text("ปฏิเสธ", fontWeight = FontWeight.Bold)
+                    Text("ปฏิเสธ", fontSize = 15.sp, fontWeight = FontWeight.Black)
                 }
                 Button(
                     onClick = onAccept,
@@ -1399,7 +1399,7 @@ private fun OfferCard(
                     modifier = Modifier.weight(1.25f).height(50.dp),
                     shape = RoundedCornerShape(18.dp)
                 ) {
-                    Text("รับงาน · " + secondsLeft + " วิ", fontWeight = FontWeight.Black)
+                    Text("รับงาน · " + secondsLeft + " วิ", fontSize = 15.sp, fontWeight = FontWeight.Black)
                 }
             }
         }
@@ -1467,7 +1467,9 @@ private fun MarketPickupPanel(
 @Composable
 private fun ActiveJobCard(
     job: RiderJob,
+    details: RiderVerificationDetails?,
     busy: Boolean,
+    onDetails: () -> Unit,
     onChat: () -> Unit,
     onNavigate: () -> Unit,
     onArriveShop: () -> Unit,
@@ -1476,141 +1478,106 @@ private fun ActiveJobCard(
     onArriveCustomer: () -> Unit,
     onDeliveryVerify: () -> Unit
 ) {
-    Card(
-        Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(21.dp),
+    val context = LocalContext.current
+    val pickup = job.status in setOf("rider_assigned", "assigned", "preparing", "ready")
+    var navigationStarted by remember(job.id, pickup) {
+        mutableStateOf(context.getSharedPreferences("rider_navigation", Context.MODE_PRIVATE)
+            .getBoolean(job.id + if (pickup) ":shop" else ":customer", false))
+    }
+    val title = when {
+        job.status == "ready" -> "ร้านเตรียมสินค้าแล้ว"
+        job.status == "preparing" -> "ร้านกำลังเตรียมสินค้า"
+        pickup -> "กำลังไปรับสินค้า"
+        job.status == "picked_up" -> "รับสินค้าแล้ว"
+        job.customerArrived -> "Rider ถึงลูกค้าแล้ว"
+        else -> "กำลังไปส่ง"
+    }
+    val processLabel = when {
+        job.marketOrderId != null && pickup -> "รับของตามจุด"
+        job.status == "ready" -> "ตรวจสอบรายการ"
+        job.status == "in_progress" -> "กำลังนำส่ง"
+        job.status == "picked_up" -> "เริ่มจัดส่ง"
+        pickup -> "รอร้าน"
+        else -> "รออัปเดต"
+    }
+    val primaryLabel = when {
+        job.marketOrderId != null && pickup -> "นำทางไปร้านถัดไป"
+        pickup && job.shopArrived -> if (job.status == "ready") "ตรวจสอบรายการ" else "ถึงร้านแล้ว ✓"
+        pickup && navigationStarted -> "ถึงร้านแล้ว"
+        pickup -> "นำทางไปร้าน"
+        job.status == "in_progress" && job.customerArrived -> "ส่งมอบสินค้า"
+        job.status == "in_progress" && navigationStarted -> "ถึงลูกค้าแล้ว"
+        else -> "นำทางไปลูกค้า"
+    }
+    Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(21.dp),
         colors = CardDefaults.cardColors(containerColor = Color(0xFFFEFDFD)),
         elevation = CardDefaults.cardElevation(defaultElevation = 5.dp),
-        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFEEE5E8))
-    ) {
-        Column(Modifier.padding(12.dp)) {
+        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFEEE5E8))) {
+        Column(Modifier.padding(if (LocalConfiguration.current.screenHeightDp <= 760) 10.dp else 12.dp)) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
                 Column(Modifier.weight(1f)) {
-                    Text("กำลังทำงาน", color = QgRed, fontWeight = FontWeight.ExtraBold, style = MaterialTheme.typography.labelMedium)
-                    Text(job.numberLabel, fontWeight = FontWeight.Black, style = MaterialTheme.typography.headlineSmall)
+                    Text(title, color = QgRed, fontWeight = FontWeight.Black, fontSize = 11.sp)
+                    Text(job.numberLabel, fontWeight = FontWeight.Black, fontSize = 24.sp)
                 }
-                Box(
-                    Modifier
-                        .clip(RoundedCornerShape(13.dp))
-                        .background(QgRedSoft)
-                        .padding(horizontal = 9.dp, vertical = 6.dp)
-                ) {
-                    Text(
-                        riderStatusLabel(job.status),
-                        color = QgRed,
-                        fontWeight = FontWeight.Black,
-                        style = MaterialTheme.typography.labelMedium
-                    )
+                Box(Modifier.clip(RoundedCornerShape(13.dp)).background(QgRedSoft).padding(horizontal = 9.dp, vertical = 6.dp)) {
+                    Text(job.deliveryFee?.let { "฿%.0f".format(it) } ?: "฿—", color = QgRed, fontWeight = FontWeight.Black, fontSize = 13.sp)
                 }
             }
-
-            Spacer(Modifier.height(7.dp))
-            RiderJobPlaceRow("store", "ร้าน", job.pickupAddress ?: "ยังไม่มีที่อยู่ร้าน")
-            RiderJobPlaceRow("home", "ลูกค้า", job.deliveryAddress ?: "ยังไม่มีที่อยู่ลูกค้า")
-
-            job.deliveryFee?.let {
-                Spacer(Modifier.height(7.dp))
-                Row(
-                    Modifier
-                        .fillMaxWidth()
-                        .background(Color(0xFFFAF6F7), RoundedCornerShape(14.dp))
-                        .padding(horizontal = 10.dp, vertical = 8.dp)
-                ) {
-                    Text("รายได้ค่าส่ง", color = QgMuted, style = MaterialTheme.typography.labelSmall)
-                    Spacer(Modifier.weight(1f))
-                    Text("฿" + "%.0f".format(it), color = QgRed, fontWeight = FontWeight.Black)
+            Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                QgRemoteImage(details?.shopLogo, Modifier.size(42.dp), fallback = details?.shopName?.take(1) ?: "Q", cornerRadius = 14.dp)
+                Column { Text("ร้านค้า", color = QgMuted, fontSize = 8.sp); Text(details?.shopName ?: "ร้านค้า", fontWeight = FontWeight.Bold, fontSize = 12.sp) }
+            }
+            RiderJobPlaceRow("user", "ลูกค้า", details?.customerName ?: "ลูกค้า")
+            Column(Modifier.fillMaxWidth().padding(top = 7.dp).background(Color(0xFFFFF6F8), RoundedCornerShape(14.dp)).padding(horizontal = 9.dp, vertical = 8.dp)) {
+                Text(if (pickup) "จุดรับสินค้า" else "ที่อยู่จัดส่ง", fontSize = 8.sp, color = QgMuted)
+                Text((if (pickup) job.pickupAddress else job.deliveryAddress) ?: "พิกัดยังไม่พร้อม", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+            }
+            details?.note?.let { note ->
+                Column(Modifier.fillMaxWidth().padding(top = 6.dp).background(Color(0xFFFFF9EA), RoundedCornerShape(14.dp)).padding(10.dp)) {
+                    Text("หมายเหตุจากลูกค้า", color = QgMuted, fontSize = 8.sp)
+                    Text(note, fontSize = 11.sp, fontWeight = FontWeight.Bold)
                 }
             }
-
-            if (job.marketOrderId == null && job.status in setOf("rider_assigned", "assigned", "preparing", "ready")) {
-                job.shopCash?.let {
-                    Spacer(Modifier.height(7.dp))
-                    RiderCashPanel("เงินสดที่ต้องจ่ายร้าน", it, "แสดงยอดเท่านั้น ไม่มีปุ่มยืนยันเงิน")
-                }
+            Row(Modifier.fillMaxWidth().padding(top = 7.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                RiderJobTool("jobs", processLabel, !busy && job.marketOrderId == null && job.status == "ready", Modifier.weight(1f), onPickupVerify)
+                RiderJobTool("jobs", "รายการ", !busy, Modifier.weight(1f), onDetails)
+                RiderJobTool("support", "แชต", !busy, Modifier.weight(1f), onChat)
             }
-            if (job.status == "in_progress") {
-                job.customerCash?.let {
-                    Spacer(Modifier.height(7.dp))
-                    RiderCashPanel("เงินสดที่ต้องเก็บจากลูกค้า", it, "ส่งสินค้าและถ่ายรูปจบงานได้เลย")
-                }
-            }
-
-            Spacer(Modifier.height(9.dp))
-            OutlinedButton(
-                onClick = onChat,
-                enabled = !busy,
-                modifier = Modifier.fillMaxWidth().height(46.dp),
-                shape = RoundedCornerShape(16.dp)
+            Button(
+                onClick = {
+                    when {
+                        job.marketOrderId != null && pickup -> { onNavigate(); navigationStarted = context.getSharedPreferences("rider_navigation", Context.MODE_PRIVATE).getBoolean(job.id + if (pickup) ":shop" else ":customer", false) }
+                        pickup && job.shopArrived && job.status == "ready" -> onPickupVerify()
+                        pickup && navigationStarted -> onArriveShop()
+                        job.status == "picked_up" -> onStartDelivery()
+                        job.status == "in_progress" && job.customerArrived -> onDeliveryVerify()
+                        job.status == "in_progress" && navigationStarted -> onArriveCustomer()
+                        else -> { onNavigate(); navigationStarted = context.getSharedPreferences("rider_navigation", Context.MODE_PRIVATE).getBoolean(job.id + if (pickup) ":shop" else ":customer", false) }
+                    }
+                },
+                enabled = !busy && job.navigationTarget != null && !(pickup && job.shopArrived && job.status != "ready" && job.marketOrderId == null),
+                modifier = Modifier.fillMaxWidth().padding(top = 7.dp).heightIn(min = 46.dp), shape = RoundedCornerShape(18.dp),
+                colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = Color(0xFFF04455))
             ) {
-                Text("แชทกับลูกค้า", fontWeight = FontWeight.Bold)
-            }
-            Spacer(Modifier.height(7.dp))
-
-            when (job.status) {
-                "rider_assigned", "assigned", "preparing", "ready" -> {
-                    Button(
-                        onClick = onNavigate,
-                        enabled = !busy && job.navigationTarget != null,
-                        modifier = Modifier.fillMaxWidth().height(52.dp),
-                        shape = RoundedCornerShape(18.dp)
-                    ) { Text("นำทางไปร้าน", fontWeight = FontWeight.Black) }
-                    Spacer(Modifier.height(7.dp))
-                    if (!job.shopArrived) {
-                        OutlinedButton(
-                            onClick = onArriveShop,
-                            enabled = !busy,
-                            modifier = Modifier.fillMaxWidth().height(48.dp),
-                            shape = RoundedCornerShape(16.dp)
-                        ) { Text("ถึงร้านแล้ว", fontWeight = FontWeight.Bold) }
-                    } else if (job.status == "ready") {
-                        Button(
-                            onClick = onPickupVerify,
-                            enabled = !busy,
-                            modifier = Modifier.fillMaxWidth().height(52.dp),
-                            shape = RoundedCornerShape(18.dp)
-                        ) { Text("ตรวจสอบรายการ", fontWeight = FontWeight.Black) }
-                    } else {
-                        Box(
-                            Modifier.fillMaxWidth().background(QgRedSoft, RoundedCornerShape(14.dp)).padding(10.dp)
-                        ) {
-                            Text("ถึงร้านแล้ว · รอร้านเตรียมสินค้า", color = QgRed, fontWeight = FontWeight.Bold)
-                        }
-                    }
-                }
-                "picked_up" -> {
-                    Button(
-                        onClick = onStartDelivery,
-                        enabled = !busy,
-                        modifier = Modifier.fillMaxWidth().height(52.dp),
-                        shape = RoundedCornerShape(18.dp)
-                    ) { Text("เริ่มจัดส่งและนำทาง", fontWeight = FontWeight.Black) }
-                }
-                "in_progress" -> {
-                    Button(
-                        onClick = onNavigate,
-                        enabled = !busy && job.navigationTarget != null,
-                        modifier = Modifier.fillMaxWidth().height(52.dp),
-                        shape = RoundedCornerShape(18.dp)
-                    ) { Text("นำทางไปลูกค้า", fontWeight = FontWeight.Black) }
-                    Spacer(Modifier.height(7.dp))
-                    if (!job.customerArrived) {
-                        OutlinedButton(
-                            onClick = onArriveCustomer,
-                            enabled = !busy,
-                            modifier = Modifier.fillMaxWidth().height(48.dp),
-                            shape = RoundedCornerShape(16.dp)
-                        ) { Text("ถึงลูกค้าแล้ว", fontWeight = FontWeight.Bold) }
-                    } else {
-                        Button(
-                            onClick = onDeliveryVerify,
-                            enabled = !busy,
-                            modifier = Modifier.fillMaxWidth().height(52.dp),
-                            shape = RoundedCornerShape(18.dp)
-                        ) { Text("ตรวจสอบและส่งมอบสินค้า", fontWeight = FontWeight.Black) }
-                    }
-                }
+                QgIcon("location", Modifier.size(22.dp), Color.White)
+                Spacer(Modifier.width(9.dp))
+                Text(primaryLabel, fontSize = 12.sp, fontWeight = FontWeight.Black)
             }
         }
+    }
+}
+
+@Composable
+private fun RiderJobTool(icon: String, label: String, enabled: Boolean, modifier: Modifier, onClick: () -> Unit) {
+    Row(modifier.heightIn(min = 46.dp).clip(RoundedCornerShape(15.dp))
+        .background(Color.White).border(1.dp, Color(0xFFEDE5E8), RoundedCornerShape(15.dp))
+        .clickable(enabled = enabled, onClick = onClick).padding(horizontal = 4.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
+        Icon(painterResource(if (icon == "support") R.drawable.qg_rider_nav_chat else R.drawable.qg_rider_flow_jobs),
+            contentDescription = null, modifier = Modifier.size(18.dp), tint = if (enabled) Color(0xFF282427) else QgMuted)
+        Spacer(Modifier.width(6.dp))
+        Text(label, color = if (enabled) Color(0xFF282427) else QgMuted, fontSize = 9.sp, fontWeight = FontWeight.ExtraBold)
     }
 }
 
@@ -1673,23 +1640,35 @@ private fun RiderJobPlaceRow(icon: String, label: String, value: String) {
         }
         Spacer(Modifier.width(8.dp))
         Column(Modifier.weight(1f)) {
-            Text(label, color = QgMuted, style = MaterialTheme.typography.labelSmall)
-            Text(value, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodySmall, maxLines = 2)
+            Text(label, color = QgMuted, fontSize = 8.sp)
+            Text(value, fontWeight = FontWeight.Bold, fontSize = 12.sp, maxLines = 2)
         }
     }
 }
 
 @Composable
-private fun RiderOfferMetric(label: String, value: String, modifier: Modifier) {
+private fun RiderOfferMetric(label: String, value: String, modifier: Modifier, highlight: Boolean = false) {
     Column(
         modifier
             .background(Color(0xFFFAF7F8), RoundedCornerShape(14.dp))
             .padding(horizontal = 6.dp, vertical = 8.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text(label, color = QgMuted, style = MaterialTheme.typography.labelSmall)
-        Text(value, fontWeight = FontWeight.Black, style = MaterialTheme.typography.bodySmall)
+        Text(label, color = QgMuted, fontSize = 8.sp)
+        Text(value, color = if (highlight) QgRed else Color(0xFF17171B), fontWeight = FontWeight.Black, fontSize = 12.sp)
     }
+}
+
+// Same straight-line distance and 25 km/h estimate as Web offer metrics.
+private fun riderDistanceKm(fromLat: Double?, fromLng: Double?, toLat: Double?, toLng: Double?): Double? {
+    if (fromLat == null || fromLng == null || toLat == null || toLng == null) return null
+    if (!fromLat.isFinite() || !fromLng.isFinite() || !toLat.isFinite() || !toLng.isFinite() ||
+        fromLat !in -90.0..90.0 || toLat !in -90.0..90.0 || fromLng !in -180.0..180.0 || toLng !in -180.0..180.0) return null
+    val dLat = Math.toRadians(toLat - fromLat)
+    val dLng = Math.toRadians(toLng - fromLng)
+    val a = kotlin.math.sin(dLat / 2).let { it * it } + kotlin.math.cos(Math.toRadians(fromLat)) *
+        kotlin.math.cos(Math.toRadians(toLat)) * kotlin.math.sin(dLng / 2).let { it * it }
+    return 6371.0 * 2.0 * kotlin.math.atan2(kotlin.math.sqrt(a.coerceIn(0.0, 1.0)), kotlin.math.sqrt((1.0 - a).coerceIn(0.0, 1.0)))
 }
 
 @Composable
@@ -1965,6 +1944,9 @@ private fun openNavigation(context: Context, job: RiderJob) {
             "https://www.google.com/maps/dir/?api=1&destination=" +
                 target.first + "," + target.second
         )
-        runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, web)) }
+        val webOpened = runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, web)) }.isSuccess
+        if (!webOpened) return
     }
+    context.getSharedPreferences("rider_navigation", Context.MODE_PRIVATE).edit()
+        .putBoolean(job.id + if (job.isDelivering) ":customer" else ":shop", true).apply()
 }

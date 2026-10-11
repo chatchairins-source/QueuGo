@@ -226,4 +226,59 @@ begin
   'queuego_laundry_rider_active_job','queuego_laundry_rider_invites','queuego_laundry_invite_rider')
  loop execute format('revoke all on function %s from public,anon,authenticated',f.signature); end loop;
 end $retire$;
+-- Shops enable their own laundry service without accepting a platform Rider.
+CREATE OR REPLACE FUNCTION public.queuego_laundry_save_settings(p_enabled boolean, p_minimum_order numeric, p_pickup_fee numeric, p_return_fee numeric, p_round_trip_fee numeric, p_delivery_fee_mode text)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public', 'pg_temp'
+AS $function$
+declare
+  v_user uuid:=public.get_my_user_id();
+  v_hub uuid;
+  v_settings public.laundry_shop_settings%rowtype;
+begin
+  if v_user is null or public.get_my_role()<>'shop' then raise exception 'shop login required'; end if;
+  select h.id into v_hub
+  from public.laundry_hubs h
+  join public.shop_profiles s on s.id=h.shop_id
+  where s.user_id=v_user and s.archived_at is null
+  order by h.created_at
+  limit 1;
+  if v_hub is null then raise exception 'setup laundry service first'; end if;
+  if p_delivery_fee_mode not in ('separate','round_trip') then raise exception 'invalid delivery fee mode'; end if;
+  if greatest(coalesce(p_minimum_order,0),coalesce(p_pickup_fee,0),coalesce(p_return_fee,0),coalesce(p_round_trip_fee,0))>100000
+     or least(coalesce(p_minimum_order,0),coalesce(p_pickup_fee,0),coalesce(p_return_fee,0),coalesce(p_round_trip_fee,0))<0
+  then raise exception 'invalid laundry pricing'; end if;
+
+  if coalesce(p_enabled,false) then
+    if not exists(select 1 from public.laundry_services where hub_id=v_hub and active=true) then
+      raise exception 'add at least one active laundry service';
+    end if;
+  end if;
+
+  insert into public.laundry_shop_settings(
+    hub_id,enabled,accepts_pickup,accepts_return,minimum_order,
+    base_pickup_fee,return_fee,round_trip_fee,delivery_fee_mode,updated_at
+  ) values(
+    v_hub,coalesce(p_enabled,false),true,true,greatest(coalesce(p_minimum_order,0),0),
+    greatest(coalesce(p_pickup_fee,0),0),greatest(coalesce(p_return_fee,0),0),
+    greatest(coalesce(p_round_trip_fee,0),0),p_delivery_fee_mode,now()
+  )
+  on conflict(hub_id) do update set
+    enabled=excluded.enabled,
+    accepts_pickup=true,
+    accepts_return=true,
+    minimum_order=excluded.minimum_order,
+    base_pickup_fee=excluded.base_pickup_fee,
+    return_fee=excluded.return_fee,
+    round_trip_fee=excluded.round_trip_fee,
+    delivery_fee_mode=excluded.delivery_fee_mode,
+    updated_at=now()
+  returning * into v_settings;
+
+  return to_jsonb(v_settings);
+end $function$
+
+;
 commit;
