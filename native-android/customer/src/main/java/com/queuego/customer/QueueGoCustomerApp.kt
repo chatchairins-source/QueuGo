@@ -452,6 +452,8 @@ private fun CustomerShell(
             screen = "market"
         } else if (screen == "checkout") {
             screen = "cart"
+        } else if (screen == "favorites") {
+            screen = "profile"
         } else if (screen == "shopping" && shoppingMode != "all") {
             shoppingMode = "all"
         } else {
@@ -1206,11 +1208,32 @@ private fun CustomerShell(
                         supportInitialOrderId = null
                     }
                 )
-                "profile" -> ProfileScreen(
+                "favorites" -> CustomerFavoritesScreen(
                     auth = auth,
+                    shops = shops,
+                    onBack = { screen = "profile" },
+                    onOpenShop = { shopId ->
+                        shops.find { it.id == shopId }?.let { openShopFromHome(it, "favorites") }
+                    }
+                )
+                "profile" -> CustomerProfileScreen(
+                    auth = auth,
+                    unreadCount = notifications.count { !it.read },
+                    pushBusy = pushActionBusy,
+                    onLocation = { screen = "location" },
+                    onOrders = { screen = "orders" },
+                    onNotifications = { screen = "notifications" },
+                    onFavorites = { screen = "favorites" },
+                    onPromotion = { screen = "promotion" },
                     onSupport = {
                         supportInitialOrderId = null
                         screen = "support"
+                    },
+                    onEnableBackgroundNotifications = {
+                        launchCustomerPushProfileAction(false)
+                    },
+                    onTestNotification = {
+                        launchCustomerPushProfileAction(true)
                     },
                     logout = ::logoutWithPushCleanup
                 )
@@ -1750,43 +1773,6 @@ private fun OrdersScreen(
             }
         }
         Spacer(Modifier.height(30.dp))
-    }
-}
-
-@Composable
-private fun ProfileScreen(
-    auth: NativeAuth,
-    onSupport: () -> Unit,
-    logout: () -> Unit
-) {
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(14.dp)) {
-        QgSectionTitle("บัญชีของฉัน")
-        Spacer(Modifier.height(12.dp))
-        QgCard(Modifier.fillMaxWidth()) {
-            Column {
-                Text(auth.user.name, fontWeight = FontWeight.Black, style = MaterialTheme.typography.titleLarge)
-                Text("สถานะบัญชี: " + auth.user.status, color = QgMuted)
-            }
-        }
-        Spacer(Modifier.height(10.dp))
-        QgCard(Modifier.fillMaxWidth()) {
-            Column {
-                Text("QueueGo Production", fontWeight = FontWeight.ExtraBold)
-                Text("บัญชีนี้ใช้ Session และ RLS ของระบบจริง", color = QgMuted)
-            }
-        }
-        Spacer(Modifier.height(10.dp))
-        Button(onClick = onSupport, modifier = Modifier.fillMaxWidth()) {
-            Text("ติดต่อฝ่ายช่วยเหลือ")
-        }
-        Spacer(Modifier.height(10.dp))
-        QgAccountDeletionSection(
-            accessToken = auth.session.accessToken,
-            onDeleted = logout,
-            pendingChatUserId = auth.user.id
-        )
-        Spacer(Modifier.height(18.dp))
-        OutlinedButton(onClick = logout, modifier = Modifier.fillMaxWidth()) { Text("ออกจากระบบ") }
     }
 }
 
