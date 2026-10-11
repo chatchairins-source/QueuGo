@@ -28,6 +28,21 @@ import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
 internal const val MERCHANT_NOTIFICATION_CHANNEL = "queuego_orders_v2"
+private const val MERCHANT_PUSH_PREFS = "queuego_merchant_push_preferences"
+private const val MERCHANT_PUSH_ENABLED = "push_enabled"
+
+internal fun merchantPushEnabled(context: Context): Boolean =
+    context.applicationContext
+        .getSharedPreferences(MERCHANT_PUSH_PREFS, Context.MODE_PRIVATE)
+        .getBoolean(MERCHANT_PUSH_ENABLED, true)
+
+internal fun setMerchantPushEnabled(context: Context, enabled: Boolean) {
+    context.applicationContext
+        .getSharedPreferences(MERCHANT_PUSH_PREFS, Context.MODE_PRIVATE)
+        .edit()
+        .putBoolean(MERCHANT_PUSH_ENABLED, enabled)
+        .apply()
+}
 
 internal fun ensureMerchantNotificationChannel(context: Context) {
     if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
@@ -59,6 +74,7 @@ private suspend fun merchantFirebaseToken(): String = suspendCancellableCoroutin
 }
 
 internal suspend fun syncMerchantNativePush(context: Context, auth: NativeAuth): Boolean {
+    if (!merchantPushEnabled(context)) return false
     val store = NativePushDeviceStore(context, "shop")
     val api = NativePushApi()
     if (auth.user.role != "shop" || auth.user.status != "active") {
@@ -85,6 +101,7 @@ class QueueGoMerchantMessagingService : FirebaseMessagingService() {
     override fun onNewToken(token: String) {
         super.onNewToken(token)
         if (token.length < 16) return
+        if (!merchantPushEnabled(applicationContext)) return
         val sessionStore = SecureRoleSessionStore(applicationContext, "shop")
         val cached = sessionStore.load() ?: return
         serviceScope.launch {
