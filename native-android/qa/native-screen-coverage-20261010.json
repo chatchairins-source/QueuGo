@@ -1,5 +1,5 @@
 {
-  "reviewed_at": "2026-10-10",
+  "reviewed_at": "2026-10-11",
   "scope": "Native source-surface coverage only; not rendered or physical visual parity certification",
   "physical_visual_parity": "OPEN",
   "roles": {
@@ -11,6 +11,14 @@
       [
         "home_shell",
         "native-android/customer/src/main/java/com/queuego/customer/QueueGoCustomerApp.kt"
+      ],
+      [
+        "profile",
+        "native-android/customer/src/main/java/com/queuego/customer/CustomerProfileScreen.kt"
+      ],
+      [
+        "favorites",
+        "native-android/customer/src/main/java/com/queuego/customer/CustomerFavoritesScreen.kt"
       ],
       [
         "bottom_navigation",
@@ -219,5 +227,5 @@
       ]
     ]
   },
-  "audit_note": "All remaining Screen/App/Map/Chat-named Kotlin candidates were reviewed; API/store/model/validation-only files are intentionally excluded from UI surface coverage."
+  "audit_note": "All current Screen/App/Map/Chat-named Kotlin candidates, including the split Customer Profile/Favorites surfaces, were reviewed; API/store/model/validation-only files are intentionally excluded from UI surface coverage."
 }
