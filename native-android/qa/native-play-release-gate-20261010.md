@@ -257,8 +257,11 @@ HTTP200 and exact reviewed text verified at the public privacy URL. Complete the
 Play Data Safety assessment for Native FCM and voice transmission, including
 whether ephemeral processing/processor exceptions apply under current Play
 definitions. Do not reuse the old Capacitor rule forbidding RECORD_AUDIO or its
-SDK inventory. Do not claim a fixed call-metadata retention period until the
-actual backend policy is confirmed. Data Safety, retention-policy and Play Console declarations remain OPEN.
+SDK inventory. Production now enforces bounded call-metadata retention:
+`qg_call_sessions` and `voice_call` notification metadata older than 30 days
+are purged daily by `queuego-voice-call-retention`; the purge function is
+SECURITY INVOKER and app roles cannot execute it. The backend retention-policy
+gap is therefore CLOSED. Final Data Safety and Play Console declarations remain OPEN.
 The microphone foreground service also requires an accurate Play foreground
 service declaration with real user-flow evidence; source permission is insufficient.
 

@@ -34,5 +34,6 @@ must(sql.includes('delete from public.qg_user_blocks where blocker_user_id=v_use
 must(sql.includes('content_snapshot=case when reporter_user_id=v_user.id or reported_user_id=v_user.id then null else content_snapshot end'),'account deletion must scrub reported chat snapshots');
 must(privacy.includes('รายงานหรือบล็อกคู่สนทนา'),'privacy policy must disclose chat report/block rights');
 must(privacy.includes('สำเนาเนื้อหา'),'privacy policy must disclose moderation snapshot retention and cleanup');
+must(privacy.includes('อายุเกิน 30 วันโดยอัตโนมัติทุกวัน'),'privacy policy must disclose the enforced daily purge of voice-call metadata older than 30 days');
 
 console.log('account deletion/privacy gate checks passed');
