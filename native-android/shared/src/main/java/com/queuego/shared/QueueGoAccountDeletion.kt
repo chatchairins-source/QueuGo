@@ -285,7 +285,9 @@ private fun AccountSettingsRow(
                 color = if (danger) Color(0xFFD92F3E) else Color(0xFF17191D),
                 fontWeight = FontWeight.ExtraBold
             )
-            Text(subtitle, color = Color(0xFF8A8F96))
+            if (subtitle.isNotBlank()) {
+                Text(subtitle, color = Color(0xFF8A8F96))
+            }
         }
         Text("›", color = Color(0xFFAFB3B9))
     }
