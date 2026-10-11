@@ -1024,7 +1024,24 @@ private fun CustomerShell(
                     }
                 )
                 "market-trip" -> selectedMarketTrip?.let {
-                    MarketTripDetailScreen(auth = auth, trip = it, onBack = { screen = "orders" })
+                    MarketTripDetailScreen(auth = auth, trip = it, onBack = { screen = "orders" },
+                        onBrowse = { screen = "market" }, trackingBusy = busy,
+                        onTrackChild = { id ->
+                            if (!busy) {
+                                busy = true
+                                scope.launch {
+                                    try {
+                                        val child = api.loadOrderById(auth, id) ?: error("ไม่พบออเดอร์ของบัญชีนี้")
+                                        selectedOrder = child
+                                        orderItems = emptyList()
+                                        trackingContext = null
+                                        screen = "order"
+                                    } catch (cancelled: CancellationException) { throw cancelled }
+                                    catch (e: Exception) { message = e.message ?: "โหลดการติดตามไม่สำเร็จ" }
+                                    finally { busy = false }
+                                }
+                            }
+                        })
                 }
                 "laundry-order" -> selectedLaundryOrder?.let {
                     LaundryOrderDetailScreen(auth = auth, order = it, onBack = { screen = "orders" })

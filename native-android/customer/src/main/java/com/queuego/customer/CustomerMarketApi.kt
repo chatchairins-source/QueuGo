@@ -64,7 +64,10 @@ data class MarketTripSummary(
     val shopCount: Int,
     val total: Double,
     val deliveryAddress: String?,
-    val createdAt: String?
+    val createdAt: String?,
+    val subtotal: Double? = null,
+    val deliveryFee: Double? = null,
+    val multiShopFee: Double? = null
 )
 
 data class MarketTripChild(
@@ -264,18 +267,25 @@ class CustomerMarketApi(private val http: QueueGoNativeApi = QueueGoNativeApi())
     private fun parseTrip(r: JSONObject) = MarketTripSummary(r.getString("id"), r.optString("market_id"),
         r.optString("status"), r.optInt("shop_count", 0), r.optDouble("total_amount", 0.0),
         r.optString("delivery_address").takeIf { it.isNotBlank() && it != "null" },
-        r.optString("created_at").takeIf { it.isNotBlank() && it != "null" })
+        r.optString("created_at").takeIf { it.isNotBlank() && it != "null" },
+        r.optDoubleOrNull("subtotal"), r.optDoubleOrNull("delivery_fee"), r.optDoubleOrNull("multi_shop_service_fee"))
 
     suspend fun trips(auth: NativeAuth): List<MarketTripSummary> {
-        val rows = http.array(http.get("market_orders?select=id,market_id,status,shop_count,total_amount,delivery_address,created_at" +
+        val rows = http.array(http.get("market_orders?select=id,market_id,status,shop_count,total_amount,delivery_address,created_at,subtotal,delivery_fee,multi_shop_service_fee" +
             "&customer_id=eq." + http.enc(auth.user.id) + "&order=created_at.desc&limit=50", auth.session.accessToken))
         return (0 until rows.length()).mapNotNull { rows.optJSONObject(it)?.let(::parseTrip) }
     }
 
     internal suspend fun trip(auth: NativeAuth, tripId: String): MarketTripSummary? {
-        val rows = http.array(http.get("market_orders?select=id,market_id,status,shop_count,total_amount,delivery_address,created_at" +
+        val rows = http.array(http.get("market_orders?select=id,market_id,status,shop_count,total_amount,delivery_address,created_at,subtotal,delivery_fee,multi_shop_service_fee" +
             "&id=eq." + http.enc(tripId) + "&customer_id=eq." + http.enc(auth.user.id) + "&limit=1", auth.session.accessToken))
         return rows.optJSONObject(0)?.let(::parseTrip)
+    }
+
+    internal suspend fun cancelTrip(auth: NativeAuth, tripId: String) {
+        val raw = http.rpc("qg_customer_cancel_market_order", auth.session.accessToken, JSONObject().put("p_market_order_id", tripId))
+        val receipt = when (raw) { is JSONObject -> raw; is JSONArray -> raw.optJSONObject(0); else -> null }
+        check(receipt != null && receipt.optString("market_order_id") == tripId && receipt.optString("status") == "CANCELLED") { "ระบบยังไม่ยืนยันการยกเลิก กรุณาโหลดสถานะล่าสุด" }
     }
 
     suspend fun tripChildren(auth: NativeAuth, tripId: String): List<MarketTripChild> {
