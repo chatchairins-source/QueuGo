@@ -188,17 +188,17 @@ internal fun CustomerProfileScreen(
 
         CustomerProfileSectionTitle("บัญชีและการใช้งาน")
         CustomerProfileCard {
-            CustomerProfileActionRow("pin", "ที่อยู่จัดส่ง", null, onAddress)
+            CustomerProfileActionRow("pin", "ที่อยู่จัดส่ง", null, onClick = onAddress)
             HorizontalDivider(color = Color(0xFFECEEF1))
-            CustomerProfileActionRow("orders", "ออเดอร์ของฉัน", null, onOrders)
+            CustomerProfileActionRow("orders", "ออเดอร์ของฉัน", null, onClick = onOrders)
             HorizontalDivider(color = Color(0xFFECEEF1))
-            CustomerProfileActionRow("bell", "การแจ้งเตือน", null, onNotifications)
+            CustomerProfileActionRow("bell", "การแจ้งเตือน", null, onClick = onNotifications)
             HorizontalDivider(color = Color(0xFFECEEF1))
-            CustomerProfileActionRow("heart", "รายการโปรด", null, onFavorites)
+            CustomerProfileActionRow("heart", "รายการโปรด", null, onClick = onFavorites)
             HorizontalDivider(color = Color(0xFFECEEF1))
-            CustomerProfileActionRow("gift", "โปรโมชั่นจากร้าน", null, onPromotion)
+            CustomerProfileActionRow("gift", "โปรโมชั่นจากร้าน", null, onClick = onPromotion)
             HorizontalDivider(color = Color(0xFFECEEF1))
-            CustomerProfileActionRow("support", "ติดต่อฝ่ายช่วยเหลือ", null, onSupport)
+            CustomerProfileActionRow("support", "ติดต่อฝ่ายช่วยเหลือ", null, onClick = onSupport)
         }
 
         Spacer(Modifier.height(12.dp))
