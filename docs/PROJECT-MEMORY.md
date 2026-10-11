@@ -872,3 +872,9 @@ The user-supplied Rider reference screens are the acceptance reference for workf
 ## 2026-10-11 Special-route shell Blueprint staging
 - Current main V['market-cart'] selects cart navigation; V['market-order'] and customer-laundry.js order detail select orders. Add these existing Native routes to the shared bottom-navigation selection mapping.
 - Production standalone laundry/index.html has its own sticky header and no main QueueGo header/bottom nav. Hide main shell chrome only for the existing laundry route, preserving the Native Laundry header and all other routes/navigation. No new renderer or route/storage. Full regression/Pilot and authenticated rendered comparison remain required.
+
+
+## 2026-10-11 Merchant Laundry read lifecycle staging
+- Existing Merchant Laundry polling was not bound to Android lifecycle/token rotation and swallowed CancellationException. Bind reads to STARTED with current actor/access token, preserve the existing5-second foreground refresh, serialize read/post-action refresh through one actor-scoped Mutex and retain the last successful snapshot on read failure. Owner-keyed state prevents reusing another merchant snapshot.
+- Separate read errors from mutation acknowledgement messages; recovered reads clear their own error. Existing accepted actions propagate cancellation and release busy in finally. No new request/replay/RPC/storage or automatic mutation retries; layout and all business actions retained.
+- Full clean regression/source and exact-head Native Pilot required before merge; authenticated/physical Laundry E2E and Release Gate remain OPEN.
