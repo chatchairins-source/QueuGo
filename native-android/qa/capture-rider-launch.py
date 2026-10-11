@@ -59,6 +59,34 @@ def android_runtime_for_pids(pids):
         ).stdout)
     return "\n".join(chunks)
 
+
+def full_crash_buffer():
+    return run(
+        adb + ["logcat", "-b", "crash", "-d"],
+        capture_output=True,
+        text=True,
+    ).stdout
+
+
+def package_crash_blocks(crash_text: str, pkg: str):
+    lines = crash_text.splitlines()
+    blocks = []
+    for index, line in enumerate(lines):
+        if "FATAL EXCEPTION" not in line:
+            continue
+        window = "\n".join(lines[index:index + 16])
+        if f"Process: {pkg}," in window:
+            blocks.append(window)
+    return "\n\n".join(blocks)
+
+
+def assert_no_package_crash(pkg: str, evidence_path: Path):
+    crash_text = full_crash_buffer()
+    evidence_path.write_text(crash_text)
+    relevant = package_crash_blocks(crash_text, pkg)
+    assert not relevant, f"{pkg} crashed; inspect {evidence_path.name}"
+
+
 def capture_role_viewports():
     """Real Android display configurations; no authenticated state or sample orders."""
     evidence = []
@@ -222,6 +250,7 @@ def capture_role_viewports():
                 item["native_customer_signup_navigation"] = "PASS; phone/email mode and back; no account/data submitted"
                 runtime = android_runtime_for_pids(role_pids)
                 assert "FATAL EXCEPTION" not in runtime, "Customer registration navigation crashed"
+            assert_no_package_crash(pkg, directory / "crash-buffer.txt")
             evidence.append(item)
     (output / "matrix-metadata.json").write_text(json.dumps(evidence, ensure_ascii=False, indent=2) + "\n")
     print("Actual three-role phone/small-phone/tablet fresh-session launch matrix PASS; authenticated E2E/visual parity remain unverified")
@@ -315,6 +344,7 @@ with (output / "emulator.log").open("w") as log:
         runtime = android_runtime_for_pids(rider_pids)
         (output / "android-runtime.txt").write_text(runtime)
         assert "FATAL EXCEPTION" not in runtime, "QueueGo Rider runtime crash; inspect the evidence"
+        assert_no_package_crash(package, output / "rider-crash-buffer.txt")
         run(adb + ["shell", "uiautomator", "dump", "/sdcard/queuego-rider-launch.xml"])
         ui = output / "rider-launch.xml"
         run(adb + ["pull", "/sdcard/queuego-rider-launch.xml", str(ui)])
