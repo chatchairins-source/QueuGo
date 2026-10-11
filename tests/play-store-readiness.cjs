@@ -24,7 +24,8 @@ const productionPush=read('supabase/functions/queuego-push/index.ts');
 const sharedManifest=read('native-android/shared/src/main/AndroidManifest.xml');
 const riderManifest=read('native-android/rider/src/main/AndroidManifest.xml');
 const privacy=read('docs/privacy.html');
-const nativeReleaseGate=read('native-android/qa/native-play-release-gate-20261010.md');
+const nativeReleaseGateDoc=read('native-android/qa/native-play-release-gate-20261010.md');
+const nativeReleaseVerifier=read('native-android/qa/verify-native-release-gate.py');
 for(const role of ['customer','merchant','rider']){
   const appGradle=read(`native-android/${role}/build.gradle.kts`);
   ok(/compileSdk\s*=\s*36/.test(appGradle),role+' must compile against API 36');
@@ -72,6 +73,14 @@ ok(/RECORD_AUDIO for optional order-scoped audio calls/i.test(readiness),'Native
 ok(/FOREGROUND_SERVICE_MICROPHONE/i.test(readiness),'Native microphone foreground-service permission must remain documented');
 ok(/Incoming FCM does not start microphone access in the background/i.test(readiness),'Play readiness must preserve visible-user-action microphone start boundary');
 ok(/Play Console foreground-service declaration draft/i.test(readiness),'Play readiness must retain an explicit foreground-service declaration draft');
+ok(/Android developer verification \/ package registration/i.test(readiness),'Play readiness must cover the active Android developer verification requirement');
+for(const check of ['developer_identity_verified','customer_package_registered','merchant_package_registered','rider_package_registered']){
+  ok(nativeReleaseVerifier.includes('"'+check+'"'),'Play preflight gate must require '+check);
+}
+for(const id of ['com.queuego.customer','com.queuego.merchant','com.queuego.rider']){
+  ok(readiness.includes(id),'Android developer verification guidance must name package '+id);
+}
+ok(nativeReleaseVerifier.includes('registered_packages')&&nativeReleaseVerifier.includes('expected_packages'),'Play gate must structurally bind registration evidence to exact package names');
 ok(/Customer \/ Merchant \/ Rider — `microphone`/i.test(readiness),'All three Native apps must have a microphone FGS declaration draft');
 ok(/Rider only — `specialUse`/i.test(readiness)&&/Active QueueGo Rider navigation return control/i.test(readiness),'Rider specialUse declaration must retain the reviewed subtype and use case');
 ok(/Demo video evidence required/i.test(readiness),'Foreground-service declaration must require real-device demo video evidence');
@@ -92,8 +101,8 @@ ok(manifest?.android?.voice_call_metadata_retention_production_verified===true,'
 ok(manifest?.android?.voice_call_metadata_retention_security==='SECURITY_INVOKER_SERVICE_ROLE_ONLY','Voice retention purge must remain non-client SECURITY INVOKER');
 ok(/อายุเกิน 30 วันโดยอัตโนมัติทุกวัน/.test(privacy),'Published privacy source must disclose daily purge of voice-call metadata older than 30 days');
 ok(/Production call metadata retention is now enforced/.test(readiness)&&/queuego-voice-call-retention/.test(readiness),'Play readiness must document the active Production retention job');
-ok(/backend retention-policy[\s\S]*CLOSED/.test(nativeReleaseGate),'Native release gate must close only the backend retention-policy gap');
-ok(/Final Data Safety and Play Console declarations remain OPEN/.test(nativeReleaseGate),'Retention policy completion must not auto-certify the Play Data Safety gate');
+ok(/backend retention-policy[\s\S]*CLOSED/.test(nativeReleaseGateDoc),'Native release gate must close only the backend retention-policy gap');
+ok(/Final Data Safety and Play Console declarations remain OPEN/.test(nativeReleaseGateDoc),'Retention policy completion must not auto-certify the Play Data Safety gate');
 ok(manifest?.play?.foreground_service_declaration_draft_ready===true&&manifest?.play?.foreground_service_console_status==='BLOCKED_PENDING_REAL_DEVICE_VIDEO_AND_PLAY_ENTRY','FGS declaration source readiness must stay separate from external Play completion');
 ok(nativeVoicePeer.includes('PeerConnection.RTCConfiguration')&&nativeVoicePeer.includes('createAudioTrack("queuego-audio"'),'Data Safety E2EE exception must remain tied to the Native peer-to-peer WebRTC audio path');
 ok(nativeTurnEdge.includes('rtc.live.cloudflare.com/v1/turn/')&&nativeTurnEdge.includes('generate-ice-servers'),'Native voice relay must remain the reviewed Cloudflare TURN credential path');
