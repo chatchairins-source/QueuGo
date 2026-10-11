@@ -188,24 +188,23 @@ internal fun CustomerProfileScreen(
 
         CustomerProfileSectionTitle("บัญชีและการใช้งาน")
         CustomerProfileCard {
-            CustomerProfileActionRow("pin", "ที่อยู่จัดส่ง", null, onClick = onAddress)
+            CustomerProfileActionRow("ที่อยู่จัดส่ง", null, onClick = onAddress)
             HorizontalDivider(color = Color(0xFFECEEF1))
-            CustomerProfileActionRow("orders", "ออเดอร์ของฉัน", null, onClick = onOrders)
+            CustomerProfileActionRow("ออเดอร์ของฉัน", null, onClick = onOrders)
             HorizontalDivider(color = Color(0xFFECEEF1))
-            CustomerProfileActionRow("bell", "การแจ้งเตือน", null, onClick = onNotifications)
+            CustomerProfileActionRow("การแจ้งเตือน", null, onClick = onNotifications)
             HorizontalDivider(color = Color(0xFFECEEF1))
-            CustomerProfileActionRow("heart", "รายการโปรด", null, onClick = onFavorites)
+            CustomerProfileActionRow("รายการโปรด", null, onClick = onFavorites)
             HorizontalDivider(color = Color(0xFFECEEF1))
-            CustomerProfileActionRow("gift", "โปรโมชั่นจากร้าน", null, onClick = onPromotion)
+            CustomerProfileActionRow("โปรโมชั่นจากร้าน", null, onClick = onPromotion)
             HorizontalDivider(color = Color(0xFFECEEF1))
-            CustomerProfileActionRow("support", "ติดต่อฝ่ายช่วยเหลือ", null, onClick = onSupport)
+            CustomerProfileActionRow("ติดต่อฝ่ายช่วยเหลือ", null, onClick = onSupport)
         }
 
         Spacer(Modifier.height(12.dp))
         CustomerProfileSectionTitle("การแจ้งเตือน")
         CustomerProfileCard {
             CustomerProfileStateRow(
-                icon = "bell",
                 title = "เสียงแจ้งเตือนเมื่อ Rider ถึง",
                 subtitle = "เสียงเตือนเมื่อ Rider มาถึงจุดส่ง",
                 state = if (arrivalSound) "เปิด" else "ปิด",
@@ -217,7 +216,6 @@ internal fun CustomerProfileScreen(
             }
             HorizontalDivider(color = Color(0xFFECEEF1))
             CustomerProfileActionRow(
-                icon = "bell",
                 title = "การแจ้งเตือนเบื้องหลัง",
                 subtitle = "รับสถานะออเดอร์แม้ไม่ได้เปิดหน้านี้",
                 enabled = !busy
@@ -261,7 +259,6 @@ internal fun CustomerProfileScreen(
             }
             HorizontalDivider(color = Color(0xFFECEEF1))
             CustomerProfileActionRow(
-                icon = "bell",
                 title = "ทดสอบการแจ้งเตือน",
                 subtitle = "ตรวจว่าแจ้งเตือนเข้าเมื่อแอปอยู่เบื้องหลัง",
                 enabled = !busy
@@ -331,7 +328,6 @@ private fun CustomerProfileCard(content: @Composable () -> Unit) {
 
 @Composable
 private fun CustomerProfileActionRow(
-    icon: String,
     title: String,
     subtitle: String?,
     enabled: Boolean = true,
@@ -344,13 +340,6 @@ private fun CustomerProfileActionRow(
             .padding(horizontal = 12.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Box(
-            Modifier.size(34.dp).background(Color(0xFFF5F5F6), RoundedCornerShape(11.dp)),
-            contentAlignment = Alignment.Center
-        ) {
-            QgIcon(icon, Modifier.size(17.dp), Color(0xFF737982))
-        }
-        Spacer(Modifier.size(9.dp))
         Column(Modifier.weight(1f)) {
             Text(title, color = Color(0xFF202329), fontSize = 13.sp, fontWeight = FontWeight.ExtraBold)
             if (!subtitle.isNullOrBlank()) {
@@ -364,7 +353,6 @@ private fun CustomerProfileActionRow(
 
 @Composable
 private fun CustomerProfileStateRow(
-    icon: String,
     title: String,
     subtitle: String,
     state: String,
