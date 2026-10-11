@@ -13,7 +13,6 @@ const privacy=read('docs/privacy.html');
 const deletion=read('docs/account-deletion.html');
 const sql=read('QueueGo-Pilot-Account-Deletion-Privacy.sql');
 const accountDeletionVoiceCleanup=read('supabase/migrations/20261011071500_account_deletion_voice_metadata_cleanup.sql');
-const nativeVoiceSchema=read('ops/native-voice-call-schema-proposal-20261010.sql');
 
 must(shared.includes('/functions/v1/account-delete'),'shared client must call account-delete edge function');
 must(shared.includes("confirm: 'DELETE_ACCOUNT'"),'shared client must require destructive confirmation token');
@@ -33,7 +32,7 @@ must(sql.includes("delivery_address='ข้อมูลถูกลบตาม�
 must(!sql.includes('set delivery_address=null,delivery_latitude=null,delivery_longitude=null\n     where customer_id=v_user.id;'),'market order scrub must not null NOT NULL columns');
 must(sql.includes("delete from public.notifications n")&&sql.includes("n.id=c.id")&&sql.includes("n.type='voice_call'"),'account deletion must remove the exact counterpart voice notification bound to the call UUID');
 must(sql.includes('delete from public.qg_call_sessions where caller_user_id=v_user.id or callee_user_id=v_user.id;'),'account deletion must immediately remove voice call session metadata');
-must(nativeVoiceSchema.includes('insert into public.notifications(id,user_id,title,message,type,reference_id)')&&nativeVoiceSchema.includes('v_call_id,\n    v_callee_id,'),'incoming voice notification UUID must equal the call UUID for exact privacy cleanup');
+must(accountDeletionVoiceCleanup.includes("v_new_header text := 'insert into public.notifications(id,user_id,title,message,type,reference_id)'")&&accountDeletionVoiceCleanup.includes("v_new_values text := E'  values(\\n    v_call_id,\\n    v_callee_id,'"),'incremental voice migration must bind incoming notification UUID to the call UUID for exact privacy cleanup');
 must(accountDeletionVoiceCleanup.includes("'public.qg_call_start(uuid,text,uuid)'::regprocedure"),'voice cleanup migration must back up and patch qg_call_start together with account deletion');
 must(accountDeletionVoiceCleanup.includes('QG_CALL_NOTIFICATION_BINDING_MISSING'),'voice cleanup migration must verify exact call-to-notification UUID binding');
 must(accountDeletionVoiceCleanup.includes('ACCOUNT_DELETION_VOICE_NOTIFICATION_CLEANUP_MISSING'),'voice cleanup migration must verify counterpart notification cleanup');
