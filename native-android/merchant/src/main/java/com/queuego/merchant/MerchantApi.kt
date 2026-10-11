@@ -76,7 +76,8 @@ data class MerchantOrder(
     val customerId: String? = null,
     val customerName: String? = null,
     val deliveryAddress: String? = null,
-    val riderArrivedShopAt: String? = null
+    val riderArrivedShopAt: String? = null,
+    val firstItemImage: String? = null
 )
 
 data class MerchantOrderItem(
@@ -609,12 +610,31 @@ class MerchantApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
             }
         }.getOrDefault(emptyMap())
 
+        val firstImages = runCatching {
+            val itemRows = http.array(
+                http.get(
+                    "order_items?select=order_id,item_image&order_id=in.(" +
+                        ids.joinToString(",") + ")&order=created_at.asc",
+                    auth.session.accessToken
+                )
+            )
+            buildMap<String, String?> {
+                for (i in 0 until itemRows.length()) {
+                    val row = itemRows.optJSONObject(i) ?: continue
+                    val orderId = row.optString("order_id")
+                    if (orderId.isBlank() || containsKey(orderId)) continue
+                    put(orderId, row.optNullable("item_image"))
+                }
+            }
+        }.getOrDefault(emptyMap())
+
         return orders.map { order ->
             val context = arrivals[order.id]
             order.copy(
                 riderArrivedCustomerAt = context?.first ?: order.riderArrivedCustomerAt,
                 riderArrivedShopAt = context?.second ?: order.riderArrivedShopAt,
-                deliveryAddress = context?.third ?: order.deliveryAddress
+                deliveryAddress = context?.third ?: order.deliveryAddress,
+                firstItemImage = firstImages[order.id]
             )
         }
     }
