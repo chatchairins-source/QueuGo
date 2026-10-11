@@ -62,7 +62,7 @@ The `play_store_preflight` evidence envelope must explicitly certify all four ch
 It must also bind `registered_packages` to exactly:
 `["com.queuego.customer","com.queuego.merchant","com.queuego.rider"]`.
 
-For each registered package, the evidence must also record the Play-registered public signing certificate SHA-256. QueueGo currently uses one certified Native release signing identity, so all three registered package certificate fingerprints must match `QG_ANDROID_SIGNING_CERT_SHA256`. A package name marked registered against a different or missing signing certificate does not satisfy the release gate.
+For each registered package, the evidence must also record the public signing-certificate SHA-256 fingerprint(s) that Play shows as registered. Do **not** force those fingerprints to equal QueueGo's upload-keystore fingerprint: with Play App Signing, Google can auto-register eligible apps using Play's app-signing-key information, and a package can have multiple registered signing keys. The release upload key remains verified separately by `release_signing` / `QG_ANDROID_SIGNING_CERT_SHA256`. A package with no verifiable registered-key evidence does not satisfy the release gate.
 The evidence artifact should be a current Play Console export or screenshot set that shows the verified developer/account state and the package registration state; the envelope must keep the exact release `version_name`, release versionCodes, observed Play maximum versionCodes, UTC observation timestamp, and SHA-256-hashed artifact references required by the canonical release gate.
 
 Official references:
