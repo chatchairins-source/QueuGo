@@ -1,3 +1,11 @@
+## 2026-10-11 approved shop-managed Laundry implementation staging
+- Owner confirmed the laundry shop uses its own employees for pickup and return, entirely in Merchant. This supersedes all platform Rider-Laundry requirements. No employee app/account is required in the first version; shop account records staff names per leg.
+- Flow: pending → accepted → pickup_assigned → picked_up → at_hub → washing → ready_return → out_for_return → completed. Customer tracks shop updates; shop sets pickup/return fees. Existing order IDs, price snapshots, history and audit records are retained.
+- Production inspection found 3 pending Laundry orders and zero laundry_rider_jobs. Current placement requires linked Riders and current accept/ready-return creates Rider jobs; the staged SQL removes those dependencies without deleting data.
+- Merchant Web staging adds staff assignment, owned customer contact/navigation and full pickup/return actions. Customer labels identify shop employees. Rider Web no longer loads, renders or mutates Laundry work. Native equivalent is staged in PR140.
+- QueueGo-Laundry-Shop-Transport.sql is staged and NOT deployed. It adds staff-name fields, one ownership-guarded state machine with row lock, expected-status checks and repeat-safe actions; old action endpoints delegate to it. Placement keeps route/pricing/idempotency guards while removing the linked-Rider prerequisite. Backed up exact Production function definitions in ops/backups/laundry-shop-transport-20261011.sql.
+- Remaining: SQL database validation, retire old Rider RPC access, full relevant regression updates, authenticated shop/customer end-to-end test, visual QA and coordinated backend/Web rollout. Native compilation/physical-device tests remain OPEN. Do not claim Production changed, full parity or Play readiness.
+
 # QueueGo project memory
 
 ## 2026-10-10 Native voice privacy disclosure

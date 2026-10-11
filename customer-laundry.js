@@ -1,7 +1,7 @@
 (function(){
 'use strict';
 if(typeof V==='undefined')return;
-const QG_LAUNDRY_STATUS={pending:'รอร้านรับ',accepted:'ร้านรับแล้ว · รอ Rider',pickup_assigned:'Rider กำลังไปรับผ้า',picked_up:'Rider รับผ้าแล้ว',at_hub:'ผ้าถึงร้านแล้ว',washing:'กำลังซัก/ทำความสะอาด',ready_return:'พร้อมส่งคืน',return_assigned:'Rider กำลังไปรับผ้าสะอาด',out_for_return:'กำลังส่งคืน',completed:'ส่งคืนสำเร็จ',cancelled:'ยกเลิก'};
+const QG_LAUNDRY_STATUS={pending:'รอร้านรับ',accepted:'ร้านรับแล้ว · รอพนักงานร้าน',pickup_assigned:'พนักงานร้านกำลังไปรับผ้า',picked_up:'พนักงานร้านรับผ้าแล้ว',at_hub:'ผ้าถึงร้านแล้ว',washing:'กำลังซัก/ทำความสะอาด',ready_return:'พร้อมส่งคืน',return_assigned:'ร้านกำลังจัดส่งผ้าคืน',out_for_return:'กำลังส่งคืน',completed:'ส่งคืนสำเร็จ',cancelled:'ยกเลิก'};
 const QG_LAUNDRY_FLOW=['pending','accepted','pickup_assigned','picked_up','at_hub','washing','ready_return','return_assigned','out_for_return','completed'];
 function qgLaundryUnit(t){return ({per_kg:'กก.',per_item:'ชิ้น',per_set:'ชุด',fixed:'เหมาจ่าย'})[t]||''}
 V['laundry-order']=async function(id,ticket){

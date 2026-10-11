@@ -2188,7 +2188,7 @@ window.qgmSetupSteps=function(u,shop,products){
  {title:'ส่งใบสมัครร้านค้า',done:!!shop.id,note:shop.id?'ระบบได้รับข้อมูลร้านแล้ว':'บันทึกข้อมูลร้านเพื่อสร้างใบสมัคร',page:'shop-setup'},
  {title:'กรอกข้อมูลและรูปภาพร้าน',done:!missing.length&&!images.length,note:missing.concat(images).length?'กรุณาเพิ่ม '+missing.concat(images).join(' • '):'ข้อมูลติดต่อ ที่อยู่ และรูปภาพครบแล้ว',page:'shop-setup'},
  {title:'ปักหมุดตำแหน่งร้าน',done:qgIsValidShopCoordinate(data.lat,data.lng),note:qgIsValidShopCoordinate(data.lat,data.lng)?'บันทึกพิกัดร้านแล้ว':'เลือกตำแหน่งหน้าร้านบนแผนที่ Longdo แล้วบันทึก',page:'shop-setup'},
- ...(qgmTopLevelShopCategory(data.category)==='laundry'?[{title:'เตรียมบริการฝากซัก',done:true,note:'หลังร้านผ่านอนุมัติ ให้ตั้งค่าบริการ ราคา และ Rider ในเมนูฝากซัก'}]:[{title:'เพิ่มสินค้าอย่างน้อย 1 รายการพร้อมรูป',done:products.some(p=>text(p.name)&&text(p.image)&&Number(p.price)>0),note:'เพิ่มชื่อสินค้า ราคา และรูปสินค้าอย่างน้อย 1 รายการ',page:'shop-products'}]),
+ ...(qgmTopLevelShopCategory(data.category)==='laundry'?[{title:'เตรียมบริการฝากซัก',done:true,note:'หลังร้านผ่านอนุมัติ ให้ตั้งค่าบริการ ราคา และการรับ–ส่งของร้าน ในเมนูฝากซัก'}]:[{title:'เพิ่มสินค้าอย่างน้อย 1 รายการพร้อมรูป',done:products.some(p=>text(p.name)&&text(p.image)&&Number(p.price)>0),note:'เพิ่มชื่อสินค้า ราคา และรูปสินค้าอย่างน้อย 1 รายการ',page:'shop-products'}]),
  ...(qgmTopLevelShopCategory(data.category)==='market'?[{title:'ยืนยันร้านในตลาดสด',done:shop.market_membership_status==='approved',note:shop.market_membership_status==='approved'?'ผ่านการยืนยันตลาดแล้ว':'เลือกตลาด ระบุจุดขาย และแนบหลักฐานเพื่อให้แอดมินตรวจสอบ',page:'market-membership'}]:[]),
  {title:'รับการอนุมัติจากแอดมิน',done:u.status==='approved',note:u.status==='approved'?'ร้านผ่านการอนุมัติแล้ว':u.status==='suspended'?'บัญชีถูกระงับ กรุณาติดต่อแอดมิน':u.status==='rejected'?'ใบสมัครยังไม่ผ่าน กรุณาติดต่อแอดมินเพื่อสอบถามสิ่งที่ต้องแก้ไข':'เมื่อกรอกข้อมูลครบแล้ว รอแอดมินตรวจสอบใบสมัคร',page:'shop-support'}
  ];
@@ -2924,7 +2924,7 @@ window.renderShopModules=async function(){
     '<section class="qgm-card qgm-settings-links">'+
       '<button type="button" class="qgm-settings-link" onclick="navigate(\'shop-setup\')"><span>ข้อมูลและตำแหน่งร้าน</span><b>›</b></button>'+
       '<button type="button" class="qgm-settings-link" onclick="navigate(\'shop-hours\')"><span>เวลาทำการและวันหยุด</span><b>›</b></button>'+
-      '<button type="button" class="qgm-settings-link" onclick="navigate(\'shop-laundry\')"><span>ฝากซัก · บริการ ราคา และ Rider</span><b>›</b></button>'+
+      '<button type="button" class="qgm-settings-link" onclick="navigate(\'shop-laundry\')"><span>ฝากซัก · บริการ ราคา และการรับ–ส่งของร้าน</span><b>›</b></button>'+
     '</section>'+
     '<div class="qgm-section-heading"><h2>โมดูลร้านค้า</h2></div>'+
     '<section id="qt-shop-modules-list" class="qgm-settings-modules"><div class="qgm-card" style="padding:16px">กำลังโหลดข้อมูล...</div></section>',
