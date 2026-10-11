@@ -15,8 +15,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithCache
-import androidx.compose.ui.focus.onFocusChanged
-import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.focus.FocusDirection\nimport androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.geometry.Offset\nimport androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
@@ -165,7 +165,7 @@ private fun LoginField(label: String, placeholder: String, value: String, change
             textStyle = authText(16, 24), cursorBrush = androidx.compose.ui.graphics.SolidColor(AuthRed),
             visualTransformation = if (secret) PasswordVisualTransformation() else VisualTransformation.None,
             keyboardOptions = KeyboardOptions(keyboardType = if (secret) KeyboardType.Password else KeyboardType.Email, imeAction = if (secret) ImeAction.Done else ImeAction.Next),
-            keyboardActions = KeyboardActions(onDone = { submit() }),
+            keyboardActions = KeyboardActions(onNext = { focus.moveFocus(FocusDirection.Down) }, onDone = { submit() }),
             modifier = Modifier.fillMaxWidth().height(50.dp).onFocusChanged { focused = it.isFocused }
                 .border(1.dp, if (focused) Color(0x88E6002D) else Color(0xFFE6DFE2), RoundedCornerShape(15.dp)),
             decorationBox = { inner -> Box(Modifier.fillMaxSize().padding(horizontal = 14.dp), contentAlignment = Alignment.CenterStart) {
