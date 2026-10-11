@@ -934,14 +934,29 @@ private fun RiderHome(
             } else if (loadError != null) {
                 Text(loadError!!, color = MaterialTheme.colorScheme.error)
             } else if (current != null) {
+                val marketVehicleReady = current.profileInfo?.let {
+                    it.vehicleStatus == "active" && !it.vehicleVerifiedAt.isNullOrBlank()
+                } == true
                 Row(Modifier.fillMaxWidth(), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
                     Text(
-                        if (current.online) "ออนไลน์ · พร้อมรับงาน" else "ออฟไลน์",
+                        when {
+                            !current.online -> "ออฟไลน์"
+                            marketVehicleReady -> "ออนไลน์ · พร้อมรับงาน"
+                            else -> "ออนไลน์ · พร้อมรับงานอาหาร"
+                        },
                         fontWeight = FontWeight.Black,
                         style = MaterialTheme.typography.titleMedium,
                         modifier = Modifier.weight(1f)
                     )
                     QgStatusPill(if (current.online) "ONLINE" else "OFFLINE", current.online)
+                }
+                if (current.online && !marketVehicleReady) {
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        "งานตลาด/ของชำรอตรวจสอบยานพาหนะ",
+                        color = QgMuted,
+                        style = MaterialTheme.typography.labelSmall
+                    )
                 }
                 Spacer(Modifier.height(8.dp))
                 if (current.activeJob == null && current.laundry.activeJob == null) {
