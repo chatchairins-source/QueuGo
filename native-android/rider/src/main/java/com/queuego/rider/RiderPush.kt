@@ -129,11 +129,12 @@ class QueueGoRiderMessagingService : FirebaseMessagingService() {
         val referenceId = message.data["referenceId"]
             ?: message.data["reference_id"]
             ?: ""
+        val type = message.data["type"].orEmpty()
 
         val intent = Intent(this, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
             putExtra("queuego_push_reference_id", referenceId)
-            putExtra("queuego_push_type", message.data["type"].orEmpty())
+            putExtra("queuego_push_type", type)
         }
         val pendingIntent = PendingIntent.getActivity(
             this,
@@ -148,7 +149,10 @@ class QueueGoRiderMessagingService : FirebaseMessagingService() {
             .setContentText(body.take(220))
             .setStyle(NotificationCompat.BigTextStyle().bigText(body.take(220)))
             .setPriority(NotificationCompat.PRIORITY_HIGH)
-            .setCategory(NotificationCompat.CATEGORY_MESSAGE)
+            .setCategory(
+                if (type == "voice_call") NotificationCompat.CATEGORY_CALL
+                else NotificationCompat.CATEGORY_MESSAGE
+            )
             .setAutoCancel(true)
             .setContentIntent(pendingIntent)
             .build()
