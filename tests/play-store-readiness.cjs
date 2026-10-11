@@ -75,7 +75,7 @@ ok(/Incoming FCM does not start microphone access in the background/i.test(readi
 ok(/Play Console foreground-service declaration draft/i.test(readiness),'Play readiness must retain an explicit foreground-service declaration draft');
 ok(/Android developer verification \/ package registration/i.test(readiness),'Play readiness must cover the active Android developer verification requirement');
 for(const check of ['developer_identity_verified','customer_package_registered','merchant_package_registered','rider_package_registered']){
-  ok(nativeReleaseGate.includes('"'+check+'"'),'Play preflight gate must require '+check);
+  ok(nativeReleaseVerifier.includes('"'+check+'"'),'Play preflight gate must require '+check);
 }
 for(const id of ['com.queuego.customer','com.queuego.merchant','com.queuego.rider']){
   ok(readiness.includes(id),'Android developer verification guidance must name package '+id);
