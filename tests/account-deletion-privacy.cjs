@@ -27,6 +27,7 @@ must(privacy.includes('นโยบายความเป็นส่วนต
 must(privacy.includes('account-deletion.html'),'privacy policy must link deletion page');
 must(deletion.includes('../account-deletion.js'),'external deletion page must use same backend');
 must(deletion.includes('เข้าสู่ระบบเพื่อยืนยัน'),'external deletion page must authenticate account owner');
+must(deletion.includes('ข้อมูลสถานะการโทร')&&deletion.includes('การแจ้งเตือนสายเรียกเข้า')&&deletion.includes('ทันที'),'external deletion page must disclose immediate voice-call metadata cleanup');
 must(sql.includes('queuego_account_deletion_eligibility'),'SQL source must include eligibility gate');
 must(sql.includes("delivery_address='ข้อมูลถูกลบตามคำขอเจ้าของบัญชี'"),'market order PII scrub must respect NOT NULL');
 must(!sql.includes('set delivery_address=null,delivery_latitude=null,delivery_longitude=null\n     where customer_id=v_user.id;'),'market order scrub must not null NOT NULL columns');
