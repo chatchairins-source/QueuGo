@@ -473,6 +473,7 @@ private fun RiderHome(
     }
 
     LaunchedEffect(auth.user.id) {
+        if (!riderPushEnabled(context)) return@LaunchedEffect
         ensureRiderOrderChannel(context)
         runCatching {
             syncRiderNativePush(context, auth, api, pushStore)
