@@ -22,6 +22,30 @@ import com.longdo.api.LongdoLayer
 import com.longdo.api.MapGLSurfaceView
 import com.longdo.api.Pin
 import com.longdo.api.type.MapLocation
+import java.lang.ref.WeakReference
+
+
+object QueueGoLongdoPermissionBridge {
+    private val maps = mutableListOf<WeakReference<com.longdo.api.Map>>()
+
+    @Synchronized
+    internal fun register(map: com.longdo.api.Map) {
+        maps.removeAll { it.get() == null || it.get() === map }
+        maps += WeakReference(map)
+    }
+
+    @Synchronized
+    internal fun unregister(map: com.longdo.api.Map?) {
+        maps.removeAll { it.get() == null || it.get() === map }
+    }
+
+    fun onRequestPermissionResult() {
+        val active = synchronized(this) {
+            maps.mapNotNull { it.get() }.also { maps.removeAll { ref -> ref.get() == null } }
+        }
+        active.forEach { map -> runCatching { map.onRequestPermissionResult() } }
+    }
+}
 
 private class TrackingMapHolder {
     var view: MapGLSurfaceView? = null
@@ -29,6 +53,26 @@ private class TrackingMapHolder {
     var renderedPoints: List<QgMapPoint>? = null
     var centered = false
     var disposed = false
+    private var resumed = false
+
+    fun resume() {
+        val activeView = view ?: return
+        if (disposed || resumed) return
+        activeView.post {
+            if (!disposed && view === activeView && !resumed) {
+                runCatching { activeView.onResume() }
+                runCatching { map?.onResume() }
+                resumed = true
+            }
+        }
+    }
+
+    fun pause() {
+        if (!resumed) return
+        runCatching { map?.onPause() }
+        runCatching { view?.onPause() }
+        resumed = false
+    }
 
     fun draw(points: List<QgMapPoint>) {
         val activeMap = map ?: return
@@ -88,7 +132,11 @@ fun QgLongdoTrackingMap(
                             if (!holder.disposed) {
                                 runCatching {
                                     holder.map = map
+                                    QueueGoLongdoPermissionBridge.register(map)
                                     map.setBase(LongdoLayer(ctx, "gray", 0, 1, 20))
+                                    if (owner?.lifecycle?.currentState?.isAtLeast(Lifecycle.State.RESUMED) != false) {
+                                        runCatching { map.onResume() }
+                                    }
                                     holder.draw(currentPoints.value)
                                 }.onSuccess { currentReady.value(true) }
                                     .onFailure { currentReady.value(false) }
@@ -96,7 +144,7 @@ fun QgLongdoTrackingMap(
                         }
                     }
                 })
-                if (owner?.lifecycle?.currentState?.isAtLeast(Lifecycle.State.RESUMED) != false) view.onResume()
+                if (owner?.lifecycle?.currentState?.isAtLeast(Lifecycle.State.RESUMED) != false) holder.resume()
             }
         },
         update = {
@@ -106,8 +154,8 @@ fun QgLongdoTrackingMap(
     DisposableEffect(owner) {
         val observer = LifecycleEventObserver { _, event ->
             when (event) {
-                Lifecycle.Event.ON_RESUME -> holder.view?.onResume()
-                Lifecycle.Event.ON_PAUSE -> holder.view?.onPause()
+                Lifecycle.Event.ON_RESUME -> holder.resume()
+                Lifecycle.Event.ON_PAUSE -> holder.pause()
                 else -> Unit
             }
         }
@@ -115,8 +163,9 @@ fun QgLongdoTrackingMap(
         onDispose {
             owner?.lifecycle?.removeObserver(observer)
             holder.disposed = true
+            QueueGoLongdoPermissionBridge.unregister(holder.map)
             runCatching { holder.map?.clearPin() }
-            runCatching { holder.view?.onPause() }
+            holder.pause()
             holder.map = null
             holder.view = null
         }
@@ -129,6 +178,26 @@ private class LocationPickerMapHolder {
     var map: com.longdo.api.Map? = null
     var disposed = false
     var lastRecenterToken: Int? = null
+    private var resumed = false
+
+    fun resume() {
+        val activeView = view ?: return
+        if (disposed || resumed) return
+        activeView.post {
+            if (!disposed && view === activeView && !resumed) {
+                runCatching { activeView.onResume() }
+                runCatching { map?.onResume() }
+                resumed = true
+            }
+        }
+    }
+
+    fun pause() {
+        if (!resumed) return
+        runCatching { map?.onPause() }
+        runCatching { view?.onPause() }
+        resumed = false
+    }
 
     fun recenter(point: QgMapPoint?, token: Int) {
         val activeMap = map ?: return
@@ -172,7 +241,11 @@ fun QgLongdoLocationPickerMap(
                             if (!holder.disposed) {
                                 runCatching {
                                     holder.map = map
+                                    QueueGoLongdoPermissionBridge.register(map)
                                     map.setBase(LongdoLayer(ctx, "gray", 0, 1, 20))
+                                    if (owner?.lifecycle?.currentState?.isAtLeast(Lifecycle.State.RESUMED) != false) {
+                                        runCatching { map.onResume() }
+                                    }
                                     map.setDrawCrossSign(true)
                                     map.setCrossSignColor(floatArrayOf(239f / 255f, 51f / 255f, 64f / 255f, 1f))
                                     map.setStatusListener(object : IStatusListener {
@@ -206,7 +279,7 @@ fun QgLongdoLocationPickerMap(
                         }
                     }
                 })
-                if (owner?.lifecycle?.currentState?.isAtLeast(Lifecycle.State.RESUMED) != false) view.onResume()
+                if (owner?.lifecycle?.currentState?.isAtLeast(Lifecycle.State.RESUMED) != false) holder.resume()
             }
         },
         update = {
@@ -219,8 +292,8 @@ fun QgLongdoLocationPickerMap(
     DisposableEffect(owner) {
         val observer = LifecycleEventObserver { _, event ->
             when (event) {
-                Lifecycle.Event.ON_RESUME -> holder.view?.onResume()
-                Lifecycle.Event.ON_PAUSE -> holder.view?.onPause()
+                Lifecycle.Event.ON_RESUME -> holder.resume()
+                Lifecycle.Event.ON_PAUSE -> holder.pause()
                 else -> Unit
             }
         }
@@ -228,7 +301,8 @@ fun QgLongdoLocationPickerMap(
         onDispose {
             owner?.lifecycle?.removeObserver(observer)
             holder.disposed = true
-            runCatching { holder.view?.onPause() }
+            QueueGoLongdoPermissionBridge.unregister(holder.map)
+            holder.pause()
             holder.map = null
             holder.view = null
         }
