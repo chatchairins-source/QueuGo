@@ -99,6 +99,69 @@ fun RiderProfileScreen(
                     RiderProfilePill(snapshot?.online == true)
                 }
             }
+            snapshot?.laundry?.invites.orEmpty().forEach { invite ->
+                Spacer(Modifier.height(9.dp))
+                Card(
+                    Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(17.dp),
+                    border = BorderStroke(1.dp, Color(0xFFEEE6E8)),
+                    colors = CardDefaults.cardColors(containerColor = Color.White)
+                ) {
+                    Row(
+                        Modifier.fillMaxWidth().padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Column(Modifier.weight(1f)) {
+                            Text("คำเชิญงานฝากซัก", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                            Text(
+                                invite.shopName.ifBlank { invite.hubName.ifBlank { "ร้านฝากซัก" } },
+                                color = QgMuted,
+                                fontSize = 8.5.sp,
+                                modifier = Modifier.padding(top = 3.dp)
+                            )
+                        }
+                        TextButton(
+                            onClick = {
+                                busy = true
+                                scope.launch {
+                                    try {
+                                        api.respondLaundryInvite(auth, invite.inviteId, true)
+                                        onSnapshot(api.riderSnapshot(auth))
+                                        message = "ยอมรับเป็น Rider รับ-ส่งผ้าของร้านแล้ว"
+                                    } catch (e: CancellationException) {
+                                        throw e
+                                    } catch (e: Exception) {
+                                        message = e.message ?: "ตอบคำเชิญไม่สำเร็จ"
+                                    } finally {
+                                        busy = false
+                                    }
+                                }
+                            },
+                            enabled = !busy
+                        ) { Text("ยอมรับ", color = QgRed, fontWeight = FontWeight.Black) }
+                        TextButton(
+                            onClick = {
+                                busy = true
+                                scope.launch {
+                                    try {
+                                        api.respondLaundryInvite(auth, invite.inviteId, false)
+                                        onSnapshot(api.riderSnapshot(auth))
+                                        message = "ปฏิเสธคำเชิญแล้ว"
+                                    } catch (e: CancellationException) {
+                                        throw e
+                                    } catch (e: Exception) {
+                                        message = e.message ?: "ตอบคำเชิญไม่สำเร็จ"
+                                    } finally {
+                                        busy = false
+                                    }
+                                }
+                            },
+                            enabled = !busy
+                        ) { Text("ปฏิเสธ", color = QgMuted, fontWeight = FontWeight.Bold) }
+                    }
+                }
+            }
             Spacer(Modifier.height(10.dp))
             RiderProfileSection("การรับงาน") {
                 RiderSettingRow("สถานะรับงาน", "เปิดหรือปิดการรับงานจัดส่ง", R.drawable.qg_rider_flow_loc,
@@ -112,6 +175,30 @@ fun RiderProfileScreen(
                             onSnapshot(api.riderSnapshot(auth))
                             message = if (enabled) "เปิดรับงานแล้ว" else "ปิดรับงานแล้ว"
                         } catch (e: CancellationException) { throw e } catch (e: Exception) { message = e.message ?: "เปลี่ยนสถานะไม่สำเร็จ" } finally { busy = false }
+                    }
+                }
+                RiderSettingDivider()
+                RiderSettingRow(
+                    "รับงานฝากซัก",
+                    "งานรับ–ส่งผ้าจากร้านที่เข้าร่วม",
+                    R.drawable.qg_rider_flow_jobs,
+                    enabled = !busy && snapshot != null,
+                    trailing = { RiderProfilePill(snapshot?.laundry?.modeEnabled == true, offlineLabel = "ปิด") }
+                ) {
+                    val enabled = snapshot?.laundry?.modeEnabled != true
+                    busy = true
+                    scope.launch {
+                        try {
+                            api.setLaundryMode(auth, enabled)
+                            onSnapshot(api.riderSnapshot(auth))
+                            message = if (enabled) "เปิดรับงานฝากซักแล้ว" else "ปิดรับงานฝากซักแล้ว"
+                        } catch (e: CancellationException) {
+                            throw e
+                        } catch (e: Exception) {
+                            message = e.message ?: "เปลี่ยนโหมดฝากซักไม่สำเร็จ"
+                        } finally {
+                            busy = false
+                        }
                     }
                 }
             }
