@@ -158,6 +158,24 @@ data class RiderLaundryState(
     val pool: List<RiderLaundryJob> = emptyList()
 )
 
+internal fun RiderLaundryJob.asMapJob(): RiderJob = RiderJob(
+    id = "laundry:" + jobId,
+    orderNumber = orderNumber,
+    status = if (isCollected) "in_progress" else "rider_assigned",
+    pickupAddress = fromAddress,
+    pickupLat = fromLatitude,
+    pickupLng = fromLongitude,
+    deliveryAddress = toAddress,
+    deliveryLat = toLatitude,
+    deliveryLng = toLongitude,
+    deliveryFee = jobFee,
+    marketOrderId = null,
+    arrivedShopAt = null,
+    arrivedCustomerAt = null,
+    shopCash = null,
+    customerCash = customerAmount
+)
+
 data class RiderProfileInfo(
     val profileId: String,
     val riderName: String?,

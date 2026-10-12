@@ -165,7 +165,7 @@ fun RiderProfileScreen(
             Spacer(Modifier.height(10.dp))
             RiderProfileSection("การรับงาน") {
                 RiderSettingRow("สถานะรับงาน", "เปิดหรือปิดการรับงานจัดส่ง", R.drawable.qg_rider_flow_loc,
-                    enabled = !busy && snapshot != null && snapshot.activeJob == null, green = true,
+                    enabled = !busy && snapshot != null && snapshot.activeJob == null && snapshot.laundry.activeJob == null, green = true,
                     trailing = { RiderProfilePill(snapshot?.online == true, offlineLabel = "ปิด") }) {
                     val enabled = snapshot?.online != true
                     busy = true

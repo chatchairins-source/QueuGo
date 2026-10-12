@@ -866,9 +866,11 @@ class QueueGoApi {
 
         fun jobs(name: String): List<RiderLaundryJob> {
             val rows = root.optJSONArray(name) ?: JSONArray()
+            val fallbackStatus = if (name == "pool") "waiting" else "assigned"
             return buildList {
                 for (i in 0 until rows.length()) {
-                    rows.optJSONObject(i)?.let { parseLaundryJob(it) }?.let(::add)
+                    val row = rows.optJSONObject(i) ?: continue
+                    parseLaundryJob(row, fallbackStatus)?.let { add(it) }
                 }
             }
         }
@@ -882,7 +884,7 @@ class QueueGoApi {
         )
     }
 
-    private fun parseLaundryJob(row: JSONObject): RiderLaundryJob? {
+    private fun parseLaundryJob(row: JSONObject, fallbackStatus: String): RiderLaundryJob? {
         val jobId = row.optString("job_id")
         val laundryOrderId = row.optString("laundry_order_id")
         if (jobId.isBlank() || laundryOrderId.isBlank()) return null
@@ -891,8 +893,8 @@ class QueueGoApi {
             jobId = jobId,
             laundryOrderId = laundryOrderId,
             orderNumber = text("order_number"),
-            leg = row.optString("leg"),
-            jobStatus = row.optString("job_status"),
+            leg = row.optString("leg").ifBlank { "pickup" },
+            jobStatus = row.optString("job_status").ifBlank { fallbackStatus },
             orderStatus = text("order_status"),
             hubId = text("hub_id"),
             hubName = text("hub_name"),
