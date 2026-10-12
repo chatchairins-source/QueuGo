@@ -1,5 +1,7 @@
 package com.queuego.rider
 
+import androidx.compose.animation.core.animateDpAsState
+
 import android.Manifest
 import android.content.Context
 import android.content.Intent
@@ -31,6 +33,7 @@ import com.queuego.shared.QgRiderBg
 import androidx.compose.ui.graphics.Color
 import androidx.compose.material3.CardDefaults
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -79,11 +82,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -1037,16 +1043,76 @@ private fun RiderHome(
             }
         }
 
+        val activeSheetJob = snapshot?.activeJob
+        val density = LocalDensity.current
+        val expandedSheetHeight = (maxHeight - 132.dp).coerceAtLeast(240.dp)
+        val collapsedSheetHeight = 92.dp
+        var jobSheetExpanded by rememberSaveable(activeSheetJob?.id) { mutableStateOf(true) }
+        var draggedSheetHeightPx by remember(activeSheetJob?.id) { mutableStateOf<Float?>(null) }
+        val settledSheetHeight by animateDpAsState(
+            targetValue = if (jobSheetExpanded) expandedSheetHeight else collapsedSheetHeight,
+            label = "rider-job-sheet-height"
+        )
+        val expandedPx = with(density) { expandedSheetHeight.toPx() }
+        val collapsedPx = with(density) { collapsedSheetHeight.toPx() }
+        val liveSheetHeight = draggedSheetHeightPx?.let { with(density) { it.toDp() } } ?: settledSheetHeight
+        val dockBase = Modifier
+            .align(Alignment.BottomCenter)
+            .padding(bottom = 68.dp)
+            .widthIn(max = 676.dp)
+            .fillMaxWidth()
+        val dockModifier = if (activeSheetJob != null) {
+            dockBase
+                .height(liveSheetHeight)
+                .clip(RoundedCornerShape(topStart = 22.dp, topEnd = 22.dp))
+                .background(Color(0xF8FFFFFF))
+                .pointerInput(activeSheetJob.id, expandedPx, collapsedPx) {
+                    detectVerticalDragGestures(
+                        onDragStart = {
+                            draggedSheetHeightPx = if (jobSheetExpanded) expandedPx else collapsedPx
+                        },
+                        onVerticalDrag = { change, dragAmount ->
+                            change.consume()
+                            val currentHeight = draggedSheetHeightPx
+                                ?: if (jobSheetExpanded) expandedPx else collapsedPx
+                            draggedSheetHeightPx = (currentHeight - dragAmount).coerceIn(collapsedPx, expandedPx)
+                        },
+                        onDragEnd = {
+                            val currentHeight = draggedSheetHeightPx
+                                ?: if (jobSheetExpanded) expandedPx else collapsedPx
+                            jobSheetExpanded = currentHeight >= (collapsedPx + expandedPx) / 2f
+                            draggedSheetHeightPx = null
+                        },
+                        onDragCancel = { draggedSheetHeightPx = null }
+                    )
+                }
+        } else {
+            dockBase.heightIn(max = expandedSheetHeight)
+        }
+
         Column(
-            Modifier
-                .align(Alignment.BottomCenter)
-                .padding(bottom = 68.dp)
-                .widthIn(max = 676.dp)
-                .fillMaxWidth()
-                .heightIn(max = (maxHeight - 132.dp).coerceAtLeast(0.dp))
-                .verticalScroll(rememberScrollState())
+            dockModifier
+                .then(if (activeSheetJob == null || jobSheetExpanded) Modifier.verticalScroll(rememberScrollState()) else Modifier)
                 .padding(horizontal = 8.dp)
         ) {
+            if (activeSheetJob != null) {
+                Box(
+                    Modifier
+                        .fillMaxWidth()
+                        .height(24.dp)
+                        .clickable { jobSheetExpanded = !jobSheetExpanded },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Box(Modifier.size(width = 42.dp, height = 5.dp).background(Color(0xFFD9D3D6), RoundedCornerShape(99.dp)))
+                }
+            }
+            if (activeSheetJob != null && !jobSheetExpanded) {
+                RiderMiniJobSheet(
+                    job = activeSheetJob,
+                    navigation = navigationState,
+                    onExpand = { jobSheetExpanded = true }
+                )
+            } else {
         if (auth.user.status != "active") {
             Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(21.dp), colors = CardDefaults.cardColors(containerColor = Color.White)) {
                 Column(Modifier.padding(16.dp)) {
@@ -1283,6 +1349,7 @@ private fun RiderHome(
 
             }
         }
+            }
 
         }
 
@@ -1303,6 +1370,57 @@ private fun RiderHome(
             controller = voiceController,
             onAnswer = ::answerVoiceCall
         )
+    }
+}
+
+@Composable
+private fun RiderMiniJobSheet(
+    job: RiderJob,
+    navigation: RiderNavigationState,
+    onExpand: () -> Unit
+) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .heightIn(min = 60.dp)
+            .clip(RoundedCornerShape(17.dp))
+            .clickable(onClick = onExpand)
+            .padding(horizontal = 10.dp, vertical = 7.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(9.dp)
+    ) {
+        Box(
+            Modifier.size(40.dp).background(QgRedSoft, RoundedCornerShape(13.dp)),
+            contentAlignment = Alignment.Center
+        ) {
+            QgIcon("location", Modifier.size(22.dp), QgRed)
+        }
+        Column(Modifier.weight(1f)) {
+            Text(
+                riderStatusLabel(job.status),
+                color = QgRed,
+                fontWeight = FontWeight.Black,
+                fontSize = 10.sp
+            )
+            Text(job.numberLabel, fontWeight = FontWeight.Black, fontSize = 15.sp)
+        }
+        Column(horizontalAlignment = Alignment.End) {
+            Text(
+                navigation.etaSeconds?.let {
+                    kotlin.math.ceil(it / 60.0).toInt().coerceAtLeast(1).toString() + " นาที"
+                } ?: "ETA —",
+                fontWeight = FontWeight.Black,
+                fontSize = 12.sp
+            )
+            Text(
+                navigation.distanceRemainingMeters?.let {
+                    if (it >= 1000.0) "%.1f กม.".format(it / 1000.0) else "%.0f ม.".format(it)
+                } ?: "—",
+                color = QgMuted,
+                fontSize = 9.sp
+            )
+        }
+        Text("⌃", color = QgMuted, fontSize = 19.sp, fontWeight = FontWeight.Black)
     }
 }
 
