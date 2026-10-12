@@ -150,6 +150,10 @@ internal class RiderNavigationVoiceGate {
     fun clear() { consumed.clear() }
 }
 
+internal fun clearRiderNavigationSession() {
+    RiderNavigationProcessStore.clearTarget(null)
+}
+
 internal class RiderLongdoRouteClient(
     private val apiKey: String = "347649ca13f49db0d8a599ae35f8de2b",
     private val client: OkHttpClient = OkHttpClient.Builder()
@@ -386,6 +390,7 @@ internal class RiderNavigationController(
                     lastFix?.let { updateProgress(it) }
                 }
                 .onFailure { error ->
+                    if (error is kotlinx.coroutines.CancellationException) throw error
                     if (target?.key != currentTarget.key) return@onFailure
                     _state.value = _state.value.copy(
                         loading = false,

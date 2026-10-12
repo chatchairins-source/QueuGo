@@ -240,6 +240,7 @@ fun QueueGoRiderApp(pushTarget: NativePushLaunchTarget? = null) {
                     onLogout = {
                         val current = auth!!
                         RiderReturnService.stop(context)
+                        clearRiderNavigationSession()
                         store.clear()
                         auth = null
                         scope.launch {
@@ -256,6 +257,7 @@ fun QueueGoRiderApp(pushTarget: NativePushLaunchTarget? = null) {
                     onLogout = {
                         val current = auth!!
                         RiderReturnService.stop(context)
+                        clearRiderNavigationSession()
                         scope.launch {
                             runCatching { api.setOnline(current, false, null, null) }
                             runCatching { disableRiderNativePush(current, api, store) }
@@ -1247,7 +1249,9 @@ private fun RiderHome(
                                         )
                                     }.onSuccess {
                                         actionMessage = "บันทึกถึงร้านแล้ว"
-                                        snapshot = runCatching { api.riderSnapshot(auth) }.getOrNull()
+                                        runCatching { api.riderSnapshot(auth) }
+                                            .onFailure { if (it is CancellationException) throw it }
+                                            .onSuccess { snapshot = it }
                                     }.onFailure {
                                         actionMessage = it.message ?: "บันทึกถึงร้านไม่สำเร็จ"
                                     }
@@ -1288,7 +1292,9 @@ private fun RiderHome(
                                         )
                                     }.onSuccess {
                                         actionMessage = "บันทึกถึงลูกค้าแล้ว"
-                                        snapshot = runCatching { api.riderSnapshot(auth) }.getOrNull()
+                                        runCatching { api.riderSnapshot(auth) }
+                                            .onFailure { if (it is CancellationException) throw it }
+                                            .onSuccess { snapshot = it }
                                     }.onFailure {
                                         actionMessage = it.message ?: "บันทึกถึงลูกค้าไม่สำเร็จ"
                                     }
@@ -1329,7 +1335,9 @@ private fun RiderHome(
                                     runCatching { api.declineOffer(auth, current.offeredJob.id) }
                                         .onSuccess {
                                             actionMessage = "ส่งงานให้ Rider คนถัดไปแล้ว"
-                                            snapshot = runCatching { api.riderSnapshot(auth) }.getOrNull()
+                                            runCatching { api.riderSnapshot(auth) }
+                                            .onFailure { if (it is CancellationException) throw it }
+                                            .onSuccess { snapshot = it }
                                         }
                                         .onFailure {
                                             actionMessage = it.message ?: "ปฏิเสธงานไม่สำเร็จ"

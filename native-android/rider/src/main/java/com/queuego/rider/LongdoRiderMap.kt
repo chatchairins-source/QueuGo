@@ -49,6 +49,16 @@ private class RiderLongdoHolder(private val cameraState: MutableState<DoubleArra
     private val routeLines = mutableListOf<Line>()
     private var renderedRouteKey: String? = null
 
+    fun attachMap(nextMap: com.longdo.api.Map) {
+        if (map !== nextMap) {
+            map?.let { oldMap -> routeLines.forEach { line -> runCatching { oldMap.removeLine(line) } } }
+            routeLines.clear()
+            renderedRouteKey = null
+            lastOverlayKey = null
+            map = nextMap
+        }
+    }
+
     private fun stopLocationUpdates() {
         locationListener?.let { listener ->
             runCatching { locationManager?.removeUpdates(listener) }
@@ -154,7 +164,9 @@ private class RiderLongdoHolder(private val cameraState: MutableState<DoubleArra
         startLocationUpdates(context)
         val ldmap = map ?: return
         if (disposed) return
-        val location = deviceLocation(context)
+        val matchedLocation = navigationState.snappedPoint
+            ?.takeIf { navigationState.active && !navigationState.offRoute && !navigationState.weakGps }
+        val location = matchedLocation?.let { it.latitude to it.longitude } ?: deviceLocation(context)
         val key = buildString {
             append(location?.first).append(",").append(location?.second).append("|")
             append(job?.id ?: "none")
@@ -255,7 +267,9 @@ private class RiderLongdoHolder(private val cameraState: MutableState<DoubleArra
         runCatching {
             activeMap.setCanRotateCamera(true)
             activeMap.setZoom(17)
-            activeMap.setLocation(MapLocation(fix.longitude, fix.latitude))
+            val followedPoint = navigationState.snappedPoint
+                ?.takeIf { !navigationState.offRoute } ?: fix.point
+            activeMap.setLocation(MapLocation(followedPoint.longitude, followedPoint.latitude))
             navigationState.headingDegrees?.let { activeMap.rotate(it, true) }
         }
     }
@@ -303,6 +317,7 @@ internal fun RiderLongdoMap(
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     val currentReady = rememberUpdatedState(onMapReady)
     val currentLocationCallback = rememberUpdatedState(onLocationFix)
+    val currentNavigationState = rememberUpdatedState(navigationState)
     val latestJob: MutableState<RiderJob?> = remember { mutableStateOf(job) }
     val latestPickups = remember { mutableStateOf(marketPickups) }
     latestJob.value = job
@@ -320,7 +335,7 @@ internal fun RiderLongdoMap(
                         holder.mapCreated(view)
                         if (!holder.disposed) {
                             runCatching {
-                                holder.map = map
+                                holder.attachMap(map)
                                 map.setBase(LongdoLayer(ctx, "normal", 0, 1, 20).apply {
                                     // The SDK defaults to HTTP; keep Android cleartext disabled.
                                     layerURL = "https://ms2.longdo.com/mmmap/img.php"
@@ -333,7 +348,7 @@ internal fun RiderLongdoMap(
                                 map.setZoom(camera?.get(2)?.toInt() ?: 13)
                                 holder.lastOverlayKey = null
                                 holder.centerOnDevice(ctx)
-                                holder.updateNavigation(navigationState) { currentLocationCallback.value(it) }
+                                holder.updateNavigation(currentNavigationState.value) { currentLocationCallback.value(it) }
                                 holder.refreshOverlays(ctx, latestJob.value, latestPickups.value)
                             }.onSuccess { currentReady.value(true) }
                                 .onFailure { currentReady.value(false) }
@@ -345,7 +360,7 @@ internal fun RiderLongdoMap(
             view
         },
         update = {
-            holder.updateNavigation(navigationState) { currentLocationCallback.value(it) }
+            holder.updateNavigation(currentNavigationState.value) { currentLocationCallback.value(it) }
             holder.refreshOverlays(context, job, marketPickups)
         }
     )
@@ -355,7 +370,7 @@ internal fun RiderLongdoMap(
     }
 
     LaunchedEffect(navigationState) {
-        holder.updateNavigation(navigationState) { currentLocationCallback.value(it) }
+        holder.updateNavigation(currentNavigationState.value) { currentLocationCallback.value(it) }
     }
 
     LaunchedEffect(recenterSignal) {
