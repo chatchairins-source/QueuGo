@@ -20,12 +20,13 @@ ok(customer.includes('.qg-order-map{height:178px!important'),'Customer order tra
 ok(customer.includes('.prim{width:100%;min-height:48px'),'Customer primary actions must retain practical touch height while compact');
 ok(customer.includes('@media(max-height:760px)'),'Customer must have a short-screen compact density mode');
 ok(customer.includes('customer-features.js?v=20261012-chat2'),'Customer feature bundle must refresh after accepted/assigned progress fix and Customer chat rebuild');
-ok(customer.includes('customer-features.css?v=20261012-chat4'),'Customer chat stylesheet must refresh after keyboard parity fix');
+ok(customer.includes('customer-features.css?v=20261012-chat5'),'Customer chat stylesheet must refresh after iOS focus-zoom fix');
 ok(customerCss.includes('.qg-customer-chat-page{position:fixed;z-index:20000;inset:0;height:100dvh'),'Customer chat must be a full-screen overlay like Rider chat');
 ok(customerCss.includes('.qg-customer-chat-compose{position:relative;z-index:2;flex:0 0 auto;width:100%'),'Customer chat composer must stay in the full-screen chat flow instead of floating above bottom navigation');
 ok(customerCss.includes('grid-template-columns:42px minmax(0,1fr) 46px;align-items:center'),'Customer chat photo/input/send controls must share one centered row');
 ok(customerCss.includes('.qg-customer-chat-photo,.qg-customer-chat-send{height:42px;align-self:center'),'Customer chat action buttons must stay compact and vertically aligned');
 ok(customerCss.includes('.qg-customer-chat-input{min-width:0;height:42px;align-self:center'),'Customer chat text input must align with the send button');
+ok(customerCss.includes('font-size:16px;outline:0}.qg-customer-chat-input:focus'),'Customer chat input must be at least 16px to prevent iOS Safari focus zoom');
 ok(customerCss.includes('padding:6px 10px calc(7px + env(safe-area-inset-bottom,0px))!important'),'Customer chat composer must keep only device safe-area padding at the bottom');
 ok(!customer.includes('customer-features.js?v=20261007-bg1'),'Customer must not keep the stale bg1 order feature bundle URL');
 ok(features.includes("['rider_assigned','assigned','preparing','ready'].includes(o.status)?2"),'Customer assigned state must remain in pickup/preparation progress');
