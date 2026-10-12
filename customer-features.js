@@ -386,16 +386,17 @@ const QGCustomer=(()=>{
     }
     return state;
   }
-  function customerChatReport(id,messageId){
+  function customerChatReport(id){
     document.getElementById('customer-chat-report-dialog')?.remove();
     const d=document.createElement('dialog');
     d.id='customer-chat-report-dialog';
     d.className='qg-chat-report-dialog';
     d.innerHTML=`<form method="dialog" class="qg-chat-report-sheet">
       <header class="qg-chat-report-head">
-        <div><small>ความปลอดภัย</small><h3>รายงานเนื้อหาแชต</h3></div>
+        <div><small>ความปลอดภัย</small><h3>รายงานแชต</h3></div>
         <button type="submit" value="cancel" class="qg-chat-report-close" aria-label="ปิด">×</button>
       </header>
+      <p class="qg-chat-report-hint">แคปหน้าจอส่วนของแชตที่ต้องการรายงาน แล้วแนบภาพด้านล่าง</p>
       <label class="qg-chat-report-field"><span>เหตุผล</span><select name="reason">
         <option value="harassment">คุกคาม / กลั่นแกล้ง</option>
         <option value="inappropriate">เนื้อหาไม่เหมาะสม</option>
@@ -404,20 +405,36 @@ const QGCustomer=(()=>{
         <option value="safety">ความปลอดภัย</option>
         <option value="other">อื่น ๆ</option>
       </select></label>
-      <label class="qg-chat-report-field"><span>รายละเอียด</span><textarea name="details" maxlength="1000" rows="4" placeholder="อธิบายเพิ่มเติม (ไม่บังคับ)"></textarea></label>
+      <div class="qg-chat-report-evidence">
+        <span>ภาพแคปหน้าจอแชต</span>
+        <input type="file" id="customer-chat-report-image" accept="image/jpeg,image/png,image/webp" hidden>
+        <button type="button" id="customer-chat-report-pick">เลือกภาพแคปหน้าจอ</button>
+        <small id="customer-chat-report-file">ยังไม่ได้เลือกภาพ</small>
+      </div>
+      <label class="qg-chat-report-field"><span>รายละเอียด</span><textarea name="details" maxlength="1000" rows="3" placeholder="อธิบายเพิ่มเติม (ไม่บังคับ)"></textarea></label>
       <footer class="qg-chat-report-actions">
         <button type="submit" value="cancel" class="qg-chat-report-cancel">ยกเลิก</button>
         <button class="qg-chat-report-submit" type="button" id="customer-chat-report-send">ส่งรายงาน</button>
       </footer>
     </form>`;
     document.body.appendChild(d);
+    const fileInput=d.querySelector('#customer-chat-report-image');
+    const fileName=d.querySelector('#customer-chat-report-file');
+    d.querySelector('#customer-chat-report-pick').onclick=()=>fileInput.click();
+    fileInput.onchange=()=>{
+      const file=fileInput.files?.[0];
+      fileName.textContent=file?file.name:'ยังไม่ได้เลือกภาพ';
+      fileName.classList.toggle('has-file',!!file);
+    };
     d.addEventListener('click',e=>{if(e.target===d)d.close()});
     d.querySelector('#customer-chat-report-send').onclick=async e=>{
+      const file=fileInput.files?.[0];
+      if(!file)return toast('กรุณาแนบภาพแคปหน้าจอแชตก่อนส่งรายงาน');
       e.currentTarget.disabled=true;
       try{
         const form=d.querySelector('form');
-        await QueueGoUGC.report(id,messageId||null,form.elements.reason.value,form.elements.details.value.trim());
-        d.close();d.remove();toast('ส่งรายงานให้ QueueGo ตรวจสอบแล้ว');
+        await QueueGoUGC.report(id,null,form.elements.reason.value,form.elements.details.value.trim(),file);
+        d.close();d.remove();toast('ส่งรายงานพร้อมภาพหลักฐานแล้ว');
       }catch(err){
         toast(err.message||'ส่งรายงานไม่สำเร็จ');
         e.currentTarget.disabled=false;
@@ -479,7 +496,7 @@ const QGCustomer=(()=>{
       tools.hidden=!tools.hidden;
       $('customer-chat-menu').setAttribute('aria-expanded',String(!tools.hidden));
     };
-    $('customer-chat-report-user').onclick=()=>customerChatReport(id,null);
+    $('customer-chat-report-user').onclick=()=>customerChatReport(id);
     $('customer-chat-block-user').onclick=()=>customerChatBlock(id,ticket);
     $('customer-chat-photo').onclick=()=>$('customer-chat-photo-input').click();
     $('customer-chat-photo-input').onchange=e=>{
@@ -502,8 +519,7 @@ const QGCustomer=(()=>{
       if(version===last)return;
       last=version;
       const box=$('customer-chat-messages'),bottom=box.scrollHeight-box.scrollTop-box.clientHeight<80;
-      box.innerHTML=messages.length?messages.map(m=>`<div class="chat-bubble ${m.sender_id===u.userId?'mine':'theirs'}"><div class="qg-chat-bubble-body">${chatBody(m.message)}</div><div class="qg-chat-bubble-meta"><small>${esc(date(m.created_at))}</small>${m.sender_id!==u.userId?`<button type="button" data-chat-report="${esc(m.id)}">รายงาน</button>`:''}</div></div>`).join(''):'<p class="qg-customer-chat-empty">ยังไม่มีข้อความ เริ่มแชทกับ Rider ได้เลย</p>';
-      box.querySelectorAll('[data-chat-report]').forEach(btn=>btn.onclick=()=>customerChatReport(id,btn.dataset.chatReport));
+      box.innerHTML=messages.length?messages.map(m=>`<div class="chat-bubble ${m.sender_id===u.userId?'mine':'theirs'}"><div class="qg-chat-bubble-body">${chatBody(m.message)}</div><div class="qg-chat-bubble-meta"><small>${esc(date(m.created_at))}</small></div></div>`).join(''):'<p class="qg-customer-chat-empty">ยังไม่มีข้อความ เริ่มแชทกับ Rider ได้เลย</p>';
       if(bottom)box.scrollTop=box.scrollHeight;
     };
     await refresh();
