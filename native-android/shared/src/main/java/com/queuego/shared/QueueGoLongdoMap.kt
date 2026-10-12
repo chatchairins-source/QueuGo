@@ -243,9 +243,9 @@ fun QgLongdoLocationPickerMap(
                         view.post {
                             holder.mapCreated(view)
                             if (!holder.disposed) {
-                                runCatching {
-                                    holder.map = map
-                                    holder.lastRecenterToken = null
+                                holder.map = map
+                                holder.lastRecenterToken = null
+                                val setup = runCatching {
                                     map.setBase(LongdoLayer(ctx, "gray", 0, 1, 20).apply {
                                         layerURL = "https://ms2.longdo.com/mmmap/img.php"
                                     })
@@ -270,14 +270,37 @@ fun QgLongdoLocationPickerMap(
                                             }
                                         }
                                     })
-                                    val start = currentInitial.value?.takeIf { it.valid }
-                                        ?: QgMapPoint(15.0, 101.0, 0)
-                                    map.setZoom(if (currentInitial.value?.valid == true) 16 else 6)
-                                    map.setLocation(MapLocation(start.longitude, start.latitude))
-                                    currentInitial.value?.takeIf { it.valid }?.let(currentCenterChanged.value)
-                                    holder.recenter(currentRecenter.value, currentRecenterToken.value)
-                                }.onSuccess { Log.i("QueueGoLongdoMap", "native_map_ready"); currentReady.value(true) }
-                                    .onFailure { Log.e("QueueGoLongdoMap", "Native map operation failed", it); currentReady.value(false) }
+                                }
+                                setup.onFailure {
+                                    Log.e("QueueGoLongdoMap", "Native map setup failed", it)
+                                    currentReady.value(false)
+                                }
+                                if (setup.isSuccess) {
+                                    fun finishInitialCamera(attempt: Int) {
+                                        if (holder.disposed || holder.map !== map) return
+                                        runCatching {
+                                            val start = currentInitial.value?.takeIf { it.valid }
+                                                ?: QgMapPoint(15.0, 101.0, 0)
+                                            map.setZoom(if (currentInitial.value?.valid == true) 16 else 6)
+                                            map.setLocation(MapLocation(start.longitude, start.latitude))
+                                            currentInitial.value?.takeIf { it.valid }?.let(currentCenterChanged.value)
+                                            holder.recenter(currentRecenter.value, currentRecenterToken.value)
+                                        }.onSuccess {
+                                            Log.i("QueueGoLongdoMap", "native_map_ready")
+                                            currentReady.value(true)
+                                        }.onFailure { failure ->
+                                            if (failure is NullPointerException && attempt < 20 && !holder.disposed) {
+                                                view.postDelayed({ finishInitialCamera(attempt + 1) }, 100L)
+                                            } else {
+                                                Log.e("QueueGoLongdoMap", "Native map operation failed", failure)
+                                                currentReady.value(false)
+                                            }
+                                        }
+                                    }
+                                    // Longdo 0.1.8 can report onMapCreated before its zoom listener is attached.
+                                    // Retry the first camera operation asynchronously instead of failing the visible map.
+                                    view.postDelayed({ finishInitialCamera(0) }, 100L)
+                                }
                             }
                         }
                     }
