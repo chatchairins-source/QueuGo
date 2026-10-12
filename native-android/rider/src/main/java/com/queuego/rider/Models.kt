@@ -40,6 +40,11 @@ data class RiderVerificationDetails(
     val note: String?
 )
 
+data class RiderShopDisplay(
+    val shopName: String?,
+    val shopLogo: String?
+)
+
 internal fun cleanRiderOrderNote(note: String?): String? = note?.lineSequence()
     ?.filter { it.isNotEmpty() && !it.startsWith("__QT_ORDER_STATUS__=") }
     ?.joinToString("\n")?.trim()?.takeIf { it.isNotEmpty() }
