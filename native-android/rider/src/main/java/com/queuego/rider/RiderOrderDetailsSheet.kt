@@ -89,13 +89,13 @@ internal fun RiderOrderDetailsSheet(auth: QueueGoAuth, job: RiderJob, api: Queue
                                 item.description?.let { Text(it, color = QgMuted, fontSize = 8.sp) }
                                 Text("× ${item.quantity}", color = QgMuted, fontSize = 8.sp)
                             }
-                            Text("฿%.0f".format(item.totalPrice), fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                            Text(riderMoneyBaht(item.totalPrice), fontWeight = FontWeight.Bold, fontSize = 11.sp)
                         }
                         HorizontalDivider(color = Color(0xFFF0EAEC))
                     }
                     Row(Modifier.fillMaxWidth().padding(vertical = 12.dp), horizontalArrangement = Arrangement.SpaceBetween) {
                         Text("รวมค่าสินค้า", fontSize = 12.sp)
-                        Text("฿%.0f".format(rows.sumOf { it.totalPrice }), color = QgRed, fontSize = 17.sp, fontWeight = FontWeight.Bold)
+                        Text(riderMoneyBaht(rows.sumOf { it.totalPrice }), color = QgRed, fontSize = 17.sp, fontWeight = FontWeight.Bold)
                     }
                     details?.note?.let {
                         Column(Modifier.fillMaxWidth().background(Color(0xFFFFF4F6), RoundedCornerShape(14.dp)).padding(10.dp)) {

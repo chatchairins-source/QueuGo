@@ -41,8 +41,8 @@ internal fun RiderRouteBundlePanel(
                     Column(Modifier.weight(1f)) {
                         Text("งานพ่วง ${active.size} ออเดอร์", fontSize = 13.sp, fontWeight = FontWeight.Black)
                         Text(
-                            "รายได้รวม ฿%.0f".format(totalIncome) +
-                                if (totalSavings > 0.0) " · ลูกค้าประหยัดรวม ฿%.0f".format(totalSavings) else "",
+                            "รายได้รวม " + riderMoneyBaht(totalIncome) +
+                                if (totalSavings > 0.0) " · ลูกค้าประหยัดรวม " + riderMoneyBaht(totalSavings) else "",
                             color = QgMuted,
                             fontSize = 8.sp
                         )
@@ -60,8 +60,8 @@ internal fun RiderRouteBundlePanel(
                             )
                             Text(
                                 "รับร้าน ${order.bundleSequence} · ส่งลูกค้าลำดับ ${order.dropRank} · ค่าส่ง ฿" +
-                                    "%.0f".format(order.job.deliveryFee ?: 0.0) +
-                                    if (order.customerSavings > 0.0) " · ลูกค้าประหยัด ฿%.0f".format(order.customerSavings) else "",
+                                    riderMoneyNumber(order.job.deliveryFee ?: 0.0) +
+                                    if (order.customerSavings > 0.0) " · ลูกค้าประหยัด " + riderMoneyBaht(order.customerSavings) else "",
                                 color = QgMuted,
                                 fontSize = 8.sp
                             )
@@ -90,12 +90,11 @@ internal fun RiderRouteBundlePanel(
                         Column(Modifier.weight(1f)) {
                             Text(offer.shopName + " · " + offer.numberLabel, fontSize = 11.sp, fontWeight = FontWeight.Bold)
                             Text(
-                                "เพิ่ม %.1f กม. · ประมาณ %d นาที · รายรับเพิ่ม ฿%.0f · ลูกค้าประหยัด ฿%.0f".format(
+                                "เพิ่ม %.1f กม. · ประมาณ %d นาที".format(
                                     offer.detourKm,
-                                    offer.addedMinutes,
-                                    offer.riderExtraFee,
-                                    offer.customerSavings
-                                ),
+                                    offer.addedMinutes
+                                ) + " · รายรับเพิ่ม " + riderMoneyBaht(offer.riderExtraFee) +
+                                    " · ลูกค้าประหยัด " + riderMoneyBaht(offer.customerSavings),
                                 color = QgMuted,
                                 fontSize = 8.sp,
                                 lineHeight = 11.sp

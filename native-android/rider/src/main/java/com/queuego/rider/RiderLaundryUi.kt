@@ -50,7 +50,7 @@ internal fun RiderLaundryActiveCard(
                     Text(job.routeLabel + " · " + (job.serviceName ?: "บริการฝากซัก"), color = QgMuted, fontSize = 9.sp)
                 }
                 Text(
-                    "฿%.0f".format(job.jobFee),
+                    riderMoneyBaht(job.jobFee),
                     color = QgRed,
                     fontWeight = FontWeight.Black,
                     modifier = Modifier.background(QgRedSoft, RoundedCornerShape(13.dp)).padding(horizontal = 9.dp, vertical = 6.dp)
@@ -138,7 +138,7 @@ internal fun RiderLaundryPoolCard(
                     }
                     Spacer(Modifier.width(8.dp))
                     Column(horizontalAlignment = Alignment.End) {
-                        Text("฿%.0f".format(job.jobFee), color = QgRed, fontWeight = FontWeight.Black)
+                        Text(riderMoneyBaht(job.jobFee), color = QgRed, fontWeight = FontWeight.Black)
                         Button(
                             onClick = { onClaim(job) },
                             enabled = !busy,

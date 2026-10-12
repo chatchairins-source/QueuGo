@@ -1334,7 +1334,7 @@ private fun RiderHome(
                         Spacer(Modifier.height(if (shortHome) 7.dp else 9.dp))
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                             listOf("วันนี้" to (todaySummary?.jobs?.let { "$it งาน" } ?: "— งาน"),
-                                "รายได้" to (todaySummary?.income?.let { "฿%.0f".format(it) } ?: "฿—"),
+                                "รายได้" to riderMoneyBaht(todaySummary?.income),
                                 "ออนไลน์" to (todaySummary?.onlineHours?.let { "%.1f ชม.".format(it) } ?: "— ชม.")
                             ).forEach { (label, value) ->
                                 Column(Modifier.weight(1f).background(Color(0xFFFAF6F7), RoundedCornerShape(15.dp)).padding(horizontal = 6.dp, vertical = 8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
@@ -1824,7 +1824,7 @@ private fun OfferCard(
                         .padding(horizontal = 9.dp, vertical = 6.dp)
                 ) {
                     Text(
-                        "฿" + "%.0f".format(job.deliveryFee ?: 0.0),
+                        riderMoneyBaht(job.deliveryFee ?: 0.0),
                         color = QgRed,
                         fontWeight = FontWeight.Black
                     )
@@ -1854,7 +1854,7 @@ private fun OfferCard(
             ) {
                 RiderOfferMetric("ระยะทาง", (pickupKm?.let { "%.1f".format(it) } ?: "—") + " กม.", Modifier.weight(1f))
                 RiderOfferMetric("เวลาประมาณ", (deliveryKm?.let { kotlin.math.ceil(it / 25.0 * 60.0).toInt().coerceAtLeast(1).toString() } ?: "—") + " นาที", Modifier.weight(1f))
-                RiderOfferMetric("รายได้", job.deliveryFee?.let { "฿" + "%.0f".format(it) } ?: "฿—", Modifier.weight(1f), highlight = true)
+                RiderOfferMetric("รายได้", riderMoneyBaht(job.deliveryFee), Modifier.weight(1f), highlight = true)
             }
 
             Row(
@@ -1904,7 +1904,7 @@ private fun MarketPickupPanel(
                     fontWeight = FontWeight.SemiBold
                 )
                 if (!pickup.shopAddress.isNullOrBlank()) Text(pickup.shopAddress)
-                Text("ยอดร้าน ฿" + "%.0f".format(pickup.shopAmount))
+                Text("ยอดร้าน " + riderMoneyBaht(pickup.shopAmount))
                 Spacer(Modifier.height(6.dp))
                 if (pickup.done) {
                     Text(
@@ -1996,7 +1996,7 @@ private fun ActiveJobCard(
                     Text(job.numberLabel, fontWeight = FontWeight.Black, fontSize = 24.sp)
                 }
                 Box(Modifier.clip(RoundedCornerShape(13.dp)).background(QgRedSoft).padding(horizontal = 9.dp, vertical = 6.dp)) {
-                    Text(job.deliveryFee?.let { "฿%.0f".format(it) } ?: "฿—", color = QgRed, fontWeight = FontWeight.Black, fontSize = 13.sp)
+                    Text(riderMoneyBaht(job.deliveryFee), color = QgRed, fontWeight = FontWeight.Black, fontSize = 13.sp)
                 }
             }
             Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically,
@@ -2230,7 +2230,7 @@ private fun RiderCashPanel(title: String, amount: Double, note: String) {
             .padding(10.dp)
     ) {
         Text(title, color = QgMuted, style = MaterialTheme.typography.labelSmall)
-        Text("฿" + "%.0f".format(amount), color = QgRed, fontWeight = FontWeight.Black, style = MaterialTheme.typography.titleLarge)
+        Text(riderMoneyBaht(amount), color = QgRed, fontWeight = FontWeight.Black, style = MaterialTheme.typography.titleLarge)
         Text(note, color = QgMuted, style = MaterialTheme.typography.labelSmall)
     }
 }
@@ -2336,7 +2336,7 @@ private fun VerificationScreen(
                         Column(Modifier.padding(14.dp)) {
                             Text(marketPickup.shopName, fontWeight = FontWeight.Bold)
                             if (!marketPickup.shopAddress.isNullOrBlank()) Text(marketPickup.shopAddress)
-                            Text("ยอดร้าน ฿" + "%.0f".format(marketPickup.shopAmount))
+                            Text("ยอดร้าน " + riderMoneyBaht(marketPickup.shopAmount))
                         }
                     }
                 }
@@ -2362,7 +2362,7 @@ private fun VerificationScreen(
                                     if (pickup && !item.description.isNullOrBlank()) Text(item.description, fontSize = 9.sp, color = QgMuted)
                                     Text("× ${item.quantity}", fontSize = 8.sp, color = QgMuted)
                                 }
-                                Text("฿" + "%.0f".format(item.totalPrice), fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                                Text(riderMoneyBaht(item.totalPrice), fontWeight = FontWeight.Bold, fontSize = 12.sp)
                             }
                             if (index < items.lastIndex) Box(Modifier.fillMaxWidth().height(1.dp).background(Color(0xFFF0EAEC)))
                         }
@@ -2370,7 +2370,7 @@ private fun VerificationScreen(
                             Box(Modifier.fillMaxWidth().height(1.dp).background(Color(0xFFEEE6E8)))
                             Row(Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.SpaceBetween) {
                                 Text("รวมค่าสินค้า", fontSize = 10.sp)
-                                Text("฿" + "%.0f".format(job.shopCash), fontSize = 17.sp, fontWeight = FontWeight.Bold, color = QgRed)
+                                Text(riderMoneyBaht(job.shopCash), fontSize = 17.sp, fontWeight = FontWeight.Bold, color = QgRed)
                             }
                         }
                     }

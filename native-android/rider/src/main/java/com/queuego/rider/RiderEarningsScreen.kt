@@ -166,4 +166,4 @@ private fun RiderEarnError(message: String) {
     }
 }
 
-private fun baht(value: Double) = "฿" + "%.2f".format(value)
+private fun baht(value: Double) = riderMoneyBaht(value, fixedCashDecimals = true)
