@@ -1293,8 +1293,28 @@ private fun RiderHome(
                     }
                 }
                 Spacer(Modifier.height(12.dp))
+                fun claimLaundry(laundryJob: RiderLaundryJob) {
+                    if (actionBusy) return
+                    actionBusy = true
+                    scope.launch {
+                        runCatching { api.claimLaundryJob(auth, laundryJob.jobId) }
+                            .onSuccess {
+                                actionMessage = "รับงานฝากซักแล้ว"
+                                runCatching { api.riderSnapshot(auth) }
+                                    .onFailure { if (it is CancellationException) throw it }
+                                    .onSuccess { updated ->
+                                        snapshot = updated
+                                        updated.laundry.activeJob?.let {
+                                            openNavigation(context, it.asMapJob())
+                                        }
+                                    }
+                            }
+                            .onFailure { actionMessage = it.message ?: "รับงานฝากซักไม่สำเร็จ" }
+                        actionBusy = false
+                    }
+                }
                 when {
-                    current.laundry.activeJob != null -> {
+                    current.activeJob == null && current.laundry.activeJob != null -> {
                         val laundryJob = current.laundry.activeJob
                         RiderLaundryActiveCard(
                             job = laundryJob,
@@ -1505,30 +1525,19 @@ private fun RiderHome(
                                 scope.launch { refreshSnapshot() }
                             }
                         )
+                        if (current.laundry.pool.isNotEmpty()) {
+                            RiderLaundryPoolCard(
+                                jobs = current.laundry.pool,
+                                busy = actionBusy,
+                                onClaim = ::claimLaundry
+                            )
+                        }
                     }
                     current.laundry.pool.isNotEmpty() -> {
                         RiderLaundryPoolCard(
                             jobs = current.laundry.pool,
                             busy = actionBusy,
-                            onClaim = { laundryJob ->
-                                actionBusy = true
-                                scope.launch {
-                                    runCatching { api.claimLaundryJob(auth, laundryJob.jobId) }
-                                        .onSuccess {
-                                            actionMessage = "รับงานฝากซักแล้ว"
-                                            runCatching { api.riderSnapshot(auth) }
-                                                .onFailure { if (it is CancellationException) throw it }
-                                                .onSuccess { updated ->
-                                                    snapshot = updated
-                                                    updated.laundry.activeJob?.let {
-                                                        openNavigation(context, it.asMapJob())
-                                                    }
-                                                }
-                                        }
-                                        .onFailure { actionMessage = it.message ?: "รับงานฝากซักไม่สำเร็จ" }
-                                    actionBusy = false
-                                }
-                            }
+                            onClaim = ::claimLaundry
                         )
                     }
                     else -> Unit
