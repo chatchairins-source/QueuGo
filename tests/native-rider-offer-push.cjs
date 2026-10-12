@@ -19,6 +19,9 @@ const path=require('path');
   assert.equal(message.data.sessionId,'transport-session');
   assert.equal(policy.buildRiderOfferMessage('token',metadata,'2026-10-12T06:00:00Z','session',now),null);
   assert.equal(policy.buildRiderOfferMessage('token',metadata,'invalid','session',now),null);
+  assert.equal(policy.buildRiderOfferMessage('',metadata,'2026-10-12T06:00:30Z','session',now),null);
+  assert.equal(policy.buildRiderOfferMessage('token',{...metadata,user_id:''},'2026-10-12T06:00:30Z','session',now),null);
+  assert.equal(policy.buildRiderOfferMessage('token',metadata,'2026-10-12T06:00:30Z','',now),null);
   for(const type of ['order','voice_call','push_test']){
     const event=policy.buildRiderEventMessage('transport-token',{...metadata,type,title:'event',message:'body'},'transport-session');
     assert(!('notification' in event),'All Rider background events must pass cached account/session checks');
@@ -28,11 +31,16 @@ const path=require('path');
     assert.equal(event.data.userId,metadata.user_id);assert.equal(event.data.sessionId,'transport-session');
     assert.deepEqual(event.android,{priority:'high'});
   }
+  assert.equal(policy.buildRiderEventMessage('',metadata,'transport-session'),null);
+  assert.equal(policy.buildRiderEventMessage('transport-token',{...metadata,id:''},'transport-session'),null);
+  assert.equal(policy.buildRiderEventMessage('transport-token',{...metadata,user_id:''},'transport-session'),null);
+  assert.equal(policy.buildRiderEventMessage('transport-token',metadata,''),null);
   const edge=fs.readFileSync('supabase/functions/queuego-push/index.ts','utf8');
   assert(edge.includes("offer.data.rider_id!==profile.data.id"));
   assert(edge.includes('created<offered'));
   assert(edge.includes('message:riderMessage||{'),'Existing other-role notification payload must remain');
   assert(edge.includes("user.role==='rider'?buildRiderEventMessage"),'Other-role payload remains on the existing transport path');
+  assert(edge.includes("if(user.role==='rider'&&!riderMessage)return 204"),'Incomplete Rider recipient/session metadata must never fall back to notification payload');
   const riderPush=fs.readFileSync('native-android/rider/src/main/java/com/queuego/rider/RiderPush.kt','utf8');
   assert(riderPush.includes('SessionStore(applicationContext).load() ?: return'),'Data-only Rider events require a cached signed-in session');
   assert(riderPush.includes('recipientId != cached.user.id'),'Rider event recipient must match the cached account');
