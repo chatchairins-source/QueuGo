@@ -476,6 +476,23 @@ private fun RiderHome(
     var recenterSignal by remember { mutableStateOf(0) }
     var mapReady by remember { mutableStateOf(false) }
     var pendingMapRecenter by remember { mutableStateOf(false) }
+    val navigationController = remember(auth.user.id) { RiderNavigationController() }
+    val navigationState by navigationController.state.collectAsState()
+    val navigationSpeaker = remember(auth.user.id) { RiderNavigationSpeaker(context) }
+    DisposableEffect(navigationController, navigationSpeaker) {
+        onDispose {
+            navigationSpeaker.close()
+            navigationController.close()
+        }
+    }
+    LaunchedEffect(navigationState) {
+        navigationSpeaker.speakIfNeeded(navigationState)
+    }
+    LaunchedEffect(snapshot?.activeJob, snapshot?.marketPickups) {
+        navigationController.setTarget(
+            snapshot?.activeJob?.let { riderNavigationTarget(it, snapshot?.marketPickups.orEmpty()) }
+        )
+    }
 
     val locationPermission = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -904,7 +921,9 @@ private fun RiderHome(
             modifier = Modifier.fillMaxSize(),
             job = mapJob,
             marketPickups = snapshot?.marketPickups.orEmpty(),
+            navigationState = navigationState,
             recenterSignal = recenterSignal,
+            onLocationFix = navigationController::onLocationFix,
             onMapReady = { mapReady = it }
         )
 
@@ -921,6 +940,61 @@ private fun RiderHome(
                 enabled = !actionBusy && snapshot != null && snapshot?.activeJob == null,
                 onToggle = { changeOnline(snapshot?.online != true) }
             )
+            if (navigationState.active) {
+                Spacer(Modifier.height(7.dp))
+                Card(
+                    shape = RoundedCornerShape(15.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xF5FFFFFF)),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFEEE5E8))
+                ) {
+                    Column(Modifier.fillMaxWidth().padding(horizontal = 11.dp, vertical = 8.dp)) {
+                        val nextText = navigationState.nextInstruction?.turnCode?.let(::riderTurnPhrase)
+                        Text(
+                            when {
+                                navigationState.loading && !navigationState.routeReady -> "กำลังคำนวณเส้นทาง…"
+                                navigationState.weakGps -> "สัญญาณ GPS อ่อน · กำลังรักษาเส้นทางเดิม"
+                                navigationState.offRoute -> "ออกนอกเส้นทาง · กำลังคำนวณใหม่"
+                                nextText != null && navigationState.nextInstruction?.turnCode != 9 -> nextText
+                                else -> "นำทางไป" + navigationState.targetLabel
+                            },
+                            fontWeight = FontWeight.Black,
+                            fontSize = 13.sp
+                        )
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            Text(
+                                navigationState.distanceRemainingMeters?.let {
+                                    if (it >= 1000.0) "%.1f กม.".format(it / 1000.0) else "%.0f ม.".format(it)
+                                } ?: "—",
+                                color = QgMuted,
+                                fontSize = 10.sp
+                            )
+                            Text(
+                                navigationState.etaSeconds?.let {
+                                    "ประมาณ " + kotlin.math.ceil(it / 60.0).toInt().coerceAtLeast(1) + " นาที"
+                                } ?: "ETA —",
+                                color = QgMuted,
+                                fontSize = 10.sp
+                            )
+                            navigationState.headingDegrees?.let {
+                                Text("ทิศ %.0f°".format(it), color = QgMuted, fontSize = 10.sp)
+                            }
+                        }
+                        if (navigationState.routeError != null) {
+                            Text(navigationState.routeError!!, color = QgRed, fontSize = 9.sp)
+                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                                OutlinedButton(
+                                    onClick = { navigationController.retry() },
+                                    modifier = Modifier.weight(1f).heightIn(min = 40.dp)
+                                ) { Text("ลองเส้นทางอีกครั้ง", fontSize = 9.sp) }
+                                OutlinedButton(
+                                    onClick = { snapshot?.activeJob?.let { openExternalNavigation(context, it) } },
+                                    modifier = Modifier.weight(1f).heightIn(min = 40.dp)
+                                ) { Text("เปิดแผนที่ภายนอก", fontSize = 9.sp) }
+                            }
+                        }
+                    }
+                }
+            }
             if (!mapReady) {
                 Spacer(Modifier.height(7.dp))
                 Card(
@@ -1949,6 +2023,13 @@ private fun createEvidenceUri(context: Context): Uri {
 }
 
 private fun openNavigation(context: Context, job: RiderJob) {
+    if (job.navigationTarget == null) return
+    RiderReturnService.stop(context)
+    context.getSharedPreferences("rider_navigation", Context.MODE_PRIVATE).edit()
+        .putBoolean(job.id + if (job.isDelivering) ":customer" else ":shop", true).apply()
+}
+
+private fun openExternalNavigation(context: Context, job: RiderJob) {
     val target = job.navigationTarget ?: return
     RiderReturnService.start(context)
     val navigation = Uri.parse(
@@ -1963,9 +2044,6 @@ private fun openNavigation(context: Context, job: RiderJob) {
             "https://www.google.com/maps/dir/?api=1&destination=" +
                 target.first + "," + target.second
         )
-        val webOpened = runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, web)) }.isSuccess
-        if (!webOpened) return
+        runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, web)) }
     }
-    context.getSharedPreferences("rider_navigation", Context.MODE_PRIVATE).edit()
-        .putBoolean(job.id + if (job.isDelivering) ":customer" else ":shop", true).apply()
 }
