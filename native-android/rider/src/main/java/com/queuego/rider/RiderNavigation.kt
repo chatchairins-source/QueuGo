@@ -189,6 +189,8 @@ internal class RiderLongdoRouteClient(
 
     internal fun parseGeoJson(raw: String, target: RiderNavigationTarget): RiderRoutePlan {
         val root = JSONObject(raw)
+        val status = root.optJSONObject("meta")?.optInt("status", 200) ?: 200
+        if (status != 200) error("Longdo routing status " + status)
         val features = root.optJSONArray("features") ?: error("Longdo ไม่ส่งเส้นทาง")
         val parts = mutableListOf<List<RiderNavPoint>>()
         val instructions = mutableListOf<RiderRouteInstruction>()
@@ -226,8 +228,14 @@ internal class RiderLongdoRouteClient(
         val geometryDistance = cleanedParts.sumOf { part ->
             part.zipWithNext().sumOf { (a, b) -> riderHaversineMeters(a, b) }
         }
+        // The service summary is authoritative, including current traffic travel time.
+        val summary = root.optJSONObject("data")
+        summary?.optDouble("distance", Double.NaN)
+            ?.takeIf { it.isFinite() && it > 0.0 }?.let { totalDistance = it }
+        summary?.optDouble("interval", Double.NaN)
+            ?.takeIf { it.isFinite() && it > 0.0 }?.let { totalInterval = it }
         if (totalDistance <= 0.0) totalDistance = geometryDistance
-        if (totalInterval <= 0.0) totalInterval = max(60.0, totalDistance / 7.0)
+        if (totalInterval <= 0.0) error("Longdo ไม่ส่งเวลาประเมินเส้นทาง")
 
         return RiderRoutePlan(
             targetKey = target.key,

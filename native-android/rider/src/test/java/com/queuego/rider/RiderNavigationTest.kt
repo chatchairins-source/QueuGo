@@ -18,6 +18,36 @@ class RiderNavigationTest {
         assertTrue(gate.consume("job:shop:0:turn:2:300"))
     }
 
+    // Route-format fixtures only: no users, jobs, orders, GPS providers or business writes.
+    private val routeGeometry = """[{"type":"Feature","properties":{"turn":4,"name":"","distance":100,"interval":10},"geometry":{"type":"LineString","coordinates":[[100.0,13.0],[100.01,13.0]]}}]"""
+    private val parserTarget = RiderNavigationTarget("route-format", "", "pickup", 13.0, 100.01)
+
+    @Test fun routeUsesServiceDistanceAndTrafficTimeSummary() {
+        val plan = RiderLongdoRouteClient().parseGeoJson(
+            """{"type":"FeatureCollection","meta":{"status":200},"data":{"distance":4494,"interval":289},"features":$routeGeometry}""",
+            parserTarget
+        )
+        assertEquals(4494.0, plan.distanceMeters, 0.001)
+        assertEquals(289.0, plan.intervalSeconds, 0.001)
+    }
+
+    @Test fun missingServiceDurationNeverInventsAnEta() {
+        val noTime = routeGeometry.replace("\"interval\":10", "\"interval\":0")
+        org.junit.Assert.assertThrows(IllegalStateException::class.java) {
+            RiderLongdoRouteClient().parseGeoJson(
+                """{"type":"FeatureCollection","features":$noTime}""", parserTarget
+            )
+        }
+    }
+
+    @Test fun serviceErrorCannotBeRenderedAsARoute() {
+        org.junit.Assert.assertThrows(IllegalStateException::class.java) {
+            RiderLongdoRouteClient().parseGeoJson(
+                """{"meta":{"status":403},"features":$routeGeometry}""", parserTarget
+            )
+        }
+    }
+
     @Test fun turnCodeMatchesLongdoContract() {
         assertEquals("เลี้ยวซ้าย", riderTurnPhrase(0))
         assertEquals("เลี้ยวขวา", riderTurnPhrase(1))
