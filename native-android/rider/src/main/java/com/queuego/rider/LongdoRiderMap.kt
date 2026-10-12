@@ -162,7 +162,7 @@ fun RiderLongdoMap(
                         if (!holder.disposed) {
                             runCatching {
                                 holder.map = map
-                                map.setBase(LongdoLayer(ctx, "gray", 0, 1, 20))
+                                map.setBase(LongdoLayer(ctx, "normal", 0, 1, 20))
                                 // Production Web's initial camera, never a fabricated GPS marker.
                                 map.setLocation(MapLocation(100.5018, 13.7563))
                                 map.setZoom(13)

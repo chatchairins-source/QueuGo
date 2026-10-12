@@ -404,6 +404,11 @@ def capture_map_display_only():
                            "com.queuego.rider.test/androidx.test.runner.AndroidJUnitRunner"],
                      capture_output=True, text=True, timeout=210)
         (directory / "instrumentation.txt").write_text(result.stdout + result.stderr)
+        print("QUEUEGO_MAP_INSTRUMENTATION " + viewport + "\n" + result.stdout + result.stderr)
+        full_log = run(adb + ["logcat", "-d", "-v", "threadtime"], capture_output=True, text=True).stdout
+        (directory / "full-logcat.txt").write_text(full_log)
+        if "OK (1 test)" not in result.stdout:
+            print("QUEUEGO_MAP_FAILURE_LOG\n" + full_log[-24000:])
         assert "OK (1 test)" in result.stdout, "Actual map mount/lifecycle test failed: " + viewport
         runtime = run(adb + ["logcat", "-d", "-s", "AndroidRuntime:E"], capture_output=True, text=True).stdout
         (directory / "android-runtime.txt").write_text(runtime)
