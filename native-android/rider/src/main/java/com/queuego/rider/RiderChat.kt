@@ -244,15 +244,22 @@ fun RiderChatScreen(
     auth: QueueGoAuth,
     job: RiderJob,
     onBack: () -> Unit,
+    onCallCustomer: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     key(auth.user.id, auth.session.sessionId, job.id) {
-        RiderChatRoom(auth, job, onBack, modifier)
+        RiderChatRoom(auth, job, onBack, onCallCustomer, modifier)
     }
 }
 
 @Composable
-private fun RiderChatRoom(auth: QueueGoAuth, job: RiderJob, onBack: () -> Unit, modifier: Modifier) {
+private fun RiderChatRoom(
+    auth: QueueGoAuth,
+    job: RiderJob,
+    onBack: () -> Unit,
+    onCallCustomer: () -> Unit,
+    modifier: Modifier
+) {
     val api = remember { RiderChatApi() }
     val scope = rememberCoroutineScope()
     var moderation by remember(auth.user.id, auth.session.sessionId, job.id) { mutableStateOf<RiderChatModeration?>(null) }
@@ -401,6 +408,23 @@ private fun RiderChatRoom(auth: QueueGoAuth, job: RiderJob, onBack: () -> Unit, 
                     else -> customerName ?: "ลูกค้า"
                 }, fontSize = 15.sp, fontWeight = FontWeight.Bold)
                 Text(job.numberLabel, color = Color(0xFF8A8387), fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
+            }
+            if (job.status.lowercase() !in setOf("completed", "cancelled", "no_rider_available")) {
+                IconButton(
+                    onClick = onCallCustomer,
+                    enabled = !busy,
+                    modifier = Modifier.size(44.dp)
+                        .semantics { contentDescription = "โทรหาลูกค้าผ่าน QueueGo" }
+                        .clip(RoundedCornerShape(22.dp))
+                        .background(Color(0xFFFFF0F3))
+                ) {
+                    Icon(
+                        painterResource(R.drawable.qg_rider_flow_phone),
+                        "โทรหาลูกค้าผ่าน QueueGo",
+                        Modifier.size(21.dp),
+                        tint = QgRed
+                    )
+                }
             }
             IconButton(onClick = { showSafety = true }, enabled = moderation?.accepted == true,
                 modifier = Modifier.size(44.dp).semantics { contentDescription = "ความปลอดภัยแชต" }
