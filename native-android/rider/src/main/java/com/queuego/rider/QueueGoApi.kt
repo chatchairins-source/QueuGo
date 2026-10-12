@@ -1044,7 +1044,7 @@ class QueueGoApi {
         deliveryLat = o.doubleOrNull("delivery_latitude"),
         deliveryLng = o.doubleOrNull("delivery_longitude"),
         deliveryFee = o.doubleOrNull("delivery_fee"),
-        marketOrderId = o.optString("market_order_id").takeIf { it.isNotBlank() },
+        marketOrderId = o.optString("market_order_id").takeIf { it.isNotBlank() && !it.equals("null", ignoreCase = true) },
         arrivedShopAt = o.optString("rider_arrived_shop_at").takeIf { it.isNotBlank() },
         arrivedCustomerAt = o.optString("rider_arrived_customer_at").takeIf { it.isNotBlank() },
         shopCash = o.doubleOrNull("subtotal"),
