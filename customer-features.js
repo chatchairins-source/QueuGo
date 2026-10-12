@@ -3,6 +3,31 @@
 const QGCustomer=(()=>{
   let orderSnapshot=null,cleanups=[],notificationTimer=null,notificationUser='',notificationBusy=false,knownNotifications=null,unread=0;
   const actor=()=>{const u=S.get();return u?u.userId+':'+u.authUserId:''};
+  let voiceController=null;
+  function voice(){
+    if(voiceController)return voiceController;
+    if(!window.QueueGoVoiceWeb)return null;
+    voiceController=QueueGoVoiceWeb.create({
+      url:CFG.URL,
+      key:CFG.KEY,
+      getToken:()=>token(),
+      getSession:()=>S.get(),
+      setSession:next=>S.set(next),
+      getUserId:()=>S.get()?.userId||'',
+      toast:message=>toast(message)
+    });
+    return voiceController;
+  }
+  function activateVoice(){
+    const controller=voice();
+    if(controller)controller.startIncomingWatch();
+    return controller;
+  }
+  function startVoiceCall(orderId,target,label){
+    const controller=activateVoice();
+    if(!controller)return toast('ระบบโทรผ่าน QueueGo ยังไม่พร้อม');
+    controller.start(orderId,target,label).catch(error=>toast(error?.message||'โทรผ่าน QueueGo ไม่สำเร็จ'));
+  }
   const owned=(key,ticket)=>actor()===key&&ticket===routeVersion;
   const safeImage=value=>{const s=String(value||'');return /^https:\/\//i.test(s)||/^data:image\/(jpeg|png|webp);base64,[a-z0-9+/=]+$/i.test(s)?s:''};
   const phone=value=>String(value||'').replace(/[^+\d]/g,'');
@@ -167,7 +192,7 @@ const QGCustomer=(()=>{
           <span>ร้าน ${esc(ctx.shop?.name||'ร้านค้า')}${orderNote?` · ${esc(orderNote)}`:''}</span>
         </div>
         <div class="qg-order-hero-actions">
-          ${!['pending','searching_rider'].includes(o.status)?linkPhone(ctx.shop?.phone,'ติดต่อร้าน'):''}
+          ${!closed&&!['pending','searching_rider'].includes(o.status)?`<button type="button" class="lk qg-voice-launch" data-qg-voice-target="shop" data-qg-voice-label="${esc(ctx.shop?.name||'ร้านค้า')}">${window.QueueGoVoiceWeb?.phoneIcon?.()||''}<span>โทรหาร้าน</span></button>`:''}
           ${!o.rider_id&&['pending','searching_rider'].includes(o.status)?`<button class="lk qg-danger" onclick="QGCustomer.cancel('${esc(id)}')">ยกเลิกคำสั่งซื้อ</button>`:''}
           <button class="lk" onclick="go('support/${esc(id)}')">แจ้งปัญหา</button>
         </div>
@@ -198,7 +223,7 @@ const QGCustomer=(()=>{
           <div class="qg-order-rider-copy"><b>${esc(r.name||'Rider')}</b><span>${esc([r.vehicle_type,r.vehicle_plate].filter(Boolean).join(' ')||'ข้อมูลรถกำลังอัปเดต')}</span></div>
         </div>
         <div class="qg-order-rider-actions">
-          ${!closed?linkPhone(r.phone,'โทรหา Rider'):''}
+          ${!closed?`<button type="button" class="lk qg-voice-launch" data-qg-voice-target="rider" data-qg-voice-label="${esc(r.name||'Rider')}">${window.QueueGoVoiceWeb?.phoneIcon?.()||''}<span>โทรผ่าน QueueGo</span></button>`:''}
           ${chatOpen?`<button class="lk qg-chat" onclick="go('order-chat/${esc(id)}')">${o.status==='completed'?`แชทต่อได้อีก ${chatMinutesLeft(o)} นาที`:'แชทกับ Rider'}</button>`:o.status==='completed'?'<span class="sm">แชทปิดแล้วหลังจบงาน 30 นาที</span>':''}
         </div>
       </section>`:''}
@@ -225,6 +250,10 @@ const QGCustomer=(()=>{
       ${o.status==='completed'?'<section class="qg-order-card" id="customer-review">กำลังโหลดรีวิว…</section>':''}
     </div>`,'orders');
 
+    if(!closed)activateVoice();
+    document.querySelectorAll('[data-qg-voice-target]').forEach(button=>{
+      button.onclick=()=>startVoiceCall(id,button.dataset.qgVoiceTarget,button.dataset.qgVoiceLabel||'QueueGo');
+    });
     orderSnapshot={id,actor:key,version:orderVersion(o),closed};
     if(searching)startRiderSearchClock(searchStartedAt);
     if(!closed)track(o,ctx,ticket,key);
@@ -369,7 +398,7 @@ const QGCustomer=(()=>{
     if(!confirm('บล็อก Rider คนนี้จากการส่งข้อความใหม่? การบล็อกไม่ยกเลิกออเดอร์'))return;
     try{await QueueGoUGC.block(id);toast('บล็อกคู่สนทนาแล้ว');await renderChat(id,ticket)}catch(e){toast(e.message||'บล็อกไม่สำเร็จ')}
   }
-  async function renderChat(id,ticket=routeVersion){const key=actor(),u=S.get(),rows=await db('orders?select=id,status,rider_id,completed_at,updated_at&customer_id=eq.'+encodeURIComponent(u.userId)+'&id=eq.'+encodeURIComponent(id)+'&limit=1');if(!owned(key,ticket))return;const o=rows[0];if(!o||!o.rider_id)return layout('<p class="empty">แชทเปิดเมื่อ Rider รับงานแล้ว</p>','orders');if(!chatAvailable(o)){try{localStorage.removeItem(chatKey(id))}catch(e){}return layout(`<div class="pt"><button class="back" onclick="go('order/${esc(id)}')">${ico('back')}</button><h1>แชทกับ Rider</h1></div><p class="empty">แชทปิดแล้ว ระบบให้ติดต่อกันได้ 30 นาทีหลังจบงาน</p>`,'orders')}const moderation=await customerChatGate(id,ticket,key);if(!moderation)return;const deadline=chatDeadline(o),completed=o.status==='completed';layout(`<div class="pt"><button class="back" onclick="go('order/${esc(id)}')">${ico('back')}</button><h1>แชทกับ Rider</h1></div><div style="display:flex;gap:8px;flex-wrap:wrap;margin:0 0 10px"><button type="button" id="customer-chat-report-user">รายงานคู่สนทนา</button><button type="button" id="customer-chat-block-user">บล็อก Rider</button><a href="${esc(QueueGoUGC.guidelinesUrl())}" target="_blank" rel="noopener">กติกาแชต</a></div>${completed?`<p class="sm">หลังจบงานแชทจะปิดและถูกลบอัตโนมัติ · เหลือประมาณ ${chatMinutesLeft(o)} นาที</p>`:''}<div id="customer-chat-messages" class="chat-messages"></div><form id="customer-chat-form"><input class="in" name="message" maxlength="500" placeholder="พิมพ์ข้อความ"><input type="file" name="photo" accept="image/jpeg,image/png,image/webp"><button class="prim">ส่งข้อความ / ตรวจผลข้อความเดิม</button><p class="sm" id="customer-chat-error" role="status"></p></form>`,'orders');$('customer-chat-report-user').onclick=()=>customerChatReport(id,null);$('customer-chat-block-user').onclick=()=>customerChatBlock(id,ticket);if(deadline){const timer=setTimeout(()=>{if(owned(key,ticket)&&location.hash==='#order-chat/'+id)renderChat(id,ticket)},Math.max(250,Math.min(2147483000,deadline-Date.now()+250)));cleanups.push(()=>clearTimeout(timer))}let last='';const refresh=async()=>{const messages=await db('order_chat_messages?select=id,sender_id,message,created_at&order_id=eq.'+encodeURIComponent(id)+'&order=created_at.desc&limit=100');if(!owned(key,ticket)||!$('customer-chat-messages'))return;messages.reverse();const version=JSON.stringify(messages);if(version===last)return;last=version;const box=$('customer-chat-messages'),bottom=box.scrollHeight-box.scrollTop-box.clientHeight<80;box.innerHTML=messages.length?messages.map(m=>`<div class="chat-bubble ${m.sender_id===u.userId?'mine':''}">${chatBody(m.message)}<small>${esc(date(m.created_at))}</small>${m.sender_id!==u.userId?`<button type="button" data-chat-report="${esc(m.id)}" style="display:block;margin-top:4px">รายงาน</button>`:''}</div>`).join(''):'<p class="empty">ยังไม่มีข้อความ</p>';box.querySelectorAll('[data-chat-report]').forEach(btn=>btn.onclick=()=>customerChatReport(id,btn.dataset.chatReport));if(bottom)box.scrollTop=box.scrollHeight};await refresh();if(!owned(key,ticket))return;poll(refresh,4000);
+  async function renderChat(id,ticket=routeVersion){const key=actor(),u=S.get(),rows=await db('orders?select=id,status,rider_id,completed_at,updated_at&customer_id=eq.'+encodeURIComponent(u.userId)+'&id=eq.'+encodeURIComponent(id)+'&limit=1');if(!owned(key,ticket))return;const o=rows[0];if(!o||!o.rider_id)return layout('<p class="empty">แชทเปิดเมื่อ Rider รับงานแล้ว</p>','orders');if(!chatAvailable(o)){try{localStorage.removeItem(chatKey(id))}catch(e){}return layout(`<div class="pt"><button class="back" onclick="go('order/${esc(id)}')">${ico('back')}</button><h1>แชทกับ Rider</h1></div><p class="empty">แชทปิดแล้ว ระบบให้ติดต่อกันได้ 30 นาทีหลังจบงาน</p>`,'orders')}const moderation=await customerChatGate(id,ticket,key);if(!moderation)return;const deadline=chatDeadline(o),completed=o.status==='completed';layout(`<div class="pt"><button class="back" onclick="go('order/${esc(id)}')">${ico('back')}</button><h1>แชทกับ Rider</h1></div><div style="display:flex;gap:8px;flex-wrap:wrap;margin:0 0 10px"><button type="button" id="customer-chat-call" class="qg-voice-launch">${window.QueueGoVoiceWeb?.phoneIcon?.()||''}<span>โทรผ่าน QueueGo</span></button><button type="button" id="customer-chat-report-user">รายงานคู่สนทนา</button><button type="button" id="customer-chat-block-user">บล็อก Rider</button><a href="${esc(QueueGoUGC.guidelinesUrl())}" target="_blank" rel="noopener">กติกาแชต</a></div>${completed?`<p class="sm">หลังจบงานแชทจะปิดและถูกลบอัตโนมัติ · เหลือประมาณ ${chatMinutesLeft(o)} นาที</p>`:''}<div id="customer-chat-messages" class="chat-messages"></div><form id="customer-chat-form"><input class="in" name="message" maxlength="500" placeholder="พิมพ์ข้อความ"><input type="file" name="photo" accept="image/jpeg,image/png,image/webp"><button class="prim">ส่งข้อความ / ตรวจผลข้อความเดิม</button><p class="sm" id="customer-chat-error" role="status"></p></form>`,'orders');activateVoice();$('customer-chat-call').onclick=()=>startVoiceCall(id,'rider','Rider');$('customer-chat-report-user').onclick=()=>customerChatReport(id,null);$('customer-chat-block-user').onclick=()=>customerChatBlock(id,ticket);if(deadline){const timer=setTimeout(()=>{if(owned(key,ticket)&&location.hash==='#order-chat/'+id)renderChat(id,ticket)},Math.max(250,Math.min(2147483000,deadline-Date.now()+250)));cleanups.push(()=>clearTimeout(timer))}let last='';const refresh=async()=>{const messages=await db('order_chat_messages?select=id,sender_id,message,created_at&order_id=eq.'+encodeURIComponent(id)+'&order=created_at.desc&limit=100');if(!owned(key,ticket)||!$('customer-chat-messages'))return;messages.reverse();const version=JSON.stringify(messages);if(version===last)return;last=version;const box=$('customer-chat-messages'),bottom=box.scrollHeight-box.scrollTop-box.clientHeight<80;box.innerHTML=messages.length?messages.map(m=>`<div class="chat-bubble ${m.sender_id===u.userId?'mine':''}">${chatBody(m.message)}<small>${esc(date(m.created_at))}</small>${m.sender_id!==u.userId?`<button type="button" data-chat-report="${esc(m.id)}" style="display:block;margin-top:4px">รายงาน</button>`:''}</div>`).join(''):'<p class="empty">ยังไม่มีข้อความ</p>';box.querySelectorAll('[data-chat-report]').forEach(btn=>btn.onclick=()=>customerChatReport(id,btn.dataset.chatReport));if(bottom)box.scrollTop=box.scrollHeight};await refresh();if(!owned(key,ticket))return;poll(refresh,4000);
     $('customer-chat-form').onsubmit=async e=>{e.preventDefault();const f=e.currentTarget,b=f.querySelector('button'),storageKey=chatKey(id);if(b.disabled)return;b.disabled=true;try{let payload;try{payload=JSON.parse(localStorage.getItem(storageKey)||'null');if(payload&&(payload.order_id!==id||payload.sender_id!==u.userId||typeof payload.id!=='string'||typeof payload.message!=='string'))throw Error('invalid payload')}catch(e){localStorage.removeItem(storageKey);payload=null}if(!payload){let text=f.elements.message.value.trim();const file=f.elements.photo.files[0];if(file)text='__IMG__'+await compressImage(file);if(!owned(key,ticket))return;if(!text)return;payload={id:uuid(),order_id:id,sender_id:u.userId,message:text};localStorage.setItem(storageKey,JSON.stringify(payload));}if(payload.order_id!==id||payload.sender_id!==u.userId)throw Error('ข้อความเดิมไม่ตรงบัญชี');const accessToken=await token();if(!owned(key,ticket))return;const sent=await db('order_chat_messages?select=id&id=eq.'+encodeURIComponent(payload.id)+'&order_id=eq.'+encodeURIComponent(id),{token:accessToken});if(!owned(key,ticket))return;if(!sent.length)await db('order_chat_messages',{method:'POST',token:accessToken,body:payload});localStorage.removeItem(storageKey);if(!owned(key,ticket))return;f.reset();$('customer-chat-error').textContent='';try{await refresh()}catch(refreshErr){console.warn('customer chat post-send refresh failed',refreshErr)}}catch(e){if(e.status>=400&&e.status<500&&![408,409,429].includes(e.status))localStorage.removeItem(storageKey);if(owned(key,ticket))$('customer-chat-error').textContent=e.status?'ส่งข้อความไม่สำเร็จ กรุณาตรวจสถานะออเดอร์':'ยังไม่ได้รับผล กดตรวจผลข้อความเดิมอีกครั้ง';}finally{if(owned(key,ticket)&&b.isConnected)b.disabled=false}};
   }
   async function compressImage(file){if(!['image/jpeg','image/png','image/webp'].includes(file.type)||file.size>5*1024*1024)throw Error('รูปต้องเป็น JPG, PNG หรือ WebP ไม่เกิน 5 MB');const url=URL.createObjectURL(file);try{const img=await new Promise((resolve,reject)=>{const i=new Image();i.onload=()=>resolve(i);i.onerror=reject;i.src=url});const scale=Math.min(1,1000/Math.max(img.width,img.height)),canvas=document.createElement('canvas');canvas.width=Math.round(img.width*scale);canvas.height=Math.round(img.height*scale);canvas.getContext('2d').drawImage(img,0,0,canvas.width,canvas.height);return canvas.toDataURL('image/jpeg',.7)}finally{URL.revokeObjectURL(url)}}
@@ -378,7 +407,7 @@ const QGCustomer=(()=>{
   addEventListener('pageshow',syncNotifications);addEventListener('online',syncNotifications);document.addEventListener('visibilitychange',()=>{if(!document.hidden)notificationsTick()});
   function toggleSound(button){const key='qg_customer_sound_'+S.get().userId,enabled=localStorage.getItem(key)!=='on';localStorage.setItem(key,enabled?'on':'off');button.querySelector('span').textContent=enabled?'เปิด':'ปิด';if(enabled&&'speechSynthesis' in window){const speech=new SpeechSynthesisUtterance('เปิดเสียงแจ้งเตือนแล้ว');speech.lang='th-TH';speechSynthesis.speak(speech)}}
   function filterMenu(category){document.querySelectorAll('[data-menu-category]').forEach(row=>{row.hidden=!!category&&row.dataset.menuCategory!==category})}
-  return {needsOrderRefresh,toggleSound,deleteAccount,filterMenu,leave,poll,actor,owned,safeImage,note,linkPhone,date,context,cancel,favorite,favoriteButton,loadFavorites,reviews,reviewList,renderFavorites,renderPromotions,renderNotifications,renderProfile,renderOrder,renderChat,syncNotifications,openNotification,markRead,uploadEvidence,openEvidence};
+  return {needsOrderRefresh,toggleSound,deleteAccount,filterMenu,leave,poll,actor,owned,safeImage,note,linkPhone,date,context,cancel,favorite,favoriteButton,loadFavorites,reviews,reviewList,renderFavorites,renderPromotions,renderNotifications,renderProfile,renderOrder,renderChat,syncNotifications,openNotification,markRead,uploadEvidence,openEvidence,activateVoice,startVoiceCall};
 })();
 V.order=QGCustomer.renderOrder;
 V['order-chat']=QGCustomer.renderChat;
