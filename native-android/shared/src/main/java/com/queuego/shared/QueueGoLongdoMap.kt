@@ -7,6 +7,7 @@ import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.PointF
 import android.view.LayoutInflater
+import android.util.Log
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.remember
@@ -128,8 +129,8 @@ fun QgLongdoTrackingMap(
                                         layerURL = "https://ms2.longdo.com/mmmap/img.php"
                                     })
                                     holder.draw(currentPoints.value)
-                                }.onSuccess { currentReady.value(true) }
-                                    .onFailure { currentReady.value(false) }
+                                }.onSuccess { Log.i("QueueGoLongdoMap", "native_map_ready"); currentReady.value(true) }
+                                    .onFailure { Log.e("QueueGoLongdoMap", "Native map operation failed", it); currentReady.value(false) }
                             }
                         }
                     }
@@ -138,7 +139,7 @@ fun QgLongdoTrackingMap(
             }
         },
         update = {
-            runCatching { holder.draw(points) }.onFailure { currentReady.value(false) }
+            runCatching { holder.draw(points) }.onFailure { Log.e("QueueGoLongdoMap", "Native map operation failed", it); currentReady.value(false) }
         }
     )
     DisposableEffect(owner) {
@@ -275,8 +276,8 @@ fun QgLongdoLocationPickerMap(
                                     map.setLocation(MapLocation(start.longitude, start.latitude))
                                     currentInitial.value?.takeIf { it.valid }?.let(currentCenterChanged.value)
                                     holder.recenter(currentRecenter.value, currentRecenterToken.value)
-                                }.onSuccess { currentReady.value(true) }
-                                    .onFailure { currentReady.value(false) }
+                                }.onSuccess { Log.i("QueueGoLongdoMap", "native_map_ready"); currentReady.value(true) }
+                                    .onFailure { Log.e("QueueGoLongdoMap", "Native map operation failed", it); currentReady.value(false) }
                             }
                         }
                     }
@@ -287,7 +288,7 @@ fun QgLongdoLocationPickerMap(
         update = {
             runCatching {
                 holder.recenter(recenterPoint, recenterToken)
-            }.onFailure { currentReady.value(false) }
+            }.onFailure { Log.e("QueueGoLongdoMap", "Native map operation failed", it); currentReady.value(false) }
         }
     )
 

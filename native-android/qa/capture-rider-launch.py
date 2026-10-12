@@ -203,12 +203,24 @@ def capture_customer_location():
             assert_no_package_crash(pkg, directory / "gps-tap-crash.txt")
         run(adb + ["shell", "input", "keyevent", "3"])
         time.sleep(1)
-        run(adb + ["shell", "am", "start", "-W", "-n", pkg + "/.MainActivity"], timeout=40)
+        # A hot Activity may not notify am start -W's launch wait. Check the real
+        # foreground UI and a subsequent tap rather than that CLI wait result.
+        run(adb + ["shell", "am", "start", "-n", pkg + "/.MainActivity"], timeout=15)
+        nodes = wait_ui(directory / "resumed.xml", lambda ns: any(n.get("text") == "ใช้ตำแหน่ง GPS ปัจจุบัน" for n in ns))
+        activities = run(adb + ["shell", "dumpsys", "activity", "activities"], capture_output=True, text=True).stdout
+        assert any("mResumedActivity" in line and pkg + "/.MainActivity" in line for line in activities.splitlines()), "Customer Activity is not resumed"
         time.sleep(3)
         assert_no_package_crash(pkg, directory / "resume-crash.txt")
         package_pids(pkg)
         nodes = read_ui(directory / "resumed.xml")
         assert any(n.get("text") == "ใช้ตำแหน่ง GPS ปัจจุบัน" for n in nodes), "Picker did not resume"
+        with (directory / "resumed.png").open("wb") as png:
+            run(adb + ["exec-out", "screencap", "-p"], stdout=png)
+        back = next(n for n in nodes if n.get("content-desc") == "ย้อนกลับ")
+        b = [int(x) for x in re.findall(r"\d+", back.get("bounds", ""))]
+        run(adb + ["shell", "input", "tap", str((b[0]+b[2])//2), str((b[1]+b[3])//2)])
+        wait_ui(directory / "back-home.xml", lambda ns: any(n.get("text") == "เลือกที่อยู่จัดส่ง" for n in ns) and not any(n.get("text") == "ใช้ตำแหน่ง GPS ปัจจุบัน" for n in ns))
+        assert_no_package_crash(pkg, directory / "back-crash.txt")
         print("QUEUEGO_CUSTOMER_LOCATION_PASS " + permission_state)
 
 
