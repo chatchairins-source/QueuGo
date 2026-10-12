@@ -884,6 +884,7 @@ private fun RiderHome(
                 auth = auth,
                 job = chatJob!!,
                 onBack = { chatJob = null },
+                onCallCustomer = { chatJob?.id?.let(::startCustomerVoice) },
                 modifier = Modifier.fillMaxSize()
             )
             RiderVoiceOverlay(
