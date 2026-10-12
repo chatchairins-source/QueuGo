@@ -17,5 +17,10 @@ for(const path of [
 ]){
   assert.strictEqual(read(path),pushSource,path+' must match gated push source exactly');
 }
-// Production remote history reconciled after duplicate idempotent concurrent apply.
+assert.strictEqual(
+  read('supabase/migrations/20261012124318_native_voice_block_revocation.sql'),
+  read('supabase/migrations/20261012121736_native_voice_block_revocation.sql'),
+  'Production Voice block-revocation history must exactly match the gated CLI source'
+);
+// Preserve the actual remote version alongside the CLI-created idempotent source.
 console.log('Native backend migration mirror: PASS');
