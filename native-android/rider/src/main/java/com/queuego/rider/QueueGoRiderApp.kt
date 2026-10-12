@@ -1001,6 +1001,7 @@ private fun RiderHome(
             modifier = Modifier.fillMaxSize(),
             job = mapJob,
             marketPickups = snapshot?.marketPickups.orEmpty(),
+            bundleOrders = snapshot?.bundle?.activeOrders.orEmpty(),
             navigationState = navigationState,
             recenterSignal = recenterSignal,
             onLocationFix = navigationController::onLocationFix,
@@ -1472,6 +1473,26 @@ private fun RiderHome(
                             },
                             onDeliveryVerify = {
                                 openVerification("delivery", current.activeJob)
+                            }
+                        )
+                        RiderRouteBundlePanel(
+                            state = current.bundle,
+                            busy = actionBusy,
+                            onClaim = { candidate ->
+                                actionBusy = true
+                                scope.launch {
+                                    runCatching { api.claimRouteBundle(auth, candidate.orderId) }
+                                        .onSuccess {
+                                            actionMessage = "รับงานพ่วงแล้ว"
+                                            runCatching { api.riderSnapshot(auth) }
+                                                .onFailure { if (it is CancellationException) throw it }
+                                                .onSuccess { snapshot = it }
+                                        }
+                                        .onFailure {
+                                            actionMessage = it.message ?: "รับงานพ่วงไม่สำเร็จ"
+                                        }
+                                    actionBusy = false
+                                }
                             }
                         )
                     }
