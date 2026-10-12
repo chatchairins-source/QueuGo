@@ -34,6 +34,8 @@ class QueueGoVoiceWebController{
     if(typeof this.config.getToken!=='function'||typeof this.config.getSession!=='function'||typeof this.config.setSession!=='function')throw new Error('QueueGo Voice session adapter ไม่ครบ');
     this.phase='idle';this.call=null;this.caller=false;this.muted=false;this.media=null;this.peer=null;this.remoteAudio=null;this.socket=null;this.socketConnected=false;this.socketRef=2;this.joinRef='1';this.heartbeatTimer=null;this.pendingIce=[];this.remoteDescriptionReady=false;this.offerSent=false;this.watchTimer=null;this.authTimer=null;this.operation=0;this.overlay=null;this.elapsedTimer=null;this.connectedAt=0;this.incomingBusy=false;this.destroyed=false;this.sessionValidation={id:'',at:0};
     this._onVisibility=()=>{if(!document.hidden)this.refreshIncoming().catch(()=>{})};
+    this._onPageHide=()=>this.endActiveCallKeepalive();
+    global.addEventListener('pagehide',this._onPageHide);
   }
 
   notify(message){try{if(typeof this.config.toast==='function')this.config.toast(message);else console.warn(message)}catch(_){console.warn(message)}}
@@ -48,6 +50,34 @@ class QueueGoVoiceWebController{
     const data=await r.json().catch(()=>null);
     if(!r.ok){const e=new Error((data&&(data.message||data.hint||data.error))||'VOICE_RPC_'+r.status);e.status=r.status;throw e;}
     return data;
+  }
+
+  endActiveCallKeepalive(){
+    const call=this.call,session=this.getSession(),token=session?.accessToken;
+    if(!call?.id||!UUID.test(String(session?.sessionId||''))||!token)return;
+    if(!this.caller&&call.status!=='accepted')return;
+    if(!['ringing_out','connecting','connected'].includes(this.phase))return;
+    try{
+      fetch(this.config.url.replace(/\/$/,'')+'/rest/v1/rpc/qg_call_end',{
+        method:'POST',
+        headers:this.headers(token),
+        body:JSON.stringify({p_call_id:call.id,p_session_id:session.sessionId}),
+        keepalive:true
+      }).catch(()=>{});
+    }catch(_){}
+  }
+
+  async startRpcWithRecovery(orderId,target,session){
+    try{
+      return await this.rpc('qg_call_start',{p_order_id:orderId,p_target:target,p_session_id:session.sessionId});
+    }catch(error){
+      if(!/call already active/i.test(String(error?.message||'')))throw error;
+      const active=await this.rpc('qg_call_active',{p_order_id:orderId,p_session_id:session.sessionId});
+      if(!active?.id||!ACTIVE_CALL_STATUSES.has(active.status))throw error;
+      await this.rpc('qg_call_end',{p_call_id:active.id,p_session_id:session.sessionId});
+      await sleep(120);
+      return this.rpc('qg_call_start',{p_order_id:orderId,p_target:target,p_session_id:session.sessionId});
+    }
   }
 
   deviceId(){try{let id=localStorage.getItem(DEVICE_KEY);if(!id){id=uuid();localStorage.setItem(DEVICE_KEY,id)}return id}catch(_){return uuid()}}
@@ -88,7 +118,7 @@ class QueueGoVoiceWebController{
     const op=++this.operation;
     try{
       await this.requestMic();const session=await this.ensureSession();if(op!==this.operation)return;
-      const call=await this.rpc('qg_call_start',{p_order_id:orderId,p_target:target,p_session_id:session.sessionId});if(op!==this.operation)return;
+      const call=await this.startRpcWithRecovery(orderId,target,session);if(op!==this.operation)return;
       this.call=call;this.caller=true;this.phase='ringing_out';this.showOverlay(label||call.callee_name||this.targetLabel(target));this.renderOverlay();
       const until=Date.now()+50000;let accepted=null;
       while(op===this.operation&&Date.now()<until&&this.phase==='ringing_out'){
@@ -232,7 +262,7 @@ class QueueGoVoiceWebController{
   }
 
   startElapsed(){clearInterval(this.elapsedTimer);const tick=()=>{if(!this.overlay||this.phase!=='connected')return;const sec=Math.max(0,Math.floor((Date.now()-this.connectedAt)/1000)),m=String(Math.floor(sec/60)).padStart(2,'0'),s=String(sec%60).padStart(2,'0');const el=this.overlay.querySelector('[data-qg-voice-time]');if(el)el.textContent=m+':'+s};tick();this.elapsedTimer=setInterval(tick,1000)}
-  fail(error){console.warn('QueueGo Voice:',error);this.finish('error',error?.message||'โทรผ่าน QueueGo ไม่สำเร็จ')}
+  fail(error){console.warn('QueueGo Voice:',error);if(this.call?.id&&['ringing_out','connecting','connected'].includes(this.phase))this.safeEndRpc(this.call.id);this.finish('error',error?.message||'โทรผ่าน QueueGo ไม่สำเร็จ')}
 
   finish(phase='ended',message){
     this.phase=phase;clearInterval(this.authTimer);this.authTimer=null;clearInterval(this.elapsedTimer);this.elapsedTimer=null;this.closeRealtime();this.closePeer(true);this.renderOverlay();if(message)this.notify(message);
@@ -241,7 +271,7 @@ class QueueGoVoiceWebController{
 
   closeRealtime(){clearInterval(this.heartbeatTimer);this.heartbeatTimer=null;const socket=this.socket;this.socket=null;this.socketConnected=false;if(socket){try{if(socket.readyState===WebSocket.OPEN&&this.call)socket.send(this.envelope('realtime:'+this.call.topic,'phx_leave',{},'leave',this.joinRef))}catch(_){}try{socket.close(1000,'voice call closed')}catch(_){}}}
   closePeer(stopMedia){try{this.peer?.close()}catch(_){}this.peer=null;this.pendingIce=[];this.remoteDescriptionReady=false;if(this.remoteAudio){try{this.remoteAudio.srcObject=null;this.remoteAudio.remove()}catch(_){}this.remoteAudio=null}if(stopMedia&&this.media){try{this.media.getTracks().forEach(track=>track.stop())}catch(_){}this.media=null}}
-  destroy(){this.destroyed=true;this.stopIncomingWatch();++this.operation;this.finish('idle')}
+  destroy(){this.destroyed=true;this.stopIncomingWatch();global.removeEventListener('pagehide',this._onPageHide);if(this.call?.id&&['ringing_out','connecting','connected'].includes(this.phase))this.safeEndRpc(this.call.id);++this.operation;this.finish('idle')}
 }
 
 function installStyles(){
