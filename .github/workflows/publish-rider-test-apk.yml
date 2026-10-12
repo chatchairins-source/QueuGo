@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - work-native-map-display-20261012
+      - work-native-rider-authenticated-20261012
     paths:
       - .github/workflows/publish-rider-test-apk.yml
   workflow_dispatch:
