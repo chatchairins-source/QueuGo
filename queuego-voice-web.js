@@ -32,7 +32,7 @@ class QueueGoVoiceWebController{
     this.config=config||{};
     if(!this.config.url||!this.config.key)throw new Error('QueueGo Voice config ไม่ครบ');
     if(typeof this.config.getToken!=='function'||typeof this.config.getSession!=='function'||typeof this.config.setSession!=='function')throw new Error('QueueGo Voice session adapter ไม่ครบ');
-    this.phase='idle';this.call=null;this.caller=false;this.muted=false;this.media=null;this.peer=null;this.remoteAudio=null;this.socket=null;this.socketConnected=false;this.socketRef=2;this.joinRef='1';this.pendingIce=[];this.remoteDescriptionReady=false;this.offerSent=false;this.watchTimer=null;this.authTimer=null;this.operation=0;this.overlay=null;this.elapsedTimer=null;this.connectedAt=0;this.incomingBusy=false;this.destroyed=false;
+    this.phase='idle';this.call=null;this.caller=false;this.muted=false;this.media=null;this.peer=null;this.remoteAudio=null;this.socket=null;this.socketConnected=false;this.socketRef=2;this.joinRef='1';this.heartbeatTimer=null;this.pendingIce=[];this.remoteDescriptionReady=false;this.offerSent=false;this.watchTimer=null;this.authTimer=null;this.operation=0;this.overlay=null;this.elapsedTimer=null;this.connectedAt=0;this.incomingBusy=false;this.destroyed=false;
     this._onVisibility=()=>{if(!document.hidden)this.refreshIncoming().catch(()=>{})};
   }
 
@@ -164,7 +164,7 @@ class QueueGoVoiceWebController{
       socket.onmessage=event=>{
         let msg;try{msg=JSON.parse(event.data)}catch(_){return}
         if(msg.topic!=='realtime:'+topic)return;
-        if(msg.event==='phx_reply'&&String(msg.ref)==='1'){if(msg.payload?.status==='ok'){this.socketConnected=true;done(resolve,true)}else done(reject,new Error('Voice Realtime ถูกปฏิเสธ'));return}
+        if(msg.event==='phx_reply'&&String(msg.ref)==='1'){if(msg.payload?.status==='ok'){this.socketConnected=true;clearInterval(this.heartbeatTimer);this.heartbeatTimer=setInterval(()=>{if(this.socket===socket&&socket.readyState===WebSocket.OPEN){try{socket.send(this.envelope('phoenix','heartbeat',{},String(this.socketRef++),null))}catch(_){}}},20000);done(resolve,true)}else done(reject,new Error('Voice Realtime ถูกปฏิเสธ'));return}
         if(msg.event==='broadcast'){const name=msg.payload?.event,payload=msg.payload?.payload;if(SIGNAL_EVENTS.has(name)&&payload&&op===this.operation)this.handleSignal(name,payload).catch(e=>this.fail(e))}
         else if(msg.event==='phx_error'||(msg.event==='system'&&msg.payload?.status==='error')){if(op===this.operation)this.fail(new Error('Voice Realtime ขัดข้อง'))}
       };
@@ -232,7 +232,7 @@ class QueueGoVoiceWebController{
     const el=this.overlay;setTimeout(()=>{if(this.overlay===el&&['ended','error','idle'].includes(this.phase)){el?.remove();this.overlay=null;if(this.phase!=='idle')this.phase='idle';this.call=null;this.caller=false;this.muted=false}},phase==='idle'?0:1200);
   }
 
-  closeRealtime(){const socket=this.socket;this.socket=null;this.socketConnected=false;if(socket){try{if(socket.readyState===WebSocket.OPEN&&this.call)socket.send(this.envelope('realtime:'+this.call.topic,'phx_leave',{},'leave',this.joinRef))}catch(_){}try{socket.close(1000,'voice call closed')}catch(_){}}}
+  closeRealtime(){clearInterval(this.heartbeatTimer);this.heartbeatTimer=null;const socket=this.socket;this.socket=null;this.socketConnected=false;if(socket){try{if(socket.readyState===WebSocket.OPEN&&this.call)socket.send(this.envelope('realtime:'+this.call.topic,'phx_leave',{},'leave',this.joinRef))}catch(_){}try{socket.close(1000,'voice call closed')}catch(_){}}}
   closePeer(stopMedia){try{this.peer?.close()}catch(_){}this.peer=null;this.pendingIce=[];this.remoteDescriptionReady=false;if(this.remoteAudio){try{this.remoteAudio.srcObject=null;this.remoteAudio.remove()}catch(_){}this.remoteAudio=null}if(stopMedia&&this.media){try{this.media.getTracks().forEach(track=>track.stop())}catch(_){}this.media=null}}
   destroy(){this.destroyed=true;this.stopIncomingWatch();++this.operation;this.finish('idle')}
 }
