@@ -378,6 +378,61 @@ def verify_voice_foreground_runtime():
     print("Microphone foreground service background/owned cleanup PASS; real voice audio remains unverified")
 
 
+def capture_map_display_only():
+    """Actual Longdo component frames; no login, sample jobs or GPS injection."""
+    import base64
+    from PIL import Image
+    test_apk = repo / "native-android/rider/build/outputs/apk/androidTest/debug/rider-debug-androidTest.apk"
+    run(adb + ["install", "-r", str(test_apk)])
+    evidence = []
+    for viewport, dimensions, density, granted in (
+        ("phone-denied", "1080x2280", "440", False),
+        ("phone-allowed", "1080x2280", "440", True),
+        ("large-allowed", "1600x2560", "240", True),
+    ):
+        directory = output / viewport
+        directory.mkdir(exist_ok=True)
+        run(adb + ["shell", "am", "force-stop", package])
+        run(adb + ["shell", "wm", "size", dimensions])
+        run(adb + ["shell", "wm", "density", density])
+        if granted:
+            for permission in ("ACCESS_COARSE_LOCATION", "ACCESS_FINE_LOCATION"):
+                run(adb + ["shell", "pm", "grant", package, "android.permission." + permission])
+        run(adb + ["logcat", "-b", "all", "-c"])
+        result = run(adb + ["shell", "am", "instrument", "-w", "-r", "-e", "class",
+                           "com.queuego.rider.RiderMapRuntimeTest",
+                           "com.queuego.rider.test/androidx.test.runner.AndroidJUnitRunner"],
+                     capture_output=True, text=True, timeout=210)
+        (directory / "instrumentation.txt").write_text(result.stdout + result.stderr)
+        assert "OK (1 test)" in result.stdout, "Actual map mount/lifecycle test failed: " + viewport
+        runtime = run(adb + ["logcat", "-d", "-s", "AndroidRuntime:E"], capture_output=True, text=True).stdout
+        (directory / "android-runtime.txt").write_text(runtime)
+        assert_no_package_crash(package, directory / "crash-buffer.txt")
+        screenshots = []
+        for state in ("initial", "resumed", "recreated"):
+            image = directory / (state + ".png")
+            run(adb + ["pull", "/sdcard/Android/data/" + package + "/files/map-runtime/" + state + ".png", str(image)])
+            raw = image.read_bytes()
+            assert raw[:8] == b"\x89PNG\r\n\x1a\n", "Invalid real Android screenshot"
+            preview = directory / (state + ".jpg")
+            with Image.open(image) as bitmap:
+                assert bitmap.size == tuple(map(int, dimensions.split("x"))), "Unexpected actual viewport"
+                bitmap.convert("RGB").resize((540, round(bitmap.height * 540 / bitmap.width))).save(preview, quality=80)
+            # Read-only review transport, alongside original lossless evidence artifacts.
+            print("QUEUEGO_MAP_FRAME " + viewport + "/" + state + " " + base64.b64encode(preview.read_bytes()).decode())
+            screenshots.append({"state": state, "sha256": hashlib.sha256(raw).hexdigest(), "file": str(image.relative_to(output))})
+        evidence.append({"viewport": viewport, "dimensions": dimensions, "density": density,
+                         "location_permission_granted": granted, "map_mount_background_recreation": "PASS",
+                         "screenshots": screenshots})
+    metadata = {"source_head": os.environ["GITHUB_SHA"], "workflow_run": os.environ["GITHUB_RUN_ID"],
+                "apk_sha256": hashlib.sha256(apk.read_bytes()).hexdigest(), "cases": evidence,
+                "physical_device": False, "gps_injected": False, "sample_jobs_created": False,
+                "production_account_or_order_writes": False, "authenticated_home_parity_certified": False,
+                "physical_gps_positioning_certified": False, "visible_tiles_review_required": True}
+    (output / "map-display-metadata.json").write_text(json.dumps(metadata, indent=2) + "\n")
+    print("QUEUEGO_MAP_METADATA " + json.dumps(metadata))
+
+
 with (output / "emulator.log").open("w") as log:
     emulator = subprocess.Popen([emulator_bin, "-avd", name, "-port", "5554", "-accel", "on", "-no-window", "-no-snapshot", "-no-audio", "-gpu", "swiftshader", "-memory", "2048", "-cores", "2"], stdout=log, stderr=subprocess.STDOUT)
     try:
@@ -391,56 +446,59 @@ with (output / "emulator.log").open("w") as log:
             time.sleep(5)
         run(adb + ["install", "-r", str(apk)])
         run(adb + ["logcat", "-b", "all", "-c"])
-        start = run(adb + ["shell", "am", "start", "-W", "-n", component], capture_output=True, text=True)
-        (output / "activity-start.txt").write_text(start.stdout + start.stderr)
-        assert "Status: ok" in start.stdout, "Activity launch did not succeed"
-        time.sleep(10)
-        rider_pids = package_pids(package)
-        activity = run(adb + ["shell", "dumpsys", "activity", "activities"], capture_output=True, text=True).stdout
-        assert any("mResumedActivity" in line and component in line for line in activity.splitlines()), "Rider is not the resumed activity"
-        runtime = android_runtime_for_pids(rider_pids)
-        (output / "android-runtime.txt").write_text(runtime)
-        assert "FATAL EXCEPTION" not in runtime, "QueueGo Rider runtime crash; inspect the evidence"
-        assert_no_package_crash(package, output / "rider-crash-buffer.txt")
-        run(adb + ["shell", "uiautomator", "dump", "/sdcard/queuego-rider-launch.xml"])
-        ui = output / "rider-launch.xml"
-        run(adb + ["pull", "/sdcard/queuego-rider-launch.xml", str(ui)])
-        nodes = list(ET.parse(ui).getroot().iter("node"))
-        assert any(n.get("package") == package for n in nodes), "No Rider UI in the actual accessibility hierarchy"
-        assert any("เข้าสู่ระบบ" in (n.get("text", "") + n.get("content-desc", "")) for n in nodes), "Expected the real fresh-session login screen, not an empty page"
-        image = output / "rider-native-login.png"
-        with image.open("wb") as png:
-            run(adb + ["exec-out", "screencap", "-p"], stdout=png)
-        raw = image.read_bytes()
-        assert raw[:8] == b"\x89PNG\r\n\x1a\n", "Invalid device screenshot"
-        width, height = struct.unpack(">II", raw[16:24])
-        assert (width, height) == (1080, 2280), "Unexpected capture dimensions"
-        metrics = run(adb + ["shell", "wm", "size"], capture_output=True, text=True).stdout
-        metrics += run(adb + ["shell", "wm", "density"], capture_output=True, text=True).stdout
-        (output / "device-metrics.txt").write_text(metrics)
-        api = run(adb + ["shell", "getprop", "ro.build.version.sdk"], capture_output=True, text=True).stdout.strip()
-        metadata = {
-            "source_head": os.environ["GITHUB_SHA"],
-            "workflow_run": os.environ["GITHUB_RUN_ID"],
-            "captured_at_utc": datetime.datetime.now(datetime.timezone.utc).isoformat(),
-            "package": package,
-            "apk_sha256": hashlib.sha256(apk.read_bytes()).hexdigest(),
-            "screenshot_sha256": hashlib.sha256(raw).hexdigest(),
-            "width_px": width, "height_px": height, "android_api": api,
-            "hardware_accelerated_emulator": True,
-            "physical_device": False,
-            "state": "fresh-session login; no credentials entered",
-            "launch_smoke": "PASS",
-            "home_map_captured": False,
-            "visual_parity_certified": False,
-            "production_e2e_certified": False,
-            "physical_fcm_certified": False,
-        }
-        (output / "metadata.json").write_text(json.dumps(metadata, ensure_ascii=False, indent=2) + "\n")
-        print("Actual Rider unauthenticated launch PASS; Home visual / E2E / physical FCM remain unverified")
-        capture_role_viewports()
-        verify_real_home_map_runtime()
-        verify_voice_foreground_runtime()
+        if os.environ.get("QG_MAP_DISPLAY_ONLY") == "1":
+            capture_map_display_only()
+        else:
+            start = run(adb + ["shell", "am", "start", "-W", "-n", component], capture_output=True, text=True)
+            (output / "activity-start.txt").write_text(start.stdout + start.stderr)
+            assert "Status: ok" in start.stdout, "Activity launch did not succeed"
+            time.sleep(10)
+            rider_pids = package_pids(package)
+            activity = run(adb + ["shell", "dumpsys", "activity", "activities"], capture_output=True, text=True).stdout
+            assert any("mResumedActivity" in line and component in line for line in activity.splitlines()), "Rider is not the resumed activity"
+            runtime = android_runtime_for_pids(rider_pids)
+            (output / "android-runtime.txt").write_text(runtime)
+            assert "FATAL EXCEPTION" not in runtime, "QueueGo Rider runtime crash; inspect the evidence"
+            assert_no_package_crash(package, output / "rider-crash-buffer.txt")
+            run(adb + ["shell", "uiautomator", "dump", "/sdcard/queuego-rider-launch.xml"])
+            ui = output / "rider-launch.xml"
+            run(adb + ["pull", "/sdcard/queuego-rider-launch.xml", str(ui)])
+            nodes = list(ET.parse(ui).getroot().iter("node"))
+            assert any(n.get("package") == package for n in nodes), "No Rider UI in the actual accessibility hierarchy"
+            assert any("เข้าสู่ระบบ" in (n.get("text", "") + n.get("content-desc", "")) for n in nodes), "Expected the real fresh-session login screen, not an empty page"
+            image = output / "rider-native-login.png"
+            with image.open("wb") as png:
+                run(adb + ["exec-out", "screencap", "-p"], stdout=png)
+            raw = image.read_bytes()
+            assert raw[:8] == b"\x89PNG\r\n\x1a\n", "Invalid device screenshot"
+            width, height = struct.unpack(">II", raw[16:24])
+            assert (width, height) == (1080, 2280), "Unexpected capture dimensions"
+            metrics = run(adb + ["shell", "wm", "size"], capture_output=True, text=True).stdout
+            metrics += run(adb + ["shell", "wm", "density"], capture_output=True, text=True).stdout
+            (output / "device-metrics.txt").write_text(metrics)
+            api = run(adb + ["shell", "getprop", "ro.build.version.sdk"], capture_output=True, text=True).stdout.strip()
+            metadata = {
+                "source_head": os.environ["GITHUB_SHA"],
+                "workflow_run": os.environ["GITHUB_RUN_ID"],
+                "captured_at_utc": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+                "package": package,
+                "apk_sha256": hashlib.sha256(apk.read_bytes()).hexdigest(),
+                "screenshot_sha256": hashlib.sha256(raw).hexdigest(),
+                "width_px": width, "height_px": height, "android_api": api,
+                "hardware_accelerated_emulator": True,
+                "physical_device": False,
+                "state": "fresh-session login; no credentials entered",
+                "launch_smoke": "PASS",
+                "home_map_captured": False,
+                "visual_parity_certified": False,
+                "production_e2e_certified": False,
+                "physical_fcm_certified": False,
+            }
+            (output / "metadata.json").write_text(json.dumps(metadata, ensure_ascii=False, indent=2) + "\n")
+            print("Actual Rider unauthenticated launch PASS; Home visual / E2E / physical FCM remain unverified")
+            capture_role_viewports()
+            verify_real_home_map_runtime()
+            verify_voice_foreground_runtime()
     finally:
         for arguments, filename in [(["logcat", "-d", "-s", "AndroidRuntime:E"], "android-runtime.txt"), (["logcat", "-b", "crash", "-d"], "crash-buffer.txt")]:
             try:

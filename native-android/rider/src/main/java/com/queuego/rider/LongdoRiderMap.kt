@@ -10,6 +10,10 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -24,6 +28,17 @@ private class RiderLongdoHolder {
     var mapView: MapGLSurfaceView? = null
     var map: com.longdo.api.Map? = null
     var lastOverlayKey: String? = null
+    var disposed = false
+    private var resumed = false
+
+    fun resume() {
+        val view = mapView ?: return
+        if (!disposed && !resumed) { view.onResume(); resumed = true }
+    }
+
+    fun pause() {
+        if (resumed) { mapView?.onPause(); resumed = false }
+    }
 
     fun refreshOverlays(
         context: android.content.Context,
@@ -31,7 +46,10 @@ private class RiderLongdoHolder {
         pickups: List<MarketPickup>
     ) {
         val ldmap = map ?: return
+        if (disposed) return
+        val location = deviceLocation(context)
         val key = buildString {
+            append(location?.first).append(",").append(location?.second).append("|")
             append(job?.id ?: "none")
             append("|")
             append(job?.status ?: "")
@@ -47,7 +65,7 @@ private class RiderLongdoHolder {
 
         runCatching { ldmap.clearPin() }
 
-        deviceLocation(context)?.let { (lat, lon) ->
+        location?.let { (lat, lon) ->
             runCatching {
                 ldmap.pushPin(
                     Pin(
@@ -77,7 +95,7 @@ private class RiderLongdoHolder {
             return
         }
 
-        if (job!!.marketOrderId != null && !job.isDelivering) {
+        if (job.marketOrderId != null && !job.isDelivering) {
             pickups.filter { !it.done }.forEach { addPin(it.latitude, it.longitude) }
         } else {
             addPin(job.pickupLat, job.pickupLng)
@@ -104,7 +122,8 @@ private class RiderLongdoHolder {
     }
 
     fun dispose() {
-        runCatching { mapView?.onPause() }
+        disposed = true
+        runCatching { pause() }
         map = null
         mapView = null
     }
@@ -120,6 +139,8 @@ fun RiderLongdoMap(
 ) {
     val context = LocalContext.current
     val holder = remember { RiderLongdoHolder() }
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
+    val currentReady = rememberUpdatedState(onMapReady)
     val latestJob: MutableState<RiderJob?> = remember { mutableStateOf(job) }
     val latestPickups = remember { mutableStateOf(marketPickups) }
     latestJob.value = job
@@ -133,16 +154,20 @@ fun RiderLongdoMap(
             holder.mapView = view
             view.setListener(object : IMapListener {
                 override fun onMapCreated(map: com.longdo.api.Map) {
-                    holder.map = map
-                    runCatching {
-                        map.setBase(LongdoLayer(ctx, "gray", 0, 1, 20))
+                    view.post {
+                        if (!holder.disposed) {
+                            runCatching {
+                                holder.map = map
+                                map.setBase(LongdoLayer(ctx, "gray", 0, 1, 20))
+                                holder.centerOnDevice(ctx)
+                                holder.refreshOverlays(ctx, latestJob.value, latestPickups.value)
+                            }.onSuccess { currentReady.value(true) }
+                                .onFailure { currentReady.value(false) }
+                        }
                     }
-                    holder.centerOnDevice(ctx)
-                    holder.refreshOverlays(ctx, latestJob.value, latestPickups.value)
-                    onMapReady(true)
                 }
             })
-            runCatching { view.onResume() }
+            if (lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) holder.resume()
             view
         },
         update = {
@@ -158,10 +183,19 @@ fun RiderLongdoMap(
         if (recenterSignal > 0) holder.recenter(context)
     }
 
-    DisposableEffect(Unit) {
+    DisposableEffect(lifecycle) {
+        val observer = LifecycleEventObserver { _, event ->
+            when (event) {
+                Lifecycle.Event.ON_RESUME -> holder.resume()
+                Lifecycle.Event.ON_PAUSE -> holder.pause()
+                else -> Unit
+            }
+        }
+        lifecycle.addObserver(observer)
         onDispose {
+            lifecycle.removeObserver(observer)
             holder.dispose()
-            onMapReady(false)
+            currentReady.value(false)
         }
     }
 }
