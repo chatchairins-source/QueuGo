@@ -5,6 +5,15 @@ import android.content.Intent
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.border
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.foundation.background
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -19,6 +28,8 @@ import androidx.compose.ui.unit.dp
 import com.queuego.shared.QgMuted
 import com.queuego.shared.QgRed
 import com.queuego.shared.QueueGoNativeApi
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -181,9 +192,10 @@ fun RiderSupportScreen(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val api = remember { RiderSupportApi() }
-    var tickets by remember { mutableStateOf<List<RiderSupportTicket>>(emptyList()) }
+    var tickets by remember { mutableStateOf<List<RiderSupportTicket>?>(null) }
+    var ticketLoadError by remember { mutableStateOf<String?>(null) }
     var selectedOrder by remember { mutableStateOf<String?>(null) }
-    var category by remember { mutableStateOf("other") }
+    var category by remember { mutableStateOf(riderSupportCategories.first().first) }
     var details by remember { mutableStateOf("") }
     var evidence by remember { mutableStateOf<Uri?>(null) }
     var busy by remember { mutableStateOf(false) }
@@ -198,42 +210,40 @@ fun RiderSupportScreen(
 
     suspend fun refresh() {
         tickets = api.tickets(auth)
+        ticketLoadError = null
     }
 
     LaunchedEffect(auth.session.accessToken) {
-        runCatching { refresh() }.onFailure { message = it.message ?: "โหลดเรื่องที่แจ้งไม่สำเร็จ" }
+        try { refresh() } catch (e: CancellationException) { throw e } catch (e: Exception) {
+            ticketLoadError = e.message ?: "โหลดเรื่องที่แจ้งไม่สำเร็จ"
+        }
     }
 
+    LaunchedEffect(message) { if (message != null) { delay(4_000); message = null } }
+    val maxHeight = (LocalConfiguration.current.screenHeightDp * .9f).dp
     val orderOptions = buildList {
         activeJob?.let { add(it.id to it.numberLabel) }
         history.take(49).forEach { add(it.id to it.number) }
     }.distinctBy { it.first }
 
-    Column(
-        modifier.fillMaxSize().verticalScroll(rememberScrollState())
-            .padding(horizontal = 12.dp, vertical = 10.dp)
-    ) {
-        Row(Modifier.fillMaxWidth()) {
-            OutlinedButton(onClick = onBack) { Text("ย้อนกลับ") }
-            Spacer(Modifier.width(10.dp))
-            Column {
-                Text("ติดต่อฝ่ายดูแล", fontWeight = FontWeight.Black, style = MaterialTheme.typography.titleLarge)
-                Text("แจ้งปัญหาและติดตามสถานะจากระบบ", color = QgMuted)
+    Column(modifier.fillMaxWidth().heightIn(max = maxHeight).verticalScroll(rememberScrollState()).padding(16.dp)) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Text("ติดต่อฝ่ายดูแล", fontWeight = FontWeight.Bold, fontSize = 18.sp, modifier = Modifier.weight(1f))
+            IconButton(onClick = onBack, modifier = Modifier.size(38.dp).background(Color(0xFFFFF0F3), RoundedCornerShape(99.dp))) {
+                Text("✕", color = QgRed)
             }
         }
+        Text("แจ้งปัญหาและติดตามสถานะจากระบบ", color = QgMuted, fontSize = 12.sp)
         if (!message.isNullOrBlank()) {
             Spacer(Modifier.height(8.dp))
             Text(message!!, color = QgRed)
         }
 
         Spacer(Modifier.height(12.dp))
-        Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(18.dp), colors = CardDefaults.cardColors(containerColor = Color.White)) {
-            Column(Modifier.padding(12.dp)) {
-                Text("แจ้งปัญหา", fontWeight = FontWeight.Black)
-                Spacer(Modifier.height(8.dp))
-
+        Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
+                Text("ออเดอร์ที่เกี่ยวข้อง (ถ้ามี)", fontSize = 10.sp, fontWeight = FontWeight.Bold)
                 Box(Modifier.fillMaxWidth()) {
-                    OutlinedButton(onClick = { orderMenu = true }, modifier = Modifier.fillMaxWidth()) {
+                    OutlinedButton(onClick = { orderMenu = true }, modifier = Modifier.fillMaxWidth().height(50.dp), shape = RoundedCornerShape(13.dp), border = BorderStroke(1.dp, Color(0xFFE6DDE0))) {
                         Text(orderOptions.find { it.first == selectedOrder }?.second ?: "ไม่ระบุออเดอร์")
                     }
                     DropdownMenu(orderMenu, { orderMenu = false }) {
@@ -250,9 +260,9 @@ fun RiderSupportScreen(
                     }
                 }
 
-                Spacer(Modifier.height(8.dp))
+                Text("ประเภทปัญหา", fontSize = 10.sp, fontWeight = FontWeight.Bold)
                 Box(Modifier.fillMaxWidth()) {
-                    OutlinedButton(onClick = { categoryMenu = true }, modifier = Modifier.fillMaxWidth()) {
+                    OutlinedButton(onClick = { categoryMenu = true }, modifier = Modifier.fillMaxWidth().height(50.dp), shape = RoundedCornerShape(13.dp), border = BorderStroke(1.dp, Color(0xFFE6DDE0))) {
                         Text(riderSupportCategories.find { it.first == category }?.second ?: "อื่น ๆ")
                     }
                     DropdownMenu(categoryMenu, { categoryMenu = false }) {
@@ -265,14 +275,15 @@ fun RiderSupportScreen(
                     }
                 }
 
-                Spacer(Modifier.height(8.dp))
-                OutlinedTextField(
-                    value = details,
-                    onValueChange = { if (it.length <= 2000) details = it },
-                    modifier = Modifier.fillMaxWidth(),
-                    label = { Text("รายละเอียด") },
-                    minLines = 4
-                )
+                Text("รายละเอียด", fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                BasicTextField(value = details, onValueChange = { if (it.length <= 2000) details = it },
+                    enabled = !busy, minLines = 2, textStyle = TextStyle(fontSize = 16.sp, color = Color(0xFF17171B)),
+                    cursorBrush = SolidColor(QgRed), modifier = Modifier.fillMaxWidth()
+                        .border(1.dp, Color(0xFFE6DDE0), RoundedCornerShape(13.dp)).padding(10.dp),
+                    decorationBox = { inner -> Box {
+                        if (details.isEmpty()) Text("อธิบายปัญหาอย่างน้อย 10 ตัวอักษร", fontSize = 16.sp, color = QgMuted)
+                        inner()
+                    } })
                 Spacer(Modifier.height(8.dp))
                 OutlinedButton(onClick = { picker.launch("image/*") }, modifier = Modifier.fillMaxWidth()) {
                     Text(if (evidence == null) "แนบรูปหลักฐาน (ถ้ามี)" else "เลือกรูปหลักฐานแล้ว")
@@ -292,6 +303,7 @@ fun RiderSupportScreen(
                                 details = ""
                                 evidence = null
                                 selectedOrder = null
+                                category = riderSupportCategories.first().first
                                 message = "ส่งเรื่องให้ฝ่ายดูแลแล้ว"
                             }.onFailure {
                                 message = it.message ?: "ส่งเรื่องไม่สำเร็จ"
@@ -300,18 +312,22 @@ fun RiderSupportScreen(
                         }
                     },
                     enabled = !busy && details.trim().length >= 10,
-                    modifier = Modifier.fillMaxWidth()
-                ) { Text(if (busy) "กำลังส่ง..." else "ส่งเรื่อง") }
-            }
+                    modifier = Modifier.fillMaxWidth().height(48.dp), shape = RoundedCornerShape(14.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = QgRed)
+                ) { Text(if (busy) "กำลังส่ง..." else "ส่งเรื่อง", fontWeight = FontWeight.Black) }
         }
 
         Spacer(Modifier.height(12.dp))
         Text("เรื่องที่แจ้งไว้", fontWeight = FontWeight.Black)
         Spacer(Modifier.height(7.dp))
-        if (tickets.isEmpty()) {
-            Text("ยังไม่มีเรื่องที่แจ้ง", color = QgMuted)
+        if (ticketLoadError != null) {
+            Text(ticketLoadError!!, color = QgRed, fontSize = 12.sp)
+        } else if (tickets == null) {
+            Text("กำลังโหลด…", color = QgMuted, fontSize = 12.sp)
+        } else if (tickets.orEmpty().isEmpty()) {
+            Text("ยังไม่มีเรื่องที่แจ้ง", color = QgMuted, fontSize = 12.sp)
         } else {
-            tickets.forEach { ticket ->
+            tickets.orEmpty().forEach { ticket ->
                 Card(
                     Modifier.fillMaxWidth().padding(bottom = 8.dp),
                     shape = RoundedCornerShape(17.dp),
@@ -364,6 +380,6 @@ fun RiderSupportScreen(
                 }
             }
         }
-        Spacer(Modifier.height(86.dp))
+        Spacer(Modifier.height(8.dp))
     }
 }

@@ -17,7 +17,7 @@ for(const p of [
   'rider/src/main/java/com/queuego/rider/QueueGoApi.kt',
   'rider/src/main/java/com/queuego/rider/RiderPush.kt',
   'rider/src/main/res/drawable/qg_notification.xml',
-  'rider/src/main/java/com/queuego/rider/RiderHistoryCard.kt',
+  'rider/src/main/java/com/queuego/rider/RiderOrderDetailsSheet.kt',
   'rider/src/main/java/com/queuego/rider/RiderChat.kt',
   'rider/src/main/java/com/queuego/rider/RiderMessagesScreen.kt',
   'rider/src/main/java/com/queuego/rider/RiderEarningsScreen.kt',

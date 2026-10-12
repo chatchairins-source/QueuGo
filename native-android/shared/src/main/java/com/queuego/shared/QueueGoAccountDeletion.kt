@@ -80,7 +80,8 @@ class QueueGoAccountDeletionApi {
 fun QgAccountDeletionSection(
     accessToken: String,
     onDeleted: () -> Unit,
-    pendingChatUserId: String? = null
+    pendingChatUserId: String? = null,
+    onBusyChange: (Boolean) -> Unit = {}
 ) {
     val api = remember { QueueGoAccountDeletionApi() }
     val context = LocalContext.current
@@ -128,6 +129,7 @@ fun QgAccountDeletionSection(
                         onClick = {
                             if (busy) return@Button
                             busy = true
+                            onBusyChange(true)
                             scope.launch {
                                 runCatching { api.delete(accessToken) }
                                     .onSuccess {
@@ -138,6 +140,7 @@ fun QgAccountDeletionSection(
                                     }
                                     .onFailure { message = it.message ?: "ลบบัญชีไม่สำเร็จ" }
                                 busy = false
+                                onBusyChange(false)
                             }
                         },
                         enabled = !busy,

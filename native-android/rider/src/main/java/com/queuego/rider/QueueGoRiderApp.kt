@@ -834,7 +834,7 @@ private fun RiderHome(
                 "earn" -> RiderEarningsScreen(
                     auth = auth,
                     api = api,
-                    history = recentHistory,
+                    onBack = { activeTab = "home" },
                     modifier = Modifier.align(Alignment.TopCenter).widthIn(max = 748.dp).fillMaxSize()
                 )
                 "profile" -> RiderProfileScreen(
@@ -1734,7 +1734,7 @@ private fun VerificationScreen(
                 }
                 Spacer(Modifier.size(44.dp))
             }
-            Column(Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState())
+            Column(Modifier.weight(1f).widthIn(max = 680.dp).fillMaxWidth().align(Alignment.CenterHorizontally).verticalScroll(rememberScrollState())
                 .padding(horizontal = 10.dp).padding(top = if (shortScreen) 7.dp else 9.dp, bottom = 92.dp)) {
                 Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(18.dp), colors = CardDefaults.cardColors(containerColor = Color.White)) {
                     Column(Modifier.padding(horizontal = 11.dp, vertical = if (shortScreen) 9.dp else 12.dp)) {
