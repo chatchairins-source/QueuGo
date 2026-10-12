@@ -502,6 +502,9 @@ class QueueGoApi {
                 }
             }
         }
+        val laundry = runCatching { readLaundryState(auth.session.accessToken) }
+            .getOrDefault(RiderLaundryState())
+
         val profileInfo = RiderProfileInfo(
             profileId = profileId,
             riderName = profile.optString("rider_name").takeIf { it.isNotBlank() },
@@ -511,7 +514,15 @@ class QueueGoApi {
             vehicleStatus = profile.optString("vehicle_status").takeIf { it.isNotBlank() },
             vehicleVerifiedAt = profile.optString("vehicle_verified_at").takeIf { it.isNotBlank() }
         )
-        RiderSnapshot(online, active, offered, marketPickups, profileId, profile = profileInfo)
+        RiderSnapshot(
+            online = online,
+            activeJob = active,
+            offeredJob = offered,
+            marketPickups = marketPickups,
+            riderProfileId = profileId,
+            laundry = laundry,
+            profile = profileInfo
+        )
     }
 
     /** Exact reference lookup remains constrained to this Rider and existing RLS. */
@@ -548,6 +559,45 @@ class QueueGoApi {
             ).optJSONObject(0)
             fun text(key: String): String? = shop?.optString(key)?.takeIf { it.isNotBlank() && it != "null" }
             RiderShopDisplay(text("shop_name"), text("public_logo"))
+        }
+
+    suspend fun setLaundryMode(auth: QueueGoAuth, enabled: Boolean) = withContext(Dispatchers.IO) {
+        rpc(
+            "queuego_set_laundry_rider_mode",
+            auth.session.accessToken,
+            JSONObject().put("p_enabled", enabled)
+        )
+        Unit
+    }
+
+    suspend fun respondLaundryInvite(auth: QueueGoAuth, inviteId: String, accept: Boolean) =
+        withContext(Dispatchers.IO) {
+            rpc(
+                "queuego_laundry_rider_invite_action",
+                auth.session.accessToken,
+                JSONObject().put("p_invite_id", inviteId).put("p_accept", accept)
+            )
+            Unit
+        }
+
+    suspend fun claimLaundryJob(auth: QueueGoAuth, jobId: String) = withContext(Dispatchers.IO) {
+        rpc(
+            "queuego_claim_laundry_job",
+            auth.session.accessToken,
+            JSONObject().put("p_job_id", jobId)
+        )
+        Unit
+    }
+
+    suspend fun laundryJobAction(auth: QueueGoAuth, jobId: String, action: String) =
+        withContext(Dispatchers.IO) {
+            require(action in setOf("arrive", "collect", "deliver")) { "สถานะงานฝากซักไม่ถูกต้อง" }
+            rpc(
+                "queuego_laundry_rider_action",
+                auth.session.accessToken,
+                JSONObject().put("p_job_id", jobId).put("p_action", action)
+            )
+            Unit
         }
 
     suspend fun verificationDetails(auth: QueueGoAuth, orderId: String): RiderVerificationDetails =
@@ -789,6 +839,78 @@ class QueueGoApi {
         } finally {
             connection.disconnect()
         }
+    }
+
+    private fun readLaundryState(token: String): RiderLaundryState {
+        val root = rpc("queuego_laundry_rider_state", token, JSONObject()) as? JSONObject
+            ?: return RiderLaundryState()
+
+        val invitesJson = root.optJSONArray("invites") ?: JSONArray()
+        val invites = buildList {
+            for (i in 0 until invitesJson.length()) {
+                val row = invitesJson.optJSONObject(i) ?: continue
+                val inviteId = row.optString("invite_id")
+                if (inviteId.isBlank()) continue
+                add(
+                    RiderLaundryInvite(
+                        inviteId = inviteId,
+                        hubId = row.optString("hub_id"),
+                        hubName = row.optString("hub_name").ifBlank { "ร้านฝากซัก" },
+                        shopName = row.optString("shop_name").ifBlank { "ร้านฝากซัก" },
+                        status = row.optString("status"),
+                        createdAt = row.optString("created_at").takeIf { it.isNotBlank() && it != "null" }
+                    )
+                )
+            }
+        }
+
+        fun jobs(name: String): List<RiderLaundryJob> {
+            val rows = root.optJSONArray(name) ?: JSONArray()
+            return buildList {
+                for (i in 0 until rows.length()) {
+                    rows.optJSONObject(i)?.let { parseLaundryJob(it) }?.let(::add)
+                }
+            }
+        }
+
+        return RiderLaundryState(
+            featureEnabled = root.optBoolean("feature_enabled", false),
+            modeEnabled = root.optBoolean("mode_enabled", false),
+            invites = invites,
+            activeJob = jobs("active_jobs").firstOrNull(),
+            pool = jobs("pool")
+        )
+    }
+
+    private fun parseLaundryJob(row: JSONObject): RiderLaundryJob? {
+        val jobId = row.optString("job_id")
+        val laundryOrderId = row.optString("laundry_order_id")
+        if (jobId.isBlank() || laundryOrderId.isBlank()) return null
+        fun text(name: String): String? = row.optString(name).takeIf { it.isNotBlank() && it != "null" }
+        return RiderLaundryJob(
+            jobId = jobId,
+            laundryOrderId = laundryOrderId,
+            orderNumber = text("order_number"),
+            leg = row.optString("leg"),
+            jobStatus = row.optString("job_status"),
+            orderStatus = text("order_status"),
+            hubId = text("hub_id"),
+            hubName = text("hub_name"),
+            shopName = text("shop_name"),
+            serviceName = text("service_name"),
+            actualQuantity = row.doubleOrNull("actual_quantity"),
+            pricingType = text("pricing_type"),
+            jobFee = row.doubleOrZero("job_fee"),
+            fromAddress = text("from_address"),
+            fromLatitude = row.doubleOrNull("from_latitude"),
+            fromLongitude = row.doubleOrNull("from_longitude"),
+            toAddress = text("to_address"),
+            toLatitude = row.doubleOrNull("to_latitude"),
+            toLongitude = row.doubleOrNull("to_longitude"),
+            customerAmount = row.doubleOrNull("customer_amount"),
+            actualKg = row.doubleOrNull("actual_kg"),
+            createdAt = text("created_at")
+        )
     }
 
     private fun parseJob(o: JSONObject) = RiderJob(
