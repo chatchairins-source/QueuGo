@@ -448,7 +448,7 @@ def capture_map_display_only():
         for state in ("resumed", "recreated"):
             difference = ImageChops.difference(initial, map_interior(state))
             changed = sum(1 for pixel in difference.getdata() if max(pixel) > 60) / (180 * 240)
-            assert changed < 0.30, "Map camera jumped after lifecycle: " + viewport + "/" + state
+            assert changed < 0.08, "Map camera jumped after lifecycle: " + viewport + "/" + state
         evidence.append({"viewport": viewport, "dimensions": dimensions, "density": density,
                          "location_permission_granted": granted, "map_mount_background_recreation": "PASS",
                          "screenshots": screenshots})
