@@ -16,6 +16,14 @@ import java.net.URL
 import java.nio.charset.StandardCharsets
 import java.util.UUID
 
+internal fun riderNullableText(value: String?): String? =
+    value?.trim()?.takeIf { it.isNotEmpty() && !it.equals("null", ignoreCase = true) }
+
+internal fun riderNullableUuid(value: String?): String? =
+    riderNullableText(value)?.takeIf { candidate ->
+        runCatching { UUID.fromString(candidate) }.isSuccess
+    }
+
 class QueueGoApi {
     companion object {
         private const val BASE_URL = "https://pkypiqhlrmzocysgeqew.supabase.co"
@@ -558,7 +566,7 @@ class QueueGoApi {
                 "/rest/v1/orders?select=shop_id&id=eq." + enc(orderId) + "&limit=1",
                 auth.session.accessToken
             ).optJSONObject(0) ?: return@withContext RiderShopDisplay(null, null)
-            val shopId = order.optString("shop_id").takeIf { it.isNotBlank() && it != "null" }
+            val shopId = riderNullableUuid(order.optString("shop_id"))
                 ?: return@withContext RiderShopDisplay(null, null)
             val shop = requestArray(
                 "GET",
@@ -1044,7 +1052,7 @@ class QueueGoApi {
         deliveryLat = o.doubleOrNull("delivery_latitude"),
         deliveryLng = o.doubleOrNull("delivery_longitude"),
         deliveryFee = o.doubleOrNull("delivery_fee"),
-        marketOrderId = o.optString("market_order_id").takeIf { it.isNotBlank() && !it.equals("null", ignoreCase = true) },
+        marketOrderId = riderNullableUuid(o.optString("market_order_id")),
         arrivedShopAt = o.optString("rider_arrived_shop_at").takeIf { it.isNotBlank() },
         arrivedCustomerAt = o.optString("rider_arrived_customer_at").takeIf { it.isNotBlank() },
         shopCash = o.doubleOrNull("subtotal"),
@@ -1072,8 +1080,8 @@ class QueueGoApi {
 
     private fun firstOrderId(rows: JSONArray): String? {
         for (i in 0 until rows.length()) {
-            val id = rows.optJSONObject(i)?.optString("order_id").orEmpty()
-            if (id.isNotBlank()) return id
+            val id = riderNullableUuid(rows.optJSONObject(i)?.optString("order_id"))
+            if (id != null) return id
         }
         return null
     }
