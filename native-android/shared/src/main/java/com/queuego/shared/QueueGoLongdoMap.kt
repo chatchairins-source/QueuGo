@@ -31,9 +31,11 @@ private class TrackingMapHolder {
     var centered = false
     var disposed = false
     private var resumed = false
+    private var pausePending = false
 
     fun resume() {
         val activeView = view ?: return
+        pausePending = false
         if (!disposed && !resumed) {
             activeView.onResume()
             resumed = true
@@ -42,8 +44,23 @@ private class TrackingMapHolder {
 
     fun pause() {
         if (resumed) {
+            // SDK0.1.8 onPause dereferences renderer.map before calling GLSurfaceView.
+            // Permission dialogs can pause the Activity before the first GL map exists.
+            if (view?.renderer?.map == null) {
+                pausePending = true
+                return
+            }
             view?.onPause()
             resumed = false
+            pausePending = false
+        }
+    }
+
+    fun mapCreated(createdView: MapGLSurfaceView) {
+        if (pausePending && resumed) {
+            createdView.onPause()
+            resumed = false
+            pausePending = false
         }
     }
 
@@ -102,6 +119,7 @@ fun QgLongdoTrackingMap(
                 view.setListener(object : IMapListener {
                     override fun onMapCreated(map: com.longdo.api.Map) {
                         view.post {
+                            holder.mapCreated(view)
                             if (!holder.disposed) {
                                 runCatching {
                                     holder.map = map
@@ -149,9 +167,11 @@ private class LocationPickerMapHolder {
     var map: com.longdo.api.Map? = null
     var disposed = false
     private var resumed = false
+    private var pausePending = false
 
     fun resume() {
         val activeView = view ?: return
+        pausePending = false
         if (!disposed && !resumed) {
             activeView.onResume()
             resumed = true
@@ -160,8 +180,23 @@ private class LocationPickerMapHolder {
 
     fun pause() {
         if (resumed) {
+            // SDK0.1.8 onPause dereferences renderer.map before calling GLSurfaceView.
+            // Permission dialogs can pause the Activity before the first GL map exists.
+            if (view?.renderer?.map == null) {
+                pausePending = true
+                return
+            }
             view?.onPause()
             resumed = false
+            pausePending = false
+        }
+    }
+
+    fun mapCreated(createdView: MapGLSurfaceView) {
+        if (pausePending && resumed) {
+            createdView.onPause()
+            resumed = false
+            pausePending = false
         }
     }
     var lastRecenterToken: Int? = null
@@ -205,6 +240,7 @@ fun QgLongdoLocationPickerMap(
                 view.setListener(object : IMapListener {
                     override fun onMapCreated(map: com.longdo.api.Map) {
                         view.post {
+                            holder.mapCreated(view)
                             if (!holder.disposed) {
                                 runCatching {
                                     holder.map = map

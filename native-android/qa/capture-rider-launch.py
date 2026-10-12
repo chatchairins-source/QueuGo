@@ -184,6 +184,23 @@ def capture_customer_location():
         assert any(n.get("text") == "ใช้ตำแหน่ง GPS ปัจจุบัน" for n in nodes), "GPS action missing"
         with (directory / "picker.png").open("wb") as png:
             run(adb + ["exec-out", "screencap", "-p"], stdout=png)
+        from PIL import Image
+        frame = Image.open(directory / "picker.png").convert("RGB")
+        gray_fraction = sum(1 for pixel in frame.getdata() if pixel == (179, 179, 179)) / (frame.width * frame.height)
+        (directory / "render-metrics.json").write_text(json.dumps({"sdk_blank_gray_fraction": gray_fraction}))
+        assert gray_fraction < 0.01, "Actual Customer map remains blank SDK gray"
+        # Pan the actual rendered map, without saving an address or injecting GPS.
+        gps = next(n for n in nodes if n.get("text") == "ใช้ตำแหน่ง GPS ปัจจุบัน")
+        gb = [int(x) for x in re.findall(r"\d+", gps.get("bounds", ""))]
+        description = next(n for n in nodes if n.get("text", "").startswith("ปักหมุดตำแหน่งรับสินค้า"))
+        db = [int(x) for x in re.findall(r"\d+", description.get("bounds", ""))]
+        map_y = (db[3] + gb[1]) // 2
+        run(adb + ["shell", "input", "swipe", str(frame.width // 2), str(map_y), str(frame.width // 2 + 100), str(map_y), "400"])
+        wait_ui(directory / "panned.xml", lambda ns: any(n.get("text", "").startswith("Lat: ") and "--" not in n.get("text", "") for n in ns))
+        if permission_state == "allowed":
+            run(adb + ["shell", "input", "tap", str((gb[0]+gb[2])//2), str((gb[1]+gb[3])//2)])
+            time.sleep(1)
+            assert_no_package_crash(pkg, directory / "gps-tap-crash.txt")
         run(adb + ["shell", "input", "keyevent", "3"])
         time.sleep(1)
         run(adb + ["shell", "am", "start", "-W", "-n", pkg + "/.MainActivity"], timeout=40)
@@ -545,6 +562,7 @@ with (output / "emulator.log").open("w") as log:
         run(adb + ["logcat", "-b", "all", "-c"])
         if os.environ.get("QG_CUSTOMER_LOCATION_ONLY") == "1":
             capture_customer_location()
+            capture_map_display_only()
         elif os.environ.get("QG_MAP_DISPLAY_ONLY") == "1":
             capture_map_display_only()
         else:

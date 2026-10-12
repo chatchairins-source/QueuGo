@@ -37,6 +37,7 @@ private class RiderLongdoHolder(private val cameraState: MutableState<DoubleArra
     var disposed = false
     private var centeredOnDevice = cameraState.value?.getOrNull(3) == 1.0
     private var resumed = false
+    private var pausePending = false
     private var locationManager: LocationManager? = null
     private var locationListener: LocationListener? = null
     private var locationPermissionMask = 0
@@ -91,6 +92,7 @@ private class RiderLongdoHolder(private val cameraState: MutableState<DoubleArra
 
     fun resume(context: Context) {
         val view = mapView ?: return
+        pausePending = false
         if (!disposed && !resumed) { view.onResume(); resumed = true }
         startLocationUpdates(context)
     }
@@ -103,7 +105,25 @@ private class RiderLongdoHolder(private val cameraState: MutableState<DoubleArra
             }
         }
         stopLocationUpdates()
-        if (resumed) { mapView?.onPause(); resumed = false }
+        if (resumed) {
+            // A permission dialog can pause before SDK0.1.8 creates renderer.map.
+            // SDK onPause dereferences that map; defer until its creation callback.
+            if (mapView?.renderer?.map == null) {
+                pausePending = true
+                return
+            }
+            mapView?.onPause()
+            resumed = false
+            pausePending = false
+        }
+    }
+
+    fun mapCreated(view: MapGLSurfaceView) {
+        if (pausePending && resumed) {
+            view.onPause()
+            resumed = false
+            pausePending = false
+        }
     }
 
     fun refreshOverlays(
@@ -228,6 +248,7 @@ fun RiderLongdoMap(
             view.setListener(object : IMapListener {
                 override fun onMapCreated(map: com.longdo.api.Map) {
                     view.post {
+                        holder.mapCreated(view)
                         if (!holder.disposed) {
                             runCatching {
                                 holder.map = map
