@@ -2347,7 +2347,7 @@ private fun VerificationScreen(
                     RiderCashPanel(
                         title = "จ่ายร้าน",
                         amount = job.shopCash,
-                        note = "แสดงยอดสำหรับจ่ายร้านเท่านั้น · ไม่มีหน้าจอยืนยันเงินเพิ่ม"
+                        note = "จ่ายร้านตามยอดนี้ก่อนรับสินค้า"
                     )
                 }
                 if (!pickup && !marketPickupMode && job.customerCash != null) {
@@ -2355,7 +2355,7 @@ private fun VerificationScreen(
                     RiderCashPanel(
                         title = "เก็บจากลูกค้า",
                         amount = job.customerCash,
-                        note = "เก็บเงินตามยอดนี้ แล้วสไลด์จบงานหลังถ่ายรูป"
+                        note = "เก็บเงินตามยอดนี้จากลูกค้า ก่อนสไลด์ส่งสำเร็จ"
                     )
                 }
                 Spacer(Modifier.height(6.dp))
