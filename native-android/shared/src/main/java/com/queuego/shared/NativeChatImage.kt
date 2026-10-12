@@ -31,13 +31,13 @@ import java.net.URL
 
 private const val CHAT_IMAGE_LIMIT = 5 * 1024 * 1024
 
-private fun InputStream.readChatImage(): ByteArray {
+private fun InputStream.readChatImage(limit: Int = CHAT_IMAGE_LIMIT): ByteArray {
     val result = ByteArrayOutputStream()
     val buffer = ByteArray(8192)
     while (true) {
         val count = read(buffer)
         if (count < 0) break
-        require(result.size() + count <= CHAT_IMAGE_LIMIT) { "รูปต้องไม่เกิน 5 MB" }
+        require(result.size() + count <= limit) { "รูปต้องไม่เกิน ${limit / (1024 * 1024)} MB" }
         result.write(buffer, 0, count)
     }
     return result.toByteArray()
@@ -69,10 +69,11 @@ private fun decodeChatImage(bytes: ByteArray): Bitmap {
 }
 
 /** Same actual photo -> JPEG1000px/70% data URI protocol used by Production Rider web. */
-suspend fun prepareNativeChatImage(resolver: ContentResolver, uri: Uri, allowedMimeTypes: Set<String>? = null): String = withContext(Dispatchers.IO) {
+suspend fun prepareNativeChatImage(resolver: ContentResolver, uri: Uri, allowedMimeTypes: Set<String>? = null,
+    maxInputBytes: Int = CHAT_IMAGE_LIMIT): String = withContext(Dispatchers.IO) {
     val mime = resolver.getType(uri).orEmpty()
     require(mime.startsWith("image/") && (allowedMimeTypes == null || mime in allowedMimeTypes)) { "กรุณาเลือกรูปภาพ JPG, PNG หรือ WebP" }
-    val bytes = resolver.openInputStream(uri)?.use { it.readChatImage() } ?: error("เปิดรูปไม่สำเร็จ")
+    val bytes = resolver.openInputStream(uri)?.use { it.readChatImage(maxInputBytes) } ?: error("เปิดรูปไม่สำเร็จ")
     val decoded = decodeChatImage(bytes)
     val scale = minOf(1f, 1000f / maxOf(decoded.width, decoded.height))
     val scaled = if (scale < 1f) Bitmap.createScaledBitmap(decoded,

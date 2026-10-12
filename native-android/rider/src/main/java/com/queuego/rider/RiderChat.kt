@@ -176,17 +176,17 @@ class RiderChatApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
     suspend fun report(
         auth: QueueGoAuth,
         orderId: String,
-        messageId: String?,
+        evidence: String,
         details: String?,
         reason: String = "other"
     ) {
         require(reason in riderChatReportReasons.keys) { "เหตุผลไม่ถูกต้อง" }
         http.rpc(
-            "qg_report_chat",
+                "qg_report_chat_with_evidence",
             auth.session.accessToken,
             JSONObject()
                 .put("p_order_id", orderId)
-                .put("p_message_id", messageId ?: JSONObject.NULL)
+                .put("p_evidence_data", riderReportEvidence(evidence))
                 .put("p_reason", reason)
                 .put("p_details", details?.trim()?.takeIf { it.isNotBlank() } ?: JSONObject.NULL)
         )
@@ -268,7 +268,9 @@ private fun RiderChatRoom(
     var busy by remember(auth.user.id, auth.session.sessionId, job.id) { mutableStateOf(false) }
     var message by remember(auth.user.id, auth.session.sessionId, job.id) { mutableStateOf<String?>(null) }
     var readError by remember(auth.user.id, auth.session.sessionId, job.id) { mutableStateOf<String?>(null) }
-    var reportMessageId by remember(auth.user.id, auth.session.sessionId, job.id) { mutableStateOf<String?>(null) }
+    var showReport by remember { mutableStateOf(false) }
+    var reportEvidence by remember { mutableStateOf<String?>(null) }
+    var reportError by remember { mutableStateOf<String?>(null) }
     var reportDetails by remember(auth.user.id, auth.session.sessionId, job.id) { mutableStateOf("") }
 
     val lifecycle = LocalLifecycleOwner.current.lifecycle
@@ -394,6 +396,23 @@ private fun RiderChatRoom(
         }
     }
 
+    val reportPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        if (uri != null && !busy && showReport) {
+            busy = true
+            scope.launch {
+                try {
+                    val prepared = com.queuego.shared.prepareNativeChatImage(context.contentResolver, uri,
+                        setOf("image/jpeg", "image/png", "image/webp"), maxInputBytes = 8 * 1024 * 1024)
+                    currentCoroutineContext().ensureActive()
+                    reportEvidence = riderReportEvidence(prepared)
+                    reportError = null
+                } catch (cancelled: CancellationException) { throw cancelled }
+                catch (failure: Exception) { reportError = failure.message ?: "อ่านภาพหลักฐานไม่สำเร็จ" }
+                finally { busy = false }
+            }
+        }
+    }
+
     Column(modifier.fillMaxSize().background(Color(0xFFF8F7F8)).imePadding()) {
         Row(Modifier.fillMaxWidth().heightIn(min = 64.dp).background(Color.White)
             .padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -409,7 +428,7 @@ private fun RiderChatRoom(
                 }, fontSize = 15.sp, fontWeight = FontWeight.Bold)
                 Text(job.numberLabel, color = Color(0xFF8A8387), fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
             }
-            if (job.status.lowercase() !in setOf("completed", "cancelled", "no_rider_available")) {
+            if (riderChatCanCall(job.status, window?.status)) {
                 IconButton(
                     onClick = onCallCustomer,
                     enabled = !busy,
@@ -555,7 +574,7 @@ private fun RiderChatRoom(
                                         )
                                     }
                                     val timeLabel = riderChatTimeLabel(chat.createdAt)
-                                    if (timeLabel.isNotBlank() || !mine) {
+                                    if (timeLabel.isNotBlank()) {
                                         Row(
                                             Modifier.fillMaxWidth().padding(top = 5.dp),
                                             horizontalArrangement = Arrangement.End,
@@ -563,20 +582,6 @@ private fun RiderChatRoom(
                                         ) {
                                             if (timeLabel.isNotBlank()) {
                                                 Text(timeLabel, color = Color(0xFF9A9296), fontSize = 9.sp)
-                                            }
-                                            if (!mine) {
-                                                if (timeLabel.isNotBlank()) Spacer(Modifier.width(10.dp))
-                                                Text(
-                                                    "รายงาน",
-                                                    color = QgRed,
-                                                    fontSize = 9.sp,
-                                                    fontWeight = FontWeight.Bold,
-                                                    modifier = Modifier.clickable {
-                                                        reportMessageId = chat.id
-                                                        reportDetails = ""
-                                                        reportReason = "harassment"
-                                                    }
-                                                )
                                             }
                                         }
                                     }
@@ -589,7 +594,7 @@ private fun RiderChatRoom(
                 if (showSafety) {
                     AlertDialog(onDismissRequest = { showSafety = false }, title = { Text("ความปลอดภัยแชต") },
                         text = { Column {
-                            TextButton(onClick = { showSafety = false; reportMessageId = ""; reportDetails = ""; reportReason = "harassment" }) { Text("รายงานคู่สนทนา") }
+                            TextButton(onClick = { showSafety = false; showReport = true; reportEvidence = null; reportError = null; reportDetails = ""; reportReason = "harassment" }) { Text("รายงานคู่สนทนา") }
                             TextButton(onClick = { showSafety = false; confirmBlock = true }, enabled = !busy) { Text("บล็อกลูกค้า") }
                             TextButton(onClick = { context.startActivity(Intent(Intent.ACTION_VIEW,
                                 Uri.parse("https://chatchairins-source.github.io/QueuGo/docs/community-guidelines.html"))) }) { Text("อ่านกติกาชุมชน QueueGo") }
@@ -609,10 +614,17 @@ private fun RiderChatRoom(
                             }
                         }, enabled = !busy) { Text("บล็อกลูกค้า") } })
                 }
-                if (reportMessageId != null) {
-                    AlertDialog(onDismissRequest = { if (!busy) reportMessageId = null },
-                        title = { Text("รายงานเนื้อหาแชต") },
-                        text = { Column {
+                if (showReport) {
+                    AlertDialog(onDismissRequest = { if (!busy) showReport = false },
+                        title = { Text("รายงานแชต") },
+                        text = { Column(Modifier.verticalScroll(rememberScrollState())) {
+                            Text("แคปหน้าจอส่วนของแชตที่ต้องการรายงาน แล้วแนบภาพด้านล่าง")
+                            OutlinedButton(onClick = { reportPicker.launch("image/*") }, enabled = !busy) {
+                                Text("เลือกภาพแคปหน้าจอ")
+                            }
+                            Text(if (reportEvidence == null) "ยังไม่ได้เลือกภาพ" else "แนบภาพแคปหน้าจอแล้ว")
+                            reportEvidence?.let { RiderChatImage(it) }
+                            reportError?.let { Text(it, color = QgRed) }
                             Text("เหตุผล")
                             androidx.compose.foundation.layout.Box {
                                 OutlinedButton(onClick = { reasonMenu = true }, enabled = !busy) { Text(riderChatReportReasons.getValue(reportReason)) }
@@ -628,18 +640,24 @@ private fun RiderChatRoom(
                                 label = { Text("รายละเอียด") }, minLines = 4, maxLines = 4,
                                 modifier = Modifier.fillMaxWidth(), enabled = !busy)
                         } },
-                        dismissButton = { TextButton(onClick = { reportMessageId = null }, enabled = !busy) { Text("ปิด") } },
+                        dismissButton = { TextButton(onClick = { showReport = false }, enabled = !busy) { Text("ปิด") } },
                         confirmButton = { TextButton(onClick = {
+                            if (busy) return@TextButton
+                            val evidence = reportEvidence
+                            if (evidence == null) {
+                                reportError = "กรุณาแนบภาพแคปหน้าจอแชตก่อนส่งรายงาน"
+                                return@TextButton
+                            }
                             busy = true
-                            val target = reportMessageId
                             scope.launch {
                                 try {
-                                    api.report(auth, job.id, target?.takeIf { it.isNotBlank() }, reportDetails, reportReason)
+                                    api.report(auth, job.id, evidence, reportDetails, reportReason)
                                     currentCoroutineContext().ensureActive()
-                                    message = "ส่งรายงานให้ QueueGo ตรวจสอบแล้ว"
-                                    reportMessageId = null
+                                    message = "ส่งรายงานพร้อมภาพหลักฐานแล้ว"
+                                    showReport = false
+                                    reportEvidence = null
                                 } catch (cancelled: CancellationException) { throw cancelled }
-                                catch (failure: Exception) { message = failure.message ?: "ส่งรายงานไม่สำเร็จ" }
+                                catch (failure: Exception) { reportError = failure.message ?: "ส่งรายงานไม่สำเร็จ" }
                                 finally { busy = false }
                             }
                         }, enabled = !busy) { Text("ส่งรายงาน") } })
