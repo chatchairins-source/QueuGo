@@ -5,6 +5,7 @@ const models=fs.readFileSync('native-android/rider/src/main/java/com/queuego/rid
 const api=fs.readFileSync('native-android/rider/src/main/java/com/queuego/rider/QueueGoApi.kt','utf8');
 const app=fs.readFileSync('native-android/rider/src/main/java/com/queuego/rider/QueueGoRiderApp.kt','utf8');
 const ui=fs.readFileSync('native-android/rider/src/main/java/com/queuego/rider/RiderRouteBundleUi.kt','utf8');
+const map=fs.readFileSync('native-android/rider/src/main/java/com/queuego/rider/LongdoRiderMap.kt','utf8');
 
 assert(models.includes('data class RiderRouteBundleState('),'Native Rider must carry Production route bundle state');
 assert(models.includes('val activeOrders: List<RiderBundleOrder>')&&models.includes('val candidates: List<RiderBundleCandidate>'),
@@ -32,5 +33,11 @@ assert(ui.includes('"รับร้าน')&&ui.includes('"ส่งลูก�
   'Native bundle UI must show pickup/drop order and explicit opt-in claim');
 assert(ui.includes('offer.detourKm')&&ui.includes('offer.addedMinutes')&&ui.includes('offer.riderExtraFee')&&ui.includes('offer.customerSavings'),
   'Native bundle candidate must expose detour, delay, rider extra and customer savings');
+assert(map.includes('bundleOrders: List<RiderBundleOrder> = emptyList()'),
+  'Longdo map must accept the authoritative active bundle stops');
+assert(map.includes('bundleOrders.filter { it.job.status != "cancelled" }.forEach'),
+  'Longdo map must render every live bundle pickup and delivery marker');
+assert(app.includes('bundleOrders = snapshot?.bundle?.activeOrders.orEmpty()'),
+  'Home must pass all active bundle stops to Longdo');
 
 console.log('Native Rider Production route bundle parity contracts: PASS');
