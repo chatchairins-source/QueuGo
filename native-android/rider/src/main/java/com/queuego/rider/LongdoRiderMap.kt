@@ -20,6 +20,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
@@ -29,12 +30,12 @@ import com.longdo.api.MapGLSurfaceView
 import com.longdo.api.Pin
 import com.longdo.api.type.MapLocation
 
-private class RiderLongdoHolder {
+private class RiderLongdoHolder(private val cameraState: MutableState<DoubleArray?>) {
     var mapView: MapGLSurfaceView? = null
     var map: com.longdo.api.Map? = null
     var lastOverlayKey: String? = null
     var disposed = false
-    private var centeredOnDevice = false
+    private var centeredOnDevice = cameraState.value?.getOrNull(3) == 1.0
     private var resumed = false
     private var locationManager: LocationManager? = null
     private var locationListener: LocationListener? = null
@@ -73,7 +74,8 @@ private class RiderLongdoHolder {
             override fun onStatusChanged(provider: String?, status: Int, extras: Bundle?) = Unit
         }
         var registered = false
-        runCatching { manager.getProviders(true) }.getOrDefault(emptyList())
+        // Register available providers even when GPS is toggled off, so enabling it resumes updates.
+        runCatching { manager.getProviders(false) }.getOrDefault(emptyList())
             .filter { it == LocationManager.GPS_PROVIDER || it == LocationManager.NETWORK_PROVIDER }
             .forEach { provider ->
                 runCatching { manager.requestLocationUpdates(provider, 5_000L, 5f, listener, Looper.getMainLooper()) }
@@ -94,6 +96,12 @@ private class RiderLongdoHolder {
     }
 
     fun pause() {
+        map?.let { activeMap ->
+            runCatching {
+                val location = activeMap.getLocation()
+                cameraState.value = doubleArrayOf(location.lon, location.lat, activeMap.getZoom().toDouble(), if (centeredOnDevice) 1.0 else 0.0)
+            }
+        }
         stopLocationUpdates()
         if (resumed) { mapView?.onPause(); resumed = false }
     }
@@ -202,7 +210,8 @@ fun RiderLongdoMap(
     onMapReady: (Boolean) -> Unit
 ) {
     val context = LocalContext.current
-    val holder = remember { RiderLongdoHolder() }
+    val cameraState = rememberSaveable { mutableStateOf<DoubleArray?>(null) }
+    val holder = remember { RiderLongdoHolder(cameraState) }
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     val currentReady = rememberUpdatedState(onMapReady)
     val latestJob: MutableState<RiderJob?> = remember { mutableStateOf(job) }
@@ -226,9 +235,13 @@ fun RiderLongdoMap(
                                     // The SDK defaults to HTTP; keep Android cleartext disabled.
                                     layerURL = "https://ms2.longdo.com/mmmap/img.php"
                                 })
-                                // Production Web's initial camera, never a fabricated GPS marker.
-                                map.setLocation(MapLocation(100.5018, 13.7563))
-                                map.setZoom(13)
+                                map.setDrawCrossSign(false)
+                                // Keep the real viewport across GL-surface or Activity recreation.
+                                // Web's fallback is only the initial camera, never a GPS marker.
+                                val camera = cameraState.value
+                                map.setLocation(MapLocation(camera?.get(0) ?: 100.5018, camera?.get(1) ?: 13.7563))
+                                map.setZoom(camera?.get(2)?.toInt() ?: 13)
+                                holder.lastOverlayKey = null
                                 holder.centerOnDevice(ctx)
                                 holder.refreshOverlays(ctx, latestJob.value, latestPickups.value)
                             }.onSuccess { currentReady.value(true) }

@@ -440,6 +440,15 @@ def capture_map_display_only():
                 colors = interior.resize((180, 240)).quantize(colors=64).getcolors()
                 dominant_fraction = max(count for count, _ in colors) / (180 * 240)
                 assert dominant_fraction < 0.95, "Blank native map pixels: " + viewport + "/" + state
+        from PIL import ImageChops
+        def map_interior(state):
+            with Image.open(directory / (state + ".png")) as bitmap:
+                return bitmap.convert("RGB").crop((0, bitmap.height // 10, bitmap.width, bitmap.height * 9 // 10)).resize((180, 240))
+        initial = map_interior("initial")
+        for state in ("resumed", "recreated"):
+            difference = ImageChops.difference(initial, map_interior(state))
+            changed = sum(1 for pixel in difference.getdata() if max(pixel) > 60) / (180 * 240)
+            assert changed < 0.30, "Map camera jumped after lifecycle: " + viewport + "/" + state
         evidence.append({"viewport": viewport, "dimensions": dimensions, "density": density,
                          "location_permission_granted": granted, "map_mount_background_recreation": "PASS",
                          "screenshots": screenshots})
