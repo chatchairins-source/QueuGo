@@ -1,5 +1,5 @@
 {
-  "reviewed_at": "2026-10-10",
+  "reviewed_at": "2026-10-12",
   "scope": "Native source-surface coverage only; not rendered or physical visual parity certification",
   "physical_visual_parity": "OPEN",
   "roles": {
@@ -208,16 +208,18 @@
         "native-android/rider/src/main/java/com/queuego/rider/RiderEvidencePreview.kt"
       ],
       [
-        "history",
-        "native-android/rider/src/main/java/com/queuego/rider/RiderHistoryCard.kt"
-      ],
-      [
         "chat_image_component",
         "native-android/rider/src/main/java/com/queuego/rider/RiderChatImage.kt",
         "helper",
         "RiderChatImage"
+      ],
+      [
+        "history",
+        "native-android/rider/src/main/java/com/queuego/rider/RiderEarningsScreen.kt",
+        "helper",
+        "รายการงาน"
       ]
     ]
   },
-  "audit_note": "All remaining Screen/App/Map/Chat-named Kotlin candidates were reviewed; API/store/model/validation-only files are intentionally excluded from UI surface coverage."
+  "audit_note": "Rider standalone HistoryCard was intentionally retired; Production history is rendered in RiderEarningsScreen. All remaining Screen/App/Map/Chat-named Kotlin candidates were reviewed; API/store/model/validation-only files are intentionally excluded from UI surface coverage."
 }
