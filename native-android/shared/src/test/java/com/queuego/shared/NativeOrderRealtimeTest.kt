@@ -116,7 +116,13 @@ class NativeOrderRealtimeTest {
         val signals = Channel<Unit>(Channel.UNLIMITED)
         val collector = launch {
             NativeOrderRealtime(server.url("/websocket").toString(), client)
-                .changes("rider-jwt", riderRealtimeSubscriptions("user-1", "profile-2")).collect { signals.send(it) }
+                // Keep the original five-channel transport regression, including historic
+                // Laundry channels. This explicit test fixture does not re-enable dispatch.
+                .changes("rider-jwt", riderRealtimeSubscriptions("user-1", "profile-2") + listOf(
+                    NativeRealtimeSubscription("laundry_rider_jobs", "rider_id=eq.profile-2"),
+                    NativeRealtimeSubscription("laundry_rider_invites", "rider_id=eq.profile-2"),
+                    NativeRealtimeSubscription("laundry_rider_preferences", "rider_id=eq.profile-2")
+                )).collect { signals.send(it) }
         }
         try {
             withTimeout(5_000) { signals.receive() }
@@ -136,6 +142,62 @@ class NativeOrderRealtimeTest {
             assertNull(withTimeoutOrNull(150) { signals.receive() })
             // Every accepted subscription, including all three Laundry tables, invalidates.
             for (id in 10..14) {
+                socket.send(change(id))
+                withTimeout(5_000) { signals.receive() }
+            }
+        } finally {
+            collector.cancel()
+            collector.join()
+            signals.close()
+            client.dispatcher.executorService.shutdown()
+            client.connectionPool.evictAll()
+            server.shutdown()
+        }
+    }
+
+    @Test fun currentRiderChannelRejectsRetiredAndForeignEventIds() = runBlocking {
+        val server = MockWebServer()
+        val sockets = LinkedBlockingQueue<WebSocket>()
+        val joins = LinkedBlockingQueue<JSONObject>()
+        server.enqueue(MockResponse().withWebSocketUpgrade(object : WebSocketListener() {
+            override fun onMessage(socket: WebSocket, text: String) {
+                val message = JSONObject(text)
+                if (message.optString("event") != "phx_join") return
+                joins.add(message)
+                val changes = message.getJSONObject("payload").getJSONObject("config").getJSONArray("postgres_changes")
+                for (i in 0 until changes.length()) changes.getJSONObject(i).put("id", i + 10)
+                socket.send(JSONObject().put("topic", message.getString("topic")).put("event", "phx_reply").put("ref", "1")
+                    .put("payload", JSONObject().put("status", "ok").put("response", JSONObject().put("postgres_changes", changes))).toString())
+                sockets.add(socket)
+            }
+        }))
+        val client = OkHttpClient()
+        val signals = Channel<Unit>(Channel.UNLIMITED)
+        val collector = launch {
+            NativeOrderRealtime(server.url("/websocket").toString(), client)
+                .changes("rider-jwt", riderRealtimeSubscriptions("user-1", "profile-2")).collect { signals.send(it) }
+        }
+        try {
+            withTimeout(5_000) { signals.receive() }
+            val join = joins.poll(1, TimeUnit.SECONDS)
+            assertEquals("rider-jwt", join.getJSONObject("payload").getString("access_token"))
+            val filters = join.getJSONObject("payload").getJSONObject("config").getJSONArray("postgres_changes")
+            assertEquals(2, filters.length())
+            val tables = listOf("notifications", "orders")
+            tables.forEachIndexed { index, table ->
+                assertEquals(table, filters.getJSONObject(index).getString("table"))
+                assertEquals(if (index == 0) "user_id=eq.user-1" else "rider_id=eq.profile-2", filters.getJSONObject(index).getString("filter"))
+            }
+            val socket = sockets.poll(1, TimeUnit.SECONDS)
+            fun change(id: Int) = JSONObject().put("topic", join.getString("topic"))
+                .put("event", "postgres_changes").put("payload", JSONObject().put("ids", org.json.JSONArray().put(id))).toString()
+            // Retired Laundry event IDs and foreign IDs must not invalidate Rider state.
+            for (id in listOf(12, 13, 14, 999)) {
+                socket.send(change(id))
+                assertNull(withTimeoutOrNull(150) { signals.receive() })
+            }
+            // Every owned, acknowledged subscription still invalidates.
+            for (id in 10..11) {
                 socket.send(change(id))
                 withTimeout(5_000) { signals.receive() }
             }
