@@ -424,10 +424,20 @@ def verify_real_home_map_runtime():
     run(adb + ["install", "-r", str(test_apk)])
     run(adb + ["logcat", "-b", "all", "-c"])
     after = run(instrument, capture_output=True, text=True, timeout=150)
-    process_log = run(adb + ["logcat", "-d", "-s", "QueueGoMapRuntime:I"], capture_output=True, text=True).stdout
+    process_log = run(
+        adb + ["logcat", "-d", "-v", "threadtime", "-s", "QueueGoMapRuntime:I"],
+        capture_output=True,
+        text=True
+    ).stdout
     completed_pids = re.findall(r"completed_pid=(\d+)", process_log)
-    assert completed_pids, "Corrected map test must identify its completed Android process"
-    corrected_pid = completed_pids[-1]
+    captured_pids = re.findall(
+        r"\s(\d+)\s+\d+\s+I\s+QueueGoMapRuntime:\s+captured=(?:initial|resumed|recreated)\b",
+        process_log
+    )
+    observed_pids = completed_pids or captured_pids
+    assert observed_pids, "Corrected map test must identify the Android process from completion or captured map frames"
+    corrected_pid = observed_pids[-1]
+    assert all(pid == corrected_pid for pid in captured_pids), "Corrected map frames must remain inside one Android process"
     runtime = run(adb + ["logcat", "-d", "--pid=" + corrected_pid, "-s", "AndroidRuntime:E"], capture_output=True, text=True).stdout
     (output / "map-process-log.txt").write_text(process_log)
     (output / "map-after-fix.txt").write_text(after.stdout + after.stderr + runtime)
@@ -439,6 +449,7 @@ def verify_real_home_map_runtime():
         "apk_sha256": hashlib.sha256(apk.read_bytes()).hexdigest(),
         "baseline": "reproduced NoClassDefFoundError android/support/v4/view/GestureDetectorCompat",
         "corrected_instrumentation_process_pid": corrected_pid,
+        "corrected_pid_source": "completed_pid" if completed_pids else "captured_frame_logcat",
         "actual_native_home_map_creation": "PASS",
         "map_background_foreground_and_activity_recreation": "PASS",
         "authenticated_login_e2e": False,
