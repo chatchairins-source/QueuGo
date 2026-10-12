@@ -787,7 +787,9 @@ private fun RiderHome(
             }
             .onFailure {
                 if (it is CancellationException) throw it
-                loadError = it.message ?: "โหลดงานไม่สำเร็จ"
+                // Never expose raw PostgREST/PostgreSQL implementation errors on the Rider home.
+                // The refresh loop keeps retrying while the last known safe snapshot remains usable.
+                loadError = "กำลังเชื่อมต่อข้อมูลงานใหม่"
             }
     }
 
@@ -1532,11 +1534,25 @@ private fun RiderHome(
                                     runCatching { api.acceptOffer(auth, current.offeredJob) }
                                         .onSuccess {
                                             actionMessage = "รับงานสำเร็จ · กำลังเปิดนำทางไปร้าน"
-                                            val updated = runCatching { api.riderSnapshot(auth) }.getOrNull()
+
+                                            // Claim success is authoritative. Promote the offered job locally before
+                                            // loading optional route/market metadata so a secondary read failure can
+                                            // never leave the Rider staring at an expired offer or a raw DB error.
+                                            val acceptedFallback = current.offeredJob.copy(
+                                                status = "rider_assigned",
+                                                offerExpiresAt = null
+                                            )
+                                            snapshot = current.copy(
+                                                activeJob = acceptedFallback,
+                                                offeredJob = null,
+                                                marketPickups = emptyList()
+                                            )
+
+                                            val updated = runCatching { api.riderSnapshot(auth) }
+                                                .onFailure { if (it is CancellationException) throw it }
+                                                .getOrNull()
                                             if (updated != null) snapshot = updated
-                                            updated?.activeJob?.let { accepted ->
-                                                openNavigation(context, accepted)
-                                            }
+                                            openNavigation(context, updated?.activeJob ?: acceptedFallback)
                                         }
                                         .onFailure {
                                             actionMessage = it.message ?: "รับงานไม่สำเร็จ"
