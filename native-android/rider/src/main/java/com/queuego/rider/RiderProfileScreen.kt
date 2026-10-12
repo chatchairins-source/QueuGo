@@ -102,7 +102,7 @@ fun RiderProfileScreen(
             Spacer(Modifier.height(10.dp))
             RiderProfileSection("การรับงาน") {
                 RiderSettingRow("สถานะรับงาน", "เปิดหรือปิดการรับงานจัดส่ง", R.drawable.qg_rider_flow_loc,
-                    enabled = !busy && snapshot != null && snapshot.activeJob == null, green = true,
+                    enabled = !busy && snapshot != null && snapshot.activeJob == null && snapshot.laundry.activeJob == null, green = true,
                     trailing = { RiderProfilePill(snapshot?.online == true, offlineLabel = "ปิด") }) {
                     val enabled = snapshot?.online != true
                     busy = true
@@ -114,7 +114,53 @@ fun RiderProfileScreen(
                         } catch (e: CancellationException) { throw e } catch (e: Exception) { message = e.message ?: "เปลี่ยนสถานะไม่สำเร็จ" } finally { busy = false }
                     }
                 }
+                RiderSettingDivider()
+                RiderSettingRow(
+                    "รับงานฝากซัก",
+                    if (snapshot?.laundry?.featureEnabled == false)
+                        "Admin ปิดรับงานใหม่ชั่วคราว แต่ตั้งโหมดและรับคำเชิญได้"
+                    else "งานรับ–ส่งผ้าจากร้านที่เข้าร่วม",
+                    R.drawable.qg_rider_flow_jobs,
+                    enabled = !busy && snapshot != null,
+                    trailing = { RiderProfilePill(snapshot?.laundry?.modeEnabled == true, offlineLabel = "ปิด") }
+                ) {
+                    val enabled = snapshot?.laundry?.modeEnabled != true
+                    busy = true
+                    scope.launch {
+                        try {
+                            api.setLaundryMode(auth, enabled)
+                            onSnapshot(api.riderSnapshot(auth))
+                            message = if (enabled) "เปิดรับงานฝากซักแล้ว" else "ปิดรับงานฝากซักแล้ว"
+                        } catch (e: CancellationException) {
+                            throw e
+                        } catch (e: Exception) {
+                            message = e.message ?: "เปลี่ยนโหมดฝากซักไม่สำเร็จ"
+                        } finally {
+                            busy = false
+                        }
+                    }
+                }
             }
+            RiderLaundryInvites(
+                invites = snapshot?.laundry?.invites.orEmpty(),
+                busy = busy,
+                onAction = { invite, accept ->
+                    busy = true
+                    scope.launch {
+                        try {
+                            api.laundryInviteAction(auth, invite.inviteId, accept)
+                            onSnapshot(api.riderSnapshot(auth))
+                            message = if (accept) "ยอมรับเป็น Rider รับ-ส่งผ้าของร้านแล้ว" else "ปฏิเสธคำเชิญแล้ว"
+                        } catch (e: CancellationException) {
+                            throw e
+                        } catch (e: Exception) {
+                            message = e.message ?: "บันทึกคำเชิญไม่สำเร็จ"
+                        } finally {
+                            busy = false
+                        }
+                    }
+                }
+            )
             Spacer(Modifier.height(10.dp))
             RiderProfileSection("บัญชีและช่วยเหลือ") {
                 RiderSettingRow("ตั้งค่าบัญชี", "ชื่อ เบอร์โทร และข้อมูลบัญชี", R.drawable.qg_rider_nav_user, enabled = !busy) {
