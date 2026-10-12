@@ -52,5 +52,8 @@ ok(riderHome.includes('shop = offerShopDisplay')&&riderHome.includes('logoUrl = 
 ok(riderApi.includes('suspend fun offerShopDisplay(')&&riderApi.includes('/rest/v1/orders?select=shop_id&id=eq.')&&
    riderApi.includes('/rest/v1/shop_profiles?select=shop_name,public_logo&id=eq.'),
    'Rider offer identity must come from the authenticated Production order/shop profile path, not mock data');
+ok(riderHome.includes('containerColor = Color(0xFF171519)')&&riderHome.includes('Modifier.widthIn(max = 350.dp)')&&
+   riderHome.includes('QgIcon("location", Modifier.size(19.dp), Color.White)')&&riderHome.includes('color = Color(0xFFCFC9CC)'),
+   'Rider navigation badge must retain the compact dark Production route-badge treatment');
 
 console.log(JSON.stringify({checks,failures:0,scope:'Native Customer/Merchant/Rider source-surface coverage; visual parity remains OPEN'}));
