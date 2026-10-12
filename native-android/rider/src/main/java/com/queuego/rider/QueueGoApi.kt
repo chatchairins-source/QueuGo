@@ -532,6 +532,24 @@ class QueueGoApi {
             children.optJSONObject(0)?.let(::parseJob)
         }
 
+    suspend fun offerShopDisplay(auth: QueueGoAuth, orderId: String): RiderShopDisplay =
+        withContext(Dispatchers.IO) {
+            val order = requestArray(
+                "GET",
+                "/rest/v1/orders?select=shop_id&id=eq." + enc(orderId) + "&limit=1",
+                auth.session.accessToken
+            ).optJSONObject(0) ?: return@withContext RiderShopDisplay(null, null)
+            val shopId = order.optString("shop_id").takeIf { it.isNotBlank() && it != "null" }
+                ?: return@withContext RiderShopDisplay(null, null)
+            val shop = requestArray(
+                "GET",
+                "/rest/v1/shop_profiles?select=shop_name,public_logo&id=eq." + enc(shopId) + "&limit=1",
+                auth.session.accessToken
+            ).optJSONObject(0)
+            fun text(key: String): String? = shop?.optString(key)?.takeIf { it.isNotBlank() && it != "null" }
+            RiderShopDisplay(text("shop_name"), text("public_logo"))
+        }
+
     suspend fun verificationDetails(auth: QueueGoAuth, orderId: String): RiderVerificationDetails =
         withContext(Dispatchers.IO) {
             val order = requestArray("GET", "/rest/v1/orders?select=shop_id,customer_id,note&id=eq." + enc(orderId) + "&limit=1", auth.session.accessToken)
