@@ -32,7 +32,7 @@ class QueueGoVoiceWebController{
     this.config=config||{};
     if(!this.config.url||!this.config.key)throw new Error('QueueGo Voice config ไม่ครบ');
     if(typeof this.config.getToken!=='function'||typeof this.config.getSession!=='function'||typeof this.config.setSession!=='function')throw new Error('QueueGo Voice session adapter ไม่ครบ');
-    this.phase='idle';this.call=null;this.caller=false;this.muted=false;this.media=null;this.peer=null;this.remoteAudio=null;this.socket=null;this.socketConnected=false;this.socketRef=2;this.joinRef='1';this.heartbeatTimer=null;this.pendingIce=[];this.remoteDescriptionReady=false;this.offerSent=false;this.watchTimer=null;this.authTimer=null;this.operation=0;this.overlay=null;this.elapsedTimer=null;this.connectedAt=0;this.incomingBusy=false;this.destroyed=false;
+    this.phase='idle';this.call=null;this.caller=false;this.muted=false;this.media=null;this.peer=null;this.remoteAudio=null;this.socket=null;this.socketConnected=false;this.socketRef=2;this.joinRef='1';this.heartbeatTimer=null;this.pendingIce=[];this.remoteDescriptionReady=false;this.offerSent=false;this.watchTimer=null;this.authTimer=null;this.operation=0;this.overlay=null;this.elapsedTimer=null;this.connectedAt=0;this.incomingBusy=false;this.destroyed=false;this.sessionValidation={id:'',at:0};
     this._onVisibility=()=>{if(!document.hidden)this.refreshIncoming().catch(()=>{})};
   }
 
@@ -56,15 +56,22 @@ class QueueGoVoiceWebController{
     let session=this.getSession();if(!session)throw new Error('กรุณาเข้าสู่ระบบใหม่');
     const token=await this.config.getToken();if(!token)throw new Error('กรุณาเข้าสู่ระบบใหม่');
     if(UUID.test(String(session.sessionId||''))){
-      try{
-        const ok=await this.rpc('check_active_session',{p_session_id:session.sessionId},token);
+      const id=String(session.sessionId),fresh=this.sessionValidation.id===id&&Date.now()-this.sessionValidation.at<15000;
+      if(!fresh){
+        const ok=await this.rpc('check_active_session',{p_session_id:id},token);
         const valid=ok===true||(Array.isArray(ok)&&ok[0]===true)||(ok&&ok.check_active_session===true);
-        if(valid){this.rpc('touch_active_session',{p_session_id:session.sessionId},token).catch(()=>{});return {...session,accessToken:token};}
-      }catch(_){}
+        if(!valid){
+          const error=new Error('บัญชีนี้ถูกใช้งานบนอุปกรณ์อื่น กรุณาเข้าสู่ระบบใหม่');
+          error.status=403;throw error;
+        }
+        this.sessionValidation={id,at:Date.now()};
+        this.rpc('touch_active_session',{p_session_id:id},token).catch(()=>{});
+      }
+      return {...session,accessToken:token};
     }
     const sessionId=uuid();
     await this.rpc('claim_active_session',{p_session_id:sessionId,p_device_id:this.deviceId()},token);
-    session={...session,sessionId,accessToken:token};this.setSession(session);return session;
+    session={...session,sessionId,accessToken:token};this.sessionValidation={id:sessionId,at:Date.now()};this.setSession(session);return session;
   }
 
   async requestMic(){
