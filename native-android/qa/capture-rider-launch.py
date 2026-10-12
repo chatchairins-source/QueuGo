@@ -143,10 +143,9 @@ def capture_customer_market(directory: Path, dimensions: str):
             "populated_cart_e2e_certified": False, "visual_parity_certified": False}
 
 
-def capture_role_viewports():
+def capture_role_viewports(roles=("customer", "merchant", "rider")):
     """Real Android display configurations; no authenticated state or sample orders."""
     evidence = []
-    roles = ("customer", "merchant", "rider")
     for role in roles:
         role_apk = repo / f"native-android/{role}/build/outputs/apk/debug/{role}-debug.apk"
         assert role_apk.is_file(), f"Missing actual {role} APK"
@@ -308,9 +307,17 @@ def capture_role_viewports():
                 runtime = android_runtime_for_pids(role_pids)
                 assert "FATAL EXCEPTION" not in runtime, "Customer registration navigation crashed"
             assert_no_package_crash(pkg, directory / "crash-buffer.txt")
+            if os.environ.get("QG_MAP_DISPLAY_ONLY") == "1" and role == "rider":
+                import base64
+                from PIL import Image
+                for state in ("login", "registration"):
+                    preview = directory / (state + ".jpg")
+                    with Image.open(directory / (state + ".png")) as bitmap:
+                        bitmap.convert("RGB").resize((720, round(bitmap.height * 720 / bitmap.width))).save(preview, quality=85)
+                    print("QUEUEGO_RIDER_FRAME " + viewport + "/" + state + " " + base64.b64encode(preview.read_bytes()).decode())
             evidence.append(item)
     (output / "matrix-metadata.json").write_text(json.dumps(evidence, ensure_ascii=False, indent=2) + "\n")
-    print("Actual three-role phone/small-phone/tablet fresh-session launch matrix PASS; authenticated E2E/visual parity remain unverified")
+    print("Actual " + ",".join(roles) + " phone/small-phone/large-screen fresh-session launch matrix PASS; authenticated E2E/visual parity remain unverified")
 
 
 def verify_real_home_map_runtime():
@@ -459,6 +466,8 @@ def capture_map_display_only():
                 "physical_gps_positioning_certified": False, "visible_tiles_review_required": True}
     (output / "map-display-metadata.json").write_text(json.dumps(metadata, indent=2) + "\n")
     print("QUEUEGO_MAP_METADATA " + json.dumps(metadata))
+    # Continue visual review through the existing real public-screen capture, without submitting forms.
+    capture_role_viewports(("rider",))
 
 
 with (output / "emulator.log").open("w") as log:
