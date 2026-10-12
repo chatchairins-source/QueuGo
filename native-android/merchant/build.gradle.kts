@@ -13,6 +13,7 @@ android {
         applicationId = "com.queuego.merchant"
         minSdk = 26
         targetSdk = 36
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         versionCode = providers.environmentVariable("QG_MERCHANT_VERSION_CODE").orNull?.toInt() ?: 3
         versionName = providers.environmentVariable("QG_NATIVE_VERSION_NAME").orNull ?: "0.3.0-visual-blueprint"
     }
@@ -26,6 +27,9 @@ dependencies {
     implementation(platform("com.google.firebase:firebase-bom:35.0.0"))
     implementation("com.google.firebase:firebase-messaging")
     testImplementation("junit:junit:4.13.2")
+    androidTestImplementation("androidx.test:runner:1.6.2")
+    androidTestImplementation("androidx.test:core:1.6.1")
+    androidTestImplementation("junit:junit:4.13.2")
     testImplementation("org.json:json:20240303")
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.9.4")
     implementation(project(":shared"))
