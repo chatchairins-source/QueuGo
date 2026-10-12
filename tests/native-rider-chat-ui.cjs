@@ -20,7 +20,9 @@ ok(chat.includes('RoundedCornerShape(topStart = 18.dp'),'Rider chat bubbles must
 ok(chat.includes('R.drawable.qg_rider_chat_photo'),'Rider composer must use the native photo icon');
 ok(chat.includes('R.drawable.qg_rider_chat_send'),'Rider composer must use the native send icon');
 ok(!chat.includes('Text("➤"'),'Rider composer must not regress to the text-glyph send button');
-ok(chat.includes('"รายงาน"')&&!chat.includes('"รายงานข้อความ"'),'Incoming-message report action must stay compact');
+ok(chat.includes('"รายงานคู่สนทนา"')&&!chat.includes('"รายงานข้อความ"')&&!chat.includes('reportMessageId = chat.id'),'Reporting must stay in the single chat safety menu');
+ok(chat.includes('"qg_report_chat_with_evidence"')&&chat.includes('"p_evidence_data"'),'Rider must reuse the Production screenshot report RPC');
+ok(chat.includes('if (evidence == null)')&&chat.includes('"กรุณาแนบภาพแคปหน้าจอแชตก่อนส่งรายงาน"'),'Screenshot evidence is required before sending a report');
 
 ok(photo.includes('<vector')&&photo.includes('android:viewportWidth="24"'),'Rider chat photo icon must remain a vector asset');
 ok(send.includes('<vector')&&send.includes('android:viewportWidth="24"'),'Rider chat send icon must remain a vector asset');
