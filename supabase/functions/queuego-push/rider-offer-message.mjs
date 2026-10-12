@@ -26,3 +26,19 @@ export function buildRiderOfferMessage(token, notification, expiresAt, sessionId
     }
   };
 }
+
+// Rider events must be checked by the app even after background logout/session changes.
+export function buildRiderEventMessage(token, notification, sessionId) {
+  return {
+    token,
+    data: {
+      notificationId: String(notification.id || ''), role: 'rider',
+      type: String(notification.type || 'notification'),
+      referenceId: String(notification.reference_id || ''),
+      userId: String(notification.user_id || ''), sessionId: String(sessionId || ''),
+      title: String(notification.title || 'QueueGo Rider').slice(0, 80),
+      message: String(notification.message || 'มีรายการอัปเดต').slice(0, 220)
+    },
+    android: { priority: 'high' }
+  };
+}

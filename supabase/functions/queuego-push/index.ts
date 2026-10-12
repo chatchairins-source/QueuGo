@@ -1,5 +1,5 @@
 import webpush from 'npm:web-push@3.6.7';
-import { isRiderOfferNotification, buildRiderOfferMessage } from './rider-offer-message.mjs';
+import { isRiderOfferNotification, buildRiderOfferMessage, buildRiderEventMessage } from './rider-offer-message.mjs';
 import { createClient } from 'npm:@supabase/supabase-js@2.49.10';
 
 const url=Deno.env.get('SUPABASE_URL')!;
@@ -135,6 +135,9 @@ async function sendNativePush(deviceToken:string,user:any,n:any,sessionId:string
     referenceId:String(n.reference_id||''),
     ...(user.role==='rider'?{userId:String(n.user_id||''),sessionId}: {})
   };
+  const riderMessage=riderOfferMessage||(user.role==='rider'?buildRiderEventMessage(deviceToken,{
+    ...n,title:visibleOrderText(n.title||'QueueGo Rider'),message:visibleOrderText(n.message||'มีรายการอัปเดต')
+  },sessionId):null);
   const response=await fetch(
     'https://fcm.googleapis.com/v1/projects/'+encodeURIComponent(firebase.projectId)+'/messages:send',
     {
@@ -144,7 +147,7 @@ async function sendNativePush(deviceToken:string,user:any,n:any,sessionId:string
         'Content-Type':'application/json'
       },
       body:JSON.stringify({
-        message:riderOfferMessage||{
+        message:riderMessage||{
           token:deviceToken,
           notification:{
             title:visibleOrderText(n.title||'QueueGo').slice(0,80),
