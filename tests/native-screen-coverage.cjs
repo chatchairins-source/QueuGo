@@ -40,4 +40,17 @@ const riderLogin=fs.readFileSync('native-android/rider/src/main/java/com/queuego
 ok(riderLogin.includes('onRegister: () -> Unit'),'Rider registration entry must remain on the Native login surface');
 ok(!/ACTION_VIEW|startActivity\s*\(/.test(riderLogin),'Rider registration must not regress to external-browser signup');
 
+const riderHome=fs.readFileSync('native-android/rider/src/main/java/com/queuego/rider/QueueGoRiderApp.kt','utf8');
+const riderApi=fs.readFileSync('native-android/rider/src/main/java/com/queuego/rider/QueueGoApi.kt','utf8');
+ok(riderHome.includes('private fun RiderBlueprintBrandPill()')&&riderHome.includes('horizontalArrangement = Arrangement.SpaceBetween')&&
+   riderHome.includes('Text("Queue"')&&riderHome.includes('Text("Go", color = QgRed')&&riderHome.includes('Text("Rider", color = Color(0xFF8D8589)'),
+   'Rider Native home topbar must retain the Production QueueGo Rider brand pill beside online status');
+ok(riderHome.includes('shop = offerShopDisplay')&&riderHome.includes('logoUrl = shop?.shopLogo')&&
+   riderHome.includes('value = shop?.shopName ?: job.pickupAddress ?: "ร้านค้า"')&&
+   riderHome.includes('trailing = "รับสินค้า"')&&riderHome.includes('trailing = "ส่งสินค้า"'),
+   'Rider offer card must retain Production shop identity and pickup/delivery row semantics');
+ok(riderApi.includes('suspend fun offerShopDisplay(')&&riderApi.includes('/rest/v1/orders?select=shop_id&id=eq.')&&
+   riderApi.includes('/rest/v1/shop_profiles?select=shop_name,public_logo&id=eq.'),
+   'Rider offer identity must come from the authenticated Production order/shop profile path, not mock data');
+
 console.log(JSON.stringify({checks,failures:0,scope:'Native Customer/Merchant/Rider source-surface coverage; visual parity remains OPEN'}));
