@@ -1001,6 +1001,7 @@ private fun RiderHome(
             modifier = Modifier.fillMaxSize(),
             job = mapJob,
             marketPickups = snapshot?.marketPickups.orEmpty(),
+            bundleOrders = snapshot?.bundle?.activeOrders.orEmpty(),
             navigationState = navigationState,
             recenterSignal = recenterSignal,
             onLocationFix = navigationController::onLocationFix,
