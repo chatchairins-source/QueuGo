@@ -151,6 +151,7 @@ data class RiderLaundryJob(
 }
 
 data class RiderLaundryState(
+    val featureEnabled: Boolean = false,
     val modeEnabled: Boolean = false,
     val invites: List<RiderLaundryInvite> = emptyList(),
     val activeJob: RiderLaundryJob? = null,
