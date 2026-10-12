@@ -19,8 +19,8 @@ ok(customer.includes('.qg-home-original-main .sc{border-radius:18px;padding:10px
 ok(customer.includes('.qg-order-map{height:178px!important'),'Customer order tracking map must avoid oversized vertical space');
 ok(customer.includes('.prim{width:100%;min-height:48px'),'Customer primary actions must retain practical touch height while compact');
 ok(customer.includes('@media(max-height:760px)'),'Customer must have a short-screen compact density mode');
-ok(customer.includes('customer-features.js?v=20261012-chat2'),'Customer feature bundle must refresh after accepted/assigned progress fix and Customer chat rebuild');
-ok(customer.includes('customer-features.css?v=20261012-chat5'),'Customer chat stylesheet must refresh after iOS focus-zoom fix');
+ok(customer.includes('customer-features.js?v=20261012-chat6'),'Customer feature bundle must refresh after single-report chat update');
+ok(customer.includes('customer-features.css?v=20261012-chat6'),'Customer chat stylesheet must refresh after single-report evidence UI update');
 ok(customerCss.includes('.qg-customer-chat-page{position:fixed;z-index:20000;inset:0;height:100dvh'),'Customer chat must be a full-screen overlay like Rider chat');
 ok(customerCss.includes('.qg-customer-chat-compose{position:relative;z-index:2;flex:0 0 auto;width:100%'),'Customer chat composer must stay in the full-screen chat flow instead of floating above bottom navigation');
 ok(customerCss.includes('grid-template-columns:42px minmax(0,1fr) 46px;align-items:center'),'Customer chat photo/input/send controls must share one centered row');

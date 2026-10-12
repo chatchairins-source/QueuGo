@@ -10,6 +10,7 @@ const merchant=read('merchant/index.html');
 const admin=read('admin/index.html');
 const migration=read('supabase/migrations/20261007005927_queuego_ugc_chat_moderation.sql');
 const snapshot=read('supabase/migrations/20261007010709_ugc_report_content_snapshot.sql');
+const evidence=read('supabase/migrations/20261012182500_chat_single_report_evidence.sql');
 const privateHelper=read('supabase/migrations/20261007014905_move_ugc_policy_helper_private.sql');
 const anonPrivilege=read('supabase/migrations/20261007023348_ugc_chat_revoke_anon_table_privileges.sql');
 const deletion=read('QueueGo-Pilot-Account-Deletion-Privacy.sql');
@@ -20,7 +21,8 @@ const rules=read('docs/community-guidelines.html');
 for(const fn of ['state','accept','block','unblock','report']){
   ok(new RegExp('const '+fn+'=|function '+fn+'\\(').test(client),'shared UGC client must expose '+fn);
 }
-ok(client.includes('qg_chat_moderation_state')&&client.includes('qg_report_chat'),'shared UGC client must call server RPCs');
+ok(client.includes('qg_chat_moderation_state')&&client.includes('qg_report_chat')&&client.includes('qg_report_chat_with_evidence'),'shared UGC client must call server RPCs including screenshot evidence');
+ok(client.includes('readEvidence(file)')&&client.includes("canvas.toDataURL('image/jpeg'"),'shared UGC client must compress screenshot evidence before reporting');
 for(const html of [read('index.html'),merchant,rider])ok(html.includes('queuego-ugc.js'),'all role bundles must load shared UGC client');
 ok(customer.includes('customerChatGate')&&customer.includes('customerChatReport')&&customer.includes('customerChatBlock'),'Customer chat must enforce terms/report/block');
 ok(rider.includes('qgChatGateScreen')&&rider.includes('qgOpenRiderChatReport')&&rider.includes('qgOpenRiderChatSafety'),'Rider chat must enforce terms/report/block');
@@ -36,6 +38,10 @@ ok(privateHelper.includes('drop function if exists public.qg_chat_moderation_pos
 ok(/revoke all privileges on table public\.order_chat_messages from anon/i.test(anonPrivilege),'Anonymous Data API role must have no direct order-chat table privileges');
 ok(/grant select, insert, update, delete on table public\.order_chat_messages to authenticated/i.test(anonPrivilege),'Authenticated order-chat table privileges must remain explicit');
 ok(snapshot.includes('content_snapshot')&&snapshot.includes('qg_report_chat'),'reported message evidence must persist after chat cleanup');
+ok(evidence.includes('qg_report_chat_with_evidence')&&evidence.includes("v_snapshot:='__IMG__'||p_evidence_data"),'single chat report RPC must persist screenshot evidence for Admin review');
+ok(!customer.includes('data-chat-report')&&!rider.includes('data-chat-report'),'Customer and Rider chat bubbles must not show a report button on every message');
+ok(customer.includes('customer-chat-report-user')&&rider.includes('data-report'),'Customer and Rider must keep one conversation-level report action');
+ok(customer.includes('customer-chat-report-image')&&rider.includes('qg-rider-report-image'),'single report flow must ask for a screenshot attachment');
 ok(deletion.includes('qg_ugc_terms_acceptances')&&deletion.includes('qg_user_blocks')&&deletion.includes('qg_ugc_reports'),'account deletion must scrub UGC personal state');
 ok(release.includes('queuego-ugc.js')&&release.includes('community-guidelines.html'),'release bundle must include UGC safety assets');
 ok(pilot.includes('queuego-ugc.js')&&pilot.includes('community-guidelines.html'),'Pilot APK bundle must include UGC safety assets');
