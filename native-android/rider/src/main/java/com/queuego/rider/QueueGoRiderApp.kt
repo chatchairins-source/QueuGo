@@ -520,10 +520,11 @@ private fun RiderHome(
     LaunchedEffect(navigationState) {
         navigationSpeaker.speakIfNeeded(navigationState)
     }
-    LaunchedEffect(snapshot?.activeJob, snapshot?.marketPickups) {
-        navigationController.setTarget(
-            snapshot?.activeJob?.let { riderNavigationTarget(it, snapshot?.marketPickups.orEmpty()) }
-        )
+    LaunchedEffect(snapshot?.activeJob, snapshot?.marketPickups, snapshot?.laundry?.activeJob) {
+        val target = snapshot?.activeJob?.let {
+            riderNavigationTarget(it, snapshot?.marketPickups.orEmpty())
+        } ?: snapshot?.laundry?.activeJob?.let(::riderLaundryNavigationTarget)
+        navigationController.setTarget(target)
     }
 
     val locationPermission = rememberLauncherForActivityResult(
@@ -972,7 +973,7 @@ private fun RiderHome(
     }
 
     fun changeOnline(enabled: Boolean) {
-        if (actionBusy || snapshot?.activeJob != null || snapshot == null) return
+        if (actionBusy || snapshot?.activeJob != null || snapshot?.laundry?.activeJob != null || snapshot == null) return
         if (enabled && !ensureLocationPermission()) return
         actionBusy = true
         scope.launch {
@@ -989,7 +990,7 @@ private fun RiderHome(
     }
 
     val shortHome = LocalConfiguration.current.screenHeightDp <= 760
-    val mapJob = snapshot?.activeJob ?: snapshot?.offeredJob
+    val mapJob = snapshot?.activeJob ?: snapshot?.laundry?.activeJob?.asMapJob() ?: snapshot?.offeredJob
 
     BoxWithConstraints(
         modifier
@@ -1016,7 +1017,7 @@ private fun RiderHome(
             RiderBlueprintTopBar(
                 active = auth.user.status == "active",
                 online = snapshot?.online == true,
-                enabled = !actionBusy && snapshot != null && snapshot?.activeJob == null,
+                enabled = !actionBusy && snapshot != null && snapshot?.activeJob == null && snapshot?.laundry?.activeJob == null,
                 onToggle = { changeOnline(snapshot?.online != true) }
             )
             if (navigationState.active) {
@@ -1074,7 +1075,10 @@ private fun RiderHome(
                                         modifier = Modifier.weight(1f).heightIn(min = 38.dp)
                                     ) { Text("ลองเส้นทางอีกครั้ง", fontSize = 8.sp) }
                                     OutlinedButton(
-                                        onClick = { snapshot?.activeJob?.let { openExternalNavigation(context, it) } },
+                                        onClick = {
+                                            (snapshot?.activeJob ?: snapshot?.laundry?.activeJob?.asMapJob())
+                                                ?.let { openExternalNavigation(context, it) }
+                                        },
                                         modifier = Modifier.weight(1f).heightIn(min = 38.dp)
                                     ) { Text("เปิดแผนที่ภายนอก", fontSize = 8.sp) }
                                 }
@@ -1243,7 +1247,7 @@ private fun RiderHome(
             } else if (loadError != null) {
                 Text(loadError!!, color = MaterialTheme.colorScheme.error)
             } else if (current != null) {
-                if (current.activeJob == null && current.offeredJob == null) {
+                if (current.activeJob == null && current.offeredJob == null && current.laundry.activeJob == null) {
                     Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(21.dp),
                         colors = CardDefaults.cardColors(containerColor = Color(0xFCFFFFFF)),
                         border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFEEE5E8))) {
@@ -1290,6 +1294,37 @@ private fun RiderHome(
                 }
                 Spacer(Modifier.height(12.dp))
                 when {
+                    current.laundry.activeJob != null -> {
+                        val laundryJob = current.laundry.activeJob
+                        RiderLaundryActiveCard(
+                            job = laundryJob,
+                            busy = actionBusy,
+                            onNavigate = {
+                                if (!ensureLocationPermission()) return@RiderLaundryActiveCard
+                                openNavigation(context, laundryJob.asMapJob())
+                                recenterSignal += 1
+                            },
+                            onAction = { action ->
+                                actionBusy = true
+                                scope.launch {
+                                    runCatching { api.laundryJobAction(auth, laundryJob.jobId, action) }
+                                        .onSuccess {
+                                            actionMessage = when (action) {
+                                                "arrive" -> "บันทึกถึงจุดรับแล้ว"
+                                                "collect" -> "รับผ้าแล้ว · กำลังนำทางต่อ"
+                                                "deliver" -> "ส่งงานฝากซักถึงปลายทางแล้ว"
+                                                else -> "อัปเดตงานฝากซักแล้ว"
+                                            }
+                                            runCatching { api.riderSnapshot(auth) }
+                                                .onFailure { if (it is CancellationException) throw it }
+                                                .onSuccess { snapshot = it }
+                                        }
+                                        .onFailure { actionMessage = it.message ?: "อัปเดตงานฝากซักไม่สำเร็จ" }
+                                    actionBusy = false
+                                }
+                            }
+                        )
+                    }
                     current.activeJob != null -> {
                         val activeJob = current.activeJob
                         if (activeJob.marketOrderId != null && activeJob.status != "in_progress") {
@@ -1468,6 +1503,31 @@ private fun RiderHome(
                                 }
                                 actionMessage = "ข้อเสนอนี้หมดเวลา ระบบกำลังส่งงานให้ Rider คนถัดไป"
                                 scope.launch { refreshSnapshot() }
+                            }
+                        )
+                    }
+                    current.laundry.pool.isNotEmpty() -> {
+                        RiderLaundryPoolCard(
+                            jobs = current.laundry.pool,
+                            busy = actionBusy,
+                            onClaim = { laundryJob ->
+                                actionBusy = true
+                                scope.launch {
+                                    runCatching { api.claimLaundryJob(auth, laundryJob.jobId) }
+                                        .onSuccess {
+                                            actionMessage = "รับงานฝากซักแล้ว"
+                                            runCatching { api.riderSnapshot(auth) }
+                                                .onFailure { if (it is CancellationException) throw it }
+                                                .onSuccess { updated ->
+                                                    snapshot = updated
+                                                    updated.laundry.activeJob?.let {
+                                                        openNavigation(context, it.asMapJob())
+                                                    }
+                                                }
+                                        }
+                                        .onFailure { actionMessage = it.message ?: "รับงานฝากซักไม่สำเร็จ" }
+                                    actionBusy = false
+                                }
                             }
                         )
                     }
