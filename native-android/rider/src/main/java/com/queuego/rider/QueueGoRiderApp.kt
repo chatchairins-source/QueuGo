@@ -1454,6 +1454,26 @@ private fun RiderHome(
                                 openVerification("delivery", current.activeJob)
                             }
                         )
+                        RiderRouteBundlePanel(
+                            state = current.bundle,
+                            busy = actionBusy,
+                            onClaim = { candidate ->
+                                actionBusy = true
+                                scope.launch {
+                                    runCatching { api.claimRouteBundle(auth, candidate.orderId) }
+                                        .onSuccess {
+                                            actionMessage = "รับงานพ่วงแล้ว"
+                                            runCatching { api.riderSnapshot(auth) }
+                                                .onFailure { if (it is CancellationException) throw it }
+                                                .onSuccess { snapshot = it }
+                                        }
+                                        .onFailure {
+                                            actionMessage = it.message ?: "รับงานพ่วงไม่สำเร็จ"
+                                        }
+                                    actionBusy = false
+                                }
+                            }
+                        )
                     }
                     current.offeredJob != null -> {
                         OfferCard(
