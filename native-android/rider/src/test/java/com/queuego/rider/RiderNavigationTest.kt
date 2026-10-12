@@ -6,6 +6,18 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class RiderNavigationTest {
+    @Test fun gpsJitterDoesNotReplayAlreadySpokenThresholds() {
+        val gate = RiderNavigationVoiceGate()
+        assertTrue(gate.consume("job:shop:0:turn:2:300"))
+        assertTrue(gate.consume("job:shop:0:turn:2:100"))
+        assertEquals(false, gate.consume("job:shop:0:turn:2:300"))
+        assertEquals(false, gate.consume("job:shop:0:turn:2:100"))
+        assertTrue(gate.consume("job:shop:1:turn:2:100"))
+        assertTrue(gate.consume("job:customer:0:turn:2:100"))
+        gate.clear()
+        assertTrue(gate.consume("job:shop:0:turn:2:300"))
+    }
+
     @Test fun turnCodeMatchesLongdoContract() {
         assertEquals("เลี้ยวซ้าย", riderTurnPhrase(0))
         assertEquals("เลี้ยวขวา", riderTurnPhrase(1))

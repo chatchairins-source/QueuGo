@@ -33,6 +33,9 @@ for(const [role,surfaces] of Object.entries(matrix.roles)){
   for(const required of requiredSurfaces[role]||[]) ok(seen.has(required),role+' required UI surface missing from coverage matrix: '+required);
 }
 
+const riderHistory=fs.readFileSync('native-android/rider/src/main/java/com/queuego/rider/RiderEarningsScreen.kt','utf8');
+ok(riderHistory.includes('api.cashLedger(')&&riderHistory.includes('rows.take(30).forEachIndexed')&&riderHistory.includes('รายการงานล่าสุด'),'Rider history must retain the Production ledger reader and rendered job cards');
+
 const riderLogin=fs.readFileSync('native-android/rider/src/main/java/com/queuego/rider/RiderLoginScreen.kt','utf8');
 ok(riderLogin.includes('onRegister: () -> Unit'),'Rider registration entry must remain on the Native login surface');
 ok(!/ACTION_VIEW|startActivity\s*\(/.test(riderLogin),'Rider registration must not regress to external-browser signup');

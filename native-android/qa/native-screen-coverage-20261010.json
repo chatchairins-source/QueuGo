@@ -209,7 +209,7 @@
       ],
       [
         "history",
-        "native-android/rider/src/main/java/com/queuego/rider/RiderHistoryCard.kt"
+        "native-android/rider/src/main/java/com/queuego/rider/RiderEarningsScreen.kt"
       ],
       [
         "chat_image_component",

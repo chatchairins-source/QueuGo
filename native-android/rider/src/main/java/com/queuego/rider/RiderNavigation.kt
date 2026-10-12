@@ -111,7 +111,7 @@ internal data class RiderNavigationState(
 private object RiderNavigationProcessStore {
     private var cachedPlan: RiderRoutePlan? = null
     private var rerouteVersion: Int = 0
-    private var lastVoiceToken: String? = null
+    private val voiceGate = RiderNavigationVoiceGate()
 
     @Synchronized
     fun restore(targetKey: String): Pair<RiderRoutePlan?, Int> =
@@ -125,9 +125,7 @@ private object RiderNavigationProcessStore {
 
     @Synchronized
     fun consumeVoiceToken(token: String): Boolean {
-        if (lastVoiceToken == token) return false
-        lastVoiceToken = token
-        return true
+        return voiceGate.consume(token)
     }
 
     @Synchronized
@@ -135,8 +133,21 @@ private object RiderNavigationProcessStore {
         if (targetKey == null || cachedPlan?.targetKey != targetKey) {
             cachedPlan = null
             rerouteVersion = 0
+            if (targetKey == null) voiceGate.clear()
         }
     }
+}
+
+/** Retained across Activity recreation; jitter must not replay earlier thresholds. */
+internal class RiderNavigationVoiceGate {
+    private val consumed = linkedSetOf<String>()
+    fun consume(token: String): Boolean {
+        if (!consumed.add(token)) return false
+        // Bound process memory without retaining another Rider's navigation after logout.
+        if (consumed.size > 256) consumed.remove(consumed.first())
+        return true
+    }
+    fun clear() { consumed.clear() }
 }
 
 internal class RiderLongdoRouteClient(
@@ -517,7 +528,7 @@ internal fun riderTurnPhrase(turnCode: Int): String? = when (turnCode) {
 internal data class RiderVoiceCue(val token: String, val phrase: String)
 
 internal fun riderVoiceCue(state: RiderNavigationState): RiderVoiceCue? {
-    if (!state.active || !state.routeReady || state.targetKey.isNullOrBlank()) return null
+    if (!state.active || !state.routeReady || state.targetKey.isNullOrBlank() || state.weakGps || state.offRoute) return null
     val targetKey = state.targetKey
     val remaining = state.distanceRemainingMeters
     if (remaining != null && remaining <= 28.0) {
