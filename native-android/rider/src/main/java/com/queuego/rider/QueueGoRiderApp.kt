@@ -2342,6 +2342,22 @@ private fun VerificationScreen(
                 }
 
                 if (pickup) details?.note?.let { RiderProofNote(it, shortScreen) }
+                if (pickup && job.shopCash != null) {
+                    Spacer(Modifier.height(6.dp))
+                    RiderCashPanel(
+                        title = "จ่ายร้าน",
+                        amount = job.shopCash,
+                        note = "แสดงยอดสำหรับจ่ายร้านเท่านั้น · ไม่มีหน้าจอยืนยันเงินเพิ่ม"
+                    )
+                }
+                if (!pickup && !marketPickupMode && job.customerCash != null) {
+                    Spacer(Modifier.height(6.dp))
+                    RiderCashPanel(
+                        title = "เก็บจากลูกค้า",
+                        amount = job.customerCash,
+                        note = "เก็บเงินตามยอดนี้ แล้วสไลด์จบงานหลังถ่ายรูป"
+                    )
+                }
                 Spacer(Modifier.height(6.dp))
                 if (photoUri != null) {
                     Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(18.dp), colors = CardDefaults.cardColors(containerColor = Color.White)) {
@@ -2363,20 +2379,45 @@ private fun VerificationScreen(
                     }
                 }
                 if (message != null) Text(message, color = QgRed, modifier = Modifier.padding(top = 8.dp))
-                Text(if (pickup || marketPickupMode) "ตรวจรายการให้ครบและถ่ายรูปก่อนรับสินค้า" else "ตรวจรายการให้ครบและถ่ายรูปหลักฐานก่อนยืนยันส่ง", fontSize = 8.sp, color = QgMuted, modifier = Modifier.padding(top = 5.dp))
+                Text(
+                    if (pickup || marketPickupMode) "ตรวจรายการให้ครบและถ่ายรูปก่อนรับสินค้า"
+                    else "ตรวจรายการให้ครบ ถ่ายรูปหลักฐาน แล้วสไลด์ให้สุดเพื่อส่งสำเร็จ",
+                    fontSize = 8.sp,
+                    color = QgMuted,
+                    modifier = Modifier.padding(top = 5.dp)
+                )
             }
         }
         Box(Modifier.align(Alignment.BottomCenter).padding(horizontal = 10.dp, vertical = 12.dp).widthIn(max = 660.dp).fillMaxWidth()
             .background(Color(0xFAFFFFFF), RoundedCornerShape(18.dp))) {
-            Button(
-                onClick = if (photoReady) onConfirm else onCamera,
-                enabled = !busy && (!photoReady || previewReady),
-                modifier = Modifier.fillMaxWidth().height(54.dp),
-                shape = RoundedCornerShape(18.dp),
-                colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = Color(0xFFF04455))
-            ) {
-                if (busy) CircularProgressIndicator(Modifier.size(20.dp), color = Color.White)
-                else Text(when { !photoReady && marketPickupMode -> "ถ่ายรูปสินค้าจุดนี้"; !photoReady && pickup -> "ถ่ายรูปสินค้าที่รับ"; !photoReady -> "ถ่ายรูปตอนส่ง"; marketPickupMode -> "ยืนยันรับสินค้าจุดนี้"; pickup -> "ยืนยันรับสินค้า"; else -> "ยืนยันส่งสินค้า" }, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+            if (photoReady && !pickup && !marketPickupMode) {
+                RiderSlideComplete(
+                    enabled = previewReady,
+                    busy = busy,
+                    label = "สไลด์เพื่อส่งสำเร็จ",
+                    onComplete = onConfirm
+                )
+            } else {
+                Button(
+                    onClick = if (photoReady) onConfirm else onCamera,
+                    enabled = !busy && (!photoReady || previewReady),
+                    modifier = Modifier.fillMaxWidth().height(54.dp),
+                    shape = RoundedCornerShape(18.dp),
+                    colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = Color(0xFFF04455))
+                ) {
+                    if (busy) CircularProgressIndicator(Modifier.size(20.dp), color = Color.White)
+                    else Text(
+                        when {
+                            !photoReady && marketPickupMode -> "ถ่ายรูปสินค้าจุดนี้"
+                            !photoReady && pickup -> "ถ่ายรูปสินค้าที่รับ"
+                            !photoReady -> "ถ่ายรูปตอนส่ง"
+                            marketPickupMode -> "ยืนยันรับสินค้าจุดนี้"
+                            else -> "ยืนยันรับสินค้า"
+                        },
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
             }
         }
     }
