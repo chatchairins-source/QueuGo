@@ -2,6 +2,11 @@ package com.queuego.rider
 
 import java.time.Instant
 
+/** Prefer the refreshed order state while a chat remains open after delivery. */
+internal fun riderChatCanCall(initialStatus: String, currentStatus: String?): Boolean =
+    (currentStatus ?: initialStatus).lowercase(java.util.Locale.ROOT) !in
+        setOf("completed", "cancelled", "no_rider_available")
+
 /** Production web riderChatDeadline: delivery timestamp, then existing order updated_at. */
 internal data class RiderChatWindow(val status: String, val deadline: Long?) {
     fun isOpen(now: Long): Boolean = status != "cancelled" &&

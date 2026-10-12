@@ -9,6 +9,19 @@ class RiderChatWindowTest {
     private val delivered = "2026-10-09T06:00:00Z"
     private val at = Instant.parse(delivered).toEpochMilli()
 
+    @Test fun callingStopsWhenOpenChatRefreshesToTerminalOrder() {
+        assertTrue(riderChatCanCall("in_progress", null))
+        assertTrue(riderChatCanCall("in_progress", "arrival"))
+        for (status in listOf("completed", "cancelled", "no_rider_available")) {
+            assertFalse(riderChatCanCall("in_progress", status))
+            assertFalse(riderChatCanCall(status, null))
+            assertFalse(riderChatCanCall("in_progress", status.uppercase(java.util.Locale.ROOT)))
+        }
+        // The post-delivery chat window stays available, but voice calling must stop.
+        assertTrue(riderChatWindow("completed", delivered, delivered).isOpen(at + 60_000))
+        assertFalse(riderChatCanCall("in_progress", "completed"))
+    }
+
     @Test fun completedRoomClosesAtExactThirtyMinuteBoundary() {
         val window = riderChatWindow("completed", delivered, "2026-10-09T06:10:00Z")
         assertTrue(window.isOpen(at + 30 * 60_000L - 1))

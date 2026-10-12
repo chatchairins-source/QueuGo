@@ -409,7 +409,7 @@ private fun RiderChatRoom(
                 }, fontSize = 15.sp, fontWeight = FontWeight.Bold)
                 Text(job.numberLabel, color = Color(0xFF8A8387), fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
             }
-            if (job.status.lowercase() !in setOf("completed", "cancelled", "no_rider_available")) {
+            if (riderChatCanCall(job.status, window?.status)) {
                 IconButton(
                     onClick = onCallCustomer,
                     enabled = !busy,
