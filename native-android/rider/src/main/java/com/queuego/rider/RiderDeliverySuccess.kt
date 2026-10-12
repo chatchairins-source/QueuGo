@@ -55,7 +55,7 @@ internal fun RiderDeliverySuccess(
                 Text(job.numberLabel, color = QgMuted, fontSize = 10.sp)
                 Spacer(Modifier.height(9.dp))
                 Text(
-                    "รายได้ค่าส่ง ฿" + "%.0f".format(job.deliveryFee ?: 0.0),
+                    "รายได้ค่าส่ง ฿" + riderMoneyNumber(job.deliveryFee ?: 0.0),
                     color = QgRed,
                     fontSize = 17.sp,
                     fontWeight = FontWeight.Black
