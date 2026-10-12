@@ -490,7 +490,7 @@ class QueueGoApi {
             val offer = rpcArray("qg_get_my_rider_offer", auth.session.accessToken)
             val offeredId = firstOrderId(offer)
             val offerExpiry = firstOfferExpiry(offer)
-            if (offeredId != null && offerExpiry != null) {
+            if (offeredId != null && riderOfferSecondsLeft(offerExpiry) > 0) {
                 val rows = requestArray(
                     "GET",
                     "/rest/v1/orders?select=" + fields + "&id=eq." + enc(offeredId) + "&limit=1",
@@ -512,6 +512,22 @@ class QueueGoApi {
         )
         RiderSnapshot(online, active, offered, marketPickups, profileId, profile = profileInfo)
     }
+
+    /** Exact reference lookup remains constrained to this Rider and existing RLS. */
+    suspend fun notificationJob(auth: QueueGoAuth, referenceId: String, profileId: String): RiderJob? =
+        withContext(Dispatchers.IO) {
+            if (!referenceId.matches(Regex("[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}")))
+                return@withContext null
+            val fields = "id,order_number,status,pickup_address,pickup_latitude,pickup_longitude," +
+                "delivery_address,delivery_latitude,delivery_longitude,delivery_fee,subtotal,total_amount,market_order_id," +
+                "rider_arrived_shop_at,rider_arrived_customer_at"
+            val base = "/rest/v1/orders?select=" + fields + "&order_type=eq.shopping&rider_id=eq." + enc(profileId)
+            val direct = requestArray("GET", base + "&id=eq." + enc(referenceId) + "&limit=1", auth.session.accessToken)
+            if (direct.length() > 0) return@withContext parseJob(direct.getJSONObject(0))
+            val children = requestArray("GET", base + "&market_order_id=eq." + enc(referenceId) +
+                "&order=created_at.desc&limit=1", auth.session.accessToken)
+            children.optJSONObject(0)?.let(::parseJob)
+        }
 
     suspend fun verificationDetails(auth: QueueGoAuth, orderId: String): RiderVerificationDetails =
         withContext(Dispatchers.IO) {

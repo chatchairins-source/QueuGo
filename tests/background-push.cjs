@@ -134,9 +134,15 @@ ok(merchantNativeApp.includes('LaunchedEffect(pushTarget?.eventId, loading, push
    merchantNativeApp.includes('delay(3_000)')&&merchantNativeApp.includes('pushRetrySignal += 1')&&
    merchantNativeApp.includes('screen = "order"'),
    'Native Merchant system push tap must preserve the referenced order across transient refresh failure and retry after initial data load');
-ok(riderNativeApp.includes('LaunchedEffect(pushTarget?.eventId)')&&
+ok(riderNativeApp.includes('LaunchedEffect(pushTarget?.eventId, auth.user.id, auth.session.accessToken, lifecycle)')&&
    riderNativeApp.includes('activeTab = "home"')&&riderNativeApp.includes('refreshSnapshot()'),
    'Native Rider system push tap must return to live work and refresh the authoritative snapshot');
+ok(riderNativeApp.includes('it.matchesPushReference(target.referenceId)')&&
+   riderNativeApp.includes('api.notificationJob(auth, target.referenceId, it)')&&
+   riderNativeApp.includes('detailJob = referencedJob')&&
+   riderNativeApp.includes('if (loadError != null) error(loadError!!)')&&
+   riderNativeApp.includes('while (!resolved)')&&riderNativeApp.includes('delay(3_000)'),
+   'Rider push must resolve the exact reference and preserve recovery across transient failure');
 ok(riderNativePush.includes('if (type == "voice_call") NotificationCompat.CATEGORY_CALL')&&
    riderNativePush.includes('else NotificationCompat.CATEGORY_MESSAGE'),
    'Native Rider voice_call push must retain call notification semantics while job pushes remain messages');

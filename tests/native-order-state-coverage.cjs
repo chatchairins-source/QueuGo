@@ -98,12 +98,15 @@ ok(riderModels.includes('get() = status == "picked_up" || status == "in_progress
 ok(riderModels.includes('get() = !arrivedShopAt.isNullOrBlank()')&&
    riderModels.includes('get() = !arrivedCustomerAt.isNullOrBlank()'),
   'Rider arrival presentation must derive from persisted arrival timestamps');
-ok(riderUi.includes('if (!job.customerArrived)')&&riderUi.includes('Text("ถึงลูกค้าแล้ว"'),
-  'Rider in-progress state must gate delivery handoff on arrival timestamp');
-ok(riderUi.includes('"picked_up" -> {')&&riderUi.includes('Text("เริ่มจัดส่งและนำทาง"'),
+ok(riderUi.includes('job.status == "in_progress" && job.customerArrived -> onDeliveryVerify()')&&
+   riderUi.includes('job.status == "in_progress" && navigationStarted -> onArriveCustomer()')&&
+   riderUi.includes('job.status == "in_progress" && job.customerArrived -> "ส่งมอบสินค้า"')&&
+   riderUi.includes('job.status == "in_progress" && navigationStarted -> "ถึงลูกค้าแล้ว"'),
+  'Rider in-progress handoff must require persisted arrival and pre-arrival action must record arrival');
+ok(riderUi.includes('job.status == "picked_up" -> onStartDelivery()')&&riderUi.includes('openNavigation(context, current.activeJob.copy(status = "in_progress"))'),
   'Rider picked_up state must explicitly start delivery/navigation');
-ok(riderUi.includes('"in_progress" -> {')&&riderUi.includes('Text("นำทางไปลูกค้า"'),
-  'Rider in_progress state must navigate to the customer');
+ok(riderUi.includes('else -> "นำทางไปลูกค้า"')&&riderUi.includes('else -> { onNavigate(); navigationStarted ='),
+  'Rider delivery state must retain navigation before arrival');
 ok(riderApi.includes('&status=eq.completed&order=updated_at.desc'),
   'Rider history must retain completed jobs outside the active snapshot');
 ok(!riderApi.includes('status=in.(arrived')&&!riderApi.includes(',arrived'),
