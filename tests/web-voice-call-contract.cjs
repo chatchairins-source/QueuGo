@@ -10,6 +10,7 @@ const voice=fs.readFileSync(path.join(root,'queuego-voice-web.js'),'utf8');
 const customer=fs.readFileSync(path.join(root,'customer-features.js'),'utf8');
 const index=fs.readFileSync(path.join(root,'index.html'),'utf8');
 const rider=fs.readFileSync(path.join(root,'rider/index.html'),'utf8');
+const merchant=fs.readFileSync(path.join(root,'merchant/index.html'),'utf8');
 
 assert.doesNotThrow(()=>acorn.parse(voice,{ecmaVersion:'latest',sourceType:'script'}),'shared web voice client must parse');
 
@@ -21,6 +22,8 @@ assert.match(voice,/new RTCPeerConnection\(/,'web voice must use browser WebRTC'
 assert.match(voice,/getUserMedia\(\{audio:/,'web voice must request audio only');
 assert.match(voice,/video:false/,'web voice must not request video');
 assert.match(voice,/private:true/,'voice signaling must use a private Realtime channel');
+assert.match(voice,/heartbeatTimer/,'web Realtime signaling must keep the private channel alive');
+assert.match(voice,/topic:'phoenix'|envelope\('phoenix','heartbeat'/,'web Realtime signaling must send Phoenix heartbeats');
 for(const event of ['ready','offer','answer','ice','hangup'])assert.match(voice,new RegExp("'"+event+"'"),'missing signaling event '+event);
 assert.match(voice,/check_active_session/,'web voice must validate active QueueGo session');
 assert.match(voice,/claim_active_session/,'legacy web sessions must be upgraded through the existing active-session RPC');
@@ -38,5 +41,11 @@ assert.match(rider,/QueueGoVoiceWeb\.create/,'Rider must initialize shared voice
 assert.match(rider,/controller\.start\(order\.id,'customer'/,'Rider must call only the order customer');
 assert.match(rider,/id="chat-call"/,'Rider chat must expose a QueueGo call action');
 assert.match(rider,/id="qg-delivery-call"/,'Rider delivery flow must expose a QueueGo call action');
+
+assert.match(merchant,/\.\.\/queuego-voice-web\.js\?v=20261012-voice1/,'Merchant web must load the shared voice client');
+assert.match(merchant,/QueueGoVoiceWeb\.create/,'Merchant must initialize shared voice controller');
+assert.match(merchant,/controller\.start\(order\.id,'customer'/,'Merchant must call only the order customer');
+assert.match(merchant,/id="qgm-order-call-customer"/,'Merchant active order must expose a QueueGo customer call action');
+assert.match(merchant,/QGM_VOICE_CONTROLLER\.destroy/,'Merchant logout must close voice transport');
 
 console.log('web voice call contract: OK');
