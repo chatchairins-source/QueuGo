@@ -473,7 +473,7 @@ def verify_real_home_map_runtime():
     (output / "map-process-log.txt").write_text(process_log)
     (output / "map-after-fix.txt").write_text(after.stdout + after.stderr + runtime)
     assert after.returncode == 0, "Real map instrumentation returned a non-zero exit code"
-    assert "OK (1 test)" in after.stdout, "Real map instrumentation did not pass"
+    assert "OK (1 test)" in (after.stdout + after.stderr), "Real map instrumentation did not pass"
     assert "FATAL EXCEPTION" not in runtime, "Corrected Home map crashed"
     metadata = {
         "source_head": os.environ["GITHUB_SHA"],
