@@ -401,6 +401,30 @@ def capture_role_viewports(roles=("customer", "merchant", "rider")):
     print("Actual " + ",".join(roles) + " phone/small-phone/large-screen fresh-session launch matrix PASS; authenticated E2E/visual parity remain unverified")
 
 
+def retain_real_map_frames(directory):
+    """Keep available original frames even when instrumentation fails its gates."""
+    directory.mkdir(parents=True, exist_ok=True)
+    copies = []
+    for state in ("initial", "resumed", "recreated"):
+        for suffix in ("-first-frame.png", ".png", "-camera.json"):
+            filename = state + suffix
+            copied = subprocess.run(
+                adb + ["exec-out", "run-as", package, "cat", "files/map-runtime/" + filename],
+                capture_output=True, timeout=10, check=False
+            )
+            # Later lifecycle states may be absent after an early failure.
+            if copied.returncode == 0 and copied.stdout:
+                (directory / filename).write_bytes(copied.stdout)
+                copies.append({"file": filename, "sha256": hashlib.sha256(copied.stdout).hexdigest()})
+    (directory / "capture-manifest.json").write_text(json.dumps({
+        "source_head": os.environ["GITHUB_SHA"],
+        "workflow_run": os.environ["GITHUB_RUN_ID"],
+        "physical_device": False,
+        "visual_parity_certified": False,
+        "files": copies,
+    }, indent=2) + "\n")
+
+
 def verify_real_home_map_runtime():
     """A dependency/lifecycle component test, never an authenticated E2E claim."""
     baseline = output / "baseline"
@@ -422,6 +446,8 @@ def verify_real_home_map_runtime():
     run(adb + ["shell", "am", "force-stop", package])
     run(adb + ["install", "-r", str(apk)])
     run(adb + ["install", "-r", str(test_apk)])
+    # Clear only generated evidence so a partial run cannot retain stale frames.
+    run(adb + ["shell", "run-as", package, "rm", "-rf", "files/map-runtime"])
     run(adb + ["logcat", "-b", "all", "-c"])
     after_process = subprocess.Popen(
         instrument,
@@ -472,6 +498,7 @@ def verify_real_home_map_runtime():
     runtime = run(adb + ["logcat", "-d", "--pid=" + corrected_pid, "-s", "AndroidRuntime:E"], capture_output=True, text=True).stdout
     (output / "map-process-log.txt").write_text(process_log)
     (output / "map-after-fix.txt").write_text(after.stdout + after.stderr + runtime)
+    retain_real_map_frames(output / "map-frames")
     assert after.returncode == 0, "Real map instrumentation returned a non-zero exit code"
     assert "OK (1 test)" in (after.stdout + after.stderr), "Real map instrumentation did not pass"
     assert "FATAL EXCEPTION" not in runtime, "Corrected Home map crashed"
