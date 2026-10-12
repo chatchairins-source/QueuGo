@@ -176,6 +176,58 @@ internal fun RiderLaundryJob.asMapJob(): RiderJob = RiderJob(
     customerCash = customerAmount
 )
 
+data class RiderBundleOrder(
+    val bundleId: String,
+    val job: RiderJob,
+    val bundleSequence: Int,
+    val dropRank: Int,
+    val shopId: String?,
+    val shopName: String,
+    val originalDeliveryFee: Double,
+    val customerSavings: Double,
+    val riderExtraFee: Double,
+    val detourKm: Double,
+    val addedMinutes: Int,
+    val routeSequence: String?
+)
+
+data class RiderBundleCandidate(
+    val orderId: String,
+    val orderNumber: String?,
+    val shopId: String?,
+    val shopName: String,
+    val pickupAddress: String?,
+    val deliveryAddress: String?,
+    val pickupLat: Double?,
+    val pickupLng: Double?,
+    val deliveryLat: Double?,
+    val deliveryLng: Double?,
+    val detourKm: Double,
+    val addedMinutes: Int,
+    val standaloneDeliveryFee: Double,
+    val bundledDeliveryFee: Double,
+    val customerSavings: Double,
+    val riderExtraFee: Double,
+    val routeSequence: String?
+) {
+    val numberLabel: String
+        get() = nativeOrderNumber(orderNumber)
+}
+
+data class RiderRouteBundleState(
+    val activeOrders: List<RiderBundleOrder> = emptyList(),
+    val candidates: List<RiderBundleCandidate> = emptyList()
+) {
+    fun currentOrder(): RiderBundleOrder? {
+        val live = activeOrders.filter { it.job.status !in setOf("cancelled", "completed") }
+        if (live.isEmpty()) return null
+        live.firstOrNull { it.job.status == "in_progress" }?.let { return it }
+        live.filter { it.job.status in setOf("rider_assigned", "preparing", "ready", "assigned") }
+            .minByOrNull { it.bundleSequence }?.let { return it }
+        return live.filter { it.job.status == "picked_up" }.minByOrNull { it.dropRank } ?: live.first()
+    }
+}
+
 data class RiderProfileInfo(
     val profileId: String,
     val riderName: String?,
@@ -206,6 +258,7 @@ data class RiderSnapshot(
     val marketPickups: List<MarketPickup> = emptyList(),
     val riderProfileId: String? = null,
     val laundry: RiderLaundryState = RiderLaundryState(),
+    val bundle: RiderRouteBundleState = RiderRouteBundleState(),
     val profile: RiderProfileInfo? = null
 )
 
