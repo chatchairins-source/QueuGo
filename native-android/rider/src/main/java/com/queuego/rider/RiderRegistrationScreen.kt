@@ -22,6 +22,7 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -119,16 +120,16 @@ internal fun RiderRegistrationScreen(
             Spacer(Modifier.height(16.dp))
             Surface(Modifier.widthIn(max=820.dp).fillMaxWidth(),shape=RoundedCornerShape(if(wide)28.dp else 22.dp),
                 color=Color.White,border=BorderStroke(1.dp,RegistrationLine)) {
-                Column(Modifier.padding(18.dp)) {
+                Column(Modifier.padding(19.dp)) {
                     Row(Modifier.fillMaxWidth().padding(top=4.dp,bottom=22.dp),horizontalArrangement=Arrangement.SpaceBetween) {
                         listOf("ส่วนตัว","รถและพื้นที่","เอกสาร","ยืนยัน").forEachIndexed { index,label ->
                             if(index>0) Box(Modifier.weight(1f).padding(top=13.dp).height(2.dp).background(RegistrationLine))
                             Column(horizontalAlignment=Alignment.CenterHorizontally) {
                                 Box(Modifier.size(28.dp).background(if(index<=step)RegistrationRed else Color(0xFFF3EDEF),RoundedCornerShape(50)),contentAlignment=Alignment.Center) {
-                                    Text((index+1).toString(),fontSize=9.sp,fontWeight=FontWeight.Bold,color=if(index<=step)Color.White else Color(0xFFAAA0A5))
+                                    Text((index+1).toString(),fontSize=9.sp,lineHeight=14.sp,fontWeight=FontWeight.Bold,color=if(index<=step)Color.White else Color(0xFFAAA0A5))
                                 }
                                 Spacer(Modifier.height(5.dp))
-                                Text(label,fontSize=9.sp,color=if(index==step)RegistrationRed else Color(0xFFAAA0A5))
+                                Text(label,fontSize=9.sp,lineHeight=14.sp,color=if(index==step)RegistrationRed else Color(0xFFAAA0A5))
                             }
                         }
                     }
@@ -146,29 +147,30 @@ internal fun RiderRegistrationScreen(
                                 picker.launch(if(key=="rr-photo"||key=="rr-vehicle-photo")arrayOf("image/*")else arrayOf("image/*","application/pdf"))
                             }
                             Text(if(key in documents)"เลือกไฟล์แล้ว" else if(face)"ยังไม่ได้เลือกรูป" else "ยังไม่ได้เลือกไฟล์",
-                                fontSize=10.sp,color=Color(0xFF77747B),modifier=Modifier.padding(vertical=8.dp))
+                                fontSize=10.sp,lineHeight=15.sp,color=Color(0xFF77747B),modifier=Modifier.padding(vertical=8.dp))
                             if(!face)documents[key]?.let { RegistrationDocumentPreview(it) }
-                            if(face)Text("JPG/PNG ไม่เกิน 8 MB • เห็นใบหน้าชัดเจน",fontSize=13.sp)
+                            if(face)Text("JPG/PNG ไม่เกิน 8 MB • เห็นใบหน้าชัดเจน",fontSize=13.sp,lineHeight=20.sp)
                         }
                     }
+                    val panelModifier = if (wide) Modifier.fillMaxHeight() else Modifier
                     val panels: List<@Composable () -> Unit> = when(step) {
                         0 -> listOf(
-                            { RegistrationPanel("รูปโปรไฟล์",required=true) { upload("rr-photo") } },
-                            { RegistrationPanel("ข้อมูลส่วนตัว") {
+                            { RegistrationPanel("รูปโปรไฟล์",required=true,modifier=panelModifier) { upload("rr-photo") } },
+                            { RegistrationPanel("ข้อมูลส่วนตัว",modifier=panelModifier) {
                                 RegistrationField("ชื่อ - นามสกุล *","เช่น นายสมชาย ใจดี",form.name,locked) { form=form.copy(name=it) }
                                 RegistrationField("เบอร์โทรศัพท์ *","0812345678",form.phone,locked,type=KeyboardType.Phone) { form=form.copy(phone=it) }
                                 if(!resuming) RegistrationField("รหัสผ่าน *","อย่างน้อย 12 ตัว: A-Z, a-z, ตัวเลข, สัญลักษณ์",password,locked,secret=true) { password=it }
                                 RegistrationField("อีเมล (ถ้ามี)","rider@example.com",form.email,locked,type=KeyboardType.Email) { form=form.copy(email=it) }
                             } })
                         1 -> listOf(
-                            { RegistrationPanel("ยานพาหนะ") {
+                            { RegistrationPanel("ยานพาหนะ",modifier=panelModifier) {
                                 RegistrationSelect("ประเภทพาหนะ *",form.vehicle,listOf("motorcycle" to "รถจักรยานยนต์","car" to "รถยนต์","bicycle" to "จักรยาน","saleng" to "รถซาเล้ง"),locked) { form=form.copy(vehicle=it) }
                                 RegistrationField("ความจุรับงานตลาด (กก.)","เช่น 20",form.capacity,locked,type=KeyboardType.Decimal) { form=form.copy(capacity=it) }
                                 RegistrationField("ทะเบียนรถ *","เช่น กข 1234 บุรีรัมย์",form.plate,locked) { form=form.copy(plate=it) }
                                 RegistrationField("ยี่ห้อ","เช่น Honda",form.make,locked) { form=form.copy(make=it) }
                                 RegistrationField("รุ่น","เช่น Wave",form.model,locked) { form=form.copy(model=it) }
                             } },
-                            { RegistrationPanel("พื้นที่ให้บริการ") {
+                            { RegistrationPanel("พื้นที่ให้บริการ",modifier=panelModifier) {
                                 val provinces=listOf("กรุงเทพมหานคร","บุรีรัมย์","นครราชสีมา","ขอนแก่น","เชียงใหม่","ชลบุรี","อุบลราชธานี","สุรินทร์","ศรีสะเกษ","มหาสารคาม","ร้อยเอ็ด","สระบุรี","ปทุมธานี","นนทบุรี","สมุทรปราการ","ภูเก็ต")
                                 RegistrationSelect("จังหวัด *",form.province,listOf("" to "เลือกจังหวัด")+provinces.map{it to it},locked) { form=form.copy(province=it) }
                                 RegistrationField("อำเภอ/เขต *","เช่น เมืองบุรีรัมย์",form.district,locked) { form=form.copy(district=it) }
@@ -182,8 +184,8 @@ internal fun RiderRegistrationScreen(
                                 modifier=Modifier.background(Color(0xFFFFF2F4),RoundedCornerShape(14.dp)).padding(12.dp))
                         } })
                     }
-                    if(wide && panels.size==2) Row(horizontalArrangement=Arrangement.spacedBy(14.dp)) {
-                        panels.forEach { panel -> Box(Modifier.weight(1f)) { panel() } }
+                    if(wide && panels.size==2) Row(Modifier.height(IntrinsicSize.Max),horizontalArrangement=Arrangement.spacedBy(14.dp)) {
+                        panels.forEach { panel -> Box(Modifier.weight(1f).fillMaxHeight()) { panel() } }
                     } else Column(verticalArrangement=Arrangement.spacedBy(14.dp)) { panels.forEach { it() } }
                     val message=localError?:error
                     if(message!=null)Text(message,color=RegistrationRed,fontSize=11.sp,modifier=Modifier.padding(top=12.dp))
@@ -213,29 +215,29 @@ internal fun RiderRegistrationScreen(
     }
 }
 
-@Composable private fun RegistrationPanel(title:String,required:Boolean=false,content:@Composable ColumnScope.()->Unit) {
-    Column(Modifier.fillMaxWidth().border(1.dp,RegistrationLine,RoundedCornerShape(20.dp)).padding(18.dp)) {
+@Composable private fun RegistrationPanel(title:String,required:Boolean=false,modifier:Modifier=Modifier,content:@Composable ColumnScope.()->Unit) {
+    Column(modifier.fillMaxWidth().border(1.dp,RegistrationLine,RoundedCornerShape(20.dp)).padding(19.dp)) {
         Row(Modifier.fillMaxWidth().padding(bottom=10.dp),horizontalArrangement=Arrangement.SpaceBetween) {
-            Text(title,fontSize=17.sp,fontWeight=FontWeight.Bold)
-            if(required)Text("บังคับ",fontSize=11.sp,color=RegistrationRed,fontWeight=FontWeight.ExtraBold)
+            Text(title,fontSize=17.sp,lineHeight=26.sp,fontWeight=FontWeight.Bold)
+            if(required)Text("บังคับ",fontSize=11.sp,lineHeight=17.sp,color=RegistrationRed,fontWeight=FontWeight.ExtraBold)
         }
         content()
     }
 }
 @Composable private fun RegistrationField(label:String,hint:String,value:String,locked:Boolean,secret:Boolean=false,type:KeyboardType=KeyboardType.Text,change:(String)->Unit) {
     Column(Modifier.padding(vertical=10.dp)) {
-        Text(label,fontSize=11.sp,fontWeight=FontWeight.ExtraBold)
-        BasicTextField(value,change,enabled=!locked,singleLine=true,textStyle=androidx.compose.ui.text.TextStyle(fontSize=16.sp,color=Color(0xFF17171B)),
+        Text(label,fontSize=11.sp,lineHeight=17.sp,fontWeight=FontWeight.ExtraBold)
+        BasicTextField(value,change,enabled=!locked,singleLine=true,textStyle=androidx.compose.ui.text.TextStyle(fontSize=16.sp,fontWeight=FontWeight.ExtraBold,lineHeight=24.sp,platformStyle=PlatformTextStyle(includeFontPadding=false),color=Color(0xFF17171B)),
             cursorBrush=SolidColor(RegistrationRed),keyboardOptions=KeyboardOptions(keyboardType=if(secret)KeyboardType.Password else type),
             visualTransformation=if(secret)PasswordVisualTransformation()else VisualTransformation.None,
             modifier=Modifier.padding(top=6.dp).fillMaxWidth().height(50.dp).border(1.dp,Color(0xFFE6DFE2),RoundedCornerShape(15.dp)),
-            decorationBox={inner->Box(Modifier.fillMaxSize().padding(horizontal=14.dp),contentAlignment=Alignment.CenterStart){if(value.isEmpty())Text(hint,fontSize=16.sp,color=Color(0xFF757575));inner()}})
+            decorationBox={inner->Box(Modifier.fillMaxSize().padding(horizontal=14.dp),contentAlignment=Alignment.CenterStart){if(value.isEmpty())Text(hint,fontSize=16.sp,fontWeight=FontWeight.ExtraBold,lineHeight=24.sp,color=Color(0xFF757575));inner()}})
     }
 }
 @Composable private fun RegistrationSelect(label:String,value:String,options:List<Pair<String,String>>,locked:Boolean,change:(String)->Unit) {
     var expanded by remember { mutableStateOf(false) }
     Column(Modifier.padding(vertical=10.dp)) {
-        Text(label,fontSize=11.sp,fontWeight=FontWeight.ExtraBold)
+        Text(label,fontSize=11.sp,lineHeight=17.sp,fontWeight=FontWeight.ExtraBold)
         Box {
             OutlinedButton(onClick={expanded=true},enabled=!locked,modifier=Modifier.padding(top=6.dp).fillMaxWidth().height(50.dp),shape=RoundedCornerShape(15.dp),border=BorderStroke(1.dp,Color(0xFFE6DFE2))) {
                 Text(options.firstOrNull{it.first==value}?.second.orEmpty(),fontSize=16.sp,color=Color(0xFF17171B),modifier=Modifier.weight(1f));Text("⌄",color=Color(0xFF17171B))

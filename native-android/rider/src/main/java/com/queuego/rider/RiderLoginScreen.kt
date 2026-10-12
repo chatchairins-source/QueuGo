@@ -15,6 +15,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithCache
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
@@ -78,6 +79,8 @@ internal fun RiderLoginScreen(
     }) {
         val wide = maxWidth > 800.dp
         val viewportHeight = maxHeight
+        val viewportWidth = maxWidth
+        val brandWidth = minOf(maxWidth * (1.05f / 1.8f), maxWidth - 360.dp)
         val brandPadding = (maxWidth.value * .06f).coerceIn(34f, 86f).dp
         val headingSize = (maxWidth.value * .06f).coerceIn(42f, 78f)
         val card: @Composable () -> Unit = {
@@ -137,7 +140,26 @@ internal fun RiderLoginScreen(
             Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 17.dp, vertical = 24.dp), horizontalAlignment = Alignment.CenterHorizontally) { card() }
         } else {
             Row(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
-                Column(Modifier.weight(1.05f).heightIn(min = viewportHeight).background(Color(0xFFFFF5F7)).padding(brandPadding), verticalArrangement = Arrangement.SpaceBetween) {
+                Column(Modifier.width(brandWidth).heightIn(min = viewportHeight).clipToBounds().drawWithCache {
+                    val center = Offset(size.width * .14f, size.height * .20f)
+                    val radius = kotlin.math.hypot(size.width * .86f, size.height * .80f)
+                    val brush = Brush.radialGradient(0f to Color.White, .46f to Color(0xFFFFF5F7), 1f to Color(0xFFF5DFE5), center = center, radius = radius)
+                    val qSize = minOf(viewportWidth.value * .58f, 700f).dp.toPx()
+                    val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = android.graphics.Color.argb(11, 230, 0, 45)
+                        textSize = qSize
+                        typeface = android.graphics.Typeface.create("sans-serif-black", android.graphics.Typeface.NORMAL)
+                    }
+                    val metrics = paint.fontMetrics
+                    val lineHeight = qSize * .8f
+                    val bottom = size.height + viewportWidth.toPx() * .13f
+                    val baseline = bottom - lineHeight + (lineHeight - (metrics.descent - metrics.ascent)) / 2f - metrics.ascent
+                    val left = size.width + viewportWidth.toPx() * .07f - paint.measureText("Q")
+                    onDrawBehind {
+                        drawRect(brush)
+                        drawIntoCanvas { it.nativeCanvas.drawText("Q", left, baseline, paint) }
+                    }
+                }.padding(brandPadding), verticalArrangement = Arrangement.SpaceBetween) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Surface(shape = RoundedCornerShape(18.dp), color = AuthRed) { Box(Modifier.size(58.dp), contentAlignment = Alignment.Center) { Text("Q", color = Color.White, style = authText(38, 58, FontWeight.Black)) } }
                         Spacer(Modifier.width(12.dp))
@@ -151,7 +173,7 @@ internal fun RiderLoginScreen(
                         Text("เข้าสู่ระบบเพื่อดูงานใกล้คุณ เส้นทาง รายได้ และสถานะงานทั้งหมดในที่เดียว", style = authText(15, 26), color = Color(0xFF5F5960))
                     }
                 }
-                Box(Modifier.weight(.75f).heightIn(min = viewportHeight).padding(horizontal = 17.dp), contentAlignment = Alignment.Center) { card() }
+                Box(Modifier.width(viewportWidth - brandWidth).heightIn(min = viewportHeight).padding(horizontal = 17.dp), contentAlignment = Alignment.Center) { card() }
             }
         }
     }
