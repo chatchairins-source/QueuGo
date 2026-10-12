@@ -483,6 +483,13 @@ class QueueGoApi {
             }
         }
 
+        var bundle = RiderRouteBundleState()
+        if (online && active != null && active.marketOrderId == null) {
+            bundle = runCatching { readRouteBundleState(auth, profileId) }
+                .getOrDefault(RiderRouteBundleState())
+            bundle.currentOrder()?.let { active = it.job }
+        }
+
         var offered: RiderJob? = null
         if (active == null && online) {
             // Server is the single source of truth for sequential Rider offers.
@@ -521,6 +528,7 @@ class QueueGoApi {
             marketPickups = marketPickups,
             riderProfileId = profileId,
             laundry = laundry,
+            bundle = bundle,
             profile = profileInfo
         )
     }
@@ -560,6 +568,15 @@ class QueueGoApi {
             fun text(key: String): String? = shop?.optString(key)?.takeIf { it.isNotBlank() && it != "null" }
             RiderShopDisplay(text("shop_name"), text("public_logo"))
         }
+
+    suspend fun claimRouteBundle(auth: QueueGoAuth, orderId: String) = withContext(Dispatchers.IO) {
+        actionOnce(
+            auth,
+            "bundle_claim",
+            JSONObject().put("p_order_id", orderId)
+        )
+        Unit
+    }
 
     suspend fun setLaundryMode(auth: QueueGoAuth, enabled: Boolean) = withContext(Dispatchers.IO) {
         rpc(
@@ -839,6 +856,107 @@ class QueueGoApi {
         } finally {
             connection.disconnect()
         }
+    }
+
+    private fun readRouteBundleState(auth: QueueGoAuth, profileId: String): RiderRouteBundleState {
+        val activeMeta = when (val raw = rpc(
+            "queuego_route_bundle_active_orders",
+            auth.session.accessToken,
+            JSONObject()
+        )) {
+            is JSONArray -> raw
+            is JSONObject -> JSONArray().put(raw)
+            else -> JSONArray()
+        }
+        val candidatesRaw = when (val raw = rpc(
+            "queuego_route_bundle_candidates",
+            auth.session.accessToken,
+            JSONObject()
+        )) {
+            is JSONArray -> raw
+            is JSONObject -> JSONArray().put(raw)
+            else -> JSONArray()
+        }
+
+        val ids = buildList {
+            for (i in 0 until activeMeta.length()) {
+                activeMeta.optJSONObject(i)?.optString("order_id")
+                    ?.takeIf { it.isNotBlank() && it != "null" }
+                    ?.let { add(it) }
+            }
+        }.distinct()
+
+        val jobsById = if (ids.isEmpty()) {
+            emptyMap()
+        } else {
+            val rows = requestArray(
+                "GET",
+                "/rest/v1/orders?select=" + RIDER_JOB_FIELDS +
+                    "&rider_id=eq." + enc(profileId) +
+                    "&id=in.(" + ids.joinToString(",") { enc(it) } + ")",
+                auth.session.accessToken
+            )
+            buildMap {
+                for (i in 0 until rows.length()) {
+                    val row = rows.optJSONObject(i) ?: continue
+                    parseJob(row).let { put(it.id, it) }
+                }
+            }
+        }
+
+        val activeOrders = buildList {
+            for (i in 0 until activeMeta.length()) {
+                val row = activeMeta.optJSONObject(i) ?: continue
+                val orderId = row.optString("order_id")
+                val job = jobsById[orderId] ?: continue
+                add(
+                    RiderBundleOrder(
+                        bundleId = row.optString("bundle_id"),
+                        job = job,
+                        bundleSequence = row.optInt("bundle_sequence", 99),
+                        dropRank = row.optInt("drop_rank", row.optInt("bundle_sequence", 99)),
+                        shopId = row.optString("shop_id").takeIf { it.isNotBlank() && it != "null" },
+                        shopName = row.optString("shop_name").ifBlank { "ร้านค้า" },
+                        originalDeliveryFee = row.doubleOrZero("original_delivery_fee"),
+                        customerSavings = row.doubleOrZero("customer_savings"),
+                        riderExtraFee = row.doubleOrZero("rider_extra_fee"),
+                        detourKm = row.doubleOrZero("detour_km"),
+                        addedMinutes = row.optInt("added_minutes", 0),
+                        routeSequence = row.optString("route_sequence").takeIf { it.isNotBlank() && it != "null" }
+                    )
+                )
+            }
+        }.sortedBy { it.bundleSequence }
+
+        val candidates = buildList {
+            for (i in 0 until candidatesRaw.length()) {
+                val row = candidatesRaw.optJSONObject(i) ?: continue
+                val orderId = row.optString("order_id").takeIf { it.isNotBlank() && it != "null" } ?: continue
+                add(
+                    RiderBundleCandidate(
+                        orderId = orderId,
+                        orderNumber = row.optString("order_number").takeIf { it.isNotBlank() && it != "null" },
+                        shopId = row.optString("shop_id").takeIf { it.isNotBlank() && it != "null" },
+                        shopName = row.optString("shop_name").ifBlank { "ร้านค้า" },
+                        pickupAddress = row.optString("pickup_address").takeIf { it.isNotBlank() && it != "null" },
+                        deliveryAddress = row.optString("delivery_address").takeIf { it.isNotBlank() && it != "null" },
+                        pickupLat = row.doubleOrNull("pickup_latitude"),
+                        pickupLng = row.doubleOrNull("pickup_longitude"),
+                        deliveryLat = row.doubleOrNull("delivery_latitude"),
+                        deliveryLng = row.doubleOrNull("delivery_longitude"),
+                        detourKm = row.doubleOrZero("detour_km"),
+                        addedMinutes = row.optInt("added_minutes", 0),
+                        standaloneDeliveryFee = row.doubleOrZero("standalone_delivery_fee"),
+                        bundledDeliveryFee = row.doubleOrZero("bundled_delivery_fee"),
+                        customerSavings = row.doubleOrZero("customer_savings"),
+                        riderExtraFee = row.doubleOrZero("rider_extra_fee"),
+                        routeSequence = row.optString("route_sequence").takeIf { it.isNotBlank() && it != "null" }
+                    )
+                )
+            }
+        }
+
+        return RiderRouteBundleState(activeOrders = activeOrders, candidates = candidates)
     }
 
     private fun readLaundryState(token: String): RiderLaundryState {
