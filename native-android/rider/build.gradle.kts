@@ -45,4 +45,5 @@ dependencies {
     implementation("androidx.compose.foundation:foundation:1.11.4")
     implementation("androidx.core:core-ktx:1.17.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
 }
