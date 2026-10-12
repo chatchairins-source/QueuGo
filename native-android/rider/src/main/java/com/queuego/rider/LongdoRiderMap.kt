@@ -44,6 +44,7 @@ private class RiderLongdoHolder(private val cameraState: MutableState<DoubleArra
     private var locationPermissionMask = 0
     private var currentJob: RiderJob? = null
     private var currentPickups: List<MarketPickup> = emptyList()
+    private var currentBundleOrders: List<RiderBundleOrder> = emptyList()
     private var navigationState: RiderNavigationState = RiderNavigationState()
     private var onLocationFix: (RiderNavigationFix) -> Unit = {}
     private val routeLines = mutableListOf<Line>()
@@ -91,12 +92,12 @@ private class RiderLongdoHolder(private val cameraState: MutableState<DoubleArra
                             elapsedRealtimeNanos = location.elapsedRealtimeNanos
                         )
                     )
-                    refreshOverlays(context, currentJob, currentPickups)
+                    refreshOverlays(context, currentJob, currentPickups, currentBundleOrders)
                     renderNavigation()
                 }
             }
             override fun onProviderEnabled(provider: String) {
-                if (!disposed && resumed) refreshOverlays(context, currentJob, currentPickups)
+                if (!disposed && resumed) refreshOverlays(context, currentJob, currentPickups, currentBundleOrders)
             }
             override fun onProviderDisabled(provider: String) = Unit
             @Deprecated("Required for Android 8/9 compatibility")
@@ -157,10 +158,12 @@ private class RiderLongdoHolder(private val cameraState: MutableState<DoubleArra
     fun refreshOverlays(
         context: android.content.Context,
         job: RiderJob?,
-        pickups: List<MarketPickup>
+        pickups: List<MarketPickup>,
+        bundleOrders: List<RiderBundleOrder> = emptyList()
     ) {
         currentJob = job
         currentPickups = pickups
+        currentBundleOrders = bundleOrders
         startLocationUpdates(context)
         val ldmap = map ?: return
         if (disposed) return
@@ -178,6 +181,11 @@ private class RiderLongdoHolder(private val cameraState: MutableState<DoubleArra
             append(job?.deliveryLat).append(",").append(job?.deliveryLng)
             append("|")
             pickups.forEach { append(it.pickupId).append(":").append(it.status).append(";") }
+            append("|bundle:")
+            bundleOrders.forEach {
+                append(it.job.id).append(":").append(it.job.status).append(":")
+                    .append(it.bundleSequence).append(":").append(it.dropRank).append(";")
+            }
         }
         if (key == lastOverlayKey) return
         lastOverlayKey = key
@@ -214,12 +222,19 @@ private class RiderLongdoHolder(private val cameraState: MutableState<DoubleArra
             return
         }
 
-        if (job.marketOrderId != null && !job.isDelivering) {
-            pickups.filter { !it.done }.forEach { addPin(it.latitude, it.longitude) }
+        if (bundleOrders.size > 1 && job.marketOrderId == null) {
+            bundleOrders.filter { it.job.status != "cancelled" }.forEach { bundled ->
+                addPin(bundled.job.pickupLat, bundled.job.pickupLng)
+                addPin(bundled.job.deliveryLat, bundled.job.deliveryLng)
+            }
         } else {
-            addPin(job.pickupLat, job.pickupLng)
+            if (job.marketOrderId != null && !job.isDelivering) {
+                pickups.filter { !it.done }.forEach { addPin(it.latitude, it.longitude) }
+            } else {
+                addPin(job.pickupLat, job.pickupLng)
+            }
+            addPin(job.deliveryLat, job.deliveryLng)
         }
-        addPin(job.deliveryLat, job.deliveryLng)
 
         if (navigationState.active) {
             renderNavigation()
@@ -306,6 +321,7 @@ internal fun RiderLongdoMap(
     modifier: Modifier = Modifier,
     job: RiderJob?,
     marketPickups: List<MarketPickup>,
+    bundleOrders: List<RiderBundleOrder> = emptyList(),
     navigationState: RiderNavigationState,
     recenterSignal: Int,
     onLocationFix: (RiderNavigationFix) -> Unit,
@@ -320,8 +336,10 @@ internal fun RiderLongdoMap(
     val currentNavigationState = rememberUpdatedState(navigationState)
     val latestJob: MutableState<RiderJob?> = remember { mutableStateOf(job) }
     val latestPickups = remember { mutableStateOf(marketPickups) }
+    val latestBundleOrders = remember { mutableStateOf(bundleOrders) }
     latestJob.value = job
     latestPickups.value = marketPickups
+    latestBundleOrders.value = bundleOrders
 
     AndroidView(
         modifier = modifier,
@@ -349,7 +367,7 @@ internal fun RiderLongdoMap(
                                 holder.lastOverlayKey = null
                                 holder.centerOnDevice(ctx)
                                 holder.updateNavigation(currentNavigationState.value) { currentLocationCallback.value(it) }
-                                holder.refreshOverlays(ctx, latestJob.value, latestPickups.value)
+                                holder.refreshOverlays(ctx, latestJob.value, latestPickups.value, latestBundleOrders.value)
                             }.onSuccess { currentReady.value(true) }
                                 .onFailure { currentReady.value(false) }
                         }
@@ -361,12 +379,12 @@ internal fun RiderLongdoMap(
         },
         update = {
             holder.updateNavigation(currentNavigationState.value) { currentLocationCallback.value(it) }
-            holder.refreshOverlays(context, job, marketPickups)
+            holder.refreshOverlays(context, job, marketPickups, bundleOrders)
         }
     )
 
-    LaunchedEffect(job?.id, job?.status, job?.pickupLat, job?.pickupLng, job?.deliveryLat, job?.deliveryLng, marketPickups) {
-        holder.refreshOverlays(context, job, marketPickups)
+    LaunchedEffect(job?.id, job?.status, job?.pickupLat, job?.pickupLng, job?.deliveryLat, job?.deliveryLng, marketPickups, bundleOrders) {
+        holder.refreshOverlays(context, job, marketPickups, bundleOrders)
     }
 
     LaunchedEffect(navigationState) {
