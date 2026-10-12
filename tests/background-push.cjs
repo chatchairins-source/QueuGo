@@ -143,6 +143,12 @@ ok(riderNativeApp.includes('it.matchesPushReference(target.referenceId)')&&
    riderNativeApp.includes('if (loadError != null) error(loadError!!)')&&
    riderNativeApp.includes('while (!resolved)')&&riderNativeApp.includes('delay(3_000)'),
    'Rider push must resolve the exact reference and preserve recovery across transient failure');
+const riderNativeActivity=read('native-android/rider/src/main/java/com/queuego/rider/MainActivity.kt');
+ok(riderNativeActivity.includes('override fun onSaveInstanceState(outState: Bundle)')&&
+   riderNativeActivity.includes('outState.putString("rider_push_reference", target.referenceId)')&&
+   riderNativeActivity.includes('savedInstanceState?.getString("rider_push_reference")')&&
+   riderNativeActivity.includes('pushEventId = savedInstanceState?.getLong("rider_push_event_id")'),
+   'Rider pending push reference and event identity must survive Activity recreation');
 ok(riderNativePush.includes('if (type == "voice_call") NotificationCompat.CATEGORY_CALL')&&
    riderNativePush.includes('else NotificationCompat.CATEGORY_MESSAGE'),
    'Native Rider voice_call push must retain call notification semantics while job pushes remain messages');

@@ -123,8 +123,8 @@ class NativeOrderRealtimeTest {
             val join = joins.poll(1, TimeUnit.SECONDS)
             assertEquals("rider-jwt", join.getJSONObject("payload").getString("access_token"))
             val filters = join.getJSONObject("payload").getJSONObject("config").getJSONArray("postgres_changes")
-            assertEquals(5, filters.length())
-            val tables = listOf("notifications", "orders", "laundry_rider_jobs", "laundry_rider_invites", "laundry_rider_preferences")
+            assertEquals(2, filters.length())
+            val tables = listOf("notifications", "orders")
             tables.forEachIndexed { index, table ->
                 assertEquals(table, filters.getJSONObject(index).getString("table"))
                 assertEquals(if (index == 0) "user_id=eq.user-1" else "rider_id=eq.profile-2", filters.getJSONObject(index).getString("filter"))
@@ -134,8 +134,13 @@ class NativeOrderRealtimeTest {
                 .put("event", "postgres_changes").put("payload", JSONObject().put("ids", org.json.JSONArray().put(id))).toString()
             socket.send(change(999))
             assertNull(withTimeoutOrNull(150) { signals.receive() })
-            // Every accepted subscription, including all three Laundry tables, invalidates.
-            for (id in 10..14) {
+            // Retired platform-Laundry subscription IDs must not invalidate ordinary Rider work.
+            for (id in 12..14) {
+                socket.send(change(id))
+                assertNull(withTimeoutOrNull(150) { signals.receive() })
+            }
+            // Both current owner-filtered subscriptions must invalidate.
+            for (id in 10..11) {
                 socket.send(change(id))
                 withTimeout(5_000) { signals.receive() }
             }
