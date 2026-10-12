@@ -372,6 +372,8 @@ private fun RiderHome(
     var loadError by remember { mutableStateOf<String?>(null) }
     var actionBusy by remember { mutableStateOf(false) }
     var actionMessage by remember { mutableStateOf<String?>(null) }
+    var deliverySuccessJob by remember { mutableStateOf<RiderJob?>(null) }
+    var arrivalGuard by remember { mutableStateOf<RiderArrivalGuardState?>(null) }
     LaunchedEffect(actionMessage) {
         if (actionMessage != null) {
             delay(4_000)
@@ -663,6 +665,66 @@ private fun RiderHome(
         pendingCameraUri = null
     }
 
+    fun commitArrival(job: RiderJob, target: String) {
+        val location = lastKnownLocation(context)
+        actionBusy = true
+        actionMessage = null
+        scope.launch {
+            var committed = false
+            var updated: RiderSnapshot? = null
+            runCatching {
+                api.markArrival(
+                    auth,
+                    job.id,
+                    target,
+                    location?.first,
+                    location?.second
+                )
+            }.onSuccess {
+                committed = true
+                actionMessage = if (target == "shop") {
+                    "บันทึกถึงร้านแล้ว · แจ้งร้านแล้ว"
+                } else {
+                    "บันทึกถึงลูกค้าแล้ว · แจ้งลูกค้าแล้ว"
+                }
+                updated = runCatching { api.riderSnapshot(auth) }
+                    .onFailure { if (it is CancellationException) throw it }
+                    .getOrNull()
+                updated?.let { snapshot = it }
+            }.onFailure {
+                actionMessage = it.message ?: "บันทึกการมาถึงไม่สำเร็จ"
+            }
+            actionBusy = false
+            if (committed) {
+                arrivalGuard = null
+                if (target == "customer") {
+                    openVerification("delivery", updated?.activeJob ?: job)
+                }
+            }
+        }
+    }
+
+    fun requestArrival(job: RiderJob, target: String) {
+        if (!ensureLocationPermission()) return
+        val location = lastKnownLocation(context)
+        val destinationLat = if (target == "shop") job.pickupLat else job.deliveryLat
+        val destinationLng = if (target == "shop") job.pickupLng else job.deliveryLng
+        val km = if (location != null && destinationLat != null && destinationLng != null) {
+            riderDistanceKm(
+                location.first,
+                location.second,
+                destinationLat,
+                destinationLng
+            )
+        } else null
+        val meters = km?.let { kotlin.math.round(it * 1000.0).toInt().coerceAtLeast(1) }
+        if (km != null && km <= 0.2) {
+            commitArrival(job, target)
+        } else {
+            arrivalGuard = RiderArrivalGuardState(job, target, meters)
+        }
+    }
+
     fun playRiderOfferAlert() {
         val tone = runCatching { ToneGenerator(AudioManager.STREAM_NOTIFICATION, 100) }.getOrNull() ?: return
         scope.launch {
@@ -897,7 +959,10 @@ private fun RiderHome(
                             "marketPickup" -> "รับสินค้าจุดนี้แล้ว"
                             else -> "จัดส่งสำเร็จ"
                         }
-                        if (completedMode == "delivery") RiderReturnService.stop(context)
+                        if (completedMode == "delivery") {
+                            RiderReturnService.stop(context)
+                            deliverySuccessJob = job
+                        }
                         closeVerification()
                         val updated = runCatching { api.riderSnapshot(auth) }.getOrNull()
                         if (updated != null) snapshot = updated
@@ -1405,28 +1470,7 @@ private fun RiderHome(
                                 openNavigation(context, target)
                             },
                             onArriveShop = {
-                                if (!ensureLocationPermission()) return@ActiveJobCard
-                                val loc = lastKnownLocation(context)
-                                actionBusy = true
-                                scope.launch {
-                                    runCatching {
-                                        api.markArrival(
-                                            auth,
-                                            current.activeJob.id,
-                                            "shop",
-                                            loc?.first,
-                                            loc?.second
-                                        )
-                                    }.onSuccess {
-                                        actionMessage = "บันทึกถึงร้านแล้ว"
-                                        runCatching { api.riderSnapshot(auth) }
-                                            .onFailure { if (it is CancellationException) throw it }
-                                            .onSuccess { snapshot = it }
-                                    }.onFailure {
-                                        actionMessage = it.message ?: "บันทึกถึงร้านไม่สำเร็จ"
-                                    }
-                                    actionBusy = false
-                                }
+                                requestArrival(current.activeJob, "shop")
                             },
                             onPickupVerify = {
                                 openVerification("pickup", current.activeJob)
@@ -1448,28 +1492,7 @@ private fun RiderHome(
                                 }
                             },
                             onArriveCustomer = {
-                                if (!ensureLocationPermission()) return@ActiveJobCard
-                                val loc = lastKnownLocation(context)
-                                actionBusy = true
-                                scope.launch {
-                                    runCatching {
-                                        api.markArrival(
-                                            auth,
-                                            current.activeJob.id,
-                                            "customer",
-                                            loc?.first,
-                                            loc?.second
-                                        )
-                                    }.onSuccess {
-                                        actionMessage = "บันทึกถึงลูกค้าแล้ว"
-                                        runCatching { api.riderSnapshot(auth) }
-                                            .onFailure { if (it is CancellationException) throw it }
-                                            .onSuccess { snapshot = it }
-                                    }.onFailure {
-                                        actionMessage = it.message ?: "บันทึกถึงลูกค้าไม่สำเร็จ"
-                                    }
-                                    actionBusy = false
-                                }
+                                requestArrival(current.activeJob, "customer")
                             },
                             onDeliveryVerify = {
                                 openVerification("delivery", current.activeJob)
@@ -1582,6 +1605,17 @@ private fun RiderHome(
         }
         actionMessage?.let { RiderFeedbackToast(it, Modifier.align(Alignment.BottomCenter)) }
         messageNotice?.let { RiderMessageNotice(it, Modifier.align(Alignment.TopCenter)) }
+        deliverySuccessJob?.let { completed ->
+            RiderDeliverySuccess(completed) { deliverySuccessJob = null }
+        }
+        arrivalGuard?.let { guard ->
+            RiderArrivalGuard(
+                state = guard,
+                busy = actionBusy,
+                onProceed = { commitArrival(guard.job, guard.target) },
+                onDismiss = { if (!actionBusy) arrivalGuard = null }
+            )
+        }
         RiderVoiceOverlay(
             state = voiceState,
             auth = nativeVoiceAuth,
