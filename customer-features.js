@@ -388,18 +388,169 @@ const QGCustomer=(()=>{
   }
   function customerChatReport(id,messageId){
     document.getElementById('customer-chat-report-dialog')?.remove();
-    const d=document.createElement('dialog');d.id='customer-chat-report-dialog';
-    d.innerHTML=`<form method="dialog" style="min-width:min(86vw,420px);display:grid;gap:12px"><h3 style="margin:0">รายงานเนื้อหาแชต</h3><label>เหตุผล<select class="in" name="reason"><option value="harassment">คุกคาม / กลั่นแกล้ง</option><option value="inappropriate">เนื้อหาไม่เหมาะสม</option><option value="spam">สแปม</option><option value="fraud">หลอกลวง / ฉ้อโกง</option><option value="safety">ความปลอดภัย</option><option value="other">อื่น ๆ</option></select></label><label>รายละเอียด<textarea class="in" name="details" maxlength="1000" rows="4" placeholder="อธิบายเพิ่มเติม (ไม่บังคับ)"></textarea></label><div style="display:flex;gap:8px"><button value="cancel">ยกเลิก</button><button class="prim" type="button" id="customer-chat-report-send">ส่งรายงาน</button></div></form>`;
-    document.body.appendChild(d);d.showModal();
-    d.querySelector('#customer-chat-report-send').onclick=async e=>{e.currentTarget.disabled=true;try{const form=d.querySelector('form');await QueueGoUGC.report(id,messageId||null,form.elements.reason.value,form.elements.details.value.trim());d.close();d.remove();toast('ส่งรายงานให้ QueueGo ตรวจสอบแล้ว')}catch(err){toast(err.message||'ส่งรายงานไม่สำเร็จ');e.currentTarget.disabled=false}};
+    const d=document.createElement('dialog');
+    d.id='customer-chat-report-dialog';
+    d.className='qg-chat-report-dialog';
+    d.innerHTML=`<form method="dialog" class="qg-chat-report-sheet">
+      <header class="qg-chat-report-head">
+        <div><small>ความปลอดภัย</small><h3>รายงานเนื้อหาแชต</h3></div>
+        <button type="submit" value="cancel" class="qg-chat-report-close" aria-label="ปิด">×</button>
+      </header>
+      <label class="qg-chat-report-field"><span>เหตุผล</span><select name="reason">
+        <option value="harassment">คุกคาม / กลั่นแกล้ง</option>
+        <option value="inappropriate">เนื้อหาไม่เหมาะสม</option>
+        <option value="spam">สแปม</option>
+        <option value="fraud">หลอกลวง / ฉ้อโกง</option>
+        <option value="safety">ความปลอดภัย</option>
+        <option value="other">อื่น ๆ</option>
+      </select></label>
+      <label class="qg-chat-report-field"><span>รายละเอียด</span><textarea name="details" maxlength="1000" rows="4" placeholder="อธิบายเพิ่มเติม (ไม่บังคับ)"></textarea></label>
+      <footer class="qg-chat-report-actions">
+        <button type="submit" value="cancel" class="qg-chat-report-cancel">ยกเลิก</button>
+        <button class="qg-chat-report-submit" type="button" id="customer-chat-report-send">ส่งรายงาน</button>
+      </footer>
+    </form>`;
+    document.body.appendChild(d);
+    d.addEventListener('click',e=>{if(e.target===d)d.close()});
+    d.querySelector('#customer-chat-report-send').onclick=async e=>{
+      e.currentTarget.disabled=true;
+      try{
+        const form=d.querySelector('form');
+        await QueueGoUGC.report(id,messageId||null,form.elements.reason.value,form.elements.details.value.trim());
+        d.close();d.remove();toast('ส่งรายงานให้ QueueGo ตรวจสอบแล้ว');
+      }catch(err){
+        toast(err.message||'ส่งรายงานไม่สำเร็จ');
+        e.currentTarget.disabled=false;
+      }
+    };
     d.addEventListener('close',()=>d.remove(),{once:true});
+    d.showModal();
   }
   async function customerChatBlock(id,ticket){
     if(!confirm('บล็อก Rider คนนี้จากการส่งข้อความใหม่? การบล็อกไม่ยกเลิกออเดอร์'))return;
     try{await QueueGoUGC.block(id);toast('บล็อกคู่สนทนาแล้ว');await renderChat(id,ticket)}catch(e){toast(e.message||'บล็อกไม่สำเร็จ')}
   }
-  async function renderChat(id,ticket=routeVersion){const key=actor(),u=S.get(),rows=await db('orders?select=id,status,rider_id,completed_at,updated_at&customer_id=eq.'+encodeURIComponent(u.userId)+'&id=eq.'+encodeURIComponent(id)+'&limit=1');if(!owned(key,ticket))return;const o=rows[0];if(!o||!o.rider_id)return layout('<p class="empty">แชทเปิดเมื่อ Rider รับงานแล้ว</p>','orders');if(!chatAvailable(o)){try{localStorage.removeItem(chatKey(id))}catch(e){}return layout(`<div class="pt"><button class="back" onclick="go('order/${esc(id)}')">${ico('back')}</button><h1>แชทกับ Rider</h1></div><p class="empty">แชทปิดแล้ว ระบบให้ติดต่อกันได้ 30 นาทีหลังจบงาน</p>`,'orders')}const moderation=await customerChatGate(id,ticket,key);if(!moderation)return;const deadline=chatDeadline(o),completed=o.status==='completed';layout(`<div class="pt"><button class="back" onclick="go('order/${esc(id)}')">${ico('back')}</button><h1>แชทกับ Rider</h1></div><div style="display:flex;gap:8px;flex-wrap:wrap;margin:0 0 10px"><button type="button" id="customer-chat-call" class="qg-voice-launch">${window.QueueGoVoiceWeb?.phoneIcon?.()||''}<span>โทรผ่าน QueueGo</span></button><button type="button" id="customer-chat-report-user">รายงานคู่สนทนา</button><button type="button" id="customer-chat-block-user">บล็อก Rider</button><a href="${esc(QueueGoUGC.guidelinesUrl())}" target="_blank" rel="noopener">กติกาแชต</a></div>${completed?`<p class="sm">หลังจบงานแชทจะปิดและถูกลบอัตโนมัติ · เหลือประมาณ ${chatMinutesLeft(o)} นาที</p>`:''}<div id="customer-chat-messages" class="chat-messages"></div><form id="customer-chat-form"><input class="in" name="message" maxlength="500" placeholder="พิมพ์ข้อความ"><input type="file" name="photo" accept="image/jpeg,image/png,image/webp"><button class="prim">ส่งข้อความ / ตรวจผลข้อความเดิม</button><p class="sm" id="customer-chat-error" role="status"></p></form>`,'orders');activateVoice();$('customer-chat-call').onclick=()=>startVoiceCall(id,'rider','Rider');$('customer-chat-report-user').onclick=()=>customerChatReport(id,null);$('customer-chat-block-user').onclick=()=>customerChatBlock(id,ticket);if(deadline){const timer=setTimeout(()=>{if(owned(key,ticket)&&location.hash==='#order-chat/'+id)renderChat(id,ticket)},Math.max(250,Math.min(2147483000,deadline-Date.now()+250)));cleanups.push(()=>clearTimeout(timer))}let last='';const refresh=async()=>{const messages=await db('order_chat_messages?select=id,sender_id,message,created_at&order_id=eq.'+encodeURIComponent(id)+'&order=created_at.desc&limit=100');if(!owned(key,ticket)||!$('customer-chat-messages'))return;messages.reverse();const version=JSON.stringify(messages);if(version===last)return;last=version;const box=$('customer-chat-messages'),bottom=box.scrollHeight-box.scrollTop-box.clientHeight<80;box.innerHTML=messages.length?messages.map(m=>`<div class="chat-bubble ${m.sender_id===u.userId?'mine':''}">${chatBody(m.message)}<small>${esc(date(m.created_at))}</small>${m.sender_id!==u.userId?`<button type="button" data-chat-report="${esc(m.id)}" style="display:block;margin-top:4px">รายงาน</button>`:''}</div>`).join(''):'<p class="empty">ยังไม่มีข้อความ</p>';box.querySelectorAll('[data-chat-report]').forEach(btn=>btn.onclick=()=>customerChatReport(id,btn.dataset.chatReport));if(bottom)box.scrollTop=box.scrollHeight};await refresh();if(!owned(key,ticket))return;poll(refresh,4000);
-    $('customer-chat-form').onsubmit=async e=>{e.preventDefault();const f=e.currentTarget,b=f.querySelector('button'),storageKey=chatKey(id);if(b.disabled)return;b.disabled=true;try{let payload;try{payload=JSON.parse(localStorage.getItem(storageKey)||'null');if(payload&&(payload.order_id!==id||payload.sender_id!==u.userId||typeof payload.id!=='string'||typeof payload.message!=='string'))throw Error('invalid payload')}catch(e){localStorage.removeItem(storageKey);payload=null}if(!payload){let text=f.elements.message.value.trim();const file=f.elements.photo.files[0];if(file)text='__IMG__'+await compressImage(file);if(!owned(key,ticket))return;if(!text)return;payload={id:uuid(),order_id:id,sender_id:u.userId,message:text};localStorage.setItem(storageKey,JSON.stringify(payload));}if(payload.order_id!==id||payload.sender_id!==u.userId)throw Error('ข้อความเดิมไม่ตรงบัญชี');const accessToken=await token();if(!owned(key,ticket))return;const sent=await db('order_chat_messages?select=id&id=eq.'+encodeURIComponent(payload.id)+'&order_id=eq.'+encodeURIComponent(id),{token:accessToken});if(!owned(key,ticket))return;if(!sent.length)await db('order_chat_messages',{method:'POST',token:accessToken,body:payload});localStorage.removeItem(storageKey);if(!owned(key,ticket))return;f.reset();$('customer-chat-error').textContent='';try{await refresh()}catch(refreshErr){console.warn('customer chat post-send refresh failed',refreshErr)}}catch(e){if(e.status>=400&&e.status<500&&![408,409,429].includes(e.status))localStorage.removeItem(storageKey);if(owned(key,ticket))$('customer-chat-error').textContent=e.status?'ส่งข้อความไม่สำเร็จ กรุณาตรวจสถานะออเดอร์':'ยังไม่ได้รับผล กดตรวจผลข้อความเดิมอีกครั้ง';}finally{if(owned(key,ticket)&&b.isConnected)b.disabled=false}};
+  async function renderChat(id,ticket=routeVersion){
+    const key=actor(),u=S.get();
+    const rows=await db('orders?select=id,status,rider_id,completed_at,updated_at&customer_id=eq.'+encodeURIComponent(u.userId)+'&id=eq.'+encodeURIComponent(id)+'&limit=1');
+    if(!owned(key,ticket))return;
+    const o=rows[0];
+    if(!o||!o.rider_id)return layout('<p class="empty">แชทเปิดเมื่อ Rider รับงานแล้ว</p>','orders');
+    if(!chatAvailable(o)){
+      try{localStorage.removeItem(chatKey(id))}catch(e){}
+      return layout(`<div class="pt"><button class="back" onclick="go('order/${esc(id)}')">${ico('back')}</button><h1>แชทกับ Rider</h1></div><p class="empty">แชทปิดแล้ว ระบบให้ติดต่อกันได้ 30 นาทีหลังจบงาน</p>`,'orders');
+    }
+    const moderation=await customerChatGate(id,ticket,key);
+    if(!moderation)return;
+
+    const deadline=chatDeadline(o),completed=o.status==='completed';
+    const photoIcon='<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="5" width="17" height="14" rx="3"/><circle cx="9" cy="10" r="2"/><path d="m5.5 17 4.5-4 3.2 2.7 2.3-2.2 3 3.5"/></svg>';
+    const sendIcon='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m4 4 17 8-17 8 3-8Z"/><path d="M7 12h14"/></svg>';
+    layout(`<section class="qg-customer-chat-page">
+      <header class="qg-customer-chat-head">
+        <button class="qg-customer-chat-head-btn" type="button" id="customer-chat-back" aria-label="ย้อนกลับ">${ico('back')}</button>
+        <div class="qg-customer-chat-title"><b>Rider</b><small>ประสานงานออเดอร์ผ่าน QueueGo</small></div>
+        <div class="qg-customer-chat-head-actions">
+          <button type="button" id="customer-chat-call" class="qg-customer-chat-head-btn qg-voice-launch" aria-label="โทรผ่าน QueueGo">${window.QueueGoVoiceWeb?.phoneIcon?.()||''}</button>
+          <button type="button" id="customer-chat-menu" class="qg-customer-chat-head-btn" aria-label="ตัวเลือกเพิ่มเติม">•••</button>
+        </div>
+      </header>
+      ${completed?`<div class="qg-customer-chat-expiry">หลังจบงานแชทจะปิดและถูกลบอัตโนมัติ · เหลือประมาณ ${chatMinutesLeft(o)} นาที</div>`:''}
+      <div class="qg-customer-chat-menu" id="customer-chat-tools" hidden>
+        <button type="button" id="customer-chat-report-user">รายงานคู่สนทนา</button>
+        <button type="button" id="customer-chat-block-user">บล็อก Rider</button>
+        <a href="${esc(QueueGoUGC.guidelinesUrl())}" target="_blank" rel="noopener">กติกาแชต</a>
+      </div>
+      <div id="customer-chat-messages" class="chat-messages qg-customer-chat-box" aria-live="polite"></div>
+      <form id="customer-chat-form" class="qg-customer-chat-compose">
+        <button type="button" id="customer-chat-photo" class="qg-customer-chat-photo" aria-label="เลือกรูปภาพ">${photoIcon}</button>
+        <input type="file" name="photo" id="customer-chat-photo-input" accept="image/jpeg,image/png,image/webp" hidden>
+        <input class="qg-customer-chat-input" name="message" maxlength="500" autocomplete="off" placeholder="พิมพ์ข้อความ...">
+        <button class="qg-customer-chat-send" type="submit" aria-label="ส่งข้อความ">${sendIcon}</button>
+        <p class="qg-customer-chat-error" id="customer-chat-error" role="status"></p>
+      </form>
+    </section>`,'orders');
+
+    activateVoice();
+    $('customer-chat-back').onclick=()=>go('order/'+id);
+    $('customer-chat-call').onclick=()=>startVoiceCall(id,'rider','Rider');
+    $('customer-chat-menu').onclick=()=>{
+      const tools=$('customer-chat-tools');
+      tools.hidden=!tools.hidden;
+      $('customer-chat-menu').setAttribute('aria-expanded',String(!tools.hidden));
+    };
+    $('customer-chat-report-user').onclick=()=>customerChatReport(id,null);
+    $('customer-chat-block-user').onclick=()=>customerChatBlock(id,ticket);
+    $('customer-chat-photo').onclick=()=>$('customer-chat-photo-input').click();
+    $('customer-chat-photo-input').onchange=e=>{
+      const button=$('customer-chat-photo'),file=e.currentTarget.files?.[0];
+      button.classList.toggle('has-file',!!file);
+      button.setAttribute('aria-label',file?'เปลี่ยนรูปภาพที่เลือก':'เลือกรูปภาพ');
+    };
+
+    if(deadline){
+      const timer=setTimeout(()=>{if(owned(key,ticket)&&location.hash==='#order-chat/'+id)renderChat(id,ticket)},Math.max(250,Math.min(2147483000,deadline-Date.now()+250)));
+      cleanups.push(()=>clearTimeout(timer));
+    }
+
+    let last='';
+    const refresh=async()=>{
+      const messages=await db('order_chat_messages?select=id,sender_id,message,created_at&order_id=eq.'+encodeURIComponent(id)+'&order=created_at.desc&limit=100');
+      if(!owned(key,ticket)||!$('customer-chat-messages'))return;
+      messages.reverse();
+      const version=JSON.stringify(messages);
+      if(version===last)return;
+      last=version;
+      const box=$('customer-chat-messages'),bottom=box.scrollHeight-box.scrollTop-box.clientHeight<80;
+      box.innerHTML=messages.length?messages.map(m=>`<div class="chat-bubble ${m.sender_id===u.userId?'mine':'theirs'}"><div class="qg-chat-bubble-body">${chatBody(m.message)}</div><div class="qg-chat-bubble-meta"><small>${esc(date(m.created_at))}</small>${m.sender_id!==u.userId?`<button type="button" data-chat-report="${esc(m.id)}">รายงาน</button>`:''}</div></div>`).join(''):'<p class="qg-customer-chat-empty">ยังไม่มีข้อความ เริ่มแชทกับ Rider ได้เลย</p>';
+      box.querySelectorAll('[data-chat-report]').forEach(btn=>btn.onclick=()=>customerChatReport(id,btn.dataset.chatReport));
+      if(bottom)box.scrollTop=box.scrollHeight;
+    };
+    await refresh();
+    if(!owned(key,ticket))return;
+    poll(refresh,4000);
+
+    $('customer-chat-form').onsubmit=async e=>{
+      e.preventDefault();
+      const form=e.currentTarget,button=form.querySelector('[type="submit"]'),storageKey=chatKey(id);
+      if(button.disabled)return;
+      button.disabled=true;
+      try{
+        let payload;
+        try{
+          payload=JSON.parse(localStorage.getItem(storageKey)||'null');
+          if(payload&&(payload.order_id!==id||payload.sender_id!==u.userId||typeof payload.id!=='string'||typeof payload.message!=='string'))throw Error('invalid payload');
+        }catch(e){
+          localStorage.removeItem(storageKey);payload=null;
+        }
+        if(!payload){
+          let text=form.elements.message.value.trim();
+          const file=form.elements.photo.files[0];
+          if(file)text='__IMG__'+await compressImage(file);
+          if(!owned(key,ticket))return;
+          if(!text)return;
+          payload={id:uuid(),order_id:id,sender_id:u.userId,message:text};
+          localStorage.setItem(storageKey,JSON.stringify(payload));
+        }
+        if(payload.order_id!==id||payload.sender_id!==u.userId)throw Error('ข้อความเดิมไม่ตรงบัญชี');
+        const accessToken=await token();
+        if(!owned(key,ticket))return;
+        const sent=await db('order_chat_messages?select=id&id=eq.'+encodeURIComponent(payload.id)+'&order_id=eq.'+encodeURIComponent(id),{token:accessToken});
+        if(!owned(key,ticket))return;
+        if(!sent.length)await db('order_chat_messages',{method:'POST',token:accessToken,body:payload});
+        localStorage.removeItem(storageKey);
+        if(!owned(key,ticket))return;
+        form.reset();
+        $('customer-chat-photo').classList.remove('has-file');
+        $('customer-chat-error').textContent='';
+        try{await refresh()}catch(refreshErr){console.warn('customer chat post-send refresh failed',refreshErr)}
+      }catch(e){
+        if(e.status>=400&&e.status<500&&![408,409,429].includes(e.status))localStorage.removeItem(storageKey);
+        if(owned(key,ticket))$('customer-chat-error').textContent=e.status?'ส่งข้อความไม่สำเร็จ กรุณาตรวจสถานะออเดอร์':'ยังไม่ได้รับผล กดส่งอีกครั้งเพื่อตรวจผลข้อความเดิม';
+      }finally{
+        if(owned(key,ticket)&&button.isConnected)button.disabled=false;
+      }
+    };
   }
   async function compressImage(file){if(!['image/jpeg','image/png','image/webp'].includes(file.type)||file.size>5*1024*1024)throw Error('รูปต้องเป็น JPG, PNG หรือ WebP ไม่เกิน 5 MB');const url=URL.createObjectURL(file);try{const img=await new Promise((resolve,reject)=>{const i=new Image();i.onload=()=>resolve(i);i.onerror=reject;i.src=url});const scale=Math.min(1,1000/Math.max(img.width,img.height)),canvas=document.createElement('canvas');canvas.width=Math.round(img.width*scale);canvas.height=Math.round(img.height*scale);canvas.getContext('2d').drawImage(img,0,0,canvas.width,canvas.height);return canvas.toDataURL('image/jpeg',.7)}finally{URL.revokeObjectURL(url)}}
   async function uploadEvidence(file){if(!file)return null;if(!['image/jpeg','image/png','image/webp'].includes(file.type)||file.size>5*1024*1024)throw Error('หลักฐานต้องเป็นรูปไม่เกิน 5 MB');const key=actor(),u=S.get(),t=await token();if(actor()!==key)throw Error('บัญชีเปลี่ยนแล้ว');const path=u.authUserId+'/'+uuid()+'.'+({'image/jpeg':'jpg','image/png':'png','image/webp':'webp'}[file.type]);const response=await fetch(CFG.URL+'/storage/v1/object/qg-evidence/'+path,{method:'POST',headers:{apikey:CFG.KEY,Authorization:'Bearer '+t,'Content-Type':file.type,'x-upsert':'false'},body:file,signal:AbortSignal.timeout(20000)});if(!response.ok)throw Error('อัปโหลดหลักฐานไม่สำเร็จ');return path;}
