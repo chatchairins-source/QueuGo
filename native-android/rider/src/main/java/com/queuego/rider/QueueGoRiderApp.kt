@@ -372,6 +372,7 @@ private fun RiderHome(
     var loadError by remember { mutableStateOf<String?>(null) }
     var actionBusy by remember { mutableStateOf(false) }
     var actionMessage by remember { mutableStateOf<String?>(null) }
+    var deliverySuccessJob by remember { mutableStateOf<RiderJob?>(null) }
     LaunchedEffect(actionMessage) {
         if (actionMessage != null) {
             delay(4_000)
@@ -897,7 +898,10 @@ private fun RiderHome(
                             "marketPickup" -> "รับสินค้าจุดนี้แล้ว"
                             else -> "จัดส่งสำเร็จ"
                         }
-                        if (completedMode == "delivery") RiderReturnService.stop(context)
+                        if (completedMode == "delivery") {
+                            RiderReturnService.stop(context)
+                            deliverySuccessJob = job
+                        }
                         closeVerification()
                         val updated = runCatching { api.riderSnapshot(auth) }.getOrNull()
                         if (updated != null) snapshot = updated
@@ -1582,6 +1586,9 @@ private fun RiderHome(
         }
         actionMessage?.let { RiderFeedbackToast(it, Modifier.align(Alignment.BottomCenter)) }
         messageNotice?.let { RiderMessageNotice(it, Modifier.align(Alignment.TopCenter)) }
+        deliverySuccessJob?.let { completed ->
+            RiderDeliverySuccess(completed) { deliverySuccessJob = null }
+        }
         RiderVoiceOverlay(
             state = voiceState,
             auth = nativeVoiceAuth,
