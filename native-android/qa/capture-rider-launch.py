@@ -3,11 +3,13 @@ from pathlib import Path
 import datetime
 import hashlib
 import json
+import math
 import os
 import re
 import struct
 import subprocess
 import time
+import zlib
 import xml.etree.ElementTree as ET
 
 
@@ -401,28 +403,81 @@ def capture_role_viewports(roles=("customer", "merchant", "rider")):
     print("Actual " + ",".join(roles) + " phone/small-phone/large-screen fresh-session launch matrix PASS; authenticated E2E/visual parity remain unverified")
 
 
+def valid_real_map_evidence(filename, payload):
+    # ADB exec-out can report success while returning a remote cat error on stdout.
+    if filename.endswith(".png"):
+        if not payload.startswith(b"\x89PNG\r\n\x1a\n"):
+            return False
+        offset = 8
+        header = False
+        pixels = False
+        while offset + 12 <= len(payload):
+            length = struct.unpack(">I", payload[offset:offset + 4])[0]
+            end = offset + 12 + length
+            if end > len(payload):
+                return False
+            kind = payload[offset + 4:offset + 8]
+            data = payload[offset + 8:offset + 8 + length]
+            crc = struct.unpack(">I", payload[offset + 8 + length:end])[0]
+            if zlib.crc32(kind + data) & 0xffffffff != crc:
+                return False
+            if offset == 8:
+                if kind != b"IHDR" or length != 13:
+                    return False
+                width, height = struct.unpack(">II", data[:8])
+                header = width > 0 and height > 0
+            if kind == b"IDAT":
+                pixels = True
+            if kind == b"IEND":
+                return header and pixels and length == 0 and end == len(payload)
+            offset = end
+        return False
+    try:
+        row = json.loads(payload)
+        names = ("longitude", "latitude", "zoom", "first_frame_gray_fraction",
+                 "final_gray_fraction", "capture_after_ms")
+        if not all(type(row[name]) in (int, float) and math.isfinite(row[name]) for name in names):
+            return False
+        return (-180 <= row["longitude"] <= 180 and -90 <= row["latitude"] <= 90
+                and row["zoom"] >= 0 and row["capture_after_ms"] >= 0
+                and 0 <= row["first_frame_gray_fraction"] <= 1
+                and 0 <= row["final_gray_fraction"] <= 1)
+    except (ValueError, TypeError, KeyError, UnicodeError):
+        return False
+
+
 def retain_real_map_frames(directory):
     """Keep available original frames even when instrumentation fails its gates."""
     directory.mkdir(parents=True, exist_ok=True)
     copies = []
+    unavailable = []
     for state in ("initial", "resumed", "recreated"):
         for suffix in ("-first-frame.png", ".png", "-camera.json"):
             filename = state + suffix
-            copied = subprocess.run(
-                adb + ["exec-out", "run-as", package, "cat", "files/map-runtime/" + filename],
-                capture_output=True, timeout=10, check=False
-            )
+            try:
+                copied = subprocess.run(
+                    adb + ["exec-out", "run-as", package, "cat", "files/map-runtime/" + filename],
+                    capture_output=True, timeout=10, check=False
+                )
+            except subprocess.TimeoutExpired:
+                copied = None
             # Later lifecycle states may be absent after an early failure.
-            if copied.returncode == 0 and copied.stdout:
+            if copied is not None and copied.returncode == 0 and valid_real_map_evidence(filename, copied.stdout):
                 (directory / filename).write_bytes(copied.stdout)
                 copies.append({"file": filename, "sha256": hashlib.sha256(copied.stdout).hexdigest()})
-    (directory / "capture-manifest.json").write_text(json.dumps({
+            else:
+                unavailable.append(filename)
+                (directory / filename).unlink(missing_ok=True)
+    manifest = {
         "source_head": os.environ["GITHUB_SHA"],
         "workflow_run": os.environ["GITHUB_RUN_ID"],
         "physical_device": False,
         "visual_parity_certified": False,
         "files": copies,
-    }, indent=2) + "\n")
+        "unavailable_files": unavailable,
+    }
+    (directory / "capture-manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
+    return manifest
 
 
 def verify_real_home_map_runtime():
@@ -498,10 +553,11 @@ def verify_real_home_map_runtime():
     runtime = run(adb + ["logcat", "-d", "--pid=" + corrected_pid, "-s", "AndroidRuntime:E"], capture_output=True, text=True).stdout
     (output / "map-process-log.txt").write_text(process_log)
     (output / "map-after-fix.txt").write_text(after.stdout + after.stderr + runtime)
-    retain_real_map_frames(output / "map-frames")
+    retained_frames = retain_real_map_frames(output / "map-frames")
     assert after.returncode == 0, "Real map instrumentation returned a non-zero exit code"
     assert "OK (1 test)" in (after.stdout + after.stderr), "Real map instrumentation did not pass"
     assert "FATAL EXCEPTION" not in runtime, "Corrected Home map crashed"
+    assert len(retained_frames["files"]) == 9, "Successful map runtime must retain all original PNG/camera evidence"
     metadata = {
         "source_head": os.environ["GITHUB_SHA"],
         "workflow_run": os.environ["GITHUB_RUN_ID"],
