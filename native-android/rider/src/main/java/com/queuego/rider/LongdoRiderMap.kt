@@ -356,7 +356,9 @@ internal fun RiderLongdoMap(
                                 holder.attachMap(map)
                                 map.setBase(LongdoLayer(ctx, "normal", 0, 1, 20).apply {
                                     // The SDK defaults to HTTP; keep Android cleartext disabled.
-                                    layerURL = "https://ms2.longdo.com/mmmap/img.php"
+                                    // Start on the endpoint selected by the live SDK key checker.
+                                    // Keep key validation/host selection enabled; avoid mixed in-flight hosts.
+                                    layerURL = "https://ms.longdo.com/map/msn-server/tile.php"
                                 })
                                 map.setDrawCrossSign(false)
                                 // Keep the real viewport across GL-surface or Activity recreation.

@@ -3,6 +3,7 @@ const fs=require('fs');
 
 const source=fs.readFileSync('native-android/rider/src/androidTest/java/com/queuego/rider/RiderMapRuntimeTest.kt','utf8');
 const capture=fs.readFileSync('native-android/qa/capture-rider-launch.py','utf8');
+const map=fs.readFileSync('native-android/rider/src/main/java/com/queuego/rider/LongdoRiderMap.kt','utf8');
 
 assert(source.includes('System.currentTimeMillis() - started < 60_000'),
   'Longdo tile evidence must allow up to 60 seconds for CI/emulator network latency');
@@ -19,5 +20,10 @@ assert(capture.indexOf('retain_real_map_frames(output / "map-frames")') <
   'Actual first/final map frames and camera metrics must survive failed instrumentation');
 assert(capture.includes('"rm", "-rf", "files/map-runtime"'),
   'Generated map frames must be cleared before testing to prevent stale evidence');
+assert(map.includes('layerURL = "https://ms.longdo.com/map/msn-server/tile.php"')&&!map.includes('ms2.longdo.com/mmmap/img.php'),
+  'Initial native layer must match the endpoint selected by the actual key checker');
+assert(capture.includes('len(retained_frames["files"]) == 9'),
+  'A successful instrumentation run must retain all nine valid original evidence files');
+require('child_process').execFileSync('python3',['tests/native-map-evidence-retention.py'],{stdio:'inherit'});
 
 console.log('Native Rider Longdo runtime evidence budget contracts: PASS');
