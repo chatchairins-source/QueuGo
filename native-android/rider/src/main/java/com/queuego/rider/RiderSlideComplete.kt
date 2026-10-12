@@ -62,7 +62,7 @@ internal fun RiderSlideComplete(
     ) {
         val thumbWidth = 48.dp
         val horizontalPadding = 4.dp
-        val travelPx = with(density) { (maxWidth - thumbWidth - horizontalPadding * 2).toPx().coerceAtLeast(1f) }
+        val travelPx = with(density) { (maxWidth - thumbWidth - horizontalPadding * 2f).toPx().coerceAtLeast(1f) }
         val leftPadPx = with(density) { horizontalPadding.toPx() }
 
         Box(
