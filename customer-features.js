@@ -192,7 +192,7 @@ const QGCustomer=(()=>{
           <span>ร้าน ${esc(ctx.shop?.name||'ร้านค้า')}${orderNote?` · ${esc(orderNote)}`:''}</span>
         </div>
         <div class="qg-order-hero-actions">
-          ${!['pending','searching_rider'].includes(o.status)?`<button type="button" class="lk qg-voice-launch" data-qg-voice-target="shop" data-qg-voice-label="${esc(ctx.shop?.name||'ร้านค้า')}">${window.QueueGoVoiceWeb?.phoneIcon?.()||''}<span>โทรหาร้าน</span></button>`:''}
+          ${!closed&&!['pending','searching_rider'].includes(o.status)?`<button type="button" class="lk qg-voice-launch" data-qg-voice-target="shop" data-qg-voice-label="${esc(ctx.shop?.name||'ร้านค้า')}">${window.QueueGoVoiceWeb?.phoneIcon?.()||''}<span>โทรหาร้าน</span></button>`:''}
           ${!o.rider_id&&['pending','searching_rider'].includes(o.status)?`<button class="lk qg-danger" onclick="QGCustomer.cancel('${esc(id)}')">ยกเลิกคำสั่งซื้อ</button>`:''}
           <button class="lk" onclick="go('support/${esc(id)}')">แจ้งปัญหา</button>
         </div>
@@ -407,7 +407,7 @@ const QGCustomer=(()=>{
   addEventListener('pageshow',syncNotifications);addEventListener('online',syncNotifications);document.addEventListener('visibilitychange',()=>{if(!document.hidden)notificationsTick()});
   function toggleSound(button){const key='qg_customer_sound_'+S.get().userId,enabled=localStorage.getItem(key)!=='on';localStorage.setItem(key,enabled?'on':'off');button.querySelector('span').textContent=enabled?'เปิด':'ปิด';if(enabled&&'speechSynthesis' in window){const speech=new SpeechSynthesisUtterance('เปิดเสียงแจ้งเตือนแล้ว');speech.lang='th-TH';speechSynthesis.speak(speech)}}
   function filterMenu(category){document.querySelectorAll('[data-menu-category]').forEach(row=>{row.hidden=!!category&&row.dataset.menuCategory!==category})}
-  return {needsOrderRefresh,toggleSound,deleteAccount,filterMenu,leave,poll,actor,owned,safeImage,note,linkPhone,date,context,cancel,favorite,favoriteButton,loadFavorites,reviews,reviewList,renderFavorites,renderPromotions,renderNotifications,renderProfile,renderOrder,renderChat,syncNotifications,openNotification,markRead,uploadEvidence,openEvidence};
+  return {needsOrderRefresh,toggleSound,deleteAccount,filterMenu,leave,poll,actor,owned,safeImage,note,linkPhone,date,context,cancel,favorite,favoriteButton,loadFavorites,reviews,reviewList,renderFavorites,renderPromotions,renderNotifications,renderProfile,renderOrder,renderChat,syncNotifications,openNotification,markRead,uploadEvidence,openEvidence,activateVoice,startVoiceCall};
 })();
 V.order=QGCustomer.renderOrder;
 V['order-chat']=QGCustomer.renderChat;
