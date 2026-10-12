@@ -54,7 +54,7 @@ internal fun RiderArrivalGuard(
                     Color.White,
                     RoundedCornerShape(topStart = 26.dp, topEnd = 26.dp)
                 )
-                .clickable(enabled = false) {}
+                .clickable(enabled = true, onClick = {})
                 .padding(horizontal = 17.dp)
                 .padding(top = 12.dp, bottom = 20.dp),
             horizontalAlignment = Alignment.CenterHorizontally
