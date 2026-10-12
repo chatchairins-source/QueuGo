@@ -466,6 +466,39 @@ def verify_voice_foreground_runtime():
     print("Microphone foreground service background/owned cleanup PASS; real voice audio remains unverified")
 
 
+
+def verify_merchant_shop_map_runtime():
+    """Exercise the real Merchant Longdo picker lifecycle without session or business fixtures."""
+    pkg = "com.queuego.merchant"
+    apk = repo / "native-android/merchant/build/outputs/apk/debug/merchant-debug.apk"
+    test_apk = repo / "native-android/merchant/build/outputs/apk/androidTest/debug/merchant-debug-androidTest.apk"
+    runner = "com.queuego.merchant.test/androidx.test.runner.AndroidJUnitRunner"
+    run(adb + ["install", "-r", str(apk)])
+    run(adb + ["install", "-r", str(test_apk)])
+    directory = output / "merchant-shop-map"
+    directory.mkdir(parents=True, exist_ok=True)
+    for state in ("denied", "allowed"):
+        run(adb + ["shell", "am", "force-stop", pkg])
+        for permission in ("ACCESS_FINE_LOCATION", "ACCESS_COARSE_LOCATION"):
+            command = "grant" if state == "allowed" else "revoke"
+            subprocess.run(
+                adb + ["shell", "pm", command, pkg, "android.permission." + permission],
+                capture_output=True, text=True, timeout=15
+            )
+        run(adb + ["logcat", "-b", "all", "-c"])
+        result = run(
+            adb + ["shell", "am", "instrument", "-w", "-r", "-e", "class",
+                   "com.queuego.merchant.MerchantShopMapRuntimeTest", runner],
+            capture_output=True, text=True, timeout=150
+        )
+        (directory / (state + "-instrumentation.txt")).write_text(result.stdout + result.stderr)
+        full_log = run(adb + ["logcat", "-d", "-v", "threadtime"], capture_output=True, text=True).stdout
+        (directory / (state + "-logcat.txt")).write_text(full_log)
+        assert "OK (1 test)" in result.stdout, "Merchant edit-shop map lifecycle failed: " + state
+        assert_no_package_crash(pkg, directory / (state + "-crash.txt"))
+        print("QUEUEGO_MERCHANT_SHOP_MAP_PASS " + state)
+
+
 def capture_map_display_only():
     """Actual Longdo component frames; no login, sample jobs or GPS injection."""
     import base64
@@ -574,6 +607,7 @@ with (output / "emulator.log").open("w") as log:
         run(adb + ["logcat", "-b", "all", "-c"])
         if os.environ.get("QG_CUSTOMER_LOCATION_ONLY") == "1":
             capture_customer_location()
+            verify_merchant_shop_map_runtime()
             capture_map_display_only()
         elif os.environ.get("QG_MAP_DISPLAY_ONLY") == "1":
             capture_map_display_only()
