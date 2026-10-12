@@ -410,6 +410,12 @@ def capture_map_display_only():
         if "OK (1 test)" not in result.stdout:
             print("QUEUEGO_MAP_FAILURE_LOG\n" + full_log[-24000:])
         assert "OK (1 test)" in result.stdout, "Actual map mount/lifecycle test failed: " + viewport
+        starts = full_log.count("foreground_updates_started")
+        stops = full_log.count("foreground_updates_stopped")
+        if granted:
+            assert starts >= 3 and stops >= 3, "Foreground location lifecycle was not exercised: " + viewport
+        else:
+            assert starts == 0, "Location updates started without permission"
         runtime = run(adb + ["logcat", "-d", "-s", "AndroidRuntime:E"], capture_output=True, text=True).stdout
         (directory / "android-runtime.txt").write_text(runtime)
         assert_no_package_crash(package, directory / "crash-buffer.txt")

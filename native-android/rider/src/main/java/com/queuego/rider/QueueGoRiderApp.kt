@@ -473,14 +473,23 @@ private fun RiderHome(
         if (chatJob != null) unreadMessages = 0
     }
 
+    var recenterSignal by remember { mutableStateOf(0) }
+    var mapReady by remember { mutableStateOf(false) }
+    var pendingMapRecenter by remember { mutableStateOf(false) }
+
     val locationPermission = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { grants ->
-        actionMessage = if (grants.values.any { it }) {
+        val granted = grants.values.any { it }
+        actionMessage = if (granted && pendingMapRecenter) {
+            recenterSignal += 1
+            if (lastKnownLocation(context) == null) "ยังไม่ได้ตำแหน่ง GPS" else "อนุญาตตำแหน่งแล้ว"
+        } else if (granted) {
             "อนุญาตตำแหน่งแล้ว กดปุ่มเดิมอีกครั้ง"
         } else {
             "ยังไม่ได้รับสิทธิ์ตำแหน่ง"
         }
+        pendingMapRecenter = false
     }
 
     val notificationPermission = rememberLauncherForActivityResult(
@@ -883,8 +892,6 @@ private fun RiderHome(
         }
     }
 
-    var recenterSignal by remember { mutableStateOf(0) }
-    var mapReady by remember { mutableStateOf(false) }
     val shortHome = LocalConfiguration.current.screenHeightDp <= 760
     val mapJob = snapshot?.activeJob ?: snapshot?.offeredJob
 
@@ -935,7 +942,17 @@ private fun RiderHome(
                 .align(Alignment.TopEnd)
                 .padding(top = 64.dp, end = 10.dp)
                 .size(44.dp)
-                .clickable { recenterSignal += 1 },
+                .clickable {
+                    when {
+                        !mapReady -> actionMessage = "แผนที่ยังไม่พร้อม เปิดนำทางภายนอกจากงานได้"
+                        !hasLocationPermission(context) -> {
+                            pendingMapRecenter = true
+                            ensureLocationPermission()
+                        }
+                        lastKnownLocation(context) == null -> actionMessage = "ยังไม่ได้ตำแหน่ง GPS"
+                        else -> recenterSignal += 1
+                    }
+                },
             shape = androidx.compose.foundation.shape.CircleShape,
             colors = CardDefaults.cardColors(containerColor = Color(0xF8FFFFFF)),
             border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFEEE5E8)),
@@ -1915,6 +1932,8 @@ private fun lastKnownLocation(context: Context): Pair<Double, Double>? {
         manager.getProviders(true)
             .mapNotNull { provider -> runCatching { manager.getLastKnownLocation(provider) }.getOrNull() }
             .maxByOrNull { it.time }
+            ?.takeIf { it.latitude.isFinite() && it.longitude.isFinite() &&
+                it.latitude in -90.0..90.0 && it.longitude in -180.0..180.0 }
             ?.let { it.latitude to it.longitude }
     }.getOrNull()
 }

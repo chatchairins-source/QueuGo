@@ -4,6 +4,11 @@ import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
 import android.location.LocationManager
+import android.location.Location
+import android.location.LocationListener
+import android.os.Bundle
+import android.os.Looper
+import android.util.Log
 import android.view.LayoutInflater
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -31,13 +36,65 @@ private class RiderLongdoHolder {
     var disposed = false
     private var centeredOnDevice = false
     private var resumed = false
+    private var locationManager: LocationManager? = null
+    private var locationListener: LocationListener? = null
+    private var locationPermissionMask = 0
+    private var currentJob: RiderJob? = null
+    private var currentPickups: List<MarketPickup> = emptyList()
 
-    fun resume() {
+    private fun stopLocationUpdates() {
+        locationListener?.let { listener ->
+            runCatching { locationManager?.removeUpdates(listener) }
+            Log.i("QueueGoMapLocation", "foreground_updates_stopped")
+        }
+        locationListener = null
+        locationManager = null
+        locationPermissionMask = 0
+    }
+
+    private fun startLocationUpdates(context: Context) {
+        if (disposed || !resumed) return
+        val fine = context.checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
+        val coarse = context.checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
+        val permissionMask = (if (fine) 2 else 0) + (if (coarse) 1 else 0)
+        if (permissionMask == locationPermissionMask && locationListener != null) return
+        stopLocationUpdates()
+        if (permissionMask == 0) return
+        val manager = context.getSystemService(Context.LOCATION_SERVICE) as? LocationManager ?: return
+        val listener = object : LocationListener {
+            override fun onLocationChanged(location: Location) {
+                if (!disposed && resumed) refreshOverlays(context, currentJob, currentPickups)
+            }
+            override fun onProviderEnabled(provider: String) {
+                if (!disposed && resumed) refreshOverlays(context, currentJob, currentPickups)
+            }
+            override fun onProviderDisabled(provider: String) = Unit
+            @Deprecated("Required for Android 8/9 compatibility")
+            override fun onStatusChanged(provider: String?, status: Int, extras: Bundle?) = Unit
+        }
+        var registered = false
+        runCatching { manager.getProviders(true) }.getOrDefault(emptyList())
+            .filter { it == LocationManager.GPS_PROVIDER || it == LocationManager.NETWORK_PROVIDER }
+            .forEach { provider ->
+                runCatching { manager.requestLocationUpdates(provider, 5_000L, 5f, listener, Looper.getMainLooper()) }
+                    .onSuccess { registered = true }
+            }
+        if (registered) {
+            locationManager = manager
+            locationListener = listener
+            locationPermissionMask = permissionMask
+            Log.i("QueueGoMapLocation", "foreground_updates_started")
+        }
+    }
+
+    fun resume(context: Context) {
         val view = mapView ?: return
         if (!disposed && !resumed) { view.onResume(); resumed = true }
+        startLocationUpdates(context)
     }
 
     fun pause() {
+        stopLocationUpdates()
         if (resumed) { mapView?.onPause(); resumed = false }
     }
 
@@ -46,6 +103,9 @@ private class RiderLongdoHolder {
         job: RiderJob?,
         pickups: List<MarketPickup>
     ) {
+        currentJob = job
+        currentPickups = pickups
+        startLocationUpdates(context)
         val ldmap = map ?: return
         if (disposed) return
         val location = deviceLocation(context)
@@ -177,7 +237,7 @@ fun RiderLongdoMap(
                     }
                 }
             })
-            if (lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) holder.resume()
+            if (lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) holder.resume(context)
             view
         },
         update = {
@@ -196,7 +256,7 @@ fun RiderLongdoMap(
     DisposableEffect(lifecycle) {
         val observer = LifecycleEventObserver { _, event ->
             when (event) {
-                Lifecycle.Event.ON_RESUME -> holder.resume()
+                Lifecycle.Event.ON_RESUME -> holder.resume(context)
                 Lifecycle.Event.ON_PAUSE -> holder.pause()
                 else -> Unit
             }
