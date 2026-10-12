@@ -1285,6 +1285,7 @@ async function route(background=false){
   if(!V[pg])return go('home');
   if(ok&&['cart','orders','order'].includes(pg)&&await reconcilePendingCheckout())return;
   customerOrdersLive.sync();
+  if(ok)QGCustomer.activateVoice?.();
   const viewKey=(S.get()?.userId||'guest')+':'+pg+'/'+(param||'');
   if(!background&&viewKey!==lastRouteView){lastRouteView=viewKey;layout('<div class="card" role="status" aria-live="polite">กำลังโหลดข้อมูล…</div>',pg==='order'?'orders':pg==='checkout'?'cart':pg)}
   try{await V[pg](param,ticket);if(ticket===routeVersion)bind(pg)}
