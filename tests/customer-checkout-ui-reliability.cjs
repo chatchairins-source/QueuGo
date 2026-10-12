@@ -1,6 +1,6 @@
 const fs=require('fs'),path=require('path'),assert=require('assert');
 const root=path.resolve(__dirname,'..');
-const customer=fs.readFileSync(path.join(root,'index.html'),'utf8'),features=fs.readFileSync(path.join(root,'customer-features.js'),'utf8');
+const customer=fs.readFileSync(path.join(root,'index.html'),'utf8'),features=fs.readFileSync(path.join(root,'customer-features.js'),'utf8'),customerCss=fs.readFileSync(path.join(root,'customer-features.css'),'utf8');
 let checks=0;const ok=(v,m)=>{assert.ok(v,m);checks++};
 
 ok(customer.includes("customer checkout post-commit local cleanup failed"),'post-commit local cleanup must be non-fatal');
@@ -20,6 +20,11 @@ ok(customer.includes('.qg-order-map{height:178px!important'),'Customer order tra
 ok(customer.includes('.prim{width:100%;min-height:48px'),'Customer primary actions must retain practical touch height while compact');
 ok(customer.includes('@media(max-height:760px)'),'Customer must have a short-screen compact density mode');
 ok(customer.includes('customer-features.js?v=20261012-chat2'),'Customer feature bundle must refresh after accepted/assigned progress fix and Customer chat rebuild');
+ok(customer.includes('customer-features.css?v=20261012-chat3'),'Customer chat stylesheet must refresh after composer positioning fix');
+ok(customerCss.includes('.qg-customer-chat-compose{position:fixed;z-index:270;left:50%;bottom:calc(45px + env(safe-area-inset-bottom,0px))'),'Customer chat composer must dock directly above the fixed bottom navigation');
+ok(customerCss.includes('grid-template-columns:42px minmax(0,1fr) 46px;align-items:center'),'Customer chat photo/input/send controls must share one centered row');
+ok(customerCss.includes('.qg-customer-chat-photo,.qg-customer-chat-send{height:42px;align-self:center'),'Customer chat action buttons must stay compact and vertically aligned');
+ok(customerCss.includes('.qg-customer-chat-input{min-width:0;height:42px;align-self:center'),'Customer chat text input must align with the send button');
 ok(!customer.includes('customer-features.js?v=20261007-bg1'),'Customer must not keep the stale bg1 order feature bundle URL');
 ok(features.includes("['rider_assigned','assigned','preparing','ready'].includes(o.status)?2"),'Customer assigned state must remain in pickup/preparation progress');
 ok(features.includes("['accepted','searching_rider'].includes(o.status)?1"),'Customer accepted state must remain after order-created progress');
