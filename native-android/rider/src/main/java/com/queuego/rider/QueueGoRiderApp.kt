@@ -393,6 +393,19 @@ private fun RiderHome(
             }
         }
     }
+    var offerShopDisplay by remember { mutableStateOf<RiderShopDisplay?>(null) }
+    LaunchedEffect(snapshot?.offeredJob?.id, auth.session.accessToken) {
+        offerShopDisplay = null
+        snapshot?.offeredJob?.let { job ->
+            try {
+                offerShopDisplay = api.offerShopDisplay(auth, job.id)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                // The offer remains actionable with its real order address if shop media is unavailable.
+            }
+        }
+    }
     var chatJob by remember { mutableStateOf<RiderJob?>(null) }
     var verifyMode by remember { mutableStateOf<String?>(null) }
     var verifyJob by remember { mutableStateOf<RiderJob?>(null) }
@@ -1401,6 +1414,7 @@ private fun RiderHome(
                     current.offeredJob != null -> {
                         OfferCard(
                             job = current.offeredJob,
+                            shop = offerShopDisplay,
                             riderLocation = lastKnownLocation(context),
                             busy = actionBusy,
                             onAccept = {
@@ -1634,6 +1648,7 @@ private fun RiderBottomNavigation(
 @Composable
 private fun OfferCard(
     job: RiderJob,
+    shop: RiderShopDisplay?,
     riderLocation: Pair<Double, Double>?,
     busy: Boolean,
     onAccept: () -> Unit,
@@ -1682,8 +1697,22 @@ private fun OfferCard(
                 }
             }
             Spacer(Modifier.height(8.dp))
-            RiderJobPlaceRow("store", "รับที่ร้าน", job.pickupAddress ?: "ยังไม่มีที่อยู่ร้าน")
-            RiderJobPlaceRow("home", "ส่งลูกค้า", job.deliveryAddress ?: "ยังไม่มีที่อยู่ลูกค้า")
+            RiderOfferPlaceRow(
+                logoUrl = shop?.shopLogo,
+                fallback = (shop?.shopName ?: job.pickupAddress ?: "Q").take(1),
+                icon = null,
+                label = "รับที่ร้าน",
+                value = shop?.shopName ?: job.pickupAddress ?: "ร้านค้า",
+                trailing = "รับสินค้า"
+            )
+            RiderOfferPlaceRow(
+                logoUrl = null,
+                fallback = null,
+                icon = "location",
+                label = "ส่งให้ลูกค้า",
+                value = job.deliveryAddress ?: "จุดส่งสินค้า",
+                trailing = "ส่งสินค้า"
+            )
 
             Row(
                 Modifier.fillMaxWidth().padding(top = 8.dp),
@@ -1895,12 +1924,43 @@ private fun RiderJobTool(icon: String, label: String, enabled: Boolean, modifier
 }
 
 @Composable
+private fun RiderBlueprintBrandPill() {
+    Card(
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFAFFFFFF)),
+        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFEEE7E9))
+    ) {
+        Row(
+            Modifier.heightIn(min = 44.dp).padding(start = 5.dp, end = 10.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                Modifier.size(34.dp).clip(RoundedCornerShape(12.dp)).background(QgRed),
+                contentAlignment = Alignment.Center
+            ) {
+                Text("Q", color = Color.White, fontSize = 21.sp, fontWeight = FontWeight.Black)
+            }
+            Spacer(Modifier.width(7.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("Queue", color = Color(0xFF211E20), fontSize = 15.sp, fontWeight = FontWeight.Black)
+                Text("Go", color = QgRed, fontSize = 15.sp, fontWeight = FontWeight.Black)
+            }
+            Spacer(Modifier.width(8.dp))
+            Box(Modifier.width(1.dp).height(20.dp).background(Color(0xFFEEE4E7)))
+            Spacer(Modifier.width(8.dp))
+            Text("Rider", color = Color(0xFF8D8589), fontSize = 9.sp)
+        }
+    }
+}
+
+@Composable
 private fun RiderBlueprintTopBar(active: Boolean, online: Boolean, enabled: Boolean, onToggle: () -> Unit) {
     Row(
         Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.End,
+        horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
+        RiderBlueprintBrandPill()
         Card(
             shape = RoundedCornerShape(18.dp),
             colors = CardDefaults.cardColors(containerColor = Color(0xFAFFFFFF)),
@@ -1924,14 +1984,57 @@ private fun RiderBlueprintTopBar(active: Boolean, online: Boolean, enabled: Bool
                     fontSize = 10.sp
                 )
                 Spacer(Modifier.width(6.dp))
-                Box(Modifier.size(width = 43.dp, height = 29.dp).clip(RoundedCornerShape(99.dp))
-                    .background(if (online) Color(0xFF1FBE70) else Color(0xFFD9D5D7))
-                    .clickable(enabled = enabled, role = androidx.compose.ui.semantics.Role.Switch, onClick = onToggle),
-                    contentAlignment = if (online) Alignment.CenterEnd else Alignment.CenterStart) {
-                    Box(Modifier.padding(horizontal = 3.dp).size(23.dp).background(Color.White, androidx.compose.foundation.shape.CircleShape))
+                Box(
+                    Modifier.size(width = 43.dp, height = 29.dp).clip(RoundedCornerShape(99.dp))
+                        .background(if (online) Color(0xFF1FBE70) else Color(0xFFD9D5D7))
+                        .clickable(enabled = enabled, role = androidx.compose.ui.semantics.Role.Switch, onClick = onToggle),
+                    contentAlignment = if (online) Alignment.CenterEnd else Alignment.CenterStart
+                ) {
+                    Box(
+                        Modifier.padding(horizontal = 3.dp).size(23.dp)
+                            .background(Color.White, androidx.compose.foundation.shape.CircleShape)
+                    )
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun RiderOfferPlaceRow(
+    logoUrl: String?,
+    fallback: String?,
+    icon: String?,
+    label: String,
+    value: String,
+    trailing: String
+) {
+    Row(
+        Modifier.fillMaxWidth().padding(vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        if (icon == null) {
+            QgRemoteImage(
+                logoUrl,
+                Modifier.size(42.dp),
+                fallback = fallback ?: "Q",
+                cornerRadius = 14.dp
+            )
+        } else {
+            Box(
+                Modifier.size(42.dp).background(QgRedSoft, RoundedCornerShape(14.dp)),
+                contentAlignment = Alignment.Center
+            ) {
+                QgIcon(icon, Modifier.size(22.dp), QgRed)
+            }
+        }
+        Spacer(Modifier.width(8.dp))
+        Column(Modifier.weight(1f)) {
+            Text(label, color = QgMuted, fontSize = 8.sp)
+            Text(value, fontWeight = FontWeight.Bold, fontSize = 12.sp, maxLines = 2)
+        }
+        Spacer(Modifier.width(8.dp))
+        Text(trailing, color = QgMuted, fontSize = 9.sp, maxLines = 1)
     }
 }
 
