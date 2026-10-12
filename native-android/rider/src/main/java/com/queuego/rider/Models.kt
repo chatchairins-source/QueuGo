@@ -151,10 +151,29 @@ data class RiderLaundryJob(
 }
 
 data class RiderLaundryState(
+    val featureEnabled: Boolean = false,
     val modeEnabled: Boolean = false,
     val invites: List<RiderLaundryInvite> = emptyList(),
     val activeJob: RiderLaundryJob? = null,
     val pool: List<RiderLaundryJob> = emptyList()
+)
+
+internal fun RiderLaundryJob.asMapJob(): RiderJob = RiderJob(
+    id = "laundry:" + jobId,
+    orderNumber = orderNumber,
+    status = if (isCollected) "in_progress" else "rider_assigned",
+    pickupAddress = fromAddress,
+    pickupLat = fromLatitude,
+    pickupLng = fromLongitude,
+    deliveryAddress = toAddress,
+    deliveryLat = toLatitude,
+    deliveryLng = toLongitude,
+    deliveryFee = jobFee,
+    marketOrderId = null,
+    arrivedShopAt = null,
+    arrivedCustomerAt = null,
+    shopCash = null,
+    customerCash = customerAmount
 )
 
 data class RiderProfileInfo(
