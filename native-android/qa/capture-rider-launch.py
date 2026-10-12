@@ -411,7 +411,8 @@ def capture_map_display_only():
         screenshots = []
         for state in ("initial", "resumed", "recreated"):
             image = directory / (state + ".png")
-            run(adb + ["pull", "/sdcard/Android/data/" + package + "/files/map-runtime/" + state + ".png", str(image)])
+            with image.open("wb") as png:
+                run(adb + ["exec-out", "run-as", package, "cat", "files/map-runtime/" + state + ".png"], stdout=png)
             raw = image.read_bytes()
             assert raw[:8] == b"\x89PNG\r\n\x1a\n", "Invalid real Android screenshot"
             preview = directory / (state + ".jpg")

@@ -40,7 +40,7 @@ class RiderMapRuntimeTest {
         val instrumentation = InstrumentationRegistry.getInstrumentation()
         val image = instrumentation.uiAutomation.takeScreenshot()
         assertTrue("Actual Android screenshot unavailable", image != null)
-        val directory = File(instrumentation.targetContext.getExternalFilesDir(null), "map-runtime")
+        val directory = File(instrumentation.targetContext.filesDir, "map-runtime")
         assertTrue("Cannot create map evidence directory", directory.isDirectory || directory.mkdirs())
         File(directory, "$name.png").outputStream().use { image!!.compress(Bitmap.CompressFormat.PNG, 100, it) }
         image!!.recycle()

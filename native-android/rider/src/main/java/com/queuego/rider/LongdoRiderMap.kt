@@ -29,6 +29,7 @@ private class RiderLongdoHolder {
     var map: com.longdo.api.Map? = null
     var lastOverlayKey: String? = null
     var disposed = false
+    private var centeredOnDevice = false
     private var resumed = false
 
     fun resume() {
@@ -110,15 +111,18 @@ private class RiderLongdoHolder {
         }
     }
 
-    fun centerOnDevice(context: Context) {
+    fun centerOnDevice(context: Context, force: Boolean = false) {
+        val activeMap = map ?: return
+        if (centeredOnDevice && !force) return
         val location = deviceLocation(context) ?: return
         runCatching {
-            map?.setLocation(MapLocation(location.second, location.first))
-        }
+            activeMap.setZoom(15)
+            activeMap.setLocation(MapLocation(location.second, location.first))
+        }.onSuccess { centeredOnDevice = true }
     }
 
     fun recenter(context: Context) {
-        centerOnDevice(context)
+        centerOnDevice(context, force = true)
     }
 
     fun dispose() {
@@ -159,6 +163,9 @@ fun RiderLongdoMap(
                             runCatching {
                                 holder.map = map
                                 map.setBase(LongdoLayer(ctx, "gray", 0, 1, 20))
+                                // Production Web's initial camera, never a fabricated GPS marker.
+                                map.setLocation(MapLocation(100.5018, 13.7563))
+                                map.setZoom(13)
                                 holder.centerOnDevice(ctx)
                                 holder.refreshOverlays(ctx, latestJob.value, latestPickups.value)
                             }.onSuccess { currentReady.value(true) }
@@ -212,6 +219,8 @@ private fun deviceLocation(context: Context): Pair<Double, Double>? {
                 runCatching { manager.getLastKnownLocation(provider) }.getOrNull()
             }
             .maxByOrNull { it.time }
+            ?.takeIf { it.latitude.isFinite() && it.longitude.isFinite() &&
+                it.latitude in -90.0..90.0 && it.longitude in -180.0..180.0 }
             ?.let { it.latitude to it.longitude }
     }.getOrNull()
 }
