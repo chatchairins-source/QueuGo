@@ -314,6 +314,6 @@ ok(specialTracking.includes('d.actualQuantity')&&specialTracking.includes('d.pic
 ok(marketApi.includes('qg_customer_cancel_market_order')&&specialTracking.includes('ยกเลิก Market Trip')&&specialTracking.includes('current.multiShopFee')&&specialTracking.includes('onTrackChild(child.id)'),'Market Trip must preserve current Web cancellation/tracking actions and server fee snapshots');
 ok(source.includes('if (!authRequested) {\n        QueueGoTheme {\n        GuestCustomerShell('),'Customer guest screens must use the existing Production-red QueueGoTheme');
 console.log(JSON.stringify({checks,failures:0,scope:'QueueGo Customer Merchant Rider native Android source'}));
-ok(!/queuego_(?:set_laundry_rider_mode|laundry_rider_|claim_laundry_job)/.test(riderApi),'Shop-managed Laundry must not load or mutate Rider laundry jobs');
-ok(!riderApp.includes('RiderLaundry')&&!riderMap.includes('RiderLaundryJob'),'Rider must not render or navigate shop-managed Laundry work');
+ok(/queuego_(?:set_laundry_rider_mode|laundry_rider_|claim_laundry_job)/.test(riderApi)&&riderApi.includes('queuego_laundry_rider_state'),'Rider Native must load and mutate Production Laundry jobs through authoritative RPCs');
+ok(riderApp.includes('RiderLaundryActiveCard(')&&riderApp.includes('RiderLaundryPoolCard(')&&riderApp.includes('riderLaundryNavigationTarget')&&!riderMap.includes('RiderLaundryJob'),'Rider Native must render Production Laundry work through the shared Longdo job/navigation surface without a duplicate map implementation');
 ok(!nativeRealtimeSubscriptions.includes('laundry_rider_'),'Rider must not subscribe to shop-managed Laundry dispatch');
