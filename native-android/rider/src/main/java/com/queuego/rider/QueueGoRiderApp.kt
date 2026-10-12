@@ -34,6 +34,14 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.material3.CardDefaults
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.animation.core.snap
+import androidx.compose.animation.core.spring
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.input.pointer.util.VelocityTracker
+import androidx.compose.ui.unit.Velocity
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -1052,12 +1060,63 @@ private fun RiderHome(
         var jobSheetExpanded by rememberSaveable(activeSheetJob?.id) { mutableStateOf(true) }
         var draggedSheetHeightPx by remember(activeSheetJob?.id) { mutableStateOf<Float?>(null) }
         val settledSheetHeight by animateDpAsState(
-            targetValue = if (jobSheetExpanded) expandedSheetHeight else collapsedSheetHeight,
+            targetValue = draggedSheetHeightPx?.let { with(density) { it.toDp() } }
+                ?: if (jobSheetExpanded) expandedSheetHeight else collapsedSheetHeight,
+            animationSpec = if (draggedSheetHeightPx != null) snap() else spring(),
             label = "rider-job-sheet-height"
         )
         val expandedPx = with(density) { expandedSheetHeight.toPx() }
         val collapsedPx = with(density) { collapsedSheetHeight.toPx() }
-        val liveSheetHeight = draggedSheetHeightPx?.let { with(density) { it.toDp() } } ?: settledSheetHeight
+        val liveSheetHeight = settledSheetHeight
+        val sheetScrollState = rememberScrollState()
+        fun currentSheetHeightPx() = draggedSheetHeightPx ?: with(density) { settledSheetHeight.toPx() }
+        fun dragSheet(deltaY: Float): Float {
+            val previous = currentSheetHeightPx()
+            val next = (previous - deltaY).coerceIn(collapsedPx, expandedPx)
+            if (next != previous) draggedSheetHeightPx = next
+            return previous - next
+        }
+        fun settleSheet(velocityY: Float = 0f) {
+            val height = currentSheetHeightPx()
+            jobSheetExpanded = if (kotlin.math.abs(velocityY) >= 600f) velocityY < 0f
+                else height >= (collapsedPx + expandedPx) / 2f
+            draggedSheetHeightPx = null
+        }
+        val sheetScrollConnection = remember(activeSheetJob?.id, expandedPx, collapsedPx) {
+            object : NestedScrollConnection {
+                override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                    if (source != NestedScrollSource.UserInput || activeSheetJob == null) return Offset.Zero
+                    val expanding = available.y < 0f && currentSheetHeightPx() < expandedPx
+                    val collapsing = available.y > 0f && sheetScrollState.value == 0
+                    return if (expanding || collapsing) Offset(0f, dragSheet(available.y)) else Offset.Zero
+                }
+                override fun onPostScroll(consumed: Offset, available: Offset, source: NestedScrollSource): Offset {
+                    if (source != NestedScrollSource.UserInput || activeSheetJob == null) return Offset.Zero
+                    return Offset(0f, dragSheet(available.y))
+                }
+                override suspend fun onPreFling(available: Velocity): Velocity {
+                    if (draggedSheetHeightPx == null) return Velocity.Zero
+                    settleSheet(available.y)
+                    return Velocity(0f, available.y)
+                }
+            }
+        }
+        val sheetDragModifier = Modifier.pointerInput(activeSheetJob?.id, expandedPx, collapsedPx) {
+            val tracker = VelocityTracker()
+            detectVerticalDragGestures(
+                onDragStart = {
+                    tracker.resetTracking()
+                    draggedSheetHeightPx = currentSheetHeightPx()
+                },
+                onVerticalDrag = { change, dragAmount ->
+                    tracker.addPosition(change.uptimeMillis, change.position)
+                    change.consume()
+                    dragSheet(dragAmount)
+                },
+                onDragEnd = { settleSheet(tracker.calculateVelocity().y) },
+                onDragCancel = { settleSheet() }
+            )
+        }
         val dockBase = Modifier
             .align(Alignment.BottomCenter)
             .padding(bottom = 68.dp)
@@ -1068,33 +1127,14 @@ private fun RiderHome(
                 .height(liveSheetHeight)
                 .clip(RoundedCornerShape(topStart = 22.dp, topEnd = 22.dp))
                 .background(Color(0xF8FFFFFF))
-                .pointerInput(activeSheetJob.id, expandedPx, collapsedPx) {
-                    detectVerticalDragGestures(
-                        onDragStart = {
-                            draggedSheetHeightPx = if (jobSheetExpanded) expandedPx else collapsedPx
-                        },
-                        onVerticalDrag = { change, dragAmount ->
-                            change.consume()
-                            val currentHeight = draggedSheetHeightPx
-                                ?: if (jobSheetExpanded) expandedPx else collapsedPx
-                            draggedSheetHeightPx = (currentHeight - dragAmount).coerceIn(collapsedPx, expandedPx)
-                        },
-                        onDragEnd = {
-                            val currentHeight = draggedSheetHeightPx
-                                ?: if (jobSheetExpanded) expandedPx else collapsedPx
-                            jobSheetExpanded = currentHeight >= (collapsedPx + expandedPx) / 2f
-                            draggedSheetHeightPx = null
-                        },
-                        onDragCancel = { draggedSheetHeightPx = null }
-                    )
-                }
+                .nestedScroll(sheetScrollConnection)
         } else {
             dockBase.heightIn(max = expandedSheetHeight)
         }
 
         Column(
             dockModifier
-                .then(if (activeSheetJob == null || jobSheetExpanded) Modifier.verticalScroll(rememberScrollState()) else Modifier)
+                .then(if (activeSheetJob == null || jobSheetExpanded) Modifier.verticalScroll(sheetScrollState) else Modifier)
                 .padding(horizontal = 8.dp)
         ) {
             if (activeSheetJob != null) {
@@ -1102,6 +1142,7 @@ private fun RiderHome(
                     Modifier
                         .fillMaxWidth()
                         .height(24.dp)
+                        .then(sheetDragModifier)
                         .clickable { jobSheetExpanded = !jobSheetExpanded },
                     contentAlignment = Alignment.Center
                 ) {
@@ -1110,6 +1151,7 @@ private fun RiderHome(
             }
             if (activeSheetJob != null && !jobSheetExpanded) {
                 RiderMiniJobSheet(
+                    modifier = sheetDragModifier,
                     job = activeSheetJob,
                     navigation = navigationState,
                     onExpand = { jobSheetExpanded = true }
@@ -1385,10 +1427,11 @@ private fun RiderHome(
 private fun RiderMiniJobSheet(
     job: RiderJob,
     navigation: RiderNavigationState,
-    onExpand: () -> Unit
+    onExpand: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     Row(
-        Modifier
+        modifier
             .fillMaxWidth()
             .heightIn(min = 60.dp)
             .clip(RoundedCornerShape(17.dp))
