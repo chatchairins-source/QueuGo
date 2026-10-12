@@ -143,6 +143,55 @@ def capture_customer_market(directory: Path, dimensions: str):
             "populated_cart_e2e_certified": False, "visual_parity_certified": False}
 
 
+def capture_customer_location():
+    """Tap the real Customer guest Home location entry; no coordinate or account fixtures."""
+    pkg = "com.queuego.customer"
+    customer_apk = repo / "native-android/customer/build/outputs/apk/debug/customer-debug.apk"
+    run(adb + ["install", "-r", str(customer_apk)])
+    for permission_state in ("denied", "allowed"):
+        directory = output / "customer-location" / permission_state
+        directory.mkdir(parents=True, exist_ok=True)
+        run(adb + ["shell", "pm", "clear", pkg])
+        if permission_state == "allowed":
+            for permission in ("ACCESS_FINE_LOCATION", "ACCESS_COARSE_LOCATION"):
+                run(adb + ["shell", "pm", "grant", pkg, "android.permission." + permission])
+        run(adb + ["logcat", "-b", "all", "-c"])
+        run(adb + ["shell", "am", "start", "-W", "-n", pkg + "/.MainActivity"])
+        nodes = wait_ui(directory / "home.xml", lambda ns: any(n.get("text") == "เลือกที่อยู่จัดส่ง" for n in ns))
+        target = next(n for n in nodes if n.get("text") == "เลือกที่อยู่จัดส่ง")
+        bounds = [int(x) for x in re.findall(r"\d+", target.get("bounds", ""))]
+        run(adb + ["shell", "input", "tap", str((bounds[0]+bounds[2])//2), str((bounds[1]+bounds[3])//2)])
+        time.sleep(3)
+        # Keep the original crash evidence even when UI dumping or process checks fail.
+        crash = full_crash_buffer()
+        (directory / "after-open-crash.txt").write_text(crash)
+        relevant = package_crash_blocks(crash, pkg)
+        if relevant:
+            print("QUEUEGO_CUSTOMER_LOCATION_CRASH " + permission_state + "\n" + relevant)
+            raise AssertionError("Actual Customer location picker crashed on open")
+        nodes = read_ui(directory / "picker.xml")
+        if permission_state == "denied":
+            deny = next((n for n in nodes if n.get("resource-id", "").endswith("permission_deny_button")), None)
+            assert deny is not None, "Expected actual Android location permission request"
+            b = [int(x) for x in re.findall(r"\d+", deny.get("bounds", ""))]
+            run(adb + ["shell", "input", "tap", str((b[0]+b[2])//2), str((b[1]+b[3])//2)])
+        time.sleep(20)
+        assert_no_package_crash(pkg, directory / "settled-crash.txt")
+        package_pids(pkg)
+        nodes = read_ui(directory / "settled.xml")
+        assert any(n.get("text") == "เลือกที่อยู่จัดส่ง" for n in nodes), "Customer location screen disappeared"
+        assert any(n.get("text") == "ใช้ตำแหน่ง GPS ปัจจุบัน" for n in nodes), "GPS action missing"
+        with (directory / "picker.png").open("wb") as png:
+            run(adb + ["exec-out", "screencap", "-p"], stdout=png)
+        run(adb + ["shell", "input", "keyevent", "3"])
+        time.sleep(1)
+        run(adb + ["shell", "am", "start", "-W", "-n", pkg + "/.MainActivity"])
+        time.sleep(3)
+        assert_no_package_crash(pkg, directory / "resume-crash.txt")
+        package_pids(pkg)
+        print("QUEUEGO_CUSTOMER_LOCATION_PASS " + permission_state)
+
+
 def capture_role_viewports(roles=("customer", "merchant", "rider")):
     """Real Android display configurations; no authenticated state or sample orders."""
     evidence = []
@@ -491,7 +540,9 @@ with (output / "emulator.log").open("w") as log:
             time.sleep(5)
         run(adb + ["install", "-r", str(apk)])
         run(adb + ["logcat", "-b", "all", "-c"])
-        if os.environ.get("QG_MAP_DISPLAY_ONLY") == "1":
+        if os.environ.get("QG_CUSTOMER_LOCATION_ONLY") == "1":
+            capture_customer_location()
+        elif os.environ.get("QG_MAP_DISPLAY_ONLY") == "1":
             capture_map_display_only()
         else:
             start = run(adb + ["shell", "am", "start", "-W", "-n", component], capture_output=True, text=True)

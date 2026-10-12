@@ -229,7 +229,7 @@ jobs:
           curl -fsSL "https://api.longdo.com/map-android-SDK/LongdoMapAndroidSDK_v0.1.8.aar" -o native-android/rider/libs/LongdoMapAndroidSDK_v0.1.8.aar
           echo "0918c23673ba6c7a349746f005525aca2ff3470f8e2966d5d2a4cb633ae5980c  native-android/rider/libs/LongdoMapAndroidSDK_v0.1.8.aar" | sha256sum -c -
       - name: Compile actual Rider and instrumentation
-        run: gradle -p native-android :rider:assembleDebug :rider:assembleDebugAndroidTest --stacktrace
+        run: gradle -p native-android :rider:assembleDebug :rider:assembleDebugAndroidTest :customer:assembleDebug --stacktrace
       - name: Prepare map screenshot inspection
         run: |
           python3 -m pip install Pillow
@@ -239,7 +239,7 @@ jobs:
           fi
       - name: Run actual native Longdo display and lifecycle
         env:
-          QG_MAP_DISPLAY_ONLY: '1'
+          QG_CUSTOMER_LOCATION_ONLY: '1'
         run: python3 native-android/qa/capture-rider-launch.py
       - name: Keep map images and runtime evidence
         if: always()
