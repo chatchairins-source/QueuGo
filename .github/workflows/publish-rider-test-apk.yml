@@ -1,4 +1,4 @@
-name: Publish QueueGo Rider Test APK
+name: Publish QueueGo Rider Work APK
 
 on:
   push:
@@ -16,37 +16,40 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
-        with:
-          fetch-depth: 0
 
-      - name: Download exact PASS artifact from Native Pilot 1355
-        env:
-          GH_TOKEN: ${{ github.token }}
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a
+        with:
+          gradle-version: '9.6.0'
+
+      - name: Install Android platform and verified Longdo SDK
         run: |
           set -euo pipefail
-          curl -L --fail             -H "Authorization: Bearer ${GH_TOKEN}"             -H "X-GitHub-Api-Version: 2022-11-28"             "https://api.github.com/repos/chatchairins-source/QueuGo/actions/artifacts/11705982990/zip"             -o /tmp/native-apks.zip
-          mkdir -p /tmp/native-apks
-          unzip -q /tmp/native-apks.zip -d /tmp/native-apks
-          RIDER_APK="$(find /tmp/native-apks -type f -name 'rider-debug.apk' -print -quit)"
-          test -n "${RIDER_APK}"
-          cp "${RIDER_APK}" /tmp/QueueGo-Rider-test-9f675d07.apk
-          sha256sum /tmp/QueueGo-Rider-test-9f675d07.apk
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-36" "build-tools;36.0.0" >/dev/null
+          mkdir -p native-android/rider/libs
+          curl -fsSL "https://api.longdo.com/map-android-SDK/LongdoMapAndroidSDK_v0.1.8.aar" -o native-android/rider/libs/LongdoMapAndroidSDK_v0.1.8.aar
+          echo "0918c23673ba6c7a349746f005525aca2ff3470f8e2966d5d2a4cb633ae5980c  native-android/rider/libs/LongdoMapAndroidSDK_v0.1.8.aar" | sha256sum -c -
+
+      - name: Build Rider APK from current Work branch
+        run: |
+          set -euo pipefail
+          gradle -p native-android :rider:assembleDebug --stacktrace
+          cp native-android/rider/build/outputs/apk/debug/rider-debug.apk /tmp/QueueGo-Rider-Work-latest.apk
+          sha256sum /tmp/QueueGo-Rider-Work-latest.apk
 
       - name: Publish APK to isolated download branch
-        env:
-          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           git fetch origin queuego-test-downloads
           git worktree add /tmp/queuego-downloads origin/queuego-test-downloads
-          cp /tmp/QueueGo-Rider-test-9f675d07.apk /tmp/queuego-downloads/QueueGo-Rider-test-9f675d07.apk
+          cp /tmp/QueueGo-Rider-Work-latest.apk /tmp/queuego-downloads/QueueGo-Rider-Work-latest.apk
           cd /tmp/queuego-downloads
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add QueueGo-Rider-test-9f675d07.apk
-          if git diff --cached --quiet; then
-            echo "APK already published"
-          else
-            git commit -m "chore(download): publish Rider test APK 9f675d07"
-            git push origin HEAD:queuego-test-downloads
-          fi
+          git add QueueGo-Rider-Work-latest.apk
+          git commit -m "chore(download): publish latest Work Rider APK" || true
+          git push origin HEAD:queuego-test-downloads
