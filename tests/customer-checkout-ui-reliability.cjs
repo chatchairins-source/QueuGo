@@ -19,7 +19,7 @@ ok(customer.includes('.qg-home-original-main .sc{border-radius:18px;padding:10px
 ok(customer.includes('.qg-order-map{height:178px!important'),'Customer order tracking map must avoid oversized vertical space');
 ok(customer.includes('.prim{width:100%;min-height:48px'),'Customer primary actions must retain practical touch height while compact');
 ok(customer.includes('@media(max-height:760px)'),'Customer must have a short-screen compact density mode');
-ok(customer.includes('customer-features.js?v=20261007-terminal5'),'Customer feature bundle must refresh after accepted/assigned progress fix');
+ok(customer.includes('customer-features.js?v=20261012-chat2'),'Customer feature bundle must refresh after accepted/assigned progress fix and Customer chat rebuild');
 ok(!customer.includes('customer-features.js?v=20261007-bg1'),'Customer must not keep the stale bg1 order feature bundle URL');
 ok(features.includes("['rider_assigned','assigned','preparing','ready'].includes(o.status)?2"),'Customer assigned state must remain in pickup/preparation progress');
 ok(features.includes("['accepted','searching_rider'].includes(o.status)?1"),'Customer accepted state must remain after order-created progress');
