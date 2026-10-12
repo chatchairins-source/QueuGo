@@ -29,7 +29,7 @@ assert(app.includes('RiderRouteBundlePanel('),'Native Home must render route bun
 assert(app.includes('api.claimRouteBundle(auth, candidate.orderId)'),'Native candidate action must claim through Production');
 assert(ui.includes('"งานพ่วง')&&ui.includes('"มีงานพ่วงในเส้นทาง"')&&ui.includes('"เลือกเองได้ ไม่บังคับรับ"'),
   'Native bundle copy must preserve Production Home semantics');
-assert(ui.includes('"รับร้าน')&&ui.includes('"ส่งลูกค้าลำดับ')&&ui.includes('"รับงานพ่วง"'),
+assert(ui.includes('"รับร้าน')&&ui.includes('ส่งลูกค้าลำดับ')&&ui.includes('"รับงานพ่วง"'),
   'Native bundle UI must show pickup/drop order and explicit opt-in claim');
 assert(ui.includes('offer.detourKm')&&ui.includes('offer.addedMinutes')&&ui.includes('offer.riderExtraFee')&&ui.includes('offer.customerSavings'),
   'Native bundle candidate must expose detour, delay, rider extra and customer savings');
