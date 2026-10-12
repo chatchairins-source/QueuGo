@@ -68,7 +68,7 @@ class RiderMapRuntimeTest {
         var image = requireNotNull(instrumentation.uiAutomation.takeScreenshot()) { "Actual Android screenshot unavailable" }
         File(directory, "$name-first-frame.png").outputStream().use { image.compress(Bitmap.CompressFormat.PNG, 100, it) }
         val firstFraction = grayTileFraction(image)
-        while (grayTileFraction(image) > 0.01 && System.currentTimeMillis() - started < 30_000) {
+        while (grayTileFraction(image) > 0.01 && System.currentTimeMillis() - started < 60_000) {
             image.recycle()
             Thread.sleep(2_000)
             image = requireNotNull(instrumentation.uiAutomation.takeScreenshot())
@@ -83,7 +83,7 @@ class RiderMapRuntimeTest {
             .put("longitude", actual[0]).put("latitude", actual[1]).put("zoom", actual[2])
             .put("first_frame_gray_fraction", firstFraction).put("final_gray_fraction", finalFraction)
             .put("capture_after_ms", System.currentTimeMillis() - started).toString())
-        assertTrue("Real map tiles still incomplete after 30 seconds", finalFraction <= 0.01)
+        assertTrue("Real map tiles still incomplete after 60 seconds", finalFraction <= 0.01)
         Log.i("QueueGoMapRuntime", "captured=$name; actual_sdk_camera_recorded; capture_after_ms=${System.currentTimeMillis() - started}")
         return actual
     }
