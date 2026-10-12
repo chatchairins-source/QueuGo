@@ -21,6 +21,9 @@ class QueueGoApi {
         private const val BASE_URL = "https://pkypiqhlrmzocysgeqew.supabase.co"
         private const val PUBLISHABLE_KEY = "sb_publishable_Vn2Il4jp-iBtzNsGRNY8Lg_Tpvk2Vre"
         private const val TIMEOUT = 15000
+        private const val RIDER_JOB_FIELDS = "id,order_number,status,pickup_address,pickup_latitude,pickup_longitude," +
+            "delivery_address,delivery_latitude,delivery_longitude,delivery_fee,subtotal,total_amount,market_order_id," +
+            "rider_arrived_shop_at,rider_arrived_customer_at"
     }
 
     suspend fun signIn(identifier: String, password: String, deviceId: String): QueueGoAuth =
@@ -450,9 +453,7 @@ class QueueGoApi {
         val profileId = profile.getString("id")
         val online = profile.optJSONObject("metadata")?.optBoolean("online", false) ?: false
 
-        val fields = "id,order_number,status,pickup_address,pickup_latitude,pickup_longitude," +
-            "delivery_address,delivery_latitude,delivery_longitude,delivery_fee,subtotal,total_amount,market_order_id," +
-            "rider_arrived_shop_at,rider_arrived_customer_at"
+        val fields = RIDER_JOB_FIELDS
         val activeRows = requestArray(
             "GET",
             "/rest/v1/orders?select=" + fields +
@@ -565,6 +566,24 @@ class QueueGoApi {
             if (job.marketOrderId != null) "market_claim" else "claim",
             JSONObject().put("p_order_id", job.id)
         )
+    }
+
+    /** Exact-reference read under the Rider JWT/RLS, including owned older completed orders. */
+    suspend fun notificationJob(auth: QueueGoAuth, referenceId: String): RiderJob? = withContext(Dispatchers.IO) {
+        require(auth.user.role == "rider") { "บัญชีนี้ไม่ใช่บัญชีไรเดอร์" }
+        val id = UUID.fromString(referenceId).toString()
+        val rows = requestAny("GET", "/rest/v1/orders?select=" + RIDER_JOB_FIELDS +
+            "&id=eq." + enc(id) + "&limit=1", auth.session.accessToken, null) as? JSONArray
+            ?: error("รูปแบบข้อมูลการแจ้งเตือนไม่ถูกต้อง")
+        rows.optJSONObject(0)?.let(::parseJob)
+    }
+
+    suspend fun liveOfferExpiry(auth: QueueGoAuth, orderId: String): Long? = withContext(Dispatchers.IO) {
+        val offers = requestAny("POST", "/rest/v1/rpc/qg_get_my_rider_offer", auth.session.accessToken,
+            JSONObject(), timeoutMillis = 3_000) as? JSONArray ?: error("รูปแบบข้อเสนองานไม่ถูกต้อง")
+        (0 until offers.length()).mapNotNull { offers.optJSONObject(it) }
+            .firstOrNull { it.optString("order_id") == orderId }
+            ?.optString("expires_at")?.let(::riderOfferExpiryMillis)
     }
 
     suspend fun declineOffer(auth: QueueGoAuth, orderId: String) = withContext(Dispatchers.IO) {
@@ -722,8 +741,8 @@ class QueueGoApi {
             .openConnection() as HttpURLConnection
         try {
             connection.requestMethod = "POST"
-            connection.connectTimeout = TIMEOUT
-            connection.readTimeout = TIMEOUT
+            connection.connectTimeout = timeoutMillis
+            connection.readTimeout = timeoutMillis
             connection.doOutput = true
             connection.setRequestProperty("apikey", PUBLISHABLE_KEY)
             connection.setRequestProperty("Authorization", "Bearer " + auth.session.accessToken)
@@ -812,12 +831,12 @@ class QueueGoApi {
     private fun requestArray(method: String, path: String, token: String): JSONArray =
         requestAny(method, path, token, null) as? JSONArray ?: JSONArray()
 
-    private fun requestAny(method: String, path: String, token: String?, body: JSONObject?): Any {
+    private fun requestAny(method: String, path: String, token: String?, body: JSONObject?, timeoutMillis: Int = TIMEOUT): Any {
         val connection = URL(BASE_URL + path).openConnection() as HttpURLConnection
         try {
             connection.requestMethod = method
-            connection.connectTimeout = TIMEOUT
-            connection.readTimeout = TIMEOUT
+            connection.connectTimeout = timeoutMillis
+            connection.readTimeout = timeoutMillis
             connection.setRequestProperty("apikey", PUBLISHABLE_KEY)
             connection.setRequestProperty("Accept", "application/json")
             connection.setRequestProperty("Content-Type", "application/json")

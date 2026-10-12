@@ -1,4 +1,5 @@
 import webpush from 'npm:web-push@3.6.7';
+import { isRiderOfferNotification, buildRiderOfferMessage } from './rider-offer-message.mjs';
 import { createClient } from 'npm:@supabase/supabase-js@2.49.10';
 
 const url=Deno.env.get('SUPABASE_URL')!;
@@ -109,13 +110,30 @@ async function firebaseAccess(){
   };
   return firebaseCache;
 }
-async function sendNativePush(deviceToken:string,user:any,n:any){
+async function sendNativePush(deviceToken:string,user:any,n:any,sessionId:string){
+  let riderOfferMessage:any=null;
+  if(isRiderOfferNotification(user,n)){
+    const [profile,offer]=await Promise.all([
+      admin.from('rider_profiles').select('id,status').eq('user_id',n.user_id).maybeSingle(),
+      admin.from('qg_rider_order_offers').select('rider_id,offered_at,expires_at').eq('order_id',n.reference_id).maybeSingle()
+    ]);
+    if(profile.error||offer.error)return 503;
+    if(!profile.data||profile.data.status!=='active'||!offer.data||offer.data.rider_id!==profile.data.id)return 204;
+    const created=Date.parse(n.created_at),offered=Date.parse(offer.data.offered_at);
+    // An old queued alert cannot announce a later lease for the same order.
+    if(!Number.isFinite(created)||!Number.isFinite(offered)||created<offered)return 204;
+    riderOfferMessage=buildRiderOfferMessage(deviceToken,{
+      ...n,title:visibleOrderText(n.title),message:visibleOrderText(n.message)
+    },offer.data.expires_at,sessionId);
+    if(!riderOfferMessage)return 204;
+  }
   const firebase=await firebaseAccess();
   const data={
     notificationId:String(n.id||''),
     role:String(user.role||''),
     type:String(n.type||'notification'),
-    referenceId:String(n.reference_id||'')
+    referenceId:String(n.reference_id||''),
+    ...(user.role==='rider'?{userId:String(n.user_id||''),sessionId}: {})
   };
   const response=await fetch(
     'https://fcm.googleapis.com/v1/projects/'+encodeURIComponent(firebase.projectId)+'/messages:send',
@@ -126,7 +144,7 @@ async function sendNativePush(deviceToken:string,user:any,n:any){
         'Content-Type':'application/json'
       },
       body:JSON.stringify({
-        message:{
+        message:riderOfferMessage||{
           token:deviceToken,
           notification:{
             title:visibleOrderText(n.title||'QueueGo').slice(0,80),
@@ -162,7 +180,7 @@ async function config(){
 }
 async function notificationAndUser(userId:string,notificationId:string){
   const [{data:n,error:nError},{data:user,error:uError}]=await Promise.all([
-    admin.from('notifications').select('id,user_id,title,message,type,reference_id').eq('id',notificationId).single(),
+    admin.from('notifications').select('id,user_id,title,message,type,reference_id,created_at').eq('id',notificationId).single(),
     admin.from('users').select('role,status,auth_user_id').eq('id',userId).single()
   ]);
   if(nError||uError||!n||!user||n.user_id!==userId||user.status!=='active'||!allowedRoles.has(user.role)){
@@ -212,7 +230,7 @@ Deno.serve(async(req)=>{
                   .maybeSingle();
                 status=active.error||!active.data
                   ?410
-                  :await sendNativePush(t.token,context.user,context.n);
+                  :await sendNativePush(t.token,context.user,context.n,t.session_id);
               }
             }
           }else{

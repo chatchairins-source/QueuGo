@@ -115,7 +115,9 @@ class QueueGoRiderMessagingService : FirebaseMessagingService() {
         // visible. Never surface Rider job/status notifications for a cached account
         // that is no longer approved for work.
         val cached = SessionStore(applicationContext).load() ?: return
-        if (cached.user.status != "active") return
+        if (cached.user.status != "active" || cached.user.role != "rider") return
+        val recipientRole = message.data["role"]
+        if (!recipientRole.isNullOrBlank() && recipientRole != "rider") return
         ensureRiderOrderChannel(this)
 
         // FCM displays notification payloads automatically while the app is backgrounded.
@@ -131,41 +133,84 @@ class QueueGoRiderMessagingService : FirebaseMessagingService() {
             ?: ""
         val type = message.data["type"].orEmpty()
 
-        val intent = Intent(this, MainActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
-            putExtra("queuego_push_reference_id", referenceId)
-            putExtra("queuego_push_type", type)
-        }
-        val pendingIntent = PendingIntent.getActivity(
-            this,
-            referenceId.hashCode(),
-            intent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
-
-        val notification = NotificationCompat.Builder(this, RIDER_ORDER_CHANNEL)
-            .setSmallIcon(R.drawable.qg_notification)
-            .setContentTitle(title.take(80))
-            .setContentText(body.take(220))
-            .setStyle(NotificationCompat.BigTextStyle().bigText(body.take(220)))
-            .setPriority(NotificationCompat.PRIORITY_HIGH)
-            .setCategory(
-                if (type == "voice_call") NotificationCompat.CATEGORY_CALL
-                else NotificationCompat.CATEGORY_MESSAGE
+        val recipientId = message.data["userId"]
+        val recipientSession = message.data["sessionId"]
+        if (!recipientId.isNullOrBlank() && recipientId != cached.user.id) return
+        if (!recipientSession.isNullOrBlank() && recipientSession != cached.session.sessionId) return
+        val isOffer = type == "rider_offer" || (type == "order" && title == "มีงานใหม่")
+        // Firebase invokes this callback on a worker thread and keeps its wake lock
+        // only until it returns. Bound the single offer read; don't detach notification work.
+        kotlinx.coroutines.runBlocking(Dispatchers.IO) {
+            val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            if (!manager.areNotificationsEnabled()) return@runBlocking
+            var offerExpiry: Long? = null
+            if (isOffer) {
+                val publishedExpiry = riderOfferExpiryMillis(message.data["offerExpiresAt"])
+                // New sender verifies the selected Rider, live lease and active app session.
+                // Use its bounded metadata immediately, including when the cached JWT needs refresh.
+                offerExpiry = if (type == "rider_offer" && recipientId == cached.user.id &&
+                    recipientSession == cached.session.sessionId && publishedExpiry != null) publishedExpiry
+                    else runCatching { QueueGoApi().liveOfferExpiry(cached, referenceId) }.getOrNull()
+                if (offerExpiry == null || offerExpiry <= System.currentTimeMillis() ||
+                    (publishedExpiry != null && publishedExpiry != offerExpiry)) return@runBlocking
+            }
+            // A reply received after logout/account switching cannot display the old account's push.
+            val current = SessionStore(applicationContext).load() ?: return@runBlocking
+            if (current.user.id != cached.user.id || current.session.sessionId != cached.session.sessionId ||
+                current.user.role != "rider" || current.user.status != "active") return@runBlocking
+            val tag = if (isOffer) "queuego-rider-offer:" + cached.user.id + ":" + referenceId
+                else "queuego-rider-event:" + cached.user.id + ":" +
+                    (message.data["notificationId"] ?: message.messageId ?: referenceId)
+            val key = if (offerExpiry != null) riderOfferAlertKey(cached.user.id, referenceId, offerExpiry)
+                else tag
+            val audible = consumeRiderAlert(applicationContext, key)
+            if (!isOffer && !audible) return@runBlocking
+            val intent = Intent(this@QueueGoRiderMessagingService, MainActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                putExtra("queuego_push_reference_id", referenceId)
+                putExtra("queuego_push_type", type)
+            }
+            val pendingIntent = PendingIntent.getActivity(
+                this@QueueGoRiderMessagingService, tag.hashCode(), intent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
             )
-            .setAutoCancel(true)
-            .setContentIntent(pendingIntent)
-            .build()
-
-        val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        manager.notify(
-            (message.messageId ?: referenceId.ifBlank { System.currentTimeMillis().toString() }).hashCode(),
-            notification
-        )
+            val builder = NotificationCompat.Builder(this@QueueGoRiderMessagingService, RIDER_ORDER_CHANNEL)
+                .setSmallIcon(R.drawable.qg_notification)
+                .setContentTitle(title.take(80))
+                .setContentText(body.take(220))
+                .setStyle(NotificationCompat.BigTextStyle().bigText(body.take(220)))
+                .setPriority(NotificationCompat.PRIORITY_HIGH)
+                .setCategory(if (type == "voice_call") NotificationCompat.CATEGORY_CALL else NotificationCompat.CATEGORY_MESSAGE)
+                .setOnlyAlertOnce(true)
+                .setSilent(!audible)
+                .setAutoCancel(true)
+                .setContentIntent(pendingIntent)
+            offerExpiry?.let { expiry ->
+                val remaining = expiry - System.currentTimeMillis()
+                if (remaining <= 0L) return@runBlocking
+                builder.setTimeoutAfter(remaining)
+            }
+            runCatching { manager.notify(tag, 0, builder.build()) }
+                .onFailure { android.util.Log.w("QueueGoPush", "Notification display failed") }
+        }
     }
 
     override fun onDestroy() {
         serviceScope.cancel()
         super.onDestroy()
     }
+}
+
+internal fun clearRiderOrderNotifications(context: Context) {
+    val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+    manager.activeNotifications.filter { it.notification.channelId == RIDER_ORDER_CHANNEL }
+        .forEach { manager.cancel(it.tag, it.id) }
+}
+
+internal fun reconcileRiderOfferNotifications(context: Context, userId: String, orderId: String?) {
+    val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+    val prefix = "queuego-rider-offer:$userId:"
+    val current = orderId?.let { prefix + it }
+    manager.activeNotifications.filter { it.tag?.startsWith(prefix) == true && it.tag != current }
+        .forEach { manager.cancel(it.tag, it.id) }
 }

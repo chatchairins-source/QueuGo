@@ -249,6 +249,7 @@ fun QueueGoRiderApp(pushTarget: NativePushLaunchTarget? = null) {
                         val current = auth!!
                         RiderReturnService.stop(context)
                         clearRiderNavigationSession()
+                        clearRiderOrderNotifications(context)
                         store.clear()
                         auth = null
                         scope.launch {
@@ -266,6 +267,7 @@ fun QueueGoRiderApp(pushTarget: NativePushLaunchTarget? = null) {
                         val current = auth!!
                         RiderReturnService.stop(context)
                         clearRiderNavigationSession()
+                        clearRiderOrderNotifications(context)
                         scope.launch {
                             runCatching { api.setOnline(current, false, null, null) }
                             runCatching { disableRiderNativePush(current, api, store) }
@@ -378,6 +380,7 @@ private fun RiderHome(
         }
     }
     var detailJob by remember { mutableStateOf<RiderJob?>(null) }
+    var pendingPushReference by rememberSaveable(auth.user.id) { mutableStateOf<String?>(null) }
     var homeDetails by remember { mutableStateOf<RiderVerificationDetails?>(null) }
     LaunchedEffect(snapshot?.activeJob?.id, auth.session.accessToken) {
         homeDetails = null
@@ -647,15 +650,14 @@ private fun RiderHome(
     }
 
     fun playRiderOfferAlert() {
-        val tone = ToneGenerator(AudioManager.STREAM_NOTIFICATION, 100)
-        tone.startTone(ToneGenerator.TONE_PROP_BEEP2, 650)
+        val tone = runCatching { ToneGenerator(AudioManager.STREAM_NOTIFICATION, 100) }.getOrNull() ?: return
         scope.launch {
-            delay(720)
-            runCatching {
+            try {
+                tone.startTone(ToneGenerator.TONE_PROP_BEEP2, 650)
+                delay(720)
                 tone.startTone(ToneGenerator.TONE_PROP_BEEP, 450)
                 delay(520)
-                tone.release()
-            }
+            } finally { tone.release() }
         }
     }
 
@@ -667,7 +669,10 @@ private fun RiderHome(
                 }
                 if (offerKey != null && offerKey != lastOfferAlertKey) {
                     lastOfferAlertKey = offerKey
-                    playRiderOfferAlert()
+                    val expiry = riderOfferExpiryMillis(it.offeredJob?.offerExpiresAt)
+                    val orderId = it.offeredJob?.id
+                    if (expiry != null && orderId != null && expiry > System.currentTimeMillis() &&
+                        consumeRiderAlert(context, riderOfferAlertKey(auth.user.id, orderId, expiry))) playRiderOfferAlert()
                     actionMessage = "มีงานใหม่ที่ระบบจัดให้ กรุณาตอบรับภายใน 30 วินาที"
                     // A selected 30-second offer must be visible immediately even if the Rider
                     // was viewing earnings/profile/messages. There is no shared job pool.
@@ -675,6 +680,7 @@ private fun RiderHome(
                     activeTab = "home"
                 }
                 snapshot = it
+                reconcileRiderOfferNotifications(context, auth.user.id, it.offeredJob?.id)
                 loadError = null
                 if (it.activeJob == null) RiderReturnService.stop(context)
                 val now = System.currentTimeMillis()
@@ -710,9 +716,47 @@ private fun RiderHome(
     LaunchedEffect(pushTarget?.eventId) {
         if (pushTarget == null) return@LaunchedEffect
         chatJob = null
+        detailJob = null
         closeVerification()
         activeTab = "home"
-        refreshSnapshot()
+        val reference = pushTarget.referenceId
+        if (pushTarget.type in setOf("order", "rider_offer") && reference.isNotBlank()) {
+            if (runCatching { java.util.UUID.fromString(reference) }.isSuccess) pendingPushReference = reference
+            else actionMessage = "หมายเลขออเดอร์ในการแจ้งเตือนไม่ถูกต้อง"
+        } else refreshSnapshot()
+    }
+    LaunchedEffect(pendingPushReference, auth.user.id, auth.session.accessToken, lifecycle) {
+        val reference = pendingPushReference ?: return@LaunchedEffect
+        lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            while (pendingPushReference == reference) {
+                try {
+                    refreshSnapshot()
+                    currentCoroutineContext().ensureActive()
+                    val current = snapshot
+                    if (current?.activeJob?.id == reference || current?.offeredJob?.id == reference) {
+                        pendingPushReference = null
+                    } else {
+                        val notifiedJob = api.notificationJob(auth, reference)
+                        currentCoroutineContext().ensureActive()
+                        if (pendingPushReference != reference) return@repeatOnLifecycle
+                        if (notifiedJob != null) detailJob = notifiedJob
+                        else actionMessage = "การแจ้งเตือนนี้หมดอายุ หรือคุณไม่มีสิทธิ์ดูออเดอร์นี้แล้ว"
+                        pendingPushReference = null
+                    }
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    actionMessage = "ยังเปิดออเดอร์จากการแจ้งเตือนไม่ได้ กำลังเชื่อมต่อใหม่"
+                }
+                if (pendingPushReference == reference) delay(5_000)
+            }
+        }
+    }
+    LaunchedEffect(activeTab) {
+        if (activeTab != "home") {
+            pendingPushReference = null
+            detailJob = null
+        }
     }
 
     BackHandler(enabled = activeTab != "home" && chatJob == null && verifyMode == null) {
