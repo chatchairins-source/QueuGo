@@ -22,6 +22,9 @@
         android:dataExtractionRules="@xml/queuego_data_extraction_rules"
         android:usesCleartextTraffic="false">
         <meta-data
+            android:name="longdo.map.apikeychecker"
+            android:value="https://api.longdo.com/map/services/checkkey" />
+        <meta-data
             android:name="longdo.map.key"
             android:value="347649ca13f49db0d8a599ae35f8de2b" />
         <meta-data

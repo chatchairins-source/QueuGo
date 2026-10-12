@@ -427,6 +427,13 @@ def capture_map_display_only():
             # Read-only review transport, alongside original lossless evidence artifacts.
             print("QUEUEGO_MAP_FRAME " + viewport + "/" + state + " " + base64.b64encode(preview.read_bytes()).decode())
             screenshots.append({"state": state, "sha256": hashlib.sha256(raw).hexdigest(), "file": str(image.relative_to(output))})
+        for state in ("initial", "resumed", "recreated"):
+            with Image.open(directory / (state + ".png")) as bitmap:
+                # Ignore system bars and the SDK center cross; inspect actual map coverage.
+                interior = bitmap.convert("RGB").crop((0, bitmap.height // 10, bitmap.width, bitmap.height * 9 // 10))
+                colors = interior.resize((180, 240)).quantize(colors=64).getcolors()
+                dominant_fraction = max(count for count, _ in colors) / (180 * 240)
+                assert dominant_fraction < 0.95, "Blank native map pixels: " + viewport + "/" + state
         evidence.append({"viewport": viewport, "dimensions": dimensions, "density": density,
                          "location_permission_granted": granted, "map_mount_background_recreation": "PASS",
                          "screenshots": screenshots})

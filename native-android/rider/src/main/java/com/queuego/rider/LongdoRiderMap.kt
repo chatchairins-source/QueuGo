@@ -162,7 +162,10 @@ fun RiderLongdoMap(
                         if (!holder.disposed) {
                             runCatching {
                                 holder.map = map
-                                map.setBase(LongdoLayer(ctx, "normal", 0, 1, 20))
+                                map.setBase(LongdoLayer(ctx, "normal", 0, 1, 20).apply {
+                                    // The SDK defaults to HTTP; keep Android cleartext disabled.
+                                    layerURL = "https://ms2.longdo.com/mmmap/img.php"
+                                })
                                 // Production Web's initial camera, never a fabricated GPS marker.
                                 map.setLocation(MapLocation(100.5018, 13.7563))
                                 map.setZoom(13)
