@@ -1022,53 +1022,62 @@ private fun RiderHome(
             if (navigationState.active) {
                 Spacer(Modifier.height(7.dp))
                 Card(
-                    shape = RoundedCornerShape(15.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color(0xF5FFFFFF)),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFEEE5E8))
+                    modifier = Modifier.widthIn(max = 350.dp),
+                    shape = RoundedCornerShape(17.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFF171519)),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
                 ) {
-                    Column(Modifier.fillMaxWidth().padding(horizontal = 11.dp, vertical = 8.dp)) {
-                        val nextText = navigationState.nextInstruction?.turnCode?.let(::riderTurnPhrase)
-                        Text(
-                            when {
-                                navigationState.loading && !navigationState.routeReady -> "กำลังคำนวณเส้นทาง…"
-                                navigationState.weakGps -> "สัญญาณ GPS อ่อน · กำลังรักษาเส้นทางเดิม"
-                                navigationState.offRoute -> "ออกนอกเส้นทาง · กำลังคำนวณใหม่"
-                                nextText != null && navigationState.nextInstruction?.turnCode != 9 -> nextText
-                                else -> "นำทางไป" + navigationState.targetLabel
-                            },
-                            fontWeight = FontWeight.Black,
-                            fontSize = 13.sp
-                        )
-                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                            Text(
-                                navigationState.distanceRemainingMeters?.let {
-                                    if (it >= 1000.0) "%.1f กม.".format(it / 1000.0) else "%.0f ม.".format(it)
-                                } ?: "—",
-                                color = QgMuted,
-                                fontSize = 10.sp
-                            )
-                            Text(
-                                navigationState.etaSeconds?.let {
-                                    "ประมาณ " + kotlin.math.ceil(it / 60.0).toInt().coerceAtLeast(1) + " นาที"
-                                } ?: "ETA —",
-                                color = QgMuted,
-                                fontSize = 10.sp
-                            )
-                            navigationState.headingDegrees?.let {
-                                Text("ทิศ %.0f°".format(it), color = QgMuted, fontSize = 10.sp)
-                            }
+                    Row(
+                        Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.Top
+                    ) {
+                        Box(
+                            Modifier.size(34.dp).background(QgRed, RoundedCornerShape(11.dp)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            QgIcon("location", Modifier.size(19.dp), Color.White)
                         }
-                        if (navigationState.routeError != null) {
-                            Text(navigationState.routeError!!, color = QgRed, fontSize = 9.sp)
-                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
-                                OutlinedButton(
-                                    onClick = { navigationController.retry() },
-                                    modifier = Modifier.weight(1f).heightIn(min = 40.dp)
-                                ) { Text("ลองเส้นทางอีกครั้ง", fontSize = 9.sp) }
-                                OutlinedButton(
-                                    onClick = { snapshot?.activeJob?.let { openExternalNavigation(context, it) } },
-                                    modifier = Modifier.weight(1f).heightIn(min = 40.dp)
-                                ) { Text("เปิดแผนที่ภายนอก", fontSize = 9.sp) }
+                        Spacer(Modifier.width(9.dp))
+                        Column(Modifier.weight(1f)) {
+                            val nextText = navigationState.nextInstruction?.turnCode?.let(::riderTurnPhrase)
+                            Text(
+                                when {
+                                    navigationState.loading && !navigationState.routeReady -> "กำลังคำนวณเส้นทาง…"
+                                    navigationState.weakGps -> "สัญญาณ GPS อ่อน · กำลังรักษาเส้นทางเดิม"
+                                    navigationState.offRoute -> "ออกนอกเส้นทาง · กำลังคำนวณใหม่"
+                                    nextText != null && navigationState.nextInstruction?.turnCode != 9 -> nextText
+                                    else -> "นำทางไป" + navigationState.targetLabel
+                                },
+                                color = Color.White,
+                                fontWeight = FontWeight.Black,
+                                fontSize = 12.sp
+                            )
+                            Text(
+                                buildString {
+                                    append(navigationState.distanceRemainingMeters?.let {
+                                        if (it >= 1000.0) "%.1f กม.".format(it / 1000.0) else "%.0f ม.".format(it)
+                                    } ?: "—")
+                                    append(" · ")
+                                    append(navigationState.etaSeconds?.let {
+                                        "ประมาณ " + kotlin.math.ceil(it / 60.0).toInt().coerceAtLeast(1) + " นาที"
+                                    } ?: "ETA —")
+                                    navigationState.headingDegrees?.let { append(" · ทิศ %.0f°".format(it)) }
+                                },
+                                color = Color(0xFFCFC9CC),
+                                fontSize = 8.sp
+                            )
+                            if (navigationState.routeError != null) {
+                                Text(navigationState.routeError!!, color = Color(0xFFFF7890), fontSize = 8.sp)
+                                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                                    OutlinedButton(
+                                        onClick = { navigationController.retry() },
+                                        modifier = Modifier.weight(1f).heightIn(min = 38.dp)
+                                    ) { Text("ลองเส้นทางอีกครั้ง", fontSize = 8.sp) }
+                                    OutlinedButton(
+                                        onClick = { snapshot?.activeJob?.let { openExternalNavigation(context, it) } },
+                                        modifier = Modifier.weight(1f).heightIn(min = 38.dp)
+                                    ) { Text("เปิดแผนที่ภายนอก", fontSize = 8.sp) }
+                                }
                             }
                         }
                     }
