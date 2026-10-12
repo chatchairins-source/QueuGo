@@ -116,7 +116,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import java.io.File
-import java.time.Instant
 
 @Composable
 fun QueueGoRiderApp(pushTarget: NativePushLaunchTarget? = null) {
@@ -403,6 +402,7 @@ private fun RiderHome(
     var photoUri by remember { mutableStateOf<Uri?>(null) }
     var pendingCameraUri by remember { mutableStateOf<Uri?>(null) }
     var lastOfferAlertKey by remember { mutableStateOf<String?>(null) }
+    var handledPushEventId by remember(auth.user.id) { mutableStateOf<Long?>(null) }
     var activeTab by remember { mutableStateOf("home") }
     var pendingVoiceOrderId by remember { mutableStateOf<String?>(null) }
     var pendingVoiceAnswer by remember { mutableStateOf(false) }
@@ -664,7 +664,9 @@ private fun RiderHome(
     suspend fun refreshSnapshot() = snapshotMutex.withLock {
         runCatching { api.riderSnapshot(auth) }
             .onSuccess {
-                val offerKey = it.offeredJob?.let { job ->
+                val liveSnapshot = if (it.offeredJob != null && riderOfferSecondsLeft(it.offeredJob.offerExpiresAt) <= 0)
+                    it.copy(offeredJob = null) else it
+                val offerKey = liveSnapshot.offeredJob?.let { job ->
                     job.id + ":" + (job.offerExpiresAt ?: "")
                 }
                 if (offerKey != null && offerKey != lastOfferAlertKey) {
@@ -679,8 +681,8 @@ private fun RiderHome(
                     chatJob = null
                     activeTab = "home"
                 }
-                snapshot = it
-                reconcileRiderOfferNotifications(context, auth.user.id, it.offeredJob?.id)
+                snapshot = liveSnapshot
+                reconcileRiderOfferNotifications(context, auth.user.id, liveSnapshot.offeredJob?.id)
                 loadError = null
                 if (it.activeJob == null) RiderReturnService.stop(context)
                 val now = System.currentTimeMillis()
@@ -713,14 +715,16 @@ private fun RiderHome(
             }
     }
 
-    LaunchedEffect(pushTarget?.eventId) {
-        if (pushTarget == null) return@LaunchedEffect
+    LaunchedEffect(pushTarget?.eventId, auth.user.id, auth.session.accessToken, lifecycle) {
+        val target = pushTarget ?: return@LaunchedEffect
+        if (handledPushEventId == target.eventId) return@LaunchedEffect
+        handledPushEventId = target.eventId
         chatJob = null
         detailJob = null
         closeVerification()
         activeTab = "home"
-        val reference = pushTarget.referenceId
-        if (pushTarget.type in setOf("order", "rider_offer") && reference.isNotBlank()) {
+        val reference = target.referenceId
+        if (target.type in setOf("order", "rider_offer") && reference.isNotBlank()) {
             if (runCatching { java.util.UUID.fromString(reference) }.isSuccess) pendingPushReference = reference
             else actionMessage = "หมายเลขออเดอร์ในการแจ้งเตือนไม่ถูกต้อง"
         } else refreshSnapshot()
@@ -732,11 +736,12 @@ private fun RiderHome(
                 try {
                     refreshSnapshot()
                     currentCoroutineContext().ensureActive()
-                    val current = snapshot
-                    if (current?.activeJob?.id == reference || current?.offeredJob?.id == reference) {
+                    if (loadError != null) error(loadError!!)
+                    val current = snapshot ?: error("ยังโหลดข้อมูลไรเดอร์ไม่สำเร็จ")
+                    if (current.activeJob?.matchesPushReference(reference) == true || current.offeredJob?.matchesPushReference(reference) == true) {
                         pendingPushReference = null
                     } else {
-                        val notifiedJob = api.notificationJob(auth, reference)
+                        val notifiedJob = api.notificationJob(auth, reference, current.riderProfileId)
                         currentCoroutineContext().ensureActive()
                         if (pendingPushReference != reference) return@repeatOnLifecycle
                         if (notifiedJob != null) detailJob = notifiedJob
@@ -1432,6 +1437,11 @@ private fun RiderHome(
                                 }
                             },
                             onExpired = {
+                                // Clear only the expiring version: a newer offer may already have arrived.
+                                if (snapshot?.offeredJob?.id == current.offeredJob.id &&
+                                    snapshot?.offeredJob?.offerExpiresAt == current.offeredJob.offerExpiresAt) {
+                                    snapshot = snapshot?.copy(offeredJob = null)
+                                }
                                 actionMessage = "ข้อเสนอนี้หมดเวลา ระบบกำลังส่งงานให้ Rider คนถัดไป"
                                 scope.launch { refreshSnapshot() }
                             }
@@ -1631,13 +1641,11 @@ private fun OfferCard(
 ) {
     val pickupKm = riderDistanceKm(riderLocation?.first, riderLocation?.second, job.pickupLat, job.pickupLng)
     val deliveryKm = riderDistanceKm(job.pickupLat, job.pickupLng, job.deliveryLat, job.deliveryLng)
-    var secondsLeft by remember(job.id, job.offerExpiresAt) { mutableStateOf(30) }
+    var secondsLeft by remember(job.id, job.offerExpiresAt) { mutableStateOf(riderOfferSecondsLeft(job.offerExpiresAt)) }
 
     LaunchedEffect(job.id, job.offerExpiresAt) {
         while (true) {
-            val end = runCatching { Instant.parse(job.offerExpiresAt ?: "").toEpochMilli() }.getOrNull()
-            secondsLeft = if (end == null) 30 else
-                (((end - System.currentTimeMillis()).coerceAtLeast(0L) + 999L) / 1000L).toInt()
+            secondsLeft = riderOfferSecondsLeft(job.offerExpiresAt)
             if (secondsLeft <= 0) {
                 onExpired()
                 break

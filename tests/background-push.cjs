@@ -134,9 +134,21 @@ ok(merchantNativeApp.includes('LaunchedEffect(pushTarget?.eventId, loading, push
    merchantNativeApp.includes('delay(3_000)')&&merchantNativeApp.includes('pushRetrySignal += 1')&&
    merchantNativeApp.includes('screen = "order"'),
    'Native Merchant system push tap must preserve the referenced order across transient refresh failure and retry after initial data load');
-ok(riderNativeApp.includes('LaunchedEffect(pushTarget?.eventId)')&&
+ok(riderNativeApp.includes('LaunchedEffect(pushTarget?.eventId, auth.user.id, auth.session.accessToken, lifecycle)')&&
    riderNativeApp.includes('activeTab = "home"')&&riderNativeApp.includes('refreshSnapshot()'),
    'Native Rider system push tap must return to live work and refresh the authoritative snapshot');
+ok(riderNativeApp.includes('current.activeJob?.matchesPushReference(reference)')&&
+   riderNativeApp.includes('api.notificationJob(auth, reference, current.riderProfileId)')&&
+   riderNativeApp.includes('detailJob = notifiedJob')&&
+   riderNativeApp.includes('if (loadError != null) error(loadError!!)')&&
+   riderNativeApp.includes('while (pendingPushReference == reference)')&&riderNativeApp.includes('delay(5_000)')&&riderNativeApp.includes('currentCoroutineContext().ensureActive()'),
+   'Rider push must resolve the exact reference and preserve recovery across transient failure');
+const riderNativeActivity=read('native-android/rider/src/main/java/com/queuego/rider/MainActivity.kt');
+ok(riderNativeActivity.includes('override fun onSaveInstanceState(outState: Bundle)')&&
+   riderNativeActivity.includes('outState.putString("rider_push_reference", target.referenceId)')&&
+   riderNativeActivity.includes('savedInstanceState?.getString("rider_push_reference")')&&
+   riderNativeActivity.includes('pushEventId = savedInstanceState?.getLong("rider_push_event_id")'),
+   'Rider pending push reference and event identity must survive Activity recreation');
 ok(riderNativePush.includes('if (type == "voice_call") NotificationCompat.CATEGORY_CALL')&&
    riderNativePush.includes('else NotificationCompat.CATEGORY_MESSAGE'),
    'Native Rider voice_call push must retain call notification semantics while job pushes remain messages');

@@ -491,7 +491,7 @@ class QueueGoApi {
             val offer = rpcArray("qg_get_my_rider_offer", auth.session.accessToken)
             val offeredId = firstOrderId(offer)
             val offerExpiry = firstOfferExpiry(offer)
-            if (offeredId != null && offerExpiry != null) {
+            if (offeredId != null && riderOfferSecondsLeft(offerExpiry) > 0) {
                 val rows = requestArray(
                     "GET",
                     "/rest/v1/orders?select=" + fields + "&id=eq." + enc(offeredId) + "&limit=1",
@@ -513,6 +513,24 @@ class QueueGoApi {
         )
         RiderSnapshot(online, active, offered, marketPickups, profileId, profile = profileInfo)
     }
+
+    /** Exact reference lookup remains constrained to this Rider and existing RLS. */
+    suspend fun notificationJob(auth: QueueGoAuth, referenceId: String, profileId: String): RiderJob? =
+        withContext(Dispatchers.IO) {
+            if (!referenceId.matches(Regex("[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}")))
+                return@withContext null
+            val fields = "id,order_number,status,pickup_address,pickup_latitude,pickup_longitude," +
+                "delivery_address,delivery_latitude,delivery_longitude,delivery_fee,subtotal,total_amount,market_order_id," +
+                "rider_arrived_shop_at,rider_arrived_customer_at"
+            val base = "/rest/v1/orders?select=" + fields + "&order_type=eq.shopping&rider_id=eq." + enc(profileId)
+            val direct = requestAny("GET", base + "&id=eq." + enc(referenceId) + "&limit=1", auth.session.accessToken, null) as? JSONArray
+                ?: error("รูปแบบข้อมูลการแจ้งเตือนไม่ถูกต้อง")
+            if (direct.length() > 0) return@withContext parseJob(direct.getJSONObject(0))
+            val children = requestAny("GET", base + "&market_order_id=eq." + enc(referenceId) +
+                "&order=created_at.desc&limit=1", auth.session.accessToken, null) as? JSONArray
+                ?: error("รูปแบบข้อมูลการแจ้งเตือนไม่ถูกต้อง")
+            children.optJSONObject(0)?.let(::parseJob)
+        }
 
     suspend fun verificationDetails(auth: QueueGoAuth, orderId: String): RiderVerificationDetails =
         withContext(Dispatchers.IO) {
@@ -566,16 +584,6 @@ class QueueGoApi {
             if (job.marketOrderId != null) "market_claim" else "claim",
             JSONObject().put("p_order_id", job.id)
         )
-    }
-
-    /** Exact-reference read under the Rider JWT/RLS, including owned older completed orders. */
-    suspend fun notificationJob(auth: QueueGoAuth, referenceId: String): RiderJob? = withContext(Dispatchers.IO) {
-        require(auth.user.role == "rider") { "บัญชีนี้ไม่ใช่บัญชีไรเดอร์" }
-        val id = UUID.fromString(referenceId).toString()
-        val rows = requestAny("GET", "/rest/v1/orders?select=" + RIDER_JOB_FIELDS +
-            "&id=eq." + enc(id) + "&limit=1", auth.session.accessToken, null) as? JSONArray
-            ?: error("รูปแบบข้อมูลการแจ้งเตือนไม่ถูกต้อง")
-        rows.optJSONObject(0)?.let(::parseJob)
     }
 
     suspend fun liveOfferExpiry(auth: QueueGoAuth, orderId: String): Long? = withContext(Dispatchers.IO) {
@@ -741,8 +749,8 @@ class QueueGoApi {
             .openConnection() as HttpURLConnection
         try {
             connection.requestMethod = "POST"
-            connection.connectTimeout = timeoutMillis
-            connection.readTimeout = timeoutMillis
+            connection.connectTimeout = TIMEOUT
+            connection.readTimeout = TIMEOUT
             connection.doOutput = true
             connection.setRequestProperty("apikey", PUBLISHABLE_KEY)
             connection.setRequestProperty("Authorization", "Bearer " + auth.session.accessToken)

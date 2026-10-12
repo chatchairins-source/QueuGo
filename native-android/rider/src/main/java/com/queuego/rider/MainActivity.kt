@@ -20,8 +20,21 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        pushEventId = savedInstanceState?.getLong("rider_push_event_id") ?: 0L
+        savedInstanceState?.getString("rider_push_reference")?.let { reference ->
+            pushTarget = NativePushLaunchTarget(reference, savedInstanceState.getString("rider_push_type").orEmpty(), pushEventId)
+        }
         acceptPushIntent(intent)
         setContent { QueueGoRiderApp(pushTarget = pushTarget) }
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        outState.putLong("rider_push_event_id", pushEventId)
+        pushTarget?.let { target ->
+            outState.putString("rider_push_reference", target.referenceId)
+            outState.putString("rider_push_type", target.type)
+        }
+        super.onSaveInstanceState(outState)
     }
 
     override fun onNewIntent(intent: Intent) {
