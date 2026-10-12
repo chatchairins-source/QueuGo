@@ -1045,8 +1045,8 @@ private fun RiderHome(
 
         val activeSheetJob = snapshot?.activeJob
         val density = LocalDensity.current
-        val expandedSheetHeight = (maxHeight - 132.dp).coerceAtLeast(240.dp)
-        val collapsedSheetHeight = 92.dp
+        val expandedSheetHeight = (maxHeight - 132.dp).coerceAtLeast(0.dp)
+        val collapsedSheetHeight = 92.dp.coerceAtMost(expandedSheetHeight)
         var jobSheetExpanded by rememberSaveable(activeSheetJob?.id) { mutableStateOf(true) }
         var draggedSheetHeightPx by remember(activeSheetJob?.id) { mutableStateOf<Float?>(null) }
         val settledSheetHeight by animateDpAsState(

@@ -35,6 +35,8 @@ class RiderMapRuntimeActivity : ComponentActivity() {
             RiderLongdoMap(
                 modifier = Modifier.fillMaxSize(), job = null,
                 marketPickups = emptyList(), recenterSignal = recenterSignal.intValue,
+                navigationState = RiderNavigationState(),
+                onLocationFix = {},
                 onMapReady = { ready -> if (ready) mapReady.countDown() }
             )
         }

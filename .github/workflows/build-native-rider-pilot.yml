@@ -73,7 +73,6 @@ concurrency:
 
 jobs:
   native-pilot:
-    if: ${{ !startsWith(github.ref, 'refs/heads/work-native-map-display-') }}
     runs-on: ubuntu-latest
     timeout-minutes: 35
     steps:
@@ -239,7 +238,7 @@ jobs:
           fi
       - name: Run actual native Longdo display and lifecycle
         env:
-          QG_CUSTOMER_LOCATION_ONLY: '1'
+          QG_MAP_DISPLAY_ONLY: '1'
         run: python3 native-android/qa/capture-rider-launch.py
       - name: Keep map images and runtime evidence
         if: always()

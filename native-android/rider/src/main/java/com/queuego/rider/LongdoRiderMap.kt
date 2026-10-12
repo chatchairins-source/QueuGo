@@ -242,7 +242,7 @@ private class RiderLongdoHolder(private val cameraState: MutableState<DoubleArra
                 runCatching {
                     val line = Line(part.map { MapLocation(it.longitude, it.latitude) }.toTypedArray()).apply {
                         setWidth(8)
-                        setColor(230, 0, 45, 235)
+                        setColor(floatArrayOf(230f / 255f, 0f, 45f / 255f, 235f / 255f))
                     }
                     activeMap.addLine(line)
                     routeLines += line
@@ -288,7 +288,7 @@ private class RiderLongdoHolder(private val cameraState: MutableState<DoubleArra
 }
 
 @Composable
-fun RiderLongdoMap(
+internal fun RiderLongdoMap(
     modifier: Modifier = Modifier,
     job: RiderJob?,
     marketPickups: List<MarketPickup>,
