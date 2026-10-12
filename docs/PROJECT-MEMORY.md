@@ -1,3 +1,6 @@
+## 2026-10-12 Rider nullable profile compile recovery
+- Merged run38216768959 full regression PASS; compile found nullable riderProfileId in exact notification lookup. Require the authoritative loaded profile before the assigned-order read; missing profile keeps the existing recovery retry, never drops ownership filtering. Exact rerun pending.
+
 ## 2026-10-12 Rider converged latest-HEAD compilation recovery
 - Fetched latest map working HEAD984e2dcf and notification successor97eec029. Merge preserves both histories: saved Activity push target, actual offer expiry, exact-ID recovery, persistent sound receipts, routing/GL lifecycle and draggable sheet. No reset/revert.
 - Notification CI38215644109 full regression passed but Kotlin compile failed because uploadEvidence referenced requestAny-local timeoutMillis. Restore existing proof upload TIMEOUT; bounded legacy offer lookup remains independent. All original regressions plus current two-channel realtime assertions remain. Exact merged-tree CI pending; authenticated/physical Release Gate remains OPEN.

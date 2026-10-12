@@ -741,7 +741,8 @@ private fun RiderHome(
                     if (current.activeJob?.matchesPushReference(reference) == true || current.offeredJob?.matchesPushReference(reference) == true) {
                         pendingPushReference = null
                     } else {
-                        val notifiedJob = api.notificationJob(auth, reference, current.riderProfileId)
+                        val profileId = current.riderProfileId ?: error("ยังโหลดโปรไฟล์ไรเดอร์ไม่สำเร็จ")
+                        val notifiedJob = api.notificationJob(auth, reference, profileId)
                         currentCoroutineContext().ensureActive()
                         if (pendingPushReference != reference) return@repeatOnLifecycle
                         if (notifiedJob != null) detailJob = notifiedJob

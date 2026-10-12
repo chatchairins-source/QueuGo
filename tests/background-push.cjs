@@ -138,7 +138,7 @@ ok(riderNativeApp.includes('LaunchedEffect(pushTarget?.eventId, auth.user.id, au
    riderNativeApp.includes('activeTab = "home"')&&riderNativeApp.includes('refreshSnapshot()'),
    'Native Rider system push tap must return to live work and refresh the authoritative snapshot');
 ok(riderNativeApp.includes('current.activeJob?.matchesPushReference(reference)')&&
-   riderNativeApp.includes('api.notificationJob(auth, reference, current.riderProfileId)')&&
+   riderNativeApp.includes('api.notificationJob(auth, reference, profileId)')&&
    riderNativeApp.includes('detailJob = notifiedJob')&&
    riderNativeApp.includes('if (loadError != null) error(loadError!!)')&&
    riderNativeApp.includes('while (pendingPushReference == reference)')&&riderNativeApp.includes('delay(5_000)')&&riderNativeApp.includes('currentCoroutineContext().ensureActive()'),
