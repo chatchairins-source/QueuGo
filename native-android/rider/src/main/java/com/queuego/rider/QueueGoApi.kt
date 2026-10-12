@@ -361,13 +361,15 @@ class QueueGoApi {
                 modeEnabled = root.optBoolean("mode_enabled", false),
                 invites = buildList {
                     for (i in 0 until invites.length()) {
-                        invites.optJSONObject(i)?.let(::parseLaundryInvite)?.let(::add)
+                        val row = invites.optJSONObject(i) ?: continue
+                        parseLaundryInvite(row)?.let { add(it) }
                     }
                 },
                 activeJob = active.optJSONObject(0)?.let { parseLaundryJob(it, "assigned") },
                 pool = buildList {
                     for (i in 0 until pool.length()) {
-                        pool.optJSONObject(i)?.let { parseLaundryJob(it, "waiting") }?.let(::add)
+                        val row = pool.optJSONObject(i) ?: continue
+                        parseLaundryJob(row, "waiting")?.let { add(it) }
                     }
                 }
             )
