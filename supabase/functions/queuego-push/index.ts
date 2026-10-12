@@ -138,6 +138,7 @@ async function sendNativePush(deviceToken:string,user:any,n:any,sessionId:string
   const riderMessage=riderOfferMessage||(user.role==='rider'?buildRiderEventMessage(deviceToken,{
     ...n,title:visibleOrderText(n.title||'QueueGo Rider'),message:visibleOrderText(n.message||'มีรายการอัปเดต')
   },sessionId):null);
+  if(user.role==='rider'&&!riderMessage)return 204;
   const response=await fetch(
     'https://fcm.googleapis.com/v1/projects/'+encodeURIComponent(firebase.projectId)+'/messages:send',
     {
