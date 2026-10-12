@@ -17,6 +17,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -62,17 +63,17 @@ internal fun RiderSlideComplete(
         val thumbWidth = 48.dp
         val horizontalPadding = 4.dp
         val travelPx = with(density) { (maxWidth - thumbWidth - horizontalPadding * 2).toPx().coerceAtLeast(1f) }
-        val thumbPx = with(density) { thumbWidth.toPx() }
         val leftPadPx = with(density) { horizontalPadding.toPx() }
 
         Box(
             Modifier
-                .fillMaxSize()
+                .align(Alignment.CenterStart)
+                .fillMaxWidth(progress.coerceIn(0f, 1f))
+                .height(56.dp)
                 .background(
                     Color(0xFFF04455).copy(alpha = if (enabled) 1f else 0f),
                     RoundedCornerShape(20.dp)
                 )
-                .fillMaxWidth(progress.coerceIn(0f, 1f))
         )
 
         Text(
