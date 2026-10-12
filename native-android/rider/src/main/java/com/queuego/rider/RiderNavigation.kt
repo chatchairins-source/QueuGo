@@ -418,6 +418,24 @@ internal class RiderNavigationController(
     }
 }
 
+internal fun riderLaundryNavigationTarget(job: RiderLaundryJob): RiderNavigationTarget? {
+    val point = job.navigationTarget ?: return null
+    val collected = job.isCollected
+    val label = when {
+        !collected && job.leg == "pickup" -> "ลูกค้า"
+        !collected -> "ร้านซัก"
+        job.leg == "pickup" -> "ร้านซัก"
+        else -> "ลูกค้า"
+    }
+    return RiderNavigationTarget(
+        key = "laundry:" + job.jobId + if (collected) ":to" else ":from",
+        label = label,
+        destinationKind = if (collected) "laundry_delivery" else "laundry_pickup",
+        latitude = point.first,
+        longitude = point.second
+    ).takeIf { it.point.valid }
+}
+
 internal fun riderNavigationTarget(job: RiderJob, pickups: List<MarketPickup>): RiderNavigationTarget? {
     if (job.marketOrderId != null && !job.isDelivering) {
         val next = pickups.firstOrNull { !it.done && it.latitude != null && it.longitude != null }
