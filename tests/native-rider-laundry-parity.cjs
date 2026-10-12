@@ -29,6 +29,10 @@ assert(app.includes('RiderLaundryActiveCard('),'Home must render an active laund
 assert(app.includes('RiderLaundryPoolCard('),'Home must render claimable laundry work');
 assert(app.includes('api.claimLaundryJob(auth, laundryJob.jobId)'),'Laundry claim must hit Production');
 assert(app.includes('api.laundryJobAction(auth, laundryJob.jobId, action)'),'Laundry lifecycle actions must hit Production');
+assert(app.includes('current.activeJob == null && current.laundry.activeJob != null'),'Normal delivery must retain priority over Laundry if a stale contradictory snapshot contains both');
+assert(app.includes('fun claimLaundry(laundryJob: RiderLaundryJob)')&&
+  (app.match(/onClaim = ::claimLaundry/g)||[]).length >= 2,
+  'Laundry pool must remain visible beside a normal offer and reuse one claim implementation');
 
 assert(profile.includes('"รับงานฝากซัก"'),'Profile must retain the laundry mode setting');
 assert(profile.includes('api.setLaundryMode(auth, enabled)'),'Laundry mode must persist through Production RPC');
