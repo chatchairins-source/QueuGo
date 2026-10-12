@@ -156,7 +156,7 @@ def capture_customer_location():
             for permission in ("ACCESS_FINE_LOCATION", "ACCESS_COARSE_LOCATION"):
                 run(adb + ["shell", "pm", "grant", pkg, "android.permission." + permission])
         run(adb + ["logcat", "-b", "all", "-c"])
-        run(adb + ["shell", "am", "start", "-W", "-n", pkg + "/.MainActivity"])
+        run(adb + ["shell", "am", "start", "-W", "-n", pkg + "/.MainActivity"], timeout=40)
         nodes = wait_ui(directory / "home.xml", lambda ns: any(n.get("text") == "เลือกที่อยู่จัดส่ง" for n in ns))
         target = next(n for n in nodes if n.get("text") == "เลือกที่อยู่จัดส่ง")
         bounds = [int(x) for x in re.findall(r"\d+", target.get("bounds", ""))]
@@ -176,6 +176,7 @@ def capture_customer_location():
             b = [int(x) for x in re.findall(r"\d+", deny.get("bounds", ""))]
             run(adb + ["shell", "input", "tap", str((b[0]+b[2])//2), str((b[1]+b[3])//2)])
         time.sleep(20)
+        (directory / "all-logcat.txt").write_text(run(adb + ["logcat", "-d"], capture_output=True, text=True).stdout)
         assert_no_package_crash(pkg, directory / "settled-crash.txt")
         package_pids(pkg)
         nodes = read_ui(directory / "settled.xml")
@@ -185,10 +186,12 @@ def capture_customer_location():
             run(adb + ["exec-out", "screencap", "-p"], stdout=png)
         run(adb + ["shell", "input", "keyevent", "3"])
         time.sleep(1)
-        run(adb + ["shell", "am", "start", "-W", "-n", pkg + "/.MainActivity"])
+        run(adb + ["shell", "am", "start", "-W", "-n", pkg + "/.MainActivity"], timeout=40)
         time.sleep(3)
         assert_no_package_crash(pkg, directory / "resume-crash.txt")
         package_pids(pkg)
+        nodes = read_ui(directory / "resumed.xml")
+        assert any(n.get("text") == "ใช้ตำแหน่ง GPS ปัจจุบัน" for n in nodes), "Picker did not resume"
         print("QUEUEGO_CUSTOMER_LOCATION_PASS " + permission_state)
 
 
@@ -596,7 +599,7 @@ with (output / "emulator.log").open("w") as log:
             verify_real_home_map_runtime()
             verify_voice_foreground_runtime()
     finally:
-        for arguments, filename in [(["logcat", "-d", "-s", "AndroidRuntime:E"], "android-runtime.txt"), (["logcat", "-b", "crash", "-d"], "crash-buffer.txt")]:
+        for arguments, filename in [(["logcat", "-d", "-s", "AndroidRuntime:E"], "android-runtime.txt"), (["logcat", "-b", "crash", "-d"], "crash-buffer.txt"), (["logcat", "-d"], "all-logcat-final.txt"), (["shell", "dumpsys", "activity", "lastanr"], "last-anr.txt")]:
             try:
                 result = subprocess.run(adb + arguments, capture_output=True, text=True, timeout=15)
                 (output / filename).write_text(result.stdout + result.stderr)

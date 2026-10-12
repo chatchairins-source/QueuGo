@@ -6,6 +6,7 @@ import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.PointF
+import android.view.LayoutInflater
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.remember
@@ -29,6 +30,22 @@ private class TrackingMapHolder {
     var renderedPoints: List<QgMapPoint>? = null
     var centered = false
     var disposed = false
+    private var resumed = false
+
+    fun resume() {
+        val activeView = view ?: return
+        if (!disposed && !resumed) {
+            activeView.onResume()
+            resumed = true
+        }
+    }
+
+    fun pause() {
+        if (resumed) {
+            view?.onPause()
+            resumed = false
+        }
+    }
 
     fun draw(points: List<QgMapPoint>) {
         val activeMap = map ?: return
@@ -80,7 +97,7 @@ fun QgLongdoTrackingMap(
     AndroidView(
         modifier = modifier,
         factory = { ctx ->
-            MapGLSurfaceView(ctx).also { view ->
+            (LayoutInflater.from(ctx).inflate(R.layout.view_longdo_shared_map, null, false) as MapGLSurfaceView).also { view ->
                 holder.view = view
                 view.setListener(object : IMapListener {
                     override fun onMapCreated(map: com.longdo.api.Map) {
@@ -88,7 +105,10 @@ fun QgLongdoTrackingMap(
                             if (!holder.disposed) {
                                 runCatching {
                                     holder.map = map
-                                    map.setBase(LongdoLayer(ctx, "gray", 0, 1, 20))
+                                    holder.renderedPoints = null
+                                    map.setBase(LongdoLayer(ctx, "gray", 0, 1, 20).apply {
+                                        layerURL = "https://ms2.longdo.com/mmmap/img.php"
+                                    })
                                     holder.draw(currentPoints.value)
                                 }.onSuccess { currentReady.value(true) }
                                     .onFailure { currentReady.value(false) }
@@ -96,7 +116,7 @@ fun QgLongdoTrackingMap(
                         }
                     }
                 })
-                if (owner?.lifecycle?.currentState?.isAtLeast(Lifecycle.State.RESUMED) != false) view.onResume()
+                if (owner?.lifecycle?.currentState?.isAtLeast(Lifecycle.State.RESUMED) != false) holder.resume()
             }
         },
         update = {
@@ -106,8 +126,8 @@ fun QgLongdoTrackingMap(
     DisposableEffect(owner) {
         val observer = LifecycleEventObserver { _, event ->
             when (event) {
-                Lifecycle.Event.ON_RESUME -> holder.view?.onResume()
-                Lifecycle.Event.ON_PAUSE -> holder.view?.onPause()
+                Lifecycle.Event.ON_RESUME -> holder.resume()
+                Lifecycle.Event.ON_PAUSE -> holder.pause()
                 else -> Unit
             }
         }
@@ -116,7 +136,7 @@ fun QgLongdoTrackingMap(
             owner?.lifecycle?.removeObserver(observer)
             holder.disposed = true
             runCatching { holder.map?.clearPin() }
-            runCatching { holder.view?.onPause() }
+            runCatching { holder.pause() }
             holder.map = null
             holder.view = null
         }
@@ -128,6 +148,22 @@ private class LocationPickerMapHolder {
     var view: MapGLSurfaceView? = null
     var map: com.longdo.api.Map? = null
     var disposed = false
+    private var resumed = false
+
+    fun resume() {
+        val activeView = view ?: return
+        if (!disposed && !resumed) {
+            activeView.onResume()
+            resumed = true
+        }
+    }
+
+    fun pause() {
+        if (resumed) {
+            view?.onPause()
+            resumed = false
+        }
+    }
     var lastRecenterToken: Int? = null
 
     fun recenter(point: QgMapPoint?, token: Int) {
@@ -164,7 +200,7 @@ fun QgLongdoLocationPickerMap(
     AndroidView(
         modifier = modifier,
         factory = { ctx ->
-            MapGLSurfaceView(ctx).also { view ->
+            (LayoutInflater.from(ctx).inflate(R.layout.view_longdo_shared_map, null, false) as MapGLSurfaceView).also { view ->
                 holder.view = view
                 view.setListener(object : IMapListener {
                     override fun onMapCreated(map: com.longdo.api.Map) {
@@ -172,7 +208,10 @@ fun QgLongdoLocationPickerMap(
                             if (!holder.disposed) {
                                 runCatching {
                                     holder.map = map
-                                    map.setBase(LongdoLayer(ctx, "gray", 0, 1, 20))
+                                    holder.lastRecenterToken = null
+                                    map.setBase(LongdoLayer(ctx, "gray", 0, 1, 20).apply {
+                                        layerURL = "https://ms2.longdo.com/mmmap/img.php"
+                                    })
                                     map.setDrawCrossSign(true)
                                     map.setCrossSignColor(floatArrayOf(239f / 255f, 51f / 255f, 64f / 255f, 1f))
                                     map.setStatusListener(object : IStatusListener {
@@ -206,7 +245,7 @@ fun QgLongdoLocationPickerMap(
                         }
                     }
                 })
-                if (owner?.lifecycle?.currentState?.isAtLeast(Lifecycle.State.RESUMED) != false) view.onResume()
+                if (owner?.lifecycle?.currentState?.isAtLeast(Lifecycle.State.RESUMED) != false) holder.resume()
             }
         },
         update = {
@@ -219,8 +258,8 @@ fun QgLongdoLocationPickerMap(
     DisposableEffect(owner) {
         val observer = LifecycleEventObserver { _, event ->
             when (event) {
-                Lifecycle.Event.ON_RESUME -> holder.view?.onResume()
-                Lifecycle.Event.ON_PAUSE -> holder.view?.onPause()
+                Lifecycle.Event.ON_RESUME -> holder.resume()
+                Lifecycle.Event.ON_PAUSE -> holder.pause()
                 else -> Unit
             }
         }
@@ -228,7 +267,7 @@ fun QgLongdoLocationPickerMap(
         onDispose {
             owner?.lifecycle?.removeObserver(observer)
             holder.disposed = true
-            runCatching { holder.view?.onPause() }
+            runCatching { holder.pause() }
             holder.map = null
             holder.view = null
         }
