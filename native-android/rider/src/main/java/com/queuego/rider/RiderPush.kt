@@ -44,6 +44,29 @@ internal fun ensureRiderOrderChannel(context: Context) {
     manager.createNotificationChannel(channel)
 }
 
+internal fun riderNotificationsReady(context: Context): Boolean {
+    ensureRiderOrderChannel(context)
+    val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+    if (!manager.areNotificationsEnabled()) return false
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+        val channel = manager.getNotificationChannel(RIDER_ORDER_CHANNEL) ?: return false
+        if (channel.importance == NotificationManager.IMPORTANCE_NONE) return false
+    }
+    return true
+}
+
+internal fun riderNotificationSettingsIntent(context: Context): Intent =
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+        Intent(android.provider.Settings.ACTION_CHANNEL_NOTIFICATION_SETTINGS).apply {
+            putExtra(android.provider.Settings.EXTRA_APP_PACKAGE, context.packageName)
+            putExtra(android.provider.Settings.EXTRA_CHANNEL_ID, RIDER_ORDER_CHANNEL)
+        }
+    } else {
+        Intent(android.provider.Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
+            putExtra(android.provider.Settings.EXTRA_APP_PACKAGE, context.packageName)
+        }
+    }
+
 private suspend fun firebaseToken(): String = suspendCancellableCoroutine { continuation ->
     FirebaseMessaging.getInstance().token
         .addOnSuccessListener { token ->
