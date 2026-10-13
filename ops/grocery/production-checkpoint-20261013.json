@@ -19,16 +19,17 @@
   "backup_typed_rows": 1860,
   "backup_round_trip_failures": 0,
   "backup_scope": "application rows/schema and Storage metadata; excludes Auth credentials, Storage bytes and platform internals",
-  "authenticated_web_e2e": "BLOCKED: no authenticated Merchant/Customer/Admin browser session",
+  "authenticated_web_e2e": "OPEN: real Grocery Merchant sign-in verified on current main; candidate not deployed; Customer/Admin and second Grocery shop not available",
   "main_merge": "NOT_DONE",
   "web_deployment": "NOT_DONE",
-  "ci_head": "f2f5740e5f3fea2618a1a2766cc6635784263eb7",
-  "ci_run": 38335174150,
+  "ci_head": "7c0a485eff6d9a434a5da9f982449439a552ec02",
+  "ci_run": 38335868729,
   "ci_result": "success",
   "grocery_missing_fk_indexes": 0,
   "reviewed_active_keys": [
     "โฟร์โมสต์|นมยูเอชทีรสจืด||225|ml|1|กล่อง",
     "โรซ่า|ผักกาดดองเค็ม||170|g|1|กระป๋อง"
   ],
-  "concurrent_stock": "OPEN: inspect shared product lock upgrade in cash checkout core"
+  "concurrent_stock": "OPEN: inspect shared product lock upgrade in cash checkout core",
+  "grocery_shop_count": 1
 }
