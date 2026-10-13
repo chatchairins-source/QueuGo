@@ -22,3 +22,8 @@ assert(map.includes('if (stopPins.keys == desiredStops) lastOverlayKey = key'));
 assert(map.includes('ldmap.removePin(pin) }.onSuccess { stopPins.remove(stopKey) }'));
 assert(map.includes('.append(it.job.deliveryLat).append(",").append(it.job.deliveryLng)'));
 assert(!map.includes('stopPins.remove(key)?.let'));
+
+assert(tracking.includes('existing.second.setLocation(MapLocation(point.longitude, point.latitude), true, 18)'));
+assert(tracking.includes('bitmaps.getOrPut(point.role)'));
+assert(!tracking.slice(tracking.indexOf('fun draw(points:'),tracking.indexOf('private fun Context.mapLifecycleOwner')).includes('clearPin()'));
+assert(tracking.includes('holder.attachMap(map)'));
