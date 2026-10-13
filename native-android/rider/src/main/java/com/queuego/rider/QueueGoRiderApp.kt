@@ -1374,7 +1374,7 @@ private fun RiderHome(
             .fillMaxSize()
             .background(QgRiderBg)
     ) {
-        RiderLongdoMap(
+        QueueGoRiderNavigationMap(
             modifier = Modifier.fillMaxSize(),
             stateKey = auth.user.id,
             job = mapJob,
