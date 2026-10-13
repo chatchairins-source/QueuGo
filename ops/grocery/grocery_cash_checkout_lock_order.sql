@@ -185,5 +185,4 @@ begin
     from public.orders o where o.id=p_order_id
   );
 end
-$function$
-
+$function$;
