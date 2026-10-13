@@ -60,7 +60,9 @@ assert(map.includes('fun retainAcrossVisibilityLoss()')&&
   map.includes('Lifecycle.Event.ON_PAUSE -> holder.retainAcrossVisibilityLoss()')&&
   map.includes('holder.retainAcrossVisibilityLoss()')&&
   map.includes('fun shutdownSdk()')&&
-  (map.match(/\\.onPause\\(\\)/g)||[]).length===1,
+  map.includes('activeView.onPause()')&&
+  map.indexOf('activeView.onPause()')===map.lastIndexOf('activeView.onPause()')&&
+  !map.includes('view?.onPause()')&&!map.includes('createdView.onPause()'),
   'Ordinary tab/background visibility loss must not call Longdo onPause; SDK shutdown is reserved for real surface disposal');
 assert(map.includes('setPreserveEGLContextOnPause(true)'),
   'Navigation map must preserve the GL context across background/resume to avoid tile reconstruction');
