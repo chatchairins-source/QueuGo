@@ -533,24 +533,8 @@ private fun RiderHome(
     var recenterSignal by remember { mutableStateOf(0) }
     var mapReady by remember { mutableStateOf(false) }
     var pendingMapRecenter by remember { mutableStateOf(false) }
-    val navigationController = remember(auth.user.id) { RiderNavigationController() }
-    val navigationState by navigationController.state.collectAsState()
-    val navigationSpeaker = remember(auth.user.id) { RiderNavigationSpeaker(context) }
-    DisposableEffect(navigationController, navigationSpeaker) {
-        onDispose {
-            navigationSpeaker.close()
-            navigationController.close()
-        }
-    }
-    LaunchedEffect(navigationState) {
-        navigationSpeaker.speakIfNeeded(navigationState)
-    }
-    LaunchedEffect(snapshot?.activeJob, snapshot?.marketPickups, snapshot?.laundry?.activeJob) {
-        val target = snapshot?.activeJob?.let {
-            riderNavigationTarget(it, snapshot?.marketPickups.orEmpty())
-        } ?: snapshot?.laundry?.activeJob?.let(::riderLaundryNavigationTarget)
-        navigationController.setTarget(target)
-    }
+    val navigationState = remember { RiderNavigationState() }
+
 
     val locationPermission = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -1123,6 +1107,15 @@ private fun RiderHome(
 
     fun changeOnline(enabled: Boolean) {
         if (actionBusy || snapshot?.activeJob != null || snapshot?.laundry?.activeJob != null || snapshot == null) return
+        if (enabled && !hasGoogleMaps(context)) {
+            actionMessage = "ต้องติดตั้ง Google Maps ก่อนเปิดรับงาน"
+            openGoogleMapsInstallPage(context)
+            return
+        }
+        if (enabled && !Settings.canDrawOverlays(context)) {
+            configureReturnControl()
+            return
+        }
         if (enabled && !ensureLocationPermission()) return
         actionBusy = true
         scope.launch {
@@ -1154,7 +1147,7 @@ private fun RiderHome(
             bundleOrders = snapshot?.bundle?.activeOrders.orEmpty(),
             navigationState = navigationState,
             recenterSignal = recenterSignal,
-            onLocationFix = navigationController::onLocationFix,
+            onLocationFix = {},
             onMapReady = { mapReady = it }
         )
 
@@ -1171,73 +1164,6 @@ private fun RiderHome(
                 enabled = !actionBusy && snapshot != null && snapshot?.activeJob == null && snapshot?.laundry?.activeJob == null,
                 onToggle = { changeOnline(snapshot?.online != true) }
             )
-            if (navigationState.active) {
-                Spacer(Modifier.height(7.dp))
-                Card(
-                    modifier = Modifier.widthIn(max = 350.dp),
-                    shape = RoundedCornerShape(17.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color(0xFF171519)),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
-                ) {
-                    Row(
-                        Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
-                        verticalAlignment = Alignment.Top
-                    ) {
-                        Box(
-                            Modifier.size(34.dp).background(QgRed, RoundedCornerShape(11.dp)),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            QgIcon("location", Modifier.size(19.dp), Color.White)
-                        }
-                        Spacer(Modifier.width(9.dp))
-                        Column(Modifier.weight(1f)) {
-                            val nextText = navigationState.nextInstruction?.turnCode?.let(::riderTurnPhrase)
-                            Text(
-                                when {
-                                    navigationState.loading && !navigationState.routeReady -> "กำลังคำนวณเส้นทาง…"
-                                    navigationState.weakGps -> "สัญญาณ GPS อ่อน · กำลังรักษาเส้นทางเดิม"
-                                    navigationState.offRoute -> "ออกนอกเส้นทาง · กำลังคำนวณใหม่"
-                                    nextText != null && navigationState.nextInstruction?.turnCode != 9 -> nextText
-                                    else -> "นำทางไป" + navigationState.targetLabel
-                                },
-                                color = Color.White,
-                                fontWeight = FontWeight.Black,
-                                fontSize = 12.sp
-                            )
-                            Text(
-                                buildString {
-                                    append(navigationState.distanceRemainingMeters?.let {
-                                        if (it >= 1000.0) "%.1f กม.".format(it / 1000.0) else "%.0f ม.".format(it)
-                                    } ?: "—")
-                                    append(" · ")
-                                    append(navigationState.etaSeconds?.let {
-                                        "ประมาณ " + kotlin.math.ceil(it / 60.0).toInt().coerceAtLeast(1) + " นาที"
-                                    } ?: "ETA —")
-                                    navigationState.headingDegrees?.let { append(" · ทิศ %.0f°".format(it)) }
-                                },
-                                color = Color(0xFFCFC9CC),
-                                fontSize = 8.sp
-                            )
-                            if (navigationState.routeError != null) {
-                                Text(navigationState.routeError!!, color = Color(0xFFFF7890), fontSize = 8.sp)
-                                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
-                                    OutlinedButton(
-                                        onClick = { navigationController.retry() },
-                                        modifier = Modifier.weight(1f).heightIn(min = 38.dp)
-                                    ) { Text("ลองเส้นทางอีกครั้ง", fontSize = 8.sp) }
-                                    OutlinedButton(
-                                        onClick = {
-                                            (snapshot?.activeJob ?: snapshot?.laundry?.activeJob?.asMapJob())
-                                                ?.let { openExternalNavigation(context, it) }
-                                        },
-                                        modifier = Modifier.weight(1f).heightIn(min = 38.dp)
-                                    ) { Text("เปิดแผนที่ภายนอก", fontSize = 8.sp) }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
             if (!mapReady) {
                 Spacer(Modifier.height(7.dp))
                 Card(
@@ -2495,28 +2421,60 @@ private fun createEvidenceUri(context: Context): Uri {
     )
 }
 
-private fun openNavigation(context: Context, job: RiderJob) {
-    if (job.navigationTarget == null) return
-    RiderReturnService.stop(context)
-    context.getSharedPreferences("rider_navigation", Context.MODE_PRIVATE).edit()
-        .putBoolean(job.id + if (job.isDelivering) ":customer" else ":shop", true).apply()
+private const val GOOGLE_MAPS_PACKAGE = "com.google.android.apps.maps"
+private const val PLAY_STORE_PACKAGE = "com.android.vending"
+
+private fun hasGoogleMaps(context: Context): Boolean {
+    val probe = Intent(
+        Intent.ACTION_VIEW,
+        Uri.parse("google.navigation:q=0,0&mode=d")
+    ).apply {
+        setPackage(GOOGLE_MAPS_PACKAGE)
+    }
+    return probe.resolveActivity(context.packageManager) != null
 }
 
-private fun openExternalNavigation(context: Context, job: RiderJob) {
+private fun openGoogleMapsInstallPage(context: Context) {
+    val intent = Intent(
+        Intent.ACTION_VIEW,
+        Uri.parse("market://details?id=" + GOOGLE_MAPS_PACKAGE)
+    ).apply {
+        setPackage(PLAY_STORE_PACKAGE)
+        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+    }
+    runCatching { context.startActivity(intent) }
+}
+
+private fun openNavigation(context: Context, job: RiderJob) {
     val target = job.navigationTarget ?: return
+    if (!hasGoogleMaps(context)) {
+        openGoogleMapsInstallPage(context)
+        return
+    }
+    if (!Settings.canDrawOverlays(context)) {
+        runCatching {
+            context.startActivity(
+                Intent(
+                    Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                    Uri.parse("package:" + context.packageName)
+                ).apply { addFlags(Intent.FLAG_ACTIVITY_NEW_TASK) }
+            )
+        }
+        return
+    }
+
+    context.getSharedPreferences("rider_navigation", Context.MODE_PRIVATE).edit()
+        .putBoolean(job.id + if (job.isDelivering) ":customer" else ":shop", true)
+        .apply()
+
     RiderReturnService.start(context)
     val navigation = Uri.parse(
         "google.navigation:q=" + target.first + "," + target.second + "&mode=d"
     )
     val mapsIntent = Intent(Intent.ACTION_VIEW, navigation).apply {
-        setPackage("com.google.android.apps.maps")
+        setPackage(GOOGLE_MAPS_PACKAGE)
+        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
     }
     val opened = runCatching { context.startActivity(mapsIntent) }.isSuccess
-    if (!opened) {
-        val web = Uri.parse(
-            "https://www.google.com/maps/dir/?api=1&destination=" +
-                target.first + "," + target.second
-        )
-        runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, web)) }
-    }
+    if (!opened) RiderReturnService.stop(context)
 }
