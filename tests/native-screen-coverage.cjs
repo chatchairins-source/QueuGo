@@ -69,6 +69,13 @@ ok(merchantHome.includes('"rider_assigned", "assigned" -> {')&&
 ok(!riderHome.includes('"กำลังเชื่อมต่อ Longdo Map…"')&&
    !riderHome.includes('if (loadError == null) {\n                    CircularProgressIndicator()'),
    'Rider Home must refresh silently without center or side loading indicators when no user action is blocked');
+const riderLoadingStart=riderHome.indexOf('private fun LoadingScreen');
+const riderLoginStart=riderHome.indexOf('private fun LoginScreen',riderLoadingStart);
+const riderLoadingSource=riderHome.slice(riderLoadingStart,riderLoginStart);
+ok(riderLoadingStart>=0&&riderLoginStart>riderLoadingStart&&
+   riderLoadingSource.includes('Box(modifier.fillMaxSize())')&&
+   !riderLoadingSource.includes('CircularProgressIndicator'),
+   'Rider session restoration must stay interaction-blocking but visually silent without a center spinner');
 ok(riderHome.includes('private fun RiderBlueprintBrandPill()')&&riderHome.includes('horizontalArrangement = Arrangement.SpaceBetween')&&
    riderHome.includes('Text("Queue"')&&riderHome.includes('Text("Go", color = QgRed')&&riderHome.includes('Text("Rider", color = Color(0xFF8D8589)'),
    'Rider Native home topbar must retain the Production QueueGo Rider brand pill beside online status');
