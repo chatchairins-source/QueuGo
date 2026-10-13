@@ -6,6 +6,7 @@ import android.content.pm.PackageManager
 import android.location.LocationManager
 import android.location.Location
 import android.location.LocationListener
+import android.graphics.PointF
 import android.os.Bundle
 import android.os.Looper
 import android.util.Log
@@ -37,6 +38,7 @@ import com.longdo.api.type.MapLocation
 private const val RIDER_MAP_LOCATION_REFRESH_MS = 2_500L
 private const val RIDER_MAP_LOCATION_REFRESH_METERS = 2f
 private const val RIDER_MAP_LAST_KNOWN_MAX_AGE_MS = 120_000L
+private const val RIDER_MAP_LOCATION_ANIMATION_SECONDS = 1.8
 
 private fun riderStopMarkerRes(number: Int): Int = when (number) {
     1 -> R.drawable.qg_rider_stop_1
@@ -66,6 +68,7 @@ private class RiderLongdoHolder(
     private var locationListener: LocationListener? = null
     private var locationPermissionMask = 0
     private var latestDeviceLocation: Pair<Double, Double>? = null
+    private var currentLocationPin: Pin? = null
     private var recenterOnNextFix = false
     private var currentJob: RiderJob? = null
     private var currentPickups: List<MarketPickup> = emptyList()
@@ -74,6 +77,7 @@ private class RiderLongdoHolder(
     fun attachMap(nextMap: com.longdo.api.Map) {
         if (map !== nextMap) {
             lastOverlayKey = null
+            currentLocationPin = null
             map = nextMap
         }
     }
@@ -213,8 +217,33 @@ private class RiderLongdoHolder(
         val ldmap = map ?: return
         if (disposed) return
         val location = latestDeviceLocation ?: deviceLocation(context)?.also { latestDeviceLocation = it }
+
+        fun updateCurrentLocationPin(next: Pair<Double, Double>?) {
+            if (next == null) {
+                currentLocationPin?.let { pin -> runCatching { ldmap.removePin(pin) } }
+                currentLocationPin = null
+                return
+            }
+            val (lat, lon) = next
+            val mapLocation = MapLocation(lon, lat)
+            val existing = currentLocationPin
+            if (existing == null) {
+                val pin = Pin(mapLocation, context, R.drawable.qg_rider_current_location)
+                runCatching { ldmap.pushPin(pin) }
+                    .onSuccess { currentLocationPin = pin }
+            } else {
+                runCatching {
+                    existing.setLocation(mapLocation, true, RIDER_MAP_LOCATION_ANIMATION_SECONDS)
+                }.onFailure {
+                    runCatching { ldmap.removePin(existing) }
+                    val replacementPin = Pin(mapLocation, context, R.drawable.qg_rider_current_location)
+                    runCatching { ldmap.pushPin(replacementPin) }
+                        .onSuccess { currentLocationPin = replacementPin }
+                }
+            }
+        }
+
         val key = buildString {
-            append(location?.first).append(",").append(location?.second).append("|")
             append(job?.id ?: "none")
             append("|")
             append(job?.status ?: "")
@@ -230,33 +259,28 @@ private class RiderLongdoHolder(
                     .append(it.bundleSequence).append(":").append(it.dropRank).append(";")
             }
         }
-        if (key == lastOverlayKey) return
+
+        if (key == lastOverlayKey) {
+            updateCurrentLocationPin(location)
+            if (job == null) centerOnDevice(context)
+            return
+        }
         lastOverlayKey = key
 
         runCatching { ldmap.clearPin() }
-
-        location?.let { (lat, lon) ->
-            runCatching {
-                ldmap.pushPin(
-                    Pin(
-                        MapLocation(lon, lat),
-                        context,
-                        R.drawable.qg_rider_current_location
-                    )
-                )
-            }
-        }
+        currentLocationPin = null
+        updateCurrentLocationPin(location)
 
         fun addStopPin(lat: Double?, lon: Double?, number: Int) {
             if (lat == null || lon == null) return
             runCatching {
-                ldmap.pushPin(
-                    Pin(
-                        MapLocation(lon, lat),
-                        context,
-                        riderStopMarkerRes(number)
-                    )
+                val pin = Pin(
+                    MapLocation(lon, lat),
+                    context,
+                    riderStopMarkerRes(number)
                 )
+                pin.setOffset(PointF(0f, -0.4f))
+                ldmap.pushPin(pin)
             }
         }
 
@@ -303,6 +327,7 @@ private class RiderLongdoHolder(
 
         val target = job.navigationTarget
         if (target != null) {
+            centeredOnDevice = false
             runCatching { ldmap.setLocation(MapLocation(target.second, target.first)) }
         } else {
             centerOnDevice(context)
