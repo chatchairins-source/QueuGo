@@ -2556,10 +2556,7 @@ private fun openNavigation(context: Context, job: RiderJob) {
         return
     }
 
-    context.getSharedPreferences("rider_navigation", Context.MODE_PRIVATE).edit()
-        .putBoolean(job.id + if (job.isDelivering) ":customer" else ":shop", true)
-        .apply()
-
+    val navigationKey = job.id + if (job.isDelivering) ":customer" else ":shop"
     RiderReturnService.start(context)
     val navigation = Uri.parse(
         "google.navigation:q=" + target.first + "," + target.second + "&mode=d"
@@ -2569,5 +2566,11 @@ private fun openNavigation(context: Context, job: RiderJob) {
         addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
     }
     val opened = runCatching { context.startActivity(mapsIntent) }.isSuccess
-    if (!opened) RiderReturnService.stop(context)
+    if (opened) {
+        context.getSharedPreferences("rider_navigation", Context.MODE_PRIVATE).edit()
+            .putBoolean(navigationKey, true)
+            .apply()
+    } else {
+        RiderReturnService.stop(context)
+    }
 }
