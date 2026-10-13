@@ -42,7 +42,6 @@ private class RiderNavigationMapHolder {
     var disposed = false
 
     private var resumed = false
-    private var pausePending = false
     private var lastState = RiderNavigationMapState()
     private var riderPin: Pin? = null
     private var lastRiderFix: NavigationMapFix? = null
@@ -104,7 +103,6 @@ private class RiderNavigationMapHolder {
 
     fun resume() {
         val activeView = view ?: return
-        pausePending = false
         if (!disposed && !resumed) {
             resumed = runCatching { activeView.onResume() }
                 .onFailure { Log.w("QueueGoNavMap", "map_on_resume_failed", it) }
@@ -115,7 +113,7 @@ private class RiderNavigationMapHolder {
         if (resumed) render(lastState)
     }
 
-    fun pause() {
+    private fun captureCamera() {
         map?.let { activeMap ->
             runCatching {
                 val location = activeMap.getLocation()
@@ -127,27 +125,30 @@ private class RiderNavigationMapHolder {
                 )
             }
         }
-        if (!resumed) return
-        val rendererReady = runCatching { view?.renderer?.map != null }
-            .onFailure { Log.w("QueueGoNavMap", "map_renderer_state_failed", it) }
-            .getOrDefault(false)
-        if (!rendererReady) {
-            pausePending = true
-            return
-        }
-        runCatching { view?.onPause() }
-            .onFailure { Log.w("QueueGoNavMap", "map_on_pause_failed", it) }
-        resumed = false
-        pausePending = false
     }
 
-    fun mapCreated(createdView: MapGLSurfaceView) {
-        if (pausePending && resumed) {
-            runCatching { createdView.onPause() }
-                .onFailure { Log.w("QueueGoNavMap", "map_created_pause_failed", it) }
+    fun retainAcrossVisibilityLoss() {
+        // Longdo 0.1.8 rebuilds its renderer/map after MapGLSurfaceView.onPause().
+        // For tab switches and ordinary background/foreground cycles keep the SDK renderer
+        // alive and only preserve camera state; SurfaceView can handle surface loss itself.
+        captureCamera()
+    }
+
+    fun shutdownSdk() {
+        captureCamera()
+        if (!resumed) return
+        val activeView = view ?: run {
             resumed = false
-            pausePending = false
+            return
         }
+        val rendererReady = runCatching { activeView.renderer?.map != null }
+            .onFailure { Log.w("QueueGoNavMap", "map_renderer_state_failed", it) }
+            .getOrDefault(false)
+        if (rendererReady) {
+            runCatching { activeView.onPause() }
+                .onFailure { Log.w("QueueGoNavMap", "map_on_pause_failed", it) }
+        }
+        resumed = false
     }
 
     fun render(state: RiderNavigationMapState) {
@@ -388,7 +389,7 @@ private class RiderNavigationMapHolder {
     }
 
     fun resetSurface() {
-        runCatching { pause() }
+        runCatching { shutdownSdk() }
         map?.let { activeMap ->
             routeLines.forEach { line -> runCatching { activeMap.removeLine(line) } }
             riderPin?.let { pin -> runCatching { activeMap.removePin(pin) } }
@@ -400,7 +401,6 @@ private class RiderNavigationMapHolder {
         map = null
         view = null
         resumed = false
-        pausePending = false
         stopSource = null
         stopActiveId = null
         routeSource = null
@@ -453,7 +453,7 @@ private object RiderNavigationMapRegistry {
     @Synchronized
     fun release(stateKey: String, holder: RiderNavigationMapHolder) {
         if (activeKey == stateKey && activeHolder === holder) {
-            holder.pause()
+            holder.retainAcrossVisibilityLoss()
             holder.unbindCallbacks()
             // Keep the lifecycle observer registered while Home is unmounted so an Activity
             // destroy cannot leave a retained MapGLSurfaceView holding the old Activity context.
@@ -519,7 +519,6 @@ fun RiderNavigationMap(
             view.setListener(object : IMapListener {
                     override fun onMapCreated(map: com.longdo.api.Map) {
                         view.post {
-                            holder.mapCreated(view)
                             if (holder.disposed) return@post
                             runCatching {
                                 val newSdkMap = holder.attachMap(map)
@@ -569,7 +568,7 @@ fun RiderNavigationMap(
         val observer = LifecycleEventObserver { _, event ->
             when (event) {
                 Lifecycle.Event.ON_RESUME -> holder.resume()
-                Lifecycle.Event.ON_PAUSE -> holder.pause()
+                Lifecycle.Event.ON_PAUSE -> holder.retainAcrossVisibilityLoss()
                 Lifecycle.Event.ON_DESTROY -> RiderNavigationMapRegistry.destroy(stateKey, holder)
                 else -> Unit
             }
@@ -581,7 +580,7 @@ fun RiderNavigationMap(
                 RiderNavigationMapRegistry.destroy(stateKey, holder)
             } else {
                 // Tab/screen navigation may unmount Home while the account session remains active.
-                // Pause rendering but retain the exact GL view + SDK map for the next mount.
+                // Keep the SDK renderer alive; detaching/reattaching must not trigger Longdo Map Pause.
                 RiderNavigationMapRegistry.release(stateKey, holder)
             }
             currentReady.value(false)

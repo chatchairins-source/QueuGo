@@ -55,6 +55,13 @@ assert(map.includes('activeDestroyObserver')&&
   runtimeTest.includes('retainedMapIsDisposedWhenActivityDiesOffHome')&&
   runtimeTest.includes('destroyed Activity'),
   'A retained off-Home map must be destroyed with its Activity and recreated with the new Activity context');
+assert(map.includes('fun retainAcrossVisibilityLoss()')&&
+  map.includes('Longdo 0.1.8 rebuilds its renderer/map after MapGLSurfaceView.onPause()')&&
+  map.includes('Lifecycle.Event.ON_PAUSE -> holder.retainAcrossVisibilityLoss()')&&
+  map.includes('holder.retainAcrossVisibilityLoss()')&&
+  map.includes('fun shutdownSdk()')&&
+  (map.match(/\\.onPause\\(\\)/g)||[]).length===1,
+  'Ordinary tab/background visibility loss must not call Longdo onPause; SDK shutdown is reserved for real surface disposal');
 assert(map.includes('setPreserveEGLContextOnPause(true)'),
   'Navigation map must preserve the GL context across background/resume to avoid tile reconstruction');
 assert(map.includes('ACTIVE_ROUTE_COLOR')&&map.includes('FUTURE_ROUTE_COLOR')&&
