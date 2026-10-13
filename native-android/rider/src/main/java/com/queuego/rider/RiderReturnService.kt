@@ -25,7 +25,7 @@ import kotlin.math.abs
 
 class RiderReturnService : Service() {
     companion object {
-        private const val CHANNEL_ID = "queuego_rider_navigation"
+        private const val CHANNEL_ID = "queuego_rider_google_maps_return"
         private const val NOTIFICATION_ID = 4107
 
         fun start(context: Context) {
@@ -205,10 +205,10 @@ class RiderReturnService : Service() {
         manager.createNotificationChannel(
             NotificationChannel(
                 CHANNEL_ID,
-                "Rider navigation return",
+                "กลับ QueueGo จาก Google Maps",
                 NotificationManager.IMPORTANCE_LOW
             ).apply {
-                description = "ทางลัดกลับสู่งาน QueueGo ระหว่างเปิดแอปนำทาง"
+                description = "ปุ่มลอยและทางลัดกลับสู่งาน QueueGo ระหว่างใช้ Google Maps"
             }
         )
     }
