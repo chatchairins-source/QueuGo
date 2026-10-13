@@ -120,6 +120,24 @@ class NavigationMapRuntimeTest {
                 )
             }
 
+            val beforeTabUnmount = runtimeActivity.latestDiagnostics.renderPassCount
+            scenario.onActivity { it.hideMapForAnotherTab() }
+            InstrumentationRegistry.getInstrumentation().waitForIdleSync()
+            scenario.onActivity { it.showMapAfterReturningHome() }
+            InstrumentationRegistry.getInstrumentation().waitForIdleSync()
+            awaitAppliedRender(runtimeActivity, beforeTabUnmount)
+            scenario.onActivity { activity ->
+                assertEquals("Rider tab return recreated MapGLSurfaceView", initialView, activity.mapViewIdentity())
+                assertEquals("Rider tab return recreated Longdo map", initialSdkMap, activity.sdkMapIdentity())
+                assertEquals(1, activity.latestDiagnostics.viewCreatedCount)
+                assertEquals(1, activity.latestDiagnostics.mapCreatedCount)
+                assertEquals(
+                    "Rider tab return rebuilt unchanged route layers",
+                    initialDiagnostics.routeLayerRebuildCount,
+                    activity.latestDiagnostics.routeLayerRebuildCount
+                )
+            }
+
             val beforeResume = runtimeActivity.latestDiagnostics.renderPassCount
             scenario.moveToState(Lifecycle.State.CREATED)
             Thread.sleep(300)

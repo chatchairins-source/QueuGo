@@ -34,10 +34,9 @@ private val FUTURE_ROUTE_COLOR = floatArrayOf(230f / 255f, 0f, 45f / 255f, 0.28f
 
 private data class RenderedStop(val signature: String, val pin: Pin)
 
-private class RiderNavigationMapHolder(
-    private val onCameraChanged: (NavigationMapCamera) -> Unit,
-    private val onDiagnostics: ((NavigationMapDiagnostics) -> Unit)?
-) {
+private class RiderNavigationMapHolder {
+    private var onCameraChanged: (NavigationMapCamera) -> Unit = {}
+    private var onDiagnostics: ((NavigationMapDiagnostics) -> Unit)? = null
     var view: MapGLSurfaceView? = null
     var map: com.longdo.api.Map? = null
     var disposed = false
@@ -64,6 +63,20 @@ private class RiderNavigationMapHolder(
     private var routeLayerRebuildCount = 0
     private var stopMutationCount = 0
     private var renderPassCount = 0
+
+    fun bindCallbacks(
+        cameraChanged: (NavigationMapCamera) -> Unit,
+        diagnostics: ((NavigationMapDiagnostics) -> Unit)?
+    ) {
+        onCameraChanged = cameraChanged
+        onDiagnostics = diagnostics
+        publishDiagnostics()
+    }
+
+    fun unbindCallbacks() {
+        onCameraChanged = {}
+        onDiagnostics = null
+    }
 
     fun markViewCreated() {
         viewCreatedCount += 1
@@ -373,8 +386,7 @@ private class RiderNavigationMapHolder(
         )
     }
 
-    fun dispose() {
-        disposed = true
+    fun resetSurface() {
         runCatching { pause() }
         map?.let { activeMap ->
             routeLines.forEach { line -> runCatching { activeMap.removeLine(line) } }
@@ -386,13 +398,59 @@ private class RiderNavigationMapHolder(
         riderPin = null
         map = null
         view = null
+        resumed = false
+        pausePending = false
+        stopSource = null
+        stopActiveId = null
+        routeSource = null
+        routeActiveId = null
+        routeRemainingStopIds = emptySet()
+    }
+
+    fun dispose() {
+        resetSurface()
+        disposed = true
+        unbindCallbacks()
+    }
+}
+
+private object RiderNavigationMapRegistry {
+    private var activeKey: String? = null
+    private var activeHolder: RiderNavigationMapHolder? = null
+
+    @Synchronized
+    fun acquire(stateKey: String): RiderNavigationMapHolder {
+        val current = activeHolder
+        if (activeKey == stateKey && current != null && !current.disposed) return current
+        current?.dispose()
+        return RiderNavigationMapHolder().also {
+            activeKey = stateKey
+            activeHolder = it
+        }
+    }
+
+    @Synchronized
+    fun release(stateKey: String, holder: RiderNavigationMapHolder) {
+        if (activeKey == stateKey && activeHolder === holder) {
+            holder.pause()
+            holder.unbindCallbacks()
+        }
+    }
+
+    @Synchronized
+    fun destroy(stateKey: String, holder: RiderNavigationMapHolder) {
+        if (activeKey == stateKey && activeHolder === holder) {
+            holder.dispose()
+            activeHolder = null
+            activeKey = null
+        }
     }
 }
 
 /**
  * Standalone navigation-map surface. Keep stateKey stable for the Rider account/session,
- * never an order id. Recomposition/refresh updates overlays only; AndroidView factory owns
- * the single MapGLSurfaceView instance for this composition.
+ * never an order id. Recomposition/refresh updates overlays only; the account-keyed registry
+ * retains the same MapGLSurfaceView when Home is temporarily unmounted for another Rider tab.
  */
 @Composable
 fun RiderNavigationMap(
@@ -411,24 +469,30 @@ fun RiderNavigationMap(
     val currentReady = rememberUpdatedState(onMapReady)
     val currentCameraChanged = rememberUpdatedState(onCameraChanged)
     val currentDiagnostics = rememberUpdatedState(onDiagnostics)
-    val holder = remember(stateKey) {
-        RiderNavigationMapHolder(
-            onCameraChanged = { currentCameraChanged.value(it) },
-            onDiagnostics = { currentDiagnostics.value?.invoke(it) }
-        )
-    }
+    val holder = remember(stateKey) { RiderNavigationMapRegistry.acquire(stateKey) }
+    holder.bindCallbacks(
+        cameraChanged = { currentCameraChanged.value(it) },
+        diagnostics = { currentDiagnostics.value?.invoke(it) }
+    )
 
     AndroidView(
         modifier = modifier,
         factory = { context ->
-            (LayoutInflater.from(context)
-                .inflate(SharedR.layout.view_longdo_shared_map, null, false) as MapGLSurfaceView).also { view ->
-                holder.view = view
-                // Keep the GL context across short background/resume cycles so returning to
-                // QueueGo does not force the SDK to reconstruct already-rendered map tiles.
-                view.setPreserveEGLContextOnPause(true)
-                holder.markViewCreated()
-                view.setListener(object : IMapListener {
+            val retainedView = holder.view?.takeIf { it.context === context }
+            if (holder.view != null && retainedView == null) {
+                // Activity/context changed: never retain a View backed by a destroyed Activity.
+                holder.resetSurface()
+            }
+            val view = retainedView ?: (LayoutInflater.from(context)
+                .inflate(SharedR.layout.view_longdo_shared_map, null, false) as MapGLSurfaceView).also {
+                    holder.view = it
+                    // Keep the GL context across short background/resume cycles so returning to
+                    // QueueGo does not force the SDK to reconstruct already-rendered map tiles.
+                    it.setPreserveEGLContextOnPause(true)
+                    holder.markViewCreated()
+                }
+            (view.parent as? android.view.ViewGroup)?.removeView(view)
+            view.setListener(object : IMapListener {
                     override fun onMapCreated(map: com.longdo.api.Map) {
                         view.post {
                             holder.mapCreated(view)
@@ -465,8 +529,12 @@ fun RiderNavigationMap(
                         }
                     }
                 })
-                if (lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) holder.resume()
+            if (holder.map != null) {
+                holder.render(currentState.value)
+                currentReady.value(true)
             }
+            if (lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) holder.resume()
+            view
         },
         update = {
             holder.render(state)
@@ -478,13 +546,20 @@ fun RiderNavigationMap(
             when (event) {
                 Lifecycle.Event.ON_RESUME -> holder.resume()
                 Lifecycle.Event.ON_PAUSE -> holder.pause()
+                Lifecycle.Event.ON_DESTROY -> RiderNavigationMapRegistry.destroy(stateKey, holder)
                 else -> Unit
             }
         }
         lifecycle.addObserver(observer)
         onDispose {
             lifecycle.removeObserver(observer)
-            holder.dispose()
+            if (lifecycle.currentState == Lifecycle.State.DESTROYED) {
+                RiderNavigationMapRegistry.destroy(stateKey, holder)
+            } else {
+                // Tab/screen navigation may unmount Home while the account session remains active.
+                // Pause rendering but retain the exact GL view + SDK map for the next mount.
+                RiderNavigationMapRegistry.release(stateKey, holder)
+            }
             currentReady.value(false)
         }
     }

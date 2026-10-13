@@ -23,18 +23,29 @@ class NavigationMapRuntimeActivity : ComponentActivity() {
         private set
 
     private val mapState = mutableStateOf(runtimeState())
+    private val mapMounted = mutableStateOf(true)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            RiderNavigationMap(
-                stateKey = "runtime-session",
-                state = mapState.value,
-                modifier = Modifier.fillMaxSize(),
-                onMapReady = { if (it) mapReady.countDown() },
-                onDiagnostics = { latestDiagnostics = it }
-            )
+            if (mapMounted.value) {
+                RiderNavigationMap(
+                    stateKey = "runtime-session",
+                    state = mapState.value,
+                    modifier = Modifier.fillMaxSize(),
+                    onMapReady = { if (it) mapReady.countDown() },
+                    onDiagnostics = { latestDiagnostics = it }
+                )
+            }
         }
+    }
+
+    fun hideMapForAnotherTab() {
+        mapMounted.value = false
+    }
+
+    fun showMapAfterReturningHome() {
+        mapMounted.value = true
     }
 
     fun refreshRiderFix(step: Int) {

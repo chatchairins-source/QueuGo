@@ -39,6 +39,13 @@ assert(map.includes('fun attachMap(nextMap: com.longdo.api.Map): Boolean')&&
   map.includes('if (newSdkMap) {')&&
   map.includes('never reset base/camera or force the visible map to assemble again'),
   'Repeated Longdo onMapCreated callbacks for the same SDK map must not reinitialize base/camera');
+assert(map.includes('RiderNavigationMapRegistry')&&
+  map.includes('retain the exact GL view + SDK map for the next mount')&&
+  map.includes('holder.view?.takeIf { it.context === context }')&&
+  runtimeActivity.includes('hideMapForAnotherTab')&&runtimeActivity.includes('showMapAfterReturningHome')&&
+  runtimeTest.includes('Rider tab return recreated MapGLSurfaceView')&&
+  runtimeTest.includes('Rider tab return recreated Longdo map'),
+  'Leaving Home for another Rider tab and returning must reuse the same map objects without leaking an old Activity context');
 assert(map.includes('setPreserveEGLContextOnPause(true)'),
   'Navigation map must preserve the GL context across background/resume to avoid tile reconstruction');
 assert(map.includes('ACTIVE_ROUTE_COLOR')&&map.includes('FUTURE_ROUTE_COLOR')&&
