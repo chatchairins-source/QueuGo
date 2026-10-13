@@ -493,6 +493,7 @@ internal fun RiderLongdoMap(
                             if (!holder.disposed) {
                                 runCatching {
                                     holder.attachMap(map)
+                                    com.queuego.shared.qgEnsureLongdoZoomListener(map)
                                     map.setBase(LongdoLayer(ctx, "normal", 0, 1, 20).apply {
                                         // The SDK defaults to HTTP; keep Android cleartext disabled.
                                         // Start on the endpoint selected by the live SDK key checker.

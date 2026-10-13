@@ -25,6 +25,9 @@ class RiderMapRuntimeActivity : ComponentActivity() {
             return null
         }
         val map = requireNotNull(find(window.decorView)?.renderer?.map) { "Actual SDK map is not mounted" }
+        // Exercise the real SDK's same-level path, which dereferences postZoom in 0.1.8.
+        check(map.getZoomListener() != null) { "Real map zoom callback is missing" }
+        map.setZoom(map.getZoom())
         val location = map.getLocation()
         return doubleArrayOf(location.lon, location.lat, map.getZoom().toDouble())
     }

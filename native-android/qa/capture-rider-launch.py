@@ -173,6 +173,8 @@ def capture_customer_location():
             raise AssertionError("Actual Customer location picker crashed on open")
         nodes = read_ui(directory / "picker.xml")
         if permission_state == "denied":
+            nodes = wait_ui(directory / "permission.xml", lambda ns: any(
+                n.get("resource-id", "").endswith("permission_deny_button") for n in ns))
             deny = next((n for n in nodes if n.get("resource-id", "").endswith("permission_deny_button")), None)
             assert deny is not None, "Expected actual Android location permission request"
             b = [int(x) for x in re.findall(r"\d+", deny.get("bounds", ""))]
