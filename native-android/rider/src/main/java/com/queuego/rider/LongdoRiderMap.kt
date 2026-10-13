@@ -34,6 +34,19 @@ import com.longdo.api.MapGLSurfaceView
 import com.longdo.api.Pin
 import com.longdo.api.type.MapLocation
 
+private fun riderStopMarkerRes(number: Int): Int = when (number) {
+    1 -> R.drawable.qg_rider_stop_1
+    2 -> R.drawable.qg_rider_stop_2
+    3 -> R.drawable.qg_rider_stop_3
+    4 -> R.drawable.qg_rider_stop_4
+    5 -> R.drawable.qg_rider_stop_5
+    6 -> R.drawable.qg_rider_stop_6
+    7 -> R.drawable.qg_rider_stop_7
+    8 -> R.drawable.qg_rider_stop_8
+    9 -> R.drawable.qg_rider_stop_9
+    else -> R.drawable.qg_rider_stop_more
+}
+
 private class RiderLongdoHolder(
     private val cameraState: MutableState<DoubleArray?>,
     private val persistCamera: (DoubleArray) -> Unit
@@ -48,6 +61,8 @@ private class RiderLongdoHolder(
     private var locationManager: LocationManager? = null
     private var locationListener: LocationListener? = null
     private var locationPermissionMask = 0
+    private var latestDeviceLocation: Pair<Double, Double>? = null
+    private var recenterOnNextFix = false
     private var currentJob: RiderJob? = null
     private var currentPickups: List<MarketPickup> = emptyList()
     private var currentBundleOrders: List<RiderBundleOrder> = emptyList()
@@ -80,7 +95,22 @@ private class RiderLongdoHolder(
         val manager = context.getSystemService(Context.LOCATION_SERVICE) as? LocationManager ?: return
         val listener = object : LocationListener {
             override fun onLocationChanged(location: Location) {
-                if (!disposed && resumed) {
+                if (!disposed && resumed &&
+                    location.latitude.isFinite() && location.longitude.isFinite() &&
+                    location.latitude in -90.0..90.0 && location.longitude in -180.0..180.0
+                ) {
+                    latestDeviceLocation = location.latitude to location.longitude
+                    if (recenterOnNextFix) {
+                        map?.let { activeMap ->
+                            runCatching {
+                                activeMap.setZoom(16)
+                                activeMap.setLocation(MapLocation(location.longitude, location.latitude))
+                            }.onSuccess {
+                                centeredOnDevice = true
+                                recenterOnNextFix = false
+                            }
+                        }
+                    }
                     refreshOverlays(context, currentJob, currentPickups, currentBundleOrders)
                 }
             }
@@ -167,7 +197,7 @@ private class RiderLongdoHolder(
         startLocationUpdates(context)
         val ldmap = map ?: return
         if (disposed) return
-        val location = deviceLocation(context)
+        val location = latestDeviceLocation ?: deviceLocation(context)?.also { latestDeviceLocation = it }
         val key = buildString {
             append(location?.first).append(",").append(location?.second).append("|")
             append(job?.id ?: "none")
@@ -196,20 +226,20 @@ private class RiderLongdoHolder(
                     Pin(
                         MapLocation(lon, lat),
                         context,
-                        android.R.drawable.ic_menu_compass
+                        R.drawable.qg_rider_current_location
                     )
                 )
             }
         }
 
-        fun addPin(lat: Double?, lon: Double?) {
+        fun addStopPin(lat: Double?, lon: Double?, number: Int) {
             if (lat == null || lon == null) return
             runCatching {
                 ldmap.pushPin(
                     Pin(
                         MapLocation(lon, lat),
                         context,
-                        android.R.drawable.ic_menu_mylocation
+                        riderStopMarkerRes(number)
                     )
                 )
             }
@@ -221,17 +251,39 @@ private class RiderLongdoHolder(
         }
 
         if (bundleOrders.size > 1 && job.marketOrderId == null) {
-            bundleOrders.filter { it.job.status != "cancelled" }.forEach { bundled ->
-                addPin(bundled.job.pickupLat, bundled.job.pickupLng)
-                addPin(bundled.job.deliveryLat, bundled.job.deliveryLng)
+            val numberedOrders = bundleOrders.filter { it.job.status != "cancelled" }
+            val pickupOrder = numberedOrders.sortedWith(
+                compareBy<RiderBundleOrder> { it.bundleSequence }.thenBy { it.job.id }
+            )
+            val dropOrder = numberedOrders.sortedWith(
+                compareBy<RiderBundleOrder> { it.dropRank }.thenBy { it.job.id }
+            )
+            pickupOrder.forEachIndexed { index, bundled ->
+                if (!bundled.job.shopArrived && !bundled.job.isDelivering &&
+                    bundled.job.status != "completed"
+                ) {
+                    addStopPin(bundled.job.pickupLat, bundled.job.pickupLng, index + 1)
+                }
             }
+            dropOrder.forEachIndexed { index, bundled ->
+                if (bundled.job.status != "completed") {
+                    addStopPin(
+                        bundled.job.deliveryLat,
+                        bundled.job.deliveryLng,
+                        pickupOrder.size + index + 1
+                    )
+                }
+            }
+        } else if (job.marketOrderId != null) {
+            pickups.forEachIndexed { index, pickup ->
+                if (!pickup.done) addStopPin(pickup.latitude, pickup.longitude, index + 1)
+            }
+            addStopPin(job.deliveryLat, job.deliveryLng, pickups.size + 1)
         } else {
-            if (job.marketOrderId != null && !job.isDelivering) {
-                pickups.filter { !it.done }.forEach { addPin(it.latitude, it.longitude) }
-            } else {
-                addPin(job.pickupLat, job.pickupLng)
+            if (!job.shopArrived && !job.isDelivering) {
+                addStopPin(job.pickupLat, job.pickupLng, 1)
             }
-            addPin(job.deliveryLat, job.deliveryLng)
+            addStopPin(job.deliveryLat, job.deliveryLng, 2)
         }
 
         val target = job.navigationTarget
@@ -245,7 +297,7 @@ private class RiderLongdoHolder(
     fun centerOnDevice(context: Context, force: Boolean = false) {
         val activeMap = map ?: return
         if (centeredOnDevice && !force) return
-        val location = deviceLocation(context) ?: return
+        val location = latestDeviceLocation ?: deviceLocation(context)?.also { latestDeviceLocation = it } ?: return
         runCatching {
             activeMap.setZoom(15)
             activeMap.setLocation(MapLocation(location.second, location.first))
@@ -253,7 +305,14 @@ private class RiderLongdoHolder(
     }
 
     fun recenter(context: Context) {
-        centerOnDevice(context, force = true)
+        recenterOnNextFix = true
+        startLocationUpdates(context)
+        val activeMap = map ?: return
+        val location = latestDeviceLocation ?: deviceLocation(context)?.also { latestDeviceLocation = it } ?: return
+        runCatching {
+            activeMap.setZoom(16)
+            activeMap.setLocation(MapLocation(location.second, location.first))
+        }.onSuccess { centeredOnDevice = true }
     }
 
     fun dispose() {
