@@ -1389,11 +1389,13 @@ private fun RiderHome(
             }
         } else {
             val current = snapshot
-            if (current == null && loadError == null) {
-                CircularProgressIndicator()
-            } else if (loadError != null) {
-                Text(loadError!!, color = MaterialTheme.colorScheme.error)
-            } else if (current != null) {
+            if (current == null) {
+                if (loadError == null) {
+                    CircularProgressIndicator()
+                } else {
+                    Text(loadError!!, color = MaterialTheme.colorScheme.error)
+                }
+            } else {
                 if (current.activeJob == null && current.offeredJob == null && current.laundry.activeJob == null) {
                     Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(21.dp),
                         colors = CardDefaults.cardColors(containerColor = Color(0xFCFFFFFF)),
