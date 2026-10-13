@@ -1,6 +1,8 @@
 package com.queuego.ridernavigationmap
 
 import android.os.Bundle
+import android.os.SystemClock
+import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import androidx.activity.ComponentActivity
@@ -22,6 +24,10 @@ class NavigationMapRuntimeActivity : ComponentActivity() {
     var latestDiagnostics = NavigationMapDiagnostics(0, 0, 0, 0)
         private set
 
+    @Volatile
+    var userGestureCount: Int = 0
+        private set
+
     private val mapState = mutableStateOf(runtimeState())
     private val mapMounted = mutableStateOf(true)
 
@@ -34,6 +40,7 @@ class NavigationMapRuntimeActivity : ComponentActivity() {
                     state = mapState.value,
                     modifier = Modifier.fillMaxSize(),
                     onMapReady = { if (it) mapReady.countDown() },
+                    onUserGesture = { userGestureCount += 1 },
                     onDiagnostics = { latestDiagnostics = it }
                 )
             }
@@ -81,6 +88,54 @@ class NavigationMapRuntimeActivity : ComponentActivity() {
             },
             activeStopId = "dropoff-2"
         )
+    }
+
+    fun dispatchTapOnMap() {
+        dispatchSinglePointerGesture(deltaX = 0f)
+    }
+
+    fun dispatchDragOnMap(deltaX: Float = 160f) {
+        dispatchSinglePointerGesture(deltaX = deltaX)
+    }
+
+    private fun dispatchSinglePointerGesture(deltaX: Float) {
+        val view = requireNotNull(findMapView(window.decorView))
+        val downTime = SystemClock.uptimeMillis()
+        val startX = (view.width.coerceAtLeast(400) / 2f)
+        val startY = (view.height.coerceAtLeast(400) / 2f)
+        val down = MotionEvent.obtain(
+            downTime,
+            downTime,
+            MotionEvent.ACTION_DOWN,
+            startX,
+            startY,
+            0
+        )
+        val move = MotionEvent.obtain(
+            downTime,
+            downTime + 16L,
+            MotionEvent.ACTION_MOVE,
+            startX + deltaX,
+            startY,
+            0
+        )
+        val up = MotionEvent.obtain(
+            downTime,
+            downTime + 32L,
+            MotionEvent.ACTION_UP,
+            startX + deltaX,
+            startY,
+            0
+        )
+        try {
+            view.dispatchTouchEvent(down)
+            if (deltaX != 0f) view.dispatchTouchEvent(move)
+            view.dispatchTouchEvent(up)
+        } finally {
+            down.recycle()
+            move.recycle()
+            up.recycle()
+        }
     }
 
     fun hasMapView(): Boolean = findMapView(window.decorView) != null
