@@ -172,7 +172,8 @@ class NavigationMapRuntimeTest {
                 )
             }
 
-            val beforeTabUnmount = runtimeActivity.latestDiagnostics.renderPassCount
+            val beforeTabUnmountDiagnostics = runtimeActivity.latestDiagnostics
+            val beforeTabUnmount = beforeTabUnmountDiagnostics.renderPassCount
             scenario.onActivity { it.hideMapForAnotherTab() }
             InstrumentationRegistry.getInstrumentation().waitForIdleSync()
             awaitMapPresence(scenario, expected = false)
@@ -180,6 +181,19 @@ class NavigationMapRuntimeTest {
             InstrumentationRegistry.getInstrumentation().waitForIdleSync()
             awaitMapPresence(scenario, expected = true)
             awaitAppliedRender(runtimeActivity, beforeTabUnmount)
+            val tabReturnDiagnostics = awaitBridgeSettled(
+                runtimeActivity,
+                beforeTabUnmountDiagnostics.snapshotBridgeCount
+            )
+            assertEquals(
+                "Tab return continuity bridge failed",
+                0,
+                tabReturnDiagnostics.snapshotBridgeFailureCount
+            )
+            assertFalse(
+                "Tab return continuity snapshot remained stuck over live map",
+                tabReturnDiagnostics.snapshotVisible
+            )
             scenario.onActivity { activity ->
                 assertEquals("Rider tab return recreated MapGLSurfaceView", initialView, activity.mapViewIdentity())
                 assertEquals("Rider tab return recreated Longdo map", initialSdkMap, activity.sdkMapIdentity())

@@ -40,13 +40,14 @@ assert(map.includes('fun attachMap(nextMap: com.longdo.api.Map): Boolean')&&
   map.includes('never reset base/camera or force the visible map to assemble again'),
   'Repeated Longdo onMapCreated callbacks for the same SDK map must not reinitialize base/camera');
 assert(map.includes('RiderNavigationMapRegistry')&&
-  map.includes('holder.view?.takeIf { it.context === context }')&&
+  map.includes('holder.container?.takeIf { it.context === context }')&&
   map.includes('holder.retainAcrossVisibilityLoss()')&&
   runtimeActivity.includes('hideMapForAnotherTab')&&runtimeActivity.includes('showMapAfterReturningHome')&&
   runtimeActivity.includes('hasMapView')&&runtimeTest.includes('awaitMapPresence')&&
   runtimeTest.includes('expected = false')&&runtimeTest.includes('expected = true')&&
   runtimeTest.includes('Rider tab return recreated MapGLSurfaceView')&&
-  runtimeTest.includes('Rider tab return recreated Longdo map'),
+  runtimeTest.includes('Rider tab return recreated Longdo map')&&
+  runtimeTest.includes('Tab return continuity snapshot remained stuck over live map'),
   'Leaving Home for another Rider tab must actually unmount/remount the map and reuse the same map objects without leaking an old Activity context');
 assert(map.includes('activeDestroyObserver')&&
   map.includes('Keep the lifecycle observer registered while Home is unmounted')&&
