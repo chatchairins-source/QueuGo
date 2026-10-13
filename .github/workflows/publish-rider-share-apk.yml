@@ -1,0 +1,55 @@
+name: Publish Rider Share APK
+
+on:
+  push:
+    branches:
+      - work-native-rider-authenticated-20261012
+    paths:
+      - .github/workflows/publish-rider-share-apk.yml
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      SOURCE_RUN_ID: "38339539445"
+      RELEASE_TAG: "rider-test-20261013-google-maps"
+      RELEASE_TARGET: "55d75b1bb2b109914bc57120c4bd8563f78f23f8"
+      ASSET_NAME: "QueueGo-Rider-Test-GoogleMaps.apk"
+    steps:
+      - name: Download exact passed Native Pilot artifacts
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          gh run download "$SOURCE_RUN_ID" \
+            --repo "${{ github.repository }}" \
+            --name queuego-native-pilot-apks \
+            --dir dist
+
+      - name: Select Rider APK only
+        run: |
+          set -euo pipefail
+          APK="$(find dist -type f -name '*rider*.apk' | head -n 1)"
+          test -n "$APK"
+          cp "$APK" "$ASSET_NAME"
+          sha256sum "$ASSET_NAME"
+
+      - name: Publish shareable prerelease asset
+        run: |
+          set -euo pipefail
+          if gh release view "$RELEASE_TAG" --repo "${{ github.repository }}" >/dev/null 2>&1; then
+            gh release upload "$RELEASE_TAG" "$ASSET_NAME" \
+              --repo "${{ github.repository }}" \
+              --clobber
+          else
+            gh release create "$RELEASE_TAG" "$ASSET_NAME" \
+              --repo "${{ github.repository }}" \
+              --target "$RELEASE_TARGET" \
+              --title "QueueGo Rider Test - Google Maps handoff" \
+              --notes "Test APK from Native Pilot run 38339539445 at 55d75b1. Google Maps-only navigation with QueueGo floating return control. Test build; not a production Google Play release." \
+              --prerelease
+          fi
