@@ -19,7 +19,26 @@ function normalize(row){
  // Public origin is never proof of image licensing. Import cannot approve an image.
  return {barcode,brand,product_name_th:name,product_name_en:text(row.product_name_en)||null,variant,...s,pack_size:pack,sales_unit:sales,category,subcategory:text(row.subcategory),normalized_key,source_url:source.href,source_type:row.source_type,retrieved_at:retrieved.toISOString(),source_product_id:text(row.source_product_id)||null,image:null,image_status:'pending',active:row.active===true};
 }
-function batch(rows){if(!Array.isArray(rows)||rows.length>50000)throw Error('expected <=50000 rows');const items=[],rejects=[],seen=new Map();rows.forEach((r,i)=>{try{const p=normalize(r),k=p.barcode?'gtin:'+p.barcode:p.normalized_key;if(seen.has(k)){const prior=items[seen.get(k)];if(prior.normalized_key!==p.normalized_key&&p.barcode)throw Error('GTIN conflicts with different identity');return;}seen.set(k,items.length);items.push(p);}catch(e){rejects.push({row:i+1,error:e.message});}});return {items,rejects};}
+function batch(rows){
+ if(!Array.isArray(rows)||rows.length>50000)throw Error('expected <=50000 rows');
+ const items=[],rejects=[],seen=new Map();
+ const proof=p=>({source_url:p.source_url,source_type:p.source_type,source_product_id:p.source_product_id,retrieved_at:p.retrieved_at});
+ const key=p=>JSON.stringify([p.source_url,p.source_product_id||null]);
+ rows.forEach((r,i)=>{try{
+  const p=normalize(r),identity=p.barcode?'gtin:'+p.barcode:p.normalized_key;
+  if(r.source_references!=null&&(!Array.isArray(r.source_references)||r.source_references.length>50))throw Error('invalid source references');
+  const refs=(r.source_references||[]).map(ref=>proof(normalize({...r,source_url:ref.source_url,source_type:ref.source_type,source_product_id:ref.source_product_id,retrieved_at:ref.retrieved_at})));
+  let prior=seen.has(identity)?items[seen.get(identity)]:null;
+  if(prior&&prior.normalized_key!==p.normalized_key&&p.barcode)throw Error('GTIN conflicts with different identity');
+  if(!prior){p.source_references=[];seen.set(identity,items.length);items.push(p);prior=p;}
+  for(const ref of [proof(p),...refs]){
+   if(key(ref)===key(prior)){if(ref.retrieved_at>prior.retrieved_at)prior.retrieved_at=ref.retrieved_at;continue;}
+   const existing=prior.source_references.find(x=>key(x)===key(ref));
+   if(existing){if(ref.retrieved_at>existing.retrieved_at)existing.retrieved_at=ref.retrieved_at;}else prior.source_references.push(ref);
+  }
+ }catch(e){rejects.push({row:i+1,error:e.message});}});
+ return {items,rejects};
+}
 function csv(input){let rows=[],row=[],field='',quoted=false;for(let i=0;i<input.length;i++){const c=input[i];if(c==='"'){if(quoted&&input[i+1]==='"'){field+='"';i++;}else quoted=!quoted;}else if(!quoted&&(c===','||c==='\n')){row.push(field.replace(/\r$/,''));field='';if(c==='\n'){rows.push(row);row=[];}}else field+=c;}if(quoted)throw Error('unterminated CSV quote');if(field||row.length){row.push(field.replace(/\r$/,''));rows.push(row);}const headers=rows.shift()?.map(text);if(!headers?.length||new Set(headers).size!==headers.length)throw Error('invalid CSV headers');return rows.filter(r=>r.some(Boolean)).map(r=>{if(r.length!==headers.length)throw Error('CSV column mismatch');return Object.fromEntries(headers.map((h,i)=>[h,r[i]]));});}
 const api={text,gtin,size,normalize,batch,csv};if(typeof module==='object')module.exports=api;else root.QGGroceryNormalize=api;
 })(globalThis);

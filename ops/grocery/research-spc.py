@@ -22,7 +22,7 @@ for group,category in GROUPS.items():
    brand_heading=re.findall(r'<(?:h[1-6]|div)[^>]*class=["\'][^"\']*title[^"\']*["\'][^>]*>(.*?)</(?:h[1-6]|div)>',s,re.S)
    for raw in names:
     name=clean(raw)
-    if name: rows.append({'product_name_th':name,'source_url':url,'source_type':'distributor','retrieved_at':stamp,'source_product_id':hashlib.sha256(name.encode()).hexdigest()[:24],'research_category':category,'brand_slug':url.rsplit('/',1)[-1],'image_status':'pending','size_status':'unverified','active':False})
+    if name: rows.append({'product_name_th':name,'source_url':url,'source_type':'distributor','retrieved_at':stamp,'source_record_fingerprint':hashlib.sha256(name.encode()).hexdigest()[:24],'research_category':category,'brand_slug':url.rsplit('/',1)[-1],'image_status':'pending','size_status':'unverified','active':False})
    print(group,url.rsplit('/',1)[-1],len(names),flush=True)
   except Exception as e:failures.append({'url':url,'error':str(e)})
   os.makedirs('catalog',exist_ok=True)

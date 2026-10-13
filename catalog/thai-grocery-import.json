@@ -15,10 +15,11 @@
     "source_url": "https://www.sahapat.co.th/product/foodproduct/Suree",
     "source_type": "distributor",
     "retrieved_at": "2026-10-12T17:09:57.012Z",
-    "source_product_id": "f5660527618b35851e8ff422",
+    "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -36,10 +37,11 @@
     "source_url": "https://www.sahapat.co.th/product/foodproduct/Suree",
     "source_type": "distributor",
     "retrieved_at": "2026-10-12T17:09:57.012Z",
-    "source_product_id": "458260fa5ed6147296f1fb57",
+    "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -57,10 +59,11 @@
     "source_url": "https://www.sahapat.co.th/product/foodproduct/Suree",
     "source_type": "distributor",
     "retrieved_at": "2026-10-12T17:09:57.012Z",
-    "source_product_id": "faea2f49afd8fd8922a2e499",
+    "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -78,10 +81,11 @@
     "source_url": "https://www.sahapat.co.th/product/foodproduct/Suree",
     "source_type": "distributor",
     "retrieved_at": "2026-10-12T17:09:57.012Z",
-    "source_product_id": "1951f0c14d2313107bed25c2",
+    "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -99,10 +103,11 @@
     "source_url": "https://www.sahapat.co.th/product/foodproduct/Suree",
     "source_type": "distributor",
     "retrieved_at": "2026-10-12T17:09:57.012Z",
-    "source_product_id": "52f6754daf0446d7e0fc322d",
+    "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -120,10 +125,11 @@
     "source_url": "https://www.sahapat.co.th/product/foodproduct/Suree",
     "source_type": "distributor",
     "retrieved_at": "2026-10-12T17:09:57.012Z",
-    "source_product_id": "9e595f7ac6f6728d5874faf9",
+    "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -141,10 +147,11 @@
     "source_url": "https://www.sahapat.co.th/product/foodproduct/Prawhom",
     "source_type": "distributor",
     "retrieved_at": "2026-10-12T17:10:09.326Z",
-    "source_product_id": "fe02f247392990f0523f6082",
+    "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -162,10 +169,11 @@
     "source_url": "https://www.sahapat.co.th/product/foodproduct/Prawhom",
     "source_type": "distributor",
     "retrieved_at": "2026-10-12T17:10:09.326Z",
-    "source_product_id": "d78a8b5aa619787c5442f233",
+    "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -183,10 +191,11 @@
     "source_url": "https://www.sahapat.co.th/product/foodproduct/Prawhom",
     "source_type": "distributor",
     "retrieved_at": "2026-10-12T17:10:09.326Z",
-    "source_product_id": "ee56e16b8720187ae0d0a135",
+    "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -204,10 +213,11 @@
     "source_url": "https://www.sahapat.co.th/product/foodproduct/Prawhom",
     "source_type": "distributor",
     "retrieved_at": "2026-10-12T17:10:09.326Z",
-    "source_product_id": "d229eb96754a4bdf9bff8e28",
+    "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -225,10 +235,11 @@
     "source_url": "https://www.sahapat.co.th/product/foodproduct/Prawhom",
     "source_type": "distributor",
     "retrieved_at": "2026-10-12T17:10:09.326Z",
-    "source_product_id": "0fb515daca3da776f5d21f47",
+    "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -246,10 +257,11 @@
     "source_url": "https://www.sahapat.co.th/product/foodproduct/Kewpie",
     "source_type": "distributor",
     "retrieved_at": "2026-10-12T17:10:21.033Z",
-    "source_product_id": "7138cd665c725f7e0f8049ee",
+    "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -267,10 +279,11 @@
     "source_url": "https://www.sahapat.co.th/product/foodproduct/Kewpie",
     "source_type": "distributor",
     "retrieved_at": "2026-10-12T17:10:21.033Z",
-    "source_product_id": "36ceb8cfc35a2ce641d53c87",
+    "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -288,10 +301,11 @@
     "source_url": "https://www.sahapat.co.th/product/foodproduct/Kewpie",
     "source_type": "distributor",
     "retrieved_at": "2026-10-12T17:10:21.033Z",
-    "source_product_id": "30467e6678d67043b6f292be",
+    "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -309,10 +323,11 @@
     "source_url": "https://www.sahapat.co.th/product/foodproduct/Kewpie",
     "source_type": "distributor",
     "retrieved_at": "2026-10-12T17:10:21.033Z",
-    "source_product_id": "c9e3fdbc776c8dfd21c0bbad",
+    "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -330,10 +345,11 @@
     "source_url": "https://www.sahapat.co.th/product/foodproduct/Kewpie",
     "source_type": "distributor",
     "retrieved_at": "2026-10-12T17:10:21.033Z",
-    "source_product_id": "c99cb9cc3f345c76f5f4f002",
+    "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -351,10 +367,11 @@
     "source_url": "https://www.sahapat.co.th/product/foodproduct/Kewpie",
     "source_type": "distributor",
     "retrieved_at": "2026-10-12T17:10:21.033Z",
-    "source_product_id": "6c4c4014e6bf628e8e2469cb",
+    "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -372,10 +389,11 @@
     "source_url": "https://www.sahapat.co.th/product/foodproduct/Kewpie",
     "source_type": "distributor",
     "retrieved_at": "2026-10-12T17:10:21.033Z",
-    "source_product_id": "b68de5ab1b7e18c3d2d3c2a7",
+    "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -393,10 +411,11 @@
     "source_url": "https://www.sahapat.co.th/product/foodproduct/Kewpie",
     "source_type": "distributor",
     "retrieved_at": "2026-10-12T17:10:21.033Z",
-    "source_product_id": "4f7bd909a2b3feb2e4eb1ee4",
+    "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -414,10 +433,11 @@
     "source_url": "https://www.sahapat.co.th/product/foodproduct/Kewpie",
     "source_type": "distributor",
     "retrieved_at": "2026-10-12T17:10:21.033Z",
-    "source_product_id": "0bf1ada2b9d069e5160cbd4c",
+    "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -435,10 +455,11 @@
     "source_url": "https://www.sahapat.co.th/product/foodproduct/Kewpie",
     "source_type": "distributor",
     "retrieved_at": "2026-10-12T17:10:21.033Z",
-    "source_product_id": "6c4d37d8f35d213c0349dcb8",
+    "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -456,10 +477,11 @@
     "source_url": "https://www.sahapat.co.th/product/foodproduct/Kewpie",
     "source_type": "distributor",
     "retrieved_at": "2026-10-12T17:10:21.033Z",
-    "source_product_id": "bb562eef9b9ccb601dcce378",
+    "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -477,10 +499,11 @@
     "source_url": "https://www.sahapat.co.th/product/foodproduct/Kewpie",
     "source_type": "distributor",
     "retrieved_at": "2026-10-12T17:10:21.033Z",
-    "source_product_id": "321a5260ebdabbaede133c95",
+    "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -498,10 +521,11 @@
     "source_url": "https://www.sahapat.co.th/product/foodproduct/Kewpie",
     "source_type": "distributor",
     "retrieved_at": "2026-10-12T17:10:21.033Z",
-    "source_product_id": "245dac2d8a72cbefb27ecba7",
+    "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -519,10 +543,11 @@
     "source_url": "https://www.sahapat.co.th/product/foodproduct/Kewpie",
     "source_type": "distributor",
     "retrieved_at": "2026-10-12T17:10:21.033Z",
-    "source_product_id": "8f0a4d87250857dbbeba9137",
+    "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -540,10 +565,11 @@
     "source_url": "https://www.sahapat.co.th/product/foodproduct/Kewpie",
     "source_type": "distributor",
     "retrieved_at": "2026-10-12T17:10:21.033Z",
-    "source_product_id": "e5d6c09f2ca673834f587f3a",
+    "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -561,10 +587,11 @@
     "source_url": "https://www.sahapat.co.th/product/foodproduct/Kewpie",
     "source_type": "distributor",
     "retrieved_at": "2026-10-12T17:10:21.033Z",
-    "source_product_id": "ccb4a903a7b98055aae8c17b",
+    "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -582,10 +609,11 @@
     "source_url": "https://www.sahapat.co.th/product/foodproduct/Kewpie",
     "source_type": "distributor",
     "retrieved_at": "2026-10-12T17:10:21.033Z",
-    "source_product_id": "f7ebbbfc3e9a9e7e4aa134fa",
+    "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -603,10 +631,11 @@
     "source_url": "https://www.sahapat.co.th/product/foodproduct/Kewpie",
     "source_type": "distributor",
     "retrieved_at": "2026-10-12T17:10:21.033Z",
-    "source_product_id": "e346cf32a55609cf5f183273",
+    "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -624,10 +653,11 @@
     "source_url": "https://www.sahapat.co.th/product/foodproduct/Kewpie",
     "source_type": "distributor",
     "retrieved_at": "2026-10-12T17:10:21.033Z",
-    "source_product_id": "4085a8ca85486e817616387e",
+    "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -645,10 +675,11 @@
     "source_url": "https://www.sahapat.co.th/product/foodproduct/Kewpie",
     "source_type": "distributor",
     "retrieved_at": "2026-10-12T17:10:21.033Z",
-    "source_product_id": "ab583900a0f40f8da1d7539d",
+    "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -666,10 +697,11 @@
     "source_url": "https://www.sahapat.co.th/product/foodproduct/Kewpie",
     "source_type": "distributor",
     "retrieved_at": "2026-10-12T17:10:21.033Z",
-    "source_product_id": "1c2816b4fae1273958340e8d",
+    "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -687,10 +719,11 @@
     "source_url": "https://www.sahapat.co.th/product/foodproduct/Kewpie",
     "source_type": "distributor",
     "retrieved_at": "2026-10-12T17:10:21.033Z",
-    "source_product_id": "b5e2b8d4eca85689ba24c05e",
+    "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -708,10 +741,11 @@
     "source_url": "https://www.sahapat.co.th/product/foodproduct/Kewpie",
     "source_type": "distributor",
     "retrieved_at": "2026-10-12T17:10:21.033Z",
-    "source_product_id": "9cfd34e67d2944aa4c0acd1d",
+    "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -729,10 +763,11 @@
     "source_url": "https://www.sahapat.co.th/product/foodproduct/Kewpie",
     "source_type": "distributor",
     "retrieved_at": "2026-10-12T17:10:21.033Z",
-    "source_product_id": "45922e985850a137ea176019",
+    "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -750,10 +785,11 @@
     "source_url": "https://www.sahapat.co.th/product/foodproduct/Kewpie",
     "source_type": "distributor",
     "retrieved_at": "2026-10-12T17:10:21.033Z",
-    "source_product_id": "28e0820ecd576cc9c14c81cb",
+    "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -771,10 +807,11 @@
     "source_url": "https://www.sahapat.co.th/product/foodproduct/Prung_Thip",
     "source_type": "distributor",
     "retrieved_at": "2026-10-12T17:10:34.741Z",
-    "source_product_id": "6a2525ec19c7b84550bd60f0",
+    "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -792,10 +829,11 @@
     "source_url": "https://www.sahapat.co.th/product/foodproduct/Prung_Thip",
     "source_type": "distributor",
     "retrieved_at": "2026-10-12T17:10:34.741Z",
-    "source_product_id": "e7183d205ccf9b6246cae484",
+    "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -813,10 +851,11 @@
     "source_url": "https://www.sahapat.co.th/product/foodproduct/Prung_Thip",
     "source_type": "distributor",
     "retrieved_at": "2026-10-12T17:10:34.741Z",
-    "source_product_id": "6914bfe7b5a784f7e979a676",
+    "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -834,10 +873,11 @@
     "source_url": "https://www.sahapat.co.th/product/foodproduct/Prung_Thip",
     "source_type": "distributor",
     "retrieved_at": "2026-10-12T17:10:34.741Z",
-    "source_product_id": "21af9af9d5856e6856d28ae1",
+    "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -855,10 +895,11 @@
     "source_url": "https://www.sahapat.co.th/product/foodproduct/Prung_Thip",
     "source_type": "distributor",
     "retrieved_at": "2026-10-12T17:10:34.741Z",
-    "source_product_id": "43336518cff633cc1da58c2f",
+    "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -876,10 +917,11 @@
     "source_url": "https://www.sahapat.co.th/product/foodproduct/Prung_Thip",
     "source_type": "distributor",
     "retrieved_at": "2026-10-12T17:10:34.741Z",
-    "source_product_id": "a5a0ac4ef824f7570c6b2481",
+    "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -897,10 +939,11 @@
     "source_url": "https://www.sahapat.co.th/product/foodproduct/Prung_Thip",
     "source_type": "distributor",
     "retrieved_at": "2026-10-12T17:10:34.741Z",
-    "source_product_id": "6b6de6cc296d534602b73394",
+    "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -918,10 +961,11 @@
     "source_url": "https://www.sahapat.co.th/product/foodproduct/Prung_Thip",
     "source_type": "distributor",
     "retrieved_at": "2026-10-12T17:10:34.741Z",
-    "source_product_id": "8b2eb3b9fc0928f6f978ca7e",
+    "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -939,10 +983,11 @@
     "source_url": "https://www.sahapat.co.th/product/foodproduct/Chua_Hah_Seng",
     "source_type": "distributor",
     "retrieved_at": "2026-10-12T17:11:01.312Z",
-    "source_product_id": "41f1a5b15fd60ad0a6f69c7c",
+    "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -960,10 +1005,11 @@
     "source_url": "https://www.sahapat.co.th/product/foodproduct/Chua_Hah_Seng",
     "source_type": "distributor",
     "retrieved_at": "2026-10-12T17:11:01.312Z",
-    "source_product_id": "01edefc67a075f354d8a900c",
+    "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -981,10 +1027,11 @@
     "source_url": "https://www.sahapat.co.th/product/foodproduct/Chua_Hah_Seng",
     "source_type": "distributor",
     "retrieved_at": "2026-10-12T17:11:01.312Z",
-    "source_product_id": "b11b2fbe10832b67338e82c4",
+    "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -1002,10 +1049,11 @@
     "source_url": "https://www.sahapat.co.th/product/foodproduct/Chua_Hah_Seng",
     "source_type": "distributor",
     "retrieved_at": "2026-10-12T17:11:01.312Z",
-    "source_product_id": "218994bf6b9f3562cf36b8b1",
+    "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -1023,10 +1071,11 @@
     "source_url": "https://www.sahapat.co.th/product/foodproduct/Chua_Hah_Seng",
     "source_type": "distributor",
     "retrieved_at": "2026-10-12T17:11:01.312Z",
-    "source_product_id": "45ec205edddfab848f5a95bf",
+    "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -1044,10 +1093,11 @@
     "source_url": "https://www.sahapat.co.th/product/foodproduct/Chua_Hah_Seng",
     "source_type": "distributor",
     "retrieved_at": "2026-10-12T17:11:01.312Z",
-    "source_product_id": "b4ab9da70d4033fa53b9a413",
+    "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -1065,10 +1115,11 @@
     "source_url": "https://www.sahapat.co.th/product/foodproduct/Chua_Hah_Seng",
     "source_type": "distributor",
     "retrieved_at": "2026-10-12T17:11:01.312Z",
-    "source_product_id": "6a0a40b02afca6a02b2c3448",
+    "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -1086,10 +1137,11 @@
     "source_url": "https://www.sahapat.co.th/product/foodproduct/Chua_Hah_Seng",
     "source_type": "distributor",
     "retrieved_at": "2026-10-12T17:11:01.312Z",
-    "source_product_id": "b7814445ac0c34fe76445036",
+    "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -1107,10 +1159,11 @@
     "source_url": "https://www.sahapat.co.th/product/foodproduct/Chua_Hah_Seng",
     "source_type": "distributor",
     "retrieved_at": "2026-10-12T17:11:01.312Z",
-    "source_product_id": "94acd88453766f54a6a3e69f",
+    "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -1128,10 +1181,11 @@
     "source_url": "https://www.sahapat.co.th/product/foodproduct/Chua_Hah_Seng",
     "source_type": "distributor",
     "retrieved_at": "2026-10-12T17:11:01.312Z",
-    "source_product_id": "15a7ed50c9cc50e9c7650cab",
+    "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -1149,10 +1203,11 @@
     "source_url": "https://www.sahapat.co.th/product/foodproduct/Chua_Hah_Seng",
     "source_type": "distributor",
     "retrieved_at": "2026-10-12T17:11:01.312Z",
-    "source_product_id": "4324bc68125814eee3ea67f7",
+    "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -1170,10 +1225,11 @@
     "source_url": "https://www.sahapat.co.th/product/foodproduct/Chua_Hah_Seng",
     "source_type": "distributor",
     "retrieved_at": "2026-10-12T17:11:01.312Z",
-    "source_product_id": "662d7acd9bffc0c3c6b4cf30",
+    "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -1191,10 +1247,11 @@
     "source_url": "https://www.sahapat.co.th/product/foodproduct/Aorsorror",
     "source_type": "distributor",
     "retrieved_at": "2026-10-12T17:11:36.395Z",
-    "source_product_id": "cd812d9d5cea1a71d7bd9ae8",
+    "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -1212,10 +1269,11 @@
     "source_url": "https://www.sahapat.co.th/product/foodproduct/Aorsorror",
     "source_type": "distributor",
     "retrieved_at": "2026-10-12T17:11:36.395Z",
-    "source_product_id": "a94f65a529d4b6be729a75d6",
+    "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -1233,10 +1291,11 @@
     "source_url": "https://www.sahapat.co.th/product/foodproduct/Aorsorror",
     "source_type": "distributor",
     "retrieved_at": "2026-10-12T17:11:36.395Z",
-    "source_product_id": "efc116ef2e6066b2968ce3ed",
+    "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -1254,10 +1313,11 @@
     "source_url": "https://www.sahapat.co.th/product/foodproduct/Aorsorror",
     "source_type": "distributor",
     "retrieved_at": "2026-10-12T17:11:36.395Z",
-    "source_product_id": "d9e05660046c91a0a0e6efe1",
+    "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -1275,10 +1335,11 @@
     "source_url": "https://www.sahapat.co.th/product/foodproduct/Aorsorror",
     "source_type": "distributor",
     "retrieved_at": "2026-10-12T17:11:36.395Z",
-    "source_product_id": "2afa52abe2fb892afc0d26b5",
+    "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -1296,10 +1357,11 @@
     "source_url": "https://www.sahapat.co.th/product/foodproduct/Aorsorror",
     "source_type": "distributor",
     "retrieved_at": "2026-10-12T17:11:36.395Z",
-    "source_product_id": "ddd18703d1cb375857ef9b99",
+    "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -1317,10 +1379,11 @@
     "source_url": "https://www.sahapat.co.th/product/foodproduct/Aorsorror",
     "source_type": "distributor",
     "retrieved_at": "2026-10-12T17:11:36.395Z",
-    "source_product_id": "8cbac80bce76bc2768280d23",
+    "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -1338,10 +1401,11 @@
     "source_url": "https://www.sahapat.co.th/product/foodproduct/Aorsorror",
     "source_type": "distributor",
     "retrieved_at": "2026-10-12T17:11:36.395Z",
-    "source_product_id": "3ba26f321c78af79ff9c4897",
+    "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -1359,10 +1423,11 @@
     "source_url": "https://www.sahapat.co.th/product/foodproduct/Euro_Pipo_",
     "source_type": "distributor",
     "retrieved_at": "2026-10-12T17:12:25.245Z",
-    "source_product_id": "1b200774add311f215fbe959",
+    "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -1380,10 +1445,11 @@
     "source_url": "https://www.sahapat.co.th/product/foodproduct/Yupi",
     "source_type": "distributor",
     "retrieved_at": "2026-10-12T17:12:37.151Z",
-    "source_product_id": "b5c9ab41f4829e651aaed980",
+    "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -1401,10 +1467,11 @@
     "source_url": "https://www.sahapat.co.th/product/foodproduct/Yupi",
     "source_type": "distributor",
     "retrieved_at": "2026-10-12T17:12:37.151Z",
-    "source_product_id": "39e2277ab0e6fca6504f501e",
+    "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -1422,10 +1489,11 @@
     "source_url": "https://www.sahapat.co.th/product/foodproduct/Murgerbon",
     "source_type": "distributor",
     "retrieved_at": "2026-10-12T17:13:27.651Z",
-    "source_product_id": "ecd075ada759c77f9e5acb6a",
+    "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -1443,10 +1511,11 @@
     "source_url": "https://www.sahapat.co.th/product/foodproduct/Murgerbon",
     "source_type": "distributor",
     "retrieved_at": "2026-10-12T17:13:27.651Z",
-    "source_product_id": "6f674d763d0bdd81db352a15",
+    "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -1464,10 +1533,11 @@
     "source_url": "https://www.sahapat.co.th/product/foodproduct/Murgerbon",
     "source_type": "distributor",
     "retrieved_at": "2026-10-12T17:13:27.651Z",
-    "source_product_id": "d84c87c034dfb4c7fa358258",
+    "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -1485,10 +1555,11 @@
     "source_url": "https://www.sahapat.co.th/product/foodproduct/Murgerbon",
     "source_type": "distributor",
     "retrieved_at": "2026-10-12T17:13:27.651Z",
-    "source_product_id": "ecb553ff388585bf18995ac5",
+    "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -1506,10 +1577,11 @@
     "source_url": "https://www.sahapat.co.th/product/foodproduct/Maepranom_Brand",
     "source_type": "distributor",
     "retrieved_at": "2026-10-12T17:13:52.716Z",
-    "source_product_id": "6187edf59f91b9276a879460",
+    "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -1527,10 +1599,11 @@
     "source_url": "https://www.sahapat.co.th/product/foodproduct/Maepranom_Brand",
     "source_type": "distributor",
     "retrieved_at": "2026-10-12T17:13:52.716Z",
-    "source_product_id": "b2a7da389db9244c1b1d6cf1",
+    "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -1548,10 +1621,11 @@
     "source_url": "https://www.sahapat.co.th/product/foodproduct/Maepranom_Brand",
     "source_type": "distributor",
     "retrieved_at": "2026-10-12T17:13:52.716Z",
-    "source_product_id": "707f7b02abdca4ecd674eda5",
+    "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -1569,10 +1643,11 @@
     "source_url": "https://www.sahapat.co.th/product/foodproduct/Maepranom_Brand",
     "source_type": "distributor",
     "retrieved_at": "2026-10-12T17:13:52.716Z",
-    "source_product_id": "733ae98f08ebbd813dfaf973",
+    "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -1590,10 +1665,11 @@
     "source_url": "https://www.sahapat.co.th/product/foodproduct/Maepranom_Brand",
     "source_type": "distributor",
     "retrieved_at": "2026-10-12T17:13:52.716Z",
-    "source_product_id": "2c9dd90b1efcdf6d926cbb20",
+    "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -1611,10 +1687,11 @@
     "source_url": "https://www.sahapat.co.th/product/foodproduct/Maepranom_Brand",
     "source_type": "distributor",
     "retrieved_at": "2026-10-12T17:13:52.716Z",
-    "source_product_id": "81a4f69f01bc8af985897454",
+    "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -1632,10 +1709,11 @@
     "source_url": "https://www.sahapat.co.th/product/beverageproduct/Pocari_Sweat",
     "source_type": "distributor",
     "retrieved_at": "2026-10-12T17:15:58.244Z",
-    "source_product_id": "8c6806deebc1ca84fd8fcf38",
+    "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -1653,10 +1731,11 @@
     "source_url": "https://www.sahapat.co.th/product/beverageproduct/Pocari_Sweat",
     "source_type": "distributor",
     "retrieved_at": "2026-10-12T17:15:58.244Z",
-    "source_product_id": "8c829fa7807324f966a42e09",
+    "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -1674,10 +1753,11 @@
     "source_url": "https://www.sahapat.co.th/product/beverageproduct/Mont_Fleur",
     "source_type": "distributor",
     "retrieved_at": "2026-10-12T17:16:23.693Z",
-    "source_product_id": "4ede044fdd159e6234182b8c",
+    "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -1695,10 +1775,11 @@
     "source_url": "https://www.sahapat.co.th/product/beverageproduct/Mont_Fleur",
     "source_type": "distributor",
     "retrieved_at": "2026-10-12T17:16:23.693Z",
-    "source_product_id": "7e3e0dc1f2646fe46f83112a",
+    "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -1716,10 +1797,11 @@
     "source_url": "https://www.sahapat.co.th/product/beverageproduct/Mont_Fleur",
     "source_type": "distributor",
     "retrieved_at": "2026-10-12T17:16:23.693Z",
-    "source_product_id": "683ab566558e5b50146ff802",
+    "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -1737,10 +1819,11 @@
     "source_url": "https://www.sahapat.co.th/product/beverageproduct/Mont_Fleur",
     "source_type": "distributor",
     "retrieved_at": "2026-10-12T17:16:23.693Z",
-    "source_product_id": "af46bbed99aff18c32e89381",
+    "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -1758,10 +1841,11 @@
     "source_url": "https://www.sahapat.co.th/product/beverageproduct/Mont_Fleur",
     "source_type": "distributor",
     "retrieved_at": "2026-10-12T17:16:23.693Z",
-    "source_product_id": "997701127ba818cb43a04dc8",
+    "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -1779,10 +1863,11 @@
     "source_url": "https://www.sahapat.co.th/product/beverageproduct/Mont_Fleur",
     "source_type": "distributor",
     "retrieved_at": "2026-10-12T17:16:23.693Z",
-    "source_product_id": "fc537686776fa7afd8e64324",
+    "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -1800,10 +1885,11 @@
     "source_url": "https://www.sahapat.co.th/product/beverageproduct/Mont_Fleur",
     "source_type": "distributor",
     "retrieved_at": "2026-10-12T17:16:23.693Z",
-    "source_product_id": "430a4fc49d7b810621383b4c",
+    "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -1821,10 +1907,11 @@
     "source_url": "https://www.sahapat.co.th/product/beverageproduct/Mont_Fleur",
     "source_type": "distributor",
     "retrieved_at": "2026-10-12T17:16:23.693Z",
-    "source_product_id": "b76dcc41d09bfa9ccfa8698e",
+    "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -1842,10 +1929,11 @@
     "source_url": "https://www.sahapat.co.th/product/beverageproduct/Mont_Fleur",
     "source_type": "distributor",
     "retrieved_at": "2026-10-12T17:16:23.693Z",
-    "source_product_id": "71fca842b2e78de2c8f77e34",
+    "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -1863,10 +1951,11 @@
     "source_url": "https://www.sahapat.co.th/product/beverageproduct/Mont_Fleur",
     "source_type": "distributor",
     "retrieved_at": "2026-10-12T17:16:23.693Z",
-    "source_product_id": "edb2860ae0b784f925e29c01",
+    "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -1884,10 +1973,11 @@
     "source_url": "https://www.sahapat.co.th/product/beverageproduct/DoiKham",
     "source_type": "distributor",
     "retrieved_at": "2026-10-12T17:16:36.135Z",
-    "source_product_id": "895f7b56bc4e7b14b9c2397d",
+    "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -1905,10 +1995,11 @@
     "source_url": "https://www.sahapat.co.th/product/beverageproduct/DoiKham",
     "source_type": "distributor",
     "retrieved_at": "2026-10-12T17:16:36.135Z",
-    "source_product_id": "4e723efa4feb4ca34286d8d3",
+    "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -1926,10 +2017,11 @@
     "source_url": "https://www.sahapat.co.th/product/beverageproduct/DoiKham",
     "source_type": "distributor",
     "retrieved_at": "2026-10-12T17:16:36.135Z",
-    "source_product_id": "6feaaea296fd28683455ad23",
+    "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -1947,10 +2039,11 @@
     "source_url": "https://www.sahapat.co.th/product/beverageproduct/DoiKham",
     "source_type": "distributor",
     "retrieved_at": "2026-10-12T17:16:36.135Z",
-    "source_product_id": "3e8cb02718dffa98344fc2f2",
+    "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -1968,10 +2061,11 @@
     "source_url": "https://www.sahapat.co.th/product/beverageproduct/DoiKham",
     "source_type": "distributor",
     "retrieved_at": "2026-10-12T17:16:36.135Z",
-    "source_product_id": "71006f55ce2c2f7f379a2ce4",
+    "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -1989,10 +2083,11 @@
     "source_url": "https://www.sahapat.co.th/product/beverageproduct/DoiKham",
     "source_type": "distributor",
     "retrieved_at": "2026-10-12T17:16:36.135Z",
-    "source_product_id": "e05e77a253d2bbc62bd17449",
+    "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -2010,10 +2105,11 @@
     "source_url": "https://www.sahapat.co.th/product/beverageproduct/DoiKham",
     "source_type": "distributor",
     "retrieved_at": "2026-10-12T17:16:36.135Z",
-    "source_product_id": "47432d0fb9d8b4a7bb83348a",
+    "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -2031,10 +2127,11 @@
     "source_url": "https://www.sahapat.co.th/product/beverageproduct/DoiKham",
     "source_type": "distributor",
     "retrieved_at": "2026-10-12T17:16:36.135Z",
-    "source_product_id": "1f86d9fd857dbe9c6195f789",
+    "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -2052,10 +2149,11 @@
     "source_url": "https://www.sahapat.co.th/product/beverageproduct/DoiKham",
     "source_type": "distributor",
     "retrieved_at": "2026-10-12T17:16:36.135Z",
-    "source_product_id": "a19e3c397a44d9d4cc6429b2",
+    "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -2073,10 +2171,11 @@
     "source_url": "https://www.sahapat.co.th/product/beverageproduct/DoiKham",
     "source_type": "distributor",
     "retrieved_at": "2026-10-12T17:16:36.135Z",
-    "source_product_id": "8fed82f928153a19346b63e1",
+    "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -2094,10 +2193,11 @@
     "source_url": "https://www.sahapat.co.th/product/beverageproduct/Khaoshong",
     "source_type": "distributor",
     "retrieved_at": "2026-10-12T17:16:47.519Z",
-    "source_product_id": "2cab6c7c1891be66a06c05d8",
+    "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -2115,10 +2215,11 @@
     "source_url": "https://www.sahapat.co.th/product/beverageproduct/Khaoshong",
     "source_type": "distributor",
     "retrieved_at": "2026-10-12T17:16:47.519Z",
-    "source_product_id": "d7770e6f41f8dd63750ac2e3",
+    "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -2136,10 +2237,11 @@
     "source_url": "https://www.sahapat.co.th/product/beverageproduct/Khaoshong",
     "source_type": "distributor",
     "retrieved_at": "2026-10-12T17:16:47.519Z",
-    "source_product_id": "18af15478d67e4c5b8ebbb27",
+    "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -2157,10 +2259,11 @@
     "source_url": "https://www.sahapat.co.th/product/beverageproduct/Khaoshong",
     "source_type": "distributor",
     "retrieved_at": "2026-10-12T17:16:47.519Z",
-    "source_product_id": "a1154a11b83a5bd90eb76e4b",
+    "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -2178,10 +2281,11 @@
     "source_url": "https://www.sahapat.co.th/product/beverageproduct/Khaoshong",
     "source_type": "distributor",
     "retrieved_at": "2026-10-12T17:16:47.519Z",
-    "source_product_id": "6d2f8f9e9c117d40eab3f36a",
+    "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -2199,10 +2303,11 @@
     "source_url": "https://www.sahapat.co.th/product/beverageproduct/Khaoshong",
     "source_type": "distributor",
     "retrieved_at": "2026-10-12T17:16:47.519Z",
-    "source_product_id": "e5822ab346531ec0d774c4bb",
+    "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -2220,10 +2325,11 @@
     "source_url": "https://www.sahapat.co.th/product/beverageproduct/Khaoshong",
     "source_type": "distributor",
     "retrieved_at": "2026-10-12T17:16:47.519Z",
-    "source_product_id": "136ee25582c708bba57d7302",
+    "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -2241,10 +2347,11 @@
     "source_url": "https://www.sahapat.co.th/product/householdproduct/Kincho",
     "source_type": "distributor",
     "retrieved_at": "2026-10-12T17:19:24.099Z",
-    "source_product_id": "dd471b48dd2fb0a498e14ffd",
+    "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -2262,10 +2369,11 @@
     "source_url": "https://www.sahapat.co.th/product/householdproduct/Kincho",
     "source_type": "distributor",
     "retrieved_at": "2026-10-12T17:19:24.099Z",
-    "source_product_id": "0145a18dc58d9f62fa73fd92",
+    "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -2283,10 +2391,11 @@
     "source_url": "https://www.sahapat.co.th/product/householdproduct/Kincho",
     "source_type": "distributor",
     "retrieved_at": "2026-10-12T17:19:24.099Z",
-    "source_product_id": "3ee5d68ccdbf80fdb2af0b1d",
+    "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -2304,10 +2413,11 @@
     "source_url": "https://www.sahapat.co.th/product/householdproduct/108_Shop_",
     "source_type": "distributor",
     "retrieved_at": "2026-10-12T17:19:52.277Z",
-    "source_product_id": "0f65ac551ed50e48095f0ad7",
+    "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -2325,10 +2435,11 @@
     "source_url": "https://www.sahapat.co.th/product/householdproduct/108_Shop_",
     "source_type": "distributor",
     "retrieved_at": "2026-10-12T17:19:52.277Z",
-    "source_product_id": "3f5b31537fff3b38cebacb80",
+    "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -2346,10 +2457,11 @@
     "source_url": "https://www.sahapat.co.th/product/householdproduct/108_Shop_",
     "source_type": "distributor",
     "retrieved_at": "2026-10-12T17:19:52.277Z",
-    "source_product_id": "0a53c2b2ff9022fa72c682e9",
+    "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -2367,10 +2479,11 @@
     "source_url": "https://www.sahapat.co.th/product/householdproduct/108_Shop_",
     "source_type": "distributor",
     "retrieved_at": "2026-10-12T17:19:52.277Z",
-    "source_product_id": "07f230f641beb35988610b2f",
+    "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -2388,10 +2501,11 @@
     "source_url": "https://www.sahapat.co.th/product/householdproduct/108_Shop_",
     "source_type": "distributor",
     "retrieved_at": "2026-10-12T17:19:52.277Z",
-    "source_product_id": "5789a31d101cb205371de1e0",
+    "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -2409,10 +2523,11 @@
     "source_url": "https://www.sahapat.co.th/product/householdproduct/108_Shop_",
     "source_type": "distributor",
     "retrieved_at": "2026-10-12T17:19:52.277Z",
-    "source_product_id": "d958f01d83ed580d6154adf0",
+    "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -2430,10 +2545,11 @@
     "source_url": "https://www.sahapat.co.th/product/householdproduct/Lipon_F",
     "source_type": "distributor",
     "retrieved_at": "2026-10-12T17:20:21.092Z",
-    "source_product_id": "97430569c142c0353e07a08b",
+    "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -2451,10 +2567,11 @@
     "source_url": "https://www.sahapat.co.th/product/householdproduct/Lipon_F",
     "source_type": "distributor",
     "retrieved_at": "2026-10-12T17:20:21.092Z",
-    "source_product_id": "9cc32ca4be46c12b04892051",
+    "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -2472,10 +2589,11 @@
     "source_url": "https://www.sahapat.co.th/product/householdproduct/Lipon_F",
     "source_type": "distributor",
     "retrieved_at": "2026-10-12T17:20:21.092Z",
-    "source_product_id": "ce98e59a98379680d98ce314",
+    "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -2493,10 +2611,11 @@
     "source_url": "https://www.sahapat.co.th/product/householdproduct/Lipon_F",
     "source_type": "distributor",
     "retrieved_at": "2026-10-12T17:20:21.092Z",
-    "source_product_id": "90eb2d8e0be3eed1220733b3",
+    "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -2514,10 +2633,11 @@
     "source_url": "https://www.sahapat.co.th/product/householdproduct/Lipon_F",
     "source_type": "distributor",
     "retrieved_at": "2026-10-12T17:20:21.092Z",
-    "source_product_id": "318c7bdd4713204d12f1965a",
+    "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -2535,10 +2655,11 @@
     "source_url": "https://www.sahapat.co.th/product/householdproduct/Lipon_F",
     "source_type": "distributor",
     "retrieved_at": "2026-10-12T17:20:21.092Z",
-    "source_product_id": "537f28bf3e55dd5f3bc5fed8",
+    "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -2556,10 +2677,11 @@
     "source_url": "https://www.sahapat.co.th/product/householdproduct/Suesat__Household_Product",
     "source_type": "distributor",
     "retrieved_at": "2026-10-12T17:20:54.823Z",
-    "source_product_id": "7057fb566c038061831c5420",
+    "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -2577,10 +2699,11 @@
     "source_url": "https://www.sahapat.co.th/product/householdproduct/Suesat__Household_Product",
     "source_type": "distributor",
     "retrieved_at": "2026-10-12T17:20:54.823Z",
-    "source_product_id": "1e78135c449322b35e29d9db",
+    "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -2598,10 +2721,11 @@
     "source_url": "https://www.sahapat.co.th/product/householdproduct/Suesat__Household_Product",
     "source_type": "distributor",
     "retrieved_at": "2026-10-12T17:20:54.823Z",
-    "source_product_id": "6170fdc2116336813b2c7f7d",
+    "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -2619,10 +2743,11 @@
     "source_url": "https://www.sahapat.co.th/product/householdproduct/Suesat__Household_Product",
     "source_type": "distributor",
     "retrieved_at": "2026-10-12T17:20:54.823Z",
-    "source_product_id": "ac449eb60f3c974f5665528f",
+    "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -2640,10 +2765,11 @@
     "source_url": "https://www.sahapat.co.th/product/householdproduct/Top",
     "source_type": "distributor",
     "retrieved_at": "2026-10-12T17:21:08.734Z",
-    "source_product_id": "5c2d7913d4bdcb2de9db5e88",
+    "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -2661,10 +2787,11 @@
     "source_url": "https://www.sahapat.co.th/product/personalcare/salz",
     "source_type": "distributor",
     "retrieved_at": "2026-10-12T17:22:26.466Z",
-    "source_product_id": "6a33e60243205c8e05ac0c45",
+    "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -2682,10 +2809,11 @@
     "source_url": "https://www.sahapat.co.th/product/personalcare/salz",
     "source_type": "distributor",
     "retrieved_at": "2026-10-12T17:22:26.466Z",
-    "source_product_id": "413f99bc9e4fb40d42e71889",
+    "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -2703,10 +2831,11 @@
     "source_url": "https://www.sahapat.co.th/product/personalcare/kirei_kirei",
     "source_type": "distributor",
     "retrieved_at": "2026-10-12T17:22:37.550Z",
-    "source_product_id": "7927fa777c1642ceb2d11d09",
+    "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -2724,10 +2853,11 @@
     "source_url": "https://www.sahapat.co.th/product/personalcare/kirei_kirei",
     "source_type": "distributor",
     "retrieved_at": "2026-10-12T17:22:37.550Z",
-    "source_product_id": "7f6f01e1e9313005fd21af1d",
+    "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -2745,10 +2875,11 @@
     "source_url": "https://www.sahapat.co.th/product/personalcare/kirei_kirei",
     "source_type": "distributor",
     "retrieved_at": "2026-10-12T17:22:37.550Z",
-    "source_product_id": "aca3fff4c4cdf754f93904f8",
+    "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -2766,10 +2897,11 @@
     "source_url": "https://www.sahapat.co.th/product/personalcare/kirei_kirei",
     "source_type": "distributor",
     "retrieved_at": "2026-10-12T17:22:37.550Z",
-    "source_product_id": "d87cbd895637e83fbde7722c",
+    "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -2787,10 +2919,11 @@
     "source_url": "https://www.sahapat.co.th/product/personalcare/kirei_kirei",
     "source_type": "distributor",
     "retrieved_at": "2026-10-12T17:22:37.550Z",
-    "source_product_id": "015d098c72d1cd035fac61b6",
+    "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -2808,10 +2941,11 @@
     "source_url": "https://www.sahapat.co.th/product/personalcare/kirei_kirei",
     "source_type": "distributor",
     "retrieved_at": "2026-10-12T17:22:37.550Z",
-    "source_product_id": "4396264a24c712a29b3671a9",
+    "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -2829,10 +2963,11 @@
     "source_url": "https://www.sahapat.co.th/product/personalcare/kirei_kirei",
     "source_type": "distributor",
     "retrieved_at": "2026-10-12T17:22:37.550Z",
-    "source_product_id": "42864d59118f24a49a8b4bf3",
+    "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -2850,10 +2985,11 @@
     "source_url": "https://www.sahapat.co.th/product/personalcare/kirei_kirei",
     "source_type": "distributor",
     "retrieved_at": "2026-10-12T17:22:37.550Z",
-    "source_product_id": "d152b9683847b085de970e78",
+    "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -2871,10 +3007,11 @@
     "source_url": "https://www.sahapat.co.th/product/personalcare/kirei_kirei",
     "source_type": "distributor",
     "retrieved_at": "2026-10-12T17:22:37.550Z",
-    "source_product_id": "04b1126e3bdce18a8d196fa8",
+    "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -2892,10 +3029,11 @@
     "source_url": "https://www.sahapat.co.th/product/personalcare/kirei_kirei",
     "source_type": "distributor",
     "retrieved_at": "2026-10-12T17:22:37.550Z",
-    "source_product_id": "33976673c219f36084ae4395",
+    "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -2913,10 +3051,11 @@
     "source_url": "https://www.sahapat.co.th/product/personalcare/kirei_kirei",
     "source_type": "distributor",
     "retrieved_at": "2026-10-12T17:22:37.550Z",
-    "source_product_id": "8b470f6327fc89ab91ba2f60",
+    "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -2934,10 +3073,11 @@
     "source_url": "https://www.sahapat.co.th/product/personalcare/kirei_kirei",
     "source_type": "distributor",
     "retrieved_at": "2026-10-12T17:22:37.550Z",
-    "source_product_id": "6a74ea2210cf9a39ef8eab5e",
+    "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -2955,10 +3095,11 @@
     "source_url": "https://www.sahapat.co.th/product/personalcare/kirei_kirei",
     "source_type": "distributor",
     "retrieved_at": "2026-10-12T17:22:37.550Z",
-    "source_product_id": "66468b0ee428ed76913803a6",
+    "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -2976,10 +3117,11 @@
     "source_url": "https://www.sahapat.co.th/product/personalcare/kirei_kirei",
     "source_type": "distributor",
     "retrieved_at": "2026-10-12T17:22:37.550Z",
-    "source_product_id": "4fa69174150529afb6eda8ff",
+    "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -2997,10 +3139,11 @@
     "source_url": "https://www.sahapat.co.th/product/personalcare/kirei_kirei",
     "source_type": "distributor",
     "retrieved_at": "2026-10-12T17:22:37.550Z",
-    "source_product_id": "0cf644eace3961c52d52830e",
+    "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -3018,10 +3161,11 @@
     "source_url": "https://www.sahapat.co.th/product/personalcare/kirei_kirei",
     "source_type": "distributor",
     "retrieved_at": "2026-10-12T17:22:37.550Z",
-    "source_product_id": "1266c951a173cf8dc0023e8b",
+    "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -3039,10 +3183,11 @@
     "source_url": "https://www.sahapat.co.th/product/personalcare/St._Andrews",
     "source_type": "distributor",
     "retrieved_at": "2026-10-12T17:23:28.461Z",
-    "source_product_id": "863299474ad03415769060eb",
+    "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -3060,10 +3205,11 @@
     "source_url": "https://www.sahapat.co.th/product/personalcare/St._Andrews",
     "source_type": "distributor",
     "retrieved_at": "2026-10-12T17:23:28.461Z",
-    "source_product_id": "f7944f0a9ec3252001b95930",
+    "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -3081,10 +3227,11 @@
     "source_url": "https://www.sahapat.co.th/product/personalcare/St._Andrews",
     "source_type": "distributor",
     "retrieved_at": "2026-10-12T17:23:28.461Z",
-    "source_product_id": "4268c76de41616cc2f254c42",
+    "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -3102,10 +3249,11 @@
     "source_url": "https://www.sahapat.co.th/product/personalcare/St._Andrews",
     "source_type": "distributor",
     "retrieved_at": "2026-10-12T17:23:28.461Z",
-    "source_product_id": "b23a911e6fda7dbe220703de",
+    "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -3123,10 +3271,11 @@
     "source_url": "https://www.sahapat.co.th/product/personalcare/St._Andrews",
     "source_type": "distributor",
     "retrieved_at": "2026-10-12T17:23:28.461Z",
-    "source_product_id": "f701bb51059c940674b2be09",
+    "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -3144,10 +3293,11 @@
     "source_url": "https://www.sahapat.co.th/product/personalcare/St._Andrews",
     "source_type": "distributor",
     "retrieved_at": "2026-10-12T17:23:28.461Z",
-    "source_product_id": "628c70ac82576b9b12115638",
+    "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -3165,10 +3315,11 @@
     "source_url": "https://www.sahapat.co.th/product/personalcare/St._Andrews",
     "source_type": "distributor",
     "retrieved_at": "2026-10-12T17:23:28.461Z",
-    "source_product_id": "9a9a41fc617ed747bc4cbc63",
+    "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -3186,10 +3337,11 @@
     "source_url": "https://www.sahapat.co.th/product/personalcare/St._Andrews",
     "source_type": "distributor",
     "retrieved_at": "2026-10-12T17:23:28.461Z",
-    "source_product_id": "66780dfb7870ba0fed8d9865",
+    "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -3207,10 +3359,11 @@
     "source_url": "https://www.sahapat.co.th/product/personalcare/St._Andrews",
     "source_type": "distributor",
     "retrieved_at": "2026-10-12T17:23:28.461Z",
-    "source_product_id": "a7554120b64e5d30c01283e6",
+    "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -3228,10 +3381,11 @@
     "source_url": "https://www.sahapat.co.th/product/personalcare/St._Andrews",
     "source_type": "distributor",
     "retrieved_at": "2026-10-12T17:23:28.461Z",
-    "source_product_id": "5ead350edd9d4c983da7adcd",
+    "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -3249,10 +3403,11 @@
     "source_url": "https://www.sahapat.co.th/product/personalcare/Mont_Fleur_Personal_Care",
     "source_type": "distributor",
     "retrieved_at": "2026-10-12T17:25:44.535Z",
-    "source_product_id": "e0660c9f2ceddcfdbc3eba93",
+    "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -3270,10 +3425,11 @@
     "source_url": "https://www.sahapat.co.th/product/personalcare/Mont_Fleur_Personal_Care",
     "source_type": "distributor",
     "retrieved_at": "2026-10-12T17:25:44.535Z",
-    "source_product_id": "27412795b4ccbc50a5dfbf4a",
+    "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -3294,7 +3450,8 @@
     "source_product_id": "39",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -3315,7 +3472,8 @@
     "source_product_id": "39",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -3336,7 +3494,8 @@
     "source_product_id": "39",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -3357,7 +3516,8 @@
     "source_product_id": "39",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -3378,7 +3538,8 @@
     "source_product_id": "39",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -3399,7 +3560,8 @@
     "source_product_id": "39",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -3420,7 +3582,8 @@
     "source_product_id": "39",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -3441,7 +3604,8 @@
     "source_product_id": "39",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -3462,7 +3626,8 @@
     "source_product_id": "39",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -3483,7 +3648,8 @@
     "source_product_id": "39",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -3504,7 +3670,8 @@
     "source_product_id": "39",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -3525,7 +3692,8 @@
     "source_product_id": "39",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -3546,7 +3714,8 @@
     "source_product_id": "39",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -3567,7 +3736,8 @@
     "source_product_id": "3",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -3588,7 +3758,8 @@
     "source_product_id": "3",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -3609,7 +3780,8 @@
     "source_product_id": "3",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -3630,7 +3802,8 @@
     "source_product_id": "3",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -3651,7 +3824,8 @@
     "source_product_id": "3",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -3672,7 +3846,8 @@
     "source_product_id": "3",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -3693,7 +3868,8 @@
     "source_product_id": "3",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -3714,7 +3890,8 @@
     "source_product_id": "3",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -3735,7 +3912,8 @@
     "source_product_id": "3",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -3756,7 +3934,8 @@
     "source_product_id": "3",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -3777,7 +3956,8 @@
     "source_product_id": "3",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -3798,7 +3978,8 @@
     "source_product_id": "3",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -3819,7 +4000,8 @@
     "source_product_id": "3",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -3840,7 +4022,8 @@
     "source_product_id": "2",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -3861,7 +4044,8 @@
     "source_product_id": "2",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -3882,7 +4066,8 @@
     "source_product_id": "2",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -3903,7 +4088,8 @@
     "source_product_id": "2",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -3924,7 +4110,8 @@
     "source_product_id": "2",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -3945,7 +4132,8 @@
     "source_product_id": "2",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -3966,7 +4154,8 @@
     "source_product_id": "2",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -3987,7 +4176,8 @@
     "source_product_id": "2",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -4008,7 +4198,8 @@
     "source_product_id": "2",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -4029,7 +4220,8 @@
     "source_product_id": "4",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -4050,7 +4242,8 @@
     "source_product_id": "30",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -4071,7 +4264,8 @@
     "source_product_id": "30",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -4092,7 +4286,8 @@
     "source_product_id": "30",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -4113,7 +4308,8 @@
     "source_product_id": "45",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -4134,7 +4330,8 @@
     "source_product_id": "45",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -4155,7 +4352,8 @@
     "source_product_id": "45",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -4176,7 +4374,8 @@
     "source_product_id": "7",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -4197,7 +4396,8 @@
     "source_product_id": "7",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -4218,7 +4418,8 @@
     "source_product_id": "7",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -4239,7 +4440,8 @@
     "source_product_id": "7",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -4260,7 +4462,8 @@
     "source_product_id": "7",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -4281,7 +4484,8 @@
     "source_product_id": "7",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -4302,7 +4506,8 @@
     "source_product_id": "7",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -4323,7 +4528,8 @@
     "source_product_id": "7",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -4344,7 +4550,8 @@
     "source_product_id": "7",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -4365,7 +4572,8 @@
     "source_product_id": "7",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -4386,7 +4594,8 @@
     "source_product_id": "7",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -4407,7 +4616,8 @@
     "source_product_id": "7",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -4428,7 +4638,8 @@
     "source_product_id": "7",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -4449,7 +4660,8 @@
     "source_product_id": "8",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -4470,7 +4682,8 @@
     "source_product_id": "9",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -4491,7 +4704,8 @@
     "source_product_id": "9",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -4512,7 +4726,8 @@
     "source_product_id": "9",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -4533,7 +4748,8 @@
     "source_product_id": "9",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -4554,7 +4770,8 @@
     "source_product_id": "9",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -4575,7 +4792,8 @@
     "source_product_id": "9",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -4596,7 +4814,8 @@
     "source_product_id": "9",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -4617,7 +4836,8 @@
     "source_product_id": "9",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -4638,7 +4858,8 @@
     "source_product_id": "9",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -4659,7 +4880,8 @@
     "source_product_id": "9",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -4680,7 +4902,8 @@
     "source_product_id": "9",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -4701,7 +4924,8 @@
     "source_product_id": "9",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -4722,7 +4946,8 @@
     "source_product_id": "9",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -4743,7 +4968,8 @@
     "source_product_id": "9",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -4764,7 +4990,8 @@
     "source_product_id": "10",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -4785,7 +5012,8 @@
     "source_product_id": "11",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -4806,7 +5034,8 @@
     "source_product_id": "11",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -4827,7 +5056,8 @@
     "source_product_id": "11",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -4848,7 +5078,8 @@
     "source_product_id": "11",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -4869,7 +5100,8 @@
     "source_product_id": "11",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -4890,7 +5122,8 @@
     "source_product_id": "11",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -4911,7 +5144,8 @@
     "source_product_id": "11",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -4932,7 +5166,8 @@
     "source_product_id": "11",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -4953,7 +5188,8 @@
     "source_product_id": "11",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -4974,7 +5210,8 @@
     "source_product_id": "11",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -4995,7 +5232,8 @@
     "source_product_id": "11",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -5016,7 +5254,8 @@
     "source_product_id": "11",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -5037,7 +5276,8 @@
     "source_product_id": "11",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -5058,7 +5298,8 @@
     "source_product_id": "12",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -5079,7 +5320,8 @@
     "source_product_id": "12",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -5100,7 +5342,8 @@
     "source_product_id": "12",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -5121,7 +5364,8 @@
     "source_product_id": "12",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -5142,7 +5386,8 @@
     "source_product_id": "12",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -5163,7 +5408,8 @@
     "source_product_id": "12",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -5184,7 +5430,8 @@
     "source_product_id": "12",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -5205,7 +5452,8 @@
     "source_product_id": "37",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -5226,7 +5474,8 @@
     "source_product_id": "37",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -5247,7 +5496,8 @@
     "source_product_id": "37",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -5268,7 +5518,8 @@
     "source_product_id": "37",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -5289,7 +5540,8 @@
     "source_product_id": "43",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -5310,7 +5562,8 @@
     "source_product_id": "43",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -5331,7 +5584,8 @@
     "source_product_id": "43",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -5352,7 +5606,8 @@
     "source_product_id": "43",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -5373,7 +5628,8 @@
     "source_product_id": "46",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -5394,7 +5650,8 @@
     "source_product_id": "47",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -5415,7 +5672,8 @@
     "source_product_id": "47",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -5436,7 +5694,8 @@
     "source_product_id": "47",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -5457,7 +5716,8 @@
     "source_product_id": "5",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -5478,7 +5738,8 @@
     "source_product_id": "5",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -5499,7 +5760,8 @@
     "source_product_id": "5",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -5520,7 +5782,8 @@
     "source_product_id": "5",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -5541,7 +5804,8 @@
     "source_product_id": "5",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -5562,7 +5826,8 @@
     "source_product_id": "5",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -5583,7 +5848,8 @@
     "source_product_id": "5",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -5604,7 +5870,8 @@
     "source_product_id": "5",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -5625,7 +5892,8 @@
     "source_product_id": "5",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -5646,7 +5914,8 @@
     "source_product_id": "5",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -5667,7 +5936,8 @@
     "source_product_id": "5",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -5688,7 +5958,8 @@
     "source_product_id": "5",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -5709,7 +5980,8 @@
     "source_product_id": "6",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -5730,7 +6002,8 @@
     "source_product_id": "6",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -5751,7 +6024,8 @@
     "source_product_id": "6",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -5772,7 +6046,8 @@
     "source_product_id": "6",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -5793,7 +6068,8 @@
     "source_product_id": "6",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -5814,7 +6090,8 @@
     "source_product_id": "44",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -5835,7 +6112,8 @@
     "source_product_id": "44",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -5856,7 +6134,8 @@
     "source_product_id": "50",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -5877,7 +6156,8 @@
     "source_product_id": "50",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -5898,7 +6178,8 @@
     "source_product_id": "50",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -5919,7 +6200,8 @@
     "source_product_id": "50",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -5940,7 +6222,8 @@
     "source_product_id": "16",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -5961,7 +6244,8 @@
     "source_product_id": "17",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -5982,7 +6266,8 @@
     "source_product_id": "18",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -6003,7 +6288,8 @@
     "source_product_id": "25",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -6024,7 +6310,8 @@
     "source_product_id": "19",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -6045,7 +6332,8 @@
     "source_product_id": "40",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -6066,7 +6354,8 @@
     "source_product_id": "48",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -6087,7 +6376,8 @@
     "source_product_id": "52",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -6108,7 +6398,8 @@
     "source_product_id": "38",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -6129,7 +6420,8 @@
     "source_product_id": "33",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -6150,7 +6442,8 @@
     "source_product_id": "33",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -6171,7 +6464,8 @@
     "source_product_id": "36",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -6192,7 +6486,8 @@
     "source_product_id": "15",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -6213,7 +6508,8 @@
     "source_product_id": "22",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -6234,7 +6530,8 @@
     "source_product_id": "22",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -6255,7 +6552,8 @@
     "source_product_id": "22",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -6276,7 +6574,8 @@
     "source_product_id": "22",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -6297,7 +6596,8 @@
     "source_product_id": "41",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -6318,7 +6618,8 @@
     "source_product_id": "42",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -6339,7 +6640,8 @@
     "source_product_id": "30",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -6360,7 +6662,8 @@
     "source_product_id": "31",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -6381,7 +6684,15 @@
     "source_product_id": "33",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": [
+      {
+        "source_url": "https://www.tiparos.com/products/",
+        "source_type": "manufacturer",
+        "source_product_id": "32",
+        "retrieved_at": "2026-10-12T17:27:30.331Z"
+      }
+    ]
   },
   {
     "barcode": null,
@@ -6402,7 +6713,8 @@
     "source_product_id": "34",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -6423,7 +6735,8 @@
     "source_product_id": "35",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -6444,7 +6757,8 @@
     "source_product_id": "36",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -6465,7 +6779,8 @@
     "source_product_id": "37",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -6486,7 +6801,8 @@
     "source_product_id": "38",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -6507,7 +6823,8 @@
     "source_product_id": "39",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -6528,7 +6845,8 @@
     "source_product_id": "40",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -6549,7 +6867,8 @@
     "source_product_id": "41",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -6570,7 +6889,8 @@
     "source_product_id": "42",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -6591,7 +6911,8 @@
     "source_product_id": "43",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -6612,7 +6933,8 @@
     "source_product_id": "45",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -6633,7 +6955,8 @@
     "source_product_id": "46",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -6654,7 +6977,8 @@
     "source_product_id": "48",
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -6675,7 +6999,8 @@
     "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -6696,7 +7021,8 @@
     "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -6717,7 +7043,8 @@
     "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -6738,7 +7065,8 @@
     "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -6759,7 +7087,8 @@
     "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -6780,7 +7109,8 @@
     "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -6801,7 +7131,8 @@
     "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -6822,7 +7153,8 @@
     "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -6843,7 +7175,8 @@
     "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -6864,7 +7197,8 @@
     "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -6885,7 +7219,8 @@
     "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -6906,7 +7241,8 @@
     "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -6927,7 +7263,8 @@
     "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -6948,7 +7285,8 @@
     "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -6969,7 +7307,8 @@
     "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -6990,7 +7329,8 @@
     "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -7011,7 +7351,8 @@
     "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -7032,7 +7373,8 @@
     "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -7053,7 +7395,8 @@
     "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -7074,7 +7417,8 @@
     "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -7095,7 +7439,8 @@
     "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -7116,7 +7461,8 @@
     "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   },
   {
     "barcode": null,
@@ -7137,6 +7483,7 @@
     "source_product_id": null,
     "image": null,
     "image_status": "pending",
-    "active": false
+    "active": false,
+    "source_references": []
   }
 ]

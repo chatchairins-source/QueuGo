@@ -21,14 +21,14 @@ create table public.grocery_master_products (
  created_at timestamptz not null default now(), updated_at timestamptz not null default now(),
  check(length(brand) between 1 and 250 and length(product_name_th) between 1 and 250 and length(category) between 1 and 250),
  check(barcode is null or barcode ~ '^\d{14}$'),
- check(image_status='pending' and image is null or image_status='approved' and image like 'https://pkypiqhlrmzocysgeqew.supabase.co/storage/v1/object/public/%' and length(image_rights_evidence)>10),
+ check(image_status='pending' and image is null or image_status='approved' and image is not null and image_rights_evidence is not null and image like 'https://pkypiqhlrmzocysgeqew.supabase.co/storage/v1/object/public/%' and length(trim(image_rights_evidence))>10),
  check(merged_into is null or merged_into<>id)
 );
 create table public.grocery_master_sources (
  id uuid primary key default gen_random_uuid(),master_product_id uuid not null references public.grocery_master_products(id),
  source_url text not null check(source_url like 'https://%'),source_type text not null check(source_type in ('manufacturer','distributor','retailer','government','merchant')),
  source_product_id text,retrieved_at timestamptz not null, first_seen_at timestamptz not null default now(),
- unique(master_product_id,source_url)
+ unique nulls not distinct (master_product_id,source_url,source_product_id)
 );
 alter table public.products add column grocery_master_id uuid references public.grocery_master_products(id),
  add column grocery_enabled boolean not null default false,
@@ -43,7 +43,7 @@ alter table public.grocery_master_products enable row level security;
 alter table public.grocery_master_sources enable row level security;
 revoke all on public.grocery_master_products,public.grocery_master_sources from public,anon,authenticated;
 grant select,insert,update on public.grocery_master_products,public.grocery_master_sources to authenticated;
-create policy grocery_master_read on public.grocery_master_products for select to authenticated using (public.is_active_admin() or (active and merged_into is null and public.get_my_role()='shop'));
+create policy grocery_master_read on public.grocery_master_products for select to authenticated using ((select public.is_active_admin()) or (active and merged_into is null and (select public.get_my_role())='shop'));
 create policy grocery_master_admin_insert on public.grocery_master_products for insert to authenticated with check(public.is_active_admin());
 create policy grocery_master_admin_update on public.grocery_master_products for update to authenticated using(public.is_active_admin()) with check(public.is_active_admin());
 create policy grocery_source_admin_read on public.grocery_master_sources for select to authenticated using(public.is_active_admin());
@@ -115,7 +115,7 @@ end $$;
 create trigger grocery_master_fanout after update on public.grocery_master_products for each row execute function public.qg_grocery_master_fanout();
 
 create function public.qg_grocery_import(p_rows jsonb) returns jsonb language plpgsql security invoker set search_path=public,pg_temp as $$
-declare r jsonb;m uuid;b text;by_key uuid;by_barcode uuid;v_n integer:=0;
+declare r jsonb;proof jsonb;m uuid;b text;by_key uuid;by_barcode uuid;v_n integer:=0;
 begin
  if not public.is_active_admin() then raise exception 'active admin required' using errcode='42501';end if;
  if jsonb_typeof(p_rows)<>'array' or jsonb_array_length(p_rows) not between 1 and 200 then raise exception 'batch must contain 1..200 rows';end if;
@@ -139,7 +139,15 @@ begin
   end if;
   insert into public.grocery_master_sources(master_product_id,source_url,source_type,source_product_id,retrieved_at)
   values(m,r->>'source_url',r->>'source_type',r->>'source_product_id',(r->>'retrieved_at')::timestamptz)
-  on conflict(master_product_id,source_url) do update set retrieved_at=greatest(grocery_master_sources.retrieved_at,excluded.retrieved_at);
+  on conflict(master_product_id,source_url,source_product_id) do update set retrieved_at=greatest(grocery_master_sources.retrieved_at,excluded.retrieved_at);
+  if r ? 'source_references' then
+   if jsonb_typeof(r->'source_references')<>'array' or jsonb_array_length(r->'source_references')>50 then raise exception 'invalid source references';end if;
+   for proof in select value from jsonb_array_elements(r->'source_references') loop
+    insert into public.grocery_master_sources(master_product_id,source_url,source_type,source_product_id,retrieved_at)
+    values(m,proof->>'source_url',proof->>'source_type',proof->>'source_product_id',(proof->>'retrieved_at')::timestamptz)
+    on conflict(master_product_id,source_url,source_product_id) do update set retrieved_at=greatest(grocery_master_sources.retrieved_at,excluded.retrieved_at);
+   end loop;
+  end if;
   v_n:=v_n+1;
  end loop;
  return jsonb_build_object('processed',v_n,'activation','Admin must verify and activate new products');
@@ -155,7 +163,7 @@ revoke all on grocery_private.store_save_receipts from public,anon,authenticated
 create function grocery_private.store_save(p_shop_id uuid,p_rows jsonb,p_request_id uuid) returns jsonb language plpgsql security definer set search_path=public,pg_temp as $$
 declare r jsonb;v_n integer:=0;receipt grocery_private.store_save_receipts;current_stamp timestamptz;result jsonb;
 begin
- if auth.uid() is null or public.get_my_role()<>'shop' or not exists(select 1 from public.shop_profiles where id=p_shop_id and user_id=public.get_my_user_id() and public_category='grocery' and archived_at is null) then raise exception 'own grocery shop required' using errcode='42501';end if;
+ if auth.uid() is null or coalesce(public.get_my_role(),'')<>'shop' or not exists(select 1 from public.shop_profiles where id=p_shop_id and user_id=public.get_my_user_id() and public_category='grocery' and archived_at is null) then raise exception 'own grocery shop required' using errcode='42501';end if;
  if jsonb_typeof(p_rows)<>'array' or jsonb_array_length(p_rows) not between 1 and 100 then raise exception 'batch must contain 1..100 rows';end if;
  if p_request_id is null then raise exception 'request ID required';end if;
  perform pg_advisory_xact_lock(hashtext(p_shop_id::text||p_request_id::text));
@@ -185,7 +193,7 @@ $$;
 create function public.qg_grocery_merchant_page(p_shop_id uuid,p_query text default '',p_category text default '',p_mode text default 'all',p_offset integer default 0) returns jsonb language plpgsql stable security invoker set search_path=public,pg_temp as $$
 declare result jsonb;
 begin
- if public.get_my_role()<>'shop' or not exists(select 1 from public.shop_profiles where id=p_shop_id and user_id=public.get_my_user_id() and public_category='grocery') then raise exception 'own grocery shop required';end if;
+ if coalesce(public.get_my_role(),'')<>'shop' or not exists(select 1 from public.shop_profiles where id=p_shop_id and user_id=public.get_my_user_id() and public_category='grocery') then raise exception 'own grocery shop required';end if;
  if p_offset<0 or length(p_query)>100 or p_mode not in ('all','on','off','unpriced') then raise exception 'invalid query';end if;
  select coalesce(jsonb_agg(to_jsonb(x)),'[]') into result from (
  select m.id,m.brand,m.product_name_th,m.variant,m.size_value,m.size_unit,m.pack_size,m.sales_unit,m.category,m.image,m.image_status,
@@ -216,7 +224,7 @@ begin
  if exists(select 1 from public.products a join public.products b using(shop_id) where a.grocery_master_id=p_from and b.grocery_master_id=p_into) then raise exception 'store collision: resolve listings before merge';end if;
  update public.products set grocery_master_id=p_into where grocery_master_id=p_from;get diagnostics n=row_count;
  insert into public.grocery_master_sources(master_product_id,source_url,source_type,source_product_id,retrieved_at)
- select p_into,source_url,source_type,source_product_id,retrieved_at from public.grocery_master_sources where master_product_id=p_from on conflict(master_product_id,source_url) do nothing;
+ select p_into,source_url,source_type,source_product_id,retrieved_at from public.grocery_master_sources where master_product_id=p_from on conflict(master_product_id,source_url,source_product_id) do nothing;
  update public.grocery_master_products set active=false,merged_into=p_into where id=p_from;
  insert into public.audit_logs(user_id,action,entity_type,entity_id,description,metadata) values(public.get_my_user_id(),'grocery_merge','grocery_master_products',p_from,p_reason,jsonb_build_object('target',p_into,'stores',n));
  return jsonb_build_object('merged',true,'stores',n);
@@ -229,7 +237,7 @@ grant execute on function public.qg_grocery_import(jsonb),public.qg_grocery_stor
 create function public.qg_grocery_category_toggle(p_shop_id uuid,p_category text,p_enabled boolean) returns jsonb language plpgsql security invoker set search_path=public,pg_temp as $$
 declare n integer;
 begin
- if public.get_my_role()<>'shop' or not exists(select 1 from public.shop_profiles where id=p_shop_id and user_id=public.get_my_user_id() and public_category='grocery' and archived_at is null) then raise exception 'own grocery shop required';end if;
+ if coalesce(public.get_my_role(),'')<>'shop' or not exists(select 1 from public.shop_profiles where id=p_shop_id and user_id=public.get_my_user_id() and public_category='grocery' and archived_at is null) then raise exception 'own grocery shop required';end if;
  if coalesce(p_category,'')='' or p_enabled is null then raise exception 'category and state required';end if;
  insert into public.products(shop_id,grocery_master_id,grocery_enabled)
  select p_shop_id,id,p_enabled from public.grocery_master_products where active and merged_into is null and category=p_category
