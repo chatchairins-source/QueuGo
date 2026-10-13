@@ -68,9 +68,10 @@ private class RiderNavigationMapHolder {
         cameraChanged: (NavigationMapCamera) -> Unit,
         diagnostics: ((NavigationMapDiagnostics) -> Unit)?
     ) {
+        // Binding happens during composition; never emit diagnostics from here or a callback
+        // that writes Compose state could create a recomposition loop.
         onCameraChanged = cameraChanged
         onDiagnostics = diagnostics
-        publishDiagnostics()
     }
 
     fun unbindCallbacks() {
