@@ -1043,18 +1043,18 @@ class QueueGoApi {
 
     private fun parseJob(o: JSONObject) = RiderJob(
         id = o.getString("id"),
-        orderNumber = o.optString("order_number").takeIf { it.isNotBlank() },
+        orderNumber = riderNullableText(o.optString("order_number")),
         status = o.optString("status"),
-        pickupAddress = o.optString("pickup_address").takeIf { it.isNotBlank() },
+        pickupAddress = riderNullableText(o.optString("pickup_address")),
         pickupLat = o.doubleOrNull("pickup_latitude"),
         pickupLng = o.doubleOrNull("pickup_longitude"),
-        deliveryAddress = o.optString("delivery_address").takeIf { it.isNotBlank() },
+        deliveryAddress = riderNullableText(o.optString("delivery_address")),
         deliveryLat = o.doubleOrNull("delivery_latitude"),
         deliveryLng = o.doubleOrNull("delivery_longitude"),
         deliveryFee = o.doubleOrNull("delivery_fee"),
         marketOrderId = riderNullableUuid(o.optString("market_order_id")),
-        arrivedShopAt = o.optString("rider_arrived_shop_at").takeIf { it.isNotBlank() },
-        arrivedCustomerAt = o.optString("rider_arrived_customer_at").takeIf { it.isNotBlank() },
+        arrivedShopAt = riderNullableText(o.optString("rider_arrived_shop_at")),
+        arrivedCustomerAt = riderNullableText(o.optString("rider_arrived_customer_at")),
         shopCash = o.doubleOrNull("subtotal"),
         customerCash = o.doubleOrNull("total_amount")
     )
