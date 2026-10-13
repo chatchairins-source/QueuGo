@@ -38,7 +38,7 @@ import com.longdo.api.type.MapLocation
 private const val RIDER_MAP_LOCATION_REFRESH_MS = 2_500L
 private const val RIDER_MAP_LOCATION_REFRESH_METERS = 2f
 private const val RIDER_MAP_LAST_KNOWN_MAX_AGE_MS = 120_000L
-private const val RIDER_MAP_LOCATION_ANIMATION_SECONDS = 2
+private const val RIDER_MAP_LOCATION_ANIMATION_STEPS = 18
 
 private fun riderStopMarkerRes(number: Int): Int = when (number) {
     1 -> R.drawable.qg_rider_stop_1
@@ -233,7 +233,7 @@ private class RiderLongdoHolder(
                     .onSuccess { currentLocationPin = pin }
             } else {
                 runCatching {
-                    existing.setLocation(mapLocation, true, RIDER_MAP_LOCATION_ANIMATION_SECONDS)
+                    existing.setLocation(mapLocation, true, RIDER_MAP_LOCATION_ANIMATION_STEPS)
                 }.onFailure {
                     runCatching { ldmap.removePin(existing) }
                     val replacementPin = Pin(mapLocation, context, R.drawable.qg_rider_current_location)
