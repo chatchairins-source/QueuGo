@@ -134,7 +134,15 @@ class NavigationMapRuntimeTest {
                 runtimeActivity.mapReady.await(30, TimeUnit.SECONDS)
             )
 
+            // A snapshot is an event-driven continuity artifact, not a prerequisite
+            // of a fresh live map. Exercise real visibility loss before establishing
+            // the steady-state GPS budget, while the SurfaceView is still attached.
+            scenario.moveToState(Lifecycle.State.STARTED)
             awaitSnapshotCaptured(runtimeActivity)
+            scenario.moveToState(Lifecycle.State.RESUMED)
+            InstrumentationRegistry.getInstrumentation().waitForIdleSync()
+            // Resume's one-shot continuity refresh is separate from GPS rendering.
+            Thread.sleep(1_500)
             var initialView = 0
             var initialSdkMap = 0
             var initialDiagnostics = NavigationMapDiagnostics(0, 0, 0, 0)
