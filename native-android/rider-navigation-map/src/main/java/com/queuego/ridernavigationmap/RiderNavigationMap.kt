@@ -62,6 +62,7 @@ private class RiderNavigationMapHolder {
     private var snapshotRefreshScheduled = false
     private var lastSnapshotCaptureAtMs = 0L
     private var bridgeGeneration = 0
+    private var pendingBridgeWithoutSnapshot = false
     private var announcedReplacementMap: com.longdo.api.Map? = null
     private var lastState = RiderNavigationMapState()
     private var riderPin: Pin? = null
@@ -183,6 +184,10 @@ private class RiderNavigationMapHolder {
                     snapshotCaptureCount += 1
                     if (bridgeToken != null && bridgeToken == bridgeGeneration) {
                         setSnapshotVisible(false)
+                    } else if (pendingBridgeWithoutSnapshot) {
+                        pendingBridgeWithoutSnapshot = false
+                        setSnapshotVisible(true)
+                        settleContinuityBridge()
                     } else {
                         publishDiagnostics()
                     }
@@ -228,11 +233,19 @@ private class RiderNavigationMapHolder {
     }
 
     private fun showContinuityBridge() {
-        if (snapshotBitmap == null) {
-            // Try to capture the last queued SurfaceView frame before Android drops the Surface.
-            requestSnapshot(force = true)
+        if (!snapshotVisible) {
+            // Count the bridge request at renderer-swap detection time. Visibility can follow
+            // a few frames later if PixelCopy is still finishing the last good SurfaceView frame.
+            snapshotBridgeCount += 1
         }
-        setSnapshotVisible(true, countBridge = true)
+        if (snapshotBitmap == null) {
+            pendingBridgeWithoutSnapshot = true
+            requestSnapshot(force = true)
+            publishDiagnostics()
+            return
+        }
+        pendingBridgeWithoutSnapshot = false
+        setSnapshotVisible(true)
     }
 
     private fun settleContinuityBridge() {
@@ -602,6 +615,7 @@ private class RiderNavigationMapHolder {
         snapshotCaptureInFlight = false
         snapshotRefreshScheduled = false
         snapshotVisible = false
+        pendingBridgeWithoutSnapshot = false
         announcedReplacementMap = null
         resumed = false
         stopSource = null
