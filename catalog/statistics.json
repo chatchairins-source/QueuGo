@@ -1,14 +1,14 @@
 {
-  "research_candidates": 1028,
-  "normalized_package_records": 340,
+  "research_candidates": 1109,
+  "normalized_package_records": 415,
   "deduplicated_package_observations": 3,
-  "pending_package_verification": 685,
-  "source_pages": 92,
+  "pending_package_verification": 691,
+  "source_pages": 117,
   "taxonomy_categories": 45,
-  "populated_categories": 25,
+  "populated_categories": 45,
   "barcodes": 0,
   "licensed_images": 0,
-  "pending_images": 340,
+  "pending_images": 415,
   "production_imported": 0,
   "production_enabled": 0
 }

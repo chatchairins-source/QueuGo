@@ -98,7 +98,7 @@ begin
  if new.grocery_promo_price is not null and (new.grocery_selling_price is null or new.grocery_promo_price>new.grocery_selling_price) then raise exception 'promo exceeds selling price';end if;
  if new.stock<0 then raise exception 'negative stock';end if;
  -- Available is derived on every write, including stock decrements by the existing POS.
- new.name:=m.product_name_th||case when m.variant='' then '' else ' '||m.variant end||' '||m.size_value::text||' '||m.size_unit||case when m.pack_size=1 then '' else ' x '||m.pack_size end;
+ new.name:=case when left(public.qg_grocery_fold(m.product_name_th),length(public.qg_grocery_fold(m.brand)))=public.qg_grocery_fold(m.brand) then '' else m.brand||' ' end||m.product_name_th||case when m.variant='' then '' else ' '||m.variant end||' '||m.size_value::text||' '||m.size_unit||case when m.pack_size=1 then '' else ' x '||m.pack_size end;
  new.category:=m.category;new.image:=case when m.image_status='approved' then m.image else null end;
  new.price:=coalesce(new.grocery_promo_price,new.grocery_selling_price,0);new.pos_price:=new.price;
  new.available:=m.active and new.grocery_enabled and new.grocery_selling_price>0 and (not new.grocery_stock_tracking or new.stock>0);
@@ -117,8 +117,8 @@ create trigger grocery_master_fanout after update on public.grocery_master_produ
 create function public.qg_grocery_import(p_rows jsonb) returns jsonb language plpgsql security invoker set search_path=public,pg_temp as $$
 declare r jsonb;proof jsonb;m uuid;b text;by_key uuid;by_barcode uuid;v_n integer:=0;
 begin
- if not public.is_active_admin() then raise exception 'active admin required' using errcode='42501';end if;
- if jsonb_typeof(p_rows)<>'array' or jsonb_array_length(p_rows) not between 1 and 200 then raise exception 'batch must contain 1..200 rows';end if;
+ if public.is_active_admin() is distinct from true then raise exception 'active admin required' using errcode='42501';end if;
+ if p_rows is null or jsonb_typeof(p_rows) is distinct from 'array' or jsonb_array_length(p_rows) not between 1 and 200 then raise exception 'batch must contain 1..200 rows';end if;
  -- Serialize imports + merge; unique keys still enforce concurrency at the table boundary.
  perform pg_advisory_xact_lock(hashtext('queuego.grocery.catalog'));
  for r in select value from jsonb_array_elements(p_rows) loop
@@ -128,6 +128,7 @@ begin
   select id into by_key from public.grocery_master_products where normalized_key=r->>'normalized_key';
   select id into by_barcode from public.grocery_master_products where barcode=b;
   if by_key is not null and by_barcode is not null and by_key<>by_barcode then raise exception 'identity conflict: admin merge required';end if;
+  if by_barcode is not null and exists(select 1 from public.grocery_master_products where id=by_barcode and normalized_key<>r->>'normalized_key') then raise exception 'GTIN conflicts with different identity';end if;
   m:=coalesce(by_barcode,by_key);
   if m is null then
    insert into public.grocery_master_products(barcode,brand,product_name_th,product_name_en,variant,size_value,size_unit,pack_size,sales_unit,category,subcategory,normalized_key,active)
@@ -212,8 +213,8 @@ $$;
 create function public.qg_grocery_merge(p_from uuid,p_into uuid,p_reason text) returns jsonb language plpgsql security invoker set search_path=public,pg_temp as $$
 declare m public.grocery_master_products;n integer;
 begin
- if not public.is_active_admin() then raise exception 'active admin required';end if;
- if p_from=p_into or length(trim(p_reason))<5 then raise exception 'target and reason required';end if;
+ if public.is_active_admin() is distinct from true then raise exception 'active admin required';end if;
+ if p_from is null or p_into is null or p_from=p_into or length(trim(coalesce(p_reason,'')))<5 then raise exception 'target and reason required';end if;
  perform pg_advisory_xact_lock(hashtext('queuego.grocery.catalog'));
  perform 1 from public.grocery_master_products where id in (p_from,p_into) order by id for update;
  select * into strict m from public.grocery_master_products where id=p_into and merged_into is null;

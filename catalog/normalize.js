@@ -7,7 +7,7 @@ function gtin(v){const s=text(v).replace(/[ -]/g,'');if(!s)return null;if(!/^(\d
 function size(value,unit){let n=Number(text(value).replace(/,/g,''));const k=folded(unit),map={ml:['ml',1],มล:['ml',1],มิลลิลิตร:['ml',1],l:['ml',1000],ล:['ml',1000],ลิตร:['ml',1000],g:['g',1],ก:['g',1],กรัม:['g',1],gram:['g',1],kg:['g',1000],กก:['g',1000],กิโลกรัม:['g',1000],ชิ้น:['piece',1],piece:['piece',1],ฟอง:['egg',1],egg:['egg',1],แผ่น:['sheet',1],sheet:['sheet',1]};if(!map[k]||!Number.isFinite(n)||n<=0||n>1000000)throw Error('invalid size');return {size_value:Math.round(n*map[k][1]*1000)/1000,size_unit:map[k][0]};}
 function normalize(row){
  if(!row||typeof row!=='object'||Array.isArray(row))throw Error('invalid row');
- const brand=text(row.brand),name=text(row.product_name_th).replace(/\d+(?:[.,]\d+)*\s*(?:มิลลิลิตร|กิโลกรัม|กรัม|มล\.?|กก\.?|ลิตร|ml\.?|kg\.?|gram\b|g\b|l\b)/gi,'').trim(),variant=text(row.variant),category=text(row.category),sales=text(row.sales_unit);
+ const brand=text(row.brand),name=text(text(row.product_name_th).replace(/\d+(?:[.,]\d+)*\s*(?:มิลลิลิตร|กิโลกรัม|กรัม|มล\.?|กก\.?|ลิตร|ml\.?|kg\.?|gram\b|g\b|l\b)/gi,'').replace(/\s*ขนาด\s*$/,'')),variant=text(row.variant),category=text(row.category),sales=text(row.sales_unit);
  if(!brand||!name||!category||!sales||[brand,name,variant,category,sales].some(v=>v.length>250))throw Error('brand/name/category/sales unit required');
  const s=size(row.size_value,row.size_unit),pack=Number(row.pack_size??1);if(!Number.isInteger(pack)||pack<1||pack>10000)throw Error('invalid pack size');
  const source=new URL(row.source_url);if(source.protocol!=='https:')throw Error('HTTPS source required');
@@ -21,16 +21,20 @@ function normalize(row){
 }
 function batch(rows){
  if(!Array.isArray(rows)||rows.length>50000)throw Error('expected <=50000 rows');
- const items=[],rejects=[],seen=new Map();
+ const items=[],rejects=[],seen=new Map(),byKey=new Map();
  const proof=p=>({source_url:p.source_url,source_type:p.source_type,source_product_id:p.source_product_id,retrieved_at:p.retrieved_at});
  const key=p=>JSON.stringify([p.source_url,p.source_product_id||null]);
  rows.forEach((r,i)=>{try{
   const p=normalize(r),identity=p.barcode?'gtin:'+p.barcode:p.normalized_key;
   if(r.source_references!=null&&(!Array.isArray(r.source_references)||r.source_references.length>50))throw Error('invalid source references');
   const refs=(r.source_references||[]).map(ref=>proof(normalize({...r,source_url:ref.source_url,source_type:ref.source_type,source_product_id:ref.source_product_id,retrieved_at:ref.retrieved_at})));
-  let prior=seen.has(identity)?items[seen.get(identity)]:null;
+  const existingBarcode=seen.get(identity),existingKey=byKey.get(p.normalized_key);
+  if(existingBarcode!=null&&existingKey!=null&&existingBarcode!==existingKey)throw Error('identity conflict: review required');
+  let prior=items[existingBarcode??existingKey]||null;
   if(prior&&prior.normalized_key!==p.normalized_key&&p.barcode)throw Error('GTIN conflicts with different identity');
-  if(!prior){p.source_references=[];seen.set(identity,items.length);items.push(p);prior=p;}
+  if(prior?.barcode&&p.barcode&&prior.barcode!==p.barcode)throw Error('different barcode for same normalized key');
+  if(!prior){p.source_references=[];byKey.set(p.normalized_key,items.length);seen.set(identity,items.length);items.push(p);prior=p;}
+  else if(p.barcode){prior.barcode=p.barcode;seen.set(identity,byKey.get(prior.normalized_key));}
   for(const ref of [proof(p),...refs]){
    if(key(ref)===key(prior)){if(ref.retrieved_at>prior.retrieved_at)prior.retrieved_at=ref.retrieved_at;continue;}
    const existing=prior.source_references.find(x=>key(x)===key(ref));
