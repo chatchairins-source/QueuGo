@@ -20,6 +20,8 @@ assert(app.includes('RiderReturnService.start(context)'),
   'Opening Google Maps must start the QueueGo return overlay service');
 assert(!app.includes('RiderNavigationController()')&&!app.includes('RiderNavigationSpeaker(context)')&&!app.includes('if (navigationState.active)'),
   'Rider Home must not run the retired in-app navigation engine or turn-by-turn panel');
+assert(!fs.existsSync('native-android/rider/src/main/java/com/queuego/rider/RiderNavigation.kt'),
+  'Retired Rider in-app navigation engine source must stay removed');
 assert(service.includes('TYPE_APPLICATION_OVERLAY')&&service.includes('text = "Q"')&&service.includes('MainActivity::class.java'),
   'Rider must expose a draggable Q overlay that returns to QueueGo');
 assert(main.includes('override fun onResume()')&&main.includes('RiderReturnService.stop(this)'),
