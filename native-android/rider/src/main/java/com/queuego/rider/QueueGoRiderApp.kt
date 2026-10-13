@@ -1614,6 +1614,7 @@ private fun RiderHome(
 
             }
         }
+        }
 
         RiderBottomNavigation(
             activeTab = activeTab,
