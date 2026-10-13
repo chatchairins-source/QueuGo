@@ -68,7 +68,49 @@ class SessionStore(private val context: Context) {
     fun clear() = prefs.edit()
         .remove("session")
         .remove("home_snapshot")
+        .remove("ui_state")
+        .remove("map_camera")
         .apply()
+
+    @Synchronized
+    fun saveActiveTab(userId: String, tab: String) {
+        val safeTab = tab.takeIf { it in setOf("home", "earnings", "chat", "profile") } ?: "home"
+        val root = JSONObject().put("userId", userId).put("activeTab", safeTab)
+        prefs.edit().putString("ui_state", encrypt(root.toString())).apply()
+    }
+
+    @Synchronized
+    fun loadActiveTab(userId: String): String = runCatching {
+        val raw = prefs.getString("ui_state", null) ?: return "home"
+        val root = JSONObject(decrypt(raw))
+        if (root.optString("userId") != userId) return "home"
+        root.optString("activeTab").takeIf { it in setOf("home", "earnings", "chat", "profile") } ?: "home"
+    }.getOrDefault("home")
+
+    @Synchronized
+    fun saveMapCamera(userId: String, camera: DoubleArray) {
+        if (camera.size < 4 || camera.any { !it.isFinite() }) return
+        val root = JSONObject()
+            .put("userId", userId)
+            .put("lon", camera[0])
+            .put("lat", camera[1])
+            .put("zoom", camera[2])
+            .put("centered", camera[3])
+        prefs.edit().putString("map_camera", encrypt(root.toString())).apply()
+    }
+
+    @Synchronized
+    fun loadMapCamera(userId: String): DoubleArray? = runCatching {
+        val raw = prefs.getString("map_camera", null) ?: return null
+        val root = JSONObject(decrypt(raw))
+        if (root.optString("userId") != userId) return null
+        doubleArrayOf(
+            root.getDouble("lon"),
+            root.getDouble("lat"),
+            root.getDouble("zoom"),
+            root.optDouble("centered", 0.0)
+        ).takeIf { values -> values.all { it.isFinite() } }
+    }.getOrNull()
 
     @Synchronized
     fun saveHomeSnapshot(userId: String, snapshot: RiderSnapshot) {
