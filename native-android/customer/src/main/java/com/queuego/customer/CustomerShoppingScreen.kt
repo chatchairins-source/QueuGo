@@ -70,6 +70,16 @@ internal fun shoppingScreenSpec(mode: String): ShoppingScreenSpec = when (mode) 
     else -> ShoppingScreenSpec("ช้อปปิ้ง", "shopping", "สินค้าจากร้านใกล้คุณ ส่งได้ทันที")
 }
 
+internal fun shoppingBannerDrawable(key: String): Int = when (key) {
+    "mobile_accessories" -> R.drawable.qg_mobile_accessories_banner
+    "computer_it" -> R.drawable.qg_computer_it_banner
+    "automotive" -> R.drawable.qg_automotive_banner
+    "fashion_accessories" -> R.drawable.qg_fashion_accessories_banner
+    "toys" -> R.drawable.qg_toys_banner
+    "home_decor" -> R.drawable.qg_home_decor_banner
+    else -> R.drawable.qg_shopping_banner
+}
+
 internal fun shoppingShopMatches(shop: CustomerShop, mode: String): Boolean {
     if (shop.category.lowercase() != "shopping") return false
     return when (mode) {
@@ -145,7 +155,7 @@ internal fun CustomerShoppingScreen(
 
         CustomerServiceBanner(
             banner = serviceBanners[spec.bannerKey],
-            fallbackDrawable = null,
+            fallbackDrawable = shoppingBannerDrawable(spec.bannerKey),
             fallbackTitle = spec.title,
             fallbackSubtitle = spec.subtitle,
             onLink = onBannerLink

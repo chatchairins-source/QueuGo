@@ -144,22 +144,20 @@ internal fun CustomerServiceBanner(
         .clip(shape)
         .background(Brush.linearGradient(listOf(Color(0xFFEF0B32), Color(0xFF8F071F))))
     Box(if (link != null) baseModifier.clickable { onLink(link) } else baseModifier) {
-        when {
-            remoteImage != null -> QgRemoteImage(
-                remoteImage,
-                Modifier.fillMaxSize(),
-                heading.ifBlank { "QueueGo" },
-                contentScale = ContentScale.Crop,
-                cornerRadius = 20.dp,
-                showFallback = false
-            )
-            fallbackDrawable != null -> Image(
-                painterResource(fallbackDrawable),
-                heading.ifBlank { "QueueGo" },
-                Modifier.fillMaxSize(),
-                contentScale = ContentScale.Crop
-            )
-        }
+        if (fallbackDrawable != null) Image(
+            painterResource(fallbackDrawable),
+            heading.ifBlank { "QueueGo" },
+            Modifier.fillMaxSize(),
+            contentScale = ContentScale.Crop
+        )
+        if (remoteImage != null) QgRemoteImage(
+            remoteImage,
+            Modifier.fillMaxSize(),
+            heading.ifBlank { "QueueGo" },
+            contentScale = ContentScale.Crop,
+            cornerRadius = 20.dp,
+            showFallback = false
+        )
         Column(
             Modifier
                 .align(Alignment.BottomStart)

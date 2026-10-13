@@ -20,3 +20,9 @@ const nativeMarket=fs.readFileSync(path.join(root,'native-android/customer/src/m
 assert.ok(nativeMarket.equals(Buffer.from(market[1],'base64')),'Market Native must reuse the exact web image bytes');checks++;
 assert.ok(nativeMarket.subarray(0,4).toString()==='RIFF' && nativeMarket.subarray(8,12).toString()==='WEBP','Market actual WebP');checks++;
 console.log(JSON.stringify({checks,failures:0,scope:'Customer Home/Food/Drink/Grocery/Market assets are byte-identical to the web blueprint; screenshot parity remains pending'}));
+
+for(const key of ['shopping', 'mobile_accessories', 'computer_it', 'automotive', 'fashion_accessories', 'toys', 'home_decor', 'laundry']) {
+ const web=fs.readFileSync(path.join(root,"assets/banners",`qg_${key}_banner.webp`)), native=fs.readFileSync(path.join(root,"native-android/customer/src/main/res/drawable",`qg_${key}_banner.webp`));
+ assert.ok(web.equals(native),key+" exact cross-platform image bytes");
+ assert.ok(native.readUInt32LE(4)+8===native.length,key+" valid container length");
+}

@@ -8,6 +8,14 @@ import org.junit.Test
 
 class CustomerShoppingTest {
     @Test
+    fun everyModeResolvesBundledArtwork() {
+        val keys = listOf("shopping", "mobile_accessories", "computer_it", "automotive", "fashion_accessories", "toys", "home_decor")
+        assertEquals(7, keys.map { shoppingBannerDrawable(it) }.distinct().size)
+        assertEquals(shoppingBannerDrawable("automotive"), shoppingBannerDrawable(shoppingScreenSpec("automotive_car").bannerKey))
+        assertEquals(shoppingBannerDrawable("automotive"), shoppingBannerDrawable(shoppingScreenSpec("automotive_motorcycle").bannerKey))
+    }
+
+    @Test
     fun normalizesPublicShoppingSubcategories() {
         assertEquals(
             setOf("mobile_accessories", "computer_it"),
