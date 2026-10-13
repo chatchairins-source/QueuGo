@@ -161,6 +161,13 @@ ok(riderApp.includes('api.setOnline(current, false, null, null)')&&riderApp.incl
 ok(riderApp.includes('รับงานสำเร็จ · กำลังเปิดนำทางไปร้าน')&&riderApp.includes('val acceptedFallback = current.offeredJob.copy(')&&riderApp.includes('activeJob = acceptedFallback')&&riderApp.includes('openNavigation(context, updated?.activeJob ?: acceptedFallback)'),'Rider native must promote an accepted offer locally and auto-open navigation even if optional post-claim refresh fails');
 ok(riderApi.includes('riderNullableUuid')&&riderApi.includes('marketOrderId = riderNullableUuid(o.optString("market_order_id"))')&&riderApi.includes('val id = riderNullableUuid(rows.optJSONObject(i)?.optString("order_id"))'),'Rider native must reject JSON null/null-like UUID values before Market or offer RPC routing');
 ok(riderApp.includes('รับสินค้าแล้ว · กำลังเปิดนำทางไปลูกค้า')&&riderApp.includes('completedMode == "pickup"')&&riderApp.includes('openNavigation(context, pickedUp)'),'Rider native must auto-open navigation to the customer after pickup proof');
+ok(riderApp.includes('val localAfterSuccess = when (completedMode)')&&
+   riderApp.includes('job.copy(status = "picked_up")')&&
+   riderApp.includes('pickup.copy(status = "PICKED_UP")')&&
+   riderApp.includes('bundled.copy(job = bundled.job.copy(status = "completed"))')&&
+   riderApp.includes('pushStore.saveHomeSnapshot(auth.user.id, localAfterSuccess)')&&
+   riderApp.includes('?: localAfterSuccess?.activeJob'),
+   'Rider proof success must advance local workflow immediately so pickup/delivery verification cannot repeat when refresh is slow or fails');
 const riderMap=read('rider/src/main/java/com/queuego/rider/LongdoRiderMap.kt');
 const nativeRealtimeSubscriptions=read('shared/src/main/java/com/queuego/shared/NativeRealtimeSubscription.kt');
 const riderDispatchLaundryMigration=fs.readFileSync(path.resolve(root,'..','supabase','migrations','20261009044500_rider_dispatch_excludes_active_laundry.sql'),'utf8');
