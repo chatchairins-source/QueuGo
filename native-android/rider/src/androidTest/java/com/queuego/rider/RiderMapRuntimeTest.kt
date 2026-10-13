@@ -25,8 +25,17 @@ class RiderMapRuntimeTest {
             awaitRealMap()
             scenario.onActivity { it.recenterMap() }
             val initialCamera = captureRealFrame("initial", scenario)
-            scenario.moveToState(Lifecycle.State.CREATED)
-            scenario.moveToState(Lifecycle.State.RESUMED)
+            // Stress the exact physical-device lifecycle edge that occurs during
+            // app switching, permission sheets and screen-off/on. A single cycle can
+            // miss intermittent GL renderer teardown races.
+            repeat(8) { cycle ->
+                scenario.moveToState(Lifecycle.State.CREATED)
+                Thread.sleep(250)
+                scenario.moveToState(Lifecycle.State.RESUMED)
+                Thread.sleep(250)
+                scenario.onActivity { it.recenterMap() }
+                Log.i("QueueGoMapRuntime", "lifecycle_stress_cycle=" + (cycle + 1))
+            }
             awaitRealMap()
             val resumedCamera = captureRealFrame("resumed", scenario)
             assertSameCamera(initialCamera, resumedCamera)
