@@ -160,6 +160,9 @@ ok(riderApi.includes('if (!online)')&&riderApi.includes('qg_get_my_rider_offer')
 ok(riderApp.includes('api.setOnline(current, false, null, null)')&&riderApp.includes('api.revoke(current.session)'),'Rider logout must take the Rider offline before session revocation');
 ok(riderApp.includes('รับงานสำเร็จ · กำลังเปิดนำทางไปร้าน')&&riderApp.includes('val acceptedFallback = current.offeredJob.copy(')&&riderApp.includes('activeJob = acceptedFallback')&&riderApp.includes('openNavigation(context, updated?.activeJob ?: acceptedFallback)'),'Rider native must promote an accepted offer locally and auto-open navigation even if optional post-claim refresh fails');
 ok(riderApi.includes('riderNullableUuid')&&riderApi.includes('marketOrderId = riderNullableUuid(o.optString("market_order_id"))')&&riderApi.includes('val id = riderNullableUuid(rows.optJSONObject(i)?.optString("order_id"))'),'Rider native must reject JSON null/null-like UUID values before Market or offer RPC routing');
+ok(riderApi.includes('arrivedShopAt = riderNullableText(o.optString("rider_arrived_shop_at"))')&&
+   riderApi.includes('arrivedCustomerAt = riderNullableText(o.optString("rider_arrived_customer_at"))'),
+   'Rider arrival timestamps must reject JSON null literals so the UI never shows false arrived checkmarks');
 ok(riderApp.includes('รับสินค้าแล้ว · กำลังเปิดนำทางไปลูกค้า')&&riderApp.includes('completedMode == "pickup"')&&riderApp.includes('openNavigation(context, pickedUp)'),'Rider native must auto-open navigation to the customer after pickup proof');
 ok(riderApp.includes('val localAfterSuccess = when (completedMode)')&&
    riderApp.includes('job.copy(status = "picked_up")')&&
