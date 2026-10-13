@@ -158,6 +158,8 @@ internal class RiderRoadRouteDisplay {
     private var generation = 0
     private var disposed = false
     private val lines = mutableMapOf<String, List<Line>>()
+    private val renderedGeometry = mutableMapOf<String, List<List<RiderRoutePoint>>>()
+    private val retiring = mutableSetOf<Line>()
     private val cache = linkedMapOf<Pair<RiderRoutePoint, RiderRoutePoint>, Pair<Long, List<List<RiderRoutePoint>>>>()
 
     fun pause() { request?.cancel(); request = null; generation++ }
@@ -165,12 +167,16 @@ internal class RiderRoadRouteDisplay {
         disposed = true
         pause()
         map?.let { active -> lines.values.flatten().forEach { runCatching { active.removeLine(it) } } }
-        lines.clear(); cache.clear(); map = null; scope.cancel()
+        map?.let { active -> retiring.forEach { runCatching { active.removeLine(it) } } }
+        lines.clear(); renderedGeometry.clear(); retiring.clear(); cache.clear(); map = null; scope.cancel()
     }
 
     fun update(context: Context, activeMap: com.longdo.api.Map, nextOrigin: RiderRoutePoint?,
         nextStops: List<RiderRouteStop>, foreground: Boolean) {
         if (disposed || !foreground) return
+        if (map === activeMap) retiring.toList().forEach { line ->
+            runCatching { activeMap.removeLine(line) }.onSuccess { retiring.remove(line) }
+        }
         val now = android.os.SystemClock.elapsedRealtime()
         val stopsChanged = stops != nextStops
         val changed = map !== activeMap || stopsChanged || (origin == null) != (nextOrigin == null)
@@ -181,16 +187,25 @@ internal class RiderRoadRouteDisplay {
         if (!changed && !moved && complete && now - startedAt < 120_000) return
         if (!changed && now - startedAt < 15_000) return
         pause()
-        if (map !== activeMap) lines.clear()
+        if (map !== activeMap) {
+            lines.clear(); renderedGeometry.clear(); retiring.clear()
+        }
         else if (stopsChanged) {
-            lines.values.flatten().forEach { runCatching { activeMap.removeLine(it) } }
-            lines.clear()
+            retiring.addAll(lines.values.flatten())
+            retiring.toList().forEach { line ->
+                runCatching { activeMap.removeLine(line) }.onSuccess { retiring.remove(line) }
+            }
+            lines.clear(); renderedGeometry.clear()
         }
         map = activeMap; stops = nextStops; origin = nextOrigin; startedAt = now
         val version = generation
         val desired = legs.map { it.id }.toSet()
         lines.keys.filter { it !in desired }.forEach { id ->
-            lines.remove(id)?.forEach { runCatching { activeMap.removeLine(it) } }
+            renderedGeometry.remove(id)
+            lines.remove(id)?.forEach { line ->
+                retiring.add(line)
+                runCatching { activeMap.removeLine(line) }.onSuccess { retiring.remove(line) }
+            }
         }
         if (legs.isEmpty()) return
         request = scope.launch {
@@ -206,16 +221,30 @@ internal class RiderRoadRouteDisplay {
                     ensureActive()
                     if (disposed || generation != version || map !== activeMap) return@launch
                     val existing = lines[leg.id]
+                    if (existing != null && renderedGeometry[leg.id] == geometry) continue
                     if (existing != null && existing.size == geometry.size) {
                         existing.zip(geometry).forEach { (line, points) ->
                             line.setLocation(points.map { MapLocation(it.longitude, it.latitude) }.toTypedArray())
                         }
                     } else {
                         val replacement = geometry.map { riderRouteLine(it, leg.first, context.resources.displayMetrics.density) }
-                        replacement.forEach { activeMap.addLine(it) }
-                        existing?.forEach { activeMap.removeLine(it) }
+                        val added = mutableListOf<Line>()
+                        try {
+                            replacement.forEach { activeMap.addLine(it); added.add(it) }
+                        } catch (error: Exception) {
+                            added.forEach { line ->
+                                retiring.add(line)
+                                runCatching { activeMap.removeLine(line) }.onSuccess { retiring.remove(line) }
+                            }
+                            throw error
+                        }
                         lines[leg.id] = replacement
+                        existing?.forEach { line ->
+                            retiring.add(line)
+                            runCatching { activeMap.removeLine(line) }.onSuccess { retiring.remove(line) }
+                        }
                     }
+                    renderedGeometry[leg.id] = geometry
                 } catch (cancelled: CancellationException) { throw cancelled }
                   catch (_: Exception) { Log.w("QueueGoRouteDisplay", "road_geometry_unavailable") }
             }

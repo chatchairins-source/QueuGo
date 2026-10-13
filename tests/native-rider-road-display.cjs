@@ -17,3 +17,6 @@ assert(!map.includes('clearPin()'));
 require('./native-rider-google-maps-return.cjs');
 require('./native-rider-route-bundle-parity.cjs');
 console.log('Rider dark active / pale remaining real-road display contracts: PASS');
+
+assert(road.includes('renderedGeometry[leg.id] == geometry) continue'));
+assert(road.includes('retiring.toList().forEach'));
