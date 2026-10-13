@@ -35,7 +35,10 @@ import com.longdo.api.MapGLSurfaceView
 import com.longdo.api.Pin
 import com.longdo.api.type.MapLocation
 
-private class RiderLongdoHolder(private val cameraState: MutableState<DoubleArray?>) {
+private class RiderLongdoHolder(
+    private val cameraState: MutableState<DoubleArray?>,
+    private val persistCamera: (DoubleArray) -> Unit
+) {
     var mapView: MapGLSurfaceView? = null
     var map: com.longdo.api.Map? = null
     var lastOverlayKey: String? = null
@@ -138,7 +141,9 @@ private class RiderLongdoHolder(private val cameraState: MutableState<DoubleArra
         map?.let { activeMap ->
             runCatching {
                 val location = activeMap.getLocation()
-                cameraState.value = doubleArrayOf(location.lon, location.lat, activeMap.getZoom().toDouble(), if (centeredOnDevice) 1.0 else 0.0)
+                val camera = doubleArrayOf(location.lon, location.lat, activeMap.getZoom().toDouble(), if (centeredOnDevice) 1.0 else 0.0)
+                cameraState.value = camera
+                persistCamera(camera)
             }
         }
         stopLocationUpdates()
@@ -333,6 +338,7 @@ private class RiderLongdoHolder(private val cameraState: MutableState<DoubleArra
 @Composable
 internal fun RiderLongdoMap(
     modifier: Modifier = Modifier,
+    stateKey: String,
     job: RiderJob?,
     marketPickups: List<MarketPickup>,
     bundleOrders: List<RiderBundleOrder> = emptyList(),
@@ -342,8 +348,11 @@ internal fun RiderLongdoMap(
     onMapReady: (Boolean) -> Unit
 ) {
     val context = LocalContext.current
-    val cameraState = rememberSaveable { mutableStateOf<DoubleArray?>(null) }
-    val holder = remember { RiderLongdoHolder(cameraState) }
+    val stateStore = remember(context) { SessionStore(context) }
+    val cameraState = rememberSaveable(stateKey) { mutableStateOf(stateStore.loadMapCamera(stateKey)) }
+    val holder = remember(stateKey) {
+        RiderLongdoHolder(cameraState) { camera -> stateStore.saveMapCamera(stateKey, camera) }
+    }
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     val currentReady = rememberUpdatedState(onMapReady)
     val currentLocationCallback = rememberUpdatedState(onLocationFix)
