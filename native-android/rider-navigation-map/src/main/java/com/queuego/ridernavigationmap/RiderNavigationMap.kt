@@ -172,7 +172,7 @@ private class RiderNavigationMapHolder(
 
     private fun renderStops(activeMap: com.longdo.api.Map, state: RiderNavigationMapState) {
         val activeStopId = state.resolvedActiveStopId()
-        if (state.stops === stopSource && activeStopId == stopActiveId) return
+        if (state.stops == stopSource && activeStopId == stopActiveId) return
         val desired = state.remainingStops().associateBy { it.id }
 
         stopPins.keys.filter { it !in desired.keys }.forEach { id ->
@@ -212,7 +212,7 @@ private class RiderNavigationMapHolder(
     private fun renderRoutes(activeMap: com.longdo.api.Map, state: RiderNavigationMapState) {
         val activeStopId = state.resolvedActiveStopId()
         val remainingStopIds = state.remainingStops().mapTo(linkedSetOf()) { it.id }
-        if (state.routes === routeSource &&
+        if (state.routes == routeSource &&
             activeStopId == routeActiveId &&
             remainingStopIds == routeRemainingStopIds
         ) return

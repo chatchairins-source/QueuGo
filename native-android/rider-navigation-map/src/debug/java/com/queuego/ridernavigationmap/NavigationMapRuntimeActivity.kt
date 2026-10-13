@@ -52,6 +52,16 @@ class NavigationMapRuntimeActivity : ComponentActivity() {
         )
     }
 
+    fun refreshEquivalentOrderSnapshot() {
+        val previous = mapState.value
+        mapState.value = previous.copy(
+            stops = previous.stops.map { it.copy() },
+            routes = previous.routes.map { segment ->
+                segment.copy(points = segment.points.toList())
+            }
+        )
+    }
+
     fun advanceToSecondStop() {
         val previous = mapState.value
         mapState.value = previous.copy(

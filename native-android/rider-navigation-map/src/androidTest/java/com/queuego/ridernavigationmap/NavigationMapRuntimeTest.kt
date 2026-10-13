@@ -56,6 +56,23 @@ class NavigationMapRuntimeTest {
                 )
             }
 
+            scenario.onActivity { it.refreshEquivalentOrderSnapshot() }
+            InstrumentationRegistry.getInstrumentation().waitForIdleSync()
+            scenario.onActivity { activity ->
+                assertEquals("Equivalent backend refresh recreated MapGLSurfaceView", initialView, activity.mapViewIdentity())
+                assertEquals("Equivalent backend refresh recreated Longdo map", initialSdkMap, activity.sdkMapIdentity())
+                assertEquals(
+                    "Equivalent backend refresh rebuilt unchanged route layers",
+                    initialDiagnostics.routeLayerRebuildCount,
+                    activity.latestDiagnostics.routeLayerRebuildCount
+                )
+                assertEquals(
+                    "Equivalent backend refresh rebuilt unchanged stop pins",
+                    initialDiagnostics.stopMutationCount,
+                    activity.latestDiagnostics.stopMutationCount
+                )
+            }
+
             scenario.moveToState(Lifecycle.State.CREATED)
             Thread.sleep(300)
             scenario.moveToState(Lifecycle.State.RESUMED)

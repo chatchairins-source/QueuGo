@@ -27,9 +27,10 @@ assert(map.includes('Deliberately keep lastRiderFix, map, pins and route layers'
   !map.includes('latestDeviceLocation = null')&&!map.includes('clearPin()'),
   'Refresh/resume must not clear the existing map or rebuild every marker');
 assert(!map.includes('LaunchedEffect(state)')&&
-  map.includes('state.stops === stopSource')&&map.includes('state.routes === routeSource')&&
+  map.includes('state.stops == stopSource')&&map.includes('state.routes == routeSource')&&
+  !map.includes('state.stops === stopSource')&&!map.includes('state.routes === routeSource')&&
   !map.includes('routes.hashCode()'),
-  'GPS/order refresh must not render twice or traverse unchanged route geometry');
+  'GPS/order refresh must not render twice or rebuild structurally-equivalent route geometry');
 assert(map.includes('setPreserveEGLContextOnPause(true)'),
   'Navigation map must preserve the GL context across background/resume to avoid tile reconstruction');
 assert(map.includes('ACTIVE_ROUTE_COLOR')&&map.includes('FUTURE_ROUTE_COLOR')&&
@@ -44,8 +45,10 @@ assert(workflow.includes(':rider-navigation-map:testDebugUnitTest'),
   'Native Pilot must compile and unit-test the standalone map module');
 assert(runtimeTest.includes('GPS refresh recreated MapGLSurfaceView')&&
   runtimeTest.includes('GPS refresh rebuilt unchanged route layers')&&
-  runtimeTest.includes('Resume recreated Longdo map'),
-  'Android runtime test must prove refresh and resume reuse the exact map objects');
+  runtimeTest.includes('Resume recreated Longdo map')&&
+  runtimeTest.includes('Equivalent backend refresh rebuilt unchanged route layers')&&
+  runtimeActivity.includes('refreshEquivalentOrderSnapshot'),
+  'Android runtime test must prove GPS/backend refresh and resume reuse the exact map objects and overlays');
 assert(runtimeActivity.includes('there are no QueueGo accounts, jobs, orders or Production writes')&&
   runtimeActivity.includes('refreshRiderFix')&&runtimeActivity.includes('advanceToSecondStop'),
   'Runtime host must remain isolated from QueueGo business data while exercising navigation state');
