@@ -39,7 +39,8 @@ assert(map.includes('stopSource = null')&&map.includes('routeSource = null')&&
   'Transient Longdo pin/line failures must remain retryable instead of caching a partial frame');
 assert(map.includes('fun attachMap(nextMap: com.longdo.api.Map): Boolean')&&
   map.includes('if (map === nextMap) return false')&&
-  map.includes('if (newSdkMap) {')&&
+  map.includes('val newSdkMap = attachMap(nextMap)')&&
+  map.includes('if (!newSdkMap) return false')&&
   map.includes('never reset base/camera or force the visible map to assemble again'),
   'Repeated Longdo onMapCreated callbacks for the same SDK map must not reinitialize base/camera');
 assert(map.includes('RiderNavigationMapRegistry')&&
