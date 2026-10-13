@@ -35,8 +35,15 @@ assert(ui.includes('offer.detourKm')&&ui.includes('offer.addedMinutes')&&ui.incl
   'Native bundle candidate must expose detour, delay, rider extra and customer savings');
 assert(map.includes('bundleOrders: List<RiderBundleOrder> = emptyList()'),
   'Longdo map must accept the authoritative active bundle stops');
-assert(map.includes('bundleOrders.filter { it.job.status != "cancelled" }.forEach'),
-  'Longdo map must render every live bundle pickup and delivery marker');
+assert(map.includes('val pickupOrder = numberedOrders.sortedWith')&&
+  map.includes('val dropOrder = numberedOrders.sortedWith')&&
+  map.includes('pickupOrder.size + index + 1'),
+  'Longdo map must number bundled pickup stops first and customer drops after them');
+assert(map.includes('!bundled.job.shopArrived && !bundled.job.isDelivering'),
+  'Bundle pickup marker must disappear once that Rider reaches or passes the shop stop');
+assert(map.includes('addStopPin(job.deliveryLat, job.deliveryLng, 2)')&&
+  map.includes('!job.shopArrived && !job.isDelivering'),
+  'Base Rider map must keep shop as point 1, customer as point 2, and hide point 1 after shop arrival');
 assert(app.includes('bundleOrders = snapshot?.bundle?.activeOrders.orEmpty()'),
   'Home must pass all active bundle stops to Longdo');
 
