@@ -25,7 +25,11 @@ class RiderNullableUuidTest {
     @Test
     fun nullableTextRejectsJsonNullLiteral() {
         assertNull(riderNullableText(null))
+        assertNull(riderNullableText(""))
+        assertNull(riderNullableText("   "))
         assertNull(riderNullableText("null"))
+        assertNull(riderNullableText("NULL"))
         assertEquals("QueueGo", riderNullableText(" QueueGo "))
+        assertEquals("2026-10-13T00:00:00Z", riderNullableText(" 2026-10-13T00:00:00Z "))
     }
 }
