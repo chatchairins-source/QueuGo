@@ -33,10 +33,11 @@ class RiderMapRuntimeActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setContent {
             RiderLongdoMap(
-                modifier = Modifier.fillMaxSize(), job = null,
-                marketPickups = emptyList(), recenterSignal = recenterSignal.intValue,
-                navigationState = RiderNavigationState(),
-                onLocationFix = {},
+                modifier = Modifier.fillMaxSize(),
+                stateKey = "runtime-map",
+                job = null,
+                marketPickups = emptyList(),
+                recenterSignal = recenterSignal.intValue,
                 onMapReady = { ready -> if (ready) mapReady.countDown() }
             )
         }
