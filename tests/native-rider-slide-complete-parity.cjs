@@ -10,6 +10,8 @@ assert(app.includes('RiderCashPanel(')&&app.includes('title = "จ่ายร�
   'Rider pickup verification must keep the shop cash amount inline');
 assert(app.includes('RiderCustomerCashPanel(job)')&&app.includes('Text("เก็บจากลูกค้า"'),
   'Rider delivery verification must keep customer collection inline without another confirmation screen');
+assert((app.match(/fontSize = 34\.sp/g)||[]).length>=2,
+  'Shop-payment and customer-collection totals must remain visually prominent');
 assert(app.includes('riderMoneyBaht(item.unitPrice) + " × ${item.quantity}"')&&app.includes('riderMoneyBaht(item.totalPrice)'),
   'Rider item list must show Production unit price × quantity and the line total');
 for(const label of ['"ที่อยู่ร้าน"','"ยอดสินค้า"','"ค่าส่ง"','"ยอดที่ต้องเก็บทั้งหมด"','"เก็บเงินตามยอดนี้จากลูกค้า"']){

@@ -2185,9 +2185,9 @@ private fun RiderCashPanel(title: String, amount: Double, note: String) {
             .background(QgRedSoft, RoundedCornerShape(14.dp))
             .padding(10.dp)
     ) {
-        Text(title, color = QgMuted, style = MaterialTheme.typography.labelSmall)
-        Text(riderMoneyBaht(amount), color = QgRed, fontWeight = FontWeight.Black, style = MaterialTheme.typography.titleLarge)
-        Text(note, color = QgMuted, style = MaterialTheme.typography.labelSmall)
+        Text(title, color = Color(0xFF3C383A), fontSize = 14.sp, fontWeight = FontWeight.Bold)
+        Text(riderMoneyBaht(amount), color = QgRed, fontSize = 34.sp, fontWeight = FontWeight.Black)
+        Text(note, color = QgMuted, fontSize = 11.sp)
     }
 }
 
@@ -2199,7 +2199,7 @@ private fun RiderCustomerCashPanel(job: RiderJob) {
             .background(QgRedSoft, RoundedCornerShape(14.dp))
             .padding(horizontal = 12.dp, vertical = 11.dp)
     ) {
-        Text("เก็บจากลูกค้า", color = QgMuted, style = MaterialTheme.typography.labelSmall)
+        Text("เก็บจากลูกค้า", color = Color(0xFF3C383A), fontSize = 14.sp, fontWeight = FontWeight.Bold)
         job.customerSubtotal?.let { RiderCashBreakdownRow("ยอดสินค้า", it) }
         job.customerDeliveryFee?.let { RiderCashBreakdownRow("ค่าส่ง", it) }
         job.customerServiceFee?.takeIf { it > 0.0 }?.let {
@@ -2211,7 +2211,7 @@ private fun RiderCustomerCashPanel(job: RiderJob) {
         )
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Bottom) {
             Text("ยอดที่ต้องเก็บทั้งหมด", fontSize = 11.sp, fontWeight = FontWeight.Bold)
-            Text(riderMoneyBaht(job.customerCash), color = QgRed, fontSize = 24.sp, fontWeight = FontWeight.Black)
+            Text(riderMoneyBaht(job.customerCash), color = QgRed, fontSize = 34.sp, fontWeight = FontWeight.Black)
         }
         Text("เก็บเงินตามยอดนี้จากลูกค้า", color = QgMuted, style = MaterialTheme.typography.labelSmall)
     }
