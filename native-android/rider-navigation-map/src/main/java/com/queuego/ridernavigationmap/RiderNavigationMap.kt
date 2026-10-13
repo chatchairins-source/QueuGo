@@ -102,15 +102,14 @@ private class RiderNavigationMapHolder {
     }
 
     fun resume() {
-        val activeView = view ?: return
-        if (!disposed && !resumed) {
-            resumed = runCatching { activeView.onResume() }
-                .onFailure { Log.w("QueueGoNavMap", "map_on_resume_failed", it) }
-                .isSuccess
-        }
+        if (disposed || view == null) return
+        // Longdo's Activity lifecycle does not require MapGLSurfaceView.onResume().
+        // Calling it after ordinary background/foreground transitions can replace renderer.map
+        // and visibly reassemble the map even though the retained View itself never changed.
+        resumed = true
         // Deliberately keep lastRiderFix, map, pins and route layers. A refresh/resume must
         // never reconstruct the map just because Rider/order state changed.
-        if (resumed) render(lastState)
+        render(lastState)
     }
 
     private fun captureCamera() {

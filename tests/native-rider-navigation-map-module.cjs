@@ -40,8 +40,8 @@ assert(map.includes('fun attachMap(nextMap: com.longdo.api.Map): Boolean')&&
   map.includes('never reset base/camera or force the visible map to assemble again'),
   'Repeated Longdo onMapCreated callbacks for the same SDK map must not reinitialize base/camera');
 assert(map.includes('RiderNavigationMapRegistry')&&
-  map.includes('retain the exact GL view + SDK map for the next mount')&&
   map.includes('holder.view?.takeIf { it.context === context }')&&
+  map.includes('holder.retainAcrossVisibilityLoss()')&&
   runtimeActivity.includes('hideMapForAnotherTab')&&runtimeActivity.includes('showMapAfterReturningHome')&&
   runtimeActivity.includes('hasMapView')&&runtimeTest.includes('awaitMapPresence')&&
   runtimeTest.includes('expected = false')&&runtimeTest.includes('expected = true')&&
@@ -62,8 +62,10 @@ assert(map.includes('fun retainAcrossVisibilityLoss()')&&
   map.includes('fun shutdownSdk()')&&
   map.includes('activeView.onPause()')&&
   map.indexOf('activeView.onPause()')===map.lastIndexOf('activeView.onPause()')&&
-  !map.includes('view?.onPause()')&&!map.includes('createdView.onPause()'),
-  'Ordinary tab/background visibility loss must not call Longdo onPause; SDK shutdown is reserved for real surface disposal');
+  !map.includes('view?.onPause()')&&!map.includes('createdView.onPause()')&&
+  !map.includes('activeView.onResume()')&&
+  map.includes('Calling it after ordinary background/foreground transitions can replace renderer.map'),
+  'Ordinary tab/background visibility loss must not call Longdo onPause/onResume; SDK shutdown is reserved for real surface disposal');
 assert(map.includes('setPreserveEGLContextOnPause(true)'),
   'Navigation map must preserve the GL context across background/resume to avoid tile reconstruction');
 assert(map.includes('ACTIVE_ROUTE_COLOR')&&map.includes('FUTURE_ROUTE_COLOR')&&
