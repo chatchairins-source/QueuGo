@@ -265,7 +265,6 @@ fun QueueGoRiderApp(pushTarget: NativePushLaunchTarget? = null) {
                     onLogout = {
                         val current = auth!!
                         RiderReturnService.stop(context)
-                        clearRiderNavigationSession()
                         clearRiderOrderNotifications(context)
                         store.clear()
                         auth = null
@@ -283,7 +282,6 @@ fun QueueGoRiderApp(pushTarget: NativePushLaunchTarget? = null) {
                     onLogout = {
                         val current = auth!!
                         RiderReturnService.stop(context)
-                        clearRiderNavigationSession()
                         clearRiderOrderNotifications(context)
                         scope.launch {
                             runCatching { api.setOnline(current, false, null, null) }
@@ -533,8 +531,6 @@ private fun RiderHome(
     var recenterSignal by remember { mutableStateOf(0) }
     var mapReady by remember { mutableStateOf(false) }
     var pendingMapRecenter by remember { mutableStateOf(false) }
-    val navigationState = remember { RiderNavigationState() }
-
 
     val locationPermission = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -1145,9 +1141,7 @@ private fun RiderHome(
             job = mapJob,
             marketPickups = snapshot?.marketPickups.orEmpty(),
             bundleOrders = snapshot?.bundle?.activeOrders.orEmpty(),
-            navigationState = navigationState,
             recenterSignal = recenterSignal,
-            onLocationFix = {},
             onMapReady = { mapReady = it }
         )
 
