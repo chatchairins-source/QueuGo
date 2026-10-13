@@ -39,6 +39,8 @@ ok(riderHistory.includes('api.cashLedger(')&&riderHistory.includes('rows.take(30
 const riderLogin=fs.readFileSync('native-android/rider/src/main/java/com/queuego/rider/RiderLoginScreen.kt','utf8');
 ok(riderLogin.includes('onRegister: () -> Unit'),'Rider registration entry must remain on the Native login surface');
 ok(!/ACTION_VIEW|startActivity\s*\(/.test(riderLogin),'Rider registration must not regress to external-browser signup');
+ok(/if \(!wide\) \{[\s\S]*?verticalArrangement = Arrangement\.Center[\s\S]*?card\(\)/.test(riderLogin),
+   'Rider mobile login group must remain vertically centered while retaining scroll/IME handling');
 
 const riderHome=fs.readFileSync('native-android/rider/src/main/java/com/queuego/rider/QueueGoRiderApp.kt','utf8');
 const riderApi=fs.readFileSync('native-android/rider/src/main/java/com/queuego/rider/QueueGoApi.kt','utf8');
