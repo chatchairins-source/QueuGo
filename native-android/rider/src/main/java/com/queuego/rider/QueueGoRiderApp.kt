@@ -1163,6 +1163,21 @@ private fun RiderHome(
         if (enabled && !ensureLocationPermission()) return
         actionBusy = true
         scope.launch {
+            if (enabled) {
+                val pushBound = runCatching {
+                    syncRiderNativePush(context, auth, api, pushStore)
+                }.getOrElse {
+                    actionMessage = "เชื่อมการแจ้งเตือนงานกับอุปกรณ์นี้ไม่สำเร็จ กรุณาลองอีกครั้ง"
+                    false
+                }
+                if (!pushBound) {
+                    if (actionMessage == null) {
+                        actionMessage = "ยังเชื่อมการแจ้งเตือนงานกับ session นี้ไม่ได้"
+                    }
+                    actionBusy = false
+                    return@launch
+                }
+            }
             val loc = lastKnownLocation(context)
             runCatching { api.setOnline(auth, enabled, loc?.first, loc?.second) }
                 .onSuccess {
