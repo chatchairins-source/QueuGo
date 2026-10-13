@@ -21,6 +21,10 @@ assert(map.includes('val holder = remember(stateKey)')&&map.includes('AndroidVie
 assert(map.includes('Deliberately keep lastRiderFix, map, pins and route layers')&&
   !map.includes('latestDeviceLocation = null')&&!map.includes('clearPin()'),
   'Refresh/resume must not clear the existing map or rebuild every marker');
+assert(!map.includes('LaunchedEffect(state)')&&
+  map.includes('state.stops === stopSource')&&map.includes('state.routes === routeSource')&&
+  !map.includes('routes.hashCode()'),
+  'GPS/order refresh must not render twice or traverse unchanged route geometry');
 assert(map.includes('ACTIVE_ROUTE_COLOR')&&map.includes('FUTURE_ROUTE_COLOR')&&
   map.includes('setWidth(if (segment.style == NavigationRouteStyle.ACTIVE) 8 else 6)'),
   'Current route must be dark red and later route legs visibly faded');

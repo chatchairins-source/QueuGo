@@ -10,7 +10,6 @@ import android.util.Log
 import android.view.LayoutInflater
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
@@ -49,11 +48,16 @@ private class RiderNavigationMapHolder(
     private var riderPin: Pin? = null
     private var lastRiderFix: NavigationMapFix? = null
     private var lastCameraFix: NavigationMapPoint? = null
+    private var lastCameraBearing: Float? = null
     private val stopPins = linkedMapOf<String, RenderedStop>()
     private val routeLines = mutableListOf<Line>()
     private val markerBitmaps = mutableMapOf<Int, Bitmap>()
     private val stopBitmaps = mutableMapOf<Triple<NavigationStopKind, Int, Boolean>, Bitmap>()
-    private var routeRenderKey: Int? = null
+    private var stopSource: List<NavigationMapStop>? = null
+    private var stopActiveId: String? = null
+    private var routeSource: List<NavigationRouteSegment>? = null
+    private var routeActiveId: String? = null
+    private var routeRemainingStopIds: Set<String> = emptySet()
 
     private var viewCreatedCount = 0
     private var mapCreatedCount = 0
@@ -71,7 +75,13 @@ private class RiderNavigationMapHolder(
         riderPin = null
         stopPins.clear()
         routeLines.clear()
-        routeRenderKey = null
+        stopSource = null
+        stopActiveId = null
+        routeSource = null
+        routeActiveId = null
+        routeRemainingStopIds = emptySet()
+        lastCameraFix = null
+        lastCameraBearing = null
         mapCreatedCount += 1
         publishDiagnostics()
     }
@@ -129,9 +139,11 @@ private class RiderNavigationMapHolder(
         val activeMap = map ?: return
         if (disposed) return
 
-        state.rider?.takeIf { it.point.valid }?.let {
-            lastRiderFix = it
-            renderRider(activeMap, it)
+        state.rider?.takeIf { it.point.valid }?.let { nextFix ->
+            if (riderPin == null || lastRiderFix?.point != nextFix.point) {
+                renderRider(activeMap, nextFix)
+            }
+            lastRiderFix = nextFix
         }
         renderStops(activeMap, state)
         renderRoutes(activeMap, state)
@@ -160,6 +172,7 @@ private class RiderNavigationMapHolder(
 
     private fun renderStops(activeMap: com.longdo.api.Map, state: RiderNavigationMapState) {
         val activeStopId = state.resolvedActiveStopId()
+        if (state.stops === stopSource && activeStopId == stopActiveId) return
         val desired = state.remainingStops().associateBy { it.id }
 
         stopPins.keys.filter { it !in desired.keys }.forEach { id ->
@@ -191,14 +204,20 @@ private class RiderNavigationMapHolder(
                     stopMutationCount += 1
                 }
         }
+        stopSource = state.stops
+        stopActiveId = activeStopId
         publishDiagnostics()
     }
 
     private fun renderRoutes(activeMap: com.longdo.api.Map, state: RiderNavigationMapState) {
-        val routes = state.styledRemainingRoutes()
-        val nextKey = routes.hashCode()
-        if (routeRenderKey == nextKey) return
+        val activeStopId = state.resolvedActiveStopId()
+        val remainingStopIds = state.remainingStops().mapTo(linkedSetOf()) { it.id }
+        if (state.routes === routeSource &&
+            activeStopId == routeActiveId &&
+            remainingStopIds == routeRemainingStopIds
+        ) return
 
+        val routes = state.styledRemainingRoutes()
         routeLines.forEach { line -> runCatching { activeMap.removeLine(line) } }
         routeLines.clear()
 
@@ -217,7 +236,9 @@ private class RiderNavigationMapHolder(
                 runCatching { activeMap.addLine(line) }.onSuccess { routeLines += line }
             }
 
-        routeRenderKey = nextKey
+        routeSource = state.routes
+        routeActiveId = activeStopId
+        routeRemainingStopIds = remainingStopIds
         routeLayerRebuildCount += 1
         publishDiagnostics()
     }
@@ -226,16 +247,25 @@ private class RiderNavigationMapHolder(
         val target = fix.point
         val previous = lastCameraFix
         val movedEnough = previous == null || navigationHaversineMeters(previous, target) >= 1.5
-        if (!movedEnough && fix.bearingDegrees == null) return
+        val nextBearing = fix.bearingDegrees
+            ?.takeIf { it.isFinite() }
+            ?.let { ((it % 360f) + 360f) % 360f }
+        val bearingChanged = when {
+            nextBearing == null -> false
+            lastCameraBearing == null -> true
+            else -> kotlin.math.abs(((nextBearing - lastCameraBearing!! + 540f) % 360f) - 180f) >= 2f
+        }
+        if (!movedEnough && !bearingChanged) return
 
         runCatching {
             activeMap.setCanRotateCamera(true)
             activeMap.setZoom(zoom.coerceIn(14, 20))
             activeMap.setLocation(MapLocation(target.longitude, target.latitude))
-            fix.bearingDegrees
-                ?.takeIf { it.isFinite() }
-                ?.let { activeMap.rotate(((it % 360f) + 360f) % 360f, true) }
-        }.onSuccess { lastCameraFix = target }
+            nextBearing?.let { activeMap.rotate(it, true) }
+        }.onSuccess {
+            lastCameraFix = target
+            if (nextBearing != null) lastCameraBearing = nextBearing
+        }
     }
 
     private fun markerBitmap(resId: Int): Bitmap =
@@ -383,10 +413,6 @@ fun RiderNavigationMap(
             holder.render(state)
         }
     )
-
-    LaunchedEffect(state) {
-        holder.render(currentState.value)
-    }
 
     DisposableEffect(lifecycle, stateKey) {
         val observer = LifecycleEventObserver { _, event ->
