@@ -34,7 +34,12 @@ import com.longdo.api.Pin
 import com.longdo.api.type.MapLocation
 import com.queuego.shared.R as SharedR
 
-private const val RIDER_MARKER_ANIMATION_STEPS = 18
+private const val RIDER_MARKER_DEFAULT_ANIMATION_SECONDS = 0.72
+private const val RIDER_MARKER_MIN_ANIMATION_SECONDS = 0.18
+private const val RIDER_MARKER_MAX_ANIMATION_SECONDS = 0.85
+private const val RIDER_MARKER_ANIMATION_CADENCE_RATIO = 0.82
+private const val RIDER_MARKER_TELEPORT_METERS = 120.0
+private const val CAMERA_ZOOM_MIN_INTERVAL_MS = 1_800L
 private const val DEFAULT_LONGITUDE = 100.5018
 private const val DEFAULT_LATITUDE = 13.7563
 private const val SNAPSHOT_CAPTURE_THROTTLE_MS = 1_200L
@@ -49,6 +54,36 @@ private val ACTIVE_ROUTE_COLOR = floatArrayOf(230f / 255f, 0f, 45f / 255f, 0.96f
 private val FUTURE_ROUTE_COLOR = floatArrayOf(230f / 255f, 0f, 45f / 255f, 0.28f)
 
 private data class RenderedStop(val signature: String, val pin: Pin)
+
+internal fun riderMarkerMoveThresholdMeters(speedMetersPerSecond: Float?): Double = when {
+    speedMetersPerSecond == null -> 1.0
+    speedMetersPerSecond < 0.8f -> 1.8
+    speedMetersPerSecond < 3f -> 1.1
+    else -> 0.6
+}
+
+internal fun shouldMoveRiderMarker(
+    previousRenderedFix: NavigationMapFix?,
+    nextFix: NavigationMapFix
+): Boolean {
+    val previous = previousRenderedFix ?: return true
+    return navigationHaversineMeters(previous.point, nextFix.point) >=
+        riderMarkerMoveThresholdMeters(nextFix.speedMetersPerSecond)
+}
+
+internal fun riderMarkerAnimationSeconds(
+    previousRenderedFix: NavigationMapFix?,
+    nextFix: NavigationMapFix
+): Double {
+    val previousNanos = previousRenderedFix?.elapsedRealtimeNanos ?: 0L
+    val nextNanos = nextFix.elapsedRealtimeNanos
+    if (previousNanos <= 0L || nextNanos <= previousNanos) {
+        return RIDER_MARKER_DEFAULT_ANIMATION_SECONDS
+    }
+    val cadenceSeconds = (nextNanos - previousNanos).toDouble() / 1_000_000_000.0
+    return (cadenceSeconds * RIDER_MARKER_ANIMATION_CADENCE_RATIO)
+        .coerceIn(RIDER_MARKER_MIN_ANIMATION_SECONDS, RIDER_MARKER_MAX_ANIMATION_SECONDS)
+}
 
 private class RiderNavigationMapHolder {
     private var onCameraChanged: (NavigationMapCamera) -> Unit = {}
@@ -73,10 +108,14 @@ private class RiderNavigationMapHolder {
     private var lastState = RiderNavigationMapState()
     private var riderPin: Pin? = null
     private var lastRiderFix: NavigationMapFix? = null
+    private var lastRenderedRiderFix: NavigationMapFix? = null
     private var lastCameraFix: NavigationMapPoint? = null
+    private var lastCameraCenter: NavigationMapPoint? = null
     private var lastCameraBearing: Float? = null
+    private var lastCameraZoomChangeAtMs: Long = 0L
     private val stopPins = linkedMapOf<String, RenderedStop>()
     private val routeLines = mutableListOf<Line>()
+    private var renderedRouteSegments: List<NavigationRouteSegment> = emptyList()
     private val markerBitmaps = mutableMapOf<Int, Bitmap>()
     private val stopBitmaps = mutableMapOf<Triple<NavigationStopKind, Int, Boolean>, Bitmap>()
     private var stopSource: List<NavigationMapStop>? = null
@@ -288,12 +327,16 @@ private class RiderNavigationMapHolder {
         riderPin = null
         stopPins.clear()
         routeLines.clear()
+        renderedRouteSegments = emptyList()
         stopSource = null
         stopActiveId = null
         routeSource = null
         routeActiveId = null
         routeRemainingStopIds = emptySet()
         lastCameraFix = null
+        lastCameraCenter = null
+        lastCameraZoomChangeAtMs = 0L
+        lastRenderedRiderFix = null
         // Preserve heading continuity across an internal Longdo renderer swap.
         mapCreatedCount += 1
         publishDiagnostics()
@@ -320,6 +363,7 @@ private class RiderNavigationMapHolder {
                 setDoPreDrawCache(true)
             })
             nextMap.setDrawCrossSign(false)
+            nextMap.setCanRotateCamera(true)
             val start = camera?.point?.takeIf { it.valid }
                 ?: lastState.rider?.point?.takeIf { it.valid }
                 ?: lastState.remainingStops().firstOrNull()?.point
@@ -328,7 +372,6 @@ private class RiderNavigationMapHolder {
             nextMap.setZoom(camera?.zoom?.coerceIn(4, 20) ?: 15)
             val bearing = camera?.bearingDegrees ?: lastCameraBearing
             bearing?.takeIf { it.isFinite() }?.let {
-                nextMap.setCanRotateCamera(true)
                 nextMap.rotate(((it % 360f) + 360f) % 360f, false)
             }
             render(lastState)
@@ -438,7 +481,7 @@ private class RiderNavigationMapHolder {
         renderPassCount += 1
 
         state.rider?.takeIf { it.point.valid }?.let { nextFix ->
-            if (riderPin == null || lastRiderFix?.point != nextFix.point) {
+            if (riderPin == null || shouldMoveRiderMarker(lastRenderedRiderFix, nextFix)) {
                 renderRider(activeMap, nextFix)
             }
             lastRiderFix = nextFix
@@ -451,9 +494,10 @@ private class RiderNavigationMapHolder {
             followRider(activeMap, state.copy(rider = followedFix))
         }
         // Publish once per applied state even when overlays are structurally unchanged.
-        // This distinguishes a stable frame from a state update that never reached the map.
+        // PixelCopy is deliberately not scheduled on every GPS tick: continuity snapshots
+        // are captured on visibility loss or real renderer replacement so live navigation
+        // never competes with screenshot work for the render thread.
         publishDiagnostics()
-        scheduleSnapshotRefresh()
     }
 
     private fun renderRider(activeMap: com.longdo.api.Map, fix: NavigationMapFix) {
@@ -461,14 +505,37 @@ private class RiderNavigationMapHolder {
         val existing = riderPin
         if (existing == null) {
             val pin = Pin(location, markerBitmap(SharedR.drawable.qg_map_rider))
-            runCatching { activeMap.pushPin(pin) }.onSuccess { riderPin = pin }
-        } else {
-            runCatching { existing.setLocation(location, true, RIDER_MARKER_ANIMATION_STEPS) }
-                .onFailure {
-                    runCatching { activeMap.removePin(existing) }
-                    val replacement = Pin(location, markerBitmap(SharedR.drawable.qg_map_rider))
-                    runCatching { activeMap.pushPin(replacement) }.onSuccess { riderPin = replacement }
+            runCatching { activeMap.pushPin(pin) }
+                .onSuccess {
+                    riderPin = pin
+                    lastRenderedRiderFix = fix
                 }
+        } else {
+            val previous = lastRenderedRiderFix
+            val distance = previous?.let { navigationHaversineMeters(it.point, fix.point) }
+            val update = runCatching {
+                if (distance != null && distance >= RIDER_MARKER_TELEPORT_METERS) {
+                    // Never animate a stale/teleport correction across the whole screen.
+                    existing.setLocation(location)
+                } else {
+                    existing.setLocation(
+                        location,
+                        true,
+                        riderMarkerAnimationSeconds(previous, fix)
+                    )
+                }
+            }
+            if (update.isSuccess) {
+                lastRenderedRiderFix = fix
+            } else {
+                runCatching { activeMap.removePin(existing) }
+                val replacement = Pin(location, markerBitmap(SharedR.drawable.qg_map_rider))
+                runCatching { activeMap.pushPin(replacement) }
+                    .onSuccess {
+                        riderPin = replacement
+                        lastRenderedRiderFix = fix
+                    }
+            }
         }
     }
 
@@ -543,11 +610,51 @@ private class RiderNavigationMapHolder {
             remainingStopIds == routeRemainingStopIds
         ) return
 
+        // Keep the route object order stable: future legs render first and the active leg last.
         val routes = state.styledRemainingRoutes()
+            .sortedBy { if (it.style == NavigationRouteStyle.FUTURE) 0 else 1 }
+
+        val canMutateInPlace =
+            routeLines.size == routes.size &&
+                renderedRouteSegments.size == routes.size &&
+                renderedRouteSegments.zip(routes).all { (before, after) ->
+                    before.id == after.id &&
+                        before.toStopId == after.toStopId &&
+                        before.style == after.style
+                }
+
+        if (canMutateInPlace) {
+            var changed = false
+            var mutationSucceeded = true
+            routes.forEachIndexed { index, segment ->
+                val previous = renderedRouteSegments[index]
+                if (previous.points != segment.points) {
+                    changed = true
+                    val locations = segment.points
+                        .map { MapLocation(it.longitude, it.latitude) }
+                        .toTypedArray()
+                    if (runCatching { routeLines[index].setLocation(locations) }.isFailure) {
+                        mutationSucceeded = false
+                    }
+                }
+            }
+            if (mutationSucceeded) {
+                renderedRouteSegments = routes
+                routeSource = state.routes
+                routeActiveId = activeStopId
+                routeRemainingStopIds = remainingStopIds
+                if (changed) routeLayerRebuildCount += 1
+                publishDiagnostics()
+                return
+            }
+        }
+
+        // Topology/style changed or an in-place mutation failed: rebuild once as recovery.
         val failedToRemove = routeLines.filter { line ->
             runCatching { activeMap.removeLine(line) }.isFailure
         }
         routeLines.clear()
+        renderedRouteSegments = emptyList()
         routeLines.addAll(failedToRemove)
         if (failedToRemove.isNotEmpty()) {
             routeSource = null
@@ -558,31 +665,31 @@ private class RiderNavigationMapHolder {
         }
 
         var renderSucceeded = true
-        // Future legs first, active leg last so the dark-red current path stays visually dominant.
-        routes.sortedBy { if (it.style == NavigationRouteStyle.FUTURE) 0 else 1 }
-            .forEach { segment ->
-                val line = Line(
-                    segment.points.map { MapLocation(it.longitude, it.latitude) }.toTypedArray()
-                ).apply {
-                    setWidth(if (segment.style == NavigationRouteStyle.ACTIVE) 8 else 6)
-                    setColor(
-                        if (segment.style == NavigationRouteStyle.ACTIVE) ACTIVE_ROUTE_COLOR
-                        else FUTURE_ROUTE_COLOR
-                    )
-                }
-                val added = runCatching { activeMap.addLine(line) }
-                    .onSuccess { routeLines += line }
-                    .isSuccess
-                if (!added) renderSucceeded = false
+        routes.forEach { segment ->
+            val line = Line(
+                segment.points.map { MapLocation(it.longitude, it.latitude) }.toTypedArray()
+            ).apply {
+                setWidth(if (segment.style == NavigationRouteStyle.ACTIVE) 8 else 6)
+                setColor(
+                    if (segment.style == NavigationRouteStyle.ACTIVE) ACTIVE_ROUTE_COLOR
+                    else FUTURE_ROUTE_COLOR
+                )
             }
+            val added = runCatching { activeMap.addLine(line) }
+                .onSuccess { routeLines += line }
+                .isSuccess
+            if (!added) renderSucceeded = false
+        }
 
         if (renderSucceeded && routeLines.size == routes.size) {
+            renderedRouteSegments = routes
             routeSource = state.routes
             routeActiveId = activeStopId
             routeRemainingStopIds = remainingStopIds
             routeLayerRebuildCount += 1
         } else {
             // Keep partial route layers visible only until the next render can clean/rebuild them.
+            renderedRouteSegments = emptyList()
             routeSource = null
             routeActiveId = null
             routeRemainingStopIds = emptySet()
@@ -593,22 +700,48 @@ private class RiderNavigationMapHolder {
     private fun followRider(activeMap: com.longdo.api.Map, state: RiderNavigationMapState) {
         val fix = state.rider ?: return
         val decision = navigationCameraDecision(state, lastCameraBearing) ?: return
-        val previous = lastCameraFix
-        val movedEnough = previous == null || navigationHaversineMeters(previous, fix.point) >= 1.5
-        val bearingChanged = navigationBearingChangedEnough(lastCameraBearing, decision.bearingDegrees)
-        val zoomChanged = runCatching { activeMap.getZoom() != decision.zoom }.getOrDefault(true)
-        if (!movedEnough && !bearingChanged && !zoomChanged) return
+        val speed = fix.speedMetersPerSecond
+        val movementThreshold = navigationCameraMovementThresholdMeters(speed)
+        val centerMoved = lastCameraCenter == null ||
+            navigationHaversineMeters(lastCameraCenter!!, decision.center) >= movementThreshold
+        val bearingChanged = navigationBearingChangedEnough(
+            lastCameraBearing,
+            decision.bearingDegrees,
+            minimumDeltaDegrees = 2.5f
+        )
+
+        val now = SystemClock.elapsedRealtime()
+        val currentZoom = runCatching { activeMap.getZoom() }.getOrNull()
+        val requestedZoomChange = currentZoom == null || currentZoom != decision.zoom
+        val zoomChangeAllowed = requestedZoomChange && (
+            lastCameraZoomChangeAtMs == 0L ||
+                now - lastCameraZoomChangeAtMs >= CAMERA_ZOOM_MIN_INTERVAL_MS ||
+                (currentZoom != null && kotlin.math.abs(currentZoom - decision.zoom) >= 2)
+            )
+
+        if (!centerMoved && !bearingChanged && !zoomChangeAllowed) return
 
         runCatching {
-            activeMap.setCanRotateCamera(true)
-            activeMap.setZoom(decision.zoom)
-            // Center slightly ahead on the matched road so the Rider sits lower in the
-            // viewport and can see more of the upcoming route, like a real navigation app.
-            activeMap.setLocation(MapLocation(decision.center.longitude, decision.center.latitude))
-            decision.bearingDegrees?.let { activeMap.rotate(it, true) }
+            // Use Longdo's native camera animation instead of jumping the viewport every GPS tick.
+            if (centerMoved) {
+                activeMap.setLocation(
+                    MapLocation(decision.center.longitude, decision.center.latitude),
+                    true
+                )
+            }
+            if (zoomChangeAllowed) {
+                activeMap.setZoom(decision.zoom, true)
+            }
+            if (bearingChanged) {
+                decision.bearingDegrees?.let { activeMap.rotate(it, true) }
+            }
         }.onSuccess {
             lastCameraFix = fix.point
-            if (decision.bearingDegrees != null) lastCameraBearing = decision.bearingDegrees
+            if (centerMoved) lastCameraCenter = decision.center
+            if (bearingChanged && decision.bearingDegrees != null) {
+                lastCameraBearing = decision.bearingDegrees
+            }
+            if (zoomChangeAllowed) lastCameraZoomChangeAtMs = now
         }
     }
 
@@ -679,6 +812,7 @@ private class RiderNavigationMapHolder {
             stopPins.values.forEach { rendered -> runCatching { activeMap.removePin(rendered.pin) } }
         }
         routeLines.clear()
+        renderedRouteSegments = emptyList()
         stopPins.clear()
         riderPin = null
         map = null
@@ -696,6 +830,10 @@ private class RiderNavigationMapHolder {
         rendererWatchGeneration += 1
         announcedReplacementMap = null
         lastKnownCamera = null
+        lastRenderedRiderFix = null
+        lastCameraFix = null
+        lastCameraCenter = null
+        lastCameraZoomChangeAtMs = 0L
         resumed = false
         stopSource = null
         stopActiveId = null

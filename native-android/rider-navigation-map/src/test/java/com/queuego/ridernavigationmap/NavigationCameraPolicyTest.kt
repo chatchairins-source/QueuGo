@@ -78,6 +78,16 @@ class NavigationCameraPolicyTest {
         assertTrue(smoothed!! < 1f || smoothed > 359f)
     }
 
+    @Test fun microBearingChangesDoNotWobbleTheCamera() {
+        assertTrue(!navigationBearingChangedEnough(90f, 91.4f))
+        assertTrue(navigationBearingChangedEnough(90f, 93f))
+    }
+
+    @Test fun cameraMoveThresholdSuppressesStandstillJitter() {
+        assertTrue(navigationCameraMovementThresholdMeters(0.5f) >
+            navigationCameraMovementThresholdMeters(8f))
+    }
+
     @Test fun poorGpsAccuracyAvoidsOverZooming() {
         assertEquals(
             18,

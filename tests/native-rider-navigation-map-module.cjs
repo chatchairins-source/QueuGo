@@ -143,12 +143,27 @@ assert(cameraPolicy.includes('navigationCameraDecision')&&
   cameraPolicy.includes('speedMetersPerSecond >= 18f')&&
   cameraPolicy.includes('smoothNavigationBearing')&&
   cameraPolicy.includes('navigationPointAtDistance')&&
-  map.includes('activeMap.setZoom(decision.zoom)')&&
+  map.includes('activeMap.setLocation(')&&
+  map.includes('true\n                )')&&
+  map.includes('activeMap.setZoom(decision.zoom, true)')&&
+  map.includes('minimumDeltaDegrees = 2.5f')&&
+  map.includes('CAMERA_ZOOM_MIN_INTERVAL_MS = 1_800L')&&
   map.includes('decision.bearingDegrees?.let { activeMap.rotate(it, true) }'),
-  'Navigation camera must adapt zoom to speed/arrival, smooth heading and look ahead on the matched road');
+  'Navigation camera must animate position/zoom, suppress micro-wobble and look ahead on the matched road');
 assert(map.includes('ACTIVE_ROUTE_COLOR')&&map.includes('FUTURE_ROUTE_COLOR')&&
   map.includes('setWidth(if (segment.style == NavigationRouteStyle.ACTIVE) 8 else 6)'),
   'Current route must be dark red and later route legs visibly faded');
+assert(map.includes('routeLines[index].setLocation(locations)')&&
+  map.includes('renderedRouteSegments.zip(routes)')&&
+  map.includes('Topology/style changed or an in-place mutation failed'),
+  'Route progress must mutate existing Longdo line geometry in place and rebuild only on topology/style changes');
+assert(map.includes('RIDER_MARKER_MAX_ANIMATION_SECONDS = 0.85')&&
+  map.includes('riderMarkerAnimationSeconds(previous, fix)')&&
+  !map.includes('RIDER_MARKER_ANIMATION_STEPS = 18'),
+  'Rider marker animation duration must stay below the GPS cadence instead of overlapping for 18 seconds');
+assert(map.includes('PixelCopy is deliberately not scheduled on every GPS tick')&&
+  !map.includes('publishDiagnostics()\n        scheduleSnapshotRefresh()'),
+  'Live GPS rendering must not schedule PixelCopy snapshots on every navigation update');
 assert(models.includes('resolvedActiveStopId')&&models.includes('styledRemainingRoutes'),
   'Module must support numbered multi-stop progression independently of RiderJob');
 assert(route.includes('private val apiKey: String')&&route.includes('RouteService/geojson/route')&&
