@@ -1016,12 +1016,24 @@ private fun RiderHome(
                     }
                     result.onSuccess { mutationResult ->
                         val completedMode = verifyMode
-                        val pickupCommittedStatus = if (completedMode == "pickup") {
+                        var pickupCommittedStatus = if (completedMode == "pickup") {
                             riderPickupCommittedStatus(mutationResult)
                         } else null
+
+                        // Current Production pickup normally returns in_progress. A legacy/idempotent
+                        // picked_up row still needs one deliver transition before Google Maps handoff,
+                        // otherwise returning to QueueGo would show "นำทางไปลูกค้า" again.
+                        if (completedMode == "pickup" && pickupCommittedStatus == "picked_up") {
+                            if (runCatching { api.startDelivery(auth, job.copy(status = "picked_up")) }.isSuccess) {
+                                pickupCommittedStatus = "in_progress"
+                            }
+                        }
+
                         val before = snapshot
                         actionMessage = when (completedMode) {
-                            "pickup" -> "รับสินค้าแล้ว · กำลังเปิดนำทางไปลูกค้า"
+                            "pickup" -> if (pickupCommittedStatus == "in_progress")
+                                "รับสินค้าแล้ว · กำลังเปิดนำทางไปลูกค้า"
+                            else "รับสินค้าแล้ว · กดเริ่มจัดส่งเพื่อไปลูกค้า"
                             "marketPickup" -> "รับสินค้าจุดนี้แล้ว"
                             else -> "จัดส่งสำเร็จ"
                         }
@@ -1088,11 +1100,12 @@ private fun RiderHome(
                             pushStore.saveHomeSnapshot(auth.user.id, committedRead)
                         }
 
-                        if (completedMode == "pickup") {
-                            val pickedUp = committedRead?.activeJob
+                        if (completedMode == "pickup" && pickupCommittedStatus == "in_progress") {
+                            val delivering = committedRead?.activeJob
+                                ?.takeIf { it.status == "in_progress" }
                                 ?: localAfterSuccess?.activeJob
-                                ?: job.copy(status = pickupCommittedStatus ?: "picked_up")
-                            openNavigation(context, pickedUp)
+                                ?: job.copy(status = "in_progress")
+                            openNavigation(context, delivering)
                         }
                     }.onFailure {
                         actionMessage = it.message ?: "บันทึกหลักฐานไม่สำเร็จ"

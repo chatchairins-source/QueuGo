@@ -21,6 +21,12 @@ assert(app.includes('RiderReturnService.start(context)'),
 assert(app.includes('if (opened) {')&&app.includes('.putBoolean(navigationKey, true)')&&
   app.includes('} else {\n        RiderReturnService.stop(context)'),
   'Rider navigation stage must commit only after Google Maps opens; a failed handoff must stop the return service without advancing UI state');
+assert(app.includes('pickupCommittedStatus == "picked_up"')&&
+  app.includes('api.startDelivery(auth, job.copy(status = "picked_up"))'),
+  'Legacy picked_up pickup results must advance to delivery before customer Maps handoff');
+assert(app.includes('completedMode == "pickup" && pickupCommittedStatus == "in_progress"')&&
+  app.includes('openNavigation(context, delivering)'),
+  'Customer Maps must open only after the Rider order is in_progress so return UI shows arrive-customer');
 assert(!app.includes('RiderNavigationController()')&&!app.includes('RiderNavigationSpeaker(context)')&&!app.includes('if (navigationState.active)'),
   'Rider Home must not run the retired in-app navigation engine or turn-by-turn panel');
 assert(!fs.existsSync('native-android/rider/src/main/java/com/queuego/rider/RiderNavigation.kt'),
