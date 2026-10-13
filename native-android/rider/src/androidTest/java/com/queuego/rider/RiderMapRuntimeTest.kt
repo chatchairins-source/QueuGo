@@ -16,6 +16,7 @@ import java.util.concurrent.TimeUnit
 
 class RiderMapRuntimeTest {
     @Test fun homeMapMountsBackgroundsAndRecreatesWithoutMissingSdkClasses() {
+        verifyBrandedVectorRendering()
         ActivityScenario.launch(RiderMapRuntimeActivity::class.java).use { scenario ->
             fun awaitRealMap() {
                 var ready: CountDownLatch? = null
@@ -48,6 +49,33 @@ class RiderMapRuntimeTest {
             assertExpectedGpsCamera(recreatedCamera)
         }
         Log.i("QueueGoMapRuntime", "completed_pid=${Process.myPid()}")
+    }
+
+    private fun verifyBrandedVectorRendering() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val assets = listOf(
+            R.drawable.qg_marker_pickup to android.graphics.Color.rgb(230, 0, 45),
+            R.drawable.qg_marker_dropoff to android.graphics.Color.rgb(0, 127, 153),
+            R.drawable.qg_rider_current_location to android.graphics.Color.rgb(230, 0, 45),
+            R.drawable.qg_rider_brand_q to android.graphics.Color.rgb(230, 0, 45)
+        )
+        for ((asset, primary) in assets) {
+            for (density in listOf(1, 2, 3)) {
+                val drawable = requireNotNull(context.getDrawable(asset))
+                val width = 48 * density
+                val height = if (asset == R.drawable.qg_marker_pickup || asset == R.drawable.qg_marker_dropoff) 58 * density else width
+                val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+                drawable.setBounds(0, 0, width, height)
+                drawable.draw(android.graphics.Canvas(bitmap))
+                val pixels = IntArray(width * height)
+                bitmap.getPixels(pixels, 0, width, 0, 0, width, height)
+                assertTrue("Branded vector primary color missing", pixels.count { it == primary } > pixels.size / 10)
+                assertTrue("Branded vector white edge/icon missing", pixels.any { it == android.graphics.Color.WHITE })
+                assertTrue("Branded vector must retain transparent map background", pixels.any { android.graphics.Color.alpha(it) == 0 })
+                bitmap.recycle()
+            }
+        }
+        Log.i("QueueGoMapRuntime", "branded_vectors_1x_2x_3x_verified")
     }
 
     private fun assertSameCamera(expected: DoubleArray, actual: DoubleArray) {

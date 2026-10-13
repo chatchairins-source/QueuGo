@@ -1,9 +1,12 @@
-## 2026-10-13 professional map marker family staging
-- Continue from live PR142 head9270cb257db1de1d668fb717cac8c1bcae44b34d; remote backup/marker-family-before-20261013 retains this head. Customer mapReady/GPS permission ordering and shared/Rider Longdo fail-closed lifecycle code remain untouched.
-- Custom vector storefront red pickup, teal home drop-off and red directional Rider diamond share white edges and soft vector shadows. Bitmap stop badges render actual numbers including10+ independently of glyphs; existing bundleSequence/dropRank ordering and arrival/completion omission remain unchanged.
-- Rider caches role/number bitmaps and reconciles only added/removed stops, keeping unchanged stops and GPS pin mounted. Existing GPS setLocation interpolation remains. Overlay uses custom bold red-Q vector, white edge and pressed ripple; existing one-time hint, drag/snap/position persistence and Activity return flags remain.
-- Customer tracking uses explicit semantic roles; native tracking renders the same vector family rather than plain circles. No backend/state/routing/navigation changes or mock business records.
-- Source/regression, Native unit/build/16KB/no-WebView and real Longdo/emulator runtime validation pending on the exact candidate head. Physical GPS/Google Maps/overlay/authenticated E2E and final Release Gate remain OPEN; no release APK/AAB delivery.
+## 2026-10-13 Customer tracking semantic marker integration
+- Preserved concurrent successor3ec0677 and its Rider marker/return design plus real vector instrumentation. PR169 integrates the same family into Customer tracking with explicit role fields; Customer mapReady/GPS and shared Longdo lifecycle code stay unchanged.
+- Local full regression passed before successor integration; combined exact-head regression/unit/build/runtime must pass. Physical gates remain OPEN; no release artifacts delivered.
+
+## 2026-10-13 professional map marker mission staging
+- Continue PR142 from 9270cb257db1de1d668fb717cac8c1bcae44b34d; preserve Customer mapReady/GPS ordering and shared Longdo fail-closed lifecycle fixes. Backup branch backup/map-markers-before-9270cb25-20261013.
+- Owner explicitly authorizes the existing Google Maps return overlay visual update. Custom bold vector family: red storefront pickup, teal house drop-off, red directional Rider, and branded vector Q on the draggable return control. Sequence badges render actual integers independently of icons, including 10+ stops. Retire old generic numbered marker resources.
+- Keep bundleSequence/dropRank and pickup-completion predicates unchanged. Incrementally reconcile stop pins instead of clearPin; foreground GPS moves the existing Rider pin. Preserve camera for same-job presentation updates. Overlay activity/session/drag/snap/persistence logic retained, with pressed feedback.
+- Source/regression and exact-head Pilot build/runtime gates must complete before certification. Physical GPS/Google Maps return, authenticated E2E and final Release Gate remain OPEN; no release artifact authorized by software CI alone.
 
 ## 2026-10-12 Longdo mixed-endpoint and invalid-evidence follow-up
 - PR166/ada37df858e32c4dc4928b5d6e40ee591ca0415d exact Pilot38251358486 SUCCESS. Working e39090ca post-merge38250742424 failed initial map tile completeness after60s. Its artifact11748211365 sha25651a24e846027b02eb4134821d93c5318c0379e50b92303b96fa00c1ebb040a4b preserves a real19.8867% gray rectangle, unchanged after61.9s; corrected PID4686 did not show a verified app crash. This is a demonstrated incomplete map frame, not a timeout-only assumption.

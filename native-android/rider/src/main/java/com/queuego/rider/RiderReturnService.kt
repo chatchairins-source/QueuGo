@@ -11,15 +11,9 @@ import android.graphics.Color
 import android.graphics.PixelFormat
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
-import android.graphics.drawable.RippleDrawable
-import android.content.res.ColorStateList
 import android.os.Build
 import android.os.IBinder
 import android.provider.Settings
-import android.text.SpannableString
-import android.text.Spanned
-import android.text.style.RelativeSizeSpan
-import android.text.style.StyleSpan
 import android.util.Log
 import android.view.Gravity
 import android.view.MotionEvent
@@ -134,17 +128,14 @@ class RiderReturnService : Service() {
             setTextColor(Color.rgb(230, 0, 45))
             elevation = 12f * density
             setPadding(dp(12), 0, dp(12), 0)
-            background = RippleDrawable(ColorStateList.valueOf(0x33E6002D),
-                premiumOverlayBackground(dp(2)), null)
-            fun brand() = getDrawable(R.drawable.qg_rider_return_brand)!!.apply {
-                setBounds(0, 0, dp(48), dp(48))
-            }
-            setCompoundDrawables(brand(), null, null, null)
+            background = premiumOverlayBackground(dp(2))
+            val brand = requireNotNull(getDrawable(R.drawable.qg_rider_brand_q))
+            brand.setBounds(0, 0, dp(40), dp(40))
+            setCompoundDrawables(brand, null, null, null)
             compoundDrawablePadding = if (showHint) dp(6) else 0
-            text = if (showHint) "กลับ QueueGo" else ""
             textSize = 13f
             typeface = Typeface.DEFAULT_BOLD
-            setPadding(dp(4), 0, dp(4), 0)
+            text = if (showHint) "กลับ QueueGo" else ""
             contentDescription = "กลับ QueueGo"
         }
 
@@ -197,7 +188,9 @@ class RiderReturnService : Service() {
         bubble.setOnTouchListener { _, event ->
             when (event.actionMasked) {
                 MotionEvent.ACTION_DOWN -> {
-                    bubble.isPressed = true
+                    bubble.alpha = .82f
+                    bubble.scaleX = .96f
+                    bubble.scaleY = .96f
                     downX = params.x
                     downY = params.y
                     touchX = event.rawX
@@ -212,14 +205,18 @@ class RiderReturnService : Service() {
                     true
                 }
                 MotionEvent.ACTION_UP -> {
-                    bubble.isPressed = false
                     val moved = abs(event.rawX - touchX) + abs(event.rawY - touchY)
+                    bubble.alpha = 1f
+                    bubble.scaleX = 1f
+                    bubble.scaleY = 1f
                     snapToNearestEdge(persistPosition = true)
                     if (moved < 18f * density) returnToQueueGo()
                     true
                 }
                 MotionEvent.ACTION_CANCEL -> {
-                    bubble.isPressed = false
+                    bubble.alpha = 1f
+                    bubble.scaleX = 1f
+                    bubble.scaleY = 1f
                     snapToNearestEdge(persistPosition = true)
                     true
                 }
@@ -239,8 +236,10 @@ class RiderReturnService : Service() {
                     params.x = edgeX(edge)
                     params.y = clampY(params.y)
                     bubble.setPadding(0, 0, 0, 0)
+                    bubble.setPadding(dp(8), 0, dp(8), 0)
+                    bubble.compoundDrawablePadding = 0
                     bubble.text = ""
-                    bubble.textSize = 27f
+                    bubble.textSize = 13f
                     bubble.typeface = Typeface.DEFAULT_BOLD
                     runCatching { windowManager.updateViewLayout(bubble, params) }
                     prefs.edit().putBoolean(PREF_HINT_SHOWN, true).apply()

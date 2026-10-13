@@ -13,7 +13,7 @@ fun customerTrackingPoints(order: CustomerOrder, rider: CustomerTrackingRider?):
             if (lat != null && lon != null) QgMapPoint(lat, lon, color, role).takeIf { it.valid }?.let { add(it) }
         }
         point(order.pickupLatitude, order.pickupLongitude, 0xFFE6002D.toInt(), QgMapRole.MERCHANT)
-        point(order.deliveryLatitude, order.deliveryLongitude, 0xFF087F8C.toInt(), QgMapRole.CUSTOMER)
+        point(order.deliveryLatitude, order.deliveryLongitude, 0xFF007F99.toInt(), QgMapRole.CUSTOMER)
         if (order.status != "searching_rider") point(rider?.latitude, rider?.longitude, 0xFFE6002D.toInt(), QgMapRole.RIDER)
     }
 }

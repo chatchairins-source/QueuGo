@@ -18,7 +18,7 @@ class CustomerTrackingPolicyTest {
         assertEquals(listOf(QgMapRole.MERCHANT, QgMapRole.CUSTOMER, QgMapRole.RIDER),
             points.map { it.role })
         assertEquals(0xFFE6002D.toInt(), points[0].color)
-        assertEquals(0xFF087F8C.toInt(), points[1].color)
+        assertEquals(0xFF007F99.toInt(), points[1].color)
         assertNotEquals(points[0].color, points[1].color)
     }
     @Test fun closedOrdersNeverExposeMapPointsEvenWithCachedRiderCoordinates() {

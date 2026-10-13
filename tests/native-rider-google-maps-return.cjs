@@ -36,7 +36,7 @@ assert(!app.includes('RiderNavigationController()')&&!app.includes('RiderNavigat
   'Rider Home must not run the retired in-app navigation engine or turn-by-turn panel');
 assert(!fs.existsSync('native-android/rider/src/main/java/com/queuego/rider/RiderNavigation.kt'),
   'Retired Rider in-app navigation engine source must stay removed');
-assert(service.includes('TYPE_APPLICATION_OVERLAY')&&service.includes('R.drawable.qg_rider_return_brand')&&service.includes('MainActivity::class.java'),
+assert(service.includes('TYPE_APPLICATION_OVERLAY')&&service.includes('R.drawable.qg_rider_brand_q')&&service.includes('MainActivity::class.java'),
   'Rider must expose a draggable Q overlay that returns to QueueGo');
 assert(service.includes('snapToNearestEdge')&&service.includes('PREF_Y_RATIO')&&service.includes('putFloat(PREF_Y_RATIO'),
   'Rider return overlay must snap to an edge and persist its vertical position');
