@@ -54,5 +54,7 @@ const path=require('path');
   assert(riderApp.includes('enabled && !riderNotificationsReady(context)'),'Rider must not go online while job notifications are disabled');
   assert(riderApp.includes('notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)'),'Rider must request Android notification permission when required');
   assert(riderApp.includes('riderNotificationSettingsIntent(context)'),'Rider must take an already-denied/disabled channel to Android notification settings');
+  assert(riderApp.includes('syncRiderNativePush(context, auth, api, pushStore)'),'Rider must bind the current native push token/session again before going online');
+  assert(riderApp.includes('if (!pushBound)')&&riderApp.includes('return@launch'),'Rider must refuse online state when current-session native push binding fails');
   console.log('Rider offer push expiry, ownership, session and transport policy: PASS');
 })().catch(e=>{console.error(e);process.exit(1)});
