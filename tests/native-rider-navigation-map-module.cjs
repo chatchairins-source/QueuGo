@@ -129,6 +129,12 @@ assert(coordinator.includes('class NavigationRouteCoordinator')&&
   coordinator.includes('preservedFuture')&&
   coordinator.includes('segment.toStopId != activeStop.id'),
   'Route coordinator must reroute only the active leg, preserve future stops and stay independent of Rider business state');
+assert(coordinator.includes('ROUTE_PROGRESS_RENDER_STEP_METERS = 10.0')&&
+  coordinator.includes('visibleProgressMeters')&&
+  coordinator.includes('maxOf(visibleProgressMeters, match.progressMeters)')&&
+  coordinator.includes('trimNavigationRouteSegment')&&
+  coordinator.includes('guidance.weakGps || guidance.offRoute'),
+  'Active route must shrink monotonically behind the Rider without rebuilding geometry on every GPS tick or trusting unreliable fixes');
 assert(route.includes('NavigationRouteInstruction')&&
   route.includes('turnCode = properties.optInt("turn", 4)')&&
   route.includes('roadName = properties.optString("name").trim()'),
