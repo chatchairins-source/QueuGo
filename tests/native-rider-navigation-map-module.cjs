@@ -58,7 +58,7 @@ assert(map.includes('activeDestroyObserver')&&
   runtimeTest.includes('destroyed Activity'),
   'A retained off-Home map must be destroyed with its Activity and recreated with the new Activity context');
 assert(map.includes('fun retainAcrossVisibilityLoss()')&&
-  map.includes('Longdo 0.1.8 rebuilds its renderer/map after MapGLSurfaceView.onPause()')&&
+  map.includes('Capture a frozen frame quietly for emergency continuity')&&
   map.includes('Lifecycle.Event.ON_PAUSE -> holder.retainAcrossVisibilityLoss()')&&
   map.includes('holder.retainAcrossVisibilityLoss()')&&
   map.includes('fun shutdownSdk()')&&
@@ -72,6 +72,7 @@ assert(map.includes('setPreserveEGLContextOnPause(true)'),
   'Navigation map must preserve the GL context across background/resume when Android allows it');
 assert(map.includes('PixelCopy.request')&&map.includes('snapshotOverlay')&&
   map.includes('showContinuityBridge')&&map.includes('settleContinuityBridge')&&
+  map.includes('The bridge is shown only when attachMap() detects a real map')&&
   models.includes('snapshotBridgeCount: Int = 0')&&models.includes('snapshotVisible: Boolean = false'),
   'When Android recreates the Longdo renderer, a captured SurfaceView frame must hide visible map reassembly');
 assert(map.includes('map.setDoTileAnimation(false)')&&map.includes('map.setDoPreShowCache(true)')&&
@@ -102,7 +103,8 @@ assert(runtimeTest.includes('awaitAppliedRender')&&runtimeTest.includes('awaitSt
   runtimeTest.includes('bounded GPS retries')&&
   runtimeTest.includes('GPS refresh recreated MapGLSurfaceView')&&
   runtimeTest.includes('GPS refresh rebuilt unchanged route layers')&&
-  runtimeTest.includes('Navigation map continuity bridge did not settle')&&
+  runtimeTest.includes('Healthy tab remount should not invoke the continuity bridge')&&
+  runtimeTest.includes('Healthy background/resume should not invoke the continuity bridge')&&
   runtimeTest.includes('Longdo map replacement was not recorded')&&
   runtimeTest.includes('Equivalent backend refresh rebuilt unchanged route layers')&&
   runtimeTest.includes('Structurally-equal backend refresh should be suppressed before map render')&&

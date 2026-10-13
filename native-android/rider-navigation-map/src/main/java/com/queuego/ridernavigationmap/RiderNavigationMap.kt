@@ -301,11 +301,12 @@ private class RiderNavigationMapHolder {
     }
 
     fun retainAcrossVisibilityLoss() {
-        // Longdo 0.1.8 rebuilds its renderer/map after MapGLSurfaceView.onPause().
-        // For tab switches and ordinary background/foreground cycles keep the SDK renderer
-        // alive and only preserve camera state; SurfaceView can handle surface loss itself.
+        // Tab switches and ordinary background/foreground cycles keep the SDK renderer alive.
+        // Capture a frozen frame quietly for emergency continuity, but do not cover a healthy
+        // retained renderer. The bridge is shown only when attachMap() detects a real map
+        // replacement from Android/Longdo.
         captureCamera()
-        showContinuityBridge()
+        requestSnapshot(force = true)
     }
 
     fun shutdownSdk() {

@@ -181,17 +181,14 @@ class NavigationMapRuntimeTest {
             InstrumentationRegistry.getInstrumentation().waitForIdleSync()
             awaitMapPresence(scenario, expected = true)
             awaitAppliedRender(runtimeActivity, beforeTabUnmount)
-            val tabReturnDiagnostics = awaitBridgeSettled(
-                runtimeActivity,
-                beforeTabUnmountDiagnostics.snapshotBridgeCount
-            )
+            val tabReturnDiagnostics = runtimeActivity.latestDiagnostics
             assertEquals(
-                "Tab return continuity bridge failed",
-                0,
-                tabReturnDiagnostics.snapshotBridgeFailureCount
+                "Healthy tab remount should not invoke the continuity bridge",
+                beforeTabUnmountDiagnostics.snapshotBridgeCount,
+                tabReturnDiagnostics.snapshotBridgeCount
             )
             assertFalse(
-                "Tab return continuity snapshot remained stuck over live map",
+                "Healthy tab remount unexpectedly covered the retained map with a snapshot",
                 tabReturnDiagnostics.snapshotVisible
             )
             scenario.onActivity { activity ->
@@ -214,23 +211,40 @@ class NavigationMapRuntimeTest {
             scenario.moveToState(Lifecycle.State.RESUMED)
             InstrumentationRegistry.getInstrumentation().waitForIdleSync()
             awaitAppliedRender(runtimeActivity, beforeResumeRender)
-            val resumeDiagnostics = awaitBridgeSettled(
-                runtimeActivity,
-                beforeResumeDiagnostics.snapshotBridgeCount
-            )
 
             var resumedSdkMap = initialSdkMap
             scenario.onActivity { activity ->
                 assertEquals("Resume recreated MapGLSurfaceView", initialView, activity.mapViewIdentity())
                 resumedSdkMap = activity.sdkMapIdentity()
+            }
+
+            var resumeDiagnostics = runtimeActivity.latestDiagnostics
+            if (resumeDiagnostics.snapshotBridgeCount > beforeResumeDiagnostics.snapshotBridgeCount) {
+                resumeDiagnostics = awaitBridgeSettled(
+                    runtimeActivity,
+                    beforeResumeDiagnostics.snapshotBridgeCount
+                )
+            }
+            assertTrue(resumeDiagnostics.snapshotCaptureCount > 0)
+            assertEquals(0, resumeDiagnostics.snapshotBridgeFailureCount)
+            assertFalse("Continuity snapshot remained stuck over live map", resumeDiagnostics.snapshotVisible)
+
+            scenario.onActivity { activity ->
                 assertEquals(1, activity.latestDiagnostics.viewCreatedCount)
-                assertTrue(activity.latestDiagnostics.snapshotCaptureCount > 0)
-                assertTrue(activity.latestDiagnostics.snapshotBridgeCount > beforeResumeDiagnostics.snapshotBridgeCount)
-                assertEquals(0, activity.latestDiagnostics.snapshotBridgeFailureCount)
-                assertFalse("Continuity snapshot remained stuck over live map", activity.latestDiagnostics.snapshotVisible)
-                if (resumedSdkMap != initialSdkMap) {
+                if (resumedSdkMap == initialSdkMap) {
+                    assertEquals(
+                        "Healthy background/resume should not invoke the continuity bridge",
+                        beforeResumeDiagnostics.snapshotBridgeCount,
+                        activity.latestDiagnostics.snapshotBridgeCount
+                    )
+                    assertEquals(1, activity.latestDiagnostics.mapCreatedCount)
+                } else {
                     assertTrue("Longdo map replacement was not recorded", activity.latestDiagnostics.mapReplacementCount >= 1)
                     assertTrue("Longdo map replacement did not increment map creation count", activity.latestDiagnostics.mapCreatedCount >= 2)
+                    assertTrue(
+                        "Longdo replacement did not invoke frozen-frame continuity bridge",
+                        activity.latestDiagnostics.snapshotBridgeCount > beforeResumeDiagnostics.snapshotBridgeCount
+                    )
                 }
             }
 
