@@ -476,17 +476,21 @@ class QueueGoApi {
             marketPickups = marketPickupRoute(auth, active.marketOrderId)
             val parents = requestArray(
                 "GET",
-                "/rest/v1/market_orders?select=delivery_fee,rider_bonus,total_amount&id=eq." +
+                "/rest/v1/market_orders?select=subtotal,delivery_fee,multi_shop_service_fee,rider_bonus,total_amount&id=eq." +
                     enc(active.marketOrderId) + "&limit=1",
                 auth.session.accessToken
             )
             if (parents.length() > 0) {
                 val parent = parents.getJSONObject(0)
                 active = active.copy(
+                    // deliveryFee remains Rider income; customer-facing fees stay separate below.
                     deliveryFee = parent.doubleOrZero("delivery_fee") +
                         parent.doubleOrZero("rider_bonus"),
                     shopCash = null,
-                    customerCash = parent.doubleOrNull("total_amount")
+                    customerCash = parent.doubleOrNull("total_amount"),
+                    customerSubtotal = parent.doubleOrNull("subtotal"),
+                    customerDeliveryFee = parent.doubleOrNull("delivery_fee"),
+                    customerServiceFee = parent.doubleOrNull("multi_shop_service_fee")
                 )
             }
         }
@@ -1056,7 +1060,9 @@ class QueueGoApi {
         arrivedShopAt = riderNullableText(o.optString("rider_arrived_shop_at")),
         arrivedCustomerAt = riderNullableText(o.optString("rider_arrived_customer_at")),
         shopCash = o.doubleOrNull("subtotal"),
-        customerCash = o.doubleOrNull("total_amount")
+        customerCash = o.doubleOrNull("total_amount"),
+        customerSubtotal = o.doubleOrNull("subtotal"),
+        customerDeliveryFee = o.doubleOrNull("delivery_fee")
     )
 
     private fun JSONObject.doubleOrNull(name: String): Double? =

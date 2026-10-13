@@ -78,7 +78,10 @@ data class RiderJob(
     val arrivedShopAt: String?,
     val arrivedCustomerAt: String?,
     val shopCash: Double? = null,
-    val customerCash: Double? = null
+    val customerCash: Double? = null,
+    val customerSubtotal: Double? = null,
+    val customerDeliveryFee: Double? = null,
+    val customerServiceFee: Double? = null
 ) {
     val numberLabel: String
         get() = nativeOrderNumber(orderNumber)

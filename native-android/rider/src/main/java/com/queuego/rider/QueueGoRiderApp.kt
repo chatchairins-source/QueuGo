@@ -2191,6 +2191,44 @@ private fun RiderCashPanel(title: String, amount: Double, note: String) {
     }
 }
 
+@Composable
+private fun RiderCustomerCashPanel(job: RiderJob) {
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .background(QgRedSoft, RoundedCornerShape(14.dp))
+            .padding(horizontal = 12.dp, vertical = 11.dp)
+    ) {
+        Text("เก็บจากลูกค้า", color = QgMuted, style = MaterialTheme.typography.labelSmall)
+        job.customerSubtotal?.let { RiderCashBreakdownRow("ยอดสินค้า", it) }
+        job.customerDeliveryFee?.let { RiderCashBreakdownRow("ค่าส่ง", it) }
+        job.customerServiceFee?.takeIf { it > 0.0 }?.let {
+            RiderCashBreakdownRow("ค่าบริการหลายร้าน", it)
+        }
+        HorizontalDivider(
+            modifier = Modifier.padding(vertical = 7.dp),
+            color = Color(0x22E6002D)
+        )
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Bottom) {
+            Text("ยอดที่ต้องเก็บทั้งหมด", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+            Text(riderMoneyBaht(job.customerCash), color = QgRed, fontSize = 24.sp, fontWeight = FontWeight.Black)
+        }
+        Text("เก็บเงินตามยอดนี้จากลูกค้า", color = QgMuted, style = MaterialTheme.typography.labelSmall)
+    }
+}
+
+@Composable
+private fun RiderCashBreakdownRow(label: String, amount: Double) {
+    Row(
+        Modifier.fillMaxWidth().padding(top = 6.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(label, color = QgMuted, fontSize = 10.sp)
+        Text(riderMoneyBaht(amount), fontSize = 11.sp, fontWeight = FontWeight.Bold)
+    }
+}
+
 private fun riderStatusLabel(status: String): String = when (status) {
     "rider_assigned", "assigned" -> "ไปร้าน"
     "preparing" -> "ร้านกำลังเตรียม"
@@ -2261,6 +2299,8 @@ private fun VerificationScreen(
                         }
                         Box(Modifier.fillMaxWidth().height(1.dp).background(Color(0xFFF0EAEC)))
                         RiderProofMetaRow(R.drawable.qg_rider_flow_jobs, "รหัสออเดอร์", job.numberLabel)
+                        Box(Modifier.fillMaxWidth().height(1.dp).background(Color(0xFFF0EAEC)))
+                        RiderProofMetaRow(R.drawable.qg_rider_flow_loc, "ที่อยู่ร้าน", job.pickupAddress ?: "จุดรับสินค้า")
                         Box(Modifier.fillMaxWidth().height(1.dp).background(Color(0xFFF0EAEC)))
                         RiderProofMetaRow(R.drawable.qg_rider_nav_user, "ลูกค้า", details.customerName ?: "ลูกค้า")
                     }
@@ -2343,11 +2383,7 @@ private fun VerificationScreen(
                 }
                 if (!pickup && !marketPickupMode && job.customerCash != null) {
                     Spacer(Modifier.height(6.dp))
-                    RiderCashPanel(
-                        title = "เก็บจากลูกค้า",
-                        amount = job.customerCash,
-                        note = "เก็บเงินตามยอดนี้จากลูกค้า ก่อนสไลด์ส่งสำเร็จ"
-                    )
+                    RiderCustomerCashPanel(job)
                 }
                 Spacer(Modifier.height(6.dp))
                 if (photoUri != null) {
