@@ -73,10 +73,12 @@ assert(map.includes('fun retainAcrossVisibilityLoss()')&&
 assert(map.includes('setPreserveEGLContextOnPause(true)'),
   'Navigation map must preserve the GL context across background/resume when Android allows it');
 assert(map.includes('announceRendererReplacement')&&
+  map.includes('fun configureMap(')&&
+  map.includes('Longdo 0.1.8 can silently replace renderer.map without emitting onMapCreated')&&
   map.includes('activeView.renderer?.map')&&
   map.includes('rendererMap !== map')&&
-  map.includes('Wait for onMapCreated + base/camera/route setup before uncovering a replacement map'),
-  'Renderer-map identity changes must trigger the frozen-frame bridge before Longdo onMapCreated exposes reconstruction');
+  map.includes('configureMap(activeView.context, rendererMap!!)'),
+  'Renderer-map identity changes must be bridged and proactively adopted even when Longdo never emits onMapCreated');
 assert(map.includes('PixelCopy.request')&&map.includes('snapshotOverlay')&&
   map.includes('showContinuityBridge')&&map.includes('settleContinuityBridge')&&
   map.includes('pendingBridgeWithoutSnapshot')&&
@@ -84,8 +86,8 @@ assert(map.includes('PixelCopy.request')&&map.includes('snapshotOverlay')&&
   map.includes('The bridge is shown only when attachMap() detects a real map')&&
   models.includes('snapshotBridgeCount: Int = 0')&&models.includes('snapshotVisible: Boolean = false'),
   'When Android recreates the Longdo renderer, a captured SurfaceView frame must hide visible map reassembly');
-assert(map.includes('map.setDoTileAnimation(false)')&&map.includes('map.setDoPreShowCache(true)')&&
-  map.includes('setDoPreDrawCache(true)'),
+assert(map.includes('nextMap.setDoTileAnimation(false)')&&map.includes('nextMap.setDoPreShowCache(true)')&&
+  map.includes('setDoPreDrawCache(true)')&&map.includes('lastKnownCamera'),
   'Longdo replacement maps must prefer cached tiles and disable tile-appearance animation');
 assert(guidance.includes('class NavigationProgressTracker')&&
   guidance.includes('requiredOffRouteSamples: Int = 2')&&

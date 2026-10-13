@@ -64,6 +64,7 @@ private class RiderNavigationMapHolder {
     private var bridgeGeneration = 0
     private var pendingBridgeWithoutSnapshot = false
     private var announcedReplacementMap: com.longdo.api.Map? = null
+    private var lastKnownCamera: NavigationMapCamera? = null
     private var lastState = RiderNavigationMapState()
     private var riderPin: Pin? = null
     private var lastRiderFix: NavigationMapFix? = null
@@ -288,21 +289,64 @@ private class RiderNavigationMapHolder {
         routeActiveId = null
         routeRemainingStopIds = emptySet()
         lastCameraFix = null
-        lastCameraBearing = null
+        // Preserve heading continuity across an internal Longdo renderer swap.
         mapCreatedCount += 1
         publishDiagnostics()
+        return true
+    }
+
+    fun configureMap(
+        context: android.content.Context,
+        nextMap: com.longdo.api.Map,
+        initialCamera: NavigationMapCamera? = null
+    ): Boolean {
+        val replacingExistingMap = map != null && map !== nextMap
+        if (replacingExistingMap) announceRendererReplacement(nextMap)
+        val newSdkMap = attachMap(nextMap)
+        if (!newSdkMap) return false
+
+        val continuityCamera = if (replacingExistingMap) lastKnownCamera else null
+        val camera = continuityCamera ?: initialCamera
+        runCatching {
+            nextMap.setDoTileAnimation(false)
+            nextMap.setDoPreShowCache(true)
+            nextMap.setBase(LongdoLayer(context, "normal", 0, 1, 20).apply {
+                layerURL = "https://ms.longdo.com/map/msn-server/tile.php"
+                setDoPreDrawCache(true)
+            })
+            nextMap.setDrawCrossSign(false)
+            val start = camera?.point?.takeIf { it.valid }
+                ?: lastState.rider?.point?.takeIf { it.valid }
+                ?: lastState.remainingStops().firstOrNull()?.point
+                ?: NavigationMapPoint(DEFAULT_LATITUDE, DEFAULT_LONGITUDE)
+            nextMap.setLocation(MapLocation(start.longitude, start.latitude))
+            nextMap.setZoom(camera?.zoom?.coerceIn(4, 20) ?: 15)
+            val bearing = camera?.bearingDegrees ?: lastCameraBearing
+            bearing?.takeIf { it.isFinite() }?.let {
+                nextMap.setCanRotateCamera(true)
+                nextMap.rotate(((it % 360f) + 360f) % 360f, false)
+            }
+            render(lastState)
+        }.onFailure {
+            Log.e("QueueGoNavMap", "map_replacement_setup_failed", it)
+            throw it
+        }
+
+        if (replacingExistingMap) settleContinuityBridge()
         return true
     }
 
     fun resume() {
         val activeView = view ?: return
         if (disposed) return
-        // Longdo can swap renderer.map before it emits onMapCreated. Detect that identity
-        // change here so the last good frame covers the replacement immediately instead of
-        // exposing tile/base reconstruction for even a single visible frame.
+        // Longdo 0.1.8 can silently replace renderer.map without emitting onMapCreated.
+        // Adopt and configure that exact renderer map here so the visible surface never waits
+        // for a callback that may never arrive.
         val rendererMap = runCatching { activeView.renderer?.map }.getOrNull()
         val replacementPending = rendererMap != null && map != null && rendererMap !== map
-        if (replacementPending) announceRendererReplacement(rendererMap!!)
+        if (replacementPending) {
+            configureMap(activeView.context, rendererMap!!)
+        }
         // Longdo's Activity lifecycle does not require MapGLSurfaceView.onResume().
         // Calling it after ordinary background/foreground transitions can replace renderer.map
         // and visibly reassemble the map even though the retained View itself never changed.
@@ -310,7 +354,6 @@ private class RiderNavigationMapHolder {
         // Deliberately keep lastRiderFix, map, pins and route layers. A refresh/resume must
         // never reconstruct the map just because Rider/order state changed.
         render(lastState)
-        // Wait for onMapCreated + base/camera/route setup before uncovering a replacement map.
         if (!replacementPending) settleContinuityBridge()
     }
 
@@ -318,12 +361,13 @@ private class RiderNavigationMapHolder {
         map?.let { activeMap ->
             runCatching {
                 val location = activeMap.getLocation()
-                onCameraChanged(
-                    NavigationMapCamera(
-                        point = NavigationMapPoint(location.lat, location.lon),
-                        zoom = activeMap.getZoom()
-                    )
+                val camera = NavigationMapCamera(
+                    point = NavigationMapPoint(location.lat, location.lon),
+                    zoom = activeMap.getZoom(),
+                    bearingDegrees = lastCameraBearing
                 )
+                lastKnownCamera = camera
+                onCameraChanged(camera)
             }
         }
     }
@@ -617,6 +661,7 @@ private class RiderNavigationMapHolder {
         snapshotVisible = false
         pendingBridgeWithoutSnapshot = false
         announcedReplacementMap = null
+        lastKnownCamera = null
         resumed = false
         stopSource = null
         stopActiveId = null
@@ -759,28 +804,9 @@ fun RiderNavigationMap(
                         view.post {
                             if (holder.disposed) return@post
                             runCatching {
-                                val newSdkMap = holder.attachMap(map)
-                                if (newSdkMap) {
-                                    map.setDoTileAnimation(false)
-                                    map.setDoPreShowCache(true)
-                                    map.setBase(LongdoLayer(context, "normal", 0, 1, 20).apply {
-                                        layerURL = "https://ms.longdo.com/map/msn-server/tile.php"
-                                        setDoPreDrawCache(true)
-                                    })
-                                    map.setDrawCrossSign(false)
-                                    val start = initialCamera?.point?.takeIf { it.valid }
-                                        ?: currentState.value.rider?.point?.takeIf { it.valid }
-                                        ?: currentState.value.remainingStops().firstOrNull()?.point
-                                        ?: NavigationMapPoint(DEFAULT_LATITUDE, DEFAULT_LONGITUDE)
-                                    map.setLocation(MapLocation(start.longitude, start.latitude))
-                                    map.setZoom(initialCamera?.zoom?.coerceIn(4, 20) ?: 15)
-                                    initialCamera?.bearingDegrees
-                                        ?.takeIf { it.isFinite() }
-                                        ?.let {
-                                            map.setCanRotateCamera(true)
-                                            map.rotate(((it % 360f) + 360f) % 360f, false)
-                                        }
-                                }
+                                // Initial callbacks and delayed replacement callbacks share the
+                                // same setup path. Silent renderer swaps are adopted by resume().
+                                holder.configureMap(context, map, initialCamera)
                                 // A duplicate SDK callback for the same map is only a render retry;
                                 // never reset base/camera or force the visible map to assemble again.
                                 holder.render(currentState.value)
