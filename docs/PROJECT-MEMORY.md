@@ -1,3 +1,9 @@
+## 2026-10-13 additional Rider navigation and final cash flow mission
+- Owner adds to the same mission: automatic Google Maps handoff must show arrival actions on return; photo/proof uses buttons; slider belongs only to final completion on a full-screen customer cash amount review matching Production Web cash layout. This newer instruction supersedes the older prohibition on a separate cash review presentation. No additional payment confirmation RPC/state is introduced.
+- Start from integrated marker successor52511640/tree2861f70a, whose tree matches testedc5a37c52/run38367565964 SUCCESS. Backup backup/rider-before-delivery-cash-flow-52511640-20261013.
+- Fix stale navigation UI by sharing the persisted Maps stage key and observing preference changes plus Activity resume. Preserve Maps-only handoff, return overlay, bundle sequencing and Longdo fixes. Proof advances by button to final collection; full-screen amount uses authoritative customerCash, and final slider alone calls existing completeWithPhoto. Back returns to proof, retaining evidence; invalid/missing amounts block final collection.
+- Full regression/Native unit/build/16KB/no-WebView/runtime remain required on this new source. Physical/authenticated Release Gate remains OPEN; no release APK/AAB.
+
 ## 2026-10-13 Customer tracking semantic marker integration
 - Preserved concurrent successor3ec0677 and its Rider marker/return design plus real vector instrumentation. PR169 integrates the same family into Customer tracking with explicit role fields; Customer mapReady/GPS and shared Longdo lifecycle code stay unchanged.
 - Local full regression passed before successor integration; combined exact-head regression/unit/build/runtime must pass. Physical gates remain OPEN; no release artifacts delivered.

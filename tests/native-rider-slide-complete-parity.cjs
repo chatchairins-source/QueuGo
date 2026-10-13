@@ -9,7 +9,7 @@ const slide=fs.readFileSync('native-android/rider/src/main/java/com/queuego/ride
 assert(app.includes('RiderCashPanel(')&&app.includes('title = "จ่ายร้าน"'),
   'Rider pickup verification must keep the shop cash amount inline');
 assert(app.includes('RiderCustomerCashPanel(job)')&&app.includes('Text("เก็บจากลูกค้า"'),
-  'Rider delivery verification must keep customer collection inline without another confirmation screen');
+  'Rider proof screen must retain the authoritative collection breakdown before final cash review');
 assert((app.match(/fontSize = 34\.sp/g)||[]).length>=2,
   'Shop-payment and customer-collection totals must remain visually prominent');
 assert(app.includes('riderMoneyBaht(item.unitPrice) + " × ${item.quantity}"')&&app.includes('riderMoneyBaht(item.totalPrice)'),
@@ -32,14 +32,18 @@ assert(app.includes('riderPickupCommittedStatus(mutationResult)')&&
   app.includes('?: localAfterSuccess?.activeJob'),
   'Pickup photo success must preserve the committed order through stale reads and hand Google Maps the authoritative next stop');
 
-assert(app.includes('RiderSlideComplete(')&&app.includes('label = "สไลด์เพื่อส่งสำเร็จ"'),
+assert(app.includes('RiderSlideComplete(')&&app.includes('label = "เก็บเงินจากลูกค้าเรียบร้อยแล้ว"'),
   'Delivery verification must use slide-to-complete');
 assert(app.includes('if (photoReady && !pickup && !marketPickupMode)'),
   'Slide-to-complete must only replace the final delivery action after proof is captured');
-assert(app.includes('onComplete = onConfirm'),
+assert(app.includes('onComplete = onComplete') && app.includes('onComplete = onConfirm'),
   'Slide completion must reuse the existing completeWithPhoto path');
-assert(!/CashConfirm|cashConfirm|qgOpenCashConfirmPage/.test(app),
-  'Native Rider must not introduce a separate cash-confirm screen');
+assert(app.includes('RiderCollectionScreen(') && app.includes('onClick = { showCollection = true }'),
+  'Proof must advance by button to a full-screen final collection review');
+assert(app.includes('riderCollectionReady(job.customerCash, photoReady, previewReady)'),
+  'Final collection must require a readable proof and an authoritative finite cash amount');
+assert(app.includes('fontSize = if (amount.length > 12) 34.sp else 56.sp'),
+  'Final collection must display the full amount prominently like Production Web');
 
 assert(slide.includes('detectHorizontalDragGestures('),'Slide control must require a horizontal gesture');
 assert(slide.includes('if (progress >= 0.92f)'),'Slide control must require near-complete travel');

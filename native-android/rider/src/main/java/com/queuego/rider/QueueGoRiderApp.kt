@@ -2105,9 +2105,27 @@ private fun ActiveJobCard(
 ) {
     val context = LocalContext.current
     val pickup = job.status in setOf("rider_assigned", "assigned", "preparing", "ready")
-    var navigationStarted by remember(job.id, pickup) {
-        mutableStateOf(context.getSharedPreferences("rider_navigation", Context.MODE_PRIVATE)
-            .getBoolean(job.id + if (pickup) ":shop" else ":customer", false))
+    val navigationPrefs = remember(context) { context.getSharedPreferences("rider_navigation", Context.MODE_PRIVATE) }
+    val navigationKey = riderNavigationKey(job)
+    val navigationLifecycle = LocalLifecycleOwner.current.lifecycle
+    var navigationStarted by remember(navigationKey) {
+        mutableStateOf(navigationPrefs.getBoolean(navigationKey, false))
+    }
+    DisposableEffect(navigationPrefs, navigationKey, navigationLifecycle) {
+        fun readNavigationStage() { navigationStarted = navigationPrefs.getBoolean(navigationKey, false) }
+        val listener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
+            if (key == navigationKey) readNavigationStage()
+        }
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) readNavigationStage()
+        }
+        navigationPrefs.registerOnSharedPreferenceChangeListener(listener)
+        navigationLifecycle.addObserver(observer)
+        readNavigationStage()
+        onDispose {
+            navigationPrefs.unregisterOnSharedPreferenceChangeListener(listener)
+            navigationLifecycle.removeObserver(observer)
+        }
     }
     val title = when {
         job.status == "ready" -> "ร้านเตรียมสินค้าแล้ว"
@@ -2130,6 +2148,7 @@ private fun ActiveJobCard(
         pickup && job.shopArrived -> if (job.status == "ready") "ตรวจสอบรายการ" else "ถึงร้านแล้ว ✓"
         pickup && navigationStarted -> "ถึงร้านแล้ว"
         pickup -> "นำทางไปร้าน"
+        job.status == "picked_up" -> "เริ่มจัดส่ง"
         job.status == "in_progress" && job.customerArrived -> "ส่งมอบสินค้า"
         job.status == "in_progress" && navigationStarted -> "ถึงลูกค้าแล้ว"
         else -> "นำทางไปลูกค้า"
@@ -2172,13 +2191,13 @@ private fun ActiveJobCard(
             Button(
                 onClick = {
                     when {
-                        job.marketOrderId != null && pickup -> { onNavigate(); navigationStarted = context.getSharedPreferences("rider_navigation", Context.MODE_PRIVATE).getBoolean(job.id + if (pickup) ":shop" else ":customer", false) }
+                        job.marketOrderId != null && pickup -> { onNavigate(); navigationStarted = context.getSharedPreferences("rider_navigation", Context.MODE_PRIVATE).getBoolean(navigationKey, false) }
                         pickup && job.shopArrived && job.status == "ready" -> onPickupVerify()
                         pickup && navigationStarted -> onArriveShop()
                         job.status == "picked_up" -> onStartDelivery()
                         job.status == "in_progress" && job.customerArrived -> onDeliveryVerify()
                         job.status == "in_progress" && navigationStarted -> onArriveCustomer()
-                        else -> { onNavigate(); navigationStarted = context.getSharedPreferences("rider_navigation", Context.MODE_PRIVATE).getBoolean(job.id + if (pickup) ":shop" else ":customer", false) }
+                        else -> { onNavigate(); navigationStarted = context.getSharedPreferences("rider_navigation", Context.MODE_PRIVATE).getBoolean(navigationKey, false) }
                     }
                 },
                 enabled = !busy && job.navigationTarget != null && !(pickup && job.shopArrived && job.status != "ready" && job.marketOrderId == null),
@@ -2455,6 +2474,20 @@ private fun VerificationScreen(
     val marketPickupMode = mode == "marketPickup"
     var previewReady by remember(photoUri) { mutableStateOf(false) }
     val photoReady = photoUri != null
+    var showCollection by rememberSaveable(job.id, mode) { mutableStateOf(false) }
+    val collectionReady = riderCollectionReady(job.customerCash, photoReady, previewReady)
+    if (showCollection && photoReady && !pickup && !marketPickupMode) {
+        RiderCollectionScreen(
+            modifier = modifier,
+            job = job,
+            busy = busy,
+            message = message,
+            enabled = collectionReady,
+            onBack = { showCollection = false },
+            onComplete = onConfirm
+        )
+        return
+    }
     val screenHeight = LocalConfiguration.current.screenHeightDp
     val shortScreen = screenHeight <= 760
     BackHandler { if (!busy) onBack() }
@@ -2604,7 +2637,7 @@ private fun VerificationScreen(
                 if (message != null) Text(message, color = QgRed, modifier = Modifier.padding(top = 8.dp))
                 Text(
                     if (pickup || marketPickupMode) "ตรวจรายการให้ครบและถ่ายรูปก่อนรับสินค้า"
-                    else "ตรวจรายการให้ครบ ถ่ายรูปหลักฐาน แล้วสไลด์ให้สุดเพื่อส่งสำเร็จ",
+                    else "ถ่ายรูปหลักฐานแล้วกดไปหน้าเก็บเงิน ก่อนสไลด์จบงาน",
                     fontSize = 8.sp,
                     color = QgMuted,
                     modifier = Modifier.padding(top = 5.dp)
@@ -2614,12 +2647,12 @@ private fun VerificationScreen(
         Box(Modifier.align(Alignment.BottomCenter).padding(horizontal = 10.dp, vertical = 12.dp).widthIn(max = 660.dp).fillMaxWidth()
             .background(Color(0xFAFFFFFF), RoundedCornerShape(18.dp))) {
             if (photoReady && !pickup && !marketPickupMode) {
-                RiderSlideComplete(
-                    enabled = previewReady,
-                    busy = busy,
-                    label = "สไลด์เพื่อส่งสำเร็จ",
-                    onComplete = onConfirm
-                )
+                Button(
+                    onClick = { showCollection = true },
+                    enabled = !busy && collectionReady,
+                    modifier = Modifier.fillMaxWidth().height(54.dp),
+                    shape = RoundedCornerShape(18.dp)
+                ) { Text("ส่งมอบสินค้าและเก็บเงิน", fontWeight = FontWeight.Bold) }
             } else {
                 Button(
                     onClick = if (photoReady) onConfirm else onCamera,
@@ -2642,6 +2675,69 @@ private fun VerificationScreen(
                     )
                 }
             }
+        }
+    }
+}
+
+/** Final cash review reuses completion-with-proof; it creates no additional payment transaction. */
+@Composable
+private fun RiderCollectionScreen(
+    modifier: Modifier,
+    job: RiderJob,
+    busy: Boolean,
+    message: String?,
+    enabled: Boolean,
+    onBack: () -> Unit,
+    onComplete: () -> Unit
+) {
+    BackHandler { if (!busy) onBack() }
+    val amount = riderMoneyBaht(job.customerCash)
+    Column(modifier.fillMaxSize().background(Color(0xFFF7F7F8))) {
+        Row(Modifier.fillMaxWidth().background(Color.White).padding(horizontal = 10.dp, vertical = 5.dp),
+            verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.size(44.dp).clickable(enabled = !busy, onClick = onBack), contentAlignment = Alignment.Center) {
+                Icon(painterResource(R.drawable.qg_rider_flow_back), "ย้อนกลับ", Modifier.size(22.dp), tint = QgRed)
+            }
+            Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
+                Text("เก็บเงินจากลูกค้า", fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                Text(job.numberLabel, fontSize = 10.sp, color = QgMuted)
+            }
+            Spacer(Modifier.size(44.dp))
+        }
+        Column(Modifier.weight(1f).widthIn(max = 660.dp).fillMaxWidth().align(Alignment.CenterHorizontally)
+            .verticalScroll(rememberScrollState()).padding(horizontal = 22.dp, vertical = 32.dp),
+            horizontalAlignment = Alignment.CenterHorizontally) {
+            Box(Modifier.size(112.dp, 82.dp).background(QgRedSoft, RoundedCornerShape(26.dp)), contentAlignment = Alignment.Center) {
+                Icon(painterResource(R.drawable.qg_rider_cash), null, Modifier.size(66.dp), tint = QgRed)
+            }
+            Spacer(Modifier.height(30.dp))
+            Text("ยอดที่ต้องเก็บจากลูกค้า", color = QgMuted, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+            Text(amount, color = Color(0xFF111111), fontSize = if (amount.length > 12) 34.sp else 56.sp,
+                fontWeight = FontWeight.Black, maxLines = 1)
+            Spacer(Modifier.height(16.dp))
+            Text("ส่งสินค้าให้ลูกค้าเรียบร้อย แล้วตรวจสอบเงินสดก่อนจบงาน", color = QgMuted,
+                fontSize = 13.sp, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+            if (message != null) Text(message, color = QgRed, modifier = Modifier.padding(top = 14.dp))
+        }
+        Column(Modifier.widthIn(max = 660.dp).fillMaxWidth().align(Alignment.CenterHorizontally)
+            .background(Color.White).padding(horizontal = 14.dp, vertical = 16.dp)) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween) {
+                Text("ทั้งหมด", fontWeight = FontWeight.Bold)
+                Column(horizontalAlignment = Alignment.End) {
+                    Text("เงินสด", color = QgMuted, fontSize = 10.sp)
+                    Text(amount, fontSize = 26.sp, fontWeight = FontWeight.Black)
+                }
+            }
+            Spacer(Modifier.height(12.dp))
+            RiderSlideComplete(
+                enabled = enabled,
+                busy = busy,
+                label = "เก็บเงินจากลูกค้าเรียบร้อยแล้ว",
+                onComplete = onComplete
+            )
+            Text("สไลด์ให้สุดเมื่อยอดเงินถูกต้องแล้ว", Modifier.fillMaxWidth().padding(top = 6.dp),
+                color = QgMuted, fontSize = 10.sp, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
         }
     }
 }
@@ -2752,7 +2848,7 @@ private fun openNavigation(context: Context, job: RiderJob) {
         return
     }
 
-    val navigationKey = job.id + if (job.isDelivering) ":customer" else ":shop"
+    val navigationKey = riderNavigationKey(job)
     RiderReturnService.start(context)
     val navigation = Uri.parse(
         "google.navigation:q=" + target.first + "," + target.second + "&mode=d"
