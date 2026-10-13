@@ -15,7 +15,7 @@ class LongdoNavigationRouteClientTest {
 
     // Route-format fixtures only: no users, orders, accounts or Production writes.
     private val geometry =
-        """[{"type":"Feature","properties":{"distance":100,"interval":10},"geometry":{"type":"LineString","coordinates":[[100.0,13.0],[100.01,13.0]]}}]"""
+        """[{"type":"Feature","properties":{"distance":100,"interval":10,"turn":1,"name":"ถนนทดสอบ"},"geometry":{"type":"LineString","coordinates":[[100.0,13.0],[100.01,13.0]]}}]"""
 
     @Test fun parserUsesServiceSummaryAndProducesRenderableLeg() {
         val leg = LongdoNavigationRouteClient("test-key").parseGeoJson(
@@ -27,6 +27,9 @@ class LongdoNavigationRouteClientTest {
         assertEquals(289.0, leg.durationSeconds!!, 0.001)
         assertEquals("route-format-stop", leg.segment.toStopId)
         assertEquals(2, leg.segment.points.size)
+        assertEquals(1, leg.instructions.size)
+        assertEquals(1, leg.instructions.first().turnCode)
+        assertEquals("ถนนทดสอบ", leg.instructions.first().roadName)
     }
 
     @Test fun missingDurationKeepsMapGeometryInsteadOfInventingEta() {

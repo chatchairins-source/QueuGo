@@ -9,10 +9,19 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.util.concurrent.TimeUnit
 
+data class NavigationRouteInstruction(
+    val sequence: Int,
+    val turnCode: Int,
+    val roadName: String,
+    val sectionDistanceMeters: Double,
+    val sectionDurationSeconds: Double
+)
+
 data class NavigationRouteLeg(
     val segment: NavigationRouteSegment,
     val distanceMeters: Double,
-    val durationSeconds: Double?
+    val durationSeconds: Double?,
+    val instructions: List<NavigationRouteInstruction> = emptyList()
 )
 
 class LongdoNavigationRouteClient(
@@ -61,16 +70,26 @@ class LongdoNavigationRouteClient(
 
         val features = root.optJSONArray("features") ?: error("Longdo route geometry missing")
         val points = mutableListOf<NavigationMapPoint>()
+        val instructions = mutableListOf<NavigationRouteInstruction>()
         var featureDistance = 0.0
         var featureDuration = 0.0
 
         for (index in 0 until features.length()) {
             val feature = features.optJSONObject(index) ?: continue
-            val properties = feature.optJSONObject("properties")
-            properties?.optDouble("distance", Double.NaN)
-                ?.takeIf { it.isFinite() && it >= 0.0 }?.let { featureDistance += it }
-            properties?.optDouble("interval", Double.NaN)
-                ?.takeIf { it.isFinite() && it >= 0.0 }?.let { featureDuration += it }
+            val properties = feature.optJSONObject("properties") ?: JSONObject()
+            val sectionDistance = properties.optDouble("distance", 0.0)
+                .takeIf { it.isFinite() && it >= 0.0 } ?: 0.0
+            val sectionDuration = properties.optDouble("interval", 0.0)
+                .takeIf { it.isFinite() && it >= 0.0 } ?: 0.0
+            featureDistance += sectionDistance
+            featureDuration += sectionDuration
+            instructions += NavigationRouteInstruction(
+                sequence = index,
+                turnCode = properties.optInt("turn", 4),
+                roadName = properties.optString("name").trim(),
+                sectionDistanceMeters = sectionDistance,
+                sectionDurationSeconds = sectionDuration
+            )
 
             val geometry = feature.optJSONObject("geometry") ?: continue
             when (geometry.optString("type")) {
@@ -102,7 +121,8 @@ class LongdoNavigationRouteClient(
                 points = points
             ),
             distanceMeters = distance,
-            durationSeconds = duration
+            durationSeconds = duration,
+            instructions = instructions
         )
     }
 

@@ -8,6 +8,7 @@ const moduleBuild=fs.readFileSync('native-android/rider-navigation-map/build.gra
 const map=fs.readFileSync('native-android/rider-navigation-map/src/main/java/com/queuego/ridernavigationmap/RiderNavigationMap.kt','utf8');
 const route=fs.readFileSync('native-android/rider-navigation-map/src/main/java/com/queuego/ridernavigationmap/LongdoNavigationRouteClient.kt','utf8');
 const cameraPolicy=fs.readFileSync('native-android/rider-navigation-map/src/main/java/com/queuego/ridernavigationmap/NavigationCameraPolicy.kt','utf8');
+const guidance=fs.readFileSync('native-android/rider-navigation-map/src/main/java/com/queuego/ridernavigationmap/NavigationGuidance.kt','utf8');
 const models=fs.readFileSync('native-android/rider-navigation-map/src/main/java/com/queuego/ridernavigationmap/NavigationMapModels.kt','utf8');
 const workflow=fs.readFileSync('.github/workflows/build-native-rider-pilot.yml','utf8');
 const runtimeTest=fs.readFileSync('native-android/rider-navigation-map/src/androidTest/java/com/queuego/ridernavigationmap/NavigationMapRuntimeTest.kt','utf8');
@@ -48,7 +49,7 @@ assert(map.includes('RiderNavigationMapRegistry')&&
   runtimeTest.includes('expected = false')&&runtimeTest.includes('expected = true')&&
   runtimeTest.includes('Rider tab return recreated MapGLSurfaceView')&&
   runtimeTest.includes('Rider tab return recreated Longdo map')&&
-  runtimeTest.includes('Tab return continuity snapshot remained stuck over live map'),
+  runtimeTest.includes('Healthy tab remount should not invoke the continuity bridge'),
   'Leaving Home for another Rider tab must actually unmount/remount the map and reuse the same map objects without leaking an old Activity context');
 assert(map.includes('activeDestroyObserver')&&
   map.includes('Keep the lifecycle observer registered while Home is unmounted')&&
@@ -78,6 +79,16 @@ assert(map.includes('PixelCopy.request')&&map.includes('snapshotOverlay')&&
 assert(map.includes('map.setDoTileAnimation(false)')&&map.includes('map.setDoPreShowCache(true)')&&
   map.includes('setDoPreDrawCache(true)'),
   'Longdo replacement maps must prefer cached tiles and disable tile-appearance animation');
+assert(guidance.includes('class NavigationProgressTracker')&&
+  guidance.includes('requiredOffRouteSamples: Int = 2')&&
+  guidance.includes('rerouteCooldownMillis: Long = 8_000L')&&
+  guidance.includes('shouldReroute')&&guidance.includes('arrived')&&
+  guidance.includes('navigationNextInstruction')&&guidance.includes('navigationTurnPhrase'),
+  'Navigation guidance must expose progress/ETA, reliable off-route reroute, arrival and turn instructions without Rider business-state coupling');
+assert(route.includes('NavigationRouteInstruction')&&
+  route.includes('turnCode = properties.optInt("turn", 4)')&&
+  route.includes('roadName = properties.optString("name").trim()'),
+  'Longdo route parsing must preserve maneuver instructions and road names for in-app guidance');
 assert(cameraPolicy.includes('navigationCameraDecision')&&
   cameraPolicy.includes('speedMetersPerSecond >= 18f')&&
   cameraPolicy.includes('smoothNavigationBearing')&&
