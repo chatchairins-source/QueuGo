@@ -90,6 +90,9 @@ class NavigationMapRuntimeActivity : ComponentActivity() {
         return System.identityHashCode(requireNotNull(view.renderer.map))
     }
 
+    fun mapViewUsesActivityContext(): Boolean =
+        requireNotNull(findMapView(window.decorView)).context === this
+
     private fun findMapView(view: View): MapGLSurfaceView? {
         if (view is MapGLSurfaceView) return view
         if (view is ViewGroup) {

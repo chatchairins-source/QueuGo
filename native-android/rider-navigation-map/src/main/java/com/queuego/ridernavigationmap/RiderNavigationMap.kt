@@ -418,16 +418,36 @@ private class RiderNavigationMapHolder {
 private object RiderNavigationMapRegistry {
     private var activeKey: String? = null
     private var activeHolder: RiderNavigationMapHolder? = null
+    private var activeLifecycle: Lifecycle? = null
+    private var activeDestroyObserver: LifecycleEventObserver? = null
+
+    private fun detachLifecycleObserver() {
+        val lifecycle = activeLifecycle
+        val observer = activeDestroyObserver
+        if (lifecycle != null && observer != null) lifecycle.removeObserver(observer)
+        activeLifecycle = null
+        activeDestroyObserver = null
+    }
 
     @Synchronized
-    fun acquire(stateKey: String): RiderNavigationMapHolder {
+    fun acquire(stateKey: String, lifecycle: Lifecycle): RiderNavigationMapHolder {
         val current = activeHolder
-        if (activeKey == stateKey && current != null && !current.disposed) return current
+        if (activeKey == stateKey && activeLifecycle === lifecycle &&
+            current != null && !current.disposed
+        ) return current
+
+        detachLifecycleObserver()
         current?.dispose()
-        return RiderNavigationMapHolder().also {
-            activeKey = stateKey
-            activeHolder = it
+        val holder = RiderNavigationMapHolder()
+        val destroyObserver = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_DESTROY) destroy(stateKey, holder)
         }
+        activeKey = stateKey
+        activeHolder = holder
+        activeLifecycle = lifecycle
+        activeDestroyObserver = destroyObserver
+        lifecycle.addObserver(destroyObserver)
+        return holder
     }
 
     @Synchronized
@@ -435,12 +455,15 @@ private object RiderNavigationMapRegistry {
         if (activeKey == stateKey && activeHolder === holder) {
             holder.pause()
             holder.unbindCallbacks()
+            // Keep the lifecycle observer registered while Home is unmounted so an Activity
+            // destroy cannot leave a retained MapGLSurfaceView holding the old Activity context.
         }
     }
 
     @Synchronized
     fun destroy(stateKey: String, holder: RiderNavigationMapHolder) {
         if (activeKey == stateKey && activeHolder === holder) {
+            detachLifecycleObserver()
             holder.dispose()
             activeHolder = null
             activeKey = null
@@ -470,7 +493,7 @@ fun RiderNavigationMap(
     val currentReady = rememberUpdatedState(onMapReady)
     val currentCameraChanged = rememberUpdatedState(onCameraChanged)
     val currentDiagnostics = rememberUpdatedState(onDiagnostics)
-    val holder = remember(stateKey) { RiderNavigationMapRegistry.acquire(stateKey) }
+    val holder = remember(stateKey, lifecycle) { RiderNavigationMapRegistry.acquire(stateKey, lifecycle) }
     holder.bindCallbacks(
         cameraChanged = { currentCameraChanged.value(it) },
         diagnostics = { currentDiagnostics.value?.invoke(it) }

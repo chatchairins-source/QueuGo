@@ -46,6 +46,13 @@ assert(map.includes('RiderNavigationMapRegistry')&&
   runtimeTest.includes('Rider tab return recreated MapGLSurfaceView')&&
   runtimeTest.includes('Rider tab return recreated Longdo map'),
   'Leaving Home for another Rider tab and returning must reuse the same map objects without leaking an old Activity context');
+assert(map.includes('activeDestroyObserver')&&
+  map.includes('Keep the lifecycle observer registered while Home is unmounted')&&
+  map.includes('remember(stateKey, lifecycle)')&&
+  runtimeActivity.includes('mapViewUsesActivityContext')&&
+  runtimeTest.includes('retainedMapIsDisposedWhenActivityDiesOffHome')&&
+  runtimeTest.includes('destroyed Activity'),
+  'A retained off-Home map must be destroyed with its Activity and recreated with the new Activity context');
 assert(map.includes('setPreserveEGLContextOnPause(true)'),
   'Navigation map must preserve the GL context across background/resume to avoid tile reconstruction');
 assert(map.includes('ACTIVE_ROUTE_COLOR')&&map.includes('FUTURE_ROUTE_COLOR')&&

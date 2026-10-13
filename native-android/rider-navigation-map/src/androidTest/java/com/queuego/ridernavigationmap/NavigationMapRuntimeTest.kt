@@ -4,6 +4,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.test.core.app.ActivityScenario
 import androidx.test.platform.app.InstrumentationRegistry
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.util.concurrent.TimeUnit
@@ -168,5 +169,54 @@ class NavigationMapRuntimeTest {
                 assertTrue(activity.latestDiagnostics.stopMutationCount > initialDiagnostics.stopMutationCount)
             }
         }
+
+    @Test
+    fun retainedMapIsDisposedWhenActivityDiesOffHome() {
+        ActivityScenario.launch(NavigationMapRuntimeActivity::class.java).use { scenario ->
+            lateinit var firstActivity: NavigationMapRuntimeActivity
+            scenario.onActivity { firstActivity = it }
+            assertTrue(
+                "Initial navigation map did not become ready",
+                firstActivity.mapReady.await(30, TimeUnit.SECONDS)
+            )
+
+            var oldActivityIdentity = 0
+            var oldViewIdentity = 0
+            scenario.onActivity { activity ->
+                oldActivityIdentity = System.identityHashCode(activity)
+                oldViewIdentity = activity.mapViewIdentity()
+                assertTrue("Initial map View does not use Activity context", activity.mapViewUsesActivityContext())
+                activity.hideMapForAnotherTab()
+            }
+            InstrumentationRegistry.getInstrumentation().waitForIdleSync()
+
+            scenario.recreate()
+
+            lateinit var recreatedActivity: NavigationMapRuntimeActivity
+            scenario.onActivity { recreatedActivity = it }
+            assertTrue(
+                "Navigation map did not recover after Activity recreation",
+                recreatedActivity.mapReady.await(30, TimeUnit.SECONDS)
+            )
+            scenario.onActivity { activity ->
+                assertNotEquals(
+                    "Activity recreation unexpectedly reused the destroyed Activity",
+                    oldActivityIdentity,
+                    System.identityHashCode(activity)
+                )
+                assertNotEquals(
+                    "Activity recreation reused a MapGLSurfaceView backed by the destroyed Activity",
+                    oldViewIdentity,
+                    activity.mapViewIdentity()
+                )
+                assertTrue(
+                    "Recreated map View retained the wrong Activity context",
+                    activity.mapViewUsesActivityContext()
+                )
+                assertEquals(1, activity.latestDiagnostics.viewCreatedCount)
+                assertEquals(1, activity.latestDiagnostics.mapCreatedCount)
+            }
+        }
+    }
     }
 }
