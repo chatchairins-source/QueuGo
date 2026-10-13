@@ -32,8 +32,11 @@ assert(map.includes('RIDER_MAP_LOCATION_REFRESH_MS = 2_500L')&&
   map.includes('RIDER_MAP_LOCATION_REFRESH_METERS = 2f')&&
   map.includes('RIDER_MAP_LAST_KNOWN_MAX_AGE_MS = 120_000L')&&
   map.includes('RIDER_MAP_LOCATION_REFRESH_MS,')&&
-  map.includes('ageMs in 0..RIDER_MAP_LAST_KNOWN_MAX_AGE_MS'),
+  map.includes('ageMs in 0L..RIDER_MAP_LAST_KNOWN_MAX_AGE_MS'),
   'Rider map must follow a fresh foreground GPS fix instead of presenting an old last-known location as current');
+assert(map.includes('latestDeviceLocation = null')&&
+  map.includes('refreshOverlays(context, currentJob, currentPickups, currentBundleOrders)'),
+  'Rider map must discard an in-memory pre-background fix and redraw from fresh location state on resume');
 for(const marker of ['qg_rider_stop_1','qg_rider_stop_2','qg_rider_stop_3','qg_rider_stop_4']){
   assert(fs.existsSync('native-android/rider/src/main/res/drawable/'+marker+'.xml'),
     'Numbered Rider stop marker missing: '+marker);
