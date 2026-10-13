@@ -179,18 +179,19 @@ ok(riderApi.includes('riderNullableUuid')&&riderApi.includes('marketOrderId = ri
 ok(riderApi.includes('arrivedShopAt = riderNullableText(o.optString("rider_arrived_shop_at"))')&&
    riderApi.includes('arrivedCustomerAt = riderNullableText(o.optString("rider_arrived_customer_at"))'),
    'Rider arrival timestamps must reject JSON null literals so the UI never shows false arrived checkmarks');
-ok(riderApp.includes('รับสินค้าแล้ว · กำลังเปิดนำทางไปลูกค้า')&&
-   riderApp.includes('completedMode == "pickup" && pickupCommittedStatus == "in_progress"')&&
-   riderApp.includes('val delivering = committedRead?.activeJob')&&
-   riderApp.includes('openNavigation(context, delivering)'),
-  'Rider native must auto-open customer navigation only after pickup is authoritatively in progress');
+ok(riderApp.includes('completedMode == "pickup" && pickupCommittedStatus == "in_progress"')&&
+   riderApp.includes('val nextStop = committedRead?.activeJob')&&
+   riderApp.includes('?: localAfterSuccess?.activeJob')&&
+   riderApp.includes('openNavigation(context, nextStop)'),
+  'Rider native must open Google Maps only after pickup is authoritatively in progress and follow the authoritative next stop, including another bundled shop');
 ok(riderApp.includes('val localAfterSuccess = when (completedMode)')&&
-   riderApp.includes('job.copy(status = "picked_up")')&&
+   riderApp.includes('riderApplyPickupCommit(')&&
+   riderApp.includes('pickupCommittedStatus ?: "picked_up"')&&
    riderApp.includes('pickup.copy(status = "PICKED_UP")')&&
    riderApp.includes('bundled.copy(job = bundled.job.copy(status = "completed"))')&&
    riderApp.includes('pushStore.saveHomeSnapshot(auth.user.id, localAfterSuccess)')&&
    riderApp.includes('?: localAfterSuccess?.activeJob'),
-   'Rider proof success must advance local workflow immediately so pickup/delivery verification cannot repeat when refresh is slow or fails');
+   'Rider proof success must advance local workflow immediately, including bundle-aware pickup handoff, so verification cannot repeat when refresh is slow or fails');
 ok(riderApp.includes('if (current == null) {')&&
    riderApp.includes('if (loadError != null) {')&&
    riderApp.includes('if (snapshot == null) loadError = "กำลังเชื่อมต่อข้อมูลงานใหม่"')&&
