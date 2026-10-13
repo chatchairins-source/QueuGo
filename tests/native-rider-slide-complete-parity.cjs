@@ -25,6 +25,10 @@ assert(api.includes('customerSubtotal = o.doubleOrNull("subtotal")')&&api.includ
 assert(api.includes('select=subtotal,delivery_fee,multi_shop_service_fee,rider_bonus,total_amount')&&
   api.includes('customerServiceFee = parent.doubleOrNull("multi_shop_service_fee")'),
   'Market Rider cash breakdown must use Production parent totals without treating Rider bonus as customer delivery fee');
+assert(app.includes('riderPickupCommittedStatus(mutationResult)')&&
+  app.includes('riderPickupReadCanReplace(pickupCommittedStatus, job.id, candidate)')&&
+  app.includes('job.copy(status = pickupCommittedStatus ?: "picked_up")'),
+  'Pickup photo success must keep authoritative in_progress state through stale reads before Google Maps handoff');
 
 assert(app.includes('RiderSlideComplete(')&&app.includes('label = "สไลด์เพื่อส่งสำเร็จ"'),
   'Delivery verification must use slide-to-complete');
