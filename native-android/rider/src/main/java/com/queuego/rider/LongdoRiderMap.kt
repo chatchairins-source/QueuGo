@@ -34,6 +34,10 @@ import com.longdo.api.MapGLSurfaceView
 import com.longdo.api.Pin
 import com.longdo.api.type.MapLocation
 
+private const val RIDER_MAP_LOCATION_REFRESH_MS = 2_500L
+private const val RIDER_MAP_LOCATION_REFRESH_METERS = 2f
+private const val RIDER_MAP_LAST_KNOWN_MAX_AGE_MS = 120_000L
+
 private fun riderStopMarkerRes(number: Int): Int = when (number) {
     1 -> R.drawable.qg_rider_stop_1
     2 -> R.drawable.qg_rider_stop_2
@@ -126,7 +130,13 @@ private class RiderLongdoHolder(
         runCatching { manager.getProviders(false) }.getOrDefault(emptyList())
             .filter { it == LocationManager.GPS_PROVIDER || it == LocationManager.NETWORK_PROVIDER }
             .forEach { provider ->
-                runCatching { manager.requestLocationUpdates(provider, 5_000L, 5f, listener, Looper.getMainLooper()) }
+                runCatching { manager.requestLocationUpdates(
+                            provider,
+                            RIDER_MAP_LOCATION_REFRESH_MS,
+                            RIDER_MAP_LOCATION_REFRESH_METERS,
+                            listener,
+                            Looper.getMainLooper()
+                        ) }
                     .onSuccess { registered = true }
             }
         if (registered) {
@@ -463,8 +473,12 @@ private fun deviceLocation(context: Context): Pair<Double, Double>? {
                 runCatching { manager.getLastKnownLocation(provider) }.getOrNull()
             }
             .maxByOrNull { it.time }
-            ?.takeIf { it.latitude.isFinite() && it.longitude.isFinite() &&
-                it.latitude in -90.0..90.0 && it.longitude in -180.0..180.0 }
+            ?.takeIf { fix ->
+                val ageMs = System.currentTimeMillis() - fix.time
+                ageMs in 0..RIDER_MAP_LAST_KNOWN_MAX_AGE_MS &&
+                    fix.latitude.isFinite() && fix.longitude.isFinite() &&
+                    fix.latitude in -90.0..90.0 && fix.longitude in -180.0..180.0
+            }
             ?.let { it.latitude to it.longitude }
     }.getOrNull()
 }
