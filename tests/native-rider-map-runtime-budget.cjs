@@ -29,13 +29,13 @@ assert(map.includes('R.drawable.qg_rider_current_location')&&
   map.includes('latestDeviceLocation')&&map.includes('recenterOnNextFix = true'),
   'Rider map must use the QueueGo current-location marker and refresh/recenter again on the next fresh location fix');
 assert(map.includes('currentLocationPin')&&
-  map.includes('existing.setLocation(mapLocation, true, RIDER_MAP_LOCATION_ANIMATION_SECONDS)')&&
+  map.includes('existing.setLocation(mapLocation, true, RIDER_MAP_LOCATION_ANIMATION_STEPS)')&&
   map.includes('pin.setOffset(PointF(0f, -0.4f))')&&
   !map.includes('append(location?.first).append(",").append(location?.second)'),
   'Rider GPS updates must move the current-location pin smoothly without rebuilding numbered stops on every fix');
-assert(map.includes('private const val RIDER_MAP_LOCATION_ANIMATION_SECONDS = 2')&&
-  !map.includes('RIDER_MAP_LOCATION_ANIMATION_SECONDS = 1.8'),
-  'Rider Longdo marker animation duration must remain the SDK-compatible Int value');
+assert(map.includes('private const val RIDER_MAP_LOCATION_ANIMATION_STEPS = 18')&&
+  !map.includes('RIDER_MAP_LOCATION_ANIMATION_SECONDS'),
+  'Rider Longdo v0.1.8 marker animation must use the SDK interpolation-step Int contract, not seconds');
 assert(map.includes('RIDER_MAP_LOCATION_REFRESH_MS = 2_500L')&&
   map.includes('RIDER_MAP_LOCATION_REFRESH_METERS = 2f')&&
   map.includes('RIDER_MAP_LAST_KNOWN_MAX_AGE_MS = 120_000L')&&
