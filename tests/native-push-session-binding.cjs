@@ -46,7 +46,7 @@ assert(!/drop table\s+public\.qg_native_push_tokens/i.test(sql),'push hardening 
 // Production rows or tokens are created by this regression.
 async function registrationAuthorizationRegression(){
   const start=edge.indexOf("      const nativeToken=",edge.indexOf("if(input.action==='subscribe-native')"));
-  const end=edge.indexOf('      // Native FCM registration',start);
+  const end=edge.indexOf('      await config();',start);
   assert(start>=0&&end>start,'registration authorization block missing');
   const body=edge.slice(start,end).replace('legacySessions.data![0]','legacySessions.data[0]');
   const AsyncFunction=Object.getPrototypeOf(async function(){}).constructor;
