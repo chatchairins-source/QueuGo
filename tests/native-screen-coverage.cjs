@@ -39,11 +39,16 @@ ok(riderHistory.includes('api.cashLedger(')&&riderHistory.includes('rows.take(30
 const riderLogin=fs.readFileSync('native-android/rider/src/main/java/com/queuego/rider/RiderLoginScreen.kt','utf8');
 ok(riderLogin.includes('onRegister: () -> Unit'),'Rider registration entry must remain on the Native login surface');
 ok(!/ACTION_VIEW|startActivity\s*\(/.test(riderLogin),'Rider registration must not regress to external-browser signup');
-ok(/if \(!wide\) \{[\s\S]*?verticalArrangement = Arrangement\.Center[\s\S]*?card\(\)/.test(riderLogin),
-   'Rider mobile login group must remain vertically centered while retaining scroll/IME handling');
-ok(riderLogin.includes('if (!wide) {')&&riderLogin.includes('Text("Queue"')&&riderLogin.includes('Text("Go"')&&
-   riderLogin.includes('Text("Rider"')&&riderLogin.includes('Text("Q", color = Color.White'),
-   'Rider mobile login group must retain the QueueGo Rider logo/brand requested for Native auth');
+ok(riderLogin.includes('verticalArrangement = Arrangement.Center')&&
+   riderLogin.includes('horizontalAlignment = Alignment.CenterHorizontally')&&
+   riderLogin.includes('horizontal = if (wide) 32.dp else 17.dp')&&
+   riderLogin.includes('vertical = if (wide) 32.dp else 24.dp')&&
+   !riderLogin.includes('brandWidth')&&!riderLogin.includes('รับงานง่าย\\nเห็นข้อมูลชัด\\nทำงานได้เร็ว'),
+   'Rider login group must remain centered on phone, small-phone, tablet and landscape without the old split brand panel');
+ok(riderLogin.includes('Text("Queue"')&&riderLogin.includes('Text("Go"')&&
+   riderLogin.includes('Text("Rider"')&&riderLogin.includes('Text("Q", color = Color.White')&&
+   riderLogin.includes('widthIn(max = if (wide) 480.dp else 430.dp)'),
+   'Every Rider login viewport must keep the QueueGo Rider brand inside the centered auth group');
 
 const riderHome=fs.readFileSync('native-android/rider/src/main/java/com/queuego/rider/QueueGoRiderApp.kt','utf8');
 const riderApi=fs.readFileSync('native-android/rider/src/main/java/com/queuego/rider/QueueGoApi.kt','utf8');

@@ -15,7 +15,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithCache
-import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
@@ -43,7 +42,7 @@ private fun authText(size: Int, height: Int, weight: FontWeight = FontWeight.Nor
     color = AuthInk, platformStyle = PlatformTextStyle(includeFontPadding = false)
 )
 
-/** Production rider/index.html AUTH rules; mobile hides the desktop brand panel. */
+/** QueueGo Rider auth: one centered branded login group on every supported Android viewport. */
 @Composable
 internal fun RiderLoginScreen(
     modifier: Modifier,
@@ -78,14 +77,9 @@ internal fun RiderLoginScreen(
         onDrawBehind { drawRect(brush) }
     }) {
         val wide = maxWidth > 800.dp
-        val viewportHeight = maxHeight
-        val viewportWidth = maxWidth
-        val brandWidth = minOf(maxWidth * (1.05f / 1.8f), maxWidth - 360.dp)
-        val brandPadding = (maxWidth.value * .06f).coerceIn(34f, 86f).dp
-        val headingSize = (maxWidth.value * .06f).coerceIn(42f, 78f)
         val card: @Composable () -> Unit = {
             Surface(
-                modifier = Modifier.widthIn(max = 430.dp).fillMaxWidth()
+                modifier = Modifier.widthIn(max = if (wide) 480.dp else 430.dp).fillMaxWidth()
                     .drawWithCache {
                         // CSS box-shadow: 0 18px 46px rgba(58,19,30,.12).
                         // Android elevation additionally attenuates the supplied colour;
@@ -101,32 +95,30 @@ internal fun RiderLoginScreen(
                 shape = RoundedCornerShape(30.dp), color = Color.White
             ) {
                 Column(Modifier.padding(28.dp)) {
-                    if (!wide) {
-                        Row(
-                            Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.Center,
-                            verticalAlignment = Alignment.CenterVertically
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Surface(
+                            shape = RoundedCornerShape(18.dp),
+                            color = AuthRed,
+                            shadowElevation = 8.dp
                         ) {
-                            Surface(
-                                shape = RoundedCornerShape(18.dp),
-                                color = AuthRed,
-                                shadowElevation = 8.dp
-                            ) {
-                                Box(Modifier.size(58.dp), contentAlignment = Alignment.Center) {
-                                    Text("Q", color = Color.White, style = authText(38, 58, FontWeight.Black))
-                                }
-                            }
-                            Spacer(Modifier.width(12.dp))
-                            Column {
-                                Row {
-                                    Text("Queue", style = authText(28, 28, FontWeight.Bold))
-                                    Text("Go", style = authText(28, 28, FontWeight.Bold), color = AuthRed)
-                                }
-                                Text("Rider", color = Color(0xFF6F6970), style = authText(13, 20, FontWeight.ExtraBold))
+                            Box(Modifier.size(58.dp), contentAlignment = Alignment.Center) {
+                                Text("Q", color = Color.White, style = authText(38, 58, FontWeight.Black))
                             }
                         }
-                        Spacer(Modifier.height(24.dp))
+                        Spacer(Modifier.width(12.dp))
+                        Column {
+                            Row {
+                                Text("Queue", style = authText(28, 28, FontWeight.Bold))
+                                Text("Go", style = authText(28, 28, FontWeight.Bold), color = AuthRed)
+                            }
+                            Text("Rider", color = Color(0xFF6F6970), style = authText(13, 20, FontWeight.ExtraBold))
+                        }
                     }
+                    Spacer(Modifier.height(24.dp))
                     Text("เข้าสู่ระบบ", style = authText(29, 44, FontWeight.Bold))
                     Spacer(Modifier.height(6.dp))
                     Text("ใช้เบอร์โทรศัพท์หรืออีเมลที่สมัครไว้", style = authText(12, 18), color = AuthMuted)
@@ -162,54 +154,18 @@ internal fun RiderLoginScreen(
                 }
             }
         }
-        if (!wide) {
-            Column(
-                Modifier
-                    .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
-                    .padding(horizontal = 17.dp, vertical = 24.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
-            ) {
-                card()
-            }
-        } else {
-            Row(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
-                Column(Modifier.width(brandWidth).heightIn(min = viewportHeight).clipToBounds().drawWithCache {
-                    val center = Offset(size.width * .14f, size.height * .20f)
-                    val radius = kotlin.math.hypot(size.width * .86f, size.height * .80f)
-                    val brush = Brush.radialGradient(0f to Color.White, .46f to Color(0xFFFFF5F7), 1f to Color(0xFFF5DFE5), center = center, radius = radius)
-                    val qSize = minOf(viewportWidth.value * .58f, 700f).dp.toPx()
-                    val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
-                        color = android.graphics.Color.argb(11, 230, 0, 45)
-                        textSize = qSize
-                        typeface = android.graphics.Typeface.create("sans-serif-black", android.graphics.Typeface.NORMAL)
-                    }
-                    val metrics = paint.fontMetrics
-                    val lineHeight = qSize * .8f
-                    val bottom = size.height + viewportWidth.toPx() * .13f
-                    val baseline = bottom - lineHeight + (lineHeight - (metrics.descent - metrics.ascent)) / 2f - metrics.ascent
-                    val left = size.width + viewportWidth.toPx() * .07f - paint.measureText("Q")
-                    onDrawBehind {
-                        drawRect(brush)
-                        drawIntoCanvas { it.nativeCanvas.drawText("Q", left, baseline, paint) }
-                    }
-                }.padding(brandPadding), verticalArrangement = Arrangement.SpaceBetween) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Surface(shape = RoundedCornerShape(18.dp), color = AuthRed) { Box(Modifier.size(58.dp), contentAlignment = Alignment.Center) { Text("Q", color = Color.White, style = authText(38, 58, FontWeight.Black)) } }
-                        Spacer(Modifier.width(12.dp))
-                        Column { Row { Text("Queue", style = authText(28, 28, FontWeight.Bold)); Text("Go", style = authText(28, 28, FontWeight.Bold), color = AuthRed) }; Text("Rider", color = Color(0xFF6F6970), style = authText(13, 20, FontWeight.ExtraBold)) }
-                    }
-                    Column {
-                        Text("สำหรับไรเดอร์ QueueGo", color = AuthRed, style = authText(12, 18, FontWeight.Black), modifier = Modifier.background(Color.White, RoundedCornerShape(999.dp)).padding(horizontal = 12.dp, vertical = 8.dp))
-                        Spacer(Modifier.height(18.dp))
-                        Text("รับงานง่าย\nเห็นข้อมูลชัด\nทำงานได้เร็ว", style = authText(42, 44, FontWeight.Bold).copy(fontSize = headingSize.sp, lineHeight = (headingSize * 1.03f).sp, letterSpacing = (-headingSize * .045f).sp))
-                        Spacer(Modifier.height(18.dp))
-                        Text("เข้าสู่ระบบเพื่อดูงานใกล้คุณ เส้นทาง รายได้ และสถานะงานทั้งหมดในที่เดียว", style = authText(15, 26), color = Color(0xFF5F5960))
-                    }
-                }
-                Box(Modifier.width(viewportWidth - brandWidth).heightIn(min = viewportHeight).padding(horizontal = 17.dp), contentAlignment = Alignment.Center) { card() }
-            }
+        Column(
+            Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(
+                    horizontal = if (wide) 32.dp else 17.dp,
+                    vertical = if (wide) 32.dp else 24.dp
+                ),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            card()
         }
     }
 }
