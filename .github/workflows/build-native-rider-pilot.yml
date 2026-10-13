@@ -208,7 +208,7 @@ jobs:
       # Public APK/AAB delivery requires the full three-role Release Gate.
 
   map-display-only:
-    if: ${{ startsWith(github.ref, 'refs/heads/work-native-map-display-') || github.ref == 'refs/heads/work-native-rider-authenticated-20261012' }}
+    if: ${{ startsWith(github.ref, 'refs/heads/work-native-map-display-') || github.ref == 'refs/heads/work-native-rider-authenticated-20261012' || github.ref == 'refs/heads/work-native-marker-family-20261013' }}
     runs-on: ubuntu-latest
     timeout-minutes: 35
     steps:
@@ -239,6 +239,7 @@ jobs:
       - name: Run actual native Longdo display and lifecycle
         env:
           QG_MAP_DISPLAY_ONLY: '1'
+          QG_CUSTOMER_LOCATION_ONLY: '1'
         run: python3 native-android/qa/capture-rider-launch.py
       - name: Keep map images and runtime evidence
         if: always()

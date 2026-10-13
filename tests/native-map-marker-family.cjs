@@ -27,3 +27,14 @@ assert(tracking.includes('existing.second.setLocation(MapLocation(point.longitud
 assert(tracking.includes('bitmaps.getOrPut(point.role)'));
 assert(!tracking.slice(tracking.indexOf('fun draw(points:'),tracking.indexOf('private fun Context.mapLifecycleOwner')).includes('clearPin()'));
 assert(tracking.includes('holder.attachMap(map)'));
+
+const workflow = read('.github/workflows/build-native-rider-pilot.yml');
+assert(workflow.includes("github.ref == 'refs/heads/work-native-marker-family-20261013'"));
+assert(workflow.includes("QG_CUSTOMER_LOCATION_ONLY: '1'"));
+
+const zoom = read(root+'shared/src/main/java/com/queuego/shared/LongdoZoomListener.kt');
+assert(zoom.includes('if (map.getZoomListener() != null) return'));
+assert(zoom.includes('map.setZoomListener(object : IZoomListener'));
+for(const callback of ['preZoom','postZoom','finishZoomAnimation']) assert(zoom.includes('override fun '+callback));
+assert((tracking.match(/qgEnsureLongdoZoomListener\(map\)/g)||[]).length === 2);
+assert(map.includes('com.queuego.shared.qgEnsureLongdoZoomListener(map)'));

@@ -16,7 +16,7 @@ class RiderMapRuntimeActivity : ComponentActivity() {
     val mapReady = CountDownLatch(1)
     private val recenterSignal = mutableIntStateOf(0)
     fun recenterMap() { recenterSignal.intValue += 1 }
-    fun actualMapCamera(): DoubleArray {
+    private fun actualMap(): com.longdo.api.Map {
         fun find(view: View): MapGLSurfaceView? {
             if (view is MapGLSurfaceView) return view
             if (view is ViewGroup) for (i in 0 until view.childCount) {
@@ -25,6 +25,24 @@ class RiderMapRuntimeActivity : ComponentActivity() {
             return null
         }
         val map = requireNotNull(find(window.decorView)?.renderer?.map) { "Actual SDK map is not mounted" }
+        return map
+    }
+
+    internal fun showRoadDisplayEvidence(paths: List<List<RiderRoutePoint>>) {
+        val map = actualMap()
+        val first = riderRouteLine(paths.first(), true, resources.displayMetrics.density)
+        val later = riderRouteLine(paths.last(), false, resources.displayMetrics.density)
+        check(first.getColor()[3] == 1f && later.getColor()[3] < .35f)
+        check(first.getColor()[0] < later.getColor()[0])
+        map.addLine(later)
+        map.addLine(first)
+    }
+
+    fun actualMapCamera(): DoubleArray {
+        val map = actualMap()
+        // Exercise the real SDK's same-level path, which dereferences postZoom in 0.1.8.
+        check(map.getZoomListener() != null) { "Real map zoom callback is missing" }
+        map.setZoom(map.getZoom())
         val location = map.getLocation()
         return doubleArrayOf(location.lon, location.lat, map.getZoom().toDouble())
     }

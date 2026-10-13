@@ -170,6 +170,7 @@ fun QgLongdoTrackingMap(
                             if (!holder.disposed) {
                                 runCatching {
                                     holder.attachMap(map)
+                                    qgEnsureLongdoZoomListener(map)
                                     map.setBase(LongdoLayer(ctx, "gray", 0, 1, 20).apply {
                                         layerURL = "https://ms2.longdo.com/mmmap/img.php"
                                     })
@@ -298,6 +299,7 @@ fun QgLongdoLocationPickerMap(
                                 holder.map = map
                                 holder.lastRecenterToken = null
                                 val setup = runCatching {
+                                    qgEnsureLongdoZoomListener(map)
                                     map.setBase(LongdoLayer(ctx, "gray", 0, 1, 20).apply {
                                         layerURL = "https://ms2.longdo.com/mmmap/img.php"
                                     })
@@ -349,7 +351,7 @@ fun QgLongdoLocationPickerMap(
                                             }
                                         }
                                     }
-                                    // Longdo 0.1.8 can report onMapCreated before its zoom listener is attached.
+                                    // Longdo 0.1.8 can report onMapCreated before camera internals settle.
                                     // Retry the first camera operation asynchronously instead of failing the visible map.
                                     view.postDelayed({ finishInitialCamera(0) }, 100L)
                                 }
