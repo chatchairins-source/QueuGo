@@ -9,6 +9,49 @@ import org.junit.Test
 import java.util.concurrent.TimeUnit
 
 class NavigationMapRuntimeTest {
+    private fun awaitAppliedRender(
+        activity: NavigationMapRuntimeActivity,
+        previousRenderPassCount: Int,
+        timeoutMs: Long = 5_000L
+    ): NavigationMapDiagnostics {
+        val deadline = android.os.SystemClock.elapsedRealtime() + timeoutMs
+        while (android.os.SystemClock.elapsedRealtime() < deadline) {
+            val diagnostics = activity.latestDiagnostics
+            if (diagnostics.renderPassCount > previousRenderPassCount) return diagnostics
+            Thread.sleep(25)
+        }
+        throw AssertionError(
+            "Navigation map state was not applied after render pass $previousRenderPassCount"
+        )
+    }
+
+    private fun awaitStopProgression(
+        scenario: ActivityScenario<NavigationMapRuntimeActivity>,
+        activity: NavigationMapRuntimeActivity,
+        initial: NavigationMapDiagnostics
+    ): NavigationMapDiagnostics {
+        val expectedRoutes = initial.routeLayerRebuildCount + 1
+        var diagnostics = activity.latestDiagnostics
+        repeat(4) { attempt ->
+            val previousRender = diagnostics.renderPassCount
+            if (attempt == 0) {
+                scenario.onActivity { it.advanceToSecondStop() }
+            } else {
+                // A foreground GPS refresh is the real Production retry trigger after a
+                // transient Longdo pin/line mutation failure.
+                scenario.onActivity { it.refreshRiderFix(100 + attempt) }
+            }
+            InstrumentationRegistry.getInstrumentation().waitForIdleSync()
+            diagnostics = awaitAppliedRender(activity, previousRender)
+            if (diagnostics.routeLayerRebuildCount == expectedRoutes &&
+                diagnostics.stopMutationCount > initial.stopMutationCount
+            ) return diagnostics
+        }
+        throw AssertionError(
+            "Stop progression overlays did not converge after bounded GPS retries: $diagnostics"
+        )
+    }
+
     @Test
     fun gpsRefreshAndResumeReuseTheSameMapObjects() {
         ActivityScenario.launch(NavigationMapRuntimeActivity::class.java).use { scenario ->
@@ -34,10 +77,12 @@ class NavigationMapRuntimeTest {
             assertTrue(initialDiagnostics.routeLayerRebuildCount >= 1)
             assertTrue(initialDiagnostics.stopMutationCount >= 2)
 
+            val beforeGpsRender = runtimeActivity.latestDiagnostics.renderPassCount
             repeat(16) { index ->
                 scenario.onActivity { it.refreshRiderFix(index + 1) }
                 InstrumentationRegistry.getInstrumentation().waitForIdleSync()
             }
+            awaitAppliedRender(runtimeActivity, beforeGpsRender)
 
             scenario.onActivity { activity ->
                 assertEquals("GPS refresh recreated MapGLSurfaceView", initialView, activity.mapViewIdentity())
@@ -56,8 +101,10 @@ class NavigationMapRuntimeTest {
                 )
             }
 
+            val beforeEquivalentRefresh = runtimeActivity.latestDiagnostics.renderPassCount
             scenario.onActivity { it.refreshEquivalentOrderSnapshot() }
             InstrumentationRegistry.getInstrumentation().waitForIdleSync()
+            awaitAppliedRender(runtimeActivity, beforeEquivalentRefresh)
             scenario.onActivity { activity ->
                 assertEquals("Equivalent backend refresh recreated MapGLSurfaceView", initialView, activity.mapViewIdentity())
                 assertEquals("Equivalent backend refresh recreated Longdo map", initialSdkMap, activity.sdkMapIdentity())
@@ -73,10 +120,12 @@ class NavigationMapRuntimeTest {
                 )
             }
 
+            val beforeResume = runtimeActivity.latestDiagnostics.renderPassCount
             scenario.moveToState(Lifecycle.State.CREATED)
             Thread.sleep(300)
             scenario.moveToState(Lifecycle.State.RESUMED)
             InstrumentationRegistry.getInstrumentation().waitForIdleSync()
+            awaitAppliedRender(runtimeActivity, beforeResume)
 
             scenario.onActivity { activity ->
                 assertEquals("Resume recreated MapGLSurfaceView", initialView, activity.mapViewIdentity())
@@ -85,8 +134,12 @@ class NavigationMapRuntimeTest {
                 assertEquals(1, activity.latestDiagnostics.mapCreatedCount)
             }
 
-            scenario.onActivity { it.advanceToSecondStop() }
-            InstrumentationRegistry.getInstrumentation().waitForIdleSync()
+            val progressedDiagnostics = awaitStopProgression(scenario, runtimeActivity, initialDiagnostics)
+            assertEquals(
+                "Stop progression rebuilt route layers more than once",
+                initialDiagnostics.routeLayerRebuildCount + 1,
+                progressedDiagnostics.routeLayerRebuildCount
+            )
             scenario.onActivity { activity ->
                 assertEquals("Stop progression recreated MapGLSurfaceView", initialView, activity.mapViewIdentity())
                 assertEquals("Stop progression recreated Longdo map", initialSdkMap, activity.sdkMapIdentity())

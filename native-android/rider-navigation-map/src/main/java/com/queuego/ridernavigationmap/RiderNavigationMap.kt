@@ -63,6 +63,7 @@ private class RiderNavigationMapHolder(
     private var mapCreatedCount = 0
     private var routeLayerRebuildCount = 0
     private var stopMutationCount = 0
+    private var renderPassCount = 0
 
     fun markViewCreated() {
         viewCreatedCount += 1
@@ -138,6 +139,7 @@ private class RiderNavigationMapHolder(
         lastState = state
         val activeMap = map ?: return
         if (disposed) return
+        renderPassCount += 1
 
         state.rider?.takeIf { it.point.valid }?.let { nextFix ->
             if (riderPin == null || lastRiderFix?.point != nextFix.point) {
@@ -152,6 +154,9 @@ private class RiderNavigationMapHolder(
         if (state.followRider && followedFix != null) {
             followRider(activeMap, followedFix, state.followZoom)
         }
+        // Publish once per applied state even when overlays are structurally unchanged.
+        // This distinguishes a stable frame from a state update that never reached the map.
+        publishDiagnostics()
     }
 
     private fun renderRider(activeMap: com.longdo.api.Map, fix: NavigationMapFix) {
@@ -361,7 +366,8 @@ private class RiderNavigationMapHolder(
                 viewCreatedCount = viewCreatedCount,
                 mapCreatedCount = mapCreatedCount,
                 routeLayerRebuildCount = routeLayerRebuildCount,
-                stopMutationCount = stopMutationCount
+                stopMutationCount = stopMutationCount,
+                renderPassCount = renderPassCount
             )
         )
     }

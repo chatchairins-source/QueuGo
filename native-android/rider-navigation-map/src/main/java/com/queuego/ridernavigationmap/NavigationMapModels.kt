@@ -54,7 +54,8 @@ data class NavigationMapDiagnostics(
     val viewCreatedCount: Int,
     val mapCreatedCount: Int,
     val routeLayerRebuildCount: Int,
-    val stopMutationCount: Int
+    val stopMutationCount: Int,
+    val renderPassCount: Int = 0
 )
 
 internal fun RiderNavigationMapState.remainingStops(): List<NavigationMapStop> =
