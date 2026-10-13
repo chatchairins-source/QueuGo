@@ -494,6 +494,7 @@ private class RiderNavigationMapHolder {
             followRider(activeMap, state.copy(rider = followedFix))
         }
         // Publish once per applied state even when overlays are structurally unchanged.
+        // This distinguishes a stable frame from a state update that never reached the map.
         // PixelCopy is deliberately not scheduled on every GPS tick: continuity snapshots
         // are captured on visibility loss or real renderer replacement so live navigation
         // never competes with screenshot work for the render thread.
