@@ -67,7 +67,6 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -2388,9 +2387,12 @@ private fun RiderCustomerCashPanel(job: RiderJob) {
         job.customerServiceFee?.takeIf { it > 0.0 }?.let {
             RiderCashBreakdownRow("ค่าบริการหลายร้าน", it)
         }
-        HorizontalDivider(
-            modifier = Modifier.padding(vertical = 7.dp),
-            color = Color(0x22E6002D)
+        Box(
+            Modifier
+                .fillMaxWidth()
+                .padding(vertical = 7.dp)
+                .height(1.dp)
+                .background(Color(0x22E6002D))
         )
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Bottom) {
             Text("ยอดที่ต้องเก็บทั้งหมด", fontSize = 11.sp, fontWeight = FontWeight.Bold)
