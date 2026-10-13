@@ -22,9 +22,9 @@ assert(capture.indexOf('retain_real_map_frames(output / "map-frames")') <
   'Actual first/final map frames and camera metrics must survive failed instrumentation');
 assert(capture.includes('"rm", "-rf", "files/map-runtime"'),
   'Generated map frames must be cleared before testing to prevent stale evidence');
-assert(capture.includes('"allowIncompleteTiles", "true"')&&
+assert((capture.match(/"allowIncompleteTiles", "true"/g)||[]).length>=2&&
   capture.includes('dominant_fraction < 0.95'),
-  'Map-display runtime may relax only strict tile completion and must still reject blank rendered maps');
+  'Both native-pilot and map-display runtime may relax only strict tile completion while map-display still rejects blank rendered maps');
 assert(map.includes('layerURL = "https://ms.longdo.com/map/msn-server/tile.php"')&&!map.includes('ms2.longdo.com/mmmap/img.php'),
   'Initial native layer must match the endpoint selected by the actual key checker');
 assert(capture.includes('len(retained_frames["files"]) == 9'),

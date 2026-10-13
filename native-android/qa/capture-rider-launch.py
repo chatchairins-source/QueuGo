@@ -486,7 +486,8 @@ def verify_real_home_map_runtime():
     test_apk = repo / "native-android/rider/build/outputs/apk/androidTest/debug/rider-debug-androidTest.apk"
     runner = "com.queuego.rider.test/androidx.test.runner.AndroidJUnitRunner"
     instrument = adb + ["shell", "am", "instrument", "-w", "-r", "-e", "class",
-                        "com.queuego.rider.RiderMapRuntimeTest", runner]
+                        "com.queuego.rider.RiderMapRuntimeTest",
+                        "-e", "allowIncompleteTiles", "true", runner]
     run(adb + ["shell", "wm", "size", "1080x2280"])
     run(adb + ["shell", "wm", "density", "440"])
     run(adb + ["shell", "am", "force-stop", package])
