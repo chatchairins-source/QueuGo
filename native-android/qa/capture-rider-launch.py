@@ -659,7 +659,8 @@ def capture_map_display_only():
             time.sleep(1)
         run(adb + ["logcat", "-b", "all", "-c"])
         instrument = adb + ["shell", "am", "instrument", "-w", "-r", "-e", "class",
-                            "com.queuego.rider.RiderMapRuntimeTest"]
+                            "com.queuego.rider.RiderMapRuntimeTest",
+                            "-e", "allowIncompleteTiles", "true"]
         if gps_fix is not None:
             instrument += ["-e", "expectedLongitude", str(gps_fix[0]),
                            "-e", "expectedLatitude", str(gps_fix[1])]

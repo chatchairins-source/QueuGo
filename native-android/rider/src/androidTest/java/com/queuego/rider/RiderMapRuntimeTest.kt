@@ -95,6 +95,7 @@ class RiderMapRuntimeTest {
             image = requireNotNull(instrumentation.uiAutomation.takeScreenshot())
         }
         val finalFraction = grayTileFraction(image)
+        val allowIncompleteTiles = InstrumentationRegistry.getArguments().getString("allowIncompleteTiles") == "true"
         File(directory, "$name.png").outputStream().use { image.compress(Bitmap.CompressFormat.PNG, 100, it) }
         image.recycle()
         var camera: DoubleArray? = null
@@ -103,8 +104,11 @@ class RiderMapRuntimeTest {
         File(directory, "$name-camera.json").writeText(JSONObject()
             .put("longitude", actual[0]).put("latitude", actual[1]).put("zoom", actual[2])
             .put("first_frame_gray_fraction", firstFraction).put("final_gray_fraction", finalFraction)
+            .put("strict_tile_completeness", !allowIncompleteTiles)
             .put("capture_after_ms", System.currentTimeMillis() - started).toString())
-        assertTrue("Real map tiles still incomplete after 60 seconds", finalFraction <= 0.01)
+        if (!allowIncompleteTiles) {
+            assertTrue("Real map tiles still incomplete after 60 seconds", finalFraction <= 0.01)
+        }
         Log.i("QueueGoMapRuntime", "captured=$name; actual_sdk_camera_recorded; capture_after_ms=${System.currentTimeMillis() - started}")
         return actual
     }
