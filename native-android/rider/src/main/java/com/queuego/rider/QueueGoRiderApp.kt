@@ -1103,6 +1103,23 @@ private fun RiderHome(
 
     fun changeOnline(enabled: Boolean) {
         if (actionBusy || snapshot?.activeJob != null || snapshot?.laundry?.activeJob != null || snapshot == null) return
+        if (enabled && !riderFirebaseConfigured(context)) {
+            actionMessage = "ระบบแจ้งเตือน Android ยังไม่พร้อม จึงยังเปิดรับงานไม่ได้"
+            return
+        }
+        if (enabled && !riderNotificationsReady(context)) {
+            if (
+                Build.VERSION.SDK_INT >= 33 &&
+                context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+            ) {
+                actionMessage = "ต้องอนุญาตการแจ้งเตือนก่อนเปิดรับงาน"
+                notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+            } else {
+                actionMessage = "ต้องเปิดการแจ้งเตือนงาน QueueGo ก่อนเปิดรับงาน"
+                runCatching { context.startActivity(riderNotificationSettingsIntent(context)) }
+            }
+            return
+        }
         if (enabled && !hasGoogleMaps(context)) {
             actionMessage = "ต้องติดตั้ง Google Maps ก่อนเปิดรับงาน"
             openGoogleMapsInstallPage(context)
