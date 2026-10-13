@@ -1,3 +1,8 @@
+## 2026-10-13 complete Customer category banner artwork
+- Owner requests matching Web/Native Android banners for Laundry, Shopping and every Shopping mode, while retaining the original category icon buttons. Continue Web31a4187 and Native56371ee; preserve Rider map/lifecycle/sequencing fixes and all unrelated successors.
+- Existing shopping sprite is not a decodable WebP in the repository. Replace its use with individually verified WebP files: shopping/mobile/computer/automotive/fashion/toys/home and laundry, all under50KiB. Automotive car/motorcycle use the automotive family image. Artwork is category illustration, never a substituted real store/product photo.
+- Both versions use identical image bytes; managed Admin banners/hide/link settings retained, bundled image remains visible while a remote banner loads/fails. Images belong in banners; category icons unchanged. No order/payment/state/backend changes. Source/CI and live publication checks pending; Native physical Release Gate stays OPEN.
+
 # QueueGo project memory
 
 ## 2026-10-10 Native voice privacy disclosure
