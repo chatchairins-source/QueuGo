@@ -179,10 +179,12 @@ internal class RiderRoadRouteDisplay {
         }
         val now = android.os.SystemClock.elapsedRealtime()
         val stopsChanged = stops != nextStops
-        val changed = map !== activeMap || stopsChanged || (origin == null) != (nextOrigin == null)
+        val legs = riderDisplayLegs(nextOrigin, nextStops).filter { riderRouteDistance(it.from, it.to) >= 1.0 }
+        val desired = legs.map { it.id }.toSet()
+        val changed = map !== activeMap || stopsChanged || (origin == null) != (nextOrigin == null) ||
+            lines.keys.any { it !in desired }
         val moved = nextOrigin != null && origin?.let { riderRouteDistance(it, nextOrigin) >= 30.0 } != false
-        val legs = riderDisplayLegs(nextOrigin, nextStops)
-        val complete = legs.filter { riderRouteDistance(it.from, it.to) >= 1.0 }.all { it.id in lines }
+        val complete = legs.all { it.id in lines }
         if (!changed && request?.isActive == true && (!moved || now - startedAt < 15_000)) return
         if (!changed && !moved && complete && now - startedAt < 120_000) return
         if (!changed && now - startedAt < 15_000) return
@@ -199,7 +201,6 @@ internal class RiderRoadRouteDisplay {
         }
         map = activeMap; stops = nextStops; origin = nextOrigin; startedAt = now
         val version = generation
-        val desired = legs.map { it.id }.toSet()
         lines.keys.filter { it !in desired }.forEach { id ->
             renderedGeometry.remove(id)
             lines.remove(id)?.forEach { line ->
@@ -211,7 +212,6 @@ internal class RiderRoadRouteDisplay {
         request = scope.launch {
             for (leg in legs) {
                 try {
-                    if (riderRouteDistance(leg.from, leg.to) < 1.0) continue
                     val key = leg.from to leg.to
                     val stored = cache[key]?.takeIf { now - it.first < 120_000 }
                     val geometry = stored?.second ?: loadRiderRoadGeometry(context, leg.from, leg.to).also {

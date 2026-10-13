@@ -20,3 +20,5 @@ console.log('Rider dark active / pale remaining real-road display contracts: PAS
 
 assert(road.includes('renderedGeometry[leg.id] == geometry) continue'));
 assert(road.includes('retiring.toList().forEach'));
+
+assert(road.includes('lines.keys.any { it !in desired }'));
