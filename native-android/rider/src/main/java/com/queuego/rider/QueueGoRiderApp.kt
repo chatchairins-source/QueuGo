@@ -1474,9 +1474,24 @@ private fun RiderHome(
                                         runCatching { api.startDelivery(auth, activeJob) }
                                             .onSuccess {
                                                 actionMessage = "รับของครบแล้ว · เริ่มจัดส่ง"
-                                                val updated = runCatching { api.riderSnapshot(auth) }.getOrNull()
-                                                if (updated != null) snapshot = updated
-                                                openNavigation(context, activeJob.copy(status = "in_progress"))
+                                                val committedJob = activeJob.copy(status = "in_progress")
+                                                val committedSnapshot = current.copy(
+                                                    activeJob = committedJob,
+                                                    offeredJob = null
+                                                )
+                                                snapshot = committedSnapshot
+                                                pushStore.saveHomeSnapshot(auth.user.id, committedSnapshot)
+                                                val updated = runCatching { api.riderSnapshot(auth) }
+                                                    .onFailure { if (it is CancellationException) throw it }
+                                                    .getOrNull()
+                                                val committedRead = updated?.takeIf {
+                                                    riderPickupReadCanReplace("in_progress", activeJob.id, it)
+                                                }
+                                                if (committedRead != null) {
+                                                    snapshot = committedRead
+                                                    pushStore.saveHomeSnapshot(auth.user.id, committedRead)
+                                                }
+                                                openNavigation(context, committedRead?.activeJob ?: committedJob)
                                             }
                                             .onFailure {
                                                 actionMessage = it.message ?: "เริ่มจัดส่งไม่สำเร็จ"
@@ -1517,9 +1532,24 @@ private fun RiderHome(
                                     runCatching { api.startDelivery(auth, current.activeJob) }
                                         .onSuccess {
                                             actionMessage = "เริ่มจัดส่งแล้ว"
-                                            val updated = runCatching { api.riderSnapshot(auth) }.getOrNull()
-                                            if (updated != null) snapshot = updated
-                                            openNavigation(context, current.activeJob.copy(status = "in_progress"))
+                                            val committedJob = current.activeJob.copy(status = "in_progress")
+                                            val committedSnapshot = current.copy(
+                                                activeJob = committedJob,
+                                                offeredJob = null
+                                            )
+                                            snapshot = committedSnapshot
+                                            pushStore.saveHomeSnapshot(auth.user.id, committedSnapshot)
+                                            val updated = runCatching { api.riderSnapshot(auth) }
+                                                .onFailure { if (it is CancellationException) throw it }
+                                                .getOrNull()
+                                            val committedRead = updated?.takeIf {
+                                                riderPickupReadCanReplace("in_progress", current.activeJob.id, it)
+                                            }
+                                            if (committedRead != null) {
+                                                snapshot = committedRead
+                                                pushStore.saveHomeSnapshot(auth.user.id, committedRead)
+                                            }
+                                            openNavigation(context, committedRead?.activeJob ?: committedJob)
                                         }
                                         .onFailure {
                                             actionMessage = it.message ?: "เริ่มจัดส่งไม่สำเร็จ"

@@ -27,6 +27,9 @@ assert(app.includes('pickupCommittedStatus == "picked_up"')&&
 assert(app.includes('completedMode == "pickup" && pickupCommittedStatus == "in_progress"')&&
   app.includes('openNavigation(context, delivering)'),
   'Customer Maps must open only after the Rider order is in_progress so return UI shows arrive-customer');
+assert((app.match(/riderPickupReadCanReplace\("in_progress"/g)||[]).length>=2 &&
+  (app.match(/pushStore\.saveHomeSnapshot\(auth\.user\.id, committedSnapshot\)/g)||[]).length>=2,
+  'Manual and Market start-delivery must commit in_progress locally and reject stale picked_up reads before Maps handoff');
 assert(!app.includes('RiderNavigationController()')&&!app.includes('RiderNavigationSpeaker(context)')&&!app.includes('if (navigationState.active)'),
   'Rider Home must not run the retired in-app navigation engine or turn-by-turn panel');
 assert(!fs.existsSync('native-android/rider/src/main/java/com/queuego/rider/RiderNavigation.kt'),
