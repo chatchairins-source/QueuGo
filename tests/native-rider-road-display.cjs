@@ -1,7 +1,7 @@
 const assert=require('assert'), fs=require('fs');
 const road=fs.readFileSync('native-android/rider/src/main/java/com/queuego/rider/RiderRouteDisplay.kt','utf8');
 const map=fs.readFileSync('native-android/rider/src/main/java/com/queuego/rider/LongdoRiderMap.kt','utf8');
-assert(road.includes('setColor(163, 0, 31, 255)') && road.includes('setColor(230, 0, 45, 76)'));
+assert(road.includes('floatArrayOf(163f / 255f, 0f, 31f / 255f, 1f)') && road.includes('floatArrayOf(230f / 255f, 0f, 45f / 255f, 76f / 255f)'));
 assert(road.includes('RouteService/geojson/route'));
 assert(road.includes('riderRouteDisplayStops') && road.includes('it.bundleSequence') && road.includes('it.dropRank'));
 assert(road.includes('pickups.filter { !it.done }'));

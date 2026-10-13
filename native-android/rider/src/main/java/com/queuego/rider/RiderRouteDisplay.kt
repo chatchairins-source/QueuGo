@@ -134,7 +134,8 @@ internal suspend fun loadRiderRoadGeometry(context: Context, from: RiderRoutePoi
 
 internal fun riderRouteLine(points: List<RiderRoutePoint>, first: Boolean, density: Float): Line =
     Line(points.map { MapLocation(it.longitude, it.latitude) }.toTypedArray()).apply {
-        if (first) setColor(163, 0, 31, 255) else setColor(230, 0, 45, 76)
+        setColor(if (first) floatArrayOf(163f / 255f, 0f, 31f / 255f, 1f)
+            else floatArrayOf(230f / 255f, 0f, 45f / 255f, 76f / 255f))
         setWidth(((if (first) 4f else 3f) * density).roundToInt().coerceAtLeast(2))
         setWeight(if (first) 0 else 1)
     }
