@@ -1641,7 +1641,13 @@ private fun RiderHome(
                                 requestArrival(current.activeJob, "shop")
                             },
                             onPickupVerify = {
-                                openVerification("pickup", current.activeJob)
+                                if (current.activeJob.marketOrderId != null) {
+                                    current.marketPickups.firstOrNull { !it.done }?.let { pickup ->
+                                        openMarketPickupVerification(current.activeJob, pickup)
+                                    }
+                                } else {
+                                    openVerification("pickup", current.activeJob)
+                                }
                             },
                             onStartDelivery = {
                                 actionBusy = true
@@ -2144,6 +2150,7 @@ private fun ActiveJobCard(
         else -> "รออัปเดต"
     }
     val primaryLabel = when {
+        job.marketOrderId != null && pickup && navigationStarted -> "ถึงร้านแล้ว"
         job.marketOrderId != null && pickup -> "นำทางไปร้านถัดไป"
         pickup && job.shopArrived -> if (job.status == "ready") "ตรวจสอบรายการ" else "ถึงร้านแล้ว ✓"
         pickup && navigationStarted -> "ถึงร้านแล้ว"
@@ -2191,6 +2198,7 @@ private fun ActiveJobCard(
             Button(
                 onClick = {
                     when {
+                        job.marketOrderId != null && pickup && navigationStarted -> onPickupVerify()
                         job.marketOrderId != null && pickup -> { onNavigate(); navigationStarted = context.getSharedPreferences("rider_navigation", Context.MODE_PRIVATE).getBoolean(navigationKey, false) }
                         pickup && job.shopArrived && job.status == "ready" -> onPickupVerify()
                         pickup && navigationStarted -> onArriveShop()
@@ -2609,6 +2617,10 @@ private fun VerificationScreen(
                         amount = job.shopCash,
                         note = "จ่ายร้านตามยอดนี้ก่อนรับสินค้า"
                     )
+                }
+                if (!pickup && !marketPickupMode && (job.customerCash == null || !job.customerCash.isFinite() || job.customerCash < 0.0)) {
+                    Text("ยังตรวจสอบยอดเงินจากระบบไม่ได้ กรุณากลับและเปิดรายการใหม่", color = QgRed,
+                        modifier = Modifier.padding(vertical = 8.dp), fontSize = 12.sp)
                 }
                 if (!pickup && !marketPickupMode && job.customerCash != null) {
                     Spacer(Modifier.height(6.dp))

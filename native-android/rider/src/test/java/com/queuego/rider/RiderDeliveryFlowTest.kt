@@ -22,6 +22,14 @@ class RiderDeliveryFlowTest {
         assertNotEquals(riderNavigationKey(job("ready")), riderNavigationKey(job("in_progress")))
     }
 
+    @Test fun marketNextShopDoesNotReusePreviousShopNavigation() {
+        val first = job("ready").copy(marketOrderId = "key-test", pickupLat = 15.0, pickupLng = 103.0)
+        val next = first.copy(pickupLat = 15.1)
+        assertNotEquals(riderNavigationKey(first), riderNavigationKey(next))
+        assertEquals(riderNavigationKey(first.copy(status = "in_progress")),
+            riderNavigationKey(next.copy(status = "in_progress")))
+    }
+
     @Test fun collectionRequiresReadableProofAndAuthoritativeAmount() {
         assertFalse(riderCollectionReady(120.5, false, false))
         assertFalse(riderCollectionReady(120.5, true, false))
