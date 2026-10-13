@@ -25,6 +25,7 @@ class RiderMapRuntimeTest {
             awaitRealMap()
             scenario.onActivity { it.recenterMap() }
             val initialCamera = captureRealFrame("initial", scenario)
+            assertExpectedGpsCamera(initialCamera)
             // Stress the exact physical-device lifecycle edge that occurs during
             // app switching, permission sheets and screen-off/on. A single cycle can
             // miss intermittent GL renderer teardown races.
@@ -39,10 +40,12 @@ class RiderMapRuntimeTest {
             awaitRealMap()
             val resumedCamera = captureRealFrame("resumed", scenario)
             assertSameCamera(initialCamera, resumedCamera)
+            assertExpectedGpsCamera(resumedCamera)
             scenario.recreate()
             awaitRealMap()
             val recreatedCamera = captureRealFrame("recreated", scenario)
             assertSameCamera(initialCamera, recreatedCamera)
+            assertExpectedGpsCamera(recreatedCamera)
         }
         Log.i("QueueGoMapRuntime", "completed_pid=${Process.myPid()}")
     }
@@ -51,6 +54,15 @@ class RiderMapRuntimeTest {
         assertEquals("Actual SDK longitude jumped", expected[0], actual[0], 0.0001)
         assertEquals("Actual SDK latitude jumped", expected[1], actual[1], 0.0001)
         assertEquals("Actual SDK zoom changed", expected[2], actual[2], 0.0)
+    }
+
+    private fun assertExpectedGpsCamera(actual: DoubleArray) {
+        val args = InstrumentationRegistry.getArguments()
+        val expectedLongitude = args.getString("expectedLongitude")?.toDoubleOrNull() ?: return
+        val expectedLatitude = args.getString("expectedLatitude")?.toDoubleOrNull() ?: return
+        assertEquals("Rider map did not recenter to the injected current longitude", expectedLongitude, actual[0], 0.002)
+        assertEquals("Rider map did not recenter to the injected current latitude", expectedLatitude, actual[1], 0.002)
+        Log.i("QueueGoMapRuntime", "injected_gps_camera_verified")
     }
 
     private fun grayTileFraction(bitmap: Bitmap): Double {
