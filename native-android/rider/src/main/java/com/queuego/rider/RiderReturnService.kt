@@ -13,6 +13,7 @@ import android.graphics.drawable.GradientDrawable
 import android.os.Build
 import android.os.IBinder
 import android.provider.Settings
+import android.util.Log
 import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
@@ -33,7 +34,8 @@ class RiderReturnService : Service() {
             val cached = SessionStore(context.applicationContext).load() ?: return
             if (cached.user.status != "active") return
             val intent = Intent(context, RiderReturnService::class.java)
-            ContextCompat.startForegroundService(context, intent)
+            runCatching { ContextCompat.startForegroundService(context, intent) }
+                .onFailure { Log.w("QueueGoReturnService", "foreground_start_rejected", it) }
         }
 
         fun stop(context: Context) {
@@ -68,14 +70,24 @@ class RiderReturnService : Service() {
             .setContentIntent(returnPendingIntent())
             .build()
 
-        if (Build.VERSION.SDK_INT >= 34) {
-            startForeground(
-                NOTIFICATION_ID,
-                notification,
-                ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE
-            )
-        } else {
-            startForeground(NOTIFICATION_ID, notification)
+        val foregroundStarted = runCatching {
+            if (Build.VERSION.SDK_INT >= 34) {
+                startForeground(
+                    NOTIFICATION_ID,
+                    notification,
+                    ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE
+                )
+            } else {
+                startForeground(NOTIFICATION_ID, notification)
+            }
+        }.onFailure {
+            Log.w("QueueGoReturnService", "start_foreground_failed", it)
+        }.isSuccess
+
+        if (!foregroundStarted) {
+            removeOverlay()
+            stopSelf()
+            return START_NOT_STICKY
         }
 
         if (Settings.canDrawOverlays(this)) showOverlay()
@@ -141,15 +153,19 @@ class RiderReturnService : Service() {
                 MotionEvent.ACTION_UP -> {
                     val moved = abs(event.rawX - touchX) + abs(event.rawY - touchY)
                     if (moved < 18f * resources.displayMetrics.density) {
-                        startActivity(
-                            Intent(this, MainActivity::class.java).apply {
-                                addFlags(
-                                    Intent.FLAG_ACTIVITY_NEW_TASK or
-                                        Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or
-                                        Intent.FLAG_ACTIVITY_SINGLE_TOP
-                                )
-                            }
-                        )
+                        runCatching {
+                            startActivity(
+                                Intent(this, MainActivity::class.java).apply {
+                                    addFlags(
+                                        Intent.FLAG_ACTIVITY_NEW_TASK or
+                                            Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or
+                                            Intent.FLAG_ACTIVITY_SINGLE_TOP
+                                    )
+                                }
+                            )
+                        }.onFailure {
+                            Log.w("QueueGoReturnService", "overlay_return_failed", it)
+                        }
                     }
                     true
                 }
