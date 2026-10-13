@@ -7,7 +7,7 @@ class RiderRouteDisplayTest {
     private fun job(id: String, state: String = "ready") = RiderJob(id, null, state,
         null, 15.0, 103.0, null, 15.1, 103.1, null, null, null, null, null)
     private fun bundled(id: String, sequence: Int, drop: Int, state: String = "ready") =
-        RiderBundleOrder("bundle", job(id, state), sequence, drop, null, "", 0.0, 0.0, 0.0, 0.0, 0.0, null)
+        RiderBundleOrder("bundle", job(id, state), sequence, drop, null, "", 0.0, 0.0, 0.0, 0.0, 0, null)
 
     @Test fun pendingBundleShopsComeBeforeEveryCustomer() {
         val orders = listOf(bundled("b", 2, 1, "in_progress"), bundled("a", 1, 2))
