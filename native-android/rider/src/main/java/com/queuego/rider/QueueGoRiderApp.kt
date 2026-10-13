@@ -304,18 +304,46 @@ internal fun riderPickupCommittedStatus(mutationResult: Any?): String =
         else -> "picked_up"
     }
 
+internal fun riderSnapshotJobForCommit(updated: RiderSnapshot, jobId: String): RiderJob? =
+    updated.activeJob?.takeIf { it.id == jobId }
+        ?: updated.bundle.activeOrders.firstOrNull { it.job.id == jobId }?.job
+
 internal fun riderPickupReadCanReplace(
     committedStatus: String,
     jobId: String,
     updated: RiderSnapshot
 ): Boolean {
-    val candidate = updated.activeJob ?: return false
-    if (candidate.id != jobId) return false
+    val candidate = riderSnapshotJobForCommit(updated, jobId) ?: return false
     val status = candidate.status.lowercase()
     return when (committedStatus.lowercase()) {
         "in_progress" -> status in setOf("in_progress", "completed")
         else -> status in setOf("picked_up", "in_progress", "completed")
     }
+}
+
+internal fun riderApplyPickupCommit(
+    current: RiderSnapshot,
+    pickedJob: RiderJob,
+    committedStatus: String
+): RiderSnapshot {
+    val advancedJob = pickedJob.copy(status = committedStatus.lowercase())
+    val bundled = current.bundle.activeOrders.any { it.job.id == pickedJob.id }
+    if (!bundled) {
+        return current.copy(activeJob = advancedJob, offeredJob = null)
+    }
+
+    val bundleAfter = current.bundle.copy(
+        activeOrders = current.bundle.activeOrders.map { bundledOrder ->
+            if (bundledOrder.job.id == pickedJob.id) {
+                bundledOrder.copy(job = advancedJob)
+            } else bundledOrder
+        }
+    )
+    return current.copy(
+        activeJob = bundleAfter.currentOrder()?.job ?: advancedJob,
+        offeredJob = null,
+        bundle = bundleAfter
+    )
 }
 
 private fun riderStageRank(status: String): Int = when (status.lowercase()) {
@@ -394,8 +422,8 @@ internal fun riderVerificationCommitVisible(
     marketPickupId: String?,
     updated: RiderSnapshot
 ): Boolean = when (mode) {
-    "pickup" -> updated.activeJob?.let { job ->
-        job.id == jobId && job.status.lowercase() in setOf("picked_up", "in_progress", "completed")
+    "pickup" -> riderSnapshotJobForCommit(updated, jobId)?.let { job ->
+        job.status.lowercase() in setOf("picked_up", "in_progress", "completed")
     } == true
     "marketPickup" -> {
         val pickupCommitted = marketPickupId?.let { id ->
@@ -1132,9 +1160,12 @@ private fun RiderHome(
                         }
 
                         val before = snapshot
+                        val bundlePickup = completedMode == "pickup" &&
+                            before?.bundle?.activeOrders?.any { it.job.id == job.id } == true
                         actionMessage = when (completedMode) {
                             "pickup" -> if (pickupCommittedStatus == "in_progress")
-                                "รับสินค้าแล้ว · กำลังเปิดนำทางไปลูกค้า"
+                                if (bundlePickup) "รับสินค้าแล้ว · กำลังเปิดนำทางจุดถัดไป"
+                                else "รับสินค้าแล้ว · กำลังเปิดนำทางไปลูกค้า"
                             else "รับสินค้าแล้ว · กดเริ่มจัดส่งเพื่อไปลูกค้า"
                             "marketPickup" -> "รับสินค้าจุดนี้แล้ว"
                             else -> "จัดส่งสำเร็จ"
@@ -1144,10 +1175,13 @@ private fun RiderHome(
                         // workflow immediately so a slow/failed snapshot refresh can
                         // never return Rider to the same verification/photo step.
                         val localAfterSuccess = when (completedMode) {
-                            "pickup" -> before?.copy(
-                                activeJob = job.copy(status = pickupCommittedStatus ?: "picked_up"),
-                                offeredJob = null
-                            )
+                            "pickup" -> before?.let {
+                                riderApplyPickupCommit(
+                                    it,
+                                    job,
+                                    pickupCommittedStatus ?: "picked_up"
+                                )
+                            }
                             "marketPickup" -> {
                                 val pickupId = verifyMarketPickup?.pickupId
                                 before?.copy(
@@ -1203,11 +1237,10 @@ private fun RiderHome(
                         }
 
                         if (completedMode == "pickup" && pickupCommittedStatus == "in_progress") {
-                            val delivering = committedRead?.activeJob
-                                ?.takeIf { it.status == "in_progress" }
+                            val nextStop = committedRead?.activeJob
                                 ?: localAfterSuccess?.activeJob
                                 ?: job.copy(status = "in_progress")
-                            openNavigation(context, delivering)
+                            openNavigation(context, nextStop)
                         }
                     }.onFailure {
                         actionMessage = it.message ?: "บันทึกหลักฐานไม่สำเร็จ"

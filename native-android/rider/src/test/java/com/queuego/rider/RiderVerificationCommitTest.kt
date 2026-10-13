@@ -219,4 +219,88 @@ class RiderVerificationCommitTest {
             )
         )
     }
+    private fun bundled(job: RiderJob, pickup: Int, drop: Int) = RiderBundleOrder(
+        bundleId = "bundle-1",
+        job = job,
+        bundleSequence = pickup,
+        dropRank = drop,
+        shopId = "shop-" + job.id,
+        shopName = "Shop " + job.id,
+        originalDeliveryFee = 30.0,
+        customerSavings = 5.0,
+        riderExtraFee = 2.0,
+        detourKm = 0.2,
+        addedMinutes = 1,
+        routeSequence = null
+    )
+
+    @Test
+    fun bundlePickupAcceptsCommittedOrderEvenWhenServerActiveMovesToNextShop() {
+        val picked = job("in_progress", "order-1")
+        val next = job("ready", "order-2")
+        val updated = RiderSnapshot(
+            online = true,
+            activeJob = next,
+            offeredJob = null,
+            bundle = RiderRouteBundleState(
+                activeOrders = listOf(
+                    bundled(picked, pickup = 1, drop = 2),
+                    bundled(next, pickup = 2, drop = 1)
+                )
+            )
+        )
+
+        assertTrue(riderPickupReadCanReplace("in_progress", "order-1", updated))
+        assertTrue(riderVerificationCommitVisible("pickup", "order-1", null, updated))
+        assertEquals("order-1", riderSnapshotJobForCommit(updated, "order-1")?.id)
+    }
+
+    @Test
+    fun localBundlePickupCommitAdvancesToPendingShopBeforeCustomer() {
+        val first = job("ready", "order-1")
+        val second = job("ready", "order-2")
+        val current = RiderSnapshot(
+            online = true,
+            activeJob = first,
+            offeredJob = null,
+            bundle = RiderRouteBundleState(
+                activeOrders = listOf(
+                    bundled(first, pickup = 1, drop = 2),
+                    bundled(second, pickup = 2, drop = 1)
+                )
+            )
+        )
+
+        val promoted = riderApplyPickupCommit(current, first, "in_progress")
+
+        assertEquals("order-2", promoted.activeJob?.id)
+        assertEquals(
+            "in_progress",
+            promoted.bundle.activeOrders.first { it.job.id == "order-1" }.job.status
+        )
+        assertEquals("ready", promoted.activeJob?.status)
+    }
+
+    @Test
+    fun finalBundlePickupCommitSwitchesToFirstCustomerDropRank() {
+        val first = job("in_progress", "order-1")
+        val second = job("ready", "order-2")
+        val current = RiderSnapshot(
+            online = true,
+            activeJob = second,
+            offeredJob = null,
+            bundle = RiderRouteBundleState(
+                activeOrders = listOf(
+                    bundled(first, pickup = 1, drop = 2),
+                    bundled(second, pickup = 2, drop = 1)
+                )
+            )
+        )
+
+        val promoted = riderApplyPickupCommit(current, second, "in_progress")
+
+        assertEquals("order-2", promoted.activeJob?.id)
+        assertEquals("in_progress", promoted.activeJob?.status)
+    }
+
 }

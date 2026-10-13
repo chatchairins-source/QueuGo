@@ -23,6 +23,13 @@ assert(api.includes('actionOnce(')&&api.includes('"bundle_claim"')&&api.includes
   'Bundle claim must use the existing idempotent Rider action receipt path');
 assert(api.includes('bundle.currentOrder()?.let { active = it.job }'),
   'Rider snapshot must replace arbitrary latest-order selection with the authoritative bundle next job');
+assert(app.includes('riderSnapshotJobForCommit(updated, jobId)')&&
+  app.includes('riderApplyPickupCommit('),
+  'Pickup commit recovery must remain bundle-aware when the authoritative active job advances to the next stop');
+assert(app.includes('val nextStop = committedRead?.activeJob')&&
+  app.includes('?: localAfterSuccess?.activeJob')&&
+  !app.includes('val delivering = committedRead?.activeJob'),
+  'Post-pickup Google Maps handoff must use the authoritative next bundle stop instead of forcing the just-picked customer');
 assert(api.includes('&id=in.(')&&api.includes('parseJob(row)'),
   'Bundle metadata must merge with real order rows so arrival/photo state remains authoritative');
 assert(api.includes('bundle = bundle'),'Rider snapshot must carry route bundle state');
