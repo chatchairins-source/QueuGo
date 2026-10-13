@@ -16,10 +16,17 @@ for(const role of roles){
  check(adaptive.includes('<adaptive-icon') && adaptive.includes('@drawable/ic_queuego_foreground') && adaptive.includes('@drawable/ic_queuego_background'),role+' separate adaptive layers');
  const vector=fs.readFileSync(path.join(res,'drawable/ic_queuego_foreground.xml'),'utf8');
  const paths=[...vector.matchAll(/android:pathData="([^"]+)"/g)].map(x=>x[1]);
- check(paths.length>=4,role+' Q and service symbol');
- if(sharedPaths)check(JSON.stringify(paths.slice(0,2))===JSON.stringify(sharedPaths),role+' same Q geometry');
- else sharedPaths=paths.slice(0,2);
- check(vector.includes('#EF3340')&&!vector.includes('<text'),role+' brand color and no app text');
+ if(role==='rider'){
+  check(paths.length===2,'rider icon must be the bold Q only');
+  check(vector.includes('#E6002D')&&!vector.includes('strokeColor="#EF3340"'),'rider must use the approved stronger red Q without legacy role decoration');
+  const adaptive33=fs.readFileSync(path.join(res,'mipmap-anydpi-v33/ic_queuego_launcher.xml'),'utf8');
+  check(adaptive33.includes('<monochrome android:drawable="@drawable/ic_queuego_monochrome"'),'rider Android 13+ monochrome icon');
+ }else{
+  check(paths.length>=4,role+' Q and service symbol');
+  if(sharedPaths)check(JSON.stringify(paths.slice(0,2))===JSON.stringify(sharedPaths),role+' same Q geometry');
+  else sharedPaths=paths.slice(0,2);
+  check(vector.includes('#EF3340')&&!vector.includes('<text'),role+' brand color and no app text');
+ }
  for(const [density,size] of Object.entries({mdpi:48,hdpi:72,xhdpi:96,xxhdpi:144,xxxhdpi:192,store:512})){
   const file=density==='store'?path.join(root,'branding',`${role}-play-store-512.png`):path.join(res,`mipmap-${density}`,'ic_queuego_launcher.png');
   const bytes=fs.readFileSync(file);
@@ -29,6 +36,6 @@ for(const role of roles){
 }
 const metrics=JSON.parse(fs.readFileSync(path.join(root,'branding/geometry-check.json'),'utf8'));
 for(const role of roles)check(metrics.metrics[role].maxRadiusDp<=33,role+' adaptive safe circle');
-check(metrics.roleWeightSpreadPercent<=10,'symbol coverage consistency');
+check(metrics.roleWeightSpreadPercent<=10,'Customer/Merchant service-symbol coverage consistency');
 check(fs.existsSync(path.join(root,'branding/family-preview.png')),'reviewable family preview');
-console.log(JSON.stringify({checks,failures:0,scope:'native launcher assets, density sizes, shared Q geometry and recorded raster safe-area metrics; physical launcher rendering remains pending'}));
+console.log(JSON.stringify({checks,failures:0,scope:'native launcher assets, density sizes, Rider bold-Q exception and recorded raster safe-area metrics; physical launcher rendering remains pending'}));
