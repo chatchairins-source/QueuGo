@@ -75,11 +75,12 @@ assert(map.includes('setPreserveEGLContextOnPause(true)'),
   'Navigation map must preserve the GL context across background/resume when Android allows it');
 assert(map.includes('announceRendererReplacement')&&
   map.includes('fun configureMap(')&&
-  map.includes('Longdo 0.1.8 can silently replace renderer.map without emitting onMapCreated')&&
-  map.includes('activeView.renderer?.map')&&
-  map.includes('rendererMap !== map')&&
-  map.includes('configureMap(activeView.context, rendererMap!!)'),
-  'Renderer-map identity changes must be bridged and proactively adopted even when Longdo never emits onMapCreated');
+  map.includes('adoptSilentRendererReplacement')&&
+  map.includes('watchRendererIdentity')&&
+  map.includes('RENDERER_WATCH_MAX_ATTEMPTS')&&
+  map.includes('Longdo can replace renderer.map after ON_RESUME returns')&&
+  map.includes('configureMap(activeView.context, rendererMap)'),
+  'Renderer-map identity changes must be bridged and watched after resume so delayed silent Longdo replacements are proactively adopted');
 assert(map.includes('PixelCopy.request')&&map.includes('snapshotOverlay')&&
   map.includes('showContinuityBridge')&&map.includes('settleContinuityBridge')&&
   map.includes('pendingBridgeWithoutSnapshot')&&

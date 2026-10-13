@@ -40,6 +40,8 @@ private const val SNAPSHOT_CAPTURE_DELAY_MS = 180L
 private const val SNAPSHOT_BRIDGE_SETTLE_MS = 500L
 private const val SNAPSHOT_BRIDGE_RETRY_MS = 250L
 private const val SNAPSHOT_BRIDGE_MAX_ATTEMPTS = 8
+private const val RENDERER_WATCH_INTERVAL_MS = 100L
+private const val RENDERER_WATCH_MAX_ATTEMPTS = 50
 
 private val ACTIVE_ROUTE_COLOR = floatArrayOf(230f / 255f, 0f, 45f / 255f, 0.96f)
 private val FUTURE_ROUTE_COLOR = floatArrayOf(230f / 255f, 0f, 45f / 255f, 0.28f)
@@ -63,6 +65,7 @@ private class RiderNavigationMapHolder {
     private var lastSnapshotCaptureAtMs = 0L
     private var bridgeGeneration = 0
     private var pendingBridgeWithoutSnapshot = false
+    private var rendererWatchGeneration = 0
     private var announcedReplacementMap: com.longdo.api.Map? = null
     private var lastKnownCamera: NavigationMapCamera? = null
     private var lastState = RiderNavigationMapState()
@@ -336,17 +339,43 @@ private class RiderNavigationMapHolder {
         return true
     }
 
+    private fun adoptSilentRendererReplacement(activeView: MapGLSurfaceView): Boolean {
+        val rendererMap = runCatching { activeView.renderer?.map }.getOrNull()
+        val activeMap = map
+        if (rendererMap == null || activeMap == null || rendererMap === activeMap) return false
+        configureMap(activeView.context, rendererMap)
+        return true
+    }
+
+    private fun watchRendererIdentity(generation: Int, attempt: Int = 0) {
+        if (disposed || !resumed || generation != rendererWatchGeneration) return
+        val activeView = view ?: return
+        val replaced = runCatching { adoptSilentRendererReplacement(activeView) }
+            .onFailure { Log.e("QueueGoNavMap", "renderer_identity_watch_failed", it) }
+            .getOrDefault(false)
+        if (replaced) return
+        if (attempt < RENDERER_WATCH_MAX_ATTEMPTS) {
+            mainHandler.postDelayed(
+                { watchRendererIdentity(generation, attempt + 1) },
+                RENDERER_WATCH_INTERVAL_MS
+            )
+        }
+    }
+
+    private fun startRendererIdentityWatch() {
+        val generation = ++rendererWatchGeneration
+        watchRendererIdentity(generation)
+    }
+
     fun resume() {
         val activeView = view ?: return
         if (disposed) return
-        // Longdo 0.1.8 can silently replace renderer.map without emitting onMapCreated.
-        // Adopt and configure that exact renderer map here so the visible surface never waits
-        // for a callback that may never arrive.
-        val rendererMap = runCatching { activeView.renderer?.map }.getOrNull()
-        val replacementPending = rendererMap != null && map != null && rendererMap !== map
-        if (replacementPending) {
-            configureMap(activeView.context, rendererMap!!)
-        }
+        // Longdo can replace renderer.map after ON_RESUME returns and may never emit
+        // onMapCreated for that replacement. Check immediately and then keep a short bounded
+        // watcher alive so the replacement is adopted through configureMap() as soon as it exists.
+        val replacementPending = runCatching { adoptSilentRendererReplacement(activeView) }
+            .onFailure { Log.e("QueueGoNavMap", "renderer_resume_adoption_failed", it) }
+            .getOrDefault(false)
         // Longdo's Activity lifecycle does not require MapGLSurfaceView.onResume().
         // Calling it after ordinary background/foreground transitions can replace renderer.map
         // and visibly reassemble the map even though the retained View itself never changed.
@@ -354,6 +383,7 @@ private class RiderNavigationMapHolder {
         // Deliberately keep lastRiderFix, map, pins and route layers. A refresh/resume must
         // never reconstruct the map just because Rider/order state changed.
         render(lastState)
+        startRendererIdentityWatch()
         if (!replacementPending) settleContinuityBridge()
     }
 
@@ -373,6 +403,7 @@ private class RiderNavigationMapHolder {
     }
 
     fun retainAcrossVisibilityLoss() {
+        rendererWatchGeneration += 1
         // Tab switches and ordinary background/foreground cycles keep the SDK renderer alive.
         // Capture a frozen frame quietly for emergency continuity, but do not cover a healthy
         // retained renderer. The bridge is shown only when attachMap() detects a real map
@@ -660,6 +691,7 @@ private class RiderNavigationMapHolder {
         snapshotRefreshScheduled = false
         snapshotVisible = false
         pendingBridgeWithoutSnapshot = false
+        rendererWatchGeneration += 1
         announcedReplacementMap = null
         lastKnownCamera = null
         resumed = false
