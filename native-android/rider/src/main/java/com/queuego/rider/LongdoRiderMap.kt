@@ -7,6 +7,8 @@ import android.location.LocationManager
 import android.location.Location
 import android.location.LocationListener
 import android.graphics.PointF
+import android.graphics.Bitmap
+import android.graphics.Canvas
 import android.os.Bundle
 import android.os.Looper
 import android.util.Log
@@ -53,6 +55,19 @@ private fun riderStopMarkerRes(number: Int): Int = when (number) {
     else -> R.drawable.qg_rider_stop_more
 }
 
+private fun renderRiderMarkerBitmap(context: Context, resId: Int): Bitmap {
+    val drawable = requireNotNull(context.resources.getDrawable(resId, context.theme)) {
+        "Rider marker resource unavailable: $resId"
+    }
+    val width = drawable.intrinsicWidth.coerceAtLeast(1)
+    val height = drawable.intrinsicHeight.coerceAtLeast(1)
+    return Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888).also { bitmap ->
+        val canvas = Canvas(bitmap)
+        drawable.setBounds(0, 0, width, height)
+        drawable.draw(canvas)
+    }
+}
+
 private class RiderLongdoHolder(
     private val cameraState: MutableState<DoubleArray?>,
     private val persistCamera: (DoubleArray) -> Unit
@@ -69,10 +84,16 @@ private class RiderLongdoHolder(
     private var locationPermissionMask = 0
     private var latestDeviceLocation: Pair<Double, Double>? = null
     private var currentLocationPin: Pin? = null
+    private val markerBitmaps = mutableMapOf<Int, Bitmap>()
     private var recenterOnNextFix = false
     private var currentJob: RiderJob? = null
     private var currentPickups: List<MarketPickup> = emptyList()
     private var currentBundleOrders: List<RiderBundleOrder> = emptyList()
+
+    private fun markerBitmap(context: Context, resId: Int): Bitmap =
+        markerBitmaps[resId] ?: renderRiderMarkerBitmap(context, resId).also {
+            markerBitmaps[resId] = it
+        }
 
     fun attachMap(nextMap: com.longdo.api.Map) {
         if (map !== nextMap) {
@@ -228,7 +249,7 @@ private class RiderLongdoHolder(
             val mapLocation = MapLocation(lon, lat)
             val existing = currentLocationPin
             if (existing == null) {
-                val pin = Pin(mapLocation, context, R.drawable.qg_rider_current_location)
+                val pin = Pin(mapLocation, markerBitmap(context, R.drawable.qg_rider_current_location))
                 runCatching { ldmap.pushPin(pin) }
                     .onSuccess { currentLocationPin = pin }
             } else {
@@ -279,8 +300,7 @@ private class RiderLongdoHolder(
             runCatching {
                 val pin = Pin(
                     MapLocation(lon, lat),
-                    context,
-                    riderStopMarkerRes(number)
+                    markerBitmap(context, riderStopMarkerRes(number))
                 )
                 pin.setOffset(PointF(0f, -0.4f))
                 ldmap.pushPin(pin)
