@@ -297,6 +297,29 @@ fun QueueGoRiderApp(pushTarget: NativePushLaunchTarget? = null) {
     }
 }
 
+internal fun riderVerificationCommitVisible(
+    mode: String,
+    jobId: String,
+    marketPickupId: String?,
+    updated: RiderSnapshot
+): Boolean = when (mode) {
+    "pickup" -> updated.activeJob?.let { job ->
+        job.id == jobId && job.status.lowercase() in setOf("picked_up", "in_progress", "completed")
+    } == true
+    "marketPickup" -> {
+        val pickupCommitted = marketPickupId?.let { id ->
+            updated.marketPickups.firstOrNull { it.pickupId == id }?.done
+        } == true
+        val orderAdvanced = updated.activeJob?.let { job ->
+            job.id == jobId && job.status.lowercase() in setOf("picked_up", "in_progress", "completed")
+        } == true
+        pickupCommitted || orderAdvanced
+    }
+    else -> updated.activeJob?.let { job ->
+        job.id != jobId || job.status.lowercase() in setOf("completed", "cancelled")
+    } ?: true
+}
+
 @Composable
 private fun LoadingScreen(modifier: Modifier) {
     Column(
@@ -1024,13 +1047,21 @@ private fun RiderHome(
                         val updated = runCatching { api.riderSnapshot(auth) }
                             .onFailure { if (it is CancellationException) throw it }
                             .getOrNull()
-                        if (updated != null) {
-                            snapshot = updated
-                            pushStore.saveHomeSnapshot(auth.user.id, updated)
+                        val committedRead = updated?.takeIf { candidate ->
+                            riderVerificationCommitVisible(
+                                completedMode.orEmpty(),
+                                job.id,
+                                verifyMarketPickup?.pickupId,
+                                candidate
+                            )
+                        }
+                        if (committedRead != null) {
+                            snapshot = committedRead
+                            pushStore.saveHomeSnapshot(auth.user.id, committedRead)
                         }
 
                         if (completedMode == "pickup") {
-                            val pickedUp = updated?.activeJob
+                            val pickedUp = committedRead?.activeJob
                                 ?: localAfterSuccess?.activeJob
                                 ?: job.copy(status = "picked_up")
                             openNavigation(context, pickedUp)
