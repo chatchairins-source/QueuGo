@@ -26,6 +26,23 @@ class NavigationMapRuntimeTest {
         )
     }
 
+    private fun awaitMapPresence(
+        scenario: ActivityScenario<NavigationMapRuntimeActivity>,
+        expected: Boolean,
+        timeoutMs: Long = 5_000L
+    ) {
+        val deadline = android.os.SystemClock.elapsedRealtime() + timeoutMs
+        var observed = !expected
+        while (android.os.SystemClock.elapsedRealtime() < deadline) {
+            scenario.onActivity { observed = it.hasMapView() }
+            if (observed == expected) return
+            Thread.sleep(25)
+        }
+        throw AssertionError(
+            "Navigation map presence did not become $expected; last observed=$observed"
+        )
+    }
+
     private fun awaitStopProgression(
         scenario: ActivityScenario<NavigationMapRuntimeActivity>,
         activity: NavigationMapRuntimeActivity,
@@ -124,8 +141,10 @@ class NavigationMapRuntimeTest {
             val beforeTabUnmount = runtimeActivity.latestDiagnostics.renderPassCount
             scenario.onActivity { it.hideMapForAnotherTab() }
             InstrumentationRegistry.getInstrumentation().waitForIdleSync()
+            awaitMapPresence(scenario, expected = false)
             scenario.onActivity { it.showMapAfterReturningHome() }
             InstrumentationRegistry.getInstrumentation().waitForIdleSync()
+            awaitMapPresence(scenario, expected = true)
             awaitAppliedRender(runtimeActivity, beforeTabUnmount)
             scenario.onActivity { activity ->
                 assertEquals("Rider tab return recreated MapGLSurfaceView", initialView, activity.mapViewIdentity())

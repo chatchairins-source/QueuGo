@@ -43,9 +43,11 @@ assert(map.includes('RiderNavigationMapRegistry')&&
   map.includes('retain the exact GL view + SDK map for the next mount')&&
   map.includes('holder.view?.takeIf { it.context === context }')&&
   runtimeActivity.includes('hideMapForAnotherTab')&&runtimeActivity.includes('showMapAfterReturningHome')&&
+  runtimeActivity.includes('hasMapView')&&runtimeTest.includes('awaitMapPresence')&&
+  runtimeTest.includes('expected = false')&&runtimeTest.includes('expected = true')&&
   runtimeTest.includes('Rider tab return recreated MapGLSurfaceView')&&
   runtimeTest.includes('Rider tab return recreated Longdo map'),
-  'Leaving Home for another Rider tab and returning must reuse the same map objects without leaking an old Activity context');
+  'Leaving Home for another Rider tab must actually unmount/remount the map and reuse the same map objects without leaking an old Activity context');
 assert(map.includes('activeDestroyObserver')&&
   map.includes('Keep the lifecycle observer registered while Home is unmounted')&&
   map.includes('remember(stateKey, lifecycle)')&&

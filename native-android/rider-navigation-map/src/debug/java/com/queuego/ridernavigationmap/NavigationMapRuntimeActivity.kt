@@ -83,6 +83,8 @@ class NavigationMapRuntimeActivity : ComponentActivity() {
         )
     }
 
+    fun hasMapView(): Boolean = findMapView(window.decorView) != null
+
     fun mapViewIdentity(): Int = System.identityHashCode(requireNotNull(findMapView(window.decorView)))
 
     fun sdkMapIdentity(): Int {
