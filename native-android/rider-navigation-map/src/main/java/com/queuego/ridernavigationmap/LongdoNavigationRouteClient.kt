@@ -25,7 +25,7 @@ data class NavigationRouteLeg(
 )
 
 interface NavigationRouteProvider {
-    override suspend fun route(
+    suspend fun route(
         from: NavigationMapPoint,
         stop: NavigationMapStop,
         segmentId: String
@@ -39,8 +39,8 @@ class LongdoNavigationRouteClient(
         .readTimeout(12, TimeUnit.SECONDS)
         .callTimeout(12, TimeUnit.SECONDS)
         .build()
-) {
-    suspend fun route(
+) : NavigationRouteProvider {
+    override suspend fun route(
         from: NavigationMapPoint,
         stop: NavigationMapStop,
         segmentId: String
