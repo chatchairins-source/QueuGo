@@ -123,36 +123,54 @@ fun QueueGoRiderApp(pushTarget: NativePushLaunchTarget? = null) {
     val api = remember { QueueGoApi() }
     val store = remember { SessionStore(context) }
     val scope = rememberCoroutineScope()
+    val cachedAtComposition = remember { store.load() }
 
-    var auth by remember { mutableStateOf<QueueGoAuth?>(null) }
-    var restoring by remember { mutableStateOf(true) }
+    // Hydrate the encrypted local session immediately. Validation still runs against
+    // Production, but returning from background/activity recreation must not flash a
+    // cold-start loading screen or discard the Rider's current working context.
+    var auth by remember { mutableStateOf<QueueGoAuth?>(cachedAtComposition) }
+    var restoring by remember { mutableStateOf(cachedAtComposition == null) }
     var busy by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     var restorationError by remember { mutableStateOf(false) }
     var restorationAttempt by remember { mutableStateOf(0) }
-    var registrationOpen by remember { mutableStateOf(false) }
+    var registrationOpen by remember {
+        mutableStateOf(
+            cachedAtComposition?.let {
+                store.pendingRegistrationUserId() == it.session.authUserId
+            } ?: false
+        )
+    }
 
     LaunchedEffect(restorationAttempt) {
-        restoring = true
-        restorationError = false
-        val cached = store.load()
-        if (cached != null) {
-            runCatching { api.validate(cached).also { store.save(it) } }
-                .onSuccess {
-                    auth = it
-                    registrationOpen = store.pendingRegistrationUserId() == it.session.authUserId
-                }
-                .onFailure {
-                    if (it is CancellationException) throw it
-                    if (shouldClearRiderSession(it)) {
-                        store.clear()
-                        error = it.message
-                    } else {
-                        restorationError = true
-                    }
-                }
+        val cached = auth ?: store.load()
+        if (cached == null) {
+            restoring = false
+            return@LaunchedEffect
         }
+
+        // Never blank an already-restored UI while the server session check runs.
+        if (auth == null) auth = cached
         restoring = false
+        restorationError = false
+
+        runCatching { api.validate(cached).also { store.save(it) } }
+            .onSuccess {
+                auth = it
+                registrationOpen = store.pendingRegistrationUserId() == it.session.authUserId
+            }
+            .onFailure {
+                if (it is CancellationException) throw it
+                if (shouldClearRiderSession(it)) {
+                    store.clear()
+                    auth = null
+                    error = it.message
+                } else if (auth == null) {
+                    restorationError = true
+                }
+                // With a cached authenticated view, transient network failure is
+                // non-blocking; the periodic validator will retry in the background.
+            }
     }
 
     LaunchedEffect(auth?.session?.sessionId) {
@@ -363,7 +381,9 @@ private fun RiderHome(
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     val snapshotMutex = remember { Mutex() }
 
-    var snapshot by remember { mutableStateOf<RiderSnapshot?>(null) }
+    var snapshot by remember(auth.user.id) {
+        mutableStateOf<RiderSnapshot?>(pushStore.loadHomeSnapshot(auth.user.id))
+    }
     var todaySummary by remember { mutableStateOf<RiderPeriodSummary?>(null) }
     var recentHistory by remember { mutableStateOf<List<RiderHistoryOrder>>(emptyList()) }
     var lastSummaryAt by remember { mutableStateOf(0L) }
@@ -418,7 +438,7 @@ private fun RiderHome(
     var pendingCameraUri by remember { mutableStateOf<Uri?>(null) }
     var lastOfferAlertKey by remember { mutableStateOf<String?>(null) }
     var handledPushEventId by remember(auth.user.id) { mutableStateOf<Long?>(null) }
-    var activeTab by remember { mutableStateOf("home") }
+    var activeTab by rememberSaveable(auth.user.id) { mutableStateOf("home") }
     var pendingVoiceOrderId by remember { mutableStateOf<String?>(null) }
     var pendingVoiceAnswer by remember { mutableStateOf(false) }
     val voicePermission = rememberLauncherForActivityResult(
@@ -769,6 +789,7 @@ private fun RiderHome(
                     activeTab = "home"
                 }
                 snapshot = liveSnapshot
+                pushStore.saveHomeSnapshot(auth.user.id, liveSnapshot)
                 reconcileRiderOfferNotifications(context, auth.user.id, liveSnapshot.offeredJob?.id)
                 loadError = null
                 if (it.activeJob == null) RiderReturnService.stop(context)
@@ -1553,11 +1574,13 @@ private fun RiderHome(
                                                 status = "rider_assigned",
                                                 offerExpiresAt = null
                                             )
-                                            snapshot = current.copy(
+                                            val acceptedSnapshot = current.copy(
                                                 activeJob = acceptedFallback,
                                                 offeredJob = null,
                                                 marketPickups = emptyList()
                                             )
+                                            snapshot = acceptedSnapshot
+                                            pushStore.saveHomeSnapshot(auth.user.id, acceptedSnapshot)
 
                                             val updated = runCatching { api.riderSnapshot(auth) }
                                                 .onFailure { if (it is CancellationException) throw it }
