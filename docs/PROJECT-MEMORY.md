@@ -1,3 +1,8 @@
+## 2026-10-13 approved category banners verified
+- Final Web merge b5f9e4e3c84ca4e1daf6cb0ccd44d32cc38c07a7/PR181 has exactly tested3d29de55 tree. RC38419925893 and merged-tree RC38420111285 / Pages38420111247 SUCCESS. Actual public Shopping overview, six subcategories and Laundry images decode960x458; bright full photos/light text wash and original category icons verified.
+- Native merge22a2a8b29b96ba555daa9aedcd5620e0b7d1e4cf/PR177 has exactly testedc01e91bf tree, preserving newest Rider4acbcda. Pilot38419935708 SUCCESS: full regression/source, all-role JVM, all3 debug builds,16KB/no-WebView and native-pilot launch/map/service lifecycle. Separate map-display-only/navigation-map-runtime jobs skipped for this branch; no new certification from those jobs.
+- Internal APK artifact11825313667 ZIPsha256d5f0f441e0b7fba052e3f3280fe4266ab69ee3f0343535dd9b7b14df82b29ba4 verified; all8 packaged Customer nodpi images decode960x458 and match Web bytes. Owner freezes the seven selected category images; only Laundry gets the small local-shop adjustment. No further photo regeneration unless requested. No business/backend writes. Physical/authenticated E2E and final Release Gate remain OPEN; no release APK/AAB delivered.
+
 ## 2026-10-13 final selection freeze
 - Owner says use the existing selected images for every category in BOTH Web and Android; make only a small ordinary-shop adjustment to Laundry. Freeze the seven selected category images; no further scene changes outside Laundry. Retain black collared shirts/red Q, bright full pictures, no dark panel/strip and original category icon tiles. Any format compression only keeps the selected picture.
 
