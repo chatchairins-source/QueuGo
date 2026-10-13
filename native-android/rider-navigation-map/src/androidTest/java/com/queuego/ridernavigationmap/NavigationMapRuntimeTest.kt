@@ -119,10 +119,9 @@ class NavigationMapRuntimeTest {
                 )
             }
 
-            val beforeEquivalentRefresh = runtimeActivity.latestDiagnostics.renderPassCount
+            val beforeEquivalentRefresh = runtimeActivity.latestDiagnostics
             scenario.onActivity { it.refreshEquivalentOrderSnapshot() }
             InstrumentationRegistry.getInstrumentation().waitForIdleSync()
-            awaitAppliedRender(runtimeActivity, beforeEquivalentRefresh)
             scenario.onActivity { activity ->
                 assertEquals("Equivalent backend refresh recreated MapGLSurfaceView", initialView, activity.mapViewIdentity())
                 assertEquals("Equivalent backend refresh recreated Longdo map", initialSdkMap, activity.sdkMapIdentity())
@@ -135,6 +134,11 @@ class NavigationMapRuntimeTest {
                     "Equivalent backend refresh rebuilt unchanged stop pins",
                     initialDiagnostics.stopMutationCount,
                     activity.latestDiagnostics.stopMutationCount
+                )
+                assertEquals(
+                    "Structurally-equal backend refresh should be suppressed before map render",
+                    beforeEquivalentRefresh.renderPassCount,
+                    activity.latestDiagnostics.renderPassCount
                 )
             }
 

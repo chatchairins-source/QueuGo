@@ -77,6 +77,7 @@ assert(runtimeTest.includes('awaitAppliedRender')&&runtimeTest.includes('awaitSt
   runtimeTest.includes('GPS refresh rebuilt unchanged route layers')&&
   runtimeTest.includes('Resume recreated Longdo map')&&
   runtimeTest.includes('Equivalent backend refresh rebuilt unchanged route layers')&&
+  runtimeTest.includes('Structurally-equal backend refresh should be suppressed before map render')&&
   runtimeActivity.includes('refreshEquivalentOrderSnapshot'),
   'Android runtime test must prove GPS/backend refresh and resume reuse the exact map objects and overlays');
 assert(runtimeActivity.includes('there are no QueueGo accounts, jobs, orders or Production writes')&&
