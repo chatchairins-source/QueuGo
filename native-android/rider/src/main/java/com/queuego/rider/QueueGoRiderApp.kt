@@ -643,7 +643,6 @@ private fun RiderHome(
     }
 
     var recenterSignal by remember { mutableStateOf(0) }
-    var mapReady by remember { mutableStateOf(false) }
     var pendingMapRecenter by remember { mutableStateOf(false) }
 
     val locationPermission = rememberLauncherForActivityResult(
@@ -1353,7 +1352,7 @@ private fun RiderHome(
             marketPickups = snapshot?.marketPickups.orEmpty(),
             bundleOrders = snapshot?.bundle?.activeOrders.orEmpty(),
             recenterSignal = recenterSignal,
-            onMapReady = { mapReady = it }
+            onMapReady = { }
         )
 
         Column(
@@ -1369,20 +1368,6 @@ private fun RiderHome(
                 enabled = !actionBusy && snapshot != null && snapshot?.activeJob == null && snapshot?.laundry?.activeJob == null,
                 onToggle = { changeOnline(snapshot?.online != true) }
             )
-            if (!mapReady) {
-                Spacer(Modifier.height(7.dp))
-                Card(
-                    shape = RoundedCornerShape(14.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color(0xEEFFFFFF))
-                ) {
-                    Text(
-                        "กำลังเชื่อมต่อ Longdo Map…",
-                        color = QgMuted,
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 7.dp),
-                        style = MaterialTheme.typography.labelSmall
-                    )
-                }
-            }
         }
 
         Card(
@@ -1392,12 +1377,10 @@ private fun RiderHome(
                 .size(44.dp)
                 .clickable {
                     when {
-                        !mapReady -> actionMessage = "แผนที่ยังไม่พร้อม เปิดนำทางภายนอกจากงานได้"
                         !hasLocationPermission(context) -> {
                             pendingMapRecenter = true
                             ensureLocationPermission()
                         }
-                        lastKnownLocation(context) == null -> actionMessage = "ยังไม่ได้ตำแหน่ง GPS"
                         else -> recenterSignal += 1
                     }
                 },
@@ -1450,9 +1433,7 @@ private fun RiderHome(
         } else {
             val current = snapshot
             if (current == null) {
-                if (loadError == null) {
-                    CircularProgressIndicator()
-                } else {
+                if (loadError != null) {
                     Text(loadError!!, color = MaterialTheme.colorScheme.error)
                 }
             } else {
