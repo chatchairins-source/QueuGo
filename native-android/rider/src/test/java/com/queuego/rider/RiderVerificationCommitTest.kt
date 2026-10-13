@@ -1,5 +1,6 @@
 package com.queuego.rider
 
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -20,6 +21,21 @@ class RiderVerificationCommitTest {
         arrivedShopAt = null,
         arrivedCustomerAt = null
     )
+
+    @Test
+    fun pickupMutationInProgressRejectsStalePickedUpRead() {
+        assertEquals("in_progress", riderPickupCommittedStatus("in_progress"))
+        assertFalse(riderPickupReadCanReplace("in_progress", "order-1", RiderSnapshot(false, job("picked_up"), null)))
+        assertTrue(riderPickupReadCanReplace("in_progress", "order-1", RiderSnapshot(false, job("in_progress"), null)))
+        assertTrue(riderPickupReadCanReplace("in_progress", "order-1", RiderSnapshot(false, job("completed"), null)))
+    }
+
+    @Test
+    fun pickedUpMutationMayAdvanceButNeverReturnToReady() {
+        assertEquals("picked_up", riderPickupCommittedStatus("picked_up"))
+        assertFalse(riderPickupReadCanReplace("picked_up", "order-1", RiderSnapshot(false, job("ready"), null)))
+        assertTrue(riderPickupReadCanReplace("picked_up", "order-1", RiderSnapshot(false, job("in_progress"), null)))
+    }
 
     @Test
     fun pickupRejectsStaleReadySnapshot() {
