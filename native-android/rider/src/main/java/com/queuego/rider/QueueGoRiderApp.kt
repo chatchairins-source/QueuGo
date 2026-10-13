@@ -438,7 +438,10 @@ private fun RiderHome(
     var pendingCameraUri by remember { mutableStateOf<Uri?>(null) }
     var lastOfferAlertKey by remember { mutableStateOf<String?>(null) }
     var handledPushEventId by remember(auth.user.id) { mutableStateOf<Long?>(null) }
-    var activeTab by rememberSaveable(auth.user.id) { mutableStateOf("home") }
+    var activeTab by rememberSaveable(auth.user.id) { mutableStateOf(pushStore.loadActiveTab(auth.user.id)) }
+    LaunchedEffect(auth.user.id, activeTab) {
+        pushStore.saveActiveTab(auth.user.id, activeTab)
+    }
     var pendingVoiceOrderId by remember { mutableStateOf<String?>(null) }
     var pendingVoiceAnswer by remember { mutableStateOf(false) }
     val voicePermission = rememberLauncherForActivityResult(
@@ -1145,6 +1148,7 @@ private fun RiderHome(
     ) {
         RiderLongdoMap(
             modifier = Modifier.fillMaxSize(),
+            stateKey = auth.user.id,
             job = mapJob,
             marketPickups = snapshot?.marketPickups.orEmpty(),
             bundleOrders = snapshot?.bundle?.activeOrders.orEmpty(),
