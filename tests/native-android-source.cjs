@@ -230,7 +230,14 @@ ok(riderApp.includes('RiderLongdoMap(')&&
    !riderApp.includes('RiderMiniJobSheet(')&&
    riderApp.includes('recenterSignal'),
    'Rider native must keep a fixed non-draggable active job card over the map with recenter control');
-ok(riderApp.includes('val cachedAtComposition = remember { store.load() }')&&riderApp.includes('mutableStateOf<QueueGoAuth?>(cachedAtComposition)')&&riderApp.includes('pushStore.loadHomeSnapshot(auth.user.id)')&&riderApp.includes('pushStore.saveHomeSnapshot(auth.user.id, liveSnapshot)')&&riderApp.includes('rememberSaveable(auth.user.id) { mutableStateOf(pushStore.loadActiveTab(auth.user.id)) }')&&riderApp.includes('pushStore.saveActiveTab(auth.user.id, activeTab)'),'Rider must restore encrypted session, active work snapshot and the persisted tab without a cold reload after activity recreation');
+ok(riderApp.includes('val cachedAtComposition = remember { store.load() }')&&
+   riderApp.includes('mutableStateOf<QueueGoAuth?>(cachedAtComposition)')&&
+   riderApp.includes('pushStore.loadHomeSnapshot(auth.user.id)')&&
+   riderApp.includes('riderResolveMissingActiveSnapshot(currentSnapshot, liveSnapshot, resolvedJob)')&&
+   riderApp.includes('pushStore.saveHomeSnapshot(auth.user.id, mergedSnapshot)')&&
+   riderApp.includes('rememberSaveable(auth.user.id) { mutableStateOf(pushStore.loadActiveTab(auth.user.id)) }')&&
+   riderApp.includes('pushStore.saveActiveTab(auth.user.id, activeTab)'),
+   'Rider must restore encrypted session, monotonic active work snapshot and the persisted tab without a cold reload after activity recreation');
 ok(riderSessionStore.includes('saveHomeSnapshot(')&&riderSessionStore.includes('loadHomeSnapshot(')&&riderSessionStore.includes('home_snapshot'),'Rider session store must persist encrypted home work state for background/process recovery');
 ok(riderManifest.includes('android:launchMode="singleTask"')&&riderManifest.includes('android:alwaysRetainTaskState="true"'),'Rider launcher must reuse its existing task instead of creating a fresh work activity after app switching');
 ok(source.includes('longdo.map.key'),'native Rider manifest must provide Longdo map key');
