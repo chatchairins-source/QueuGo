@@ -49,7 +49,8 @@ const riderHome=fs.readFileSync('native-android/rider/src/main/java/com/queuego/
 const riderApi=fs.readFileSync('native-android/rider/src/main/java/com/queuego/rider/QueueGoApi.kt','utf8');
 const riderStore=fs.readFileSync('native-android/rider/src/main/java/com/queuego/rider/SessionStore.kt','utf8');
 ok(riderStore.includes('setOf("home", "earn", "chat", "profile")')&&
-   riderStore.includes('"earnings" -> "earn"')&&riderHome.includes('activeTab == "earn"'),
+   riderStore.includes('"earnings" -> "earn"')&&
+   riderHome.includes('"earn" -> RiderEarningsScreen('),
    'Rider tab persistence must use the actual earnings tab key and migrate the old key without returning Home');
 for(const field of ['customerSubtotal','customerDeliveryFee','customerServiceFee']){
   ok(riderStore.includes('.put("'+field+'", job.'+field+')')&&
