@@ -1277,109 +1277,34 @@ private fun RiderHome(
         }
 
         val activeSheetJob = snapshot?.activeJob
-        val density = LocalDensity.current
         val expandedSheetHeight = (maxHeight - 132.dp).coerceAtLeast(0.dp)
-        val collapsedSheetHeight = 92.dp.coerceAtMost(expandedSheetHeight)
-        var jobSheetExpanded by rememberSaveable(activeSheetJob?.id) { mutableStateOf(true) }
-        var draggedSheetHeightPx by remember(activeSheetJob?.id) { mutableStateOf<Float?>(null) }
-        val settledSheetHeight by animateDpAsState(
-            targetValue = draggedSheetHeightPx?.let { with(density) { it.toDp() } }
-                ?: if (jobSheetExpanded) expandedSheetHeight else collapsedSheetHeight,
-            animationSpec = if (draggedSheetHeightPx != null) snap() else spring(),
-            label = "rider-job-sheet-height"
-        )
-        val expandedPx = with(density) { expandedSheetHeight.toPx() }
-        val collapsedPx = with(density) { collapsedSheetHeight.toPx() }
-        val liveSheetHeight = settledSheetHeight
+        val fixedJobCardMaxHeight = if (activeSheetJob != null) {
+            (maxHeight * 0.56f).coerceAtLeast(220.dp)
+        } else {
+            expandedSheetHeight
+        }
         val sheetScrollState = rememberScrollState()
-        fun currentSheetHeightPx() = draggedSheetHeightPx ?: with(density) { settledSheetHeight.toPx() }
-        fun dragSheet(deltaY: Float): Float {
-            val previous = currentSheetHeightPx()
-            val next = (previous - deltaY).coerceIn(collapsedPx, expandedPx)
-            if (next != previous) draggedSheetHeightPx = next
-            return previous - next
-        }
-        fun settleSheet(velocityY: Float = 0f) {
-            val height = currentSheetHeightPx()
-            jobSheetExpanded = if (kotlin.math.abs(velocityY) >= 600f) velocityY < 0f
-                else height >= (collapsedPx + expandedPx) / 2f
-            draggedSheetHeightPx = null
-        }
-        val sheetScrollConnection = remember(activeSheetJob?.id, expandedPx, collapsedPx) {
-            object : NestedScrollConnection {
-                override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
-                    if (source != NestedScrollSource.UserInput || activeSheetJob == null) return Offset.Zero
-                    val expanding = available.y < 0f && currentSheetHeightPx() < expandedPx
-                    val collapsing = available.y > 0f && sheetScrollState.value == 0
-                    return if (expanding || collapsing) Offset(0f, dragSheet(available.y)) else Offset.Zero
-                }
-                override fun onPostScroll(consumed: Offset, available: Offset, source: NestedScrollSource): Offset {
-                    if (source != NestedScrollSource.UserInput || activeSheetJob == null) return Offset.Zero
-                    return Offset(0f, dragSheet(available.y))
-                }
-                override suspend fun onPreFling(available: Velocity): Velocity {
-                    if (draggedSheetHeightPx == null) return Velocity.Zero
-                    settleSheet(available.y)
-                    return Velocity(0f, available.y)
-                }
-            }
-        }
-        val sheetDragModifier = Modifier.pointerInput(activeSheetJob?.id, expandedPx, collapsedPx) {
-            val tracker = VelocityTracker()
-            detectVerticalDragGestures(
-                onDragStart = {
-                    tracker.resetTracking()
-                    draggedSheetHeightPx = currentSheetHeightPx()
-                },
-                onVerticalDrag = { change, dragAmount ->
-                    tracker.addPosition(change.uptimeMillis, change.position)
-                    change.consume()
-                    dragSheet(dragAmount)
-                },
-                onDragEnd = { settleSheet(tracker.calculateVelocity().y) },
-                onDragCancel = { settleSheet() }
-            )
-        }
-        val dockBase = Modifier
+        val dockModifier = Modifier
             .align(Alignment.BottomCenter)
             .padding(bottom = 68.dp)
             .widthIn(max = 676.dp)
             .fillMaxWidth()
-        val dockModifier = if (activeSheetJob != null) {
-            dockBase
-                .height(liveSheetHeight)
-                .clip(RoundedCornerShape(topStart = 22.dp, topEnd = 22.dp))
-                .background(Color(0xF8FFFFFF))
-                .nestedScroll(sheetScrollConnection)
-        } else {
-            dockBase.heightIn(max = expandedSheetHeight)
-        }
+            .heightIn(max = fixedJobCardMaxHeight)
+            .then(
+                if (activeSheetJob != null) {
+                    Modifier
+                        .clip(RoundedCornerShape(topStart = 22.dp, topEnd = 22.dp))
+                        .background(Color(0xF8FFFFFF))
+                } else {
+                    Modifier
+                }
+            )
 
         Column(
             dockModifier
-                .then(if (activeSheetJob == null || jobSheetExpanded) Modifier.verticalScroll(sheetScrollState) else Modifier)
-                .padding(horizontal = 8.dp)
+                .verticalScroll(sheetScrollState)
+                .padding(horizontal = 8.dp, vertical = if (activeSheetJob != null) 8.dp else 0.dp)
         ) {
-            if (activeSheetJob != null) {
-                Box(
-                    Modifier
-                        .fillMaxWidth()
-                        .height(24.dp)
-                        .then(sheetDragModifier)
-                        .clickable { jobSheetExpanded = !jobSheetExpanded },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Box(Modifier.size(width = 42.dp, height = 5.dp).background(Color(0xFFD9D3D6), RoundedCornerShape(99.dp)))
-                }
-            }
-            if (activeSheetJob != null && !jobSheetExpanded) {
-                RiderMiniJobSheet(
-                    modifier = sheetDragModifier,
-                    job = activeSheetJob,
-                    navigation = navigationState,
-                    onExpand = { jobSheetExpanded = true }
-                )
-            } else {
         if (auth.user.status != "active") {
             Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(21.dp), colors = CardDefaults.cardColors(containerColor = Color.White)) {
                 Column(Modifier.padding(16.dp)) {
@@ -1689,9 +1614,6 @@ private fun RiderHome(
 
             }
         }
-            }
-
-        }
 
         RiderBottomNavigation(
             activeTab = activeTab,
@@ -1721,58 +1643,6 @@ private fun RiderHome(
             controller = voiceController,
             onAnswer = ::answerVoiceCall
         )
-    }
-}
-
-@Composable
-private fun RiderMiniJobSheet(
-    job: RiderJob,
-    navigation: RiderNavigationState,
-    onExpand: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Row(
-        modifier
-            .fillMaxWidth()
-            .heightIn(min = 60.dp)
-            .clip(RoundedCornerShape(17.dp))
-            .clickable(onClick = onExpand)
-            .padding(horizontal = 10.dp, vertical = 7.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(9.dp)
-    ) {
-        Box(
-            Modifier.size(40.dp).background(QgRedSoft, RoundedCornerShape(13.dp)),
-            contentAlignment = Alignment.Center
-        ) {
-            QgIcon("location", Modifier.size(22.dp), QgRed)
-        }
-        Column(Modifier.weight(1f)) {
-            Text(
-                riderStatusLabel(job.status),
-                color = QgRed,
-                fontWeight = FontWeight.Black,
-                fontSize = 10.sp
-            )
-            Text(job.numberLabel, fontWeight = FontWeight.Black, fontSize = 15.sp)
-        }
-        Column(horizontalAlignment = Alignment.End) {
-            Text(
-                navigation.etaSeconds?.let {
-                    kotlin.math.ceil(it / 60.0).toInt().coerceAtLeast(1).toString() + " นาที"
-                } ?: "ETA —",
-                fontWeight = FontWeight.Black,
-                fontSize = 12.sp
-            )
-            Text(
-                navigation.distanceRemainingMeters?.let {
-                    if (it >= 1000.0) "%.1f กม.".format(it / 1000.0) else "%.0f ม.".format(it)
-                } ?: "—",
-                color = QgMuted,
-                fontSize = 9.sp
-            )
-        }
-        Text("⌃", color = QgMuted, fontSize = 19.sp, fontWeight = FontWeight.Black)
     }
 }
 
