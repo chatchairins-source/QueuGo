@@ -58,6 +58,7 @@ internal fun CustomerLocationPickerScreen(
     var draftAddress by remember(address) { mutableStateOf(address) }
     var recenterToken by remember { mutableIntStateOf(0) }
     var mapReady by remember { mutableStateOf(false) }
+    var autoGpsRequested by remember { mutableStateOf(false) }
     var lastAutoAddress by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(location?.latitude, location?.longitude) {
@@ -72,10 +73,14 @@ internal fun CustomerLocationPickerScreen(
         }
     }
 
-    LaunchedEffect(Unit) {
-        // Web blueprint resolves GPS automatically on opening; saved coordinates remain
-        // visible and usable if permission is denied or a current fix is unavailable.
-        delay(80)
+    LaunchedEffect(mapReady) {
+        // Do not launch the Android location-permission dialog while Longdo's GL surface
+        // is still being created. On physical devices that Activity pause can race
+        // Longdo 0.1.8 renderer initialization and close the Customer app.
+        // Keep Production behavior (automatic GPS on open) but only after the map is ready.
+        if (!mapReady || autoGpsRequested) return@LaunchedEffect
+        autoGpsRequested = true
+        delay(150)
         onGps()
     }
 
