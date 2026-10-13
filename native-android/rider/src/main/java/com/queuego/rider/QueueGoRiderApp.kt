@@ -2356,7 +2356,7 @@ private fun VerificationScreen(
                                 Column(Modifier.weight(1f)) {
                                     Text(item.name, fontWeight = FontWeight.Bold, fontSize = 12.sp)
                                     if (pickup && !item.description.isNullOrBlank()) Text(item.description, fontSize = 9.sp, color = QgMuted)
-                                    Text("× ${item.quantity}", fontSize = 8.sp, color = QgMuted)
+                                    Text(riderMoneyBaht(item.unitPrice) + " × ${item.quantity}", fontSize = 8.sp, color = QgMuted)
                                 }
                                 Text(riderMoneyBaht(item.totalPrice), fontWeight = FontWeight.Bold, fontSize = 12.sp)
                             }
