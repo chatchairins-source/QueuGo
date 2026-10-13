@@ -68,7 +68,7 @@ with (log_dir / "emulator.log").open("w") as log:
         for scale in ("window_animation_scale", "transition_animation_scale", "animator_duration_scale"):
             run(adb + ["shell", "settings", "put", "global", scale, "0"])
 
-        result = run(
+        result = subprocess.run(
             [gradle, "-p", "native-android",
              ":rider-navigation-map:connectedDebugAndroidTest",
              "--no-build-cache", "--stacktrace"],
@@ -79,10 +79,13 @@ with (log_dir / "emulator.log").open("w") as log:
         )
         (log_dir / "gradle.txt").write_text(result.stdout + result.stderr)
         print(result.stdout)
+        if result.stderr:
+            print(result.stderr)
+        if result.returncode != 0:
+            raise SystemExit("Navigation-map connected Android test failed")
         print("QUEUEGO_NAVIGATION_MAP_RUNTIME_PASS")
     finally:
         try:
-            subprocess.run(adb + ["logcat", "-d"], capture_output=True, text=True, timeout=15).stdout
             logs = subprocess.run(adb + ["logcat", "-d"], capture_output=True, text=True, timeout=15)
             (log_dir / "logcat.txt").write_text(logs.stdout + logs.stderr)
         except subprocess.TimeoutExpired:
