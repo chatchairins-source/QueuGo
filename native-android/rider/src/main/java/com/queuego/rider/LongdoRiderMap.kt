@@ -77,6 +77,7 @@ private class RiderLongdoHolder(
     private var latestDeviceLocation: Pair<Double, Double>? = null
     private var currentLocationPin: Pin? = null
     private val stopPins = mutableMapOf<String, Pin>()
+    private val roadDisplay = RiderRoadRouteDisplay()
     private val stopBitmaps = mutableMapOf<Pair<RiderStopVisual, Int>, Bitmap>()
     private var cameraJobId: String? = null
     private val markerBitmaps = mutableMapOf<Int, Bitmap>()
@@ -209,6 +210,7 @@ private class RiderLongdoHolder(
     }
 
     fun pause() {
+        roadDisplay.pause()
         map?.let { activeMap ->
             runCatching {
                 val location = activeMap.getLocation()
@@ -258,6 +260,10 @@ private class RiderLongdoHolder(
         val ldmap = map ?: return
         if (disposed) return
         val location = latestDeviceLocation ?: deviceLocation(context)?.also { latestDeviceLocation = it }
+        roadDisplay.update(context, ldmap,
+            location?.let { RiderRoutePoint(it.first, it.second) },
+            riderRouteDisplayStops(job, pickups, bundleOrders), resumed)
+
 
         fun updateCurrentLocationPin(next: Pair<Double, Double>?) {
             if (next == null) {
@@ -420,6 +426,7 @@ private class RiderLongdoHolder(
 
     fun dispose() {
         disposed = true
+        roadDisplay.dispose()
         runCatching { pause() }
         map = null
         mapView = null
