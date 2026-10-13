@@ -25,8 +25,10 @@ assert(app.includes('pickupCommittedStatus == "picked_up"')&&
   app.includes('api.startDelivery(auth, job.copy(status = "picked_up"))'),
   'Legacy picked_up pickup results must advance to delivery before customer Maps handoff');
 assert(app.includes('completedMode == "pickup" && pickupCommittedStatus == "in_progress"')&&
-  app.includes('openNavigation(context, delivering)'),
-  'Customer Maps must open only after the Rider order is in_progress so return UI shows arrive-customer');
+  app.includes('val nextStop = committedRead?.activeJob')&&
+  app.includes('?: localAfterSuccess?.activeJob')&&
+  app.includes('openNavigation(context, nextStop)'),
+  'Post-pickup Google Maps must open only after an in_progress commit and must follow the authoritative next stop, including another bundled shop before customer delivery');
 assert((app.match(/riderPickupReadCanReplace\("in_progress"/g)||[]).length>=2 &&
   (app.match(/pushStore\.saveHomeSnapshot\(auth\.user\.id, committedSnapshot\)/g)||[]).length>=2,
   'Manual and Market start-delivery must commit in_progress locally and reject stale picked_up reads before Maps handoff');
