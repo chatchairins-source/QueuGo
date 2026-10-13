@@ -60,7 +60,9 @@ assert(map.includes('RiderNavigationMapRegistry')&&
   runtimeTest.includes('expected = false')&&runtimeTest.includes('expected = true')&&
   runtimeTest.includes('Rider tab return recreated MapGLSurfaceView')&&
   runtimeTest.includes('Rider tab return recreated Longdo map')&&
-  runtimeTest.includes('Healthy tab remount should not invoke the continuity bridge'),
+  runtimeTest.includes('Healthy tab remount should not invoke the continuity bridge')&&
+  runtimeTest.includes('manualPanSuspendsFollowButTapDoesNotReportGesture')&&
+  runtimeActivity.includes('dispatchDragOnMap')&&runtimeActivity.includes('userGestureCount'),
   'Leaving Home for another Rider tab must actually unmount/remount the map and reuse the same map objects without leaking an old Activity context');
 assert(map.includes('activeDestroyObserver')&&
   map.includes('Keep the lifecycle observer registered while Home is unmounted')&&
