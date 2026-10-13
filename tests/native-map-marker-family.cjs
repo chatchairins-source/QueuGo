@@ -27,3 +27,7 @@ assert(tracking.includes('existing.second.setLocation(MapLocation(point.longitud
 assert(tracking.includes('bitmaps.getOrPut(point.role)'));
 assert(!tracking.slice(tracking.indexOf('fun draw(points:'),tracking.indexOf('private fun Context.mapLifecycleOwner')).includes('clearPin()'));
 assert(tracking.includes('holder.attachMap(map)'));
+
+const workflow = read('.github/workflows/build-native-rider-pilot.yml');
+assert(workflow.includes("github.ref == 'refs/heads/work-native-marker-family-20261013'"));
+assert(workflow.includes("QG_CUSTOMER_LOCATION_ONLY: '1'"));

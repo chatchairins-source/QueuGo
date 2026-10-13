@@ -1,3 +1,9 @@
+## 2026-10-13 map marker software verification and Customer runtime gate
+- Exact code c5a37c52d550fa7f4f9bcd12285ac7ea07118150/Pilot38367565964 SUCCESS: full regression, all-role JVM, all3 debug APKs,16KB/no-WebView, actual Rider vector/map/stressed lifecycle and three-role launch matrix. Customer location-specific permission suite was NOT invoked in that run, so it is not Customer crash-runtime certification.
+- Preserves successor8b09d9e with separated stop-number rail and branded red Q on white. Customer tracking uses the identical semantic vector family and moves Rider/changed points in place; unchanged stops/bitmaps are cached. Failed Rider stop add/remove is retried without abandoning stale pin ownership.
+- Enable the existing map-display job for marker-family continuation and invoke its existing QG_CUSTOMER_LOCATION_ONLY branch: actual Customer delivery-address entry under denied/granted permission, Merchant shop-map lifecycle, then Rider map/GPS/display matrix. This adds required evidence rather than claiming an unexecuted test passed.
+- Physical Google Maps/overlay/GPS, authenticated real-order E2E and Release Gate remain OPEN; no release APK/AAB delivery.
+
 ## 2026-10-13 Customer tracking semantic marker integration
 - Preserved concurrent successor3ec0677 and its Rider marker/return design plus real vector instrumentation. PR169 integrates the same family into Customer tracking with explicit role fields; Customer mapReady/GPS and shared Longdo lifecycle code stay unchanged.
 - Local full regression passed before successor integration; combined exact-head regression/unit/build/runtime must pass. Physical gates remain OPEN; no release artifacts delivered.
