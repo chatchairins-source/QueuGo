@@ -308,6 +308,7 @@ internal fun QueueGoRiderNavigationMap(
     }
 
     var riderFix by remember(stateKey) { mutableStateOf<NavigationMapFix?>(null) }
+    var followRider by remember(stateKey) { mutableStateOf(true) }
     val locationEngine = remember(stateKey) {
         RiderNavigationLocationEngine(context) { riderFix = it }
     }
@@ -368,7 +369,7 @@ internal fun QueueGoRiderNavigationMap(
         stops = stops,
         routes = futureRoutes,
         activeStopId = activeStopId,
-        followRider = true,
+        followRider = followRider,
         followZoom = 17
     )
     var renderedState by remember(stateKey) { mutableStateOf(baseState) }
@@ -390,6 +391,7 @@ internal fun QueueGoRiderNavigationMap(
 
     LaunchedEffect(recenterSignal) {
         if (recenterSignal > 0) {
+            followRider = true
             riderFix?.let { fix ->
                 stateChannel.trySend(
                     baseState.copy(rider = fix, followRider = true)
@@ -404,6 +406,7 @@ internal fun QueueGoRiderNavigationMap(
         modifier = modifier,
         initialCamera = initialCamera,
         onMapReady = onMapReady,
+        onUserGesture = { followRider = false },
         onCameraChanged = { camera ->
             sessionStore.saveMapCamera(
                 stateKey,

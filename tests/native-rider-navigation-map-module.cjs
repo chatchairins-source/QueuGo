@@ -80,6 +80,17 @@ assert(map.includes('fun retainAcrossVisibilityLoss()')&&
   !map.includes('activeView.onResume()')&&
   map.includes('Calling it after ordinary background/foreground transitions can replace renderer.map'),
   'Ordinary tab/background visibility loss must not call Longdo onPause/onResume; SDK shutdown is reserved for real surface disposal');
+assert(map.includes('MotionEvent.ACTION_MOVE')&&
+  map.includes('MotionEvent.ACTION_POINTER_DOWN')&&
+  map.includes('ViewConfiguration.get(context).scaledTouchSlop')&&
+  map.includes('currentUserGesture.value()')&&
+  map.includes('holder.view?.setOnTouchListener(null)')&&
+  integration.includes('var followRider by remember(stateKey) { mutableStateOf(true) }')&&
+  integration.includes('followRider = followRider')&&
+  integration.includes('onUserGesture = { followRider = false }')&&
+  integration.includes('followRider = true'),
+  'Manual drag or pinch must suspend navigation follow until the Rider explicitly recenters');
+
 assert(map.includes('setPreserveEGLContextOnPause(true)'),
   'Navigation map must preserve the GL context across background/resume when Android allows it');
 assert(map.includes('announceRendererReplacement')&&
