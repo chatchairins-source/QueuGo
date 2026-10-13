@@ -266,7 +266,7 @@ ok(riderManifest.includes('android:launchMode="singleTask"')&&riderManifest.incl
 ok(source.includes('longdo.map.key'),'native Rider manifest must provide Longdo map key');
 const customerManifest=read('customer/src/main/AndroidManifest.xml');
 ok(customerManifest.includes('longdo.map.key')&&customerManifest.includes('ACCESS_FINE_LOCATION'),'native Customer Longdo picker must declare map key and location permission');
-ok(source.includes('deviceLocation')&&source.includes('setLocation(MapLocation')&&source.includes('clearPin')&&source.includes('pushPin'),'native Rider map must use Android GPS and show rider/job pins');
+ok(source.includes('deviceLocation')&&source.includes('setLocation(MapLocation')&&source.includes('ldmap.removePin')&&source.includes('pushPin'),'native Rider map must use Android GPS and show rider/job pins');
 ok(source.includes('QgBottomNav')&&source.includes('.height(58.dp)'),'native bottom navigation must keep approved compact web density');
 
 ok(source.includes('qg_merchant_action_once'),'Merchant native order actions must stay idempotent');
