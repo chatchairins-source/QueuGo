@@ -79,6 +79,8 @@ assert(map.includes('announceRendererReplacement')&&
   'Renderer-map identity changes must trigger the frozen-frame bridge before Longdo onMapCreated exposes reconstruction');
 assert(map.includes('PixelCopy.request')&&map.includes('snapshotOverlay')&&
   map.includes('showContinuityBridge')&&map.includes('settleContinuityBridge')&&
+  map.includes('pendingBridgeWithoutSnapshot')&&
+  map.includes('Count the bridge request at renderer-swap detection time')&&
   map.includes('The bridge is shown only when attachMap() detects a real map')&&
   models.includes('snapshotBridgeCount: Int = 0')&&models.includes('snapshotVisible: Boolean = false'),
   'When Android recreates the Longdo renderer, a captured SurfaceView frame must hide visible map reassembly');
