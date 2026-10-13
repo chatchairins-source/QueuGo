@@ -12,11 +12,14 @@ class NavigationMapRuntimeTest {
     @Test
     fun gpsRefreshAndResumeReuseTheSameMapObjects() {
         ActivityScenario.launch(NavigationMapRuntimeActivity::class.java).use { scenario ->
-            var ready = false
+            lateinit var runtimeActivity: NavigationMapRuntimeActivity
             scenario.onActivity { activity ->
-                ready = activity.mapReady.await(30, TimeUnit.SECONDS)
+                runtimeActivity = activity
             }
-            assertTrue("Standalone Longdo navigation map did not become ready", ready)
+            assertTrue(
+                "Standalone Longdo navigation map did not become ready",
+                runtimeActivity.mapReady.await(30, TimeUnit.SECONDS)
+            )
 
             var initialView = 0
             var initialSdkMap = 0
