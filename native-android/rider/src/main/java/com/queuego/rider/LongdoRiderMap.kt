@@ -94,18 +94,23 @@ private class RiderLongdoHolder(
         stopBitmaps.getOrPut(visual to number) {
             val asset = if (visual == RiderStopVisual.PICKUP) R.drawable.qg_marker_pickup
                 else R.drawable.qg_marker_dropoff
-            val bitmap = renderRiderMarkerBitmap(context, asset)
+            val base = renderRiderMarkerBitmap(context, asset)
+            val scale = base.width / 48f
+            // Reserve a separate top rail so the sequence badge never covers the icon.
+            val bitmap = Bitmap.createBitmap(base.width + (8f * scale).toInt(),
+                base.height + (8f * scale).toInt(), Bitmap.Config.ARGB_8888)
             val canvas = Canvas(bitmap)
-            val scale = bitmap.width / 48f
+            canvas.drawBitmap(base, 0f, 8f * scale, null)
+            base.recycle()
             val paint = Paint(Paint.ANTI_ALIAS_FLAG)
             paint.color = Color.WHITE
-            canvas.drawRoundRect(28f * scale, 0f, 48f * scale, 18f * scale, 6f * scale, 6f * scale, paint)
+            canvas.drawRoundRect(34f * scale, 0f, 54f * scale, 18f * scale, 6f * scale, 6f * scale, paint)
             paint.color = Color.rgb(14, 36, 56)
             paint.typeface = Typeface.DEFAULT_BOLD
             paint.textAlign = Paint.Align.CENTER
             paint.textSize = (if (number < 100) 12f else 9f) * scale
             val baseline = 9f * scale - (paint.ascent() + paint.descent()) / 2f
-            canvas.drawText(number.toString(), 38f * scale, baseline, paint)
+            canvas.drawText(number.toString(), 44f * scale, baseline, paint)
             bitmap
         }
 
@@ -290,12 +295,17 @@ private class RiderLongdoHolder(
             append("|")
             append(job?.deliveryLat).append(",").append(job?.deliveryLng)
             append("|")
-            pickups.forEach { append(it.pickupId).append(":").append(it.status).append(";") }
+            pickups.forEach {
+                append(it.pickupId).append(":").append(it.status).append(":")
+                    .append(it.latitude).append(",").append(it.longitude).append(";")
+            }
             append("|bundle:")
             bundleOrders.forEach {
                 append(it.job.id).append(":").append(it.job.status).append(":")
                     .append(it.job.shopArrived).append(":")
-                    .append(it.bundleSequence).append(":").append(it.dropRank).append(";")
+                    .append(it.bundleSequence).append(":").append(it.dropRank).append(":")
+                    .append(it.job.pickupLat).append(",").append(it.job.pickupLng).append(":")
+                    .append(it.job.deliveryLat).append(",").append(it.job.deliveryLng).append(";")
             }
         }
 
