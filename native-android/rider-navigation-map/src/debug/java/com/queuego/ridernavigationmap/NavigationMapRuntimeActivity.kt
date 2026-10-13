@@ -90,6 +90,29 @@ class NavigationMapRuntimeActivity : ComponentActivity() {
         )
     }
 
+    fun shortenActiveRouteFixture() {
+        val previous = mapState.value
+        mapState.value = previous.copy(
+            routes = previous.routes.map { segment ->
+                if (segment.id == "fixture-leg-1" && segment.points.size > 2) {
+                    segment.copy(
+                        points = listOf(
+                            NavigationMapPoint(13.7572, 100.5030),
+                            segment.points.last()
+                        )
+                    )
+                } else {
+                    segment
+                }
+            }
+        )
+    }
+
+    fun routeLineIdentities(): List<Int> {
+        val map = requireNotNull(findMapView(window.decorView).renderer.map)
+        return map.allLines.map(System::identityHashCode)
+    }
+
     fun dispatchTapOnMap() {
         dispatchSinglePointerGesture(deltaX = 0f)
     }

@@ -309,6 +309,34 @@ class NavigationMapRuntimeTest {
     }
 
     @Test
+    fun routeProgressMutatesExistingLongdoLineWithoutRecreatingIt() {
+        ActivityScenario.launch(NavigationMapRuntimeActivity::class.java).use { scenario ->
+            lateinit var activity: NavigationMapRuntimeActivity
+            scenario.onActivity { activity = it }
+            assertTrue(
+                "Navigation map did not become ready for line mutation test",
+                activity.mapReady.await(30, TimeUnit.SECONDS)
+            )
+
+            var before = emptyList<Int>()
+            var beforeRenderPass = 0
+            scenario.onActivity {
+                before = it.routeLineIdentities()
+                beforeRenderPass = it.latestDiagnostics.renderPassCount
+                it.shortenActiveRouteFixture()
+            }
+            InstrumentationRegistry.getInstrumentation().waitForIdleSync()
+            awaitAppliedRender(activity, beforeRenderPass)
+
+            scenario.onActivity {
+                val after = it.routeLineIdentities()
+                assertEquals("Route line count changed during geometry-only progress", before.size, after.size)
+                assertEquals("Route progress recreated Longdo Line objects instead of mutating them", before, after)
+            }
+        }
+    }
+
+    @Test
     fun manualPanSuspendsFollowButTapDoesNotReportGesture() {
         ActivityScenario.launch(NavigationMapRuntimeActivity::class.java).use { scenario ->
             lateinit var activity: NavigationMapRuntimeActivity
