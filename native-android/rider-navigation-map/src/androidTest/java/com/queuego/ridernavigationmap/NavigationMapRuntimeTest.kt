@@ -169,6 +169,7 @@ class NavigationMapRuntimeTest {
                 assertTrue(activity.latestDiagnostics.stopMutationCount > initialDiagnostics.stopMutationCount)
             }
         }
+    }
 
     @Test
     fun retainedMapIsDisposedWhenActivityDiesOffHome() {
@@ -217,6 +218,5 @@ class NavigationMapRuntimeTest {
                 assertEquals(1, activity.latestDiagnostics.mapCreatedCount)
             }
         }
-    }
     }
 }
