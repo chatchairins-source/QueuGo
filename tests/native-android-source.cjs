@@ -179,7 +179,11 @@ ok(riderApi.includes('riderNullableUuid')&&riderApi.includes('marketOrderId = ri
 ok(riderApi.includes('arrivedShopAt = riderNullableText(o.optString("rider_arrived_shop_at"))')&&
    riderApi.includes('arrivedCustomerAt = riderNullableText(o.optString("rider_arrived_customer_at"))'),
    'Rider arrival timestamps must reject JSON null literals so the UI never shows false arrived checkmarks');
-ok(riderApp.includes('รับสินค้าแล้ว · กำลังเปิดนำทางไปลูกค้า')&&riderApp.includes('completedMode == "pickup"')&&riderApp.includes('openNavigation(context, pickedUp)'),'Rider native must auto-open navigation to the customer after pickup proof');
+ok(riderApp.includes('รับสินค้าแล้ว · กำลังเปิดนำทางไปลูกค้า')&&
+   riderApp.includes('completedMode == "pickup" && pickupCommittedStatus == "in_progress"')&&
+   riderApp.includes('val delivering = committedRead?.activeJob')&&
+   riderApp.includes('openNavigation(context, delivering)'),
+  'Rider native must auto-open customer navigation only after pickup is authoritatively in progress');
 ok(riderApp.includes('val localAfterSuccess = when (completedMode)')&&
    riderApp.includes('job.copy(status = "picked_up")')&&
    riderApp.includes('pickup.copy(status = "PICKED_UP")')&&
