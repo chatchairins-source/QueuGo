@@ -7,6 +7,7 @@ const riderApp=fs.readFileSync('native-android/rider/src/main/java/com/queuego/r
 const moduleBuild=fs.readFileSync('native-android/rider-navigation-map/build.gradle.kts','utf8');
 const map=fs.readFileSync('native-android/rider-navigation-map/src/main/java/com/queuego/ridernavigationmap/RiderNavigationMap.kt','utf8');
 const route=fs.readFileSync('native-android/rider-navigation-map/src/main/java/com/queuego/ridernavigationmap/LongdoNavigationRouteClient.kt','utf8');
+const cameraPolicy=fs.readFileSync('native-android/rider-navigation-map/src/main/java/com/queuego/ridernavigationmap/NavigationCameraPolicy.kt','utf8');
 const models=fs.readFileSync('native-android/rider-navigation-map/src/main/java/com/queuego/ridernavigationmap/NavigationMapModels.kt','utf8');
 const workflow=fs.readFileSync('.github/workflows/build-native-rider-pilot.yml','utf8');
 const runtimeTest=fs.readFileSync('native-android/rider-navigation-map/src/androidTest/java/com/queuego/ridernavigationmap/NavigationMapRuntimeTest.kt','utf8');
@@ -76,6 +77,13 @@ assert(map.includes('PixelCopy.request')&&map.includes('snapshotOverlay')&&
 assert(map.includes('map.setDoTileAnimation(false)')&&map.includes('map.setDoPreShowCache(true)')&&
   map.includes('setDoPreDrawCache(true)'),
   'Longdo replacement maps must prefer cached tiles and disable tile-appearance animation');
+assert(cameraPolicy.includes('navigationCameraDecision')&&
+  cameraPolicy.includes('speedMetersPerSecond >= 18f')&&
+  cameraPolicy.includes('smoothNavigationBearing')&&
+  cameraPolicy.includes('navigationPointAtDistance')&&
+  map.includes('activeMap.setZoom(decision.zoom)')&&
+  map.includes('decision.bearingDegrees?.let { activeMap.rotate(it, true) }'),
+  'Navigation camera must adapt zoom to speed/arrival, smooth heading and look ahead on the matched road');
 assert(map.includes('ACTIVE_ROUTE_COLOR')&&map.includes('FUTURE_ROUTE_COLOR')&&
   map.includes('setWidth(if (segment.style == NavigationRouteStyle.ACTIVE) 8 else 6)'),
   'Current route must be dark red and later route legs visibly faded');

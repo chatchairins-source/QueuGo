@@ -342,7 +342,7 @@ private class RiderNavigationMapHolder {
 
         val followedFix = state.rider?.takeIf { it.point.valid } ?: lastRiderFix
         if (state.followRider && followedFix != null) {
-            followRider(activeMap, followedFix, state.followZoom)
+            followRider(activeMap, state.copy(rider = followedFix))
         }
         // Publish once per applied state even when overlays are structurally unchanged.
         // This distinguishes a stable frame from a state update that never reached the map.
@@ -484,28 +484,25 @@ private class RiderNavigationMapHolder {
         publishDiagnostics()
     }
 
-    private fun followRider(activeMap: com.longdo.api.Map, fix: NavigationMapFix, zoom: Int) {
-        val target = fix.point
+    private fun followRider(activeMap: com.longdo.api.Map, state: RiderNavigationMapState) {
+        val fix = state.rider ?: return
+        val decision = navigationCameraDecision(state, lastCameraBearing) ?: return
         val previous = lastCameraFix
-        val movedEnough = previous == null || navigationHaversineMeters(previous, target) >= 1.5
-        val nextBearing = fix.bearingDegrees
-            ?.takeIf { it.isFinite() }
-            ?.let { ((it % 360f) + 360f) % 360f }
-        val bearingChanged = when {
-            nextBearing == null -> false
-            lastCameraBearing == null -> true
-            else -> kotlin.math.abs(((nextBearing - lastCameraBearing!! + 540f) % 360f) - 180f) >= 2f
-        }
-        if (!movedEnough && !bearingChanged) return
+        val movedEnough = previous == null || navigationHaversineMeters(previous, fix.point) >= 1.5
+        val bearingChanged = navigationBearingChangedEnough(lastCameraBearing, decision.bearingDegrees)
+        val zoomChanged = runCatching { activeMap.getZoom() != decision.zoom }.getOrDefault(true)
+        if (!movedEnough && !bearingChanged && !zoomChanged) return
 
         runCatching {
             activeMap.setCanRotateCamera(true)
-            activeMap.setZoom(zoom.coerceIn(14, 20))
-            activeMap.setLocation(MapLocation(target.longitude, target.latitude))
-            nextBearing?.let { activeMap.rotate(it, true) }
+            activeMap.setZoom(decision.zoom)
+            // Center slightly ahead on the matched road so the Rider sits lower in the
+            // viewport and can see more of the upcoming route, like a real navigation app.
+            activeMap.setLocation(MapLocation(decision.center.longitude, decision.center.latitude))
+            decision.bearingDegrees?.let { activeMap.rotate(it, true) }
         }.onSuccess {
-            lastCameraFix = target
-            if (nextBearing != null) lastCameraBearing = nextBearing
+            lastCameraFix = fix.point
+            if (decision.bearingDegrees != null) lastCameraBearing = decision.bearingDegrees
         }
     }
 

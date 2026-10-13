@@ -9,6 +9,7 @@ data class NavigationMapFix(
     val point: NavigationMapPoint,
     val bearingDegrees: Float? = null,
     val accuracyMeters: Float? = null,
+    val speedMetersPerSecond: Float? = null,
     val elapsedRealtimeNanos: Long = 0L
 )
 
