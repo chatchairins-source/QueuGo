@@ -24,6 +24,14 @@ assert(!fs.existsSync('native-android/rider/src/main/java/com/queuego/rider/Ride
   'Retired Rider in-app navigation engine source must stay removed');
 assert(service.includes('TYPE_APPLICATION_OVERLAY')&&service.includes('text = "Q"')&&service.includes('MainActivity::class.java'),
   'Rider must expose a draggable Q overlay that returns to QueueGo');
+assert(service.includes('snapToNearestEdge')&&service.includes('PREF_Y_RATIO')&&service.includes('putFloat(PREF_Y_RATIO'),
+  'Rider return overlay must snap to an edge and persist its vertical position');
+assert(service.includes('"Q   กลับ QueueGo"')&&service.includes('PREF_HINT_SHOWN')&&service.includes('2400L'),
+  'Rider return overlay must teach the return action once, then collapse to the Q');
+assert(service.includes('premiumOverlayBackground')&&service.includes('Color.rgb(230, 0, 45)')&&service.includes('setStroke'),
+  'Rider return overlay must keep the premium QueueGo red-Q treatment');
+assert(service.includes('setSmallIcon(R.drawable.qg_notification)'),
+  'Rider return foreground service must use the QueueGo notification asset, not an Android debug icon');
 assert(main.includes('override fun onResume()')&&main.includes('RiderReturnService.stop(this)'),
   'Returning to QueueGo must remove the floating overlay');
 
