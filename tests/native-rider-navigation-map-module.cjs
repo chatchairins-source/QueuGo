@@ -26,7 +26,9 @@ const integration=fs.readFileSync('native-android/rider/src/main/java/com/queueg
 assert(riderBuild.includes('implementation(project(":rider-navigation-map"))')&&
   riderApp.includes('QueueGoRiderNavigationMap('),
   'Runtime-gated navigation map must be integrated into the Rider APK through the QueueGo adapter');
-assert(integration.includes('LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 1_000L)')&&
+assert(integration.includes('NAVIGATION_LOCATION_INTERVAL_MS = 1_000L')&&
+  integration.includes('LocationRequest.Builder(')&&
+  integration.includes('Priority.PRIORITY_HIGH_ACCURACY')&&
   integration.includes('NavigationRouteCoordinator')&&
   integration.includes('Channel.CONFLATED')&&
   integration.includes('riderNavigationStops'),
