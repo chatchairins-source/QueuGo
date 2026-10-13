@@ -97,3 +97,14 @@ Release remains OPEN. Cloud Merchant shows the sign-in form and has no saved ses
 
 
 Later in the same continuation, secure Merchant sign-in succeeded. The visible account page confirms a Grocery test shop. This supersedes the earlier no-Merchant-session observation; it does NOT certify candidate UI E2E, because main still lacks the PR's Grocery editor. Production currently has one non-archived Grocery shop, so two-real-store price isolation is still unavailable. Customer/Admin authenticated sessions and simultaneous stock connections remain unverified. Commit `7c0a485eff6d9a434a5da9f982449439a552ec02` RC CI 38335868729 succeeded. Gate remains OPEN; no main merge/deployment.
+
+
+## 2026-10-13 continuation — checkout lock-order hardening
+
+Production source review confirmed the remaining concurrency concern: `queuego_place_cash_order_core` validated cart products with `FOR SHARE`, while the Grocery `order_items` stock trigger later required `FOR UPDATE` on the same product rows. Two simultaneous purchases of one Grocery SKU could therefore attempt a lock upgrade at the same time. For multi-SKU carts, inconsistent acquisition order could also increase deadlock risk.
+
+Migration `20261013023547_grocery_cash_checkout_lock_order.sql` is now installed in Production. The existing cash checkout core is preserved; it now acquires product `FOR UPDATE` locks in deterministic product-UUID order during validation, before inserting `order_items`. No second checkout, payment or stock system was introduced. A regression guard is part of both the full and Grocery-specific test commands.
+
+RC run 38337527764 passed the full npm regression and rendered Grocery browser suite before rollout. A transaction-wrapped Production parse/readback also passed before migration. Post-deploy readback confirms the function remains `SECURITY DEFINER`, keeps `search_path=public, pg_temp`, is not directly executable by `anon` or `authenticated`, uses deterministic product ordering and `FOR UPDATE`, and no longer contains the old product `FOR SHARE` path. Security advisor headline counts remained unchanged from the pre-migration baseline for the reviewed categories (RLS-with-no-policy 10, anon executable security-definer 9, authenticated executable security-definer 143).
+
+The source-level lock-upgrade hazard is closed. **Release Gate remains OPEN** because a real simultaneous authenticated Grocery checkout race has not yet been exercised, candidate Grocery UI is still not deployed to main, Production has only one non-archived Grocery shop, and Customer/Admin authenticated E2E remains unverified. No main merge/web deployment was performed. Rider Android remains untouched.
