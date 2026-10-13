@@ -70,8 +70,8 @@ private class RiderNavigationMapHolder(
         publishDiagnostics()
     }
 
-    fun attachMap(nextMap: com.longdo.api.Map) {
-        if (map === nextMap) return
+    fun attachMap(nextMap: com.longdo.api.Map): Boolean {
+        if (map === nextMap) return false
         map = nextMap
         riderPin = null
         stopPins.clear()
@@ -85,6 +85,7 @@ private class RiderNavigationMapHolder(
         lastCameraBearing = null
         mapCreatedCount += 1
         publishDiagnostics()
+        return true
     }
 
     fun resume() {
@@ -433,23 +434,27 @@ fun RiderNavigationMap(
                             holder.mapCreated(view)
                             if (holder.disposed) return@post
                             runCatching {
-                                holder.attachMap(map)
-                                map.setBase(LongdoLayer(context, "normal", 0, 1, 20).apply {
-                                    layerURL = "https://ms.longdo.com/map/msn-server/tile.php"
-                                })
-                                map.setDrawCrossSign(false)
-                                val start = initialCamera?.point?.takeIf { it.valid }
-                                    ?: currentState.value.rider?.point?.takeIf { it.valid }
-                                    ?: currentState.value.remainingStops().firstOrNull()?.point
-                                    ?: NavigationMapPoint(DEFAULT_LATITUDE, DEFAULT_LONGITUDE)
-                                map.setLocation(MapLocation(start.longitude, start.latitude))
-                                map.setZoom(initialCamera?.zoom?.coerceIn(4, 20) ?: 15)
-                                initialCamera?.bearingDegrees
-                                    ?.takeIf { it.isFinite() }
-                                    ?.let {
-                                        map.setCanRotateCamera(true)
-                                        map.rotate(((it % 360f) + 360f) % 360f, false)
-                                    }
+                                val newSdkMap = holder.attachMap(map)
+                                if (newSdkMap) {
+                                    map.setBase(LongdoLayer(context, "normal", 0, 1, 20).apply {
+                                        layerURL = "https://ms.longdo.com/map/msn-server/tile.php"
+                                    })
+                                    map.setDrawCrossSign(false)
+                                    val start = initialCamera?.point?.takeIf { it.valid }
+                                        ?: currentState.value.rider?.point?.takeIf { it.valid }
+                                        ?: currentState.value.remainingStops().firstOrNull()?.point
+                                        ?: NavigationMapPoint(DEFAULT_LATITUDE, DEFAULT_LONGITUDE)
+                                    map.setLocation(MapLocation(start.longitude, start.latitude))
+                                    map.setZoom(initialCamera?.zoom?.coerceIn(4, 20) ?: 15)
+                                    initialCamera?.bearingDegrees
+                                        ?.takeIf { it.isFinite() }
+                                        ?.let {
+                                            map.setCanRotateCamera(true)
+                                            map.rotate(((it % 360f) + 360f) % 360f, false)
+                                        }
+                                }
+                                // A duplicate SDK callback for the same map is only a render retry;
+                                // never reset base/camera or force the visible map to assemble again.
                                 holder.render(currentState.value)
                             }.onSuccess {
                                 currentReady.value(true)

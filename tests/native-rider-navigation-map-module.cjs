@@ -34,6 +34,11 @@ assert(!map.includes('LaunchedEffect(state)')&&
 assert(map.includes('stopSource = null')&&map.includes('routeSource = null')&&
   map.includes('if (!pushed) renderSucceeded = false')&&map.includes('failedToRemove.isNotEmpty()'),
   'Transient Longdo pin/line failures must remain retryable instead of caching a partial frame');
+assert(map.includes('fun attachMap(nextMap: com.longdo.api.Map): Boolean')&&
+  map.includes('if (map === nextMap) return false')&&
+  map.includes('if (newSdkMap) {')&&
+  map.includes('never reset base/camera or force the visible map to assemble again'),
+  'Repeated Longdo onMapCreated callbacks for the same SDK map must not reinitialize base/camera');
 assert(map.includes('setPreserveEGLContextOnPause(true)'),
   'Navigation map must preserve the GL context across background/resume to avoid tile reconstruction');
 assert(map.includes('ACTIVE_ROUTE_COLOR')&&map.includes('FUTURE_ROUTE_COLOR')&&
