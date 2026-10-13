@@ -49,9 +49,10 @@ assert(main.includes('override fun onResume()')&&main.includes('RiderReturnServi
 assert(app.includes('riderMergeLiveSnapshot(current, resolvedSnapshot)')&&
   app.includes('previousPickups[pickup.pickupId]?.takeIf { it.done && !pickup.done }'),
   'Rider refresh must reject same-job status regression and preserve completed Market pickup points');
-assert(app.includes('riderResolveMissingActiveSnapshot(currentSnapshot, liveSnapshot, resolvedJob)')&&
+assert(app.includes('riderResolveMissingActiveSnapshot(')&&
+  app.includes('lookup?.getOrNull()')&&app.includes('lookup?.isSuccess == true')&&
   app.includes('api.notificationJob(auth, currentSnapshot.activeJob.id, id)'),
-  'A stale empty refresh after claim must resolve the current order before it can clear the authoritative local active job');
+  'A stale empty refresh after claim must distinguish lookup failure from authoritative order absence before clearing the local active job');
 assert(app.includes('takeIf { it.activeJob?.id == acceptedFallback.id }')&&
   app.includes('riderMergeLiveSnapshot(acceptedSnapshot, it)'),
   'Accept-offer follow-up reads must never replace the authoritative local claim with an empty or different active job');

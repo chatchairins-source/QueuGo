@@ -358,18 +358,19 @@ internal fun riderMergeLiveSnapshot(current: RiderSnapshot, incoming: RiderSnaps
 internal fun riderResolveMissingActiveSnapshot(
     current: RiderSnapshot,
     incoming: RiderSnapshot,
-    resolvedJob: RiderJob?
+    resolvedJob: RiderJob?,
+    lookupSucceeded: Boolean
 ): RiderSnapshot {
     val currentJob = current.activeJob ?: return incoming
     if (incoming.activeJob != null) return incoming
     val status = resolvedJob?.status?.lowercase()
     val activeStatuses = setOf("rider_assigned", "assigned", "preparing", "ready", "picked_up", "in_progress")
     return when {
-        resolvedJob == null -> incoming.copy(
+        !lookupSucceeded -> incoming.copy(
             activeJob = currentJob,
             marketPickups = if (currentJob.marketOrderId != null) current.marketPickups else incoming.marketPickups
         )
-        resolvedJob.id == currentJob.id && status in activeStatuses -> incoming.copy(
+        resolvedJob?.id == currentJob.id && status in activeStatuses -> incoming.copy(
             activeJob = resolvedJob,
             marketPickups = if (resolvedJob.marketOrderId != null) current.marketPickups else incoming.marketPickups
         )
@@ -906,12 +907,16 @@ private fun RiderHome(
                 val currentSnapshot = snapshot
                 val resolvedSnapshot = if (currentSnapshot?.activeJob != null && liveSnapshot.activeJob == null) {
                     val profileId = liveSnapshot.riderProfileId ?: currentSnapshot.riderProfileId
-                    val resolvedJob = profileId?.let { id ->
+                    val lookup = profileId?.let { id ->
                         runCatching { api.notificationJob(auth, currentSnapshot.activeJob.id, id) }
                             .onFailure { if (it is CancellationException) throw it }
-                            .getOrNull()
                     }
-                    riderResolveMissingActiveSnapshot(currentSnapshot, liveSnapshot, resolvedJob)
+                    riderResolveMissingActiveSnapshot(
+                        currentSnapshot,
+                        liveSnapshot,
+                        lookup?.getOrNull(),
+                        lookup?.isSuccess == true
+                    )
                 } else liveSnapshot
                 val mergedSnapshot = currentSnapshot?.let { current ->
                     riderMergeLiveSnapshot(current, resolvedSnapshot)

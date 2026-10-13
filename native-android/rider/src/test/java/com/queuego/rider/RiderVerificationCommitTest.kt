@@ -76,30 +76,33 @@ class RiderVerificationCommitTest {
     }
 
     @Test
-    fun staleEmptyRefreshAfterClaimKeepsAuthoritativeLocalJob() {
+    fun staleEmptyRefreshSeparatesLookupFailureFromAuthoritativeAbsence() {
         val claimed = job("rider_assigned")
         val current = RiderSnapshot(true, claimed, null)
         val emptyIncoming = RiderSnapshot(true, null, null)
 
-        val unresolved = riderResolveMissingActiveSnapshot(current, emptyIncoming, null)
-        assertEquals("order-1", unresolved.activeJob?.id)
-        assertEquals("rider_assigned", unresolved.activeJob?.status)
+        val lookupFailed = riderResolveMissingActiveSnapshot(current, emptyIncoming, null, false)
+        assertEquals("order-1", lookupFailed.activeJob?.id)
+        assertEquals("rider_assigned", lookupFailed.activeJob?.status)
 
-        val confirmed = riderResolveMissingActiveSnapshot(current, emptyIncoming, job("in_progress"))
+        val authoritativelyGone = riderResolveMissingActiveSnapshot(current, emptyIncoming, null, true)
+        assertEquals(null, authoritativelyGone.activeJob)
+
+        val confirmed = riderResolveMissingActiveSnapshot(current, emptyIncoming, job("in_progress"), true)
         assertEquals("in_progress", confirmed.activeJob?.status)
 
-        val cancelled = riderResolveMissingActiveSnapshot(current, emptyIncoming, job("cancelled"))
+        val cancelled = riderResolveMissingActiveSnapshot(current, emptyIncoming, job("cancelled"), true)
         assertEquals(null, cancelled.activeJob)
     }
 
     @Test
-    fun staleEmptyRefreshKeepsCompletedMarketPickupProgress() {
+    fun failedEmptyRefreshKeepsCompletedMarketPickupProgress() {
         val marketJob = job("picked_up").copy(marketOrderId = "market-1")
         val donePickup = MarketPickup("pickup-1", "PICKED_UP", "ร้าน", "ตลาด", 100.0, 14.0, 103.0)
         val current = RiderSnapshot(true, marketJob, null, listOf(donePickup))
         val emptyIncoming = RiderSnapshot(true, null, null)
 
-        val merged = riderResolveMissingActiveSnapshot(current, emptyIncoming, null)
+        val merged = riderResolveMissingActiveSnapshot(current, emptyIncoming, null, false)
         assertEquals("order-1", merged.activeJob?.id)
         assertTrue(merged.marketPickups.single().done)
     }
