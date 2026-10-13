@@ -630,7 +630,7 @@ def verify_merchant_shop_map_runtime():
 
 
 def capture_map_display_only():
-    """Actual Longdo component frames; no login, sample jobs or GPS injection."""
+    """Actual Longdo component frames; allowed cases inject emulator GPS only, never Production data."""
     import base64
     from PIL import Image
     test_apk = repo / "native-android/rider/build/outputs/apk/androidTest/debug/rider-debug-androidTest.apk"
@@ -638,24 +638,33 @@ def capture_map_display_only():
     # Public UI is reviewed independently before map/network checks; no form data is submitted.
     capture_role_viewports(("rider",))
     evidence = []
-    for viewport, dimensions, density, granted in (
-        ("phone-denied", "1080x2280", "440", False),
-        ("phone-allowed", "1080x2280", "440", True),
-        ("large-allowed", "1600x2560", "240", True),
+    for viewport, dimensions, density, granted, gps_fix in (
+        ("phone-denied", "1080x2280", "440", False, None),
+        ("phone-allowed", "1080x2280", "440", True, (100.612345, 13.712345)),
+        ("large-allowed", "1600x2560", "240", True, (100.632345, 13.732345)),
     ):
         directory = output / viewport
         directory.mkdir(exist_ok=True)
         run(adb + ["shell", "am", "force-stop", package])
         run(adb + ["shell", "wm", "size", dimensions])
         run(adb + ["shell", "wm", "density", density])
-        if granted:
-            for permission in ("ACCESS_COARSE_LOCATION", "ACCESS_FINE_LOCATION"):
-                run(adb + ["shell", "pm", "grant", package, "android.permission." + permission])
+        for permission in ("ACCESS_COARSE_LOCATION", "ACCESS_FINE_LOCATION"):
+            command = "grant" if granted else "revoke"
+            subprocess.run(
+                adb + ["shell", "pm", command, package, "android.permission." + permission],
+                capture_output=True, text=True, timeout=15, check=False
+            )
+        if gps_fix is not None:
+            run(adb + ["emu", "geo", "fix", str(gps_fix[0]), str(gps_fix[1])])
+            time.sleep(1)
         run(adb + ["logcat", "-b", "all", "-c"])
-        result = run(adb + ["shell", "am", "instrument", "-w", "-r", "-e", "class",
-                           "com.queuego.rider.RiderMapRuntimeTest",
-                           "com.queuego.rider.test/androidx.test.runner.AndroidJUnitRunner"],
-                     capture_output=True, text=True, timeout=210)
+        instrument = adb + ["shell", "am", "instrument", "-w", "-r", "-e", "class",
+                            "com.queuego.rider.RiderMapRuntimeTest"]
+        if gps_fix is not None:
+            instrument += ["-e", "expectedLongitude", str(gps_fix[0]),
+                           "-e", "expectedLatitude", str(gps_fix[1])]
+        instrument += ["com.queuego.rider.test/androidx.test.runner.AndroidJUnitRunner"]
+        result = run(instrument, capture_output=True, text=True, timeout=210)
         (directory / "instrumentation.txt").write_text(result.stdout + result.stderr)
         print("QUEUEGO_MAP_INSTRUMENTATION " + viewport + "\n" + result.stdout + result.stderr)
         full_log = run(adb + ["logcat", "-d", "-v", "threadtime"], capture_output=True, text=True).stdout
@@ -711,11 +720,16 @@ def capture_map_display_only():
             # Camera continuity is asserted against the actual SDK by instrumentation.
             print("QUEUEGO_MAP_PIXEL_CHANGE " + viewport + "/" + state + " " + str(changed))
         evidence.append({"viewport": viewport, "dimensions": dimensions, "density": density,
-                         "location_permission_granted": granted, "map_mount_background_recreation": "PASS",
+                         "location_permission_granted": granted,
+                         "emulator_gps_fix": (
+                             {"longitude": gps_fix[0], "latitude": gps_fix[1]} if gps_fix is not None else None
+                         ),
+                         "map_mount_background_recreation": "PASS",
                          "screenshots": screenshots})
     metadata = {"source_head": os.environ["GITHUB_SHA"], "workflow_run": os.environ["GITHUB_RUN_ID"],
                 "apk_sha256": hashlib.sha256(apk.read_bytes()).hexdigest(), "cases": evidence,
-                "physical_device": False, "gps_injected": False, "sample_jobs_created": False,
+                "physical_device": False, "gps_injected_for_allowed_emulator_cases": True,
+                "sample_jobs_created": False,
                 "production_account_or_order_writes": False, "authenticated_home_parity_certified": False,
                 "physical_gps_positioning_certified": False, "visible_tiles_review_required": True}
     (output / "map-display-metadata.json").write_text(json.dumps(metadata, indent=2) + "\n")
