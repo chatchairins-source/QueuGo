@@ -1,5 +1,7 @@
 const fs=require('fs');
 const assert=require('assert');
+const path=require('path');
+const {pathToFileURL}=require('url');
 
 const read=p=>fs.readFileSync(p,'utf8');
 const shared=read('native-android/shared/src/main/java/com/queuego/shared/NativePush.kt');
@@ -24,6 +26,14 @@ has(edge,/user_active_sessions[\s\S]*eq\('user_id',context\.user\.auth_user_id\)
   'Edge dispatch must revalidate native token session');
 has(edge,/status=active\.error\|\|!active\.data\s*\?410/s,
   'stale native push session must be retired');
+has(edge,/unsubscribe-native[\s\S]*enabled:false,session_id:null/s,
+  'Native logout must release the session-bound token while preserving the install id');
+has(edge,/nativeRegistrationCandidate\(user\.id,input\.deviceId,platform,deviceRow\.data,duplicate\.data\)/,
+  'Native registration must route ownership through the account-switch policy');
+has(edge,/previousUser[\s\S]*eq\('session_id',plan\.expectedSessionId\)[\s\S]*is\('revoked_at',null\)/s,
+  'Foreign registration reclaim must check the exact former session binding');
+has(edge,/eq\('user_id',plan\.expectedOwner\)[\s\S]*eq\('session_id',plan\.expectedSessionId\)/s,
+  'Foreign registration reclaim must use compare-and-swap ownership/session guards');
 
 has(sql,/add column if not exists session_id uuid/i,'session_id additive column missing');
 has(sql,/set enabled=false[\s\S]*session_id is null/i,'legacy unbound tokens must be disabled');
@@ -76,3 +86,43 @@ async function registrationAuthorizationRegression(){
   console.log('Native push session binding contract and authorization regression: PASS');
 }
 registrationAuthorizationRegression().catch(error=>{console.error(error);process.exitCode=1});
+
+
+async function accountSwitchRegistrationRegression(){
+  const policy=await import(pathToFileURL(path.resolve('supabase/functions/queuego-push/native-registration-policy.mjs')));
+  const userA='11111111-1111-4111-8111-111111111111';
+  const userB='22222222-2222-4222-8222-222222222222';
+  const device='33333333-3333-4333-8333-333333333333';
+  const otherDevice='44444444-4444-4444-8444-444444444444';
+  const staleSession='55555555-5555-4555-8555-555555555555';
+  const row={id:device,user_id:userA,platform:'android',token:'same-physical-fcm-token',enabled:false,session_id:staleSession};
+
+  assert.deepEqual(policy.nativeRegistrationCandidate(userB,device,'android',null,null),{mode:'create',id:device});
+  assert.deepEqual(policy.nativeRegistrationCandidate(userA,device,'android',row,row),{mode:'owned',id:device});
+
+  const foreign=policy.nativeRegistrationCandidate(userB,device,'android',row,row);
+  assert.equal(foreign.mode,'foreign');
+  assert.equal(policy.finalizeNativeRegistration(foreign,true).status,403,
+    'A still-active former session must never be stolen by account switching');
+
+  const reclaim=policy.finalizeNativeRegistration(foreign,false);
+  assert.equal(reclaim.mode,'reclaim');
+  assert.equal(reclaim.expectedOwner,userA);
+  assert.equal(reclaim.expectedSessionId,staleSession);
+  assert.equal(reclaim.expectedToken,row.token);
+
+  assert.equal(
+    policy.nativeRegistrationCandidate(userB,device,'android',null,{...row,id:otherDevice}).status,403,
+    'A foreign token under another install id must not be silently moved'
+  );
+  assert.equal(
+    policy.nativeRegistrationCandidate(userB,device,'android',row,{...row,id:otherDevice}).status,409,
+    'Conflicting device and token rows must fail closed'
+  );
+  assert.equal(
+    policy.nativeRegistrationCandidate(userB,device,'ios',row,row).status,403,
+    'A registration must not cross platform ownership'
+  );
+  console.log('Native push account-switch registration policy: PASS');
+}
+accountSwitchRegistrationRegression().catch(error=>{console.error(error);process.exitCode=1});
