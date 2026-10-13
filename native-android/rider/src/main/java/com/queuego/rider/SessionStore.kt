@@ -65,7 +65,134 @@ class SessionStore(private val context: Context) {
         )
     }.getOrNull()
 
-    fun clear() = prefs.edit().remove("session").apply()
+    fun clear() = prefs.edit()
+        .remove("session")
+        .remove("home_snapshot")
+        .apply()
+
+    @Synchronized
+    fun saveHomeSnapshot(userId: String, snapshot: RiderSnapshot) {
+        val root = JSONObject()
+            .put("userId", userId)
+            .put("online", snapshot.online)
+            .put("riderProfileId", snapshot.riderProfileId)
+        snapshot.activeJob?.let { root.put("activeJob", riderJobToJson(it)) }
+        snapshot.laundry.activeJob?.let { root.put("laundryActiveJob", laundryJobToJson(it)) }
+        prefs.edit().putString("home_snapshot", encrypt(root.toString())).apply()
+    }
+
+    @Synchronized
+    fun loadHomeSnapshot(userId: String): RiderSnapshot? = runCatching {
+        val raw = prefs.getString("home_snapshot", null) ?: return null
+        val root = JSONObject(decrypt(raw))
+        if (root.optString("userId") != userId) return null
+        val activeJob = root.optJSONObject("activeJob")?.let(::riderJobFromJson)
+        val laundryActive = root.optJSONObject("laundryActiveJob")?.let(::laundryJobFromJson)
+        RiderSnapshot(
+            online = root.optBoolean("online", false),
+            activeJob = activeJob,
+            offeredJob = null,
+            riderProfileId = root.optString("riderProfileId")
+                .takeIf { it.isNotBlank() && !it.equals("null", ignoreCase = true) },
+            laundry = RiderLaundryState(activeJob = laundryActive)
+        )
+    }.getOrNull()
+
+    private fun riderJobToJson(job: RiderJob): JSONObject = JSONObject()
+        .put("id", job.id)
+        .put("orderNumber", job.orderNumber)
+        .put("status", job.status)
+        .put("pickupAddress", job.pickupAddress)
+        .put("pickupLat", job.pickupLat)
+        .put("pickupLng", job.pickupLng)
+        .put("deliveryAddress", job.deliveryAddress)
+        .put("deliveryLat", job.deliveryLat)
+        .put("deliveryLng", job.deliveryLng)
+        .put("deliveryFee", job.deliveryFee)
+        .put("marketOrderId", job.marketOrderId)
+        .put("offerExpiresAt", job.offerExpiresAt)
+        .put("arrivedShopAt", job.arrivedShopAt)
+        .put("arrivedCustomerAt", job.arrivedCustomerAt)
+        .put("shopCash", job.shopCash)
+        .put("customerCash", job.customerCash)
+
+    private fun riderJobFromJson(o: JSONObject): RiderJob = RiderJob(
+        id = o.getString("id"),
+        orderNumber = o.optNullableString("orderNumber"),
+        status = o.getString("status"),
+        pickupAddress = o.optNullableString("pickupAddress"),
+        pickupLat = o.optNullableDouble("pickupLat"),
+        pickupLng = o.optNullableDouble("pickupLng"),
+        deliveryAddress = o.optNullableString("deliveryAddress"),
+        deliveryLat = o.optNullableDouble("deliveryLat"),
+        deliveryLng = o.optNullableDouble("deliveryLng"),
+        deliveryFee = o.optNullableDouble("deliveryFee"),
+        marketOrderId = o.optNullableString("marketOrderId"),
+        offerExpiresAt = o.optNullableString("offerExpiresAt"),
+        arrivedShopAt = o.optNullableString("arrivedShopAt"),
+        arrivedCustomerAt = o.optNullableString("arrivedCustomerAt"),
+        shopCash = o.optNullableDouble("shopCash"),
+        customerCash = o.optNullableDouble("customerCash")
+    )
+
+    private fun laundryJobToJson(job: RiderLaundryJob): JSONObject = JSONObject()
+        .put("jobId", job.jobId)
+        .put("laundryOrderId", job.laundryOrderId)
+        .put("orderNumber", job.orderNumber)
+        .put("leg", job.leg)
+        .put("jobStatus", job.jobStatus)
+        .put("orderStatus", job.orderStatus)
+        .put("hubId", job.hubId)
+        .put("hubName", job.hubName)
+        .put("shopName", job.shopName)
+        .put("serviceName", job.serviceName)
+        .put("actualQuantity", job.actualQuantity)
+        .put("pricingType", job.pricingType)
+        .put("jobFee", job.jobFee)
+        .put("fromAddress", job.fromAddress)
+        .put("fromLatitude", job.fromLatitude)
+        .put("fromLongitude", job.fromLongitude)
+        .put("toAddress", job.toAddress)
+        .put("toLatitude", job.toLatitude)
+        .put("toLongitude", job.toLongitude)
+        .put("customerAmount", job.customerAmount)
+        .put("actualKg", job.actualKg)
+        .put("createdAt", job.createdAt)
+
+    private fun laundryJobFromJson(o: JSONObject): RiderLaundryJob = RiderLaundryJob(
+        jobId = o.getString("jobId"),
+        laundryOrderId = o.getString("laundryOrderId"),
+        orderNumber = o.optNullableString("orderNumber"),
+        leg = o.getString("leg"),
+        jobStatus = o.getString("jobStatus"),
+        orderStatus = o.optNullableString("orderStatus"),
+        hubId = o.optNullableString("hubId"),
+        hubName = o.optNullableString("hubName"),
+        shopName = o.optNullableString("shopName"),
+        serviceName = o.optNullableString("serviceName"),
+        actualQuantity = o.optNullableDouble("actualQuantity"),
+        pricingType = o.optNullableString("pricingType"),
+        jobFee = o.optDouble("jobFee", 0.0),
+        fromAddress = o.optNullableString("fromAddress"),
+        fromLatitude = o.optNullableDouble("fromLatitude"),
+        fromLongitude = o.optNullableDouble("fromLongitude"),
+        toAddress = o.optNullableString("toAddress"),
+        toLatitude = o.optNullableDouble("toLatitude"),
+        toLongitude = o.optNullableDouble("toLongitude"),
+        customerAmount = o.optNullableDouble("customerAmount"),
+        actualKg = o.optNullableDouble("actualKg"),
+        createdAt = o.optNullableString("createdAt")
+    )
+
+    private fun JSONObject.optNullableString(key: String): String? {
+        if (!has(key) || isNull(key)) return null
+        return optString(key).trim().takeIf { it.isNotEmpty() && !it.equals("null", ignoreCase = true) }
+    }
+
+    private fun JSONObject.optNullableDouble(key: String): Double? {
+        if (!has(key) || isNull(key)) return null
+        return optDouble(key).takeIf { it.isFinite() }
+    }
 
     fun pendingRegistrationUserId(): String? = prefs.getString("pending_registration_user", null)
 
