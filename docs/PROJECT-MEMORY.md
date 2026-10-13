@@ -266,3 +266,11 @@ The user-supplied Rider reference screens are the acceptance reference for workf
 - Owner requested the existing 20-minute preparation countdown inside the “สินค้าพร้อมส่ง” button. Removed the separate countdown card and its unused CSS.
 - Countdown still derives from Production `preparing_at`; reopening the order does not restart it. At expiry it stays at 00:00 and the Merchant explicitly presses the ready action. The timer does not transition an order automatically or prevent an earlier ready action.
 - No database, RPC, RLS, payment or order-state changes. Backup: `backup-pre-merchant-button-countdown-20261008-0856`.
+
+## 2026-10-12 Grocery Master Catalog mission (independent of Rider)
+
+- Owner authorized a real Thai Grocery Master Catalog with Big C as one reference, factual manufacturer/distributor sources, strict image-rights handling and batch idempotent import. Do not bulk-copy Big C or use retailer image hotlinks. No fake production catalog, no store-mandated master price, no Rider Native mission changes.
+- Candidate branch `work-grocery-master-catalog-20261012`, base main `7595d764`; backup `backup-web-pre-grocery-master-20261012`.
+- Candidate schema links master identities to existing `products` store listings and preserves checkout/GP/POS/state flow. Paged Merchant onboarding, Admin catalog/import/merge/image approval and Customer Grocery storefront are staged. New imports are inactive until review. Missing licensed images stay pending.
+- Research: 1,028 factual observations, 340 normalized package records across 25 populated categories; 45 category definitions. 685 package identities remain incomplete; no verified barcodes and no approved/licensed images. No Production migration/import/deployment occurred.
+- See `docs/GROCERY-MASTER-CATALOG.md` and generated `catalog/statistics.json`. Release remains OPEN: remaining category/package verification, authenticated rendered mobile QA, Production backup/rollout/advisors/E2E, multi-client stock races, 10k query evidence and merge-collision resolution. Do not call this candidate a completed or released catalog.

@@ -1082,6 +1082,7 @@ V.shop=async(id,ticket=routeVersion)=>{
   if(!s)return layout('<p class="empty">ไม่พบร้านค้า</p>','home');
   if(String(s.public_category||'').toLowerCase()==='laundry'){location.href='laundry/';return}
   if(DEDICATED_MARKET_CATS.has(String(s.public_category||'').toLowerCase()))return go('market');
+  if(s.public_category==='grocery')return qgRenderCustomerGroceryShop(s,ticket);
   const [menu,ratings,favorites]=await Promise.all([loadMenu(id),QGCustomer.reviews(id),QGCustomer.loadFavorites()]);if(ticket!==routeVersion)return;
   const items=(menu||[]).filter(p=>p.delivery_available!==false),categories=[...new Set(items.map(p=>p.category||p.menu_category).filter(Boolean))];
   layout(`<div class="cover">${s.public_cover?`<img src="${esc(s.public_cover)}" alt="" onerror="this.remove()">`:''}
@@ -1321,5 +1322,6 @@ addEventListener('hashchange',()=>route());
 <script src="customer-features.js?v=20261012-chat6"></script>
 <script src="customer-laundry.js?v=20261006-orderlist5"></script>
 <script>route();</script>
+<script src="catalog/customer-grocery.js?v=20261012"></script>
 </body>
 </html>
