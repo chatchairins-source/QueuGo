@@ -134,6 +134,14 @@ ok(source.includes('\"search\" -> CustomerSearchScreen')&&source.includes('Custo
 const customerAuthScreen=read('customer/src/main/java/com/queuego/customer/CustomerAuthenticationScreen.kt');
 const customerGuestShell=read('customer/src/main/java/com/queuego/customer/CustomerGuestShell.kt');
 const customerApp=read('customer/src/main/java/com/queuego/customer/QueueGoCustomerApp.kt');
+const customerLocationPicker=read('customer/src/main/java/com/queuego/customer/CustomerLocationPicker.kt');
+ok(
+  customerLocationPicker.includes('LaunchedEffect(mapReady)') &&
+  customerLocationPicker.includes('autoGpsRequested') &&
+  customerLocationPicker.includes('if (!mapReady || autoGpsRequested) return@LaunchedEffect') &&
+  !customerLocationPicker.includes('delay(80)\n        onGps()'),
+  'Customer location picker must wait for native Longdo readiness before automatic GPS permission handoff'
+);
 ok(customerAuthScreen.includes('CustomerBottomNavigation(screen = "login", cartCount = guestCartCount)')&&customerAuthScreen.includes('Spacer(Modifier.height(92.dp))'),'Customer native auth must preserve the Production web fixed four-tab navigation and 92dp content clearance');
 ok(customerAuthScreen.includes('.windowInsetsPadding(WindowInsets.statusBars)')&&customerAuthScreen.includes('padding(horizontal = 12.dp, vertical = 6.dp)')&&customerAuthScreen.includes('.widthIn(max = 720.dp)'),'Customer native auth top bar must preserve Production web safe-area, compact spacing and 720px content width');
 ok(customerAuthScreen.includes('.onFocusChanged { focused = it.isFocused }')&&customerAuthScreen.includes('if (focused) QgRed else QgLine')&&customerAuthScreen.includes('cursorBrush = SolidColor(QgRed)'),'Customer native auth inputs must preserve Production web red focus treatment');
