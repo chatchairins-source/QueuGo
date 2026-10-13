@@ -10,6 +10,10 @@ import android.os.Bundle
 import android.os.Looper
 import android.util.Log
 import android.view.LayoutInflater
+import android.view.Gravity
+import android.view.ViewGroup
+import android.widget.FrameLayout
+import android.widget.TextView
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -122,8 +126,12 @@ private class RiderLongdoHolder(private val cameraState: MutableState<DoubleArra
     fun resume(context: Context) {
         val view = mapView ?: return
         pausePending = false
-        if (!disposed && !resumed) { view.onResume(); resumed = true }
-        startLocationUpdates(context)
+        if (!disposed && !resumed) {
+            resumed = runCatching { view.onResume() }
+                .onFailure { Log.w("QueueGoLongdo", "map_on_resume_failed", it) }
+                .isSuccess
+        }
+        if (resumed) startLocationUpdates(context)
     }
 
     fun pause() {
@@ -141,7 +149,8 @@ private class RiderLongdoHolder(private val cameraState: MutableState<DoubleArra
                 pausePending = true
                 return
             }
-            mapView?.onPause()
+            runCatching { mapView?.onPause() }
+                .onFailure { Log.w("QueueGoLongdo", "map_on_pause_failed", it) }
             resumed = false
             pausePending = false
         }
@@ -149,7 +158,8 @@ private class RiderLongdoHolder(private val cameraState: MutableState<DoubleArra
 
     fun mapCreated(view: MapGLSurfaceView) {
         if (pausePending && resumed) {
-            view.onPause()
+            runCatching { view.onPause() }
+                .onFailure { Log.w("QueueGoLongdo", "map_created_pause_failed", it) }
             resumed = false
             pausePending = false
         }
@@ -344,40 +354,76 @@ internal fun RiderLongdoMap(
     AndroidView(
         modifier = modifier,
         factory = { ctx ->
-            val view = LayoutInflater.from(ctx)
-                .inflate(R.layout.view_longdo_map, null, false) as MapGLSurfaceView
+            val root = FrameLayout(ctx)
+            val view = runCatching {
+                LayoutInflater.from(ctx)
+                    .inflate(R.layout.view_longdo_map, root, false) as MapGLSurfaceView
+            }.onFailure {
+                Log.e("QueueGoLongdo", "map_inflate_failed", it)
+            }.getOrNull()
+
+            if (view == null) {
+                root.addView(
+                    TextView(ctx).apply {
+                        text = "แผนที่กำลังเชื่อมต่อใหม่"
+                        gravity = Gravity.CENTER
+                    },
+                    FrameLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        ViewGroup.LayoutParams.MATCH_PARENT
+                    )
+                )
+                currentReady.value(false)
+                return@AndroidView root
+            }
+
+            root.addView(
+                view,
+                FrameLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.MATCH_PARENT
+                )
+            )
             holder.mapView = view
-            view.setListener(object : IMapListener {
-                override fun onMapCreated(map: com.longdo.api.Map) {
-                    view.post {
-                        holder.mapCreated(view)
-                        if (!holder.disposed) {
-                            runCatching {
-                                holder.attachMap(map)
-                                map.setBase(LongdoLayer(ctx, "normal", 0, 1, 20).apply {
-                                    // The SDK defaults to HTTP; keep Android cleartext disabled.
-                                    // Start on the endpoint selected by the live SDK key checker.
-                                    // Keep key validation/host selection enabled; avoid mixed in-flight hosts.
-                                    layerURL = "https://ms.longdo.com/map/msn-server/tile.php"
-                                })
-                                map.setDrawCrossSign(false)
-                                // Keep the real viewport across GL-surface or Activity recreation.
-                                // Web's fallback is only the initial camera, never a GPS marker.
-                                val camera = cameraState.value
-                                map.setLocation(MapLocation(camera?.get(0) ?: 100.5018, camera?.get(1) ?: 13.7563))
-                                map.setZoom(camera?.get(2)?.toInt() ?: 13)
-                                holder.lastOverlayKey = null
-                                holder.centerOnDevice(ctx)
-                                holder.updateNavigation(currentNavigationState.value) { currentLocationCallback.value(it) }
-                                holder.refreshOverlays(ctx, latestJob.value, latestPickups.value, latestBundleOrders.value)
-                            }.onSuccess { currentReady.value(true) }
-                                .onFailure { currentReady.value(false) }
+            runCatching {
+                view.setListener(object : IMapListener {
+                    override fun onMapCreated(map: com.longdo.api.Map) {
+                        view.post {
+                            holder.mapCreated(view)
+                            if (!holder.disposed) {
+                                runCatching {
+                                    holder.attachMap(map)
+                                    map.setBase(LongdoLayer(ctx, "normal", 0, 1, 20).apply {
+                                        // The SDK defaults to HTTP; keep Android cleartext disabled.
+                                        // Start on the endpoint selected by the live SDK key checker.
+                                        // Keep key validation/host selection enabled; avoid mixed in-flight hosts.
+                                        layerURL = "https://ms.longdo.com/map/msn-server/tile.php"
+                                    })
+                                    map.setDrawCrossSign(false)
+                                    // Keep the real viewport across GL-surface or Activity recreation.
+                                    // Web's fallback is only the initial camera, never a GPS marker.
+                                    val camera = cameraState.value
+                                    map.setLocation(MapLocation(camera?.get(0) ?: 100.5018, camera?.get(1) ?: 13.7563))
+                                    map.setZoom(camera?.get(2)?.toInt() ?: 13)
+                                    holder.lastOverlayKey = null
+                                    holder.centerOnDevice(ctx)
+                                    holder.updateNavigation(currentNavigationState.value) { currentLocationCallback.value(it) }
+                                    holder.refreshOverlays(ctx, latestJob.value, latestPickups.value, latestBundleOrders.value)
+                                }.onSuccess { currentReady.value(true) }
+                                    .onFailure {
+                                        Log.w("QueueGoLongdo", "map_created_setup_failed", it)
+                                        currentReady.value(false)
+                                    }
+                            }
                         }
                     }
-                }
-            })
+                })
+            }.onFailure {
+                Log.e("QueueGoLongdo", "map_listener_failed", it)
+                currentReady.value(false)
+            }
             if (lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) holder.resume(context)
-            view
+            root
         },
         update = {
             holder.updateNavigation(currentNavigationState.value) { currentLocationCallback.value(it) }
