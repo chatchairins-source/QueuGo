@@ -33,6 +33,9 @@ assert(map.includes('currentLocationPin')&&
   map.includes('pin.setOffset(PointF(0f, -0.4f))')&&
   !map.includes('append(location?.first).append(",").append(location?.second)'),
   'Rider GPS updates must move the current-location pin smoothly without rebuilding numbered stops on every fix');
+assert(map.includes('private const val RIDER_MAP_LOCATION_ANIMATION_SECONDS = 2')&&
+  !map.includes('RIDER_MAP_LOCATION_ANIMATION_SECONDS = 1.8'),
+  'Rider Longdo marker animation duration must remain the SDK-compatible Int value');
 assert(map.includes('RIDER_MAP_LOCATION_REFRESH_MS = 2_500L')&&
   map.includes('RIDER_MAP_LOCATION_REFRESH_METERS = 2f')&&
   map.includes('RIDER_MAP_LAST_KNOWN_MAX_AGE_MS = 120_000L')&&
