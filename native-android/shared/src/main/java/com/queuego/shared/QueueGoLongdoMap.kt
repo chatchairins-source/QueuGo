@@ -38,20 +38,26 @@ private class TrackingMapHolder {
         val activeView = view ?: return
         pausePending = false
         if (!disposed && !resumed) {
-            activeView.onResume()
-            resumed = true
+            resumed = runCatching { activeView.onResume() }
+                .onFailure { Log.w("QueueGoLongdoMap", "shared_map_on_resume_failed", it) }
+                .isSuccess
         }
     }
 
     fun pause() {
         if (resumed) {
-            // SDK0.1.8 onPause dereferences renderer.map before calling GLSurfaceView.
-            // Permission dialogs can pause the Activity before the first GL map exists.
-            if (view?.renderer?.map == null) {
+            // SDK0.1.8 can touch renderer state while the GL map is still being created
+            // or torn down on physical devices. Treat an exception/unknown renderer as
+            // not-ready instead of allowing the whole Customer/Merchant process to die.
+            val rendererReady = runCatching { view?.renderer?.map != null }
+                .onFailure { Log.w("QueueGoLongdoMap", "shared_map_renderer_state_failed", it) }
+                .getOrDefault(false)
+            if (!rendererReady) {
                 pausePending = true
                 return
             }
-            view?.onPause()
+            runCatching { view?.onPause() }
+                .onFailure { Log.w("QueueGoLongdoMap", "shared_map_on_pause_failed", it) }
             resumed = false
             pausePending = false
         }
@@ -59,7 +65,8 @@ private class TrackingMapHolder {
 
     fun mapCreated(createdView: MapGLSurfaceView) {
         if (pausePending && resumed) {
-            createdView.onPause()
+            runCatching { createdView.onPause() }
+                .onFailure { Log.w("QueueGoLongdoMap", "shared_map_created_pause_failed", it) }
             resumed = false
             pausePending = false
         }
@@ -174,20 +181,26 @@ private class LocationPickerMapHolder {
         val activeView = view ?: return
         pausePending = false
         if (!disposed && !resumed) {
-            activeView.onResume()
-            resumed = true
+            resumed = runCatching { activeView.onResume() }
+                .onFailure { Log.w("QueueGoLongdoMap", "shared_map_on_resume_failed", it) }
+                .isSuccess
         }
     }
 
     fun pause() {
         if (resumed) {
-            // SDK0.1.8 onPause dereferences renderer.map before calling GLSurfaceView.
-            // Permission dialogs can pause the Activity before the first GL map exists.
-            if (view?.renderer?.map == null) {
+            // SDK0.1.8 can touch renderer state while the GL map is still being created
+            // or torn down on physical devices. Treat an exception/unknown renderer as
+            // not-ready instead of allowing the whole Customer/Merchant process to die.
+            val rendererReady = runCatching { view?.renderer?.map != null }
+                .onFailure { Log.w("QueueGoLongdoMap", "shared_map_renderer_state_failed", it) }
+                .getOrDefault(false)
+            if (!rendererReady) {
                 pausePending = true
                 return
             }
-            view?.onPause()
+            runCatching { view?.onPause() }
+                .onFailure { Log.w("QueueGoLongdoMap", "shared_map_on_pause_failed", it) }
             resumed = false
             pausePending = false
         }
@@ -195,7 +208,8 @@ private class LocationPickerMapHolder {
 
     fun mapCreated(createdView: MapGLSurfaceView) {
         if (pausePending && resumed) {
-            createdView.onPause()
+            runCatching { createdView.onPause() }
+                .onFailure { Log.w("QueueGoLongdoMap", "shared_map_created_pause_failed", it) }
             resumed = false
             pausePending = false
         }
