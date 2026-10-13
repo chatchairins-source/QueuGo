@@ -1012,18 +1012,18 @@ private fun RiderHome(
                                     }
                                 )
                             }
-                            else -> {
-                                val bundleAfter = before?.bundle?.copy(
-                                    activeOrders = before.bundle.activeOrders.map { bundled ->
+                            else -> before?.let { previous ->
+                                val bundleAfter = previous.bundle.copy(
+                                    activeOrders = previous.bundle.activeOrders.map { bundled ->
                                         if (bundled.job.id == job.id) {
                                             bundled.copy(job = bundled.job.copy(status = "completed"))
                                         } else bundled
                                     }
                                 )
-                                before?.copy(
-                                    activeJob = bundleAfter?.currentOrder()?.job,
+                                previous.copy(
+                                    activeJob = bundleAfter.currentOrder()?.job,
                                     marketPickups = emptyList(),
-                                    bundle = bundleAfter ?: before.bundle
+                                    bundle = bundleAfter
                                 )
                             }
                         }
