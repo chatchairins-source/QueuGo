@@ -4,6 +4,8 @@ const sql=fs.readFileSync('ops/grocery/grocery_cash_checkout_lock_order.sql','ut
 let checks=0;
 const ok=(value,message)=>{assert.ok(value,message);checks++;};
 
+ok(sql.trimEnd().endsWith(';'),'candidate SQL must be executable as a standalone migration');
+
 ok(
   /for v_item in select value from jsonb_array_elements\(p_items\) order by \(value->>'product_id'\)::uuid loop/i.test(sql),
   'cash checkout must lock cart products in deterministic UUID order'
