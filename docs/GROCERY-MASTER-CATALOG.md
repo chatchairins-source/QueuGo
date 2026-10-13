@@ -7,14 +7,14 @@ Mission is independent of Rider Native Android. Web base: `7595d764dac8a14d28162
 `catalog/statistics.json` is generated, not an estimate:
 
 - 1,109 factual research observations from 117 public source pages.
-- 415 normalized package records; three repeated package observations deduplicated.
-- 691 observations lack a clear name, explicit package size or an unambiguous package identity and remain research only.
+- 414 normalized package records; three repeated package observations deduplicated.
+- 692 observations lack a clear name, explicit package size or an unambiguous package identity and remain research only.
 - 45 category definitions, including the owner's 43 initial categories; 45 currently populated with normalized package records.
 - Zero verified GTINs. No SKU/database/photo identifiers are relabelled as barcodes.
-- Zero licensed/approved production images. All 415 package records have pending images.
-- Zero records imported into Production; zero new products enabled there.
+- Zero licensed/approved production images. All 414 package records have pending images.
+- 414 records imported into Production; zero products activated and zero store links. First import and full repeat import both leave 414 unique masters and 415 provenance records.
 
-These counts do not mean 1,109 sellable SKUs or complete coverage of the Thai grocery market. All initial categories have source-backed coverage; coverage depth is uneven and this is an extensible first dataset, not a complete retailer catalog. Some names identify product families; the 691 incomplete observations must not be converted into arbitrary weights or artificial variants. Package material, domestic availability and sale-unit identity must be reviewed before activation.
+These counts do not mean 1,109 sellable SKUs or complete coverage of the Thai grocery market. All initial categories have source-backed coverage; coverage depth is uneven and this is an extensible first dataset, not a complete retailer catalog. Some names identify product families; the 692 incomplete observations must not be converted into arbitrary weights or artificial variants. Package material, domestic availability and sale-unit identity must be reviewed before activation.
 
 Primary sources include Betagen, Ichitan, Ajinomoto, Foremost, Deksomboon, Hi-Q Food, ThaiNamthip's current public product names and explicit available-size lists, Tiparos, Morakot, Mitr Phol Sugar, CP Brand and Carabao. Sahapat's distributor product pages supply additional factual names and some explicit sizes. Selected factual package observations from Tops, Lotus's, HomePro, OfficeMate, Watsons and All Online expand domestic category coverage. One Big C toothbrush pack page is a factual reference only; no prose, photos or prices are included. Kao website terms require permission for commercial reuse, so it is excluded from the new collector/import input. Its generated record fingerprints are internal audit keys, never vendor SKUs or GTINs. No descriptions, prices or photos are copied into the sellable catalog. Big C is a reference source only: its terms restrict copying/downloading, so no Big C bulk scraping pipeline is included. The historical DIT 2020 promotion PDF was investigated but not used as current market data.
 
@@ -31,7 +31,7 @@ Migration: `supabase/migrations/20261012170449_grocery_master_catalog.sql` (crea
 - Tracked stock reservations execute inside existing order transactions, reject insufficient/fractional quantity, and restore once on cancellation/no-rider failure. Non-linked products immediately bypass the new stock trigger. Completed grocery items cannot be edited. Private reservation rows are not exposed to clients.
 - Merge preserves historical product/order IDs and source references. If both masters already have listings in the same shop, merge rejects the collision instead of silently selecting a price/stock or discarding an order reference. The Admin picker shows product identity and store usage before merging; overlapping store listings are deliberately rejected with a clear message. Resolving overlapping listings requires store inventory review and must never silently select a price or add duplicate stock.
 
-Read-only Production schema/policy preflight: `ops/grocery/preflight-schema-20261012.json`. Git backup: `backup-web-pre-grocery-master-20261012`. This is not a full database dump. No Production schema was changed; a complete current schema/storage/trigger backup is required immediately before a future rollout.
+Read-only Production schema/policy preflight: `ops/grocery/preflight-schema-20261012.json`. Git backup: `backup-web-pre-grocery-master-20261012`. This is not a full database dump. Production additive migration applied on 2026-10-13 after a private application snapshot. The snapshot covers 82 public application/storage metadata tables and schema definitions; 1,860 typed rows passed an exact disposable PGlite round-trip. Auth credentials, physical Storage bytes and platform internals are excluded. This is not full Supabase disaster-recovery certification.
 
 ## Import pipeline
 
@@ -76,6 +76,8 @@ A disposable 10,000-row fixture catalog returned the bounded 51-row sentinel pag
 
 Rendered component QA now passes 48 checks across Merchant/Admin/Customer at 320, 390 and 768 px using Chromium 153.0.8010.0 and a Thai font. It verifies bounded pages, no horizontal overflow, actual source-backed names, store-save confirmation, image placeholders, Admin target selection and Customer lazy loading. The browser transport and account IDs are isolated fixtures; this is not authenticated Production or physical-device E2E. The RC workflow also runs this browser suite using the runner's Chrome. See `docs/qa/grocery-browser-20261013.json`.
 
-**Release Gate OPEN.** Production migration/import/advisors, real store A/B onboarding → checkout → stock/cancel/POS regression, actual multi-client stock races and Production 10k-record query measurements remain unverified. Incomplete observations stay out of import and image approval remains pending. No Production deployment, main merge or release-ready claim is made.
+**Release Gate OPEN.** Catalog activation/web publication, real store A/B onboarding → checkout → stock/cancel/POS regression, actual multi-client stock races and Production 10k-record query measurements remain unverified. Incomplete observations stay out of import and image approval remains pending. Production schema and inactive seed are installed; no web deployment, main merge or release-ready claim is made.
 
 Deployment blocker observed on 2026-10-13: Supabase MCP is connected for SQL, but provides no backup operation. The CLI `db dump --linked` fails with `ProjectRefNotLinkedError`; no database connection/token variables are configured in this workspace. No valid dump was produced. Before schema mutation, obtain a current restorable backup through the authenticated Dashboard or an authorized CLI connection; do not substitute schema metadata for the backup.
+
+2026-10-13 rollout checkpoint: Dashboard Free plan has no managed backups. A scoped application snapshot was saved privately before schema installation; no private row data is committed. Management seed reuses the tested import body under the DBA connection without impersonating an Admin, and keeps all new products inactive. Full existing products row hashes match the pre-migration snapshot (7 rows, zero differences). New Grocery RLS tables are enabled; two deny-all internal bookkeeping tables intentionally have no client policies. Remaining 692 ambiguous observations are quarantined, including a truncated detergent/refill bundle. Barcode/image evidence remains absent; no retailer images were downloaded.

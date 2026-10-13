@@ -5968,6 +5968,19 @@
       "review_reason": "Missing product identity, no explicit size or ambiguous multiple package sizes; requires source-context review"
     },
     {
+      "product_name_th": "ผลิตภัณฑ์ซักผ้า สูตรเข้มข้น 800 มล. และ ถุงเติม 65",
+      "source_url": "https://www.sahapat.co.th/product/householdproduct/Top",
+      "source_type": "distributor",
+      "retrieved_at": "2026-10-12T17:21:08.734071+00:00",
+      "research_category": "ของใช้ในบ้าน",
+      "brand_slug": "Top",
+      "image_status": "pending",
+      "size_status": "unverified",
+      "active": false,
+      "source_record_fingerprint": "5c2d7913d4bdcb2de9db5e88",
+      "review_reason": "Missing product identity, no explicit size or ambiguous multiple package sizes; requires source-context review"
+    },
+    {
       "product_name_th": "เดอ ปารี กลิ่น Blooming",
       "source_url": "https://www.sahapat.co.th/product/householdproduct/De_Paris",
       "source_type": "distributor",
