@@ -144,8 +144,12 @@ private class RiderLongdoHolder(private val cameraState: MutableState<DoubleArra
         stopLocationUpdates()
         if (resumed) {
             // A permission dialog can pause before SDK0.1.8 creates renderer.map.
-            // SDK onPause dereferences that map; defer until its creation callback.
-            if (mapView?.renderer?.map == null) {
+            // Renderer access itself is SDK-owned and can also fail during GL teardown
+            // on physical Android devices, so treat "unknown" as not-ready.
+            val rendererReady = runCatching { mapView?.renderer?.map != null }
+                .onFailure { Log.w("QueueGoLongdo", "map_renderer_state_failed", it) }
+                .getOrDefault(false)
+            if (!rendererReady) {
                 pausePending = true
                 return
             }
