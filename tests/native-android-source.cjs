@@ -241,7 +241,7 @@ ok(riderSessionStore.includes('fun pushDeviceId()')&&riderSessionStore.includes(
 ok(riderApp.includes('syncRiderNativePush(context, auth, api, pushStore)')&&riderApp.includes('disableRiderNativePush(current, api, store)'),'Rider login/logout must synchronize native push subscription lifecycle');
 ok(pilotWorkflow.includes('QG_FIREBASE_GOOGLE_SERVICES_JSON_B64')&&pilotWorkflow.includes('native-android/rider/google-services.json')&&pilotWorkflow.includes('com.queuego.rider'),'native Rider CI must inject and validate Firebase config without committing it');
 ok(source.includes('RiderLongdoMap')&&source.includes('MapGLSurfaceView')&&source.includes('LongdoLayer'),'native Rider must include Longdo map SDK host');
-ok(riderApp.includes('RiderLongdoMap(')&&
+ok(riderApp.includes('QueueGoRiderNavigationMap(')&&
    riderApp.includes('val fixedJobCardMaxHeight = if (activeSheetJob != null)')&&
    riderApp.includes('(maxHeight * 0.56f).coerceAtLeast(220.dp)')&&
    riderApp.includes('.heightIn(max = fixedJobCardMaxHeight)')&&
