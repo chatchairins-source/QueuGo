@@ -46,5 +46,12 @@ assert(service.includes('setSmallIcon(R.drawable.qg_notification)'),
   'Rider return foreground service must use the QueueGo notification asset, not an Android debug icon');
 assert(main.includes('override fun onResume()')&&main.includes('RiderReturnService.stop(this)'),
   'Returning to QueueGo must remove the floating overlay');
+assert(app.includes('riderMergeLiveSnapshot(current, liveSnapshot)')&&
+  app.includes('previousPickups[pickup.pickupId]?.takeIf { it.done && !pickup.done }'),
+  'Rider refresh must reject same-job status regression and preserve completed Market pickup points');
+assert(app.includes('val committedMarker = "local:" + System.currentTimeMillis()')&&
+  app.includes('riderArrivalReadCanReplace(target, job.id, it)')&&
+  app.includes('pushStore.saveHomeSnapshot(auth.user.id, committedSnapshot)'),
+  'Rider arrival must commit locally before accepting a server read so return/resume cannot lose arrived state');
 
 console.log('Native Rider Google Maps-only return overlay contracts: PASS');

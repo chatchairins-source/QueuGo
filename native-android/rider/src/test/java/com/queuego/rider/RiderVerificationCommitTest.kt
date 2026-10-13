@@ -38,6 +38,70 @@ class RiderVerificationCommitTest {
     }
 
     @Test
+    fun refreshMergeNeverRegressesSameActiveJobOrDoneMarketPickup() {
+        val ready = job("ready")
+        val inProgress = job("in_progress").copy(
+            arrivedShopAt = "local:1",
+            customerSubtotal = 100.0,
+            customerDeliveryFee = 20.0
+        )
+        val donePickup = MarketPickup("pickup-1", "PICKED_UP", "ร้าน", "ตลาด", 100.0, 14.0, 103.0)
+        val stalePickup = donePickup.copy(status = "READY")
+
+        val merged = riderMergeLiveSnapshot(
+            RiderSnapshot(false, inProgress, null, listOf(donePickup)),
+            RiderSnapshot(false, ready, null, listOf(stalePickup))
+        )
+
+        assertEquals("in_progress", merged.activeJob?.status)
+        assertTrue(merged.activeJob?.shopArrived == true)
+        assertEquals(100.0, merged.activeJob?.customerSubtotal)
+        assertEquals(20.0, merged.activeJob?.customerDeliveryFee)
+        assertTrue(merged.marketPickups.single().done)
+    }
+
+    @Test
+    fun refreshMergeAllowsForwardProgressAndDifferentJob() {
+        val forward = riderMergeLiveSnapshot(
+            RiderSnapshot(false, job("ready"), null),
+            RiderSnapshot(false, job("in_progress"), null)
+        )
+        assertEquals("in_progress", forward.activeJob?.status)
+
+        val next = riderMergeLiveSnapshot(
+            RiderSnapshot(false, job("in_progress"), null),
+            RiderSnapshot(false, job("rider_assigned", "order-2"), null)
+        )
+        assertEquals("order-2", next.activeJob?.id)
+    }
+
+    @Test
+    fun arrivalReadRequiresCommittedArrivalMarker() {
+        assertFalse(riderArrivalReadCanReplace("shop", "order-1", RiderSnapshot(false, job("ready"), null)))
+        assertTrue(
+            riderArrivalReadCanReplace(
+                "shop",
+                "order-1",
+                RiderSnapshot(false, job("ready").copy(arrivedShopAt = "2026-10-13T04:00:00Z"), null)
+            )
+        )
+        assertFalse(
+            riderArrivalReadCanReplace(
+                "customer",
+                "order-1",
+                RiderSnapshot(false, job("in_progress").copy(arrivedShopAt = "2026-10-13T04:00:00Z"), null)
+            )
+        )
+        assertTrue(
+            riderArrivalReadCanReplace(
+                "customer",
+                "order-1",
+                RiderSnapshot(false, job("in_progress").copy(arrivedCustomerAt = "2026-10-13T04:01:00Z"), null)
+            )
+        )
+    }
+
+    @Test
     fun pickupRejectsStaleReadySnapshot() {
         assertFalse(
             riderVerificationCommitVisible(

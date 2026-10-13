@@ -318,6 +318,53 @@ internal fun riderPickupReadCanReplace(
     }
 }
 
+private fun riderStageRank(status: String): Int = when (status.lowercase()) {
+    "rider_assigned", "assigned" -> 10
+    "preparing" -> 20
+    "ready" -> 30
+    "picked_up" -> 40
+    "in_progress" -> 50
+    "completed", "cancelled" -> 60
+    else -> 0
+}
+
+internal fun riderMergeLiveSnapshot(current: RiderSnapshot, incoming: RiderSnapshot): RiderSnapshot {
+    val currentJob = current.activeJob
+    val incomingJob = incoming.activeJob
+    val mergedJob = when {
+        currentJob == null || incomingJob == null || currentJob.id != incomingJob.id -> incomingJob
+        else -> {
+            val currentRank = riderStageRank(currentJob.status)
+            val incomingRank = riderStageRank(incomingJob.status)
+            val base = if (incomingRank >= currentRank && incomingRank > 0) incomingJob else currentJob
+            base.copy(
+                arrivedShopAt = base.arrivedShopAt ?: currentJob.arrivedShopAt,
+                arrivedCustomerAt = base.arrivedCustomerAt ?: currentJob.arrivedCustomerAt,
+                shopCash = base.shopCash ?: currentJob.shopCash,
+                customerCash = base.customerCash ?: currentJob.customerCash,
+                customerSubtotal = base.customerSubtotal ?: currentJob.customerSubtotal,
+                customerDeliveryFee = base.customerDeliveryFee ?: currentJob.customerDeliveryFee,
+                customerServiceFee = base.customerServiceFee ?: currentJob.customerServiceFee
+            )
+        }
+    }
+    val previousPickups = current.marketPickups.associateBy { it.pickupId }
+    val mergedPickups = incoming.marketPickups.map { pickup ->
+        previousPickups[pickup.pickupId]?.takeIf { it.done && !pickup.done } ?: pickup
+    }
+    return incoming.copy(activeJob = mergedJob, marketPickups = mergedPickups)
+}
+
+internal fun riderArrivalReadCanReplace(target: String, jobId: String, updated: RiderSnapshot): Boolean {
+    val candidate = updated.activeJob ?: return false
+    if (candidate.id != jobId) return false
+    return when (target) {
+        "shop" -> candidate.shopArrived
+        "customer" -> candidate.customerArrived
+        else -> false
+    }
+}
+
 internal fun riderVerificationCommitVisible(
     mode: String,
     jobId: String,
@@ -743,10 +790,29 @@ private fun RiderHome(
                 } else {
                     "บันทึกถึงลูกค้าแล้ว · แจ้งลูกค้าแล้ว"
                 }
+                val committedMarker = "local:" + System.currentTimeMillis()
+                val committedJob = if (target == "shop") {
+                    job.copy(arrivedShopAt = job.arrivedShopAt ?: committedMarker)
+                } else {
+                    job.copy(arrivedCustomerAt = job.arrivedCustomerAt ?: committedMarker)
+                }
+                val committedSnapshot = snapshot?.takeIf { it.activeJob?.id == job.id }?.copy(activeJob = committedJob)
+                if (committedSnapshot != null) {
+                    snapshot = committedSnapshot
+                    pushStore.saveHomeSnapshot(auth.user.id, committedSnapshot)
+                }
                 updated = runCatching { api.riderSnapshot(auth) }
                     .onFailure { if (it is CancellationException) throw it }
                     .getOrNull()
-                updated?.let { snapshot = it }
+                    ?.takeIf { riderArrivalReadCanReplace(target, job.id, it) }
+                    ?.let { server ->
+                        committedSnapshot?.let { local -> riderMergeLiveSnapshot(local, server) } ?: server
+                    }
+                updated?.let {
+                    snapshot = it
+                    pushStore.saveHomeSnapshot(auth.user.id, it)
+                }
+                if (updated == null && committedSnapshot != null) updated = committedSnapshot
             }.onFailure {
                 actionMessage = it.message ?: "บันทึกการมาถึงไม่สำเร็จ"
             }
@@ -815,13 +881,16 @@ private fun RiderHome(
                     chatJob = null
                     activeTab = "home"
                 }
-                snapshot = liveSnapshot
-                pushStore.saveHomeSnapshot(auth.user.id, liveSnapshot)
-                reconcileRiderOfferNotifications(context, auth.user.id, liveSnapshot.offeredJob?.id)
+                val mergedSnapshot = snapshot?.let { current ->
+                    riderMergeLiveSnapshot(current, liveSnapshot)
+                } ?: liveSnapshot
+                snapshot = mergedSnapshot
+                pushStore.saveHomeSnapshot(auth.user.id, mergedSnapshot)
+                reconcileRiderOfferNotifications(context, auth.user.id, mergedSnapshot.offeredJob?.id)
                 loadError = null
-                if (it.activeJob == null) RiderReturnService.stop(context)
+                if (mergedSnapshot.activeJob == null) RiderReturnService.stop(context)
                 val now = System.currentTimeMillis()
-                if (it.online && now - lastLocationPushAt >= 10_000L) {
+                if (mergedSnapshot.online && now - lastLocationPushAt >= 10_000L) {
                     val loc = lastKnownLocation(context)
                     if (loc != null) {
                         runCatching { api.updateLocation(auth, loc.first, loc.second) }
