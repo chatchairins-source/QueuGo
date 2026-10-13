@@ -1,0 +1,406 @@
+package com.queuego.ridernavigationmap
+
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.Color
+import android.graphics.Paint
+import android.graphics.PointF
+import android.graphics.Typeface
+import android.util.Log
+import android.view.LayoutInflater
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.viewinterop.AndroidView
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import com.longdo.api.IMapListener
+import com.longdo.api.Line
+import com.longdo.api.LongdoLayer
+import com.longdo.api.MapGLSurfaceView
+import com.longdo.api.Pin
+import com.longdo.api.type.MapLocation
+import com.queuego.shared.R as SharedR
+
+private const val RIDER_MARKER_ANIMATION_STEPS = 18
+private const val DEFAULT_LONGITUDE = 100.5018
+private const val DEFAULT_LATITUDE = 13.7563
+
+private val ACTIVE_ROUTE_COLOR = floatArrayOf(230f / 255f, 0f, 45f / 255f, 0.96f)
+private val FUTURE_ROUTE_COLOR = floatArrayOf(230f / 255f, 0f, 45f / 255f, 0.28f)
+
+private data class RenderedStop(val signature: String, val pin: Pin)
+
+private class RiderNavigationMapHolder(
+    private val onCameraChanged: (NavigationMapCamera) -> Unit,
+    private val onDiagnostics: ((NavigationMapDiagnostics) -> Unit)?
+) {
+    var view: MapGLSurfaceView? = null
+    var map: com.longdo.api.Map? = null
+    var disposed = false
+
+    private var resumed = false
+    private var pausePending = false
+    private var lastState = RiderNavigationMapState()
+    private var riderPin: Pin? = null
+    private var lastRiderFix: NavigationMapFix? = null
+    private var lastCameraFix: NavigationMapPoint? = null
+    private val stopPins = linkedMapOf<String, RenderedStop>()
+    private val routeLines = mutableListOf<Line>()
+    private val markerBitmaps = mutableMapOf<Int, Bitmap>()
+    private val stopBitmaps = mutableMapOf<Triple<NavigationStopKind, Int, Boolean>, Bitmap>()
+    private var routeRenderKey: Int? = null
+
+    private var viewCreatedCount = 0
+    private var mapCreatedCount = 0
+    private var routeLayerRebuildCount = 0
+    private var stopMutationCount = 0
+
+    fun markViewCreated() {
+        viewCreatedCount += 1
+        publishDiagnostics()
+    }
+
+    fun attachMap(nextMap: com.longdo.api.Map) {
+        if (map === nextMap) return
+        map = nextMap
+        riderPin = null
+        stopPins.clear()
+        routeLines.clear()
+        routeRenderKey = null
+        mapCreatedCount += 1
+        publishDiagnostics()
+    }
+
+    fun resume() {
+        val activeView = view ?: return
+        pausePending = false
+        if (!disposed && !resumed) {
+            resumed = runCatching { activeView.onResume() }
+                .onFailure { Log.w("QueueGoNavMap", "map_on_resume_failed", it) }
+                .isSuccess
+        }
+        // Deliberately keep lastRiderFix, map, pins and route layers. A refresh/resume must
+        // never reconstruct the map just because Rider/order state changed.
+        if (resumed) render(lastState)
+    }
+
+    fun pause() {
+        map?.let { activeMap ->
+            runCatching {
+                val location = activeMap.getLocation()
+                onCameraChanged(
+                    NavigationMapCamera(
+                        point = NavigationMapPoint(location.lat, location.lon),
+                        zoom = activeMap.getZoom()
+                    )
+                )
+            }
+        }
+        if (!resumed) return
+        val rendererReady = runCatching { view?.renderer?.map != null }
+            .onFailure { Log.w("QueueGoNavMap", "map_renderer_state_failed", it) }
+            .getOrDefault(false)
+        if (!rendererReady) {
+            pausePending = true
+            return
+        }
+        runCatching { view?.onPause() }
+            .onFailure { Log.w("QueueGoNavMap", "map_on_pause_failed", it) }
+        resumed = false
+        pausePending = false
+    }
+
+    fun mapCreated(createdView: MapGLSurfaceView) {
+        if (pausePending && resumed) {
+            runCatching { createdView.onPause() }
+                .onFailure { Log.w("QueueGoNavMap", "map_created_pause_failed", it) }
+            resumed = false
+            pausePending = false
+        }
+    }
+
+    fun render(state: RiderNavigationMapState) {
+        lastState = state
+        val activeMap = map ?: return
+        if (disposed) return
+
+        state.rider?.takeIf { it.point.valid }?.let {
+            lastRiderFix = it
+            renderRider(activeMap, it)
+        }
+        renderStops(activeMap, state)
+        renderRoutes(activeMap, state)
+
+        val followedFix = state.rider?.takeIf { it.point.valid } ?: lastRiderFix
+        if (state.followRider && followedFix != null) {
+            followRider(activeMap, followedFix, state.followZoom)
+        }
+    }
+
+    private fun renderRider(activeMap: com.longdo.api.Map, fix: NavigationMapFix) {
+        val location = MapLocation(fix.point.longitude, fix.point.latitude)
+        val existing = riderPin
+        if (existing == null) {
+            val pin = Pin(location, markerBitmap(SharedR.drawable.qg_map_rider))
+            runCatching { activeMap.pushPin(pin) }.onSuccess { riderPin = pin }
+        } else {
+            runCatching { existing.setLocation(location, true, RIDER_MARKER_ANIMATION_STEPS) }
+                .onFailure {
+                    runCatching { activeMap.removePin(existing) }
+                    val replacement = Pin(location, markerBitmap(SharedR.drawable.qg_map_rider))
+                    runCatching { activeMap.pushPin(replacement) }.onSuccess { riderPin = replacement }
+                }
+        }
+    }
+
+    private fun renderStops(activeMap: com.longdo.api.Map, state: RiderNavigationMapState) {
+        val activeStopId = state.resolvedActiveStopId()
+        val desired = state.remainingStops().associateBy { it.id }
+
+        stopPins.keys.filter { it !in desired.keys }.forEach { id ->
+            val rendered = stopPins.remove(id) ?: return@forEach
+            runCatching { activeMap.removePin(rendered.pin) }
+            stopMutationCount += 1
+        }
+
+        desired.values.forEach { stop ->
+            val signature = listOf(
+                stop.sequence.toString(),
+                stop.kind.name,
+                stop.point.latitude.toString(),
+                stop.point.longitude.toString(),
+                (stop.id == activeStopId).toString()
+            ).joinToString("|")
+            val existing = stopPins[stop.id]
+            if (existing?.signature == signature) return@forEach
+            existing?.let { runCatching { activeMap.removePin(it.pin) } }
+
+            val pin = Pin(
+                MapLocation(stop.point.longitude, stop.point.latitude),
+                stopBitmap(stop.kind, stop.sequence, stop.id == activeStopId)
+            )
+            pin.setOffset(PointF(0f, -0.4f))
+            runCatching { activeMap.pushPin(pin) }
+                .onSuccess {
+                    stopPins[stop.id] = RenderedStop(signature, pin)
+                    stopMutationCount += 1
+                }
+        }
+        publishDiagnostics()
+    }
+
+    private fun renderRoutes(activeMap: com.longdo.api.Map, state: RiderNavigationMapState) {
+        val routes = state.styledRemainingRoutes()
+        val nextKey = routes.hashCode()
+        if (routeRenderKey == nextKey) return
+
+        routeLines.forEach { line -> runCatching { activeMap.removeLine(line) } }
+        routeLines.clear()
+
+        // Future legs first, active leg last so the dark-red current path stays visually dominant.
+        routes.sortedBy { if (it.style == NavigationRouteStyle.FUTURE) 0 else 1 }
+            .forEach { segment ->
+                val line = Line(
+                    segment.points.map { MapLocation(it.longitude, it.latitude) }.toTypedArray()
+                ).apply {
+                    setWidth(if (segment.style == NavigationRouteStyle.ACTIVE) 8 else 6)
+                    setColor(
+                        if (segment.style == NavigationRouteStyle.ACTIVE) ACTIVE_ROUTE_COLOR
+                        else FUTURE_ROUTE_COLOR
+                    )
+                }
+                runCatching { activeMap.addLine(line) }.onSuccess { routeLines += line }
+            }
+
+        routeRenderKey = nextKey
+        routeLayerRebuildCount += 1
+        publishDiagnostics()
+    }
+
+    private fun followRider(activeMap: com.longdo.api.Map, fix: NavigationMapFix, zoom: Int) {
+        val target = fix.point
+        val previous = lastCameraFix
+        val movedEnough = previous == null || navigationHaversineMeters(previous, target) >= 1.5
+        if (!movedEnough && fix.bearingDegrees == null) return
+
+        runCatching {
+            activeMap.setCanRotateCamera(true)
+            activeMap.setZoom(zoom.coerceIn(14, 20))
+            activeMap.setLocation(MapLocation(target.longitude, target.latitude))
+            fix.bearingDegrees
+                ?.takeIf { it.isFinite() }
+                ?.let { activeMap.rotate(((it % 360f) + 360f) % 360f, true) }
+        }.onSuccess { lastCameraFix = target }
+    }
+
+    private fun markerBitmap(resId: Int): Bitmap =
+        markerBitmaps[resId] ?: renderVector(resId).also { markerBitmaps[resId] = it }
+
+    private fun stopBitmap(kind: NavigationStopKind, number: Int, active: Boolean): Bitmap =
+        stopBitmaps.getOrPut(Triple(kind, number, active)) {
+            val resId = if (kind == NavigationStopKind.PICKUP) SharedR.drawable.qg_map_pickup
+            else SharedR.drawable.qg_map_dropoff
+            val base = renderVector(resId)
+            val scale = base.width / 48f
+            val bitmap = Bitmap.createBitmap(
+                base.width + (8f * scale).toInt(),
+                base.height + (9f * scale).toInt(),
+                Bitmap.Config.ARGB_8888
+            )
+            val canvas = Canvas(bitmap)
+            canvas.drawBitmap(base, 0f, 9f * scale, null)
+            base.recycle()
+
+            val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+            paint.color = if (active) Color.rgb(230, 0, 45) else Color.WHITE
+            canvas.drawRoundRect(33f * scale, 0f, 55f * scale, 19f * scale, 7f * scale, 7f * scale, paint)
+            paint.color = if (active) Color.WHITE else Color.rgb(14, 36, 56)
+            paint.typeface = Typeface.DEFAULT_BOLD
+            paint.textAlign = Paint.Align.CENTER
+            paint.textSize = (if (number < 100) 12f else 9f) * scale
+            val baseline = 9.5f * scale - (paint.ascent() + paint.descent()) / 2f
+            canvas.drawText(number.toString(), 44f * scale, baseline, paint)
+            bitmap
+        }
+
+    private fun renderVector(resId: Int): Bitmap {
+        val context = requireNotNull(view?.context) { "Navigation map view is not attached" }
+        val drawable = requireNotNull(context.getDrawable(resId)) { "Map marker resource unavailable: $resId" }
+        val width = drawable.intrinsicWidth.coerceAtLeast(1)
+        val height = drawable.intrinsicHeight.coerceAtLeast(1)
+        return Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888).also { bitmap ->
+            val canvas = Canvas(bitmap)
+            drawable.setBounds(0, 0, width, height)
+            drawable.draw(canvas)
+        }
+    }
+
+    private fun publishDiagnostics() {
+        onDiagnostics?.invoke(
+            NavigationMapDiagnostics(
+                viewCreatedCount = viewCreatedCount,
+                mapCreatedCount = mapCreatedCount,
+                routeLayerRebuildCount = routeLayerRebuildCount,
+                stopMutationCount = stopMutationCount
+            )
+        )
+    }
+
+    fun dispose() {
+        disposed = true
+        runCatching { pause() }
+        map?.let { activeMap ->
+            routeLines.forEach { line -> runCatching { activeMap.removeLine(line) } }
+            riderPin?.let { pin -> runCatching { activeMap.removePin(pin) } }
+            stopPins.values.forEach { rendered -> runCatching { activeMap.removePin(rendered.pin) } }
+        }
+        routeLines.clear()
+        stopPins.clear()
+        riderPin = null
+        map = null
+        view = null
+    }
+}
+
+/**
+ * Standalone navigation-map surface. Keep stateKey stable for the Rider account/session,
+ * never an order id. Recomposition/refresh updates overlays only; AndroidView factory owns
+ * the single MapGLSurfaceView instance for this composition.
+ */
+@Composable
+fun RiderNavigationMap(
+    stateKey: String,
+    state: RiderNavigationMapState,
+    modifier: Modifier = Modifier,
+    initialCamera: NavigationMapCamera? = null,
+    onMapReady: (Boolean) -> Unit = {},
+    onCameraChanged: (NavigationMapCamera) -> Unit = {},
+    onDiagnostics: ((NavigationMapDiagnostics) -> Unit)? = null
+) {
+    require(stateKey.isNotBlank()) { "Navigation map stateKey must be stable and non-blank" }
+
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
+    val currentState = rememberUpdatedState(state)
+    val currentReady = rememberUpdatedState(onMapReady)
+    val currentCameraChanged = rememberUpdatedState(onCameraChanged)
+    val currentDiagnostics = rememberUpdatedState(onDiagnostics)
+    val holder = remember(stateKey) {
+        RiderNavigationMapHolder(
+            onCameraChanged = { currentCameraChanged.value(it) },
+            onDiagnostics = { currentDiagnostics.value?.invoke(it) }
+        )
+    }
+
+    AndroidView(
+        modifier = modifier,
+        factory = { context ->
+            (LayoutInflater.from(context)
+                .inflate(SharedR.layout.view_longdo_shared_map, null, false) as MapGLSurfaceView).also { view ->
+                holder.view = view
+                holder.markViewCreated()
+                view.setListener(object : IMapListener {
+                    override fun onMapCreated(map: com.longdo.api.Map) {
+                        view.post {
+                            holder.mapCreated(view)
+                            if (holder.disposed) return@post
+                            runCatching {
+                                holder.attachMap(map)
+                                map.setBase(LongdoLayer(context, "normal", 0, 1, 20).apply {
+                                    layerURL = "https://ms.longdo.com/map/msn-server/tile.php"
+                                })
+                                map.setDrawCrossSign(false)
+                                val start = initialCamera?.point?.takeIf { it.valid }
+                                    ?: currentState.value.rider?.point?.takeIf { it.valid }
+                                    ?: currentState.value.remainingStops().firstOrNull()?.point
+                                    ?: NavigationMapPoint(DEFAULT_LATITUDE, DEFAULT_LONGITUDE)
+                                map.setLocation(MapLocation(start.longitude, start.latitude))
+                                map.setZoom(initialCamera?.zoom?.coerceIn(4, 20) ?: 15)
+                                initialCamera?.bearingDegrees
+                                    ?.takeIf { it.isFinite() }
+                                    ?.let {
+                                        map.setCanRotateCamera(true)
+                                        map.rotate(((it % 360f) + 360f) % 360f, false)
+                                    }
+                                holder.render(currentState.value)
+                            }.onSuccess {
+                                currentReady.value(true)
+                            }.onFailure {
+                                Log.e("QueueGoNavMap", "map_setup_failed", it)
+                                currentReady.value(false)
+                            }
+                        }
+                    }
+                })
+                if (lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) holder.resume()
+            }
+        },
+        update = {
+            holder.render(state)
+        }
+    )
+
+    LaunchedEffect(state) {
+        holder.render(currentState.value)
+    }
+
+    DisposableEffect(lifecycle, stateKey) {
+        val observer = LifecycleEventObserver { _, event ->
+            when (event) {
+                Lifecycle.Event.ON_RESUME -> holder.resume()
+                Lifecycle.Event.ON_PAUSE -> holder.pause()
+                else -> Unit
+            }
+        }
+        lifecycle.addObserver(observer)
+        onDispose {
+            lifecycle.removeObserver(observer)
+            holder.dispose()
+            currentReady.value(false)
+        }
+    }
+}
