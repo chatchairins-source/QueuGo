@@ -22,8 +22,8 @@ for(const rpc of [
 assert(api.includes('laundry = laundry'),'Rider snapshot must carry Production laundry state');
 assert(api.includes('fallbackStatus = if (name == "pool") "waiting" else "assigned"'),'Laundry pool/active state must preserve Production transition defaults');
 
-assert(nav.includes('internal fun riderLaundryNavigationTarget(job: RiderLaundryJob)'),'Laundry navigation must use the in-app route controller');
-assert(app.includes('snapshot?.laundry?.activeJob?.let(::riderLaundryNavigationTarget)'),'Home route target must follow active laundry work');
+assert(!app.includes('snapshot?.laundry?.activeJob?.let(::riderLaundryNavigationTarget)'),'Laundry work must not activate the retired in-app navigation controller');
+assert(app.includes('openNavigation(context, laundryJob.asMapJob())'),'Laundry navigation must hand the real destination to Google Maps');
 assert(app.includes('snapshot?.laundry?.activeJob?.asMapJob()'),'Longdo map must display active laundry endpoints');
 assert(app.includes('RiderLaundryActiveCard('),'Home must render an active laundry card');
 assert(app.includes('RiderLaundryPoolCard('),'Home must render claimable laundry work');
