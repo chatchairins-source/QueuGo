@@ -137,7 +137,16 @@ internal fun RiderLoginScreen(
             }
         }
         if (!wide) {
-            Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 17.dp, vertical = 24.dp), horizontalAlignment = Alignment.CenterHorizontally) { card() }
+            Column(
+                Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 17.dp, vertical = 24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                card()
+            }
         } else {
             Row(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
                 Column(Modifier.width(brandWidth).heightIn(min = viewportHeight).clipToBounds().drawWithCache {
