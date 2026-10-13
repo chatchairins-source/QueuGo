@@ -222,7 +222,25 @@ fun RiderProfileScreen(
                 RiderSettingRow("ทดสอบการแจ้งเตือน", "ส่งแจ้งเตือนทดสอบหลัง 7 วินาที", R.drawable.qg_rider_nav_chat, enabled = !busy) {
                     busy = true
                     scope.launch {
-                        try { api.testNativePush(auth); message = "ระบบจะส่งแจ้งเตือนทดสอบหลังประมาณ 7 วินาที" } catch (e: CancellationException) { throw e } catch (e: Exception) { message = e.message ?: "ทดสอบการแจ้งเตือนไม่สำเร็จ" } finally { busy = false }
+                        try {
+                            if (!riderNotificationsReady(context)) {
+                                message = "กรุณาเปิดการแจ้งเตือนงาน QueueGo ก่อนทดสอบ"
+                                return@launch
+                            }
+                            val bound = syncRiderNativePush(context, auth, api, SessionStore(context))
+                            if (!bound) {
+                                message = "ยังเชื่อมการแจ้งเตือนกับ session นี้ไม่ได้"
+                                return@launch
+                            }
+                            api.testNativePush(auth)
+                            message = "ระบบจะส่งแจ้งเตือนทดสอบหลังประมาณ 7 วินาที"
+                        } catch (e: CancellationException) {
+                            throw e
+                        } catch (e: Exception) {
+                            message = e.message ?: "ทดสอบการแจ้งเตือนไม่สำเร็จ"
+                        } finally {
+                            busy = false
+                        }
                     }
                 }
                 RiderSettingDivider()
