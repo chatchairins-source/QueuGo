@@ -6,7 +6,10 @@ plugins {
 android {
     namespace = "com.queuego.ridernavigationmap"
     compileSdk = 36
-    defaultConfig { minSdk = 26 }
+    defaultConfig {
+        minSdk = 26
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    }
     buildFeatures { compose = true }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
@@ -17,7 +20,11 @@ android {
 dependencies {
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.json:json:20240303")
+    androidTestImplementation("androidx.test:runner:1.6.2")
+    androidTestImplementation("androidx.test:core:1.6.1")
+    androidTestImplementation("junit:junit:4.13.2")
     implementation(project(":shared"))
+    implementation("androidx.activity:activity-compose:1.13.0")
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.9.4")
     implementation("androidx.compose.ui:ui:1.11.4")
     implementation("androidx.compose.foundation:foundation:1.11.4")

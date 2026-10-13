@@ -9,6 +9,9 @@ const map=fs.readFileSync('native-android/rider-navigation-map/src/main/java/com
 const route=fs.readFileSync('native-android/rider-navigation-map/src/main/java/com/queuego/ridernavigationmap/LongdoNavigationRouteClient.kt','utf8');
 const models=fs.readFileSync('native-android/rider-navigation-map/src/main/java/com/queuego/ridernavigationmap/NavigationMapModels.kt','utf8');
 const workflow=fs.readFileSync('.github/workflows/build-native-rider-pilot.yml','utf8');
+const runtimeTest=fs.readFileSync('native-android/rider-navigation-map/src/androidTest/java/com/queuego/ridernavigationmap/NavigationMapRuntimeTest.kt','utf8');
+const runtimeActivity=fs.readFileSync('native-android/rider-navigation-map/src/debug/java/com/queuego/ridernavigationmap/NavigationMapRuntimeActivity.kt','utf8');
+const runtimeRunner=fs.readFileSync('native-android/qa/run-rider-navigation-map-runtime.py','utf8');
 
 assert(settings.includes('":rider-navigation-map"'),
   'Standalone Rider navigation map module must be registered');
@@ -35,5 +38,16 @@ assert(route.includes('private val apiKey: String')&&route.includes('RouteServic
   'Routing key must be injected and never hard-coded into the standalone module');
 assert(workflow.includes(':rider-navigation-map:testDebugUnitTest'),
   'Native Pilot must compile and unit-test the standalone map module');
+assert(runtimeTest.includes('GPS refresh recreated MapGLSurfaceView')&&
+  runtimeTest.includes('GPS refresh rebuilt unchanged route layers')&&
+  runtimeTest.includes('Resume recreated Longdo map'),
+  'Android runtime test must prove refresh and resume reuse the exact map objects');
+assert(runtimeActivity.includes('there are no QueueGo accounts, jobs, orders or Production writes')&&
+  runtimeActivity.includes('refreshRiderFix')&&runtimeActivity.includes('advanceToSecondStop'),
+  'Runtime host must remain isolated from QueueGo business data while exercising navigation state');
+assert(workflow.includes('navigation-map-runtime:')&&
+  workflow.includes('run-rider-navigation-map-runtime.py')&&
+  runtimeRunner.includes(':rider-navigation-map:connectedDebugAndroidTest'),
+  'Standalone navigation map must have a dedicated Android runtime gate');
 
 console.log('Standalone Rider navigation map module contracts: PASS');
