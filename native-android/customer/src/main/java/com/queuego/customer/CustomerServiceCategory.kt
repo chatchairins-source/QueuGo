@@ -1,5 +1,6 @@
 package com.queuego.customer
 
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -16,16 +17,21 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.res.imageResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.queuego.shared.QgIcon
 import com.queuego.shared.QgMuted
 import com.queuego.shared.QgRemoteImage
+import kotlin.math.roundToInt
 
 internal data class WebServiceCategory(val heading: String, val bannerTitle: String, val bannerSubtitle: String,
     val sectionTitle: String, val description: String, val empty: String, val drawable: Int)
@@ -129,7 +135,8 @@ internal fun CustomerServiceBanner(
     fallbackDrawable: Int?,
     fallbackTitle: String,
     fallbackSubtitle: String,
-    onLink: (String) -> Unit = {}
+    onLink: (String) -> Unit = {},
+    fallbackCrop: String? = null
 ) {
     if (banner?.active == false) return
     val remoteImage = webBannerImage(banner)
@@ -152,6 +159,11 @@ internal fun CustomerServiceBanner(
                 contentScale = ContentScale.Crop,
                 cornerRadius = 20.dp,
                 showFallback = false
+            )
+            fallbackDrawable != null && fallbackCrop != null -> CustomerCroppedServiceBanner(
+                drawable = fallbackDrawable,
+                crop = fallbackCrop,
+                modifier = Modifier.fillMaxSize()
             )
             fallbackDrawable != null -> Image(
                 painterResource(fallbackDrawable),
@@ -186,5 +198,33 @@ internal fun CustomerServiceBanner(
                 )
             }
         }
+    }
+}
+
+
+@Composable
+private fun CustomerCroppedServiceBanner(
+    drawable: Int,
+    crop: String,
+    modifier: Modifier = Modifier
+) {
+    val sprite = ImageBitmap.imageResource(drawable)
+    val source = when (crop) {
+        "mobile_accessories" -> intArrayOf(0, 128, 320, 128)
+        "computer_it" -> intArrayOf(320, 128, 320, 128)
+        "automotive" -> intArrayOf(640, 128, 320, 128)
+        "fashion_accessories" -> intArrayOf(0, 256, 320, 128)
+        "toys" -> intArrayOf(320, 256, 320, 128)
+        "home_decor" -> intArrayOf(640, 256, 320, 128)
+        else -> intArrayOf(0, 0, 960, 128)
+    }
+    Canvas(modifier) {
+        drawImage(
+            image = sprite,
+            srcOffset = IntOffset(source[0], source[1]),
+            srcSize = IntSize(source[2], source[3]),
+            dstOffset = IntOffset.Zero,
+            dstSize = IntSize(size.width.roundToInt(), size.height.roundToInt())
+        )
     }
 }

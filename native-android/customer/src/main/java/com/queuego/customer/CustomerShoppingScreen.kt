@@ -145,10 +145,11 @@ internal fun CustomerShoppingScreen(
 
         CustomerServiceBanner(
             banner = serviceBanners[spec.bannerKey],
-            fallbackDrawable = null,
+            fallbackDrawable = R.drawable.qg_shopping_sprite,
             fallbackTitle = spec.title,
             fallbackSubtitle = spec.subtitle,
-            onLink = onBannerLink
+            onLink = onBannerLink,
+            fallbackCrop = spec.bannerKey
         )
 
         if (selected == "all") {
