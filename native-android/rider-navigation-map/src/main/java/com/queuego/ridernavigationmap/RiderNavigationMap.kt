@@ -372,6 +372,9 @@ fun RiderNavigationMap(
             (LayoutInflater.from(context)
                 .inflate(SharedR.layout.view_longdo_shared_map, null, false) as MapGLSurfaceView).also { view ->
                 holder.view = view
+                // Keep the GL context across short background/resume cycles so returning to
+                // QueueGo does not force the SDK to reconstruct already-rendered map tiles.
+                view.setPreserveEGLContextOnPause(true)
                 holder.markViewCreated()
                 view.setListener(object : IMapListener {
                     override fun onMapCreated(map: com.longdo.api.Map) {
