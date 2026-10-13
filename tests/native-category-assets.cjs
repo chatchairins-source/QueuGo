@@ -26,3 +26,8 @@ for(const key of ['shopping', 'mobile_accessories', 'computer_it', 'automotive',
  assert.ok(web.equals(native),key+" exact cross-platform image bytes");
  assert.ok(native.readUInt32LE(4)+8===native.length,key+" valid container length");
 }
+
+const bannerUi=fs.readFileSync(path.join(root,"native-android/customer/src/main/java/com/queuego/customer/CustomerServiceCategory.kt"),"utf8").split("internal fun CustomerServiceBanner(")[1];
+assert.ok(bannerUi.includes("Color(0xF0FFFFFF)"),"soft light banner text wash");
+assert.ok(!bannerUi.includes("Color(0xAD000000)"),"owner forbids dark banner strip");
+assert.ok(bannerUi.includes("color = Color(0xFF17191D)"),"readable dark text on light wash");

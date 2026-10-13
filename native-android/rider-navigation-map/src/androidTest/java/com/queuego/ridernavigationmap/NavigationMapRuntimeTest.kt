@@ -309,6 +309,38 @@ class NavigationMapRuntimeTest {
     }
 
     @Test
+    fun manualPanSuspendsFollowButTapDoesNotReportGesture() {
+        ActivityScenario.launch(NavigationMapRuntimeActivity::class.java).use { scenario ->
+            lateinit var activity: NavigationMapRuntimeActivity
+            scenario.onActivity { activity = it }
+            assertTrue(
+                "Navigation map did not become ready for gesture test",
+                activity.mapReady.await(30, TimeUnit.SECONDS)
+            )
+
+            scenario.onActivity { it.dispatchTapOnMap() }
+            InstrumentationRegistry.getInstrumentation().waitForIdleSync()
+            scenario.onActivity {
+                assertEquals(
+                    "Simple tap incorrectly suspended Rider follow",
+                    0,
+                    it.userGestureCount
+                )
+            }
+
+            scenario.onActivity { it.dispatchDragOnMap() }
+            InstrumentationRegistry.getInstrumentation().waitForIdleSync()
+            scenario.onActivity {
+                assertEquals(
+                    "Manual map drag did not report exactly one user gesture",
+                    1,
+                    it.userGestureCount
+                )
+            }
+        }
+    }
+
+    @Test
     fun retainedMapIsDisposedWhenActivityDiesOffHome() {
         ActivityScenario.launch(NavigationMapRuntimeActivity::class.java).use { scenario ->
             lateinit var firstActivity: NavigationMapRuntimeActivity

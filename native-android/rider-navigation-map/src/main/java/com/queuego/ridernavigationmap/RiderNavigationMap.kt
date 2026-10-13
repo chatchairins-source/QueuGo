@@ -11,8 +11,10 @@ import android.os.Looper
 import android.os.SystemClock
 import android.util.Log
 import android.view.LayoutInflater
+import android.view.MotionEvent
 import android.view.PixelCopy
 import android.view.View
+import android.view.ViewConfiguration
 import android.widget.FrameLayout
 import android.widget.ImageView
 import androidx.compose.runtime.Composable
@@ -778,6 +780,7 @@ fun RiderNavigationMap(
     initialCamera: NavigationMapCamera? = null,
     onMapReady: (Boolean) -> Unit = {},
     onCameraChanged: (NavigationMapCamera) -> Unit = {},
+    onUserGesture: () -> Unit = {},
     onDiagnostics: ((NavigationMapDiagnostics) -> Unit)? = null
 ) {
     require(stateKey.isNotBlank()) { "Navigation map stateKey must be stable and non-blank" }
@@ -786,6 +789,7 @@ fun RiderNavigationMap(
     val currentState = rememberUpdatedState(state)
     val currentReady = rememberUpdatedState(onMapReady)
     val currentCameraChanged = rememberUpdatedState(onCameraChanged)
+    val currentUserGesture = rememberUpdatedState(onUserGesture)
     val currentDiagnostics = rememberUpdatedState(onDiagnostics)
     val holder = remember(stateKey, lifecycle) { RiderNavigationMapRegistry.acquire(stateKey, lifecycle) }
     holder.bindCallbacks(
@@ -831,6 +835,38 @@ fun RiderNavigationMap(
             }
             (root.parent as? android.view.ViewGroup)?.removeView(root)
             val view = requireNotNull(holder.view)
+            val touchSlop = ViewConfiguration.get(context).scaledTouchSlop.toFloat()
+            var touchDownX = 0f
+            var touchDownY = 0f
+            var userGestureReported = false
+            view.setOnTouchListener { _, event ->
+                when (event.actionMasked) {
+                    MotionEvent.ACTION_DOWN -> {
+                        touchDownX = event.x
+                        touchDownY = event.y
+                        userGestureReported = false
+                    }
+                    MotionEvent.ACTION_POINTER_DOWN -> {
+                        if (!userGestureReported) {
+                            userGestureReported = true
+                            currentUserGesture.value()
+                        }
+                    }
+                    MotionEvent.ACTION_MOVE -> {
+                        if (!userGestureReported) {
+                            val dx = event.x - touchDownX
+                            val dy = event.y - touchDownY
+                            if (dx * dx + dy * dy >= touchSlop * touchSlop) {
+                                userGestureReported = true
+                                currentUserGesture.value()
+                            }
+                        }
+                    }
+                    MotionEvent.ACTION_UP,
+                    MotionEvent.ACTION_CANCEL -> userGestureReported = false
+                }
+                false
+            }
             view.setListener(object : IMapListener {
                     override fun onMapCreated(map: com.longdo.api.Map) {
                         view.post {
@@ -876,6 +912,7 @@ fun RiderNavigationMap(
         lifecycle.addObserver(observer)
         onDispose {
             lifecycle.removeObserver(observer)
+            holder.view?.setOnTouchListener(null)
             if (lifecycle.currentState == Lifecycle.State.DESTROYED) {
                 RiderNavigationMapRegistry.destroy(stateKey, holder)
             } else {

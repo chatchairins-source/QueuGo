@@ -162,13 +162,13 @@ internal fun CustomerServiceBanner(
             Modifier
                 .align(Alignment.BottomStart)
                 .fillMaxWidth()
-                .background(Brush.verticalGradient(listOf(Color.Transparent, Color(0xAD000000))))
+                .background(Brush.verticalGradient(listOf(Color.Transparent, Color(0xF0FFFFFF))))
                 .padding(start = 18.dp, end = 18.dp, top = 30.dp, bottom = 16.dp)
         ) {
             if (heading.isNotBlank()) {
                 Text(
                     heading,
-                    color = Color.White,
+                    color = Color(0xFF17191D),
                     fontSize = 20.sp,
                     lineHeight = 23.sp,
                     fontWeight = FontWeight.Bold
@@ -178,7 +178,7 @@ internal fun CustomerServiceBanner(
                 Spacer(Modifier.height(4.dp))
                 Text(
                     subtitle,
-                    color = Color.White,
+                    color = Color(0xFF17191D),
                     fontSize = 12.sp,
                     lineHeight = 18.sp
                 )
