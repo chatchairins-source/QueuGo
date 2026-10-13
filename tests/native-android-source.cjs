@@ -200,7 +200,16 @@ ok(riderSessionStore.includes('fun pushDeviceId()')&&riderSessionStore.includes(
 ok(riderApp.includes('syncRiderNativePush(context, auth, api, pushStore)')&&riderApp.includes('disableRiderNativePush(current, api, store)'),'Rider login/logout must synchronize native push subscription lifecycle');
 ok(pilotWorkflow.includes('QG_FIREBASE_GOOGLE_SERVICES_JSON_B64')&&pilotWorkflow.includes('native-android/rider/google-services.json')&&pilotWorkflow.includes('com.queuego.rider'),'native Rider CI must inject and validate Firebase config without committing it');
 ok(source.includes('RiderLongdoMap')&&source.includes('MapGLSurfaceView')&&source.includes('LongdoLayer'),'native Rider must include Longdo map SDK host');
-ok(riderApp.includes('RiderLongdoMap(')&&riderApp.includes('val expandedSheetHeight = (maxHeight - 132.dp).coerceAtLeast(0.dp)')&&riderApp.includes('dockBase.heightIn(max = expandedSheetHeight)')&&riderApp.includes('val collapsedSheetHeight = 92.dp.coerceAtMost(expandedSheetHeight)')&&riderApp.includes('.coerceIn(collapsedPx, expandedPx)') && !riderApp.includes('fillMaxHeight(0.62f)')&&riderApp.includes('recenterSignal'),'Rider native must keep map-first home with bottom dock and recenter control');
+ok(riderApp.includes('RiderLongdoMap(')&&
+   riderApp.includes('val fixedJobCardMaxHeight = if (activeSheetJob != null)')&&
+   riderApp.includes('(maxHeight * 0.56f).coerceAtLeast(220.dp)')&&
+   riderApp.includes('.heightIn(max = fixedJobCardMaxHeight)')&&
+   !riderApp.includes('jobSheetExpanded')&&
+   !riderApp.includes('draggedSheetHeightPx')&&
+   !riderApp.includes('sheetDragModifier')&&
+   !riderApp.includes('RiderMiniJobSheet(')&&
+   riderApp.includes('recenterSignal'),
+   'Rider native must keep a fixed non-draggable active job card over the map with recenter control');
 ok(riderApp.includes('val cachedAtComposition = remember { store.load() }')&&riderApp.includes('mutableStateOf<QueueGoAuth?>(cachedAtComposition)')&&riderApp.includes('pushStore.loadHomeSnapshot(auth.user.id)')&&riderApp.includes('pushStore.saveHomeSnapshot(auth.user.id, liveSnapshot)')&&riderApp.includes('rememberSaveable(auth.user.id) { mutableStateOf("home") }'),'Rider must restore encrypted session, active work snapshot and tab without a cold reload after activity recreation');
 ok(riderSessionStore.includes('saveHomeSnapshot(')&&riderSessionStore.includes('loadHomeSnapshot(')&&riderSessionStore.includes('home_snapshot'),'Rider session store must persist encrypted home work state for background/process recovery');
 ok(riderManifest.includes('android:launchMode="singleTask"')&&riderManifest.includes('android:alwaysRetainTaskState="true"'),'Rider launcher must reuse its existing task instead of creating a fresh work activity after app switching');
