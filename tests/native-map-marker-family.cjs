@@ -16,3 +16,9 @@ assert(tracking.includes('runCatching { view?.renderer?.map != null }') && track
 require('./native-map-marker-design.cjs');
 require('./native-rider-route-bundle-parity.cjs');
 console.log('Shared Customer/Rider semantic marker family and preserved crash guards: PASS');
+
+const map = read(root+'rider/src/main/java/com/queuego/rider/LongdoRiderMap.kt');
+assert(map.includes('if (stopPins.keys == desiredStops) lastOverlayKey = key'));
+assert(map.includes('ldmap.removePin(pin) }.onSuccess { stopPins.remove(stopKey) }'));
+assert(map.includes('.append(it.job.deliveryLat).append(":").append(it.job.deliveryLng)'));
+assert(!map.includes('stopPins.remove(key)?.let'));
