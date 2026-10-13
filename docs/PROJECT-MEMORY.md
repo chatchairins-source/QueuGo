@@ -1,3 +1,8 @@
+## 2026-10-14 continued exact-head navigation validation
+- Owner confirmed continuation/publication. Git HTTPS has no local credentials; published through the connected GitHub API with an expected old HEAD and no force. Remote ccbb64f has exactly local359bfc7 tree5e687b64; both7352807 and latest working35284c2 are retained as ancestors. Prior publication blocker is resolved.
+- Pilot38485198433 is validating ccbb64f; pending results must not be called PASS. Navigation emulator runner now enables Android animations at scale1 rather than disabling them, so marker interpolation is exercised. This runner change itself requires a new exact-head run.
+- Background design audit confirmed against Android Developers foreground-service types/restrictions documentation (https://developer.android.com/develop/background-work/services/fgs/service-types). Foreground-started, user-visible location FGS requires location type/permission plus granted foreground location; no blanket background permission addition. Existing return specialUse service still is not a location service. No background/service mutation in this mission.
+
 ## 2026-10-13 zero-jank navigation follow-up (unreleased)
 - Continued PR180 source7352807 and merged current Rider working35284c2 locally, retaining approved banners and all newer work. Remote backup `backup/rider-smooth-before-zero-jank-20261013` points to existing7352807; no reset/revert.
 - Marker cadence now uses the last received fix rather than last moved target, with animation shorter even than sub180ms cadence; renderer replacement cancels the old animator and failed movement permits retry. Existing cancellable animator uses SDK non-animated Pin mutation; no overlapping vendor animations.
