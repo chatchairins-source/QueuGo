@@ -155,7 +155,12 @@ private class RiderLongdoHolder(
                 .onFailure { Log.w("QueueGoLongdo", "map_on_resume_failed", it) }
                 .isSuccess
         }
-        if (resumed) startLocationUpdates(context)
+        if (resumed) {
+            // Never present an in-memory fix from before Google Maps/background as "current".
+            latestDeviceLocation = null
+            startLocationUpdates(context)
+            refreshOverlays(context, currentJob, currentPickups, currentBundleOrders)
+        }
     }
 
     fun pause() {
@@ -475,7 +480,7 @@ private fun deviceLocation(context: Context): Pair<Double, Double>? {
             .maxByOrNull { it.time }
             ?.takeIf { fix ->
                 val ageMs = System.currentTimeMillis() - fix.time
-                ageMs in 0..RIDER_MAP_LAST_KNOWN_MAX_AGE_MS &&
+                ageMs in 0L..RIDER_MAP_LAST_KNOWN_MAX_AGE_MS &&
                     fix.latitude.isFinite() && fix.longitude.isFinite() &&
                     fix.latitude in -90.0..90.0 && fix.longitude in -180.0..180.0
             }
