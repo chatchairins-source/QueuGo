@@ -62,6 +62,7 @@ private class RiderNavigationMapHolder {
     private var snapshotRefreshScheduled = false
     private var lastSnapshotCaptureAtMs = 0L
     private var bridgeGeneration = 0
+    private var announcedReplacementMap: com.longdo.api.Map? = null
     private var lastState = RiderNavigationMapState()
     private var riderPin: Pin? = null
     private var lastRiderFix: NavigationMapFix? = null
@@ -251,14 +252,20 @@ private class RiderNavigationMapHolder {
         publishDiagnostics()
     }
 
+    private fun announceRendererReplacement(nextMap: com.longdo.api.Map) {
+        if (map == null || map === nextMap || announcedReplacementMap === nextMap) return
+        announcedReplacementMap = nextMap
+        mapReplacementCount += 1
+        showContinuityBridge()
+    }
+
     fun attachMap(nextMap: com.longdo.api.Map): Boolean {
         if (map === nextMap) return false
-        val replacingExistingMap = map != null
-        if (replacingExistingMap) {
-            mapReplacementCount += 1
-            showContinuityBridge()
+        if (map != null && announcedReplacementMap !== nextMap) {
+            announceRendererReplacement(nextMap)
         }
         map = nextMap
+        announcedReplacementMap = null
         riderPin = null
         stopPins.clear()
         routeLines.clear()
@@ -275,7 +282,14 @@ private class RiderNavigationMapHolder {
     }
 
     fun resume() {
-        if (disposed || view == null) return
+        val activeView = view ?: return
+        if (disposed) return
+        // Longdo can swap renderer.map before it emits onMapCreated. Detect that identity
+        // change here so the last good frame covers the replacement immediately instead of
+        // exposing tile/base reconstruction for even a single visible frame.
+        val rendererMap = runCatching { activeView.renderer?.map }.getOrNull()
+        val replacementPending = rendererMap != null && map != null && rendererMap !== map
+        if (replacementPending) announceRendererReplacement(rendererMap!!)
         // Longdo's Activity lifecycle does not require MapGLSurfaceView.onResume().
         // Calling it after ordinary background/foreground transitions can replace renderer.map
         // and visibly reassemble the map even though the retained View itself never changed.
@@ -283,7 +297,8 @@ private class RiderNavigationMapHolder {
         // Deliberately keep lastRiderFix, map, pins and route layers. A refresh/resume must
         // never reconstruct the map just because Rider/order state changed.
         render(lastState)
-        settleContinuityBridge()
+        // Wait for onMapCreated + base/camera/route setup before uncovering a replacement map.
+        if (!replacementPending) settleContinuityBridge()
     }
 
     private fun captureCamera() {
@@ -587,6 +602,7 @@ private class RiderNavigationMapHolder {
         snapshotCaptureInFlight = false
         snapshotRefreshScheduled = false
         snapshotVisible = false
+        announcedReplacementMap = null
         resumed = false
         stopSource = null
         stopActiveId = null

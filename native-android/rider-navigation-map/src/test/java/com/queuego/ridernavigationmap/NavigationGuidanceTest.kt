@@ -80,8 +80,10 @@ class NavigationGuidanceTest {
         now += 8_000L
         val fifth = tracker.update(fix, routeLeg(), stop)
         val sixth = tracker.update(fix, routeLeg(), stop)
-        assertFalse(fifth.shouldReroute)
-        assertTrue(sixth.shouldReroute)
+        // Off-route evidence remained continuous during cooldown, so once the cooldown expires
+        // the next sample should reroute immediately instead of waiting for two new samples.
+        assertTrue(fifth.shouldReroute)
+        assertFalse(sixth.shouldReroute)
     }
 
     @Test fun weakGpsNeverTriggersReroute() {

@@ -71,6 +71,11 @@ assert(map.includes('fun retainAcrossVisibilityLoss()')&&
   'Ordinary tab/background visibility loss must not call Longdo onPause/onResume; SDK shutdown is reserved for real surface disposal');
 assert(map.includes('setPreserveEGLContextOnPause(true)'),
   'Navigation map must preserve the GL context across background/resume when Android allows it');
+assert(map.includes('announceRendererReplacement')&&
+  map.includes('activeView.renderer?.map')&&
+  map.includes('rendererMap !== map')&&
+  map.includes('Wait for onMapCreated + base/camera/route setup before uncovering a replacement map'),
+  'Renderer-map identity changes must trigger the frozen-frame bridge before Longdo onMapCreated exposes reconstruction');
 assert(map.includes('PixelCopy.request')&&map.includes('snapshotOverlay')&&
   map.includes('showContinuityBridge')&&map.includes('settleContinuityBridge')&&
   map.includes('The bridge is shown only when attachMap() detects a real map')&&
