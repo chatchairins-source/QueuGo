@@ -227,7 +227,7 @@ fun RiderProfileScreen(
                 }
                 RiderSettingDivider()
                 // Existing Android-only permission control; never an extra Home card.
-                RiderSettingRow("สิทธิ์กลับจากแอปนำทาง", "การแจ้งเตือนและสิทธิ์แสดงทับแอปอื่น", R.drawable.qg_rider_flow_loc, onClick = onNavigationSettings)
+                RiderSettingRow("ปุ่มลอยกลับ QueueGo", "ใช้ระหว่างเปิด Google Maps เพื่อนำทาง", R.drawable.qg_rider_flow_loc, onClick = onNavigationSettings)
             }
             Spacer(Modifier.height(10.dp))
             RiderProfileSection("ความเป็นส่วนตัวและบัญชี") {
