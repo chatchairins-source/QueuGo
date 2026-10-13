@@ -76,6 +76,35 @@ class RiderVerificationCommitTest {
     }
 
     @Test
+    fun staleEmptyRefreshAfterClaimKeepsAuthoritativeLocalJob() {
+        val claimed = job("rider_assigned")
+        val current = RiderSnapshot(true, claimed, null)
+        val emptyIncoming = RiderSnapshot(true, null, null)
+
+        val unresolved = riderResolveMissingActiveSnapshot(current, emptyIncoming, null)
+        assertEquals("order-1", unresolved.activeJob?.id)
+        assertEquals("rider_assigned", unresolved.activeJob?.status)
+
+        val confirmed = riderResolveMissingActiveSnapshot(current, emptyIncoming, job("in_progress"))
+        assertEquals("in_progress", confirmed.activeJob?.status)
+
+        val cancelled = riderResolveMissingActiveSnapshot(current, emptyIncoming, job("cancelled"))
+        assertEquals(null, cancelled.activeJob)
+    }
+
+    @Test
+    fun staleEmptyRefreshKeepsCompletedMarketPickupProgress() {
+        val marketJob = job("picked_up").copy(marketOrderId = "market-1")
+        val donePickup = MarketPickup("pickup-1", "PICKED_UP", "ร้าน", "ตลาด", 100.0, 14.0, 103.0)
+        val current = RiderSnapshot(true, marketJob, null, listOf(donePickup))
+        val emptyIncoming = RiderSnapshot(true, null, null)
+
+        val merged = riderResolveMissingActiveSnapshot(current, emptyIncoming, null)
+        assertEquals("order-1", merged.activeJob?.id)
+        assertTrue(merged.marketPickups.single().done)
+    }
+
+    @Test
     fun arrivalReadRequiresCommittedArrivalMarker() {
         assertFalse(riderArrivalReadCanReplace("shop", "order-1", RiderSnapshot(false, job("ready"), null)))
         assertTrue(

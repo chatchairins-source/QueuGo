@@ -355,6 +355,28 @@ internal fun riderMergeLiveSnapshot(current: RiderSnapshot, incoming: RiderSnaps
     return incoming.copy(activeJob = mergedJob, marketPickups = mergedPickups)
 }
 
+internal fun riderResolveMissingActiveSnapshot(
+    current: RiderSnapshot,
+    incoming: RiderSnapshot,
+    resolvedJob: RiderJob?
+): RiderSnapshot {
+    val currentJob = current.activeJob ?: return incoming
+    if (incoming.activeJob != null) return incoming
+    val status = resolvedJob?.status?.lowercase()
+    val activeStatuses = setOf("rider_assigned", "assigned", "preparing", "ready", "picked_up", "in_progress")
+    return when {
+        resolvedJob == null -> incoming.copy(
+            activeJob = currentJob,
+            marketPickups = if (currentJob.marketOrderId != null) current.marketPickups else incoming.marketPickups
+        )
+        resolvedJob.id == currentJob.id && status in activeStatuses -> incoming.copy(
+            activeJob = resolvedJob,
+            marketPickups = if (resolvedJob.marketOrderId != null) current.marketPickups else incoming.marketPickups
+        )
+        else -> incoming
+    }
+}
+
 internal fun riderArrivalReadCanReplace(target: String, jobId: String, updated: RiderSnapshot): Boolean {
     val candidate = updated.activeJob ?: return false
     if (candidate.id != jobId) return false
@@ -881,9 +903,19 @@ private fun RiderHome(
                     chatJob = null
                     activeTab = "home"
                 }
-                val mergedSnapshot = snapshot?.let { current ->
-                    riderMergeLiveSnapshot(current, liveSnapshot)
-                } ?: liveSnapshot
+                val currentSnapshot = snapshot
+                val resolvedSnapshot = if (currentSnapshot?.activeJob != null && liveSnapshot.activeJob == null) {
+                    val profileId = liveSnapshot.riderProfileId ?: currentSnapshot.riderProfileId
+                    val resolvedJob = profileId?.let { id ->
+                        runCatching { api.notificationJob(auth, currentSnapshot.activeJob.id, id) }
+                            .onFailure { if (it is CancellationException) throw it }
+                            .getOrNull()
+                    }
+                    riderResolveMissingActiveSnapshot(currentSnapshot, liveSnapshot, resolvedJob)
+                } else liveSnapshot
+                val mergedSnapshot = currentSnapshot?.let { current ->
+                    riderMergeLiveSnapshot(current, resolvedSnapshot)
+                } ?: resolvedSnapshot
                 snapshot = mergedSnapshot
                 pushStore.saveHomeSnapshot(auth.user.id, mergedSnapshot)
                 reconcileRiderOfferNotifications(context, auth.user.id, mergedSnapshot.offeredJob?.id)
@@ -1685,7 +1717,12 @@ private fun RiderHome(
                                             val updated = runCatching { api.riderSnapshot(auth) }
                                                 .onFailure { if (it is CancellationException) throw it }
                                                 .getOrNull()
-                                            if (updated != null) snapshot = updated
+                                                ?.takeIf { it.activeJob?.id == acceptedFallback.id }
+                                                ?.let { riderMergeLiveSnapshot(acceptedSnapshot, it) }
+                                            if (updated != null) {
+                                                snapshot = updated
+                                                pushStore.saveHomeSnapshot(auth.user.id, updated)
+                                            }
                                             openNavigation(context, updated?.activeJob ?: acceptedFallback)
                                         }
                                         .onFailure {

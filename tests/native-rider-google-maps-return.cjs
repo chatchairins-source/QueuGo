@@ -46,9 +46,15 @@ assert(service.includes('setSmallIcon(R.drawable.qg_notification)'),
   'Rider return foreground service must use the QueueGo notification asset, not an Android debug icon');
 assert(main.includes('override fun onResume()')&&main.includes('RiderReturnService.stop(this)'),
   'Returning to QueueGo must remove the floating overlay');
-assert(app.includes('riderMergeLiveSnapshot(current, liveSnapshot)')&&
+assert(app.includes('riderMergeLiveSnapshot(current, resolvedSnapshot)')&&
   app.includes('previousPickups[pickup.pickupId]?.takeIf { it.done && !pickup.done }'),
   'Rider refresh must reject same-job status regression and preserve completed Market pickup points');
+assert(app.includes('riderResolveMissingActiveSnapshot(currentSnapshot, liveSnapshot, resolvedJob)')&&
+  app.includes('api.notificationJob(auth, currentSnapshot.activeJob.id, id)'),
+  'A stale empty refresh after claim must resolve the current order before it can clear the authoritative local active job');
+assert(app.includes('takeIf { it.activeJob?.id == acceptedFallback.id }')&&
+  app.includes('riderMergeLiveSnapshot(acceptedSnapshot, it)'),
+  'Accept-offer follow-up reads must never replace the authoritative local claim with an empty or different active job');
 assert(app.includes('val committedMarker = "local:" + System.currentTimeMillis()')&&
   app.includes('riderArrivalReadCanReplace(target, job.id, it)')&&
   app.includes('pushStore.saveHomeSnapshot(auth.user.id, committedSnapshot)'),
