@@ -287,6 +287,15 @@ main:has(.qg-customer-action-dock){padding-bottom:calc(142px + env(safe-area-ins
 .qg-shopping-banner-art.fashion_accessories{background-size:300% 300%;background-position:left bottom}
 .qg-shopping-banner-art.toys{background-size:300% 300%;background-position:center bottom}
 .qg-shopping-banner-art.home_decor{background-size:300% 300%;background-position:right bottom}
+.qg-shopping-photo-card{padding:0!important;overflow:hidden;display:block!important;text-align:left!important;background:#fff!important}
+.qg-shopping-photo-card>span{display:block;padding:10px 11px 12px;font-weight:800;line-height:1.25}
+.qg-shopping-card-art{width:100%;aspect-ratio:1.55/1;background-image:url('assets/shopping/qg-shopping-sprite.webp');background-repeat:no-repeat;background-color:#f2f2f2}
+.qg-shopping-card-art.mobile_accessories{background-size:300% 300%;background-position:left 50%}
+.qg-shopping-card-art.computer_it{background-size:300% 300%;background-position:center 50%}
+.qg-shopping-card-art.automotive{background-size:300% 300%;background-position:right 50%}
+.qg-shopping-card-art.fashion_accessories{background-size:300% 300%;background-position:left bottom}
+.qg-shopping-card-art.toys{background-size:300% 300%;background-position:center bottom}
+.qg-shopping-card-art.home_decor{background-size:300% 300%;background-position:right bottom}
 .qg-service-banner-copy{position:absolute;inset:auto 0 0;padding:30px 18px 16px;color:#fff;background:linear-gradient(transparent,rgba(0,0,0,.68))}
 .qg-service-banner-copy b{display:block;font-size:20px;line-height:1.15}.qg-service-banner-copy small{display:block;margin-top:4px;font-size:12px;color:#fff}
 .qg-service-banner[role="link"]{cursor:pointer}
@@ -1068,12 +1077,12 @@ V.shopping=async(mode,ticket=routeVersion)=>{
     return (Number.isFinite(da)?da:Infinity)-(Number.isFinite(dbb)?dbb:Infinity);
   });
   const categoryGrid=selected==='all'?`<div class="qg-shopping-categories">
-    <button class="qg-shopping-category" onclick="go('shopping/mobile_accessories')"><i>${ico('phone',26)}</i><span>มือถือและอุปกรณ์</span></button>
-    <button class="qg-shopping-category" onclick="go('shopping/computer_it')"><i>${ico('monitor',26)}</i><span>คอมพิวเตอร์และไอที</span></button>
-    <button class="qg-shopping-category" onclick="go('shopping/automotive')"><i>${ico('gear',26)}</i><span>อะไหล่ยานยนต์</span></button>
-    <button class="qg-shopping-category" onclick="go('shopping/fashion_accessories')"><i>${ico('shirt',26)}</i><span>เสื้อผ้าและเครื่องประดับ</span></button>
-    <button class="qg-shopping-category" onclick="go('shopping/toys')"><i>${ico('toy',26)}</i><span>ของเล่น</span></button>
-    <button class="qg-shopping-category" onclick="go('shopping/home_decor')"><i>${ico('decor',26)}</i><span>ตกแต่งบ้าน</span></button>
+    <button class="qg-shopping-category qg-shopping-photo-card" onclick="go('shopping/mobile_accessories')"><div class="qg-shopping-card-art mobile_accessories" aria-hidden="true"></div><span>มือถือและอุปกรณ์</span></button>
+    <button class="qg-shopping-category qg-shopping-photo-card" onclick="go('shopping/computer_it')"><div class="qg-shopping-card-art computer_it" aria-hidden="true"></div><span>คอมพิวเตอร์และไอที</span></button>
+    <button class="qg-shopping-category qg-shopping-photo-card" onclick="go('shopping/automotive')"><div class="qg-shopping-card-art automotive" aria-hidden="true"></div><span>อะไหล่ยานยนต์</span></button>
+    <button class="qg-shopping-category qg-shopping-photo-card" onclick="go('shopping/fashion_accessories')"><div class="qg-shopping-card-art fashion_accessories" aria-hidden="true"></div><span>เสื้อผ้าและเครื่องประดับ</span></button>
+    <button class="qg-shopping-category qg-shopping-photo-card" onclick="go('shopping/toys')"><div class="qg-shopping-card-art toys" aria-hidden="true"></div><span>ของเล่น</span></button>
+    <button class="qg-shopping-category qg-shopping-photo-card" onclick="go('shopping/home_decor')"><div class="qg-shopping-card-art home_decor" aria-hidden="true"></div><span>ตกแต่งบ้าน</span></button>
   </div>`:'';
   const autoFilters=selected.startsWith('automotive')?`<div class="qg-shopping-filters">
     <button class="${selected==='automotive'?'active':''}" onclick="go('shopping/automotive')">ทั้งหมด</button>
