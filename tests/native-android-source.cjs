@@ -233,7 +233,9 @@ ok(riderApp.includes('RiderLongdoMap(')&&
 ok(riderApp.includes('val cachedAtComposition = remember { store.load() }')&&
    riderApp.includes('mutableStateOf<QueueGoAuth?>(cachedAtComposition)')&&
    riderApp.includes('pushStore.loadHomeSnapshot(auth.user.id)')&&
-   riderApp.includes('riderResolveMissingActiveSnapshot(currentSnapshot, liveSnapshot, resolvedJob)')&&
+   riderApp.includes('riderResolveMissingActiveSnapshot(')&&
+   riderApp.includes('lookup?.getOrNull()')&&
+   riderApp.includes('lookup?.isSuccess == true')&&
    riderApp.includes('pushStore.saveHomeSnapshot(auth.user.id, mergedSnapshot)')&&
    riderApp.includes('rememberSaveable(auth.user.id) { mutableStateOf(pushStore.loadActiveTab(auth.user.id)) }')&&
    riderApp.includes('pushStore.saveActiveTab(auth.user.id, activeTab)'),
