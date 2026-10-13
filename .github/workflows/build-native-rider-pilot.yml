@@ -208,7 +208,7 @@ jobs:
       # Public APK/AAB delivery requires the full three-role Release Gate.
 
   map-display-only:
-    if: ${{ startsWith(github.ref, 'refs/heads/work-native-map-display-') }}
+    if: ${{ startsWith(github.ref, 'refs/heads/work-native-map-display-') || github.ref == 'refs/heads/work-native-rider-authenticated-20261012' }}
     runs-on: ubuntu-latest
     timeout-minutes: 35
     steps:
