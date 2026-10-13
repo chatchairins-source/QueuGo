@@ -25,5 +25,13 @@ assert(map.includes('layerURL = "https://ms.longdo.com/map/msn-server/tile.php"'
 assert(capture.includes('len(retained_frames["files"]) == 9'),
   'A successful instrumentation run must retain all nine valid original evidence files');
 require('child_process').execFileSync('python3',['tests/native-map-evidence-retention.py'],{stdio:'inherit'});
+assert(map.includes('R.drawable.qg_rider_current_location')&&
+  map.includes('latestDeviceLocation')&&map.includes('recenterOnNextFix = true'),
+  'Rider map must use the QueueGo current-location marker and refresh/recenter again on the next fresh location fix');
+for(const marker of ['qg_rider_stop_1','qg_rider_stop_2','qg_rider_stop_3','qg_rider_stop_4']){
+  assert(fs.existsSync('native-android/rider/src/main/res/drawable/'+marker+'.xml'),
+    'Numbered Rider stop marker missing: '+marker);
+}
+
 
 console.log('Native Rider Longdo runtime evidence budget contracts: PASS');
