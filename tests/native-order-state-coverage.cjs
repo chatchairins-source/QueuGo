@@ -103,8 +103,12 @@ ok(riderUi.includes('job.status == "in_progress" && job.customerArrived -> onDel
    riderUi.includes('job.status == "in_progress" && job.customerArrived -> "ส่งมอบสินค้า"')&&
    riderUi.includes('job.status == "in_progress" && navigationStarted -> "ถึงลูกค้าแล้ว"'),
   'Rider in-progress handoff must require persisted arrival and pre-arrival action must record arrival');
-ok(riderUi.includes('job.status == "picked_up" -> onStartDelivery()')&&riderUi.includes('api.startDelivery(auth, current.activeJob)')&&riderUi.includes('openNavigation(context, current.activeJob.copy(status = "in_progress"))'),
-  'Rider picked_up state must explicitly start delivery/navigation');
+ok(riderUi.includes('job.status == "picked_up" -> onStartDelivery()')&&
+   riderUi.includes('api.startDelivery(auth, current.activeJob)')&&
+   riderUi.includes('val committedJob = current.activeJob.copy(status = "in_progress")')&&
+   riderUi.includes('openNavigation(context, committedRead?.activeJob ?: committedJob)')&&
+   riderUi.includes('completedMode == "pickup" && pickupCommittedStatus == "in_progress"'),
+  'Rider picked_up fallback must commit in_progress before customer Maps handoff while normal pickup may auto-advance');
 ok(riderUi.includes('else -> "นำทางไปลูกค้า"')&&riderUi.includes('else -> { onNavigate(); navigationStarted ='),
   'Rider delivery state must retain navigation before arrival');
 ok(riderApi.includes('&status=eq.completed&order=updated_at.desc'),
