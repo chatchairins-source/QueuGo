@@ -28,6 +28,11 @@ require('child_process').execFileSync('python3',['tests/native-map-evidence-rete
 assert(map.includes('R.drawable.qg_rider_current_location')&&
   map.includes('latestDeviceLocation')&&map.includes('recenterOnNextFix = true'),
   'Rider map must use the QueueGo current-location marker and refresh/recenter again on the next fresh location fix');
+assert(map.includes('currentLocationPin')&&
+  map.includes('existing.setLocation(mapLocation, true, RIDER_MAP_LOCATION_ANIMATION_SECONDS)')&&
+  map.includes('pin.setOffset(PointF(0f, -0.4f))')&&
+  !map.includes('append(location?.first).append(",").append(location?.second)'),
+  'Rider GPS updates must move the current-location pin smoothly without rebuilding numbered stops on every fix');
 assert(map.includes('RIDER_MAP_LOCATION_REFRESH_MS = 2_500L')&&
   map.includes('RIDER_MAP_LOCATION_REFRESH_METERS = 2f')&&
   map.includes('RIDER_MAP_LAST_KNOWN_MAX_AGE_MS = 120_000L')&&
