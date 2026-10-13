@@ -224,10 +224,18 @@ data class RiderRouteBundleState(
     fun currentOrder(): RiderBundleOrder? {
         val live = activeOrders.filter { it.job.status !in setOf("cancelled", "completed") }
         if (live.isEmpty()) return null
-        live.firstOrNull { it.job.status == "in_progress" }?.let { return it }
+
+        // A picked-up order can already be in_progress while another bundled shop is
+        // still waiting for pickup. Finish every authoritative pickup stop first.
         live.filter { it.job.status in setOf("rider_assigned", "preparing", "ready", "assigned") }
-            .minByOrNull { it.bundleSequence }?.let { return it }
-        return live.filter { it.job.status == "picked_up" }.minByOrNull { it.dropRank } ?: live.first()
+            .minByOrNull { it.bundleSequence }
+            ?.let { return it }
+
+        // After pickups are exhausted, follow the Production drop rank rather than
+        // arbitrary bundle/list order. This also covers legacy picked_up reads.
+        return live.filter { it.job.status in setOf("picked_up", "in_progress") }
+            .minByOrNull { it.dropRank }
+            ?: live.minByOrNull { it.bundleSequence }
     }
 }
 
