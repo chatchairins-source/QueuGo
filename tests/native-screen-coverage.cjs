@@ -51,6 +51,7 @@ ok(riderLogin.includes('Text("Queue"')&&riderLogin.includes('Text("Go"')&&
    'Every Rider login viewport must keep the QueueGo Rider brand inside the centered auth group');
 
 const riderHome=fs.readFileSync('native-android/rider/src/main/java/com/queuego/rider/QueueGoRiderApp.kt','utf8');
+const merchantHome=fs.readFileSync('native-android/merchant/src/main/java/com/queuego/merchant/QueueGoMerchantApp.kt','utf8');
 const riderApi=fs.readFileSync('native-android/rider/src/main/java/com/queuego/rider/QueueGoApi.kt','utf8');
 const riderStore=fs.readFileSync('native-android/rider/src/main/java/com/queuego/rider/SessionStore.kt','utf8');
 ok(riderStore.includes('setOf("home", "earn", "chat", "profile")')&&
@@ -62,6 +63,12 @@ for(const field of ['customerSubtotal','customerDeliveryFee','customerServiceFee
      riderStore.includes(field+' = o.optNullableDouble("'+field+'")'),
      'Rider cached job must preserve '+field+' across process recreation');
 }
+ok(merchantHome.includes('"rider_assigned", "assigned" -> {')&&
+   merchantHome.includes('onClick = { onAction("preparing", null) }'),
+   'Merchant must be able to start preparing immediately after Rider assignment without waiting for Rider arrival');
+ok(!riderHome.includes('"กำลังเชื่อมต่อ Longdo Map…"')&&
+   !riderHome.includes('if (loadError == null) {\n                    CircularProgressIndicator()'),
+   'Rider Home must refresh silently without center or side loading indicators when no user action is blocked');
 ok(riderHome.includes('private fun RiderBlueprintBrandPill()')&&riderHome.includes('horizontalArrangement = Arrangement.SpaceBetween')&&
    riderHome.includes('Text("Queue"')&&riderHome.includes('Text("Go", color = QgRed')&&riderHome.includes('Text("Rider", color = Color(0xFF8D8589)'),
    'Rider Native home topbar must retain the Production QueueGo Rider brand pill beside online status');
