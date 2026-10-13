@@ -41,6 +41,10 @@ assert(map.includes('val pickupOrder = numberedOrders.sortedWith')&&
   'Longdo map must number bundled pickup stops first and customer drops after them');
 assert(map.includes('!bundled.job.shopArrived && !bundled.job.isDelivering'),
   'Bundle pickup marker must disappear once that Rider reaches or passes the shop stop');
+assert(map.includes('append(job?.shopArrived ?: false)')&&
+  map.includes('.append(it.job.shopArrived).append(":")')&&
+  map.includes('job?.arrivedShopAt'),
+  'Rider stop cache must invalidate immediately when shop arrival changes for base and bundled jobs');
 assert(map.includes('addStopPin(job.deliveryLat, job.deliveryLng, 2)')&&
   map.includes('!job.shopArrived && !job.isDelivering'),
   'Base Rider map must keep shop as point 1, customer as point 2, and hide point 1 after shop arrival');
