@@ -19,9 +19,11 @@ ok(vm.runInContext("qgServiceBannerMarkup('toys','','','')",ctx)==='','Admin hid
 vm.runInContext("serviceBannerConfigCache={toys:{image_url:'https://example.invalid/banner.webp'}}",ctx);
 const html=vm.runInContext("qgServiceBannerMarkup('toys','','title','subtitle')",ctx);
 ok(html.includes('src="https://example.invalid/banner.webp"'),'managed image precedence');
-ok(html.includes('data-fallback="assets/banners/qg_toys_banner.webp"'),'managed image failure fallback');
+ok(html.includes('data-fallback="assets/banners/qg_toys_banner.webp?v=20261013-bright1"'),'managed image failure fallback');
 ok(!source.includes('qg-shopping-banner-art'),'retired corrupt sprite path');
 const shopping=source.slice(source.indexOf('V.shopping=async'),source.indexOf('async function shareShop'));
 ok(!/qg-shopping-category[^>]*>[\s]*<img/.test(shopping),'retain category icons, pictures only in banners');
 ok(fs.readFileSync(path.join(root,'laundry/index.html'),'utf8').includes('assets/banners/qg_laundry_banner.webp'),'Laundry banner image');
+ok(source.includes('color:#17191d;background:linear-gradient(transparent,rgba(255,255,255,.94))'),'banner text uses a light wash');
+ok(!source.includes('padding:30px 18px 16px;color:#fff;background:linear-gradient(transparent,rgba(0,0,0,.68))'),'no dark banner panel');
 console.log(JSON.stringify({checks,failures:0,scope:'all category banner WebP files, image budget, Admin override/hide/failure and retained category icons'}));
