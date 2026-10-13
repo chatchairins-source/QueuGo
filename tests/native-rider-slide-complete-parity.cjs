@@ -27,8 +27,10 @@ assert(api.includes('select=subtotal,delivery_fee,multi_shop_service_fee,rider_b
   'Market Rider cash breakdown must use Production parent totals without treating Rider bonus as customer delivery fee');
 assert(app.includes('riderPickupCommittedStatus(mutationResult)')&&
   app.includes('riderPickupReadCanReplace(pickupCommittedStatus, job.id, candidate)')&&
-  app.includes('job.copy(status = pickupCommittedStatus ?: "picked_up")'),
-  'Pickup photo success must keep authoritative in_progress state through stale reads before Google Maps handoff');
+  app.includes('riderApplyPickupCommit(')&&
+  app.includes('val nextStop = committedRead?.activeJob')&&
+  app.includes('?: localAfterSuccess?.activeJob'),
+  'Pickup photo success must preserve the committed order through stale reads and hand Google Maps the authoritative next stop');
 
 assert(app.includes('RiderSlideComplete(')&&app.includes('label = "สไลด์เพื่อส่งสำเร็จ"'),
   'Delivery verification must use slide-to-complete');
