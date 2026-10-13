@@ -6,7 +6,6 @@ const api=fs.readFileSync('native-android/rider/src/main/java/com/queuego/rider/
 const app=fs.readFileSync('native-android/rider/src/main/java/com/queuego/rider/QueueGoRiderApp.kt','utf8');
 const profile=fs.readFileSync('native-android/rider/src/main/java/com/queuego/rider/RiderProfileScreen.kt','utf8');
 const ui=fs.readFileSync('native-android/rider/src/main/java/com/queuego/rider/RiderLaundryUi.kt','utf8');
-const nav=fs.readFileSync('native-android/rider/src/main/java/com/queuego/rider/RiderNavigation.kt','utf8');
 
 assert(models.includes('val featureEnabled: Boolean = false'),'Laundry feature switch must remain in Rider snapshot state');
 assert(models.includes('internal fun RiderLaundryJob.asMapJob()'),'Laundry active jobs must render on the real Native map');
