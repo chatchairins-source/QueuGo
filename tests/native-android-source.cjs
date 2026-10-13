@@ -66,6 +66,22 @@ ok(gradle.includes('applicationId = "com.queuego.rider"'),'Rider package id');
 ok(/compileSdk\s*=\s*36/.test(gradle),'compileSdk 36');
 ok(/targetSdk\s*=\s*36/.test(gradle),'targetSdk 36');
 
+const riderIcon=read('rider/src/main/res/drawable/ic_queuego_foreground.xml');
+const riderAdaptive33=read('rider/src/main/res/mipmap-anydpi-v33/ic_queuego_launcher.xml');
+ok(riderIcon.includes('#E6002D')&&riderIcon.includes('fillType="evenOdd"')&&!riderIcon.includes('strokeColor="#EF3340"'),
+   'Rider launcher must use the simplified bold QueueGo red Q mark');
+ok(riderAdaptive33.includes('<monochrome android:drawable="@drawable/ic_queuego_monochrome"'),
+   'Rider launcher must expose Android 13+ monochrome icon support');
+for(const density of ['mdpi','hdpi','xhdpi','xxhdpi','xxxhdpi']){
+  ok(fs.existsSync(path.join(root,'rider/src/main/res/mipmap-'+density+'/ic_queuego_launcher.xml')),
+     'Rider launcher vector missing for '+density);
+  ok(!fs.existsSync(path.join(root,'rider/src/main/res/mipmap-'+density+'/ic_queuego_launcher.png')),
+     'legacy Rider launcher bitmap must not shadow the new Q asset for '+density);
+}
+const playStoreIcon=fs.readFileSync(path.join(root,'rider/play-store/queuego-rider-icon-512.png'));
+ok(playStoreIcon.subarray(0,8).equals(Buffer.from([137,80,78,71,13,10,26,10])),'Rider Play Store icon must be PNG');
+ok(playStoreIcon.readUInt32BE(16)===512&&playStoreIcon.readUInt32BE(20)===512,'Rider Play Store icon must be exactly 512x512');
+
 const all=[];
 (function walk(dir){
   for(const name of fs.readdirSync(dir)){
