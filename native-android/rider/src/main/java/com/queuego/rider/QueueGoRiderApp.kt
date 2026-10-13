@@ -297,6 +297,27 @@ fun QueueGoRiderApp(pushTarget: NativePushLaunchTarget? = null) {
     }
 }
 
+internal fun riderPickupCommittedStatus(mutationResult: Any?): String =
+    when (mutationResult?.toString()?.trim()?.lowercase()) {
+        "in_progress" -> "in_progress"
+        "picked_up" -> "picked_up"
+        else -> "picked_up"
+    }
+
+internal fun riderPickupReadCanReplace(
+    committedStatus: String,
+    jobId: String,
+    updated: RiderSnapshot
+): Boolean {
+    val candidate = updated.activeJob ?: return false
+    if (candidate.id != jobId) return false
+    val status = candidate.status.lowercase()
+    return when (committedStatus.lowercase()) {
+        "in_progress" -> status in setOf("in_progress", "completed")
+        else -> status in setOf("picked_up", "in_progress", "completed")
+    }
+}
+
 internal fun riderVerificationCommitVisible(
     mode: String,
     jobId: String,
@@ -993,8 +1014,11 @@ private fun RiderHome(
                             )
                         }
                     }
-                    result.onSuccess {
+                    result.onSuccess { mutationResult ->
                         val completedMode = verifyMode
+                        val pickupCommittedStatus = if (completedMode == "pickup") {
+                            riderPickupCommittedStatus(mutationResult)
+                        } else null
                         val before = snapshot
                         actionMessage = when (completedMode) {
                             "pickup" -> "รับสินค้าแล้ว · กำลังเปิดนำทางไปลูกค้า"
@@ -1007,7 +1031,7 @@ private fun RiderHome(
                         // never return Rider to the same verification/photo step.
                         val localAfterSuccess = when (completedMode) {
                             "pickup" -> before?.copy(
-                                activeJob = job.copy(status = "picked_up"),
+                                activeJob = job.copy(status = pickupCommittedStatus ?: "picked_up"),
                                 offeredJob = null
                             )
                             "marketPickup" -> {
@@ -1048,12 +1072,16 @@ private fun RiderHome(
                             .onFailure { if (it is CancellationException) throw it }
                             .getOrNull()
                         val committedRead = updated?.takeIf { candidate ->
-                            riderVerificationCommitVisible(
+                            val visible = riderVerificationCommitVisible(
                                 completedMode.orEmpty(),
                                 job.id,
                                 verifyMarketPickup?.pickupId,
                                 candidate
                             )
+                            val monotonicPickup = completedMode != "pickup" ||
+                                pickupCommittedStatus == null ||
+                                riderPickupReadCanReplace(pickupCommittedStatus, job.id, candidate)
+                            visible && monotonicPickup
                         }
                         if (committedRead != null) {
                             snapshot = committedRead
@@ -1063,7 +1091,7 @@ private fun RiderHome(
                         if (completedMode == "pickup") {
                             val pickedUp = committedRead?.activeJob
                                 ?: localAfterSuccess?.activeJob
-                                ?: job.copy(status = "picked_up")
+                                ?: job.copy(status = pickupCommittedStatus ?: "picked_up")
                             openNavigation(context, pickedUp)
                         }
                     }.onFailure {
