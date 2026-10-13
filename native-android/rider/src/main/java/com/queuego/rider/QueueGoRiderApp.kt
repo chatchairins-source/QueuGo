@@ -989,22 +989,68 @@ private fun RiderHome(
                     }
                     result.onSuccess {
                         val completedMode = verifyMode
+                        val before = snapshot
                         actionMessage = when (completedMode) {
                             "pickup" -> "รับสินค้าแล้ว · กำลังเปิดนำทางไปลูกค้า"
                             "marketPickup" -> "รับสินค้าจุดนี้แล้ว"
                             else -> "จัดส่งสำเร็จ"
                         }
+
+                        // The successful mutation is authoritative. Promote the local
+                        // workflow immediately so a slow/failed snapshot refresh can
+                        // never return Rider to the same verification/photo step.
+                        val localAfterSuccess = when (completedMode) {
+                            "pickup" -> before?.copy(
+                                activeJob = job.copy(status = "picked_up"),
+                                offeredJob = null
+                            )
+                            "marketPickup" -> {
+                                val pickupId = verifyMarketPickup?.pickupId
+                                before?.copy(
+                                    marketPickups = before.marketPickups.map { pickup ->
+                                        if (pickup.pickupId == pickupId) pickup.copy(status = "PICKED_UP") else pickup
+                                    }
+                                )
+                            }
+                            else -> {
+                                val bundleAfter = before?.bundle?.copy(
+                                    activeOrders = before.bundle.activeOrders.map { bundled ->
+                                        if (bundled.job.id == job.id) {
+                                            bundled.copy(job = bundled.job.copy(status = "completed"))
+                                        } else bundled
+                                    }
+                                )
+                                before?.copy(
+                                    activeJob = bundleAfter?.currentOrder()?.job,
+                                    marketPickups = emptyList(),
+                                    bundle = bundleAfter ?: before.bundle
+                                )
+                            }
+                        }
+                        if (localAfterSuccess != null) {
+                            snapshot = localAfterSuccess
+                            pushStore.saveHomeSnapshot(auth.user.id, localAfterSuccess)
+                        }
+
                         if (completedMode == "delivery") {
                             RiderReturnService.stop(context)
                             deliverySuccessJob = job
                         }
                         closeVerification()
-                        val updated = runCatching { api.riderSnapshot(auth) }.getOrNull()
-                        if (updated != null) snapshot = updated
+
+                        val updated = runCatching { api.riderSnapshot(auth) }
+                            .onFailure { if (it is CancellationException) throw it }
+                            .getOrNull()
+                        if (updated != null) {
+                            snapshot = updated
+                            pushStore.saveHomeSnapshot(auth.user.id, updated)
+                        }
+
                         if (completedMode == "pickup") {
-                            updated?.activeJob?.let { pickedUp ->
-                                openNavigation(context, pickedUp)
-                            }
+                            val pickedUp = updated?.activeJob
+                                ?: localAfterSuccess?.activeJob
+                                ?: job.copy(status = "picked_up")
+                            openNavigation(context, pickedUp)
                         }
                     }.onFailure {
                         actionMessage = it.message ?: "บันทึกหลักฐานไม่สำเร็จ"
