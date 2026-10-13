@@ -31,6 +31,9 @@ assert(!map.includes('LaunchedEffect(state)')&&
   !map.includes('state.stops === stopSource')&&!map.includes('state.routes === routeSource')&&
   !map.includes('routes.hashCode()'),
   'GPS/order refresh must not render twice or rebuild structurally-equivalent route geometry');
+assert(map.includes('stopSource = null')&&map.includes('routeSource = null')&&
+  map.includes('if (!pushed) renderSucceeded = false')&&map.includes('failedToRemove.isNotEmpty()'),
+  'Transient Longdo pin/line failures must remain retryable instead of caching a partial frame');
 assert(map.includes('setPreserveEGLContextOnPause(true)'),
   'Navigation map must preserve the GL context across background/resume to avoid tile reconstruction');
 assert(map.includes('ACTIVE_ROUTE_COLOR')&&map.includes('FUTURE_ROUTE_COLOR')&&

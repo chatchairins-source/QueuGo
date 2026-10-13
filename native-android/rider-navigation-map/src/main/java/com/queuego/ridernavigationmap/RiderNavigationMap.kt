@@ -174,11 +174,17 @@ private class RiderNavigationMapHolder(
         val activeStopId = state.resolvedActiveStopId()
         if (state.stops == stopSource && activeStopId == stopActiveId) return
         val desired = state.remainingStops().associateBy { it.id }
+        var renderSucceeded = true
 
-        stopPins.keys.filter { it !in desired.keys }.forEach { id ->
-            val rendered = stopPins.remove(id) ?: return@forEach
-            runCatching { activeMap.removePin(rendered.pin) }
-            stopMutationCount += 1
+        stopPins.keys.filter { it !in desired.keys }.toList().forEach { id ->
+            val rendered = stopPins[id] ?: return@forEach
+            val removed = runCatching { activeMap.removePin(rendered.pin) }.isSuccess
+            if (removed) {
+                stopPins.remove(id)
+                stopMutationCount += 1
+            } else {
+                renderSucceeded = false
+            }
         }
 
         desired.values.forEach { stop ->
@@ -191,21 +197,39 @@ private class RiderNavigationMapHolder(
             ).joinToString("|")
             val existing = stopPins[stop.id]
             if (existing?.signature == signature) return@forEach
-            existing?.let { runCatching { activeMap.removePin(it.pin) } }
+
+            if (existing != null) {
+                val removed = runCatching { activeMap.removePin(existing.pin) }.isSuccess
+                if (!removed) {
+                    renderSucceeded = false
+                    return@forEach
+                }
+                stopPins.remove(stop.id)
+                stopMutationCount += 1
+            }
 
             val pin = Pin(
                 MapLocation(stop.point.longitude, stop.point.latitude),
                 stopBitmap(stop.kind, stop.sequence, stop.id == activeStopId)
             )
             pin.setOffset(PointF(0f, -0.4f))
-            runCatching { activeMap.pushPin(pin) }
+            val pushed = runCatching { activeMap.pushPin(pin) }
                 .onSuccess {
                     stopPins[stop.id] = RenderedStop(signature, pin)
                     stopMutationCount += 1
                 }
+                .isSuccess
+            if (!pushed) renderSucceeded = false
         }
-        stopSource = state.stops
-        stopActiveId = activeStopId
+
+        if (renderSucceeded && stopPins.keys == desired.keys) {
+            stopSource = state.stops
+            stopActiveId = activeStopId
+        } else {
+            // Do not cache a partial frame: the next refresh/resume must retry missing pins.
+            stopSource = null
+            stopActiveId = null
+        }
         publishDiagnostics()
     }
 
@@ -218,9 +242,20 @@ private class RiderNavigationMapHolder(
         ) return
 
         val routes = state.styledRemainingRoutes()
-        routeLines.forEach { line -> runCatching { activeMap.removeLine(line) } }
+        val failedToRemove = routeLines.filter { line ->
+            runCatching { activeMap.removeLine(line) }.isFailure
+        }
         routeLines.clear()
+        routeLines.addAll(failedToRemove)
+        if (failedToRemove.isNotEmpty()) {
+            routeSource = null
+            routeActiveId = null
+            routeRemainingStopIds = emptySet()
+            publishDiagnostics()
+            return
+        }
 
+        var renderSucceeded = true
         // Future legs first, active leg last so the dark-red current path stays visually dominant.
         routes.sortedBy { if (it.style == NavigationRouteStyle.FUTURE) 0 else 1 }
             .forEach { segment ->
@@ -233,13 +268,23 @@ private class RiderNavigationMapHolder(
                         else FUTURE_ROUTE_COLOR
                     )
                 }
-                runCatching { activeMap.addLine(line) }.onSuccess { routeLines += line }
+                val added = runCatching { activeMap.addLine(line) }
+                    .onSuccess { routeLines += line }
+                    .isSuccess
+                if (!added) renderSucceeded = false
             }
 
-        routeSource = state.routes
-        routeActiveId = activeStopId
-        routeRemainingStopIds = remainingStopIds
-        routeLayerRebuildCount += 1
+        if (renderSucceeded && routeLines.size == routes.size) {
+            routeSource = state.routes
+            routeActiveId = activeStopId
+            routeRemainingStopIds = remainingStopIds
+            routeLayerRebuildCount += 1
+        } else {
+            // Keep partial route layers visible only until the next render can clean/rebuild them.
+            routeSource = null
+            routeActiveId = null
+            routeRemainingStopIds = emptySet()
+        }
         publishDiagnostics()
     }
 
