@@ -109,8 +109,9 @@ class NavigationMapRuntimeActivity : ComponentActivity() {
     }
 
     fun routeLineIdentities(): List<Int> {
-        val map = requireNotNull(findMapView(window.decorView).renderer.map)
-        return map.allLines.map(System::identityHashCode)
+        val mapView = requireNotNull(findMapView(window.decorView))
+        val activeMap = requireNotNull(mapView.renderer.map)
+        return activeMap.allLines.map { line -> System.identityHashCode(line) }
     }
 
     fun dispatchTapOnMap() {
