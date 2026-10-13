@@ -1,0 +1,169 @@
+package com.queuego.ridernavigationmap
+
+import kotlinx.coroutines.runBlocking
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertTrue
+import org.junit.Test
+
+class NavigationRouteCoordinatorTest {
+    private class FakeRouteProvider : NavigationRouteProvider {
+        data class Call(
+            val from: NavigationMapPoint,
+            val stopId: String,
+            val segmentId: String
+        )
+        val calls = mutableListOf<Call>()
+        var failNext = false
+
+        override suspend fun route(
+            from: NavigationMapPoint,
+            stop: NavigationMapStop,
+            segmentId: String
+        ): NavigationRouteLeg {
+            if (failNext) {
+                failNext = false
+                error("route unavailable")
+            }
+            calls += Call(from, stop.id, segmentId)
+            val mid = NavigationMapPoint(
+                latitude = (from.latitude + stop.point.latitude) / 2.0,
+                longitude = (from.longitude + stop.point.longitude) / 2.0
+            )
+            return NavigationRouteLeg(
+                segment = NavigationRouteSegment(
+                    id = segmentId,
+                    toStopId = stop.id,
+                    points = listOf(from, mid, stop.point),
+                    style = NavigationRouteStyle.ACTIVE
+                ),
+                distanceMeters = 1200.0,
+                durationSeconds = 240.0,
+                instructions = listOf(
+                    NavigationRouteInstruction(0, 5, "ถนนหลัก", 600.0, 120.0),
+                    NavigationRouteInstruction(1, 1, "ถนนปลายทาง", 600.0, 120.0)
+                )
+            )
+        }
+    }
+
+    private val pickup = NavigationMapStop(
+        id = "pickup-1",
+        sequence = 1,
+        kind = NavigationStopKind.PICKUP,
+        point = NavigationMapPoint(13.0000, 100.0100)
+    )
+    private val customer = NavigationMapStop(
+        id = "dropoff-2",
+        sequence = 2,
+        kind = NavigationStopKind.DROPOFF,
+        point = NavigationMapPoint(13.0100, 100.0100)
+    )
+    private val futureRoute = NavigationRouteSegment(
+        id = "future-dropoff",
+        toStopId = customer.id,
+        points = listOf(pickup.point, customer.point),
+        style = NavigationRouteStyle.FUTURE
+    )
+
+    private fun state(
+        riderPoint: NavigationMapPoint = NavigationMapPoint(13.0000, 100.0000),
+        pickupCompleted: Boolean = false
+    ) = RiderNavigationMapState(
+        rider = NavigationMapFix(
+            point = riderPoint,
+            accuracyMeters = 5f,
+            speedMetersPerSecond = 7f
+        ),
+        stops = listOf(pickup.copy(completed = pickupCompleted), customer),
+        routes = listOf(futureRoute),
+        activeStopId = if (pickupCompleted) customer.id else pickup.id
+    )
+
+    @Test fun initialRouteReplacesOnlyActiveLegAndPreservesFutureStop() = runBlocking {
+        val provider = FakeRouteProvider()
+        val coordinator = NavigationRouteCoordinator(provider, nowMillis = { 10_000L })
+
+        val first = coordinator.synchronize(state())
+
+        assertEquals(1, provider.calls.size)
+        assertTrue(first.routeChanged)
+        assertFalse(first.rerouted)
+        assertEquals(pickup.id, first.activeLeg!!.segment.toStopId)
+        assertEquals(
+            listOf(pickup.id, customer.id),
+            first.mapState.routes.map { it.toStopId }
+        )
+        assertEquals("future-dropoff", first.mapState.routes.last().id)
+
+        val second = coordinator.synchronize(first.mapState)
+        assertEquals(1, provider.calls.size)
+        assertFalse(second.routeChanged)
+        assertNotNull(second.guidance.distanceRemainingMeters)
+    }
+
+    @Test fun twoReliableOffRouteSamplesRerouteOnlyActiveLeg() = runBlocking {
+        var now = 20_000L
+        val provider = FakeRouteProvider()
+        val coordinator = NavigationRouteCoordinator(provider, nowMillis = { now })
+        val initial = coordinator.synchronize(state())
+
+        val offRouteState = initial.mapState.copy(
+            rider = NavigationMapFix(
+                point = NavigationMapPoint(12.9980, 100.0050),
+                accuracyMeters = 5f,
+                speedMetersPerSecond = 6f
+            )
+        )
+        val firstOff = coordinator.synchronize(offRouteState)
+        assertEquals(1, provider.calls.size)
+        assertTrue(firstOff.guidance.offRoute)
+        assertFalse(firstOff.rerouted)
+
+        now += 500L
+        val rerouted = coordinator.synchronize(offRouteState)
+        assertEquals(2, provider.calls.size)
+        assertTrue(rerouted.rerouted)
+        assertEquals(1, rerouted.rerouteVersion)
+        assertEquals(customer.id, rerouted.mapState.routes.last().toStopId)
+        assertEquals("future-dropoff", rerouted.mapState.routes.last().id)
+    }
+
+    @Test fun completingPickupPromotesNextStopAndRequestsFreshActiveRoute() = runBlocking {
+        val provider = FakeRouteProvider()
+        val coordinator = NavigationRouteCoordinator(provider, nowMillis = { 30_000L })
+        val initial = coordinator.synchronize(state())
+        assertEquals(pickup.id, initial.activeLeg!!.segment.toStopId)
+
+        val next = coordinator.synchronize(
+            initial.mapState.copy(
+                stops = listOf(pickup.copy(completed = true), customer),
+                activeStopId = customer.id,
+                rider = NavigationMapFix(
+                    point = pickup.point,
+                    accuracyMeters = 5f,
+                    speedMetersPerSecond = 2f
+                )
+            )
+        )
+
+        assertEquals(2, provider.calls.size)
+        assertEquals(customer.id, next.activeLeg!!.segment.toStopId)
+        assertEquals(0, next.rerouteVersion)
+        assertEquals(listOf(customer.id), next.mapState.routes.map { it.toStopId })
+    }
+
+    @Test fun routeFailureDoesNotDestroyExistingMapState() = runBlocking {
+        val provider = FakeRouteProvider().apply { failNext = true }
+        val coordinator = NavigationRouteCoordinator(provider, nowMillis = { 40_000L })
+        val original = state()
+
+        val result = coordinator.synchronize(original)
+
+        assertEquals(original, result.mapState)
+        assertEquals(null, result.activeLeg)
+        assertTrue(result.routeError!!.contains("route unavailable"))
+        assertFalse(result.routeChanged)
+    }
+}

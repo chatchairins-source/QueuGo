@@ -39,6 +39,7 @@ dependencies {
     implementation("com.google.firebase:firebase-messaging")
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.9.4")
     implementation(project(":shared"))
+    implementation(project(":rider-navigation-map"))
     implementation("com.google.android.gms:play-services-location:21.3.0")
     implementation("androidx.activity:activity-compose:1.13.0")
     implementation("androidx.compose.material3:material3:1.4.0")
