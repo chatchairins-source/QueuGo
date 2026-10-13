@@ -413,12 +413,8 @@ internal fun riderVerificationCommitVisible(
 
 @Composable
 private fun LoadingScreen(modifier: Modifier) {
-    Column(
-        modifier.fillMaxSize(),
-        verticalArrangement = Arrangement.Center
-    ) {
-        CircularProgressIndicator(Modifier.padding(24.dp))
-    }
+    // Restoration still blocks interaction, but normal app/session recovery stays visually silent.
+    Box(modifier.fillMaxSize())
 }
 
 @Composable
