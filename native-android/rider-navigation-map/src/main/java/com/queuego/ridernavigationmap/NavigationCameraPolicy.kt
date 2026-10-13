@@ -34,6 +34,7 @@ internal fun navigationCameraDecision(
     // At driving speed GPS course is authoritative. At walking/standstill speed the
     // course sensor becomes noisy, so prefer the matched road direction when available.
     val desiredBearing = when {
+        speed == null || speed < 0.83f -> routeBearing ?: previousBearingDegrees
         speed != null && speed >= 2.2f -> gpsBearing ?: routeBearing
         routeBearing != null -> routeBearing
         else -> gpsBearing
@@ -162,9 +163,20 @@ internal fun navigationPointAtDistance(
     return segment.points.last()
 }
 
-internal fun navigationBearingChangedEnough(previous: Float?, next: Float?): Boolean {
+internal fun navigationBearingChangedEnough(
+    previous: Float?,
+    next: Float?,
+    minimumDeltaDegrees: Float = 2.5f
+): Boolean {
     if (next == null) return false
     if (previous == null) return true
     val delta = abs(((next - previous + 540f) % 360f) - 180f)
-    return delta >= 1.5f
+    return delta >= minimumDeltaDegrees.coerceAtLeast(0.5f)
+}
+
+internal fun navigationCameraMovementThresholdMeters(speedMetersPerSecond: Float?): Double = when {
+    speedMetersPerSecond == null -> 1.6
+    speedMetersPerSecond < 1.2f -> 2.4
+    speedMetersPerSecond < 4f -> 1.8
+    else -> 1.2
 }

@@ -61,7 +61,8 @@ data class NavigationMapDiagnostics(
     val snapshotBridgeCount: Int = 0,
     val snapshotBridgeFailureCount: Int = 0,
     val mapReplacementCount: Int = 0,
-    val snapshotVisible: Boolean = false
+    val snapshotVisible: Boolean = false,
+    val routeGeometryUpdateCount: Int = 0
 )
 
 internal fun RiderNavigationMapState.remainingStops(): List<NavigationMapStop> =

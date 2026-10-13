@@ -44,7 +44,9 @@ assert(!map.includes('LaunchedEffect(state)')&&
   !map.includes('routes.hashCode()'),
   'GPS/order refresh must not render twice or rebuild structurally-equivalent route geometry');
 assert(map.includes('stopSource = null')&&map.includes('routeSource = null')&&
-  map.includes('if (!pushed) renderSucceeded = false')&&map.includes('failedToRemove.isNotEmpty()'),
+  map.includes('if (!pushed) renderSucceeded = false')&&map.includes('runCatching { activeMap.removeLine(oldLine) }.isFailure')&&
+  map.includes('nextSegments += requireNotNull(oldSegment)')&&
+  map.includes('routeSource = if (succeeded) state.routes else null'),
   'Transient Longdo pin/line failures must remain retryable instead of caching a partial frame');
 assert(map.includes('fun attachMap(nextMap: com.longdo.api.Map): Boolean')&&
   map.includes('if (map === nextMap) return false')&&
@@ -62,7 +64,9 @@ assert(map.includes('RiderNavigationMapRegistry')&&
   runtimeTest.includes('Rider tab return recreated Longdo map')&&
   runtimeTest.includes('Healthy tab remount should not invoke the continuity bridge')&&
   runtimeTest.includes('manualPanSuspendsFollowButTapDoesNotReportGesture')&&
-  runtimeActivity.includes('dispatchDragOnMap')&&runtimeActivity.includes('userGestureCount'),
+  runtimeTest.includes('routeProgressMutatesExistingLongdoLineWithoutRecreatingIt')&&
+  runtimeActivity.includes('dispatchDragOnMap')&&runtimeActivity.includes('userGestureCount')&&
+  runtimeActivity.includes('shortenActiveRouteFixture')&&runtimeActivity.includes('routeLineIdentities'),
   'Leaving Home for another Rider tab must actually unmount/remount the map and reuse the same map objects without leaking an old Activity context');
 assert(map.includes('activeDestroyObserver')&&
   map.includes('Keep the lifecycle observer registered while Home is unmounted')&&
@@ -129,6 +133,12 @@ assert(coordinator.includes('class NavigationRouteCoordinator')&&
   coordinator.includes('preservedFuture')&&
   coordinator.includes('segment.toStopId != activeStop.id'),
   'Route coordinator must reroute only the active leg, preserve future stops and stay independent of Rider business state');
+assert(coordinator.includes('ROUTE_PROGRESS_RENDER_STEP_METERS = 10.0')&&
+  coordinator.includes('visibleProgressMeters')&&
+  coordinator.includes('maxOf(visibleProgressMeters, match.progressMeters)')&&
+  coordinator.includes('trimNavigationRouteSegment')&&
+  coordinator.includes('guidance.weakGps || guidance.offRoute'),
+  'Active route must shrink monotonically behind the Rider without rebuilding geometry on every GPS tick or trusting unreliable fixes');
 assert(route.includes('NavigationRouteInstruction')&&
   route.includes('turnCode = properties.optInt("turn", 4)')&&
   route.includes('roadName = properties.optString("name").trim()'),
@@ -137,12 +147,31 @@ assert(cameraPolicy.includes('navigationCameraDecision')&&
   cameraPolicy.includes('speedMetersPerSecond >= 18f')&&
   cameraPolicy.includes('smoothNavigationBearing')&&
   cameraPolicy.includes('navigationPointAtDistance')&&
-  map.includes('activeMap.setZoom(decision.zoom)')&&
+  map.includes('activeMap.setLocation(')&&
+  map.includes('true\n                )')&&
+  map.includes('activeMap.setZoom(decision.zoom, true)')&&
+  map.includes('minimumDeltaDegrees = 2.5f')&&
+  map.includes('CAMERA_ZOOM_MIN_INTERVAL_MS = 1_800L')&&
   map.includes('decision.bearingDegrees?.let { activeMap.rotate(it, true) }'),
-  'Navigation camera must adapt zoom to speed/arrival, smooth heading and look ahead on the matched road');
+  'Navigation camera must animate position/zoom, suppress micro-wobble and look ahead on the matched road');
 assert(map.includes('ACTIVE_ROUTE_COLOR')&&map.includes('FUTURE_ROUTE_COLOR')&&
   map.includes('setWidth(if (segment.style == NavigationRouteStyle.ACTIVE) 8 else 6)'),
   'Current route must be dark red and later route legs visibly faded');
+assert(map.includes('oldLine.setLocation(segment.points.map')&&
+  map.includes('renderedRouteSegments.zip(routeLines)')&&
+  map.includes('Topology/style changed or an in-place mutation failed'),
+  'Route progress must mutate existing Longdo line geometry in place and rebuild only on topology/style changes');
+assert(map.includes('RIDER_MARKER_MAX_ANIMATION_MS = 850L')&&
+  map.includes('ValueAnimator.ofFloat(0f, 1f)')&&
+  map.includes('riderMarkerAnimator?.cancel()')&&
+  map.includes('existing.getMovingLocation()')&&
+  map.includes('riderMarkerAnimationMillis(lastRiderFix ?: previousTarget, fix)')&&
+  !map.includes('RIDER_MARKER_ANIMATION_STEPS = 18')&&
+  !map.includes('existing.setLocation(\n                        location,\n                        true,'),
+  'Rider marker smoothing must use one cancellable Android animator shorter than the GPS cadence and never stack Longdo animations');
+assert(map.includes('PixelCopy is deliberately not scheduled on every GPS tick')&&
+  !map.includes('publishDiagnostics()\n        scheduleSnapshotRefresh()'),
+  'Live GPS rendering must not schedule PixelCopy snapshots on every navigation update');
 assert(models.includes('resolvedActiveStopId')&&models.includes('styledRemainingRoutes'),
   'Module must support numbered multi-stop progression independently of RiderJob');
 assert(route.includes('private val apiKey: String')&&route.includes('RouteService/geojson/route')&&

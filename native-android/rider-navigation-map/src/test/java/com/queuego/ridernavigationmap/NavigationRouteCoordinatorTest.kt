@@ -154,6 +154,77 @@ class NavigationRouteCoordinatorTest {
         assertEquals(listOf(customer.id), next.mapState.routes.map { it.toStopId })
     }
 
+    @Test fun activeRouteShrinksForwardWithoutGrowingBackOnGpsJitter() = runBlocking {
+        val provider = FakeRouteProvider()
+        val coordinator = NavigationRouteCoordinator(provider, nowMillis = { 35_000L })
+        val initial = coordinator.synchronize(state())
+        val initialActive = initial.mapState.routes.first { it.toStopId == pickup.id }
+        assertEquals(3, initialActive.points.size)
+
+        val forward = coordinator.synchronize(
+            initial.mapState.copy(
+                rider = NavigationMapFix(
+                    point = NavigationMapPoint(13.0000, 100.0060),
+                    accuracyMeters = 5f,
+                    speedMetersPerSecond = 7f
+                )
+            )
+        )
+        val shortened = forward.mapState.routes.first { it.toStopId == pickup.id }
+        assertTrue(shortened.points.first().longitude > initialActive.points.first().longitude)
+
+        val jitterBack = coordinator.synchronize(
+            forward.mapState.copy(
+                rider = NavigationMapFix(
+                    point = NavigationMapPoint(13.0000, 100.0040),
+                    accuracyMeters = 5f,
+                    speedMetersPerSecond = 7f
+                )
+            )
+        )
+        val afterJitter = jitterBack.mapState.routes.first { it.toStopId == pickup.id }
+        assertTrue(
+            "Consumed active route grew backwards after GPS jitter",
+            afterJitter.points.first().longitude >= shortened.points.first().longitude
+        )
+        assertEquals("future-dropoff", jitterBack.mapState.routes.last().id)
+    }
+
+    @Test fun smallProgressDoesNotChangeVisibleGeometryEveryGpsTick() = runBlocking {
+        val provider = FakeRouteProvider()
+        val coordinator = NavigationRouteCoordinator(provider, nowMillis = { 36_000L })
+        val initial = coordinator.synchronize(state())
+        val before = initial.mapState.routes.first { it.toStopId == pickup.id }
+
+        val tinyMove = coordinator.synchronize(
+            initial.mapState.copy(
+                rider = NavigationMapFix(
+                    point = NavigationMapPoint(13.0000, 100.00003),
+                    accuracyMeters = 5f,
+                    speedMetersPerSecond = 2f
+                )
+            )
+        )
+        val after = tinyMove.mapState.routes.first { it.toStopId == pickup.id }
+        assertEquals(before.points, after.points)
+    }
+
+    @Test fun activeRouteDisappearsWhenOnlyArrivalStubRemains() {
+        val segment = NavigationRouteSegment(
+            id = "active",
+            toStopId = pickup.id,
+            points = listOf(
+                NavigationMapPoint(13.0000, 100.0000),
+                pickup.point
+            ),
+            style = NavigationRouteStyle.ACTIVE
+        )
+        val total = navigationHaversineMeters(segment.points.first(), segment.points.last())
+        val trimmed = trimNavigationRouteSegment(segment, total - 1.0, pickup.point)
+        assertFalse(trimmed.renderable)
+        assertTrue(trimmed.points.isEmpty())
+    }
+
     @Test fun routeFailureDoesNotDestroyExistingMapState() = runBlocking {
         val provider = FakeRouteProvider().apply { failNext = true }
         val coordinator = NavigationRouteCoordinator(provider, nowMillis = { 40_000L })

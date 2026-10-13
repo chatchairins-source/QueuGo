@@ -65,7 +65,8 @@ class NavigationMapRuntimeActivity : ComponentActivity() {
                 ),
                 bearingDegrees = (15f + step * 3f) % 360f,
                 accuracyMeters = 6f,
-                elapsedRealtimeNanos = step.toLong()
+                speedMetersPerSecond = 8f,
+                elapsedRealtimeNanos = (step.toLong() + 1L) * 1_000_000_000L
             )
         )
     }
@@ -88,6 +89,36 @@ class NavigationMapRuntimeActivity : ComponentActivity() {
             },
             activeStopId = "dropoff-2"
         )
+    }
+
+    fun shortenActiveRouteFixture() {
+        val previous = mapState.value
+        mapState.value = previous.copy(
+            routes = previous.routes.map { segment ->
+                if (segment.id == "fixture-leg-1" && segment.points.size > 2) {
+                    segment.copy(
+                        points = listOf(
+                            NavigationMapPoint(13.7572, 100.5030),
+                            segment.points.last()
+                        )
+                    )
+                } else {
+                    segment
+                }
+            }
+        )
+    }
+
+    fun replaceActiveRouteFixture() {
+        mapState.value = mapState.value.copy(routes = mapState.value.routes.map {
+            if (it.id == "fixture-leg-1") it.copy(id = "fixture-reroute") else it
+        })
+    }
+
+    fun routeLineIdentities(): List<Int> {
+        val mapView = requireNotNull(findMapView(window.decorView))
+        val activeMap = requireNotNull(mapView.renderer.map)
+        return activeMap.allLines.map { line -> System.identityHashCode(line) }
     }
 
     fun dispatchTapOnMap() {

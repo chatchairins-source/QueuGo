@@ -66,8 +66,10 @@ with (log_dir / "emulator.log").open("w") as log:
             time.sleep(4)
 
         for scale in ("window_animation_scale", "transition_animation_scale", "animator_duration_scale"):
-            run(adb + ["shell", "settings", "put", "global", scale, "0"])
+            run(adb + ["shell", "settings", "put", "global", scale, "1"])
 
+        # Exercise actual Android interpolation; animator_duration_scale=0 would
+        # bypass the marker animation and conceal overlap/jank regressions.
         result = subprocess.run(
             [gradle, "-p", "native-android",
              ":rider-navigation-map:connectedDebugAndroidTest",

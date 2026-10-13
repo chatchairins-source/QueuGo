@@ -78,6 +78,29 @@ class NavigationCameraPolicyTest {
         assertTrue(smoothed!! < 1f || smoothed > 359f)
     }
 
+    @Test fun microBearingChangesDoNotWobbleTheCamera() {
+        assertTrue(!navigationBearingChangedEnough(90f, 91.4f))
+        assertTrue(navigationBearingChangedEnough(90f, 93f))
+    }
+
+    @Test fun cameraMoveThresholdSuppressesStandstillJitter() {
+        assertTrue(navigationCameraMovementThresholdMeters(0.5f) >
+            navigationCameraMovementThresholdMeters(8f))
+    }
+
+    @Test fun stoppedWithoutRouteKeepsPreviousHeading() {
+        val state = RiderNavigationMapState(rider = NavigationMapFix(
+            point = NavigationMapPoint(13.0, 100.0),
+            bearingDegrees = 210f, speedMetersPerSecond = 0.5f
+        ))
+        assertEquals(92f, navigationCameraDecision(state, 92f)!!.bearingDegrees!!, 0.001f)
+        assertEquals(null, navigationCameraDecision(state, null)!!.bearingDegrees)
+    }
+
+    @Test fun northCrossingTakesTwoDegreeTurn() {
+        assertEquals(0f, smoothNavigationBearing(359f, 1f, 0.5f)!!, 0.001f)
+    }
+
     @Test fun poorGpsAccuracyAvoidsOverZooming() {
         assertEquals(
             18,
