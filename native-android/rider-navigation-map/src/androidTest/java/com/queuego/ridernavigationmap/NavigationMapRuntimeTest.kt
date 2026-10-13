@@ -57,6 +57,28 @@ class NavigationMapRuntimeTest {
         throw AssertionError("Navigation map never captured a continuity snapshot")
     }
 
+    private fun awaitRendererReplacementBridge(
+        activity: NavigationMapRuntimeActivity,
+        previousReplacementCount: Int,
+        previousBridgeCount: Int,
+        timeoutMs: Long = 5_000L
+    ): NavigationMapDiagnostics {
+        val deadline = android.os.SystemClock.elapsedRealtime() + timeoutMs
+        while (android.os.SystemClock.elapsedRealtime() < deadline) {
+            val diagnostics = activity.latestDiagnostics
+            if (diagnostics.mapReplacementCount > previousReplacementCount &&
+                diagnostics.snapshotBridgeCount > previousBridgeCount
+            ) {
+                return diagnostics
+            }
+            InstrumentationRegistry.getInstrumentation().waitForIdleSync()
+            Thread.sleep(25)
+        }
+        throw AssertionError(
+            "Longdo renderer replacement callback did not announce continuity bridge"
+        )
+    }
+
     private fun awaitBridgeSettled(
         activity: NavigationMapRuntimeActivity,
         previousBridgeCount: Int,
@@ -229,7 +251,17 @@ class NavigationMapRuntimeTest {
             }
 
             var resumeDiagnostics = runtimeActivity.latestDiagnostics
-            if (resumeDiagnostics.snapshotBridgeCount > beforeResumeDiagnostics.snapshotBridgeCount) {
+            if (resumedSdkMap != initialSdkMap) {
+                resumeDiagnostics = awaitRendererReplacementBridge(
+                    runtimeActivity,
+                    beforeResumeDiagnostics.mapReplacementCount,
+                    beforeResumeDiagnostics.snapshotBridgeCount
+                )
+                resumeDiagnostics = awaitBridgeSettled(
+                    runtimeActivity,
+                    beforeResumeDiagnostics.snapshotBridgeCount
+                )
+            } else if (resumeDiagnostics.snapshotBridgeCount > beforeResumeDiagnostics.snapshotBridgeCount) {
                 resumeDiagnostics = awaitBridgeSettled(
                     runtimeActivity,
                     beforeResumeDiagnostics.snapshotBridgeCount

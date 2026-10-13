@@ -129,6 +129,8 @@ assert(models.includes('renderPassCount: Int = 0')&&
   map.includes('state update that never reached the map'),
   'Diagnostics must expose applied render passes without forcing an overlay rebuild');
 assert(runtimeTest.includes('awaitAppliedRender')&&runtimeTest.includes('awaitStopProgression')&&
+  runtimeTest.includes('awaitRendererReplacementBridge')&&
+  runtimeTest.includes('Longdo renderer replacement callback did not announce continuity bridge')&&
   runtimeTest.includes('bounded GPS retries')&&
   runtimeTest.includes('GPS refresh recreated MapGLSurfaceView')&&
   runtimeTest.includes('GPS refresh rebuilt unchanged route layers')&&
