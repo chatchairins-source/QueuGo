@@ -67,7 +67,14 @@ assert(map.includes('fun retainAcrossVisibilityLoss()')&&
   map.includes('Calling it after ordinary background/foreground transitions can replace renderer.map'),
   'Ordinary tab/background visibility loss must not call Longdo onPause/onResume; SDK shutdown is reserved for real surface disposal');
 assert(map.includes('setPreserveEGLContextOnPause(true)'),
-  'Navigation map must preserve the GL context across background/resume to avoid tile reconstruction');
+  'Navigation map must preserve the GL context across background/resume when Android allows it');
+assert(map.includes('PixelCopy.request')&&map.includes('snapshotOverlay')&&
+  map.includes('showContinuityBridge')&&map.includes('settleContinuityBridge')&&
+  models.includes('snapshotBridgeCount: Int = 0')&&models.includes('snapshotVisible: Boolean = false'),
+  'When Android recreates the Longdo renderer, a captured SurfaceView frame must hide visible map reassembly');
+assert(map.includes('map.setDoTileAnimation(false)')&&map.includes('map.setDoPreShowCache(true)')&&
+  map.includes('setDoPreDrawCache(true)'),
+  'Longdo replacement maps must prefer cached tiles and disable tile-appearance animation');
 assert(map.includes('ACTIVE_ROUTE_COLOR')&&map.includes('FUTURE_ROUTE_COLOR')&&
   map.includes('setWidth(if (segment.style == NavigationRouteStyle.ACTIVE) 8 else 6)'),
   'Current route must be dark red and later route legs visibly faded');
@@ -86,11 +93,12 @@ assert(runtimeTest.includes('awaitAppliedRender')&&runtimeTest.includes('awaitSt
   runtimeTest.includes('bounded GPS retries')&&
   runtimeTest.includes('GPS refresh recreated MapGLSurfaceView')&&
   runtimeTest.includes('GPS refresh rebuilt unchanged route layers')&&
-  runtimeTest.includes('Resume recreated Longdo map')&&
+  runtimeTest.includes('Navigation map continuity bridge did not settle')&&
+  runtimeTest.includes('Longdo map replacement was not recorded')&&
   runtimeTest.includes('Equivalent backend refresh rebuilt unchanged route layers')&&
   runtimeTest.includes('Structurally-equal backend refresh should be suppressed before map render')&&
   runtimeActivity.includes('refreshEquivalentOrderSnapshot'),
-  'Android runtime test must prove GPS/backend refresh and resume reuse the exact map objects and overlays');
+  'Android runtime test must prove GPS/backend refresh stays in place and renderer replacement is visually bridged instead of exposed');
 assert(runtimeActivity.includes('there are no QueueGo accounts, jobs, orders or Production writes')&&
   runtimeActivity.includes('refreshRiderFix')&&runtimeActivity.includes('advanceToSecondStop'),
   'Runtime host must remain isolated from QueueGo business data while exercising navigation state');

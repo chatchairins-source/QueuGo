@@ -6,8 +6,15 @@ import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.PointF
 import android.graphics.Typeface
+import android.os.Handler
+import android.os.Looper
+import android.os.SystemClock
 import android.util.Log
 import android.view.LayoutInflater
+import android.view.PixelCopy
+import android.view.View
+import android.widget.FrameLayout
+import android.widget.ImageView
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.remember
@@ -28,6 +35,11 @@ import com.queuego.shared.R as SharedR
 private const val RIDER_MARKER_ANIMATION_STEPS = 18
 private const val DEFAULT_LONGITUDE = 100.5018
 private const val DEFAULT_LATITUDE = 13.7563
+private const val SNAPSHOT_CAPTURE_THROTTLE_MS = 1_200L
+private const val SNAPSHOT_CAPTURE_DELAY_MS = 180L
+private const val SNAPSHOT_BRIDGE_SETTLE_MS = 500L
+private const val SNAPSHOT_BRIDGE_RETRY_MS = 250L
+private const val SNAPSHOT_BRIDGE_MAX_ATTEMPTS = 8
 
 private val ACTIVE_ROUTE_COLOR = floatArrayOf(230f / 255f, 0f, 45f / 255f, 0.96f)
 private val FUTURE_ROUTE_COLOR = floatArrayOf(230f / 255f, 0f, 45f / 255f, 0.28f)
@@ -37,11 +49,19 @@ private data class RenderedStop(val signature: String, val pin: Pin)
 private class RiderNavigationMapHolder {
     private var onCameraChanged: (NavigationMapCamera) -> Unit = {}
     private var onDiagnostics: ((NavigationMapDiagnostics) -> Unit)? = null
+    var container: FrameLayout? = null
     var view: MapGLSurfaceView? = null
+    var snapshotOverlay: ImageView? = null
     var map: com.longdo.api.Map? = null
     var disposed = false
 
+    private val mainHandler = Handler(Looper.getMainLooper())
     private var resumed = false
+    private var snapshotBitmap: Bitmap? = null
+    private var snapshotCaptureInFlight = false
+    private var snapshotRefreshScheduled = false
+    private var lastSnapshotCaptureAtMs = 0L
+    private var bridgeGeneration = 0
     private var lastState = RiderNavigationMapState()
     private var riderPin: Pin? = null
     private var lastRiderFix: NavigationMapFix? = null
@@ -62,6 +82,11 @@ private class RiderNavigationMapHolder {
     private var routeLayerRebuildCount = 0
     private var stopMutationCount = 0
     private var renderPassCount = 0
+    private var snapshotCaptureCount = 0
+    private var snapshotBridgeCount = 0
+    private var snapshotBridgeFailureCount = 0
+    private var mapReplacementCount = 0
+    private var snapshotVisible = false
 
     fun bindCallbacks(
         cameraChanged: (NavigationMapCamera) -> Unit,
@@ -78,6 +103,149 @@ private class RiderNavigationMapHolder {
         onDiagnostics = null
     }
 
+    fun attachContainer(root: FrameLayout, overlay: ImageView) {
+        container = root
+        snapshotOverlay = overlay
+        snapshotBitmap?.let { bitmap ->
+            overlay.setImageBitmap(bitmap)
+            overlay.visibility = if (snapshotVisible) View.VISIBLE else View.GONE
+            if (snapshotVisible) overlay.bringToFront()
+        }
+    }
+
+    private fun replaceSnapshot(next: Bitmap) {
+        val previous = snapshotBitmap
+        snapshotBitmap = next
+        snapshotOverlay?.setImageBitmap(next)
+        if (previous != null && previous !== next && !previous.isRecycled) previous.recycle()
+    }
+
+    private fun setSnapshotVisible(visible: Boolean, countBridge: Boolean = false) {
+        val overlay = snapshotOverlay
+        if (visible && snapshotBitmap != null && overlay != null) {
+            overlay.setImageBitmap(snapshotBitmap)
+            overlay.visibility = View.VISIBLE
+            overlay.bringToFront()
+            if (!snapshotVisible && countBridge) snapshotBridgeCount += 1
+            snapshotVisible = true
+        } else if (!visible) {
+            overlay?.visibility = View.GONE
+            snapshotVisible = false
+        }
+        publishDiagnostics()
+    }
+
+    private fun requestSnapshot(
+        force: Boolean,
+        bridgeToken: Int? = null,
+        attempt: Int = 0
+    ) {
+        val activeView = view ?: return
+        if (disposed || activeView.width <= 0 || activeView.height <= 0) {
+            if (bridgeToken != null && attempt < SNAPSHOT_BRIDGE_MAX_ATTEMPTS) {
+                mainHandler.postDelayed(
+                    { requestSnapshot(true, bridgeToken, attempt + 1) },
+                    SNAPSHOT_BRIDGE_RETRY_MS
+                )
+            }
+            return
+        }
+        if (snapshotCaptureInFlight) {
+            if (bridgeToken != null && attempt < SNAPSHOT_BRIDGE_MAX_ATTEMPTS) {
+                mainHandler.postDelayed(
+                    { requestSnapshot(true, bridgeToken, attempt + 1) },
+                    SNAPSHOT_BRIDGE_RETRY_MS
+                )
+            }
+            return
+        }
+        val now = SystemClock.elapsedRealtime()
+        if (!force && (snapshotVisible || now - lastSnapshotCaptureAtMs < SNAPSHOT_CAPTURE_THROTTLE_MS)) return
+
+        val width = activeView.width.coerceAtLeast(1)
+        val height = activeView.height.coerceAtLeast(1)
+        val target = runCatching {
+            Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+        }.getOrNull() ?: return
+
+        snapshotCaptureInFlight = true
+        runCatching {
+            PixelCopy.request(activeView, target, { result ->
+                snapshotCaptureInFlight = false
+                if (disposed) {
+                    if (!target.isRecycled) target.recycle()
+                    return@request
+                }
+                if (result == PixelCopy.SUCCESS) {
+                    replaceSnapshot(target)
+                    lastSnapshotCaptureAtMs = SystemClock.elapsedRealtime()
+                    snapshotCaptureCount += 1
+                    if (bridgeToken != null && bridgeToken == bridgeGeneration) {
+                        setSnapshotVisible(false)
+                    } else {
+                        publishDiagnostics()
+                    }
+                } else {
+                    if (!target.isRecycled) target.recycle()
+                    if (bridgeToken != null && bridgeToken == bridgeGeneration) {
+                        if (attempt < SNAPSHOT_BRIDGE_MAX_ATTEMPTS) {
+                            mainHandler.postDelayed(
+                                { requestSnapshot(true, bridgeToken, attempt + 1) },
+                                SNAPSHOT_BRIDGE_RETRY_MS
+                            )
+                        } else {
+                            snapshotBridgeFailureCount += 1
+                            setSnapshotVisible(false)
+                        }
+                    }
+                }
+            }, mainHandler)
+        }.onFailure {
+            snapshotCaptureInFlight = false
+            if (!target.isRecycled) target.recycle()
+            if (bridgeToken != null && bridgeToken == bridgeGeneration) {
+                if (attempt < SNAPSHOT_BRIDGE_MAX_ATTEMPTS) {
+                    mainHandler.postDelayed(
+                        { requestSnapshot(true, bridgeToken, attempt + 1) },
+                        SNAPSHOT_BRIDGE_RETRY_MS
+                    )
+                } else {
+                    snapshotBridgeFailureCount += 1
+                    setSnapshotVisible(false)
+                }
+            }
+        }
+    }
+
+    private fun scheduleSnapshotRefresh() {
+        if (disposed || snapshotVisible || snapshotRefreshScheduled) return
+        snapshotRefreshScheduled = true
+        mainHandler.postDelayed({
+            snapshotRefreshScheduled = false
+            requestSnapshot(force = false)
+        }, SNAPSHOT_CAPTURE_DELAY_MS)
+    }
+
+    private fun showContinuityBridge() {
+        if (snapshotBitmap == null) {
+            // Try to capture the last queued SurfaceView frame before Android drops the Surface.
+            requestSnapshot(force = true)
+        }
+        setSnapshotVisible(true, countBridge = true)
+    }
+
+    private fun settleContinuityBridge() {
+        if (!snapshotVisible) {
+            scheduleSnapshotRefresh()
+            return
+        }
+        val token = ++bridgeGeneration
+        mainHandler.postDelayed(
+            { requestSnapshot(force = true, bridgeToken = token) },
+            SNAPSHOT_BRIDGE_SETTLE_MS
+        )
+    }
+
     fun markViewCreated() {
         viewCreatedCount += 1
         publishDiagnostics()
@@ -85,6 +253,11 @@ private class RiderNavigationMapHolder {
 
     fun attachMap(nextMap: com.longdo.api.Map): Boolean {
         if (map === nextMap) return false
+        val replacingExistingMap = map != null
+        if (replacingExistingMap) {
+            mapReplacementCount += 1
+            showContinuityBridge()
+        }
         map = nextMap
         riderPin = null
         stopPins.clear()
@@ -110,6 +283,7 @@ private class RiderNavigationMapHolder {
         // Deliberately keep lastRiderFix, map, pins and route layers. A refresh/resume must
         // never reconstruct the map just because Rider/order state changed.
         render(lastState)
+        settleContinuityBridge()
     }
 
     private fun captureCamera() {
@@ -131,6 +305,7 @@ private class RiderNavigationMapHolder {
         // For tab switches and ordinary background/foreground cycles keep the SDK renderer
         // alive and only preserve camera state; SurfaceView can handle surface loss itself.
         captureCamera()
+        showContinuityBridge()
     }
 
     fun shutdownSdk() {
@@ -172,6 +347,7 @@ private class RiderNavigationMapHolder {
         // Publish once per applied state even when overlays are structurally unchanged.
         // This distinguishes a stable frame from a state update that never reached the map.
         publishDiagnostics()
+        scheduleSnapshotRefresh()
     }
 
     private fun renderRider(activeMap: com.longdo.api.Map, fix: NavigationMapFix) {
@@ -382,7 +558,12 @@ private class RiderNavigationMapHolder {
                 mapCreatedCount = mapCreatedCount,
                 routeLayerRebuildCount = routeLayerRebuildCount,
                 stopMutationCount = stopMutationCount,
-                renderPassCount = renderPassCount
+                renderPassCount = renderPassCount,
+                snapshotCaptureCount = snapshotCaptureCount,
+                snapshotBridgeCount = snapshotBridgeCount,
+                snapshotBridgeFailureCount = snapshotBridgeFailureCount,
+                mapReplacementCount = mapReplacementCount,
+                snapshotVisible = snapshotVisible
             )
         )
     }
@@ -399,6 +580,15 @@ private class RiderNavigationMapHolder {
         riderPin = null
         map = null
         view = null
+        container = null
+        snapshotOverlay?.setImageDrawable(null)
+        snapshotOverlay = null
+        snapshotBitmap?.takeIf { !it.isRecycled }?.recycle()
+        snapshotBitmap = null
+        mainHandler.removeCallbacksAndMessages(null)
+        snapshotCaptureInFlight = false
+        snapshotRefreshScheduled = false
+        snapshotVisible = false
         resumed = false
         stopSource = null
         stopActiveId = null
@@ -501,20 +691,41 @@ fun RiderNavigationMap(
     AndroidView(
         modifier = modifier,
         factory = { context ->
-            val retainedView = holder.view?.takeIf { it.context === context }
-            if (holder.view != null && retainedView == null) {
-                // Activity/context changed: never retain a View backed by a destroyed Activity.
+            val retainedRoot = holder.container?.takeIf { it.context === context }
+            if (holder.container != null && retainedRoot == null) {
+                // Activity/context changed: never retain Views backed by a destroyed Activity.
                 holder.resetSurface()
             }
-            val view = retainedView ?: (LayoutInflater.from(context)
-                .inflate(SharedR.layout.view_longdo_shared_map, null, false) as MapGLSurfaceView).also {
-                    holder.view = it
-                    // Keep the GL context across short background/resume cycles so returning to
-                    // QueueGo does not force the SDK to reconstruct already-rendered map tiles.
-                    it.setPreserveEGLContextOnPause(true)
-                    holder.markViewCreated()
+            val root = retainedRoot ?: FrameLayout(context).also { frame ->
+                val view = LayoutInflater.from(context)
+                    .inflate(SharedR.layout.view_longdo_shared_map, frame, false) as MapGLSurfaceView
+                view.setPreserveEGLContextOnPause(true)
+                frame.addView(
+                    view,
+                    FrameLayout.LayoutParams(
+                        FrameLayout.LayoutParams.MATCH_PARENT,
+                        FrameLayout.LayoutParams.MATCH_PARENT
+                    )
+                )
+                val overlay = ImageView(context).apply {
+                    scaleType = ImageView.ScaleType.FIT_XY
+                    visibility = View.GONE
+                    isClickable = false
+                    isFocusable = false
                 }
-            (view.parent as? android.view.ViewGroup)?.removeView(view)
+                frame.addView(
+                    overlay,
+                    FrameLayout.LayoutParams(
+                        FrameLayout.LayoutParams.MATCH_PARENT,
+                        FrameLayout.LayoutParams.MATCH_PARENT
+                    )
+                )
+                holder.view = view
+                holder.attachContainer(frame, overlay)
+                holder.markViewCreated()
+            }
+            (root.parent as? android.view.ViewGroup)?.removeView(root)
+            val view = requireNotNull(holder.view)
             view.setListener(object : IMapListener {
                     override fun onMapCreated(map: com.longdo.api.Map) {
                         view.post {
@@ -522,8 +733,11 @@ fun RiderNavigationMap(
                             runCatching {
                                 val newSdkMap = holder.attachMap(map)
                                 if (newSdkMap) {
+                                    map.setDoTileAnimation(false)
+                                    map.setDoPreShowCache(true)
                                     map.setBase(LongdoLayer(context, "normal", 0, 1, 20).apply {
                                         layerURL = "https://ms.longdo.com/map/msn-server/tile.php"
+                                        setDoPreDrawCache(true)
                                     })
                                     map.setDrawCrossSign(false)
                                     val start = initialCamera?.point?.takeIf { it.valid }
@@ -542,6 +756,7 @@ fun RiderNavigationMap(
                                 // A duplicate SDK callback for the same map is only a render retry;
                                 // never reset base/camera or force the visible map to assemble again.
                                 holder.render(currentState.value)
+                                holder.resume()
                             }.onSuccess {
                                 currentReady.value(true)
                             }.onFailure {
@@ -556,7 +771,7 @@ fun RiderNavigationMap(
                 currentReady.value(true)
             }
             if (lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) holder.resume()
-            view
+            root
         },
         update = {
             holder.render(state)

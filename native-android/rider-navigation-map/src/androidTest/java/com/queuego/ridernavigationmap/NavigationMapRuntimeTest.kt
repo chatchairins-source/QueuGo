@@ -4,6 +4,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.test.core.app.ActivityScenario
 import androidx.test.platform.app.InstrumentationRegistry
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -41,6 +42,35 @@ class NavigationMapRuntimeTest {
         throw AssertionError(
             "Navigation map presence did not become $expected; last observed=$observed"
         )
+    }
+
+    private fun awaitSnapshotCaptured(
+        activity: NavigationMapRuntimeActivity,
+        timeoutMs: Long = 6_000L
+    ): NavigationMapDiagnostics {
+        val deadline = android.os.SystemClock.elapsedRealtime() + timeoutMs
+        while (android.os.SystemClock.elapsedRealtime() < deadline) {
+            val diagnostics = activity.latestDiagnostics
+            if (diagnostics.snapshotCaptureCount > 0) return diagnostics
+            Thread.sleep(25)
+        }
+        throw AssertionError("Navigation map never captured a continuity snapshot")
+    }
+
+    private fun awaitBridgeSettled(
+        activity: NavigationMapRuntimeActivity,
+        previousBridgeCount: Int,
+        timeoutMs: Long = 8_000L
+    ): NavigationMapDiagnostics {
+        val deadline = android.os.SystemClock.elapsedRealtime() + timeoutMs
+        while (android.os.SystemClock.elapsedRealtime() < deadline) {
+            val diagnostics = activity.latestDiagnostics
+            if (diagnostics.snapshotBridgeCount > previousBridgeCount && !diagnostics.snapshotVisible) {
+                return diagnostics
+            }
+            Thread.sleep(25)
+        }
+        throw AssertionError("Navigation map continuity bridge did not settle")
     }
 
     private fun awaitStopProgression(
@@ -162,31 +192,45 @@ class NavigationMapRuntimeTest {
                 )
             }
 
-            val beforeResume = runtimeActivity.latestDiagnostics.renderPassCount
+            awaitSnapshotCaptured(runtimeActivity)
+            val beforeResumeDiagnostics = runtimeActivity.latestDiagnostics
+            val beforeResumeRender = beforeResumeDiagnostics.renderPassCount
             scenario.moveToState(Lifecycle.State.CREATED)
             Thread.sleep(300)
             scenario.moveToState(Lifecycle.State.RESUMED)
             InstrumentationRegistry.getInstrumentation().waitForIdleSync()
-            awaitAppliedRender(runtimeActivity, beforeResume)
+            awaitAppliedRender(runtimeActivity, beforeResumeRender)
+            val resumeDiagnostics = awaitBridgeSettled(
+                runtimeActivity,
+                beforeResumeDiagnostics.snapshotBridgeCount
+            )
 
+            var resumedSdkMap = initialSdkMap
             scenario.onActivity { activity ->
                 assertEquals("Resume recreated MapGLSurfaceView", initialView, activity.mapViewIdentity())
-                assertEquals("Resume recreated Longdo map", initialSdkMap, activity.sdkMapIdentity())
+                resumedSdkMap = activity.sdkMapIdentity()
                 assertEquals(1, activity.latestDiagnostics.viewCreatedCount)
-                assertEquals(1, activity.latestDiagnostics.mapCreatedCount)
+                assertTrue(activity.latestDiagnostics.snapshotCaptureCount > 0)
+                assertTrue(activity.latestDiagnostics.snapshotBridgeCount > beforeResumeDiagnostics.snapshotBridgeCount)
+                assertEquals(0, activity.latestDiagnostics.snapshotBridgeFailureCount)
+                assertFalse("Continuity snapshot remained stuck over live map", activity.latestDiagnostics.snapshotVisible)
+                if (resumedSdkMap != initialSdkMap) {
+                    assertTrue("Longdo map replacement was not recorded", activity.latestDiagnostics.mapReplacementCount >= 1)
+                    assertTrue("Longdo map replacement did not increment map creation count", activity.latestDiagnostics.mapCreatedCount >= 2)
+                }
             }
 
-            val progressedDiagnostics = awaitStopProgression(scenario, runtimeActivity, initialDiagnostics)
+            val progressedDiagnostics = awaitStopProgression(scenario, runtimeActivity, resumeDiagnostics)
             assertEquals(
                 "Stop progression rebuilt route layers more than once",
-                initialDiagnostics.routeLayerRebuildCount + 1,
+                resumeDiagnostics.routeLayerRebuildCount + 1,
                 progressedDiagnostics.routeLayerRebuildCount
             )
             scenario.onActivity { activity ->
                 assertEquals("Stop progression recreated MapGLSurfaceView", initialView, activity.mapViewIdentity())
-                assertEquals("Stop progression recreated Longdo map", initialSdkMap, activity.sdkMapIdentity())
+                assertEquals("Stop progression unexpectedly replaced the current Longdo map", resumedSdkMap, activity.sdkMapIdentity())
                 assertEquals(
-                    initialDiagnostics.routeLayerRebuildCount + 1,
+                    resumeDiagnostics.routeLayerRebuildCount + 1,
                     activity.latestDiagnostics.routeLayerRebuildCount
                 )
                 assertTrue(activity.latestDiagnostics.stopMutationCount > initialDiagnostics.stopMutationCount)
