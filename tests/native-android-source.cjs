@@ -192,9 +192,10 @@ ok(riderApp.includes('val localAfterSuccess = when (completedMode)')&&
    riderApp.includes('?: localAfterSuccess?.activeJob'),
    'Rider proof success must advance local workflow immediately so pickup/delivery verification cannot repeat when refresh is slow or fails');
 ok(riderApp.includes('if (current == null) {')&&
-   riderApp.includes('if (loadError == null) {')&&
-   !riderApp.includes('} else if (loadError != null) {'),
-   'Rider refresh errors must not replace an existing active snapshot with a blocking reload/error state');
+   riderApp.includes('if (loadError != null) {')&&
+   riderApp.includes('if (snapshot == null) loadError = "กำลังเชื่อมต่อข้อมูลงานใหม่"')&&
+   !riderApp.includes('"กำลังเชื่อมต่อ Longdo Map…"'),
+   'Rider refresh errors must keep an existing safe snapshot visible and initial loading must stay silent unless there is a real first-load failure');
 const riderMap=read('rider/src/main/java/com/queuego/rider/LongdoRiderMap.kt');
 const nativeRealtimeSubscriptions=read('shared/src/main/java/com/queuego/shared/NativeRealtimeSubscription.kt');
 const riderDispatchLaundryMigration=fs.readFileSync(path.resolve(root,'..','supabase','migrations','20261009044500_rider_dispatch_excludes_active_laundry.sql'),'utf8');
