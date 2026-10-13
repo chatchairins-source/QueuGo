@@ -604,17 +604,26 @@ private fun RiderHome(
                 Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
                 Uri.parse("package:" + context.packageName)
             )
-            context.startActivity(intent)
-            actionMessage = "เปิดสิทธิ์ 'แสดงทับแอปอื่น' เพื่อใช้ปุ่ม Q ระหว่างนำทาง"
+            val opened = runCatching { context.startActivity(intent) }.isSuccess
+            actionMessage = if (opened) {
+                "เปิดสิทธิ์ 'แสดงทับแอปอื่น' เพื่อใช้ปุ่ม Q ระหว่างนำทาง"
+            } else {
+                "ไม่สามารถเปิดหน้าตั้งค่าสิทธิ์ปุ่ม Q ได้"
+            }
             return
         }
         actionMessage = "ปุ่ม Q กลับ QueueGo พร้อมใช้งานแล้ว"
     }
 
     fun openCamera() {
-        val uri = createEvidenceUri(context)
-        pendingCameraUri = uri
-        cameraLauncher.launch(uri)
+        runCatching {
+            val uri = createEvidenceUri(context)
+            pendingCameraUri = uri
+            cameraLauncher.launch(uri)
+        }.onFailure {
+            pendingCameraUri = null
+            actionMessage = "เปิดกล้องไม่สำเร็จ กรุณาลองอีกครั้ง"
+        }
     }
 
     fun openVerification(mode: String, job: RiderJob) {
@@ -729,11 +738,13 @@ private fun RiderHome(
         val tone = runCatching { ToneGenerator(AudioManager.STREAM_NOTIFICATION, 100) }.getOrNull() ?: return
         scope.launch {
             try {
-                tone.startTone(ToneGenerator.TONE_PROP_BEEP2, 650)
+                if (!runCatching { tone.startTone(ToneGenerator.TONE_PROP_BEEP2, 650) }.getOrDefault(false)) return@launch
                 delay(720)
-                tone.startTone(ToneGenerator.TONE_PROP_BEEP, 450)
+                runCatching { tone.startTone(ToneGenerator.TONE_PROP_BEEP, 450) }
                 delay(520)
-            } finally { tone.release() }
+            } finally {
+                runCatching { tone.release() }
+            }
         }
     }
 
