@@ -9,6 +9,7 @@ const map=fs.readFileSync('native-android/rider-navigation-map/src/main/java/com
 const route=fs.readFileSync('native-android/rider-navigation-map/src/main/java/com/queuego/ridernavigationmap/LongdoNavigationRouteClient.kt','utf8');
 const cameraPolicy=fs.readFileSync('native-android/rider-navigation-map/src/main/java/com/queuego/ridernavigationmap/NavigationCameraPolicy.kt','utf8');
 const guidance=fs.readFileSync('native-android/rider-navigation-map/src/main/java/com/queuego/ridernavigationmap/NavigationGuidance.kt','utf8');
+const coordinator=fs.readFileSync('native-android/rider-navigation-map/src/main/java/com/queuego/ridernavigationmap/NavigationRouteCoordinator.kt','utf8');
 const models=fs.readFileSync('native-android/rider-navigation-map/src/main/java/com/queuego/ridernavigationmap/NavigationMapModels.kt','utf8');
 const workflow=fs.readFileSync('.github/workflows/build-native-rider-pilot.yml','utf8');
 const runtimeTest=fs.readFileSync('native-android/rider-navigation-map/src/androidTest/java/com/queuego/ridernavigationmap/NavigationMapRuntimeTest.kt','utf8');
@@ -90,6 +91,16 @@ assert(guidance.includes('class NavigationProgressTracker')&&
   guidance.includes('shouldReroute')&&guidance.includes('arrived')&&
   guidance.includes('navigationNextInstruction')&&guidance.includes('navigationTurnPhrase'),
   'Navigation guidance must expose progress/ETA, reliable off-route reroute, arrival and turn instructions without Rider business-state coupling');
+assert(route.includes('interface NavigationRouteProvider')&&
+  route.includes('class LongdoNavigationRouteClient')&&
+  route.includes(': NavigationRouteProvider'),
+  'Longdo routing must be injectable behind a provider contract so the standalone coordinator is testable without Production calls');
+assert(coordinator.includes('class NavigationRouteCoordinator')&&
+  coordinator.includes('progressTracker.update')&&
+  coordinator.includes('guidance.shouldReroute')&&
+  coordinator.includes('preservedFuture')&&
+  coordinator.includes('segment.toStopId != activeStop.id'),
+  'Route coordinator must reroute only the active leg, preserve future stops and stay independent of Rider business state');
 assert(route.includes('NavigationRouteInstruction')&&
   route.includes('turnCode = properties.optInt("turn", 4)')&&
   route.includes('roadName = properties.optString("name").trim()'),
@@ -123,7 +134,9 @@ assert(runtimeTest.includes('awaitAppliedRender')&&runtimeTest.includes('awaitSt
   runtimeTest.includes('Healthy background/resume should not invoke the continuity bridge')&&
   runtimeTest.includes('Longdo map replacement was not recorded')&&
   runtimeTest.includes('Equivalent backend refresh rebuilt unchanged route layers')&&
-  runtimeTest.includes('Structurally-equal backend refresh should be suppressed before map render')&&
+  runtimeTest.includes('Equivalent backend refresh changed SDK map creation count')&&
+  runtimeTest.includes('Equivalent backend refresh changed map replacement count')&&
+  runtimeTest.includes('Equivalent backend refresh invoked continuity bridge')&&
   runtimeActivity.includes('refreshEquivalentOrderSnapshot'),
   'Android runtime test must prove GPS/backend refresh stays in place and renderer replacement is visually bridged instead of exposed');
 assert(runtimeActivity.includes('there are no QueueGo accounts, jobs, orders or Production writes')&&

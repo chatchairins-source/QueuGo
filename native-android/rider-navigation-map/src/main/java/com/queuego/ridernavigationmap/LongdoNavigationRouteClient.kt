@@ -24,6 +24,14 @@ data class NavigationRouteLeg(
     val instructions: List<NavigationRouteInstruction> = emptyList()
 )
 
+interface NavigationRouteProvider {
+    override suspend fun route(
+        from: NavigationMapPoint,
+        stop: NavigationMapStop,
+        segmentId: String
+    ): NavigationRouteLeg
+}
+
 class LongdoNavigationRouteClient(
     private val apiKey: String,
     private val client: OkHttpClient = OkHttpClient.Builder()

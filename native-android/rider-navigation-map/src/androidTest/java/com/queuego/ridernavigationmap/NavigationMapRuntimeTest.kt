@@ -166,9 +166,19 @@ class NavigationMapRuntimeTest {
                     activity.latestDiagnostics.stopMutationCount
                 )
                 assertEquals(
-                    "Structurally-equal backend refresh should be suppressed before map render",
-                    beforeEquivalentRefresh.renderPassCount,
-                    activity.latestDiagnostics.renderPassCount
+                    "Equivalent backend refresh changed SDK map creation count",
+                    beforeEquivalentRefresh.mapCreatedCount,
+                    activity.latestDiagnostics.mapCreatedCount
+                )
+                assertEquals(
+                    "Equivalent backend refresh changed map replacement count",
+                    beforeEquivalentRefresh.mapReplacementCount,
+                    activity.latestDiagnostics.mapReplacementCount
+                )
+                assertEquals(
+                    "Equivalent backend refresh invoked continuity bridge",
+                    beforeEquivalentRefresh.snapshotBridgeCount,
+                    activity.latestDiagnostics.snapshotBridgeCount
                 )
             }
 
