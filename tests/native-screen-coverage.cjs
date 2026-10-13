@@ -41,6 +41,9 @@ ok(riderLogin.includes('onRegister: () -> Unit'),'Rider registration entry must 
 ok(!/ACTION_VIEW|startActivity\s*\(/.test(riderLogin),'Rider registration must not regress to external-browser signup');
 ok(/if \(!wide\) \{[\s\S]*?verticalArrangement = Arrangement\.Center[\s\S]*?card\(\)/.test(riderLogin),
    'Rider mobile login group must remain vertically centered while retaining scroll/IME handling');
+ok(riderLogin.includes('if (!wide) {')&&riderLogin.includes('Text("Queue"')&&riderLogin.includes('Text("Go"')&&
+   riderLogin.includes('Text("Rider"')&&riderLogin.includes('Text("Q", color = Color.White'),
+   'Rider mobile login group must retain the QueueGo Rider logo/brand requested for Native auth');
 
 const riderHome=fs.readFileSync('native-android/rider/src/main/java/com/queuego/rider/QueueGoRiderApp.kt','utf8');
 const riderApi=fs.readFileSync('native-android/rider/src/main/java/com/queuego/rider/QueueGoApi.kt','utf8');
