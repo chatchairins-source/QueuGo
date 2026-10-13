@@ -101,6 +101,32 @@ internal fun RiderLoginScreen(
                 shape = RoundedCornerShape(30.dp), color = Color.White
             ) {
                 Column(Modifier.padding(28.dp)) {
+                    if (!wide) {
+                        Row(
+                            Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.Center,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Surface(
+                                shape = RoundedCornerShape(18.dp),
+                                color = AuthRed,
+                                shadowElevation = 8.dp
+                            ) {
+                                Box(Modifier.size(58.dp), contentAlignment = Alignment.Center) {
+                                    Text("Q", color = Color.White, style = authText(38, 58, FontWeight.Black))
+                                }
+                            }
+                            Spacer(Modifier.width(12.dp))
+                            Column {
+                                Row {
+                                    Text("Queue", style = authText(28, 28, FontWeight.Bold))
+                                    Text("Go", style = authText(28, 28, FontWeight.Bold), color = AuthRed)
+                                }
+                                Text("Rider", color = Color(0xFF6F6970), style = authText(13, 20, FontWeight.ExtraBold))
+                            }
+                        }
+                        Spacer(Modifier.height(24.dp))
+                    }
                     Text("เข้าสู่ระบบ", style = authText(29, 44, FontWeight.Bold))
                     Spacer(Modifier.height(6.dp))
                     Text("ใช้เบอร์โทรศัพท์หรืออีเมลที่สมัครไว้", style = authText(12, 18), color = AuthMuted)
