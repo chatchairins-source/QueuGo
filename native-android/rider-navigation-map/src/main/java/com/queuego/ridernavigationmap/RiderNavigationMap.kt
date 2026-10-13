@@ -1,5 +1,6 @@
 package com.queuego.ridernavigationmap
 
+import android.animation.ValueAnimator
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
@@ -15,6 +16,7 @@ import android.view.MotionEvent
 import android.view.PixelCopy
 import android.view.View
 import android.view.ViewConfiguration
+import android.view.animation.LinearInterpolator
 import android.widget.FrameLayout
 import android.widget.ImageView
 import androidx.compose.runtime.Composable
@@ -34,9 +36,9 @@ import com.longdo.api.Pin
 import com.longdo.api.type.MapLocation
 import com.queuego.shared.R as SharedR
 
-private const val RIDER_MARKER_DEFAULT_ANIMATION_SECONDS = 0.72
-private const val RIDER_MARKER_MIN_ANIMATION_SECONDS = 0.18
-private const val RIDER_MARKER_MAX_ANIMATION_SECONDS = 0.85
+private const val RIDER_MARKER_DEFAULT_ANIMATION_MS = 720L
+private const val RIDER_MARKER_MIN_ANIMATION_MS = 180L
+private const val RIDER_MARKER_MAX_ANIMATION_MS = 850L
 private const val RIDER_MARKER_ANIMATION_CADENCE_RATIO = 0.82
 private const val RIDER_MARKER_TELEPORT_METERS = 120.0
 private const val CAMERA_ZOOM_MIN_INTERVAL_MS = 1_800L
@@ -71,18 +73,19 @@ internal fun shouldMoveRiderMarker(
         riderMarkerMoveThresholdMeters(nextFix.speedMetersPerSecond)
 }
 
-internal fun riderMarkerAnimationSeconds(
+internal fun riderMarkerAnimationMillis(
     previousRenderedFix: NavigationMapFix?,
     nextFix: NavigationMapFix
-): Double {
+): Long {
     val previousNanos = previousRenderedFix?.elapsedRealtimeNanos ?: 0L
     val nextNanos = nextFix.elapsedRealtimeNanos
     if (previousNanos <= 0L || nextNanos <= previousNanos) {
-        return RIDER_MARKER_DEFAULT_ANIMATION_SECONDS
+        return RIDER_MARKER_DEFAULT_ANIMATION_MS
     }
-    val cadenceSeconds = (nextNanos - previousNanos).toDouble() / 1_000_000_000.0
-    return (cadenceSeconds * RIDER_MARKER_ANIMATION_CADENCE_RATIO)
-        .coerceIn(RIDER_MARKER_MIN_ANIMATION_SECONDS, RIDER_MARKER_MAX_ANIMATION_SECONDS)
+    val cadenceMillis = (nextNanos - previousNanos) / 1_000_000.0
+    return (cadenceMillis * RIDER_MARKER_ANIMATION_CADENCE_RATIO)
+        .toLong()
+        .coerceIn(RIDER_MARKER_MIN_ANIMATION_MS, RIDER_MARKER_MAX_ANIMATION_MS)
 }
 
 private class RiderNavigationMapHolder {
@@ -109,6 +112,7 @@ private class RiderNavigationMapHolder {
     private var riderPin: Pin? = null
     private var lastRiderFix: NavigationMapFix? = null
     private var lastRenderedRiderFix: NavigationMapFix? = null
+    private var riderMarkerAnimator: ValueAnimator? = null
     private var lastCameraFix: NavigationMapPoint? = null
     private var lastCameraCenter: NavigationMapPoint? = null
     private var lastCameraBearing: Float? = null
@@ -502,42 +506,65 @@ private class RiderNavigationMapHolder {
     }
 
     private fun renderRider(activeMap: com.longdo.api.Map, fix: NavigationMapFix) {
-        val location = MapLocation(fix.point.longitude, fix.point.latitude)
+        val target = MapLocation(fix.point.longitude, fix.point.latitude)
         val existing = riderPin
         if (existing == null) {
-            val pin = Pin(location, markerBitmap(SharedR.drawable.qg_map_rider))
+            val pin = Pin(target, markerBitmap(SharedR.drawable.qg_map_rider))
             runCatching { activeMap.pushPin(pin) }
                 .onSuccess {
                     riderPin = pin
                     lastRenderedRiderFix = fix
                 }
-        } else {
-            val previous = lastRenderedRiderFix
-            val distance = previous?.let { navigationHaversineMeters(it.point, fix.point) }
-            val update = runCatching {
-                if (distance != null && distance >= RIDER_MARKER_TELEPORT_METERS) {
-                    // Never animate a stale/teleport correction across the whole screen.
-                    existing.setLocation(location)
-                } else {
-                    existing.setLocation(
-                        location,
-                        true,
-                        riderMarkerAnimationSeconds(previous, fix)
-                    )
+            return
+        }
+
+        riderMarkerAnimator?.cancel()
+        riderMarkerAnimator = null
+
+        val previousTarget = lastRenderedRiderFix
+        val targetDistance = previousTarget?.let {
+            navigationHaversineMeters(it.point, fix.point)
+        }
+        if (targetDistance != null && targetDistance >= RIDER_MARKER_TELEPORT_METERS) {
+            // Never animate a stale/teleport correction across the whole screen.
+            runCatching { existing.setLocation(target) }
+                .onSuccess { lastRenderedRiderFix = fix }
+            return
+        }
+
+        // Longdo v0.1.8 exposes a different third-argument signature than the public docs.
+        // Use Android's animator with the no-animation Pin.setLocation() overload instead.
+        // Starting from getMovingLocation() prevents a jump when a new GPS fix arrives before
+        // the previous interpolation has finished.
+        val moving = runCatching { existing.getMovingLocation() }.getOrNull()
+        val start = moving?.let { NavigationMapPoint(it.lat, it.lon) }
+            ?.takeIf { it.valid }
+            ?: previousTarget?.point
+            ?: fix.point
+        val distance = navigationHaversineMeters(start, fix.point)
+        if (distance < riderMarkerMoveThresholdMeters(fix.speedMetersPerSecond)) {
+            lastRenderedRiderFix = fix
+            return
+        }
+
+        val durationMs = riderMarkerAnimationMillis(previousTarget, fix)
+        val animator = ValueAnimator.ofFloat(0f, 1f).apply {
+            duration = durationMs
+            interpolator = LinearInterpolator()
+            addUpdateListener { animation ->
+                val fraction = animation.animatedFraction.toDouble()
+                val latitude = start.latitude + (fix.point.latitude - start.latitude) * fraction
+                val longitude = start.longitude + (fix.point.longitude - start.longitude) * fraction
+                runCatching {
+                    existing.setLocation(MapLocation(longitude, latitude))
+                }.onFailure {
+                    animation.cancel()
                 }
             }
-            if (update.isSuccess) {
-                lastRenderedRiderFix = fix
-            } else {
-                runCatching { activeMap.removePin(existing) }
-                val replacement = Pin(location, markerBitmap(SharedR.drawable.qg_map_rider))
-                runCatching { activeMap.pushPin(replacement) }
-                    .onSuccess {
-                        riderPin = replacement
-                        lastRenderedRiderFix = fix
-                    }
-            }
         }
+        riderMarkerAnimator = animator
+        lastRenderedRiderFix = fix
+        animator.start()
     }
 
     private fun renderStops(activeMap: com.longdo.api.Map, state: RiderNavigationMapState) {
@@ -812,6 +839,8 @@ private class RiderNavigationMapHolder {
             riderPin?.let { pin -> runCatching { activeMap.removePin(pin) } }
             stopPins.values.forEach { rendered -> runCatching { activeMap.removePin(rendered.pin) } }
         }
+        riderMarkerAnimator?.cancel()
+        riderMarkerAnimator = null
         routeLines.clear()
         renderedRouteSegments = emptyList()
         stopPins.clear()
