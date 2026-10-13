@@ -17,6 +17,8 @@ assert(settings.includes('":rider-navigation-map"'),
   'Standalone Rider navigation map module must be registered');
 assert(moduleBuild.includes('id("com.android.library")')&&moduleBuild.includes('implementation(project(":shared"))'),
   'Navigation map must stay an Android library reusing the shared Longdo SDK');
+assert(moduleBuild.includes('com.google.android.gms:play-services-location:21.3.0'),
+  'Standalone Longdo runtime must include the Google Play Services location classes required by MapLocationManager');
 assert(!riderBuild.includes('project(":rider-navigation-map")')&&!riderApp.includes('com.queuego.ridernavigationmap'),
   'New navigation map must remain isolated from the current Rider APK until its map gate passes');
 assert(map.includes('val holder = remember(stateKey)')&&map.includes('AndroidView(')&&map.includes('factory =')&&map.includes('update ='),
