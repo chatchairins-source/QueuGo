@@ -287,6 +287,9 @@ ok(source.includes('SYSTEM_ALERT_WINDOW')&&source.includes('TYPE_APPLICATION_OVE
 ok(source.includes('FOREGROUND_SERVICE_SPECIAL_USE')&&source.includes('RiderReturnService'),'navigation return overlay must run as explicit foreground special-use service');
 ok(source.includes('ACTION_MANAGE_OVERLAY_PERMISSION'),'overlay permission must be explicitly user-controlled');
 ok(source.includes('RiderReturnService.stop'),'overlay service must have cleanup path');
+ok(riderMap.includes('map_inflate_failed')&&riderMap.includes('map_on_resume_failed')&&riderMap.includes('map_on_pause_failed')&&riderMap.includes('return@AndroidView root'),'Rider Longdo host must fail safe instead of crashing the process when SDK inflate/resume/pause fails');
+const riderReturnService=read('rider/src/main/java/com/queuego/rider/RiderReturnService.kt');
+ok(riderReturnService.includes('foreground_start_rejected')&&riderReturnService.includes('start_foreground_failed')&&riderReturnService.includes('foregroundStarted'),'Rider navigation return service must tolerate Android foreground-service rejection without crashing');
 ok(!/cash-confirm|ยืนยันชำระเงินให้ร้าน|ยืนยันเก็บเงินจากลูกค้า/i.test(source),'native Rider must not reintroduce manual cash confirmation screens');
 ok(!/service_role|sb_secret_/i.test(source),'no privileged Supabase secret');
 ok(runtimeCapture.includes('def package_pids(pkg: str)')&&runtimeCapture.includes('def android_runtime_for_pids(pids)'),'Android runtime evidence must resolve the tested QueueGo process IDs');
