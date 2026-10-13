@@ -21,8 +21,8 @@ assert(moduleBuild.includes('com.google.android.gms:play-services-location:21.3.
   'Standalone Longdo runtime must include the Google Play Services location classes required by MapLocationManager');
 assert(!riderBuild.includes('project(":rider-navigation-map")')&&!riderApp.includes('com.queuego.ridernavigationmap'),
   'New navigation map must remain isolated from the current Rider APK until its map gate passes');
-assert(map.includes('val holder = remember(stateKey)')&&map.includes('AndroidView(')&&map.includes('factory =')&&map.includes('update ='),
-  'MapView owner must survive normal Compose recomposition and only update overlays');
+assert(map.includes('val holder = remember(stateKey, lifecycle)')&&map.includes('AndroidView(')&&map.includes('factory =')&&map.includes('update ='),
+  'MapView owner must survive normal Compose recomposition and lifecycle-safe tab remounts while only updating overlays');
 assert(map.includes('Deliberately keep lastRiderFix, map, pins and route layers')&&
   !map.includes('latestDeviceLocation = null')&&!map.includes('clearPin()'),
   'Refresh/resume must not clear the existing map or rebuild every marker');
