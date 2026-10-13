@@ -314,13 +314,11 @@ private class RiderLongdoHolder(
             if (job == null) centerOnDevice(context)
             return
         }
-        lastOverlayKey = key
-
         updateCurrentLocationPin(location)
         val desiredStops = mutableSetOf<String>()
 
         fun addStopPin(lat: Double?, lon: Double?, number: Int, visual: RiderStopVisual) {
-            if (lat == null || lon == null) return
+            if (lat == null || lon == null || !lat.isFinite() || !lon.isFinite()) return
             val stopKey = "$visual:$number:$lat:$lon"
             desiredStops.add(stopKey)
             if (stopKey in stopPins) return
@@ -336,8 +334,11 @@ private class RiderLongdoHolder(
         }
 
         if (job == null) {
-            stopPins.values.forEach { runCatching { ldmap.removePin(it) } }
-            stopPins.clear()
+            stopPins.keys.toList().forEach { stopKey ->
+                val pin = stopPins.getValue(stopKey)
+                runCatching { ldmap.removePin(pin) }.onSuccess { stopPins.remove(stopKey) }
+            }
+            if (stopPins.isEmpty()) lastOverlayKey = key
             cameraJobId = null
             centerOnDevice(context)
             return
@@ -379,9 +380,12 @@ private class RiderLongdoHolder(
             addStopPin(job.deliveryLat, job.deliveryLng, 2, RiderStopVisual.DROPOFF)
         }
 
-        stopPins.keys.filter { it !in desiredStops }.forEach { key ->
-            stopPins.remove(key)?.let { pin -> runCatching { ldmap.removePin(pin) } }
+        stopPins.keys.filter { it !in desiredStops }.forEach { stopKey ->
+            val pin = stopPins.getValue(stopKey)
+            runCatching { ldmap.removePin(pin) }.onSuccess { stopPins.remove(stopKey) }
         }
+        // Failed SDK add/remove calls retry on the next refresh; never cache a stale pin set.
+        if (stopPins.keys == desiredStops) lastOverlayKey = key
         if (cameraJobId == job.id) return
         cameraJobId = job.id
         val target = job.navigationTarget

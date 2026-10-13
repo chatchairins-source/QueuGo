@@ -29,6 +29,16 @@ private class TrackingMapHolder {
     var view: MapGLSurfaceView? = null
     var map: com.longdo.api.Map? = null
     var renderedPoints: List<QgMapPoint>? = null
+    private val pins = mutableMapOf<Pair<QgMapRole, Int>, Pair<QgMapPoint, Pin>>()
+    private val bitmaps = mutableMapOf<QgMapRole, Bitmap>()
+
+    fun attachMap(nextMap: com.longdo.api.Map) {
+        if (map !== nextMap) {
+            pins.clear()
+            renderedPoints = null
+            map = nextMap
+        }
+    }
     var centered = false
     var disposed = false
     private var resumed = false
@@ -77,20 +87,49 @@ private class TrackingMapHolder {
         if (disposed) return
         val valid = points.filter { it.valid }
         if (renderedPoints == valid) return
-        activeMap.clearPin()
-        valid.forEach { point ->
-            val density = view?.resources?.displayMetrics?.density ?: 1f
-            val size = (26 * density).toInt().coerceAtLeast(26)
-            val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
-            val canvas = Canvas(bitmap)
-            val paint = Paint(Paint.ANTI_ALIAS_FLAG)
-            paint.color = android.graphics.Color.WHITE
-            canvas.drawCircle(size / 2f, size / 2f, size / 2f, paint)
-            paint.color = point.color
-            canvas.drawCircle(size / 2f, size / 2f, size * 10f / 26f, paint)
-            activeMap.pushPin(Pin(MapLocation(point.longitude, point.latitude), bitmap, PointF(size / 2f, size / 2f)))
+        val counts = mutableMapOf<QgMapRole, Int>()
+        val desired = valid.associateBy { point ->
+            val index = counts.getOrDefault(point.role, 0)
+            counts[point.role] = index + 1
+            point.role to index
         }
-        renderedPoints = valid
+        pins.keys.filter { it !in desired }.forEach { key ->
+            val pin = pins.getValue(key).second
+            runCatching { activeMap.removePin(pin) }.onSuccess { pins.remove(key) }
+        }
+        desired.forEach { (key, point) ->
+            val existing = pins[key]
+            if (existing != null) {
+                if (existing.first != point) {
+                    runCatching {
+                        existing.second.setLocation(MapLocation(point.longitude, point.latitude), true, 18)
+                    }.onSuccess { pins[key] = point to existing.second }
+                }
+                return@forEach
+            }
+            val context = view?.context ?: return@forEach
+            val bitmap = bitmaps.getOrPut(point.role) {
+                val resource = when (point.role) {
+                    QgMapRole.MERCHANT -> R.drawable.qg_map_pickup
+                    QgMapRole.CUSTOMER -> R.drawable.qg_map_dropoff
+                    QgMapRole.RIDER -> R.drawable.qg_map_rider
+                }
+                val drawable = requireNotNull(context.getDrawable(resource))
+                Bitmap.createBitmap(drawable.intrinsicWidth.coerceAtLeast(1),
+                    drawable.intrinsicHeight.coerceAtLeast(1), Bitmap.Config.ARGB_8888).also {
+                    drawable.setBounds(0, 0, it.width, it.height)
+                    drawable.draw(Canvas(it))
+                }
+            }
+            val anchorY = if (point.role == QgMapRole.RIDER) bitmap.height / 2f
+                else bitmap.height.toFloat()
+            val pin = Pin(MapLocation(point.longitude, point.latitude), bitmap,
+                PointF(bitmap.width / 2f, anchorY))
+            runCatching { activeMap.pushPin(pin) }.onSuccess { pins[key] = point to pin }
+        }
+        if (pins.keys == desired.keys && desired.all { (key, point) -> pins[key]?.first == point }) {
+            renderedPoints = valid
+        }
         // Refresh markers without pulling the user's manually panned viewport back.
         if (!centered && valid.isNotEmpty()) {
             activeMap.setZoom(14)
@@ -130,8 +169,7 @@ fun QgLongdoTrackingMap(
                             holder.mapCreated(view)
                             if (!holder.disposed) {
                                 runCatching {
-                                    holder.map = map
-                                    holder.renderedPoints = null
+                                    holder.attachMap(map)
                                     map.setBase(LongdoLayer(ctx, "gray", 0, 1, 20).apply {
                                         layerURL = "https://ms2.longdo.com/mmmap/img.php"
                                     })

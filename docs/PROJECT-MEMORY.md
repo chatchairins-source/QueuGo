@@ -1,3 +1,7 @@
+## 2026-10-13 Customer tracking semantic marker integration
+- Preserved concurrent successor3ec0677 and its Rider marker/return design plus real vector instrumentation. PR169 integrates the same family into Customer tracking with explicit role fields; Customer mapReady/GPS and shared Longdo lifecycle code stay unchanged.
+- Local full regression passed before successor integration; combined exact-head regression/unit/build/runtime must pass. Physical gates remain OPEN; no release artifacts delivered.
+
 ## 2026-10-13 professional map marker mission staging
 - Continue PR142 from 9270cb257db1de1d668fb717cac8c1bcae44b34d; preserve Customer mapReady/GPS ordering and shared Longdo fail-closed lifecycle fixes. Backup branch backup/map-markers-before-9270cb25-20261013.
 - Owner explicitly authorizes the existing Google Maps return overlay visual update. Custom bold vector family: red storefront pickup, teal house drop-off, red directional Rider, and branded vector Q on the draggable return control. Sequence badges render actual integers independently of icons, including 10+ stops. Retire old generic numbered marker resources.
