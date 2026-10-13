@@ -47,6 +47,15 @@ ok(riderLogin.includes('if (!wide) {')&&riderLogin.includes('Text("Queue"')&&rid
 
 const riderHome=fs.readFileSync('native-android/rider/src/main/java/com/queuego/rider/QueueGoRiderApp.kt','utf8');
 const riderApi=fs.readFileSync('native-android/rider/src/main/java/com/queuego/rider/QueueGoApi.kt','utf8');
+const riderStore=fs.readFileSync('native-android/rider/src/main/java/com/queuego/rider/SessionStore.kt','utf8');
+ok(riderStore.includes('setOf("home", "earn", "chat", "profile")')&&
+   riderStore.includes('"earnings" -> "earn"')&&riderHome.includes('activeTab == "earn"'),
+   'Rider tab persistence must use the actual earnings tab key and migrate the old key without returning Home');
+for(const field of ['customerSubtotal','customerDeliveryFee','customerServiceFee']){
+  ok(riderStore.includes('.put("'+field+'", job.'+field+')')&&
+     riderStore.includes(field+' = o.optNullableDouble("'+field+'")'),
+     'Rider cached job must preserve '+field+' across process recreation');
+}
 ok(riderHome.includes('private fun RiderBlueprintBrandPill()')&&riderHome.includes('horizontalArrangement = Arrangement.SpaceBetween')&&
    riderHome.includes('Text("Queue"')&&riderHome.includes('Text("Go", color = QgRed')&&riderHome.includes('Text("Rider", color = Color(0xFF8D8589)'),
    'Rider Native home topbar must retain the Production QueueGo Rider brand pill beside online status');

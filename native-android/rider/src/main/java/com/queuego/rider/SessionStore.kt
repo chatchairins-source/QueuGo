@@ -74,7 +74,7 @@ class SessionStore(private val context: Context) {
 
     @Synchronized
     fun saveActiveTab(userId: String, tab: String) {
-        val safeTab = tab.takeIf { it in setOf("home", "earnings", "chat", "profile") } ?: "home"
+        val safeTab = tab.takeIf { it in setOf("home", "earn", "chat", "profile") } ?: "home"
         val root = JSONObject().put("userId", userId).put("activeTab", safeTab)
         prefs.edit().putString("ui_state", encrypt(root.toString())).apply()
     }
@@ -84,7 +84,11 @@ class SessionStore(private val context: Context) {
         val raw = prefs.getString("ui_state", null) ?: return "home"
         val root = JSONObject(decrypt(raw))
         if (root.optString("userId") != userId) return "home"
-        root.optString("activeTab").takeIf { it in setOf("home", "earnings", "chat", "profile") } ?: "home"
+        when (val saved = root.optString("activeTab")) {
+            "earnings" -> "earn" // migrate the old key without bouncing the Rider back Home
+            in setOf("home", "earn", "chat", "profile") -> saved
+            else -> "home"
+        }
     }.getOrDefault("home")
 
     @Synchronized
@@ -157,6 +161,9 @@ class SessionStore(private val context: Context) {
         .put("arrivedCustomerAt", job.arrivedCustomerAt)
         .put("shopCash", job.shopCash)
         .put("customerCash", job.customerCash)
+        .put("customerSubtotal", job.customerSubtotal)
+        .put("customerDeliveryFee", job.customerDeliveryFee)
+        .put("customerServiceFee", job.customerServiceFee)
 
     private fun riderJobFromJson(o: JSONObject): RiderJob = RiderJob(
         id = o.getString("id"),
@@ -174,7 +181,10 @@ class SessionStore(private val context: Context) {
         arrivedShopAt = o.optNullableString("arrivedShopAt"),
         arrivedCustomerAt = o.optNullableString("arrivedCustomerAt"),
         shopCash = o.optNullableDouble("shopCash"),
-        customerCash = o.optNullableDouble("customerCash")
+        customerCash = o.optNullableDouble("customerCash"),
+        customerSubtotal = o.optNullableDouble("customerSubtotal"),
+        customerDeliveryFee = o.optNullableDouble("customerDeliveryFee"),
+        customerServiceFee = o.optNullableDouble("customerServiceFee")
     )
 
     private fun laundryJobToJson(job: RiderLaundryJob): JSONObject = JSONObject()
