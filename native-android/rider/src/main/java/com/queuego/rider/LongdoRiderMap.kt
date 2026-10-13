@@ -247,6 +247,8 @@ private class RiderLongdoHolder(
             append(job?.id ?: "none")
             append("|")
             append(job?.status ?: "")
+            append("|arrived:")
+            append(job?.shopArrived ?: false)
             append("|")
             append(job?.pickupLat).append(",").append(job?.pickupLng)
             append("|")
@@ -256,6 +258,7 @@ private class RiderLongdoHolder(
             append("|bundle:")
             bundleOrders.forEach {
                 append(it.job.id).append(":").append(it.job.status).append(":")
+                    .append(it.job.shopArrived).append(":")
                     .append(it.bundleSequence).append(":").append(it.dropRank).append(";")
             }
         }
@@ -466,7 +469,7 @@ internal fun RiderLongdoMap(
         }
     )
 
-    LaunchedEffect(job?.id, job?.status, job?.pickupLat, job?.pickupLng, job?.deliveryLat, job?.deliveryLng, marketPickups, bundleOrders) {
+    LaunchedEffect(job?.id, job?.status, job?.arrivedShopAt, job?.pickupLat, job?.pickupLng, job?.deliveryLat, job?.deliveryLng, marketPickups, bundleOrders) {
         holder.refreshOverlays(context, job, marketPickups, bundleOrders)
     }
 
