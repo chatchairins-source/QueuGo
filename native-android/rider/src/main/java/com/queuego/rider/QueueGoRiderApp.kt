@@ -952,9 +952,10 @@ private fun RiderHome(
             }
             .onFailure {
                 if (it is CancellationException) throw it
-                // Never expose raw PostgREST/PostgreSQL implementation errors on the Rider home.
-                // The refresh loop keeps retrying while the last known safe snapshot remains usable.
-                loadError = "กำลังเชื่อมต่อข้อมูลงานใหม่"
+                // A transient refresh must never cover an already-restored safe snapshot.
+                // Keep the cached/live job visible and retry silently; only first-load failures
+                // need an error surface because there is no usable Rider state yet.
+                if (snapshot == null) loadError = "กำลังเชื่อมต่อข้อมูลงานใหม่"
             }
     }
 
