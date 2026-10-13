@@ -1,6 +1,6 @@
 'use strict';
 const fs=require('fs'),assert=require('assert');
-const sql=fs.readFileSync('ops/grocery/grocery_cash_checkout_lock_order.sql','utf8');
+const sql=fs.readFileSync('supabase/migrations/20261013023547_grocery_cash_checkout_lock_order.sql','utf8');
 let checks=0;
 const ok=(value,message)=>{assert.ok(value,message);checks++;};
 
