@@ -177,11 +177,12 @@ fun LaundryNativeScreen(
         Box(Modifier.fillMaxWidth().weight(1f), contentAlignment = Alignment.TopCenter) {
         Column(Modifier.widthIn(max = 680.dp).fillMaxWidth().verticalScroll(rememberScrollState()).padding(18.dp)) {
         if (selectedHub == null) {
-            Column(Modifier.fillMaxWidth().background(Color(0xFFE6002D), RoundedCornerShape(24.dp)).padding(22.dp)) {
-                Text("ฝากซัก", color = Color.White, fontSize = 25.sp, fontWeight = FontWeight.ExtraBold)
-                Spacer(Modifier.height(6.dp))
-                Text("เลือกร้านและบริการ ร้านยืนยันก่อน แล้ว Rider ไปรับผ้าถึงที่และส่งคืนเมื่อเสร็จ", color = Color.White.copy(alpha = 0.9f))
-            }
+            CustomerServiceBanner(
+                banner = null,
+                fallbackDrawable = R.drawable.qg_laundry_banner,
+                fallbackTitle = "ฝากซัก",
+                fallbackSubtitle = "เลือกร้านและบริการ ร้านยืนยันก่อน แล้ว Rider ไปรับผ้าถึงที่และส่งคืนเมื่อเสร็จ"
+            )
             Spacer(Modifier.height(18.dp))
         }
 

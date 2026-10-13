@@ -44,7 +44,9 @@ assert(!map.includes('LaunchedEffect(state)')&&
   !map.includes('routes.hashCode()'),
   'GPS/order refresh must not render twice or rebuild structurally-equivalent route geometry');
 assert(map.includes('stopSource = null')&&map.includes('routeSource = null')&&
-  map.includes('if (!pushed) renderSucceeded = false')&&map.includes('failedToRemove.isNotEmpty()'),
+  map.includes('if (!pushed) renderSucceeded = false')&&map.includes('runCatching { activeMap.removeLine(oldLine) }.isFailure')&&
+  map.includes('nextSegments += requireNotNull(oldSegment)')&&
+  map.includes('routeSource = if (succeeded) state.routes else null'),
   'Transient Longdo pin/line failures must remain retryable instead of caching a partial frame');
 assert(map.includes('fun attachMap(nextMap: com.longdo.api.Map): Boolean')&&
   map.includes('if (map === nextMap) return false')&&
@@ -155,15 +157,15 @@ assert(cameraPolicy.includes('navigationCameraDecision')&&
 assert(map.includes('ACTIVE_ROUTE_COLOR')&&map.includes('FUTURE_ROUTE_COLOR')&&
   map.includes('setWidth(if (segment.style == NavigationRouteStyle.ACTIVE) 8 else 6)'),
   'Current route must be dark red and later route legs visibly faded');
-assert(map.includes('routeLines[index].setLocation(locations)')&&
-  map.includes('renderedRouteSegments.zip(routes)')&&
+assert(map.includes('oldLine.setLocation(segment.points.map')&&
+  map.includes('renderedRouteSegments.zip(routeLines)')&&
   map.includes('Topology/style changed or an in-place mutation failed'),
   'Route progress must mutate existing Longdo line geometry in place and rebuild only on topology/style changes');
 assert(map.includes('RIDER_MARKER_MAX_ANIMATION_MS = 850L')&&
   map.includes('ValueAnimator.ofFloat(0f, 1f)')&&
   map.includes('riderMarkerAnimator?.cancel()')&&
   map.includes('existing.getMovingLocation()')&&
-  map.includes('riderMarkerAnimationMillis(previousTarget, fix)')&&
+  map.includes('riderMarkerAnimationMillis(lastRiderFix ?: previousTarget, fix)')&&
   !map.includes('RIDER_MARKER_ANIMATION_STEPS = 18')&&
   !map.includes('existing.setLocation(\n                        location,\n                        true,'),
   'Rider marker smoothing must use one cancellable Android animator shorter than the GPS cadence and never stack Longdo animations');

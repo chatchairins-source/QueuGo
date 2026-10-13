@@ -34,6 +34,7 @@ internal fun navigationCameraDecision(
     // At driving speed GPS course is authoritative. At walking/standstill speed the
     // course sensor becomes noisy, so prefer the matched road direction when available.
     val desiredBearing = when {
+        speed == null || speed < 0.83f -> routeBearing ?: previousBearingDegrees
         speed != null && speed >= 2.2f -> gpsBearing ?: routeBearing
         routeBearing != null -> routeBearing
         else -> gpsBearing

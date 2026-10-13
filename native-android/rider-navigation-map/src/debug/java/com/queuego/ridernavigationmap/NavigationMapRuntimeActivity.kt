@@ -65,7 +65,8 @@ class NavigationMapRuntimeActivity : ComponentActivity() {
                 ),
                 bearingDegrees = (15f + step * 3f) % 360f,
                 accuracyMeters = 6f,
-                elapsedRealtimeNanos = step.toLong()
+                speedMetersPerSecond = 8f,
+                elapsedRealtimeNanos = (step.toLong() + 1L) * 1_000_000_000L
             )
         )
     }
@@ -106,6 +107,12 @@ class NavigationMapRuntimeActivity : ComponentActivity() {
                 }
             }
         )
+    }
+
+    fun replaceActiveRouteFixture() {
+        mapState.value = mapState.value.copy(routes = mapState.value.routes.map {
+            if (it.id == "fixture-leg-1") it.copy(id = "fixture-reroute") else it
+        })
     }
 
     fun routeLineIdentities(): List<Int> {

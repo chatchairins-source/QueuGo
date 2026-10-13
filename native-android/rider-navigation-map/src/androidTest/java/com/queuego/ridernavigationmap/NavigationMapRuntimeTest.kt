@@ -134,6 +134,7 @@ class NavigationMapRuntimeTest {
                 runtimeActivity.mapReady.await(30, TimeUnit.SECONDS)
             )
 
+            awaitSnapshotCaptured(runtimeActivity)
             var initialView = 0
             var initialSdkMap = 0
             var initialDiagnostics = NavigationMapDiagnostics(0, 0, 0, 0)
@@ -148,13 +149,19 @@ class NavigationMapRuntimeTest {
             assertTrue(initialDiagnostics.stopMutationCount >= 2)
 
             val beforeGpsRender = runtimeActivity.latestDiagnostics.renderPassCount
-            repeat(16) { index ->
+            repeat(60) { index ->
+                val beforeTick = runtimeActivity.latestDiagnostics.renderPassCount
                 scenario.onActivity { it.refreshRiderFix(index + 1) }
                 InstrumentationRegistry.getInstrumentation().waitForIdleSync()
+                awaitAppliedRender(runtimeActivity, beforeTick)
             }
             awaitAppliedRender(runtimeActivity, beforeGpsRender)
 
             scenario.onActivity { activity ->
+                assertEquals("GPS ticks captured snapshots", initialDiagnostics.snapshotCaptureCount,
+                    activity.latestDiagnostics.snapshotCaptureCount)
+                assertEquals("GPS ticks replaced renderer", initialDiagnostics.mapReplacementCount,
+                    activity.latestDiagnostics.mapReplacementCount)
                 assertEquals("GPS refresh recreated MapGLSurfaceView", initialView, activity.mapViewIdentity())
                 assertEquals("GPS refresh recreated Longdo map", initialSdkMap, activity.sdkMapIdentity())
                 assertEquals(1, activity.latestDiagnostics.viewCreatedCount)
@@ -332,6 +339,14 @@ class NavigationMapRuntimeTest {
                 val after = it.routeLineIdentities()
                 assertEquals("Route line count changed during geometry-only progress", before.size, after.size)
                 assertEquals("Route progress recreated Longdo Line objects instead of mutating them", before, after)
+                beforeRenderPass = it.latestDiagnostics.renderPassCount
+                it.replaceActiveRouteFixture()
+            }
+            awaitAppliedRender(activity, beforeRenderPass)
+            scenario.onActivity {
+                val afterReroute = it.routeLineIdentities()
+                assertEquals("Reroute recreated future line", before.first(), afterReroute.first())
+                assertNotEquals("Reroute did not replace active line", before.last(), afterReroute.last())
             }
         }
     }

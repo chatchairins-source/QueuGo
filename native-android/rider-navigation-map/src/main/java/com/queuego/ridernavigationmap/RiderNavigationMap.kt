@@ -73,6 +73,12 @@ internal fun shouldMoveRiderMarker(
         riderMarkerMoveThresholdMeters(nextFix.speedMetersPerSecond)
 }
 
+internal fun riderMarkerAnimationSeconds(previousFix: NavigationMapFix?, nextFix: NavigationMapFix): Double =
+    riderMarkerAnimationMillis(previousFix, nextFix) / 1000.0
+
+internal fun shouldAnimateRiderMarker(previous: NavigationMapPoint, next: NavigationMapPoint): Boolean =
+    navigationHaversineMeters(previous, next) < RIDER_MARKER_TELEPORT_METERS
+
 internal fun riderMarkerAnimationMillis(
     previousRenderedFix: NavigationMapFix?,
     nextFix: NavigationMapFix
@@ -86,6 +92,7 @@ internal fun riderMarkerAnimationMillis(
     return (cadenceMillis * RIDER_MARKER_ANIMATION_CADENCE_RATIO)
         .toLong()
         .coerceIn(RIDER_MARKER_MIN_ANIMATION_MS, RIDER_MARKER_MAX_ANIMATION_MS)
+        .coerceAtMost((cadenceMillis * RIDER_MARKER_ANIMATION_CADENCE_RATIO).toLong().coerceAtLeast(0L))
 }
 
 private class RiderNavigationMapHolder {
@@ -131,6 +138,7 @@ private class RiderNavigationMapHolder {
     private var viewCreatedCount = 0
     private var mapCreatedCount = 0
     private var routeLayerRebuildCount = 0
+    private var routeGeometryUpdateCount = 0
     private var stopMutationCount = 0
     private var renderPassCount = 0
     private var snapshotCaptureCount = 0
@@ -326,6 +334,8 @@ private class RiderNavigationMapHolder {
         if (map != null && announcedReplacementMap !== nextMap) {
             announceRendererReplacement(nextMap)
         }
+        riderMarkerAnimator?.cancel()
+        riderMarkerAnimator = null
         map = nextMap
         announcedReplacementMap = null
         riderPin = null
@@ -479,6 +489,7 @@ private class RiderNavigationMapHolder {
     }
 
     fun render(state: RiderNavigationMapState) {
+        val restoringFollow = state.followRider && !lastState.followRider
         lastState = state
         val activeMap = map ?: return
         if (disposed) return
@@ -495,6 +506,7 @@ private class RiderNavigationMapHolder {
 
         val followedFix = state.rider?.takeIf { it.point.valid } ?: lastRiderFix
         if (state.followRider && followedFix != null) {
+            if (restoringFollow) lastCameraCenter = null
             followRider(activeMap, state.copy(rider = followedFix))
         }
         // Publish once per applied state even when overlays are structurally unchanged.
@@ -522,10 +534,7 @@ private class RiderNavigationMapHolder {
         riderMarkerAnimator = null
 
         val previousTarget = lastRenderedRiderFix
-        val targetDistance = previousTarget?.let {
-            navigationHaversineMeters(it.point, fix.point)
-        }
-        if (targetDistance != null && targetDistance >= RIDER_MARKER_TELEPORT_METERS) {
+        if (previousTarget != null && !shouldAnimateRiderMarker(previousTarget.point, fix.point)) {
             // Never animate a stale/teleport correction across the whole screen.
             runCatching { existing.setLocation(target) }
                 .onSuccess { lastRenderedRiderFix = fix }
@@ -547,7 +556,7 @@ private class RiderNavigationMapHolder {
             return
         }
 
-        val durationMs = riderMarkerAnimationMillis(previousTarget, fix)
+        val durationMs = riderMarkerAnimationMillis(lastRiderFix ?: previousTarget, fix)
         val animator = ValueAnimator.ofFloat(0f, 1f).apply {
             duration = durationMs
             interpolator = LinearInterpolator()
@@ -558,6 +567,7 @@ private class RiderNavigationMapHolder {
                 runCatching {
                     existing.setLocation(MapLocation(longitude, latitude))
                 }.onFailure {
+                    lastRenderedRiderFix = null
                     animation.cancel()
                 }
             }
@@ -642,86 +652,69 @@ private class RiderNavigationMapHolder {
         val routes = state.styledRemainingRoutes()
             .sortedBy { if (it.style == NavigationRouteStyle.FUTURE) 0 else 1 }
 
-        val canMutateInPlace =
-            routeLines.size == routes.size &&
-                renderedRouteSegments.size == routes.size &&
-                renderedRouteSegments.zip(routes).all { (before, after) ->
-                    before.id == after.id &&
-                        before.toStopId == after.toStopId &&
-                        before.style == after.style
-                }
-
-        if (canMutateInPlace) {
-            var changed = false
-            var mutationSucceeded = true
-            routes.forEachIndexed { index, segment ->
-                val previous = renderedRouteSegments[index]
-                if (previous.points != segment.points) {
-                    changed = true
-                    val locations = segment.points
-                        .map { MapLocation(it.longitude, it.latitude) }
-                        .toTypedArray()
-                    if (runCatching { routeLines[index].setLocation(locations) }.isFailure) {
-                        mutationSucceeded = false
-                    }
+        // Reconcile each leg independently. Rerouting/removing the active leg must not
+        // remove future lines that are still valid. Failed mutations remain retryable.
+        val previous = renderedRouteSegments.zip(routeLines).associate { (segment, line) ->
+            segment.id to (segment to line)
+        }.toMutableMap()
+        val nextLines = mutableListOf<Line>()
+        val nextSegments = mutableListOf<NavigationRouteSegment>()
+        var succeeded = true
+        var topologyChanged = false
+        var geometryChanged = false
+        for (segment in routes) {
+            val retained = previous.remove(segment.id)
+            val oldSegment = retained?.first
+            val oldLine = retained?.second
+            val sameStyle = oldSegment != null && oldSegment.toStopId == segment.toStopId &&
+                oldSegment.style == segment.style
+            if (oldLine != null && sameStyle) {
+                val mutated = oldSegment!!.points == segment.points || runCatching {
+                    oldLine.setLocation(segment.points.map {
+                        MapLocation(it.longitude, it.latitude)
+                    }.toTypedArray())
+                    geometryChanged = true
+                }.isSuccess
+                if (mutated) {
+                    nextLines += oldLine
+                    nextSegments += segment
+                    continue
                 }
             }
-            if (mutationSucceeded) {
-                renderedRouteSegments = routes
-                routeSource = state.routes
-                routeActiveId = activeStopId
-                routeRemainingStopIds = remainingStopIds
-                if (changed) routeLayerRebuildCount += 1
-                publishDiagnostics()
-                return
+            // Topology/style changed or an in-place mutation failed: replace only this leg.
+            if (oldLine != null && runCatching { activeMap.removeLine(oldLine) }.isFailure) {
+                nextLines += oldLine
+                nextSegments += requireNotNull(oldSegment)
+                succeeded = false
+                continue
             }
+            topologyChanged = true
+            val line = Line(segment.points.map { MapLocation(it.longitude, it.latitude) }.toTypedArray()).apply {
+                setWidth(if (segment.style == NavigationRouteStyle.ACTIVE) 8 else 6)
+                setColor(if (segment.style == NavigationRouteStyle.ACTIVE) ACTIVE_ROUTE_COLOR else FUTURE_ROUTE_COLOR)
+            }
+            if (runCatching { activeMap.addLine(line) }.isSuccess) {
+                nextLines += line
+                nextSegments += segment
+            } else succeeded = false
         }
-
-        // Topology/style changed or an in-place mutation failed: rebuild once as recovery.
-        val failedToRemove = routeLines.filter { line ->
-            runCatching { activeMap.removeLine(line) }.isFailure
+        previous.values.forEach { (segment, line) ->
+            topologyChanged = true
+            if (runCatching { activeMap.removeLine(line) }.isFailure) {
+                nextLines += line
+                nextSegments += segment
+                succeeded = false
+            }
         }
         routeLines.clear()
-        renderedRouteSegments = emptyList()
-        routeLines.addAll(failedToRemove)
-        if (failedToRemove.isNotEmpty()) {
-            routeSource = null
-            routeActiveId = null
-            routeRemainingStopIds = emptySet()
-            publishDiagnostics()
-            return
-        }
+        routeLines.addAll(nextLines)
+        renderedRouteSegments = nextSegments
+        if (topologyChanged) routeLayerRebuildCount += 1
+        if (geometryChanged) routeGeometryUpdateCount += 1
+        routeSource = if (succeeded) state.routes else null
+        routeActiveId = if (succeeded) activeStopId else null
+        routeRemainingStopIds = if (succeeded) remainingStopIds else emptySet()
 
-        var renderSucceeded = true
-        routes.forEach { segment ->
-            val line = Line(
-                segment.points.map { MapLocation(it.longitude, it.latitude) }.toTypedArray()
-            ).apply {
-                setWidth(if (segment.style == NavigationRouteStyle.ACTIVE) 8 else 6)
-                setColor(
-                    if (segment.style == NavigationRouteStyle.ACTIVE) ACTIVE_ROUTE_COLOR
-                    else FUTURE_ROUTE_COLOR
-                )
-            }
-            val added = runCatching { activeMap.addLine(line) }
-                .onSuccess { routeLines += line }
-                .isSuccess
-            if (!added) renderSucceeded = false
-        }
-
-        if (renderSucceeded && routeLines.size == routes.size) {
-            renderedRouteSegments = routes
-            routeSource = state.routes
-            routeActiveId = activeStopId
-            routeRemainingStopIds = remainingStopIds
-            routeLayerRebuildCount += 1
-        } else {
-            // Keep partial route layers visible only until the next render can clean/rebuild them.
-            renderedRouteSegments = emptyList()
-            routeSource = null
-            routeActiveId = null
-            routeRemainingStopIds = emptySet()
-        }
         publishDiagnostics()
     }
 
@@ -821,6 +814,7 @@ private class RiderNavigationMapHolder {
                 viewCreatedCount = viewCreatedCount,
                 mapCreatedCount = mapCreatedCount,
                 routeLayerRebuildCount = routeLayerRebuildCount,
+                routeGeometryUpdateCount = routeGeometryUpdateCount,
                 stopMutationCount = stopMutationCount,
                 renderPassCount = renderPassCount,
                 snapshotCaptureCount = snapshotCaptureCount,

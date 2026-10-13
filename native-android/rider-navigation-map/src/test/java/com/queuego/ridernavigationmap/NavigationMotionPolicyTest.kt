@@ -34,6 +34,21 @@ class NavigationMotionPolicyTest {
         assertTrue(riderMarkerAnimationMillis(previous, next) < 500L)
     }
 
+    @Test fun rapidFixesNeverExceedCadenceEvenBelowMinimumAnimation() {
+        val previous = NavigationMapFix(point = NavigationMapPoint(13.0, 100.0),
+            elapsedRealtimeNanos = 1_000_000_000L)
+        val next = previous.copy(elapsedRealtimeNanos = 1_100_000_000L)
+        assertTrue(riderMarkerAnimationMillis(previous, next) < 100L)
+    }
+
+    @Test fun largeCorrectionSnapsWhileOrdinaryMotionAnimates() {
+        val start = NavigationMapPoint(13.0, 100.0)
+        assertFalse(shouldAnimateRiderMarker(start, NavigationMapPoint(13.002, 100.0)))
+        assertTrue(shouldAnimateRiderMarker(start, NavigationMapPoint(13.00005, 100.0)))
+        val fix = NavigationMapFix(point = start)
+        assertEquals(0.72, riderMarkerAnimationSeconds(null, fix), 0.001)
+    }
+
     @Test fun standstillGpsJitterDoesNotMoveMarker() {
         val previous = NavigationMapFix(
             point = NavigationMapPoint(13.0, 100.0),
