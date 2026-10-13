@@ -1,6 +1,7 @@
 package com.queuego.customer
 
 import com.queuego.shared.QgMapPoint
+import com.queuego.shared.QgMapRole
 import org.junit.Assert.*
 import org.junit.Test
 
@@ -12,6 +13,14 @@ class CustomerTrackingPolicyTest {
     )
     private val rider = CustomerTrackingRider("Rider", null, null, null, null, 15.0, 103.11, null)
 
+    @Test fun trackingRolesUseDistinctSemanticAssetsAndColors() {
+        val points = customerTrackingPoints(order(), rider)
+        assertEquals(listOf(QgMapRole.MERCHANT, QgMapRole.CUSTOMER, QgMapRole.RIDER),
+            points.map { it.role })
+        assertEquals(0xFFE6002D.toInt(), points[0].color)
+        assertEquals(0xFF087F8C.toInt(), points[1].color)
+        assertNotEquals(points[0].color, points[1].color)
+    }
     @Test fun closedOrdersNeverExposeMapPointsEvenWithCachedRiderCoordinates() {
         listOf("completed", "cancelled", "no_rider_available", "COMPLETED").forEach {
             assertTrue(customerTrackingPoints(order(it), rider).isEmpty())

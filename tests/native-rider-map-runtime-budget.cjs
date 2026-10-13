@@ -36,7 +36,7 @@ assert(map.includes('R.drawable.qg_rider_current_location')&&
 assert(map.includes('private fun renderRiderMarkerBitmap')&&
   map.includes('Bitmap.createBitmap')&&map.includes('drawable.draw(canvas)')&&
   map.includes('Pin(mapLocation, markerBitmap(context, R.drawable.qg_rider_current_location))')&&
-  map.includes('markerBitmap(context, riderStopMarkerRes(number))'),
+  map.includes('stopMarkerBitmap(context, stop.third.first, stop.third.second)'),
   'Rider Longdo v0.1.8 markers must render vector resources to Bitmap before Pin construction');
 assert(map.includes('currentLocationPin')&&
   map.includes('existing.setLocation(mapLocation, true, RIDER_MAP_LOCATION_ANIMATION_STEPS)')&&
@@ -55,9 +55,9 @@ assert(map.includes('RIDER_MAP_LOCATION_REFRESH_MS = 2_500L')&&
 assert(map.includes('latestDeviceLocation = null')&&
   map.includes('refreshOverlays(context, currentJob, currentPickups, currentBundleOrders)'),
   'Rider map must discard an in-memory pre-background fix and redraw from fresh location state on resume');
-for(const marker of ['qg_rider_stop_1','qg_rider_stop_2','qg_rider_stop_3','qg_rider_stop_4']){
-  assert(fs.existsSync('native-android/rider/src/main/res/drawable/'+marker+'.xml'),
-    'Numbered Rider stop marker missing: '+marker);
+for(const marker of ['qg_map_pickup','qg_map_dropoff','qg_map_rider']){
+  assert(fs.existsSync('native-android/shared/src/main/res/drawable/'+marker+'.xml'),
+    'Semantic QueueGo map marker missing: '+marker);
 }
 
 

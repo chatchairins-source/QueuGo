@@ -79,16 +79,18 @@ private class TrackingMapHolder {
         if (renderedPoints == valid) return
         activeMap.clearPin()
         valid.forEach { point ->
-            val density = view?.resources?.displayMetrics?.density ?: 1f
-            val size = (26 * density).toInt().coerceAtLeast(26)
-            val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
-            val canvas = Canvas(bitmap)
-            val paint = Paint(Paint.ANTI_ALIAS_FLAG)
-            paint.color = android.graphics.Color.WHITE
-            canvas.drawCircle(size / 2f, size / 2f, size / 2f, paint)
-            paint.color = point.color
-            canvas.drawCircle(size / 2f, size / 2f, size * 10f / 26f, paint)
-            activeMap.pushPin(Pin(MapLocation(point.longitude, point.latitude), bitmap, PointF(size / 2f, size / 2f)))
+            val context = view?.context ?: return@forEach
+            val resource = when (point.role) {
+                QgMapRole.MERCHANT -> R.drawable.qg_map_pickup
+                QgMapRole.CUSTOMER -> R.drawable.qg_map_dropoff
+                QgMapRole.RIDER -> R.drawable.qg_map_rider
+            }
+            val drawable = context.getDrawable(resource) ?: return@forEach
+            val bitmap = Bitmap.createBitmap(drawable.intrinsicWidth.coerceAtLeast(1),
+                drawable.intrinsicHeight.coerceAtLeast(1), Bitmap.Config.ARGB_8888)
+            drawable.setBounds(0, 0, bitmap.width, bitmap.height)
+            drawable.draw(Canvas(bitmap))
+            activeMap.pushPin(Pin(MapLocation(point.longitude, point.latitude), bitmap, PointF(bitmap.width / 2f, bitmap.height.toFloat())))
         }
         renderedPoints = valid
         // Refresh markers without pulling the user's manually panned viewport back.

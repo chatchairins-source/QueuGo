@@ -9,6 +9,8 @@ import android.location.LocationListener
 import android.graphics.PointF
 import android.graphics.Bitmap
 import android.graphics.Canvas
+import android.graphics.Paint
+import android.graphics.Typeface
 import android.os.Bundle
 import android.os.Looper
 import android.util.Log
@@ -42,19 +44,6 @@ private const val RIDER_MAP_LOCATION_REFRESH_METERS = 2f
 private const val RIDER_MAP_LAST_KNOWN_MAX_AGE_MS = 120_000L
 private const val RIDER_MAP_LOCATION_ANIMATION_STEPS = 18
 
-private fun riderStopMarkerRes(number: Int): Int = when (number) {
-    1 -> R.drawable.qg_rider_stop_1
-    2 -> R.drawable.qg_rider_stop_2
-    3 -> R.drawable.qg_rider_stop_3
-    4 -> R.drawable.qg_rider_stop_4
-    5 -> R.drawable.qg_rider_stop_5
-    6 -> R.drawable.qg_rider_stop_6
-    7 -> R.drawable.qg_rider_stop_7
-    8 -> R.drawable.qg_rider_stop_8
-    9 -> R.drawable.qg_rider_stop_9
-    else -> R.drawable.qg_rider_stop_more
-}
-
 private fun renderRiderMarkerBitmap(context: Context, resId: Int): Bitmap {
     val drawable = requireNotNull(context.resources.getDrawable(resId, context.theme)) {
         "Rider marker resource unavailable: $resId"
@@ -84,7 +73,9 @@ private class RiderLongdoHolder(
     private var locationPermissionMask = 0
     private var latestDeviceLocation: Pair<Double, Double>? = null
     private var currentLocationPin: Pin? = null
+    private val stopPins = mutableMapOf<String, Pin>()
     private val markerBitmaps = mutableMapOf<Int, Bitmap>()
+    private val stopBitmaps = mutableMapOf<Pair<Boolean, Int>, Bitmap>()
     private var recenterOnNextFix = false
     private var currentJob: RiderJob? = null
     private var currentPickups: List<MarketPickup> = emptyList()
@@ -95,10 +86,32 @@ private class RiderLongdoHolder(
             markerBitmaps[resId] = it
         }
 
+    private fun stopMarkerBitmap(context: Context, pickup: Boolean, number: Int): Bitmap =
+        stopBitmaps.getOrPut(pickup to number) {
+            val resource = if (pickup) com.queuego.shared.R.drawable.qg_map_pickup
+                else com.queuego.shared.R.drawable.qg_map_dropoff
+            val bitmap = renderRiderMarkerBitmap(context, resource)
+            val canvas = Canvas(bitmap)
+            val density = context.resources.displayMetrics.density
+            val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = android.graphics.Color.WHITE }
+            // Separate corner badge leaves the storefront/home glyph fully readable.
+            val cx = 38f * density
+            val cy = 10f * density
+            canvas.drawRoundRect(cx - 9f*density, cy - 9f*density,
+                cx + 9f*density, cy + 9f*density, 6f*density, 6f*density, paint)
+            paint.color = if (pickup) 0xFFE6002D.toInt() else 0xFF087F8C.toInt()
+            paint.typeface = Typeface.DEFAULT_BOLD
+            paint.textAlign = Paint.Align.CENTER
+            paint.textSize = (if (number < 10) 12f else 10f) * density
+            canvas.drawText(number.toString(), cx, cy - (paint.ascent()+paint.descent())/2f, paint)
+            bitmap
+        }
+
     fun attachMap(nextMap: com.longdo.api.Map) {
         if (map !== nextMap) {
             lastOverlayKey = null
             currentLocationPin = null
+            stopPins.clear()
             map = nextMap
         }
     }
@@ -257,7 +270,7 @@ private class RiderLongdoHolder(
                     existing.setLocation(mapLocation, true, RIDER_MAP_LOCATION_ANIMATION_STEPS)
                 }.onFailure {
                     runCatching { ldmap.removePin(existing) }
-                    val replacementPin = Pin(mapLocation, context, R.drawable.qg_rider_current_location)
+                    val replacementPin = Pin(mapLocation, markerBitmap(context, R.drawable.qg_rider_current_location))
                     runCatching { ldmap.pushPin(replacementPin) }
                         .onSuccess { currentLocationPin = replacementPin }
                 }
@@ -275,12 +288,14 @@ private class RiderLongdoHolder(
             append("|")
             append(job?.deliveryLat).append(",").append(job?.deliveryLng)
             append("|")
-            pickups.forEach { append(it.pickupId).append(":").append(it.status).append(";") }
+            pickups.forEach { append(it.pickupId).append(":").append(it.status).append(":").append(it.latitude).append(":").append(it.longitude).append(";") }
             append("|bundle:")
             bundleOrders.forEach {
                 append(it.job.id).append(":").append(it.job.status).append(":")
                     .append(it.job.shopArrived).append(":")
-                    .append(it.bundleSequence).append(":").append(it.dropRank).append(";")
+                    .append(it.bundleSequence).append(":").append(it.dropRank).append(":")
+                    .append(it.job.pickupLat).append(":").append(it.job.pickupLng).append(":")
+                    .append(it.job.deliveryLat).append(":").append(it.job.deliveryLng).append(";")
             }
         }
 
@@ -289,25 +304,32 @@ private class RiderLongdoHolder(
             if (job == null) centerOnDevice(context)
             return
         }
-        lastOverlayKey = key
-
-        runCatching { ldmap.clearPin() }
-        currentLocationPin = null
-        updateCurrentLocationPin(location)
-
-        fun addStopPin(lat: Double?, lon: Double?, number: Int) {
-            if (lat == null || lon == null) return
-            runCatching {
-                val pin = Pin(
-                    MapLocation(lon, lat),
-                    markerBitmap(context, riderStopMarkerRes(number))
-                )
-                pin.setOffset(PointF(0f, -0.4f))
-                ldmap.pushPin(pin)
+        val desiredStops = linkedMapOf<String, Triple<Double, Double, Pair<Boolean, Int>>>()
+        fun addStopPin(lat: Double?, lon: Double?, number: Int, pickup: Boolean) {
+            if (lat == null || lon == null || !lat.isFinite() || !lon.isFinite()) return
+            val identity = "$pickup:$number:$lat:$lon"
+            desiredStops[identity] = Triple(lat, lon, pickup to number)
+        }
+        fun reconcileStops() {
+            // Keep the GPS pin and unchanged stops mounted; retry failed SDK changes.
+            stopPins.keys.filter { it !in desiredStops }.toList().forEach { identity ->
+                runCatching { ldmap.removePin(stopPins.getValue(identity)) }
+                    .onSuccess { stopPins.remove(identity) }
             }
+            desiredStops.forEach { (identity, stop) ->
+                if (identity !in stopPins) {
+                    val pin = Pin(MapLocation(stop.second, stop.first),
+                        stopMarkerBitmap(context, stop.third.first, stop.third.second))
+                    pin.setOffset(PointF(0f, -0.4f))
+                    runCatching { ldmap.pushPin(pin) }.onSuccess { stopPins[identity] = pin }
+                }
+            }
+            if (stopPins.keys == desiredStops.keys) lastOverlayKey = key
+            updateCurrentLocationPin(location)
         }
 
         if (job == null) {
+            reconcileStops()
             centerOnDevice(context)
             return
         }
@@ -324,7 +346,7 @@ private class RiderLongdoHolder(
                 if (!bundled.job.shopArrived && !bundled.job.isDelivering &&
                     bundled.job.status != "completed"
                 ) {
-                    addStopPin(bundled.job.pickupLat, bundled.job.pickupLng, index + 1)
+                    addStopPin(bundled.job.pickupLat, bundled.job.pickupLng, index + 1, true)
                 }
             }
             dropOrder.forEachIndexed { index, bundled ->
@@ -332,22 +354,23 @@ private class RiderLongdoHolder(
                     addStopPin(
                         bundled.job.deliveryLat,
                         bundled.job.deliveryLng,
-                        pickupOrder.size + index + 1
+                        pickupOrder.size + index + 1, false
                     )
                 }
             }
         } else if (job.marketOrderId != null) {
             pickups.forEachIndexed { index, pickup ->
-                if (!pickup.done) addStopPin(pickup.latitude, pickup.longitude, index + 1)
+                if (!pickup.done) addStopPin(pickup.latitude, pickup.longitude, index + 1, true)
             }
-            addStopPin(job.deliveryLat, job.deliveryLng, pickups.size + 1)
+            addStopPin(job.deliveryLat, job.deliveryLng, pickups.size + 1, false)
         } else {
             if (!job.shopArrived && !job.isDelivering) {
-                addStopPin(job.pickupLat, job.pickupLng, 1)
+                addStopPin(job.pickupLat, job.pickupLng, 1, true)
             }
-            addStopPin(job.deliveryLat, job.deliveryLng, 2)
+            addStopPin(job.deliveryLat, job.deliveryLng, 2, false)
         }
 
+        reconcileStops()
         val target = job.navigationTarget
         if (target != null) {
             centeredOnDevice = false
