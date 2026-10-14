@@ -31,3 +31,9 @@ jobs:
           cache: npm
       - run: npm ci --no-audit --no-fund
       - run: npm test
+      - name: Render Grocery components at mobile and tablet widths
+        shell: bash
+        run: |
+          curl --fail --location --max-time 30 https://raw.githubusercontent.com/google/fonts/main/ofl/notosansthai/NotoSansThai%5Bwdth,wght%5D.ttf -o "$RUNNER_TEMP/NotoSansThai.ttf"
+          echo "5a1c559bb539583c8a1fd99d1c5b9491e5e14478c9cd2bd0970d5c3096cc9ef8  $RUNNER_TEMP/NotoSansThai.ttf" | sha256sum --check
+          GROCERY_CHROMIUM_PATH="$(command -v google-chrome)" GROCERY_QA_FONT="$RUNNER_TEMP/NotoSansThai.ttf" GROCERY_QA_DIR="$RUNNER_TEMP/grocery-browser" npm run test:grocery:browser
