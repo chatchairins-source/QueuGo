@@ -77,6 +77,8 @@ internal fun RiderSafetyScreen(
     var locationShareMessage by remember { mutableStateOf<String?>(null) }
     var mapFeedbackLocation by remember { mutableStateOf<RiderSafetyLocation?>(null) }
     var showMapFeedback by remember { mutableStateOf(false) }
+    var showSafetyIncident by remember { mutableStateOf(false) }
+    var safetyIncidentLocation by remember { mutableStateOf<RiderSafetyLocation?>(null) }
     var fatigueStatus by remember(auth.user.id) { mutableStateOf<RiderFatigueStatus?>(null) }
     var fatigueLoaded by remember(auth.user.id) { mutableStateOf(false) }
     val navigationFix by RiderNavigationLocationStore.fix.collectAsState()
@@ -200,6 +202,42 @@ internal fun RiderSafetyScreen(
         Spacer(Modifier.height(12.dp))
         riderSafetyContacts().forEach { contact ->
             RiderSafetyContactCard(contact) { dial(contact.number) }
+        }
+
+        Card(
+            Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(18.dp),
+            colors = CardDefaults.cardColors(containerColor = Color.White),
+            border = BorderStroke(1.dp, Color(0xFFFFD8DB))
+        ) {
+            Column(Modifier.padding(14.dp)) {
+                Text("รายงานเหตุการณ์ความปลอดภัย", fontWeight = FontWeight.Black, fontSize = 14.sp)
+                Text(
+                    "รายงานอุบัติเหตุ การคุกคาม จุดส่งไม่ปลอดภัย หรืออันตรายบนถนน โดยผูกกับออเดอร์ปัจจุบันถ้ามี",
+                    color = QgMuted,
+                    fontSize = 9.sp,
+                    lineHeight = 12.sp,
+                    modifier = Modifier.padding(top = 3.dp)
+                )
+                Spacer(Modifier.height(8.dp))
+                Button(
+                    onClick = {
+                        safetyIncidentLocation = currentShareLocation()
+                        showSafetyIncident = true
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(14.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF17191D))
+                ) {
+                    Text("รายงานเหตุการณ์", fontWeight = FontWeight.Bold)
+                }
+                Text(
+                    "ตำแหน่งจะไม่ถูกแนบ เว้นแต่คุณเลือกเองในหน้ารายงาน",
+                    color = QgMuted,
+                    fontSize = 8.sp,
+                    modifier = Modifier.padding(top = 6.dp)
+                )
+            }
         }
 
         Spacer(Modifier.height(5.dp))
@@ -461,6 +499,23 @@ internal fun RiderSafetyScreen(
                 }
             }
         }
+    }
+
+    if (showSafetyIncident) {
+        RiderSafetyIncidentDialog(
+            auth = auth,
+            activeJob = activeJob,
+            currentLocation = safetyIncidentLocation,
+            onDismiss = {
+                showSafetyIncident = false
+                safetyIncidentLocation = null
+            },
+            onReported = { label ->
+                showSafetyIncident = false
+                safetyIncidentLocation = null
+                locationShareMessage = "ส่งรายงานความปลอดภัยแล้ว · $label"
+            }
+        )
     }
 
     if (showMapFeedback && mapFeedbackLocation != null) {
