@@ -86,6 +86,16 @@ assert(localRoadSignedDelivery.includes('interface QueueGoLocalRoadSnapshotTrans
   localRoadSignedDelivery.includes('fun interface QueueGoLocalRoadSignatureVerifier'),
   'Local Roads transport, decoding and signature verification must remain injectable and fail-closed before Production wiring');
 
+assert(localRoadSignedDelivery.includes('CACHE_FORMAT_VERSION = 2')&&
+  localRoadSignedDelivery.includes('val keyId: String')&&
+  localRoadSignedDelivery.includes('val signature: ByteArray')&&
+  localRoadSignedDelivery.includes('fun loadCached()')&&
+  localRoadSignedDelivery.includes('loadTrustedCache()')&&
+  localRoadSignedDelivery.includes('Cached local-road signature verification failed')&&
+  localRoadSignedDelivery.includes('Cached local-road revision does not match signed payload'),
+  'Cached Local Roads must be reverified from the signed envelope before offline use or revision-watermark decisions');
+
+
 assert(localRoadHttpsTransport.includes('endpoint.isHttps')&&
   localRoadHttpsTransport.includes('.get()')&&
   localRoadHttpsTransport.includes('continuation.invokeOnCancellation { call.cancel() }')&&
