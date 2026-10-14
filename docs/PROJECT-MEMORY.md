@@ -1,3 +1,9 @@
+## 2026-10-14 Work continuation: coverage candidate identity
+- Verified live successor PR213 at355651f and continued from PR215 at5126d101; preserve navigation cache/retry/cancellation/viewport/puck/session and isolated signed Local Roads stack. No renderer swap or Production writes.
+- Found coverage candidate key collisions caused by lowercasing, punctuation replacement and100-character truncation. Hash the complete opaque aggregate reference with SHA-256; preserve the original sourceReference. Added a regression for punctuation, case and long-prefix collisions plus input-order stability. This review-only feature is unreleased; no persisted-key migration is introduced.
+- Local full regression on355651f passed. CI38513574551 already passed both dedicated map runtimes, JVM, three debug APK builds and16KB packaging; full native launch/voice lifecycle was still running at inspection. This fix requires its own JVM/CI results and must not borrow predecessor certification.
+- Branch backup/local-roads-coverage-before-key-fix-20261014 retains5126d101. Physical road/GPS/Google Maps handoff, authenticated E2E and final Release Gate remain open. No Grab code/assets/geometry copied.
+
 ## 2026-10-14 continued exact-head navigation validation
 - Owner confirmed continuation/publication. Git HTTPS has no local credentials; published through the connected GitHub API with an expected old HEAD and no force. Remote ccbb64f has exactly local359bfc7 tree5e687b64; both7352807 and latest working35284c2 are retained as ancestors. Prior publication blocker is resolved.
 - Pilot38485198433 is validating ccbb64f; pending results must not be called PASS. Navigation emulator runner now enables Android animations at scale1 rather than disabling them, so marker interpolation is exercised. This runner change itself requires a new exact-head run.

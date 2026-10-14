@@ -132,6 +132,24 @@ class QueueGoLocalRoadCoverageAuditTest {
     }
 
     @Test
+    fun distinctOpaqueReferencesKeepDistinctStableCandidateKeys() {
+        val geometry = listOf(p(15.0100, 103.0100), p(15.0110, 103.0110))
+        val references = listOf(
+            "alley/a", "alley:a", "alley-a",
+            "Alley-A", "---", "aggregate",
+            "a".repeat(100) + "first", "a".repeat(100) + "second"
+        )
+        val traces = references.map { evidence(it, geometry) }
+        val candidates = auditQueueGoLocalRoadCoverage(emptyList(), traces)
+
+        assertEquals(references.size, candidates.map { it.candidateKey }.distinct().size)
+        assertEquals(traces.map { it.aggregateReference }.toSet(),
+            candidates.map { it.sourceReference }.toSet())
+        assertTrue(candidates.all { it.candidateKey.matches(Regex("coverage:[0-9a-f]{64}")) })
+        assertEquals(candidates, auditQueueGoLocalRoadCoverage(emptyList(), traces.reversed()))
+    }
+
+    @Test
     fun pointToSegmentDistanceIsSmallForNearRoadAndLargeForGap() {
         val near = queueGoPointToSegmentDistanceMeters(
             p(15.00005, 103.0020),
