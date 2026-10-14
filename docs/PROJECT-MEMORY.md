@@ -1,3 +1,13 @@
+## 2026-10-14 Rider world-class: Stop-After-Work + Safety Incident unified successor
+- Continued from stop-after-work head f85ce9ea, preserving final world-class proof/return, evidence-quality compatibility, Auto Accept, failed-delivery, Benefits, connectivity and event feedback work.
+- Carries the new durable “หยุดรับงานหลังงานนี้” intent together with the Grab-parity Safety Incident Report so no sibling Rider work is dropped.
+- Safety Incident Report remains tied to the active real order when available, uses the existing qg_create_ticket support path, never auto-cancels/completes the order, and never calls emergency services.
+- Precise location remains opt-in only; it is unavailable when no recent accurate location exists.
+- Emergency guidance remains 191 / 1669 first for immediate help.
+- No Production DB/schema, payment, dispatch or offer visibility change from the Safety Incident feature.
+- Backup: backup/rider-worldclass-before-stop-safety-unify-20261014 @ f85ce9ea.
+- PASS requires exact-head native-pilot + navigation-map-runtime.
+
 ## 2026-10-14 Rider world-class: opt-in Auto Accept unified onto final proof/return head
 - Continued from world-class final head 7df4d782, preserving durable one-photo proof recovery, adaptive refresh, multi-stop Return-to-Sender v4, connectivity guards, touch-target work, failed-delivery flow, Benefits Center and event feedback.
 - Added Grab-parity Acceptance Mode as an opt-in Rider preference. Default remains manual “เลือกเอง”; existing 30-second targeted offer behavior remains the default.
