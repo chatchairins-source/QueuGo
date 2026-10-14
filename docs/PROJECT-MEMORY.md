@@ -1,3 +1,11 @@
+## 2026-10-14 Grab Driver parity: go-online availability readiness
+- Added a QueueGo-native availability/readiness layer inspired by the capability category observed in the owner-supplied Grab Driver APK. It does not copy Grab code/assets and does not change dispatch.
+- Offline Rider Home now shows eight real checks before go-online: validated internet, Firebase availability, notifications, location permission, device GPS/Location service, installed Google Maps, overlay return permission and server Rider re-verification state.
+- Unknown re-verification state is CHECKING, never fake READY. Required/pending/rejected identity states surface the server reason and remain blocked by the existing database online gate.
+- Go-online preflight now gives explicit internet and GPS/Location-service guidance before the existing notification/Maps/overlay/location-permission checks. Server-side setOnline/re-verification rules remain authoritative.
+- Added pure JVM coverage for all-ready, multiple device blockers, rejected identity and unknown-identity fail-closed behavior.
+- Backup backup/rider-offer-performance-before-availability-20261014 retains fc8281c. Successor work-native-rider-availability-readiness-20261014 requires exact-head native-pilot before PASS.
+
 ## 2026-10-14 Grab Driver parity: real Rider offer-performance metrics
 - Added Rider-only aggregate performance over the existing server-only qg_rider_offer_history; the Native app still cannot SELECT offer-history rows directly. Production migration 20261014071245 rider_offer_performance_v1 is applied.
 - The RPC accepts only Today/7/30-day windows using Asia/Bangkok day boundaries and returns counts/rates only for the active authenticated Rider: offered, accepted, declined, expired, acceptance rate, response rate, decline/timeout rates and average response time for explicit responses.
