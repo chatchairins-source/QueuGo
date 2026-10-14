@@ -14,6 +14,7 @@ const models=fs.readFileSync('native-android/rider-navigation-map/src/main/java/
 const signalPipeline=fs.readFileSync('native-android/rider-navigation-map/src/main/java/com/queuego/ridernavigationmap/NavigationSignalPipeline.kt','utf8');
 const confidenceMetrics=fs.readFileSync('native-android/rider-navigation-map/src/main/java/com/queuego/ridernavigationmap/NavigationConfidenceMetrics.kt','utf8');
 const viewportInsets=fs.readFileSync('native-android/rider-navigation-map/src/main/java/com/queuego/ridernavigationmap/NavigationViewportInsets.kt','utf8');
+const overviewPolicy=fs.readFileSync('native-android/rider-navigation-map/src/main/java/com/queuego/ridernavigationmap/NavigationOverviewPolicy.kt','utf8');
 const puckOrientation=fs.readFileSync('native-android/rider-navigation-map/src/main/java/com/queuego/ridernavigationmap/NavigationPuckOrientation.kt','utf8');
 const workflow=fs.readFileSync('.github/workflows/build-native-rider-pilot.yml','utf8');
 const runtimeTest=fs.readFileSync('native-android/rider-navigation-map/src/androidTest/java/com/queuego/ridernavigationmap/NavigationMapRuntimeTest.kt','utf8');
@@ -182,19 +183,24 @@ assert(
   riderApp.includes('NavigationViewportInsets(')&&
   riderApp.includes('overviewSignal = overviewSignal')&&
   integration.includes('viewModeController.onOverview()')&&
-  map.includes('activeMap.bound(')&&
-  map.includes('RectF(')&&
-  map.includes('navigationViewportInsetsSignature(insets)'),
-  'Rider overview must fit the live route around measured job-card occlusion instead of hiding stops behind the sheet');
+  overviewPolicy.includes('navigationOverviewViewportDecision')&&
+  overviewPolicy.includes('safe.bottomPx - safe.topPx')&&
+  map.includes('navigationOverviewViewportDecision(')&&
+  map.includes('navigationViewportInsetsSignature(insets)')&&
+  map.includes('activeMap.rotate(0f, true)'),
+  'Rider overview must fit the live route around measured job-card occlusion without relying on unsupported Longdo padding overloads');
 
 assert(
   puckOrientation.includes('vehicleBearing - cameraBearing')&&
   map.includes('activeMap.getRotate()')&&
-  map.includes('pin.setRotate(nextRotation)')&&
+  map.includes('pin.setIcon(riderPuckBitmap(nextRotation, nextOpacity))')&&
+  map.includes('activeMap.requestRender("queuego-rider-puck-presentation")')&&
   map.includes('navigationPuckFreshness(')&&
-  map.includes('pin.setOpacity(nextOpacity)')&&
-  map.includes('postDelayed({ tick() }, 1_000L)'),
-  'Rider puck must rotate relative to the actual camera and age into stale/lost presentation without synthetic GPS fixes');
+  map.includes('opacityPercent')&&
+  map.includes('postDelayed({ tick() }, 1_000L)')&&
+  !map.includes('pin.setRotate(')&&
+  !map.includes('pin.setOpacity('),
+  'Rider puck must use the pinned Longdo v0.1.8 bitmap API for camera-relative rotation and stale/lost presentation without synthetic GPS fixes');
 
 assert(map.includes('setPreserveEGLContextOnPause(true)'),
   'Navigation map must preserve the GL context across background/resume when Android allows it');
