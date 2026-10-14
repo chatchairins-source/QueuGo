@@ -1,3 +1,14 @@
+## 2026-10-14 Rider Grab-parity: Safety Incident + Stop-after-work unified successor
+- Continued from Safety Incident #312 head 1b629204 and carried the availability “stop after current work” nudge onto the same successor so no sibling Grab-parity branch is lost.
+- Static Grab Driver inspection exposed availability/go-offline nudge components. QueueGo already had manual online/offline and Fatigue Safety, but the fatigue reminder only offered “รับทราบ” even when it recommended resting after the current job.
+- Fatigue Safety now offers “จบงานนี้แล้วหยุดรับงาน”. This is opt-in and stored per Rider on-device so an app/process restart does not forget the intent.
+- The intent never turns Rider offline mid-job. It executes only when QueueGo has no active order, Laundry job, Return-to-Sender case or targeted offer, the Rider is still online, validated network is available and no server action is already running.
+- While stop-after-work is pending, opt-in Auto Accept is temporarily suppressed without changing the Rider's saved Acceptance Mode preference. Manual offer behavior remains unchanged.
+- If the offline mutation fails, the pending intent is retained and retried after connectivity/state becomes safe. Manual offline clears the pending intent.
+- Preserves #312 order-linked Safety Incident report unchanged, including location opt-in privacy and no automatic emergency call/order cancellation.
+- Backup: backup/rider-worldclass-before-safety-stop-unify-20261014 @ 1b629204.
+- PASS requires exact-head native-pilot + navigation-map-runtime plus RiderStopAfterWork and Safety Incident unit contracts.
+
 ## 2026-10-14 Rider world-class: order-linked Safety Incident Report
 - Continued from evidence-quality compatibility head 5c8fd760, which already preserves final world-class proof/return, Auto Accept, failed-delivery, Benefits, connectivity and event feedback work.
 - Static inspection of the owner-supplied Grab Driver 5.457.1 package confirmed a dedicated Safety Report capability. QueueGo already had emergency numbers, one trusted emergency contact, one-tap current-location sharing, Fatigue Safety and map/road feedback, but lacked a structured safety incident report tied to the active order.
