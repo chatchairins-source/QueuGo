@@ -1,3 +1,12 @@
+## 2026-10-14 Rider world-class: Safety Report Overview unified on latest safety/stop head
+- Continued from Safety Incident + Stop-After-Work head 177286b0, retaining the targeted-offer stop blocker coverage and bounded explicit-location incident payload.
+- Carried Safety Report Overview from the sibling #315 line without replacing the newer safety/stop tests.
+- Safety Center shows the Rider's 3 latest real [SAFETY_INCIDENT:*] support tickets, direct existing Support status, Admin note when present, and QT order label when linked.
+- Refreshes immediately after a new safety incident and links to the existing full Support history.
+- Reuses qg_support_tickets + existing RLS; no new schema/RPC/background location collection and no invented SLA.
+- Backup: backup/rider-worldclass-before-safety-overview-unify-20261014 @ 177286b0.
+- PASS requires exact-head native-pilot + navigation-map-runtime.
+
 ## 2026-10-14 Rider Grab-parity: Safety Incident + Stop-after-work unified successor
 - Continued from Safety Incident #312 head 1b629204 and carried the availability “stop after current work” nudge onto the same successor so no sibling Grab-parity branch is lost.
 - Static Grab Driver inspection exposed availability/go-offline nudge components. QueueGo already had manual online/offline and Fatigue Safety, but the fatigue reminder only offered “รับทราบ” even when it recommended resting after the current job.
