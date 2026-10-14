@@ -105,6 +105,63 @@ class QueueGoLocalRoadCoverageAuditTest {
         assertEquals(QueueGoCoverageEndpointHint.NONE, candidate.endHint)
     }
 
+    @Test
+    fun sparseTraceGapIsRejectedInsteadOfDrawingAFalseRoad() {
+        val trace = evidence(
+            "sparse",
+            listOf(
+                p(15.0100, 103.0100),
+                p(15.0200, 103.0200)
+            ),
+            traversals = 8,
+            accuracy = 6.0
+        )
+
+        val candidates = auditQueueGoLocalRoadCoverage(
+            baseRoads = emptyList(),
+            aggregateTraces = listOf(trace)
+        )
+
+        assertTrue(candidates.isEmpty())
+    }
+
+    @Test
+    fun coveragePolylineIsDensifiedBeforeDistanceScoring() {
+        val points = listOf(
+            p(15.0000, 103.0000),
+            p(15.0000, 103.0010)
+        )
+
+        val sampled = queueGoDensifyCoveragePolyline(
+            points = points,
+            maximumStepMeters = 12.0,
+            maximumSampleCount = 100
+        )
+
+        assertTrue(sampled.size > points.size)
+        assertEquals(points.first(), sampled.first())
+        assertEquals(points.last(), sampled.last())
+        sampled.zipWithNext().forEach { (a, b) ->
+            assertTrue(queueGoLocalRoadDistanceMeters(a, b) <= 12.1)
+        }
+    }
+
+    @Test
+    fun densifySampleLimitFailsClosedWithoutAllocatingHugeOutput() {
+        val points = listOf(
+            p(15.0000, 103.0000),
+            p(15.0000, 103.0040)
+        )
+
+        val sampled = queueGoDensifyCoveragePolyline(
+            points = points,
+            maximumStepMeters = 5.0,
+            maximumSampleCount = 10
+        )
+
+        assertTrue(sampled.isEmpty())
+    }
+
     @Test(expected = IllegalArgumentException::class)
     fun rawOrExternalTraceReferenceIsRejected() {
         QueueGoAggregateTraceEvidence(
