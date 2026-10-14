@@ -1,10 +1,13 @@
 package com.queuego.ridernavigationmap
 
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
+import kotlinx.coroutines.suspendCancellableCoroutine
+import okhttp3.Call
+import okhttp3.Callback
 import okhttp3.HttpUrl
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import okhttp3.Response
+import java.io.IOException
 import org.json.JSONArray
 import org.json.JSONObject
 import java.util.concurrent.TimeUnit
@@ -44,7 +47,7 @@ class LongdoNavigationRouteClient(
         from: NavigationMapPoint,
         stop: NavigationMapStop,
         segmentId: String
-    ): NavigationRouteLeg = withContext(Dispatchers.IO) {
+    ): NavigationRouteLeg {
         require(apiKey.isNotBlank()) { "Longdo routing key is required" }
         require(from.valid && stop.point.valid) { "Invalid navigation coordinates" }
         require(segmentId.isNotBlank()) { "Route segment id is required" }
@@ -63,13 +66,48 @@ class LongdoNavigationRouteClient(
             .addQueryParameter("key", apiKey)
             .build()
 
-        client.newCall(Request.Builder().url(url).get().build()).execute().use { response ->
-            if (!response.isSuccessful) error("Longdo routing HTTP ${response.code}")
-            val body = response.body?.string().orEmpty()
-            if (body.isBlank()) error("Longdo routing response is empty")
-            parseGeoJson(body, stop, segmentId)
-        }
+        val request = Request.Builder().url(url).get().build()
+        val body = executeCancellable(request)
+        return parseGeoJson(body, stop, segmentId)
     }
+
+    private suspend fun executeCancellable(request: Request): String =
+        suspendCancellableCoroutine { continuation ->
+            val call = client.newCall(request)
+            continuation.invokeOnCancellation { call.cancel() }
+            call.enqueue(
+                object : Callback {
+                    override fun onFailure(call: Call, error: IOException) {
+                        if (!continuation.isActive) return
+                        continuation.resumeWith(Result.failure(error))
+                    }
+
+                    override fun onResponse(call: Call, response: Response) {
+                        response.use {
+                            if (!continuation.isActive) return
+                            if (!response.isSuccessful) {
+                                continuation.resumeWith(
+                                    Result.failure(
+                                        IllegalStateException("Longdo routing HTTP ${response.code}")
+                                    )
+                                )
+                                return
+                            }
+                            val body = response.body?.string().orEmpty()
+                            if (body.isBlank()) {
+                                continuation.resumeWith(
+                                    Result.failure(
+                                        IllegalStateException("Longdo routing response is empty")
+                                    )
+                                )
+                                return
+                            }
+                            continuation.resumeWith(Result.success(body))
+                        }
+                    }
+                }
+            )
+        }
 
     internal fun parseGeoJson(raw: String, stop: NavigationMapStop, segmentId: String): NavigationRouteLeg {
         val root = JSONObject(raw)
