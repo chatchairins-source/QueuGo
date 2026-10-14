@@ -1,3 +1,11 @@
+## 2026-10-14 Grab Driver parity: real-data Rider Insurance Center v1
+- Rebased Insurance Center onto Large Order/runtime-diagnostics successor 63ef1db so QueueGo preserves Work's latest load-transparency and local performance diagnostics.
+- Confirmed the owner-supplied Grab Driver 5.457.1 package contains insurance capabilities including Income Protection, e-Hailing insurance premium detail/discovery, usage-based insurance survey and insurance webview modules. QueueGo previously had no insurance schema or Rider UI.
+- QueueGo Insurance Center is real-data-only: no invented coverage, provider, premium, benefit amount or policy number. Production migration 20261014085820 rider_insurance_center_v1 is additive and already applied; active-Rider validation returned policy_count=0.
+- Policy data lives in qg_private. Rider reads owned policies only; Admin list/save/delete re-checks live active Admin; anon execute is revoked. V1 is informational and does not block online availability.
+- Native Rider Profile shows provider, plan/type, policy number, coverage dates/status, optional summary and verified support contact/link. Admin Rider panel can add/delete real policy records through public authenticated RPCs only.
+- Backup backup/rider-load-summary-before-insurance-20261014 retains 63ef1db. Exact-head native-pilot + navigation-map-runtime are required before PASS.
+
 ## 2026-10-14 Grab Driver parity: real Large Order / vehicle load transparency
 - Rebased onto current runtime network+jank diagnostics successor 97a722a so QueueGo keeps Work's local API latency/Jank tracking while adding Large Order transparency. No diagnostic data or behavior is overwritten.
 - QueueGo dispatch already enforces real vehicle-capacity matching for Market/Grocery using market_order_weight(order)=quantity*item_weight_kg and selected vehicle_capacity_kg. This feature does not change matching; it exposes the authoritative load to the targeted/assigned Rider.
