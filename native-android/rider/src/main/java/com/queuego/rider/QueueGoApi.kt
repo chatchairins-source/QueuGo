@@ -126,6 +126,9 @@ internal fun riderReverificationStatusFromRpc(raw: Any?): RiderReverificationSta
     )
 }
 
+internal fun riderReverificationBlocksOnline(status: RiderReverificationStatus): Boolean =
+    status.required && status.status in setOf("required", "pending", "rejected")
+
 class QueueGoApi {
     companion object {
         private const val BASE_URL = "https://pkypiqhlrmzocysgeqew.supabase.co"
@@ -381,6 +384,12 @@ class QueueGoApi {
         latitude: Double?,
         longitude: Double?
     ) = withContext(Dispatchers.IO) {
+        if (online) {
+            val identityState = runCatching { reverificationStatus(auth) }.getOrNull()
+            if (identityState != null && riderReverificationBlocksOnline(identityState)) {
+                error("กรุณายืนยันตัวตน Rider ให้ผ่านก่อนเปิดออนไลน์")
+            }
+        }
         val profiles = requestArray(
             "GET",
             "/rest/v1/rider_profiles?select=id,rider_name,phone,vehicle_type,vehicle_plate,vehicle_status,vehicle_verified_at,metadata&user_id=eq." + enc(auth.user.id) + "&limit=1",
