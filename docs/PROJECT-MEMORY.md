@@ -1,3 +1,9 @@
+## 2026-10-14 Grab Driver parity: first-run guided learning without duplicate UI
+- Confirmed QueueGo already had an 8-lesson Rider Learning Center covering targeted 30-second offers, Google Maps handoff, pickup photo, Market multi-stop, delivery cash, 200m warning, ratings/missions and safety. Do not create a second QuickStart/tutorial implementation.
+- Added only the missing guided-onboarding behavior to the existing Learning Center: active Riders who have never seen onboarding-v1 automatically see the real Learning Center once after login/registration completes. Closing it marks that user/version as seen locally so it does not interrupt later sessions.
+- The existing Profile > ศูนย์เรียนรู้ Rider remains the single manual entry point and can be reopened at any time. No Home card, fake lesson data, backend write or Production migration is introduced.
+- Backup backup/rider-quickstart-before-guided-onboarding-20261014 retains 97a722a. Exact-head native-pilot + navigation-map-runtime are required before PASS.
+
 ## 2026-10-14 Grab Driver parity: Rider runtime network + jank diagnostics
 - Confirmed the owner-supplied Grab Driver package contains networkStats and janktracker modules. QueueGo already had device readiness, ApplicationExitInfo crash/ANR history and retained-map diagnostics, but did not distinguish slow API sessions from UI frame jank.
 - Added local-only runtime measurements. QueueGo API requests record only request count, success/failure and elapsed milliseconds; no URL, RPC name, order ID, payload, customer, shop or location data is stored. Slow is >=1500 ms. Diagnostics shows count/fail/slow/average/worst for the current process session.
