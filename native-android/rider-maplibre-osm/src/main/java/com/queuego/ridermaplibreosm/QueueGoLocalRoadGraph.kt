@@ -5,12 +5,12 @@ import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.math.sqrt
 
-data class QueueGoLocalRoadGraphNode(
+data class QueueGoLocalRoadGraphNode internal constructor(
     val id: String,
     val point: QueueGoLocalRoadPoint
 )
 
-data class QueueGoLocalRoadGraphEdge(
+data class QueueGoLocalRoadGraphEdge internal constructor(
     val id: String,
     val roadId: String,
     val fromNodeId: String,
@@ -39,7 +39,7 @@ data class QueueGoLocalRoadGraphEdge(
     }
 }
 
-data class QueueGoLocalRoadGraph(
+data class QueueGoLocalRoadGraph internal constructor(
     val nodes: Map<String, QueueGoLocalRoadGraphNode>,
     val edges: List<QueueGoLocalRoadGraphEdge>,
     val outgoingEdges: Map<String, List<QueueGoLocalRoadGraphEdge>>
@@ -60,7 +60,7 @@ data class QueueGoLocalRoadGraph(
  * lanes can be only a few meters apart. A later field-certified topology step may add explicit
  * junction evidence; this builder only merges exact coordinate identity.
  */
-fun buildQueueGoLocalRoadGraph(
+internal fun buildQueueGoLocalRoadGraph(
     roads: List<QueueGoLocalRoad>
 ): QueueGoLocalRoadGraph {
     val nodes = linkedMapOf<String, QueueGoLocalRoadGraphNode>()
