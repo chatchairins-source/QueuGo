@@ -1,3 +1,10 @@
+## 2026-10-14 Grab Driver parity: Unplanned Stop safety check
+- Added a local advisory safety check inspired by Grab Driver's unplanned-stop capability, continuing from My Destination + Safety Location Share head 1170fde.
+- During active navigation only, QueueGo may ask “คุณโอเคไหม?” after at least 10 minutes without reliable movement. It fails closed when GPS is weak, route state is off-route/unknown, speed is unavailable, Rider is moving >=2 km/h, Rider has arrived, or the remaining route is <=150 m.
+- The alert is advisory only. “ฉันโอเค” dismisses the current stop episode until movement starts a new episode. “ศูนย์ความปลอดภัย” opens the existing Rider Safety Centre.
+- QueueGo never auto-calls, auto-shares location, contacts emergency services or mutates an order because of this advisory.
+- Backup backup/rider-safety-share-before-unplanned-stop-20261014 retains 1170fde. Exact-head native-pilot + navigation-map-runtime are required before PASS.
+
 ## 2026-10-14 Grab Driver parity: My Destination + Safety location-share release
 - Continued from consolidated My Destination head 8d53ab6 so Learning/Missions/Safety/Speed/ETA, Runtime Diagnostics, Offer Performance, Availability Readiness and My Destination all remain in one line.
 - Added one-time current-location sharing in Safety Centre. QueueGo uses the retained navigation GPS fix when available, otherwise only a system last-known fix no older than 5 minutes and with reported accuracy <=200 m.
