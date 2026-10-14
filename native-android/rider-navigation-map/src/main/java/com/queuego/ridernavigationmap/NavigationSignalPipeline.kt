@@ -26,15 +26,23 @@ class NavigationSignalPipeline(
 ) {
     private var activeRouteId: String? = null
     private var lastDisplayFix: NavigationMapFix? = null
+    private var lastRawFix: NavigationMapFix? = null
+    private var lastSignal: NavigationSignalState? = null
     private var consecutiveLowConfidenceMatches: Int = 0
+    private var confidenceMetrics = NavigationConfidenceMetrics()
 
     fun reset() {
         activeRouteId = null
         lastDisplayFix = null
+        lastRawFix = null
+        lastSignal = null
         consecutiveLowConfidenceMatches = 0
+        confidenceMetrics = NavigationConfidenceMetrics()
         locationFilter.reset()
         routeMatcher.reset()
     }
+
+    fun metrics(): NavigationConfidenceMetrics = confidenceMetrics
 
     fun update(
         rawFix: NavigationMapFix,
@@ -61,8 +69,15 @@ class NavigationSignalPipeline(
         rawFix: NavigationMapFix,
         activeRoute: NavigationRouteSegment?
     ): NavigationSignalState {
-        if (activeRoute?.id != activeRouteId) {
-            activeRouteId = activeRoute?.id
+        val nextRouteId = activeRoute?.id
+        if (rawFix == lastRawFix && nextRouteId == activeRouteId) {
+            return requireNotNull(lastSignal) {
+                "Duplicate fix was observed before the first navigation signal was recorded"
+            }
+        }
+
+        if (nextRouteId != activeRouteId) {
+            activeRouteId = nextRouteId
             consecutiveLowConfidenceMatches = 0
             routeMatcher.reset()
         }
@@ -70,14 +85,16 @@ class NavigationSignalPipeline(
         val filtered = locationFilter.filter(rawFix)
         val acceptedFix = filtered.fix
         if (filtered.rejected || acceptedFix == null) {
-            return NavigationSignalState(
-                rawFix = rawFix,
-                displayFix = lastDisplayFix,
-                quality = filtered.quality,
-                routeMatch = null,
-                puckState = NavigationPuckState.HELD,
-                accepted = false,
-                rejectionReason = filtered.reason
+            return record(
+                NavigationSignalState(
+                    rawFix = rawFix,
+                    displayFix = lastDisplayFix,
+                    quality = filtered.quality,
+                    routeMatch = null,
+                    puckState = NavigationPuckState.HELD,
+                    accepted = false,
+                    rejectionReason = filtered.reason
+                )
             )
         }
 
@@ -88,13 +105,15 @@ class NavigationSignalPipeline(
             navigationHaversineMeters(previousDisplayFix.point, acceptedFix.point) <=
                 weakGpsFreezeRadiusMeters(acceptedFix.accuracyMeters)
         ) {
-            return NavigationSignalState(
-                rawFix = rawFix,
-                displayFix = previousDisplayFix,
-                quality = filtered.quality,
-                routeMatch = null,
-                puckState = NavigationPuckState.WEAK_GPS,
-                accepted = true
+            return record(
+                NavigationSignalState(
+                    rawFix = rawFix,
+                    displayFix = previousDisplayFix,
+                    quality = filtered.quality,
+                    routeMatch = null,
+                    puckState = NavigationPuckState.WEAK_GPS,
+                    accepted = true
+                )
             )
         }
 
@@ -122,13 +141,15 @@ class NavigationSignalPipeline(
                 ambiguousHoldRadiusMeters(acceptedFix.accuracyMeters)
 
         if (holdAmbiguousMatch) {
-            return NavigationSignalState(
-                rawFix = rawFix,
-                displayFix = previousDisplayFix,
-                quality = filtered.quality,
-                routeMatch = hybridMatch,
-                puckState = NavigationPuckState.DEGRADED,
-                accepted = true
+            return record(
+                NavigationSignalState(
+                    rawFix = rawFix,
+                    displayFix = previousDisplayFix,
+                    quality = filtered.quality,
+                    routeMatch = hybridMatch,
+                    puckState = NavigationPuckState.DEGRADED,
+                    accepted = true
+                )
             )
         }
 
@@ -145,18 +166,54 @@ class NavigationSignalPipeline(
         )
         lastDisplayFix = displayFix
 
-        return NavigationSignalState(
-            rawFix = rawFix,
-            displayFix = displayFix,
-            quality = filtered.quality,
-            routeMatch = hybridMatch,
-            puckState = puckState(
+        return record(
+            NavigationSignalState(
+                rawFix = rawFix,
+                displayFix = displayFix,
                 quality = filtered.quality,
-                match = hybridMatch,
-                snapThresholdMeters = snapThreshold
-            ),
-            accepted = true
+                routeMatch = hybridMatch,
+                puckState = puckState(
+                    quality = filtered.quality,
+                    match = hybridMatch,
+                    snapThresholdMeters = snapThreshold
+                ),
+                accepted = true
+            )
         )
+    }
+
+    private fun record(signal: NavigationSignalState): NavigationSignalState {
+        lastRawFix = signal.rawFix
+        lastSignal = signal
+
+        val candidateDelta = signal.displayFix?.let { displayFix ->
+            navigationHaversineMeters(signal.rawFix.point, displayFix.point)
+        }
+        val matchConfidence = signal.routeMatch?.confidence
+        confidenceMetrics = confidenceMetrics.copy(
+            sampleCount = confidenceMetrics.sampleCount + 1L,
+            acceptedCount = confidenceMetrics.acceptedCount + if (signal.accepted) 1L else 0L,
+            rejectedCount = confidenceMetrics.rejectedCount + if (signal.accepted) 0L else 1L,
+            highMatchCount = confidenceMetrics.highMatchCount +
+                if (matchConfidence == NavigationMatchConfidence.HIGH) 1L else 0L,
+            mediumMatchCount = confidenceMetrics.mediumMatchCount +
+                if (matchConfidence == NavigationMatchConfidence.MEDIUM) 1L else 0L,
+            lowMatchCount = confidenceMetrics.lowMatchCount +
+                if (matchConfidence == NavigationMatchConfidence.LOW) 1L else 0L,
+            heldPuckCount = confidenceMetrics.heldPuckCount +
+                if (signal.puckState == NavigationPuckState.HELD) 1L else 0L,
+            weakGpsCount = confidenceMetrics.weakGpsCount +
+                if (signal.puckState == NavigationPuckState.WEAK_GPS) 1L else 0L,
+            offRouteCount = confidenceMetrics.offRouteCount +
+                if (signal.puckState == NavigationPuckState.OFF_ROUTE) 1L else 0L,
+            lastCandidateDeltaMeters = candidateDelta,
+            maxCandidateDeltaMeters = max(
+                confidenceMetrics.maxCandidateDeltaMeters,
+                candidateDelta ?: 0.0
+            ),
+            lastRejectionReason = signal.rejectionReason ?: confidenceMetrics.lastRejectionReason
+        )
+        return signal
     }
 
     private fun ambiguousHoldRadiusMeters(accuracyMeters: Float?): Double {

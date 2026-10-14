@@ -165,6 +165,60 @@ class NavigationSignalPipelineTest {
     }
 
     @Test
+    fun equivalentBackendRefreshDoesNotReprocessTheSameGpsFix() {
+        val pipeline = NavigationSignalPipeline()
+        val raw = NavigationMapFix(
+            point = NavigationMapPoint(13.00005, 100.0040),
+            bearingDegrees = 90f,
+            accuracyMeters = 8f,
+            speedMetersPerSecond = 7f,
+            elapsedRealtimeNanos = 1_000_000_000L
+        )
+
+        val first = pipeline.update(raw, route)
+        val duplicate = pipeline.update(raw.copy(), route)
+        val metrics = pipeline.metrics()
+
+        assertEquals(first, duplicate)
+        assertEquals(1L, metrics.sampleCount)
+        assertEquals(1L, metrics.acceptedCount)
+        assertEquals(0L, metrics.rejectedCount)
+        assertEquals(null, metrics.lastRejectionReason)
+    }
+
+    @Test
+    fun shadowMetricsTrackRejectedTeleportWithoutMutatingRawFix() {
+        val pipeline = NavigationSignalPipeline()
+        pipeline.update(
+            NavigationMapFix(
+                point = NavigationMapPoint(13.0000, 100.0010),
+                accuracyMeters = 8f,
+                speedMetersPerSecond = 5f,
+                elapsedRealtimeNanos = 1_000_000_000L
+            ),
+            route
+        )
+        val teleport = NavigationMapFix(
+            point = NavigationMapPoint(13.0200, 100.0010),
+            accuracyMeters = 8f,
+            speedMetersPerSecond = 5f,
+            elapsedRealtimeNanos = 2_000_000_000L
+        )
+
+        val signal = pipeline.update(teleport, route)
+        val metrics = pipeline.metrics()
+
+        assertFalse(signal.accepted)
+        assertEquals(2L, metrics.sampleCount)
+        assertEquals(1L, metrics.acceptedCount)
+        assertEquals(1L, metrics.rejectedCount)
+        assertEquals(1L, metrics.heldPuckCount)
+        assertEquals("implausible-teleport", metrics.lastRejectionReason)
+        assertTrue((metrics.lastCandidateDeltaMeters ?: 0.0) > 1_000.0)
+        assertEquals(teleport, signal.rawFix)
+    }
+
+    @Test
     fun rejectedTeleportHoldsLastDisplayFixWithoutReplacingRawFix() {
         val pipeline = NavigationSignalPipeline()
         val first = pipeline.update(
