@@ -6,6 +6,17 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class RiderConnectivityNoticeTest {
+    @Test fun explicitNetworkLossShowsImmediatelyWithSafeSnapshot() {
+        val model = riderConnectivityNotice(
+            consecutiveRefreshFailures = 0,
+            hasSnapshot = true,
+            hasActiveWork = true,
+            networkAvailable = false
+        )
+        requireNotNull(model)
+        assertTrue(model.detail.contains("งานยังอยู่ในเครื่อง"))
+    }
+
     @Test fun transientSingleMissStaysSilent() {
         assertNull(
             riderConnectivityNotice(
