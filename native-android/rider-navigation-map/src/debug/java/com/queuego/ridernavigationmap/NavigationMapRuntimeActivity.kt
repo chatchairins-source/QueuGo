@@ -2,6 +2,7 @@ package com.queuego.ridernavigationmap
 
 import android.os.Bundle
 import android.os.SystemClock
+import android.view.Choreographer
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
@@ -12,13 +13,34 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Modifier
 import com.longdo.api.MapGLSurfaceView
 import java.util.concurrent.CountDownLatch
+import kotlin.math.ceil
 
 /**
  * Debug-only host for the standalone navigation map. Coordinates are renderer fixtures only:
  * there are no QueueGo accounts, jobs, orders or Production writes in this activity.
  */
+data class NavigationRuntimeFrameTiming(
+    val frameCount: Int,
+    val p95IntervalMs: Double,
+    val maxIntervalMs: Double
+)
+
 class NavigationMapRuntimeActivity : ComponentActivity() {
     val mapReady = CountDownLatch(1)
+
+    private val frameIntervalsNanos = ArrayList<Long>(512)
+    private var frameCaptureActive = false
+    private var previousFrameTimeNanos = 0L
+    private val frameCallback = object : Choreographer.FrameCallback {
+        override fun doFrame(frameTimeNanos: Long) {
+            if (!frameCaptureActive) return
+            if (previousFrameTimeNanos > 0L && frameTimeNanos > previousFrameTimeNanos) {
+                frameIntervalsNanos += frameTimeNanos - previousFrameTimeNanos
+            }
+            previousFrameTimeNanos = frameTimeNanos
+            Choreographer.getInstance().postFrameCallback(this)
+        }
+    }
 
     @Volatile
     var latestDiagnostics = NavigationMapDiagnostics(0, 0, 0, 0)
@@ -45,6 +67,32 @@ class NavigationMapRuntimeActivity : ComponentActivity() {
                 )
             }
         }
+    }
+
+    fun startFrameTimingCapture() {
+        frameIntervalsNanos.clear()
+        previousFrameTimeNanos = 0L
+        frameCaptureActive = true
+        Choreographer.getInstance().removeFrameCallback(frameCallback)
+        Choreographer.getInstance().postFrameCallback(frameCallback)
+    }
+
+    fun stopFrameTimingCapture(): NavigationRuntimeFrameTiming {
+        frameCaptureActive = false
+        Choreographer.getInstance().removeFrameCallback(frameCallback)
+        val millis = frameIntervalsNanos
+            .map { it / 1_000_000.0 }
+            .sorted()
+        if (millis.isEmpty()) {
+            return NavigationRuntimeFrameTiming(0, 0.0, 0.0)
+        }
+        val p95Index = (ceil(millis.size * 0.95).toInt() - 1)
+            .coerceIn(0, millis.lastIndex)
+        return NavigationRuntimeFrameTiming(
+            frameCount = millis.size,
+            p95IntervalMs = millis[p95Index],
+            maxIntervalMs = millis.last()
+        )
     }
 
     fun hideMapForAnotherTab() {
@@ -167,6 +215,12 @@ class NavigationMapRuntimeActivity : ComponentActivity() {
             move.recycle()
             up.recycle()
         }
+    }
+
+    override fun onDestroy() {
+        frameCaptureActive = false
+        Choreographer.getInstance().removeFrameCallback(frameCallback)
+        super.onDestroy()
     }
 
     fun hasMapView(): Boolean = findMapView(window.decorView) != null

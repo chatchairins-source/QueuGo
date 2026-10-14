@@ -203,6 +203,16 @@ assert(models.includes('renderPassCount: Int = 0')&&
   map.includes('renderPassCount += 1')&&
   map.includes('state update that never reached the map'),
   'Diagnostics must expose applied render passes without forcing an overlay rebuild');
+assert(runtimeActivity.includes('Choreographer.FrameCallback')&&
+  runtimeActivity.includes('startFrameTimingCapture')&&
+  runtimeActivity.includes('stopFrameTimingCapture')&&
+  runtimeTest.includes('repeat(60)')&&
+  runtimeTest.includes('p95 frame interval exceeded gross-jank budget')&&
+  runtimeTest.includes('frameTiming.p95IntervalMs <= 150.0')&&
+  runtimeTest.includes('frameTiming.maxIntervalMs <= 1_000.0')&&
+  runtimeTest.includes('"QueueGoNavPerf"')&&
+  runtimeTest.includes('" p95_ms="')&&runtimeTest.includes('" max_ms="'),
+  'Navigation runtime must measure a 60-GPS-update UI frame budget without claiming emulator FPS as physical-device certification');
 assert(runtimeTest.includes('awaitAppliedRender')&&runtimeTest.includes('awaitStopProgression')&&
   runtimeTest.includes('awaitRendererReplacementBridge')&&
   runtimeTest.includes('Longdo renderer replacement callback did not announce continuity bridge')&&
