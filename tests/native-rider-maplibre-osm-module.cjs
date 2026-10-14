@@ -8,6 +8,7 @@ const view=fs.readFileSync('native-android/rider-maplibre-osm/src/main/java/com/
 const localRoads=fs.readFileSync('native-android/rider-maplibre-osm/src/main/java/com/queuego/ridermaplibreosm/QueueGoLocalRoads.kt','utf8');
 const localRoadFeed=fs.readFileSync('native-android/rider-maplibre-osm/src/main/java/com/queuego/ridermaplibreosm/QueueGoLocalRoadFeed.kt','utf8');
 const localRoadRouting=fs.readFileSync('native-android/rider-maplibre-osm/src/main/java/com/queuego/ridermaplibreosm/QueueGoLocalRoadRoutingPolicy.kt','utf8');
+const localRoadGraph=fs.readFileSync('native-android/rider-maplibre-osm/src/main/java/com/queuego/ridermaplibreosm/QueueGoLocalRoadGraph.kt','utf8');
 const riderBuild=fs.readFileSync('native-android/rider/build.gradle.kts','utf8');
 
 assert(settings.includes('":rider-maplibre-osm"'),'MapLibre OSM module must be registered in native settings');
@@ -79,5 +80,17 @@ assert(!localRoadRouting.includes('shortestPath')&&
   !localRoadRouting.includes('NavigationRouteCoordinator')&&
   !localRoadRouting.includes('LongdoNavigationRouteClient'),
   'Local Roads eligibility policy must not silently replace the Production routing engine');
+
+assert(localRoadGraph.includes('buildQueueGoLocalRoadGraph')&&
+  localRoadGraph.includes('queueGoLocalRoadRoutingDecision(')&&
+  localRoadGraph.includes('if (!road.verified || road.access == QueueGoLocalRoadAccess.PRIVATE_RESTRICTED)')&&
+  localRoadGraph.includes('if (!road.oneWay)')&&
+  localRoadGraph.includes('point.latitude.toBits()')&&
+  localRoadGraph.includes('point.longitude.toBits()')&&
+  localRoadGraph.includes('does not snap nearby-but-different coordinates')&&
+  !localRoadGraph.includes('Dijkstra')&&
+  !localRoadGraph.includes('shortestPath')&&
+  !localRoadGraph.includes('NavigationRouteCoordinator'),
+  'Experimental Local Roads graph must preserve verified/private/one-way guards, exact topology only, and remain separate from Production routing');
 
 console.log('native rider MapLibre OSM module contract passed');
