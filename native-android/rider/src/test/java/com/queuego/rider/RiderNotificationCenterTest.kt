@@ -56,4 +56,11 @@ class RiderNotificationCenterTest {
         )
         assertFalse(riderNotificationCanOpenOrder(row))
     }
+
+    @Test fun unreadBadgeIsBoundedForBottomNavigation() {
+        assertEquals(0, riderNotificationBadgeCount(0))
+        assertEquals(12, riderNotificationBadgeCount(12))
+        assertEquals(99, riderNotificationBadgeCount(100))
+        assertEquals(99, riderNotificationBadgeCount(999))
+    }
 }
