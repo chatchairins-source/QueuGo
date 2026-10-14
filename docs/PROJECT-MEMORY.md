@@ -1,3 +1,9 @@
+## 2026-10-14 Grab Driver parity: Rider background power health
+- Extended the existing local Rider Diagnostics with two advisory Android checks: system power-saver state and whether Android reports the app as background-restricted.
+- Both values come from the device at runtime; no telemetry is uploaded and no vendor-specific state is fabricated. Failed checks link only to the standard QueueGo app settings page.
+- These remain recommendations, not delivery hard gates. The five existing readiness gates remain validated internet, location permission, location services, notifications and installed Google Maps.
+- Backup backup-rider-background-health-20261014 retains 500cc76. Exact-head native-pilot required before PASS.
+
 ## 2026-10-14 Grab Driver parity: real Rider offer-performance metrics
 - Added Rider-only aggregate performance over the existing server-only qg_rider_offer_history; the Native app still cannot SELECT offer-history rows directly. Production migration 20261014071245 rider_offer_performance_v1 is applied.
 - The RPC accepts only Today/7/30-day windows using Asia/Bangkok day boundaries and returns counts/rates only for the active authenticated Rider: offered, accepted, declined, expired, acceptance rate, response rate, decline/timeout rates and average response time for explicit responses.
