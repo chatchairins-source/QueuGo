@@ -17,11 +17,13 @@ class QueueGoMapLibreOsmView @JvmOverloads constructor(
     private val mapView: MapView
     private var map: MapLibreMap? = null
     private var currentConfig: MapLibreOsmConfig? = null
+    private var localRoads: List<QueueGoLocalRoad> = emptyList()
     private var created = false
     private var started = false
     private var resumed = false
     private var destroyed = false
     private var styleApplyCount = 0
+    private var localRoadUpdateCount = 0
 
     var onMapReady: ((MapLibreMap) -> Unit)? = null
 
@@ -64,10 +66,20 @@ class QueueGoMapLibreOsmView @JvmOverloads constructor(
         }
     }
 
+    fun setLocalRoads(roads: List<QueueGoLocalRoad>) {
+        check(!destroyed) { "MapLibre view already destroyed" }
+        localRoads = roads.toList()
+        map?.style?.let { style ->
+            QueueGoLocalRoadOverlay.apply(style, localRoads)
+            localRoadUpdateCount += 1
+        }
+    }
+
     private fun applyConfig(config: MapLibreOsmConfig) {
         val readyMap = map ?: return
         styleApplyCount += 1
-        readyMap.setStyle(ShortbreadVillageStyle.builder(config.sourceUri)) {
+        readyMap.setStyle(ShortbreadVillageStyle.builder(config.sourceUri)) { style ->
+            QueueGoLocalRoadOverlay.apply(style, localRoads)
             applyCamera(readyMap, config)
             onMapReady?.invoke(readyMap)
         }
@@ -126,5 +138,14 @@ class QueueGoMapLibreOsmView @JvmOverloads constructor(
     fun mapViewIdentity(): Int = System.identityHashCode(mapView)
     fun mapIdentity(): Int? = map?.let(System::identityHashCode)
     fun styleApplyCount(): Int = styleApplyCount
+    fun localRoadUpdateCount(): Int = localRoadUpdateCount
+    fun hasLocalRoadSource(): Boolean =
+        map?.style?.getSource(QueueGoLocalRoadOverlay.SOURCE_ID) != null
+    fun hasLocalRoadLayers(): Boolean {
+        val style = map?.style ?: return false
+        return style.getLayer(QueueGoLocalRoadOverlay.CASING_LAYER_ID) != null &&
+            style.getLayer(QueueGoLocalRoadOverlay.SURFACE_LAYER_ID) != null &&
+            style.getLayer(QueueGoLocalRoadOverlay.MOTORCYCLE_LAYER_ID) != null
+    }
     fun isDestroyed(): Boolean = destroyed
 }
