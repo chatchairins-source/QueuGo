@@ -1,3 +1,11 @@
+## 2026-10-14 Grab Driver parity: unified gate-fix + event-feedback successor
+- Continued from benefits-delivery gate-fix head 702bb2a and explicitly merged the event-feedback sibling line so Release Gate hardening and Rider completion feedback stay on one successor.
+- Preserves the already-unified real-data Benefits Center, recipient-unavailable / failed-delivery reporting, critical Home priorities, Availability vehicle gates, account restriction UX and retained map continuity.
+- Gate fix removes the invalid Compose weight import and hardens Android real-map instrumentation against provider-unavailable road geometry while keeping the map-reuse assertions.
+- Event feedback adds completion confirmation chime/haptic behavior and its JVM coverage without changing order, payment, dispatch or Production DB state.
+- Backup: backup/rider-grab-parity-before-gate-event-unify-20261014 @ 702bb2a.
+- PASS requires exact-head native-pilot + navigation-map-runtime and all existing Admin/backend contracts.
+
 ## 2026-10-14 Rider Grab-parity gate fix: failed-delivery compile + map lifecycle isolation
 - Continued from unified Benefits + failed-delivery head 2a61a650 without dropping Benefits Center, critical Home actions, Availability gates, account restrictions or delivery-issue reporting.
 - Fixed RiderDeliveryIssueDialog Compose compilation by using the public foundation.layout import surface instead of explicitly importing an internal weight symbol.
