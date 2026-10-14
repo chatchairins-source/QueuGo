@@ -34,7 +34,18 @@ for(const [role,surfaces] of Object.entries(matrix.roles)){
 }
 
 const riderHistory=fs.readFileSync('native-android/rider/src/main/java/com/queuego/rider/RiderEarningsScreen.kt','utf8');
-ok(riderHistory.includes('api.cashLedger(')&&riderHistory.includes('rows.take(30).forEachIndexed')&&riderHistory.includes('รายการงานล่าสุด'),'Rider history must retain the Production ledger reader and rendered job cards');
+ok(
+  riderHistory.includes('api.cashLedger(')&&
+  riderHistory.includes('api.history(auth, 200)')&&
+  riderHistory.includes('รายการงานล่าสุด')&&
+  riderHistory.includes('RiderJobHistoryDetail(')&&
+  riderHistory.includes('expandedOrderId')&&
+  riderHistory.includes('cashPaidMerchant')&&
+  riderHistory.includes('cashCollectedCustomer')&&
+  riderHistory.includes('pickupAddress')&&
+  riderHistory.includes('deliveryAddress'),
+  'Rider history must retain the Production ledger source and expandable real route/cash job details'
+);
 
 const riderLogin=fs.readFileSync('native-android/rider/src/main/java/com/queuego/rider/RiderLoginScreen.kt','utf8');
 ok(riderLogin.includes('onRegister: () -> Unit'),'Rider registration entry must remain on the Native login surface');

@@ -1,3 +1,13 @@
+## 2026-10-14 Heatmap map-reuse guard preserved in Rider parity successor
+- Pulled forward Work PR228 runtime assertions onto the latest Job History successor. These diagnostics prove demand add/level-change/clear reconciles pins while preserving the same MapGLSurfaceView and Longdo map identities.
+- No Heatmap product behavior changed here; this preserves the stronger renderer continuity guard while later Rider parity work continues.
+
+## 2026-10-14 Grab Driver parity mission: detailed Rider Job History
+- Upgraded the existing Rider Earnings recent-job list instead of creating a duplicate screen. Cash ledger remains the authoritative date-range source; existing owned completed-order history enriches each row with pickup address, delivery address and completion time.
+- Each recent job can expand in place to show pickup -> delivery, delivery fee, cash paid to merchant, cash collected from customer and cash received-minus-paid for that trip. UI explicitly labels this as cash flow, not net profit.
+- Rider history now prefers orders.completed_at and falls back to updated_at only for legacy rows. Completion time is formatted in Asia/Bangkok. Missing detail fails gracefully without fabricating addresses or timestamps.
+- No Production DB change and no order/dispatch/payment flow change. Backup backup/rider-grab-parity-before-job-history-20261014 retains d8057e0. Exact-head Native CI is required before PASS.
+
 ## 2026-10-14 Grab Driver parity mission: real Rider compliments
 - Added optional Rider compliments as real customer-generated data on top of the existing rider_rating flow. Customer can choose up to three allowlisted compliments only after a 4–5 star Rider rating: polite, fast, careful, professional, friendly and helpful. No default/fake badges are created.
 - Production migration 20261014061234 rider_compliments_v1 stores compliment selections only in qg_private, not the public reviews table. Public wrappers are authenticated-only; customer read/write is restricted to the customer's own completed reviewed order and Rider aggregate is restricted to the current active Rider. Rider sees counts only, never customer identities/comments/order IDs.
