@@ -42,6 +42,9 @@ class SessionStore(private val context: Context) {
             .put("name", auth.user.name)
             .put("role", auth.user.role)
             .put("status", auth.user.status)
+            .put("phone", auth.user.phone)
+            .put("suspendedAt", auth.user.suspendedAt)
+            .put("suspensionReason", auth.user.suspensionReason)
             .toString()
         prefs.edit().putString("session", encrypt(json)).apply()
     }
@@ -61,7 +64,10 @@ class SessionStore(private val context: Context) {
                 id = o.getString("userId"),
                 name = o.optString("name").ifBlank { "ไรเดอร์" },
                 role = o.getString("role"),
-                status = o.optString("status")
+                status = o.optString("status"),
+                phone = o.optString("phone").takeIf { it.isNotBlank() && it != "null" },
+                suspendedAt = o.optString("suspendedAt").takeIf { it.isNotBlank() && it != "null" },
+                suspensionReason = o.optString("suspensionReason").takeIf { it.isNotBlank() && it != "null" }
             )
         )
     }.getOrNull()
