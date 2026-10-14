@@ -33,6 +33,37 @@ internal fun riderServerClockNow(
 internal fun riderServerClockSkewMs(sample: RiderServerClockSample?): Long? =
     sample?.let { it.serverEpochMs - it.deviceWallEpochMs }
 
+internal data class RiderServerClockHealth(
+    val headline: String,
+    val detail: String,
+    val healthy: Boolean?
+)
+
+internal fun riderServerClockHealth(skewMs: Long?): RiderServerClockHealth {
+    if (skewMs == null) {
+        return RiderServerClockHealth(
+            headline = "ยังไม่ได้เทียบเวลา Server",
+            detail = "เมื่อ QueueGo ติดต่อระบบสำเร็จ แอปจะปรับ countdown งานกับเวลา Server อัตโนมัติ",
+            healthy = null
+        )
+    }
+    val absolute = kotlin.math.abs(skewMs)
+    val seconds = absolute / 1000.0
+    return if (absolute < 5_000L) {
+        RiderServerClockHealth(
+            headline = "เวลาเครื่องตรงกับ Server",
+            detail = "คลาดประมาณ %.1f วินาที · countdown ใช้เวลา Server".format(seconds),
+            healthy = true
+        )
+    } else {
+        RiderServerClockHealth(
+            headline = "เวลาเครื่องคลาดจาก Server",
+            detail = "คลาดประมาณ %.1f วินาที · QueueGo ชดเชยให้ countdown งานแล้ว".format(seconds),
+            healthy = false
+        )
+    }
+}
+
 internal object RiderServerClock {
     @Volatile
     private var latest: RiderServerClockSample? = null
