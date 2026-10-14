@@ -1,3 +1,14 @@
+## 2026-10-14 Rider world-class: order-linked Safety Incident Report
+- Continued from evidence-quality compatibility head 5c8fd760, which already preserves final world-class proof/return, Auto Accept, failed-delivery, Benefits, connectivity and event feedback work.
+- Static inspection of the owner-supplied Grab Driver 5.457.1 package confirmed a dedicated Safety Report capability. QueueGo already had emergency numbers, one trusted emergency contact, one-tap current-location sharing, Fatigue Safety and map/road feedback, but lacked a structured safety incident report tied to the active order.
+- Rider Safety Center now includes “รายงานเหตุการณ์ความปลอดภัย” for accident/injury, threat/harassment, unsafe location, road hazard, vehicle issue and other incidents.
+- When an active order exists, the report is tied to that real order via the existing qg_create_ticket RPC. No new Production DB/schema or support category is introduced.
+- Precise coordinates are privacy-safe by default: location is NOT attached automatically. The Rider must explicitly enable the location checkbox in the incident dialog; if no recent accurate location exists, the option stays unavailable.
+- The dialog explicitly tells Rider that emergency response still requires 191 / 1669 and that submitting the QueueGo report does not auto-cancel the order.
+- Reports use machine-readable [SAFETY_INCIDENT:<reason>] details under the existing rider support category, with bounded optional note length.
+- Backup: backup/rider-worldclass-before-safety-incident-v2-20261014 @ 5c8fd760.
+- PASS requires exact-head native-pilot + navigation-map-runtime.
+
 ## 2026-10-14 Rider world-class: opt-in Auto Accept unified onto final proof/return head
 - Continued from world-class final head 7df4d782, preserving durable one-photo proof recovery, adaptive refresh, multi-stop Return-to-Sender v4, connectivity guards, touch-target work, failed-delivery flow, Benefits Center and event feedback.
 - Added Grab-parity Acceptance Mode as an opt-in Rider preference. Default remains manual “เลือกเอง”; existing 30-second targeted offer behavior remains the default.
