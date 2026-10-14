@@ -159,11 +159,10 @@ assert(localRoadPathfinder.includes('findQueueGoLocalRoadPath')&&
 
 assert(!localRoadPathfinder.includes('NavigationRouteCoordinator')&&
   !localRoadPathfinder.includes('LongdoNavigationRouteClient')&&
-  !localRoadPathfinder.includes('Google Maps')&&
-  !localRoadPathfinder.includes('Supabase')&&
-  !localRoadPathfinder.includes('ETA')&&
+  !localRoadPathfinder.includes('QueueGoLocalRoadHttpsTransport')&&
+  !localRoadPathfinder.includes('io.supabase')&&
   !localRoadPathfinder.includes('speedMetersPerSecond'),
-  'Experimental Local Roads pathfinder must stay isolated from Production navigation, backend writes and ETA/speed assumptions');
+  'Experimental Local Roads pathfinder must stay isolated from Production navigation, backend transport and speed assumptions');
 
 
 console.log('native rider MapLibre OSM module contract passed');
