@@ -240,4 +240,21 @@ for(const needle of [
 ]){
   assert.ok(multipleVehiclesLegacyGuard.includes(needle),'Rider multiple vehicles v3 missing selected legacy guard: '+needle);
 }
+const riderDocumentReadinessMigration=read('supabase/migrations/20261014084324_rider_document_readiness_v1.sql');
+for(const needle of [
+  'qg_private.rider_document_expiries',
+  'qg_rider_document_readiness',
+  'qg_admin_rider_document_queue',
+  'qg_admin_set_rider_document_expiry',
+  'qg_guard_rider_document_expiry_online',
+  "'national_id','driver_license','vehicle_prb'",
+  "when d.expires_on is null then 'unknown'",
+  "d.expires_on < current_date",
+  'rider document expired',
+  "revoke all on table qg_private.rider_document_expiries from public, anon, authenticated",
+  "revoke all on function public.qg_rider_document_readiness() from public, anon",
+  "revoke all on function public.qg_admin_set_rider_document_expiry(uuid,text,date,uuid) from public, anon"
+]){
+  assert.ok(riderDocumentReadinessMigration.includes(needle),'Rider document readiness migration missing contract: '+needle);
+}
 console.log('Native backend migration mirror: PASS');
