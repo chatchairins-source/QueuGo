@@ -21,6 +21,12 @@ class RiderGrabParityUnifiedTest {
             riderDeliveryIssueReasons.map { it.key }.toSet()
         )
 
+        val contactEvidence = riderDeliveryIssueNoteWithAttempts(
+            "",
+            RiderDeliveryContactAttempts(callCount = 1, chatCount = 1, lastAttemptAtMs = 1L)
+        )
+        assertTrue(contactEvidence.startsWith("[CONTACT_ATTEMPTS:2;CALL:1;CHAT:1]"))
+
         val online = riderEventFeedbackSpec(RiderEventFeedbackKind.GO_ONLINE)
         val offline = riderEventFeedbackSpec(RiderEventFeedbackKind.GO_OFFLINE)
         val accepted = riderEventFeedbackSpec(RiderEventFeedbackKind.JOB_ACCEPTED)
