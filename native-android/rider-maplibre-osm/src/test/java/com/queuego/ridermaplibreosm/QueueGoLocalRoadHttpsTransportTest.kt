@@ -63,6 +63,7 @@ class QueueGoLocalRoadHttpsTransportTest {
                 MockResponse()
                     .setResponseCode(200)
                     .setHeader("Content-Type", QUEUEGO_LOCAL_ROAD_MEDIA_TYPE)
+                    .setHeader(QUEUEGO_LOCAL_ROAD_HEADER_ENVELOPE_VERSION, "1")
                     .setHeader(QUEUEGO_LOCAL_ROAD_HEADER_KEY_ID, "roads-key-1")
                     .setHeader(QUEUEGO_LOCAL_ROAD_HEADER_SHA256, queueGoSha256Hex(payload))
                     .setHeader(
@@ -77,6 +78,8 @@ class QueueGoLocalRoadHttpsTransportTest {
                 endpoint = fixture.server.url("/local-roads/v1/snapshot")
             ).fetch()
 
+            requireNotNull(envelope)
+            assertEquals(1, envelope.envelopeVersion)
             assertEquals("roads-key-1", envelope.keyId)
             assertEquals(queueGoSha256Hex(payload), envelope.payloadSha256Hex)
             assertArrayEquals(payload, envelope.payload)
@@ -85,6 +88,23 @@ class QueueGoLocalRoadHttpsTransportTest {
             val request = fixture.server.takeRequest()
             assertEquals(QUEUEGO_LOCAL_ROAD_MEDIA_TYPE, request.getHeader("Accept"))
             assertEquals("GET", request.method)
+        } finally {
+            fixture.server.shutdown()
+        }
+    }
+
+    @Test
+    fun notModifiedResponseReturnsNoSnapshot() = runBlocking {
+        val fixture = tlsFixture()
+        try {
+            fixture.server.enqueue(MockResponse().setResponseCode(304))
+
+            val envelope = QueueGoLocalRoadHttpsTransport(
+                client = fixture.client,
+                endpoint = fixture.server.url("/local-roads/v1/snapshot")
+            ).fetch()
+
+            assertEquals(null, envelope)
         } finally {
             fixture.server.shutdown()
         }
