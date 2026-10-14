@@ -49,6 +49,46 @@ class QueueGoPmTilesDownloaderTest {
         directory.deleteRecursively()
     }
 
+    @Test fun progressThrottleAvoidsWorkManagerUpdatesForEverySmallBuffer() {
+        val start = 1_000_000_000L
+        assertFalse(
+            shouldReportPmTilesProgress(
+                downloadedBytes = 8L * 1024L,
+                lastReportedBytes = 0L,
+                nowNanos = start + 100_000_000L,
+                lastReportedNanos = start,
+                complete = false
+            )
+        )
+        assertTrue(
+            shouldReportPmTilesProgress(
+                downloadedBytes = 512L * 1024L,
+                lastReportedBytes = 0L,
+                nowNanos = start + 100_000_000L,
+                lastReportedNanos = start,
+                complete = false
+            )
+        )
+        assertTrue(
+            shouldReportPmTilesProgress(
+                downloadedBytes = 16L * 1024L,
+                lastReportedBytes = 0L,
+                nowNanos = start + 500_000_000L,
+                lastReportedNanos = start,
+                complete = false
+            )
+        )
+        assertTrue(
+            shouldReportPmTilesProgress(
+                downloadedBytes = 1L,
+                lastReportedBytes = 0L,
+                nowNanos = start,
+                lastReportedNanos = start,
+                complete = true
+            )
+        )
+    }
+
     @Test fun downloadsFreshArchiveAndRenamesPartFile() = runBlocking {
         val payload = "pmtiles-v3-data".toByteArray()
         server.enqueue(

@@ -20,6 +20,20 @@ data class QueueGoPmTilesProgress(
             ?.let { (downloadedBytes.toDouble() / it.toDouble()).coerceIn(0.0, 1.0) }
 }
 
+private const val PROGRESS_MIN_BYTES = 512L * 1024L
+private const val PROGRESS_MIN_INTERVAL_NANOS = 500_000_000L
+
+internal fun shouldReportPmTilesProgress(
+    downloadedBytes: Long,
+    lastReportedBytes: Long,
+    nowNanos: Long,
+    lastReportedNanos: Long,
+    complete: Boolean
+): Boolean =
+    complete ||
+        downloadedBytes - lastReportedBytes >= PROGRESS_MIN_BYTES ||
+        nowNanos - lastReportedNanos >= PROGRESS_MIN_INTERVAL_NANOS
+
 class QueueGoPmTilesDownloader(
     private val client: OkHttpClient = OkHttpClient()
 ) {
@@ -97,15 +111,33 @@ class QueueGoPmTilesDownloader(
                 val input = body.byteStream()
                 val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
                 var downloaded = baseBytes
+                var lastReportedBytes = baseBytes
+                var lastReportedNanos = System.nanoTime()
                 while (true) {
                     kotlinx.coroutines.currentCoroutineContext().ensureActive()
                     val count = input.read(buffer)
                     if (count < 0) break
                     output.write(buffer, 0, count)
                     downloaded += count
-                    onProgress(QueueGoPmTilesProgress(downloaded, totalBytes))
+                    val nowNanos = System.nanoTime()
+                    if (
+                        shouldReportPmTilesProgress(
+                            downloadedBytes = downloaded,
+                            lastReportedBytes = lastReportedBytes,
+                            nowNanos = nowNanos,
+                            lastReportedNanos = lastReportedNanos,
+                            complete = totalBytes != null && downloaded >= totalBytes
+                        )
+                    ) {
+                        onProgress(QueueGoPmTilesProgress(downloaded, totalBytes))
+                        lastReportedBytes = downloaded
+                        lastReportedNanos = nowNanos
+                    }
                 }
                 output.fd.sync()
+                if (downloaded != lastReportedBytes) {
+                    onProgress(QueueGoPmTilesProgress(downloaded, totalBytes))
+                }
             }
 
             totalBytes?.let { expected ->
