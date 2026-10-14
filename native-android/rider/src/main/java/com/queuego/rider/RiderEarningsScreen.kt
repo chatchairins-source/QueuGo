@@ -38,6 +38,8 @@ fun RiderEarningsScreen(auth: QueueGoAuth, api: QueueGoApi, onBack: () -> Unit, 
     var historyDetails by remember { mutableStateOf<List<RiderHistoryOrder>>(emptyList()) }
     var missions by remember { mutableStateOf<List<RiderMission>?>(null) }
     var missionError by remember { mutableStateOf<String?>(null) }
+    var supplyPlan by remember { mutableStateOf<RiderSupplyPlan?>(null) }
+    var supplyPlanError by remember { mutableStateOf<String?>(null) }
     var expandedOrderId by remember { mutableStateOf<String?>(null) }
     var summaryError by remember { mutableStateOf<String?>(null) }
     var ledgerError by remember { mutableStateOf<String?>(null) }
@@ -51,6 +53,17 @@ fun RiderEarningsScreen(auth: QueueGoAuth, api: QueueGoApi, onBack: () -> Unit, 
         } catch (e: Exception) {
             missionError = "โหลดภารกิจไม่สำเร็จ: " + (e.message ?: "เชื่อมต่อไม่ได้")
             missions = emptyList()
+        }
+    }
+    LaunchedEffect(auth.session.accessToken) {
+        supplyPlan = null
+        supplyPlanError = null
+        try {
+            supplyPlan = api.supplyPlan(auth)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            supplyPlanError = "โหลดช่วงเวลางานไม่สำเร็จ: " + (e.message ?: "เชื่อมต่อไม่ได้")
         }
     }
     LaunchedEffect(auth.session.accessToken, days) {
@@ -157,6 +170,88 @@ fun RiderEarningsScreen(auth: QueueGoAuth, api: QueueGoApi, onBack: () -> Unit, 
                         "คำนวณจากงานสำเร็จ รายได้ และเวลาออนไลน์จริงในช่วงที่เลือก",
                         color = QgMuted,
                         fontSize = 8.sp,
+                        modifier = Modifier.padding(top = 9.dp)
+                    )
+                }
+            }
+        }
+        when {
+            supplyPlanError != null -> RiderEarnError(supplyPlanError!!)
+            supplyPlan == null -> RiderEarnLoading("กำลังโหลดช่วงเวลางาน…")
+            supplyPlan?.ready != true -> {
+                Spacer(Modifier.height(12.dp))
+                RiderEarningsCard {
+                    RiderEarnSectionTitle("วางแผนเวลาออกวิ่ง", "ข้อมูลย้อนหลัง")
+                    Text(
+                        "ข้อมูลย้อนหลังยังไม่พอสำหรับจัดอันดับช่วงเวลาอย่างน่าเชื่อถือ",
+                        color = QgMuted,
+                        fontSize = 10.sp,
+                        modifier = Modifier.padding(top = 9.dp)
+                    )
+                    Text(
+                        "QueueGo จะเริ่มแสดงช่วงเวลาที่คึกคักเมื่อมีข้อมูลจริงเพียงพอ โดยไม่สร้างคำแนะนำจากข้อมูลจำลอง",
+                        color = QgMuted,
+                        fontSize = 8.sp,
+                        lineHeight = 11.sp,
+                        modifier = Modifier.padding(top = 6.dp)
+                    )
+                }
+            }
+            else -> {
+                val plan = supplyPlan!!
+                Spacer(Modifier.height(12.dp))
+                RiderEarningsCard {
+                    RiderEarnSectionTitle("วางแผนเวลาออกวิ่ง", riderSupplyConfidenceLabel(plan.confidence))
+                    Spacer(Modifier.height(8.dp))
+                    plan.windows.take(6).forEachIndexed { index, window ->
+                        Row(
+                            Modifier.fillMaxWidth().padding(vertical = 7.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            Column(Modifier.weight(1f)) {
+                                Text(
+                                    riderSupplyWindowLabel(window),
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Text(
+                                    "ระดับจากปริมาณออเดอร์ย้อนหลัง",
+                                    color = QgMuted,
+                                    fontSize = 8.sp,
+                                    modifier = Modifier.padding(top = 2.dp)
+                                )
+                            }
+                            Text(
+                                riderSupplyLevelLabel(window.level),
+                                color = when (window.level) {
+                                    3 -> QgRed
+                                    2 -> Color(0xFF9A6500)
+                                    else -> Color(0xFF5F5A5D)
+                                },
+                                fontSize = 9.sp,
+                                fontWeight = FontWeight.Black,
+                                modifier = Modifier
+                                    .background(
+                                        when (window.level) {
+                                            3 -> Color(0xFFFFEDF1)
+                                            2 -> Color(0xFFFFF7E6)
+                                            else -> Color(0xFFF4F1F2)
+                                        },
+                                        RoundedCornerShape(99.dp)
+                                    )
+                                    .padding(horizontal = 8.dp, vertical = 4.dp)
+                            )
+                        }
+                        if (index < plan.windows.take(6).lastIndex) {
+                            HorizontalDivider(color = Color(0xFFF0EAEC))
+                        }
+                    }
+                    Text(
+                        "อิงออเดอร์จริงย้อนหลัง ${plan.sourceDays} วัน · ${riderSupplyConfidenceLabel(plan.confidence)} · ไม่ใช่การรับประกันว่าจะมีงาน",
+                        color = QgMuted,
+                        fontSize = 8.sp,
+                        lineHeight = 11.sp,
                         modifier = Modifier.padding(top = 9.dp)
                     )
                 }
