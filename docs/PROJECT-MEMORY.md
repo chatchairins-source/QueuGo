@@ -1,3 +1,14 @@
+## 2026-10-14 Rider world-class: opt-in Auto Accept unified onto final proof/return head
+- Continued from world-class final head 7df4d782, preserving durable one-photo proof recovery, adaptive refresh, multi-stop Return-to-Sender v4, connectivity guards, touch-target work, failed-delivery flow, Benefits Center and event feedback.
+- Added Grab-parity Acceptance Mode as an opt-in Rider preference. Default remains manual “เลือกเอง”; existing 30-second targeted offer behavior remains the default.
+- Auto Accept only acts on the current live targeted offer while Rider is online, network is available, no active delivery/laundry work exists, no action is already running, and at least 3 seconds remain in the server-calibrated offer window.
+- Auto Accept does not apply to route-bundle jobs or Laundry jobs. Those remain manual.
+- Manual and automatic acceptance share one authoritative acceptTargetedOffer() path, including local promotion to active work, cached snapshot durability, best-effort authoritative refresh, event feedback and Google Maps handoff.
+- Preference is stored per Rider account on-device and can be disabled immediately from idle Home.
+- No dispatch RPC, payment rule, Production schema or offer visibility rule changed. This is a client-side opt-in convenience over the existing single-targeted-offer assignment.
+- Backup: backup/rider-worldclass-before-auto-accept-unify-20261014 @ 7df4d782.
+- PASS requires exact-head native-pilot + navigation-map-runtime.
+
 ## 2026-10-14 Rider world-class final unify: durable proof + adaptive refresh + multi-stop return v4
 - Continued from worldclass-proof-refresh-v2 head 382e3b68 and preserved its latest Rider world-class return/photo/connectivity stack.
 - Verified the v2 tree still lacked the complete RiderHome pending-proof wiring despite the branch message; restored the durable one-photo flow from the proven proof-return successor without duplicating models, API, return card, event feedback, proof store or refresh cadence.
