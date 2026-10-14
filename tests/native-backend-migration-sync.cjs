@@ -1,3 +1,4 @@
+// Rider vehicle inspection release gate exact-head checkpoint.
 const fs=require('fs');
 const assert=require('assert');
 
