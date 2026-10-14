@@ -6,6 +6,19 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class RiderEventFeedbackTest {
+    @Test fun availabilityAndJobAcceptanceHaveDistinctCues() {
+        val online = riderEventFeedbackSpec(RiderEventFeedbackKind.GO_ONLINE)
+        val offline = riderEventFeedbackSpec(RiderEventFeedbackKind.GO_OFFLINE)
+        val accepted = riderEventFeedbackSpec(RiderEventFeedbackKind.JOB_ACCEPTED)
+
+        assertTrue(online.successHaptic)
+        assertTrue(offline.successHaptic)
+        assertTrue(accepted.successHaptic)
+        assertTrue(online.tones != offline.tones)
+        assertTrue(accepted.tones != online.tones)
+        assertTrue(accepted.tones != offline.tones)
+    }
+
     @Test fun pickupFeedbackIsShortAndConfirming() {
         val spec = riderEventFeedbackSpec(RiderEventFeedbackKind.PICKUP_SUCCESS)
         assertTrue(spec.successHaptic)
