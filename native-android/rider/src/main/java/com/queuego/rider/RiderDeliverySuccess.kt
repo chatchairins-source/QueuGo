@@ -25,13 +25,19 @@ import kotlinx.coroutines.delay
 @Composable
 internal fun RiderDeliverySuccess(
     job: RiderJob,
+    recommendation: RiderAfterJobRecommendation?,
+    onNavigateRecommendation: (RiderAfterJobRecommendation) -> Unit,
     onDismiss: () -> Unit
 ) {
     val eventFeedbackView = LocalView.current
     LaunchedEffect(job.id) {
         playRiderEventFeedback(eventFeedbackView, RiderEventFeedbackKind.DELIVERY_SUCCESS)
-        delay(4_500)
-        onDismiss()
+    }
+    LaunchedEffect(job.id, recommendation?.zone?.latitude, recommendation?.zone?.longitude) {
+        if (recommendation == null) {
+            delay(7_000)
+            onDismiss()
+        }
     }
     Box(
         Modifier.fillMaxSize().background(Color(0x66000000)),
@@ -63,14 +69,65 @@ internal fun RiderDeliverySuccess(
                     fontSize = 17.sp,
                     fontWeight = FontWeight.Black
                 )
-                Spacer(Modifier.height(14.dp))
-                Button(
-                    onClick = onDismiss,
-                    modifier = Modifier.fillMaxWidth().height(48.dp),
-                    shape = RoundedCornerShape(15.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFF04455))
-                ) {
-                    Text("รับทราบ", fontWeight = FontWeight.Black)
+                recommendation?.let { next ->
+                    Spacer(Modifier.height(14.dp))
+                    Card(
+                        Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF6F8))
+                    ) {
+                        Column(Modifier.fillMaxWidth().padding(13.dp)) {
+                            Text("แนะนำพื้นที่งานถัดไป", color = QgMuted, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                            Text(
+                                riderAfterJobLevelLabel(next.zone.level),
+                                color = QgRed,
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.Black,
+                                modifier = Modifier.padding(top = 3.dp)
+                            )
+                            Text(
+                                riderAfterJobDistanceLabel(next.distanceKm) +
+                                    " · ข้อมูลพื้นที่งาน " + next.zone.windowHours + " ชม.",
+                                color = Color(0xFF5F575B),
+                                fontSize = 9.sp,
+                                modifier = Modifier.padding(top = 3.dp)
+                            )
+                            Text(
+                                "เป็นคำแนะนำจากข้อมูลจริง ไม่รับประกันว่าจะมีงาน และไม่กระทบการรับงานแบบปกติ",
+                                color = QgMuted,
+                                fontSize = 8.sp,
+                                lineHeight = 11.sp,
+                                modifier = Modifier.padding(top = 5.dp)
+                            )
+                        }
+                    }
+                    Spacer(Modifier.height(10.dp))
+                    Button(
+                        onClick = { onNavigateRecommendation(next) },
+                        modifier = Modifier.fillMaxWidth().height(50.dp),
+                        shape = RoundedCornerShape(15.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFF04455))
+                    ) {
+                        Text("นำทางไปพื้นที่งานถัดไป", fontWeight = FontWeight.Black)
+                    }
+                    Spacer(Modifier.height(7.dp))
+                    androidx.compose.material3.OutlinedButton(
+                        onClick = onDismiss,
+                        modifier = Modifier.fillMaxWidth().height(48.dp),
+                        shape = RoundedCornerShape(15.dp)
+                    ) {
+                        Text("กลับหน้าหลัก", fontWeight = FontWeight.Bold)
+                    }
+                } ?: run {
+                    Spacer(Modifier.height(14.dp))
+                    Button(
+                        onClick = onDismiss,
+                        modifier = Modifier.fillMaxWidth().height(48.dp),
+                        shape = RoundedCornerShape(15.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFF04455))
+                    ) {
+                        Text("รับทราบ", fontWeight = FontWeight.Black)
+                    }
                 }
             }
         }
