@@ -361,6 +361,16 @@ data class RiderEmergencyContact(
 )
 
 
+data class RiderFatigueStatus(
+    val online: Boolean,
+    val onlineSince: String?,
+    val continuousOnlineMinutes: Int,
+    val onlineMinutesToday: Int,
+    val level: String,
+    val medicalDetection: Boolean
+)
+
+
 data class RiderHistoryOrder(
     val id: String,
     val number: String,

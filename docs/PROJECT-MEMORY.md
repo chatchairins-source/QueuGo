@@ -1,3 +1,11 @@
+## 2026-10-14 Grab Driver parity: persistent Rider Fatigue Safety v1
+- Added a QueueGo-native persistent work/rest safety layer after confirming the owner-supplied Grab Driver package contains a dedicated Fatigue v1/v2 service/repository/UI stack. QueueGo does not claim liveness, drowsiness, biometric or medical detection.
+- Production migration 20261014073631_rider_fatigue_status_v1 is additive and read-only. It derives the current continuous online session and Bangkok-day total online minutes from server-owned qg_rider_presence_events, using the existing rider_id/occurred_at index. Public wrapper is SECURITY INVOKER, anon EXECUTE is revoked, and active Rider live-session ownership is checked in qg_private.
+- Advisory levels are normal (<120 continuous minutes), rest_recommended (>=120) and strong_rest_recommended (>=240). They do not interrupt an active order or auto-close the Rider. Existing 2-hour continuous-navigation reminder remains; this new layer survives screen/app lifecycle because its source is server presence history.
+- Native Safety Centre shows continuous online time, today's total and an explicit non-medical disclaimer. Empty/invalid payloads fail safe to normal/zero rather than inventing fatigue state.
+- Production read-only validation used an already-active Rider session and confirmed the RPC returns real presence-derived values with medical_detection=false; no Rider state or business record was written.
+- Backup backup/rider-destination-safety-before-fatigue-20261014 retains 1170fde. PASS requires native-pilot + navigation-map-runtime on the exact successor HEAD.
+
 ## 2026-10-14 Grab Driver parity: My Destination + Safety location-share release
 - Continued from consolidated My Destination head 8d53ab6 so Learning/Missions/Safety/Speed/ETA, Runtime Diagnostics, Offer Performance, Availability Readiness and My Destination all remain in one line.
 - Added one-time current-location sharing in Safety Centre. QueueGo uses the retained navigation GPS fix when available, otherwise only a system last-known fix no older than 5 minutes and with reported accuracy <=200 m.

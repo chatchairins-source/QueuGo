@@ -145,6 +145,25 @@ internal fun riderEmergencyContactFromRpc(raw: Any?): RiderEmergencyContact {
     )
 }
 
+internal fun riderFatigueStatusFromRpc(raw: Any?): RiderFatigueStatus {
+    val row = when (raw) {
+        is JSONObject -> raw
+        is JSONArray -> raw.optJSONObject(0) ?: JSONObject()
+        else -> JSONObject()
+    }
+    val level = row.optString("level").takeIf {
+        it in setOf("normal", "rest_recommended", "strong_rest_recommended")
+    } ?: "normal"
+    return RiderFatigueStatus(
+        online = row.optBoolean("online", false),
+        onlineSince = riderNullableText(row.optString("online_since")),
+        continuousOnlineMinutes = row.optInt("continuous_online_minutes", 0).coerceAtLeast(0),
+        onlineMinutesToday = row.optInt("online_minutes_today", 0).coerceAtLeast(0),
+        level = level,
+        medicalDetection = row.optBoolean("medical_detection", false)
+    )
+}
+
 internal fun riderMissionsFromRpc(raw: Any?): List<RiderMission> {
     val rows = when (raw) {
         is JSONArray -> raw
@@ -570,6 +589,17 @@ class QueueGoApi {
                     JSONObject().put("p_days", days)
                 ),
                 days
+            )
+        }
+
+    suspend fun fatigueStatus(auth: QueueGoAuth): RiderFatigueStatus =
+        withContext(Dispatchers.IO) {
+            riderFatigueStatusFromRpc(
+                rpc(
+                    "qg_rider_fatigue_status",
+                    auth.session.accessToken,
+                    JSONObject()
+                )
             )
         }
 
