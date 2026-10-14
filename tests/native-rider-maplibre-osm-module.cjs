@@ -7,6 +7,7 @@ const style=fs.readFileSync('native-android/rider-maplibre-osm/src/main/java/com
 const view=fs.readFileSync('native-android/rider-maplibre-osm/src/main/java/com/queuego/ridermaplibreosm/QueueGoMapLibreOsmView.kt','utf8');
 const localRoads=fs.readFileSync('native-android/rider-maplibre-osm/src/main/java/com/queuego/ridermaplibreosm/QueueGoLocalRoads.kt','utf8');
 const localRoadFeed=fs.readFileSync('native-android/rider-maplibre-osm/src/main/java/com/queuego/ridermaplibreosm/QueueGoLocalRoadFeed.kt','utf8');
+const signedLocalRoadFeed=fs.readFileSync('native-android/rider-maplibre-osm/src/main/java/com/queuego/ridermaplibreosm/QueueGoLocalRoadSignedFeed.kt','utf8');
 const riderBuild=fs.readFileSync('native-android/rider/build.gradle.kts','utf8');
 
 assert(settings.includes('":rider-maplibre-osm"'),'MapLibre OSM module must be registered in native settings');
@@ -65,5 +66,27 @@ assert(localRoadFeed.includes('queuego-trace:')&&
   !localRoadFeed.toLowerCase().includes('rider_id')&&
   !localRoadFeed.toLowerCase().includes('grab:'),
   'Verified trace provenance must reference QueueGo aggregate trace evidence without Rider identity or competitor references');
+
+
+assert(
+  signedLocalRoadFeed.includes('endpoint.isHttps')&&
+  signedLocalRoadFeed.includes('QUEUEGO_LOCAL_ROAD_MAX_SIGNED_PAYLOAD_BYTES')&&
+  signedLocalRoadFeed.includes('MessageDigest.isEqual')&&
+  signedLocalRoadFeed.includes('SHA256withECDSA')&&
+  signedLocalRoadFeed.includes('expectedKeyId')&&
+  signedLocalRoadFeed.includes('continuation.invokeOnCancellation { call.cancel() }')&&
+  signedLocalRoadFeed.includes('verifier.verify(signedPayload)')&&
+  signedLocalRoadFeed.indexOf('verifier.verify(signedPayload)') <
+    signedLocalRoadFeed.indexOf('decoder.decode(signedPayload.bytes)'),
+  'Signed Local Roads delivery must fail closed on HTTPS, size, key-id, digest and ECDSA signature before decoding');
+
+assert(
+  !signedLocalRoadFeed.includes('supabase.co')&&
+  !signedLocalRoadFeed.includes('api.queuego')&&
+  !signedLocalRoadFeed.toLowerCase().includes('grab')&&
+  signedLocalRoadFeed.includes('X-QueueGo-Local-Road-Key-Id')&&
+  signedLocalRoadFeed.includes('X-QueueGo-Local-Road-SHA256')&&
+  signedLocalRoadFeed.includes('X-QueueGo-Local-Road-Signature'),
+  'Signed Local Roads client must not hardcode Production endpoints, competitor references or secret signing material');
 
 console.log('native rider MapLibre OSM module contract passed');
