@@ -86,6 +86,9 @@ fun validateQueueGoLocalRoadFeed(
         require(sourceReference.length <= QUEUEGO_LOCAL_ROAD_MAX_SOURCE_REFERENCE_LENGTH) {
             "Local-road source reference is too long: " + road.id
         }
+        require(queueGoLocalRoadSourceReferenceAllowed(road.source, sourceReference)) {
+            "Local-road source reference does not match provenance: " + road.id
+        }
 
         if (road.verified) {
             require(record.verifiedAtEpochMillis != null && record.verifiedAtEpochMillis > 0L) {
@@ -124,3 +127,23 @@ fun validateQueueGoLocalRoadFeed(
  */
 fun QueueGoValidatedLocalRoadFeed.roadsForApply(): List<QueueGoLocalRoad>? =
     takeIf { decision == QueueGoLocalRoadFeedDecision.APPLY }?.roads
+
+
+internal fun queueGoLocalRoadSourceReferenceAllowed(
+    source: QueueGoLocalRoadSource,
+    sourceReference: String
+): Boolean {
+    val reference = sourceReference.trim().lowercase()
+    return when (source) {
+        QueueGoLocalRoadSource.OPENSTREETMAP_VERIFIED ->
+            reference.startsWith("osm:")
+        QueueGoLocalRoadSource.PUBLIC_DATA ->
+            reference.startsWith("public:")
+        QueueGoLocalRoadSource.RIDER_GPS_TRACE_VERIFIED ->
+            reference.startsWith("queuego-trace:")
+        QueueGoLocalRoadSource.MERCHANT_CONFIRMED ->
+            reference.startsWith("merchant:")
+        QueueGoLocalRoadSource.FIELD_SURVEY ->
+            reference.startsWith("field-survey:")
+    }
+}
