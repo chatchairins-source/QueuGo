@@ -35,10 +35,8 @@ class QueueGoTrustedLocalRoadGraphSession internal constructor(
     val edgeCount: Int
         get() = graph.edges.size
 
-    fun exactNodeId(point: QueueGoLocalRoadPoint): String? {
-        val id = queueGoExactNodeId(point)
-        return id.takeIf { it in graph.nodes }
-    }
+    fun exactNodeId(point: QueueGoLocalRoadPoint): String? =
+        graph.exactPointNodeIds[queueGoExactNodeId(point)]
 
     fun findPath(request: QueueGoLocalRoadPathRequest): QueueGoLocalRoadPathResult =
         findQueueGoLocalRoadPath(graph, request)
