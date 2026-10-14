@@ -536,6 +536,8 @@ private fun RiderHome(
     var destinationPreference by remember(auth.user.id) { mutableStateOf<RiderDestinationPreference?>(null) }
     var destinationLoaded by remember(auth.user.id) { mutableStateOf(false) }
     var showDestination by remember(auth.user.id) { mutableStateOf(false) }
+    var availabilityReverification by remember(auth.user.id) { mutableStateOf<RiderReverificationStatus?>(null) }
+    var availabilityReverificationLoaded by remember(auth.user.id) { mutableStateOf(false) }
     var recentHistory by remember { mutableStateOf<List<RiderHistoryOrder>>(emptyList()) }
     var lastSummaryAt by remember { mutableStateOf(0L) }
     var lastHistoryAt by remember { mutableStateOf(0L) }
@@ -572,6 +574,28 @@ private fun RiderHome(
                     // Keep the last aggregate during a transient read failure.
                 }
                 delay(300_000L)
+            }
+        }
+    }
+
+    LaunchedEffect(
+        auth.user.id,
+        auth.session.accessToken,
+        snapshot?.online,
+        lifecycle
+    ) {
+        if (snapshot?.online == true) return@LaunchedEffect
+        lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            while (true) {
+                try {
+                    availabilityReverification = api.reverificationStatus(auth)
+                    availabilityReverificationLoaded = true
+                } catch (error: CancellationException) {
+                    throw error
+                } catch (_: Exception) {
+                    availabilityReverificationLoaded = false
+                }
+                delay(60_000L)
             }
         }
     }
@@ -1363,6 +1387,18 @@ private fun RiderHome(
 
     fun changeOnline(enabled: Boolean) {
         if (actionBusy || snapshot?.activeJob != null || snapshot?.laundry?.activeJob != null || snapshot == null) return
+        if (enabled) {
+            val diagnostics = readRiderDiagnostics(context)
+            if (!diagnostics.networkReady) {
+                actionMessage = "ต้องเชื่อมต่ออินเทอร์เน็ตก่อนเปิดรับงาน"
+                return
+            }
+            if (!diagnostics.locationServices) {
+                actionMessage = "ต้องเปิด GPS / Location ก่อนเปิดรับงาน"
+                runCatching { context.startActivity(Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS)) }
+                return
+            }
+        }
         if (enabled && !riderFirebaseConfigured(context)) {
             actionMessage = "ระบบแจ้งเตือน Android ยังไม่พร้อม จึงยังเปิดรับงานไม่ได้"
             return
@@ -1765,6 +1801,16 @@ private fun RiderHome(
                             modifier = Modifier.fillMaxWidth().padding(top = 8.dp).heightIn(min = 46.dp),
                             shape = RoundedCornerShape(15.dp)) { Text("ปิดรับงาน", fontSize = 15.sp, fontWeight = FontWeight.Black) }
                     } else {
+                        val readiness = riderAvailabilityReadiness(
+                            diagnostics = readRiderDiagnostics(context),
+                            firebaseConfigured = riderFirebaseConfigured(context),
+                            reverification = availabilityReverification,
+                            reverificationLoaded = availabilityReverificationLoaded
+                        )
+                        RiderAvailabilityReadinessCard(
+                            readiness = readiness,
+                            modifier = Modifier.padding(top = 8.dp)
+                        )
                         Button(onClick = { changeOnline(true) }, enabled = !actionBusy,
                             modifier = Modifier.fillMaxWidth().padding(top = 8.dp).heightIn(min = 46.dp),
                             shape = RoundedCornerShape(15.dp)) { Text("เปิดรับงาน", fontSize = 15.sp, fontWeight = FontWeight.Black) }
