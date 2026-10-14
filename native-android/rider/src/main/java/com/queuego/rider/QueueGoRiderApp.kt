@@ -566,6 +566,7 @@ private fun RiderHome(
 ) {
     val context = LocalContext.current
     val eventFeedbackView = LocalView.current
+    val networkAvailable by rememberRiderNetworkAvailable(context)
     val scope = rememberCoroutineScope()
     val nativeVoiceAuth = remember(
         auth.user.id,
@@ -665,6 +666,11 @@ private fun RiderHome(
     var loadError by remember { mutableStateOf<String?>(null) }
     var actionBusy by remember { mutableStateOf(false) }
     var actionMessage by remember { mutableStateOf<String?>(null) }
+    fun requireWorkNetwork(): Boolean {
+        if (riderWorkMutationAllowed(networkAvailable)) return true
+        actionMessage = RIDER_OFFLINE_ACTION_MESSAGE
+        return false
+    }
     var deliverySuccessJob by remember { mutableStateOf<RiderJob?>(null) }
     var arrivalGuard by remember { mutableStateOf<RiderArrivalGuardState?>(null) }
     LaunchedEffect(actionMessage) {
@@ -1101,6 +1107,7 @@ private fun RiderHome(
     }
 
     fun commitArrival(job: RiderJob, target: String) {
+        if (!requireWorkNetwork()) return
         val location = lastKnownLocation(context)
         actionBusy = true
         actionMessage = null
@@ -1159,6 +1166,7 @@ private fun RiderHome(
     }
 
     fun requestArrival(job: RiderJob, target: String) {
+        if (!requireWorkNetwork()) return
         if (!ensureLocationPermission()) return
         val location = lastKnownLocation(context)
         val destinationLat = if (target == "shop") job.pickupLat else job.deliveryLat
@@ -1398,6 +1406,7 @@ private fun RiderHome(
                     actionMessage = "กรุณาถ่ายรูปหลักฐานก่อน"
                     return@VerificationScreen
                 }
+                if (!requireWorkNetwork()) return@VerificationScreen
                 val location = lastKnownLocation(context)
                 actionBusy = true
                 actionMessage = null
@@ -2224,6 +2233,9 @@ private fun RiderHome(
                     }
                     current.activeJob != null -> {
                         val activeJob = current.activeJob
+                        if (riderOfflineContinuityActive(activeWork = true, networkAvailable = networkAvailable)) {
+                            RiderOfflineContinuityBanner(Modifier.padding(bottom = 8.dp))
+                        }
                         if (activeJob.marketOrderId != null && activeJob.status != "in_progress") {
                             MarketPickupPanel(
                                 job = activeJob,
@@ -2244,6 +2256,9 @@ private fun RiderHome(
                                     openMarketPickupVerification(activeJob, pickup)
                                 },
                                 onStartDelivery = {
+                                    if (!requireWorkNetwork()) {
+                                        Unit
+                                    } else {
                                     actionBusy = true
                                     scope.launch {
                                         runCatching { api.startDelivery(auth, activeJob) }
@@ -2273,6 +2288,7 @@ private fun RiderHome(
                                             }
                                         actionBusy = false
                                     }
+                                    }
                                 }
                             )
                             Spacer(Modifier.height(10.dp))
@@ -2287,6 +2303,7 @@ private fun RiderHome(
                             details = homeDetails,
                             loadSummary = activeLoadSummary,
                             busy = actionBusy,
+                            networkAvailable = networkAvailable,
                             onDetails = { detailJob = current.activeJob },
                             onChat = { chatJob = current.activeJob },
                             onNavigate = {
@@ -2309,6 +2326,9 @@ private fun RiderHome(
                                 }
                             },
                             onStartDelivery = {
+                                if (!requireWorkNetwork()) {
+                                    Unit
+                                } else {
                                 actionBusy = true
                                 scope.launch {
                                     runCatching { api.startDelivery(auth, current.activeJob) }
@@ -2337,6 +2357,7 @@ private fun RiderHome(
                                             actionMessage = it.message ?: "เริ่มจัดส่งไม่สำเร็จ"
                                         }
                                     actionBusy = false
+                                }
                                 }
                             },
                             onArriveCustomer = {
@@ -2823,6 +2844,7 @@ private fun ActiveJobCard(
     details: RiderVerificationDetails?,
     loadSummary: RiderLoadSummary?,
     busy: Boolean,
+    networkAvailable: Boolean,
     onDetails: () -> Unit,
     onChat: () -> Unit,
     onNavigate: () -> Unit,
@@ -2872,6 +2894,12 @@ private fun ActiveJobCard(
         job.status == "picked_up" -> "เริ่มจัดส่ง"
         pickup -> "รอร้าน"
         else -> "รออัปเดต"
+    }
+    val primaryRequiresNetwork = when {
+        pickup && navigationStarted && !(job.marketOrderId != null) -> true
+        job.status == "picked_up" -> true
+        job.status == "in_progress" && navigationStarted && !job.customerArrived -> true
+        else -> false
     }
     val primaryLabel = when {
         job.marketOrderId != null && pickup && navigationStarted -> "ถึงร้านแล้ว"
@@ -2926,12 +2954,12 @@ private fun ActiveJobCard(
             Row(Modifier.fillMaxWidth().padding(top = 7.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 RiderJobTool("jobs", processLabel, !busy && job.marketOrderId == null && job.status == "ready", Modifier.weight(1f), onPickupVerify)
                 RiderJobTool("jobs", "รายการ", !busy, Modifier.weight(1f), onDetails)
-                RiderJobTool("support", "แชต", !busy, Modifier.weight(1f), onChat)
+                RiderJobTool("support", "แชต", !busy && networkAvailable, Modifier.weight(1f), onChat)
             }
             if (!pickup && job.status == "in_progress") {
                 OutlinedButton(
                     onClick = onDeliveryIssue,
-                    enabled = !busy,
+                    enabled = !busy && networkAvailable,
                     modifier = Modifier.fillMaxWidth().padding(top = 7.dp).heightIn(min = 42.dp),
                     shape = RoundedCornerShape(16.dp)
                 ) {
@@ -2951,7 +2979,10 @@ private fun ActiveJobCard(
                         else -> { onNavigate(); navigationStarted = context.getSharedPreferences("rider_navigation", Context.MODE_PRIVATE).getBoolean(navigationKey, false) }
                     }
                 },
-                enabled = !busy && job.navigationTarget != null && !(pickup && job.shopArrived && job.status != "ready" && job.marketOrderId == null),
+                enabled = !busy &&
+                    job.navigationTarget != null &&
+                    !(pickup && job.shopArrived && job.status != "ready" && job.marketOrderId == null) &&
+                    (!primaryRequiresNetwork || networkAvailable),
                 modifier = Modifier.fillMaxWidth().padding(top = 7.dp).heightIn(min = 46.dp), shape = RoundedCornerShape(18.dp),
                 colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = Color(0xFFF04455))
             ) {
