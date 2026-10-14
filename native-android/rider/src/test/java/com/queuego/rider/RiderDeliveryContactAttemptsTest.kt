@@ -52,4 +52,16 @@ class RiderDeliveryContactAttemptsTest {
 
         assertTrue(note.length <= 1_200)
     }
+    @Test fun countersAreBoundedForLocalEvidenceStorage() {
+        val capped = riderRecordDeliveryContactAttempt(
+            RiderDeliveryContactAttempts(callCount = 99, chatCount = 99, lastAttemptAtMs = 1_000L),
+            RiderDeliveryContactChannel.CALL,
+            2_000L
+        )
+
+        assertEquals(99, capped.callCount)
+        assertEquals(99, capped.chatCount)
+        assertEquals(198, capped.totalCount)
+    }
+
 }
