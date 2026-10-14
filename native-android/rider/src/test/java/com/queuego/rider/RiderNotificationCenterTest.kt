@@ -8,6 +8,7 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
+// QueueGo Rider exact-head unified safety/message release gate.
 class RiderNotificationCenterTest {
     @Test fun parserKeepsRealRowsAndUnreadState() {
         val rows = riderNotificationsFromRows(
