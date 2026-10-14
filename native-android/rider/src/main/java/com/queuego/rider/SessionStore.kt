@@ -5,6 +5,7 @@ import android.provider.Settings
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
 import android.util.Base64
+import org.json.JSONArray
 import org.json.JSONObject
 import java.security.KeyStore
 import java.util.UUID
@@ -70,6 +71,7 @@ class SessionStore(private val context: Context) {
         .remove("home_snapshot")
         .remove("ui_state")
         .remove("map_camera")
+        .remove("map_view_mode")
         .apply()
 
     @Synchronized
@@ -117,6 +119,26 @@ class SessionStore(private val context: Context) {
     }.getOrNull()
 
     @Synchronized
+    fun saveMapViewMode(userId: String, mode: String) {
+        val safeMode = mode.takeIf { it == "FOLLOW" || it == "FREE_PAN" } ?: "FOLLOW"
+        val root = JSONObject()
+            .put("userId", userId)
+            .put("mode", safeMode)
+        prefs.edit().putString("map_view_mode", encrypt(root.toString())).apply()
+    }
+
+    @Synchronized
+    fun loadMapViewMode(userId: String): String = runCatching {
+        val raw = prefs.getString("map_view_mode", null) ?: return "FOLLOW"
+        val root = JSONObject(decrypt(raw))
+        if (root.optString("userId") != userId) return "FOLLOW"
+        when (root.optString("mode")) {
+            "FREE_PAN" -> "FREE_PAN"
+            else -> "FOLLOW"
+        }
+    }.getOrDefault("FOLLOW")
+
+    @Synchronized
     fun saveHomeSnapshot(userId: String, snapshot: RiderSnapshot) {
         val root = JSONObject()
             .put("userId", userId)
@@ -124,6 +146,18 @@ class SessionStore(private val context: Context) {
             .put("riderProfileId", snapshot.riderProfileId)
         snapshot.activeJob?.let { root.put("activeJob", riderJobToJson(it)) }
         snapshot.laundry.activeJob?.let { root.put("laundryActiveJob", laundryJobToJson(it)) }
+        root.put(
+            "marketPickups",
+            JSONArray().apply {
+                snapshot.marketPickups.forEach { put(marketPickupToJson(it)) }
+            }
+        )
+        root.put(
+            "bundleActiveOrders",
+            JSONArray().apply {
+                snapshot.bundle.activeOrders.forEach { put(bundleOrderToJson(it)) }
+            }
+        )
         prefs.edit().putString("home_snapshot", encrypt(root.toString())).apply()
     }
 
@@ -134,15 +168,69 @@ class SessionStore(private val context: Context) {
         if (root.optString("userId") != userId) return null
         val activeJob = root.optJSONObject("activeJob")?.let(::riderJobFromJson)
         val laundryActive = root.optJSONObject("laundryActiveJob")?.let(::laundryJobFromJson)
+        val marketPickups = root.optJSONArray("marketPickups").jsonObjects()
+            .mapNotNull { item -> runCatching { marketPickupFromJson(item) }.getOrNull() }
+        val bundleActiveOrders = root.optJSONArray("bundleActiveOrders").jsonObjects()
+            .mapNotNull { item -> runCatching { bundleOrderFromJson(item) }.getOrNull() }
         RiderSnapshot(
             online = root.optBoolean("online", false),
             activeJob = activeJob,
             offeredJob = null,
+            marketPickups = marketPickups,
             riderProfileId = root.optString("riderProfileId")
                 .takeIf { it.isNotBlank() && !it.equals("null", ignoreCase = true) },
-            laundry = RiderLaundryState(activeJob = laundryActive)
+            laundry = RiderLaundryState(activeJob = laundryActive),
+            bundle = RiderRouteBundleState(activeOrders = bundleActiveOrders)
         )
     }.getOrNull()
+
+    private fun marketPickupToJson(pickup: MarketPickup): JSONObject = JSONObject()
+        .put("pickupId", pickup.pickupId)
+        .put("status", pickup.status)
+        .put("shopName", pickup.shopName)
+        .put("shopAddress", pickup.shopAddress)
+        .put("shopAmount", pickup.shopAmount)
+        .put("latitude", pickup.latitude)
+        .put("longitude", pickup.longitude)
+
+    private fun marketPickupFromJson(o: JSONObject): MarketPickup = MarketPickup(
+        pickupId = o.getString("pickupId"),
+        status = o.getString("status"),
+        shopName = o.optString("shopName"),
+        shopAddress = o.optNullableString("shopAddress"),
+        shopAmount = o.optDouble("shopAmount", 0.0),
+        latitude = o.optNullableDouble("latitude"),
+        longitude = o.optNullableDouble("longitude")
+    )
+
+    private fun bundleOrderToJson(order: RiderBundleOrder): JSONObject = JSONObject()
+        .put("bundleId", order.bundleId)
+        .put("job", riderJobToJson(order.job))
+        .put("bundleSequence", order.bundleSequence)
+        .put("dropRank", order.dropRank)
+        .put("shopId", order.shopId)
+        .put("shopName", order.shopName)
+        .put("originalDeliveryFee", order.originalDeliveryFee)
+        .put("customerSavings", order.customerSavings)
+        .put("riderExtraFee", order.riderExtraFee)
+        .put("detourKm", order.detourKm)
+        .put("addedMinutes", order.addedMinutes)
+        .put("routeSequence", order.routeSequence)
+
+    private fun bundleOrderFromJson(o: JSONObject): RiderBundleOrder = RiderBundleOrder(
+        bundleId = o.getString("bundleId"),
+        job = riderJobFromJson(o.getJSONObject("job")),
+        bundleSequence = o.optInt("bundleSequence", 0),
+        dropRank = o.optInt("dropRank", 0),
+        shopId = o.optNullableString("shopId"),
+        shopName = o.optString("shopName"),
+        originalDeliveryFee = o.optDouble("originalDeliveryFee", 0.0),
+        customerSavings = o.optDouble("customerSavings", 0.0),
+        riderExtraFee = o.optDouble("riderExtraFee", 0.0),
+        detourKm = o.optDouble("detourKm", 0.0),
+        addedMinutes = o.optInt("addedMinutes", 0),
+        routeSequence = o.optNullableString("routeSequence")
+    )
 
     private fun riderJobToJson(job: RiderJob): JSONObject = JSONObject()
         .put("id", job.id)
@@ -235,6 +323,15 @@ class SessionStore(private val context: Context) {
         actualKg = o.optNullableDouble("actualKg"),
         createdAt = o.optNullableString("createdAt")
     )
+
+    private fun JSONArray?.jsonObjects(): List<JSONObject> {
+        if (this == null) return emptyList()
+        return buildList {
+            for (index in 0 until length()) {
+                optJSONObject(index)?.let(::add)
+            }
+        }
+    }
 
     private fun JSONObject.optNullableString(key: String): String? {
         if (!has(key) || isNull(key)) return null

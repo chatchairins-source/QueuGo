@@ -13,6 +13,9 @@ const coordinator=fs.readFileSync('native-android/rider-navigation-map/src/main/
 const models=fs.readFileSync('native-android/rider-navigation-map/src/main/java/com/queuego/ridernavigationmap/NavigationMapModels.kt','utf8');
 const signalPipeline=fs.readFileSync('native-android/rider-navigation-map/src/main/java/com/queuego/ridernavigationmap/NavigationSignalPipeline.kt','utf8');
 const confidenceMetrics=fs.readFileSync('native-android/rider-navigation-map/src/main/java/com/queuego/ridernavigationmap/NavigationConfidenceMetrics.kt','utf8');
+const viewportInsets=fs.readFileSync('native-android/rider-navigation-map/src/main/java/com/queuego/ridernavigationmap/NavigationViewportInsets.kt','utf8');
+const overviewPolicy=fs.readFileSync('native-android/rider-navigation-map/src/main/java/com/queuego/ridernavigationmap/NavigationOverviewPolicy.kt','utf8');
+const puckOrientation=fs.readFileSync('native-android/rider-navigation-map/src/main/java/com/queuego/ridernavigationmap/NavigationPuckOrientation.kt','utf8');
 const workflow=fs.readFileSync('.github/workflows/build-native-rider-pilot.yml','utf8');
 const runtimeTest=fs.readFileSync('native-android/rider-navigation-map/src/androidTest/java/com/queuego/ridernavigationmap/NavigationMapRuntimeTest.kt','utf8');
 const runtimeActivity=fs.readFileSync('native-android/rider-navigation-map/src/debug/java/com/queuego/ridernavigationmap/NavigationMapRuntimeActivity.kt','utf8');
@@ -27,6 +30,8 @@ assert(moduleBuild.includes('id("com.android.library")')&&moduleBuild.includes('
 assert(moduleBuild.includes('com.google.android.gms:play-services-location:21.3.0'),
   'Standalone Longdo runtime must include the Google Play Services location classes required by MapLocationManager');
 const integration=fs.readFileSync('native-android/rider/src/main/java/com/queuego/rider/RiderNavigationIntegration.kt','utf8');
+const sessionStore=fs.readFileSync('native-android/rider/src/main/java/com/queuego/rider/SessionStore.kt','utf8');
+const navigationSessionRegistry=fs.readFileSync('native-android/rider/src/main/java/com/queuego/rider/RiderNavigationSessionRegistry.kt','utf8');
 const locationService=fs.readFileSync('native-android/rider/src/main/java/com/queuego/rider/RiderNavigationLocationService.kt','utf8');
 const riderManifest=fs.readFileSync('native-android/rider/src/main/AndroidManifest.xml','utf8');
 assert(riderBuild.includes('implementation(project(":rider-navigation-map"))')&&
@@ -133,10 +138,69 @@ assert(
   confidenceMetrics.includes('data class NavigationConfidenceMetrics')&&
   integration.includes('displayPipeline.metrics()')&&
   integration.includes('"QGNavShadow"')&&
-  integration.includes('BuildConfig.DEBUG')&&
+  integration.includes('ApplicationInfo.FLAG_DEBUGGABLE')&&
+  !integration.includes('BuildConfig.DEBUG')&&
   !integration.includes('rawFix.point.latitude')&&
   !integration.includes('rawFix.point.longitude'),
   'Shadow confidence rollout must be idempotent on equivalent backend refreshes and emit only aggregate debug diagnostics without coordinates');
+
+assert(
+  sessionStore.includes('"marketPickups"')&&
+  sessionStore.includes('"bundleActiveOrders"')&&
+  sessionStore.includes('marketPickupToJson')&&
+  sessionStore.includes('bundleOrderToJson')&&
+  sessionStore.includes('marketPickups = marketPickups')&&
+  sessionStore.includes('bundle = RiderRouteBundleState(activeOrders = bundleActiveOrders)')&&
+  sessionStore.includes('offeredJob = null'),
+  'Cold-start Rider cache must retain authoritative active Market/bundle stop topology without persisting expiring targeted offers');
+
+assert(
+  navigationSessionRegistry.includes('object RiderNavigationSessionRegistry')&&
+  navigationSessionRegistry.includes('fun saveFutureRoutes(')&&
+  navigationSessionRegistry.includes('fun saveRenderedRoutes(')&&
+  navigationSessionRegistry.includes('if (frame.topologyKey != topologyKey)')&&
+  integration.includes('RiderNavigationSessionRegistry.load(stateKey, stopTopology)')&&
+  integration.includes('retainedFrame?.futureRoutes.orEmpty()')&&
+  integration.includes('baseState.copy(routes = it)')&&
+  integration.includes('result.routeError != null')&&
+  integration.includes('candidate.copy(routes = renderedState.routes)'),
+  'Visible route frame must survive Rider Home tab remounts and transient route refresh failures without leaking into a different stop topology');
+
+assert(
+  sessionStore.includes('fun saveMapViewMode(')&&
+  sessionStore.includes('fun loadMapViewMode(')&&
+  sessionStore.includes('"FREE_PAN"')&&
+  integration.includes('sessionStore.loadMapViewMode(stateKey)')&&
+  integration.includes('sessionStore.saveMapViewMode(stateKey, NavigationViewMode.FREE_PAN.name)')&&
+  integration.includes('sessionStore.saveMapViewMode(stateKey, NavigationViewMode.FOLLOW.name)'),
+  'Manual-pan view mode must survive Rider tab remounts without silently resuming camera follow');
+
+assert(
+  viewportInsets.includes('data class NavigationViewportInsets')&&
+  models.includes('val viewportInsets: NavigationViewportInsets')&&
+  models.includes('val viewMode: NavigationViewMode')&&
+  riderApp.includes('onGloballyPositioned')&&
+  riderApp.includes('NavigationViewportInsets(')&&
+  riderApp.includes('overviewSignal = overviewSignal')&&
+  integration.includes('viewModeController.onOverview()')&&
+  overviewPolicy.includes('navigationOverviewViewportDecision')&&
+  overviewPolicy.includes('safe.bottomPx - safe.topPx')&&
+  map.includes('navigationOverviewViewportDecision(')&&
+  map.includes('navigationViewportInsetsSignature(insets)')&&
+  map.includes('activeMap.rotate(0f, true)'),
+  'Rider overview must fit the live route around measured job-card occlusion without relying on unsupported Longdo padding overloads');
+
+assert(
+  puckOrientation.includes('vehicleBearing - cameraBearing')&&
+  map.includes('activeMap.getRotate()')&&
+  map.includes('pin.setIcon(riderPuckBitmap(nextRotation, nextOpacity))')&&
+  map.includes('activeMap.requestRender("queuego-rider-puck-presentation")')&&
+  map.includes('navigationPuckFreshness(')&&
+  map.includes('opacityPercent')&&
+  map.includes('postDelayed({ tick() }, 1_000L)')&&
+  !map.includes('pin.setRotate(')&&
+  !map.includes('pin.setOpacity('),
+  'Rider puck must use the pinned Longdo v0.1.8 bitmap API for camera-relative rotation and stale/lost presentation without synthetic GPS fixes');
 
 assert(map.includes('setPreserveEGLContextOnPause(true)'),
   'Navigation map must preserve the GL context across background/resume when Android allows it');

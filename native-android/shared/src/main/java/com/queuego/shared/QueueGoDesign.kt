@@ -236,6 +236,11 @@ fun QgIcon(name: String, modifier: Modifier = Modifier, color: Color = QgRed) {
                 line(.27f,.57f,.5f,.88f); line(.73f,.57f,.5f,.88f)
                 drawCircle(color, w*.10f, Offset(w*.5f,h*.41f), style=stroke)
             }
+            "route" -> {
+                drawCircle(color, w*.055f, Offset(w*.24f,h*.76f), style=stroke)
+                drawCircle(color, w*.055f, Offset(w*.76f,h*.24f), style=stroke)
+                line(.28f,.71f,.42f,.56f); line(.42f,.56f,.58f,.56f); line(.58f,.56f,.72f,.29f)
+            }
             "bag" -> {
                 drawRoundRect(color, Offset(w*.2f,h*.34f), Size(w*.6f,h*.5f), CornerRadius(w*.08f), style=stroke)
                 drawArc(color, 200f, 140f, false, Offset(w*.34f,h*.12f), Size(w*.32f,h*.34f), style=stroke)

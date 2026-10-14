@@ -1,6 +1,7 @@
 package com.queuego.rider
 
 import android.content.Context
+import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
 import android.util.Log
 import androidx.compose.runtime.Composable
@@ -29,6 +30,7 @@ import com.queuego.ridernavigationmap.NavigationSignalPipeline
 import com.queuego.ridernavigationmap.NavigationStopKind
 import com.queuego.ridernavigationmap.NavigationViewMode
 import com.queuego.ridernavigationmap.NavigationViewModeController
+import com.queuego.ridernavigationmap.NavigationViewportInsets
 import com.queuego.ridernavigationmap.RiderNavigationMap
 import com.queuego.ridernavigationmap.RiderNavigationMapState
 import kotlinx.coroutines.CancellationException
@@ -204,6 +206,8 @@ internal fun QueueGoRiderNavigationMap(
     marketPickups: List<MarketPickup>,
     bundleOrders: List<RiderBundleOrder> = emptyList(),
     recenterSignal: Int,
+    overviewSignal: Int = 0,
+    viewportInsets: NavigationViewportInsets = NavigationViewportInsets(),
     onMapReady: (Boolean) -> Unit
 ) {
     val context = LocalContext.current
@@ -218,7 +222,15 @@ internal fun QueueGoRiderNavigationMap(
         }
     }
 
-    val viewModeController = remember(stateKey) { NavigationViewModeController() }
+    val initialViewMode = remember(stateKey) {
+        when (sessionStore.loadMapViewMode(stateKey)) {
+            "FREE_PAN" -> NavigationViewMode.FREE_PAN
+            else -> NavigationViewMode.FOLLOW
+        }
+    }
+    val viewModeController = remember(stateKey, initialViewMode) {
+        NavigationViewModeController(initialViewMode)
+    }
     var viewModeState by remember(stateKey) {
         mutableStateOf(viewModeController.state())
     }
@@ -258,7 +270,11 @@ internal fun QueueGoRiderNavigationMap(
         ?.id
 
     LaunchedEffect(activeStopId) {
-        viewModeState = viewModeController.onActiveStopChanged()
+        val next = viewModeController.onActiveStopChanged()
+        viewModeState = next
+        if (next.mode != NavigationViewMode.OVERVIEW) {
+            sessionStore.saveMapViewMode(stateKey, next.mode.name)
+        }
     }
 
     val routeKey = remember(context.packageName) { riderLongdoNavigationKey(context) }
@@ -270,7 +286,6 @@ internal fun QueueGoRiderNavigationMap(
     }
     val displayPipeline = remember(stateKey) { NavigationSignalPipeline() }
 
-    var futureRoutes by remember(stateKey) { mutableStateOf<List<NavigationRouteSegment>>(emptyList()) }
     val stopTopology = remember(stops) {
         stops.joinToString("|") {
             listOf(
@@ -282,11 +297,27 @@ internal fun QueueGoRiderNavigationMap(
             ).joinToString(":")
         }
     }
+    val retainedFrame = remember(stateKey, stopTopology) {
+        RiderNavigationSessionRegistry.load(stateKey, stopTopology)
+    }
+    var futureRoutes by remember(stateKey, stopTopology) {
+        mutableStateOf(retainedFrame?.futureRoutes.orEmpty())
+    }
 
-    LaunchedEffect(routeProvider, stopTopology) {
+    LaunchedEffect(routeProvider, stopTopology, navigationActive) {
         displayPipeline.reset()
-        futureRoutes = if (routeProvider == null) emptyList()
-        else buildFutureRoutes(routeProvider, stops)
+        if (!navigationActive) {
+            futureRoutes = emptyList()
+            RiderNavigationSessionRegistry.clear(stateKey)
+        } else if (routeProvider != null) {
+            val builtRoutes = buildFutureRoutes(routeProvider, stops)
+            futureRoutes = builtRoutes
+            RiderNavigationSessionRegistry.saveFutureRoutes(
+                stateKey = stateKey,
+                topologyKey = stopTopology,
+                routes = builtRoutes
+            )
+        }
     }
 
     val baseState = RiderNavigationMapState(
@@ -295,15 +326,27 @@ internal fun QueueGoRiderNavigationMap(
         routes = futureRoutes,
         activeStopId = activeStopId,
         followRider = followRider,
-        followZoom = 17
+        followZoom = 17,
+        viewMode = viewModeState.mode,
+        viewportInsets = viewportInsets.normalized()
     )
-    var renderedState by remember(stateKey) { mutableStateOf(baseState) }
-    val stateChannel = remember(stateKey) { Channel<RiderNavigationMapState>(Channel.CONFLATED) }
+    var renderedState by remember(stateKey, stopTopology) {
+        mutableStateOf(
+            retainedFrame
+                ?.renderedRoutes
+                ?.takeIf { it.isNotEmpty() }
+                ?.let { baseState.copy(routes = it) }
+                ?: baseState
+        )
+    }
+    val stateChannel = remember(stateKey, stopTopology) {
+        Channel<RiderNavigationMapState>(Channel.CONFLATED)
+    }
 
     LaunchedEffect(baseState) {
         stateChannel.trySend(baseState)
     }
-    LaunchedEffect(coordinator, stateChannel, displayPipeline) {
+    LaunchedEffect(coordinator, stateChannel, displayPipeline, stopTopology, navigationActive) {
         var lastLoggedShadowSample = 0L
 
         fun displayState(authoritativeState: RiderNavigationMapState): RiderNavigationMapState {
@@ -311,7 +354,8 @@ internal fun QueueGoRiderNavigationMap(
                 return authoritativeState
             }
             val candidateDisplayState = displayPipeline.applyToDisplayState(authoritativeState)
-            if (BuildConfig.DEBUG && RIDER_NAV_CONFIDENCE_SHADOW_ENABLED) {
+            val debuggable = (context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
+            if (debuggable && RIDER_NAV_CONFIDENCE_SHADOW_ENABLED) {
                 val metrics = displayPipeline.metrics()
                 if (metrics.sampleCount >= lastLoggedShadowSample + 30L) {
                     lastLoggedShadowSample = metrics.sampleCount
@@ -341,14 +385,41 @@ internal fun QueueGoRiderNavigationMap(
 
         if (coordinator == null) {
             for (next in stateChannel) {
-                renderedState = displayState(next)
+                val candidate = displayState(next)
+                renderedState = if (
+                    navigationActive &&
+                    candidate.routes.isEmpty() &&
+                    renderedState.routes.isNotEmpty()
+                ) {
+                    candidate.copy(routes = renderedState.routes)
+                } else {
+                    candidate
+                }
+                RiderNavigationSessionRegistry.saveRenderedRoutes(
+                    stateKey = stateKey,
+                    topologyKey = stopTopology,
+                    routes = renderedState.routes
+                )
             }
         } else {
             for (next in stateChannel) {
                 // Route progress/reroute stays authoritative on the raw GPS fix.
                 val result = coordinator.synchronize(next)
                 // Filtering/snapping, when the rollout gate is enabled, is renderer-only.
-                renderedState = displayState(result.mapState)
+                val candidate = displayState(result.mapState)
+                renderedState = if (
+                    result.routeError != null &&
+                    renderedState.routes.isNotEmpty()
+                ) {
+                    candidate.copy(routes = renderedState.routes)
+                } else {
+                    candidate
+                }
+                RiderNavigationSessionRegistry.saveRenderedRoutes(
+                    stateKey = stateKey,
+                    topologyKey = stopTopology,
+                    routes = renderedState.routes
+                )
             }
         }
     }
@@ -356,11 +427,28 @@ internal fun QueueGoRiderNavigationMap(
     LaunchedEffect(recenterSignal) {
         if (recenterSignal > 0) {
             viewModeState = viewModeController.onRecenter()
+            sessionStore.saveMapViewMode(stateKey, NavigationViewMode.FOLLOW.name)
             riderFix?.let { fix ->
                 stateChannel.trySend(
-                    baseState.copy(rider = fix, followRider = true)
+                    baseState.copy(
+                        rider = fix,
+                        followRider = true,
+                        viewMode = NavigationViewMode.FOLLOW
+                    )
                 )
             }
+        }
+    }
+
+    LaunchedEffect(overviewSignal) {
+        if (overviewSignal > 0) {
+            viewModeState = viewModeController.onOverview()
+            stateChannel.trySend(
+                baseState.copy(
+                    followRider = false,
+                    viewMode = NavigationViewMode.OVERVIEW
+                )
+            )
         }
     }
 
@@ -372,6 +460,7 @@ internal fun QueueGoRiderNavigationMap(
         onMapReady = onMapReady,
         onUserGesture = {
             viewModeState = viewModeController.onUserGesture()
+            sessionStore.saveMapViewMode(stateKey, NavigationViewMode.FREE_PAN.name)
         },
         onCameraChanged = { camera ->
             sessionStore.saveMapCamera(
