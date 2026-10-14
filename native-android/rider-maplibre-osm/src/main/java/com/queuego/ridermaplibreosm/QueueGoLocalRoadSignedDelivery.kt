@@ -1,6 +1,9 @@
 package com.queuego.ridermaplibreosm
 
+import java.io.DataInputStream
+import java.io.DataOutputStream
 import java.io.File
+import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.nio.file.Files
 import java.nio.file.StandardCopyOption
@@ -62,25 +65,43 @@ data class QueueGoLocalRoadCachedSnapshot(
 class QueueGoLocalRoadSnapshotCache(
     private val directory: File
 ) {
-    private val payloadFile = File(directory, "local-roads.snapshot")
-    private val metadataFile = File(directory, "local-roads.meta")
+    private val snapshotFile = File(directory, "local-roads.qglr")
+    private val tempFile = File(directory, "local-roads.qglr.tmp")
 
     @Synchronized
-    fun read(): QueueGoLocalRoadCachedSnapshot? = runCatching {
-        if (!payloadFile.isFile || !metadataFile.isFile) return null
-        val lines = metadataFile.readLines()
-        if (lines.size != 2) return null
-        val revision = lines[0].toLongOrNull()?.takeIf { it > 0L } ?: return null
-        val expectedSha = normalizeSha256(lines[1]) ?: return null
-        val payload = payloadFile.readBytes()
-        val actualSha = queueGoSha256Hex(payload)
-        if (actualSha != expectedSha) return null
-        QueueGoLocalRoadCachedSnapshot(
-            revision = revision,
-            payloadSha256Hex = actualSha,
-            payload = payload
-        )
-    }.getOrNull()
+    fun read(): QueueGoLocalRoadCachedSnapshot? {
+        if (!snapshotFile.exists()) return null
+        require(snapshotFile.isFile) { "Local-road cache path is invalid" }
+
+        return DataInputStream(FileInputStream(snapshotFile)).use { input ->
+            require(input.readInt() == CACHE_MAGIC) { "Local-road cache magic is invalid" }
+            require(input.readInt() == CACHE_FORMAT_VERSION) {
+                "Unsupported local-road cache format"
+            }
+            val revision = input.readLong()
+            require(revision > 0L) { "Local-road cache revision is invalid" }
+
+            val expectedSha = normalizeSha256(input.readUTF())
+                ?: throw IllegalArgumentException("Local-road cache SHA-256 is invalid")
+            val payloadLength = input.readInt()
+            require(payloadLength in 1..QUEUEGO_LOCAL_ROAD_MAX_SIGNED_PAYLOAD_BYTES) {
+                "Local-road cache payload size is invalid"
+            }
+            val payload = ByteArray(payloadLength)
+            input.readFully(payload)
+            require(input.read() == -1) { "Local-road cache contains trailing bytes" }
+
+            val actualSha = queueGoSha256Hex(payload)
+            require(actualSha == expectedSha) {
+                "Local-road cache payload digest does not match"
+            }
+            QueueGoLocalRoadCachedSnapshot(
+                revision = revision,
+                payloadSha256Hex = actualSha,
+                payload = payload
+            )
+        }
+    }
 
     @Synchronized
     fun write(
@@ -89,6 +110,11 @@ class QueueGoLocalRoadSnapshotCache(
         payload: ByteArray
     ) {
         require(revision > 0L) { "Local-road cache revision must be positive" }
+        require(payload.isNotEmpty() &&
+            payload.size <= QUEUEGO_LOCAL_ROAD_MAX_SIGNED_PAYLOAD_BYTES
+        ) {
+            "Local-road cache payload size is invalid"
+        }
         val safeSha = normalizeSha256(payloadSha256Hex)
             ?: throw IllegalArgumentException("Local-road cache SHA-256 is invalid")
         require(queueGoSha256Hex(payload) == safeSha) {
@@ -98,28 +124,20 @@ class QueueGoLocalRoadSnapshotCache(
         directory.mkdirs()
         require(directory.isDirectory) { "Local-road cache directory is unavailable" }
 
-        val payloadTmp = File(directory, "local-roads.snapshot.tmp")
-        val metadataTmp = File(directory, "local-roads.meta.tmp")
-        writeSynced(payloadTmp, payload)
-        writeSynced(metadataTmp, "$revision\n$safeSha\n".toByteArray(Charsets.UTF_8))
-
-        moveAtomically(payloadTmp, payloadFile)
-        try {
-            moveAtomically(metadataTmp, metadataFile)
-        } catch (error: Throwable) {
-            // A metadata failure leaves the payload unreadable as a snapshot because read()
-            // requires matching metadata. Never invent or auto-promote a revision.
-            runCatching { metadataTmp.delete() }
-            throw error
+        FileOutputStream(tempFile).use { fileOutput ->
+            DataOutputStream(fileOutput).use { output ->
+                output.writeInt(CACHE_MAGIC)
+                output.writeInt(CACHE_FORMAT_VERSION)
+                output.writeLong(revision)
+                output.writeUTF(safeSha)
+                output.writeInt(payload.size)
+                output.write(payload)
+                output.flush()
+                fileOutput.fd.sync()
+            }
         }
-    }
 
-    private fun writeSynced(file: File, bytes: ByteArray) {
-        FileOutputStream(file).use { output ->
-            output.write(bytes)
-            output.flush()
-            output.fd.sync()
-        }
+        moveAtomically(tempFile, snapshotFile)
     }
 
     private fun moveAtomically(from: File, to: File) {
@@ -137,6 +155,11 @@ class QueueGoLocalRoadSnapshotCache(
                 StandardCopyOption.REPLACE_EXISTING
             )
         }
+    }
+
+    private companion object {
+        const val CACHE_MAGIC = 0x51474C52
+        const val CACHE_FORMAT_VERSION = 1
     }
 }
 
