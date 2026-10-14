@@ -1,3 +1,21 @@
+## 2026-10-14 Navigation runtime hardening: quiet snapshot retry
+- Exact-head navigation-map runtime on background-health #279 exposed a flaky continuity path: ON_PAUSE quiet PixelCopy could transiently fail once and never retry, leaving snapshotCaptureCount at zero even though map reuse itself remained healthy.
+- Production renderer now retries only quiet visibility-loss snapshot capture, bounded to 12 attempts at 250 ms. It does not show the continuity overlay, does not count renderer-bridge failures, and does not touch GPS/route/order state. Real renderer-replacement bridge behavior remains unchanged.
+- This unified successor carries Account Restriction + Home Action Cards on top of the runtime fix so there is one continuation line.
+
+## 2026-10-14 Grab Driver parity: unified Account Restriction + Home Action Cards successor
+- Unified the two latest sibling branches so Rider Home action cards and status-specific non-active account restriction UX now live on one successor line.
+- Started from Home Action Cards head b77e2f0, then carried forward the Account Restriction implementation from PR #280 without changing dispatch, payment, navigation, auth policy or Production DB.
+- Backup: backup/rider-grab-parity-before-account-actions-unify-20261014 @ b77e2f0.
+- This successor supersedes the divergent PR #280 branch; exact-head native-pilot + navigation-map-runtime remain required before PASS.
+
+## 2026-10-14 Grab Driver parity: Rider Home Action Cards
+- Added a compact Home action-card layer inspired by the ActionCard capability observed in the owner-supplied Grab Driver package, without copying Grab code/assets and without creating a second notification or mission system.
+- Cards are derived only from existing real QueueGo state: current Production missions, verified document readiness and Android background-health diagnostics. No placeholder promotion, bonus or fake warning is created.
+- Cards render only while Rider has no offer/active delivery/laundry work and are capped at two. Expired-document actions are urgent; active/upcoming mission links to Earnings/Missions; background-health/document actions link to Profile where the existing document/diagnostics controls live.
+- Home now refreshes mission state every 5 minutes only while idle. Existing re-verification/document readiness polling continues every 60 seconds while offline and every 5 minutes while online, allowing expiry information to remain current without high-frequency traffic.
+- Backup backup/rider-grab-parity-before-home-action-cards-20261014 retains 89df824. Exact-head native-pilot + navigation-map-runtime are required before PASS.
+
 ## 2026-10-14 Grab Driver parity: background/app-exit health diagnostics v2
 - Rebased the background-health work onto the latest server-clock diagnostics head 8ace1a5 so server-time health and Android background health remain on one line.
 - Rider Diagnostics now checks Battery Optimization exemption and Android background restriction in addition to existing process-exit, map reuse, GPS integrity, API/network, UI-jank, main-thread and server-clock health.
