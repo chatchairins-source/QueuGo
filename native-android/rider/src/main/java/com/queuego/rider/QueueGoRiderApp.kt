@@ -135,7 +135,6 @@ fun QueueGoRiderApp(pushTarget: NativePushLaunchTarget? = null) {
     }
     val api = remember { QueueGoApi() }
     val store = remember { SessionStore(context) }
-    val quickStartStore = remember(context) { RiderQuickStartStore(context) }
     val scope = rememberCoroutineScope()
     val cachedAtComposition = remember { store.load() }
 
@@ -155,7 +154,6 @@ fun QueueGoRiderApp(pushTarget: NativePushLaunchTarget? = null) {
             } ?: false
         )
     }
-    var quickStartHidden by remember(auth?.user?.id) { mutableStateOf(false) }
 
     LaunchedEffect(restorationAttempt) {
         val cached = auth ?: store.load()
@@ -308,27 +306,6 @@ fun QueueGoRiderApp(pushTarget: NativePushLaunchTarget? = null) {
                     }
                 )
             }
-        }
-        val activeUserId = auth?.user?.id
-        if (
-            !restoring &&
-            !restorationError &&
-            !registrationOpen &&
-            auth?.user?.status == "active" &&
-            !activeUserId.isNullOrBlank() &&
-            !quickStartHidden &&
-            !quickStartStore.hasSeen(activeUserId)
-        ) {
-            RiderQuickStartDialog(
-                onDismiss = {
-                    quickStartStore.markSeen(activeUserId)
-                    quickStartHidden = true
-                },
-                onComplete = {
-                    quickStartStore.markSeen(activeUserId)
-                    quickStartHidden = true
-                }
-            )
         }
     }
 }
