@@ -89,11 +89,15 @@ internal fun RiderDiagnosticsScreen(
     val networkDiagnostics by RiderRuntimeDiagnosticsStore.networkDiagnostics.collectAsState()
     val uiJankDiagnostics by RiderRuntimeDiagnosticsStore.uiJankDiagnostics.collectAsState()
     val mainThreadDiagnostics by RiderRuntimeDiagnosticsStore.mainThreadWatchdog.collectAsState()
+    val locationIntegrityDiagnostics by RiderLocationIntegrityStore.diagnostics.collectAsState()
     val mapHealth = remember(mapDiagnostics) { mapDiagnostics?.let(::riderMapRuntimeHealth) }
     val networkHealth = remember(networkDiagnostics) { riderNetworkRuntimeHealth(networkDiagnostics) }
     val uiJankHealth = remember(uiJankDiagnostics) { riderUiJankRuntimeHealth(uiJankDiagnostics) }
     val mainThreadHealth = remember(mainThreadDiagnostics) {
         riderMainThreadWatchdogHealth(mainThreadDiagnostics)
+    }
+    val locationIntegrityHealth = remember(locationIntegrityDiagnostics) {
+        riderLocationIntegrityHealth(locationIntegrityDiagnostics)
     }
 
     fun launch(intent: Intent) {
@@ -169,6 +173,12 @@ internal fun RiderDiagnosticsScreen(
         Spacer(Modifier.height(12.dp))
         Text("ประสิทธิภาพแอปและแผนที่", color = QgMuted, fontSize = 10.sp, fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(6.dp))
+        RiderRuntimeInfoCard(
+            title = "GPS integrity",
+            headline = locationIntegrityHealth.headline,
+            detail = locationIntegrityHealth.detail,
+            healthy = locationIntegrityHealth.healthy
+        )
         RiderRuntimeInfoCard(
             title = "Map session",
             headline = mapHealth?.headline ?: "ยังไม่มีข้อมูลแผนที่ใน session นี้",
