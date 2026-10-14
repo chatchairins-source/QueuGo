@@ -651,6 +651,10 @@ private fun RiderHome(
     var availabilityReverificationLoaded by remember(auth.user.id) { mutableStateOf(false) }
     var availabilityDocuments by remember(auth.user.id) { mutableStateOf<RiderDocumentReadiness?>(null) }
     var availabilityDocumentsLoaded by remember(auth.user.id) { mutableStateOf(false) }
+    var availabilityVehicleInspection by remember(auth.user.id) { mutableStateOf<RiderVehicleInspectionStatus?>(null) }
+    var availabilityVehicleInspectionLoaded by remember(auth.user.id) { mutableStateOf(false) }
+    var availabilitySelectedVehicle by remember(auth.user.id) { mutableStateOf<RiderVehicle?>(null) }
+    var availabilityVehiclesLoaded by remember(auth.user.id) { mutableStateOf(false) }
     var recentHistory by remember { mutableStateOf<List<RiderHistoryOrder>>(emptyList()) }
     var lastSummaryAt by remember { mutableStateOf(0L) }
     var lastHistoryAt by remember { mutableStateOf(0L) }
@@ -715,6 +719,22 @@ private fun RiderHome(
                     throw error
                 } catch (_: Exception) {
                     availabilityDocumentsLoaded = false
+                }
+                try {
+                    availabilityVehicleInspection = api.vehicleInspectionStatus(auth)
+                    availabilityVehicleInspectionLoaded = true
+                } catch (error: CancellationException) {
+                    throw error
+                } catch (_: Exception) {
+                    availabilityVehicleInspectionLoaded = false
+                }
+                try {
+                    availabilitySelectedVehicle = api.vehicles(auth).firstOrNull { it.selected }
+                    availabilityVehiclesLoaded = true
+                } catch (error: CancellationException) {
+                    throw error
+                } catch (_: Exception) {
+                    availabilityVehiclesLoaded = false
                 }
                 delay(60_000L)
             }
@@ -2068,7 +2088,11 @@ private fun RiderHome(
                             reverification = availabilityReverification,
                             reverificationLoaded = availabilityReverificationLoaded,
                             documents = availabilityDocuments,
-                            documentsLoaded = availabilityDocumentsLoaded
+                            documentsLoaded = availabilityDocumentsLoaded,
+                            vehicleInspection = availabilityVehicleInspection,
+                            vehicleInspectionLoaded = availabilityVehicleInspectionLoaded,
+                            selectedVehicle = availabilitySelectedVehicle,
+                            vehiclesLoaded = availabilityVehiclesLoaded
                         )
                         RiderAvailabilityReadinessCard(
                             readiness = readiness,
