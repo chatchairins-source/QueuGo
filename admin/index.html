@@ -2314,13 +2314,13 @@ async function qgLoadAdminCash(day){
  window.qgAdminLoadTickets=async function(){const body=document.querySelector('#qg-v22-admin-tickets .qg-content');if(!body)return;try{
    const [tickets,returnCases]=await Promise.all([
      req('qg_support_tickets?select=id,user_id,role,order_id,original_order_id,category,details,status,admin_id,admin_note,evidence_path,created_at&order=created_at.desc&limit=200'),
-     req('rpc/qg_admin_delivery_return_cases','POST',{})
+     req('rpc/qg_admin_delivery_return_cases_v2','POST',{})
    ]);
    if(!body.isConnected)return;
    const returnsByTicket=new Map((returnCases||[]).filter(x=>x.ticket_id).map(x=>[x.ticket_id,x]));
    const returnLabel={reported:'รอฝ่ายดูแล',return_required:'ให้คืนร้านแล้ว',returning:'Rider กำลังคืนร้าน',returned:'คืนร้านสำเร็จ',resolved_no_return:'ให้ส่งต่อแล้ว',cancelled:'ปิดเคส'};
    body.innerHTML=tickets.length?tickets.map(t=>{const rc=returnsByTicket.get(t.id);const orderId=t.order_id||t.original_order_id;const noteId=safe(t.id);
-     const returnBox=rc?'<div style="margin:10px 0;padding:10px;border-radius:12px;background:#fff5f6"><b>การแก้ปัญหาจัดส่ง: '+safe(returnLabel[rc.status]||rc.status)+'</b><small style="display:block;margin-top:4px">เงินสดคืน Rider '+money(rc.expected_refund_amount||0)+' · '+safe(rc.shop_name||'ร้านค้า')+'</small>'+
+     const returnBox=rc?'<div style="margin:10px 0;padding:10px;border-radius:12px;background:#fff5f6"><b>การแก้ปัญหาจัดส่ง: '+safe(returnLabel[rc.status]||rc.status)+'</b><small style="display:block;margin-top:4px">เงินสดคืน Rider '+money(rc.expected_refund_amount||0)+' · คืนแล้ว '+safe(rc.returned_stop_count||0)+'/'+safe(rc.return_stop_count||1)+' จุด</small>'+(rc.current_shop_name?'<small style="display:block;margin-top:4px">จุดปัจจุบัน: '+safe(rc.current_shop_name)+' · '+money(rc.current_refund_amount||0)+'</small>':'')+
        (rc.status==='reported'?'<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px"><button type="button" data-return="'+safe(rc.case_id)+'" data-return-action="return_to_shop">ให้คืนร้าน</button><button type="button" data-return="'+safe(rc.case_id)+'" data-return-action="resolve_no_return">ให้ส่งต่อ</button></div>':'')+
        (rc.admin_note?'<small style="display:block;margin-top:6px">'+safe(rc.admin_note)+'</small>':'')+'</div>':'';
      return '<article><b>'+safe(category[t.category]||t.category)+'</b><span>'+safe(t.status)+'</span><small>'+safe(t.role)+' · '+new Date(t.created_at).toLocaleString('th-TH')+' · '+safe(t.user_id)+'</small><p>'+safe(t.details)+'</p>'+returnBox+
