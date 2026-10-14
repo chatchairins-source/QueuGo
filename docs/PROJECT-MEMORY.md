@@ -1,3 +1,11 @@
+## 2026-10-14 Grab Driver parity: Rider Supply Planning v1
+- Confirmed the owner-supplied Grab Driver package contains HotSpot Navigation, Heatmap V2 and Supply Shaping modules. QueueGo already had a privacy-safe spatial demand heatmap; this adds time-of-week planning without copying Grab implementation or assets.
+- Production migration 20261014075257_rider_supply_planning_v1 is read-only and Rider-only. It aggregates distinct delivery trips over the previous 28 days in Bangkok time into 2-hour weekday slots. Market multi-shop children are deduplicated by market_order_id.
+- The RPC returns only up to six day/time windows, relative level 1-3, confidence bucket and source window. It returns forecast=false and no raw order IDs, customer/shop identities, locations or exact demand counts.
+- Planning fails closed when fewer than 20 real historical trips are available. Confidence is low below 40 trips, medium from 40 and high from 100; the UI explicitly says historical tendency is not a guarantee of future work.
+- Native Rider shows Supply Planning in Earnings alongside real performance/missions. Production read-only validation used an already-active Rider session and returned real historical windows with forecast=false; no business record was written.
+- Backup backup/rider-map-feedback-before-supply-planning-20261014 retains 9044719. PASS requires native-pilot + navigation-map-runtime on the exact successor HEAD.
+
 ## 2026-10-14 Grab Driver parity: Rider Map Feedback v1
 - Added a privacy-bounded QueueGo map-feedback workflow after confirming the owner-supplied Grab Driver package contains realtime/navigation feedback services and option-sheet UI. No Grab code, assets or road geometry are copied.
 - Production migration 20261014074523_rider_map_feedback_v1 stores feedback only in qg_private. Rider submits an allowlisted issue category, one current coordinate snapshot and an optional <=500-character note. No order/customer/shop/destination identifiers are accepted or stored by this contract. Rider rate limit is 5 submissions/hour.
