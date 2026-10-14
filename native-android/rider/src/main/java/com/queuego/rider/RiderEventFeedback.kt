@@ -14,6 +14,8 @@ internal enum class RiderEventFeedbackKind {
     JOB_ACCEPTED,
     PICKUP_SUCCESS,
     DELIVERY_SUCCESS,
+    RETURN_STOP_SUCCESS,
+    RETURN_COMPLETE,
     ACTION_ERROR
 }
 
@@ -57,6 +59,23 @@ internal fun riderEventFeedbackSpec(kind: RiderEventFeedbackKind): RiderEventFee
                 ToneGenerator.TONE_PROP_BEEP2 to 260
             ),
             gapsMs = listOf(90L),
+            successHaptic = true
+        )
+        RiderEventFeedbackKind.RETURN_STOP_SUCCESS -> RiderEventFeedbackSpec(
+            tones = listOf(
+                ToneGenerator.TONE_PROP_BEEP2 to 120,
+                ToneGenerator.TONE_PROP_BEEP to 170
+            ),
+            gapsMs = listOf(60L),
+            successHaptic = true
+        )
+        RiderEventFeedbackKind.RETURN_COMPLETE -> RiderEventFeedbackSpec(
+            tones = listOf(
+                ToneGenerator.TONE_PROP_BEEP to 120,
+                ToneGenerator.TONE_PROP_BEEP2 to 150,
+                ToneGenerator.TONE_PROP_BEEP to 240
+            ),
+            gapsMs = listOf(65L, 75L),
             successHaptic = true
         )
         RiderEventFeedbackKind.ACTION_ERROR -> RiderEventFeedbackSpec(
