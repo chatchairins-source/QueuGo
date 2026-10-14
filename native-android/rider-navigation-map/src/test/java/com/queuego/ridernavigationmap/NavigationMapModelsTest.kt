@@ -5,6 +5,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class NavigationMapModelsTest {
+    // Demand-heatmap successor checkpoint: keeps the navigation runtime gate on the final source tree.
     private fun stop(id: String, sequence: Int, completed: Boolean = false) = NavigationMapStop(
         id = id,
         sequence = sequence,
