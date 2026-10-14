@@ -46,6 +46,7 @@ class RiderVoiceAssistantTest {
             "ถึงจุดส่งแล้ว กรุณาตรวจสอบยอดในหน้าจอและส่งสินค้า",
             riderVoiceJobAnnouncement(job("in_progress", arrivedCustomerAt = "now"))
         )
+        assertEquals("งานเสร็จเรียบร้อยแล้ว", riderVoiceJobAnnouncement(job("completed")))
         assertNull(riderVoiceJobAnnouncement(job("searching_rider")))
     }
 
