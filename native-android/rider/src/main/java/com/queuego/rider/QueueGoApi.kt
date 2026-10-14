@@ -603,6 +603,29 @@ class QueueGoApi {
             )
         }
 
+    suspend fun submitMapFeedback(
+        auth: QueueGoAuth,
+        category: String,
+        latitude: Double,
+        longitude: Double,
+        note: String?
+    ) = withContext(Dispatchers.IO) {
+        require(category in riderMapFeedbackCategoryKeys) { "ประเภทปัญหาแผนที่ไม่ถูกต้อง" }
+        require(latitude in 5.0..21.0 && longitude in 97.0..106.0) { "ตำแหน่งอยู่นอกพื้นที่ที่รองรับ" }
+        val cleanNote = riderNullableText(note)
+        require(cleanNote == null || cleanNote.length <= 500) { "รายละเอียดต้องไม่เกิน 500 ตัวอักษร" }
+        rpc(
+            "qg_rider_submit_map_feedback",
+            auth.session.accessToken,
+            JSONObject()
+                .put("p_category", category)
+                .put("p_latitude", latitude)
+                .put("p_longitude", longitude)
+                .put("p_note", cleanNote)
+        )
+        Unit
+    }
+
     suspend fun periodSummary(auth: QueueGoAuth, days: Int = 1): RiderPeriodSummary =
         withContext(Dispatchers.IO) {
             val raw = rpc(
