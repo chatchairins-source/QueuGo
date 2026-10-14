@@ -109,8 +109,7 @@ internal fun RiderMyDestinationDialog(
                     enabled = enabled
                 )
                 onSaved(saved)
-                if (!enabled) onClose()
-                else onClose()
+                onClose()
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -228,7 +227,7 @@ internal fun RiderMyDestinationDialog(
                     )
                 }
 
-                if (current?.configured == true && current.enabled) {
+                if (current?.configured == true && current?.enabled == true) {
                     Spacer(Modifier.height(7.dp))
                     OutlinedButton(
                         onClick = { save(false, useExisting = true) },
