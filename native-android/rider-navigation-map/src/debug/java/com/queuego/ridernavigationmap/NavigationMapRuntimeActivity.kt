@@ -115,6 +115,32 @@ class NavigationMapRuntimeActivity : ComponentActivity() {
         })
     }
 
+    fun showDemandHeatmapFixture(level: Int = 1) {
+        mapState.value = mapState.value.copy(
+            stops = emptyList(),
+            routes = emptyList(),
+            activeStopId = null,
+            demandZones = listOf(
+                NavigationDemandZone(
+                    id = "demand:a",
+                    point = NavigationMapPoint(13.7560, 100.5000),
+                    level = level,
+                    windowHours = 24
+                ),
+                NavigationDemandZone(
+                    id = "demand:b",
+                    point = NavigationMapPoint(13.7600, 100.5060),
+                    level = 2,
+                    windowHours = 24
+                )
+            )
+        )
+    }
+
+    fun clearDemandHeatmapFixture() {
+        mapState.value = mapState.value.copy(demandZones = emptyList())
+    }
+
     fun routeLineIdentities(): List<Int> {
         val mapView = requireNotNull(findMapView(window.decorView))
         val activeMap = requireNotNull(mapView.renderer.map)

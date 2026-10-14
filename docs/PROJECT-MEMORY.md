@@ -4,6 +4,7 @@
 - Demand privacy policy: shopping pickups only; last 24 hours for pilot volume; 0.02-degree coarse grid (about 2 km); at least 2 orders per cell; max 25 cells. Response contains only coarse latitude/longitude, level 1-3 and window_hours. It never returns raw counts, order IDs, customer identities, shop identities or delivery destinations.
 - Production contract was exercised using claims from a currently active real Rider session without exposing its identifiers: result contained 1 coarse zone at level 1 with a 24-hour window.
 - Native Rider refreshes the aggregate at most every 5 minutes while online and idle. Demand overlays are removed for any offered/active/laundry job, never change camera/route selection, and reconcile stable coordinate-keyed cached pins in the retained navigation renderer instead of rebuilding the map. Empty/failing reads do not fabricate demand.
+- Navigation runtime now tracks demand-pin mutations separately and exercises add, level-change and clear transitions while asserting the retained MapGLSurfaceView and Longdo map identities never change.
 - Existing orders created_at and order_type indexes already support the bounded 24-hour source query; no new index was added. Backup backup/rider-grab-parity-before-demand-heatmap-20261014 retains 9755a92. Exact-head JVM/build/map runtime CI is required before PASS.
 
 ## 2026-10-14 Grab Driver parity unified successor: Safety + Rating + Identity + Performance

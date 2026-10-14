@@ -151,6 +151,7 @@ private class RiderNavigationMapHolder {
     private var routeLayerRebuildCount = 0
     private var routeGeometryUpdateCount = 0
     private var stopMutationCount = 0
+    private var demandMutationCount = 0
     private var renderPassCount = 0
     private var snapshotCaptureCount = 0
     private var snapshotBridgeCount = 0
@@ -735,8 +736,10 @@ private class RiderNavigationMapHolder {
 
         demandPins.keys.filter { it !in desired.keys }.toList().forEach { id ->
             val rendered = demandPins[id] ?: return@forEach
-            if (runCatching { activeMap.removePin(rendered.pin) }.isSuccess) demandPins.remove(id)
-            else succeeded = false
+            if (runCatching { activeMap.removePin(rendered.pin) }.isSuccess) {
+                demandPins.remove(id)
+                demandMutationCount += 1
+            } else succeeded = false
         }
 
         desired.values.forEach { zone ->
@@ -754,6 +757,7 @@ private class RiderNavigationMapHolder {
                     return@forEach
                 }
                 demandPins.remove(zone.id)
+                demandMutationCount += 1
             }
             val pin = Pin(
                 MapLocation(zone.point.longitude, zone.point.latitude),
@@ -762,6 +766,7 @@ private class RiderNavigationMapHolder {
             pin.setOffset(PointF(0f, -0.48f))
             if (runCatching { activeMap.pushPin(pin) }.isSuccess) {
                 demandPins[zone.id] = RenderedDemandZone(signature, pin)
+                demandMutationCount += 1
             } else succeeded = false
         }
         demandSource = if (succeeded && demandPins.keys == desired.keys) state.demandZones else null
@@ -1063,6 +1068,7 @@ private class RiderNavigationMapHolder {
                 routeLayerRebuildCount = routeLayerRebuildCount,
                 routeGeometryUpdateCount = routeGeometryUpdateCount,
                 stopMutationCount = stopMutationCount,
+                demandMutationCount = demandMutationCount,
                 renderPassCount = renderPassCount,
                 snapshotCaptureCount = snapshotCaptureCount,
                 snapshotBridgeCount = snapshotBridgeCount,
