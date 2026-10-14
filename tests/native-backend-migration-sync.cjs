@@ -1,3 +1,4 @@
+// Rider Admin reverification v3 exact-head release gate.
 const fs=require('fs');
 const assert=require('assert');
 
@@ -59,6 +60,7 @@ for(const needle of [
 }
 const adminReverificationQueueMigration=read('supabase/migrations/20261014063649_admin_rider_reverification_queue_v1.sql');
 for(const needle of [
+  'qg_private.admin_rider_reverification_queue',
   'qg_admin_rider_reverification_queue',
   'admin required',
   'public.is_active_admin()',
@@ -68,8 +70,10 @@ for(const needle of [
 }
 const reverificationOnlineGateMigration=read('supabase/migrations/20261014063832_rider_reverification_online_gate_v1.sql');
 for(const needle of [
+  'qg_private.guard_rider_reverification_online',
   'qg_guard_rider_reverification_online',
   "rr.status in ('required','pending','rejected')",
+  "revoke all on function qg_private.guard_rider_reverification_online() from public, anon, authenticated",
   'rider identity reverification required'
 ]){
   assert.ok(reverificationOnlineGateMigration.includes(needle),'Rider reverification online gate migration missing contract: '+needle);
