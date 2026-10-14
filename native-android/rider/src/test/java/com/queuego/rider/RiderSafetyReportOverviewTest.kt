@@ -50,4 +50,8 @@ class RiderSafetyReportOverviewTest {
         assertEquals("ESCALATED", riderSafetyReportStatusLabel("ESCALATED"))
         assertEquals("ไม่ทราบสถานะ", riderSafetyReportStatusLabel(""))
     }
+    @Test fun unknownSupportStatusIsShownWithoutInventingMeaning() {
+        assertEquals("SERVER_NEW", riderSafetyReportStatusLabel("SERVER_NEW"))
+    }
+
 }
