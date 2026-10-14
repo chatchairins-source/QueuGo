@@ -291,7 +291,6 @@ internal fun QueueGoRiderNavigationMap(
     }
     val displayPipeline = remember(stateKey) { NavigationSignalPipeline() }
 
-    var futureRoutes by remember(stateKey) { mutableStateOf<List<NavigationRouteSegment>>(emptyList()) }
     val stopTopology = remember(stops) {
         stops.joinToString("|") {
             listOf(
@@ -303,11 +302,27 @@ internal fun QueueGoRiderNavigationMap(
             ).joinToString(":")
         }
     }
+    val retainedFrame = remember(stateKey, stopTopology) {
+        RiderNavigationSessionRegistry.load(stateKey, stopTopology)
+    }
+    var futureRoutes by remember(stateKey, stopTopology) {
+        mutableStateOf(retainedFrame?.futureRoutes.orEmpty())
+    }
 
-    LaunchedEffect(routeProvider, stopTopology) {
+    LaunchedEffect(routeProvider, stopTopology, navigationActive) {
         displayPipeline.reset()
-        futureRoutes = if (routeProvider == null) emptyList()
-        else buildFutureRoutes(routeProvider, stops)
+        if (!navigationActive) {
+            futureRoutes = emptyList()
+            RiderNavigationSessionRegistry.clear(stateKey)
+        } else if (routeProvider != null) {
+            val builtRoutes = buildFutureRoutes(routeProvider, stops)
+            futureRoutes = builtRoutes
+            RiderNavigationSessionRegistry.saveFutureRoutes(
+                stateKey = stateKey,
+                topologyKey = stopTopology,
+                routes = builtRoutes
+            )
+        }
     }
 
     val baseState = RiderNavigationMapState(
@@ -320,13 +335,23 @@ internal fun QueueGoRiderNavigationMap(
         viewMode = viewModeState.mode,
         viewportInsets = viewportInsets.normalized()
     )
-    var renderedState by remember(stateKey) { mutableStateOf(baseState) }
-    val stateChannel = remember(stateKey) { Channel<RiderNavigationMapState>(Channel.CONFLATED) }
+    var renderedState by remember(stateKey, stopTopology) {
+        mutableStateOf(
+            retainedFrame
+                ?.renderedRoutes
+                ?.takeIf { it.isNotEmpty() }
+                ?.let { baseState.copy(routes = it) }
+                ?: baseState
+        )
+    }
+    val stateChannel = remember(stateKey, stopTopology) {
+        Channel<RiderNavigationMapState>(Channel.CONFLATED)
+    }
 
     LaunchedEffect(baseState) {
         stateChannel.trySend(baseState)
     }
-    LaunchedEffect(coordinator, stateChannel, displayPipeline) {
+    LaunchedEffect(coordinator, stateChannel, displayPipeline, stopTopology, navigationActive) {
         var lastLoggedShadowSample = 0L
 
         fun displayState(authoritativeState: RiderNavigationMapState): RiderNavigationMapState {
@@ -365,14 +390,41 @@ internal fun QueueGoRiderNavigationMap(
 
         if (coordinator == null) {
             for (next in stateChannel) {
-                renderedState = displayState(next)
+                val candidate = displayState(next)
+                renderedState = if (
+                    navigationActive &&
+                    candidate.routes.isEmpty() &&
+                    renderedState.routes.isNotEmpty()
+                ) {
+                    candidate.copy(routes = renderedState.routes)
+                } else {
+                    candidate
+                }
+                RiderNavigationSessionRegistry.saveRenderedRoutes(
+                    stateKey = stateKey,
+                    topologyKey = stopTopology,
+                    routes = renderedState.routes
+                )
             }
         } else {
             for (next in stateChannel) {
                 // Route progress/reroute stays authoritative on the raw GPS fix.
                 val result = coordinator.synchronize(next)
                 // Filtering/snapping, when the rollout gate is enabled, is renderer-only.
-                renderedState = displayState(result.mapState)
+                val candidate = displayState(result.mapState)
+                renderedState = if (
+                    result.routeError != null &&
+                    renderedState.routes.isNotEmpty()
+                ) {
+                    candidate.copy(routes = renderedState.routes)
+                } else {
+                    candidate
+                }
+                RiderNavigationSessionRegistry.saveRenderedRoutes(
+                    stateKey = stateKey,
+                    topologyKey = stopTopology,
+                    routes = renderedState.routes
+                )
             }
         }
     }
