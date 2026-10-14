@@ -144,6 +144,16 @@ assert(
   'Shadow confidence rollout must be idempotent on equivalent backend refreshes and emit only aggregate debug diagnostics without coordinates');
 
 assert(
+  sessionStore.includes('"marketPickups"')&&
+  sessionStore.includes('"bundleActiveOrders"')&&
+  sessionStore.includes('marketPickupToJson')&&
+  sessionStore.includes('bundleOrderToJson')&&
+  sessionStore.includes('marketPickups = marketPickups')&&
+  sessionStore.includes('bundle = RiderRouteBundleState(activeOrders = bundleActiveOrders)')&&
+  sessionStore.includes('offeredJob = null'),
+  'Cold-start Rider cache must retain authoritative active Market/bundle stop topology without persisting expiring targeted offers');
+
+assert(
   navigationSessionRegistry.includes('object RiderNavigationSessionRegistry')&&
   navigationSessionRegistry.includes('fun saveFutureRoutes(')&&
   navigationSessionRegistry.includes('fun saveRenderedRoutes(')&&
