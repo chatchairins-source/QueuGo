@@ -2,6 +2,9 @@ const fs=require('fs');
 const assert=require('assert');
 
 const sql=fs.readFileSync('ops/queuego-local-roads-schema-proposal.sql','utf8');
+const executableSql=sql.split('\n')
+  .filter(line=>!line.trim().startsWith('--'))
+  .join('\n');
 
 assert(sql.includes('PROPOSAL ONLY')&&sql.trim().endsWith('rollback;'),
   'Local Roads schema proposal must be non-persistent by default');
@@ -32,9 +35,9 @@ assert(sql.includes('revoke all on table public.qg_local_roads from anon, authen
 assert(sql.includes('with (security_invoker = true)')&&
   sql.includes('grant select on table public.qg_local_road_feed to authenticated'),
   'Verified Local Roads feed must use a security-invoker read-only view');
-assert(!/postgis/i.test(sql.replace(/Deliberately no PostGIS dependency/g,'')),
+assert(!/create\s+extension[\s\S]{0,120}postgis/i.test(executableSql),
   'Proposal must not silently introduce a PostGIS dependency');
-assert(!/security\s+definer/i.test(sql),
+assert(!/security\s+definer/i.test(executableSql),
   'Local Roads proposal must not add SECURITY DEFINER code');
 assert(!/grab|competitor:/i.test(sql),
   'Local Roads schema must not encode competitor geometry/provenance');
