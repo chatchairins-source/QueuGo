@@ -51,6 +51,13 @@ data class RiderPickupGuide(
     val marketStallNo: String?
 )
 
+data class RiderLoadSummary(
+    val weightKg: Double?,
+    val vehicleCapacityKg: Double?,
+    val utilizationRatio: Double?,
+    val state: String
+)
+
 data class RiderShopDisplay(
     val shopName: String?,
     val shopLogo: String?
