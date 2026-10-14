@@ -45,9 +45,9 @@ object ShortbreadVillageStyle {
         ShortbreadRoadPolicy("service", 13f, "#c4c6c8", "#ffffff", 0.6f, 3.2f, 5.6f)
     )
 
-    fun builder(tileJsonUrl: String): Style.Builder {
+    fun builder(vectorSourceUri: String): Style.Builder {
         var builder = Style.Builder()
-            .withSource(VectorSource(SOURCE_ID, tileJsonUrl))
+            .withSource(VectorSource(SOURCE_ID, vectorSourceUri))
             .withLayer(
                 BackgroundLayer("queuego-background").withProperties(
                     backgroundColor("#f3f0e9")

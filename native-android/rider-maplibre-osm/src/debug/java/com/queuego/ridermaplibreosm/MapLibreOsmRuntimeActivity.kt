@@ -20,7 +20,7 @@ class MapLibreOsmRuntimeActivity : Activity() {
             onMapReady = { mapReady.countDown() }
             setConfig(
                 MapLibreOsmConfig(
-                    tileJsonUrl = "https://vector.openstreetmap.org/shortbread_v1/tilejson.json",
+                    vectorSourceUri = "https://vector.openstreetmap.org/shortbread_v1/tilejson.json",
                     initialLatitude = 14.90544,
                     initialLongitude = 103.14653,
                     initialZoom = 17.0
