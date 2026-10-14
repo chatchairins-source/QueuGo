@@ -1,6 +1,7 @@
 package com.queuego.rider
 
 import android.Manifest
+import android.app.ActivityManager
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -8,6 +9,8 @@ import android.location.LocationManager
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import android.net.Uri
+import android.os.Build
+import android.os.PowerManager
 import android.provider.Settings
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -36,8 +39,12 @@ internal data class RiderDiagnosticsSnapshot(
     val notifications: Boolean,
     val googleMaps: Boolean,
     val overlayReturn: Boolean,
-    val microphone: Boolean
+    val microphone: Boolean,
+    val batteryOptimizationExempt: Boolean = true,
+    val backgroundRestricted: Boolean = false
 ) {
+    val backgroundReliabilityReady: Boolean
+        get() = batteryOptimizationExempt && !backgroundRestricted
     val readyForDelivery: Boolean
         get() = networkReady && locationPermission && locationServices && notifications && googleMaps
 
@@ -64,6 +71,15 @@ internal fun readRiderDiagnostics(context: Context): RiderDiagnosticsSnapshot {
     val overlayReturn = Settings.canDrawOverlays(context)
     val microphone =
         ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
+    val powerManager = context.getSystemService(PowerManager::class.java)
+    val batteryOptimizationExempt =
+        Build.VERSION.SDK_INT < Build.VERSION_CODES.M ||
+            runCatching { powerManager?.isIgnoringBatteryOptimizations(context.packageName) == true }
+                .getOrDefault(false)
+    val activityManager = context.getSystemService(ActivityManager::class.java)
+    val backgroundRestricted =
+        Build.VERSION.SDK_INT >= Build.VERSION_CODES.P &&
+            runCatching { activityManager?.isBackgroundRestricted == true }.getOrDefault(false)
 
     return RiderDiagnosticsSnapshot(
         networkReady = networkReady,
@@ -72,7 +88,9 @@ internal fun readRiderDiagnostics(context: Context): RiderDiagnosticsSnapshot {
         notifications = riderNotificationsReady(context),
         googleMaps = googleMaps,
         overlayReturn = overlayReturn,
-        microphone = microphone
+        microphone = microphone,
+        batteryOptimizationExempt = batteryOptimizationExempt,
+        backgroundRestricted = backgroundRestricted
     )
 }
 
@@ -170,6 +188,22 @@ internal fun RiderDiagnosticsScreen(
             launch(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:${context.packageName}")))
         }
         RiderDiagnosticRow("ไมโครโฟน", "ใช้สำหรับโทรเสียงใน QueueGo", diagnostics.microphone, required = false) {
+            launch(appDetailsIntent(context))
+        }
+        RiderDiagnosticRow(
+            "Battery Optimization",
+            "แนะนำให้ยกเว้น QueueGo Rider เพื่อลดโอกาสที่ Android ปิด location / offer service ตอนจอดหน้าจอ",
+            diagnostics.batteryOptimizationExempt,
+            required = false
+        ) {
+            launch(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))
+        }
+        RiderDiagnosticRow(
+            "การทำงานเบื้องหลัง",
+            "Android ไม่ควรจำกัด QueueGo Rider ขณะสลับไป Google Maps หรือปิดหน้าจอ",
+            !diagnostics.backgroundRestricted,
+            required = false
+        ) {
             launch(appDetailsIntent(context))
         }
 
