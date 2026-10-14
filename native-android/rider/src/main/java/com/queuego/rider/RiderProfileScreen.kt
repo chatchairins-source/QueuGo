@@ -144,7 +144,11 @@ fun RiderProfileScreen(
                             modifier = Modifier.height(26.dp)
                         ) {
                             Text(
-                                if (busy) "กำลังบันทึก" else "เปลี่ยนรูป",
+                                when {
+                                    busy -> "กำลังบันทึก"
+                                    profile?.profilePhoto.isNullOrBlank() -> "เพิ่มรูป"
+                                    else -> "เปลี่ยนรูป"
+                                },
                                 color = QgRed,
                                 fontSize = 8.sp,
                                 fontWeight = FontWeight.Bold
@@ -153,6 +157,15 @@ fun RiderProfileScreen(
                     }
                     Column(Modifier.weight(1f)) {
                         Text(displayName, fontWeight = FontWeight.Bold, fontSize = if (smallScreen) 17.sp else 19.sp)
+                        if (profile?.profilePhoto.isNullOrBlank()) {
+                            Text(
+                                "เพิ่มรูปเพื่อให้ลูกค้าและร้านค้าจำ Rider ได้",
+                                color = Color(0xFF9A6B00),
+                                fontSize = 8.sp,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(top = 3.dp)
+                            )
+                        }
                         Text(displayPhone.ifBlank { "-" }, color = QgMuted, fontSize = 10.sp, modifier = Modifier.padding(top = 3.dp))
                         val vehicle = riderVehicleLabel(profile?.vehicleType)
                         val plate = profile?.vehiclePlate?.takeIf { it.isNotBlank() }
