@@ -94,9 +94,10 @@ class QueueGoLocalRoadSignedDeliveryTest {
     }
 
     @Test(expected = IllegalArgumentException::class)
-    fun digestMismatchFailsBeforeDecodeOrCacheWrite() = runBlocking {
-        val directory = Files.createTempDirectory("qg-local-roads").toFile()
-        try {
+    fun digestMismatchFailsBeforeDecodeOrCacheWrite() {
+        runBlocking {
+            val directory = Files.createTempDirectory("qg-local-roads").toFile()
+            try {
             val cache = QueueGoLocalRoadSnapshotCache(directory)
             val delivery = QueueGoLocalRoadSignedDelivery(
                 transport = object : QueueGoLocalRoadSnapshotTransport {
@@ -118,16 +119,18 @@ class QueueGoLocalRoadSignedDeliveryTest {
                 cache = cache
             )
 
-            delivery.refresh()
-        } finally {
-            directory.deleteRecursively()
+                delivery.refresh()
+            } finally {
+                directory.deleteRecursively()
+            }
         }
     }
 
     @Test(expected = IllegalArgumentException::class)
-    fun corruptedCacheFailsClosedBeforeTransportCanApplyOlderRevision() = runBlocking {
-        val directory = Files.createTempDirectory("qg-local-roads").toFile()
-        try {
+    fun corruptedCacheFailsClosedBeforeTransportCanApplyOlderRevision() {
+        runBlocking {
+            val directory = Files.createTempDirectory("qg-local-roads").toFile()
+            try {
             val cache = QueueGoLocalRoadSnapshotCache(directory)
             val cachedPayload = "cached-revision-10".toByteArray()
             cache.write(10, queueGoSha256Hex(cachedPayload), cachedPayload)
@@ -156,9 +159,10 @@ class QueueGoLocalRoadSignedDeliveryTest {
                 cache = cache
             )
 
-            delivery.refresh()
-        } finally {
-            directory.deleteRecursively()
+                delivery.refresh()
+            } finally {
+                directory.deleteRecursively()
+            }
         }
     }
 
