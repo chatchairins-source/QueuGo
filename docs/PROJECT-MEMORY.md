@@ -1,3 +1,12 @@
+## 2026-10-14 Rider world-class: adaptive refresh on unified Photo Quality + Return-to-Sender line
+- Continued from world-class integrator head ec85f9ea after verifying the branch contains touch-target/network guards, byte-identical Photo Quality evidence decoding/tests, Return-to-Sender card/tests, and RTS migrations v1/v2/v3.
+- Re-applied only the adaptive snapshot polling contract; no old QueueGoRiderApp file was copied over the newer world-class flow.
+- Realtime + push remain primary. Fallback snapshot refresh stays 3 seconds while Rider is online, has active work, or has a targeted offer.
+- Offline/idle fallback is 15 seconds; validated-network loss uses 12 seconds. Because networkAvailable is a LaunchedEffect key, reconnect restarts the loop immediately instead of waiting for the backoff window.
+- No order, dispatch, payment, navigation, Return-to-Sender, photo-proof or Production DB behavior changed.
+- Backup: backup/rider-worldclass-before-adaptive-refresh-20261014 @ ec85f9ea.
+- Exact-head native-pilot + navigation-map-runtime remain required before PASS.
+
 ## 2026-10-14 Rider one-hand UX: touch-target hardening on network-guard successor
 - Continued from #297 so validated-network mutation guards and reconnect continuity remain intact.
 - Active Rider custom actions previously used 42dp/46dp minimum heights. Android accessibility guidance recommends at least 48dp touch targets for interactive controls.
