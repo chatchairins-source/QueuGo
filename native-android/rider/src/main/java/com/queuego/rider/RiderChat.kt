@@ -245,10 +245,11 @@ fun RiderChatScreen(
     job: RiderJob,
     onBack: () -> Unit,
     onCallCustomer: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    contactLabel: String? = null
 ) {
     key(auth.user.id, auth.session.sessionId, job.id) {
-        RiderChatRoom(auth, job, onBack, onCallCustomer, modifier)
+        RiderChatRoom(auth, job, onBack, onCallCustomer, modifier, contactLabel)
     }
 }
 
@@ -258,7 +259,8 @@ private fun RiderChatRoom(
     job: RiderJob,
     onBack: () -> Unit,
     onCallCustomer: () -> Unit,
-    modifier: Modifier
+    modifier: Modifier,
+    contactLabel: String?
 ) {
     val api = remember { RiderChatApi() }
     val scope = rememberCoroutineScope()
@@ -424,7 +426,7 @@ private fun RiderChatRoom(
                 Text(when {
                     moderation?.blockedByMe == true || moderation?.blockedMe == true -> "แชตถูกจำกัด"
                     moderation?.accepted == false -> "กติกาการแชต"
-                    else -> customerName ?: "ลูกค้า"
+                    else -> contactLabel ?: customerName ?: "ลูกค้า"
                 }, fontSize = 15.sp, fontWeight = FontWeight.Bold)
                 Text(job.numberLabel, color = Color(0xFF8A8387), fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
             }

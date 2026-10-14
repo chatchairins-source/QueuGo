@@ -582,6 +582,19 @@ def verify_real_home_map_runtime():
     print("Actual Longdo crash before fix reproduced; corrected native Home map mount/background/recreation PASS")
 
 
+def verify_proof_process_recovery():
+    runner = "com.queuego.rider.test/androidx.test.runner.AndroidJUnitRunner"
+    for method in ["preparePendingProofForProcessKill", "recoverPendingProofAfterProcessKill"]:
+        result = run(adb + ["shell", "am", "instrument", "-w", "-r", "-e", "class",
+                           "com.queuego.rider.RiderProofPersistenceTest#" + method, runner],
+                     capture_output=True, text=True, timeout=120)
+        (output / ("proof-" + method + ".txt")).write_text(result.stdout + result.stderr)
+        assert "OK (1 test)" in result.stdout, "Durable photo/cash process recovery failed: " + method
+        if method == "preparePendingProofForProcessKill":
+            run(adb + ["shell", "am", "force-stop", "com.queuego.rider"])
+    print("One-photo pending proof + cash-stage recovery across real process death PASS")
+
+
 def verify_voice_foreground_runtime():
     runner = "com.queuego.rider.test/androidx.test.runner.AndroidJUnitRunner"
     result = run(adb + ["shell", "am", "instrument", "-w", "-r", "-e", "class",
@@ -832,6 +845,7 @@ with (output / "emulator.log").open("w") as log:
             print("Actual Rider unauthenticated launch PASS; Home visual / E2E / physical FCM remain unverified")
             capture_role_viewports()
             verify_real_home_map_runtime()
+            verify_proof_process_recovery()
             verify_voice_foreground_runtime()
             verify_navigation_location_foreground_runtime()
     finally:

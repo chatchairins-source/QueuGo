@@ -5,6 +5,25 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class RiderPendingProofStoreTest {
+    @Test fun serverStageNeverReopensCommittedPickup() {
+        assertTrue(riderVerificationResumeAllowed("pickup", "ready", false, false))
+        listOf("picked_up", "in_progress", "completed", "cancelled").forEach {
+            assertFalse(riderVerificationResumeAllowed("pickup", it, false, false))
+        }
+    }
+
+    @Test fun deliveryCashResumeRequiresAuthoritativeCustomerArrival() {
+        assertTrue(riderVerificationResumeAllowed("delivery", "in_progress", true, false))
+        assertFalse(riderVerificationResumeAllowed("delivery", "in_progress", false, false))
+        assertFalse(riderVerificationResumeAllowed("delivery", "completed", true, false))
+    }
+
+    @Test fun marketResumeCannotRepeatCompletedStop() {
+        assertTrue(riderVerificationResumeAllowed("marketPickup", "ready", false, true))
+        assertFalse(riderVerificationResumeAllowed("marketPickup", "ready", false, false))
+        assertFalse(riderVerificationResumeAllowed("marketPickup", "in_progress", false, true))
+    }
+
     private val draft = RiderProofDraft(
         workId = "order-1",
         mode = "delivery",
