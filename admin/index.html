@@ -142,16 +142,13 @@ function qtRiderReverificationStateLabel(status){
 }
 window.qtAdminRequestRiderReverification=async function(riderId){
   try{
-    let reason='';
-    if(typeof qgAdminInput==='function'){
-      const value=await qgAdminInput({title:'ขอยืนยันตัวตน Rider',label:'เหตุผล (ไม่บังคับ)'});
-      if(value===null)return;
-      reason=String(value||'').trim();
-    }else{
-      const value=window.prompt('เหตุผลที่ขอให้ Rider ยืนยันตัวตนใหม่ (ไม่บังคับ)','');
-      if(value===null)return;
-      reason=String(value||'').trim();
+    if(typeof qgAdminInput!=='function'){
+      if(typeof toast==='function')toast('ฟอร์ม Admin ยังไม่พร้อม กรุณารีเฟรชหน้า');
+      return;
     }
+    const value=await qgAdminInput({title:'ขอยืนยันตัวตน Rider',label:'เหตุผล (ไม่บังคับ)'});
+    if(value===null)return;
+    const reason=String(value||'').trim();
     await qtSupabaseRpc('qg_admin_request_rider_reverification',{
       p_rider_id:riderId,
       p_reason:reason||null
@@ -167,9 +164,11 @@ window.qtAdminReviewRiderReverification=async function(requestId,decision){
     if(!['approved','rejected'].includes(decision))return;
     let note=null;
     if(decision==='rejected'){
-      const value=typeof qgAdminInput==='function'
-        ? await qgAdminInput({title:'ให้ Rider ถ่ายรูปใหม่',label:'เหตุผลที่ไม่ผ่าน'})
-        : window.prompt('เหตุผลที่ไม่ผ่าน');
+      if(typeof qgAdminInput!=='function'){
+        if(typeof toast==='function')toast('ฟอร์ม Admin ยังไม่พร้อม กรุณารีเฟรชหน้า');
+        return;
+      }
+      const value=await qgAdminInput({title:'ให้ Rider ถ่ายรูปใหม่',label:'เหตุผลที่ไม่ผ่าน'});
       if(value===null)return;
       note=String(value||'').trim();
       if(!note){
