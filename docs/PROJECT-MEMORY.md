@@ -1,3 +1,10 @@
+## 2026-10-14 Grab Driver parity: real Rider offer-performance metrics
+- Added Rider-only aggregate performance over the existing server-only qg_rider_offer_history; the Native app still cannot SELECT offer-history rows directly. Production migration 20261014071245 rider_offer_performance_v1 is applied.
+- The RPC accepts only Today/7/30-day windows using Asia/Bangkok day boundaries and returns counts/rates only for the active authenticated Rider: offered, accepted, declined, expired, acceptance rate, response rate, decline/timeout rates and average response time for explicit responses.
+- Production read-only verification used a live Rider session and returned real non-empty accepted/expired aggregates. No order/customer/shop identifiers are exposed and dispatch behavior is unchanged.
+- Native Earnings adds a compact offer-performance card. A zero-offer period renders “ยังไม่มีข้อเสนอ” and no fake 0% rate.
+- Backup backup-offer-metrics-20261014 retains 53e5ab6. Exact-head native-pilot required before PASS.
+
 ## 2026-10-14 Grab Driver parity successor: ETA HUD + local Runtime/Map diagnostics
 - Continued from ETA HUD v2 head 0b1d601 so authoritative distance/ETA/next-turn guidance and the unified Learning/Missions/Safety stack remain intact.
 - Wired the already-existing NavigationMapDiagnostics callback into Rider Diagnostics instead of creating a second telemetry engine. Rider can now inspect view/map creation, map replacement, render pass, route rebuild and snapshot-bridge-failure counters from the retained Longdo renderer.
