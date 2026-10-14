@@ -10,6 +10,7 @@ class RiderLearningCenterTest {
         val lessons = riderLearningLessons()
         assertEquals(8, lessons.size)
         assertEquals(lessons.size, lessons.map { it.id }.distinct().size)
+        assertTrue(lessons.all { it.title.isNotBlank() && it.summary.isNotBlank() && it.steps.isNotEmpty() })
 
         val all = lessons.flatMap { listOf(it.title, it.summary) + it.steps }.joinToString("\n")
         assertTrue(all.contains("30 วินาที"))
