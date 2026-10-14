@@ -1,3 +1,9 @@
+## 2026-10-14 Grab Driver parity mission: Rider performance view
+- Continued from Rider identity/diagnostics head 32df088. QueueGo already had Today/7/30-day earnings, cash ledger and authoritative period summary, but lacked a compact driver-performance view.
+- Added a pure derived performance model using only existing Production summary values: average income per completed job, jobs per online hour, average income per day and jobs per day. Zero-job/zero-online periods display no invented per-job or per-hour figure.
+- Rider Earnings now shows a performance card below the existing summary. No acceptance rate, rating, incentive target, demand forecast or fake benchmark is introduced because those need real backend/product rules.
+- Backup backup/rider-grab-parity-before-performance-20261014 retains 32df088. Successor work-native-rider-grab-parity-performance-20261014 requires its own exact-head CI before merge.
+
 ## 2026-10-14 Grab Driver parity mission: Rider identity + diagnostics
 - Owner requested QueueGo to adopt useful Grab Driver capabilities found in the supplied Grab Driver 5.457.1 package, while keeping QueueGo branding/flows and never copying Grab proprietary code, assets or map geometry.
 - Source comparison confirms QueueGo already has session recovery, foreground navigation location, map matching/resilience, 30-second sequential offers, floating return control, earnings, chat, photo proof, multi-stop and Customer-side Rider identity. First real gaps selected for additive implementation are Rider self-profile identity and device health diagnostics.

@@ -75,6 +75,44 @@ fun RiderEarningsScreen(auth: QueueGoAuth, api: QueueGoApi, onBack: () -> Unit, 
                     RiderEarnStat("ออนไลน์", "${s.onlineHours} ชม.", Color(0xFFF3F8FF), Color(0xFF17171B), Modifier.weight(1f))
                     RiderEarnStat("เฉลี่ย/ชม.", s.incomePerHour?.let(::baht) ?: "—", Color(0xFFFFF9EF), Color(0xFF17171B), Modifier.weight(1f))
                 }
+
+                val performance = riderPerformanceMetrics(s)
+                Spacer(Modifier.height(12.dp))
+                RiderEarningsCard {
+                    RiderEarnSectionTitle("ผลงานการวิ่งงาน", if (days == 1) "วันนี้" else "$days วัน")
+                    Spacer(Modifier.height(10.dp))
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        RiderCashStat(
+                            "เฉลี่ย / เที่ยว",
+                            performance.averageIncomePerJob?.let(::baht) ?: "—",
+                            Modifier.weight(1f)
+                        )
+                        RiderCashStat(
+                            "งาน / ชั่วโมง",
+                            performance.jobsPerOnlineHour?.let { riderPerformanceNumber(it) } ?: "—",
+                            Modifier.weight(1f)
+                        )
+                    }
+                    Spacer(Modifier.height(8.dp))
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        RiderCashStat(
+                            "เฉลี่ยรายได้ / วัน",
+                            baht(performance.averageIncomePerDay),
+                            Modifier.weight(1f)
+                        )
+                        RiderCashStat(
+                            "งาน / วัน",
+                            riderPerformanceNumber(performance.averageJobsPerDay),
+                            Modifier.weight(1f)
+                        )
+                    }
+                    Text(
+                        "คำนวณจากงานสำเร็จ รายได้ และเวลาออนไลน์จริงในช่วงที่เลือก",
+                        color = QgMuted,
+                        fontSize = 8.sp,
+                        modifier = Modifier.padding(top = 9.dp)
+                    )
+                }
             }
         }
         when {
