@@ -2224,7 +2224,7 @@ private fun RiderHome(
 
         RiderBottomNavigation(
             activeTab = activeTab,
-            unreadMessages = unreadMessages,
+            unreadMessages = (unreadMessages + unreadNotifications).coerceAtMost(99),
             onSelect = { activeTab = it },
             modifier = Modifier.align(Alignment.BottomCenter)
         )
