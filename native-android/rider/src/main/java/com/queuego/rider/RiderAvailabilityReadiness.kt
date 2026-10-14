@@ -47,7 +47,9 @@ internal fun riderAvailabilityReadiness(
     diagnostics: RiderDiagnosticsSnapshot,
     firebaseConfigured: Boolean,
     reverification: RiderReverificationStatus?,
-    reverificationLoaded: Boolean
+    reverificationLoaded: Boolean,
+    documents: RiderDocumentReadiness?,
+    documentsLoaded: Boolean
 ): RiderAvailabilityReadiness {
     fun state(ready: Boolean) =
         if (ready) RiderAvailabilityCheckState.READY else RiderAvailabilityCheckState.BLOCKED
@@ -79,6 +81,39 @@ internal fun riderAvailabilityReadiness(
             detail = "ไม่มีคำขอยืนยันตัวตนที่บล็อกการเปิดรับงาน",
             state = RiderAvailabilityCheckState.READY
         )
+    }
+
+    val documentCheck = when {
+        !documentsLoaded -> RiderAvailabilityCheck(
+            key = "documents",
+            title = "เอกสาร",
+            detail = "กำลังตรวจวันหมดอายุเอกสารจาก QueueGo",
+            state = RiderAvailabilityCheckState.CHECKING
+        )
+        documents?.blocking == true -> {
+            val expired = documents.items.filter { it.status == "expired" }
+            RiderAvailabilityCheck(
+                key = "documents",
+                title = "เอกสารหมดอายุ",
+                detail = expired.joinToString(" · ") { item ->
+                    item.label + (item.expiresOn?.let { " $it" } ?: "")
+                }.ifBlank { "มีเอกสารหมดอายุ กรุณาติดต่อ Admin" },
+                state = RiderAvailabilityCheckState.BLOCKED
+            )
+        }
+        else -> {
+            val expiring = documents?.items.orEmpty().filter { it.status == "expiring" }
+            RiderAvailabilityCheck(
+                key = "documents",
+                title = "เอกสาร",
+                detail = if (expiring.isNotEmpty()) {
+                    "ใกล้หมดอายุ: " + expiring.joinToString(" · ") { it.label }
+                } else {
+                    "ไม่มีเอกสารที่หมดอายุและบล็อกการเปิดรับงาน"
+                },
+                state = RiderAvailabilityCheckState.READY
+            )
+        }
     }
 
     return RiderAvailabilityReadiness(
@@ -125,7 +160,8 @@ internal fun riderAvailabilityReadiness(
                 "ต้องเปิดสิทธิ์แสดงทับแอปอื่นเพื่อกลับจาก Google Maps ได้เร็ว",
                 state(diagnostics.overlayReturn)
             ),
-            identityCheck
+            identityCheck,
+            documentCheck
         )
     )
 }
