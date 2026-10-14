@@ -80,6 +80,9 @@ internal fun riderNotificationTimeLabel(raw: String?): String? {
         .format(instant)
 }
 
+internal fun riderNotificationBadgeCount(unreadRows: Int): Int =
+    unreadRows.coerceAtLeast(0).coerceAtMost(99)
+
 internal class RiderNotificationCenterApi(
     private val http: QueueGoNativeApi = QueueGoNativeApi()
 ) {
@@ -101,7 +104,7 @@ internal class RiderNotificationCenterApi(
                 auth.session.accessToken
             )
         )
-        return rows.length().coerceAtMost(99)
+        return riderNotificationBadgeCount(rows.length())
     }
 
     suspend fun markRead(auth: QueueGoAuth, notificationId: String) {
