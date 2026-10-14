@@ -1,3 +1,23 @@
+## 2026-10-14 Rider Admin re-verification v3 clean completion gate
+- Rebased only the remaining stricter Admin re-verification deltas onto current base d12e371. The reason-required migration is already byte-identical on base, so it is not duplicated.
+- Admin now blocks blank re-verification reasons before RPC and sends only a non-blank reason. Regression guards the UI behavior plus private Admin queue / online-gate revoke contracts.
+- This v3 branch is conflict-free by construction and exists only to finish the current re-verification release gate. No new Grab-parity feature may start until exact-head native-pilot + navigation-map-runtime pass and the PR is mergeable.
+
+## 2026-10-14 Rider re-verification Admin workflow on consolidated release
+- Pulled Work PR235 Admin workflow onto the consolidated #234 release line because its Admin files were byte-identical to the PR235 base before the new workflow, so the UI changes apply cleanly without overwriting newer Admin work.
+- Existing Admin Rider-status cards now call qg_admin_rider_reverification_queue, can request a fresh identity check, open pending private selfie evidence through the existing signed qg-evidence viewer, approve a pending selfie, or reject it with a required Rider-facing reason. The Admin UI never queries qg_private directly.
+- Production queue migration 20261014063649 remains authenticated-only and re-checks live session + active Admin server-side. Production gate migration 20261014063832 additionally prevents an affected Rider from going online until approved.
+- Admin interface regression guards the three public re-verification RPCs, signed evidence viewer usage and absence of direct private-table access. Exact-head consolidated CI remains required.
+
+## 2026-10-14 Rider Grab-parity release successor: selfie re-verification
+- Continued from consolidated Release Gate head 7220b29 so Heatmap, map-reuse runtime assertions, real compliments, detailed Job History, managed public Rider photo and all earlier parity remain on one line.
+- Added explicit Rider selfie re-verification without claiming biometric/liveness detection. Admin may request a check; Rider captures a fresh camera photo; private qg-evidence storage holds the selfie; server state is required/pending/approved/rejected. Public Rider avatar remains in rider-profile and is never reused as verification evidence.
+- Production migration 20261014062750 rider_reverification_v1 is additive and already applied. Public wrappers are SECURITY INVOKER with anon EXECUTE revoked; private helpers validate live auth.sessions plus active Rider/Admin roles. Rider reads only its own latest request and can submit only an owned qg-evidence path. Admin request/review functions re-check active-admin server-side.
+- Native Profile adds no visible UI when no request exists. Required/rejected states offer camera-only capture + preview + submit; pending is read-only. Production read-only exercise with an active Rider session returned required=false/status=null and no real Rider was enrolled for testing.
+- Re-verification now has a server-enforced online gate: qg_guard_rider_reverification_online blocks Rider metadata transitions from offline to online while the latest request is required, pending or rejected. Admin/service-role maintenance remains exempt. Native setOnline performs a friendly preflight, but the database trigger is authoritative even for old clients/direct PATCHes.
+- Production continuation migrations are 20261014063649 admin_rider_reverification_queue_v1 and 20261014063832 rider_reverification_online_gate_v1. The Admin queue is authenticated-only and re-checks active-admin status in qg_private; the gate trigger changes no Rider with no open re-verification request.
+- Backup backup/rider-grab-parity-release-before-reverification-20261014 retains 7220b29. PASS requires native-pilot and navigation-map-runtime on the exact successor HEAD.
+
 ## 2026-10-14 Rider Grab-parity consolidated Release Gate
 - Consolidated the post-PR224 Rider experience work onto one exact-head release-gate branch: privacy-safe demand heatmap, map-reuse runtime assertions, real customer compliments, detailed job history and Rider-managed public profile photo.
 - The branch name intentionally enters navigation-map-runtime so the retained Longdo renderer and the full Native pilot suite run on the same head. No PASS claim is allowed unless both are green.

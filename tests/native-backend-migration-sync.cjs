@@ -1,3 +1,4 @@
+// Rider Admin reverification v3 exact-head release gate.
 const fs=require('fs');
 const assert=require('assert');
 
@@ -44,5 +45,46 @@ for(const needle of [
   "revoke all on function public.qg_rider_set_profile_photo(text) from public, anon"
 ]){
   assert.ok(riderProfilePhotoMigration.includes(needle),'Rider profile photo migration missing contract: '+needle);
+}
+const reverificationMigration=read('supabase/migrations/20261014062750_rider_reverification_v1.sql');
+for(const needle of [
+  'qg_private.rider_reverification_requests',
+  'qg_rider_reverification_status',
+  'qg_rider_submit_reverification',
+  'qg_admin_request_rider_reverification',
+  'qg_admin_review_rider_reverification',
+  "revoke all on function public.qg_rider_reverification_status() from public, anon",
+  "revoke all on function public.qg_rider_submit_reverification(text) from public, anon"
+]){
+  assert.ok(reverificationMigration.includes(needle),'Rider reverification migration missing contract: '+needle);
+}
+const adminReverificationQueueMigration=read('supabase/migrations/20261014063649_admin_rider_reverification_queue_v1.sql');
+for(const needle of [
+  'qg_private.admin_rider_reverification_queue',
+  'qg_admin_rider_reverification_queue',
+  'admin required',
+  'public.is_active_admin()',
+  "revoke all on function public.qg_admin_rider_reverification_queue() from public, anon"
+]){
+  assert.ok(adminReverificationQueueMigration.includes(needle),'Admin Rider reverification queue migration missing contract: '+needle);
+}
+const reverificationOnlineGateMigration=read('supabase/migrations/20261014063832_rider_reverification_online_gate_v1.sql');
+for(const needle of [
+  'qg_private.guard_rider_reverification_online',
+  'qg_guard_rider_reverification_online',
+  "rr.status in ('required','pending','rejected')",
+  "revoke all on function qg_private.guard_rider_reverification_online() from public, anon, authenticated",
+  'rider identity reverification required'
+]){
+  assert.ok(reverificationOnlineGateMigration.includes(needle),'Rider reverification online gate migration missing contract: '+needle);
+}
+const reverificationReasonMigration=read('supabase/migrations/20261014064554_rider_reverification_reason_required_v1.sql');
+for(const needle of [
+  'v_reason := nullif(btrim(p_reason)',
+  'reverification reason required',
+  'reason=v_reason',
+  "values(p_rider_id,'required',v_reason)"
+]){
+  assert.ok(reverificationReasonMigration.includes(needle),'Rider reverification reason migration missing contract: '+needle);
 }
 console.log('Native backend migration mirror: PASS');
