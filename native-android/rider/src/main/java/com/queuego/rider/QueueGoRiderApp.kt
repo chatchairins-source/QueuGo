@@ -17,6 +17,7 @@ import com.queuego.shared.QueueGoTheme
 import com.queuego.shared.QueueGoVoiceCallOverlay
 import com.queuego.shared.NativeVoiceCallController
 import com.queuego.shared.NativeVoiceControllerState
+import com.queuego.shared.NativeVoicePhase
 import com.queuego.shared.NativeUser
 import com.queuego.shared.NativeSession
 import com.queuego.shared.NativeAuth
@@ -570,6 +571,14 @@ private fun RiderHome(
     ) { auth.asNativeVoiceAuth() }
     val voiceController = remember(auth.user.id) { NativeVoiceCallController(context) }
     val voiceState by voiceController.state.collectAsState()
+    val voiceAssistantEnabled by remember(context, auth.user.id) {
+        RiderVoiceAssistantSettings.enabled(context, auth.user.id)
+    }.collectAsState()
+    val voiceAssistantSpeaker = remember(auth.user.id) {
+        RiderVoiceAssistantSpeaker(context.applicationContext)
+    }
+    var lastSpokenOfferKey by rememberSaveable(auth.user.id) { mutableStateOf<String?>(null) }
+    var lastSpokenJobStageKey by rememberSaveable(auth.user.id) { mutableStateOf<String?>(null) }
     val navigationFix by RiderNavigationLocationStore.fix.collectAsState()
     val navigationSessionStartedMs by RiderNavigationLocationStore.sessionStartedElapsedRealtimeMs.collectAsState()
     var navigationGuidance by remember(auth.user.id) { mutableStateOf(NavigationGuidanceState()) }
@@ -579,6 +588,12 @@ private fun RiderHome(
     var dismissedUnexpectedStopEpisode by remember(auth.user.id) { mutableStateOf<Long?>(null) }
     var showUnexpectedStopSafety by remember(auth.user.id) { mutableStateOf(false) }
     DisposableEffect(voiceController) { onDispose { voiceController.close() } }
+    DisposableEffect(voiceAssistantSpeaker) { onDispose { voiceAssistantSpeaker.close() } }
+    LaunchedEffect(voiceAssistantEnabled, voiceState.phase) {
+        if (!voiceAssistantEnabled || voiceState.phase != NativeVoicePhase.IDLE) {
+            voiceAssistantSpeaker.stop()
+        }
+    }
     val pushStore = remember(context) { SessionStore(context) }
     val realtime = remember { NativeOrderRealtime() }
     val lifecycle = LocalLifecycleOwner.current.lifecycle
@@ -587,6 +602,44 @@ private fun RiderHome(
     var snapshot by remember(auth.user.id) {
         mutableStateOf<RiderSnapshot?>(pushStore.loadHomeSnapshot(auth.user.id))
     }
+
+    LaunchedEffect(
+        voiceAssistantEnabled,
+        voiceState.phase,
+        snapshot?.offeredJob?.id,
+        snapshot?.offeredJob?.offerExpiresAt
+    ) {
+        if (!voiceAssistantEnabled || voiceState.phase != NativeVoicePhase.IDLE) return@LaunchedEffect
+        val offer = snapshot?.offeredJob ?: return@LaunchedEffect
+        if (riderOfferSecondsLeft(offer.offerExpiresAt) <= 0) return@LaunchedEffect
+        val key = offer.id + ":" + (offer.offerExpiresAt ?: "")
+        if (key != lastSpokenOfferKey) {
+            lastSpokenOfferKey = key
+            delay(1_300L)
+            if (voiceAssistantEnabled && voiceState.phase == NativeVoicePhase.IDLE) {
+                voiceAssistantSpeaker.speak(riderVoiceOfferAnnouncement(), "offer:$key")
+            }
+        }
+    }
+
+    LaunchedEffect(
+        voiceAssistantEnabled,
+        voiceState.phase,
+        snapshot?.activeJob?.id,
+        snapshot?.activeJob?.status,
+        snapshot?.activeJob?.arrivedShopAt,
+        snapshot?.activeJob?.arrivedCustomerAt
+    ) {
+        if (!voiceAssistantEnabled || voiceState.phase != NativeVoicePhase.IDLE) return@LaunchedEffect
+        val job = snapshot?.activeJob ?: return@LaunchedEffect
+        val key = riderVoiceJobStageKey(job) ?: return@LaunchedEffect
+        val message = riderVoiceJobAnnouncement(job) ?: return@LaunchedEffect
+        if (key != lastSpokenJobStageKey) {
+            lastSpokenJobStageKey = key
+            voiceAssistantSpeaker.speak(message, "job:$key")
+        }
+    }
+
     var todaySummary by remember { mutableStateOf<RiderPeriodSummary?>(null) }
     var demandZones by remember(auth.user.id) { mutableStateOf<List<RiderDemandZone>>(emptyList()) }
     var destinationPreference by remember(auth.user.id) { mutableStateOf<RiderDestinationPreference?>(null) }

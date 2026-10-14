@@ -1,3 +1,11 @@
+## 2026-10-14 Grab Driver parity: unified GPS integrity + privacy-safe Voice Assistant
+- Unified the additive GPS-integrity diagnostics successor with QueueGo Voice Assistant v1 so the latest line keeps both capabilities instead of parallel PRs.
+- Voice Assistant remains opt-in and on-device. Android TextToSpeech reads only privacy-safe operational prompts: new targeted offer and authoritative job-stage changes. It never speaks customer/shop names, phone numbers, addresses, order amounts or other trip details.
+- Voice Assistant requests no microphone permission, records no audio and implements no speech recognition. Thai locale is preferred with device-locale fallback. TTS stops whenever QueueGo voice-call phase is not IDLE.
+- Stage deduplication includes shop/customer arrival flags, preventing repeated speech from Compose recomposition while still announcing a real arrival transition once. Offer speech waits briefly after the existing alert tone.
+- Preserves PR273 GPS mock-signal diagnostics at the foreground Fused Location boundary, Insurance Center, watchdog hardening, guided Learning, Large Order transparency and all earlier parity ancestry.
+- Backup backup/rider-location-integrity-before-voice-assistant-20261014 retains d0652d8. Exact-head native-pilot + navigation-map-runtime are required before PASS.
+
 ## 2026-10-14 Grab Driver parity mission: GPS / location integrity diagnostics
 - Continued from latest Insurance Center head 7136502 after re-checking all open PRs before work. Grab Driver contains mismatch / integrity-oriented modules; QueueGo previously filtered impossible coordinates, poor accuracy and impossible jumps but did not surface Android's own mock-location signal.
 - Added RiderLocationIntegrityStore at the retained foreground location service boundary. Every received Fused Location fix records Android's mock marker before normal accuracy/jump filtering so suspicious fixes cannot disappear silently just because the navigation smoother rejects them.
