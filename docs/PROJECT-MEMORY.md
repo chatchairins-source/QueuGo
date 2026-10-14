@@ -1,3 +1,9 @@
+## 2026-10-14 Grab Driver parity mission: Rider Safety Centre
+- Added a QueueGo-native Rider Safety Centre as the next capability category observed in the supplied Grab Driver package. No Grab UI/code/assets are copied.
+- Safety Centre uses verified Thai emergency contacts: 191 urgent police, 1669 national emergency medical service, and 1155 Tourist Police. All emergency actions use ACTION_DIAL, never direct-call permission, so the Rider must confirm the call in the phone app.
+- The panel surfaces the current QueueGo order number when a job is active and links to existing QueueGo Support for order/account issues. It does not expose or transmit live location, create emergency recordings, or invent fatigue/safety scores.
+- Official references checked before implementation: Thailand Government emergency number directory, NIEM 1669, and Tourist Police 1155. Backup backup/rider-grab-parity-rating-before-safety-20261014 retains 993ddbd. Successor work-native-rider-grab-parity-safety-20261014 requires its own CI before merge.
+
 ## 2026-10-14 Grab Driver parity mission: real Rider rating + Merchant identity
 - Continued from PR219 head 32df088b after backing it up at backup/rider-grab-parity-identity-before-rating-merchant-20261014. QueueGo Customer already had a real Rider card; Merchant lacked the equivalent and Rider did not surface the existing customer rider_rating data.
 - Production migration 20261014054747 rider_identity_rating_context_v1 adds owner-scoped Rider rating summary and shop-order-scoped Rider identity RPCs. Direct rider_profiles RLS remains unchanged. Public wrappers are SECURITY INVOKER with anon execute revoked; private definer helpers verify an active auth session and role/order ownership.
