@@ -106,6 +106,7 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -564,6 +565,7 @@ private fun RiderHome(
     onLogout: () -> Unit
 ) {
     val context = LocalContext.current
+    val eventFeedbackView = LocalView.current
     val scope = rememberCoroutineScope()
     val nativeVoiceAuth = remember(
         auth.user.id,
@@ -1455,6 +1457,10 @@ private fun RiderHome(
                             else -> "จัดส่งสำเร็จ"
                         }
 
+                        if (completedMode == "pickup" || completedMode == "marketPickup") {
+                            playRiderEventFeedback(eventFeedbackView, RiderEventFeedbackKind.PICKUP_SUCCESS)
+                        }
+
                         // The successful mutation is authoritative. Promote the local
                         // workflow immediately so a slow/failed snapshot refresh can
                         // never return Rider to the same verification/photo step.
@@ -1527,6 +1533,7 @@ private fun RiderHome(
                             openNavigation(context, nextStop)
                         }
                     }.onFailure {
+                        playRiderEventFeedback(eventFeedbackView, RiderEventFeedbackKind.ACTION_ERROR)
                         actionMessage = it.message ?: "บันทึกหลักฐานไม่สำเร็จ"
                     }
                     actionBusy = false
