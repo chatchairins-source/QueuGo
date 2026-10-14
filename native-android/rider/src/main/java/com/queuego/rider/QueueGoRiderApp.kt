@@ -2956,7 +2956,21 @@ private fun RiderHome(
             }
         }
         deliverySuccessJob?.let { completed ->
-            RiderDeliverySuccess(completed) { deliverySuccessJob = null }
+            val recommendation = riderAfterJobRecommendation(
+                zones = demandZones,
+                originLatitude = completed.deliveryLat,
+                originLongitude = completed.deliveryLng
+            )
+            RiderDeliverySuccess(
+                job = completed,
+                recommendation = recommendation,
+                onNavigateRecommendation = { next ->
+                    if (openAfterJobRecommendationNavigation(context, next)) {
+                        deliverySuccessJob = null
+                    }
+                },
+                onDismiss = { deliverySuccessJob = null }
+            )
         }
         deliveryIssueJob?.let { issueJob ->
             RiderDeliveryIssueDialog(
@@ -4202,6 +4216,40 @@ private fun openReturnNavigation(context: Context, state: RiderDeliveryReturn) {
     if (!runCatching { context.startActivity(mapsIntent) }.isSuccess) {
         RiderReturnService.stop(context)
     }
+}
+
+private fun openAfterJobRecommendationNavigation(
+    context: Context,
+    recommendation: RiderAfterJobRecommendation
+): Boolean {
+    if (!hasGoogleMaps(context)) {
+        openGoogleMapsInstallPage(context)
+        return false
+    }
+    if (!Settings.canDrawOverlays(context)) {
+        runCatching {
+            context.startActivity(
+                Intent(
+                    Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                    Uri.parse("package:" + context.packageName)
+                ).apply { addFlags(Intent.FLAG_ACTIVITY_NEW_TASK) }
+            )
+        }
+        return false
+    }
+
+    RiderReturnService.start(context)
+    val navigation = Uri.parse(
+        "google.navigation:q=" + recommendation.zone.latitude + "," +
+            recommendation.zone.longitude + "&mode=d"
+    )
+    val mapsIntent = Intent(Intent.ACTION_VIEW, navigation).apply {
+        setPackage(GOOGLE_MAPS_PACKAGE)
+        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+    }
+    val opened = runCatching { context.startActivity(mapsIntent) }.isSuccess
+    if (!opened) RiderReturnService.stop(context)
+    return opened
 }
 
 private fun openNavigation(context: Context, job: RiderJob) {
