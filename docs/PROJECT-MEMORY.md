@@ -1,3 +1,8 @@
+## 2026-10-14 Rider Message Center release hardening
+- Message Center unread badge is now server-backed even before Rider opens the Notifications subsection: foreground Home polls only unread notification IDs under the existing own-row RLS every 30 seconds and caps the bottom-nav count at 99.
+- A transient unread-count failure preserves the last server-confirmed count. A single notification is no longer optimistically marked read when the PATCH fails; navigation may still proceed through the existing order-reference authorization path while unread state remains server-accurate.
+- Added pure badge-boundary regression coverage. Backup backup/rider-message-center-before-unread-hardening-20261014 retains 4e8f712.
+
 ## 2026-10-14 Grab Driver parity unified release: Fatigue + Unplanned Stop + Message Center
 - Consolidated three parallel successors onto the current navigation-map release line instead of leaving Rider safety/messages split across PRs.
 - Preserves persistent server-backed Fatigue Safety from the current base: presence-history continuous/today online minutes and advisory rest levels only; no medical/drowsiness claim and no automatic work interruption.
