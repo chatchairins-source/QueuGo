@@ -21,11 +21,13 @@ class RiderAvailabilityReadinessTest {
             diagnostics = readyDiagnostics,
             firebaseConfigured = true,
             reverification = null,
-            reverificationLoaded = true
+            reverificationLoaded = true,
+            documents = RiderDocumentReadiness(blocking = false, items = emptyList()),
+            documentsLoaded = true
         )
         assertTrue(readiness.fullyReady)
-        assertEquals(8, readiness.readyCount)
-        assertEquals(8, readiness.totalCount)
+        assertEquals(9, readiness.readyCount)
+        assertEquals(9, readiness.totalCount)
     }
 
     @Test fun deviceBlockersAreVisibleBeforeGoOnlineAttempt() {
@@ -37,7 +39,9 @@ class RiderAvailabilityReadinessTest {
             ),
             firebaseConfigured = false,
             reverification = null,
-            reverificationLoaded = true
+            reverificationLoaded = true,
+            documents = RiderDocumentReadiness(blocking = false, items = emptyList()),
+            documentsLoaded = true
         )
         assertFalse(readiness.fullyReady)
         assertEquals(
@@ -60,7 +64,9 @@ class RiderAvailabilityReadinessTest {
                 reviewedAt = null,
                 reviewNote = "รูปไม่ชัด กรุณาถ่ายหน้าตรงใหม่"
             ),
-            reverificationLoaded = true
+            reverificationLoaded = true,
+            documents = RiderDocumentReadiness(blocking = false, items = emptyList()),
+            documentsLoaded = true
         )
         assertFalse(readiness.fullyReady)
         assertEquals(listOf("identity"), readiness.blocked.map { it.key })
@@ -72,10 +78,63 @@ class RiderAvailabilityReadinessTest {
             diagnostics = readyDiagnostics,
             firebaseConfigured = true,
             reverification = null,
-            reverificationLoaded = false
+            reverificationLoaded = false,
+            documents = RiderDocumentReadiness(blocking = false, items = emptyList()),
+            documentsLoaded = true
         )
         assertFalse(readiness.fullyReady)
-        assertEquals(7, readiness.readyCount)
+        assertEquals(8, readiness.readyCount)
         assertEquals(listOf("identity"), readiness.checking.map { it.key })
+    }
+
+    @Test fun expiredKnownDocumentBlocksButUnknownDatesDoNot() {
+        val unknown = riderAvailabilityReadiness(
+            diagnostics = readyDiagnostics,
+            firebaseConfigured = true,
+            reverification = null,
+            reverificationLoaded = true,
+            documents = RiderDocumentReadiness(
+                blocking = false,
+                items = listOf(
+                    RiderDocumentStatus("driver_license", "ใบขับขี่", null, null, null, "unknown", null)
+                )
+            ),
+            documentsLoaded = true
+        )
+        assertTrue(unknown.fullyReady)
+
+        val expired = riderAvailabilityReadiness(
+            diagnostics = readyDiagnostics,
+            firebaseConfigured = true,
+            reverification = null,
+            reverificationLoaded = true,
+            documents = RiderDocumentReadiness(
+                blocking = true,
+                items = listOf(
+                    RiderDocumentStatus("driver_license", "ใบขับขี่", null, null, "2026-10-01", "expired", -13)
+                )
+            ),
+            documentsLoaded = true
+        )
+        assertFalse(expired.fullyReady)
+        assertEquals(listOf("documents"), expired.blocked.map { it.key })
+    }
+
+    @Test fun expiringDocumentWarnsWithoutBlockingAvailability() {
+        val readiness = riderAvailabilityReadiness(
+            diagnostics = readyDiagnostics,
+            firebaseConfigured = true,
+            reverification = null,
+            reverificationLoaded = true,
+            documents = RiderDocumentReadiness(
+                blocking = false,
+                items = listOf(
+                    RiderDocumentStatus("national_id", "บัตรประชาชน", null, null, "2026-10-30", "expiring", 16)
+                )
+            ),
+            documentsLoaded = true
+        )
+        assertTrue(readiness.fullyReady)
+        assertEquals(RiderAvailabilityCheckState.READY, readiness.checks.single { it.key == "documents" }.state)
     }
 }
