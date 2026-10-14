@@ -63,6 +63,7 @@ internal fun RiderDeliveryIssueDialog(
     onDismiss: () -> Unit,
     onCallCustomer: () -> Unit,
     onOpenChat: () -> Unit,
+    networkAvailable: Boolean,
     onReported: (String) -> Unit
 ) {
     val scope = rememberCoroutineScope()
@@ -98,7 +99,7 @@ internal fun RiderDeliveryIssueDialog(
                             error = null
                             onCallCustomer()
                         },
-                        enabled = !busy,
+                        enabled = !busy && networkAvailable,
                         modifier = Modifier.weight(1f)
                     ) { Text("โทรหาลูกค้า") }
                     OutlinedButton(
@@ -107,7 +108,7 @@ internal fun RiderDeliveryIssueDialog(
                             error = null
                             onOpenChat()
                         },
-                        enabled = !busy,
+                        enabled = !busy && networkAvailable,
                         modifier = Modifier.weight(1f)
                     ) { Text("แชต") }
                 }
@@ -150,6 +151,9 @@ internal fun RiderDeliveryIssueDialog(
                     maxLines = 4
                 )
 
+                if (!networkAvailable) {
+                    Text(RIDER_NETWORK_GUARD_MESSAGE, color = QgRed, modifier = Modifier.padding(top = 2.dp))
+                }
                 error?.let {
                     Text(it, color = QgRed, modifier = Modifier.padding(top = 2.dp))
                 }
@@ -180,7 +184,7 @@ internal fun RiderDeliveryIssueDialog(
                         }
                     }
                 },
-                enabled = !busy
+                enabled = !busy && networkAvailable
             ) { Text(if (busy) "กำลังส่ง..." else "ส่งให้ฝ่ายดูแล") }
         }
     )
