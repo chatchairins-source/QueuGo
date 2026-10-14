@@ -4,7 +4,7 @@ import com.queuego.ridernavigationmap.NavigationGuidanceState
 
 private const val RIDER_UNPLANNED_STOP_MS = 10 * 60 * 1000L
 private const val RIDER_UNPLANNED_STOP_MIN_REMAINING_METERS = 150.0
-private const val RIDER_UNPLANNED_STOP_MOVING_KPH = 5
+private const val RIDER_UNPLANNED_STOP_MOVING_KPH = 2
 
 internal fun riderUnexpectedStopResetRequired(
     guidance: NavigationGuidanceState,
