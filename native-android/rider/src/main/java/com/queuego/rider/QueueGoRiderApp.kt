@@ -631,8 +631,10 @@ private fun RiderHome(
     var detailJob by remember { mutableStateOf<RiderJob?>(null) }
     var pendingPushReference by rememberSaveable(auth.user.id) { mutableStateOf<String?>(null) }
     var homeDetails by remember { mutableStateOf<RiderVerificationDetails?>(null) }
+    var activeLoadSummary by remember { mutableStateOf<RiderLoadSummary?>(null) }
     LaunchedEffect(snapshot?.activeJob?.id, auth.session.accessToken) {
         homeDetails = null
+        activeLoadSummary = null
         snapshot?.activeJob?.let { job ->
             try {
                 homeDetails = api.verificationDetails(auth, job.id)
@@ -641,11 +643,20 @@ private fun RiderHome(
             } catch (e: Exception) {
                 // Work controls remain available if metadata fails.
             }
+            activeLoadSummary = try {
+                api.orderLoadSummary(auth, job.id)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                null
+            }
         }
     }
     var offerShopDisplay by remember { mutableStateOf<RiderShopDisplay?>(null) }
+    var offerLoadSummary by remember { mutableStateOf<RiderLoadSummary?>(null) }
     LaunchedEffect(snapshot?.offeredJob?.id, auth.session.accessToken) {
         offerShopDisplay = null
+        offerLoadSummary = null
         snapshot?.offeredJob?.let { job ->
             try {
                 offerShopDisplay = api.offerShopDisplay(auth, job.id)
@@ -653,6 +664,13 @@ private fun RiderHome(
                 throw e
             } catch (_: Exception) {
                 // The offer remains actionable with its real order address if shop media is unavailable.
+            }
+            offerLoadSummary = try {
+                api.orderLoadSummary(auth, job.id)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                null
             }
         }
     }
@@ -2077,6 +2095,7 @@ private fun RiderHome(
                                 current.marketPickups.all { it.done }
                             ) activeJob.copy(status = "picked_up") else activeJob,
                             details = homeDetails,
+                            loadSummary = activeLoadSummary,
                             busy = actionBusy,
                             onDetails = { detailJob = current.activeJob },
                             onChat = { chatJob = current.activeJob },
@@ -2162,6 +2181,7 @@ private fun RiderHome(
                         OfferCard(
                             job = current.offeredJob,
                             shop = offerShopDisplay,
+                            loadSummary = offerLoadSummary,
                             riderLocation = lastKnownLocation(context),
                             busy = actionBusy,
                             onAccept = {
@@ -2419,6 +2439,7 @@ private fun RiderBottomNavigation(
 private fun OfferCard(
     job: RiderJob,
     shop: RiderShopDisplay?,
+    loadSummary: RiderLoadSummary?,
     riderLocation: Pair<Double, Double>?,
     busy: Boolean,
     onAccept: () -> Unit,
@@ -2492,6 +2513,8 @@ private fun OfferCard(
                 RiderOfferMetric("เวลาประมาณ", (deliveryKm?.let { kotlin.math.ceil(it / 25.0 * 60.0).toInt().coerceAtLeast(1).toString() } ?: "—") + " นาที", Modifier.weight(1f))
                 RiderOfferMetric("รายได้", riderMoneyBaht(job.deliveryFee), Modifier.weight(1f), highlight = true)
             }
+
+            RiderLoadSummaryBlock(loadSummary, compact = true)
 
             Row(
                 Modifier.fillMaxWidth().padding(top = 8.dp),
@@ -2587,6 +2610,7 @@ private fun MarketPickupPanel(
 private fun ActiveJobCard(
     job: RiderJob,
     details: RiderVerificationDetails?,
+    loadSummary: RiderLoadSummary?,
     busy: Boolean,
     onDetails: () -> Unit,
     onChat: () -> Unit,
@@ -2680,6 +2704,7 @@ private fun ActiveJobCard(
                     marketStallNo = details.marketStallNo
                 )
             }
+            if (pickup) RiderLoadSummaryBlock(loadSummary)
             details?.note?.let { note ->
                 Column(Modifier.fillMaxWidth().padding(top = 6.dp).background(Color(0xFFFFF9EA), RoundedCornerShape(14.dp)).padding(10.dp)) {
                     Text("หมายเหตุจากลูกค้า", color = QgMuted, fontSize = 8.sp)
@@ -2712,6 +2737,57 @@ private fun ActiveJobCard(
                 Spacer(Modifier.width(9.dp))
                 Text(primaryLabel, fontSize = 12.sp, fontWeight = FontWeight.Black)
             }
+        }
+    }
+}
+
+internal fun riderLoadSummaryLabel(summary: RiderLoadSummary): String? {
+    val weight = summary.weightKg ?: return null
+    val weightText = if (weight < 10.0) "%.1f".format(weight) else "%.0f".format(weight)
+    val capacity = summary.vehicleCapacityKg
+    val capacityText = capacity?.let { if (it < 10.0) "%.1f".format(it) else "%.0f".format(it) }
+    return buildString {
+        append("น้ำหนัก ").append(weightText).append(" กก.")
+        if (capacityText != null) append(" · รถรับได้ ").append(capacityText).append(" กก.")
+        summary.utilizationRatio?.takeIf { it.isFinite() && it >= 0.0 }?.let {
+            append(" · ").append((it * 100.0).toInt().coerceAtLeast(0)).append("%")
+        }
+    }
+}
+
+internal fun riderLoadSummaryStateLabel(state: String): String? = when (state) {
+    "near_capacity" -> "งานใหญ่ · ใกล้เต็มความจุรถ"
+    "over_capacity" -> "เกินความจุรถที่เลือก"
+    "capacity_unknown" -> "ยังไม่ทราบความจุรถ"
+    else -> null
+}
+
+@Composable
+private fun RiderLoadSummaryBlock(summary: RiderLoadSummary?, compact: Boolean = false) {
+    val current = summary ?: return
+    val label = riderLoadSummaryLabel(current) ?: return
+    val warning = riderLoadSummaryStateLabel(current.state)
+    val warningState = current.state in setOf("near_capacity", "over_capacity")
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .padding(top = if (compact) 6.dp else 7.dp)
+            .background(
+                if (warningState) Color(0xFFFFF3E8) else Color(0xFFF4F8FF),
+                RoundedCornerShape(12.dp)
+            )
+            .padding(horizontal = 9.dp, vertical = if (compact) 6.dp else 8.dp)
+    ) {
+        Text("ขนาดงาน", color = QgMuted, fontSize = 8.sp, fontWeight = FontWeight.Bold)
+        Text(label, fontSize = 10.sp, fontWeight = FontWeight.Black, modifier = Modifier.padding(top = 3.dp))
+        warning?.let {
+            Text(
+                it,
+                color = if (current.state == "over_capacity") QgRed else Color(0xFF9A6200),
+                fontSize = 9.sp,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(top = 3.dp)
+            )
         }
     }
 }
