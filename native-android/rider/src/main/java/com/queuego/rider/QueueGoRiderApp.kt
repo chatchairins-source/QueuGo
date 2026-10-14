@@ -2106,7 +2106,13 @@ private fun RiderHome(
                             missions = homeMissions,
                             diagnostics = readRiderDiagnostics(context),
                             documents = availabilityDocuments,
-                            documentsLoaded = current.online && availabilityDocumentsLoaded
+                            documentsLoaded = current.online && availabilityDocumentsLoaded,
+                            reverification = availabilityReverification,
+                            reverificationLoaded = current.online && availabilityReverificationLoaded,
+                            vehicleInspection = availabilityVehicleInspection,
+                            vehicleInspectionLoaded = current.online && availabilityVehicleInspectionLoaded,
+                            selectedVehicle = availabilitySelectedVehicle,
+                            vehiclesLoaded = current.online && availabilityVehiclesLoaded
                         )
                         RiderHomeActionCards(
                             cards = homeActionCards,
