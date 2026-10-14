@@ -1,8 +1,12 @@
 package com.queuego.ridernavigationmap
 
+import kotlinx.coroutines.CancellationException
+
 private const val ROUTE_PROGRESS_RENDER_STEP_METERS = 10.0
 private const val ROUTE_PROGRESS_NEAR_ARRIVAL_METERS = 25.0
 private const val ROUTE_PROGRESS_HIDE_REMAINING_METERS = 3.0
+private const val INITIAL_ROUTE_RETRY_BASE_MILLIS = 1_500L
+private const val INITIAL_ROUTE_RETRY_MAX_MILLIS = 12_000L
 
 data class NavigationRouteCoordinatorResult(
     val mapState: RiderNavigationMapState,
@@ -16,7 +20,7 @@ data class NavigationRouteCoordinatorResult(
 
 class NavigationRouteCoordinator(
     private val routeProvider: NavigationRouteProvider,
-    nowMillis: () -> Long = { System.currentTimeMillis() }
+    private val nowMillis: () -> Long = { System.currentTimeMillis() }
 ) {
     private val progressTracker = NavigationProgressTracker(nowMillis = nowMillis)
     private var activeStopId: String? = null
@@ -24,6 +28,9 @@ class NavigationRouteCoordinator(
     private var rerouteVersion: Int = 0
     private var visibleActiveSegment: NavigationRouteSegment? = null
     private var visibleProgressMeters: Double = 0.0
+    private var initialRouteFailureCount: Int = 0
+    private var nextInitialRouteAttemptAtMillis: Long = 0L
+    private var lastInitialRouteError: String? = null
 
     fun reset() {
         activeStopId = null
@@ -31,6 +38,7 @@ class NavigationRouteCoordinator(
         rerouteVersion = 0
         visibleActiveSegment = null
         visibleProgressMeters = 0.0
+        resetInitialRouteRetry()
         progressTracker.reset()
     }
 
@@ -57,6 +65,7 @@ class NavigationRouteCoordinator(
             rerouteVersion = 0
             visibleActiveSegment = null
             visibleProgressMeters = 0.0
+            resetInitialRouteRetry()
             progressTracker.reset()
         }
 
@@ -75,17 +84,28 @@ class NavigationRouteCoordinator(
         var routeError: String? = null
 
         if (activeLeg == null) {
-            try {
-                activeLeg = routeProvider.route(
-                    from = fix.point,
-                    stop = activeStop,
-                    segmentId = segmentId(activeStop.id, rerouteVersion)
-                )
-                visibleActiveSegment = activeLeg?.segment
-                visibleProgressMeters = 0.0
-                routeChanged = true
-            } catch (error: Throwable) {
-                routeError = error.message ?: "คำนวณเส้นทางไม่สำเร็จ"
+            val now = nowMillis()
+            if (now >= nextInitialRouteAttemptAtMillis) {
+                try {
+                    activeLeg = routeProvider.route(
+                        from = fix.point,
+                        stop = activeStop,
+                        segmentId = segmentId(activeStop.id, rerouteVersion)
+                    )
+                    visibleActiveSegment = activeLeg?.segment
+                    visibleProgressMeters = 0.0
+                    resetInitialRouteRetry()
+                    routeChanged = true
+                } catch (error: Throwable) {
+                    if (error is CancellationException) throw error
+                    routeError = error.message ?: "คำนวณเส้นทางไม่สำเร็จ"
+                    lastInitialRouteError = routeError
+                    initialRouteFailureCount += 1
+                    nextInitialRouteAttemptAtMillis =
+                        now + initialRouteRetryDelayMillis(initialRouteFailureCount)
+                }
+            } else {
+                routeError = lastInitialRouteError
             }
         }
 
@@ -114,6 +134,7 @@ class NavigationRouteCoordinator(
                 progressTracker.reset()
                 guidance = progressTracker.update(fix, replacement, activeStop)
             } catch (error: Throwable) {
+                if (error is CancellationException) throw error
                 routeError = error.message ?: "คำนวณเส้นทางใหม่ไม่สำเร็จ"
             }
         }
@@ -139,6 +160,18 @@ class NavigationRouteCoordinator(
             rerouted = rerouted,
             routeError = routeError
         )
+    }
+
+    private fun resetInitialRouteRetry() {
+        initialRouteFailureCount = 0
+        nextInitialRouteAttemptAtMillis = 0L
+        lastInitialRouteError = null
+    }
+
+    private fun initialRouteRetryDelayMillis(failureCount: Int): Long {
+        val exponent = (failureCount - 1).coerceIn(0, 3)
+        return (INITIAL_ROUTE_RETRY_BASE_MILLIS shl exponent)
+            .coerceAtMost(INITIAL_ROUTE_RETRY_MAX_MILLIS)
     }
 
     private fun segmentId(stopId: String, version: Int): String =

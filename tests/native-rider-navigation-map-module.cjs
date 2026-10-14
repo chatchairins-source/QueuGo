@@ -183,6 +183,13 @@ assert(
   integration.includes('remember(routeKey, stateKey)'),
   'Future route prefetch must be reusable only near the planned origin, expire safely, bypass reroutes and remain scoped to one Rider session');
 
+assert(
+  coordinator.includes('INITIAL_ROUTE_RETRY_BASE_MILLIS')&&
+  coordinator.includes('nextInitialRouteAttemptAtMillis')&&
+  coordinator.includes('initialRouteRetryDelayMillis')&&
+  coordinator.includes('if (error is CancellationException) throw error'),
+  'Initial route failures must back off instead of retrying on every GPS tick, while cancelled superseded requests must stop immediately');
+
 assert(map.includes('setPreserveEGLContextOnPause(true)'),
   'Navigation map must preserve the GL context across background/resume when Android allows it');
 assert(map.includes('announceRendererReplacement')&&
