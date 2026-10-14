@@ -133,7 +133,9 @@ assert(
   confidenceMetrics.includes('data class NavigationConfidenceMetrics')&&
   integration.includes('displayPipeline.metrics()')&&
   integration.includes('"QGNavShadow"')&&
-  integration.includes('BuildConfig.DEBUG')&&
+  integration.includes('ApplicationInfo.FLAG_DEBUGGABLE')&&
+  integration.includes('debugNavigationDiagnostics')&&
+  !integration.includes('BuildConfig.DEBUG')&&
   !integration.includes('rawFix.point.latitude')&&
   !integration.includes('rawFix.point.longitude'),
   'Shadow confidence rollout must be idempotent on equivalent backend refreshes and emit only aggregate debug diagnostics without coordinates');

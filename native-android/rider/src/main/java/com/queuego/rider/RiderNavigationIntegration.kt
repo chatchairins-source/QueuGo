@@ -1,6 +1,7 @@
 package com.queuego.rider
 
 import android.content.Context
+import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
 import android.util.Log
 import androidx.compose.runtime.Composable
@@ -207,6 +208,9 @@ internal fun QueueGoRiderNavigationMap(
     onMapReady: (Boolean) -> Unit
 ) {
     val context = LocalContext.current
+    val debugNavigationDiagnostics = remember(context) {
+        (context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
+    }
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     val sessionStore = remember(context) { SessionStore(context) }
     val initialCamera = remember(stateKey) {
@@ -311,7 +315,7 @@ internal fun QueueGoRiderNavigationMap(
                 return authoritativeState
             }
             val candidateDisplayState = displayPipeline.applyToDisplayState(authoritativeState)
-            if (BuildConfig.DEBUG && RIDER_NAV_CONFIDENCE_SHADOW_ENABLED) {
+            if (debugNavigationDiagnostics && RIDER_NAV_CONFIDENCE_SHADOW_ENABLED) {
                 val metrics = displayPipeline.metrics()
                 if (metrics.sampleCount >= lastLoggedShadowSample + 30L) {
                     lastLoggedShadowSample = metrics.sampleCount
