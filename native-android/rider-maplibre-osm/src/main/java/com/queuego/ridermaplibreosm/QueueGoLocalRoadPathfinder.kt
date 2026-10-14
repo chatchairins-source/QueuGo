@@ -60,7 +60,7 @@ private data class QueueGoPathPredecessor(
  * - treats destination/service access as a terminal phase: once entered, the path cannot
  *   leave the explicitly allowed destination-road set and use it as a through shortcut.
  */
-fun findQueueGoLocalRoadPath(
+internal fun findQueueGoLocalRoadPath(
     graph: QueueGoLocalRoadGraph,
     request: QueueGoLocalRoadPathRequest
 ): QueueGoLocalRoadPathResult {
