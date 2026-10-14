@@ -12,7 +12,7 @@ import java.security.PublicKey
 import java.security.Signature
 
 private const val QUEUEGO_LOCAL_ROAD_ENVELOPE_VERSION = 1
-private const val QUEUEGO_LOCAL_ROAD_MAX_SIGNED_PAYLOAD_BYTES = 8 * 1024 * 1024
+internal const val QUEUEGO_LOCAL_ROAD_MAX_SIGNED_PAYLOAD_BYTES = 8 * 1024 * 1024
 private const val QUEUEGO_LOCAL_ROAD_MAX_SIGNATURE_BYTES = 4 * 1024
 private const val QUEUEGO_LOCAL_ROAD_MAX_KEY_ID_LENGTH = 96
 
