@@ -163,6 +163,7 @@ class RiderNavigationLocationService : Service() {
 
         if (started) {
             locationUpdatesStarted = true
+            Log.i("QueueGoNavLocation", "foreground_updates_started")
         } else {
             callback = null
             stopSelf()
@@ -173,6 +174,7 @@ class RiderNavigationLocationService : Service() {
         locationUpdatesStarted = false
         callback?.let { runCatching { fusedClient.removeLocationUpdates(it) } }
         callback = null
+        Log.i("QueueGoNavLocation", "foreground_updates_stopped")
     }
 
     private fun accept(location: Location) {

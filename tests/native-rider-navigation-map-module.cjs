@@ -15,6 +15,8 @@ const workflow=fs.readFileSync('.github/workflows/build-native-rider-pilot.yml',
 const runtimeTest=fs.readFileSync('native-android/rider-navigation-map/src/androidTest/java/com/queuego/ridernavigationmap/NavigationMapRuntimeTest.kt','utf8');
 const runtimeActivity=fs.readFileSync('native-android/rider-navigation-map/src/debug/java/com/queuego/ridernavigationmap/NavigationMapRuntimeActivity.kt','utf8');
 const runtimeRunner=fs.readFileSync('native-android/qa/run-rider-navigation-map-runtime.py','utf8');
+const riderLaunchCapture=fs.readFileSync('native-android/qa/capture-rider-launch.py','utf8');
+const locationRuntimeTest=fs.readFileSync('native-android/rider/src/androidTest/java/com/queuego/rider/RiderNavigationLocationServiceRuntimeTest.kt','utf8');
 
 assert(settings.includes('":rider-navigation-map"'),
   'Standalone Rider navigation map module must be registered');
@@ -225,3 +227,12 @@ assert(workflow.includes('navigation-map-runtime:')&&
   'Standalone navigation map must have a dedicated Android runtime gate');
 
 console.log('Standalone Rider navigation map module contracts: PASS');
+
+assert(locationRuntimeTest.includes('RiderNavigationLocationService.start(it)')&&
+  locationRuntimeTest.includes('KEYCODE_HOME')&&
+  locationRuntimeTest.includes('isForeground=true')&&
+  locationRuntimeTest.includes('RiderNavigationLocationService.stop(context)')&&
+  riderLaunchCapture.includes('verify_navigation_location_foreground_runtime()')&&
+  riderLaunchCapture.includes('foreground_updates_started')&&
+  riderLaunchCapture.includes('foreground_updates_stopped'),
+  'Android runtime must prove the navigation location service starts from a visible Activity, survives Home, and stops cleanly');
