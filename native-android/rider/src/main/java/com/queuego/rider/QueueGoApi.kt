@@ -460,6 +460,41 @@ internal fun riderInsurancePoliciesFromRpc(raw: Any?): List<RiderInsurancePolicy
     }
 }
 
+internal fun riderBenefitsFromRpc(raw: Any?): List<RiderBenefit> {
+    val rows = when (raw) {
+        is JSONArray -> raw
+        is JSONObject -> JSONArray().put(raw)
+        else -> JSONArray()
+    }
+    return buildList {
+        for (index in 0 until rows.length()) {
+            val row = rows.optJSONObject(index) ?: continue
+            val id = riderNullableText(row.optString("benefit_id")) ?: continue
+            val provider = riderNullableText(row.optString("provider_name")) ?: continue
+            val title = riderNullableText(row.optString("title")) ?: continue
+            val starts = riderNullableText(row.optString("starts_on")) ?: continue
+            val category = riderNullableText(row.optString("category"))
+                ?.takeIf { it in setOf("fuel","maintenance","food","telecom","health","other") }
+                ?: "other"
+            add(
+                RiderBenefit(
+                    id = id,
+                    category = category,
+                    providerName = provider,
+                    title = title,
+                    description = riderNullableText(row.optString("description")),
+                    startsOn = starts,
+                    expiresOn = riderNullableText(row.optString("expires_on")),
+                    actionLabel = riderNullableText(row.optString("action_label")),
+                    actionUrl = riderNullableText(row.optString("action_url"))
+                        ?.takeIf { it.startsWith("https://") },
+                    supportPhone = riderNullableText(row.optString("support_phone"))
+                )
+            )
+        }
+    }
+}
+
 class QueueGoApi {
     companion object {
         private const val BASE_URL = "https://pkypiqhlrmzocysgeqew.supabase.co"
@@ -1077,6 +1112,13 @@ class QueueGoApi {
         withContext(Dispatchers.IO) {
             riderInsurancePoliciesFromRpc(
                 rpc("qg_rider_insurance_policies", auth.session.accessToken, JSONObject())
+            )
+        }
+
+    suspend fun benefits(auth: QueueGoAuth): List<RiderBenefit> =
+        withContext(Dispatchers.IO) {
+            riderBenefitsFromRpc(
+                rpc("qg_rider_benefits", auth.session.accessToken, JSONObject())
             )
         }
 
