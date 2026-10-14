@@ -190,6 +190,13 @@ assert(
   coordinator.includes('if (error is CancellationException) throw error'),
   'Initial route failures must back off instead of retrying on every GPS tick, while cancelled superseded requests must stop immediately');
 
+assert(
+  route.includes('suspendCancellableCoroutine')&&
+  route.includes('continuation.invokeOnCancellation { call.cancel() }')&&
+  route.includes('call.enqueue(')&&
+  !route.includes('.execute().use'),
+  'Superseded route work must cancel the underlying OkHttp Call instead of leaving a blocking request alive until timeout');
+
 assert(map.includes('setPreserveEGLContextOnPause(true)'),
   'Navigation map must preserve the GL context across background/resume when Android allows it');
 assert(map.includes('announceRendererReplacement')&&
