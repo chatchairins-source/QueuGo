@@ -1,3 +1,9 @@
+## 2026-10-14 Grab Driver parity successor: ETA HUD + local Runtime/Map diagnostics
+- Continued from ETA HUD v2 head 0b1d601 so authoritative distance/ETA/next-turn guidance and the unified Learning/Missions/Safety stack remain intact.
+- Wired the already-existing NavigationMapDiagnostics callback into Rider Diagnostics instead of creating a second telemetry engine. Rider can now inspect view/map creation, map replacement, render pass, route rebuild and snapshot-bridge-failure counters from the retained Longdo renderer.
+- Android 11+ Diagnostics also reads the most recent ApplicationExitInfo reason locally to distinguish crash/ANR/low-memory/resource exits from normal user-requested close or app update. Exit history is never uploaded.
+- No new GPS stream, renderer, network call, table or Production mutation. Backup backup/rider-eta-before-runtime-diagnostics-20261014 retains 0b1d601. Exact-head native-pilot + navigation-map-runtime remain required before PASS.
+
 ## 2026-10-14 Grab Driver parity: ETA HUD rebased onto latest unified safety head
 - Rebased the route ETA HUD onto 5abe6a1 after the consolidated Rider branch advanced with exact Production emergency-contact migration fixes. Rider Home and navigation integration were byte-identical across the rebase base, so the ETA view carries without overwriting those fixes.
 - HUD remains read-only: next-stop route distance, Longdo ETA when present and next turn instruction. Weak GPS/off-route hides the values and no fallback ETA is invented.

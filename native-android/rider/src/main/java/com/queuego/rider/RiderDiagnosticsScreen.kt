@@ -84,6 +84,9 @@ internal fun RiderDiagnosticsScreen(
     val context = LocalContext.current
     var refresh by remember { mutableIntStateOf(0) }
     val diagnostics = remember(refresh) { readRiderDiagnostics(context) }
+    val lastExit = remember(refresh) { readRiderLastProcessExit(context) }
+    val mapDiagnostics by RiderRuntimeDiagnosticsStore.mapDiagnostics.collectAsState()
+    val mapHealth = remember(mapDiagnostics) { mapDiagnostics?.let(::riderMapRuntimeHealth) }
 
     fun launch(intent: Intent) {
         runCatching { context.startActivity(intent) }
@@ -155,6 +158,22 @@ internal fun RiderDiagnosticsScreen(
             launch(appDetailsIntent(context))
         }
 
+        Spacer(Modifier.height(12.dp))
+        Text("ประสิทธิภาพแอปและแผนที่", color = QgMuted, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+        Spacer(Modifier.height(6.dp))
+        RiderRuntimeInfoCard(
+            title = "Map session",
+            headline = mapHealth?.headline ?: "ยังไม่มีข้อมูลแผนที่ใน session นี้",
+            detail = mapHealth?.detail ?: "เปิดหน้า Home/แผนที่อย่างน้อยหนึ่งครั้งเพื่อดูสถานะ reuse",
+            healthy = mapHealth?.healthy
+        )
+        RiderRuntimeInfoCard(
+            title = "การปิดแอปครั้งก่อน",
+            headline = lastExit?.label ?: "ไม่พบ crash/exit history ที่อ่านได้",
+            detail = lastExit?.detail ?: "Android จะเก็บข้อมูลนี้เฉพาะเวอร์ชันที่รองรับ",
+            healthy = lastExit?.problematic?.not()
+        )
+
         Spacer(Modifier.height(10.dp))
         OutlinedButton(
             onClick = { refresh += 1 },
@@ -203,6 +222,58 @@ private fun RiderDiagnosticRow(
                 TextButton(onClick = onFix) {
                     Text("ตั้งค่า", color = QgRed, fontWeight = FontWeight.Bold, fontSize = 10.sp)
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun RiderRuntimeInfoCard(
+    title: String,
+    headline: String,
+    detail: String,
+    healthy: Boolean?
+) {
+    Card(
+        Modifier.fillMaxWidth().padding(bottom = 7.dp),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        border = BorderStroke(1.dp, Color(0xFFEEE6E8))
+    ) {
+        Row(
+            Modifier.fillMaxWidth().padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Box(
+                Modifier.size(28.dp).background(
+                    when (healthy) {
+                        true -> Color(0xFFE8F7F1)
+                        false -> Color(0xFFFFECEE)
+                        null -> Color(0xFFF2F2F3)
+                    },
+                    CircleShape
+                ),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    when (healthy) {
+                        true -> "✓"
+                        false -> "!"
+                        null -> "i"
+                    },
+                    color = when (healthy) {
+                        true -> Color(0xFF12845E)
+                        false -> QgRed
+                        null -> QgMuted
+                    },
+                    fontWeight = FontWeight.Black
+                )
+            }
+            Column(Modifier.weight(1f)) {
+                Text(title, color = QgMuted, fontSize = 8.5.sp, fontWeight = FontWeight.Bold)
+                Text(headline, fontWeight = FontWeight.Bold, fontSize = 11.sp, modifier = Modifier.padding(top = 2.dp))
+                Text(detail, color = QgMuted, fontSize = 8.5.sp, lineHeight = 11.sp, modifier = Modifier.padding(top = 3.dp))
             }
         }
     }
