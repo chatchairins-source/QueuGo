@@ -30,7 +30,7 @@ class RiderEventFeedbackTest {
     }
 
     @Test fun everyPatternStaysBriefEnoughForDrivingWorkflow() {
-        RiderEventFeedbackKind.entries.forEach { kind ->
+        RiderEventFeedbackKind.values().forEach { kind ->
             val spec = riderEventFeedbackSpec(kind)
             val duration = spec.tones.sumOf { it.second.toLong() } + spec.gapsMs.sum()
             assertTrue("$kind feedback is too long", duration <= 900L)
