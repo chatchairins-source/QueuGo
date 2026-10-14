@@ -32,6 +32,8 @@ import java.util.Locale
 fun RiderEarningsScreen(auth: QueueGoAuth, api: QueueGoApi, onBack: () -> Unit, modifier: Modifier = Modifier) {
     var days by remember { mutableIntStateOf(1) }
     var summary by remember { mutableStateOf<RiderPeriodSummary?>(null) }
+    var offerPerformance by remember { mutableStateOf<RiderOfferPerformance?>(null) }
+    var offerPerformanceError by remember { mutableStateOf<String?>(null) }
     var ledger by remember { mutableStateOf<List<RiderCashLedgerEntry>?>(null) }
     var historyDetails by remember { mutableStateOf<List<RiderHistoryOrder>>(emptyList()) }
     var missions by remember { mutableStateOf<List<RiderMission>?>(null) }
@@ -54,6 +56,17 @@ fun RiderEarningsScreen(auth: QueueGoAuth, api: QueueGoApi, onBack: () -> Unit, 
     LaunchedEffect(auth.session.accessToken, days) {
         summary = null; summaryError = null
         try { summary = api.periodSummary(auth, days) } catch (e: CancellationException) { throw e } catch (e: Exception) { summaryError = "โหลดสรุปงานไม่สำเร็จ: " + (e.message ?: "เชื่อมต่อไม่ได้") }
+    }
+    LaunchedEffect(auth.session.accessToken, days) {
+        offerPerformance = null
+        offerPerformanceError = null
+        try {
+            offerPerformance = api.offerPerformance(auth, days)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            offerPerformanceError = "โหลดสถิติข้อเสนอไม่สำเร็จ: " + (e.message ?: "เชื่อมต่อไม่ได้")
+        }
     }
     LaunchedEffect(auth.session.accessToken, days) {
         ledger = null; ledgerError = null
@@ -145,6 +158,46 @@ fun RiderEarningsScreen(auth: QueueGoAuth, api: QueueGoApi, onBack: () -> Unit, 
                         color = QgMuted,
                         fontSize = 8.sp,
                         modifier = Modifier.padding(top = 9.dp)
+                    )
+                }
+            }
+        }
+        when {
+            offerPerformanceError != null -> RiderEarnError(offerPerformanceError!!)
+            offerPerformance == null -> RiderEarnLoading("กำลังโหลดสถิติข้อเสนอ…")
+            offerPerformance!!.offered <= 0 -> {
+                Spacer(Modifier.height(12.dp))
+                RiderEarningsCard {
+                    RiderEarnSectionTitle("การตอบรับข้อเสนอ", if (days == 1) "วันนี้" else "$days วัน")
+                    Text("ยังไม่มีข้อเสนอ Rider ในช่วงที่เลือก", color = QgMuted, fontSize = 10.sp, modifier = Modifier.padding(top = 10.dp))
+                }
+            }
+            else -> {
+                val offers = offerPerformance!!
+                Spacer(Modifier.height(12.dp))
+                RiderEarningsCard {
+                    RiderEarnSectionTitle("การตอบรับข้อเสนอ", if (days == 1) "วันนี้" else "$days วัน")
+                    Spacer(Modifier.height(10.dp))
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        RiderCashStat("ข้อเสนอ", offers.offered.toString() + " งาน", Modifier.weight(1f))
+                        RiderCashStat("รับงาน", offers.accepted.toString() + " งาน", Modifier.weight(1f))
+                    }
+                    Spacer(Modifier.height(8.dp))
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        RiderCashStat("อัตรารับงาน", offers.acceptanceRate?.let(::riderOfferPercent) ?: "—", Modifier.weight(1f))
+                        RiderCashStat("ตอบข้อเสนอ", offers.responseRate?.let(::riderOfferPercent) ?: "—", Modifier.weight(1f))
+                    }
+                    Spacer(Modifier.height(8.dp))
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        RiderCashStat("หมดเวลา / ไม่ตอบ", offers.expired.toString() + " งาน", Modifier.weight(1f))
+                        RiderCashStat("ปฏิเสธ", offers.declined.toString() + " งาน", Modifier.weight(1f))
+                    }
+                    offers.averageResponseSeconds?.let {
+                        Text("เวลาตอบเฉลี่ย " + riderOfferResponseTime(it), color = QgMuted, fontSize = 9.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 9.dp))
+                    }
+                    Text(
+                        "คำนวณจากข้อเสนอจริงที่ระบบส่งถึงบัญชี Rider นี้ · หมดเวลาคือข้อเสนอที่ไม่ได้รับหรือปฏิเสธก่อนหมดเวลา",
+                        color = QgMuted, fontSize = 8.sp, lineHeight = 11.sp, modifier = Modifier.padding(top = 7.dp)
                     )
                 }
             }
@@ -457,6 +510,15 @@ internal fun riderHistoryCompletedLabel(raw: String?): String? {
         .ofPattern("d MMM · HH:mm", Locale("th", "TH"))
         .withZone(ZoneId.of("Asia/Bangkok"))
     return formatter.format(instant)
+}
+
+internal fun riderOfferPercent(value: Double): String =
+    String.format(Locale.US, "%.1f%%", value.coerceIn(0.0, 100.0))
+
+internal fun riderOfferResponseTime(seconds: Double): String {
+    val safe = seconds.coerceAtLeast(0.0)
+    return if (safe < 60.0) String.format(Locale.US, "%.1f วินาที", safe)
+    else String.format(Locale.US, "%.1f นาที", safe / 60.0)
 }
 
 private fun baht(value: Double) = riderMoneyBaht(value, fixedCashDecimals = true)

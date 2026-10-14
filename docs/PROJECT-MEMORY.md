@@ -1,3 +1,8 @@
+## 2026-10-14 Consolidated Rider parity: runtime diagnostics + real offer performance
+- Rebased both parity additions onto current unified Learning/Missions/Safety/ETA head 3b41353 instead of continuing older red ancestry. Runtime diagnostics reuses NavigationMapDiagnostics and local Android exit history only; offer performance uses the already-applied Rider-only aggregate RPC over server-owned offer history.
+- No new GPS stream, map renderer, direct offer-history access, dispatch mutation or fake rate. Today/7/30 offer metrics are real aggregates; empty periods render no invented percentage.
+- Backup backup/rider-grab-parity-before-consolidated-destination-20261014 retains 3b41353. Exact-head native-pilot + navigation-map-runtime remain required.
+
 ## 2026-10-14 Grab Driver parity release scope lock: authoritative ETA HUD
 - Pulled PR246 ETA HUD onto the single Rider release line after verifying it reads only the existing Longdo NavigationGuidanceState. It does not request routes, change reroute/camera behavior or create another GPS stream.
 - Active work can now show real remaining route distance, Longdo-provided ETA when available, and parsed next-turn/road guidance. Weak-GPS or off-route guidance hides the HUD; missing ETA never falls back to an invented speed estimate.
