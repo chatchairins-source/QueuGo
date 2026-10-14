@@ -2955,8 +2955,25 @@ private fun RiderHome(
                 messageNotice?.let { RiderMessageNotice(it, Modifier) }
             }
         }
+        val afterWorkRecommendation = riderAfterWorkRecommendation(
+            online = snapshot?.online == true,
+            stopAfterWorkPending = stopAfterWorkPending,
+            missions = homeMissions,
+            demandZones = demandZones
+        )
         deliverySuccessJob?.let { completed ->
-            RiderDeliverySuccess(completed) { deliverySuccessJob = null }
+            RiderDeliverySuccess(
+                job = completed,
+                recommendation = afterWorkRecommendation,
+                onRecommendation = { target ->
+                    deliverySuccessJob = null
+                    activeTab = when (target) {
+                        RiderAfterWorkRecommendationTarget.HOME -> "home"
+                        RiderAfterWorkRecommendationTarget.EARNINGS -> "earn"
+                    }
+                },
+                onDismiss = { deliverySuccessJob = null }
+            )
         }
         deliveryIssueJob?.let { issueJob ->
             RiderDeliveryIssueDialog(
