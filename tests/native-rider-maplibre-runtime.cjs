@@ -18,8 +18,15 @@ assert(runtime.includes('repeat(60)')&&
   runtime.includes('Tab return recreated MapLibreMap')&&
   runtime.includes('Resume reloaded style'),
   'MapLibre runtime must prove 60 refreshes, tab return and resume keep the same renderer/style');
-assert(activity.includes('asset://queuego-runtime-tilejson.json'),
-  'MapLibre runtime must use an APK-local vector source and avoid external-network flakiness');
+assert(activity.includes('MapLibreOsmConfig.localPmTiles(')&&
+  activity.includes('assets.open("queuego-runtime.pmtiles")')&&
+  activity.includes('File(filesDir, "queuego-runtime.pmtiles")')&&
+  !activity.includes('http://')&&!activity.includes('https://'),
+  'MapLibre runtime must copy an APK test archive into app storage and open it with pmtiles://file:// without external network');
+assert(view.includes('queryRenderedFeatures(viewport, layerId)')&&
+  runtime.includes('Local PMTiles residential road was not decoded and rendered')&&
+  runtime.includes('renderedResidentialRoadCount()'),
+  'MapLibre runtime must prove a residential road feature is decoded and rendered from the local PMTiles archive');
 assert(runner.includes(':rider-maplibre-osm:connectedDebugAndroidTest')&&
   runner.includes('QUEUEGO_MAPLIBRE_OSM_RUNTIME_PASS'),
   'MapLibre runtime runner must execute the module connected Android test');

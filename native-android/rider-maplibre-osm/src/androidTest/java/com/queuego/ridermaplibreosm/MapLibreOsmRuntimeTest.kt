@@ -26,7 +26,24 @@ class MapLibreOsmRuntimeTest {
                 initialView = it.mapViewIdentity()
                 initialMap = it.mapIdentity()
                 assertEquals(1, it.styleApplyCount())
+                assertTrue("Runtime source is not local PMTiles", it.usesLocalPmTiles())
             }
+
+            val renderDeadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(10)
+            var renderedResidentialRoads = 0
+            while (renderedResidentialRoads == 0 && System.nanoTime() < renderDeadline) {
+                scenario.onActivity {
+                    renderedResidentialRoads = it.renderedResidentialRoadCount()
+                }
+                if (renderedResidentialRoads == 0) {
+                    Thread.sleep(100)
+                    InstrumentationRegistry.getInstrumentation().waitForIdleSync()
+                }
+            }
+            assertTrue(
+                "Local PMTiles residential road was not decoded and rendered",
+                renderedResidentialRoads > 0
+            )
 
             repeat(60) { step ->
                 scenario.onActivity { it.refreshCamera(step + 1) }
@@ -64,6 +81,10 @@ class MapLibreOsmRuntimeTest {
                 assertEquals("Resume recreated MapLibreMap", initialMap, it.mapIdentity())
                 assertEquals("Resume reloaded style", 1, it.styleApplyCount())
                 assertFalse("MapLibre view destroyed during ordinary lifecycle", it.mapDestroyed())
+                assertTrue(
+                    "Local PMTiles residential road disappeared after resume",
+                    it.renderedResidentialRoadCount() > 0
+                )
             }
         }
     }

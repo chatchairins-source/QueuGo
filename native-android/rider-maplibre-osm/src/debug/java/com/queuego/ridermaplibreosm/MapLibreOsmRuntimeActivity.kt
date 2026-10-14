@@ -4,6 +4,7 @@ import android.app.Activity
 import android.os.Bundle
 import android.view.ViewGroup
 import android.widget.FrameLayout
+import java.io.File
 import java.util.concurrent.CountDownLatch
 
 class MapLibreOsmRuntimeActivity : Activity() {
@@ -11,16 +12,21 @@ class MapLibreOsmRuntimeActivity : Activity() {
 
     private lateinit var root: FrameLayout
     private lateinit var mapView: QueueGoMapLibreOsmView
-
-    private val baseConfig = MapLibreOsmConfig(
-        sourceUri = "asset://queuego-runtime-tilejson.json",
-        initialLatitude = 14.9820,
-        initialLongitude = 103.1020,
-        initialZoom = 16.0
-    )
+    private lateinit var baseConfig: MapLibreOsmConfig
+    private lateinit var runtimePmTiles: File
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        runtimePmTiles = File(filesDir, "queuego-runtime.pmtiles")
+        assets.open("queuego-runtime.pmtiles").use { input ->
+            runtimePmTiles.outputStream().use { output -> input.copyTo(output) }
+        }
+        baseConfig = MapLibreOsmConfig.localPmTiles(
+            file = runtimePmTiles,
+            initialLatitude = 14.9820,
+            initialLongitude = 103.1020,
+            initialZoom = 16.0
+        )
         root = FrameLayout(this)
         setContentView(root)
         mapView = QueueGoMapLibreOsmView(this).apply {
@@ -100,6 +106,12 @@ class MapLibreOsmRuntimeActivity : Activity() {
             )
         }
     }
+
+    fun usesLocalPmTiles(): Boolean =
+        baseConfig.isOfflinePmTiles && runtimePmTiles.isFile && runtimePmTiles.length() > 0L
+
+    fun renderedResidentialRoadCount(): Int =
+        mapView.renderedFeatureCount("queuego-road-residential")
 
     fun mapViewIdentity(): Int = mapView.mapViewIdentity()
     fun mapIdentity(): Int = requireNotNull(mapView.mapIdentity())
