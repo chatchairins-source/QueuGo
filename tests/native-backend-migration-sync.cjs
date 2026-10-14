@@ -126,4 +126,18 @@ for(const needle of [
 ]){
   assert.ok(offerPerformanceMigration.includes(needle),'Rider offer performance migration missing contract: '+needle);
 }
+const destinationMigration=read('supabase/migrations/20261014071752_rider_my_destination_soft_dispatch_v1.sql');
+for(const needle of [
+  'qg_private.rider_destination_preferences',
+  'qg_rider_destination_preference',
+  'qg_rider_set_destination_preference',
+  'left join qg_private.rider_destination_preferences',
+  "now()+interval '30 seconds'",
+  'qg_private.approx_distance_km',
+  ') >= 1.0',
+  "revoke all on table qg_private.rider_destination_preferences from public, anon, authenticated",
+  "revoke all on function public.qg_rider_destination_preference() from public, anon"
+]){
+  assert.ok(destinationMigration.includes(needle),'Rider My Destination migration missing contract: '+needle);
+}
 console.log('Native backend migration mirror: PASS');
