@@ -43,7 +43,7 @@ class QueueGoMapLibreOsmView @JvmOverloads constructor(
         val previous = currentConfig
         currentConfig = config
         val readyMap = map ?: return
-        if (previous?.tileJsonUrl != config.tileJsonUrl) {
+        if (previous?.sourceUri != config.sourceUri) {
             applyConfig(config)
         } else if (
             previous.initialLatitude != config.initialLatitude ||
@@ -56,7 +56,7 @@ class QueueGoMapLibreOsmView @JvmOverloads constructor(
 
     private fun applyConfig(config: MapLibreOsmConfig) {
         val readyMap = map ?: return
-        readyMap.setStyle(ShortbreadVillageStyle.builder(config.tileJsonUrl)) {
+        readyMap.setStyle(ShortbreadVillageStyle.builder(config.sourceUri)) {
             applyCamera(readyMap, config)
             onMapReady?.invoke(readyMap)
         }

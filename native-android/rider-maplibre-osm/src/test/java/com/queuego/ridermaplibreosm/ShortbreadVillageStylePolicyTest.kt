@@ -1,6 +1,7 @@
 package com.queuego.ridermaplibreosm
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -14,6 +15,10 @@ class ShortbreadVillageStylePolicyTest {
         assertTrue(byKind.getValue("unclassified").minZoom <= 12f)
         assertTrue(byKind.getValue("living_street").minZoom <= 13f)
         assertTrue(byKind.getValue("service").minZoom <= 13f)
+        assertFalse(
+            "Shortbread does not guarantee a land source-layer",
+            ShortbreadVillageStyle::class.java.declaredFields.any { it.name == "SOURCE_LAYER_LAND" }
+        )
     }
 
     @Test fun localRoadsGrowAtCloseNavigationZoom() {

@@ -29,7 +29,6 @@ data class ShortbreadRoadPolicy(
 object ShortbreadVillageStyle {
     const val SOURCE_ID = "queuego-osm-shortbread"
     const val SOURCE_LAYER_STREETS = "streets"
-    const val SOURCE_LAYER_LAND = "land"
     const val SOURCE_LAYER_WATER = "water_polygons"
     const val SOURCE_LAYER_BUILDINGS = "buildings"
 
@@ -52,14 +51,6 @@ object ShortbreadVillageStyle {
                 BackgroundLayer("queuego-background").withProperties(
                     backgroundColor("#f3f0e9")
                 )
-            )
-            .withLayer(
-                FillLayer("queuego-land", SOURCE_ID)
-                    .withSourceLayer(SOURCE_LAYER_LAND)
-                    .withProperties(
-                        fillColor("#ece9e2"),
-                        fillOpacity(1.0f)
-                    )
             )
             .withLayer(
                 FillLayer("queuego-water", SOURCE_ID)
