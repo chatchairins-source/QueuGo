@@ -77,6 +77,64 @@ class NavigationSignalPipelineTest {
     }
 
     @Test
+    fun lowConfidenceMatchHoldsLastDisplayForTwoSamplesBeforeRelease() {
+        val shortRoute = NavigationRouteSegment(
+            id = "short",
+            toStopId = "shop",
+            points = listOf(
+                NavigationMapPoint(13.0000, 100.0000),
+                NavigationMapPoint(13.0000, 100.0040)
+            ),
+            style = NavigationRouteStyle.ACTIVE
+        )
+        val pipeline = NavigationSignalPipeline()
+        val first = pipeline.update(
+            NavigationMapFix(
+                point = NavigationMapPoint(13.0000, 100.0010),
+                bearingDegrees = 90f,
+                accuracyMeters = 8f,
+                speedMetersPerSecond = 6f,
+                elapsedRealtimeNanos = 1_000_000_000L
+            ),
+            shortRoute
+        )
+        val ambiguous1 = pipeline.update(
+            NavigationMapFix(
+                point = NavigationMapPoint(13.00035, 100.0011),
+                bearingDegrees = 270f,
+                accuracyMeters = 18f,
+                speedMetersPerSecond = 6f,
+                elapsedRealtimeNanos = 2_000_000_000L
+            ),
+            shortRoute
+        )
+        val ambiguous2 = pipeline.update(
+            NavigationMapFix(
+                point = NavigationMapPoint(13.00036, 100.0012),
+                bearingDegrees = 270f,
+                accuracyMeters = 18f,
+                speedMetersPerSecond = 6f,
+                elapsedRealtimeNanos = 3_000_000_000L
+            ),
+            shortRoute
+        )
+        val ambiguous3 = pipeline.update(
+            NavigationMapFix(
+                point = NavigationMapPoint(13.00037, 100.0013),
+                bearingDegrees = 270f,
+                accuracyMeters = 18f,
+                speedMetersPerSecond = 6f,
+                elapsedRealtimeNanos = 4_000_000_000L
+            ),
+            shortRoute
+        )
+
+        assertEquals(first.displayFix, ambiguous1.displayFix)
+        assertEquals(first.displayFix, ambiguous2.displayFix)
+        assertTrue(ambiguous3.displayFix != first.displayFix)
+    }
+
+    @Test
     fun weakGpsJitterFreezesAtLastGoodDisplayFix() {
         val pipeline = NavigationSignalPipeline()
         val first = pipeline.update(
