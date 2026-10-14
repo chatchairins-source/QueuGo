@@ -157,6 +157,7 @@ class NavigationMapRuntimeTest {
             assertTrue(initialDiagnostics.stopMutationCount >= 2)
 
             val beforeGpsRender = runtimeActivity.latestDiagnostics.renderPassCount
+            scenario.onActivity { it.startFrameTimingCapture() }
             repeat(60) { index ->
                 val beforeTick = runtimeActivity.latestDiagnostics.renderPassCount
                 scenario.onActivity { it.refreshRiderFix(index + 1) }
@@ -164,6 +165,22 @@ class NavigationMapRuntimeTest {
                 awaitAppliedRender(runtimeActivity, beforeTick)
             }
             awaitAppliedRender(runtimeActivity, beforeGpsRender)
+            var frameTiming = NavigationRuntimeFrameTiming(0, 0.0, 0.0)
+            scenario.onActivity { frameTiming = it.stopFrameTimingCapture() }
+            assertTrue(
+                "GPS stress did not produce enough UI frames for timing diagnostics",
+                frameTiming.frameCount >= 30
+            )
+            assertTrue(
+                "GPS stress p95 frame interval exceeded gross-jank budget: " +
+                    frameTiming.p95IntervalMs + "ms",
+                frameTiming.p95IntervalMs <= 150.0
+            )
+            assertTrue(
+                "GPS stress hit a main-thread stall above one second: " +
+                    frameTiming.maxIntervalMs + "ms",
+                frameTiming.maxIntervalMs <= 1_000.0
+            )
 
             scenario.onActivity { activity ->
                 assertEquals("GPS ticks captured snapshots", initialDiagnostics.snapshotCaptureCount,
