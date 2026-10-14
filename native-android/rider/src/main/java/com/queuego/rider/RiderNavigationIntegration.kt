@@ -206,6 +206,7 @@ internal fun QueueGoRiderNavigationMap(
     marketPickups: List<MarketPickup>,
     bundleOrders: List<RiderBundleOrder> = emptyList(),
     recenterSignal: Int,
+    overviewSignal: Int = 0,
     viewportInsets: NavigationViewportInsets = NavigationViewportInsets(),
     onMapReady: (Boolean) -> Unit
 ) {
@@ -364,9 +365,25 @@ internal fun QueueGoRiderNavigationMap(
             viewModeState = viewModeController.onRecenter()
             riderFix?.let { fix ->
                 stateChannel.trySend(
-                    baseState.copy(rider = fix, followRider = true)
+                    baseState.copy(
+                        rider = fix,
+                        followRider = true,
+                        viewMode = NavigationViewMode.FOLLOW
+                    )
                 )
             }
+        }
+    }
+
+    LaunchedEffect(overviewSignal) {
+        if (overviewSignal > 0) {
+            viewModeState = viewModeController.onOverview()
+            stateChannel.trySend(
+                baseState.copy(
+                    followRider = false,
+                    viewMode = NavigationViewMode.OVERVIEW
+                )
+            )
         }
     }
 
