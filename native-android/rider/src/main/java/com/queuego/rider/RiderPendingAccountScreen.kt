@@ -82,6 +82,7 @@ internal fun RiderAccountStatusScreen(
     modifier: Modifier,
     user: QueueGoUser,
     refreshing: Boolean,
+    error: String?,
     onRefresh: () -> Unit,
     onLogout: () -> Unit
 ) {
@@ -93,6 +94,7 @@ internal fun RiderAccountStatusScreen(
         description = copy.description,
         reason = user.suspensionReason?.takeIf { copy.showReason && it.isNotBlank() },
         statusTime = riderAccountStatusTimeLabel(user.suspendedAt),
+        inlineError = error,
         primaryButton = if (refreshing) "กำลังตรวจสถานะ…" else "ตรวจสถานะอีกครั้ง",
         primaryEnabled = !refreshing,
         onPrimary = onRefresh,
@@ -110,6 +112,7 @@ internal fun RiderConnectionRecoveryScreen(modifier: Modifier, onRetry: () -> Un
         description = "บัญชียังอยู่ในเครื่อง กรุณาต่ออินเทอร์เน็ตแล้วลองใหม่",
         reason = null,
         statusTime = null,
+        inlineError = null,
         primaryButton = "ลองใหม่",
         primaryEnabled = true,
         onPrimary = onRetry,
@@ -126,6 +129,7 @@ private fun RiderAccountCard(
     description: String,
     reason: String?,
     statusTime: String?,
+    inlineError: String?,
     primaryButton: String,
     primaryEnabled: Boolean,
     onPrimary: () -> Unit,
@@ -217,7 +221,7 @@ private fun RiderAccountCard(
                         textAlign = androidx.compose.ui.text.style.TextAlign.Center
                     )
 
-                    if (!reason.isNullOrBlank()) {
+                    if (!reason.isNullOrBlank() || statusTime != null) {
                         Spacer(Modifier.height(14.dp))
                         Surface(
                             modifier = Modifier.fillMaxWidth(),
@@ -227,18 +231,20 @@ private fun RiderAccountCard(
                         ) {
                             Column(Modifier.padding(12.dp)) {
                                 Text(
-                                    "เหตุผลจาก QueueGo",
+                                    "รายละเอียดสถานะ",
                                     color = Color(0xFFE6002D),
                                     fontSize = 10.sp,
                                     fontWeight = FontWeight.Black
                                 )
-                                Text(
-                                    reason,
-                                    color = Color(0xFF4D4448),
-                                    fontSize = 11.sp,
-                                    lineHeight = 17.sp,
-                                    modifier = Modifier.padding(top = 5.dp)
-                                )
+                                reason?.let {
+                                    Text(
+                                        it,
+                                        color = Color(0xFF4D4448),
+                                        fontSize = 11.sp,
+                                        lineHeight = 17.sp,
+                                        modifier = Modifier.padding(top = 5.dp)
+                                    )
+                                }
                                 statusTime?.let {
                                     Text(
                                         "อัปเดตสถานะ $it",
@@ -249,6 +255,14 @@ private fun RiderAccountCard(
                                 }
                             }
                         }
+                    }
+                    inlineError?.takeIf { it.isNotBlank() }?.let {
+                        Text(
+                            it,
+                            color = Color(0xFFE6002D),
+                            fontSize = 10.sp,
+                            modifier = Modifier.padding(top = 10.dp)
+                        )
                     }
 
                     Spacer(Modifier.height(18.dp))
