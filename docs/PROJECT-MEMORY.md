@@ -1,3 +1,10 @@
+## 2026-10-14 Grab Driver parity: My Destination + Safety location-share release
+- Continued from consolidated My Destination head 8d53ab6 so Learning/Missions/Safety/Speed/ETA, Runtime Diagnostics, Offer Performance, Availability Readiness and My Destination all remain in one line.
+- Added one-time current-location sharing in Safety Centre. QueueGo uses the retained navigation GPS fix when available, otherwise only a system last-known fix no older than 5 minutes and with reported accuracy <=200 m.
+- Generic share opens the Android share sheet. If an emergency contact exists, Rider may open the SMS composer with the same location snapshot. Nothing is sent automatically.
+- Shared text intentionally excludes order number, customer address, merchant address and delivery destination, and states that the shared point is not live tracking.
+- Backup backup/rider-destination-before-safety-share-20261014 retains 8d53ab6. Exact-head native-pilot + navigation-map-runtime are required before PASS.
+
 ## 2026-10-14 Grab Driver parity: Rider My Destination soft preference
 - Added My Destination as a soft offer-ordering preference without changing QueueGo's owner-approved targeted 30-second offer contract. It never auto-accepts, never hides other eligible jobs and never grants a Rider access to another Rider's destination.
 - Production migration 20261014071752 rider_my_destination_soft_dispatch_v1 is applied and mirrored. Preference rows live in qg_private; anon has no RPC access and authenticated clients cannot SELECT the private table directly.
