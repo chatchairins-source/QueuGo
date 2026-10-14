@@ -5,6 +5,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
+// QueueGo Rider exact-head Unplanned Stop release gate.
 class RiderUnexpectedStopTest {
     private val travelling = NavigationGuidanceState(
         weakGps = false,
