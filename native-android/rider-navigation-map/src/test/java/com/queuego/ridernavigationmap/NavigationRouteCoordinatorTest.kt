@@ -1,5 +1,6 @@
 package com.queuego.ridernavigationmap
 
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -15,13 +16,20 @@ class NavigationRouteCoordinatorTest {
             val segmentId: String
         )
         val calls = mutableListOf<Call>()
+        var attempts = 0
         var failNext = false
+        var cancelNext = false
 
         override suspend fun route(
             from: NavigationMapPoint,
             stop: NavigationMapStop,
             segmentId: String
         ): NavigationRouteLeg {
+            attempts += 1
+            if (cancelNext) {
+                cancelNext = false
+                throw CancellationException("superseded route")
+            }
             if (failNext) {
                 failNext = false
                 error("route unavailable")
@@ -236,5 +244,45 @@ class NavigationRouteCoordinatorTest {
         assertEquals(null, result.activeLeg)
         assertTrue(result.routeError!!.contains("route unavailable"))
         assertFalse(result.routeChanged)
+        assertEquals(1, provider.attempts)
+    }
+
+    @Test fun failedInitialRouteUsesBackoffInsteadOfRetryingEveryGpsTick() = runBlocking {
+        var now = 50_000L
+        val provider = FakeRouteProvider().apply { failNext = true }
+        val coordinator = NavigationRouteCoordinator(provider, nowMillis = { now })
+        val original = state()
+
+        val failed = coordinator.synchronize(original)
+        assertEquals(1, provider.attempts)
+        assertTrue(failed.routeError!!.contains("route unavailable"))
+
+        now += 1_000L
+        val held = coordinator.synchronize(original)
+        assertEquals(1, provider.attempts)
+        assertEquals(original, held.mapState)
+        assertEquals(null, held.activeLeg)
+
+        now += 500L
+        val recovered = coordinator.synchronize(original)
+        assertEquals(2, provider.attempts)
+        assertNotNull(recovered.activeLeg)
+        assertTrue(recovered.routeChanged)
+        assertEquals(null, recovered.routeError)
+    }
+
+    @Test fun supersededRouteRequestPropagatesCancellationImmediately() = runBlocking {
+        val provider = FakeRouteProvider().apply { cancelNext = true }
+        val coordinator = NavigationRouteCoordinator(provider, nowMillis = { 60_000L })
+
+        var cancelled = false
+        try {
+            coordinator.synchronize(state())
+        } catch (_: CancellationException) {
+            cancelled = true
+        }
+
+        assertTrue(cancelled)
+        assertEquals(1, provider.attempts)
     }
 }
