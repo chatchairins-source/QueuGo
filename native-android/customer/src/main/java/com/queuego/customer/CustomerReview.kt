@@ -38,6 +38,34 @@ data class CustomerReview(
     val comment: String?
 )
 
+internal val customerRiderComplimentOptions = listOf(
+    "polite" to "สุภาพ",
+    "fast" to "ส่งไว",
+    "careful" to "ดูแลสินค้า",
+    "professional" to "เป็นมืออาชีพ",
+    "friendly" to "เป็นมิตร",
+    "helpful" to "ช่วยเหลือดี"
+)
+
+internal fun customerRiderComplimentsFromRpc(raw: Any?): Set<String> {
+    val row = when (raw) {
+        is JSONObject -> raw
+        is JSONArray -> raw.optJSONObject(0) ?: JSONObject()
+        else -> JSONObject()
+    }
+    val values = row.optJSONArray("compliments") ?: JSONArray()
+    val allowed = customerRiderComplimentOptions.mapTo(linkedSetOf()) { it.first }
+    return buildSet {
+        for (index in 0 until values.length()) {
+            val key = values.optString(index).trim().lowercase()
+            if (key in allowed) add(key)
+        }
+    }
+}
+
+internal fun customerRiderComplimentLabel(key: String): String =
+    customerRiderComplimentOptions.firstOrNull { it.first == key }?.second ?: key
+
 class CustomerReviewApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
     suspend fun load(auth: NativeAuth, orderId: String): CustomerReview? {
         val rows = http.array(
@@ -80,6 +108,32 @@ class CustomerReviewApi(private val http: QueueGoNativeApi = QueueGoNativeApi())
         )
     }
 
+    suspend fun loadRiderCompliments(auth: NativeAuth, orderId: String): Set<String> {
+        val raw = http.rpc(
+            "qg_customer_rider_compliments",
+            auth.session.accessToken,
+            JSONObject().put("p_order_id", orderId)
+        )
+        return customerRiderComplimentsFromRpc(raw)
+    }
+
+    suspend fun saveRiderCompliments(
+        auth: NativeAuth,
+        orderId: String,
+        compliments: Set<String>
+    ) {
+        val normalized = customerRiderComplimentOptions.map { it.first }
+            .filter { it in compliments }
+            .take(3)
+        http.rpc(
+            "qg_customer_save_rider_compliments",
+            auth.session.accessToken,
+            JSONObject()
+                .put("p_order_id", orderId)
+                .put("p_compliments", JSONArray(normalized))
+        )
+    }
+
     suspend fun delete(auth: NativeAuth, reviewId: String) {
         val raw = http.delete(
             "reviews?id=eq." + http.enc(reviewId) +
@@ -113,6 +167,8 @@ fun CustomerReviewCard(
     var rating by remember(order.id) { mutableStateOf(0) }
     var foodRating by remember(order.id) { mutableStateOf(0) }
     var riderRating by remember(order.id) { mutableStateOf(0) }
+    var riderCompliments by remember(order.id) { mutableStateOf<Set<String>>(emptySet()) }
+    var storedRiderCompliments by remember(order.id) { mutableStateOf<Set<String>>(emptySet()) }
     var comment by remember(order.id) { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }
     var message by remember { mutableStateOf<String?>(null) }
@@ -129,9 +185,19 @@ fun CustomerReviewCard(
     }
 
     LaunchedEffect(order.id) {
-        runCatching { api.load(auth, order.id) }
-            .onSuccess { hydrate(it) }
-            .onFailure { message = it.message ?: "โหลดรีวิวไม่สำเร็จ" }
+        runCatching {
+            val loadedReview = api.load(auth, order.id)
+            val compliments = if (loadedReview != null) {
+                api.loadRiderCompliments(auth, order.id)
+            } else {
+                emptySet()
+            }
+            loadedReview to compliments
+        }.onSuccess { (loadedReview, compliments) ->
+            hydrate(loadedReview)
+            storedRiderCompliments = compliments
+            riderCompliments = compliments
+        }.onFailure { message = it.message ?: "โหลดรีวิวไม่สำเร็จ" }
         loaded = true
     }
 
@@ -158,6 +224,16 @@ fun CustomerReviewCard(
                 if (current.riderRating != null) {
                     ReviewReadRow("คะแนน Rider", current.riderRating)
                 }
+                if (storedRiderCompliments.isNotEmpty()) {
+                    Spacer(Modifier.height(6.dp))
+                    Text(
+                        "คำชม Rider · " + customerRiderComplimentOptions
+                            .filter { it.first in storedRiderCompliments }
+                            .joinToString(" · ") { it.second },
+                        color = QgMuted,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
                 if (!current.comment.isNullOrBlank()) {
                     Spacer(Modifier.height(7.dp))
                     Text(current.comment!!)
@@ -166,6 +242,7 @@ fun CustomerReviewCard(
                 Row(Modifier.fillMaxWidth()) {
                     OutlinedButton(
                         onClick = {
+                            riderCompliments = storedRiderCompliments
                             editing = true
                             deleteArmed = false
                             message = null
@@ -183,6 +260,8 @@ fun CustomerReviewCard(
                                 scope.launch {
                                     runCatching { api.delete(auth, current.id) }
                                         .onSuccess {
+                                            storedRiderCompliments = emptySet()
+                                            riderCompliments = emptySet()
                                             hydrate(null)
                                             message = "ลบรีวิวแล้ว"
                                         }
@@ -203,7 +282,26 @@ fun CustomerReviewCard(
                     RatingPicker("คะแนนอาหาร (ไม่บังคับ)", foodRating) { foodRating = it }
                 }
                 Spacer(Modifier.height(8.dp))
-                RatingPicker("คะแนน Rider (ไม่บังคับ)", riderRating) { riderRating = it }
+                RatingPicker("คะแนน Rider (ไม่บังคับ)", riderRating) {
+                    riderRating = it
+                    if (it < 4) riderCompliments = emptySet()
+                }
+                if (riderRating in 4..5) {
+                    Spacer(Modifier.height(8.dp))
+                    RiderComplimentPicker(
+                        selected = riderCompliments,
+                        onToggle = { key ->
+                            riderCompliments = if (key in riderCompliments) {
+                                riderCompliments - key
+                            } else if (riderCompliments.size < 3) {
+                                riderCompliments + key
+                            } else {
+                                message = "เลือกคำชม Rider ได้สูงสุด 3 ข้อ"
+                                riderCompliments
+                            }
+                        }
+                    )
+                }
                 Spacer(Modifier.height(8.dp))
                 OutlinedTextField(
                     value = comment,
@@ -229,9 +327,23 @@ fun CustomerReviewCard(
                                     riderRating = riderRating.takeIf { it in 1..5 },
                                     comment = comment
                                 )
+                                if (riderRating in 4..5) {
+                                    api.saveRiderCompliments(auth, order.id, riderCompliments)
+                                }
                             }.onSuccess {
-                                runCatching { api.load(auth, order.id) }
-                                    .onSuccess { hydrate(it) }
+                                runCatching {
+                                    val refreshed = api.load(auth, order.id)
+                                    val compliments = if ((refreshed?.riderRating ?: 0) in 4..5) {
+                                        api.loadRiderCompliments(auth, order.id)
+                                    } else {
+                                        emptySet()
+                                    }
+                                    refreshed to compliments
+                                }.onSuccess { (refreshed, compliments) ->
+                                    hydrate(refreshed)
+                                    storedRiderCompliments = compliments
+                                    riderCompliments = compliments
+                                }
                                 message = "บันทึกรีวิวแล้ว"
                             }.onFailure { message = it.message ?: "บันทึกรีวิวไม่สำเร็จ" }
                             busy = false
@@ -244,6 +356,7 @@ fun CustomerReviewCard(
                     Spacer(Modifier.height(6.dp))
                     OutlinedButton(
                         onClick = {
+                            riderCompliments = storedRiderCompliments
                             hydrate(current)
                             editing = false
                             message = null
@@ -253,6 +366,35 @@ fun CustomerReviewCard(
                     ) { Text("ยกเลิกการแก้ไข") }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun RiderComplimentPicker(
+    selected: Set<String>,
+    onToggle: (String) -> Unit
+) {
+    Column {
+        Text("คำชม Rider (เลือกได้สูงสุด 3 ข้อ)", color = QgMuted, fontWeight = FontWeight.Bold)
+        Spacer(Modifier.height(5.dp))
+        customerRiderComplimentOptions.chunked(2).forEach { options ->
+            Row(Modifier.fillMaxWidth()) {
+                options.forEachIndexed { index, (key, label) ->
+                    if (key in selected) {
+                        Button(onClick = { onToggle(key) }, modifier = Modifier.weight(1f)) {
+                            Text(label)
+                        }
+                    } else {
+                        OutlinedButton(onClick = { onToggle(key) }, modifier = Modifier.weight(1f)) {
+                            Text(label)
+                        }
+                    }
+                    if (index == 0) Spacer(Modifier.padding(3.dp))
+                }
+                if (options.size == 1) Spacer(Modifier.weight(1f))
+            }
+            Spacer(Modifier.height(5.dp))
         }
     }
 }

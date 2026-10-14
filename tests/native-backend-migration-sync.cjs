@@ -23,4 +23,15 @@ assert.strictEqual(
   'Production Voice block-revocation history must exactly match the gated CLI source'
 );
 // Preserve the actual remote version alongside the CLI-created idempotent source.
+const complimentMigration=read('supabase/migrations/20261014061234_rider_compliments_v1.sql');
+for(const needle of [
+  'qg_private.rider_review_compliments',
+  'qg_customer_save_rider_compliments',
+  'qg_customer_rider_compliments',
+  'qg_rider_compliment_summary',
+  "revoke all on function public.qg_rider_compliment_summary() from public, anon",
+  "cardinality(compliments) between 1 and 3"
+]){
+  assert.ok(complimentMigration.includes(needle),'Rider compliments migration missing contract: '+needle);
+}
 console.log('Native backend migration mirror: PASS');

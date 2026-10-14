@@ -67,9 +67,17 @@ fun RiderProfileScreen(
     var showSafety by remember { mutableStateOf(false) }
     var showDiagnostics by remember { mutableStateOf(false) }
     var ratingSummary by remember(auth.user.id) { mutableStateOf<RiderRatingSummary?>(null) }
+    var complimentSummary by remember(auth.user.id) { mutableStateOf<RiderComplimentSummary?>(null) }
     LaunchedEffect(auth.user.id, auth.session.accessToken) {
         ratingSummary = try {
             api.ratingSummary(auth)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            null
+        }
+        complimentSummary = try {
+            api.complimentSummary(auth)
         } catch (e: CancellationException) {
             throw e
         } catch (_: Exception) {
@@ -133,6 +141,25 @@ fun RiderProfileScreen(
                                 fontWeight = if (rating.count > 0) FontWeight.Black else FontWeight.Medium,
                                 modifier = Modifier.padding(top = 5.dp)
                             )
+                        }
+                        complimentSummary?.takeIf { it.total > 0 && it.items.isNotEmpty() }?.let { summary ->
+                            val visible = summary.items.take(if (smallScreen) 2 else 3)
+                            Row(
+                                Modifier.padding(top = 6.dp),
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                visible.forEach { item ->
+                                    Text(
+                                        riderComplimentLabel(item.key) + " " + item.count,
+                                        color = Color(0xFF6E5C15),
+                                        fontSize = 8.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        modifier = Modifier
+                                            .background(Color(0xFFFFF7D6), RoundedCornerShape(99.dp))
+                                            .padding(horizontal = 6.dp, vertical = 3.dp)
+                                    )
+                                }
+                            }
                         }
                     }
                     RiderProfilePill(snapshot?.online == true)
@@ -448,6 +475,16 @@ private fun RiderAccountField(label: String, value: String, change: (String) -> 
                 decorationBox = { inner -> Box(Modifier.fillMaxSize().padding(horizontal = 14.dp), contentAlignment = Alignment.CenterStart) { inner() } })
         }
     }
+}
+
+internal fun riderComplimentLabel(key: String): String = when (key) {
+    "polite" -> "สุภาพ"
+    "fast" -> "ส่งไว"
+    "careful" -> "ดูแลสินค้า"
+    "professional" -> "มืออาชีพ"
+    "friendly" -> "เป็นมิตร"
+    "helpful" -> "ช่วยเหลือดี"
+    else -> key
 }
 
 private fun riderVehicleLabel(type: String?): String = when (type) {
