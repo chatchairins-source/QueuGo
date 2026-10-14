@@ -319,6 +319,8 @@ async function qtRenderAdminRiderPresence(){
           '</div>';
         }else if(vi?.status==='required'||vi?.status==='rejected'){
           vehicleActions='<div style="margin-top:7px"><small>รอ Rider ถ่ายรูปรถจากแอป</small></div>';
+        }else if(online){
+          vehicleActions='<div style="margin-top:7px"><small>ให้ Rider ออฟไลน์และจบงานก่อน จึงจะขอตรวจสภาพรถได้</small></div>';
         }else{
           vehicleActions='<div class="row-btns" style="margin-top:8px"><button class="btn-secondary" type="button" onclick="qtAdminRequestRiderVehicleInspection(\''+escapeHtml(p.id)+'\')">ขอตรวจสภาพรถ</button></div>';
         }
