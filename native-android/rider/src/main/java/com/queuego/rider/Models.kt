@@ -283,6 +283,19 @@ data class RiderPeriodSummary(
     val incomePerHour: Double?
 )
 
+data class RiderOfferPerformance(
+    val days: Int,
+    val offered: Int,
+    val accepted: Int,
+    val declined: Int,
+    val expired: Int,
+    val acceptanceRate: Double?,
+    val responseRate: Double?,
+    val declineRate: Double?,
+    val timeoutRate: Double?,
+    val averageResponseSeconds: Double?
+)
+
 data class RiderRatingSummary(
     val average: Double?,
     val count: Int,
@@ -304,6 +317,15 @@ data class RiderDemandZone(
     val longitude: Double,
     val level: Int,
     val windowHours: Int
+)
+
+data class RiderDestinationPreference(
+    val configured: Boolean,
+    val enabled: Boolean,
+    val label: String?,
+    val latitude: Double?,
+    val longitude: Double?,
+    val updatedAt: String? = null
 )
 
 data class RiderMission(

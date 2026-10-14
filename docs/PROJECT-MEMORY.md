@@ -1,3 +1,15 @@
+## 2026-10-14 Grab Driver parity: Rider My Destination soft preference
+- Added My Destination as a soft offer-ordering preference without changing QueueGo's owner-approved targeted 30-second offer contract. It never auto-accepts, never hides other eligible jobs and never grants a Rider access to another Rider's destination.
+- Production migration 20261014071752 rider_my_destination_soft_dispatch_v1 is applied and mirrored. Preference rows live in qg_private; anon has no RPC access and authenticated clients cannot SELECT the private table directly.
+- Dispatch preserves all current eligibility, active Shopping/Laundry exclusions, vehicle/capacity checks, one-live-offer behavior and 30-second expiry. Pickup proximity remains primary via 1-km pickup-distance bands; only Riders in the same band get a preference advantage, and only when that order's delivery moves the Rider at least 1 km closer to the saved destination.
+- Native Rider reuses the shared Longdo location picker and Longdo reverse-geocode endpoint. The My Destination control is visible only while online and idle; it disappears for offers/active work. UI states explicitly that the Rider must still manually accept within 30 seconds.
+- Runtime Diagnostics + real Offer Performance were consolidated onto the same current Learning/Missions/Safety/ETA ancestry before this feature. Backup backup/rider-grab-parity-before-consolidated-destination-20261014 retains 3b41353.
+
+## 2026-10-14 Consolidated Rider parity: runtime diagnostics + real offer performance
+- Rebased both parity additions onto current unified Learning/Missions/Safety/ETA head 3b41353 instead of continuing older red ancestry. Runtime diagnostics reuses NavigationMapDiagnostics and local Android exit history only; offer performance uses the already-applied Rider-only aggregate RPC over server-owned offer history.
+- No new GPS stream, map renderer, direct offer-history access, dispatch mutation or fake rate. Today/7/30 offer metrics are real aggregates; empty periods render no invented percentage.
+- Backup backup/rider-grab-parity-before-consolidated-destination-20261014 retains 3b41353. Exact-head native-pilot + navigation-map-runtime remain required.
+
 ## 2026-10-14 Grab Driver parity release scope lock: authoritative ETA HUD
 - Pulled PR246 ETA HUD onto the single Rider release line after verifying it reads only the existing Longdo NavigationGuidanceState. It does not request routes, change reroute/camera behavior or create another GPS stream.
 - Active work can now show real remaining route distance, Longdo-provided ETA when available, and parsed next-turn/road guidance. Weak-GPS or off-route guidance hides the HUD; missing ETA never falls back to an invented speed estimate.

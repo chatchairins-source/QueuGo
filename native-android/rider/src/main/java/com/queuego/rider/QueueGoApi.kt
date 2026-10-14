@@ -177,6 +177,66 @@ internal fun riderMissionsFromRpc(raw: Any?): List<RiderMission> {
     }
 }
 
+internal fun riderOfferPerformanceFromRpc(
+    raw: Any?,
+    fallbackDays: Int
+): RiderOfferPerformance {
+    val row = when (raw) {
+        is JSONObject -> raw
+        is JSONArray -> raw.optJSONObject(0) ?: JSONObject()
+        else -> JSONObject()
+    }
+    fun nullableDouble(key: String): Double? =
+        if (row.has(key) && !row.isNull(key)) row.optDouble(key).takeIf { it.isFinite() } else null
+    return RiderOfferPerformance(
+        days = row.optInt("days", fallbackDays),
+        offered = row.optInt("offered", 0).coerceAtLeast(0),
+        accepted = row.optInt("accepted", 0).coerceAtLeast(0),
+        declined = row.optInt("declined", 0).coerceAtLeast(0),
+        expired = row.optInt("expired", 0).coerceAtLeast(0),
+        acceptanceRate = nullableDouble("acceptance_rate"),
+        responseRate = nullableDouble("response_rate"),
+        declineRate = nullableDouble("decline_rate"),
+        timeoutRate = nullableDouble("timeout_rate"),
+        averageResponseSeconds = nullableDouble("average_response_seconds")
+    )
+}
+
+internal fun riderDestinationPreferenceFromRpc(raw: Any?): RiderDestinationPreference {
+    val row = when (raw) {
+        is JSONObject -> raw
+        is JSONArray -> raw.optJSONObject(0) ?: JSONObject()
+        else -> JSONObject()
+    }
+    val configured = row.optBoolean("configured", false)
+    val label = riderNullableText(row.optString("label"))
+    val latitude = if (row.has("latitude") && !row.isNull("latitude")) row.optDouble("latitude").takeIf { it.isFinite() } else null
+    val longitude = if (row.has("longitude") && !row.isNull("longitude")) row.optDouble("longitude").takeIf { it.isFinite() } else null
+    val valid = configured &&
+        !label.isNullOrBlank() &&
+        latitude != null && latitude in 5.0..21.0 &&
+        longitude != null && longitude in 97.0..106.0
+    return RiderDestinationPreference(
+        configured = valid,
+        enabled = valid && row.optBoolean("enabled", false),
+        label = label.takeIf { valid },
+        latitude = latitude.takeIf { valid },
+        longitude = longitude.takeIf { valid },
+        updatedAt = riderNullableText(row.optString("updated_at")).takeIf { valid }
+    )
+}
+
+private val riderDestinationAddressKeys =
+    listOf("house_number", "soi", "road", "subdistrict", "district", "province", "postcode")
+
+internal fun riderFormatLongdoAddress(raw: String): String? = runCatching {
+    val row = JSONObject(raw)
+    riderDestinationAddressKeys
+        .mapNotNull { key -> row.optString(key).trim().takeIf { it.isNotBlank() && it != "null" } }
+        .joinToString(" ")
+        .takeIf { it.isNotBlank() }
+}.getOrNull()
+
 class QueueGoApi {
     companion object {
         private const val BASE_URL = "https://pkypiqhlrmzocysgeqew.supabase.co"
@@ -500,6 +560,19 @@ class QueueGoApi {
             )
         }
 
+    suspend fun offerPerformance(auth: QueueGoAuth, days: Int = 1): RiderOfferPerformance =
+        withContext(Dispatchers.IO) {
+            require(days in setOf(1, 7, 30)) { "days must be 1, 7 or 30" }
+            riderOfferPerformanceFromRpc(
+                rpc(
+                    "qg_rider_offer_performance",
+                    auth.session.accessToken,
+                    JSONObject().put("p_days", days)
+                ),
+                days
+            )
+        }
+
     suspend fun periodSummary(auth: QueueGoAuth, days: Int = 1): RiderPeriodSummary =
         withContext(Dispatchers.IO) {
             val raw = rpc(
@@ -553,6 +626,61 @@ class QueueGoApi {
                     JSONObject()
                 )
             )
+        }
+
+    suspend fun destinationPreference(auth: QueueGoAuth): RiderDestinationPreference =
+        withContext(Dispatchers.IO) {
+            riderDestinationPreferenceFromRpc(
+                rpc(
+                    "qg_rider_destination_preference",
+                    auth.session.accessToken,
+                    JSONObject()
+                )
+            )
+        }
+
+    suspend fun setDestinationPreference(
+        auth: QueueGoAuth,
+        label: String,
+        latitude: Double,
+        longitude: Double,
+        enabled: Boolean
+    ): RiderDestinationPreference = withContext(Dispatchers.IO) {
+        require(label.trim().isNotEmpty() && label.trim().length <= 160) { "กรุณาระบุชื่อจุดหมาย" }
+        require(latitude in 5.0..21.0 && longitude in 97.0..106.0) { "จุดหมายอยู่นอกพื้นที่ที่รองรับ" }
+        riderDestinationPreferenceFromRpc(
+            rpc(
+                "qg_rider_set_destination_preference",
+                auth.session.accessToken,
+                JSONObject()
+                    .put("p_label", label.trim())
+                    .put("p_latitude", latitude)
+                    .put("p_longitude", longitude)
+                    .put("p_enabled", enabled)
+            )
+        )
+    }
+
+    suspend fun reverseGeocodeDestination(latitude: Double, longitude: Double): String? =
+        withContext(Dispatchers.IO) {
+            if (latitude !in 5.0..21.0 || longitude !in 97.0..106.0) return@withContext null
+            val connection = URL(
+                "https://api.longdo.com/map/services/address?lon=$longitude&lat=$latitude&key=347649ca13f49db0d8a599ae35f8de2b"
+            ).openConnection() as HttpURLConnection
+            connection.connectTimeout = 8_000
+            connection.readTimeout = 8_000
+            connection.requestMethod = "GET"
+            connection.setRequestProperty("Accept", "application/json")
+            try {
+                if (connection.responseCode !in 200..299) return@withContext null
+                connection.inputStream.bufferedReader(Charsets.UTF_8).use { reader ->
+                    riderFormatLongdoAddress(reader.readText())
+                }
+            } catch (_: Exception) {
+                null
+            } finally {
+                connection.disconnect()
+            }
         }
 
     suspend fun reverificationStatus(auth: QueueGoAuth): RiderReverificationStatus =
