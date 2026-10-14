@@ -6,6 +6,7 @@ import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.PointF
+import android.graphics.RectF
 import android.graphics.Typeface
 import android.os.Handler
 import android.os.Looper
@@ -29,6 +30,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.longdo.api.IMapListener
+import com.longdo.api.IMarker
 import com.longdo.api.Line
 import com.longdo.api.LongdoLayer
 import com.longdo.api.MapGLSurfaceView
@@ -124,6 +126,11 @@ private class RiderNavigationMapHolder {
     private var lastCameraCenter: NavigationMapPoint? = null
     private var lastCameraBearing: Float? = null
     private var lastCameraZoomChangeAtMs: Long = 0L
+    private var surfaceVisible = false
+    private var puckFreshnessGeneration = 0
+    private var lastPuckRotation: Float? = null
+    private var lastPuckOpacity: Float? = null
+    private var lastOverviewSignature: String? = null
     private val stopPins = linkedMapOf<String, RenderedStop>()
     private val routeLines = mutableListOf<Line>()
     private var renderedRouteSegments: List<NavigationRouteSegment> = emptyList()
@@ -429,6 +436,7 @@ private class RiderNavigationMapHolder {
     fun resume() {
         val activeView = view ?: return
         if (disposed) return
+        surfaceVisible = true
         // Longdo can replace renderer.map after ON_RESUME returns and may never emit
         // onMapCreated for that replacement. Check immediately and then keep a short bounded
         // watcher alive so the replacement is adopted through configureMap() as soon as it exists.
@@ -443,17 +451,38 @@ private class RiderNavigationMapHolder {
         // never reconstruct the map just because Rider/order state changed.
         render(lastState)
         startRendererIdentityWatch()
+        startPuckFreshnessTicker()
         if (!replacementPending) settleContinuityBridge()
+    }
+
+    private fun startPuckFreshnessTicker() {
+        val generation = ++puckFreshnessGeneration
+        fun tick() {
+            if (disposed || !surfaceVisible || generation != puckFreshnessGeneration) return
+            val activeMap = map
+            val fix = lastRiderFix
+            if (activeMap != null && fix != null) {
+                renderRiderPresentation(activeMap, fix)
+            }
+            mainHandler.postDelayed({ tick() }, 1_000L)
+        }
+        tick()
     }
 
     private fun captureCamera() {
         map?.let { activeMap ->
             runCatching {
                 val location = activeMap.getLocation()
+                val actualBearing = runCatching { activeMap.getRotate() }
+                    .getOrNull()
+                    ?.takeIf { it.isFinite() }
+                    ?.let(::normalizeNavigationBearing)
+                    ?: lastCameraBearing
+                if (actualBearing != null) lastCameraBearing = actualBearing
                 val camera = NavigationMapCamera(
                     point = NavigationMapPoint(location.lat, location.lon),
                     zoom = activeMap.getZoom(),
-                    bearingDegrees = lastCameraBearing
+                    bearingDegrees = actualBearing
                 )
                 lastKnownCamera = camera
                 onCameraChanged(camera)
@@ -462,6 +491,8 @@ private class RiderNavigationMapHolder {
     }
 
     fun retainAcrossVisibilityLoss() {
+        surfaceVisible = false
+        puckFreshnessGeneration += 1
         rendererWatchGeneration += 1
         // Tab switches and ordinary background/foreground cycles keep the SDK renderer alive.
         // Capture a frozen frame quietly for emergency continuity, but do not cover a healthy
@@ -472,6 +503,8 @@ private class RiderNavigationMapHolder {
     }
 
     fun shutdownSdk() {
+        surfaceVisible = false
+        puckFreshnessGeneration += 1
         captureCamera()
         if (!resumed) return
         val activeView = view ?: run {
@@ -490,6 +523,9 @@ private class RiderNavigationMapHolder {
 
     fun render(state: RiderNavigationMapState) {
         val restoringFollow = state.followRider && !lastState.followRider
+        val enteringOverview =
+            state.viewMode == NavigationViewMode.OVERVIEW &&
+                lastState.viewMode != NavigationViewMode.OVERVIEW
         lastState = state
         val activeMap = map ?: return
         if (disposed) return
@@ -505,10 +541,18 @@ private class RiderNavigationMapHolder {
         renderRoutes(activeMap, state)
 
         val followedFix = state.rider?.takeIf { it.point.valid } ?: lastRiderFix
-        if (state.followRider && followedFix != null) {
-            if (restoringFollow) lastCameraCenter = null
-            followRider(activeMap, state.copy(rider = followedFix))
+        when {
+            state.viewMode == NavigationViewMode.OVERVIEW -> {
+                fitOverview(activeMap, state, force = enteringOverview)
+            }
+            state.followRider && followedFix != null -> {
+                lastOverviewSignature = null
+                if (restoringFollow) lastCameraCenter = null
+                followRider(activeMap, state.copy(rider = followedFix))
+            }
+            else -> lastOverviewSignature = null
         }
+        followedFix?.let { renderRiderPresentation(activeMap, it) }
         // Publish once per applied state even when overlays are structurally unchanged.
         // This distinguishes a stable frame from a state update that never reached the map.
         // PixelCopy is deliberately not scheduled on every GPS tick: continuity snapshots
@@ -575,6 +619,105 @@ private class RiderNavigationMapHolder {
         riderMarkerAnimator = animator
         lastRenderedRiderFix = fix
         animator.start()
+    }
+
+    private fun renderRiderPresentation(activeMap: com.longdo.api.Map, fix: NavigationMapFix) {
+        val pin = riderPin ?: return
+        var changed = false
+
+        val cameraBearing = runCatching { activeMap.getRotate() }
+            .getOrNull()
+            ?.takeIf { it.isFinite() }
+            ?.let(::normalizeNavigationBearing)
+            ?: lastCameraBearing
+        val orientation = navigationPuckOrientationDecision(fix, cameraBearing)
+        orientation.rotationDegrees?.let { nextRotation ->
+            if (lastPuckRotation == null ||
+                navigationBearingChangedEnough(lastPuckRotation, nextRotation, minimumDeltaDegrees = 2.5f)
+            ) {
+                runCatching { pin.setRotate(nextRotation) }
+                    .onSuccess {
+                        lastPuckRotation = nextRotation
+                        changed = true
+                    }
+            }
+        }
+
+        val freshness = navigationPuckFreshness(
+            fix = fix,
+            nowElapsedRealtimeNanos = SystemClock.elapsedRealtimeNanos()
+        )
+        val nextOpacity = when (freshness.freshness) {
+            NavigationPuckFreshness.STALE -> 0.55f
+            NavigationPuckFreshness.LOST -> 0.35f
+            else -> 1f
+        }
+        if (lastPuckOpacity == null || kotlin.math.abs(lastPuckOpacity!! - nextOpacity) >= 0.01f) {
+            runCatching { pin.setOpacity(nextOpacity) }
+                .onSuccess {
+                    lastPuckOpacity = nextOpacity
+                    changed = true
+                }
+        }
+
+        if (changed) {
+            runCatching { activeMap.requestRenderOnce("queuego-rider-puck-presentation") }
+        }
+    }
+
+    private fun fitOverview(
+        activeMap: com.longdo.api.Map,
+        state: RiderNavigationMapState,
+        force: Boolean
+    ) {
+        val insets = state.viewportInsets.normalized()
+        val signature = listOf(
+            navigationViewportInsetsSignature(insets),
+            state.resolvedActiveStopId().orEmpty(),
+            state.remainingStops().hashCode().toString(),
+            state.styledRemainingRoutes().hashCode().toString()
+        ).joinToString("|")
+        if (!force && signature == lastOverviewSignature) return
+
+        val markers = mutableListOf<IMarker>()
+        riderPin?.let(markers::add)
+        stopPins.values.forEach { markers += it.pin }
+        routeLines.forEach { markers += it }
+
+        if (markers.size >= 2) {
+            runCatching {
+                activeMap.bound(
+                    markers,
+                    true,
+                    true,
+                    false,
+                    false,
+                    RectF(
+                        insets.leftPx.toFloat(),
+                        insets.topPx.toFloat(),
+                        insets.rightPx.toFloat(),
+                        insets.bottomPx.toFloat()
+                    )
+                )
+            }.onSuccess {
+                lastOverviewSignature = signature
+                lastCameraCenter = null
+            }
+        } else {
+            val bounds = navigationOverviewBounds(state)
+            if (bounds != null) {
+                runCatching {
+                    activeMap.setLocation(
+                        MapLocation(bounds.center.longitude, bounds.center.latitude),
+                        true
+                    )
+                    activeMap.setZoom(navigationOverviewZoom(bounds), true)
+                }.onSuccess {
+                    lastOverviewSignature = signature
+                    lastCameraCenter = bounds.center
+                }
+            }
+        }
     }
 
     private fun renderStops(activeMap: com.longdo.api.Map, state: RiderNavigationMapState) {
@@ -851,13 +994,19 @@ private class RiderNavigationMapHolder {
         snapshotRefreshScheduled = false
         snapshotVisible = false
         pendingBridgeWithoutSnapshot = false
+        surfaceVisible = false
+        puckFreshnessGeneration += 1
         rendererWatchGeneration += 1
         announcedReplacementMap = null
         lastKnownCamera = null
         lastRenderedRiderFix = null
         lastCameraFix = null
         lastCameraCenter = null
+        lastCameraBearing = null
         lastCameraZoomChangeAtMs = 0L
+        lastPuckRotation = null
+        lastPuckOpacity = null
+        lastOverviewSignature = null
         resumed = false
         stopSource = null
         stopActiveId = null
