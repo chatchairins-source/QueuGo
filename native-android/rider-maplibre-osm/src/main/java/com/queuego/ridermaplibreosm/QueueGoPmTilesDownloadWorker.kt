@@ -21,10 +21,15 @@ class QueueGoPmTilesDownloadWorker(
         val fileName = inputData.getString(KEY_FILE_NAME)
             ?.takeIf(::safeFileName)
             ?: return Result.failure()
+        val expectedSha256 = inputData.getString(KEY_EXPECTED_SHA256)
 
         val destination = File(applicationContext.filesDir, "queuego-maps/$fileName")
         return runCatching {
-            QueueGoPmTilesDownloader().download(sourceUrl, destination) { progress ->
+            QueueGoPmTilesDownloader().download(
+                sourceUrl = sourceUrl,
+                destination = destination,
+                expectedSha256 = expectedSha256
+            ) { progress ->
                 setProgressAsync(
                     workDataOf(
                         KEY_DOWNLOADED_BYTES to progress.downloadedBytes,
@@ -54,6 +59,7 @@ class QueueGoPmTilesDownloadWorker(
     companion object {
         const val KEY_SOURCE_URL = "source_url"
         const val KEY_FILE_NAME = "file_name"
+        const val KEY_EXPECTED_SHA256 = "expected_sha256"
         const val KEY_LOCAL_PATH = "local_path"
         const val KEY_DOWNLOADED_BYTES = "downloaded_bytes"
         const val KEY_TOTAL_BYTES = "total_bytes"
@@ -69,7 +75,8 @@ class QueueGoPmTilesDownloadWorker(
         fun enqueue(
             context: Context,
             sourceUrl: String,
-            fileName: String = "buriram-shortbread.pmtiles"
+            fileName: String = "buriram-shortbread.pmtiles",
+            expectedSha256: String? = null
         ) = WorkManager.getInstance(context).enqueueUniqueWork(
             "queuego-pmtiles-$fileName",
             ExistingWorkPolicy.KEEP,
@@ -83,6 +90,9 @@ class QueueGoPmTilesDownloadWorker(
                     Data.Builder()
                         .putString(KEY_SOURCE_URL, sourceUrl)
                         .putString(KEY_FILE_NAME, fileName)
+                        .apply {
+                            expectedSha256?.let { putString(KEY_EXPECTED_SHA256, it) }
+                        }
                         .build()
                 )
                 .build()

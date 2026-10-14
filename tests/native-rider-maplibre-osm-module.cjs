@@ -23,8 +23,15 @@ const config=fs.readFileSync('native-android/rider-maplibre-osm/src/main/java/co
 const downloader=fs.readFileSync('native-android/rider-maplibre-osm/src/main/java/com/queuego/ridermaplibreosm/QueueGoPmTilesDownloader.kt','utf8');
 const worker=fs.readFileSync('native-android/rider-maplibre-osm/src/main/java/com/queuego/ridermaplibreosm/QueueGoPmTilesDownloadWorker.kt','utf8');
 assert(config.includes('pmtiles://file://')&&config.includes('localPmTiles('),'Offline MapLibre source must use a local PMTiles file URI');
-assert(downloader.includes('header("Range", "bytes=$existingBytes-")')&&downloader.includes('StandardCopyOption.ATOMIC_MOVE'),'PMTiles downloader must resume partial archives and atomically publish completed files');
-assert(worker.includes('CoroutineWorker')&&worker.includes('NetworkType.CONNECTED')&&worker.includes('setProgressAsync('),'PMTiles download must run as resumable background work with non-blocking progress reporting');
+assert(downloader.includes('header("Range", "bytes=$existingBytes-")')&&
+  downloader.includes('header("If-Range", it)')&&
+  downloader.includes('PMTILES_MAGIC')&&downloader.includes('PMTILES_VERSION = 3')&&
+  downloader.includes('MessageDigest.getInstance("SHA-256")')&&
+  downloader.includes('StandardCopyOption.ATOMIC_MOVE'),
+  'PMTiles downloader must resume only the same archive, validate v3/header/checksum and atomically publish completed files');
+assert(worker.includes('CoroutineWorker')&&worker.includes('NetworkType.CONNECTED')&&
+  worker.includes('KEY_EXPECTED_SHA256')&&worker.includes('setProgressAsync('),
+  'PMTiles download must run as resumable background work with integrity metadata and non-blocking progress reporting');
 assert(!downloader.includes('vector.openstreetmap.org'),'Offline archive downloader must never bulk-download from OSMF tile infrastructure');
 assert(!style.includes('SOURCE_LAYER_LAND'),'Village style must not depend on a non-standard Shortbread land source-layer');
 assert(view.includes('mapViewIdentity()')&&view.includes('mapIdentity()'),'Module must expose renderer identity for future lifecycle retention tests');

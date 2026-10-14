@@ -36,3 +36,22 @@ QG_PLANETILER_DRY_RUN=1 native-android/qa/build-buriram-shortbread-pmtiles.sh
 The build rejects empty/invalid output, checks the `PMTiles` magic header, and writes a
 `.sha256` integrity file beside the archive. Do not bulk-download tiles from
 `vector.openstreetmap.org`; offline archives are built from raw OSM data instead.
+
+## Device delivery and integrity
+
+MapLibre Android reads the completed archive from app-owned storage using
+`pmtiles://file://<absolute-path>`. QueueGo downloads the complete regional archive itself;
+MapLibre offline-pack caching is not used for PMTiles.
+
+Publish the generated `.sha256` beside the archive and pass that expected digest into
+`QueueGoPmTilesDownloadWorker.enqueue(..., expectedSha256 = ...)`. The downloader:
+
+- resumes only when the saved ETag/Last-Modified validator still identifies the same archive;
+- sends `Range` plus `If-Range` for safe continuation;
+- restarts from byte zero if the server archive changed;
+- validates the `PMTiles` magic header and v3 version byte;
+- verifies SHA-256 when supplied;
+- atomically renames the completed `.part` file only after every integrity check passes.
+
+Do not point MapLibre directly at an APK asset for Production offline data. The archive is
+copied/downloaded to app-owned file storage first so native byte-range reads work correctly.
