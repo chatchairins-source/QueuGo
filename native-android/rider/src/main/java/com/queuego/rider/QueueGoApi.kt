@@ -1225,15 +1225,17 @@ class QueueGoApi {
     ): String = withContext(Dispatchers.IO) {
         val caseId = UUID.randomUUID().toString()
         val ticketId = UUID.randomUUID().toString()
+        val cleanNote = note.trim().take(1200)
+        val payload = JSONObject()
+            .put("p_case_id", caseId)
+            .put("p_ticket_id", ticketId)
+            .put("p_order_id", job.id)
+            .put("p_reason", reason)
+        if (cleanNote.isBlank()) payload.put("p_note", JSONObject.NULL) else payload.put("p_note", cleanNote)
         val raw = rpc(
             "qg_rider_report_delivery_issue",
             auth.session.accessToken,
-            JSONObject()
-                .put("p_case_id", caseId)
-                .put("p_ticket_id", ticketId)
-                .put("p_order_id", job.id)
-                .put("p_reason", reason)
-                .put("p_note", note.trim().take(1200).ifBlank { JSONObject.NULL })
+            payload
         )
         when (raw) {
             is String -> riderNullableUuid(raw) ?: caseId
