@@ -1,0 +1,62 @@
+name: QueueGo SawaiJee OSM Real Data Gate
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - work-native-rider-maplibre-sawaijee-realdata-20261014
+    paths:
+      - 'native-android/qa/build-buriram-shortbread-pmtiles.sh'
+      - 'native-android/qa/verify-pmtiles-village.py'
+      - '.github/workflows/build-sawaijee-osm-map.yml'
+      - 'tests/native-rider-maplibre-realdata.cjs'
+      - 'package.json'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: queuego-sawaijee-osm-realdata
+  cancel-in-progress: true
+
+jobs:
+  build-sawaijee-pmtiles:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      QG_MAP_DATA_DIR: ${{ runner.temp }}/queuego-sawaijee-map
+      QG_BURIRAM_BOUNDS: 103.115,14.870,103.180,14.945
+      QG_PM_TILES_OUTPUT_NAME: sawaijee-shortbread.pmtiles
+      QG_PM_TILES_MAXZOOM: 14
+      QG_PLANETILER_MEMORY: 4g
+      QG_SAWAIJEE_LAT: '14.9058'
+      QG_SAWAIJEE_LON: '103.14682'
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Validate real-data gate contracts
+        run: node tests/native-rider-maplibre-realdata.cjs
+
+      - name: Build real SawaiJee Shortbread PMTiles from OSM PBF
+        run: native-android/qa/build-buriram-shortbread-pmtiles.sh
+
+      - name: Verify PMTiles v3 MVT header and SawaiJee coverage
+        run: |
+          python3 native-android/qa/verify-pmtiles-village.py \
+            --file "${QG_MAP_DATA_DIR}/${QG_PM_TILES_OUTPUT_NAME}" \
+            --target-lat "${QG_SAWAIJEE_LAT}" \
+            --target-lon "${QG_SAWAIJEE_LON}" \
+            --required-maxzoom 14 \
+            --report "${QG_MAP_DATA_DIR}/sawaijee-pmtiles-report.json"
+
+      - name: Preserve real SawaiJee map evidence
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: queuego-sawaijee-osm-pmtiles
+          path: |
+            ${{ runner.temp }}/queuego-sawaijee-map/sawaijee-shortbread.pmtiles
+            ${{ runner.temp }}/queuego-sawaijee-map/sawaijee-shortbread.pmtiles.sha256
+            ${{ runner.temp }}/queuego-sawaijee-map/sawaijee-pmtiles-report.json
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 7
