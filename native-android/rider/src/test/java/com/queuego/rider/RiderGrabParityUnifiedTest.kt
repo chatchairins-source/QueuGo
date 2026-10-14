@@ -6,8 +6,9 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class RiderGrabParityUnifiedTest {
-    @Test fun benefitsAndFailedDeliveryContractsCoexistOnSingleSuccessor() {
+    @Test fun benefitsFailedDeliveryAndEventFeedbackCoexistOnReleaseSuccessor() {
         assertTrue(riderBenefitsFromRpc(JSONArray()).isEmpty())
+
         assertEquals(
             setOf(
                 "customer_unreachable",
@@ -19,5 +20,21 @@ class RiderGrabParityUnifiedTest {
             ),
             riderDeliveryIssueReasons.map { it.key }.toSet()
         )
+
+        val online = riderEventFeedbackSpec(RiderEventFeedbackKind.GO_ONLINE)
+        val offline = riderEventFeedbackSpec(RiderEventFeedbackKind.GO_OFFLINE)
+        val accepted = riderEventFeedbackSpec(RiderEventFeedbackKind.JOB_ACCEPTED)
+        val completed = riderEventFeedbackSpec(RiderEventFeedbackKind.DELIVERY_SUCCESS)
+        val error = riderEventFeedbackSpec(RiderEventFeedbackKind.ACTION_ERROR)
+
+        assertTrue(online.successHaptic)
+        assertTrue(offline.successHaptic)
+        assertTrue(accepted.successHaptic)
+        assertTrue(completed.successHaptic)
+        assertTrue(online.tones != offline.tones)
+        assertTrue(accepted.tones != online.tones)
+        assertEquals(2, completed.tones.size)
+        assertTrue(!error.successHaptic)
+        assertTrue(error.tones != completed.tones)
     }
 }

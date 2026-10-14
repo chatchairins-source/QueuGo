@@ -1,3 +1,11 @@
+## 2026-10-14 Grab Driver parity: event-feedback exact-head release gate
+- Release successor created directly from PR #293 head 2fa16843 after Work finished the distinct Rider feedback language for online/offline, accepted job, pickup success, delivery success and action failure.
+- Preserves PR #292 compile-safe failed-delivery flow and provider-isolated real-map lifecycle gate, plus real-data Benefits Center, critical Home actions, Availability vehicle gates, account restrictions and retained map continuity.
+- Release branch adds integration coverage only: Benefits must remain real-data-only, failed-delivery reasons remain order-linked, and the new Rider event feedback contracts coexist on the same successor.
+- No Production order/payment/dispatch/DB behavior is changed by this release-gate successor. No third-party audio asset and no VIBRATE permission are introduced.
+- Backup: backup/rider-grab-parity-before-event-feedback-release-20261014 @ 2fa16843.
+- PASS requires native-pilot + navigation-map-runtime on the exact final HEAD.
+
 ## 2026-10-14 Grab Driver parity: Rider event feedback language
 - Static inspection of the owner-supplied Grab Driver 5.457.1 APK confirmed distinct raw resources for delivery_success, delivery_error, picker_success, picker_error and incoming-job sound.
 - QueueGo does not copy any Grab audio asset. Rider now uses QueueGo-owned platform-generated feedback patterns plus Android haptics.
