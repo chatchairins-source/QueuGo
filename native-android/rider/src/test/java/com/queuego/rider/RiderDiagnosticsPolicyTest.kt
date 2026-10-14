@@ -14,10 +14,14 @@ class RiderDiagnosticsPolicyTest {
             notifications = true,
             googleMaps = true,
             overlayReturn = false,
-            microphone = false
+            microphone = false,
+            powerSaverOff = false,
+            backgroundUnrestricted = false
         )
         assertTrue(ready.readyForDelivery)
         assertEquals(5, ready.essentialPassedCount)
+        assertFalse(ready.powerSaverOff)
+        assertFalse(ready.backgroundUnrestricted)
 
         val noNotifications = ready.copy(notifications = false)
         assertFalse(noNotifications.readyForDelivery)
