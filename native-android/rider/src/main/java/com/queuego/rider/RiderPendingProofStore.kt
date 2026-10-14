@@ -122,11 +122,11 @@ internal class RiderPendingProofStore(context: Context) {
             return null
         }
 
-        val confirmedKey = confirmedKey(userId)
-        val previousConfirmed = decode(prefs.getString(confirmedKey, null))
+        val confirmedSlot = confirmedKey(userId)
+        val previousConfirmed = decode(prefs.getString(confirmedSlot, null))
         val confirmed = capture.copy(createdAtMs = nowMs)
         prefs.edit()
-            .putString(confirmedKey, encode(confirmed))
+            .putString(confirmedSlot, encode(confirmed))
             .remove(captureKey)
             .apply()
 
