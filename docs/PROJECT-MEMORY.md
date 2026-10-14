@@ -1,3 +1,9 @@
+## 2026-10-14 Grab Driver parity unified: Learning Center + Missions + emergency contact
+- Continued from PR240 Learning Center, which itself preserves PR239 server-owned real Missions. No parallel training or mission implementation is introduced.
+- Added one Rider-owned personal emergency contact inside the existing Safety Centre. Production migration 20261014065058 stores it only in qg_private.rider_emergency_contacts; public wrappers validate live session + active Rider ownership and anon execute is revoked.
+- Native Safety Centre can add, edit, delete and dial the saved contact. QueueGo does not auto-call, auto-message or auto-share GPS/location. Official Thailand emergency numbers 191 / 1669 / 1155 remain unchanged and separate.
+- This branch uses the navigation-map prefix so Learning Center + Missions + Safety contact must pass native-pilot and navigation-map-runtime on the same exact head before PASS.
+
 ## 2026-10-14 Grab Driver parity mission: Rider Learning Center
 - Added an in-app Rider Learning Center based on the training capability category observed in the owner-supplied Grab Driver package, while using QueueGo-only content and current production flow.
 - The Profile/Help section now opens eight compact expandable lessons: targeted 30-second offers, Google Maps merchant navigation, cash-to-merchant + one pickup photo, Market multi-stop, customer delivery/cash/photo completion, GPS/200m warning behavior, ratings/compliments/missions, and safety/device diagnostics.
