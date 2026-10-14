@@ -116,4 +116,14 @@ for(const needle of [
 ]){
   assert.ok(emergencyPhoneFix.includes(needle),'Rider emergency contact v2 missing contract: '+needle);
 }
+const offerPerformanceMigration=read('supabase/migrations/20261014071245_rider_offer_performance_v1.sql');
+for(const needle of [
+  'qg_private.rider_offer_performance',
+  'qg_rider_offer_performance',
+  'qg_rider_offer_history',
+  "v_days not in (1, 7, 30)",
+  "revoke all on function public.qg_rider_offer_performance(integer) from public, anon"
+]){
+  assert.ok(offerPerformanceMigration.includes(needle),'Rider offer performance migration missing contract: '+needle);
+}
 console.log('Native backend migration mirror: PASS');

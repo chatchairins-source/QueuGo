@@ -177,6 +177,35 @@ internal fun riderMissionsFromRpc(raw: Any?): List<RiderMission> {
     }
 }
 
+internal fun riderOfferPerformanceFromRpc(
+    raw: Any?,
+    fallbackDays: Int
+): RiderOfferPerformance {
+    val row = when (raw) {
+        is JSONObject -> raw
+        is JSONArray -> raw.optJSONObject(0) ?: JSONObject()
+        else -> JSONObject()
+    }
+    fun nullableDouble(key: String): Double? =
+        if (row.has(key) && !row.isNull(key)) {
+            row.optDouble(key).takeIf { it.isFinite() }
+        } else {
+            null
+        }
+    return RiderOfferPerformance(
+        days = row.optInt("days", fallbackDays),
+        offered = row.optInt("offered", 0).coerceAtLeast(0),
+        accepted = row.optInt("accepted", 0).coerceAtLeast(0),
+        declined = row.optInt("declined", 0).coerceAtLeast(0),
+        expired = row.optInt("expired", 0).coerceAtLeast(0),
+        acceptanceRate = nullableDouble("acceptance_rate"),
+        responseRate = nullableDouble("response_rate"),
+        declineRate = nullableDouble("decline_rate"),
+        timeoutRate = nullableDouble("timeout_rate"),
+        averageResponseSeconds = nullableDouble("average_response_seconds")
+    )
+}
+
 class QueueGoApi {
     companion object {
         private const val BASE_URL = "https://pkypiqhlrmzocysgeqew.supabase.co"
@@ -497,6 +526,19 @@ class QueueGoApi {
                     auth.session.accessToken,
                     JSONObject()
                 )
+            )
+        }
+
+    suspend fun offerPerformance(auth: QueueGoAuth, days: Int = 1): RiderOfferPerformance =
+        withContext(Dispatchers.IO) {
+            require(days in setOf(1, 7, 30)) { "days must be 1, 7 or 30" }
+            riderOfferPerformanceFromRpc(
+                rpc(
+                    "qg_rider_offer_performance",
+                    auth.session.accessToken,
+                    JSONObject().put("p_days", days)
+                ),
+                days
             )
         }
 
