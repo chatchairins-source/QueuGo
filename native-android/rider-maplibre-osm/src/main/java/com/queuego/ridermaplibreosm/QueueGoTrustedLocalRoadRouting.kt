@@ -9,10 +9,14 @@ package com.queuego.ridermaplibreosm
  */
 class QueueGoTrustedLocalRoadSnapshot internal constructor(
     val revision: Long,
-    internal val roads: List<QueueGoLocalRoad>
+    internal val roads: List<QueueGoLocalRoad>,
+    internal val junctions: List<QueueGoVerifiedLocalRoadJunction>
 ) {
     val roadCount: Int
         get() = roads.size
+
+    val junctionCount: Int
+        get() = junctions.size
 }
 
 /**
@@ -49,7 +53,10 @@ suspend fun QueueGoLocalRoadSignedDelivery.refreshTrustedSnapshot(): QueueGoTrus
 fun QueueGoTrustedLocalRoadSnapshot.buildGraphSession(): QueueGoTrustedLocalRoadGraphSession =
     QueueGoTrustedLocalRoadGraphSession(
         revision = revision,
-        graph = buildQueueGoLocalRoadGraph(roads)
+        graph = buildQueueGoLocalRoadGraph(
+            roads = roads,
+            junctions = junctions
+        )
     )
 
 private fun QueueGoLocalRoadDeliveryResult.toTrustedSnapshotOrNull():
@@ -60,6 +67,7 @@ private fun QueueGoLocalRoadDeliveryResult.toTrustedSnapshotOrNull():
     }
     return QueueGoTrustedLocalRoadSnapshot(
         revision = trustedRevision,
-        roads = roads.toList()
+        roads = roads.toList(),
+        junctions = junctions.toList()
     )
 }
