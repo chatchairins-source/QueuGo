@@ -180,4 +180,19 @@ for(const needle of [
 ]){
   assert.ok(supplyPlanningMigration.includes(needle),'Rider supply planning migration missing contract: '+needle);
 }
+const vehicleInspectionMigration=read('supabase/migrations/20261014080810_rider_vehicle_inspection_v1.sql');
+for(const needle of [
+  'qg_private.rider_vehicle_inspection_requests',
+  'qg_rider_vehicle_inspection_status',
+  'qg_rider_submit_vehicle_inspection',
+  'qg_admin_rider_vehicle_inspection_queue',
+  'qg_admin_request_rider_vehicle_inspection',
+  'qg_admin_review_rider_vehicle_inspection',
+  'qg_guard_rider_vehicle_inspection_online',
+  "ri.status in ('required','pending','rejected')",
+  'rider vehicle inspection required',
+  "revoke all on function public.qg_rider_vehicle_inspection_status() from public, anon"
+]){
+  assert.ok(vehicleInspectionMigration.includes(needle),'Rider vehicle inspection migration missing contract: '+needle);
+}
 console.log('Native backend migration mirror: PASS');
