@@ -8,7 +8,9 @@ const view=fs.readFileSync('native-android/rider-maplibre-osm/src/main/java/com/
 const localRoads=fs.readFileSync('native-android/rider-maplibre-osm/src/main/java/com/queuego/ridermaplibreosm/QueueGoLocalRoads.kt','utf8');
 const localRoadFeed=fs.readFileSync('native-android/rider-maplibre-osm/src/main/java/com/queuego/ridermaplibreosm/QueueGoLocalRoadFeed.kt','utf8');
 const localRoadSignedDelivery=fs.readFileSync('native-android/rider-maplibre-osm/src/main/java/com/queuego/ridermaplibreosm/QueueGoLocalRoadSignedDelivery.kt','utf8');
+const localRoadHttpsTransport=fs.readFileSync('native-android/rider-maplibre-osm/src/main/java/com/queuego/ridermaplibreosm/QueueGoLocalRoadHttpsTransport.kt','utf8');
 const localRoadRouting=fs.readFileSync('native-android/rider-maplibre-osm/src/main/java/com/queuego/ridermaplibreosm/QueueGoLocalRoadRoutingPolicy.kt','utf8');
+const localRoadGraph=fs.readFileSync('native-android/rider-maplibre-osm/src/main/java/com/queuego/ridermaplibreosm/QueueGoLocalRoadGraph.kt','utf8');
 const riderBuild=fs.readFileSync('native-android/rider/build.gradle.kts','utf8');
 
 assert(settings.includes('":rider-maplibre-osm"'),'MapLibre OSM module must be registered in native settings');
@@ -112,5 +114,37 @@ assert(!localRoadRouting.includes('shortestPath')&&
   !localRoadRouting.includes('LongdoNavigationRouteClient'),
   'Local Roads eligibility policy must stay separate from the Production routing engine');
 
+
+
+assert(localRoadHttpsTransport.includes('endpoint.isHttps')&&
+  localRoadHttpsTransport.includes('.get()')&&
+  localRoadHttpsTransport.includes('continuation.invokeOnCancellation { call.cancel() }')&&
+  localRoadHttpsTransport.includes('QUEUEGO_LOCAL_ROAD_MEDIA_TYPE')&&
+  localRoadHttpsTransport.includes('QUEUEGO_LOCAL_ROAD_MAX_SIGNED_PAYLOAD_BYTES.toLong()')&&
+  localRoadHttpsTransport.includes('QUEUEGO_LOCAL_ROAD_HEADER_ENVELOPE_VERSION')&&
+  localRoadHttpsTransport.includes('result.code == 204 || result.code == 304')&&
+  localRoadHttpsTransport.includes('Base64.getDecoder().decode(signatureHeader)')&&
+  localRoadHttpsTransport.includes('envelopeVersion = envelopeVersion')&&
+  !localRoadHttpsTransport.includes('.post(')&&
+  !localRoadHttpsTransport.includes('.put(')&&
+  !localRoadHttpsTransport.includes('.delete('),
+  'Local Roads HTTPS transport must stay read-only, cancellable, bounded, versioned and treat 204/304 as no-change responses');
+
+assert(!localRoadHttpsTransport.includes('supabase.co')&&
+  !localRoadHttpsTransport.includes('api.queuego')&&
+  !localRoadHttpsTransport.toLowerCase().includes('grab'),
+  'Local Roads HTTPS transport must not hardcode Production endpoints or competitor references');
+
+assert(localRoadGraph.includes('buildQueueGoLocalRoadGraph')&&
+  localRoadGraph.includes('queueGoLocalRoadRoutingDecision(')&&
+  localRoadGraph.includes('if (!road.verified || road.access == QueueGoLocalRoadAccess.PRIVATE_RESTRICTED)')&&
+  localRoadGraph.includes('if (!road.oneWay)')&&
+  localRoadGraph.includes('point.latitude.toBits()')&&
+  localRoadGraph.includes('point.longitude.toBits()')&&
+  localRoadGraph.includes('does not snap nearby-but-different coordinates')&&
+  !localRoadGraph.includes('Dijkstra')&&
+  !localRoadGraph.includes('shortestPath')&&
+  !localRoadGraph.includes('NavigationRouteCoordinator'),
+  'Experimental Local Roads graph must preserve exact verified topology and remain isolated from Production routing');
 
 console.log('native rider MapLibre OSM module contract passed');
