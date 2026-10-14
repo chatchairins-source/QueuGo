@@ -246,7 +246,8 @@ data class RiderProfileInfo(
     val vehicleType: String?,
     val vehiclePlate: String?,
     val vehicleStatus: String?,
-    val vehicleVerifiedAt: String?
+    val vehicleVerifiedAt: String?,
+    val profilePhoto: String? = null
 )
 
 data class RiderCashLedgerEntry(

@@ -24,6 +24,9 @@ internal fun riderNullableUuid(value: String?): String? =
         runCatching { UUID.fromString(candidate) }.isSuccess
     }
 
+internal fun riderProfilePhoto(metadata: JSONObject?): String? =
+    riderNullableText(metadata?.optString("profileImage"))
+
 class QueueGoApi {
     companion object {
         private const val BASE_URL = "https://pkypiqhlrmzocysgeqew.supabase.co"
@@ -531,7 +534,8 @@ class QueueGoApi {
             vehicleType = profile.optString("vehicle_type").takeIf { it.isNotBlank() },
             vehiclePlate = profile.optString("vehicle_plate").takeIf { it.isNotBlank() },
             vehicleStatus = profile.optString("vehicle_status").takeIf { it.isNotBlank() },
-            vehicleVerifiedAt = profile.optString("vehicle_verified_at").takeIf { it.isNotBlank() }
+            vehicleVerifiedAt = profile.optString("vehicle_verified_at").takeIf { it.isNotBlank() },
+            profilePhoto = riderProfilePhoto(profile.optJSONObject("metadata"))
         )
         RiderSnapshot(
             online = online,
