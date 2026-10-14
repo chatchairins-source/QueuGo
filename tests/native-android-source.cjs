@@ -222,7 +222,7 @@ ok(riderApp.includes('val localAfterSuccess = when (completedMode)')&&
    riderApp.includes('pickupCommittedStatus ?: "picked_up"')&&
    riderApp.includes('pickup.copy(status = "PICKED_UP")')&&
    riderApp.includes('bundled.copy(job = bundled.job.copy(status = "completed"))')&&
-   riderApp.includes('pushStore.saveHomeSnapshot(auth.user.id, localAfterSuccess)')&&
+   riderApp.includes('persistCommittedSnapshot(localAfterSuccess)')&&
    riderApp.includes('?: localAfterSuccess?.activeJob'),
    'Rider proof success must advance local workflow immediately, including bundle-aware pickup handoff, so verification cannot repeat when refresh is slow or fails');
 ok(riderApp.includes('if (current == null) {')&&

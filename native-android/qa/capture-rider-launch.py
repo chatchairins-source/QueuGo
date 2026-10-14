@@ -584,15 +584,18 @@ def verify_real_home_map_runtime():
 
 def verify_proof_process_recovery():
     runner = "com.queuego.rider.test/androidx.test.runner.AndroidJUnitRunner"
-    for method in ["preparePendingProofForProcessKill", "recoverPendingProofAfterProcessKill"]:
-        result = run(adb + ["shell", "am", "instrument", "-w", "-r", "-e", "class",
-                           "com.queuego.rider.RiderProofPersistenceTest#" + method, runner],
-                     capture_output=True, text=True, timeout=120)
-        (output / ("proof-" + method + ".txt")).write_text(result.stdout + result.stderr)
-        assert "OK (1 test)" in result.stdout, "Durable photo/cash process recovery failed: " + method
-        if method == "preparePendingProofForProcessKill":
-            run(adb + ["shell", "am", "force-stop", "com.queuego.rider"])
-    print("One-photo pending proof + cash-stage recovery across real process death PASS")
+    stages = ["navigating_merchant", "arrived_merchant", "pickup_verification", "picked_up",
+              "navigating_customer", "arrived_customer", "photo_captured", "cash_collection"]
+    for stage in stages:
+        for method in ["preparePendingProofForProcessKill", "recoverPendingProofAfterProcessKill"]:
+            result = run(adb + ["shell", "am", "instrument", "-w", "-r", "-e", "stage", stage, "-e", "class",
+                               "com.queuego.rider.RiderProofPersistenceTest#" + method, runner],
+                         capture_output=True, text=True, timeout=120)
+            (output / ("proof-" + stage + "-" + method + ".txt")).write_text(result.stdout + result.stderr)
+            assert "OK (1 test)" in result.stdout, "Durable Rider process recovery failed: " + stage + "/" + method
+            if method == "preparePendingProofForProcessKill":
+                run(adb + ["shell", "am", "force-stop", "com.queuego.rider"])
+    print("Eight-stage Rider snapshot/navigation/workflow/photo/cash recovery across real process death PASS")
 
 
 def verify_voice_foreground_runtime():

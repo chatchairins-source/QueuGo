@@ -139,7 +139,7 @@ class SessionStore(private val context: Context) {
     }.getOrDefault("FOLLOW")
 
     @Synchronized
-    fun saveHomeSnapshot(userId: String, snapshot: RiderSnapshot) {
+    fun saveHomeSnapshot(userId: String, snapshot: RiderSnapshot, durable: Boolean = false): Boolean {
         val root = JSONObject()
             .put("userId", userId)
             .put("online", snapshot.online)
@@ -158,7 +158,8 @@ class SessionStore(private val context: Context) {
                 snapshot.bundle.activeOrders.forEach { put(bundleOrderToJson(it)) }
             }
         )
-        prefs.edit().putString("home_snapshot", encrypt(root.toString())).apply()
+        val editor = prefs.edit().putString("home_snapshot", encrypt(root.toString()))
+        return if (durable) editor.commit() else { editor.apply(); true }
     }
 
     @Synchronized

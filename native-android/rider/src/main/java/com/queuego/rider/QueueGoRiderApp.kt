@@ -679,6 +679,14 @@ private fun RiderHome(
     var actionBusy by remember { mutableStateOf(false) }
     var actionMessage by remember { mutableStateOf<String?>(null) }
 
+    suspend fun persistCommittedSnapshot(value: RiderSnapshot) {
+        val saved = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+            runCatching { pushStore.saveHomeSnapshot(auth.user.id, value, durable = true) }
+                .getOrDefault(false)
+        }
+        if (!saved) actionMessage = "บันทึกงานในเครื่องไม่สำเร็จ · เชื่อมต่อเพื่อกู้คืนสถานะจากระบบ"
+    }
+
     fun setStopAfterWorkPending(pending: Boolean) {
         stopAfterWorkPending = pending
         stopAfterWorkStore.setPending(auth.user.id, pending)
@@ -1285,7 +1293,7 @@ private fun RiderHome(
                 val committedSnapshot = snapshot?.takeIf { it.activeJob?.id == job.id }?.copy(activeJob = committedJob)
                 if (committedSnapshot != null) {
                     snapshot = committedSnapshot
-                    pushStore.saveHomeSnapshot(auth.user.id, committedSnapshot)
+                    persistCommittedSnapshot(committedSnapshot)
                 }
                 updated = runCatching { api.riderSnapshot(auth) }
                     .onFailure { if (it is CancellationException) throw it }
@@ -1296,7 +1304,7 @@ private fun RiderHome(
                     }
                 updated?.let {
                     snapshot = it
-                    pushStore.saveHomeSnapshot(auth.user.id, it)
+                    persistCommittedSnapshot(it)
                 }
                 if (updated == null && committedSnapshot != null) updated = committedSnapshot
             }.onFailure {
@@ -1716,7 +1724,7 @@ private fun RiderHome(
                         }
                         if (localAfterSuccess != null) {
                             snapshot = localAfterSuccess
-                            pushStore.saveHomeSnapshot(auth.user.id, localAfterSuccess)
+                            persistCommittedSnapshot(localAfterSuccess)
                         }
 
                         if (completedMode == "delivery") {
@@ -1749,7 +1757,7 @@ private fun RiderHome(
                         }
                         if (committedRead != null) {
                             snapshot = committedRead
-                            pushStore.saveHomeSnapshot(auth.user.id, committedRead)
+                            persistCommittedSnapshot(committedRead)
                         }
 
                         if (completedMode == "pickup" && pickupCommittedStatus == "in_progress") {
@@ -1958,7 +1966,7 @@ private fun RiderHome(
                     runCatching { api.riderSnapshot(auth) }
                         .onSuccess {
                             snapshot = it
-                            pushStore.saveHomeSnapshot(auth.user.id, it)
+                            persistCommittedSnapshot(it)
                         }
                     actionBusy = false
                     return@repeatOnLifecycle
@@ -2004,7 +2012,7 @@ private fun RiderHome(
                         marketPickups = emptyList()
                     )
                     snapshot = acceptedSnapshot
-                    pushStore.saveHomeSnapshot(auth.user.id, acceptedSnapshot)
+                    persistCommittedSnapshot(acceptedSnapshot)
 
                     val updated = runCatching { api.riderSnapshot(auth) }
                         .onFailure { if (it is CancellationException) throw it }
@@ -2013,7 +2021,7 @@ private fun RiderHome(
                         ?.let { riderMergeLiveSnapshot(acceptedSnapshot, it) }
                     if (updated != null) {
                         snapshot = updated
-                        pushStore.saveHomeSnapshot(auth.user.id, updated)
+                        persistCommittedSnapshot(updated)
                     }
                     openNavigation(context, updated?.activeJob ?: acceptedFallback)
                 }
@@ -2663,7 +2671,7 @@ private fun RiderHome(
                                                     .getOrNull()
                                                 if (updated != null) {
                                                     snapshot = updated
-                                                    pushStore.saveHomeSnapshot(auth.user.id, updated)
+                                                    persistCommittedSnapshot(updated)
                                                 }
                                                 openReturnNavigation(context, updated?.deliveryReturn ?: returnCase)
                                             }
@@ -2702,7 +2710,7 @@ private fun RiderHome(
                                                     .getOrNull()
                                                 if (updated != null) {
                                                     snapshot = updated
-                                                    pushStore.saveHomeSnapshot(auth.user.id, updated)
+                                                    persistCommittedSnapshot(updated)
                                                 }
                                                 if (result == "returned") {
                                                     playRiderEventFeedback(eventFeedbackView, RiderEventFeedbackKind.RETURN_COMPLETE)
@@ -2792,7 +2800,7 @@ private fun RiderHome(
                                                     offeredJob = null
                                                 )
                                                 snapshot = committedSnapshot
-                                                pushStore.saveHomeSnapshot(auth.user.id, committedSnapshot)
+                                                persistCommittedSnapshot(committedSnapshot)
                                                 val updated = runCatching { api.riderSnapshot(auth) }
                                                     .onFailure { if (it is CancellationException) throw it }
                                                     .getOrNull()
@@ -2801,7 +2809,7 @@ private fun RiderHome(
                                                 }
                                                 if (committedRead != null) {
                                                     snapshot = committedRead
-                                                    pushStore.saveHomeSnapshot(auth.user.id, committedRead)
+                                                    persistCommittedSnapshot(committedRead)
                                                 }
                                                 openNavigation(context, committedRead?.activeJob ?: committedJob)
                                             }
@@ -2862,7 +2870,7 @@ private fun RiderHome(
                                                 offeredJob = null
                                             )
                                             snapshot = committedSnapshot
-                                            pushStore.saveHomeSnapshot(auth.user.id, committedSnapshot)
+                                            persistCommittedSnapshot(committedSnapshot)
                                             val updated = runCatching { api.riderSnapshot(auth) }
                                                 .onFailure { if (it is CancellationException) throw it }
                                                 .getOrNull()
@@ -2871,7 +2879,7 @@ private fun RiderHome(
                                             }
                                             if (committedRead != null) {
                                                 snapshot = committedRead
-                                                pushStore.saveHomeSnapshot(auth.user.id, committedRead)
+                                                persistCommittedSnapshot(committedRead)
                                             }
                                             openNavigation(context, committedRead?.activeJob ?: committedJob)
                                         }
@@ -4394,7 +4402,7 @@ private fun openNavigation(context: Context, job: RiderJob) {
     if (opened) {
         context.getSharedPreferences("rider_navigation", Context.MODE_PRIVATE).edit()
             .putBoolean(navigationKey, true)
-            .apply()
+            .commit()
     } else {
         RiderReturnService.stop(context)
     }

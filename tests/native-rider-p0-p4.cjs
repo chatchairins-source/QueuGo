@@ -25,4 +25,9 @@ assert(app.includes('if (actionBusy || !requireServerNetwork()) return@Verificat
 assert(app.includes('if (showCollection && photoReady && previewReady'), 'Restored cash collection must revalidate the saved photo before enabling completion');
 assert(runtime.includes('RiderProofPersistenceTest#') && runtime.includes('"force-stop", "com.queuego.rider"'));
 assert(runtime.includes('verify_proof_process_recovery()'));
+assert(app.includes('pushStore.saveHomeSnapshot(auth.user.id, value, durable = true)') &&
+  app.includes('kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO)'),
+  'Acknowledged mutations must persist encrypted snapshots off the main thread before navigation');
+for (const stage of ['navigating_merchant','arrived_merchant','pickup_verification','picked_up',
+  'navigating_customer','arrived_customer','photo_captured','cash_collection']) assert(runtime.includes('"'+stage+'"'));
 console.log('Rider P0–P4 integration contracts: PASS (authenticated operational E2E remains separate)');
