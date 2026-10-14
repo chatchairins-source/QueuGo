@@ -23,9 +23,11 @@ internal data class RiderConnectivityNoticeModel(
 internal fun riderConnectivityNotice(
     consecutiveRefreshFailures: Int,
     hasSnapshot: Boolean,
-    hasActiveWork: Boolean
+    hasActiveWork: Boolean,
+    networkAvailable: Boolean = true
 ): RiderConnectivityNoticeModel? {
-    if (!hasSnapshot || consecutiveRefreshFailures < 2) return null
+    if (!hasSnapshot) return null
+    if (networkAvailable && consecutiveRefreshFailures < 2) return null
     return RiderConnectivityNoticeModel(
         title = "สัญญาณขัดข้อง",
         detail = if (hasActiveWork) {
