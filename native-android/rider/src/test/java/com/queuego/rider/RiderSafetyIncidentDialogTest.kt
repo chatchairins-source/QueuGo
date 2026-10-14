@@ -48,6 +48,7 @@ class RiderSafetyIncidentDialogTest {
         )
 
         assertTrue(details.contains("ตำแหน่งที่ Rider เลือกแนบ=15.244444,104.847222"))
+        assertTrue(details.length >= 10)
     }
 
     @Test fun incidentWithoutActiveOrderStillProducesValidSupportDetails() {
