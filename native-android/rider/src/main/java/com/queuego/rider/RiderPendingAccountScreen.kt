@@ -20,11 +20,58 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-/** rider/index.html renderPending: no map, GPS, job feed or online toggle. */
+internal data class RiderAccountRestrictionContent(
+    val badge: String,
+    val title: String,
+    val description: String
+)
+
+internal fun riderAccountRestrictionContent(status: String?): RiderAccountRestrictionContent =
+    when (status?.trim()?.lowercase()) {
+        "pending" -> RiderAccountRestrictionContent(
+            badge = "อยู่ระหว่างตรวจสอบ",
+            title = "ใบสมัครของคุณอยู่ระหว่างตรวจสอบ",
+            description = "ใบสมัครของคุณถูกบันทึกแล้ว เมื่อ Admin อนุมัติ คุณจะสามารถเปิดรับงานได้ทันที"
+        )
+        "suspended" -> RiderAccountRestrictionContent(
+            badge = "บัญชีถูกระงับ",
+            title = "บัญชี Rider ถูกระงับชั่วคราว",
+            description = "ขณะนี้บัญชีนี้ไม่สามารถเปิดรับงานได้ กรุณาติดต่อฝ่ายดูแล QueueGo เพื่อตรวจสอบสถานะบัญชี"
+        )
+        "inactive" -> RiderAccountRestrictionContent(
+            badge = "บัญชียังไม่พร้อม",
+            title = "บัญชี Rider ยังไม่เปิดใช้งาน",
+            description = "ขณะนี้ยังไม่สามารถเปิดรับงานได้ กรุณาตรวจสอบสถานะบัญชีกับฝ่ายดูแล QueueGo"
+        )
+        "rejected" -> RiderAccountRestrictionContent(
+            badge = "ใบสมัครยังไม่ผ่าน",
+            title = "บัญชียังไม่สามารถเปิดรับงาน",
+            description = "กรุณาติดต่อฝ่ายดูแล QueueGo เพื่อตรวจสอบหรือแก้ไขข้อมูลการสมัครก่อนเปิดรับงาน"
+        )
+        else -> RiderAccountRestrictionContent(
+            badge = "บัญชียังไม่พร้อมใช้งาน",
+            title = "ยังไม่สามารถเปิดรับงานได้",
+            description = "สถานะบัญชีนี้ยังไม่อนุญาตให้เปิดรับงาน กรุณาติดต่อฝ่ายดูแล QueueGo เพื่อตรวจสอบรายละเอียด"
+        )
+    }
+
+/** Non-active Rider accounts never render map, GPS, job feed or online toggle. */
 @Composable
-internal fun RiderPendingAccountScreen(modifier: Modifier, name: String, onLogout: () -> Unit) {
-    RiderAccountCard(modifier, "ใบสมัครของคุณอยู่ระหว่างตรวจสอบ", "สวัสดี " + name.ifBlank { "ไรเดอร์" },
-        "ใบสมัครของคุณถูกบันทึกแล้ว เมื่อ Admin อนุมัติ คุณจะสามารถเปิดรับงานได้ทันที", "ออกจากระบบ", onLogout)
+internal fun RiderPendingAccountScreen(
+    modifier: Modifier,
+    name: String,
+    status: String? = "pending",
+    onLogout: () -> Unit
+) {
+    val content = riderAccountRestrictionContent(status)
+    RiderAccountCard(
+        modifier,
+        content.badge,
+        "สวัสดี " + name.ifBlank { "ไรเดอร์" } + "\n" + content.title,
+        content.description,
+        "ออกจากระบบ",
+        onLogout
+    )
 }
 
 @Composable

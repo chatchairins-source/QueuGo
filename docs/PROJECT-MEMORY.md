@@ -1,3 +1,9 @@
+## 2026-10-14 Grab Driver parity: account restriction / suspension UX
+- Continued from background-health head 89df824. Grab Driver contains a dedicated suspension experience; QueueGo previously routed every non-active Rider status through the pending-application copy, so suspended/inactive/rejected accounts could be told incorrectly that Admin was merely reviewing the application.
+- Non-active Rider shell now renders status-specific copy for pending, suspended, inactive and rejected, with a fail-closed generic restriction for unknown statuses. It never invents a backend reason; suspended/rejected copy directs the Rider to QueueGo support for the actual account decision.
+- Security/flow is unchanged: every non-active status still stays outside Rider Home, map, GPS job feed and online controls. No Production DB or auth-policy change.
+- Backup backup/rider-background-health-before-account-restriction-20261014 retains 89df824. Exact-head native-pilot + navigation-map-runtime remain required before PASS.
+
 ## 2026-10-14 Grab Driver parity: background/app-exit health diagnostics v2
 - Rebased the background-health work onto the latest server-clock diagnostics head 8ace1a5 so server-time health and Android background health remain on one line.
 - Rider Diagnostics now checks Battery Optimization exemption and Android background restriction in addition to existing process-exit, map reuse, GPS integrity, API/network, UI-jank, main-thread and server-clock health.
