@@ -3,6 +3,7 @@ package com.queuego.rider
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertNotEquals
+import org.junit.Assert.assertFalse
 import org.junit.Test
 
 class RiderVoiceAssistantTest {
@@ -54,5 +55,17 @@ class RiderVoiceAssistantTest {
         val before = riderVoiceJobStageKey(job("rider_assigned"))
         val after = riderVoiceJobStageKey(job("rider_assigned", arrivedShopAt = "now"))
         assertNotEquals(before, after)
+    }
+
+    @Test fun spokenPromptsNeverEchoTripIdentityOrMoney() {
+        val all = listOfNotNull(
+            riderVoiceOfferAnnouncement(),
+            riderVoiceJobAnnouncement(job("rider_assigned")),
+            riderVoiceJobAnnouncement(job("ready")),
+            riderVoiceJobAnnouncement(job("in_progress", arrivedCustomerAt = "now"))
+        ).joinToString(" ")
+        for (privateValue in listOf("QT-1001", "0812345678", "บ้านลูกค้า", "ร้านทดสอบ", "250 บาท")) {
+            assertFalse(all.contains(privateValue))
+        }
     }
 }
