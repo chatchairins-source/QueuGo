@@ -129,6 +129,22 @@ internal fun riderReverificationStatusFromRpc(raw: Any?): RiderReverificationSta
 internal fun riderReverificationBlocksOnline(status: RiderReverificationStatus): Boolean =
     status.required && status.status in setOf("required", "pending", "rejected")
 
+internal fun riderEmergencyContactFromRpc(raw: Any?): RiderEmergencyContact {
+    val row = when (raw) {
+        is JSONObject -> raw
+        is JSONArray -> raw.optJSONObject(0) ?: JSONObject()
+        else -> JSONObject()
+    }
+    fun nullable(key: String): String? = riderNullableText(row.optString(key))
+    val configured = row.optBoolean("configured", false)
+    return RiderEmergencyContact(
+        configured = configured,
+        name = if (configured) nullable("name") else null,
+        phone = if (configured) nullable("phone") else null,
+        updatedAt = if (configured) nullable("updated_at") else null
+    )
+}
+
 internal fun riderMissionsFromRpc(raw: Any?): List<RiderMission> {
     val rows = when (raw) {
         is JSONArray -> raw
@@ -561,6 +577,33 @@ class QueueGoApi {
                 "qg_rider_submit_reverification",
                 auth.session.accessToken,
                 JSONObject().put("p_photo_path", path)
+            )
+        )
+    }
+
+    suspend fun emergencyContact(auth: QueueGoAuth): RiderEmergencyContact =
+        withContext(Dispatchers.IO) {
+            riderEmergencyContactFromRpc(
+                rpc(
+                    "qg_rider_emergency_contact",
+                    auth.session.accessToken,
+                    JSONObject()
+                )
+            )
+        }
+
+    suspend fun setEmergencyContact(
+        auth: QueueGoAuth,
+        name: String,
+        phone: String
+    ): RiderEmergencyContact = withContext(Dispatchers.IO) {
+        riderEmergencyContactFromRpc(
+            rpc(
+                "qg_rider_set_emergency_contact",
+                auth.session.accessToken,
+                JSONObject()
+                    .put("p_name", name)
+                    .put("p_phone", phone)
             )
         )
     }
