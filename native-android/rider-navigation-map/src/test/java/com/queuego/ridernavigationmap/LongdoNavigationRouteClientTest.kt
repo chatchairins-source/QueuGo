@@ -1,8 +1,17 @@
 package com.queuego.ridernavigationmap
 
+import java.io.IOException
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
+import okhttp3.OkHttpClient
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertThrows
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class LongdoNavigationRouteClientTest {
@@ -50,5 +59,40 @@ class LongdoNavigationRouteClientTest {
                 "leg-1"
             )
         }
+    }
+
+
+    @Test fun cancellingRouteCoroutineCancelsUnderlyingOkHttpCall() = runBlocking {
+        val enteredRequest = CountDownLatch(1)
+        val observedCancellation = CountDownLatch(1)
+        val client = OkHttpClient.Builder()
+            .addInterceptor { chain ->
+                enteredRequest.countDown()
+                while (!chain.call().isCanceled()) {
+                    Thread.sleep(5L)
+                }
+                observedCancellation.countDown()
+                throw IOException("cancelled by test")
+            }
+            .build()
+        val routeClient = LongdoNavigationRouteClient("test-key", client)
+
+        val job = launch(Dispatchers.Default) {
+            routeClient.route(
+                from = NavigationMapPoint(13.0, 100.0),
+                stop = stop,
+                segmentId = "cancel-me"
+            )
+        }
+
+        assertTrue(
+            "OkHttp request never entered the interceptor",
+            enteredRequest.await(2, TimeUnit.SECONDS)
+        )
+        job.cancelAndJoin()
+        assertTrue(
+            "Cancelling navigation coroutine did not cancel the OkHttp Call",
+            observedCancellation.await(2, TimeUnit.SECONDS)
+        )
     }
 }
