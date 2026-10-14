@@ -410,6 +410,26 @@ internal fun riderPickupGuideFromRpc(raw: Any?): RiderPickupGuide {
     )
 }
 
+internal fun riderLoadSummaryFromRpc(raw: Any?): RiderLoadSummary {
+    val row = when (raw) {
+        is JSONObject -> raw
+        is JSONArray -> raw.optJSONObject(0) ?: JSONObject()
+        else -> JSONObject()
+    }
+    fun number(key: String): Double? =
+        if (!row.has(key) || row.isNull(key)) null
+        else row.optDouble(key).takeIf { it.isFinite() && it >= 0.0 }
+    val state = riderNullableText(row.optString("state"))
+        ?.takeIf { it in setOf("unknown","capacity_unknown","normal","near_capacity","over_capacity") }
+        ?: "unknown"
+    return RiderLoadSummary(
+        weightKg = number("weight_kg"),
+        vehicleCapacityKg = number("vehicle_capacity_kg"),
+        utilizationRatio = number("utilization_ratio"),
+        state = state
+    )
+}
+
 class QueueGoApi {
     companion object {
         private const val BASE_URL = "https://pkypiqhlrmzocysgeqew.supabase.co"
@@ -1415,6 +1435,17 @@ class QueueGoApi {
                 guide.parkingInstructions,
                 guide.marketZone,
                 guide.marketStallNo
+            )
+        }
+
+    suspend fun orderLoadSummary(auth: QueueGoAuth, orderId: String): RiderLoadSummary =
+        withContext(Dispatchers.IO) {
+            riderLoadSummaryFromRpc(
+                rpc(
+                    "qg_rider_order_load_summary",
+                    auth.session.accessToken,
+                    JSONObject().put("p_order_id", orderId)
+                )
             )
         }
 
