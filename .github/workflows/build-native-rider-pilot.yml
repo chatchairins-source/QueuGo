@@ -251,7 +251,7 @@ jobs:
           retention-days: 14
 
   navigation-map-runtime:
-    if: ${{ startsWith(github.ref, 'refs/heads/work-native-rider-navigation-map-') }}
+    if: ${{ startsWith(github.ref, 'refs/heads/work-native-rider-navigation-map-') || startsWith(github.ref, 'refs/heads/work-native-rider-nav-confidence-') }}
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
