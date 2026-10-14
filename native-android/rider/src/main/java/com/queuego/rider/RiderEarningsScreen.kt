@@ -334,12 +334,21 @@ fun RiderEarningsScreen(auth: QueueGoAuth, api: QueueGoApi, onBack: () -> Unit, 
                     Spacer(Modifier.height(10.dp))
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         RiderCashStat("จ่ายร้าน", baht(rows.sumOf { it.cashPaidMerchant }), Modifier.weight(1f))
-                        RiderCashStat("เก็บลูกค้า", baht(rows.sumOf { it.cashCollectedCustomer }), Modifier.weight(1f))
+                        RiderCashStat("คืนจากร้าน", baht(rows.sumOf { it.cashRefundedMerchant }), Modifier.weight(1f))
                     }
                     Spacer(Modifier.height(8.dp))
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        RiderCashStat("เก็บลูกค้า", baht(rows.sumOf { it.cashCollectedCustomer }), Modifier.weight(1f))
                         RiderCashStat("ค่าส่งที่ได้รับ", baht(rows.sumOf { it.deliveryFee }), Modifier.weight(1f))
-                        RiderCashStat("สุทธิรับ-จ่าย", baht(rows.sumOf { it.cashCollectedCustomer - it.cashPaidMerchant }), Modifier.weight(1f), QgRed)
+                    }
+                    Spacer(Modifier.height(8.dp))
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        RiderCashStat(
+                            "สุทธิรับ-จ่าย",
+                            baht(rows.sumOf { riderHistoryCashFlow(it) }),
+                            Modifier.weight(1f),
+                            QgRed
+                        )
                     }
                 }
                 Spacer(Modifier.height(10.dp))
@@ -432,7 +441,11 @@ private fun RiderJobHistoryDetail(
         }
         Spacer(Modifier.height(7.dp))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+            RiderCashStat("คืนจากร้าน", baht(row.cashRefundedMerchant), Modifier.weight(1f))
             RiderCashStat("เก็บลูกค้า", baht(row.cashCollectedCustomer), Modifier.weight(1f))
+        }
+        Spacer(Modifier.height(7.dp))
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
             RiderCashStat(
                 "เงินสดรับ-จ่าย",
                 baht(riderHistoryCashFlow(row)),
@@ -581,7 +594,7 @@ private fun RiderEarnError(message: String) {
 }
 
 internal fun riderHistoryCashFlow(row: RiderCashLedgerEntry): Double =
-    row.cashCollectedCustomer - row.cashPaidMerchant
+    row.cashCollectedCustomer + row.cashRefundedMerchant - row.cashPaidMerchant
 
 internal fun riderHistoryStatusLabel(status: String): String = when (status.lowercase()) {
     "completed" -> "งานส่งสำเร็จ"
