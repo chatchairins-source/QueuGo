@@ -23,6 +23,42 @@ class NavigationCameraPolicyTest {
         point = route.points.last()
     )
 
+    @Test
+    fun poorBearingAccuracyFallsBackToMatchedRoadDirection() {
+        val route = NavigationRouteSegment(
+            id = "active",
+            toStopId = "shop",
+            points = listOf(
+                NavigationMapPoint(15.0000, 103.0000),
+                NavigationMapPoint(15.0000, 103.0100)
+            ),
+            style = NavigationRouteStyle.ACTIVE
+        )
+        val state = RiderNavigationMapState(
+            rider = NavigationMapFix(
+                point = NavigationMapPoint(15.00002, 103.0040),
+                bearingDegrees = 270f,
+                accuracyMeters = 8f,
+                speedMetersPerSecond = 8f,
+                bearingAccuracyDegrees = 85f
+            ),
+            stops = listOf(
+                NavigationMapStop(
+                    id = "shop",
+                    sequence = 1,
+                    kind = NavigationStopKind.PICKUP,
+                    point = NavigationMapPoint(15.0000, 103.0100)
+                )
+            ),
+            routes = listOf(route),
+            activeStopId = "shop"
+        )
+
+        val decision = navigationCameraDecision(state, previousBearingDegrees = null)
+
+        assertTrue(decision!!.bearingDegrees!! in 70f..110f)
+    }
+
     @Test fun highwaySpeedZoomsOutAndLooksAhead() {
         val state = RiderNavigationMapState(
             rider = NavigationMapFix(

@@ -61,9 +61,8 @@ class NavigationHybridMatcher(
             val progress = walked + segmentMeters * projection.fraction
             val bearing = navigationBearingDegrees(a, b)
             val headingDelta = headingDeltaDegrees(
-                fixBearing = fix.bearingDegrees,
-                segmentBearing = bearing,
-                speedMetersPerSecond = fix.speedMetersPerSecond
+                fix = fix,
+                segmentBearing = bearing
             )
 
             val continuityPenalty = if (
@@ -124,16 +123,16 @@ class NavigationHybridMatcher(
     }
 
     private fun headingDeltaDegrees(
-        fixBearing: Float?,
-        segmentBearing: Float,
-        speedMetersPerSecond: Float?
+        fix: NavigationMapFix,
+        segmentBearing: Float
     ): Float? {
-        val speed = speedMetersPerSecond?.takeIf { it.isFinite() && it >= 0f } ?: return null
-        val bearing = fixBearing?.takeIf { it.isFinite() } ?: return null
+        val speed = fix.speedMetersPerSecond
+            ?.takeIf { it.isFinite() && it >= 0f }
+            ?: return null
         if (speed < 2f) return null
-        val a = normalizeNavigationBearing(bearing)
+        val bearing = navigationUsableGpsBearing(fix) ?: return null
         val b = normalizeNavigationBearing(segmentBearing)
-        return abs(((a - b + 540f) % 360f) - 180f)
+        return abs(((bearing - b + 540f) % 360f) - 180f)
     }
 
     private fun confidenceFor(

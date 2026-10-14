@@ -205,7 +205,13 @@ class RiderNavigationLocationService : Service() {
                     location.accuracy.takeIf { location.hasAccuracy() && it.isFinite() },
                 speedMetersPerSecond =
                     location.speed.takeIf { location.hasSpeed() && it.isFinite() && it >= 0f },
-                elapsedRealtimeNanos = location.elapsedRealtimeNanos
+                elapsedRealtimeNanos = location.elapsedRealtimeNanos,
+                bearingAccuracyDegrees = location.bearingAccuracyDegrees.takeIf {
+                    location.hasBearingAccuracy() && it.isFinite() && it >= 0f
+                },
+                speedAccuracyMetersPerSecond = location.speedAccuracyMetersPerSecond.takeIf {
+                    location.hasSpeedAccuracy() && it.isFinite() && it >= 0f
+                }
             )
         )
     }
