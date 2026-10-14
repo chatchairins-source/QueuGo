@@ -118,6 +118,13 @@ assert(map.includes('MotionEvent.ACTION_MOVE')&&
   integration.includes('followRider = followRider'),
   'Manual drag or pinch must suspend navigation follow until the Rider explicitly recenters');
 
+assert(
+  integration.includes('RIDER_NAV_CONFIDENCE_SHADOW_ENABLED = true')&&
+  integration.includes('RIDER_NAV_DISPLAY_CONFIDENCE_ENABLED = false')&&
+  integration.includes('val candidateDisplayState = displayPipeline.applyToDisplayState(authoritativeState)')&&
+  integration.includes('return if (RIDER_NAV_DISPLAY_CONFIDENCE_ENABLED)'),
+  'Confidence matching must run in shadow mode while the certified Rider display remains unchanged');
+
 assert(map.includes('setPreserveEGLContextOnPause(true)'),
   'Navigation map must preserve the GL context across background/resume when Android allows it');
 assert(map.includes('announceRendererReplacement')&&
