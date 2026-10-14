@@ -1,0 +1,38 @@
+package com.queuego.rider
+
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
+import org.junit.Test
+
+class RiderPendingProofStoreTest {
+    private val draft = RiderProofDraft(
+        jobId = "order-1",
+        mode = "delivery",
+        marketPickupId = null,
+        uri = "content://queuego/proof.jpg",
+        createdAtMs = 1_000L
+    )
+
+    @Test fun proofDraftNeverCrossesOrdersOrWorkflowStages() {
+        assertTrue(riderProofDraftMatches(draft, "order-1", "delivery", null))
+        assertFalse(riderProofDraftMatches(draft, "order-2", "delivery", null))
+        assertFalse(riderProofDraftMatches(draft, "order-1", "pickup", null))
+    }
+
+    @Test fun marketPickupProofRequiresExactStop() {
+        val market = draft.copy(mode = "marketPickup", marketPickupId = "pickup-a")
+        assertTrue(riderProofDraftMatches(market, "order-1", "marketPickup", "pickup-a"))
+        assertFalse(riderProofDraftMatches(market, "order-1", "marketPickup", "pickup-b"))
+        assertFalse(riderProofDraftMatches(market, "order-1", "marketPickup", null))
+    }
+
+    @Test fun confirmedProofHasBoundedRecoveryLifetime() {
+        assertTrue(riderProofDraftFresh(1_000L, 1_000L + RIDER_PROOF_DRAFT_MAX_AGE_MS, RIDER_PROOF_DRAFT_MAX_AGE_MS))
+        assertFalse(riderProofDraftFresh(1_000L, 1_001L + RIDER_PROOF_DRAFT_MAX_AGE_MS, RIDER_PROOF_DRAFT_MAX_AGE_MS))
+    }
+
+    @Test fun futureOrInvalidTimestampCannotBeRestored() {
+        assertFalse(riderProofDraftFresh(0L, 10_000L, RIDER_PROOF_DRAFT_MAX_AGE_MS))
+        assertFalse(riderProofDraftFresh(20_000L, 10_000L, RIDER_PROOF_DRAFT_MAX_AGE_MS))
+    }
+}
