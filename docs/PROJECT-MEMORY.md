@@ -1,3 +1,11 @@
+## 2026-10-14 Grab Driver parity: real-data Rider Insurance Center v1
+- Rebased Insurance Center onto main-thread watchdog successor 9eeb136, preserving first-run Learning, Large Order transparency, network/jank diagnostics and watchdog diagnostics.
+- Confirmed the owner-supplied Grab Driver 5.457.1 package contains insurance capabilities including Income Protection, e-Hailing insurance premium detail/discovery, usage-based insurance survey and insurance webview modules. QueueGo previously had no insurance schema or Rider UI.
+- QueueGo Insurance Center is real-data-only: no invented coverage, provider, premium, benefit amount or policy number. Production migration 20261014085820 rider_insurance_center_v1 is additive and already applied; active-Rider validation returned policy_count=0.
+- Policy data lives in qg_private. Rider reads owned policies only; Admin list/save/delete re-checks live active Admin; anon execute is revoked. V1 is informational and does not block online availability.
+- Native Rider Profile shows provider, plan/type, policy number, coverage dates/status, optional summary and verified support contact/link. Admin Rider panel can add/delete real policy records through public authenticated RPCs only.
+- Backup backup/rider-watchdog-before-insurance-20261014 retains 9eeb136. Exact-head native-pilot + navigation-map-runtime are required before PASS.
+
 ## 2026-10-14 Grab Driver parity: Rider main-thread watchdog
 - Added the remaining Grab-like watchdog reliability layer on top of local network+jank diagnostics. A background daemon pings Android's main thread every 2 seconds; the posted main-thread callback records only response delay.
 - >=500 ms counts as a slow main-thread response and >=5000 ms as a stall. Diagnostics remains informational until at least 3 pings exist. No stack trace, screen content, order/customer/shop/location or payload is collected or uploaded.
