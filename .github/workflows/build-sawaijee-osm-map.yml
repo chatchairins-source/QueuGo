@@ -24,7 +24,6 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     env:
-      QG_MAP_DATA_DIR: ${{ runner.temp }}/queuego-sawaijee-map
       QG_BURIRAM_BOUNDS: 103.115,14.870,103.180,14.945
       QG_PM_TILES_OUTPUT_NAME: sawaijee-shortbread.pmtiles
       QG_PM_TILES_MAXZOOM: 14
@@ -33,6 +32,9 @@ jobs:
       QG_SAWAIJEE_LON: '103.14682'
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Prepare real-data workspace
+        run: echo "QG_MAP_DATA_DIR=$RUNNER_TEMP/queuego-sawaijee-map" >> "$GITHUB_ENV"
 
       - name: Validate real-data gate contracts
         run: node tests/native-rider-maplibre-realdata.cjs
