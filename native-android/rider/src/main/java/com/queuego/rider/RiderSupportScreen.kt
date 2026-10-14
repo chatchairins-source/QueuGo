@@ -181,21 +181,29 @@ private val riderSupportCategories = listOf(
     "other" to "อื่น ๆ"
 )
 
+internal fun riderSupportInitialCategory(requested: String?): String =
+    requested?.takeIf { candidate ->
+        riderSupportCategories.any { it.first == candidate }
+    } ?: riderSupportCategories.first().first
+
 @Composable
 fun RiderSupportScreen(
     auth: QueueGoAuth,
     activeJob: RiderJob?,
     history: List<RiderHistoryOrder>,
     onBack: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    initialOrderId: String? = null,
+    initialOrderLabel: String? = null,
+    initialCategory: String? = null
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val api = remember { RiderSupportApi() }
     var tickets by remember { mutableStateOf<List<RiderSupportTicket>?>(null) }
     var ticketLoadError by remember { mutableStateOf<String?>(null) }
-    var selectedOrder by remember { mutableStateOf<String?>(null) }
-    var category by remember { mutableStateOf(riderSupportCategories.first().first) }
+    var selectedOrder by remember(initialOrderId) { mutableStateOf(initialOrderId) }
+    var category by remember(initialCategory) { mutableStateOf(riderSupportInitialCategory(initialCategory)) }
     var details by remember { mutableStateOf("") }
     var evidence by remember { mutableStateOf<Uri?>(null) }
     var busy by remember { mutableStateOf(false) }
@@ -222,6 +230,9 @@ fun RiderSupportScreen(
     LaunchedEffect(message) { if (message != null) { delay(4_000); message = null } }
     val maxHeight = (LocalConfiguration.current.screenHeightDp * .9f).dp
     val orderOptions = buildList {
+        if (!initialOrderId.isNullOrBlank() && !initialOrderLabel.isNullOrBlank()) {
+            add(initialOrderId to initialOrderLabel)
+        }
         activeJob?.let { add(it.id to it.numberLabel) }
         history.take(49).forEach { add(it.id to it.number) }
     }.distinctBy { it.first }
