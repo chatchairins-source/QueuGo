@@ -1368,11 +1368,26 @@ private fun RiderHome(
             realtime.changes(auth.session.accessToken, subscriptions).collect { refreshSnapshot() }
         }
     }
-    LaunchedEffect(auth.session.accessToken, lifecycle) {
+    LaunchedEffect(
+        auth.session.accessToken,
+        lifecycle,
+        networkAvailable,
+        snapshot?.online,
+        snapshot?.activeJob?.id,
+        snapshot?.laundry?.activeJob?.id,
+        snapshot?.offeredJob?.id
+    ) {
         lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
             while (true) {
                 refreshSnapshot()
-                delay(3_000)
+                delay(
+                    riderSnapshotPollIntervalMs(
+                        networkAvailable = networkAvailable,
+                        online = snapshot?.online == true,
+                        hasActiveWork = snapshot?.activeJob != null || snapshot?.laundry?.activeJob != null,
+                        hasOffer = snapshot?.offeredJob != null
+                    )
+                )
             }
         }
     }
@@ -1725,8 +1740,19 @@ private fun RiderHome(
     }
 
     val shortHome = LocalConfiguration.current.screenHeightDp <= 760
-    val mapJob = snapshot?.activeJob ?: snapshot?.laundry?.activeJob?.asMapJob() ?: snapshot?.offeredJob
-    val activeNavigationWork = snapshot?.activeJob != null || snapshot?.laundry?.activeJob != null
+    val returnMapJob = snapshot?.deliveryReturn?.takeIf { it.canReturnToShop }?.let { returnCase ->
+        snapshot?.activeJob?.copy(
+            status = "ready",
+            pickupAddress = returnCase.shopAddress,
+            pickupLat = returnCase.shopLatitude,
+            pickupLng = returnCase.shopLongitude
+        )
+    }
+    val mapJob = returnMapJob ?: snapshot?.activeJob ?: snapshot?.laundry?.activeJob?.asMapJob() ?: snapshot?.offeredJob
+    val activeNavigationWork =
+        snapshot?.deliveryReturn?.canReturnToShop == true ||
+            snapshot?.activeJob != null ||
+            snapshot?.laundry?.activeJob != null
     val connectivityNotice = riderConnectivityNotice(
         consecutiveRefreshFailures = consecutiveSnapshotFailures,
         hasSnapshot = snapshot != null,
@@ -2244,6 +2270,7 @@ private fun RiderHome(
                             state = returnCase,
                             photoReady = returnPhotoUri != null,
                             busy = actionBusy,
+                            networkAvailable = networkAvailable,
                             onStartReturn = {
                                 if (!requireServerNetwork()) {
                                     Unit
@@ -2256,10 +2283,16 @@ private fun RiderHome(
                                                 val updated = runCatching { api.riderSnapshot(auth) }
                                                     .onFailure { if (it is CancellationException) throw it }
                                                     .getOrNull()
-                                                if (updated != null) snapshot = updated
+                                                if (updated != null) {
+                                                    snapshot = updated
+                                                    pushStore.saveHomeSnapshot(auth.user.id, updated)
+                                                }
                                                 openReturnNavigation(context, updated?.deliveryReturn ?: returnCase)
                                             }
-                                            .onFailure { actionMessage = it.message ?: "เริ่มคืนสินค้าไม่สำเร็จ" }
+                                            .onFailure {
+                                                playRiderEventFeedback(eventFeedbackView, RiderEventFeedbackKind.ACTION_ERROR)
+                                                actionMessage = it.message ?: "เริ่มคืนสินค้าไม่สำเร็จ"
+                                            }
                                         actionBusy = false
                                     }
                                 }
@@ -2277,13 +2310,18 @@ private fun RiderHome(
                                             runCatching {
                                                 api.completeDeliveryReturn(context, auth, returnCase.caseId, proof)
                                             }.onSuccess {
+                                                playRiderEventFeedback(eventFeedbackView, RiderEventFeedbackKind.PICKUP_SUCCESS)
                                                 actionMessage = "คืนสินค้าให้ร้านเรียบร้อย · บันทึกเงินคืน Rider แล้ว"
                                                 returnPhotoUri = null
                                                 returnPendingCameraUri = null
                                                 runCatching { api.riderSnapshot(auth) }
                                                     .onFailure { if (it is CancellationException) throw it }
-                                                    .onSuccess { snapshot = it }
+                                                    .onSuccess {
+                                                        snapshot = it
+                                                        pushStore.saveHomeSnapshot(auth.user.id, it)
+                                                    }
                                             }.onFailure {
+                                                playRiderEventFeedback(eventFeedbackView, RiderEventFeedbackKind.ACTION_ERROR)
                                                 actionMessage = it.message ?: "บันทึกการคืนสินค้าไม่สำเร็จ"
                                             }
                                             actionBusy = false
@@ -3056,10 +3094,10 @@ private fun ActiveJobCard(
                 OutlinedButton(
                     onClick = onDeliveryIssue,
                     enabled = !busy && networkAvailable,
-                    modifier = Modifier.fillMaxWidth().padding(top = 7.dp).heightIn(min = 42.dp),
+                    modifier = Modifier.fillMaxWidth().padding(top = 7.dp).heightIn(min = RIDER_SECONDARY_ACTION_MIN_HEIGHT_DP.dp),
                     shape = RoundedCornerShape(16.dp)
                 ) {
-                    Text("ลูกค้าติดต่อไม่ได้ / ส่งไม่สำเร็จ", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    Text("ลูกค้าติดต่อไม่ได้ / ส่งไม่สำเร็จ", fontSize = RIDER_SECONDARY_ACTION_TEXT_SP.sp, fontWeight = FontWeight.Bold)
                 }
             }
             Button(
@@ -3079,12 +3117,12 @@ private fun ActiveJobCard(
                     job.navigationTarget != null &&
                     !(pickup && job.shopArrived && job.status != "ready" && job.marketOrderId == null) &&
                     (!primaryRequiresNetwork || networkAvailable),
-                modifier = Modifier.fillMaxWidth().padding(top = 7.dp).heightIn(min = 46.dp), shape = RoundedCornerShape(18.dp),
+                modifier = Modifier.fillMaxWidth().padding(top = 7.dp).heightIn(min = RIDER_PRIMARY_ACTION_MIN_HEIGHT_DP.dp), shape = RoundedCornerShape(18.dp),
                 colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = Color(0xFFF04455))
             ) {
                 QgIcon("location", Modifier.size(22.dp), Color.White)
                 Spacer(Modifier.width(9.dp))
-                Text(primaryLabel, fontSize = 12.sp, fontWeight = FontWeight.Black)
+                Text(primaryLabel, fontSize = RIDER_PRIMARY_ACTION_TEXT_SP.sp, fontWeight = FontWeight.Black)
             }
         }
     }
@@ -3175,14 +3213,14 @@ private fun RiderPickupGuideBlock(
 
 @Composable
 private fun RiderJobTool(icon: String, label: String, enabled: Boolean, modifier: Modifier, onClick: () -> Unit) {
-    Row(modifier.heightIn(min = 46.dp).clip(RoundedCornerShape(15.dp))
+    Row(modifier.heightIn(min = RIDER_SECONDARY_ACTION_MIN_HEIGHT_DP.dp).clip(RoundedCornerShape(15.dp))
         .background(Color.White).border(1.dp, Color(0xFFEDE5E8), RoundedCornerShape(15.dp))
         .clickable(enabled = enabled, onClick = onClick).padding(horizontal = 4.dp, vertical = 8.dp),
         horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
         Icon(painterResource(if (icon == "support") R.drawable.qg_rider_nav_chat else R.drawable.qg_rider_flow_jobs),
             contentDescription = null, modifier = Modifier.size(18.dp), tint = if (enabled) Color(0xFF282427) else QgMuted)
         Spacer(Modifier.width(6.dp))
-        Text(label, color = if (enabled) Color(0xFF282427) else QgMuted, fontSize = 9.sp, fontWeight = FontWeight.ExtraBold)
+        Text(label, color = if (enabled) Color(0xFF282427) else QgMuted, fontSize = RIDER_TOOL_TEXT_SP.sp, fontWeight = FontWeight.ExtraBold)
     }
 }
 
