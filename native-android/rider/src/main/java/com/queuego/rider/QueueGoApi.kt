@@ -99,6 +99,13 @@ internal fun riderComplimentSummaryFromRpc(raw: Any?): RiderComplimentSummary {
     )
 }
 
+internal fun riderProfilePhotoMimeType(raw: String?): String? = when (raw?.trim()?.lowercase()) {
+    "image/jpeg", "image/jpg" -> "image/jpeg"
+    "image/png" -> "image/png"
+    "image/webp" -> "image/webp"
+    else -> null
+}
+
 class QueueGoApi {
     companion object {
         private const val BASE_URL = "https://pkypiqhlrmzocysgeqew.supabase.co"
@@ -533,6 +540,59 @@ class QueueGoApi {
                 )
             }
         }
+    }
+
+    suspend fun updateProfilePhoto(
+        context: Context,
+        auth: QueueGoAuth,
+        photoUri: Uri
+    ): String = withContext(Dispatchers.IO) {
+        val mime = riderProfilePhotoMimeType(context.contentResolver.getType(photoUri))
+            ?: error("รองรับเฉพาะรูป JPG, PNG หรือ WebP")
+        val bytes = context.contentResolver.openInputStream(photoUri)?.use { it.readBytes() }
+            ?: error("อ่านรูปโปรไฟล์ไม่ได้")
+        if (bytes.isEmpty()) error("รูปโปรไฟล์ว่าง")
+        if (bytes.size > 5 * 1024 * 1024) error("รูปโปรไฟล์ต้องมีขนาดไม่เกิน 5 MB")
+
+        val path = auth.session.authUserId + "/profile"
+        val connection = URL(BASE_URL + "/storage/v1/object/rider-profile/" + path)
+            .openConnection() as HttpURLConnection
+        try {
+            connection.requestMethod = "POST"
+            connection.connectTimeout = TIMEOUT
+            connection.readTimeout = TIMEOUT
+            connection.doOutput = true
+            connection.setRequestProperty("apikey", PUBLISHABLE_KEY)
+            connection.setRequestProperty("Authorization", "Bearer " + auth.session.accessToken)
+            connection.setRequestProperty("Content-Type", mime)
+            connection.setRequestProperty("x-upsert", "true")
+            connection.outputStream.use { it.write(bytes) }
+
+            val code = connection.responseCode
+            if (code !in 200..299) {
+                val text = connection.errorStream?.use {
+                    BufferedReader(InputStreamReader(it, StandardCharsets.UTF_8)).readText()
+                }.orEmpty()
+                val message = runCatching { JSONObject(text).optString("message") }.getOrNull()
+                    ?.takeIf { it.isNotBlank() } ?: "อัปโหลดรูปโปรไฟล์ไม่สำเร็จ"
+                throw RiderHttpException(code, message)
+            }
+        } finally {
+            connection.disconnect()
+        }
+
+        val raw = rpc(
+            "qg_rider_set_profile_photo",
+            auth.session.accessToken,
+            JSONObject().put("p_path", path)
+        )
+        val row = when (raw) {
+            is JSONObject -> raw
+            is JSONArray -> raw.optJSONObject(0) ?: JSONObject()
+            else -> JSONObject()
+        }
+        riderNullableText(row.optString("url"))
+            ?: error("ระบบยังไม่ยืนยันรูปโปรไฟล์")
     }
 
     suspend fun updateAccount(
