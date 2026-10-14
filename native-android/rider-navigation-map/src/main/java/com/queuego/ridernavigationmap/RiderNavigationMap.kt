@@ -759,7 +759,9 @@ private class RiderNavigationMapHolder {
                 MapLocation(zone.point.longitude, zone.point.latitude),
                 demandBitmap(zone.level)
             )
-            pin.setOffset(PointF(0f, -0.48f))
+            // Longdo Pin anchors at bitmap center by default. Keep the demand halo centered
+            // on the coarse cell; stop markers use a negative Y offset only because they
+            // have a pointed tip.
             if (runCatching { activeMap.pushPin(pin) }.isSuccess) {
                 demandPins[zone.id] = RenderedDemandZone(signature, pin)
             } else succeeded = false
@@ -994,7 +996,9 @@ private class RiderNavigationMapHolder {
     private fun demandBitmap(level: Int): Bitmap =
         demandBitmaps.getOrPut(level.coerceIn(1, 3)) {
             val normalized = level.coerceIn(1, 3)
-            val size = when (normalized) { 1 -> 68; 2 -> 86; else -> 106 }
+            val density = view?.resources?.displayMetrics?.density?.coerceAtLeast(1f) ?: 1f
+            val sizeDp = when (normalized) { 1 -> 56f; 2 -> 70f; else -> 86f }
+            val size = (sizeDp * density).toInt().coerceAtLeast(1)
             val alpha = when (normalized) { 1 -> 42; 2 -> 58; else -> 76 }
             Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888).also { bitmap ->
                 val canvas = Canvas(bitmap)
@@ -1011,7 +1015,7 @@ private class RiderNavigationMapHolder {
                 canvas.drawCircle(center, center, radius, Paint(Paint.ANTI_ALIAS_FLAG).apply {
                     color = Color.argb(105, 230, 0, 45)
                     style = Paint.Style.STROKE
-                    strokeWidth = 2f
+                    strokeWidth = 1.5f * density
                 })
             }
         }
