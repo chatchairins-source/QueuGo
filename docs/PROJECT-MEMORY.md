@@ -1,3 +1,9 @@
+## 2026-10-14 Grab Driver parity unified successor: Voice Assistant + GPS integrity
+- Unified the two sibling successors that both branched from Insurance Center head 7136502: privacy-safe Voice Assistant and Android mock-location integrity diagnostics now live on one navigation-map release line instead of competing PRs.
+- Voice Assistant remains opt-in, TTS-only and privacy-safe; it never speaks names, phone numbers, addresses, amounts or other private trip details and stops during active QueueGo voice calls.
+- GPS integrity remains diagnostic-only v1: the retained foreground location service records Android's own mock-location flag before navigation filtering, while Diagnostics shows observed/mock fix counts. It does not suspend Rider, block jobs, alter dispatch/routes or upload anti-fraud telemetry.
+- Backup backup/rider-voice-before-location-integrity-unify-20261014 retains adf51fa. Exact-head native-pilot + navigation-map-runtime are required before PASS.
+
 ## 2026-10-14 Grab Driver parity: privacy-safe Rider Voice Assistant v1
 - Confirmed the owner-supplied Grab Driver 5.457.1 package contains a dedicated voiceassistant stack with TTS/message-reader/audio-focus concepts. QueueGo previously had voice calling but no spoken Rider work-state assistant.
 - Added an opt-in on-device Voice Assistant v1. It reads only privacy-safe operational prompts: a new targeted offer and authoritative Rider job-stage changes (accepted/at shop/preparing/ready/delivering/at customer/completed). It never speaks customer name, phone, address, order amount, shop identity or other trip details.
