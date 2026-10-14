@@ -248,6 +248,12 @@ internal fun RiderSafetyScreen(
             onOpenSupport = onSupport
         )
 
+        Spacer(Modifier.height(8.dp))
+        RiderNearbyRoadAlertsCard(
+            auth = auth,
+            location = currentShareLocation()
+        )
+
         Spacer(Modifier.height(5.dp))
         Card(
             Modifier.fillMaxWidth(),
