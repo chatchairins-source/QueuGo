@@ -30,6 +30,7 @@ assert(moduleBuild.includes('com.google.android.gms:play-services-location:21.3.
   'Standalone Longdo runtime must include the Google Play Services location classes required by MapLocationManager');
 const integration=fs.readFileSync('native-android/rider/src/main/java/com/queuego/rider/RiderNavigationIntegration.kt','utf8');
 const sessionStore=fs.readFileSync('native-android/rider/src/main/java/com/queuego/rider/SessionStore.kt','utf8');
+const navigationSessionRegistry=fs.readFileSync('native-android/rider/src/main/java/com/queuego/rider/RiderNavigationSessionRegistry.kt','utf8');
 const locationService=fs.readFileSync('native-android/rider/src/main/java/com/queuego/rider/RiderNavigationLocationService.kt','utf8');
 const riderManifest=fs.readFileSync('native-android/rider/src/main/AndroidManifest.xml','utf8');
 assert(riderBuild.includes('implementation(project(":rider-navigation-map"))')&&
@@ -141,6 +142,18 @@ assert(
   !integration.includes('rawFix.point.latitude')&&
   !integration.includes('rawFix.point.longitude'),
   'Shadow confidence rollout must be idempotent on equivalent backend refreshes and emit only aggregate debug diagnostics without coordinates');
+
+assert(
+  navigationSessionRegistry.includes('object RiderNavigationSessionRegistry')&&
+  navigationSessionRegistry.includes('fun saveFutureRoutes(')&&
+  navigationSessionRegistry.includes('fun saveRenderedRoutes(')&&
+  navigationSessionRegistry.includes('if (frame.topologyKey != topologyKey)')&&
+  integration.includes('RiderNavigationSessionRegistry.load(stateKey, stopTopology)')&&
+  integration.includes('retainedFrame?.futureRoutes.orEmpty()')&&
+  integration.includes('baseState.copy(routes = it)')&&
+  integration.includes('result.routeError != null')&&
+  integration.includes('candidate.copy(routes = renderedState.routes)'),
+  'Visible route frame must survive Rider Home tab remounts and transient route refresh failures without leaking into a different stop topology');
 
 assert(
   sessionStore.includes('fun saveMapViewMode(')&&
