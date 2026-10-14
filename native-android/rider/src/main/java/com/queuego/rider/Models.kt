@@ -319,6 +319,15 @@ data class RiderDemandZone(
     val windowHours: Int
 )
 
+data class RiderDestinationPreference(
+    val configured: Boolean,
+    val enabled: Boolean,
+    val label: String?,
+    val latitude: Double?,
+    val longitude: Double?,
+    val updatedAt: String?
+)
+
 data class RiderMission(
     val id: String,
     val title: String,

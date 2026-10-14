@@ -1,3 +1,11 @@
+## 2026-10-14 Grab Driver parity: Rider destination soft-priority mode
+- Exposed the already-live Production Rider destination preference capability in Native instead of creating a second dispatch system. Production migration 20261014071752 rider_my_destination_soft_dispatch_v1 is mirrored byte-for-byte from Supabase migration history into the repo.
+- Rider idle Home now has “ไปทางนี้”: configure a named destination using the existing shared Longdo location picker, reuse current GPS when desired, and toggle the preference on/off. No second map renderer or location stream is created.
+- Dispatch behavior remains the existing Production soft priority: pickup-distance bucket stays first; within comparable pickup distance, an enabled destination preference favors work whose delivery moves the Rider at least 1 km closer to the destination, then favors deliveries closer to that destination. It is not a hard filter and does not guarantee a matching job.
+- Preference storage stays private in qg_private.rider_destination_preferences; Native uses only authenticated owner-scoped public RPCs. Direct authenticated table access remains revoked and qg_dispatch_rider_offers remains non-executable by public/anon/authenticated clients.
+- Added Native parser/location-boundary regressions and backend migration contract guards.
+- Backup backup/rider-availability-before-destination-20261014 retains 42c016a. Successor work-native-rider-destination-mode-20261014 requires exact-head native-pilot before PASS.
+
 ## 2026-10-14 Grab Driver parity: go-online availability readiness
 - Added a QueueGo-native availability/readiness layer inspired by the capability category observed in the owner-supplied Grab Driver APK. It does not copy Grab code/assets and does not change dispatch.
 - Offline Rider Home now shows eight real checks before go-online: validated internet, Firebase availability, notifications, location permission, device GPS/Location service, installed Google Maps, overlay return permission and server Rider re-verification state.

@@ -206,6 +206,32 @@ internal fun riderOfferPerformanceFromRpc(
     )
 }
 
+internal fun riderDestinationPreferenceFromRpc(raw: Any?): RiderDestinationPreference {
+    val row = when (raw) {
+        is JSONObject -> raw
+        is JSONArray -> raw.optJSONObject(0) ?: JSONObject()
+        else -> JSONObject()
+    }
+    val configured = row.optBoolean("configured", false)
+    fun nullableText(key: String): String? =
+        row.optString(key).trim().takeIf { it.isNotEmpty() && it != "null" }
+    fun nullableDouble(key: String): Double? =
+        if (row.has(key) && !row.isNull(key)) {
+            row.optDouble(key).takeIf { it.isFinite() }
+        } else {
+            null
+        }
+
+    return RiderDestinationPreference(
+        configured = configured,
+        enabled = configured && row.optBoolean("enabled", false),
+        label = if (configured) nullableText("label") else null,
+        latitude = if (configured) nullableDouble("latitude") else null,
+        longitude = if (configured) nullableDouble("longitude") else null,
+        updatedAt = if (configured) nullableText("updated_at") else null
+    )
+}
+
 class QueueGoApi {
     companion object {
         private const val BASE_URL = "https://pkypiqhlrmzocysgeqew.supabase.co"
@@ -596,6 +622,43 @@ class QueueGoApi {
                 )
             )
         }
+
+    suspend fun destinationPreference(auth: QueueGoAuth): RiderDestinationPreference =
+        withContext(Dispatchers.IO) {
+            riderDestinationPreferenceFromRpc(
+                rpc(
+                    "qg_rider_destination_preference",
+                    auth.session.accessToken,
+                    JSONObject()
+                )
+            )
+        }
+
+    suspend fun setDestinationPreference(
+        auth: QueueGoAuth,
+        label: String,
+        latitude: Double,
+        longitude: Double,
+        enabled: Boolean
+    ): RiderDestinationPreference = withContext(Dispatchers.IO) {
+        require(latitude in 5.0..21.0 && longitude in 97.0..106.0) {
+            "ตำแหน่งปลายทางอยู่นอกพื้นที่ที่รองรับ"
+        }
+        require(label.trim().isNotEmpty() && label.trim().length <= 160) {
+            "กรุณาระบุชื่อปลายทาง"
+        }
+        riderDestinationPreferenceFromRpc(
+            rpc(
+                "qg_rider_set_destination_preference",
+                auth.session.accessToken,
+                JSONObject()
+                    .put("p_label", label.trim())
+                    .put("p_latitude", latitude)
+                    .put("p_longitude", longitude)
+                    .put("p_enabled", enabled)
+            )
+        )
+    }
 
     suspend fun reverificationStatus(auth: QueueGoAuth): RiderReverificationStatus =
         withContext(Dispatchers.IO) {
