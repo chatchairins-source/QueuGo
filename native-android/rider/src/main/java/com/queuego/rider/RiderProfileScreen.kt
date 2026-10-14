@@ -165,6 +165,11 @@ fun RiderProfileScreen(
                     RiderProfilePill(snapshot?.online == true)
                 }
             }
+            RiderReverificationCard(
+                auth = auth,
+                api = api,
+                modifier = Modifier.padding(top = 9.dp)
+            )
             snapshot?.laundry?.invites.orEmpty().forEach { invite ->
                 Spacer(Modifier.height(9.dp))
                 Card(
