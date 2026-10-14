@@ -69,6 +69,9 @@ fun RiderProfileScreen(
     var showSafety by remember { mutableStateOf(false) }
     var showLearning by remember { mutableStateOf(false) }
     var showDiagnostics by remember { mutableStateOf(false) }
+    val voiceAssistantEnabled by remember(context, auth.user.id) {
+        RiderVoiceAssistantSettings.enabled(context, auth.user.id)
+    }.collectAsState()
     val profilePhotoPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         if (uri != null && !busy) {
             busy = true
@@ -406,6 +409,25 @@ fun RiderProfileScreen(
                             busy = false
                         }
                     }
+                }
+                RiderSettingDivider()
+                RiderSettingRow(
+                    "ผู้ช่วยเสียง Rider",
+                    "อ่านงานใหม่และสถานะสำคัญเป็นเสียงไทย · ไม่ใช้ไมโครโฟน",
+                    R.drawable.qg_rider_nav_chat,
+                    trailing = {
+                        Switch(
+                            checked = voiceAssistantEnabled,
+                            onCheckedChange = { enabled ->
+                                RiderVoiceAssistantSettings.setEnabled(context, auth.user.id, enabled)
+                                message = if (enabled) "เปิดผู้ช่วยเสียง Rider แล้ว" else "ปิดผู้ช่วยเสียง Rider แล้ว"
+                            }
+                        )
+                    }
+                ) {
+                    val enabled = !voiceAssistantEnabled
+                    RiderVoiceAssistantSettings.setEnabled(context, auth.user.id, enabled)
+                    message = if (enabled) "เปิดผู้ช่วยเสียง Rider แล้ว" else "ปิดผู้ช่วยเสียง Rider แล้ว"
                 }
                 RiderSettingDivider()
                 // Existing Android-only permission control; never an extra Home card.
