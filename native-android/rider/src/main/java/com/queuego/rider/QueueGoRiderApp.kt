@@ -129,6 +129,10 @@ import java.io.File
 @Composable
 fun QueueGoRiderApp(pushTarget: NativePushLaunchTarget? = null) {
     val context = LocalContext.current
+    DisposableEffect(Unit) {
+        RiderFrameJankTracker.start()
+        onDispose { RiderFrameJankTracker.stop() }
+    }
     val api = remember { QueueGoApi() }
     val store = remember { SessionStore(context) }
     val scope = rememberCoroutineScope()
