@@ -174,7 +174,7 @@ class QueueGoRiderMessagingService : FirebaseMessagingService() {
                 offerExpiry = if (type == "rider_offer" && recipientId == cached.user.id &&
                     recipientSession == cached.session.sessionId && publishedExpiry != null) publishedExpiry
                     else runCatching { QueueGoApi().liveOfferExpiry(cached, referenceId) }.getOrNull()
-                if (offerExpiry == null || offerExpiry <= System.currentTimeMillis() ||
+                if (offerExpiry == null || offerExpiry <= RiderServerClock.nowEpochMillis() ||
                     (publishedExpiry != null && publishedExpiry != offerExpiry)) return@runBlocking
             }
             // A reply received after logout/account switching cannot display the old account's push.
@@ -209,7 +209,7 @@ class QueueGoRiderMessagingService : FirebaseMessagingService() {
                 .setAutoCancel(true)
                 .setContentIntent(pendingIntent)
             offerExpiry?.let { expiry ->
-                val remaining = expiry - System.currentTimeMillis()
+                val remaining = expiry - RiderServerClock.nowEpochMillis()
                 if (remaining <= 0L) return@runBlocking
                 builder.setTimeoutAfter(remaining)
             }

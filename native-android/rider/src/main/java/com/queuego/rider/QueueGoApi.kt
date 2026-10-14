@@ -2002,6 +2002,11 @@ class QueueGoApi {
             }
 
             val code = connection.responseCode
+            RiderServerClock.observeHttpDate(
+                rawDate = connection.getHeaderField("Date"),
+                responseElapsedRealtimeMs = SystemClock.elapsedRealtime(),
+                deviceWallEpochMs = System.currentTimeMillis()
+            )
             val stream = if (code in 200..299) connection.inputStream else connection.errorStream
             val text = stream?.use {
                 BufferedReader(InputStreamReader(it, StandardCharsets.UTF_8)).readText()

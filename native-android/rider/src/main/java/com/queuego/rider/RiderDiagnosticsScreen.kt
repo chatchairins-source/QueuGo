@@ -99,6 +99,9 @@ internal fun RiderDiagnosticsScreen(
     val locationIntegrityHealth = remember(locationIntegrityDiagnostics) {
         riderLocationIntegrityHealth(locationIntegrityDiagnostics)
     }
+    val serverClockHealth = remember(refresh) {
+        riderServerClockHealth(RiderServerClock.skewMillis())
+    }
 
     fun launch(intent: Intent) {
         runCatching { context.startActivity(intent) }
@@ -184,6 +187,12 @@ internal fun RiderDiagnosticsScreen(
             headline = mapHealth?.headline ?: "ยังไม่มีข้อมูลแผนที่ใน session นี้",
             detail = mapHealth?.detail ?: "เปิดหน้า Home/แผนที่อย่างน้อยหนึ่งครั้งเพื่อดูสถานะ reuse",
             healthy = mapHealth?.healthy
+        )
+        RiderRuntimeInfoCard(
+            title = "เวลา Server",
+            headline = serverClockHealth.headline,
+            detail = serverClockHealth.detail,
+            healthy = serverClockHealth.healthy
         )
         RiderRuntimeInfoCard(
             title = "QueueGo API",
