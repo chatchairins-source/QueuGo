@@ -17,6 +17,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
 import com.queuego.shared.QgMuted
 import com.queuego.shared.QgRed
 import com.queuego.shared.QgRedSoft
@@ -39,6 +40,7 @@ fun RiderEarningsScreen(auth: QueueGoAuth, api: QueueGoApi, onBack: () -> Unit, 
     var missions by remember { mutableStateOf<List<RiderMission>?>(null) }
     var missionError by remember { mutableStateOf<String?>(null) }
     var expandedOrderId by remember { mutableStateOf<String?>(null) }
+    var appealOrder by remember { mutableStateOf<Pair<String, String>?>(null) }
     var summaryError by remember { mutableStateOf<String?>(null) }
     var ledgerError by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(auth.session.accessToken) {
@@ -294,7 +296,13 @@ fun RiderEarningsScreen(auth: QueueGoAuth, api: QueueGoApi, onBack: () -> Unit, 
                                 }
                             }
                             if (expanded) {
-                                RiderJobHistoryDetail(row = row, detail = detail)
+                                RiderJobHistoryDetail(
+                                    row = row,
+                                    detail = detail,
+                                    onAppeal = {
+                                        appealOrder = row.orderId to row.numberLabel
+                                    }
+                                )
                             }
                         }
                         if (index < visibleRows.lastIndex) HorizontalDivider(color = Color(0xFFF0EAEC))
@@ -303,12 +311,34 @@ fun RiderEarningsScreen(auth: QueueGoAuth, api: QueueGoApi, onBack: () -> Unit, 
             }
         }
     }
+
+    appealOrder?.let { (orderId, orderLabel) ->
+        Dialog(onDismissRequest = { appealOrder = null }) {
+            Surface(
+                modifier = Modifier.widthIn(max = 620.dp).fillMaxWidth(),
+                shape = RoundedCornerShape(24.dp),
+                color = Color.White
+            ) {
+                RiderSupportScreen(
+                    auth = auth,
+                    activeJob = null,
+                    history = historyDetails,
+                    onBack = { appealOrder = null },
+                    modifier = Modifier.fillMaxWidth(),
+                    initialOrderId = orderId,
+                    initialOrderLabel = orderLabel,
+                    initialCategory = "other"
+                )
+            }
+        }
+    }
 }
 
 @Composable
 private fun RiderJobHistoryDetail(
     row: RiderCashLedgerEntry,
-    detail: RiderHistoryOrder?
+    detail: RiderHistoryOrder?,
+    onAppeal: () -> Unit
 ) {
     Spacer(Modifier.height(9.dp))
     Column(
@@ -351,6 +381,15 @@ private fun RiderJobHistoryDetail(
             fontSize = 8.sp,
             modifier = Modifier.padding(top = 8.dp)
         )
+        Spacer(Modifier.height(9.dp))
+        OutlinedButton(
+            onClick = onAppeal,
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(13.dp),
+            border = BorderStroke(1.dp, Color(0xFFE6DDE0))
+        ) {
+            Text("แจ้งปัญหาเที่ยวนี้", color = QgRed, fontWeight = FontWeight.Bold)
+        }
     }
 }
 
