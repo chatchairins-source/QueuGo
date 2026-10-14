@@ -42,7 +42,8 @@ data class QueueGoLocalRoadGraphEdge internal constructor(
 data class QueueGoLocalRoadGraph internal constructor(
     val nodes: Map<String, QueueGoLocalRoadGraphNode>,
     val edges: List<QueueGoLocalRoadGraphEdge>,
-    val outgoingEdges: Map<String, List<QueueGoLocalRoadGraphEdge>>
+    val outgoingEdges: Map<String, List<QueueGoLocalRoadGraphEdge>>,
+    internal val exactPointNodeIds: Map<String, String>
 ) {
     fun outgoing(
         nodeId: String,
@@ -52,18 +53,35 @@ data class QueueGoLocalRoadGraph internal constructor(
         outgoingEdges[nodeId].orEmpty().filter { it.allows(vehicle, traversalUse) }
 }
 
+private data class QueueGoRoadPointKey(
+    val roadId: String,
+    val pointIndex: Int
+)
+
+private data class QueueGoGraphJunctionIndex(
+    val memberNodeIds: Map<QueueGoRoadPointKey, String>,
+    val canonicalPoints: Map<String, QueueGoLocalRoadPoint>
+)
+
 /**
  * Experimental topology builder only.
  *
- * This deliberately does not snap nearby-but-different coordinates together. False connectivity
- * is worse than a temporarily disconnected alley because parallel roads, walls and divided access
- * lanes can be only a few meters apart. A later field-certified topology step may add explicit
- * junction evidence; this builder only merges exact coordinate identity.
+ * Nearby coordinates never connect automatically. They may share a graph node only when the
+ * signed/reviewed feed carries explicit verified junction evidence naming the exact road point
+ * indices. This keeps false connectivity fail-closed while still allowing reviewed village
+ * alleys/intersections whose surveyed coordinates are a few metres apart.
  */
 internal fun buildQueueGoLocalRoadGraph(
-    roads: List<QueueGoLocalRoad>
+    roads: List<QueueGoLocalRoad>,
+    junctions: List<QueueGoVerifiedLocalRoadJunction> = emptyList()
 ): QueueGoLocalRoadGraph {
+    val roadById = roads.associateBy { it.id }
+    val junctionIndex = buildQueueGoGraphJunctionIndex(
+        roadsById = roadById,
+        junctions = junctions
+    )
     val nodes = linkedMapOf<String, QueueGoLocalRoadGraphNode>()
+    val exactPointNodeIds = linkedMapOf<String, String>()
     val edges = mutableListOf<QueueGoLocalRoadGraphEdge>()
     val seenRoadIds = hashSetOf<String>()
 
@@ -75,15 +93,29 @@ internal fun buildQueueGoLocalRoadGraph(
             "Duplicate local-road id cannot enter graph: " + road.id
         }
 
-        road.points.zipWithNext().forEachIndexed { segmentIndex, (from, to) ->
-            if (from == to) return@forEachIndexed
+        for (segmentIndex in 0 until road.points.lastIndex) {
+            val from = road.points[segmentIndex]
+            val to = road.points[segmentIndex + 1]
+            if (from == to) continue
 
-            val fromNode = nodeFor(nodes, from)
-            val toNode = nodeFor(nodes, to)
+            val fromNode = nodeFor(
+                nodes = nodes,
+                exactPointNodeIds = exactPointNodeIds,
+                roadId = road.id,
+                pointIndex = segmentIndex,
+                point = from,
+                junctionIndex = junctionIndex
+            )
+            val toNode = nodeFor(
+                nodes = nodes,
+                exactPointNodeIds = exactPointNodeIds,
+                roadId = road.id,
+                pointIndex = segmentIndex + 1,
+                point = to,
+                junctionIndex = junctionIndex
+            )
             val lengthMeters = queueGoLocalRoadDistanceMeters(from, to)
-            if (!lengthMeters.isFinite() || lengthMeters <= 0.0) {
-                return@forEachIndexed
-            }
+            if (!lengthMeters.isFinite() || lengthMeters <= 0.0) continue
 
             buildEdge(
                 road = road,
@@ -114,17 +146,81 @@ internal fun buildQueueGoLocalRoadGraph(
     return QueueGoLocalRoadGraph(
         nodes = nodes.toMap(),
         edges = edges.toList(),
-        outgoingEdges = outgoing
+        outgoingEdges = outgoing,
+        exactPointNodeIds = exactPointNodeIds.toMap()
+    )
+}
+
+private fun buildQueueGoGraphJunctionIndex(
+    roadsById: Map<String, QueueGoLocalRoad>,
+    junctions: List<QueueGoVerifiedLocalRoadJunction>
+): QueueGoGraphJunctionIndex {
+    val memberNodeIds = linkedMapOf<QueueGoRoadPointKey, String>()
+    val canonicalPoints = linkedMapOf<String, QueueGoLocalRoadPoint>()
+    val seenJunctionIds = hashSetOf<String>()
+
+    junctions.forEach { junction ->
+        require(seenJunctionIds.add(junction.id)) {
+            "Duplicate local-road junction id cannot enter graph: " + junction.id
+        }
+        val nodeId = "j:" + junction.id
+        val memberPoints = junction.members.map { member ->
+            val road = roadsById[member.roadId]
+                ?: throw IllegalArgumentException(
+                    "Local-road junction references unknown graph road: " + member.roadId
+                )
+            require(road.verified && road.access != QueueGoLocalRoadAccess.PRIVATE_RESTRICTED) {
+                "Local-road junction references an ineligible graph road: " + member.roadId
+            }
+            require(member.pointIndex in road.points.indices) {
+                "Local-road junction point index is invalid: " + member.roadId
+            }
+            val key = QueueGoRoadPointKey(member.roadId, member.pointIndex)
+            require(memberNodeIds.putIfAbsent(key, nodeId) == null) {
+                "Local-road point cannot belong to multiple graph junctions: " +
+                    member.roadId + ":" + member.pointIndex
+            }
+            road.points[member.pointIndex]
+        }
+        require(memberPoints.isNotEmpty()) { "Local-road junction has no graph members" }
+        canonicalPoints[nodeId] = QueueGoLocalRoadPoint(
+            latitude = memberPoints.sumOf { it.latitude } / memberPoints.size.toDouble(),
+            longitude = memberPoints.sumOf { it.longitude } / memberPoints.size.toDouble()
+        )
+    }
+
+    return QueueGoGraphJunctionIndex(
+        memberNodeIds = memberNodeIds.toMap(),
+        canonicalPoints = canonicalPoints.toMap()
     )
 }
 
 private fun nodeFor(
     nodes: MutableMap<String, QueueGoLocalRoadGraphNode>,
-    point: QueueGoLocalRoadPoint
+    exactPointNodeIds: MutableMap<String, String>,
+    roadId: String,
+    pointIndex: Int,
+    point: QueueGoLocalRoadPoint,
+    junctionIndex: QueueGoGraphJunctionIndex
 ): QueueGoLocalRoadGraphNode {
-    val id = queueGoExactNodeId(point)
+    val memberKey = QueueGoRoadPointKey(roadId, pointIndex)
+    val junctionNodeId = junctionIndex.memberNodeIds[memberKey]
+    val id = junctionNodeId ?: queueGoExactNodeId(point)
+    val canonicalPoint = junctionNodeId
+        ?.let(junctionIndex.canonicalPoints::get)
+        ?: point
+
+    val exactPointId = queueGoExactNodeId(point)
+    val existingMapping = exactPointNodeIds.putIfAbsent(exactPointId, id)
+    require(existingMapping == null || existingMapping == id) {
+        "Exact Local Roads coordinate is assigned to conflicting verified junctions"
+    }
+
     return nodes.getOrPut(id) {
-        QueueGoLocalRoadGraphNode(id = id, point = point)
+        QueueGoLocalRoadGraphNode(
+            id = id,
+            point = canonicalPoint
+        )
     }
 }
 
@@ -136,6 +232,8 @@ private fun buildEdge(
     direction: QueueGoRoadDirection,
     lengthMeters: Double
 ): QueueGoLocalRoadGraphEdge? {
+    if (fromNode.id == toNode.id) return null
+
     val motorcycleThrough = queueGoLocalRoadRoutingDecision(
         road,
         QueueGoRoutingVehicle.MOTORCYCLE,
