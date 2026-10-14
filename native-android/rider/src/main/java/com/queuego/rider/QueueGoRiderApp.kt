@@ -533,6 +533,9 @@ private fun RiderHome(
     }
     var todaySummary by remember { mutableStateOf<RiderPeriodSummary?>(null) }
     var demandZones by remember(auth.user.id) { mutableStateOf<List<RiderDemandZone>>(emptyList()) }
+    var destinationPreference by remember(auth.user.id) { mutableStateOf<RiderDestinationPreference?>(null) }
+    var destinationLoaded by remember(auth.user.id) { mutableStateOf(false) }
+    var showDestination by remember(auth.user.id) { mutableStateOf(false) }
     var recentHistory by remember { mutableStateOf<List<RiderHistoryOrder>>(emptyList()) }
     var lastSummaryAt by remember { mutableStateOf(0L) }
     var lastHistoryAt by remember { mutableStateOf(0L) }
@@ -571,6 +574,18 @@ private fun RiderHome(
                 delay(300_000L)
             }
         }
+    }
+
+    LaunchedEffect(auth.user.id, auth.session.accessToken) {
+        destinationLoaded = false
+        destinationPreference = try {
+            api.destinationPreference(auth)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            null
+        }
+        destinationLoaded = true
     }
 
     var detailJob by remember { mutableStateOf<RiderJob?>(null) }
@@ -1605,6 +1620,49 @@ private fun RiderHome(
             }
         }
 
+        if (
+            mapJob == null &&
+            snapshot?.online == true &&
+            destinationLoaded
+        ) {
+            Card(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(top = 116.dp, end = 10.dp)
+                    .widthIn(max = 190.dp)
+                    .clickable(enabled = !actionBusy) { showDestination = true },
+                shape = RoundedCornerShape(18.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = if (destinationPreference?.enabled == true) Color(0xFFFFF2F4) else Color(0xF8FFFFFF)
+                ),
+                border = androidx.compose.foundation.BorderStroke(
+                    1.dp,
+                    if (destinationPreference?.enabled == true) Color(0xFFFFC9D0) else Color(0xFFEEE5E8)
+                ),
+                elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+            ) {
+                Row(
+                    Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(7.dp)
+                ) {
+                    QgIcon("route", Modifier.size(20.dp), QgRed)
+                    Column {
+                        Text(
+                            riderDestinationControlLabel(destinationPreference),
+                            color = Color(0xFF211E20),
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Black,
+                            maxLines = 1
+                        )
+                        if (destinationPreference?.enabled == true) {
+                            Text("soft preference", color = QgMuted, fontSize = 7.5.sp)
+                        }
+                    }
+                }
+            }
+        }
+
         if (mapJob != null) {
             Card(
                 modifier = Modifier
@@ -2014,6 +2072,16 @@ private fun RiderHome(
             onSelect = { activeTab = it },
             modifier = Modifier.align(Alignment.BottomCenter)
         )
+        if (showDestination) {
+            RiderMyDestinationDialog(
+                auth = auth,
+                api = api,
+                current = destinationPreference,
+                currentGps = navigationFix?.point?.let { it.latitude to it.longitude },
+                onSaved = { destinationPreference = it },
+                onClose = { showDestination = false }
+            )
+        }
         detailJob?.let { job ->
             RiderOrderDetailsSheet(auth, job, api, onDismiss = { detailJob = null })
         }
