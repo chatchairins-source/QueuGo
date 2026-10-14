@@ -100,7 +100,7 @@ class NavigationSignalPipelineTest {
         )
         val ambiguous1 = pipeline.update(
             NavigationMapFix(
-                point = NavigationMapPoint(13.00035, 100.0011),
+                point = NavigationMapPoint(13.00022, 100.00105),
                 bearingDegrees = 270f,
                 accuracyMeters = 18f,
                 speedMetersPerSecond = 6f,
@@ -110,7 +110,7 @@ class NavigationSignalPipelineTest {
         )
         val ambiguous2 = pipeline.update(
             NavigationMapFix(
-                point = NavigationMapPoint(13.00036, 100.0012),
+                point = NavigationMapPoint(13.00023, 100.00108),
                 bearingDegrees = 270f,
                 accuracyMeters = 18f,
                 speedMetersPerSecond = 6f,
@@ -120,7 +120,7 @@ class NavigationSignalPipelineTest {
         )
         val ambiguous3 = pipeline.update(
             NavigationMapFix(
-                point = NavigationMapPoint(13.00037, 100.0013),
+                point = NavigationMapPoint(13.00024, 100.00110),
                 bearingDegrees = 270f,
                 accuracyMeters = 18f,
                 speedMetersPerSecond = 6f,
