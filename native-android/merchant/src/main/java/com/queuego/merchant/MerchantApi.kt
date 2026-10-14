@@ -72,7 +72,17 @@ data class MerchantOrder(
     val preparingAt: String?,
     val readyAt: String?,
     val itemCount: Int = 0,
-    val riderArrivedCustomerAt: String? = null
+    val riderArrivedCustomerAt: String? = null,
+    val riderId: String? = null
+)
+
+data class MerchantRiderContext(
+    val name: String,
+    val phone: String?,
+    val photo: String?,
+    val vehicleType: String?,
+    val vehiclePlate: String?,
+    val vehicleVerified: Boolean
 )
 
 data class MerchantOrderItem(
@@ -560,7 +570,8 @@ class MerchantApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
                         r.optNullable("created_at"),
                         r.optNullable("preparing_at"),
                         r.optNullable("ready_at"),
-                        r.optJSONArray("items")?.length() ?: 0
+                        itemCount = r.optJSONArray("items")?.length() ?: 0,
+                        riderId = r.optNullable("rider_id")
                     )
                 )
             }
@@ -594,6 +605,15 @@ class MerchantApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
         return orders.map { order ->
             order.copy(riderArrivedCustomerAt = arrivals[order.id])
         }
+    }
+
+    suspend fun loadOrderRider(auth: NativeAuth, orderId: String): MerchantRiderContext? {
+        val raw = http.rpc(
+            "qg_merchant_order_rider_context",
+            auth.session.accessToken,
+            JSONObject().put("p_order_id", orderId)
+        )
+        return merchantRiderContextFromRpc(raw)
     }
 
     suspend fun loadOrderItems(auth: NativeAuth, orderId: String): List<MerchantOrderItem> {
@@ -1171,6 +1191,24 @@ class MerchantApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
 
 private fun JSONObject.optNullable(key: String): String? =
     optString(key).takeIf { it.isNotBlank() && it != "null" }
+
+internal fun merchantRiderContextFromRpc(raw: Any?): MerchantRiderContext? {
+    val row = when (raw) {
+        is JSONObject -> raw
+        is JSONArray -> raw.optJSONObject(0) ?: JSONObject()
+        else -> JSONObject()
+    }
+    if (row.length() == 0) return null
+    val name = row.optNullable("name") ?: "Rider"
+    return MerchantRiderContext(
+        name = name,
+        phone = row.optNullable("phone"),
+        photo = row.optNullable("photo"),
+        vehicleType = row.optNullable("vehicle_type"),
+        vehiclePlate = row.optNullable("vehicle_plate"),
+        vehicleVerified = row.optBoolean("vehicle_verified", false)
+    )
+}
 
 
 private fun merchantProductFromRow(r: JSONObject): MerchantProduct? {

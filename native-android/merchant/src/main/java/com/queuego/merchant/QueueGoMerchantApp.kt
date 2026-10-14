@@ -1,6 +1,7 @@
 package com.queuego.merchant
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.media.AudioManager
 import android.media.ToneGenerator
@@ -120,6 +121,7 @@ private fun MerchantShell(
     var todayRevenue by remember { mutableStateOf(MerchantTodayRevenue(0, 0.0, 0.0, 0.0)) }
     var knownPendingIds by remember { mutableStateOf<Set<String>?>(null) }
     var selectedOrder by remember { mutableStateOf<MerchantOrder?>(null) }
+    var selectedRiderContext by remember { mutableStateOf<MerchantRiderContext?>(null) }
     var selectedProduct by remember { mutableStateOf<MerchantProduct?>(null) }
     var newProductCategory by remember { mutableStateOf<String?>(null) }
     var productReturnScreen by remember { mutableStateOf("products") }
@@ -335,6 +337,25 @@ private fun MerchantShell(
         }
     }
 
+    LaunchedEffect(
+        screen,
+        selectedOrder?.id,
+        selectedOrder?.riderId,
+        selectedOrder?.status,
+        auth.session.accessToken
+    ) {
+        val order = selectedOrder
+        selectedRiderContext = if (
+            screen == "order" &&
+            order != null &&
+            !order.riderId.isNullOrBlank()
+        ) {
+            runCatching { api.loadOrderRider(auth, order.id) }.getOrNull()
+        } else {
+            null
+        }
+    }
+
     suspend fun refreshNotifications() = notificationsMutex.withLock {
         runCatching { api.loadNotifications(auth) }
             .onFailure { if (it is kotlinx.coroutines.CancellationException) throw it }
@@ -531,15 +552,20 @@ private fun MerchantShell(
                 )
                 "orders" -> MerchantOrdersScreen(orders, loading) {
                     selectedOrder = it
+                    selectedRiderContext = null
                     orderItems = emptyList()
                     screen = "order"
                 }
                 "order" -> MerchantOrderDetail(
                     order = selectedOrder,
+                    rider = selectedRiderContext,
                     items = orderItems,
                     products = products,
                     busy = busy,
-                    onBack = { screen = "orders" },
+                    onBack = {
+                        selectedRiderContext = null
+                        screen = "orders"
+                    },
                     onAction = { action, reason -> selectedOrder?.let { runAction(it, action, reason) } },
                     onSaveItems = { draft ->
                         val current = selectedOrder
@@ -1273,6 +1299,7 @@ private fun MerchantOrderCard(order: MerchantOrder, onOpen: (MerchantOrder) -> U
 @Composable
 private fun MerchantOrderDetail(
     order: MerchantOrder?,
+    rider: MerchantRiderContext?,
     items: List<MerchantOrderItem>,
     products: List<MerchantProduct>,
     busy: Boolean,
@@ -1280,6 +1307,7 @@ private fun MerchantOrderDetail(
     onAction: (String, String?) -> Unit,
     onSaveItems: (List<MerchantOrderEditItem>) -> Unit
 ) {
+    val context = LocalContext.current
     var now by remember { mutableStateOf(System.currentTimeMillis()) }
     var cancelOpen by remember(order?.id) { mutableStateOf(false) }
     var editOpen by remember(order?.id) { mutableStateOf(false) }
@@ -1325,6 +1353,59 @@ private fun MerchantOrderDetail(
                 Text("ยอดที่ร้านได้รับจาก Rider", color = QgMuted)
                 Text("฿" + "%.0f".format(order.subtotal), color = QgRed, fontWeight = FontWeight.Black, style = MaterialTheme.typography.headlineMedium)
                 Text("แสดงยอดเงินสดเท่านั้น ไม่มีขั้นตอนยืนยันรับเงินซ้ำ", color = QgMuted, style = MaterialTheme.typography.bodySmall)
+            }
+        }
+        rider?.let { assignedRider ->
+            Spacer(Modifier.height(10.dp))
+            QgCard(Modifier.fillMaxWidth()) {
+                Row(
+                    Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    QgRemoteImage(
+                        assignedRider.photo,
+                        Modifier.size(58.dp),
+                        assignedRider.name
+                    )
+                    Spacer(Modifier.width(10.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text("Rider ที่รับงาน", color = QgMuted, fontSize = 9.sp)
+                        Text(assignedRider.name, fontWeight = FontWeight.Black, fontSize = 16.sp)
+                        val vehicle = listOfNotNull(
+                            assignedRider.vehicleType?.takeIf { it.isNotBlank() },
+                            assignedRider.vehiclePlate?.takeIf { it.isNotBlank() }
+                        ).joinToString(" · ").ifBlank { "QueueGo Rider" }
+                        Text(vehicle, color = QgMuted, fontSize = 10.sp, modifier = Modifier.padding(top = 2.dp))
+                        if (assignedRider.vehicleVerified) {
+                            Text(
+                                "ยืนยันข้อมูลรถแล้ว",
+                                color = QgGreen,
+                                fontSize = 9.sp,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(top = 3.dp)
+                            )
+                        }
+                        assignedRider.phone?.let { phone ->
+                            Text(phone, color = QgMuted, fontSize = 10.sp, modifier = Modifier.padding(top = 3.dp))
+                        }
+                    }
+                    assignedRider.phone?.let { phone ->
+                        OutlinedButton(
+                            onClick = {
+                                runCatching {
+                                    context.startActivity(
+                                        Intent(
+                                            Intent.ACTION_DIAL,
+                                            Uri.parse("tel:" + Uri.encode(phone))
+                                        )
+                                    )
+                                }
+                            }
+                        ) {
+                            Text("โทร", fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
             }
         }
         Spacer(Modifier.height(12.dp))

@@ -65,6 +65,16 @@ fun RiderProfileScreen(
     var message by remember { mutableStateOf<String?>(null) }
     var showSupport by remember { mutableStateOf(false) }
     var showDiagnostics by remember { mutableStateOf(false) }
+    var ratingSummary by remember(auth.user.id) { mutableStateOf<RiderRatingSummary?>(null) }
+    LaunchedEffect(auth.user.id, auth.session.accessToken) {
+        ratingSummary = try {
+            api.ratingSummary(auth)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            null
+        }
+    }
     LaunchedEffect(message) {
         if (message != null) { delay(4_000); message = null }
     }
@@ -106,6 +116,20 @@ fun RiderProfileScreen(
                                 color = Color(0xFF12845E),
                                 fontSize = 8.5.sp,
                                 fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(top = 5.dp)
+                            )
+                        }
+                        ratingSummary?.let { rating ->
+                            val label = if (rating.count > 0 && rating.average != null) {
+                                "★ " + "%.1f".format(rating.average) + " · " + rating.count + " รีวิว"
+                            } else {
+                                "ยังไม่มีคะแนนจากลูกค้า"
+                            }
+                            Text(
+                                label,
+                                color = if (rating.count > 0) Color(0xFFD59A00) else QgMuted,
+                                fontSize = 9.sp,
+                                fontWeight = if (rating.count > 0) FontWeight.Black else FontWeight.Medium,
                                 modifier = Modifier.padding(top = 5.dp)
                             )
                         }
