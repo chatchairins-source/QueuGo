@@ -38,6 +38,36 @@ class MapLibreOsmRuntimeTest {
                 assertEquals("Camera-only refresh reloaded Shortbread style", 1, it.styleApplyCount())
             }
 
+            var localRoadApplyBefore = 0
+            scenario.onActivity {
+                localRoadApplyBefore = it.localRoadApplyCount()
+                it.applyLocalRoadFixture(1)
+            }
+            InstrumentationRegistry.getInstrumentation().waitForIdleSync()
+            scenario.onActivity {
+                assertEquals("Local-road update recreated MapView", initialView, it.mapViewIdentity())
+                assertEquals("Local-road update recreated MapLibreMap", initialMap, it.mapIdentity())
+                assertEquals("Local-road update reloaded Shortbread style", 1, it.styleApplyCount())
+                assertEquals(2, it.localRoadSegmentCount())
+                assertTrue(
+                    "Local-road GeoJSON overlay was not applied",
+                    it.localRoadApplyCount() > localRoadApplyBefore
+                )
+                localRoadApplyBefore = it.localRoadApplyCount()
+                it.applyLocalRoadFixture(2)
+            }
+            InstrumentationRegistry.getInstrumentation().waitForIdleSync()
+            scenario.onActivity {
+                assertEquals("Second local-road update recreated MapView", initialView, it.mapViewIdentity())
+                assertEquals("Second local-road update recreated MapLibreMap", initialMap, it.mapIdentity())
+                assertEquals("Second local-road update reloaded style", 1, it.styleApplyCount())
+                assertEquals(2, it.localRoadSegmentCount())
+                assertTrue(
+                    "Existing local-road source was not updated in place",
+                    it.localRoadApplyCount() > localRoadApplyBefore
+                )
+            }
+
             scenario.onActivity { it.refreshEquivalentConfig() }
             InstrumentationRegistry.getInstrumentation().waitForIdleSync()
             scenario.onActivity {
