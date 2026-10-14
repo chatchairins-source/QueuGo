@@ -10,6 +10,7 @@ import org.maplibre.android.camera.CameraPosition
 import org.maplibre.android.geometry.LatLng
 import org.maplibre.android.maps.MapLibreMap
 import org.maplibre.android.maps.MapView
+import org.maplibre.android.style.sources.VectorSource
 
 class QueueGoMapLibreOsmView @JvmOverloads constructor(
     context: Context,
@@ -122,6 +123,19 @@ class QueueGoMapLibreOsmView @JvmOverloads constructor(
         created = false
         map = null
         removeAllViews()
+    }
+
+    fun sourceStreetFeatureCount(): Int {
+        val readyMap = map ?: return 0
+        val source = readyMap.style
+            ?.getSourceAs<VectorSource>(ShortbreadVillageStyle.SOURCE_ID)
+            ?: return 0
+        return runCatching {
+            source.querySourceFeatures(
+                arrayOf(ShortbreadVillageStyle.SOURCE_LAYER_STREETS),
+                null
+            ).size
+        }.getOrDefault(0)
     }
 
     fun renderedFeatureCount(layerId: String): Int {

@@ -23,10 +23,12 @@ assert(activity.includes('MapLibreOsmConfig.localPmTiles(')&&
   activity.includes('File(filesDir, "queuego-runtime.pmtiles")')&&
   !activity.includes('http://')&&!activity.includes('https://'),
   'MapLibre runtime must copy an APK test archive into app storage and open it with pmtiles://file:// without external network');
-assert(view.includes('queryRenderedFeatures(viewport, layerId)')&&
-  runtime.includes('Local PMTiles residential road was not decoded and rendered')&&
-  runtime.includes('renderedResidentialRoadCount()'),
-  'MapLibre runtime must prove a residential road feature is decoded and rendered from the local PMTiles archive');
+assert(view.includes('querySourceFeatures(')&&
+  view.includes('queryRenderedFeatures(viewport, layerId)')&&
+  runtime.includes('Local PMTiles z14 street tile was not decoded from app storage')&&
+  runtime.includes('Decoded local PMTiles residential road was not rendered by village style')&&
+  runtime.includes('sourceStreetFeatureCount()')&&runtime.includes('renderedResidentialRoadCount()'),
+  'MapLibre runtime must prove a z14 street feature is decoded from local PMTiles and rendered by the residential style layer');
 assert(runner.includes(':rider-maplibre-osm:connectedDebugAndroidTest')&&
   runner.includes('QUEUEGO_MAPLIBRE_OSM_RUNTIME_PASS'),
   'MapLibre runtime runner must execute the module connected Android test');

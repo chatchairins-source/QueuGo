@@ -110,6 +110,9 @@ class MapLibreOsmRuntimeActivity : Activity() {
     fun usesLocalPmTiles(): Boolean =
         baseConfig.isOfflinePmTiles && runtimePmTiles.isFile && runtimePmTiles.length() > 0L
 
+    fun sourceStreetFeatureCount(): Int =
+        mapView.sourceStreetFeatureCount()
+
     fun renderedResidentialRoadCount(): Int =
         mapView.renderedFeatureCount("queuego-road-residential")
 

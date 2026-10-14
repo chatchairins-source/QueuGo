@@ -29,19 +29,28 @@ class MapLibreOsmRuntimeTest {
                 assertTrue("Runtime source is not local PMTiles", it.usesLocalPmTiles())
             }
 
-            val renderDeadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(10)
+            val renderDeadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(12)
+            var sourceStreetFeatures = 0
             var renderedResidentialRoads = 0
-            while (renderedResidentialRoads == 0 && System.nanoTime() < renderDeadline) {
+            while (
+                (sourceStreetFeatures == 0 || renderedResidentialRoads == 0) &&
+                System.nanoTime() < renderDeadline
+            ) {
                 scenario.onActivity {
+                    sourceStreetFeatures = it.sourceStreetFeatureCount()
                     renderedResidentialRoads = it.renderedResidentialRoadCount()
                 }
-                if (renderedResidentialRoads == 0) {
+                if (sourceStreetFeatures == 0 || renderedResidentialRoads == 0) {
                     Thread.sleep(100)
                     InstrumentationRegistry.getInstrumentation().waitForIdleSync()
                 }
             }
             assertTrue(
-                "Local PMTiles residential road was not decoded and rendered",
+                "Local PMTiles z14 street tile was not decoded from app storage",
+                sourceStreetFeatures > 0
+            )
+            assertTrue(
+                "Decoded local PMTiles residential road was not rendered by village style",
                 renderedResidentialRoads > 0
             )
 
