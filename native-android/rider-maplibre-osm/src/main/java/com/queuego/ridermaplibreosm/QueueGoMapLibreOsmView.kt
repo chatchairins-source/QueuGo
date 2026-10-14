@@ -1,6 +1,7 @@
 package com.queuego.ridermaplibreosm
 
 import android.content.Context
+import android.os.Bundle
 import android.util.AttributeSet
 import android.widget.FrameLayout
 import org.maplibre.android.MapLibre
@@ -16,9 +17,11 @@ class QueueGoMapLibreOsmView @JvmOverloads constructor(
     private val mapView: MapView
     private var map: MapLibreMap? = null
     private var currentConfig: MapLibreOsmConfig? = null
+    private var created = false
     private var started = false
     private var resumed = false
     private var destroyed = false
+    private var styleApplyCount = 0
 
     var onMapReady: ((MapLibreMap) -> Unit)? = null
 
@@ -29,8 +32,15 @@ class QueueGoMapLibreOsmView @JvmOverloads constructor(
             mapView,
             LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT)
         )
-        mapView.onCreate(null)
+    }
+
+    fun onCreate(savedInstanceState: Bundle? = null) {
+        check(!destroyed) { "MapLibre view already destroyed" }
+        if (created) return
+        created = true
+        mapView.onCreate(savedInstanceState)
         mapView.getMapAsync { readyMap ->
+            if (destroyed) return@getMapAsync
             map = readyMap
             readyMap.uiSettings.isAttributionEnabled = true
             readyMap.uiSettings.isLogoEnabled = true
@@ -56,6 +66,7 @@ class QueueGoMapLibreOsmView @JvmOverloads constructor(
 
     private fun applyConfig(config: MapLibreOsmConfig) {
         val readyMap = map ?: return
+        styleApplyCount += 1
         readyMap.setStyle(ShortbreadVillageStyle.builder(config.sourceUri)) {
             applyCamera(readyMap, config)
             onMapReady?.invoke(readyMap)
@@ -70,13 +81,13 @@ class QueueGoMapLibreOsmView @JvmOverloads constructor(
     }
 
     fun onStart() {
-        if (destroyed || started) return
+        if (destroyed || !created || started) return
         started = true
         mapView.onStart()
     }
 
     fun onResume() {
-        if (destroyed || resumed) return
+        if (destroyed || !created || resumed) return
         resumed = true
         mapView.onResume()
     }
@@ -93,8 +104,12 @@ class QueueGoMapLibreOsmView @JvmOverloads constructor(
         mapView.onStop()
     }
 
+    fun onSaveInstanceState(outState: Bundle) {
+        if (!destroyed && created) mapView.onSaveInstanceState(outState)
+    }
+
     fun onLowMemory() {
-        if (!destroyed) mapView.onLowMemory()
+        if (!destroyed && created) mapView.onLowMemory()
     }
 
     fun destroy() {
@@ -102,11 +117,14 @@ class QueueGoMapLibreOsmView @JvmOverloads constructor(
         if (resumed) onPause()
         if (started) onStop()
         destroyed = true
-        mapView.onDestroy()
+        if (created) mapView.onDestroy()
+        created = false
         map = null
         removeAllViews()
     }
 
     fun mapViewIdentity(): Int = System.identityHashCode(mapView)
     fun mapIdentity(): Int? = map?.let(System::identityHashCode)
+    fun styleApplyCount(): Int = styleApplyCount
+    fun isDestroyed(): Boolean = destroyed
 }
