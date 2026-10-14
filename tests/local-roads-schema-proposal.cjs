@@ -44,6 +44,9 @@ assert(sql.includes('revoke all on table public.qg_local_roads from anon, authen
   sql.includes('grant select on table public.qg_local_roads to authenticated')&&
   !sql.includes('grant insert, update, delete\n  on table public.qg_local_roads to authenticated'),
   'Published Local Roads must be explicit read-only Data API state for authenticated clients');
+assert(
+  (sql.match(/access_type\s*<>\s*'private_restricted'/g)||[]).length >= 2,
+  'Private/restricted Local Roads geometry must stay out of both authenticated table reads and the Rider feed view');
 assert(sql.includes('with (security_invoker = true)')&&
   sql.includes('grant select on table public.qg_local_road_feed to authenticated'),
   'Verified Local Roads feed must use a security-invoker read-only view');
