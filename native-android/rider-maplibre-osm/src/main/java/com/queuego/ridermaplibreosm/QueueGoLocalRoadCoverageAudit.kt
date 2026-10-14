@@ -1,5 +1,6 @@
 package com.queuego.ridermaplibreosm
 
+import kotlin.math.ceil
 import kotlin.math.cos
 import kotlin.math.max
 import kotlin.math.min
@@ -48,6 +49,9 @@ data class QueueGoLocalRoadCoverageAuditPolicy(
     val minimumTraversalCount: Int = 3,
     val maximumMedianAccuracyMeters: Double = 20.0,
     val minimumTraceLengthMeters: Double = 30.0,
+    val maximumPointGapMeters: Double = 120.0,
+    val coverageSampleStepMeters: Double = 12.0,
+    val maximumCoverageSampleCount: Int = 50_000,
     val baseRoadCoverageDistanceMeters: Double = 18.0,
     val minimumUncoveredFraction: Double = 0.65,
     val endpointJunctionHintDistanceMeters: Double = 25.0
@@ -61,6 +65,15 @@ data class QueueGoLocalRoadCoverageAuditPolicy(
         }
         require(minimumTraceLengthMeters in 10.0..2_000.0) {
             "Coverage minimum trace length is invalid"
+        }
+        require(maximumPointGapMeters in 30.0..500.0) {
+            "Coverage maximum point gap is invalid"
+        }
+        require(coverageSampleStepMeters in 5.0..30.0) {
+            "Coverage sample step is invalid"
+        }
+        require(maximumCoverageSampleCount in 1_000..100_000) {
+            "Coverage maximum sample count is invalid"
         }
         require(baseRoadCoverageDistanceMeters in 5.0..60.0) {
             "Coverage road-distance threshold is invalid"
@@ -114,10 +127,24 @@ fun auditQueueGoLocalRoadCoverage(
         .filter { it.traversalCount >= policy.minimumTraversalCount }
         .filter { it.medianAccuracyMeters <= policy.maximumMedianAccuracyMeters }
         .mapNotNull { evidence ->
-            val lengthMeters = queueGoPolylineLengthMeters(evidence.points)
+            val segmentLengths = evidence.points.zipWithNext().map { (a, b) ->
+                queueGoLocalRoadDistanceMeters(a, b)
+            }
+            if (segmentLengths.any { it > policy.maximumPointGapMeters }) {
+                return@mapNotNull null
+            }
+
+            val lengthMeters = segmentLengths.sum()
             if (lengthMeters < policy.minimumTraceLengthMeters) return@mapNotNull null
 
-            val pointDistances = evidence.points.map { point ->
+            val coveragePoints = queueGoDensifyCoveragePolyline(
+                points = evidence.points,
+                maximumStepMeters = policy.coverageSampleStepMeters,
+                maximumSampleCount = policy.maximumCoverageSampleCount
+            )
+            if (coveragePoints.isEmpty()) return@mapNotNull null
+
+            val pointDistances = coveragePoints.map { point ->
                 queueGoDistanceToNearestCoverageRoadMeters(point, baseRoads)
             }
             val uncoveredCount = pointDistances.count {
@@ -167,6 +194,50 @@ internal fun queueGoPolylineLengthMeters(
     points.zipWithNext().sumOf { (a, b) ->
         queueGoLocalRoadDistanceMeters(a, b)
     }
+
+internal fun queueGoDensifyCoveragePolyline(
+    points: List<QueueGoLocalRoadPoint>,
+    maximumStepMeters: Double,
+    maximumSampleCount: Int
+): List<QueueGoLocalRoadPoint> {
+    require(maximumStepMeters > 0.0 && maximumStepMeters.isFinite()) {
+        "Coverage densify step is invalid"
+    }
+    require(maximumSampleCount >= points.size) {
+        "Coverage densify sample limit is smaller than input"
+    }
+    if (points.size < 2) return points.toList()
+
+    val output = ArrayList<QueueGoLocalRoadPoint>(min(maximumSampleCount, points.size * 4))
+    output += points.first()
+
+    points.zipWithNext().forEach { (a, b) ->
+        val distanceMeters = queueGoLocalRoadDistanceMeters(a, b)
+        val steps = ceil(distanceMeters / maximumStepMeters)
+            .toInt()
+            .coerceAtLeast(1)
+        if (output.size + steps > maximumSampleCount) {
+            return emptyList()
+        }
+
+        var longitudeDelta = b.longitude - a.longitude
+        if (longitudeDelta > 180.0) longitudeDelta -= 360.0
+        if (longitudeDelta < -180.0) longitudeDelta += 360.0
+
+        for (step in 1..steps) {
+            val fraction = step.toDouble() / steps.toDouble()
+            var longitude = a.longitude + longitudeDelta * fraction
+            while (longitude > 180.0) longitude -= 360.0
+            while (longitude < -180.0) longitude += 360.0
+            output += QueueGoLocalRoadPoint(
+                latitude = a.latitude + (b.latitude - a.latitude) * fraction,
+                longitude = longitude
+            )
+        }
+    }
+
+    return output
+}
 
 internal fun queueGoDistanceToNearestCoverageRoadMeters(
     point: QueueGoLocalRoadPoint,

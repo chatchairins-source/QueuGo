@@ -208,10 +208,15 @@ assert(localRoadCoverageAudit.includes('data class QueueGoAggregateTraceEvidence
   localRoadCoverageAudit.includes('aggregateReference.startsWith("queuego-trace:")')&&
   localRoadCoverageAudit.includes('minimumTraversalCount: Int = 3')&&
   localRoadCoverageAudit.includes('maximumMedianAccuracyMeters: Double = 20.0')&&
+  localRoadCoverageAudit.includes('maximumPointGapMeters: Double = 120.0')&&
+  localRoadCoverageAudit.includes('coverageSampleStepMeters: Double = 12.0')&&
+  localRoadCoverageAudit.includes('maximumCoverageSampleCount: Int = 50_000')&&
+  localRoadCoverageAudit.includes('segmentLengths.any { it > policy.maximumPointGapMeters }')&&
+  localRoadCoverageAudit.includes('queueGoDensifyCoveragePolyline(')&&
   localRoadCoverageAudit.includes('minimumUncoveredFraction: Double = 0.65')&&
   localRoadCoverageAudit.includes('data class QueueGoLocalRoadCoverageCandidate')&&
   localRoadCoverageAudit.includes('NEAR_EXISTING_ROAD'),
-  'Local Roads coverage audit must require bounded privacy-safe aggregate evidence and emit review candidates with endpoint hints');
+  'Local Roads coverage audit must require continuous bounded aggregate evidence, densify coverage scoring, and emit review candidates with endpoint hints');
 
 assert(!localRoadCoverageAudit.includes('riderId')&&
   !localRoadCoverageAudit.includes('orderId')&&
