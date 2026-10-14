@@ -1,7 +1,9 @@
 package com.queuego.ridermaplibreosm
 
-private const val QUEUEGO_LOCAL_ROAD_SCHEMA_VERSION = 1
+private const val QUEUEGO_LOCAL_ROAD_SCHEMA_VERSION_V1 = 1
+private const val QUEUEGO_LOCAL_ROAD_SCHEMA_VERSION = 2
 private const val QUEUEGO_LOCAL_ROAD_MAX_ROADS = 20_000
+private const val QUEUEGO_LOCAL_ROAD_MAX_JUNCTIONS = 20_000
 private const val QUEUEGO_LOCAL_ROAD_MAX_POINTS_PER_ROAD = 10_000
 private const val QUEUEGO_LOCAL_ROAD_MAX_TOTAL_POINTS = 250_000
 private const val QUEUEGO_LOCAL_ROAD_MAX_SOURCE_REFERENCE_LENGTH = 240
@@ -17,7 +19,8 @@ data class QueueGoLocalRoadFeed(
     val schemaVersion: Int = QUEUEGO_LOCAL_ROAD_SCHEMA_VERSION,
     val revision: Long,
     val generatedAtEpochMillis: Long,
-    val records: List<QueueGoLocalRoadFeedRecord>
+    val records: List<QueueGoLocalRoadFeedRecord>,
+    val junctions: List<QueueGoVerifiedLocalRoadJunction> = emptyList()
 )
 
 data class QueueGoLocalRoadFeedRecord(
@@ -36,6 +39,7 @@ data class QueueGoValidatedLocalRoadFeed(
     val revision: Long,
     val generatedAtEpochMillis: Long,
     val roads: List<QueueGoLocalRoad>,
+    val junctions: List<QueueGoVerifiedLocalRoadJunction>,
     val decision: QueueGoLocalRoadFeedDecision,
     val totalPointCount: Int
 )
@@ -44,8 +48,16 @@ fun validateQueueGoLocalRoadFeed(
     feed: QueueGoLocalRoadFeed,
     currentRevision: Long? = null
 ): QueueGoValidatedLocalRoadFeed {
-    require(feed.schemaVersion == QUEUEGO_LOCAL_ROAD_SCHEMA_VERSION) {
+    require(
+        feed.schemaVersion == QUEUEGO_LOCAL_ROAD_SCHEMA_VERSION_V1 ||
+            feed.schemaVersion == QUEUEGO_LOCAL_ROAD_SCHEMA_VERSION
+    ) {
         "Unsupported local-road schema version"
+    }
+    if (feed.schemaVersion == QUEUEGO_LOCAL_ROAD_SCHEMA_VERSION_V1) {
+        require(feed.junctions.isEmpty()) {
+            "Schema v1 Local Roads feed cannot contain junction evidence"
+        }
     }
     require(feed.revision > 0L) { "Local-road revision must be positive" }
     require(feed.generatedAtEpochMillis > 0L) {
@@ -53,6 +65,9 @@ fun validateQueueGoLocalRoadFeed(
     }
     require(feed.records.size <= QUEUEGO_LOCAL_ROAD_MAX_ROADS) {
         "Local-road feed exceeds road limit"
+    }
+    require(feed.junctions.size <= QUEUEGO_LOCAL_ROAD_MAX_JUNCTIONS) {
+        "Local-road feed exceeds junction limit"
     }
 
     val decision = when {
@@ -112,10 +127,32 @@ fun validateQueueGoLocalRoadFeed(
         }
     }
 
+    val roadsById = feed.records.associate { it.road.id to it.road }
+    val seenJunctionIds = HashSet<String>(feed.junctions.size.coerceAtLeast(16))
+    val occupiedMembers = HashSet<QueueGoLocalRoadJunctionMember>()
+
+    feed.junctions.forEach { junction ->
+        require(seenJunctionIds.add(junction.id)) {
+            "Duplicate local-road junction id: " + junction.id
+        }
+        validateQueueGoVerifiedJunction(
+            junction = junction,
+            roadsById = roadsById,
+            generatedAtEpochMillis = feed.generatedAtEpochMillis
+        )
+        junction.members.forEach { member ->
+            require(occupiedMembers.add(member)) {
+                "Local-road point cannot belong to multiple explicit junctions: " +
+                    member.roadId + ":" + member.pointIndex
+            }
+        }
+    }
+
     return QueueGoValidatedLocalRoadFeed(
         revision = feed.revision,
         generatedAtEpochMillis = feed.generatedAtEpochMillis,
         roads = feed.records.map { it.road },
+        junctions = feed.junctions.toList(),
         decision = decision,
         totalPointCount = totalPoints
     )
@@ -127,6 +164,9 @@ fun validateQueueGoLocalRoadFeed(
  */
 fun QueueGoValidatedLocalRoadFeed.roadsForApply(): List<QueueGoLocalRoad>? =
     takeIf { decision == QueueGoLocalRoadFeedDecision.APPLY }?.roads
+
+fun QueueGoValidatedLocalRoadFeed.junctionsForApply(): List<QueueGoVerifiedLocalRoadJunction>? =
+    takeIf { decision == QueueGoLocalRoadFeedDecision.APPLY }?.junctions
 
 
 internal fun queueGoLocalRoadSourceReferenceAllowed(
