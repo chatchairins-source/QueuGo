@@ -4,6 +4,8 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.provider.Settings
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
@@ -66,6 +68,24 @@ fun RiderProfileScreen(
     var showSupport by remember { mutableStateOf(false) }
     var showSafety by remember { mutableStateOf(false) }
     var showDiagnostics by remember { mutableStateOf(false) }
+    val profilePhotoPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        if (uri != null && !busy) {
+            busy = true
+            scope.launch {
+                try {
+                    api.updateProfilePhoto(context, auth, uri)
+                    onSnapshot(api.riderSnapshot(auth))
+                    message = "อัปเดตรูปโปรไฟล์แล้ว"
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    message = e.message ?: "อัปเดตรูปโปรไฟล์ไม่สำเร็จ"
+                } finally {
+                    busy = false
+                }
+            }
+        }
+    }
     var ratingSummary by remember(auth.user.id) { mutableStateOf<RiderRatingSummary?>(null) }
     var complimentSummary by remember(auth.user.id) { mutableStateOf<RiderComplimentSummary?>(null) }
     LaunchedEffect(auth.user.id, auth.session.accessToken) {
@@ -106,12 +126,31 @@ fun RiderProfileScreen(
                 border = BorderStroke(1.dp, Color(0xFFEEE6E8)), colors = CardDefaults.cardColors(containerColor = Color.White)) {
                 Row(Modifier.fillMaxWidth().padding(if (smallScreen) 10.dp else 12.dp),
                     verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(11.dp)) {
-                    QgRemoteImage(
-                        source = profile?.profilePhoto,
-                        modifier = Modifier.size(if (smallScreen) 52.dp else 58.dp),
-                        fallback = displayName,
-                        cornerRadius = if (smallScreen) 16.dp else 18.dp
-                    )
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        QgRemoteImage(
+                            source = profile?.profilePhoto,
+                            modifier = Modifier
+                                .size(if (smallScreen) 52.dp else 58.dp)
+                                .clickable(enabled = !busy, role = Role.Button) {
+                                    profilePhotoPicker.launch("image/*")
+                                },
+                            fallback = displayName,
+                            cornerRadius = if (smallScreen) 16.dp else 18.dp
+                        )
+                        TextButton(
+                            onClick = { profilePhotoPicker.launch("image/*") },
+                            enabled = !busy,
+                            contentPadding = PaddingValues(horizontal = 3.dp, vertical = 0.dp),
+                            modifier = Modifier.height(26.dp)
+                        ) {
+                            Text(
+                                if (busy) "กำลังบันทึก" else "เปลี่ยนรูป",
+                                color = QgRed,
+                                fontSize = 8.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
                     Column(Modifier.weight(1f)) {
                         Text(displayName, fontWeight = FontWeight.Bold, fontSize = if (smallScreen) 17.sp else 19.sp)
                         Text(displayPhone.ifBlank { "-" }, color = QgMuted, fontSize = 10.sp, modifier = Modifier.padding(top = 3.dp))
