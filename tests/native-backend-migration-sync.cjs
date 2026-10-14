@@ -117,8 +117,3 @@ for(const needle of [
   assert.ok(emergencyPhoneFix.includes(needle),'Rider emergency contact v2 missing contract: '+needle);
 }
 console.log('Native backend migration mirror: PASS');
-"
-]){
-  assert.ok(emergencyContactMigration.includes(needle),'Rider emergency contact migration missing contract: '+needle);
-}
-console.log('Native backend migration mirror: PASS');
