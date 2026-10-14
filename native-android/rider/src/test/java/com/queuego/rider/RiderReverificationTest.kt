@@ -35,4 +35,22 @@ class RiderReverificationTest {
     @Test fun approvedRequestUsesVerifiedState() {
         assertEquals("ยืนยันตัวตนแล้ว", riderReverificationTitle("approved"))
     }
+
+    @Test fun onlyOpenIdentityChecksBlockGoingOnline() {
+        assertTrue(
+            riderReverificationBlocksOnline(
+                RiderReverificationStatus(true, "id", "required", null, null, null, null, null)
+            )
+        )
+        assertTrue(
+            riderReverificationBlocksOnline(
+                RiderReverificationStatus(true, "id", "pending", null, null, null, null, null)
+            )
+        )
+        assertFalse(
+            riderReverificationBlocksOnline(
+                RiderReverificationStatus(false, "id", "approved", null, null, null, null, null)
+            )
+        )
+    }
 }
