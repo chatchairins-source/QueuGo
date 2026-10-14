@@ -1,9 +1,16 @@
+## 2026-10-14 Rider Grab-parity unified release: Admin review + server online gate
+- Consolidated the Rider identity work onto the navigation-map release-gate line. Existing managed public profile photo remains separate from private selfie verification evidence.
+- Admin uses the existing Rider-status panel to request a re-check, view the submitted private qg-evidence selfie through the existing short-lived signed viewer, approve it, or return it with a required Rider-facing reason. Admin UI reads only public authenticated RPCs and never qg_private tables directly.
+- Production migration 20261014063649 exposes the Admin-only re-verification queue; migration 20261014063832 enforces offline-to-online eligibility at the rider_profiles trigger boundary for required/pending/rejected requests. This makes re-verification a real server-enforced gate instead of a client-only warning.
+- Admin regression continues to ban prompt(); qgAdminInput remains the only input surface. Backend mirror tests now guard the re-verification schema, Admin queue and server online gate.
+- Backup backup/rider-grab-parity-release-before-admin-ui-20261014 retains 98cfd29. PASS requires native-pilot and navigation-map-runtime on this exact successor HEAD.
+
 ## 2026-10-14 Rider Grab-parity release successor: selfie re-verification
 - Continued from consolidated Release Gate head 7220b29 so Heatmap, map-reuse runtime assertions, real compliments, detailed Job History, managed public Rider photo and all earlier parity remain on one line.
 - Added explicit Rider selfie re-verification without claiming biometric/liveness detection. Admin may request a check; Rider captures a fresh camera photo; private qg-evidence storage holds the selfie; server state is required/pending/approved/rejected. Public Rider avatar remains in rider-profile and is never reused as verification evidence.
 - Production migration 20261014062750 rider_reverification_v1 is additive and already applied. Public wrappers are SECURITY INVOKER with anon EXECUTE revoked; private helpers validate live auth.sessions plus active Rider/Admin roles. Rider reads only its own latest request and can submit only an owned qg-evidence path. Admin request/review functions re-check active-admin server-side.
 - Native Profile adds no visible UI when no request exists. Required/rejected states offer camera-only capture + preview + submit; pending is read-only. Production read-only exercise with an active Rider session returned required=false/status=null and no real Rider was enrolled for testing.
-- This is not yet a hard anti-account-sharing gate because online/offline still PATCHes rider_profiles metadata directly. Server-enforced online eligibility remains a separate hardening step.
+- Production migration 20261014063832 rider_reverification_online_gate_v1 now enforces the identity state at the database boundary: any Rider transition from offline to online is rejected while the latest re-verification is required, pending or rejected. This also closes direct rider_profiles metadata PATCH bypasses; Admin/service-role operations remain available for recovery.
 - Backup backup/rider-grab-parity-release-before-reverification-20261014 retains 7220b29. PASS requires native-pilot and navigation-map-runtime on the exact successor HEAD.
 
 ## 2026-10-14 Rider Grab-parity consolidated Release Gate
