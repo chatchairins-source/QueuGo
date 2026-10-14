@@ -6,15 +6,27 @@ const executableSql=sql.split('\n')
   .filter(line=>!line.trim().startsWith('--'))
   .join('\n');
 
+assert((sql.match(/\brollback\s*;/gi)||[]).length===1,
+  'Proposal must contain exactly one terminal rollback and no duplicated SQL tail');
 assert(sql.includes('PROPOSAL ONLY')&&sql.trim().endsWith('rollback;'),
   'Local Roads schema proposal must be non-persistent by default');
 assert(sql.includes('create table if not exists public.qg_local_road_candidates')&&
   sql.includes('create table if not exists public.qg_local_roads')&&
   sql.includes('create table if not exists public.qg_local_road_feed_state'),
   'Local Roads must separate reviewed candidates, published roads and feed revision state');
-assert(sql.includes("status in ('candidate','approved','rejected')")&&
-  sql.includes("status in ('approved','rejected') and reviewed_at is not null and reviewed_by is not null"),
+assert(/status\s+in\s*\(\s*'candidate'\s*,\s*'approved'\s*,\s*'rejected'\s*\)/i.test(sql)&&
+  /status\s+in\s*\(\s*'approved'\s*,\s*'rejected'\s*\)[\s\S]{0,120}reviewed_at is not null[\s\S]{0,120}reviewed_by is not null/i.test(sql),
   'Reviewed candidates must have explicit approval/rejection evidence');
+assert(sql.includes('candidate_version bigint not null default 1')&&
+  sql.includes('unique (road_key, candidate_version)')&&
+  sql.includes('published_revision bigint')&&
+  sql.includes('published_at timestamptz'),
+  'Candidate road history must be versioned and retain publication evidence');
+assert(
+  (sql.match(/and published_revision is null/g)||[]).length >= 3&&
+  (sql.match(/and published_at is null/g)||[]).length >= 3,
+  'Authenticated candidate insert/update/delete must not mutate already-published candidate versions');
+
 assert(sql.includes("source_reference like 'osm:%'")&&
   sql.includes("source_reference like 'public:%'")&&
   sql.includes("source_reference like 'queuego-trace:%'")&&
