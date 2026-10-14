@@ -1,6 +1,7 @@
 package com.queuego.rider
 
 import android.Manifest
+import android.app.ActivityManager
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -8,6 +9,8 @@ import android.location.LocationManager
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import android.net.Uri
+import android.os.Build
+import android.os.PowerManager
 import android.provider.Settings
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -36,7 +39,9 @@ internal data class RiderDiagnosticsSnapshot(
     val notifications: Boolean,
     val googleMaps: Boolean,
     val overlayReturn: Boolean,
-    val microphone: Boolean
+    val microphone: Boolean,
+    val powerSaverOff: Boolean,
+    val backgroundUnrestricted: Boolean
 ) {
     val readyForDelivery: Boolean
         get() = networkReady && locationPermission && locationServices && notifications && googleMaps
@@ -65,6 +70,14 @@ internal fun readRiderDiagnostics(context: Context): RiderDiagnosticsSnapshot {
     val microphone =
         ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
 
+    val powerSaverOff =
+        context.getSystemService(PowerManager::class.java)?.isPowerSaveMode != true
+    val backgroundUnrestricted = if (Build.VERSION.SDK_INT < Build.VERSION_CODES.P) {
+        true
+    } else {
+        context.getSystemService(ActivityManager::class.java)?.isBackgroundRestricted != true
+    }
+
     return RiderDiagnosticsSnapshot(
         networkReady = networkReady,
         locationPermission = locationPermission,
@@ -72,7 +85,9 @@ internal fun readRiderDiagnostics(context: Context): RiderDiagnosticsSnapshot {
         notifications = riderNotificationsReady(context),
         googleMaps = googleMaps,
         overlayReturn = overlayReturn,
-        microphone = microphone
+        microphone = microphone,
+        powerSaverOff = powerSaverOff,
+        backgroundUnrestricted = backgroundUnrestricted
     )
 }
 
@@ -155,6 +170,22 @@ internal fun RiderDiagnosticsScreen(
             launch(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:${context.packageName}")))
         }
         RiderDiagnosticRow("ไมโครโฟน", "ใช้สำหรับโทรเสียงใน QueueGo", diagnostics.microphone, required = false) {
+            launch(appDetailsIntent(context))
+        }
+        RiderDiagnosticRow(
+            "โหมดประหยัดพลังงาน",
+            "ถ้าเปิดอยู่ Android อาจลดความถี่งานเบื้องหลังบางส่วน",
+            diagnostics.powerSaverOff,
+            required = false
+        ) {
+            launch(appDetailsIntent(context))
+        }
+        RiderDiagnosticRow(
+            "การทำงานเบื้องหลัง",
+            "ถ้าถูกจำกัด อาจทำให้ GPS หรือการแจ้งเตือนล่าช้า",
+            diagnostics.backgroundUnrestricted,
+            required = false
+        ) {
             launch(appDetailsIntent(context))
         }
 
