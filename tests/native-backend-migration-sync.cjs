@@ -1,3 +1,4 @@
+// Rider Admin reverification v3 exact-head release gate.
 const fs=require('fs');
 const assert=require('assert');
 
