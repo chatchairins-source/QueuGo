@@ -305,6 +305,12 @@ jobs:
       - uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a # v4
         with:
           gradle-version: '9.6.0'
+      - name: Enable Android acceleration
+        run: |
+          test -c /dev/kvm
+          if [ ! -r /dev/kvm ] || [ ! -w /dev/kvm ]; then
+            sudo chown "$(id -u):$(id -g)" /dev/kvm
+          fi
       - name: Run MapLibre OSM village runtime gate
         run: python3 native-android/qa/run-rider-maplibre-osm-runtime.py
       - name: Upload MapLibre OSM runtime evidence
