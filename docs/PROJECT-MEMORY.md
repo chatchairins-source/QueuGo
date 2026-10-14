@@ -1,3 +1,10 @@
+## 2026-10-14 Rider Grab-parity unified runtime + Availability vehicle gates
+- Unified the latest Account Restriction + real Home Action Cards successor with the navigation-map quiet continuity retry that fixed the exact runtime snapshot failure. No duplicate Home/action system was introduced.
+- Audited the existing setOnline preflight and found two existing blockers missing from the green Availability card: vehicle inspection and approval state of the selected vehicle. Home now refreshes both states with the existing identity/document readiness polling and feeds them into the same readiness card.
+- Availability uses the existing riderVehicleInspectionBlocksOnline / riderVehicleBlocksOnline helpers, so pending/rejected/required inspection and an unapproved selected vehicle are visible before Rider taps online. Read failures remain CHECKING rather than fake-ready.
+- No Production DB, dispatch, payment, offer, map-camera or navigation semantics changed. The quiet PixelCopy retry is bounded and preserves the original runtime assertion.
+- Backup backup/rider-account-actions-before-runtime-availability-unify-20261014 retains 41b3f50. Exact-head native-pilot + navigation-map-runtime are required before PASS.
+
 ## 2026-10-14 Grab Driver parity: unified Account Restriction + Home Action Cards successor
 - Unified the two latest sibling branches so Rider Home action cards and status-specific non-active account restriction UX now live on one successor line.
 - Started from Home Action Cards head b77e2f0, then carried forward the Account Restriction implementation from PR #280 without changing dispatch, payment, navigation, auth policy or Production DB.
