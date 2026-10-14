@@ -1,3 +1,13 @@
+## 2026-10-14 Grab Driver parity: durable delivery contact-attempt evidence
+- Continued from world-class Stop-After-Work + Safety Incident head fe84fd71, preserving one-photo proof quality/recovery, Return-to-Sender v4, Auto Accept, Benefits, failed-delivery, event feedback and safety incident reporting.
+- Static inspection of the owner-supplied Grab Driver 5.457.1 APK exposed a dedicated ContactAttemptCountHandler in the in-transit cancellation/recipient-unavailable path.
+- QueueGo previously allowed a manual checkbox (“ฉันได้โทรหรือแชตกับลูกค้าแล้ว”) before failed-delivery reporting. That could be checked without an actual QueueGo contact action and was lost when the Rider left the dialog for Chat.
+- Replaced the checkbox with on-device durable per-Rider/per-order contact-attempt tracking. Only pressing QueueGo Call or Chat records an attempt; Call and Chat counts are shown separately and survive leaving/reopening the dialog.
+- Attempts expire after 24 hours. No message/call content is stored; only call/chat counters and last-attempt time.
+- Failed-delivery note now carries a bounded machine-readable marker [CONTACT_ATTEMPTS:<total>;CALL:<n>;CHAT:<n>] into the existing delivery-issue RPC. No Production schema/RLS/payment/dispatch mutation.
+- Backup: backup/rider-worldclass-before-contact-attempts-20261014 @ fe84fd71.
+- PASS requires exact-head native-pilot + navigation-map-runtime.
+
 ## 2026-10-14 Rider world-class: Stop-After-Work + Safety Incident unified successor
 - Continued from stop-after-work head f85ce9ea, preserving final world-class proof/return, evidence-quality compatibility, Auto Accept, failed-delivery, Benefits, connectivity and event feedback work.
 - Carries the new durable “หยุดรับงานหลังงานนี้” intent together with the Grab-parity Safety Incident Report so no sibling Rider work is dropped.
