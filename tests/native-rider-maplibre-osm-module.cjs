@@ -11,6 +11,7 @@ const localRoadSignedDelivery=fs.readFileSync('native-android/rider-maplibre-osm
 const localRoadHttpsTransport=fs.readFileSync('native-android/rider-maplibre-osm/src/main/java/com/queuego/ridermaplibreosm/QueueGoLocalRoadHttpsTransport.kt','utf8');
 const localRoadRouting=fs.readFileSync('native-android/rider-maplibre-osm/src/main/java/com/queuego/ridermaplibreosm/QueueGoLocalRoadRoutingPolicy.kt','utf8');
 const localRoadGraph=fs.readFileSync('native-android/rider-maplibre-osm/src/main/java/com/queuego/ridermaplibreosm/QueueGoLocalRoadGraph.kt','utf8');
+const localRoadPathfinder=fs.readFileSync('native-android/rider-maplibre-osm/src/main/java/com/queuego/ridermaplibreosm/QueueGoLocalRoadPathfinder.kt','utf8');
 const riderBuild=fs.readFileSync('native-android/rider/build.gradle.kts','utf8');
 
 assert(settings.includes('":rider-maplibre-osm"'),'MapLibre OSM module must be registered in native settings');
@@ -144,5 +145,25 @@ assert(localRoadGraph.includes('buildQueueGoLocalRoadGraph')&&
   !localRoadGraph.includes('shortestPath')&&
   !localRoadGraph.includes('NavigationRouteCoordinator'),
   'Experimental Local Roads graph must preserve verified/private/one-way guards, exact topology only, and remain separate from Production routing');
+
+assert(localRoadPathfinder.includes('findQueueGoLocalRoadPath')&&
+  localRoadPathfinder.includes('PriorityQueue')&&
+  localRoadPathfinder.includes('destinationPhase')&&
+  localRoadPathfinder.includes('destinationAccessRoadIds')&&
+  localRoadPathfinder.includes('SEARCH_LIMIT_EXCEEDED')&&
+  localRoadPathfinder.includes('QueueGoRoadTraversalUse.THROUGH')&&
+  localRoadPathfinder.includes('QueueGoRoadTraversalUse.DESTINATION_ACCESS')&&
+  localRoadPathfinder.includes('edge.roadId !in request.destinationAccessRoadIds')&&
+  localRoadPathfinder.includes('uses exact graph nodes only (no coordinate snapping)'),
+  'Experimental Local Roads pathfinder must remain bounded, exact-node, vehicle-aware and prevent destination-access roads from becoming through shortcuts');
+
+assert(!localRoadPathfinder.includes('NavigationRouteCoordinator')&&
+  !localRoadPathfinder.includes('LongdoNavigationRouteClient')&&
+  !localRoadPathfinder.includes('Google Maps')&&
+  !localRoadPathfinder.includes('Supabase')&&
+  !localRoadPathfinder.includes('ETA')&&
+  !localRoadPathfinder.includes('speedMetersPerSecond'),
+  'Experimental Local Roads pathfinder must stay isolated from Production navigation, backend writes and ETA/speed assumptions');
+
 
 console.log('native rider MapLibre OSM module contract passed');
