@@ -1,3 +1,10 @@
+## 2026-10-14 Grab Driver parity: local Runtime + Map diagnostics
+- Grab Driver contains dedicated app-performance/app-exit diagnostic tracking. QueueGo already had detailed NavigationMapDiagnostics counters inside the retained Longdo renderer, but the Rider app discarded them.
+- Added a local-only runtime diagnostics bridge: the existing renderer now publishes view/map creation, replacement, render pass, route rebuild and snapshot-bridge-failure counters into Rider Diagnostics. No extra renderer, location provider, network request or database table is created.
+- Android 11+ Rider Diagnostics also reads the most recent ApplicationExitInfo reason locally so crash, ANR, low-memory or resource-exit causes can be distinguished from user-requested close/app update. Nothing from process-exit history is uploaded.
+- Map health flags repeated map creation/replacement or snapshot bridge failure for investigation; normal route/render mutations remain informational. This directly supports the owner's long-standing issue where returning from another app could appear to rebuild/reload the map.
+- Backup backup/rider-runtime-diagnostics-before-grab-parity-20261014 retains 1d7c09c. Successor must pass native-pilot + navigation-map-runtime on the exact head.
+
 ## 2026-10-14 Grab Driver parity unified: live speed + advisory rest reminder
 - Pulled the validated PR242 speed/rest implementation onto the current Learning + Missions + Emergency Contact release line after confirming QueueGoRiderApp.kt and RiderNavigationLocationService.kt were byte-identical to PR242's base.
 - Reuses the existing foreground navigation GPS stream; no second location provider is created. Current km/h renders only for accepted speed samples with accuracy guard, and implausible values above 200 km/h are hidden.

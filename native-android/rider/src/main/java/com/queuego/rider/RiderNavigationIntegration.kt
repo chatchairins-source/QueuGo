@@ -490,6 +490,7 @@ internal fun QueueGoRiderNavigationMap(
                     1.0
                 )
             )
-        }
+        },
+        onDiagnostics = RiderRuntimeDiagnosticsStore::publishMap
     )
 }
