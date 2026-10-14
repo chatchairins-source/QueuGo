@@ -1014,12 +1014,12 @@ private fun RiderHome(
                 auth.user.id,
                 RIDER_PROOF_SLOT_DELIVERY
             )
-            photoUri = promoted?.uri?.let(Uri::parse) ?: pendingCameraUri
+            photoUri = promoted?.uri?.let(Uri::parse)
             pendingCameraUri = null
             actionMessage = if (promoted != null) {
                 "ถ่ายรูปหลักฐานแล้ว · ระบบเก็บรูปไว้จนกว่าจะส่งสำเร็จ"
             } else {
-                "ถ่ายรูปหลักฐานแล้ว"
+                "บันทึกรูปหลักฐานไม่สำเร็จ กรุณาถ่ายใหม่"
             }
         } else {
             pendingProofStore.cancelCapture(auth.user.id, RIDER_PROOF_SLOT_DELIVERY)
@@ -1035,12 +1035,12 @@ private fun RiderHome(
                 auth.user.id,
                 RIDER_PROOF_SLOT_RETURN
             )
-            returnPhotoUri = promoted?.uri?.let(Uri::parse) ?: returnPendingCameraUri
+            returnPhotoUri = promoted?.uri?.let(Uri::parse)
             returnPendingCameraUri = null
             actionMessage = if (promoted != null) {
                 "ถ่ายรูปหลักฐานการคืนสินค้าแล้ว · ระบบเก็บรูปไว้จนกว่าจะส่งสำเร็จ"
             } else {
-                "ถ่ายรูปหลักฐานการคืนสินค้าแล้ว"
+                "บันทึกรูปหลักฐานการคืนสินค้าไม่สำเร็จ กรุณาถ่ายใหม่"
             }
         } else {
             pendingProofStore.cancelCapture(auth.user.id, RIDER_PROOF_SLOT_RETURN)
