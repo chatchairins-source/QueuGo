@@ -131,7 +131,7 @@ class QueueGoMapLibreOsmView @JvmOverloads constructor(
         )
         return readyMap.queryRenderedFeatures(
             RectF(0f, 0f, width.toFloat(), height.toFloat()),
-            layerIds
+            *layerIds
         ).size
     }
 }
