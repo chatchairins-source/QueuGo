@@ -165,7 +165,7 @@ internal fun RiderReverificationCard(
                             .fillMaxWidth()
                             .height(280.dp)
                             .background(Color(0xFFF2EFF0), RoundedCornerShape(16.dp))
-                    ) { previewReady = it }
+                    ) { quality -> previewReady = quality.acceptable }
                     Spacer(Modifier.height(10.dp))
                     Row(
                         Modifier.fillMaxWidth(),
