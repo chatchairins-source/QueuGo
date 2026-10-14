@@ -26,8 +26,8 @@ class RiderAvailabilityReadinessTest {
             documentsLoaded = true
         )
         assertTrue(readiness.fullyReady)
-        assertEquals(9, readiness.readyCount)
-        assertEquals(9, readiness.totalCount)
+        assertEquals(11, readiness.readyCount)
+        assertEquals(11, readiness.totalCount)
     }
 
     @Test fun deviceBlockersAreVisibleBeforeGoOnlineAttempt() {
@@ -83,7 +83,7 @@ class RiderAvailabilityReadinessTest {
             documentsLoaded = true
         )
         assertFalse(readiness.fullyReady)
-        assertEquals(8, readiness.readyCount)
+        assertEquals(10, readiness.readyCount)
         assertEquals(listOf("identity"), readiness.checking.map { it.key })
     }
 
@@ -136,5 +136,75 @@ class RiderAvailabilityReadinessTest {
         )
         assertTrue(readiness.fullyReady)
         assertEquals(RiderAvailabilityCheckState.READY, readiness.checks.single { it.key == "documents" }.state)
+    }
+
+    @Test fun pendingVehicleInspectionIsVisibleBeforeOnlineAttempt() {
+        val readiness = riderAvailabilityReadiness(
+            diagnostics = readyDiagnostics,
+            firebaseConfigured = true,
+            reverification = null,
+            reverificationLoaded = true,
+            documents = RiderDocumentReadiness(false),
+            documentsLoaded = true,
+            vehicleInspection = RiderVehicleInspectionStatus(
+                required = true,
+                requestId = "inspection-1",
+                status = "pending",
+                reason = null,
+                requestedAt = null,
+                submittedAt = null,
+                reviewedAt = null,
+                reviewNote = null
+            ),
+            vehicleInspectionLoaded = true
+        )
+        assertFalse(readiness.fullyReady)
+        assertEquals(listOf("vehicle_inspection"), readiness.blocked.map { it.key })
+    }
+
+    @Test fun unknownVehicleStatesStayCheckingInsteadOfFakeReady() {
+        val readiness = riderAvailabilityReadiness(
+            diagnostics = readyDiagnostics,
+            firebaseConfigured = true,
+            reverification = null,
+            reverificationLoaded = true,
+            documents = RiderDocumentReadiness(false),
+            documentsLoaded = true,
+            vehicleInspection = null,
+            vehicleInspectionLoaded = false,
+            selectedVehicle = null,
+            vehiclesLoaded = false
+        )
+        assertFalse(readiness.fullyReady)
+        assertEquals(
+            setOf("vehicle_inspection", "selected_vehicle"),
+            readiness.checking.map { it.key }.toSet()
+        )
+    }
+
+    @Test fun unapprovedSelectedVehicleMatchesSetOnlineBlocker() {
+        val readiness = riderAvailabilityReadiness(
+            diagnostics = readyDiagnostics,
+            firebaseConfigured = true,
+            reverification = null,
+            reverificationLoaded = true,
+            documents = RiderDocumentReadiness(false),
+            documentsLoaded = true,
+            selectedVehicle = RiderVehicle(
+                id = "vehicle-1",
+                type = "motorcycle",
+                name = null,
+                plate = "1กข1234",
+                capacityKg = null,
+                status = "pending",
+                selected = true,
+                legacySeed = false,
+                approvedAt = null,
+                reviewNote = null
+            ),
+            vehiclesLoaded = true
+        )
+        assertFalse(readiness.fullyReady)
+        assertEquals(listOf("selected_vehicle"), readiness.blocked.map { it.key })
     }
 }
