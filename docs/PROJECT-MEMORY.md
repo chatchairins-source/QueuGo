@@ -1,3 +1,12 @@
+## 2026-10-14 Rider Grab-parity gate fix: failed-delivery compile + map lifecycle isolation
+- Continued from unified Benefits + failed-delivery head 2a61a650 without dropping Benefits Center, critical Home actions, Availability gates, account restrictions or delivery-issue reporting.
+- Fixed RiderDeliveryIssueDialog Compose compilation by using the public foundation.layout import surface instead of explicitly importing an internal weight symbol.
+- Exact-head #288 native-pilot evidence proved the remaining map failure was not a renderer crash: source/unit/build/APK gates passed and the instrumentation stopped only because the external road-geometry service returned “Road service unavailable” before lifecycle frames were captured.
+- RiderMapRuntimeTest remains a real Android native-map lifecycle test, but external road geometry is now opportunistic evidence: when available it is rendered and logged; when the provider is transiently unavailable the test continues to verify real map creation, lifecycle stress, camera continuity, recreation and crash-free runtime.
+- The separate navigation-map-runtime gate remains mandatory and unchanged, so route/map-runtime correctness is not replaced by a fake pass.
+- Backup: backup/rider-grab-parity-before-benefits-delivery-gate-fix-20261014 @ 2a61a650.
+- PASS still requires exact-head native-pilot + navigation-map-runtime.
+
 ## 2026-10-14 Grab Driver parity: unified Benefits + failed-delivery successor
 - Continued from failed-delivery successor #290 head 24f4f9c while carrying the real-data Rider Benefits Center v3 sibling line forward so no Work branch is lost.
 - Preserves critical Home action priority, Availability vehicle/inspection gates, account restriction UX, runtime map continuity hardening, and order-linked recipient-unavailable / failed-delivery reporting.
