@@ -601,12 +601,19 @@ private fun RiderHome(
     }
     val pushStore = remember(context) { SessionStore(context) }
     val proofStore = remember(context) { RiderPendingProofStore(context) }
+    val acceptanceModeStore = remember(context) { RiderAcceptanceModeStore(context) }
     val realtime = remember { NativeOrderRealtime() }
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     val snapshotMutex = remember { Mutex() }
 
     var snapshot by remember(auth.user.id) {
         mutableStateOf<RiderSnapshot?>(pushStore.loadHomeSnapshot(auth.user.id))
+    }
+    var autoAcceptEnabled by rememberSaveable(auth.user.id) {
+        mutableStateOf(acceptanceModeStore.autoAcceptEnabled(auth.user.id))
+    }
+    var autoAcceptAttemptKey by rememberSaveable(auth.user.id) {
+        mutableStateOf<String?>(null)
     }
 
     LaunchedEffect(
@@ -1797,6 +1804,109 @@ private fun RiderHome(
         }
     }
 
+    fun acceptTargetedOffer(job: RiderJob, automatic: Boolean) {
+        if (actionBusy) return
+        if (!networkAvailable) {
+            if (!automatic) actionMessage = RIDER_NETWORK_GUARD_MESSAGE
+            return
+        }
+        val current = snapshot ?: return
+        val liveOffer = current.offeredJob?.takeIf {
+            it.id == job.id && it.offerExpiresAt == job.offerExpiresAt
+        } ?: return
+        if (riderOfferSecondsLeft(liveOffer.offerExpiresAt) <= 0) return
+
+        actionBusy = true
+        scope.launch {
+            runCatching { api.acceptOffer(auth, liveOffer) }
+                .onSuccess {
+                    playRiderEventFeedback(eventFeedbackView, RiderEventFeedbackKind.JOB_ACCEPTED)
+                    actionMessage = if (automatic) {
+                        "รับงานอัตโนมัติแล้ว · กำลังเปิดนำทางไปร้าน"
+                    } else {
+                        "รับงานสำเร็จ · กำลังเปิดนำทางไปร้าน"
+                    }
+
+                    val acceptedFallback = liveOffer.copy(
+                        status = "rider_assigned",
+                        offerExpiresAt = null
+                    )
+                    val acceptedSnapshot = current.copy(
+                        activeJob = acceptedFallback,
+                        offeredJob = null,
+                        marketPickups = emptyList()
+                    )
+                    snapshot = acceptedSnapshot
+                    pushStore.saveHomeSnapshot(auth.user.id, acceptedSnapshot)
+
+                    val updated = runCatching { api.riderSnapshot(auth) }
+                        .onFailure { if (it is CancellationException) throw it }
+                        .getOrNull()
+                        ?.takeIf { it.activeJob?.id == acceptedFallback.id }
+                        ?.let { riderMergeLiveSnapshot(acceptedSnapshot, it) }
+                    if (updated != null) {
+                        snapshot = updated
+                        pushStore.saveHomeSnapshot(auth.user.id, updated)
+                    }
+                    openNavigation(context, updated?.activeJob ?: acceptedFallback)
+                }
+                .onFailure {
+                    playRiderEventFeedback(eventFeedbackView, RiderEventFeedbackKind.ACTION_ERROR)
+                    actionMessage = if (automatic) {
+                        "รับงานอัตโนมัติไม่สำเร็จ · คุณยังกดรับงานได้ตามปกติ"
+                    } else {
+                        it.message ?: "รับงานไม่สำเร็จ"
+                    }
+                }
+            actionBusy = false
+        }
+    }
+
+    LaunchedEffect(
+        autoAcceptEnabled,
+        networkAvailable,
+        snapshot?.online,
+        snapshot?.activeJob?.id,
+        snapshot?.laundry?.activeJob?.id,
+        snapshot?.offeredJob?.id,
+        snapshot?.offeredJob?.offerExpiresAt,
+        actionBusy,
+        lifecycle
+    ) {
+        lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            val current = snapshot ?: return@repeatOnLifecycle
+            val offer = current.offeredJob ?: return@repeatOnLifecycle
+            val key = offer.id + ":" + (offer.offerExpiresAt ?: "")
+            if (autoAcceptAttemptKey == key) return@repeatOnLifecycle
+            if (!riderAutoAcceptEligible(
+                    enabled = autoAcceptEnabled,
+                    networkAvailable = networkAvailable,
+                    online = current.online,
+                    hasActiveWork = current.activeJob != null || current.laundry.activeJob != null,
+                    actionBusy = actionBusy,
+                    secondsLeft = riderOfferSecondsLeft(offer.offerExpiresAt)
+                )
+            ) return@repeatOnLifecycle
+
+            delay(250L)
+            val latest = snapshot?.offeredJob ?: return@repeatOnLifecycle
+            val latestKey = latest.id + ":" + (latest.offerExpiresAt ?: "")
+            if (latestKey != key) return@repeatOnLifecycle
+            if (!riderAutoAcceptEligible(
+                    enabled = autoAcceptEnabled,
+                    networkAvailable = networkAvailable,
+                    online = snapshot?.online == true,
+                    hasActiveWork = snapshot?.activeJob != null || snapshot?.laundry?.activeJob != null,
+                    actionBusy = actionBusy,
+                    secondsLeft = riderOfferSecondsLeft(latest.offerExpiresAt)
+                )
+            ) return@repeatOnLifecycle
+
+            autoAcceptAttemptKey = key
+            acceptTargetedOffer(latest, automatic = true)
+        }
+    }
+
     val shortHome = LocalConfiguration.current.screenHeightDp <= 760
     val returnMapJob = snapshot?.deliveryReturn?.takeIf { it.canReturnToShop }?.let { returnCase ->
         snapshot?.activeJob?.copy(
@@ -2269,6 +2379,20 @@ private fun RiderHome(
                                 }
                             }
                         )
+                        RiderAcceptanceModeControl(
+                            autoAcceptEnabled = autoAcceptEnabled,
+                            enabled = !actionBusy,
+                            onAutoAcceptChanged = { enabled ->
+                                autoAcceptEnabled = enabled
+                                acceptanceModeStore.setAutoAcceptEnabled(auth.user.id, enabled)
+                                actionMessage = if (enabled) {
+                                    "เปิดรับงานอัตโนมัติแล้ว"
+                                } else {
+                                    "เปลี่ยนเป็นเลือกงานเองแล้ว"
+                                }
+                            },
+                            modifier = Modifier.padding(top = 8.dp)
+                        )
                     if (current.online) {
                         OutlinedButton(onClick = { changeOnline(false) }, enabled = !actionBusy,
                             modifier = Modifier.fillMaxWidth().padding(top = 8.dp).heightIn(min = 46.dp),
@@ -2592,45 +2716,7 @@ private fun RiderHome(
                             riderLocation = lastKnownLocation(context),
                             busy = actionBusy,
                             onAccept = {
-                                actionBusy = true
-                                scope.launch {
-                                    runCatching { api.acceptOffer(auth, current.offeredJob) }
-                                        .onSuccess {
-                                            playRiderEventFeedback(eventFeedbackView, RiderEventFeedbackKind.JOB_ACCEPTED)
-                                            actionMessage = "รับงานสำเร็จ · กำลังเปิดนำทางไปร้าน"
-
-                                            // Claim success is authoritative. Promote the offered job locally before
-                                            // loading optional route/market metadata so a secondary read failure can
-                                            // never leave the Rider staring at an expired offer or a raw DB error.
-                                            val acceptedFallback = current.offeredJob.copy(
-                                                status = "rider_assigned",
-                                                offerExpiresAt = null
-                                            )
-                                            val acceptedSnapshot = current.copy(
-                                                activeJob = acceptedFallback,
-                                                offeredJob = null,
-                                                marketPickups = emptyList()
-                                            )
-                                            snapshot = acceptedSnapshot
-                                            pushStore.saveHomeSnapshot(auth.user.id, acceptedSnapshot)
-
-                                            val updated = runCatching { api.riderSnapshot(auth) }
-                                                .onFailure { if (it is CancellationException) throw it }
-                                                .getOrNull()
-                                                ?.takeIf { it.activeJob?.id == acceptedFallback.id }
-                                                ?.let { riderMergeLiveSnapshot(acceptedSnapshot, it) }
-                                            if (updated != null) {
-                                                snapshot = updated
-                                                pushStore.saveHomeSnapshot(auth.user.id, updated)
-                                            }
-                                            openNavigation(context, updated?.activeJob ?: acceptedFallback)
-                                        }
-                                        .onFailure {
-                                            playRiderEventFeedback(eventFeedbackView, RiderEventFeedbackKind.ACTION_ERROR)
-                                            actionMessage = it.message ?: "รับงานไม่สำเร็จ"
-                                        }
-                                    actionBusy = false
-                                }
+                                acceptTargetedOffer(current.offeredJob, automatic = false)
                             },
                             onDecline = {
                                 actionBusy = true
