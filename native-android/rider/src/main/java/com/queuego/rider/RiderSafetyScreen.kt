@@ -75,6 +75,8 @@ internal fun RiderSafetyScreen(
     var emergencyPhone by remember { mutableStateOf("") }
     var emergencyMessage by remember { mutableStateOf<String?>(null) }
     var locationShareMessage by remember { mutableStateOf<String?>(null) }
+    var mapFeedbackLocation by remember { mutableStateOf<RiderSafetyLocation?>(null) }
+    var showMapFeedback by remember { mutableStateOf(false) }
     var fatigueStatus by remember(auth.user.id) { mutableStateOf<RiderFatigueStatus?>(null) }
     var fatigueLoaded by remember(auth.user.id) { mutableStateOf(false) }
     val navigationFix by RiderNavigationLocationStore.fix.collectAsState()
@@ -393,6 +395,23 @@ internal fun RiderSafetyScreen(
                 ) {
                     Text("แชร์ตำแหน่งปัจจุบัน", fontWeight = FontWeight.Bold)
                 }
+                Spacer(Modifier.height(7.dp))
+                OutlinedButton(
+                    onClick = {
+                        val location = currentShareLocation()
+                        if (location == null) {
+                            locationShareMessage = "ยังไม่มีตำแหน่งที่ใหม่พอ กรุณาเปิด GPS แล้วลองอีกครั้ง"
+                        } else {
+                            mapFeedbackLocation = location
+                            showMapFeedback = true
+                            locationShareMessage = null
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(14.dp)
+                ) {
+                    Text("รายงานปัญหาแผนที่ / ถนน", fontWeight = FontWeight.Bold)
+                }
                 emergencyContact?.takeIf {
                     it.configured && !it.phone.isNullOrBlank()
                 }?.phone?.let { phone ->
@@ -441,6 +460,25 @@ internal fun RiderSafetyScreen(
                     Text("ติดต่อฝ่ายดูแล QueueGo", fontWeight = FontWeight.Bold)
                 }
             }
+        }
+    }
+
+    if (showMapFeedback && mapFeedbackLocation != null) {
+        Dialog(onDismissRequest = { showMapFeedback = false }) {
+            RiderMapFeedbackDialog(
+                auth = auth,
+                api = api,
+                location = mapFeedbackLocation!!,
+                onSubmitted = {
+                    showMapFeedback = false
+                    mapFeedbackLocation = null
+                    locationShareMessage = "ส่งรายงานให้ทีมแผนที่ตรวจสอบแล้ว"
+                },
+                onClose = {
+                    showMapFeedback = false
+                    mapFeedbackLocation = null
+                }
+            )
         }
     }
 
