@@ -18,6 +18,12 @@ class RiderAccountRestrictionTest {
         assertEquals("ใบสมัครของคุณอยู่ระหว่างตรวจสอบ", pending.title)
     }
 
+    @Test fun deletedProductionStatusHasExplicitClosedAccountCopy() {
+        val deleted = riderAccountRestrictionContent("deleted")
+        assertEquals("บัญชีถูกยกเลิก", deleted.badge)
+        assertEquals("บัญชี Rider นี้ไม่พร้อมใช้งาน", deleted.title)
+    }
+
     @Test fun unknownNonActiveStatusFailsClosedToGenericRestriction() {
         val unknown = riderAccountRestrictionContent("custom_hold")
         assertEquals("บัญชียังไม่พร้อมใช้งาน", unknown.badge)
