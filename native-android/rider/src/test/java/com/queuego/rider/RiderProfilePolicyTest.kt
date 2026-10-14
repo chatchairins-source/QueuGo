@@ -12,4 +12,13 @@ class RiderProfilePolicyTest {
             RIDER_PRIVACY_POLICY_URL
         )
     }
+    @Test fun profilePhotoRejectsBlankAndNullMetadataButKeepsRealRegistrationImage() {
+        assertEquals(null, riderProfilePhoto(null))
+        assertEquals(null, riderProfilePhoto(org.json.JSONObject().put("profileImage", "")))
+        assertEquals(null, riderProfilePhoto(org.json.JSONObject().put("profileImage", org.json.JSONObject.NULL)))
+        assertEquals(
+            "data:image/jpeg;base64,abc123",
+            riderProfilePhoto(org.json.JSONObject().put("profileImage", "data:image/jpeg;base64,abc123"))
+        )
+    }
 }

@@ -31,6 +31,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.queuego.shared.QgAccountDeletionSection
 import com.queuego.shared.QgMuted
+import com.queuego.shared.QgRemoteImage
 import com.queuego.shared.QgRedSoft
 import com.queuego.shared.QgRed
 import kotlinx.coroutines.CancellationException
@@ -63,6 +64,7 @@ fun RiderProfileScreen(
     var busy by remember { mutableStateOf(false) }
     var message by remember { mutableStateOf<String?>(null) }
     var showSupport by remember { mutableStateOf(false) }
+    var showDiagnostics by remember { mutableStateOf(false) }
     LaunchedEffect(message) {
         if (message != null) { delay(4_000); message = null }
     }
@@ -85,9 +87,12 @@ fun RiderProfileScreen(
                 border = BorderStroke(1.dp, Color(0xFFEEE6E8)), colors = CardDefaults.cardColors(containerColor = Color.White)) {
                 Row(Modifier.fillMaxWidth().padding(if (smallScreen) 10.dp else 12.dp),
                     verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(11.dp)) {
-                    Box(Modifier.size(if (smallScreen) 52.dp else 58.dp).background(QgRedSoft, RoundedCornerShape(if (smallScreen) 16.dp else 18.dp)), contentAlignment = Alignment.Center) {
-                        Text(displayName.take(1).uppercase(), color = QgRed, fontSize = 22.sp, fontWeight = FontWeight.Black)
-                    }
+                    QgRemoteImage(
+                        source = profile?.profilePhoto,
+                        modifier = Modifier.size(if (smallScreen) 52.dp else 58.dp),
+                        fallback = displayName,
+                        cornerRadius = if (smallScreen) 16.dp else 18.dp
+                    )
                     Column(Modifier.weight(1f)) {
                         Text(displayName, fontWeight = FontWeight.Bold, fontSize = if (smallScreen) 17.sp else 19.sp)
                         Text(displayPhone.ifBlank { "-" }, color = QgMuted, fontSize = 10.sp, modifier = Modifier.padding(top = 3.dp))
@@ -95,6 +100,15 @@ fun RiderProfileScreen(
                         val plate = profile?.vehiclePlate?.takeIf { it.isNotBlank() }
                         Text(vehicle + (plate?.let { " · $it" } ?: " · QueueGo Rider"), color = Color(0xFF746A6E), fontSize = 8.5.sp,
                             modifier = Modifier.padding(top = 5.dp).background(Color(0xFFF7F3F4), RoundedCornerShape(99.dp)).padding(horizontal = 7.dp, vertical = 4.dp))
+                        if (!profile?.vehicleVerifiedAt.isNullOrBlank() || profile?.vehicleStatus.equals("verified", true)) {
+                            Text(
+                                "ยืนยันข้อมูลรถแล้ว",
+                                color = Color(0xFF12845E),
+                                fontSize = 8.5.sp,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(top = 5.dp)
+                            )
+                        }
                     }
                     RiderProfilePill(snapshot?.online == true)
                 }
@@ -246,6 +260,12 @@ fun RiderProfileScreen(
                 RiderSettingDivider()
                 // Existing Android-only permission control; never an extra Home card.
                 RiderSettingRow("ปุ่มลอยกลับ QueueGo", "ใช้ระหว่างเปิด Google Maps เพื่อนำทาง", R.drawable.qg_rider_flow_loc, onClick = onNavigationSettings)
+                RiderSettingDivider()
+                RiderSettingRow(
+                    "ตรวจสอบระบบ Rider",
+                    "ตรวจ GPS · แจ้งเตือน · อินเทอร์เน็ต · Google Maps · ปุ่มลอย",
+                    R.drawable.qg_rider_flow_loc
+                ) { showDiagnostics = true }
             }
             Spacer(Modifier.height(10.dp))
             RiderProfileSection("ความเป็นส่วนตัวและบัญชี") {
@@ -270,6 +290,18 @@ fun RiderProfileScreen(
         Surface(Modifier.padding(14.dp).widthIn(max = 620.dp).fillMaxWidth().imePadding(), shape = RoundedCornerShape(24.dp), color = Color.White) {
             RiderSupportScreen(auth = auth, activeJob = snapshot?.activeJob, history = history,
                 onBack = { showSupport = false }, modifier = Modifier.fillMaxWidth())
+        }
+    }
+    if (showDiagnostics) Dialog(onDismissRequest = { showDiagnostics = false }, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+        Surface(
+            Modifier.padding(14.dp).widthIn(max = 620.dp).fillMaxWidth(),
+            shape = RoundedCornerShape(24.dp),
+            color = Color.White
+        ) {
+            RiderDiagnosticsScreen(
+                onClose = { showDiagnostics = false },
+                modifier = Modifier.fillMaxWidth()
+            )
         }
     }
     if (editing) Dialog(onDismissRequest = { if (!busy) editing = false }, properties = DialogProperties(usePlatformDefaultWidth = false)) {
