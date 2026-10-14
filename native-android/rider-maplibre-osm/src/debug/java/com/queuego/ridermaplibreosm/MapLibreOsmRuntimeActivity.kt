@@ -72,6 +72,27 @@ class MapLibreOsmRuntimeActivity : Activity() {
         super.onDestroy()
     }
 
+    fun setVerifiedLocalRoadFixture(version: Int = 1) {
+        val delta = version.coerceAtLeast(1) * 0.0001
+        mapView.setLocalRoads(
+            listOf(
+                QueueGoLocalRoad(
+                    id = "runtime-local-road",
+                    points = listOf(
+                        QueueGoLocalRoadPoint(14.9818, 103.1018),
+                        QueueGoLocalRoadPoint(14.9822 + delta, 103.1023 + delta)
+                    ),
+                    source = QueueGoLocalRoadSource.FIELD_SURVEY,
+                    verified = true,
+                    access = QueueGoLocalRoadAccess.MOTORCYCLE_AND_CAR,
+                    oneWay = false,
+                    surface = QueueGoLocalRoadSurface.PAVED,
+                    name = "runtime fixture"
+                )
+            )
+        )
+    }
+
     fun refreshEquivalentConfig() {
         mapView.setConfig(baseConfig.copy())
     }
@@ -104,5 +125,8 @@ class MapLibreOsmRuntimeActivity : Activity() {
     fun mapViewIdentity(): Int = mapView.mapViewIdentity()
     fun mapIdentity(): Int = requireNotNull(mapView.mapIdentity())
     fun styleApplyCount(): Int = mapView.styleApplyCount()
+    fun localRoadUpdateCount(): Int = mapView.localRoadUpdateCount()
+    fun hasLocalRoadSource(): Boolean = mapView.hasLocalRoadSource()
+    fun hasLocalRoadLayers(): Boolean = mapView.hasLocalRoadLayers()
     fun mapDestroyed(): Boolean = mapView.isDestroyed()
 }
