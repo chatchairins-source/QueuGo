@@ -1,3 +1,4 @@
+// Rider vehicle inspection release gate exact-head checkpoint.
 const fs=require('fs');
 const assert=require('assert');
 
@@ -179,5 +180,29 @@ for(const needle of [
   "revoke all on function public.qg_rider_supply_plan() from public, anon"
 ]){
   assert.ok(supplyPlanningMigration.includes(needle),'Rider supply planning migration missing contract: '+needle);
+}
+const vehicleInspectionMigration=read('supabase/migrations/20261014080810_rider_vehicle_inspection_v1.sql');
+for(const needle of [
+  'qg_private.rider_vehicle_inspection_requests',
+  'qg_rider_vehicle_inspection_status',
+  'qg_rider_submit_vehicle_inspection',
+  'qg_admin_rider_vehicle_inspection_queue',
+  'qg_admin_request_rider_vehicle_inspection',
+  'qg_admin_review_rider_vehicle_inspection',
+  'qg_guard_rider_vehicle_inspection_online',
+  "ri.status in ('required','pending','rejected')",
+  'rider vehicle inspection required',
+  "revoke all on function public.qg_rider_vehicle_inspection_status() from public, anon"
+]){
+  assert.ok(vehicleInspectionMigration.includes(needle),'Rider vehicle inspection migration missing contract: '+needle);
+}
+const vehicleInspectionOfflineRequest=read('supabase/migrations/20261014081405_rider_vehicle_inspection_offline_request_v2.sql');
+for(const needle of [
+  'rider must be offline before vehicle inspection request',
+  'rider has active delivery',
+  "o.status not in ('completed','cancelled','no_rider_available')",
+  "revoke all on function qg_private.admin_request_rider_vehicle_inspection(uuid,text) from public, anon"
+]){
+  assert.ok(vehicleInspectionOfflineRequest.includes(needle),'Rider vehicle inspection offline-request guard missing contract: '+needle);
 }
 console.log('Native backend migration mirror: PASS');

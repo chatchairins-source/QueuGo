@@ -167,6 +167,29 @@ internal fun riderReverificationStatusFromRpc(raw: Any?): RiderReverificationSta
 internal fun riderReverificationBlocksOnline(status: RiderReverificationStatus): Boolean =
     status.required && status.status in setOf("required", "pending", "rejected")
 
+internal fun riderVehicleInspectionStatusFromRpc(raw: Any?): RiderVehicleInspectionStatus {
+    val row = when (raw) {
+        is JSONObject -> raw
+        is JSONArray -> raw.optJSONObject(0) ?: JSONObject()
+        else -> JSONObject()
+    }
+    fun nullable(key: String): String? =
+        row.optString(key).trim().takeIf { it.isNotEmpty() && it != "null" }
+    return RiderVehicleInspectionStatus(
+        required = row.optBoolean("required", false),
+        requestId = nullable("request_id"),
+        status = nullable("status"),
+        reason = nullable("reason"),
+        requestedAt = nullable("requested_at"),
+        submittedAt = nullable("submitted_at"),
+        reviewedAt = nullable("reviewed_at"),
+        reviewNote = nullable("review_note")
+    )
+}
+
+internal fun riderVehicleInspectionBlocksOnline(status: RiderVehicleInspectionStatus): Boolean =
+    status.required && status.status in setOf("required", "pending", "rejected")
+
 internal fun riderEmergencyContactFromRpc(raw: Any?): RiderEmergencyContact {
     val row = when (raw) {
         is JSONObject -> raw
@@ -554,6 +577,10 @@ class QueueGoApi {
             if (identityState != null && riderReverificationBlocksOnline(identityState)) {
                 error("กรุณายืนยันตัวตน Rider ให้ผ่านก่อนเปิดออนไลน์")
             }
+            val vehicleState = runCatching { vehicleInspectionStatus(auth) }.getOrNull()
+            if (vehicleState != null && riderVehicleInspectionBlocksOnline(vehicleState)) {
+                error("กรุณาส่งรูปตรวจสภาพรถและรออนุมัติก่อนเปิดออนไลน์")
+            }
         }
         val profiles = requestArray(
             "GET",
@@ -805,6 +832,32 @@ class QueueGoApi {
         riderReverificationStatusFromRpc(
             rpc(
                 "qg_rider_submit_reverification",
+                auth.session.accessToken,
+                JSONObject().put("p_photo_path", path)
+            )
+        )
+    }
+
+    suspend fun vehicleInspectionStatus(auth: QueueGoAuth): RiderVehicleInspectionStatus =
+        withContext(Dispatchers.IO) {
+            riderVehicleInspectionStatusFromRpc(
+                rpc(
+                    "qg_rider_vehicle_inspection_status",
+                    auth.session.accessToken,
+                    JSONObject()
+                )
+            )
+        }
+
+    suspend fun submitVehicleInspection(
+        context: Context,
+        auth: QueueGoAuth,
+        photoUri: Uri
+    ): RiderVehicleInspectionStatus = withContext(Dispatchers.IO) {
+        val path = uploadEvidence(context, auth, photoUri)
+        riderVehicleInspectionStatusFromRpc(
+            rpc(
+                "qg_rider_submit_vehicle_inspection",
                 auth.session.accessToken,
                 JSONObject().put("p_photo_path", path)
             )
