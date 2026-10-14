@@ -98,6 +98,12 @@ internal fun MerchantShopSetupScreen(
     var openTime by remember(shop.id, shop.openTime) { mutableStateOf(shop.openTime ?: "06:00") }
     var closeTime by remember(shop.id, shop.closeTime) { mutableStateOf(shop.closeTime ?: "22:00") }
     var description by remember(shop.id, shop.description) { mutableStateOf(shop.description.orEmpty()) }
+    var riderPickupInstructions by remember(shop.id, shop.riderPickupInstructions) {
+        mutableStateOf(shop.riderPickupInstructions.orEmpty())
+    }
+    var riderParkingInstructions by remember(shop.id, shop.riderParkingInstructions) {
+        mutableStateOf(shop.riderParkingInstructions.orEmpty())
+    }
     var mapReady by remember { mutableStateOf(false) }
     var recenterToken by remember { mutableIntStateOf(0) }
 
@@ -297,6 +303,26 @@ internal fun MerchantShopSetupScreen(
             )
         }
 
+        SetupField("คำแนะนำจุดรับสำหรับ Rider") {
+            OutlinedTextField(
+                value = riderPickupInstructions,
+                onValueChange = { if (it.length <= 300) riderPickupInstructions = it },
+                modifier = Modifier.fillMaxWidth(),
+                minLines = 2,
+                supportingText = { Text("เช่น รับของที่เคาน์เตอร์ด้านขวา / เข้าประตูหลัง · ${riderPickupInstructions.length}/300") }
+            )
+        }
+
+        SetupField("จุดจอด / วิธีเข้าร้านสำหรับ Rider") {
+            OutlinedTextField(
+                value = riderParkingInstructions,
+                onValueChange = { if (it.length <= 300) riderParkingInstructions = it },
+                modifier = Modifier.fillMaxWidth(),
+                minLines = 2,
+                supportingText = { Text("เช่น จอดหน้าร้าน 5 นาที / เข้าซอยข้างร้าน / จอดชั้น B1 · ${riderParkingInstructions.length}/300") }
+            )
+        }
+
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             MerchantSetupImage(
                 title = "รูปหน้าร้าน / โปรไฟล์ร้าน",
@@ -333,7 +359,9 @@ internal fun MerchantShopSetupScreen(
                         closeTime = closeTime,
                         description = description,
                         logo = null,
-                        cover = null
+                        cover = null,
+                        riderPickupInstructions = riderPickupInstructions,
+                        riderParkingInstructions = riderParkingInstructions
                     )
                 )
             },
