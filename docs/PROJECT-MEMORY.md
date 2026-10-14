@@ -1,3 +1,9 @@
+## 2026-10-14 Grab Driver parity mission: Rider Learning Center
+- Added an in-app Rider Learning Center based on the training capability category observed in the owner-supplied Grab Driver package, while using QueueGo-only content and current production flow.
+- The Profile/Help section now opens eight compact expandable lessons: targeted 30-second offers, Google Maps merchant navigation, cash-to-merchant + one pickup photo, Market multi-stop, customer delivery/cash/photo completion, GPS/200m warning behavior, ratings/compliments/missions, and safety/device diagnostics.
+- The guide explicitly preserves current rules: no PIN/OTP pickup flow, no 250m hard geofence, no slide-to-complete step, and Market multi-shop Mission progress counts one trip. No mock business data, backend mutation or new permission is introduced.
+- Backup backup/rider-training-before-grab-parity-20261014 retains ac9704b. Exact successor CI required before PASS.
+
 ## 2026-10-14 Grab Driver parity mission: real Rider Missions
 - Added a Mission framework based on the mission/incentive capability observed in the owner-supplied Grab Driver package, without copying code/assets and without introducing automatic money payout.
 - Production migration 20261014064750 rider_missions_v1 stores mission definitions only in qg_private. Admin-only public wrappers can list/create/activate missions; Rider wrapper returns only active/upcoming mission definitions plus the current Rider's aggregate progress. anon execute is revoked.
