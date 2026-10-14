@@ -4,6 +4,7 @@ const assert=require('assert');
 
 const script='native-android/qa/build-buriram-shortbread-pmtiles.sh';
 const src=fs.readFileSync(script,'utf8');
+const workflow=fs.readFileSync('.github/workflows/build-native-rider-pilot.yml','utf8');
 
 cp.execFileSync('bash',['-n',script],{stdio:'pipe'});
 
@@ -25,6 +26,11 @@ assert(src.includes('QG_PLANETILER_DRY_RUN'),
   'Planetiler build must support deterministic dry-run verification');
 assert(!src.includes('vector.openstreetmap.org'),
   'Planetiler build must never scrape OpenStreetMap Foundation vector tiles');
+assert(workflow.includes('buriram-pmtiles-build:')&&
+  workflow.includes('Build real Buriram Shortbread PMTiles from raw OSM')&&
+  workflow.includes('queuego-buriram-shortbread-pmtiles')&&
+  workflow.includes('sha256sum -c buriram-shortbread.pmtiles.sha256'),
+  'Dedicated CI gate must build, verify and retain the real Buriram PMTiles archive from raw OSM');
 
 const env={
   ...process.env,

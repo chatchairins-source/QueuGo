@@ -325,3 +325,34 @@ jobs:
           if-no-files-found: warn
           retention-days: 14
 
+  buriram-pmtiles-build:
+    if: ${{ github.ref == 'refs/heads/work-native-rider-maplibre-buriram-pmtiles-20261014' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - name: Build real Buriram Shortbread PMTiles from raw OSM
+        env:
+          QG_MAP_DATA_DIR: ${{ runner.temp }}/queuego-map-data
+          QG_PLANETILER_MEMORY: 5g
+          QG_PM_TILES_MAXZOOM: '14'
+        run: native-android/qa/build-buriram-shortbread-pmtiles.sh
+      - name: Verify Buriram archive integrity and size
+        env:
+          QG_MAP_DATA_DIR: ${{ runner.temp }}/queuego-map-data
+        run: |
+          test -s "$QG_MAP_DATA_DIR/buriram-shortbread.pmtiles"
+          test -s "$QG_MAP_DATA_DIR/buriram-shortbread.pmtiles.sha256"
+          (cd "$QG_MAP_DATA_DIR" && sha256sum -c buriram-shortbread.pmtiles.sha256)
+          stat -c '%n %s bytes' "$QG_MAP_DATA_DIR/buriram-shortbread.pmtiles" | tee "$QG_MAP_DATA_DIR/build-evidence.txt"
+          cat "$QG_MAP_DATA_DIR/buriram-shortbread.pmtiles.sha256" >> "$QG_MAP_DATA_DIR/build-evidence.txt"
+      - name: Keep real Buriram PMTiles evidence
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: queuego-buriram-shortbread-pmtiles
+          path: |
+            ${{ runner.temp }}/queuego-map-data/buriram-shortbread.pmtiles
+            ${{ runner.temp }}/queuego-map-data/buriram-shortbread.pmtiles.sha256
+            ${{ runner.temp }}/queuego-map-data/build-evidence.txt
+          if-no-files-found: error
+          retention-days: 14
