@@ -5,57 +5,55 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class RiderAcceptanceModeTest {
-    @Test fun autoAcceptIsOptInAndNeedsLiveTargetedOfferWindow() {
-        assertFalse(
-            riderAutoAcceptEligible(
-                enabled = false,
-                networkAvailable = true,
-                online = true,
-                hasActiveWork = false,
-                actionBusy = false,
-                secondsLeft = 30
-            )
-        )
-        assertTrue(
-            riderAutoAcceptEligible(
-                enabled = true,
-                networkAvailable = true,
-                online = true,
-                hasActiveWork = false,
-                actionBusy = false,
-                secondsLeft = 30
-            )
-        )
+    private fun eligible(
+        enabled: Boolean = true,
+        networkAvailable: Boolean = true,
+        online: Boolean = true,
+        hasActiveWork: Boolean = false,
+        actionBusy: Boolean = false,
+        secondsLeft: Int = 30,
+        requiredMerchantCash: Double? = 300.0,
+        cashLimitBaht: Double? = 500.0,
+        multiShop: Boolean = false
+    ) = riderAutoAcceptEligible(
+        enabled,
+        networkAvailable,
+        online,
+        hasActiveWork,
+        actionBusy,
+        secondsLeft,
+        requiredMerchantCash,
+        cashLimitBaht,
+        multiShop
+    )
+
+    @Test fun autoAcceptIsOptInAndNeedsCashCoverage() {
+        assertFalse(eligible(enabled = false))
+        assertTrue(eligible())
+        assertFalse(eligible(cashLimitBaht = null))
+        assertFalse(eligible(requiredMerchantCash = null))
+        assertFalse(eligible(requiredMerchantCash = 501.0, cashLimitBaht = 500.0))
+        assertTrue(eligible(requiredMerchantCash = 500.0, cashLimitBaht = 500.0))
     }
 
     @Test fun autoAcceptFailsClosedForUnsafeOrStaleStates() {
-        assertFalse(riderAutoAcceptEligible(true, false, true, false, false, 30))
-        assertFalse(riderAutoAcceptEligible(true, true, false, false, false, 30))
-        assertFalse(riderAutoAcceptEligible(true, true, true, true, false, 30))
-        assertFalse(riderAutoAcceptEligible(true, true, true, false, true, 30))
-        assertFalse(
-            riderAutoAcceptEligible(
-                true,
-                true,
-                true,
-                false,
-                false,
-                RIDER_AUTO_ACCEPT_MIN_SECONDS_LEFT - 1
-            )
-        )
+        assertFalse(eligible(networkAvailable = false))
+        assertFalse(eligible(online = false))
+        assertFalse(eligible(hasActiveWork = true))
+        assertFalse(eligible(actionBusy = true))
+        assertFalse(eligible(multiShop = true))
+        assertFalse(eligible(secondsLeft = RIDER_AUTO_ACCEPT_MIN_SECONDS_LEFT - 1))
+    }
+
+    @Test fun invalidCashValuesNeverAutoAccept() {
+        assertFalse(eligible(requiredMerchantCash = Double.NaN))
+        assertFalse(eligible(cashLimitBaht = Double.NaN))
+        assertFalse(eligible(requiredMerchantCash = -1.0))
+        assertFalse(eligible(cashLimitBaht = -1.0))
     }
 
     @Test fun acceptanceWindowKeepsRaceBufferBeforeExpiry() {
         assertTrue(RIDER_AUTO_ACCEPT_MIN_SECONDS_LEFT >= 2)
-        assertTrue(
-            riderAutoAcceptEligible(
-                true,
-                true,
-                true,
-                false,
-                false,
-                RIDER_AUTO_ACCEPT_MIN_SECONDS_LEFT
-            )
-        )
+        assertTrue(eligible(secondsLeft = RIDER_AUTO_ACCEPT_MIN_SECONDS_LEFT))
     }
 }
