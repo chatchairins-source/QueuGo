@@ -1368,11 +1368,26 @@ private fun RiderHome(
             realtime.changes(auth.session.accessToken, subscriptions).collect { refreshSnapshot() }
         }
     }
-    LaunchedEffect(auth.session.accessToken, lifecycle) {
+    LaunchedEffect(
+        auth.session.accessToken,
+        lifecycle,
+        networkAvailable,
+        snapshot?.online,
+        snapshot?.activeJob?.id,
+        snapshot?.laundry?.activeJob?.jobId,
+        snapshot?.offeredJob?.id
+    ) {
         lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
             while (true) {
                 refreshSnapshot()
-                delay(3_000)
+                delay(
+                    riderSnapshotPollIntervalMs(
+                        networkAvailable = networkAvailable,
+                        online = snapshot?.online == true,
+                        hasActiveWork = snapshot?.activeJob != null || snapshot?.laundry?.activeJob != null,
+                        hasOffer = snapshot?.offeredJob != null
+                    )
+                )
             }
         }
     }
