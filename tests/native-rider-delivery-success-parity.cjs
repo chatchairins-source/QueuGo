@@ -27,5 +27,11 @@ assert(
   ui.includes('onRecommendation(item)'),
   'Success card recommendation CTA must pass the exact real recommendation selected by Rider Home'
 );
+assert(
+  app.includes('RiderAfterWorkRecommendationTarget.DEMAND_NAVIGATION') &&
+  app.includes('openAfterWorkRecommendationNavigation(context, item)') &&
+  app.includes('google.navigation:q='),
+  'Real demand recommendation must hand off to external Google Maps through the QueueGo return path'
+);
 
 console.log('Native Rider delivery success parity contracts: PASS');
