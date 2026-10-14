@@ -651,6 +651,7 @@ private fun RiderHome(
     var lastOfferAlertKey by remember { mutableStateOf<String?>(null) }
     var handledPushEventId by remember(auth.user.id) { mutableStateOf<Long?>(null) }
     var activeTab by rememberSaveable(auth.user.id) { mutableStateOf(pushStore.loadActiveTab(auth.user.id)) }
+    var messageSection by rememberSaveable(auth.user.id) { mutableStateOf("chat") }
     LaunchedEffect(auth.user.id, activeTab) {
         pushStore.saveActiveTab(auth.user.id, activeTab)
     }
@@ -698,12 +699,13 @@ private fun RiderHome(
     val badgeTracker = remember(auth.user.id, auth.session.sessionId) { RiderMessageBadgeTracker(auth.user.id) }
     val badgeApi = remember { RiderMessageBadgeApi() }
     var unreadMessages by remember(auth.user.id, auth.session.sessionId) { mutableStateOf(0) }
+    var unreadNotifications by remember(auth.user.id, auth.session.sessionId) { mutableStateOf(0) }
     var messageNotice by remember(auth.user.id, auth.session.sessionId) { mutableStateOf<String?>(null) }
     var messageNoticeVersion by remember(auth.user.id, auth.session.sessionId) { mutableStateOf(0) }
     val badgeActive by rememberUpdatedState(snapshot?.activeJob?.id)
     val badgeHistory by rememberUpdatedState(recentHistory)
     val badgeChat by rememberUpdatedState(chatJob?.id)
-    val badgeInbox by rememberUpdatedState(activeTab == "chat")
+    val badgeInbox by rememberUpdatedState(activeTab == "chat" && messageSection == "chat")
     LaunchedEffect(auth.user.id, auth.session.sessionId, auth.session.accessToken, lifecycle) {
         lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
             while (true) {
@@ -737,8 +739,10 @@ private fun RiderHome(
             messageNotice = null
         }
     }
-    LaunchedEffect(chatJob?.id, activeTab, auth.user.id) {
-        if (activeTab == "chat") badgePreferences.edit().putLong(auth.user.id, System.currentTimeMillis()).apply()
+    LaunchedEffect(chatJob?.id, activeTab, messageSection, auth.user.id) {
+        if (activeTab == "chat" && messageSection == "chat") {
+            badgePreferences.edit().putLong(auth.user.id, System.currentTimeMillis()).apply()
+        }
         if (chatJob != null) unreadMessages = 0
     }
 
@@ -1347,6 +1351,13 @@ private fun RiderHome(
                     auth = auth,
                     activeJob = snapshot?.activeJob,
                     history = recentHistory,
+                    section = messageSection,
+                    onSectionChange = { messageSection = it },
+                    onNotificationUnreadChanged = { unreadNotifications = it.coerceAtLeast(0) },
+                    onOpenNotificationReference = { reference ->
+                        activeTab = "home"
+                        pendingPushReference = reference
+                    },
                     onOpenChat = { chatJob = it },
                     modifier = Modifier.fillMaxSize()
                 )
@@ -1369,7 +1380,7 @@ private fun RiderHome(
             }
             RiderBottomNavigation(
                 activeTab = activeTab,
-                unreadMessages = unreadMessages,
+                unreadMessages = (unreadMessages + unreadNotifications).coerceAtMost(99),
                 onSelect = { activeTab = it },
                 modifier = Modifier.align(Alignment.BottomCenter)
             )

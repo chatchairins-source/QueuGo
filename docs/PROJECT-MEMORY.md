@@ -1,3 +1,11 @@
+## 2026-10-14 Grab Driver parity: Rider Message Center
+- Added a Native Rider Message Center using the existing Production notifications table instead of inventing a second inbox. Production already contains real Rider notifications and RLS restricts SELECT/UPDATE to each signed-in user's own rows.
+- The existing “ข้อความ” bottom tab now contains two in-place sections: Chat and Notifications. Notification Center loads the latest 100 real rows, displays unread state and Bangkok-local timestamps, supports mark-one-read and mark-all-read, and contributes its unread count to the existing bottom badge after it has loaded.
+- Opening the Notifications section no longer marks chat messages as seen; chat badge acknowledgement only runs while the Chat subsection is actually visible.
+- Order/rider_offer notifications reuse the existing pendingPushReference authorization path. Tapping never bypasses Rider ownership: expired or inaccessible orders fall through the existing “notification expired/no permission” handling. Non-order notifications are read-only content and never invent navigation.
+- No Production DB change was required. Added parser, navigation-eligibility and timestamp regression tests. Backup backup/rider-destination-safety-before-message-center-20261014 retains 1170fde.
+- Successor work-native-rider-message-center-20261014 requires exact-head native-pilot before PASS.
+
 ## 2026-10-14 Grab Driver parity: My Destination + Safety location-share release
 - Continued from consolidated My Destination head 8d53ab6 so Learning/Missions/Safety/Speed/ETA, Runtime Diagnostics, Offer Performance, Availability Readiness and My Destination all remain in one line.
 - Added one-time current-location sharing in Safety Centre. QueueGo uses the retained navigation GPS fix when available, otherwise only a system last-known fix no older than 5 minutes and with reported accuracy <=200 m.
