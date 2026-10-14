@@ -88,9 +88,13 @@ internal fun RiderDiagnosticsScreen(
     val mapDiagnostics by RiderRuntimeDiagnosticsStore.mapDiagnostics.collectAsState()
     val networkDiagnostics by RiderRuntimeDiagnosticsStore.networkDiagnostics.collectAsState()
     val uiJankDiagnostics by RiderRuntimeDiagnosticsStore.uiJankDiagnostics.collectAsState()
+    val mainThreadDiagnostics by RiderRuntimeDiagnosticsStore.mainThreadWatchdog.collectAsState()
     val mapHealth = remember(mapDiagnostics) { mapDiagnostics?.let(::riderMapRuntimeHealth) }
     val networkHealth = remember(networkDiagnostics) { riderNetworkRuntimeHealth(networkDiagnostics) }
     val uiJankHealth = remember(uiJankDiagnostics) { riderUiJankRuntimeHealth(uiJankDiagnostics) }
+    val mainThreadHealth = remember(mainThreadDiagnostics) {
+        riderMainThreadWatchdogHealth(mainThreadDiagnostics)
+    }
 
     fun launch(intent: Intent) {
         runCatching { context.startActivity(intent) }
@@ -182,6 +186,12 @@ internal fun RiderDiagnosticsScreen(
             headline = uiJankHealth.headline,
             detail = uiJankHealth.detail,
             healthy = uiJankHealth.healthy
+        )
+        RiderRuntimeInfoCard(
+            title = "Main-thread watchdog",
+            headline = mainThreadHealth.headline,
+            detail = mainThreadHealth.detail,
+            healthy = mainThreadHealth.healthy
         )
         RiderRuntimeInfoCard(
             title = "การปิดแอปครั้งก่อน",
