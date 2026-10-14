@@ -49,7 +49,11 @@ internal fun riderAvailabilityReadiness(
     reverification: RiderReverificationStatus?,
     reverificationLoaded: Boolean,
     documents: RiderDocumentReadiness?,
-    documentsLoaded: Boolean
+    documentsLoaded: Boolean,
+    vehicleInspection: RiderVehicleInspectionStatus? = null,
+    vehicleInspectionLoaded: Boolean = true,
+    selectedVehicle: RiderVehicle? = null,
+    vehiclesLoaded: Boolean = true
 ): RiderAvailabilityReadiness {
     fun state(ready: Boolean) =
         if (ready) RiderAvailabilityCheckState.READY else RiderAvailabilityCheckState.BLOCKED
@@ -79,6 +83,60 @@ internal fun riderAvailabilityReadiness(
             key = "identity",
             title = "สิทธิ์บัญชี",
             detail = "ไม่มีคำขอยืนยันตัวตนที่บล็อกการเปิดรับงาน",
+            state = RiderAvailabilityCheckState.READY
+        )
+    }
+
+    val vehicleInspectionCheck = when {
+        !vehicleInspectionLoaded -> RiderAvailabilityCheck(
+            key = "vehicle_inspection",
+            title = "ตรวจสภาพรถ",
+            detail = "กำลังตรวจสถานะรูปสภาพรถจาก QueueGo",
+            state = RiderAvailabilityCheckState.CHECKING
+        )
+        vehicleInspection != null && riderVehicleInspectionBlocksOnline(vehicleInspection) -> RiderAvailabilityCheck(
+            key = "vehicle_inspection",
+            title = "ตรวจสภาพรถ",
+            detail = when (vehicleInspection.status) {
+                "pending" -> "ส่งรูปรถแล้วและกำลังรอ Admin ตรวจสอบ"
+                "rejected" -> vehicleInspection.reviewNote
+                    ?.takeIf { it.isNotBlank() }
+                    ?: "รูปสภาพรถยังไม่ผ่าน กรุณาถ่ายและส่งใหม่"
+                else -> vehicleInspection.reason
+                    ?.takeIf { it.isNotBlank() }
+                    ?: "ต้องส่งรูปตรวจสภาพรถก่อนเปิดรับงาน"
+            },
+            state = RiderAvailabilityCheckState.BLOCKED
+        )
+        else -> RiderAvailabilityCheck(
+            key = "vehicle_inspection",
+            title = "ตรวจสภาพรถ",
+            detail = "ไม่มีคำขอตรวจสภาพรถที่บล็อกการเปิดรับงาน",
+            state = RiderAvailabilityCheckState.READY
+        )
+    }
+
+    val selectedVehicleCheck = when {
+        !vehiclesLoaded -> RiderAvailabilityCheck(
+            key = "selected_vehicle",
+            title = "รถที่ใช้รับงาน",
+            detail = "กำลังตรวจรถคันที่เลือกจาก QueueGo",
+            state = RiderAvailabilityCheckState.CHECKING
+        )
+        riderVehicleBlocksOnline(selectedVehicle) -> RiderAvailabilityCheck(
+            key = "selected_vehicle",
+            title = "รถที่ใช้รับงาน",
+            detail = selectedVehicle?.let {
+                "รถ " + it.plate + " ยังไม่ผ่านการอนุมัติ กรุณาเลือกรถที่ผ่านการอนุมัติ"
+            } ?: "กรุณาเลือกรถที่ผ่านการอนุมัติก่อนเปิดรับงาน",
+            state = RiderAvailabilityCheckState.BLOCKED
+        )
+        else -> RiderAvailabilityCheck(
+            key = "selected_vehicle",
+            title = "รถที่ใช้รับงาน",
+            detail = selectedVehicle?.let {
+                "รถ " + it.plate + " พร้อมใช้รับงาน"
+            } ?: "ไม่พบรถคันที่ระบบระบุว่ายังไม่ผ่านอนุมัติ",
             state = RiderAvailabilityCheckState.READY
         )
     }
@@ -161,6 +219,8 @@ internal fun riderAvailabilityReadiness(
                 state(diagnostics.overlayReturn)
             ),
             identityCheck,
+            vehicleInspectionCheck,
+            selectedVehicleCheck,
             documentCheck
         )
     )
