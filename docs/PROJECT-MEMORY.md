@@ -1,3 +1,7 @@
+## 2026-10-14 Heatmap map-reuse guard preserved in Rider parity successor
+- Pulled forward Work PR228 runtime assertions onto the latest Job History successor. These diagnostics prove demand add/level-change/clear reconciles pins while preserving the same MapGLSurfaceView and Longdo map identities.
+- No Heatmap product behavior changed here; this preserves the stronger renderer continuity guard while later Rider parity work continues.
+
 ## 2026-10-14 Grab Driver parity mission: detailed Rider Job History
 - Upgraded the existing Rider Earnings recent-job list instead of creating a duplicate screen. Cash ledger remains the authoritative date-range source; existing owned completed-order history enriches each row with pickup address, delivery address and completion time.
 - Each recent job can expand in place to show pickup -> delivery, delivery fee, cash paid to merchant, cash collected from customer and cash received-minus-paid for that trip. UI explicitly labels this as cash flow, not net profit.
