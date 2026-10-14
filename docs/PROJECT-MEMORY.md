@@ -1,3 +1,14 @@
+## 2026-10-14 Rider world-class: nearby real-demand navigation after completed work
+- Continued from verified Road Alerts head 74197bfd, preserving Road Alerts Production rollout, Laundry jobId compile regression, Safety Overview/contact-attempt evidence, Stop-After-Work, one-photo proof quality/recovery, Return-to-Sender v4, Auto Accept, Benefits and connectivity hardening.
+- Static Grab Driver inspection confirmed AfterBookingRecommendation / JobRecommendationV2. QueueGo already had a real-data After-Work card, but the demand CTA only returned Rider to Home and did not select a useful nearby zone.
+- Recommendation policy stays fail-safe: offline Rider and Stop-After-Work receive no more-work suggestion; an active/upcoming real Mission still wins over generic demand.
+- When no Mission exists, QueueGo uses existing qg_rider_demand_heatmap data plus the completed order's real delivery coordinates. It considers only real demand zones within 15 km, prioritizes the highest demand level, then the nearest zone within that level.
+- A qualifying demand recommendation opens external Google Maps directly to the selected zone and starts the existing QueueGo floating-return service. It never changes dispatch priority, auto-accepts a job, or guarantees work.
+- If delivery coordinates are unavailable or all real demand zones are farther than 15 km, QueueGo falls back to the existing Home heatmap CTA instead of inventing a destination.
+- No Production DB/schema, payment, dispatch or offer-visibility mutation.
+- Backup: backup/rider-worldclass-before-after-work-navigation-20261014 @ d3f99277.
+- PASS requires exact-head native-pilot + navigation-map-runtime.
+
 ## 2026-10-14 Rider world-class: verified nearby Road Alerts on latest compile-safe head
 - Continued from the After-Work Recommendation successor and carried the Laundry jobId compile fix forward before adding Road Alerts.
 - Production migration rider_road_alerts_v1 is applied. Rider alerts are derived only from existing Rider map feedback that an active Admin accepted_for_review and explicitly published; raw Rider reports are never shown directly to other Riders.

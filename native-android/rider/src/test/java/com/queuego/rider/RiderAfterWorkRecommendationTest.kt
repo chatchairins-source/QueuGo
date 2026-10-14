@@ -28,7 +28,9 @@ class RiderAfterWorkRecommendationTest {
             online = true,
             stopAfterWorkPending = true,
             missions = listOf(mission()),
-            demandZones = listOf(RiderDemandZone(14.99, 103.10, 3, 24))
+            demandZones = listOf(RiderDemandZone(14.99, 103.10, 3, 24)),
+            originLatitude = 15.0,
+            originLongitude = 103.0
         )
 
         assertNull(result)
@@ -40,41 +42,119 @@ class RiderAfterWorkRecommendationTest {
                 online = false,
                 stopAfterWorkPending = false,
                 missions = listOf(mission()),
-                demandZones = emptyList()
+                demandZones = emptyList(),
+                originLatitude = 15.0,
+                originLongitude = 103.0
             )
         )
     }
 
-    @Test fun activeMissionWinsOverGenericDemand() {
+    @Test fun activeMissionWinsOverNearbyDemand() {
         val result = riderAfterWorkRecommendation(
             online = true,
             stopAfterWorkPending = false,
             missions = listOf(mission()),
-            demandZones = listOf(RiderDemandZone(14.99, 103.10, 3, 24))
+            demandZones = listOf(RiderDemandZone(15.005, 103.005, 3, 24)),
+            originLatitude = 15.0,
+            originLongitude = 103.0
         )
 
         requireNotNull(result)
         assertEquals(RiderAfterWorkRecommendationTarget.EARNINGS, result.target)
         assertTrue(result.detail.contains("2/5 เที่ยว"))
         assertEquals("ดูภารกิจ", result.actionLabel)
+        assertNull(result.latitude)
+        assertNull(result.longitude)
     }
 
-    @Test fun realDemandIsSuggestedOnlyWhenNoActiveMissionExists() {
+    @Test fun highestDemandLevelWinsBeforeDistanceWithinRepositionRadius() {
         val result = riderAfterWorkRecommendation(
             online = true,
             stopAfterWorkPending = false,
-            missions = listOf(mission(state = "completed", completed = true, progress = 5)),
+            missions = emptyList(),
             demandZones = listOf(
-                RiderDemandZone(14.99, 103.10, 2, 24),
-                RiderDemandZone(15.01, 103.11, 3, 12)
-            )
+                RiderDemandZone(15.002, 103.002, 2, 24),
+                RiderDemandZone(15.020, 103.020, 3, 12)
+            ),
+            originLatitude = 15.0,
+            originLongitude = 103.0
+        )
+
+        requireNotNull(result)
+        assertEquals(RiderAfterWorkRecommendationTarget.DEMAND_NAVIGATION, result.target)
+        assertEquals("พื้นที่คึกคักมาก", result.title)
+        assertEquals(15.020, result.latitude!!, 0.000001)
+        assertEquals(103.020, result.longitude!!, 0.000001)
+        assertEquals("นำทางไปพื้นที่งาน", result.actionLabel)
+        assertTrue(result.detail.contains("ข้อมูลพื้นที่งาน 12 ชม."))
+    }
+
+    @Test fun nearestZoneWinsWhenDemandLevelMatches() {
+        val result = riderAfterWorkRecommendation(
+            online = true,
+            stopAfterWorkPending = false,
+            missions = emptyList(),
+            demandZones = listOf(
+                RiderDemandZone(15.050, 103.050, 3, 24),
+                RiderDemandZone(15.005, 103.005, 3, 24)
+            ),
+            originLatitude = 15.0,
+            originLongitude = 103.0
+        )
+
+        requireNotNull(result)
+        assertEquals(RiderAfterWorkRecommendationTarget.DEMAND_NAVIGATION, result.target)
+        assertEquals(15.005, result.latitude!!, 0.000001)
+        assertEquals(103.005, result.longitude!!, 0.000001)
+        assertTrue(result.detail.contains("ห่างประมาณ"))
+    }
+
+    @Test fun farDemandFallsBackToExistingHomeHeatmapInsteadOfLongReposition() {
+        val result = riderAfterWorkRecommendation(
+            online = true,
+            stopAfterWorkPending = false,
+            missions = emptyList(),
+            demandZones = listOf(RiderDemandZone(15.25, 103.25, 3, 24)),
+            originLatitude = 15.0,
+            originLongitude = 103.0
         )
 
         requireNotNull(result)
         assertEquals(RiderAfterWorkRecommendationTarget.HOME, result.target)
-        assertTrue(result.detail.contains("2 จุด"))
-        assertTrue(result.detail.contains("ระดับสูงสุด 3/3"))
-        assertTrue(result.detail.contains("ช่วง 12 ชม."))
+        assertNull(result.latitude)
+        assertNull(result.longitude)
+        assertEquals("ดูบนแผนที่", result.actionLabel)
+    }
+
+    @Test fun customRepositionRadiusIsFailClosed() {
+        val result = riderAfterWorkRecommendation(
+            online = true,
+            stopAfterWorkPending = false,
+            missions = emptyList(),
+            demandZones = listOf(RiderDemandZone(15.020, 103.020, 3, 24)),
+            originLatitude = 15.0,
+            originLongitude = 103.0,
+            maxRepositionKm = 1.0
+        )
+
+        requireNotNull(result)
+        assertEquals(RiderAfterWorkRecommendationTarget.HOME, result.target)
+        assertNull(result.latitude)
+        assertNull(result.longitude)
+    }
+
+    @Test fun missingDeliveryCoordinatesKeepsSafeHomeHeatmapFallback() {
+        val result = riderAfterWorkRecommendation(
+            online = true,
+            stopAfterWorkPending = false,
+            missions = emptyList(),
+            demandZones = listOf(RiderDemandZone(15.01, 103.01, 3, 24)),
+            originLatitude = null,
+            originLongitude = null
+        )
+
+        requireNotNull(result)
+        assertEquals(RiderAfterWorkRecommendationTarget.HOME, result.target)
     }
 
     @Test fun emptyRealDataFallsBackToNormalSuccessDismissal() {
@@ -83,8 +163,15 @@ class RiderAfterWorkRecommendationTest {
                 online = true,
                 stopAfterWorkPending = false,
                 missions = emptyList(),
-                demandZones = emptyList()
+                demandZones = emptyList(),
+                originLatitude = 15.0,
+                originLongitude = 103.0
             )
         )
+    }
+
+    @Test fun distanceLabelStaysCompact() {
+        assertTrue(riderAfterWorkDistanceLabel(0.42).contains("ม."))
+        assertTrue(riderAfterWorkDistanceLabel(2.34).contains("2.3"))
     }
 }

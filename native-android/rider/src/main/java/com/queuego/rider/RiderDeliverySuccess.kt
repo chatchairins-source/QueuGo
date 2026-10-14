@@ -26,7 +26,7 @@ import kotlinx.coroutines.delay
 internal fun RiderDeliverySuccess(
     job: RiderJob,
     recommendation: RiderAfterWorkRecommendation?,
-    onRecommendation: (RiderAfterWorkRecommendationTarget) -> Unit,
+    onRecommendation: (RiderAfterWorkRecommendation) -> Unit,
     onDismiss: () -> Unit
 ) {
     val eventFeedbackView = LocalView.current
@@ -85,7 +85,7 @@ internal fun RiderDeliverySuccess(
                                 modifier = Modifier.padding(top = 3.dp)
                             )
                             Button(
-                                onClick = { onRecommendation(item.target) },
+                                onClick = { onRecommendation(item) },
                                 modifier = Modifier.fillMaxWidth().padding(top = 9.dp).height(42.dp),
                                 shape = RoundedCornerShape(13.dp),
                                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFF04455))
