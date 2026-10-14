@@ -2638,6 +2638,7 @@ private fun RiderHome(
                     deliveryIssueJob = null
                     chatJob = issueJob
                 },
+                networkAvailable = networkAvailable,
                 onReported = { label ->
                     deliveryIssueJob = null
                     actionMessage = "ส่งปัญหาให้ฝ่ายดูแลแล้ว · $label"
