@@ -1,3 +1,13 @@
+## 2026-10-14 Grab Driver parity: order-linked failed-delivery / recipient-unavailable flow
+- Rebased onto critical Home actions release head bbfaac65 so the latest identity/vehicle/document Home priorities and Availability gates remain intact.
+- Static inspection of the owner-supplied Grab Driver 5.457.1 package confirmed dedicated recipient-unavailable and failed-delivery capabilities (Call Recipient, Chat with Recipient, recipient issue/refusal, Delivery Failed and structured issue reporting).
+- QueueGo already had customer voice/chat and general Support tickets, but no order-linked operational flow for a Rider who cannot complete a delivery.
+- Rider in-progress card now exposes “ลูกค้าติดต่อไม่ได้ / ส่งไม่สำเร็จ”. The dialog requires a contact attempt, keeps Call/Chat available, records a structured reason and optional note, and creates an existing qg_create_ticket support record tied to the real order.
+- QueueGo intentionally does NOT auto-cancel or auto-complete the order from this dialog. Cash settlement and delivery state remain authoritative until support resolves the case.
+- Existing Production support category constraint is respected by using category rider plus machine-readable [DELIVERY_ISSUE:<reason>] details; no Production DB/schema mutation.
+- Backup: backup/rider-grab-parity-critical-home-before-delivery-issue-20261014 @ bbfaac65.
+- Exact-head native-pilot + navigation-map-runtime are required before PASS.
+
 ## 2026-10-14 Rider Grab-parity release successor: runtime + Home actions + Availability vehicle gates
 - Continued from runtime-fixed unified Account Restriction + Home Action Cards head 2a033bd, preserving the bounded quiet PixelCopy retry that addresses the real continuity runtime failure.
 - Audited Rider Availability against the existing setOnline preflight. The card previously omitted vehicle-inspection and selected-vehicle approval blockers even though setOnline already enforced both. Offline/idle Home now refreshes those two existing states with the same readiness poll and passes them into the Availability card.
