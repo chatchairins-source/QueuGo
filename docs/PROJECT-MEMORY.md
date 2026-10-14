@@ -1,3 +1,9 @@
+## 2026-10-14 Grab Driver parity: unified Account Restriction + Home Action Cards successor
+- Unified the two latest sibling branches so Rider Home action cards and status-specific non-active account restriction UX now live on one successor line.
+- Started from Home Action Cards head b77e2f0, then carried forward the Account Restriction implementation from PR #280 without changing dispatch, payment, navigation, auth policy or Production DB.
+- Backup: backup/rider-grab-parity-before-account-actions-unify-20261014 @ b77e2f0.
+- This successor supersedes the divergent PR #280 branch; exact-head native-pilot + navigation-map-runtime remain required before PASS.
+
 ## 2026-10-14 Grab Driver parity: Rider Home Action Cards
 - Added a compact Home action-card layer inspired by the ActionCard capability observed in the owner-supplied Grab Driver package, without copying Grab code/assets and without creating a second notification or mission system.
 - Cards are derived only from existing real QueueGo state: current Production missions, verified document readiness and Android background-health diagnostics. No placeholder promotion, bonus or fake warning is created.
