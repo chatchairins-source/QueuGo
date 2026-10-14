@@ -393,6 +393,22 @@ internal fun riderDocumentReadinessFromRpc(raw: Any?): RiderDocumentReadiness {
     )
 }
 
+internal fun riderPickupGuideFromRpc(raw: Any?): RiderPickupGuide {
+    val row = when (raw) {
+        is JSONObject -> raw
+        is JSONArray -> raw.optJSONObject(0) ?: JSONObject()
+        else -> JSONObject()
+    }
+    fun nullable(key: String): String? =
+        row.optString(key).trim().takeIf { it.isNotEmpty() && it != "null" }
+    return RiderPickupGuide(
+        pickupInstructions = nullable("pickup_instructions"),
+        parkingInstructions = nullable("parking_instructions"),
+        marketZone = nullable("market_zone"),
+        marketStallNo = nullable("market_stall_no")
+    )
+}
+
 class QueueGoApi {
     companion object {
         private const val BASE_URL = "https://pkypiqhlrmzocysgeqew.supabase.co"
@@ -1378,8 +1394,27 @@ class QueueGoApi {
                 is JSONArray -> contact.optJSONObject(0)
                 else -> null
             }
+            val guide = runCatching {
+                riderPickupGuideFromRpc(
+                    rpc(
+                        "qg_rider_pickup_guide",
+                        auth.session.accessToken,
+                        JSONObject().put("p_order_id", orderId)
+                    )
+                )
+            }.getOrDefault(RiderPickupGuide(null, null, null, null))
             fun text(row: JSONObject?, key: String): String? = row?.optString(key)?.takeIf { it.isNotBlank() && it != "null" }
-            RiderVerificationDetails(text(shop, "shop_name"), text(shop, "public_logo"), text(customer, "name"), text(customer, "phone"), cleanRiderOrderNote(text(order, "note")))
+            RiderVerificationDetails(
+                text(shop, "shop_name"),
+                text(shop, "public_logo"),
+                text(customer, "name"),
+                text(customer, "phone"),
+                cleanRiderOrderNote(text(order, "note")),
+                guide.pickupInstructions,
+                guide.parkingInstructions,
+                guide.marketZone,
+                guide.marketStallNo
+            )
         }
 
     suspend fun orderItems(auth: QueueGoAuth, orderId: String): List<RiderItem> =
@@ -1541,6 +1576,25 @@ class QueueGoApi {
             is JSONObject -> JSONArray().put(rows)
             else -> JSONArray()
         }
+        val guideByPickup = runCatching {
+            val raw = rpc(
+                "qg_rider_market_pickup_guides",
+                auth.session.accessToken,
+                JSONObject().put("p_market_order_id", marketOrderId)
+            )
+            val guides = when (raw) {
+                is JSONArray -> raw
+                is JSONObject -> JSONArray().put(raw)
+                else -> JSONArray()
+            }
+            buildMap {
+                for (index in 0 until guides.length()) {
+                    val row = guides.optJSONObject(index) ?: continue
+                    val pickupId = riderNullableText(row.optString("pickup_id")) ?: continue
+                    put(pickupId, riderPickupGuideFromRpc(row))
+                }
+            }
+        }.getOrDefault(emptyMap())
         return buildList {
             for (i in 0 until array.length()) {
                 val row = array.optJSONObject(i) ?: continue
@@ -1552,7 +1606,11 @@ class QueueGoApi {
                         shopAddress = row.optString("shop_address").takeIf { it.isNotBlank() },
                         shopAmount = row.doubleOrZero("shop_amount"),
                         latitude = row.doubleOrNull("latitude"),
-                        longitude = row.doubleOrNull("longitude")
+                        longitude = row.doubleOrNull("longitude"),
+                        pickupInstructions = guideByPickup[row.optString("pickup_id")]?.pickupInstructions,
+                        parkingInstructions = guideByPickup[row.optString("pickup_id")]?.parkingInstructions,
+                        marketZone = guideByPickup[row.optString("pickup_id")]?.marketZone,
+                        marketStallNo = guideByPickup[row.optString("pickup_id")]?.marketStallNo
                     )
                 )
             }

@@ -1,3 +1,9 @@
+## 2026-10-14 Grab Driver parity: Merchant pickup + parking guidance
+- Confirmed the owner-supplied Grab Driver package contains parking/pickup-support capability while QueueGo Merchant only exposed address/pin. Added Rider-facing pickup instructions and parking/entrance instructions to the existing Merchant shop setup; both are stored inside existing shop metadata and capped at 300 characters.
+- Production migration 20261014085155 merchant_pickup_guidance_v1 is additive and exposes only allowlisted guidance through Rider-scoped RPCs. A Rider may read a single-shop guide only while assigned to that order or holding the live targeted offer. Market multi-stop guides require the Rider to own an active order in that market trip. No full shop metadata is exposed.
+- Native Rider shows guidance only when present: Active Job before arrival, pickup verification, Market multi-stop list and Market pickup verification. Market zone/stall are reused from existing shop fields. Empty stores render no placeholder guidance.
+- Backup backup/rider-document-readiness-before-pickup-guide-20261014 retains 9da9beb. Successor work-native-rider-navigation-map-grab-parity-pickup-guide-20261014 requires native-pilot + navigation-map-runtime exact-head PASS.
+
 ## 2026-10-14 Grab Driver parity: Rider document expiry readiness v1
 - Added real expiry readiness for Rider identity/driver documents and the selected vehicle's PRB without inventing dates. Admin records dates only after checking actual documents. Legacy/unknown dates remain status=unknown and do NOT block existing Riders.
 - Production migration 20261014084324 rider_document_readiness_v1 is additive. Private expiry rows live in qg_private. Rider sees only its own readiness. Admin reads/sets dates only through authenticated public wrappers that re-check active Admin server-side. anon execute is revoked.

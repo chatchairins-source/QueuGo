@@ -37,7 +37,18 @@ data class RiderVerificationDetails(
     val shopLogo: String?,
     val customerName: String?,
     val customerPhone: String?,
-    val note: String?
+    val note: String?,
+    val pickupInstructions: String? = null,
+    val parkingInstructions: String? = null,
+    val marketZone: String? = null,
+    val marketStallNo: String? = null
+)
+
+data class RiderPickupGuide(
+    val pickupInstructions: String?,
+    val parkingInstructions: String?,
+    val marketZone: String?,
+    val marketStallNo: String?
 )
 
 data class RiderShopDisplay(
@@ -56,7 +67,11 @@ data class MarketPickup(
     val shopAddress: String?,
     val shopAmount: Double,
     val latitude: Double?,
-    val longitude: Double?
+    val longitude: Double?,
+    val pickupInstructions: String? = null,
+    val parkingInstructions: String? = null,
+    val marketZone: String? = null,
+    val marketStallNo: String? = null
 ) {
     val done: Boolean
         get() = status.uppercase() == "PICKED_UP" || status.uppercase() == "CANCELLED"
