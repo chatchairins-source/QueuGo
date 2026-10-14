@@ -24,11 +24,16 @@ import com.queuego.ridernavigationmap.NavigationRouteCoordinator
 import com.queuego.ridernavigationmap.NavigationRouteProvider
 import com.queuego.ridernavigationmap.NavigationRouteSegment
 import com.queuego.ridernavigationmap.NavigationRouteStyle
+import com.queuego.ridernavigationmap.NavigationSignalPipeline
 import com.queuego.ridernavigationmap.NavigationStopKind
 import com.queuego.ridernavigationmap.RiderNavigationMap
 import com.queuego.ridernavigationmap.RiderNavigationMapState
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.channels.Channel
+
+// Keep disabled until the isolated confidence pipeline passes CI + real-device route gates.
+// When enabled, it changes renderer/camera coordinates only; coordinator and business state stay raw.
+private const val RIDER_NAV_DISPLAY_CONFIDENCE_ENABLED = false
 
 private fun riderLongdoNavigationKey(context: Context): String? = runCatching {
     context.packageManager
@@ -251,6 +256,7 @@ internal fun QueueGoRiderNavigationMap(
     val coordinator = remember(stateKey, routeProvider) {
         routeProvider?.let { NavigationRouteCoordinator(it) }
     }
+    val displayPipeline = remember(stateKey) { NavigationSignalPipeline() }
 
     var futureRoutes by remember(stateKey) { mutableStateOf<List<NavigationRouteSegment>>(emptyList()) }
     val stopTopology = remember(stops) {
@@ -266,6 +272,7 @@ internal fun QueueGoRiderNavigationMap(
     }
 
     LaunchedEffect(routeProvider, stopTopology) {
+        displayPipeline.reset()
         futureRoutes = if (routeProvider == null) emptyList()
         else buildFutureRoutes(routeProvider, stops)
     }
@@ -284,13 +291,24 @@ internal fun QueueGoRiderNavigationMap(
     LaunchedEffect(baseState) {
         stateChannel.trySend(baseState)
     }
-    LaunchedEffect(coordinator, stateChannel) {
+    LaunchedEffect(coordinator, stateChannel, displayPipeline) {
+        fun displayState(authoritativeState: RiderNavigationMapState): RiderNavigationMapState =
+            if (RIDER_NAV_DISPLAY_CONFIDENCE_ENABLED) {
+                displayPipeline.applyToDisplayState(authoritativeState)
+            } else {
+                authoritativeState
+            }
+
         if (coordinator == null) {
-            for (next in stateChannel) renderedState = next
+            for (next in stateChannel) {
+                renderedState = displayState(next)
+            }
         } else {
             for (next in stateChannel) {
+                // Route progress/reroute stays authoritative on the raw GPS fix.
                 val result = coordinator.synchronize(next)
-                renderedState = result.mapState
+                // Filtering/snapping, when the rollout gate is enabled, is renderer-only.
+                renderedState = displayState(result.mapState)
             }
         }
     }
