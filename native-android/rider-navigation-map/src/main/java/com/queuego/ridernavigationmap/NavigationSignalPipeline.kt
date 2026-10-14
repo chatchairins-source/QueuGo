@@ -26,10 +26,12 @@ class NavigationSignalPipeline(
 ) {
     private var activeRouteId: String? = null
     private var lastDisplayFix: NavigationMapFix? = null
+    private var consecutiveLowConfidenceMatches: Int = 0
 
     fun reset() {
         activeRouteId = null
         lastDisplayFix = null
+        consecutiveLowConfidenceMatches = 0
         locationFilter.reset()
         routeMatcher.reset()
     }
@@ -61,6 +63,7 @@ class NavigationSignalPipeline(
     ): NavigationSignalState {
         if (activeRoute?.id != activeRouteId) {
             activeRouteId = activeRoute?.id
+            consecutiveLowConfidenceMatches = 0
             routeMatcher.reset()
         }
 
@@ -99,9 +102,35 @@ class NavigationSignalPipeline(
             ?.takeIf { it.renderable }
             ?.let { routeMatcher.match(it, acceptedFix) }
 
+        consecutiveLowConfidenceMatches = when (hybridMatch?.confidence) {
+            NavigationMatchConfidence.LOW -> consecutiveLowConfidenceMatches + 1
+            NavigationMatchConfidence.HIGH,
+            NavigationMatchConfidence.MEDIUM -> 0
+            null -> consecutiveLowConfidenceMatches
+        }
+
+        val snapThreshold = snapThresholdMeters(acceptedFix)
         val snapEligible = hybridMatch != null &&
             hybridMatch.confidence != NavigationMatchConfidence.LOW &&
-            hybridMatch.routeMatch.offRouteMeters <= snapThresholdMeters(acceptedFix)
+            hybridMatch.routeMatch.offRouteMeters <= snapThreshold
+
+        val holdAmbiguousMatch = !snapEligible &&
+            hybridMatch?.confidence == NavigationMatchConfidence.LOW &&
+            consecutiveLowConfidenceMatches <= 2 &&
+            previousDisplayFix != null &&
+            navigationHaversineMeters(previousDisplayFix.point, acceptedFix.point) <=
+                ambiguousHoldRadiusMeters(acceptedFix.accuracyMeters)
+
+        if (holdAmbiguousMatch) {
+            return NavigationSignalState(
+                rawFix = rawFix,
+                displayFix = previousDisplayFix,
+                quality = filtered.quality,
+                routeMatch = hybridMatch,
+                puckState = NavigationPuckState.DEGRADED,
+                accepted = true
+            )
+        }
 
         val displayBearing = when {
             !snapEligible -> acceptedFix.bearingDegrees
@@ -124,10 +153,18 @@ class NavigationSignalPipeline(
             puckState = puckState(
                 quality = filtered.quality,
                 match = hybridMatch,
-                snapThresholdMeters = snapThresholdMeters(acceptedFix)
+                snapThresholdMeters = snapThreshold
             ),
             accepted = true
         )
+    }
+
+    private fun ambiguousHoldRadiusMeters(accuracyMeters: Float?): Double {
+        val accuracy = accuracyMeters
+            ?.takeIf { it.isFinite() && it >= 0f }
+            ?.toDouble()
+            ?: 20.0
+        return max(40.0, accuracy * 1.8).coerceAtMost(90.0)
     }
 
     private fun weakGpsFreezeRadiusMeters(accuracyMeters: Float?): Double {
