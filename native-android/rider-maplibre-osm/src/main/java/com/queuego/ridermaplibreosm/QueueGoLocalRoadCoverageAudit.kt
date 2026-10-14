@@ -1,5 +1,6 @@
 package com.queuego.ridermaplibreosm
 
+import java.security.MessageDigest
 import kotlin.math.cos
 import kotlin.math.max
 import kotlin.math.min
@@ -227,11 +228,8 @@ internal fun queueGoPointToSegmentDistanceMeters(
 }
 
 private fun queueGoCoverageStableKey(reference: String): String =
-    reference
-        .removePrefix("queuego-trace:")
-        .lowercase()
-        .map { ch -> if (ch.isLetterOrDigit() || ch == '-' || ch == '_') ch else '-' }
-        .joinToString("")
-        .trim('-')
-        .take(100)
-        .ifBlank { "aggregate" }
+    // References are opaque identities. Slugging, case folding or truncation can merge
+    // distinct reviewed evidence into one candidate key. Hash the complete UTF-8 reference.
+    MessageDigest.getInstance("SHA-256")
+        .digest(reference.toByteArray(Charsets.UTF_8))
+        .joinToString("") { byte -> "%02x".format(byte.toInt() and 0xff) }
