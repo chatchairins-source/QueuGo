@@ -97,6 +97,8 @@ jobs:
           javap -classpath /tmp/longdo-classes.jar -public com.longdo.api.Pin
           javap -classpath /tmp/longdo-classes.jar -public com.longdo.api.IMarker
           javap -classpath /tmp/longdo-classes.jar -public com.longdo.api.Map
+          echo "Longdo API inspection complete"
+          exit 1
       - name: Prepare native Firebase configs
         env:
           QG_FIREBASE_GOOGLE_SERVICES_JSON_B64: ${{ secrets.QG_FIREBASE_GOOGLE_SERVICES_JSON_B64 }}
