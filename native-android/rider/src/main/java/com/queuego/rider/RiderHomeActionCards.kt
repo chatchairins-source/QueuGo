@@ -27,16 +27,80 @@ internal data class RiderHomeActionCardModel(
     val title: String,
     val detail: String,
     val target: RiderHomeActionTarget,
-    val urgent: Boolean = false
+    val urgent: Boolean = false,
+    val priority: Int = 50
 )
 
 internal fun riderHomeActionCards(
     missions: List<RiderMission>,
     diagnostics: RiderDiagnosticsSnapshot,
     documents: RiderDocumentReadiness?,
-    documentsLoaded: Boolean
+    documentsLoaded: Boolean,
+    reverification: RiderReverificationStatus? = null,
+    reverificationLoaded: Boolean = false,
+    vehicleInspection: RiderVehicleInspectionStatus? = null,
+    vehicleInspectionLoaded: Boolean = false,
+    selectedVehicle: RiderVehicle? = null,
+    vehiclesLoaded: Boolean = false
 ): List<RiderHomeActionCardModel> {
     val cards = mutableListOf<RiderHomeActionCardModel>()
+
+    if (reverificationLoaded && reverification != null && riderReverificationBlocksOnline(reverification)) {
+        cards += RiderHomeActionCardModel(
+            key = "identity:" + (reverification.status ?: "required"),
+            title = when (reverification.status) {
+                "pending" -> "ยืนยันตัวตน · รอตรวจสอบ"
+                "rejected" -> "ต้องถ่ายรูปยืนยันตัวตนใหม่"
+                else -> "ต้องยืนยันตัวตน Rider"
+            },
+            detail = when (reverification.status) {
+                "pending" -> "QueueGo ได้รับรูปแล้ว ฝ่ายดูแลกำลังตรวจสอบ"
+                "rejected" -> reverification.reviewNote?.takeIf { it.isNotBlank() }
+                    ?: "รูปก่อนหน้ายังไม่ผ่าน กรุณาถ่ายรูปใหม่ในโปรไฟล์"
+                else -> reverification.reason?.takeIf { it.isNotBlank() }
+                    ?: "กรุณาถ่ายรูปหน้าตรงใหม่ในโปรไฟล์"
+            },
+            target = RiderHomeActionTarget.PROFILE,
+            urgent = true,
+            priority = 0
+        )
+    }
+
+    if (vehicleInspectionLoaded && vehicleInspection != null &&
+        riderVehicleInspectionBlocksOnline(vehicleInspection)
+    ) {
+        cards += RiderHomeActionCardModel(
+            key = "vehicle-inspection:" + (vehicleInspection.status ?: "required"),
+            title = when (vehicleInspection.status) {
+                "pending" -> "ตรวจสภาพรถ · รอตรวจสอบ"
+                "rejected" -> "ต้องถ่ายรูปรถใหม่"
+                else -> "ต้องตรวจสภาพรถ"
+            },
+            detail = when (vehicleInspection.status) {
+                "pending" -> "QueueGo ได้รับรูปรถแล้ว ฝ่ายดูแลกำลังตรวจสอบ"
+                "rejected" -> vehicleInspection.reviewNote?.takeIf { it.isNotBlank() }
+                    ?: "รูปสภาพรถยังไม่ผ่าน กรุณาถ่ายและส่งใหม่"
+                else -> vehicleInspection.reason?.takeIf { it.isNotBlank() }
+                    ?: "กรุณาส่งรูปตรวจสภาพรถในโปรไฟล์"
+            },
+            target = RiderHomeActionTarget.PROFILE,
+            urgent = true,
+            priority = 1
+        )
+    }
+
+    if (vehiclesLoaded && riderVehicleBlocksOnline(selectedVehicle)) {
+        cards += RiderHomeActionCardModel(
+            key = "selected-vehicle",
+            title = "รถที่เลือกยังไม่พร้อมรับงาน",
+            detail = selectedVehicle?.let {
+                "รถ " + it.plate + " ยังไม่ผ่านการอนุมัติ กรุณาเลือกรถที่อนุมัติแล้ว"
+            } ?: "กรุณาเลือกรถที่ผ่านการอนุมัติ",
+            target = RiderHomeActionTarget.PROFILE,
+            urgent = true,
+            priority = 2
+        )
+    }
 
     val activeMission = missions.firstOrNull { it.state == "active" && !it.completed }
         ?: missions.firstOrNull { it.state == "upcoming" && !it.completed }
@@ -45,7 +109,8 @@ internal fun riderHomeActionCards(
             key = "mission:" + mission.id,
             title = if (mission.state == "upcoming") "ภารกิจกำลังจะเริ่ม" else "ภารกิจของคุณ",
             detail = mission.title + " · " + mission.progressJobs + "/" + mission.targetJobs + " เที่ยว",
-            target = RiderHomeActionTarget.EARNINGS
+            target = RiderHomeActionTarget.EARNINGS,
+            priority = 5
         )
     }
 
@@ -58,7 +123,8 @@ internal fun riderHomeActionCards(
                 item.label + (item.expiresOn?.let { date -> " · $date" } ?: "")
             } ?: "มีเอกสารหมดอายุ กรุณาตรวจสอบในโปรไฟล์",
             target = RiderHomeActionTarget.PROFILE,
-            urgent = true
+            urgent = true,
+            priority = 3
         )
     } else if (documentsLoaded) {
         documents?.items?.firstOrNull { it.status == "expiring" }?.let { item ->
@@ -66,7 +132,8 @@ internal fun riderHomeActionCards(
                 key = "documents:expiring:" + item.key,
                 title = "เอกสารใกล้หมดอายุ",
                 detail = item.label + (item.daysRemaining?.let { " · เหลือ ${it.coerceAtLeast(0)} วัน" } ?: ""),
-                target = RiderHomeActionTarget.PROFILE
+                target = RiderHomeActionTarget.PROFILE,
+                priority = 4
             )
         }
     }
@@ -84,16 +151,14 @@ internal fun riderHomeActionCards(
             key = "background-health",
             title = "ปรับการทำงานเบื้องหลัง",
             detail = detail,
-            target = RiderHomeActionTarget.PROFILE
+            target = RiderHomeActionTarget.PROFILE,
+            priority = 6
         )
     }
 
     return cards
         .distinctBy { it.key }
-        .sortedWith(
-            compareByDescending<RiderHomeActionCardModel> { it.urgent }
-                .thenBy { if (it.key.startsWith("mission:")) 0 else 1 }
-        )
+        .sortedBy { it.priority }
         .take(2)
 }
 
