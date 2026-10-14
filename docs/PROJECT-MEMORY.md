@@ -1,3 +1,9 @@
+## 2026-10-14 Rider re-verification Admin workflow on consolidated release
+- Pulled Work PR235 Admin workflow onto the consolidated #234 release line because its Admin files were byte-identical to the PR235 base before the new workflow, so the UI changes apply cleanly without overwriting newer Admin work.
+- Existing Admin Rider-status cards now call qg_admin_rider_reverification_queue, can request a fresh identity check, open pending private selfie evidence through the existing signed qg-evidence viewer, approve a pending selfie, or reject it with a required Rider-facing reason. The Admin UI never queries qg_private directly.
+- Production queue migration 20261014063649 remains authenticated-only and re-checks live session + active Admin server-side. Production gate migration 20261014063832 additionally prevents an affected Rider from going online until approved.
+- Admin interface regression guards the three public re-verification RPCs, signed evidence viewer usage and absence of direct private-table access. Exact-head consolidated CI remains required.
+
 ## 2026-10-14 Rider Grab-parity release successor: selfie re-verification
 - Continued from consolidated Release Gate head 7220b29 so Heatmap, map-reuse runtime assertions, real compliments, detailed Job History, managed public Rider photo and all earlier parity remain on one line.
 - Added explicit Rider selfie re-verification without claiming biometric/liveness detection. Admin may request a check; Rider captures a fresh camera photo; private qg-evidence storage holds the selfie; server state is required/pending/approved/rejected. Public Rider avatar remains in rider-profile and is never reused as verification evidence.
