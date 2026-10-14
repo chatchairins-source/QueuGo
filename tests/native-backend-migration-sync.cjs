@@ -77,4 +77,13 @@ for(const needle of [
 ]){
   assert.ok(onlineGateMigration.includes(needle),'Rider reverification online gate missing contract: '+needle);
 }
+const reverificationReasonMigration=read('supabase/migrations/20261014064554_rider_reverification_reason_required_v1.sql');
+for(const needle of [
+  'v_reason := nullif(btrim(p_reason)',
+  'reverification reason required',
+  'reason=v_reason',
+  "values(p_rider_id,'required',v_reason)"
+]){
+  assert.ok(reverificationReasonMigration.includes(needle),'Rider reverification reason migration missing contract: '+needle);
+}
 console.log('Native backend migration mirror: PASS');
