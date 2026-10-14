@@ -17,6 +17,7 @@ class QueueGoMapLibreOsmView @JvmOverloads constructor(
     private val mapView: MapView
     private var map: MapLibreMap? = null
     private var currentConfig: MapLibreOsmConfig? = null
+    private var localRoads: List<QueueGoLocalRoad> = emptyList()
     private var created = false
     private var started = false
     private var resumed = false
@@ -64,10 +65,19 @@ class QueueGoMapLibreOsmView @JvmOverloads constructor(
         }
     }
 
+    fun setLocalRoads(roads: List<QueueGoLocalRoad>) {
+        check(!destroyed) { "MapLibre view already destroyed" }
+        localRoads = roads.toList()
+        map?.style?.let { style ->
+            QueueGoLocalRoadOverlay.apply(style, localRoads)
+        }
+    }
+
     private fun applyConfig(config: MapLibreOsmConfig) {
         val readyMap = map ?: return
         styleApplyCount += 1
-        readyMap.setStyle(ShortbreadVillageStyle.builder(config.sourceUri)) {
+        readyMap.setStyle(ShortbreadVillageStyle.builder(config.sourceUri)) { style ->
+            QueueGoLocalRoadOverlay.apply(style, localRoads)
             applyCamera(readyMap, config)
             onMapReady?.invoke(readyMap)
         }
