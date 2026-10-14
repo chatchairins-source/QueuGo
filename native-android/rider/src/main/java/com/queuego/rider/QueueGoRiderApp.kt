@@ -30,6 +30,7 @@ import com.queuego.shared.QgRemoteImage
 import com.queuego.shared.QgLine
 import com.queuego.shared.QgRedSoft
 import com.queuego.shared.QgRiderBg
+import com.queuego.ridernavigationmap.NavigationViewportInsets
 import androidx.compose.ui.graphics.Color
 import androidx.compose.material3.CardDefaults
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -86,6 +87,7 @@ import kotlinx.coroutines.sync.withLock
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
@@ -94,6 +96,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
@@ -1374,6 +1377,12 @@ private fun RiderHome(
             .fillMaxSize()
             .background(QgRiderBg)
     ) {
+        val navigationDensity = LocalDensity.current
+        val navigationTopInsetPx = with(navigationDensity) { 72.dp.roundToPx() }
+        var navigationBottomInsetPx by remember(navigationDensity) {
+            mutableIntStateOf(with(navigationDensity) { 68.dp.roundToPx() })
+        }
+
         QueueGoRiderNavigationMap(
             modifier = Modifier.fillMaxSize(),
             stateKey = auth.user.id,
@@ -1381,6 +1390,10 @@ private fun RiderHome(
             marketPickups = snapshot?.marketPickups.orEmpty(),
             bundleOrders = snapshot?.bundle?.activeOrders.orEmpty(),
             recenterSignal = recenterSignal,
+            viewportInsets = NavigationViewportInsets(
+                topPx = navigationTopInsetPx,
+                bottomPx = navigationBottomInsetPx
+            ),
             onMapReady = { }
         )
 
@@ -1449,6 +1462,12 @@ private fun RiderHome(
 
         Column(
             dockModifier
+                .onGloballyPositioned { coordinates ->
+                    navigationBottomInsetPx = maxOf(
+                        coordinates.size.height,
+                        with(navigationDensity) { 68.dp.roundToPx() }
+                    )
+                }
                 .verticalScroll(sheetScrollState)
                 .padding(horizontal = 8.dp, vertical = if (activeSheetJob != null) 8.dp else 0.dp)
         ) {
