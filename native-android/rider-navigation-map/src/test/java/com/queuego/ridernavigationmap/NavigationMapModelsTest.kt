@@ -46,4 +46,18 @@ class NavigationMapModelsTest {
         assertEquals(listOf("shop-2", "customer"), state.styledRemainingRoutes().map { it.toStopId })
         assertEquals(NavigationRouteStyle.ACTIVE, state.styledRemainingRoutes().first().style)
     }
+    @Test fun demandZonesFailClosedAndDeduplicateByStableIdentity() {
+        val state = RiderNavigationMapState(
+            demandZones = listOf(
+                NavigationDemandZone("cell-a", NavigationMapPoint(15.0, 103.0), 1, 24),
+                NavigationDemandZone("cell-a", NavigationMapPoint(15.01, 103.01), 3, 24),
+                NavigationDemandZone("", NavigationMapPoint(15.02, 103.02), 2, 24),
+                NavigationDemandZone("bad-level", NavigationMapPoint(15.03, 103.03), 9, 24)
+            )
+        )
+        val zones = state.renderableDemandZones()
+        assertEquals(1, zones.size)
+        assertEquals("cell-a", zones.single().id)
+        assertEquals(1, zones.single().level)
+    }
 }

@@ -243,9 +243,9 @@ internal fun QueueGoRiderNavigationMap(
         riderNavigationStops(job, marketPickups, bundleOrders)
     }
     val navigationDemandZones = remember(demandZones) {
-        demandZones.mapIndexed { index, zone ->
+        demandZones.map { zone ->
             NavigationDemandZone(
-                id = "demand:" + zone.latitude + ":" + zone.longitude + ":" + index,
+                id = "demand:" + zone.latitude + ":" + zone.longitude,
                 point = NavigationMapPoint(zone.latitude, zone.longitude),
                 level = zone.level,
                 windowHours = zone.windowHours
