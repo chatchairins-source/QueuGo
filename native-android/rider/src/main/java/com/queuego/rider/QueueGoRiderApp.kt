@@ -1155,7 +1155,7 @@ private fun RiderHome(
                     lastOfferAlertKey = offerKey
                     val expiry = riderOfferExpiryMillis(it.offeredJob?.offerExpiresAt)
                     val orderId = it.offeredJob?.id
-                    if (expiry != null && orderId != null && expiry > System.currentTimeMillis() &&
+                    if (expiry != null && orderId != null && expiry > RiderServerClock.nowEpochMillis() &&
                         consumeRiderAlert(context, riderOfferAlertKey(auth.user.id, orderId, expiry))) playRiderOfferAlert()
                     actionMessage = "มีงานใหม่ที่ระบบจัดให้ กรุณาตอบรับภายใน 30 วินาที"
                     // A selected 30-second offer must be visible immediately even if the Rider
