@@ -7,6 +7,7 @@ const style=fs.readFileSync('native-android/rider-maplibre-osm/src/main/java/com
 const view=fs.readFileSync('native-android/rider-maplibre-osm/src/main/java/com/queuego/ridermaplibreosm/QueueGoMapLibreOsmView.kt','utf8');
 const localRoads=fs.readFileSync('native-android/rider-maplibre-osm/src/main/java/com/queuego/ridermaplibreosm/QueueGoLocalRoads.kt','utf8');
 const localRoadFeed=fs.readFileSync('native-android/rider-maplibre-osm/src/main/java/com/queuego/ridermaplibreosm/QueueGoLocalRoadFeed.kt','utf8');
+const localRoadSignedDelivery=fs.readFileSync('native-android/rider-maplibre-osm/src/main/java/com/queuego/ridermaplibreosm/QueueGoLocalRoadSignedDelivery.kt','utf8');
 const riderBuild=fs.readFileSync('native-android/rider/build.gradle.kts','utf8');
 
 assert(settings.includes('":rider-maplibre-osm"'),'MapLibre OSM module must be registered in native settings');
@@ -65,5 +66,21 @@ assert(localRoadFeed.includes('queuego-trace:')&&
   !localRoadFeed.toLowerCase().includes('rider_id')&&
   !localRoadFeed.toLowerCase().includes('grab:'),
   'Verified trace provenance must reference QueueGo aggregate trace evidence without Rider identity or competitor references');
+
+assert(localRoadSignedDelivery.includes('SHA256withECDSA')&&
+  localRoadSignedDelivery.includes('payloadSha256Hex')&&
+  localRoadSignedDelivery.includes('queueGoSha256Hex(envelope.payload)')&&
+  localRoadSignedDelivery.includes('QueueGoLocalRoadSnapshotCache')&&
+  localRoadSignedDelivery.includes('StandardCopyOption.ATOMIC_MOVE')&&
+  localRoadSignedDelivery.includes('REJECTED_STALE')&&
+  localRoadSignedDelivery.includes('trustedKeys[keyId]')&&
+  !localRoadSignedDelivery.includes('http://')&&
+  !localRoadSignedDelivery.includes('https://'),
+  'Signed Local Roads delivery must verify digest/signature, reject stale revisions and atomically cache verified payloads without hardcoded Production transport');
+
+assert(localRoadSignedDelivery.includes('interface QueueGoLocalRoadSnapshotTransport')&&
+  localRoadSignedDelivery.includes('interface QueueGoLocalRoadFeedDecoder')&&
+  localRoadSignedDelivery.includes('fun interface QueueGoLocalRoadSignatureVerifier'),
+  'Local Roads transport, decoding and signature verification must remain injectable and fail-closed before Production wiring');
 
 console.log('native rider MapLibre OSM module contract passed');
