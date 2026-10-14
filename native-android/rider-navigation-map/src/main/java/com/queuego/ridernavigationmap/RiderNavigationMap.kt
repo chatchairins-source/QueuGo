@@ -49,6 +49,8 @@ private const val SNAPSHOT_CAPTURE_DELAY_MS = 180L
 private const val SNAPSHOT_BRIDGE_SETTLE_MS = 500L
 private const val SNAPSHOT_BRIDGE_RETRY_MS = 250L
 private const val SNAPSHOT_BRIDGE_MAX_ATTEMPTS = 8
+private const val SNAPSHOT_QUIET_RETRY_MS = 250L
+private const val SNAPSHOT_QUIET_MAX_ATTEMPTS = 12
 private const val RENDERER_WATCH_INTERVAL_MS = 100L
 private const val RENDERER_WATCH_MAX_ATTEMPTS = 50
 
@@ -209,24 +211,41 @@ private class RiderNavigationMapHolder {
     private fun requestSnapshot(
         force: Boolean,
         bridgeToken: Int? = null,
-        attempt: Int = 0
+        attempt: Int = 0,
+        quietRetry: Boolean = false
     ) {
         val activeView = view ?: return
         if (disposed || activeView.width <= 0 || activeView.height <= 0) {
-            if (bridgeToken != null && attempt < SNAPSHOT_BRIDGE_MAX_ATTEMPTS) {
-                mainHandler.postDelayed(
-                    { requestSnapshot(true, bridgeToken, attempt + 1) },
-                    SNAPSHOT_BRIDGE_RETRY_MS
-                )
+            when {
+                bridgeToken != null && attempt < SNAPSHOT_BRIDGE_MAX_ATTEMPTS -> {
+                    mainHandler.postDelayed(
+                        { requestSnapshot(true, bridgeToken, attempt + 1, quietRetry) },
+                        SNAPSHOT_BRIDGE_RETRY_MS
+                    )
+                }
+                quietRetry && attempt < SNAPSHOT_QUIET_MAX_ATTEMPTS -> {
+                    mainHandler.postDelayed(
+                        { requestSnapshot(true, null, attempt + 1, true) },
+                        SNAPSHOT_QUIET_RETRY_MS
+                    )
+                }
             }
             return
         }
         if (snapshotCaptureInFlight) {
-            if (bridgeToken != null && attempt < SNAPSHOT_BRIDGE_MAX_ATTEMPTS) {
-                mainHandler.postDelayed(
-                    { requestSnapshot(true, bridgeToken, attempt + 1) },
-                    SNAPSHOT_BRIDGE_RETRY_MS
-                )
+            when {
+                bridgeToken != null && attempt < SNAPSHOT_BRIDGE_MAX_ATTEMPTS -> {
+                    mainHandler.postDelayed(
+                        { requestSnapshot(true, bridgeToken, attempt + 1, quietRetry) },
+                        SNAPSHOT_BRIDGE_RETRY_MS
+                    )
+                }
+                quietRetry && attempt < SNAPSHOT_QUIET_MAX_ATTEMPTS -> {
+                    mainHandler.postDelayed(
+                        { requestSnapshot(true, null, attempt + 1, true) },
+                        SNAPSHOT_QUIET_RETRY_MS
+                    )
+                }
             }
             return
         }
@@ -262,15 +281,23 @@ private class RiderNavigationMapHolder {
                     }
                 } else {
                     if (!target.isRecycled) target.recycle()
-                    if (bridgeToken != null && bridgeToken == bridgeGeneration) {
-                        if (attempt < SNAPSHOT_BRIDGE_MAX_ATTEMPTS) {
+                    when {
+                        bridgeToken != null && bridgeToken == bridgeGeneration -> {
+                            if (attempt < SNAPSHOT_BRIDGE_MAX_ATTEMPTS) {
+                                mainHandler.postDelayed(
+                                    { requestSnapshot(true, bridgeToken, attempt + 1, quietRetry) },
+                                    SNAPSHOT_BRIDGE_RETRY_MS
+                                )
+                            } else {
+                                snapshotBridgeFailureCount += 1
+                                setSnapshotVisible(false)
+                            }
+                        }
+                        quietRetry && attempt < SNAPSHOT_QUIET_MAX_ATTEMPTS -> {
                             mainHandler.postDelayed(
-                                { requestSnapshot(true, bridgeToken, attempt + 1) },
-                                SNAPSHOT_BRIDGE_RETRY_MS
+                                { requestSnapshot(true, null, attempt + 1, true) },
+                                SNAPSHOT_QUIET_RETRY_MS
                             )
-                        } else {
-                            snapshotBridgeFailureCount += 1
-                            setSnapshotVisible(false)
                         }
                     }
                 }
@@ -278,15 +305,23 @@ private class RiderNavigationMapHolder {
         }.onFailure {
             snapshotCaptureInFlight = false
             if (!target.isRecycled) target.recycle()
-            if (bridgeToken != null && bridgeToken == bridgeGeneration) {
-                if (attempt < SNAPSHOT_BRIDGE_MAX_ATTEMPTS) {
+            when {
+                bridgeToken != null && bridgeToken == bridgeGeneration -> {
+                    if (attempt < SNAPSHOT_BRIDGE_MAX_ATTEMPTS) {
+                        mainHandler.postDelayed(
+                            { requestSnapshot(true, bridgeToken, attempt + 1, quietRetry) },
+                            SNAPSHOT_BRIDGE_RETRY_MS
+                        )
+                    } else {
+                        snapshotBridgeFailureCount += 1
+                        setSnapshotVisible(false)
+                    }
+                }
+                quietRetry && attempt < SNAPSHOT_QUIET_MAX_ATTEMPTS -> {
                     mainHandler.postDelayed(
-                        { requestSnapshot(true, bridgeToken, attempt + 1) },
-                        SNAPSHOT_BRIDGE_RETRY_MS
+                        { requestSnapshot(true, null, attempt + 1, true) },
+                        SNAPSHOT_QUIET_RETRY_MS
                     )
-                } else {
-                    snapshotBridgeFailureCount += 1
-                    setSnapshotVisible(false)
                 }
             }
         }
@@ -509,7 +544,11 @@ private class RiderNavigationMapHolder {
         // retained renderer. The bridge is shown only when attachMap() detects a real map
         // replacement from Android/Longdo.
         captureCamera()
-        requestSnapshot(force = true)
+        // PixelCopy can transiently return SOURCE_NO_DATA while Android moves the
+        // Activity from RESUMED to STARTED. Retry only this quiet continuity capture;
+        // never show an overlay or count a bridge failure unless a renderer replacement
+        // actually occurs.
+        requestSnapshot(force = true, quietRetry = true)
     }
 
     fun shutdownSdk() {
