@@ -115,6 +115,13 @@ class QueueGoPmTilesDownloader(
             }
         }
 
+        try {
+            QueueGoPmTilesArchive.requireValidVectorV3(partial)
+        } catch (error: Throwable) {
+            partial.delete()
+            throw error
+        }
+
         moveAtomically(partial, destination)
         return destination
     }

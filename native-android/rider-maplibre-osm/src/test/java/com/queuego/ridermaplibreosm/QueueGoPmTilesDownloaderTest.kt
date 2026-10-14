@@ -49,8 +49,18 @@ class QueueGoPmTilesDownloaderTest {
         directory.deleteRecursively()
     }
 
+    private fun validPmTilesPayload(extra: ByteArray = "tile-data".toByteArray()): ByteArray {
+        val header = ByteArray(QueueGoPmTilesArchive.HEADER_SIZE_BYTES)
+        "PMTiles".toByteArray().copyInto(header, destinationOffset = 0)
+        header[7] = QueueGoPmTilesArchive.SPEC_VERSION_V3.toByte()
+        header[99] = QueueGoPmTilesArchive.TILE_TYPE_MVT.toByte()
+        header[100] = 0
+        header[101] = 14
+        return header + extra
+    }
+
     @Test fun downloadsFreshArchiveAndRenamesPartFile() = runBlocking {
-        val payload = "pmtiles-v3-data".toByteArray()
+        val payload = validPmTilesPayload()
         server.enqueue(
             MockResponse()
                 .setResponseCode(200)
@@ -73,9 +83,11 @@ class QueueGoPmTilesDownloaderTest {
     }
 
     @Test fun resumesExistingPartWithRangeRequest() = runBlocking {
-        val prefix = "partial-".toByteArray()
-        val suffix = "remaining".toByteArray()
-        val total = prefix.size + suffix.size
+        val payload = validPmTilesPayload("remaining".toByteArray())
+        val splitAt = 64
+        val prefix = payload.copyOfRange(0, splitAt)
+        val suffix = payload.copyOfRange(splitAt, payload.size)
+        val total = payload.size
         File(directory, "buriram.pmtiles.part").writeBytes(prefix)
         server.enqueue(
             MockResponse()
@@ -93,6 +105,28 @@ class QueueGoPmTilesDownloaderTest {
 
         val request = server.takeRequest()
         assertEquals("bytes=${prefix.size}-", request.getHeader("Range"))
-        assertArrayEquals(prefix + suffix, destination.readBytes())
+        assertArrayEquals(payload, destination.readBytes())
+    }
+
+    @Test fun rejectsSuccessfulHttpResponseThatIsNotPmTiles() = runBlocking {
+        val payload = "<html>gateway error</html>".toByteArray()
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setHeader("Content-Length", payload.size)
+                .setBody(okio.Buffer().write(payload))
+        )
+
+        val destination = File(directory, "buriram.pmtiles")
+        val failure = runCatching {
+            QueueGoPmTilesDownloader(client).download(
+                sourceUrl = server.url("/buriram.pmtiles").toString(),
+                destination = destination
+            )
+        }
+
+        assertTrue(failure.isFailure)
+        assertFalse(destination.exists())
+        assertFalse(File(directory, "buriram.pmtiles.part").exists())
     }
 }

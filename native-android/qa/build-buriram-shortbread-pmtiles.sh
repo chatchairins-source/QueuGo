@@ -76,6 +76,17 @@ if [[ "${MAGIC}" != "PMTiles" ]]; then
   exit 5
 fi
 
+SPEC_VERSION="$(od -An -t u1 -j 7 -N 1 "${OUTPUT_PATH}" | tr -d '[:space:]')"
+TILE_TYPE="$(od -An -t u1 -j 99 -N 1 "${OUTPUT_PATH}" | tr -d '[:space:]')"
+if [[ "${SPEC_VERSION}" != "3" ]]; then
+  echo "Unsupported PMTiles spec version: ${SPEC_VERSION}" >&2
+  exit 6
+fi
+if [[ "${TILE_TYPE}" != "1" ]]; then
+  echo "Buriram archive is not MVT vector PMTiles: tile type ${TILE_TYPE}" >&2
+  exit 7
+fi
+
 SHA_FILE="${OUTPUT_PATH}.sha256"
 sha256sum "${OUTPUT_PATH}" > "${SHA_FILE}"
 

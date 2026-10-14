@@ -48,6 +48,24 @@ data class MapLibreOsmConfig(
             initialZoom = initialZoom
         )
 
+        fun preferOfflinePmTiles(
+            localFile: File,
+            fallbackTileJsonUrl: String,
+            initialLatitude: Double,
+            initialLongitude: Double,
+            initialZoom: Double = 16.0
+        ): MapLibreOsmConfig =
+            if (QueueGoPmTilesArchive.isValidVectorV3(localFile)) {
+                localPmTiles(localFile, initialLatitude, initialLongitude, initialZoom)
+            } else {
+                onlineTileJson(
+                    fallbackTileJsonUrl,
+                    initialLatitude,
+                    initialLongitude,
+                    initialZoom
+                )
+            }
+
         internal fun isSupportedSourceUri(value: String): Boolean =
             value.startsWith("https://") ||
                 value.startsWith("http://") ||

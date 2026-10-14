@@ -20,6 +20,9 @@ assert(src.includes('--output=${OUTPUT_PATH_IN_CONTAINER}')&&src.includes('.pmti
   'Planetiler output must be a PMTiles archive');
 assert(src.includes('head -c 7')&&src.includes('"PMTiles"'),
   'Build must verify the PMTiles magic header');
+assert(src.includes('-j 7 -N 1')&&src.includes('SPEC_VERSION')&&
+  src.includes('-j 99 -N 1')&&src.includes('TILE_TYPE'),
+  'Build must reject non-v3 or non-MVT PMTiles before publishing Buriram map data');
 assert(src.includes('sha256sum'),'Build must emit SHA-256 integrity evidence');
 assert(src.includes('QG_PLANETILER_DRY_RUN'),
   'Planetiler build must support deterministic dry-run verification');
