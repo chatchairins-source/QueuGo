@@ -6,6 +6,7 @@ const build=fs.readFileSync('native-android/rider-maplibre-osm/build.gradle.kts'
 const style=fs.readFileSync('native-android/rider-maplibre-osm/src/main/java/com/queuego/ridermaplibreosm/ShortbreadVillageStyle.kt','utf8');
 const view=fs.readFileSync('native-android/rider-maplibre-osm/src/main/java/com/queuego/ridermaplibreosm/QueueGoMapLibreOsmView.kt','utf8');
 const localRoads=fs.readFileSync('native-android/rider-maplibre-osm/src/main/java/com/queuego/ridermaplibreosm/QueueGoLocalRoads.kt','utf8');
+const localRoadFeed=fs.readFileSync('native-android/rider-maplibre-osm/src/main/java/com/queuego/ridermaplibreosm/QueueGoLocalRoadFeed.kt','utf8');
 const riderBuild=fs.readFileSync('native-android/rider/build.gradle.kts','utf8');
 
 assert(settings.includes('":rider-maplibre-osm"'),'MapLibre OSM module must be registered in native settings');
@@ -52,5 +53,17 @@ assert(localRoads.includes('val renderable: Boolean')&&
 assert(view.includes('fun setLocalRoads(')&&
   view.includes('QueueGoLocalRoadOverlay.apply(style, localRoads)'),
   'MapLibre Rider map must accept verified local-road updates without reloading the base style');
+
+assert(localRoadFeed.includes('schemaVersion: Int')&&
+  localRoadFeed.includes('revision: Long')&&
+  localRoadFeed.includes('QueueGoLocalRoadFeedDecision')&&
+  localRoadFeed.includes('REJECT_STALE')&&
+  localRoadFeed.includes('QUEUEGO_LOCAL_ROAD_MAX_TOTAL_POINTS')&&
+  localRoadFeed.includes('queueGoLocalRoadSourceReferenceAllowed'),
+  'Local Roads ingestion must be versioned, bounded, idempotent and fail closed on stale/provenance-mismatched snapshots');
+assert(localRoadFeed.includes('queuego-trace:')&&
+  !localRoadFeed.toLowerCase().includes('rider_id')&&
+  !localRoadFeed.toLowerCase().includes('grab:'),
+  'Verified trace provenance must reference QueueGo aggregate trace evidence without Rider identity or competitor references');
 
 console.log('native rider MapLibre OSM module contract passed');
