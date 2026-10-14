@@ -1,3 +1,10 @@
+## 2026-10-14 Grab Driver parity: event-feedback v2 + gate-fix unified successor
+- Continued from event-feedback-v2 head c7a1e58 and carried the final #292 failed-delivery fallback coverage forward.
+- This successor keeps the full Benefits + failed-delivery lineage, compile-safe Compose imports, provider-isolated real-map lifecycle gate, critical Home/Availability/account/runtime work, and Rider event completion feedback on one branch.
+- The event-feedback-v2 line already contained the gate code fixes; #292 contributed only the latest fallback order-label test after their shared merge base.
+- Backup: backup/rider-grab-parity-before-event-v2-gate-unify-20261014 @ c7a1e58.
+- PASS requires exact-head native-pilot + navigation-map-runtime and existing Admin/backend contracts.
+
 ## 2026-10-14 Grab Driver parity: Rider event feedback language
 - Static inspection of the owner-supplied Grab Driver 5.457.1 APK confirmed distinct raw resources for delivery_success, delivery_error, picker_success, picker_error and incoming-job sound.
 - QueueGo does not copy any Grab audio asset. Rider now uses QueueGo-owned platform-generated feedback patterns plus Android haptics.
