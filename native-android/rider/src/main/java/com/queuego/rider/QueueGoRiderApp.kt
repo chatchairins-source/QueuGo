@@ -1971,7 +1971,7 @@ private fun RiderHome(
         networkAvailable,
         snapshot?.online,
         snapshot?.activeJob?.id,
-        snapshot?.laundry?.activeJob?.id,
+        snapshot?.laundry?.activeJob?.jobId,
         snapshot?.offeredJob?.id,
         snapshot?.offeredJob?.offerExpiresAt,
         actionBusy,
