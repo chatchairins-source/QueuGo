@@ -146,7 +146,7 @@ window.qtAdminRequestRiderReverification=async function(riderId){
       if(typeof toast==='function')toast('ฟอร์ม Admin ยังไม่พร้อม กรุณารีเฟรชหน้า');
       return;
     }
-    const value=await qgAdminInput({title:'ขอยืนยันตัวตน Rider',label:'เหตุผล (ไม่บังคับ)'});
+    const value=await qgAdminInput({title:'ขอยืนยันตัวตน Rider',label:'เหตุผลที่ขอตรวจใหม่'});
     if(value===null)return;
     const reason=String(value||'').trim();
     await qtSupabaseRpc('qg_admin_request_rider_reverification',{
