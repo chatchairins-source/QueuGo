@@ -26,6 +26,8 @@ import com.queuego.ridernavigationmap.NavigationRouteSegment
 import com.queuego.ridernavigationmap.NavigationRouteStyle
 import com.queuego.ridernavigationmap.NavigationSignalPipeline
 import com.queuego.ridernavigationmap.NavigationStopKind
+import com.queuego.ridernavigationmap.NavigationViewMode
+import com.queuego.ridernavigationmap.NavigationViewModeController
 import com.queuego.ridernavigationmap.RiderNavigationMap
 import com.queuego.ridernavigationmap.RiderNavigationMapState
 import kotlinx.coroutines.CancellationException
@@ -214,7 +216,11 @@ internal fun QueueGoRiderNavigationMap(
         }
     }
 
-    var followRider by remember(stateKey) { mutableStateOf(true) }
+    val viewModeController = remember(stateKey) { NavigationViewModeController() }
+    var viewModeState by remember(stateKey) {
+        mutableStateOf(viewModeController.state())
+    }
+    val followRider = viewModeState.mode == NavigationViewMode.FOLLOW
 
     val stops = remember(job, marketPickups, bundleOrders) {
         riderNavigationStops(job, marketPickups, bundleOrders)
@@ -248,6 +254,10 @@ internal fun QueueGoRiderNavigationMap(
         .filter { !it.completed }
         .minByOrNull { it.sequence }
         ?.id
+
+    LaunchedEffect(activeStopId) {
+        viewModeState = viewModeController.onActiveStopChanged()
+    }
 
     val routeKey = remember(context.packageName) { riderLongdoNavigationKey(context) }
     val routeProvider = remember(routeKey) {
@@ -315,7 +325,7 @@ internal fun QueueGoRiderNavigationMap(
 
     LaunchedEffect(recenterSignal) {
         if (recenterSignal > 0) {
-            followRider = true
+            viewModeState = viewModeController.onRecenter()
             riderFix?.let { fix ->
                 stateChannel.trySend(
                     baseState.copy(rider = fix, followRider = true)
@@ -330,7 +340,9 @@ internal fun QueueGoRiderNavigationMap(
         modifier = modifier,
         initialCamera = initialCamera,
         onMapReady = onMapReady,
-        onUserGesture = { followRider = false },
+        onUserGesture = {
+            viewModeState = viewModeController.onUserGesture()
+        },
         onCameraChanged = { camera ->
             sessionStore.saveMapCamera(
                 stateKey,
