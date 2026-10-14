@@ -57,3 +57,57 @@ fun navigationOverviewZoom(bounds: NavigationOverviewBounds): Int = when {
     bounds.spanMeters >= 700.0 -> 16
     else -> 17
 }
+
+
+data class NavigationOverviewViewportDecision(
+    val center: NavigationMapPoint,
+    val zoom: Int
+)
+
+fun navigationOverviewViewportDecision(
+    bounds: NavigationOverviewBounds,
+    insets: NavigationViewportInsets,
+    viewportWidthPx: Int,
+    viewportHeightPx: Int
+): NavigationOverviewViewportDecision {
+    val safe = insets.normalized()
+    val width = viewportWidthPx.coerceAtLeast(1)
+    val height = viewportHeightPx.coerceAtLeast(1)
+    val availableWidth = (width - safe.leftPx - safe.rightPx).coerceAtLeast(1)
+    val availableHeight = (height - safe.topPx - safe.bottomPx).coerceAtLeast(1)
+
+    val pressure = maxOf(
+        width.toDouble() / availableWidth.toDouble(),
+        height.toDouble() / availableHeight.toDouble()
+    ).coerceAtLeast(1.0)
+    val zoomPenalty = kotlin.math.ceil(kotlin.math.log2(pressure))
+        .toInt()
+        .coerceIn(0, 3)
+
+    val latitudeSpan = (bounds.north - bounds.south).coerceAtLeast(0.0)
+    val longitudeSpan = (bounds.east - bounds.west).coerceAtLeast(0.0)
+    val verticalBias =
+        (safe.bottomPx - safe.topPx).toDouble() / (2.0 * availableHeight.toDouble())
+    val horizontalBias =
+        (safe.rightPx - safe.leftPx).toDouble() / (2.0 * availableWidth.toDouble())
+
+    val shiftedCenter = NavigationMapPoint(
+        latitude = (bounds.center.latitude - latitudeSpan * verticalBias)
+            .coerceIn(-85.0, 85.0),
+        longitude = normalizeOverviewLongitude(
+            bounds.center.longitude + longitudeSpan * horizontalBias
+        )
+    )
+
+    return NavigationOverviewViewportDecision(
+        center = shiftedCenter,
+        zoom = (navigationOverviewZoom(bounds) - zoomPenalty).coerceIn(4, 20)
+    )
+}
+
+private fun normalizeOverviewLongitude(value: Double): Double {
+    var normalized = value
+    while (normalized > 180.0) normalized -= 360.0
+    while (normalized < -180.0) normalized += 360.0
+    return normalized
+}

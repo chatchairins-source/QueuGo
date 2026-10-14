@@ -6,7 +6,6 @@ import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.PointF
-import android.graphics.RectF
 import android.graphics.Typeface
 import android.os.Handler
 import android.os.Looper
@@ -30,7 +29,6 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.longdo.api.IMapListener
-import com.longdo.api.IMarker
 import com.longdo.api.Line
 import com.longdo.api.LongdoLayer
 import com.longdo.api.MapGLSurfaceView
@@ -58,6 +56,7 @@ private val ACTIVE_ROUTE_COLOR = floatArrayOf(230f / 255f, 0f, 45f / 255f, 0.96f
 private val FUTURE_ROUTE_COLOR = floatArrayOf(230f / 255f, 0f, 45f / 255f, 0.28f)
 
 private data class RenderedStop(val signature: String, val pin: Pin)
+private data class RiderPuckBitmapKey(val rotationDegrees: Int, val opacityPercent: Int)
 
 internal fun riderMarkerMoveThresholdMeters(speedMetersPerSecond: Float?): Double = when {
     speedMetersPerSecond == null -> 1.0
@@ -135,6 +134,7 @@ private class RiderNavigationMapHolder {
     private val routeLines = mutableListOf<Line>()
     private var renderedRouteSegments: List<NavigationRouteSegment> = emptyList()
     private val markerBitmaps = mutableMapOf<Int, Bitmap>()
+    private val riderPuckBitmaps = mutableMapOf<RiderPuckBitmapKey, Bitmap>()
     private val stopBitmaps = mutableMapOf<Triple<NavigationStopKind, Int, Boolean>, Bitmap>()
     private var stopSource: List<NavigationMapStop>? = null
     private var stopActiveId: String? = null
@@ -626,7 +626,6 @@ private class RiderNavigationMapHolder {
 
     private fun renderRiderPresentation(activeMap: com.longdo.api.Map, fix: NavigationMapFix) {
         val pin = riderPin ?: return
-        var changed = false
 
         val cameraBearing = runCatching { activeMap.getRotate() }
             .getOrNull()
@@ -634,17 +633,7 @@ private class RiderNavigationMapHolder {
             ?.let(::normalizeNavigationBearing)
             ?: lastCameraBearing
         val orientation = navigationPuckOrientationDecision(fix, cameraBearing)
-        orientation.rotationDegrees?.let { nextRotation ->
-            if (lastPuckRotation == null ||
-                navigationBearingChangedEnough(lastPuckRotation, nextRotation, minimumDeltaDegrees = 2.5f)
-            ) {
-                runCatching { pin.setRotate(nextRotation) }
-                    .onSuccess {
-                        lastPuckRotation = nextRotation
-                        changed = true
-                    }
-            }
-        }
+        val nextRotation = orientation.rotationDegrees ?: lastPuckRotation ?: 0f
 
         val freshness = navigationPuckFreshness(
             fix = fix,
@@ -655,16 +644,26 @@ private class RiderNavigationMapHolder {
             NavigationPuckFreshness.LOST -> 0.35f
             else -> 1f
         }
-        if (lastPuckOpacity == null || kotlin.math.abs(lastPuckOpacity!! - nextOpacity) >= 0.01f) {
-            runCatching { pin.setOpacity(nextOpacity) }
-                .onSuccess {
-                    lastPuckOpacity = nextOpacity
-                    changed = true
-                }
-        }
 
-        if (changed) {
-            runCatching { activeMap.requestRenderOnce("queuego-rider-puck-presentation") }
+        val rotationChanged = lastPuckRotation == null ||
+            navigationBearingChangedEnough(
+                lastPuckRotation,
+                nextRotation,
+                minimumDeltaDegrees = 5f
+            )
+        val opacityChanged = lastPuckOpacity == null ||
+            kotlin.math.abs(lastPuckOpacity!! - nextOpacity) >= 0.01f
+
+        if (!rotationChanged && !opacityChanged) return
+
+        runCatching {
+            // Longdo v0.1.8 exposes Pin.setIcon(Bitmap) but not public rotate/opacity setters.
+            // Keep the same Pin object and update only its cached presentation bitmap.
+            pin.setIcon(riderPuckBitmap(nextRotation, nextOpacity))
+            activeMap.requestRender("queuego-rider-puck-presentation")
+        }.onSuccess {
+            lastPuckRotation = nextRotation
+            lastPuckOpacity = nextOpacity
         }
     }
 
@@ -682,44 +681,43 @@ private class RiderNavigationMapHolder {
         ).joinToString("|")
         if (!force && signature == lastOverviewSignature) return
 
-        val markers = mutableListOf<IMarker>()
-        riderPin?.let(markers::add)
-        stopPins.values.forEach { markers += it.pin }
-        routeLines.forEach { markers += it }
-
-        if (markers.size >= 2) {
-            runCatching {
-                activeMap.bound(
-                    markers,
-                    true,
-                    true,
-                    false,
-                    false,
-                    RectF(
-                        insets.leftPx.toFloat(),
-                        insets.topPx.toFloat(),
-                        insets.rightPx.toFloat(),
-                        insets.bottomPx.toFloat()
-                    )
-                )
-            }.onSuccess {
-                lastOverviewSignature = signature
-                lastCameraCenter = null
-            }
+        val bounds = navigationOverviewBounds(state) ?: return
+        val activeView = view
+        val viewportDecision = if (
+            activeView != null &&
+            activeView.width > 0 &&
+            activeView.height > 0
+        ) {
+            navigationOverviewViewportDecision(
+                bounds = bounds,
+                insets = insets,
+                viewportWidthPx = activeView.width,
+                viewportHeightPx = activeView.height
+            )
         } else {
-            val bounds = navigationOverviewBounds(state)
-            if (bounds != null) {
-                runCatching {
-                    activeMap.setLocation(
-                        MapLocation(bounds.center.longitude, bounds.center.latitude),
-                        true
-                    )
-                    activeMap.setZoom(navigationOverviewZoom(bounds), true)
-                }.onSuccess {
-                    lastOverviewSignature = signature
-                    lastCameraCenter = bounds.center
-                }
-            }
+            NavigationOverviewViewportDecision(
+                center = bounds.center,
+                zoom = navigationOverviewZoom(bounds)
+            )
+        }
+
+        runCatching {
+            // v0.1.8 does not expose the newer RectF-padded bound overload.
+            // Use QueueGo's renderer-independent viewport policy, then apply the resulting
+            // north-up center/zoom through APIs that exist in the pinned AAR.
+            activeMap.rotate(0f, true)
+            activeMap.setLocation(
+                MapLocation(
+                    viewportDecision.center.longitude,
+                    viewportDecision.center.latitude
+                ),
+                true
+            )
+            activeMap.setZoom(viewportDecision.zoom, true)
+        }.onSuccess {
+            lastOverviewSignature = signature
+            lastCameraBearing = 0f
+            lastCameraCenter = viewportDecision.center
         }
     }
 
@@ -914,6 +912,38 @@ private class RiderNavigationMapHolder {
 
     private fun markerBitmap(resId: Int): Bitmap =
         markerBitmaps[resId] ?: renderVector(resId).also { markerBitmaps[resId] = it }
+
+    private fun riderPuckBitmap(rotationDegrees: Float, opacity: Float): Bitmap {
+        val normalized = normalizeNavigationBearing(rotationDegrees)
+        val rotationBucket = ((((normalized + 2.5f) / 5f).toInt()) * 5) % 360
+        val opacityPercent = (opacity.coerceIn(0f, 1f) * 100f + 0.5f).toInt()
+        if (rotationBucket == 0 && opacityPercent >= 100) {
+            return markerBitmap(SharedR.drawable.qg_map_rider)
+        }
+
+        val key = RiderPuckBitmapKey(rotationBucket, opacityPercent)
+        return riderPuckBitmaps.getOrPut(key) {
+            val base = markerBitmap(SharedR.drawable.qg_map_rider)
+            Bitmap.createBitmap(
+                base.width.coerceAtLeast(1),
+                base.height.coerceAtLeast(1),
+                Bitmap.Config.ARGB_8888
+            ).also { output ->
+                val canvas = Canvas(output)
+                val paint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG).apply {
+                    alpha = (opacityPercent * 255 / 100).coerceIn(0, 255)
+                }
+                canvas.save()
+                canvas.rotate(
+                    rotationBucket.toFloat(),
+                    base.width / 2f,
+                    base.height / 2f
+                )
+                canvas.drawBitmap(base, 0f, 0f, paint)
+                canvas.restore()
+            }
+        }
+    }
 
     private fun stopBitmap(kind: NavigationStopKind, number: Int, active: Boolean): Bitmap =
         stopBitmaps.getOrPut(Triple(kind, number, active)) {
