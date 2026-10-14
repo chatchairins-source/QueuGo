@@ -6,19 +6,31 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class RiderDeliveryReturnFlowTest {
-    private fun state(status: String) = RiderDeliveryReturn(
+    private fun state(
+        status: String,
+        totalStops: Int = 1,
+        returnedStops: Int = 0
+    ) = RiderDeliveryReturn(
         caseId = "11111111-1111-1111-1111-111111111111",
         orderId = "22222222-2222-2222-2222-222222222222",
         orderNumber = "QT-1234",
+        marketOrderId = if (totalStops > 1) "44444444-4444-4444-4444-444444444444" else null,
         status = status,
         reason = "customer_unreachable",
         adminNote = null,
+        expectedRefundAmount = if (totalStops > 1) 300.0 else 120.0,
+        returnStopCount = totalStops,
+        returnedStopCount = returnedStops,
+        remainingStopCount = (totalStops - returnedStops).coerceAtLeast(0),
+        stopId = "55555555-5555-5555-5555-555555555555",
+        stopOrderId = "66666666-6666-6666-6666-666666666666",
+        stopSequence = returnedStops + 1,
+        stopRefundAmount = if (totalStops > 1) 100.0 else 120.0,
         shopId = "33333333-3333-3333-3333-333333333333",
         shopName = "ร้านทดสอบ",
         shopAddress = "บุรีรัมย์",
         shopLatitude = 14.9,
         shopLongitude = 103.1,
-        expectedRefundAmount = 120.0,
         ticketId = null,
         reportedAt = null,
         returnRequiredAt = null,
@@ -35,6 +47,15 @@ class RiderDeliveryReturnFlowTest {
         assertTrue(state("return_required").canReturnToShop)
         assertTrue(state("returning").canReturnToShop)
         assertFalse(state("returned").canReturnToShop)
+    }
+
+    @Test fun marketReturnExposesCurrentStopProgressWithoutLosingTotalRefund() {
+        val multi = state("returning", totalStops = 3, returnedStops = 1)
+        assertTrue(multi.multiStop)
+        assertEquals(2, multi.currentStopNumber)
+        assertEquals(2, multi.remainingStopCount)
+        assertEquals(100.0, multi.stopRefundAmount, 0.001)
+        assertEquals(300.0, multi.expectedRefundAmount, 0.001)
     }
 
     @Test fun merchantRefundOffsetsCashPreviouslyPaidToMerchant() {
