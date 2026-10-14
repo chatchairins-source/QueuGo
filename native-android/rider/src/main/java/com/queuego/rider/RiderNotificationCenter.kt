@@ -80,7 +80,7 @@ internal fun riderNotificationTimeLabel(raw: String?): String? {
         .format(instant)
 }
 
-private class RiderNotificationCenterApi(
+internal class RiderNotificationCenterApi(
     private val http: QueueGoNativeApi = QueueGoNativeApi()
 ) {
     suspend fun rows(auth: QueueGoAuth): List<RiderNotificationRow> {
@@ -92,6 +92,16 @@ private class RiderNotificationCenterApi(
             )
         )
         return riderNotificationsFromRows(raw)
+    }
+
+    suspend fun unreadCount(auth: QueueGoAuth): Int {
+        val rows = http.array(
+            http.get(
+                "notifications?select=id&is_read=eq.false&order=created_at.desc&limit=100",
+                auth.session.accessToken
+            )
+        )
+        return rows.length().coerceAtMost(99)
     }
 
     suspend fun markRead(auth: QueueGoAuth, notificationId: String) {
@@ -223,12 +233,18 @@ internal fun RiderNotificationCenter(
                         .clickable {
                             scope.launch {
                                 if (!row.isRead) {
-                                    runCatching { api.markRead(auth, row.id) }
-                                    applyRows(
-                                        rows.map {
-                                            if (it.id == row.id) it.copy(isRead = true) else it
-                                        }
-                                    )
+                                    try {
+                                        api.markRead(auth, row.id)
+                                        applyRows(
+                                            rows.map {
+                                                if (it.id == row.id) it.copy(isRead = true) else it
+                                            }
+                                        )
+                                    } catch (e: CancellationException) {
+                                        throw e
+                                    } catch (_: Exception) {
+                                        error = "ทำเครื่องหมายอ่านไม่สำเร็จ"
+                                    }
                                 }
                                 if (riderNotificationCanOpenOrder(row)) {
                                     onOpenOrderReference(row.referenceId!!)
