@@ -153,6 +153,47 @@ function qtRiderMultipleVehicleStateLabel(status,selected,legacy){
   if(legacy&&status!=='approved')return 'รถเดิม';
   return {approved:'อนุมัติแล้ว',pending:'รออนุมัติ',rejected:'ไม่ผ่าน'}[String(status||'')]||'ไม่ทราบสถานะ';
 }
+function qtRiderDocumentExpiryMeta(value){
+  const raw=String(value||'').trim();
+  if(!raw)return {label:'ยังไม่ระบุวันหมดอายุ',color:'#777'};
+  const today=(typeof qtLocalDateKey==='function'?qtLocalDateKey():new Date().toISOString().slice(0,10));
+  const start=new Date(today+'T00:00:00Z');
+  const end=new Date(raw+'T00:00:00Z');
+  const days=Math.round((end-start)/86400000);
+  if(!Number.isFinite(days))return {label:raw,color:'#777'};
+  if(days<0)return {label:'หมดอายุ · '+raw,color:'#d92d3f'};
+  if(days<=30)return {label:'ใกล้หมดอายุ · เหลือ '+days+' วัน · '+raw,color:'#9a6b00'};
+  return {label:'ใช้ได้ · หมดอายุ '+raw,color:'#12845e'};
+}
+window.qtAdminSetRiderDocumentExpiry=async function(riderId,key,vehicleId,currentValue,label){
+  try{
+    if(typeof qgAdminInput!=='function'){
+      if(typeof toast==='function')toast('ฟอร์ม Admin ยังไม่พร้อม กรุณารีเฟรชหน้า');
+      return;
+    }
+    const current=String(currentValue||'').trim();
+    const value=await qgAdminInput({
+      title:'วันหมดอายุ '+String(label||'เอกสาร Rider'),
+      label:'YYYY-MM-DD'+(current?' · ปัจจุบัน '+current:'')+' · เว้นว่างเพื่อล้างค่า'
+    });
+    if(value===null)return;
+    const expiry=String(value||'').trim();
+    if(expiry && (!/^\d{4}-\d{2}-\d{2}$/.test(expiry)||Number.isNaN(Date.parse(expiry+'T00:00:00Z')))){
+      if(typeof toast==='function')toast('กรุณากรอกวันที่รูปแบบ YYYY-MM-DD');
+      return;
+    }
+    await qtSupabaseRpc('qg_admin_set_rider_document_expiry',{
+      p_rider_id:riderId,
+      p_document_key:key,
+      p_expires_on:expiry||null,
+      p_vehicle_id:vehicleId||null
+    });
+    if(typeof toast==='function')toast(expiry?'บันทึกวันหมดอายุแล้ว':'ล้างวันหมดอายุแล้ว');
+    await qtRenderAdminRiderPresence();
+  }catch(err){
+    if(typeof toast==='function')toast('บันทึกวันหมดอายุไม่สำเร็จ: '+err.message);
+  }
+};
 window.qtAdminReviewRiderVehicle=async function(vehicleId,decision){
   try{
     if(!['approved','rejected'].includes(decision))return;
@@ -292,15 +333,16 @@ async function qtRenderAdminRiderPresence(){
   try{
     const token=await qtGetAccessToken();
     if(!token)throw Error('กรุณาเข้าสู่ระบบ Admin');
-    const [users,profiles,presence,reverification,vehicleInspection,riderVehicles]=await Promise.all([
+    const [users,profiles,presence,reverification,vehicleInspection,riderVehicles,riderDocuments]=await Promise.all([
       qtSupabaseTable('users?select=id,name,role,status&role=eq.rider',{accessToken:token}),
       qtSupabaseTable('rider_profiles?select=id,user_id,status,metadata,updated_at',{accessToken:token}),
       qtSupabaseTable('qg_rider_presence_events?select=rider_id,online,occurred_at&order=occurred_at.desc&limit=2000',{accessToken:token}),
       qtSupabaseRpc('qg_admin_rider_reverification_queue'),
       qtSupabaseRpc('qg_admin_rider_vehicle_inspection_queue'),
-      qtSupabaseRpc('qg_admin_rider_vehicle_queue')
+      qtSupabaseRpc('qg_admin_rider_vehicle_queue'),
+      qtSupabaseRpc('qg_admin_rider_document_queue')
     ]);
-    if(!Array.isArray(users)||!Array.isArray(profiles)||!Array.isArray(presence)||!Array.isArray(reverification)||!Array.isArray(vehicleInspection)||!Array.isArray(riderVehicles))throw Error('ข้อมูลไรเดอร์ไม่ครบ');
+    if(!Array.isArray(users)||!Array.isArray(profiles)||!Array.isArray(presence)||!Array.isArray(reverification)||!Array.isArray(vehicleInspection)||!Array.isArray(riderVehicles)||!Array.isArray(riderDocuments))throw Error('ข้อมูลไรเดอร์ไม่ครบ');
     const byUser=new Map(profiles.map(p=>[String(p.user_id),p]));
     const latestPresence=new Map();
     presence.forEach(ev=>{
@@ -320,6 +362,9 @@ async function qtRenderAdminRiderPresence(){
       if(!vehiclesByRider.has(key))vehiclesByRider.set(key,[]);
       vehiclesByRider.get(key).push(v);
     });
+    const documentsByRider=new Map(
+      riderDocuments.filter(x=>x&&x.rider_id).map(x=>[String(x.rider_id),x])
+    );
     if(!el.isConnected)return;
     el.innerHTML=users.length?users.map(u=>{
       const p=byUser.get(String(u.id));
@@ -395,12 +440,25 @@ async function qtRenderAdminRiderPresence(){
             note+actions+
           '</div>';
         }).join('')+'</div>':'';
+      const rd=p?.id?documentsByRider.get(String(p.id)):null;
+      const documentRow=(label,key,value,vehicleId)=>{
+        const meta=qtRiderDocumentExpiryMeta(value);
+        return '<div style="display:flex;gap:8px;align-items:center;justify-content:space-between;margin-top:6px">'+
+          '<div><small><strong>'+escapeHtml(label)+'</strong></small><div><small style="color:'+meta.color+'">'+escapeHtml(meta.label)+'</small></div></div>'+
+          '<button class="btn-secondary" type="button" onclick="qtAdminSetRiderDocumentExpiry(\''+escapeHtml(p.id)+'\',\''+escapeHtml(key)+'\',\''+escapeHtml(vehicleId||'')+'\',\''+escapeHtml(value||'')+'\',\''+escapeHtml(label)+'\')">ตั้งวัน</button>'+
+        '</div>';
+      };
+      const docsHtml=p?.id&&rd?'<div style="margin-top:10px;border-top:1px solid #eee;padding-top:8px"><small><strong>เอกสารและวันหมดอายุ</strong></small>'+
+        documentRow('บัตรประชาชน','national_id',rd.national_id_expires_on,null)+
+        documentRow('ใบขับขี่','driver_license',rd.driver_license_expires_on,null)+
+        documentRow('พ.ร.บ. '+(rd.selected_vehicle_plate||'รถคันปัจจุบัน'),'vehicle_prb',rd.vehicle_prb_expires_on,rd.selected_vehicle_id)+
+      '</div>':'';
       return '<div class="qt-rider-online-card"><strong>'+escapeHtml(u.name||'ไรเดอร์')+'</strong><span style="float:right">'+state+'</span>'+
         '<div style="margin-top:6px"><small>ยืนยันตัวตน: '+escapeHtml(verificationStatus)+'</small></div>'+
         note+verifyActions+
         '<div style="margin-top:9px"><small>ตรวจรถ: '+escapeHtml(vehicleInspectionStatus)+'</small></div>'+
         vehicleNote+vehicleActions+
-        fleetHtml+
+        fleetHtml+docsHtml+
       '</div>';
     }).join(''):'<div class="qt-rider-online-card">ยังไม่มีข้อมูลไรเดอร์</div>';
   }catch(err){if(el.isConnected)el.textContent='โหลดสถานะไรเดอร์ไม่สำเร็จ: '+err.message;}
