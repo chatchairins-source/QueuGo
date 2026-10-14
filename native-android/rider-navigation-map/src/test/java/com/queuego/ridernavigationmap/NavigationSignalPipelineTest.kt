@@ -77,6 +77,36 @@ class NavigationSignalPipelineTest {
     }
 
     @Test
+    fun weakGpsJitterFreezesAtLastGoodDisplayFix() {
+        val pipeline = NavigationSignalPipeline()
+        val first = pipeline.update(
+            NavigationMapFix(
+                point = NavigationMapPoint(13.0000, 100.0010),
+                bearingDegrees = 90f,
+                accuracyMeters = 12f,
+                speedMetersPerSecond = 2f,
+                elapsedRealtimeNanos = 1_000_000_000L
+            ),
+            route
+        )
+        val weak = pipeline.update(
+            NavigationMapFix(
+                point = NavigationMapPoint(13.00020, 100.0010),
+                bearingDegrees = 90f,
+                accuracyMeters = 75f,
+                speedMetersPerSecond = 0.5f,
+                elapsedRealtimeNanos = 2_000_000_000L
+            ),
+            route
+        )
+
+        assertTrue(weak.accepted)
+        assertEquals(NavigationPuckState.WEAK_GPS, weak.puckState)
+        assertEquals(first.displayFix, weak.displayFix)
+        assertTrue(weak.rawFix.point != weak.displayFix?.point)
+    }
+
+    @Test
     fun rejectedTeleportHoldsLastDisplayFixWithoutReplacingRawFix() {
         val pipeline = NavigationSignalPipeline()
         val first = pipeline.update(
