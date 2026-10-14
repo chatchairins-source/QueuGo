@@ -269,8 +269,28 @@ fun QueueGoRiderApp(pushTarget: NativePushLaunchTarget? = null) {
                         }
                     }
                 )
-                auth?.user?.status != "active" -> RiderPendingAccountScreen(
-                    modifier = Modifier.padding(insets), name = auth!!.user.name,
+                auth?.user?.status != "active" -> RiderAccountStatusScreen(
+                    modifier = Modifier.padding(insets),
+                    user = auth!!.user,
+                    refreshing = busy,
+                    onRefresh = {
+                        val current = auth ?: return@RiderAccountStatusScreen
+                        busy = true
+                        error = null
+                        scope.launch {
+                            try {
+                                val validated = api.validate(current)
+                                store.save(validated)
+                                auth = validated
+                            } catch (e: CancellationException) {
+                                throw e
+                            } catch (e: Exception) {
+                                error = e.message ?: "ตรวจสถานะบัญชีไม่สำเร็จ"
+                            } finally {
+                                busy = false
+                            }
+                        }
+                    },
                     onLogout = {
                         val current = auth!!
                         RiderReturnService.stop(context)
