@@ -1,3 +1,13 @@
+## 2026-10-14 Rider world-class final unify: durable proof + adaptive refresh + multi-stop return v4
+- Continued from worldclass-proof-refresh-v2 head 382e3b68 and preserved its latest Rider world-class return/photo/connectivity stack.
+- Verified the v2 tree still lacked the complete RiderHome pending-proof wiring despite the branch message; restored the durable one-photo flow from the proven proof-return successor without duplicating models, API, return card, event feedback, proof store or refresh cadence.
+- Pickup, delivery, market-pickup and return proof photos are reserved/promoted in local app storage and recovered after process/reconnect interruptions. Confirmed proof is cleared only after the corresponding server mutation succeeds.
+- Multi-stop Return-to-Sender remains authoritative from qg_rider_active_delivery_return_v2. After one return stop succeeds, QueueGo refreshes state and opens Google Maps to the next shop; final stop uses distinct completion feedback.
+- Kept exactly one proof photo per step and the existing proof-quality gate.
+- Aligned source migration mirror to the actual versioned filename 20261014102925_rider_delivery_return_multi_stop_v4.sql and wired rider-return-to-sender.cjs into the full package regression command.
+- Backup: backup/rider-worldclass-before-proof-v2-final-unify-20261014 @ 382e3b68.
+- PASS requires exact-head native-pilot + navigation-map-runtime + Return-to-Sender/proof/refresh unit and source contracts.
+
 ## 2026-10-14 Rider one-hand UX: touch-target hardening on network-guard successor
 - Continued from #297 so validated-network mutation guards and reconnect continuity remain intact.
 - Active Rider custom actions previously used 42dp/46dp minimum heights. Android accessibility guidance recommends at least 48dp touch targets for interactive controls.
