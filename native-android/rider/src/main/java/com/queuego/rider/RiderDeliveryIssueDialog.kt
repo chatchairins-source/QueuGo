@@ -27,11 +27,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.queuego.shared.QgMuted
 import com.queuego.shared.QgRed
-import com.queuego.shared.QueueGoNativeApi
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
-import org.json.JSONObject
-import java.util.UUID
 
 internal data class RiderDeliveryIssueReason(
     val key: String,
@@ -64,29 +61,6 @@ internal fun riderDeliveryIssueDetails(
     }
 }
 
-private class RiderDeliveryIssueApi(
-    private val http: QueueGoNativeApi = QueueGoNativeApi()
-) {
-    suspend fun report(
-        auth: QueueGoAuth,
-        job: RiderJob,
-        reason: RiderDeliveryIssueReason,
-        note: String
-    ) {
-        val details = riderDeliveryIssueDetails(job.numberLabel, reason, note)
-        http.rpc(
-            "qg_create_ticket",
-            auth.session.accessToken,
-            JSONObject()
-                .put("p_ticket_id", UUID.randomUUID().toString())
-                .put("p_order_id", job.id)
-                .put("p_category", "rider")
-                .put("p_details", details)
-                .put("p_evidence_path", JSONObject.NULL)
-        )
-    }
-}
-
 @Composable
 internal fun RiderDeliveryIssueDialog(
     auth: QueueGoAuth,
@@ -97,7 +71,7 @@ internal fun RiderDeliveryIssueDialog(
     onReported: (String) -> Unit
 ) {
     val scope = rememberCoroutineScope()
-    val api = remember { RiderDeliveryIssueApi() }
+    val api = remember { QueueGoApi() }
     var selectedKey by rememberSaveable(job.id) { mutableStateOf(riderDeliveryIssueReasons.first().key) }
     var note by rememberSaveable(job.id) { mutableStateOf("") }
     var contacted by rememberSaveable(job.id) { mutableStateOf(false) }
@@ -200,7 +174,7 @@ internal fun RiderDeliveryIssueDialog(
                     error = null
                     scope.launch {
                         try {
-                            api.report(auth, job, selected, note)
+                            api.reportDeliveryIssue(auth, job, selected.key, note)
                             onReported(selected.label)
                         } catch (failure: CancellationException) {
                             throw failure
