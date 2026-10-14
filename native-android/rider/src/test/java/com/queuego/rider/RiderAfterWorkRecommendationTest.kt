@@ -126,6 +126,23 @@ class RiderAfterWorkRecommendationTest {
         assertEquals("ดูบนแผนที่", result.actionLabel)
     }
 
+    @Test fun customRepositionRadiusIsFailClosed() {
+        val result = riderAfterWorkRecommendation(
+            online = true,
+            stopAfterWorkPending = false,
+            missions = emptyList(),
+            demandZones = listOf(RiderDemandZone(15.020, 103.020, 3, 24)),
+            originLatitude = 15.0,
+            originLongitude = 103.0,
+            maxRepositionKm = 1.0
+        )
+
+        requireNotNull(result)
+        assertEquals(RiderAfterWorkRecommendationTarget.HOME, result.target)
+        assertNull(result.latitude)
+        assertNull(result.longitude)
+    }
+
     @Test fun missingDeliveryCoordinatesKeepsSafeHomeHeatmapFallback() {
         val result = riderAfterWorkRecommendation(
             online = true,
