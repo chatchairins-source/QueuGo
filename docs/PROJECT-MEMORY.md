@@ -3,6 +3,7 @@
 - Added RiderServerClock using the existing Supabase HTTP Date response header as the trusted calibration source, then advances time with Android elapsedRealtime. No extra network request and no Production DB change. Before the first valid server sample it fails back to the existing device wall clock.
 - The 30-second offer card, Voice Assistant offer check, foreground offer alert and background FCM offer expiry/timeout now share the same calibrated clock. Changing the handset wall clock after calibration no longer makes the active countdown jump.
 - Malformed/missing Date headers fail closed to the existing fallback. JVM tests cover RFC-1123 parsing, monotonic advancement, large device-clock skew and fallback behavior.
+- Rider Diagnostics now surfaces Server-time calibration health and handset/server skew. A large handset skew is shown as a warning while explicitly confirming that QueueGo is compensating the active offer countdown.
 - Backup backup/rider-location-voice-before-server-clock-20261014 retains c7d1b04. Exact-head native-pilot + navigation-map-runtime are required before PASS.
 
 ## 2026-10-14 Grab Driver parity: unified GPS integrity + privacy-safe Voice Assistant
