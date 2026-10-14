@@ -1,3 +1,10 @@
+## 2026-10-14 Grab Driver parity: real Large Order / vehicle load transparency
+- Rebased onto current runtime network+jank diagnostics successor 97a722a so QueueGo keeps Work's local API latency/Jank tracking while adding Large Order transparency. No diagnostic data or behavior is overwritten.
+- QueueGo dispatch already enforces real vehicle-capacity matching for Market/Grocery using market_order_weight(order)=quantity*item_weight_kg and selected vehicle_capacity_kg. This feature does not change matching; it exposes the authoritative load to the targeted/assigned Rider.
+- Production migration 20261014085832 rider_order_load_summary_v1 is additive and Rider-scoped. Assigned Rider or the live targeted-offer Rider may read only that order's summary. Market multi-shop returns the non-cancelled trip total; single Market/Grocery returns real catalog weight; unknown/food weight remains hidden.
+- Native Offer and pickup-stage Active Job show real kg, selected-vehicle capacity and utilization. >=80% is labelled “งานใหญ่ · ใกล้เต็มความจุรถ”; over-capacity is shown defensively. No fake weight, bag count or estimate is introduced.
+- Backup backup/rider-runtime-performance-before-load-summary-20261014 retains 97a722a. Exact successor native-pilot + navigation-map-runtime are required before PASS.
+
 ## 2026-10-14 Grab Driver parity: Rider runtime network + jank diagnostics
 - Confirmed the owner-supplied Grab Driver package contains networkStats and janktracker modules. QueueGo already had device readiness, ApplicationExitInfo crash/ANR history and retained-map diagnostics, but did not distinguish slow API sessions from UI frame jank.
 - Added local-only runtime measurements. QueueGo API requests record only request count, success/failure and elapsed milliseconds; no URL, RPC name, order ID, payload, customer, shop or location data is stored. Slow is >=1500 ms. Diagnostics shows count/fail/slow/average/worst for the current process session.
