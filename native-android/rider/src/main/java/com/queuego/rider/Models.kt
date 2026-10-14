@@ -367,6 +367,17 @@ data class RiderReverificationStatus(
     val reviewNote: String?
 )
 
+data class RiderVehicleInspectionStatus(
+    val required: Boolean,
+    val requestId: String?,
+    val status: String?,
+    val reason: String?,
+    val requestedAt: String?,
+    val submittedAt: String?,
+    val reviewedAt: String?,
+    val reviewNote: String?
+)
+
 
 data class RiderEmergencyContact(
     val configured: Boolean,
