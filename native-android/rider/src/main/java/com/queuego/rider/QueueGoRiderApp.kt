@@ -601,6 +601,7 @@ private fun RiderHome(
     }
     val pushStore = remember(context) { SessionStore(context) }
     val acceptanceModeStore = remember(context) { RiderAcceptanceModeStore(context) }
+    val stopAfterWorkStore = remember(context) { RiderStopAfterWorkStore(context) }
     val realtime = remember { NativeOrderRealtime() }
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     val snapshotMutex = remember { Mutex() }
@@ -613,6 +614,9 @@ private fun RiderHome(
     }
     var autoAcceptAttemptKey by rememberSaveable(auth.user.id) {
         mutableStateOf<String?>(null)
+    }
+    var stopAfterWorkPending by rememberSaveable(auth.user.id) {
+        mutableStateOf(stopAfterWorkStore.pending(auth.user.id))
     }
 
     LaunchedEffect(
@@ -674,6 +678,12 @@ private fun RiderHome(
     var consecutiveSnapshotFailures by remember(auth.user.id) { mutableIntStateOf(0) }
     var actionBusy by remember { mutableStateOf(false) }
     var actionMessage by remember { mutableStateOf<String?>(null) }
+
+    fun setStopAfterWorkPending(pending: Boolean) {
+        stopAfterWorkPending = pending
+        stopAfterWorkStore.setPending(auth.user.id, pending)
+    }
+
     fun requireServerNetwork(): Boolean {
         if (riderServerMutationAllowed(networkAvailable)) return true
         actionMessage = RIDER_NETWORK_GUARD_MESSAGE
@@ -1819,6 +1829,7 @@ private fun RiderHome(
             val loc = lastKnownLocation(context)
             runCatching { api.setOnline(auth, enabled, loc?.first, loc?.second) }
                 .onSuccess {
+                    if (!enabled) setStopAfterWorkPending(false)
                     playRiderEventFeedback(
                         eventFeedbackView,
                         if (enabled) RiderEventFeedbackKind.GO_ONLINE else RiderEventFeedbackKind.GO_OFFLINE
@@ -1832,6 +1843,67 @@ private fun RiderHome(
                     actionMessage = it.message ?: "เปลี่ยนสถานะรับงานไม่สำเร็จ"
                 }
             actionBusy = false
+        }
+    }
+
+    LaunchedEffect(
+        stopAfterWorkPending,
+        networkAvailable,
+        snapshot?.online,
+        snapshot?.activeJob?.id,
+        snapshot?.laundry?.activeJob?.jobId,
+        snapshot?.deliveryReturn?.caseId,
+        snapshot?.offeredJob?.id,
+        lifecycle
+    ) {
+        lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            while (stopAfterWorkPending) {
+                val current = snapshot
+                if (current == null) {
+                    delay(1_000L)
+                    continue
+                }
+                if (!current.online) {
+                    setStopAfterWorkPending(false)
+                    return@repeatOnLifecycle
+                }
+                if (!riderStopAfterWorkReady(
+                        pending = stopAfterWorkPending,
+                        networkAvailable = networkAvailable,
+                        online = current.online,
+                        hasActiveJob = current.activeJob != null,
+                        hasLaundryJob = current.laundry.activeJob != null,
+                        hasDeliveryReturn = current.deliveryReturn != null,
+                        hasOffer = current.offeredJob != null,
+                        actionBusy = actionBusy
+                    )
+                ) {
+                    delay(1_000L)
+                    continue
+                }
+
+                actionBusy = true
+                val loc = lastKnownLocation(context)
+                val stopped = runCatching {
+                    api.setOnline(auth, false, loc?.first, loc?.second)
+                }.isSuccess
+                if (stopped) {
+                    setStopAfterWorkPending(false)
+                    playRiderEventFeedback(eventFeedbackView, RiderEventFeedbackKind.GO_OFFLINE)
+                    actionMessage = "จบงานแล้ว · ปิดรับงานให้แล้ว"
+                    runCatching { api.riderSnapshot(auth) }
+                        .onSuccess {
+                            snapshot = it
+                            pushStore.saveHomeSnapshot(auth.user.id, it)
+                        }
+                    actionBusy = false
+                    return@repeatOnLifecycle
+                }
+
+                actionBusy = false
+                actionMessage = "ยังปิดรับงานไม่สำเร็จ · ระบบจะลองอีกครั้งเมื่อเชื่อมต่อพร้อม"
+                delay(5_000L)
+            }
         }
     }
 
@@ -1895,6 +1967,7 @@ private fun RiderHome(
 
     LaunchedEffect(
         autoAcceptEnabled,
+        stopAfterWorkPending,
         networkAvailable,
         snapshot?.online,
         snapshot?.activeJob?.id,
@@ -1910,7 +1983,7 @@ private fun RiderHome(
             val key = offer.id + ":" + (offer.offerExpiresAt ?: "")
             if (autoAcceptAttemptKey == key) return@repeatOnLifecycle
             if (!riderAutoAcceptEligible(
-                    enabled = autoAcceptEnabled,
+                    enabled = riderAutoAcceptAllowedWhileStopping(autoAcceptEnabled, stopAfterWorkPending),
                     networkAvailable = networkAvailable,
                     online = current.online,
                     hasActiveWork = current.activeJob != null || current.laundry.activeJob != null,
@@ -1924,7 +1997,7 @@ private fun RiderHome(
             val latestKey = latest.id + ":" + (latest.offerExpiresAt ?: "")
             if (latestKey != key) return@repeatOnLifecycle
             if (!riderAutoAcceptEligible(
-                    enabled = autoAcceptEnabled,
+                    enabled = riderAutoAcceptAllowedWhileStopping(autoAcceptEnabled, stopAfterWorkPending),
                     networkAvailable = networkAvailable,
                     online = snapshot?.online == true,
                     hasActiveWork = snapshot?.activeJob != null || snapshot?.laundry?.activeJob != null,
@@ -2134,11 +2207,39 @@ private fun RiderHome(
                                 color = Color(0xFF78694E),
                                 modifier = Modifier.padding(top = 3.dp)
                             )
-                            TextButton(
-                                onClick = { dismissedRestSessionStart = navigationSessionStartedMs },
-                                modifier = Modifier.align(Alignment.End)
-                            ) {
-                                Text("รับทราบ", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = QgRed)
+                            if (stopAfterWorkPending) {
+                                Text(
+                                    "ตั้งให้หยุดรับงานอัตโนมัติหลังงานนี้แล้ว",
+                                    color = Color(0xFF287A4B),
+                                    fontSize = 8.5.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.padding(top = 5.dp)
+                                )
+                                TextButton(
+                                    onClick = {
+                                        setStopAfterWorkPending(false)
+                                        actionMessage = "ยกเลิกการหยุดรับงานหลังจบงานแล้ว"
+                                    },
+                                    modifier = Modifier.align(Alignment.End)
+                                ) {
+                                    Text("ยกเลิก", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = QgRed)
+                                }
+                            } else {
+                                TextButton(
+                                    onClick = {
+                                        setStopAfterWorkPending(true)
+                                        actionMessage = "ตั้งให้หยุดรับงานหลังจบงานนี้แล้ว"
+                                    },
+                                    modifier = Modifier.align(Alignment.End)
+                                ) {
+                                    Text("จบงานนี้แล้วหยุดรับงาน", fontSize = 9.sp, fontWeight = FontWeight.Black, color = QgRed)
+                                }
+                                TextButton(
+                                    onClick = { dismissedRestSessionStart = navigationSessionStartedMs },
+                                    modifier = Modifier.align(Alignment.End)
+                                ) {
+                                    Text("รับทราบ", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = QgMuted)
+                                }
                             }
                         }
                     }
