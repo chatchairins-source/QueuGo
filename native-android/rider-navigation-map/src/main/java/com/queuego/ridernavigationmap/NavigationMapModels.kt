@@ -50,7 +50,9 @@ data class RiderNavigationMapState(
     val routes: List<NavigationRouteSegment> = emptyList(),
     val activeStopId: String? = null,
     val followRider: Boolean = true,
-    val followZoom: Int = 17
+    val followZoom: Int = 17,
+    val viewMode: NavigationViewMode = NavigationViewMode.FOLLOW,
+    val viewportInsets: NavigationViewportInsets = NavigationViewportInsets()
 )
 
 data class NavigationMapDiagnostics(
