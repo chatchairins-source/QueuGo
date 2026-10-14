@@ -279,10 +279,39 @@ data class RiderCashLedgerEntry(
     val deliveryFee: Double,
     val cashPaidMerchant: Double,
     val cashCollectedCustomer: Double,
+    val cashRefundedMerchant: Double = 0.0,
     val createdAt: String?
 ) {
     val numberLabel: String
         get() = nativeOrderNumber(orderNumber)
+}
+
+data class RiderDeliveryReturn(
+    val caseId: String,
+    val orderId: String,
+    val orderNumber: String?,
+    val status: String,
+    val reason: String,
+    val adminNote: String?,
+    val shopId: String,
+    val shopName: String?,
+    val shopAddress: String?,
+    val shopLatitude: Double?,
+    val shopLongitude: Double?,
+    val expectedRefundAmount: Double,
+    val ticketId: String?,
+    val reportedAt: String?,
+    val returnRequiredAt: String?,
+    val startedReturnAt: String?
+) {
+    val numberLabel: String
+        get() = nativeOrderNumber(orderNumber)
+
+    val waitingForSupport: Boolean
+        get() = status == "reported"
+
+    val canReturnToShop: Boolean
+        get() = status == "return_required" || status == "returning"
 }
 
 data class RiderSnapshot(
@@ -293,7 +322,8 @@ data class RiderSnapshot(
     val riderProfileId: String? = null,
     val laundry: RiderLaundryState = RiderLaundryState(),
     val bundle: RiderRouteBundleState = RiderRouteBundleState(),
-    val profile: RiderProfileInfo? = null
+    val profile: RiderProfileInfo? = null,
+    val deliveryReturn: RiderDeliveryReturn? = null
 )
 
 
