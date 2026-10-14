@@ -1,3 +1,11 @@
+## 2026-10-14 Grab Driver parity: Rider Map Feedback v1
+- Added a privacy-bounded QueueGo map-feedback workflow after confirming the owner-supplied Grab Driver package contains realtime/navigation feedback services and option-sheet UI. No Grab code, assets or road geometry are copied.
+- Production migration 20261014074523_rider_map_feedback_v1 stores feedback only in qg_private. Rider submits an allowlisted issue category, one current coordinate snapshot and an optional <=500-character note. No order/customer/shop/destination identifiers are accepted or stored by this contract. Rider rate limit is 5 submissions/hour.
+- Native Rider exposes “รายงานปัญหาแผนที่ / ถนน” from Safety Centre. It reuses the existing retained navigation fix or fresh safety last-known location snapshot; no new GPS stream is opened. UI tells Rider to stop safely before reporting.
+- Admin Rider panel has a pending review queue with location viewer and accepted_for_review/dismissed decisions. accepted_for_review is review-only: this migration never edits Local Roads, route geometry, map renderer or dispatch data automatically.
+- Public wrappers are SECURITY INVOKER with anon EXECUTE revoked; qg_private validates live active Rider/Admin sessions. Admin UI never reads the private table directly.
+- Backup backup/rider-safety-messages-before-map-feedback-20261014 retains 4e8f712. Exact-head native-pilot + navigation-map-runtime and Admin regression are required before PASS.
+
 ## 2026-10-14 Grab Driver parity unified release: Fatigue + Unplanned Stop + Message Center
 - Consolidated three parallel successors onto the current navigation-map release line instead of leaving Rider safety/messages split across PRs.
 - Preserves persistent server-backed Fatigue Safety from the current base: presence-history continuous/today online minutes and advisory rest levels only; no medical/drowsiness claim and no automatic work interruption.
