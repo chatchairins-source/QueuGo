@@ -149,6 +149,7 @@ class RiderNavigationLocationService : Service() {
 
     private fun startLocationUpdates() {
         if (locationUpdatesStarted || !hasLocationPermission()) return
+        RiderLocationIntegrityStore.startSession()
 
         val nextCallback = object : LocationCallback() {
             override fun onLocationResult(result: LocationResult) {
@@ -187,6 +188,7 @@ class RiderNavigationLocationService : Service() {
 
     private fun accept(location: Location) {
         if (!locationUpdatesStarted) return
+        RiderLocationIntegrityStore.record(location)
         if (!location.latitude.isFinite() || !location.longitude.isFinite()) return
         if (location.latitude !in -90.0..90.0 || location.longitude !in -180.0..180.0) return
         if (location.hasAccuracy() && location.accuracy > NAVIGATION_MAX_ACCURACY_METERS) return
