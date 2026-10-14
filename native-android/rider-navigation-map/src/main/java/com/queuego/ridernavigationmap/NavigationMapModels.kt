@@ -77,7 +77,8 @@ data class NavigationMapDiagnostics(
     val snapshotBridgeFailureCount: Int = 0,
     val mapReplacementCount: Int = 0,
     val snapshotVisible: Boolean = false,
-    val routeGeometryUpdateCount: Int = 0
+    val routeGeometryUpdateCount: Int = 0,
+    val demandMutationCount: Int = 0
 )
 
 internal fun RiderNavigationMapState.renderableDemandZones(): List<NavigationDemandZone> =

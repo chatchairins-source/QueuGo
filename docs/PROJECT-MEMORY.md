@@ -1,3 +1,8 @@
+## 2026-10-14 Rider demand heatmap runtime assertions
+- Continued the newer Work heatmap successor PR227 at fd2ea9f, preserving its density-aware centered demand halos and successful navigation runtime baseline.
+- Added diagnostics/runtime evidence only: demand pin mutations are counted separately, debug fixtures exercise add/level-change/clear, and the Android emulator test asserts MapGLSurfaceView plus Longdo map identities remain unchanged through every demand transition.
+- No Heatmap product/backend/privacy/camera/route behavior changed from PR227. Backup backup/rider-demand-heatmap-before-runtime-assertions-20261014 retains fd2ea9f. Exact successor CI is required before PASS.
+
 ## 2026-10-14 Rider demand heatmap exact runtime gate
 - Re-cut the unchanged privacy-safe Heatmap implementation from 03f5194 onto branch work-native-rider-navigation-map-demand-heatmap-20261014 because the repository's navigation-map-runtime job is intentionally branch-prefix gated. This successor exists to force the actual retained Longdo navigation renderer runtime gate on the exact Heatmap implementation without weakening or changing CI conditions.
 - No product/backend behavior changed in this checkpoint. Source implementation remains the Production-tested aggregate heatmap from PR225; PASS requires both native-pilot and navigation-map-runtime on this successor HEAD.
