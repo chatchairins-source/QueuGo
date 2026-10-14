@@ -149,9 +149,13 @@ window.qtAdminRequestRiderReverification=async function(riderId){
     const value=await qgAdminInput({title:'ขอยืนยันตัวตน Rider',label:'เหตุผลที่ขอตรวจใหม่'});
     if(value===null)return;
     const reason=String(value||'').trim();
+    if(!reason){
+      if(typeof toast==='function')toast('กรุณาระบุเหตุผลที่ขอตรวจใหม่');
+      return;
+    }
     await qtSupabaseRpc('qg_admin_request_rider_reverification',{
       p_rider_id:riderId,
-      p_reason:reason||null
+      p_reason:reason
     });
     if(typeof toast==='function')toast('ส่งคำขอยืนยันตัวตนแล้ว');
     await qtRenderAdminRiderPresence();
