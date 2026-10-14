@@ -10,7 +10,8 @@ assert(
   app.includes('deliverySuccessJob = job') &&
   app.includes('RiderDeliverySuccess(') &&
   app.includes('job = completed') &&
-  app.includes('recommendation = afterWorkRecommendation'),
+  app.includes('recommendation = afterWorkRecommendation') &&
+  app.includes('onDismiss = { deliverySuccessJob = null }'),
   'Successful delivery must surface the Production-style success card with optional real after-work recommendation'
 );
 assert(app.includes('if (completedMode == "delivery") {')&&app.includes('closeVerification()'),
@@ -23,7 +24,9 @@ assert(ui.includes('"รายได้ค่าส่ง ฿"')&&ui.includes('j
 assert(ui.includes('"รับทราบ"')&&ui.includes('if (recommendation == null)')&&ui.includes('delay(4_500)'),
   'Success feedback must keep acknowledgement and auto-dismiss only when no real recommendation exists');
 assert(
+  ui.includes('recommendation: RiderAfterWorkRecommendation?') &&
   ui.includes('onRecommendation: (RiderAfterWorkRecommendation) -> Unit') &&
+  ui.includes('recommendation?.let { item ->') &&
   ui.includes('onRecommendation(item)'),
   'Success card recommendation CTA must pass the exact real recommendation selected by Rider Home'
 );
