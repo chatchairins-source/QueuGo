@@ -1,3 +1,8 @@
+## 2026-10-14 Grab Driver parity: ETA HUD rebased onto latest unified safety head
+- Rebased the route ETA HUD onto 5abe6a1 after the consolidated Rider branch advanced with exact Production emergency-contact migration fixes. Rider Home and navigation integration were byte-identical across the rebase base, so the ETA view carries without overwriting those fixes.
+- HUD remains read-only: next-stop route distance, Longdo ETA when present and next turn instruction. Weak GPS/off-route hides the values and no fallback ETA is invented.
+- Backup backup/rider-grab-parity-before-eta-hud-20261014-v3 retains 5abe6a1. Exact-head native-pilot + navigation-map-runtime required.
+
 ## 2026-10-14 Grab Driver parity unified: live speed + advisory rest reminder
 - Pulled the validated PR242 speed/rest implementation onto the current Learning + Missions + Emergency Contact release line after confirming QueueGoRiderApp.kt and RiderNavigationLocationService.kt were byte-identical to PR242's base.
 - Reuses the existing foreground navigation GPS stream; no second location provider is created. Current km/h renders only for accepted speed samples with accuracy guard, and implausible values above 200 km/h are hidden.
