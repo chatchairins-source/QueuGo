@@ -231,4 +231,12 @@ for(const needle of [
 ]){
   assert.ok(multipleVehiclesCompat.includes(needle),'Rider multiple vehicles v2 missing compatibility contract: '+needle);
 }
+const multipleVehiclesLegacyGuard=read('supabase/migrations/20261014082657_rider_multiple_vehicles_selected_legacy_guard_v3.sql');
+for(const needle of [
+  'v_existing.legacy_seed and v_existing.is_selected',
+  'rider must be offline before verifying selected vehicle',
+  'rider has active delivery'
+]){
+  assert.ok(multipleVehiclesLegacyGuard.includes(needle),'Rider multiple vehicles v3 missing selected legacy guard: '+needle);
+}
 console.log('Native backend migration mirror: PASS');
