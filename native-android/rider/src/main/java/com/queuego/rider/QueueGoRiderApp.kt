@@ -282,7 +282,9 @@ fun QueueGoRiderApp(pushTarget: NativePushLaunchTarget? = null) {
                     }
                 )
                 auth?.user?.status != "active" -> RiderPendingAccountScreen(
-                    modifier = Modifier.padding(insets), name = auth!!.user.name,
+                    modifier = Modifier.padding(insets),
+                    name = auth!!.user.name,
+                    status = auth!!.user.status,
                     onLogout = {
                         val current = auth!!
                         RiderReturnService.stop(context)
