@@ -5,6 +5,7 @@ const settings=fs.readFileSync('native-android/settings.gradle.kts','utf8');
 const build=fs.readFileSync('native-android/rider-maplibre-osm/build.gradle.kts','utf8');
 const style=fs.readFileSync('native-android/rider-maplibre-osm/src/main/java/com/queuego/ridermaplibreosm/ShortbreadVillageStyle.kt','utf8');
 const view=fs.readFileSync('native-android/rider-maplibre-osm/src/main/java/com/queuego/ridermaplibreosm/QueueGoMapLibreOsmView.kt','utf8');
+const localRoads=fs.readFileSync('native-android/rider-maplibre-osm/src/main/java/com/queuego/ridermaplibreosm/QueueGoLocalRoads.kt','utf8');
 const riderBuild=fs.readFileSync('native-android/rider/build.gradle.kts','utf8');
 
 assert(settings.includes('":rider-maplibre-osm"'),'MapLibre OSM module must be registered in native settings');
@@ -34,5 +35,22 @@ assert(!downloader.includes('vector.openstreetmap.org'),'Offline archive downloa
 assert(!style.includes('SOURCE_LAYER_LAND'),'Village style must not depend on a non-standard Shortbread land source-layer');
 assert(view.includes('mapViewIdentity()')&&view.includes('mapIdentity()'),'Module must expose renderer identity for future lifecycle retention tests');
 assert(view.includes('readyMap.uiSettings.isAttributionEnabled = true'),'OpenStreetMap attribution control must stay enabled');
+
+assert(localRoads.includes('enum class QueueGoLocalRoadSource')&&
+  localRoads.includes('OPENSTREETMAP_VERIFIED')&&
+  localRoads.includes('PUBLIC_DATA')&&
+  localRoads.includes('RIDER_GPS_TRACE_VERIFIED')&&
+  localRoads.includes('MERCHANT_CONFIRMED')&&
+  localRoads.includes('FIELD_SURVEY')&&
+  !localRoads.toLowerCase().includes('grab'),
+  'QueueGo Local Roads provenance must exclude competitor/private geometry sources');
+assert(localRoads.includes('val renderable: Boolean')&&
+  localRoads.includes('verified && access != QueueGoLocalRoadAccess.PRIVATE_RESTRICTED')&&
+  localRoads.includes('GeoJsonSource(SOURCE_ID, features)')&&
+  localRoads.includes('existing.setGeoJson(features)'),
+  'QueueGo Local Roads must render only verified non-private geometry and update GeoJSON in place');
+assert(view.includes('fun setLocalRoads(')&&
+  view.includes('QueueGoLocalRoadOverlay.apply(style, localRoads)'),
+  'MapLibre Rider map must accept verified local-road updates without reloading the base style');
 
 console.log('native rider MapLibre OSM module contract passed');
