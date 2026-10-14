@@ -33,8 +33,9 @@ import com.queuego.ridernavigationmap.RiderNavigationMapState
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.channels.Channel
 
-// Keep disabled until the isolated confidence pipeline passes CI + real-device route gates.
-// When enabled, it changes renderer/camera coordinates only; coordinator and business state stay raw.
+// Shadow mode computes the candidate renderer fix while preserving the certified display.
+// The display gate stays off until CI + real-device route gates pass.
+private const val RIDER_NAV_CONFIDENCE_SHADOW_ENABLED = true
 private const val RIDER_NAV_DISPLAY_CONFIDENCE_ENABLED = false
 
 private fun riderLongdoNavigationKey(context: Context): String? = runCatching {
@@ -302,12 +303,17 @@ internal fun QueueGoRiderNavigationMap(
         stateChannel.trySend(baseState)
     }
     LaunchedEffect(coordinator, stateChannel, displayPipeline) {
-        fun displayState(authoritativeState: RiderNavigationMapState): RiderNavigationMapState =
-            if (RIDER_NAV_DISPLAY_CONFIDENCE_ENABLED) {
-                displayPipeline.applyToDisplayState(authoritativeState)
+        fun displayState(authoritativeState: RiderNavigationMapState): RiderNavigationMapState {
+            if (!RIDER_NAV_CONFIDENCE_SHADOW_ENABLED && !RIDER_NAV_DISPLAY_CONFIDENCE_ENABLED) {
+                return authoritativeState
+            }
+            val candidateDisplayState = displayPipeline.applyToDisplayState(authoritativeState)
+            return if (RIDER_NAV_DISPLAY_CONFIDENCE_ENABLED) {
+                candidateDisplayState
             } else {
                 authoritativeState
             }
+        }
 
         if (coordinator == null) {
             for (next in stateChannel) {
