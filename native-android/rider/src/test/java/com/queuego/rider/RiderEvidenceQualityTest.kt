@@ -6,6 +6,29 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class RiderEvidenceQualityTest {
+    @Test fun completelyDarkOrClippedFramesRequireRetake() {
+        assertTrue(riderEvidenceExposureMessage(IntArray(100) { 0xff000000.toInt() })!!.contains("มืด"))
+        assertTrue(riderEvidenceExposureMessage(IntArray(100) { 0xffffffff.toInt() })!!.contains("สว่าง"))
+    }
+
+    @Test fun darkBagsAndWhitePackagingWithVisibleDetailAreNotRejected() {
+        val pixels = IntArray(100) { if (it < 97) 0xff000000.toInt() else 0xff808080.toInt() }
+        assertNull(riderEvidenceExposureMessage(pixels))
+        assertNull(riderEvidenceExposureMessage(IntArray(100) { 0xffeeeeee.toInt() }))
+    }
+
+    @Test fun exposureThresholdIsDeterministicAndInclusive() {
+        val pixels = IntArray(100) { if (it < 98) 0xff080808.toInt() else 0xff808080.toInt() }
+        assertTrue(riderEvidenceExposureMessage(pixels)!!.contains("มืด"))
+        assertNull(riderEvidenceExposureMessage(IntArray(100) { 0xff090909.toInt() }))
+    }
+
+    @Test fun exposureCannotOverrideDecodeOrResolutionFailure() {
+        assertTrue(riderEvidenceQuality(0, 0, null, "มืด").message!!.contains("เปิดรูป"))
+        assertTrue(riderEvidenceQuality(320, 240, null, "มืด").message!!.contains("ความละเอียด"))
+        assertFalse(riderEvidenceQuality(1920, 1080, null, "มืด").acceptable)
+    }
+
     @Test fun normalCameraPhotoIsAccepted() {
         val result = riderEvidenceQuality(1920, 1080, 2L * 1024L * 1024L)
         assertTrue(result.acceptable)

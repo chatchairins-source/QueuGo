@@ -679,6 +679,14 @@ private fun RiderHome(
     var actionBusy by remember { mutableStateOf(false) }
     var actionMessage by remember { mutableStateOf<String?>(null) }
 
+    suspend fun persistCommittedSnapshot(value: RiderSnapshot) {
+        val saved = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+            runCatching { pushStore.saveHomeSnapshot(auth.user.id, value, durable = true) }
+                .getOrDefault(false)
+        }
+        if (!saved) actionMessage = "บันทึกงานในเครื่องไม่สำเร็จ · เชื่อมต่อเพื่อกู้คืนสถานะจากระบบ"
+    }
+
     fun setStopAfterWorkPending(pending: Boolean) {
         stopAfterWorkPending = pending
         stopAfterWorkStore.setPending(auth.user.id, pending)
@@ -852,6 +860,9 @@ private fun RiderHome(
     }
     var chatJob by remember { mutableStateOf<RiderJob?>(null) }
     var deliveryIssueJob by remember { mutableStateOf<RiderJob?>(null) }
+    var pickupIssueJob by remember { mutableStateOf<RiderJob?>(null) }
+    var pickupIssueStopId by remember { mutableStateOf<String?>(null) }
+    var pickupChatJob by remember { mutableStateOf<RiderJob?>(null) }
     var verifyMode by remember { mutableStateOf<String?>(null) }
     var verifyJob by remember { mutableStateOf<RiderJob?>(null) }
     var verifyDetails by remember { mutableStateOf<RiderVerificationDetails?>(null) }
@@ -870,6 +881,7 @@ private fun RiderHome(
         pushStore.saveActiveTab(auth.user.id, activeTab)
     }
     var pendingVoiceOrderId by remember { mutableStateOf<String?>(null) }
+    var pendingVoiceTarget by remember { mutableStateOf("customer") }
     var pendingVoiceAnswer by remember { mutableStateOf(false) }
     val voicePermission = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -879,7 +891,7 @@ private fun RiderHome(
                 voiceController.answerIncoming(nativeVoiceAuth)
             } else {
                 pendingVoiceOrderId?.let { orderId ->
-                    voiceController.startOutgoing(nativeVoiceAuth, orderId, "customer")
+                    voiceController.startOutgoing(nativeVoiceAuth, orderId, pendingVoiceTarget)
                 }
             }
         } else {
@@ -894,6 +906,18 @@ private fun RiderHome(
             voiceController.startOutgoing(nativeVoiceAuth, orderId, "customer")
         } else {
             pendingVoiceOrderId = orderId
+            pendingVoiceTarget = "customer"
+            pendingVoiceAnswer = false
+            voicePermission.launch(Manifest.permission.RECORD_AUDIO)
+        }
+    }
+
+    fun startShopVoice(orderId: String) {
+        if (context.checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
+            voiceController.startOutgoing(nativeVoiceAuth, orderId, "shop")
+        } else {
+            pendingVoiceOrderId = orderId
+            pendingVoiceTarget = "shop"
             pendingVoiceAnswer = false
             voicePermission.launch(Manifest.permission.RECORD_AUDIO)
         }
@@ -1177,6 +1201,7 @@ private fun RiderHome(
                 }
             }
                 .onSuccess {
+                    pendingProofStore.saveVerification(auth.user.id, RiderVerificationResume(job.id, mode, null, false))
                     verifyMode = mode
                     verifyJob = job
                     verifyItems = it.first
@@ -1203,6 +1228,7 @@ private fun RiderHome(
     }
 
     fun openMarketPickupVerification(job: RiderJob, pickup: MarketPickup) {
+        pendingProofStore.saveVerification(auth.user.id, RiderVerificationResume(job.id, "marketPickup", pickup.pickupId, false))
         verifyMode = "marketPickup"
         verifyJob = job
         verifyMarketPickup = pickup
@@ -1225,6 +1251,7 @@ private fun RiderHome(
     }
 
     fun closeVerification() {
+        pendingProofStore.clearVerification(auth.user.id)
         verifyMode = null
         verifyJob = null
         verifyItems = emptyList()
@@ -1235,7 +1262,7 @@ private fun RiderHome(
     }
 
     fun commitArrival(job: RiderJob, target: String) {
-        if (!requireServerNetwork()) return
+        if (actionBusy || !requireServerNetwork()) return
         val location = lastKnownLocation(context)
         actionBusy = true
         actionMessage = null
@@ -1266,7 +1293,7 @@ private fun RiderHome(
                 val committedSnapshot = snapshot?.takeIf { it.activeJob?.id == job.id }?.copy(activeJob = committedJob)
                 if (committedSnapshot != null) {
                     snapshot = committedSnapshot
-                    pushStore.saveHomeSnapshot(auth.user.id, committedSnapshot)
+                    persistCommittedSnapshot(committedSnapshot)
                 }
                 updated = runCatching { api.riderSnapshot(auth) }
                     .onFailure { if (it is CancellationException) throw it }
@@ -1277,7 +1304,7 @@ private fun RiderHome(
                     }
                 updated?.let {
                     snapshot = it
-                    pushStore.saveHomeSnapshot(auth.user.id, it)
+                    persistCommittedSnapshot(it)
                 }
                 if (updated == null && committedSnapshot != null) updated = committedSnapshot
             }.onFailure {
@@ -1508,13 +1535,51 @@ private fun RiderHome(
         }
     }
 
-    if (chatJob != null) {
+    LaunchedEffect(auth.user.id, snapshot?.activeJob?.id, snapshot?.activeJob?.status,
+        snapshot?.activeJob?.customerArrived, snapshot?.marketPickups?.map { it.pickupId to it.done }, actionBusy) {
+        if (actionBusy) return@LaunchedEffect
+        val saved = pendingProofStore.loadVerification(auth.user.id) ?: return@LaunchedEffect
+        val current = snapshot ?: return@LaunchedEffect
+        val job = riderSnapshotJobForCommit(current, saved.workId) ?: run {
+            if (verifyMode != null) closeVerification()
+            return@LaunchedEffect
+        }
+        val pickup = current.marketPickups.firstOrNull { it.pickupId == saved.pickupId && !it.done }
+        if (!riderVerificationResumeAllowed(saved.mode, job.status, job.customerArrived, pickup != null)) {
+            pendingProofStore.clearVerification(auth.user.id)
+            if (verifyMode != null) closeVerification()
+            return@LaunchedEffect
+        }
+        if (verifyMode != null) {
+            verifyJob = job
+            return@LaunchedEffect
+        }
+        // Restore identity and the one saved photo immediately, even while offline.
+        verifyMode = saved.mode
+        verifyJob = job
+        verifyMarketPickup = pickup
+        photoUri = pendingProofStore.loadConfirmedMatching(auth.user.id, RIDER_PROOF_SLOT_DELIVERY,
+            job.id, saved.mode, saved.pickupId)?.uri?.let(Uri::parse)
+        if (pickup == null) {
+            try {
+                verifyItems = api.orderItems(auth, job.id)
+                verifyDetails = api.verificationDetails(auth, job.id)
+            } catch (failure: CancellationException) { throw failure }
+            catch (_: Exception) { actionMessage = "กู้คืนขั้นตอนงานแล้ว · รายการจะพร้อมเมื่อเชื่อมต่อได้" }
+        }
+    }
+
+    if (chatJob != null || pickupChatJob != null) {
+        val currentChat = pickupChatJob ?: chatJob!!
         Box(modifier.fillMaxSize()) {
             RiderChatScreen(
                 auth = auth,
-                job = chatJob!!,
-                onBack = { chatJob = null },
-                onCallCustomer = { chatJob?.id?.let(::startCustomerVoice) },
+                job = currentChat,
+                onBack = { chatJob = null; pickupChatJob = null },
+                onCallCustomer = {
+                    if (pickupChatJob != null) startShopVoice(currentChat.id) else startCustomerVoice(currentChat.id)
+                },
+                contactLabel = if (pickupChatJob != null) "แชตออเดอร์ · ร้านและลูกค้า" else null,
                 modifier = Modifier.fillMaxSize()
             )
             RiderVoiceOverlay(
@@ -1539,6 +1604,13 @@ private fun RiderHome(
             photoUri = photoUri,
             busy = actionBusy,
             message = actionMessage,
+            resumeCollection = pendingProofStore.loadVerification(auth.user.id)?.collection == true,
+            onCollectionChanged = { collection ->
+                val job = verifyJob
+                val mode = verifyMode
+                if (job != null && mode != null) pendingProofStore.saveVerification(auth.user.id,
+                    RiderVerificationResume(job.id, mode, verifyMarketPickup?.pickupId, collection))
+            },
             onBack = { closeVerification() },
             onCamera = { openCamera() },
             onChat = { val job = verifyJob; closeVerification(); chatJob = job },
@@ -1551,7 +1623,7 @@ private fun RiderHome(
                     actionMessage = "กรุณาถ่ายรูปหลักฐานก่อน"
                     return@VerificationScreen
                 }
-                if (!requireServerNetwork()) return@VerificationScreen
+                if (actionBusy || !requireServerNetwork()) return@VerificationScreen
                 val location = lastKnownLocation(context)
                 actionBusy = true
                 actionMessage = null
@@ -1652,7 +1724,7 @@ private fun RiderHome(
                         }
                         if (localAfterSuccess != null) {
                             snapshot = localAfterSuccess
-                            pushStore.saveHomeSnapshot(auth.user.id, localAfterSuccess)
+                            persistCommittedSnapshot(localAfterSuccess)
                         }
 
                         if (completedMode == "delivery") {
@@ -1685,7 +1757,7 @@ private fun RiderHome(
                         }
                         if (committedRead != null) {
                             snapshot = committedRead
-                            pushStore.saveHomeSnapshot(auth.user.id, committedRead)
+                            persistCommittedSnapshot(committedRead)
                         }
 
                         if (completedMode == "pickup" && pickupCommittedStatus == "in_progress") {
@@ -1894,7 +1966,7 @@ private fun RiderHome(
                     runCatching { api.riderSnapshot(auth) }
                         .onSuccess {
                             snapshot = it
-                            pushStore.saveHomeSnapshot(auth.user.id, it)
+                            persistCommittedSnapshot(it)
                         }
                     actionBusy = false
                     return@repeatOnLifecycle
@@ -1940,7 +2012,7 @@ private fun RiderHome(
                         marketPickups = emptyList()
                     )
                     snapshot = acceptedSnapshot
-                    pushStore.saveHomeSnapshot(auth.user.id, acceptedSnapshot)
+                    persistCommittedSnapshot(acceptedSnapshot)
 
                     val updated = runCatching { api.riderSnapshot(auth) }
                         .onFailure { if (it is CancellationException) throw it }
@@ -1949,7 +2021,7 @@ private fun RiderHome(
                         ?.let { riderMergeLiveSnapshot(acceptedSnapshot, it) }
                     if (updated != null) {
                         snapshot = updated
-                        pushStore.saveHomeSnapshot(auth.user.id, updated)
+                        persistCommittedSnapshot(updated)
                     }
                     openNavigation(context, updated?.activeJob ?: acceptedFallback)
                 }
@@ -2599,7 +2671,7 @@ private fun RiderHome(
                                                     .getOrNull()
                                                 if (updated != null) {
                                                     snapshot = updated
-                                                    pushStore.saveHomeSnapshot(auth.user.id, updated)
+                                                    persistCommittedSnapshot(updated)
                                                 }
                                                 openReturnNavigation(context, updated?.deliveryReturn ?: returnCase)
                                             }
@@ -2638,7 +2710,7 @@ private fun RiderHome(
                                                     .getOrNull()
                                                 if (updated != null) {
                                                     snapshot = updated
-                                                    pushStore.saveHomeSnapshot(auth.user.id, updated)
+                                                    persistCommittedSnapshot(updated)
                                                 }
                                                 if (result == "returned") {
                                                     playRiderEventFeedback(eventFeedbackView, RiderEventFeedbackKind.RETURN_COMPLETE)
@@ -2714,7 +2786,7 @@ private fun RiderHome(
                                     openMarketPickupVerification(activeJob, pickup)
                                 },
                                 onStartDelivery = {
-                                    if (!requireServerNetwork()) {
+                                    if (actionBusy || !requireServerNetwork()) {
                                         Unit
                                     } else {
                                     actionBusy = true
@@ -2728,7 +2800,7 @@ private fun RiderHome(
                                                     offeredJob = null
                                                 )
                                                 snapshot = committedSnapshot
-                                                pushStore.saveHomeSnapshot(auth.user.id, committedSnapshot)
+                                                persistCommittedSnapshot(committedSnapshot)
                                                 val updated = runCatching { api.riderSnapshot(auth) }
                                                     .onFailure { if (it is CancellationException) throw it }
                                                     .getOrNull()
@@ -2737,7 +2809,7 @@ private fun RiderHome(
                                                 }
                                                 if (committedRead != null) {
                                                     snapshot = committedRead
-                                                    pushStore.saveHomeSnapshot(auth.user.id, committedRead)
+                                                    persistCommittedSnapshot(committedRead)
                                                 }
                                                 openNavigation(context, committedRead?.activeJob ?: committedJob)
                                             }
@@ -2784,7 +2856,7 @@ private fun RiderHome(
                                 }
                             },
                             onStartDelivery = {
-                                if (!requireServerNetwork()) {
+                                if (actionBusy || !requireServerNetwork()) {
                                     Unit
                                 } else {
                                 actionBusy = true
@@ -2798,7 +2870,7 @@ private fun RiderHome(
                                                 offeredJob = null
                                             )
                                             snapshot = committedSnapshot
-                                            pushStore.saveHomeSnapshot(auth.user.id, committedSnapshot)
+                                            persistCommittedSnapshot(committedSnapshot)
                                             val updated = runCatching { api.riderSnapshot(auth) }
                                                 .onFailure { if (it is CancellationException) throw it }
                                                 .getOrNull()
@@ -2807,7 +2879,7 @@ private fun RiderHome(
                                             }
                                             if (committedRead != null) {
                                                 snapshot = committedRead
-                                                pushStore.saveHomeSnapshot(auth.user.id, committedRead)
+                                                persistCommittedSnapshot(committedRead)
                                             }
                                             openNavigation(context, committedRead?.activeJob ?: committedJob)
                                         }
@@ -2826,6 +2898,10 @@ private fun RiderHome(
                             },
                             onDeliveryIssue = {
                                 deliveryIssueJob = current.activeJob
+                            },
+                            onPickupIssue = {
+                                pickupIssueJob = current.activeJob
+                                pickupIssueStopId = current.marketPickups.firstOrNull { !it.done }?.pickupId
                             }
                         )
                         RiderRouteBundlePanel(
@@ -2985,6 +3061,18 @@ private fun RiderHome(
                     }
                 },
                 onDismiss = { deliverySuccessJob = null }
+            )
+        }
+        pickupIssueJob?.let { issueJob ->
+            RiderPickupIssueDialog(
+                auth = auth, job = issueJob, pickupId = pickupIssueStopId,
+                onDismiss = { pickupIssueJob = null },
+                onCallShop = { startShopVoice(it.id) },
+                onChat = { pickupIssueJob = null; pickupChatJob = it },
+                onReported = { label ->
+                    pickupIssueJob = null
+                    actionMessage = "ส่งปัญหาจุดรับให้ฝ่ายดูแลแล้ว · $label"
+                }
             )
         }
         deliveryIssueJob?.let { issueJob ->
@@ -3307,7 +3395,8 @@ private fun ActiveJobCard(
     onStartDelivery: () -> Unit,
     onArriveCustomer: () -> Unit,
     onDeliveryVerify: () -> Unit,
-    onDeliveryIssue: () -> Unit
+    onDeliveryIssue: () -> Unit,
+    onPickupIssue: () -> Unit
 ) {
     val context = LocalContext.current
     val pickup = job.status in setOf("rider_assigned", "assigned", "preparing", "ready")
@@ -3409,6 +3498,12 @@ private fun ActiveJobCard(
                 RiderJobTool("jobs", processLabel, !busy && job.marketOrderId == null && job.status == "ready", Modifier.weight(1f), onPickupVerify)
                 RiderJobTool("jobs", "รายการ", !busy, Modifier.weight(1f), onDetails)
                 RiderJobTool("support", "แชต", !busy && networkAvailable, Modifier.weight(1f), onChat)
+            }
+            if (pickup) {
+                OutlinedButton(onClick = onPickupIssue, enabled = !busy && networkAvailable,
+                    modifier = Modifier.fillMaxWidth().padding(top = 7.dp).heightIn(min = RIDER_SECONDARY_ACTION_MIN_HEIGHT_DP.dp)) {
+                    Text("ปัญหาที่จุดรับ", fontSize = RIDER_SECONDARY_ACTION_TEXT_SP.sp)
+                }
             }
             if (!pickup && job.status == "in_progress" && job.customerArrived) {
                 OutlinedButton(
@@ -3783,6 +3878,8 @@ private fun VerificationScreen(
     photoUri: Uri?,
     busy: Boolean,
     message: String?,
+    resumeCollection: Boolean,
+    onCollectionChanged: (Boolean) -> Unit,
     onBack: () -> Unit,
     onCamera: () -> Unit,
     onChat: () -> Unit,
@@ -3794,9 +3891,10 @@ private fun VerificationScreen(
     var previewQuality by remember(photoUri) { mutableStateOf<RiderEvidenceQuality?>(null) }
     val previewReady = previewQuality?.acceptable == true
     val photoReady = photoUri != null
-    var showCollection by rememberSaveable(job.id, mode) { mutableStateOf(false) }
+    var showCollection by rememberSaveable(job.id, mode) { mutableStateOf(resumeCollection) }
+    LaunchedEffect(showCollection) { onCollectionChanged(showCollection) }
     val collectionReady = riderCollectionReady(job.customerCash, photoReady, previewReady)
-    if (showCollection && photoReady && !pickup && !marketPickupMode) {
+    if (showCollection && photoReady && previewReady && !pickup && !marketPickupMode) {
         RiderCollectionScreen(
             modifier = modifier,
             job = job,
@@ -3984,7 +4082,7 @@ private fun VerificationScreen(
                                 .clip(RoundedCornerShape(15.dp))) {
                                 RiderEvidencePreview(photoUri, Modifier.fillMaxSize()) { previewQuality = it }
                                 Box(Modifier.align(Alignment.BottomEnd).padding(8.dp)
-                                    .height(38.dp).clip(RoundedCornerShape(99.dp)).background(Color(0xF5FFFFFF))
+                                    .heightIn(min = 48.dp).clip(RoundedCornerShape(99.dp)).background(Color(0xF5FFFFFF))
                                     .clickable(enabled = !busy, onClick = onCamera).padding(horizontal = 13.dp), contentAlignment = Alignment.Center) {
                                     Text("ถ่ายใหม่", fontSize = 10.sp, fontWeight = FontWeight.Black)
                                 }
@@ -4164,7 +4262,7 @@ private fun lastKnownLocation(context: Context): Pair<Double, Double>? {
 }
 
 private fun createEvidenceUri(context: Context): Uri {
-    val dir = File(context.cacheDir, "queuego-evidence").apply { mkdirs() }
+    val dir = File(context.filesDir, "queuego-evidence").apply { mkdirs() }
     val file = File.createTempFile("qg-proof-", ".jpg", dir)
     return FileProvider.getUriForFile(
         context,
@@ -4304,7 +4402,7 @@ private fun openNavigation(context: Context, job: RiderJob) {
     if (opened) {
         context.getSharedPreferences("rider_navigation", Context.MODE_PRIVATE).edit()
             .putBoolean(navigationKey, true)
-            .apply()
+            .commit()
     } else {
         RiderReturnService.stop(context)
     }

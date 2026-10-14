@@ -16,6 +16,7 @@ import java.net.URLEncoder
 import java.net.URL
 import java.nio.charset.StandardCharsets
 import java.util.UUID
+import java.security.MessageDigest
 
 internal fun riderNullableText(value: String?): String? =
     value?.trim()?.takeIf { it.isNotEmpty() && !it.equals("null", ignoreCase = true) }
@@ -1224,6 +1225,25 @@ class QueueGoApi {
         )
     }
 
+    suspend fun pickupIssueOrderId(auth: QueueGoAuth, pickupId: String): String = withContext(Dispatchers.IO) {
+        val row = requestArray("GET", "/rest/v1/market_order_pickups?select=order_id&id=eq." +
+            enc(pickupId) + "&limit=1", auth.session.accessToken).optJSONObject(0)
+        riderNullableUuid(row?.optString("order_id")) ?: error("ไม่พบออเดอร์ของจุดรับนี้")
+    }
+
+    internal suspend fun reportPickupIssue(
+        auth: QueueGoAuth, job: RiderJob, reason: RiderPickupIssueReason, note: String, pickupId: String?
+    ): Any = withContext(Dispatchers.IO) {
+        require(reason in riderPickupIssueReasons) { "สาเหตุจุดรับไม่ถูกต้อง" }
+        val details = riderPickupIssueDetails(job.numberLabel, reason, note, pickupId)
+        rpc("qg_create_ticket", auth.session.accessToken, JSONObject()
+            .put("p_ticket_id", riderPickupIssueRequestId(auth.user.id, job.id, details))
+            .put("p_order_id", job.id)
+            .put("p_category", reason.category)
+            .put("p_details", details)
+            .put("p_evidence_path", JSONObject.NULL))
+    }
+
     suspend fun reportDeliveryIssue(
         auth: QueueGoAuth,
         job: RiderJob,
@@ -1685,7 +1705,18 @@ class QueueGoApi {
             .put("p_target", target)
             .putNullable("p_lat", latitude)
             .putNullable("p_lng", longitude)
-        rpc("qg_rider_mark_arrival", auth.session.accessToken, body)
+        riderRecoverMutation(
+            mutate = { rpc("qg_rider_mark_arrival", auth.session.accessToken, body) },
+            readCommitted = {
+                val row = readMutationOrder(auth, orderId)
+                val field = when (target) {
+                    "shop" -> "rider_arrived_shop_at"
+                    "customer" -> "rider_arrived_customer_at"
+                    else -> error("จุดหมายไม่ถูกต้อง")
+                }
+                if (riderNullableText(row?.optString(field)) != null) target else null
+            }
+        )
     }
 
     suspend fun startDelivery(auth: QueueGoAuth, job: RiderJob) = withContext(Dispatchers.IO) {
@@ -1720,7 +1751,13 @@ class QueueGoApi {
             .put("p_photo_path", path)
             .putNullable("p_lat", latitude)
             .putNullable("p_lng", longitude)
-        rpc("qg_pickup_with_photo", auth.session.accessToken, body)
+        riderRecoverMutation(
+            mutate = { rpc("qg_pickup_with_photo", auth.session.accessToken, body) },
+            readCommitted = {
+                val status = readMutationOrder(auth, orderId)?.optString("status")
+                if (status in setOf("picked_up", "in_progress") && mutationProofExists(auth, "qg_pickup_proofs", orderId, path)) status else null
+            }
+        )
     }
 
     suspend fun completeWithPhoto(
@@ -1738,14 +1775,28 @@ class QueueGoApi {
                 .put("p_photo_path", path)
                 .putNullable("p_lat", latitude)
                 .putNullable("p_lng", longitude)
-            rpc("qg_complete_market_with_photo", auth.session.accessToken, body)
+            riderRecoverMutation(
+                mutate = { rpc("qg_complete_market_with_photo", auth.session.accessToken, body) },
+                readCommitted = {
+                    val rows = requestArray("GET", "/rest/v1/orders?select=id,status&market_order_id=eq." + enc(job.marketOrderId), auth.session.accessToken)
+                    val orders = (0 until rows.length()).mapNotNull { rows.optJSONObject(it) }
+                    if (orders.isNotEmpty() && orders.all { it.optString("status") in setOf("completed", "cancelled") } &&
+                        orders.any { it.optString("status") == "completed" && mutationProofExists(auth, "qg_delivery_proofs", it.optString("id"), path) }) "completed" else null
+                }
+            )
         } else {
             val body = JSONObject()
                 .put("p_order_id", job.id)
                 .put("p_photo_path", path)
                 .putNullable("p_lat", latitude)
                 .putNullable("p_lng", longitude)
-            rpc("qg_complete_with_photo", auth.session.accessToken, body)
+            riderRecoverMutation(
+                mutate = { rpc("qg_complete_with_photo", auth.session.accessToken, body) },
+                readCommitted = {
+                    if (readMutationOrder(auth, job.id)?.optString("status") == "completed" &&
+                        mutationProofExists(auth, "qg_delivery_proofs", job.id, path)) "completed" else null
+                }
+            )
         }
     }
 
@@ -1764,7 +1815,13 @@ class QueueGoApi {
             .put("p_photo_path", path)
             .putNullable("p_lat", latitude)
             .putNullable("p_lng", longitude)
-        rpc("qg_market_pickup_with_photo", auth.session.accessToken, body)
+        riderRecoverMutation(
+            mutate = { rpc("qg_market_pickup_with_photo", auth.session.accessToken, body) },
+            readCommitted = {
+                val row = requestArray("GET", "/rest/v1/market_order_pickups?select=order_id,status&id=eq." + enc(pickup.pickupId) + "&limit=1", auth.session.accessToken).optJSONObject(0)
+                if (row?.optString("status") == "PICKED_UP" && mutationProofExists(auth, "qg_pickup_proofs", row.optString("order_id"), path)) JSONObject().put("status", "PICKED_UP") else null
+            }
+        )
     }
 
     private fun marketPickupRoute(auth: QueueGoAuth, marketOrderId: String): List<MarketPickup> {
@@ -1822,14 +1879,46 @@ class QueueGoApi {
     private fun actionOnce(auth: QueueGoAuth, kind: String, payload: JSONObject): Any {
         val seed = auth.user.id + "|" + kind + "|" + payload.toString()
         val requestId = UUID.nameUUIDFromBytes(seed.toByteArray(StandardCharsets.UTF_8)).toString()
-        return rpc(
-            "qg_rider_action_once",
-            auth.session.accessToken,
-            JSONObject()
-                .put("p_request_id", requestId)
-                .put("p_kind", kind)
-                .put("p_payload", payload)
+        val body = JSONObject()
+            .put("p_request_id", requestId)
+            .put("p_kind", kind)
+            .put("p_payload", payload)
+        return riderRecoverMutation(
+            mutate = { rpc("qg_rider_action_once", auth.session.accessToken, body) },
+            readCommitted = {
+                val receipt = requestArray("GET", "/rest/v1/qg_rider_action_receipts?select=result,kind,payload&request_id=eq." +
+                    enc(requestId) + "&user_id=eq." + enc(auth.user.id) + "&limit=1", auth.session.accessToken).optJSONObject(0)
+                if (receipt?.optString("kind") == kind && receipt.has("result")) receipt.get("result") else null
+            }
         )
+    }
+
+    private fun readMutationOrder(auth: QueueGoAuth, orderId: String): JSONObject? =
+        requestArray("GET", "/rest/v1/orders?select=id,status,rider_arrived_shop_at,rider_arrived_customer_at&id=eq." +
+            enc(orderId) + "&limit=1", auth.session.accessToken).optJSONObject(0)
+
+    private fun mutationProofExists(auth: QueueGoAuth, table: String, orderId: String, path: String): Boolean =
+        requestArray("GET", "/rest/v1/$table?select=order_id&order_id=eq." + enc(orderId) +
+            "&photo_path=eq." + enc(path) + "&limit=1", auth.session.accessToken).length() == 1
+
+    private fun uploadedEvidenceMatches(auth: QueueGoAuth, path: String, bytes: ByteArray): Boolean {
+        val connection = URL(BASE_URL + "/storage/v1/object/authenticated/qg-evidence/" + path)
+            .openConnection() as HttpURLConnection
+        try {
+            connection.connectTimeout = TIMEOUT
+            connection.readTimeout = TIMEOUT
+            connection.setRequestProperty("apikey", PUBLISHABLE_KEY)
+            connection.setRequestProperty("Authorization", "Bearer " + auth.session.accessToken)
+            if (connection.responseCode != 200) return false
+            return connection.inputStream.buffered().use { input ->
+                var matches = true
+                for (byte in bytes) if (input.read() != (byte.toInt() and 255)) {
+                    matches = false
+                    break
+                }
+                matches && input.read() == -1
+            }
+        } finally { connection.disconnect() }
     }
 
     private fun uploadEvidence(context: Context, auth: QueueGoAuth, uri: Uri): String {
@@ -1838,7 +1927,20 @@ class QueueGoApi {
         if (bytes.isEmpty()) error("รูปหลักฐานว่าง")
         if (bytes.size > 5 * 1024 * 1024) error("รูปหลักฐานต้องมีขนาดไม่เกิน 5 MB")
 
-        val path = auth.session.authUserId + "/" + UUID.randomUUID() + ".jpg"
+        // Same single photo has one immutable storage identity across retries/process death.
+        val digest = MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { "%02x".format(it) }
+        val path = auth.session.authUserId + "/proof-" + digest + ".jpg"
+        try {
+            return uploadEvidenceBytes(auth, path, bytes)
+        } catch (failure: Exception) {
+            if (!riderMutationAmbiguous(failure) && !(failure is RiderHttpException && failure.statusCode == 409)) throw failure
+            val exists = runCatching { uploadedEvidenceMatches(auth, path, bytes) }.getOrDefault(false)
+            if (!exists) throw failure
+            return path
+        }
+    }
+
+    private fun uploadEvidenceBytes(auth: QueueGoAuth, path: String, bytes: ByteArray): String {
         val connection = URL(BASE_URL + "/storage/v1/object/qg-evidence/" + path)
             .openConnection() as HttpURLConnection
         try {

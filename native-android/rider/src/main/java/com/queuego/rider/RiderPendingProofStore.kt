@@ -17,6 +17,18 @@ internal data class RiderProofDraft(
     val createdAtMs: Long
 )
 
+internal data class RiderVerificationResume(
+    val workId: String, val mode: String, val pickupId: String?, val collection: Boolean
+)
+
+internal fun riderVerificationResumeAllowed(mode: String, status: String, customerArrived: Boolean, pickupPending: Boolean): Boolean =
+    when (mode) {
+        "pickup" -> status == "ready"
+        "marketPickup" -> pickupPending && status in setOf("rider_assigned", "assigned", "preparing", "ready")
+        "delivery" -> status == "in_progress" && customerArrived
+        else -> false
+    }
+
 internal fun riderProofDraftMatches(
     draft: RiderProofDraft,
     workId: String,
@@ -42,6 +54,24 @@ internal class RiderPendingProofStore(context: Context) {
 
     private fun reservationKey(userId: String, slot: String) = "capture:$slot:$userId"
     private fun confirmedKey(userId: String, slot: String) = "confirmed:$slot:$userId"
+
+    fun saveVerification(userId: String, value: RiderVerificationResume) {
+        val raw = JSONObject().put("work_id", value.workId).put("mode", value.mode)
+            .put("pickup_id", value.pickupId ?: JSONObject.NULL).put("collection", value.collection)
+        check(prefs.edit().putString("workflow:$userId", raw.toString()).commit()) {
+            "บันทึกขั้นตอนงานไม่สำเร็จ กรุณาลองใหม่"
+        }
+    }
+
+    fun loadVerification(userId: String): RiderVerificationResume? = runCatching {
+        val row = JSONObject(prefs.getString("workflow:$userId", null) ?: return null)
+        RiderVerificationResume(row.getString("work_id"), row.getString("mode"),
+            row.optString("pickup_id").takeIf { it.isNotBlank() && it != "null" }, row.optBoolean("collection"))
+    }.getOrNull()
+
+    fun clearVerification(userId: String) {
+        prefs.edit().remove("workflow:$userId").commit()
+    }
 
     private fun encode(value: RiderProofDraft): String =
         JSONObject()
@@ -92,7 +122,6 @@ internal class RiderPendingProofStore(context: Context) {
     ) {
         val key = reservationKey(userId, slot)
         val previousReservation = decode(prefs.getString(key, null))
-        if (previousReservation?.uri != uri.toString()) discardUri(previousReservation?.uri)
 
         val draft = RiderProofDraft(
             workId = workId,
@@ -101,13 +130,16 @@ internal class RiderPendingProofStore(context: Context) {
             uri = uri.toString(),
             createdAtMs = nowMs
         )
-        prefs.edit().putString(key, encode(draft)).apply()
+        check(prefs.edit().putString(key, encode(draft)).commit()) {
+            "บันทึกรูปหลักฐานไม่สำเร็จ กรุณาลองใหม่"
+        }
+        if (previousReservation?.uri != uri.toString()) discardUri(previousReservation?.uri)
     }
 
     fun cancelCapture(userId: String, slot: String) {
         val key = reservationKey(userId, slot)
         val previousReservation = decode(prefs.getString(key, null))
-        prefs.edit().remove(key).apply()
+        if (!prefs.edit().remove(key).commit()) return
         discardUri(previousReservation?.uri)
     }
 
@@ -132,10 +164,11 @@ internal class RiderPendingProofStore(context: Context) {
         val previousConfirmed = decode(prefs.getString(confirmedSlot, null))
         val confirmed = capture.copy(createdAtMs = nowMs)
 
-        prefs.edit()
+        val saved = prefs.edit()
             .putString(confirmedSlot, encode(confirmed))
             .remove(captureKey)
-            .apply()
+            .commit()
+        if (!saved) return null
 
         if (previousConfirmed?.uri != null && previousConfirmed.uri != confirmed.uri) {
             discardUri(previousConfirmed.uri)
@@ -155,7 +188,7 @@ internal class RiderPendingProofStore(context: Context) {
         val draft = decode(prefs.getString(key, null)) ?: return null
 
         if (!riderProofDraftFresh(draft.createdAtMs, nowMs, RIDER_PROOF_DRAFT_MAX_AGE_MS)) {
-            prefs.edit().remove(key).apply()
+            if (!prefs.edit().remove(key).commit()) return null
             discardUri(draft.uri)
             return null
         }
@@ -178,7 +211,7 @@ internal class RiderPendingProofStore(context: Context) {
         val draft = decode(prefs.getString(key, null)) ?: return
         if (!riderProofDraftMatches(draft, workId, mode, marketPickupId)) return
 
-        prefs.edit().remove(key).apply()
+        if (!prefs.edit().remove(key).commit()) return
         discardUri(draft.uri)
     }
 }

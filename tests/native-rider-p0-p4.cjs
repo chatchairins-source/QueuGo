@@ -1,0 +1,33 @@
+const fs = require('fs');
+const assert = require('assert');
+const root = 'native-android/rider/src/main/java/com/queuego/rider/';
+const api = fs.readFileSync(root + 'QueueGoApi.kt', 'utf8');
+const app = fs.readFileSync(root + 'QueueGoRiderApp.kt', 'utf8');
+const store = fs.readFileSync(root + 'RiderPendingProofStore.kt', 'utf8');
+const preview = fs.readFileSync(root + 'RiderEvidencePreview.kt', 'utf8');
+const issue = fs.readFileSync(root + 'RiderPickupIssueDialog.kt', 'utf8');
+const runtime = fs.readFileSync('native-android/qa/capture-rider-launch.py', 'utf8');
+const report = api.slice(api.indexOf('suspend fun reportPickupIssue('), api.indexOf('suspend fun reportDeliveryIssue('));
+assert(report.includes('qg_create_ticket') && report.includes('.put("p_order_id", job.id)'));
+assert(!/cancel|rider_order_action|qg_rider_action_once|update.*payment/i.test(report), 'Pickup reports must never mutate operational/payment state');
+assert(issue.includes('api.pickupIssueOrderId(auth, pickupId)'), 'Market support and contact must resolve exact child order');
+assert(issue.includes('if (busy) return@TextButton'));
+assert(app.includes('voiceController.startOutgoing(nativeVoiceAuth, orderId, "shop")'));
+assert(app.includes('File(context.filesDir, "queuego-evidence")'), 'Pending evidence must survive Android cache eviction');
+assert(store.includes('.commit()') && store.includes('fun saveVerification'));
+assert(preview.includes('ContentScale.Fit'), 'Proof review must show full frame');
+assert(preview.includes('evidenceExposure(oriented)') && preview.includes('withContext(Dispatchers.IO)'));
+assert(api.includes('MessageDigest.getInstance("SHA-256")') && api.includes('uploadedEvidenceMatches(auth, path, bytes)'));
+assert(api.includes('qg_rider_action_receipts?select=result,kind,payload&request_id=eq.'));
+assert(api.includes('mutationProofExists(auth, "qg_delivery_proofs", job.id, path)'));
+assert(api.includes('mutationProofExists(auth, "qg_pickup_proofs", orderId, path)'));
+assert(app.includes('if (actionBusy || !requireServerNetwork()) return@VerificationScreen'));
+assert(app.includes('if (showCollection && photoReady && previewReady'), 'Restored cash collection must revalidate the saved photo before enabling completion');
+assert(runtime.includes('RiderProofPersistenceTest#') && runtime.includes('"force-stop", "com.queuego.rider"'));
+assert(runtime.includes('verify_proof_process_recovery()'));
+assert(app.includes('pushStore.saveHomeSnapshot(auth.user.id, value, durable = true)') &&
+  app.includes('kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO)'),
+  'Acknowledged mutations must persist encrypted snapshots off the main thread before navigation');
+for (const stage of ['navigating_merchant','arrived_merchant','pickup_verification','picked_up',
+  'navigating_customer','arrived_customer','photo_captured','cash_collection']) assert(runtime.includes('"'+stage+'"'));
+console.log('Rider P0–P4 integration contracts: PASS (authenticated operational E2E remains separate)');

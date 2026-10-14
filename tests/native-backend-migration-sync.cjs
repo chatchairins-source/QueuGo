@@ -320,6 +320,7 @@ for(const needle of [
   assert.ok(benefitToggleMigration.includes(needle),'Rider benefits toggle migration missing contract: '+needle);
 }
 const roadAlertsMigration=read('supabase/migrations/20261014110355_rider_road_alerts_v1.sql');
+const roadAlertsSql=roadAlertsMigration.replace(/\s+/g,' ').trim();
 for(const needle of [
   'qg_private.rider_road_alerts',
   'qg_rider_nearby_road_alerts',
@@ -329,7 +330,7 @@ for(const needle of [
   "revoke all on table qg_private.rider_road_alerts from public, anon, authenticated",
   "revoke all on function public.qg_rider_nearby_road_alerts(double precision,double precision,double precision) from public, anon"
 ]){
-  assert.ok(roadAlertsMigration.includes(needle),'Rider Road Alerts migration missing contract: '+needle);
+  assert.ok(roadAlertsSql.includes(needle),'Rider Road Alerts migration missing contract: '+needle);
 }
 const roadAlertFkIndex=read('supabase/migrations/20261014110429_rider_road_alerts_fk_index_v2.sql');
 assert.ok(
@@ -341,5 +342,4 @@ assert.ok(
   !fs.existsSync('supabase/migrations/20261014105430_rider_road_alerts_v1.sql'),
   'Pre-Production Rider Road Alerts migration timestamp must not remain in source history'
 );
-
 console.log('Native backend migration mirror: PASS');

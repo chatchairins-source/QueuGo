@@ -6,15 +6,18 @@ const chat=fs.readFileSync('native-android/rider/src/main/java/com/queuego/rider
 const window=fs.readFileSync('native-android/rider/src/main/java/com/queuego/rider/RiderChatWindow.kt','utf8');
 
 assert(chat.includes('onCallCustomer: () -> Unit'),'Rider chat must accept the existing QueueGo voice action');
-assert(chat.includes('contentDescription = "โทรหาลูกค้าผ่าน QueueGo"'),'Rider chat header must expose the QueueGo call control');
+assert(chat.includes('contentDescription = if (contactLabel != null) "โทรหาร้านผ่าน QueueGo" else "โทรหาลูกค้าผ่าน QueueGo"'),
+  'Rider chat call accessibility label must match the customer or merchant destination');
 assert(chat.includes('R.drawable.qg_rider_flow_phone'),'Rider chat must use the existing professional phone icon');
 assert(chat.includes('riderChatCanCall(job.status, window?.status)'),
   'Rider chat must use refreshed order status to hide calling after terminal order states');
 assert(window.includes('(currentStatus ?: initialStatus)') &&
   window.includes('setOf("completed", "cancelled", "no_rider_available")'),
   'All three terminal states must suppress calling, including before the first refresh');
-assert(app.includes('onCallCustomer = { chatJob?.id?.let(::startCustomerVoice) }'),
-  'Rider chat call action must reuse the existing native voice controller and microphone permission flow');
+assert(app.includes('if (pickupChatJob != null) startShopVoice(currentChat.id) else startCustomerVoice(currentChat.id)') &&
+  app.includes('voiceController.startOutgoing(nativeVoiceAuth, orderId, pendingVoiceTarget)') &&
+  app.includes('pendingVoiceTarget = "shop"') && app.includes('pendingVoiceTarget = "customer"'),
+  'Both chat destinations must reuse native voice and retain the correct role through microphone permission');
 assert(!chat.includes('Intent.ACTION_DIAL')&&!chat.includes('Intent.ACTION_CALL'),
   'Rider chat call must not fall back to carrier phone calling');
 

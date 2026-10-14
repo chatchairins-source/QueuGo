@@ -30,7 +30,9 @@ assert(app.includes('completedMode == "pickup" && pickupCommittedStatus == "in_p
   app.includes('openNavigation(context, nextStop)'),
   'Post-pickup Google Maps must open only after an in_progress commit and must follow the authoritative next stop, including another bundled shop before customer delivery');
 assert((app.match(/riderPickupReadCanReplace\("in_progress"/g)||[]).length>=2 &&
-  (app.match(/pushStore\.saveHomeSnapshot\(auth\.user\.id, committedSnapshot\)/g)||[]).length>=2,
+  (app.match(/persistCommittedSnapshot\(committedSnapshot\)/g)||[]).length>=2 &&
+  app.includes('pushStore.saveHomeSnapshot(auth.user.id, value, durable = true)') &&
+  app.includes('kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO)'),
   'Manual and Market start-delivery must commit in_progress locally and reject stale picked_up reads before Maps handoff');
 assert(!app.includes('RiderNavigationController()')&&!app.includes('RiderNavigationSpeaker(context)')&&!app.includes('if (navigationState.active)'),
   'Rider Home must not run the retired in-app navigation engine or turn-by-turn panel');
@@ -60,7 +62,7 @@ assert(app.includes('takeIf { it.activeJob?.id == acceptedFallback.id }')&&
   'Accept-offer follow-up reads must never replace the authoritative local claim with an empty or different active job');
 assert(app.includes('val committedMarker = "local:" + System.currentTimeMillis()')&&
   app.includes('riderArrivalReadCanReplace(target, job.id, it)')&&
-  app.includes('pushStore.saveHomeSnapshot(auth.user.id, committedSnapshot)'),
+  app.includes('persistCommittedSnapshot(committedSnapshot)'),
   'Rider arrival must commit locally before accepting a server read so return/resume cannot lose arrived state');
 
 console.log('Native Rider Google Maps-only return overlay contracts: PASS');
