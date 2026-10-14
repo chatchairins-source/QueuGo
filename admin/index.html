@@ -148,6 +148,41 @@ function qtRiderVehicleInspectionStateLabel(status){
     rejected:'ต้องถ่ายรูปรถใหม่'
   }[String(status||'')]||'ยังไม่ขอตรวจรถ';
 }
+function qtRiderMultipleVehicleStateLabel(status,selected,legacy){
+  if(selected&&status==='approved')return 'กำลังใช้';
+  if(legacy&&status!=='approved')return 'รถเดิม';
+  return {approved:'อนุมัติแล้ว',pending:'รออนุมัติ',rejected:'ไม่ผ่าน'}[String(status||'')]||'ไม่ทราบสถานะ';
+}
+window.qtAdminReviewRiderVehicle=async function(vehicleId,decision){
+  try{
+    if(!['approved','rejected'].includes(decision))return;
+    let note=null;
+    if(decision==='rejected'){
+      if(typeof qgAdminInput!=='function'){
+        if(typeof toast==='function')toast('ฟอร์ม Admin ยังไม่พร้อม กรุณารีเฟรชหน้า');
+        return;
+      }
+      const value=await qgAdminInput({title:'ไม่อนุมัติรถ Rider',label:'เหตุผลที่ไม่ผ่าน'});
+      if(value===null)return;
+      note=String(value||'').trim();
+      if(!note){
+        if(typeof toast==='function')toast('กรุณาระบุเหตุผลให้ Rider ทราบ');
+        return;
+      }
+    }else if(!window.confirm('ยืนยันอนุมัติรถคันนี้ให้ Rider เลือกใช้งาน?')){
+      return;
+    }
+    await qtSupabaseRpc('qg_admin_review_rider_vehicle',{
+      p_vehicle_id:vehicleId,
+      p_decision:decision,
+      p_note:note
+    });
+    if(typeof toast==='function')toast(decision==='approved'?'อนุมัติรถแล้ว':'ส่งเหตุผลกลับ Rider แล้ว');
+    await qtRenderAdminRiderPresence();
+  }catch(err){
+    if(typeof toast==='function')toast('บันทึกผลอนุมัติรถไม่สำเร็จ: '+err.message);
+  }
+};
 window.qtAdminRequestRiderVehicleInspection=async function(riderId){
   try{
     if(typeof qgAdminInput!=='function'){
@@ -257,14 +292,15 @@ async function qtRenderAdminRiderPresence(){
   try{
     const token=await qtGetAccessToken();
     if(!token)throw Error('กรุณาเข้าสู่ระบบ Admin');
-    const [users,profiles,presence,reverification,vehicleInspection]=await Promise.all([
+    const [users,profiles,presence,reverification,vehicleInspection,riderVehicles]=await Promise.all([
       qtSupabaseTable('users?select=id,name,role,status&role=eq.rider',{accessToken:token}),
       qtSupabaseTable('rider_profiles?select=id,user_id,status,metadata,updated_at',{accessToken:token}),
       qtSupabaseTable('qg_rider_presence_events?select=rider_id,online,occurred_at&order=occurred_at.desc&limit=2000',{accessToken:token}),
       qtSupabaseRpc('qg_admin_rider_reverification_queue'),
-      qtSupabaseRpc('qg_admin_rider_vehicle_inspection_queue')
+      qtSupabaseRpc('qg_admin_rider_vehicle_inspection_queue'),
+      qtSupabaseRpc('qg_admin_rider_vehicle_queue')
     ]);
-    if(!Array.isArray(users)||!Array.isArray(profiles)||!Array.isArray(presence)||!Array.isArray(reverification)||!Array.isArray(vehicleInspection))throw Error('ข้อมูลไรเดอร์ไม่ครบ');
+    if(!Array.isArray(users)||!Array.isArray(profiles)||!Array.isArray(presence)||!Array.isArray(reverification)||!Array.isArray(vehicleInspection)||!Array.isArray(riderVehicles))throw Error('ข้อมูลไรเดอร์ไม่ครบ');
     const byUser=new Map(profiles.map(p=>[String(p.user_id),p]));
     const latestPresence=new Map();
     presence.forEach(ev=>{
@@ -277,6 +313,13 @@ async function qtRenderAdminRiderPresence(){
     const vehicleInspectionByRider=new Map(
       vehicleInspection.filter(x=>x&&x.rider_id).map(x=>[String(x.rider_id),x])
     );
+    const vehiclesByRider=new Map();
+    riderVehicles.forEach(v=>{
+      const key=String(v?.rider_id||'');
+      if(!key)return;
+      if(!vehiclesByRider.has(key))vehiclesByRider.set(key,[]);
+      vehiclesByRider.get(key).push(v);
+    });
     if(!el.isConnected)return;
     el.innerHTML=users.length?users.map(u=>{
       const p=byUser.get(String(u.id));
@@ -328,11 +371,36 @@ async function qtRenderAdminRiderPresence(){
       const vehicleNote=vi?.status==='rejected'&&vi.review_note
         ? '<div style="margin-top:5px"><small>เหตุผลตรวจรถ: '+escapeHtml(vi.review_note)+'</small></div>'
         : '';
+      const fleet=p?.id?(vehiclesByRider.get(String(p.id))||[]):[];
+      const fleetHtml=fleet.length?'<div style="margin-top:10px;border-top:1px solid #eee;padding-top:8px"><small><strong>รถในบัญชี '+fleet.length+' คัน</strong></small>'+
+        fleet.map(v=>{
+          const title=[v.vehicle_type,v.vehicle_name].filter(Boolean).join(' · ')||'รถ Rider';
+          const status=qtRiderMultipleVehicleStateLabel(v.status,v.is_selected===true,v.legacy_seed===true);
+          const note=v.status==='rejected'&&v.review_note
+            ? '<div><small>เหตุผล: '+escapeHtml(v.review_note)+'</small></div>'
+            : '';
+          let actions='';
+          if(v.status==='pending'&&v.legacy_seed===true&&!v.photo_path){
+            actions='<div><small>รถเดิมจากระบบก่อนหน้า · Rider ยังใช้ต่อได้และสามารถส่งรูปยืนยันจากแอปภายหลัง</small></div>';
+          }else if(v.status==='pending'){
+            actions='<div class="row-btns" style="margin-top:6px">'+
+              (v.photo_path?'<button class="btn-secondary" type="button" onclick="qgAdminOpenEvidence(\''+escapeHtml(v.photo_path)+'\')">ดูรูปรถ</button>':'')+
+              '<button class="btn-primary" type="button" onclick="qtAdminReviewRiderVehicle(\''+escapeHtml(v.vehicle_id)+'\',\'approved\')">อนุมัติรถ</button>'+
+              '<button class="btn-danger" type="button" onclick="qtAdminReviewRiderVehicle(\''+escapeHtml(v.vehicle_id)+'\',\'rejected\')">ไม่อนุมัติ</button>'+
+            '</div>';
+          }
+          return '<div style="margin-top:7px;padding:8px;border:1px solid #eee;border-radius:10px">'+
+            '<div><small><strong>'+escapeHtml(title)+'</strong> · '+escapeHtml(v.vehicle_plate||'-')+'</small></div>'+
+            '<div><small>สถานะ: '+escapeHtml(status)+(v.is_selected?' · คันปัจจุบัน':'')+'</small></div>'+
+            note+actions+
+          '</div>';
+        }).join('')+'</div>':'';
       return '<div class="qt-rider-online-card"><strong>'+escapeHtml(u.name||'ไรเดอร์')+'</strong><span style="float:right">'+state+'</span>'+
         '<div style="margin-top:6px"><small>ยืนยันตัวตน: '+escapeHtml(verificationStatus)+'</small></div>'+
         note+verifyActions+
         '<div style="margin-top:9px"><small>ตรวจรถ: '+escapeHtml(vehicleInspectionStatus)+'</small></div>'+
         vehicleNote+vehicleActions+
+        fleetHtml+
       '</div>';
     }).join(''):'<div class="qt-rider-online-card">ยังไม่มีข้อมูลไรเดอร์</div>';
   }catch(err){if(el.isConnected)el.textContent='โหลดสถานะไรเดอร์ไม่สำเร็จ: '+err.message;}
