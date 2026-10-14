@@ -162,6 +162,26 @@ class RiderAvailabilityReadinessTest {
         assertEquals(listOf("vehicle_inspection"), readiness.blocked.map { it.key })
     }
 
+    @Test fun unknownVehicleStatesStayCheckingInsteadOfFakeReady() {
+        val readiness = riderAvailabilityReadiness(
+            diagnostics = readyDiagnostics,
+            firebaseConfigured = true,
+            reverification = null,
+            reverificationLoaded = true,
+            documents = RiderDocumentReadiness(false),
+            documentsLoaded = true,
+            vehicleInspection = null,
+            vehicleInspectionLoaded = false,
+            selectedVehicle = null,
+            vehiclesLoaded = false
+        )
+        assertFalse(readiness.fullyReady)
+        assertEquals(
+            setOf("vehicle_inspection", "selected_vehicle"),
+            readiness.checking.map { it.key }.toSet()
+        )
+    }
+
     @Test fun unapprovedSelectedVehicleMatchesSetOnlineBlocker() {
         val readiness = riderAvailabilityReadiness(
             diagnostics = readyDiagnostics,
