@@ -99,6 +99,26 @@ internal fun riderComplimentSummaryFromRpc(raw: Any?): RiderComplimentSummary {
     )
 }
 
+internal fun riderReverificationStatusFromRpc(raw: Any?): RiderReverificationStatus {
+    val row = when (raw) {
+        is JSONObject -> raw
+        is JSONArray -> raw.optJSONObject(0) ?: JSONObject()
+        else -> JSONObject()
+    }
+    fun nullable(key: String): String? =
+        row.optString(key).trim().takeIf { it.isNotEmpty() && it != "null" }
+    return RiderReverificationStatus(
+        required = row.optBoolean("required", false),
+        requestId = nullable("request_id"),
+        status = nullable("status"),
+        reason = nullable("reason"),
+        requestedAt = nullable("requested_at"),
+        submittedAt = nullable("submitted_at"),
+        reviewedAt = nullable("reviewed_at"),
+        reviewNote = nullable("review_note")
+    )
+}
+
 class QueueGoApi {
     companion object {
         private const val BASE_URL = "https://pkypiqhlrmzocysgeqew.supabase.co"
@@ -459,6 +479,32 @@ class QueueGoApi {
                 )
             )
         }
+
+    suspend fun reverificationStatus(auth: QueueGoAuth): RiderReverificationStatus =
+        withContext(Dispatchers.IO) {
+            riderReverificationStatusFromRpc(
+                rpc(
+                    "qg_rider_reverification_status",
+                    auth.session.accessToken,
+                    JSONObject()
+                )
+            )
+        }
+
+    suspend fun submitReverification(
+        context: Context,
+        auth: QueueGoAuth,
+        photoUri: Uri
+    ): RiderReverificationStatus = withContext(Dispatchers.IO) {
+        val path = uploadEvidence(context, auth, photoUri)
+        riderReverificationStatusFromRpc(
+            rpc(
+                "qg_rider_submit_reverification",
+                auth.session.accessToken,
+                JSONObject().put("p_photo_path", path)
+            )
+        )
+    }
 
     suspend fun history(auth: QueueGoAuth, limit: Int = 50): List<RiderHistoryOrder> =
         withContext(Dispatchers.IO) {
