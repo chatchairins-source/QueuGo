@@ -376,7 +376,7 @@ class QueueGoApi {
             val authUserId = auth.getJSONObject("user").getString("id")
             val users = requestArray(
                 "GET",
-                "/rest/v1/users?select=id,name,phone,role,status&auth_user_id=eq." + enc(authUserId),
+                "/rest/v1/users?select=id,name,phone,role,status,suspended_at,suspension_reason&auth_user_id=eq." + enc(authUserId),
                 accessToken
             )
             if (users.length() == 0) error("ไม่พบบัญชี QueueGo")
@@ -406,7 +406,9 @@ class QueueGoApi {
                     name = row.optString("name").ifBlank { "ไรเดอร์" },
                     role = row.optString("role"),
                     status = row.optString("status"),
-                    phone = row.optString("phone").takeIf { it.isNotBlank() }
+                    phone = row.optString("phone").takeIf { it.isNotBlank() },
+                    suspendedAt = riderNullableText(row.optString("suspended_at")),
+                    suspensionReason = riderNullableText(row.optString("suspension_reason"))
                 )
             )
         }
@@ -485,7 +487,7 @@ class QueueGoApi {
 
         val users = requestArray(
             "GET",
-            "/rest/v1/users?select=id,name,phone,role,status&auth_user_id=eq." + enc(liveAuth.session.authUserId),
+            "/rest/v1/users?select=id,name,phone,role,status,suspended_at,suspension_reason&auth_user_id=eq." + enc(liveAuth.session.authUserId),
             liveAuth.session.accessToken
         )
         if (users.length() == 0) throw RiderSessionInvalidException("ไม่พบบัญชี QueueGo")
@@ -497,7 +499,9 @@ class QueueGoApi {
                 name = row.optString("name").ifBlank { "ไรเดอร์" },
                 role = "rider",
                 status = row.optString("status"),
-                phone = row.optString("phone").takeIf { it.isNotBlank() }
+                phone = row.optString("phone").takeIf { it.isNotBlank() },
+                suspendedAt = riderNullableText(row.optString("suspended_at")),
+                suspensionReason = riderNullableText(row.optString("suspension_reason"))
             )
         )
     }
