@@ -6,6 +6,9 @@ const verifier=fs.readFileSync('native-android/qa/verify-pmtiles-village.py','ut
 
 assert(workflow.includes('work-native-rider-maplibre-sawaijee-realdata-20261014'),
   'Real-data workflow must stay isolated from production Rider branches');
+assert(workflow.includes('QG_MAP_DATA_DIR=$RUNNER_TEMP/queuego-sawaijee-map')&&
+  !workflow.includes('QG_MAP_DATA_DIR: ${{ runner.temp }}'),
+  'Runner temp path must be exported after runner startup instead of using unavailable job-level runner context');
 assert(workflow.includes('103.115,14.870,103.180,14.945'),
   'Real-data workflow must clip the smoke archive around SawaiJee');
 assert(workflow.includes("QG_SAWAIJEE_LAT: '14.9058'")&&workflow.includes("QG_SAWAIJEE_LON: '103.14682'"),
