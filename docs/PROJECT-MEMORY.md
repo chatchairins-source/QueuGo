@@ -1,3 +1,11 @@
+## 2026-10-14 Grab Driver parity: privacy-safe Rider Voice Assistant v1
+- Confirmed the owner-supplied Grab Driver 5.457.1 package contains a dedicated voiceassistant stack with TTS/message-reader/audio-focus concepts. QueueGo previously had voice calling but no spoken Rider work-state assistant.
+- Added an opt-in on-device Voice Assistant v1. It reads only privacy-safe operational prompts: a new targeted offer and authoritative Rider job-stage changes (accepted/at shop/preparing/ready/delivering/at customer/completed). It never speaks customer name, phone, address, order amount, shop identity or other trip details.
+- Voice Assistant uses Android TextToSpeech only. It does not request microphone permission, does not record audio and does not implement speech recognition. Thai locale is preferred with device-locale fallback.
+- Profile > การแจ้งเตือน now has one persisted per-Rider toggle. TTS stops whenever QueueGo voice-call phase is not IDLE and is disposed with RiderHome. Offer speech is delayed briefly so it does not collide with the existing alert beep.
+- Stage keys include arrival flags, so arriving at shop/customer can produce one new announcement without repeated speech from Compose recomposition. Regression tests guard privacy-safe offer wording, authoritative stage mapping and arrival-stage key changes.
+- Rebased onto Insurance Center head 7136502, preserving main-thread watchdog stall hardening, first-run Learning, Large Order transparency and all earlier parity ancestry. Backup backup/rider-insurance-watchdog-before-voice-assistant-20261014 retains 7136502. Exact-head native-pilot + navigation-map-runtime are required before PASS.
+
 ## 2026-10-14 Grab Driver parity: real-data Rider Insurance Center v1
 - Rebased Insurance Center onto main-thread watchdog successor 9eeb136, preserving first-run Learning, Large Order transparency, network/jank diagnostics and watchdog diagnostics.
 - Confirmed the owner-supplied Grab Driver 5.457.1 package contains insurance capabilities including Income Protection, e-Hailing insurance premium detail/discovery, usage-based insurance survey and insurance webview modules. QueueGo previously had no insurance schema or Rider UI.
