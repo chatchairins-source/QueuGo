@@ -61,6 +61,7 @@ const adminReverificationQueueMigration=read('supabase/migrations/20261014063649
 for(const needle of [
   'qg_admin_rider_reverification_queue',
   'admin required',
+  'public.is_active_admin()',
   "revoke all on function public.qg_admin_rider_reverification_queue() from public, anon"
 ]){
   assert.ok(adminReverificationQueueMigration.includes(needle),'Admin Rider reverification queue migration missing contract: '+needle);
