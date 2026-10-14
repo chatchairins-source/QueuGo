@@ -1,3 +1,12 @@
+## 2026-10-14 Grab Driver parity: Rider Map Feedback v1
+- Added a privacy-bounded QueueGo map-feedback workflow after confirming the owner-supplied Grab Driver package contains realtime/navigation feedback services and option-sheet UI. No Grab code, assets or road geometry are copied.
+- Production migration 20261014074523_rider_map_feedback_v1 stores feedback only in qg_private. Rider submits an allowlisted issue category, one current coordinate snapshot and an optional <=500-character note. No order/customer/shop/destination identifiers are accepted or stored by this contract. Rider rate limit is 5 submissions/hour.
+- Native Rider exposes “รายงานปัญหาแผนที่ / ถนน” from Safety Centre. It reuses the existing retained navigation fix or fresh safety last-known location snapshot; no new GPS stream is opened. UI tells Rider to stop safely before reporting.
+- Admin Rider panel has a pending review queue with location viewer and accepted_for_review/dismissed decisions. accepted_for_review is review-only: this migration never edits Local Roads, route geometry, map renderer or dispatch data automatically.
+- Public wrappers are SECURITY INVOKER with anon EXECUTE revoked; qg_private validates live active Rider/Admin sessions. Admin UI never reads the private table directly.
+- Rebasing preserves the latest Message Center hardening at 683499e, including live server unread badge polling and fail-closed mark-read behavior. Backup backup/rider-safety-messages-before-map-feedback-20261014 retains pre-feedback 4e8f712.
+- PASS requires native-pilot + navigation-map-runtime + Admin regression on this exact successor HEAD.
+
 ## 2026-10-14 Rider Message Center release hardening
 - Message Center unread badge is now server-backed even before Rider opens the Notifications subsection: foreground Home polls only unread notification IDs under the existing own-row RLS every 30 seconds and caps the bottom-nav count at 99.
 - A transient unread-count failure preserves the last server-confirmed count. A single notification is no longer optimistically marked read when the PATCH fails; navigation may still proceed through the existing order-reference authorization path while unread state remains server-accurate.

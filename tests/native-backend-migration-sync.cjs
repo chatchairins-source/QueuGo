@@ -152,4 +152,20 @@ for(const needle of [
 ]){
   assert.ok(fatigueMigration.includes(needle),'Rider fatigue migration missing contract: '+needle);
 }
+const mapFeedbackMigration=read('supabase/migrations/20261014074523_rider_map_feedback_v1.sql');
+for(const needle of [
+  'qg_private.rider_map_feedback',
+  'qg_rider_submit_map_feedback',
+  'qg_admin_rider_map_feedback_queue',
+  'qg_admin_review_rider_map_feedback',
+  "interval '1 hour'",
+  ") >= 5",
+  "'accepted_for_review'",
+  "revoke all on table qg_private.rider_map_feedback from public, anon, authenticated",
+  "revoke all on function public.qg_rider_submit_map_feedback(text,double precision,double precision,text)",
+  "revoke all on function public.qg_admin_rider_map_feedback_queue(text,integer)",
+  "revoke all on function public.qg_admin_review_rider_map_feedback(uuid,text,text)"
+]){
+  assert.ok(mapFeedbackMigration.includes(needle),'Rider map feedback migration missing contract: '+needle);
+}
 console.log('Native backend migration mirror: PASS');
