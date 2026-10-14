@@ -91,6 +91,12 @@ jobs:
           mkdir -p native-android/rider/libs
           curl -fsSL "https://api.longdo.com/map-android-SDK/LongdoMapAndroidSDK_v0.1.8.aar" -o native-android/rider/libs/LongdoMapAndroidSDK_v0.1.8.aar
           echo "0918c23673ba6c7a349746f005525aca2ff3470f8e2966d5d2a4cb633ae5980c  native-android/rider/libs/LongdoMapAndroidSDK_v0.1.8.aar" | sha256sum -c -
+      - name: Inspect Longdo v0.1.8 navigation API
+        run: |
+          unzip -p native-android/rider/libs/LongdoMapAndroidSDK_v0.1.8.aar classes.jar > /tmp/longdo-classes.jar
+          javap -classpath /tmp/longdo-classes.jar -public com.longdo.api.Pin
+          javap -classpath /tmp/longdo-classes.jar -public com.longdo.api.IMarker
+          javap -classpath /tmp/longdo-classes.jar -public com.longdo.api.Map
       - name: Prepare native Firebase configs
         env:
           QG_FIREBASE_GOOGLE_SERVICES_JSON_B64: ${{ secrets.QG_FIREBASE_GOOGLE_SERVICES_JSON_B64 }}
