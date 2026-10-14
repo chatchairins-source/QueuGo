@@ -57,4 +57,13 @@ for(const needle of [
 ]){
   assert.ok(reverificationMigration.includes(needle),'Rider reverification migration missing contract: '+needle);
 }
+const adminReverificationMigration=read('supabase/migrations/20261014063649_admin_rider_reverification_queue_v1.sql');
+for(const needle of [
+  'qg_private.admin_rider_reverification_queue',
+  'qg_admin_rider_reverification_queue',
+  'public.is_active_admin()',
+  "revoke all on function public.qg_admin_rider_reverification_queue() from public, anon"
+]){
+  assert.ok(adminReverificationMigration.includes(needle),'Admin Rider reverification migration missing contract: '+needle);
+}
 console.log('Native backend migration mirror: PASS');
