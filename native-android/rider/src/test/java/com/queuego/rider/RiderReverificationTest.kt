@@ -31,4 +31,8 @@ class RiderReverificationTest {
     @Test fun pendingRequestUsesWaitingState() {
         assertEquals("ส่งรูปแล้ว · รอตรวจสอบ", riderReverificationTitle("pending"))
     }
+
+    @Test fun approvedRequestUsesVerifiedState() {
+        assertEquals("ยืนยันตัวตนแล้ว", riderReverificationTitle("approved"))
+    }
 }
