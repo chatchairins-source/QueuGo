@@ -1,3 +1,9 @@
+## 2026-10-14 Grab Driver parity mission: Rider personal emergency contact
+- Added one Rider-owned personal emergency contact to the existing Safety Centre without changing the official Thailand emergency numbers (191 / 1669 / 1155) or QueueGo Support flow.
+- Production migration 20261014065058 rider_emergency_contact_v1 stores the contact only in qg_private.rider_emergency_contacts. Authenticated users have no direct table access. Rider read/write wrappers validate a live session plus the active Rider identity server-side; anon execute is revoked.
+- Native Safety Centre can add, edit, delete and dial the saved contact. QueueGo never auto-calls, auto-messages or auto-shares GPS/location with the contact. The personal contact remains separate from public Rider profile/metadata.
+- Backend privileges were verified after migration: anon read/write are false while authenticated RPC execute is available. Backup backup/rider-safety-before-emergency-contact-20261014 retains d12e371. Exact-head native CI is required before PASS.
+
 ## 2026-10-14 Rider re-verification Admin workflow on consolidated release
 - Pulled Work PR235 Admin workflow onto the consolidated #234 release line because its Admin files were byte-identical to the PR235 base before the new workflow, so the UI changes apply cleanly without overwriting newer Admin work.
 - Existing Admin Rider-status cards now call qg_admin_rider_reverification_queue, can request a fresh identity check, open pending private selfie evidence through the existing signed qg-evidence viewer, approve a pending selfie, or reject it with a required Rider-facing reason. The Admin UI never queries qg_private directly.
