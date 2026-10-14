@@ -279,8 +279,8 @@ data class RiderCashLedgerEntry(
     val deliveryFee: Double,
     val cashPaidMerchant: Double,
     val cashCollectedCustomer: Double,
-    val cashRefundedMerchant: Double = 0.0,
-    val createdAt: String?
+    val createdAt: String?,
+    val cashRefundedMerchant: Double = 0.0
 ) {
     val numberLabel: String
         get() = nativeOrderNumber(orderNumber)
