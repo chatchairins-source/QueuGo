@@ -11,6 +11,8 @@ const cameraPolicy=fs.readFileSync('native-android/rider-navigation-map/src/main
 const guidance=fs.readFileSync('native-android/rider-navigation-map/src/main/java/com/queuego/ridernavigationmap/NavigationGuidance.kt','utf8');
 const coordinator=fs.readFileSync('native-android/rider-navigation-map/src/main/java/com/queuego/ridernavigationmap/NavigationRouteCoordinator.kt','utf8');
 const models=fs.readFileSync('native-android/rider-navigation-map/src/main/java/com/queuego/ridernavigationmap/NavigationMapModels.kt','utf8');
+const signalPipeline=fs.readFileSync('native-android/rider-navigation-map/src/main/java/com/queuego/ridernavigationmap/NavigationSignalPipeline.kt','utf8');
+const confidenceMetrics=fs.readFileSync('native-android/rider-navigation-map/src/main/java/com/queuego/ridernavigationmap/NavigationConfidenceMetrics.kt','utf8');
 const workflow=fs.readFileSync('.github/workflows/build-native-rider-pilot.yml','utf8');
 const runtimeTest=fs.readFileSync('native-android/rider-navigation-map/src/androidTest/java/com/queuego/ridernavigationmap/NavigationMapRuntimeTest.kt','utf8');
 const runtimeActivity=fs.readFileSync('native-android/rider-navigation-map/src/debug/java/com/queuego/ridernavigationmap/NavigationMapRuntimeActivity.kt','utf8');
@@ -111,11 +113,32 @@ assert(map.includes('MotionEvent.ACTION_MOVE')&&
   map.includes('ViewConfiguration.get(context).scaledTouchSlop')&&
   map.includes('currentUserGesture.value()')&&
   map.includes('holder.view?.setOnTouchListener(null)')&&
-  integration.includes('var followRider by remember(stateKey) { mutableStateOf(true) }')&&
-  integration.includes('followRider = followRider')&&
-  integration.includes('onUserGesture = { followRider = false }')&&
-  integration.includes('followRider = true'),
+  integration.includes('NavigationViewModeController')&&
+  integration.includes('val followRider = viewModeState.mode == NavigationViewMode.FOLLOW')&&
+  integration.includes('viewModeState = viewModeController.onUserGesture()')&&
+  integration.includes('viewModeState = viewModeController.onRecenter()')&&
+  integration.includes('followRider = followRider'),
   'Manual drag or pinch must suspend navigation follow until the Rider explicitly recenters');
+
+assert(
+  integration.includes('RIDER_NAV_CONFIDENCE_SHADOW_ENABLED = true')&&
+  integration.includes('RIDER_NAV_DISPLAY_CONFIDENCE_ENABLED = false')&&
+  integration.includes('val candidateDisplayState = displayPipeline.applyToDisplayState(authoritativeState)')&&
+  integration.includes('return if (RIDER_NAV_DISPLAY_CONFIDENCE_ENABLED)'),
+  'Confidence matching must run in shadow mode while the certified Rider display remains unchanged');
+
+assert(
+  signalPipeline.includes('if (rawFix == lastRawFix && nextRouteId == activeRouteId)')&&
+  signalPipeline.includes('fun metrics(): NavigationConfidenceMetrics')&&
+  confidenceMetrics.includes('data class NavigationConfidenceMetrics')&&
+  integration.includes('displayPipeline.metrics()')&&
+  integration.includes('"QGNavShadow"')&&
+  integration.includes('ApplicationInfo.FLAG_DEBUGGABLE')&&
+  integration.includes('debugNavigationDiagnostics')&&
+  !integration.includes('BuildConfig.DEBUG')&&
+  !integration.includes('rawFix.point.latitude')&&
+  !integration.includes('rawFix.point.longitude'),
+  'Shadow confidence rollout must be idempotent on equivalent backend refreshes and emit only aggregate debug diagnostics without coordinates');
 
 assert(map.includes('setPreserveEGLContextOnPause(true)'),
   'Navigation map must preserve the GL context across background/resume when Android allows it');

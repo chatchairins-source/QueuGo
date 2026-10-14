@@ -1,7 +1,9 @@
 package com.queuego.rider
 
 import android.content.Context
+import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
+import android.util.Log
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -24,11 +26,19 @@ import com.queuego.ridernavigationmap.NavigationRouteCoordinator
 import com.queuego.ridernavigationmap.NavigationRouteProvider
 import com.queuego.ridernavigationmap.NavigationRouteSegment
 import com.queuego.ridernavigationmap.NavigationRouteStyle
+import com.queuego.ridernavigationmap.NavigationSignalPipeline
 import com.queuego.ridernavigationmap.NavigationStopKind
+import com.queuego.ridernavigationmap.NavigationViewMode
+import com.queuego.ridernavigationmap.NavigationViewModeController
 import com.queuego.ridernavigationmap.RiderNavigationMap
 import com.queuego.ridernavigationmap.RiderNavigationMapState
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.channels.Channel
+
+// Shadow mode computes the candidate renderer fix while preserving the certified display.
+// The display gate stays off until CI + real-device route gates pass.
+private const val RIDER_NAV_CONFIDENCE_SHADOW_ENABLED = true
+private const val RIDER_NAV_DISPLAY_CONFIDENCE_ENABLED = false
 
 private fun riderLongdoNavigationKey(context: Context): String? = runCatching {
     context.packageManager
@@ -198,6 +208,9 @@ internal fun QueueGoRiderNavigationMap(
     onMapReady: (Boolean) -> Unit
 ) {
     val context = LocalContext.current
+    val debugNavigationDiagnostics = remember(context) {
+        (context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
+    }
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     val sessionStore = remember(context) { SessionStore(context) }
     val initialCamera = remember(stateKey) {
@@ -209,7 +222,11 @@ internal fun QueueGoRiderNavigationMap(
         }
     }
 
-    var followRider by remember(stateKey) { mutableStateOf(true) }
+    val viewModeController = remember(stateKey) { NavigationViewModeController() }
+    var viewModeState by remember(stateKey) {
+        mutableStateOf(viewModeController.state())
+    }
+    val followRider = viewModeState.mode == NavigationViewMode.FOLLOW
 
     val stops = remember(job, marketPickups, bundleOrders) {
         riderNavigationStops(job, marketPickups, bundleOrders)
@@ -244,6 +261,10 @@ internal fun QueueGoRiderNavigationMap(
         .minByOrNull { it.sequence }
         ?.id
 
+    LaunchedEffect(activeStopId) {
+        viewModeState = viewModeController.onActiveStopChanged()
+    }
+
     val routeKey = remember(context.packageName) { riderLongdoNavigationKey(context) }
     val routeProvider = remember(routeKey) {
         routeKey?.let { LongdoNavigationRouteClient(it) }
@@ -251,6 +272,7 @@ internal fun QueueGoRiderNavigationMap(
     val coordinator = remember(stateKey, routeProvider) {
         routeProvider?.let { NavigationRouteCoordinator(it) }
     }
+    val displayPipeline = remember(stateKey) { NavigationSignalPipeline() }
 
     var futureRoutes by remember(stateKey) { mutableStateOf<List<NavigationRouteSegment>>(emptyList()) }
     val stopTopology = remember(stops) {
@@ -266,6 +288,7 @@ internal fun QueueGoRiderNavigationMap(
     }
 
     LaunchedEffect(routeProvider, stopTopology) {
+        displayPipeline.reset()
         futureRoutes = if (routeProvider == null) emptyList()
         else buildFutureRoutes(routeProvider, stops)
     }
@@ -284,20 +307,59 @@ internal fun QueueGoRiderNavigationMap(
     LaunchedEffect(baseState) {
         stateChannel.trySend(baseState)
     }
-    LaunchedEffect(coordinator, stateChannel) {
+    LaunchedEffect(coordinator, stateChannel, displayPipeline) {
+        var lastLoggedShadowSample = 0L
+
+        fun displayState(authoritativeState: RiderNavigationMapState): RiderNavigationMapState {
+            if (!RIDER_NAV_CONFIDENCE_SHADOW_ENABLED && !RIDER_NAV_DISPLAY_CONFIDENCE_ENABLED) {
+                return authoritativeState
+            }
+            val candidateDisplayState = displayPipeline.applyToDisplayState(authoritativeState)
+            if (debugNavigationDiagnostics && RIDER_NAV_CONFIDENCE_SHADOW_ENABLED) {
+                val metrics = displayPipeline.metrics()
+                if (metrics.sampleCount >= lastLoggedShadowSample + 30L) {
+                    lastLoggedShadowSample = metrics.sampleCount
+                    Log.d(
+                        "QGNavShadow",
+                        "samples=" + metrics.sampleCount +
+                            " accepted=" + metrics.acceptedCount +
+                            " rejected=" + metrics.rejectedCount +
+                            " high=" + metrics.highMatchCount +
+                            " medium=" + metrics.mediumMatchCount +
+                            " low=" + metrics.lowMatchCount +
+                            " weak=" + metrics.weakGpsCount +
+                            " held=" + metrics.heldPuckCount +
+                            " offRoute=" + metrics.offRouteCount +
+                            " lastDeltaM=" + metrics.lastCandidateDeltaMeters +
+                            " maxDeltaM=" + metrics.maxCandidateDeltaMeters +
+                            " lastReject=" + metrics.lastRejectionReason
+                    )
+                }
+            }
+            return if (RIDER_NAV_DISPLAY_CONFIDENCE_ENABLED) {
+                candidateDisplayState
+            } else {
+                authoritativeState
+            }
+        }
+
         if (coordinator == null) {
-            for (next in stateChannel) renderedState = next
+            for (next in stateChannel) {
+                renderedState = displayState(next)
+            }
         } else {
             for (next in stateChannel) {
+                // Route progress/reroute stays authoritative on the raw GPS fix.
                 val result = coordinator.synchronize(next)
-                renderedState = result.mapState
+                // Filtering/snapping, when the rollout gate is enabled, is renderer-only.
+                renderedState = displayState(result.mapState)
             }
         }
     }
 
     LaunchedEffect(recenterSignal) {
         if (recenterSignal > 0) {
-            followRider = true
+            viewModeState = viewModeController.onRecenter()
             riderFix?.let { fix ->
                 stateChannel.trySend(
                     baseState.copy(rider = fix, followRider = true)
@@ -312,7 +374,9 @@ internal fun QueueGoRiderNavigationMap(
         modifier = modifier,
         initialCamera = initialCamera,
         onMapReady = onMapReady,
-        onUserGesture = { followRider = false },
+        onUserGesture = {
+            viewModeState = viewModeController.onUserGesture()
+        },
         onCameraChanged = { camera ->
             sessionStore.saveMapCamera(
                 stateKey,
