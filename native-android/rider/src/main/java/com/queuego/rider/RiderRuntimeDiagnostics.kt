@@ -4,11 +4,18 @@ import android.app.ActivityManager
 import android.app.ApplicationExitInfo
 import android.content.Context
 import android.os.Build
+import android.os.Handler
+import android.os.Looper
+import android.os.SystemClock
 import android.view.Choreographer
 import com.queuego.ridernavigationmap.NavigationMapDiagnostics
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import java.util.concurrent.Executors
+import java.util.concurrent.ScheduledFuture
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicBoolean
 
 internal data class RiderNetworkRuntimeSnapshot(
     val totalRequests: Long = 0,
@@ -28,14 +35,23 @@ internal data class RiderUiJankSnapshot(
     val worstFrameMs: Long = 0
 )
 
+internal data class RiderMainThreadWatchdogSnapshot(
+    val pingCount: Long = 0,
+    val slowPingCount: Long = 0,
+    val stallCount: Long = 0,
+    val worstDelayMs: Long = 0
+)
+
 internal object RiderRuntimeDiagnosticsStore {
     private val mutableMapDiagnostics = MutableStateFlow<NavigationMapDiagnostics?>(null)
     private val mutableNetworkDiagnostics = MutableStateFlow(RiderNetworkRuntimeSnapshot())
     private val mutableUiJankDiagnostics = MutableStateFlow(RiderUiJankSnapshot())
+    private val mutableMainThreadWatchdog = MutableStateFlow(RiderMainThreadWatchdogSnapshot())
 
     val mapDiagnostics: StateFlow<NavigationMapDiagnostics?> = mutableMapDiagnostics.asStateFlow()
     val networkDiagnostics: StateFlow<RiderNetworkRuntimeSnapshot> = mutableNetworkDiagnostics.asStateFlow()
     val uiJankDiagnostics: StateFlow<RiderUiJankSnapshot> = mutableUiJankDiagnostics.asStateFlow()
+    val mainThreadWatchdog: StateFlow<RiderMainThreadWatchdogSnapshot> = mutableMainThreadWatchdog.asStateFlow()
 
     fun publishMap(value: NavigationMapDiagnostics) {
         mutableMapDiagnostics.value = value
@@ -55,6 +71,14 @@ internal object RiderRuntimeDiagnosticsStore {
         mutableUiJankDiagnostics.value = riderUiJankSnapshotAfter(
             mutableUiJankDiagnostics.value,
             frameDurationMs
+        )
+    }
+
+    @Synchronized
+    fun recordMainThreadPing(delayMs: Long) {
+        mutableMainThreadWatchdog.value = riderMainThreadWatchdogAfter(
+            mutableMainThreadWatchdog.value,
+            delayMs
         )
     }
 }
@@ -90,6 +114,68 @@ internal fun riderUiJankSnapshotAfter(
 internal fun riderShouldRecordFrameDuration(durationMs: Long): Boolean =
     durationMs in 1L..500L
 
+internal fun riderMainThreadWatchdogAfter(
+    previous: RiderMainThreadWatchdogSnapshot,
+    delayMs: Long
+): RiderMainThreadWatchdogSnapshot {
+    val delay = delayMs.coerceAtLeast(0L)
+    return previous.copy(
+        pingCount = previous.pingCount + 1,
+        slowPingCount = previous.slowPingCount + if (delay >= 500L) 1 else 0,
+        stallCount = previous.stallCount + if (delay >= 5_000L) 1 else 0,
+        worstDelayMs = maxOf(previous.worstDelayMs, delay)
+    )
+}
+
+internal object RiderMainThreadWatchdog {
+    private val mainHandler = Handler(Looper.getMainLooper())
+    private val executor = Executors.newSingleThreadScheduledExecutor { runnable ->
+        Thread(runnable, "qg-rider-watchdog").apply { isDaemon = true }
+    }
+    private val pingInFlight = AtomicBoolean(false)
+    private var future: ScheduledFuture<*>? = null
+    @Volatile private var started = false
+    @Volatile private var generation = 0L
+
+    @Synchronized
+    fun start() {
+        if (started && future?.isCancelled == false && future?.isDone == false) return
+        generation += 1L
+        val activeGeneration = generation
+        started = true
+        pingInFlight.set(false)
+        future = executor.scheduleAtFixedRate(
+            {
+                if (!started || generation != activeGeneration) return@scheduleAtFixedRate
+                if (!pingInFlight.compareAndSet(false, true)) return@scheduleAtFixedRate
+                val sentAt = SystemClock.elapsedRealtime()
+                val posted = mainHandler.post {
+                    if (started && generation == activeGeneration) {
+                        RiderRuntimeDiagnosticsStore.recordMainThreadPing(
+                            SystemClock.elapsedRealtime() - sentAt
+                        )
+                        pingInFlight.set(false)
+                    }
+                }
+                if (!posted && generation == activeGeneration) {
+                    pingInFlight.set(false)
+                }
+            },
+            0L,
+            2L,
+            TimeUnit.SECONDS
+        )
+    }
+
+    @Synchronized
+    fun stop() {
+        started = false
+        generation += 1L
+        future?.cancel(false)
+        future = null
+        pingInFlight.set(false)
+    }
+}
 internal object RiderFrameJankTracker {
     private var started = false
     private var lastFrameNanos = 0L
@@ -148,6 +234,25 @@ internal fun riderNetworkRuntimeHealth(value: RiderNetworkRuntimeSnapshot): Ride
     )
 }
 
+internal fun riderMainThreadWatchdogHealth(
+    value: RiderMainThreadWatchdogSnapshot
+): RiderRuntimeHealth {
+    if (value.pingCount < 3L) {
+        return RiderRuntimeHealth(
+            healthy = null,
+            headline = "กำลังตรวจการตอบสนองของ main thread",
+            detail = "ping ${value.pingCount} · ต้องมีอย่างน้อย 3 ครั้งก่อนประเมิน"
+        )
+    }
+    val slowPercent = value.slowPingCount * 100.0 / value.pingCount.toDouble()
+    val healthy = value.stallCount == 0L && slowPercent <= 10.0
+    return RiderRuntimeHealth(
+        healthy = healthy,
+        headline = if (healthy) "main thread ตอบสนองปกติ" else "พบ main-thread stall ที่ควรตรวจ",
+        detail = "ping ${value.pingCount} · slow ${value.slowPingCount}" +
+            " · stall ${value.stallCount} · worst ${value.worstDelayMs} ms"
+    )
+}
 internal fun riderUiJankRuntimeHealth(value: RiderUiJankSnapshot): RiderRuntimeHealth {
     if (value.totalFrames < 60L) {
         return RiderRuntimeHealth(

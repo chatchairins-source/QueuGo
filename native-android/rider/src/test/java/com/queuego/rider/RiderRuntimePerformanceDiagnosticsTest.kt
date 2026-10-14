@@ -48,8 +48,30 @@ class RiderRuntimePerformanceDiagnosticsTest {
         assertFalse(riderShouldRecordFrameDuration(700L))
     }
 
+    @Test fun mainThreadWatchdogSeparatesSlowPingFromRealStall() {
+        var snapshot = RiderMainThreadWatchdogSnapshot()
+        snapshot = riderMainThreadWatchdogAfter(snapshot, 40L)
+        snapshot = riderMainThreadWatchdogAfter(snapshot, 700L)
+        snapshot = riderMainThreadWatchdogAfter(snapshot, 5_500L)
+
+        assertEquals(3L, snapshot.pingCount)
+        assertEquals(2L, snapshot.slowPingCount)
+        assertEquals(1L, snapshot.stallCount)
+        assertEquals(5_500L, snapshot.worstDelayMs)
+        assertFalse(riderMainThreadWatchdogHealth(snapshot).healthy == true)
+    }
+
+    @Test fun responsiveMainThreadStaysHealthyAfterEnoughPings() {
+        var snapshot = RiderMainThreadWatchdogSnapshot()
+        repeat(5) {
+            snapshot = riderMainThreadWatchdogAfter(snapshot, 30L)
+        }
+        assertTrue(riderMainThreadWatchdogHealth(snapshot).healthy == true)
+    }
+
     @Test fun emptyRuntimeStatsRemainInformationalNotFailure() {
         assertNull(riderNetworkRuntimeHealth(RiderNetworkRuntimeSnapshot()).healthy)
         assertNull(riderUiJankRuntimeHealth(RiderUiJankSnapshot()).healthy)
+        assertNull(riderMainThreadWatchdogHealth(RiderMainThreadWatchdogSnapshot()).healthy)
     }
 }
