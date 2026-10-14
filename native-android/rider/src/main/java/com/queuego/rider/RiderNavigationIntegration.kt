@@ -1,6 +1,7 @@
 package com.queuego.rider
 
 import android.content.Context
+import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
 import android.util.Log
 import androidx.compose.runtime.Composable
@@ -29,6 +30,7 @@ import com.queuego.ridernavigationmap.NavigationSignalPipeline
 import com.queuego.ridernavigationmap.NavigationStopKind
 import com.queuego.ridernavigationmap.NavigationViewMode
 import com.queuego.ridernavigationmap.NavigationViewModeController
+import com.queuego.ridernavigationmap.NavigationViewportInsets
 import com.queuego.ridernavigationmap.RiderNavigationMap
 import com.queuego.ridernavigationmap.RiderNavigationMapState
 import kotlinx.coroutines.CancellationException
@@ -204,6 +206,7 @@ internal fun QueueGoRiderNavigationMap(
     marketPickups: List<MarketPickup>,
     bundleOrders: List<RiderBundleOrder> = emptyList(),
     recenterSignal: Int,
+    viewportInsets: NavigationViewportInsets = NavigationViewportInsets(),
     onMapReady: (Boolean) -> Unit
 ) {
     val context = LocalContext.current
@@ -295,7 +298,9 @@ internal fun QueueGoRiderNavigationMap(
         routes = futureRoutes,
         activeStopId = activeStopId,
         followRider = followRider,
-        followZoom = 17
+        followZoom = 17,
+        viewMode = viewModeState.mode,
+        viewportInsets = viewportInsets.normalized()
     )
     var renderedState by remember(stateKey) { mutableStateOf(baseState) }
     val stateChannel = remember(stateKey) { Channel<RiderNavigationMapState>(Channel.CONFLATED) }
@@ -311,7 +316,8 @@ internal fun QueueGoRiderNavigationMap(
                 return authoritativeState
             }
             val candidateDisplayState = displayPipeline.applyToDisplayState(authoritativeState)
-            if (BuildConfig.DEBUG && RIDER_NAV_CONFIDENCE_SHADOW_ENABLED) {
+            val debuggable = (context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
+            if (debuggable && RIDER_NAV_CONFIDENCE_SHADOW_ENABLED) {
                 val metrics = displayPipeline.metrics()
                 if (metrics.sampleCount >= lastLoggedShadowSample + 30L) {
                     lastLoggedShadowSample = metrics.sampleCount
