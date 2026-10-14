@@ -45,4 +45,9 @@ class RiderSafetyReportOverviewTest {
             )
         )
     }
+
+    @Test fun unknownSupportStatusIsShownVerbatimInsteadOfInvented() {
+        assertEquals("ESCALATED", riderSafetyReportStatusLabel("ESCALATED"))
+        assertEquals("ไม่ทราบสถานะ", riderSafetyReportStatusLabel(""))
+    }
 }
