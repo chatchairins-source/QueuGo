@@ -36,6 +36,27 @@ class NavigationSignalPipeline(
 
     fun update(
         rawFix: NavigationMapFix,
+        state: RiderNavigationMapState
+    ): NavigationSignalState {
+        val activeRoute = state.styledRemainingRoutes()
+            .firstOrNull { it.style == NavigationRouteStyle.ACTIVE }
+        return update(rawFix, activeRoute)
+    }
+
+    /**
+     * Produces a renderer-only state. The authoritative route coordinator and all
+     * business/arrival logic must continue consuming the raw fix upstream.
+     */
+    fun applyToDisplayState(authoritativeState: RiderNavigationMapState): RiderNavigationMapState {
+        val rawFix = authoritativeState.rider ?: return authoritativeState
+        val signal = update(rawFix, authoritativeState)
+        return authoritativeState.copy(
+            rider = signal.displayFix ?: rawFix
+        )
+    }
+
+    fun update(
+        rawFix: NavigationMapFix,
         activeRoute: NavigationRouteSegment?
     ): NavigationSignalState {
         if (activeRoute?.id != activeRouteId) {
