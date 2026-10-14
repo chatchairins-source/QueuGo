@@ -64,6 +64,7 @@ fun RiderProfileScreen(
     var busy by remember { mutableStateOf(false) }
     var message by remember { mutableStateOf<String?>(null) }
     var showSupport by remember { mutableStateOf(false) }
+    var showSafety by remember { mutableStateOf(false) }
     var showDiagnostics by remember { mutableStateOf(false) }
     var ratingSummary by remember(auth.user.id) { mutableStateOf<RiderRatingSummary?>(null) }
     LaunchedEffect(auth.user.id, auth.session.accessToken) {
@@ -246,6 +247,8 @@ fun RiderProfileScreen(
                     name = displayName; phone = displayPhone; editing = true
                 }
                 RiderSettingDivider()
+                RiderSettingRow("ศูนย์ความปลอดภัย", "เหตุฉุกเฉิน · แพทย์ · ตำรวจ · QueueGo Support", R.drawable.qg_rider_flow_loc) { showSafety = true }
+                RiderSettingDivider()
                 RiderSettingRow("แจ้งปัญหา / ติดตามเรื่อง", "ติดต่อฝ่ายดูแล QueueGo", R.drawable.qg_rider_nav_chat) { showSupport = true }
             }
             Spacer(Modifier.height(10.dp))
@@ -310,6 +313,24 @@ fun RiderProfileScreen(
             }
         }
     }
+    if (showSafety) Dialog(onDismissRequest = { showSafety = false }, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+        Surface(
+            Modifier.padding(14.dp).widthIn(max = 620.dp).fillMaxWidth(),
+            shape = RoundedCornerShape(24.dp),
+            color = Color.White
+        ) {
+            RiderSafetyScreen(
+                activeJob = snapshot?.activeJob,
+                onSupport = {
+                    showSafety = false
+                    showSupport = true
+                },
+                onClose = { showSafety = false },
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+    }
+
     if (showSupport) Dialog(onDismissRequest = { showSupport = false }, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         Surface(Modifier.padding(14.dp).widthIn(max = 620.dp).fillMaxWidth().imePadding(), shape = RoundedCornerShape(24.dp), color = Color.White) {
             RiderSupportScreen(auth = auth, activeJob = snapshot?.activeJob, history = history,
