@@ -1667,11 +1667,18 @@ private fun RiderHome(
             val loc = lastKnownLocation(context)
             runCatching { api.setOnline(auth, enabled, loc?.first, loc?.second) }
                 .onSuccess {
+                    playRiderEventFeedback(
+                        eventFeedbackView,
+                        if (enabled) RiderEventFeedbackKind.GO_ONLINE else RiderEventFeedbackKind.GO_OFFLINE
+                    )
                     actionMessage = if (enabled) "เปิดรับงานแล้ว" else "ปิดรับงานแล้ว"
                     runCatching { api.riderSnapshot(auth) }.onSuccess { snapshot = it }
                         .onFailure { actionMessage = it.message ?: "โหลดสถานะรับงานไม่สำเร็จ" }
                 }
-                .onFailure { actionMessage = it.message ?: "เปลี่ยนสถานะรับงานไม่สำเร็จ" }
+                .onFailure {
+                    playRiderEventFeedback(eventFeedbackView, RiderEventFeedbackKind.ACTION_ERROR)
+                    actionMessage = it.message ?: "เปลี่ยนสถานะรับงานไม่สำเร็จ"
+                }
             actionBusy = false
         }
     }
@@ -2375,6 +2382,7 @@ private fun RiderHome(
                                 scope.launch {
                                     runCatching { api.acceptOffer(auth, current.offeredJob) }
                                         .onSuccess {
+                                            playRiderEventFeedback(eventFeedbackView, RiderEventFeedbackKind.JOB_ACCEPTED)
                                             actionMessage = "รับงานสำเร็จ · กำลังเปิดนำทางไปร้าน"
 
                                             // Claim success is authoritative. Promote the offered job locally before
@@ -2404,6 +2412,7 @@ private fun RiderHome(
                                             openNavigation(context, updated?.activeJob ?: acceptedFallback)
                                         }
                                         .onFailure {
+                                            playRiderEventFeedback(eventFeedbackView, RiderEventFeedbackKind.ACTION_ERROR)
                                             actionMessage = it.message ?: "รับงานไม่สำเร็จ"
                                         }
                                     actionBusy = false
