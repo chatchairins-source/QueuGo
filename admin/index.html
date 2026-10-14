@@ -192,6 +192,89 @@ window.qtAdminDeleteRiderInsurance=async function(policyId){
     await qtRenderAdminRiderPresence();
   }catch(err){toast('ลบกรมธรรม์ไม่สำเร็จ: '+err.message);}
 };
+function qtRiderBenefitCategoryLabel(category){
+  return {
+    fuel:'น้ำมัน / พลังงาน',
+    maintenance:'ดูแลรถ',
+    food:'อาหารและเครื่องดื่ม',
+    telecom:'โทรศัพท์ / อินเทอร์เน็ต',
+    health:'สุขภาพ',
+    other:'สิทธิประโยชน์อื่น'
+  }[String(category||'')]||String(category||'อื่น ๆ');
+}
+window.qtAdminAddRiderBenefit=async function(){
+  try{
+    if(typeof qgAdminInput!=='function')throw Error('ฟอร์ม Admin ยังไม่พร้อม');
+    const categoryValue=await qgAdminInput({
+      title:'เพิ่มสิทธิประโยชน์ Rider',
+      label:'ประเภท: fuel / maintenance / food / telecom / health / other',
+      value:'other',
+      type:'text'
+    });
+    if(categoryValue===null)return;
+    const category=String(categoryValue||'').trim().toLowerCase();
+    if(!['fuel','maintenance','food','telecom','health','other'].includes(category)){
+      toast('ประเภทสิทธิประโยชน์ไม่ถูกต้อง');return;
+    }
+    const provider=await qgAdminInput({title:'ผู้ให้สิทธิ์',label:'ชื่อบริษัท / พาร์ทเนอร์',type:'text'});
+    if(provider===null)return;
+    const title=await qgAdminInput({title:'ชื่อสิทธิประโยชน์',label:'ชื่อสิทธิ์ที่ Rider จะเห็น',type:'text'});
+    if(title===null)return;
+    const description=await qgAdminInput({title:'รายละเอียดสิทธิ์',label:'รายละเอียดจริง (เว้นว่างได้)',type:'text'});
+    if(description===null)return;
+    const starts=await qgAdminInput({
+      title:'วันเริ่มใช้สิทธิ์',
+      label:'วันเริ่มใช้สิทธิ์',
+      type:'date',
+      value:(typeof qtLocalDateKey==='function'?qtLocalDateKey():new Date().toISOString().slice(0,10))
+    });
+    if(starts===null||!starts)return;
+    const expires=await qgAdminInput({title:'วันหมดอายุ',label:'เว้นว่างถ้าไม่มีวันหมดอายุ',type:'date',min:starts});
+    if(expires===null)return;
+    if(expires&&expires<starts){toast('วันหมดอายุต้องไม่ก่อนวันเริ่ม');return;}
+    const actionLabel=await qgAdminInput({title:'ข้อความปุ่ม',label:'เช่น ดูสิทธิ์ / ลงทะเบียน (เว้นว่างได้)',type:'text'});
+    if(actionLabel===null)return;
+    const actionUrl=await qgAdminInput({title:'ลิงก์สิทธิ์',label:'ต้องเป็น https:// (เว้นว่างได้)',type:'text'});
+    if(actionUrl===null)return;
+    const url=String(actionUrl||'').trim();
+    if(url&&!/^https:\/\//i.test(url)){toast('ลิงก์สิทธิ์ต้องใช้ https://');return;}
+    const supportPhone=await qgAdminInput({title:'เบอร์ติดต่อ',label:'ตัวเลข 8-15 หลัก (เว้นว่างได้)',type:'text'});
+    if(supportPhone===null)return;
+    await qtSupabaseRpc('qg_admin_save_rider_benefit',{
+      p_benefit_id:null,
+      p_category:category,
+      p_provider_name:String(provider||'').trim(),
+      p_title:String(title||'').trim(),
+      p_description:String(description||'').trim()||null,
+      p_starts_on:starts,
+      p_expires_on:String(expires||'').trim()||null,
+      p_action_label:String(actionLabel||'').trim()||null,
+      p_action_url:url||null,
+      p_support_phone:String(supportPhone||'').trim()||null,
+      p_enabled:true
+    });
+    toast('เพิ่มสิทธิประโยชน์ Rider แล้ว');
+    await qtRenderAdminRiderPresence();
+  }catch(err){toast('เพิ่มสิทธิประโยชน์ไม่สำเร็จ: '+err.message);}
+};
+window.qtAdminSetRiderBenefitEnabled=async function(benefitId,enabled){
+  try{
+    await qtSupabaseRpc('qg_admin_set_rider_benefit_enabled',{
+      p_benefit_id:benefitId,
+      p_enabled:enabled===true
+    });
+    toast(enabled?'เปิดสิทธิประโยชน์แล้ว':'ปิดสิทธิประโยชน์แล้ว');
+    await qtRenderAdminRiderPresence();
+  }catch(err){toast('เปลี่ยนสถานะสิทธิประโยชน์ไม่สำเร็จ: '+err.message);}
+};
+window.qtAdminDeleteRiderBenefit=async function(benefitId){
+  try{
+    if(!window.confirm('ลบสิทธิประโยชน์นี้ออกจาก QueueGo?'))return;
+    await qtSupabaseRpc('qg_admin_delete_rider_benefit',{p_benefit_id:benefitId});
+    toast('ลบสิทธิประโยชน์ Rider แล้ว');
+    await qtRenderAdminRiderPresence();
+  }catch(err){toast('ลบสิทธิประโยชน์ไม่สำเร็จ: '+err.message);}
+};
 function qtRiderDocumentExpiryMeta(value){
   const raw=String(value||'').trim();
   if(!raw)return {label:'ยังไม่ระบุวันหมดอายุ',color:'#777'};
@@ -372,7 +455,7 @@ async function qtRenderAdminRiderPresence(){
   try{
     const token=await qtGetAccessToken();
     if(!token)throw Error('กรุณาเข้าสู่ระบบ Admin');
-    const [users,profiles,presence,reverification,vehicleInspection,riderVehicles,riderDocuments,riderInsurance]=await Promise.all([
+    const [users,profiles,presence,reverification,vehicleInspection,riderVehicles,riderDocuments,riderInsurance,riderBenefits]=await Promise.all([
       qtSupabaseTable('users?select=id,name,role,status&role=eq.rider',{accessToken:token}),
       qtSupabaseTable('rider_profiles?select=id,user_id,status,metadata,updated_at',{accessToken:token}),
       qtSupabaseTable('qg_rider_presence_events?select=rider_id,online,occurred_at&order=occurred_at.desc&limit=2000',{accessToken:token}),
@@ -380,9 +463,10 @@ async function qtRenderAdminRiderPresence(){
       qtSupabaseRpc('qg_admin_rider_vehicle_inspection_queue'),
       qtSupabaseRpc('qg_admin_rider_vehicle_queue'),
       qtSupabaseRpc('qg_admin_rider_document_queue'),
-      qtSupabaseRpc('qg_admin_rider_insurance_queue')
+      qtSupabaseRpc('qg_admin_rider_insurance_queue'),
+      qtSupabaseRpc('qg_admin_rider_benefits')
     ]);
-    if(!Array.isArray(users)||!Array.isArray(profiles)||!Array.isArray(presence)||!Array.isArray(reverification)||!Array.isArray(vehicleInspection)||!Array.isArray(riderVehicles)||!Array.isArray(riderDocuments)||!Array.isArray(riderInsurance))throw Error('ข้อมูลไรเดอร์ไม่ครบ');
+    if(!Array.isArray(users)||!Array.isArray(profiles)||!Array.isArray(presence)||!Array.isArray(reverification)||!Array.isArray(vehicleInspection)||!Array.isArray(riderVehicles)||!Array.isArray(riderDocuments)||!Array.isArray(riderInsurance)||!Array.isArray(riderBenefits))throw Error('ข้อมูลไรเดอร์ไม่ครบ');
     const byUser=new Map(profiles.map(p=>[String(p.user_id),p]));
     const latestPresence=new Map();
     presence.forEach(ev=>{
@@ -413,7 +497,27 @@ async function qtRenderAdminRiderPresence(){
       insuranceByRider.get(key).push(policy);
     });
     if(!el.isConnected)return;
-    el.innerHTML=users.length?users.map(u=>{
+    const riderBenefitsHtml='<div class="qt-rider-online-card" style="margin-bottom:10px">'+
+      '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px">'+
+        '<div><strong>Rider Benefits</strong><div><small>สิทธิประโยชน์จริงที่ Rider เห็นในแอป</small></div></div>'+
+        '<button class="btn-primary" type="button" onclick="qtAdminAddRiderBenefit()">เพิ่มสิทธิ์</button>'+
+      '</div>'+
+      (riderBenefits.length?riderBenefits.map(item=>{
+        const status={active:'ใช้งานอยู่',upcoming:'ยังไม่เริ่ม',expired:'หมดอายุ',disabled:'ปิดใช้งาน'}[String(item.status||'')]||String(item.status||'');
+        const period=String(item.starts_on||'')+(item.expires_on?' – '+String(item.expires_on):' · ไม่กำหนดวันหมดอายุ');
+        return '<div style="margin-top:8px;padding:9px;border:1px solid #eee;border-radius:10px">'+
+          '<div><small><strong>'+escapeHtml(item.title||'สิทธิประโยชน์')+'</strong> · '+escapeHtml(qtRiderBenefitCategoryLabel(item.category))+'</small></div>'+
+          '<div><small>'+escapeHtml(item.provider_name||'')+' · '+escapeHtml(status)+'</small></div>'+
+          '<div><small>'+escapeHtml(period)+'</small></div>'+
+          (item.description?'<div style="margin-top:4px"><small>'+escapeHtml(item.description)+'</small></div>':'')+
+          '<div class="row-btns" style="margin-top:6px">'+
+            '<button class="btn-secondary" type="button" onclick="qtAdminSetRiderBenefitEnabled(\''+escapeHtml(item.benefit_id)+'\','+(item.enabled===true?'false':'true')+')">'+(item.enabled===true?'ปิด':'เปิด')+'</button>'+
+            '<button class="btn-danger" type="button" onclick="qtAdminDeleteRiderBenefit(\''+escapeHtml(item.benefit_id)+'\')">ลบ</button>'+
+          '</div>'+
+        '</div>';
+      }).join(''):'<div style="margin-top:7px"><small>ยังไม่มีสิทธิประโยชน์ Rider ที่บันทึกใน QueueGo</small></div>')+
+    '</div>';
+    el.innerHTML=riderBenefitsHtml+(users.length?users.map(u=>{
       const p=byUser.get(String(u.id));
       const ev=p?.id?latestPresence.get(String(p.id)):null;
       /* Presence events are the source of truth for the rider's manual online/offline switch.
@@ -516,7 +620,7 @@ async function qtRenderAdminRiderPresence(){
         vehicleNote+vehicleActions+
         fleetHtml+docsHtml+insuranceHtml+
       '</div>';
-    }).join(''):'<div class="qt-rider-online-card">ยังไม่มีข้อมูลไรเดอร์</div>';
+    }).join(''):'<div class="qt-rider-online-card">ยังไม่มีข้อมูลไรเดอร์</div>');
   }catch(err){if(el.isConnected)el.textContent='โหลดสถานะไรเดอร์ไม่สำเร็จ: '+err.message;}
 }
 
