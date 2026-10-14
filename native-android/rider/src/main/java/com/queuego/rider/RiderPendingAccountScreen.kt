@@ -48,6 +48,11 @@ internal fun riderAccountRestrictionContent(status: String?): RiderAccountRestri
             title = "บัญชียังไม่สามารถเปิดรับงาน",
             description = "กรุณาติดต่อฝ่ายดูแล QueueGo เพื่อตรวจสอบหรือแก้ไขข้อมูลการสมัครก่อนเปิดรับงาน"
         )
+        "deleted" -> RiderAccountRestrictionContent(
+            badge = "บัญชีถูกยกเลิก",
+            title = "บัญชี Rider นี้ไม่พร้อมใช้งาน",
+            description = "บัญชีนี้ถูกยกเลิกในระบบและไม่สามารถเปิดรับงานได้ หากคิดว่าเป็นข้อผิดพลาด กรุณาติดต่อฝ่ายดูแล QueueGo"
+        )
         else -> RiderAccountRestrictionContent(
             badge = "บัญชียังไม่พร้อมใช้งาน",
             title = "ยังไม่สามารถเปิดรับงานได้",
