@@ -1,3 +1,14 @@
+## 2026-10-14 Rider world-class: verified nearby Road Alerts on latest compile-safe head
+- Continued from the After-Work Recommendation successor and carried the Laundry jobId compile fix forward before adding Road Alerts.
+- Production migration rider_road_alerts_v1 is applied. Rider alerts are derived only from existing Rider map feedback that an active Admin accepted_for_review and explicitly published; raw Rider reports are never shown directly to other Riders.
+- Rider Safety Center now shows up to three verified active road alerts within 5 km of the Rider's current location. Categories are limited to road_closed, bad_road and unsafe_turn. The card refreshes only while the Safety Center is composed and adds no new background location tracking.
+- Admin can publish a reviewed map-feedback item for a bounded 15–10080 minute window or disable an active alert. Alerts expire automatically.
+- The authenticated Rider RPC requires a live active Rider session and validates Thailand-range coordinates plus radius bounds. anon EXECUTE is revoked.
+- Supabase advisors identified the new published_by FK without a covering index; Production follow-up migration rider_road_alerts_fk_index_v2 was applied and the source mirror now uses the exact Production version 20261014110429.
+- qg_private.rider_road_alerts intentionally has RLS enabled with no direct policies and no anon/authenticated table grants; all access is through guarded RPCs.
+- Backup: backup/rider-worldclass-before-road-alerts-unify-20261014.
+- PASS requires exact-head native-pilot + navigation-map-runtime plus backend migration mirror/regression checks.
+
 ## 2026-10-14 Grab Driver parity: real-data After-Work Recommendation
 - Continued from Safety Overview + durable contact-attempt head 31451a64.
 - Static inspection of the owner-supplied Grab Driver 5.457.1 APK confirmed AfterBookingRecommendation / JobRecommendationV2 plus a dedicated post-booking CTA layer.

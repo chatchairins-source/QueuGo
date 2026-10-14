@@ -675,18 +675,51 @@ window.qtAdminReviewRiderMapFeedback=async function(feedbackId,decision){
     if(typeof toast==='function')toast('บันทึกผลรายงานไม่สำเร็จ: '+err.message);
   }
 };
+function qtRiderRoadAlertDefaultMinutes(category){
+  return String(category||'')==='road_closed'?360:1440;
+}
+function qtRiderRoadAlertDurationLabel(minutes){
+  const value=Number(minutes)||0;
+  return value>=1440?(Math.round(value/1440)+' วัน'):(Math.round(value/60)+' ชม.');
+}
+window.qtAdminPublishRiderRoadAlert=async function(feedbackId,category){
+  try{
+    const minutes=qtRiderRoadAlertDefaultMinutes(category);
+    const label=qtRiderRoadAlertDurationLabel(minutes);
+    if(!window.confirm('เผยแพร่แจ้งเตือนนี้ให้ Rider ใกล้เคียงเป็นเวลา '+label+'?'))return;
+    await qtSupabaseRpc('qg_admin_publish_rider_road_alert',{
+      p_feedback_id:feedbackId,
+      p_duration_minutes:minutes
+    });
+    if(typeof toast==='function')toast('เผยแพร่แจ้งเตือนถนนแล้ว · '+label);
+    await qtRenderAdminRiderMapFeedback();
+  }catch(err){
+    if(typeof toast==='function')toast('เผยแพร่แจ้งเตือนไม่สำเร็จ: '+err.message);
+  }
+};
+window.qtAdminDisableRiderRoadAlert=async function(alertId){
+  try{
+    if(!window.confirm('ปิดแจ้งเตือนถนนนี้สำหรับ Rider ทุกคน?'))return;
+    await qtSupabaseRpc('qg_admin_disable_rider_road_alert',{p_alert_id:alertId});
+    if(typeof toast==='function')toast('ปิดแจ้งเตือนถนนแล้ว');
+    await qtRenderAdminRiderMapFeedback();
+  }catch(err){
+    if(typeof toast==='function')toast('ปิดแจ้งเตือนไม่สำเร็จ: '+err.message);
+  }
+};
 async function qtRenderAdminRiderMapFeedback(){
   const el=document.getElementById('qt-admin-rider-map-feedback-panel');
   if(!el)return;
   el.textContent='กำลังโหลดรายงานแผนที่…';
   try{
-    const rows=await qtSupabaseRpc('qg_admin_rider_map_feedback_queue',{
-      p_status:'pending',
-      p_limit:100
-    });
-    if(!Array.isArray(rows))throw Error('ข้อมูลรายงานแผนที่ไม่ครบ');
+    const [pending,accepted]=await Promise.all([
+      qtSupabaseRpc('qg_admin_rider_map_feedback_queue',{p_status:'pending',p_limit:100}),
+      qtSupabaseRpc('qg_admin_rider_map_feedback_queue',{p_status:'accepted_for_review',p_limit:100})
+    ]);
+    if(!Array.isArray(pending)||!Array.isArray(accepted))throw Error('ข้อมูลรายงานแผนที่ไม่ครบ');
     if(!el.isConnected)return;
-    el.innerHTML=rows.length?rows.map(row=>{
+
+    const pendingHtml=pending.length?pending.map(row=>{
       const lat=Number(row.latitude),lng=Number(row.longitude);
       const time=row.created_at?new Date(row.created_at).toLocaleString('th-TH'):'-';
       const note=row.note?'<p class="qt-admin-note">'+escapeHtml(row.note)+'</p>':'';
@@ -701,6 +734,36 @@ async function qtRenderAdminRiderMapFeedback(){
         '</div>'+
       '</article>';
     }).join(''):'<div class="card">ยังไม่มีรายงานแผนที่รอตรวจ</div>';
+
+    const acceptedHtml=accepted.length?accepted.map(row=>{
+      const lat=Number(row.latitude),lng=Number(row.longitude);
+      const reviewed=row.reviewed_at?new Date(row.reviewed_at).toLocaleString('th-TH'):'-';
+      const note=row.note?'<p class="qt-admin-note">'+escapeHtml(row.note)+'</p>':'';
+      const alertActive=row.alert_active===true;
+      const alertUntil=row.alert_expires_at?new Date(row.alert_expires_at).toLocaleString('th-TH'):'';
+      const publishable=['road_closed','bad_road','unsafe_turn'].includes(String(row.category||''));
+      const alertStatus=alertActive
+        ?'<p class="qt-admin-note" style="color:#15845e"><b>กำลังแจ้งเตือน Rider</b> · ถึง '+escapeHtml(alertUntil)+'</p>'
+        :(row.alert_id?'<p class="qt-admin-note">แจ้งเตือนถูกปิดหรือหมดอายุแล้ว</p>':'');
+      const alertAction=alertActive
+        ?'<button class="btn-danger" type="button" onclick="qtAdminDisableRiderRoadAlert(\''+escapeHtml(row.alert_id)+'\')">ปิดแจ้งเตือน</button>'
+        :(publishable
+          ?'<button class="btn-primary" type="button" onclick="qtAdminPublishRiderRoadAlert(\''+escapeHtml(row.id)+'\',\''+escapeHtml(row.category)+'\')">เผยแพร่แจ้งเตือน '+escapeHtml(qtRiderRoadAlertDurationLabel(qtRiderRoadAlertDefaultMinutes(row.category)))+'</button>'
+          :'<span class="qt-admin-note">หมวดนี้ใช้ปรับข้อมูลแผนที่ ไม่เผยแพร่เป็น alert</span>');
+      return '<article class="card">'+
+        '<b>'+escapeHtml(qtRiderMapFeedbackCategoryLabel(row.category))+'</b>'+
+        '<p class="qt-admin-note">เข้าคิวตรวจแล้ว · '+escapeHtml(reviewed)+'</p>'+
+        note+alertStatus+
+        '<div class="row-btns">'+
+          '<button class="btn-secondary" type="button" onclick="qtAdminOpenRiderMapFeedbackLocation('+lat+','+lng+')">ดูจุดบนแผนที่</button>'+
+          alertAction+
+        '</div>'+
+      '</article>';
+    }).join(''):'<div class="card">ยังไม่มีรายงานที่รับเข้าคิวตรวจ</div>';
+
+    el.innerHTML=
+      '<h3 style="margin:0 0 8px">รอตรวจ</h3>'+pendingHtml+
+      '<h3 style="margin:14px 0 8px">รับเข้าคิวตรวจ / แจ้งเตือนถนน</h3>'+acceptedHtml;
   }catch(err){
     if(el.isConnected)el.textContent='โหลดรายงานแผนที่ไม่สำเร็จ: '+err.message;
   }
