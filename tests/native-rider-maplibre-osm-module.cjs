@@ -13,6 +13,7 @@ const localRoadRouting=fs.readFileSync('native-android/rider-maplibre-osm/src/ma
 const localRoadGraph=fs.readFileSync('native-android/rider-maplibre-osm/src/main/java/com/queuego/ridermaplibreosm/QueueGoLocalRoadGraph.kt','utf8');
 const localRoadPathfinder=fs.readFileSync('native-android/rider-maplibre-osm/src/main/java/com/queuego/ridermaplibreosm/QueueGoLocalRoadPathfinder.kt','utf8');
 const trustedLocalRoadRouting=fs.readFileSync('native-android/rider-maplibre-osm/src/main/java/com/queuego/ridermaplibreosm/QueueGoTrustedLocalRoadRouting.kt','utf8');
+const localRoadJunction=fs.readFileSync('native-android/rider-maplibre-osm/src/main/java/com/queuego/ridermaplibreosm/QueueGoLocalRoadJunction.kt','utf8');
 const riderBuild=fs.readFileSync('native-android/rider/build.gradle.kts','utf8');
 
 assert(settings.includes('":rider-maplibre-osm"'),'MapLibre OSM module must be registered in native settings');
@@ -141,7 +142,9 @@ assert(localRoadGraph.includes('buildQueueGoLocalRoadGraph')&&
   localRoadGraph.includes('if (!road.oneWay)')&&
   localRoadGraph.includes('point.latitude.toBits()')&&
   localRoadGraph.includes('point.longitude.toBits()')&&
-  localRoadGraph.includes('does not snap nearby-but-different coordinates')&&
+  localRoadGraph.includes('Nearby coordinates never connect automatically')&&
+  localRoadGraph.includes('junctions: List<QueueGoVerifiedLocalRoadJunction> = emptyList()')&&
+  localRoadGraph.includes('junctionIndex.memberNodeIds[memberKey]')&&
   !localRoadGraph.includes('Dijkstra')&&
   !localRoadGraph.includes('shortestPath')&&
   !localRoadGraph.includes('NavigationRouteCoordinator'),
@@ -176,8 +179,29 @@ assert(localRoadGraph.includes('internal fun buildQueueGoLocalRoadGraph(')&&
   'Trusted Local Roads graph/pathfinder access must require a signed-delivery trust token instead of accepting arbitrary external road lists');
 
 assert(trustedLocalRoadRouting.includes('exactNodeId(point: QueueGoLocalRoadPoint): String?')&&
-  trustedLocalRoadRouting.includes('id.takeIf { it in graph.nodes }'),
-  'Trusted field-test routing must expose exact-node lookup only and must not introduce nearest-road snapping');
+  trustedLocalRoadRouting.includes('graph.exactPointNodeIds[queueGoExactNodeId(point)]'),
+  'Trusted field-test routing must expose exact reviewed-point lookup only and must not introduce nearest-road snapping');
+
+assert(localRoadFeed.includes('QUEUEGO_LOCAL_ROAD_SCHEMA_VERSION = 2')&&
+  localRoadFeed.includes('junctions: List<QueueGoVerifiedLocalRoadJunction> = emptyList()')&&
+  localRoadFeed.includes('Schema v1 Local Roads feed cannot contain junction evidence')&&
+  localRoadFeed.includes('validateQueueGoVerifiedJunction(')&&
+  localRoadFeed.includes('Local-road point cannot belong to multiple explicit junctions'),
+  'Signed Local Roads schema v2 must carry bounded explicit junction evidence while keeping v1 backward-compatible');
+
+assert(localRoadJunction.includes('QueueGoVerifiedLocalRoadJunction')&&
+  localRoadJunction.includes('members.size in 2..8')&&
+  localRoadJunction.includes('road.verified')&&
+  localRoadJunction.includes('PRIVATE_RESTRICTED')&&
+  localRoadJunction.includes('queueGoLocalRoadSourceReferenceAllowed')&&
+  localRoadJunction.includes('QUEUEGO_LOCAL_ROAD_MAX_JUNCTION_SPAN_METERS = 25.0'),
+  'Verified junction evidence must be provenance-bound, close-range, multi-road and unable to expose private/unverified roads');
+
+assert(localRoadSignedDelivery.includes('junctions = trusted.validated.junctions')&&
+  localRoadSignedDelivery.includes('junctions = requireNotNull(validated.junctionsForApply())')&&
+  trustedLocalRoadRouting.includes('internal val junctions: List<QueueGoVerifiedLocalRoadJunction>')&&
+  trustedLocalRoadRouting.includes('junctions = junctions'),
+  'Verified junction evidence must survive signed cache/delivery and reach graph construction only through the trusted snapshot token');
 
 
 
