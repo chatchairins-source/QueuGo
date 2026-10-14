@@ -1,3 +1,9 @@
+## 2026-10-14 Grab Driver parity: first-run guided learning without duplicate UI
+- Confirmed QueueGo already had an 8-lesson Rider Learning Center covering targeted 30-second offers, Google Maps handoff, pickup photo, Market multi-stop, delivery cash, 200m warning, ratings/missions and safety. Do not create a second QuickStart/tutorial implementation.
+- Added only the missing guided-onboarding behavior to the existing Learning Center: active Riders who have never seen onboarding-v1 automatically see the real Learning Center once after login/registration completes. Closing it marks that user/version as seen locally so it does not interrupt later sessions.
+- The existing Profile > ศูนย์เรียนรู้ Rider remains the single manual entry point and can be reopened at any time. No Home card, fake lesson data, backend write or Production migration is introduced.
+- Backup backup/rider-load-summary-before-learning-onboarding-20261014 retains 63ef1db. Exact-head native-pilot + navigation-map-runtime are required before PASS.
+
 ## 2026-10-14 Grab Driver parity: real Large Order / vehicle load transparency
 - Rebased onto current runtime network+jank diagnostics successor 97a722a so QueueGo keeps Work's local API latency/Jank tracking while adding Large Order transparency. No diagnostic data or behavior is overwritten.
 - QueueGo dispatch already enforces real vehicle-capacity matching for Market/Grocery using market_order_weight(order)=quantity*item_weight_kg and selected vehicle_capacity_kg. This feature does not change matching; it exposes the authoritative load to the targeted/assigned Rider.
