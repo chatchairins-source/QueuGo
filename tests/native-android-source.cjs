@@ -189,6 +189,7 @@ const pilotWorkflow=fs.readFileSync(path.resolve(root,'..','.github','workflows'
 ok(riderApi.includes('qg_get_my_rider_offer')&&!riderApi.includes('rpcArray("get_rider_delivery_pool"'),'Rider native must show only the server-selected live offer, never a shared delivery pool');
 ok(riderApi.includes('qg_rider_decline_offer')&&riderApi.includes('qg_rider_action_once'),'Rider native offer accept/decline must stay on guarded Production RPCs');
 ok(riderApp.includes('พร้อมรับงานแล้ว')&&riderApp.includes('กำลังค้นหางานใกล้คุณ'),'Rider idle card must use the Production waiting title and GPS subtitle');
+ok(riderApp.includes('snapshot?.laundry?.activeJob?.jobId')&&!riderApp.includes('snapshot?.laundry?.activeJob?.id,'),'Rider Auto Accept lifecycle key must use Laundry jobId, never a nonexistent id field');
 ok(riderApp.includes('onExpired =')&&riderApp.includes('ข้อเสนอนี้หมดเวลา ระบบกำลังส่งงานให้ Rider คนถัดไป'),'Rider expired offers must immediately leave the card and continue sequential dispatch');
 ok(riderApp.includes('ToneGenerator(AudioManager.STREAM_NOTIFICATION, 100)')&&riderApp.includes('มีงานใหม่ที่ระบบจัดให้ กรุณาตอบรับภายใน 30 วินาที'),'Rider foreground must alert once for a newly issued server offer');
 ok(riderApi.includes('if (!online)')&&riderApi.includes('qg_get_my_rider_offer')&&riderApi.includes('qg_rider_decline_offer'),'Rider going offline must release any live offer immediately');
