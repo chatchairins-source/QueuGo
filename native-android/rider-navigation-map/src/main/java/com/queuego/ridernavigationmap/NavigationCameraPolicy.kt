@@ -22,17 +22,16 @@ internal fun navigationCameraDecision(
     val match = activeRoute?.let { matchNavigationRoute(it, fix.point) }
     val reliableRouteMatch = match?.takeIf { it.offRouteMeters <= ROUTE_BEARING_MAX_OFF_ROUTE_METERS }
 
-    val gpsBearing = fix.bearingDegrees
-        ?.takeIf { it.isFinite() }
-        ?.let(::normalizeNavigationBearing)
+    val gpsBearing = navigationUsableGpsBearing(fix)
     val routeBearing = reliableRouteMatch?.segmentBearingDegrees
         ?.takeIf { it.isFinite() }
         ?.let(::normalizeNavigationBearing)
     val speed = fix.speedMetersPerSecond
         ?.takeIf { it.isFinite() && it >= 0f }
 
-    // At driving speed GPS course is authoritative. At walking/standstill speed the
-    // course sensor becomes noisy, so prefer the matched road direction when available.
+    // At driving speed a reliable GPS course is preferred. If Android reports poor
+    // bearing/speed accuracy, fall back to the matched road instead of rotating the map
+    // on a noisy course sample. At walking/standstill speed route direction still wins.
     val desiredBearing = when {
         speed == null || speed < 0.83f -> routeBearing ?: previousBearingDegrees
         speed != null && speed >= 2.2f -> gpsBearing ?: routeBearing

@@ -10,7 +10,9 @@ data class NavigationMapFix(
     val bearingDegrees: Float? = null,
     val accuracyMeters: Float? = null,
     val speedMetersPerSecond: Float? = null,
-    val elapsedRealtimeNanos: Long = 0L
+    val elapsedRealtimeNanos: Long = 0L,
+    val bearingAccuracyDegrees: Float? = null,
+    val speedAccuracyMetersPerSecond: Float? = null
 )
 
 enum class NavigationStopKind { PICKUP, DROPOFF }

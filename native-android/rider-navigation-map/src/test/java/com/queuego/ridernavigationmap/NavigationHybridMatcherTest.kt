@@ -86,6 +86,26 @@ class NavigationHybridMatcherTest {
     }
 
     @Test
+    fun poorBearingAccuracyDoesNotPenalizeTheGeometricallyCorrectSegment() {
+        val matcher = NavigationHybridMatcher()
+        val result = matcher.match(
+            parallelReturnRoute,
+            NavigationMapFix(
+                point = NavigationMapPoint(13.00001, 100.0040),
+                bearingDegrees = 270f,
+                accuracyMeters = 6f,
+                speedMetersPerSecond = 8f,
+                elapsedRealtimeNanos = 1_000_000_000L,
+                bearingAccuracyDegrees = 90f
+            )
+        )
+
+        assertNotNull(result)
+        assertTrue(result!!.routeMatch.segmentBearingDegrees!! in 70f..110f)
+        assertEquals(null, result.headingDeltaDegrees)
+    }
+
+    @Test
     fun continuityAvoidsJumpingBackwardAtAmbiguousGeometry() {
         val matcher = NavigationHybridMatcher()
         val first = matcher.match(
