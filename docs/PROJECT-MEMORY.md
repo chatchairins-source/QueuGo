@@ -1,3 +1,10 @@
+## 2026-10-14 Grab Driver parity: Rider runtime network + jank diagnostics
+- Confirmed the owner-supplied Grab Driver package contains networkStats and janktracker modules. QueueGo already had device readiness, ApplicationExitInfo crash/ANR history and retained-map diagnostics, but did not distinguish slow API sessions from UI frame jank.
+- Added local-only runtime measurements. QueueGo API requests record only request count, success/failure and elapsed milliseconds; no URL, RPC name, order ID, payload, customer, shop or location data is stored. Slow is >=1500 ms. Diagnostics shows count/fail/slow/average/worst for the current process session.
+- Added a lightweight Choreographer frame sampler for the Rider app process. Frames >=34 ms count as jank, >=100 ms as severe, and lifecycle/background gaps >500 ms are ignored. Diagnostics waits for at least 60 rendered frames before classifying health.
+- No Production DB or telemetry upload was added. This phase is intentionally on-device diagnosis only, so Rider/support can tell whether a reported lag is network-side or UI-side without collecting personal trip data.
+- Backup backup/rider-runtime-performance-before-network-jank-20261014 retains 472bde3. Exact-head native-pilot + navigation-map-runtime are required before PASS.
+
 ## 2026-10-14 Grab Driver parity: Merchant pickup + parking guidance
 - Confirmed the owner-supplied Grab Driver package contains parking/pickup-support capability while QueueGo Merchant only exposed address/pin. Added Rider-facing pickup instructions and parking/entrance instructions to the existing Merchant shop setup; both are stored inside existing shop metadata and capped at 300 characters.
 - Production migration 20261014085155 merchant_pickup_guidance_v1 is additive and exposes only allowlisted guidance through Rider-scoped RPCs. A Rider may read a single-shop guide only while assigned to that order or holding the live targeted offer. Market multi-stop guides require the Rider to own an active order in that market trip. No full shop metadata is exposed.
