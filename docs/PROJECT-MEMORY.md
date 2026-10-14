@@ -1,3 +1,10 @@
+## 2026-10-14 Rider Home Action Cards: critical online readiness state
+- Extended the real-data Home Action Card layer with already-polled server-backed readiness blockers so Admin actions are visible even when they happen while Rider is already online.
+- Online idle Home may now surface Rider selfie re-verification, vehicle inspection and an unapproved selected vehicle before lower-priority document, mission and Android background-health cards. No new RPC or poll was added; this reuses the Availability state already refreshed by the v2 vehicle-gate successor.
+- Critical cards are intentionally enabled only while online. Offline Rider continues to use the existing Availability card, avoiding duplicate blockers on the same Home screen.
+- Priority is deterministic and still capped at two cards: identity -> vehicle inspection -> selected vehicle -> blocked/expiring documents -> mission -> background health. No fake promotion, bonus or backend reason is invented.
+- Backup backup/rider-availability-before-critical-home-actions-20261014 retains 43c4779. Exact-head native-pilot + navigation-map-runtime remain required before PASS.
+
 ## 2026-10-14 Rider Grab-parity release successor: runtime + Home actions + Availability vehicle gates
 - Continued from runtime-fixed unified Account Restriction + Home Action Cards head 2a033bd, preserving the bounded quiet PixelCopy retry that addresses the real continuity runtime failure.
 - Audited Rider Availability against the existing setOnline preflight. The card previously omitted vehicle-inspection and selected-vehicle approval blockers even though setOnline already enforced both. Offline/idle Home now refreshes those two existing states with the same readiness poll and passes them into the Availability card.
