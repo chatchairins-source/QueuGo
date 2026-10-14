@@ -283,4 +283,19 @@ for(const needle of [
 ]){
   assert.ok(riderLoadSummaryMigration.includes(needle),'Rider load summary migration missing contract: '+needle);
 }
+const riderInsuranceMigration=read('supabase/migrations/20261014085820_rider_insurance_center_v1.sql');
+for(const needle of [
+  'qg_private.rider_insurance_policies',
+  'qg_rider_insurance_policies',
+  'qg_admin_rider_insurance_queue',
+  'qg_admin_save_rider_insurance',
+  'qg_admin_delete_rider_insurance',
+  "coverage_type in ('personal_accident','income_protection','vehicle','other')",
+  "support_url is null or support_url ~ '^https://'",
+  "revoke all on table qg_private.rider_insurance_policies from public, anon, authenticated",
+  "revoke all on function public.qg_rider_insurance_policies() from public, anon",
+  "revoke all on function public.qg_admin_rider_insurance_queue() from public, anon"
+]){
+  assert.ok(riderInsuranceMigration.includes(needle),'Rider insurance migration missing contract: '+needle);
+}
 console.log('Native backend migration mirror: PASS');

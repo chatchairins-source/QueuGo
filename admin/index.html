@@ -153,6 +153,45 @@ function qtRiderMultipleVehicleStateLabel(status,selected,legacy){
   if(legacy&&status!=='approved')return 'รถเดิม';
   return {approved:'อนุมัติแล้ว',pending:'รออนุมัติ',rejected:'ไม่ผ่าน'}[String(status||'')]||'ไม่ทราบสถานะ';
 }
+function qtRiderInsuranceTypeLabel(type){
+  return {personal_accident:'ประกันอุบัติเหตุ',income_protection:'คุ้มครองรายได้',vehicle:'ประกันรถ',other:'ความคุ้มครองอื่น'}[String(type||'')]||String(type||'อื่น ๆ');
+}
+window.qtAdminAddRiderInsurance=async function(riderId){
+  try{
+    if(typeof qgAdminInput!=='function')throw Error('ฟอร์ม Admin ยังไม่พร้อม');
+    const type=await qgAdminInput({title:'เพิ่มความคุ้มครอง Rider',label:'ประเภท: personal_accident / income_protection / vehicle / other',value:'personal_accident',type:'text'});
+    if(type===null)return;
+    const coverageType=String(type||'').trim();
+    if(!['personal_accident','income_protection','vehicle','other'].includes(coverageType)){toast('ประเภทความคุ้มครองไม่ถูกต้อง');return;}
+    const provider=await qgAdminInput({title:'ผู้ให้บริการประกัน',label:'ชื่อบริษัท / ผู้ให้บริการ',type:'text'});
+    if(provider===null)return;
+    const product=await qgAdminInput({title:'ชื่อแผนประกัน',label:'ชื่อผลิตภัณฑ์ / แผน',type:'text'});
+    if(product===null)return;
+    const policyNumber=await qgAdminInput({title:'เลขกรมธรรม์',label:'เลขกรมธรรม์จริง',type:'text'});
+    if(policyNumber===null)return;
+    const starts=await qgAdminInput({title:'วันเริ่มคุ้มครอง',label:'วันเริ่มคุ้มครอง',type:'date'});
+    if(starts===null)return;
+    const expires=await qgAdminInput({title:'วันสิ้นสุดความคุ้มครอง',label:'วันหมดอายุ',type:'date',min:starts});
+    if(expires===null)return;
+    if(expires<starts){toast('วันหมดอายุต้องไม่ก่อนวันเริ่มคุ้มครอง');return;}
+    await qtSupabaseRpc('qg_admin_save_rider_insurance',{
+      p_policy_id:null,p_rider_id:riderId,p_coverage_type:coverageType,
+      p_provider_name:String(provider).trim(),p_product_name:String(product).trim(),
+      p_policy_number:String(policyNumber).trim(),p_starts_on:starts,p_expires_on:expires,
+      p_coverage_summary:null,p_support_phone:null,p_support_url:null
+    });
+    toast('บันทึกกรมธรรม์ Rider แล้ว');
+    await qtRenderAdminRiderPresence();
+  }catch(err){toast('บันทึกกรมธรรม์ไม่สำเร็จ: '+err.message);}
+};
+window.qtAdminDeleteRiderInsurance=async function(policyId){
+  try{
+    if(!window.confirm('ลบกรมธรรม์นี้ออกจาก QueueGo?'))return;
+    await qtSupabaseRpc('qg_admin_delete_rider_insurance',{p_policy_id:policyId});
+    toast('ลบกรมธรรม์แล้ว');
+    await qtRenderAdminRiderPresence();
+  }catch(err){toast('ลบกรมธรรม์ไม่สำเร็จ: '+err.message);}
+};
 function qtRiderDocumentExpiryMeta(value){
   const raw=String(value||'').trim();
   if(!raw)return {label:'ยังไม่ระบุวันหมดอายุ',color:'#777'};
@@ -333,16 +372,17 @@ async function qtRenderAdminRiderPresence(){
   try{
     const token=await qtGetAccessToken();
     if(!token)throw Error('กรุณาเข้าสู่ระบบ Admin');
-    const [users,profiles,presence,reverification,vehicleInspection,riderVehicles,riderDocuments]=await Promise.all([
+    const [users,profiles,presence,reverification,vehicleInspection,riderVehicles,riderDocuments,riderInsurance]=await Promise.all([
       qtSupabaseTable('users?select=id,name,role,status&role=eq.rider',{accessToken:token}),
       qtSupabaseTable('rider_profiles?select=id,user_id,status,metadata,updated_at',{accessToken:token}),
       qtSupabaseTable('qg_rider_presence_events?select=rider_id,online,occurred_at&order=occurred_at.desc&limit=2000',{accessToken:token}),
       qtSupabaseRpc('qg_admin_rider_reverification_queue'),
       qtSupabaseRpc('qg_admin_rider_vehicle_inspection_queue'),
       qtSupabaseRpc('qg_admin_rider_vehicle_queue'),
-      qtSupabaseRpc('qg_admin_rider_document_queue')
+      qtSupabaseRpc('qg_admin_rider_document_queue'),
+      qtSupabaseRpc('qg_admin_rider_insurance_queue')
     ]);
-    if(!Array.isArray(users)||!Array.isArray(profiles)||!Array.isArray(presence)||!Array.isArray(reverification)||!Array.isArray(vehicleInspection)||!Array.isArray(riderVehicles)||!Array.isArray(riderDocuments))throw Error('ข้อมูลไรเดอร์ไม่ครบ');
+    if(!Array.isArray(users)||!Array.isArray(profiles)||!Array.isArray(presence)||!Array.isArray(reverification)||!Array.isArray(vehicleInspection)||!Array.isArray(riderVehicles)||!Array.isArray(riderDocuments)||!Array.isArray(riderInsurance))throw Error('ข้อมูลไรเดอร์ไม่ครบ');
     const byUser=new Map(profiles.map(p=>[String(p.user_id),p]));
     const latestPresence=new Map();
     presence.forEach(ev=>{
@@ -365,6 +405,13 @@ async function qtRenderAdminRiderPresence(){
     const documentsByRider=new Map(
       riderDocuments.filter(x=>x&&x.rider_id).map(x=>[String(x.rider_id),x])
     );
+    const insuranceByRider=new Map();
+    riderInsurance.forEach(policy=>{
+      const key=String(policy?.rider_id||'');
+      if(!key)return;
+      if(!insuranceByRider.has(key))insuranceByRider.set(key,[]);
+      insuranceByRider.get(key).push(policy);
+    });
     if(!el.isConnected)return;
     el.innerHTML=users.length?users.map(u=>{
       const p=byUser.get(String(u.id));
@@ -453,12 +500,21 @@ async function qtRenderAdminRiderPresence(){
         documentRow('ใบขับขี่','driver_license',rd.driver_license_expires_on,null)+
         documentRow('พ.ร.บ. '+(rd.selected_vehicle_plate||'รถคันปัจจุบัน'),'vehicle_prb',rd.vehicle_prb_expires_on,rd.selected_vehicle_id)+
       '</div>':'';
+      const policies=p?.id?(insuranceByRider.get(String(p.id))||[]):[];
+      const insuranceHtml=p?.id?'<div style="margin-top:10px;border-top:1px solid #eee;padding-top:8px"><div style="display:flex;align-items:center;justify-content:space-between;gap:8px"><small><strong>Insurance Center</strong></small><button class="btn-secondary" type="button" onclick="qtAdminAddRiderInsurance(\''+escapeHtml(p.id)+'\')">เพิ่มกรมธรรม์</button></div>'+
+        (policies.length?policies.map(policy=>'<div style="margin-top:7px;padding:8px;border:1px solid #eee;border-radius:10px">'+
+          '<div><small><strong>'+escapeHtml(policy.product_name||qtRiderInsuranceTypeLabel(policy.coverage_type))+'</strong></small></div>'+
+          '<div><small>'+escapeHtml(policy.provider_name||'')+' · '+escapeHtml(policy.policy_number||'ไม่ระบุเลขกรมธรรม์')+'</small></div>'+
+          '<div><small>'+escapeHtml(policy.starts_on||'')+' – '+escapeHtml(policy.expires_on||'')+' · '+escapeHtml(policy.status||'')+'</small></div>'+
+          '<div class="row-btns" style="margin-top:6px"><button class="btn-danger" type="button" onclick="qtAdminDeleteRiderInsurance(\''+escapeHtml(policy.policy_id)+'\')">ลบ</button></div>'+
+        '</div>').join(''):'<div style="margin-top:6px"><small>ยังไม่มีกรมธรรม์ที่บันทึกใน QueueGo</small></div>')+
+      '</div>':'';
       return '<div class="qt-rider-online-card"><strong>'+escapeHtml(u.name||'ไรเดอร์')+'</strong><span style="float:right">'+state+'</span>'+
         '<div style="margin-top:6px"><small>ยืนยันตัวตน: '+escapeHtml(verificationStatus)+'</small></div>'+
         note+verifyActions+
         '<div style="margin-top:9px"><small>ตรวจรถ: '+escapeHtml(vehicleInspectionStatus)+'</small></div>'+
         vehicleNote+vehicleActions+
-        fleetHtml+docsHtml+
+        fleetHtml+docsHtml+insuranceHtml+
       '</div>';
     }).join(''):'<div class="qt-rider-online-card">ยังไม่มีข้อมูลไรเดอร์</div>';
   }catch(err){if(el.isConnected)el.textContent='โหลดสถานะไรเดอร์ไม่สำเร็จ: '+err.message;}

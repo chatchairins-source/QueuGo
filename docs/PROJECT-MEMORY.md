@@ -1,3 +1,11 @@
+## 2026-10-14 Grab Driver parity: real-data Rider Insurance Center v1
+- Rebased Insurance Center onto first-run guided Learning successor 6efb575 so QueueGo preserves Work's latest Learning, Large Order transparency and local runtime diagnostics.
+- Confirmed the owner-supplied Grab Driver 5.457.1 package contains insurance capabilities including Income Protection, e-Hailing insurance premium detail/discovery, usage-based insurance survey and insurance webview modules. QueueGo previously had no insurance schema or Rider UI.
+- QueueGo Insurance Center is real-data-only: no invented coverage, provider, premium, benefit amount or policy number. Production migration 20261014085820 rider_insurance_center_v1 is additive and already applied; active-Rider validation returned policy_count=0.
+- Policy data lives in qg_private. Rider reads owned policies only; Admin list/save/delete re-checks live active Admin; anon execute is revoked. V1 is informational and does not block online availability.
+- Native Rider Profile shows provider, plan/type, policy number, coverage dates/status, optional summary and verified support contact/link. Admin Rider panel can add/delete real policy records through public authenticated RPCs only.
+- Backup backup/rider-learning-before-insurance-20261014 retains 6efb575. Exact-head native-pilot + navigation-map-runtime are required before PASS.
+
 ## 2026-10-14 Grab Driver parity: first-run guided learning without duplicate UI
 - Confirmed QueueGo already had an 8-lesson Rider Learning Center covering targeted 30-second offers, Google Maps handoff, pickup photo, Market multi-stop, delivery cash, 200m warning, ratings/missions and safety. Do not create a second QuickStart/tutorial implementation.
 - Added only the missing guided-onboarding behavior to the existing Learning Center: active Riders who have never seen onboarding-v1 automatically see the real Learning Center once after login/registration completes. Closing it marks that user/version as seen locally so it does not interrupt later sessions.
