@@ -1,3 +1,8 @@
+## 2026-10-14 Rider Admin re-verification v3 clean completion gate
+- Rebased only the remaining stricter Admin re-verification deltas onto current base d12e371. The reason-required migration is already byte-identical on base, so it is not duplicated.
+- Admin now blocks blank re-verification reasons before RPC and sends only a non-blank reason. Regression guards the UI behavior plus private Admin queue / online-gate revoke contracts.
+- This v3 branch is conflict-free by construction and exists only to finish the current re-verification release gate. No new Grab-parity feature may start until exact-head native-pilot + navigation-map-runtime pass and the PR is mergeable.
+
 ## 2026-10-14 Rider re-verification Admin workflow on consolidated release
 - Pulled Work PR235 Admin workflow onto the consolidated #234 release line because its Admin files were byte-identical to the PR235 base before the new workflow, so the UI changes apply cleanly without overwriting newer Admin work.
 - Existing Admin Rider-status cards now call qg_admin_rider_reverification_queue, can request a fresh identity check, open pending private selfie evidence through the existing signed qg-evidence viewer, approve a pending selfie, or reject it with a required Rider-facing reason. The Admin UI never queries qg_private directly.
