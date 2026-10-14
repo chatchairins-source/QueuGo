@@ -1,11 +1,7 @@
 package com.queuego.rider
 
-import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
-import android.location.Location
-import android.os.Looper
-import android.os.SystemClock
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -18,11 +14,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
-import com.google.android.gms.location.LocationCallback
-import com.google.android.gms.location.LocationRequest
-import com.google.android.gms.location.LocationResult
-import com.google.android.gms.location.LocationServices
-import com.google.android.gms.location.Priority
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.queuego.ridernavigationmap.LongdoNavigationRouteClient
 import com.queuego.ridernavigationmap.NavigationMapCamera
 import com.queuego.ridernavigationmap.NavigationMapFix
@@ -37,96 +29,6 @@ import com.queuego.ridernavigationmap.RiderNavigationMap
 import com.queuego.ridernavigationmap.RiderNavigationMapState
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.channels.Channel
-import kotlin.math.max
-
-private const val NAVIGATION_LOCATION_INTERVAL_MS = 1_000L
-private const val NAVIGATION_LOCATION_MIN_INTERVAL_MS = 500L
-private const val NAVIGATION_LOCATION_MIN_DISTANCE_METERS = 1f
-private const val NAVIGATION_MAX_ACCURACY_METERS = 80f
-private const val NAVIGATION_MAX_REASONABLE_SPEED_MPS = 55f
-private const val NAVIGATION_STALE_LAST_FIX_MS = 30_000L
-
-private class RiderNavigationLocationEngine(
-    context: Context,
-    private val onFix: (NavigationMapFix) -> Unit
-) {
-    private val appContext = context.applicationContext
-    private val client = LocationServices.getFusedLocationProviderClient(appContext)
-    private val request = LocationRequest.Builder(
-        Priority.PRIORITY_HIGH_ACCURACY,
-        NAVIGATION_LOCATION_INTERVAL_MS
-    )
-        .setMinUpdateIntervalMillis(NAVIGATION_LOCATION_MIN_INTERVAL_MS)
-        .setMinUpdateDistanceMeters(NAVIGATION_LOCATION_MIN_DISTANCE_METERS)
-        .setWaitForAccurateLocation(false)
-        .build()
-
-    private var callback: LocationCallback? = null
-    private var lastAccepted: Location? = null
-    private var running = false
-
-    fun start() {
-        if (running) return
-        val fine = appContext.checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) ==
-            PackageManager.PERMISSION_GRANTED
-        val coarse = appContext.checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) ==
-            PackageManager.PERMISSION_GRANTED
-        if (!fine && !coarse) return
-
-        running = true
-        val nextCallback = object : LocationCallback() {
-            override fun onLocationResult(result: LocationResult) {
-                result.locations.forEach(::accept)
-            }
-        }
-        callback = nextCallback
-        runCatching {
-            client.requestLocationUpdates(request, nextCallback, Looper.getMainLooper())
-            client.lastLocation.addOnSuccessListener { location ->
-                if (!running || location == null) return@addOnSuccessListener
-                val ageMs = (SystemClock.elapsedRealtimeNanos() - location.elapsedRealtimeNanos) / 1_000_000L
-                if (ageMs in 0L..NAVIGATION_STALE_LAST_FIX_MS) accept(location)
-            }
-        }.onFailure {
-            callback = null
-            running = false
-        }
-    }
-
-    fun stop() {
-        running = false
-        callback?.let { runCatching { client.removeLocationUpdates(it) } }
-        callback = null
-    }
-
-    private fun accept(location: Location) {
-        if (!running || !location.latitude.isFinite() || !location.longitude.isFinite()) return
-        if (location.latitude !in -90.0..90.0 || location.longitude !in -180.0..180.0) return
-        if (location.hasAccuracy() && location.accuracy > NAVIGATION_MAX_ACCURACY_METERS) return
-
-        val previous = lastAccepted
-        if (previous != null) {
-            val deltaSeconds =
-                (location.elapsedRealtimeNanos - previous.elapsedRealtimeNanos) / 1_000_000_000.0
-            if (deltaSeconds > 0.0) {
-                val distance = previous.distanceTo(location)
-                val maximumJump = max(120f, (deltaSeconds * NAVIGATION_MAX_REASONABLE_SPEED_MPS).toFloat())
-                if (distance > maximumJump) return
-            }
-        }
-
-        lastAccepted = Location(location)
-        onFix(
-            NavigationMapFix(
-                point = NavigationMapPoint(location.latitude, location.longitude),
-                bearingDegrees = location.bearing.takeIf { location.hasBearing() && it.isFinite() },
-                accuracyMeters = location.accuracy.takeIf { location.hasAccuracy() && it.isFinite() },
-                speedMetersPerSecond = location.speed.takeIf { location.hasSpeed() && it.isFinite() && it >= 0f },
-                elapsedRealtimeNanos = location.elapsedRealtimeNanos
-            )
-        )
-    }
-}
 
 private fun riderLongdoNavigationKey(context: Context): String? = runCatching {
     context.packageManager
@@ -307,31 +209,35 @@ internal fun QueueGoRiderNavigationMap(
         }
     }
 
-    var riderFix by remember(stateKey) { mutableStateOf<NavigationMapFix?>(null) }
     var followRider by remember(stateKey) { mutableStateOf(true) }
-    val locationEngine = remember(stateKey) {
-        RiderNavigationLocationEngine(context) { riderFix = it }
-    }
-
-    DisposableEffect(lifecycle, locationEngine) {
-        val observer = LifecycleEventObserver { _, event ->
-            when (event) {
-                Lifecycle.Event.ON_RESUME -> locationEngine.start()
-                Lifecycle.Event.ON_PAUSE -> locationEngine.stop()
-                Lifecycle.Event.ON_DESTROY -> locationEngine.stop()
-                else -> Unit
-            }
-        }
-        lifecycle.addObserver(observer)
-        if (lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) locationEngine.start()
-        onDispose {
-            lifecycle.removeObserver(observer)
-            locationEngine.stop()
-        }
-    }
 
     val stops = remember(job, marketPickups, bundleOrders) {
         riderNavigationStops(job, marketPickups, bundleOrders)
+    }
+    val navigationActive = stops.any { !it.completed && it.point.valid }
+    val riderFix by RiderNavigationLocationStore.fix.collectAsStateWithLifecycle()
+
+    DisposableEffect(lifecycle, navigationActive, context) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME && navigationActive) {
+                // Android 14+ requires a location foreground service to be created while
+                // the app still has a visible Activity unless background location was granted.
+                RiderNavigationLocationService.start(context)
+            }
+        }
+        lifecycle.addObserver(observer)
+
+        if (!navigationActive) {
+            RiderNavigationLocationService.stop(context)
+        } else if (lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) {
+            RiderNavigationLocationService.start(context)
+        }
+
+        onDispose {
+            // Deliberately do not stop an active navigation service when Compose unmounts
+            // because a tab switch, screen-off or another app must not cut the GPS stream.
+            lifecycle.removeObserver(observer)
+        }
     }
     val activeStopId = stops
         .filter { !it.completed }

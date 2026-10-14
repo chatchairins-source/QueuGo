@@ -15,6 +15,8 @@ const workflow=fs.readFileSync('.github/workflows/build-native-rider-pilot.yml',
 const runtimeTest=fs.readFileSync('native-android/rider-navigation-map/src/androidTest/java/com/queuego/ridernavigationmap/NavigationMapRuntimeTest.kt','utf8');
 const runtimeActivity=fs.readFileSync('native-android/rider-navigation-map/src/debug/java/com/queuego/ridernavigationmap/NavigationMapRuntimeActivity.kt','utf8');
 const runtimeRunner=fs.readFileSync('native-android/qa/run-rider-navigation-map-runtime.py','utf8');
+const riderLaunchCapture=fs.readFileSync('native-android/qa/capture-rider-launch.py','utf8');
+const locationRuntimeTest=fs.readFileSync('native-android/rider/src/androidTest/java/com/queuego/rider/RiderNavigationLocationServiceRuntimeTest.kt','utf8');
 
 assert(settings.includes('":rider-navigation-map"'),
   'Standalone Rider navigation map module must be registered');
@@ -23,16 +25,34 @@ assert(moduleBuild.includes('id("com.android.library")')&&moduleBuild.includes('
 assert(moduleBuild.includes('com.google.android.gms:play-services-location:21.3.0'),
   'Standalone Longdo runtime must include the Google Play Services location classes required by MapLocationManager');
 const integration=fs.readFileSync('native-android/rider/src/main/java/com/queuego/rider/RiderNavigationIntegration.kt','utf8');
+const locationService=fs.readFileSync('native-android/rider/src/main/java/com/queuego/rider/RiderNavigationLocationService.kt','utf8');
+const riderManifest=fs.readFileSync('native-android/rider/src/main/AndroidManifest.xml','utf8');
 assert(riderBuild.includes('implementation(project(":rider-navigation-map"))')&&
   riderApp.includes('QueueGoRiderNavigationMap('),
   'Runtime-gated navigation map must be integrated into the Rider APK through the QueueGo adapter');
-assert(integration.includes('NAVIGATION_LOCATION_INTERVAL_MS = 1_000L')&&
-  integration.includes('LocationRequest.Builder(')&&
-  integration.includes('Priority.PRIORITY_HIGH_ACCURACY')&&
+assert(locationService.includes('NAVIGATION_LOCATION_INTERVAL_MS = 1_000L')&&
+  locationService.includes('LocationRequest.Builder(')&&
+  locationService.includes('Priority.PRIORITY_HIGH_ACCURACY')&&
+  locationService.includes('MutableStateFlow<NavigationMapFix?>')&&
+  integration.includes('RiderNavigationLocationStore.fix.collectAsStateWithLifecycle()')&&
   integration.includes('NavigationRouteCoordinator')&&
   integration.includes('Channel.CONFLATED')&&
   integration.includes('riderNavigationStops'),
-  'Rider integration must feed 1-second fused GPS and authoritative stops into the sequential navigation coordinator');
+  'Rider navigation must use one foreground-owned 1-second fused GPS stream and feed its latest fix into the sequential coordinator');
+assert(riderManifest.includes('android.permission.FOREGROUND_SERVICE_LOCATION')&&
+  riderManifest.includes('android:name=".RiderNavigationLocationService"')&&
+  riderManifest.includes('android:foregroundServiceType="location"')&&
+  !riderManifest.includes('android.permission.ACCESS_BACKGROUND_LOCATION')&&
+  locationService.includes('ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION')&&
+  locationService.includes('START_NOT_STICKY'),
+  'Navigation location must use the Android location foreground-service contract without requesting broad background-location permission');
+assert(integration.includes('Lifecycle.Event.ON_RESUME && navigationActive')&&
+  integration.includes('RiderNavigationLocationService.start(context)')&&
+  integration.includes('RiderNavigationLocationService.stop(context)')&&
+  integration.includes('do not stop an active navigation service when Compose unmounts')&&
+  !integration.includes('Lifecycle.Event.ON_PAUSE -> locationEngine.stop()')&&
+  !integration.includes('RiderNavigationLocationEngine'),
+  'Navigation GPS must start while the Activity is visible, survive pause/tab unmount, and stop only when navigation is no longer active');
 assert(map.includes('val holder = remember(stateKey, lifecycle)')&&map.includes('AndroidView(')&&map.includes('factory =')&&map.includes('update ='),
   'MapView owner must survive normal Compose recomposition and lifecycle-safe tab remounts while only updating overlays');
 assert(map.includes('Deliberately keep lastRiderFix, map, pins and route layers')&&
@@ -207,3 +227,12 @@ assert(workflow.includes('navigation-map-runtime:')&&
   'Standalone navigation map must have a dedicated Android runtime gate');
 
 console.log('Standalone Rider navigation map module contracts: PASS');
+
+assert(locationRuntimeTest.includes('RiderNavigationLocationService.start(it)')&&
+  locationRuntimeTest.includes('KEYCODE_HOME')&&
+  locationRuntimeTest.includes('isForeground=true')&&
+  locationRuntimeTest.includes('RiderNavigationLocationService.stop(context)')&&
+  riderLaunchCapture.includes('verify_navigation_location_foreground_runtime()')&&
+  riderLaunchCapture.includes('foreground_updates_started')&&
+  riderLaunchCapture.includes('foreground_updates_stopped'),
+  'Android runtime must prove the navigation location service starts from a visible Activity, survives Home, and stops cleanly');

@@ -599,6 +599,29 @@ def verify_voice_foreground_runtime():
     print("Microphone foreground service background/owned cleanup PASS; real voice audio remains unverified")
 
 
+def verify_navigation_location_foreground_runtime():
+    runner = "com.queuego.rider.test/androidx.test.runner.AndroidJUnitRunner"
+    result = run(adb + ["shell", "am", "instrument", "-w", "-r", "-e", "class",
+                       "com.queuego.rider.RiderNavigationLocationServiceRuntimeTest", runner],
+                 capture_output=True, text=True, timeout=120)
+    (output / "navigation-location-foreground-runtime.txt").write_text(result.stdout + result.stderr)
+    assert "OK (1 test)" in result.stdout, "Navigation location foreground service lifecycle failed"
+    logcat = run(adb + ["logcat", "-d", "-s", "QueueGoNavLocation:I"],
+                 capture_output=True, text=True).stdout
+    (output / "navigation-location-logcat.txt").write_text(logcat)
+    assert "foreground_updates_started" in logcat, "Location runtime did not start Fused updates"
+    assert "foreground_updates_stopped" in logcat, "Location runtime did not stop Fused updates"
+    (output / "navigation-location-metadata.json").write_text(json.dumps({
+        "source_head": os.environ["GITHUB_SHA"],
+        "workflow_run": os.environ["GITHUB_RUN_ID"],
+        "location_service_visible_start_background_survival_and_cleanup": "PASS",
+        "physical_device": False,
+        "physical_gps_certified": False,
+        "production_account_or_order_writes": False,
+    }, indent=2) + "\n")
+    print("Navigation location foreground service visible-start/background-survival/cleanup PASS")
+
+
 
 def verify_merchant_shop_map_runtime():
     """Exercise the real Merchant Longdo picker lifecycle without session or business fixtures."""
@@ -810,6 +833,7 @@ with (output / "emulator.log").open("w") as log:
             capture_role_viewports()
             verify_real_home_map_runtime()
             verify_voice_foreground_runtime()
+            verify_navigation_location_foreground_runtime()
     finally:
         for arguments, filename in [(["logcat", "-d", "-s", "AndroidRuntime:E"], "android-runtime.txt"), (["logcat", "-b", "crash", "-d"], "crash-buffer.txt"), (["logcat", "-d"], "all-logcat-final.txt"), (["shell", "dumpsys", "activity", "lastanr"], "last-anr.txt")]:
             try:
