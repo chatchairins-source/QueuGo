@@ -222,7 +222,15 @@ internal fun QueueGoRiderNavigationMap(
         }
     }
 
-    val viewModeController = remember(stateKey) { NavigationViewModeController() }
+    val initialViewMode = remember(stateKey) {
+        when (sessionStore.loadMapViewMode(stateKey)) {
+            "FREE_PAN" -> NavigationViewMode.FREE_PAN
+            else -> NavigationViewMode.FOLLOW
+        }
+    }
+    val viewModeController = remember(stateKey, initialViewMode) {
+        NavigationViewModeController(initialViewMode)
+    }
     var viewModeState by remember(stateKey) {
         mutableStateOf(viewModeController.state())
     }
@@ -262,7 +270,11 @@ internal fun QueueGoRiderNavigationMap(
         ?.id
 
     LaunchedEffect(activeStopId) {
-        viewModeState = viewModeController.onActiveStopChanged()
+        val next = viewModeController.onActiveStopChanged()
+        viewModeState = next
+        if (next.mode != NavigationViewMode.OVERVIEW) {
+            sessionStore.saveMapViewMode(stateKey, next.mode.name)
+        }
     }
 
     val routeKey = remember(context.packageName) { riderLongdoNavigationKey(context) }
@@ -363,6 +375,7 @@ internal fun QueueGoRiderNavigationMap(
     LaunchedEffect(recenterSignal) {
         if (recenterSignal > 0) {
             viewModeState = viewModeController.onRecenter()
+            sessionStore.saveMapViewMode(stateKey, NavigationViewMode.FOLLOW.name)
             riderFix?.let { fix ->
                 stateChannel.trySend(
                     baseState.copy(
@@ -395,6 +408,7 @@ internal fun QueueGoRiderNavigationMap(
         onMapReady = onMapReady,
         onUserGesture = {
             viewModeState = viewModeController.onUserGesture()
+            sessionStore.saveMapViewMode(stateKey, NavigationViewMode.FREE_PAN.name)
         },
         onCameraChanged = { camera ->
             sessionStore.saveMapCamera(
