@@ -1,3 +1,9 @@
+## 2026-10-14 Grab Driver parity: route ETA HUD
+- APK inspection confirmed Grab navigation separates ETAInfoProvider and top-panel guidance. QueueGo already had authoritative Longdo route distance, duration, progress and next-instruction state but did not expose them in Rider Home.
+- Added a read-only guidance callback from the retained navigation integration to Home. It does not request routes, alter reroute decisions, move the camera or create another GPS stream.
+- Active work now shows next-stop route distance, ETA when Longdo supplied duration, and the next parsed turn instruction/road name. Weak-GPS and off-route guidance hides the HUD instead of showing stale/misleading values. Missing ETA never falls back to an invented speed estimate.
+- Backup backup/rider-grab-parity-before-eta-hud-20261014-v2 retains 11839bd. Exact-head native-pilot + navigation-map-runtime remain required.
+
 ## 2026-10-14 Grab Driver parity unified: live speed + advisory rest reminder
 - Pulled the validated PR242 speed/rest implementation onto the current Learning + Missions + Emergency Contact release line after confirming QueueGoRiderApp.kt and RiderNavigationLocationService.kt were byte-identical to PR242's base.
 - Reuses the existing foreground navigation GPS stream; no second location provider is created. Current km/h renders only for accepted speed samples with accuracy guard, and implausible values above 200 km/h are hidden.

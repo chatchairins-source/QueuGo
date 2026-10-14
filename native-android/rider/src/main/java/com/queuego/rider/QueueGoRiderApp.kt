@@ -32,6 +32,7 @@ import com.queuego.shared.QgLine
 import com.queuego.shared.QgRedSoft
 import com.queuego.shared.QgRiderBg
 import com.queuego.ridernavigationmap.NavigationViewportInsets
+import com.queuego.ridernavigationmap.NavigationGuidanceState
 import androidx.compose.ui.graphics.Color
 import androidx.compose.material3.CardDefaults
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -517,6 +518,7 @@ private fun RiderHome(
     val voiceState by voiceController.state.collectAsState()
     val navigationFix by RiderNavigationLocationStore.fix.collectAsState()
     val navigationSessionStartedMs by RiderNavigationLocationStore.sessionStartedElapsedRealtimeMs.collectAsState()
+    var navigationGuidance by remember(auth.user.id) { mutableStateOf(NavigationGuidanceState()) }
     var navigationClockMs by remember { mutableStateOf(SystemClock.elapsedRealtime()) }
     var dismissedRestSessionStart by remember { mutableStateOf<Long?>(null) }
     DisposableEffect(voiceController) { onDispose { voiceController.close() } }
@@ -1422,6 +1424,7 @@ private fun RiderHome(
         navigationClockMs,
         dismissedRestSessionStart
     )
+    val navigationHud = if (activeNavigationWork) riderNavigationHudInfo(navigationGuidance) else null
 
     BoxWithConstraints(
         modifier
@@ -1447,7 +1450,8 @@ private fun RiderHome(
                 topPx = navigationTopInsetPx,
                 bottomPx = navigationBottomInsetPx
             ),
-            onMapReady = { }
+            onMapReady = { },
+            onGuidance = { navigationGuidance = it }
         )
 
         Column(
@@ -1465,7 +1469,7 @@ private fun RiderHome(
             )
         }
 
-        if (activeNavigationWork && (reliableSpeedKph != null || restReminderDue)) {
+        if (activeNavigationWork && (reliableSpeedKph != null || navigationHud != null || restReminderDue)) {
             Column(
                 modifier = Modifier
                     .align(Alignment.TopStart)
@@ -1485,6 +1489,40 @@ private fun RiderHome(
                         ) {
                             Text(speed.toString(), fontSize = 21.sp, fontWeight = FontWeight.Black, color = Color(0xFF211E20))
                             Text("กม./ชม.", fontSize = 8.sp, color = QgMuted, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+                navigationHud?.let { hud ->
+                    Card(
+                        modifier = Modifier.widthIn(max = 250.dp),
+                        shape = RoundedCornerShape(17.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color(0xF8FFFFFF)),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE9E2E4)),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 3.dp)
+                    ) {
+                        Column(Modifier.padding(horizontal = 11.dp, vertical = 9.dp)) {
+                            Text("จุดถัดไป", fontSize = 8.sp, color = QgMuted, fontWeight = FontWeight.Bold)
+                            Row(
+                                Modifier.padding(top = 2.dp),
+                                horizontalArrangement = Arrangement.spacedBy(7.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(hud.distanceText, fontSize = 15.sp, fontWeight = FontWeight.Black, color = Color(0xFF211E20))
+                                hud.etaText?.let { eta ->
+                                    Text("•", color = QgMuted, fontSize = 10.sp)
+                                    Text(eta, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFF5F5559))
+                                }
+                            }
+                            hud.instructionText?.let { instruction ->
+                                Text(
+                                    instruction,
+                                    fontSize = 9.sp,
+                                    lineHeight = 12.sp,
+                                    color = Color(0xFF5F5559),
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.padding(top = 4.dp)
+                                )
+                            }
                         }
                     }
                 }
