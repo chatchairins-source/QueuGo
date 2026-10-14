@@ -273,6 +273,7 @@ fun QueueGoRiderApp(pushTarget: NativePushLaunchTarget? = null) {
                     modifier = Modifier.padding(insets),
                     user = auth!!.user,
                     refreshing = busy,
+                    error = error,
                     onRefresh = {
                         val current = auth ?: return@RiderAccountStatusScreen
                         busy = true
