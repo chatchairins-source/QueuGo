@@ -10,6 +10,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -21,6 +22,7 @@ import com.queuego.ridernavigationmap.CachingNavigationRouteProvider
 import com.queuego.ridernavigationmap.LongdoNavigationRouteClient
 import com.queuego.ridernavigationmap.NavigationMapCamera
 import com.queuego.ridernavigationmap.NavigationMapFix
+import com.queuego.ridernavigationmap.NavigationGuidanceState
 import com.queuego.ridernavigationmap.NavigationMapPoint
 import com.queuego.ridernavigationmap.NavigationDemandZone
 import com.queuego.ridernavigationmap.NavigationMapStop
@@ -211,9 +213,11 @@ internal fun QueueGoRiderNavigationMap(
     recenterSignal: Int,
     overviewSignal: Int = 0,
     viewportInsets: NavigationViewportInsets = NavigationViewportInsets(),
-    onMapReady: (Boolean) -> Unit
+    onMapReady: (Boolean) -> Unit,
+    onGuidance: (NavigationGuidanceState) -> Unit = {}
 ) {
     val context = LocalContext.current
+    val guidanceCallback by rememberUpdatedState(onGuidance)
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     val sessionStore = remember(context) { SessionStore(context) }
     val initialCamera = remember(stateKey) {
@@ -403,6 +407,7 @@ internal fun QueueGoRiderNavigationMap(
 
         if (coordinator == null) {
             for (next in stateChannel) {
+                guidanceCallback(NavigationGuidanceState())
                 val candidate = displayState(next)
                 renderedState = if (
                     navigationActive &&
@@ -423,6 +428,7 @@ internal fun QueueGoRiderNavigationMap(
             for (next in stateChannel) {
                 // Route progress/reroute stays authoritative on the raw GPS fix.
                 val result = coordinator.synchronize(next)
+                guidanceCallback(result.guidance)
                 // Filtering/snapping, when the rollout gate is enabled, is renderer-only.
                 val candidate = displayState(result.mapState)
                 renderedState = if (

@@ -424,6 +424,8 @@ fun RiderProfileScreen(
             color = Color.White
         ) {
             RiderSafetyScreen(
+                auth = auth,
+                api = api,
                 activeJob = snapshot?.activeJob,
                 onSupport = {
                     showSafety = false

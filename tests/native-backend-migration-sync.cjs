@@ -96,4 +96,24 @@ for(const needle of [
 ]){
   assert.ok(riderMissionsMigration.includes(needle),'Rider missions migration missing contract: '+needle);
 }
+const emergencyContactMigration=read('supabase/migrations/20261014065058_rider_emergency_contact_v1.sql');
+for(const needle of [
+  'qg_private.rider_emergency_contacts',
+  'qg_rider_emergency_contact',
+  'qg_rider_set_emergency_contact',
+  "revoke all on table qg_private.rider_emergency_contacts from public, anon, authenticated",
+  "revoke all on function public.qg_rider_emergency_contact() from public, anon",
+  "revoke all on function public.qg_rider_set_emergency_contact(text,text) from public, anon"
+]){
+  assert.ok(emergencyContactMigration.includes(needle),'Rider emergency contact v1 missing contract: '+needle);
+}
+const emergencyPhoneFix=read('supabase/migrations/20261014070308_rider_emergency_contact_phone_regex_fix_v2.sql');
+for(const needle of [
+  'rider_emergency_contact_phone_format',
+  "contact_phone ~ '^[+]?[0-9]{8,15}$'",
+  "v_phone !~ '^[+]?[0-9]{8,15}$'",
+  "revoke all on function qg_private.rider_set_emergency_contact(text,text) from public, anon"
+]){
+  assert.ok(emergencyPhoneFix.includes(needle),'Rider emergency contact v2 missing contract: '+needle);
+}
 console.log('Native backend migration mirror: PASS');

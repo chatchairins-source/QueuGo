@@ -1,3 +1,20 @@
+## 2026-10-14 Grab Driver parity release scope lock: authoritative ETA HUD
+- Pulled PR246 ETA HUD onto the single Rider release line after verifying it reads only the existing Longdo NavigationGuidanceState. It does not request routes, change reroute/camera behavior or create another GPS stream.
+- Active work can now show real remaining route distance, Longdo-provided ETA when available, and parsed next-turn/road guidance. Weak-GPS or off-route guidance hides the HUD; missing ETA never falls back to an invented speed estimate.
+- This is the final feature addition for the current parity pass. From this checkpoint forward, scope is locked to regression/build/runtime fixes required to make the exact release head pass native-pilot and navigation-map-runtime.
+
+## 2026-10-14 Grab Driver parity unified: live speed + advisory rest reminder
+- Pulled the validated PR242 speed/rest implementation onto the current Learning + Missions + Emergency Contact release line after confirming QueueGoRiderApp.kt and RiderNavigationLocationService.kt were byte-identical to PR242's base.
+- Reuses the existing foreground navigation GPS stream; no second location provider is created. Current km/h renders only for accepted speed samples with accuracy guard, and implausible values above 200 km/h are hidden.
+- After two hours of one continuous navigation session, QueueGo shows a non-blocking advisory rest reminder that can be acknowledged once for that session. It does not change order state, block delivery, claim a legal limit, or claim biometric/fatigue detection.
+- This remains on the same navigation-map release branch so map reuse/runtime and full Native regressions validate the combined stack on one exact head.
+
+## 2026-10-14 Grab Driver parity unified: Learning Center + Missions + emergency contact
+- Continued from PR240 Learning Center, which itself preserves PR239 server-owned real Missions. No parallel training or mission implementation is introduced.
+- Added one Rider-owned personal emergency contact inside the existing Safety Centre. Production migration 20261014065058 stores it only in qg_private.rider_emergency_contacts; public wrappers validate live session + active Rider ownership and anon execute is revoked.
+- Native Safety Centre can add, edit, delete and dial the saved contact. QueueGo does not auto-call, auto-message or auto-share GPS/location. Official Thailand emergency numbers 191 / 1669 / 1155 remain unchanged and separate.
+- This branch uses the navigation-map prefix so Learning Center + Missions + Safety contact must pass native-pilot and navigation-map-runtime on the same exact head before PASS.
+
 ## 2026-10-14 Grab Driver parity mission: Rider Learning Center
 - Added an in-app Rider Learning Center based on the training capability category observed in the owner-supplied Grab Driver package, while using QueueGo-only content and current production flow.
 - The Profile/Help section now opens eight compact expandable lessons: targeted 30-second offers, Google Maps merchant navigation, cash-to-merchant + one pickup photo, Market multi-stop, customer delivery/cash/photo completion, GPS/200m warning behavior, ratings/compliments/missions, and safety/device diagnostics.

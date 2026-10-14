@@ -11,6 +11,7 @@ import android.media.AudioManager
 import android.media.ToneGenerator
 import android.net.Uri
 import android.os.Build
+import android.os.SystemClock
 import android.provider.Settings
 import com.queuego.shared.QueueGoTheme
 import com.queuego.shared.QueueGoVoiceCallOverlay
@@ -31,6 +32,7 @@ import com.queuego.shared.QgLine
 import com.queuego.shared.QgRedSoft
 import com.queuego.shared.QgRiderBg
 import com.queuego.ridernavigationmap.NavigationViewportInsets
+import com.queuego.ridernavigationmap.NavigationGuidanceState
 import androidx.compose.ui.graphics.Color
 import androidx.compose.material3.CardDefaults
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -73,6 +75,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -514,6 +517,11 @@ private fun RiderHome(
     ) { auth.asNativeVoiceAuth() }
     val voiceController = remember(auth.user.id) { NativeVoiceCallController(context) }
     val voiceState by voiceController.state.collectAsState()
+    val navigationFix by RiderNavigationLocationStore.fix.collectAsState()
+    val navigationSessionStartedMs by RiderNavigationLocationStore.sessionStartedElapsedRealtimeMs.collectAsState()
+    var navigationGuidance by remember(auth.user.id) { mutableStateOf(NavigationGuidanceState()) }
+    var navigationClockMs by remember { mutableStateOf(SystemClock.elapsedRealtime()) }
+    var dismissedRestSessionStart by remember { mutableStateOf<Long?>(null) }
     DisposableEffect(voiceController) { onDispose { voiceController.close() } }
     val pushStore = remember(context) { SessionStore(context) }
     val realtime = remember { NativeOrderRealtime() }
@@ -1398,6 +1406,26 @@ private fun RiderHome(
 
     val shortHome = LocalConfiguration.current.screenHeightDp <= 760
     val mapJob = snapshot?.activeJob ?: snapshot?.laundry?.activeJob?.asMapJob() ?: snapshot?.offeredJob
+    val activeNavigationWork = snapshot?.activeJob != null || snapshot?.laundry?.activeJob != null
+    LaunchedEffect(activeNavigationWork, navigationSessionStartedMs) {
+        if (!activeNavigationWork || navigationSessionStartedMs == null) return@LaunchedEffect
+        while (true) {
+            navigationClockMs = SystemClock.elapsedRealtime()
+            delay(30_000L)
+        }
+    }
+    val reliableSpeedKph = if (activeNavigationWork) riderReliableSpeedKph(navigationFix) else null
+    val continuousNavigationMs = if (activeNavigationWork) {
+        riderContinuousNavigationMs(navigationSessionStartedMs, navigationClockMs)
+    } else {
+        0L
+    }
+    val restReminderDue = activeNavigationWork && riderRestReminderDue(
+        navigationSessionStartedMs,
+        navigationClockMs,
+        dismissedRestSessionStart
+    )
+    val navigationHud = if (activeNavigationWork) riderNavigationHudInfo(navigationGuidance) else null
 
     BoxWithConstraints(
         modifier
@@ -1423,7 +1451,8 @@ private fun RiderHome(
                 topPx = navigationTopInsetPx,
                 bottomPx = navigationBottomInsetPx
             ),
-            onMapReady = { }
+            onMapReady = { },
+            onGuidance = { navigationGuidance = it }
         )
 
         Column(
@@ -1439,6 +1468,92 @@ private fun RiderHome(
                 enabled = !actionBusy && snapshot != null && snapshot?.activeJob == null && snapshot?.laundry?.activeJob == null,
                 onToggle = { changeOnline(snapshot?.online != true) }
             )
+        }
+
+        if (activeNavigationWork && (reliableSpeedKph != null || navigationHud != null || restReminderDue)) {
+            Column(
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .padding(top = 64.dp, start = 10.dp),
+                verticalArrangement = Arrangement.spacedBy(7.dp)
+            ) {
+                reliableSpeedKph?.let { speed ->
+                    Card(
+                        shape = RoundedCornerShape(18.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color(0xF7FFFFFF)),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE9E2E4)),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 3.dp)
+                    ) {
+                        Column(
+                            Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text(speed.toString(), fontSize = 21.sp, fontWeight = FontWeight.Black, color = Color(0xFF211E20))
+                            Text("กม./ชม.", fontSize = 8.sp, color = QgMuted, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+                navigationHud?.let { hud ->
+                    Card(
+                        modifier = Modifier.widthIn(max = 250.dp),
+                        shape = RoundedCornerShape(17.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color(0xF8FFFFFF)),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE9E2E4)),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 3.dp)
+                    ) {
+                        Column(Modifier.padding(horizontal = 11.dp, vertical = 9.dp)) {
+                            Text("จุดถัดไป", fontSize = 8.sp, color = QgMuted, fontWeight = FontWeight.Bold)
+                            Row(
+                                Modifier.padding(top = 2.dp),
+                                horizontalArrangement = Arrangement.spacedBy(7.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(hud.distanceText, fontSize = 15.sp, fontWeight = FontWeight.Black, color = Color(0xFF211E20))
+                                hud.etaText?.let { eta ->
+                                    Text("•", color = QgMuted, fontSize = 10.sp)
+                                    Text(eta, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFF5F5559))
+                                }
+                            }
+                            hud.instructionText?.let { instruction ->
+                                Text(
+                                    instruction,
+                                    fontSize = 9.sp,
+                                    lineHeight = 12.sp,
+                                    color = Color(0xFF5F5559),
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.padding(top = 4.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+                if (restReminderDue) {
+                    Card(
+                        modifier = Modifier.widthIn(max = 250.dp),
+                        shape = RoundedCornerShape(17.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFAFFF7E8)),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFFFD99A))
+                    ) {
+                        Column(Modifier.padding(horizontal = 11.dp, vertical = 9.dp)) {
+                            Text("แนะนำให้พักเมื่อสะดวก", fontSize = 11.sp, fontWeight = FontWeight.Black, color = Color(0xFF6B4A10))
+                            Text(
+                                "นำทางต่อเนื่อง " + riderDriveDurationLabel(continuousNavigationMs) +
+                                    " · หลังจบงานนี้ควรหยุดพักก่อนรับงานถัดไป",
+                                fontSize = 8.5.sp,
+                                lineHeight = 12.sp,
+                                color = Color(0xFF78694E),
+                                modifier = Modifier.padding(top = 3.dp)
+                            )
+                            TextButton(
+                                onClick = { dismissedRestSessionStart = navigationSessionStartedMs },
+                                modifier = Modifier.align(Alignment.End)
+                            ) {
+                                Text("รับทราบ", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = QgRed)
+                            }
+                        }
+                    }
+                }
+            }
         }
 
         if (mapJob == null && snapshot?.online == true && demandZones.isNotEmpty()) {

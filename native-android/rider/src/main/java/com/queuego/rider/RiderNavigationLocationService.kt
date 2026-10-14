@@ -40,14 +40,22 @@ private const val NAVIGATION_STALE_LAST_FIX_MS = 30_000L
 
 internal object RiderNavigationLocationStore {
     private val mutableFix = MutableStateFlow<NavigationMapFix?>(null)
+    private val mutableSessionStartedElapsedRealtimeMs = MutableStateFlow<Long?>(null)
     val fix: StateFlow<NavigationMapFix?> = mutableFix.asStateFlow()
+    val sessionStartedElapsedRealtimeMs: StateFlow<Long?> =
+        mutableSessionStartedElapsedRealtimeMs.asStateFlow()
 
     fun publish(next: NavigationMapFix) {
+        if (mutableSessionStartedElapsedRealtimeMs.value == null) {
+            val elapsedMs = next.elapsedRealtimeNanos / 1_000_000L
+            if (elapsedMs > 0L) mutableSessionStartedElapsedRealtimeMs.value = elapsedMs
+        }
         mutableFix.value = next
     }
 
     fun clear() {
         mutableFix.value = null
+        mutableSessionStartedElapsedRealtimeMs.value = null
     }
 }
 
