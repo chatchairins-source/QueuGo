@@ -228,6 +228,23 @@ fun RiderProfileScreen(
                 api = api,
                 modifier = Modifier.padding(top = 9.dp)
             )
+            RiderVehiclesCard(
+                auth = auth,
+                api = api,
+                online = snapshot?.online == true,
+                onSelected = {
+                    scope.launch {
+                        try {
+                            onSnapshot(api.riderSnapshot(auth))
+                        } catch (e: CancellationException) {
+                            throw e
+                        } catch (_: Exception) {
+                            message = "เปลี่ยนรถแล้ว แต่โหลดโปรไฟล์ล่าสุดไม่สำเร็จ"
+                        }
+                    }
+                },
+                modifier = Modifier.padding(top = 9.dp)
+            )
             snapshot?.laundry?.invites.orEmpty().forEach { invite ->
                 Spacer(Modifier.height(9.dp))
                 Card(
