@@ -11,6 +11,7 @@ ok(html.includes("qtSupabaseRpc('qg_admin_rider_vehicle_inspection_queue')"));
 ok(html.includes("qtSupabaseRpc('qg_admin_request_rider_vehicle_inspection'"));
 ok(html.includes("qtSupabaseRpc('qg_admin_review_rider_vehicle_inspection'"));
 ok(html.includes('ขอตรวจสภาพรถ'));
+ok(html.includes('ให้ Rider ออฟไลน์และจบงานก่อน'));
 ok(!html.includes('qg_private.rider_vehicle_inspection_requests'));
 ok(html.includes("qtSupabaseRpc('qg_admin_rider_missions')"));
 ok(html.includes("qtSupabaseRpc('qg_admin_create_rider_mission'"));
