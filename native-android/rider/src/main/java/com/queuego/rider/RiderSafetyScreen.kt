@@ -75,6 +75,8 @@ internal fun RiderSafetyScreen(
     var emergencyPhone by remember { mutableStateOf("") }
     var emergencyMessage by remember { mutableStateOf<String?>(null) }
     var locationShareMessage by remember { mutableStateOf<String?>(null) }
+    var fatigueStatus by remember(auth.user.id) { mutableStateOf<RiderFatigueStatus?>(null) }
+    var fatigueLoaded by remember(auth.user.id) { mutableStateOf(false) }
     val navigationFix by RiderNavigationLocationStore.fix.collectAsState()
 
     LaunchedEffect(auth.user.id, auth.session.accessToken) {
@@ -87,6 +89,17 @@ internal fun RiderSafetyScreen(
         } finally {
             emergencyLoaded = true
         }
+    }
+
+    LaunchedEffect(auth.user.id, auth.session.accessToken) {
+        fatigueStatus = try {
+            api.fatigueStatus(auth)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            null
+        }
+        fatigueLoaded = true
     }
 
     fun dial(number: String) {
@@ -257,6 +270,101 @@ internal fun RiderSafetyScreen(
                 }
                 emergencyMessage?.let {
                     Text(it, color = QgRed, fontSize = 9.sp, modifier = Modifier.padding(top = 7.dp))
+                }
+            }
+        }
+
+        Spacer(Modifier.height(8.dp))
+        Card(
+            Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(18.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = when (fatigueStatus?.level) {
+                    "strong_rest_recommended" -> Color(0xFFFFF1F2)
+                    "rest_recommended" -> Color(0xFFFFFAEF)
+                    else -> Color.White
+                }
+            ),
+            border = BorderStroke(
+                1.dp,
+                when (fatigueStatus?.level) {
+                    "strong_rest_recommended" -> Color(0xFFFFCCD2)
+                    "rest_recommended" -> Color(0xFFFFE0A8)
+                    else -> Color(0xFFEEE6E8)
+                }
+            )
+        ) {
+            Column(Modifier.padding(14.dp)) {
+                Text("เวลาทำงานและการพัก", fontWeight = FontWeight.Black, fontSize = 14.sp)
+                when {
+                    !fatigueLoaded -> CircularProgressIndicator(Modifier.size(22.dp), strokeWidth = 2.dp)
+                    fatigueStatus == null -> Text(
+                        "ยังโหลดเวลาทำงานไม่ได้",
+                        color = QgMuted,
+                        fontSize = 9.sp,
+                        modifier = Modifier.padding(top = 5.dp)
+                    )
+                    else -> {
+                        val fatigue = fatigueStatus!!
+                        Text(
+                            riderFatigueTitle(fatigue.level),
+                            color = when (fatigue.level) {
+                                "strong_rest_recommended" -> QgRed
+                                "rest_recommended" -> Color(0xFF9A6500)
+                                else -> Color(0xFF15845E)
+                            },
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Black,
+                            modifier = Modifier.padding(top = 6.dp)
+                        )
+                        Text(
+                            riderFatigueDetail(fatigue.level),
+                            color = QgMuted,
+                            fontSize = 9.sp,
+                            lineHeight = 12.sp,
+                            modifier = Modifier.padding(top = 4.dp)
+                        )
+                        Spacer(Modifier.height(9.dp))
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Surface(
+                                modifier = Modifier.weight(1f),
+                                shape = RoundedCornerShape(12.dp),
+                                color = Color(0xFFF8F5F6)
+                            ) {
+                                Column(Modifier.padding(10.dp)) {
+                                    Text("ออนไลน์ต่อเนื่อง", color = QgMuted, fontSize = 8.sp)
+                                    Text(
+                                        riderFatigueDurationLabel(fatigue.continuousOnlineMinutes),
+                                        fontWeight = FontWeight.Black,
+                                        fontSize = 12.sp,
+                                        modifier = Modifier.padding(top = 2.dp)
+                                    )
+                                }
+                            }
+                            Surface(
+                                modifier = Modifier.weight(1f),
+                                shape = RoundedCornerShape(12.dp),
+                                color = Color(0xFFF8F5F6)
+                            ) {
+                                Column(Modifier.padding(10.dp)) {
+                                    Text("วันนี้รวม", color = QgMuted, fontSize = 8.sp)
+                                    Text(
+                                        riderFatigueDurationLabel(fatigue.onlineMinutesToday),
+                                        fontWeight = FontWeight.Black,
+                                        fontSize = 12.sp,
+                                        modifier = Modifier.padding(top = 2.dp)
+                                    )
+                                }
+                            }
+                        }
+                        Text(
+                            "คำนวณจากประวัติเปิด/ปิดรับงานของบัญชีนี้ ไม่ใช่ระบบตรวจความง่วงหรือข้อมูลสุขภาพ",
+                            color = QgMuted,
+                            fontSize = 8.sp,
+                            lineHeight = 11.sp,
+                            modifier = Modifier.padding(top = 8.dp)
+                        )
+                    }
                 }
             }
         }
