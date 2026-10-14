@@ -1,3 +1,15 @@
+## 2026-10-14 Grab Driver parity: real-data After-Work Recommendation
+- Continued from Safety Overview + durable contact-attempt head 31451a64.
+- Static inspection of the owner-supplied Grab Driver 5.457.1 APK confirmed AfterBookingRecommendation / JobRecommendationV2 plus a dedicated post-booking CTA layer.
+- QueueGo previously showed only “จัดส่งสำเร็จ” + delivery income for 4.5 seconds and dismissed.
+- Delivery success now consumes existing real QueueGo state only: active/upcoming Mission first, otherwise current Demand Heatmap data. No recommendation is invented when both are empty.
+- If Stop-After-Work is pending or Rider is offline, no “more work” recommendation is shown.
+- Mission CTA routes to the existing Earnings/Missions surface; Demand CTA returns to Home where the existing real demand zones are already rendered on the map.
+- The success card still auto-dismisses after 4.5s when no real recommendation is available. If a real recommendation arrives while the card is visible, auto-dismiss is cancelled so Rider can choose the CTA.
+- No Production DB/schema, dispatch, payment, offer visibility or navigation mutation.
+- Backup: backup/rider-worldclass-before-after-work-recommendation-20261014 @ 31451a64.
+- PASS requires exact-head native-pilot + navigation-map-runtime.
+
 ## 2026-10-14 Grab Driver parity: durable contact attempts on Safety Overview successor
 - Continued from Safety Report Overview head 47fe3242, preserving Safety Incident, Stop-After-Work, one-photo proof quality/recovery, Return-to-Sender v4, Auto Accept, Benefits, failed-delivery and event feedback.
 - Static inspection of the owner-supplied Grab Driver 5.457.1 APK exposed a dedicated ContactAttemptCountHandler in the in-transit recipient-unavailable/cancellation flow.
