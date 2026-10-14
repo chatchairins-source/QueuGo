@@ -19,7 +19,8 @@ assert(style.includes('SOURCE_LAYER_BUILDINGS = "buildings"'),'OSM Shortbread st
 assert(style.includes('VectorSource(SOURCE_ID, tileJsonUrl)'),'Vector TileJSON endpoint must be runtime-configurable and not tied to one provider');
 assert(!style.includes('vector.openstreetmap.org'),'OSMF public vector endpoint must not be hardcoded into the renderer');
 assert(view.includes('MapLibre.getInstance(context.applicationContext)'),'MapLibre must initialize before MapView creation');
-assert(view.includes('mapViewIdentity()')&&view.includes('mapIdentity()'),'Module must expose renderer identity for future lifecycle retention tests');
+assert(view.includes('mapViewIdentity()')&&view.includes('mapIdentity()'),'Module must expose renderer identity for lifecycle retention tests');
+assert(view.includes('renderedVillageRoadFeatureCount()')&&view.includes('queryRenderedFeatures'),'Runtime gate must query actual rendered village-road features, not only inspect static style declarations');
 assert(view.includes('readyMap.uiSettings.isAttributionEnabled = true'),'OpenStreetMap attribution control must stay enabled');
 
 console.log('native rider MapLibre OSM module contract passed');

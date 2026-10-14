@@ -1,6 +1,7 @@
 package com.queuego.ridermaplibreosm
 
 import android.content.Context
+import android.graphics.RectF
 import android.util.AttributeSet
 import android.widget.FrameLayout
 import org.maplibre.android.MapLibre
@@ -108,5 +109,29 @@ class QueueGoMapLibreOsmView @JvmOverloads constructor(
     }
 
     fun mapViewIdentity(): Int = System.identityHashCode(mapView)
+
     fun mapIdentity(): Int? = map?.let(System::identityHashCode)
+
+    fun villageRoadLayerCount(): Int {
+        val style = map?.style ?: return 0
+        return listOf("residential", "unclassified", "living_street", "service").count { kind ->
+            style.getLayer("queuego-road-$kind") != null &&
+                style.getLayer("queuego-road-$kind-casing") != null
+        }
+    }
+
+    fun renderedVillageRoadFeatureCount(): Int {
+        val readyMap = map ?: return 0
+        if (width <= 0 || height <= 0) return 0
+        val layerIds = arrayOf(
+            "queuego-road-residential",
+            "queuego-road-unclassified",
+            "queuego-road-living_street",
+            "queuego-road-service"
+        )
+        return readyMap.queryRenderedFeatures(
+            RectF(0f, 0f, width.toFloat(), height.toFloat()),
+            layerIds
+        ).size
+    }
 }
