@@ -25,13 +25,19 @@ import kotlinx.coroutines.delay
 @Composable
 internal fun RiderDeliverySuccess(
     job: RiderJob,
+    recommendation: RiderAfterWorkRecommendation?,
+    onRecommendation: (RiderAfterWorkRecommendationTarget) -> Unit,
     onDismiss: () -> Unit
 ) {
     val eventFeedbackView = LocalView.current
     LaunchedEffect(job.id) {
         playRiderEventFeedback(eventFeedbackView, RiderEventFeedbackKind.DELIVERY_SUCCESS)
-        delay(4_500)
-        onDismiss()
+    }
+    LaunchedEffect(job.id, recommendation?.key) {
+        if (recommendation == null) {
+            delay(4_500)
+            onDismiss()
+        }
     }
     Box(
         Modifier.fillMaxSize().background(Color(0x66000000)),
@@ -63,6 +69,32 @@ internal fun RiderDeliverySuccess(
                     fontSize = 17.sp,
                     fontWeight = FontWeight.Black
                 )
+                recommendation?.let { item ->
+                    Spacer(Modifier.height(14.dp))
+                    Card(
+                        Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF3F5))
+                    ) {
+                        Column(Modifier.fillMaxWidth().padding(12.dp)) {
+                            Text(item.title, fontSize = 12.sp, fontWeight = FontWeight.Black)
+                            Text(
+                                item.detail,
+                                color = QgMuted,
+                                fontSize = 9.sp,
+                                modifier = Modifier.padding(top = 3.dp)
+                            )
+                            Button(
+                                onClick = { onRecommendation(item.target) },
+                                modifier = Modifier.fillMaxWidth().padding(top = 9.dp).height(42.dp),
+                                shape = RoundedCornerShape(13.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFF04455))
+                            ) {
+                                Text(item.actionLabel, fontWeight = FontWeight.Black, fontSize = 11.sp)
+                            }
+                        }
+                    }
+                }
                 Spacer(Modifier.height(14.dp))
                 Button(
                     onClick = onDismiss,
