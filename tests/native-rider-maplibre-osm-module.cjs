@@ -14,6 +14,7 @@ const localRoadGraph=fs.readFileSync('native-android/rider-maplibre-osm/src/main
 const localRoadPathfinder=fs.readFileSync('native-android/rider-maplibre-osm/src/main/java/com/queuego/ridermaplibreosm/QueueGoLocalRoadPathfinder.kt','utf8');
 const trustedLocalRoadRouting=fs.readFileSync('native-android/rider-maplibre-osm/src/main/java/com/queuego/ridermaplibreosm/QueueGoTrustedLocalRoadRouting.kt','utf8');
 const localRoadJunction=fs.readFileSync('native-android/rider-maplibre-osm/src/main/java/com/queuego/ridermaplibreosm/QueueGoLocalRoadJunction.kt','utf8');
+const localRoadCoverageAudit=fs.readFileSync('native-android/rider-maplibre-osm/src/main/java/com/queuego/ridermaplibreosm/QueueGoLocalRoadCoverageAudit.kt','utf8');
 const riderBuild=fs.readFileSync('native-android/rider/build.gradle.kts','utf8');
 
 assert(settings.includes('":rider-maplibre-osm"'),'MapLibre OSM module must be registered in native settings');
@@ -202,6 +203,27 @@ assert(localRoadSignedDelivery.includes('junctions = trusted.validated.junctions
   trustedLocalRoadRouting.includes('internal val junctions: List<QueueGoVerifiedLocalRoadJunction>')&&
   trustedLocalRoadRouting.includes('junctions = junctions'),
   'Verified junction evidence must survive signed cache/delivery and reach graph construction only through the trusted snapshot token');
+
+assert(localRoadCoverageAudit.includes('data class QueueGoAggregateTraceEvidence')&&
+  localRoadCoverageAudit.includes('aggregateReference.startsWith("queuego-trace:")')&&
+  localRoadCoverageAudit.includes('minimumTraversalCount: Int = 3')&&
+  localRoadCoverageAudit.includes('maximumMedianAccuracyMeters: Double = 20.0')&&
+  localRoadCoverageAudit.includes('minimumUncoveredFraction: Double = 0.65')&&
+  localRoadCoverageAudit.includes('data class QueueGoLocalRoadCoverageCandidate')&&
+  localRoadCoverageAudit.includes('NEAR_EXISTING_ROAD'),
+  'Local Roads coverage audit must require bounded privacy-safe aggregate evidence and emit review candidates with endpoint hints');
+
+assert(!localRoadCoverageAudit.includes('riderId')&&
+  !localRoadCoverageAudit.includes('orderId')&&
+  !localRoadCoverageAudit.includes('deviceId')&&
+  !localRoadCoverageAudit.includes('buildQueueGoLocalRoadGraph(')&&
+  !localRoadCoverageAudit.includes('findQueueGoLocalRoadPath(')&&
+  !localRoadCoverageAudit.includes('NavigationRouteCoordinator')&&
+  !localRoadCoverageAudit.includes('LongdoNavigationRouteClient')&&
+  !localRoadCoverageAudit.includes('QueueGoLocalRoadSignedDelivery')&&
+  !localRoadCoverageAudit.toLowerCase().includes('grab'),
+  'Local Roads coverage audit must remain review-only, identity-free and isolated from trusted graph/Production routing');
+
 
 
 
