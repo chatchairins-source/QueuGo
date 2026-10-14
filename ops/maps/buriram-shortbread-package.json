@@ -1,0 +1,10 @@
+{
+  "id": "buriram-shortbread",
+  "schema": "shortbread",
+  "format": "pmtiles",
+  "bounds_wsen": [102.369, 14.109, 103.592, 15.819],
+  "source": "https://download.geofabrik.de/asia/thailand-latest.osm.pbf",
+  "planetiler_version": "0.10.2",
+  "output_file": "buriram-shortbread.pmtiles",
+  "attribution": "© OpenStreetMap contributors"
+}
