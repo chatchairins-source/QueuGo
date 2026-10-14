@@ -5,6 +5,13 @@ const settings=fs.readFileSync('native-android/settings.gradle.kts','utf8');
 const build=fs.readFileSync('native-android/rider-maplibre-osm/build.gradle.kts','utf8');
 const style=fs.readFileSync('native-android/rider-maplibre-osm/src/main/java/com/queuego/ridermaplibreosm/ShortbreadVillageStyle.kt','utf8');
 const view=fs.readFileSync('native-android/rider-maplibre-osm/src/main/java/com/queuego/ridermaplibreosm/QueueGoMapLibreOsmView.kt','utf8');
+const localRoads=fs.readFileSync('native-android/rider-maplibre-osm/src/main/java/com/queuego/ridermaplibreosm/QueueGoLocalRoads.kt','utf8');
+const localRoadFeed=fs.readFileSync('native-android/rider-maplibre-osm/src/main/java/com/queuego/ridermaplibreosm/QueueGoLocalRoadFeed.kt','utf8');
+const localRoadSignedDelivery=fs.readFileSync('native-android/rider-maplibre-osm/src/main/java/com/queuego/ridermaplibreosm/QueueGoLocalRoadSignedDelivery.kt','utf8');
+const localRoadHttpsTransport=fs.readFileSync('native-android/rider-maplibre-osm/src/main/java/com/queuego/ridermaplibreosm/QueueGoLocalRoadHttpsTransport.kt','utf8');
+const localRoadRouting=fs.readFileSync('native-android/rider-maplibre-osm/src/main/java/com/queuego/ridermaplibreosm/QueueGoLocalRoadRoutingPolicy.kt','utf8');
+const localRoadGraph=fs.readFileSync('native-android/rider-maplibre-osm/src/main/java/com/queuego/ridermaplibreosm/QueueGoLocalRoadGraph.kt','utf8');
+const localRoadPathfinder=fs.readFileSync('native-android/rider-maplibre-osm/src/main/java/com/queuego/ridermaplibreosm/QueueGoLocalRoadPathfinder.kt','utf8');
 const riderBuild=fs.readFileSync('native-android/rider/build.gradle.kts','utf8');
 
 assert(settings.includes('":rider-maplibre-osm"'),'MapLibre OSM module must be registered in native settings');
@@ -34,5 +41,128 @@ assert(!downloader.includes('vector.openstreetmap.org'),'Offline archive downloa
 assert(!style.includes('SOURCE_LAYER_LAND'),'Village style must not depend on a non-standard Shortbread land source-layer');
 assert(view.includes('mapViewIdentity()')&&view.includes('mapIdentity()'),'Module must expose renderer identity for future lifecycle retention tests');
 assert(view.includes('readyMap.uiSettings.isAttributionEnabled = true'),'OpenStreetMap attribution control must stay enabled');
+
+assert(localRoads.includes('enum class QueueGoLocalRoadSource')&&
+  localRoads.includes('OPENSTREETMAP_VERIFIED')&&
+  localRoads.includes('PUBLIC_DATA')&&
+  localRoads.includes('RIDER_GPS_TRACE_VERIFIED')&&
+  localRoads.includes('MERCHANT_CONFIRMED')&&
+  localRoads.includes('FIELD_SURVEY')&&
+  !localRoads.toLowerCase().includes('grab'),
+  'QueueGo Local Roads provenance must exclude competitor/private geometry sources');
+assert(localRoads.includes('val renderable: Boolean')&&
+  localRoads.includes('verified && access != QueueGoLocalRoadAccess.PRIVATE_RESTRICTED')&&
+  localRoads.includes('GeoJsonSource(SOURCE_ID, features)')&&
+  localRoads.includes('existing.setGeoJson(features)'),
+  'QueueGo Local Roads must render only verified non-private geometry and update GeoJSON in place');
+assert(view.includes('fun setLocalRoads(')&&
+  view.includes('QueueGoLocalRoadOverlay.apply(style, localRoads)'),
+  'MapLibre Rider map must accept verified local-road updates without reloading the base style');
+
+assert(localRoadFeed.includes('schemaVersion: Int')&&
+  localRoadFeed.includes('revision: Long')&&
+  localRoadFeed.includes('QueueGoLocalRoadFeedDecision')&&
+  localRoadFeed.includes('REJECT_STALE')&&
+  localRoadFeed.includes('QUEUEGO_LOCAL_ROAD_MAX_TOTAL_POINTS')&&
+  localRoadFeed.includes('queueGoLocalRoadSourceReferenceAllowed'),
+  'Local Roads ingestion must be versioned, bounded, idempotent and fail closed on stale/provenance-mismatched snapshots');
+assert(localRoadFeed.includes('queuego-trace:')&&
+  !localRoadFeed.toLowerCase().includes('rider_id')&&
+  !localRoadFeed.toLowerCase().includes('grab:'),
+  'Verified trace provenance must reference QueueGo aggregate trace evidence without Rider identity or competitor references');
+
+assert(localRoadSignedDelivery.includes('SHA256withECDSA')&&
+  localRoadSignedDelivery.includes('payloadSha256Hex')&&
+  localRoadSignedDelivery.includes('queueGoSha256Hex(envelope.payload)')&&
+  localRoadSignedDelivery.includes('QueueGoLocalRoadSnapshotCache')&&
+  localRoadSignedDelivery.includes('StandardCopyOption.ATOMIC_MOVE')&&
+  localRoadSignedDelivery.includes('REJECTED_STALE')&&
+  localRoadSignedDelivery.includes('trustedKeys[keyId]')&&
+  !localRoadSignedDelivery.includes('http://')&&
+  !localRoadSignedDelivery.includes('https://'),
+  'Signed Local Roads delivery must verify digest/signature, reject stale revisions and atomically cache verified payloads without hardcoded Production transport');
+
+assert(localRoadSignedDelivery.includes('interface QueueGoLocalRoadSnapshotTransport')&&
+  localRoadSignedDelivery.includes('interface QueueGoLocalRoadFeedDecoder')&&
+  localRoadSignedDelivery.includes('fun interface QueueGoLocalRoadSignatureVerifier'),
+  'Local Roads transport, decoding and signature verification must remain injectable and fail-closed before Production wiring');
+
+assert(localRoadSignedDelivery.includes('CACHE_FORMAT_VERSION = 2')&&
+  localRoadSignedDelivery.includes('val keyId: String')&&
+  localRoadSignedDelivery.includes('val signature: ByteArray')&&
+  localRoadSignedDelivery.includes('fun loadCached()')&&
+  localRoadSignedDelivery.includes('loadTrustedCache()')&&
+  localRoadSignedDelivery.includes('Cached local-road signature verification failed')&&
+  localRoadSignedDelivery.includes('Cached local-road revision does not match signed payload'),
+  'Cached Local Roads must be reverified from the signed envelope before offline use or revision-watermark decisions');
+
+
+assert(localRoadHttpsTransport.includes('endpoint.isHttps')&&
+  localRoadHttpsTransport.includes('.get()')&&
+  localRoadHttpsTransport.includes('continuation.invokeOnCancellation { call.cancel() }')&&
+  localRoadHttpsTransport.includes('QUEUEGO_LOCAL_ROAD_MEDIA_TYPE')&&
+  localRoadHttpsTransport.includes('QUEUEGO_LOCAL_ROAD_MAX_SIGNED_PAYLOAD_BYTES.toLong()')&&
+  localRoadHttpsTransport.includes('contentLength > maxPayloadBytes')&&
+  localRoadHttpsTransport.includes('QUEUEGO_LOCAL_ROAD_HEADER_ENVELOPE_VERSION')&&
+  localRoadHttpsTransport.includes('result.code == 204 || result.code == 304')&&
+  localRoadHttpsTransport.includes('Base64.getDecoder().decode(signatureHeader)')&&
+  localRoadHttpsTransport.includes('envelopeVersion = envelopeVersion')&&
+  localRoadHttpsTransport.includes('QueueGoLocalRoadSignedEnvelope(')&&
+  !localRoadHttpsTransport.includes('.post(')&&
+  !localRoadHttpsTransport.includes('.put(')&&
+  !localRoadHttpsTransport.includes('.delete('),
+  'Local Roads HTTPS transport must stay read-only, cancellable, share the signed-core payload limit, carry envelope versioning and treat 204/304 as no-change responses');
+
+assert(!localRoadHttpsTransport.includes('supabase.co')&&
+  !localRoadHttpsTransport.includes('api.queuego')&&
+  !localRoadHttpsTransport.toLowerCase().includes('grab'),
+  'Local Roads transport must not hardcode Production endpoints or competitor references');
+
+
+assert(localRoadRouting.includes('UNVERIFIED')&&
+  localRoadRouting.includes('PRIVATE_RESTRICTED')&&
+  localRoadRouting.includes('VEHICLE_NOT_ALLOWED')&&
+  localRoadRouting.includes('DESTINATION_ACCESS_ONLY')&&
+  localRoadRouting.includes('ONE_WAY_REVERSE')&&
+  localRoadRouting.includes('QueueGoRoutingVehicle.MOTORCYCLE')&&
+  localRoadRouting.includes('QueueGoRoadTraversalUse.DESTINATION_ACCESS'),
+  'Local Roads routing eligibility must fail closed for unverified/private/wrong-vehicle/through-service/reverse-one-way traversal');
+
+assert(!localRoadRouting.includes('shortestPath')&&
+  !localRoadRouting.includes('NavigationRouteCoordinator')&&
+  !localRoadRouting.includes('LongdoNavigationRouteClient'),
+  'Local Roads eligibility policy must stay separate from the Production routing engine');
+
+
+assert(localRoadGraph.includes('buildQueueGoLocalRoadGraph')&&
+  localRoadGraph.includes('queueGoLocalRoadRoutingDecision(')&&
+  localRoadGraph.includes('if (!road.verified || road.access == QueueGoLocalRoadAccess.PRIVATE_RESTRICTED)')&&
+  localRoadGraph.includes('if (!road.oneWay)')&&
+  localRoadGraph.includes('point.latitude.toBits()')&&
+  localRoadGraph.includes('point.longitude.toBits()')&&
+  localRoadGraph.includes('does not snap nearby-but-different coordinates')&&
+  !localRoadGraph.includes('Dijkstra')&&
+  !localRoadGraph.includes('shortestPath')&&
+  !localRoadGraph.includes('NavigationRouteCoordinator'),
+  'Experimental Local Roads graph must preserve verified/private/one-way guards, exact topology only, and remain separate from Production routing');
+
+assert(localRoadPathfinder.includes('findQueueGoLocalRoadPath')&&
+  localRoadPathfinder.includes('PriorityQueue')&&
+  localRoadPathfinder.includes('destinationPhase')&&
+  localRoadPathfinder.includes('destinationAccessRoadIds')&&
+  localRoadPathfinder.includes('SEARCH_LIMIT_EXCEEDED')&&
+  localRoadPathfinder.includes('QueueGoRoadTraversalUse.THROUGH')&&
+  localRoadPathfinder.includes('QueueGoRoadTraversalUse.DESTINATION_ACCESS')&&
+  localRoadPathfinder.includes('edge.roadId !in request.destinationAccessRoadIds')&&
+  localRoadPathfinder.includes('uses exact graph nodes only (no coordinate snapping)'),
+  'Experimental Local Roads pathfinder must remain bounded, exact-node, vehicle-aware and prevent destination-access roads from becoming through shortcuts');
+
+assert(!localRoadPathfinder.includes('NavigationRouteCoordinator')&&
+  !localRoadPathfinder.includes('LongdoNavigationRouteClient')&&
+  !localRoadPathfinder.includes('QueueGoLocalRoadHttpsTransport')&&
+  !localRoadPathfinder.includes('io.supabase')&&
+  !localRoadPathfinder.includes('speedMetersPerSecond'),
+  'Experimental Local Roads pathfinder must stay isolated from Production navigation, backend transport and speed assumptions');
+
 
 console.log('native rider MapLibre OSM module contract passed');
