@@ -305,7 +305,7 @@ internal fun RiderSafetyScreen(
                         },
                         enabled = !emergencyBusy &&
                             emergencyName.trim().isNotEmpty() &&
-                            emergencyPhone.count(Char::isDigit) in 8..15,
+                            emergencyPhone.count { it.isDigit() } in 8..15,
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(14.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = QgRed)
