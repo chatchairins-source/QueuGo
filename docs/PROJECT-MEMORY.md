@@ -1,3 +1,13 @@
+## 2026-10-14 Rider continuity: non-blocking reconnect notice
+- Continued from event-feedback exact-head release gate #294.
+- QueueGo already persisted the last safe Rider snapshot and retried silently, so transient network failure did not erase an active job. The remaining UX gap was visibility: a Rider with a restored/active job could not tell that live refreshes were failing.
+- Added a compact connectivity notice only after two consecutive snapshot refresh failures when a safe snapshot already exists.
+- Active work copy explicitly says the job remains on-device while QueueGo reconnects. Idle copy stays shorter.
+- The notice never replaces the job UI, does not mutate order/payment/dispatch state, does not play automatic reconnect audio, and disappears immediately after the next successful snapshot refresh.
+- First-load/no-snapshot behavior remains unchanged and continues using the existing connection recovery path.
+- Backup: backup/rider-grab-parity-before-connectivity-release-unify-20261014.
+- Exact-head native-pilot + navigation-map-runtime remain required before PASS.
+
 ## 2026-10-14 Grab Driver parity: event-feedback exact-head release gate
 - Release successor created directly from PR #293 head 2fa16843 after Work finished the distinct Rider feedback language for online/offline, accepted job, pickup success, delivery success and action failure.
 - Preserves PR #292 compile-safe failed-delivery flow and provider-isolated real-map lifecycle gate, plus real-data Benefits Center, critical Home actions, Availability vehicle gates, account restrictions and retained map continuity.

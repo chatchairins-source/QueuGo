@@ -663,6 +663,7 @@ private fun RiderHome(
     var lastHistoryAt by remember { mutableStateOf(0L) }
     var lastLocationPushAt by remember { mutableStateOf(0L) }
     var loadError by remember { mutableStateOf<String?>(null) }
+    var consecutiveSnapshotFailures by remember(auth.user.id) { mutableIntStateOf(0) }
     var actionBusy by remember { mutableStateOf(false) }
     var actionMessage by remember { mutableStateOf<String?>(null) }
     var deliverySuccessJob by remember { mutableStateOf<RiderJob?>(null) }
@@ -1233,6 +1234,7 @@ private fun RiderHome(
                 snapshot = mergedSnapshot
                 pushStore.saveHomeSnapshot(auth.user.id, mergedSnapshot)
                 reconcileRiderOfferNotifications(context, auth.user.id, mergedSnapshot.offeredJob?.id)
+                consecutiveSnapshotFailures = 0
                 loadError = null
                 if (mergedSnapshot.activeJob == null) RiderReturnService.stop(context)
                 val now = System.currentTimeMillis()
@@ -1262,8 +1264,9 @@ private fun RiderHome(
             .onFailure {
                 if (it is CancellationException) throw it
                 // A transient refresh must never cover an already-restored safe snapshot.
-                // Keep the cached/live job visible and retry silently; only first-load failures
-                // need an error surface because there is no usable Rider state yet.
+                // Keep the cached/live job visible. After two consecutive misses, show a compact
+                // reconnecting notice instead of replacing the job UI with an error screen.
+                consecutiveSnapshotFailures = (consecutiveSnapshotFailures + 1).coerceAtMost(99)
                 if (snapshot == null) loadError = "กำลังเชื่อมต่อข้อมูลงานใหม่"
             }
     }
@@ -1686,6 +1689,11 @@ private fun RiderHome(
     val shortHome = LocalConfiguration.current.screenHeightDp <= 760
     val mapJob = snapshot?.activeJob ?: snapshot?.laundry?.activeJob?.asMapJob() ?: snapshot?.offeredJob
     val activeNavigationWork = snapshot?.activeJob != null || snapshot?.laundry?.activeJob != null
+    val connectivityNotice = riderConnectivityNotice(
+        consecutiveRefreshFailures = consecutiveSnapshotFailures,
+        hasSnapshot = snapshot != null,
+        hasActiveWork = activeNavigationWork || snapshot?.offeredJob != null
+    )
     LaunchedEffect(activeNavigationWork, navigationSessionStartedMs) {
         if (!activeNavigationWork || navigationSessionStartedMs == null) return@LaunchedEffect
         while (true) {
@@ -2508,7 +2516,12 @@ private fun RiderHome(
             RiderOrderDetailsSheet(auth, job, api, onDismiss = { detailJob = null })
         }
         actionMessage?.let { RiderFeedbackToast(it, Modifier.align(Alignment.BottomCenter)) }
-        messageNotice?.let { RiderMessageNotice(it, Modifier.align(Alignment.TopCenter)) }
+        if (connectivityNotice != null || messageNotice != null) {
+            Column(Modifier.align(Alignment.TopCenter)) {
+                connectivityNotice?.let { RiderConnectivityNotice(it) }
+                messageNotice?.let { RiderMessageNotice(it, Modifier) }
+            }
+        }
         deliverySuccessJob?.let { completed ->
             RiderDeliverySuccess(completed) { deliverySuccessJob = null }
         }
