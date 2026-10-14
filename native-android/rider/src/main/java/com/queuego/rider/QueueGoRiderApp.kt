@@ -1761,7 +1761,25 @@ private fun RiderHome(
                     if (current.online) Text("อยู่ใกล้ย่านร้านอาหาร ตลาด และร้านค้าที่เข้าร่วม จะช่วยให้ได้รับงานเร็วขึ้น",
                         modifier = Modifier.fillMaxWidth().padding(top = 7.dp).background(Color(0xFFFFF4F6), RoundedCornerShape(14.dp)).padding(horizontal = 10.dp, vertical = 8.dp),
                         color = Color(0xFF7B6870), fontSize = 9.sp, lineHeight = 13.sp)
-                    }
+
+                    RiderDestinationModeCard(
+                        auth = auth,
+                        api = api,
+                        currentLocation = {
+                            if (hasLocationPermission(context)) {
+                                lastKnownLocation(context)
+                            } else {
+                                locationPermission.launch(
+                                    arrayOf(
+                                        Manifest.permission.ACCESS_FINE_LOCATION,
+                                        Manifest.permission.ACCESS_COARSE_LOCATION
+                                    )
+                                )
+                                null
+                            }
+                        },
+                        modifier = Modifier.padding(top = 8.dp)
+                    )
                     }
                 }
                 Spacer(Modifier.height(12.dp))
