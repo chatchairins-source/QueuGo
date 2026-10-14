@@ -2955,21 +2955,33 @@ private fun RiderHome(
                 messageNotice?.let { RiderMessageNotice(it, Modifier) }
             }
         }
-        val afterWorkRecommendation = riderAfterWorkRecommendation(
-            online = snapshot?.online == true,
-            stopAfterWorkPending = stopAfterWorkPending,
-            missions = homeMissions,
-            demandZones = demandZones
-        )
         deliverySuccessJob?.let { completed ->
+            val afterWorkRecommendation = riderAfterWorkRecommendation(
+                online = snapshot?.online == true,
+                stopAfterWorkPending = stopAfterWorkPending,
+                missions = homeMissions,
+                demandZones = demandZones,
+                originLatitude = completed.deliveryLat,
+                originLongitude = completed.deliveryLng
+            )
             RiderDeliverySuccess(
                 job = completed,
                 recommendation = afterWorkRecommendation,
-                onRecommendation = { target ->
-                    deliverySuccessJob = null
-                    activeTab = when (target) {
-                        RiderAfterWorkRecommendationTarget.HOME -> "home"
-                        RiderAfterWorkRecommendationTarget.EARNINGS -> "earn"
+                onRecommendation = { item ->
+                    when (item.target) {
+                        RiderAfterWorkRecommendationTarget.HOME -> {
+                            deliverySuccessJob = null
+                            activeTab = "home"
+                        }
+                        RiderAfterWorkRecommendationTarget.EARNINGS -> {
+                            deliverySuccessJob = null
+                            activeTab = "earn"
+                        }
+                        RiderAfterWorkRecommendationTarget.DEMAND_NAVIGATION -> {
+                            if (openAfterWorkRecommendationNavigation(context, item)) {
+                                deliverySuccessJob = null
+                            }
+                        }
                     }
                 },
                 onDismiss = { deliverySuccessJob = null }
@@ -4219,6 +4231,46 @@ private fun openReturnNavigation(context: Context, state: RiderDeliveryReturn) {
     if (!runCatching { context.startActivity(mapsIntent) }.isSuccess) {
         RiderReturnService.stop(context)
     }
+}
+
+private fun openAfterWorkRecommendationNavigation(
+    context: Context,
+    recommendation: RiderAfterWorkRecommendation
+): Boolean {
+    val latitude = recommendation.latitude
+        ?.takeIf { it.isFinite() && it in -90.0..90.0 }
+        ?: return false
+    val longitude = recommendation.longitude
+        ?.takeIf { it.isFinite() && it in -180.0..180.0 }
+        ?: return false
+
+    if (!hasGoogleMaps(context)) {
+        openGoogleMapsInstallPage(context)
+        return false
+    }
+    if (!Settings.canDrawOverlays(context)) {
+        runCatching {
+            context.startActivity(
+                Intent(
+                    Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                    Uri.parse("package:" + context.packageName)
+                ).apply { addFlags(Intent.FLAG_ACTIVITY_NEW_TASK) }
+            )
+        }
+        return false
+    }
+
+    RiderReturnService.start(context)
+    val mapsIntent = Intent(
+        Intent.ACTION_VIEW,
+        Uri.parse("google.navigation:q=" + latitude + "," + longitude + "&mode=d")
+    ).apply {
+        setPackage(GOOGLE_MAPS_PACKAGE)
+        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+    }
+    val opened = runCatching { context.startActivity(mapsIntent) }.isSuccess
+    if (!opened) RiderReturnService.stop(context)
+    return opened
 }
 
 private fun openNavigation(context: Context, job: RiderJob) {
