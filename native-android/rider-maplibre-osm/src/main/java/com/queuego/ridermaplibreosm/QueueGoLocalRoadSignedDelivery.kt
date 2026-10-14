@@ -57,9 +57,12 @@ class QueueGoLocalRoadEcdsaVerifier(
 }
 
 data class QueueGoLocalRoadCachedSnapshot(
+    val envelopeVersion: Int,
+    val keyId: String,
     val revision: Long,
     val payloadSha256Hex: String,
-    val payload: ByteArray
+    val payload: ByteArray,
+    val signature: ByteArray
 )
 
 class QueueGoLocalRoadSnapshotCache(
@@ -78,11 +81,26 @@ class QueueGoLocalRoadSnapshotCache(
             require(input.readInt() == CACHE_FORMAT_VERSION) {
                 "Unsupported local-road cache format"
             }
+            val envelopeVersion = input.readInt()
+            require(envelopeVersion == QUEUEGO_LOCAL_ROAD_ENVELOPE_VERSION) {
+                "Unsupported cached local-road envelope version"
+            }
+            val keyId = input.readUTF()
+            require(keyId.isNotBlank() && keyId.length <= QUEUEGO_LOCAL_ROAD_MAX_KEY_ID_LENGTH) {
+                "Local-road cached signing key id is invalid"
+            }
             val revision = input.readLong()
             require(revision > 0L) { "Local-road cache revision is invalid" }
 
             val expectedSha = normalizeSha256(input.readUTF())
                 ?: throw IllegalArgumentException("Local-road cache SHA-256 is invalid")
+            val signatureLength = input.readInt()
+            require(signatureLength in 1..QUEUEGO_LOCAL_ROAD_MAX_SIGNATURE_BYTES) {
+                "Local-road cached signature size is invalid"
+            }
+            val signature = ByteArray(signatureLength)
+            input.readFully(signature)
+
             val payloadLength = input.readInt()
             require(payloadLength in 1..QUEUEGO_LOCAL_ROAD_MAX_SIGNED_PAYLOAD_BYTES) {
                 "Local-road cache payload size is invalid"
@@ -96,9 +114,12 @@ class QueueGoLocalRoadSnapshotCache(
                 "Local-road cache payload digest does not match"
             }
             QueueGoLocalRoadCachedSnapshot(
+                envelopeVersion = envelopeVersion,
+                keyId = keyId,
                 revision = revision,
                 payloadSha256Hex = actualSha,
-                payload = payload
+                payload = payload,
+                signature = signature
             )
         }
     }
@@ -106,18 +127,30 @@ class QueueGoLocalRoadSnapshotCache(
     @Synchronized
     fun write(
         revision: Long,
-        payloadSha256Hex: String,
-        payload: ByteArray
+        envelope: QueueGoLocalRoadSignedEnvelope
     ) {
         require(revision > 0L) { "Local-road cache revision must be positive" }
-        require(payload.isNotEmpty() &&
-            payload.size <= QUEUEGO_LOCAL_ROAD_MAX_SIGNED_PAYLOAD_BYTES
+        require(envelope.envelopeVersion == QUEUEGO_LOCAL_ROAD_ENVELOPE_VERSION) {
+            "Unsupported local-road envelope version"
+        }
+        require(envelope.keyId.isNotBlank() &&
+            envelope.keyId.length <= QUEUEGO_LOCAL_ROAD_MAX_KEY_ID_LENGTH
+        ) {
+            "Local-road signing key id is invalid"
+        }
+        require(envelope.payload.isNotEmpty() &&
+            envelope.payload.size <= QUEUEGO_LOCAL_ROAD_MAX_SIGNED_PAYLOAD_BYTES
         ) {
             "Local-road cache payload size is invalid"
         }
-        val safeSha = normalizeSha256(payloadSha256Hex)
+        require(envelope.signature.isNotEmpty() &&
+            envelope.signature.size <= QUEUEGO_LOCAL_ROAD_MAX_SIGNATURE_BYTES
+        ) {
+            "Local-road signature size is invalid"
+        }
+        val safeSha = normalizeSha256(envelope.payloadSha256Hex)
             ?: throw IllegalArgumentException("Local-road cache SHA-256 is invalid")
-        require(queueGoSha256Hex(payload) == safeSha) {
+        require(queueGoSha256Hex(envelope.payload) == safeSha) {
             "Local-road cache payload digest does not match"
         }
 
@@ -128,10 +161,14 @@ class QueueGoLocalRoadSnapshotCache(
             DataOutputStream(fileOutput).use { output ->
                 output.writeInt(CACHE_MAGIC)
                 output.writeInt(CACHE_FORMAT_VERSION)
+                output.writeInt(envelope.envelopeVersion)
+                output.writeUTF(envelope.keyId)
                 output.writeLong(revision)
                 output.writeUTF(safeSha)
-                output.writeInt(payload.size)
-                output.write(payload)
+                output.writeInt(envelope.signature.size)
+                output.write(envelope.signature)
+                output.writeInt(envelope.payload.size)
+                output.write(envelope.payload)
                 output.flush()
                 fileOutput.fd.sync()
             }
@@ -159,12 +196,13 @@ class QueueGoLocalRoadSnapshotCache(
 
     private companion object {
         const val CACHE_MAGIC = 0x51474C52
-        const val CACHE_FORMAT_VERSION = 1
+        const val CACHE_FORMAT_VERSION = 2
     }
 }
 
 enum class QueueGoLocalRoadDeliveryStatus {
     NO_SNAPSHOT,
+    CACHED,
     APPLIED,
     UNCHANGED,
     REJECTED_STALE
@@ -182,12 +220,31 @@ class QueueGoLocalRoadSignedDelivery(
     private val verifier: QueueGoLocalRoadSignatureVerifier,
     private val cache: QueueGoLocalRoadSnapshotCache
 ) {
-    suspend fun refresh(): QueueGoLocalRoadDeliveryResult {
-        val current = cache.read()
-        val envelope = transport.fetch()
+    fun loadCached(): QueueGoLocalRoadDeliveryResult {
+        val trusted = loadTrustedCache()
             ?: return QueueGoLocalRoadDeliveryResult(
                 status = QueueGoLocalRoadDeliveryStatus.NO_SNAPSHOT,
-                revision = current?.revision
+                revision = null
+            )
+        return QueueGoLocalRoadDeliveryResult(
+            status = QueueGoLocalRoadDeliveryStatus.CACHED,
+            revision = trusted.validated.revision,
+            roads = trusted.validated.roads
+        )
+    }
+
+    suspend fun refresh(): QueueGoLocalRoadDeliveryResult {
+        val current = loadTrustedCache()
+        val envelope = transport.fetch()
+            ?: return current?.let {
+                QueueGoLocalRoadDeliveryResult(
+                    status = QueueGoLocalRoadDeliveryStatus.CACHED,
+                    revision = it.validated.revision,
+                    roads = it.validated.roads
+                )
+            } ?: QueueGoLocalRoadDeliveryResult(
+                status = QueueGoLocalRoadDeliveryStatus.NO_SNAPSHOT,
+                revision = null
             )
 
         validateEnvelope(envelope)
@@ -198,15 +255,14 @@ class QueueGoLocalRoadSignedDelivery(
         val feed = decoder.decode(envelope.payload)
         val validated = validateQueueGoLocalRoadFeed(
             feed = feed,
-            currentRevision = current?.revision
+            currentRevision = current?.validated?.revision
         )
 
         return when (validated.decision) {
             QueueGoLocalRoadFeedDecision.APPLY -> {
                 cache.write(
                     revision = validated.revision,
-                    payloadSha256Hex = envelope.payloadSha256Hex,
-                    payload = envelope.payload
+                    envelope = envelope
                 )
                 QueueGoLocalRoadDeliveryResult(
                     status = QueueGoLocalRoadDeliveryStatus.APPLIED,
@@ -217,14 +273,36 @@ class QueueGoLocalRoadSignedDelivery(
             QueueGoLocalRoadFeedDecision.UNCHANGED ->
                 QueueGoLocalRoadDeliveryResult(
                     status = QueueGoLocalRoadDeliveryStatus.UNCHANGED,
-                    revision = validated.revision
+                    revision = validated.revision,
+                    roads = current?.validated?.roads.orEmpty()
                 )
             QueueGoLocalRoadFeedDecision.REJECT_STALE ->
                 QueueGoLocalRoadDeliveryResult(
                     status = QueueGoLocalRoadDeliveryStatus.REJECTED_STALE,
-                    revision = current?.revision
+                    revision = current?.validated?.revision,
+                    roads = current?.validated?.roads.orEmpty()
                 )
         }
+    }
+
+    private fun loadTrustedCache(): TrustedCachedLocalRoadSnapshot? {
+        val cached = cache.read() ?: return null
+        val envelope = QueueGoLocalRoadSignedEnvelope(
+            envelopeVersion = cached.envelopeVersion,
+            keyId = cached.keyId,
+            payload = cached.payload,
+            payloadSha256Hex = cached.payloadSha256Hex,
+            signature = cached.signature
+        )
+        validateEnvelope(envelope)
+        require(verifier.verify(envelope.keyId, envelope.payload, envelope.signature)) {
+            "Cached local-road signature verification failed"
+        }
+        val validated = validateQueueGoLocalRoadFeed(decoder.decode(envelope.payload))
+        require(validated.revision == cached.revision) {
+            "Cached local-road revision does not match signed payload"
+        }
+        return TrustedCachedLocalRoadSnapshot(cached, validated)
     }
 
     private fun validateEnvelope(envelope: QueueGoLocalRoadSignedEnvelope) {
@@ -254,6 +332,11 @@ class QueueGoLocalRoadSignedDelivery(
         }
     }
 }
+
+private data class TrustedCachedLocalRoadSnapshot(
+    val cached: QueueGoLocalRoadCachedSnapshot,
+    val validated: QueueGoValidatedLocalRoadFeed
+)
 
 internal fun queueGoSha256Hex(bytes: ByteArray): String =
     MessageDigest.getInstance("SHA-256")
