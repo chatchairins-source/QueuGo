@@ -50,6 +50,45 @@ assert(
 assert(sql.includes('with (security_invoker = true)')&&
   sql.includes('grant select on table public.qg_local_road_feed to authenticated'),
   'Verified Local Roads feed must use a security-invoker read-only view');
+assert(sql.includes('create table if not exists public.qg_local_road_junction_candidates')&&
+  sql.includes('create table if not exists public.qg_local_road_junctions')&&
+  sql.includes('unique (junction_key, candidate_version)')&&
+  sql.includes('jsonb_array_length(members) between 2 and 8'),
+  'Local Roads schema v2 proposal must version reviewed junction candidates and bound published junction members');
+
+assert(sql.includes('alter table public.qg_local_road_junction_candidates enable row level security')&&
+  sql.includes('alter table public.qg_local_road_junctions enable row level security')&&
+  sql.includes('qg_local_road_junction_candidates_admin_select')&&
+  sql.includes('qg_local_road_junctions_verified_read'),
+  'Local Roads junction candidate/published tables must enable explicit RLS');
+
+assert(sql.includes('revoke all on table public.qg_local_road_junction_candidates from anon, authenticated')&&
+  sql.includes('revoke all on table public.qg_local_road_junctions from anon, authenticated')&&
+  sql.includes('grant select, insert, update, delete\n  on table public.qg_local_road_junction_candidates to authenticated')&&
+  sql.includes('grant select on table public.qg_local_road_junctions to authenticated'),
+  'Local Roads junction Data API exposure must use explicit least-privilege grants');
+
+assert(
+  (sql.match(/qg_local_road_junction_candidates[\s\S]{0,900}published_revision is null/g)||[]).length >= 3&&
+  (sql.match(/qg_local_road_junction_candidates[\s\S]{0,900}published_at is null/g)||[]).length >= 3,
+  'Published junction candidate versions must become immutable to authenticated admin mutation');
+
+assert(sql.includes('create or replace view public.qg_local_road_junction_feed')&&
+  sql.includes('with (security_invoker = true)')&&
+  sql.includes('grant select on table public.qg_local_road_junction_feed to authenticated'),
+  'Published junction feed must be a security-invoker authenticated read-only view');
+
+assert(sql.includes("roads.road_key = member ->> 'road_key'")&&
+  sql.includes("roads.access_type <> 'private_restricted'")&&
+  sql.includes('where not exists ('),
+  'Published junction reads must fail closed when any member road is missing, retired or private');
+
+assert(sql.includes('validate junction member shape/reference/private-road/span constraints')&&
+  sql.includes('increment ONE feed revision covering both roads and junctions')&&
+  sql.includes('currently <=25m')&&
+  sql.includes('No client may auto-snap nearby geometry'),
+  'Server-only publication boundary must validate explicit junction evidence and share one monotonic roads+junctions revision');
+
 assert(!/create\s+extension[\s\S]{0,120}postgis/i.test(executableSql),
   'Proposal must not silently introduce a PostGIS dependency');
 assert(!/security\s+definer/i.test(executableSql),
