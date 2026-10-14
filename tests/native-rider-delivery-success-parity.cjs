@@ -6,8 +6,14 @@ const ui=fs.readFileSync('native-android/rider/src/main/java/com/queuego/rider/R
 
 assert(app.includes('var deliverySuccessJob by remember { mutableStateOf<RiderJob?>(null) }'),
   'Rider Home must retain the just-completed delivery for success feedback');
-assert(app.includes('deliverySuccessJob = job')&&app.includes('RiderDeliverySuccess(completed)'),
-  'Successful delivery must surface the Production-style success card');
+assert(
+  app.includes('deliverySuccessJob = job') &&
+  app.includes('RiderDeliverySuccess(') &&
+  app.includes('job = completed') &&
+  app.includes('recommendation = afterWorkRecommendation') &&
+  app.includes('onDismiss = { deliverySuccessJob = null }'),
+  'Successful delivery must surface the Production-style success card and preserve the After-Work recommendation path'
+);
 assert(app.includes('if (completedMode == "delivery") {')&&app.includes('closeVerification()'),
   'Success feedback must happen after the existing delivery completion path');
 
@@ -17,5 +23,11 @@ assert(ui.includes('"รายได้ค่าส่ง ฿"')&&ui.includes('j
   'Success card must show the authoritative Native Rider delivery earning');
 assert(ui.includes('"รับทราบ"')&&ui.includes('delay(4_500)'),
   'Success feedback must support acknowledgement and Production-style auto dismissal');
+assert(
+  ui.includes('recommendation: RiderAfterWorkRecommendation?') &&
+  ui.includes('onRecommendation: (RiderAfterWorkRecommendation) -> Unit') &&
+  ui.includes('recommendation?.let { item ->'),
+  'Success card must retain optional After-Work recommendation without replacing completion feedback'
+);
 
 console.log('Native Rider delivery success parity contracts: PASS');
