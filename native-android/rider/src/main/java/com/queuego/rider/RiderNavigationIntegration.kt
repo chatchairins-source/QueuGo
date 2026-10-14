@@ -17,6 +17,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.queuego.ridernavigationmap.CachingNavigationRouteProvider
 import com.queuego.ridernavigationmap.LongdoNavigationRouteClient
 import com.queuego.ridernavigationmap.NavigationMapCamera
 import com.queuego.ridernavigationmap.NavigationMapFix
@@ -278,8 +279,12 @@ internal fun QueueGoRiderNavigationMap(
     }
 
     val routeKey = remember(context.packageName) { riderLongdoNavigationKey(context) }
-    val routeProvider = remember(routeKey) {
-        routeKey?.let { LongdoNavigationRouteClient(it) }
+    val routeProvider = remember(routeKey, stateKey) {
+        routeKey?.let { key ->
+            CachingNavigationRouteProvider(
+                delegate = LongdoNavigationRouteClient(key)
+            )
+        }
     }
     val coordinator = remember(stateKey, routeProvider) {
         routeProvider?.let { NavigationRouteCoordinator(it) }

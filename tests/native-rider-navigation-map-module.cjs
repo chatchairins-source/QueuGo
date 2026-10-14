@@ -15,6 +15,7 @@ const signalPipeline=fs.readFileSync('native-android/rider-navigation-map/src/ma
 const confidenceMetrics=fs.readFileSync('native-android/rider-navigation-map/src/main/java/com/queuego/ridernavigationmap/NavigationConfidenceMetrics.kt','utf8');
 const viewportInsets=fs.readFileSync('native-android/rider-navigation-map/src/main/java/com/queuego/ridernavigationmap/NavigationViewportInsets.kt','utf8');
 const puckOrientation=fs.readFileSync('native-android/rider-navigation-map/src/main/java/com/queuego/ridernavigationmap/NavigationPuckOrientation.kt','utf8');
+const routeCache=fs.readFileSync('native-android/rider-navigation-map/src/main/java/com/queuego/ridernavigationmap/NavigationRouteCache.kt','utf8');
 const workflow=fs.readFileSync('.github/workflows/build-native-rider-pilot.yml','utf8');
 const runtimeTest=fs.readFileSync('native-android/rider-navigation-map/src/androidTest/java/com/queuego/ridernavigationmap/NavigationMapRuntimeTest.kt','utf8');
 const runtimeActivity=fs.readFileSync('native-android/rider-navigation-map/src/debug/java/com/queuego/ridernavigationmap/NavigationMapRuntimeActivity.kt','utf8');
@@ -172,6 +173,15 @@ assert(
   map.includes('pin.setOpacity(nextOpacity)')&&
   map.includes('postDelayed({ tick() }, 1_000L)'),
   'Rider puck must rotate relative to the actual camera and age into stale/lost presentation without synthetic GPS fixes');
+
+assert(
+  routeCache.includes('class CachingNavigationRouteProvider')&&
+  routeCache.includes('shouldBypassCache(segmentId)')&&
+  routeCache.includes('navigationHaversineMeters(entry.origin, from)')&&
+  routeCache.includes('createdAtMillis')&&
+  integration.includes('CachingNavigationRouteProvider(')&&
+  integration.includes('remember(routeKey, stateKey)'),
+  'Future route prefetch must be reusable only near the planned origin, expire safely, bypass reroutes and remain scoped to one Rider session');
 
 assert(map.includes('setPreserveEGLContextOnPause(true)'),
   'Navigation map must preserve the GL context across background/resume when Android allows it');
