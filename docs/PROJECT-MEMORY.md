@@ -1,3 +1,13 @@
+## 2026-10-14 Rider world-class: Safety Report Overview
+- Continued from the latest unified Stop-After-Work + Safety Incident successor.
+- Static inspection of the owner-supplied Grab Driver 5.457.1 package shows a dedicated safety-report overview surface. QueueGo could submit safety incidents but previously required Riders to find those cases inside the generic Support history.
+- Safety Center now reads the Rider's existing qg_support_tickets rows and shows the three latest [SAFETY_INCIDENT:*] reports with the real Support status and Admin note when present.
+- Production RLS already limits qg_support_tickets SELECT to the ticket owner or active Admin. No new schema, RPC, background tracking or support system was created.
+- Status copy is a direct presentation of existing OPEN / IN_REVIEW / WAITING_USER / RESOLVED / REJECTED / CLOSED values and does not invent SLA or response-time promises.
+- After a Rider submits a new safety incident, the overview refreshes immediately.
+- Backup: backup/rider-worldclass-before-safety-overview-20261014.
+- PASS requires exact-head native-pilot + navigation-map-runtime.
+
 ## 2026-10-14 Rider world-class: Stop-After-Work + Safety Incident unified successor
 - Continued from stop-after-work head f85ce9ea, preserving final world-class proof/return, evidence-quality compatibility, Auto Accept, failed-delivery, Benefits, connectivity and event feedback work.
 - Carries the new durable “หยุดรับงานหลังงานนี้” intent together with the Grab-parity Safety Incident Report so no sibling Rider work is dropped.
