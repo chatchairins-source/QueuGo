@@ -358,6 +358,9 @@ private class RiderNavigationMapHolder {
         lastCameraCenter = null
         lastCameraZoomChangeAtMs = 0L
         lastRenderedRiderFix = null
+        lastPuckRotation = null
+        lastPuckOpacity = null
+        lastOverviewSignature = null
         // Preserve heading continuity across an internal Longdo renderer swap.
         mapCreatedCount += 1
         publishDiagnostics()
