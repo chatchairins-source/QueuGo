@@ -290,15 +290,23 @@ data class RiderDeliveryReturn(
     val caseId: String,
     val orderId: String,
     val orderNumber: String?,
+    val marketOrderId: String?,
     val status: String,
     val reason: String,
     val adminNote: String?,
-    val shopId: String,
+    val expectedRefundAmount: Double,
+    val returnStopCount: Int,
+    val returnedStopCount: Int,
+    val remainingStopCount: Int,
+    val stopId: String?,
+    val stopOrderId: String?,
+    val stopSequence: Int?,
+    val stopRefundAmount: Double,
+    val shopId: String?,
     val shopName: String?,
     val shopAddress: String?,
     val shopLatitude: Double?,
     val shopLongitude: Double?,
-    val expectedRefundAmount: Double,
     val ticketId: String?,
     val reportedAt: String?,
     val returnRequiredAt: String?,
@@ -312,6 +320,12 @@ data class RiderDeliveryReturn(
 
     val canReturnToShop: Boolean
         get() = status == "return_required" || status == "returning"
+
+    val multiStop: Boolean
+        get() = returnStopCount > 1
+
+    val currentStopNumber: Int
+        get() = (returnedStopCount + 1).coerceAtMost(returnStopCount.coerceAtLeast(1))
 }
 
 data class RiderSnapshot(
