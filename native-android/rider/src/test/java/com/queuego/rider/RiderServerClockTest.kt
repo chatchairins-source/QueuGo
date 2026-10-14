@@ -43,4 +43,12 @@ class RiderServerClockTest {
             riderServerClockNow(sample, elapsedRealtimeMs = 499L, fallbackWallEpochMs = 777L)
         )
     }
+
+    @Test fun healthExplainsClockSkewWithoutClaimingCountdownFailure() {
+        assertEquals(null, riderServerClockHealth(null).healthy)
+        assertEquals(true, riderServerClockHealth(2_500L).healthy)
+        val warning = riderServerClockHealth(-12_000L)
+        assertEquals(false, warning.healthy)
+        assert(warning.detail.contains("ชดเชย"))
+    }
 }
