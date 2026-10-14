@@ -42,6 +42,21 @@ class RiderEventFeedbackTest {
         assertEquals(1, error.gapsMs.size)
     }
 
+    @Test fun returnFeedbackIsDistinctFromPickupAndDelivery() {
+        val pickup = riderEventFeedbackSpec(RiderEventFeedbackKind.PICKUP_SUCCESS)
+        val delivery = riderEventFeedbackSpec(RiderEventFeedbackKind.DELIVERY_SUCCESS)
+        val stop = riderEventFeedbackSpec(RiderEventFeedbackKind.RETURN_STOP_SUCCESS)
+        val complete = riderEventFeedbackSpec(RiderEventFeedbackKind.RETURN_COMPLETE)
+
+        assertTrue(stop.successHaptic)
+        assertTrue(complete.successHaptic)
+        assertTrue(stop.tones != pickup.tones)
+        assertTrue(stop.tones != delivery.tones)
+        assertTrue(complete.tones != delivery.tones)
+        assertTrue(complete.tones != stop.tones)
+        assertEquals(3, complete.tones.size)
+    }
+
     @Test fun everyPatternStaysBriefEnoughForDrivingWorkflow() {
         RiderEventFeedbackKind.values().forEach { kind ->
             val spec = riderEventFeedbackSpec(kind)
