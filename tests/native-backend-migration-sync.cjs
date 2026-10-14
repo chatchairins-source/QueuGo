@@ -168,4 +168,16 @@ for(const needle of [
 ]){
   assert.ok(mapFeedbackMigration.includes(needle),'Rider map feedback migration missing contract: '+needle);
 }
+const supplyPlanningMigration=read('supabase/migrations/20261014075257_rider_supply_planning_v1.sql');
+for(const needle of [
+  'qg_private.rider_supply_plan',
+  'qg_rider_supply_plan',
+  "interval '28 days'",
+  "v_sample >= 20",
+  "'forecast',false",
+  "'basis','historical_orders'",
+  "revoke all on function public.qg_rider_supply_plan() from public, anon"
+]){
+  assert.ok(supplyPlanningMigration.includes(needle),'Rider supply planning migration missing contract: '+needle);
+}
 console.log('Native backend migration mirror: PASS');
