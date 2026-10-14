@@ -409,6 +409,45 @@ internal fun riderPickupGuideFromRpc(raw: Any?): RiderPickupGuide {
     )
 }
 
+internal fun riderInsurancePoliciesFromRpc(raw: Any?): List<RiderInsurancePolicy> {
+    val rows = when (raw) {
+        is JSONArray -> raw
+        is JSONObject -> JSONArray().put(raw)
+        else -> JSONArray()
+    }
+    return buildList {
+        for (index in 0 until rows.length()) {
+            val row = rows.optJSONObject(index) ?: continue
+            val id = riderNullableText(row.optString("policy_id")) ?: continue
+            val provider = riderNullableText(row.optString("provider_name")) ?: continue
+            val starts = riderNullableText(row.optString("starts_on")) ?: continue
+            val expires = riderNullableText(row.optString("expires_on")) ?: continue
+            val type = riderNullableText(row.optString("coverage_type"))
+                ?.takeIf { it in setOf("personal_accident","income_protection","vehicle","other") }
+                ?: "other"
+            val status = riderNullableText(row.optString("status"))
+                ?.takeIf { it in setOf("active","upcoming","expired") }
+                ?: "expired"
+            add(
+                RiderInsurancePolicy(
+                    id = id,
+                    coverageType = type,
+                    providerName = provider,
+                    productName = riderNullableText(row.optString("product_name")),
+                    policyNumber = riderNullableText(row.optString("policy_number")),
+                    startsOn = starts,
+                    expiresOn = expires,
+                    status = status,
+                    coverageSummary = riderNullableText(row.optString("coverage_summary")),
+                    supportPhone = riderNullableText(row.optString("support_phone")),
+                    supportUrl = riderNullableText(row.optString("support_url"))
+                        ?.takeIf { it.startsWith("https://") }
+                )
+            )
+        }
+    }
+}
+
 class QueueGoApi {
     companion object {
         private const val BASE_URL = "https://pkypiqhlrmzocysgeqew.supabase.co"
@@ -1016,6 +1055,17 @@ class QueueGoApi {
             riderDocumentReadinessFromRpc(
                 rpc(
                     "qg_rider_document_readiness",
+                    auth.session.accessToken,
+                    JSONObject()
+                )
+            )
+        }
+
+    suspend fun insurancePolicies(auth: QueueGoAuth): List<RiderInsurancePolicy> =
+        withContext(Dispatchers.IO) {
+            riderInsurancePoliciesFromRpc(
+                rpc(
+                    "qg_rider_insurance_policies",
                     auth.session.accessToken,
                     JSONObject()
                 )

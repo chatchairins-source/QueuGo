@@ -1,3 +1,10 @@
+## 2026-10-14 Grab Driver parity: real-data Rider Insurance Center v1
+- Confirmed the owner-supplied Grab Driver 5.457.1 package contains insurance capabilities including Income Protection, e-Hailing insurance premium detail/discovery, usage-based insurance survey and insurance webview modules. QueueGo had no insurance schema or Rider UI.
+- Added a real-data-only Insurance Center. QueueGo does NOT invent coverage, provider, premium, benefit amount or policy number. With no recorded policy, Rider sees only that QueueGo has no policy on record.
+- Production migration 20261014085820 rider_insurance_center_v1 is additive and already applied. Policy data is private in qg_private. Rider reads only owned policies through qg_rider_insurance_policies; Admin list/save/delete requires a live active-Admin session. anon execute is revoked. Insurance is informational in v1 and does not block online availability.
+- Native Rider Profile shows provider, plan/type, policy number, coverage dates, status, optional summary and verified support contact/link. Admin Rider panel can add/delete real policy records through public authenticated RPCs only.
+- Production active-Rider validation returned policy_count=0, preserving truthful empty state. Backup backup/rider-pickup-guide-before-insurance-20261014 retains 472bde3. Exact-head native-pilot + navigation-map-runtime are required before PASS.
+
 ## 2026-10-14 Grab Driver parity: Merchant pickup + parking guidance
 - Confirmed the owner-supplied Grab Driver package contains parking/pickup-support capability while QueueGo Merchant only exposed address/pin. Added Rider-facing pickup instructions and parking/entrance instructions to the existing Merchant shop setup; both are stored inside existing shop metadata and capped at 300 characters.
 - Production migration 20261014085155 merchant_pickup_guidance_v1 is additive and exposes only allowlisted guidance through Rider-scoped RPCs. A Rider may read a single-shop guide only while assigned to that order or holding the live targeted offer. Market multi-stop guides require the Rider to own an active order in that market trip. No full shop metadata is exposed.

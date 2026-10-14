@@ -422,6 +422,20 @@ data class RiderDocumentReadiness(
     val items: List<RiderDocumentStatus> = emptyList()
 )
 
+data class RiderInsurancePolicy(
+    val id: String,
+    val coverageType: String,
+    val providerName: String,
+    val productName: String?,
+    val policyNumber: String?,
+    val startsOn: String,
+    val expiresOn: String,
+    val status: String,
+    val coverageSummary: String?,
+    val supportPhone: String?,
+    val supportUrl: String?
+)
+
 data class RiderEmergencyContact(
     val configured: Boolean,
     val name: String?,
