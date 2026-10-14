@@ -31,6 +31,21 @@ class RiderStopAfterWorkTest {
         assertFalse(riderAutoAcceptAllowedWhileStopping(false, false))
     }
 
+    @Test fun targetedOfferMustClearBeforeAutomaticOffline() {
+        assertFalse(
+            riderStopAfterWorkReady(
+                pending = true,
+                networkAvailable = true,
+                online = true,
+                hasActiveJob = false,
+                hasLaundryJob = false,
+                hasDeliveryReturn = false,
+                hasOffer = true,
+                actionBusy = false
+            )
+        )
+    }
+
     @Test fun stopAfterWorkFailsClosedWhenAlreadyOfflineOrBusy() {
         assertFalse(riderStopAfterWorkReady(true, true, false, false, false, false, false, false))
         assertFalse(riderStopAfterWorkReady(true, true, true, false, false, false, false, true))
