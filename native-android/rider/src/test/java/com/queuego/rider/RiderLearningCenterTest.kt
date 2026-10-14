@@ -21,6 +21,12 @@ class RiderLearningCenterTest {
         assertTrue(all.contains("ภารกิจ"))
     }
 
+    @Test fun firstRunLearningPolicyOnlyOpensForActiveUnseenRider() {
+        assertTrue(riderShouldShowLearningOnboarding(activeUser = true, seen = false))
+        assertFalse(riderShouldShowLearningOnboarding(activeUser = true, seen = true))
+        assertFalse(riderShouldShowLearningOnboarding(activeUser = false, seen = false))
+    }
+
     @Test fun learningCenterDoesNotRestoreRetiredVerificationFlow() {
         val all = riderLearningLessons().flatMap { it.steps }.joinToString("\n").lowercase()
         assertTrue(all.contains("ไม่มีขั้นตอน pin หรือ otp"))

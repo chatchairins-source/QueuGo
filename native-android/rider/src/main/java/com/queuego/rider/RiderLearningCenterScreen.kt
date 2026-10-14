@@ -1,5 +1,6 @@
 package com.queuego.rider
 
+import android.content.Context
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -18,6 +19,20 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.queuego.shared.QgMuted
 import com.queuego.shared.QgRed
+
+internal fun riderShouldShowLearningOnboarding(activeUser: Boolean, seen: Boolean): Boolean =
+    activeUser && !seen
+
+internal class RiderLearningOnboardingStore(context: Context) {
+    private val prefs = context.getSharedPreferences("queuego-rider-learning", Context.MODE_PRIVATE)
+
+    fun hasSeen(userId: String): Boolean =
+        prefs.getBoolean("onboarding-v1:$userId", false)
+
+    fun markSeen(userId: String) {
+        prefs.edit().putBoolean("onboarding-v1:$userId", true).apply()
+    }
+}
 
 internal data class RiderLearningLesson(
     val id: String,
