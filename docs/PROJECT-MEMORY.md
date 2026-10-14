@@ -1,3 +1,9 @@
+## 2026-10-14 Grab Driver parity: background/app-exit health diagnostics
+- Continued from server-calibrated offer clock head b6b3a20. Grab Driver contains dedicated app-exit/health infrastructure; QueueGo already had process-exit history and runtime watchdogs but did not expose Android battery-optimization/background-restriction state.
+- Rider Diagnostics now checks whether QueueGo Rider is exempt from battery optimization and whether Android marks the app background-restricted. Both are advisory only: they never change the existing five-item delivery readiness or block Rider online, avoiding false lockouts across OEM devices.
+- Fix actions open Android system settings only. No REQUEST_IGNORE_BATTERY_OPTIMIZATIONS permission and no new Play-policy-sensitive permission is added. The goal is to reduce missed offer/location updates when the screen is off or Rider switches to Google Maps.
+- Backup backup/rider-server-clock-before-background-health-20261014 retains b6b3a20. Exact-head native-pilot + navigation-map-runtime are required before PASS.
+
 ## 2026-10-14 Grab Driver parity: server-calibrated Rider offer clock
 - Grab Driver package includes dedicated NTP/time infrastructure. QueueGo offer deadlines already come from Production but Native countdown, offer alert eligibility and FCM timeout still compared those deadlines to the phone wall clock.
 - Added RiderServerClock using the existing Supabase HTTP Date response header as the trusted calibration source, then advances time with Android elapsedRealtime. No extra network request and no Production DB change. Before the first valid server sample it fails back to the existing device wall clock.
