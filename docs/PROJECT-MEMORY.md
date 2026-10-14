@@ -1,3 +1,13 @@
+## 2026-10-14 Rider performance: adaptive snapshot refresh cadence
+- Continued from one-hand touch-target successor #298.
+- QueueGo keeps Realtime + push and preserves the 3-second fallback refresh cadence whenever the Rider is online, has an active job, or has a targeted offer.
+- When the Rider is offline/idle with no work, fallback polling backs off to 15 seconds.
+- While Android reports no validated network, fallback polling backs off to 12 seconds; the network callback remains a LaunchedEffect key so reconnect restarts the loop immediately instead of waiting for the backoff window.
+- This reduces unnecessary battery/network work without weakening active-work/offer reliability.
+- No order, dispatch, payment, navigation or Production DB behavior changed.
+- Backup: backup/rider-grab-parity-before-adaptive-refresh-20261014.
+- Exact-head native-pilot + navigation-map-runtime remain required before PASS.
+
 ## 2026-10-14 Rider one-hand UX: touch-target hardening on network-guard successor
 - Continued from #297 so validated-network mutation guards and reconnect continuity remain intact.
 - Active Rider custom actions previously used 42dp/46dp minimum heights. Android accessibility guidance recommends at least 48dp touch targets for interactive controls.
