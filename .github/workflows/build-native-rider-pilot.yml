@@ -291,7 +291,7 @@ jobs:
           retention-days: 14
 
   maplibre-osm-runtime:
-    if: ${{ startsWith(github.ref, 'refs/heads/work-native-rider-maplibre-') }}
+    if: ${{ startsWith(github.ref, 'refs/heads/work-native-rider-maplibre-') || startsWith(github.ref, 'refs/heads/work-native-rider-local-roads-') }}
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
