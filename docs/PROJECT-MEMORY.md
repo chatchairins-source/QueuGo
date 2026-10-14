@@ -1,3 +1,9 @@
+## 2026-10-14 Grab Driver parity unified: Missions + personal emergency contact
+- Continued from PR239 real Missions instead of creating a parallel incentive implementation. Missions remain server-owned, zero-placeholder and non-paying unless Admin creates real definitions.
+- Added one Rider-owned personal emergency contact to the existing Safety Centre. Production migration 20261014065058 stores the contact only in qg_private.rider_emergency_contacts; authenticated clients have no direct table privileges, and public Rider wrappers validate live session + active Rider ownership with anon execute revoked.
+- Native Safety Centre can add, edit, delete and dial the saved contact. QueueGo does not auto-call, auto-message or auto-share GPS/location. Official Thailand emergency numbers 191 / 1669 / 1155 remain unchanged and separate.
+- This successor uses the navigation-map branch prefix so the complete Missions + Safety contact stack must pass native-pilot and navigation-map-runtime on the same exact head before PASS.
+
 ## 2026-10-14 Grab Driver parity mission: real Rider Missions
 - Added a Mission framework based on the mission/incentive capability observed in the owner-supplied Grab Driver package, without copying code/assets and without introducing automatic money payout.
 - Production migration 20261014064750 rider_missions_v1 stores mission definitions only in qg_private. Admin-only public wrappers can list/create/activate missions; Rider wrapper returns only active/upcoming mission definitions plus the current Rider's aggregate progress. anon execute is revoked.
