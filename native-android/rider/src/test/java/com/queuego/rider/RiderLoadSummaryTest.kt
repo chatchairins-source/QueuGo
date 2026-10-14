@@ -39,4 +39,24 @@ class RiderLoadSummaryTest {
         assertEquals("unknown", summary.state)
         assertEquals("น้ำหนัก 5.5 กก.", riderLoadSummaryLabel(summary))
     }
+
+    @Test fun overCapacityAndUnknownCapacityRemainExplicit() {
+        val over = riderLoadSummaryFromRpc(
+            JSONObject()
+                .put("weight_kg", 24.0)
+                .put("vehicle_capacity_kg", 20.0)
+                .put("utilization_ratio", 1.2)
+                .put("state", "over_capacity")
+        )
+        assertEquals("เกินความจุรถที่เลือก", riderLoadSummaryStateLabel(over.state))
+        assertEquals("น้ำหนัก 24 กก. · รถรับได้ 20 กก. · 120%", riderLoadSummaryLabel(over))
+
+        val noCapacity = riderLoadSummaryFromRpc(
+            JSONObject()
+                .put("weight_kg", 7.25)
+                .put("state", "capacity_unknown")
+        )
+        assertEquals("ยังไม่ทราบความจุรถ", riderLoadSummaryStateLabel(noCapacity.state))
+        assertEquals("น้ำหนัก 7.3 กก.", riderLoadSummaryLabel(noCapacity))
+    }
 }
