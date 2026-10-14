@@ -34,4 +34,15 @@ for(const needle of [
 ]){
   assert.ok(complimentMigration.includes(needle),'Rider compliments migration missing contract: '+needle);
 }
+const riderProfilePhotoMigration=read('supabase/migrations/20261014062708_rider_public_profile_photo_v1.sql');
+for(const needle of [
+  "'rider-profile'",
+  'rider_profile_owner_insert',
+  'rider_profile_owner_update',
+  'qg_rider_set_profile_photo',
+  "v_expected_path := v_uid::text || '/profile'",
+  "revoke all on function public.qg_rider_set_profile_photo(text) from public, anon"
+]){
+  assert.ok(riderProfilePhotoMigration.includes(needle),'Rider profile photo migration missing contract: '+needle);
+}
 console.log('Native backend migration mirror: PASS');

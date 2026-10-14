@@ -1,3 +1,9 @@
+## 2026-10-14 Grab Driver parity mission: Rider-managed public profile photo
+- Added a dedicated public rider-profile Storage bucket for the Rider identity photo shown to Customer, Merchant and Rider. This is intentionally separate from private qg-evidence/KYC/proof media.
+- Storage writes are restricted to active Rider owner paths under auth.uid(); the app uses one stable authUid/profile object with upsert, max 5 MB and JPG/PNG/WebP only. A server RPC verifies the uploaded owner object and updates only rider_profiles.metadata.profileImage, preserving KYC, vehicle approval and all unrelated metadata.
+- The stored public URL carries a version query so replacing the same object changes the Compose image source and avoids stale profile-photo cache. Native Rider profile lets the Rider choose a new image from the device and refreshes the authoritative snapshot after server confirmation.
+- Production migration 20261014062708 rider_public_profile_photo_v1 is applied. anon cannot execute the profile-photo mutation RPC. No KYC document or approval state is modified. Backup backup/rider-grab-parity-before-profile-photo-20261014 retains d9b0eaf. Exact-head CI and physical upload verification remain required before PASS.
+
 ## 2026-10-14 Heatmap map-reuse guard preserved in Rider parity successor
 - Pulled forward Work PR228 runtime assertions onto the latest Job History successor. These diagnostics prove demand add/level-change/clear reconciles pins while preserving the same MapGLSurfaceView and Longdo map identities.
 - No Heatmap product behavior changed here; this preserves the stronger renderer continuity guard while later Rider parity work continues.
