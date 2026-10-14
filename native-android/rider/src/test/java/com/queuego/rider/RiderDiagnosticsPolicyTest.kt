@@ -23,4 +23,27 @@ class RiderDiagnosticsPolicyTest {
         assertFalse(noNotifications.readyForDelivery)
         assertEquals(4, noNotifications.essentialPassedCount)
     }
+
+    @Test fun backgroundHealthIsAdvisoryAndDoesNotChangeCoreDeliveryGate() {
+        val restricted = RiderDiagnosticsSnapshot(
+            networkReady = true,
+            locationPermission = true,
+            locationServices = true,
+            notifications = true,
+            googleMaps = true,
+            overlayReturn = true,
+            microphone = true,
+            batteryOptimizationExempt = false,
+            backgroundRestricted = true
+        )
+        assertTrue(restricted.readyForDelivery)
+        assertEquals(5, restricted.essentialPassedCount)
+        assertFalse(restricted.backgroundReliabilityReady)
+
+        val healthy = restricted.copy(
+            batteryOptimizationExempt = true,
+            backgroundRestricted = false
+        )
+        assertTrue(healthy.backgroundReliabilityReady)
+    }
 }
