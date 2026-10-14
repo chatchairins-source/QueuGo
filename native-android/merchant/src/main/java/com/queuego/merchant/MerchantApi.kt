@@ -25,7 +25,9 @@ data class MerchantShop(
     val openTime: String? = null,
     val closeTime: String? = null,
     val description: String? = null,
-    val shoppingSubcategories: Set<String> = emptySet()
+    val shoppingSubcategories: Set<String> = emptySet(),
+    val riderPickupInstructions: String? = null,
+    val riderParkingInstructions: String? = null
 )
 
 data class MerchantShopSetupDraft(
@@ -41,7 +43,9 @@ data class MerchantShopSetupDraft(
     val closeTime: String,
     val description: String,
     val logo: String?,
-    val cover: String?
+    val cover: String?,
+    val riderPickupInstructions: String = "",
+    val riderParkingInstructions: String = ""
 )
 
 data class MerchantTodayRevenue(
@@ -242,7 +246,7 @@ data class ShopReadiness(val complete: Boolean, val checks: JSONObject, val cata
 class MerchantApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
     suspend fun loadShop(auth: NativeAuth): MerchantShop? {
         val rows = http.array(http.get(
-            "shop_profiles?select=id,shop_name,public_category,public_subcategories,public_logo,public_cover,public_description,phone,address,latitude,longitude,public_open_time,public_close_time,status,onboarding_status,delivery_enabled" +
+            "shop_profiles?select=id,shop_name,public_category,public_subcategories,public_logo,public_cover,public_description,phone,address,latitude,longitude,public_open_time,public_close_time,status,onboarding_status,delivery_enabled,metadata" +
                 "&user_id=eq." + http.enc(auth.user.id) + "&archived_at=is.null&order=created_at.desc&limit=1",
             auth.session.accessToken
         ))
@@ -263,7 +267,9 @@ class MerchantApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
             r.optNullable("public_open_time"),
             r.optNullable("public_close_time"),
             r.optNullable("public_description"),
-            parseMerchantSubcategories(r.opt("public_subcategories"))
+            parseMerchantSubcategories(r.opt("public_subcategories")),
+            r.optJSONObject("metadata")?.optNullable("riderPickupInstructions"),
+            r.optJSONObject("metadata")?.optNullable("riderParkingInstructions")
         )
     }
 
@@ -276,6 +282,10 @@ class MerchantApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
         val contactName = draft.contactName.trim()
         val phone = draft.phone.trim()
         val address = draft.address.trim()
+        val pickupInstructions = draft.riderPickupInstructions.trim()
+        val parkingInstructions = draft.riderParkingInstructions.trim()
+        require(pickupInstructions.length <= 300) { "คำแนะนำจุดรับสินค้าต้องไม่เกิน 300 ตัวอักษร" }
+        require(parkingInstructions.length <= 300) { "คำแนะนำที่จอดรถต้องไม่เกิน 300 ตัวอักษร" }
         val category = draft.category.trim().lowercase()
         require(shopName.isNotBlank()) { "กรุณากรอกชื่อร้าน" }
         require(contactName.isNotBlank()) { "กรุณากรอกชื่อผู้ติดต่อ" }
@@ -323,6 +333,8 @@ class MerchantApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
                 .put("openTime", draft.openTime.trim())
                 .put("closeTime", draft.closeTime.trim())
                 .put("description", draft.description.trim())
+                .put("riderPickupInstructions", pickupInstructions)
+                .put("riderParkingInstructions", parkingInstructions)
                 .put("logo", draft.logo ?: shop.logo ?: JSONObject.NULL)
                 .put("cover", draft.cover ?: shop.cover ?: JSONObject.NULL)
                 .also { metadata ->
