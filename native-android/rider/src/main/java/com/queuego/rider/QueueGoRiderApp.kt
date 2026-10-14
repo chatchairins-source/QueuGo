@@ -282,7 +282,9 @@ fun QueueGoRiderApp(pushTarget: NativePushLaunchTarget? = null) {
                     }
                 )
                 auth?.user?.status != "active" -> RiderPendingAccountScreen(
-                    modifier = Modifier.padding(insets), name = auth!!.user.name,
+                    modifier = Modifier.padding(insets),
+                    name = auth!!.user.name,
+                    status = auth!!.user.status,
                     onLogout = {
                         val current = auth!!
                         RiderReturnService.stop(context)
@@ -641,6 +643,7 @@ private fun RiderHome(
     }
 
     var todaySummary by remember { mutableStateOf<RiderPeriodSummary?>(null) }
+    var homeMissions by remember(auth.user.id) { mutableStateOf<List<RiderMission>>(emptyList()) }
     var demandZones by remember(auth.user.id) { mutableStateOf<List<RiderDemandZone>>(emptyList()) }
     var destinationPreference by remember(auth.user.id) { mutableStateOf<RiderDestinationPreference?>(null) }
     var destinationLoaded by remember(auth.user.id) { mutableStateOf(false) }
@@ -670,6 +673,31 @@ private fun RiderHome(
             snapshot?.laundry?.activeJob == null &&
             snapshot?.offeredJob == null
 
+    val homeActionEligible =
+        snapshot != null &&
+            snapshot?.activeJob == null &&
+            snapshot?.laundry?.activeJob == null &&
+            snapshot?.offeredJob == null
+
+    LaunchedEffect(auth.user.id, auth.session.accessToken, homeActionEligible, lifecycle) {
+        if (!homeActionEligible) {
+            homeMissions = emptyList()
+            return@LaunchedEffect
+        }
+        lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            while (true) {
+                homeMissions = try {
+                    api.missions(auth)
+                } catch (error: CancellationException) {
+                    throw error
+                } catch (_: Exception) {
+                    homeMissions
+                }
+                delay(300_000L)
+            }
+        }
+    }
+
     LaunchedEffect(auth.user.id, auth.session.accessToken, demandHeatmapEligible, lifecycle) {
         if (!demandHeatmapEligible) {
             demandZones = emptyList()
@@ -695,7 +723,6 @@ private fun RiderHome(
         snapshot?.online,
         lifecycle
     ) {
-        if (snapshot?.online == true) return@LaunchedEffect
         lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
             while (true) {
                 try {
@@ -714,7 +741,7 @@ private fun RiderHome(
                 } catch (_: Exception) {
                     availabilityDocumentsLoaded = false
                 }
-                delay(60_000L)
+                delay(if (snapshot?.online == true) 300_000L else 60_000L)
             }
         }
     }
@@ -2055,6 +2082,21 @@ private fun RiderHome(
                             }
                         }
                         }
+                        val homeActionCards = riderHomeActionCards(
+                            missions = homeMissions,
+                            diagnostics = readRiderDiagnostics(context),
+                            documents = availabilityDocuments,
+                            documentsLoaded = current.online && availabilityDocumentsLoaded
+                        )
+                        RiderHomeActionCards(
+                            cards = homeActionCards,
+                            onAction = { target ->
+                                activeTab = when (target) {
+                                    RiderHomeActionTarget.EARNINGS -> "earn"
+                                    RiderHomeActionTarget.PROFILE -> "profile"
+                                }
+                            }
+                        )
                     if (current.online) {
                         OutlinedButton(onClick = { changeOnline(false) }, enabled = !actionBusy,
                             modifier = Modifier.fillMaxWidth().padding(top = 8.dp).heightIn(min = 46.dp),
