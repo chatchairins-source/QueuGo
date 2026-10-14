@@ -9,14 +9,15 @@ class QueueGoLocalRoadRoutingPolicyTest {
     private fun road(
         verified: Boolean = true,
         access: QueueGoLocalRoadAccess = QueueGoLocalRoadAccess.MOTORCYCLE_AND_CAR,
-        oneWay: Boolean = false
+        oneWay: Boolean = false,
+        source: QueueGoLocalRoadSource = QueueGoLocalRoadSource.FIELD_SURVEY
     ) = QueueGoLocalRoad(
         id = "road",
         points = listOf(
             QueueGoLocalRoadPoint(15.0000, 103.0000),
             QueueGoLocalRoadPoint(15.0005, 103.0007)
         ),
-        source = QueueGoLocalRoadSource.FIELD_SURVEY,
+        source = source,
         verified = verified,
         access = access,
         oneWay = oneWay
@@ -63,6 +64,34 @@ class QueueGoLocalRoadRoutingPolicyTest {
         assertFalse(car.allowed)
         assertEquals(QueueGoLocalRoadRoutingBlockReason.VEHICLE_NOT_ALLOWED, car.blockReason)
         assertTrue(motorcycle.allowed)
+    }
+
+    @Test
+    fun merchantConfirmedEntranceCannotBecomeThroughRoad() {
+        val merchantEntrance = road(
+            access = QueueGoLocalRoadAccess.MOTORCYCLE_AND_CAR,
+            source = QueueGoLocalRoadSource.MERCHANT_CONFIRMED
+        )
+
+        val through = queueGoLocalRoadRoutingDecision(
+            merchantEntrance,
+            QueueGoRoutingVehicle.MOTORCYCLE,
+            QueueGoRoadTraversalUse.THROUGH,
+            QueueGoRoadDirection.FORWARD
+        )
+        val destination = queueGoLocalRoadRoutingDecision(
+            merchantEntrance,
+            QueueGoRoutingVehicle.MOTORCYCLE,
+            QueueGoRoadTraversalUse.DESTINATION_ACCESS,
+            QueueGoRoadDirection.FORWARD
+        )
+
+        assertFalse(through.allowed)
+        assertEquals(
+            QueueGoLocalRoadRoutingBlockReason.DESTINATION_ACCESS_ONLY,
+            through.blockReason
+        )
+        assertTrue(destination.allowed)
     }
 
     @Test
