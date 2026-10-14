@@ -443,6 +443,19 @@ data class RiderInsurancePolicy(
     val supportUrl: String?
 )
 
+data class RiderBenefit(
+    val id: String,
+    val category: String,
+    val providerName: String,
+    val title: String,
+    val description: String?,
+    val startsOn: String,
+    val expiresOn: String?,
+    val actionLabel: String?,
+    val actionUrl: String?,
+    val supportPhone: String?
+)
+
 data class RiderEmergencyContact(
     val configured: Boolean,
     val name: String?,
