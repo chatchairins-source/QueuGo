@@ -209,7 +209,11 @@ internal fun riderVehiclesFromRpc(raw: Any?): List<RiderVehicle> {
                     type = type,
                     name = riderNullableText(row.optString("vehicle_name")),
                     plate = plate,
-                    capacityKg = row.doubleOrNull("vehicle_capacity_kg"),
+                    capacityKg = if (!row.has("vehicle_capacity_kg") || row.isNull("vehicle_capacity_kg")) {
+                        null
+                    } else {
+                        row.optDouble("vehicle_capacity_kg").takeIf { it.isFinite() }
+                    },
                     status = status,
                     selected = row.optBoolean("is_selected", false),
                     legacySeed = row.optBoolean("legacy_seed", false),
@@ -928,7 +932,10 @@ class QueueGoApi {
             auth.session.accessToken,
             JSONObject()
                 .put("p_vehicle_type", type)
-                .putNullable("p_vehicle_name", name?.trim()?.takeIf { it.isNotBlank() })
+                .put(
+                    "p_vehicle_name",
+                    name?.trim()?.takeIf { it.isNotBlank() } ?: JSONObject.NULL
+                )
                 .put("p_vehicle_plate", plate.trim())
                 .putNullable("p_capacity_kg", capacityKg)
                 .put("p_photo_path", path)
