@@ -706,6 +706,9 @@ private fun RiderHome(
     val badgeApi = remember { RiderMessageBadgeApi() }
     var unreadMessages by remember(auth.user.id, auth.session.sessionId) { mutableStateOf(0) }
     var unreadNotifications by remember(auth.user.id, auth.session.sessionId) { mutableStateOf(0) }
+    val notificationCenterApi = remember(auth.user.id, auth.session.sessionId) {
+        RiderNotificationCenterApi()
+    }
     var messageNotice by remember(auth.user.id, auth.session.sessionId) { mutableStateOf<String?>(null) }
     var messageNoticeVersion by remember(auth.user.id, auth.session.sessionId) { mutableStateOf(0) }
     val badgeActive by rememberUpdatedState(snapshot?.activeJob?.id)
@@ -739,6 +742,21 @@ private fun RiderHome(
             }
         }
     }
+    LaunchedEffect(auth.user.id, auth.session.sessionId, auth.session.accessToken, lifecycle) {
+        lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            while (true) {
+                try {
+                    unreadNotifications = notificationCenterApi.unreadCount(auth)
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (_: Exception) {
+                    // Preserve the last server-confirmed badge count during transient failures.
+                }
+                delay(30_000L)
+            }
+        }
+    }
+
     LaunchedEffect(messageNoticeVersion) {
         if (messageNotice != null) {
             delay(3_800)
