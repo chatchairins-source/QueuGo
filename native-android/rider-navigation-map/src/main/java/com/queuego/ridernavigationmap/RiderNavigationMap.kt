@@ -215,7 +215,8 @@ private class RiderNavigationMapHolder {
         quietRetry: Boolean = false
     ) {
         val activeView = view ?: return
-        if (disposed || activeView.width <= 0 || activeView.height <= 0) {
+        if (disposed) return
+        if (activeView.width <= 0 || activeView.height <= 0) {
             when {
                 bridgeToken != null && attempt < SNAPSHOT_BRIDGE_MAX_ATTEMPTS -> {
                     mainHandler.postDelayed(
