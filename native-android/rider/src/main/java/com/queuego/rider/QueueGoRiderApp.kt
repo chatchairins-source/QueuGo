@@ -833,6 +833,8 @@ private fun RiderHome(
     var verifyMarketPickup by remember { mutableStateOf<MarketPickup?>(null) }
     var photoUri by remember { mutableStateOf<Uri?>(null) }
     var pendingCameraUri by remember { mutableStateOf<Uri?>(null) }
+    var returnPhotoUri by remember { mutableStateOf<Uri?>(null) }
+    var returnPendingCameraUri by remember { mutableStateOf<Uri?>(null) }
     var lastOfferAlertKey by remember { mutableStateOf<String?>(null) }
     var handledPushEventId by remember(auth.user.id) { mutableStateOf<Long?>(null) }
     var activeTab by rememberSaveable(auth.user.id) { mutableStateOf(pushStore.loadActiveTab(auth.user.id)) }
@@ -1005,6 +1007,22 @@ private fun RiderHome(
         }
     }
 
+    val returnCameraLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.TakePicture()
+    ) { success ->
+        if (success) {
+            returnPhotoUri = returnPendingCameraUri
+            actionMessage = "ถ่ายรูปหลักฐานการคืนสินค้าแล้ว"
+        } else {
+            returnPendingCameraUri = null
+        }
+    }
+
+    LaunchedEffect(snapshot?.deliveryReturn?.caseId) {
+        returnPhotoUri = null
+        returnPendingCameraUri = null
+    }
+
     fun ensureLocationPermission(): Boolean {
         if (hasLocationPermission(context)) return true
         locationPermission.launch(
@@ -1047,6 +1065,17 @@ private fun RiderHome(
         }.onFailure {
             pendingCameraUri = null
             actionMessage = "เปิดกล้องไม่สำเร็จ กรุณาลองอีกครั้ง"
+        }
+    }
+
+    fun openReturnCamera() {
+        runCatching {
+            val uri = createEvidenceUri(context)
+            returnPendingCameraUri = uri
+            returnCameraLauncher.launch(uri)
+        }.onFailure {
+            returnPendingCameraUri = null
+            actionMessage = "เปิดกล้องคืนสินค้าไม่สำเร็จ กรุณาลองอีกครั้ง"
         }
     }
 
@@ -2177,6 +2206,55 @@ private fun RiderHome(
                     }
                 }
                 when {
+                    current.deliveryReturn != null -> {
+                        val returnCase = current.deliveryReturn
+                        RiderDeliveryReturnCard(
+                            state = returnCase,
+                            photoReady = returnPhotoUri != null,
+                            busy = actionBusy,
+                            onStartReturn = {
+                                actionBusy = true
+                                scope.launch {
+                                    runCatching { api.startDeliveryReturn(auth, returnCase.caseId) }
+                                        .onSuccess {
+                                            actionMessage = "เริ่มคืนสินค้า · กำลังเปิดนำทางกลับร้าน"
+                                            val updated = runCatching { api.riderSnapshot(auth) }
+                                                .onFailure { if (it is CancellationException) throw it }
+                                                .getOrNull()
+                                            if (updated != null) snapshot = updated
+                                            openReturnNavigation(context, updated?.deliveryReturn ?: returnCase)
+                                        }
+                                        .onFailure { actionMessage = it.message ?: "เริ่มคืนสินค้าไม่สำเร็จ" }
+                                    actionBusy = false
+                                }
+                            },
+                            onNavigate = { openReturnNavigation(context, returnCase) },
+                            onCaptureProof = { openReturnCamera() },
+                            onCompleteReturn = {
+                                val proof = returnPhotoUri
+                                if (proof == null) {
+                                    actionMessage = "กรุณาถ่ายรูปหลักฐานการคืนสินค้าก่อน"
+                                } else {
+                                    actionBusy = true
+                                    scope.launch {
+                                        runCatching {
+                                            api.completeDeliveryReturn(context, auth, returnCase.caseId, proof)
+                                        }.onSuccess {
+                                            actionMessage = "คืนสินค้าให้ร้านเรียบร้อย · บันทึกเงินคืน Rider แล้ว"
+                                            returnPhotoUri = null
+                                            returnPendingCameraUri = null
+                                            runCatching { api.riderSnapshot(auth) }
+                                                .onFailure { if (it is CancellationException) throw it }
+                                                .onSuccess { snapshot = it }
+                                        }.onFailure {
+                                            actionMessage = it.message ?: "บันทึกการคืนสินค้าไม่สำเร็จ"
+                                        }
+                                        actionBusy = false
+                                    }
+                                }
+                            }
+                        )
+                    }
                     current.activeJob == null && current.laundry.activeJob != null -> {
                         val laundryJob = current.laundry.activeJob
                         RiderLaundryActiveCard(
@@ -2912,7 +2990,7 @@ private fun ActiveJobCard(
                 RiderJobTool("jobs", "รายการ", !busy, Modifier.weight(1f), onDetails)
                 RiderJobTool("support", "แชต", !busy, Modifier.weight(1f), onChat)
             }
-            if (!pickup && job.status == "in_progress") {
+            if (!pickup && job.status == "in_progress" && job.customerArrived) {
                 OutlinedButton(
                     onClick = onDeliveryIssue,
                     enabled = !busy,
@@ -3668,6 +3746,40 @@ private fun openGoogleMapsInstallPage(context: Context) {
         addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
     }
     runCatching { context.startActivity(intent) }
+}
+
+private fun openReturnNavigation(context: Context, state: RiderDeliveryReturn) {
+    if (!hasGoogleMaps(context)) {
+        openGoogleMapsInstallPage(context)
+        return
+    }
+    if (!Settings.canDrawOverlays(context)) {
+        runCatching {
+            context.startActivity(
+                Intent(
+                    Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                    Uri.parse("package:" + context.packageName)
+                ).apply { addFlags(Intent.FLAG_ACTIVITY_NEW_TASK) }
+            )
+        }
+        return
+    }
+    val query = if (state.shopLatitude != null && state.shopLongitude != null) {
+        state.shopLatitude.toString() + "," + state.shopLongitude.toString()
+    } else {
+        Uri.encode(state.shopAddress ?: state.shopName ?: return)
+    }
+    RiderReturnService.start(context)
+    val mapsIntent = Intent(
+        Intent.ACTION_VIEW,
+        Uri.parse("google.navigation:q=" + query + "&mode=d")
+    ).apply {
+        setPackage(GOOGLE_MAPS_PACKAGE)
+        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+    }
+    if (!runCatching { context.startActivity(mapsIntent) }.isSuccess) {
+        RiderReturnService.stop(context)
+    }
 }
 
 private fun openNavigation(context: Context, job: RiderJob) {
