@@ -298,4 +298,25 @@ for(const needle of [
 ]){
   assert.ok(riderInsuranceMigration.includes(needle),'Rider insurance migration missing contract: '+needle);
 }
+const benefitsMigration=read('supabase/migrations/20261014093530_rider_partner_benefits_v1.sql');
+for(const needle of [
+  'qg_private.rider_benefits',
+  'qg_rider_benefits',
+  'qg_admin_rider_benefits',
+  'qg_admin_save_rider_benefit',
+  'qg_admin_delete_rider_benefit',
+  "revoke all on function public.qg_rider_benefits() from public, anon",
+  "revoke all on function public.qg_admin_rider_benefits() from public, anon",
+  "action_url is null or action_url ~ '^https://'"
+]){
+  assert.ok(benefitsMigration.includes(needle),'Rider benefits migration missing contract: '+needle);
+}
+const benefitToggleMigration=read('supabase/migrations/20261014093948_rider_partner_benefits_toggle_v2.sql');
+for(const needle of [
+  'qg_admin_set_rider_benefit_enabled',
+  "revoke all on function public.qg_admin_set_rider_benefit_enabled(uuid,boolean) from public, anon",
+  'rider benefit unavailable'
+]){
+  assert.ok(benefitToggleMigration.includes(needle),'Rider benefits toggle migration missing contract: '+needle);
+}
 console.log('Native backend migration mirror: PASS');
