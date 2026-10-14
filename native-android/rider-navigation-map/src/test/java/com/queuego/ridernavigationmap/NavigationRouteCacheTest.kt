@@ -32,7 +32,7 @@ class NavigationRouteCacheTest {
     ) = NavigationMapStop(
         id = id,
         sequence = 2,
-        kind = NavigationStopKind.CUSTOMER,
+        kind = NavigationStopKind.DROPOFF,
         point = point,
         label = "ลูกค้า"
     )
