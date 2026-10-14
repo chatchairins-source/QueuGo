@@ -72,6 +72,33 @@ internal fun riderDemandZonesFromRpc(raw: Any?): List<RiderDemandZone> {
     }
 }
 
+internal val riderComplimentKeys = setOf(
+    "polite","fast","careful","professional","friendly","helpful"
+)
+
+internal fun riderComplimentSummaryFromRpc(raw: Any?): RiderComplimentSummary {
+    val row = when (raw) {
+        is JSONObject -> raw
+        is JSONArray -> raw.optJSONObject(0) ?: JSONObject()
+        else -> JSONObject()
+    }
+    val items = row.optJSONArray("items") ?: JSONArray()
+    val seen = hashSetOf<String>()
+    val parsed = buildList {
+        for (index in 0 until items.length()) {
+            val item = items.optJSONObject(index) ?: continue
+            val key = item.optString("key").trim().lowercase()
+            val count = item.optInt("count", 0)
+            if (key !in riderComplimentKeys || count <= 0 || !seen.add(key)) continue
+            add(RiderComplimentCount(key, count))
+        }
+    }
+    return RiderComplimentSummary(
+        total = row.optInt("total", 0).coerceAtLeast(0),
+        items = parsed
+    )
+}
+
 class QueueGoApi {
     companion object {
         private const val BASE_URL = "https://pkypiqhlrmzocysgeqew.supabase.co"
@@ -405,6 +432,17 @@ class QueueGoApi {
             riderRatingSummaryFromRpc(
                 rpc(
                     "qg_rider_rating_summary",
+                    auth.session.accessToken,
+                    JSONObject()
+                )
+            )
+        }
+
+    suspend fun complimentSummary(auth: QueueGoAuth): RiderComplimentSummary =
+        withContext(Dispatchers.IO) {
+            riderComplimentSummaryFromRpc(
+                rpc(
+                    "qg_rider_compliment_summary",
                     auth.session.accessToken,
                     JSONObject()
                 )
