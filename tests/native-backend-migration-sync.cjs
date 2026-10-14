@@ -271,4 +271,16 @@ for(const needle of [
 ]){
   assert.ok(pickupGuidanceMigration.includes(needle),'Merchant pickup guidance migration missing contract: '+needle);
 }
+const riderLoadSummaryMigration=read('supabase/migrations/20261014085832_rider_order_load_summary_v1.sql');
+for(const needle of [
+  'qg_private.rider_order_load_summary',
+  'qg_rider_order_load_summary',
+  'public.market_order_weight',
+  'vehicle_capacity_kg',
+  "v_ratio>=0.8 then 'near_capacity'",
+  "f.expires_at>now()",
+  "revoke all on function public.qg_rider_order_load_summary(uuid) from public, anon"
+]){
+  assert.ok(riderLoadSummaryMigration.includes(needle),'Rider load summary migration missing contract: '+needle);
+}
 console.log('Native backend migration mirror: PASS');
