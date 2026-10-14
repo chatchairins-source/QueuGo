@@ -86,7 +86,11 @@ internal fun RiderDiagnosticsScreen(
     val diagnostics = remember(refresh) { readRiderDiagnostics(context) }
     val lastExit = remember(refresh) { readRiderLastProcessExit(context) }
     val mapDiagnostics by RiderRuntimeDiagnosticsStore.mapDiagnostics.collectAsState()
+    val networkDiagnostics by RiderRuntimeDiagnosticsStore.networkDiagnostics.collectAsState()
+    val uiJankDiagnostics by RiderRuntimeDiagnosticsStore.uiJankDiagnostics.collectAsState()
     val mapHealth = remember(mapDiagnostics) { mapDiagnostics?.let(::riderMapRuntimeHealth) }
+    val networkHealth = remember(networkDiagnostics) { riderNetworkRuntimeHealth(networkDiagnostics) }
+    val uiJankHealth = remember(uiJankDiagnostics) { riderUiJankRuntimeHealth(uiJankDiagnostics) }
 
     fun launch(intent: Intent) {
         runCatching { context.startActivity(intent) }
@@ -166,6 +170,18 @@ internal fun RiderDiagnosticsScreen(
             headline = mapHealth?.headline ?: "ยังไม่มีข้อมูลแผนที่ใน session นี้",
             detail = mapHealth?.detail ?: "เปิดหน้า Home/แผนที่อย่างน้อยหนึ่งครั้งเพื่อดูสถานะ reuse",
             healthy = mapHealth?.healthy
+        )
+        RiderRuntimeInfoCard(
+            title = "QueueGo API",
+            headline = networkHealth.headline,
+            detail = networkHealth.detail,
+            healthy = networkHealth.healthy
+        )
+        RiderRuntimeInfoCard(
+            title = "ความลื่นของ UI",
+            headline = uiJankHealth.headline,
+            detail = uiJankHealth.detail,
+            healthy = uiJankHealth.healthy
         )
         RiderRuntimeInfoCard(
             title = "การปิดแอปครั้งก่อน",
