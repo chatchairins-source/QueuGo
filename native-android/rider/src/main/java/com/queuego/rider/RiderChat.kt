@@ -435,13 +435,13 @@ private fun RiderChatRoom(
                     onClick = onCallCustomer,
                     enabled = !busy,
                     modifier = Modifier.size(44.dp)
-                        .semantics { contentDescription = "โทรหาลูกค้าผ่าน QueueGo" }
+                        .semantics { contentDescription = if (contactLabel != null) "โทรหาร้านผ่าน QueueGo" else "โทรหาลูกค้าผ่าน QueueGo" }
                         .clip(RoundedCornerShape(22.dp))
                         .background(Color(0xFFFFF0F3))
                 ) {
                     Icon(
                         painterResource(R.drawable.qg_rider_flow_phone),
-                        "โทรหาลูกค้าผ่าน QueueGo",
+                        if (contactLabel != null) "โทรหาร้านผ่าน QueueGo" else "โทรหาลูกค้าผ่าน QueueGo",
                         Modifier.size(21.dp),
                         tint = QgRed
                     )
