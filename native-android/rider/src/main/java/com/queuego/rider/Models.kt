@@ -306,6 +306,17 @@ data class RiderDemandZone(
     val windowHours: Int
 )
 
+data class RiderReverificationStatus(
+    val required: Boolean,
+    val requestId: String?,
+    val status: String?,
+    val reason: String?,
+    val requestedAt: String?,
+    val submittedAt: String?,
+    val reviewedAt: String?,
+    val reviewNote: String?
+)
+
 
 data class RiderHistoryOrder(
     val id: String,
