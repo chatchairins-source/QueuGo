@@ -18,6 +18,15 @@ class RiderAccountRestrictionTest {
         assertEquals("ใบสมัครของคุณอยู่ระหว่างตรวจสอบ", pending.title)
     }
 
+
+    @Test fun inactiveAndRejectedNeverUsePendingApprovalCopy() {
+        listOf("inactive", "rejected").forEach { status ->
+            val content = riderAccountRestrictionContent(status)
+            assertFalse(content.description.contains("เมื่อ Admin อนุมัติ"))
+            assertFalse(content.title.contains("อยู่ระหว่างตรวจสอบ"))
+        }
+    }
+
     @Test fun deletedProductionStatusHasExplicitClosedAccountCopy() {
         val deleted = riderAccountRestrictionContent("deleted")
         assertEquals("บัญชีถูกยกเลิก", deleted.badge)
