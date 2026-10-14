@@ -339,7 +339,12 @@ fun RiderEarningsScreen(auth: QueueGoAuth, api: QueueGoApi, onBack: () -> Unit, 
                     Spacer(Modifier.height(8.dp))
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         RiderCashStat("ค่าส่งที่ได้รับ", baht(rows.sumOf { it.deliveryFee }), Modifier.weight(1f))
-                        RiderCashStat("สุทธิรับ-จ่าย", baht(rows.sumOf { it.cashCollectedCustomer - it.cashPaidMerchant }), Modifier.weight(1f), QgRed)
+                        RiderCashStat("สุทธิรับ-จ่าย", baht(rows.sumOf { riderHistoryCashFlow(it) }), Modifier.weight(1f), QgRed)
+                    }
+                    val merchantRefund = rows.sumOf { it.cashRefundedMerchant }
+                    if (merchantRefund > 0.0) {
+                        Spacer(Modifier.height(8.dp))
+                        RiderCashStat("ร้านคืนเงินจากงานส่งไม่สำเร็จ", baht(merchantRefund), Modifier.fillMaxWidth())
                     }
                 }
                 Spacer(Modifier.height(10.dp))
@@ -433,13 +438,15 @@ private fun RiderJobHistoryDetail(
         Spacer(Modifier.height(7.dp))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
             RiderCashStat("เก็บลูกค้า", baht(row.cashCollectedCustomer), Modifier.weight(1f))
-            RiderCashStat(
-                "เงินสดรับ-จ่าย",
-                baht(riderHistoryCashFlow(row)),
-                Modifier.weight(1f),
-                if (riderHistoryCashFlow(row) >= 0.0) Color(0xFF17171B) else QgRed
-            )
+            RiderCashStat("ร้านคืน", baht(row.cashRefundedMerchant), Modifier.weight(1f))
         }
+        Spacer(Modifier.height(7.dp))
+        RiderCashStat(
+            "เงินสดรับ-จ่าย",
+            baht(riderHistoryCashFlow(row)),
+            Modifier.fillMaxWidth(),
+            if (riderHistoryCashFlow(row) >= 0.0) Color(0xFF17171B) else QgRed
+        )
         Text(
             "เงินสดรับ-จ่ายเป็นกระแสเงินสดของเที่ยว ไม่ใช่กำไรสุทธิ",
             color = QgMuted,
@@ -581,7 +588,7 @@ private fun RiderEarnError(message: String) {
 }
 
 internal fun riderHistoryCashFlow(row: RiderCashLedgerEntry): Double =
-    row.cashCollectedCustomer - row.cashPaidMerchant
+    row.cashCollectedCustomer + row.cashRefundedMerchant - row.cashPaidMerchant
 
 internal fun riderHistoryStatusLabel(status: String): String = when (status.lowercase()) {
     "completed" -> "งานส่งสำเร็จ"
