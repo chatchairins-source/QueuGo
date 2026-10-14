@@ -1,3 +1,11 @@
+## 2026-10-14 Rider Grab-parity release successor: selfie re-verification
+- Continued from consolidated Release Gate head 7220b29 so Heatmap, map-reuse runtime assertions, real compliments, detailed Job History, managed public Rider photo and all earlier parity remain on one line.
+- Added explicit Rider selfie re-verification without claiming biometric/liveness detection. Admin may request a check; Rider captures a fresh camera photo; private qg-evidence storage holds the selfie; server state is required/pending/approved/rejected. Public Rider avatar remains in rider-profile and is never reused as verification evidence.
+- Production migration 20261014062750 rider_reverification_v1 is additive and already applied. Public wrappers are SECURITY INVOKER with anon EXECUTE revoked; private helpers validate live auth.sessions plus active Rider/Admin roles. Rider reads only its own latest request and can submit only an owned qg-evidence path. Admin request/review functions re-check active-admin server-side.
+- Native Profile adds no visible UI when no request exists. Required/rejected states offer camera-only capture + preview + submit; pending is read-only. Production read-only exercise with an active Rider session returned required=false/status=null and no real Rider was enrolled for testing.
+- This is not yet a hard anti-account-sharing gate because online/offline still PATCHes rider_profiles metadata directly. Server-enforced online eligibility remains a separate hardening step.
+- Backup backup/rider-grab-parity-release-before-reverification-20261014 retains 7220b29. PASS requires native-pilot and navigation-map-runtime on the exact successor HEAD.
+
 ## 2026-10-14 Rider Grab-parity consolidated Release Gate
 - Consolidated the post-PR224 Rider experience work onto one exact-head release-gate branch: privacy-safe demand heatmap, map-reuse runtime assertions, real customer compliments, detailed job history and Rider-managed public profile photo.
 - The branch name intentionally enters navigation-map-runtime so the retained Longdo renderer and the full Native pilot suite run on the same head. No PASS claim is allowed unless both are green.
