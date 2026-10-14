@@ -371,7 +371,7 @@ private fun RiderAddVehicleDialog(
                             .fillMaxWidth()
                             .height(220.dp)
                             .background(Color(0xFFF2EFF0), RoundedCornerShape(16.dp))
-                    ) { previewReady = it }
+                    ) { quality -> previewReady = quality.acceptable }
                     Spacer(Modifier.height(7.dp))
                     OutlinedButton(onClick = ::openCamera, enabled = !busy, modifier = Modifier.fillMaxWidth()) {
                         Text("ถ่ายใหม่")
