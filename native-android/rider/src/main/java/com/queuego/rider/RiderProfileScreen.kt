@@ -258,6 +258,11 @@ fun RiderProfileScreen(
                 api = api,
                 modifier = Modifier.padding(top = 9.dp)
             )
+            RiderBenefitsCard(
+                auth = auth,
+                api = api,
+                modifier = Modifier.padding(top = 9.dp)
+            )
             snapshot?.laundry?.invites.orEmpty().forEach { invite ->
                 Spacer(Modifier.height(9.dp))
                 Card(
