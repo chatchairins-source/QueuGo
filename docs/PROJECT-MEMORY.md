@@ -1,3 +1,12 @@
+## 2026-10-14 Grab Driver parity: durable contact attempts on Safety Overview successor
+- Continued from Safety Report Overview head 47fe3242, preserving Safety Incident, Stop-After-Work, one-photo proof quality/recovery, Return-to-Sender v4, Auto Accept, Benefits, failed-delivery and event feedback.
+- Static inspection of the owner-supplied Grab Driver 5.457.1 APK exposed a dedicated ContactAttemptCountHandler in the in-transit recipient-unavailable/cancellation flow.
+- QueueGo now records only actual QueueGo Call/Chat button presses per Rider + order instead of trusting a manual “contacted” checkbox.
+- Call and Chat counts are shown separately, survive leaving/reopening the dialog, and expire after 24 hours. No call/message content is stored.
+- Failed-delivery note carries [CONTACT_ATTEMPTS:<total>;CALL:<n>;CHAT:<n>] into the existing delivery-issue RPC without schema/RLS/payment/dispatch changes.
+- Backup: backup/rider-worldclass-before-safety-overview-contact-attempts-20261014 @ 47fe3242.
+- PASS requires exact-head native-pilot + navigation-map-runtime.
+
 ## 2026-10-14 Rider world-class: Safety Report Overview unified on latest safety/stop head
 - Continued from Safety Incident + Stop-After-Work head 177286b0, retaining the targeted-offer stop blocker coverage and bounded explicit-location incident payload.
 - Carried Safety Report Overview from the sibling #315 line without replacing the newer safety/stop tests.
