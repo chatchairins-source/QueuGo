@@ -1,3 +1,10 @@
+## 2026-10-14 Grab Driver parity: Safety current-location share
+- Added a QueueGo-native Safety Centre location-share action inspired by Grab Driver's share-location capability without copying Grab code/assets or creating a public live-tracking endpoint.
+- Rider shares only one current-location snapshot: the retained navigation GPS fix when available, otherwise a system last-known fix no older than 5 minutes and no worse than 200 m reported accuracy. Invalid/stale coordinates fail closed.
+- Generic share uses the Android share sheet. If the Rider configured an emergency contact, QueueGo can open the SMS composer prefilled with the same snapshot. Neither path sends automatically.
+- Shared text contains only the Rider's current coordinate link and an explicit note that it is not real-time tracking. QueueGo does not append order number, customer address, merchant address or destination.
+- Backup backup/rider-safety-before-location-share-20261014 retains 42c016a. Exact-head native-pilot required before PASS.
+
 ## 2026-10-14 Grab Driver parity: go-online availability readiness
 - Added a QueueGo-native availability/readiness layer inspired by the capability category observed in the owner-supplied Grab Driver APK. It does not copy Grab code/assets and does not change dispatch.
 - Offline Rider Home now shows eight real checks before go-online: validated internet, Firebase availability, notifications, location permission, device GPS/Location service, installed Google Maps, overlay return permission and server Rider re-verification state.
