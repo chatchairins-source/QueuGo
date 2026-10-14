@@ -1,3 +1,12 @@
+## 2026-10-14 Grab Driver parity: order-linked failed-delivery / recipient-unavailable flow
+- Continued from unified account/action-card head 41b3f50. Static inspection of the owner-supplied Grab Driver 5.457.1 package confirmed dedicated recipient-unavailable and failed-delivery capabilities (Call Recipient, Chat with Recipient, recipient issue/refusal, Delivery Failed and structured issue reporting).
+- QueueGo already had customer voice/chat and general Support tickets, but no order-linked operational flow for a Rider who cannot complete a delivery.
+- Rider in-progress card now exposes “ลูกค้าติดต่อไม่ได้ / ส่งไม่สำเร็จ”. The dialog requires a contact attempt, keeps Call/Chat available, records a structured reason and optional note, and creates an existing qg_create_ticket support record tied to the real order.
+- QueueGo intentionally does NOT auto-cancel or auto-complete the order from this dialog. Cash settlement and delivery state remain authoritative until support resolves the case.
+- Existing Production support category constraint is respected by using category rider plus machine-readable [DELIVERY_ISSUE:<reason>] details; no Production DB/schema mutation.
+- Backup: backup/rider-grab-parity-before-delivery-issue-20261014 @ 41b3f50.
+- Exact-head native-pilot + navigation-map-runtime are required before PASS.
+
 ## 2026-10-14 Grab Driver parity: unified Account Restriction + Home Action Cards successor
 - Unified the two latest sibling branches so Rider Home action cards and status-specific non-active account restriction UX now live on one successor line.
 - Started from Home Action Cards head b77e2f0, then carried forward the Account Restriction implementation from PR #280 without changing dispatch, payment, navigation, auth policy or Production DB.
