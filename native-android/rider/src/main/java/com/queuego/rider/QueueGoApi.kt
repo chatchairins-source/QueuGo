@@ -46,6 +46,32 @@ internal fun riderRatingSummaryFromRpc(raw: Any?): RiderRatingSummary {
     )
 }
 
+internal fun riderDemandZonesFromRpc(raw: Any?): List<RiderDemandZone> {
+    val rows = when (raw) {
+        is JSONArray -> raw
+        is JSONObject -> raw.optJSONArray("zones") ?: JSONArray().put(raw)
+        else -> JSONArray()
+    }
+    val seen = hashSetOf<String>()
+    return buildList {
+        for (index in 0 until rows.length()) {
+            val row = rows.optJSONObject(index) ?: continue
+            val latitude = if (row.has("latitude") && !row.isNull("latitude")) {
+                row.optDouble("latitude").takeIf { it.isFinite() && it in 5.0..21.0 }
+            } else null
+            val longitude = if (row.has("longitude") && !row.isNull("longitude")) {
+                row.optDouble("longitude").takeIf { it.isFinite() && it in 97.0..106.0 }
+            } else null
+            val level = row.optInt("level", 0)
+            val windowHours = row.optInt("window_hours", 0)
+            if (latitude == null || longitude == null || level !in 1..3 || windowHours !in 1..168) continue
+            val key = latitude.toString() + ":" + longitude.toString()
+            if (!seen.add(key)) continue
+            add(RiderDemandZone(latitude, longitude, level, windowHours))
+        }
+    }
+}
+
 class QueueGoApi {
     companion object {
         private const val BASE_URL = "https://pkypiqhlrmzocysgeqew.supabase.co"
@@ -379,6 +405,17 @@ class QueueGoApi {
             riderRatingSummaryFromRpc(
                 rpc(
                     "qg_rider_rating_summary",
+                    auth.session.accessToken,
+                    JSONObject()
+                )
+            )
+        }
+
+    suspend fun demandHeatmap(auth: QueueGoAuth): List<RiderDemandZone> =
+        withContext(Dispatchers.IO) {
+            riderDemandZonesFromRpc(
+                rpc(
+                    "qg_rider_demand_heatmap",
                     auth.session.accessToken,
                     JSONObject()
                 )

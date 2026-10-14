@@ -22,6 +22,7 @@ import com.queuego.ridernavigationmap.LongdoNavigationRouteClient
 import com.queuego.ridernavigationmap.NavigationMapCamera
 import com.queuego.ridernavigationmap.NavigationMapFix
 import com.queuego.ridernavigationmap.NavigationMapPoint
+import com.queuego.ridernavigationmap.NavigationDemandZone
 import com.queuego.ridernavigationmap.NavigationMapStop
 import com.queuego.ridernavigationmap.NavigationRouteCoordinator
 import com.queuego.ridernavigationmap.NavigationRouteProvider
@@ -206,6 +207,7 @@ internal fun QueueGoRiderNavigationMap(
     job: RiderJob?,
     marketPickups: List<MarketPickup>,
     bundleOrders: List<RiderBundleOrder> = emptyList(),
+    demandZones: List<RiderDemandZone> = emptyList(),
     recenterSignal: Int,
     overviewSignal: Int = 0,
     viewportInsets: NavigationViewportInsets = NavigationViewportInsets(),
@@ -239,6 +241,16 @@ internal fun QueueGoRiderNavigationMap(
 
     val stops = remember(job, marketPickups, bundleOrders) {
         riderNavigationStops(job, marketPickups, bundleOrders)
+    }
+    val navigationDemandZones = remember(demandZones) {
+        demandZones.mapIndexed { index, zone ->
+            NavigationDemandZone(
+                id = "demand:" + zone.latitude + ":" + zone.longitude + ":" + index,
+                point = NavigationMapPoint(zone.latitude, zone.longitude),
+                level = zone.level,
+                windowHours = zone.windowHours
+            )
+        }
     }
     val navigationActive = stops.any { !it.completed && it.point.valid }
     val riderFix by RiderNavigationLocationStore.fix.collectAsStateWithLifecycle()
@@ -329,6 +341,7 @@ internal fun QueueGoRiderNavigationMap(
         rider = riderFix,
         stops = stops,
         routes = futureRoutes,
+        demandZones = if (navigationActive) emptyList() else navigationDemandZones,
         activeStopId = activeStopId,
         followRider = followRider,
         followZoom = 17,

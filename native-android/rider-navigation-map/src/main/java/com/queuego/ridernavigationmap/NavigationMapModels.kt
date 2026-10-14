@@ -38,6 +38,16 @@ data class NavigationRouteSegment(
         points.size > 1 && points.all { it.valid }
 }
 
+data class NavigationDemandZone(
+    val id: String,
+    val point: NavigationMapPoint,
+    val level: Int,
+    val windowHours: Int
+) {
+    val renderable: Boolean get() =
+        id.isNotBlank() && point.valid && level in 1..3 && windowHours in 1..168
+}
+
 data class NavigationMapCamera(
     val point: NavigationMapPoint,
     val zoom: Int,
@@ -48,6 +58,7 @@ data class RiderNavigationMapState(
     val rider: NavigationMapFix? = null,
     val stops: List<NavigationMapStop> = emptyList(),
     val routes: List<NavigationRouteSegment> = emptyList(),
+    val demandZones: List<NavigationDemandZone> = emptyList(),
     val activeStopId: String? = null,
     val followRider: Boolean = true,
     val followZoom: Int = 17,
@@ -68,6 +79,13 @@ data class NavigationMapDiagnostics(
     val snapshotVisible: Boolean = false,
     val routeGeometryUpdateCount: Int = 0
 )
+
+internal fun RiderNavigationMapState.renderableDemandZones(): List<NavigationDemandZone> =
+    demandZones.asSequence()
+        .filter { it.renderable }
+        .distinctBy { it.id }
+        .sortedBy { it.id }
+        .toList()
 
 internal fun RiderNavigationMapState.remainingStops(): List<NavigationMapStop> =
     stops.asSequence()
