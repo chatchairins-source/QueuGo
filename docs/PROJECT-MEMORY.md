@@ -1,3 +1,31 @@
+## 2026-10-14 Grab Driver parity: unified Benefits + failed-delivery successor
+- Continued from failed-delivery successor #290 head 24f4f9c while carrying the real-data Rider Benefits Center v3 sibling line forward so no Work branch is lost.
+- Preserves critical Home action priority, Availability vehicle/inspection gates, account restriction UX, runtime map continuity hardening, and order-linked recipient-unavailable / failed-delivery reporting.
+- Restores the already-applied Production Rider Benefits source mirror: Native Profile Benefits Center, authenticated rider benefits RPC parsing, Admin global Benefits controls, backend/admin regression contracts, and additive migration files 20261014093530 + 20261014093948.
+- Production already contains both benefits migrations and benefit RPCs. This successor performs no new Production schema mutation and seeds no fake benefit/partner/discount data.
+- The only branch-level overlap between Benefits v3 and #290 was PROJECT-MEMORY; code/test/migration files were non-conflicting and carried forward intact.
+- Backup: backup/rider-grab-parity-before-benefits-delivery-unify-20261014 @ 24f4f9c.
+- PASS requires exact-head native-pilot + navigation-map-runtime plus existing Admin/backend regression contracts.
+
+## 2026-10-14 Grab Driver parity: real-data Rider Benefits Center v3
+- Continued from runtime-fixed unified Account Restriction + Home Action Cards head 2a033bd, preserving bounded quiet PixelCopy retry and the explicit deleted-account restriction state.
+- Grab Driver contains Partner Benefits. QueueGo now has a real-data-only Rider Benefits Center in addition to Insurance Center. Production migrations 20261014093530 rider_partner_benefits_v1 and 20261014093948 rider_partner_benefits_toggle_v2 are additive and already applied.
+- No benefit, partner, coupon or discount seed data was created. Active Rider-session validation returned visible_benefit_count=0 before any real Admin record exists.
+- Data is private in qg_private. Rider sees only enabled benefits inside the active date window. Public wrappers are authenticated-only with anon EXECUTE revoked. Admin list/save/toggle/delete paths re-check active Admin server-side.
+- Native Rider Profile shows only real active benefits, including provider/category/date window and optional HTTPS action/support phone. The parser discards non-HTTPS action URLs as defense in depth.
+- Existing Admin Rider panel has one global Rider Benefits section where Admin can add real benefits, temporarily enable/disable them or delete them. It uses qgAdminInput and public RPCs only; admin regressions forbid direct qg_private access and prompt().
+- Backup backup/rider-runtime-account-actions-before-benefits-v3-20261014 retains 2a033bd. PASS requires native-pilot + navigation-map-runtime plus Admin/backend regressions on exact HEAD.
+
+## 2026-10-14 Grab Driver parity: order-linked failed-delivery / recipient-unavailable flow
+- Rebased onto critical Home actions release head bbfaac65 so the latest identity/vehicle/document Home priorities and Availability gates remain intact.
+- Static inspection of the owner-supplied Grab Driver 5.457.1 package confirmed dedicated recipient-unavailable and failed-delivery capabilities (Call Recipient, Chat with Recipient, recipient issue/refusal, Delivery Failed and structured issue reporting).
+- QueueGo already had customer voice/chat and general Support tickets, but no order-linked operational flow for a Rider who cannot complete a delivery.
+- Rider in-progress card now exposes “ลูกค้าติดต่อไม่ได้ / ส่งไม่สำเร็จ”. The dialog requires a contact attempt, keeps Call/Chat available, records a structured reason and optional note, and creates an existing qg_create_ticket support record tied to the real order.
+- QueueGo intentionally does NOT auto-cancel or auto-complete the order from this dialog. Cash settlement and delivery state remain authoritative until support resolves the case.
+- Existing Production support category constraint is respected by using category rider plus machine-readable [DELIVERY_ISSUE:<reason>] details; no Production DB/schema mutation.
+- Backup: backup/rider-grab-parity-critical-home-before-delivery-issue-20261014 @ bbfaac65.
+- Exact-head native-pilot + navigation-map-runtime are required before PASS.
+
 ## 2026-10-14 Rider Grab-parity release successor: runtime + Home actions + Availability vehicle gates
 - Continued from runtime-fixed unified Account Restriction + Home Action Cards head 2a033bd, preserving the bounded quiet PixelCopy retry that addresses the real continuity runtime failure.
 - Audited Rider Availability against the existing setOnline preflight. The card previously omitted vehicle-inspection and selected-vehicle approval blockers even though setOnline already enforced both. Offline/idle Home now refreshes those two existing states with the same readiness poll and passes them into the Availability card.

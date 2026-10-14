@@ -825,6 +825,7 @@ private fun RiderHome(
         }
     }
     var chatJob by remember { mutableStateOf<RiderJob?>(null) }
+    var deliveryIssueJob by remember { mutableStateOf<RiderJob?>(null) }
     var verifyMode by remember { mutableStateOf<String?>(null) }
     var verifyJob by remember { mutableStateOf<RiderJob?>(null) }
     var verifyDetails by remember { mutableStateOf<RiderVerificationDetails?>(null) }
@@ -2329,6 +2330,9 @@ private fun RiderHome(
                             },
                             onDeliveryVerify = {
                                 openVerification("delivery", current.activeJob)
+                            },
+                            onDeliveryIssue = {
+                                deliveryIssueJob = current.activeJob
                             }
                         )
                         RiderRouteBundlePanel(
@@ -2491,6 +2495,22 @@ private fun RiderHome(
         messageNotice?.let { RiderMessageNotice(it, Modifier.align(Alignment.TopCenter)) }
         deliverySuccessJob?.let { completed ->
             RiderDeliverySuccess(completed) { deliverySuccessJob = null }
+        }
+        deliveryIssueJob?.let { issueJob ->
+            RiderDeliveryIssueDialog(
+                auth = auth,
+                job = issueJob,
+                onDismiss = { deliveryIssueJob = null },
+                onCallCustomer = { startCustomerVoice(issueJob.id) },
+                onOpenChat = {
+                    deliveryIssueJob = null
+                    chatJob = issueJob
+                },
+                onReported = { label ->
+                    deliveryIssueJob = null
+                    actionMessage = "ส่งปัญหาให้ฝ่ายดูแลแล้ว · $label"
+                }
+            )
         }
         arrivalGuard?.let { guard ->
             RiderArrivalGuard(
@@ -2794,7 +2814,8 @@ private fun ActiveJobCard(
     onPickupVerify: () -> Unit,
     onStartDelivery: () -> Unit,
     onArriveCustomer: () -> Unit,
-    onDeliveryVerify: () -> Unit
+    onDeliveryVerify: () -> Unit,
+    onDeliveryIssue: () -> Unit
 ) {
     val context = LocalContext.current
     val pickup = job.status in setOf("rider_assigned", "assigned", "preparing", "ready")
@@ -2890,6 +2911,16 @@ private fun ActiveJobCard(
                 RiderJobTool("jobs", processLabel, !busy && job.marketOrderId == null && job.status == "ready", Modifier.weight(1f), onPickupVerify)
                 RiderJobTool("jobs", "รายการ", !busy, Modifier.weight(1f), onDetails)
                 RiderJobTool("support", "แชต", !busy, Modifier.weight(1f), onChat)
+            }
+            if (!pickup && job.status == "in_progress") {
+                OutlinedButton(
+                    onClick = onDeliveryIssue,
+                    enabled = !busy,
+                    modifier = Modifier.fillMaxWidth().padding(top = 7.dp).heightIn(min = 42.dp),
+                    shape = RoundedCornerShape(16.dp)
+                ) {
+                    Text("ลูกค้าติดต่อไม่ได้ / ส่งไม่สำเร็จ", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                }
             }
             Button(
                 onClick = {
