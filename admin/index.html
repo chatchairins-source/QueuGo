@@ -132,6 +132,63 @@ async function qtLoadOwnSupabaseUser(accessToken, authUserId){
 </script>
 
 <script>
+function qtRiderReverificationStateLabel(status){
+  return {
+    required:'รอ Rider ถ่ายรูป',
+    pending:'รอตรวจรูป',
+    approved:'ยืนยันแล้ว',
+    rejected:'ต้องถ่ายใหม่'
+  }[String(status||'')]||'ยังไม่ขอตรวจ';
+}
+window.qtAdminRequestRiderReverification=async function(riderId){
+  try{
+    if(typeof qgAdminInput!=='function'){
+      if(typeof toast==='function')toast('ฟอร์ม Admin ยังไม่พร้อม กรุณารีเฟรชหน้า');
+      return;
+    }
+    const value=await qgAdminInput({title:'ขอยืนยันตัวตน Rider',label:'เหตุผล (ไม่บังคับ)'});
+    if(value===null)return;
+    const reason=String(value||'').trim();
+    await qtSupabaseRpc('qg_admin_request_rider_reverification',{
+      p_rider_id:riderId,
+      p_reason:reason||null
+    });
+    if(typeof toast==='function')toast('ส่งคำขอยืนยันตัวตนแล้ว');
+    await qtRenderAdminRiderPresence();
+  }catch(err){
+    if(typeof toast==='function')toast('ส่งคำขอไม่สำเร็จ: '+err.message);
+  }
+};
+window.qtAdminReviewRiderReverification=async function(requestId,decision){
+  try{
+    if(!['approved','rejected'].includes(decision))return;
+    let note=null;
+    if(decision==='rejected'){
+      if(typeof qgAdminInput!=='function'){
+        if(typeof toast==='function')toast('ฟอร์ม Admin ยังไม่พร้อม กรุณารีเฟรชหน้า');
+        return;
+      }
+      const value=await qgAdminInput({title:'ให้ Rider ถ่ายรูปใหม่',label:'เหตุผลที่ไม่ผ่าน'});
+      if(value===null)return;
+      note=String(value||'').trim();
+      if(!note){
+        if(typeof toast==='function')toast('กรุณาระบุเหตุผลให้ Rider ทราบ');
+        return;
+      }
+    }else if(!window.confirm('ยืนยันว่ารูปนี้เป็น Rider เจ้าของบัญชี?')){
+      return;
+    }
+    await qtSupabaseRpc('qg_admin_review_rider_reverification',{
+      p_request_id:requestId,
+      p_decision:decision,
+      p_note:note
+    });
+    if(typeof toast==='function')toast(decision==='approved'?'อนุมัติการยืนยันตัวตนแล้ว':'ส่งกลับให้ Rider ถ่ายใหม่แล้ว');
+    await qtRenderAdminRiderPresence();
+  }catch(err){
+    if(typeof toast==='function')toast('บันทึกผลตรวจไม่สำเร็จ: '+err.message);
+  }
+};
 async function qtRenderAdminRiderPresence(){
   const el=document.getElementById('qt-admin-rider-online-panel');
   if(!el)return;
@@ -139,18 +196,22 @@ async function qtRenderAdminRiderPresence(){
   try{
     const token=await qtGetAccessToken();
     if(!token)throw Error('กรุณาเข้าสู่ระบบ Admin');
-    const [users,profiles,presence]=await Promise.all([
+    const [users,profiles,presence,reverification]=await Promise.all([
       qtSupabaseTable('users?select=id,name,role,status&role=eq.rider',{accessToken:token}),
       qtSupabaseTable('rider_profiles?select=id,user_id,status,metadata,updated_at',{accessToken:token}),
-      qtSupabaseTable('qg_rider_presence_events?select=rider_id,online,occurred_at&order=occurred_at.desc&limit=2000',{accessToken:token})
+      qtSupabaseTable('qg_rider_presence_events?select=rider_id,online,occurred_at&order=occurred_at.desc&limit=2000',{accessToken:token}),
+      qtSupabaseRpc('qg_admin_rider_reverification_queue')
     ]);
-    if(!Array.isArray(users)||!Array.isArray(profiles)||!Array.isArray(presence))throw Error('ข้อมูลไรเดอร์ไม่ครบ');
+    if(!Array.isArray(users)||!Array.isArray(profiles)||!Array.isArray(presence)||!Array.isArray(reverification))throw Error('ข้อมูลไรเดอร์ไม่ครบ');
     const byUser=new Map(profiles.map(p=>[String(p.user_id),p]));
     const latestPresence=new Map();
     presence.forEach(ev=>{
       const key=String(ev?.rider_id||'');
       if(key&&!latestPresence.has(key))latestPresence.set(key,ev);
     });
+    const verificationByRider=new Map(
+      reverification.filter(x=>x&&x.rider_id).map(x=>[String(x.rider_id),x])
+    );
     if(!el.isConnected)return;
     el.innerHTML=users.length?users.map(u=>{
       const p=byUser.get(String(u.id));
@@ -160,7 +221,31 @@ async function qtRenderAdminRiderPresence(){
       const switchedOnline=ev?ev.online===true:p?.metadata?.online===true;
       const online=u.status==='active'&&p?.status==='active'&&switchedOnline;
       const state=u.status==='suspended'?'พักสิทธิ์':u.status!=='active'?'รออนุมัติ':online?'ออนไลน์':'ออฟไลน์';
-      return '<div class="qt-rider-online-card"><strong>'+escapeHtml(u.name||'ไรเดอร์')+'</strong><span style="float:right">'+state+'</span></div>';
+      const rv=p?.id?verificationByRider.get(String(p.id)):null;
+      const verificationStatus=qtRiderReverificationStateLabel(rv?.status);
+      let verifyActions='';
+      if(p?.id&&u.status==='active'&&p.status==='active'){
+        if(rv?.status==='pending'){
+          verifyActions='<div class="row-btns" style="margin-top:8px">'+
+            (rv.selfie_path?'<button class="btn-secondary" type="button" onclick="qgAdminOpenEvidence(\''+escapeHtml(rv.selfie_path)+'\')">ดูรูปยืนยัน</button>':'')+
+            '<button class="btn-primary" type="button" onclick="qtAdminReviewRiderReverification(\''+escapeHtml(rv.request_id)+'\',\'approved\')">อนุมัติ</button>'+
+            '<button class="btn-danger" type="button" onclick="qtAdminReviewRiderReverification(\''+escapeHtml(rv.request_id)+'\',\'rejected\')">ให้ถ่ายใหม่</button>'+
+          '</div>';
+        }else if(rv?.status==='required'){
+          verifyActions='<div style="margin-top:7px"><small>ส่งคำขอแล้ว รอ Rider ถ่ายรูปจากแอป</small></div>';
+        }else{
+          verifyActions='<div class="row-btns" style="margin-top:8px"><button class="btn-secondary" type="button" onclick="qtAdminRequestRiderReverification(\''+escapeHtml(p.id)+'\')">'+
+            (rv?.status==='rejected'?'ขอให้ถ่ายใหม่':'ขอยืนยันตัวตนใหม่')+
+          '</button></div>';
+        }
+      }
+      const note=rv?.status==='rejected'&&rv.review_note
+        ? '<div style="margin-top:5px"><small>เหตุผล: '+escapeHtml(rv.review_note)+'</small></div>'
+        : '';
+      return '<div class="qt-rider-online-card"><strong>'+escapeHtml(u.name||'ไรเดอร์')+'</strong><span style="float:right">'+state+'</span>'+
+        '<div style="margin-top:6px"><small>ยืนยันตัวตน: '+escapeHtml(verificationStatus)+'</small></div>'+
+        note+verifyActions+
+      '</div>';
     }).join(''):'<div class="qt-rider-online-card">ยังไม่มีข้อมูลไรเดอร์</div>';
   }catch(err){if(el.isConnected)el.textContent='โหลดสถานะไรเดอร์ไม่สำเร็จ: '+err.message;}
 }
