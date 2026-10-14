@@ -27,6 +27,9 @@ data class QueueGoAggregateTraceEvidence(
         require(aggregateReference.startsWith("queuego-trace:")) {
             "Coverage evidence must use a QueueGo aggregate trace reference"
         }
+        require(aggregateReference.removePrefix("queuego-trace:").isNotBlank()) {
+            "Coverage evidence aggregate trace identity is required"
+        }
         require(aggregateReference.length <= 240) {
             "Coverage evidence reference is too long"
         }
