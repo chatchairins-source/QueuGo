@@ -58,6 +58,13 @@ class RiderDeliveryReturnFlowTest {
         assertEquals(300.0, multi.expectedRefundAmount, 0.001)
     }
 
+    @Test fun finalReturnStopProgressNeverRunsPastTotalStops() {
+        val finalStop = state("returning", totalStops = 3, returnedStops = 2)
+        assertEquals(3, finalStop.currentStopNumber)
+        assertEquals(1, finalStop.remainingStopCount)
+        assertTrue(finalStop.canReturnToShop)
+    }
+
     @Test fun merchantRefundOffsetsCashPreviouslyPaidToMerchant() {
         val row = RiderCashLedgerEntry(
             orderId = "order",
