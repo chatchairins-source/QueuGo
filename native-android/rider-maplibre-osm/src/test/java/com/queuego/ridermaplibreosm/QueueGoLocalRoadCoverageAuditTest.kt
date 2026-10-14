@@ -94,7 +94,7 @@ class QueueGoLocalRoadCoverageAuditTest {
             "rural-gap",
             listOf(
                 p(15.0100, 103.0100),
-                p(15.0110, 103.0110)
+                p(15.0105, 103.0105)
             )
         )
 
