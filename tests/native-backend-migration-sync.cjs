@@ -205,4 +205,30 @@ for(const needle of [
 ]){
   assert.ok(vehicleInspectionOfflineRequest.includes(needle),'Rider vehicle inspection offline-request guard missing contract: '+needle);
 }
+const multipleVehiclesMigration=read('supabase/migrations/20261014081916_rider_multiple_vehicles_v1.sql');
+for(const needle of [
+  'qg_private.rider_vehicles',
+  'qg_rider_vehicle_list',
+  'qg_rider_add_vehicle',
+  'qg_rider_select_vehicle',
+  'qg_admin_rider_vehicle_queue',
+  'qg_admin_review_rider_vehicle',
+  'qg_guard_rider_selected_vehicle_online',
+  'rider must be offline before switching vehicle',
+  'rider has active delivery',
+  "revoke all on table qg_private.rider_vehicles from public, anon, authenticated",
+  "revoke all on function public.qg_rider_vehicle_list() from public, anon"
+]){
+  assert.ok(multipleVehiclesMigration.includes(needle),'Rider multiple vehicles v1 missing contract: '+needle);
+}
+const multipleVehiclesCompat=read('supabase/migrations/20261014082029_rider_multiple_vehicles_legacy_compat_v2.sql');
+for(const needle of [
+  'legacy_seed boolean not null default false',
+  'and status<>\'rejected\'',
+  'and not v_existing.legacy_seed',
+  'and not v.legacy_seed',
+  "'legacy_seed',v.legacy_seed"
+]){
+  assert.ok(multipleVehiclesCompat.includes(needle),'Rider multiple vehicles v2 missing compatibility contract: '+needle);
+}
 console.log('Native backend migration mirror: PASS');
