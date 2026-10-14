@@ -1,3 +1,12 @@
+## 2026-10-14 Rider one-hand UX: touch-target and action readability hardening
+- Continued from reconnect continuity successor #296.
+- Android accessibility guidance recommends at least 48dp touch targets for interactive controls. Active Rider job actions still had 42dp/46dp minimums in custom controls.
+- Centralized Rider interaction metrics and raised secondary/custom action targets to 48dp and the primary job action to 52dp.
+- Increased action-label sizes for the three compact job tools, failed-delivery action and primary navigation/workflow action so the Rider can scan them faster while working.
+- No navigation, dispatch, payment, order state or backend behavior changed.
+- Backup: backup/rider-grab-parity-before-touch-targets-20261014.
+- Exact-head native-pilot + navigation-map-runtime remain required before PASS.
+
 ## 2026-10-14 Rider continuity: non-blocking reconnect notice
 - Continued from event-feedback exact-head release gate #294.
 - QueueGo already persisted the last safe Rider snapshot and retried silently, so transient network failure did not erase an active job. The remaining UX gap was visibility: a Rider with a restored/active job could not tell that live refreshes were failing.
