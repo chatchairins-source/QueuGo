@@ -712,7 +712,7 @@ async function loadShops(){
     .map(s=>({...s,open:m.has(String(s.id))?m.get(String(s.id)).is_open!==false:true}));
   return shops;
 }
-const loadMenu=id=>db('products?select=id,shop_id,name,description,price,delivery_price,image,available,delivery_available&shop_id=eq.'+encodeURIComponent(id)+'&delivery_available=eq.true');
+const loadMenu=id=>db('products?select=id,shop_id,name,description,price,delivery_price,image,available,delivery_available,grocery_stock_tracking,stock&shop_id=eq.'+encodeURIComponent(id)+'&delivery_available=eq.true');
 const uuid=()=>crypto.randomUUID();
 const STATUS_LABEL={pending:'รอร้านรับ',accepted:'ร้านรับแล้ว',searching_rider:'กำลังหาไรเดอร์',rider_assigned:'ไรเดอร์รับงานแล้ว',preparing:'กำลังเตรียม',ready:'พร้อมรับสินค้า',assigned:'ไรเดอร์รับงาน',picked_up:'รับสินค้าแล้ว',in_progress:'กำลังจัดส่ง',rider_to_customer:'กำลังจัดส่ง',arrived:'Rider ถึงลูกค้าแล้ว',completed:'ส่งสำเร็จ',no_rider_available:'ไม่พบ Rider',cancelled:'ยกเลิก'};
 async function loadShopProfile(id){const rows=await db('shop_profiles?select=*&id=eq.'+encodeURIComponent(id)+'&limit=1');return Array.isArray(rows)?rows[0]:null}
@@ -1083,6 +1083,7 @@ V.shop=async(id,ticket=routeVersion)=>{
   if(!s)return layout('<p class="empty">ไม่พบร้านค้า</p>','home');
   if(String(s.public_category||'').toLowerCase()==='laundry'){location.href='laundry/';return}
   if(DEDICATED_MARKET_CATS.has(String(s.public_category||'').toLowerCase()))return go('market');
+  if(s.public_category==='grocery')return qgRenderCustomerGroceryShop(s,ticket);
   const [menu,ratings,favorites]=await Promise.all([loadMenu(id),QGCustomer.reviews(id),QGCustomer.loadFavorites()]);if(ticket!==routeVersion)return;
   const items=(menu||[]).filter(p=>p.delivery_available!==false),categories=[...new Set(items.map(p=>p.category||p.menu_category).filter(Boolean))];
   layout(`<div class="cover">${s.public_cover?`<img src="${esc(s.public_cover)}" alt="" onerror="this.remove()">`:''}
@@ -1166,16 +1167,22 @@ V.checkout=async(_,ticket=routeVersion)=>{
   const pending=readPendingCheckout();
   if(pending){const p=pending.body;renderCheckout(`<div class="card" role="status"><b>ตรวจผลคำสั่งซื้อเดิม</b><p>คำขอนี้ยังไม่ได้รับผลยืนยัน กดตรวจผลอีกครั้งเพื่อดำเนินการด้วยรายการและที่อยู่เดิม ระบบจะไม่สร้างออเดอร์ซ้ำ</p><p>${esc(p.p_delivery_address)}</p>${p.p_note?`<p>หมายเหตุ: ${esc(p.p_note)}</p>`:''}</div>`,Number(p.p_expected_subtotal),Number(p.p_expected_delivery_fee));$('place-order-btn').textContent='ตรวจผลคำสั่งซื้อเดิม';return}
   if(!cart.items.length)return go('cart');const actor=S.get()?.userId,shopId=cart.shopId;
-  const [s,menu]=await Promise.all([loadShopProfile(shopId),loadMenu(shopId)]);if(ticket!==routeVersion||S.get()?.userId!==actor||cart.shopId!==shopId)return;
+  const [s,menu,openStates]=await Promise.all([loadShopProfile(shopId),loadMenu(shopId),db('shop_open_states?select=is_open,resume_at&shop_id=eq.'+encodeURIComponent(shopId))]);if(ticket!==routeVersion||S.get()?.userId!==actor||cart.shopId!==shopId)return;
   if(!s)throw Error('ไม่พบข้อมูลร้านค้า');if(!Array.isArray(menu))throw Error('ยังโหลดรายการสินค้าไม่ได้');
+  const blockers=[];
+  if(s.status!=='active'||s.delivery_enabled!==true)blockers.push('ร้านยังไม่พร้อมรับเดลิเวอรี่');
+  if(!s.market_id||s.market_membership_status!=='approved')blockers.push('ร้านยังไม่ได้เลือกตลาดที่ได้รับอนุมัติ');
+  if(s.market_id){const markets=await db('markets?select=id,active&id=eq.'+encodeURIComponent(s.market_id)+'&limit=1');if(ticket!==routeVersion||S.get()?.userId!==actor||cart.shopId!==shopId)return;if(markets[0]?.active!==true)blockers.push('ตลาดยังไม่เปิดให้บริการ');}
+  if(!Array.isArray(openStates))throw Error('ยังตรวจเวลาเปิดร้านไม่ได้');
+  if(openStates.some(x=>x.is_open===false&&(!x.resume_at||!Number.isFinite(Date.parse(x.resume_at))||Date.parse(x.resume_at)>Date.now())))blockers.push('ร้านปิดอยู่ กรุณากลับมาสั่งเมื่อร้านเปิด');
   const catalog=new Map(menu.map(p=>[String(p.id),p])),unavailable=[];let changed=false;
-  for(const item of cart.items){const product=catalog.get(String(item.id)),price=Number(product?.delivery_price??product?.price);if(!product||product.available===false||product.delivery_available===false||!Number.isFinite(price)||price<0){unavailable.push(item.name);continue}if(item.price!==price){item.price=price;changed=true}}
+  for(const item of cart.items){const product=catalog.get(String(item.id)),price=Number(product?.delivery_price??product?.price);if(!product||product.available!==true||product.delivery_available!==true||!Number.isFinite(price)||price<0||(product.grocery_stock_tracking===true&&(!Number.isFinite(Number(product.stock))||Number(product.stock)<item.qty))){unavailable.push(item.name);continue}if(item.price!==price){item.price=price;changed=true}}
   if(changed)saveCart();
-  renderCheckout(`<div class="card" style="margin-top:0"><b>${esc(s.shop_name||'ร้านค้า')}</b><p class="sm">ชำระเงินสด • ระบบเดลิเวอรี่ QueueGo</p>${changed?'<p role="status">ราคาสินค้ามีการเปลี่ยนแปลง ยอดด้านล่างเป็นราคาล่าสุด กรุณาตรวจสอบก่อนยืนยัน</p>':''}${unavailable.length?`<p role="alert">รายการที่ยังสั่งไม่ได้: ${unavailable.map(esc).join(', ')}</p><button class="lk" onclick="go('cart')">กลับไปแก้ตะกร้า</button>`:''}<div id="checkout-pin-map" class="mapbox" style="height:115px;margin-top:10px"></div><button style="margin-top:10px;padding:7px 11px;width:auto;border:1px solid #d1d5db;border-radius:9px;background:transparent;color:inherit;font-size:12px;font-weight:600" onclick="checkoutPicker&&checkoutPicker.locate()">ใช้ตำแหน่ง GPS ปัจจุบัน</button><div class="dist">Lat: <span id="co-lat">--</span> · Lng: <span id="co-lng">--</span></div><label for="delivery-address">ที่อยู่จัดส่ง</label><textarea class="ta" id="delivery-address" placeholder="ที่อยู่/จุดสังเกตสำหรับจัดส่ง">${esc(currentPos?.address||'')}</textarea><label for="checkout-note">หมายเหตุสำหรับร้าน</label><textarea class="ta" id="checkout-note" maxlength="500" placeholder="รายละเอียดเพิ่มเติมสำหรับร้าน (ถ้ามี)" oninput="setCheckoutNote(this.value)">${esc(cart.note||'')}</textarea></div>`,cartTotal(),null,unavailable.length>0);
+  renderCheckout(`<div class="card" style="margin-top:0"><b>${esc(s.shop_name||'ร้านค้า')}</b><p class="sm">ชำระเงินสด • ระบบเดลิเวอรี่ QueueGo</p>${blockers.length?`<p role="alert">${blockers.map(esc).join(' · ')}</p>`:''}${changed?'<p role="status">ราคาสินค้ามีการเปลี่ยนแปลง ยอดด้านล่างเป็นราคาล่าสุด กรุณาตรวจสอบก่อนยืนยัน</p>':''}${unavailable.length?`<p role="alert">รายการที่ยังสั่งไม่ได้: ${unavailable.map(esc).join(', ')}</p><button class="lk" onclick="go('cart')">กลับไปแก้ตะกร้า</button>`:''}<div id="checkout-pin-map" class="mapbox" style="height:115px;margin-top:10px"></div><button style="margin-top:10px;padding:7px 11px;width:auto;border:1px solid #d1d5db;border-radius:9px;background:transparent;color:inherit;font-size:12px;font-weight:600" onclick="checkoutPicker&&checkoutPicker.locate()">ใช้ตำแหน่ง GPS ปัจจุบัน</button><div class="dist">Lat: <span id="co-lat">--</span> · Lng: <span id="co-lng">--</span></div><label for="delivery-address">ที่อยู่จัดส่ง</label><textarea class="ta" id="delivery-address" placeholder="ที่อยู่/จุดสังเกตสำหรับจัดส่ง">${esc(currentPos?.address||'')}</textarea><label for="checkout-note">หมายเหตุสำหรับร้าน</label><textarea class="ta" id="checkout-note" maxlength="500" placeholder="รายละเอียดเพิ่มเติมสำหรับร้าน (ถ้ามี)" oninput="setCheckoutNote(this.value)">${esc(cart.note||'')}</textarea></div>`,cartTotal(),null,unavailable.length>0||blockers.length>0);
   let picked=currentPos&&qgIsValidCoordinate(currentPos.lat,currentPos.lng,true)?{lat:currentPos.lat,lng:currentPos.lng}:null,locationVersion=0,lastAutoAddress=null;
   const showTotal=loc=>{if(!loc)return;const fee=deliveryFeeFor(s,loc);$('checkout-delivery-fee').textContent=baht(fee);$('checkout-total').textContent=baht(cartTotal()+fee)};showTotal(picked);
   checkoutPicker=initLocationPicker('checkout-pin-map',picked?.lat,picked?.lng,async(lat,lng)=>{picked={lat,lng};showTotal(picked);currentPos={...currentPos,lat,lng};$('co-lat').textContent=lat.toFixed(6);$('co-lng').textContent=lng.toFixed(6);const version=++locationVersion,field=$('delivery-address'),previous=field.value;if(previous&&previous!==lastAutoAddress)return;const t=await qtReverseGeocodeCustomer(lat,lng);if(t&&version===locationVersion&&field.isConnected&&field.value===previous){field.value=t;lastAutoAddress=t;currentPos.address=t}});
-  window.__checkoutQuote=()=>!unavailable.length&&picked?{shopId,location:picked,subtotal:cartTotal(),deliveryFee:deliveryFeeFor(s,picked)}:null;
+  window.__checkoutQuote=()=>!unavailable.length&&!blockers.length&&picked?{shopId,location:picked,subtotal:cartTotal(),deliveryFee:deliveryFeeFor(s,picked)}:null;
   const picker=checkoutPicker;setTimeout(()=>{if(checkoutPicker===picker)picker.map?.resize()},80);
 };
 const MARKET_TRIP_STATUS={
@@ -1322,5 +1329,6 @@ addEventListener('hashchange',()=>route());
 <script src="customer-features.js?v=20261012-chat6"></script>
 <script src="customer-laundry.js?v=20261006-orderlist5"></script>
 <script>route();</script>
+<script src="catalog/customer-grocery.js?v=20261012"></script>
 </body>
 </html>

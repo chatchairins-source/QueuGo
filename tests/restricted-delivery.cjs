@@ -24,7 +24,7 @@ ok(merchant.includes("ขายหน้าร้าน POS ได้ แต่ 
 ok(merchant.includes("qgm-delivery-available")&&merchant.includes("qgmApplyDeliveryRestriction"),'Delivery switch must be automatically locked for restricted items');
 
 ok(customer.includes("p=>p.delivery_available!==false"),'Customer storefront must hide products disabled for Delivery');
-ok(customer.includes("product.delivery_available===false"),'Checkout must reject products disabled for Delivery');
+ok(customer.includes("product.delivery_available!==true"),'Checkout must reject products disabled for Delivery');
 ok(customer.includes("delivery_available=eq.true"),'Customer menu search must only search Delivery-enabled products');
 
 console.log(JSON.stringify({checks,failures:0,scope:'QueueGo POS-only restriction for alcohol/tobacco and Delivery exclusion'}));
