@@ -8,6 +8,7 @@ const view=fs.readFileSync('native-android/rider-maplibre-osm/src/main/java/com/
 const localRoads=fs.readFileSync('native-android/rider-maplibre-osm/src/main/java/com/queuego/ridermaplibreosm/QueueGoLocalRoads.kt','utf8');
 const localRoadFeed=fs.readFileSync('native-android/rider-maplibre-osm/src/main/java/com/queuego/ridermaplibreosm/QueueGoLocalRoadFeed.kt','utf8');
 const localRoadSignedDelivery=fs.readFileSync('native-android/rider-maplibre-osm/src/main/java/com/queuego/ridermaplibreosm/QueueGoLocalRoadSignedDelivery.kt','utf8');
+const localRoadRouting=fs.readFileSync('native-android/rider-maplibre-osm/src/main/java/com/queuego/ridermaplibreosm/QueueGoLocalRoadRoutingPolicy.kt','utf8');
 const riderBuild=fs.readFileSync('native-android/rider/build.gradle.kts','utf8');
 
 assert(settings.includes('":rider-maplibre-osm"'),'MapLibre OSM module must be registered in native settings');
@@ -82,5 +83,34 @@ assert(localRoadSignedDelivery.includes('interface QueueGoLocalRoadSnapshotTrans
   localRoadSignedDelivery.includes('interface QueueGoLocalRoadFeedDecoder')&&
   localRoadSignedDelivery.includes('fun interface QueueGoLocalRoadSignatureVerifier'),
   'Local Roads transport, decoding and signature verification must remain injectable and fail-closed before Production wiring');
+
+assert(localRoadSignedDelivery.includes('CACHE_FORMAT_VERSION = 2')&&
+  localRoadSignedDelivery.includes('val keyId: String')&&
+  localRoadSignedDelivery.includes('val signature: ByteArray')&&
+  localRoadSignedDelivery.includes('fun loadCached()')&&
+  localRoadSignedDelivery.includes('loadTrustedCache()')&&
+  localRoadSignedDelivery.includes('Cached local-road signature verification failed')&&
+  localRoadSignedDelivery.includes('Cached local-road revision does not match signed payload'),
+  'Cached Local Roads must be reverified from the signed envelope before offline use or revision-watermark decisions');
+
+
+assert(localRoadRouting.includes('UNVERIFIED')&&
+  localRoadRouting.includes('PRIVATE_RESTRICTED')&&
+  localRoadRouting.includes('VEHICLE_NOT_ALLOWED')&&
+  localRoadRouting.includes('DESTINATION_ACCESS_ONLY')&&
+  localRoadRouting.includes('ONE_WAY_REVERSE')&&
+  localRoadRouting.includes('QueueGoRoutingVehicle.MOTORCYCLE')&&
+  localRoadRouting.includes('QueueGoRoadTraversalUse.DESTINATION_ACCESS'),
+  'Local Roads routing eligibility must fail closed for unverified/private/wrong-vehicle/through-service/reverse-one-way traversal');
+
+assert(localRoadRouting.includes('road.source == QueueGoLocalRoadSource.MERCHANT_CONFIRMED')&&
+  localRoadRouting.includes('traversalUse != QueueGoRoadTraversalUse.DESTINATION_ACCESS'),
+  'Merchant-confirmed access geometry must remain destination-only and never become a through shortcut');
+
+assert(!localRoadRouting.includes('shortestPath')&&
+  !localRoadRouting.includes('NavigationRouteCoordinator')&&
+  !localRoadRouting.includes('LongdoNavigationRouteClient'),
+  'Local Roads eligibility policy must stay separate from the Production routing engine');
+
 
 console.log('native rider MapLibre OSM module contract passed');
