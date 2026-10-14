@@ -1,3 +1,10 @@
+## 2026-10-14 Unified Rider parity release: Fatigue + Message Center + Unplanned Stop
+- Consolidated the three parallel successors from My Destination + Safety Share: persistent Fatigue Safety (#258), Native Message Center (#257) and local Unplanned Stop safety advisory (#256). Fatigue Safety is the base so its Production RPC/migration and Safety Centre UI remain unchanged.
+- Message Center keeps real notifications under existing RLS, Chat/Notifications subsections, unread badge aggregation, mark-one/all-read actions and fail-closed order/rider_offer reference routing.
+- Unplanned Stop keeps the 10-minute stationary advisory only during reliable active navigation, suppressing weak-GPS/off-route/arrival/near-destination/moving states and reusing the existing Safety Centre. It never calls, shares, contacts emergency services or mutates an order automatically.
+- This consolidation adds no Production DB mutation. Branch naming intentionally enters navigation-map-runtime; native-pilot and navigation-map-runtime must both pass on the exact combined head.
+- Backup backup/rider-fatigue-before-message-unplanned-unify-20261014 retains f90463f.
+
 ## 2026-10-14 Grab Driver parity: persistent Rider Fatigue Safety v1
 - Added a QueueGo-native persistent work/rest safety layer after confirming the owner-supplied Grab Driver package contains a dedicated Fatigue v1/v2 service/repository/UI stack. QueueGo does not claim liveness, drowsiness, biometric or medical detection.
 - Production migration 20261014073631_rider_fatigue_status_v1 is additive and read-only. It derives the current continuous online session and Bangkok-day total online minutes from server-owned qg_rider_presence_events, using the existing rider_id/occurred_at index. Public wrapper is SECURITY INVOKER, anon EXECUTE is revoked, and active Rider live-session ownership is checked in qg_private.
