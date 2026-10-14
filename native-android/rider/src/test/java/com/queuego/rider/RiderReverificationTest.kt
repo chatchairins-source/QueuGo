@@ -47,6 +47,11 @@ class RiderReverificationTest {
                 RiderReverificationStatus(true, "id", "pending", null, null, null, null, null)
             )
         )
+        assertTrue(
+            riderReverificationBlocksOnline(
+                RiderReverificationStatus(true, "id", "rejected", null, null, null, null, "ถ่ายใหม่")
+            )
+        )
         assertFalse(
             riderReverificationBlocksOnline(
                 RiderReverificationStatus(false, "id", "approved", null, null, null, null, null)
