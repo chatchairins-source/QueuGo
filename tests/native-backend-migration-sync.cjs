@@ -196,4 +196,13 @@ for(const needle of [
 ]){
   assert.ok(vehicleInspectionMigration.includes(needle),'Rider vehicle inspection migration missing contract: '+needle);
 }
+const vehicleInspectionOfflineRequest=read('supabase/migrations/20261014081405_rider_vehicle_inspection_offline_request_v2.sql');
+for(const needle of [
+  'rider must be offline before vehicle inspection request',
+  'rider has active delivery',
+  "o.status not in ('completed','cancelled','no_rider_available')",
+  "revoke all on function qg_private.admin_request_rider_vehicle_inspection(uuid,text) from public, anon"
+]){
+  assert.ok(vehicleInspectionOfflineRequest.includes(needle),'Rider vehicle inspection offline-request guard missing contract: '+needle);
+}
 console.log('Native backend migration mirror: PASS');
