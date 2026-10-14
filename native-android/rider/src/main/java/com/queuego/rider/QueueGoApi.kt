@@ -27,6 +27,25 @@ internal fun riderNullableUuid(value: String?): String? =
 internal fun riderProfilePhoto(metadata: JSONObject?): String? =
     riderNullableText(metadata?.optString("profileImage"))
 
+internal fun riderRatingSummaryFromRpc(raw: Any?): RiderRatingSummary {
+    val row = when (raw) {
+        is JSONObject -> raw
+        is JSONArray -> raw.optJSONObject(0) ?: JSONObject()
+        else -> JSONObject()
+    }
+    val distribution = row.optJSONObject("distribution")
+    val average = if (row.has("average") && !row.isNull("average")) {
+        row.optDouble("average").takeIf { it.isFinite() }
+    } else null
+    return RiderRatingSummary(
+        average = average,
+        count = row.optInt("count", 0).coerceAtLeast(0),
+        distribution = (1..5).associateWith { star ->
+            distribution?.optInt(star.toString(), 0)?.coerceAtLeast(0) ?: 0
+        }
+    )
+}
+
 class QueueGoApi {
     companion object {
         private const val BASE_URL = "https://pkypiqhlrmzocysgeqew.supabase.co"
@@ -352,6 +371,17 @@ class QueueGoApi {
                 onlineHours = o.optDouble("online_hours", 0.0),
                 incomePerHour = if (o.has("income_per_hour") && !o.isNull("income_per_hour"))
                     o.optDouble("income_per_hour").takeIf { !it.isNaN() } else null
+            )
+        }
+
+    suspend fun ratingSummary(auth: QueueGoAuth): RiderRatingSummary =
+        withContext(Dispatchers.IO) {
+            riderRatingSummaryFromRpc(
+                rpc(
+                    "qg_rider_rating_summary",
+                    auth.session.accessToken,
+                    JSONObject()
+                )
             )
         }
 

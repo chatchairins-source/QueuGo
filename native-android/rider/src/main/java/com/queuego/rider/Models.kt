@@ -283,6 +283,12 @@ data class RiderPeriodSummary(
     val incomePerHour: Double?
 )
 
+data class RiderRatingSummary(
+    val average: Double?,
+    val count: Int,
+    val distribution: Map<Int, Int> = emptyMap()
+)
+
 
 data class RiderHistoryOrder(
     val id: String,
