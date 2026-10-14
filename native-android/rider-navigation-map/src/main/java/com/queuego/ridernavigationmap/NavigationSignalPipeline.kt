@@ -78,6 +78,23 @@ class NavigationSignalPipeline(
             )
         }
 
+        val previousDisplayFix = lastDisplayFix
+        if (
+            filtered.quality == NavigationFixQuality.WEAK &&
+            previousDisplayFix != null &&
+            navigationHaversineMeters(previousDisplayFix.point, acceptedFix.point) <=
+                weakGpsFreezeRadiusMeters(acceptedFix.accuracyMeters)
+        ) {
+            return NavigationSignalState(
+                rawFix = rawFix,
+                displayFix = previousDisplayFix,
+                quality = filtered.quality,
+                routeMatch = null,
+                puckState = NavigationPuckState.WEAK_GPS,
+                accepted = true
+            )
+        }
+
         val hybridMatch = activeRoute
             ?.takeIf { it.renderable }
             ?.let { routeMatcher.match(it, acceptedFix) }
@@ -111,6 +128,14 @@ class NavigationSignalPipeline(
             ),
             accepted = true
         )
+    }
+
+    private fun weakGpsFreezeRadiusMeters(accuracyMeters: Float?): Double {
+        val accuracy = accuracyMeters
+            ?.takeIf { it.isFinite() && it >= 0f }
+            ?.toDouble()
+            ?: 60.0
+        return max(24.0, accuracy * 0.8).coerceAtMost(64.0)
     }
 
     private fun snapThresholdMeters(fix: NavigationMapFix): Double {
