@@ -1,3 +1,9 @@
+## 2026-10-14 Grab Driver parity mission: Merchant sees assigned Rider identity
+- Production audit confirmed Merchant cannot directly SELECT rider_profiles under RLS. Do not weaken that policy. Existing Production RPC public.qg_merchant_order_rider_context(uuid) is the correct narrow surface: public wrapper is security-invoker, authenticated-only; qg_private implementation validates live auth session, shop ownership and active Rider. Rider phone is returned only during active delivery or for 30 minutes after completed delivery.
+- Native Merchant now consumes that existing RPC for the selected order and renders the Rider's real photo, name, vehicle/type, plate and verified-vehicle badge. The call button appears only when Production returns a phone number; Native never extends the contact window or queries rider_profiles directly.
+- Empty/unavailable Rider context renders no placeholder identity card. Added parser regressions for empty context, real identity and expired contact window.
+- No Production DB change was needed. Backup backup/merchant-grab-parity-before-rider-identity-20261014 retains f552c87. Successor work-native-merchant-grab-parity-rider-identity-20261014 requires its own exact-head CI before merge.
+
 ## 2026-10-14 Grab Driver parity mission: Rider performance view
 - Continued from Rider identity/diagnostics head 32df088. QueueGo already had Today/7/30-day earnings, cash ledger and authoritative period summary, but lacked a compact driver-performance view.
 - Added a pure derived performance model using only existing Production summary values: average income per completed job, jobs per online hour, average income per day and jobs per day. Zero-job/zero-online periods display no invented per-job or per-hour figure.

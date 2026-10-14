@@ -75,6 +75,32 @@ data class MerchantOrder(
     val riderArrivedCustomerAt: String? = null
 )
 
+data class MerchantRiderContext(
+    val name: String,
+    val phone: String?,
+    val photo: String?,
+    val vehicleType: String?,
+    val vehiclePlate: String?,
+    val vehicleVerified: Boolean
+)
+
+internal fun merchantRiderContextFromJson(row: JSONObject?): MerchantRiderContext? {
+    if (row == null || row.length() == 0) return null
+    val name = row.optNullable("name") ?: "Rider"
+    val photo = row.optNullable("photo")
+    val vehicleType = row.optNullable("vehicle_type")
+    val vehiclePlate = row.optNullable("vehicle_plate")
+    if (name == "Rider" && photo == null && vehicleType == null && vehiclePlate == null) return null
+    return MerchantRiderContext(
+        name = name,
+        phone = row.optNullable("phone"),
+        photo = photo,
+        vehicleType = vehicleType,
+        vehiclePlate = vehiclePlate,
+        vehicleVerified = row.optBoolean("vehicle_verified", false)
+    )
+}
+
 data class MerchantOrderItem(
     val name: String,
     val description: String?,
@@ -538,6 +564,21 @@ class MerchantApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
             r.optDouble("gp_due", 0.0),
             r.optDouble("cash_received", 0.0)
         )
+    }
+
+    suspend fun orderRiderContext(auth: NativeAuth, orderId: String): MerchantRiderContext? {
+        val safeId = runCatching { UUID.fromString(orderId).toString() }.getOrNull() ?: return null
+        val raw = http.rpc(
+            "qg_merchant_order_rider_context",
+            auth.session.accessToken,
+            JSONObject().put("p_order_id", safeId)
+        )
+        val row = when (raw) {
+            is JSONObject -> raw
+            is JSONArray -> raw.optJSONObject(0)
+            else -> null
+        }
+        return merchantRiderContextFromJson(row)
     }
 
     suspend fun loadOrders(auth: NativeAuth): List<MerchantOrder> {

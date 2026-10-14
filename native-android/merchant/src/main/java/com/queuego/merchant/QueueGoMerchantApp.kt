@@ -1,6 +1,7 @@
 package com.queuego.merchant
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.media.AudioManager
 import android.media.ToneGenerator
@@ -124,6 +125,7 @@ private fun MerchantShell(
     var newProductCategory by remember { mutableStateOf<String?>(null) }
     var productReturnScreen by remember { mutableStateOf("products") }
     var orderItems by remember { mutableStateOf<List<MerchantOrderItem>>(emptyList()) }
+    var orderRider by remember { mutableStateOf<MerchantRiderContext?>(null) }
     var gpRate by remember { mutableStateOf(0.0) }
     var loading by remember { mutableStateOf(true) }
     var busy by remember { mutableStateOf(false) }
@@ -341,6 +343,21 @@ private fun MerchantShell(
             .onSuccess { notifications = it }
     }
 
+    LaunchedEffect(screen, selectedOrder?.id, selectedOrder?.status, auth.session.accessToken) {
+        val current = selectedOrder
+        if (screen != "order" || current == null) {
+            orderRider = null
+        } else {
+            orderRider = try {
+                api.orderRiderContext(auth, current.id)
+            } catch (failure: kotlinx.coroutines.CancellationException) {
+                throw failure
+            } catch (_: Exception) {
+                null
+            }
+        }
+    }
+
     LaunchedEffect(auth.session.accessToken, shop?.id, lifecycle) {
         val shopId = shop?.id ?: return@LaunchedEffect
         lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
@@ -538,8 +555,18 @@ private fun MerchantShell(
                     order = selectedOrder,
                     items = orderItems,
                     products = products,
+                    rider = orderRider,
                     busy = busy,
                     onBack = { screen = "orders" },
+                    onCallRider = { phone ->
+                        runCatching {
+                            context.startActivity(
+                                Intent(Intent.ACTION_DIAL, Uri.fromParts("tel", phone, null))
+                            )
+                        }.onFailure {
+                            message = "ไม่สามารถเปิดแอปโทรศัพท์ได้"
+                        }
+                    },
                     onAction = { action, reason -> selectedOrder?.let { runAction(it, action, reason) } },
                     onSaveItems = { draft ->
                         val current = selectedOrder
@@ -1275,8 +1302,10 @@ private fun MerchantOrderDetail(
     order: MerchantOrder?,
     items: List<MerchantOrderItem>,
     products: List<MerchantProduct>,
+    rider: MerchantRiderContext?,
     busy: Boolean,
     onBack: () -> Unit,
+    onCallRider: (String) -> Unit,
     onAction: (String, String?) -> Unit,
     onSaveItems: (List<MerchantOrderEditItem>) -> Unit
 ) {
@@ -1327,7 +1356,55 @@ private fun MerchantOrderDetail(
                 Text("แสดงยอดเงินสดเท่านั้น ไม่มีขั้นตอนยืนยันรับเงินซ้ำ", color = QgMuted, style = MaterialTheme.typography.bodySmall)
             }
         }
-        Spacer(Modifier.height(12.dp))
+        Spacer(Modifier.height(10.dp))
+        if (rider != null) {
+            QgCard(Modifier.fillMaxWidth()) {
+                Column {
+                    Text("Rider ที่รับงาน", color = QgMuted, style = MaterialTheme.typography.bodySmall)
+                    Spacer(Modifier.height(9.dp))
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        QgRemoteImage(
+                            source = rider.photo,
+                            modifier = Modifier.size(54.dp),
+                            fallback = rider.name,
+                            cornerRadius = 17.dp
+                        )
+                        Column(Modifier.weight(1f)) {
+                            Text(rider.name, fontWeight = FontWeight.ExtraBold)
+                            val vehicle = listOfNotNull(rider.vehicleType, rider.vehiclePlate)
+                                .filter { it.isNotBlank() }
+                                .joinToString(" · ")
+                            if (vehicle.isNotBlank()) {
+                                Text(vehicle, color = QgMuted, fontSize = 10.sp, modifier = Modifier.padding(top = 3.dp))
+                            }
+                            if (rider.vehicleVerified) {
+                                Text(
+                                    "ยืนยันข้อมูลรถแล้ว",
+                                    color = QgGreen,
+                                    fontSize = 9.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.padding(top = 4.dp)
+                                )
+                            }
+                        }
+                    }
+                    rider.phone?.takeIf { it.isNotBlank() }?.let { phone ->
+                        Spacer(Modifier.height(9.dp))
+                        OutlinedButton(
+                            onClick = { onCallRider(phone) },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("โทรหา Rider", fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+            }
+            Spacer(Modifier.height(12.dp))
+        }
 
         when (order.status) {
             "pending" -> {
