@@ -6,7 +6,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class RiderGrabParityUnifiedTest {
-    @Test fun benefitsAndFailedDeliveryContractsCoexistOnSingleSuccessor() {
+    @Test fun benefitsFailedDeliveryAndEventFeedbackCoexistOnSingleSuccessor() {
         assertTrue(riderBenefitsFromRpc(JSONArray()).isEmpty())
         assertEquals(
             setOf(
@@ -19,5 +19,8 @@ class RiderGrabParityUnifiedTest {
             ),
             riderDeliveryIssueReasons.map { it.key }.toSet()
         )
+        val completion = riderEventFeedbackSpec(RiderEventFeedbackKind.DELIVERY_SUCCESS)
+        assertTrue(completion.successHaptic)
+        assertEquals(2, completion.tones.size)
     }
 }
