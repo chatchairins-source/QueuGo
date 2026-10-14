@@ -7,6 +7,7 @@ const style=fs.readFileSync('native-android/rider-maplibre-osm/src/main/java/com
 const view=fs.readFileSync('native-android/rider-maplibre-osm/src/main/java/com/queuego/ridermaplibreosm/QueueGoMapLibreOsmView.kt','utf8');
 const localRoads=fs.readFileSync('native-android/rider-maplibre-osm/src/main/java/com/queuego/ridermaplibreosm/QueueGoLocalRoads.kt','utf8');
 const localRoadFeed=fs.readFileSync('native-android/rider-maplibre-osm/src/main/java/com/queuego/ridermaplibreosm/QueueGoLocalRoadFeed.kt','utf8');
+const localRoadRouting=fs.readFileSync('native-android/rider-maplibre-osm/src/main/java/com/queuego/ridermaplibreosm/QueueGoLocalRoadRoutingPolicy.kt','utf8');
 const riderBuild=fs.readFileSync('native-android/rider/build.gradle.kts','utf8');
 
 assert(settings.includes('":rider-maplibre-osm"'),'MapLibre OSM module must be registered in native settings');
@@ -65,5 +66,18 @@ assert(localRoadFeed.includes('queuego-trace:')&&
   !localRoadFeed.toLowerCase().includes('rider_id')&&
   !localRoadFeed.toLowerCase().includes('grab:'),
   'Verified trace provenance must reference QueueGo aggregate trace evidence without Rider identity or competitor references');
+
+assert(localRoadRouting.includes('UNVERIFIED')&&
+  localRoadRouting.includes('PRIVATE_RESTRICTED')&&
+  localRoadRouting.includes('VEHICLE_NOT_ALLOWED')&&
+  localRoadRouting.includes('DESTINATION_ACCESS_ONLY')&&
+  localRoadRouting.includes('ONE_WAY_REVERSE')&&
+  localRoadRouting.includes('QueueGoRoutingVehicle.MOTORCYCLE')&&
+  localRoadRouting.includes('QueueGoRoadTraversalUse.DESTINATION_ACCESS'),
+  'Local Roads routing eligibility must fail closed for unverified/private/wrong-vehicle/through-service/reverse-one-way traversal');
+assert(!localRoadRouting.includes('shortestPath')&&
+  !localRoadRouting.includes('NavigationRouteCoordinator')&&
+  !localRoadRouting.includes('LongdoNavigationRouteClient'),
+  'Local Roads eligibility policy must not silently replace the Production routing engine');
 
 console.log('native rider MapLibre OSM module contract passed');
