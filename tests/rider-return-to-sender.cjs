@@ -8,6 +8,8 @@ const multi=fs.readFileSync('supabase/migrations/20261014102925_rider_delivery_r
 const app=fs.readFileSync('native-android/rider/src/main/java/com/queuego/rider/QueueGoRiderApp.kt','utf8');
 const api=fs.readFileSync('native-android/rider/src/main/java/com/queuego/rider/QueueGoApi.kt','utf8');
 const admin=fs.readFileSync('admin/index.html','utf8');
+const returnCard=fs.readFileSync('native-android/rider/src/main/java/com/queuego/rider/RiderDeliveryReturnCard.kt','utf8');
+const feedback=fs.readFileSync('native-android/rider/src/main/java/com/queuego/rider/RiderEventFeedback.kt','utf8');
 
 assert.match(migration,/qg_rider_delivery_returns/);
 assert.match(migration,/qg_rider_cash_return_refunds/);
@@ -24,6 +26,12 @@ assert.match(multi,/cash_paid_amount/);
 assert.match(multi,/return_sequence/);
 assert.match(multi,/market_order_id/);
 assert.match(multi,/rider_arrived_customer_at/);
+assert.match(multi,/qg_rider_delivery_returns_one_active_market_group/);
+assert.match(multi,/status='PICKED_UP'/);
+assert.match(multi,/refund_amount/);
+assert.match(multi,/proof_path/);
+assert.match(multi,/o\.market_order_id=v_case\.market_order_id/);
+assert.match(multi,/qg_rider_delivery_return_stops_rpc_only/);
 assert.match(app,/job\.customerArrived/);
 assert.match(app,/RiderDeliveryReturnCard/);
 assert.match(api,/qg_rider_report_delivery_issue/);
@@ -32,5 +40,10 @@ assert.match(api,/qg_rider_complete_delivery_return/);
 assert.match(admin,/qg_admin_delivery_return_cases_v2/);
 assert.match(admin,/return_to_shop/);
 assert.match(admin,/resolve_no_return/);
+assert.match(returnCard,/RiderEvidencePreview/);
+assert.match(returnCard,/returnStopCount/);
+assert.match(returnCard,/stopRefundAmount/);
+assert.match(feedback,/RETURN_STOP_SUCCESS/);
+assert.match(feedback,/RETURN_COMPLETE/);
 
 console.log('rider return-to-sender contracts PASS');
