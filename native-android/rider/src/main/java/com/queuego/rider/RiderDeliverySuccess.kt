@@ -13,6 +13,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -26,7 +27,9 @@ internal fun RiderDeliverySuccess(
     job: RiderJob,
     onDismiss: () -> Unit
 ) {
+    val eventFeedbackView = LocalView.current
     LaunchedEffect(job.id) {
+        playRiderEventFeedback(eventFeedbackView, RiderEventFeedbackKind.DELIVERY_SUCCESS)
         delay(4_500)
         onDismiss()
     }

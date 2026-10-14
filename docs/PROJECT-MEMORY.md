@@ -1,3 +1,12 @@
+## 2026-10-14 Grab Driver parity: Rider event feedback language
+- Static inspection of the owner-supplied Grab Driver 5.457.1 APK confirmed distinct raw resources for delivery_success, delivery_error, picker_success, picker_error and incoming-job sound.
+- QueueGo does not copy any Grab audio asset. Rider now uses QueueGo-owned platform-generated feedback patterns plus Android haptics.
+- Pickup success uses a short confirmation cue; delivery completion uses a more distinctive two-step cue; proof/action failure uses a separate reject cue.
+- Existing incoming-offer alert remains unchanged.
+- Feedback uses STREAM_NOTIFICATION and View.performHapticFeedback so Android sound/DND/haptic settings remain authoritative; no VIBRATE permission or third-party audio asset added.
+- Backup: backup/rider-grab-parity-before-event-feedback-v3-20261014.
+- Exact-head native-pilot + navigation-map-runtime remain required before PASS.
+
 ## 2026-10-14 Rider Grab-parity gate fix: failed-delivery compile + map lifecycle isolation
 - Continued from unified Benefits + failed-delivery head 2a61a650 without dropping Benefits Center, critical Home actions, Availability gates, account restrictions or delivery-issue reporting.
 - Fixed RiderDeliveryIssueDialog Compose compilation by using the public foundation.layout import surface instead of explicitly importing an internal weight symbol.
