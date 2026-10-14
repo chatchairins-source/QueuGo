@@ -11,6 +11,7 @@ import org.maplibre.android.style.layers.PropertyFactory.fillColor
 import org.maplibre.android.style.layers.PropertyFactory.fillOpacity
 import org.maplibre.android.style.layers.PropertyFactory.lineCap
 import org.maplibre.android.style.layers.PropertyFactory.lineColor
+import org.maplibre.android.style.layers.PropertyFactory.lineDasharray
 import org.maplibre.android.style.layers.PropertyFactory.lineJoin
 import org.maplibre.android.style.layers.PropertyFactory.lineOpacity
 import org.maplibre.android.style.layers.PropertyFactory.lineWidth
@@ -24,6 +25,16 @@ data class ShortbreadRoadPolicy(
     val widthAtMinZoom: Float,
     val widthAt16: Float,
     val widthAt19: Float
+)
+
+data class ShortbreadContextRoadPolicy(
+    val kind: String,
+    val minZoom: Float,
+    val color: String,
+    val widthAtMinZoom: Float,
+    val widthAt16: Float,
+    val widthAt19: Float,
+    val dashPattern: Array<Float>
 )
 
 object ShortbreadVillageStyle {
@@ -42,6 +53,17 @@ object ShortbreadVillageStyle {
         ShortbreadRoadPolicy("residential", 12f, "#b5b9bd", "#ffffff", 0.8f, 4.2f, 7.2f),
         ShortbreadRoadPolicy("living_street", 13f, "#bec1c4", "#ffffff", 0.7f, 3.8f, 6.6f),
         ShortbreadRoadPolicy("service", 13f, "#c4c6c8", "#ffffff", 0.6f, 3.2f, 5.6f)
+    )
+
+    // Shortbread contains more local-access geometry than a car-navigation route should
+    // necessarily use. Draw these as muted dashed context so village alleys/tracks are visible
+    // without presenting every foot/cycle path as a normal drivable street.
+    val contextRoadPolicies = listOf(
+        ShortbreadContextRoadPolicy("track", 13f, "#b9b4aa", 0.8f, 2.2f, 3.8f, arrayOf(2.0f, 1.2f)),
+        ShortbreadContextRoadPolicy("pedestrian", 14f, "#c7c3bc", 0.7f, 1.8f, 3.2f, arrayOf(1.5f, 1.0f)),
+        ShortbreadContextRoadPolicy("cycleway", 14f, "#bfc9bf", 0.7f, 1.7f, 3.0f, arrayOf(1.6f, 1.1f)),
+        ShortbreadContextRoadPolicy("footway", 15f, "#c9c7c2", 0.6f, 1.4f, 2.5f, arrayOf(1.2f, 1.2f)),
+        ShortbreadContextRoadPolicy("path", 15f, "#c9c7c2", 0.6f, 1.4f, 2.5f, arrayOf(1.2f, 1.2f))
     )
 
     fun builder(sourceUri: String): Style.Builder {
@@ -69,6 +91,34 @@ object ShortbreadVillageStyle {
                     )
                     .also { it.minZoom = 14f }
             )
+
+        contextRoadPolicies.forEach { policy ->
+            val filter = Expression.eq(
+                Expression.get("kind"),
+                Expression.literal(policy.kind)
+            )
+            val contextLine = LineLayer("queuego-context-${policy.kind}", SOURCE_ID)
+                .withSourceLayer(SOURCE_LAYER_STREETS)
+                .withFilter(filter)
+                .withProperties(
+                    lineColor(policy.color),
+                    lineOpacity(0.78f),
+                    lineCap(Property.LINE_CAP_ROUND),
+                    lineJoin(Property.LINE_JOIN_ROUND),
+                    lineDasharray(policy.dashPattern),
+                    lineWidth(
+                        Expression.interpolate(
+                            Expression.linear(),
+                            Expression.zoom(),
+                            Expression.stop(policy.minZoom, policy.widthAtMinZoom),
+                            Expression.stop(16f, policy.widthAt16),
+                            Expression.stop(19f, policy.widthAt19)
+                        )
+                    )
+                )
+                .also { it.minZoom = policy.minZoom }
+            builder = builder.withLayer(contextLine)
+        }
 
         roadPolicies.forEach { policy ->
             val filter = Expression.eq(

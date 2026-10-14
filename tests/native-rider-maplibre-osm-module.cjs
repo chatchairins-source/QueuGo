@@ -14,6 +14,11 @@ assert(!riderBuild.includes('project(":rider-maplibre-osm")'),'MapLibre OSM modu
 for(const kind of ['residential','unclassified','living_street','service']){
   assert(style.includes('"'+kind+'"'),'Shortbread village style must include '+kind);
 }
+for(const kind of ['track','pedestrian','cycleway','footway','path']){
+  assert(style.includes('"'+kind+'"'),'Shortbread village context must include '+kind);
+}
+assert(style.includes('lineDasharray(policy.dashPattern)'),
+  'Non-standard village access paths must stay visually distinct from normal drivable streets');
 assert(style.includes('SOURCE_LAYER_STREETS = "streets"'),'OSM Shortbread style must render the streets source layer');
 assert(style.includes('SOURCE_LAYER_BUILDINGS = "buildings"'),'OSM Shortbread style must retain village building context');
 assert(style.includes('VectorSource(SOURCE_ID, sourceUri)'),'Vector TileJSON endpoint must be runtime-configurable and not tied to one provider');

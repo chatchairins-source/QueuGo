@@ -21,6 +21,20 @@ class ShortbreadVillageStylePolicyTest {
         )
     }
 
+    @Test fun villageContextRoadsExposeTracksAndSmallPathsWithoutStylingThemAsNormalRoads() {
+        val byKind = ShortbreadVillageStyle.contextRoadPolicies.associateBy { it.kind }
+        listOf("track", "pedestrian", "cycleway", "footway", "path").forEach { kind ->
+            assertTrue("Missing village context road class: $kind", byKind.containsKey(kind))
+            assertTrue(
+                "Village context road must use a dashed visual distinction: $kind",
+                byKind.getValue(kind).dashPattern.isNotEmpty()
+            )
+        }
+        assertTrue(byKind.getValue("track").minZoom <= 13f)
+        assertTrue(byKind.getValue("pedestrian").minZoom <= 14f)
+        assertTrue(byKind.getValue("path").minZoom >= 15f)
+    }
+
     @Test fun localRoadsGrowAtCloseNavigationZoom() {
         val residential = ShortbreadVillageStyle.roadPolicies.first { it.kind == "residential" }
         assertTrue(residential.widthAt16 > residential.widthAtMinZoom)
