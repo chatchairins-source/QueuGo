@@ -275,20 +275,22 @@ fun QueueGoRiderApp(pushTarget: NativePushLaunchTarget? = null) {
                     refreshing = busy,
                     error = error,
                     onRefresh = {
-                        val current = auth ?: return@RiderAccountStatusScreen
-                        busy = true
-                        error = null
-                        scope.launch {
-                            try {
-                                val validated = api.validate(current)
-                                store.save(validated)
-                                auth = validated
-                            } catch (e: CancellationException) {
-                                throw e
-                            } catch (e: Exception) {
-                                error = e.message ?: "ตรวจสถานะบัญชีไม่สำเร็จ"
-                            } finally {
-                                busy = false
+                        val current = auth
+                        if (current != null && !busy) {
+                            busy = true
+                            error = null
+                            scope.launch {
+                                try {
+                                    val validated = api.validate(current)
+                                    store.save(validated)
+                                    auth = validated
+                                } catch (e: CancellationException) {
+                                    throw e
+                                } catch (e: Exception) {
+                                    error = e.message ?: "ตรวจสถานะบัญชีไม่สำเร็จ"
+                                } finally {
+                                    busy = false
+                                }
                             }
                         }
                     },
