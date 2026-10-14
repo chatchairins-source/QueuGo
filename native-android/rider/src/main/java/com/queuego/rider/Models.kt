@@ -331,6 +331,14 @@ data class RiderReverificationStatus(
 )
 
 
+data class RiderEmergencyContact(
+    val configured: Boolean,
+    val name: String?,
+    val phone: String?,
+    val updatedAt: String? = null
+)
+
+
 data class RiderHistoryOrder(
     val id: String,
     val number: String,
