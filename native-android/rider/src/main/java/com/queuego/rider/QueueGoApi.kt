@@ -1188,7 +1188,7 @@ class QueueGoApi {
         }
 
     suspend fun activeDeliveryReturn(auth: QueueGoAuth): RiderDeliveryReturn? = withContext(Dispatchers.IO) {
-        val raw = rpc("qg_rider_active_delivery_return", auth.session.accessToken, JSONObject())
+        val raw = rpc("qg_rider_active_delivery_return_v2", auth.session.accessToken, JSONObject())
         val row = when (raw) {
             is JSONArray -> raw.optJSONObject(0)
             is JSONObject -> raw
@@ -1196,20 +1196,27 @@ class QueueGoApi {
         } ?: return@withContext null
         val caseId = riderNullableUuid(row.optString("case_id")) ?: return@withContext null
         val orderId = riderNullableUuid(row.optString("order_id")) ?: return@withContext null
-        val shopId = riderNullableUuid(row.optString("shop_id")) ?: return@withContext null
         RiderDeliveryReturn(
             caseId = caseId,
             orderId = orderId,
             orderNumber = riderNullableText(row.optString("order_number")),
+            marketOrderId = riderNullableUuid(row.optString("market_order_id")),
             status = row.optString("status"),
             reason = row.optString("reason"),
             adminNote = riderNullableText(row.optString("admin_note")),
-            shopId = shopId,
+            expectedRefundAmount = row.doubleOrZero("expected_refund_amount"),
+            returnStopCount = row.optInt("return_stop_count", 1).coerceAtLeast(1),
+            returnedStopCount = row.optInt("returned_stop_count", 0).coerceAtLeast(0),
+            remainingStopCount = row.optInt("remaining_stop_count", 0).coerceAtLeast(0),
+            stopId = riderNullableUuid(row.optString("stop_id")),
+            stopOrderId = riderNullableUuid(row.optString("stop_order_id")),
+            stopSequence = row.optInt("stop_sequence").takeIf { row.has("stop_sequence") && !row.isNull("stop_sequence") && it > 0 },
+            stopRefundAmount = row.doubleOrZero("stop_refund_amount"),
+            shopId = riderNullableUuid(row.optString("shop_id")),
             shopName = riderNullableText(row.optString("shop_name")),
             shopAddress = riderNullableText(row.optString("shop_address")),
             shopLatitude = row.doubleOrNull("shop_latitude"),
             shopLongitude = row.doubleOrNull("shop_longitude"),
-            expectedRefundAmount = row.doubleOrZero("expected_refund_amount"),
             ticketId = riderNullableUuid(row.optString("ticket_id")),
             reportedAt = riderNullableText(row.optString("reported_at")),
             returnRequiredAt = riderNullableText(row.optString("return_required_at")),
