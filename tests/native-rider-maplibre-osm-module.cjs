@@ -88,13 +88,17 @@ assert(localRoadHttpsTransport.includes('endpoint.isHttps')&&
   localRoadHttpsTransport.includes('.get()')&&
   localRoadHttpsTransport.includes('continuation.invokeOnCancellation { call.cancel() }')&&
   localRoadHttpsTransport.includes('QUEUEGO_LOCAL_ROAD_MEDIA_TYPE')&&
+  localRoadHttpsTransport.includes('QUEUEGO_LOCAL_ROAD_MAX_SIGNED_PAYLOAD_BYTES.toLong()')&&
   localRoadHttpsTransport.includes('contentLength > maxPayloadBytes')&&
+  localRoadHttpsTransport.includes('QUEUEGO_LOCAL_ROAD_HEADER_ENVELOPE_VERSION')&&
+  localRoadHttpsTransport.includes('result.code == 204 || result.code == 304')&&
   localRoadHttpsTransport.includes('Base64.getDecoder().decode(signatureHeader)')&&
+  localRoadHttpsTransport.includes('envelopeVersion = envelopeVersion')&&
   localRoadHttpsTransport.includes('QueueGoLocalRoadSignedEnvelope(')&&
   !localRoadHttpsTransport.includes('.post(')&&
   !localRoadHttpsTransport.includes('.put(')&&
   !localRoadHttpsTransport.includes('.delete('),
-  'Local Roads HTTPS transport must stay read-only, cancellable, bounded and return the raw signed envelope for the single verifier/cache implementation');
+  'Local Roads HTTPS transport must stay read-only, cancellable, share the signed-core payload limit, carry envelope versioning and treat 204/304 as no-change responses');
 
 assert(!localRoadHttpsTransport.includes('supabase.co')&&
   !localRoadHttpsTransport.includes('api.queuego')&&
