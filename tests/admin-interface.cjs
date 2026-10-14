@@ -4,6 +4,7 @@ let checks=0;const ok=v=>{assert.ok(v);checks++},root=path.resolve(__dirname,'..
 ok(html.includes("qtSupabaseRpc('qg_admin_rider_reverification_queue')"));
 ok(html.includes("qtSupabaseRpc('qg_admin_request_rider_reverification'"));
 ok(html.includes("qtSupabaseRpc('qg_admin_review_rider_reverification'"));
+ok(html.includes("label:'เหตุผลที่ขอตรวจใหม่'"));
 ok(html.includes("qgAdminOpenEvidence("));
 ok(!html.includes('qg_private.rider_reverification_requests'));
 const d=new JSDOM('<div id="app"></div>',{url:'https://queuego.test/admin/#admin-governance',runScripts:'outside-only'}),w=d.window;w.HTMLDialogElement.prototype.showModal=function(){};
