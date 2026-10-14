@@ -46,6 +46,66 @@ internal fun riderRatingSummaryFromRpc(raw: Any?): RiderRatingSummary {
     )
 }
 
+internal fun riderDemandZonesFromRpc(raw: Any?): List<RiderDemandZone> {
+    val rows = when (raw) {
+        is JSONArray -> raw
+        is JSONObject -> raw.optJSONArray("zones") ?: JSONArray().put(raw)
+        else -> JSONArray()
+    }
+    val seen = hashSetOf<String>()
+    return buildList {
+        for (index in 0 until rows.length()) {
+            val row = rows.optJSONObject(index) ?: continue
+            val latitude = if (row.has("latitude") && !row.isNull("latitude")) {
+                row.optDouble("latitude").takeIf { it.isFinite() && it in 5.0..21.0 }
+            } else null
+            val longitude = if (row.has("longitude") && !row.isNull("longitude")) {
+                row.optDouble("longitude").takeIf { it.isFinite() && it in 97.0..106.0 }
+            } else null
+            val level = row.optInt("level", 0)
+            val windowHours = row.optInt("window_hours", 0)
+            if (latitude == null || longitude == null || level !in 1..3 || windowHours !in 1..168) continue
+            val key = latitude.toString() + ":" + longitude.toString()
+            if (!seen.add(key)) continue
+            add(RiderDemandZone(latitude, longitude, level, windowHours))
+        }
+    }
+}
+
+internal val riderComplimentKeys = setOf(
+    "polite","fast","careful","professional","friendly","helpful"
+)
+
+internal fun riderComplimentSummaryFromRpc(raw: Any?): RiderComplimentSummary {
+    val row = when (raw) {
+        is JSONObject -> raw
+        is JSONArray -> raw.optJSONObject(0) ?: JSONObject()
+        else -> JSONObject()
+    }
+    val items = row.optJSONArray("items") ?: JSONArray()
+    val seen = hashSetOf<String>()
+    val parsed = buildList {
+        for (index in 0 until items.length()) {
+            val item = items.optJSONObject(index) ?: continue
+            val key = item.optString("key").trim().lowercase()
+            val count = item.optInt("count", 0)
+            if (key !in riderComplimentKeys || count <= 0 || !seen.add(key)) continue
+            add(RiderComplimentCount(key, count))
+        }
+    }
+    return RiderComplimentSummary(
+        total = row.optInt("total", 0).coerceAtLeast(0),
+        items = parsed
+    )
+}
+
+internal fun riderProfilePhotoMimeType(raw: String?): String? = when (raw?.trim()?.lowercase()) {
+    "image/jpeg", "image/jpg" -> "image/jpeg"
+    "image/png" -> "image/png"
+    "image/webp" -> "image/webp"
+    else -> null
+}
+
 class QueueGoApi {
     companion object {
         private const val BASE_URL = "https://pkypiqhlrmzocysgeqew.supabase.co"
@@ -385,6 +445,28 @@ class QueueGoApi {
             )
         }
 
+    suspend fun complimentSummary(auth: QueueGoAuth): RiderComplimentSummary =
+        withContext(Dispatchers.IO) {
+            riderComplimentSummaryFromRpc(
+                rpc(
+                    "qg_rider_compliment_summary",
+                    auth.session.accessToken,
+                    JSONObject()
+                )
+            )
+        }
+
+    suspend fun demandHeatmap(auth: QueueGoAuth): List<RiderDemandZone> =
+        withContext(Dispatchers.IO) {
+            riderDemandZonesFromRpc(
+                rpc(
+                    "qg_rider_demand_heatmap",
+                    auth.session.accessToken,
+                    JSONObject()
+                )
+            )
+        }
+
     suspend fun history(auth: QueueGoAuth, limit: Int = 50): List<RiderHistoryOrder> =
         withContext(Dispatchers.IO) {
             val profiles = requestArray(
@@ -396,7 +478,7 @@ class QueueGoApi {
             val profileId = profiles.getJSONObject(0).getString("id")
             val rows = requestArray(
                 "GET",
-                "/rest/v1/orders?select=id,order_number,pickup_address,delivery_address,delivery_fee,updated_at" +
+                "/rest/v1/orders?select=id,order_number,pickup_address,delivery_address,delivery_fee,completed_at,updated_at" +
                     "&rider_id=eq." + enc(profileId) +
                     "&status=eq.completed&order=updated_at.desc&limit=" + limit.coerceIn(1, 200),
                 auth.session.accessToken
@@ -414,7 +496,9 @@ class QueueGoApi {
                             pickupAddress = r.optString("pickup_address").takeIf { it.isNotBlank() },
                             deliveryAddress = r.optString("delivery_address").takeIf { it.isNotBlank() },
                             deliveryFee = r.optDouble("delivery_fee", 0.0),
-                            completedAt = r.optString("updated_at").takeIf { it.isNotBlank() }
+                            completedAt = r.optString("completed_at")
+                                .takeIf { it.isNotBlank() && it != "null" }
+                                ?: r.optString("updated_at").takeIf { it.isNotBlank() && it != "null" }
                         )
                     )
                 }
@@ -456,6 +540,59 @@ class QueueGoApi {
                 )
             }
         }
+    }
+
+    suspend fun updateProfilePhoto(
+        context: Context,
+        auth: QueueGoAuth,
+        photoUri: Uri
+    ): String = withContext(Dispatchers.IO) {
+        val mime = riderProfilePhotoMimeType(context.contentResolver.getType(photoUri))
+            ?: error("รองรับเฉพาะรูป JPG, PNG หรือ WebP")
+        val bytes = context.contentResolver.openInputStream(photoUri)?.use { it.readBytes() }
+            ?: error("อ่านรูปโปรไฟล์ไม่ได้")
+        if (bytes.isEmpty()) error("รูปโปรไฟล์ว่าง")
+        if (bytes.size > 5 * 1024 * 1024) error("รูปโปรไฟล์ต้องมีขนาดไม่เกิน 5 MB")
+
+        val path = auth.session.authUserId + "/profile"
+        val connection = URL(BASE_URL + "/storage/v1/object/rider-profile/" + path)
+            .openConnection() as HttpURLConnection
+        try {
+            connection.requestMethod = "POST"
+            connection.connectTimeout = TIMEOUT
+            connection.readTimeout = TIMEOUT
+            connection.doOutput = true
+            connection.setRequestProperty("apikey", PUBLISHABLE_KEY)
+            connection.setRequestProperty("Authorization", "Bearer " + auth.session.accessToken)
+            connection.setRequestProperty("Content-Type", mime)
+            connection.setRequestProperty("x-upsert", "true")
+            connection.outputStream.use { it.write(bytes) }
+
+            val code = connection.responseCode
+            if (code !in 200..299) {
+                val text = connection.errorStream?.use {
+                    BufferedReader(InputStreamReader(it, StandardCharsets.UTF_8)).readText()
+                }.orEmpty()
+                val message = runCatching { JSONObject(text).optString("message") }.getOrNull()
+                    ?.takeIf { it.isNotBlank() } ?: "อัปโหลดรูปโปรไฟล์ไม่สำเร็จ"
+                throw RiderHttpException(code, message)
+            }
+        } finally {
+            connection.disconnect()
+        }
+
+        val raw = rpc(
+            "qg_rider_set_profile_photo",
+            auth.session.accessToken,
+            JSONObject().put("p_path", path)
+        )
+        val row = when (raw) {
+            is JSONObject -> raw
+            is JSONArray -> raw.optJSONObject(0) ?: JSONObject()
+            else -> JSONObject()
+        }
+        riderNullableText(row.optString("url"))
+            ?: error("ระบบยังไม่ยืนยันรูปโปรไฟล์")
     }
 
     suspend fun updateAccount(

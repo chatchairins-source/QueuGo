@@ -324,6 +324,63 @@ class NavigationMapRuntimeTest {
     }
 
     @Test
+    fun demandHeatmapReconcilesPinsWithoutRecreatingMapObjects() {
+        ActivityScenario.launch(NavigationMapRuntimeActivity::class.java).use { scenario ->
+            lateinit var activity: NavigationMapRuntimeActivity
+            scenario.onActivity { activity = it }
+            assertTrue(
+                "Navigation map did not become ready for demand heatmap test",
+                activity.mapReady.await(30, TimeUnit.SECONDS)
+            )
+
+            var initialView = 0
+            var initialMap = 0
+            var before = activity.latestDiagnostics
+            scenario.onActivity {
+                initialView = it.mapViewIdentity()
+                initialMap = it.sdkMapIdentity()
+                before = it.latestDiagnostics
+                it.showDemandHeatmapFixture(level = 1)
+            }
+            InstrumentationRegistry.getInstrumentation().waitForIdleSync()
+            var after = awaitAppliedRender(activity, before.renderPassCount)
+            assertTrue(
+                "Demand heatmap did not add aggregate pins",
+                after.demandMutationCount >= before.demandMutationCount + 2
+            )
+
+            scenario.onActivity {
+                assertEquals("Demand heatmap recreated MapGLSurfaceView", initialView, it.mapViewIdentity())
+                assertEquals("Demand heatmap recreated Longdo map", initialMap, it.sdkMapIdentity())
+                before = it.latestDiagnostics
+                it.showDemandHeatmapFixture(level = 3)
+            }
+            after = awaitAppliedRender(activity, before.renderPassCount)
+            assertTrue(
+                "Demand level change did not reconcile its pin",
+                after.demandMutationCount >= before.demandMutationCount + 2
+            )
+
+            scenario.onActivity {
+                assertEquals("Demand update recreated MapGLSurfaceView", initialView, it.mapViewIdentity())
+                assertEquals("Demand update recreated Longdo map", initialMap, it.sdkMapIdentity())
+                before = it.latestDiagnostics
+                it.clearDemandHeatmapFixture()
+            }
+            after = awaitAppliedRender(activity, before.renderPassCount)
+            assertTrue(
+                "Demand heatmap clear did not remove aggregate pins",
+                after.demandMutationCount >= before.demandMutationCount + 2
+            )
+
+            scenario.onActivity {
+                assertEquals("Demand clear recreated MapGLSurfaceView", initialView, it.mapViewIdentity())
+                assertEquals("Demand clear recreated Longdo map", initialMap, it.sdkMapIdentity())
+            }
+        }
+    }
+
+    @Test
     fun routeProgressMutatesExistingLongdoLineWithoutRecreatingIt() {
         ActivityScenario.launch(NavigationMapRuntimeActivity::class.java).use { scenario ->
             lateinit var activity: NavigationMapRuntimeActivity

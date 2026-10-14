@@ -21,14 +21,20 @@ import com.queuego.shared.QgMuted
 import com.queuego.shared.QgRed
 import com.queuego.shared.QgRedSoft
 import kotlinx.coroutines.CancellationException
+import java.time.Instant
 import java.time.LocalDate
+import java.time.OffsetDateTime
 import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 
 @Composable
 fun RiderEarningsScreen(auth: QueueGoAuth, api: QueueGoApi, onBack: () -> Unit, modifier: Modifier = Modifier) {
     var days by remember { mutableIntStateOf(1) }
     var summary by remember { mutableStateOf<RiderPeriodSummary?>(null) }
     var ledger by remember { mutableStateOf<List<RiderCashLedgerEntry>?>(null) }
+    var historyDetails by remember { mutableStateOf<List<RiderHistoryOrder>>(emptyList()) }
+    var expandedOrderId by remember { mutableStateOf<String?>(null) }
     var summaryError by remember { mutableStateOf<String?>(null) }
     var ledgerError by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(auth.session.accessToken, days) {
@@ -37,9 +43,23 @@ fun RiderEarningsScreen(auth: QueueGoAuth, api: QueueGoApi, onBack: () -> Unit, 
     }
     LaunchedEffect(auth.session.accessToken, days) {
         ledger = null; ledgerError = null
+        expandedOrderId = null
         val to = LocalDate.now(ZoneId.of("Asia/Bangkok"))
         val from = to.minusDays((days - 1).toLong())
-        try { ledger = api.cashLedger(auth, from.toString(), to.toString()) } catch (e: CancellationException) { throw e } catch (e: Exception) { ledgerError = "โหลดบัญชีเงินสดไม่สำเร็จ: " + (e.message ?: "เชื่อมต่อไม่ได้") }
+        try {
+            ledger = api.cashLedger(auth, from.toString(), to.toString())
+            historyDetails = try {
+                api.history(auth, 200)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                emptyList()
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            ledgerError = "โหลดบัญชีเงินสดไม่สำเร็จ: " + (e.message ?: "เชื่อมต่อไม่ได้")
+        }
     }
     Column(modifier.fillMaxSize().background(Color(0xFFF8F7F8)).verticalScroll(rememberScrollState())
         .padding(horizontal = 14.dp).padding(top = 15.dp, bottom = 78.dp)) {
@@ -138,22 +158,106 @@ fun RiderEarningsScreen(auth: QueueGoAuth, api: QueueGoApi, onBack: () -> Unit, 
                 RiderEarningsCard {
                     RiderEarnSectionTitle("รายการงานล่าสุด", "${rows.size} งาน")
                     if (rows.isEmpty()) RiderEarnLoading("ยังไม่มีรายการ")
-                    rows.take(30).forEachIndexed { index, row ->
-                        Row(Modifier.fillMaxWidth().padding(vertical = 11.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                            Column(Modifier.weight(1f)) {
-                                Text(row.numberLabel, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                                Text(row.status, color = QgMuted, fontSize = 8.sp)
+                    val detailByOrder = remember(historyDetails) {
+                        historyDetails.associateBy { it.id }
+                    }
+                    val visibleRows = rows.take(30)
+                    visibleRows.forEachIndexed { index, row ->
+                        val detail = detailByOrder[row.orderId]
+                        val expanded = expandedOrderId == row.orderId
+                        Column(
+                            Modifier
+                                .fillMaxWidth()
+                                .clickable(role = Role.Button) {
+                                    expandedOrderId = if (expanded) null else row.orderId
+                                }
+                                .padding(vertical = 11.dp)
+                        ) {
+                            Row(
+                                Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column(Modifier.weight(1f)) {
+                                    Text(row.numberLabel, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                                    Text(
+                                        riderHistoryStatusLabel(row.status),
+                                        color = QgMuted,
+                                        fontSize = 8.sp,
+                                        modifier = Modifier.padding(top = 2.dp)
+                                    )
+                                    riderHistoryCompletedLabel(detail?.completedAt ?: row.createdAt)?.let {
+                                        Text(it, color = QgMuted, fontSize = 8.sp, modifier = Modifier.padding(top = 2.dp))
+                                    }
+                                }
+                                Column(horizontalAlignment = Alignment.End) {
+                                    Text(
+                                        if (row.status == "completed") "สำเร็จ" else "ดูรายละเอียด",
+                                        color = QgMuted,
+                                        fontSize = 8.sp
+                                    )
+                                    Text(baht(row.deliveryFee), fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                                    Text(if (expanded) "ซ่อน ▲" else "รายละเอียด ▼", color = QgRed, fontSize = 8.sp)
+                                }
                             }
-                            Column(horizontalAlignment = Alignment.End) {
-                                Text(if (row.status == "completed") "สำเร็จ" else "กำลังดำเนินการ", color = QgMuted, fontSize = 8.sp)
-                                Text(baht(row.deliveryFee), fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                            if (expanded) {
+                                RiderJobHistoryDetail(row = row, detail = detail)
                             }
                         }
-                        if (index < rows.take(30).lastIndex) HorizontalDivider(color = Color(0xFFF0EAEC))
+                        if (index < visibleRows.lastIndex) HorizontalDivider(color = Color(0xFFF0EAEC))
                     }
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun RiderJobHistoryDetail(
+    row: RiderCashLedgerEntry,
+    detail: RiderHistoryOrder?
+) {
+    Spacer(Modifier.height(9.dp))
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .background(Color(0xFFFAF7F8), RoundedCornerShape(14.dp))
+            .padding(11.dp)
+    ) {
+        Text("เส้นทางงาน", color = QgMuted, fontSize = 8.sp, fontWeight = FontWeight.Bold)
+        Text(
+            "รับ · " + detail?.pickupAddress.orEmpty().ifBlank { "ไม่มีรายละเอียดจุดรับ" },
+            fontSize = 11.sp,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(top = 6.dp)
+        )
+        Text(
+            "ส่ง · " + detail?.deliveryAddress.orEmpty().ifBlank { "ไม่มีรายละเอียดจุดส่ง" },
+            color = Color(0xFF5E575B),
+            fontSize = 10.sp,
+            modifier = Modifier.padding(top = 4.dp)
+        )
+        Spacer(Modifier.height(10.dp))
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+            RiderCashStat("ค่าส่ง", baht(row.deliveryFee), Modifier.weight(1f))
+            RiderCashStat("จ่ายร้าน", baht(row.cashPaidMerchant), Modifier.weight(1f))
+        }
+        Spacer(Modifier.height(7.dp))
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+            RiderCashStat("เก็บลูกค้า", baht(row.cashCollectedCustomer), Modifier.weight(1f))
+            RiderCashStat(
+                "เงินสดรับ-จ่าย",
+                baht(riderHistoryCashFlow(row)),
+                Modifier.weight(1f),
+                if (riderHistoryCashFlow(row) >= 0.0) Color(0xFF17171B) else QgRed
+            )
+        }
+        Text(
+            "เงินสดรับ-จ่ายเป็นกระแสเงินสดของเที่ยว ไม่ใช่กำไรสุทธิ",
+            color = QgMuted,
+            fontSize = 8.sp,
+            modifier = Modifier.padding(top = 8.dp)
+        )
     }
 }
 
@@ -202,6 +306,33 @@ private fun RiderEarnError(message: String) {
     Box(Modifier.fillMaxWidth().padding(top = 12.dp).background(Color(0xFFFFF3F5), RoundedCornerShape(18.dp)).padding(horizontal = 18.dp, vertical = 28.dp)) {
         Text(message, color = Color(0xFF7D2738), fontSize = 12.sp)
     }
+}
+
+internal fun riderHistoryCashFlow(row: RiderCashLedgerEntry): Double =
+    row.cashCollectedCustomer - row.cashPaidMerchant
+
+internal fun riderHistoryStatusLabel(status: String): String = when (status.lowercase()) {
+    "completed" -> "งานส่งสำเร็จ"
+    "cancelled" -> "งานถูกยกเลิก"
+    "no_rider_available" -> "งานสิ้นสุด"
+    "picked_up" -> "รับสินค้าแล้ว"
+    "in_progress" -> "กำลังจัดส่ง"
+    "ready" -> "พร้อมรับสินค้า"
+    "preparing" -> "ร้านกำลังเตรียม"
+    "rider_assigned", "assigned" -> "รับงานแล้ว"
+    else -> status.ifBlank { "สถานะงาน" }
+}
+
+internal fun riderHistoryCompletedLabel(raw: String?): String? {
+    val value = raw?.trim()?.takeIf { it.isNotEmpty() && !it.equals("null", true) } ?: return null
+    val instant = runCatching { Instant.parse(value) }
+        .getOrElse {
+            runCatching { OffsetDateTime.parse(value).toInstant() }.getOrNull() ?: return null
+        }
+    val formatter = DateTimeFormatter
+        .ofPattern("d MMM · HH:mm", Locale("th", "TH"))
+        .withZone(ZoneId.of("Asia/Bangkok"))
+    return formatter.format(instant)
 }
 
 private fun baht(value: Double) = riderMoneyBaht(value, fixedCashDecimals = true)

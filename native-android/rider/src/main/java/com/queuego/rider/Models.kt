@@ -289,6 +289,23 @@ data class RiderRatingSummary(
     val distribution: Map<Int, Int> = emptyMap()
 )
 
+data class RiderComplimentCount(
+    val key: String,
+    val count: Int
+)
+
+data class RiderComplimentSummary(
+    val total: Int,
+    val items: List<RiderComplimentCount> = emptyList()
+)
+
+data class RiderDemandZone(
+    val latitude: Double,
+    val longitude: Double,
+    val level: Int,
+    val windowHours: Int
+)
+
 
 data class RiderHistoryOrder(
     val id: String,

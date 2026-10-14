@@ -1,3 +1,43 @@
+## 2026-10-14 Rider Grab-parity consolidated Release Gate
+- Consolidated the post-PR224 Rider experience work onto one exact-head release-gate branch: privacy-safe demand heatmap, map-reuse runtime assertions, real customer compliments, detailed job history and Rider-managed public profile photo.
+- The branch name intentionally enters navigation-map-runtime so the retained Longdo renderer and the full Native pilot suite run on the same head. No PASS claim is allowed unless both are green.
+- Active Production Rider aggregate currently has 3 active Riders and 0 profile photos, so the profile UI now labels the empty state as "เพิ่มรูป" and explains that Customer/Merchant use it to identify the Rider. This is non-blocking for the current pilot; no online-state hard gate was added.
+- Production backend migrations already applied in this chain: 20261014055901 rider_demand_heatmap_v1, 20261014061234 rider_compliments_v1, 20261014062708 rider_public_profile_photo_v1. No Grab proprietary code/assets/map geometry were copied.
+
+## 2026-10-14 Grab Driver parity mission: Rider-managed public profile photo
+- Added a dedicated public rider-profile Storage bucket for the Rider identity photo shown to Customer, Merchant and Rider. This is intentionally separate from private qg-evidence/KYC/proof media.
+- Storage writes are restricted to active Rider owner paths under auth.uid(); the app uses one stable authUid/profile object with upsert, max 5 MB and JPG/PNG/WebP only. A server RPC verifies the uploaded owner object and updates only rider_profiles.metadata.profileImage, preserving KYC, vehicle approval and all unrelated metadata.
+- The stored public URL carries a version query so replacing the same object changes the Compose image source and avoids stale profile-photo cache. Native Rider profile lets the Rider choose a new image from the device and refreshes the authoritative snapshot after server confirmation.
+- Production migration 20261014062708 rider_public_profile_photo_v1 is applied. anon cannot execute the profile-photo mutation RPC. No KYC document or approval state is modified. Backup backup/rider-grab-parity-before-profile-photo-20261014 retains d9b0eaf. Exact-head CI and physical upload verification remain required before PASS.
+
+## 2026-10-14 Heatmap map-reuse guard preserved in Rider parity successor
+- Pulled forward Work PR228 runtime assertions onto the latest Job History successor. These diagnostics prove demand add/level-change/clear reconciles pins while preserving the same MapGLSurfaceView and Longdo map identities.
+- No Heatmap product behavior changed here; this preserves the stronger renderer continuity guard while later Rider parity work continues.
+
+## 2026-10-14 Grab Driver parity mission: detailed Rider Job History
+- Upgraded the existing Rider Earnings recent-job list instead of creating a duplicate screen. Cash ledger remains the authoritative date-range source; existing owned completed-order history enriches each row with pickup address, delivery address and completion time.
+- Each recent job can expand in place to show pickup -> delivery, delivery fee, cash paid to merchant, cash collected from customer and cash received-minus-paid for that trip. UI explicitly labels this as cash flow, not net profit.
+- Rider history now prefers orders.completed_at and falls back to updated_at only for legacy rows. Completion time is formatted in Asia/Bangkok. Missing detail fails gracefully without fabricating addresses or timestamps.
+- No Production DB change and no order/dispatch/payment flow change. Backup backup/rider-grab-parity-before-job-history-20261014 retains d8057e0. Exact-head Native CI is required before PASS.
+
+## 2026-10-14 Grab Driver parity mission: real Rider compliments
+- Added optional Rider compliments as real customer-generated data on top of the existing rider_rating flow. Customer can choose up to three allowlisted compliments only after a 4–5 star Rider rating: polite, fast, careful, professional, friendly and helpful. No default/fake badges are created.
+- Production migration 20261014061234 rider_compliments_v1 stores compliment selections only in qg_private, not the public reviews table. Public wrappers are authenticated-only; customer read/write is restricted to the customer's own completed reviewed order and Rider aggregate is restricted to the current active Rider. Rider sees counts only, never customer identities/comments/order IDs.
+- Native Customer loads, edits and persists its own compliment selections with the review. Lowering Rider rating below 4 clears compliments via a private cleanup trigger. Native Rider profile shows up to the top three real compliment badges with counts; zero data renders no badges.
+- Backend contracts were exercised with active real Rider and Customer session claims without exposing identifiers; both empty-state reads returned zero as expected. Backup backup/rider-grab-parity-before-compliments-20261014 retains fd2ea9f. Exact successor CI is required before PASS.
+
+## 2026-10-14 Rider demand heatmap exact runtime gate
+- Re-cut the unchanged privacy-safe Heatmap implementation from 03f5194 onto branch work-native-rider-navigation-map-demand-heatmap-20261014 because the repository's navigation-map-runtime job is intentionally branch-prefix gated. This successor exists to force the actual retained Longdo navigation renderer runtime gate on the exact Heatmap implementation without weakening or changing CI conditions.
+- No product/backend behavior changed in this checkpoint. Source implementation remains the Production-tested aggregate heatmap from PR225; PASS requires both native-pilot and navigation-map-runtime on this successor HEAD.
+
+## 2026-10-14 Grab Driver parity mission: privacy-safe Rider demand heatmap
+- Continued exact unified parity head 9755a92 / PR224. The owner-supplied Grab Driver 5.457.1 package contains heatmap/hotspot capability; QueueGo implements its own aggregate demand surface without copying Grab code, assets, geometry or styling.
+- Production migration 20261014055901 rider_demand_heatmap_v1 is additive. Public qg_rider_demand_heatmap() is SECURITY INVOKER with anon EXECUTE revoked; private helper verifies auth.uid, live auth.sessions session_id and an active Rider profile. Security advisor reported no finding for the new RPC; existing unrelated advisor debt is unchanged.
+- Demand privacy policy: shopping pickups only; last 24 hours for pilot volume; 0.02-degree coarse grid (about 2 km); at least 2 orders per cell; max 25 cells. Response contains only coarse latitude/longitude, level 1-3 and window_hours. It never returns raw counts, order IDs, customer identities, shop identities or delivery destinations.
+- Production contract was exercised using claims from a currently active real Rider session without exposing its identifiers: result contained 1 coarse zone at level 1 with a 24-hour window.
+- Native Rider refreshes the aggregate at most every 5 minutes while online and idle. Demand overlays are removed for any offered/active/laundry job, never change camera/route selection, and reconcile stable coordinate-keyed cached pins in the retained navigation renderer instead of rebuilding the map. Empty/failing reads do not fabricate demand.
+- Existing orders created_at and order_type indexes already support the bounded 24-hour source query; no new index was added. Backup backup/rider-grab-parity-before-demand-heatmap-20261014 retains 9755a92. Exact-head JVM/build/map runtime CI is required before PASS.
+
 ## 2026-10-14 Grab Driver parity unified successor: Safety + Rating + Identity + Performance
 - Reconciled parallel parity work after discovering Work PR221/PR222 were newer than the standalone performance branch. PR222 head 4afb11e2 is now the Source of Truth because it already contains Rider real rating, Merchant assigned-Rider identity, Production migration mirror and Safety Centre on top of PR219 identity/diagnostics.
 - Added the previously separate Rider Performance view onto that exact successor: average income per completed job, jobs per online hour, average income per day and jobs per day, derived only from the authoritative period summary. Zero-job/zero-online periods never fabricate per-job/per-hour values.

@@ -56,6 +56,7 @@ private val ACTIVE_ROUTE_COLOR = floatArrayOf(230f / 255f, 0f, 45f / 255f, 0.96f
 private val FUTURE_ROUTE_COLOR = floatArrayOf(230f / 255f, 0f, 45f / 255f, 0.28f)
 
 private data class RenderedStop(val signature: String, val pin: Pin)
+private data class RenderedDemandZone(val signature: String, val pin: Pin)
 private data class RiderPuckBitmapKey(val rotationDegrees: Int, val opacityPercent: Int)
 
 internal fun riderMarkerMoveThresholdMeters(speedMetersPerSecond: Float?): Double = when {
@@ -131,12 +132,15 @@ private class RiderNavigationMapHolder {
     private var lastPuckOpacity: Float? = null
     private var lastOverviewSignature: String? = null
     private val stopPins = linkedMapOf<String, RenderedStop>()
+    private val demandPins = linkedMapOf<String, RenderedDemandZone>()
     private val routeLines = mutableListOf<Line>()
     private var renderedRouteSegments: List<NavigationRouteSegment> = emptyList()
     private val markerBitmaps = mutableMapOf<Int, Bitmap>()
     private val riderPuckBitmaps = mutableMapOf<RiderPuckBitmapKey, Bitmap>()
     private val stopBitmaps = mutableMapOf<Triple<NavigationStopKind, Int, Boolean>, Bitmap>()
+    private val demandBitmaps = mutableMapOf<Int, Bitmap>()
     private var stopSource: List<NavigationMapStop>? = null
+    private var demandSource: List<NavigationDemandZone>? = null
     private var stopActiveId: String? = null
     private var routeSource: List<NavigationRouteSegment>? = null
     private var routeActiveId: String? = null
@@ -147,6 +151,7 @@ private class RiderNavigationMapHolder {
     private var routeLayerRebuildCount = 0
     private var routeGeometryUpdateCount = 0
     private var stopMutationCount = 0
+    private var demandMutationCount = 0
     private var renderPassCount = 0
     private var snapshotCaptureCount = 0
     private var snapshotBridgeCount = 0
@@ -347,10 +352,12 @@ private class RiderNavigationMapHolder {
         announcedReplacementMap = null
         riderPin = null
         stopPins.clear()
+        demandPins.clear()
         routeLines.clear()
         renderedRouteSegments = emptyList()
         stopSource = null
         stopActiveId = null
+        demandSource = null
         routeSource = null
         routeActiveId = null
         routeRemainingStopIds = emptySet()
@@ -540,6 +547,7 @@ private class RiderNavigationMapHolder {
             }
             lastRiderFix = nextFix
         }
+        renderDemandZones(activeMap, state)
         renderStops(activeMap, state)
         renderRoutes(activeMap, state)
 
@@ -719,6 +727,51 @@ private class RiderNavigationMapHolder {
             lastCameraBearing = 0f
             lastCameraCenter = viewportDecision.center
         }
+    }
+
+    private fun renderDemandZones(activeMap: com.longdo.api.Map, state: RiderNavigationMapState) {
+        if (state.demandZones == demandSource) return
+        val desired = state.renderableDemandZones().associateBy { it.id }
+        var succeeded = true
+
+        demandPins.keys.filter { it !in desired.keys }.toList().forEach { id ->
+            val rendered = demandPins[id] ?: return@forEach
+            if (runCatching { activeMap.removePin(rendered.pin) }.isSuccess) {
+                demandPins.remove(id)
+                demandMutationCount += 1
+            } else succeeded = false
+        }
+
+        desired.values.forEach { zone ->
+            val signature = listOf(
+                zone.point.latitude.toString(),
+                zone.point.longitude.toString(),
+                zone.level.toString(),
+                zone.windowHours.toString()
+            ).joinToString("|")
+            val existing = demandPins[zone.id]
+            if (existing?.signature == signature) return@forEach
+            if (existing != null) {
+                if (runCatching { activeMap.removePin(existing.pin) }.isFailure) {
+                    succeeded = false
+                    return@forEach
+                }
+                demandPins.remove(zone.id)
+                demandMutationCount += 1
+            }
+            val pin = Pin(
+                MapLocation(zone.point.longitude, zone.point.latitude),
+                demandBitmap(zone.level)
+            )
+            // Longdo Pin anchors at bitmap center by default. Keep the demand halo centered
+            // on the coarse cell; stop markers use a negative Y offset only because they
+            // have a pointed tip.
+            if (runCatching { activeMap.pushPin(pin) }.isSuccess) {
+                demandPins[zone.id] = RenderedDemandZone(signature, pin)
+                demandMutationCount += 1
+            } else succeeded = false
+        }
+        demandSource = if (succeeded && demandPins.keys == desired.keys) state.demandZones else null
     }
 
     private fun renderStops(activeMap: com.longdo.api.Map, state: RiderNavigationMapState) {
@@ -945,6 +998,33 @@ private class RiderNavigationMapHolder {
         }
     }
 
+    private fun demandBitmap(level: Int): Bitmap =
+        demandBitmaps.getOrPut(level.coerceIn(1, 3)) {
+            val normalized = level.coerceIn(1, 3)
+            val density = view?.resources?.displayMetrics?.density?.coerceAtLeast(1f) ?: 1f
+            val sizeDp = when (normalized) { 1 -> 56f; 2 -> 70f; else -> 86f }
+            val size = (sizeDp * density).toInt().coerceAtLeast(1)
+            val alpha = when (normalized) { 1 -> 42; 2 -> 58; else -> 76 }
+            Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888).also { bitmap ->
+                val canvas = Canvas(bitmap)
+                val center = size / 2f
+                val radius = size * 0.45f
+                canvas.drawCircle(center, center, radius, Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                    color = Color.argb(alpha, 230, 0, 45)
+                    style = Paint.Style.FILL
+                })
+                canvas.drawCircle(center, center, radius * 0.52f, Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                    color = Color.argb((alpha + 34).coerceAtMost(150), 230, 0, 45)
+                    style = Paint.Style.FILL
+                })
+                canvas.drawCircle(center, center, radius, Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                    color = Color.argb(105, 230, 0, 45)
+                    style = Paint.Style.STROKE
+                    strokeWidth = 1.5f * density
+                })
+            }
+        }
+
     private fun stopBitmap(kind: NavigationStopKind, number: Int, active: Boolean): Bitmap =
         stopBitmaps.getOrPut(Triple(kind, number, active)) {
             val resId = if (kind == NavigationStopKind.PICKUP) SharedR.drawable.qg_map_pickup
@@ -992,6 +1072,7 @@ private class RiderNavigationMapHolder {
                 routeLayerRebuildCount = routeLayerRebuildCount,
                 routeGeometryUpdateCount = routeGeometryUpdateCount,
                 stopMutationCount = stopMutationCount,
+                demandMutationCount = demandMutationCount,
                 renderPassCount = renderPassCount,
                 snapshotCaptureCount = snapshotCaptureCount,
                 snapshotBridgeCount = snapshotBridgeCount,
@@ -1008,12 +1089,14 @@ private class RiderNavigationMapHolder {
             routeLines.forEach { line -> runCatching { activeMap.removeLine(line) } }
             riderPin?.let { pin -> runCatching { activeMap.removePin(pin) } }
             stopPins.values.forEach { rendered -> runCatching { activeMap.removePin(rendered.pin) } }
+            demandPins.values.forEach { rendered -> runCatching { activeMap.removePin(rendered.pin) } }
         }
         riderMarkerAnimator?.cancel()
         riderMarkerAnimator = null
         routeLines.clear()
         renderedRouteSegments = emptyList()
         stopPins.clear()
+        demandPins.clear()
         riderPin = null
         map = null
         view = null
