@@ -319,6 +319,21 @@ data class RiderDemandZone(
     val windowHours: Int
 )
 
+data class RiderSupplyWindow(
+    val dayOfWeek: Int,
+    val startHour: Int,
+    val endHour: Int,
+    val level: Int
+)
+
+data class RiderSupplyPlan(
+    val ready: Boolean,
+    val confidence: String,
+    val sourceDays: Int,
+    val forecast: Boolean,
+    val windows: List<RiderSupplyWindow>
+)
+
 data class RiderDestinationPreference(
     val configured: Boolean,
     val enabled: Boolean,
