@@ -31,6 +31,7 @@ internal fun RiderDeliveryReturnCard(
     state: RiderDeliveryReturn,
     photoReady: Boolean,
     busy: Boolean,
+    networkAvailable: Boolean,
     onStartReturn: () -> Unit,
     onNavigate: () -> Unit,
     onCaptureProof: () -> Unit,
@@ -129,8 +130,8 @@ internal fun RiderDeliveryReturnCard(
             if (state.status == "return_required") {
                 Button(
                     onClick = onStartReturn,
-                    enabled = !busy,
-                    modifier = Modifier.fillMaxWidth().height(48.dp),
+                    enabled = !busy && networkAvailable,
+                    modifier = Modifier.fillMaxWidth().height(RIDER_PRIMARY_ACTION_MIN_HEIGHT_DP.dp),
                     shape = RoundedCornerShape(17.dp)
                 ) {
                     Text("นำทางกลับร้าน", fontWeight = FontWeight.Black)
@@ -139,7 +140,7 @@ internal fun RiderDeliveryReturnCard(
                 OutlinedButton(
                     onClick = onNavigate,
                     enabled = !busy,
-                    modifier = Modifier.fillMaxWidth().height(45.dp),
+                    modifier = Modifier.fillMaxWidth().height(RIDER_SECONDARY_ACTION_MIN_HEIGHT_DP.dp),
                     shape = RoundedCornerShape(16.dp)
                 ) {
                     Text("นำทางกลับร้าน", fontWeight = FontWeight.Bold)
@@ -147,8 +148,8 @@ internal fun RiderDeliveryReturnCard(
                 Spacer(Modifier.height(7.dp))
                 Button(
                     onClick = if (photoReady) onCompleteReturn else onCaptureProof,
-                    enabled = !busy,
-                    modifier = Modifier.fillMaxWidth().height(48.dp),
+                    enabled = !busy && (!photoReady || networkAvailable),
+                    modifier = Modifier.fillMaxWidth().height(RIDER_PRIMARY_ACTION_MIN_HEIGHT_DP.dp),
                     shape = RoundedCornerShape(17.dp)
                 ) {
                     Text(
