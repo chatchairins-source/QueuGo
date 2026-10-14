@@ -25,7 +25,7 @@ class QueueGoPmTilesDownloadWorker(
         val destination = File(applicationContext.filesDir, "queuego-maps/$fileName")
         return runCatching {
             QueueGoPmTilesDownloader().download(sourceUrl, destination) { progress ->
-                setProgress(
+                setProgressAsync(
                     workDataOf(
                         KEY_DOWNLOADED_BYTES to progress.downloadedBytes,
                         KEY_TOTAL_BYTES to (progress.totalBytes ?: -1L)
