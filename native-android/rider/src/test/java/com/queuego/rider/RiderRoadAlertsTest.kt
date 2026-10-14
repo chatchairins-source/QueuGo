@@ -7,6 +7,13 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class RiderRoadAlertsTest {
+    @Test fun publicAlertSurfaceIsRestrictedToReviewedRoadHazards() {
+        assertEquals(
+            setOf("road_closed", "bad_road", "unsafe_turn"),
+            riderPublicRoadAlertCategories
+        )
+    }
+
     @Test fun parserKeepsOnlyPublicVerifiedRoadAlertCategories() {
         val rows = JSONArray()
             .put(
