@@ -2368,7 +2368,7 @@ private fun RiderHome(
                                             runCatching {
                                                 api.completeDeliveryReturn(context, auth, returnCase.caseId, proof)
                                             }.onSuccess {
-                                                playRiderEventFeedback(eventFeedbackView, RiderEventFeedbackKind.PICKUP_SUCCESS)
+                                                playRiderEventFeedback(eventFeedbackView, RiderEventFeedbackKind.RETURN_COMPLETE)
                                                 actionMessage = "คืนสินค้าให้ร้านเรียบร้อย · บันทึกเงินคืน Rider แล้ว"
                                                 proofStore.clearConfirmedMatching(
                                                     auth.user.id,
