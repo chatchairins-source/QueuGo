@@ -71,3 +71,4 @@ internal fun riderEtaLabel(seconds: Double): String {
         else -> "$totalMinutes นาที"
     }
 }
+// QueueGo Rider unified parity release-gate checkpoint: ETA HUD is read-only.
