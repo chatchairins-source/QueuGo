@@ -2540,6 +2540,13 @@ private fun MarketPickupPanel(
                     fontWeight = FontWeight.SemiBold
                 )
                 if (!pickup.shopAddress.isNullOrBlank()) Text(pickup.shopAddress)
+                RiderPickupGuideBlock(
+                    pickupInstructions = pickup.pickupInstructions,
+                    parkingInstructions = pickup.parkingInstructions,
+                    marketZone = pickup.marketZone,
+                    marketStallNo = pickup.marketStallNo,
+                    compact = true
+                )
                 Text("ยอดร้าน " + riderMoneyBaht(pickup.shopAmount))
                 Spacer(Modifier.height(6.dp))
                 if (pickup.done) {
@@ -2665,6 +2672,14 @@ private fun ActiveJobCard(
                 Text(if (pickup) "จุดรับสินค้า" else "ที่อยู่จัดส่ง", fontSize = 8.sp, color = QgMuted)
                 Text((if (pickup) job.pickupAddress else job.deliveryAddress) ?: "พิกัดยังไม่พร้อม", fontSize = 12.sp, fontWeight = FontWeight.Bold)
             }
+            if (pickup && details != null) {
+                RiderPickupGuideBlock(
+                    pickupInstructions = details.pickupInstructions,
+                    parkingInstructions = details.parkingInstructions,
+                    marketZone = details.marketZone,
+                    marketStallNo = details.marketStallNo
+                )
+            }
             details?.note?.let { note ->
                 Column(Modifier.fillMaxWidth().padding(top = 6.dp).background(Color(0xFFFFF9EA), RoundedCornerShape(14.dp)).padding(10.dp)) {
                     Text("หมายเหตุจากลูกค้า", color = QgMuted, fontSize = 8.sp)
@@ -2698,6 +2713,38 @@ private fun ActiveJobCard(
                 Text(primaryLabel, fontSize = 12.sp, fontWeight = FontWeight.Black)
             }
         }
+    }
+}
+
+internal fun riderPickupAreaLabel(marketZone: String?, marketStallNo: String?): String? =
+    listOfNotNull(
+        marketZone?.trim()?.takeIf { it.isNotEmpty() }?.let { "โซน $it" },
+        marketStallNo?.trim()?.takeIf { it.isNotEmpty() }?.let { "แผง $it" }
+    ).joinToString(" · ").takeIf { it.isNotEmpty() }
+
+@Composable
+private fun RiderPickupGuideBlock(
+    pickupInstructions: String?,
+    parkingInstructions: String?,
+    marketZone: String?,
+    marketStallNo: String?,
+    compact: Boolean = false
+) {
+    val pickup = pickupInstructions?.trim()?.takeIf { it.isNotEmpty() }
+    val parking = parkingInstructions?.trim()?.takeIf { it.isNotEmpty() }
+    val area = riderPickupAreaLabel(marketZone, marketStallNo)
+    if (pickup == null && parking == null && area == null) return
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .padding(top = if (compact) 5.dp else 7.dp)
+            .background(Color(0xFFFFF9EA), RoundedCornerShape(12.dp))
+            .padding(horizontal = 9.dp, vertical = if (compact) 6.dp else 8.dp)
+    ) {
+        Text("คำแนะนำรับสินค้า", color = QgMuted, fontSize = 8.sp, fontWeight = FontWeight.Bold)
+        area?.let { Text(it, fontSize = 10.sp, fontWeight = FontWeight.Black, modifier = Modifier.padding(top = 3.dp)) }
+        pickup?.let { Text("รับของ · $it", fontSize = 10.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 3.dp)) }
+        parking?.let { Text("จอด / ทางเข้า · $it", color = Color(0xFF65584B), fontSize = 9.sp, modifier = Modifier.padding(top = 3.dp)) }
     }
 }
 
@@ -3019,6 +3066,18 @@ private fun VerificationScreen(
                         RiderProofMetaRow(R.drawable.qg_rider_flow_jobs, "รหัสออเดอร์", job.numberLabel)
                         Box(Modifier.fillMaxWidth().height(1.dp).background(Color(0xFFF0EAEC)))
                         RiderProofMetaRow(R.drawable.qg_rider_flow_loc, "ที่อยู่ร้าน", job.pickupAddress ?: "จุดรับสินค้า")
+                        if (!details.pickupInstructions.isNullOrBlank()) {
+                            Box(Modifier.fillMaxWidth().height(1.dp).background(Color(0xFFF0EAEC)))
+                            RiderProofMetaRow(R.drawable.qg_rider_flow_jobs, "จุดรับสินค้า", details.pickupInstructions)
+                        }
+                        if (!details.parkingInstructions.isNullOrBlank()) {
+                            Box(Modifier.fillMaxWidth().height(1.dp).background(Color(0xFFF0EAEC)))
+                            RiderProofMetaRow(R.drawable.qg_rider_flow_loc, "จุดจอด / ทางเข้า", details.parkingInstructions)
+                        }
+                        riderPickupAreaLabel(details.marketZone, details.marketStallNo)?.let { area ->
+                            Box(Modifier.fillMaxWidth().height(1.dp).background(Color(0xFFF0EAEC)))
+                            RiderProofMetaRow(R.drawable.qg_rider_flow_loc, "โซน / แผง", area)
+                        }
                         Box(Modifier.fillMaxWidth().height(1.dp).background(Color(0xFFF0EAEC)))
                         RiderProofMetaRow(R.drawable.qg_rider_nav_user, "ลูกค้า", details.customerName ?: "ลูกค้า")
                     }
@@ -3050,6 +3109,12 @@ private fun VerificationScreen(
                         Column(Modifier.padding(14.dp)) {
                             Text(marketPickup.shopName, fontWeight = FontWeight.Bold)
                             if (!marketPickup.shopAddress.isNullOrBlank()) Text(marketPickup.shopAddress)
+                            RiderPickupGuideBlock(
+                                pickupInstructions = marketPickup.pickupInstructions,
+                                parkingInstructions = marketPickup.parkingInstructions,
+                                marketZone = marketPickup.marketZone,
+                                marketStallNo = marketPickup.marketStallNo
+                            )
                             Text("ยอดร้าน " + riderMoneyBaht(marketPickup.shopAmount))
                         }
                     }
