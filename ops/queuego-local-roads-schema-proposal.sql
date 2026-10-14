@@ -243,7 +243,10 @@ create policy qg_local_roads_verified_read
   on public.qg_local_roads
   for select
   to authenticated
-  using (active);
+  using (
+    active
+    and access_type <> 'private_restricted'
+  );
 
 drop policy if exists qg_local_roads_admin_read
   on public.qg_local_roads;
@@ -279,7 +282,8 @@ select
   roads.verified_at
 from public.qg_local_roads roads
 cross join public.qg_local_road_feed_state state
-where roads.active;
+where roads.active
+  and roads.access_type <> 'private_restricted';
 
 revoke all on table public.qg_local_road_feed from anon, authenticated;
 grant select on table public.qg_local_road_feed to authenticated;
