@@ -2356,7 +2356,7 @@ private fun RiderHome(
                         val returnCase = current.deliveryReturn
                         RiderDeliveryReturnCard(
                             state = returnCase,
-                            photoReady = returnPhotoUri != null,
+                            photoUri = returnPhotoUri,
                             busy = actionBusy,
                             networkAvailable = networkAvailable,
                             onStartReturn = {
@@ -2397,9 +2397,7 @@ private fun RiderHome(
                                         scope.launch {
                                             runCatching {
                                                 api.completeDeliveryReturn(context, auth, returnCase.caseId, proof)
-                                            }.onSuccess {
-                                                playRiderEventFeedback(eventFeedbackView, RiderEventFeedbackKind.PICKUP_SUCCESS)
-                                                actionMessage = "คืนสินค้าให้ร้านเรียบร้อย · บันทึกเงินคืน Rider แล้ว"
+                                            }.onSuccess { result ->
                                                 pendingProofStore.clearConfirmedMatching(
                                                     userId = auth.user.id,
                                                     slot = RIDER_PROOF_SLOT_RETURN,
@@ -2409,12 +2407,23 @@ private fun RiderHome(
                                                 )
                                                 returnPhotoUri = null
                                                 returnPendingCameraUri = null
-                                                runCatching { api.riderSnapshot(auth) }
+                                                val updated = runCatching { api.riderSnapshot(auth) }
                                                     .onFailure { if (it is CancellationException) throw it }
-                                                    .onSuccess {
-                                                        snapshot = it
-                                                        pushStore.saveHomeSnapshot(auth.user.id, it)
+                                                    .getOrNull()
+                                                if (updated != null) {
+                                                    snapshot = updated
+                                                    pushStore.saveHomeSnapshot(auth.user.id, updated)
+                                                }
+                                                if (result == "returned") {
+                                                    playRiderEventFeedback(eventFeedbackView, RiderEventFeedbackKind.RETURN_COMPLETE)
+                                                    actionMessage = "คืนสินค้าครบทุกจุด · เงินคืน Rider บันทึกแล้ว"
+                                                } else {
+                                                    playRiderEventFeedback(eventFeedbackView, RiderEventFeedbackKind.RETURN_STOP_SUCCESS)
+                                                    actionMessage = "คืนจุดนี้เรียบร้อย · ไปจุดคืนถัดไป"
+                                                    updated?.deliveryReturn?.takeIf { it.canReturnToShop }?.let {
+                                                        openReturnNavigation(context, it)
                                                     }
+                                                }
                                             }.onFailure {
                                                 playRiderEventFeedback(eventFeedbackView, RiderEventFeedbackKind.ACTION_ERROR)
                                                 actionMessage = it.message ?: "บันทึกการคืนสินค้าไม่สำเร็จ"
