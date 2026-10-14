@@ -56,6 +56,12 @@ assert(sql.includes('create table if not exists public.qg_local_road_junction_ca
   sql.includes('jsonb_array_length(members) between 2 and 8'),
   'Local Roads schema v2 proposal must version reviewed junction candidates and bound published junction members');
 
+assert(
+  /create table if not exists public\.qg_local_road_junction_candidates \([\s\S]*?qg_local_road_junction_candidates_publication_state[\s\S]*?\n\);\n\ncreate table if not exists public\.qg_local_road_junctions \(/i.test(sql)&&
+  /create table if not exists public\.qg_local_road_junctions \([\s\S]*?qg_local_road_junctions_members[\s\S]*?\n\);\n\n-- Junction members are reviewed objects shaped as:/i.test(sql),
+  'Junction table blocks must be syntactically complete before the next proposal statement');
+
+
 assert(sql.includes('alter table public.qg_local_road_junction_candidates enable row level security')&&
   sql.includes('alter table public.qg_local_road_junctions enable row level security')&&
   sql.includes('qg_local_road_junction_candidates_admin_select')&&
