@@ -379,6 +379,19 @@ data class RiderVehicleInspectionStatus(
 )
 
 
+data class RiderVehicle(
+    val id: String,
+    val type: String,
+    val name: String?,
+    val plate: String,
+    val capacityKg: Double?,
+    val status: String,
+    val selected: Boolean,
+    val legacySeed: Boolean,
+    val approvedAt: String?,
+    val reviewNote: String?
+)
+
 data class RiderEmergencyContact(
     val configured: Boolean,
     val name: String?,

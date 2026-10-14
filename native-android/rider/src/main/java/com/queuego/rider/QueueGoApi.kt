@@ -190,6 +190,44 @@ internal fun riderVehicleInspectionStatusFromRpc(raw: Any?): RiderVehicleInspect
 internal fun riderVehicleInspectionBlocksOnline(status: RiderVehicleInspectionStatus): Boolean =
     status.required && status.status in setOf("required", "pending", "rejected")
 
+internal fun riderVehiclesFromRpc(raw: Any?): List<RiderVehicle> {
+    val rows = when (raw) {
+        is JSONArray -> raw
+        is JSONObject -> JSONArray().put(raw)
+        else -> JSONArray()
+    }
+    return buildList {
+        for (index in 0 until rows.length()) {
+            val row = rows.optJSONObject(index) ?: continue
+            val id = riderNullableText(row.optString("vehicle_id")) ?: continue
+            val type = riderNullableText(row.optString("vehicle_type")) ?: continue
+            val plate = riderNullableText(row.optString("vehicle_plate")) ?: continue
+            val status = riderNullableText(row.optString("status")) ?: "pending"
+            add(
+                RiderVehicle(
+                    id = id,
+                    type = type,
+                    name = riderNullableText(row.optString("vehicle_name")),
+                    plate = plate,
+                    capacityKg = if (!row.has("vehicle_capacity_kg") || row.isNull("vehicle_capacity_kg")) {
+                        null
+                    } else {
+                        row.optDouble("vehicle_capacity_kg").takeIf { it.isFinite() }
+                    },
+                    status = status,
+                    selected = row.optBoolean("is_selected", false),
+                    legacySeed = row.optBoolean("legacy_seed", false),
+                    approvedAt = riderNullableText(row.optString("approved_at")),
+                    reviewNote = riderNullableText(row.optString("review_note"))
+                )
+            )
+        }
+    }
+}
+
+internal fun riderVehicleBlocksOnline(vehicle: RiderVehicle?): Boolean =
+    vehicle != null && vehicle.selected && vehicle.status != "approved" && !vehicle.legacySeed
+
 internal fun riderEmergencyContactFromRpc(raw: Any?): RiderEmergencyContact {
     val row = when (raw) {
         is JSONObject -> raw
@@ -581,6 +619,10 @@ class QueueGoApi {
             if (vehicleState != null && riderVehicleInspectionBlocksOnline(vehicleState)) {
                 error("กรุณาส่งรูปตรวจสภาพรถและรออนุมัติก่อนเปิดออนไลน์")
             }
+            val selectedVehicle = runCatching { vehicles(auth).firstOrNull { it.selected } }.getOrNull()
+            if (riderVehicleBlocksOnline(selectedVehicle)) {
+                error("กรุณาเลือกรถที่ผ่านการอนุมัติก่อนเปิดออนไลน์")
+            }
         }
         val profiles = requestArray(
             "GET",
@@ -863,6 +905,53 @@ class QueueGoApi {
             )
         )
     }
+
+    suspend fun vehicles(auth: QueueGoAuth): List<RiderVehicle> =
+        withContext(Dispatchers.IO) {
+            riderVehiclesFromRpc(
+                rpc(
+                    "qg_rider_vehicle_list",
+                    auth.session.accessToken,
+                    JSONObject()
+                )
+            )
+        }
+
+    suspend fun addVehicle(
+        context: Context,
+        auth: QueueGoAuth,
+        type: String,
+        name: String?,
+        plate: String,
+        capacityKg: Double?,
+        photoUri: Uri
+    ) = withContext(Dispatchers.IO) {
+        val path = uploadEvidence(context, auth, photoUri)
+        rpc(
+            "qg_rider_add_vehicle",
+            auth.session.accessToken,
+            JSONObject()
+                .put("p_vehicle_type", type)
+                .put(
+                    "p_vehicle_name",
+                    name?.trim()?.takeIf { it.isNotBlank() } ?: JSONObject.NULL
+                )
+                .put("p_vehicle_plate", plate.trim())
+                .putNullable("p_capacity_kg", capacityKg)
+                .put("p_photo_path", path)
+        )
+        Unit
+    }
+
+    suspend fun selectVehicle(auth: QueueGoAuth, vehicleId: String) =
+        withContext(Dispatchers.IO) {
+            rpc(
+                "qg_rider_select_vehicle",
+                auth.session.accessToken,
+                JSONObject().put("p_vehicle_id", vehicleId)
+            )
+            Unit
+        }
 
     suspend fun emergencyContact(auth: QueueGoAuth): RiderEmergencyContact =
         withContext(Dispatchers.IO) {
