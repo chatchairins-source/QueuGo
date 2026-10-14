@@ -1,3 +1,7 @@
+## 2026-10-14 Rider demand heatmap exact runtime gate
+- Re-cut the unchanged privacy-safe Heatmap implementation from 03f5194 onto branch work-native-rider-navigation-map-demand-heatmap-20261014 because the repository's navigation-map-runtime job is intentionally branch-prefix gated. This successor exists to force the actual retained Longdo navigation renderer runtime gate on the exact Heatmap implementation without weakening or changing CI conditions.
+- No product/backend behavior changed in this checkpoint. Source implementation remains the Production-tested aggregate heatmap from PR225; PASS requires both native-pilot and navigation-map-runtime on this successor HEAD.
+
 ## 2026-10-14 Grab Driver parity mission: privacy-safe Rider demand heatmap
 - Continued exact unified parity head 9755a92 / PR224. The owner-supplied Grab Driver 5.457.1 package contains heatmap/hotspot capability; QueueGo implements its own aggregate demand surface without copying Grab code, assets, geometry or styling.
 - Production migration 20261014055901 rider_demand_heatmap_v1 is additive. Public qg_rider_demand_heatmap() is SECURITY INVOKER with anon EXECUTE revoked; private helper verifies auth.uid, live auth.sessions session_id and an active Rider profile. Security advisor reported no finding for the new RPC; existing unrelated advisor debt is unchanged.
