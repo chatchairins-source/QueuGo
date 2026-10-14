@@ -1,3 +1,10 @@
+## 2026-10-14 Rider re-verification Admin workflow
+- Completed the operational Admin side of Rider selfie re-verification without creating a duplicate Admin screen. The existing Rider-status panel now reads a dedicated admin-only queue RPC and shows request state per Rider.
+- Active Rider cards can request a new identity check. Pending submissions expose the private qg-evidence photo through the existing short-lived signed evidence viewer and provide approve / retake actions. Rejected requests show the Rider-facing reason; approved Riders can be requested again only when Admin intentionally starts a new check.
+- Production migration 20261014063649 admin_rider_reverification_queue_v1 adds only an authenticated Admin queue wrapper. It re-checks live session and public.is_active_admin() server-side; anon execute is revoked. Admin UI never queries qg_private tables directly.
+- Admin input uses the existing qgAdminInput modal; native prompt() remains forbidden by the Admin regression suite.
+- Backup backup/admin-rider-reverification-before-ui-20261014 retains fda23a5. Exact-head web/native CI remains required before PASS.
+
 ## 2026-10-14 Grab Driver parity mission: Rider selfie re-verification
 - Unified on top of the newer managed public-profile-photo successor and latest Job History regression contract. QueueGo public Rider photo remains in the dedicated rider-profile bucket; re-verification selfie evidence remains private in qg-evidence and is never reused as a public avatar.
 - QueueGo already collected a real front-facing Rider photo at registration but had no in-service identity re-verification. Added an explicit re-verification workflow without claiming biometric/liveness detection: Admin may request a new check; Rider captures a fresh camera photo; QueueGo stores the private evidence and exposes required/pending/approved/rejected status.
