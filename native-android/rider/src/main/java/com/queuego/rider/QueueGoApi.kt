@@ -4,6 +4,7 @@ import com.queuego.shared.nativeOrderNumber
 
 import android.content.Context
 import android.net.Uri
+import android.os.SystemClock
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
@@ -1909,6 +1910,8 @@ class QueueGoApi {
         requestAny(method, path, token, null) as? JSONArray ?: JSONArray()
 
     private fun requestAny(method: String, path: String, token: String?, body: JSONObject?, timeoutMillis: Int = TIMEOUT): Any {
+        val startedAt = SystemClock.elapsedRealtime()
+        var success = false
         val connection = URL(BASE_URL + path).openConnection() as HttpURLConnection
         try {
             connection.requestMethod = method
@@ -1942,16 +1945,25 @@ class QueueGoApi {
                 throw RiderHttpException(code, message)
             }
 
-            if (text.isBlank()) return JSONObject()
-            val value = text.trim()
-            return when {
-                value.startsWith("[") -> JSONArray(value)
-                value.startsWith("{") -> JSONObject(value)
-                value == "true" -> true
-                value == "false" -> false
-                else -> value.trim(34.toChar())
+            val result: Any = if (text.isBlank()) {
+                JSONObject()
+            } else {
+                val value = text.trim()
+                when {
+                    value.startsWith("[") -> JSONArray(value)
+                    value.startsWith("{") -> JSONObject(value)
+                    value == "true" -> true
+                    value == "false" -> false
+                    else -> value.trim(34.toChar())
+                }
             }
+            success = true
+            return result
         } finally {
+            RiderRuntimeDiagnosticsStore.recordNetwork(
+                durationMs = SystemClock.elapsedRealtime() - startedAt,
+                success = success
+            )
             connection.disconnect()
         }
     }
