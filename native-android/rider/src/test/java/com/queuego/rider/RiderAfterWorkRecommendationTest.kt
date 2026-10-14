@@ -82,7 +82,7 @@ class RiderAfterWorkRecommendationTest {
 
         requireNotNull(result)
         assertEquals(RiderAfterWorkRecommendationTarget.DEMAND_NAVIGATION, result.target)
-        assertEquals(3, result.key.substringAfterLast(":").let { 3 })
+        assertEquals("พื้นที่คึกคักมาก", result.title)
         assertEquals(15.020, result.latitude!!, 0.000001)
         assertEquals(103.020, result.longitude!!, 0.000001)
         assertEquals("นำทางไปพื้นที่งาน", result.actionLabel)
