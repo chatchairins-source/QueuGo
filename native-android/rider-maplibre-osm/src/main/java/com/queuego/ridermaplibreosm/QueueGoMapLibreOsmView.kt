@@ -135,7 +135,7 @@ class QueueGoMapLibreOsmView @JvmOverloads constructor(
         if (mapWidth <= 0 || mapHeight <= 0) return 0
         return readyMap.queryRenderedFeatures(
             RectF(0f, 0f, mapWidth.toFloat(), mapHeight.toFloat()),
-            layerIds
+            *layerIds
         ).size
     }
 

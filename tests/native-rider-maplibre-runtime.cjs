@@ -14,8 +14,9 @@ assert(view.includes('fun onCreate(savedInstanceState: Bundle? = null)')&&
 assert(view.includes('styleApplyCount += 1')&&view.includes('fun styleApplyCount(): Int'),
   'MapLibre runtime must expose style application count for no-reload assertions');
 assert(view.includes('addOnDidFinishRenderingMapListener')&&
-  view.includes('queryRenderedFeatures')&&view.includes('fun renderedFeatureCount'),
-  'MapLibre runtime must expose a fully-rendered signal and rendered-feature query for real PMTiles evidence');
+  view.includes('queryRenderedFeatures')&&view.includes('fun renderedFeatureCount')&&
+  view.includes('*layerIds'),
+  'MapLibre runtime must expose a fully-rendered signal and spread layer IDs into the rendered-feature vararg query');
 assert(runtime.includes('repeat(60)')&&
   runtime.includes('GPS-like camera refresh recreated MapView')&&
   runtime.includes('Tab return recreated MapLibreMap')&&
