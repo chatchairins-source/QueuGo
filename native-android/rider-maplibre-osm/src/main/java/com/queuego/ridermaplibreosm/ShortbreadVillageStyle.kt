@@ -66,6 +66,14 @@ object ShortbreadVillageStyle {
         ShortbreadContextRoadPolicy("path", 15f, "#c9c7c2", 0.6f, 1.4f, 2.5f, arrayOf(1.2f, 1.2f))
     )
 
+    fun villageQaLayerIds(): Array<String> = arrayOf(
+        "queuego-road-residential",
+        "queuego-road-unclassified",
+        "queuego-road-living_street",
+        "queuego-road-service",
+        "queuego-context-track"
+    )
+
     fun builder(sourceUri: String): Style.Builder {
         var builder = Style.Builder()
             .withSource(VectorSource(SOURCE_ID, sourceUri))

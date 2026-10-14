@@ -4,27 +4,52 @@ import android.app.Activity
 import android.os.Bundle
 import android.view.ViewGroup
 import android.widget.FrameLayout
+import java.io.File
 import java.util.concurrent.CountDownLatch
 
 class MapLibreOsmRuntimeActivity : Activity() {
     val mapReady = CountDownLatch(1)
+    val mapFullyRendered = CountDownLatch(1)
 
     private lateinit var root: FrameLayout
     private lateinit var mapView: QueueGoMapLibreOsmView
+    private lateinit var baseConfig: MapLibreOsmConfig
+    private var usingRealPmTiles = false
 
-    private val baseConfig = MapLibreOsmConfig(
-        sourceUri = "asset://queuego-runtime-tilejson.json",
-        initialLatitude = 14.9820,
-        initialLongitude = 103.1020,
-        initialZoom = 16.0
-    )
+    private fun runtimeConfig(): MapLibreOsmConfig {
+        val realAsset = "sawaijee-shortbread.pmtiles"
+        val available = assets.list("")?.toSet().orEmpty()
+        if (realAsset in available) {
+            val directory = File(filesDir, "queuego-runtime-map").apply { mkdirs() }
+            val localFile = File(directory, realAsset)
+            assets.open(realAsset).use { input ->
+                localFile.outputStream().use { output -> input.copyTo(output) }
+            }
+            QueueGoPmTilesArchive.requireValidVectorV3(localFile)
+            usingRealPmTiles = true
+            return MapLibreOsmConfig.localPmTiles(
+                file = localFile,
+                initialLatitude = 14.9058,
+                initialLongitude = 103.14682,
+                initialZoom = 16.0
+            )
+        }
+        return MapLibreOsmConfig(
+            sourceUri = "asset://queuego-runtime-tilejson.json",
+            initialLatitude = 14.9820,
+            initialLongitude = 103.1020,
+            initialZoom = 16.0
+        )
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        baseConfig = runtimeConfig()
         root = FrameLayout(this)
         setContentView(root)
         mapView = QueueGoMapLibreOsmView(this).apply {
             onMapReady = { mapReady.countDown() }
+            onMapFullyRendered = { mapFullyRendered.countDown() }
             onCreate(savedInstanceState)
             setConfig(baseConfig)
         }
@@ -100,6 +125,11 @@ class MapLibreOsmRuntimeActivity : Activity() {
             )
         }
     }
+
+    fun isUsingRealPmTiles(): Boolean = usingRealPmTiles
+
+    fun renderedVillageRoadFeatureCount(): Int =
+        mapView.renderedFeatureCount(ShortbreadVillageStyle.villageQaLayerIds())
 
     fun mapViewIdentity(): Int = mapView.mapViewIdentity()
     fun mapIdentity(): Int = requireNotNull(mapView.mapIdentity())

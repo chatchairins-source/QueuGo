@@ -1,6 +1,7 @@
 package com.queuego.ridermaplibreosm
 
 import android.content.Context
+import android.graphics.RectF
 import android.os.Bundle
 import android.util.AttributeSet
 import android.widget.FrameLayout
@@ -24,10 +25,14 @@ class QueueGoMapLibreOsmView @JvmOverloads constructor(
     private var styleApplyCount = 0
 
     var onMapReady: ((MapLibreMap) -> Unit)? = null
+    var onMapFullyRendered: (() -> Unit)? = null
 
     init {
         MapLibre.getInstance(context.applicationContext)
         mapView = MapView(context)
+        mapView.addOnDidFinishRenderingMapListener { fully ->
+            if (fully) onMapFullyRendered?.invoke()
+        }
         addView(
             mapView,
             LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT)
@@ -121,6 +126,17 @@ class QueueGoMapLibreOsmView @JvmOverloads constructor(
         created = false
         map = null
         removeAllViews()
+    }
+
+    fun renderedFeatureCount(layerIds: Array<String>): Int {
+        val readyMap = map ?: return 0
+        val mapWidth = mapView.width
+        val mapHeight = mapView.height
+        if (mapWidth <= 0 || mapHeight <= 0) return 0
+        return readyMap.queryRenderedFeatures(
+            RectF(0f, 0f, mapWidth.toFloat(), mapHeight.toFloat()),
+            layerIds
+        ).size
     }
 
     fun mapViewIdentity(): Int = System.identityHashCode(mapView)

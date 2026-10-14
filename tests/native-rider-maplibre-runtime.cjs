@@ -13,13 +13,25 @@ assert(view.includes('fun onCreate(savedInstanceState: Bundle? = null)')&&
   'MapLibre wrapper must forward the full Android MapView lifecycle instead of hardcoding onCreate(null)');
 assert(view.includes('styleApplyCount += 1')&&view.includes('fun styleApplyCount(): Int'),
   'MapLibre runtime must expose style application count for no-reload assertions');
+assert(view.includes('addOnDidFinishRenderingMapListener')&&
+  view.includes('queryRenderedFeatures')&&view.includes('fun renderedFeatureCount'),
+  'MapLibre runtime must expose a fully-rendered signal and rendered-feature query for real PMTiles evidence');
 assert(runtime.includes('repeat(60)')&&
   runtime.includes('GPS-like camera refresh recreated MapView')&&
   runtime.includes('Tab return recreated MapLibreMap')&&
   runtime.includes('Resume reloaded style'),
   'MapLibre runtime must prove 60 refreshes, tab return and resume keep the same renderer/style');
 assert(activity.includes('asset://queuego-runtime-tilejson.json'),
-  'MapLibre runtime must use an APK-local vector source and avoid external-network flakiness');
+  'MapLibre runtime must keep an APK-local fallback vector source and avoid external-network flakiness');
+assert(activity.includes('sawaijee-shortbread.pmtiles')&&
+  activity.includes('QueueGoPmTilesArchive.requireValidVectorV3(localFile)')&&
+  activity.includes('MapLibreOsmConfig.localPmTiles(')&&
+  activity.includes('14.9058')&&activity.includes('103.14682'),
+  'When real SawaiJee PMTiles is injected, runtime must materialize and open the local archive at the pilot village');
+assert(runtime.includes('realPmTilesAssetRendersVillageRoadsWhenInjected')&&
+  runtime.includes('renderedVillageRoadFeatureCount() > 0')&&
+  runtime.includes('mapFullyRendered.await'),
+  'Real PMTiles runtime gate must prove village roads render from the local archive');
 assert(runner.includes(':rider-maplibre-osm:connectedDebugAndroidTest')&&
   runner.includes('QUEUEGO_MAPLIBRE_OSM_RUNTIME_PASS'),
   'MapLibre runtime runner must execute the module connected Android test');

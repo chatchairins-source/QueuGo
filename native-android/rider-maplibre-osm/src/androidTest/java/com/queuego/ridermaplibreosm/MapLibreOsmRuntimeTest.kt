@@ -7,9 +7,38 @@ import java.util.concurrent.TimeUnit
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
+import org.junit.Assume.assumeTrue
 import org.junit.Test
 
 class MapLibreOsmRuntimeTest {
+    @Test
+    fun realPmTilesAssetRendersVillageRoadsWhenInjected() {
+        ActivityScenario.launch(MapLibreOsmRuntimeActivity::class.java).use { scenario ->
+            lateinit var activity: MapLibreOsmRuntimeActivity
+            scenario.onActivity { activity = it }
+            assertTrue(
+                "MapLibre OSM runtime map did not become ready",
+                activity.mapReady.await(30, TimeUnit.SECONDS)
+            )
+            assumeTrue(
+                "Real PMTiles asset not injected for this runtime",
+                activity.isUsingRealPmTiles()
+            )
+            assertTrue(
+                "Real PMTiles map did not fully render",
+                activity.mapFullyRendered.await(30, TimeUnit.SECONDS)
+            )
+            InstrumentationRegistry.getInstrumentation().waitForIdleSync()
+            scenario.onActivity {
+                assertTrue(
+                    "SawaiJee PMTiles rendered no village road features",
+                    it.renderedVillageRoadFeatureCount() > 0
+                )
+                assertEquals(1, it.styleApplyCount())
+            }
+        }
+    }
+
     @Test
     fun refreshTabReturnAndResumeReuseSameMapObjects() {
         ActivityScenario.launch(MapLibreOsmRuntimeActivity::class.java).use { scenario ->
