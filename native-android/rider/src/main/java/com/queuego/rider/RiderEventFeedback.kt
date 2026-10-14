@@ -9,6 +9,9 @@ import android.view.HapticFeedbackConstants
 import android.view.View
 
 internal enum class RiderEventFeedbackKind {
+    GO_ONLINE,
+    GO_OFFLINE,
+    JOB_ACCEPTED,
     PICKUP_SUCCESS,
     DELIVERY_SUCCESS,
     ACTION_ERROR
@@ -22,6 +25,27 @@ internal data class RiderEventFeedbackSpec(
 
 internal fun riderEventFeedbackSpec(kind: RiderEventFeedbackKind): RiderEventFeedbackSpec =
     when (kind) {
+        RiderEventFeedbackKind.GO_ONLINE -> RiderEventFeedbackSpec(
+            tones = listOf(
+                ToneGenerator.TONE_PROP_BEEP to 120,
+                ToneGenerator.TONE_PROP_BEEP2 to 190
+            ),
+            gapsMs = listOf(70L),
+            successHaptic = true
+        )
+        RiderEventFeedbackKind.GO_OFFLINE -> RiderEventFeedbackSpec(
+            tones = listOf(ToneGenerator.TONE_PROP_BEEP2 to 170),
+            gapsMs = emptyList(),
+            successHaptic = true
+        )
+        RiderEventFeedbackKind.JOB_ACCEPTED -> RiderEventFeedbackSpec(
+            tones = listOf(
+                ToneGenerator.TONE_PROP_BEEP2 to 120,
+                ToneGenerator.TONE_PROP_BEEP to 180
+            ),
+            gapsMs = listOf(70L),
+            successHaptic = true
+        )
         RiderEventFeedbackKind.PICKUP_SUCCESS -> RiderEventFeedbackSpec(
             tones = listOf(ToneGenerator.TONE_PROP_BEEP to 170),
             gapsMs = emptyList(),
