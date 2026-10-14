@@ -1,7 +1,23 @@
 const fs=require('fs');
 const assert=require('assert');
+const {execFileSync}=require('child_process');
 
-const script=fs.readFileSync('ops/maps/build-buriram-shortbread-pmtiles.sh','utf8');
+const scriptPath='ops/maps/build-buriram-shortbread-pmtiles.sh';
+const script=fs.readFileSync(scriptPath,'utf8');
+
+execFileSync('bash',['-n',scriptPath],{stdio:'pipe'});
+const plan=execFileSync(scriptPath,['--print-plan'],{
+  encoding:'utf8',
+  env:{
+    ...process.env,
+    QUEUEGO_MAP_WORK_DIR:'/tmp/queuego-map-plan-work',
+    QUEUEGO_MAP_OUTPUT_DIR:'/tmp/queuego-map-plan-output'
+  }
+});
+assert(plan.includes('planetiler_version=0.10.2')&&
+  plan.includes('bounds=102.369,14.109,103.592,15.819')&&
+  plan.includes('schema=shortbread'),
+  'Buriram PMTiles pipeline print-plan must remain executable and deterministic');
 
 assert(script.includes('PLANETILER_VERSION="${PLANETILER_VERSION:-0.10.2}"'),
   'Buriram tile build must pin Planetiler 0.10.2 by default');
