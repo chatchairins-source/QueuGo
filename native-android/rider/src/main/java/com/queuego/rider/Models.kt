@@ -7,7 +7,9 @@ data class QueueGoUser(
     val name: String,
     val role: String,
     val status: String,
-    val phone: String? = null
+    val phone: String? = null,
+    val suspendedAt: String? = null,
+    val suspensionReason: String? = null
 )
 
 data class QueueGoSession(
