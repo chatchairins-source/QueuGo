@@ -193,7 +193,20 @@ ok(riderApp.includes('onExpired =')&&riderApp.includes('ข้อเสนอน
 ok(riderApp.includes('ToneGenerator(AudioManager.STREAM_NOTIFICATION, 100)')&&riderApp.includes('มีงานใหม่ที่ระบบจัดให้ กรุณาตอบรับภายใน 30 วินาที'),'Rider foreground must alert once for a newly issued server offer');
 ok(riderApi.includes('if (!online)')&&riderApi.includes('qg_get_my_rider_offer')&&riderApi.includes('qg_rider_decline_offer'),'Rider going offline must release any live offer immediately');
 ok(riderApp.includes('api.setOnline(current, false, null, null)')&&riderApp.includes('api.revoke(current.session)'),'Rider logout must take the Rider offline before session revocation');
-ok(riderApp.includes('รับงานสำเร็จ · กำลังเปิดนำทางไปร้าน')&&riderApp.includes('val acceptedFallback = current.offeredJob.copy(')&&riderApp.includes('activeJob = acceptedFallback')&&riderApp.includes('openNavigation(context, updated?.activeJob ?: acceptedFallback)'),'Rider native must promote an accepted offer locally and auto-open navigation even if optional post-claim refresh fails');
+ok(
+  riderApp.includes('รับงานสำเร็จ · กำลังเปิดนำทางไปร้าน')&&
+  riderApp.includes('activeJob = acceptedFallback')&&
+  riderApp.includes('openNavigation(context, updated?.activeJob ?: acceptedFallback)')&&
+  (
+    riderApp.includes('val acceptedFallback = current.offeredJob.copy(')||
+    (
+      riderApp.includes('fun acceptTargetedOffer(job: RiderJob, automatic: Boolean)')&&
+      riderApp.includes('val liveOffer = current.offeredJob?.takeIf')&&
+      riderApp.includes('val acceptedFallback = liveOffer.copy(')
+    )
+  ),
+  'Rider native must promote an accepted offer locally and auto-open navigation even if optional post-claim refresh fails'
+);
 ok(riderApi.includes('riderNullableUuid')&&riderApi.includes('marketOrderId = riderNullableUuid(o.optString("market_order_id"))')&&riderApi.includes('val id = riderNullableUuid(rows.optJSONObject(i)?.optString("order_id"))'),'Rider native must reject JSON null/null-like UUID values before Market or offer RPC routing');
 ok(riderApi.includes('arrivedShopAt = riderNullableText(o.optString("rider_arrived_shop_at"))')&&
    riderApi.includes('arrivedCustomerAt = riderNullableText(o.optString("rider_arrived_customer_at"))'),
