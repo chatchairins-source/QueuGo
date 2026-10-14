@@ -524,6 +524,7 @@ private fun RiderHome(
         mutableStateOf<RiderSnapshot?>(pushStore.loadHomeSnapshot(auth.user.id))
     }
     var todaySummary by remember { mutableStateOf<RiderPeriodSummary?>(null) }
+    var demandZones by remember(auth.user.id) { mutableStateOf<List<RiderDemandZone>>(emptyList()) }
     var recentHistory by remember { mutableStateOf<List<RiderHistoryOrder>>(emptyList()) }
     var lastSummaryAt by remember { mutableStateOf(0L) }
     var lastHistoryAt by remember { mutableStateOf(0L) }
@@ -539,6 +540,31 @@ private fun RiderHome(
             actionMessage = null
         }
     }
+    val demandHeatmapEligible =
+        snapshot?.online == true &&
+            snapshot?.activeJob == null &&
+            snapshot?.laundry?.activeJob == null &&
+            snapshot?.offeredJob == null
+
+    LaunchedEffect(auth.user.id, auth.session.accessToken, demandHeatmapEligible, lifecycle) {
+        if (!demandHeatmapEligible) {
+            demandZones = emptyList()
+            return@LaunchedEffect
+        }
+        lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            while (true) {
+                try {
+                    demandZones = api.demandHeatmap(auth)
+                } catch (error: CancellationException) {
+                    throw error
+                } catch (_: Exception) {
+                    // Keep the last aggregate during a transient read failure.
+                }
+                delay(300_000L)
+            }
+        }
+    }
+
     var detailJob by remember { mutableStateOf<RiderJob?>(null) }
     var pendingPushReference by rememberSaveable(auth.user.id) { mutableStateOf<String?>(null) }
     var homeDetails by remember { mutableStateOf<RiderVerificationDetails?>(null) }
@@ -1390,6 +1416,7 @@ private fun RiderHome(
             job = mapJob,
             marketPickups = snapshot?.marketPickups.orEmpty(),
             bundleOrders = snapshot?.bundle?.activeOrders.orEmpty(),
+            demandZones = if (mapJob == null && snapshot?.online == true) demandZones else emptyList(),
             recenterSignal = recenterSignal,
             overviewSignal = overviewSignal,
             viewportInsets = NavigationViewportInsets(
@@ -1412,6 +1439,31 @@ private fun RiderHome(
                 enabled = !actionBusy && snapshot != null && snapshot?.activeJob == null && snapshot?.laundry?.activeJob == null,
                 onToggle = { changeOnline(snapshot?.online != true) }
             )
+        }
+
+        if (mapJob == null && snapshot?.online == true && demandZones.isNotEmpty()) {
+            Card(
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .padding(top = 64.dp, start = 10.dp),
+                shape = RoundedCornerShape(99.dp),
+                colors = CardDefaults.cardColors(containerColor = Color(0xF8FFFFFF)),
+                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFFFD8DC)),
+                elevation = CardDefaults.cardElevation(defaultElevation = 3.dp)
+            ) {
+                Row(
+                    Modifier.padding(horizontal = 10.dp, vertical = 7.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        Modifier
+                            .size(9.dp)
+                            .background(QgRed.copy(alpha = 0.55f), androidx.compose.foundation.shape.CircleShape)
+                    )
+                    Spacer(Modifier.width(6.dp))
+                    Text("พื้นที่งาน 24 ชม.", color = Color(0xFF5F5559), fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                }
+            }
         }
 
         Card(

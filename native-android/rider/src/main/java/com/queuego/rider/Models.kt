@@ -289,6 +289,13 @@ data class RiderRatingSummary(
     val distribution: Map<Int, Int> = emptyMap()
 )
 
+data class RiderDemandZone(
+    val latitude: Double,
+    val longitude: Double,
+    val level: Int,
+    val windowHours: Int
+)
+
 
 data class RiderHistoryOrder(
     val id: String,
