@@ -333,7 +333,7 @@ fun CustomerReviewCard(
                             }.onSuccess {
                                 runCatching {
                                     val refreshed = api.load(auth, order.id)
-                                    val compliments = if (refreshed?.riderRating in 4..5) {
+                                    val compliments = if ((refreshed?.riderRating ?: 0) in 4..5) {
                                         api.loadRiderCompliments(auth, order.id)
                                     } else {
                                         emptySet()
