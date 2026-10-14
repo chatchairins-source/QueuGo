@@ -1,3 +1,10 @@
+## 2026-10-14 Grab Driver parity: Rider Account Status Center
+- QueueGo previously routed every non-active Rider account through the same pending-application screen even though public.users already stores pending/active/suspended/rejected/deleted plus suspended_at and suspension_reason. This successor fixes that UX without a new backend table or fake appeal process.
+- Native sign-in and periodic session validation now read the existing suspension fields, and encrypted SessionStore retains phone/status timestamp/reason so activity recreation does not temporarily erase the explanation.
+- Non-active accounts now receive status-specific copy: pending review, rejected application, suspended account or deleted account. Real suspension reason/time are shown only when Production provides them. No invented reason is displayed.
+- Added a server refresh action on the status screen: after Admin changes the account to active, Rider can tap “ตรวจสถานะอีกครั้ง” and enter the normal Home immediately without logout/login. Refresh errors remain visible on the same screen.
+- Production currently has 3 Rider users and all are active, so this UI change does not alter any live Rider state. Backup backup/rider-multiple-vehicles-before-account-status-20261014 retains exact Multiple Vehicles head 489fef6.
+
 ## 2026-10-14 Grab Driver parity: Rider Multiple Vehicles v1
 - Confirmed the owner-supplied Grab Driver package contains a multiplevehicles module while QueueGo previously projected only one vehicle through rider_profiles. Added an additive private multi-vehicle registry while preserving rider_profiles as the selected-vehicle compatibility projection for all existing order/dispatch/market flows.
 - Production migrations 20261014081916, 20261014082029 and 20261014082657 are applied. Existing vehicle data was seeded without changing Rider identity/order state. Legacy selected vehicles are grandfathered so existing Riders are not suddenly blocked; new vehicles require a fresh camera photo, Admin approval and an approved status before selection.
