@@ -586,12 +586,12 @@ private fun RiderHome(
             while (true) {
                 try {
                     availabilityReverification = api.reverificationStatus(auth)
+                    availabilityReverificationLoaded = true
                 } catch (error: CancellationException) {
                     throw error
                 } catch (_: Exception) {
-                    // Device/network blockers are shown locally; server remains authoritative.
-                } finally {
-                    availabilityReverificationLoaded = true
+                    // Do not invent a ready identity state when the server check is unavailable.
+                    availabilityReverificationLoaded = false
                 }
                 delay(60_000L)
             }
