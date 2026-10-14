@@ -1,0 +1,102 @@
+name: QueueGo SawaiJee MapLibre Real Runtime Gate
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - work-native-rider-maplibre-sawaijee-real-runtime-20261014
+    paths:
+      - 'native-android/rider-maplibre-osm/**'
+      - 'native-android/qa/build-buriram-shortbread-pmtiles.sh'
+      - 'native-android/qa/verify-pmtiles-village.py'
+      - 'native-android/qa/verify-maplibre-real-runtime-result.py'
+      - 'native-android/qa/run-rider-maplibre-osm-runtime.py'
+      - '.github/workflows/build-sawaijee-maplibre-runtime.yml'
+      - 'tests/native-rider-maplibre-real-runtime.cjs'
+      - 'package.json'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: queuego-sawaijee-maplibre-real-runtime
+  cancel-in-progress: true
+
+jobs:
+  real-sawaijee-maplibre-runtime:
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    env:
+      QG_BURIRAM_BOUNDS: 103.115,14.870,103.180,14.945
+      QG_PM_TILES_OUTPUT_NAME: sawaijee-shortbread.pmtiles
+      QG_PM_TILES_MAXZOOM: 14
+      QG_PLANETILER_MEMORY: 4g
+      QG_SAWAIJEE_LAT: '14.9058'
+      QG_SAWAIJEE_LON: '103.14682'
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a
+        with:
+          gradle-version: '9.6.0'
+
+      - name: Prepare SawaiJee real runtime workspace
+        run: echo "QG_MAP_DATA_DIR=$RUNNER_TEMP/queuego-sawaijee-real-runtime" >> "$GITHUB_ENV"
+
+      - name: Validate real MapLibre runtime contracts
+        run: node tests/native-rider-maplibre-real-runtime.cjs
+
+      - name: Build real SawaiJee Shortbread PMTiles from OSM PBF
+        run: native-android/qa/build-buriram-shortbread-pmtiles.sh
+
+      - name: Verify PMTiles v3 MVT header and SawaiJee coverage
+        run: |
+          python3 native-android/qa/verify-pmtiles-village.py \
+            --file "${QG_MAP_DATA_DIR}/${QG_PM_TILES_OUTPUT_NAME}" \
+            --target-lat "${QG_SAWAIJEE_LAT}" \
+            --target-lon "${QG_SAWAIJEE_LON}" \
+            --required-maxzoom 14 \
+            --report "${QG_MAP_DATA_DIR}/sawaijee-pmtiles-report.json"
+
+      - name: Inject verified real PMTiles into debug runtime only
+        run: |
+          mkdir -p native-android/rider-maplibre-osm/src/debug/assets
+          cp "${QG_MAP_DATA_DIR}/${QG_PM_TILES_OUTPUT_NAME}" \
+            native-android/rider-maplibre-osm/src/debug/assets/sawaijee-shortbread.pmtiles
+          cmp "${QG_MAP_DATA_DIR}/${QG_PM_TILES_OUTPUT_NAME}" \
+            native-android/rider-maplibre-osm/src/debug/assets/sawaijee-shortbread.pmtiles
+
+      - name: Install Android platform for real MapLibre runtime
+        run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-36" "build-tools;36.0.0" >/dev/null
+
+      - name: Enable Android acceleration
+        run: |
+          test -c /dev/kvm
+          if [ ! -r /dev/kvm ] || [ ! -w /dev/kvm ]; then
+            sudo chown "$(id -u):$(id -g)" /dev/kvm
+          fi
+
+      - name: Render real SawaiJee PMTiles in MapLibre emulator
+        run: python3 native-android/qa/run-rider-maplibre-osm-runtime.py
+
+      - name: Prove real PMTiles road assertion executed instead of skipping
+        run: python3 native-android/qa/verify-maplibre-real-runtime-result.py
+
+      - name: Preserve real SawaiJee MapLibre runtime evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: queuego-sawaijee-maplibre-real-runtime
+          path: |
+            ${{ runner.temp }}/queuego-sawaijee-real-runtime/sawaijee-pmtiles-report.json
+            ${{ runner.temp }}/queuego-sawaijee-real-runtime/sawaijee-shortbread.pmtiles.sha256
+            artifacts/rider-maplibre-osm-runtime/
+            native-android/rider-maplibre-osm/build/reports/androidTests/connected/
+            native-android/rider-maplibre-osm/build/outputs/androidTest-results/connected/
+          if-no-files-found: warn
+          retention-days: 14
