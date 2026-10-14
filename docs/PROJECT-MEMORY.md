@@ -1,3 +1,15 @@
+## 2026-10-14 Grab Driver parity: Photo Proof Quality + Connectivity + Return-to-Sender unified successor
+- Continued from connectivity-guard-v2 head cf278778, which already carries Event Feedback release ancestry, failed-delivery reporting, Benefits, account/Home/Availability/runtime hardening.
+- Added one-photo proof guidance only: keep the owner rule of exactly one proof photo, show framing guidance before capture, reject unreadable/low-resolution/over-5MB images, and require an acceptable decoded preview before pickup/delivery confirmation.
+- Added Return-to-Sender on top of the existing Production backend that is already deployed: qg_rider_delivery_returns, qg_rider_cash_return_refunds, qg_rider_report_delivery_issue, qg_admin_delivery_return_action, qg_rider_active_delivery_return, qg_rider_start_delivery_return and qg_rider_complete_delivery_return.
+- Rider may report delivery failure only after customer arrival. Reporting never auto-cancels. Admin decides return_to_shop vs resolve_no_return. Approved return uses external Google Maps to the shop, one return proof photo, then server records returned merchandise and merchant cash refund.
+- Cash ledger now includes cash_refunded_merchant so a merchant refund offsets cash previously paid by Rider instead of appearing as a permanent loss.
+- Admin Support/Tickets now shows linked return cases and real return decisions.
+- Connectivity guard remains authoritative: server mutations are blocked without validated internet; local work state and photos remain preserved.
+- Mirrored already-applied Production migrations 20261014101105 / 20261014101131 / 20261014101155 into source. No new Production DDL was applied in this successor.
+- Backup: backup/rider-grab-parity-before-photo-quality-unify-20261014 @ cf278778.
+- PASS requires exact-head native-pilot + navigation-map-runtime + return-to-sender/source regression contracts.
+
 ## 2026-10-14 Rider continuity: non-blocking reconnect notice
 - Continued from event-feedback exact-head release gate #294.
 - QueueGo already persisted the last safe Rider snapshot and retried silently, so transient network failure did not erase an active job. The remaining UX gap was visibility: a Rider with a restored/active job could not tell that live refreshes were failing.
