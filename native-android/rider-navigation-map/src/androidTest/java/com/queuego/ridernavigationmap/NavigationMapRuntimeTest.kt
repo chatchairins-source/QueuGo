@@ -1,5 +1,6 @@
 package com.queuego.ridernavigationmap
 
+import android.util.Log
 import androidx.lifecycle.Lifecycle
 import androidx.test.core.app.ActivityScenario
 import androidx.test.platform.app.InstrumentationRegistry
@@ -170,6 +171,12 @@ class NavigationMapRuntimeTest {
             assertTrue(
                 "GPS stress did not produce enough UI frames for timing diagnostics",
                 frameTiming.frameCount >= 30
+            )
+            Log.i(
+                "QueueGoNavPerf",
+                "gps_stress_frames=" + frameTiming.frameCount +
+                    " p95_ms=" + frameTiming.p95IntervalMs +
+                    " max_ms=" + frameTiming.maxIntervalMs
             )
             assertTrue(
                 "GPS stress p95 frame interval exceeded gross-jank budget: " +

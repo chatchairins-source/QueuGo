@@ -209,7 +209,9 @@ assert(runtimeActivity.includes('Choreographer.FrameCallback')&&
   runtimeTest.includes('repeat(60)')&&
   runtimeTest.includes('p95 frame interval exceeded gross-jank budget')&&
   runtimeTest.includes('frameTiming.p95IntervalMs <= 150.0')&&
-  runtimeTest.includes('frameTiming.maxIntervalMs <= 1_000.0'),
+  runtimeTest.includes('frameTiming.maxIntervalMs <= 1_000.0')&&
+  runtimeTest.includes('"QueueGoNavPerf"')&&
+  runtimeTest.includes('" p95_ms="')&&runtimeTest.includes('" max_ms="'),
   'Navigation runtime must measure a 60-GPS-update UI frame budget without claiming emulator FPS as physical-device certification');
 assert(runtimeTest.includes('awaitAppliedRender')&&runtimeTest.includes('awaitStopProgression')&&
   runtimeTest.includes('awaitRendererReplacementBridge')&&
