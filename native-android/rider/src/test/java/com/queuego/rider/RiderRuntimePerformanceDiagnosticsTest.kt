@@ -30,7 +30,7 @@ class RiderRuntimePerformanceDiagnosticsTest {
 
         var frames = RiderUiJankSnapshot()
         repeat(60) {
-            frames = riderUiJankSnapshotAfterFrame(frames, 16L)
+            frames = riderUiJankSnapshotAfter(frames, 16L)
         }
         assertTrue(riderUiJankRuntimeHealth(frames).healthy == true)
     }
@@ -38,9 +38,9 @@ class RiderRuntimePerformanceDiagnosticsTest {
     @Test fun severeFrameFlagsJankAndBackgroundGapIsIgnored() {
         var frames = RiderUiJankSnapshot()
         repeat(60) {
-            frames = riderUiJankSnapshotAfterFrame(frames, 16L)
+            frames = riderUiJankSnapshotAfter(frames, 16L)
         }
-        frames = riderUiJankSnapshotAfterFrame(frames, 120L)
+        frames = riderUiJankSnapshotAfter(frames, 120L)
 
         assertFalse(riderUiJankRuntimeHealth(frames).healthy == true)
         assertEquals(1L, frames.severeFrames)
