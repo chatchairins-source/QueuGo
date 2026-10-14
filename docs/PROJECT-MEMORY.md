@@ -1,3 +1,10 @@
+## 2026-10-14 Grab Driver parity: live speed + advisory rest reminder
+- APK inspection confirmed Grab Driver contains navigation SpeedIndicatorProvider and dedicated fatigue/safety modules. QueueGo now adopts the useful concept without copying Grab code/assets and without claiming road speed-limit knowledge or biometric/medical detection.
+- Reused the existing foreground navigation GPS stream; no second location reader was added. RiderNavigationLocationStore now retains the start of the current navigation session from the first accepted fix and clears it with the same navigation lifecycle.
+- Active delivery UI shows current km/h only from a GPS speed sample that passes the existing fix pipeline plus a speed-accuracy guard. Implausible >200 km/h samples and weak speed accuracy are hidden rather than displayed.
+- After 2 hours of one continuous navigation session QueueGo shows an advisory rest reminder. It does not block the current order, does not claim a legal driving limit, and can be acknowledged once for that navigation session.
+- Backup backup/rider-grab-parity-before-speed-rest-20261014 retains d12e371. Exact-head native-pilot + navigation-map-runtime are required before PASS.
+
 ## 2026-10-14 Rider re-verification Admin workflow on consolidated release
 - Pulled Work PR235 Admin workflow onto the consolidated #234 release line because its Admin files were byte-identical to the PR235 base before the new workflow, so the UI changes apply cleanly without overwriting newer Admin work.
 - Existing Admin Rider-status cards now call qg_admin_rider_reverification_queue, can request a fresh identity check, open pending private selfie evidence through the existing signed qg-evidence viewer, approve a pending selfie, or reject it with a required Rider-facing reason. The Admin UI never queries qg_private directly.
