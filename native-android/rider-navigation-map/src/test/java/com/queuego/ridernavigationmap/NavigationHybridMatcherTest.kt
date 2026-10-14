@@ -37,6 +37,55 @@ class NavigationHybridMatcherTest {
     }
 
     @Test
+    fun continuityPrefersLaterLoopCrossingInsteadOfJumpingBackToRouteStart() {
+        val loopRoute = NavigationRouteSegment(
+            id = "loop",
+            toStopId = "stop",
+            points = listOf(
+                NavigationMapPoint(15.0000, 103.0000),
+                NavigationMapPoint(15.0000, 103.0100),
+                NavigationMapPoint(15.0100, 103.0100),
+                NavigationMapPoint(15.0100, 103.0000),
+                NavigationMapPoint(15.0000, 103.0000)
+            )
+        )
+        val matcher = NavigationHybridMatcher()
+
+        val beforeCrossing = matcher.match(
+            loopRoute,
+            NavigationMapFix(
+                point = NavigationMapPoint(15.0030, 103.0000),
+                bearingDegrees = 180f,
+                accuracyMeters = 8f,
+                speedMetersPerSecond = 7f,
+                elapsedRealtimeNanos = 1_000_000_000L
+            )
+        )
+        val atRepeatedPoint = matcher.match(
+            loopRoute,
+            NavigationMapFix(
+                point = NavigationMapPoint(15.0000, 103.0000),
+                bearingDegrees = null,
+                accuracyMeters = 8f,
+                speedMetersPerSecond = 1f,
+                elapsedRealtimeNanos = 2_000_000_000L
+            )
+        )
+
+        assertNotNull(beforeCrossing)
+        assertNotNull(atRepeatedPoint)
+        assertTrue(
+            "Matcher jumped from the late loop crossing back to route start",
+            atRepeatedPoint!!.routeMatch.progressMeters >= beforeCrossing!!.routeMatch.progressMeters
+        )
+        assertTrue(
+            "Repeated endpoint should resolve near the end of the route",
+            atRepeatedPoint.routeMatch.geometryDistanceMeters -
+                atRepeatedPoint.routeMatch.progressMeters < 5.0
+        )
+    }
+
+    @Test
     fun continuityAvoidsJumpingBackwardAtAmbiguousGeometry() {
         val matcher = NavigationHybridMatcher()
         val first = matcher.match(
