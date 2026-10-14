@@ -2,7 +2,6 @@ package com.queuego.rider
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Checkbox
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -18,6 +17,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.queuego.shared.QgMuted
@@ -65,11 +65,15 @@ internal fun RiderDeliveryIssueDialog(
     onOpenChat: () -> Unit,
     onReported: (String) -> Unit
 ) {
+    val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val api = remember { QueueGoApi() }
+    val contactAttemptStore = remember(context, auth.user.id) { RiderDeliveryContactAttemptStore(context) }
     var selectedKey by rememberSaveable(job.id) { mutableStateOf(riderDeliveryIssueReasons.first().key) }
     var note by rememberSaveable(job.id) { mutableStateOf("") }
-    var contacted by rememberSaveable(job.id) { mutableStateOf(false) }
+    var attempts by remember(auth.user.id, job.id) {
+        mutableStateOf(contactAttemptStore.load(auth.user.id, job.id))
+    }
     var busy by remember(job.id) { mutableStateOf(false) }
     var error by remember(job.id) { mutableStateOf<String?>(null) }
     val selected = riderDeliveryIssueReasons.first { it.key == selectedKey }
@@ -94,7 +98,11 @@ internal fun RiderDeliveryIssueDialog(
                 ) {
                     OutlinedButton(
                         onClick = {
-                            contacted = true
+                            attempts = contactAttemptStore.record(
+                                auth.user.id,
+                                job.id,
+                                RiderDeliveryContactChannel.CALL
+                            )
                             error = null
                             onCallCustomer()
                         },
@@ -103,7 +111,11 @@ internal fun RiderDeliveryIssueDialog(
                     ) { Text("โทรหาลูกค้า") }
                     OutlinedButton(
                         onClick = {
-                            contacted = true
+                            attempts = contactAttemptStore.record(
+                                auth.user.id,
+                                job.id,
+                                RiderDeliveryContactChannel.CHAT
+                            )
                             error = null
                             onOpenChat()
                         },
@@ -129,17 +141,15 @@ internal fun RiderDeliveryIssueDialog(
                     }
                 }
 
-                Row(
-                    Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Checkbox(
-                        checked = contacted,
-                        onCheckedChange = { if (!busy) contacted = it },
-                        enabled = !busy
-                    )
-                    Text("ฉันได้โทรหรือแชตกับลูกค้าแล้ว")
-                }
+                Text(
+                    if (attempts.totalCount == 0) {
+                        "ยังไม่มีการติดต่อผ่าน QueueGo"
+                    } else {
+                        "ติดต่อแล้ว ${attempts.totalCount} ครั้ง · โทร ${attempts.callCount} · แชต ${attempts.chatCount}"
+                    },
+                    color = if (attempts.totalCount == 0) QgMuted else QgRed,
+                    fontWeight = FontWeight.Bold
+                )
 
                 OutlinedTextField(
                     value = note,
@@ -161,15 +171,20 @@ internal fun RiderDeliveryIssueDialog(
         confirmButton = {
             TextButton(
                 onClick = {
-                    if (!contacted) {
-                        error = "กรุณาโทรหรือแชตกับลูกค้าก่อนรายงาน"
+                    if (attempts.totalCount <= 0) {
+                        error = "กรุณากดโทรหรือแชตกับลูกค้าผ่าน QueueGo ก่อนรายงาน"
                         return@TextButton
                     }
                     busy = true
                     error = null
                     scope.launch {
                         try {
-                            api.reportDeliveryIssue(auth, job, selected.key, note)
+                            api.reportDeliveryIssue(
+                                auth,
+                                job,
+                                selected.key,
+                                riderDeliveryIssueNoteWithAttempts(note, attempts)
+                            )
                             onReported(selected.label)
                         } catch (failure: CancellationException) {
                             throw failure
