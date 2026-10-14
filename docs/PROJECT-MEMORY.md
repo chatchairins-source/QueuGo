@@ -1,3 +1,9 @@
+## 2026-10-14 Grab Driver parity mission: GPS / location integrity diagnostics
+- Continued from latest Insurance Center head 7136502 after re-checking all open PRs before work. Grab Driver contains mismatch / integrity-oriented modules; QueueGo previously filtered impossible coordinates, poor accuracy and impossible jumps but did not surface Android's own mock-location signal.
+- Added RiderLocationIntegrityStore at the retained foreground location service boundary. Every received Fused Location fix records Android's mock marker before normal accuracy/jump filtering so suspicious fixes cannot disappear silently just because the navigation smoother rejects them.
+- Rider Diagnostics now shows a GPS integrity runtime card: no observed fixes = informational, normal fixes = healthy, any Android-marked mock fix = warning with real observed/mock counts. This v1 is intentionally diagnostic-only: it does not block jobs, suspend Rider, alter dispatch, modify routes or upload an anti-fraud event, reducing false-positive risk while we observe real devices.
+- Added pure JVM policy regressions for empty, healthy and mock-detected sessions. Backup backup/rider-insurance-before-location-integrity-20261014 retains 7136502. Exact-head native-pilot + navigation-map-runtime are required before PASS.
+
 ## 2026-10-14 Grab Driver parity: real-data Rider Insurance Center v1
 - Rebased Insurance Center onto main-thread watchdog successor 9eeb136, preserving first-run Learning, Large Order transparency, network/jank diagnostics and watchdog diagnostics.
 - Confirmed the owner-supplied Grab Driver 5.457.1 package contains insurance capabilities including Income Protection, e-Hailing insurance premium detail/discovery, usage-based insurance survey and insurance webview modules. QueueGo previously had no insurance schema or Rider UI.
