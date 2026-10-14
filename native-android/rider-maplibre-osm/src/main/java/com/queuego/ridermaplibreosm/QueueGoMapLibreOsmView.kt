@@ -22,6 +22,8 @@ class QueueGoMapLibreOsmView @JvmOverloads constructor(
     private var resumed = false
     private var destroyed = false
     private var styleApplyCount = 0
+    private var localRoadApplyCount = 0
+    private var localRoadSegments: List<QueueGoLocalRoadSegment> = emptyList()
 
     var onMapReady: ((MapLibreMap) -> Unit)? = null
 
@@ -67,10 +69,24 @@ class QueueGoMapLibreOsmView @JvmOverloads constructor(
     private fun applyConfig(config: MapLibreOsmConfig) {
         val readyMap = map ?: return
         styleApplyCount += 1
-        readyMap.setStyle(ShortbreadVillageStyle.builder(config.sourceUri)) {
+        readyMap.setStyle(ShortbreadVillageStyle.builder(config.sourceUri)) { style ->
+            QueueGoLocalRoadOverlay.installOrUpdate(style, localRoadSegments)
+            localRoadApplyCount += 1
             applyCamera(readyMap, config)
             onMapReady?.invoke(readyMap)
         }
+    }
+
+    fun setLocalRoads(segments: List<QueueGoLocalRoadSegment>) {
+        check(!destroyed) { "MapLibre view already destroyed" }
+        val next = QueueGoLocalRoadPolicy.visibleSegments(segments)
+        if (next == localRoadSegments) return
+        localRoadSegments = next.toList()
+
+        val readyMap = map ?: return
+        val style = readyMap.style ?: return
+        QueueGoLocalRoadOverlay.installOrUpdate(style, localRoadSegments)
+        localRoadApplyCount += 1
     }
 
     private fun applyCamera(map: MapLibreMap, config: MapLibreOsmConfig) {
@@ -126,5 +142,7 @@ class QueueGoMapLibreOsmView @JvmOverloads constructor(
     fun mapViewIdentity(): Int = System.identityHashCode(mapView)
     fun mapIdentity(): Int? = map?.let(System::identityHashCode)
     fun styleApplyCount(): Int = styleApplyCount
+    fun localRoadApplyCount(): Int = localRoadApplyCount
+    fun localRoadSegmentCount(): Int = localRoadSegments.size
     fun isDestroyed(): Boolean = destroyed
 }
