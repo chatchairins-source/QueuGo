@@ -3306,7 +3306,8 @@ private fun VerificationScreen(
 ) {
     val pickup = mode == "pickup"
     val marketPickupMode = mode == "marketPickup"
-    var previewReady by remember(photoUri) { mutableStateOf(false) }
+    var previewQuality by remember(photoUri) { mutableStateOf<RiderEvidenceQuality?>(null) }
+    val previewReady = previewQuality?.acceptable == true
     val photoReady = photoUri != null
     var showCollection by rememberSaveable(job.id, mode) { mutableStateOf(false) }
     val collectionReady = riderCollectionReady(job.customerCash, photoReady, previewReady)
@@ -3471,6 +3472,22 @@ private fun VerificationScreen(
                     RiderCustomerCashPanel(job)
                 }
                 Spacer(Modifier.height(6.dp))
+                if (photoUri == null) {
+                    RiderProofCard(shortScreen) {
+                        Text("แนวทางรูปหลักฐาน", fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                        Text(
+                            if (pickup || marketPickupMode) {
+                                "ให้เห็นสินค้าทั้งหมดในเฟรมเดียว ภาพต้องชัด และอย่าบังสินค้า"
+                            } else {
+                                "ให้เห็นสินค้าและจุดส่งในเฟรมเดียว ภาพต้องชัด และไม่จำเป็นต้องถ่ายหน้าลูกค้า"
+                            },
+                            color = QgMuted,
+                            fontSize = 9.sp,
+                            lineHeight = 12.sp,
+                            modifier = Modifier.padding(top = 3.dp)
+                        )
+                    }
+                }
                 if (photoUri != null) {
                     Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(18.dp), colors = CardDefaults.cardColors(containerColor = Color.White)) {
                         Column(Modifier.padding(10.dp)) {
@@ -3480,12 +3497,21 @@ private fun VerificationScreen(
                             }
                             Box(Modifier.fillMaxWidth().padding(top = 8.dp).height(if (shortScreen) 108.dp else (screenHeight * .31f).coerceIn(160f, 215f).dp)
                                 .clip(RoundedCornerShape(15.dp))) {
-                                RiderEvidencePreview(photoUri, Modifier.fillMaxSize()) { previewReady = it }
+                                RiderEvidencePreview(photoUri, Modifier.fillMaxSize()) { previewQuality = it }
                                 Box(Modifier.align(Alignment.BottomEnd).padding(8.dp)
                                     .height(38.dp).clip(RoundedCornerShape(99.dp)).background(Color(0xF5FFFFFF))
                                     .clickable(enabled = !busy, onClick = onCamera).padding(horizontal = 13.dp), contentAlignment = Alignment.Center) {
                                     Text("ถ่ายใหม่", fontSize = 10.sp, fontWeight = FontWeight.Black)
                                 }
+                            }
+                            previewQuality?.let { quality ->
+                                Text(
+                                    quality.message ?: "รูปพร้อมใช้เป็นหลักฐาน",
+                                    color = if (quality.acceptable) Color(0xFF287A4B) else QgRed,
+                                    fontSize = 8.5.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.padding(top = 6.dp)
+                                )
                             }
                         }
                     }
