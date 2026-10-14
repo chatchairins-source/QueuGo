@@ -131,6 +131,28 @@ class QueueGoLocalRoadCoverageAuditTest {
         auditQueueGoLocalRoadCoverage(emptyList(), listOf(trace, trace))
     }
 
+    @Test(expected = IllegalArgumentException::class)
+    fun emptyAggregateTraceIdentityIsRejected() {
+        evidence(
+            "",
+            listOf(
+                p(15.0100, 103.0100),
+                p(15.0110, 103.0110)
+            )
+        )
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun blankAggregateTraceIdentityIsRejected() {
+        evidence(
+            "   ",
+            listOf(
+                p(15.0100, 103.0100),
+                p(15.0110, 103.0110)
+            )
+        )
+    }
+
     @Test
     fun distinctOpaqueReferencesKeepDistinctStableCandidateKeys() {
         val geometry = listOf(p(15.0100, 103.0100), p(15.0110, 103.0110))
