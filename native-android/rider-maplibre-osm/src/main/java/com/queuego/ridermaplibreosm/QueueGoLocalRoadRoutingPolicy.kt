@@ -66,6 +66,16 @@ fun queueGoLocalRoadRoutingDecision(
     }
 
     if (
+        road.source == QueueGoLocalRoadSource.MERCHANT_CONFIRMED &&
+        traversalUse != QueueGoRoadTraversalUse.DESTINATION_ACCESS
+    ) {
+        return QueueGoLocalRoadRoutingDecision(
+            allowed = false,
+            blockReason = QueueGoLocalRoadRoutingBlockReason.DESTINATION_ACCESS_ONLY
+        )
+    }
+
+    if (
         road.access == QueueGoLocalRoadAccess.SERVICE_ACCESS &&
         traversalUse != QueueGoRoadTraversalUse.DESTINATION_ACCESS
     ) {
