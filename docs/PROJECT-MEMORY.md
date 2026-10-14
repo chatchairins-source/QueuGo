@@ -1,3 +1,11 @@
+## 2026-10-14 Grab Driver parity: real-data Rider Benefits Center
+- Continued from unified Account Restriction + Home Action Cards head 41b3f50. Grab Driver includes Partner Benefits; QueueGo previously had Insurance Center but no general Rider benefits catalogue.
+- Added real-data-only Rider Benefits. Production migrations 20261014093530 rider_partner_benefits_v1 and 20261014093948 rider_partner_benefits_toggle_v2 are additive and already applied. No benefit/partner/coupon seed data was created; active Rider session validation returned visible_benefit_count=0.
+- Data lives in qg_private. Rider sees only enabled benefits whose date window is currently active. Public wrappers are authenticated-only with anon EXECUTE revoked. Admin list/save/toggle/delete re-check active Admin server-side.
+- Native Rider Profile shows active real benefits only, with provider/category/date window and optional verified https action / support phone. Unsafe non-https action URLs are discarded by the client parser as defense in depth.
+- Existing Admin Rider panel now has one global Rider Benefits section, not a duplicate per-Rider card. Admin can add real benefits, temporarily enable/disable them, or delete them. Admin uses qgAdminInput and public RPCs only; direct qg_private access remains forbidden by regression.
+- Backup backup/rider-account-actions-before-benefits-v2-20261014 retains 41b3f50. Exact-head native-pilot + navigation-map-runtime and Admin/backend regressions are required before PASS.
+
 ## 2026-10-14 Grab Driver parity: unified Account Restriction + Home Action Cards successor
 - Unified the two latest sibling branches so Rider Home action cards and status-specific non-active account restriction UX now live on one successor line.
 - Started from Home Action Cards head b77e2f0, then carried forward the Account Restriction implementation from PR #280 without changing dispatch, payment, navigation, auth policy or Production DB.
