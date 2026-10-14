@@ -1,6 +1,7 @@
 package com.queuego.ridermaplibreosm
 
 import java.io.File
+import kotlin.io.path.createTempDirectory
 import kotlinx.coroutines.runBlocking
 import okhttp3.OkHttpClient
 import okhttp3.mockwebserver.MockResponse
@@ -40,7 +41,7 @@ class QueueGoPmTilesDownloaderTest {
             )
             .hostnameVerifier { _, _ -> true }
             .build()
-        directory = createTempDir(prefix = "queuego-pmtiles-")
+        directory = createTempDirectory("queuego-pmtiles-").toFile()
     }
 
     @After fun tearDown() {
