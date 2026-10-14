@@ -87,6 +87,9 @@ internal fun riderUiJankSnapshotAfter(
     )
 }
 
+internal fun riderShouldRecordFrameDuration(durationMs: Long): Boolean =
+    durationMs in 1L..500L
+
 internal object RiderFrameJankTracker {
     private var started = false
     private var lastFrameNanos = 0L
@@ -98,7 +101,7 @@ internal object RiderFrameJankTracker {
             lastFrameNanos = frameTimeNanos
             if (previous > 0L) {
                 val durationMs = ((frameTimeNanos - previous) / 1_000_000L).coerceAtLeast(0L)
-                if (durationMs in 1L..500L) {
+                if (riderShouldRecordFrameDuration(durationMs)) {
                     RiderRuntimeDiagnosticsStore.recordFrame(durationMs)
                 }
             }
