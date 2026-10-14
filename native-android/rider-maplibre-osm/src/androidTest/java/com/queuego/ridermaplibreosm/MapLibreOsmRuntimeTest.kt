@@ -38,6 +38,26 @@ class MapLibreOsmRuntimeTest {
                 assertEquals("Camera-only refresh reloaded Shortbread style", 1, it.styleApplyCount())
             }
 
+            scenario.onActivity { it.setVerifiedLocalRoadFixture(version = 1) }
+            InstrumentationRegistry.getInstrumentation().waitForIdleSync()
+            scenario.onActivity {
+                assertEquals("Verified local-road update recreated MapView", initialView, it.mapViewIdentity())
+                assertEquals("Verified local-road update recreated MapLibreMap", initialMap, it.mapIdentity())
+                assertEquals("Verified local-road update reloaded Shortbread style", 1, it.styleApplyCount())
+                assertEquals(1, it.localRoadUpdateCount())
+                assertTrue("Verified local-road GeoJSON source was not attached", it.hasLocalRoadSource())
+                assertTrue("Verified local-road layers were not attached", it.hasLocalRoadLayers())
+            }
+
+            scenario.onActivity { it.setVerifiedLocalRoadFixture(version = 2) }
+            InstrumentationRegistry.getInstrumentation().waitForIdleSync()
+            scenario.onActivity {
+                assertEquals("Second local-road update recreated MapView", initialView, it.mapViewIdentity())
+                assertEquals("Second local-road update recreated MapLibreMap", initialMap, it.mapIdentity())
+                assertEquals("Second local-road update reloaded base style", 1, it.styleApplyCount())
+                assertEquals("Local-road source was not updated in place", 2, it.localRoadUpdateCount())
+            }
+
             scenario.onActivity { it.refreshEquivalentConfig() }
             InstrumentationRegistry.getInstrumentation().waitForIdleSync()
             scenario.onActivity {
