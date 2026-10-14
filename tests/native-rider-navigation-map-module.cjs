@@ -29,6 +29,7 @@ assert(moduleBuild.includes('id("com.android.library")')&&moduleBuild.includes('
 assert(moduleBuild.includes('com.google.android.gms:play-services-location:21.3.0'),
   'Standalone Longdo runtime must include the Google Play Services location classes required by MapLocationManager');
 const integration=fs.readFileSync('native-android/rider/src/main/java/com/queuego/rider/RiderNavigationIntegration.kt','utf8');
+const sessionStore=fs.readFileSync('native-android/rider/src/main/java/com/queuego/rider/SessionStore.kt','utf8');
 const locationService=fs.readFileSync('native-android/rider/src/main/java/com/queuego/rider/RiderNavigationLocationService.kt','utf8');
 const riderManifest=fs.readFileSync('native-android/rider/src/main/AndroidManifest.xml','utf8');
 assert(riderBuild.includes('implementation(project(":rider-navigation-map"))')&&
@@ -140,6 +141,15 @@ assert(
   !integration.includes('rawFix.point.latitude')&&
   !integration.includes('rawFix.point.longitude'),
   'Shadow confidence rollout must be idempotent on equivalent backend refreshes and emit only aggregate debug diagnostics without coordinates');
+
+assert(
+  sessionStore.includes('fun saveMapViewMode(')&&
+  sessionStore.includes('fun loadMapViewMode(')&&
+  sessionStore.includes('"FREE_PAN"')&&
+  integration.includes('sessionStore.loadMapViewMode(stateKey)')&&
+  integration.includes('sessionStore.saveMapViewMode(stateKey, NavigationViewMode.FREE_PAN.name)')&&
+  integration.includes('sessionStore.saveMapViewMode(stateKey, NavigationViewMode.FOLLOW.name)'),
+  'Manual-pan view mode must survive Rider tab remounts without silently resuming camera follow');
 
 assert(
   viewportInsets.includes('data class NavigationViewportInsets')&&
