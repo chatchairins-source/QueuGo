@@ -90,6 +90,23 @@ class QueueGoLocalRoadFeedTest {
         )
     }
 
+    @Test(expected = IllegalArgumentException::class)
+    fun competitorStyleReferenceCannotPassFieldSurveyProvenance() {
+        validateQueueGoLocalRoadFeed(
+            QueueGoLocalRoadFeed(
+                revision = 3,
+                generatedAtEpochMillis = 1_700_000_100_000L,
+                records = listOf(
+                    QueueGoLocalRoadFeedRecord(
+                        road = road("road-a"),
+                        sourceReference = "competitor:road-a",
+                        verifiedAtEpochMillis = 1_700_000_000_000L
+                    )
+                )
+            )
+        )
+    }
+
     @Test
     fun unverifiedCandidateCanBeCarriedButRendererStillFiltersIt() {
         val candidate = record("candidate", verified = false)
