@@ -1455,7 +1455,7 @@ private fun RiderHome(
         networkAvailable,
         snapshot?.online,
         snapshot?.activeJob?.id,
-        snapshot?.laundry?.activeJob?.id,
+        snapshot?.laundry?.activeJob?.jobId,
         snapshot?.offeredJob?.id
     ) {
         lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
@@ -1611,9 +1611,10 @@ private fun RiderHome(
                                 )
                             }
                             "marketPickup" -> {
+                                val pickupId = completedMarketPickupId
                                 before?.copy(
                                     marketPickups = before.marketPickups.map { pickup ->
-                                        if (pickup.pickupId == completedMarketPickupId) pickup.copy(status = "PICKED_UP") else pickup
+                                        if (pickup.pickupId == pickupId) pickup.copy(status = "PICKED_UP") else pickup
                                     }
                                 )
                             }
