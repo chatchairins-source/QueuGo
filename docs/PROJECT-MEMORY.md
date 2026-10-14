@@ -1,3 +1,14 @@
+## 2026-10-14 Rider world-class unified: proof recovery + adaptive refresh + multi-stop return
+- Continued from latest proof-recovery head 9e5de475, which already carries Photo Proof Quality, Connectivity Guard, Return-to-Sender, one-photo proof persistence and adaptive snapshot refresh.
+- Unified the newer multi-stop return state from the Rider world-class line without dropping pending-proof recovery.
+- RiderDeliveryReturn now consumes qg_rider_active_delivery_return_v2 and tracks market_order_id, return_stop_count, returned_stop_count, current stop, per-stop refund and remaining stops.
+- Return proof remains exactly one photo per current return stop. The photo must pass the existing QueueGo proof-quality gate and is persisted locally until the server confirms the return mutation.
+- After a confirmed return stop, the pending proof is cleared only for that confirmed stop. If more return stops remain, QueueGo refreshes the authoritative return state and opens Google Maps to the next shop automatically.
+- Return stop success and all-return-complete now have distinct QueueGo-owned sound/haptic feedback. No Grab audio assets are copied.
+- Adaptive refresh from the proof-recovery line remains unchanged: critical/online work stays 3s fallback, no-network backs off to 12s, offline idle to 15s.
+- Backup: backup/rider-worldclass-before-proof-return-unify-20261014 @ 9e5de475.
+- PASS requires exact-head native-pilot + navigation-map-runtime plus existing proof-recovery / return-flow unit contracts.
+
 ## 2026-10-14 Rider one-hand UX: touch-target hardening on network-guard successor
 - Continued from #297 so validated-network mutation guards and reconnect continuity remain intact.
 - Active Rider custom actions previously used 42dp/46dp minimum heights. Android accessibility guidance recommends at least 48dp touch targets for interactive controls.
