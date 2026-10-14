@@ -1,3 +1,9 @@
+## 2026-10-14 Rider Grab-parity consolidated Release Gate
+- Consolidated the post-PR224 Rider experience work onto one exact-head release-gate branch: privacy-safe demand heatmap, map-reuse runtime assertions, real customer compliments, detailed job history and Rider-managed public profile photo.
+- The branch name intentionally enters navigation-map-runtime so the retained Longdo renderer and the full Native pilot suite run on the same head. No PASS claim is allowed unless both are green.
+- Active Production Rider aggregate currently has 3 active Riders and 0 profile photos, so the profile UI now labels the empty state as "เพิ่มรูป" and explains that Customer/Merchant use it to identify the Rider. This is non-blocking for the current pilot; no online-state hard gate was added.
+- Production backend migrations already applied in this chain: 20261014055901 rider_demand_heatmap_v1, 20261014061234 rider_compliments_v1, 20261014062708 rider_public_profile_photo_v1. No Grab proprietary code/assets/map geometry were copied.
+
 ## 2026-10-14 Grab Driver parity mission: Rider-managed public profile photo
 - Added a dedicated public rider-profile Storage bucket for the Rider identity photo shown to Customer, Merchant and Rider. This is intentionally separate from private qg-evidence/KYC/proof media.
 - Storage writes are restricted to active Rider owner paths under auth.uid(); the app uses one stable authUid/profile object with upsert, max 5 MB and JPG/PNG/WebP only. A server RPC verifies the uploaded owner object and updates only rider_profiles.metadata.profileImage, preserving KYC, vehicle approval and all unrelated metadata.
