@@ -124,6 +124,44 @@ class QueueGoLocalRoadSignedDeliveryTest {
         }
     }
 
+    @Test(expected = IllegalArgumentException::class)
+    fun corruptedCacheFailsClosedBeforeTransportCanApplyOlderRevision() = runBlocking {
+        val directory = Files.createTempDirectory("qg-local-roads").toFile()
+        try {
+            val cache = QueueGoLocalRoadSnapshotCache(directory)
+            val cachedPayload = "cached-revision-10".toByteArray()
+            cache.write(10, queueGoSha256Hex(cachedPayload), cachedPayload)
+
+            val snapshotFile = directory.resolve("local-roads.qglr")
+            val bytes = snapshotFile.readBytes()
+            bytes[bytes.lastIndex] = (bytes.last().toInt() xor 0x01).toByte()
+            snapshotFile.writeBytes(bytes)
+
+            val delivery = QueueGoLocalRoadSignedDelivery(
+                transport = object : QueueGoLocalRoadSnapshotTransport {
+                    override suspend fun fetch(): QueueGoLocalRoadSignedEnvelope {
+                        throw AssertionError(
+                            "Transport must not run when the persisted revision watermark is corrupt"
+                        )
+                    }
+                },
+                decoder = object : QueueGoLocalRoadFeedDecoder {
+                    override fun decode(payload: ByteArray): QueueGoLocalRoadFeed {
+                        throw AssertionError("Decoder must not run for corrupt cache")
+                    }
+                },
+                verifier = QueueGoLocalRoadSignatureVerifier { _, _, _ ->
+                    throw AssertionError("Verifier must not run for corrupt cache")
+                },
+                cache = cache
+            )
+
+            delivery.refresh()
+        } finally {
+            directory.deleteRecursively()
+        }
+    }
+
     @Test
     fun staleSignedRevisionNeverReplacesNewerCachedSnapshot() = runBlocking {
         val directory = Files.createTempDirectory("qg-local-roads").toFile()
