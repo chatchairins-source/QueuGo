@@ -70,6 +70,7 @@ class SessionStore(private val context: Context) {
         .remove("home_snapshot")
         .remove("ui_state")
         .remove("map_camera")
+        .remove("map_view_mode")
         .apply()
 
     @Synchronized
@@ -115,6 +116,26 @@ class SessionStore(private val context: Context) {
             root.optDouble("centered", 0.0)
         ).takeIf { values -> values.all { it.isFinite() } }
     }.getOrNull()
+
+    @Synchronized
+    fun saveMapViewMode(userId: String, mode: String) {
+        val safeMode = mode.takeIf { it == "FOLLOW" || it == "FREE_PAN" } ?: "FOLLOW"
+        val root = JSONObject()
+            .put("userId", userId)
+            .put("mode", safeMode)
+        prefs.edit().putString("map_view_mode", encrypt(root.toString())).apply()
+    }
+
+    @Synchronized
+    fun loadMapViewMode(userId: String): String = runCatching {
+        val raw = prefs.getString("map_view_mode", null) ?: return "FOLLOW"
+        val root = JSONObject(decrypt(raw))
+        if (root.optString("userId") != userId) return "FOLLOW"
+        when (root.optString("mode")) {
+            "FREE_PAN" -> "FREE_PAN"
+            else -> "FOLLOW"
+        }
+    }.getOrDefault("FOLLOW")
 
     @Synchronized
     fun saveHomeSnapshot(userId: String, snapshot: RiderSnapshot) {
