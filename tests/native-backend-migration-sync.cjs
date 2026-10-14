@@ -107,7 +107,7 @@ for(const needle of [
 ]){
   assert.ok(emergencyContactMigration.includes(needle),'Rider emergency contact v1 missing contract: '+needle);
 }
-const emergencyPhoneFix=read('supabase/migrations/20261014070400_rider_emergency_contact_phone_regex_fix_v2.sql');
+const emergencyPhoneFix=read('supabase/migrations/20261014070308_rider_emergency_contact_phone_regex_fix_v2.sql');
 for(const needle of [
   'rider_emergency_contact_phone_format',
   "contact_phone ~ '^[+]?[0-9]{8,15}$'",
