@@ -140,4 +140,16 @@ for(const needle of [
 ]){
   assert.ok(destinationMigration.includes(needle),'Rider My Destination migration missing contract: '+needle);
 }
+const fatigueMigration=read('supabase/migrations/20261014073631_rider_fatigue_status_v1.sql');
+for(const needle of [
+  'qg_private.rider_fatigue_status',
+  'qg_rider_fatigue_status',
+  'qg_rider_presence_events',
+  "'strong_rest_recommended'",
+  "'rest_recommended'",
+  "'medical_detection', false",
+  "revoke all on function public.qg_rider_fatigue_status() from public, anon"
+]){
+  assert.ok(fatigueMigration.includes(needle),'Rider fatigue migration missing contract: '+needle);
+}
 console.log('Native backend migration mirror: PASS');
