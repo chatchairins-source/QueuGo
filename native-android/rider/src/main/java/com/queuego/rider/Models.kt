@@ -306,6 +306,19 @@ data class RiderDemandZone(
     val windowHours: Int
 )
 
+data class RiderMission(
+    val id: String,
+    val title: String,
+    val description: String?,
+    val targetJobs: Int,
+    val rewardNote: String?,
+    val startsAt: String?,
+    val endsAt: String?,
+    val state: String,
+    val progressJobs: Int,
+    val completed: Boolean
+)
+
 data class RiderReverificationStatus(
     val required: Boolean,
     val requestId: String?,

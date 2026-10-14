@@ -83,4 +83,17 @@ for(const needle of [
 ]){
   assert.ok(reverificationReasonMigration.includes(needle),'Rider reverification reason migration missing contract: '+needle);
 }
+const riderMissionsMigration=read('supabase/migrations/20261014064750_rider_missions_v1.sql');
+for(const needle of [
+  'qg_private.rider_missions',
+  'qg_rider_missions',
+  'qg_admin_rider_missions',
+  'qg_admin_create_rider_mission',
+  'qg_admin_set_rider_mission_active',
+  "count(distinct coalesce(o.market_order_id::text,o.id::text))",
+  "revoke all on function public.qg_rider_missions() from public, anon",
+  "revoke all on table qg_private.rider_missions from public, anon, authenticated"
+]){
+  assert.ok(riderMissionsMigration.includes(needle),'Rider missions migration missing contract: '+needle);
+}
 console.log('Native backend migration mirror: PASS');

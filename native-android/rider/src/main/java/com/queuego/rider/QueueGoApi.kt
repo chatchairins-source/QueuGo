@@ -129,6 +129,38 @@ internal fun riderReverificationStatusFromRpc(raw: Any?): RiderReverificationSta
 internal fun riderReverificationBlocksOnline(status: RiderReverificationStatus): Boolean =
     status.required && status.status in setOf("required", "pending", "rejected")
 
+internal fun riderMissionsFromRpc(raw: Any?): List<RiderMission> {
+    val rows = when (raw) {
+        is JSONArray -> raw
+        is JSONObject -> JSONArray().put(raw)
+        else -> JSONArray()
+    }
+    return buildList {
+        for (index in 0 until rows.length()) {
+            val row = rows.optJSONObject(index) ?: continue
+            val id = row.optString("id").trim()
+            val title = row.optString("title").trim()
+            val target = row.optInt("target_jobs", 0)
+            if (id.isBlank() || title.isBlank() || target <= 0) continue
+            val progress = row.optInt("progress_jobs", 0).coerceIn(0, target)
+            add(
+                RiderMission(
+                    id = id,
+                    title = title,
+                    description = riderNullableText(row.optString("description")),
+                    targetJobs = target,
+                    rewardNote = riderNullableText(row.optString("reward_note")),
+                    startsAt = riderNullableText(row.optString("starts_at")),
+                    endsAt = riderNullableText(row.optString("ends_at")),
+                    state = row.optString("state").takeIf { it in setOf("upcoming","active","completed") } ?: "active",
+                    progressJobs = progress,
+                    completed = row.optBoolean("completed", progress >= target)
+                )
+            )
+        }
+    }
+}
+
 class QueueGoApi {
     companion object {
         private const val BASE_URL = "https://pkypiqhlrmzocysgeqew.supabase.co"
@@ -440,6 +472,17 @@ class QueueGoApi {
         )
         Unit
     }
+
+    suspend fun missions(auth: QueueGoAuth): List<RiderMission> =
+        withContext(Dispatchers.IO) {
+            riderMissionsFromRpc(
+                rpc(
+                    "qg_rider_missions",
+                    auth.session.accessToken,
+                    JSONObject()
+                )
+            )
+        }
 
     suspend fun periodSummary(auth: QueueGoAuth, days: Int = 1): RiderPeriodSummary =
         withContext(Dispatchers.IO) {

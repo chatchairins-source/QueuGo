@@ -1,3 +1,10 @@
+## 2026-10-14 Grab Driver parity mission: real Rider Missions
+- Added a Mission framework based on the mission/incentive capability observed in the owner-supplied Grab Driver package, without copying code/assets and without introducing automatic money payout.
+- Production migration 20261014064750 rider_missions_v1 stores mission definitions only in qg_private. Admin-only public wrappers can list/create/activate missions; Rider wrapper returns only active/upcoming mission definitions plus the current Rider's aggregate progress. anon execute is revoked.
+- Mission progress counts completed shopping trips by completed_at. Market multi-shop children sharing one market_order_id count as one trip, preventing inflated progress. A partial index supports rider/completed_at aggregation.
+- Native Rider Earnings shows Mission cards only when Production returns real missions; zero missions renders no placeholder. Admin Rider section creates and opens/closes missions with title, description, target trips, time window and optional reward text. Reward text is informational only; this version does not credit a wallet, transfer money or mutate Rider earnings.
+- Production was intentionally left with zero mission rows after backend verification. Backup backup/rider-missions-before-grab-parity-20261014 retains d12e371. Exact successor CI required before PASS.
+
 ## 2026-10-14 Rider re-verification Admin workflow on consolidated release
 - Pulled Work PR235 Admin workflow onto the consolidated #234 release line because its Admin files were byte-identical to the PR235 base before the new workflow, so the UI changes apply cleanly without overwriting newer Admin work.
 - Existing Admin Rider-status cards now call qg_admin_rider_reverification_queue, can request a fresh identity check, open pending private selfie evidence through the existing signed qg-evidence viewer, approve a pending selfie, or reject it with a required Rider-facing reason. The Admin UI never queries qg_private directly.

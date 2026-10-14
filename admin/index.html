@@ -249,6 +249,82 @@ async function qtRenderAdminRiderPresence(){
     }).join(''):'<div class="qt-rider-online-card">ยังไม่มีข้อมูลไรเดอร์</div>';
   }catch(err){if(el.isConnected)el.textContent='โหลดสถานะไรเดอร์ไม่สำเร็จ: '+err.message;}
 }
+
+function qtMissionLocalValue(offsetHours){
+  const date=new Date(Date.now()+offsetHours*3600000);
+  const local=new Date(date.getTime()-date.getTimezoneOffset()*60000);
+  return local.toISOString().slice(0,16);
+}
+window.qtAdminCreateRiderMission=async function(){
+  try{
+    const title=String(document.getElementById('qt-mission-title')?.value||'').trim();
+    const description=String(document.getElementById('qt-mission-description')?.value||'').trim();
+    const reward=String(document.getElementById('qt-mission-reward')?.value||'').trim();
+    const target=Number(document.getElementById('qt-mission-target')?.value||0);
+    const startValue=String(document.getElementById('qt-mission-start')?.value||'');
+    const endValue=String(document.getElementById('qt-mission-end')?.value||'');
+    if(!title){toast('กรุณาระบุชื่อภารกิจ');return;}
+    if(!Number.isInteger(target)||target<1||target>500){toast('เป้าหมายต้องอยู่ระหว่าง 1–500 เที่ยว');return;}
+    if(!startValue||!endValue){toast('กรุณาระบุเวลาเริ่มและสิ้นสุด');return;}
+    const startsAt=new Date(startValue),endsAt=new Date(endValue);
+    if(!Number.isFinite(startsAt.getTime())||!Number.isFinite(endsAt.getTime())||endsAt<=startsAt){
+      toast('ช่วงเวลาภารกิจไม่ถูกต้อง');return;
+    }
+    await qtSupabaseRpc('qg_admin_create_rider_mission',{
+      p_title:title,
+      p_description:description||null,
+      p_target_jobs:target,
+      p_reward_note:reward||null,
+      p_starts_at:startsAt.toISOString(),
+      p_ends_at:endsAt.toISOString()
+    });
+    toast('สร้างภารกิจ Rider แล้ว');
+    await qtAdminLoadRiderMissions();
+  }catch(err){toast('สร้างภารกิจไม่สำเร็จ: '+err.message);}
+};
+window.qtAdminToggleRiderMission=async function(id,active){
+  try{
+    await qtSupabaseRpc('qg_admin_set_rider_mission_active',{p_mission_id:id,p_active:active===true});
+    toast(active?'เปิดภารกิจแล้ว':'ปิดภารกิจแล้ว');
+    await qtAdminLoadRiderMissions();
+  }catch(err){toast('เปลี่ยนสถานะภารกิจไม่สำเร็จ: '+err.message);}
+};
+window.qtAdminLoadRiderMissions=async function(){
+  const el=document.getElementById('qt-admin-rider-mission-panel');
+  if(!el)return;
+  el.textContent='กำลังโหลดภารกิจ Rider…';
+  try{
+    const rows=await qtSupabaseRpc('qg_admin_rider_missions');
+    if(!Array.isArray(rows))throw Error('ข้อมูลภารกิจไม่ถูกต้อง');
+    const missionCards=rows.map(m=>{
+      const start=m.starts_at?new Date(m.starts_at).toLocaleString('th-TH'):'-';
+      const end=m.ends_at?new Date(m.ends_at).toLocaleString('th-TH'):'-';
+      return '<article class="card" style="margin-top:8px">'+
+        '<strong>'+escapeHtml(m.title||'ภารกิจ Rider')+'</strong>'+
+        '<span style="float:right">'+(m.active?'เปิด':'ปิด')+'</span>'+
+        '<p class="qt-admin-note">เป้าหมาย '+Number(m.target_jobs||0).toLocaleString('th-TH')+
+        ' เที่ยว · '+escapeHtml(start)+' → '+escapeHtml(end)+'</p>'+
+        (m.description?'<p>'+escapeHtml(m.description)+'</p>':'')+
+        (m.reward_note?'<p class="qt-admin-note">รางวัล: '+escapeHtml(m.reward_note)+'</p>':'')+
+        '<button class="'+(m.active?'btn-danger':'btn-primary')+'" type="button" onclick="qtAdminToggleRiderMission(\''+
+          escapeHtml(m.id)+'\','+(!m.active)+')">'+(m.active?'ปิดภารกิจ':'เปิดภารกิจ')+'</button>'+
+      '</article>';
+    }).join('');
+    el.innerHTML=
+      '<div class="card">'+
+        '<h3>สร้างภารกิจใหม่</h3>'+
+        '<label>ชื่อภารกิจ<input id="qt-mission-title" maxlength="120" placeholder="เช่น ส่งครบ 10 เที่ยว"></label>'+
+        '<label>รายละเอียด<textarea id="qt-mission-description" maxlength="500" placeholder="รายละเอียดที่ Rider ต้องทำ"></textarea></label>'+
+        '<label>เป้าหมาย (เที่ยว)<input id="qt-mission-target" type="number" min="1" max="500" step="1" value="10"></label>'+
+        '<label>เริ่ม<input id="qt-mission-start" type="datetime-local" value="'+qtMissionLocalValue(0)+'"></label>'+
+        '<label>สิ้นสุด<input id="qt-mission-end" type="datetime-local" value="'+qtMissionLocalValue(24)+'"></label>'+
+        '<label>ข้อความรางวัล (ไม่บังคับ)<input id="qt-mission-reward" maxlength="160" placeholder="ระบบนี้ไม่จ่ายเงินอัตโนมัติ"></label>'+
+        '<button class="btn-primary btn-block" type="button" onclick="qtAdminCreateRiderMission()">สร้างภารกิจ</button>'+
+        '<p class="qt-admin-note">Progress นับเฉพาะเที่ยวที่ส่งสำเร็จจริง งาน Market หลายร้านนับเป็น 1 เที่ยว และระบบนี้ไม่สร้างการจ่ายโบนัสอัตโนมัติ</p>'+
+      '</div>'+
+      (missionCards||'<div class="card">ยังไม่มีภารกิจ Rider</div>');
+  }catch(err){if(el.isConnected)el.textContent='โหลดภารกิจไม่สำเร็จ: '+err.message;}
+};
 </script>
 
 <script>
@@ -1050,7 +1126,7 @@ function renderAdminGovernance(){
  ${panel('qt-sec-orders','<h2>จัดการออเดอร์</h2><p class="qt-admin-note">ค้นหา ตรวจสถานะ และเปิดประวัติออเดอร์</p><button class="btn-primary" onclick="navigate(\'admin-orders\')">เปิดรายการออเดอร์</button>')}
  ${panel('qt-sec-shops',`<h2>จัดการร้านค้า</h2><div class="qg-shop-filters">${[['all','ทั้งหมด'],['ready','พร้อมใช้งาน'],['pending_review','รออนุมัติ'],['incomplete','ข้อมูลไม่ครบ'],['never_opened','ไม่เคยเปิดใช้งาน'],['archived','ถูกลบ / Archived']].map(([key,label],i)=>`<button class="${i===0?'active':''}" data-shop-filter="${key}" onclick="qgAdminShopFilter('${key}')">${label}</button>`).join('')}</div><input id="qg-shop-search" type="search" aria-label="ค้นหาร้านค้า" placeholder="ค้นหาชื่อร้าน ประเภท หรือเบอร์โทร" oninput="qgAdminShopFilter()"><div class="qg-shop-list">${shopCards||empty('ยังไม่มีร้านค้า')}</div><p id="qg-shop-empty" class="qg-empty" hidden>ไม่พบร้านค้าที่ค้นหา</p>`)}
  ${panel('qt-sec-users',`<h2>จัดการผู้ใช้</h2><div class="qt-user-category-tabs">${[['customer','ลูกค้า'],['rider','ไรเดอร์'],['shop','ร้านค้า'],['technician','ช่าง'],['admin','แอดมิน']].map(([role,label],i)=>`<button class="qt-user-category-btn ${i===0?'active':''}" data-user-category="${role}" onclick="qtUserCategory('${role}')">${label} (${users.filter(u=>u.type===role).length})</button>`).join('')}</div><input type="search" id="qg-admin-user-search" aria-label="ค้นหาผู้ใช้" placeholder="ค้นหาชื่อ ประเภทร้าน หรือเบอร์โทร" oninput="qgAdminFilterUsers(this.value)">${userPanels}`)}
- ${panel('qt-sec-delivery','<h2>สถานะไรเดอร์</h2><div id="qt-admin-rider-online-panel" class="card">กำลังโหลดสถานะจากระบบ…</div>')}
+ ${panel('qt-sec-delivery','<h2>สถานะไรเดอร์</h2><div id="qt-admin-rider-online-panel" class="card">กำลังโหลดสถานะจากระบบ…</div><h2 style="margin-top:16px">ภารกิจ Rider</h2><div id="qt-admin-rider-mission-panel">กำลังโหลดภารกิจ…</div>')}
  ${panel('qt-sec-approval',`<h2>รออนุมัติผู้ให้บริการ</h2><div class="qg-approval-tabs">${[['all','ทั้งหมด'],['shop','ร้านค้า'],['rider','ไรเดอร์']].map(([role,label],i)=>`<button class="${i===0?'active':''}" data-approval-filter="${role}" onclick="qgAdminApprovalRole('${role}')">${label}</button>`).join('')}</div><input id="qg-approval-search" type="search" aria-label="ค้นหาใบสมัคร" placeholder="ค้นหาชื่อร้าน ประเภท หรือเบอร์โทร" oninput="qgAdminApprovalRole(window.QG_ADMIN_APPROVAL_ROLE||'all')">${approval}<p id="qg-approval-filter-empty" class="qg-empty" ${pending.length?'hidden':''}>ไม่มีใบสมัครที่ตรงกับการค้นหา</p>`)}
  ${panel('qt-sec-promote',`<h2>คำขอ Promote</h2>${promos.map(p=>`<article class="card"><b>${esc(p.shopName||p.shopId)}</b><p>${esc(qtPromoStatusLabel(p.status))} · ${Number(p.bidPrice||0).toLocaleString('th-TH')} บาท</p><div class="row-btns">${p.status==='pending'?`<button class="btn-primary" onclick="adminApprovePromotion('${esc(p.id)}')">อนุมัติ</button><button class="btn-danger" onclick="adminRejectPromotion('${esc(p.id)}')">ปฏิเสธ</button>`:''}${p.status==='active'?`<button class="btn-danger" onclick="stopPromote('${esc(p.id)}')">หยุดโปรโมต</button>`:''}</div></article>`).join('')||empty('ยังไม่มีคำขอ Promote')}`)}
  ${panel('qt-sec-finance',`<h2>การเงิน</h2><div class="row-btns"><button class="btn-primary" onclick="navigate('admin-gp')">GP และสลิป</button><button onclick="navigate('admin-cash')">รายงานเงินสด</button></div><h3>คำขอคืนเงิน</h3>${orders.filter(o=>o.refundStatus==='requested').map(o=>`<article class="card"><b>${esc(displayOrderNumber(o))}</b><p>${esc(o.refundReason||'-')} · ${Number(o.total||0).toLocaleString('th-TH')} บาท</p><button class="btn-primary" onclick="adminApproveRefund('${esc(o.id)}')">อนุมัติคืนเงิน</button></article>`).join('')||empty('ไม่มีคำขอคืนเงิน')}`)}
@@ -1059,7 +1135,7 @@ function renderAdminGovernance(){
  ${panel('qt-sec-audit',`<h2>ประวัติการทำงาน</h2><button onclick="qtAdminRefreshAuditLog()">โหลดประวัติล่าสุด</button>${audit.slice(-100).reverse().map(x=>`<article class="card"><b>${esc(x.action||'-')}</b><p class="qt-admin-note">${esc(users.find(u=>u.id===x.actorId)?.name||x.actorId||'ระบบ')} · ${x.at?new Date(x.at).toLocaleString('th-TH'):'-'}<br>${esc(x.entityType||'')} ${esc(x.entityId||'')}</p></article>`).join('')||empty('ยังไม่มีบันทึก')}`)}
  ${panel('qt-sec-settings',`<h2>ตั้งค่าระบบ</h2><div class="card"><div class="qt-settings-grid">${fields.map(([key,label,min,max,step])=>`<label>${label}<input id="qt-set-${key}" type="number" min="${min}" ${max==null?'':`max="${max}"`} step="${step}" value="${esc(settings[key])}"></label>`).join('')}<label class="qt-settings-toggle">เปิดการแจ้งเตือน<input id="qt-set-notifications" type="checkbox" ${settings.notifications?'checked':''}></label></div><button class="btn-primary btn-block" onclick="qtSaveSystemSettings()">บันทึกการตั้งค่า</button></div><div id="qg-platform-controls" class="card">กำลังโหลดบริการและราคา…</div><div class="card qg-banner-admin-card"><div class="qg-banner-admin-head"><div><h3>แบนเนอร์หน้าแรก</h3><p>รองรับสูงสุด 3 ภาพ สไลด์อัตโนมัติ และเตรียมลิงก์สำหรับโฆษณาในอนาคต</p></div></div><div id="qg-home-banner-manager" class="qg-home-banner-manager">กำลังโหลดแบนเนอร์…</div></div><div class="card qg-banner-admin-card"><div class="qg-banner-admin-head"><div><h3>แบนเนอร์หมวดหมู่</h3><p>อัปโหลดหรือเปลี่ยนภาพของอาหาร เครื่องดื่ม ของชำ ตลาดสด และ Shopping ได้จากจุดเดียว</p></div></div><div id="qg-service-banner-manager" class="qg-home-banner-manager">กำลังโหลดแบนเนอร์หมวดหมู่…</div></div>`)}
  ${panel('qt-sec-permissions','<h2>สิทธิ์ผู้ดูแลระบบ</h2><div class="card"><p>จัดการผู้ใช้ ร้านค้า ไรเดอร์ ออเดอร์ พิกัด และค่าบริการ</p><p class="qt-admin-note">ใช้สิทธิ์บัญชีผู้ดูแลจากระบบกลาง</p></div>')}</div>`);
- window.qtAdminTab=function(id){if(!sections.some(([key])=>key===id))return;sessionStorage.setItem('qt_admin_active_tab',id);document.querySelectorAll('.qt-admin-panel').forEach(el=>el.classList.toggle('active',el.id===id));const picker=document.getElementById('qg-admin-section-picker');if(picker)picker.value=id;const title=sections.find(([key])=>key===id)?.[1];const titleNode=document.querySelector('.qg-page-title h1');if(titleNode)titleNode.textContent=title;document.title=title+' · QueueGo Admin';qgAdminSyncNavigation();if(id==='qt-sec-delivery')qtRenderAdminRiderPresence();if(id==='qt-sec-security')qtSecurityRole(window.QT_SECURITY_ROLE||'customer');if(id==='qt-sec-settings'){qgRenderPlatformControls();if(typeof qgAdminLoadHomeBanners==='function')qgAdminLoadHomeBanners();if(typeof qgAdminLoadServiceBanners==='function')qgAdminLoadServiceBanners();}if(id==='qt-sec-approval')qgAdminApprovalRole(window.QG_ADMIN_APPROVAL_ROLE||'all');if(id==='qt-sec-shops')qgAdminShopFilter(window.QG_ADMIN_SHOP_FILTER||'all')};
+ window.qtAdminTab=function(id){if(!sections.some(([key])=>key===id))return;sessionStorage.setItem('qt_admin_active_tab',id);document.querySelectorAll('.qt-admin-panel').forEach(el=>el.classList.toggle('active',el.id===id));const picker=document.getElementById('qg-admin-section-picker');if(picker)picker.value=id;const title=sections.find(([key])=>key===id)?.[1];const titleNode=document.querySelector('.qg-page-title h1');if(titleNode)titleNode.textContent=title;document.title=title+' · QueueGo Admin';qgAdminSyncNavigation();if(id==='qt-sec-delivery'){qtRenderAdminRiderPresence();qtAdminLoadRiderMissions();}if(id==='qt-sec-security')qtSecurityRole(window.QT_SECURITY_ROLE||'customer');if(id==='qt-sec-settings'){qgRenderPlatformControls();if(typeof qgAdminLoadHomeBanners==='function')qgAdminLoadHomeBanners();if(typeof qgAdminLoadServiceBanners==='function')qgAdminLoadServiceBanners();}if(id==='qt-sec-approval')qgAdminApprovalRole(window.QG_ADMIN_APPROVAL_ROLE||'all');if(id==='qt-sec-shops')qgAdminShopFilter(window.QG_ADMIN_SHOP_FILTER||'all')};
  const saved=sessionStorage.getItem('qt_admin_active_tab');qtAdminTab(sections.some(([id])=>id===saved)?saved:'qt-sec-overview');
 }
 function qgAdminShopFilter(status){if(status)window.QG_ADMIN_SHOP_FILTER=status;const key=window.QG_ADMIN_SHOP_FILTER||'all',query=(document.getElementById('qg-shop-search')?.value||'').trim().toLocaleLowerCase('th');let count=0;document.querySelectorAll('[data-shop-filter]').forEach(b=>b.classList.toggle('active',b.dataset.shopFilter===key));document.querySelectorAll('.qg-shop-card').forEach(card=>{card.hidden=!(key==='all'||card.dataset.bucket===key)||!card.textContent.toLocaleLowerCase('th').includes(query);if(!card.hidden)count++});const empty=document.getElementById('qg-shop-empty');if(empty)empty.hidden=count>0;}
