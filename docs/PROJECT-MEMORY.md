@@ -1,3 +1,10 @@
+## 2026-10-14 Rider Grab-parity release successor: runtime + Home actions + Availability vehicle gates
+- Continued from runtime-fixed unified Account Restriction + Home Action Cards head 2a033bd, preserving the bounded quiet PixelCopy retry that addresses the real continuity runtime failure.
+- Audited Rider Availability against the existing setOnline preflight. The card previously omitted vehicle-inspection and selected-vehicle approval blockers even though setOnline already enforced both. Offline/idle Home now refreshes those two existing states with the same readiness poll and passes them into the Availability card.
+- Required/pending/rejected vehicle inspection and an unapproved selected vehicle are now visible before Rider taps online. Read failures remain CHECKING instead of being presented as ready.
+- No new online rule, Production DB mutation, dispatch/payment/order change or map-camera behavior. This is UI/preflight parity with existing server-backed rules.
+- Backup backup/rider-runtime-account-actions-before-availability-20261014 retains 2a033bd. Exact-head native-pilot + navigation-map-runtime are required before PASS.
+
 ## 2026-10-14 Navigation runtime hardening: quiet snapshot retry
 - Exact-head navigation-map runtime on background-health #279 exposed a flaky continuity path: ON_PAUSE quiet PixelCopy could transiently fail once and never retry, leaving snapshotCaptureCount at zero even though map reuse itself remained healthy.
 - Production renderer now retries only quiet visibility-loss snapshot capture, bounded to 12 attempts at 250 ms. It does not show the continuity overlay, does not count renderer-bridge failures, and does not touch GPS/route/order state. Real renderer-replacement bridge behavior remains unchanged.
