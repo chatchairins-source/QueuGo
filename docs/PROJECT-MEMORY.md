@@ -1,3 +1,12 @@
+## 2026-10-14 Rider world-class: Safety Overview + durable delivery contact attempts
+- Continued from the latest Safety Report Overview successor without replacing Home/Map/Stop/Safety files wholesale.
+- Failed-delivery reporting no longer trusts a rider-toggled “contacted” checkbox. QueueGo now records actual Call/Chat button attempts locally per Rider+order and requires at least one real QueueGo contact action before the report can be submitted.
+- Contact-attempt evidence is durable for the active order, expires after 24 hours, and is encoded into the existing ticket note as [CONTACT_ATTEMPTS:<total>;CALL:<n>;CHAT:<n>].
+- This remains evidence of an attempted contact action, not proof that the recipient answered. No call recording, message-content capture, background monitoring or new Production schema is introduced.
+- Safety Report Overview, Stop-After-Work, Safety Incident, failed-delivery return flow, Benefits, evidence quality, Auto Accept and map/runtime hardening remain preserved.
+- Backup: backup/rider-worldclass-before-contact-attempts-unify-20261014.
+- PASS requires exact-head native-pilot + navigation-map-runtime.
+
 ## 2026-10-14 Rider world-class: Safety Report Overview unified on latest safety/stop head
 - Continued from Safety Incident + Stop-After-Work head 177286b0, retaining the targeted-offer stop blocker coverage and bounded explicit-location incident payload.
 - Carried Safety Report Overview from the sibling #315 line without replacing the newer safety/stop tests.
