@@ -79,6 +79,7 @@ internal fun RiderSafetyScreen(
     var showMapFeedback by remember { mutableStateOf(false) }
     var showSafetyIncident by remember { mutableStateOf(false) }
     var safetyIncidentLocation by remember { mutableStateOf<RiderSafetyLocation?>(null) }
+    var safetyReportRefreshKey by remember(auth.user.id) { mutableIntStateOf(0) }
     var fatigueStatus by remember(auth.user.id) { mutableStateOf<RiderFatigueStatus?>(null) }
     var fatigueLoaded by remember(auth.user.id) { mutableStateOf(false) }
     val navigationFix by RiderNavigationLocationStore.fix.collectAsState()
@@ -239,6 +240,13 @@ internal fun RiderSafetyScreen(
                 )
             }
         }
+
+        Spacer(Modifier.height(8.dp))
+        RiderSafetyReportOverviewCard(
+            auth = auth,
+            refreshKey = safetyReportRefreshKey,
+            onOpenSupport = onSupport
+        )
 
         Spacer(Modifier.height(5.dp))
         Card(
@@ -513,6 +521,7 @@ internal fun RiderSafetyScreen(
             onReported = { label ->
                 showSafetyIncident = false
                 safetyIncidentLocation = null
+                safetyReportRefreshKey += 1
                 locationShareMessage = "ส่งรายงานความปลอดภัยแล้ว · $label"
             }
         )
