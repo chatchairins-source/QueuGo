@@ -1187,6 +1187,87 @@ class QueueGoApi {
             }
         }
 
+    suspend fun activeDeliveryReturn(auth: QueueGoAuth): RiderDeliveryReturn? = withContext(Dispatchers.IO) {
+        val raw = rpc("qg_rider_active_delivery_return", auth.session.accessToken, JSONObject())
+        val row = when (raw) {
+            is JSONArray -> raw.optJSONObject(0)
+            is JSONObject -> raw
+            else -> null
+        } ?: return@withContext null
+        val caseId = riderNullableUuid(row.optString("case_id")) ?: return@withContext null
+        val orderId = riderNullableUuid(row.optString("order_id")) ?: return@withContext null
+        val shopId = riderNullableUuid(row.optString("shop_id")) ?: return@withContext null
+        RiderDeliveryReturn(
+            caseId = caseId,
+            orderId = orderId,
+            orderNumber = riderNullableText(row.optString("order_number")),
+            status = row.optString("status"),
+            reason = row.optString("reason"),
+            adminNote = riderNullableText(row.optString("admin_note")),
+            shopId = shopId,
+            shopName = riderNullableText(row.optString("shop_name")),
+            shopAddress = riderNullableText(row.optString("shop_address")),
+            shopLatitude = row.doubleOrNull("shop_latitude"),
+            shopLongitude = row.doubleOrNull("shop_longitude"),
+            expectedRefundAmount = row.doubleOrZero("expected_refund_amount"),
+            ticketId = riderNullableUuid(row.optString("ticket_id")),
+            reportedAt = riderNullableText(row.optString("reported_at")),
+            returnRequiredAt = riderNullableText(row.optString("return_required_at")),
+            startedReturnAt = riderNullableText(row.optString("started_return_at"))
+        )
+    }
+
+    suspend fun reportDeliveryIssue(
+        auth: QueueGoAuth,
+        job: RiderJob,
+        reason: String,
+        note: String
+    ): String = withContext(Dispatchers.IO) {
+        val caseId = UUID.randomUUID().toString()
+        val ticketId = UUID.randomUUID().toString()
+        val cleanNote = note.trim().take(1200)
+        val payload = JSONObject()
+            .put("p_case_id", caseId)
+            .put("p_ticket_id", ticketId)
+            .put("p_order_id", job.id)
+            .put("p_reason", reason)
+        if (cleanNote.isBlank()) payload.put("p_note", JSONObject.NULL) else payload.put("p_note", cleanNote)
+        val raw = rpc(
+            "qg_rider_report_delivery_issue",
+            auth.session.accessToken,
+            payload
+        )
+        when (raw) {
+            is String -> riderNullableUuid(raw) ?: caseId
+            else -> caseId
+        }
+    }
+
+    suspend fun startDeliveryReturn(auth: QueueGoAuth, caseId: String): String =
+        withContext(Dispatchers.IO) {
+            rpc(
+                "qg_rider_start_delivery_return",
+                auth.session.accessToken,
+                JSONObject().put("p_case_id", caseId)
+            ).toString().trim('"')
+        }
+
+    suspend fun completeDeliveryReturn(
+        context: Context,
+        auth: QueueGoAuth,
+        caseId: String,
+        proofUri: Uri
+    ): String = withContext(Dispatchers.IO) {
+        val proofPath = uploadEvidence(context, auth, proofUri)
+        rpc(
+            "qg_rider_complete_delivery_return",
+            auth.session.accessToken,
+            JSONObject()
+                .put("p_case_id", caseId)
+                .put("p_proof_path", proofPath)
+        ).toString().trim('"')
+    }
+
     suspend fun cashLedger(
         auth: QueueGoAuth,
         fromDate: String,
@@ -1217,7 +1298,8 @@ class QueueGoApi {
                         deliveryFee = row.doubleOrZero("delivery_fee"),
                         cashPaidMerchant = row.doubleOrZero("cash_paid_merchant"),
                         cashCollectedCustomer = row.doubleOrZero("cash_collected_customer"),
-                        createdAt = row.optString("created_at").takeIf { it.isNotBlank() }
+                        createdAt = row.optString("created_at").takeIf { it.isNotBlank() },
+                        cashRefundedMerchant = row.doubleOrZero("cash_refunded_merchant")
                     )
                 )
             }
@@ -1375,6 +1457,7 @@ class QueueGoApi {
         }
         val laundry = runCatching { readLaundryState(auth.session.accessToken) }
             .getOrDefault(RiderLaundryState())
+        val deliveryReturn = runCatching { activeDeliveryReturn(auth) }.getOrNull()
 
         val profileInfo = RiderProfileInfo(
             profileId = profileId,
@@ -1394,7 +1477,8 @@ class QueueGoApi {
             riderProfileId = profileId,
             laundry = laundry,
             bundle = bundle,
-            profile = profileInfo
+            profile = profileInfo,
+            deliveryReturn = deliveryReturn
         )
     }
 
