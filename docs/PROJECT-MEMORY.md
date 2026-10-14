@@ -1,3 +1,8 @@
+## 2026-10-14 Rider Grab-parity clean release successor: Admin re-verification
+- Rebased the Admin re-verification UI onto the latest clean Rider re-verification release head aaa4aae after PR236 became dirty when its base advanced. No feature rollback: camera-only Rider selfie, private evidence, Admin request/review, rejected reason, server online gate and latest rejected-state regression are all preserved.
+- Admin Rider-status panel uses only public authenticated RPCs plus the existing signed qg-evidence viewer; it never reads qg_private directly. Backend mirror now keeps both the original semantic guard strings and the stronger private-function/revoke assertions.
+- Backup backup/rider-admin-reverification-clean-rebase-20261014 retains aaa4aae. This v2 branch intentionally uses the navigation-map prefix so native-pilot and navigation-map-runtime must both run on the exact same clean successor head.
+
 ## 2026-10-14 Rider Grab-parity release successor: selfie re-verification
 - Continued from consolidated Release Gate head 7220b29 so Heatmap, map-reuse runtime assertions, real compliments, detailed Job History, managed public Rider photo and all earlier parity remain on one line.
 - Added explicit Rider selfie re-verification without claiming biometric/liveness detection. Admin may request a check; Rider captures a fresh camera photo; private qg-evidence storage holds the selfie; server state is required/pending/approved/rejected. Public Rider avatar remains in rider-profile and is never reused as verification evidence.
