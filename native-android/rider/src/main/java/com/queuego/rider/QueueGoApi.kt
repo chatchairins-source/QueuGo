@@ -355,6 +355,44 @@ internal fun riderFormatLongdoAddress(raw: String): String? = runCatching {
         .takeIf { it.isNotBlank() }
 }.getOrNull()
 
+internal fun riderDocumentReadinessFromRpc(raw: Any?): RiderDocumentReadiness {
+    val row = when (raw) {
+        is JSONObject -> raw
+        is JSONArray -> raw.optJSONObject(0) ?: JSONObject()
+        else -> JSONObject()
+    }
+    val items = row.optJSONArray("items") ?: JSONArray()
+    val parsed = buildList {
+        for (index in 0 until items.length()) {
+            val item = items.optJSONObject(index) ?: continue
+            val key = riderNullableText(item.optString("key")) ?: continue
+            val label = riderNullableText(item.optString("label")) ?: key
+            val status = riderNullableText(item.optString("status"))
+                ?.takeIf { it in setOf("unknown","valid","expiring","expired") }
+                ?: "unknown"
+            add(
+                RiderDocumentStatus(
+                    key = key,
+                    label = label,
+                    vehicleId = riderNullableText(item.optString("vehicle_id")),
+                    vehiclePlate = riderNullableText(item.optString("vehicle_plate")),
+                    expiresOn = riderNullableText(item.optString("expires_on")),
+                    status = status,
+                    daysRemaining = if (!item.has("days_remaining") || item.isNull("days_remaining")) {
+                        null
+                    } else {
+                        item.optInt("days_remaining")
+                    }
+                )
+            )
+        }
+    }
+    return RiderDocumentReadiness(
+        blocking = row.optBoolean("blocking", false),
+        items = parsed
+    )
+}
+
 class QueueGoApi {
     companion object {
         private const val BASE_URL = "https://pkypiqhlrmzocysgeqew.supabase.co"
@@ -622,6 +660,10 @@ class QueueGoApi {
             val selectedVehicle = runCatching { vehicles(auth).firstOrNull { it.selected } }.getOrNull()
             if (riderVehicleBlocksOnline(selectedVehicle)) {
                 error("กรุณาเลือกรถที่ผ่านการอนุมัติก่อนเปิดออนไลน์")
+            }
+            val documentState = runCatching { documentReadiness(auth) }.getOrNull()
+            if (documentState?.blocking == true) {
+                error("เอกสาร Rider หรือ พ.ร.บ. รถคันปัจจุบันหมดอายุ กรุณาติดต่อ Admin")
             }
         }
         val profiles = requestArray(
@@ -951,6 +993,17 @@ class QueueGoApi {
                 JSONObject().put("p_vehicle_id", vehicleId)
             )
             Unit
+        }
+
+    suspend fun documentReadiness(auth: QueueGoAuth): RiderDocumentReadiness =
+        withContext(Dispatchers.IO) {
+            riderDocumentReadinessFromRpc(
+                rpc(
+                    "qg_rider_document_readiness",
+                    auth.session.accessToken,
+                    JSONObject()
+                )
+            )
         }
 
     suspend fun emergencyContact(auth: QueueGoAuth): RiderEmergencyContact =

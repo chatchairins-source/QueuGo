@@ -544,6 +544,8 @@ private fun RiderHome(
     var showDestination by remember(auth.user.id) { mutableStateOf(false) }
     var availabilityReverification by remember(auth.user.id) { mutableStateOf<RiderReverificationStatus?>(null) }
     var availabilityReverificationLoaded by remember(auth.user.id) { mutableStateOf(false) }
+    var availabilityDocuments by remember(auth.user.id) { mutableStateOf<RiderDocumentReadiness?>(null) }
+    var availabilityDocumentsLoaded by remember(auth.user.id) { mutableStateOf(false) }
     var recentHistory by remember { mutableStateOf<List<RiderHistoryOrder>>(emptyList()) }
     var lastSummaryAt by remember { mutableStateOf(0L) }
     var lastHistoryAt by remember { mutableStateOf(0L) }
@@ -600,6 +602,14 @@ private fun RiderHome(
                     throw error
                 } catch (_: Exception) {
                     availabilityReverificationLoaded = false
+                }
+                try {
+                    availabilityDocuments = api.documentReadiness(auth)
+                    availabilityDocumentsLoaded = true
+                } catch (error: CancellationException) {
+                    throw error
+                } catch (_: Exception) {
+                    availabilityDocumentsLoaded = false
                 }
                 delay(60_000L)
             }
@@ -1933,7 +1943,9 @@ private fun RiderHome(
                             diagnostics = readRiderDiagnostics(context),
                             firebaseConfigured = riderFirebaseConfigured(context),
                             reverification = availabilityReverification,
-                            reverificationLoaded = availabilityReverificationLoaded
+                            reverificationLoaded = availabilityReverificationLoaded,
+                            documents = availabilityDocuments,
+                            documentsLoaded = availabilityDocumentsLoaded
                         )
                         RiderAvailabilityReadinessCard(
                             readiness = readiness,

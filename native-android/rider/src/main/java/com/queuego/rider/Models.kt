@@ -392,6 +392,21 @@ data class RiderVehicle(
     val reviewNote: String?
 )
 
+data class RiderDocumentStatus(
+    val key: String,
+    val label: String,
+    val vehicleId: String?,
+    val vehiclePlate: String?,
+    val expiresOn: String?,
+    val status: String,
+    val daysRemaining: Int?
+)
+
+data class RiderDocumentReadiness(
+    val blocking: Boolean,
+    val items: List<RiderDocumentStatus> = emptyList()
+)
+
 data class RiderEmergencyContact(
     val configured: Boolean,
     val name: String?,
