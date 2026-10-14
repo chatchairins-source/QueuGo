@@ -1,3 +1,8 @@
+## 2026-10-14 Grab Driver parity release scope lock: authoritative ETA HUD
+- Pulled PR246 ETA HUD onto the single Rider release line after verifying it reads only the existing Longdo NavigationGuidanceState. It does not request routes, change reroute/camera behavior or create another GPS stream.
+- Active work can now show real remaining route distance, Longdo-provided ETA when available, and parsed next-turn/road guidance. Weak-GPS or off-route guidance hides the HUD; missing ETA never falls back to an invented speed estimate.
+- This is the final feature addition for the current parity pass. From this checkpoint forward, scope is locked to regression/build/runtime fixes required to make the exact release head pass native-pilot and navigation-map-runtime.
+
 ## 2026-10-14 Grab Driver parity unified: live speed + advisory rest reminder
 - Pulled the validated PR242 speed/rest implementation onto the current Learning + Missions + Emergency Contact release line after confirming QueueGoRiderApp.kt and RiderNavigationLocationService.kt were byte-identical to PR242's base.
 - Reuses the existing foreground navigation GPS stream; no second location provider is created. Current km/h renders only for accepted speed samples with accuracy guard, and implausible values above 200 km/h are hidden.
