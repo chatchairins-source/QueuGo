@@ -18,6 +18,7 @@ class RiderDeliveryIssueDialogTest {
             ),
             riderDeliveryIssueReasons.map { it.key }
         )
+        assertEquals(riderDeliveryIssueReasons.size, riderDeliveryIssueReasons.map { it.key }.distinct().size)
     }
 
     @Test fun supportDetailsStayOrderLinkedAndMachineReadable() {
