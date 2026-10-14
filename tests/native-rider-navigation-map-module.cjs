@@ -111,10 +111,11 @@ assert(map.includes('MotionEvent.ACTION_MOVE')&&
   map.includes('ViewConfiguration.get(context).scaledTouchSlop')&&
   map.includes('currentUserGesture.value()')&&
   map.includes('holder.view?.setOnTouchListener(null)')&&
-  integration.includes('var followRider by remember(stateKey) { mutableStateOf(true) }')&&
-  integration.includes('followRider = followRider')&&
-  integration.includes('onUserGesture = { followRider = false }')&&
-  integration.includes('followRider = true'),
+  integration.includes('NavigationViewModeController')&&
+  integration.includes('val followRider = viewModeState.mode == NavigationViewMode.FOLLOW')&&
+  integration.includes('viewModeState = viewModeController.onUserGesture()')&&
+  integration.includes('viewModeState = viewModeController.onRecenter()')&&
+  integration.includes('followRider = followRider'),
   'Manual drag or pinch must suspend navigation follow until the Rider explicitly recenters');
 
 assert(map.includes('setPreserveEGLContextOnPause(true)'),
