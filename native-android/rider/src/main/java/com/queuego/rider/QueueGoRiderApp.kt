@@ -74,6 +74,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -109,6 +110,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.widthIn
@@ -522,6 +524,9 @@ private fun RiderHome(
     var navigationGuidance by remember(auth.user.id) { mutableStateOf(NavigationGuidanceState()) }
     var navigationClockMs by remember { mutableStateOf(SystemClock.elapsedRealtime()) }
     var dismissedRestSessionStart by remember { mutableStateOf<Long?>(null) }
+    var unexpectedStopLastMovementMs by remember(auth.user.id) { mutableStateOf<Long?>(null) }
+    var dismissedUnexpectedStopEpisode by remember(auth.user.id) { mutableStateOf<Long?>(null) }
+    var showUnexpectedStopSafety by remember(auth.user.id) { mutableStateOf(false) }
     DisposableEffect(voiceController) { onDispose { voiceController.close() } }
     val pushStore = remember(context) { SessionStore(context) }
     val realtime = remember { NativeOrderRealtime() }
@@ -1478,6 +1483,45 @@ private fun RiderHome(
     )
     val navigationHud = if (activeNavigationWork) riderNavigationHudInfo(navigationGuidance) else null
 
+    LaunchedEffect(
+        activeNavigationWork,
+        navigationFix,
+        navigationGuidance,
+        reliableSpeedKph,
+        navigationSessionStartedMs
+    ) {
+        val now = navigationFix
+            ?.elapsedRealtimeNanos
+            ?.div(1_000_000L)
+            ?.takeIf { it > 0L }
+            ?: SystemClock.elapsedRealtime()
+
+        if (!activeNavigationWork) {
+            unexpectedStopLastMovementMs = null
+            dismissedUnexpectedStopEpisode = null
+            showUnexpectedStopSafety = false
+            return@LaunchedEffect
+        }
+
+        if (unexpectedStopLastMovementMs == null) {
+            unexpectedStopLastMovementMs = navigationSessionStartedMs ?: now
+        }
+
+        if (riderUnexpectedStopResetRequired(navigationGuidance, reliableSpeedKph)) {
+            unexpectedStopLastMovementMs = now
+            dismissedUnexpectedStopEpisode = null
+        }
+    }
+
+    val unexpectedStopDue = riderUnexpectedStopDue(
+        activeNavigationWork = activeNavigationWork,
+        guidance = navigationGuidance,
+        reliableSpeedKph = reliableSpeedKph,
+        lastMovementElapsedMs = unexpectedStopLastMovementMs,
+        nowElapsedMs = navigationClockMs,
+        dismissedEpisodeStartMs = dismissedUnexpectedStopEpisode
+    )
+
     BoxWithConstraints(
         modifier
             .fillMaxSize()
@@ -1521,7 +1565,7 @@ private fun RiderHome(
             )
         }
 
-        if (activeNavigationWork && (reliableSpeedKph != null || navigationHud != null || restReminderDue)) {
+        if (activeNavigationWork && (reliableSpeedKph != null || navigationHud != null || restReminderDue || unexpectedStopDue)) {
             Column(
                 modifier = Modifier
                     .align(Alignment.TopStart)
@@ -1600,6 +1644,60 @@ private fun RiderHome(
                                 modifier = Modifier.align(Alignment.End)
                             ) {
                                 Text("รับทราบ", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = QgRed)
+                            }
+                        }
+                    }
+                }
+                if (unexpectedStopDue) {
+                    Card(
+                        modifier = Modifier.widthIn(max = 270.dp),
+                        shape = RoundedCornerShape(17.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFAFFF2F3)),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFFFC8CE))
+                    ) {
+                        Column(Modifier.padding(horizontal = 11.dp, vertical = 9.dp)) {
+                            Text(
+                                "คุณโอเคไหม?",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Black,
+                                color = QgRed
+                            )
+                            Text(
+                                "ระบบพบว่าหยุดนิ่งระหว่างนำทางประมาณ " +
+                                    (riderUnexpectedStopDurationLabel(
+                                        unexpectedStopLastMovementMs,
+                                        navigationClockMs
+                                    ) ?: "10 นาที") +
+                                    " · QueueGo จะไม่โทรหรือส่งตำแหน่งให้อัตโนมัติ",
+                                fontSize = 8.5.sp,
+                                lineHeight = 12.sp,
+                                color = Color(0xFF6F5B60),
+                                modifier = Modifier.padding(top = 3.dp)
+                            )
+                            Row(
+                                Modifier.fillMaxWidth().padding(top = 7.dp),
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                OutlinedButton(
+                                    onClick = {
+                                        dismissedUnexpectedStopEpisode = unexpectedStopLastMovementMs
+                                    },
+                                    modifier = Modifier.weight(1f),
+                                    shape = RoundedCornerShape(12.dp)
+                                ) {
+                                    Text("ฉันโอเค", fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                                }
+                                Button(
+                                    onClick = {
+                                        dismissedUnexpectedStopEpisode = unexpectedStopLastMovementMs
+                                        showUnexpectedStopSafety = true
+                                    },
+                                    modifier = Modifier.weight(1f),
+                                    shape = RoundedCornerShape(12.dp),
+                                    colors = ButtonDefaults.buttonColors(containerColor = QgRed)
+                                ) {
+                                    Text("ศูนย์ความปลอดภัย", fontSize = 8.5.sp, fontWeight = FontWeight.Bold)
+                                }
                             }
                         }
                     }
@@ -2127,6 +2225,27 @@ private fun RiderHome(
                 onSaved = { destinationPreference = it },
                 onClose = { showDestination = false }
             )
+        }
+        if (showUnexpectedStopSafety) {
+            Dialog(onDismissRequest = { showUnexpectedStopSafety = false }) {
+                Surface(
+                    modifier = Modifier.widthIn(max = 620.dp),
+                    shape = RoundedCornerShape(24.dp),
+                    color = Color.White
+                ) {
+                    RiderSafetyScreen(
+                        auth = auth,
+                        api = api,
+                        activeJob = mapJob,
+                        onSupport = {
+                            showUnexpectedStopSafety = false
+                            activeTab = "chat"
+                        },
+                        onClose = { showUnexpectedStopSafety = false },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            }
         }
         detailJob?.let { job ->
             RiderOrderDetailsSheet(auth, job, api, onDismiss = { detailJob = null })
