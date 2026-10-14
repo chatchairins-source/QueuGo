@@ -34,9 +34,23 @@ fun RiderEarningsScreen(auth: QueueGoAuth, api: QueueGoApi, onBack: () -> Unit, 
     var summary by remember { mutableStateOf<RiderPeriodSummary?>(null) }
     var ledger by remember { mutableStateOf<List<RiderCashLedgerEntry>?>(null) }
     var historyDetails by remember { mutableStateOf<List<RiderHistoryOrder>>(emptyList()) }
+    var missions by remember { mutableStateOf<List<RiderMission>?>(null) }
+    var missionError by remember { mutableStateOf<String?>(null) }
     var expandedOrderId by remember { mutableStateOf<String?>(null) }
     var summaryError by remember { mutableStateOf<String?>(null) }
     var ledgerError by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(auth.session.accessToken) {
+        missions = null
+        missionError = null
+        try {
+            missions = api.missions(auth)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            missionError = "โหลดภารกิจไม่สำเร็จ: " + (e.message ?: "เชื่อมต่อไม่ได้")
+            missions = emptyList()
+        }
+    }
     LaunchedEffect(auth.session.accessToken, days) {
         summary = null; summaryError = null
         try { summary = api.periodSummary(auth, days) } catch (e: CancellationException) { throw e } catch (e: Exception) { summaryError = "โหลดสรุปงานไม่สำเร็จ: " + (e.message ?: "เชื่อมต่อไม่ได้") }
@@ -131,6 +145,32 @@ fun RiderEarningsScreen(auth: QueueGoAuth, api: QueueGoApi, onBack: () -> Unit, 
                         color = QgMuted,
                         fontSize = 8.sp,
                         modifier = Modifier.padding(top = 9.dp)
+                    )
+                }
+            }
+        }
+        when {
+            missionError != null -> RiderEarnError(missionError!!)
+            missions == null -> Unit
+            missions.orEmpty().isNotEmpty() -> {
+                Spacer(Modifier.height(12.dp))
+                RiderEarningsCard {
+                    RiderEarnSectionTitle("ภารกิจ Rider", "${missions.orEmpty().size} รายการ")
+                    Spacer(Modifier.height(8.dp))
+                    missions.orEmpty().forEachIndexed { index, mission ->
+                        RiderMissionRow(mission)
+                        if (index < missions.orEmpty().lastIndex) {
+                            HorizontalDivider(
+                                color = Color(0xFFF0EAEC),
+                                modifier = Modifier.padding(vertical = 8.dp)
+                            )
+                        }
+                    }
+                    Text(
+                        "ความคืบหน้านับจากเที่ยวที่ส่งสำเร็จจริง · งาน Market หลายร้านนับเป็น 1 เที่ยว",
+                        color = QgMuted,
+                        fontSize = 8.sp,
+                        modifier = Modifier.padding(top = 10.dp)
                     )
                 }
             }
@@ -259,6 +299,90 @@ private fun RiderJobHistoryDetail(
             modifier = Modifier.padding(top = 8.dp)
         )
     }
+}
+
+@Composable
+private fun RiderMissionRow(mission: RiderMission) {
+    val fraction = if (mission.targetJobs <= 0) 0f
+        else (mission.progressJobs.toFloat() / mission.targetJobs.toFloat()).coerceIn(0f, 1f)
+    val stateLabel = when (mission.state) {
+        "completed" -> "สำเร็จแล้ว"
+        "upcoming" -> "กำลังจะเริ่ม"
+        else -> "กำลังทำ"
+    }
+    Column(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+        Row(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(Modifier.weight(1f)) {
+                Text(mission.title, fontSize = 14.sp, fontWeight = FontWeight.Black)
+                mission.description?.let {
+                    Text(it, color = QgMuted, fontSize = 9.sp, modifier = Modifier.padding(top = 3.dp))
+                }
+            }
+            Text(
+                stateLabel,
+                color = if (mission.completed) Color(0xFF12845E) else QgRed,
+                fontSize = 9.sp,
+                fontWeight = FontWeight.Bold
+            )
+        }
+        Spacer(Modifier.height(8.dp))
+        Box(
+            Modifier
+                .fillMaxWidth()
+                .height(8.dp)
+                .background(Color(0xFFF0EAEC), RoundedCornerShape(99.dp))
+        ) {
+            if (fraction > 0f) {
+                Box(
+                    Modifier
+                        .fillMaxWidth(fraction)
+                        .fillMaxHeight()
+                        .background(if (mission.completed) Color(0xFF12845E) else QgRed, RoundedCornerShape(99.dp))
+                )
+            }
+        }
+        Row(
+            Modifier.fillMaxWidth().padding(top = 6.dp),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(
+                "${mission.progressJobs} / ${mission.targetJobs} เที่ยว",
+                fontSize = 10.sp,
+                fontWeight = FontWeight.Bold
+            )
+            riderMissionEndLabel(mission.endsAt)?.let {
+                Text("ถึง $it", color = QgMuted, fontSize = 8.sp)
+            }
+        }
+        mission.rewardNote?.let {
+            Text(
+                "รางวัล · $it",
+                color = Color(0xFF6E5C15),
+                fontSize = 9.sp,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier
+                    .padding(top = 7.dp)
+                    .background(Color(0xFFFFF7D6), RoundedCornerShape(99.dp))
+                    .padding(horizontal = 8.dp, vertical = 4.dp)
+            )
+        }
+    }
+}
+
+internal fun riderMissionEndLabel(raw: String?): String? {
+    val value = raw?.trim()?.takeIf { it.isNotEmpty() && !it.equals("null", true) } ?: return null
+    val instant = runCatching { Instant.parse(value) }
+        .getOrElse {
+            runCatching { OffsetDateTime.parse(value).toInstant() }.getOrNull() ?: return null
+        }
+    return DateTimeFormatter
+        .ofPattern("d MMM HH:mm", Locale("th", "TH"))
+        .withZone(ZoneId.of("Asia/Bangkok"))
+        .format(instant)
 }
 
 @Composable
