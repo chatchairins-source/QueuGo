@@ -45,4 +45,12 @@ class RiderDeliveryIssueDialogTest {
         assertTrue(details.length >= 10)
         assertTrue(details.length < 2000)
     }
+    @Test fun missingVisibleOrderNumberStillProducesValidSupportDetails() {
+        val reason = riderDeliveryIssueReasons.first()
+        val details = riderDeliveryIssueDetails("   ", reason, "")
+
+        assertTrue(details.contains("QueueGo order"))
+        assertTrue(details.length >= 10)
+    }
+
 }
