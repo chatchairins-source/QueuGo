@@ -502,7 +502,7 @@ class QueueGoApi {
         private const val PUBLISHABLE_KEY = "sb_publishable_Vn2Il4jp-iBtzNsGRNY8Lg_Tpvk2Vre"
         private const val TIMEOUT = 15000
         private const val RIDER_JOB_FIELDS = "id,order_number,status,pickup_address,pickup_latitude,pickup_longitude," +
-            "delivery_address,delivery_latitude,delivery_longitude,delivery_fee,subtotal,total_amount,market_order_id," +
+            "delivery_address,delivery_latitude,delivery_longitude,delivery_fee,rider_delivery_payout,next_after_order_id,subtotal,total_amount,market_order_id," +
             "rider_arrived_shop_at,rider_arrived_customer_at"
     }
 
@@ -743,6 +743,14 @@ class QueueGoApi {
                 .put("deviceId", deviceId)
         )
         Unit
+    }
+
+    suspend fun syncDispatchPreference(
+        auth: QueueGoAuth, autoAccept: Boolean, stopAfterWork: Boolean, ready: Boolean
+    ): Boolean = withContext(Dispatchers.IO) {
+        val raw = rpc("qg_rider_dispatch_preference", auth.session.accessToken, JSONObject()
+            .put("p_auto_accept", autoAccept).put("p_stop_after_work", stopAfterWork).put("p_ready", ready))
+        (raw as? JSONObject)?.optBoolean("acknowledged", false) == true
     }
 
     suspend fun setOnline(
@@ -1428,10 +1436,14 @@ class QueueGoApi {
             "/rest/v1/orders?select=" + fields +
                 "&order_type=eq.shopping&rider_id=eq." + enc(profileId) +
                 "&status=in.(rider_assigned,preparing,ready,assigned,picked_up,in_progress)" +
-                "&order=created_at.desc&limit=1",
+                "&order=next_after_order_id.asc.nullsfirst,created_at.asc&limit=5",
             auth.session.accessToken
         )
-        var active = if (activeRows.length() > 0) parseJob(activeRows.getJSONObject(0)) else null
+        // NEXT is displayed separately and cannot steal the current navigation/cash stage.
+        val currentRows = (0 until activeRows.length()).map { activeRows.getJSONObject(it) }
+        val nextRow = currentRows.firstOrNull { !it.isNull("next_after_order_id") && it.has("next_after_order_id") }
+        val nextJob = nextRow?.let(::parseJob)
+        var active = currentRows.firstOrNull { it.isNull("next_after_order_id") || !it.has("next_after_order_id") }?.let(::parseJob)
         var marketPickups = emptyList<MarketPickup>()
         if (active?.marketOrderId != null) {
             marketPickups = marketPickupRoute(auth, active.marketOrderId)
@@ -1505,7 +1517,8 @@ class QueueGoApi {
             laundry = laundry,
             bundle = bundle,
             profile = profileInfo,
-            deliveryReturn = deliveryReturn
+            deliveryReturn = deliveryReturn,
+            nextJob = nextJob
         )
     }
 
@@ -2154,7 +2167,7 @@ class QueueGoApi {
         deliveryAddress = riderNullableText(o.optString("delivery_address")),
         deliveryLat = o.doubleOrNull("delivery_latitude"),
         deliveryLng = o.doubleOrNull("delivery_longitude"),
-        deliveryFee = o.doubleOrNull("delivery_fee"),
+        deliveryFee = o.doubleOrNull("rider_delivery_payout") ?: o.doubleOrNull("delivery_fee"),
         marketOrderId = riderNullableUuid(o.optString("market_order_id")),
         arrivedShopAt = riderNullableText(o.optString("rider_arrived_shop_at")),
         arrivedCustomerAt = riderNullableText(o.optString("rider_arrived_customer_at")),

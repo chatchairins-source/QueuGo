@@ -1716,7 +1716,8 @@ private fun RiderHome(
                                     }
                                 )
                                 previous.copy(
-                                    activeJob = bundleAfter.currentOrder()?.job,
+                                    activeJob = bundleAfter.currentOrder()?.job ?: previous.nextJob,
+                                    nextJob = null,
                                     marketPickups = emptyList(),
                                     bundle = bundleAfter
                                 )
@@ -1760,6 +1761,13 @@ private fun RiderHome(
                             persistCommittedSnapshot(committedRead)
                         }
 
+                        if (completedMode == "delivery") {
+                            val promoted = committedRead?.activeJob ?: localAfterSuccess?.activeJob
+                            if (promoted != null && promoted.id != job.id) {
+                                deliverySuccessJob = null
+                                openNavigation(context, promoted)
+                            }
+                        }
                         if (completedMode == "pickup" && pickupCommittedStatus == "in_progress") {
                             val nextStop = committedRead?.activeJob
                                 ?: localAfterSuccess?.activeJob
@@ -2034,6 +2042,21 @@ private fun RiderHome(
                     }
                 }
             actionBusy = false
+        }
+    }
+
+    // Fresh acknowledged readiness lease. An old installed app cannot enable server dispatch.
+    LaunchedEffect(autoAcceptEnabled, stopAfterWorkPending, networkAvailable, snapshot?.online,
+        snapshot?.deliveryReturn?.caseId, actionBusy, lifecycle, auth.session.accessToken) {
+        lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            while (true) {
+                runCatching {
+                    api.syncDispatchPreference(auth, autoAcceptEnabled, stopAfterWorkPending,
+                        networkAvailable && snapshot?.online == true && !actionBusy &&
+                            snapshot?.deliveryReturn == null && snapshot?.laundry?.activeJob == null)
+                }.onFailure { if (it is CancellationException) throw it }
+                delay(20_000L)
+            }
         }
     }
 
@@ -2904,6 +2927,15 @@ private fun RiderHome(
                                 pickupIssueStopId = current.marketPickups.firstOrNull { !it.done }?.pickupId
                             }
                         )
+                        snapshot?.nextJob?.let { queued ->
+                            Card(Modifier.fillMaxWidth().padding(top = 8.dp)) {
+                                Column(Modifier.padding(12.dp)) {
+                                    Text("งานถัดไป · " + queued.numberLabel, fontWeight = FontWeight.Bold)
+                                    Text("ส่งงานปัจจุบันเสร็จแล้ว ไปรับที่ " + (queued.pickupAddress ?: "ร้านค้า"))
+                                    Text("รายรับค่าส่ง " + riderMoneyBaht(queued.deliveryFee ?: 0.0))
+                                }
+                            }
+                        }
                         RiderRouteBundlePanel(
                             state = current.bundle,
                             busy = actionBusy,

@@ -337,7 +337,8 @@ data class RiderSnapshot(
     val laundry: RiderLaundryState = RiderLaundryState(),
     val bundle: RiderRouteBundleState = RiderRouteBundleState(),
     val profile: RiderProfileInfo? = null,
-    val deliveryReturn: RiderDeliveryReturn? = null
+    val deliveryReturn: RiderDeliveryReturn? = null,
+    val nextJob: RiderJob? = null
 )
 
 

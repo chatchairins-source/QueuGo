@@ -145,6 +145,7 @@ class SessionStore(private val context: Context) {
             .put("online", snapshot.online)
             .put("riderProfileId", snapshot.riderProfileId)
         snapshot.activeJob?.let { root.put("activeJob", riderJobToJson(it)) }
+        snapshot.nextJob?.let { root.put("nextJob", riderJobToJson(it)) }
         snapshot.laundry.activeJob?.let { root.put("laundryActiveJob", laundryJobToJson(it)) }
         root.put(
             "marketPickups",
@@ -177,6 +178,7 @@ class SessionStore(private val context: Context) {
             online = root.optBoolean("online", false),
             activeJob = activeJob,
             offeredJob = null,
+            nextJob = root.optJSONObject("nextJob")?.let { riderJobFromJson(it) },
             marketPickups = marketPickups,
             riderProfileId = root.optString("riderProfileId")
                 .takeIf { it.isNotBlank() && !it.equals("null", ignoreCase = true) },

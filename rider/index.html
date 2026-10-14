@@ -1243,7 +1243,7 @@ function riderEarning(o){
   // rider income is the parent delivery fee + multi-shop rider bonus.
   if(Number.isFinite(Number(o?._marketRiderEarning)))return Number(o._marketRiderEarning);
   if(Number.isFinite(Number(o?._poolDeliveryFee)))return Number(o._poolDeliveryFee);
-  return (Number(o?.delivery_fee ?? o?.rider_fee ?? 0)||0)+(Number(o?.rider_multi_shop_bonus||0)||0);
+  return (Number(o?.rider_delivery_payout ?? o?.delivery_fee ?? o?.rider_fee ?? 0)||0)+(Number(o?.rider_multi_shop_bonus||0)||0);
 }
 
 
@@ -1378,7 +1378,7 @@ function qgRouteBundleHTML(){
     const live=orders.filter(o=>o.status!=='cancelled'&&o.status!=='completed');
     const allPicked=live.length>0&&live.every(o=>['picked_up','in_progress'].includes(o.status));
     const nextPicked=live.filter(o=>statusFromRow(o)==='picked_up').sort((a,b)=>(Number(a._bundleDropRank)||99)-(Number(b._bundleDropRank)||99))[0];
-    const totalIncome=orders.filter(o=>o.status!=='cancelled').reduce((a,o)=>a+Number(o.delivery_fee||0),0);
+    const totalIncome=orders.filter(o=>o.status!=='cancelled').reduce((a,o)=>a+riderEarning(o),0);
     const totalSavings=orders.reduce((a,o)=>a+Number(o.bundle_customer_savings||0),0);
     out+='<section class="qg-bundle-card"><div class="qg-bundle-head"><div><b>งานพ่วง '+orders.length+' ออเดอร์</b><small>รายได้รวม ฿'+totalIncome.toLocaleString('th-TH')+(totalSavings>0?' · ลูกค้าประหยัดรวม ฿'+totalSavings.toLocaleString('th-TH'):'')+'</small></div><span>เส้นทางเดียวกัน</span></div>';
     out+=orders.map(o=>{
@@ -2372,7 +2372,7 @@ window.qgRenderEarnings=function(){
      const to=new Date(),from=new Date(to.getTime()-(days-1)*86400000),token=await getAccessToken();
      const rows=await sbTable('rpc/qg_rider_cash_ledger',{method:'POST',token,body:{p_from:day(from),p_to:day(to)}});
      if(!box.isConnected)return;
-     const list=Array.isArray(rows)?rows:[],sum=k=>list.reduce((a,o)=>a+Number(o[k]||0),0),paid=sum('cash_paid_merchant'),collected=sum('cash_collected_customer'),fees=list.reduce((a,o)=>a+Number(o.delivery_fee||0),0);
+     const list=Array.isArray(rows)?rows:[],sum=k=>list.reduce((a,o)=>a+Number(o[k]||0),0),paid=sum('cash_paid_merchant'),collected=sum('cash_collected_customer'),fees=list.reduce((a,o)=>a+riderEarning(o),0);
      box.className='qg-ledger';
      box.innerHTML=`<section class="qg-cash-card"><div class="qg-section-title"><b>บัญชีเงินสด</b><span>${days===1?'วันนี้':days+' วัน'}</span></div><div class="qg-cash-grid"><div><span>จ่ายร้าน</span><b>${baht(paid)}</b></div><div><span>เก็บลูกค้า</span><b>${baht(collected)}</b></div><div><span>ค่าส่งที่ได้รับ</span><b>${baht(fees)}</b></div><div><span>สุทธิรับ-จ่าย</span><b class="qg-red">${baht(collected-paid)}</b></div></div></section><section class="qg-recent"><div class="qg-section-title"><b>รายการงานล่าสุด</b><span>${list.length} งาน</span></div>${list.length?list.slice(0,30).map(o=>`<article><div><b>${esc(qgShortOrder({order_number:o.order_number,id:o.order_id}))}</b><small>${esc(String(o.status||''))}</small></div><div><span>${o.status==='completed'?'สำเร็จ':'กำลังดำเนินการ'}</span><b>${baht(o.delivery_fee||0)}</b></div></article>`).join(''):'<div class="qg-empty">ยังไม่มีรายการ</div>'}</section>`;
    }catch(e){box.className='qg-error-state';box.textContent='โหลดบัญชีเงินสดไม่สำเร็จ: '+e.message}

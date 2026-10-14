@@ -1,0 +1,84 @@
+const assert=require('node:assert/strict'),fs=require('node:fs'),{PGlite}=require('@electric-sql/pglite');
+const id=n=>'00000000-0000-4000-8000-'+String(n).padStart(12,'0');
+(async()=>{
+ const db=new PGlite();let checks=0;
+ await db.exec(`create role anon;create role authenticated;create role service_role;create schema auth;create schema qg_private;
+ create function auth.uid() returns uuid language sql as $$select nullif(current_setting('test.uid',true),'')::uuid$$;
+ create table users(id uuid primary key,auth_user_id uuid,role text,status text);
+ create table rider_profiles(id uuid primary key,user_id uuid,status text,metadata jsonb,latitude float8,longitude float8,updated_at timestamptz,vehicle_type text,vehicle_status text,vehicle_verified_at timestamptz,vehicle_capacity_kg numeric);
+ create table orders(id uuid primary key,order_number text,rider_id uuid,customer_id uuid,shop_id uuid,order_type text default 'shopping',status text,fulfillment_vertical text default 'food',market_order_id uuid,rider_assigned_at timestamptz,updated_at timestamptz default now(),created_at timestamptz default now(),note text,route_bundle_id uuid,route_bundle_sequence int,bundle_original_delivery_fee numeric,bundle_customer_savings numeric,bundle_rider_extra_fee numeric,bundle_detour_km numeric,bundle_added_minutes int,bundle_route_sequence text,rider_arrived_shop_at timestamptz,pickup_latitude float8,pickup_longitude float8,delivery_latitude float8,delivery_longitude float8,subtotal numeric default 100,delivery_fee numeric default 25,total_amount numeric default 125,gp_amount numeric default 0);
+ create table deliveries(order_id uuid,rider_id uuid,status text default 'pending',delivery_fee numeric,updated_at timestamptz,delivered_at timestamptz);
+ create table shop_profiles(id uuid primary key,user_id uuid,public_category text);
+ create table audit_logs(user_id uuid,action text,entity_type text,entity_id uuid,description text,metadata jsonb);
+ create table notifications(user_id uuid,title text,message text,type text,reference_id uuid);
+ create table qg_rider_order_offers(order_id uuid primary key,rider_id uuid,offered_at timestamptz,expires_at timestamptz,attempt int);
+ create table qg_rider_offer_history(order_id uuid,rider_id uuid,offered_at timestamptz,resolved_at timestamptz,outcome text,attempt int);
+ create table laundry_rider_jobs(rider_id uuid,status text);
+ create table qg_rider_delivery_returns(rider_id uuid,status text);
+ create table qg_private.rider_destination_preferences(rider_id uuid,enabled boolean,latitude float8,longitude float8);
+ create table route_bundles(id uuid primary key default gen_random_uuid(),rider_id uuid,primary_order_id uuid,status text,created_at timestamptz default now(),updated_at timestamptz);
+ create table payments(order_id uuid,status text,amount numeric,updated_at timestamptz);
+ create table queuego_platform_rules(rule_key text primary key,value jsonb,created_at timestamptz);
+ create function queuego_rule_numeric(k text,d numeric,t timestamptz) returns numeric language sql as $$select coalesce((select (value#>>'{}')::numeric from queuego_platform_rules where rule_key=k),d)$$;
+ create function queuego_feature_enabled(k text,t timestamptz) returns boolean language sql as $$select true$$;
+ create function queuego_distance_km(a float8,b float8,c float8,d float8) returns numeric language sql as $$select (sqrt(power(a-c,2)+power(b-d,2))*111)::numeric$$;
+ create function qg_private.approx_distance_km(a float8,b float8,c float8,d float8) returns float8 language sql as $$select queuego_distance_km(a,b,c,d)::float8$$;
+ create function market_order_weight(p uuid) returns numeric language sql as $$select 1::numeric$$;
+ insert into users values('${id(1)}','${id(101)}','rider','active'),('${id(2)}','${id(102)}','rider','active');
+ insert into rider_profiles values('${id(11)}','${id(1)}','active','{"online":true,"available":true}',15,103,now(),'motorcycle','active',now(),20),('${id(12)}','${id(2)}','active','{"online":true,"available":true}',15,103,now(),'motorcycle','active',now(),20);
+ insert into shop_profiles values('${id(50)}','${id(51)}','food');`);
+ const migration=fs.readdirSync('supabase/migrations').find(n=>n.endsWith('_rider_continuous_dispatch_phase1.sql'));
+ await db.exec(fs.readFileSync('supabase/migrations/'+migration,'utf8'));
+ const query=(s,p)=>db.query(s,p),as=async n=>query("select set_config('test.uid',$1,false)",[id(n)]);
+ const row=async n=>(await query('select * from orders where id=$1',[id(n)])).rows[0];
+ const eq=(a,b)=>{assert.deepEqual(a,b);checks++};
+ const reject=async(s,p,re)=>{await assert.rejects(query(s,p),re);checks++};
+ async function seed(n,status='searching_rider',rider=null){await query(`insert into orders(id,order_number,status,rider_id,customer_id,shop_id,pickup_latitude,pickup_longitude,delivery_latitude,delivery_longitude) values($1,$2,$3,$4,$5,$6,15,103,15.002,103)`,[id(n),'QT-'+n,status,rider&&id(rider),id(60),id(50)]);await query('insert into deliveries(order_id,rider_id,status,delivery_fee) values($1,$2,$3,25)',[id(n),rider&&id(rider),rider?'assigned':'pending'])}
+ await as(101);await query('select qg_rider_dispatch_preference(true,false,true)');
+ await seed(20);eq((await query('select qg_dispatch_rider_offers() n')).rows[0].n,1);eq((await row(20)).rider_id,null); // rollout OFF preserves manual lease
+ await query('select rider_claim_order($1)',[id(20)]);eq((await row(20)).rider_id,id(11));
+ await query('delete from qg_rider_order_offers');await query("update orders set status='in_progress' where id=$1",[id(20)]);
+ await query("insert into queuego_platform_rules values('dispatch.continuous_enabled','1',now())");
+ // Only one Rider available for deterministic continuation tests.
+ await query("update rider_profiles set metadata='{}' where id=$1",[id(12)]);
+ await seed(21);await query('select qg_dispatch_rider_offers()');eq((await row(21)).next_after_order_id,id(20));eq((await row(21)).rider_id,id(11));eq((await row(20)).status,'in_progress');
+ eq((await query('select count(*)::int n from qg_rider_offer_history where order_id=$1 and outcome=$2',[id(21),'accepted'])).rows[0].n,1);
+ await reject("update orders set status='picked_up' where id=$1",[id(21)],/finish current delivery/);
+ await reject("update orders set rider_arrived_shop_at=now() where id=$1",[id(21)],/finish current delivery/);
+ await query("update orders set status='preparing' where id=$1",[id(21)]);eq((await row(21)).status,'preparing');
+ await seed(22);await query('select qg_dispatch_rider_offers()');eq((await row(22)).rider_id,null); // third order denied
+ await query("update orders set status='completed' where id=$1",[id(20)]);eq((await row(21)).next_after_order_id,null);
+ await query("update orders set status='in_progress' where id=$1",[id(21)]);
+ await query('select qg_rider_dispatch_preference(true,true,true)');await query('select qg_dispatch_rider_offers()');eq((await row(22)).rider_id,null); // stop wins
+ await query('select qg_rider_dispatch_preference(true,false,false)');await query('select qg_dispatch_rider_offers()');eq((await row(22)).rider_id,null); // unsafe/stale lease
+ await query('select qg_rider_dispatch_preference(false,false,true)');await query('select qg_dispatch_rider_offers()');eq((await row(22)).rider_id,null); // manual active Rider has no implicit assignment
+ await query('select qg_rider_dispatch_preference(true,false,true)');
+ await query("insert into laundry_rider_jobs values($1,'assigned')",[id(11)]);await query('select qg_dispatch_rider_offers()');eq((await row(22)).rider_id,null);await query('delete from laundry_rider_jobs');
+ await query("update orders set pickup_latitude=16 where id=$1",[id(22)]);await query('select qg_dispatch_rider_offers()');eq((await row(22)).rider_id,null);
+ await query("update orders set pickup_latitude=15 where id=$1",[id(22)]);await query('select qg_dispatch_rider_offers()');eq((await row(22)).next_after_order_id,id(21));
+ await query('select qg_dispatch_rider_offers()');eq((await query('select count(*)::int n from audit_logs where entity_id=$1',[id(22)])).rows[0].n,1); // duplicate retry no assignment side effects
+ await query("update orders set status='cancelled' where id=$1",[id(21)]);eq((await row(22)).next_after_order_id,null);
+ await query("update orders set status='completed' where id=$1",[id(22)]);
+ // Quote tests execute the NEW Production function body, not a test reimplementation.
+ await seed(30,'ready',11);await seed(31);
+ let q=(await query('select queuego_route_bundle_quote_orders($1,$2,now()) q',[id(30),id(31)])).rows[0].q;
+ eq(q.eligible,true);eq(q.min_rider_extra_fee,0);eq(q.road_eta_verified,false);
+ assert(q.primary_bundled_delivery_fee<25&&q.bundled_delivery_fee<25);checks++;
+ eq(q.primary_bundled_delivery_fee+q.bundled_delivery_fee,q.rider_route_payout);
+ assert(q.rider_extra_fee===q.incremental_distance_cost+q.incremental_pickup_cost+q.incremental_dropoff_cost+q.incremental_time_cost);checks++;
+ await query('select queuego_claim_route_bundle($1)',[id(31)]);eq(Number((await row(30)).rider_delivery_payout),25);eq(Number((await row(31)).rider_delivery_payout),q.rider_extra_fee);
+ eq(Number((await row(30)).subtotal),100);eq(Number((await row(31)).subtotal),100);
+ eq(Number((await row(30)).total_amount),100+q.primary_bundled_delivery_fee);eq(Number((await row(31)).total_amount),100+q.bundled_delivery_fee);
+ await reject('select queuego_claim_route_bundle($1)',[id(31)],/no longer available/);
+ await query("update orders set status='completed' where id in ($1,$2)",[id(30),id(31)]);
+ await seed(40,'ready',11);await seed(41);await query('update orders set pickup_latitude=null where id=$1',[id(41)]);
+ q=(await query('select queuego_route_bundle_quote_orders($1,$2,now()) q',[id(40),id(41)])).rows[0].q;eq(q.eligible,false);
+ await query('update orders set pickup_latitude=15,delivery_fee=1 where id=$1',[id(41)]);
+ q=(await query('select queuego_route_bundle_quote_orders($1,$2,now()) q',[id(40),id(41)])).rows[0].q;eq(q.eligible,false);assert(q.rider_extra_fee>1);checks++; // fair cost NEVER capped to the fee to manufacture eligibility
+ // Exposed RPCs have explicit ownership and no anonymous execution.
+ await as(999);await reject('select qg_rider_dispatch_preference(true,false,true)',[],/active rider/);
+ eq((await query("select has_function_privilege('anon','public.qg_rider_dispatch_preference(boolean,boolean,boolean)','execute') b")).rows[0].b,false);
+ eq((await query("select has_function_privilege('authenticated','qg_private.claim_rider_order(uuid,uuid)','execute') b")).rows[0].b,false);
+ await query('grant select,update on orders to authenticated');await query('set role authenticated');await reject('update orders set rider_delivery_payout=1 where id=$1',[id(40)],/dispatch snapshots require/);await query('reset role');
+ console.log(JSON.stringify({checks,failures:0,scope:'isolated PostgreSQL phase1: next assignment/promotion, rollout, stop/readiness/conflict, cash and payout. Independent connection races, road ETA and physical recovery are NOT certified.'}));await db.close();
+})().catch(e=>{console.error(e);process.exit(1)});
