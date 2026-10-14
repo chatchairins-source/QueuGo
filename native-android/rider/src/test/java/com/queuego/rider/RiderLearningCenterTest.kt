@@ -24,7 +24,8 @@ class RiderLearningCenterTest {
     @Test fun learningCenterDoesNotRestoreRetiredVerificationFlow() {
         val all = riderLearningLessons().flatMap { it.steps }.joinToString("\n").lowercase()
         assertTrue(all.contains("ไม่มีขั้นตอน pin หรือ otp"))
-        assertFalse(all.contains("250 เมตร"))
+        assertTrue(all.contains("ไม่ใช่การบังคับ geofence 250 เมตร"))
+        assertFalse(all.contains("ต้องอยู่ในระยะ 250 เมตร"))
         assertFalse(all.contains("สไลด์จบงาน"))
     }
 }
