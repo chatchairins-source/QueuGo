@@ -74,6 +74,8 @@ internal fun RiderSafetyScreen(
     var emergencyName by remember { mutableStateOf("") }
     var emergencyPhone by remember { mutableStateOf("") }
     var emergencyMessage by remember { mutableStateOf<String?>(null) }
+    var locationShareMessage by remember { mutableStateOf<String?>(null) }
+    val navigationFix by RiderNavigationLocationStore.fix.collectAsState()
 
     LaunchedEffect(auth.user.id, auth.session.accessToken) {
         try {
@@ -92,6 +94,49 @@ internal fun RiderSafetyScreen(
             context.startActivity(
                 Intent(Intent.ACTION_DIAL, Uri.parse("tel:" + Uri.encode(number)))
             )
+        }
+    }
+
+    fun currentShareLocation(): RiderSafetyLocation? =
+        navigationFix?.point?.let {
+            riderSafetyLocationOrNull(it.latitude, it.longitude)
+        } ?: riderSafetyLastKnownLocation(context)
+
+    fun shareCurrentLocation() {
+        val location = currentShareLocation()
+        if (location == null) {
+            locationShareMessage = "ยังไม่มีตำแหน่งที่ใหม่พอ กรุณาเปิด GPS แล้วลองอีกครั้ง"
+            return
+        }
+        val send = Intent(Intent.ACTION_SEND).apply {
+            type = "text/plain"
+            putExtra(Intent.EXTRA_TEXT, riderSafetyLocationShareText(location))
+        }
+        runCatching {
+            context.startActivity(Intent.createChooser(send, "แชร์ตำแหน่งปัจจุบัน"))
+        }.onSuccess {
+            locationShareMessage = null
+        }.onFailure {
+            locationShareMessage = "ไม่สามารถเปิดเมนูแชร์ได้"
+        }
+    }
+
+    fun messageEmergencyContactLocation(phone: String) {
+        val location = currentShareLocation()
+        if (location == null) {
+            locationShareMessage = "ยังไม่มีตำแหน่งที่ใหม่พอ กรุณาเปิด GPS แล้วลองอีกครั้ง"
+            return
+        }
+        val intent = Intent(
+            Intent.ACTION_SENDTO,
+            Uri.parse("smsto:" + Uri.encode(phone))
+        ).putExtra("sms_body", riderSafetyLocationShareText(location))
+        runCatching {
+            context.startActivity(intent)
+        }.onSuccess {
+            locationShareMessage = null
+        }.onFailure {
+            locationShareMessage = "ไม่สามารถเปิดแอปข้อความได้"
         }
     }
 
@@ -212,6 +257,54 @@ internal fun RiderSafetyScreen(
                 }
                 emergencyMessage?.let {
                     Text(it, color = QgRed, fontSize = 9.sp, modifier = Modifier.padding(top = 7.dp))
+                }
+            }
+        }
+
+        Spacer(Modifier.height(8.dp))
+        Card(
+            Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(18.dp),
+            colors = CardDefaults.cardColors(containerColor = Color.White),
+            border = BorderStroke(1.dp, Color(0xFFEEE6E8))
+        ) {
+            Column(Modifier.padding(14.dp)) {
+                Text("แชร์ตำแหน่งเพื่อความปลอดภัย", fontWeight = FontWeight.Black, fontSize = 14.sp)
+                Text(
+                    "แชร์เฉพาะตำแหน่งปัจจุบัน ณ ตอนที่กด ไม่ใช่การติดตามแบบเรียลไทม์ และไม่แนบที่อยู่ลูกค้าหรือร้านค้า",
+                    color = QgMuted,
+                    fontSize = 9.sp,
+                    lineHeight = 12.sp,
+                    modifier = Modifier.padding(top = 3.dp)
+                )
+                Spacer(Modifier.height(8.dp))
+                OutlinedButton(
+                    onClick = { shareCurrentLocation() },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(14.dp)
+                ) {
+                    Text("แชร์ตำแหน่งปัจจุบัน", fontWeight = FontWeight.Bold)
+                }
+                emergencyContact?.takeIf {
+                    it.configured && !it.phone.isNullOrBlank()
+                }?.phone?.let { phone ->
+                    Spacer(Modifier.height(7.dp))
+                    Button(
+                        onClick = { messageEmergencyContactLocation(phone) },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(14.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF17191D))
+                    ) {
+                        Text("เปิด SMS ถึงผู้ติดต่อฉุกเฉิน", fontWeight = FontWeight.Bold)
+                    }
+                }
+                locationShareMessage?.let {
+                    Text(
+                        it,
+                        color = QgRed,
+                        fontSize = 9.sp,
+                        modifier = Modifier.padding(top = 7.dp)
+                    )
                 }
             }
         }
