@@ -1,3 +1,9 @@
+## 2026-10-14 Grab Driver parity: Rider main-thread watchdog
+- Added the remaining Grab-like watchdog reliability layer on top of local network+jank diagnostics. A background daemon pings Android's main thread every 2 seconds; the posted main-thread callback records only response delay.
+- >=500 ms counts as a slow main-thread response and >=5000 ms as a stall. Diagnostics remains informational until at least 3 pings exist. No stack trace, screen content, order/customer/shop/location or payload is collected or uploaded.
+- Watchdog runs only with the Rider app composition lifecycle and is stopped on dispose. It complements, rather than replaces, Choreographer jank sampling and Android ApplicationExitInfo crash/ANR history.
+- No Production DB, remote telemetry or Rider workflow change. Backup backup/rider-learning-before-main-thread-watchdog-20261014 retains 6efb575. Exact-head native-pilot + navigation-map-runtime are required before PASS.
+
 ## 2026-10-14 Grab Driver parity: first-run guided learning without duplicate UI
 - Confirmed QueueGo already had an 8-lesson Rider Learning Center covering targeted 30-second offers, Google Maps handoff, pickup photo, Market multi-stop, delivery cash, 200m warning, ratings/missions and safety. Do not create a second QuickStart/tutorial implementation.
 - Added only the missing guided-onboarding behavior to the existing Learning Center: active Riders who have never seen onboarding-v1 automatically see the real Learning Center once after login/registration completes. Closing it marks that user/version as seen locally so it does not interrupt later sessions.
