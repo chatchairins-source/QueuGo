@@ -142,6 +142,116 @@ create table if not exists public.qg_local_roads (
     check (name is null or char_length(name) <= 160)
 );
 
+create table if not exists public.qg_local_road_junction_candidates (
+  id uuid primary key default gen_random_uuid(),
+  junction_key text not null,
+  candidate_version bigint not null default 1,
+  service_area_id uuid not null
+    references public.queuego_service_areas(id) on delete restrict,
+  status text not null default 'candidate',
+  source_type text not null,
+  source_reference text not null,
+  members jsonb not null,
+  reviewed_at timestamptz,
+  reviewed_by uuid references public.users(id) on delete set null,
+  published_revision bigint,
+  published_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+
+  constraint qg_local_road_junction_candidates_key_format
+    check (junction_key ~ '^[a-z0-9][a-z0-9:_-]{2,119}$'),
+  constraint qg_local_road_junction_candidates_version
+    check (candidate_version > 0),
+  constraint qg_local_road_junction_candidates_key_version_unique
+    unique (junction_key, candidate_version),
+  constraint qg_local_road_junction_candidates_status
+    check (status in ('candidate', 'approved', 'rejected')),
+  constraint qg_local_road_junction_candidates_source
+    check (source_type in (
+      'openstreetmap_verified',
+      'public_data',
+      'rider_gps_trace_verified',
+      'merchant_confirmed',
+      'field_survey'
+    )),
+  constraint qg_local_road_junction_candidates_source_reference
+    check (
+      (source_type = 'openstreetmap_verified' and source_reference like 'osm:%') or
+      (source_type = 'public_data' and source_reference like 'public:%') or
+      (source_type = 'rider_gps_trace_verified' and source_reference like 'queuego-trace:%') or
+      (source_type = 'merchant_confirmed' and source_reference like 'merchant:%') or
+      (source_type = 'field_survey' and source_reference like 'field-survey:%')
+    ),
+  constraint qg_local_road_junction_candidates_members
+    check (
+      jsonb_typeof(members) = 'array'
+      and jsonb_array_length(members) between 2 and 8
+    ),
+  constraint qg_local_road_junction_candidates_review_state
+    check (
+      (status = 'candidate' and reviewed_at is null and reviewed_by is null) or
+      (status in ('approved', 'rejected') and reviewed_at is not null and reviewed_by is not null)
+    ),
+  constraint qg_local_road_junction_candidates_publication_state
+    check (
+      (published_revision is null and published_at is null) or
+      (
+        published_revision > 0
+        and published_at is not null
+        and status = 'approved'
+      )
+    )
+);
+
+create table if not exists public.qg_local_road_junctions (
+  id uuid primary key default gen_random_uuid(),
+  junction_key text not null unique,
+  service_area_id uuid not null
+    references public.queuego_service_areas(id) on delete restrict,
+  feed_revision bigint not null,
+  source_type text not null,
+  source_reference text not null,
+  members jsonb not null,
+  active boolean not null default true,
+  verified_at timestamptz not null,
+  verified_by uuid references public.users(id) on delete set null,
+  published_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+
+  constraint qg_local_road_junctions_key_format
+    check (junction_key ~ '^[a-z0-9][a-z0-9:_-]{2,119}$'),
+  constraint qg_local_road_junctions_revision
+    check (feed_revision > 0),
+  constraint qg_local_road_junctions_source
+    check (source_type in (
+      'openstreetmap_verified',
+      'public_data',
+      'rider_gps_trace_verified',
+      'merchant_confirmed',
+      'field_survey'
+    )),
+  constraint qg_local_road_junctions_source_reference
+    check (
+      (source_type = 'openstreetmap_verified' and source_reference like 'osm:%') or
+      (source_type = 'public_data' and source_reference like 'public:%') or
+      (source_type = 'rider_gps_trace_verified' and source_reference like 'queuego-trace:%') or
+      (source_type = 'merchant_confirmed' and source_reference like 'merchant:%') or
+      (source_type = 'field_survey' and source_reference like 'field-survey:%')
+    ),
+  constraint qg_local_road_junctions_members
+    check (
+      jsonb_typeof(members) = 'array'
+      and jsonb_array_length(members) between 2 and 8
+    )
+);
+
+-- Junction members are reviewed objects shaped as:
+-- [{"road_key":"...","point_index":0}, ...].
+-- The later service-role-only publication transaction MUST validate every member against the
+-- exact approved road geometry in the same feed revision, reject missing/private/retired roads,
+-- reject duplicate road-point memberships, require >=2 distinct roads, and enforce the Android
+-- signed-feed junction span guard (currently <=25m). No client may auto-snap nearby geometry.
 create table if not exists public.qg_local_road_feed_state (
   singleton boolean primary key default true,
   revision bigint not null default 1,
