@@ -1,3 +1,16 @@
+## 2026-10-14 Rider Message Center release hardening
+- Message Center unread badge is now server-backed even before Rider opens the Notifications subsection: foreground Home polls only unread notification IDs under the existing own-row RLS every 30 seconds and caps the bottom-nav count at 99.
+- A transient unread-count failure preserves the last server-confirmed count. A single notification is no longer optimistically marked read when the PATCH fails; navigation may still proceed through the existing order-reference authorization path while unread state remains server-accurate.
+- Added pure badge-boundary regression coverage. Backup backup/rider-message-center-before-unread-hardening-20261014 retains 4e8f712.
+
+## 2026-10-14 Grab Driver parity unified release: Fatigue + Unplanned Stop + Message Center
+- Consolidated three parallel successors onto the current navigation-map release line instead of leaving Rider safety/messages split across PRs.
+- Preserves persistent server-backed Fatigue Safety from the current base: presence-history continuous/today online minutes and advisory rest levels only; no medical/drowsiness claim and no automatic work interruption.
+- Carries Unplanned Stop advisory from the reviewed safety branch: active navigation only, >=10 minutes reliably stationary, suppressed for weak GPS/off-route/arrival/unknown speed/near-destination, with explicit “ฉันโอเค” and Safety Centre actions only. It never calls, shares or mutates an order automatically.
+- Carries Native Message Center into the existing “ข้อความ” tab as Chat / Notifications. Notifications use the existing own-row RLS table, latest 100 rows, read/unread state, mark-one/all read and existing pendingPushReference authorization for order/rider_offer references.
+- Chat seen state is acknowledged only while the Chat subsection is visible; opening Notifications alone no longer clears chat unread. Bottom message badge combines chat + notification unread once notification rows are loaded.
+- Backup backup/rider-fatigue-before-safety-message-unify-20261014 retains f90463f. Exact-head native-pilot + navigation-map-runtime are required before PASS.
+
 ## 2026-10-14 Grab Driver parity: persistent Rider Fatigue Safety v1
 - Added a QueueGo-native persistent work/rest safety layer after confirming the owner-supplied Grab Driver package contains a dedicated Fatigue v1/v2 service/repository/UI stack. QueueGo does not claim liveness, drowsiness, biometric or medical detection.
 - Production migration 20261014073631_rider_fatigue_status_v1 is additive and read-only. It derives the current continuous online session and Bangkok-day total online minutes from server-owned qg_rider_presence_events, using the existing rider_id/occurred_at index. Public wrapper is SECURITY INVOKER, anon EXECUTE is revoked, and active Rider live-session ownership is checked in qg_private.

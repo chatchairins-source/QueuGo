@@ -122,6 +122,10 @@ fun RiderMessagesScreen(
     auth: QueueGoAuth,
     activeJob: RiderJob?,
     history: List<RiderHistoryOrder>,
+    section: String,
+    onSectionChange: (String) -> Unit,
+    onNotificationUnreadChanged: (Int) -> Unit,
+    onOpenNotificationReference: (String) -> Unit,
     onOpenChat: (RiderJob) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -161,9 +165,50 @@ fun RiderMessagesScreen(
     ) {
         Text("ข้อความ", fontWeight = FontWeight.Bold, fontSize = 27.sp,
             modifier = Modifier.widthIn(max = 720.dp).fillMaxWidth())
-        Spacer(Modifier.height(15.dp))
+        Spacer(Modifier.height(10.dp))
+        Row(
+            Modifier.widthIn(max = 720.dp).fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(7.dp)
+        ) {
+            listOf("chat" to "แชต", "notifications" to "แจ้งเตือน").forEach { (key, label) ->
+                val selected = section == key
+                Card(
+                    Modifier
+                        .weight(1f)
+                        .clickable { onSectionChange(key) },
+                    shape = RoundedCornerShape(14.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = if (selected) Color(0xFFFFEDF1) else Color.White
+                    ),
+                    border = BorderStroke(
+                        1.dp,
+                        if (selected) Color(0xFFFFC8D2) else Color(0xFFEEE6E8)
+                    )
+                ) {
+                    Box(
+                        Modifier.fillMaxWidth().padding(vertical = 9.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            label,
+                            color = if (selected) QgRed else Color(0xFF756E72),
+                            fontWeight = FontWeight.Black,
+                            fontSize = 11.sp
+                        )
+                    }
+                }
+            }
+        }
+        Spacer(Modifier.height(12.dp))
 
-        if (loading || !error.isNullOrBlank() || rows.isEmpty()) {
+        if (section == "notifications") {
+            RiderNotificationCenter(
+                auth = auth,
+                onUnreadChanged = onNotificationUnreadChanged,
+                onOpenOrderReference = onOpenNotificationReference,
+                modifier = Modifier.widthIn(max = 720.dp).fillMaxWidth()
+            )
+        } else if (loading || !error.isNullOrBlank() || rows.isEmpty()) {
             Column(Modifier.widthIn(max = 720.dp).fillMaxWidth().padding(vertical = 30.dp),
                 horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(if (loading) "กำลังโหลดข้อความ..." else error ?: "ยังไม่มีการสนทนา",
