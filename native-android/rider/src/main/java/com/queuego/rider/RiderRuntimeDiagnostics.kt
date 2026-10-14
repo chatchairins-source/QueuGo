@@ -15,6 +15,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import java.util.concurrent.Executors
 import java.util.concurrent.ScheduledFuture
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicBoolean
 
 internal data class RiderNetworkRuntimeSnapshot(
     val totalRequests: Long = 0,
@@ -131,18 +132,33 @@ internal object RiderMainThreadWatchdog {
     private val executor = Executors.newSingleThreadScheduledExecutor { runnable ->
         Thread(runnable, "qg-rider-watchdog").apply { isDaemon = true }
     }
+    private val pingInFlight = AtomicBoolean(false)
     private var future: ScheduledFuture<*>? = null
+    @Volatile private var started = false
+    @Volatile private var generation = 0L
 
     @Synchronized
     fun start() {
-        if (future?.isCancelled == false && future?.isDone == false) return
+        if (started && future?.isCancelled == false && future?.isDone == false) return
+        generation += 1L
+        val activeGeneration = generation
+        started = true
+        pingInFlight.set(false)
         future = executor.scheduleAtFixedRate(
             {
+                if (!started || generation != activeGeneration) return@scheduleAtFixedRate
+                if (!pingInFlight.compareAndSet(false, true)) return@scheduleAtFixedRate
                 val sentAt = SystemClock.elapsedRealtime()
-                mainHandler.post {
-                    RiderRuntimeDiagnosticsStore.recordMainThreadPing(
-                        SystemClock.elapsedRealtime() - sentAt
-                    )
+                val posted = mainHandler.post {
+                    if (started && generation == activeGeneration) {
+                        RiderRuntimeDiagnosticsStore.recordMainThreadPing(
+                            SystemClock.elapsedRealtime() - sentAt
+                        )
+                        pingInFlight.set(false)
+                    }
+                }
+                if (!posted && generation == activeGeneration) {
+                    pingInFlight.set(false)
                 }
             },
             0L,
@@ -153,8 +169,11 @@ internal object RiderMainThreadWatchdog {
 
     @Synchronized
     fun stop() {
+        started = false
+        generation += 1L
         future?.cancel(false)
         future = null
+        pingInFlight.set(false)
     }
 }
 internal object RiderFrameJankTracker {
