@@ -1,3 +1,12 @@
+## 2026-10-14 Grab Driver parity: real-data Rider Benefits Center v3
+- Continued from runtime-fixed unified Account Restriction + Home Action Cards head 2a033bd, preserving bounded quiet PixelCopy retry and the explicit deleted-account restriction state.
+- Grab Driver contains Partner Benefits. QueueGo now has a real-data-only Rider Benefits Center in addition to Insurance Center. Production migrations 20261014093530 rider_partner_benefits_v1 and 20261014093948 rider_partner_benefits_toggle_v2 are additive and already applied.
+- No benefit, partner, coupon or discount seed data was created. Active Rider-session validation returned visible_benefit_count=0 before any real Admin record exists.
+- Data is private in qg_private. Rider sees only enabled benefits inside the active date window. Public wrappers are authenticated-only with anon EXECUTE revoked. Admin list/save/toggle/delete paths re-check active Admin server-side.
+- Native Rider Profile shows only real active benefits, including provider/category/date window and optional HTTPS action/support phone. The parser discards non-HTTPS action URLs as defense in depth.
+- Existing Admin Rider panel has one global Rider Benefits section where Admin can add real benefits, temporarily enable/disable them or delete them. It uses qgAdminInput and public RPCs only; admin regressions forbid direct qg_private access and prompt().
+- Backup backup/rider-runtime-account-actions-before-benefits-v3-20261014 retains 2a033bd. PASS requires native-pilot + navigation-map-runtime plus Admin/backend regressions on exact HEAD.
+
 ## 2026-10-14 Navigation runtime hardening: quiet snapshot retry
 - Exact-head navigation-map runtime on background-health #279 exposed a flaky continuity path: ON_PAUSE quiet PixelCopy could transiently fail once and never retry, leaving snapshotCaptureCount at zero even though map reuse itself remained healthy.
 - Production renderer now retries only quiet visibility-loss snapshot capture, bounded to 12 attempts at 250 ms. It does not show the continuity overlay, does not count renderer-bridge failures, and does not touch GPS/route/order state. Real renderer-replacement bridge behavior remains unchanged.
