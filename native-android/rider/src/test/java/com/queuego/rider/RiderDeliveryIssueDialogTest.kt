@@ -41,6 +41,7 @@ class RiderDeliveryIssueDialogTest {
         val reason = riderDeliveryIssueReasons.last()
         val details = riderDeliveryIssueDetails("QT-1111", reason, "x".repeat(5000))
 
+        assertTrue(details.length >= 10)
         assertTrue(details.length < 2000)
     }
 }
