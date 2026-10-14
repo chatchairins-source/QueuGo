@@ -600,6 +600,7 @@ private fun RiderHome(
         }
     }
     val pushStore = remember(context) { SessionStore(context) }
+    val proofStore = remember(context) { RiderPendingProofStore(context) }
     val realtime = remember { NativeOrderRealtime() }
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     val snapshotMutex = remember { Mutex() }
@@ -1009,9 +1010,13 @@ private fun RiderHome(
         ActivityResultContracts.TakePicture()
     ) { success ->
         if (success) {
-            photoUri = pendingCameraUri
-            actionMessage = "ถ่ายรูปหลักฐานแล้ว"
+            val confirmed = proofStore.promoteCapture(auth.user.id, RIDER_PROOF_SLOT_DELIVERY)
+            photoUri = confirmed?.let { Uri.parse(it.uri) }
+            actionMessage = if (photoUri != null) "ถ่ายรูปหลักฐานแล้ว"
+            else "อ่านรูปหลักฐานไม่สำเร็จ กรุณาถ่ายใหม่"
+            pendingCameraUri = null
         } else {
+            proofStore.cancelCapture(auth.user.id, RIDER_PROOF_SLOT_DELIVERY)
             pendingCameraUri = null
         }
     }
@@ -1020,15 +1025,28 @@ private fun RiderHome(
         ActivityResultContracts.TakePicture()
     ) { success ->
         if (success) {
-            returnPhotoUri = returnPendingCameraUri
-            actionMessage = "ถ่ายรูปหลักฐานการคืนสินค้าแล้ว"
+            val confirmed = proofStore.promoteCapture(auth.user.id, RIDER_PROOF_SLOT_RETURN)
+            returnPhotoUri = confirmed?.let { Uri.parse(it.uri) }
+            actionMessage = if (returnPhotoUri != null) "ถ่ายรูปหลักฐานการคืนสินค้าแล้ว"
+            else "อ่านรูปหลักฐานการคืนไม่สำเร็จ กรุณาถ่ายใหม่"
+            returnPendingCameraUri = null
         } else {
+            proofStore.cancelCapture(auth.user.id, RIDER_PROOF_SLOT_RETURN)
             returnPendingCameraUri = null
         }
     }
 
     LaunchedEffect(snapshot?.deliveryReturn?.caseId) {
-        returnPhotoUri = null
+        val returnCase = snapshot?.deliveryReturn
+        returnPhotoUri = returnCase?.let {
+            proofStore.loadConfirmedMatching(
+                auth.user.id,
+                RIDER_PROOF_SLOT_RETURN,
+                it.caseId,
+                "deliveryReturn",
+                null
+            )?.let { draft -> Uri.parse(draft.uri) }
+        }
         returnPendingCameraUri = null
     }
 
@@ -1068,10 +1086,21 @@ private fun RiderHome(
 
     fun openCamera() {
         runCatching {
+            val job = verifyJob ?: error("ไม่พบงานที่กำลังตรวจสอบ")
+            val mode = verifyMode ?: error("ไม่พบขั้นตอนงาน")
             val uri = createEvidenceUri(context)
             pendingCameraUri = uri
+            proofStore.reserveCapture(
+                auth.user.id,
+                RIDER_PROOF_SLOT_DELIVERY,
+                job.id,
+                mode,
+                verifyMarketPickup?.pickupId,
+                uri
+            )
             cameraLauncher.launch(uri)
         }.onFailure {
+            proofStore.cancelCapture(auth.user.id, RIDER_PROOF_SLOT_DELIVERY)
             pendingCameraUri = null
             actionMessage = "เปิดกล้องไม่สำเร็จ กรุณาลองอีกครั้ง"
         }
@@ -1079,10 +1108,20 @@ private fun RiderHome(
 
     fun openReturnCamera() {
         runCatching {
+            val returnCase = snapshot?.deliveryReturn ?: error("ไม่พบงานคืนสินค้า")
             val uri = createEvidenceUri(context)
             returnPendingCameraUri = uri
+            proofStore.reserveCapture(
+                auth.user.id,
+                RIDER_PROOF_SLOT_RETURN,
+                returnCase.caseId,
+                "deliveryReturn",
+                null,
+                uri
+            )
             returnCameraLauncher.launch(uri)
         }.onFailure {
+            proofStore.cancelCapture(auth.user.id, RIDER_PROOF_SLOT_RETURN)
             returnPendingCameraUri = null
             actionMessage = "เปิดกล้องคืนสินค้าไม่สำเร็จ กรุณาลองอีกครั้ง"
         }
@@ -1104,7 +1143,13 @@ private fun RiderHome(
                     verifyJob = job
                     verifyItems = it.first
                     verifyDetails = it.second
-                    photoUri = null
+                    photoUri = proofStore.loadConfirmedMatching(
+                        auth.user.id,
+                        RIDER_PROOF_SLOT_DELIVERY,
+                        job.id,
+                        mode,
+                        null
+                    )?.let { draft -> Uri.parse(draft.uri) }
                     pendingCameraUri = null
                 }
                 .onFailure {
@@ -1121,7 +1166,13 @@ private fun RiderHome(
         verifyMarketPickup = pickup
         verifyItems = emptyList()
         verifyDetails = null
-        photoUri = null
+        photoUri = proofStore.loadConfirmedMatching(
+            auth.user.id,
+            RIDER_PROOF_SLOT_DELIVERY,
+            job.id,
+            "marketPickup",
+            pickup.pickupId
+        )?.let { draft -> Uri.parse(draft.uri) }
         pendingCameraUri = null
         actionMessage = null
     }
@@ -1556,6 +1607,13 @@ private fun RiderHome(
                             pushStore.saveHomeSnapshot(auth.user.id, localAfterSuccess)
                         }
 
+                        proofStore.clearConfirmedMatching(
+                            auth.user.id,
+                            RIDER_PROOF_SLOT_DELIVERY,
+                            job.id,
+                            completedMode.orEmpty(),
+                            if (completedMode == "marketPickup") verifyMarketPickup?.pickupId else null
+                        )
                         if (completedMode == "delivery") {
                             RiderReturnService.stop(context)
                             deliverySuccessJob = job
@@ -2312,6 +2370,13 @@ private fun RiderHome(
                                             }.onSuccess {
                                                 playRiderEventFeedback(eventFeedbackView, RiderEventFeedbackKind.PICKUP_SUCCESS)
                                                 actionMessage = "คืนสินค้าให้ร้านเรียบร้อย · บันทึกเงินคืน Rider แล้ว"
+                                                proofStore.clearConfirmedMatching(
+                                                    auth.user.id,
+                                                    RIDER_PROOF_SLOT_RETURN,
+                                                    returnCase.caseId,
+                                                    "deliveryReturn",
+                                                    null
+                                                )
                                                 returnPhotoUri = null
                                                 returnPendingCameraUri = null
                                                 runCatching { api.riderSnapshot(auth) }
