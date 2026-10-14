@@ -1,3 +1,10 @@
+## 2026-10-14 Grab Driver parity unified: Missions + Emergency Contact + Learning Center
+- Continued from PR241 exact head a093188 so server-owned Missions and the Rider-owned personal emergency contact remain the single successor line. Training is added here instead of keeping a parallel PR240 implementation.
+- Added the QueueGo-only Rider Learning Center under Profile > Account & Help. Eight expandable lessons cover the current 30-second offer, Google Maps handoff/return, merchant cash + one pickup photo, Market multi-stop, customer cash/photo completion, GPS warning behavior, ratings/compliments/missions, and safety/device diagnostics.
+- Preserves current product rules explicitly: no PIN/OTP handoff, no 250m hard geofence, no slide-to-complete, no Grab text/assets. Personal emergency contact remains opt-in/manual; QueueGo never auto-calls, auto-messages or shares Rider GPS with that contact.
+- Fixed the malformed emergency-contact regex assertion inherited by PR241's backend migration mirror. The regression now pins both the named phone-format constraint and the complete ^\\+?[0-9]{8,15}$ contract.
+- Backup backup/rider-training-safety-before-unify-20261014 retains a093188. This successor uses the navigation-map branch prefix; native-pilot and navigation-map-runtime must both pass on the exact head.
+
 ## 2026-10-14 Grab Driver parity unified: Missions + personal emergency contact
 - Continued from PR239 real Missions instead of creating a parallel incentive implementation. Missions remain server-owned, zero-placeholder and non-paying unless Admin creates real definitions.
 - Added one Rider-owned personal emergency contact to the existing Safety Centre. Production migration 20261014065058 stores the contact only in qg_private.rider_emergency_contacts; authenticated clients have no direct table privileges, and public Rider wrappers validate live session + active Rider ownership with anon execute revoked.

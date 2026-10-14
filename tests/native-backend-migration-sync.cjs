@@ -104,7 +104,12 @@ for(const needle of [
   "revoke all on table qg_private.rider_emergency_contacts from public, anon, authenticated",
   "revoke all on function public.qg_rider_emergency_contact() from public, anon",
   "revoke all on function public.qg_rider_set_emergency_contact(text,text) from public, anon",
+  "rider_emergency_contact_phone_format",
   "contact_phone ~ '^\\\\+?[0-9]{8,15}
+]){
+  assert.ok(emergencyContactMigration.includes(needle),'Rider emergency contact migration missing contract: '+needle);
+}
+console.log('Native backend migration mirror: PASS');
 "
 ]){
   assert.ok(emergencyContactMigration.includes(needle),'Rider emergency contact migration missing contract: '+needle);

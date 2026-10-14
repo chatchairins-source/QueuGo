@@ -67,6 +67,7 @@ fun RiderProfileScreen(
     var message by remember { mutableStateOf<String?>(null) }
     var showSupport by remember { mutableStateOf(false) }
     var showSafety by remember { mutableStateOf(false) }
+    var showLearning by remember { mutableStateOf(false) }
     var showDiagnostics by remember { mutableStateOf(false) }
     val profilePhotoPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         if (uri != null && !busy) {
@@ -331,6 +332,12 @@ fun RiderProfileScreen(
                     name = displayName; phone = displayPhone; editing = true
                 }
                 RiderSettingDivider()
+                RiderSettingRow(
+                    "ศูนย์เรียนรู้ Rider",
+                    "รับงาน · นำทาง · รับสินค้า · Market · ส่งลูกค้า · ความปลอดภัย",
+                    R.drawable.qg_rider_flow_jobs
+                ) { showLearning = true }
+                RiderSettingDivider()
                 RiderSettingRow("ศูนย์ความปลอดภัย", "เหตุฉุกเฉิน · แพทย์ · ตำรวจ · QueueGo Support", R.drawable.qg_rider_flow_loc) { showSafety = true }
                 RiderSettingDivider()
                 RiderSettingRow("แจ้งปัญหา / ติดตามเรื่อง", "ติดต่อฝ่ายดูแล QueueGo", R.drawable.qg_rider_nav_chat) { showSupport = true }
@@ -397,6 +404,19 @@ fun RiderProfileScreen(
             }
         }
     }
+    if (showLearning) Dialog(onDismissRequest = { showLearning = false }, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+        Surface(
+            Modifier.padding(14.dp).widthIn(max = 620.dp).fillMaxWidth(),
+            shape = RoundedCornerShape(24.dp),
+            color = Color.White
+        ) {
+            RiderLearningCenterScreen(
+                onClose = { showLearning = false },
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+    }
+
     if (showSafety) Dialog(onDismissRequest = { showSafety = false }, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         Surface(
             Modifier.padding(14.dp).widthIn(max = 620.dp).fillMaxWidth(),
