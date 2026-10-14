@@ -1,3 +1,9 @@
+## 2026-10-14 Grab Driver parity unified successor: Safety + Rating + Identity + Performance
+- Reconciled parallel parity work after discovering Work PR221/PR222 were newer than the standalone performance branch. PR222 head 4afb11e2 is now the Source of Truth because it already contains Rider real rating, Merchant assigned-Rider identity, Production migration mirror and Safety Centre on top of PR219 identity/diagnostics.
+- Added the previously separate Rider Performance view onto that exact successor: average income per completed job, jobs per online hour, average income per day and jobs per day, derived only from the authoritative period summary. Zero-job/zero-online periods never fabricate per-job/per-hour values.
+- This successor intentionally supersedes standalone PR220 performance and duplicate PR223 Merchant identity. Preserve Work implementations from PR221/PR222; do not keep parallel versions.
+- Backup backup/rider-grab-parity-safety-before-performance-unify-20261014 retains 4afb11e2. New exact-head CI is required before any PASS claim.
+
 ## 2026-10-14 Grab Driver parity mission: Rider Safety Centre
 - Added a QueueGo-native Rider Safety Centre as the next capability category observed in the supplied Grab Driver package. No Grab UI/code/assets are copied.
 - Safety Centre uses verified Thai emergency contacts: 191 urgent police, 1669 national emergency medical service, and 1155 Tourist Police. All emergency actions use ACTION_DIAL, never direct-call permission, so the Rider must confirm the call in the phone app.
