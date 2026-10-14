@@ -12,6 +12,7 @@ const localRoadHttpsTransport=fs.readFileSync('native-android/rider-maplibre-osm
 const localRoadRouting=fs.readFileSync('native-android/rider-maplibre-osm/src/main/java/com/queuego/ridermaplibreosm/QueueGoLocalRoadRoutingPolicy.kt','utf8');
 const localRoadGraph=fs.readFileSync('native-android/rider-maplibre-osm/src/main/java/com/queuego/ridermaplibreosm/QueueGoLocalRoadGraph.kt','utf8');
 const localRoadPathfinder=fs.readFileSync('native-android/rider-maplibre-osm/src/main/java/com/queuego/ridermaplibreosm/QueueGoLocalRoadPathfinder.kt','utf8');
+const trustedLocalRoadRouting=fs.readFileSync('native-android/rider-maplibre-osm/src/main/java/com/queuego/ridermaplibreosm/QueueGoTrustedLocalRoadRouting.kt','utf8');
 const riderBuild=fs.readFileSync('native-android/rider/build.gradle.kts','utf8');
 
 assert(settings.includes('":rider-maplibre-osm"'),'MapLibre OSM module must be registered in native settings');
@@ -163,6 +164,21 @@ assert(!localRoadPathfinder.includes('NavigationRouteCoordinator')&&
   !localRoadPathfinder.includes('io.supabase')&&
   !localRoadPathfinder.includes('speedMetersPerSecond'),
   'Experimental Local Roads pathfinder must stay isolated from Production navigation, backend transport and speed assumptions');
+
+assert(localRoadGraph.includes('internal fun buildQueueGoLocalRoadGraph(')&&
+  localRoadPathfinder.includes('internal fun findQueueGoLocalRoadPath(')&&
+  trustedLocalRoadRouting.includes('class QueueGoTrustedLocalRoadSnapshot internal constructor')&&
+  trustedLocalRoadRouting.includes('class QueueGoTrustedLocalRoadGraphSession internal constructor')&&
+  trustedLocalRoadRouting.includes('QueueGoLocalRoadSignedDelivery.loadTrustedSnapshot()')&&
+  trustedLocalRoadRouting.includes('QueueGoLocalRoadSignedDelivery.refreshTrustedSnapshot()')&&
+  trustedLocalRoadRouting.includes('fun QueueGoTrustedLocalRoadSnapshot.buildGraphSession()')&&
+  trustedLocalRoadRouting.includes('fun findPath(request: QueueGoLocalRoadPathRequest)'),
+  'Trusted Local Roads graph/pathfinder access must require a signed-delivery trust token instead of accepting arbitrary external road lists');
+
+assert(trustedLocalRoadRouting.includes('exactNodeId(point: QueueGoLocalRoadPoint): String?')&&
+  trustedLocalRoadRouting.includes('id.takeIf { it in graph.nodes }'),
+  'Trusted field-test routing must expose exact-node lookup only and must not introduce nearest-road snapping');
+
 
 
 console.log('native rider MapLibre OSM module contract passed');
