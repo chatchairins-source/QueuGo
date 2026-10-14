@@ -2,6 +2,7 @@ package com.queuego.rider
 
 import android.content.Context
 import android.content.pm.PackageManager
+import android.util.Log
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -303,11 +304,34 @@ internal fun QueueGoRiderNavigationMap(
         stateChannel.trySend(baseState)
     }
     LaunchedEffect(coordinator, stateChannel, displayPipeline) {
+        var lastLoggedShadowSample = 0L
+
         fun displayState(authoritativeState: RiderNavigationMapState): RiderNavigationMapState {
             if (!RIDER_NAV_CONFIDENCE_SHADOW_ENABLED && !RIDER_NAV_DISPLAY_CONFIDENCE_ENABLED) {
                 return authoritativeState
             }
             val candidateDisplayState = displayPipeline.applyToDisplayState(authoritativeState)
+            if (BuildConfig.DEBUG && RIDER_NAV_CONFIDENCE_SHADOW_ENABLED) {
+                val metrics = displayPipeline.metrics()
+                if (metrics.sampleCount >= lastLoggedShadowSample + 30L) {
+                    lastLoggedShadowSample = metrics.sampleCount
+                    Log.d(
+                        "QGNavShadow",
+                        "samples=" + metrics.sampleCount +
+                            " accepted=" + metrics.acceptedCount +
+                            " rejected=" + metrics.rejectedCount +
+                            " high=" + metrics.highMatchCount +
+                            " medium=" + metrics.mediumMatchCount +
+                            " low=" + metrics.lowMatchCount +
+                            " weak=" + metrics.weakGpsCount +
+                            " held=" + metrics.heldPuckCount +
+                            " offRoute=" + metrics.offRouteCount +
+                            " lastDeltaM=" + metrics.lastCandidateDeltaMeters +
+                            " maxDeltaM=" + metrics.maxCandidateDeltaMeters +
+                            " lastReject=" + metrics.lastRejectionReason
+                    )
+                }
+            }
             return if (RIDER_NAV_DISPLAY_CONFIDENCE_ENABLED) {
                 candidateDisplayState
             } else {
