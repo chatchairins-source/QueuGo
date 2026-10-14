@@ -1,3 +1,9 @@
+## 2026-10-14 Unified Grab parity: Missions + Learning + Emergency + Speed/Rest
+- Unified the validated Speed indicator / advisory rest work from PR242 onto the newer PR244 line. QueueGoRiderApp at PR244 was byte-identical to the PR234 base, so the speed/rest UI carries cleanly without overwriting Mission, Learning Center or personal Emergency Contact work, which lives in separate feature files.
+- Current speed reuses the accepted foreground navigation fix; no second GPS reader. Weak speed accuracy and implausible values are hidden.
+- A non-blocking rest suggestion appears after two hours of one continuous navigation session and can be acknowledged for that session. It does not interrupt the active delivery.
+- Backup backup/rider-grab-parity-training-safety-before-speed-unify-20261014 retains 0c994056. Exact-head native-pilot and navigation-map-runtime are required.
+
 ## 2026-10-14 Grab Driver parity unified: Missions + Emergency Contact + Learning Center
 - Continued from PR241 exact head a093188 so server-owned Missions and the Rider-owned personal emergency contact remain the single successor line. Training is added here instead of keeping a parallel PR240 implementation.
 - Added the QueueGo-only Rider Learning Center under Profile > Account & Help. Eight expandable lessons cover the current 30-second offer, Google Maps handoff/return, merchant cash + one pickup photo, Market multi-stop, customer cash/photo completion, GPS warning behavior, ratings/compliments/missions, and safety/device diagnostics.
