@@ -38,10 +38,10 @@ internal fun riderAfterWorkRecommendation(
     val activeMission = missions.firstOrNull { it.state == "active" && !it.completed }
         ?: missions.firstOrNull { it.state == "upcoming" && !it.completed }
     if (activeMission != null) {
-        val progress = "\${activeMission.progressJobs}/\${activeMission.targetJobs} เที่ยว"
+        val progress = "${activeMission.progressJobs}/${activeMission.targetJobs} เที่ยว"
         val reward = activeMission.rewardNote?.takeIf { it.isNotBlank() }
         return RiderAfterWorkRecommendation(
-            key = "mission:\${activeMission.id}",
+            key = "mission:${activeMission.id}",
             title = if (activeMission.state == "upcoming") "ภารกิจกำลังจะเริ่ม" else "ไปต่อกับภารกิจของคุณ",
             detail = buildString {
                 append(activeMission.title)
@@ -92,10 +92,10 @@ internal fun riderAfterWorkRecommendation(
             val zone = best.first
             val distanceKm = best.second
             return RiderAfterWorkRecommendation(
-                key = "demand:\${zone.latitude}:\${zone.longitude}:\${zone.level}:\${zone.windowHours}",
+                key = "demand:${zone.latitude}:${zone.longitude}:${zone.level}:${zone.windowHours}",
                 title = riderAfterWorkDemandLevelLabel(zone.level),
                 detail = riderAfterWorkDistanceLabel(distanceKm) +
-                    " · ข้อมูลพื้นที่งาน \${zone.windowHours} ชม. · ไม่รับประกันว่าจะมีงาน",
+                    " · ข้อมูลพื้นที่งาน ${zone.windowHours} ชม. · ไม่รับประกันว่าจะมีงาน",
                 actionLabel = "นำทางไปพื้นที่งาน",
                 target = RiderAfterWorkRecommendationTarget.DEMAND_NAVIGATION,
                 latitude = zone.latitude,
@@ -107,9 +107,9 @@ internal fun riderAfterWorkRecommendation(
     val strongestLevel = demandZones.maxOf { it.level }
     val freshestWindow = demandZones.minOf { it.windowHours }
     return RiderAfterWorkRecommendation(
-        key = "demand:\$strongestLevel:\$freshestWindow:\${demandZones.size}",
+        key = "demand:$strongestLevel:$freshestWindow:${demandZones.size}",
         title = "ดูพื้นที่งานถัดไป",
-        detail = "มีข้อมูลพื้นที่งานจริง \${demandZones.size} จุด · ระดับสูงสุด \$strongestLevel/3 · ช่วง \$freshestWindow ชม.",
+        detail = "มีข้อมูลพื้นที่งานจริง ${demandZones.size} จุด · ระดับสูงสุด $strongestLevel/3 · ช่วง $freshestWindow ชม.",
         actionLabel = "ดูบนแผนที่",
         target = RiderAfterWorkRecommendationTarget.HOME
     )
