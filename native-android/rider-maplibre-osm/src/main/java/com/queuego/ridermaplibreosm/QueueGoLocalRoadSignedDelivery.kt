@@ -211,7 +211,8 @@ enum class QueueGoLocalRoadDeliveryStatus {
 data class QueueGoLocalRoadDeliveryResult(
     val status: QueueGoLocalRoadDeliveryStatus,
     val revision: Long?,
-    val roads: List<QueueGoLocalRoad> = emptyList()
+    val roads: List<QueueGoLocalRoad> = emptyList(),
+    val junctions: List<QueueGoVerifiedLocalRoadJunction> = emptyList()
 )
 
 class QueueGoLocalRoadSignedDelivery(
@@ -229,7 +230,8 @@ class QueueGoLocalRoadSignedDelivery(
         return QueueGoLocalRoadDeliveryResult(
             status = QueueGoLocalRoadDeliveryStatus.CACHED,
             revision = trusted.validated.revision,
-            roads = trusted.validated.roads
+            roads = trusted.validated.roads,
+            junctions = trusted.validated.junctions
         )
     }
 
@@ -240,7 +242,8 @@ class QueueGoLocalRoadSignedDelivery(
                 QueueGoLocalRoadDeliveryResult(
                     status = QueueGoLocalRoadDeliveryStatus.CACHED,
                     revision = it.validated.revision,
-                    roads = it.validated.roads
+                    roads = it.validated.roads,
+                    junctions = it.validated.junctions
                 )
             } ?: QueueGoLocalRoadDeliveryResult(
                 status = QueueGoLocalRoadDeliveryStatus.NO_SNAPSHOT,
@@ -267,20 +270,23 @@ class QueueGoLocalRoadSignedDelivery(
                 QueueGoLocalRoadDeliveryResult(
                     status = QueueGoLocalRoadDeliveryStatus.APPLIED,
                     revision = validated.revision,
-                    roads = requireNotNull(validated.roadsForApply())
+                    roads = requireNotNull(validated.roadsForApply()),
+                    junctions = requireNotNull(validated.junctionsForApply())
                 )
             }
             QueueGoLocalRoadFeedDecision.UNCHANGED ->
                 QueueGoLocalRoadDeliveryResult(
                     status = QueueGoLocalRoadDeliveryStatus.UNCHANGED,
                     revision = validated.revision,
-                    roads = current?.validated?.roads.orEmpty()
+                    roads = current?.validated?.roads.orEmpty(),
+                    junctions = current?.validated?.junctions.orEmpty()
                 )
             QueueGoLocalRoadFeedDecision.REJECT_STALE ->
                 QueueGoLocalRoadDeliveryResult(
                     status = QueueGoLocalRoadDeliveryStatus.REJECTED_STALE,
                     revision = current?.validated?.revision,
-                    roads = current?.validated?.roads.orEmpty()
+                    roads = current?.validated?.roads.orEmpty(),
+                    junctions = current?.validated?.junctions.orEmpty()
                 )
         }
     }
