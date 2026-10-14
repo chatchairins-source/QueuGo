@@ -72,6 +72,44 @@ internal fun riderDemandZonesFromRpc(raw: Any?): List<RiderDemandZone> {
     }
 }
 
+internal fun riderSupplyPlanFromRpc(raw: Any?): RiderSupplyPlan {
+    val row = when (raw) {
+        is JSONObject -> raw
+        is JSONArray -> raw.optJSONObject(0) ?: JSONObject()
+        else -> JSONObject()
+    }
+    val ready = row.optBoolean("ready", false)
+    val confidence = row.optString("confidence").takeIf {
+        it in setOf("low", "medium", "high")
+    } ?: "low"
+    val sourceDays = row.optInt("source_days", 28).coerceIn(1, 365)
+    val forecast = row.optBoolean("forecast", false)
+    val values = row.optJSONArray("windows") ?: JSONArray()
+    val seen = hashSetOf<String>()
+    val windows = buildList {
+        if (ready) {
+            for (index in 0 until values.length()) {
+                val item = values.optJSONObject(index) ?: continue
+                val day = item.optInt("day_of_week", 0)
+                val start = item.optInt("start_hour", -1)
+                val end = item.optInt("end_hour", -1)
+                val level = item.optInt("level", 0)
+                if (day !in 1..7 || start !in 0..23 || end !in 1..24 || end <= start || level !in 1..3) continue
+                val key = "$day:$start:$end"
+                if (!seen.add(key)) continue
+                add(RiderSupplyWindow(day, start, end, level))
+            }
+        }
+    }
+    return RiderSupplyPlan(
+        ready = ready && windows.isNotEmpty(),
+        confidence = confidence,
+        sourceDays = sourceDays,
+        forecast = forecast,
+        windows = windows
+    )
+}
+
 internal val riderComplimentKeys = setOf(
     "polite","fast","careful","professional","friendly","helpful"
 )
@@ -664,6 +702,17 @@ class QueueGoApi {
             riderComplimentSummaryFromRpc(
                 rpc(
                     "qg_rider_compliment_summary",
+                    auth.session.accessToken,
+                    JSONObject()
+                )
+            )
+        }
+
+    suspend fun supplyPlan(auth: QueueGoAuth): RiderSupplyPlan =
+        withContext(Dispatchers.IO) {
+            riderSupplyPlanFromRpc(
+                rpc(
+                    "qg_rider_supply_plan",
                     auth.session.accessToken,
                     JSONObject()
                 )
