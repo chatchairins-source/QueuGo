@@ -35,23 +35,33 @@ internal class RiderVoiceAssistantSpeaker(context: Context) : TextToSpeech.OnIni
     private var pending: Pair<String, String>? = null
 
     init {
-        engine = TextToSpeech(context.applicationContext, this)
+        engine = runCatching { TextToSpeech(context.applicationContext, this) }.getOrNull()
     }
 
     override fun onInit(status: Int) {
         val current = engine ?: return
         if (status != TextToSpeech.SUCCESS) {
             pending = null
+            runCatching { current.shutdown() }
+            engine = null
             return
         }
-        val thaiResult = current.setLanguage(Locale("th", "TH"))
-        if (
-            thaiResult == TextToSpeech.LANG_MISSING_DATA ||
-            thaiResult == TextToSpeech.LANG_NOT_SUPPORTED
-        ) {
-            current.language = Locale.getDefault()
+        val configured = runCatching {
+            val thaiResult = current.setLanguage(Locale("th", "TH"))
+            if (
+                thaiResult == TextToSpeech.LANG_MISSING_DATA ||
+                thaiResult == TextToSpeech.LANG_NOT_SUPPORTED
+            ) {
+                current.language = Locale.getDefault()
+            }
+            current.setSpeechRate(1.0f)
+        }.isSuccess
+        if (!configured) {
+            pending = null
+            runCatching { current.shutdown() }
+            engine = null
+            return
         }
-        current.setSpeechRate(1.0f)
         ready = true
         pending?.let { (text, id) ->
             pending = null
@@ -66,7 +76,7 @@ internal class RiderVoiceAssistantSpeaker(context: Context) : TextToSpeech.OnIni
             pending = clean to utteranceId
             return
         }
-        engine?.speak(clean, TextToSpeech.QUEUE_FLUSH, null, utteranceId)
+        runCatching { engine?.speak(clean, TextToSpeech.QUEUE_FLUSH, null, utteranceId) }
     }
 
     fun stop() {
