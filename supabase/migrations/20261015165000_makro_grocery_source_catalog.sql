@@ -1,47 +1,41 @@
 -- Searchable Makro source catalog for Grocery Merchant Web.
--- Source rows remain separate from canonical grocery_master_products.
--- Remote Makro image URLs are Merchant catalog previews, not customer image-rights approval.
+-- User-locked scope: branded dry-grocery only. No fresh market, frozen/chilled food,
+-- beverages root, electrical appliances, alcohol or tobacco.
+-- Remote Makro images are Merchant catalog previews only; products.image remains null
+-- until a store supplies/uses a separately approved production image path.
 
-create extension if not exists http with schema extensions;
 create extension if not exists pg_trgm with schema extensions;
 
 create table if not exists public.grocery_source_products (
   source text not null,
   source_product_id text not null,
-  source_category text not null,
-  source_rank integer not null default 0 check (source_rank >= 0),
+  source_rank integer not null check (source_rank >= 0),
   sku text,
   barcode text,
   brand text not null,
-  brand_en text,
   title_th text not null,
   title_en text,
-  categories text[] not null default '{}'::text[],
-  category_ids text[] not null default '{}'::text[],
-  deepest_category text,
+  deepest_category text not null,
   image_url text,
-  image_urls text[] not null default '{}'::text[],
   unit_size text,
   unit_type text,
   unit_factor numeric,
-  packaging_weight numeric,
   source_url text not null,
-  raw_facts jsonb not null default '{}'::jsonb,
   retrieved_at timestamptz not null,
-  active boolean not null default true,
+  active boolean not null default false,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
-  primary key (source, source_product_id),
-  check (source = 'makro-pro'),
-  check (source_category in ('dry-grocery','beverages')),
+  primary key (source,source_product_id),
+  check (source='makro-pro'),
+  check (deepest_category='dry-grocery' or deepest_category like 'dry-grocery/%'),
   check (length(btrim(brand)) between 1 and 250),
   check (length(btrim(title_th)) between 1 and 500),
-  check (source_url like 'https://www.makro.pro/%'),
+  check (source_url='https://www.makro.pro/th/c/dry-grocery'),
   check (image_url is null or image_url like 'https://images.mango-prod.siammakro.cloud/%')
 );
 
 create index if not exists grocery_source_active_rank
-  on public.grocery_source_products(active,source_category,source_rank,source_product_id);
+  on public.grocery_source_products(active,source_rank,source_product_id);
 
 create index if not exists grocery_source_brand_trgm
   on public.grocery_source_products using gin (brand extensions.gin_trgm_ops)
@@ -53,7 +47,12 @@ create index if not exists grocery_source_title_trgm
 
 create index if not exists grocery_source_search
   on public.grocery_source_products using gin (
-    to_tsvector('simple',coalesce(brand,'')||' '||coalesce(title_th,'')||' '||coalesce(title_en,'')||' '||coalesce(barcode,''))
+    to_tsvector('simple',
+      coalesce(brand,'')||' '||
+      coalesce(title_th,'')||' '||
+      coalesce(title_en,'')||' '||
+      coalesce(barcode,'')
+    )
   )
   where active;
 
@@ -65,20 +64,19 @@ create unique index if not exists products_shop_makro_source_unique
   on public.products(shop_id,(metadata->>'makro_source_product_id'))
   where coalesce(metadata->>'makro_source_product_id','')<>'';
 
-create or replace function public.qg_grocery_source_category_label(p_source_category text,p_deepest_category text)
+create or replace function public.qg_grocery_source_category_label(p_deepest_category text)
 returns text
 language sql
 immutable
 set search_path=public,pg_temp
 as $$
   select case
-    when p_source_category='beverages' then 'เครื่องดื่ม'
     when coalesce(p_deepest_category,'') like '%instant-noodles%' then 'บะหมี่กึ่งสำเร็จรูป'
     when coalesce(p_deepest_category,'') like '%rice%' then 'ข้าวสาร'
     when coalesce(p_deepest_category,'') ~ '(canned|can-food|fish-can)' then 'อาหารกระป๋อง'
     when coalesce(p_deepest_category,'') ~ '(bread|bakery)' then 'ขนมอบ'
     when coalesce(p_deepest_category,'') ~ '(seasoning|sauce|condiment|spice|sugar|salt|oil)' then 'เครื่องปรุง'
-    else 'อื่นๆ'
+    else 'ของแห้ง'
   end
 $$;
 
@@ -120,7 +118,6 @@ begin
     select
       s.source,
       s.source_product_id,
-      s.source_category,
       s.source_rank,
       s.sku,
       s.barcode,
@@ -131,7 +128,7 @@ begin
       s.unit_size,
       s.unit_type,
       s.unit_factor,
-      public.qg_grocery_source_category_label(s.source_category,s.deepest_category) as queuego_category,
+      public.qg_grocery_source_category_label(s.deepest_category) as queuego_category,
       exists(
         select 1 from public.products p
         where p.shop_id=p_shop_id
@@ -145,14 +142,17 @@ begin
         or s.brand ilike '%'||q||'%'
         or s.title_th ilike '%'||q||'%'
         or coalesce(s.title_en,'') ilike '%'||q||'%'
-        or to_tsvector('simple',coalesce(s.brand,'')||' '||coalesce(s.title_th,'')||' '||coalesce(s.title_en,'')||' '||coalesce(s.barcode,''))
-           @@ plainto_tsquery('simple',q)
+        or to_tsvector('simple',
+             coalesce(s.brand,'')||' '||
+             coalesce(s.title_th,'')||' '||
+             coalesce(s.title_en,'')||' '||
+             coalesce(s.barcode,'')
+           ) @@ plainto_tsquery('simple',q)
       )
     order by
       (s.barcode=q and q<>'') desc,
       (s.brand ilike q||'%' and q<>'') desc,
       (s.title_th ilike q||'%' and q<>'') desc,
-      case s.source_category when 'dry-grocery' then 0 else 1 end,
       s.source_rank,
       s.brand,
       s.title_th,
@@ -222,7 +222,7 @@ begin
       then s.title_th
     else s.brand||' '||s.title_th
   end;
-  v_category:=public.qg_grocery_source_category_label(s.source_category,s.deepest_category);
+  v_category:=public.qg_grocery_source_category_label(s.deepest_category);
   v_gp:=public.effective_gp_rate(p_shop_id);
   v_delivery_price:=round(p_store_price*(1+v_gp/100),2);
   v_metadata:=jsonb_build_object(
@@ -234,7 +234,7 @@ begin
     'barcode',s.barcode,
     'catalog_preview_image',s.image_url,
     'catalog_preview_only',true,
-    'catalog_source_category',s.source_category,
+    'catalog_source_category','dry-grocery',
     'catalog_deepest_category',s.deepest_category,
     'catalog_retrieved_at',s.retrieved_at
   );
@@ -287,210 +287,156 @@ begin
 end
 $$;
 
--- Internal page importer. It is not executable through anon/authenticated Data API.
-create or replace function public.qg_internal_makro_source_sync_page(
-  p_category text,
-  p_page integer,
-  p_size integer default 120
-)
-returns jsonb
-language plpgsql
-security definer
-set search_path=public,extensions,pg_temp
-as $$
-declare
-  response extensions.http_response;
-  body jsonb;
-  doc jsonb;
-  hit jsonb;
-  n integer:=0;
-  excluded integer:=0;
-  found_count integer:=0;
-  ord bigint;
-  deepest text;
-  brand_value text;
-  title_value text;
-  image_value text;
-  attr_text text;
-begin
-  if p_category not in ('dry-grocery','beverages')
-     or p_page<1
-     or p_size<1
-     or p_size>200
-  then
-    raise exception 'invalid Makro sync page';
-  end if;
-
-  select * into response
-  from extensions.http_post(
-    'https://search.maknet.siammakro.cloud/search/api/v1/indexes/products/search',
-    jsonb_build_object(
-      'q','*',
-      'size',p_size,
-      'filters',jsonb_build_object(
-        'category',jsonb_build_array(p_category),
-        'isSalesCustomer',false,
-        'countryCode','TH',
-        'lang','th',
-        'allowRestrictedProduct',true,
-        'allowAlcohol',false
-      ),
-      'sortBy','RELEVANCE',
-      'autocorrect',false,
-      'page',p_page,
-      'autocategorise',false,
-      'includeCurations',false,
-      'source','web'
-    )::text,
-    'application/json'
-  );
-
-  if response.status<>200 then
-    raise exception 'Makro search HTTP %: %',response.status,left(response.content,300);
-  end if;
-
-  body:=response.content::jsonb;
-  found_count:=coalesce((body->>'found')::integer,0);
-
-  for hit,ord in
-    select value,ordinality
-    from jsonb_array_elements(coalesce(body->'hits','[]'::jsonb)) with ordinality
-  loop
-    doc:=hit->'document';
-    brand_value:=btrim(coalesce(doc->>'brand',''));
-    title_value:=btrim(coalesce(doc->>'title',doc->>'searchTitle',''));
-    deepest:=lower(coalesce(doc->>'deepestCategory',''));
-    attr_text:=lower(coalesce(doc->'productAttributes'->'categoricalAttributes','[]'::jsonb)::text);
-
-    if brand_value=''
-       or brand_value ~* '^(?:-|n/?a|na|none|no\s*brand|unbranded|ไม่มีแบรนด์|ไม่มียี่ห้อ|ไม่ระบุ)$'
-       or title_value=''
-       or deepest !~ ('^'||replace(p_category,'-','\-')||'(/|$)')
-       or deepest ~ '(^|/)(eggs?|frozen|tofu|fresh([^/]*|$)|chilled|produce|meat|seafood|vegetable|fruit)(/|$)'
-       or lower(coalesce(doc->>'isWeightedFresh','false'))='true'
-       or attr_text ~ 'storage_type::(chilled|frozen|refrigerated)'
-    then
-      excluded:=excluded+1;
-      continue;
-    end if;
-
-    image_value:=case
-      when coalesce(doc#>>'{images,0}','') like 'https://images.mango-prod.siammakro.cloud/%'
-      then doc#>>'{images,0}'
-      else null
-    end;
-
-    insert into public.grocery_source_products(
-      source,source_product_id,source_category,source_rank,sku,barcode,brand,brand_en,
-      title_th,title_en,categories,category_ids,deepest_category,image_url,image_urls,
-      unit_size,unit_type,unit_factor,packaging_weight,source_url,raw_facts,retrieved_at,active,updated_at
-    )
-    values(
-      'makro-pro',
-      coalesce(doc->>'productId',doc->>'id'),
-      p_category,
-      (p_page-1)*p_size+ord::integer,
-      nullif(doc->>'sku',''),
-      nullif(coalesce(doc->>'itemBarCode',doc#>>'{itemBarCodes,0}'),''),
-      brand_value,
-      nullif(doc->>'brandEn',''),
-      title_value,
-      nullif(doc->>'titleEn',''),
-      array(select jsonb_array_elements_text(coalesce(doc->'categories','[]'::jsonb))),
-      array(select jsonb_array_elements_text(coalesce(doc->'categoryIds','[]'::jsonb))),
-      nullif(doc->>'deepestCategory',''),
-      image_value,
-      array(
-        select x
-        from jsonb_array_elements_text(coalesce(doc->'images','[]'::jsonb)) x
-        where x like 'https://images.mango-prod.siammakro.cloud/%'
-        limit 5
-      ),
-      nullif(doc->>'unitSize',''),
-      nullif(doc->>'unitType',''),
-      nullif(doc->>'unitFactor','')::numeric,
-      nullif(doc->>'packagingWeight','')::numeric,
-      'https://www.makro.pro/th/c/'||p_category,
-      jsonb_build_object(
-        'productAttributes',coalesce(doc->'productAttributes','{}'::jsonb),
-        'itemBarCodes',coalesce(doc->'itemBarCodes','[]'::jsonb)
-      ),
-      now(),
-      true,
-      now()
-    )
-    on conflict(source,source_product_id) do update set
-      source_category=excluded.source_category,
-      source_rank=excluded.source_rank,
-      sku=excluded.sku,
-      barcode=excluded.barcode,
-      brand=excluded.brand,
-      brand_en=excluded.brand_en,
-      title_th=excluded.title_th,
-      title_en=excluded.title_en,
-      categories=excluded.categories,
-      category_ids=excluded.category_ids,
-      deepest_category=excluded.deepest_category,
-      image_url=excluded.image_url,
-      image_urls=excluded.image_urls,
-      unit_size=excluded.unit_size,
-      unit_type=excluded.unit_type,
-      unit_factor=excluded.unit_factor,
-      packaging_weight=excluded.packaging_weight,
-      source_url=excluded.source_url,
-      raw_facts=excluded.raw_facts,
-      retrieved_at=excluded.retrieved_at,
-      active=true,
-      updated_at=now();
-    n:=n+1;
-  end loop;
-
-  return jsonb_build_object(
-    'category',p_category,
-    'page',p_page,
-    'size',p_size,
-    'source_found',found_count,
-    'upserted',n,
-    'excluded',excluded
-  );
-end
-$$;
-
-create or replace function public.qg_internal_makro_source_finalize(p_target integer default 10000)
+-- Admin-only batch import from the generated, reviewed public Makro source snapshot.
+-- Existing active rows stay active during an incomplete upload; new rows remain inactive
+-- until qg_admin_grocery_source_finalize verifies the whole 10k snapshot.
+create or replace function public.qg_admin_grocery_source_import(p_rows jsonb)
 returns jsonb
 language plpgsql
 security definer
 set search_path=public,pg_temp
 as $$
 declare
+  r jsonb;
+  source_id text;
+  brand_value text;
+  title_value text;
+  deepest text;
+  image_value text;
+  retrieved timestamptz;
+  rank_value integer;
+  n integer:=0;
+begin
+  if public.is_active_admin() is distinct from true then
+    raise exception 'active admin required' using errcode='42501';
+  end if;
+  if p_rows is null
+     or jsonb_typeof(p_rows)<>'array'
+     or jsonb_array_length(p_rows) not between 1 and 200
+  then
+    raise exception 'batch must contain 1..200 rows';
+  end if;
+
+  perform pg_advisory_xact_lock(hashtext('queuego.grocery.source.makro.import'));
+
+  for r in select value from jsonb_array_elements(p_rows)
+  loop
+    source_id:=btrim(coalesce(r->>'source_product_id',''));
+    brand_value:=btrim(coalesce(r->>'brand',''));
+    title_value:=btrim(coalesce(r->>'title_th',''));
+    deepest:=lower(btrim(coalesce(r->>'deepest_category','')));
+    image_value:=nullif(btrim(coalesce(r->>'image_url','')),'');
+    retrieved:=nullif(r->>'retrieved_at','')::timestamptz;
+    rank_value:=coalesce((r->>'source_rank')::integer,-1);
+
+    if source_id=''
+       or brand_value=''
+       or brand_value ~* '^(?:-|n/?a|na|none|no\s*brand|unbranded|ไม่มีแบรนด์|ไม่มียี่ห้อ|ไม่ระบุ)$'
+       or title_value=''
+       or deepest !~ '^dry-grocery(/|$)'
+       or deepest ~ '(^|/)(eggs?|frozen|tofu|fresh([^/]*|$)|chilled|produce|meat|seafood|vegetable|fruit|alcohol|beer|wine|liquor|spirits?|tobacco|cigarettes?)(/|$)'
+       or retrieved is null
+       or rank_value<0
+    then
+      raise exception 'invalid Makro dry source row';
+    end if;
+    if image_value is not null
+       and image_value not like 'https://images.mango-prod.siammakro.cloud/%'
+    then
+      raise exception 'unexpected Makro image host';
+    end if;
+
+    insert into public.grocery_source_products(
+      source,source_product_id,source_rank,sku,barcode,brand,title_th,title_en,
+      deepest_category,image_url,unit_size,unit_type,unit_factor,source_url,
+      retrieved_at,active,updated_at
+    )
+    values(
+      'makro-pro',source_id,rank_value,
+      nullif(r->>'sku',''),nullif(r->>'barcode',''),brand_value,title_value,
+      nullif(r->>'title_en',''),deepest,image_value,
+      nullif(r->>'unit_size',''),nullif(r->>'unit_type',''),
+      nullif(r->>'unit_factor','')::numeric,
+      'https://www.makro.pro/th/c/dry-grocery',
+      retrieved,false,now()
+    )
+    on conflict(source,source_product_id) do update set
+      source_rank=excluded.source_rank,
+      sku=excluded.sku,
+      barcode=excluded.barcode,
+      brand=excluded.brand,
+      title_th=excluded.title_th,
+      title_en=excluded.title_en,
+      deepest_category=excluded.deepest_category,
+      image_url=excluded.image_url,
+      unit_size=excluded.unit_size,
+      unit_type=excluded.unit_type,
+      unit_factor=excluded.unit_factor,
+      source_url=excluded.source_url,
+      retrieved_at=excluded.retrieved_at,
+      updated_at=now();
+
+    n:=n+1;
+  end loop;
+
+  return jsonb_build_object('processed',n);
+end
+$$;
+
+create or replace function public.qg_admin_grocery_source_finalize(
+  p_retrieved_at timestamptz,
+  p_target integer default 10000
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path=public,pg_temp
+as $$
+declare
+  n_snapshot integer;
   n_active integer;
 begin
-  if p_target<1 or p_target>50000 then raise exception 'invalid target';end if;
+  if public.is_active_admin() is distinct from true then
+    raise exception 'active admin required' using errcode='42501';
+  end if;
+  if p_retrieved_at is null or p_target<>10000 then
+    raise exception 'exact 10000-row snapshot required';
+  end if;
 
-  with ranked as (
-    select source,source_product_id,
-           row_number() over(
-             order by case source_category when 'dry-grocery' then 0 else 1 end,
-                      source_rank,source_product_id
-           ) as rn
-    from public.grocery_source_products
-    where source='makro-pro'
-  )
-  update public.grocery_source_products s
-  set active=(r.rn<=p_target),updated_at=now()
-  from ranked r
-  where s.source=r.source and s.source_product_id=r.source_product_id;
+  perform pg_advisory_xact_lock(hashtext('queuego.grocery.source.makro.import'));
+
+  select count(*) into n_snapshot
+  from public.grocery_source_products
+  where source='makro-pro'
+    and retrieved_at=p_retrieved_at;
+
+  if n_snapshot<>p_target then
+    raise exception 'Makro source snapshot incomplete: %/%',n_snapshot,p_target;
+  end if;
+
+  update public.grocery_source_products
+  set active=(source='makro-pro' and retrieved_at=p_retrieved_at),
+      updated_at=now()
+  where source='makro-pro';
 
   select count(*) into n_active
   from public.grocery_source_products
   where source='makro-pro' and active;
 
-  return jsonb_build_object('target',p_target,'active',n_active);
+  if n_active<>p_target then
+    raise exception 'Makro source activation mismatch: %/%',n_active,p_target;
+  end if;
+
+  return jsonb_build_object(
+    'retrieved_at',p_retrieved_at,
+    'target',p_target,
+    'active',n_active
+  );
 end
 $$;
 
-revoke all on function public.qg_grocery_source_category_label(text,text) from public,anon;
-grant execute on function public.qg_grocery_source_category_label(text,text) to authenticated;
+revoke all on function public.qg_grocery_source_category_label(text) from public,anon;
+grant execute on function public.qg_grocery_source_category_label(text) to authenticated;
 
 revoke all on function public.qg_grocery_source_search(uuid,text,integer) from public,anon;
 grant execute on function public.qg_grocery_source_search(uuid,text,integer) to authenticated;
@@ -498,5 +444,8 @@ grant execute on function public.qg_grocery_source_search(uuid,text,integer) to 
 revoke all on function public.qg_grocery_source_add_to_shop(uuid,text,numeric,integer,boolean,boolean) from public,anon;
 grant execute on function public.qg_grocery_source_add_to_shop(uuid,text,numeric,integer,boolean,boolean) to authenticated;
 
-revoke all on function public.qg_internal_makro_source_sync_page(text,integer,integer) from public,anon,authenticated,service_role;
-revoke all on function public.qg_internal_makro_source_finalize(integer) from public,anon,authenticated,service_role;
+revoke all on function public.qg_admin_grocery_source_import(jsonb) from public,anon;
+grant execute on function public.qg_admin_grocery_source_import(jsonb) to authenticated;
+
+revoke all on function public.qg_admin_grocery_source_finalize(timestamptz,integer) from public,anon;
+grant execute on function public.qg_admin_grocery_source_finalize(timestamptz,integer) to authenticated;
