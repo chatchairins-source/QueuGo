@@ -55,6 +55,16 @@ ok(
   'QgRemoteImage must support per-surface decode ceilings so small thumbnails never allocate full-size bitmaps'
 );
 ok(
+  design.includes('qgRemoteImageDecodeGate = Semaphore(3)') &&
+  design.includes('qgRemoteImageDecodeGate.withPermit'),
+  'Remote image loading must limit concurrent compressed-byte and bitmap allocations across all native apps'
+);
+ok(
+  chatImage.includes('chatImageDecodeGate = Semaphore(2)') &&
+  chatImage.includes('chatImageDecodeGate.withPermit'),
+  'Chat image loading must limit concurrent compressed-byte and bitmap allocations'
+);
+ok(
   customerMarket.includes('maxDecodeSide = 256') &&
   customerSearch.includes('maxDecodeSide = 256') &&
   customerShop.includes('maxDecodeSide = 256'),
