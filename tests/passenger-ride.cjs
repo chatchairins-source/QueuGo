@@ -6,6 +6,16 @@ const id=n=>'00000000-0000-4000-8000-'+String(n).padStart(12,'0');
  const reject=async(s,p,re)=>{await assert.rejects(q(s,p),re);checks++};
  const as=n=>q("select set_config('test.uid',$1,false)",[id(n)]);
  await db.exec(require('./fixtures/passenger-ride-schema.cjs')());
+ const licenseCardSource=fs.readFileSync('native-android/rider/src/main/java/com/queuego/rider/RiderPassengerLicenseCard.kt','utf8');
+ const riderApiSource=fs.readFileSync('native-android/rider/src/main/java/com/queuego/rider/QueueGoApi.kt','utf8');
+ const adminRideSource=fs.readFileSync('admin/passenger-ride.js','utf8');
+ const publicLicenseMigration=fs.readFileSync('supabase/migrations/20261015061000_passenger_public_license_evidence.sql','utf8');
+ eq(licenseCardSource.includes('อัปโหลดใบขับขี่สาธารณะ'),true);
+ eq(licenseCardSource.includes('api.submitPassengerLicense(context, auth, uri)'),true);
+ eq(riderApiSource.includes('"qg_rider_submit_public_license"'),true);
+ eq(adminRideSource.includes('ดูหลักฐานใบขับขี่สาธารณะ'),true);
+ eq(publicLicenseMigration.includes('pending public driving license evidence required'),true);
+ eq(publicLicenseMigration.includes("bucket_id='qg-evidence'"),true);
  let evidenceSeq=0;
  const submitPublicEvidence=async(rider=11,actor=101)=>{
   const path=id(actor)+'/public-license-'+(++evidenceSeq)+'.jpg';
