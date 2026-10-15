@@ -311,6 +311,15 @@ ok(
   'Rider post-commit local proof cleanup must remain non-fatal after authoritative server success'
 );
 
+const riderVoiceAssistant=read('rider/src/main/java/com/queuego/rider/RiderVoiceAssistant.kt');
+ok(
+  riderVoiceAssistant.includes('engine = runCatching { TextToSpeech(context.applicationContext, this) }.getOrNull()') &&
+  riderVoiceAssistant.includes('val configured = runCatching {') &&
+  riderVoiceAssistant.includes('runCatching { engine?.speak(') &&
+  riderVoiceAssistant.includes('runCatching { current.shutdown() }'),
+  'Rider optional TTS must fail closed on OEM TextToSpeech initialization/configuration/speak errors'
+);
+
 const riderNotificationPolicy=read('rider/src/main/java/com/queuego/rider/RiderNotificationPolicy.kt');
 ok(
   riderNotificationPolicy.includes('internal suspend fun consumeRiderAlert') &&
