@@ -1,6 +1,8 @@
 package com.queuego.customer
 
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.util.concurrent.atomic.AtomicBoolean
 
 internal interface CheckoutJournal<P> {
@@ -25,7 +27,9 @@ internal class CustomerCheckoutRecovery<P, R>(private val journal: CheckoutJourn
     ): R {
         if (!sending.compareAndSet(false, true)) throw CheckoutInProgress()
         try {
-            val pending = journal.read() ?: create().also(journal::write)
+            val pending = withContext(Dispatchers.IO) { journal.read() } ?: create().also { created ->
+                withContext(Dispatchers.IO) { journal.write(created) }
+            }
             val receipt = try { send(pending) }
             catch (e: CancellationException) { throw e }
             catch (e: Exception) {
@@ -34,13 +38,13 @@ internal class CustomerCheckoutRecovery<P, R>(private val journal: CheckoutJourn
                     catch (_: Exception) { null }
                 if (found != null) found
                 else {
-                    if (definitiveRejection(e)) journal.clear()
+                    if (definitiveRejection(e)) withContext(Dispatchers.IO) { journal.clear() }
                     throw e
                 }
             }
             // An acknowledged server order must never be reported as failed because
             // local cleanup failed. Its journal can be reconciled on the next launch.
-            runCatching { journal.complete(pending) }
+            runCatching { withContext(Dispatchers.IO) { journal.complete(pending) } }
             return receipt
         } finally { sending.set(false) }
     }
@@ -48,7 +52,7 @@ internal class CustomerCheckoutRecovery<P, R>(private val journal: CheckoutJourn
     suspend fun reconcile(recover: suspend (P) -> R?): R? {
         if (!sending.compareAndSet(false, true)) return null
         try {
-            val pending = journal.read() ?: return null
+            val pending = withContext(Dispatchers.IO) { journal.read() } ?: return null
             val receipt = recover(pending) ?: return null
             runCatching { journal.complete(pending) }
             return receipt
