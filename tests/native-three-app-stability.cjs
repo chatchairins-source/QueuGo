@@ -38,6 +38,13 @@ ok(merchantMain.includes('lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED)')
 ok(merchantMain.includes('withContext(kotlinx.coroutines.Dispatchers.IO) { store.load() }'),'Merchant session watcher must decrypt off Main');
 ok(merchantMain.includes('delay(5_000)')&&!merchantMain.includes('delay(350)')&&!merchantMain.includes('delay(1_000)'),'Merchant must not hot-poll encrypted session state');
 ok(merchantMain.includes('sessionLoaded'),'Merchant must not flash an unauthenticated surface before initial secure-session read completes');
+ok(
+  merchantMain.includes('withContext(kotlinx.coroutines.Dispatchers.IO) { store.save(auth) }') &&
+  merchantMain.includes('withContext(kotlinx.coroutines.Dispatchers.IO) { store.save(validated) }') &&
+  merchantMain.includes('withContext(kotlinx.coroutines.Dispatchers.IO) { store.clear() }') &&
+  !merchantMain.includes('auth = refreshed'),
+  'Merchant login/register/POS session writes and logout clear must stay off Main, and IO refresh callbacks must not mutate Compose state'
+);
 
 const rider=read('rider/src/main/java/com/queuego/rider/QueueGoRiderApp.kt');
 ok(
