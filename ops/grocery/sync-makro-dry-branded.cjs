@@ -24,10 +24,11 @@ function allowedShelfStable(doc){
   if(attrs.some(x=>/^storage_type::(?:chilled|frozen|refrigerated)$/i.test(String(x))))return false;
   return true;
 }
-function compact(doc,retrievedAt){
+function compact(doc,retrievedAt,sourceRank){
   const image=(doc.images||[]).find(x=>typeof x==='string'&&/^https:\/\/images\.mango-prod\.siammakro\.cloud\//.test(x))||null;
   return {
     source_product_id:String(doc.productId||doc.id||''),
+    source_rank:sourceRank,
     sku:doc.sku||null,
     barcode:doc.itemBarCode||doc.itemBarCodes?.[0]||null,
     brand:String(doc.brand||'').trim(),
@@ -35,6 +36,9 @@ function compact(doc,retrievedAt){
     title_en:doc.titleEn||null,
     deepest_category:doc.deepestCategory||ROOT,
     image_url:image,
+    unit_size:doc.unitSize||null,
+    unit_type:doc.unitType||null,
+    unit_factor:doc.unitFactor??null,
     source_category:ROOT,
     source_url:'https://www.makro.pro/th/c/dry-grocery',
     retrieved_at:retrievedAt
@@ -99,7 +103,16 @@ async function main(){
   console.log(JSON.stringify({endpoint,root:ROOT,expected,size,pages}));
 
   const docs=new Map();
-  const add=j=>{for(const h of j.hits||[]){const d=h?.document,id=String(d?.productId||d?.id||'');if(id)docs.set(id,d)}};
+  const add=j=>{
+    const page=Number(j.page)||1;
+    (j.hits||[]).forEach((h,i)=>{
+      const d=h?.document,id=String(d?.productId||d?.id||'');
+      if(!id)return;
+      const rank=(page-1)*size+i;
+      const prev=docs.get(id);
+      if(!prev||rank<prev.rank)docs.set(id,{doc:d,rank});
+    });
+  };
   add(first);
   let next=2,done=1;
   async function worker(){
@@ -115,13 +128,14 @@ async function main(){
   await Promise.all(Array.from({length:Math.min(CONCURRENCY,Math.max(1,pages-1))},worker));
 
   const excluded={missingBrand:0,notShelfStable:0,missingTitle:0},eligible=[];
-  for(const d of docs.values()){
+  for(const entry of docs.values()){
+    const d=entry.doc;
     if(!validBrand(d.brand)){excluded.missingBrand++;continue}
     if(!allowedShelfStable(d)){excluded.notShelfStable++;continue}
     if(!String(d.title||d.searchTitle||'').trim()){excluded.missingTitle++;continue}
-    eligible.push(compact(d,retrievedAt));
+    eligible.push(compact(d,retrievedAt,entry.rank));
   }
-  eligible.sort((a,b)=>a.brand.localeCompare(b.brand,'th')||a.title_th.localeCompare(b.title_th,'th')||a.source_product_id.localeCompare(b.source_product_id));
+  eligible.sort((a,b)=>a.source_rank-b.source_rank||a.source_product_id.localeCompare(b.source_product_id));
   if(eligible.length<TARGET_COUNT)throw Error('Eligible branded shelf-stable dry-grocery below target: '+eligible.length);
 
   const items=eligible.slice(0,TARGET_COUNT);
