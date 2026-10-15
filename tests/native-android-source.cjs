@@ -364,16 +364,22 @@ ok(riderApp.includes('QueueGoRiderNavigationMap(')&&
    !riderApp.includes('RiderMiniJobSheet(')&&
    riderApp.includes('recenterSignal'),
    'Rider native must keep a fixed non-draggable active job card over the map with recenter control');
-ok(riderApp.includes('val cachedAtComposition = remember { store.load() }')&&
-   riderApp.includes('mutableStateOf<QueueGoAuth?>(cachedAtComposition)')&&
-   riderApp.includes('pushStore.loadHomeSnapshot(auth.user.id)')&&
+ok(riderApp.includes('var auth by remember { mutableStateOf<QueueGoAuth?>(null) }')&&
+   riderApp.includes('var restoring by remember { mutableStateOf(true) }')&&
+   riderApp.includes('val cached = auth ?: kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO)')&&
+   riderApp.includes('if (auth == null) auth = cached')&&
+   riderApp.includes('restoring -> LoadingScreen')&&
+   riderApp.includes('auth == null -> LoginScreen')&&
+   riderApp.includes('val cachedSnapshot = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO)')&&
+   riderApp.includes('if (snapshot == null && cachedSnapshot != null) snapshot = cachedSnapshot')&&
    riderApp.includes('riderResolveMissingActiveSnapshot(')&&
    riderApp.includes('lookup?.getOrNull()')&&
    riderApp.includes('lookup?.isSuccess == true')&&
    riderApp.includes('pushStore.saveHomeSnapshot(auth.user.id, mergedSnapshot)')&&
-   riderApp.includes('rememberSaveable(auth.user.id) { mutableStateOf(pushStore.loadActiveTab(auth.user.id)) }')&&
+   riderApp.includes('val savedTab = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO)')&&
+   riderApp.includes('if (!activeTabHydrated) return@LaunchedEffect')&&
    riderApp.includes('pushStore.saveActiveTab(auth.user.id, activeTab)'),
-   'Rider must restore encrypted session, monotonic active work snapshot and the persisted tab without a cold reload after activity recreation');
+   'Rider must restore encrypted session, monotonic active work snapshot and persisted tab off Main without flashing login after activity recreation');
 ok(riderSessionStore.includes('saveHomeSnapshot(')&&riderSessionStore.includes('loadHomeSnapshot(')&&riderSessionStore.includes('home_snapshot'),'Rider session store must persist encrypted home work state for background/process recovery');
 ok(riderManifest.includes('android:launchMode="singleTask"')&&riderManifest.includes('android:alwaysRetainTaskState="true"'),'Rider launcher must reuse its existing task instead of creating a fresh work activity after app switching');
 ok(source.includes('longdo.map.key'),'native Rider manifest must provide Longdo map key');
