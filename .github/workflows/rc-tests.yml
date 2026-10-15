@@ -24,7 +24,12 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
+      - uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a # v4
+        with:
+          gradle-version: '9.6.0'
+      - name: Install Android build platform
+        run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-36" "build-tools;36.0.0" >/dev/null
       - run: npm ci --no-audit --no-fund
       - run: npm test
       - name: Compile Merchant Native Kotlin
-        run: cd native-android && ./gradlew :merchant:compileDebugKotlin --no-daemon
+        run: gradle -p native-android :merchant:compileDebugKotlin --no-build-cache --stacktrace
