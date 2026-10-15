@@ -391,6 +391,7 @@ ok(
 
 const customerCheckoutRecovery=read('customer/src/main/java/com/queuego/customer/CustomerCheckoutRecovery.kt');
 const customerMarketScreen=read('customer/src/main/java/com/queuego/customer/QueueGoMarketScreen.kt');
+const customerLaundryScreen=read('customer/src/main/java/com/queuego/customer/QueueGoLaundryScreen.kt');
 ok(
   customerCheckoutRecovery.includes('withContext(Dispatchers.IO) { journal.read() }') &&
   customerCheckoutRecovery.includes('withContext(Dispatchers.IO) { journal.write(created) }') &&
@@ -403,6 +404,19 @@ ok(
   customerMarketScreen.includes('withContext(Dispatchers.IO) {') &&
   customerMarketScreen.includes('commitMarketGuestMerge('),
   'Customer Market guest/account durable cart merge must stay on IO instead of Main'
+);
+
+ok(
+  customerMarketScreen.includes('checkoutPending = withContext(Dispatchers.IO) { cartStore.hasPendingCheckout() }') &&
+  customerMarketScreen.includes('withContext(Dispatchers.IO) { cartStore.save(cart) }') &&
+  !customerMarketScreen.includes('mutableStateOf(cartStore.hasPendingCheckout())') &&
+  !customerMarketScreen.includes('if (restoredCart && !checkoutPending) cartStore.save(cart)'),
+  'Customer Market pending-state reads and regular cart persistence must stay off Main'
+);
+ok(
+  customerLaundryScreen.includes('checkoutPending = withContext(Dispatchers.IO) { journal.hasPending() }') &&
+  !customerLaundryScreen.includes('mutableStateOf(journal.hasPending())'),
+  'Customer Laundry pending checkout state must be read off Main during restore and reconciliation'
 );
 
 const customerPicker=read('customer/src/main/java/com/queuego/customer/CustomerLocationPicker.kt');
