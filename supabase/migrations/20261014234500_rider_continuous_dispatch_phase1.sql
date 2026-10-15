@@ -4,6 +4,7 @@ alter table public.orders add column if not exists next_after_order_id uuid refe
 alter table public.orders add column if not exists rider_delivery_payout numeric check (rider_delivery_payout >= 0);
 create unique index if not exists orders_one_next_job_per_rider on public.orders(rider_id)
  where next_after_order_id is not null and status not in ('completed','cancelled');
+create index if not exists orders_next_after_order_idx on public.orders(next_after_order_id) where next_after_order_id is not null;
 alter table public.qg_rider_order_offers add column if not exists next_after_order_id uuid references public.orders(id);
 create schema if not exists qg_private;
 create table if not exists qg_private.rider_dispatch_preferences (

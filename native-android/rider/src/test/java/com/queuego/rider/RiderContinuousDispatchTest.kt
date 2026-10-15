@@ -4,6 +4,23 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class RiderContinuousDispatchTest {
+    @Test fun backgroundLeaseRequiresFreshNavigationAndExplicitSafeSession() {
+        fun eligible(ready: Boolean = true, auto: Boolean = true, stop: Boolean = false,
+                     job: Boolean = true, token: Long = 120_000L, age: Long? = 1_000L) =
+            riderNavigationDispatchLeaseEligible(ready, auto, stop, job, token, age)
+        assertTrue(eligible())
+        assertTrue(eligible(age = 0))
+        assertTrue(eligible(age = 15_000))
+        assertFalse(eligible(ready = false)) // Busy/offline/conflicting service.
+        assertFalse(eligible(auto = false))
+        assertFalse(eligible(stop = true))
+        assertFalse(eligible(job = false)) // No resurrection after process death/logout/completion.
+        assertFalse(eligible(token = 60_000))
+        assertFalse(eligible(token = 0))
+        assertFalse(eligible(age = null))
+        assertFalse(eligible(age = -1))
+        assertFalse(eligible(age = 15_001))
+    }
     private fun job(id: String, status: String = "in_progress", goods: Double = 100.0) = RiderJob(
         id, id, status, "shop-$id", 15.0, 103.0, "customer-$id", 15.01, 103.0,
         25.0, null, arrivedShopAt = null, arrivedCustomerAt = null,

@@ -79,6 +79,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -2033,16 +2034,23 @@ private fun RiderHome(
         }
     }
 
-    // Fresh acknowledged readiness lease. An old installed app cannot enable server dispatch.
+    // Navigation and visible UI renew the same lease with the same on-device preference.
+    SideEffect {
+        RiderNavigationDispatchReadiness.bind(RiderNavigationDispatchReadiness.Binding(
+            auth.user.id, auth.session.sessionId, snapshot?.riderProfileId, snapshot?.activeJob?.id,
+            networkAvailable && snapshot?.online == true && !actionBusy &&
+                snapshot?.deliveryReturn == null && snapshot?.laundry?.activeJob == null))
+    }
+    DisposableEffect(auth.user.id, auth.session.sessionId) {
+        onDispose { RiderNavigationDispatchReadiness.clear(auth.user.id) }
+    }
     LaunchedEffect(autoAcceptEnabled, stopAfterWorkPending, networkAvailable, snapshot?.online,
-        snapshot?.deliveryReturn?.caseId, actionBusy, lifecycle, auth.session.accessToken) {
+        snapshot?.deliveryReturn?.caseId, snapshot?.laundry?.activeJob?.jobId,
+        actionBusy, lifecycle, auth.session.accessToken) {
         lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
             while (true) {
-                runCatching {
-                    api.syncDispatchPreference(auth, autoAcceptEnabled, stopAfterWorkPending,
-                        networkAvailable && snapshot?.online == true && !actionBusy &&
-                            snapshot?.deliveryReturn == null && snapshot?.laundry?.activeJob == null)
-                }.onFailure { if (it is CancellationException) throw it }
+                runCatching { RiderNavigationDispatchReadiness.syncForeground(context, api, auth) }
+                    .onFailure { if (it is CancellationException) throw it }
                 delay(20_000L)
             }
         }

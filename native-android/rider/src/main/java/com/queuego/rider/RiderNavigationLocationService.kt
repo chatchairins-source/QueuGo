@@ -24,6 +24,7 @@ import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
 import com.queuego.ridernavigationmap.NavigationMapFix
 import com.queuego.ridernavigationmap.NavigationMapPoint
+import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -101,6 +102,8 @@ class RiderNavigationLocationService : Service() {
             .build()
     }
 
+    private val dispatchScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private var dispatchHeartbeat: Job? = null
     private var callback: LocationCallback? = null
     private var lastAccepted: Location? = null
     private var locationUpdatesStarted = false
@@ -137,11 +140,34 @@ class RiderNavigationLocationService : Service() {
         }
 
         startLocationUpdates()
+        if (dispatchHeartbeat == null && locationUpdatesStarted) {
+            dispatchHeartbeat = dispatchScope.launch {
+                val api = QueueGoApi()
+                while (isActive) {
+                    try {
+                        withTimeout(15_000L) {
+                            val fix = RiderNavigationLocationStore.fix.value
+                            RiderNavigationDispatchReadiness.syncNavigation(applicationContext, api,
+                                fix?.elapsedRealtimeNanos, fix?.point?.latitude, fix?.point?.longitude)
+                        }
+                    } catch (error: TimeoutCancellationException) {
+                        // No successful renewal: any previous server lease expires normally.
+                    } catch (error: CancellationException) {
+                        throw error
+                    } catch (error: Exception) {
+                        Log.w("QueueGoNavLocation", "dispatch_readiness_unavailable")
+                    }
+                    delay(20_000L)
+                }
+            }
+        }
         return START_NOT_STICKY
     }
 
     override fun onDestroy() {
+        dispatchScope.cancel()
         stopLocationUpdates()
+        RiderNavigationLocationStore.clear()
         super.onDestroy()
     }
 

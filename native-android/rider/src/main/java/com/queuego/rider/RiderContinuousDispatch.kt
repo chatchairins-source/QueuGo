@@ -20,3 +20,10 @@ internal fun riderAfterDeliveryCommit(previous: RiderSnapshot, completedOrderId:
         bundle = bundleAfter
     )
 }
+
+/** A navigation foreground service may renew a lease only with a live bound job/session and fresh GPS. */
+internal fun riderNavigationDispatchLeaseEligible(
+    ready: Boolean, autoAccept: Boolean, stopAfterWork: Boolean, hasBoundJob: Boolean,
+    tokenRemainingMs: Long, fixAgeMs: Long?
+): Boolean = ready && autoAccept && !stopAfterWork && hasBoundJob &&
+    tokenRemainingMs > 60_000L && fixAgeMs != null && fixAgeMs in 0L..15_000L
