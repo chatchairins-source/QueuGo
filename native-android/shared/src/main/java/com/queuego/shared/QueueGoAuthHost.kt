@@ -1,5 +1,7 @@
 package com.queuego.shared
 
+import android.content.Context
+import android.content.ContextWrapper
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -25,7 +27,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -36,6 +38,12 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+
+private fun Context.queueGoLifecycleOwner(): LifecycleOwner? = when (this) {
+    is LifecycleOwner -> this
+    is ContextWrapper -> if (baseContext !== this) baseContext.queueGoLifecycleOwner() else null
+    else -> null
+}
 
 data class NativeAuthEntry(
     val busy: Boolean,
@@ -60,7 +68,7 @@ fun QueueGoAuthHost(
     val store = remember { SecureRoleSessionStore(context, expectedRole) }
     val scope = rememberCoroutineScope()
     val logoutScope = remember(context) { nativeLogoutScope(context, scope) }
-    val lifecycle = LocalLifecycleOwner.current.lifecycle
+    val lifecycle = remember(context) { context.queueGoLifecycleOwner()?.lifecycle }
     var auth by remember { mutableStateOf<NativeAuth?>(null) }
     var restoring by remember { mutableStateOf(true) }
     var busy by remember { mutableStateOf(false) }
@@ -184,7 +192,8 @@ fun QueueGoAuthHost(
 
     LaunchedEffect(auth?.session?.sessionId, lifecycle) {
         if (auth == null) return@LaunchedEffect
-        lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+        val activeLifecycle = lifecycle ?: return@LaunchedEffect
+        activeLifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
             while (true) {
                 delay(25_000)
                 val current = auth ?: break
