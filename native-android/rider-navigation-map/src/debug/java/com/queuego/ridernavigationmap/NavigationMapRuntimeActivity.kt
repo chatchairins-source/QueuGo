@@ -204,6 +204,25 @@ class NavigationMapRuntimeActivity : ComponentActivity() {
         return System.identityHashCode(requireNotNull(view.renderer.map))
     }
 
+    fun mapTiltDegrees(): Float {
+        val view = requireNotNull(findMapView(window.decorView))
+        return requireNotNull(view.renderer.map).getTilt()
+    }
+
+    fun showOverviewForTiltFixture() {
+        mapState.value = mapState.value.copy(
+            followRider = false,
+            viewMode = NavigationViewMode.OVERVIEW
+        )
+    }
+
+    fun restoreFollowForTiltFixture() {
+        mapState.value = mapState.value.copy(
+            followRider = true,
+            viewMode = NavigationViewMode.FOLLOW
+        )
+    }
+
     fun mapViewUsesActivityContext(): Boolean =
         requireNotNull(findMapView(window.decorView)).context === this
 
