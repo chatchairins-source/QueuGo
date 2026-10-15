@@ -41,6 +41,7 @@ internal fun CustomerOrderTrackingScreen(
     order: CustomerOrder?,
     items: List<CustomerOrderItem>,
     context: CustomerOrderContext?,
+    eta: CustomerOrderEta?,
     shopCategory: String?,
     busy: Boolean,
     onCallShop: () -> Unit,
@@ -224,6 +225,11 @@ internal fun CustomerOrderTrackingScreen(
         if (order.status.equals("searching_rider", true)) {
             Spacer(Modifier.height(8.dp))
             CustomerSearchingRiderCard()
+        }
+
+        eta?.let {
+            Spacer(Modifier.height(8.dp))
+            CustomerEtaCard(it)
         }
 
         context?.rider?.let { rider ->
@@ -424,6 +430,45 @@ internal fun CustomerOrderTrackingScreen(
         Spacer(Modifier.height(30.dp))
     }
 }
+
+@Composable
+private fun CustomerEtaCard(eta: CustomerOrderEta) {
+    CustomerTrackingCard {
+        Text("เวลาจัดส่งโดยประมาณ", fontSize = 10.sp, color = QgMuted, fontWeight = FontWeight.ExtraBold)
+        Spacer(Modifier.height(3.dp))
+        val etaText = eta.etaAt?.let(::customerEtaClock)
+        Text(
+            etaText?.let { "คาดว่าจะถึงประมาณ $it น." }
+                ?: if (eta.source == "awaiting_rider") "กำลังหา Rider · จะแสดงเวลาถึงเมื่อมี Rider"
+                else "กำลังคำนวณเวลาจัดส่งจากสถานะล่าสุด",
+            fontSize = 16.sp,
+            fontWeight = FontWeight.Black
+        )
+        eta.merchantReadyAt?.let { ready ->
+            Spacer(Modifier.height(4.dp))
+            Text(
+                "ร้านคาดว่าพร้อม " + customerEtaClock(ready) + " น." +
+                    if (eta.sharedRoute) " · ระบบกำลังจัดลำดับเส้นทางร่วม" else "",
+                color = QgMuted,
+                fontSize = 10.sp,
+                lineHeight = 14.sp
+            )
+        }
+        Spacer(Modifier.height(4.dp))
+        Text(
+            if (eta.roadEtaVerified) "อัปเดตจากเส้นทางล่าสุด" else "เวลาโดยประมาณจากความพร้อมร้านและสถานะ Rider",
+            color = Color(0xFF91898D),
+            fontSize = 9.sp
+        )
+    }
+}
+
+private fun customerEtaClock(raw: String): String =
+    runCatching {
+        DateTimeFormatter.ofPattern("HH:mm", Locale("th", "TH"))
+            .withZone(ZoneId.of("Asia/Bangkok"))
+            .format(Instant.parse(raw))
+    }.getOrDefault("--:--")
 
 @Composable
 private fun CustomerTrackingHeader(title: String, onBack: () -> Unit) {
