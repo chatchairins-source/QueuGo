@@ -9,43 +9,73 @@ const target=process.argv[2]||'https://www.makro.pro/th/c/dry-grocery';
   const executableCandidates=['/usr/bin/google-chrome','/usr/bin/google-chrome-stable','/usr/bin/chromium','/usr/bin/chromium-browser'];
   const executablePath=executableCandidates.find(p=>fs.existsSync(p));
   if(!executablePath) throw new Error('Chromium/Chrome executable not found');
+
   const browser=await chromium.launch({headless:true,executablePath,args:['--no-sandbox','--disable-dev-shm-usage']});
   const page=await browser.newPage({viewport:{width:1366,height:900},locale:'th-TH'});
-  const seen=[];
-  const responses=[];
+  const requests=[],responses=[];
+
   page.on('request',req=>{
+    const type=req.resourceType();
+    if(type!=='xhr'&&type!=='fetch')return;
     const u=req.url();
-    if(/search|type|product|catalog|collection/i.test(u)){
-      seen.push({method:req.method(),url:u,postData:req.postData(),headers:req.headers()});
-    }
+    if(/google|facebook|doubleclick|analytics|segment|braze|metrics/i.test(u))return;
+    requests.push({type,method:req.method(),url:u,postData:req.postData(),headers:req.headers()});
   });
+
   page.on('response',async res=>{
+    const req=res.request();
+    const type=req.resourceType();
+    if(type!=='xhr'&&type!=='fetch')return;
     const u=res.url();
-    if(!/search|type|product|catalog|collection/i.test(u))return;
+    if(/google|facebook|doubleclick|analytics|segment|braze|metrics/i.test(u))return;
     const ct=res.headers()['content-type']||'';
     if(!ct.includes('json'))return;
     try{
       const body=await res.json();
       const text=JSON.stringify(body);
-      if(/"hits"|"found"|"products"/i.test(text)){
-        responses.push({url:u,status:res.status(),body});
+      if(/"hits"|"found"|"products"|"items"/i.test(text)){
+        responses.push({url:u,status:res.status(),request:{method:req.method(),postData:req.postData(),headers:req.headers()},body});
       }
     }catch{}
   });
+
   await page.goto(target,{waitUntil:'domcontentloaded',timeout:120000});
   await page.waitForTimeout(5000);
-  for(let i=0;i<6;i++){
-    await page.evaluate(()=>window.scrollTo(0,document.body.scrollHeight));
-    await page.waitForTimeout(1800);
+
+  let input=null;
+  const candidates=[
+    'input[type="search"]',
+    'input[placeholder*="ค้นหา"]',
+    'input[aria-label*="ค้นหา"]'
+  ];
+  for(const sel of candidates){
+    const loc=page.locator(sel).first();
+    if(await loc.count()){ input=loc; break; }
   }
-  fs.writeFileSync('artifacts/makro-browser-probe/requests.json',JSON.stringify(seen,null,2));
+  if(input){
+    await input.fill('มาม่า');
+    await input.press('Enter');
+    await page.waitForTimeout(7000);
+  }else{
+    await page.goto('https://www.makro.pro/th/c/search?q=%E0%B8%A1%E0%B8%B2%E0%B8%A1%E0%B9%88%E0%B8%B2',{waitUntil:'domcontentloaded',timeout:120000});
+    await page.waitForTimeout(7000);
+  }
+
+  for(let i=0;i<3;i++){
+    await page.evaluate(()=>window.scrollTo(0,document.body.scrollHeight));
+    await page.waitForTimeout(1500);
+  }
+
+  fs.writeFileSync('artifacts/makro-browser-probe/requests.json',JSON.stringify(requests,null,2));
   fs.writeFileSync('artifacts/makro-browser-probe/responses.json',JSON.stringify(responses,null,2));
-  console.log('BROWSER_REQUESTS',JSON.stringify(seen.slice(-80),null,2));
+  console.log('BROWSER_REQUESTS',JSON.stringify(requests.slice(-80),null,2));
   console.log('BROWSER_RESPONSES',JSON.stringify(responses.slice(-20).map(x=>({
-    url:x.url,status:x.status,
+    url:x.url,status:x.status,method:x.request.method,postData:x.request.postData,
     found:x.body?.found ?? x.body?.results?.[0]?.found,
     page:x.body?.page ?? x.body?.results?.[0]?.page,
-    hitCount:x.body?.hits?.length ?? x.body?.results?.[0]?.hits?.length
+    hitCount:x.body?.hits?.length ?? x.body?.results?.[0]?.hits?.length,
+    bodyKeys:Object.keys(x.body||{})
   })),null,2));
+
   await browser.close();
 })().catch(e=>{console.error(e);process.exit(1)});
