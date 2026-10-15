@@ -468,15 +468,15 @@ internal fun RiderLongdoMap(
     val context = LocalContext.current
     val stateStore = remember(context.applicationContext) { SessionStore(context.applicationContext) }
     val cameraState = rememberSaveable(stateKey) { mutableStateOf<DoubleArray?>(null) }
-    var cameraHydrated by remember(stateKey) { mutableStateOf(cameraState.value != null) }
+    val cameraHydrated = remember(stateKey) { mutableStateOf(cameraState.value != null) }
     LaunchedEffect(stateKey) {
-        if (!cameraHydrated) {
+        if (!cameraHydrated.value) {
             cameraState.value = withContext(Dispatchers.IO) { stateStore.loadMapCamera(stateKey) }
-            cameraHydrated = true
+            cameraHydrated.value = true
         }
     }
-    if (!cameraHydrated) {
-        Box(modifier)
+    if (!cameraHydrated.value) {
+        Box(modifier) {}
         return
     }
     val holder = remember(stateKey) {
