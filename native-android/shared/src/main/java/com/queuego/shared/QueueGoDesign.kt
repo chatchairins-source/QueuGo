@@ -401,7 +401,7 @@ fun QgIcon(name: String, modifier: Modifier = Modifier, color: Color = QgRed) {
 }
 
 private const val QG_REMOTE_IMAGE_MAX_BYTES = 8 * 1024 * 1024
-private const val QG_REMOTE_IMAGE_MAX_SIDE = 1600
+private const val QG_REMOTE_IMAGE_MAX_SIDE = 1280
 
 private fun InputStream.readQueueGoImageLimited(limit: Int = QG_REMOTE_IMAGE_MAX_BYTES): ByteArray {
     val output = ByteArrayOutputStream(minOf(limit, 256 * 1024))
