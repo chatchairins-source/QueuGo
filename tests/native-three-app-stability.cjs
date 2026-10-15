@@ -115,6 +115,13 @@ ok(
   !riderApiMemory.includes('BufferedReader(InputStreamReader(it, StandardCharsets.UTF_8)).readText()'),
   'Rider API responses must be byte bounded before JSON parsing to prevent low-memory process kills'
 );
+ok(
+  riderApiMemory.includes('readRiderBytesBounded') &&
+  riderApiMemory.includes('readRiderBytesBounded(5 * 1024 * 1024, "รูปโปรไฟล์ต้องมีขนาดไม่เกิน 5 MB")') &&
+  riderApiMemory.includes('readRiderBytesBounded(5 * 1024 * 1024, "รูปหลักฐานต้องมีขนาดไม่เกิน 5 MB")') &&
+  !riderApiMemory.includes('.use { it.readBytes() }'),
+  'Rider evidence/profile source files must be bounded while streaming, before heap allocation'
+);
 
 const reg=read('rider/src/main/java/com/queuego/rider/RiderRegistrationScreen.kt');
 ok(reg.includes('val before = documents')&&reg.includes('documents = before'),'Oversized/failed Rider document addition must rollback from in-memory form state');
