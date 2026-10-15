@@ -1,3 +1,11 @@
+## 2026-10-15 Market Master Catalog continuation
+- Continue Work's existing Market candidate `work-market-master-catalog-20261015` from audited baseline `6106cc45bc7bfebaa16d9e8efb4fcefccc301754`; backup before audit fixes: `backup-market-master-catalog-audit-20261015`. Do not recreate the catalog on another branch.
+- Market Master Catalog is additive over the existing authoritative `products`, `market_products`, stock movements, checkout/order/payment flow and `market_save_product`. Master rows contain identity/source facts only; merchants still choose storefront price, sale unit, route weight, cost, initial stock and low-stock threshold.
+- Fixed a pre-existing Merchant Market pricing hazard: the manual editor must never feed `delivery_price` back into `p_price`, because the existing product trigger derives Delivery price from storefront price + effective GP. Manual Market editing now uses `pos_price/price` as storefront price and shows a read-only GP-derived Delivery preview. The Market catalog follows the same one-storefront-price rule.
+- Market master images remain null unless centrally stored with both source and reuse-rights evidence. An `approved` image must be a QueueGo public Storage URL with HTTPS source and nonblank rights evidence; no retailer hotlinks or invented permission.
+- Starter catalog remains deliberately small and evidence-backed (25 public Market identities). No price, cost, stock, route weight, barcode or image is inferred. Source-unit wording is kept separate from QueueGo sale-unit suggestions.
+- Do not apply the Market migration to Production or merge to main until disposable SQL/source/UI regression and the full repository gate pass on the exact candidate head.
+
 ## 2026-10-15 Grocery catalog sales channels
 - Owner removed the Grocery catalog promotion-price editor and requires explicit per-product choices for `ขายหน้าร้าน` and `เดลิเวอรี่ลูกค้า`. Continue from Web main `1efb918f434d60337baaf6776405cc669646caf4`; backup `backup-pre-grocery-sales-channels-20261015`; candidate `work-grocery-sales-channels-20261015`.
 - Manual product editors on Web and latest Merchant Native successor already have separate POS/Delivery controls and GP-derived Delivery pricing, so do not duplicate or replace that flow. This change is scoped to the Grocery Master Catalog editor plus its existing RPC contract.
