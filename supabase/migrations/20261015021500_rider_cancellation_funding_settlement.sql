@@ -28,6 +28,8 @@ begin
     or new.settled_by is distinct from old.settled_by
     or new.settlement_reference is distinct from old.settlement_reference
     or new.settlement_note is distinct from old.settlement_note
+    or new.created_at is distinct from old.created_at
+    or new.updated_at is distinct from old.updated_at
   ) then
     raise exception 'settled Rider funding is immutable';
   end if;
