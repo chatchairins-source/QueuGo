@@ -219,6 +219,37 @@ ok(
   !merchantMainSource.includes('val saved = store.load()\n            if (saved?.session'),
   'Merchant secure-session polling must stay lifecycle-gated, off Main and outside the former hot polling loop'
 );
+const customerShopForMemory=read('customer/src/main/java/com/queuego/customer/CustomerShopScreen.kt');
+const customerSearchForMemory=read('customer/src/main/java/com/queuego/customer/CustomerSearchScreen.kt');
+const customerAppForMemory=read('customer/src/main/java/com/queuego/customer/QueueGoCustomerApp.kt');
+const merchantMediaForMemory=read('merchant/src/main/java/com/queuego/merchant/MerchantMediaScreen.kt');
+ok(
+  sharedDesign.includes('QG_REMOTE_IMAGE_MAX_SIDE = 1280'),
+  'Shared remote images must keep the low-memory 1280px decode ceiling'
+);
+ok(
+  customerShopForMemory.includes('LazyColumn(Modifier.fillMaxSize())') &&
+  customerShopForMemory.includes('items(products, key = { it.id })') &&
+  !customerShopForMemory.includes('products.forEach { product ->'),
+  'Customer shop product images must lazy-render instead of allocating the entire catalog at once'
+);
+ok(
+  customerSearchForMemory.includes('LazyColumn(') &&
+  customerSearchForMemory.includes('items(rows, key = { "search-shop:" + it.id })') &&
+  !customerSearchForMemory.includes('rows.forEach { shop ->'),
+  'Customer search image results must lazy-render'
+);
+ok(
+  customerAppForMemory.includes('items(nearbyShops, key = { "home-shop:" + it.id })') &&
+  !customerAppForMemory.includes('else -> nearbyShops.forEach { shop ->'),
+  'Customer Home nearby-shop images must lazy-render'
+);
+ok(
+  merchantMediaForMemory.includes('LazyColumn(') &&
+  merchantMediaForMemory.includes('items = rows.chunked(3)') &&
+  !merchantMediaForMemory.includes('rows.chunked(3).forEach'),
+  'Merchant media gallery must lazy-render rows instead of decoding the full image library at once'
+);
 const merchantAppSource=read('merchant/src/main/java/com/queuego/merchant/QueueGoMerchantApp.kt');
 const sharedMapForStability=read('shared/src/main/java/com/queuego/shared/QueueGoLongdoMap.kt');
 ok(
