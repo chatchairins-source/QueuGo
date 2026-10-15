@@ -7,7 +7,7 @@ const outPath=process.argv[3]||'catalog/makro-dry-branded-20261015.json';
 const endpointNeedle='/search/api/v1/indexes/products/search';
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 const RETRIES=4,CONCURRENCY=4,TARGET_COUNT=10000;
-const ROOTS=['dry-grocery','beverages'];
+const ROOTS=['dry-grocery'];
 
 function validBrand(v){
   const x=String(v||'').trim();
@@ -40,12 +40,10 @@ function compact(doc,retrievedAt,root){
     category_ids:Array.isArray(doc.categoryIds)?doc.categoryIds:[],
     deepest_category:doc.deepestCategory||null,
     image_url:images[0]||null,
-    image_urls:images.slice(0,5),
     unit_size:doc.unitSize||null,
     unit_type:doc.unitType||null,
     unit_factor:doc.unitFactor??null,
     packaging_weight:doc.packagingWeight??null,
-    product_attributes:doc.productAttributes||null,
     source_url:'https://www.makro.pro/th/c/'+root,
     retrieved_at:retrievedAt
   };
@@ -158,6 +156,7 @@ async function main(){
     target_count:TARGET_COUNT,
     count:selected.length,
     roots_priority:ROOTS,
+    scope_note:'Makro dry-grocery only; no beverages, fresh market, or electronics',
     filters:{
       require_brand:true,
       exclude_fresh:true,
