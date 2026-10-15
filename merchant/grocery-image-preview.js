@@ -389,7 +389,7 @@ window.QG_GROCERY_PREVIEW_IMAGES=Object.freeze({
   "88c8d3eb-8f16-47ce-8249-8568701cf646": "https://www.sahapat.co.th/product/assets/uploads/img/product/image_th/20230312062625_C17577D2-613E-41D2-9DDD-AC48D7892720.jpg",
   "c9ca7820-835f-4b5e-b5ce-7a20f835f844": "https://www.sahapat.co.th/product/assets/uploads/img/product/image_th/20230312062625_C17577D2-613E-41D2-9DDD-AC48D7892720.jpg",
   "48602626-d1c2-418a-9f38-a7259354f6ba": "https://www.sahapat.co.th/product/assets/uploads/img/product/image_th/20230312062625_C17577D2-613E-41D2-9DDD-AC48D7892720.jpg",
-  "af790161-f15a-4f26-9d49-95f9100b3cdd": "https://officework.co.th/html/images/no-image.jpg",
+  "af790161-f15a-4f26-9d49-95f9100b3cdd": "https://down-th.img.susercontent.com/file/sg-11134201-825zw-mlg2ttgu9kw3a2",
   "8d5cf390-2501-438a-9eda-fc84f38fc93b": "https://www.sahapat.co.th/product/assets/uploads/img/product/image_th/20230310013731_6B035EA9-DE81-4F1B-8DF1-413EADE32FA7.png",
   "10e7d174-5092-41ba-b291-d1994555ade6": "https://www.sahapat.co.th/product/assets/uploads/img/product/image_th/20230310011930_EB66D150-1211-4EC6-B95B-6C77830FEB90.png",
   "5621668d-cfd7-4032-859d-ac2d59a6f77b": "https://www.sahapat.co.th/product/assets/uploads/img/product/image_th/20230310012120_3675233C-230E-4FA6-8DD4-09196EA305B5.png",
