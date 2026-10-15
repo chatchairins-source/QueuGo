@@ -27,7 +27,7 @@ begin
  select r.id into v_rider
  from public.rider_profiles r join public.users u on u.id=r.user_id
  where u.auth_user_id=auth.uid() and u.role='rider' and u.status='active' and r.status='active'
- order by r.created_at desc limit 1;
+ order by r.updated_at desc nulls last, r.id limit 1;
  if v_rider is null then raise exception 'active rider required' using errcode='42501'; end if;
 
  select * into v_submission
@@ -66,7 +66,7 @@ begin
  select r.id into v_rider
  from public.rider_profiles r join public.users u on u.id=r.user_id
  where u.auth_user_id=auth.uid() and u.role='rider' and u.status='active' and r.status='active'
- order by r.created_at desc limit 1 for update of r;
+ order by r.updated_at desc nulls last, r.id limit 1 for update of r;
  if v_rider is null then raise exception 'active rider required' using errcode='42501'; end if;
 
  if p_evidence_path is null
