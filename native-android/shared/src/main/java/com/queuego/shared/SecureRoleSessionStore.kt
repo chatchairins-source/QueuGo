@@ -12,6 +12,7 @@ import javax.crypto.KeyGenerator
 import javax.crypto.SecretKey
 import javax.crypto.spec.GCMParameterSpec
 
+private const val SECURE_ROLE_SESSION_MAX_PLAINTEXT_BYTES = 48 * 1024
 private const val SECURE_ROLE_SESSION_MAX_ENCRYPTED_CHARS = 64 * 1024
 
 class SecureRoleSessionStore(private val context: Context, private val roleKey: String) {
@@ -34,7 +35,14 @@ class SecureRoleSessionStore(private val context: Context, private val roleKey: 
             .put("role", auth.user.role)
             .put("status", auth.user.status)
             .toString()
-        prefs.edit().putString("session", encrypt(json)).apply()
+        require(json.toByteArray(Charsets.UTF_8).size <= SECURE_ROLE_SESSION_MAX_PLAINTEXT_BYTES) {
+            "Session มีขนาดใหญ่เกินกำหนด"
+        }
+        val encrypted = encrypt(json)
+        require(encrypted.length <= SECURE_ROLE_SESSION_MAX_ENCRYPTED_CHARS) {
+            "Session ที่เข้ารหัสมีขนาดใหญ่เกินกำหนด"
+        }
+        prefs.edit().putString("session", encrypted).apply()
     }
 
     fun load(): NativeAuth? {
