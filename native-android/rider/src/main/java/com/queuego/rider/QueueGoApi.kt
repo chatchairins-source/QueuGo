@@ -36,6 +36,21 @@ private fun InputStream.readRiderApiResponseBounded(
     return output.toString(StandardCharsets.UTF_8.name())
 }
 
+private fun InputStream.readRiderBytesBounded(
+    limit: Int,
+    tooLargeMessage: String
+): ByteArray {
+    val output = ByteArrayOutputStream(minOf(limit, 256 * 1024))
+    val buffer = ByteArray(16 * 1024)
+    while (true) {
+        val count = read(buffer)
+        if (count < 0) break
+        require(output.size() + count <= limit) { tooLargeMessage }
+        output.write(buffer, 0, count)
+    }
+    return output.toByteArray()
+}
+
 internal fun riderNullableText(value: String?): String? =
     value?.trim()?.takeIf { it.isNotEmpty() && !it.equals("null", ignoreCase = true) }
 
@@ -1393,10 +1408,10 @@ class QueueGoApi {
     ): String = withContext(Dispatchers.IO) {
         val mime = riderProfilePhotoMimeType(context.contentResolver.getType(photoUri))
             ?: error("รองรับเฉพาะรูป JPG, PNG หรือ WebP")
-        val bytes = context.contentResolver.openInputStream(photoUri)?.use { it.readBytes() }
-            ?: error("อ่านรูปโปรไฟล์ไม่ได้")
+        val bytes = context.contentResolver.openInputStream(photoUri)?.use {
+            it.readRiderBytesBounded(5 * 1024 * 1024, "รูปโปรไฟล์ต้องมีขนาดไม่เกิน 5 MB")
+        } ?: error("อ่านรูปโปรไฟล์ไม่ได้")
         if (bytes.isEmpty()) error("รูปโปรไฟล์ว่าง")
-        if (bytes.size > 5 * 1024 * 1024) error("รูปโปรไฟล์ต้องมีขนาดไม่เกิน 5 MB")
 
         val path = auth.session.authUserId + "/profile"
         val connection = URL(BASE_URL + "/storage/v1/object/rider-profile/" + path)
@@ -1415,7 +1430,7 @@ class QueueGoApi {
             val code = connection.responseCode
             if (code !in 200..299) {
                 val text = connection.errorStream?.use {
-                    BufferedReader(InputStreamReader(it, StandardCharsets.UTF_8)).readText()
+                    it.readRiderApiResponseBounded()
                 }.orEmpty()
                 val message = runCatching { JSONObject(text).optString("message") }.getOrNull()
                     ?.takeIf { it.isNotBlank() } ?: "อัปโหลดรูปโปรไฟล์ไม่สำเร็จ"
@@ -1983,10 +1998,10 @@ class QueueGoApi {
     }
 
     private fun uploadEvidence(context: Context, auth: QueueGoAuth, uri: Uri): String {
-        val bytes = context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
-            ?: error("อ่านรูปหลักฐานไม่ได้")
+        val bytes = context.contentResolver.openInputStream(uri)?.use {
+            it.readRiderBytesBounded(5 * 1024 * 1024, "รูปหลักฐานต้องมีขนาดไม่เกิน 5 MB")
+        } ?: error("อ่านรูปหลักฐานไม่ได้")
         if (bytes.isEmpty()) error("รูปหลักฐานว่าง")
-        if (bytes.size > 5 * 1024 * 1024) error("รูปหลักฐานต้องมีขนาดไม่เกิน 5 MB")
 
         // Same single photo has one immutable storage identity across retries/process death.
         val digest = MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { "%02x".format(it) }
@@ -2018,7 +2033,7 @@ class QueueGoApi {
             val code = connection.responseCode
             if (code !in 200..299) {
                 val text = connection.errorStream?.use {
-                    BufferedReader(InputStreamReader(it, StandardCharsets.UTF_8)).readText()
+                    it.readRiderApiResponseBounded()
                 }.orEmpty()
                 val message = runCatching { JSONObject(text).optString("message") }.getOrNull()
                     ?.takeIf { it.isNotBlank() } ?: "อัปโหลดหลักฐานไม่สำเร็จ"
