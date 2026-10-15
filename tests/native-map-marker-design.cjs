@@ -13,7 +13,7 @@ assert(map.includes('RiderStopVisual.PICKUP') && map.includes('RiderStopVisual.D
 assert(map.includes('canvas.drawText(number.toString()') && !map.includes('stop_more'));
 assert(map.includes('compareBy<RiderBundleOrder> { it.bundleSequence }'));
 assert(map.includes('compareBy<RiderBundleOrder> { it.dropRank }'));
-assert(map.includes('pickupOrder.size + index + 1, RiderStopVisual.DROPOFF'));
+assert(map.includes('bundled.dropoffStopRank ?: (pickupOrder.size + index + 1), RiderStopVisual.DROPOFF'));
 assert(map.includes('!bundled.job.shopArrived && !bundled.job.isDelivering'));
 assert(map.includes('if (!pickup.done) addStopPin'));
 assert(map.includes('stopPins.keys.filter { it !in desiredStops }'));

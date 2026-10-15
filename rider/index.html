@@ -851,6 +851,11 @@ async function enrichRouteBundleRiderState(activeOrder,token){
         S.bundleOrders=(Array.isArray(rows)?rows:[]).map(o=>{
           const m=meta.get(String(o.id))||{};
           o._bundleDropRank=Number(m.drop_rank)||Number(o.route_bundle_sequence)||99;
+          let plan=null;try{plan=JSON.parse(m.route_sequence||'null')}catch{}
+          if(plan?.kind==='queuego_stop_plan_v1'){
+            o._bundlePlanVersion=1;o._bundlePickupStopRank=Number(plan.pickup_rank);o._bundleDropoffStopRank=Number(plan.dropoff_rank);
+            o._bundleCustomerName=typeof plan.customer_name==='string'?plan.customer_name:null;
+          }
           o._bundleShopName=m.shop_name||'ร้านค้า';
           o._bundleDetourKm=Number(m.detour_km)||0;
           o._bundleAddedMinutes=Number(m.added_minutes)||0;
@@ -870,7 +875,16 @@ async function enrichRouteBundleRiderState(activeOrder,token){
   }
   return activeOrder;
 }
+function qgBundlePlannedStops(rows=S.bundleOrders||[]){
+  if(!rows.some(o=>o._bundlePlanVersion===1))return null;
+  const live=rows.filter(o=>o&&o.status!=='cancelled'&&o.status!=='completed');
+  if(live.some(o=>!Number.isInteger(o._bundlePickupStopRank)||!Number.isInteger(o._bundleDropoffStopRank)||o._bundlePickupStopRank<1||o._bundleDropoffStopRank>10||o._bundlePickupStopRank>=o._bundleDropoffStopRank))return [];
+  const stops=live.flatMap(o=>['picked_up','in_progress'].includes(statusFromRow(o))?[{order:o,pickup:false,rank:o._bundleDropoffStopRank}]:[{order:o,pickup:true,rank:o._bundlePickupStopRank},{order:o,pickup:false,rank:o._bundleDropoffStopRank}]);
+  if(new Set(stops.map(s=>s.rank)).size!==stops.length)return [];
+  return stops.sort((a,b)=>a.rank-b.rank);
+}
 function qgBundleNextOrder(){
+  const planned=qgBundlePlannedStops();if(planned!==null)return planned[0]?.order||null;
   const rows=(S.bundleOrders||[]).filter(o=>o&&o.status!=='cancelled'&&o.status!=='completed');
   if(!rows.length)return null;
   const inProgress=rows.find(o=>statusFromRow(o)==='in_progress');
@@ -1376,23 +1390,28 @@ function qgRouteBundleHTML(){
   let out='';
   if(orders.length>1){
     const live=orders.filter(o=>o.status!=='cancelled'&&o.status!=='completed');
+    const planned=qgBundlePlannedStops(orders),nextPlanned=planned?.[0];
     const allPicked=live.length>0&&live.every(o=>['picked_up','in_progress'].includes(o.status));
     const nextPicked=live.filter(o=>statusFromRow(o)==='picked_up').sort((a,b)=>(Number(a._bundleDropRank)||99)-(Number(b._bundleDropRank)||99))[0];
     const totalIncome=orders.filter(o=>o.status!=='cancelled').reduce((a,o)=>a+riderEarning(o),0);
     const totalSavings=orders.reduce((a,o)=>a+Number(o.bundle_customer_savings||0),0);
     out+='<section class="qg-bundle-card"><div class="qg-bundle-head"><div><b>งานพ่วง '+orders.length+' ออเดอร์</b><small>รายได้รวม ฿'+totalIncome.toLocaleString('th-TH')+(totalSavings>0?' · ลูกค้าประหยัดรวม ฿'+totalSavings.toLocaleString('th-TH'):'')+'</small></div><span>เส้นทางเดียวกัน</span></div>';
+    if(planned){
+      out+='<div class="qg-bundle-order"><div><b>จุดถัดไป: '+esc(nextPlanned?(nextPlanned.pickup?(nextPlanned.order._bundleShopName||'ร้านค้า'):(nextPlanned.order._bundleCustomerName||'ลูกค้า')):'กำลังอัปเดตเส้นทาง')+'</b>'+
+        planned.map(stop=>'<small>'+stop.rank+'. '+(stop.pickup?'รับ ':'ส่ง ')+esc(stop.pickup?(stop.order._bundleShopName||'ร้านค้า'):(stop.order._bundleCustomerName||'ลูกค้า'))+' · '+esc(qgShortOrder(stop.order))+'</small>').join('')+'</div></div>';
+    }
     out+=orders.map(o=>{
       const st=statusFromRow(o),rank=Number(o._bundleDropRank)||Number(o.route_bundle_sequence)||1,shop=o._shop?.shop_name||o._bundleShopName||'ร้านค้า';
       let action='';
-      if(st==='ready')action='<button data-bundle-advance="'+esc(o.id)+'">รับสินค้าแล้ว</button>';
+      if(st==='ready'&&(!planned||nextPlanned?.pickup&&String(nextPlanned.order.id)===String(o.id)))action='<button data-bundle-advance="'+esc(o.id)+'">รับสินค้าแล้ว</button>';
       else if(st==='picked_up'){
-        if(allPicked&&nextPicked&&String(nextPicked.id)===String(o.id))action='<button data-bundle-advance="'+esc(o.id)+'">เริ่มส่งลูกค้าลำดับ '+rank+'</button>';
+        if(planned?nextPlanned&&!nextPlanned.pickup&&String(nextPlanned.order.id)===String(o.id):allPicked&&nextPicked&&String(nextPicked.id)===String(o.id))action='<button data-bundle-advance="'+esc(o.id)+'">เริ่มส่งลูกค้าลำดับ '+rank+'</button>';
         else action='<small>รับของแล้ว · '+(allPicked?'รอส่งตามลำดับ':'รอรับของอีกออเดอร์ให้ครบ')+'</small>';
-      }else if(st==='in_progress')action='<button data-bundle-finish="'+esc(o.id)+'">ถึงแล้ว</button>';
+      }else if(st==='in_progress'&&(!planned||nextPlanned&&!nextPlanned.pickup&&String(nextPlanned.order.id)===String(o.id)))action='<button data-bundle-finish="'+esc(o.id)+'">ถึงแล้ว</button>';
       else if(st==='completed')action='<small class="qg-bundle-done">✓ ส่งสำเร็จ</small>';
       else if(st==='cancelled')action='<small>ยกเลิก</small>';
       else action='<small>'+esc(STEP_LABEL[st]||'รอร้านเตรียมสินค้า')+'</small>';
-      return '<article class="qg-bundle-order"><div><b>'+esc(qgShortOrder(o))+' · '+esc(shop)+'</b><small>รับร้าน '+Number(o.route_bundle_sequence||1)+' · ส่งลูกค้าลำดับ '+rank+' · ค่าส่ง ฿'+Number(o.delivery_fee||0).toLocaleString('th-TH')+(Number(o.bundle_customer_savings||0)>0?' · ลูกค้าประหยัด ฿'+Number(o.bundle_customer_savings).toLocaleString('th-TH'):'')+'</small></div>'+action+'</article>';
+      return '<article class="qg-bundle-order"><div><b>'+esc(qgShortOrder(o))+' · '+esc(shop)+'</b><small>รับร้าน '+Number(o.route_bundle_sequence||1)+' · ส่งลูกค้าลำดับ '+rank+' · ค่าส่ง ฿'+riderEarning(o).toLocaleString('th-TH')+(Number(o.bundle_customer_savings||0)>0?' · ลูกค้าประหยัด ฿'+Number(o.bundle_customer_savings).toLocaleString('th-TH'):'')+'</small></div>'+action+'</article>';
     }).join('')+'</section>';
   }
   if(offers.length){

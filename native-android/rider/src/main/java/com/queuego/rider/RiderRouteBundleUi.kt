@@ -28,6 +28,7 @@ internal fun RiderRouteBundlePanel(
 
     if (active.size > 1) {
         val live = active.filter { it.job.status != "cancelled" }
+        val stops = state.routeStops()
         val totalIncome = live.sumOf { it.job.deliveryFee ?: 0.0 }
         val totalSavings = live.sumOf { it.customerSavings }
         Card(
@@ -39,7 +40,7 @@ internal fun RiderRouteBundlePanel(
             Column(Modifier.padding(12.dp)) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                     Column(Modifier.weight(1f)) {
-                        Text("งานพ่วง ${active.size} ออเดอร์", fontSize = 13.sp, fontWeight = FontWeight.Black)
+                        Text("งานของคุณ ${live.count { it.job.status != "completed" }} รายการ", fontSize = 13.sp, fontWeight = FontWeight.Black)
                         Text(
                             "รายได้รวม " + riderMoneyBaht(totalIncome) +
                                 if (totalSavings > 0.0) " · ลูกค้าประหยัดรวม " + riderMoneyBaht(totalSavings) else "",
@@ -48,6 +49,20 @@ internal fun RiderRouteBundlePanel(
                         )
                     }
                     Text("เส้นทางเดียวกัน", color = QgRed, fontSize = 8.sp, fontWeight = FontWeight.ExtraBold)
+                }
+                stops.firstOrNull()?.let { next ->
+                    Text("จุดถัดไป: " + (if (next.pickup) next.order.shopName else "ส่ง " + (next.order.customerName ?: next.order.job.numberLabel)),
+                        fontSize = 12.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 8.dp))
+                }
+                stops.forEachIndexed { index, stop ->
+                    Text("${stop.rank}. " + (if (stop.pickup) "รับ " + stop.order.shopName else "ส่ง " + (stop.order.customerName ?: "ลูกค้า")) + " · " + stop.order.job.numberLabel,
+                        fontSize = 11.sp, modifier = Modifier.padding(top = 7.dp))
+                    if (index == 0) {
+                        val cash = if (stop.pickup && stop.order.job.status == "ready" && stop.order.job.shopArrived) stop.order.job.shopCash
+                            else if (!stop.pickup && stop.order.job.customerArrived) stop.order.job.customerCash else null
+                        cash?.let { Text((if (stop.pickup) "จ่ายร้าน " else "เก็บลูกค้า ") + riderMoneyBaht(it),
+                            color = QgRed, fontSize = 12.sp, fontWeight = FontWeight.Bold) }
+                    }
                 }
                 active.forEach { order ->
                     HorizontalDivider(color = Color(0xFFF0EAEC), modifier = Modifier.padding(vertical = 8.dp))

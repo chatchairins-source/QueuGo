@@ -310,6 +310,7 @@ private class RiderLongdoHolder(
                 append(it.job.id).append(":").append(it.job.status).append(":")
                     .append(it.job.shopArrived).append(":")
                     .append(it.bundleSequence).append(":").append(it.dropRank).append(":")
+                    .append(it.pickupStopRank).append(":").append(it.dropoffStopRank).append(":")
                     .append(it.job.pickupLat).append(",").append(it.job.pickupLng).append(":")
                     .append(it.job.deliveryLat).append(",").append(it.job.deliveryLng).append(";")
             }
@@ -362,7 +363,7 @@ private class RiderLongdoHolder(
                 if (!bundled.job.shopArrived && !bundled.job.isDelivering &&
                     bundled.job.status != "completed"
                 ) {
-                    addStopPin(bundled.job.pickupLat, bundled.job.pickupLng, index + 1, RiderStopVisual.PICKUP)
+                    addStopPin(bundled.job.pickupLat, bundled.job.pickupLng, bundled.pickupStopRank ?: (index + 1), RiderStopVisual.PICKUP)
                 }
             }
             dropOrder.forEachIndexed { index, bundled ->
@@ -370,7 +371,7 @@ private class RiderLongdoHolder(
                     addStopPin(
                         bundled.job.deliveryLat,
                         bundled.job.deliveryLng,
-                        pickupOrder.size + index + 1, RiderStopVisual.DROPOFF
+                        bundled.dropoffStopRank ?: (pickupOrder.size + index + 1), RiderStopVisual.DROPOFF
                     )
                 }
             }

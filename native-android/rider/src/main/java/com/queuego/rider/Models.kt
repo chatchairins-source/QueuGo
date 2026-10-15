@@ -213,7 +213,10 @@ data class RiderBundleOrder(
     val riderExtraFee: Double,
     val detourKm: Double,
     val addedMinutes: Int,
-    val routeSequence: String?
+    val routeSequence: String?,
+    val pickupStopRank: Int? = null,
+    val dropoffStopRank: Int? = null,
+    val customerName: String? = null
 )
 
 data class RiderBundleCandidate(
@@ -239,11 +242,29 @@ data class RiderBundleCandidate(
         get() = nativeOrderNumber(orderNumber)
 }
 
+data class RiderBundleStop(val order: RiderBundleOrder, val pickup: Boolean, val rank: Int)
+
 data class RiderRouteBundleState(
     val activeOrders: List<RiderBundleOrder> = emptyList(),
     val candidates: List<RiderBundleCandidate> = emptyList()
 ) {
+    fun routeStops(): List<RiderBundleStop> {
+        val live = activeOrders.filter { it.job.status !in setOf("cancelled", "completed") }
+        val dynamic = live.any { it.pickupStopRank != null || it.dropoffStopRank != null }
+        if (dynamic && live.any { it.pickupStopRank == null || it.dropoffStopRank == null }) return emptyList()
+        val count = activeOrders.size
+        return live.flatMap { order ->
+            buildList {
+                if (!order.job.isDelivering) add(RiderBundleStop(order, true, order.pickupStopRank ?: order.bundleSequence))
+                add(RiderBundleStop(order, false, order.dropoffStopRank ?: (count + order.dropRank)))
+            }
+        }.sortedBy { it.rank }
+    }
+
     fun currentOrder(): RiderBundleOrder? {
+        if (activeOrders.any { it.pickupStopRank != null || it.dropoffStopRank != null }) {
+            return routeStops().firstOrNull()?.order
+        }
         val live = activeOrders.filter { it.job.status !in setOf("cancelled", "completed") }
         if (live.isEmpty()) return null
 

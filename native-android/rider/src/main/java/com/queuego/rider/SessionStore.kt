@@ -219,6 +219,9 @@ class SessionStore(private val context: Context) {
         .put("detourKm", order.detourKm)
         .put("addedMinutes", order.addedMinutes)
         .put("routeSequence", order.routeSequence)
+        .put("pickupStopRank", order.pickupStopRank)
+        .put("dropoffStopRank", order.dropoffStopRank)
+        .put("customerName", order.customerName)
 
     private fun bundleOrderFromJson(o: JSONObject): RiderBundleOrder = RiderBundleOrder(
         bundleId = o.getString("bundleId"),
@@ -232,7 +235,10 @@ class SessionStore(private val context: Context) {
         riderExtraFee = o.optDouble("riderExtraFee", 0.0),
         detourKm = o.optDouble("detourKm", 0.0),
         addedMinutes = o.optInt("addedMinutes", 0),
-        routeSequence = o.optNullableString("routeSequence")
+        routeSequence = o.optNullableString("routeSequence"),
+        pickupStopRank = o.optInt("pickupStopRank").takeIf { it in 1..10 },
+        dropoffStopRank = o.optInt("dropoffStopRank").takeIf { it in 1..10 },
+        customerName = o.optNullableString("customerName")
     )
 
     private fun riderJobToJson(job: RiderJob): JSONObject = JSONObject()

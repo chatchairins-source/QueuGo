@@ -502,7 +502,7 @@ class QueueGoApi {
         private const val PUBLISHABLE_KEY = "sb_publishable_Vn2Il4jp-iBtzNsGRNY8Lg_Tpvk2Vre"
         private const val TIMEOUT = 15000
         private const val RIDER_JOB_FIELDS = "id,order_number,status,pickup_address,pickup_latitude,pickup_longitude," +
-            "delivery_address,delivery_latitude,delivery_longitude,delivery_fee,rider_delivery_payout,next_after_order_id,subtotal,total_amount,market_order_id," +
+            "delivery_address,delivery_latitude,delivery_longitude,delivery_fee,rider_delivery_payout,next_after_order_id,route_bundle_id,subtotal,total_amount,market_order_id," +
             "rider_arrived_shop_at,rider_arrived_customer_at"
     }
 
@@ -1471,7 +1471,10 @@ class QueueGoApi {
         var bundle = RiderRouteBundleState()
         if (online && active != null && active.marketOrderId == null) {
             bundle = runCatching { readRouteBundleState(auth, profileId) }
-                .getOrDefault(RiderRouteBundleState())
+                .getOrElse { failure ->
+                    if (currentRows.any { !it.isNull("route_bundle_id") && it.has("route_bundle_id") }) throw failure
+                    RiderRouteBundleState()
+                }
             bundle.currentOrder()?.let { active = it.job }
         }
 
@@ -2033,6 +2036,13 @@ class QueueGoApi {
                 val row = activeMeta.optJSONObject(i) ?: continue
                 val orderId = row.optString("order_id")
                 val job = jobsById[orderId] ?: continue
+                val plan = row.optString("route_sequence").takeIf { it.startsWith("{") }?.let(::JSONObject)
+                    ?.takeIf { it.optString("kind") == "queuego_stop_plan_v1" }
+                val pickupRank = plan?.optInt("pickup_rank")
+                val dropoffRank = plan?.optInt("dropoff_rank")
+                if (plan != null && (pickupRank == null || dropoffRank == null || pickupRank !in 1..10 || dropoffRank !in 1..10 || pickupRank >= dropoffRank)) {
+                    error("ลำดับจุดรับส่งกำลังอัปเดต")
+                }
                 add(
                     RiderBundleOrder(
                         bundleId = row.optString("bundle_id"),
@@ -2046,11 +2056,20 @@ class QueueGoApi {
                         riderExtraFee = row.doubleOrZero("rider_extra_fee"),
                         detourKm = row.doubleOrZero("detour_km"),
                         addedMinutes = row.optInt("added_minutes", 0),
-                        routeSequence = row.optString("route_sequence").takeIf { it.isNotBlank() && it != "null" }
+                        routeSequence = row.optString("route_sequence").takeIf { it.isNotBlank() && it != "null" },
+                        pickupStopRank = pickupRank,
+                        dropoffStopRank = dropoffRank,
+                        customerName = riderNullableText(plan?.optString("customer_name"))
                     )
                 )
             }
         }.sortedBy { it.bundleSequence }
+        if (activeOrders.any { it.pickupStopRank != null }) {
+            val ranks = activeOrders.flatMap { listOfNotNull(it.pickupStopRank, it.dropoffStopRank) }
+            if (ranks.size != activeOrders.size * 2 || ranks.distinct().size != ranks.size) {
+                error("ลำดับจุดรับส่งกำลังอัปเดต")
+            }
+        }
 
         val candidates = buildList {
             for (i in 0 until candidatesRaw.length()) {
