@@ -75,7 +75,7 @@ ok(
   customerApp.includes('val saved = cartStore.load()') &&
   customerApp.includes('val guest = guestCartStore.load()') &&
   customerApp.includes('val savedLocation = locationStore.load()') &&
-  customerApp.includes('if (localStateLoaded) withContext(Dispatchers.IO) { cartStore.save(cart) }') &&
+  customerApp.includes('if (localStateLoaded) {') && customerApp.includes('try { withContext(Dispatchers.IO) { cartStore.save(cart) } }') &&
   !customerApp.includes('LaunchedEffect(cart) { cartStore.save(cart) }'),
   'Customer local cart/location restore, guest merge and cart persistence must stay off Main'
 );

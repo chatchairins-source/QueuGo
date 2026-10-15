@@ -623,7 +623,11 @@ private fun CustomerShell(
         }
     }
     LaunchedEffect(cart, localStateLoaded) {
-        if (localStateLoaded) withContext(Dispatchers.IO) { cartStore.save(cart) }
+        if (localStateLoaded) {
+            try { withContext(Dispatchers.IO) { cartStore.save(cart) } }
+            catch (e: CancellationException) { throw e }
+            catch (_: Exception) { /* Keep visible state and the durable checkout journal for recovery. */ }
+        }
     }
     LaunchedEffect(auth.session.accessToken, screen, selectedOrder?.id, lifecycle) {
         if (screen == "orders" || screen == "order") {
