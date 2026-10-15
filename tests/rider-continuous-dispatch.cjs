@@ -84,7 +84,6 @@ const id=n=>'00000000-0000-4000-8000-'+String(n).padStart(12,'0');
  q=(await query('select queuego_route_bundle_quote_orders($1,$2,now()) q',[id(40),id(41)])).rows[0].q;eq(q.eligible,false);
  await query('update orders set pickup_latitude=15,delivery_fee=1 where id=$1',[id(41)]);
  q=(await query('select queuego_route_bundle_quote_orders($1,$2,now()) q',[id(40),id(41)])).rows[0].q;eq(q.eligible,false);assert(q.rider_extra_fee>1);checks++; // fair cost NEVER capped to the fee to manufacture eligibility
-
  // Exposed RPCs have explicit ownership and no anonymous execution.
  await as(999);await reject('select qg_rider_dispatch_preference(true,false,true)',[],/active rider/);
  eq((await query("select has_function_privilege('anon','public.qg_rider_dispatch_preference(boolean,boolean,boolean)','execute') b")).rows[0].b,false);
