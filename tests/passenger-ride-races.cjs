@@ -55,7 +55,15 @@ const id=n=>'00000000-0000-4000-8000-'+String(n).padStart(12,'0');
    await admin.query("insert into deliveries(order_id,status,delivery_fee) values($1,'pending',25)",[id(n)]);
   };
   const order=async n=>(await admin.query('select * from orders where id=$1',[id(n)])).rows[0];
-  const approve=(rider=11)=>review.query('select queuego_admin_review_public_license($1,current_date+30,$2)',[id(rider),'race gate approved']);
+  let evidenceSequence=0;
+  const approve=async(rider=11)=>{
+   const actor=rider===11?101:102;
+   const submitter=rider===11?riderA:other;
+   const path=id(actor)+'/public-license-race-'+(++evidenceSequence)+'.jpg';
+   await admin.query("insert into storage.objects(bucket_id,name) values('qg-evidence',$1) on conflict(name) do nothing",[path]);
+   await submitter.query('select qg_rider_submit_public_license($1)',[path]);
+   return review.query('select queuego_admin_review_public_license($1,current_date+30,$2)',[id(rider),'race gate approved']);
+  };
   const revoke=(rider=11)=>review.query('select queuego_admin_review_public_license($1,null,$2)',[id(rider),'race gate revoked']);
   const finishRide=async n=>{
    await riderA.query("select qg_private.ride_order_action($1,'arrive_pickup')",[id(n)]);
