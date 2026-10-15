@@ -5,6 +5,7 @@ on:
     branches:
       - queuego-market-bundle-laundry-rc
       - main
+      - ci-native-merchant-grocery-catalog-20261015
   workflow_dispatch:
 
 permissions:
@@ -19,5 +20,11 @@ jobs:
         with:
           node-version: '22'
           cache: npm
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
+        with:
+          distribution: temurin
+          java-version: '17'
       - run: npm ci --no-audit --no-fund
       - run: npm test
+      - name: Compile Merchant Native Kotlin
+        run: cd native-android && ./gradlew :merchant:compileDebugKotlin --no-daemon
