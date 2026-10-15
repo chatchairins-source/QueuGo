@@ -55,7 +55,7 @@ const id=n=>'00000000-0000-4000-8000-'+String(n).padStart(12,'0');
     `insert into orders(id,order_number,customer_id,order_type,fulfillment_vertical,status,subtotal,delivery_fee,total_amount,
        ride_distance_km,ride_duration_minutes,ride_platform_fee,rider_delivery_payout,pickup_address,pickup_latitude,pickup_longitude,
        delivery_address,delivery_latitude,delivery_longitude)
-     values($1,$2,$3,'service','ride','searching_rider',0,50,50,3,8,$4,50-$4,'pickup',15,103,'dropoff',15.01,103)`,
+     values($1,$2,$3,'service','ride','searching_rider',0,50,50,3,8,$4::numeric,50-($4::numeric),'pickup',15,103,'dropoff',15.01,103)`,
     [id(n),'QT-'+n,id(60),fee]
    );
    await admin.query("insert into deliveries(order_id,status,delivery_fee) values($1,'pending',50)",[id(n)]);
