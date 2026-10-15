@@ -8,6 +8,10 @@ One private ledger with distinct Rider and Merchant accounts; satang throughout.
 
 GP collection uses credit only. Owner confirmed all prior Orders were simulated tests and rejected the legacy slip path. Old test Orders are not migrated or charged retroactively. Legacy GP RPCs, settlement writes/API, slip bucket access and UI are retired. GP-bearing new checkout fails closed while Merchant credit is disabled. The additive retirement migration follows the credit predecessor; do not skip migration ordering.
 
+## Admin free Merchant credit
+
+The owner authorizes Admin-issued promotional GP credit independently of paid topups. No Omise approval or payment is needed for a real, explicitly approved promotional grant. Use the existing promo ledger; never label the grant as cash or a paid bank transaction. Apply the Admin grant migration after its credit/retirement predecessors. The Admin UI must list active unarchived stores even if they have no ledger account, require amount and reason, persist a request before RPC, and retry ambiguous responses with the same UUID. Verify role/session/suspension, duplicate/mismatched requests, simultaneous grants and audit rollback on an isolated database before rollout. Do not seed every shop or enable the paid intake flag for this feature. Production schema deployment and Merchant GP activation still require their migration and Order-lifecycle checks.
+
 ## Activation prerequisites
 
 1. Recheck remote successor, branch ancestry and exact-head CI. Apply predecessor staged migrations in order on an isolated DB first. Back up current schema/functions/financial data before approved Production apply; do not reset/revert newer work.

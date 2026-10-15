@@ -28,6 +28,17 @@ const id=n=>'00000000-0000-4000-8000-'+String(n).padStart(12,'0');
   await b.query("select qg_private.credit_hold($1,'rider',$2,2000)",[id(1),missing]);await b.query("select qg_private.credit_finish($1,'rider',false)",[missing]);
   eq((await b.query('select cash_minor::int n,held_cash_minor::int h from qg_private.credit_accounts')).rows[0],{n:3000,h:0});
   eq((await b.query(`select count(*)::int n from qg_private.credit_accounts a join lateral(select coalesce(sum(cash_delta),0) c,coalesce(sum(held_cash_delta),0) h from qg_private.credit_entries where user_id=a.user_id and kind=a.kind)e on true where a.cash_minor<>e.c or a.held_cash_minor<>e.h`)).rows[0].n,0);
+  const c=await connect();await c.query("select set_config('test.uid',$1,false)",[id(170)]);await b.query("select set_config('test.uid',$1,false)",[id(170)]);
+  const gift=(client,n=810,amount=100000)=>client.query('select queuego_admin_grant_merchant_credit($1,$2,$3,$4) id',[id(n),id(51),amount,'Owner approved GP campaign']);
+  const gifts=await Promise.all([b,c].map(client=>gift(client)));eq(gifts[0].rows[0].id,gifts[1].rows[0].id);
+  eq((await admin.query("select promo_minor::int n,cash_minor::int cash from qg_private.credit_accounts where kind='merchant'")).rows[0],{n:100000,cash:0});
+  eq((await admin.query("select count(*)::int n from audit_logs where action='merchant_credit_grant'")).rows[0].n,1);
+  const mismatch=await Promise.allSettled([gift(b,811,20000),gift(c,811,30000)]);eq(mismatch.filter(x=>x.status==='fulfilled').length,1);eq(mismatch.filter(x=>x.status==='rejected'&&/mismatch/.test(x.reason.message)).length,1);
+  const prior=(await admin.query("select promo_minor from qg_private.credit_accounts where kind='merchant'")).rows[0].promo_minor;
+  const dying=await connect();await dying.query("select set_config('test.uid',$1,false)",[id(170)]);await dying.query('begin');await gift(dying,812);await dying.end();
+  eq((await admin.query("select promo_minor from qg_private.credit_accounts where kind='merchant'")).rows[0].promo_minor,prior);
+  eq((await admin.query("select count(*)::int n from qg_private.credit_entries where event_key=$1",['admin-promo:'+id(812)])).rows[0].n,0);
+  await gift(c,812);eq((await admin.query("select count(*)::int n from audit_logs where action='merchant_credit_grant'")).rows[0].n,3);
   console.log('Independent PostgreSQL credit races: '+checks+' checks PASS');
  }finally{await Promise.allSettled(clients.map(c=>c.end()))}
 })().catch(e=>{console.error(e);process.exitCode=1});
