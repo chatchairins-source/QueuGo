@@ -20,6 +20,18 @@ ok(auth.includes('withContext(Dispatchers.IO) { store.save(validated) }'),'Custo
 ok(auth.includes('repeatOnLifecycle(Lifecycle.State.STARTED)'),'Customer/Merchant auth heartbeat must stop while UI is backgrounded');
 ok(!auth.includes('auth = refreshed'),'NativeAuthApi IO refresh callback must never mutate Compose auth state directly');
 
+const roleShell=read('shared/src/main/java/com/queuego/shared/QueueGoRoleNativeApp.kt');
+ok(
+  roleShell.includes('withContext(Dispatchers.IO) { store.load() }') &&
+  roleShell.includes('withContext(Dispatchers.IO) { store.save(validated) }') &&
+  roleShell.includes('withContext(Dispatchers.IO) { store.clear() }') &&
+  roleShell.includes('repeatOnLifecycle(Lifecycle.State.STARTED)') &&
+  roleShell.includes('runCatching { api.revoke(current.session) }') &&
+  !roleShell.includes('val cached = store.load()') &&
+  !roleShell.includes('store.save(it); auth = it'),
+  'Shared fallback role shell must keep secure-session crypto off Main, lifecycle-gate polling and fail closed on revoke'
+);
+
 const customerApp=read('customer/src/main/java/com/queuego/customer/QueueGoCustomerApp.kt');
 ok(
   customerApp.includes('authRequested = withContext(Dispatchers.IO) { store.load() != null }') &&
