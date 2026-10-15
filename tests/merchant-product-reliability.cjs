@@ -22,9 +22,9 @@ ok(merchant.includes('productCacheFresh'),'stale cached product lists must not b
 ok(merchant.includes("cached.user.shopProfileId&&cached.user.category&&Date.now()-cached.at<7*86400000"),'returning Merchant cache must not be trusted without resolved shop profile and category');
 ok(merchant.includes("qtLoadOwnMerchantIdentity(token,s.authUserId)"),'returning Merchant session must restore users and shop profile together');
 const merchantRouterSource=merchant.slice(merchant.indexOf('function qgmRenderBootFailure'),merchant.indexOf('/* ---------- Layout ---------- */'));
-ok(merchantRouterSource.includes("try{ window.qtShopRoute(); }"),'Merchant router must attempt first paint inside its protected render block');
-ok(merchantRouterSource.includes("setTimeout(()=>{try{qgmActivateVoice()}catch(voiceErr)"),'Merchant Voice startup must be deferred and non-fatal after first paint');
-ok(merchantRouterSource.indexOf("try{ window.qtShopRoute(); }")<merchantRouterSource.indexOf("qgmActivateVoice()"),'Merchant first paint must happen before Voice startup');
+ok(merchantRouterSource.includes("try{ const rendered=window.qtShopRoute();"),'Merchant router must attempt first paint inside its protected render block');
+ok(merchantRouterSource.includes("setTimeout(()=>{try{Promise.resolve(qgmActivateVoice()).catch("),'Merchant Voice startup must be deferred and non-fatal after first paint');
+ok(merchantRouterSource.indexOf("try{ const rendered=window.qtShopRoute();")<merchantRouterSource.indexOf("qgmActivateVoice()"),'Merchant first paint must happen before Voice startup');
 ok(merchantRouterSource.includes("เปิดหน้าร้านค้าไม่สำเร็จ"),'Merchant must render a visible recovery screen instead of leaving a blank page when route rendering fails');
 ok(merchant.includes("if(page!=='login'&&!u&&qgmHasRestorableShopSession())"),'valid Merchant session must restore identity before showing login');
 ok(merchant.includes("กำลังตรวจสอบบัญชีร้าน"),'Merchant route must expose session-restore state instead of silently showing login');
@@ -36,7 +36,7 @@ ok(!merchant.includes("await qtHydrateDatabase({light:false});return shopUser()"
 ok(merchant.includes('await qgmBoundSessionRestore(qtRestoreOwnUser({refresh:true}))'),'Grocery category recovery must refresh only the Merchant identity under the same timeout');
 
 ok(merchant.includes('const QT_AUTH_REFRESH_TIMEOUT_MS=8000;'),'Merchant token refresh must have an explicit network timeout below the route restore bound');
-ok(merchant.includes('signal:AbortSignal.timeout(QT_AUTH_REFRESH_TIMEOUT_MS)'),'Merchant refresh-token fetch must be abortable instead of hanging indefinitely');
+ok(merchant.includes('const timeout=qtRequestTimeout(QT_AUTH_REFRESH_TIMEOUT_MS);'),'Merchant refresh-token fetch must be abortable instead of hanging indefinitely');
 
 ok(merchant.includes("function qtApplyShopProfileIdentity"),'Merchant identity merge must be shared across login/restore/hydrate');
 
@@ -66,7 +66,7 @@ ok(merchant.includes("page==='shop-grocery-catalog'&&!u&&qgmHasRestorableShopSes
 const grocery=fs.readFileSync(path.join(root,'merchant/grocery-catalog.js'),'utf8');
 ok(grocery.includes("const sessionShopOwner=()=>"),'Grocery catalog renderer must accept the signed-in Merchant session as temporary owner identity');
 ok(grocery.includes("shop_profiles?select=id,public_category&user_id=eq."),'session fallback must resolve the current shop directly and verify its public category');
-ok(merchant.includes('grocery-catalog.js?v=20261015-sessiondirect2'),'Merchant HTML must cache-bust the session-direct Grocery catalog JavaScript');
+ok(merchant.includes('grocery-catalog.js?v=20261015-scopefix2'),'Merchant HTML must cache-bust the session-direct Grocery catalog JavaScript');
 ok(merchant.includes("case'shop-grocery-catalog':return qgRenderGroceryCatalog({addMode:true,pageTitle:'เพิ่มสินค้าจากแคตตาล็อก'})"),'dedicated Grocery catalog fallback route must keep the catalog page name');
 ok(merchant.includes("if(u?.category==='grocery'&&p?.grocery_master_id)return qgRenderGroceryCatalog"),'only existing master-linked Grocery rows may redirect to the master catalog');
 ok(!merchant.includes("if(u?.category==='grocery'&&(id==='new'||p?.grocery_master_id))"),'new Grocery products must never be hijacked by master catalog');
