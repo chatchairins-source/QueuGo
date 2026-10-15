@@ -26,6 +26,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -1333,146 +1335,136 @@ internal fun CustomerHome(
     }
 
     val homeHorizontalPadding = if (LocalConfiguration.current.screenWidthDp <= 420) 12.dp else 14.dp
-    Column(
-        Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = homeHorizontalPadding)
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(horizontal = homeHorizontalPadding)
     ) {
-        Row(
-            Modifier
-                .fillMaxWidth()
-                .clickable(onClick = onLocation)
-                .padding(start = 2.dp, end = 2.dp, top = 13.dp, bottom = 10.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Box(
+        item(key = "home-location") {
+            Row(
                 Modifier
-                    .size(34.dp)
-                    .clip(RoundedCornerShape(11.dp))
-                    .background(androidx.compose.ui.graphics.Color(0xFFFFF0F1)),
-                contentAlignment = Alignment.Center
+                    .fillMaxWidth()
+                    .clickable(onClick = onLocation)
+                    .padding(start = 2.dp, end = 2.dp, top = 13.dp, bottom = 10.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    Modifier
+                        .size(34.dp)
+                        .clip(RoundedCornerShape(11.dp))
+                        .background(androidx.compose.ui.graphics.Color(0xFFFFF0F1)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.qg_home_pin),
+                        contentDescription = null,
+                        modifier = Modifier.size(19.dp),
+                        tint = QgRed
+                    )
+                }
+                Spacer(Modifier.width(10.dp))
+                Column(Modifier.weight(1f)) {
+                    Text("ส่งไปที่", color = QgMuted, fontSize = 11.sp, lineHeight = 14.sp)
+                    Text(
+                        deliveryAddress.ifBlank { location?.address.orEmpty() }.ifBlank { "เลือกที่อยู่จัดส่ง" },
+                        color = androidx.compose.ui.graphics.Color(0xFF17191D),
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 13.sp,
+                        lineHeight = 17.sp,
+                        maxLines = 1
+                    )
+                }
+            }
+        }
+        item(key = "home-search") {
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .height(48.dp)
+                    .shadow(
+                        elevation = 4.dp,
+                        shape = RoundedCornerShape(15.dp),
+                        clip = false,
+                        ambientColor = androidx.compose.ui.graphics.Color(0x0914181E),
+                        spotColor = androidx.compose.ui.graphics.Color(0x0914181E)
+                    )
+                    .clip(RoundedCornerShape(15.dp))
+                    .background(androidx.compose.ui.graphics.Color.White)
+                    .border(1.dp, QgLine, RoundedCornerShape(15.dp))
+                    .clickable(onClick = onSearch)
+                    .padding(horizontal = 14.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 Icon(
-                    painter = painterResource(R.drawable.qg_home_pin),
+                    painter = painterResource(R.drawable.qg_nav_search),
                     contentDescription = null,
-                    modifier = Modifier.size(19.dp),
-                    tint = QgRed
+                    modifier = Modifier.size(20.dp),
+                    tint = androidx.compose.ui.graphics.Color(0xFF3F434A)
                 )
+                Spacer(Modifier.width(10.dp))
+                Text("ค้นหาร้านค้าจากทุกหมวด", color = androidx.compose.ui.graphics.Color(0xFF9A9EA5), fontSize = 14.sp)
             }
-            Spacer(Modifier.width(10.dp))
-            Column(Modifier.weight(1f)) {
+            Spacer(Modifier.height(13.dp))
+        }
+        item(key = "home-banner") {
+            CustomerHomeBanner(
+                banners = banners,
+                selected = bannerIndex,
+                onSelect = { bannerIndex = it },
+                onOpen = { banner -> banner.link?.let(onBannerLink) }
+            )
+            Spacer(Modifier.height(20.dp))
+        }
+        item(key = "home-categories") {
+            Row(
+                Modifier
+                    .horizontalScroll(rememberScrollState())
+                    .padding(start = 2.dp, end = 2.dp, top = 2.dp, bottom = 5.dp),
+                horizontalArrangement = Arrangement.spacedBy(13.dp)
+            ) {
+                categories.filter { it.first != "all" }.forEach { (key, label) ->
+                    CustomerCategoryButton(key = key, label = label, onClick = { onCategory(key) })
+                }
+            }
+            Spacer(Modifier.height(20.dp))
+        }
+        item(key = "home-nearby-heading") {
+            Row(
+                Modifier.fillMaxWidth().padding(horizontal = 2.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                 Text(
-                    "ส่งไปที่",
-                    color = QgMuted,
-                    fontSize = 11.sp,
-                    lineHeight = 14.sp
-                )
-                Text(
-                    deliveryAddress.ifBlank { location?.address.orEmpty() }.ifBlank { "เลือกที่อยู่จัดส่ง" },
+                    "ร้านใกล้คุณ",
                     color = androidx.compose.ui.graphics.Color(0xFF17191D),
+                    fontWeight = FontWeight.ExtraBold,
+                    fontSize = 18.sp,
+                    lineHeight = 22.sp
+                )
+                Spacer(Modifier.weight(1f))
+                Text(
+                    "ดูทั้งหมด",
+                    color = QgRed,
                     fontWeight = FontWeight.Bold,
                     fontSize = 13.sp,
-                    lineHeight = 17.sp,
-                    maxLines = 1
+                    modifier = Modifier.clickable(onClick = onSearch)
                 )
             }
-        }
-
-        Row(
-            Modifier
-                .fillMaxWidth()
-                .height(48.dp)
-                .shadow(
-                    elevation = 4.dp,
-                    shape = RoundedCornerShape(15.dp),
-                    clip = false,
-                    ambientColor = androidx.compose.ui.graphics.Color(0x0914181E),
-                    spotColor = androidx.compose.ui.graphics.Color(0x0914181E)
-                )
-                .clip(RoundedCornerShape(15.dp))
-                .background(androidx.compose.ui.graphics.Color.White)
-                .border(1.dp, QgLine, RoundedCornerShape(15.dp))
-                .clickable(onClick = onSearch)
-                .padding(horizontal = 14.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(
-                painter = painterResource(R.drawable.qg_nav_search),
-                contentDescription = null,
-                modifier = Modifier.size(20.dp),
-                tint = androidx.compose.ui.graphics.Color(0xFF3F434A)
-            )
-            Spacer(Modifier.width(10.dp))
-            Text(
-                "ค้นหาร้านค้าจากทุกหมวด",
-                color = androidx.compose.ui.graphics.Color(0xFF9A9EA5),
-                fontSize = 14.sp
-            )
-        }
-
-        Spacer(Modifier.height(13.dp))
-        CustomerHomeBanner(
-            banners = banners,
-            selected = bannerIndex,
-            onSelect = { bannerIndex = it },
-            onOpen = { banner -> banner.link?.let(onBannerLink) }
-        )
-
-        Spacer(Modifier.height(20.dp))
-        Row(
-            Modifier
-                .horizontalScroll(rememberScrollState())
-                .padding(start = 2.dp, end = 2.dp, top = 2.dp, bottom = 5.dp),
-            horizontalArrangement = Arrangement.spacedBy(13.dp)
-        ) {
-            categories.filter { it.first != "all" }.forEach { (key, label) ->
-                CustomerCategoryButton(
-                    key = key,
-                    label = label,
-                    onClick = { onCategory(key) }
-                )
+            Spacer(Modifier.height(11.dp))
+            if (loading) {
+                CircularProgressIndicator()
+            } else if (nearbyShops.isEmpty()) {
+                Text("ยังไม่มีร้านค้า", color = QgMuted, modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp))
             }
         }
-
-        Spacer(Modifier.height(20.dp))
-        Row(
-            Modifier.fillMaxWidth().padding(horizontal = 2.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                "ร้านใกล้คุณ",
-                color = androidx.compose.ui.graphics.Color(0xFF17191D),
-                fontWeight = FontWeight.ExtraBold,
-                fontSize = 18.sp,
-                lineHeight = 22.sp
-            )
-            Spacer(Modifier.weight(1f))
-            Text(
-                "ดูทั้งหมด",
-                color = QgRed,
-                fontWeight = FontWeight.Bold,
-                fontSize = 13.sp,
-                modifier = Modifier.clickable(onClick = onSearch)
-            )
-        }
-        Spacer(Modifier.height(11.dp))
-
-        when {
-            loading -> CircularProgressIndicator()
-            nearbyShops.isEmpty() -> Text(
-                "ยังไม่มีร้านค้า",
-                color = QgMuted,
-                modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp)
-            )
-            else -> nearbyShops.forEach { shop ->
+        if (!loading) {
+            items(nearbyShops, key = { "home-shop:" + it.id }) { shop ->
                 CustomerBlueprintShopCard(shop = shop, onClick = { onShop(shop) })
             }
         }
-        Spacer(Modifier.height(28.dp))
+        item(key = "home-bottom-space") {
+            Spacer(Modifier.height(28.dp))
+        }
     }
 }
-
 @Composable
 private fun CustomerCategoryButton(
     key: String,
