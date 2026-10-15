@@ -1985,6 +1985,10 @@ class QueueGoApi {
         val result = actionOnce(auth, "ride", JSONObject().put("p_order_id", job.id).put("p_action", action)) as? JSONObject
             ?: error("ยังยืนยันผลไม่ได้ กรุณาตรวจสถานะอีกครั้ง")
         val status = result.optString("status")
+        if (result.optBoolean("requeued", false)) {
+            check(status == "searching_rider") { "สถานะเที่ยวเปลี่ยน กรุณาตรวจสอบอีกครั้ง" }
+            return@withContext status
+        }
         check(status == expected || status == "completed") { "สถานะเที่ยวเปลี่ยน กรุณาตรวจสอบอีกครั้ง" }
         status
     }

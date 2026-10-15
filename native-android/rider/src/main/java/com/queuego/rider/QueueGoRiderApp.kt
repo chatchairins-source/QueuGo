@@ -3092,18 +3092,28 @@ private fun RiderHome(
                                         scope.launch {
                                             try {
                                                 val status = api.passengerAction(auth, activeJob, action)
-                                                val now = java.time.Instant.now().toString()
-                                                val committedJob = activeJob.copy(status = status,
-                                                    arrivedShopAt = if (action == "arrive_pickup") now else activeJob.arrivedShopAt,
-                                                    arrivedCustomerAt = if (action == "arrive_dropoff") now else activeJob.arrivedCustomerAt)
-                                                val committed = current.copy(activeJob = committedJob.takeUnless { status == "completed" }, offeredJob = null)
-                                                snapshot = committed
-                                                persistCommittedSnapshot(committed)
-                                                actionMessage = if (status == "completed") "จบเที่ยวแล้ว" else "อัปเดตเที่ยวแล้ว"
-                                                if (action == "start" && status == "in_progress") openNavigation(context, committedJob)
-                                                runCatching { api.riderSnapshot(auth) }
-                                                    .onFailure { if (it is CancellationException) throw it }
-                                                    .onSuccess { snapshot = it; persistCommittedSnapshot(it) }
+                                                if (status == "searching_rider") {
+                                                    val released = current.copy(activeJob = null, offeredJob = null)
+                                                    snapshot = released
+                                                    persistCommittedSnapshot(released)
+                                                    actionMessage = "สิทธิ์หรือเครดิตรับเที่ยวไม่พร้อม · ระบบส่งเที่ยวกลับไปหาคนขับใหม่แล้ว"
+                                                    runCatching { api.riderSnapshot(auth) }
+                                                        .onFailure { if (it is CancellationException) throw it }
+                                                        .onSuccess { snapshot = it; persistCommittedSnapshot(it) }
+                                                } else {
+                                                    val now = java.time.Instant.now().toString()
+                                                    val committedJob = activeJob.copy(status = status,
+                                                        arrivedShopAt = if (action == "arrive_pickup") now else activeJob.arrivedShopAt,
+                                                        arrivedCustomerAt = if (action == "arrive_dropoff") now else activeJob.arrivedCustomerAt)
+                                                    val committed = current.copy(activeJob = committedJob.takeUnless { status == "completed" }, offeredJob = null)
+                                                    snapshot = committed
+                                                    persistCommittedSnapshot(committed)
+                                                    actionMessage = if (status == "completed") "จบเที่ยวแล้ว" else "อัปเดตเที่ยวแล้ว"
+                                                    if (action == "start" && status == "in_progress") openNavigation(context, committedJob)
+                                                    runCatching { api.riderSnapshot(auth) }
+                                                        .onFailure { if (it is CancellationException) throw it }
+                                                        .onSuccess { snapshot = it; persistCommittedSnapshot(it) }
+                                                }
                                             } catch (e: CancellationException) { throw e }
                                             catch (e: Exception) { actionMessage = e.message ?: "ยังยืนยันผลไม่ได้ กรุณาลองอีกครั้ง" }
                                             finally { actionBusy = false }

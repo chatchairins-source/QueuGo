@@ -173,6 +173,15 @@ begin
 
  delete from public.qg_rider_order_offers where order_id=o.id;
 
+ -- A new assignment generation must not inherit idempotency receipts from the old Rider.
+ -- Audit logs are preserved; only retry receipts tied to the released assignment are reset.
+ delete from public.qg_rider_action_receipts ar
+ using public.rider_profiles r
+ where r.id=p_rider_id
+   and ar.user_id=r.user_id
+   and ar.kind='ride'
+   and ar.payload->>'p_order_id'=o.id::text;
+
  update public.orders
  set status='searching_rider',
      rider_id=null,
