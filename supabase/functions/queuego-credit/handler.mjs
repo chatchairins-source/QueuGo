@@ -32,8 +32,9 @@ export function createCreditHandler(env,fetcher=fetch,webhook=false){
   if(req.method==='OPTIONS')return new Response(null,{status:204,headers:cors});
   if(req.method!=='POST')return reply({error:'POST required'},405);
   const base=env.get('SUPABASE_URL'),service=env.get('SUPABASE_SERVICE_ROLE_KEY'),secret=env.get('OMISE_SECRET_KEY'),webhookSecret=env.get('OMISE_WEBHOOK_SECRET');
-  // Explicit rollout switch and LIVE key are mandatory. Webhooks additionally require the Omise signing secret.
-  if(env.get('QUEUEGO_CREDIT_LIVE_ENABLED')!=='true'||!base||!service||!/^skey_live_[A-Za-z0-9]+$/.test(secret||'')||(webhook&&!webhookSecret))return reply({error:'ระบบเครดิตยังไม่เปิดใช้งาน'},503);
+  // New topups require the rollout switch. Already-paid signed webhooks remain settleable during an intake pause.
+  // A LIVE key is always mandatory; webhooks additionally require the Omise signing secret.
+  if((!webhook&&env.get('QUEUEGO_CREDIT_LIVE_ENABLED')!=='true')||!base||!service||!/^skey_live_[A-Za-z0-9]+$/.test(secret||'')||(webhook&&!webhookSecret))return reply({error:'ระบบเครดิตยังไม่เปิดใช้งาน'},503);
   const serviceHeaders={apikey:service,authorization:'Bearer '+service,'content-type':'application/json'};
   const providerHeaders={authorization:'Basic '+btoa(secret+':')};
   const rpc=async(name,body,authorization='Bearer '+service)=>{

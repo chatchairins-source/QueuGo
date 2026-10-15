@@ -28,6 +28,8 @@ const assert=require('node:assert/strict'),crypto=require('node:crypto');
  // Real provider charge envelopes can exceed the small client request limit.
  calls=[];applied=[];eq((await hook(hookReq({...hookEvent,provider_context:'x'.repeat(9000)}))).status,200);eq(applied.length,1);
  calls=[];applied=[];eq((await hook(hookReq({...hookEvent,provider_context:'x'.repeat(131073)}))).status,503);eq(calls.length,0);
+ const pausedHook=createCreditHandler({get:k=>({...values,QUEUEGO_CREDIT_LIVE_ENABLED:'false'})[k]},good,true);
+ calls=[];applied=[];eq((await pausedHook(hookReq(hookEvent))).status,200);eq(applied.length,1);
  // During Omise secret rotation, accept either signature from the comma-separated header.
  calls=[];applied=[];eq((await hook(hookReq(hookEvent,{prefix:'0'.repeat(64)+','}))).status,200);eq(applied.length,1);
  // Signed payload still cannot override the independently retrieved provider status.
