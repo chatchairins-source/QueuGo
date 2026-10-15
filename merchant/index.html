@@ -546,6 +546,24 @@ function qtUserFromRow(r){
   delete u.password;
   return u;
 }
+function qtApplyShopProfileIdentity(u,shop){
+  if(!u||u.type!=='shop'||!shop)return u;
+  const meta=shop.metadata&&typeof shop.metadata==='object'&&!Array.isArray(shop.metadata)?shop.metadata:{};
+  const lock={id:u.id,authUserId:u.authUserId,type:u.type,status:u.status,name:u.name,phone:u.phone};
+  Object.assign(u,meta,{shopName:shop.shop_name,address:shop.address,lat:shop.latitude,lng:shop.longitude,shopProfileId:shop.id,publicCategory:shop.public_category||null,category:shop.public_category||meta.category||u.category,marketMembershipStatus:shop.market_membership_status||null,onboardingStatus:shop.onboarding_status||'draft',submittedForReviewAt:shop.submitted_for_review_at||null,archivedAt:shop.archived_at||null});
+  delete u.password;return Object.assign(u,lock);
+}
+async function qtLoadOwnMerchantIdentity(accessToken,authUserId){
+  const profile=await qtLoadOwnSupabaseUser(accessToken,authUserId);
+  if(!profile)return {profile:null,user:null,shop:null};
+  const user=qtUserFromRow(profile);
+  if(user.type!=='shop')return {profile,user,shop:null};
+  const shops=await qtSupabaseTable('shop_profiles?select=*&user_id=eq.'+encodeURIComponent(user.id)+'&archived_at=is.null&order=created_at.desc&limit=1',{accessToken});
+  const shop=Array.isArray(shops)&&shops[0]?shops[0]:null;
+  if(shop)qtApplyShopProfileIdentity(user,shop);
+  return {profile,user,shop};
+}
+window.qtLoadOwnMerchantIdentity=qtLoadOwnMerchantIdentity;
 
 function qtOrderToRow(o){
   const pickup=o.pickup||{};
@@ -688,8 +706,9 @@ async function qtRestoreOwnUser(options={}){
   if(!options.refresh){
     let cached=null;try{const key=qgMerchantCacheKey();cached=key&&JSON.parse(localStorage.getItem(key)||'null')}catch(e){}
     const session=qtSessionRead();
-    if(cached?.user?.id===session?.userId&&cached.user.type==='shop'&&Date.now()-cached.at<7*86400000){
+    if(cached?.user?.id===session?.userId&&cached.user.type==='shop'&&cached.user.shopProfileId&&Date.now()-cached.at<7*86400000){
       QT_DB_CACHE.qt_users=[cached.user];
+      QT_SYNC.profileMaps={shopById:new Map([[cached.user.shopProfileId,cached.user.id]]),shopByUserId:new Map([[cached.user.id,cached.user.shopProfileId]])};
       const productCacheFresh=Number(cached.productsAt)>0&&Date.now()-Number(cached.productsAt)<5*60000;
       QT_DB_CACHE.qt_products=productCacheFresh?qtSanitizeCachedProducts(cached.products,cached.user):[];
       qtRestoreOwnUser({refresh:true}).then(()=>qtRerenderAfterHydrate()).catch(()=>{});return;
@@ -699,9 +718,13 @@ async function qtRestoreOwnUser(options={}){
   const s=qtSessionRead(); if(!s||!s.accessToken||!s.authUserId) return;
   try{
     const token=await qtGetAccessToken();
-    const p=await Promise.race([qtLoadOwnSupabaseUser(token,s.authUserId),new Promise((_,rej)=>setTimeout(()=>rej(new Error('timeout')),8000))]);
-    if(p && qtAccessToken()===token){ QT_DB_CACHE.qt_users=[qtUserFromRow(p)]; qtMarkClean('qt_users'); }
-  }catch(e){ console.warn('restore own profile failed',e); }
+    const identity=await Promise.race([qtLoadOwnMerchantIdentity(token,s.authUserId),new Promise((_,rej)=>setTimeout(()=>rej(new Error('timeout')),8000))]);
+    if(identity?.user && qtAccessToken()===token){
+      QT_DB_CACHE.qt_users=[identity.user];
+      if(identity.shop)QT_SYNC.profileMaps={shopById:new Map([[identity.shop.id,identity.user.id]]),shopByUserId:new Map([[identity.user.id,identity.shop.id]])};
+      qtMarkClean('qt_users');
+    }
+  }catch(e){ console.warn('restore own merchant identity failed',e); }
 }
 
 async function qtHydrateDatabase(opts){
@@ -722,12 +745,7 @@ async function qtHydrateDatabase(opts){
         const sm=new Map((shops||[]).filter(x=>x&&x.user_id).map(x=>[x.user_id,x]));
         profileMaps={shopById:new Map((shops||[]).map(x=>[x.id,x.user_id])),shopByUserId:new Map([...sm.entries()].map(([id,x])=>[id,x.id]))};
         QT_SYNC.profileMaps=profileMaps;
-        QT_DB_CACHE.qt_users=QT_DB_CACHE.qt_users.map(u=>{
-          const x=u.type==='shop'?sm.get(u.id):null;if(!x)return u;
-          const lock={id:u.id,authUserId:u.authUserId,type:u.type,status:u.status,name:u.name,phone:u.phone};
-          Object.assign(u,(x.metadata&&typeof x.metadata==='object'?x.metadata:{}),{shopName:x.shop_name,address:x.address,lat:x.latitude,lng:x.longitude,shopProfileId:x.id,publicCategory:x.public_category||null,category:x.public_category||x.metadata?.category||u.category,marketMembershipStatus:x.market_membership_status||null,onboardingStatus:x.onboarding_status||'draft',submittedForReviewAt:x.submitted_for_review_at||null,archivedAt:x.archived_at||null});
-          delete u.password;return Object.assign(u,lock);
-        });
+        QT_DB_CACHE.qt_users=QT_DB_CACHE.qt_users.map(u=>{const x=u.type==='shop'?sm.get(u.id):null;return x?qtApplyShopProfileIdentity(u,x):u});
       }catch(e){ console.warn('profile hydrate failed',e); }
       qtMarkClean('qt_users');
       if(me?.role==='shop' && me.userId){
