@@ -8,6 +8,7 @@ on:
       - 'ops/grocery/probe-makro.cjs'
       - 'ops/grocery/probe-makro-browser.cjs'
       - 'ops/grocery/probe-makro-direct.cjs'
+      - 'ops/grocery/probe-makro-direct.cjs'
       - 'ops/grocery/sync-makro-dry-branded.cjs'
       - '.github/workflows/makro-public-catalog-probe.yml'
   pull_request:
@@ -42,6 +43,8 @@ jobs:
         run: node ops/grocery/probe-makro-direct.cjs 100
       - name: Capture Makro live catalog request
         run: node ops/grocery/probe-makro-browser.cjs
+      - name: Verify direct Makro catalog API
+        run: node ops/grocery/probe-makro-direct.cjs 120
       - name: Build branded dry Makro catalog
         run: node ops/grocery/sync-makro-dry-branded.cjs
       - name: Commit generated Makro catalog
