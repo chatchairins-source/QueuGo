@@ -238,7 +238,7 @@ jobs:
         run: node tests/rider-continuous-dispatch-races.cjs
 
   passenger-ride-races:
-    if: ${{ startsWith(github.ref, 'refs/heads/work-native-ride-passenger-') }}
+    if: ${{ startsWith(github.ref, 'refs/heads/work-native-ride-passenger-') || startsWith(github.ref, 'refs/heads/work-native-rider-continuous-dispatch-') }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     services:
