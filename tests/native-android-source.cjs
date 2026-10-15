@@ -7,6 +7,9 @@ for(const p of [
   'settings.gradle.kts',
   'build.gradle.kts',
   'shared/build.gradle.kts',
+  'shared/src/main/java/com/queuego/shared/NativeExitDiagnostics.kt',
+  'shared/src/main/java/com/queuego/shared/QueueGoDesign.kt',
+  'shared/src/main/java/com/queuego/shared/NativeChatImage.kt',
   'shared/src/main/java/com/queuego/shared/QueueGoAccountDeletion.kt',
   'customer/build.gradle.kts',
   'customer/src/main/AndroidManifest.xml',
@@ -90,6 +93,45 @@ const all=[];
   }
 })(root);
 const source=all.join('\n');
+
+const sharedDesign=read('shared/src/main/java/com/queuego/shared/QueueGoDesign.kt');
+const sharedChatImage=read('shared/src/main/java/com/queuego/shared/NativeChatImage.kt');
+const exitDiagnostics=read('shared/src/main/java/com/queuego/shared/NativeExitDiagnostics.kt');
+const customerMainForExit=read('customer/src/main/java/com/queuego/customer/MainActivity.kt');
+const merchantMainForExit=read('merchant/src/main/java/com/queuego/merchant/MainActivity.kt');
+const riderMainForExit=read('rider/src/main/java/com/queuego/rider/MainActivity.kt');
+const merchantImageUploadForMemory=read('merchant/src/main/java/com/queuego/merchant/MerchantImageUpload.kt');
+ok(
+  sharedDesign.includes('QG_REMOTE_IMAGE_MAX_BYTES') &&
+  sharedDesign.includes('readQueueGoImageLimited') &&
+  sharedDesign.includes('inJustDecodeBounds = true') &&
+  sharedDesign.includes('inSampleSize = sample') &&
+  sharedDesign.includes('DisposableEffect(image)') &&
+  !sharedDesign.includes('inputStream.use { it.readBytes() }'),
+  'Shared remote images must be bounded, sampled before decode and recycled instead of risking all-role OOM'
+);
+ok(
+  sharedChatImage.includes('DisposableEffect(bitmap)') &&
+  sharedChatImage.includes('owned.recycle()'),
+  'Shared chat images must release Bitmap memory when messages leave composition'
+);
+ok(
+  merchantImageUploadForMemory.includes('inJustDecodeBounds = true') &&
+  merchantImageUploadForMemory.includes('inSampleSize = sample') &&
+  merchantImageUploadForMemory.indexOf('inJustDecodeBounds = true') <
+    merchantImageUploadForMemory.indexOf('val decoded = BitmapFactory.decodeByteArray'),
+  'Merchant uploads must sample camera/gallery images before allocating the full Bitmap'
+);
+ok(
+  exitDiagnostics.includes('getHistoricalProcessExitReasons') &&
+  exitDiagnostics.includes('REASON_LOW_MEMORY') &&
+  exitDiagnostics.includes('REASON_ANR') &&
+  !exitDiagnostics.includes('traceInputStream') &&
+  customerMainForExit.includes('NativeExitDiagnostics.recordPreviousProcessExit(this, "customer")') &&
+  merchantMainForExit.includes('NativeExitDiagnostics.recordPreviousProcessExit(this, "merchant")') &&
+  riderMainForExit.includes('NativeExitDiagnostics.recordPreviousProcessExit(this, "rider")'),
+  'All three native apps must record coarse Android exit reasons without collecting exit traces'
+);
 
 ok(!/android\.webkit\.WebView|<WebView\b|loadUrl\(/.test(source),'native apps must not use WebView UI');
 ok(source.includes('expectedRole = "customer"')&&source.includes('expectedRole = "shop"'),'Customer/Merchant must validate real QueueGo roles');
