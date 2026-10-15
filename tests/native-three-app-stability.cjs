@@ -390,6 +390,7 @@ ok(
   'Rider post-commit local proof cleanup must remain non-fatal after authoritative server success'
 );
 
+const riderRoot=read('rider/src/main/java/com/queuego/rider/QueueGoRiderApp.kt');
 const riderMessageBadge=read('rider/src/main/java/com/queuego/rider/RiderMessageBadge.kt');
 ok(
   riderMessageBadge.includes('class RiderMessageSeenStore') &&
@@ -405,7 +406,6 @@ ok(
 
 const riderAcceptance=read('rider/src/main/java/com/queuego/rider/RiderAcceptanceMode.kt');
 const riderStopAfterWork=read('rider/src/main/java/com/queuego/rider/RiderStopAfterWork.kt');
-const riderRoot=read('rider/src/main/java/com/queuego/rider/QueueGoRiderApp.kt');
 ok(
   riderAcceptance.includes('suspend fun autoAcceptEnabled') &&
   riderAcceptance.includes('withContext(Dispatchers.IO)') &&
