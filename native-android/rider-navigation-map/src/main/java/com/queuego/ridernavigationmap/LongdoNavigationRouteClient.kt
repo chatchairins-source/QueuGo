@@ -7,10 +7,31 @@ import okhttp3.HttpUrl
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.Response
+import java.io.ByteArrayOutputStream
 import java.io.IOException
+import java.io.InputStream
+import java.nio.charset.StandardCharsets
 import org.json.JSONArray
 import org.json.JSONObject
 import java.util.concurrent.TimeUnit
+
+private const val LONGDO_ROUTE_RESPONSE_MAX_BYTES = 4 * 1024 * 1024
+private const val LONGDO_ROUTE_MAX_FEATURES = 2_048
+private const val LONGDO_ROUTE_MAX_POINTS = 12_000
+
+private fun InputStream.readLongdoRouteResponseBounded(): String {
+    val output = ByteArrayOutputStream(128 * 1024)
+    val buffer = ByteArray(16 * 1024)
+    while (true) {
+        val count = read(buffer)
+        if (count < 0) break
+        require(output.size() + count <= LONGDO_ROUTE_RESPONSE_MAX_BYTES) {
+            "Longdo routing response is too large"
+        }
+        output.write(buffer, 0, count)
+    }
+    return output.toString(StandardCharsets.UTF_8.name())
+}
 
 data class NavigationRouteInstruction(
     val sequence: Int,
@@ -93,7 +114,22 @@ class LongdoNavigationRouteClient(
                                 )
                                 return
                             }
-                            val body = response.body?.string().orEmpty()
+                            val responseBody = response.body
+                            val contentLength = responseBody?.contentLength() ?: 0L
+                            if (contentLength > LONGDO_ROUTE_RESPONSE_MAX_BYTES) {
+                                continuation.resumeWith(
+                                    Result.failure(
+                                        IllegalStateException("Longdo routing response is too large")
+                                    )
+                                )
+                                return
+                            }
+                            val body = runCatching {
+                                responseBody?.byteStream()?.use { it.readLongdoRouteResponseBounded() }.orEmpty()
+                            }.getOrElse { failure ->
+                                continuation.resumeWith(Result.failure(failure))
+                                return
+                            }
                             if (body.isBlank()) {
                                 continuation.resumeWith(
                                     Result.failure(
@@ -115,6 +151,7 @@ class LongdoNavigationRouteClient(
         if (status != 200) error("Longdo routing status $status")
 
         val features = root.optJSONArray("features") ?: error("Longdo route geometry missing")
+        require(features.length() <= LONGDO_ROUTE_MAX_FEATURES) { "Longdo route has too many features" }
         val points = mutableListOf<NavigationMapPoint>()
         val instructions = mutableListOf<NavigationRouteInstruction>()
         var featureDistance = 0.0
@@ -181,7 +218,10 @@ class LongdoNavigationRouteClient(
                 latitude = pair.optDouble(1, Double.NaN),
                 longitude = pair.optDouble(0, Double.NaN)
             )
-            if (point.valid && output.lastOrNull() != point) output += point
+            if (point.valid && output.lastOrNull() != point) {
+                require(output.size < LONGDO_ROUTE_MAX_POINTS) { "Longdo route has too many points" }
+                output += point
+            }
         }
     }
 }

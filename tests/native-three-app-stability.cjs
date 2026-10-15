@@ -618,6 +618,16 @@ ok(
   'Rider navigation-map camera/view-mode Keystore restore and high-frequency persistence must stay off Main'
 );
 
+const riderNavigationRouteClient=read('rider-navigation-map/src/main/java/com/queuego/ridernavigationmap/LongdoNavigationRouteClient.kt');
+ok(
+  riderNavigationRouteClient.includes('LONGDO_ROUTE_RESPONSE_MAX_BYTES = 4 * 1024 * 1024') &&
+  riderNavigationRouteClient.includes('LONGDO_ROUTE_MAX_FEATURES = 2_048') &&
+  riderNavigationRouteClient.includes('LONGDO_ROUTE_MAX_POINTS = 12_000') &&
+  riderNavigationRouteClient.includes('readLongdoRouteResponseBounded') &&
+  !riderNavigationRouteClient.includes('response.body?.string()'),
+  'Rider navigation route HTTP/GeoJSON memory must stay bounded before parse and renderer allocation'
+);
+
 const riderNavigationMapRuntime=read('rider-navigation-map/src/main/java/com/queuego/ridernavigationmap/RiderNavigationMap.kt');
 ok(
   riderNavigationMapRuntime.includes('RIDER_NAV_SNAPSHOT_MAX_SIDE_PX = 1280') &&
@@ -629,13 +639,18 @@ ok(
 );
 
 ok(
-  riderNavigationMapRuntime.includes('private fun recycleBitmapCaches()') &&
+  riderNavigationMapRuntime.includes('fun resetSurface(): Boolean') &&
+  riderNavigationMapRuntime.includes('var graphicsReleased = runCatching { shutdownSdk() }.isSuccess') &&
+  riderNavigationMapRuntime.includes('if (runCatching { activeMap.removePin(pin) }.isFailure) graphicsReleased = false') &&
+  riderNavigationMapRuntime.includes('private fun releaseBitmapCaches(recyclePixels: Boolean)') &&
+  riderNavigationMapRuntime.includes('if (recyclePixels) markerBitmaps.values.forEach') &&
   riderNavigationMapRuntime.includes('markerBitmaps.clear()') &&
   riderNavigationMapRuntime.includes('riderPuckBitmaps.clear()') &&
   riderNavigationMapRuntime.includes('stopBitmaps.clear()') &&
   riderNavigationMapRuntime.includes('demandBitmaps.clear()') &&
-  riderNavigationMapRuntime.includes('resetSurface()\n        recycleBitmapCaches()'),
-  'Rider navigation marker/puck/stop/demand bitmap caches must recycle when the holder is disposed'
+  riderNavigationMapRuntime.includes('val graphicsReleased = resetSurface()') &&
+  riderNavigationMapRuntime.includes('releaseBitmapCaches(graphicsReleased)'),
+  'Rider navigation bitmap caches must drop strong refs on dispose and recycle pixels only after renderer graphics release succeeds'
 );
 
 const riderLongdoMap=read('rider/src/main/java/com/queuego/rider/LongdoRiderMap.kt');
