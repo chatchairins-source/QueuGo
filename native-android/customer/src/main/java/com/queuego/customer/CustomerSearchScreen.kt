@@ -248,7 +248,8 @@ private fun CustomerSearchShopCard(
             source = shop.logo ?: shop.cover,
             modifier = Modifier.size(if (compact) 72.dp else 78.dp),
             fallback = shop.name,
-            cornerRadius = 13.dp
+            cornerRadius = 13.dp,
+            maxDecodeSide = 256
         )
         Spacer(Modifier.width(9.dp))
         Column(Modifier.weight(1f)) {
