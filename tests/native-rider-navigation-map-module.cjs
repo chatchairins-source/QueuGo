@@ -1,3 +1,4 @@
+// Runtime gate trigger: native Longdo perspective tilt branch.
 const assert=require('assert');
 const fs=require('fs');
 
