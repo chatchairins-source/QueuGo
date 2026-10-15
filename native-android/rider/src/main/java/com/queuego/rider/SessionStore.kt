@@ -123,6 +123,7 @@ class SessionStore(private val context: Context) {
             .put("lat", camera[1])
             .put("zoom", camera[2])
             .put("centered", camera[3])
+            .put("tilt", camera.getOrElse(4) { 0.0 }.coerceIn(0.0, 50.0))
         prefs.edit().putString("map_camera", encrypt(root.toString())).apply()
     }
 
@@ -135,7 +136,8 @@ class SessionStore(private val context: Context) {
             root.getDouble("lon"),
             root.getDouble("lat"),
             root.getDouble("zoom"),
-            root.optDouble("centered", 0.0)
+            root.optDouble("centered", 0.0),
+            root.optDouble("tilt", 0.0).coerceIn(0.0, 50.0)
         ).takeIf { values -> values.all { it.isFinite() } }
     }.getOrNull()
 

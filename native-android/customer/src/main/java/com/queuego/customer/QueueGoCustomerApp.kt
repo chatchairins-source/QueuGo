@@ -358,6 +358,11 @@ private fun CustomerShell(
         // cart immediately even if durable journal cleanup failed. The pending
         // journal remains available for exact-request reconciliation next launch.
         cart = emptyList()
+        // Server success must win even if local durable cart cleanup fails.
+        // Persist off Main so encrypted/local storage cannot block the UI thread.
+        scope.launch(Dispatchers.IO) {
+            runCatching { cartStore.save(emptyList()) }
+        }
         note = ""
         selectedOrder = order
         orderItems = emptyList()
