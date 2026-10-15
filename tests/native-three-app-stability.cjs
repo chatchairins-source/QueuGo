@@ -81,6 +81,21 @@ ok(exit.includes('SupervisorJob() + Dispatchers.IO')&&exit.includes('scope.launc
 ok(exit.includes('REASON_LOW_MEMORY')&&exit.includes('REASON_ANR')&&exit.includes('REASON_CRASH_NATIVE'),'Exit diagnostics must distinguish LMK/ANR/native crash');
 ok(!exit.includes('traceInputStream'),'Exit diagnostics must not collect crash traces or user payloads');
 
+const customerPush=read('customer/src/main/java/com/queuego/customer/CustomerPush.kt');
+const merchantPush=read('merchant/src/main/java/com/queuego/merchant/MerchantPush.kt');
+ok(
+  customerPush.includes('Build.VERSION_CODES.TIRAMISU') &&
+  customerPush.includes('android.Manifest.permission.POST_NOTIFICATIONS') &&
+  customerPush.includes('PackageManager.PERMISSION_GRANTED') &&
+  customerPush.includes('runCatching {') &&
+  customerPush.includes('NotificationManager).notify(') &&
+  merchantPush.includes('Build.VERSION_CODES.TIRAMISU') &&
+  merchantPush.includes('android.Manifest.permission.POST_NOTIFICATIONS') &&
+  merchantPush.includes('PackageManager.PERMISSION_GRANTED') &&
+  merchantPush.includes('NotificationManager).notify('),
+  'Customer/Merchant FCM services must check Android 13 notification permission and fail closed around notify'
+);
+
 const customerPicker=read('customer/src/main/java/com/queuego/customer/CustomerLocationPicker.kt');
 ok(customerPicker.includes('mapReady')&&customerPicker.includes('delay(150)'),'Customer location permission must remain delayed until Longdo renderer is ready');
 
