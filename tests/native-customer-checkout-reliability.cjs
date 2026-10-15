@@ -12,7 +12,11 @@ ok(start>=0&&end>start,'Native Customer confirmed-order handler must exist');
 const placed=app.slice(start,end);
 ok(placed.includes('lastCheckoutReceipt = order.id'),'confirmed-order handler must bind the server receipt');
 ok(placed.includes('cart = emptyList()'),'server-confirmed order must clear the visible cart immediately');
-ok(!placed.includes('cartStore.save('),'confirmed-order UI must not perform durable IO on Main');
+ok(
+  placed.includes('scope.launch(Dispatchers.IO) {') &&
+  placed.includes('runCatching { cartStore.save(emptyList()) }'),
+  'confirmed-order durable cart cleanup must be best-effort and explicitly off Main'
+);
 const persistenceStart=app.indexOf('LaunchedEffect(cart, localStateLoaded)');
 const persistenceEnd=app.indexOf('LaunchedEffect(auth.session.accessToken, screen',persistenceStart);
 const persistence=app.slice(persistenceStart,persistenceEnd);
