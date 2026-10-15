@@ -492,18 +492,25 @@ ok(
 );
 ok(
   riderRegistrationImage.includes('maxOf(bounds.outWidth, bounds.outHeight) / sample > 2048') &&
+  riderRegistrationImage.includes('val transformed = android.graphics.Bitmap.createBitmap(') &&
+  riderRegistrationImage.includes('if (scale < 1f) postScale(scale, scale)') &&
+  !riderRegistrationImage.includes('Bitmap.createScaledBitmap(') &&
+  !riderRegistrationImage.includes('val upright=') &&
   !riderRegistrationImage.includes('> 2800'),
-  'Rider registration image decode must keep peak Bitmap memory below the old 2800px ceiling'
+  'Rider registration image decode must sample before decode and avoid duplicate upright/scaled Bitmap peak memory'
 );
 
 ok(
   riderRegistrationImage.includes('RIDER_REGISTRATION_PDF_INPUT_MAX_BYTES = 5 * 1024 * 1024') &&
   riderRegistrationImage.includes('RIDER_REGISTRATION_IMAGE_INPUT_MAX_BYTES = 8 * 1024 * 1024') &&
+  riderRegistrationImage.includes('RIDER_REGISTRATION_IMAGE_OUTPUT_MAX_BYTES = 4 * 1024 * 1024') &&
+  riderRegistrationImage.includes('RIDER_REGISTRATION_IMAGE_MAX_BASE64_CHARS') &&
   riderRegistrationImage.includes('RIDER_REGISTRATION_PDF_MAX_BASE64_CHARS') &&
   riderRegistrationImage.includes('prefix.contentEquals("%PDF-".toByteArray(Charsets.US_ASCII))') &&
   riderRegistrationImage.includes('require(output.size() + count <= limit)') &&
+  riderRegistrationImage.includes('require(output.size() <= RIDER_REGISTRATION_IMAGE_OUTPUT_MAX_BYTES)') &&
   !riderRegistrationImage.includes('output.size() <= 8 * 1024 * 1024'),
-  'Rider registration must detect PDF before full buffering and cap raw/Base64 peak memory separately from images'
+  'Rider registration must cap PDF input and resized-image output before Base64 expansion'
 );
 
 const reg=read('rider/src/main/java/com/queuego/rider/RiderRegistrationScreen.kt');

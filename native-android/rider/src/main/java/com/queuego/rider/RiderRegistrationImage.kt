@@ -10,6 +10,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 private const val RIDER_REGISTRATION_IMAGE_INPUT_MAX_BYTES = 8 * 1024 * 1024
+private const val RIDER_REGISTRATION_IMAGE_OUTPUT_MAX_BYTES = 4 * 1024 * 1024
+private const val RIDER_REGISTRATION_IMAGE_MAX_BASE64_CHARS =
+    ((RIDER_REGISTRATION_IMAGE_OUTPUT_MAX_BYTES + 2) / 3) * 4
 private const val RIDER_REGISTRATION_PDF_INPUT_MAX_BYTES = 5 * 1024 * 1024
 private const val RIDER_REGISTRATION_PDF_MAX_BASE64_CHARS =
     ((RIDER_REGISTRATION_PDF_INPUT_MAX_BYTES + 2) / 3) * 4
@@ -66,6 +69,7 @@ internal suspend fun readRiderRegistrationDocument(context: Context, uri: Uri, a
             android.media.ExifInterface(java.io.ByteArrayInputStream(bytes))
                 .getAttributeInt(android.media.ExifInterface.TAG_ORIENTATION,1)
         }.getOrDefault(1)
+        val scale = minOf(1f, 1400f / maxOf(bitmap.width, bitmap.height))
         val matrix = android.graphics.Matrix().apply {
             when(orientation) {
                 2 -> setScale(-1f,1f)
@@ -76,14 +80,24 @@ internal suspend fun readRiderRegistrationDocument(context: Context, uri: Uri, a
                 7 -> { setRotate(-90f); postScale(-1f,1f) }
                 8 -> setRotate(-90f)
             }
+            if (scale < 1f) postScale(scale, scale)
         }
-        val upright=android.graphics.Bitmap.createBitmap(bitmap,0,0,bitmap.width,bitmap.height,matrix,true)
-        val scale = minOf(1f, 1400f / maxOf(upright.width, upright.height))
-        val scaled = Bitmap.createScaledBitmap(upright, maxOf(1, (upright.width * scale).toInt()), maxOf(1, (upright.height * scale).toInt()), true)
+        val transformed = android.graphics.Bitmap.createBitmap(
+            bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true
+        )
         try {
-            val output = ByteArrayOutputStream()
-            check(scaled.compress(Bitmap.CompressFormat.JPEG, 78, output)) { "ไม่สามารถอ่านรูปภาพได้" }
-            "data:image/jpeg;base64," + Base64.encodeToString(output.toByteArray(), Base64.NO_WRAP)
-        } finally { if (scaled !== upright) scaled.recycle(); if (upright !== bitmap) upright.recycle() }
+            val output = ByteArrayOutputStream(256 * 1024)
+            check(transformed.compress(Bitmap.CompressFormat.JPEG, 78, output)) { "ไม่สามารถอ่านรูปภาพได้" }
+            require(output.size() <= RIDER_REGISTRATION_IMAGE_OUTPUT_MAX_BYTES) {
+                "รูปหลังปรับขนาดยังมีขนาดใหญ่เกินกำหนด"
+            }
+            val encoded = Base64.encodeToString(output.toByteArray(), Base64.NO_WRAP)
+            require(encoded.length <= RIDER_REGISTRATION_IMAGE_MAX_BASE64_CHARS) {
+                "รูปหลังเข้ารหัสมีขนาดใหญ่เกินกำหนด"
+            }
+            "data:image/jpeg;base64," + encoded
+        } finally {
+            if (transformed !== bitmap && !transformed.isRecycled) transformed.recycle()
+        }
     } finally { bitmap.recycle() }
 }
