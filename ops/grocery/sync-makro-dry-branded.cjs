@@ -6,6 +6,7 @@ const endpoint='https://search.maknet.siammakro.cloud/search/api/v1/indexes/prod
 const outPath=process.argv[2]||'catalog/makro-dry-branded-20261015.json';
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 const RETRIES=4,CONCURRENCY=4,TARGET_COUNT=10000,ROOT='dry-grocery';
+const STORE_CODES=JSON.parse(fs.readFileSync('catalog/makro-store-codes-20261015.json','utf8')).store_codes;
 
 function validBrand(v){
   const x=String(v||'').trim();
@@ -45,6 +46,7 @@ function body(page,size){
     size,
     filters:{
       category:[ROOT],
+      storeCodes:STORE_CODES,
       isSalesCustomer:false,
       countryCode:'TH',
       lang:'th',
@@ -52,10 +54,10 @@ function body(page,size){
       allowAlcohol:true
     },
     sortBy:'RELEVANCE',
-    autocorrect:false,
+    autocorrect:true,
     page,
-    autocategorise:false,
-    includeCurations:false,
+    autocategorise:true,
+    includeCurations:true,
     source:'web'
   };
 }
