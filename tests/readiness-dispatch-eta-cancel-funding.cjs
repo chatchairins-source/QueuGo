@@ -81,8 +81,16 @@ const id=n=>'00000000-0000-4000-8000-'+String(n).padStart(12,'0');
  await as(160);const eta=(await q('select qg_customer_order_eta($1) e',[id(310)])).rows[0].e;
  assert(eta.eta_at);checks++;eq(eta.road_eta_verified,false);
 
- // After the surviving order becomes in-progress, the SAME existing dispatcher can refill NEXT.
+ // After the surviving order becomes in-progress, live road guidance replaces
+ // approximate ETA through the SAME customer read model.
  await q("update orders set status='in_progress' where id=$1",[id(310)]);
+ await as(101);
+ const liveEta=(await q('select qg_rider_publish_customer_eta($1,$2) e',[id(310),420])).rows[0].e;
+ eq(liveEta.source,'rider_navigation_road');eq(Number(liveEta.eta_seconds),420);
+ await as(160);
+ const roadEta=(await q('select qg_customer_order_eta($1) e',[id(310)])).rows[0].e;
+ eq(roadEta.source,'rider_navigation_road');eq(roadEta.road_eta_verified,true);
+ await as(101);
  await seed(312);await setReady(312,1);await as(101);await q('select qg_rider_dispatch_preference(true,false,true)');
  await cacheRoute(310,312);await q('select qg_dispatch_rider_offers()');
  eq((await row(312)).rider_id,id(11));eq((await row(312)).next_after_order_id,id(310));
