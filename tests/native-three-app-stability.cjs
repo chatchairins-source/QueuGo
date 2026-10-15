@@ -130,6 +130,15 @@ ok(
 const merchantImage=read('merchant/src/main/java/com/queuego/merchant/MerchantImageUpload.kt');
 const merchantProducts=read('merchant/src/main/java/com/queuego/merchant/MerchantProductsScreen.kt');
 const merchantCatalog=read('merchant/src/main/java/com/queuego/merchant/MerchantCatalogScreen.kt');
+const merchantLaundry=read('merchant/src/main/java/com/queuego/merchant/MerchantLaundryScreen.kt');
+ok(
+  merchantLaundry.includes('fun openExternal(intent: Intent, failureMessage: String)') &&
+  merchantLaundry.includes('runCatching { context.startActivity(intent) }') &&
+  !merchantLaundry.includes('OutlinedButton(onClick = { context.startActivity(Intent(Intent.ACTION_DIAL') &&
+  !merchantLaundry.includes('context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://www.google.com/maps/dir/'),
+  'Merchant Laundry external dial/navigation intents must fail closed instead of crashing when Android has no handler'
+);
+
 const merchantMedia=read('merchant/src/main/java/com/queuego/merchant/MerchantMediaScreen.kt');
 const merchantShopSetup=read('merchant/src/main/java/com/queuego/merchant/MerchantShopSetupScreen.kt');
 const merchantGpSlip=read('merchant/src/main/java/com/queuego/merchant/MerchantGpSlipUpload.kt');
