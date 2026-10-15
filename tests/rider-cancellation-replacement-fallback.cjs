@@ -87,6 +87,7 @@ const id=n=>'00000000-0000-4000-8000-'+String(n).padStart(12,'0');
  await q("update orders set rider_id=$1,status='rider_assigned',next_after_order_id=$2 where id=$3",[id(11),id(920),id(921)]);
  f=(await q("select * from qg_private.rider_cancellation_funding where id=$1",[id(820)])).rows[0];
  eq(f.replacement_order_id,null);
+ await q("update orders set status='cancelled' where id=$1",[id(921)]);
 
  // A replacement that fully covers the target leaves no platform cash obligation and is voided.
  await order(930,'in_progress',25,25);
