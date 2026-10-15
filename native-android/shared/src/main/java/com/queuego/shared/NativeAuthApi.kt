@@ -4,13 +4,31 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
-import java.io.BufferedReader
-import java.io.InputStreamReader
+import java.io.ByteArrayOutputStream
+import java.io.InputStream
 import java.net.HttpURLConnection
 import java.net.URLEncoder
 import java.net.URL
 import java.nio.charset.StandardCharsets
 import java.util.UUID
+
+private const val NATIVE_AUTH_RESPONSE_MAX_BYTES = 4 * 1024 * 1024
+
+private fun InputStream.readNativeAuthResponseBounded(
+    limit: Int = NATIVE_AUTH_RESPONSE_MAX_BYTES
+): String {
+    val output = ByteArrayOutputStream(minOf(limit, 128 * 1024))
+    val buffer = ByteArray(16 * 1024)
+    while (true) {
+        val count = read(buffer)
+        if (count < 0) break
+        require(output.size() + count <= limit) {
+            "ข้อมูลบัญชีตอบกลับมีขนาดใหญ่เกินไป กรุณาลองใหม่"
+        }
+        output.write(buffer, 0, count)
+    }
+    return output.toString(StandardCharsets.UTF_8.name())
+}
 
 class NativeAuthApi(
     private val baseUrl: String = "https://pkypiqhlrmzocysgeqew.supabase.co"
@@ -644,10 +662,12 @@ class NativeAuthApi(
                 }
             }
             val code = connection.responseCode
+            val declaredLength = connection.contentLengthLong
+            require(declaredLength <= 0L || declaredLength <= NATIVE_AUTH_RESPONSE_MAX_BYTES) {
+                "ข้อมูลบัญชีตอบกลับมีขนาดใหญ่เกินไป กรุณาลองใหม่"
+            }
             val stream = if (code in 200..299) connection.inputStream else connection.errorStream
-            val text = stream?.use {
-                BufferedReader(InputStreamReader(it, StandardCharsets.UTF_8)).readText()
-            }.orEmpty()
+            val text = stream?.use { it.readNativeAuthResponseBounded() }.orEmpty()
             if (code !in 200..299) {
                 val message = runCatching { JSONObject(text).optString("message") }.getOrNull()
                     ?.takeIf { it.isNotBlank() } ?: "HTTP " + code
