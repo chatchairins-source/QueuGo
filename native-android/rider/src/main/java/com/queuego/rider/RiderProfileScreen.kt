@@ -120,7 +120,7 @@ fun RiderProfileScreen(
     Box(modifier.fillMaxSize().background(Color(0xFFF8F7F8))) {
         Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())
             .padding(horizontal = 14.dp).padding(top = 15.dp, bottom = 78.dp)) {
-            RiderPassengerEligibility(auth)
+            RiderPassengerLicenseCard(auth, api)
             Row(Modifier.fillMaxWidth().padding(bottom = 14.dp), verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Spacer(Modifier.width(44.dp))
