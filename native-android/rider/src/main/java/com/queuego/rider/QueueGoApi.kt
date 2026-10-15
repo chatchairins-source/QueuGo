@@ -1033,8 +1033,8 @@ class QueueGoApi {
             connection.setRequestProperty("Accept", "application/json")
             try {
                 if (connection.responseCode !in 200..299) return@withContext null
-                connection.inputStream.bufferedReader(Charsets.UTF_8).use { reader ->
-                    riderFormatLongdoAddress(reader.readText())
+                connection.inputStream.use { input ->
+                    riderFormatLongdoAddress(input.readRiderApiResponseBounded(512 * 1024))
                 }
             } catch (_: Exception) {
                 null
