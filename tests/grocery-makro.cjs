@@ -7,8 +7,8 @@ const sql=fs.readFileSync('supabase/migrations/20261015165000_grocery_makro_full
 const merchant=fs.readFileSync('merchant/grocery-catalog.js','utf8');
 const workflow=fs.readFileSync('.github/workflows/makro-public-catalog-probe.yml','utf8');
 ok(sync.includes('/search/api/v1/indexes/products/search'),'sync must use captured Makro public search endpoint');
-ok(sync.includes("const ROOTS=['dry-grocery'];"),'sync must lock source to dry-grocery only');
-ok(!sync.includes("'beverages'"),'sync must not pad the catalog with the beverages root');
+ok(sync.includes("TARGET_COUNT=10000,ROOT='dry-grocery'"),'sync must lock source to dry-grocery only');
+ok(sync.includes('exclude_beverages_root:true'),'sync must explicitly exclude the beverages root');
 ok(sync.includes('validBrand'),'sync must reject missing/placeholder brands');
 for(const token of ['eggs?','frozen','tofu','fresh','chilled','meat','seafood','vegetable','fruit'])ok(sync.includes(token),'sync must exclude '+token);
 ok(sync.includes("TARGET_COUNT=10000"),'sync must target exactly 10,000 eligible dry branded products');
