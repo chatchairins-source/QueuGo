@@ -258,6 +258,7 @@ private fun CustomerShell(
     var selectedShop by remember { mutableStateOf<CustomerShop?>(null) }
     var selectedOrder by remember { mutableStateOf<CustomerOrder?>(null) }
     var trackingContext by remember { mutableStateOf<CustomerOrderContext?>(null) }
+    var orderEta by remember { mutableStateOf<CustomerOrderEta?>(null) }
     var selectedMarketTrip by remember { mutableStateOf<MarketTripSummary?>(null) }
     var selectedLaundryOrder by remember { mutableStateOf<LaundryOrderSummary?>(null) }
     var supportInitialOrderId by remember { mutableStateOf<String?>(null) }
@@ -492,6 +493,11 @@ private fun CustomerShell(
                 .onSuccess { fresh ->
                     if (fresh != null && screen == "order" && selectedOrder?.id == detailId) selectedOrder = fresh
                 }
+            runCatching { api.loadOrderEta(auth, detailId) }
+                .onFailure { if (it is CancellationException) throw it }
+                .onSuccess { fresh ->
+                    if (screen == "order" && selectedOrder?.id == detailId) orderEta = fresh
+                }
         }
         val detail = selectedOrder?.takeIf { screen == "order" }
         if (detail != null && contextRefreshGate.shouldFetch(detail)) {
@@ -506,6 +512,7 @@ private fun CustomerShell(
         }
     }
 
+    LaunchedEffect(selectedOrder?.id) { orderEta = null }
     LaunchedEffect(auth.user.id) { refresh() }
     LaunchedEffect(pushTarget?.eventId, auth.user.id) {
         val target = pushTarget ?: return@LaunchedEffect
@@ -1091,6 +1098,7 @@ private fun CustomerShell(
                     order = selectedOrder,
                     items = orderItems,
                     context = trackingContext,
+                    eta = orderEta,
                     shopCategory = selectedOrder?.shopId?.let { id -> shops.find { it.id == id }?.category },
                     busy = busy,
                     onCallShop = {
