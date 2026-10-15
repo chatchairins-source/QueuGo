@@ -1179,8 +1179,28 @@ private class RiderNavigationMapHolder {
         routeRemainingStopIds = emptySet()
     }
 
+    private fun recycleBitmapCaches() {
+        markerBitmaps.values.forEach { bitmap ->
+            if (!bitmap.isRecycled) runCatching { bitmap.recycle() }
+        }
+        markerBitmaps.clear()
+        riderPuckBitmaps.values.forEach { bitmap ->
+            if (!bitmap.isRecycled) runCatching { bitmap.recycle() }
+        }
+        riderPuckBitmaps.clear()
+        stopBitmaps.values.forEach { bitmap ->
+            if (!bitmap.isRecycled) runCatching { bitmap.recycle() }
+        }
+        stopBitmaps.clear()
+        demandBitmaps.values.forEach { bitmap ->
+            if (!bitmap.isRecycled) runCatching { bitmap.recycle() }
+        }
+        demandBitmaps.clear()
+    }
+
     fun dispose() {
         resetSurface()
+        recycleBitmapCaches()
         disposed = true
         unbindCallbacks()
     }
