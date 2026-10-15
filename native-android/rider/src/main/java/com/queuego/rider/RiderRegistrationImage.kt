@@ -10,6 +10,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 private const val RIDER_REGISTRATION_IMAGE_INPUT_MAX_BYTES = 8 * 1024 * 1024
+private const val RIDER_REGISTRATION_IMAGE_OUTPUT_MAX_BYTES = 4 * 1024 * 1024
+private const val RIDER_REGISTRATION_IMAGE_MAX_BASE64_CHARS =
+    ((RIDER_REGISTRATION_IMAGE_OUTPUT_MAX_BYTES + 2) / 3) * 4
 private const val RIDER_REGISTRATION_PDF_INPUT_MAX_BYTES = 5 * 1024 * 1024
 private const val RIDER_REGISTRATION_PDF_MAX_BASE64_CHARS =
     ((RIDER_REGISTRATION_PDF_INPUT_MAX_BYTES + 2) / 3) * 4
@@ -83,7 +86,14 @@ internal suspend fun readRiderRegistrationDocument(context: Context, uri: Uri, a
         try {
             val output = ByteArrayOutputStream()
             check(scaled.compress(Bitmap.CompressFormat.JPEG, 78, output)) { "ไม่สามารถอ่านรูปภาพได้" }
-            "data:image/jpeg;base64," + Base64.encodeToString(output.toByteArray(), Base64.NO_WRAP)
+            require(output.size() <= RIDER_REGISTRATION_IMAGE_OUTPUT_MAX_BYTES) {
+                "รูปหลังปรับขนาดยังมีขนาดใหญ่เกินกำหนด"
+            }
+            val encoded = Base64.encodeToString(output.toByteArray(), Base64.NO_WRAP)
+            require(encoded.length <= RIDER_REGISTRATION_IMAGE_MAX_BASE64_CHARS) {
+                "รูปหลังเข้ารหัสมีขนาดใหญ่เกินกำหนด"
+            }
+            "data:image/jpeg;base64," + encoded
         } finally { if (scaled !== upright) scaled.recycle(); if (upright !== bitmap) upright.recycle() }
     } finally { bitmap.recycle() }
 }
