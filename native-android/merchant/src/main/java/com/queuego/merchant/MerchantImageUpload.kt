@@ -14,6 +14,24 @@ import java.net.HttpURLConnection
 import java.net.URL
 import java.util.UUID
 
+private const val MERCHANT_UPLOAD_ERROR_MAX_BYTES = 256 * 1024
+
+private fun readMerchantUploadErrorBounded(stream: java.io.InputStream?): String {
+    if (stream == null) return ""
+    return stream.use { input ->
+        val output = ByteArrayOutputStream(16 * 1024)
+        val buffer = ByteArray(8 * 1024)
+        var remaining = MERCHANT_UPLOAD_ERROR_MAX_BYTES
+        while (remaining > 0) {
+            val count = input.read(buffer, 0, minOf(buffer.size, remaining))
+            if (count <= 0) break
+            output.write(buffer, 0, count)
+            remaining -= count
+        }
+        output.toString(Charsets.UTF_8.name())
+    }
+}
+
 internal suspend fun uploadMerchantImage(
     context: Context,
     auth: NativeAuth,
@@ -100,7 +118,7 @@ internal suspend fun uploadMerchantImage(
 
         val code = connection.responseCode
         if (code !in 200..299) {
-            val body = connection.errorStream?.bufferedReader()?.use { it.readText() }.orEmpty()
+            val body = readMerchantUploadErrorBounded(connection.errorStream)
             val message = runCatching {
                 JSONObject(body).optString("message").ifBlank { JSONObject(body).optString("error") }
             }.getOrNull().orEmpty().ifBlank { "Storage HTTP $code" }
