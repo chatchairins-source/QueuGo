@@ -77,6 +77,8 @@ const merchantImage=read('merchant/src/main/java/com/queuego/merchant/MerchantIm
 const merchantProducts=read('merchant/src/main/java/com/queuego/merchant/MerchantProductsScreen.kt');
 const merchantCatalog=read('merchant/src/main/java/com/queuego/merchant/MerchantCatalogScreen.kt');
 const merchantMedia=read('merchant/src/main/java/com/queuego/merchant/MerchantMediaScreen.kt');
+const merchantShopSetup=read('merchant/src/main/java/com/queuego/merchant/MerchantShopSetupScreen.kt');
+const merchantGpSlip=read('merchant/src/main/java/com/queuego/merchant/MerchantGpSlipUpload.kt');
 ok(merchantImage.includes('inJustDecodeBounds = true')&&merchantImage.includes('inSampleSize = sample'),'Merchant gallery/camera uploads must sample before allocating Bitmap memory');
 ok(merchantImage.indexOf('inJustDecodeBounds = true')<merchantImage.indexOf('val decoded = BitmapFactory.decodeByteArray'),'Merchant image bounds must be read before full decode');
 ok(
@@ -118,6 +120,19 @@ ok(
   merchantImage.includes('readMerchantUploadErrorBounded') &&
   !merchantImage.includes('bufferedReader()?.use { it.readText() }'),
   'Merchant storage upload error bodies must be byte bounded instead of unbounded readText heap growth'
+);
+
+ok(
+  merchantShopSetup.includes('decodeMerchantProductPreview(context, uri)') &&
+  merchantShopSetup.includes('DisposableEffect(image)') &&
+  merchantShopSetup.includes('owned.recycle()') &&
+  !merchantShopSetup.includes('BitmapFactory.decodeStream(it)?.asImageBitmap()'),
+  'Merchant shop setup camera/gallery previews must reuse the sampled decoder and recycle owned Bitmaps'
+);
+ok(
+  merchantGpSlip.includes('readMerchantUploadErrorBounded(connection.errorStream)') &&
+  !merchantGpSlip.includes('bufferedReader()?.use { it.readText() }'),
+  'Merchant GP slip storage errors must reuse the bounded response reader'
 );
 
 const chatImage=read('shared/src/main/java/com/queuego/shared/NativeChatImage.kt');
