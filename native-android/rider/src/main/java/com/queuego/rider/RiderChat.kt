@@ -351,6 +351,19 @@ private fun RiderChatRoom(
     var reasonMenu by remember { mutableStateOf(false) }
     BackHandler { if (!busy) back() }
 
+    fun openCommunityGuidelines() {
+        runCatching {
+            context.startActivity(
+                Intent(
+                    Intent.ACTION_VIEW,
+                    Uri.parse("https://chatchairins-source.github.io/QueuGo/docs/community-guidelines.html")
+                )
+            )
+        }.onFailure {
+            message = "เปิดกติกาชุมชนไม่สำเร็จ"
+        }
+    }
+
     LaunchedEffect(auth.session.accessToken, window?.status, lifecycle) {
         lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
             if (window?.isOpen(System.currentTimeMillis()) == true) {
@@ -485,8 +498,7 @@ private fun RiderChatRoom(
                         "ใช้แชทเพื่อประสานงานออเดอร์ ห้ามคุกคาม สแปม หลอกลวง หรือส่งเนื้อหาไม่เหมาะสม",
                         color = QgMuted
                     )
-                    TextButton(onClick = { context.startActivity(Intent(Intent.ACTION_VIEW,
-                        Uri.parse("https://chatchairins-source.github.io/QueuGo/docs/community-guidelines.html"))) }) {
+                    TextButton(onClick = { openCommunityGuidelines() }) {
                         Text("อ่านกติกาชุมชน QueueGo")
                     }
                     Spacer(Modifier.height(10.dp))
@@ -605,8 +617,7 @@ private fun RiderChatRoom(
                         text = { Column {
                             TextButton(onClick = { showSafety = false; showReport = true; reportEvidence = null; reportError = null; reportDetails = ""; reportReason = "harassment" }) { Text("รายงานคู่สนทนา") }
                             TextButton(onClick = { showSafety = false; confirmBlock = true }, enabled = !busy) { Text("บล็อกลูกค้า") }
-                            TextButton(onClick = { context.startActivity(Intent(Intent.ACTION_VIEW,
-                                Uri.parse("https://chatchairins-source.github.io/QueuGo/docs/community-guidelines.html"))) }) { Text("อ่านกติกาชุมชน QueueGo") }
+                            TextButton(onClick = { openCommunityGuidelines() }) { Text("อ่านกติกาชุมชน QueueGo") }
                         } }, confirmButton = { TextButton(onClick = { showSafety = false }) { Text("ปิด") } })
                 }
                 if (confirmBlock) {
