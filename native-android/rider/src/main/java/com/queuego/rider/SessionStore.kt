@@ -14,6 +14,9 @@ import javax.crypto.KeyGenerator
 import javax.crypto.SecretKey
 import javax.crypto.spec.GCMParameterSpec
 
+private const val RIDER_REGISTRATION_DRAFT_MAX_JSON_CHARS = 16 * 1024 * 1024
+private const val RIDER_REGISTRATION_DRAFT_MAX_FILE_BYTES = 24L * 1024L * 1024L
+
 class SessionStore(private val context: Context) {
     private val prefs = context.getSharedPreferences("queuego_rider_native", Context.MODE_PRIVATE)
     private val alias = "queuego_rider_native_session"
@@ -366,7 +369,14 @@ class SessionStore(private val context: Context) {
 
     @Synchronized
     fun saveRegistrationDraft(value: JSONObject) {
-        val encrypted = encrypt(value.toString())
+        val plaintext = value.toString()
+        require(plaintext.length <= RIDER_REGISTRATION_DRAFT_MAX_JSON_CHARS) {
+            "เอกสารรวมมีขนาดใหญ่เกินไป กรุณาใช้รูปหรือ PDF ที่เล็กลง"
+        }
+        val encrypted = encrypt(plaintext)
+        require(encrypted.length.toLong() <= RIDER_REGISTRATION_DRAFT_MAX_FILE_BYTES) {
+            "เอกสารรวมมีขนาดใหญ่เกินไป กรุณาใช้รูปหรือ PDF ที่เล็กลง"
+        }
         val target = java.io.File(context.noBackupFilesDir, "rider-registration.enc")
         val temporary = java.io.File(context.noBackupFilesDir, "rider-registration.tmp")
         java.io.FileOutputStream(temporary).use { stream ->
@@ -379,8 +389,18 @@ class SessionStore(private val context: Context) {
     fun loadRegistrationDraft(): JSONObject? {
         val target = java.io.File(context.noBackupFilesDir, "rider-registration.enc")
         if (!target.exists()) return null
-        require(target.length() <= 100 * 1024 * 1024) { "ใบสมัครในเครื่องไม่ถูกต้อง" }
-        return JSONObject(decrypt(target.readText()))
+        require(target.length() <= RIDER_REGISTRATION_DRAFT_MAX_FILE_BYTES) {
+            "ใบสมัครในเครื่องมีขนาดใหญ่เกินไป กรุณาเลือกเอกสารใหม่"
+        }
+        val encrypted = target.readText()
+        require(encrypted.length.toLong() <= RIDER_REGISTRATION_DRAFT_MAX_FILE_BYTES) {
+            "ใบสมัครในเครื่องมีขนาดใหญ่เกินไป กรุณาเลือกเอกสารใหม่"
+        }
+        val plaintext = decrypt(encrypted)
+        require(plaintext.length <= RIDER_REGISTRATION_DRAFT_MAX_JSON_CHARS) {
+            "ใบสมัครในเครื่องมีขนาดใหญ่เกินไป กรุณาเลือกเอกสารใหม่"
+        }
+        return JSONObject(plaintext)
     }
 
     private fun secretKey(): SecretKey {
