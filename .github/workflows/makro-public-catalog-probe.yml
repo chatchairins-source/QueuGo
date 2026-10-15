@@ -8,20 +8,29 @@ on:
       - 'ops/grocery/probe-makro.cjs'
       - 'ops/grocery/probe-makro-direct.cjs'
       - 'ops/grocery/sync-makro-dry-branded.cjs'
+      - 'ops/grocery/import-makro-source-catalog.cjs'
+      - 'supabase/migrations/20261015165000_makro_grocery_source_catalog.sql'
+      - 'merchant/grocery-catalog.js'
+      - 'tests/grocery-makro.cjs'
+      - 'tests/grocery-ui.cjs'
       - '.github/workflows/makro-public-catalog-probe.yml'
   pull_request:
     branches:
       - main
     paths:
       - 'ops/grocery/probe-makro.cjs'
-      - 'ops/grocery/probe-makro-browser.cjs'
       - 'ops/grocery/probe-makro-direct.cjs'
       - 'ops/grocery/sync-makro-dry-branded.cjs'
+      - 'ops/grocery/import-makro-source-catalog.cjs'
+      - 'supabase/migrations/20261015165000_makro_grocery_source_catalog.sql'
+      - 'merchant/grocery-catalog.js'
+      - 'tests/grocery-makro.cjs'
+      - 'tests/grocery-ui.cjs'
       - '.github/workflows/makro-public-catalog-probe.yml'
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   probe:
@@ -35,31 +44,22 @@ jobs:
           cache: npm
       - name: Install project tooling
         run: npm ci --ignore-scripts
-      - name: Probe Makro PRO public dry-grocery page
+      - name: Probe Makro PRO public category page
         run: node ops/grocery/probe-makro.cjs
       - name: Verify direct Makro catalog API
         run: node ops/grocery/probe-makro-direct.cjs 120
-      - name: Build branded dry Makro catalog
+      - name: Build branded non-fresh Makro catalog
         run: node ops/grocery/sync-makro-dry-branded.cjs
-      - name: Commit generated Makro catalog
-        if: github.event_name == 'push'
-        run: |
-          git config user.name "queuego-catalog-bot"
-          git config user.email "queuego-catalog-bot@users.noreply.github.com"
-          git add catalog/makro-dry-branded-20261015.json
-          if git diff --cached --quiet; then
-            echo "No catalog change"
-          else
-            git commit -m "Catalog: sync Makro branded dry assortment"
-            git fetch origin "${GITHUB_REF_NAME}"
-            git rebase "origin/${GITHUB_REF_NAME}"
-            git push origin HEAD:"${GITHUB_REF_NAME}"
-          fi
+      - name: Validate generated 10k source snapshot
+        run: node ops/grocery/import-makro-source-catalog.cjs artifacts/makro-catalog/makro-grocery-branded.json
+      - name: Verify Makro catalog contract
+        run: node tests/grocery-makro.cjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: makro-public-catalog-probe
+          name: makro-grocery-source-catalog
           path: |
             artifacts/makro-probe
-            catalog/makro-dry-branded-20261015.json
+            artifacts/makro-catalog/makro-grocery-branded.json
           if-no-files-found: warn
+          compression-level: 9
