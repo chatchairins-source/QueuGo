@@ -17,6 +17,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.queuego.shared.QgMuted
 import com.queuego.shared.QgRed
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 internal const val RIDER_AUTO_ACCEPT_MIN_SECONDS_LEFT = 3
 
@@ -26,10 +28,11 @@ internal class RiderAcceptanceModeStore(context: Context) {
 
     private fun key(userId: String) = "auto_accept:" + userId
 
-    fun autoAcceptEnabled(userId: String): Boolean =
+    suspend fun autoAcceptEnabled(userId: String): Boolean = withContext(Dispatchers.IO) {
         prefs.getBoolean(key(userId), false)
+    }
 
-    fun setAutoAcceptEnabled(userId: String, enabled: Boolean) {
+    suspend fun setAutoAcceptEnabled(userId: String, enabled: Boolean) = withContext(Dispatchers.IO) {
         prefs.edit().putBoolean(key(userId), enabled).apply()
     }
 }
