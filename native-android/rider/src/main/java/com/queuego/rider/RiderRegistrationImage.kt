@@ -10,6 +10,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 private const val RIDER_REGISTRATION_IMAGE_INPUT_MAX_BYTES = 8 * 1024 * 1024
+private const val RIDER_REGISTRATION_IMAGE_DECODE_MAX_SIDE = 1400
 private const val RIDER_REGISTRATION_IMAGE_OUTPUT_MAX_BYTES = 4 * 1024 * 1024
 private const val RIDER_REGISTRATION_IMAGE_MAX_BASE64_CHARS =
     ((RIDER_REGISTRATION_IMAGE_OUTPUT_MAX_BYTES + 2) / 3) * 4
@@ -61,7 +62,7 @@ internal suspend fun readRiderRegistrationDocument(context: Context, uri: Uri, a
     BitmapFactory.decodeByteArray(bytes, 0, bytes.size, bounds)
     require(bounds.outWidth > 0 && bounds.outHeight > 0) { "ไม่สามารถอ่านรูปภาพได้ กรุณาเลือกไฟล์ใหม่" }
     var sample = 1
-    while (maxOf(bounds.outWidth, bounds.outHeight) / sample > 2048) sample *= 2
+    while (maxOf(bounds.outWidth, bounds.outHeight) / sample > RIDER_REGISTRATION_IMAGE_DECODE_MAX_SIDE) sample *= 2
     val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size, BitmapFactory.Options().apply { inSampleSize = sample })
         ?: error("ไม่สามารถอ่านรูปภาพได้ กรุณาเลือกไฟล์ใหม่")
     try {
@@ -69,7 +70,10 @@ internal suspend fun readRiderRegistrationDocument(context: Context, uri: Uri, a
             android.media.ExifInterface(java.io.ByteArrayInputStream(bytes))
                 .getAttributeInt(android.media.ExifInterface.TAG_ORIENTATION,1)
         }.getOrDefault(1)
-        val scale = minOf(1f, 1400f / maxOf(bitmap.width, bitmap.height))
+        val scale = minOf(
+            1f,
+            RIDER_REGISTRATION_IMAGE_DECODE_MAX_SIDE.toFloat() / maxOf(bitmap.width, bitmap.height)
+        )
         val matrix = android.graphics.Matrix().apply {
             when(orientation) {
                 2 -> setScale(-1f,1f)
