@@ -4,13 +4,23 @@ import android.content.Context
 import org.json.JSONArray
 import org.json.JSONObject
 
+private const val CUSTOMER_CART_MAX_JSON_CHARS = 1024 * 1024
+private const val CUSTOMER_PENDING_CHECKOUT_MAX_JSON_CHARS = 2 * 1024 * 1024
+
 internal data class PendingCustomerCheckout(val body: JSONObject, val cartSnapshot: String)
 
 class CustomerCartStore(context: Context, userId: String) {
     private val prefs = context.getSharedPreferences("queuego_customer_cart_" + userId, Context.MODE_PRIVATE)
 
+    private fun boundedPref(key: String, maxChars: Int): String? {
+        val raw = prefs.getString(key, null) ?: return null
+        if (raw.length <= maxChars) return raw
+        prefs.edit().remove(key).apply()
+        return null
+    }
+
     fun load(): List<CartLine> = runCatching {
-        val rows = JSONArray(prefs.getString("cart", "[]") ?: "[]")
+        val rows = JSONArray(boundedPref("cart", CUSTOMER_CART_MAX_JSON_CHARS) ?: "[]")
         buildList {
             for (i in 0 until rows.length()) {
                 val r = rows.optJSONObject(i) ?: continue
@@ -54,7 +64,7 @@ class CustomerCartStore(context: Context, userId: String) {
 
     internal fun journal(): CheckoutJournal<PendingCustomerCheckout> = object : CheckoutJournal<PendingCustomerCheckout> {
         override fun read(): PendingCustomerCheckout? {
-            val raw = prefs.getString("pending_checkout", null) ?: return null
+            val raw = boundedPref("pending_checkout", CUSTOMER_PENDING_CHECKOUT_MAX_JSON_CHARS) ?: return null
             val value = JSONObject(raw)
             val body = value.getJSONObject("body")
             java.util.UUID.fromString(body.getString("p_order_id"))
@@ -67,7 +77,7 @@ class CustomerCartStore(context: Context, userId: String) {
         override fun clear() { check(prefs.edit().remove("pending_checkout").commit()) }
         override fun complete(pending: PendingCustomerCheckout) {
             val edit = prefs.edit().remove("pending_checkout")
-            if (prefs.getString("cart", "[]") == pending.cartSnapshot) edit.putString("cart", "[]")
+            if ((boundedPref("cart", CUSTOMER_CART_MAX_JSON_CHARS) ?: "[]") == pending.cartSnapshot) edit.putString("cart", "[]")
             check(edit.commit())
         }
     }
