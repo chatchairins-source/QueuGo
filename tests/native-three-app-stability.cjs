@@ -377,6 +377,27 @@ ok(
   'Rider post-commit local proof cleanup must remain non-fatal after authoritative server success'
 );
 
+const riderAcceptance=read('rider/src/main/java/com/queuego/rider/RiderAcceptanceMode.kt');
+const riderStopAfterWork=read('rider/src/main/java/com/queuego/rider/RiderStopAfterWork.kt');
+const riderRoot=read('rider/src/main/java/com/queuego/rider/QueueGoRiderApp.kt');
+ok(
+  riderAcceptance.includes('suspend fun autoAcceptEnabled') &&
+  riderAcceptance.includes('withContext(Dispatchers.IO)') &&
+  riderStopAfterWork.includes('suspend fun pending') &&
+  riderStopAfterWork.includes('withContext(Dispatchers.IO)') &&
+  !riderRoot.includes('mutableStateOf(acceptanceModeStore.autoAcceptEnabled(auth.user.id))') &&
+  !riderRoot.includes('mutableStateOf(stopAfterWorkStore.pending(auth.user.id))'),
+  'Rider Auto Accept and Stop-after-work preferences must never read SharedPreferences during Compose state creation'
+);
+ok(
+  riderRoot.includes('dispatchPreferencesHydrated') &&
+  riderRoot.includes('if (!dispatchPreferencesHydrated) return@LaunchedEffect') &&
+  riderRoot.includes('dispatchPreferenceWriteMutex = remember(auth.user.id) { Mutex() }') &&
+  riderRoot.includes('dispatchPreferenceWriteMutex.withLock') &&
+  riderRoot.includes('enabled = dispatchPreferencesHydrated && !actionBusy'),
+  'Rider dispatch automation must wait for preference restore and serialize preference writes before Auto Accept/Stop-after-work can act'
+);
+
 const riderChat=read('rider/src/main/java/com/queuego/rider/RiderChat.kt');
 ok(
   riderChat.includes('fun openCommunityGuidelines()') &&
