@@ -5,6 +5,10 @@ import android.app.ApplicationExitInfo
 import android.content.Context
 import android.os.Build
 import android.util.Log
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 
 /**
  * Records only coarse Android process-exit metadata after the next app launch.
@@ -12,12 +16,14 @@ import android.util.Log
  */
 object NativeExitDiagnostics {
     private const val TAG = "QueueGoExit"
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     fun recordPreviousProcessExit(context: Context, role: String) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return
-        runCatching {
-            val app = context.applicationContext
-            val prefs = app.getSharedPreferences("queuego_exit_diagnostics", Context.MODE_PRIVATE)
+        val app = context.applicationContext
+        scope.launch {
+            runCatching {
+                val prefs = app.getSharedPreferences("queuego_exit_diagnostics", Context.MODE_PRIVATE)
             val lastSeen = prefs.getLong("last_exit_timestamp_ms", 0L)
             val manager = app.getSystemService(ActivityManager::class.java)
             val exits = manager.getHistoricalProcessExitReasons(app.packageName, 0, 5)
@@ -39,8 +45,9 @@ object NativeExitDiagnostics {
             exits.maxOfOrNull { it.timestamp }?.let { newest ->
                 prefs.edit().putLong("last_exit_timestamp_ms", newest).apply()
             }
-        }.onFailure {
-            Log.w(TAG, "exit_diagnostics_unavailable role=" + role)
+            }.onFailure {
+                Log.w(TAG, "exit_diagnostics_unavailable role=" + role)
+            }
         }
     }
 
