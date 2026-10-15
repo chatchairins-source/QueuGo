@@ -21,6 +21,9 @@ ok(merchant.includes('productsAt:now'),'Merchant product cache must have a short
 ok(merchant.includes('productCacheFresh'),'stale cached product lists must not be trusted on boot');
 ok(merchant.includes("cached.user.shopProfileId&&Date.now()-cached.at<7*86400000"),'returning Merchant cache must not be trusted without a resolved shop profile');
 ok(merchant.includes("qtLoadOwnMerchantIdentity(token,s.authUserId)"),'returning Merchant session must restore users and shop profile together');
+ok(merchant.includes("if(page!=='login'&&!u&&qgmHasRestorableShopSession())"),'valid Merchant session must restore identity before showing login');
+ok(merchant.includes("กำลังตรวจสอบบัญชีร้าน"),'Merchant route must expose session-restore state instead of silently showing login');
+
 ok(merchant.includes("function qtApplyShopProfileIdentity"),'Merchant identity merge must be shared across login/restore/hydrate');
 
 ok(merchant.includes("const posControl=$('#qgm-pos-available'),deliveryControl=$('#qgm-delivery-available');"),'product save must tolerate missing POS/Delivery controls from stale DOM');
