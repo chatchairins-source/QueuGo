@@ -17,7 +17,11 @@ ok(!placed.includes('cart = cartStore.load()'),'confirmed-order handler must nev
 ok(placed.includes('selectedOrder = order')&&placed.includes('screen = "order"'),'confirmed order must open tracking directly');
 ok(placed.includes('pendingCheckoutRecord = null')&&placed.includes('checkoutPending = false'),'confirmed-order UI must release checkout pending state');
 
-ok(store.includes('if (prefs.getString("cart", "[]") == pending.cartSnapshot) edit.putString("cart", "[]")'),'durable cleanup must clear only the cart snapshot that produced the confirmed order');
+ok(
+  store.includes('if ((boundedPref("cart", CUSTOMER_CART_MAX_JSON_CHARS) ?: "[]") == pending.cartSnapshot) edit.putString("cart", "[]")') ||
+  store.includes('if (prefs.getString("cart", "[]") == pending.cartSnapshot) edit.putString("cart", "[]")'),
+  'durable cleanup must clear only the cart snapshot that produced the confirmed order'
+);
 ok(recovery.includes('runCatching { withContext(Dispatchers.IO) { journal.complete(pending) } }'),'post-commit local cleanup must stay non-fatal and off Main');
 ok(recovery.includes('val pending = withContext(Dispatchers.IO) { journal.read() } ?: return null')&&recovery.includes('val receipt = recover(pending) ?: return null'),'pending journal must remain recoverable after local cleanup failure without reading durable state on Main');
 

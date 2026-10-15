@@ -1,3 +1,4 @@
+// Runtime gate trigger: native Longdo perspective tilt branch.
 const assert=require('assert');
 const fs=require('fs');
 
@@ -172,9 +173,11 @@ assert(
   sessionStore.includes('fun loadMapViewMode(')&&
   sessionStore.includes('"FREE_PAN"')&&
   integration.includes('sessionStore.loadMapViewMode(stateKey)')&&
-  integration.includes('sessionStore.saveMapViewMode(stateKey, NavigationViewMode.FREE_PAN.name)')&&
-  integration.includes('sessionStore.saveMapViewMode(stateKey, NavigationViewMode.FOLLOW.name)'),
-  'Manual-pan view mode must survive Rider tab remounts without silently resuming camera follow');
+  integration.includes('pendingViewModePersistence = NavigationViewMode.FREE_PAN.name')&&
+  integration.includes('pendingViewModePersistence = NavigationViewMode.FOLLOW.name')&&
+  integration.includes('sessionStore.saveMapViewMode(stateKey, mode)')&&
+  integration.includes('withContext(Dispatchers.IO)'),
+  'Manual-pan view mode must survive Rider tab remounts while durable persistence stays off Main');
 
 assert(
   viewportInsets.includes('data class NavigationViewportInsets')&&
@@ -283,6 +286,8 @@ assert(route.includes('NavigationRouteInstruction')&&
   'Longdo route parsing must preserve maneuver instructions and road names for in-app guidance');
 assert(cameraPolicy.includes('navigationCameraDecision')&&
   cameraPolicy.includes('speedMetersPerSecond >= 18f')&&
+  cameraPolicy.includes('navigationTilt(')&&
+  cameraPolicy.includes('smoothNavigationTilt(')&&
   cameraPolicy.includes('smoothNavigationBearing')&&
   cameraPolicy.includes('navigationPointAtDistance')&&
   map.includes('activeMap.setLocation(')&&
@@ -290,8 +295,13 @@ assert(cameraPolicy.includes('navigationCameraDecision')&&
   map.includes('activeMap.setZoom(decision.zoom, true)')&&
   map.includes('minimumDeltaDegrees = 2.5f')&&
   map.includes('CAMERA_ZOOM_MIN_INTERVAL_MS = 1_800L')&&
-  map.includes('decision.bearingDegrees?.let { activeMap.rotate(it, true) }'),
-  'Navigation camera must animate position/zoom, suppress micro-wobble and look ahead on the matched road');
+  map.includes('decision.bearingDegrees?.let { activeMap.rotate(it, true) }')&&
+  map.includes('nextMap.setCanTilt(true)')&&
+  map.includes('activeMap.setTilt(nextTilt)')&&
+  map.includes('activeMap.setTilt(0f)')&&
+  runtimeActivity.includes('mapTiltDegrees()')&&
+  runtimeTest.includes('followCameraUsesNativePerspectiveAndOverviewFlattens'),
+  'Navigation camera must animate position/zoom, suppress micro-wobble, look ahead and use native Longdo perspective tilt while flattening Overview');
 assert(map.includes('ACTIVE_ROUTE_COLOR')&&map.includes('FUTURE_ROUTE_COLOR')&&
   map.includes('setWidth(if (segment.style == NavigationRouteStyle.ACTIVE) 8 else 6)'),
   'Current route must be dark red and later route legs visibly faded');

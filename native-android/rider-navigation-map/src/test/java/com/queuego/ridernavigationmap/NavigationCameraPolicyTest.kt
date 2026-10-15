@@ -79,6 +79,37 @@ class NavigationCameraPolicyTest {
         assertTrue(decision.bearingDegrees!! in 88f..91f)
     }
 
+    @Test fun highwaySpeedUsesStrongForwardPerspective() {
+        assertEquals(
+            50f,
+            navigationTilt(
+                speedMetersPerSecond = 20f,
+                remainingRouteMeters = 2_000.0,
+                accuracyMeters = 5f
+            ),
+            0.001f
+        )
+    }
+
+    @Test fun approachingDestinationReducesPerspectiveForPrecision() {
+        assertEquals(
+            28f,
+            navigationTilt(
+                speedMetersPerSecond = 16f,
+                remainingRouteMeters = 45.0,
+                accuracyMeters = 4f
+            ),
+            0.001f
+        )
+    }
+
+    @Test fun tiltTransitionsAreBoundedInsteadOfJumping() {
+        assertEquals(38f, smoothNavigationTilt(34f, 50f), 0.001f)
+        assertEquals(30f, smoothNavigationTilt(34f, 24f), 0.001f)
+        assertTrue(navigationTiltChangedEnough(34f, 38f))
+        assertTrue(!navigationTiltChangedEnough(34f, 34.4f))
+    }
+
     @Test fun approachingDestinationZoomsInEvenWhenMovingFast() {
         assertEquals(
             19,
