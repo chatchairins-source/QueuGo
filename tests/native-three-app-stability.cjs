@@ -86,6 +86,10 @@ const merchantCatalog=read('merchant/src/main/java/com/queuego/merchant/Merchant
 const merchantMedia=read('merchant/src/main/java/com/queuego/merchant/MerchantMediaScreen.kt');
 const merchantShopSetup=read('merchant/src/main/java/com/queuego/merchant/MerchantShopSetupScreen.kt');
 const merchantGpSlip=read('merchant/src/main/java/com/queuego/merchant/MerchantGpSlipUpload.kt');
+const merchantGpViewer=read('merchant/src/main/java/com/queuego/merchant/MerchantGpSlipViewer.kt');
+const merchantPrinter=read('merchant/src/main/java/com/queuego/merchant/MerchantPrinter.kt');
+const merchantPosApi=read('merchant/src/main/java/com/queuego/merchant/MerchantPosApi.kt');
+const merchantPosPending=read('merchant/src/main/java/com/queuego/merchant/MerchantPosPendingStore.kt');
 ok(merchantImage.includes('inJustDecodeBounds = true')&&merchantImage.includes('inSampleSize = sample'),'Merchant gallery/camera uploads must sample before allocating Bitmap memory');
 ok(merchantImage.indexOf('inJustDecodeBounds = true')<merchantImage.indexOf('val decoded = BitmapFactory.decodeByteArray'),'Merchant image bounds must be read before full decode');
 ok(
@@ -124,7 +128,7 @@ ok(
 );
 ok(
   merchantImage.includes('MERCHANT_UPLOAD_ERROR_MAX_BYTES = 256 * 1024') &&
-  merchantImage.includes('readMerchantUploadErrorBounded') &&
+  merchantImage.includes('readMerchantStorageResponseBounded') &&
   !merchantImage.includes('bufferedReader()?.use { it.readText() }'),
   'Merchant storage upload error bodies must be byte bounded instead of unbounded readText heap growth'
 );
@@ -137,9 +141,30 @@ ok(
   'Merchant shop setup camera/gallery previews must reuse the sampled decoder and recycle owned Bitmaps'
 );
 ok(
-  merchantGpSlip.includes('readMerchantUploadErrorBounded(connection.errorStream)') &&
+  merchantGpSlip.includes('readMerchantStorageResponseBounded(connection.errorStream)') &&
   !merchantGpSlip.includes('bufferedReader()?.use { it.readText() }'),
   'Merchant GP slip storage errors must reuse the bounded response reader'
+);
+
+ok(
+  merchantGpViewer.includes('readMerchantStorageResponseBounded(stream)') &&
+  !merchantGpViewer.includes('bufferedReader()?.use { it.readText() }'),
+  'Merchant GP slip viewer signing responses must be bounded before JSON parsing'
+);
+ok(
+  merchantPrinter.includes('readMerchantStorageResponseBounded(stream)') &&
+  merchantPrinter.includes('require(text.length <= 256 * 1024)') &&
+  !merchantPrinter.includes('BufferedReader(InputStreamReader(it, StandardCharsets.UTF_8)).readText()'),
+  'Merchant Print Bridge request/response memory must stay bounded'
+);
+ok(
+  merchantPosPending.includes('file.length() <= 16 * 1024') &&
+  merchantPosPending.includes('it.fd.sync()') &&
+  merchantPosApi.includes('suspend fun pendingEdit(auth: NativeAuth): PosEditIntent? = withContext(Dispatchers.IO)') &&
+  merchantPosApi.includes('pendingStore.prepare(auth.session.authUserId, intent)') &&
+  merchantPosApi.includes('withContext(Dispatchers.IO)') &&
+  merchantPosApi.includes('pendingStore.clear(auth.session.authUserId, pending.requestId)'),
+  'Merchant POS pending read/fsync/clear durability must execute through IO without weakening bounded replay state'
 );
 
 const chatImage=read('shared/src/main/java/com/queuego/shared/NativeChatImage.kt');
