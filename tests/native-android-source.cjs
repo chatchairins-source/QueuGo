@@ -254,7 +254,8 @@ const merchantAppSource=read('merchant/src/main/java/com/queuego/merchant/QueueG
 const sharedMapForStability=read('shared/src/main/java/com/queuego/shared/QueueGoLongdoMap.kt');
 ok(
   merchantAppSource.includes('runCatching { ToneGenerator(AudioManager.STREAM_NOTIFICATION, 90) }') &&
-  merchantAppSource.includes('runCatching { tone.startTone(') &&
+  /val started = runCatching \{[\s\S]*?tone\.startTone\(ToneGenerator\.TONE_PROP_BEEP2, 650\)[\s\S]*?\}\.getOrDefault\(false\)/.test(merchantAppSource) &&
+  merchantAppSource.includes('if (!started) {') &&
   merchantAppSource.includes('runCatching { tone.release() }'),
   'Merchant notification audio must fail closed if the Android audio service cannot create or play a tone'
 );
