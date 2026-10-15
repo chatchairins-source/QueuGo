@@ -1,0 +1,31 @@
+name: Makro public catalog probe
+
+on:
+  push:
+    branches:
+      - work-grocery-makro-full-catalog-20261015
+    paths:
+      - 'ops/grocery/probe-makro.cjs'
+      - '.github/workflows/makro-public-catalog-probe.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Probe Makro PRO public dry-grocery page
+        run: node ops/grocery/probe-makro.cjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: makro-public-catalog-probe
+          path: artifacts/makro-probe
+          if-no-files-found: warn
