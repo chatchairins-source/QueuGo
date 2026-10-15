@@ -5,7 +5,7 @@
 - Do not merge/deploy until Grocery SQL/UI checks and the full repository regression pass. Production mutation and authenticated release verification remain gated.
 
 ## 2026-10-15 Merchant catalog larger photos and compact prices
-- Owner additionally requests smaller price-entry boxes and larger product images. Merchant-only card grid uses112x144 mobile/140x160 desktop packshots, three compact price/promotion/stock columns and44px input/button targets; 16px numeric input text prevents Safari focus zoom. Admin/Customer styling stays unchanged. Merchant CSS/JS cache versions bumped together.
+- Owner additionally requests smaller price-entry boxes and larger product images. Merchant-only card grid uses112x144 mobile/140x160 desktop packshots, two compact price/stock columns plus explicit POS/Delivery toggles and44px input/button targets; 16px numeric input text prevents Safari focus zoom. The promotion-price control is retired. Admin/Customer styling stays unchanged. Merchant CSS/JS cache versions are bumped together.
 
 ## 2026-10-15 Merchant catalog photo-first ordering
 - Owner requests products with photos at the front/first pages and products without photos at the end. Implement globally in qg_grocery_merchant_page before LIMIT/OFFSET, including search/category/status filters, with deterministic name/id ordering within each group.
