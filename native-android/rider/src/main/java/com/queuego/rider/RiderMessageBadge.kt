@@ -1,10 +1,28 @@
 package com.queuego.rider
 
+import android.content.Context
 import com.queuego.shared.QueueGoNativeApi
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.time.Instant
 
 internal data class BadgeMessage(val id: String, val orderId: String, val senderId: String, val text: String, val at: Long)
 internal data class BadgeRoom(val id: String, val customerId: String, val deliveredAt: Long?)
+
+internal class RiderMessageSeenStore(context: Context) {
+    private val appContext = context.applicationContext
+
+    private fun prefs() =
+        appContext.getSharedPreferences("rider_chat_seen", Context.MODE_PRIVATE)
+
+    suspend fun seenAt(userId: String): Long = withContext(Dispatchers.IO) {
+        prefs().getLong(userId, 0L)
+    }
+
+    suspend fun markSeen(userId: String, at: Long) = withContext(Dispatchers.IO) {
+        prefs().edit().putLong(userId, at).apply()
+    }
+}
 
 /** Web parity: baseline the active room, then count each new latest counterpart message.
  * Completed rooms count customer messages after delivery and the user's inbox seen time. */
