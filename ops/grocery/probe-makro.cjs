@@ -61,6 +61,14 @@ async function get(url){
   fs.writeFileSync('artifacts/makro-probe/initial-search.json',JSON.stringify(p.nextData?.props?.pageProps?.initialSearchResult||null,null,2));
   console.log('INITIAL_SEARCH',JSON.stringify(compactSearchSummary(p.nextData),null,2));
 
+
+  const skipTests=[base+'?skip=20',base+'?skip=40',base+'?size=20&skip=20',base+'?isAdvanceSearch=true&skip=20'];
+  for(const u of skipTests){
+    const t=await get(u), q=t.nextData?.props?.pageProps?.initialSearchResult;
+    console.log('SKIP_TEST',JSON.stringify({url:u,status:t.status,found:q?.found,page:q?.page,nextRequest:q?.nextRequest,first:q?.hits?.[0]?.document?.productId,last:q?.hits?.at?.(-1)?.document?.productId}));
+    await new Promise(r=>setTimeout(r,300));
+  }
+
   const scripts=uniq([...p.html.matchAll(/<script[^>]+src=["']([^"']+)["']/gi)]
     .map(m=>absolute(m[1],p.url)).filter(Boolean));
   const needles=[
