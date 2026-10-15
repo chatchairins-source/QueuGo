@@ -23,6 +23,8 @@ const owner='00000000-0000-4000-8000-000000000001',shop='00000000-0000-4000-8000
    else if(url.includes('/users?'))data=[{id:owner,auth_user_id:owner,role:'shop',status:'active',name:'Isolated QA owner',created_at:new Date().toISOString()}];
    else if(url.includes('/shop_profiles?'))data=[{id:shop,user_id:owner,public_category:'grocery',shop_name:'Isolated QA shop',onboarding_status:'approved'}];
    else if(url.includes('rpc/qg_grocery_categories'))data=[{category:facts[0].category,n:1}];
+   else if(url.includes('rpc/qg_grocery_source_search'))data=[{source:'makro-pro',source_product_id:'isolated-source',brand:facts[0].brand,title_th:facts[0].product_name_th,barcode:facts[0].barcode||null,deepest_category:'dry-grocery/instant-meals/instant-noodles',image_url:null,in_shop:false}];
+   else if(url.includes('rpc/qg_grocery_source_add_to_shop'))data={product_id:'isolated-source-product',delivery_price:8.8};
    else if(url.includes('rpc/qg_grocery_merchant_page'))data=[{...facts[0],id:'00000000-0000-4000-8000-000000000003',selling_price:saved?.selling_price??null,stock_qty:0,stock_tracking:false,enabled:saved?.enabled??false,pos_available:saved?.pos_available??true,delivery_available:saved?.delivery_available??true}];
    else if(url.includes('rpc/qg_grocery_store_save')){const body=route.request().postDataJSON();saved=body.p_rows[0];data={saved:body.p_rows.length}}
    await route.fulfill({status:200,contentType:'application/json',headers:{'Access-Control-Allow-Origin':origin},body:JSON.stringify(data)});

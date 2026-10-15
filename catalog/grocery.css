@@ -20,13 +20,13 @@
 .qgg-merchant .qgg-gp-note{grid-column:1/-1;padding:7px 9px;border-radius:9px;background:#f7f8f9;color:#555;font-size:11px;font-weight:700;line-height:1.35}
 .qgg-merchant .qgg-info>button{grid-column:1 / -1;min-height:42px;margin-top:1px}
 @media(max-width:450px){
-  .qgg-merchant .qgg-row{grid-template-columns:108px minmax(0,1fr);gap:5px 9px;padding:9px}
-  .qgg-merchant .qgg-row>img,.qgg-merchant .qgg-row>.qgg-image-pending{width:108px;height:132px;padding-top:7px}
+  .qgg-merchant .qgg-row{grid-template-columns:116px minmax(0,1fr);gap:5px 9px;padding:9px}
+  .qgg-merchant .qgg-row>img,.qgg-merchant .qgg-row>.qgg-image-pending{width:116px;height:146px;padding-top:7px}
   .qgg-merchant .qgg-info>b{font-size:14px;padding-top:4px}
   .qgg-merchant .qgg-info>small{font-size:11px}
   .qgg-merchant .qgg-price-controls{grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
   .qgg-merchant .qgg-price-controls>label{font-size:10.5px}
-  .qgg-merchant .qgg-price-controls input{min-height:38px;font-size:15px;padding:4px 6px}
+  .qgg-merchant .qgg-price-controls input{min-height:44px;max-width:112px;font-size:16px;padding:5px 6px}
   .qgg-merchant .qgg-channel-controls{grid-template-columns:repeat(2,minmax(0,1fr));gap:5px 7px}
   .qgg-merchant .qgg-channel-controls>label{font-size:11px}
   .qgg-merchant .qgg-gp-note{font-size:10.5px;padding:7px 8px}
