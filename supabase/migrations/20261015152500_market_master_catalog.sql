@@ -25,6 +25,8 @@ create table public.market_master_products (
   retrieved_on date not null,
   image text,
   image_status text not null default 'pending' check (image_status in ('pending','approved','rejected')),
+  image_source text,
+  image_rights_evidence text,
   active boolean not null default true,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
@@ -32,6 +34,16 @@ create table public.market_master_products (
     (suggested_unit is null and suggested_pack_size is null)
     or
     (suggested_unit is not null and suggested_pack_size is not null and suggested_pack_size>0)
+  ),
+  check (
+    (image_status in ('pending','rejected') and image is null)
+    or (
+      image_status='approved'
+      and image is not null
+      and image like 'https://pkypiqhlrmzocysgeqew.supabase.co/storage/v1/object/public/%'
+      and image_source like 'https://%'
+      and length(btrim(coalesce(image_rights_evidence,'')))>10
+    )
   )
 );
 
@@ -303,34 +315,34 @@ grant execute on function public.qg_market_catalog_add(uuid,numeric,text,numeric
 
 insert into public.market_master_products(
   slug,name_th,category,suggested_unit,suggested_pack_size,source_unit,
-  source_url,source_name,source_note,retrieved_on,image,image_status,active
+  source_url,source_name,source_note,retrieved_on,image,image_status,image_source,image_rights_evidence,active
 )
 values
-  ('kale-mixed','ผักคะน้า คละ','ผักสด','กิโลกรัม',1,'กิโลกรัม','https://www.dit.go.th/th/272638/','กรมการค้าภายใน กระทรวงพาณิชย์','DIT agricultural price report','2026-10-15'::date,null,'pending',true),
-  ('chinese-cabbage','ผักกาดขาวปลี','ผักสด','กิโลกรัม',1,'กิโลกรัม','https://www.dit.go.th/th/news/press-releases/','กรมการค้าภายใน กระทรวงพาณิชย์','DIT market price monitoring 2569','2026-10-15'::date,null,'pending',true),
-  ('choy-sum','ผักกวางตุ้ง','ผักสด','กิโลกรัม',1,'กิโลกรัม','https://www.dit.go.th/th/news/press-releases/','กรมการค้าภายใน กระทรวงพาณิชย์','DIT market price monitoring 2569','2026-10-15'::date,null,'pending',true),
-  ('cabbage','กะหล่ำปลี','ผักสด','กิโลกรัม',1,'กิโลกรัม','https://www.dit.go.th/th/news/press-releases/','กรมการค้าภายใน กระทรวงพาณิชย์','DIT market price monitoring 2569','2026-10-15'::date,null,'pending',true),
-  ('thai-basil','โหระพา','ผักสด','กิโลกรัม',1,'กิโลกรัม','https://www.dit.go.th/th/news/press-releases/','กรมการค้าภายใน กระทรวงพาณิชย์','DIT vegetable price monitoring 2569','2026-10-15'::date,null,'pending',true),
-  ('spring-onion','ต้นหอม','ผักสด','กิโลกรัม',1,'กิโลกรัม','https://www.dit.go.th/th/news/press-releases/','กรมการค้าภายใน กระทรวงพาณิชย์','DIT vegetable price monitoring 2569','2026-10-15'::date,null,'pending',true),
-  ('holy-basil-leaves','ใบกะเพรา','ผักสด','กิโลกรัม',1,'กิโลกรัม','https://www.dit.go.th/th/news/press-releases/','กรมการค้าภายใน กระทรวงพาณิชย์','DIT vegetable price monitoring 2569','2026-10-15'::date,null,'pending',true),
-  ('water-spinach','ผักบุ้งจีน','ผักสด','กิโลกรัม',1,'กิโลกรัม','https://www.dit.go.th/th/news/press-releases/','กรมการค้าภายใน กระทรวงพาณิชย์','DIT vegetable price monitoring 2569','2026-10-15'::date,null,'pending',true),
-  ('large-cavendish-banana','กล้วยหอมขนาดใหญ่','ผลไม้',null,null,'หวี','https://www.dit.go.th/th/news/press-releases/','กรมการค้าภายใน กระทรวงพาณิชย์','DIT market price monitoring 2569','2026-10-15'::date,null,'pending',true),
-  ('pork-tenderloin-dressed','สุกรชำแหละ เนื้อสัน สันใน','เนื้อหมู','กิโลกรัม',1,'กิโลกรัม','https://www.dit.go.th/th/272638/','กรมการค้าภายใน กระทรวงพาณิชย์','DIT agricultural price report','2026-10-15'::date,null,'pending',true),
-  ('pork-lean','หมูเนื้อแดง','เนื้อหมู','กิโลกรัม',1,'กิโลกรัม','https://www.dit.go.th/th/news/press-releases/','กรมการค้าภายใน กระทรวงพาณิชย์','DIT pork price monitoring 2569','2026-10-15'::date,null,'pending',true),
-  ('pork-belly','หมูสามชั้น','เนื้อหมู','กิโลกรัม',1,'กิโลกรัม','https://www.dit.go.th/th/news/press-releases/','กรมการค้าภายใน กระทรวงพาณิชย์','DIT market price monitoring 2569','2026-10-15'::date,null,'pending',true),
-  ('native-chicken','ไก่บ้าน','ไก่ / เป็ด','กิโลกรัม',1,'กิโลกรัม','https://www.dit.go.th/th/news/press-releases/','กรมการค้าภายใน กระทรวงพาณิชย์','DIT market price monitoring 2569','2026-10-15'::date,null,'pending',true),
-  ('whole-duck','เป็ดสดทั้งตัว','ไก่ / เป็ด','ชิ้น',1,'ชิ้น','https://www.dit.go.th/th/news/press-releases/','กรมการค้าภายใน กระทรวงพาณิชย์','DIT market price monitoring 2569','2026-10-15'::date,null,'pending',true),
-  ('egg-size-2-10','ไข่ไก่เบอร์ 2 (10 ฟอง)','ไข่','ชิ้น',10,'10 ฟอง','https://www.dit.go.th/th/news/press-releases/','กรมการค้าภายใน กระทรวงพาณิชย์','DIT market price monitoring 2569','2026-10-15'::date,null,'pending',true),
-  ('egg-size-3-10','ไข่ไก่เบอร์ 3 (10 ฟอง)','ไข่','ชิ้น',10,'10 ฟอง','https://www.dit.go.th/th/news/press-releases/','กรมการค้าภายใน กระทรวงพาณิชย์','DIT market price monitoring 2569','2026-10-15'::date,null,'pending',true),
-  ('dried-shiitake-small','เห็ดหอมจีนขนาดเล็ก','ของแห้ง','กิโลกรัม',1,'กิโลกรัม','https://www.dit.go.th/th/news/press-releases/','กรมการค้าภายใน กระทรวงพาณิชย์','DIT vegetarian ingredient monitoring 2569','2026-10-15'::date,null,'pending',true),
-  ('dried-shiitake-large','เห็ดหอมจีนขนาดใหญ่','ของแห้ง','กิโลกรัม',1,'กิโลกรัม','https://www.dit.go.th/th/news/press-releases/','กรมการค้าภายใน กระทรวงพาณิชย์','DIT vegetarian ingredient monitoring 2569','2026-10-15'::date,null,'pending',true),
-  ('dried-bamboo-shoot','หน่อไม้จีน','ของแห้ง','กิโลกรัม',1,'กิโลกรัม','https://www.dit.go.th/th/news/press-releases/','กรมการค้าภายใน กระทรวงพาณิชย์','DIT market price monitoring 2569','2026-10-15'::date,null,'pending',true),
-  ('fresh-tofu-skin','ฟองเต้าหู้สด','เต้าหู้ / เส้นสด / ลูกชิ้น','กิโลกรัม',1,'กิโลกรัม','https://www.dit.go.th/th/news/press-releases/','กรมการค้าภายใน กระทรวงพาณิชย์','DIT market price monitoring 2569','2026-10-15'::date,null,'pending',true),
-  ('dried-lily-flower','ดอกไม้จีน','ของแห้ง','กิโลกรัม',1,'กิโลกรัม','https://www.dit.go.th/th/news/press-releases/','กรมการค้าภายใน กระทรวงพาณิชย์','DIT vegetarian ingredient monitoring 2569','2026-10-15'::date,null,'pending',true),
-  ('textured-vegetable-protein','โปรตีนเกษตร','ของแห้ง','กิโลกรัม',1,'กิโลกรัม','https://www.dit.go.th/th/news/press-releases/','กรมการค้าภายใน กระทรวงพาณิชย์','DIT vegetarian ingredient monitoring 2569','2026-10-15'::date,null,'pending',true),
-  ('ginkgo-nut','แปะก๊วย','ของแห้ง','กิโลกรัม',1,'กิโลกรัม','https://www.dit.go.th/th/news/press-releases/','กรมการค้าภายใน กระทรวงพาณิชย์','DIT vegetarian ingredient monitoring 2569','2026-10-15'::date,null,'pending',true),
-  ('dried-squid-medium','ปลาหมึกแห้งขนาดกลาง','ของแห้ง','กิโลกรัม',1,'กิโลกรัม','https://www.dit.go.th/th/news/press-releases/','กรมการค้าภายใน กระทรวงพาณิชย์','DIT market price monitoring 2569','2026-10-15'::date,null,'pending',true),
-  ('mee-sua-400g','หมี่ซั่ว 400 กรัม','ของแห้ง','ถุง',1,'ถุง 400 กรัม','https://www.dit.go.th/th/news/press-releases/','กรมการค้าภายใน กระทรวงพาณิชย์','DIT market price monitoring 2569','2026-10-15'::date,null,'pending',true)
+  ('kale-mixed','ผักคะน้า คละ','ผักสด','กิโลกรัม',1,'กิโลกรัม','https://www.dit.go.th/th/272638/','กรมการค้าภายใน กระทรวงพาณิชย์','DIT agricultural price report','2026-10-15'::date,null,'pending',null,null,true),
+  ('chinese-cabbage','ผักกาดขาวปลี','ผักสด','กิโลกรัม',1,'กิโลกรัม','https://www.dit.go.th/th/news/press-releases/','กรมการค้าภายใน กระทรวงพาณิชย์','DIT market price monitoring 2569','2026-10-15'::date,null,'pending',null,null,true),
+  ('choy-sum','ผักกวางตุ้ง','ผักสด','กิโลกรัม',1,'กิโลกรัม','https://www.dit.go.th/th/news/press-releases/','กรมการค้าภายใน กระทรวงพาณิชย์','DIT market price monitoring 2569','2026-10-15'::date,null,'pending',null,null,true),
+  ('cabbage','กะหล่ำปลี','ผักสด','กิโลกรัม',1,'กิโลกรัม','https://www.dit.go.th/th/news/press-releases/','กรมการค้าภายใน กระทรวงพาณิชย์','DIT market price monitoring 2569','2026-10-15'::date,null,'pending',null,null,true),
+  ('thai-basil','โหระพา','ผักสด','กิโลกรัม',1,'กิโลกรัม','https://www.dit.go.th/th/news/press-releases/','กรมการค้าภายใน กระทรวงพาณิชย์','DIT vegetable price monitoring 2569','2026-10-15'::date,null,'pending',null,null,true),
+  ('spring-onion','ต้นหอม','ผักสด','กิโลกรัม',1,'กิโลกรัม','https://www.dit.go.th/th/news/press-releases/','กรมการค้าภายใน กระทรวงพาณิชย์','DIT vegetable price monitoring 2569','2026-10-15'::date,null,'pending',null,null,true),
+  ('holy-basil-leaves','ใบกะเพรา','ผักสด','กิโลกรัม',1,'กิโลกรัม','https://www.dit.go.th/th/news/press-releases/','กรมการค้าภายใน กระทรวงพาณิชย์','DIT vegetable price monitoring 2569','2026-10-15'::date,null,'pending',null,null,true),
+  ('water-spinach','ผักบุ้งจีน','ผักสด','กิโลกรัม',1,'กิโลกรัม','https://www.dit.go.th/th/news/press-releases/','กรมการค้าภายใน กระทรวงพาณิชย์','DIT vegetable price monitoring 2569','2026-10-15'::date,null,'pending',null,null,true),
+  ('large-cavendish-banana','กล้วยหอมขนาดใหญ่','ผลไม้',null,null,'หวี','https://www.dit.go.th/th/news/press-releases/','กรมการค้าภายใน กระทรวงพาณิชย์','DIT market price monitoring 2569','2026-10-15'::date,null,'pending',null,null,true),
+  ('pork-tenderloin-dressed','สุกรชำแหละ เนื้อสัน สันใน','เนื้อหมู','กิโลกรัม',1,'กิโลกรัม','https://www.dit.go.th/th/272638/','กรมการค้าภายใน กระทรวงพาณิชย์','DIT agricultural price report','2026-10-15'::date,null,'pending',null,null,true),
+  ('pork-lean','หมูเนื้อแดง','เนื้อหมู','กิโลกรัม',1,'กิโลกรัม','https://www.dit.go.th/th/news/press-releases/','กรมการค้าภายใน กระทรวงพาณิชย์','DIT pork price monitoring 2569','2026-10-15'::date,null,'pending',null,null,true),
+  ('pork-belly','หมูสามชั้น','เนื้อหมู','กิโลกรัม',1,'กิโลกรัม','https://www.dit.go.th/th/news/press-releases/','กรมการค้าภายใน กระทรวงพาณิชย์','DIT market price monitoring 2569','2026-10-15'::date,null,'pending',null,null,true),
+  ('native-chicken','ไก่บ้าน','ไก่ / เป็ด','กิโลกรัม',1,'กิโลกรัม','https://www.dit.go.th/th/news/press-releases/','กรมการค้าภายใน กระทรวงพาณิชย์','DIT market price monitoring 2569','2026-10-15'::date,null,'pending',null,null,true),
+  ('whole-duck','เป็ดสดทั้งตัว','ไก่ / เป็ด','ชิ้น',1,'ตัว','https://www.dit.go.th/th/news/press-releases/','กรมการค้าภายใน กระทรวงพาณิชย์','DIT market price monitoring 2569','2026-10-15'::date,null,'pending',null,null,true),
+  ('egg-size-2-10','ไข่ไก่เบอร์ 2 (10 ฟอง)','ไข่','ชิ้น',10,'10 ฟอง','https://www.dit.go.th/th/news/press-releases/','กรมการค้าภายใน กระทรวงพาณิชย์','DIT market price monitoring 2569','2026-10-15'::date,null,'pending',null,null,true),
+  ('egg-size-3-10','ไข่ไก่เบอร์ 3 (10 ฟอง)','ไข่','ชิ้น',10,'10 ฟอง','https://www.dit.go.th/th/news/press-releases/','กรมการค้าภายใน กระทรวงพาณิชย์','DIT market price monitoring 2569','2026-10-15'::date,null,'pending',null,null,true),
+  ('dried-shiitake-small','เห็ดหอมจีนขนาดเล็ก','ของแห้ง','กิโลกรัม',1,'กิโลกรัม','https://www.dit.go.th/th/news/press-releases/','กรมการค้าภายใน กระทรวงพาณิชย์','DIT vegetarian ingredient monitoring 2569','2026-10-15'::date,null,'pending',null,null,true),
+  ('dried-shiitake-large','เห็ดหอมจีนขนาดใหญ่','ของแห้ง','กิโลกรัม',1,'กิโลกรัม','https://www.dit.go.th/th/news/press-releases/','กรมการค้าภายใน กระทรวงพาณิชย์','DIT vegetarian ingredient monitoring 2569','2026-10-15'::date,null,'pending',null,null,true),
+  ('dried-bamboo-shoot','หน่อไม้จีน','ของแห้ง','กิโลกรัม',1,'กิโลกรัม','https://www.dit.go.th/th/news/press-releases/','กรมการค้าภายใน กระทรวงพาณิชย์','DIT market price monitoring 2569','2026-10-15'::date,null,'pending',null,null,true),
+  ('fresh-tofu-skin','ฟองเต้าหู้สด','เต้าหู้ / เส้นสด / ลูกชิ้น','กิโลกรัม',1,'กิโลกรัม','https://www.dit.go.th/th/news/press-releases/','กรมการค้าภายใน กระทรวงพาณิชย์','DIT market price monitoring 2569','2026-10-15'::date,null,'pending',null,null,true),
+  ('dried-lily-flower','ดอกไม้จีน','ของแห้ง','กิโลกรัม',1,'กิโลกรัม','https://www.dit.go.th/th/news/press-releases/','กรมการค้าภายใน กระทรวงพาณิชย์','DIT vegetarian ingredient monitoring 2569','2026-10-15'::date,null,'pending',null,null,true),
+  ('textured-vegetable-protein','โปรตีนเกษตร','ของแห้ง','กิโลกรัม',1,'กิโลกรัม','https://www.dit.go.th/th/news/press-releases/','กรมการค้าภายใน กระทรวงพาณิชย์','DIT vegetarian ingredient monitoring 2569','2026-10-15'::date,null,'pending',null,null,true),
+  ('ginkgo-nut','แปะก๊วย','ของแห้ง','กิโลกรัม',1,'กิโลกรัม','https://www.dit.go.th/th/news/press-releases/','กรมการค้าภายใน กระทรวงพาณิชย์','DIT vegetarian ingredient monitoring 2569','2026-10-15'::date,null,'pending',null,null,true),
+  ('dried-squid-medium','ปลาหมึกแห้งขนาดกลาง','ของแห้ง','กิโลกรัม',1,'กิโลกรัม','https://www.dit.go.th/th/news/press-releases/','กรมการค้าภายใน กระทรวงพาณิชย์','DIT market price monitoring 2569','2026-10-15'::date,null,'pending',null,null,true),
+  ('mee-sua-400g','หมี่ซั่ว 400 กรัม','ของแห้ง','ถุง',1,'ถุง 400 กรัม','https://www.dit.go.th/th/news/press-releases/','กรมการค้าภายใน กระทรวงพาณิชย์','DIT market price monitoring 2569','2026-10-15'::date,null,'pending',null,null,true)
 on conflict(slug) do update set
   name_th=excluded.name_th,
   category=excluded.category,
