@@ -23,7 +23,7 @@ const id=n=>'00000000-0000-4000-8000-'+String(n).padStart(12,'0');
  const q=(s,p)=>db.query(s,p),as=uid=>q("select set_config('test.uid',$1,false)",[id(uid)]);
  const eq=(a,b)=>{assert.deepEqual(a,b);checks++};
  async function order(n,status='in_progress',fee=20,payout=25,next=null){
-   await q("insert into orders(id,order_number,status,rider_id,customer_id,shop_id,delivery_fee,total_amount,rider_delivery_payout,next_after_order_id) values($1,$2,$3,$4,$5,$6,$7,100+$7,$8,$9)",
+   await q("insert into orders(id,order_number,status,rider_id,customer_id,shop_id,delivery_fee,total_amount,rider_delivery_payout,next_after_order_id) values($1,$2,$3,$4,$5,$6,$7::numeric,100::numeric+$7::numeric,$8::numeric,$9)",
      [id(n),'QT-'+n,status,id(11),id(60),id(50),fee,payout,next&&id(next)]);
    await q("insert into deliveries(order_id,rider_id,status,delivery_fee) values($1,$2,'assigned',$3)",[id(n),id(11),fee]);
  }
