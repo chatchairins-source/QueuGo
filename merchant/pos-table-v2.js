@@ -157,6 +157,9 @@
       }
       if(!profile)throw Error('ไม่พบบัญชีร้านค้าในฐานข้อมูล');const u=qtUserFromRow(profile);
       if(u.type!=='shop')throw Error('บัญชีนี้ยังไม่ได้เข้าร่วมร้านค้า กรุณาใส่รหัสเชิญ');
+      const shopRows=await qtSupabaseTable('shop_profiles?select=id,shop_name,public_category,status,metadata&user_id=eq.'+encodeURIComponent(u.id)+'&archived_at=is.null&order=created_at.desc&limit=1',{accessToken:auth.access_token});
+      const shop=Array.isArray(shopRows)?shopRows[0]:null;
+      if(shop){const meta=shop.metadata&&typeof shop.metadata==='object'&&!Array.isArray(shop.metadata)?shop.metadata:{};const identity={id:u.id,authUserId:u.authUserId,type:u.type,status:u.status,name:u.name,phone:u.phone};Object.assign(u,meta,{shopName:shop.shop_name,shopProfileId:shop.id,publicCategory:shop.public_category||null,category:shop.public_category||meta.category||u.category});Object.assign(u,identity);}
       QT_DB_CACHE.qt_users=[u];qtMarkClean('qt_users');setSession({userId:u.id,authUserId:profile.auth_user_id,accessToken:auth.access_token,refreshToken:auth.refresh_token||null,expiresAt:auth.expires_at?Number(auth.expires_at)*1000:qtJwtExpiryMs(auth.access_token),role:profile.role});navigate('dashboard');setTimeout(()=>qtBackgroundHydrate({light:false}),0);
     }catch(err){message(err);return false}
     finally{window.qgmLoginPending=false;if(btn.isConnected){btn.disabled=false;btn.textContent='เข้าสู่ระบบ'}}return false;
