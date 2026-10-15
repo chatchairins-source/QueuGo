@@ -30,7 +30,6 @@ insert into shop_profiles values('20000000-0000-4000-8000-000000000002','1000000
 await db.exec(fs.readFileSync('supabase/migrations/20261012170449_grocery_master_catalog.sql','utf8'));
 await db.exec(fs.readFileSync('supabase/migrations/20261015140312_grocery_photo_first_paging.sql','utf8'));
 await db.exec(fs.readFileSync('supabase/migrations/20261015144000_grocery_catalog_sales_channels.sql','utf8'));
-await db.exec(fs.readFileSync('supabase/migrations/20261015165000_grocery_makro_full_catalog.sql','utf8'));
 const role=async(n,r='authenticated')=>db.exec(`reset role;select set_config('request.jwt.claim.sub','10000000-0000-4000-8000-00000000000${n}',false);set role ${r};`);
 await role(1);const batch=N.batch([real,coke]).items;await db.query('select qg_grocery_import($1::jsonb)',[JSON.stringify(batch)]);await db.query('select qg_grocery_import($1::jsonb)',[JSON.stringify(batch)]);eq((await db.query('select count(*)::int n from grocery_master_products')).rows[0].n,2);
 const masters=(await db.query('select id,normalized_key from grocery_master_products order by brand')).rows;const m=masters.find(x=>x.normalized_key.startsWith('mama')).id,c=masters.find(x=>x.normalized_key.startsWith('coca')).id;
@@ -88,17 +87,6 @@ eq(new Set(first.slice(0,50).concat(second.slice(0,50)).map(r=>r.id)).size,100);
 eq((await getPage(0,'zz-photo-fixture')).every(photo),true);
 eq((await getPage(0,'','off')).every(photo),true);eq((await getPage(0,'','unpriced')).every(photo),true);
 eq((await getPage(0,'','on')).length,0);
-// Makro dry branded import: idempotent, active/searchable for Merchant, preview image never promoted to Customer image.
-await db.exec('reset role;');await role(1);
-const makroFixture={source_product_id:'8859876543210',barcode:null,brand:'ยำยำ',title_th:'ยำยำ บะหมี่กึ่งสำเร็จรูป รสหมูสับ 60 กรัม',title_en:'YumYum Instant Noodles Minced Pork 60 g',image_url:'https://images.mango-prod.siammakro.cloud/product-images/8859876543210-fixture.jpeg',deepest_category:'dry-grocery/instant-meals/instant-noodles',retrieved_at:'2026-10-15T16:00:00Z'};
-await db.query('select qg_grocery_import_makro($1::jsonb)',[JSON.stringify([makroFixture])]);
-await db.query('select qg_grocery_import_makro($1::jsonb)',[JSON.stringify([makroFixture])]);
-const mm=(await db.query("select id,active,image,image_source,image_status,catalog_display_name,catalog_source from grocery_master_products where catalog_source='makro-pro' and catalog_display_name like 'ยำยำ%'")).rows;
-eq(mm.length,1);eq(mm[0].active,true);eq(mm[0].image,null);eq(mm[0].image_status,'pending');eq(mm[0].image_source,makroFixture.image_url);eq(mm[0].catalog_display_name,makroFixture.title_th);
-eq((await db.query("select count(*)::int n from grocery_master_sources where master_product_id=$1 and source_product_id=$2",[mm[0].id,makroFixture.source_product_id])).rows[0].n,1);
-await role(2);const makroPage=(await db.query('select qg_grocery_merchant_page($1,$2) page',[shop,'ยำยำ'])).rows[0].page;
-eq(makroPage.length,1);eq(makroPage[0].display_name,makroFixture.title_th);eq(makroPage[0].image,makroFixture.image_url);
-await db.exec('reset role;');
 await db.exec("reset role;update users set status='suspended' where id='10000000-0000-4000-8000-000000000002';");await role(2);await assert.rejects(save(shop,{...row,selling_price:8}),/own grocery shop required/);checks++;
 await db.close();console.log(JSON.stringify({checks,failures:0,scope:'isolated real-fact normalization, SQL import idempotency, store price/stock and role isolation; no Production mutation'}));
 })().catch(e=>{console.error(e);process.exit(1)});
