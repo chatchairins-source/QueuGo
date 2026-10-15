@@ -53,6 +53,8 @@ import com.queuego.shared.QgSectionTitle
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import com.queuego.shared.QueueGoHttpException
 
 @Composable
@@ -124,18 +126,28 @@ fun MarketNativeScreen(
                         if (restored.map { it.product.marketId }.toSet().size <= 1) restored else emptyList()
                     }
 
-                val accountCart = restore(cartStore.load())
+                val accountCart = restore(withContext(Dispatchers.IO) { cartStore.load() })
                 val guestStore = if (auth == null) null else MarketCartStore(context, "guest")
-                val guestRevision = if (checkoutPending) null else guestStore?.revisionForMerge()
-                val alreadyMerged = guestRevision != null && cartStore.hasMergedGuest(guestRevision)
-                val guestCart = if (checkoutPending || alreadyMerged) emptyList() else guestStore?.let { restore(it.load()) }.orEmpty()
+                val guestRevision = if (checkoutPending) null else withContext(Dispatchers.IO) {
+                    guestStore?.revisionForMerge()
+                }
+                val alreadyMerged = guestRevision != null && withContext(Dispatchers.IO) {
+                    cartStore.hasMergedGuest(guestRevision)
+                }
+                val guestCart = if (checkoutPending || alreadyMerged) emptyList() else guestStore?.let { store ->
+                    restore(withContext(Dispatchers.IO) { store.load() })
+                }.orEmpty()
                 if (!checkoutPending && alreadyMerged) {
-                    commitMarketGuestMerge(true, { }, { guestStore?.clearMergedGuest() })
+                    withContext(Dispatchers.IO) {
+                        commitMarketGuestMerge(true, { }, { guestStore?.clearMergedGuest() })
+                    }
                 }
                 cart = when {
                     guestCart.isEmpty() -> accountCart
                     accountCart.isEmpty() -> {
-                        commitMarketGuestMerge(false, { cartStore.persistGuestMerge(guestCart, requireNotNull(guestRevision)) }, { guestStore?.clearMergedGuest() })
+                        withContext(Dispatchers.IO) {
+                            commitMarketGuestMerge(false, { cartStore.persistGuestMerge(guestCart, requireNotNull(guestRevision)) }, { guestStore?.clearMergedGuest() })
+                        }
                         guestCart
                     }
                     accountCart.first().product.marketId == guestCart.first().product.marketId -> {
@@ -151,7 +163,9 @@ fun MarketNativeScreen(
                                         .coerceAtLeast(1)
                                 )
                             }
-                        commitMarketGuestMerge(false, { cartStore.persistGuestMerge(merged, requireNotNull(guestRevision)) }, { guestStore?.clearMergedGuest() })
+                        withContext(Dispatchers.IO) {
+                            commitMarketGuestMerge(false, { cartStore.persistGuestMerge(merged, requireNotNull(guestRevision)) }, { guestStore?.clearMergedGuest() })
+                        }
                         merged
                     }
                     else -> {
