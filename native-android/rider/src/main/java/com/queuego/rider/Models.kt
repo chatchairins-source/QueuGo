@@ -216,7 +216,9 @@ data class RiderBundleOrder(
     val routeSequence: String?,
     val pickupStopRank: Int? = null,
     val dropoffStopRank: Int? = null,
-    val customerName: String? = null
+    val customerName: String? = null,
+    val readyEstimateAt: String? = null,
+    val readyWaitMinutes: Int? = null
 )
 
 data class RiderBundleCandidate(
