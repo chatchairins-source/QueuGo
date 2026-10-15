@@ -347,6 +347,23 @@ ok(
 const customerPicker=read('customer/src/main/java/com/queuego/customer/CustomerLocationPicker.kt');
 ok(customerPicker.includes('mapReady')&&customerPicker.includes('delay(150)'),'Customer location permission must remain delayed until Longdo renderer is ready');
 
+const riderLongdoMap=read('rider/src/main/java/com/queuego/rider/LongdoRiderMap.kt');
+ok(
+  riderLongdoMap.includes('withContext(Dispatchers.IO) { stateStore.loadMapCamera(stateKey) }') &&
+  riderLongdoMap.includes('riderMapCameraIoScope.launch') &&
+  riderLongdoMap.includes('riderMapCameraPersistMutex.withLock') &&
+  !riderLongdoMap.includes('mutableStateOf(stateStore.loadMapCamera(stateKey))') &&
+  !riderLongdoMap.includes('RiderLongdoHolder(cameraState) { camera -> stateStore.saveMapCamera(stateKey, camera) }'),
+  'Rider Longdo camera restore/persistence must keep encrypted Keystore I/O off Main and map callbacks'
+);
+ok(
+  riderLongdoMap.includes('map?.clearPin()') &&
+  riderLongdoMap.includes('markerBitmaps.values.forEach') &&
+  riderLongdoMap.includes('stopBitmaps.values.forEach') &&
+  riderLongdoMap.includes('bitmap.recycle()'),
+  'Rider Longdo marker caches must be released when the map holder is disposed'
+);
+
 const sharedManifest=read('shared/src/main/AndroidManifest.xml');
 const riderManifest=read('rider/src/main/AndroidManifest.xml');
 ok(sharedManifest.includes('FOREGROUND_SERVICE_MICROPHONE')&&sharedManifest.includes('foregroundServiceType="microphone"'),'Voice microphone foreground service declaration must match Android 14+ type rules');
