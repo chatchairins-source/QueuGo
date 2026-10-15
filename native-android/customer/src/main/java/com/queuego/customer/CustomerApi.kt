@@ -8,9 +8,23 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
+import java.io.ByteArrayOutputStream
+import java.io.InputStream
 import java.net.HttpURLConnection
 import java.net.URL
 import java.util.UUID
+
+private fun InputStream.readCustomerLongdoResponseBounded(limit: Int = 512 * 1024): String {
+    val output = ByteArrayOutputStream(minOf(limit, 64 * 1024))
+    val buffer = ByteArray(8 * 1024)
+    while (true) {
+        val count = read(buffer)
+        if (count < 0) break
+        require(output.size() + count <= limit) { "ข้อมูลพิกัดมีขนาดใหญ่เกินไป" }
+        output.write(buffer, 0, count)
+    }
+    return output.toString(Charsets.UTF_8.name())
+}
 
 data class CustomerShop(
     val id: String,
@@ -375,8 +389,8 @@ class CustomerApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
         connection.setRequestProperty("Accept", "application/json")
         try {
             if (connection.responseCode !in 200..299) return@withContext null
-            connection.inputStream.bufferedReader(Charsets.UTF_8).use { reader ->
-                formatLongdoAddress(reader.readText())
+            connection.inputStream.use { input ->
+                formatLongdoAddress(input.readCustomerLongdoResponseBounded())
             }
         } catch (_: Exception) {
             null
