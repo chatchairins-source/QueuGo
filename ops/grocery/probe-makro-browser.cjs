@@ -18,7 +18,7 @@ const target=process.argv[2]||'https://www.makro.pro/th/c/dry-grocery';
     const type=req.resourceType();
     if(type!=='xhr'&&type!=='fetch')return;
     const u=req.url();
-    if(/google|facebook|doubleclick|analytics|segment|braze|metrics/i.test(u))return;
+    if(/google|facebook|doubleclick|analytics|segment|braze|metrics|appsflyer|sentry|accesstrade/i.test(u))return;
     requests.push({type,method:req.method(),url:u,postData:req.postData(),headers:req.headers()});
   });
 
@@ -27,7 +27,7 @@ const target=process.argv[2]||'https://www.makro.pro/th/c/dry-grocery';
     const type=req.resourceType();
     if(type!=='xhr'&&type!=='fetch')return;
     const u=res.url();
-    if(/google|facebook|doubleclick|analytics|segment|braze|metrics/i.test(u))return;
+    if(/google|facebook|doubleclick|analytics|segment|braze|metrics|appsflyer|sentry|accesstrade/i.test(u))return;
     const ct=res.headers()['content-type']||'';
     if(!ct.includes('json'))return;
     try{
@@ -42,32 +42,14 @@ const target=process.argv[2]||'https://www.makro.pro/th/c/dry-grocery';
   await page.goto(target,{waitUntil:'domcontentloaded',timeout:120000});
   await page.waitForTimeout(5000);
 
-  let input=null;
-  const candidates=[
-    'input[type="search"]',
-    'input[placeholder*="ค้นหา"]',
-    'input[aria-label*="ค้นหา"]'
-  ];
-  for(const sel of candidates){
-    const loc=page.locator(sel).first();
-    if(await loc.count()){ input=loc; break; }
-  }
-  if(input){
-    await input.fill('มาม่า');
-    await input.press('Enter');
-    await page.waitForTimeout(7000);
-  }else{
-    await page.goto('https://www.makro.pro/th/c/search?q=%E0%B8%A1%E0%B8%B2%E0%B8%A1%E0%B9%88%E0%B8%B2',{waitUntil:'domcontentloaded',timeout:120000});
-    await page.waitForTimeout(7000);
-  }
-
-  for(let i=0;i<3;i++){
-    await page.evaluate(()=>window.scrollTo(0,document.body.scrollHeight));
-    await page.waitForTimeout(1500);
-  }
+  const page2=page.locator('button[data-test-id$="paginationItem-2"]').first();
+  if(!(await page2.count())) throw new Error('Makro pagination page 2 button not found');
+  await page2.click();
+  await page.waitForTimeout(7000);
 
   fs.writeFileSync('artifacts/makro-browser-probe/requests.json',JSON.stringify(requests,null,2));
   fs.writeFileSync('artifacts/makro-browser-probe/responses.json',JSON.stringify(responses,null,2));
+  console.log('PAGE_AFTER_CLICK',page.url());
   console.log('BROWSER_REQUESTS',JSON.stringify(requests.slice(-80),null,2));
   console.log('BROWSER_RESPONSES',JSON.stringify(responses.slice(-20).map(x=>({
     url:x.url,status:x.status,method:x.request.method,postData:x.request.postData,
