@@ -618,6 +618,16 @@ ok(
   'Rider navigation-map camera/view-mode Keystore restore and high-frequency persistence must stay off Main'
 );
 
+const riderNavigationRouteClient=read('rider-navigation-map/src/main/java/com/queuego/ridernavigationmap/LongdoNavigationRouteClient.kt');
+ok(
+  riderNavigationRouteClient.includes('LONGDO_ROUTE_RESPONSE_MAX_BYTES = 4 * 1024 * 1024') &&
+  riderNavigationRouteClient.includes('LONGDO_ROUTE_MAX_FEATURES = 2_048') &&
+  riderNavigationRouteClient.includes('LONGDO_ROUTE_MAX_POINTS = 12_000') &&
+  riderNavigationRouteClient.includes('readLongdoRouteResponseBounded') &&
+  !riderNavigationRouteClient.includes('response.body?.string()'),
+  'Rider navigation route HTTP/GeoJSON memory must stay bounded before parse and renderer allocation'
+);
+
 const riderNavigationMapRuntime=read('rider-navigation-map/src/main/java/com/queuego/ridernavigationmap/RiderNavigationMap.kt');
 ok(
   riderNavigationMapRuntime.includes('RIDER_NAV_SNAPSHOT_MAX_SIDE_PX = 1280') &&
