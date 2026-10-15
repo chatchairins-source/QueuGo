@@ -439,6 +439,7 @@ function qtJwtExpiryMs(token){
   }catch(e){ return 0; }
 }
 let QT_AUTH_REFRESH_PROMISE=null;
+const QT_AUTH_REFRESH_TIMEOUT_MS=8000;
 async function qtGetAccessToken(forceRefresh=false){
   const s=qtSessionRead();
   if(!s?.accessToken) return '';
@@ -454,7 +455,8 @@ async function qtGetAccessToken(forceRefresh=false){
     try{
       const r=await fetch(QT_SUPABASE_CONFIG.URL+'/auth/v1/token?grant_type=refresh_token',{
         method:'POST',headers:qtSupabaseHeaders(),
-        body:JSON.stringify({refresh_token:s.refreshToken})
+        body:JSON.stringify({refresh_token:s.refreshToken}),
+        signal:AbortSignal.timeout(QT_AUTH_REFRESH_TIMEOUT_MS)
       });
       const data=await r.json().catch(()=>({}));
       if(!r.ok || !data.access_token) throw new Error(data.error_description||data.msg||data.message||'SESSION_REFRESH_FAILED');

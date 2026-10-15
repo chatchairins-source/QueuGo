@@ -30,6 +30,9 @@ ok(merchant.includes('await qtRestoreOwnUser();u=shopUser();return u||null'),'Me
 ok(!merchant.includes("await qtHydrateDatabase({light:false});return shopUser()"),'Merchant protected-route identity recovery must not fall through to an unbounded full database hydrate');
 ok(merchant.includes('await qgmBoundSessionRestore(qtRestoreOwnUser({refresh:true}))'),'Grocery category recovery must refresh only the Merchant identity under the same timeout');
 
+ok(merchant.includes('const QT_AUTH_REFRESH_TIMEOUT_MS=8000;'),'Merchant token refresh must have an explicit network timeout below the route restore bound');
+ok(merchant.includes('signal:AbortSignal.timeout(QT_AUTH_REFRESH_TIMEOUT_MS)'),'Merchant refresh-token fetch must be abortable instead of hanging indefinitely');
+
 ok(merchant.includes("function qtApplyShopProfileIdentity"),'Merchant identity merge must be shared across login/restore/hydrate');
 
 ok(merchant.includes("const posControl=$('#qgm-pos-available'),deliveryControl=$('#qgm-delivery-available');"),'product save must tolerate missing POS/Delivery controls from stale DOM');
