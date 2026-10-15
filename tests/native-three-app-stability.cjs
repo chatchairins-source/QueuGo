@@ -7,10 +7,13 @@ const read=p=>fs.readFileSync(path.join(root,p),'utf8');
 const auth=read('shared/src/main/java/com/queuego/shared/QueueGoAuthHost.kt');
 const secureRoleStore=read('shared/src/main/java/com/queuego/shared/SecureRoleSessionStore.kt');
 ok(
+  secureRoleStore.includes('SECURE_ROLE_SESSION_MAX_PLAINTEXT_BYTES = 48 * 1024') &&
   secureRoleStore.includes('SECURE_ROLE_SESSION_MAX_ENCRYPTED_CHARS = 64 * 1024') &&
+  secureRoleStore.includes('json.toByteArray(Charsets.UTF_8).size <= SECURE_ROLE_SESSION_MAX_PLAINTEXT_BYTES') &&
+  secureRoleStore.includes('encrypted.length <= SECURE_ROLE_SESSION_MAX_ENCRYPTED_CHARS') &&
   secureRoleStore.includes('raw.length > SECURE_ROLE_SESSION_MAX_ENCRYPTED_CHARS') &&
   secureRoleStore.includes('prefs.edit().remove("session").apply()'),
-  'Customer/Merchant corrupted encrypted sessions must be size-bounded before Base64/Keystore decrypt and fail closed'
+  'Customer/Merchant session save and corrupted restore must be size-bounded before/after Keystore crypto'
 );
 ok(auth.includes('withContext(Dispatchers.IO) { store.load() }'),'Customer/Merchant auth restore must decrypt Keystore state off Main');
 ok(auth.includes('withContext(Dispatchers.IO) { store.save(validated) }'),'Customer/Merchant periodic session persistence must stay off Main');
@@ -169,6 +172,12 @@ ok(
 
 const chatImage=read('shared/src/main/java/com/queuego/shared/NativeChatImage.kt');
 ok(chatImage.includes('CHAT_IMAGE_MAX_SIDE = 1280'),'Shared chat bitmaps must stay capped for Customer/Merchant/Rider memory safety');
+ok(
+  chatImage.includes('CHAT_IMAGE_MAX_BASE64_CHARS = ((CHAT_IMAGE_LIMIT + 2) / 3) * 4') &&
+  chatImage.includes('encodedLength in 1..CHAT_IMAGE_MAX_BASE64_CHARS') &&
+  !chatImage.includes('source.length <= 7 * 1024 * 1024'),
+  'Shared chat data-URI images must reject oversized Base64 before allocating decoded bytes'
+);
 ok(chatImage.includes('DisposableEffect(bitmap)')&&chatImage.includes('owned.recycle()'),'Shared chat bitmaps must release owned memory after leaving composition');
 
 const design=read('shared/src/main/java/com/queuego/shared/QueueGoDesign.kt');
@@ -230,7 +239,10 @@ const store=read('rider/src/main/java/com/queuego/rider/SessionStore.kt');
 ok(store.includes('RIDER_REGISTRATION_DRAFT_MAX_JSON_CHARS = 16 * 1024 * 1024'),'Rider registration plaintext draft must have an aggregate heap bound');
 ok(store.includes('RIDER_REGISTRATION_DRAFT_MAX_FILE_BYTES = 24L * 1024L * 1024L'),'Rider encrypted draft file must be bounded before read/decrypt');
 ok(
+  store.includes('RIDER_SESSION_MAX_JSON_BYTES = 48 * 1024') &&
   store.includes('RIDER_ENCRYPTED_SMALL_PREF_MAX_CHARS = 64 * 1024') &&
+  store.includes('json.toByteArray(Charsets.UTF_8).size <= RIDER_SESSION_MAX_JSON_BYTES') &&
+  store.includes('encrypted.length <= RIDER_ENCRYPTED_SMALL_PREF_MAX_CHARS') &&
   store.includes('RIDER_HOME_SNAPSHOT_MAX_JSON_CHARS = 1024 * 1024') &&
   store.includes('RIDER_HOME_SNAPSHOT_MAX_ENCRYPTED_CHARS = 2 * 1024 * 1024') &&
   store.includes('boundedEncryptedPref("session", RIDER_ENCRYPTED_SMALL_PREF_MAX_CHARS)') &&
