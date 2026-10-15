@@ -706,7 +706,7 @@ async function qtRestoreOwnUser(options={}){
   if(!options.refresh){
     let cached=null;try{const key=qgMerchantCacheKey();cached=key&&JSON.parse(localStorage.getItem(key)||'null')}catch(e){}
     const session=qtSessionRead();
-    if(cached?.user?.id===session?.userId&&cached.user.type==='shop'&&cached.user.shopProfileId&&Date.now()-cached.at<7*86400000){
+    if(cached?.user?.id===session?.userId&&cached.user.type==='shop'&&cached.user.shopProfileId&&cached.user.category&&Date.now()-cached.at<7*86400000){
       QT_DB_CACHE.qt_users=[cached.user];
       QT_SYNC.profileMaps={shopById:new Map([[cached.user.shopProfileId,cached.user.id]]),shopByUserId:new Map([[cached.user.id,cached.user.shopProfileId]])};
       const productCacheFresh=Number(cached.productsAt)>0&&Date.now()-Number(cached.productsAt)<5*60000;
@@ -3850,7 +3850,7 @@ window.qgmExportRevenue=async function(button){
   const cacheKey=()=>{const s=qtSessionRead();return s?.authUserId?'qg-merchant-fast-v21:'+s.authUserId:null};
   window.qgMerchantCacheKey=cacheKey;window.qgSaveMerchantCache=saveFast;
  function saveFast(){
-    const key=cacheKey(),u=currentUser();if(!key||u?.type!=='shop')return;
+    const key=cacheKey(),u=currentUser();if(!key||u?.type!=='shop'||!u.shopProfileId||!u.category)return;
     const products=qtSanitizeCachedProducts(dbGet('qt_products',[])||[],u);
     try{const now=Date.now(),json=JSON.stringify({at:now,productsAt:now,user:u,products});if(json.length<900000)localStorage.setItem(key,json)}catch(e){}
   }
