@@ -31,9 +31,17 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.foundation.layout.Box
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 import com.longdo.api.IMapListener
 import com.longdo.api.LongdoLayer
 import com.longdo.api.MapGLSurfaceView
@@ -44,6 +52,8 @@ private const val RIDER_MAP_LOCATION_REFRESH_MS = 2_500L
 private const val RIDER_MAP_LOCATION_REFRESH_METERS = 2f
 private const val RIDER_MAP_LAST_KNOWN_MAX_AGE_MS = 120_000L
 private const val RIDER_MAP_LOCATION_ANIMATION_STEPS = 18
+private val riderMapCameraIoScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+private val riderMapCameraPersistMutex = Mutex()
 
 private enum class RiderStopVisual { PICKUP, DROPOFF }
 
@@ -427,8 +437,19 @@ private class RiderLongdoHolder(
 
     fun dispose() {
         disposed = true
-        roadDisplay.dispose()
         runCatching { pause() }
+        runCatching { map?.clearPin() }
+        currentLocationPin = null
+        stopPins.clear()
+        markerBitmaps.values.forEach { bitmap ->
+            if (!bitmap.isRecycled) runCatching { bitmap.recycle() }
+        }
+        markerBitmaps.clear()
+        stopBitmaps.values.forEach { bitmap ->
+            if (!bitmap.isRecycled) runCatching { bitmap.recycle() }
+        }
+        stopBitmaps.clear()
+        roadDisplay.dispose()
         map = null
         mapView = null
     }
@@ -445,10 +466,29 @@ internal fun RiderLongdoMap(
     onMapReady: (Boolean) -> Unit
 ) {
     val context = LocalContext.current
-    val stateStore = remember(context) { SessionStore(context) }
-    val cameraState = rememberSaveable(stateKey) { mutableStateOf(stateStore.loadMapCamera(stateKey)) }
+    val stateStore = remember(context.applicationContext) { SessionStore(context.applicationContext) }
+    val cameraState = rememberSaveable(stateKey) { mutableStateOf<DoubleArray?>(null) }
+    var cameraHydrated by remember(stateKey) { mutableStateOf(cameraState.value != null) }
+    LaunchedEffect(stateKey) {
+        if (!cameraHydrated) {
+            cameraState.value = withContext(Dispatchers.IO) { stateStore.loadMapCamera(stateKey) }
+            cameraHydrated = true
+        }
+    }
+    if (!cameraHydrated) {
+        Box(modifier)
+        return
+    }
     val holder = remember(stateKey) {
-        RiderLongdoHolder(cameraState) { camera -> stateStore.saveMapCamera(stateKey, camera) }
+        RiderLongdoHolder(cameraState) { camera ->
+            riderMapCameraIoScope.launch {
+                runCatching {
+                    riderMapCameraPersistMutex.withLock {
+                        stateStore.saveMapCamera(stateKey, camera)
+                    }
+                }.onFailure { Log.w("QueueGoLongdo", "map_camera_persist_failed", it) }
+            }
+        }
     }
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     val currentReady = rememberUpdatedState(onMapReady)
