@@ -1,7 +1,9 @@
 const fs=require('node:fs');
 const id=n=>'00000000-0000-4000-8000-'+String(n).padStart(12,'0');
 module.exports=()=>require('./rider-dispatch-schema.cjs')()+fs.readFileSync('supabase/migrations/20261014234500_rider_continuous_dispatch_phase1.sql','utf8')+`
- create function qg_private.assert_live_session() returns void language plpgsql as $$begin if auth.uid() is null then raise exception 'live session required'; end if; end$$;
+ create function qg_private.assert_live_session() returns void language plpgsql as $begin if auth.uid() is null then raise exception 'live session required'; end if; end$;
+ create schema storage;
+ create table storage.objects(bucket_id text not null,name text primary key);
  alter table orders add column completed_at timestamptz,add column rider_arrived_customer_at timestamptz,add column gp_rate numeric default 0,add column created_by uuid,add column rider_search_started_at timestamptz,add column picked_up_at timestamptz,add column delivering_at timestamptz,add column cancelled_reason text;
  alter table deliveries add column pickup_address text,add column delivery_address text,add column pickup_latitude float8,add column pickup_longitude float8,add column delivery_latitude float8,add column delivery_longitude float8;
  create table queuego_cash_order_locks(order_id uuid primary key);
@@ -29,4 +31,4 @@ module.exports=()=>require('./rider-dispatch-schema.cjs')()+fs.readFileSync('sup
  create policy orders_customer_select on orders for select to authenticated using(customer_id=get_my_user_id());
  grant usage on schema auth to authenticated;
  grant select on orders,rider_profiles to authenticated;
-`+fs.readFileSync('supabase/migrations/20261015052056_passenger_ride_shared_dispatch.sql','utf8')+fs.readFileSync('supabase/migrations/20261015054045_passenger_ride_flow_controls.sql','utf8');
+`+fs.readFileSync('supabase/migrations/20261015052056_passenger_ride_shared_dispatch.sql','utf8')+fs.readFileSync('supabase/migrations/20261015054045_passenger_ride_flow_controls.sql','utf8')+fs.readFileSync('supabase/migrations/20261015061000_passenger_public_license_evidence.sql','utf8');
