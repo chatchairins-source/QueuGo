@@ -904,7 +904,10 @@ class QueueGoApi {
                 income = o.optDouble("income", 0.0),
                 onlineHours = o.optDouble("online_hours", 0.0),
                 incomePerHour = if (o.has("income_per_hour") && !o.isNull("income_per_hour"))
-                    o.optDouble("income_per_hour").takeIf { !it.isNaN() } else null
+                    o.optDouble("income_per_hour").takeIf { !it.isNaN() } else null,
+                cashRealizedIncome = o.optDouble("cash_realized_income", o.optDouble("income", 0.0)),
+                pendingPlatformFunding = o.optDouble("pending_platform_funding", 0.0),
+                settledPlatformFunding = o.optDouble("settled_platform_funding", 0.0)
             )
         }
 
@@ -1351,7 +1354,14 @@ class QueueGoApi {
                         cashPaidMerchant = row.doubleOrZero("cash_paid_merchant"),
                         cashCollectedCustomer = row.doubleOrZero("cash_collected_customer"),
                         cashRefundedMerchant = row.doubleOrZero("cash_refunded_merchant"),
-                        createdAt = row.optString("created_at").takeIf { it.isNotBlank() }
+                        createdAt = row.optString("created_at").takeIf { it.isNotBlank() },
+                        platformCancellationFunding = row.doubleOrZero("platform_cancellation_funding"),
+                        platformCancellationFundingCash = row.doubleOrZero("platform_cancellation_funding_cash"),
+                        platformCancellationFundingStatus = riderNullableText(row.optString("platform_cancellation_funding_status")),
+                        platformCancellationFundingSettledAt = riderNullableText(row.optString("platform_cancellation_funding_settled_at")),
+                        platformCancellationFundingReference = riderNullableText(row.optString("platform_cancellation_funding_reference")),
+                        platformReplacementTarget = row.doubleOrZero("platform_cancellation_replacement_target"),
+                        platformReplacementOrderId = riderNullableUuid(row.optString("platform_replacement_order_id"))
                     )
                 )
             }
