@@ -81,6 +81,11 @@ const id=n=>'00000000-0000-4000-8000-'+String(n).padStart(12,'0');
  eq(funding.status,'settled');eq(funding.settled_by,id(70));eq(funding.settlement_reference,'BANK-001');
  assert(funding.settled_at);checks++;
  eq((await q("select count(*)::int n from audit_logs where entity_id=$1 and action='rider_cancellation_funding_settle'",[id(800)])).rows[0].n,1);
+ const reservedAfter=(await q("select qg_admin_rider_cancellation_funding_queue('reserved') q")).rows[0].q;
+ const settledAfter=(await q("select qg_admin_rider_cancellation_funding_queue('settled') q")).rows[0].q;
+ eq(reservedAfter.length,0);eq(settledAfter.length,1);
+ eq(settledAfter[0].funding_id,id(800));eq(settledAfter[0].settlement_reference,'BANK-001');
+ assert(settledAfter[0].settled_at);checks++;
 
  await as(101);
  ledger=(await q('select qg_rider_cash_ledger(current_date,current_date) l')).rows[0].l;
