@@ -33,11 +33,15 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import org.json.JSONObject
 import com.queuego.shared.QgIcon
 
 private val RegistrationRed = Color(0xFFE6002D)
 private val RegistrationLine = Color(0xFFEEE7E9)
+private const val RIDER_REGISTRATION_PREVIEW_MAX_BASE64_CHARS = 8 * 1024 * 1024
+private val riderRegistrationPreviewDecodeGate = Semaphore(1)
 
 @Composable
 internal fun RiderRegistrationScreen(
@@ -258,21 +262,38 @@ internal fun RiderRegistrationScreen(
 
 @Composable private fun RegistrationDocumentPreview(data: String) {
     if (!data.startsWith("data:image/")) return
-    val image by produceState<androidx.compose.ui.graphics.ImageBitmap?>(null, data) {
+    val image by produceState<android.graphics.Bitmap?>(null, data) {
         value = withContext(Dispatchers.IO) {
-            runCatching {
-                val bytes=android.util.Base64.decode(data.substringAfter(','),android.util.Base64.DEFAULT)
-                val bounds=android.graphics.BitmapFactory.Options().apply { inJustDecodeBounds=true }
-                android.graphics.BitmapFactory.decodeByteArray(bytes,0,bytes.size,bounds)
-                var sample=1
-                while(maxOf(bounds.outWidth,bounds.outHeight)/sample>560)sample*=2
-                android.graphics.BitmapFactory.decodeByteArray(bytes,0,bytes.size,
-                    android.graphics.BitmapFactory.Options().apply { inSampleSize=sample })?.asImageBitmap()
-            }.getOrNull()
+            riderRegistrationPreviewDecodeGate.withPermit {
+                runCatching {
+                    require(data.length <= RIDER_REGISTRATION_PREVIEW_MAX_BASE64_CHARS) {
+                        "รูปตัวอย่างมีขนาดใหญ่เกินไป"
+                    }
+                    val comma = data.indexOf(',')
+                    require(comma in 1..128) { "รูปตัวอย่างมีรูปแบบไม่ถูกต้อง" }
+                    val bytes = android.util.Base64.decode(
+                        data.substring(comma + 1),
+                        android.util.Base64.DEFAULT
+                    )
+                    val bounds=android.graphics.BitmapFactory.Options().apply { inJustDecodeBounds=true }
+                    android.graphics.BitmapFactory.decodeByteArray(bytes,0,bytes.size,bounds)
+                    require(bounds.outWidth > 0 && bounds.outHeight > 0) { "เปิดรูปตัวอย่างไม่สำเร็จ" }
+                    var sample=1
+                    while(maxOf(bounds.outWidth,bounds.outHeight)/sample>560)sample*=2
+                    android.graphics.BitmapFactory.decodeByteArray(bytes,0,bytes.size,
+                        android.graphics.BitmapFactory.Options().apply { inSampleSize=sample })
+                }.getOrNull()
+            }
         }
     }
-    image?.let { bitmap ->
-        androidx.compose.foundation.Image(bitmap,null,modifier=Modifier.padding(vertical=10.dp)
+    DisposableEffect(image) {
+        val owned = image
+        onDispose {
+            if (owned != null && !owned.isRecycled) owned.recycle()
+        }
+    }
+    image?.takeIf { !it.isRecycled }?.let { bitmap ->
+        androidx.compose.foundation.Image(bitmap.asImageBitmap(),null,modifier=Modifier.padding(vertical=10.dp)
             .widthIn(max=280.dp).heightIn(max=220.dp).fillMaxWidth()
             .aspectRatio(bitmap.width.toFloat()/bitmap.height).clip(RoundedCornerShape(16.dp)),
             contentScale=androidx.compose.ui.layout.ContentScale.Crop)
