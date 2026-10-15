@@ -175,6 +175,23 @@ ok(
   'Customer/Merchant FCM services must check Android 13 notification permission and fail closed around notify'
 );
 
+const launchQa=fs.readFileSync(path.join(__dirname,'..','native-android','qa','capture-rider-launch.py'),'utf8');
+ok(
+  launchQa.includes('def verify_three_role_system_kill_recovery():') &&
+  launchQa.includes('for role in ("customer", "merchant", "rider")') &&
+  launchQa.includes('"send-trim-memory", pkg, "RUNNING_CRITICAL"') &&
+  launchQa.includes('"send-trim-memory", pkg, "COMPLETE"') &&
+  launchQa.includes('adb + ["shell", "am", "kill", pkg]') &&
+  launchQa.includes('verify_three_role_system_kill_recovery()'),
+  'Android emulator lifecycle evidence must exercise Customer/Merchant/Rider background system-kill and cold recreation'
+);
+ok(
+  launchQa.includes('assert_no_package_crash(pkg, directory / "crash-buffer.txt")') &&
+  launchQa.includes('"background_am_kill": "PASS"') &&
+  launchQa.includes('"cold_relaunch": "PASS"'),
+  'Three-role process-death evidence must fail closed on package crash and record cold relaunch'
+);
+
 const customerPicker=read('customer/src/main/java/com/queuego/customer/CustomerLocationPicker.kt');
 ok(customerPicker.includes('mapReady')&&customerPicker.includes('delay(150)'),'Customer location permission must remain delayed until Longdo renderer is ready');
 
