@@ -697,7 +697,7 @@ private fun MerchantToppingRow(
 
 private const val MERCHANT_PRODUCT_PREVIEW_MAX_SIDE = 512
 
-private fun decodeMerchantProductPreview(context: Context, uri: Uri): Bitmap? {
+internal fun decodeMerchantProductPreview(context: Context, uri: Uri): Bitmap? {
     val resolver = context.contentResolver
     val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
     resolver.openInputStream(uri)?.use { input ->
