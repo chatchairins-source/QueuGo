@@ -608,6 +608,16 @@ ok(
   'Rider navigation-map camera/view-mode Keystore restore and high-frequency persistence must stay off Main'
 );
 
+const riderNavigationMapRuntime=read('rider-navigation-map/src/main/java/com/queuego/ridernavigationmap/RiderNavigationMap.kt');
+ok(
+  riderNavigationMapRuntime.includes('RIDER_NAV_SNAPSHOT_MAX_SIDE_PX = 1280') &&
+  riderNavigationMapRuntime.includes('val sourceMaxSide = maxOf(sourceWidth, sourceHeight)') &&
+  riderNavigationMapRuntime.includes('val snapshotScale = minOf(') &&
+  riderNavigationMapRuntime.includes('RIDER_NAV_SNAPSHOT_MAX_SIDE_PX.toFloat() / sourceMaxSide.toFloat()') &&
+  riderNavigationMapRuntime.includes('Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)'),
+  'Rider navigation continuity PixelCopy snapshots must cap bitmap dimensions before allocation'
+);
+
 const riderLongdoMap=read('rider/src/main/java/com/queuego/rider/LongdoRiderMap.kt');
 ok(
   riderLongdoMap.includes('withContext(Dispatchers.IO) { stateStore.loadMapCamera(stateKey) }') &&
