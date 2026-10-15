@@ -1,0 +1,13 @@
+'use strict';
+const fs=require('fs'),assert=require('assert'),{JSDOM}=require('jsdom');
+(async()=>{let checks=0;const eq=(a,b)=>{assert.deepEqual(a,b);checks++},tick=()=>new Promise(r=>setTimeout(r,20));
+const facts=JSON.parse(fs.readFileSync('catalog/thai-grocery-import.json','utf8')).slice(0,2),rows=facts.map((r,i)=>({...r,id:'00000000-0000-4000-8000-'+String(i+1).padStart(12,'0'),stores:0,sources:[r]}));
+const d=new JSDOM('<div id="app"></div>',{url:'https://queuego.example/admin/#grocery',runScripts:'outside-only'}),w=d.window,calls=[];let confirm=false;
+w.currentUser=()=>({id:'isolated-admin',type:'admin'});w.navigate=()=>{};w.layout=(t,b)=>w.document.getElementById('app').innerHTML=b;w.qtGetAccessToken=async()=> 'isolated-token';w.qtSupabaseTable=async(name,o)=>{calls.push({name,...o});if(name.endsWith('admin_page'))return rows;if(name.endsWith('merge'))return{merged:confirm};return[]};
+w.eval(fs.readFileSync('admin/grocery-catalog.js','utf8'));await w.qgRenderAdminGrocery();eq(w.document.querySelectorAll('.qgg-row').length,2);w.document.querySelector('[data-edit]').click();await tick();
+eq(w.document.querySelector('[name="merge_target"]').type,'hidden');eq(w.document.querySelector('[data-merge]').disabled,true);eq(w.document.querySelectorAll('[data-target]').length,1);
+w.document.querySelector('[data-target]').click();eq(w.document.querySelector('[name="merge_target"]').value,rows[1].id);eq(w.document.querySelector('[data-merge]').disabled,false);eq(w.document.querySelector('[data-merge-choice]').textContent.includes(rows[1].product_name_th),true);
+w.document.querySelector('[name="merge_reason"]').value='isolated reviewed identity';w.document.querySelector('[data-merge]').click();await tick();eq(w.document.querySelector('[name="merge_target"]')!==null,true);eq(w.document.getElementById('qgga-status').textContent.includes('รวมแล้ว'),false);
+confirm=true;w.document.querySelector('[data-merge]').click();await tick();eq(calls.filter(c=>c.name.endsWith('merge')).at(-1).body.p_into,rows[1].id);eq(w.document.querySelector('#qgga-editor form'),null);w.close();
+console.log(JSON.stringify({checks,failures:0,scope:'isolated Admin target picker and confirmed merge; no Production mutation'}));
+})().catch(e=>{console.error(e);process.exit(1)});

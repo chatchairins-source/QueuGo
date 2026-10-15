@@ -1,0 +1,11 @@
+{
+  "checks": 48,
+  "failures": 0,
+  "browser": "153.0.8010.0",
+  "widths": [
+    320,
+    390,
+    768
+  ],
+  "scope": "Rendered isolated components with real catalog names and transport fixtures; not authenticated Production, physical-device or live order E2E"
+}
