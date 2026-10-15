@@ -218,6 +218,61 @@ begin
 end $$;
 revoke all on function qg_private.requeue_passenger_ride(uuid,uuid,text,uuid) from public,anon,authenticated;
 
+-- Proactively release a pre-pickup Passenger Ride when account/profile eligibility is removed.
+-- In-progress rides are intentionally untouched so the passenger is never stranded.
+create or replace function qg_private.requeue_passenger_on_rider_profile_status()
+returns trigger language plpgsql security definer set search_path=public,pg_temp as $
+declare v_order uuid;v_actor uuid;
+begin
+ if old.status='active' and new.status is distinct from 'active' then
+  select id into v_actor from public.users where auth_user_id=auth.uid();
+  v_actor:=coalesce(v_actor,new.user_id);
+  for v_order in
+   select id from public.orders
+   where rider_id=new.id and fulfillment_vertical='ride' and status='rider_assigned'
+   order by id
+  loop
+   perform qg_private.requeue_passenger_ride(
+    v_order,new.id,'rider profile eligibility unavailable before passenger pickup',v_actor
+   );
+  end loop;
+ end if;
+ return new;
+end $;
+revoke all on function qg_private.requeue_passenger_on_rider_profile_status() from public,anon,authenticated;
+drop trigger if exists qg_ride_profile_status_requeue on public.rider_profiles;
+create trigger qg_ride_profile_status_requeue
+after update of status on public.rider_profiles
+for each row execute function qg_private.requeue_passenger_on_rider_profile_status();
+
+create or replace function qg_private.requeue_passenger_on_rider_user_status()
+returns trigger language plpgsql security definer set search_path=public,pg_temp as $
+declare v_rider uuid;v_order uuid;v_actor uuid;
+begin
+ if old.role='rider' and old.status='active' and new.status is distinct from 'active' then
+  select r.id into v_rider from public.rider_profiles r where r.user_id=new.id for update;
+  if v_rider is not null then
+   select id into v_actor from public.users where auth_user_id=auth.uid();
+   v_actor:=coalesce(v_actor,new.id);
+   for v_order in
+    select id from public.orders
+    where rider_id=v_rider and fulfillment_vertical='ride' and status='rider_assigned'
+    order by id
+   loop
+    perform qg_private.requeue_passenger_ride(
+     v_order,v_rider,'rider account eligibility unavailable before passenger pickup',v_actor
+    );
+   end loop;
+  end if;
+ end if;
+ return new;
+end $;
+revoke all on function qg_private.requeue_passenger_on_rider_user_status() from public,anon,authenticated;
+drop trigger if exists qg_ride_user_status_requeue on public.users;
+create trigger qg_ride_user_status_requeue
+after update of status on public.users
+for each row execute function qg_private.requeue_passenger_on_rider_user_status();
+
 create or replace function qg_private.guard_ride_order_write()
 returns trigger language plpgsql set search_path=public,pg_temp as $$
 declare v_compliance_requeue boolean:=false;
@@ -290,20 +345,26 @@ create trigger qg_laundry_passenger_conflict before insert or update on public.l
 
 create or replace function qg_private.ride_order_action(p_order_id uuid,p_action text)
 returns jsonb language plpgsql security definer set search_path=public,pg_temp as $$
-declare v_rider uuid;v_user uuid;o public.orders%rowtype;v_action text:=lower(trim(coalesce(p_action,'')));v_next text;
+declare v_rider uuid;v_user uuid;v_user_status text;v_rider_status text;o public.orders%rowtype;v_action text:=lower(trim(coalesce(p_action,'')));v_next text;
 begin
  perform qg_private.assert_live_session();
- select r.id,r.user_id into v_rider,v_user from public.rider_profiles r join public.users u on u.id=r.user_id
- where u.auth_user_id=auth.uid() and u.role='rider' and u.status='active' and r.status='active' for update of r;
- if v_rider is null then raise exception 'active rider required'; end if;
+ select r.id,r.user_id,u.status,r.status into v_rider,v_user,v_user_status,v_rider_status
+ from public.rider_profiles r join public.users u on u.id=r.user_id
+ where u.auth_user_id=auth.uid() and u.role='rider'
+ for update of r;
+ if v_rider is null then raise exception 'rider identity required'; end if;
  select * into o from public.orders where id=p_order_id and rider_id=v_rider and fulfillment_vertical='ride' for update;
  if not found then raise exception 'assigned passenger ride required'; end if;
  if o.status='completed' then return jsonb_build_object('status',o.status,'fare',o.total_amount); end if;
- perform set_config('queuego.v22_transition','rpc',true);
- if v_action='arrive_pickup' and o.status='rider_assigned' then
-  if o.rider_arrived_shop_at is not null then return jsonb_build_object('status',o.status,'fare',o.total_amount); end if;
-  update public.orders set rider_arrived_shop_at=coalesce(rider_arrived_shop_at,now()),updated_at=now() where id=o.id;
- elsif v_action='start' and o.status='rider_assigned' and o.rider_arrived_shop_at is not null then
+
+ -- Before passenger pickup, ANY loss of Ride eligibility releases the assignment.
+ -- After pickup/in_progress, do not strand the passenger: the same Rider may finish safely.
+ if o.status='rider_assigned' then
+  if v_user_status<>'active' or v_rider_status<>'active' then
+   if qg_private.requeue_passenger_ride(o.id,v_rider,'rider eligibility unavailable before passenger pickup',v_user)
+   then return jsonb_build_object('status','searching_rider','fare',o.total_amount,'requeued',true); end if;
+   raise exception 'rider eligibility unavailable';
+  end if;
   if not qg_private.ride_public_license_valid(v_rider,now()) then
    if qg_private.requeue_passenger_ride(o.id,v_rider,'public driving license unavailable before passenger pickup',v_user)
    then return jsonb_build_object('status','searching_rider','fare',o.total_amount,'requeued',true); end if;
@@ -314,6 +375,13 @@ begin
    then return jsonb_build_object('status','searching_rider','fare',o.total_amount,'requeued',true); end if;
    raise exception 'rider credit authorization required';
   end if;
+ end if;
+
+ perform set_config('queuego.v22_transition','rpc',true);
+ if v_action='arrive_pickup' and o.status='rider_assigned' then
+  if o.rider_arrived_shop_at is not null then return jsonb_build_object('status',o.status,'fare',o.total_amount); end if;
+  update public.orders set rider_arrived_shop_at=coalesce(rider_arrived_shop_at,now()),updated_at=now() where id=o.id;
+ elsif v_action='start' and o.status='rider_assigned' and o.rider_arrived_shop_at is not null then
   update public.orders set status='in_progress',picked_up_at=coalesce(picked_up_at,now()),delivering_at=coalesce(delivering_at,now()),updated_at=now() where id=o.id;
   update public.deliveries set status='picked_up',updated_at=now() where order_id=o.id;
  elsif v_action='arrive_dropoff' and o.status='in_progress' then
@@ -957,23 +1025,29 @@ CREATE OR REPLACE FUNCTION public.qg_rider_action_once(p_request_id uuid, p_kind
 AS $function$
 declare
   v_user uuid;
+  v_user_status text;
   v_existing public.qg_rider_action_receipts%rowtype;
   v_result jsonb;
   v_order uuid;
   v_market_order uuid;
 begin
-  select u.id
-  into v_user
+  select u.id,u.status
+  into v_user,v_user_status
   from public.users u
   join public.rider_profiles r on r.user_id=u.id
   where u.auth_user_id=auth.uid()
-    and u.role='rider'
-    and u.status='active';
+    and u.role='rider';
 
   if v_user is null
      or p_request_id is null
      or p_payload is null
      or jsonb_typeof(p_payload)<>'object' then
+    raise exception 'rider request required';
+  end if;
+
+  -- A suspended Rider may only continue the already-assigned Passenger Ride path.
+  -- ride_order_action requeues pre-pickup work and permits safe completion in_progress.
+  if v_user_status<>'active' and p_kind<>'ride' then
     raise exception 'active rider request required';
   end if;
 

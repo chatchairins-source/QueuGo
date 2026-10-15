@@ -81,6 +81,17 @@ const id=n=>'00000000-0000-4000-8000-'+String(n).padStart(12,'0');
  eq((await q("select state,generation from qg_private.credit_holds where order_id=$1 and kind='rider'",[id(799)])).rows[0],{state:'released',generation:2});
  await as(170);await q("update orders set status='cancelled' where id=$1",[id(799)]);
  await q("update qg_private.rider_document_expiries set expires_on=current_date+30 where rider_id=$1 and document_key='public_driver_license'",[id(11)]);
+ // Losing the real Rider-credit authorization after claim + arrive_pickup must also
+ // release the hold and requeue before the passenger boards.
+ await q("insert into orders(id,order_number,customer_id,order_type,fulfillment_vertical,status,subtotal,delivery_fee,total_amount,ride_distance_km,ride_duration_minutes,ride_platform_fee,rider_delivery_payout,pickup_latitude,pickup_longitude,delivery_latitude,delivery_longitude) values($1,'QT-credit-loss',$2,'service','ride','searching_rider',0,50,50,3,8,10,40,15,103,15.01,103)",[id(798),id(60)]);
+ await q("insert into deliveries(order_id,status,delivery_fee) values($1,'pending',50)",[id(798)]);await q("insert into payments(order_id,amount,status,payment_method) values($1,50,'pending','cash')",[id(798)]);
+ await q('delete from qg_rider_order_offers');await q('select qg_dispatch_rider_offers()');await as(101);await q('select rider_claim_order($1)',[id(798)]);eq((await balance()).held_cash_minor,1000);
+ await q("select qg_private.ride_order_action($1,'arrive_pickup')",[id(798)]);
+ await flag('credit_rider',false);
+ const lostCredit=(await q("select qg_private.ride_order_action($1,'start') r",[id(798)])).rows[0].r;
+ eq(lostCredit.status,'searching_rider');eq(lostCredit.requeued,true);eq((await balance()).held_cash_minor,0);
+ eq((await q("select state,generation from qg_private.credit_holds where order_id=$1 and kind='rider'",[id(798)])).rows[0],{state:'released',generation:1});
+ await as(170);await q("update orders set status='cancelled' where id=$1",[id(798)]);await flag('credit_rider',true);
  // Real passenger claim/start/complete must reserve and capture the same fee.
  await q("insert into orders(id,order_number,customer_id,order_type,fulfillment_vertical,status,subtotal,delivery_fee,total_amount,ride_distance_km,ride_duration_minutes,ride_platform_fee,rider_delivery_payout,pickup_latitude,pickup_longitude,delivery_latitude,delivery_longitude) values($1,'QT-credit-ride',$2,'service','ride','searching_rider',0,50,50,3,8,10,40,15,103,15.01,103)",[id(800),id(60)]);
  await q("insert into deliveries(order_id,status,delivery_fee) values($1,'pending',50)",[id(800)]);await q("insert into payments(order_id,amount,status,payment_method) values($1,50,'pending','cash')",[id(800)]);
