@@ -20,7 +20,11 @@ run(
     [str(manager / "sdkmanager"), "emulator", "platform-tools", "system-images;android-30;default;x86_64"],
     input="y\n" * 100,
     text=True,
-    timeout=300,
+    # GitHub-hosted runners occasionally need more than five minutes to fetch the
+    # pinned Android 30 x86_64 image. Keep the real emulator/runtime gate intact
+    # and allow the package download to finish instead of misclassifying network
+    # slowness as a navigation regression.
+    timeout=600,
 )
 name = "queuego_nav_map_" + os.environ.get("GITHUB_RUN_ID", "local")
 avd_path = temp / name
