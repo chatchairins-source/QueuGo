@@ -145,76 +145,85 @@ internal fun MerchantMediaScreen(
         }
     }
 
-    Column(
-        Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 12.dp)
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(horizontal = 12.dp)
     ) {
-        Row(
-            Modifier.padding(top = 7.dp, bottom = 10.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            OutlinedButton(
-                onClick = onBack,
-                modifier = Modifier.height(38.dp),
-                contentPadding = PaddingValues(horizontal = 12.dp)
-            ) { Text("กลับ") }
-            Spacer(Modifier.width(10.dp))
-            Box(
-                Modifier
-                    .size(50.dp)
-                    .background(Color(0xFFFFEDF0), RoundedCornerShape(15.dp)),
-                contentAlignment = Alignment.Center
+        item(key = "media-header") {
+            Row(
+                Modifier.padding(top = 7.dp, bottom = 10.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                QgIcon("gallery", Modifier.size(24.dp), QgRed)
+                OutlinedButton(
+                    onClick = onBack,
+                    modifier = Modifier.height(38.dp),
+                    contentPadding = PaddingValues(horizontal = 12.dp)
+                ) { Text("กลับ") }
+                Spacer(Modifier.width(10.dp))
+                Box(
+                    Modifier
+                        .size(50.dp)
+                        .background(Color(0xFFFFEDF0), RoundedCornerShape(15.dp)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    QgIcon("gallery", Modifier.size(24.dp), QgRed)
+                }
+                Spacer(Modifier.width(10.dp))
+                Column {
+                    Text("คลังรูปภาพร้าน", fontSize = 18.sp, fontWeight = FontWeight.ExtraBold)
+                    Text("รูปหน้าร้าน โลโก้ และรูปสินค้า", color = QgMuted, fontSize = 10.sp)
+                }
             }
-            Spacer(Modifier.width(10.dp))
-            Column {
-                Text("คลังรูปภาพร้าน", fontSize = 18.sp, fontWeight = FontWeight.ExtraBold)
-                Text("รูปหน้าร้าน โลโก้ และรูปสินค้า", color = QgMuted, fontSize = 10.sp)
+        }
+
+        item(key = "media-upload") {
+            Button(
+                onClick = { picker.launch("image/*") },
+                enabled = !uploading,
+                modifier = Modifier.fillMaxWidth().height(46.dp)
+            ) {
+                QgIcon("gallery", Modifier.size(19.dp), Color.White)
+                Spacer(Modifier.width(7.dp))
+                if (uploading) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
+                else Text("เพิ่มรูปจากเครื่อง", fontWeight = FontWeight.ExtraBold)
             }
+
+            if (!message.isNullOrBlank()) {
+                Text(
+                    message!!,
+                    color = if (message!!.contains("แล้ว")) Color(0xFF0A9660) else QgRed,
+                    fontSize = 10.sp,
+                    modifier = Modifier.padding(top = 8.dp)
+                )
+            }
+            Spacer(Modifier.height(12.dp))
         }
 
-        Button(
-            onClick = { picker.launch("image/*") },
-            enabled = !uploading,
-            modifier = Modifier.fillMaxWidth().height(46.dp)
-        ) {
-            QgIcon("gallery", Modifier.size(19.dp), Color.White)
-            Spacer(Modifier.width(7.dp))
-            if (uploading) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
-            else Text("เพิ่มรูปจากเครื่อง", fontWeight = FontWeight.ExtraBold)
-        }
-
-        if (!message.isNullOrBlank()) {
-            Text(
-                message!!,
-                color = if (message!!.contains("แล้ว")) Color(0xFF0A9660) else QgRed,
-                fontSize = 10.sp,
-                modifier = Modifier.padding(top = 8.dp)
-            )
-        }
-
-        Spacer(Modifier.height(12.dp))
         when {
-            loading -> Box(
-                Modifier.fillMaxWidth().height(160.dp),
-                contentAlignment = Alignment.Center
-            ) { CircularProgressIndicator() }
-
-            rows.isEmpty() -> Box(
-                Modifier
-                    .fillMaxWidth()
-                    .background(Color.White, RoundedCornerShape(16.dp))
-                    .border(1.dp, QgLine, RoundedCornerShape(16.dp))
-                    .padding(vertical = 34.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Text("ยังไม่มีรูปในคลัง", color = QgMuted)
+            loading -> item(key = "media-loading") {
+                Box(
+                    Modifier.fillMaxWidth().height(160.dp),
+                    contentAlignment = Alignment.Center
+                ) { CircularProgressIndicator() }
             }
 
-            else -> rows.chunked(3).forEach { row ->
+            rows.isEmpty() -> item(key = "media-empty") {
+                Box(
+                    Modifier
+                        .fillMaxWidth()
+                        .background(Color.White, RoundedCornerShape(16.dp))
+                        .border(1.dp, QgLine, RoundedCornerShape(16.dp))
+                        .padding(vertical = 34.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text("ยังไม่มีรูปในคลัง", color = QgMuted)
+                }
+            }
+
+            else -> items(
+                items = rows.chunked(3),
+                key = { row -> row.joinToString("|") { it.name } }
+            ) { row ->
                 Row(
                     Modifier.fillMaxWidth().padding(bottom = 9.dp),
                     horizontalArrangement = Arrangement.spacedBy(9.dp)
@@ -252,6 +261,8 @@ internal fun MerchantMediaScreen(
                 }
             }
         }
-        Spacer(Modifier.height(28.dp))
+        item(key = "media-bottom-space") {
+            Spacer(Modifier.height(28.dp))
+        }
     }
 }
