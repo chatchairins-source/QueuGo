@@ -482,7 +482,16 @@ ok(
   voicePeer.includes('pendingRemoteIce.size < NATIVE_VOICE_PENDING_ICE_MAX_COUNT'),
   'WebRTC SDP/ICE payloads and pre-description ICE buffering must remain bounded'
 );
-ok(returnService.includes('runCatching { ContextCompat.startForegroundService')&&returnService.includes('start_foreground_failed'),'Rider return FGS must fail closed instead of crashing when Android rejects launch');
+ok(
+  returnService.includes('runCatching { ContextCompat.startForegroundService') &&
+  returnService.includes('start_foreground_failed') &&
+  returnService.includes('withContext(Dispatchers.IO)') &&
+  returnService.includes('SessionStore(applicationContext).load()') &&
+  returnService.includes('serviceScope.cancel()') &&
+  !returnService.includes('val cached = SessionStore(context.applicationContext).load()') &&
+  !returnService.includes('val cached = SessionStore(applicationContext).load()'),
+  'Rider Google Maps return service must start while foreground but keep encrypted session decrypt off caller/service Main threads'
+);
 ok(navService.includes('start_foreground_failed')||navService.includes('foreground_start_rejected'),'Rider location FGS must handle Android start rejection');
 ok(
   voiceService.includes('context.startForegroundService(') &&
