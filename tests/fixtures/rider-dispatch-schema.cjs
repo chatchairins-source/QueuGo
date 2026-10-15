@@ -3,9 +3,9 @@ module.exports=()=>`create role anon;create role authenticated;create role servi
  create function auth.uid() returns uuid language sql as $$select nullif(current_setting('test.uid',true),'')::uuid$$;
  create table users(id uuid primary key,auth_user_id uuid,role text,status text,name text);
  create table rider_profiles(id uuid primary key,user_id uuid,status text,metadata jsonb,latitude float8,longitude float8,updated_at timestamptz,vehicle_type text,vehicle_status text,vehicle_verified_at timestamptz,vehicle_capacity_kg numeric);
- create table orders(id uuid primary key,order_number text,rider_id uuid,customer_id uuid,shop_id uuid,order_type text default 'shopping',status text,fulfillment_vertical text default 'food',market_order_id uuid,rider_assigned_at timestamptz,updated_at timestamptz default now(),created_at timestamptz default now(),note text,route_bundle_id uuid,route_bundle_sequence int,bundle_original_delivery_fee numeric,bundle_customer_savings numeric,bundle_rider_extra_fee numeric,bundle_detour_km numeric,bundle_added_minutes int,bundle_route_sequence text,rider_arrived_shop_at timestamptz,pickup_address text,delivery_address text,pickup_latitude float8,pickup_longitude float8,delivery_latitude float8,delivery_longitude float8,subtotal numeric default 100,delivery_fee numeric default 25,total_amount numeric default 125,gp_amount numeric default 0);
+ create table orders(id uuid primary key,order_number text,rider_id uuid,customer_id uuid,shop_id uuid,order_type text default 'shopping',status text,fulfillment_vertical text default 'food',market_order_id uuid,rider_assigned_at timestamptz,updated_at timestamptz default now(),created_at timestamptz default now(),merchant_accepted_at timestamptz,preparing_at timestamptz,ready_at timestamptz,cancelled_at timestamptz,note text,route_bundle_id uuid,route_bundle_sequence int,bundle_original_delivery_fee numeric,bundle_customer_savings numeric,bundle_rider_extra_fee numeric,bundle_detour_km numeric,bundle_added_minutes int,bundle_route_sequence text,rider_arrived_shop_at timestamptz,pickup_address text,delivery_address text,pickup_latitude float8,pickup_longitude float8,delivery_latitude float8,delivery_longitude float8,subtotal numeric default 100,delivery_fee numeric default 25,total_amount numeric default 125,gp_amount numeric default 0);
  create table deliveries(order_id uuid,rider_id uuid,status text default 'pending',delivery_fee numeric,updated_at timestamptz,delivered_at timestamptz);
- create table shop_profiles(id uuid primary key,user_id uuid,public_category text,shop_name text default 'isolated shop');
+ create table shop_profiles(id uuid primary key,user_id uuid,public_category text,shop_name text default 'isolated shop',created_at timestamptz default now());
  create table audit_logs(user_id uuid,action text,entity_type text,entity_id uuid,description text,metadata jsonb);
  create table notifications(user_id uuid,title text,message text,type text,reference_id uuid);
  create table qg_rider_order_offers(order_id uuid primary key,rider_id uuid,offered_at timestamptz,expires_at timestamptz,attempt int);
@@ -20,12 +20,13 @@ module.exports=()=>`create role anon;create role authenticated;create role servi
  create table qg_rider_cash_return_refunds(order_id uuid,amount numeric,refunded_at timestamptz);
  create table qg_delivery_proofs(order_id uuid,verified_at timestamptz);
  create table qg_rider_presence_events(id uuid,rider_id uuid,online boolean,occurred_at timestamptz);
+ create table qg_merchant_action_receipts(request_id uuid primary key,user_id uuid,kind text,payload jsonb,result jsonb,created_at timestamptz default now());
  create table queuego_platform_rules(rule_key text primary key,value jsonb,created_at timestamptz);
  create function queuego_rule_numeric(k text,d numeric,t timestamptz) returns numeric language sql as $$select coalesce((select (value#>>'{}')::numeric from queuego_platform_rules where rule_key=k),d)$$;
  create function queuego_feature_enabled(k text,t timestamptz) returns boolean language sql as $$select true$$;
  create function queuego_distance_km(a float8,b float8,c float8,d float8) returns numeric language sql as $$select (sqrt(power(a-c,2)+power(b-d,2))*111)::numeric$$;
  create function qg_private.approx_distance_km(a float8,b float8,c float8,d float8) returns float8 language sql as $$select queuego_distance_km(a,b,c,d)::float8$$;
  create function market_order_weight(p uuid) returns numeric language sql as $$select 1::numeric$$;
- insert into users(id,auth_user_id,role,status) values('${id(1)}','${id(101)}','rider','active'),('${id(2)}','${id(102)}','rider','active');
+ insert into users(id,auth_user_id,role,status,name) values('${id(1)}','${id(101)}','rider','active','Rider One'),('${id(2)}','${id(102)}','rider','active','Rider Two'),('${id(51)}','${id(151)}','shop','active','Merchant'),('${id(60)}','${id(160)}','customer','active','Customer');
  insert into rider_profiles values('${id(11)}','${id(1)}','active','{"online":true,"available":true}',15,103,now(),'motorcycle','active',now(),20),('${id(12)}','${id(2)}','active','{"online":true,"available":true}',15,103,now(),'motorcycle','active',now(),20);
  insert into shop_profiles(id,user_id,public_category) values('${id(50)}','${id(51)}','food');`;
