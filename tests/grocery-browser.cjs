@@ -33,6 +33,9 @@ const css=file=>[...fs.readFileSync(path.join(root,file),'utf8').matchAll(/<styl
   assert.equal(await page.locator(role==='customer'?'.mi':'.qgg-row').count(),50);checks++;
   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),role+' overflows at '+width);checks++;
   if(role==='merchant'){
+   await page.locator('#qgg-open-add').click();await page.waitForFunction(()=>document.getElementById('qgg-mode').value==='unpriced');checks++;
+   assert.equal(await page.locator('#qgg-open-add').isHidden(),true);checks++;
+   await page.locator('[data-add]').first().click();await page.waitForFunction(()=>document.querySelector('[data-field="enabled"]').checked);checks++;
    await page.locator('[data-field="selling_price"]').first().fill('8');await page.locator('[data-field="enabled"]').first().check();await page.locator('#qgg-save').click();
    await page.waitForFunction(()=>qaCalls.some(c=>c.name.endsWith('store_save')));
    await page.waitForFunction(()=>document.getElementById('qgg-status').textContent.startsWith('บันทึกแล้ว'));checks++;
