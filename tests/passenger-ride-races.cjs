@@ -127,6 +127,7 @@ const id=n=>'00000000-0000-4000-8000-'+String(n).padStart(12,'0');
   const foodAfterRide=await blockedFood;
   assert(foodAfterRide.error);assert.match(String(foodAfterRide.error.message),/passenger ride conflicts with active work/);checks+=2;
   eq((await order(182)).rider_id,null);
+  await admin.query("update orders set status='cancelled' where id=$1",[id(182)]);
   await finishRide(82);
 
   // Connection/transaction rollback must not leave a ghost passenger assignment that blocks ordinary work.
