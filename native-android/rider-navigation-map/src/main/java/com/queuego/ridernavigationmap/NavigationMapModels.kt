@@ -51,7 +51,8 @@ data class NavigationDemandZone(
 data class NavigationMapCamera(
     val point: NavigationMapPoint,
     val zoom: Int,
-    val bearingDegrees: Float? = null
+    val bearingDegrees: Float? = null,
+    val tiltDegrees: Float? = null
 )
 
 data class RiderNavigationMapState(
