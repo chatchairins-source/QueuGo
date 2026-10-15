@@ -309,11 +309,21 @@ private fun MerchantShell(
     }
 
     fun playMerchantNotificationSound() {
-        val tone = ToneGenerator(AudioManager.STREAM_NOTIFICATION, 90)
-        tone.startTone(ToneGenerator.TONE_PROP_BEEP2, 650)
-        scope.launch {
-            delay(750)
+        val tone = runCatching { ToneGenerator(AudioManager.STREAM_NOTIFICATION, 90) }
+            .getOrNull() ?: return
+        val started = runCatching {
+            tone.startTone(ToneGenerator.TONE_PROP_BEEP2, 650)
+        }.getOrDefault(false)
+        if (!started) {
             runCatching { tone.release() }
+            return
+        }
+        scope.launch {
+            try {
+                delay(750)
+            } finally {
+                runCatching { tone.release() }
+            }
         }
     }
 
