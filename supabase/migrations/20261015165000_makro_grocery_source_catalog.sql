@@ -174,7 +174,7 @@ begin
 
   return result;
 end;
-$;
+$$;
 
 create or replace function public.qg_grocery_source_add_to_shop(
   p_shop_id uuid,
@@ -297,7 +297,7 @@ begin
     'catalog_preview_image',s.image_url
   );
 end;
-$;
+$$;
 
 -- Admin-only batch import from the generated, reviewed public Makro source snapshot.
 -- Existing active rows stay active during an incomplete upload; new rows remain inactive
@@ -403,7 +403,7 @@ begin
 
   return jsonb_build_object('processed',n);
 end;
-$;
+$$;
 
 create or replace function public.qg_admin_grocery_source_finalize(
   p_retrieved_at timestamptz,
@@ -455,7 +455,7 @@ begin
     'active',n_active
   );
 end;
-$;
+$$;
 
 revoke all on function public.qg_grocery_source_category_label(text) from public,anon;
 grant execute on function public.qg_grocery_source_category_label(text) to authenticated;
