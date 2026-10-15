@@ -4488,7 +4488,7 @@ private fun openNavigation(context: Context, job: RiderJob) {
     if (opened) {
         context.getSharedPreferences("rider_navigation", Context.MODE_PRIVATE).edit()
             .putBoolean(navigationKey, true)
-            .commit()
+            .apply()
     } else {
         RiderReturnService.stop(context)
     }
