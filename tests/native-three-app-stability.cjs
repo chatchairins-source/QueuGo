@@ -237,6 +237,15 @@ ok(
 
 const riderEvidencePreview=read('rider/src/main/java/com/queuego/rider/RiderEvidencePreview.kt');
 const riderRegistrationImage=read('rider/src/main/java/com/queuego/rider/RiderRegistrationImage.kt');
+const riderSupport=read('rider/src/main/java/com/queuego/rider/RiderSupportScreen.kt');
+ok(
+  riderSupport.includes('RIDER_SUPPORT_EVIDENCE_MAX_BYTES = 5 * 1024 * 1024') &&
+  riderSupport.includes('RIDER_SUPPORT_SIGNED_RESPONSE_MAX_BYTES = 256 * 1024') &&
+  riderSupport.includes('readRiderSupportBounded') &&
+  !riderSupport.includes('.use { it.readBytes() }') &&
+  !riderSupport.includes('bufferedReader().use { it.readText() }'),
+  'Rider support evidence uploads and signed-URL responses must be bounded before heap allocation'
+);
 ok(
   riderEvidencePreview.includes('DisposableEffect(decoded?.bitmap)') &&
   riderEvidencePreview.includes('owned.recycle()'),
