@@ -74,6 +74,22 @@ ok(
   'Merchant storage media listing must be byte bounded before JSON parsing'
 );
 
+ok(
+  merchantProducts.includes('MERCHANT_PRODUCT_PREVIEW_MAX_SIDE = 512') &&
+  merchantProducts.includes('inJustDecodeBounds = true') &&
+  merchantProducts.includes('inSampleSize = sample') &&
+  merchantProducts.includes('DisposableEffect(image)') &&
+  merchantProducts.includes('owned.recycle()') &&
+  !merchantProducts.includes('BitmapFactory.decodeStream(it)?.asImageBitmap()'),
+  'Merchant local product preview must sample camera/gallery images and recycle owned Bitmaps instead of full-resolution decode'
+);
+ok(
+  merchantImage.includes('MERCHANT_UPLOAD_ERROR_MAX_BYTES = 256 * 1024') &&
+  merchantImage.includes('readMerchantUploadErrorBounded') &&
+  !merchantImage.includes('bufferedReader()?.use { it.readText() }'),
+  'Merchant storage upload error bodies must be byte bounded instead of unbounded readText heap growth'
+);
+
 const chatImage=read('shared/src/main/java/com/queuego/shared/NativeChatImage.kt');
 ok(chatImage.includes('CHAT_IMAGE_MAX_SIDE = 1280'),'Shared chat bitmaps must stay capped for Customer/Merchant/Rider memory safety');
 ok(chatImage.includes('DisposableEffect(bitmap)')&&chatImage.includes('owned.recycle()'),'Shared chat bitmaps must release owned memory after leaving composition');
