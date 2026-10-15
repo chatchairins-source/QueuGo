@@ -1,0 +1,29 @@
+const assert=require('node:assert/strict');
+(async()=>{
+ const {createCreditHandler}=await import('../supabase/functions/queuego-credit/handler.mjs');let checks=0,calls=[],applied=[];
+ const eq=(a,b)=>{assert.deepEqual(a,b);checks++};
+ const id='00000000-0000-4000-8000-000000000300';
+ const values={SUPABASE_URL:'https://isolated.invalid',SUPABASE_SERVICE_ROLE_KEY:'isolated-service',OMISE_SECRET_KEY:'skey_live_isolated',QUEUEGO_CREDIT_LIVE_ENABLED:'true'},env={get:k=>values[k]};
+ let charge={object:'charge',id:'chrg_isolated300',amount:10000,currency:'thb',livemode:true,paid:false,status:'pending',metadata:{queuego_credit_topup:id},source:{type:'promptpay',scannable_code:{image:{download_uri:'https://api.omise.co/charges/chrg_isolated300/documents/docu_fixture/downloads/fixture'}}}};
+ let topup={id,amount_minor:10000,charge_id:null};
+ const good=async(url,options)=>{calls.push([url,options]);if(url.endsWith('/auth/v1/user'))return Response.json({id});if(url.endsWith('/queuego_credit_begin_topup'))return Response.json(topup);if(url.endsWith('/queuego_credit_apply_charge')){applied.push(JSON.parse(options.body));return Response.json({status:charge.status})}if(url==='https://api.omise.co/charges')return Response.json({id:charge.id});if(url==='https://api.omise.co/charges/'+charge.id)return Response.json(charge);throw Error('unexpected request')};
+ const req=(data={id,kind:'rider',amount_minor:10000},token='rider-token')=>new Request('https://isolated.invalid/credit',{method:'POST',headers:{authorization:'Bearer '+token},body:JSON.stringify(data)});
+ const handler=createCreditHandler(env,good);eq((await handler(req())).status,200);eq(applied.length,1);eq(applied[0].p_paid,false);
+ const form=new URLSearchParams(calls.find(([u])=>u==='https://api.omise.co/charges')[1].body);eq(form.get('ref_id'),id);eq(form.get('source[qr_settings][image_type]'),'png');eq(form.get('amount'),'10000');eq(form.get('webhook_endpoints[]'),'https://isolated.invalid/functions/v1/queuego-credit-webhook');
+ eq(calls.find(([u])=>u.endsWith('queuego_credit_begin_topup'))[1].headers.authorization,'Bearer rider-token');
+ // Retry retrieves original charge, not a second provider POST.
+ calls=[];topup.charge_id=charge.id;charge={...charge,status:'successful',paid:true};eq((await handler(req())).status,200);eq(calls.some(([u])=>u==='https://api.omise.co/charges'),false);eq(applied.at(-1).p_status,'successful');
+ const hook=createCreditHandler(env,good,true);calls=[];applied=[];
+ eq((await hook(req({key:'charge.complete',data:{id:charge.id,status:'successful',amount:999999}}))).status,200);eq(applied[0].p_amount,10000);eq(calls[0][0],'https://api.omise.co/charges/'+charge.id);
+ // Spoofed payload cannot override a provider's unpaid status.
+ charge={...charge,status:'pending',paid:false};applied=[];eq((await hook(req({key:'charge.complete',data:{id:charge.id,status:'successful',paid:true}}))).status,200);eq(applied[0].p_status,'pending');eq(applied[0].p_paid,false);
+ for(const patch of [{livemode:false},{currency:'usd'},{amount:1.5},{source:{type:'card'}},{metadata:{}},{status:'unknown'}]){const saved=charge;charge={...charge,...patch};applied=[];eq((await hook(req({key:'charge.complete',data:{id:charge.id}}))).status,503);eq(applied.length,0);charge=saved}
+ calls=[];eq((await handler(req({},'isolated-service'))).status,401);eq(calls.length,0);
+ for(const envPatch of [{QUEUEGO_CREDIT_LIVE_ENABLED:'false'},{OMISE_SECRET_KEY:'skey_test_isolated'},{OMISE_SECRET_KEY:''}]){calls=[];eq((await createCreditHandler({get:k=>({...values,...envPatch})[k]},good)(req())).status,503);eq(calls.length,0)}
+ eq((await handler(req({id,kind:'merchant',amount_minor:1999}))).status,400);
+ const badAuth=createCreditHandler(env,async()=>new Response('',{status:401}));eq((await badAuth(req())).status,401);
+ topup.charge_id=null;const lost=createCreditHandler(env,async(u,o)=>u==='https://api.omise.co/charges'?new Response('',{status:409}):good(u,o));eq((await lost(req())).status,202);
+ const oversized=createCreditHandler(env,async(u,o)=>u.endsWith('/auth/v1/user')?new Response('x'.repeat(131073)):good(u,o));eq((await oversized(req())).status,503);
+ const badProvider=createCreditHandler(env,async(u,o)=>u.includes('api.omise.co')?new Response('',{status:500}):good(u,o));const fail=await badProvider(req());eq((await fail.text()).includes(values.OMISE_SECRET_KEY),false);
+ console.log('Credit Edge: '+checks+' checks PASS');
+})().catch(e=>{console.error(e);process.exitCode=1});

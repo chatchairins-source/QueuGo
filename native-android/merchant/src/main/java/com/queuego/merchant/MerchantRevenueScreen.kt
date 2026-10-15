@@ -163,6 +163,7 @@ internal fun MerchantRevenueScreen(
             )
         }
 
+        com.queuego.shared.QueueGoCreditCard(auth.user.id, auth.session.accessToken, "merchant")
         Text(
             "เงินสดค่าสินค้า: ไรเดอร์จ่ายร้านตอนรับสินค้า แล้วเก็บจากลูกค้าเอง · GP คือค่าบริการร้าน",
             color = Color(0xFF607E6E),

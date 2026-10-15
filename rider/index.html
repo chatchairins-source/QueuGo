@@ -81,6 +81,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro Text"
 .qg-cash-confirm-dock>small{display:block;margin-top:10px;text-align:center;color:#9b9598;font-size:9px;font-weight:750}
 @media(max-height:700px){.qg-cash-confirm-main{padding-top:34px}.qg-cash-visual{margin-bottom:22px}.qg-cash-confirm-amount{font-size:48px}}
 </style>
+<link rel="stylesheet" href="../queuego-credit.css">
+<script src="../queuego-credit.js"></script>
 </head><body>
 <div id="app"></div><div id="toast" class="toast"></div>
 <script>/* =========================================================================
@@ -2370,6 +2372,7 @@ window.qgRenderEarnings=function(){
      panel.querySelectorAll('[data-days]').forEach(x=>x.classList.toggle('active',x===b));
      const days=Number(b.dataset.days);qgLoadRiderPeriod(days);qgLoadRiderLedger(days);
    });
+   const h=document.createElement("div");panel.querySelector(".qg-earn-shell").prepend(h);QueueGoCredit.mount(h,{kind:"rider",owner:S.user.id,getToken:getAccessToken,base:SB.URL,key:SB.KEY});
    qgLoadRiderPeriod(1);qgLoadRiderLedger(1);
  };
  const day=d=>{const x=Object.fromEntries(new Intl.DateTimeFormat('en-US',{timeZone:'Asia/Bangkok',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(d).map(p=>[p.type,p.value]));return x.year+'-'+x.month+'-'+x.day};
