@@ -1196,6 +1196,23 @@ class QueueGoApi {
             }
         }
 
+    suspend fun publishCustomerEta(
+        auth: QueueGoAuth,
+        orderId: String,
+        etaSeconds: Int
+    ) = withContext(Dispatchers.IO) {
+        require(runCatching { UUID.fromString(orderId) }.isSuccess) { "ออเดอร์ไม่ถูกต้อง" }
+        require(etaSeconds in 0..14_400) { "ETA ไม่ถูกต้อง" }
+        rpc(
+            "qg_rider_publish_customer_eta",
+            auth.session.accessToken,
+            JSONObject()
+                .put("p_order_id", orderId)
+                .put("p_eta_seconds", etaSeconds)
+        )
+        Unit
+    }
+
     suspend fun activeDeliveryReturn(auth: QueueGoAuth): RiderDeliveryReturn? = withContext(Dispatchers.IO) {
         val raw = rpc("qg_rider_active_delivery_return_v2", auth.session.accessToken, JSONObject())
         val row = when (raw) {
