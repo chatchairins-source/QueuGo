@@ -7,6 +7,12 @@ on:
     paths:
       - 'ops/grocery/probe-makro.cjs'
       - '.github/workflows/makro-public-catalog-probe.yml'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'ops/grocery/probe-makro.cjs'
+      - '.github/workflows/makro-public-catalog-probe.yml'
   workflow_dispatch:
 
 permissions:
