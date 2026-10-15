@@ -22,6 +22,13 @@ import android.view.WindowManager
 import android.widget.TextView
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlin.math.abs
 import kotlin.math.max
 
@@ -35,12 +42,12 @@ class RiderReturnService : Service() {
         private const val PREF_HINT_SHOWN = "hint_shown"
 
         fun start(context: Context) {
-            // Overlay/navigation return is a work-only capability. Refuse to start
-            // from stale UI state for pending, suspended, or inactive Riders.
-            val cached = SessionStore(context.applicationContext).load() ?: return
-            if (cached.user.status != "active") return
-            val intent = Intent(context, RiderReturnService::class.java)
-            runCatching { ContextCompat.startForegroundService(context, intent) }
+            // Start while QueueGo is still foreground, before handing off to Google Maps.
+            // Encrypted Rider session validation happens inside the service on Dispatchers.IO
+            // after startForeground, so Android Keystore never blocks the caller/UI thread.
+            val appContext = context.applicationContext
+            val intent = Intent(appContext, RiderReturnService::class.java)
+            runCatching { ContextCompat.startForegroundService(appContext, intent) }
                 .onFailure { Log.w("QueueGoReturnService", "foreground_start_rejected", it) }
         }
 
@@ -51,6 +58,8 @@ class RiderReturnService : Service() {
 
     private var overlay: View? = null
     private lateinit var windowManager: WindowManager
+    private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+    private var sessionValidationJob: Job? = null
 
     override fun onCreate() {
         super.onCreate()
@@ -59,15 +68,6 @@ class RiderReturnService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        // Re-check at the service boundary as Android may restart/dispatch a service
-        // after the screen that originally launched it has gone away.
-        val cached = SessionStore(applicationContext).load()
-        if (cached?.user?.status != "active") {
-            removeOverlay()
-            stopSelf()
-            return START_NOT_STICKY
-        }
-
         val notification = NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(R.drawable.qg_notification)
             .setContentTitle("QueueGo Rider")
@@ -97,11 +97,28 @@ class RiderReturnService : Service() {
             return START_NOT_STICKY
         }
 
-        if (Settings.canDrawOverlays(this)) showOverlay()
+        sessionValidationJob?.cancel()
+        sessionValidationJob = serviceScope.launch {
+            val activeRider = withContext(Dispatchers.IO) {
+                runCatching {
+                    SessionStore(applicationContext).load()?.user?.let { user ->
+                        user.role == "rider" && user.status == "active"
+                    } == true
+                }.getOrDefault(false)
+            }
+            if (!activeRider) {
+                removeOverlay()
+                stopSelf(startId)
+                return@launch
+            }
+            if (Settings.canDrawOverlays(this@RiderReturnService)) showOverlay()
+        }
         return START_NOT_STICKY
     }
 
     override fun onDestroy() {
+        sessionValidationJob?.cancel()
+        serviceScope.cancel()
         removeOverlay()
         super.onDestroy()
     }
