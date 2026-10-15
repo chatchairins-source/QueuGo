@@ -17,12 +17,17 @@ begin
   if old.status='settled' and (
     new.status is distinct from old.status
     or new.amount is distinct from old.amount
+    or new.replacement_target_amount is distinct from old.replacement_target_amount
+    or new.protected_route_payout is distinct from old.protected_route_payout
+    or new.replacement_order_id is distinct from old.replacement_order_id
+    or new.reason is distinct from old.reason
     or new.order_id is distinct from old.order_id
     or new.rider_id is distinct from old.rider_id
     or new.bundle_id is distinct from old.bundle_id
     or new.settled_at is distinct from old.settled_at
     or new.settled_by is distinct from old.settled_by
     or new.settlement_reference is distinct from old.settlement_reference
+    or new.settlement_note is distinct from old.settlement_note
   ) then
     raise exception 'settled Rider funding is immutable';
   end if;
