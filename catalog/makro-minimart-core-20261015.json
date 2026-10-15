@@ -1,0 +1,283 @@
+{
+  "version": 1,
+  "created_at": "2026-10-15",
+  "policy": "Makro Minimart Core: real products observed on Makro PRO. Master row represents one retail sell unit; source_pack_count records Makro wholesale pack. No barcode, price or image-rights data invented.",
+  "priority": "สินค้าหลักร้านชำ",
+  "items": [
+    {
+      "brand": "มาม่า",
+      "product_name_th": "บะหมี่กึ่งสำเร็จรูป รสหมูสับ",
+      "size_value": 60,
+      "size_unit": "g",
+      "sales_unit": "ซอง",
+      "category": "บะหมี่กึ่งสำเร็จรูป",
+      "source_product_id": "910897",
+      "source_url": "https://www.makro.pro/th/p/qgb6wqj-6761217458371",
+      "source_pack_count": 40
+    },
+    {
+      "brand": "มาม่า",
+      "product_name_th": "บะหมี่กึ่งสำเร็จรูป รสต้มยำกุ้ง",
+      "size_value": 55,
+      "size_unit": "g",
+      "sales_unit": "ซอง",
+      "category": "บะหมี่กึ่งสำเร็จรูป",
+      "source_product_id": "198133",
+      "source_url": "https://www.makro.pro/th/p/198133-6761218080963",
+      "source_pack_count": 30
+    },
+    {
+      "brand": "มาม่า",
+      "product_name_th": "บะหมี่กึ่งสำเร็จรูป รสต้มยำกุ้งน้ำข้น",
+      "size_value": 55,
+      "size_unit": "g",
+      "sales_unit": "ซอง",
+      "category": "บะหมี่กึ่งสำเร็จรูป",
+      "source_product_id": "104223",
+      "source_url": "https://www.makro.pro/th/p/104223-6761218015427",
+      "source_pack_count": 30
+    },
+    {
+      "brand": "มาม่า",
+      "product_name_th": "คัพ บะหมี่กึ่งสำเร็จรูป รสหมูสับ",
+      "size_value": 60,
+      "size_unit": "g",
+      "sales_unit": "ถ้วย",
+      "category": "บะหมี่กึ่งสำเร็จรูป",
+      "source_product_id": "132320",
+      "source_url": "https://www.makro.pro/p/2tc-v8o-6926629961923",
+      "source_pack_count": 6
+    },
+    {
+      "brand": "มาม่า",
+      "product_name_th": "คัพ บะหมี่กึ่งสำเร็จรูป รสต้มยำกุ้ง",
+      "size_value": 42,
+      "size_unit": "g",
+      "sales_unit": "ถ้วย",
+      "category": "บะหมี่กึ่งสำเร็จรูป",
+      "source_product_id": "132419",
+      "source_url": "https://www.makro.pro/th/p/132419-7078804816067",
+      "source_pack_count": 6
+    },
+    {
+      "brand": "ยำยำ",
+      "product_name_th": "จัมโบ้ บะหมี่กึ่งสำเร็จรูป รสต้มยำกุ้ง",
+      "size_value": 63,
+      "size_unit": "g",
+      "sales_unit": "ซอง",
+      "category": "บะหมี่กึ่งสำเร็จรูป",
+      "source_product_id": "115861",
+      "source_url": "https://www.makro.pro/th/p/115861-7248041607363",
+      "source_pack_count": 30
+    },
+    {
+      "brand": "ยำยำ",
+      "product_name_th": "จัมโบ้ บะหมี่กึ่งสำเร็จรูป รสต้มยำกุ้งน้ำข้น",
+      "size_value": 63,
+      "size_unit": "g",
+      "sales_unit": "ซอง",
+      "category": "บะหมี่กึ่งสำเร็จรูป",
+      "source_product_id": "110472",
+      "source_url": "https://www.makro.pro/th/p/110472-6761217622211",
+      "source_pack_count": 30
+    },
+    {
+      "brand": "ยำยำ",
+      "product_name_th": "บะหมี่กึ่งสำเร็จรูป รสต้มยำกุ้ง",
+      "size_value": 60,
+      "size_unit": "g",
+      "sales_unit": "ซอง",
+      "category": "บะหมี่กึ่งสำเร็จรูป",
+      "source_product_id": "182798",
+      "source_url": "https://www.makro.pro/p/7-wdcf5-7115315577027",
+      "source_pack_count": 6
+    },
+    {
+      "brand": "ไวไว",
+      "product_name_th": "บะหมี่กึ่งสำเร็จรูป รสหมูสับ",
+      "size_value": 60,
+      "size_unit": "g",
+      "sales_unit": "ซอง",
+      "category": "บะหมี่กึ่งสำเร็จรูป",
+      "source_product_id": "858034",
+      "source_url": "https://www.makro.pro/th/p/858034-7115314823363",
+      "source_pack_count": 10
+    },
+    {
+      "brand": "ไวไว",
+      "product_name_th": "บะหมี่กึ่งสำเร็จรูป รสต้มยำกุ้งน้ำข้น",
+      "size_value": 60,
+      "size_unit": "g",
+      "sales_unit": "ซอง",
+      "category": "บะหมี่กึ่งสำเร็จรูป",
+      "source_product_id": "858036",
+      "source_url": "https://www.makro.pro/th/p/858036-7164688597187",
+      "source_pack_count": 10
+    },
+    {
+      "brand": "ไวไว",
+      "product_name_th": "ควิก บะหมี่กึ่งสำเร็จรูป รสต้มยำกุ้ง",
+      "size_value": 60,
+      "size_unit": "g",
+      "sales_unit": "ซอง",
+      "category": "บะหมี่กึ่งสำเร็จรูป",
+      "source_product_id": "86619",
+      "source_url": "https://www.makro.pro/th/p/7h8bocd-7078804488387",
+      "source_pack_count": 6
+    },
+    {
+      "brand": "สามแม่ครัว",
+      "product_name_th": "ปลาแมคเคอเรลในซอสมะเขือเทศ",
+      "size_value": 155,
+      "size_unit": "g",
+      "sales_unit": "กระป๋อง",
+      "category": "ปลากระป๋อง",
+      "source_product_id": "479973",
+      "source_url": "https://www.makro.pro/th/p/479973-7352859787459",
+      "source_pack_count": 10
+    },
+    {
+      "brand": "สามแม่ครัว",
+      "product_name_th": "ปลาซาร์ดีนในซอสมะเขือเทศ",
+      "size_value": 155,
+      "size_unit": "g",
+      "sales_unit": "กระป๋อง",
+      "category": "ปลากระป๋อง",
+      "source_product_id": "136279",
+      "source_url": "https://www.makro.pro/p/hz7kglp-6761218736323",
+      "source_pack_count": 10
+    },
+    {
+      "brand": "สามแม่ครัว",
+      "product_name_th": "แมคเคอเรลในซอสมะเขือเทศ",
+      "size_value": 190,
+      "size_unit": "g",
+      "sales_unit": "กระป๋อง",
+      "category": "ปลากระป๋อง",
+      "source_product_id": "105664",
+      "source_url": "https://www.makro.pro/th/p/105664-808056785549117",
+      "source_pack_count": 6
+    },
+    {
+      "brand": "รสดี",
+      "product_name_th": "ผงปรุงรส รสหมู",
+      "size_value": 70,
+      "size_unit": "g",
+      "sales_unit": "ซอง",
+      "category": "เครื่องปรุง",
+      "source_product_id": "144241",
+      "source_url": "https://www.makro.pro/th/p/144241-6761209528515",
+      "source_pack_count": 10
+    },
+    {
+      "brand": "รสดี",
+      "product_name_th": "ผงปรุงรส รสหมู",
+      "size_value": 400,
+      "size_unit": "g",
+      "sales_unit": "ซอง",
+      "category": "เครื่องปรุง",
+      "source_product_id": "106251",
+      "source_url": "https://www.makro.pro/p/3_unsab-6814744576195",
+      "source_pack_count": 1
+    },
+    {
+      "brand": "อายิโนะโมะโต๊ะ",
+      "product_name_th": "ผงชูรส",
+      "size_value": 1000,
+      "size_unit": "g",
+      "sales_unit": "ถุง",
+      "category": "เครื่องปรุง",
+      "source_product_id": "929705",
+      "source_url": "https://www.makro.pro/th/p/929705-350661837154309",
+      "source_pack_count": 1
+    },
+    {
+      "brand": "ภูเขาทอง",
+      "product_name_th": "ซอสปรุงรส ฝาเขียว",
+      "size_value": 1000,
+      "size_unit": "ml",
+      "sales_unit": "ขวด",
+      "category": "ซอส",
+      "source_product_id": "43615",
+      "source_url": "https://www.makro.pro/th/p/43615-6814748049603",
+      "source_pack_count": 3
+    },
+    {
+      "brand": "ทิพรส",
+      "product_name_th": "น้ำปลาแท้ ขวดเพ็ท",
+      "size_value": 700,
+      "size_unit": "ml",
+      "sales_unit": "ขวด",
+      "category": "น้ำปลา",
+      "source_product_id": "426547",
+      "source_url": "https://www.makro.pro/th/p/MxBUIcc-274346112267996",
+      "source_pack_count": 1
+    },
+    {
+      "brand": "ซันไลต์",
+      "product_name_th": "น้ำยาล้างจาน เลมอนเทอร์โบ",
+      "size_value": 300,
+      "size_unit": "ml",
+      "sales_unit": "ชิ้น",
+      "category": "น้ำยาล้างจาน",
+      "source_product_id": "811269",
+      "source_url": "https://www.makro.pro/th/p/811269-6761190359235",
+      "source_pack_count": 3
+    },
+    {
+      "brand": "โอโม",
+      "product_name_th": "ผงซักฟอก สูตรมาตรฐาน",
+      "size_value": 800,
+      "size_unit": "g",
+      "sales_unit": "ถุง",
+      "category": "ผงซักฟอก",
+      "source_product_id": "157043",
+      "source_url": "https://www.makro.pro/p/oi41yn-6761206251715",
+      "source_pack_count": 1
+    },
+    {
+      "brand": "ลักส์",
+      "product_name_th": "สบู่ก้อน ซอฟท์โรสชมพู",
+      "size_value": 70,
+      "size_unit": "g",
+      "sales_unit": "ก้อน",
+      "category": "สบู่",
+      "source_product_id": "117945",
+      "source_url": "https://www.makro.pro/p/6okjbdv-7078731382979",
+      "source_pack_count": 4
+    },
+    {
+      "brand": "คริสตัล",
+      "product_name_th": "น้ำดื่ม",
+      "size_value": 600,
+      "size_unit": "ml",
+      "sales_unit": "ขวด",
+      "category": "น้ำดื่ม",
+      "source_product_id": "219535",
+      "source_url": "https://www.makro.pro/p/woicih7-6761199108291",
+      "source_pack_count": 12
+    },
+    {
+      "brand": "เป๊ปซี่",
+      "product_name_th": "เครื่องดื่มน้ำอัดลม",
+      "size_value": 345,
+      "size_unit": "ml",
+      "sales_unit": "ขวด",
+      "category": "น้ำอัดลม",
+      "source_product_id": "208366",
+      "source_url": "https://www.makro.pro/th/p/208366-6761214705859",
+      "source_pack_count": 24
+    },
+    {
+      "brand": "สปอนเซอร์",
+      "product_name_th": "เครื่องดื่มเกลือแร่ ออริจินัล",
+      "size_value": 250,
+      "size_unit": "ml",
+      "sales_unit": "ขวด",
+      "category": "เครื่องดื่มอื่น ๆ",
+      "source_product_id": "128504",
+      "source_url": "https://www.makro.pro/p/hl1xatl-6761205366979",
+      "source_pack_count": 24
+    }
+  ]
+}
