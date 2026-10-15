@@ -379,6 +379,13 @@ ok(
 
 const riderChat=read('rider/src/main/java/com/queuego/rider/RiderChat.kt');
 ok(
+  riderChat.includes('fun openCommunityGuidelines()') &&
+  riderChat.includes('runCatching {') &&
+  riderChat.includes('message = "เปิดกติกาชุมชนไม่สำเร็จ"') &&
+  !riderChat.includes('TextButton(onClick = { context.startActivity(Intent(Intent.ACTION_VIEW'),
+  'Rider chat external guideline links must fail closed instead of crashing when Android has no handler'
+);
+ok(
   riderChat.includes('quickMessages = withContext(Dispatchers.IO) { quickStore.load() }') &&
   riderChat.includes('scope.launch { withContext(Dispatchers.IO) { quickStore.save(next) } }') &&
   !riderChat.includes('mutableStateOf(quickStore.load())') &&
