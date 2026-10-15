@@ -59,7 +59,7 @@ internal suspend fun uploadMerchantGpSlip(
 
         val code = connection.responseCode
         if (code !in 200..299) {
-            val body = readMerchantUploadErrorBounded(connection.errorStream)
+            val body = readMerchantStorageResponseBounded(connection.errorStream)
             val message = runCatching {
                 val json = JSONObject(body)
                 json.optString("message").ifBlank { json.optString("error") }
