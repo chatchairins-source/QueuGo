@@ -19,6 +19,8 @@ import org.json.JSONObject
 import java.io.IOException
 import java.util.concurrent.TimeUnit
 
+private const val NATIVE_ORDER_REALTIME_MAX_CHARS = 256 * 1024
+
 /** Realtime is an invalidation signal only. Owned API reads remain authoritative. */
 class NativeOrderRealtime internal constructor(
     private val endpoint: String,
@@ -74,6 +76,10 @@ class NativeOrderRealtime internal constructor(
                     .put("access_token", token), "1"))
             }
             override fun onMessage(webSocket: WebSocket, text: String) {
+                if (text.length > NATIVE_ORDER_REALTIME_MAX_CHARS) {
+                    close(IOException("Realtime message too large"))
+                    return
+                }
                 try {
                     val envelope = JSONObject(text)
                     if (envelope.optString("topic") == "phoenix" && envelope.optString("event") == "phx_reply") {
