@@ -95,6 +95,7 @@ ok(
 );
 
 const sharedApi=read('shared/src/main/java/com/queuego/shared/QueueGoNativeApi.kt');
+const nativeAuthApi=read('shared/src/main/java/com/queuego/shared/NativeAuthApi.kt');
 const riderApiMemory=read('rider/src/main/java/com/queuego/rider/QueueGoApi.kt');
 const customerApiMemory=read('customer/src/main/java/com/queuego/customer/CustomerApi.kt');
 const store=read('rider/src/main/java/com/queuego/rider/SessionStore.kt');
@@ -108,6 +109,13 @@ ok(
   sharedApi.includes('contentLengthLong') &&
   !sharedApi.includes('BufferedReader(InputStreamReader(it, StandardCharsets.UTF_8)).readText()'),
   'Shared Customer/Merchant API responses must be byte bounded before JSON parsing to prevent low-memory process kills'
+);
+ok(
+  nativeAuthApi.includes('NATIVE_AUTH_RESPONSE_MAX_BYTES = 4 * 1024 * 1024') &&
+  nativeAuthApi.includes('readNativeAuthResponseBounded') &&
+  nativeAuthApi.includes('contentLengthLong') &&
+  !nativeAuthApi.includes('BufferedReader(InputStreamReader(it, StandardCharsets.UTF_8)).readText()'),
+  'Customer/Merchant auth and session responses must be byte bounded before JSON parsing'
 );
 ok(
   riderApiMemory.includes('RIDER_API_RESPONSE_MAX_BYTES = 12 * 1024 * 1024') &&
