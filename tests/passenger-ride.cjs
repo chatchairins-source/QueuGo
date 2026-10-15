@@ -77,6 +77,7 @@ const id=n=>'00000000-0000-4000-8000-'+String(n).padStart(12,'0');
  await reject("insert into laundry_rider_jobs values($1,'assigned')",[id(11)],/conflicts/);
  await q(`insert into orders(id,order_number,status,customer_id,shop_id) values($1,'QT-food','searching_rider',$2,$3)`,[id(81),id(60),id(50)]);
  await reject("update orders set rider_id=$1,status='rider_assigned' where id=$2",[id(11),id(81)],/conflicts/);
+ await q("update orders set status='cancelled' where id=$1",[id(81)]);
  await as(101);
  const action=async(a,n)=>q('select qg_rider_action_once($1,$2,$3::jsonb) result',[id(n),'ride',JSON.stringify({p_order_id:id(80),p_action:a})]);
  await reject("select qg_private.ride_order_action($1,'start')",[id(80)],/stage changed/);
