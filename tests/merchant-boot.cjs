@@ -14,6 +14,7 @@ const tick=()=>new Promise(r=>setImmediate(r));
  w.fetch=async url=>({ok:true,status:200,json:async()=>{
   if(url.includes('shop_profiles?'))return [{id:'isolated-shop',user_id:'isolated-owner',public_category:'grocery'}];
   if(url.includes('/rpc/qg_grocery_categories'))return [{category:source.category,n:1}];
+  if(url.includes('/rpc/qg_grocery_source_search'))return [{source:'makro-pro',source_product_id:'isolated-source',brand:source.brand,title_th:source.product_name_th,barcode:source.barcode||null,deepest_category:'dry-grocery/instant-meals/instant-noodles',image_url:null,in_shop:false}];
   if(url.includes('/rpc/qg_grocery_merchant_page'))return [{...source,id:'isolated-master',selling_price:null,stock_qty:0,enabled:false}];
   return [];
  }});
