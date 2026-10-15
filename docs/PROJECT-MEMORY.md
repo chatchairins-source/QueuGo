@@ -1,3 +1,9 @@
+## 2026-10-15 Grocery product photos: collection in progress
+- Owner requests actual centrally supplied product photos for all 414 master products; merchants should not source photos individually. Continue from Merchant white-screen fix main1f983184/PR352 and preserve that work.
+- Audited all414 imported records: every image is pending/null. Collected primary-source snapshots and a reproducible candidate review manifest. Current pass has147 label/size candidates,2 ambiguous,136 review and129 without a candidate; these are NOT visual approval or permission to publish.
+- Downloaded146 unique actual distributor packshots; source URLs, original hashes and review copies retained. Additional official manufacturer candidates are kept separately. No generated packshots, retailer hotlinks, invented GTINs or invented reuse grants.
+- Existing Admin image approval/upload and Storage/RLS remain authoritative; do not introduce a duplicate image system or weaken the approved-image constraint. Production image writes remain0 until actual identity and reuse evidence are verified. Completing the other267 matches and obtaining valid reuse evidence remain OPEN.
+
 ## 2026-10-13 approved category banners verified
 - Final Web merge b5f9e4e3c84ca4e1daf6cb0ccd44d32cc38c07a7/PR181 has exactly tested3d29de55 tree. RC38419925893 and merged-tree RC38420111285 / Pages38420111247 SUCCESS. Actual public Shopping overview, six subcategories and Laundry images decode960x458; bright full photos/light text wash and original category icons verified.
 - Native merge22a2a8b29b96ba555daa9aedcd5620e0b7d1e4cf/PR177 has exactly testedc01e91bf tree, preserving newest Rider4acbcda. Pilot38419935708 SUCCESS: full regression/source, all-role JVM, all3 debug builds,16KB/no-WebView and native-pilot launch/map/service lifecycle. Separate map-display-only/navigation-map-runtime jobs skipped for this branch; no new certification from those jobs.
