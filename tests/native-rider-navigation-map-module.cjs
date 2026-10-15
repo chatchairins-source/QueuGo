@@ -172,9 +172,11 @@ assert(
   sessionStore.includes('fun loadMapViewMode(')&&
   sessionStore.includes('"FREE_PAN"')&&
   integration.includes('sessionStore.loadMapViewMode(stateKey)')&&
-  integration.includes('sessionStore.saveMapViewMode(stateKey, NavigationViewMode.FREE_PAN.name)')&&
-  integration.includes('sessionStore.saveMapViewMode(stateKey, NavigationViewMode.FOLLOW.name)'),
-  'Manual-pan view mode must survive Rider tab remounts without silently resuming camera follow');
+  integration.includes('pendingViewModePersistence = NavigationViewMode.FREE_PAN.name')&&
+  integration.includes('pendingViewModePersistence = NavigationViewMode.FOLLOW.name')&&
+  integration.includes('sessionStore.saveMapViewMode(stateKey, mode)')&&
+  integration.includes('withContext(Dispatchers.IO)'),
+  'Manual-pan view mode must survive Rider tab remounts while durable persistence stays off Main');
 
 assert(
   viewportInsets.includes('data class NavigationViewportInsets')&&
