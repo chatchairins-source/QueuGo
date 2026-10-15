@@ -16,7 +16,7 @@ import java.util.UUID
 
 private const val MERCHANT_UPLOAD_ERROR_MAX_BYTES = 256 * 1024
 
-internal fun readMerchantUploadErrorBounded(stream: java.io.InputStream?): String {
+internal fun readMerchantStorageResponseBounded(stream: java.io.InputStream?): String {
     if (stream == null) return ""
     return stream.use { input ->
         val output = ByteArrayOutputStream(16 * 1024)
@@ -118,7 +118,7 @@ internal suspend fun uploadMerchantImage(
 
         val code = connection.responseCode
         if (code !in 200..299) {
-            val body = readMerchantUploadErrorBounded(connection.errorStream)
+            val body = readMerchantStorageResponseBounded(connection.errorStream)
             val message = runCatching {
                 JSONObject(body).optString("message").ifBlank { JSONObject(body).optString("error") }
             }.getOrNull().orEmpty().ifBlank { "Storage HTTP $code" }
