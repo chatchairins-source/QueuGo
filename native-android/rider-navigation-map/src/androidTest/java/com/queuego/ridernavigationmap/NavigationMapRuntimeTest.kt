@@ -10,6 +10,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.util.concurrent.TimeUnit
 
+// Runtime validation branch: exercises native Longdo perspective tilt on the exact navigation implementation.
 class NavigationMapRuntimeTest {
     private fun awaitAppliedRender(
         activity: NavigationMapRuntimeActivity,
