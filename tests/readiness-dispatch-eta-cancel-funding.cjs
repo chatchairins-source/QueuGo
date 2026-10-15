@@ -69,12 +69,23 @@ const id=n=>'00000000-0000-4000-8000-'+String(n).padStart(12,'0');
  await q('select queuego_claim_route_bundle($1)',[id(311)]);
  const primaryBefore=await row(310);assert(Number(primaryBefore.delivery_fee)<25);checks++;
 
+ // A later merchant readiness update re-plans only the uncommitted suffix.
+ // Primary AP remains committed rank1 while its customer can move ahead of a late BP.
+ await setReady(311,45);await as(101);
+ let active=(await q('select * from queuego_route_bundle_active_orders()')).rows;
+ let primaryPlan=JSON.parse(active.find(x=>x.order_id===id(310)).route_sequence);
+ let candidatePlan=JSON.parse(active.find(x=>x.order_id===id(311)).route_sequence);
+ eq(primaryPlan.pickup_rank,1);eq(primaryPlan.dropoff_rank,2);eq(candidatePlan.pickup_rank,3);
+
  // Merchant-side cancellation leaves the remaining customer's saving untouched,
  // restores standard Rider pay, dissolves the two-order stack and records QueueGo funding.
  await q("update orders set status='cancelled',cancelled_at=now() where id=$1",[id(311)]);
  const remain=await row(310);eq(remain.route_bundle_id,null);eq(Number(remain.rider_delivery_payout),25);eq(Number(remain.delivery_fee),Number(primaryBefore.delivery_fee));
- const funding=(await q('select amount,status from qg_private.rider_cancellation_funding where order_id=$1',[id(310)])).rows[0];
+ const funding=(await q('select amount,replacement_target_amount,protected_route_payout,replacement_order_id,status from qg_private.rider_cancellation_funding where order_id=$1',[id(310)])).rows[0];
  eq(Number(funding.amount),Number((25-Number(remain.delivery_fee)).toFixed(2)));eq(funding.status,'reserved');
+ eq(Number(funding.replacement_target_amount),Number(quote.rider_extra_fee));
+ eq(Number(funding.protected_route_payout),Number((25+Number(quote.rider_extra_fee)).toFixed(2)));
+ eq(funding.replacement_order_id,null);
  const bundle=(await q('select status from route_bundles where id=$1',[primaryBefore.route_bundle_id])).rows[0];eq(bundle.status,'CANCELLED');
 
  // Customer ETA reads the same merchant readiness / Rider state and stays approximate.
@@ -94,9 +105,13 @@ const id=n=>'00000000-0000-4000-8000-'+String(n).padStart(12,'0');
  await seed(312);await setReady(312,1);await as(101);await q('select qg_rider_dispatch_preference(true,false,true)');
  await cacheRoute(310,312);await q('select qg_dispatch_rider_offers()');
  eq((await row(312)).rider_id,id(11));eq((await row(312)).next_after_order_id,id(310));
+ const linked=(await q('select replacement_order_id from qg_private.rider_cancellation_funding where order_id=$1',[id(310)])).rows[0];
+ eq(linked.replacement_order_id,id(312));
 
  const ledger=(await q('select qg_rider_cash_ledger(current_date,current_date) l')).rows[0].l;
  const line=ledger.find(x=>x.order_id===id(310));eq(Number(line.delivery_fee),25);eq(Number(line.platform_cancellation_funding),Number(funding.amount));
+ eq(Number(line.platform_cancellation_replacement_target),Number(funding.replacement_target_amount));
+ eq(line.platform_replacement_order_id,id(312));
  console.log(JSON.stringify({checks,failures:0,scope:'merchant readiness -> same dynamic dispatcher -> rider stack -> approximate customer ETA -> cancellation funding; isolated database only, no Production data or payout claim'}));
  await db.close();
 })().catch(e=>{console.error(e);process.exit(1)});
