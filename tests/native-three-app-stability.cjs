@@ -618,6 +618,16 @@ ok(
   'Rider navigation continuity PixelCopy snapshots must cap bitmap dimensions before allocation'
 );
 
+ok(
+  riderNavigationMapRuntime.includes('private fun recycleBitmapCaches()') &&
+  riderNavigationMapRuntime.includes('markerBitmaps.clear()') &&
+  riderNavigationMapRuntime.includes('riderPuckBitmaps.clear()') &&
+  riderNavigationMapRuntime.includes('stopBitmaps.clear()') &&
+  riderNavigationMapRuntime.includes('demandBitmaps.clear()') &&
+  riderNavigationMapRuntime.includes('resetSurface()\n        recycleBitmapCaches()'),
+  'Rider navigation marker/puck/stop/demand bitmap caches must recycle when the holder is disposed'
+);
+
 const riderLongdoMap=read('rider/src/main/java/com/queuego/rider/LongdoRiderMap.kt');
 ok(
   riderLongdoMap.includes('withContext(Dispatchers.IO) { stateStore.loadMapCamera(stateKey) }') &&
