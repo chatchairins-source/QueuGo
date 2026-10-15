@@ -311,6 +311,14 @@ ok(
   'Rider post-commit local proof cleanup must remain non-fatal after authoritative server success'
 );
 
+const riderNotificationPolicy=read('rider/src/main/java/com/queuego/rider/RiderNotificationPolicy.kt');
+ok(
+  riderNotificationPolicy.includes('internal suspend fun consumeRiderAlert') &&
+  riderNotificationPolicy.includes('withContext(Dispatchers.IO)') &&
+  riderNotificationPolicy.includes('.commit()'),
+  'Rider durable alert receipts must keep synchronous commit off Main without weakening duplicate-alert prevention'
+);
+
 const riderEvidencePreview=read('rider/src/main/java/com/queuego/rider/RiderEvidencePreview.kt');
 const riderRegistrationImage=read('rider/src/main/java/com/queuego/rider/RiderRegistrationImage.kt');
 const riderSupport=read('rider/src/main/java/com/queuego/rider/RiderSupportScreen.kt');
