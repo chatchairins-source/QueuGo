@@ -173,7 +173,7 @@ private fun ShopBody(auth: NativeAuth?, shop: CustomerShop, products: List<Custo
             items(products, key = { it.id }) { product ->
                 Column(Modifier.offset(y = (-18).dp)) {
                     Row(Modifier.fillMaxWidth().background(Color.White).padding(horizontal = inset, vertical = if (compact) 7.dp else 9.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(9.dp)) {
-                        QgRemoteImage(product.image, Modifier.size(if (compact) 64.dp else 72.dp, if (compact) 58.dp else 66.dp), product.name, cornerRadius = 13.dp)
+                        QgRemoteImage(product.image, Modifier.size(if (compact) 64.dp else 72.dp, if (compact) 58.dp else 66.dp), product.name, cornerRadius = 13.dp, maxDecodeSide = 256)
                         Column(Modifier.weight(1f)) {
                             Text(product.name, fontSize = 14.sp, fontWeight = FontWeight.Bold)
                             if (!product.description.isNullOrBlank()) Text(product.description, fontSize = 10.sp, color = QgMuted, maxLines = 2, modifier = Modifier.padding(vertical = 3.dp))
