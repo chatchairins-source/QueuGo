@@ -14,7 +14,7 @@ function absolute(href, origin=base){
   try { return new URL(decode(href), origin).href; } catch { return null; }
 }
 const headers={
-  'user-agent':'Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Chrome/154 Mobile Safari/537.36 QueueGoCatalogResearch/1.1',
+  'user-agent':'Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Chrome/154 Mobile Safari/537.36 QueueGoCatalogResearch/1.2',
   'accept-language':'th-TH,th;q=0.9,en;q=0.7',
   'accept':'text/html,application/xhtml+xml'
 };
@@ -36,22 +36,17 @@ function extract(html,url){
   let nextData=null; try{ if(next) nextData=JSON.parse(next[1]); }catch{}
   return {hrefs,productLinks,gtins,productImages,nextData};
 }
-function walk(obj,path='$',out=[]){
-  if(out.length>5000)return out;
-  if(Array.isArray(obj)){
-    if(obj.length>=15 && obj.length<=25) out.push({path,type:'array',length:obj.length,sample:obj.slice(0,2)});
-    obj.forEach((v,i)=>walk(v,path+'['+i+']',out));
-  }else if(obj&&typeof obj==='object'){
-    for(const [k,v] of Object.entries(obj)){
-      if(/total|count|page|offset|cursor|limit|product|item|search|category/i.test(k)){
-        let sample=v;
-        try{ sample=JSON.stringify(v).slice(0,800); }catch{}
-        out.push({path:path+'.'+k,type:typeof v,sample});
-      }
-      walk(v,path+'.'+k,out);
-    }
-  }
-  return out;
+function compactSearchSummary(nextData){
+  const r=nextData?.props?.pageProps?.initialSearchResult||null;
+  if(!r)return null;
+  return {
+    found:r.found,out_of:r.out_of,page:r.page,request_params:r.request_params,
+    hits:(r.hits||[]).slice(0,3).map(h=>({
+      id:h.document?.id,productId:h.document?.productId,sku:h.document?.sku,
+      brand:h.document?.brand,title:h.document?.title,categories:h.document?.categories,
+      images:(h.document?.images||[]).slice(0,2)
+    }))
+  };
 }
 async function get(url){
   const r=await fetch(url,{headers,redirect:'follow'});
@@ -60,49 +55,40 @@ async function get(url){
 }
 (async()=>{
   fs.mkdirSync('artifacts/makro-probe',{recursive:true});
-  const candidates=[
-    base,
-    base+'?page=2',
-    base+'?page=3',
-    base+'?offset=20',
-    base+'?offset=40',
-    base+'?pageNumber=2',
-    base+'?currentPage=2'
+  const p=await get(base);
+  if(p.status!==200)throw new Error('Makro category fetch failed '+p.status);
+  fs.writeFileSync('artifacts/makro-probe/page.html',p.html);
+  fs.writeFileSync('artifacts/makro-probe/initial-search.json',JSON.stringify(p.nextData?.props?.pageProps?.initialSearchResult||null,null,2));
+  console.log('INITIAL_SEARCH',JSON.stringify(compactSearchSummary(p.nextData),null,2));
+
+  const scripts=uniq([...p.html.matchAll(/<script[^>]+src=["']([^"']+)["']/gi)]
+    .map(m=>absolute(m[1],p.url)).filter(Boolean));
+  const needles=[
+    'products-agg-prod-v58','multi_search','typesense','per_page','cheapestPriceCollectionId',
+    'searchParams','filter_by','facet_by','x-typesense-api-key','collections/products',
+    'apiKey','searchClient','searchEndpoint','searchHost','searchUrl'
   ];
-  const pages=[];
-  for(const url of candidates){
-    const p=await get(url);
-    pages.push({requested:url,resolved:p.url,status:p.status,bytes:p.bytes,productLinks:p.productLinks,gtins:p.gtins,productImages:p.productImages});
-    console.log('PAGE_TEST',JSON.stringify({
-      requested:url,status:p.status,bytes:p.bytes,count:p.productLinks.length,
-      gtins:p.gtins.slice(0,5),first:p.productLinks[0],last:p.productLinks.at(-1)
-    }));
-    if(url===base){
-      fs.writeFileSync('artifacts/makro-probe/page.html',p.html);
-      const hints=walk(p.nextData).filter(x=>{
-        const s=JSON.stringify(x);
-        return /total|count|page|offset|cursor|limit|product|item|search|category/i.test(s);
-      });
-      fs.writeFileSync('artifacts/makro-probe/next-hints.json',JSON.stringify(hints,null,2));
-      console.log('NEXT_HINTS',JSON.stringify(hints.slice(0,120),null,2));
-      const jsUrls=uniq([...p.html.matchAll(/<script[^>]+src=["']([^"']+)["']/gi)].map(m=>absolute(m[1],p.url)).filter(Boolean));
-      for(const jsUrl of jsUrls.filter(u=>/pages\/c\//.test(u)).slice(0,3)){
-        const jr=await fetch(jsUrl,{headers:{'user-agent':headers['user-agent']}});
-        const js=await jr.text();
-        const apiHints=uniq([...js.matchAll(/https?:\\?\/\\?\/[^"'\x60\\\s]+|\/[A-Za-z0-9_?=&{}\[\].:-]{8,}/g)]
-          .map(m=>m[0].replace(/\\\//g,'/'))
-          .filter(s=>/search|product|catalog|category|plp|graphql|api|page|offset|cursor/i.test(s))).slice(0,300);
-        fs.writeFileSync('artifacts/makro-probe/category-page.js',js);
-        fs.writeFileSync('artifacts/makro-probe/api-hints.json',JSON.stringify(apiHints,null,2));
-        console.log('CATEGORY_JS',jsUrl,'bytes',Buffer.byteLength(js),'API_HINTS',JSON.stringify(apiHints.slice(0,120),null,2));
+  const matches=[];
+  for(const u of scripts){
+    const r=await fetch(u,{headers:{'user-agent':headers['user-agent']},redirect:'follow'});
+    if(!r.ok)continue;
+    const js=await r.text();
+    for(const needle of needles){
+      let start=0,count=0;
+      for(;;){
+        const i=js.toLowerCase().indexOf(needle.toLowerCase(),start);
+        if(i<0||count>=20)break;
+        matches.push({script:u,needle,index:i,context:js.slice(Math.max(0,i-900),i+2200)});
+        start=i+needle.length; count++;
       }
     }
-    await new Promise(r=>setTimeout(r,500));
+    console.log('SCANNED_SCRIPT',u,'bytes',Buffer.byteLength(js),'matches',matches.filter(x=>x.script===u).length);
+    await new Promise(r=>setTimeout(r,100));
   }
-  const first=new Set(pages[0].gtins);
-  for(const p of pages.slice(1)){
-    const overlap=p.gtins.filter(x=>first.has(x)).length;
-    console.log('OVERLAP_WITH_FIRST',p.requested,overlap,'of',p.gtins.length);
-  }
-  fs.writeFileSync('artifacts/makro-probe/probe.json',JSON.stringify({base,pages},null,2));
+  fs.writeFileSync('artifacts/makro-probe/js-search-matches.json',JSON.stringify(matches,null,2));
+  console.log('JS_MATCHES',JSON.stringify(matches.slice(0,100),null,2));
+
+  const urls=uniq(matches.flatMap(m=>[...m.context.matchAll(/https?:\\?\/\\?\/[^"'\x60\\\s]+/g)].map(x=>x[0].replace(/\\\//g,'/'))));
+  console.log('DISCOVERED_URLS',JSON.stringify(urls.slice(0,200),null,2));
+  fs.writeFileSync('artifacts/makro-probe/discovered-urls.json',JSON.stringify(urls,null,2));
 })().catch(err=>{console.error(err);process.exit(1);});
