@@ -1,3 +1,10 @@
+## 2026-10-15 Native Merchant Grocery catalog parity
+- Continue Native Merchant from PR #333 / `work-native-credit-admin-promo-20261015` HEAD `b3d61be03f2150181dbdb6c253b25c785759a243`; backup `backup-pre-native-merchant-grocery-catalog-20261015`; candidate `work-native-merchant-grocery-catalog-20261015`.
+- Web Grocery sales-channel contract is already released on main/Production: no Grocery promo-price editor, explicit `pos_available` + `delivery_available`, one storefront price, Delivery price derived by the existing GP lock.
+- Native manual product editor already had POS/Delivery + GP pricing; do not replace it. Grocery Products now exposes two explicit actions: `เพิ่มสินค้าเอง` uses the existing editor, while `เพิ่มสินค้าจากแคตตาล็อก` uses the existing Production RPCs `qg_grocery_categories`, `qg_grocery_merchant_page`, and repeat-safe `qg_grocery_store_save`.
+- Native catalog uses centrally supplied master images only, preserves the 51-row paging sentinel, optimistic `expected_updated_at`, and stable request IDs for ambiguous retries. No mock/demo/fake data and no new backend/financial system.
+- Release gate remains OPEN until source regression and Merchant Kotlin compile pass on the exact candidate HEAD. Do not merge this successor into the Native chain on a failing gate.
+
 ## 2026-10-15 Owner-authorized Admin free Merchant credit
 - Owner explicitly requested free store GP credit and an Admin grant control. This is a real promotional entitlement, separate from paid credit; it does not require Omise/payment approval and must never fabricate a bank payment. No amount is seeded or granted automatically by this migration.
 - Continue latest credit retirement successor a45b2120 plus latest credit-source a41436ad (preserved by merge), backup/credit-before-admin-promo-20261015 protects the retirement baseline. Reuse credit_accounts.promo_minor, immutable promo entries and the existing GP reserve/capture/release; no second wallet or settlement system.
