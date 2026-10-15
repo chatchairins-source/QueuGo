@@ -5,6 +5,8 @@ import com.queuego.shared.nativeOrderNumber
 import com.queuego.shared.NativeAuth
 import com.queuego.shared.nativePosPermissionAllowed
 import com.queuego.shared.QueueGoNativeApi
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
 import java.security.SecureRandom
@@ -131,9 +133,11 @@ class MerchantPosApi(
     private val pendingStore: MerchantPosPendingStore,
     private val http: QueueGoNativeApi = QueueGoNativeApi()
 ) {
-    fun pendingEdit(auth: NativeAuth): PosEditIntent? = pendingStore.load(auth.session.authUserId)
+    suspend fun pendingEdit(auth: NativeAuth): PosEditIntent? = withContext(Dispatchers.IO) {
+        pendingStore.load(auth.session.authUserId)
+    }
 
-    private fun requireNoPendingEdit(auth: NativeAuth) {
+    private suspend fun requireNoPendingEdit(auth: NativeAuth) {
         check(pendingEdit(auth) == null) { "กรุณากดตรวจรายการ POS ค้างก่อนทำรายการอื่น" }
     }
 
@@ -143,7 +147,9 @@ class MerchantPosApi(
     }
 
     private suspend fun submitPendingEdit(auth: NativeAuth, intent: PosEditIntent): String {
-        val pending = pendingStore.prepare(auth.session.authUserId, intent)
+        val pending = withContext(Dispatchers.IO) {
+            pendingStore.prepare(auth.session.authUserId, intent)
+        }
         val raw = try {
             if (pending.billId == null) {
                 val sessionResult = http.rpc("check_active_session", auth.session.accessToken,
@@ -169,12 +175,16 @@ class MerchantPosApi(
             val rejectedEdit = listOf("product unavailable", "bill not editable", "invalid kitchen state",
                 "bill identity cannot change", "sent items cannot be reduced", "cannot reduce this line")
             if (failure.statusCode == 400 && rejectedEdit.any { failure.message.orEmpty().contains(it) }) {
-                pendingStore.clear(auth.session.authUserId, pending.requestId)
+                withContext(Dispatchers.IO) {
+                    pendingStore.clear(auth.session.authUserId, pending.requestId)
+                }
             }
             throw failure
         }
         val id = merchantPosReplayOrderId(raw, pending.billId)
-        pendingStore.clear(auth.session.authUserId, pending.requestId)
+        withContext(Dispatchers.IO) {
+            pendingStore.clear(auth.session.authUserId, pending.requestId)
+        }
         return id
     }
 
