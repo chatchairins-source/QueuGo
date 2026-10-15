@@ -1083,21 +1083,28 @@ private fun RiderHome(
         ActivityResultContracts.TakePicture()
     ) { success ->
         scope.launch {
-            if (success) {
-                val promoted = pendingProofIo {
-                    pendingProofStore.promoteCapture(auth.user.id, RIDER_PROOF_SLOT_DELIVERY)
-                }
-                photoUri = promoted?.uri?.let(Uri::parse)
-                pendingCameraUri = null
-                actionMessage = if (promoted != null) {
-                    "ถ่ายรูปหลักฐานแล้ว · ระบบเก็บรูปไว้จนกว่าจะส่งสำเร็จ"
+            try {
+                if (success) {
+                    val promoted = pendingProofIo {
+                        pendingProofStore.promoteCapture(auth.user.id, RIDER_PROOF_SLOT_DELIVERY)
+                    }
+                    photoUri = promoted?.uri?.let(Uri::parse)
+                    actionMessage = if (promoted != null) {
+                        "ถ่ายรูปหลักฐานแล้ว · ระบบเก็บรูปไว้จนกว่าจะส่งสำเร็จ"
+                    } else {
+                        "บันทึกรูปหลักฐานไม่สำเร็จ กรุณาถ่ายใหม่"
+                    }
                 } else {
-                    "บันทึกรูปหลักฐานไม่สำเร็จ กรุณาถ่ายใหม่"
+                    pendingProofIo {
+                        pendingProofStore.cancelCapture(auth.user.id, RIDER_PROOF_SLOT_DELIVERY)
+                    }
                 }
-            } else {
-                pendingProofIo {
-                    pendingProofStore.cancelCapture(auth.user.id, RIDER_PROOF_SLOT_DELIVERY)
-                }
+            } catch (failure: CancellationException) {
+                throw failure
+            } catch (_: Exception) {
+                photoUri = null
+                actionMessage = "บันทึกรูปหลักฐานไม่สำเร็จ กรุณาถ่ายใหม่"
+            } finally {
                 pendingCameraUri = null
             }
         }
@@ -1107,21 +1114,28 @@ private fun RiderHome(
         ActivityResultContracts.TakePicture()
     ) { success ->
         scope.launch {
-            if (success) {
-                val promoted = pendingProofIo {
-                    pendingProofStore.promoteCapture(auth.user.id, RIDER_PROOF_SLOT_RETURN)
-                }
-                returnPhotoUri = promoted?.uri?.let(Uri::parse)
-                returnPendingCameraUri = null
-                actionMessage = if (promoted != null) {
-                    "ถ่ายรูปหลักฐานการคืนสินค้าแล้ว · ระบบเก็บรูปไว้จนกว่าจะส่งสำเร็จ"
+            try {
+                if (success) {
+                    val promoted = pendingProofIo {
+                        pendingProofStore.promoteCapture(auth.user.id, RIDER_PROOF_SLOT_RETURN)
+                    }
+                    returnPhotoUri = promoted?.uri?.let(Uri::parse)
+                    actionMessage = if (promoted != null) {
+                        "ถ่ายรูปหลักฐานการคืนสินค้าแล้ว · ระบบเก็บรูปไว้จนกว่าจะส่งสำเร็จ"
+                    } else {
+                        "บันทึกรูปหลักฐานการคืนสินค้าไม่สำเร็จ กรุณาถ่ายใหม่"
+                    }
                 } else {
-                    "บันทึกรูปหลักฐานการคืนสินค้าไม่สำเร็จ กรุณาถ่ายใหม่"
+                    pendingProofIo {
+                        pendingProofStore.cancelCapture(auth.user.id, RIDER_PROOF_SLOT_RETURN)
+                    }
                 }
-            } else {
-                pendingProofIo {
-                    pendingProofStore.cancelCapture(auth.user.id, RIDER_PROOF_SLOT_RETURN)
-                }
+            } catch (failure: CancellationException) {
+                throw failure
+            } catch (_: Exception) {
+                returnPhotoUri = null
+                actionMessage = "บันทึกรูปหลักฐานการคืนสินค้าไม่สำเร็จ กรุณาถ่ายใหม่"
+            } finally {
                 returnPendingCameraUri = null
             }
         }
@@ -1205,8 +1219,14 @@ private fun RiderHome(
             } catch (failure: CancellationException) {
                 throw failure
             } catch (_: Exception) {
-                pendingProofIo {
-                    pendingProofStore.cancelCapture(auth.user.id, RIDER_PROOF_SLOT_DELIVERY)
+                try {
+                    pendingProofIo {
+                        pendingProofStore.cancelCapture(auth.user.id, RIDER_PROOF_SLOT_DELIVERY)
+                    }
+                } catch (cancelled: CancellationException) {
+                    throw cancelled
+                } catch (_: Exception) {
+                    // Best-effort cleanup; stale reservation is age-bounded and reconciled later.
                 }
                 pendingCameraUri = null
                 actionMessage = "เปิดกล้องไม่สำเร็จ กรุณาลองอีกครั้ง"
@@ -1238,8 +1258,14 @@ private fun RiderHome(
             } catch (failure: CancellationException) {
                 throw failure
             } catch (_: Exception) {
-                pendingProofIo {
-                    pendingProofStore.cancelCapture(auth.user.id, RIDER_PROOF_SLOT_RETURN)
+                try {
+                    pendingProofIo {
+                        pendingProofStore.cancelCapture(auth.user.id, RIDER_PROOF_SLOT_RETURN)
+                    }
+                } catch (cancelled: CancellationException) {
+                    throw cancelled
+                } catch (_: Exception) {
+                    // Best-effort cleanup; stale reservation is age-bounded and reconciled later.
                 }
                 returnPendingCameraUri = null
                 actionMessage = "เปิดกล้องคืนสินค้าไม่สำเร็จ กรุณาลองอีกครั้ง"
@@ -1330,7 +1356,13 @@ private fun RiderHome(
     fun closeVerification() {
         val closingUserId = auth.user.id
         scope.launch {
-            pendingProofIo { pendingProofStore.clearVerification(closingUserId) }
+            try {
+                pendingProofIo { pendingProofStore.clearVerification(closingUserId) }
+            } catch (failure: CancellationException) {
+                throw failure
+            } catch (_: Exception) {
+                // Stale workflow state is validated against the authoritative Order on restore.
+            }
         }
         verifyMode = null
         verifyJob = null
@@ -1707,11 +1739,17 @@ private fun RiderHome(
                 val pickupId = verifyMarketPickup?.pickupId
                 if (job != null && mode != null) {
                     scope.launch {
-                        pendingProofIo {
-                            pendingProofStore.saveVerification(
-                                auth.user.id,
-                                RiderVerificationResume(job.id, mode, pickupId, collection)
-                            )
+                        try {
+                            pendingProofIo {
+                                pendingProofStore.saveVerification(
+                                    auth.user.id,
+                                    RiderVerificationResume(job.id, mode, pickupId, collection)
+                                )
+                            }
+                        } catch (failure: CancellationException) {
+                            throw failure
+                        } catch (_: Exception) {
+                            actionMessage = "บันทึกขั้นตอนงานในเครื่องไม่สำเร็จ · งานยังไม่ถูกส่ง"
                         }
                     }
                 }
@@ -1826,14 +1864,20 @@ private fun RiderHome(
                             deliverySuccessJob = job
                         }
                         scope.launch {
-                            pendingProofIo {
-                                pendingProofStore.clearConfirmedMatching(
-                                    userId = auth.user.id,
-                                    slot = RIDER_PROOF_SLOT_DELIVERY,
-                                    workId = job.id,
-                                    mode = completedMode.orEmpty(),
-                                    marketPickupId = completedMarketPickupId
-                                )
+                            try {
+                                pendingProofIo {
+                                    pendingProofStore.clearConfirmedMatching(
+                                        userId = auth.user.id,
+                                        slot = RIDER_PROOF_SLOT_DELIVERY,
+                                        workId = job.id,
+                                        mode = completedMode.orEmpty(),
+                                        marketPickupId = completedMarketPickupId
+                                    )
+                                }
+                            } catch (failure: CancellationException) {
+                                throw failure
+                            } catch (_: Exception) {
+                                // Server mutation already committed; stale local proof is reconciled later.
                             }
                         }
                         closeVerification()
@@ -2853,14 +2897,20 @@ private fun RiderHome(
                                                 api.completeDeliveryReturn(context, auth, returnCase.caseId, proof)
                                             }.onSuccess { result ->
                                                 scope.launch {
-                                                    pendingProofIo {
-                                                        pendingProofStore.clearConfirmedMatching(
-                                                            userId = auth.user.id,
-                                                            slot = RIDER_PROOF_SLOT_RETURN,
-                                                            workId = returnCase.caseId,
-                                                            mode = "deliveryReturn",
-                                                            marketPickupId = null
-                                                        )
+                                                    try {
+                                                        pendingProofIo {
+                                                            pendingProofStore.clearConfirmedMatching(
+                                                                userId = auth.user.id,
+                                                                slot = RIDER_PROOF_SLOT_RETURN,
+                                                                workId = returnCase.caseId,
+                                                                mode = "deliveryReturn",
+                                                                marketPickupId = null
+                                                            )
+                                                        }
+                                                    } catch (failure: CancellationException) {
+                                                        throw failure
+                                                    } catch (_: Exception) {
+                                                        // Server return already committed; local proof cleanup is recoverable.
                                                     }
                                                 }
                                                 returnPhotoUri = null
