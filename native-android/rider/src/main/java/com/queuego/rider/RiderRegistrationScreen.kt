@@ -85,13 +85,15 @@ internal fun RiderRegistrationScreen(
         if (uri != null && key != null && !busy) {
             documentBusy = true
             scope.launch {
+                val before = documents
                 try {
                     val data = readRiderRegistrationDocument(context,uri,key != "rr-photo" && key != "rr-vehicle-photo")
-                    documents = documents + (key to data)
+                    documents = before + (key to data)
                     withContext(Dispatchers.IO) { store.saveRegistrationDraft(draft()) }
                     localError = null
                 } catch (e: Exception) {
                     if (e is CancellationException) throw e
+                    documents = before
                     localError = e.message ?: "ไม่สามารถอ่านไฟล์ได้ กรุณาเลือกไฟล์ใหม่"
                 } finally { documentBusy = false }
             }
@@ -203,7 +205,7 @@ internal fun RiderRegistrationScreen(
                                 try {
                                     withContext(Dispatchers.IO){store.saveRegistrationDraft(draft())}
                                     if(step<3)step+=1 else onSubmit(form,password,documents)
-                                } catch(e:Exception) { if(e is CancellationException)throw e;localError="บันทึกใบสมัครในเครื่องไม่สำเร็จ กรุณาลองใหม่" }
+                                } catch(e:Exception) { if(e is CancellationException)throw e;localError=e.message?:"บันทึกใบสมัครในเครื่องไม่สำเร็จ กรุณาลองใหม่" }
                                 finally { documentBusy=false }
                             }
                         }
