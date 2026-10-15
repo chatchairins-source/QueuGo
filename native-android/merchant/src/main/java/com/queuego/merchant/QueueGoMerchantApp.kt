@@ -1467,8 +1467,18 @@ private fun MerchantOrderDetail(
                     modifier = Modifier.fillMaxWidth()
                 ) { Text("ยกเลิกออเดอร์") }
             }
-            "searching_rider" -> QgCard(Modifier.fillMaxWidth()) {
-                Text("กำลังหา Rider · รอ Rider รับงานก่อนเริ่มเตรียมออเดอร์", fontWeight = FontWeight.ExtraBold)
+            "searching_rider" -> {
+                QgCard(Modifier.fillMaxWidth()) {
+                    Text("กำลังหา Rider · รอ Rider รับงานก่อนเริ่มเตรียมออเดอร์", fontWeight = FontWeight.ExtraBold)
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        "ปรับเวลาคาดว่าพร้อมได้ตอนนี้เพื่อให้ระบบเลือกงานต่อ/งานพ่วงที่ไม่ทำให้ Rider รอ",
+                        color = QgMuted,
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+                Spacer(Modifier.height(8.dp))
+                MerchantReadyEstimateControls(order, busy, onAdjustReady)
             }
             "rider_assigned", "assigned" -> {
                 Button(
