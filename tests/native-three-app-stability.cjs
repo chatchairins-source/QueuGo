@@ -357,6 +357,21 @@ const returnService=read('rider/src/main/java/com/queuego/rider/RiderReturnServi
 const navService=read('rider/src/main/java/com/queuego/rider/RiderNavigationLocationService.kt');
 const voiceService=read('shared/src/main/java/com/queuego/shared/NativeVoiceForegroundService.kt');
 const voiceController=read('shared/src/main/java/com/queuego/shared/NativeVoiceCallController.kt');
+const voiceRealtime=read('shared/src/main/java/com/queuego/shared/NativeVoiceRealtime.kt');
+const voicePeer=read('shared/src/main/java/com/queuego/shared/NativeVoicePeer.kt');
+ok(
+  voiceRealtime.includes('NATIVE_VOICE_REALTIME_MAX_CHARS = 512 * 1024') &&
+  voiceRealtime.includes('if (text.length > NATIVE_VOICE_REALTIME_MAX_CHARS)') &&
+  voiceRealtime.includes('if (message.length > NATIVE_VOICE_REALTIME_MAX_CHARS) return false'),
+  'Voice Realtime signaling must reject oversized inbound and outbound messages before JSON/downstream buffering'
+);
+ok(
+  voicePeer.includes('NATIVE_VOICE_SDP_MAX_CHARS = 256 * 1024') &&
+  voicePeer.includes('NATIVE_VOICE_ICE_CANDIDATE_MAX_CHARS = 16 * 1024') &&
+  voicePeer.includes('NATIVE_VOICE_PENDING_ICE_MAX_COUNT = 256') &&
+  voicePeer.includes('pendingRemoteIce.size < NATIVE_VOICE_PENDING_ICE_MAX_COUNT'),
+  'WebRTC SDP/ICE payloads and pre-description ICE buffering must remain bounded'
+);
 ok(returnService.includes('runCatching { ContextCompat.startForegroundService')&&returnService.includes('start_foreground_failed'),'Rider return FGS must fail closed instead of crashing when Android rejects launch');
 ok(navService.includes('start_foreground_failed')||navService.includes('foreground_start_rejected'),'Rider location FGS must handle Android start rejection');
 ok(
