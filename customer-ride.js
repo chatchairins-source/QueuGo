@@ -79,7 +79,7 @@
    }
   }finally{busy=false;if(same(u))render()}
  }
- V.ride=async(id,ticket)=>{
+ V.ride=async(id,ticket=routeVersion)=>{
   const u=actor();if(!u)return go('login');stop();
   if(owner!==u){owner=u;pickup=currentPos?{lat:currentPos.lat,lng:currentPos.lng,address:currentPos.address}:null;destination=quote=selected=null;rows=[];error='';}
   if(id)selected=id;
@@ -87,7 +87,7 @@
   await refresh();if(!same(u)||ticket!==routeVersion)return;render();schedule();
  };
  const ordinary=V.order;
- V.order=async(id,ticket)=>{
+ V.order=async(id,ticket=routeVersion)=>{
   const u=actor(),o=(await db('orders?select=fulfillment_vertical&id=eq.'+encodeURIComponent(id)+'&customer_id=eq.'+encodeURIComponent(u)+'&limit=1'))?.[0];
   if(actor()!==u||ticket!==routeVersion)return;
   if(o?.fulfillment_vertical==='ride')return go('ride/'+id);return ordinary(id,ticket);
