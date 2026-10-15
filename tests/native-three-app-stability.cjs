@@ -96,6 +96,7 @@ ok(
 
 const sharedApi=read('shared/src/main/java/com/queuego/shared/QueueGoNativeApi.kt');
 const riderApiMemory=read('rider/src/main/java/com/queuego/rider/QueueGoApi.kt');
+const customerApiMemory=read('customer/src/main/java/com/queuego/customer/CustomerApi.kt');
 const store=read('rider/src/main/java/com/queuego/rider/SessionStore.kt');
 ok(store.includes('RIDER_REGISTRATION_DRAFT_MAX_JSON_CHARS = 16 * 1024 * 1024'),'Rider registration plaintext draft must have an aggregate heap bound');
 ok(store.includes('RIDER_REGISTRATION_DRAFT_MAX_FILE_BYTES = 24L * 1024L * 1024L'),'Rider encrypted draft file must be bounded before read/decrypt');
@@ -121,6 +122,12 @@ ok(
   riderApiMemory.includes('readRiderBytesBounded(5 * 1024 * 1024, "รูปหลักฐานต้องมีขนาดไม่เกิน 5 MB")') &&
   !riderApiMemory.includes('.use { it.readBytes() }'),
   'Rider evidence/profile source files must be bounded while streaming, before heap allocation'
+);
+ok(
+  riderApiMemory.includes('readRiderApiResponseBounded(512 * 1024)') &&
+  customerApiMemory.includes('readCustomerLongdoResponseBounded') &&
+  !customerApiMemory.includes('reader.readText()'),
+  'Customer and Rider Longdo reverse-geocode payloads must be bounded before parsing'
 );
 
 const reg=read('rider/src/main/java/com/queuego/rider/RiderRegistrationScreen.kt');
