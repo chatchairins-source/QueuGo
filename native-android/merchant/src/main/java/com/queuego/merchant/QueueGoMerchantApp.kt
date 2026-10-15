@@ -1058,7 +1058,7 @@ private fun DashboardScreen(
             QgCard(Modifier.fillMaxWidth()) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Box(Modifier.size(52.dp)) {
-                        QgRemoteImage(shop.logo ?: shop.cover, Modifier.fillMaxSize(), shop.name)
+                        QgRemoteImage(shop.logo ?: shop.cover, Modifier.fillMaxSize(), shop.name, maxDecodeSide = 256)
                     }
                     Spacer(Modifier.width(10.dp))
                     Column(Modifier.weight(1f)) {
@@ -1088,7 +1088,8 @@ private fun DashboardScreen(
                 QgRemoteImage(
                     shop.cover,
                     Modifier.fillMaxWidth().height(128.dp),
-                    shop.name
+                    shop.name,
+                    maxDecodeSide = 512
                 )
             }
         }
@@ -1376,7 +1377,7 @@ private fun MerchantOrderDetail(
                 if (items.isEmpty()) Text("กำลังโหลดรายการ...", color = QgMuted)
                 else items.forEach {
                     Row(Modifier.fillMaxWidth().padding(vertical = 7.dp), verticalAlignment = Alignment.CenterVertically) {
-                        QgRemoteImage(it.image, Modifier.size(48.dp), it.name)
+                        QgRemoteImage(it.image, Modifier.size(48.dp), it.name, maxDecodeSide = 192)
                         Spacer(Modifier.width(8.dp))
                         Column(Modifier.weight(1f)) {
                             Text(it.name, fontWeight = FontWeight.Bold)
@@ -1407,7 +1408,8 @@ private fun MerchantOrderDetail(
                     QgRemoteImage(
                         assignedRider.photo,
                         Modifier.size(58.dp),
-                        assignedRider.name
+                        assignedRider.name,
+                        maxDecodeSide = 256
                     )
                     Spacer(Modifier.width(10.dp))
                     Column(Modifier.weight(1f)) {
@@ -1652,7 +1654,7 @@ private fun MerchantOrderItemEditor(
                     QgCard(Modifier.fillMaxWidth().padding(bottom = 7.dp)) {
                         Column {
                             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                                QgRemoteImage(row.image, Modifier.size(44.dp), row.name)
+                                QgRemoteImage(row.image, Modifier.size(44.dp), row.name, maxDecodeSide = 192)
                                 Spacer(Modifier.width(8.dp))
                                 Column(Modifier.weight(1f)) {
                                     Text(row.name, fontWeight = FontWeight.Bold)
@@ -1956,7 +1958,8 @@ private fun MerchantProfileScreen(
                 source = shop?.logo ?: shop?.cover,
                 modifier = Modifier.size(56.dp),
                 fallback = shop?.name ?: auth.user.name,
-                cornerRadius = 17.dp
+                cornerRadius = 17.dp,
+                maxDecodeSide = 256
             )
             Spacer(Modifier.width(11.dp))
             Column(Modifier.weight(1f)) {
