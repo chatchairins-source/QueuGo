@@ -17,7 +17,7 @@ function allowedShelfStable(doc){
   if(!cats.some(x=>x===ROOT||x.startsWith(ROOT+'/')))return false;
   const joined=cats.join('|');
   // User scope: dry branded grocery only. Never market/fresh/frozen/chilled food.
-  if(/(?:^|\/)(?:eggs?|frozen|tofu|fresh(?:-|\/|$)|chilled|produce|meat|seafood|vegetable|fruit)(?:\/|$)/i.test(joined))return false;
+  if(/(?:^|\/)(?:eggs?|frozen|tofu|fresh(?:-|\/|$)|chilled|produce|meat|seafood|vegetable|fruit|alcohol|beer|wine|liquor|spirits?|tobacco|cigarettes?)(?:\/|$)/i.test(joined))return false;
   if(doc.isWeightedFresh===true)return false;
   const attrs=doc.productAttributes?.categoricalAttributes||[];
   if(attrs.some(x=>/^storage_type::(?:chilled|frozen|refrigerated)$/i.test(String(x))))return false;
@@ -49,7 +49,7 @@ function body(page,size){
       countryCode:'TH',
       lang:'th',
       allowRestrictedProduct:true,
-      allowAlcohol:false
+      allowAlcohol:true
     },
     sortBy:'RELEVANCE',
     autocorrect:false,
@@ -140,7 +140,7 @@ async function main(){
       exclude_market_fresh:true,
       exclude_electronics:true,
       exclude_beverages_root:true,
-      excluded_category_tokens:['eggs','frozen','tofu','fresh','chilled','produce','meat','seafood','vegetable','fruit'],
+      excluded_category_tokens:['eggs','frozen','tofu','fresh','chilled','produce','meat','seafood','vegetable','fruit','alcohol','beer','wine','liquor','spirit','tobacco','cigarette'],
       excluded_storage_types:['chilled','frozen','refrigerated']
     },
     excluded,
