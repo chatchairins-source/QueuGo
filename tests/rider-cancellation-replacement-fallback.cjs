@@ -76,6 +76,13 @@ const id=n=>'00000000-0000-4000-8000-'+String(n).padStart(12,'0');
  f=(await q("select * from qg_private.rider_cancellation_funding where id=$1",[id(820)])).rows[0];
  eq(Number(f.amount),8);eq(Number(f.replacement_covered_amount),0);assert(f.replacement_finalized_at);checks++;
 
+ // Once fallback is finalized, a late NEXT assignment cannot attach itself to the
+ // already-funded obligation even if it references the completed predecessor.
+ await order(921,'searching_rider',9,9);
+ await q("update orders set rider_id=$1,status='rider_assigned',next_after_order_id=$2 where id=$3",[id(11),id(920),id(921)]);
+ f=(await q("select * from qg_private.rider_cancellation_funding where id=$1",[id(820)])).rows[0];
+ eq(f.replacement_order_id,null);
+
  // A replacement that fully covers the target leaves no platform cash obligation and is voided.
  await order(930,'in_progress',25,25);
  await order(931,'rider_assigned',10,10,930);
