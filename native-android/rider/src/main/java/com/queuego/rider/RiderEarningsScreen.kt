@@ -127,8 +127,16 @@ fun RiderEarningsScreen(auth: QueueGoAuth, api: QueueGoApi, onBack: () -> Unit, 
                 val s = summary!!
                 Spacer(Modifier.height(12.dp))
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(9.dp)) {
-                    RiderEarnStat("รายได้จากค่าส่ง", baht(s.income), Color.White, QgRed, Modifier.weight(1f))
+                    RiderEarnStat("รายได้ที่ระบบยืนยัน", baht(s.income), Color.White, QgRed, Modifier.weight(1f))
                     RiderEarnStat("งานสำเร็จ", "${s.jobs} งาน", Color(0xFFF2FBF6), Color(0xFF17171B), Modifier.weight(1f))
+                }
+                if (s.pendingPlatformFunding > 0.0 || s.settledPlatformFunding > 0.0) {
+                    Spacer(Modifier.height(9.dp))
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(9.dp)) {
+                        RiderEarnStat("รอ QueueGo ชำระ", baht(s.pendingPlatformFunding), Color(0xFFFFF9EF), Color(0xFF8C5A00), Modifier.weight(1f))
+                        RiderEarnStat("QueueGo ชำระแล้ว", baht(s.settledPlatformFunding), Color(0xFFF2FBF6), Color(0xFF12845E), Modifier.weight(1f))
+                    }
+                    Text("เงินคุ้มครองจากการยกเลิกจะนับเป็นเงินรับจริงเมื่อมีหลักฐานชำระแล้ว", color = QgMuted, fontSize = 8.sp, modifier = Modifier.padding(top = 6.dp))
                 }
                 Spacer(Modifier.height(9.dp))
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(9.dp)) {
@@ -339,7 +347,7 @@ fun RiderEarningsScreen(auth: QueueGoAuth, api: QueueGoApi, onBack: () -> Unit, 
                     Spacer(Modifier.height(8.dp))
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         RiderCashStat("เก็บลูกค้า", baht(rows.sumOf { it.cashCollectedCustomer }), Modifier.weight(1f))
-                        RiderCashStat("ค่าส่งที่ได้รับ", baht(rows.sumOf { it.deliveryFee }), Modifier.weight(1f))
+                        RiderCashStat("รายได้ค่าส่งที่ยืนยัน", baht(rows.sumOf { it.deliveryFee }), Modifier.weight(1f))
                     }
                     Spacer(Modifier.height(8.dp))
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -445,6 +453,20 @@ private fun RiderJobHistoryDetail(
             RiderCashStat("เก็บลูกค้า", baht(row.cashCollectedCustomer), Modifier.weight(1f))
         }
         Spacer(Modifier.height(7.dp))
+        if (row.platformCancellationFunding > 0.0) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                RiderCashStat(
+                    if (row.platformCancellationFundingStatus == "settled") "QueueGo ชำระแล้ว" else "รอ QueueGo ชำระ",
+                    baht(if (row.platformCancellationFundingStatus == "settled") row.platformCancellationFundingCash else row.platformCancellationFunding),
+                    Modifier.weight(1f),
+                    if (row.platformCancellationFundingStatus == "settled") Color(0xFF12845E) else Color(0xFF8C5A00)
+                )
+            }
+            row.platformCancellationFundingReference?.let {
+                Text("อ้างอิง $it", color = QgMuted, fontSize = 8.sp, modifier = Modifier.padding(top = 5.dp))
+            }
+            Spacer(Modifier.height(7.dp))
+        }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
             RiderCashStat(
                 "เงินสดรับ-จ่าย",
@@ -454,7 +476,7 @@ private fun RiderJobHistoryDetail(
             )
         }
         Text(
-            "เงินสดรับ-จ่ายเป็นกระแสเงินสดของเที่ยว ไม่ใช่กำไรสุทธิ",
+            "เงินสดรับ-จ่ายรวมเงิน QueueGo เฉพาะรายการที่ยืนยันชำระแล้ว และไม่ใช่กำไรสุทธิ",
             color = QgMuted,
             fontSize = 8.sp,
             modifier = Modifier.padding(top = 8.dp)
@@ -594,7 +616,7 @@ private fun RiderEarnError(message: String) {
 }
 
 internal fun riderHistoryCashFlow(row: RiderCashLedgerEntry): Double =
-    row.cashCollectedCustomer + row.cashRefundedMerchant - row.cashPaidMerchant
+    row.cashCollectedCustomer + row.cashRefundedMerchant + row.platformCancellationFundingCash - row.cashPaidMerchant
 
 internal fun riderHistoryStatusLabel(status: String): String = when (status.lowercase()) {
     "completed" -> "งานส่งสำเร็จ"
