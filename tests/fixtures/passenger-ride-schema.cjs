@@ -1,7 +1,7 @@
 const fs=require('node:fs');
 const id=n=>'00000000-0000-4000-8000-'+String(n).padStart(12,'0');
 module.exports=()=>require('./rider-dispatch-schema.cjs')()+fs.readFileSync('supabase/migrations/20261014234500_rider_continuous_dispatch_phase1.sql','utf8')+`
- create function qg_private.assert_live_session() returns void language plpgsql as $begin if auth.uid() is null then raise exception 'live session required'; end if; end$;
+ create function qg_private.assert_live_session() returns void language plpgsql as $qg$begin if auth.uid() is null then raise exception 'live session required'; end if; end$qg$;
  create schema storage;
  create table storage.objects(bucket_id text not null,name text primary key);
  alter table orders add column completed_at timestamptz,add column rider_arrived_customer_at timestamptz,add column gp_rate numeric default 0,add column created_by uuid,add column rider_search_started_at timestamptz,add column picked_up_at timestamptz,add column delivering_at timestamptz,add column cancelled_reason text;
