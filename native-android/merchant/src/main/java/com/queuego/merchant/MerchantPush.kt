@@ -103,6 +103,11 @@ class QueueGoMerchantMessagingService : FirebaseMessagingService() {
         super.onMessageReceived(message)
         val cached = SecureRoleSessionStore(applicationContext, "shop").load() ?: return
         if (cached.user.role != "shop" || cached.user.status != "active") return
+        if (
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) !=
+                android.content.pm.PackageManager.PERMISSION_GRANTED
+        ) return
         ensureMerchantNotificationChannel(this)
         val title = message.notification?.title ?: message.data["title"] ?: "QueueGo"
         val body = message.notification?.body ?: message.data["message"] ?: "มีรายการอัปเดตใน QueueGo"
@@ -132,10 +137,12 @@ class QueueGoMerchantMessagingService : FirebaseMessagingService() {
             .setAutoCancel(true)
             .setContentIntent(pendingIntent)
             .build()
-        (getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager).notify(
-            (message.messageId ?: referenceId.ifBlank { System.currentTimeMillis().toString() }).hashCode(),
-            notification
-        )
+        runCatching {
+            (getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager).notify(
+                (message.messageId ?: referenceId.ifBlank { System.currentTimeMillis().toString() }).hashCode(),
+                notification
+            )
+        }
     }
 
     override fun onDestroy() {
