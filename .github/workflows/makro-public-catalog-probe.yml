@@ -6,12 +6,14 @@ on:
       - work-grocery-makro-full-catalog-20261015
     paths:
       - 'ops/grocery/probe-makro.cjs'
+      - 'ops/grocery/probe-makro-browser.cjs'
       - '.github/workflows/makro-public-catalog-probe.yml'
   pull_request:
     branches:
       - main
     paths:
       - 'ops/grocery/probe-makro.cjs'
+      - 'ops/grocery/probe-makro-browser.cjs'
       - '.github/workflows/makro-public-catalog-probe.yml'
   workflow_dispatch:
 
@@ -21,17 +23,24 @@ permissions:
 jobs:
   probe:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 12
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+          cache: npm
+      - name: Install project tooling
+        run: npm ci --ignore-scripts
       - name: Probe Makro PRO public dry-grocery page
         run: node ops/grocery/probe-makro.cjs
+      - name: Capture Makro live catalog request
+        run: node ops/grocery/probe-makro-browser.cjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: makro-public-catalog-probe
-          path: artifacts/makro-probe
+          path: |
+            artifacts/makro-probe
+            artifacts/makro-browser-probe
           if-no-files-found: warn
