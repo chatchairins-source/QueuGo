@@ -334,7 +334,7 @@ begin
        or brand_value ~* '^(?:-|n/?a|na|none|no\s*brand|unbranded|ไม่มีแบรนด์|ไม่มียี่ห้อ|ไม่ระบุ)$'
        or title_value=''
        or deepest !~ '^dry-grocery(/|$)'
-       or deepest ~ '(^|/)(eggs?|frozen|tofu|fresh([^/]*|$)|chilled|produce|meat|seafood|vegetable|fruit|alcohol|beer|wine|liquor|spirits?|tobacco|cigarettes?)(/|$)'
+       or deepest ~ '(^|/)(eggs?|frozen|tofu|fresh([^/]*|$)|chilled|alcohol|beer|wine|liquor|spirits?|tobacco|cigarettes?)(/|$)'
        or retrieved is null
        or rank_value<0
     then
