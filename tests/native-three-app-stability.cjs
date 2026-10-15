@@ -455,6 +455,14 @@ ok(
 
 const riderEvidencePreview=read('rider/src/main/java/com/queuego/rider/RiderEvidencePreview.kt');
 const riderRegistrationImage=read('rider/src/main/java/com/queuego/rider/RiderRegistrationImage.kt');
+const riderQuickMessages=read('rider/src/main/java/com/queuego/rider/RiderQuickMessages.kt');
+ok(
+  riderQuickMessages.includes('RIDER_QUICK_MESSAGES_MAX_JSON_CHARS = 8 * 1024') &&
+  riderQuickMessages.includes('if (raw.length > RIDER_QUICK_MESSAGES_MAX_JSON_CHARS)') &&
+  riderQuickMessages.includes('prefs.edit().remove(key).apply()'),
+  'Rider quick-message local JSON must fail closed before parsing corrupted oversized state'
+);
+
 const riderSupport=read('rider/src/main/java/com/queuego/rider/RiderSupportScreen.kt');
 ok(
   riderSupport.includes('RIDER_SUPPORT_EVIDENCE_MAX_BYTES = 5 * 1024 * 1024') &&
