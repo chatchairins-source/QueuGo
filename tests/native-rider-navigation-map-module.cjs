@@ -257,6 +257,14 @@ assert(route.includes('interface NavigationRouteProvider')&&
   route.includes('class LongdoNavigationRouteClient')&&
   route.includes(': NavigationRouteProvider'),
   'Longdo routing must be injectable behind a provider contract so the standalone coordinator is testable without Production calls');
+assert(
+  route.includes('LONGDO_ROUTE_RESPONSE_MAX_BYTES = 4 * 1024 * 1024') &&
+  route.includes('LONGDO_ROUTE_MAX_FEATURES = 2_048') &&
+  route.includes('LONGDO_ROUTE_MAX_POINTS = 12_000') &&
+  route.includes('readLongdoRouteResponseBounded') &&
+  route.includes('contentLength > LONGDO_ROUTE_RESPONSE_MAX_BYTES') &&
+  !route.includes('response.body?.string()'),
+  'Longdo routing must bound HTTP response, feature and geometry memory before JSON/render allocation');
 assert(coordinator.includes('class NavigationRouteCoordinator')&&
   coordinator.includes('progressTracker.update')&&
   coordinator.includes('guidance.shouldReroute')&&
