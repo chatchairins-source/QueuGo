@@ -56,6 +56,11 @@ ok(merchant.includes("renderShopProductsModern({authoritative:true})"),'authorit
 ok(merchant.includes("qgmProductViewSearch")&&merchant.includes("qgmProductViewMode"),'search and availability filter state must be combined instead of overriding one another');
 ok(merchant.includes("onclick=\"navigate('shop-product/new')\""),'Grocery primary add action must open the manual product editor');
 ok(merchant.includes("onclick=\"qgmOpenGroceryCatalog()\""),'Grocery QueueGo catalog must open through the direct catalog action');
+ok(merchant.includes("qgmOpenGroceryCatalogFromSession"),'Grocery catalog must support a valid Merchant session without waiting for hydrated profile state');
+ok(merchant.includes("page==='shop-grocery-catalog'&&!u&&qgmHasRestorableShopSession()"),'cold Grocery catalog route must bypass the full-screen identity restore gate');
+const grocery=fs.readFileSync(path.join(root,'merchant/grocery-catalog.js'),'utf8');
+ok(grocery.includes("const sessionShopOwner=()=>"),'Grocery catalog renderer must accept the signed-in Merchant session as temporary owner identity');
+ok(grocery.includes("shop_profiles?select=id,public_category&user_id=eq."),'session fallback must resolve the current shop directly and verify its public category');
 ok(merchant.includes("case'shop-grocery-catalog':return qgRenderGroceryCatalog({addMode:true,pageTitle:'เพิ่มสินค้าจากแคตตาล็อก'})"),'dedicated Grocery catalog fallback route must keep the catalog page name');
 ok(merchant.includes("if(u?.category==='grocery'&&p?.grocery_master_id)return qgRenderGroceryCatalog"),'only existing master-linked Grocery rows may redirect to the master catalog');
 ok(!merchant.includes("if(u?.category==='grocery'&&(id==='new'||p?.grocery_master_id))"),'new Grocery products must never be hijacked by master catalog');
