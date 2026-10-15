@@ -381,11 +381,12 @@ ok(
   'Rider Longdo camera restore/persistence must keep encrypted Keystore I/O off Main and map callbacks'
 );
 ok(
-  riderLongdoMap.includes('map?.clearPin()') &&
+  riderLongdoMap.includes('val pinsReleased = runCatching { map?.clearPin() }.isSuccess') &&
+  riderLongdoMap.includes('if (pinsReleased)') &&
   riderLongdoMap.includes('markerBitmaps.values.forEach') &&
   riderLongdoMap.includes('stopBitmaps.values.forEach') &&
   riderLongdoMap.includes('bitmap.recycle()'),
-  'Rider Longdo marker caches must be released when the map holder is disposed'
+  'Rider Longdo marker caches must recycle only after pins are released, avoiding renderer use-after-recycle during GL teardown'
 );
 
 const sharedManifest=read('shared/src/main/AndroidManifest.xml');
