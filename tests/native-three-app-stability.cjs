@@ -496,6 +496,16 @@ ok(
   'Rider registration image decode must keep peak Bitmap memory below the old 2800px ceiling'
 );
 
+ok(
+  riderRegistrationImage.includes('RIDER_REGISTRATION_PDF_INPUT_MAX_BYTES = 5 * 1024 * 1024') &&
+  riderRegistrationImage.includes('RIDER_REGISTRATION_IMAGE_INPUT_MAX_BYTES = 8 * 1024 * 1024') &&
+  riderRegistrationImage.includes('RIDER_REGISTRATION_PDF_MAX_BASE64_CHARS') &&
+  riderRegistrationImage.includes('prefix.contentEquals("%PDF-".toByteArray(Charsets.US_ASCII))') &&
+  riderRegistrationImage.includes('require(output.size() + count <= limit)') &&
+  !riderRegistrationImage.includes('output.size() <= 8 * 1024 * 1024'),
+  'Rider registration must detect PDF before full buffering and cap raw/Base64 peak memory separately from images'
+);
+
 const reg=read('rider/src/main/java/com/queuego/rider/RiderRegistrationScreen.kt');
 ok(reg.includes('val before = documents')&&reg.includes('documents = before'),'Oversized/failed Rider document addition must rollback from in-memory form state');
 ok(
