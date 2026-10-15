@@ -177,7 +177,11 @@ fun QueueGoRiderApp(pushTarget: NativePushLaunchTarget? = null) {
         restoring = false
         restorationError = false
 
-        runCatching { api.validate(cached).also { store.save(it) } }
+        runCatching {
+            val validated = api.validate(cached)
+            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { store.save(validated) }
+            validated
+        }
             .onSuccess {
                 auth = it
                 registrationOpen = store.pendingRegistrationUserId() == it.session.authUserId
@@ -204,7 +208,7 @@ fun QueueGoRiderApp(pushTarget: NativePushLaunchTarget? = null) {
             val result = runCatching {
                 val validated = api.validate(current)
                 api.touch(validated.session)
-                store.save(validated)
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { store.save(validated) }
                 validated
             }
             result.onSuccess { validated ->
@@ -244,7 +248,7 @@ fun QueueGoRiderApp(pushTarget: NativePushLaunchTarget? = null) {
                                         kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) { auth = checkpoint }
                                     }
                                     kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { store.finishRegistration() }
-                                    store.save(result)
+                                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { store.save(result) }
                                     auth = result
                                     registrationOpen = false
                                 } catch (e: Exception) {
@@ -266,13 +270,15 @@ fun QueueGoRiderApp(pushTarget: NativePushLaunchTarget? = null) {
                         scope.launch {
                             try {
                                 val signed = api.signIn(id, password, store.deviceId())
-                                store.save(signed)
+                                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { store.save(signed) }
                                 auth = signed
                                 if (signed.user.status == "pending") {
                                     val draft = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { store.loadRegistrationDraft() }
                                     if (draft?.optJSONObject("form")?.optString("phone")?.replace(Regex("[-\\s]"), "") == signed.user.phone &&
                                         (store.pendingRegistrationUserId() == signed.session.authUserId || api.registrationProfileMissing(signed))) {
-                                        store.saveRegistrationCheckpoint(signed)
+                                        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                                            store.saveRegistrationCheckpoint(signed)
+                                        }
                                         registrationOpen = true
                                     }
                                 }
@@ -879,7 +885,9 @@ private fun RiderHome(
     var activeTab by rememberSaveable(auth.user.id) { mutableStateOf(pushStore.loadActiveTab(auth.user.id)) }
     var messageSection by rememberSaveable(auth.user.id) { mutableStateOf("chat") }
     LaunchedEffect(auth.user.id, activeTab) {
-        pushStore.saveActiveTab(auth.user.id, activeTab)
+        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+            pushStore.saveActiveTab(auth.user.id, activeTab)
+        }
     }
     var pendingVoiceOrderId by remember { mutableStateOf<String?>(null) }
     var pendingVoiceTarget by remember { mutableStateOf("customer") }
@@ -1395,7 +1403,11 @@ private fun RiderHome(
                     riderMergeLiveSnapshot(current, resolvedSnapshot)
                 } ?: resolvedSnapshot
                 snapshot = mergedSnapshot
-                pushStore.saveHomeSnapshot(auth.user.id, mergedSnapshot)
+                if (mergedSnapshot != currentSnapshot) {
+                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                        runCatching { pushStore.saveHomeSnapshot(auth.user.id, mergedSnapshot) }
+                    }
+                }
                 reconcileRiderOfferNotifications(context, auth.user.id, mergedSnapshot.offeredJob?.id)
                 consecutiveSnapshotFailures = 0
                 loadError = null
