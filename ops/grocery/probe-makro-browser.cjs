@@ -42,20 +42,25 @@ const target=process.argv[2]||'https://www.makro.pro/th/c/dry-grocery';
   await page.goto(target,{waitUntil:'domcontentloaded',timeout:120000});
   await page.waitForTimeout(5000);
 
-  const page2=page.locator('button[data-test-id$="paginationItem-2"]').first();
-  if(!(await page2.count())) throw new Error('Makro pagination page 2 button not found');
-  await page2.click();
-  await page.waitForTimeout(7000);
+  const clicked=await page.evaluate(()=>{
+    const el=document.querySelector('button[data-test-id$="paginationItem-2"]');
+    if(!el)return false;
+    el.click();
+    return true;
+  });
+  if(!clicked) throw new Error('Makro pagination page 2 button not found');
+  await page.waitForTimeout(8000);
 
   fs.writeFileSync('artifacts/makro-browser-probe/requests.json',JSON.stringify(requests,null,2));
   fs.writeFileSync('artifacts/makro-browser-probe/responses.json',JSON.stringify(responses,null,2));
   console.log('PAGE_AFTER_CLICK',page.url());
-  console.log('BROWSER_REQUESTS',JSON.stringify(requests.slice(-80),null,2));
-  console.log('BROWSER_RESPONSES',JSON.stringify(responses.slice(-20).map(x=>({
+  console.log('CURRENT_PAGE_MARKER',await page.locator('[aria-current="true"]').first().textContent().catch(()=>null));
+  console.log('BROWSER_REQUESTS',JSON.stringify(requests.slice(-120),null,2));
+  console.log('BROWSER_RESPONSES',JSON.stringify(responses.slice(-40).map(x=>({
     url:x.url,status:x.status,method:x.request.method,postData:x.request.postData,
-    found:x.body?.found ?? x.body?.results?.[0]?.found,
-    page:x.body?.page ?? x.body?.results?.[0]?.page,
-    hitCount:x.body?.hits?.length ?? x.body?.results?.[0]?.hits?.length,
+    found:x.body?.found ?? x.body?.results?.[0]?.found ?? x.body?.pageProps?.initialSearchResult?.found,
+    page:x.body?.page ?? x.body?.results?.[0]?.page ?? x.body?.pageProps?.initialSearchResult?.page,
+    hitCount:x.body?.hits?.length ?? x.body?.results?.[0]?.hits?.length ?? x.body?.pageProps?.initialSearchResult?.hits?.length,
     bodyKeys:Object.keys(x.body||{})
   })),null,2));
 
