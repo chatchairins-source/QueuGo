@@ -1,7 +1,4 @@
-/* QueueGo Grocery WEB PREVIEW images.
- * 414/414 catalog rows have a visual candidate for owner UI review.
- * Remote candidates are not Production image-rights approval; approved master images still take precedence.
- */
+/* QueueGo Grocery web-preview image candidates. Do not treat as rights approval. */
 window.QG_GROCERY_PREVIEW_IMAGES=Object.freeze({
   "43d2fcd1-8240-48a2-a991-72120cd2774e": "https://www.sahapat.co.th/product/assets/uploads/img/product/image_th/20230313022206_6B40F227-6803-4C40-9411-A619EAC61B80.jpg",
   "b23c6ceb-9b3a-4a94-8cf7-1102794c059b": "https://www.sahapat.co.th/product/assets/uploads/img/product/image_th/20230313021146_909AC678-25B6-4923-BB1A-193AB7D117D7.jpg",
