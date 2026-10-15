@@ -25,7 +25,7 @@ async function starter(s){
  const ids=s.starter.slice();s.busy=true;button.disabled=true;try{const token=await qtGetAccessToken();if(!token||!active(s))throw Error('กรุณาเข้าสู่ระบบใหม่');let savedCount=0;
   for(let i=0;i<ids.length;i+=50){const batch=ids.slice(i,i+50);msg(s,'กำลังเปิด Starter Catalog '+Math.min(i+50,ids.length)+'/'+ids.length);const saved=await qtSupabaseTable('grocery_master_products?id=in.('+batch.join(',')+')',{method:'PATCH',accessToken:token,body:{active:true}});if(!Array.isArray(saved)||saved.length!==batch.length)throw Error('ฐานข้อมูลยังไม่ยืนยันการเปิด Starter Catalog');savedCount+=saved.length;}
   s.starter=null;button.textContent='เตรียม Starter Catalog';msg(s,'เปิด Starter Catalog แล้ว '+savedCount+' รายการ · ร้านขายของชำเลือกสินค้าและตั้งราคาได้');
- }catch(e){msg(s,'เปิด Starter Catalog ไม่สำเร็จ: '+e.message+' · ยังไม่เปิดรายการที่ฐานข้อมูลไม่ยืนยัน');}
+ }catch(e){s.starter=null;if(active(s))button.textContent='เตรียม Starter Catalog';msg(s,'เปิด Starter Catalog ไม่สำเร็จ: '+e.message+' · บาง batch อาจยืนยันแล้ว กรุณาสแกน Starter ใหม่ก่อนลองอีกครั้ง');}
  finally{s.busy=false;if(active(s))button.disabled=false;}
  await load(s);
 }
