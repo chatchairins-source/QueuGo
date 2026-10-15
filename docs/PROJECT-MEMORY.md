@@ -1,3 +1,9 @@
+## 2026-10-15 Grocery catalog sales channels
+- Owner removed the Grocery catalog promotion-price editor and requires explicit per-product choices for `ขายหน้าร้าน` and `เดลิเวอรี่ลูกค้า`. Continue from Web main `1efb918f434d60337baaf6776405cc669646caf4`; backup `backup-pre-grocery-sales-channels-20261015`; candidate `work-grocery-sales-channels-20261015`.
+- Manual product editors on Web and latest Merchant Native successor already have separate POS/Delivery controls and GP-derived Delivery pricing, so do not duplicate or replace that flow. This change is scoped to the Grocery Master Catalog editor plus its existing RPC contract.
+- Candidate removes `promo_price` from Merchant catalog payload/UI, persists `pos_available` and `delivery_available`, keeps one storefront price, and lets the existing GP price-lock derive Delivery price. Legacy Grocery promo values are retired by the staged migration; the private idempotent save receipt and ownership checks remain intact.
+- Do not merge/deploy until Grocery SQL/UI checks and the full repository regression pass. Production mutation and authenticated release verification remain gated.
+
 ## 2026-10-15 Merchant catalog larger photos and compact prices
 - Owner additionally requests smaller price-entry boxes and larger product images. Merchant-only card grid uses112x144 mobile/140x160 desktop packshots, three compact price/promotion/stock columns and44px input/button targets; 16px numeric input text prevents Safari focus zoom. Admin/Customer styling stays unchanged. Merchant CSS/JS cache versions bumped together.
 
