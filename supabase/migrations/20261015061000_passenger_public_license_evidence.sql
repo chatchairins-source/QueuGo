@@ -102,6 +102,8 @@ returns jsonb language plpgsql security definer set search_path=public,pg_temp a
 declare
  v_admin uuid;
  v_submission qg_private.rider_public_license_submissions%rowtype;
+ v_ride record;
+ v_requeued integer:=0;
 begin
  perform qg_private.assert_live_session();
  select id into v_admin from public.users
@@ -145,18 +147,30 @@ begin
   update qg_private.rider_public_license_submissions
   set status='rejected',reviewed_at=now(),reviewed_by=v_admin,review_note=trim(p_note),updated_at=now()
   where rider_id=p_rider_id;
+
+  for v_ride in
+   select id from public.orders
+   where rider_id=p_rider_id and fulfillment_vertical='ride' and status='rider_assigned'
+   order by id
+  loop
+   if qg_private.requeue_passenger_ride(
+      v_ride.id,p_rider_id,'public driving license revoked before passenger pickup',v_admin
+   ) then v_requeued:=v_requeued+1; end if;
+  end loop;
  end if;
 
  insert into public.audit_logs(user_id,action,entity_type,entity_id,description,metadata)
  values(v_admin,'rider_public_license_review','rider',p_rider_id,trim(p_note),
   jsonb_build_object('expires_on',p_expires_on,'approved',p_expires_on is not null,
-   'evidence_path',case when v_submission.rider_id is not null then v_submission.evidence_path else null end));
+   'evidence_path',case when v_submission.rider_id is not null then v_submission.evidence_path else null end,
+   'requeued_rides',v_requeued));
 
  return jsonb_build_object(
   'rider_id',p_rider_id,
   'public_license_expires_on',p_expires_on,
   'approved',p_expires_on is not null,
-  'evidence_path',case when v_submission.rider_id is not null then v_submission.evidence_path else null end
+  'evidence_path',case when v_submission.rider_id is not null then v_submission.evidence_path else null end,
+  'requeued_rides',v_requeued
  );
 end $$;
 revoke all on function public.queuego_admin_review_public_license(uuid,date,text) from public,anon;

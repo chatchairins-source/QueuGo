@@ -111,18 +111,25 @@ const id=n=>'00000000-0000-4000-8000-'+String(n).padStart(12,'0');
   await riderA.query('select rider_claim_order($1)',[id(81)]);
   await riderA.query("select qg_private.ride_order_action($1,'arrive_pickup')",[id(81)]);
 
-  // Revocation races with trip start: an already assigned Rider cannot put the passenger onboard with a revoked licence.
+  // Revocation races with trip start: revocation wins the Rider-row lock, atomically requeues,
+  // and the old Rider cannot strand the customer in rider_assigned.
+  await approve(12);
   await review.query('begin');await revoke();
   const blockedStart=riderA.query("select qg_private.ride_order_action($1,'start')",[id(81)]).then(value=>({value}),error=>({error}));
   await waitForLock(admin,riderA.processID,'licence revoke vs trip start');
   await review.query('commit');
   const startAfterRevoke=await blockedStart;
-  assert(startAfterRevoke.error);assert.match(String(startAfterRevoke.error.message),/public driving license|verified current/);checks+=2;
-  eq((await order(81)).status,'rider_assigned');
-  await approve();
-  await riderA.query("select qg_private.ride_order_action($1,'start')",[id(81)]);
-  await riderA.query("select qg_private.ride_order_action($1,'arrive_dropoff')",[id(81)]);
-  await riderA.query("select qg_private.ride_order_action($1,'complete')",[id(81)]);
+  assert(startAfterRevoke.error);assert.match(String(startAfterRevoke.error.message),/assigned passenger ride|public driving license|verified current/);checks+=2;
+  eq((await order(81)).status,'searching_rider');eq((await order(81)).rider_id,null);
+  eq((await admin.query('select rider_id from deliveries where order_id=$1',[id(81)])).rows[0].rider_id,null);
+  eq((await admin.query("select count(*)::int n from audit_logs where action='ride_compliance_requeue' and entity_id=$1",[id(81)])).rows[0].n,1);
+  await admin.query('select qg_dispatch_rider_offers()');
+  eq((await admin.query('select rider_id from qg_rider_order_offers where order_id=$1',[id(81)])).rows[0].rider_id,id(12));
+  await other.query('select rider_claim_order($1)',[id(81)]);
+  await other.query("select qg_private.ride_order_action($1,'arrive_pickup')",[id(81)]);
+  await other.query("select qg_private.ride_order_action($1,'start')",[id(81)]);
+  await other.query("select qg_private.ride_order_action($1,'arrive_dropoff')",[id(81)]);
+  await other.query("select qg_private.ride_order_action($1,'complete')",[id(81)]);
 
   // A Ride claim and Food assignment cannot both commit for the same Rider even when they overlap before either transaction finishes.
   await seedRide(82);await seedFood(182);

@@ -152,25 +152,106 @@ begin
 end $$;
 revoke all on function qg_private.ride_credit_authorized(uuid,uuid,numeric) from public,anon,authenticated;
 
+create or replace function qg_private.requeue_passenger_ride(
+ p_order_id uuid,p_rider_id uuid,p_reason text,p_actor_user_id uuid
+)
+returns boolean language plpgsql security definer set search_path=public,pg_temp as $$
+declare o public.orders%rowtype;
+begin
+ if p_order_id is null or p_rider_id is null or length(trim(coalesce(p_reason,'')))<3 then
+  raise exception 'ride compliance requeue context required';
+ end if;
+
+ select * into o
+ from public.orders
+ where id=p_order_id and rider_id=p_rider_id and fulfillment_vertical='ride' and status='rider_assigned'
+ for update;
+ if not found then return false; end if;
+
+ perform set_config('queuego.v22_transition','rpc',true);
+ perform set_config('queuego.ride_compliance_requeue','1',true);
+
+ delete from public.qg_rider_order_offers where order_id=o.id;
+
+ update public.orders
+ set status='searching_rider',
+     rider_id=null,
+     rider_assigned_at=null,
+     rider_arrived_shop_at=null,
+     rider_arrived_customer_at=null,
+     picked_up_at=null,
+     delivering_at=null,
+     completed_at=null,
+     rider_search_started_at=now(),
+     updated_at=now(),
+     note='__QT_ORDER_STATUS__=searching_rider'||E'\n'||
+          regexp_replace(coalesce(note,''),'^__QT_ORDER_STATUS__=[^\n]*\n?','','g')
+ where id=o.id;
+
+ update public.deliveries
+ set rider_id=null,status='pending',updated_at=now()
+ where order_id=o.id and status='assigned';
+
+ insert into public.audit_logs(user_id,action,entity_type,entity_id,description,metadata)
+ values(p_actor_user_id,'ride_compliance_requeue','order',o.id,trim(p_reason),
+   jsonb_build_object('from','rider_assigned','to','searching_rider','previous_rider_id',p_rider_id));
+
+ if o.customer_id is not null then
+  insert into public.notifications(user_id,title,message,type,reference_id)
+  values(o.customer_id,'กำลังหาคนขับใหม่','สิทธิ์รับส่งผู้โดยสารของคนขับเดิมไม่พร้อม ระบบกำลังหาคนขับใหม่','order',o.id);
+ end if;
+
+ insert into public.notifications(user_id,title,message,type,reference_id)
+ select r.user_id,'เที่ยวโดยสารถูกส่งคืนระบบ',o.order_number||' · สิทธิ์รับส่งผู้โดยสารไม่พร้อมก่อนเริ่มเที่ยว','order',o.id
+ from public.rider_profiles r where r.id=p_rider_id;
+
+ return true;
+end $$;
+revoke all on function qg_private.requeue_passenger_ride(uuid,uuid,text,uuid) from public,anon,authenticated;
+
 create or replace function qg_private.guard_ride_order_write()
 returns trigger language plpgsql set search_path=public,pg_temp as $$
+declare v_compliance_requeue boolean:=false;
 begin
+ if TG_OP='UPDATE' then
+  v_compliance_requeue :=
+   coalesce(current_setting('queuego.ride_compliance_requeue',true),'')='1'
+   and old.fulfillment_vertical='ride' and new.fulfillment_vertical='ride'
+   and old.status='rider_assigned' and new.status='searching_rider'
+   and old.rider_id is not null and new.rider_id is null;
+ end if;
+
  if TG_OP='UPDATE' and (old.fulfillment_vertical='ride' or new.fulfillment_vertical='ride') then
-  if new.fulfillment_vertical is distinct from old.fulfillment_vertical
-   or (to_jsonb(new)-array['status','rider_id','rider_assigned_at','updated_at','note','rider_arrived_shop_at','rider_arrived_customer_at','picked_up_at','delivering_at','completed_at','cancelled_at'])
-    is distinct from (to_jsonb(old)-array['status','rider_id','rider_assigned_at','updated_at','note','rider_arrived_shop_at','rider_arrived_customer_at','picked_up_at','delivering_at','completed_at','cancelled_at'])
+  if new.fulfillment_vertical is distinct from old.fulfillment_vertical then
+   raise exception 'passenger ride snapshot is immutable';
+  end if;
+
+  if v_compliance_requeue then
+   if (to_jsonb(new)-array['status','rider_id','rider_assigned_at','rider_search_started_at','updated_at','note','rider_arrived_shop_at','rider_arrived_customer_at','picked_up_at','delivering_at','completed_at','cancelled_at'])
+      is distinct from
+      (to_jsonb(old)-array['status','rider_id','rider_assigned_at','rider_search_started_at','updated_at','note','rider_arrived_shop_at','rider_arrived_customer_at','picked_up_at','delivering_at','completed_at','cancelled_at'])
    then raise exception 'passenger ride snapshot is immutable'; end if;
+  elsif (to_jsonb(new)-array['status','rider_id','rider_assigned_at','updated_at','note','rider_arrived_shop_at','rider_arrived_customer_at','picked_up_at','delivering_at','completed_at','cancelled_at'])
+      is distinct from
+      (to_jsonb(old)-array['status','rider_id','rider_assigned_at','updated_at','note','rider_arrived_shop_at','rider_arrived_customer_at','picked_up_at','delivering_at','completed_at','cancelled_at'])
+  then raise exception 'passenger ride snapshot is immutable'; end if;
+
   if new.status is distinct from old.status and not (
    (old.status='searching_rider' and old.rider_id is null and new.status in ('rider_assigned','cancelled','no_rider_available'))
    or (old.status='rider_assigned' and new.status='in_progress' and old.rider_arrived_shop_at is not null)
-   or (old.status='in_progress' and new.status='completed' and old.rider_arrived_customer_at is not null))
-   then raise exception 'invalid passenger ride transition'; end if;
-  if old.rider_id is not null and new.rider_id is distinct from old.rider_id then raise exception 'passenger rider is immutable'; end if;
+   or (old.status='in_progress' and new.status='completed' and old.rider_arrived_customer_at is not null)
+   or v_compliance_requeue)
+  then raise exception 'invalid passenger ride transition'; end if;
+
+  if old.rider_id is not null and new.rider_id is distinct from old.rider_id and not v_compliance_requeue
+  then raise exception 'passenger rider is immutable'; end if;
  end if;
+
  if new.fulfillment_vertical='ride' or (TG_OP='UPDATE' and old.fulfillment_vertical='ride') then
   if current_user not in ('postgres','service_role','supabase_admin') then raise exception 'passenger rides require authoritative RPC'; end if;
   if new.route_bundle_id is not null or new.next_after_order_id is not null then raise exception 'passengers cannot be bundled or queued'; end if;
  end if;
+
  if new.rider_id is not null and new.status not in ('completed','cancelled','no_rider_available') then
   perform 1 from public.rider_profiles where id=new.rider_id for update;
   if new.fulfillment_vertical='ride' and (TG_OP='INSERT' or old.rider_id is distinct from new.rider_id or new.status='in_progress' and old.status is distinct from new.status) then
@@ -214,8 +295,16 @@ begin
   if o.rider_arrived_shop_at is not null then return jsonb_build_object('status',o.status,'fare',o.total_amount); end if;
   update public.orders set rider_arrived_shop_at=coalesce(rider_arrived_shop_at,now()),updated_at=now() where id=o.id;
  elsif v_action='start' and o.status='rider_assigned' and o.rider_arrived_shop_at is not null then
-  if not qg_private.ride_public_license_valid(v_rider,now()) then raise exception 'verified current public driving license required'; end if;
-  if not qg_private.ride_credit_authorized(v_rider,o.id,o.ride_platform_fee) then raise exception 'rider credit authorization required'; end if;
+  if not qg_private.ride_public_license_valid(v_rider,now()) then
+   if qg_private.requeue_passenger_ride(o.id,v_rider,'public driving license unavailable before passenger pickup',v_user)
+   then return jsonb_build_object('status','searching_rider','fare',o.total_amount,'requeued',true); end if;
+   raise exception 'verified current public driving license required';
+  end if;
+  if not qg_private.ride_credit_authorized(v_rider,o.id,o.ride_platform_fee) then
+   if qg_private.requeue_passenger_ride(o.id,v_rider,'rider credit unavailable before passenger pickup',v_user)
+   then return jsonb_build_object('status','searching_rider','fare',o.total_amount,'requeued',true); end if;
+   raise exception 'rider credit authorization required';
+  end if;
   update public.orders set status='in_progress',picked_up_at=coalesce(picked_up_at,now()),delivering_at=coalesce(delivering_at,now()),updated_at=now() where id=o.id;
   update public.deliveries set status='picked_up',updated_at=now() where order_id=o.id;
  elsif v_action='arrive_dropoff' and o.status='in_progress' then
