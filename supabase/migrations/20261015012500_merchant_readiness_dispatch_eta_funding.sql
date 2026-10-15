@@ -976,6 +976,119 @@ end $$;
 revoke all on function public.qg_rider_cash_ledger(date,date) from public,anon;
 grant execute on function public.qg_rider_cash_ledger(date,date) to authenticated;
 
+-- Short-lived road ETA from the existing Rider navigation guidance.
+-- This is not a second ETA engine: it enriches the same customer ETA read model.
+create table if not exists qg_private.rider_customer_eta_snapshots (
+  order_id uuid primary key references public.orders(id) on delete cascade,
+  rider_id uuid not null references public.rider_profiles(id) on delete cascade,
+  route_revision bigint not null default 0 check(route_revision>=0),
+  eta_seconds integer not null check(eta_seconds between 0 and 14400),
+  eta_at timestamptz not null,
+  observed_at timestamptz not null default now(),
+  expires_at timestamptz not null,
+  source text not null default 'rider_navigation_road'
+    check(source='rider_navigation_road')
+);
+alter table qg_private.rider_customer_eta_snapshots enable row level security;
+revoke all on qg_private.rider_customer_eta_snapshots from public,anon,authenticated;
+
+create index if not exists rider_customer_eta_snapshots_expiry_idx
+on qg_private.rider_customer_eta_snapshots(expires_at);
+
+create or replace function public.qg_rider_publish_customer_eta(
+  p_order_id uuid,
+  p_eta_seconds integer
+) returns jsonb
+language plpgsql
+security definer
+set search_path=public,pg_temp
+as $
+declare
+  v_rider uuid;
+  o public.orders%rowtype;
+  v_plan jsonb;
+  v_revision bigint:=0;
+  v_next_order uuid;
+  v_next_kind text;
+  v_eta_at timestamptz;
+begin
+  select r.id into v_rider
+  from public.rider_profiles r
+  join public.users u on u.id=r.user_id
+  where u.auth_user_id=auth.uid()
+    and u.role='rider'
+    and u.status='active'
+    and r.status='active';
+  if v_rider is null then raise exception 'active rider required'; end if;
+  if p_order_id is null or p_eta_seconds is null or p_eta_seconds not between 0 and 14400 then
+    raise exception 'valid customer ETA required';
+  end if;
+
+  select * into o
+  from public.orders
+  where id=p_order_id
+    and rider_id=v_rider
+    and status in ('picked_up','in_progress')
+  for update;
+  if not found then raise exception 'current delivery ownership required'; end if;
+
+  if o.route_bundle_id is not null then
+    select rb.stop_plan,rb.route_revision
+      into v_plan,v_revision
+    from public.route_bundles rb
+    where rb.id=o.route_bundle_id and rb.rider_id=v_rider;
+
+    select x.id,p.s->>'kind'
+      into v_next_order,v_next_kind
+    from jsonb_array_elements(coalesce(v_plan,'[]'::jsonb)) with ordinality p(s,n)
+    join public.orders x
+      on x.id=(p.s->>'order_id')::uuid
+     and x.route_bundle_id=o.route_bundle_id
+    where x.status not in ('completed','cancelled')
+      and (
+        (p.s->>'kind'='pickup' and x.status in ('rider_assigned','assigned','preparing','ready'))
+        or
+        (p.s->>'kind'='dropoff' and x.status in ('picked_up','in_progress'))
+      )
+    order by p.n
+    limit 1;
+
+    if v_next_order is distinct from o.id or v_next_kind<>'dropoff' then
+      raise exception 'ETA must match authoritative customer stop';
+    end if;
+  end if;
+
+  v_eta_at:=clock_timestamp()+make_interval(secs=>p_eta_seconds);
+  insert into qg_private.rider_customer_eta_snapshots(
+    order_id,rider_id,route_revision,eta_seconds,eta_at,observed_at,expires_at,source
+  ) values(
+    o.id,v_rider,coalesce(v_revision,0),p_eta_seconds,v_eta_at,
+    clock_timestamp(),clock_timestamp()+interval '45 seconds','rider_navigation_road'
+  )
+  on conflict(order_id) do update
+  set rider_id=excluded.rider_id,
+      route_revision=excluded.route_revision,
+      eta_seconds=excluded.eta_seconds,
+      eta_at=excluded.eta_at,
+      observed_at=excluded.observed_at,
+      expires_at=excluded.expires_at,
+      source=excluded.source;
+
+  return jsonb_build_object(
+    'order_id',o.id,
+    'eta_seconds',p_eta_seconds,
+    'eta_at',v_eta_at,
+    'route_revision',coalesce(v_revision,0),
+    'expires_in_seconds',45,
+    'source','rider_navigation_road'
+  );
+end $;
+
+revoke all on function public.qg_rider_publish_customer_eta(uuid,integer)
+from public,anon;
+grant execute on function public.qg_rider_publish_customer_eta(uuid,integer)
+to authenticated;
+
 -- Customer ETA is derived from the same readiness/order/Rider state. It is
 -- intentionally labelled approximate and does not pretend straight-line math is
 -- road evidence.
@@ -997,6 +1110,8 @@ declare
   v_minutes numeric:=0;
   v_source text;
   v_shared boolean:=false;
+  v_live qg_private.rider_customer_eta_snapshots%rowtype;
+  v_current_route_revision bigint:=0;
 begin
   select u.id into v_customer
   from public.users u
@@ -1038,6 +1153,40 @@ begin
   v_shared:=o.route_bundle_id is not null;
 
   if o.status in ('picked_up','in_progress') then
+    if o.route_bundle_id is not null then
+      select route_revision into v_current_route_revision
+      from public.route_bundles
+      where id=o.route_bundle_id;
+    end if;
+
+    select * into v_live
+    from qg_private.rider_customer_eta_snapshots e
+    where e.order_id=o.id
+      and e.rider_id=o.rider_id
+      and e.expires_at>v_now
+      and (
+        o.route_bundle_id is null
+        or e.route_revision=coalesce(v_current_route_revision,0)
+      )
+    limit 1;
+
+    if found then
+      return jsonb_build_object(
+        'order_id',o.id,
+        'eta_at',v_live.eta_at,
+        'eta_minutes',greatest(ceil(v_live.eta_seconds/60.0),0),
+        'merchant_ready_estimate_at',o.merchant_ready_estimate_at,
+        'merchant_ready_revision',o.merchant_ready_revision,
+        'source','rider_navigation_road',
+        'shared_route',v_shared,
+        'road_eta_verified',true,
+        'calculated_at',v_live.observed_at
+      );
+    end if;
+
+    -- Live road evidence is deliberately short-lived. If it goes stale, fall
+    -- back to the existing clearly-labelled approximate ETA below.
+
     if r.latitude is not null and r.longitude is not null
        and o.delivery_latitude is not null and o.delivery_longitude is not null then
       v_minutes:=ceil(public.queuego_distance_km(
