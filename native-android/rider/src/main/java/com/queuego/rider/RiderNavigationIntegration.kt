@@ -100,35 +100,61 @@ internal fun riderNavigationStops(
         val usable = bundleOrders.filter {
             it.job.status.lowercase() !in setOf("cancelled", "no_rider_available")
         }
-        val pickups = usable.sortedWith(
-            compareBy<RiderBundleOrder> { it.bundleSequence }.thenBy { it.job.id }
-        )
-        val drops = usable.sortedWith(
-            compareBy<RiderBundleOrder> { it.dropRank }.thenBy { it.job.id }
-        )
-        pickups.forEachIndexed { index, order ->
-            val completed = order.job.isDelivering || order.job.status.lowercase() == "completed"
-            add(
-                id = "pickup:" + order.job.id,
-                sequence = index + 1,
-                kind = NavigationStopKind.PICKUP,
-                lat = order.job.pickupLat,
-                lon = order.job.pickupLng,
-                completed = completed,
-                label = order.shopName
+        val dynamicPlan = usable.any { it.pickupStopRank != null || it.dropoffStopRank != null }
+        if (dynamicPlan) {
+            val rankedStops = RiderRouteBundleState(activeOrders = usable).routeStops()
+            if (rankedStops.isEmpty() && usable.any {
+                    it.job.status.lowercase() !in setOf("completed", "cancelled")
+                }
+            ) {
+                // Never fall back to a legacy order when the authoritative plan is
+                // partial/stale. An empty route is safer than navigating to the wrong stop.
+                return emptyList()
+            }
+            rankedStops.forEach { stop ->
+                val order = stop.order
+                add(
+                    id = (if (stop.pickup) "pickup:" else "drop:") + order.job.id,
+                    sequence = stop.rank,
+                    kind = if (stop.pickup) NavigationStopKind.PICKUP else NavigationStopKind.DROPOFF,
+                    lat = if (stop.pickup) order.job.pickupLat else order.job.deliveryLat,
+                    lon = if (stop.pickup) order.job.pickupLng else order.job.deliveryLng,
+                    completed = if (stop.pickup) order.job.isDelivering
+                        else order.job.status.lowercase() == "completed",
+                    label = if (stop.pickup) order.shopName else "ลูกค้า " + order.job.numberLabel
+                )
+            }
+        } else {
+            val pickups = usable.sortedWith(
+                compareBy<RiderBundleOrder> { it.bundleSequence }.thenBy { it.job.id }
             )
-        }
-        val offset = pickups.size
-        drops.forEachIndexed { index, order ->
-            add(
-                id = "drop:" + order.job.id,
-                sequence = offset + index + 1,
-                kind = NavigationStopKind.DROPOFF,
-                lat = order.job.deliveryLat,
-                lon = order.job.deliveryLng,
-                completed = order.job.status.lowercase() == "completed",
-                label = "ลูกค้า " + order.job.numberLabel
+            val drops = usable.sortedWith(
+                compareBy<RiderBundleOrder> { it.dropRank }.thenBy { it.job.id }
             )
+            pickups.forEachIndexed { index, order ->
+                val completed = order.job.isDelivering || order.job.status.lowercase() == "completed"
+                add(
+                    id = "pickup:" + order.job.id,
+                    sequence = index + 1,
+                    kind = NavigationStopKind.PICKUP,
+                    lat = order.job.pickupLat,
+                    lon = order.job.pickupLng,
+                    completed = completed,
+                    label = order.shopName
+                )
+            }
+            val offset = pickups.size
+            drops.forEachIndexed { index, order ->
+                add(
+                    id = "drop:" + order.job.id,
+                    sequence = offset + index + 1,
+                    kind = NavigationStopKind.DROPOFF,
+                    lat = order.job.deliveryLat,
+                    lon = order.job.deliveryLng,
+                    completed = order.job.status.lowercase() == "completed",
+                    label = "ลูกค้า " + order.job.numberLabel
+                )
+            }
         }
     } else if (job.marketOrderId != null) {
         marketPickups.forEachIndexed { index, pickup ->
