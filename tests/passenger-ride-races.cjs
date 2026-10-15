@@ -55,8 +55,8 @@ const id=n=>'00000000-0000-4000-8000-'+String(n).padStart(12,'0');
    await admin.query("insert into deliveries(order_id,status,delivery_fee) values($1,'pending',25)",[id(n)]);
   };
   const order=async n=>(await admin.query('select * from orders where id=$1',[id(n)])).rows[0];
-  const approve=()=>review.query('select queuego_admin_review_public_license($1,current_date+30,$2)',[id(11),'race gate approved']);
-  const revoke=()=>review.query('select queuego_admin_review_public_license($1,null,$2)',[id(11),'race gate revoked']);
+  const approve=(rider=11)=>review.query('select queuego_admin_review_public_license($1,current_date+30,$2)',[id(rider),'race gate approved']);
+  const revoke=(rider=11)=>review.query('select queuego_admin_review_public_license($1,null,$2)',[id(rider),'race gate revoked']);
   const finishRide=async n=>{
    await riderA.query("select qg_private.ride_order_action($1,'arrive_pickup')",[id(n)]);
    await riderA.query("select qg_private.ride_order_action($1,'start')",[id(n)]);
@@ -80,7 +80,11 @@ const id=n=>'00000000-0000-4000-8000-'+String(n).padStart(12,'0');
   eq(duplicate.filter(x=>x.status==='fulfilled').length,2);
   eq((await order(80)).rider_id,id(11));
   eq((await admin.query("select count(*)::int n from audit_logs where entity_id=$1",[id(80)])).rows[0].n,1);
-  await assert.rejects(other.query('select rider_claim_order($1)',[id(80)]),/live targeted|no longer|finish current|active online|public driving license|verified current/);checks++;
+  // Isolate targeted-offer ownership from licence eligibility: Rider Two is legally eligible
+  // for this assertion but was never selected for this order.
+  await approve(12);
+  await assert.rejects(other.query('select rider_claim_order($1)',[id(80)]),/live targeted|no longer|finish current|active online/);checks++;
+  await revoke(12);
   await finishRide(80);
 
   // Revocation races with claim: both paths lock the Rider row, so a stale offer cannot be claimed after revocation commits.
