@@ -2784,9 +2784,8 @@ async function qgLoadAdminCash(day){
   const h=v=>String(v??"").replace(/[&<>"\']/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","\'":"&#39;"}[ch]));
   const money=v=>"฿"+Number(v||0).toLocaleString("th-TH",{minimumFractionDigits:2,maximumFractionDigits:2});
   async function ask(opts){
-    if(typeof qgAdminInput==="function")return qgAdminInput(opts);
-    const v=window.prompt(opts.label||opts.title||"ระบุข้อมูล","");
-    return v===null?null:String(v);
+    if(typeof qgAdminInput!=="function")throw Error("ฟอร์ม Admin ยังไม่พร้อม กรุณารีเฟรชหน้า");
+    return qgAdminInput(opts);
   }
   window.qgRenderRiderFunding=async function(){
     const el=document.getElementById("qg-rider-funding-panel");if(!el)return;
