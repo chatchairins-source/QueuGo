@@ -103,6 +103,8 @@ const merchantShopSetup=read('merchant/src/main/java/com/queuego/merchant/Mercha
 const merchantGpSlip=read('merchant/src/main/java/com/queuego/merchant/MerchantGpSlipUpload.kt');
 const merchantGpViewer=read('merchant/src/main/java/com/queuego/merchant/MerchantGpSlipViewer.kt');
 const merchantPrinter=read('merchant/src/main/java/com/queuego/merchant/MerchantPrinter.kt');
+const merchantPosScreen=read('merchant/src/main/java/com/queuego/merchant/MerchantPosScreen.kt');
+const sharedPrintQueue=read('shared/src/main/java/com/queuego/shared/NativePrintQueue.kt');
 const merchantPosApi=read('merchant/src/main/java/com/queuego/merchant/MerchantPosApi.kt');
 const merchantPosPending=read('merchant/src/main/java/com/queuego/merchant/MerchantPosPendingStore.kt');
 ok(merchantImage.includes('inJustDecodeBounds = true')&&merchantImage.includes('inSampleSize = sample'),'Merchant gallery/camera uploads must sample before allocating Bitmap memory');
@@ -171,6 +173,17 @@ ok(
   merchantPrinter.includes('require(text.length <= 256 * 1024)') &&
   !merchantPrinter.includes('BufferedReader(InputStreamReader(it, StandardCharsets.UTF_8)).readText()'),
   'Merchant Print Bridge request/response memory must stay bounded'
+);
+
+ok(
+  sharedPrintQueue.includes('wasPrinted: suspend (String) -> Boolean') &&
+  merchantPosScreen.includes('printerSettings = withContext(Dispatchers.IO) { printerStore.load() }') &&
+  merchantPosScreen.includes('withContext(Dispatchers.IO) { printerStore.wasPrinted(key) }') &&
+  merchantPosScreen.includes('withContext(Dispatchers.IO) { printerStore.save(safe) }') &&
+  merchantPosScreen.includes('lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED)') &&
+  !merchantPosScreen.includes('mutableStateOf(printerStore.load())') &&
+  !merchantPosScreen.includes('!printerStore.wasPrinted('),
+  'Merchant printer settings/dedupe storage and POS fallback polling must stay off Main/background lifecycle'
 );
 ok(
   merchantPosPending.includes('file.length() <= 16 * 1024') &&
