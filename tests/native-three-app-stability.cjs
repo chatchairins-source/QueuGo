@@ -17,6 +17,22 @@ ok(merchantMain.includes('delay(5_000)')&&!merchantMain.includes('delay(350)')&&
 ok(merchantMain.includes('sessionLoaded'),'Merchant must not flash an unauthenticated surface before initial secure-session read completes');
 
 const rider=read('rider/src/main/java/com/queuego/rider/QueueGoRiderApp.kt');
+ok(
+  rider.includes('val cached = auth ?: kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO)') &&
+  !rider.includes('val cachedAtComposition = remember { store.load() }'),
+  'Rider cold session restore must decrypt off Main instead of blocking first composition'
+);
+ok(
+  rider.includes('pushStore.loadHomeSnapshot(auth.user.id)') &&
+  rider.includes('val cachedSnapshot = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO)') &&
+  !rider.includes('mutableStateOf<RiderSnapshot?>(pushStore.loadHomeSnapshot(auth.user.id))'),
+  'Rider cached home snapshot must decrypt off Main'
+);
+ok(
+  rider.includes('val savedTab = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO)') &&
+  !rider.includes('mutableStateOf(pushStore.loadActiveTab(auth.user.id))'),
+  'Rider active-tab restore must decrypt off Main'
+);
 ok(rider.includes('if (mergedSnapshot != currentSnapshot)'),'Rider must not encrypt/write an unchanged home snapshot on every 3-second poll');
 ok(rider.includes('withContext(kotlinx.coroutines.Dispatchers.IO)')&&rider.includes('saveHomeSnapshot(auth.user.id, mergedSnapshot)'),'Rider snapshot persistence must execute off Main');
 ok(rider.includes('saveActiveTab(auth.user.id, activeTab)')&&rider.includes('Dispatchers.IO'),'Rider encrypted UI-state persistence must execute off Main');
