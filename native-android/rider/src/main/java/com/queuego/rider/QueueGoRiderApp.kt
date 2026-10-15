@@ -585,9 +585,13 @@ private fun RiderHome(
     ) { auth.asNativeVoiceAuth() }
     val voiceController = remember(auth.user.id) { NativeVoiceCallController(context) }
     val voiceState by voiceController.state.collectAsState()
-    val voiceAssistantEnabled by remember(context, auth.user.id) {
-        RiderVoiceAssistantSettings.enabled(context, auth.user.id)
-    }.collectAsState()
+    val voiceAssistantState = remember(auth.user.id) {
+        RiderVoiceAssistantSettings.state(auth.user.id)
+    }
+    val voiceAssistantEnabled by voiceAssistantState.collectAsState()
+    LaunchedEffect(auth.user.id) {
+        RiderVoiceAssistantSettings.hydrate(context, auth.user.id)
+    }
     val voiceAssistantSpeaker = remember(auth.user.id) {
         RiderVoiceAssistantSpeaker(context.applicationContext)
     }
