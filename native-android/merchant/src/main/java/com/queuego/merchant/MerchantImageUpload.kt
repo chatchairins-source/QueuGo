@@ -16,7 +16,7 @@ import java.util.UUID
 
 private const val MERCHANT_UPLOAD_ERROR_MAX_BYTES = 256 * 1024
 
-private fun readMerchantUploadErrorBounded(stream: java.io.InputStream?): String {
+internal fun readMerchantUploadErrorBounded(stream: java.io.InputStream?): String {
     if (stream == null) return ""
     return stream.use { input ->
         val output = ByteArrayOutputStream(16 * 1024)
