@@ -350,6 +350,12 @@ private fun LaundryOrderCard(
     var staff by remember(order.id, order.status) { mutableStateOf("") }
     var qty by remember(order.id, order.status) { mutableStateOf("") }
     var reason by remember(order.id, order.status) { mutableStateOf("") }
+    var externalError by remember(order.id, order.status) { mutableStateOf<String?>(null) }
+
+    fun openExternal(intent: Intent, failureMessage: String) {
+        runCatching { context.startActivity(intent) }
+            .onFailure { externalError = failureMessage }
+    }
     QgCard(Modifier.fillMaxWidth()) {
         Column {
             Row(Modifier.fillMaxWidth()) {
@@ -364,18 +370,33 @@ private fun LaundryOrderCard(
             order.platformFee?.let { Text("ค่า GP ฿" + "%.2f".format(it), color = QgMuted) }
             order.shopNet?.let { Text("รายได้สุทธิร้าน ฿" + "%.2f".format(it), color = QgGreen, fontWeight = FontWeight.Bold) }
             if (!order.note.isNullOrBlank()) Text("หมายเหตุ: " + order.note, color = QgMuted)
-
+            if (!externalError.isNullOrBlank()) {
+                Text(externalError!!, color = QgRed, style = MaterialTheme.typography.bodySmall)
+            }
             order.customerName?.let { Text("ลูกค้า: " + it, fontWeight = FontWeight.Bold) }
             order.pickupStaffName?.let { Text("พนักงานรับผ้า: " + it, color = QgMuted) }
             order.returnStaffName?.let { Text("พนักงานส่งคืน: " + it, color = QgMuted) }
             if (order.status !in listOf("completed", "cancelled")) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     order.customerPhone?.let { phone ->
-                        OutlinedButton(onClick = { context.startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:" + phone))) }) { Text("โทรลูกค้า") }
+                        OutlinedButton(onClick = {
+                            externalError = null
+                            openExternal(
+                                Intent(Intent.ACTION_DIAL, Uri.parse("tel:" + phone)),
+                                "ไม่พบแอปสำหรับโทรออก"
+                            )
+                        }) { Text("โทรลูกค้า") }
                     }
                     if (order.latitude != null && order.longitude != null) {
                         OutlinedButton(onClick = {
-                            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://www.google.com/maps/dir/?api=1&destination=${order.latitude},${order.longitude}")))
+                            externalError = null
+                            openExternal(
+                                Intent(
+                                    Intent.ACTION_VIEW,
+                                    Uri.parse("https://www.google.com/maps/dir/?api=1&destination=${order.latitude},${order.longitude}")
+                                ),
+                                "ไม่พบแอปสำหรับเปิดเส้นทาง"
+                            )
                         }) { Text("นำทาง") }
                     }
                 }
