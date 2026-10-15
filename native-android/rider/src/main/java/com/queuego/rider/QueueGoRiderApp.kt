@@ -145,28 +145,25 @@ fun QueueGoRiderApp(pushTarget: NativePushLaunchTarget? = null) {
     val store = remember { SessionStore(context) }
     val learningStore = remember(context) { RiderLearningOnboardingStore(context) }
     val scope = rememberCoroutineScope()
-    val cachedAtComposition = remember { store.load() }
 
-    // Hydrate the encrypted local session immediately. Validation still runs against
-    // Production, but returning from background/activity recreation must not flash a
-    // cold-start loading screen or discard the Rider's current working context.
-    var auth by remember { mutableStateOf<QueueGoAuth?>(cachedAtComposition) }
-    var restoring by remember { mutableStateOf(cachedAtComposition == null) }
+    // Rider session restore touches SharedPreferences + Android Keystore + AES/GCM.
+    // Keep all of that off Main so a slow keystore/provider cannot turn cold start
+    // into an ANR. The existing silent loading surface prevents a login flash.
+    var auth by remember { mutableStateOf<QueueGoAuth?>(null) }
+    var restoring by remember { mutableStateOf(true) }
     var busy by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     var restorationError by remember { mutableStateOf(false) }
     var restorationAttempt by remember { mutableStateOf(0) }
-    var registrationOpen by remember {
-        mutableStateOf(
-            cachedAtComposition?.let {
-                store.pendingRegistrationUserId() == it.session.authUserId
-            } ?: false
-        )
-    }
+    var registrationOpen by remember { mutableStateOf(false) }
     var learningOnboardingDismissed by remember(auth?.user?.id) { mutableStateOf(false) }
 
     LaunchedEffect(restorationAttempt) {
-        val cached = auth ?: store.load()
+        restoring = auth == null
+        restorationError = false
+        val cached = auth ?: kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+            store.load()
+        }
         if (cached == null) {
             restoring = false
             return@LaunchedEffect
@@ -174,30 +171,30 @@ fun QueueGoRiderApp(pushTarget: NativePushLaunchTarget? = null) {
 
         // Never blank an already-restored UI while the server session check runs.
         if (auth == null) auth = cached
+        registrationOpen = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+            store.pendingRegistrationUserId() == cached.session.authUserId
+        }
         restoring = false
-        restorationError = false
 
-        runCatching {
+        val validation = runCatching {
             val validated = api.validate(cached)
             kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { store.save(validated) }
             validated
         }
-            .onSuccess {
-                auth = it
-                registrationOpen = store.pendingRegistrationUserId() == it.session.authUserId
+        validation.onSuccess { validated ->
+            auth = validated
+        }.onFailure {
+            if (it is CancellationException) throw it
+            if (shouldClearRiderSession(it)) {
+                store.clear()
+                auth = null
+                error = it.message
+            } else if (auth == null) {
+                restorationError = true
             }
-            .onFailure {
-                if (it is CancellationException) throw it
-                if (shouldClearRiderSession(it)) {
-                    store.clear()
-                    auth = null
-                    error = it.message
-                } else if (auth == null) {
-                    restorationError = true
-                }
-                // With a cached authenticated view, transient network failure is
-                // non-blocking; the periodic validator will retry in the background.
-            }
+            // With a cached authenticated view, transient network failure is
+            // non-blocking; the periodic validator will retry in the background.
+        }
     }
 
     val appLifecycle = LocalLifecycleOwner.current.lifecycle
@@ -278,7 +275,9 @@ fun QueueGoRiderApp(pushTarget: NativePushLaunchTarget? = null) {
                                 if (signed.user.status == "pending") {
                                     val draft = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { store.loadRegistrationDraft() }
                                     if (draft?.optJSONObject("form")?.optString("phone")?.replace(Regex("[-\\s]"), "") == signed.user.phone &&
-                                        (store.pendingRegistrationUserId() == signed.session.authUserId || api.registrationProfileMissing(signed))) {
+                                        (kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                                            store.pendingRegistrationUserId() == signed.session.authUserId
+                                        } || api.registrationProfileMissing(signed))) {
                                         kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
                                             store.saveRegistrationCheckpoint(signed)
                                         }
