@@ -7,6 +7,7 @@ import androidx.activity.compose.setContent
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import com.queuego.shared.NativeExitDiagnostics
 
 data class NativePushLaunchTarget(
     val referenceId: String,
@@ -20,6 +21,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        NativeExitDiagnostics.recordPreviousProcessExit(this, "customer")
         acceptPushIntent(intent)
         setContent { QueueGoCustomerApp(pushTarget = pushTarget) }
     }
