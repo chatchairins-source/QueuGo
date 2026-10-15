@@ -2796,14 +2796,16 @@ async function qgLoadAdminCash(day){
       if(!el.isConnected)return;
       const reserved=rows.filter(r=>r.status==="reserved"),settled=rows.filter(r=>r.status==="settled");
       const card=r=>{
-        const replacement=r.replacement_order_number?(" · เติมงาน "+h(r.replacement_order_number)):(Number(r.replacement_target_amount||0)>0?" · กำลังหาร้าน/งานมาเติม":"");
-        const state=r.status==="settled"?("ชำระแล้ว"+(r.settled_at?" · "+h(new Date(r.settled_at).toLocaleString("th-TH")):"")):"รอชำระ";
-        const action=r.status==="reserved"&&Number(r.amount||0)>0
+        const target=Number(r.replacement_target_amount||0),covered=Number(r.replacement_covered_amount||0);
+        const unresolved=target>0&&!r.replacement_finalized_at;
+        const replacement=r.replacement_order_number?(" · เติมงาน "+h(r.replacement_order_number)):(unresolved?" · กำลังหาร้าน/งานมาเติม":"");
+        const state=r.status==="settled"?("ชำระแล้ว"+(r.settled_at?" · "+h(new Date(r.settled_at).toLocaleString("th-TH")):"")):(unresolved?"รอผลเติมงานก่อน":"รอชำระ");
+        const action=r.status==="reserved"&&Number(r.amount||0)>0&&!unresolved
           ?"<button class=\"btn-primary\" type=\"button\" onclick=\"qgSettleRiderFunding(\'"+h(r.funding_id)+"\',"+Number(r.amount||0)+")\">ยืนยันชำระแล้ว</button>"
           :"";
         return "<article class=\"card\"><b>"+h(r.order_number||r.order_id)+" · "+h(r.rider_name||"Rider")+"</b>"+
           "<p class=\"qt-admin-note\">Funding "+money(r.amount)+" · "+h(state)+replacement+"</p>"+
-          (Number(r.replacement_target_amount||0)>0?"<p class=\"qt-admin-note\">เป้าหมายงานเติม "+money(r.replacement_target_amount)+" · รายได้เส้นทางที่ปกป้อง "+money(r.protected_route_payout)+"</p>":"")+
+          (target>0?"<p class=\"qt-admin-note\">เป้าหมายงานเติม "+money(target)+(r.replacement_finalized_at?" · ครอบคลุมแล้ว "+money(covered):" · ยังไม่ปิดผล")+" · รายได้เส้นทางที่ปกป้อง "+money(r.protected_route_payout)+"</p>":"")+
           (r.settlement_reference?"<p class=\"qt-admin-note\">อ้างอิง "+h(r.settlement_reference)+"</p>":"")+
           "<div class=\"row-btns\">"+action+"</div></article>";
       };
