@@ -16,10 +16,20 @@ import javax.crypto.spec.GCMParameterSpec
 
 private const val RIDER_REGISTRATION_DRAFT_MAX_JSON_CHARS = 16 * 1024 * 1024
 private const val RIDER_REGISTRATION_DRAFT_MAX_FILE_BYTES = 24L * 1024L * 1024L
+private const val RIDER_ENCRYPTED_SMALL_PREF_MAX_CHARS = 64 * 1024
+private const val RIDER_HOME_SNAPSHOT_MAX_JSON_CHARS = 1024 * 1024
+private const val RIDER_HOME_SNAPSHOT_MAX_ENCRYPTED_CHARS = 2 * 1024 * 1024
 
 class SessionStore(private val context: Context) {
     private val prefs = context.getSharedPreferences("queuego_rider_native", Context.MODE_PRIVATE)
     private val alias = "queuego_rider_native_session"
+
+    private fun boundedEncryptedPref(key: String, maxChars: Int): String? {
+        val raw = prefs.getString(key, null) ?: return null
+        if (raw.length <= maxChars) return raw
+        prefs.edit().remove(key).apply()
+        return null
+    }
 
     fun deviceId(): String =
         Settings.Secure.getString(context.contentResolver, Settings.Secure.ANDROID_ID)
@@ -50,7 +60,7 @@ class SessionStore(private val context: Context) {
     }
 
     fun load(): QueueGoAuth? = runCatching {
-        val raw = prefs.getString("session", null) ?: return null
+        val raw = boundedEncryptedPref("session", RIDER_ENCRYPTED_SMALL_PREF_MAX_CHARS) ?: return null
         val o = JSONObject(decrypt(raw))
         QueueGoAuth(
             QueueGoSession(
@@ -86,7 +96,7 @@ class SessionStore(private val context: Context) {
 
     @Synchronized
     fun loadActiveTab(userId: String): String = runCatching {
-        val raw = prefs.getString("ui_state", null) ?: return "home"
+        val raw = boundedEncryptedPref("ui_state", RIDER_ENCRYPTED_SMALL_PREF_MAX_CHARS) ?: return "home"
         val root = JSONObject(decrypt(raw))
         if (root.optString("userId") != userId) return "home"
         when (val saved = root.optString("activeTab")) {
@@ -110,7 +120,7 @@ class SessionStore(private val context: Context) {
 
     @Synchronized
     fun loadMapCamera(userId: String): DoubleArray? = runCatching {
-        val raw = prefs.getString("map_camera", null) ?: return null
+        val raw = boundedEncryptedPref("map_camera", RIDER_ENCRYPTED_SMALL_PREF_MAX_CHARS) ?: return null
         val root = JSONObject(decrypt(raw))
         if (root.optString("userId") != userId) return null
         doubleArrayOf(
@@ -132,7 +142,7 @@ class SessionStore(private val context: Context) {
 
     @Synchronized
     fun loadMapViewMode(userId: String): String = runCatching {
-        val raw = prefs.getString("map_view_mode", null) ?: return "FOLLOW"
+        val raw = boundedEncryptedPref("map_view_mode", RIDER_ENCRYPTED_SMALL_PREF_MAX_CHARS) ?: return "FOLLOW"
         val root = JSONObject(decrypt(raw))
         if (root.optString("userId") != userId) return "FOLLOW"
         when (root.optString("mode")) {
@@ -162,13 +172,17 @@ class SessionStore(private val context: Context) {
                 snapshot.bundle.activeOrders.forEach { put(bundleOrderToJson(it)) }
             }
         )
-        val editor = prefs.edit().putString("home_snapshot", encrypt(root.toString()))
+        val plaintext = root.toString()
+        if (plaintext.length > RIDER_HOME_SNAPSHOT_MAX_JSON_CHARS) return false
+        val encrypted = encrypt(plaintext)
+        if (encrypted.length > RIDER_HOME_SNAPSHOT_MAX_ENCRYPTED_CHARS) return false
+        val editor = prefs.edit().putString("home_snapshot", encrypted)
         return if (durable) editor.commit() else { editor.apply(); true }
     }
 
     @Synchronized
     fun loadHomeSnapshot(userId: String): RiderSnapshot? = runCatching {
-        val raw = prefs.getString("home_snapshot", null) ?: return null
+        val raw = boundedEncryptedPref("home_snapshot", RIDER_HOME_SNAPSHOT_MAX_ENCRYPTED_CHARS) ?: return null
         val root = JSONObject(decrypt(raw))
         if (root.optString("userId") != userId) return null
         val activeJob = root.optJSONObject("activeJob")?.let(::riderJobFromJson)
