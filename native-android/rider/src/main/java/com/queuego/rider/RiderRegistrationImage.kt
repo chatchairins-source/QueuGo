@@ -9,22 +9,50 @@ import java.io.ByteArrayOutputStream
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
+private const val RIDER_REGISTRATION_IMAGE_INPUT_MAX_BYTES = 8 * 1024 * 1024
+private const val RIDER_REGISTRATION_PDF_INPUT_MAX_BYTES = 5 * 1024 * 1024
+private const val RIDER_REGISTRATION_PDF_MAX_BASE64_CHARS =
+    ((RIDER_REGISTRATION_PDF_INPUT_MAX_BYTES + 2) / 3) * 4
+
 internal suspend fun readRiderRegistrationDocument(context: Context, uri: Uri, allowPdf: Boolean): String = withContext(Dispatchers.IO) {
-    val bytes = context.contentResolver.openInputStream(uri)?.use { input ->
-        val output = ByteArrayOutputStream()
+    val loaded = context.contentResolver.openInputStream(uri)?.use { input ->
+        val prefix = ByteArray(5)
+        var prefixCount = 0
+        while (prefixCount < prefix.size) {
+            val count = input.read(prefix, prefixCount, prefix.size - prefixCount)
+            if (count < 0) break
+            prefixCount += count
+        }
+        val isPdf = allowPdf &&
+            prefixCount == prefix.size &&
+            prefix.contentEquals("%PDF-".toByteArray(Charsets.US_ASCII))
+        val limit = if (isPdf) {
+            RIDER_REGISTRATION_PDF_INPUT_MAX_BYTES
+        } else {
+            RIDER_REGISTRATION_IMAGE_INPUT_MAX_BYTES
+        }
+        val output = ByteArrayOutputStream(minOf(limit, 128 * 1024))
+        if (prefixCount > 0) output.write(prefix, 0, prefixCount)
         val buffer = ByteArray(16 * 1024)
         while (true) {
             val count = input.read(buffer)
             if (count < 0) break
+            require(output.size() + count <= limit) {
+                if (isPdf) "ไฟล์ PDF ต้องมีขนาดไม่เกิน 5 MB" else "ไฟล์รูปต้องมีขนาดไม่เกิน 8 MB"
+            }
             output.write(buffer, 0, count)
-            require(output.size() <= 8 * 1024 * 1024) { "ไฟล์ต้องมีขนาดไม่เกิน 8 MB" }
         }
-        output.toByteArray()
-    }
-        ?: error("ไม่สามารถอ่านไฟล์ได้ กรุณาเลือกไฟล์ใหม่")
-    require(bytes.size <= 8 * 1024 * 1024) { "ไฟล์ต้องมีขนาดไม่เกิน 8 MB" }
-    if (allowPdf && bytes.take(5).toByteArray().contentEquals("%PDF-".toByteArray())) {
-        return@withContext "data:application/pdf;base64," + Base64.encodeToString(bytes, Base64.NO_WRAP)
+        output.toByteArray() to isPdf
+    } ?: error("ไม่สามารถอ่านไฟล์ได้ กรุณาเลือกไฟล์ใหม่")
+
+    val bytes = loaded.first
+    val isPdf = loaded.second
+    if (isPdf) {
+        val encoded = Base64.encodeToString(bytes, Base64.NO_WRAP)
+        require(encoded.length <= RIDER_REGISTRATION_PDF_MAX_BASE64_CHARS) {
+            "ไฟล์ PDF มีขนาดใหญ่เกินกำหนด"
+        }
+        return@withContext "data:application/pdf;base64," + encoded
     }
     val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
     BitmapFactory.decodeByteArray(bytes, 0, bytes.size, bounds)
