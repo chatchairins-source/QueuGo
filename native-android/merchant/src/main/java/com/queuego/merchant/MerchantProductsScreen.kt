@@ -45,10 +45,12 @@ import java.util.UUID
 @Composable
 internal fun MerchantProductsScreen(
     products: List<MerchantProduct>,
+    shopCategory: String,
     busy: Boolean,
     onToggle: (MerchantProduct, Boolean) -> Unit,
     onOpen: (MerchantProduct) -> Unit,
-    onAdd: () -> Unit
+    onAddManual: () -> Unit,
+    onOpenCatalog: () -> Unit
 ) {
     var query by remember { mutableStateOf("") }
     var mode by remember { mutableStateOf("all") }
@@ -184,14 +186,36 @@ internal fun MerchantProductsScreen(
 
         item(key = "products-add") {
             Spacer(Modifier.height(8.dp))
-            Button(
-                onClick = onAdd,
-                enabled = !busy,
-                modifier = Modifier.fillMaxWidth().height(48.dp)
-            ) {
-                QgIcon("plus", Modifier.size(18.dp), Color.White)
-                Spacer(Modifier.width(7.dp))
-                Text("เพิ่มสินค้า", fontWeight = FontWeight.ExtraBold)
+            if (shopCategory == "grocery") {
+                OutlinedButton(
+                    onClick = onAddManual,
+                    enabled = !busy,
+                    modifier = Modifier.fillMaxWidth().height(48.dp)
+                ) {
+                    QgIcon("plus", Modifier.size(18.dp), QgRed)
+                    Spacer(Modifier.width(7.dp))
+                    Text("เพิ่มสินค้าเอง", fontWeight = FontWeight.ExtraBold)
+                }
+                Spacer(Modifier.height(8.dp))
+                Button(
+                    onClick = onOpenCatalog,
+                    enabled = !busy,
+                    modifier = Modifier.fillMaxWidth().height(48.dp)
+                ) {
+                    QgIcon("box", Modifier.size(18.dp), Color.White)
+                    Spacer(Modifier.width(7.dp))
+                    Text("เพิ่มสินค้าจากแคตตาล็อก", fontWeight = FontWeight.ExtraBold)
+                }
+            } else {
+                Button(
+                    onClick = onOpenCatalog,
+                    enabled = !busy,
+                    modifier = Modifier.fillMaxWidth().height(48.dp)
+                ) {
+                    QgIcon("plus", Modifier.size(18.dp), Color.White)
+                    Spacer(Modifier.width(7.dp))
+                    Text("เพิ่มสินค้า", fontWeight = FontWeight.ExtraBold)
+                }
             }
             Spacer(Modifier.height(28.dp))
         }
