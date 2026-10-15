@@ -120,7 +120,7 @@ internal fun MerchantRevenueScreen(
                 api.revenueDays(auth, start.toString(), end.toString())
             }.onSuccess { reportRows ->
                 val csv = buildString {
-                    append("วันที่,จำนวนออเดอร์,ยอดค่าสินค้า,GP,เงินสดค่าสินค้าที่ร้านได้รับ,สถานะ GP\r\n")
+                    append("วันที่,จำนวนออเดอร์,ยอดค่าสินค้า,GP รอแจ้งโอน,เงินสดค่าสินค้าที่ร้านได้รับ,สถานะ GP\r\n")
                     reportRows.forEach { row ->
                         append(csvCell(row.dateKey)).append(',')
                         append(row.orderCount).append(',')
@@ -163,6 +163,7 @@ internal fun MerchantRevenueScreen(
             )
         }
 
+        com.queuego.shared.QueueGoCreditCard(auth.user.id, auth.session.accessToken, "merchant")
         Text(
             "เงินสดค่าสินค้า: ไรเดอร์จ่ายร้านตอนรับสินค้า แล้วเก็บจากลูกค้าเอง · GP คือค่าบริการร้าน",
             color = Color(0xFF607E6E),
@@ -277,7 +278,6 @@ private fun RevenueQuickButton(label: String, onClick: () -> Unit) {
 
 @Composable
 private fun RevenueDailyReport(day: MerchantRevenueDay) {
-    val net = day.grossSales - day.gpDue
     RevenueReportCard {
         Text(
             thaiRevenueDate(day.dateKey),
@@ -289,14 +289,14 @@ private fun RevenueDailyReport(day: MerchantRevenueDay) {
         RevenueGrid(
             listOf(
                 "ยอดค่าสินค้าหลังไรเดอร์รับ" to money(day.grossSales),
-                "GP ที่ต้องชำระ" to money(day.gpDue),
+                "GP รอแจ้งโอน" to money(day.gpDue),
                 "เงินสดค่าสินค้าที่ร้านได้รับ" to money(day.cashReceived),
                 "ออเดอร์ที่ไรเดอร์รับสินค้า" to day.orderCount.toString()
             )
         )
         Spacer(Modifier.height(10.dp))
         Text(
-            "ประมาณการยอดค่าสินค้าหลังหัก GP: ${money(net)} · สถานะ GP: ${gpStatusLabel(day.gpStatus)}",
+            "GP รอแจ้งโอน ${money(day.gpDue)} · สถานะ ${gpStatusLabel(day.gpStatus)} · GP ที่หักเครดิตแล้วดูในประวัติเครดิต",
             color = Color(0xFF607E6E),
             fontSize = 10.sp,
             lineHeight = 15.sp
@@ -325,7 +325,7 @@ private fun RevenuePeriodReport(days: Int, rows: List<MerchantRevenueDay>) {
             listOf(
                 "ยอดค่าสินค้า" to money(rows.sumOf { it.grossSales }),
                 "จำนวนออเดอร์" to rows.sumOf { it.orderCount }.toString(),
-                "GP" to money(rows.sumOf { it.gpDue }),
+                "GP รอแจ้งโอน" to money(rows.sumOf { it.gpDue }),
                 "เงินสดค่าสินค้าที่ร้านได้รับ" to money(rows.sumOf { it.cashReceived })
             )
         )

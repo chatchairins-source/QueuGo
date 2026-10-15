@@ -11,6 +11,7 @@ const id=n=>'00000000-0000-4000-8000-'+String(n).padStart(12,'0');
  const riderPassengerCardSource=fs.readFileSync('native-android/rider/src/main/java/com/queuego/rider/RiderPassengerCard.kt','utf8');
  const riderRootSource=fs.readFileSync('native-android/rider/src/main/java/com/queuego/rider/QueueGoRiderApp.kt','utf8');
  const adminRideSource=fs.readFileSync('admin/passenger-ride.js','utf8');
+ const sharedRideMigration=fs.readFileSync('supabase/migrations/20261015052056_passenger_ride_shared_dispatch.sql','utf8');
  const publicLicenseMigration=fs.readFileSync('supabase/migrations/20261015061000_passenger_public_license_evidence.sql','utf8');
  eq(licenseCardSource.includes('อัปโหลดใบขับขี่สาธารณะ'),true);
  eq(licenseCardSource.includes('api.submitPassengerLicense(context, auth, uri)'),true);
@@ -23,6 +24,10 @@ const id=n=>'00000000-0000-4000-8000-'+String(n).padStart(12,'0');
  eq(riderPassengerCardSource.includes('job.customerCash?.let(::riderMoneyBaht)'),true);
  eq(riderPassengerCardSource.includes('passengerNavigationLabel(job)'),true);
  eq(adminRideSource.includes('ดูหลักฐานใบขับขี่สาธารณะ'),true);
+ eq(sharedRideMigration.includes('qg_ride_profile_status_requeue'),true);
+ eq(sharedRideMigration.includes('qg_ride_user_status_requeue'),true);
+ eq(sharedRideMigration.includes("v_user_status<>'active' and p_kind<>'ride'"),true);
+ eq(sharedRideMigration.includes('In-progress rides are intentionally untouched so the passenger is never stranded.'),true);
  eq(publicLicenseMigration.includes('pending public driving license evidence required'),true);
  eq(publicLicenseMigration.includes("bucket_id='qg-evidence'"),true);
  let evidenceSeq=0;
@@ -99,13 +104,36 @@ const id=n=>'00000000-0000-4000-8000-'+String(n).padStart(12,'0');
  await as(102);await q('select rider_claim_order($1)',[id(80)]);
  await action('arrive_pickup',181);
  await action('start',182);eq(await status(80),'in_progress');
+ // Once the passenger is onboard, later account/profile suspension must NOT strand them.
+ // The suspended Rider may only continue this already-active Ride path to a safe completion.
+ await as(170);await q("update users set status='suspended' where id=$1",[id(2)]);
+ await q("update rider_profiles set status='suspended' where id=$1",[id(12)]);await as(102);
  await action('arrive_dropoff',183);
  await as(170);await q('select queuego_admin_review_public_license($1,null,$2)',[id(12),'revoked after onboard']);await as(102);
  await action('complete',184);await action('complete',184);
- eq(await status(80),'completed');eq((await q("select count(*)::int n from audit_logs where action='ride_order_action' and description='complete'")).rows[0].n,1);
+ eq(await status(80),'completed');
+ await as(170);await q("update users set status='active' where id=$1",[id(2)]);
+ await q("update rider_profiles set status='active' where id=$1",[id(12)]);eq((await q("select count(*)::int n from audit_logs where action='ride_order_action' and description='complete'")).rows[0].n,1);
  eq((await q('select status from payments where order_id=$1',[id(80)])).rows[0].status,'paid');
  await as(160);const state=(await q('select queuego_ride_state($1) s',[id(80)])).rows[0].s;eq(state.rides[0].rider_latitude,null);
  await as(101);eq((await q('select queuego_ride_state($1) s',[id(80)])).rows[0].s.rides.length,0);
+
+ // Rider-profile eligibility removal before pickup proactively requeues without waiting for the Rider to press Start.
+ await as(170);await approvePublic();await seed(86);await q('delete from qg_rider_order_offers');await q('select qg_dispatch_rider_offers()');
+ await as(101);await q('select rider_claim_order($1)',[id(86)]);await q("select qg_private.ride_order_action($1,'arrive_pickup')",[id(86)]);
+ await as(170);await q("update rider_profiles set status='suspended' where id=$1",[id(11)]);
+ eq(await status(86),'searching_rider');eq((await q('select rider_id from orders where id=$1',[id(86)])).rows[0].rider_id,null);
+ eq((await q("select count(*)::int n from audit_logs where action='ride_compliance_requeue' and entity_id=$1",[id(86)])).rows[0].n,1);
+ await q("update orders set status='cancelled' where id=$1",[id(86)]);await q("update rider_profiles set status='active' where id=$1",[id(11)]);
+
+ // User-account suspension is the same eligibility loss and must also proactively release a pre-pickup Ride.
+ await seed(87);await q('delete from qg_rider_order_offers');await q('select qg_dispatch_rider_offers()');
+ await as(101);await q('select rider_claim_order($1)',[id(87)]);await q("select qg_private.ride_order_action($1,'arrive_pickup')",[id(87)]);
+ await as(170);await q("update users set status='suspended' where id=$1",[id(1)]);
+ eq(await status(87),'searching_rider');eq((await q('select rider_id from orders where id=$1',[id(87)])).rows[0].rider_id,null);
+ eq((await q("select count(*)::int n from audit_logs where action='ride_compliance_requeue' and entity_id=$1",[id(87)])).rows[0].n,1);
+ await q("update orders set status='cancelled' where id=$1",[id(87)]);await q("update users set status='active' where id=$1",[id(1)]);
+
  // Expiry between claim and passenger pickup must also requeue instead of stranding the customer.
  await as(170);await approvePublic();await seed(84);await q('delete from qg_rider_order_offers');await q('select qg_dispatch_rider_offers()');
  eq((await q('select rider_id from qg_rider_order_offers where order_id=$1',[id(84)])).rows[0].rider_id,id(11));

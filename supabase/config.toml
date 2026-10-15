@@ -1,0 +1,5 @@
+[functions.queuego-credit]
+verify_jwt = true
+
+[functions.queuego-credit-webhook]
+verify_jwt = false

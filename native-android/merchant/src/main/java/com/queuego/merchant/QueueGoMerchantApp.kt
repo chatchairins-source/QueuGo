@@ -1146,7 +1146,7 @@ private fun DashboardScreen(
         Spacer(Modifier.height(8.dp))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             MerchantMetricCard("เงินสดรับ", "฿" + "%.0f".format(revenue.cashReceived), "store", Modifier.weight(1f))
-            MerchantMetricCard("GP วันนี้", "฿" + "%.0f".format(revenue.gpDue), "orders", Modifier.weight(1f))
+            MerchantMetricCard("GP รอแจ้งโอน", "฿" + "%.0f".format(revenue.gpDue), "orders", Modifier.weight(1f))
         }
 
         Spacer(Modifier.height(9.dp))
