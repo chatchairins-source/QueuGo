@@ -479,7 +479,7 @@ async function qtGetAccessToken(forceRefresh=false){
         body:JSON.stringify({refresh_token:s.refreshToken}),
         signal:timeout.signal
       });
-      const data=await r.json().catch(()=>({}));
+      const data=await r.json().catch(e=>{if(e.name==='AbortError'||e.name==='TimeoutError')throw e;return {}});
       if(!r.ok || !data.access_token) throw new Error(data.error_description||data.msg||data.message||'SESSION_REFRESH_FAILED');
       const next={...s,accessToken:data.access_token,refreshToken:data.refresh_token||s.refreshToken,expiresAt:data.expires_at ? Number(data.expires_at)*1000 : (qtJwtExpiryMs(data.access_token)||null)};
       qtSessionWrite(next);
@@ -678,7 +678,7 @@ async function qtBackgroundHydrate(opts){
     if(!QT_DB_HYDRATE_QUEUED || !opts.light) QT_DB_HYDRATE_QUEUED=opts;
     return;
   }
-  if(QT_SYNC.busy){ setTimeout(()=>qtBackgroundHydrate(opts),1000); return; } /* a sync poll is in flight; try again shortly */
+  if(QT_SYNC.busy){ setTimeout(()=>qtBackgroundHydrate(opts).catch(e=>console.error('merchant queued hydrate failed',e)),1000); return; } /* a sync poll is in flight; try again shortly */
   const token=await qtGetAccessToken();
   if(!token){ QT_DB_READY.value=true; return; }
   QT_DB_HYDRATING=true; QT_SYNC.busy=true; QT_SYNC.dirty={}; /* busy also pauses the sync loop and records local writes made meanwhile */
@@ -699,7 +699,7 @@ async function qtBackgroundHydrate(opts){
   if(now!==token) QT_DB_HYDRATE_QUEUED={light:false}; /* another account signed in while loading: load again for it */
   else if(ok) qtRerenderAfterHydrate();
   const q=QT_DB_HYDRATE_QUEUED; QT_DB_HYDRATE_QUEUED=null;
-  if(q) setTimeout(()=>qtBackgroundHydrate(q),0);
+  if(q) setTimeout(()=>qtBackgroundHydrate(q).catch(e=>console.error('merchant queued hydrate failed',e)),0);
 }
 /* After the background load lands, refresh the page the person is looking at (never while they are typing). */
 function qtRerenderAfterHydrate(tries){
@@ -1141,7 +1141,7 @@ window.addEventListener('DOMContentLoaded', ()=>{
   if(hadSession){
     setTimeout(async ()=>{
       try{await qtRestoreOwnUser()}catch(e){console.error('merchant background restore failed',e)}
-      try{ router(); }catch(e){ console.warn('merchant restore rerender failed',e); }
+      try{ if(currentUser()&&!window.QGGroceryHasUnsavedChanges?.())router(); }catch(e){ console.warn('merchant restore rerender failed',e); }
       qtBackgroundHydrate({light:false}).catch(e=>console.error('merchant background hydrate failed',e));
     },0);
   }else{
@@ -2150,7 +2150,7 @@ function qgmRenderSessionChecking(message='กำลังตรวจสอบ�
 async function qgmRestoreSessionRoute(){if(QGM_ROUTE_SESSION_RESTORE)return QGM_ROUTE_SESSION_RESTORE;QGM_ROUTE_SESSION_RESTORE=(async()=>{const u=await qgmBoundSessionRestore(qgmRequireShopUser());if(u){router();return true}qgmRenderSessionChecking('ตรวจสอบบัญชีร้านไม่สำเร็จ');const app=document.getElementById('app');const card=app?.querySelector('.qgm-card');if(card)card.insertAdjacentHTML('beforeend','<button type="button" class="qgm-primary" style="margin-top:14px" onclick="qgmRestoreSessionRoute()">ลองตรวจสอบอีกครั้ง</button>');return false})().finally(()=>{QGM_ROUTE_SESSION_RESTORE=null});return QGM_ROUTE_SESSION_RESTORE}
 window.qgmRestoreSessionRoute=qgmRestoreSessionRoute;
 window.qgmOpenProducts=function(options={}){const u=shopUser();if(!u){console.warn('Products open skipped: merchant profile is not hydrated yet');return;}try{history.pushState(null,'','#shop-products')}catch(e){navigate('shop-products');return;}renderShopProductsModern(options)};
-function qgmOpenGroceryCatalogFromSession(){const s=qtSessionRead();if(!s?.accessToken||s.role!=='shop'||!s.userId)return false;if(typeof window.qgRenderGroceryCatalog!=='function'){console.error('Grocery catalog renderer unavailable');try{toast('แคตตาล็อกยังโหลดไม่เสร็จ กรุณาลองอีกครั้ง')}catch(e){}return false;}try{history.pushState(null,'','#shop-grocery-catalog')}catch(e){location.hash='shop-grocery-catalog';return true;}window.qgRenderGroceryCatalog({addMode:true,pageTitle:'เพิ่มสินค้าจากแคตตาล็อก',sessionFallback:true});return true}
+function qgmOpenGroceryCatalogFromSession(){const s=qtSessionRead();if(!s?.accessToken||s.role!=='shop'||!s.userId)return false;if(typeof window.qgRenderGroceryCatalog!=='function'){console.error('Grocery catalog renderer unavailable');try{toast('แคตตาล็อกยังโหลดไม่เสร็จ กรุณาลองอีกครั้ง')}catch(e){}return false;}try{history.pushState(null,'','#shop-grocery-catalog')}catch(e){location.hash='shop-grocery-catalog';return true;}Promise.resolve(window.qgRenderGroceryCatalog({addMode:true,pageTitle:'เพิ่มสินค้าจากแคตตาล็อก',sessionFallback:true})).catch(qgmRenderBootFailure);return true}
 function qgmOpenGroceryCatalogReady(u){if(!u){return qgmOpenGroceryCatalogFromSession()}if(u.category!=='grocery'){toast('บัญชีร้านนี้ไม่ใช่ร้านขายของชำ');return false;}if(typeof window.qgRenderGroceryCatalog!=='function'){console.error('Grocery catalog renderer unavailable');try{toast('แคตตาล็อกยังโหลดไม่เสร็จ กรุณาลองอีกครั้ง')}catch(e){}return false;}try{history.pushState(null,'','#shop-grocery-catalog')}catch(e){location.hash='shop-grocery-catalog';return true;}Promise.resolve(window.qgRenderGroceryCatalog({addMode:true,pageTitle:'เพิ่มสินค้าจากแคตตาล็อก'})).catch(qgmRenderBootFailure);return true}
 async function qgmRecoverGroceryCatalog(){if(qgmOpenGroceryCatalogFromSession())return true;let u=await qgmBoundSessionRestore(qgmRequireShopUser());if(u&&u.category!=='grocery'&&qtSessionRead()?.role==='shop'){try{await qgmBoundSessionRestore(qtRestoreOwnUser({refresh:true}));u=shopUser()||u}catch(e){console.warn('Grocery profile restore failed',e)}}return qgmOpenGroceryCatalogReady(u)}
 window.qgmOpenGroceryCatalog=function(){const u=shopUser();return u?.category==='grocery'?qgmOpenGroceryCatalogReady(u):(qgmOpenGroceryCatalogFromSession()||qgmRecoverGroceryCatalog())};
@@ -4001,7 +4001,7 @@ window.qgmExportRevenue=async function(button){
 <style id="qgm-login-role-message">#qgm-login-role-error:not([hidden]){display:block;margin:12px 0 0;padding:11px 12px;border:1px solid #f2bdc8;border-radius:11px;background:#fff1f4;color:#9d1431;font-size:14px;line-height:1.5;text-align:left}</style>
 <style id="qg-merchant-register-fields">.qgm-login-panel .qgm-register-field{display:block;margin:0 0 12px;font-size:13px;font-weight:700;color:#24272d}.qgm-register-field input,.qgm-register-field select{display:block;margin-top:6px}.qgm-register-field span{color:#ed0a31}.qgm-register-field input,.qgm-register-field select{width:100%;height:48px;min-width:0;border:1px solid #dde0e5;border-radius:12px;padding:0 13px;background:#fff;color:#20242b;font:inherit;font-size:16px}.qgm-register-field select:invalid{color:#858b94}body:has(#reg-shop-name){overflow-x:hidden}.qgm-pending{max-width:460px;margin:12px auto;padding:22px}.qgm-pending .qgm-register-mark{width:46px;height:46px;display:grid;place-items:center;border-radius:13px;background:#ed0a31;color:#fff;font-size:28px;font-weight:900}.qgm-pending h1{font-size:23px;line-height:1.3}.qgm-pending p{color:#5e6772;line-height:1.6}</style>
 <link rel="stylesheet" href="../catalog/grocery.css?v=20261012">
-<script src="grocery-catalog.js?v=20261015-scopefix1"></script>
+<script src="grocery-catalog.js?v=20261015-scopefix2"></script>
 <script src="../queuego-password-policy.js?v=20261007-security1"></script>
 <script src="../account-deletion.js?v=20261006-pilot1"></script>
 <script src="../queuego-ugc.js?v=20261012-ugc2"></script>
