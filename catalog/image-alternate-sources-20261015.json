@@ -1,0 +1,1718 @@
+{
+  "observations": [
+    {
+      "normalized_key": "coca-cola|รสชาติออริจินัลน้ำตาลน้อยกว่า||325|ml|1|ชิ้น",
+      "source_url": "https://www.coca-cola.com/th/th/brands/coca-cola/products",
+      "label": "โคคา-โคล่า ในขวดพลาสติก 330 ml",
+      "image_url": "https://www.coca-cola.com/content/dam/onexp/th/th/home-images/brands/cola/th_coca-cola_prod_original%20pet%20330ml_750x750_v1.jpg",
+      "selector": "img[src*=\"original%20pet\"]",
+      "explicit_sizes": [
+        {
+          "size_value": 330,
+          "size_unit": "ml"
+        }
+      ],
+      "identity_evidence": "Source alt text identifies brand/formula and filename identifies 330ml PET; catalog naming equivalence has not been approved."
+    },
+    {
+      "normalized_key": "coca-cola|รสชาติออริจินัลน้ำตาลน้อยกว่า||510|ml|1|ชิ้น",
+      "source_url": "https://www.coca-cola.com/th/th/brands/coca-cola/products",
+      "label": "โคคา-โคล่า ในขวดพลาสติก 330 ml",
+      "image_url": "https://www.coca-cola.com/content/dam/onexp/th/th/home-images/brands/cola/th_coca-cola_prod_original%20pet%20330ml_750x750_v1.jpg",
+      "selector": "img[src*=\"original%20pet\"]",
+      "explicit_sizes": [
+        {
+          "size_value": 330,
+          "size_unit": "ml"
+        }
+      ],
+      "identity_evidence": "Source alt text identifies brand/formula and filename identifies 330ml PET; catalog naming equivalence has not been approved."
+    },
+    {
+      "normalized_key": "coca-cola|รสชาติออริจินัลน้ำตาลน้อยกว่า||590|ml|1|ชิ้น",
+      "source_url": "https://www.coca-cola.com/th/th/brands/coca-cola/products",
+      "label": "โคคา-โคล่า ในขวดพลาสติก 330 ml",
+      "image_url": "https://www.coca-cola.com/content/dam/onexp/th/th/home-images/brands/cola/th_coca-cola_prod_original%20pet%20330ml_750x750_v1.jpg",
+      "selector": "img[src*=\"original%20pet\"]",
+      "explicit_sizes": [
+        {
+          "size_value": 330,
+          "size_unit": "ml"
+        }
+      ],
+      "identity_evidence": "Source alt text identifies brand/formula and filename identifies 330ml PET; catalog naming equivalence has not been approved."
+    },
+    {
+      "normalized_key": "coca-cola|รสชาติออริจินัลน้ำตาลน้อยกว่า||990|ml|1|ชิ้น",
+      "source_url": "https://www.coca-cola.com/th/th/brands/coca-cola/products",
+      "label": "โคคา-โคล่า ในขวดพลาสติก 330 ml",
+      "image_url": "https://www.coca-cola.com/content/dam/onexp/th/th/home-images/brands/cola/th_coca-cola_prod_original%20pet%20330ml_750x750_v1.jpg",
+      "selector": "img[src*=\"original%20pet\"]",
+      "explicit_sizes": [
+        {
+          "size_value": 330,
+          "size_unit": "ml"
+        }
+      ],
+      "identity_evidence": "Source alt text identifies brand/formula and filename identifies 330ml PET; catalog naming equivalence has not been approved."
+    },
+    {
+      "normalized_key": "coca-cola|รสชาติออริจินัลน้ำตาลน้อยกว่า||1000|ml|1|ชิ้น",
+      "source_url": "https://www.coca-cola.com/th/th/brands/coca-cola/products",
+      "label": "โคคา-โคล่า ในขวดพลาสติก 330 ml",
+      "image_url": "https://www.coca-cola.com/content/dam/onexp/th/th/home-images/brands/cola/th_coca-cola_prod_original%20pet%20330ml_750x750_v1.jpg",
+      "selector": "img[src*=\"original%20pet\"]",
+      "explicit_sizes": [
+        {
+          "size_value": 330,
+          "size_unit": "ml"
+        }
+      ],
+      "identity_evidence": "Source alt text identifies brand/formula and filename identifies 330ml PET; catalog naming equivalence has not been approved."
+    },
+    {
+      "normalized_key": "coca-cola|รสชาติออริจินัลน้ำตาลน้อยกว่า||1250|ml|1|ชิ้น",
+      "source_url": "https://www.coca-cola.com/th/th/brands/coca-cola/products",
+      "label": "โคคา-โคล่า ในขวดพลาสติก 330 ml",
+      "image_url": "https://www.coca-cola.com/content/dam/onexp/th/th/home-images/brands/cola/th_coca-cola_prod_original%20pet%20330ml_750x750_v1.jpg",
+      "selector": "img[src*=\"original%20pet\"]",
+      "explicit_sizes": [
+        {
+          "size_value": 330,
+          "size_unit": "ml"
+        }
+      ],
+      "identity_evidence": "Source alt text identifies brand/formula and filename identifies 330ml PET; catalog naming equivalence has not been approved."
+    },
+    {
+      "normalized_key": "coca-cola|รสชาติออริจินัลน้ำตาลน้อยกว่า||1450|ml|1|ชิ้น",
+      "source_url": "https://www.coca-cola.com/th/th/brands/coca-cola/products",
+      "label": "โคคา-โคล่า ในขวดพลาสติก 330 ml",
+      "image_url": "https://www.coca-cola.com/content/dam/onexp/th/th/home-images/brands/cola/th_coca-cola_prod_original%20pet%20330ml_750x750_v1.jpg",
+      "selector": "img[src*=\"original%20pet\"]",
+      "explicit_sizes": [
+        {
+          "size_value": 330,
+          "size_unit": "ml"
+        }
+      ],
+      "identity_evidence": "Source alt text identifies brand/formula and filename identifies 330ml PET; catalog naming equivalence has not been approved."
+    },
+    {
+      "normalized_key": "coca-cola|รสชาติออริจินัลน้ำตาลน้อยกว่า||1490|ml|1|ชิ้น",
+      "source_url": "https://www.coca-cola.com/th/th/brands/coca-cola/products",
+      "label": "โคคา-โคล่า ในขวดพลาสติก 330 ml",
+      "image_url": "https://www.coca-cola.com/content/dam/onexp/th/th/home-images/brands/cola/th_coca-cola_prod_original%20pet%20330ml_750x750_v1.jpg",
+      "selector": "img[src*=\"original%20pet\"]",
+      "explicit_sizes": [
+        {
+          "size_value": 330,
+          "size_unit": "ml"
+        }
+      ],
+      "identity_evidence": "Source alt text identifies brand/formula and filename identifies 330ml PET; catalog naming equivalence has not been approved."
+    },
+    {
+      "normalized_key": "coca-cola|รสชาติออริจินัลน้ำตาลน้อยกว่า||1500|ml|1|ชิ้น",
+      "source_url": "https://www.coca-cola.com/th/th/brands/coca-cola/products",
+      "label": "โคคา-โคล่า ในขวดพลาสติก 330 ml",
+      "image_url": "https://www.coca-cola.com/content/dam/onexp/th/th/home-images/brands/cola/th_coca-cola_prod_original%20pet%20330ml_750x750_v1.jpg",
+      "selector": "img[src*=\"original%20pet\"]",
+      "explicit_sizes": [
+        {
+          "size_value": 330,
+          "size_unit": "ml"
+        }
+      ],
+      "identity_evidence": "Source alt text identifies brand/formula and filename identifies 330ml PET; catalog naming equivalence has not been approved."
+    },
+    {
+      "normalized_key": "coca-cola|รสชาติออริจินัลน้ำตาลน้อยกว่า||1600|ml|1|ชิ้น",
+      "source_url": "https://www.coca-cola.com/th/th/brands/coca-cola/products",
+      "label": "โคคา-โคล่า ในขวดพลาสติก 330 ml",
+      "image_url": "https://www.coca-cola.com/content/dam/onexp/th/th/home-images/brands/cola/th_coca-cola_prod_original%20pet%20330ml_750x750_v1.jpg",
+      "selector": "img[src*=\"original%20pet\"]",
+      "explicit_sizes": [
+        {
+          "size_value": 330,
+          "size_unit": "ml"
+        }
+      ],
+      "identity_evidence": "Source alt text identifies brand/formula and filename identifies 330ml PET; catalog naming equivalence has not been approved."
+    },
+    {
+      "normalized_key": "coca-cola|รสชาติออริจินัลน้ำตาลน้อยกว่า||1950|ml|1|ชิ้น",
+      "source_url": "https://www.coca-cola.com/th/th/brands/coca-cola/products",
+      "label": "โคคา-โคล่า ในขวดพลาสติก 330 ml",
+      "image_url": "https://www.coca-cola.com/content/dam/onexp/th/th/home-images/brands/cola/th_coca-cola_prod_original%20pet%20330ml_750x750_v1.jpg",
+      "selector": "img[src*=\"original%20pet\"]",
+      "explicit_sizes": [
+        {
+          "size_value": 330,
+          "size_unit": "ml"
+        }
+      ],
+      "identity_evidence": "Source alt text identifies brand/formula and filename identifies 330ml PET; catalog naming equivalence has not been approved."
+    },
+    {
+      "normalized_key": "coca-cola|รสชาติออริจินัลน้ำตาลน้อยกว่า||2000|ml|1|ชิ้น",
+      "source_url": "https://www.coca-cola.com/th/th/brands/coca-cola/products",
+      "label": "โคคา-โคล่า ในขวดพลาสติก 330 ml",
+      "image_url": "https://www.coca-cola.com/content/dam/onexp/th/th/home-images/brands/cola/th_coca-cola_prod_original%20pet%20330ml_750x750_v1.jpg",
+      "selector": "img[src*=\"original%20pet\"]",
+      "explicit_sizes": [
+        {
+          "size_value": 330,
+          "size_unit": "ml"
+        }
+      ],
+      "identity_evidence": "Source alt text identifies brand/formula and filename identifies 330ml PET; catalog naming equivalence has not been approved."
+    },
+    {
+      "normalized_key": "coca-cola|รสชาติออริจินัลน้ำตาลน้อยกว่า||2500|ml|1|ชิ้น",
+      "source_url": "https://www.coca-cola.com/th/th/brands/coca-cola/products",
+      "label": "โคคา-โคล่า ในขวดพลาสติก 330 ml",
+      "image_url": "https://www.coca-cola.com/content/dam/onexp/th/th/home-images/brands/cola/th_coca-cola_prod_original%20pet%20330ml_750x750_v1.jpg",
+      "selector": "img[src*=\"original%20pet\"]",
+      "explicit_sizes": [
+        {
+          "size_value": 330,
+          "size_unit": "ml"
+        }
+      ],
+      "identity_evidence": "Source alt text identifies brand/formula and filename identifies 330ml PET; catalog naming equivalence has not been approved."
+    },
+    {
+      "normalized_key": "coca-cola|ซีโร่||180|ml|1|ชิ้น",
+      "source_url": "https://www.coca-cola.com/th/th/brands/coca-cola/products",
+      "label": "โคคาโคล่าไม่มีน้ำตาลในขวดพลาสติก 330 ml",
+      "image_url": "https://www.coca-cola.com/content/dam/onexp/th/th/home-images/brands/cola/th_coca-cola_prod_sugar%20free%20formula%20pet%20330ml_750x750_v1.jpg",
+      "selector": "img[src*=\"sugar%20free\"]",
+      "explicit_sizes": [
+        {
+          "size_value": 330,
+          "size_unit": "ml"
+        }
+      ],
+      "identity_evidence": "Source alt text identifies brand/formula and filename identifies 330ml PET; catalog naming equivalence has not been approved."
+    },
+    {
+      "normalized_key": "coca-cola|ซีโร่||245|ml|1|ชิ้น",
+      "source_url": "https://www.coca-cola.com/th/th/brands/coca-cola/products",
+      "label": "โคคาโคล่าไม่มีน้ำตาลในขวดพลาสติก 330 ml",
+      "image_url": "https://www.coca-cola.com/content/dam/onexp/th/th/home-images/brands/cola/th_coca-cola_prod_sugar%20free%20formula%20pet%20330ml_750x750_v1.jpg",
+      "selector": "img[src*=\"sugar%20free\"]",
+      "explicit_sizes": [
+        {
+          "size_value": 330,
+          "size_unit": "ml"
+        }
+      ],
+      "identity_evidence": "Source alt text identifies brand/formula and filename identifies 330ml PET; catalog naming equivalence has not been approved."
+    },
+    {
+      "normalized_key": "coca-cola|ซีโร่||250|ml|1|ชิ้น",
+      "source_url": "https://www.coca-cola.com/th/th/brands/coca-cola/products",
+      "label": "โคคาโคล่าไม่มีน้ำตาลในขวดพลาสติก 330 ml",
+      "image_url": "https://www.coca-cola.com/content/dam/onexp/th/th/home-images/brands/cola/th_coca-cola_prod_sugar%20free%20formula%20pet%20330ml_750x750_v1.jpg",
+      "selector": "img[src*=\"sugar%20free\"]",
+      "explicit_sizes": [
+        {
+          "size_value": 330,
+          "size_unit": "ml"
+        }
+      ],
+      "identity_evidence": "Source alt text identifies brand/formula and filename identifies 330ml PET; catalog naming equivalence has not been approved."
+    },
+    {
+      "normalized_key": "coca-cola|ซีโร่||300|ml|1|ชิ้น",
+      "source_url": "https://www.coca-cola.com/th/th/brands/coca-cola/products",
+      "label": "โคคาโคล่าไม่มีน้ำตาลในขวดพลาสติก 330 ml",
+      "image_url": "https://www.coca-cola.com/content/dam/onexp/th/th/home-images/brands/cola/th_coca-cola_prod_sugar%20free%20formula%20pet%20330ml_750x750_v1.jpg",
+      "selector": "img[src*=\"sugar%20free\"]",
+      "explicit_sizes": [
+        {
+          "size_value": 330,
+          "size_unit": "ml"
+        }
+      ],
+      "identity_evidence": "Source alt text identifies brand/formula and filename identifies 330ml PET; catalog naming equivalence has not been approved."
+    },
+    {
+      "normalized_key": "coca-cola|ซีโร่||325|ml|1|ชิ้น",
+      "source_url": "https://www.coca-cola.com/th/th/brands/coca-cola/products",
+      "label": "โคคาโคล่าไม่มีน้ำตาลในขวดพลาสติก 330 ml",
+      "image_url": "https://www.coca-cola.com/content/dam/onexp/th/th/home-images/brands/cola/th_coca-cola_prod_sugar%20free%20formula%20pet%20330ml_750x750_v1.jpg",
+      "selector": "img[src*=\"sugar%20free\"]",
+      "explicit_sizes": [
+        {
+          "size_value": 330,
+          "size_unit": "ml"
+        }
+      ],
+      "identity_evidence": "Source alt text identifies brand/formula and filename identifies 330ml PET; catalog naming equivalence has not been approved."
+    },
+    {
+      "normalized_key": "coca-cola|ซีโร่||330|ml|1|ชิ้น",
+      "source_url": "https://www.coca-cola.com/th/th/brands/coca-cola/products",
+      "label": "โคคาโคล่าไม่มีน้ำตาลในขวดพลาสติก 330 ml",
+      "image_url": "https://www.coca-cola.com/content/dam/onexp/th/th/home-images/brands/cola/th_coca-cola_prod_sugar%20free%20formula%20pet%20330ml_750x750_v1.jpg",
+      "selector": "img[src*=\"sugar%20free\"]",
+      "explicit_sizes": [
+        {
+          "size_value": 330,
+          "size_unit": "ml"
+        }
+      ],
+      "identity_evidence": "Source alt text identifies brand/formula and filename identifies 330ml PET; catalog naming equivalence has not been approved."
+    },
+    {
+      "normalized_key": "coca-cola|ซีโร่||450|ml|1|ชิ้น",
+      "source_url": "https://www.coca-cola.com/th/th/brands/coca-cola/products",
+      "label": "โคคาโคล่าไม่มีน้ำตาลในขวดพลาสติก 330 ml",
+      "image_url": "https://www.coca-cola.com/content/dam/onexp/th/th/home-images/brands/cola/th_coca-cola_prod_sugar%20free%20formula%20pet%20330ml_750x750_v1.jpg",
+      "selector": "img[src*=\"sugar%20free\"]",
+      "explicit_sizes": [
+        {
+          "size_value": 330,
+          "size_unit": "ml"
+        }
+      ],
+      "identity_evidence": "Source alt text identifies brand/formula and filename identifies 330ml PET; catalog naming equivalence has not been approved."
+    },
+    {
+      "normalized_key": "coca-cola|ซีโร่||510|ml|1|ชิ้น",
+      "source_url": "https://www.coca-cola.com/th/th/brands/coca-cola/products",
+      "label": "โคคาโคล่าไม่มีน้ำตาลในขวดพลาสติก 330 ml",
+      "image_url": "https://www.coca-cola.com/content/dam/onexp/th/th/home-images/brands/cola/th_coca-cola_prod_sugar%20free%20formula%20pet%20330ml_750x750_v1.jpg",
+      "selector": "img[src*=\"sugar%20free\"]",
+      "explicit_sizes": [
+        {
+          "size_value": 330,
+          "size_unit": "ml"
+        }
+      ],
+      "identity_evidence": "Source alt text identifies brand/formula and filename identifies 330ml PET; catalog naming equivalence has not been approved."
+    },
+    {
+      "normalized_key": "coca-cola|ซีโร่||1000|ml|1|ชิ้น",
+      "source_url": "https://www.coca-cola.com/th/th/brands/coca-cola/products",
+      "label": "โคคาโคล่าไม่มีน้ำตาลในขวดพลาสติก 330 ml",
+      "image_url": "https://www.coca-cola.com/content/dam/onexp/th/th/home-images/brands/cola/th_coca-cola_prod_sugar%20free%20formula%20pet%20330ml_750x750_v1.jpg",
+      "selector": "img[src*=\"sugar%20free\"]",
+      "explicit_sizes": [
+        {
+          "size_value": 330,
+          "size_unit": "ml"
+        }
+      ],
+      "identity_evidence": "Source alt text identifies brand/formula and filename identifies 330ml PET; catalog naming equivalence has not been approved."
+    },
+    {
+      "normalized_key": "coca-cola|ซีโร่||1250|ml|1|ชิ้น",
+      "source_url": "https://www.coca-cola.com/th/th/brands/coca-cola/products",
+      "label": "โคคาโคล่าไม่มีน้ำตาลในขวดพลาสติก 330 ml",
+      "image_url": "https://www.coca-cola.com/content/dam/onexp/th/th/home-images/brands/cola/th_coca-cola_prod_sugar%20free%20formula%20pet%20330ml_750x750_v1.jpg",
+      "selector": "img[src*=\"sugar%20free\"]",
+      "explicit_sizes": [
+        {
+          "size_value": 330,
+          "size_unit": "ml"
+        }
+      ],
+      "identity_evidence": "Source alt text identifies brand/formula and filename identifies 330ml PET; catalog naming equivalence has not been approved."
+    },
+    {
+      "normalized_key": "coca-cola|ซีโร่||1450|ml|1|ชิ้น",
+      "source_url": "https://www.coca-cola.com/th/th/brands/coca-cola/products",
+      "label": "โคคาโคล่าไม่มีน้ำตาลในขวดพลาสติก 330 ml",
+      "image_url": "https://www.coca-cola.com/content/dam/onexp/th/th/home-images/brands/cola/th_coca-cola_prod_sugar%20free%20formula%20pet%20330ml_750x750_v1.jpg",
+      "selector": "img[src*=\"sugar%20free\"]",
+      "explicit_sizes": [
+        {
+          "size_value": 330,
+          "size_unit": "ml"
+        }
+      ],
+      "identity_evidence": "Source alt text identifies brand/formula and filename identifies 330ml PET; catalog naming equivalence has not been approved."
+    },
+    {
+      "normalized_key": "coca-cola|ซีโร่||1500|ml|1|ชิ้น",
+      "source_url": "https://www.coca-cola.com/th/th/brands/coca-cola/products",
+      "label": "โคคาโคล่าไม่มีน้ำตาลในขวดพลาสติก 330 ml",
+      "image_url": "https://www.coca-cola.com/content/dam/onexp/th/th/home-images/brands/cola/th_coca-cola_prod_sugar%20free%20formula%20pet%20330ml_750x750_v1.jpg",
+      "selector": "img[src*=\"sugar%20free\"]",
+      "explicit_sizes": [
+        {
+          "size_value": 330,
+          "size_unit": "ml"
+        }
+      ],
+      "identity_evidence": "Source alt text identifies brand/formula and filename identifies 330ml PET; catalog naming equivalence has not been approved."
+    },
+    {
+      "normalized_key": "coca-cola|ซีโร่||2000|ml|1|ชิ้น",
+      "source_url": "https://www.coca-cola.com/th/th/brands/coca-cola/products",
+      "label": "โคคาโคล่าไม่มีน้ำตาลในขวดพลาสติก 330 ml",
+      "image_url": "https://www.coca-cola.com/content/dam/onexp/th/th/home-images/brands/cola/th_coca-cola_prod_sugar%20free%20formula%20pet%20330ml_750x750_v1.jpg",
+      "selector": "img[src*=\"sugar%20free\"]",
+      "explicit_sizes": [
+        {
+          "size_value": 330,
+          "size_unit": "ml"
+        }
+      ],
+      "identity_evidence": "Source alt text identifies brand/formula and filename identifies 330ml PET; catalog naming equivalence has not been approved."
+    },
+    {
+      "normalized_key": "coca-cola|รสชาติออริจินัล||180|ml|1|ชิ้น",
+      "source_url": "https://www.coca-cola.com/th/th/brands/coca-cola/products",
+      "label": "โคคา-โคล่า ในขวดพลาสติก 330 ml",
+      "image_url": "https://www.coca-cola.com/content/dam/onexp/th/th/home-images/brands/cola/th_coca-cola_prod_original%20pet%20330ml_750x750_v1.jpg",
+      "selector": "img[src*=\"original%20pet\"]",
+      "explicit_sizes": [
+        {
+          "size_value": 330,
+          "size_unit": "ml"
+        }
+      ],
+      "identity_evidence": "Source alt text identifies brand/formula and filename identifies 330ml PET; catalog naming equivalence has not been approved."
+    },
+    {
+      "normalized_key": "coca-cola|รสชาติออริจินัล||245|ml|1|ชิ้น",
+      "source_url": "https://www.coca-cola.com/th/th/brands/coca-cola/products",
+      "label": "โคคา-โคล่า ในขวดพลาสติก 330 ml",
+      "image_url": "https://www.coca-cola.com/content/dam/onexp/th/th/home-images/brands/cola/th_coca-cola_prod_original%20pet%20330ml_750x750_v1.jpg",
+      "selector": "img[src*=\"original%20pet\"]",
+      "explicit_sizes": [
+        {
+          "size_value": 330,
+          "size_unit": "ml"
+        }
+      ],
+      "identity_evidence": "Source alt text identifies brand/formula and filename identifies 330ml PET; catalog naming equivalence has not been approved."
+    },
+    {
+      "normalized_key": "coca-cola|รสชาติออริจินัล||250|ml|1|ชิ้น",
+      "source_url": "https://www.coca-cola.com/th/th/brands/coca-cola/products",
+      "label": "โคคา-โคล่า ในขวดพลาสติก 330 ml",
+      "image_url": "https://www.coca-cola.com/content/dam/onexp/th/th/home-images/brands/cola/th_coca-cola_prod_original%20pet%20330ml_750x750_v1.jpg",
+      "selector": "img[src*=\"original%20pet\"]",
+      "explicit_sizes": [
+        {
+          "size_value": 330,
+          "size_unit": "ml"
+        }
+      ],
+      "identity_evidence": "Source alt text identifies brand/formula and filename identifies 330ml PET; catalog naming equivalence has not been approved."
+    },
+    {
+      "normalized_key": "coca-cola|รสชาติออริจินัล||280|ml|1|ชิ้น",
+      "source_url": "https://www.coca-cola.com/th/th/brands/coca-cola/products",
+      "label": "โคคา-โคล่า ในขวดพลาสติก 330 ml",
+      "image_url": "https://www.coca-cola.com/content/dam/onexp/th/th/home-images/brands/cola/th_coca-cola_prod_original%20pet%20330ml_750x750_v1.jpg",
+      "selector": "img[src*=\"original%20pet\"]",
+      "explicit_sizes": [
+        {
+          "size_value": 330,
+          "size_unit": "ml"
+        }
+      ],
+      "identity_evidence": "Source alt text identifies brand/formula and filename identifies 330ml PET; catalog naming equivalence has not been approved."
+    },
+    {
+      "normalized_key": "coca-cola|รสชาติออริจินัล||295|ml|1|ชิ้น",
+      "source_url": "https://www.coca-cola.com/th/th/brands/coca-cola/products",
+      "label": "โคคา-โคล่า ในขวดพลาสติก 330 ml",
+      "image_url": "https://www.coca-cola.com/content/dam/onexp/th/th/home-images/brands/cola/th_coca-cola_prod_original%20pet%20330ml_750x750_v1.jpg",
+      "selector": "img[src*=\"original%20pet\"]",
+      "explicit_sizes": [
+        {
+          "size_value": 330,
+          "size_unit": "ml"
+        }
+      ],
+      "identity_evidence": "Source alt text identifies brand/formula and filename identifies 330ml PET; catalog naming equivalence has not been approved."
+    },
+    {
+      "normalized_key": "coca-cola|รสชาติออริจินัล||300|ml|1|ชิ้น",
+      "source_url": "https://www.coca-cola.com/th/th/brands/coca-cola/products",
+      "label": "โคคา-โคล่า ในขวดพลาสติก 330 ml",
+      "image_url": "https://www.coca-cola.com/content/dam/onexp/th/th/home-images/brands/cola/th_coca-cola_prod_original%20pet%20330ml_750x750_v1.jpg",
+      "selector": "img[src*=\"original%20pet\"]",
+      "explicit_sizes": [
+        {
+          "size_value": 330,
+          "size_unit": "ml"
+        }
+      ],
+      "identity_evidence": "Source alt text identifies brand/formula and filename identifies 330ml PET; catalog naming equivalence has not been approved."
+    },
+    {
+      "normalized_key": "coca-cola|รสชาติออริจินัล||330|ml|1|ชิ้น",
+      "source_url": "https://www.coca-cola.com/th/th/brands/coca-cola/products",
+      "label": "โคคา-โคล่า ในขวดพลาสติก 330 ml",
+      "image_url": "https://www.coca-cola.com/content/dam/onexp/th/th/home-images/brands/cola/th_coca-cola_prod_original%20pet%20330ml_750x750_v1.jpg",
+      "selector": "img[src*=\"original%20pet\"]",
+      "explicit_sizes": [
+        {
+          "size_value": 330,
+          "size_unit": "ml"
+        }
+      ],
+      "identity_evidence": "Source alt text identifies brand/formula and filename identifies 330ml PET; catalog naming equivalence has not been approved."
+    },
+    {
+      "normalized_key": "coca-cola|รสชาติออริจินัล||375|ml|1|ชิ้น",
+      "source_url": "https://www.coca-cola.com/th/th/brands/coca-cola/products",
+      "label": "โคคา-โคล่า ในขวดพลาสติก 330 ml",
+      "image_url": "https://www.coca-cola.com/content/dam/onexp/th/th/home-images/brands/cola/th_coca-cola_prod_original%20pet%20330ml_750x750_v1.jpg",
+      "selector": "img[src*=\"original%20pet\"]",
+      "explicit_sizes": [
+        {
+          "size_value": 330,
+          "size_unit": "ml"
+        }
+      ],
+      "identity_evidence": "Source alt text identifies brand/formula and filename identifies 330ml PET; catalog naming equivalence has not been approved."
+    },
+    {
+      "normalized_key": "coca-cola|รสชาติออริจินัล||500|ml|1|ชิ้น",
+      "source_url": "https://www.coca-cola.com/th/th/brands/coca-cola/products",
+      "label": "โคคา-โคล่า ในขวดพลาสติก 330 ml",
+      "image_url": "https://www.coca-cola.com/content/dam/onexp/th/th/home-images/brands/cola/th_coca-cola_prod_original%20pet%20330ml_750x750_v1.jpg",
+      "selector": "img[src*=\"original%20pet\"]",
+      "explicit_sizes": [
+        {
+          "size_value": 330,
+          "size_unit": "ml"
+        }
+      ],
+      "identity_evidence": "Source alt text identifies brand/formula and filename identifies 330ml PET; catalog naming equivalence has not been approved."
+    },
+    {
+      "normalized_key": "coca-cola|ไลท์||325|ml|1|ชิ้น",
+      "source_url": "https://www.coca-cola.com/th/th/brands/coca-cola/products",
+      "label": "โคคา-โคล่า ในขวดพลาสติก 330 ml",
+      "image_url": "https://www.coca-cola.com/content/dam/onexp/th/th/home-images/brands/cola/th_coca-cola_prod_original%20pet%20330ml_750x750_v1.jpg",
+      "selector": "img[src*=\"original%20pet\"]",
+      "explicit_sizes": [
+        {
+          "size_value": 330,
+          "size_unit": "ml"
+        }
+      ],
+      "identity_evidence": "Source alt text identifies brand/formula and filename identifies 330ml PET; catalog naming equivalence has not been approved."
+    },
+    {
+      "normalized_key": "coca-cola|ซีโร่กลิ่นวานิลลา||325|ml|1|ชิ้น",
+      "source_url": "https://www.coca-cola.com/th/th/brands/coca-cola/products",
+      "label": "โคคาโคล่าไม่มีน้ำตาลในขวดพลาสติก 330 ml",
+      "image_url": "https://www.coca-cola.com/content/dam/onexp/th/th/home-images/brands/cola/th_coca-cola_prod_sugar%20free%20formula%20pet%20330ml_750x750_v1.jpg",
+      "selector": "img[src*=\"sugar%20free\"]",
+      "explicit_sizes": [
+        {
+          "size_value": 330,
+          "size_unit": "ml"
+        }
+      ],
+      "identity_evidence": "Source alt text identifies brand/formula and filename identifies 330ml PET; catalog naming equivalence has not been approved."
+    },
+    {
+      "normalized_key": "coca-cola|ซีโร่กลิ่นวานิลลา||510|ml|1|ชิ้น",
+      "source_url": "https://www.coca-cola.com/th/th/brands/coca-cola/products",
+      "label": "โคคาโคล่าไม่มีน้ำตาลในขวดพลาสติก 330 ml",
+      "image_url": "https://www.coca-cola.com/content/dam/onexp/th/th/home-images/brands/cola/th_coca-cola_prod_sugar%20free%20formula%20pet%20330ml_750x750_v1.jpg",
+      "selector": "img[src*=\"sugar%20free\"]",
+      "explicit_sizes": [
+        {
+          "size_value": 330,
+          "size_unit": "ml"
+        }
+      ],
+      "identity_evidence": "Source alt text identifies brand/formula and filename identifies 330ml PET; catalog naming equivalence has not been approved."
+    },
+    {
+      "normalized_key": "coca-cola|ซีโร่กลิ่นวานิลลา||1500|ml|1|ชิ้น",
+      "source_url": "https://www.coca-cola.com/th/th/brands/coca-cola/products",
+      "label": "โคคาโคล่าไม่มีน้ำตาลในขวดพลาสติก 330 ml",
+      "image_url": "https://www.coca-cola.com/content/dam/onexp/th/th/home-images/brands/cola/th_coca-cola_prod_sugar%20free%20formula%20pet%20330ml_750x750_v1.jpg",
+      "selector": "img[src*=\"sugar%20free\"]",
+      "explicit_sizes": [
+        {
+          "size_value": 330,
+          "size_unit": "ml"
+        }
+      ],
+      "identity_evidence": "Source alt text identifies brand/formula and filename identifies 330ml PET; catalog naming equivalence has not been approved."
+    },
+    {
+      "normalized_key": "coca-cola|ซีโร่ไม่มีกาเฟอีน||325|ml|1|ชิ้น",
+      "source_url": "https://www.coca-cola.com/th/th/brands/coca-cola/products",
+      "label": "โคคาโคล่าไม่มีน้ำตาลในขวดพลาสติก 330 ml",
+      "image_url": "https://www.coca-cola.com/content/dam/onexp/th/th/home-images/brands/cola/th_coca-cola_prod_sugar%20free%20formula%20pet%20330ml_750x750_v1.jpg",
+      "selector": "img[src*=\"sugar%20free\"]",
+      "explicit_sizes": [
+        {
+          "size_value": 330,
+          "size_unit": "ml"
+        }
+      ],
+      "identity_evidence": "Source alt text identifies brand/formula and filename identifies 330ml PET; catalog naming equivalence has not been approved."
+    },
+    {
+      "normalized_key": "coca-cola|ซีโร่ไม่มีกาเฟอีน||510|ml|1|ชิ้น",
+      "source_url": "https://www.coca-cola.com/th/th/brands/coca-cola/products",
+      "label": "โคคาโคล่าไม่มีน้ำตาลในขวดพลาสติก 330 ml",
+      "image_url": "https://www.coca-cola.com/content/dam/onexp/th/th/home-images/brands/cola/th_coca-cola_prod_sugar%20free%20formula%20pet%20330ml_750x750_v1.jpg",
+      "selector": "img[src*=\"sugar%20free\"]",
+      "explicit_sizes": [
+        {
+          "size_value": 330,
+          "size_unit": "ml"
+        }
+      ],
+      "identity_evidence": "Source alt text identifies brand/formula and filename identifies 330ml PET; catalog naming equivalence has not been approved."
+    },
+    {
+      "normalized_key": "coca-cola|ซีโร่ไม่มีกาเฟอีน||1500|ml|1|ชิ้น",
+      "source_url": "https://www.coca-cola.com/th/th/brands/coca-cola/products",
+      "label": "โคคาโคล่าไม่มีน้ำตาลในขวดพลาสติก 330 ml",
+      "image_url": "https://www.coca-cola.com/content/dam/onexp/th/th/home-images/brands/cola/th_coca-cola_prod_sugar%20free%20formula%20pet%20330ml_750x750_v1.jpg",
+      "selector": "img[src*=\"sugar%20free\"]",
+      "explicit_sizes": [
+        {
+          "size_value": 330,
+          "size_unit": "ml"
+        }
+      ],
+      "identity_evidence": "Source alt text identifies brand/formula and filename identifies 330ml PET; catalog naming equivalence has not been approved."
+    },
+    {
+      "normalized_key": "fanta|แฟนต้ากลิ่นส้ม||245|ml|1|ชิ้น",
+      "source_url": "https://www.coca-cola.com/th/th/brands/fanta/products",
+      "label": "แฟนต้าน้ำส้มขวดพลาสติกมีโลโก้ภาษาไทย",
+      "image_url": "https://www.coca-cola.com/content/dam/onexp/th/th/home-images/fanta/new/rgb/orange-rgb.jpg",
+      "selector": "img[src*=\"orange-rgb\"]",
+      "explicit_sizes": [],
+      "identity_evidence": "Manufacturer flavor photograph; package size not established. Review only."
+    },
+    {
+      "normalized_key": "fanta|แฟนต้ากลิ่นส้ม||250|ml|1|ชิ้น",
+      "source_url": "https://www.coca-cola.com/th/th/brands/fanta/products",
+      "label": "แฟนต้าน้ำส้มขวดพลาสติกมีโลโก้ภาษาไทย",
+      "image_url": "https://www.coca-cola.com/content/dam/onexp/th/th/home-images/fanta/new/rgb/orange-rgb.jpg",
+      "selector": "img[src*=\"orange-rgb\"]",
+      "explicit_sizes": [],
+      "identity_evidence": "Manufacturer flavor photograph; package size not established. Review only."
+    },
+    {
+      "normalized_key": "fanta|แฟนต้ากลิ่นส้ม||280|ml|1|ชิ้น",
+      "source_url": "https://www.coca-cola.com/th/th/brands/fanta/products",
+      "label": "แฟนต้าน้ำส้มขวดพลาสติกมีโลโก้ภาษาไทย",
+      "image_url": "https://www.coca-cola.com/content/dam/onexp/th/th/home-images/fanta/new/rgb/orange-rgb.jpg",
+      "selector": "img[src*=\"orange-rgb\"]",
+      "explicit_sizes": [],
+      "identity_evidence": "Manufacturer flavor photograph; package size not established. Review only."
+    },
+    {
+      "normalized_key": "fanta|แฟนต้ากลิ่นส้ม||325|ml|1|ชิ้น",
+      "source_url": "https://www.coca-cola.com/th/th/brands/fanta/products",
+      "label": "แฟนต้าน้ำส้มขวดพลาสติกมีโลโก้ภาษาไทย",
+      "image_url": "https://www.coca-cola.com/content/dam/onexp/th/th/home-images/fanta/new/rgb/orange-rgb.jpg",
+      "selector": "img[src*=\"orange-rgb\"]",
+      "explicit_sizes": [],
+      "identity_evidence": "Manufacturer flavor photograph; package size not established. Review only."
+    },
+    {
+      "normalized_key": "fanta|แฟนต้ากลิ่นส้ม||330|ml|1|ชิ้น",
+      "source_url": "https://www.coca-cola.com/th/th/brands/fanta/products",
+      "label": "แฟนต้าน้ำส้มขวดพลาสติกมีโลโก้ภาษาไทย",
+      "image_url": "https://www.coca-cola.com/content/dam/onexp/th/th/home-images/fanta/new/rgb/orange-rgb.jpg",
+      "selector": "img[src*=\"orange-rgb\"]",
+      "explicit_sizes": [],
+      "identity_evidence": "Manufacturer flavor photograph; package size not established. Review only."
+    },
+    {
+      "normalized_key": "fanta|แฟนต้ากลิ่นส้ม||375|ml|1|ชิ้น",
+      "source_url": "https://www.coca-cola.com/th/th/brands/fanta/products",
+      "label": "แฟนต้าน้ำส้มขวดพลาสติกมีโลโก้ภาษาไทย",
+      "image_url": "https://www.coca-cola.com/content/dam/onexp/th/th/home-images/fanta/new/rgb/orange-rgb.jpg",
+      "selector": "img[src*=\"orange-rgb\"]",
+      "explicit_sizes": [],
+      "identity_evidence": "Manufacturer flavor photograph; package size not established. Review only."
+    },
+    {
+      "normalized_key": "fanta|แฟนต้ากลิ่นส้ม||450|ml|1|ชิ้น",
+      "source_url": "https://www.coca-cola.com/th/th/brands/fanta/products",
+      "label": "แฟนต้าน้ำส้มขวดพลาสติกมีโลโก้ภาษาไทย",
+      "image_url": "https://www.coca-cola.com/content/dam/onexp/th/th/home-images/fanta/new/rgb/orange-rgb.jpg",
+      "selector": "img[src*=\"orange-rgb\"]",
+      "explicit_sizes": [],
+      "identity_evidence": "Manufacturer flavor photograph; package size not established. Review only."
+    },
+    {
+      "normalized_key": "fanta|แฟนต้ากลิ่นส้ม||500|ml|1|ชิ้น",
+      "source_url": "https://www.coca-cola.com/th/th/brands/fanta/products",
+      "label": "แฟนต้าน้ำส้มขวดพลาสติกมีโลโก้ภาษาไทย",
+      "image_url": "https://www.coca-cola.com/content/dam/onexp/th/th/home-images/fanta/new/rgb/orange-rgb.jpg",
+      "selector": "img[src*=\"orange-rgb\"]",
+      "explicit_sizes": [],
+      "identity_evidence": "Manufacturer flavor photograph; package size not established. Review only."
+    },
+    {
+      "normalized_key": "fanta|แฟนต้ากลิ่นส้ม||1000|ml|1|ชิ้น",
+      "source_url": "https://www.coca-cola.com/th/th/brands/fanta/products",
+      "label": "แฟนต้าน้ำส้มขวดพลาสติกมีโลโก้ภาษาไทย",
+      "image_url": "https://www.coca-cola.com/content/dam/onexp/th/th/home-images/fanta/new/rgb/orange-rgb.jpg",
+      "selector": "img[src*=\"orange-rgb\"]",
+      "explicit_sizes": [],
+      "identity_evidence": "Manufacturer flavor photograph; package size not established. Review only."
+    },
+    {
+      "normalized_key": "fanta|แฟนต้ากลิ่นส้ม||1250|ml|1|ชิ้น",
+      "source_url": "https://www.coca-cola.com/th/th/brands/fanta/products",
+      "label": "แฟนต้าน้ำส้มขวดพลาสติกมีโลโก้ภาษาไทย",
+      "image_url": "https://www.coca-cola.com/content/dam/onexp/th/th/home-images/fanta/new/rgb/orange-rgb.jpg",
+      "selector": "img[src*=\"orange-rgb\"]",
+      "explicit_sizes": [],
+      "identity_evidence": "Manufacturer flavor photograph; package size not established. Review only."
+    },
+    {
+      "normalized_key": "fanta|แฟนต้ากลิ่นส้ม||1500|ml|1|ชิ้น",
+      "source_url": "https://www.coca-cola.com/th/th/brands/fanta/products",
+      "label": "แฟนต้าน้ำส้มขวดพลาสติกมีโลโก้ภาษาไทย",
+      "image_url": "https://www.coca-cola.com/content/dam/onexp/th/th/home-images/fanta/new/rgb/orange-rgb.jpg",
+      "selector": "img[src*=\"orange-rgb\"]",
+      "explicit_sizes": [],
+      "identity_evidence": "Manufacturer flavor photograph; package size not established. Review only."
+    },
+    {
+      "normalized_key": "fanta|แฟนต้ากลิ่นส้ม||1950|ml|1|ชิ้น",
+      "source_url": "https://www.coca-cola.com/th/th/brands/fanta/products",
+      "label": "แฟนต้าน้ำส้มขวดพลาสติกมีโลโก้ภาษาไทย",
+      "image_url": "https://www.coca-cola.com/content/dam/onexp/th/th/home-images/fanta/new/rgb/orange-rgb.jpg",
+      "selector": "img[src*=\"orange-rgb\"]",
+      "explicit_sizes": [],
+      "identity_evidence": "Manufacturer flavor photograph; package size not established. Review only."
+    },
+    {
+      "normalized_key": "fanta|แฟนต้ากลิ่นส้ม||2000|ml|1|ชิ้น",
+      "source_url": "https://www.coca-cola.com/th/th/brands/fanta/products",
+      "label": "แฟนต้าน้ำส้มขวดพลาสติกมีโลโก้ภาษาไทย",
+      "image_url": "https://www.coca-cola.com/content/dam/onexp/th/th/home-images/fanta/new/rgb/orange-rgb.jpg",
+      "selector": "img[src*=\"orange-rgb\"]",
+      "explicit_sizes": [],
+      "identity_evidence": "Manufacturer flavor photograph; package size not established. Review only."
+    },
+    {
+      "normalized_key": "fanta|แฟนต้ากลิ่นสตรอเบอร์รี||180|ml|1|ชิ้น",
+      "source_url": "https://www.coca-cola.com/th/th/brands/fanta/products",
+      "label": "แฟนต้าสตรอว์เบอร์รีในขวดพลาสติกพร้อมโลโก้ภาษาไทย",
+      "image_url": "https://www.coca-cola.com/content/dam/onexp/th/th/home-images/fanta/new/rgb/strawberry-rgb.jpg",
+      "selector": "img[src*=\"strawberry-rgb\"]",
+      "explicit_sizes": [],
+      "identity_evidence": "Manufacturer flavor photograph; package size not established. Review only."
+    },
+    {
+      "normalized_key": "fanta|แฟนต้ากลิ่นสตรอเบอร์รี||245|ml|1|ชิ้น",
+      "source_url": "https://www.coca-cola.com/th/th/brands/fanta/products",
+      "label": "แฟนต้าสตรอว์เบอร์รีในขวดพลาสติกพร้อมโลโก้ภาษาไทย",
+      "image_url": "https://www.coca-cola.com/content/dam/onexp/th/th/home-images/fanta/new/rgb/strawberry-rgb.jpg",
+      "selector": "img[src*=\"strawberry-rgb\"]",
+      "explicit_sizes": [],
+      "identity_evidence": "Manufacturer flavor photograph; package size not established. Review only."
+    },
+    {
+      "normalized_key": "fanta|แฟนต้ากลิ่นสตรอเบอร์รี||250|ml|1|ชิ้น",
+      "source_url": "https://www.coca-cola.com/th/th/brands/fanta/products",
+      "label": "แฟนต้าสตรอว์เบอร์รีในขวดพลาสติกพร้อมโลโก้ภาษาไทย",
+      "image_url": "https://www.coca-cola.com/content/dam/onexp/th/th/home-images/fanta/new/rgb/strawberry-rgb.jpg",
+      "selector": "img[src*=\"strawberry-rgb\"]",
+      "explicit_sizes": [],
+      "identity_evidence": "Manufacturer flavor photograph; package size not established. Review only."
+    },
+    {
+      "normalized_key": "fanta|แฟนต้ากลิ่นสตรอเบอร์รี||280|ml|1|ชิ้น",
+      "source_url": "https://www.coca-cola.com/th/th/brands/fanta/products",
+      "label": "แฟนต้าสตรอว์เบอร์รีในขวดพลาสติกพร้อมโลโก้ภาษาไทย",
+      "image_url": "https://www.coca-cola.com/content/dam/onexp/th/th/home-images/fanta/new/rgb/strawberry-rgb.jpg",
+      "selector": "img[src*=\"strawberry-rgb\"]",
+      "explicit_sizes": [],
+      "identity_evidence": "Manufacturer flavor photograph; package size not established. Review only."
+    },
+    {
+      "normalized_key": "fanta|แฟนต้ากลิ่นสตรอเบอร์รี||300|ml|1|ชิ้น",
+      "source_url": "https://www.coca-cola.com/th/th/brands/fanta/products",
+      "label": "แฟนต้าสตรอว์เบอร์รีในขวดพลาสติกพร้อมโลโก้ภาษาไทย",
+      "image_url": "https://www.coca-cola.com/content/dam/onexp/th/th/home-images/fanta/new/rgb/strawberry-rgb.jpg",
+      "selector": "img[src*=\"strawberry-rgb\"]",
+      "explicit_sizes": [],
+      "identity_evidence": "Manufacturer flavor photograph; package size not established. Review only."
+    },
+    {
+      "normalized_key": "fanta|แฟนต้ากลิ่นสตรอเบอร์รี||325|ml|1|ชิ้น",
+      "source_url": "https://www.coca-cola.com/th/th/brands/fanta/products",
+      "label": "แฟนต้าสตรอว์เบอร์รีในขวดพลาสติกพร้อมโลโก้ภาษาไทย",
+      "image_url": "https://www.coca-cola.com/content/dam/onexp/th/th/home-images/fanta/new/rgb/strawberry-rgb.jpg",
+      "selector": "img[src*=\"strawberry-rgb\"]",
+      "explicit_sizes": [],
+      "identity_evidence": "Manufacturer flavor photograph; package size not established. Review only."
+    },
+    {
+      "normalized_key": "fanta|แฟนต้ากลิ่นสตรอเบอร์รี||330|ml|1|ชิ้น",
+      "source_url": "https://www.coca-cola.com/th/th/brands/fanta/products",
+      "label": "แฟนต้าสตรอว์เบอร์รีในขวดพลาสติกพร้อมโลโก้ภาษาไทย",
+      "image_url": "https://www.coca-cola.com/content/dam/onexp/th/th/home-images/fanta/new/rgb/strawberry-rgb.jpg",
+      "selector": "img[src*=\"strawberry-rgb\"]",
+      "explicit_sizes": [],
+      "identity_evidence": "Manufacturer flavor photograph; package size not established. Review only."
+    },
+    {
+      "normalized_key": "fanta|แฟนต้ากลิ่นสตรอเบอร์รี||375|ml|1|ชิ้น",
+      "source_url": "https://www.coca-cola.com/th/th/brands/fanta/products",
+      "label": "แฟนต้าสตรอว์เบอร์รีในขวดพลาสติกพร้อมโลโก้ภาษาไทย",
+      "image_url": "https://www.coca-cola.com/content/dam/onexp/th/th/home-images/fanta/new/rgb/strawberry-rgb.jpg",
+      "selector": "img[src*=\"strawberry-rgb\"]",
+      "explicit_sizes": [],
+      "identity_evidence": "Manufacturer flavor photograph; package size not established. Review only."
+    },
+    {
+      "normalized_key": "fanta|แฟนต้ากลิ่นสตรอเบอร์รี||450|ml|1|ชิ้น",
+      "source_url": "https://www.coca-cola.com/th/th/brands/fanta/products",
+      "label": "แฟนต้าสตรอว์เบอร์รีในขวดพลาสติกพร้อมโลโก้ภาษาไทย",
+      "image_url": "https://www.coca-cola.com/content/dam/onexp/th/th/home-images/fanta/new/rgb/strawberry-rgb.jpg",
+      "selector": "img[src*=\"strawberry-rgb\"]",
+      "explicit_sizes": [],
+      "identity_evidence": "Manufacturer flavor photograph; package size not established. Review only."
+    },
+    {
+      "normalized_key": "fanta|แฟนต้ากลิ่นสตรอเบอร์รี||500|ml|1|ชิ้น",
+      "source_url": "https://www.coca-cola.com/th/th/brands/fanta/products",
+      "label": "แฟนต้าสตรอว์เบอร์รีในขวดพลาสติกพร้อมโลโก้ภาษาไทย",
+      "image_url": "https://www.coca-cola.com/content/dam/onexp/th/th/home-images/fanta/new/rgb/strawberry-rgb.jpg",
+      "selector": "img[src*=\"strawberry-rgb\"]",
+      "explicit_sizes": [],
+      "identity_evidence": "Manufacturer flavor photograph; package size not established. Review only."
+    },
+    {
+      "normalized_key": "fanta|แฟนต้ากลิ่นสตรอเบอร์รี||1000|ml|1|ชิ้น",
+      "source_url": "https://www.coca-cola.com/th/th/brands/fanta/products",
+      "label": "แฟนต้าสตรอว์เบอร์รีในขวดพลาสติกพร้อมโลโก้ภาษาไทย",
+      "image_url": "https://www.coca-cola.com/content/dam/onexp/th/th/home-images/fanta/new/rgb/strawberry-rgb.jpg",
+      "selector": "img[src*=\"strawberry-rgb\"]",
+      "explicit_sizes": [],
+      "identity_evidence": "Manufacturer flavor photograph; package size not established. Review only."
+    },
+    {
+      "normalized_key": "fanta|แฟนต้ากลิ่นสตรอเบอร์รี||1250|ml|1|ชิ้น",
+      "source_url": "https://www.coca-cola.com/th/th/brands/fanta/products",
+      "label": "แฟนต้าสตรอว์เบอร์รีในขวดพลาสติกพร้อมโลโก้ภาษาไทย",
+      "image_url": "https://www.coca-cola.com/content/dam/onexp/th/th/home-images/fanta/new/rgb/strawberry-rgb.jpg",
+      "selector": "img[src*=\"strawberry-rgb\"]",
+      "explicit_sizes": [],
+      "identity_evidence": "Manufacturer flavor photograph; package size not established. Review only."
+    },
+    {
+      "normalized_key": "fanta|แฟนต้ากลิ่นสตรอเบอร์รี||1500|ml|1|ชิ้น",
+      "source_url": "https://www.coca-cola.com/th/th/brands/fanta/products",
+      "label": "แฟนต้าสตรอว์เบอร์รีในขวดพลาสติกพร้อมโลโก้ภาษาไทย",
+      "image_url": "https://www.coca-cola.com/content/dam/onexp/th/th/home-images/fanta/new/rgb/strawberry-rgb.jpg",
+      "selector": "img[src*=\"strawberry-rgb\"]",
+      "explicit_sizes": [],
+      "identity_evidence": "Manufacturer flavor photograph; package size not established. Review only."
+    },
+    {
+      "normalized_key": "fanta|แฟนต้ากลิ่นสตรอเบอร์รี||1950|ml|1|ชิ้น",
+      "source_url": "https://www.coca-cola.com/th/th/brands/fanta/products",
+      "label": "แฟนต้าสตรอว์เบอร์รีในขวดพลาสติกพร้อมโลโก้ภาษาไทย",
+      "image_url": "https://www.coca-cola.com/content/dam/onexp/th/th/home-images/fanta/new/rgb/strawberry-rgb.jpg",
+      "selector": "img[src*=\"strawberry-rgb\"]",
+      "explicit_sizes": [],
+      "identity_evidence": "Manufacturer flavor photograph; package size not established. Review only."
+    },
+    {
+      "normalized_key": "fanta|แฟนต้ากลิ่นฟรุตพันช์||180|ml|1|ชิ้น",
+      "source_url": "https://www.coca-cola.com/th/th/brands/fanta/products",
+      "label": "แฟนต้า ฟรุตพันช์ ขวดพลาสติก โลโก้ไทย",
+      "image_url": "https://www.coca-cola.com/content/dam/onexp/th/th/home-images/fanta/new/rgb/fruit-punch-rgb.jpg",
+      "selector": "img[src*=\"fruit-punch-rgb\"]",
+      "explicit_sizes": [],
+      "identity_evidence": "Manufacturer flavor photograph; package size not established. Review only."
+    },
+    {
+      "normalized_key": "fanta|แฟนต้ากลิ่นฟรุตพันช์||245|ml|1|ชิ้น",
+      "source_url": "https://www.coca-cola.com/th/th/brands/fanta/products",
+      "label": "แฟนต้า ฟรุตพันช์ ขวดพลาสติก โลโก้ไทย",
+      "image_url": "https://www.coca-cola.com/content/dam/onexp/th/th/home-images/fanta/new/rgb/fruit-punch-rgb.jpg",
+      "selector": "img[src*=\"fruit-punch-rgb\"]",
+      "explicit_sizes": [],
+      "identity_evidence": "Manufacturer flavor photograph; package size not established. Review only."
+    },
+    {
+      "normalized_key": "fanta|แฟนต้ากลิ่นฟรุตพันช์||250|ml|1|ชิ้น",
+      "source_url": "https://www.coca-cola.com/th/th/brands/fanta/products",
+      "label": "แฟนต้า ฟรุตพันช์ ขวดพลาสติก โลโก้ไทย",
+      "image_url": "https://www.coca-cola.com/content/dam/onexp/th/th/home-images/fanta/new/rgb/fruit-punch-rgb.jpg",
+      "selector": "img[src*=\"fruit-punch-rgb\"]",
+      "explicit_sizes": [],
+      "identity_evidence": "Manufacturer flavor photograph; package size not established. Review only."
+    },
+    {
+      "normalized_key": "fanta|แฟนต้ากลิ่นฟรุตพันช์||280|ml|1|ชิ้น",
+      "source_url": "https://www.coca-cola.com/th/th/brands/fanta/products",
+      "label": "แฟนต้า ฟรุตพันช์ ขวดพลาสติก โลโก้ไทย",
+      "image_url": "https://www.coca-cola.com/content/dam/onexp/th/th/home-images/fanta/new/rgb/fruit-punch-rgb.jpg",
+      "selector": "img[src*=\"fruit-punch-rgb\"]",
+      "explicit_sizes": [],
+      "identity_evidence": "Manufacturer flavor photograph; package size not established. Review only."
+    },
+    {
+      "normalized_key": "fanta|แฟนต้ากลิ่นฟรุตพันช์||325|ml|1|ชิ้น",
+      "source_url": "https://www.coca-cola.com/th/th/brands/fanta/products",
+      "label": "แฟนต้า ฟรุตพันช์ ขวดพลาสติก โลโก้ไทย",
+      "image_url": "https://www.coca-cola.com/content/dam/onexp/th/th/home-images/fanta/new/rgb/fruit-punch-rgb.jpg",
+      "selector": "img[src*=\"fruit-punch-rgb\"]",
+      "explicit_sizes": [],
+      "identity_evidence": "Manufacturer flavor photograph; package size not established. Review only."
+    },
+    {
+      "normalized_key": "fanta|แฟนต้ากลิ่นฟรุตพันช์||330|ml|1|ชิ้น",
+      "source_url": "https://www.coca-cola.com/th/th/brands/fanta/products",
+      "label": "แฟนต้า ฟรุตพันช์ ขวดพลาสติก โลโก้ไทย",
+      "image_url": "https://www.coca-cola.com/content/dam/onexp/th/th/home-images/fanta/new/rgb/fruit-punch-rgb.jpg",
+      "selector": "img[src*=\"fruit-punch-rgb\"]",
+      "explicit_sizes": [],
+      "identity_evidence": "Manufacturer flavor photograph; package size not established. Review only."
+    },
+    {
+      "normalized_key": "fanta|แฟนต้ากลิ่นฟรุตพันช์||375|ml|1|ชิ้น",
+      "source_url": "https://www.coca-cola.com/th/th/brands/fanta/products",
+      "label": "แฟนต้า ฟรุตพันช์ ขวดพลาสติก โลโก้ไทย",
+      "image_url": "https://www.coca-cola.com/content/dam/onexp/th/th/home-images/fanta/new/rgb/fruit-punch-rgb.jpg",
+      "selector": "img[src*=\"fruit-punch-rgb\"]",
+      "explicit_sizes": [],
+      "identity_evidence": "Manufacturer flavor photograph; package size not established. Review only."
+    },
+    {
+      "normalized_key": "fanta|แฟนต้ากลิ่นฟรุตพันช์||450|ml|1|ชิ้น",
+      "source_url": "https://www.coca-cola.com/th/th/brands/fanta/products",
+      "label": "แฟนต้า ฟรุตพันช์ ขวดพลาสติก โลโก้ไทย",
+      "image_url": "https://www.coca-cola.com/content/dam/onexp/th/th/home-images/fanta/new/rgb/fruit-punch-rgb.jpg",
+      "selector": "img[src*=\"fruit-punch-rgb\"]",
+      "explicit_sizes": [],
+      "identity_evidence": "Manufacturer flavor photograph; package size not established. Review only."
+    },
+    {
+      "normalized_key": "fanta|แฟนต้ากลิ่นฟรุตพันช์||500|ml|1|ชิ้น",
+      "source_url": "https://www.coca-cola.com/th/th/brands/fanta/products",
+      "label": "แฟนต้า ฟรุตพันช์ ขวดพลาสติก โลโก้ไทย",
+      "image_url": "https://www.coca-cola.com/content/dam/onexp/th/th/home-images/fanta/new/rgb/fruit-punch-rgb.jpg",
+      "selector": "img[src*=\"fruit-punch-rgb\"]",
+      "explicit_sizes": [],
+      "identity_evidence": "Manufacturer flavor photograph; package size not established. Review only."
+    },
+    {
+      "normalized_key": "fanta|แฟนต้ากลิ่นฟรุตพันช์||1000|ml|1|ชิ้น",
+      "source_url": "https://www.coca-cola.com/th/th/brands/fanta/products",
+      "label": "แฟนต้า ฟรุตพันช์ ขวดพลาสติก โลโก้ไทย",
+      "image_url": "https://www.coca-cola.com/content/dam/onexp/th/th/home-images/fanta/new/rgb/fruit-punch-rgb.jpg",
+      "selector": "img[src*=\"fruit-punch-rgb\"]",
+      "explicit_sizes": [],
+      "identity_evidence": "Manufacturer flavor photograph; package size not established. Review only."
+    },
+    {
+      "normalized_key": "fanta|แฟนต้ากลิ่นฟรุตพันช์||1250|ml|1|ชิ้น",
+      "source_url": "https://www.coca-cola.com/th/th/brands/fanta/products",
+      "label": "แฟนต้า ฟรุตพันช์ ขวดพลาสติก โลโก้ไทย",
+      "image_url": "https://www.coca-cola.com/content/dam/onexp/th/th/home-images/fanta/new/rgb/fruit-punch-rgb.jpg",
+      "selector": "img[src*=\"fruit-punch-rgb\"]",
+      "explicit_sizes": [],
+      "identity_evidence": "Manufacturer flavor photograph; package size not established. Review only."
+    },
+    {
+      "normalized_key": "fanta|แฟนต้ากลิ่นฟรุตพันช์||1500|ml|1|ชิ้น",
+      "source_url": "https://www.coca-cola.com/th/th/brands/fanta/products",
+      "label": "แฟนต้า ฟรุตพันช์ ขวดพลาสติก โลโก้ไทย",
+      "image_url": "https://www.coca-cola.com/content/dam/onexp/th/th/home-images/fanta/new/rgb/fruit-punch-rgb.jpg",
+      "selector": "img[src*=\"fruit-punch-rgb\"]",
+      "explicit_sizes": [],
+      "identity_evidence": "Manufacturer flavor photograph; package size not established. Review only."
+    },
+    {
+      "normalized_key": "fanta|แฟนต้ากลิ่นฟรุตพันช์||1950|ml|1|ชิ้น",
+      "source_url": "https://www.coca-cola.com/th/th/brands/fanta/products",
+      "label": "แฟนต้า ฟรุตพันช์ ขวดพลาสติก โลโก้ไทย",
+      "image_url": "https://www.coca-cola.com/content/dam/onexp/th/th/home-images/fanta/new/rgb/fruit-punch-rgb.jpg",
+      "selector": "img[src*=\"fruit-punch-rgb\"]",
+      "explicit_sizes": [],
+      "identity_evidence": "Manufacturer flavor photograph; package size not established. Review only."
+    },
+    {
+      "normalized_key": "fanta|แฟนต้าองุ่นป๊อบ||325|ml|1|ชิ้น",
+      "source_url": "https://www.coca-cola.com/th/th/brands/fanta/products",
+      "label": "แฟนต้าองุ่นในขวดพลาสติกที่มีโลโก้ภาษาไทย",
+      "image_url": "https://www.coca-cola.com/content/dam/onexp/th/th/home-images/fanta/new/rgb/grape-rgb.jpg",
+      "selector": "img[src*=\"grape-rgb\"]",
+      "explicit_sizes": [],
+      "identity_evidence": "Manufacturer flavor photograph; package size not established. Review only."
+    },
+    {
+      "normalized_key": "fanta|แฟนต้าองุ่นป๊อบ||330|ml|1|ชิ้น",
+      "source_url": "https://www.coca-cola.com/th/th/brands/fanta/products",
+      "label": "แฟนต้าองุ่นในขวดพลาสติกที่มีโลโก้ภาษาไทย",
+      "image_url": "https://www.coca-cola.com/content/dam/onexp/th/th/home-images/fanta/new/rgb/grape-rgb.jpg",
+      "selector": "img[src*=\"grape-rgb\"]",
+      "explicit_sizes": [],
+      "identity_evidence": "Manufacturer flavor photograph; package size not established. Review only."
+    },
+    {
+      "normalized_key": "fanta|แฟนต้าองุ่นป๊อบ||375|ml|1|ชิ้น",
+      "source_url": "https://www.coca-cola.com/th/th/brands/fanta/products",
+      "label": "แฟนต้าองุ่นในขวดพลาสติกที่มีโลโก้ภาษาไทย",
+      "image_url": "https://www.coca-cola.com/content/dam/onexp/th/th/home-images/fanta/new/rgb/grape-rgb.jpg",
+      "selector": "img[src*=\"grape-rgb\"]",
+      "explicit_sizes": [],
+      "identity_evidence": "Manufacturer flavor photograph; package size not established. Review only."
+    },
+    {
+      "normalized_key": "fanta|แฟนต้าองุ่นป๊อบ||450|ml|1|ชิ้น",
+      "source_url": "https://www.coca-cola.com/th/th/brands/fanta/products",
+      "label": "แฟนต้าองุ่นในขวดพลาสติกที่มีโลโก้ภาษาไทย",
+      "image_url": "https://www.coca-cola.com/content/dam/onexp/th/th/home-images/fanta/new/rgb/grape-rgb.jpg",
+      "selector": "img[src*=\"grape-rgb\"]",
+      "explicit_sizes": [],
+      "identity_evidence": "Manufacturer flavor photograph; package size not established. Review only."
+    },
+    {
+      "normalized_key": "fanta|แฟนต้าองุ่นป๊อบ||500|ml|1|ชิ้น",
+      "source_url": "https://www.coca-cola.com/th/th/brands/fanta/products",
+      "label": "แฟนต้าองุ่นในขวดพลาสติกที่มีโลโก้ภาษาไทย",
+      "image_url": "https://www.coca-cola.com/content/dam/onexp/th/th/home-images/fanta/new/rgb/grape-rgb.jpg",
+      "selector": "img[src*=\"grape-rgb\"]",
+      "explicit_sizes": [],
+      "identity_evidence": "Manufacturer flavor photograph; package size not established. Review only."
+    },
+    {
+      "normalized_key": "fanta|แฟนต้าองุ่นป๊อบ||1250|ml|1|ชิ้น",
+      "source_url": "https://www.coca-cola.com/th/th/brands/fanta/products",
+      "label": "แฟนต้าองุ่นในขวดพลาสติกที่มีโลโก้ภาษาไทย",
+      "image_url": "https://www.coca-cola.com/content/dam/onexp/th/th/home-images/fanta/new/rgb/grape-rgb.jpg",
+      "selector": "img[src*=\"grape-rgb\"]",
+      "explicit_sizes": [],
+      "identity_evidence": "Manufacturer flavor photograph; package size not established. Review only."
+    },
+    {
+      "normalized_key": "fanta|แฟนต้าองุ่นป๊อบ||1500|ml|1|ชิ้น",
+      "source_url": "https://www.coca-cola.com/th/th/brands/fanta/products",
+      "label": "แฟนต้าองุ่นในขวดพลาสติกที่มีโลโก้ภาษาไทย",
+      "image_url": "https://www.coca-cola.com/content/dam/onexp/th/th/home-images/fanta/new/rgb/grape-rgb.jpg",
+      "selector": "img[src*=\"grape-rgb\"]",
+      "explicit_sizes": [],
+      "identity_evidence": "Manufacturer flavor photograph; package size not established. Review only."
+    },
+    {
+      "normalized_key": "ฉัตร|ข้าวขาวหอมมะลิใหม่||5000|g|1|ถุง",
+      "source_url": "https://khaotrachat.cpcrts.com/?v=18082025041801",
+      "label": "ข้าวหอมมะลิใหม่ตราฉัตร 100%",
+      "image_url": "https://khaotrachat.cpcrts.com/wp-content/uploads/2022/02/rice_1-1.png",
+      "selector": "manufacturer product lineup img",
+      "explicit_sizes": [],
+      "identity_evidence": "Manufacturer product photograph; bag size requires visual verification."
+    },
+    {
+      "normalized_key": "ฉัตร|ข้าวขาวหอมมะลิใหม่||1000|g|1|ถุง",
+      "source_url": "https://khaotrachat.cpcrts.com/?v=18082025041801",
+      "label": "ข้าวหอมมะลิใหม่ตราฉัตร 100%",
+      "image_url": "https://khaotrachat.cpcrts.com/wp-content/uploads/2022/02/rice_1-1.png",
+      "selector": "manufacturer product lineup img",
+      "explicit_sizes": [],
+      "identity_evidence": "Manufacturer product photograph; bag size requires visual verification."
+    },
+    {
+      "normalized_key": "ฉัตรไลท์|ข้าวกข43||5000|g|1|ถุง",
+      "source_url": "https://khaotrachat.cpcrts.com/?v=18082025041801",
+      "label": "ฉัตรไลท์",
+      "image_url": "https://khaotrachat.cpcrts.com/wp-content/uploads/2025/08/%E0%B8%97%E0%B8%AD%E0%B8%87-186x300-2.png",
+      "selector": "manufacturer product lineup img",
+      "explicit_sizes": [],
+      "identity_evidence": "Manufacturer product photograph; bag size requires visual verification."
+    },
+    {
+      "normalized_key": "ฉัตรทอง|ข้าวขาวหอมมะลิ||5000|g|1|ถุง",
+      "source_url": "https://khaotrachat.cpcrts.com/?v=18082025041801",
+      "label": "ข้าวฉัตรทอง",
+      "image_url": "https://khaotrachat.cpcrts.com/wp-content/uploads/2023/02/%E0%B8%97%E0%B8%AD%E0%B8%87.png",
+      "selector": "manufacturer product lineup img",
+      "explicit_sizes": [],
+      "identity_evidence": "Manufacturer product photograph; bag size requires visual verification."
+    },
+    {
+      "normalized_key": "ฉัตรส้ม|ข้าวหอมผสม||5000|g|1|ถุง",
+      "source_url": "https://khaotrachat.cpcrts.com/?v=18082025041801",
+      "label": "ข้าวฉัตรส้ม",
+      "image_url": "https://khaotrachat.cpcrts.com/wp-content/uploads/2022/02/4_%E0%B8%89%E0%B8%B1%E0%B8%95%E0%B8%A3%E0%B8%AA%E0%B9%89%E0%B8%A1.png",
+      "selector": "manufacturer product lineup img",
+      "explicit_sizes": [],
+      "identity_evidence": "Manufacturer product photograph; bag size requires visual verification."
+    },
+    {
+      "normalized_key": "ฟาร์มเฮ้าส์|ขนมปังโฮลวีต||250|g|1|ถุง",
+      "source_url": "https://shop.line.me/%40farmhousethai/product/318888785",
+      "label": "ขนมปังโฮลวีต 250 กรัม",
+      "image_url": "https://obs-ect.line-scdn.net/r/ect/ect/cj02djM2YmV1dXExaGN2JnM9anA2JnQ9bSZ1PTFobjBwbWRwYzRuZzAmaT0w",
+      "selector": "Product JSON-LD image",
+      "explicit_sizes": [
+        {
+          "size_value": 250,
+          "size_unit": "g"
+        }
+      ],
+      "identity_evidence": "ขนมปังโฮลวีต 250 กรัม รหัส 110412; merchant: Farmhouse official LINE shop; SKU 110412"
+    },
+    {
+      "normalized_key": "sprite|สไปรท์||180|ml|1|ชิ้น",
+      "source_url": "https://www.coca-cola.com/th/th/brands/sprite/products",
+      "label": "สไปรท์ในกระป๋อง 325 ml",
+      "image_url": "https://www.coca-cola.com/content/dam/onexp/th/th/home-images/sprite/th_sprite_prod_sprite_325ml_750x750_v1.jpg",
+      "selector": "img[src*=th_sprite_prod_]",
+      "explicit_sizes": [
+        {
+          "size_value": 325,
+          "size_unit": "ml"
+        }
+      ],
+      "identity_evidence": "Actual manufacturer alt text and filename; catalog naming equivalence and package identity await review."
+    },
+    {
+      "normalized_key": "sprite|สไปรท์||180|ml|1|ชิ้น",
+      "source_url": "https://www.coca-cola.com/th/th/brands/sprite/products",
+      "label": "สไปรท์ในขวดพลาสติก 330 ml",
+      "image_url": "https://www.coca-cola.com/content/dam/onexp/th/th/home-images/sprite/th_sprite_prod_sprite_330ml_750x750_v1.jpg",
+      "selector": "img[src*=th_sprite_prod_]",
+      "explicit_sizes": [
+        {
+          "size_value": 330,
+          "size_unit": "ml"
+        }
+      ],
+      "identity_evidence": "Actual manufacturer alt text and filename; catalog naming equivalence and package identity await review."
+    },
+    {
+      "normalized_key": "sprite|สไปรท์||245|ml|1|ชิ้น",
+      "source_url": "https://www.coca-cola.com/th/th/brands/sprite/products",
+      "label": "สไปรท์ในกระป๋อง 325 ml",
+      "image_url": "https://www.coca-cola.com/content/dam/onexp/th/th/home-images/sprite/th_sprite_prod_sprite_325ml_750x750_v1.jpg",
+      "selector": "img[src*=th_sprite_prod_]",
+      "explicit_sizes": [
+        {
+          "size_value": 325,
+          "size_unit": "ml"
+        }
+      ],
+      "identity_evidence": "Actual manufacturer alt text and filename; catalog naming equivalence and package identity await review."
+    },
+    {
+      "normalized_key": "sprite|สไปรท์||245|ml|1|ชิ้น",
+      "source_url": "https://www.coca-cola.com/th/th/brands/sprite/products",
+      "label": "สไปรท์ในขวดพลาสติก 330 ml",
+      "image_url": "https://www.coca-cola.com/content/dam/onexp/th/th/home-images/sprite/th_sprite_prod_sprite_330ml_750x750_v1.jpg",
+      "selector": "img[src*=th_sprite_prod_]",
+      "explicit_sizes": [
+        {
+          "size_value": 330,
+          "size_unit": "ml"
+        }
+      ],
+      "identity_evidence": "Actual manufacturer alt text and filename; catalog naming equivalence and package identity await review."
+    },
+    {
+      "normalized_key": "sprite|สไปรท์||250|ml|1|ชิ้น",
+      "source_url": "https://www.coca-cola.com/th/th/brands/sprite/products",
+      "label": "สไปรท์ในกระป๋อง 325 ml",
+      "image_url": "https://www.coca-cola.com/content/dam/onexp/th/th/home-images/sprite/th_sprite_prod_sprite_325ml_750x750_v1.jpg",
+      "selector": "img[src*=th_sprite_prod_]",
+      "explicit_sizes": [
+        {
+          "size_value": 325,
+          "size_unit": "ml"
+        }
+      ],
+      "identity_evidence": "Actual manufacturer alt text and filename; catalog naming equivalence and package identity await review."
+    },
+    {
+      "normalized_key": "sprite|สไปรท์||250|ml|1|ชิ้น",
+      "source_url": "https://www.coca-cola.com/th/th/brands/sprite/products",
+      "label": "สไปรท์ในขวดพลาสติก 330 ml",
+      "image_url": "https://www.coca-cola.com/content/dam/onexp/th/th/home-images/sprite/th_sprite_prod_sprite_330ml_750x750_v1.jpg",
+      "selector": "img[src*=th_sprite_prod_]",
+      "explicit_sizes": [
+        {
+          "size_value": 330,
+          "size_unit": "ml"
+        }
+      ],
+      "identity_evidence": "Actual manufacturer alt text and filename; catalog naming equivalence and package identity await review."
+    },
+    {
+      "normalized_key": "sprite|สไปรท์||280|ml|1|ชิ้น",
+      "source_url": "https://www.coca-cola.com/th/th/brands/sprite/products",
+      "label": "สไปรท์ในกระป๋อง 325 ml",
+      "image_url": "https://www.coca-cola.com/content/dam/onexp/th/th/home-images/sprite/th_sprite_prod_sprite_325ml_750x750_v1.jpg",
+      "selector": "img[src*=th_sprite_prod_]",
+      "explicit_sizes": [
+        {
+          "size_value": 325,
+          "size_unit": "ml"
+        }
+      ],
+      "identity_evidence": "Actual manufacturer alt text and filename; catalog naming equivalence and package identity await review."
+    },
+    {
+      "normalized_key": "sprite|สไปรท์||280|ml|1|ชิ้น",
+      "source_url": "https://www.coca-cola.com/th/th/brands/sprite/products",
+      "label": "สไปรท์ในขวดพลาสติก 330 ml",
+      "image_url": "https://www.coca-cola.com/content/dam/onexp/th/th/home-images/sprite/th_sprite_prod_sprite_330ml_750x750_v1.jpg",
+      "selector": "img[src*=th_sprite_prod_]",
+      "explicit_sizes": [
+        {
+          "size_value": 330,
+          "size_unit": "ml"
+        }
+      ],
+      "identity_evidence": "Actual manufacturer alt text and filename; catalog naming equivalence and package identity await review."
+    },
+    {
+      "normalized_key": "sprite|สไปรท์||325|ml|1|ชิ้น",
+      "source_url": "https://www.coca-cola.com/th/th/brands/sprite/products",
+      "label": "สไปรท์ในกระป๋อง 325 ml",
+      "image_url": "https://www.coca-cola.com/content/dam/onexp/th/th/home-images/sprite/th_sprite_prod_sprite_325ml_750x750_v1.jpg",
+      "selector": "img[src*=th_sprite_prod_]",
+      "explicit_sizes": [
+        {
+          "size_value": 325,
+          "size_unit": "ml"
+        }
+      ],
+      "identity_evidence": "Actual manufacturer alt text and filename; catalog naming equivalence and package identity await review."
+    },
+    {
+      "normalized_key": "sprite|สไปรท์||325|ml|1|ชิ้น",
+      "source_url": "https://www.coca-cola.com/th/th/brands/sprite/products",
+      "label": "สไปรท์ในขวดพลาสติก 330 ml",
+      "image_url": "https://www.coca-cola.com/content/dam/onexp/th/th/home-images/sprite/th_sprite_prod_sprite_330ml_750x750_v1.jpg",
+      "selector": "img[src*=th_sprite_prod_]",
+      "explicit_sizes": [
+        {
+          "size_value": 330,
+          "size_unit": "ml"
+        }
+      ],
+      "identity_evidence": "Actual manufacturer alt text and filename; catalog naming equivalence and package identity await review."
+    },
+    {
+      "normalized_key": "sprite|สไปรท์||330|ml|1|ชิ้น",
+      "source_url": "https://www.coca-cola.com/th/th/brands/sprite/products",
+      "label": "สไปรท์ในกระป๋อง 325 ml",
+      "image_url": "https://www.coca-cola.com/content/dam/onexp/th/th/home-images/sprite/th_sprite_prod_sprite_325ml_750x750_v1.jpg",
+      "selector": "img[src*=th_sprite_prod_]",
+      "explicit_sizes": [
+        {
+          "size_value": 325,
+          "size_unit": "ml"
+        }
+      ],
+      "identity_evidence": "Actual manufacturer alt text and filename; catalog naming equivalence and package identity await review."
+    },
+    {
+      "normalized_key": "sprite|สไปรท์||330|ml|1|ชิ้น",
+      "source_url": "https://www.coca-cola.com/th/th/brands/sprite/products",
+      "label": "สไปรท์ในขวดพลาสติก 330 ml",
+      "image_url": "https://www.coca-cola.com/content/dam/onexp/th/th/home-images/sprite/th_sprite_prod_sprite_330ml_750x750_v1.jpg",
+      "selector": "img[src*=th_sprite_prod_]",
+      "explicit_sizes": [
+        {
+          "size_value": 330,
+          "size_unit": "ml"
+        }
+      ],
+      "identity_evidence": "Actual manufacturer alt text and filename; catalog naming equivalence and package identity await review."
+    },
+    {
+      "normalized_key": "sprite|สไปรท์||375|ml|1|ชิ้น",
+      "source_url": "https://www.coca-cola.com/th/th/brands/sprite/products",
+      "label": "สไปรท์ในกระป๋อง 325 ml",
+      "image_url": "https://www.coca-cola.com/content/dam/onexp/th/th/home-images/sprite/th_sprite_prod_sprite_325ml_750x750_v1.jpg",
+      "selector": "img[src*=th_sprite_prod_]",
+      "explicit_sizes": [
+        {
+          "size_value": 325,
+          "size_unit": "ml"
+        }
+      ],
+      "identity_evidence": "Actual manufacturer alt text and filename; catalog naming equivalence and package identity await review."
+    },
+    {
+      "normalized_key": "sprite|สไปรท์||375|ml|1|ชิ้น",
+      "source_url": "https://www.coca-cola.com/th/th/brands/sprite/products",
+      "label": "สไปรท์ในขวดพลาสติก 330 ml",
+      "image_url": "https://www.coca-cola.com/content/dam/onexp/th/th/home-images/sprite/th_sprite_prod_sprite_330ml_750x750_v1.jpg",
+      "selector": "img[src*=th_sprite_prod_]",
+      "explicit_sizes": [
+        {
+          "size_value": 330,
+          "size_unit": "ml"
+        }
+      ],
+      "identity_evidence": "Actual manufacturer alt text and filename; catalog naming equivalence and package identity await review."
+    },
+    {
+      "normalized_key": "sprite|สไปรท์||450|ml|1|ชิ้น",
+      "source_url": "https://www.coca-cola.com/th/th/brands/sprite/products",
+      "label": "สไปรท์ในกระป๋อง 325 ml",
+      "image_url": "https://www.coca-cola.com/content/dam/onexp/th/th/home-images/sprite/th_sprite_prod_sprite_325ml_750x750_v1.jpg",
+      "selector": "img[src*=th_sprite_prod_]",
+      "explicit_sizes": [
+        {
+          "size_value": 325,
+          "size_unit": "ml"
+        }
+      ],
+      "identity_evidence": "Actual manufacturer alt text and filename; catalog naming equivalence and package identity await review."
+    },
+    {
+      "normalized_key": "sprite|สไปรท์||450|ml|1|ชิ้น",
+      "source_url": "https://www.coca-cola.com/th/th/brands/sprite/products",
+      "label": "สไปรท์ในขวดพลาสติก 330 ml",
+      "image_url": "https://www.coca-cola.com/content/dam/onexp/th/th/home-images/sprite/th_sprite_prod_sprite_330ml_750x750_v1.jpg",
+      "selector": "img[src*=th_sprite_prod_]",
+      "explicit_sizes": [
+        {
+          "size_value": 330,
+          "size_unit": "ml"
+        }
+      ],
+      "identity_evidence": "Actual manufacturer alt text and filename; catalog naming equivalence and package identity await review."
+    },
+    {
+      "normalized_key": "sprite|สไปรท์||500|ml|1|ชิ้น",
+      "source_url": "https://www.coca-cola.com/th/th/brands/sprite/products",
+      "label": "สไปรท์ในกระป๋อง 325 ml",
+      "image_url": "https://www.coca-cola.com/content/dam/onexp/th/th/home-images/sprite/th_sprite_prod_sprite_325ml_750x750_v1.jpg",
+      "selector": "img[src*=th_sprite_prod_]",
+      "explicit_sizes": [
+        {
+          "size_value": 325,
+          "size_unit": "ml"
+        }
+      ],
+      "identity_evidence": "Actual manufacturer alt text and filename; catalog naming equivalence and package identity await review."
+    },
+    {
+      "normalized_key": "sprite|สไปรท์||500|ml|1|ชิ้น",
+      "source_url": "https://www.coca-cola.com/th/th/brands/sprite/products",
+      "label": "สไปรท์ในขวดพลาสติก 330 ml",
+      "image_url": "https://www.coca-cola.com/content/dam/onexp/th/th/home-images/sprite/th_sprite_prod_sprite_330ml_750x750_v1.jpg",
+      "selector": "img[src*=th_sprite_prod_]",
+      "explicit_sizes": [
+        {
+          "size_value": 330,
+          "size_unit": "ml"
+        }
+      ],
+      "identity_evidence": "Actual manufacturer alt text and filename; catalog naming equivalence and package identity await review."
+    },
+    {
+      "normalized_key": "sprite|สไปรท์||1000|ml|1|ชิ้น",
+      "source_url": "https://www.coca-cola.com/th/th/brands/sprite/products",
+      "label": "สไปรท์ในกระป๋อง 325 ml",
+      "image_url": "https://www.coca-cola.com/content/dam/onexp/th/th/home-images/sprite/th_sprite_prod_sprite_325ml_750x750_v1.jpg",
+      "selector": "img[src*=th_sprite_prod_]",
+      "explicit_sizes": [
+        {
+          "size_value": 325,
+          "size_unit": "ml"
+        }
+      ],
+      "identity_evidence": "Actual manufacturer alt text and filename; catalog naming equivalence and package identity await review."
+    },
+    {
+      "normalized_key": "sprite|สไปรท์||1000|ml|1|ชิ้น",
+      "source_url": "https://www.coca-cola.com/th/th/brands/sprite/products",
+      "label": "สไปรท์ในขวดพลาสติก 330 ml",
+      "image_url": "https://www.coca-cola.com/content/dam/onexp/th/th/home-images/sprite/th_sprite_prod_sprite_330ml_750x750_v1.jpg",
+      "selector": "img[src*=th_sprite_prod_]",
+      "explicit_sizes": [
+        {
+          "size_value": 330,
+          "size_unit": "ml"
+        }
+      ],
+      "identity_evidence": "Actual manufacturer alt text and filename; catalog naming equivalence and package identity await review."
+    },
+    {
+      "normalized_key": "sprite|สไปรท์||1250|ml|1|ชิ้น",
+      "source_url": "https://www.coca-cola.com/th/th/brands/sprite/products",
+      "label": "สไปรท์ในกระป๋อง 325 ml",
+      "image_url": "https://www.coca-cola.com/content/dam/onexp/th/th/home-images/sprite/th_sprite_prod_sprite_325ml_750x750_v1.jpg",
+      "selector": "img[src*=th_sprite_prod_]",
+      "explicit_sizes": [
+        {
+          "size_value": 325,
+          "size_unit": "ml"
+        }
+      ],
+      "identity_evidence": "Actual manufacturer alt text and filename; catalog naming equivalence and package identity await review."
+    },
+    {
+      "normalized_key": "sprite|สไปรท์||1250|ml|1|ชิ้น",
+      "source_url": "https://www.coca-cola.com/th/th/brands/sprite/products",
+      "label": "สไปรท์ในขวดพลาสติก 330 ml",
+      "image_url": "https://www.coca-cola.com/content/dam/onexp/th/th/home-images/sprite/th_sprite_prod_sprite_330ml_750x750_v1.jpg",
+      "selector": "img[src*=th_sprite_prod_]",
+      "explicit_sizes": [
+        {
+          "size_value": 330,
+          "size_unit": "ml"
+        }
+      ],
+      "identity_evidence": "Actual manufacturer alt text and filename; catalog naming equivalence and package identity await review."
+    },
+    {
+      "normalized_key": "sprite|สไปรท์||1500|ml|1|ชิ้น",
+      "source_url": "https://www.coca-cola.com/th/th/brands/sprite/products",
+      "label": "สไปรท์ในกระป๋อง 325 ml",
+      "image_url": "https://www.coca-cola.com/content/dam/onexp/th/th/home-images/sprite/th_sprite_prod_sprite_325ml_750x750_v1.jpg",
+      "selector": "img[src*=th_sprite_prod_]",
+      "explicit_sizes": [
+        {
+          "size_value": 325,
+          "size_unit": "ml"
+        }
+      ],
+      "identity_evidence": "Actual manufacturer alt text and filename; catalog naming equivalence and package identity await review."
+    },
+    {
+      "normalized_key": "sprite|สไปรท์||1500|ml|1|ชิ้น",
+      "source_url": "https://www.coca-cola.com/th/th/brands/sprite/products",
+      "label": "สไปรท์ในขวดพลาสติก 330 ml",
+      "image_url": "https://www.coca-cola.com/content/dam/onexp/th/th/home-images/sprite/th_sprite_prod_sprite_330ml_750x750_v1.jpg",
+      "selector": "img[src*=th_sprite_prod_]",
+      "explicit_sizes": [
+        {
+          "size_value": 330,
+          "size_unit": "ml"
+        }
+      ],
+      "identity_evidence": "Actual manufacturer alt text and filename; catalog naming equivalence and package identity await review."
+    },
+    {
+      "normalized_key": "sprite|สไปรท์ซีโร่||325|ml|1|ชิ้น",
+      "source_url": "https://www.coca-cola.com/th/th/brands/sprite/products",
+      "label": "สไปรท์ซีโร่ชูการ์ในกระป๋อง 325 ml",
+      "image_url": "https://www.coca-cola.com/content/dam/onexp/th/th/home-images/sprite/th_sprite_prod_sprite_no_sugar_formula_325ml_750x750_v1.jpg",
+      "selector": "img[src*=th_sprite_prod_]",
+      "explicit_sizes": [
+        {
+          "size_value": 325,
+          "size_unit": "ml"
+        }
+      ],
+      "identity_evidence": "Actual manufacturer alt text and filename; catalog naming equivalence and package identity await review."
+    },
+    {
+      "normalized_key": "sprite|สไปรท์ซีโร่||325|ml|1|ชิ้น",
+      "source_url": "https://www.coca-cola.com/th/th/brands/sprite/products",
+      "label": "สไปรท์ซีโร่ชูการ์ในขวดพลาสติก 330 ml",
+      "image_url": "https://www.coca-cola.com/content/dam/onexp/th/th/home-images/sprite/th_sprite_prod_sprite_no_sugar_formula_330ml_750x750_v1.jpg",
+      "selector": "img[src*=th_sprite_prod_]",
+      "explicit_sizes": [
+        {
+          "size_value": 330,
+          "size_unit": "ml"
+        }
+      ],
+      "identity_evidence": "Actual manufacturer alt text and filename; catalog naming equivalence and package identity await review."
+    },
+    {
+      "normalized_key": "sprite|สไปรท์ซีโร่||330|ml|1|ชิ้น",
+      "source_url": "https://www.coca-cola.com/th/th/brands/sprite/products",
+      "label": "สไปรท์ซีโร่ชูการ์ในกระป๋อง 325 ml",
+      "image_url": "https://www.coca-cola.com/content/dam/onexp/th/th/home-images/sprite/th_sprite_prod_sprite_no_sugar_formula_325ml_750x750_v1.jpg",
+      "selector": "img[src*=th_sprite_prod_]",
+      "explicit_sizes": [
+        {
+          "size_value": 325,
+          "size_unit": "ml"
+        }
+      ],
+      "identity_evidence": "Actual manufacturer alt text and filename; catalog naming equivalence and package identity await review."
+    },
+    {
+      "normalized_key": "sprite|สไปรท์ซีโร่||330|ml|1|ชิ้น",
+      "source_url": "https://www.coca-cola.com/th/th/brands/sprite/products",
+      "label": "สไปรท์ซีโร่ชูการ์ในขวดพลาสติก 330 ml",
+      "image_url": "https://www.coca-cola.com/content/dam/onexp/th/th/home-images/sprite/th_sprite_prod_sprite_no_sugar_formula_330ml_750x750_v1.jpg",
+      "selector": "img[src*=th_sprite_prod_]",
+      "explicit_sizes": [
+        {
+          "size_value": 330,
+          "size_unit": "ml"
+        }
+      ],
+      "identity_evidence": "Actual manufacturer alt text and filename; catalog naming equivalence and package identity await review."
+    },
+    {
+      "normalized_key": "sprite|สไปรท์ซีโร่||500|ml|1|ชิ้น",
+      "source_url": "https://www.coca-cola.com/th/th/brands/sprite/products",
+      "label": "สไปรท์ซีโร่ชูการ์ในกระป๋อง 325 ml",
+      "image_url": "https://www.coca-cola.com/content/dam/onexp/th/th/home-images/sprite/th_sprite_prod_sprite_no_sugar_formula_325ml_750x750_v1.jpg",
+      "selector": "img[src*=th_sprite_prod_]",
+      "explicit_sizes": [
+        {
+          "size_value": 325,
+          "size_unit": "ml"
+        }
+      ],
+      "identity_evidence": "Actual manufacturer alt text and filename; catalog naming equivalence and package identity await review."
+    },
+    {
+      "normalized_key": "sprite|สไปรท์ซีโร่||500|ml|1|ชิ้น",
+      "source_url": "https://www.coca-cola.com/th/th/brands/sprite/products",
+      "label": "สไปรท์ซีโร่ชูการ์ในขวดพลาสติก 330 ml",
+      "image_url": "https://www.coca-cola.com/content/dam/onexp/th/th/home-images/sprite/th_sprite_prod_sprite_no_sugar_formula_330ml_750x750_v1.jpg",
+      "selector": "img[src*=th_sprite_prod_]",
+      "explicit_sizes": [
+        {
+          "size_value": 330,
+          "size_unit": "ml"
+        }
+      ],
+      "identity_evidence": "Actual manufacturer alt text and filename; catalog naming equivalence and package identity await review."
+    },
+    {
+      "normalized_key": "sprite|สไปรท์ซีโร่||1000|ml|1|ชิ้น",
+      "source_url": "https://www.coca-cola.com/th/th/brands/sprite/products",
+      "label": "สไปรท์ซีโร่ชูการ์ในกระป๋อง 325 ml",
+      "image_url": "https://www.coca-cola.com/content/dam/onexp/th/th/home-images/sprite/th_sprite_prod_sprite_no_sugar_formula_325ml_750x750_v1.jpg",
+      "selector": "img[src*=th_sprite_prod_]",
+      "explicit_sizes": [
+        {
+          "size_value": 325,
+          "size_unit": "ml"
+        }
+      ],
+      "identity_evidence": "Actual manufacturer alt text and filename; catalog naming equivalence and package identity await review."
+    },
+    {
+      "normalized_key": "sprite|สไปรท์ซีโร่||1000|ml|1|ชิ้น",
+      "source_url": "https://www.coca-cola.com/th/th/brands/sprite/products",
+      "label": "สไปรท์ซีโร่ชูการ์ในขวดพลาสติก 330 ml",
+      "image_url": "https://www.coca-cola.com/content/dam/onexp/th/th/home-images/sprite/th_sprite_prod_sprite_no_sugar_formula_330ml_750x750_v1.jpg",
+      "selector": "img[src*=th_sprite_prod_]",
+      "explicit_sizes": [
+        {
+          "size_value": 330,
+          "size_unit": "ml"
+        }
+      ],
+      "identity_evidence": "Actual manufacturer alt text and filename; catalog naming equivalence and package identity await review."
+    },
+    {
+      "normalized_key": "sprite|สไปรท์ซีโร่||1500|ml|1|ชิ้น",
+      "source_url": "https://www.coca-cola.com/th/th/brands/sprite/products",
+      "label": "สไปรท์ซีโร่ชูการ์ในกระป๋อง 325 ml",
+      "image_url": "https://www.coca-cola.com/content/dam/onexp/th/th/home-images/sprite/th_sprite_prod_sprite_no_sugar_formula_325ml_750x750_v1.jpg",
+      "selector": "img[src*=th_sprite_prod_]",
+      "explicit_sizes": [
+        {
+          "size_value": 325,
+          "size_unit": "ml"
+        }
+      ],
+      "identity_evidence": "Actual manufacturer alt text and filename; catalog naming equivalence and package identity await review."
+    },
+    {
+      "normalized_key": "sprite|สไปรท์ซีโร่||1500|ml|1|ชิ้น",
+      "source_url": "https://www.coca-cola.com/th/th/brands/sprite/products",
+      "label": "สไปรท์ซีโร่ชูการ์ในขวดพลาสติก 330 ml",
+      "image_url": "https://www.coca-cola.com/content/dam/onexp/th/th/home-images/sprite/th_sprite_prod_sprite_no_sugar_formula_330ml_750x750_v1.jpg",
+      "selector": "img[src*=th_sprite_prod_]",
+      "explicit_sizes": [
+        {
+          "size_value": 330,
+          "size_unit": "ml"
+        }
+      ],
+      "identity_evidence": "Actual manufacturer alt text and filename; catalog naming equivalence and package identity await review."
+    },
+    {
+      "normalized_key": "sprite|สไปรท์ชิลล์กลิ่นเลมอนไลม์และมิ้นต์||325|ml|1|ชิ้น",
+      "source_url": "https://www.coca-cola.com/th/th/brands/sprite/products",
+      "label": "สไปรท์ในกระป๋อง 325 ml",
+      "image_url": "https://www.coca-cola.com/content/dam/onexp/th/th/home-images/sprite/th_sprite_prod_sprite_325ml_750x750_v1.jpg",
+      "selector": "img[src*=th_sprite_prod_]",
+      "explicit_sizes": [
+        {
+          "size_value": 325,
+          "size_unit": "ml"
+        }
+      ],
+      "identity_evidence": "Actual manufacturer alt text and filename; catalog naming equivalence and package identity await review."
+    },
+    {
+      "normalized_key": "sprite|สไปรท์ชิลล์กลิ่นเลมอนไลม์และมิ้นต์||325|ml|1|ชิ้น",
+      "source_url": "https://www.coca-cola.com/th/th/brands/sprite/products",
+      "label": "สไปรท์ในขวดพลาสติก 330 ml",
+      "image_url": "https://www.coca-cola.com/content/dam/onexp/th/th/home-images/sprite/th_sprite_prod_sprite_330ml_750x750_v1.jpg",
+      "selector": "img[src*=th_sprite_prod_]",
+      "explicit_sizes": [
+        {
+          "size_value": 330,
+          "size_unit": "ml"
+        }
+      ],
+      "identity_evidence": "Actual manufacturer alt text and filename; catalog naming equivalence and package identity await review."
+    },
+    {
+      "normalized_key": "sprite|สไปรท์ชิลล์กลิ่นเลมอนไลม์และมิ้นต์||500|ml|1|ชิ้น",
+      "source_url": "https://www.coca-cola.com/th/th/brands/sprite/products",
+      "label": "สไปรท์ในกระป๋อง 325 ml",
+      "image_url": "https://www.coca-cola.com/content/dam/onexp/th/th/home-images/sprite/th_sprite_prod_sprite_325ml_750x750_v1.jpg",
+      "selector": "img[src*=th_sprite_prod_]",
+      "explicit_sizes": [
+        {
+          "size_value": 325,
+          "size_unit": "ml"
+        }
+      ],
+      "identity_evidence": "Actual manufacturer alt text and filename; catalog naming equivalence and package identity await review."
+    },
+    {
+      "normalized_key": "sprite|สไปรท์ชิลล์กลิ่นเลมอนไลม์และมิ้นต์||500|ml|1|ชิ้น",
+      "source_url": "https://www.coca-cola.com/th/th/brands/sprite/products",
+      "label": "สไปรท์ในขวดพลาสติก 330 ml",
+      "image_url": "https://www.coca-cola.com/content/dam/onexp/th/th/home-images/sprite/th_sprite_prod_sprite_330ml_750x750_v1.jpg",
+      "selector": "img[src*=th_sprite_prod_]",
+      "explicit_sizes": [
+        {
+          "size_value": 330,
+          "size_unit": "ml"
+        }
+      ],
+      "identity_evidence": "Actual manufacturer alt text and filename; catalog naming equivalence and package identity await review."
+    },
+    {
+      "normalized_key": "sprite|สไปรท์พลัสที||245|ml|1|ชิ้น",
+      "source_url": "https://www.coca-cola.com/th/th/brands/sprite/products",
+      "label": "สไปรท์ในกระป๋อง 325 ml",
+      "image_url": "https://www.coca-cola.com/content/dam/onexp/th/th/home-images/sprite/th_sprite_prod_sprite_325ml_750x750_v1.jpg",
+      "selector": "img[src*=th_sprite_prod_]",
+      "explicit_sizes": [
+        {
+          "size_value": 325,
+          "size_unit": "ml"
+        }
+      ],
+      "identity_evidence": "Actual manufacturer alt text and filename; catalog naming equivalence and package identity await review."
+    },
+    {
+      "normalized_key": "sprite|สไปรท์พลัสที||245|ml|1|ชิ้น",
+      "source_url": "https://www.coca-cola.com/th/th/brands/sprite/products",
+      "label": "สไปรท์ในขวดพลาสติก 330 ml",
+      "image_url": "https://www.coca-cola.com/content/dam/onexp/th/th/home-images/sprite/th_sprite_prod_sprite_330ml_750x750_v1.jpg",
+      "selector": "img[src*=th_sprite_prod_]",
+      "explicit_sizes": [
+        {
+          "size_value": 330,
+          "size_unit": "ml"
+        }
+      ],
+      "identity_evidence": "Actual manufacturer alt text and filename; catalog naming equivalence and package identity await review."
+    },
+    {
+      "normalized_key": "sprite|สไปรท์พลัสที||325|ml|1|ชิ้น",
+      "source_url": "https://www.coca-cola.com/th/th/brands/sprite/products",
+      "label": "สไปรท์ในกระป๋อง 325 ml",
+      "image_url": "https://www.coca-cola.com/content/dam/onexp/th/th/home-images/sprite/th_sprite_prod_sprite_325ml_750x750_v1.jpg",
+      "selector": "img[src*=th_sprite_prod_]",
+      "explicit_sizes": [
+        {
+          "size_value": 325,
+          "size_unit": "ml"
+        }
+      ],
+      "identity_evidence": "Actual manufacturer alt text and filename; catalog naming equivalence and package identity await review."
+    },
+    {
+      "normalized_key": "sprite|สไปรท์พลัสที||325|ml|1|ชิ้น",
+      "source_url": "https://www.coca-cola.com/th/th/brands/sprite/products",
+      "label": "สไปรท์ในขวดพลาสติก 330 ml",
+      "image_url": "https://www.coca-cola.com/content/dam/onexp/th/th/home-images/sprite/th_sprite_prod_sprite_330ml_750x750_v1.jpg",
+      "selector": "img[src*=th_sprite_prod_]",
+      "explicit_sizes": [
+        {
+          "size_value": 330,
+          "size_unit": "ml"
+        }
+      ],
+      "identity_evidence": "Actual manufacturer alt text and filename; catalog naming equivalence and package identity await review."
+    },
+    {
+      "normalized_key": "sprite|สไปรท์พลัสที||500|ml|1|ชิ้น",
+      "source_url": "https://www.coca-cola.com/th/th/brands/sprite/products",
+      "label": "สไปรท์ในกระป๋อง 325 ml",
+      "image_url": "https://www.coca-cola.com/content/dam/onexp/th/th/home-images/sprite/th_sprite_prod_sprite_325ml_750x750_v1.jpg",
+      "selector": "img[src*=th_sprite_prod_]",
+      "explicit_sizes": [
+        {
+          "size_value": 325,
+          "size_unit": "ml"
+        }
+      ],
+      "identity_evidence": "Actual manufacturer alt text and filename; catalog naming equivalence and package identity await review."
+    },
+    {
+      "normalized_key": "sprite|สไปรท์พลัสที||500|ml|1|ชิ้น",
+      "source_url": "https://www.coca-cola.com/th/th/brands/sprite/products",
+      "label": "สไปรท์ในขวดพลาสติก 330 ml",
+      "image_url": "https://www.coca-cola.com/content/dam/onexp/th/th/home-images/sprite/th_sprite_prod_sprite_330ml_750x750_v1.jpg",
+      "selector": "img[src*=th_sprite_prod_]",
+      "explicit_sizes": [
+        {
+          "size_value": 330,
+          "size_unit": "ml"
+        }
+      ],
+      "identity_evidence": "Actual manufacturer alt text and filename; catalog naming equivalence and package identity await review."
+    },
+    {
+      "normalized_key": "sprite|สไปรท์พลัสที||1000|ml|1|ชิ้น",
+      "source_url": "https://www.coca-cola.com/th/th/brands/sprite/products",
+      "label": "สไปรท์ในกระป๋อง 325 ml",
+      "image_url": "https://www.coca-cola.com/content/dam/onexp/th/th/home-images/sprite/th_sprite_prod_sprite_325ml_750x750_v1.jpg",
+      "selector": "img[src*=th_sprite_prod_]",
+      "explicit_sizes": [
+        {
+          "size_value": 325,
+          "size_unit": "ml"
+        }
+      ],
+      "identity_evidence": "Actual manufacturer alt text and filename; catalog naming equivalence and package identity await review."
+    },
+    {
+      "normalized_key": "sprite|สไปรท์พลัสที||1000|ml|1|ชิ้น",
+      "source_url": "https://www.coca-cola.com/th/th/brands/sprite/products",
+      "label": "สไปรท์ในขวดพลาสติก 330 ml",
+      "image_url": "https://www.coca-cola.com/content/dam/onexp/th/th/home-images/sprite/th_sprite_prod_sprite_330ml_750x750_v1.jpg",
+      "selector": "img[src*=th_sprite_prod_]",
+      "explicit_sizes": [
+        {
+          "size_value": 330,
+          "size_unit": "ml"
+        }
+      ],
+      "identity_evidence": "Actual manufacturer alt text and filename; catalog naming equivalence and package identity await review."
+    }
+  ]
+}

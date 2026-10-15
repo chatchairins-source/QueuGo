@@ -2,3 +2,17 @@
 .qggc-category{display:block;padding:12px}.qggc-category select{min-height:44px;margin-left:10px;max-width:75%}
 
 .qgg-primary-actions{display:flex;gap:8px;margin:12px 0;position:relative;z-index:12}.qgg-primary-actions .qgm-primary{background:#e5232c;color:#fff;border-color:#e5232c;font-weight:800;flex:1;touch-action:manipulation}.qgg-primary-actions button[hidden]{display:none!important}
+
+/* Merchant product cards: readable packshots and compact price controls. */
+.qgg-merchant .qgg-row{position:relative;display:grid;grid-template-columns:140px minmax(0,1fr);gap:8px 14px;align-items:start}
+.qgg-merchant .qgg-select{position:absolute;top:8px;left:8px;display:grid;place-items:center;width:40px;height:44px;z-index:1}
+.qgg-merchant .qgg-row>img,.qgg-merchant .qgg-row>.qgg-image-pending{grid-column:1;grid-row:1 / span 2;width:140px;height:160px;max-width:100%;box-sizing:border-box;padding:12px 4px 0;align-self:center}
+.qgg-merchant .qgg-info{display:contents}
+.qgg-merchant .qgg-info>b{grid-column:2;grid-row:1;padding-top:8px}
+.qgg-merchant .qgg-info>small{grid-column:2;grid-row:2;margin:0}
+.qgg-merchant .qgg-info>.qgg-controls{grid-column:1 / -1;margin:4px 0;gap:8px}
+.qgg-merchant .qgg-price-controls{display:grid;grid-template-columns:repeat(3,minmax(0,112px));align-items:end}
+.qgg-merchant .qgg-price-controls>label{min-width:0;font-size:12px}
+.qgg-merchant .qgg-price-controls input{min-height:44px;padding:6px 8px;font-size:16px;border-radius:8px}
+.qgg-merchant .qgg-info>button{grid-column:1 / -1;min-height:44px}
+@media(max-width:450px){.qgg-merchant .qgg-row{grid-template-columns:112px minmax(0,1fr);gap:6px 10px;padding:10px}.qgg-merchant .qgg-row>img,.qgg-merchant .qgg-row>.qgg-image-pending{width:112px;height:144px}.qgg-merchant .qgg-price-controls{grid-template-columns:repeat(3,minmax(0,112px))}}

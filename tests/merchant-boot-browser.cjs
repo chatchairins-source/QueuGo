@@ -44,6 +44,11 @@ const owner='00000000-0000-4000-8000-000000000001',shop='00000000-0000-4000-8000
     await page.locator('.qgg-row').waitFor();checks++;
     assert.equal(await page.locator('#qt-shop-login').count(),0);checks++;
     if(scenario==='session'){
+     const geometry=await page.evaluate(()=>{const card=document.querySelector('.qgg-row'),photo=card.querySelector('.qgg-image-pending'),input=card.querySelector('[data-field="selling_price"]'),r=photo.getBoundingClientRect(),p=input.getBoundingClientRect();return {photoWidth:r.width,photoHeight:r.height,priceWidth:p.width,priceHeight:p.height,font:getComputedStyle(input).fontSize,overflow:document.documentElement.scrollWidth>innerWidth+1}});
+     assert(geometry.photoWidth>=112&&geometry.photoHeight>=144,'large mobile product photo');checks++;
+     assert(geometry.priceWidth<=112&&geometry.priceHeight>=44,'compact price width with usable touch height');checks++;
+     assert.equal(geometry.font,'16px');checks++;assert.equal(geometry.overflow,false);checks++;
+     if(process.env.MERCHANT_LAYOUT_QA_DIR){fs.mkdirSync(process.env.MERCHANT_LAYOUT_QA_DIR,{recursive:true});await page.screenshot({path:path.join(process.env.MERCHANT_LAYOUT_QA_DIR,'merchant-'+width+'.png')});}
      await page.locator('[data-field="selling_price"]').fill('8');await page.locator('[data-field="enabled"]').check();await page.locator('#qgg-save').click();await page.getByText(/บันทึกแล้ว/).waitFor();assert.equal(saved.selling_price,8);checks++;
      await page.waitForLoadState('networkidle');await page.reload({waitUntil:'domcontentloaded'});await page.locator('.qgg-row').waitFor();assert.equal(await page.locator('[data-field="selling_price"]').inputValue(),'8');checks++;
      await page.getByRole('button',{name:'สินค้า',exact:true}).click();await page.locator('#qgm-grocery-catalog-add').waitFor();await page.locator('#qgm-grocery-catalog-add').click();await page.locator('.qgg-row').waitFor();checks++;
