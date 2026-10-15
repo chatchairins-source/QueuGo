@@ -14,7 +14,7 @@ returns trigger
 language plpgsql
 security definer
 set search_path=public,pg_temp
-as $
+as $$
 begin
   if new.rider_id is null or new.next_after_order_id is null then return new; end if;
 
@@ -29,7 +29,7 @@ begin
     and f.replacement_order_id is null;
 
   return new;
-end $;
+end $$;
 
 revoke all on function qg_private.link_cancellation_replacement()
 from public,anon,authenticated;
