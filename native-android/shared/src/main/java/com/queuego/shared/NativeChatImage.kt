@@ -32,6 +32,7 @@ import java.net.HttpURLConnection
 import java.net.URL
 
 private const val CHAT_IMAGE_LIMIT = 5 * 1024 * 1024
+private const val CHAT_IMAGE_MAX_BASE64_CHARS = ((CHAT_IMAGE_LIMIT + 2) / 3) * 4
 private const val CHAT_IMAGE_MAX_SIDE = 1280
 private val chatImageDecodeGate = Semaphore(2)
 
@@ -101,8 +102,17 @@ fun NativeChatImage(source: String) {
             bitmap = withContext(Dispatchers.IO) {
                 chatImageDecodeGate.withPermit {
                     val bytes = if (source.startsWith("data:image/")) {
-                        require(source.length <= 7 * 1024 * 1024 && source.substringBefore(',').endsWith(";base64"))
-                        Base64.decode(source.substringAfter(','), Base64.DEFAULT).also { require(it.size <= CHAT_IMAGE_LIMIT) }
+                        val comma = source.indexOf(',')
+                        require(comma in 1..128 && source.substring(0, comma).endsWith(";base64")) {
+                            "รูปในแชตมีรูปแบบไม่ถูกต้อง"
+                        }
+                        val encodedLength = source.length - comma - 1
+                        require(encodedLength in 1..CHAT_IMAGE_MAX_BASE64_CHARS) {
+                            "รูปต้องไม่เกิน " + (CHAT_IMAGE_LIMIT / (1024 * 1024)) + " MB"
+                        }
+                        Base64.decode(source.substring(comma + 1), Base64.DEFAULT).also {
+                            require(it.size <= CHAT_IMAGE_LIMIT)
+                        }
                     } else {
                         require(source.startsWith("https://")) { "ลิงก์รูปภาพไม่ถูกต้อง" }
                         val connection = URL(source).openConnection() as HttpURLConnection
