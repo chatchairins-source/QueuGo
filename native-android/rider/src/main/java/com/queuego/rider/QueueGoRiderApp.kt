@@ -994,7 +994,7 @@ private fun RiderHome(
         }
     }
 
-    val badgePreferences = remember(context) { context.getSharedPreferences("rider_chat_seen", Context.MODE_PRIVATE) }
+    val badgeSeenStore = remember(context.applicationContext) { RiderMessageSeenStore(context.applicationContext) }
     val badgeTracker = remember(auth.user.id, auth.session.sessionId) { RiderMessageBadgeTracker(auth.user.id) }
     val badgeApi = remember { RiderMessageBadgeApi() }
     var unreadMessages by remember(auth.user.id, auth.session.sessionId) { mutableStateOf(0) }
@@ -1018,9 +1018,14 @@ private fun RiderHome(
                     currentCoroutineContext().ensureActive()
                     if (active == badgeActive) {
                         val now = System.currentTimeMillis()
-                        if (badgeInbox) badgePreferences.edit().putLong(auth.user.id, now).apply()
+                        val seenAt = if (badgeInbox) {
+                            badgeSeenStore.markSeen(auth.user.id, now)
+                            now
+                        } else {
+                            badgeSeenStore.seenAt(auth.user.id)
+                        }
                         val (count, notice) = badgeTracker.update(active, badgeChat, badgeInbox, rooms,
-                            messages, badgePreferences.getLong(auth.user.id, 0L), now)
+                            messages, seenAt, now)
                         unreadMessages = count
                         if (notice != null) {
                             messageNotice = notice
@@ -1058,7 +1063,7 @@ private fun RiderHome(
     }
     LaunchedEffect(chatJob?.id, activeTab, messageSection, auth.user.id) {
         if (activeTab == "chat" && messageSection == "chat") {
-            badgePreferences.edit().putLong(auth.user.id, System.currentTimeMillis()).apply()
+            badgeSeenStore.markSeen(auth.user.id, System.currentTimeMillis())
         }
         if (chatJob != null) unreadMessages = 0
     }
