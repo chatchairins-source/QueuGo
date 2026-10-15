@@ -32,6 +32,8 @@ ok(sql.includes("deepest_category=source_category"),'database binds deepest cate
 ok(!sql.includes('create extension if not exists http'),'database does not crawl Makro from Production');
 ok(!sql.includes('qg_internal_makro_source_sync_page'),'no hidden Production crawler remains');
 ok(!/\nend\n\$\$;/.test(sql),'PL/pgSQL function bodies must terminate END with a semicolon');
+ok(!/^\s*\$;\s*$/m.test(sql),'SQL migration must not contain single-dollar function terminators');
+ok((sql.match(/\bas \$\$/g)||[]).length===(sql.match(/^\$\$;\s*$/gm)||[]).length,'every dollar-quoted function body is closed with $;');
 ok(sql.includes('qg_grocery_source_search'),'Merchant source search RPC exists');
 ok(sql.includes('qg_grocery_source_add_to_shop'),'Merchant add-from-source RPC exists');
 ok(sql.includes('qg_admin_grocery_source_import'),'admin batch source import exists');
