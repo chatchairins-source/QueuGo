@@ -611,6 +611,9 @@ declare
   primary_delay numeric;
   candidate_delay numeric;
 begin
+  if not public.queuego_feature_enabled('route_bundle',p_at) then
+    return jsonb_build_object('eligible',false,'reason','route bundle is disabled');
+  end if;
   select * into a from public.orders where id=p_primary_order_id;
   select * into b from public.orders where id=p_candidate_order_id;
   if a.id is null or b.id is null or a.id=b.id then
