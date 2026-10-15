@@ -102,6 +102,13 @@ const merchantApp=read('merchant/src/main/java/com/queuego/merchant/QueueGoMerch
 ok(design.includes('QG_REMOTE_IMAGE_MAX_SIDE = 1280'),'Shared remote image decode ceiling must remain bounded');
 ok(design.includes('QG_REMOTE_IMAGE_MAX_BYTES')&&design.includes('inJustDecodeBounds = true')&&!design.includes('inputStream.use { it.readBytes() }'),'Remote images must be byte bounded and sampled before decode');
 ok(
+  design.includes('QG_REMOTE_IMAGE_MAX_BASE64_CHARS = ((QG_REMOTE_IMAGE_MAX_BYTES + 2) / 3) * 4') &&
+  design.includes("val encodedLength = source.length - comma - 1") &&
+  design.includes('encodedLength in 1..QG_REMOTE_IMAGE_MAX_BASE64_CHARS') &&
+  !design.includes('QG_REMOTE_IMAGE_MAX_BYTES * 2'),
+  'Remote data-URI images must reject oversized Base64 before allocating decoded bytes'
+);
+ok(
   design.includes('maxDecodeSide: Int = QG_REMOTE_IMAGE_MAX_SIDE') &&
   design.includes('maxSide.coerceIn(128, QG_REMOTE_IMAGE_MAX_SIDE)'),
   'QgRemoteImage must support per-surface decode ceilings so small thumbnails never allocate full-size bitmaps'
@@ -213,6 +220,14 @@ ok(
 
 const reg=read('rider/src/main/java/com/queuego/rider/RiderRegistrationScreen.kt');
 ok(reg.includes('val before = documents')&&reg.includes('documents = before'),'Oversized/failed Rider document addition must rollback from in-memory form state');
+ok(
+  reg.includes('RIDER_REGISTRATION_PREVIEW_MAX_BASE64_CHARS = 8 * 1024 * 1024') &&
+  reg.includes('riderRegistrationPreviewDecodeGate = Semaphore(1)') &&
+  reg.includes('riderRegistrationPreviewDecodeGate.withPermit') &&
+  reg.includes('DisposableEffect(image)') &&
+  reg.includes('owned.recycle()'),
+  'Rider registration previews must keep Base64/Bitmap peak memory serialized and recycle owned Bitmaps'
+);
 
 const exit=read('shared/src/main/java/com/queuego/shared/NativeExitDiagnostics.kt');
 ok(exit.includes('SupervisorJob() + Dispatchers.IO')&&exit.includes('scope.launch'),'Android exit-reason diagnostics must not block Activity launch');
