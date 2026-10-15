@@ -80,7 +80,7 @@ const id=n=>'00000000-0000-4000-8000-'+String(n).padStart(12,'0');
   eq(duplicate.filter(x=>x.status==='fulfilled').length,2);
   eq((await order(80)).rider_id,id(11));
   eq((await admin.query("select count(*)::int n from audit_logs where entity_id=$1",[id(80)])).rows[0].n,1);
-  await assert.rejects(other.query('select rider_claim_order($1)',[id(80)]),/live targeted|no longer|finish current|active online/);checks++;
+  await assert.rejects(other.query('select rider_claim_order($1)',[id(80)]),/live targeted|no longer|finish current|active online|public driving license|verified current/);checks++;
   await finishRide(80);
 
   // Revocation races with claim: both paths lock the Rider row, so a stale offer cannot be claimed after revocation commits.
