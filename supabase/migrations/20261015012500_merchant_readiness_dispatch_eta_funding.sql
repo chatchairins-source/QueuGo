@@ -1002,7 +1002,7 @@ create or replace function public.qg_rider_publish_customer_eta(
 language plpgsql
 security definer
 set search_path=public,pg_temp
-as $
+as $$
 declare
   v_rider uuid;
   o public.orders%rowtype;
@@ -1082,7 +1082,7 @@ begin
     'expires_in_seconds',45,
     'source','rider_navigation_road'
   );
-end $;
+end $$;
 
 revoke all on function public.qg_rider_publish_customer_eta(uuid,integer)
 from public,anon;
