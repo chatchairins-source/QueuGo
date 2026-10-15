@@ -200,29 +200,32 @@ fun QueueGoRiderApp(pushTarget: NativePushLaunchTarget? = null) {
             }
     }
 
-    LaunchedEffect(auth?.session?.sessionId) {
+    val appLifecycle = LocalLifecycleOwner.current.lifecycle
+    LaunchedEffect(auth?.session?.sessionId, appLifecycle) {
         if (auth == null) return@LaunchedEffect
-        while (true) {
-            delay(25_000)
-            val current = auth ?: break
-            val result = runCatching {
-                val validated = api.validate(current)
-                api.touch(validated.session)
-                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { store.save(validated) }
-                validated
-            }
-            result.onSuccess { validated ->
-                auth = validated
-            }.onFailure {
-                if (it is CancellationException) throw it
-                if (shouldClearRiderSession(it)) {
-                    RiderReturnService.stop(context)
-                    store.clear()
-                    auth = null
-                    error = "Session นี้ถูกยกเลิก หมดอายุ หรือเปิดจากอุปกรณ์อื่น"
+        appLifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            while (true) {
+                delay(25_000)
+                val current = auth ?: break
+                val result = runCatching {
+                    val validated = api.validate(current)
+                    api.touch(validated.session)
+                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { store.save(validated) }
+                    validated
                 }
+                result.onSuccess { validated ->
+                    auth = validated
+                }.onFailure {
+                    if (it is CancellationException) throw it
+                    if (shouldClearRiderSession(it)) {
+                        RiderReturnService.stop(context)
+                        store.clear()
+                        auth = null
+                        error = "Session นี้ถูกยกเลิก หมดอายุ หรือเปิดจากอุปกรณ์อื่น"
+                    }
+                }
+                if (auth == null) return@repeatOnLifecycle
             }
-            if (auth == null) break
         }
     }
 
