@@ -94,10 +94,27 @@ ok(
   'Merchant product/order/profile thumbnails must use bounded decode sizes'
 );
 
+const sharedApi=read('shared/src/main/java/com/queuego/shared/QueueGoNativeApi.kt');
+const riderApiMemory=read('rider/src/main/java/com/queuego/rider/QueueGoApi.kt');
 const store=read('rider/src/main/java/com/queuego/rider/SessionStore.kt');
 ok(store.includes('RIDER_REGISTRATION_DRAFT_MAX_JSON_CHARS = 16 * 1024 * 1024'),'Rider registration plaintext draft must have an aggregate heap bound');
 ok(store.includes('RIDER_REGISTRATION_DRAFT_MAX_FILE_BYTES = 24L * 1024L * 1024L'),'Rider encrypted draft file must be bounded before read/decrypt');
 ok(!store.includes('100 * 1024 * 1024'),'Rider registration restore must never accept the old 100 MB encrypted draft');
+
+ok(
+  sharedApi.includes('QUEUEGO_NATIVE_RESPONSE_MAX_BYTES = 12 * 1024 * 1024') &&
+  sharedApi.includes('readQueueGoResponseBounded') &&
+  sharedApi.includes('contentLengthLong') &&
+  !sharedApi.includes('BufferedReader(InputStreamReader(it, StandardCharsets.UTF_8)).readText()'),
+  'Shared Customer/Merchant API responses must be byte bounded before JSON parsing to prevent low-memory process kills'
+);
+ok(
+  riderApiMemory.includes('RIDER_API_RESPONSE_MAX_BYTES = 12 * 1024 * 1024') &&
+  riderApiMemory.includes('readRiderApiResponseBounded') &&
+  riderApiMemory.includes('contentLengthLong') &&
+  !riderApiMemory.includes('BufferedReader(InputStreamReader(it, StandardCharsets.UTF_8)).readText()'),
+  'Rider API responses must be byte bounded before JSON parsing to prevent low-memory process kills'
+);
 
 const reg=read('rider/src/main/java/com/queuego/rider/RiderRegistrationScreen.kt');
 ok(reg.includes('val before = documents')&&reg.includes('documents = before'),'Oversized/failed Rider document addition must rollback from in-memory form state');
