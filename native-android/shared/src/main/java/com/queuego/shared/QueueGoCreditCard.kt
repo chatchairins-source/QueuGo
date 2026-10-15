@@ -40,7 +40,7 @@ fun QueueGoCreditCard(userId: String, token: String, kind: String) {
         check(edit.commit()) { "บันทึกรายการไม่ได้ กรุณาลองใหม่" }
     }
     suspend fun refresh() {
-        summary = api.obj(api.rpc("queuego_credit_summary", token, JSONObject().put("p_kind", kind)))
+        summary = api.obj(api.rpc("queuego_credit_summary", token, JSONObject().put("p_kind", kind).put("p_topup", request?.optString("id") ?: JSONObject.NULL)))
     }
     LaunchedEffect(accountKey, token) {
         try {
@@ -80,7 +80,7 @@ fun QueueGoCreditCard(userId: String, token: String, kind: String) {
             }
             if (data?.optBoolean("enabled") == true) {
                 if (request == null) {
-                    OutlinedTextField(amount, { amount = it.take(12) }, label = { Text("จำนวนเงิน 20–100,000 บาท") }, enabled = !busy, singleLine = true)
+                    OutlinedTextField(amount, { amount = it.take(12) }, label = { Text("จำนวนเงิน 20–100,000 บาท") }, enabled = !busy, singleLine = true, keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Decimal))
                 }
                 Button(enabled = !busy && (request != null || amount.isNotBlank()), onClick = {
                     runAction {

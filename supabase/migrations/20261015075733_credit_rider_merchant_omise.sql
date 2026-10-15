@@ -50,7 +50,7 @@ begin
 end $$;
 revoke all on function qg_private.credit_owner(text) from public,anon,authenticated;
 
-create function public.queuego_credit_summary(p_kind text) returns jsonb language plpgsql security definer set search_path=public,pg_temp as $$
+create function public.queuego_credit_summary(p_kind text,p_topup uuid default null) returns jsonb language plpgsql security definer set search_path=public,pg_temp as $$
 declare u uuid;a qg_private.credit_accounts%rowtype;
 begin
  u:=qg_private.credit_owner(p_kind);
@@ -59,10 +59,10 @@ begin
  'cash_minor',coalesce(a.cash_minor,0),'promo_minor',coalesce(a.promo_minor,0),'held_minor',coalesce(a.held_cash_minor+a.held_promo_minor,0),
  'available_minor',coalesce(a.cash_minor+a.promo_minor-a.held_cash_minor-a.held_promo_minor,0),
  'entries',coalesce((select jsonb_agg(to_jsonb(e) - 'user_id' - 'actor_id' order by e.created_at desc) from (select * from qg_private.credit_entries where user_id=u and kind=p_kind order by created_at desc,id desc limit 50)e),'[]'::jsonb),
- 'topups',coalesce((select jsonb_agg(to_jsonb(t) - 'user_id' order by t.created_at desc) from (select * from qg_private.credit_topups where user_id=u and kind=p_kind order by created_at desc limit 10)t),'[]'::jsonb));
+ 'topups',coalesce((select jsonb_agg(to_jsonb(t) - 'user_id' order by t.created_at desc) from (select * from qg_private.credit_topups where user_id=u and kind=p_kind order by (id=p_topup) desc,created_at desc limit 10)t),'[]'::jsonb));
 end $$;
-revoke all on function public.queuego_credit_summary(text) from public,anon;
-grant execute on function public.queuego_credit_summary(text) to authenticated;
+revoke all on function public.queuego_credit_summary(text,uuid) from public,anon;
+grant execute on function public.queuego_credit_summary(text,uuid) to authenticated;
 
 create function public.queuego_credit_begin_topup(p_id uuid,p_kind text,p_amount_minor bigint) returns jsonb language plpgsql security definer set search_path=public,pg_temp as $$
 declare u uuid;t qg_private.credit_topups%rowtype;

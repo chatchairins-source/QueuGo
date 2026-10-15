@@ -12,7 +12,7 @@
   const current=()=>panel.isConnected;
   const status=s=>{if(current())panel.querySelector('[data-status]').textContent=s};
   const refresh=async()=>{
-   summary=await request('/rest/v1/rpc/queuego_credit_summary',{p_kind:kind});if(!current())return;
+   summary=await request('/rest/v1/rpc/queuego_credit_summary',{p_kind:kind,p_topup:session()?.id||null});if(!current())return;
    panel.querySelector('[data-balance]').textContent='ใช้ได้ '+money(summary.available_minor)+' · กันไว้ '+money(summary.held_minor);
    panel.querySelector('[data-breakdown]').textContent='เงินจริง '+money(summary.cash_minor)+' · โปรโมชั่น '+money(summary.promo_minor);
    const pending=session(),topup=(summary.topups||[]).find(t=>t.id===pending?.id),form=panel.querySelector('form');
