@@ -208,6 +208,13 @@ ok(source.includes('ServiceCategoryScreen')&&source.includes('"category" -> Serv
 
 ok(source.includes('CustomerCategoryButton')&&source.includes('.size(54.dp)')&&source.includes('Modifier.size(92.dp)')&&source.includes('top = 13.dp, bottom = 10.dp')&&source.includes('fontSize = 18.sp'),'Customer native Home must preserve approved web location, category, heading and shop-card proportions');
 ok(source.includes('CustomerTopAction(')&&source.includes('R.drawable.qg_nav_bag')&&source.includes('R.drawable.qg_top_bell')&&source.includes('R.drawable.qg_top_user'),'Customer top actions must remain exact icon-first web vectors');
+const merchantMainSource=read('merchant/src/main/java/com/queuego/merchant/MainActivity.kt');
+ok(
+  merchantMainSource.includes('withContext(kotlinx.coroutines.Dispatchers.IO) { store.load() }') &&
+  merchantMainSource.includes('delay(1_000)') &&
+  !merchantMainSource.includes('val saved = store.load()\n            if (saved?.session'),
+  'Merchant secure-session polling must run off the UI thread instead of repeatedly decrypting Android Keystore state on Main'
+);
 const merchantAppSource=read('merchant/src/main/java/com/queuego/merchant/QueueGoMerchantApp.kt');
 ok(merchantAppSource.includes('LaunchedEffect(screen, auth.session.accessToken, lifecycle)')&&
    merchantAppSource.includes('lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED)')&&
