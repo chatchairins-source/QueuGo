@@ -158,6 +158,19 @@ ok(
   'Customer and Rider Longdo reverse-geocode payloads must be bounded before parsing'
 );
 
+const riderEvidencePreview=read('rider/src/main/java/com/queuego/rider/RiderEvidencePreview.kt');
+const riderRegistrationImage=read('rider/src/main/java/com/queuego/rider/RiderRegistrationImage.kt');
+ok(
+  riderEvidencePreview.includes('DisposableEffect(decoded?.bitmap)') &&
+  riderEvidencePreview.includes('owned.recycle()'),
+  'Rider evidence preview must recycle owned Bitmaps when a proof changes or leaves composition'
+);
+ok(
+  riderRegistrationImage.includes('maxOf(bounds.outWidth, bounds.outHeight) / sample > 2048') &&
+  !riderRegistrationImage.includes('> 2800'),
+  'Rider registration image decode must keep peak Bitmap memory below the old 2800px ceiling'
+);
+
 const reg=read('rider/src/main/java/com/queuego/rider/RiderRegistrationScreen.kt');
 ok(reg.includes('val before = documents')&&reg.includes('documents = before'),'Oversized/failed Rider document addition must rollback from in-memory form state');
 
