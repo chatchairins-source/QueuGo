@@ -209,29 +209,32 @@ private fun PosStaffNativeHost(
     onLogout: () -> Unit
 ) {
     val api = remember { NativeAuthApi() }
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
     var auth by remember { mutableStateOf(initialAuth) }
     var recoveryError by remember { mutableStateOf<String?>(null) }
 
-    LaunchedEffect(initialAuth.session.authUserId) {
-        while (true) {
-            try {
-                val validated = api.validatePosStaff(auth) { refreshed ->
-                    // validatePosStaff invokes this callback from its IO context.
-                    // Persist rotated credentials there, but never mutate Compose state here.
-                    store.save(refreshed)
+    LaunchedEffect(initialAuth.session.authUserId, lifecycle) {
+        lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            while (true) {
+                try {
+                    val validated = api.validatePosStaff(auth) { refreshed ->
+                        // validatePosStaff invokes this callback from its IO context.
+                        // Persist rotated credentials there, but never mutate Compose state here.
+                        store.save(refreshed)
+                    }
+                    withContext(kotlinx.coroutines.Dispatchers.IO) { store.save(validated) }
+                    auth = validated
+                    recoveryError = null
+                } catch (failure: Exception) {
+                    if (failure is CancellationException) throw failure
+                    if (failure is NativeSessionInvalidException) {
+                        onLogout()
+                        return@repeatOnLifecycle
+                    }
+                    recoveryError = failure.message
                 }
-                withContext(kotlinx.coroutines.Dispatchers.IO) { store.save(validated) }
-                auth = validated
-                recoveryError = null
-            } catch (failure: Exception) {
-                if (failure is CancellationException) throw failure
-                if (failure is NativeSessionInvalidException) {
-                    onLogout()
-                    return@LaunchedEffect
-                }
-                recoveryError = failure.message
+                delay(25_000)
             }
-            delay(25_000)
         }
     }
 

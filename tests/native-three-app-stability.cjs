@@ -100,6 +100,14 @@ ok(
   'Merchant login/register/POS session writes and logout clear must stay off Main, and IO refresh callbacks must not mutate Compose state'
 );
 
+ok(
+  merchantMain.includes('val lifecycle = LocalLifecycleOwner.current.lifecycle') &&
+  merchantMain.includes('LaunchedEffect(initialAuth.session.authUserId, lifecycle)') &&
+  merchantMain.includes('lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED)') &&
+  merchantMain.includes('delay(25_000)'),
+  'Merchant POS staff session validation must pause while the app is backgrounded'
+);
+
 const rider=read('rider/src/main/java/com/queuego/rider/QueueGoRiderApp.kt');
 ok(
   rider.includes('val cached = auth ?: kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO)') &&
@@ -212,8 +220,13 @@ ok(
 ok(
   merchantPrinter.includes('readMerchantStorageResponseBounded(stream)') &&
   merchantPrinter.includes('require(text.length <= 256 * 1024)') &&
+  merchantPrinter.includes('MERCHANT_PRINTER_URL_MAX_CHARS = 500') &&
+  merchantPrinter.includes('MERCHANT_PRINTER_DEDUPE_MAX_KEYS = 300') &&
+  merchantPrinter.includes('MERCHANT_PRINTER_HISTORY_MAX_CHARS = 128 * 1024') &&
+  merchantPrinter.includes('check(keys.size <= MERCHANT_PRINTER_DEDUPE_MAX_KEYS)') &&
+  merchantPrinter.includes('check(historyRaw.length <= MERCHANT_PRINTER_HISTORY_MAX_CHARS)') &&
   !merchantPrinter.includes('BufferedReader(InputStreamReader(it, StandardCharsets.UTF_8)).readText()'),
-  'Merchant Print Bridge request/response memory must stay bounded'
+  'Merchant Print Bridge request/response and local dedupe/history state must stay bounded and fail closed'
 );
 
 ok(
@@ -455,6 +468,14 @@ ok(
 
 const riderEvidencePreview=read('rider/src/main/java/com/queuego/rider/RiderEvidencePreview.kt');
 const riderRegistrationImage=read('rider/src/main/java/com/queuego/rider/RiderRegistrationImage.kt');
+const riderQuickMessages=read('rider/src/main/java/com/queuego/rider/RiderQuickMessages.kt');
+ok(
+  riderQuickMessages.includes('RIDER_QUICK_MESSAGES_MAX_JSON_CHARS = 8 * 1024') &&
+  riderQuickMessages.includes('if (raw.length > RIDER_QUICK_MESSAGES_MAX_JSON_CHARS)') &&
+  riderQuickMessages.includes('prefs.edit().remove(key).apply()'),
+  'Rider quick-message local JSON must fail closed before parsing corrupted oversized state'
+);
+
 const riderSupport=read('rider/src/main/java/com/queuego/rider/RiderSupportScreen.kt');
 ok(
   riderSupport.includes('RIDER_SUPPORT_EVIDENCE_MAX_BYTES = 5 * 1024 * 1024') &&
@@ -473,6 +494,16 @@ ok(
   riderRegistrationImage.includes('maxOf(bounds.outWidth, bounds.outHeight) / sample > 2048') &&
   !riderRegistrationImage.includes('> 2800'),
   'Rider registration image decode must keep peak Bitmap memory below the old 2800px ceiling'
+);
+
+ok(
+  riderRegistrationImage.includes('RIDER_REGISTRATION_PDF_INPUT_MAX_BYTES = 5 * 1024 * 1024') &&
+  riderRegistrationImage.includes('RIDER_REGISTRATION_IMAGE_INPUT_MAX_BYTES = 8 * 1024 * 1024') &&
+  riderRegistrationImage.includes('RIDER_REGISTRATION_PDF_MAX_BASE64_CHARS') &&
+  riderRegistrationImage.includes('prefix.contentEquals("%PDF-".toByteArray(Charsets.US_ASCII))') &&
+  riderRegistrationImage.includes('require(output.size() + count <= limit)') &&
+  !riderRegistrationImage.includes('output.size() <= 8 * 1024 * 1024'),
+  'Rider registration must detect PDF before full buffering and cap raw/Base64 peak memory separately from images'
 );
 
 const reg=read('rider/src/main/java/com/queuego/rider/RiderRegistrationScreen.kt');
@@ -575,6 +606,26 @@ ok(
   !riderNavigationIntegration.includes('val initialCamera = remember(stateKey) {\n        sessionStore.loadMapCamera(stateKey)') &&
   !riderNavigationIntegration.includes('sessionStore.saveMapCamera(\n                stateKey,'),
   'Rider navigation-map camera/view-mode Keystore restore and high-frequency persistence must stay off Main'
+);
+
+const riderNavigationMapRuntime=read('rider-navigation-map/src/main/java/com/queuego/ridernavigationmap/RiderNavigationMap.kt');
+ok(
+  riderNavigationMapRuntime.includes('RIDER_NAV_SNAPSHOT_MAX_SIDE_PX = 1280') &&
+  riderNavigationMapRuntime.includes('val sourceMaxSide = maxOf(sourceWidth, sourceHeight)') &&
+  riderNavigationMapRuntime.includes('val snapshotScale = minOf(') &&
+  riderNavigationMapRuntime.includes('RIDER_NAV_SNAPSHOT_MAX_SIDE_PX.toFloat() / sourceMaxSide.toFloat()') &&
+  riderNavigationMapRuntime.includes('Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)'),
+  'Rider navigation continuity PixelCopy snapshots must cap bitmap dimensions before allocation'
+);
+
+ok(
+  riderNavigationMapRuntime.includes('private fun recycleBitmapCaches()') &&
+  riderNavigationMapRuntime.includes('markerBitmaps.clear()') &&
+  riderNavigationMapRuntime.includes('riderPuckBitmaps.clear()') &&
+  riderNavigationMapRuntime.includes('stopBitmaps.clear()') &&
+  riderNavigationMapRuntime.includes('demandBitmaps.clear()') &&
+  riderNavigationMapRuntime.includes('resetSurface()\n        recycleBitmapCaches()'),
+  'Rider navigation marker/puck/stop/demand bitmap caches must recycle when the holder is disposed'
 );
 
 const riderLongdoMap=read('rider/src/main/java/com/queuego/rider/LongdoRiderMap.kt');
