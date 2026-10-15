@@ -28,6 +28,7 @@ create policy product_update on products for update to authenticated using(get_m
 insert into users values('10000000-0000-4000-8000-000000000001','10000000-0000-4000-8000-000000000001','admin','active'),('10000000-0000-4000-8000-000000000002','10000000-0000-4000-8000-000000000002','shop','active'),('10000000-0000-4000-8000-000000000003','10000000-0000-4000-8000-000000000003','shop','active'),('10000000-0000-4000-8000-000000000004','10000000-0000-4000-8000-000000000004','customer','active');
 insert into shop_profiles values('20000000-0000-4000-8000-000000000002','10000000-0000-4000-8000-000000000002','grocery',null),('20000000-0000-4000-8000-000000000003','10000000-0000-4000-8000-000000000003','grocery',null);`);
 await db.exec(fs.readFileSync('supabase/migrations/20261012170449_grocery_master_catalog.sql','utf8'));
+await db.exec(fs.readFileSync('supabase/migrations/20261015140312_grocery_photo_first_paging.sql','utf8'));
 const role=async(n,r='authenticated')=>db.exec(`reset role;select set_config('request.jwt.claim.sub','10000000-0000-4000-8000-00000000000${n}',false);set role ${r};`);
 await role(1);const batch=N.batch([real,coke]).items;await db.query('select qg_grocery_import($1::jsonb)',[JSON.stringify(batch)]);await db.query('select qg_grocery_import($1::jsonb)',[JSON.stringify(batch)]);eq((await db.query('select count(*)::int n from grocery_master_products')).rows[0].n,2);
 const masters=(await db.query('select id,normalized_key from grocery_master_products order by brand')).rows;const m=masters.find(x=>x.normalized_key.startsWith('mama')).id,c=masters.find(x=>x.normalized_key.startsWith('coca')).id;
@@ -73,6 +74,18 @@ eq((await db.query('select count(*)::int n from grocery_master_products where ac
 await db.exec('reset role;');
 await db.exec(`insert into grocery_master_products(brand,product_name_th,size_value,size_unit,pack_size,sales_unit,category,normalized_key,active) select 'isolated benchmark fixture','fixture-only-'||n,1,'g',1,'fixture','สินค้าจิปาถะ','server-derived',true from generate_series(1,10000)n;`);
 await role(2);const started=performance.now(),largePage=(await db.query('select qg_grocery_merchant_page($1,$2,$3) page',[shop,'','สินค้าจิปาถะ'])).rows[0].page;const largeMs=Math.round(performance.now()-started);eq(largePage.length,51);const filtered=(await db.query('select qg_grocery_merchant_page($1,$2,$3) page',[shop,'fixture-only-9999','สินค้าจิปาถะ'])).rows[0].page;eq(filtered.length,1);console.log(JSON.stringify({benchmark:'isolated PGlite 10000-row catalog, 51-row sentinel page',pageMs:largeMs,notProductionPerformance:true}));
+// Mixed-photo fixture stays only in the disposable database. Photos sort before
+// names globally, including when the photo-bearing names fall past the old first page.
+await db.exec("reset role;");
+await db.exec(`update grocery_master_products set product_name_th='zz-photo-fixture-'||id::text,image_status='approved',image='https://pkypiqhlrmzocysgeqew.supabase.co/storage/v1/object/public/grocery-catalog/fixture-only.webp',image_rights_evidence='Disposable SQL test fixture only; not a real reuse grant' where id in(select id from grocery_master_products where brand='isolated benchmark fixture' order by product_name_th desc limit 75);`);
+await role(2);
+const getPage=async(offset=0,query='',mode='all')=>(await db.query('select qg_grocery_merchant_page($1,$2,$3,$4,$5) page',[shop,query,'สินค้าจิปาถะ',mode,offset])).rows[0].page;
+const first=await getPage(),second=await getPage(50),photo=r=>!!r.image&&r.image_status==='approved';
+eq(first.length,51);eq(first.every(photo),true);eq(second.slice(0,25).every(photo),true);eq(second.slice(25).some(photo),false);
+eq(new Set(first.slice(0,50).concat(second.slice(0,50)).map(r=>r.id)).size,100);
+eq((await getPage(0,'zz-photo-fixture')).every(photo),true);
+eq((await getPage(0,'','off')).every(photo),true);eq((await getPage(0,'','unpriced')).every(photo),true);
+eq((await getPage(0,'','on')).length,0);
 await db.exec("reset role;update users set status='suspended' where id='10000000-0000-4000-8000-000000000002';");await role(2);await assert.rejects(save(shop,{...row,selling_price:8}),/own grocery shop required/);checks++;
 await db.close();console.log(JSON.stringify({checks,failures:0,scope:'isolated real-fact normalization, SQL import idempotency, store price/stock and role isolation; no Production mutation'}));
 })().catch(e=>{console.error(e);process.exit(1)});

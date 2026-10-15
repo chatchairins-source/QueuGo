@@ -1,3 +1,7 @@
+## 2026-10-15 Merchant catalog photo-first ordering
+- Owner requests products with photos at the front/first pages and products without photos at the end. Implement globally in qg_grocery_merchant_page before LIMIT/OFFSET, including search/category/status filters, with deterministic name/id ordering within each group.
+- Only approved nonblank images count as photos. Existing authorization, filters, 51-row sentinel and image approvals remain unchanged. Mixed-photo pagination regression runs in disposable PGlite only; never add synthetic photos to Production to demonstrate sorting.
+
 ## 2026-10-15 Grocery product photos: collection in progress
 - Owner requests actual centrally supplied product photos for all 414 master products; merchants should not source photos individually. Continue from Merchant white-screen fix main1f983184/PR352 and preserve that work.
 - Audited all414 imported records: every image is pending/null. Collected primary-source snapshots and a reproducible candidate review manifest. Current pass has147 label/size candidates,2 ambiguous,136 review and129 without a candidate; these are NOT visual approval or permission to publish.
