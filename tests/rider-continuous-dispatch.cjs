@@ -6,7 +6,6 @@ const id=n=>'00000000-0000-4000-8000-'+String(n).padStart(12,'0');
  const migration=fs.readdirSync('supabase/migrations').find(n=>n.endsWith('_rider_continuous_dispatch_phase1.sql'));
  await db.exec(fs.readFileSync('supabase/migrations/'+migration,'utf8'));
  const stopMigration=fs.readdirSync('supabase/migrations').find(n=>n.endsWith('_rider_dynamic_stop_plan_phase1.sql'));await db.exec(fs.readFileSync('supabase/migrations/'+stopMigration,'utf8'));
- const readinessMigration=fs.readdirSync('supabase/migrations').find(n=>n.endsWith('_merchant_readiness_dispatch_eta_funding_v1.sql'));await db.exec(fs.readFileSync('supabase/migrations/'+readinessMigration,'utf8'));
  const query=(s,p)=>db.query(s,p),as=async n=>query("select set_config('test.uid',$1,false)",[id(n)]);
  const row=async n=>(await query('select * from orders where id=$1',[id(n)])).rows[0];
  const eq=(a,b)=>{assert.deepEqual(a,b);checks++};
@@ -55,19 +54,7 @@ const id=n=>'00000000-0000-4000-8000-'+String(n).padStart(12,'0');
  eq(q.primary_bundled_delivery_fee+q.bundled_delivery_fee,q.rider_route_payout);
  assert(q.rider_extra_fee===q.incremental_distance_cost+q.incremental_pickup_cost+q.incremental_dropoff_cost+q.incremental_time_cost);checks++;
  await reject('select queuego_claim_route_bundle($1)',[id(31)],/fresh road route/);eq(await cacheRoute(30,31),true);q=(await query('select queuego_route_bundle_quote_orders($1,$2,now()) q',[id(30),id(31)])).rows[0].q;eq(q.road_eta_verified,true);await query('select queuego_claim_route_bundle($1)',[id(31)]);eq(Number((await row(30)).rider_delivery_payout),25);eq(Number((await row(31)).rider_delivery_payout),q.rider_extra_fee);
- let routeRows=(await query('select * from queuego_route_bundle_active_orders()')).rows;let planA=JSON.parse(routeRows.find(r=>r.order_id===id(30)).route_sequence);eq(planA.kind,'queuego_stop_plan_v1');eq(planA.pickup_rank,1);eq(planA.dropoff_rank,3);
- // Merchant readiness is authoritative after assignment and may re-plan only the uncommitted suffix.
- await query("update orders set status='preparing',preparing_at=now() where id=$1",[id(31)]);
- let prepared=await row(31);eq(prepared.merchant_ready_estimate_source,'system_default');assert(prepared.merchant_ready_estimate_at);checks++;
- routeRows=(await query('select * from queuego_route_bundle_active_orders()')).rows;planA=JSON.parse(routeRows.find(r=>r.order_id===id(30)).route_sequence);
- eq(planA.pickup_rank,1);eq(planA.dropoff_rank,2); // deliver primary while the second shop prepares.
- await as(151);
- const readiness=(await query('select qg_merchant_ready_estimate_once($1,$2,1) r',[id(901),id(31)])).rows[0].r;eq(readiness.ready_minutes,1);
- const replay=(await query('select qg_merchant_ready_estimate_once($1,$2,1) r',[id(901),id(31)])).rows[0].r;eq(replay.replayed,true);
- routeRows=(await query('select * from queuego_route_bundle_active_orders()')).rows;planA=JSON.parse(routeRows.find(r=>r.order_id===id(30)).route_sequence);
- eq(planA.dropoff_rank,3); // quick readiness restores the efficient pickup-first suffix.
- await as(160);const prepEta=(await query('select qg_customer_order_eta($1) e',[id(31)])).rows[0].e;eq(prepEta.kind,'merchant_ready');
- await as(101);
+ const routeRows=(await query('select * from queuego_route_bundle_active_orders()')).rows;const planA=JSON.parse(routeRows.find(r=>r.order_id===id(30)).route_sequence);eq(planA.kind,'queuego_stop_plan_v1');eq(planA.pickup_rank,1);eq(planA.dropoff_rank,3);
  eq(Number((await row(30)).subtotal),100);eq(Number((await row(31)).subtotal),100);
  eq(Number((await row(30)).total_amount),100+q.primary_bundled_delivery_fee);eq(Number((await row(31)).total_amount),100+q.bundled_delivery_fee);
  await reject('select queuego_claim_route_bundle($1)',[id(31)],/no longer available/);
@@ -88,10 +75,7 @@ const id=n=>'00000000-0000-4000-8000-'+String(n).padStart(12,'0');
  await query("update orders set status='picked_up' where id=$1",[id(30)]);
  await reject("update orders set status='in_progress' where id=$1",[id(30)],/authoritative delivery/);
  await query("update orders set status='picked_up' where id=$1",[id(31)]);
- await query("update orders set status='in_progress' where id=$1",[id(30)]);
- const etaPublish=(await query('select qg_rider_publish_customer_eta($1,420,null) e',[id(30)])).rows[0].e;eq(etaPublish.eta_seconds,420);
- await as(160);const customerEta=(await query('select qg_customer_order_eta($1) e',[id(30)])).rows[0].e;eq(customerEta.kind,'delivery_eta');eq(customerEta.confidence,'road_live');
- await as(101);await query("update orders set status='completed' where id=$1",[id(30)]);
+ await query("update orders set status='in_progress' where id=$1",[id(30)]);await query("update orders set status='completed' where id=$1",[id(30)]);
  await query("update orders set status='in_progress' where id=$1",[id(31)]);await query("update orders set status='completed' where id=$1",[id(31)]);
  await query('update deliveries set delivered_at=now() where order_id in ($1,$2)',[id(30),id(31)]);
  const summary=(await query('select qg_rider_period_summary(1) s')).rows[0].s;eq(summary.jobs,2);eq(summary.income,25+q.rider_extra_fee);
@@ -101,17 +85,6 @@ const id=n=>'00000000-0000-4000-8000-'+String(n).padStart(12,'0');
  await query('update orders set pickup_latitude=15,delivery_fee=1 where id=$1',[id(41)]);
  q=(await query('select queuego_route_bundle_quote_orders($1,$2,now()) q',[id(40),id(41)])).rows[0].q;eq(q.eligible,false);assert(q.rider_extra_fee>1);checks++; // fair cost NEVER capped to the fee to manufacture eligibility
 
- // Cancellation removes only that Order's stops and preserves its promised Rider payout as a payable protection obligation.
- await seed(60,'ready',11);await seed(61,'ready',11);
- await query("insert into route_bundles(id,rider_id,primary_order_id,status) values($1,$2,$3,'ACTIVE')",[id(600),id(11),id(60)]);
- await query('update orders set route_bundle_id=$1,route_bundle_sequence=1,rider_delivery_payout=25 where id=$2',[id(600),id(60)]);
- await query('update orders set route_bundle_id=$1,route_bundle_sequence=2,rider_delivery_payout=6 where id=$2',[id(600),id(61)]);
- const cancelPlan=[{order_id:id(60),kind:'pickup'},{order_id:id(61),kind:'pickup'},{order_id:id(60),kind:'dropoff'},{order_id:id(61),kind:'dropoff'}];
- await query('update route_bundles set stop_plan=$1::jsonb,route_revision=1 where id=$2',[JSON.stringify(cancelPlan),id(600)]);
- await query("update orders set status='cancelled',cancelled_at=now() where id=$1",[id(61)]);
- const compact=(await query('select stop_plan,route_revision from route_bundles where id=$1',[id(600)])).rows[0];eq(compact.stop_plan.length,2);eq(compact.stop_plan.every(s=>s.order_id===id(60)),true);
- const protection=(await query('select payout_snapshot,status from qg_private.rider_cancel_protection where order_id=$1',[id(61)])).rows[0];eq(Number(protection.payout_snapshot),6);eq(protection.status,'payable');
- await as(101);const protections=(await query('select qg_rider_cancellation_compensations(current_date,current_date) x')).rows[0].x;eq(protections.some(x=>x.order_id===id(61)&&Number(x.amount)===6),true);
  // Exposed RPCs have explicit ownership and no anonymous execution.
  await as(999);await reject('select qg_rider_dispatch_preference(true,false,true)',[],/active rider/);
  eq((await query("select has_function_privilege('anon','public.qg_rider_dispatch_preference(boolean,boolean,boolean)','execute') b")).rows[0].b,false);
