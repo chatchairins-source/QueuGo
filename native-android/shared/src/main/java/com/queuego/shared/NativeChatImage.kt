@@ -110,6 +110,13 @@ fun NativeChatImage(source: String) {
         } catch (cancelled: CancellationException) { throw cancelled }
         catch (_: Exception) { failed = true }
     }
+    DisposableEffect(bitmap) {
+        val owned = bitmap
+        onDispose {
+            if (owned != null && !owned.isRecycled) owned.recycle()
+        }
+    }
+
     Box(Modifier.fillMaxWidth().heightIn(min = 48.dp, max = 320.dp), contentAlignment = Alignment.Center) {
         val image = bitmap
         if (image != null) Image(image.asImageBitmap(), "รูปที่ส่งในแชต",
