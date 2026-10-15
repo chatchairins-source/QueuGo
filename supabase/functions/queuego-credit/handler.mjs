@@ -46,9 +46,19 @@ export function createCreditHandler(env,fetcher=fetch,webhook=false){
    const response=await fetcher('https://api.omise.co/charges/'+id,{headers:providerHeaders,signal:AbortSignal.timeout(15000)});
    if(!response.ok)throw Error('provider unavailable');return boundedJson(response);
   };
+  const recoverChargeId=async topupId=>{
+   if(!UUID.test(topupId||''))throw Error('invalid topup');
+   const query=new URLSearchParams({scope:'charge',query:topupId,per_page:'10',order:'reverse_chronological'});
+   const response=await fetcher('https://api.omise.co/search?'+query.toString(),{headers:providerHeaders,signal:AbortSignal.timeout(15000)});
+   if(!response.ok)return null;
+   const result=await boundedJson(response),rows=Array.isArray(result?.data)?result.data:[];
+   const matches=rows.filter(c=>c?.object==='charge'&&CHARGE.test(c.id||'')&&c.ref_id===topupId&&c.metadata?.queuego_credit_topup===topupId);
+   if(matches.length>1)throw Error('ambiguous topup charge');
+   return matches[0]?.id||null;
+  };
   const apply=async charge=>{
    const id=charge.metadata?.queuego_credit_topup;
-   if(!UUID.test(id||'')||!CHARGE.test(charge.id||'')||charge.object!=='charge'||charge.livemode!==true||charge.currency!=='thb'||charge.source?.type!=='promptpay'||!Number.isSafeInteger(charge.amount)||!['pending','successful','failed','expired'].includes(charge.status))throw Error('charge mismatch');
+   if(!UUID.test(id||'')||!CHARGE.test(charge.id||'')||charge.object!=='charge'||charge.ref_id!==id||charge.livemode!==true||charge.currency!=='thb'||charge.source?.type!=='promptpay'||!Number.isSafeInteger(charge.amount)||!['pending','successful','failed','expired'].includes(charge.status))throw Error('charge mismatch');
    await rpc('queuego_credit_apply_charge',{p_topup:id,p_charge:charge.id,p_amount:charge.amount,p_currency:charge.currency,p_live:charge.livemode,p_status:charge.status,p_paid:charge.paid===true,p_qr:charge.source?.scannable_code?.image?.download_uri??null,p_expires:charge.expires_at??null});
    return charge;
   };
@@ -72,11 +82,18 @@ export function createCreditHandler(env,fetcher=fetch,webhook=false){
    if(topup.charge_id)charge=await retrieve(topup.charge_id);
    else{
     const form=new URLSearchParams({amount:String(topup.amount_minor),currency:'thb','source[type]':'promptpay','source[qr_settings][image_type]':'png',ref_id:topup.id,'metadata[queuego_credit_topup]':topup.id,'webhook_endpoints[]':base+'/functions/v1/queuego-credit-webhook'});
-    const response=await fetcher('https://api.omise.co/charges',{method:'POST',headers:{...providerHeaders,'content-type':'application/x-www-form-urlencoded'},body:form.toString(),signal:AbortSignal.timeout(15000)});
-    // ref_id is provider-owned duplicate prevention. If the response was lost, the
-    // authoritative charge.create/complete webhook binds the same durable request.
-    if(!response.ok)return reply({id:topup.id,status:'awaiting_verification',message:'กำลังตรวจสอบรายการเดิม กรุณาใช้รายการเดิมเพื่อลองใหม่'},202);
-    const created=await boundedJson(response);charge=await retrieve(created.id);
+    let response=null;
+    try{response=await fetcher('https://api.omise.co/charges',{method:'POST',headers:{...providerHeaders,'content-type':'application/x-www-form-urlencoded'},body:form.toString(),signal:AbortSignal.timeout(15000)})}catch{}
+    if(response?.ok){
+     const created=await boundedJson(response);charge=await retrieve(created.id);
+    }else{
+     // ref_id prevents a duplicate charge. If create succeeded but its response/webhook was lost,
+     // recover the existing charge through Omise Search using the durable topup UUID in metadata,
+     // then retrieve it again before applying any credit.
+     const recovered=await recoverChargeId(topup.id);
+     if(!recovered)return reply({id:topup.id,status:'awaiting_verification',message:'กำลังตรวจสอบรายการเดิม กรุณาใช้รายการเดิมเพื่อลองใหม่'},202);
+     charge=await retrieve(recovered);
+    }
    }
    if(charge.metadata?.queuego_credit_topup!==topup.id)throw Error('topup ownership mismatch');
    await apply(charge);
