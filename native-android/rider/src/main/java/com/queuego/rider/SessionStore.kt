@@ -16,6 +16,7 @@ import javax.crypto.spec.GCMParameterSpec
 
 private const val RIDER_REGISTRATION_DRAFT_MAX_JSON_CHARS = 16 * 1024 * 1024
 private const val RIDER_REGISTRATION_DRAFT_MAX_FILE_BYTES = 24L * 1024L * 1024L
+private const val RIDER_SESSION_MAX_JSON_BYTES = 48 * 1024
 private const val RIDER_ENCRYPTED_SMALL_PREF_MAX_CHARS = 64 * 1024
 private const val RIDER_HOME_SNAPSHOT_MAX_JSON_CHARS = 1024 * 1024
 private const val RIDER_HOME_SNAPSHOT_MAX_ENCRYPTED_CHARS = 2 * 1024 * 1024
@@ -56,7 +57,14 @@ class SessionStore(private val context: Context) {
             .put("role", auth.user.role)
             .put("status", auth.user.status)
             .toString()
-        prefs.edit().putString("session", encrypt(json)).apply()
+        require(json.toByteArray(Charsets.UTF_8).size <= RIDER_SESSION_MAX_JSON_BYTES) {
+            "Session มีขนาดใหญ่เกินกำหนด"
+        }
+        val encrypted = encrypt(json)
+        require(encrypted.length <= RIDER_ENCRYPTED_SMALL_PREF_MAX_CHARS) {
+            "Session ที่เข้ารหัสมีขนาดใหญ่เกินกำหนด"
+        }
+        prefs.edit().putString("session", encrypted).apply()
     }
 
     fun load(): QueueGoAuth? = runCatching {
