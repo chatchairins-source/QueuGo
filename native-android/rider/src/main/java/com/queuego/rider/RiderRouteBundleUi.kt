@@ -15,6 +15,9 @@ import androidx.compose.ui.unit.sp
 import com.queuego.shared.QgMuted
 import com.queuego.shared.QgRed
 import com.queuego.shared.QgRedSoft
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 
 @Composable
 internal fun RiderRouteBundlePanel(
@@ -57,6 +60,14 @@ internal fun RiderRouteBundlePanel(
                 stops.forEachIndexed { index, stop ->
                     Text("${stop.rank}. " + (if (stop.pickup) "รับ " + stop.order.shopName else "ส่ง " + (stop.order.customerName ?: "ลูกค้า")) + " · " + stop.order.job.numberLabel,
                         fontSize = 11.sp, modifier = Modifier.padding(top = 7.dp))
+                    if (stop.pickup && stop.order.readyEstimateAt != null) {
+                        Text(
+                            "ร้านคาดว่าพร้อม " + riderReadyClock(stop.order.readyEstimateAt) + " น." +
+                                stop.order.readyWaitMinutes?.takeIf { it > 0 }?.let { " · อีกประมาณ $it นาที" }.orEmpty(),
+                            color = QgMuted,
+                            fontSize = 8.sp
+                        )
+                    }
                     if (index == 0) {
                         val cash = if (stop.pickup && stop.order.job.status == "ready" && stop.order.job.shopArrived) stop.order.job.shopCash
                             else if (!stop.pickup && stop.order.job.customerArrived) stop.order.job.customerCash else null
@@ -151,3 +162,11 @@ private fun BundleStatus(status: String, dropRank: Int) {
             .padding(horizontal = 7.dp, vertical = 4.dp)
     )
 }
+
+
+private fun riderReadyClock(raw: String?): String =
+    runCatching {
+        DateTimeFormatter.ofPattern("HH:mm")
+            .withZone(ZoneId.of("Asia/Bangkok"))
+            .format(Instant.parse(raw))
+    }.getOrDefault("--:--")
