@@ -628,14 +628,27 @@ private fun RiderHome(
         }
         if (snapshot == null && cachedSnapshot != null) snapshot = cachedSnapshot
     }
-    var autoAcceptEnabled by rememberSaveable(auth.user.id) {
-        mutableStateOf(acceptanceModeStore.autoAcceptEnabled(auth.user.id))
-    }
+    var dispatchPreferencesHydrated by remember(auth.user.id) { mutableStateOf(false) }
+    var autoAcceptEnabled by rememberSaveable(auth.user.id) { mutableStateOf(false) }
     var autoAcceptAttemptKey by rememberSaveable(auth.user.id) {
         mutableStateOf<String?>(null)
     }
-    var stopAfterWorkPending by rememberSaveable(auth.user.id) {
-        mutableStateOf(stopAfterWorkStore.pending(auth.user.id))
+    var stopAfterWorkPending by rememberSaveable(auth.user.id) { mutableStateOf(false) }
+
+    LaunchedEffect(auth.user.id, acceptanceModeStore, stopAfterWorkStore) {
+        try {
+            val restoredAutoAccept = acceptanceModeStore.autoAcceptEnabled(auth.user.id)
+            val restoredStopAfterWork = stopAfterWorkStore.pending(auth.user.id)
+            autoAcceptEnabled = restoredAutoAccept
+            stopAfterWorkPending = restoredStopAfterWork
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (_: Exception) {
+            autoAcceptEnabled = false
+            stopAfterWorkPending = false
+        } finally {
+            dispatchPreferencesHydrated = true
+        }
     }
 
     LaunchedEffect(
@@ -707,8 +720,17 @@ private fun RiderHome(
     }
 
     fun setStopAfterWorkPending(pending: Boolean) {
+        if (!dispatchPreferencesHydrated) return
         stopAfterWorkPending = pending
-        stopAfterWorkStore.setPending(auth.user.id, pending)
+        scope.launch {
+            try {
+                stopAfterWorkStore.setPending(auth.user.id, pending)
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (_: Exception) {
+                actionMessage = "บันทึกโหมดหยุดรับงานหลังจบงานไม่สำเร็จ"
+            }
+        }
     }
 
     fun requireServerNetwork(): Boolean {
@@ -2072,6 +2094,7 @@ private fun RiderHome(
     }
 
     LaunchedEffect(
+        dispatchPreferencesHydrated,
         stopAfterWorkPending,
         networkAvailable,
         snapshot?.online,
@@ -2081,6 +2104,7 @@ private fun RiderHome(
         snapshot?.offeredJob?.id,
         lifecycle
     ) {
+        if (!dispatchPreferencesHydrated) return@LaunchedEffect
         lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
             while (stopAfterWorkPending) {
                 val current = snapshot
@@ -2213,6 +2237,7 @@ private fun RiderHome(
     }
 
     LaunchedEffect(
+        dispatchPreferencesHydrated,
         autoAcceptEnabled,
         stopAfterWorkPending,
         networkAvailable,
@@ -2224,6 +2249,7 @@ private fun RiderHome(
         actionBusy,
         lifecycle
     ) {
+        if (!dispatchPreferencesHydrated) return@LaunchedEffect
         lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
             val current = snapshot ?: return@repeatOnLifecycle
             val offer = current.offeredJob ?: return@repeatOnLifecycle
@@ -2789,10 +2815,18 @@ private fun RiderHome(
                         )
                         RiderAcceptanceModeControl(
                             autoAcceptEnabled = autoAcceptEnabled,
-                            enabled = !actionBusy,
+                            enabled = dispatchPreferencesHydrated && !actionBusy,
                             onAutoAcceptChanged = { enabled ->
                                 autoAcceptEnabled = enabled
-                                acceptanceModeStore.setAutoAcceptEnabled(auth.user.id, enabled)
+                                scope.launch {
+                                    try {
+                                        acceptanceModeStore.setAutoAcceptEnabled(auth.user.id, enabled)
+                                    } catch (cancelled: CancellationException) {
+                                        throw cancelled
+                                    } catch (_: Exception) {
+                                        actionMessage = "บันทึกโหมดรับงานไม่สำเร็จ"
+                                    }
+                                }
                                 actionMessage = if (enabled) {
                                     "เปิดรับงานอัตโนมัติแล้ว"
                                 } else {
