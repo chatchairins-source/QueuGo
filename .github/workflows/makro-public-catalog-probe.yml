@@ -6,7 +6,6 @@ on:
       - work-grocery-makro-full-catalog-20261015
     paths:
       - 'ops/grocery/probe-makro.cjs'
-      - 'ops/grocery/probe-makro-browser.cjs'
       - 'ops/grocery/probe-makro-direct.cjs'
       - 'ops/grocery/sync-makro-dry-branded.cjs'
       - '.github/workflows/makro-public-catalog-probe.yml'
@@ -38,8 +37,6 @@ jobs:
         run: npm ci --ignore-scripts
       - name: Probe Makro PRO public dry-grocery page
         run: node ops/grocery/probe-makro.cjs
-      - name: Capture Makro live catalog request
-        run: node ops/grocery/probe-makro-browser.cjs
       - name: Verify direct Makro catalog API
         run: node ops/grocery/probe-makro-direct.cjs 120
       - name: Build branded dry Makro catalog
@@ -64,6 +61,5 @@ jobs:
           name: makro-public-catalog-probe
           path: |
             artifacts/makro-probe
-            artifacts/makro-browser-probe
             catalog/makro-dry-branded-20261015.json
           if-no-files-found: warn
