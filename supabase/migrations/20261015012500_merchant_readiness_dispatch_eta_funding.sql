@@ -472,7 +472,7 @@ create or replace function qg_private.refresh_two_order_bundle_plan(
 language plpgsql
 security definer
 set search_path=public,pg_temp
-as $
+as $$
 declare
   rb public.route_bundles%rowtype;
   a public.orders%rowtype;
@@ -606,7 +606,7 @@ begin
     return true;
   end if;
   return false;
-end $;
+end $$;
 
 revoke all on function qg_private.refresh_two_order_bundle_plan(uuid,timestamptz)
 from public,anon,authenticated;
@@ -616,14 +616,14 @@ returns trigger
 language plpgsql
 security definer
 set search_path=public,pg_temp
-as $
+as $$
 begin
   if new.route_bundle_id is not null
      and new.merchant_ready_estimate_at is distinct from old.merchant_ready_estimate_at then
     perform qg_private.refresh_two_order_bundle_plan(new.route_bundle_id,clock_timestamp());
   end if;
   return new;
-end $;
+end $$;
 
 revoke all on function qg_private.replan_bundle_on_merchant_readiness()
 from public,anon,authenticated;
