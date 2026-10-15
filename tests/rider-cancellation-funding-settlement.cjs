@@ -69,7 +69,9 @@ const id=n=>'00000000-0000-4000-8000-'+String(n).padStart(12,'0');
    "update qg_private.rider_cancellation_funding set protected_route_payout=33 where id=$1",
    "update qg_private.rider_cancellation_funding set replacement_order_id=$2 where id=$1",
    "update qg_private.rider_cancellation_funding set reason='changed' where id=$1",
-   "update qg_private.rider_cancellation_funding set settlement_note='changed' where id=$1"
+   "update qg_private.rider_cancellation_funding set settlement_note='changed' where id=$1",
+   "update qg_private.rider_cancellation_funding set created_at=created_at+interval '1 second' where id=$1",
+   "update qg_private.rider_cancellation_funding set updated_at=updated_at+interval '1 second' where id=$1"
  ]){
    const params=sql.includes('$2')?[id(800),id(901)]:[id(800)];
    await assert.rejects(q(sql,params),/immutable/);checks++;
