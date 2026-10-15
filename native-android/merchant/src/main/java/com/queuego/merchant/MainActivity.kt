@@ -62,6 +62,9 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -144,16 +147,30 @@ private fun MerchantNativeEntryGate(pushTarget: NativePushLaunchTarget?) {
     val api = remember { NativeAuthApi() }
     val scope = rememberCoroutineScope()
     val logoutScope = remember(context) { nativeLogoutScope(context, scope) }
-    var current by remember { mutableStateOf(store.load()) }
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
+    var current by remember { mutableStateOf<NativeAuth?>(null) }
+    var sessionLoaded by remember { mutableStateOf(false) }
 
-    LaunchedEffect(Unit) {
-        while (true) {
-            val saved = withContext(kotlinx.coroutines.Dispatchers.IO) { store.load() }
-            if (saved?.session?.accessToken != current?.session?.accessToken ||
-                saved?.user?.role != current?.user?.role
-            ) current = saved
-            delay(1_000)
+    LaunchedEffect(lifecycle) {
+        lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            while (true) {
+                val saved = withContext(kotlinx.coroutines.Dispatchers.IO) { store.load() }
+                if (saved?.session?.accessToken != current?.session?.accessToken ||
+                    saved?.user?.role != current?.user?.role
+                ) current = saved
+                sessionLoaded = true
+                delay(5_000)
+            }
         }
+    }
+
+    if (!sessionLoaded) {
+        QueueGoTheme {
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator()
+            }
+        }
+        return
     }
 
     when {
@@ -172,7 +189,11 @@ private fun MerchantNativeEntryGate(pushTarget: NativePushLaunchTarget?) {
         else -> QueueGoTheme {
             MerchantNativeAuthentication(
                 store = store,
-                onAuthenticated = { current = store.load() }
+                onAuthenticated = {
+                    scope.launch {
+                        current = withContext(kotlinx.coroutines.Dispatchers.IO) { store.load() }
+                    }
+                }
             )
         }
     }
