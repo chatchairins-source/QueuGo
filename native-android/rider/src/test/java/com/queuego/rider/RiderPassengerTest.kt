@@ -16,6 +16,13 @@ class RiderPassengerTest {
         assertNull(passengerStageAction(ride("cancelled")))
         assertNull(passengerStageAction(ride().copy(fulfillmentVertical="food")))
     }
+    @Test fun navigationHidesImmediatelyAfterArrivingAtEachPassengerStop() {
+        assertEquals("นำทางไปจุดรับผู้โดยสาร", passengerNavigationLabel(ride()))
+        assertNull(passengerNavigationLabel(ride(pickup="arrived")))
+        assertEquals("นำทางไปจุดหมาย", passengerNavigationLabel(ride("in_progress",pickup="arrived")))
+        assertNull(passengerNavigationLabel(ride("in_progress",pickup="arrived",drop="arrived")))
+        assertNull(passengerNavigationLabel(ride().copy(fulfillmentVertical="food")))
+    }
     @Test fun googleMapsTargetsPickupThenDestinationWithoutChangingCash() {
         val before = ride()
         val after = before.copy(status="in_progress")

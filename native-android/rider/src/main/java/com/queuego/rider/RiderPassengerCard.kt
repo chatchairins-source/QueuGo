@@ -22,8 +22,10 @@ internal fun RiderPassengerCard(job: RiderJob, busy: Boolean, networkAvailable: 
                 Text(job.customerCash?.let(::riderMoneyBaht) ?: "กำลังตรวจยอดเงิน", style = MaterialTheme.typography.headlineMedium)
             }
             if (!networkAvailable) Text("ออฟไลน์ · สถานะล่าสุดที่บันทึกไว้ รอเชื่อมต่อก่อนทำขั้นตอนถัดไป")
-            OutlinedButton(onClick = onNavigate, modifier = Modifier.fillMaxWidth(), enabled = !busy) {
-                Text(if (job.isDelivering) "นำทางไปจุดหมาย" else "นำทางไปจุดรับผู้โดยสาร")
+            passengerNavigationLabel(job)?.let { label ->
+                OutlinedButton(onClick = onNavigate, modifier = Modifier.fillMaxWidth(), enabled = !busy) {
+                    Text(label)
+                }
             }
             OutlinedButton(onClick = onChat, enabled = !busy && networkAvailable) { Text("ติดต่อผู้โดยสาร") }
             val action = passengerStageAction(job)
@@ -31,6 +33,15 @@ internal fun RiderPassengerCard(job: RiderJob, busy: Boolean, networkAvailable: 
                 Button(onClick = { onAction(key) }, enabled = !busy && networkAvailable && (key != "complete" || job.customerCash != null), modifier = Modifier.fillMaxWidth()) { Text(if (busy) "กำลังตรวจผล…" else label) }
             }
         }
+    }
+}
+
+internal fun passengerNavigationLabel(job: RiderJob): String? {
+    if (!job.isPassenger) return null
+    return when {
+        job.status == "rider_assigned" && !job.shopArrived -> "นำทางไปจุดรับผู้โดยสาร"
+        job.status == "in_progress" && !job.customerArrived -> "นำทางไปจุดหมาย"
+        else -> null
     }
 }
 
