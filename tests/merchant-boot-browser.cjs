@@ -23,7 +23,7 @@ const owner='00000000-0000-4000-8000-000000000001',shop='00000000-0000-4000-8000
    else if(url.includes('/users?'))data=[{id:owner,auth_user_id:owner,role:'shop',status:'active',name:'Isolated QA owner',created_at:new Date().toISOString()}];
    else if(url.includes('/shop_profiles?'))data=[{id:shop,user_id:owner,public_category:'grocery',shop_name:'Isolated QA shop',onboarding_status:'approved'}];
    else if(url.includes('rpc/qg_grocery_categories'))data=[{category:facts[0].category,n:1}];
-   else if(url.includes('rpc/qg_grocery_merchant_page'))data=[{...facts[0],id:'00000000-0000-4000-8000-000000000003',selling_price:saved?.selling_price??null,stock_qty:0,stock_tracking:false,enabled:saved?.enabled??false}];
+   else if(url.includes('rpc/qg_grocery_merchant_page'))data=[{...facts[0],id:'00000000-0000-4000-8000-000000000003',selling_price:saved?.selling_price??null,stock_qty:0,stock_tracking:false,enabled:saved?.enabled??false,pos_available:saved?.pos_available??true,delivery_available:saved?.delivery_available??true}];
    else if(url.includes('rpc/qg_grocery_store_save')){const body=route.request().postDataJSON();saved=body.p_rows[0];data={saved:body.p_rows.length}}
    await route.fulfill({status:200,contentType:'application/json',headers:{'Access-Control-Allow-Origin':origin},body:JSON.stringify(data)});
   });
@@ -49,7 +49,7 @@ const owner='00000000-0000-4000-8000-000000000001',shop='00000000-0000-4000-8000
      assert(geometry.priceWidth<=112&&geometry.priceHeight>=44,'compact price width with usable touch height');checks++;
      assert.equal(geometry.font,'16px');checks++;assert.equal(geometry.overflow,false);checks++;
      if(process.env.MERCHANT_LAYOUT_QA_DIR){fs.mkdirSync(process.env.MERCHANT_LAYOUT_QA_DIR,{recursive:true});await page.screenshot({path:path.join(process.env.MERCHANT_LAYOUT_QA_DIR,'merchant-'+width+'.png')});}
-     await page.locator('[data-field="selling_price"]').fill('8');await page.locator('[data-field="enabled"]').check();await page.locator('#qgg-save').click();await page.getByText(/บันทึกแล้ว/).waitFor();assert.equal(saved.selling_price,8);checks++;
+     await page.locator('[data-field="selling_price"]').fill('8');await page.locator('[data-field="pos_available"]').check();await page.locator('[data-field="delivery_available"]').check();await page.locator('#qgg-save').click();await page.getByText(/บันทึกแล้ว/).waitFor();assert.equal(saved.selling_price,8);assert.equal(saved.pos_available,true);assert.equal(saved.delivery_available,true);assert.equal('promo_price' in saved,false);checks+=4;
      await page.waitForLoadState('networkidle');await page.reload({waitUntil:'domcontentloaded'});await page.locator('.qgg-row').waitFor();assert.equal(await page.locator('[data-field="selling_price"]').inputValue(),'8');checks++;
      await page.getByRole('button',{name:'สินค้า',exact:true}).click();await page.locator('#qgm-grocery-catalog-add').waitFor();await page.locator('#qgm-grocery-catalog-add').click();await page.locator('.qgg-row').waitFor();checks++;
      await page.evaluate(()=>document.dispatchEvent(new Event('visibilitychange')));assert(await page.locator('#app').innerText());checks++;
