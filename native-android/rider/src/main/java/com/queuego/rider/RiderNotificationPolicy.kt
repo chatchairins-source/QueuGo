@@ -16,18 +16,28 @@ internal fun riderOfferAlertKey(userId: String, orderId: String, expiry: Long): 
 internal fun riderAlertReceipts(previous: List<String>, key: String): List<String>? =
     if (key in previous) null else (previous + key).takeLast(256)
 
+private const val RIDER_ALERT_RECEIPT_MAX_KEY_CHARS = 1024
+private const val RIDER_ALERT_RECEIPTS_MAX_JSON_CHARS = 512 * 1024
 private val riderAlertReceiptLock = Any()
 
 /** Only event identity is persisted; no tokens, messages, customer data or positions. */
 internal suspend fun consumeRiderAlert(context: Context, key: String): Boolean = withContext(Dispatchers.IO) {
+    if (key.length !in 1..RIDER_ALERT_RECEIPT_MAX_KEY_CHARS) return@withContext false
     synchronized(riderAlertReceiptLock) {
         val prefs = context.applicationContext.getSharedPreferences("queuego_rider_alert_receipts", Context.MODE_PRIVATE)
         val previous = runCatching {
-            val array = JSONArray(prefs.getString("events", "[]"))
+            val stored = prefs.getString("events", "[]") ?: "[]"
+            val safe = if (stored.length <= RIDER_ALERT_RECEIPTS_MAX_JSON_CHARS) stored else {
+                prefs.edit().remove("events").apply()
+                "[]"
+            }
+            val array = JSONArray(safe)
             (0 until array.length()).map { array.getString(it) }
         }.getOrDefault(emptyList())
         val next = riderAlertReceipts(previous, key) ?: return@synchronized false
-        val saved = prefs.edit().putString("events", JSONArray(next).toString()).commit()
+        val encoded = JSONArray(next).toString()
+        if (encoded.length > RIDER_ALERT_RECEIPTS_MAX_JSON_CHARS) return@synchronized false
+        val saved = prefs.edit().putString("events", encoded).commit()
         if (!saved) Log.w("QueueGoPush", "Alert receipt persistence failed")
         saved
     }
