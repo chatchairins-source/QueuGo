@@ -142,7 +142,8 @@ internal fun MerchantProductsScreen(
                         source = product.image,
                         modifier = Modifier.size(66.dp),
                         fallback = product.name,
-                        cornerRadius = 12.dp
+                        cornerRadius = 12.dp,
+                        maxDecodeSide = 256
                     )
                     Spacer(Modifier.width(10.dp))
                     Column(Modifier.weight(1f)) {
