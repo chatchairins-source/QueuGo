@@ -6,6 +6,34 @@ alter table qg_private.rider_cancellation_funding
     check(replacement_covered_amount>=0),
   add column if not exists replacement_finalized_at timestamptz;
 
+
+-- The existing linker remains the only bridge from a claimed NEXT order to
+-- cancellation funding. Never attach a replacement after fallback was finalized.
+create or replace function qg_private.link_cancellation_replacement()
+returns trigger
+language plpgsql
+security definer
+set search_path=public,pg_temp
+as $
+begin
+  if new.rider_id is null or new.next_after_order_id is null then return new; end if;
+
+  update qg_private.rider_cancellation_funding f
+  set replacement_order_id=new.id,
+      updated_at=clock_timestamp()
+  where f.order_id=new.next_after_order_id
+    and f.rider_id=new.rider_id
+    and f.status='reserved'
+    and f.replacement_target_amount>0
+    and f.replacement_finalized_at is null
+    and f.replacement_order_id is null;
+
+  return new;
+end $;
+
+revoke all on function qg_private.link_cancellation_replacement()
+from public,anon,authenticated;
+
 create or replace function qg_private.finalize_cancellation_replacement()
 returns trigger
 language plpgsql
