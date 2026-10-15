@@ -311,6 +311,15 @@ ok(
   'Rider post-commit local proof cleanup must remain non-fatal after authoritative server success'
 );
 
+const riderChat=read('rider/src/main/java/com/queuego/rider/RiderChat.kt');
+ok(
+  riderChat.includes('quickMessages = withContext(Dispatchers.IO) { quickStore.load() }') &&
+  riderChat.includes('scope.launch { withContext(Dispatchers.IO) { quickStore.save(next) } }') &&
+  !riderChat.includes('mutableStateOf(quickStore.load())') &&
+  !riderChat.includes('onSave = { quickMessages = it; quickStore.save(it) }'),
+  'Rider chat quick-message SharedPreferences/JSON load and save must stay off Main'
+);
+
 const riderVoiceAssistant=read('rider/src/main/java/com/queuego/rider/RiderVoiceAssistant.kt');
 ok(
   riderVoiceAssistant.includes('engine = runCatching { TextToSpeech(context.applicationContext, this) }.getOrNull()') &&
