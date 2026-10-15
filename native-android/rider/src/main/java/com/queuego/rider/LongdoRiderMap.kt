@@ -438,17 +438,19 @@ private class RiderLongdoHolder(
     fun dispose() {
         disposed = true
         runCatching { pause() }
-        runCatching { map?.clearPin() }
+        val pinsReleased = runCatching { map?.clearPin() }.isSuccess
         currentLocationPin = null
         stopPins.clear()
-        markerBitmaps.values.forEach { bitmap ->
-            if (!bitmap.isRecycled) runCatching { bitmap.recycle() }
+        if (pinsReleased) {
+            markerBitmaps.values.forEach { bitmap ->
+                if (!bitmap.isRecycled) runCatching { bitmap.recycle() }
+            }
+            markerBitmaps.clear()
+            stopBitmaps.values.forEach { bitmap ->
+                if (!bitmap.isRecycled) runCatching { bitmap.recycle() }
+            }
+            stopBitmaps.clear()
         }
-        markerBitmaps.clear()
-        stopBitmaps.values.forEach { bitmap ->
-            if (!bitmap.isRecycled) runCatching { bitmap.recycle() }
-        }
-        stopBitmaps.clear()
         roadDisplay.dispose()
         map = null
         mapView = null
