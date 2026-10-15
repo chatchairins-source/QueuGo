@@ -104,7 +104,7 @@ const id=n=>'00000000-0000-4000-8000-'+String(n).padStart(12,'0');
  eq(await status(80),'completed');eq((await q("select count(*)::int n from audit_logs where action='ride_order_action' and description='complete'")).rows[0].n,1);
  eq((await q('select status from payments where order_id=$1',[id(80)])).rows[0].status,'paid');
  await as(160);const state=(await q('select queuego_ride_state($1) s',[id(80)])).rows[0].s;eq(state.rides[0].rider_latitude,null);
- await as(102);eq((await q('select queuego_ride_state($1) s',[id(80)])).rows[0].s.rides.length,0);
+ await as(101);eq((await q('select queuego_ride_state($1) s',[id(80)])).rows[0].s.rides.length,0);
  // Expiry between claim and passenger pickup must also requeue instead of stranding the customer.
  await as(170);await approvePublic();await seed(84);await q('delete from qg_rider_order_offers');await q('select qg_dispatch_rider_offers()');
  eq((await q('select rider_id from qg_rider_order_offers where order_id=$1',[id(84)])).rows[0].rider_id,id(11));
