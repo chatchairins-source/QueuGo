@@ -17,7 +17,11 @@ assert(map.includes('bundled.dropoffStopRank ?: (pickupOrder.size + index + 1), 
 assert(map.includes('!bundled.job.shopArrived && !bundled.job.isDelivering'));
 assert(map.includes('if (!pickup.done) addStopPin'));
 assert(map.includes('stopPins.keys.filter { it !in desiredStops }'));
-assert(map.includes('ldmap.removePin(pin)') && !map.includes('clearPin()'));
+const disposeIndex = map.indexOf('fun dispose()');
+const liveMap = disposeIndex >= 0 ? map.slice(0, disposeIndex) : map;
+const disposeMap = disposeIndex >= 0 ? map.slice(disposeIndex) : '';
+assert(liveMap.includes('ldmap.removePin(pin)') && !liveMap.includes('clearPin()'));
+assert(disposeMap.includes('map?.clearPin()'));
 assert(map.includes('if (stopKey in stopPins) return'));
 assert(map.includes('existing.setLocation(mapLocation, true, RIDER_MAP_LOCATION_ANIMATION_STEPS)'));
 assert(overlay.includes('R.drawable.qg_rider_brand_q') && overlay.includes('setCompoundDrawables'));
