@@ -37,7 +37,9 @@ as $$
       when o.status in ('ready','picked_up','in_progress','completed') then 0::numeric
       when o.merchant_ready_estimate_at is not null then
         extract(epoch from (o.merchant_ready_estimate_at-p_at))/60.0
-      else qg_private.default_prep_minutes(o.id)::numeric
+      -- Unknown is not fabricated into a promise. The order becomes authoritative
+      -- once the Merchant starts preparing or publishes an explicit estimate.
+      else 0::numeric
     end,
     0::numeric
   )
@@ -65,8 +67,7 @@ begin
        set merchant_ready_estimate_at=v_target,
            merchant_ready_estimate_updated_at=now(),
            merchant_ready_estimate_source=v_source,
-           merchant_readiness_revision=merchant_readiness_revision+1,
-           updated_at=now()
+           merchant_readiness_revision=merchant_readiness_revision+1
      where id=new.id
        and (
          merchant_ready_estimate_at is distinct from v_target
@@ -78,8 +79,7 @@ begin
        set merchant_ready_estimate_at=v_target,
            merchant_ready_estimate_updated_at=now(),
            merchant_ready_estimate_source='ready',
-           merchant_readiness_revision=merchant_readiness_revision+1,
-           updated_at=now()
+           merchant_readiness_revision=merchant_readiness_revision+1
      where id=new.id
        and (
          merchant_ready_estimate_at is distinct from v_target
@@ -154,8 +154,7 @@ begin
      set merchant_ready_estimate_at=v_ready_at,
          merchant_ready_estimate_updated_at=now(),
          merchant_ready_estimate_source='merchant',
-         merchant_readiness_revision=merchant_readiness_revision+1,
-         updated_at=now()
+         merchant_readiness_revision=merchant_readiness_revision+1
    where id=p_order_id
    returning * into v_order;
 
