@@ -72,10 +72,12 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.repeatOnLifecycle
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
 import java.time.Instant
@@ -335,7 +337,12 @@ private fun RiderChatRoom(
     val context = LocalContext.current
     val outbox = remember { RiderChatOutbox() }
     val quickStore = remember(auth.user.id) { RiderQuickMessageStore(context, auth.user.id) }
-    var quickMessages by remember(auth.user.id) { mutableStateOf(quickStore.load()) }
+    var quickMessages by remember(auth.user.id) { mutableStateOf<List<String>>(emptyList()) }
+    var quickMessagesReady by remember(auth.user.id) { mutableStateOf(false) }
+    LaunchedEffect(quickStore) {
+        quickMessages = withContext(Dispatchers.IO) { quickStore.load() }
+        quickMessagesReady = true
+    }
     var editQuickMessages by remember { mutableStateOf(false) }
     var showSafety by remember { mutableStateOf(false) }
     var confirmBlock by remember { mutableStateOf(false) }
@@ -665,11 +672,16 @@ private fun RiderChatRoom(
                         }, enabled = !busy) { Text("ส่งรายงาน") } })
                 }
 
-                RiderQuickMessageShelf(quickMessages, enabled = !busy && !closed,
-                    onPick = { input = it }, onEdit = { editQuickMessages = true })
-                if (editQuickMessages) {
+                if (quickMessagesReady) {
+                    RiderQuickMessageShelf(quickMessages, enabled = !busy && !closed,
+                        onPick = { input = it }, onEdit = { editQuickMessages = true })
+                }
+                if (editQuickMessages && quickMessagesReady) {
                     RiderQuickMessageEditor(quickMessages,
-                        onSave = { quickMessages = it; quickStore.save(it) },
+                        onSave = { next ->
+                            quickMessages = next
+                            scope.launch { withContext(Dispatchers.IO) { quickStore.save(next) } }
+                        },
                         onClose = { editQuickMessages = false })
                 }
                 Box(Modifier.fillMaxWidth().height(1.dp).background(Color(0xFFEEE6E8)))
