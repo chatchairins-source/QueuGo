@@ -5,8 +5,6 @@ import android.content.SharedPreferences
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
-import java.io.BufferedReader
-import java.io.InputStreamReader
 import java.net.URI
 import java.net.URL
 import java.nio.charset.StandardCharsets
@@ -75,6 +73,7 @@ class MerchantPrintBridge {
         require(safe.bridgeUrl.isNotBlank()) { "กรุณาตั้งค่า HTTPS Print Bridge ก่อนพิมพ์" }
         require(type in setOf("kitchen", "receipt", "test")) { "ประเภทงานพิมพ์ไม่ถูกต้อง" }
         require(text.isNotBlank()) { "ไม่มีข้อมูลสำหรับพิมพ์" }
+        require(text.length <= 256 * 1024) { "ข้อมูลงานพิมพ์มีขนาดใหญ่เกินกำหนด" }
 
         val endpoint = URL(safe.bridgeUrl)
         val connection = endpoint.openConnection() as HttpsURLConnection
@@ -98,9 +97,7 @@ class MerchantPrintBridge {
 
             val status = connection.responseCode
             val stream = if (status in 200..299) connection.inputStream else connection.errorStream
-            val response = stream?.use {
-                BufferedReader(InputStreamReader(it, StandardCharsets.UTF_8)).readText()
-            }.orEmpty()
+            val response = readMerchantStorageResponseBounded(stream)
             if (status !in 200..299) {
                 val reason = runCatching {
                     JSONObject(response).optString("message").ifBlank {
