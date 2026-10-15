@@ -22,8 +22,21 @@ ok(rider.includes('withContext(kotlinx.coroutines.Dispatchers.IO)')&&rider.inclu
 ok(rider.includes('saveActiveTab(auth.user.id, activeTab)')&&rider.includes('Dispatchers.IO'),'Rider encrypted UI-state persistence must execute off Main');
 
 const merchantImage=read('merchant/src/main/java/com/queuego/merchant/MerchantImageUpload.kt');
+const merchantProducts=read('merchant/src/main/java/com/queuego/merchant/MerchantProductsScreen.kt');
+const merchantCatalog=read('merchant/src/main/java/com/queuego/merchant/MerchantCatalogScreen.kt');
 ok(merchantImage.includes('inJustDecodeBounds = true')&&merchantImage.includes('inSampleSize = sample'),'Merchant gallery/camera uploads must sample before allocating Bitmap memory');
 ok(merchantImage.indexOf('inJustDecodeBounds = true')<merchantImage.indexOf('val decoded = BitmapFactory.decodeByteArray'),'Merchant image bounds must be read before full decode');
+ok(
+  merchantProducts.includes('LazyColumn(') &&
+  merchantProducts.includes('items(rows, key = { it.id })'),
+  'Merchant product list must lazy-render image rows instead of composing the full catalog into heap'
+);
+ok(
+  merchantCatalog.includes('LazyColumn(') &&
+  merchantCatalog.includes('val productRows = remember(rows) { rows.chunked(2) }') &&
+  merchantCatalog.includes('items = productRows'),
+  'Merchant catalog grid must lazy-render product rows instead of decoding every product image at once'
+);
 
 const chatImage=read('shared/src/main/java/com/queuego/shared/NativeChatImage.kt');
 ok(chatImage.includes('CHAT_IMAGE_MAX_SIDE = 1280'),'Shared chat bitmaps must stay capped for Customer/Merchant/Rider memory safety');
