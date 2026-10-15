@@ -43,8 +43,30 @@ ok(chatImage.includes('CHAT_IMAGE_MAX_SIDE = 1280'),'Shared chat bitmaps must st
 ok(chatImage.includes('DisposableEffect(bitmap)')&&chatImage.includes('owned.recycle()'),'Shared chat bitmaps must release owned memory after leaving composition');
 
 const design=read('shared/src/main/java/com/queuego/shared/QueueGoDesign.kt');
+const customerSearch=read('customer/src/main/java/com/queuego/customer/CustomerSearchScreen.kt');
+const customerMarket=read('customer/src/main/java/com/queuego/customer/QueueGoMarketScreen.kt');
+const customerShop=read('customer/src/main/java/com/queuego/customer/CustomerShopScreen.kt');
+const merchantApp=read('merchant/src/main/java/com/queuego/merchant/QueueGoMerchantApp.kt');
 ok(design.includes('QG_REMOTE_IMAGE_MAX_SIDE = 1280'),'Shared remote image decode ceiling must remain bounded');
 ok(design.includes('QG_REMOTE_IMAGE_MAX_BYTES')&&design.includes('inJustDecodeBounds = true')&&!design.includes('inputStream.use { it.readBytes() }'),'Remote images must be byte bounded and sampled before decode');
+ok(
+  design.includes('maxDecodeSide: Int = QG_REMOTE_IMAGE_MAX_SIDE') &&
+  design.includes('maxSide.coerceIn(128, QG_REMOTE_IMAGE_MAX_SIDE)'),
+  'QgRemoteImage must support per-surface decode ceilings so small thumbnails never allocate full-size bitmaps'
+);
+ok(
+  customerMarket.includes('maxDecodeSide = 256') &&
+  customerSearch.includes('maxDecodeSide = 256') &&
+  customerShop.includes('maxDecodeSide = 256'),
+  'Customer Market/Search/shop list thumbnails must use bounded decode sizes'
+);
+ok(
+  merchantProducts.includes('maxDecodeSide = 256') &&
+  merchantCatalog.includes('maxDecodeSide = 384') &&
+  merchantApp.includes('maxDecodeSide = 192') &&
+  merchantApp.includes('maxDecodeSide = 256'),
+  'Merchant product/order/profile thumbnails must use bounded decode sizes'
+);
 
 const store=read('rider/src/main/java/com/queuego/rider/SessionStore.kt');
 ok(store.includes('RIDER_REGISTRATION_DRAFT_MAX_JSON_CHARS = 16 * 1024 * 1024'),'Rider registration plaintext draft must have an aggregate heap bound');
