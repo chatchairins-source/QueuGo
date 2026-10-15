@@ -108,3 +108,12 @@ Migration `20261013023547_grocery_cash_checkout_lock_order.sql` is now installed
 RC run 38337527764 passed the full npm regression and rendered Grocery browser suite before rollout. A transaction-wrapped Production parse/readback also passed before migration. Post-deploy readback confirms the function remains `SECURITY DEFINER`, keeps `search_path=public, pg_temp`, is not directly executable by `anon` or `authenticated`, uses deterministic product ordering and `FOR UPDATE`, and no longer contains the old product `FOR SHARE` path. Security advisor headline counts remained unchanged from the pre-migration baseline for the reviewed categories (RLS-with-no-policy 10, anon executable security-definer 9, authenticated executable security-definer 143).
 
 The source-level lock-upgrade hazard is closed. **Release Gate remains OPEN** because a real simultaneous authenticated Grocery checkout race has not yet been exercised, candidate Grocery UI is still not deployed to main, Production has only one non-archived Grocery shop, and Customer/Admin authenticated E2E remains unverified. No main merge/web deployment was performed. Rider Android remains untouched.
+
+
+## 2026-10-15 successor — merchant-ready Starter Catalog
+
+The old PR #168 was based on an older main and became non-mergeable after later Web banner work. Successor branch `work-grocery-master-catalog-successor-20261015` preserves both histories: current main plus the complete Grocery branch, without resetting or replacing either line.
+
+Production readback still shows 414 canonical masters but only 2 active and zero linked store listings. Of the 414 masters, 384 have at least one manufacturer or distributor provenance record; 30 are retailer-only. The Admin Grocery page now provides a two-step Starter Catalog activation action: first scan/preview the exact inactive count, then explicitly confirm. It activates only manufacturer/distributor-backed canonical rows through existing Admin RLS/audit behavior in bounded 50-row writes. Retailer-only rows are never auto-activated. The action does not invent prices, GTINs, images, stock or store listings.
+
+After trusted masters are active, Grocery merchants use the existing paged editor to choose products, set their own storefront/promo price, optionally enable stock tracking, and open/close items. Unpriced or disabled rows remain invisible to customers. Production activation is still gated; source completion does not itself mutate live catalog state.
