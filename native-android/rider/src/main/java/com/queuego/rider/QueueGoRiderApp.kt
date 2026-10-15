@@ -2142,6 +2142,35 @@ private fun RiderHome(
     )
     val navigationHud = if (activeNavigationWork) riderNavigationHudInfo(navigationGuidance) else null
 
+    val customerEtaJob by rememberUpdatedState(snapshot?.activeJob)
+    val customerEtaMapJobId by rememberUpdatedState(mapJob?.id)
+    val customerEtaGuidance by rememberUpdatedState(navigationGuidance)
+    LaunchedEffect(auth.user.id, auth.session.sessionId) {
+        while (true) {
+            val job = customerEtaJob
+            val guidance = customerEtaGuidance
+            val eta = guidance.etaSeconds
+            if (
+                job != null &&
+                job.id == customerEtaMapJobId &&
+                job.marketOrderId == null &&
+                job.status.lowercase() in setOf("picked_up", "in_progress") &&
+                !guidance.weakGps &&
+                !guidance.offRoute &&
+                eta != null &&
+                eta.isFinite() &&
+                eta in 0.0..14_400.0
+            ) {
+                // Best-effort telemetry only. The backend verifies that this QT is
+                // the authoritative customer dropoff before accepting the snapshot.
+                runCatching {
+                    api.publishCustomerEta(auth, job.id, eta.toInt().coerceIn(0, 14_400))
+                }
+            }
+            delay(15_000L)
+        }
+    }
+
     LaunchedEffect(
         activeNavigationWork,
         navigationFix,
