@@ -104,6 +104,10 @@
         "native-android/merchant/src/main/java/com/queuego/merchant/MerchantProductsScreen.kt"
       ],
       [
+        "grocery_master_catalog",
+        "native-android/merchant/src/main/java/com/queuego/merchant/MerchantGroceryCatalogScreen.kt"
+      ],
+      [
         "hours",
         "native-android/merchant/src/main/java/com/queuego/merchant/MerchantHoursScreen.kt"
       ],
