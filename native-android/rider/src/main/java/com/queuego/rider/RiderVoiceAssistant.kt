@@ -3,29 +3,39 @@ package com.queuego.rider
 import android.content.Context
 import android.speech.tts.TextToSpeech
 import java.util.Locale
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.withContext
 
 internal object RiderVoiceAssistantSettings {
     private const val PREFS = "queuego-rider-voice-assistant"
     private val flows = linkedMapOf<String, MutableStateFlow<Boolean>>()
 
     @Synchronized
-    fun enabled(context: Context, userId: String): StateFlow<Boolean> =
-        flows.getOrPut(userId) {
-            MutableStateFlow(
-                context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-                    .getBoolean("enabled:$userId", false)
-            )
-        }
+    fun state(userId: String): StateFlow<Boolean> =
+        flows.getOrPut(userId) { MutableStateFlow(false) }
 
-    @Synchronized
-    fun setEnabled(context: Context, userId: String, enabled: Boolean) {
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-            .edit()
-            .putBoolean("enabled:$userId", enabled)
-            .apply()
-        flows.getOrPut(userId) { MutableStateFlow(enabled) }.value = enabled
+    suspend fun hydrate(context: Context, userId: String) {
+        val enabled = withContext(Dispatchers.IO) {
+            context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+                .getBoolean("enabled:$userId", false)
+        }
+        synchronized(this) {
+            flows.getOrPut(userId) { MutableStateFlow(enabled) }.value = enabled
+        }
+    }
+
+    suspend fun setEnabled(context: Context, userId: String, enabled: Boolean) {
+        withContext(Dispatchers.IO) {
+            context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+                .edit()
+                .putBoolean("enabled:$userId", enabled)
+                .apply()
+        }
+        synchronized(this) {
+            flows.getOrPut(userId) { MutableStateFlow(enabled) }.value = enabled
+        }
     }
 }
 
