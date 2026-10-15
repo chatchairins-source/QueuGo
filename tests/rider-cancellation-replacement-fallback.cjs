@@ -20,6 +20,11 @@ const id=n=>'00000000-0000-4000-8000-'+String(n).padStart(12,'0');
    if(!name)throw Error('missing migration '+suffix);
    await db.exec(fs.readFileSync('supabase/migrations/'+name,'utf8'));
  }
+ const fallbackName=fs.readdirSync('supabase/migrations').find(n=>n.endsWith('_rider_cancellation_replacement_fallback.sql'));
+ const fallbackSql=fs.readFileSync('supabase/migrations/'+fallbackName,'utf8');
+ assert(fallbackSql.includes('qg_private.link_cancellation_replacement'));checks++;
+ assert(fallbackSql.includes('as '+String.fromCharCode(36,36)));checks++;
+ assert(fallbackSql.includes('and f.replacement_finalized_at is null'));checks++;
  const q=(s,p)=>db.query(s,p),as=uid=>q("select set_config('test.uid',$1,false)",[id(uid)]);
  const eq=(a,b)=>{assert.deepEqual(a,b);checks++};
  async function order(n,status='in_progress',fee=20,payout=25,next=null){
