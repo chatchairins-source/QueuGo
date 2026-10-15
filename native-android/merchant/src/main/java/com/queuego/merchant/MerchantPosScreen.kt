@@ -76,8 +76,10 @@ import com.queuego.shared.QgRemoteImage
 import com.queuego.shared.QgSectionTitle
 import com.queuego.shared.QgStatusPill
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import java.time.LocalDate
@@ -179,10 +181,16 @@ fun MerchantPosScreen(
     var inviteRoleMenu by remember { mutableStateOf(false) }
     var inviteSecret by rememberSaveable { mutableStateOf("") }
 
-    var printerSettings by remember { mutableStateOf(printerStore.load()) }
+    var printerSettings by remember { mutableStateOf(MerchantPrinterSettings()) }
+    var printerSettingsLoaded by remember { mutableStateOf(false) }
     var printerBaseline by remember { mutableStateOf<Map<String, Pair<String?, String?>>?>(null) }
     var pendingPrintCount by remember { mutableStateOf(0) }
     val printBusy = pendingPrintCount > 0
+
+    LaunchedEffect(printerStore) {
+        printerSettings = withContext(Dispatchers.IO) { printerStore.load() }
+        printerSettingsLoaded = true
+    }
 
     fun can(permission: String): Boolean {
         val s = snapshot ?: return false
@@ -207,7 +215,9 @@ fun MerchantPosScreen(
                 val sent = printQueue.submit(
                     key = printedKey,
                     force = force,
-                    wasPrinted = printerStore::wasPrinted,
+                    wasPrinted = { key ->
+                        withContext(Dispatchers.IO) { printerStore.wasPrinted(key) }
+                    },
                     markPrinted = printerStore::markPrinted
                 ) {
                     // Refresh through the authenticated Production API before sending shop data externally.
@@ -407,14 +417,17 @@ fun MerchantPosScreen(
         }
     }
 
-    LaunchedEffect(auth.session.accessToken) {
-        while (true) {
-            delay(5_000L)
-            if (!busy) refreshSnapshot()
+    LaunchedEffect(auth.session.accessToken, lifecycle) {
+        lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            while (true) {
+                delay(5_000L)
+                if (!busy) refreshSnapshot()
+            }
         }
     }
 
-    LaunchedEffect(snapshot, printerSettings) {
+    LaunchedEffect(snapshot, printerSettings, printerSettingsLoaded) {
+        if (!printerSettingsLoaded) return@LaunchedEffect
         val snap = snapshot ?: return@LaunchedEffect
         val current = snap.bills.associate { bill ->
             val kitchen = merchantKitchenPrintKey(snap, bill)
@@ -431,8 +444,7 @@ fun MerchantPosScreen(
             if (
                 printerSettings.autoKitchen &&
                 !kitchenKey.isNullOrBlank() &&
-                prior?.first != kitchenKey &&
-                !printerStore.wasPrinted(kitchenKey)
+                prior?.first != kitchenKey
             ) {
                 sendToPrinter(
                     settings = printerSettings,
@@ -448,8 +460,7 @@ fun MerchantPosScreen(
             if (
                 printerSettings.autoReceipt &&
                 !receiptKey.isNullOrBlank() &&
-                prior?.second != receiptKey &&
-                !printerStore.wasPrinted(receiptKey)
+                prior?.second != receiptKey
             ) {
                 sendToPrinter(
                     settings = printerSettings,
@@ -833,14 +844,17 @@ fun MerchantPosScreen(
                     settings = printerSettings,
                     busy = busy || printBusy,
                     onSave = { next ->
-                        runCatching {
-                            val safe = next.validated()
-                            printerStore.save(safe)
-                            printerSettings = safe
-                        }.onSuccess {
-                            message = "บันทึกการตั้งค่าเครื่องพิมพ์แล้ว"
-                        }.onFailure {
-                            message = it.message ?: "บันทึกเครื่องพิมพ์ไม่สำเร็จ"
+                        scope.launch {
+                            try {
+                                val safe = next.validated()
+                                withContext(Dispatchers.IO) { printerStore.save(safe) }
+                                printerSettings = safe
+                                message = "บันทึกการตั้งค่าเครื่องพิมพ์แล้ว"
+                            } catch (cancelled: CancellationException) {
+                                throw cancelled
+                            } catch (failure: Exception) {
+                                message = failure.message ?: "บันทึกเครื่องพิมพ์ไม่สำเร็จ"
+                            }
                         }
                     },
                     onTest = { draft ->
