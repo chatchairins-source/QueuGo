@@ -16,10 +16,11 @@ ok(Array.isArray(coverage.store_codes)&&coverage.store_codes.length>=100,'public
 ok(coverage.category==='dry-grocery','coverage snapshot is dry-grocery only');
 ok(!sync.includes("ROOT='beverages'")&&!sync.includes("ROOTS=['dry-grocery','beverages']"),'sync does not pad with beverages root');
 ok(sync.includes('validBrand'),'sync rejects unbranded rows');
-for(const token of ['eggs?','frozen','tofu','fresh','chilled','meat','seafood','vegetable','fruit','alcohol','beer','wine','liquor','tobacco','cigarettes?']){
+for(const token of ['eggs?','frozen','tofu','fresh','chilled','alcohol','beer','wine','liquor','tobacco','cigarettes?']){
   ok(sync.includes(token),'sync excludes '+token);
 }
 ok(sync.includes("storage_type::(?:chilled|frozen|refrigerated)"),'sync rejects chilled/frozen storage');
+ok(!sync.includes("|meat|seafood|vegetable|fruit|"),'sync does not wrongly discard dried/canned fruit, vegetable, meat or seafood');
 ok(sync.includes('source_rank:sourceRank'),'sync preserves deterministic source rank');
 ok(sync.includes('eligible.length<TARGET_COUNT'),'sync fails closed below 10k instead of widening scope');
 ok(!sync.includes('image_urls:'),'generated snapshot keeps one preview image only');
