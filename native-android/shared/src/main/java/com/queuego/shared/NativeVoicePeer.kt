@@ -20,6 +20,11 @@ import org.webrtc.SdpObserver
 import org.webrtc.SessionDescription
 import org.webrtc.audio.JavaAudioDeviceModule
 
+private const val NATIVE_VOICE_SDP_MAX_CHARS = 256 * 1024
+private const val NATIVE_VOICE_ICE_CANDIDATE_MAX_CHARS = 16 * 1024
+private const val NATIVE_VOICE_ICE_MID_MAX_CHARS = 256
+private const val NATIVE_VOICE_PENDING_ICE_MAX_COUNT = 256
+
 enum class NativeVoicePeerState {
     NEW, CONNECTING, CONNECTED, DISCONNECTED, FAILED, CLOSED
 }
@@ -101,6 +106,7 @@ class NativeVoicePeer(
             peer.createOffer(observer, audioOfferConstraints())
         }
         setLocalDescription(description)
+        require(description.description.length <= NATIVE_VOICE_SDP_MAX_CHARS) { "Voice offer มีขนาดใหญ่เกินกำหนด" }
         return JSONObject().put("type", "offer").put("sdp", description.description)
     }
 
@@ -109,11 +115,13 @@ class NativeVoicePeer(
         require(payload.optString("type") == "offer") { "Voice offer ไม่ถูกต้อง" }
         val sdp = payload.getString("sdp").takeIf { it.isNotBlank() }
             ?: error("Voice offer ไม่มี SDP")
+        require(sdp.length <= NATIVE_VOICE_SDP_MAX_CHARS) { "Voice offer มีขนาดใหญ่เกินกำหนด" }
         setRemoteDescription(SessionDescription(SessionDescription.Type.OFFER, sdp))
         val answer = createDescription { observer ->
             peer.createAnswer(observer, audioOfferConstraints())
         }
         setLocalDescription(answer)
+        require(answer.description.length <= NATIVE_VOICE_SDP_MAX_CHARS) { "Voice answer มีขนาดใหญ่เกินกำหนด" }
         return JSONObject().put("type", "answer").put("sdp", answer.description)
     }
 
@@ -122,19 +130,27 @@ class NativeVoicePeer(
         require(payload.optString("type") == "answer") { "Voice answer ไม่ถูกต้อง" }
         val sdp = payload.getString("sdp").takeIf { it.isNotBlank() }
             ?: error("Voice answer ไม่มี SDP")
+        require(sdp.length <= NATIVE_VOICE_SDP_MAX_CHARS) { "Voice answer มีขนาดใหญ่เกินกำหนด" }
         setRemoteDescription(SessionDescription(SessionDescription.Type.ANSWER, sdp))
     }
 
     fun addRemoteIce(payload: JSONObject): Boolean {
         checkOpen()
-        val candidate = IceCandidate(
-            if (payload.isNull("sdpMid")) null else payload.optString("sdpMid").takeIf { it.isNotBlank() },
-            payload.getInt("sdpMLineIndex"),
-            payload.getString("candidate")
-        )
+        val sdpMid = if (payload.isNull("sdpMid")) null else payload.optString("sdpMid").takeIf { it.isNotBlank() }
+        val sdpMLineIndex = payload.getInt("sdpMLineIndex")
+        val candidateText = payload.getString("candidate")
+        require(sdpMid == null || sdpMid.length <= NATIVE_VOICE_ICE_MID_MAX_CHARS) { "Voice ICE mid ใหญ่เกินกำหนด" }
+        require(sdpMLineIndex in 0..1024) { "Voice ICE index ไม่ถูกต้อง" }
+        require(candidateText.isNotBlank() && candidateText.length <= NATIVE_VOICE_ICE_CANDIDATE_MAX_CHARS) {
+            "Voice ICE candidate ใหญ่เกินกำหนด"
+        }
+        val candidate = IceCandidate(sdpMid, sdpMLineIndex, candidateText)
         if (!remoteDescriptionReady.get()) {
             synchronized(remoteIceLock) {
                 if (!remoteDescriptionReady.get()) {
+                    require(pendingRemoteIce.size < NATIVE_VOICE_PENDING_ICE_MAX_COUNT) {
+                        "Voice ICE candidate สะสมมากเกินกำหนด"
+                    }
                     pendingRemoteIce += candidate
                     return true
                 }
