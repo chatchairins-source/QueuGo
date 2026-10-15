@@ -394,6 +394,15 @@ ok(
   riderVoiceAssistant.includes('runCatching { current.shutdown() }'),
   'Rider optional TTS must fail closed on OEM TextToSpeech initialization/configuration/speak errors'
 );
+ok(
+  riderVoiceAssistant.includes('fun state(userId: String): StateFlow<Boolean>') &&
+  riderVoiceAssistant.includes('suspend fun hydrate(context: Context, userId: String)') &&
+  riderVoiceAssistant.includes('suspend fun setEnabled(context: Context, userId: String, enabled: Boolean)') &&
+  riderVoiceAssistant.includes('withContext(Dispatchers.IO)') &&
+  rider.includes('RiderVoiceAssistantSettings.hydrate(context, auth.user.id)') &&
+  !rider.includes('RiderVoiceAssistantSettings.enabled(context, auth.user.id)'),
+  'Rider voice-assistant preference reads/writes must hydrate through IO instead of SharedPreferences access during composition'
+);
 
 const riderNotificationPolicy=read('rider/src/main/java/com/queuego/rider/RiderNotificationPolicy.kt');
 ok(
