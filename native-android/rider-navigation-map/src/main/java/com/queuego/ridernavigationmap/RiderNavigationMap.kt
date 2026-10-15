@@ -1131,13 +1131,21 @@ private class RiderNavigationMapHolder {
         )
     }
 
-    fun resetSurface() {
-        runCatching { shutdownSdk() }
+    fun resetSurface(): Boolean {
+        var graphicsReleased = runCatching { shutdownSdk() }.isSuccess
         map?.let { activeMap ->
-            routeLines.forEach { line -> runCatching { activeMap.removeLine(line) } }
-            riderPin?.let { pin -> runCatching { activeMap.removePin(pin) } }
-            stopPins.values.forEach { rendered -> runCatching { activeMap.removePin(rendered.pin) } }
-            demandPins.values.forEach { rendered -> runCatching { activeMap.removePin(rendered.pin) } }
+            routeLines.forEach { line ->
+                if (runCatching { activeMap.removeLine(line) }.isFailure) graphicsReleased = false
+            }
+            riderPin?.let { pin ->
+                if (runCatching { activeMap.removePin(pin) }.isFailure) graphicsReleased = false
+            }
+            stopPins.values.forEach { rendered ->
+                if (runCatching { activeMap.removePin(rendered.pin) }.isFailure) graphicsReleased = false
+            }
+            demandPins.values.forEach { rendered ->
+                if (runCatching { activeMap.removePin(rendered.pin) }.isFailure) graphicsReleased = false
+            }
         }
         riderMarkerAnimator?.cancel()
         riderMarkerAnimator = null
@@ -1177,30 +1185,33 @@ private class RiderNavigationMapHolder {
         routeSource = null
         routeActiveId = null
         routeRemainingStopIds = emptySet()
+        return graphicsReleased
     }
 
-    private fun recycleBitmapCaches() {
-        markerBitmaps.values.forEach { bitmap ->
+    private fun releaseBitmapCaches(recyclePixels: Boolean) {
+        if (recyclePixels) markerBitmaps.values.forEach { bitmap ->
             if (!bitmap.isRecycled) runCatching { bitmap.recycle() }
         }
         markerBitmaps.clear()
-        riderPuckBitmaps.values.forEach { bitmap ->
+        if (recyclePixels) riderPuckBitmaps.values.forEach { bitmap ->
             if (!bitmap.isRecycled) runCatching { bitmap.recycle() }
         }
         riderPuckBitmaps.clear()
-        stopBitmaps.values.forEach { bitmap ->
+        if (recyclePixels) stopBitmaps.values.forEach { bitmap ->
             if (!bitmap.isRecycled) runCatching { bitmap.recycle() }
         }
         stopBitmaps.clear()
-        demandBitmaps.values.forEach { bitmap ->
+        if (recyclePixels) demandBitmaps.values.forEach { bitmap ->
             if (!bitmap.isRecycled) runCatching { bitmap.recycle() }
         }
         demandBitmaps.clear()
     }
 
     fun dispose() {
-        resetSurface()
-        recycleBitmapCaches()
+        val graphicsReleased = resetSurface()
+        // Longdo Pin accepts caller-owned Bitmap directly. If renderer removal failed,
+        // drop strong Java references but do not recycle pixels that native code may still hold.
+        releaseBitmapCaches(graphicsReleased)
         disposed = true
         unbindCallbacks()
     }
