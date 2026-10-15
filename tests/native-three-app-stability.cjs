@@ -149,8 +149,6 @@ ok(
 
 const merchantMedia=read('merchant/src/main/java/com/queuego/merchant/MerchantMediaScreen.kt');
 const merchantShopSetup=read('merchant/src/main/java/com/queuego/merchant/MerchantShopSetupScreen.kt');
-const merchantGpSlip=read('merchant/src/main/java/com/queuego/merchant/MerchantGpSlipUpload.kt');
-const merchantGpViewer=read('merchant/src/main/java/com/queuego/merchant/MerchantGpSlipViewer.kt');
 const merchantPrinter=read('merchant/src/main/java/com/queuego/merchant/MerchantPrinter.kt');
 const merchantPosScreen=read('merchant/src/main/java/com/queuego/merchant/MerchantPosScreen.kt');
 const sharedPrintQueue=read('shared/src/main/java/com/queuego/shared/NativePrintQueue.kt');
@@ -205,17 +203,6 @@ ok(
   merchantShopSetup.includes('owned.recycle()') &&
   !merchantShopSetup.includes('BitmapFactory.decodeStream(it)?.asImageBitmap()'),
   'Merchant shop setup camera/gallery previews must reuse the sampled decoder and recycle owned Bitmaps'
-);
-ok(
-  merchantGpSlip.includes('readMerchantStorageResponseBounded(connection.errorStream)') &&
-  !merchantGpSlip.includes('bufferedReader()?.use { it.readText() }'),
-  'Merchant GP slip storage errors must reuse the bounded response reader'
-);
-
-ok(
-  merchantGpViewer.includes('readMerchantStorageResponseBounded(stream)') &&
-  !merchantGpViewer.includes('bufferedReader()?.use { it.readText() }'),
-  'Merchant GP slip viewer signing responses must be bounded before JSON parsing'
 );
 ok(
   merchantPrinter.includes('readMerchantStorageResponseBounded(stream)') &&

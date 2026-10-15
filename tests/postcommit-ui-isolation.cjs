@@ -21,7 +21,7 @@ ok(customerFeatures.includes('customer cancel post-commit render failed'),'Custo
 
 ok(merchant.includes('merchant product hydrate after save failed'),'Product post-save hydrate must be non-fatal');
 ok(merchant.includes('merchant profile post-commit navigation failed'),'Shop profile navigation after save must be non-fatal');
-ok(merchant.includes('merchant GP post-commit refresh failed'),'GP slip refresh after server report must be non-fatal');
+ok(!merchant.includes('qgmSubmitGpSlip'),'Retired GP slip reporting must have no post-commit path');
 ok(merchant.includes('merchant module post-commit render failed'),'Module render after save must be non-fatal');
 ok(merchant.includes('merchant promo post-commit navigation failed'),'Promotion navigation after save must be non-fatal');
 ok(merchant.includes('merchant product post-commit render failed'),'Merchant product list render after saved availability must be non-fatal');

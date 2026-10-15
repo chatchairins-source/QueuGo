@@ -45,7 +45,6 @@ for(const p of [
   'merchant/src/main/java/com/queuego/merchant/MerchantImageUpload.kt',
   'merchant/src/main/java/com/queuego/merchant/MerchantHoursScreen.kt',
   'merchant/src/main/java/com/queuego/merchant/MerchantRevenueScreen.kt',
-  'merchant/src/main/java/com/queuego/merchant/MerchantGpSlipUpload.kt',
   'merchant/src/main/java/com/queuego/merchant/MerchantPromotionScreen.kt',
   'merchant/src/main/java/com/queuego/merchant/MerchantNotificationsScreen.kt',
   'merchant/src/main/java/com/queuego/merchant/MerchantProductModel.kt',
@@ -418,10 +417,9 @@ ok(source.includes('merchant_save_hours')&&source.includes('shop_business_hours?
 ok(merchantHours.includes('อาทิตย์')&&merchantHours.includes('เสาร์')&&merchantHours.includes('วันหยุดหรือเวลาพิเศษ')&&merchantHours.includes('บันทึกเวลาทำการ'),'Merchant native hours must preserve seven-day and special-day web flow');
 ok(source.includes('MerchantProfileSectionTitle("ข้อมูลร้าน")')&&source.includes('MerchantProfileSectionTitle("จัดการร้าน")')&&source.includes('แก้ไขข้อมูลร้าน')&&source.includes('เวลาทำการและวันหยุด'),'Merchant native account must preserve compact grouped web structure');
 const merchantRevenue=read('merchant/src/main/java/com/queuego/merchant/MerchantRevenueScreen.kt');
-const merchantGpSlip=read('merchant/src/main/java/com/queuego/merchant/MerchantGpSlipUpload.kt');
-ok(source.includes('merchant_revenue_days')&&source.includes('report_shop_gp'),'Merchant native revenue must reuse Production revenue and GP RPCs');
+ok(source.includes('merchant_revenue_days')&&!source.includes('report_shop_gp'),'Merchant revenue must read reports without the retired GP collection RPC');
 ok(merchantRevenue.includes('7 วันที่ผ่านมา')&&merchantRevenue.includes('30 วันที่ผ่านมา')&&merchantRevenue.includes('ดาวน์โหลดรายงาน 30 วัน (CSV)'),'Merchant native revenue must preserve web period and CSV controls');
-ok(merchantRevenue.includes('แนบสลิปและแจ้งโอน')&&merchantGpSlip.includes('/storage/v1/object/gp-slips/')&&merchantGpSlip.includes('5 * 1024 * 1024'),'Merchant native GP slip must preserve Production bucket and 5 MB limit');
+ok(!merchantRevenue.includes('แนบสลิปและแจ้งโอน')&&merchantRevenue.includes('QueueGoCreditCard')&&!fs.existsSync(path.join(root,'merchant/src/main/java/com/queuego/merchant/MerchantGpSlipUpload.kt')),'Merchant GP collection must use credit only; retired upload implementation must be absent');
 ok(source.includes('MerchantRevenueEntry(')&&source.includes('รายได้ทั้งหมด')&&source.includes('เลือกวัน ดูยอดขาย เงินสด และ GP ย้อนหลัง'),'Merchant native dashboard must preserve revenue entry blueprint');
 const merchantPromotion=read('merchant/src/main/java/com/queuego/merchant/MerchantPromotionScreen.kt');
 ok(source.includes('promotions?select=id,category,status,max_budget,period_days,payment_status,metadata,created_at')&&source.includes('"promotions"'),'Merchant native promotions must use Production promotions table and route');

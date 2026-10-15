@@ -408,7 +408,7 @@ async function qtLoadOwnSupabaseUser(accessToken, authUserId){
    Business data is held in memory and synchronized with Supabase.
    sessionStorage is used only for the current browser session token. */
 const QT_DB_CACHE = Object.create(null);
-const QT_DB_KEYS = new Set(['qt_users','qt_orders','qt_notifications','qt_audit_log','qt_promotions','qt_products','qt_settlements']);
+const QT_DB_KEYS = new Set(['qt_users','qt_orders','qt_notifications','qt_audit_log','qt_promotions','qt_products']);
 const QT_SHOP_MODULE_STATUSES = ['disabled','trial','enabled'];
 const QT_DB_READY = {value:false};
 function dbGet(key, def){
@@ -588,7 +588,6 @@ async function qtPersistKeyRaw(key,val){
     if(key==='qt_audit_log'){ for(const a of (val||[])){ if(!qtUuidLike(a.id)) continue; await qtSupabaseTable('audit_logs?on_conflict=id',{method:'POST',accessToken:token,body:{id:a.id,user_id:qtUuidLike(a.actorId)?a.actorId:null,action:a.action||'system',entity_type:a.entityType||null,entity_id:qtUuidLike(a.entityId)?a.entityId:null,description:a.description||'',metadata:a,created_at:qtIso(a.at)}}); } return; }
     if(key==='qt_products'){ const shopProfileId=async(userId)=>{if(!qtUuidLike(userId))return null; const rows=await qtSupabaseTable('shop_profiles?select=id&user_id=eq.'+encodeURIComponent(userId)+'&archived_at=is.null&order=created_at.desc&limit=1',{accessToken:token}); return Array.isArray(rows)&&rows[0]?rows[0].id:null;}; for(const p of (val||[])){ if(!qtUuidLike(p.id)) continue; await qtSupabaseTable('products?on_conflict=id',{method:'POST',accessToken:token,body:{id:p.id,shop_id:await shopProfileId(p.shopId),name:p.name||'',description:p.description||'',price:Number(p.price||0),image:p.image||null,available:p.available!==false,metadata:p,created_at:qtIso(p.createdAt),updated_at:qtIso(Date.now())}}); } return; }
     if(key==='qt_promotions'){ const promoProfileId=async(userId)=>{if(!qtUuidLike(userId))return null;const rows=await qtSupabaseTable('shop_profiles?select=id&user_id=eq.'+encodeURIComponent(userId)+'&archived_at=is.null&order=created_at.desc&limit=1',{accessToken:token});return Array.isArray(rows)&&rows[0]?rows[0].id:null;}; for(const p of (val||[])){ if(!qtUuidLike(p.id)) continue; await qtSupabaseTable('promotions?on_conflict=id',{method:'POST',accessToken:token,body:{id:p.id,shop_id:await promoProfileId(p.shopId),shop_name:p.shopName||null,category:p.category||null,area:p.area||null,bid_price:Number(p.bidPrice||0),max_budget:Number(p.maxBudget||0),period_days:Number(p.periodDays||0),status:p.status||'pending',approved_by:p.approvedBy||null,approved_at:p.approvedAt?qtIso(p.approvedAt):null,payment_status:p.paymentStatus||'pending',activated_at:p.activatedAt?qtIso(p.activatedAt):null,metadata:p,created_at:qtIso(p.createdAt),updated_at:qtIso(Date.now())}}); } return; }
-    if(key==='qt_settlements'){ for(const x of (val||[])){ if(!qtUuidLike(x.id)) continue; await qtSupabaseTable('settlements?on_conflict=id',{method:'POST',accessToken:token,body:{id:x.id,shop_id:x.shopId,date_key:x.dateKey,status:['pending','processing','completed','cancelled'].includes(x.status)?x.status:'pending',amount:Number(x.amount||x.gp||0),metadata:x,created_at:qtIso(x.createdAt),updated_at:qtIso(Date.now())}}); } return; }
   }catch(e){ console.warn('qtPersistKey',key,e); throw e; }
 }
 
@@ -722,7 +721,6 @@ async function qtHydrateDatabase(opts){
       QT_DB_CACHE.qt_products=(Array.isArray(ps)?ps:[]).map(p=>Object.assign({},p.metadata||{},{id:p.id,shopId:ownShop?.id||profileMaps.shopById.get(p.shop_id)||p.shop_id,shopProfileId:p.shop_id,name:p.name,description:p.description,price:Number(p.price||0),image:p.image||'',category:p.category??p.metadata?.category??'',stock:Number(p.stock??p.metadata?.stock??0),variants:p.variants??p.metadata?.variants??[],available:p.available!==false,posAvailable:p.pos_available!==false,deliveryAvailable:p.delivery_available!==false,posPrice:p.pos_price,deliveryPrice:p.delivery_price,delivery_restriction:p.delivery_restriction||p.metadata?.delivery_restriction||'none',createdAt:new Date(p.created_at).getTime()}));
     }catch(e){QT_DB_CACHE.qt_products=[];console.error('Products load failed:',e);toast('โหลดสินค้าไม่สำเร็จ: '+(e.message||e));}
     try{const pr=await qtSupabaseTable('promotions?select=*',{accessToken:token}); QT_DB_CACHE.qt_promotions=(Array.isArray(pr)?pr:[]).map(p=>Object.assign({id:p.id,shopId:p.shop_id,shopName:p.shop_name,category:p.category,area:p.area,bidPrice:Number(p.bid_price||0),maxBudget:Number(p.max_budget||0),periodDays:Number(p.period_days||0),status:p.status,approvedBy:p.approved_by,approvedAt:p.approved_at?new Date(p.approved_at).getTime():null,paymentStatus:p.payment_status,activatedAt:p.activated_at?new Date(p.activated_at).getTime():null,createdAt:new Date(p.created_at).getTime()},p.metadata||{}));}catch(e){QT_DB_CACHE.qt_promotions=[];}
-    try{const st=await qtSupabaseTable('settlements?select=*',{accessToken:token}); QT_DB_CACHE.qt_settlements=(Array.isArray(st)?st:[]).map(x=>Object.assign({id:x.id,shopId:x.shop_id,dateKey:x.date_key,status:x.status,amount:Number(x.amount||0),createdAt:new Date(x.created_at).getTime()},x.metadata||{}));}catch(e){QT_DB_CACHE.qt_settlements=[];}
 
       qtMarkClean('qt_products');
     }
@@ -1414,7 +1412,7 @@ async function cycleModule(moduleKey){
 /* =====================================================================
    V5.31 business additions — retained after merchant cleanup; obsolete overrides were removed.
    Covers: delivery-fee formula, GP 10% formula, Slide-to-Confirm engine,
-   daily settlement + GP payment status screens (shop + admin).
+   revenue reports and credit-based GP collection.
    ===================================================================== */
 
 /* ---------- 12. ค่าจัดส่งตามระยะทางจริง (GPS-based, ห้ามให้ผู้ใช้กรอกระยะทางเอง) ---------- */
@@ -1426,9 +1424,7 @@ function gpAmount(saleAmount){ return Math.round(saleAmount*QT_GP_RATE*100)/100;
 
 
 
-/* ---------- 16/17/18. สรุปยอดขายรายวัน + สถานะชำระ GP ---------- */
-// สถานะการชำระ GP ใช้ค่าที่มีอยู่จริงในตาราง settlements: pending -> processing -> completed/cancelled
-const GP_SETTLEMENT_STATUSES = {pending:'รอชำระ',processing:'รอตรวจสอบ',completed:'ชำระแล้ว',cancelled:'ยกเลิก'};
+/* ---------- สรุปยอดขายรายวัน ---------- */
 
 
 function qtCurrentShopProfileId(user){
@@ -1749,7 +1745,7 @@ button.qt-notif-row:active{transform:scale(.995)}
 let qtSupportSelectedShop=null,qtSupportLoading=false;
 function qtSupportTime(value){return new Date(value).toLocaleString('th-TH',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}
 function qtSupportBubble(message,me){
-  return `<div class="qt-support-bubble ${message.sender_user_id===me?'mine':'theirs'}"><div>${escapeHtml(message.body)}</div><small>${message.sender_user_id===me?'คุณ':'คู่สนทนา'} · ${qtSupportTime(message.created_at)}</small>${message.slip_path?`<a class="qt-support-slip" href="#" data-gp-slip="${escapeHtml(message.slip_path)}" onclick="qgmOpenGpSlip(event,this)">ดูสลิป GP</a>`:''}</div>`;
+  return `<div class="qt-support-bubble ${message.sender_user_id===me?'mine':'theirs'}"><div>${escapeHtml(message.body)}</div><small>${message.sender_user_id===me?'คุณ':'คู่สนทนา'} · ${qtSupportTime(message.created_at)}</small></div>`;
 }
 
 function renderShopSupport(){
@@ -3319,33 +3315,7 @@ window.qgmSetShopOpen=async function(toggle){
  finally{toggle.disabled=false}
  Promise.resolve().then(()=>qgmLoadDeliveryReadiness()).catch(()=>{});
 };
-// Read the exact daily GP from orders. A settlement is written only when the slip is submitted.
-window.qgmSubmitGpSlip=async function(date,input){
- const file=input.files?.[0],u=currentUser();if(!file||!u)return;
- if(file.size>5242880){toast('สลิปต้องไม่เกิน 5 MB');input.value='';return}
- const types={'image/png':'png','image/jpeg':'jpg','image/webp':'webp','application/pdf':'pdf'};
- if(!types[file.type]){toast('รองรับ JPG, PNG, WebP หรือ PDF');input.value='';return}
- input.disabled=true;
- try{
-  const token=await qtGetAccessToken(),session=qtSessionRead();if(!token||!session?.authUserId)throw Error('กรุณาเข้าสู่ระบบอีกครั้ง');
-  const path=session.authUserId+'/'+date.replace(/[^0-9-]/g,'')+'-'+crypto.randomUUID()+'.'+types[file.type];
-  const response=await fetch(QT_SUPABASE_CONFIG.URL+'/storage/v1/object/gp-slips/'+path,{method:'POST',headers:{apikey:QT_SUPABASE_CONFIG.KEY,Authorization:'Bearer '+token,'Content-Type':file.type},body:file});
-  if(!response.ok){const err=await response.json().catch(()=>({}));throw Error(err.message||'อัปโหลดสลิปไม่สำเร็จ')}
-  await qtSupabaseTable('rpc/report_shop_gp',{method:'POST',accessToken:token,body:{p_date:date,p_slip_path:path}});
-  toast('ส่งสลิปและแจ้งโอนให้แอดมินแล้ว');
-  Promise.resolve().then(()=>qtHydrateDatabase({light:false})).then(()=>{if(location.hash==='#shop-revenue'&&typeof qgmLoadRevenue==='function')qgmLoadRevenue(date);else window.renderShopSettlement()}).catch(refreshErr=>console.warn('merchant GP post-commit refresh failed',refreshErr));
- }catch(e){toast('แจ้งโอนไม่สำเร็จ: '+(e.message||e))}
- finally{input.disabled=false;input.value=''}
-};
-window.qgmOpenGpSlip=async function(event,link){
- event.preventDefault();
- try{
-  const token=await qtGetAccessToken(),path=link.dataset.gpSlip;
-  const res=await fetch(QT_SUPABASE_CONFIG.URL+'/storage/v1/object/sign/gp-slips/'+path,{method:'POST',headers:{apikey:QT_SUPABASE_CONFIG.KEY,Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({expiresIn:300})});
-  const data=await res.json();if(!res.ok||!data.signedURL)throw Error(data.message||'เปิดสลิปไม่สำเร็จ');
-  window.open(QT_SUPABASE_CONFIG.URL+'/storage/v1'+data.signedURL,'_blank','noopener');
- }catch(e){toast(e.message||'เปิดสลิปไม่สำเร็จ')}
-};
+
 })();
 </script>
 <style id="qgm-shop-location-v14">
@@ -3415,7 +3385,7 @@ window.qgmLoadRevenuePeriod=async function(days,end){
   const token=await qtGetAccessToken(),rows=await qtSupabaseTable('rpc/merchant_revenue_days',{method:'POST',accessToken:token,body:{p_from:start.toISOString().slice(0,10),p_to:end}});
   if(!box.isConnected)return;
   const sum=k=>(rows||[]).reduce((n,r)=>n+Number(r[k]||0),0),money=n=>'฿'+n.toLocaleString('th-TH',{minimumFractionDigits:2,maximumFractionDigits:2});
-  box.innerHTML='<section class="qgm-report"><h2>รายได้ '+days+' วัน</h2><div class="qgm-report-grid"><div><small>ยอดค่าสินค้า</small><b>'+money(sum('gross_sales'))+'</b></div><div><small>จำนวนออเดอร์</small><b>'+sum('order_count')+'</b></div><div><small>GP รอแจ้งโอน</small><b>'+money(sum('gp_due'))+'</b></div><div><small>เงินสดค่าสินค้าที่ร้านได้รับ</small><b>'+money(sum('cash_received'))+'</b></div></div></section>'+(rows||[]).map(r=>'<section class="qgm-report"><b>'+escapeHtml(r.date_key)+'</b> · '+Number(r.order_count||0)+' ออเดอร์ · '+money(Number(r.gross_sales||0))+'</section>').join('');
+  box.innerHTML='<section class="qgm-report"><h2>รายได้ '+days+' วัน</h2><div class="qgm-report-grid"><div><small>ยอดค่าสินค้า</small><b>'+money(sum('gross_sales'))+'</b></div><div><small>จำนวนออเดอร์</small><b>'+sum('order_count')+'</b></div><div><small>GP ตามออเดอร์</small><b>'+money(sum('gp_due'))+'</b></div><div><small>เงินสดค่าสินค้าที่ร้านได้รับ</small><b>'+money(sum('cash_received'))+'</b></div></div></section>'+(rows||[]).map(r=>'<section class="qgm-report"><b>'+escapeHtml(r.date_key)+'</b> · '+Number(r.order_count||0)+' ออเดอร์ · '+money(Number(r.gross_sales||0))+'</section>').join('');
  }catch(e){box.textContent='โหลดรายได้ไม่สำเร็จ: '+e.message}
 };
 window.qgmLoadRevenue=async function(date){
@@ -3430,10 +3400,9 @@ window.qgmLoadRevenue=async function(date){
   const money=n=>'฿'+Number(n||0).toLocaleString('th-TH',{minimumFractionDigits:2,maximumFractionDigits:2});
   const due=Number(r.gp_due||0),sales=Number(r.gross_sales||0),cash=Number(r.cash_received||0);
   box.innerHTML=`<section class="qgm-report"><h2>${escapeHtml(new Date(date+'T12:00:00').toLocaleDateString('th-TH',{day:'numeric',month:'long',year:'numeric'}))}</h2>
-    <div class="qgm-report-grid"><div><small>ยอดค่าสินค้าหลังไรเดอร์รับ</small><b>${money(sales)}</b></div><div><small>GP รอแจ้งโอน</small><b>${money(due)}</b></div><div><small>เงินสดค่าสินค้าที่ร้านได้รับ</small><b>${money(cash)}</b></div><div><small>ออเดอร์ที่ไรเดอร์รับสินค้า</small><b>${Number(r.order_count||0)}</b></div></div>
-    <p class="qgm-report-status">GP รอแจ้งโอน: ${money(due)} · ยอดที่หักเครดิตแล้วดูในประวัติเครดิต · สถานะ GP: ${escapeHtml(GP_SETTLEMENT_STATUSES[r.gp_status]||r.gp_status||'รอชำระ')}</p>
+    <div class="qgm-report-grid"><div><small>ยอดค่าสินค้าหลังไรเดอร์รับ</small><b>${money(sales)}</b></div><div><small>GP ตามออเดอร์</small><b>${money(due)}</b></div><div><small>เงินสดค่าสินค้าที่ร้านได้รับ</small><b>${money(cash)}</b></div><div><small>ออเดอร์ที่ไรเดอร์รับสินค้า</small><b>${Number(r.order_count||0)}</b></div></div>
+    <p class="qgm-report-status">หักค่าบริการผ่านเครดิตอัตโนมัติ · ตรวจรายการหักในประวัติเครดิต</p>
     <small>ยอดเงินสดบันทึกอัตโนมัติตาม flow การรับสินค้าของออเดอร์ ไม่ต้องกดยืนยันการรับเงินเพิ่ม</small>
-    ${due>0&&r.gp_status==='pending'?`<label class="qgm-gp-slip">แนบสลิปและแจ้งโอน<input type="file" accept="image/png,image/jpeg,image/webp,application/pdf" onchange="qgmSubmitGpSlip('${date}',this)"></label>`:''}
     </section>`;
  }catch(e){box.innerHTML='<p class="qgm-report qgm-report-error">โหลดรายงานไม่สำเร็จ: '+escapeHtml(e.message||e)+'</p>'}
 };
@@ -3765,8 +3734,8 @@ window.qgmExportRevenue=async function(button){
   if(!/^\d{4}-\d{2}-\d{2}$/.test(end||''))throw Error('กรุณาเลือกวันที่');
   const startDate=new Date(end+'T12:00:00Z');startDate.setUTCDate(startDate.getUTCDate()-29);
   const rows=await qtSupabaseTable('rpc/merchant_revenue_days',{method:'POST',accessToken:token,body:{p_from:startDate.toISOString().slice(0,10),p_to:end}});
-  const csv=['วันที่,จำนวนออเดอร์,ยอดค่าสินค้า,GP,เงินสดค่าสินค้าที่ร้านได้รับ,สถานะ GP'];
-  for(const x of rows||[])csv.push([x.date_key,x.order_count,x.gross_sales,x.gp_due,x.cash_received,x.gp_status].map(v=>'"'+String(v??'').replace(/"/g,'""')+'"').join(','));
+  const csv=['วันที่,จำนวนออเดอร์,ยอดค่าสินค้า,GP ตามออเดอร์,เงินสดค่าสินค้าที่ร้านได้รับ'];
+  for(const x of rows||[])csv.push([x.date_key,x.order_count,x.gross_sales,x.gp_due,x.cash_received].map(v=>'"'+String(v??'').replace(/"/g,'""')+'"').join(','));
   const url=URL.createObjectURL(new Blob(['\ufeff'+csv.join('\r\n')],{type:'text/csv;charset=utf-8'}));
   const a=document.createElement('a');a.href=url;a.download='QueueGo-revenue-'+end+'.csv';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),30000);
  }catch(e){toast('ดาวน์โหลดรายงานไม่สำเร็จ: '+(e.message||e))}
