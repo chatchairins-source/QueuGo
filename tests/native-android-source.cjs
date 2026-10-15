@@ -221,7 +221,8 @@ ok(riderApp.includes('val localAfterSuccess = when (completedMode)')&&
    riderApp.includes('riderApplyPickupCommit(')&&
    riderApp.includes('pickupCommittedStatus ?: "picked_up"')&&
    riderApp.includes('pickup.copy(status = "PICKED_UP")')&&
-   riderApp.includes('bundled.copy(job = bundled.job.copy(status = "completed"))')&&
+   riderApp.includes('riderAfterDeliveryCommit(previous, job.id)')&&
+   read('rider/src/main/java/com/queuego/rider/RiderContinuousDispatch.kt').includes('bundled.copy(job = bundled.job.copy(status = "completed"))')&&
    riderApp.includes('persistCommittedSnapshot(localAfterSuccess)')&&
    riderApp.includes('?: localAfterSuccess?.activeJob'),
    'Rider proof success must advance local workflow immediately, including bundle-aware pickup handoff, so verification cannot repeat when refresh is slow or fails');

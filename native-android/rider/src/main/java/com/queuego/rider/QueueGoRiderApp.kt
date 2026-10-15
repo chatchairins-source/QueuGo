@@ -1708,19 +1708,7 @@ private fun RiderHome(
                                 )
                             }
                             else -> before?.let { previous ->
-                                val bundleAfter = previous.bundle.copy(
-                                    activeOrders = previous.bundle.activeOrders.map { bundled ->
-                                        if (bundled.job.id == job.id) {
-                                            bundled.copy(job = bundled.job.copy(status = "completed"))
-                                        } else bundled
-                                    }
-                                )
-                                previous.copy(
-                                    activeJob = bundleAfter.currentOrder()?.job ?: previous.nextJob,
-                                    nextJob = null,
-                                    marketPickups = emptyList(),
-                                    bundle = bundleAfter
-                                )
+                                riderAfterDeliveryCommit(previous, job.id)
                             }
                         }
                         if (localAfterSuccess != null) {

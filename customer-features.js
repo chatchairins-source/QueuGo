@@ -216,8 +216,9 @@ const QGCustomer=(()=>{
         </div>
         <div class="qg-order-summary">
           <div class="qg-order-summary-row"><span>ค่าสินค้า</span><span>${baht(o.subtotal)}</span></div>
-          <div class="qg-order-summary-row"><span>ค่าจัดส่ง</span><span>${baht(o.delivery_fee)}</span></div>
-          ${Number(o.bundle_customer_savings)>0?`<p class="qg-order-saving">ประหยัดจากงานพ่วง ${baht(o.bundle_customer_savings)}</p>`:''}
+          ${Number(o.bundle_customer_savings)>0?`<div class="qg-order-summary-row"><span>ค่าส่งปกติ</span><span>${baht(Number(o.delivery_fee)+Number(o.bundle_customer_savings))}</span></div>`:''}
+          <div class="qg-order-summary-row"><span>${Number(o.bundle_customer_savings)>0?'ค่าส่งเส้นทางร่วม':'ค่าจัดส่ง'}</span><span>${baht(o.delivery_fee)}</span></div>
+          ${Number(o.bundle_customer_savings)>0?`<p class="qg-order-saving">ส่งประหยัด · ประหยัด ${baht(o.bundle_customer_savings)}</p>`:''}
           <div class="qg-order-total"><span>ยอดรวม</span><strong>${baht(o.total_amount)}</strong></div>
         </div>
       </section>

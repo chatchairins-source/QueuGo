@@ -169,7 +169,13 @@ begin
     or public.queuego_rule_numeric('dispatch.continuous_enabled',0,now())<>1
     or not exists(select 1 from qg_private.rider_dispatch_preferences dp where dp.rider_id=v_rider and dp.auto_accept and not dp.stop_after_work and dp.ready_until>now())
     or not exists(select 1 from public.orders a where a.id=v_previous and a.status='in_progress' and a.order_type='shopping' and a.fulfillment_vertical='food' and a.market_order_id is null and a.route_bundle_id is null)
-    or v_order.market_order_id is not null or v_order.fulfillment_vertical<>'food'
+    or not exists(select 1 from qg_private.route_bundle_road_matrices rm join public.orders a on a.id=rm.primary_order_id join public.rider_profiles r on r.id=v_rider
+      where rm.primary_order_id=v_previous and rm.candidate_order_id=v_order.id and rm.primary_updated_at=a.updated_at
+        and rm.candidate_updated_at=v_order.updated_at and rm.expires_at>now()
+        and qg_private.approx_distance_km(r.latitude,r.longitude,rm.rider_latitude,rm.rider_longitude)<0.1
+        and (rm.edges->'AD|BP'->>'km')::numeric<=public.queuego_rule_numeric('dispatch.max_next_link_km',1.5,now())
+        and (rm.edges->'RP|AD'->>'minutes')::numeric+(rm.edges->'AD|BP'->>'minutes')::numeric<=10)
+    or v_order.market_order_id is not null or v_order.fulfillment_vertical<>'food' 
     or exists(select 1 from public.laundry_rider_jobs lj where lj.rider_id=v_rider and lj.status in ('assigned','accepted','arrived','collected'))
     or exists(select 1 from public.qg_rider_delivery_returns dr where dr.rider_id=v_rider and dr.status not in ('resolved','returned','cancelled'))
    then raise exception 'finish current order before claiming another'; end if;
@@ -324,7 +330,12 @@ begin
           and j.pickup_latitude is not null and j.pickup_longitude is not null
           and qg_private.approx_distance_km(a.delivery_latitude,a.delivery_longitude,j.pickup_latitude,j.pickup_longitude)
             <=public.queuego_rule_numeric('dispatch.max_next_link_km',1.5,now())
-          and qg_private.approx_distance_km(r.latitude,r.longitude,a.delivery_latitude,a.delivery_longitude)<=1.5)
+          and qg_private.approx_distance_km(r.latitude,r.longitude,a.delivery_latitude,a.delivery_longitude)<=1.5
+          and exists(select 1 from qg_private.route_bundle_road_matrices rm where rm.primary_order_id=a.id and rm.candidate_order_id=j.id
+            and rm.primary_updated_at=a.updated_at and rm.candidate_updated_at=j.updated_at and rm.expires_at>now()
+            and qg_private.approx_distance_km(r.latitude,r.longitude,rm.rider_latitude,rm.rider_longitude)<0.1
+            and (rm.edges->'AD|BP'->>'km')::numeric<=public.queuego_rule_numeric('dispatch.max_next_link_km',1.5,now())
+            and (rm.edges->'RP|AD'->>'minutes')::numeric+(rm.edges->'AD|BP'->>'minutes')::numeric<=10))
       ))
       and not exists(select 1 from public.qg_rider_delivery_returns dr where dr.rider_id=r.id and dr.status not in ('resolved','returned','cancelled'))
       and not exists(
@@ -454,6 +465,109 @@ begin
 end
 $function$;
 
+-- Short-lived routing evidence, not a second route-bundle or assignment system.
+create table if not exists qg_private.route_bundle_road_matrices(
+ primary_order_id uuid not null references public.orders(id),
+ candidate_order_id uuid not null references public.orders(id),
+ primary_updated_at timestamptz not null,candidate_updated_at timestamptz not null,
+ rider_id uuid not null references public.rider_profiles(id),
+ rider_latitude double precision not null,rider_longitude double precision not null,
+ edges jsonb not null check(jsonb_typeof(edges)='object'),
+ expires_at timestamptz not null,primary key(primary_order_id,candidate_order_id)
+);
+alter table qg_private.route_bundle_road_matrices enable row level security;
+revoke all on qg_private.route_bundle_road_matrices from public,anon,authenticated;
+create index if not exists route_bundle_road_matrices_candidate_idx on qg_private.route_bundle_road_matrices(candidate_order_id);
+create index if not exists route_bundle_road_matrices_rider_idx on qg_private.route_bundle_road_matrices(rider_id);
+create index if not exists route_bundle_road_matrices_expiry_idx on qg_private.route_bundle_road_matrices(expires_at);
+
+create or replace function public.queuego_cache_route_bundle_matrix(
+ p_primary_order_id uuid,p_candidate_order_id uuid,p_primary_updated_at timestamptz,p_candidate_updated_at timestamptz,
+ p_rider_latitude double precision,p_rider_longitude double precision,p_edges jsonb
+) returns boolean language plpgsql security definer set search_path=public,pg_temp as $$
+declare a public.orders%rowtype;b public.orders%rowtype;r public.rider_profiles%rowtype;
+begin
+ select * into a from public.orders where id=p_primary_order_id;
+ select * into b from public.orders where id=p_candidate_order_id;
+ select * into r from public.rider_profiles where id=a.rider_id;
+ if a.id is null or b.id is null or r.id is null or a.id=b.id or a.updated_at is distinct from p_primary_updated_at
+  or b.updated_at is distinct from p_candidate_updated_at or b.rider_id is not null or b.status<>'searching_rider'
+  or a.status not in ('rider_assigned','preparing','ready','picked_up','in_progress')
+  or p_rider_latitude is distinct from r.latitude or p_rider_longitude is distinct from r.longitude
+ then return false; end if;
+ if p_edges is null or jsonb_typeof(p_edges)<>'object' then raise exception 'road matrix required'; end if;
+ if exists(select 1 from jsonb_each(p_edges) x where
+  jsonb_typeof(x.value->'km') is distinct from 'number' or jsonb_typeof(x.value->'minutes') is distinct from 'number'
+  or (x.value->>'km')::numeric<0 or (x.value->>'km')::numeric>=10000
+  or (x.value->>'minutes')::numeric<0 or (x.value->>'minutes')::numeric>=10000)
+ then raise exception 'invalid road edge'; end if;
+ if not (p_edges ?& array['AP|AD','BP|BD','RP|AD','AD|BP']) then raise exception 'incomplete road matrix'; end if;
+ delete from qg_private.route_bundle_road_matrices where expires_at<now()-interval '1 day';
+ insert into qg_private.route_bundle_road_matrices values(a.id,b.id,a.updated_at,b.updated_at,r.id,r.latitude,r.longitude,p_edges,now()+interval '90 seconds')
+ on conflict(primary_order_id,candidate_order_id) do update set primary_updated_at=excluded.primary_updated_at,
+ candidate_updated_at=excluded.candidate_updated_at,rider_id=excluded.rider_id,rider_latitude=excluded.rider_latitude,
+ rider_longitude=excluded.rider_longitude,edges=excluded.edges,expires_at=excluded.expires_at;
+ return true;
+end $$;
+revoke all on function public.queuego_cache_route_bundle_matrix(uuid,uuid,timestamptz,timestamptz,double precision,double precision,jsonb) from public,anon,authenticated;
+grant execute on function public.queuego_cache_route_bundle_matrix(uuid,uuid,timestamptz,timestamptz,double precision,double precision,jsonb) to service_role;
+
+-- Shared route simulator for the EXISTING bundle quote. No dispatcher, pool or order model is added.
+-- Directed road matrices can use this exact function; missing edges fail closed (no straight-line fallback here).
+create or replace function qg_private.route_bundle_simulate(
+ p_stops jsonb,p_edges jsonb,p_start text default 'START',p_locked_next text default null,
+ p_pickups_first boolean default false
+) returns jsonb language plpgsql immutable set search_path=public,pg_temp as $$
+declare v_plan jsonb;v_count integer;v_orders integer;
+begin
+ if jsonb_typeof(p_stops)<>'array' or jsonb_typeof(p_edges)<>'object' then
+  return jsonb_build_object('eligible',false,'reason','invalid route input');
+ end if;
+ select count(*),count(distinct s->>'order_id') into v_count,v_orders from jsonb_array_elements(p_stops) s;
+ if v_count<1 or v_count>10 or v_orders>5 or v_orders<1
+  or exists(select 1 from jsonb_array_elements(p_stops) s where coalesce(s->>'key','')='' or coalesce(s->>'order_id','')='' or coalesce(s->>'kind','') not in ('pickup','dropoff'))
+  or (select count(distinct s->>'key') from jsonb_array_elements(p_stops) s)<>v_count
+  or exists(select 1 from jsonb_array_elements(p_stops) s group by s->>'order_id',s->>'kind' having count(*)>1)
+  or exists(select 1 from jsonb_array_elements(p_stops) s where s->>'kind'='pickup' and not exists(select 1 from jsonb_array_elements(p_stops) d where d->>'order_id'=s->>'order_id' and d->>'kind'='dropoff'))
+ then return jsonb_build_object('eligible',false,'reason','invalid stop identity or hard cap'); end if;
+ if exists(select 1 from jsonb_array_elements(p_stops) s where s->>'kind'='dropoff'
+   and not coalesce((s->>'picked_up')::boolean,false)
+   and not exists(select 1 from jsonb_array_elements(p_stops) p where p->>'order_id'=s->>'order_id' and p->>'kind'='pickup'))
+ then return jsonb_build_object('eligible',false,'reason','missing pickup'); end if;
+ with recursive stops as (
+  select s, (ordinality)::integer n from jsonb_array_elements(p_stops) with ordinality a(s,ordinality)
+ ), walk(path,last_key,km,minutes,pickup_times,arrivals) as (
+  select array[]::integer[],p_start,0::numeric,0::numeric,'{}'::jsonb,'{}'::jsonb
+  union all
+  select w.path||x.n,x.s->>'key',w.km+(e.edge->>'km')::numeric,
+   t.finish,
+   case when x.s->>'kind'='pickup' then w.pickup_times||jsonb_build_object(x.s->>'order_id',t.finish) else w.pickup_times end,
+   w.arrivals||jsonb_build_object(x.s->>'key',t.finish)
+  from walk w join stops x on not x.n=any(w.path)
+  cross join lateral (select p_edges->(w.last_key||'|'||(x.s->>'key')) edge) e
+  cross join lateral (select greatest(w.minutes+(e.edge->>'minutes')::numeric,coalesce((x.s->>'ready_minutes')::numeric,0))
+    +coalesce((x.s->>'service_minutes')::numeric,0) finish) t
+  where e.edge is not null and e.edge->>'km' is not null and e.edge->>'minutes' is not null
+   and (e.edge->>'km')::numeric>=0 and (e.edge->>'minutes')::numeric>=0
+   and (e.edge->>'km')::numeric<10000 and (e.edge->>'minutes')::numeric<10000
+   and coalesce((x.s->>'service_minutes')::numeric,0)>=0
+   and (cardinality(w.path)>0 or p_locked_next is null or x.s->>'key'=p_locked_next)
+   and (x.s->>'kind'='pickup' or w.pickup_times ? (x.s->>'order_id') or coalesce((x.s->>'picked_up')::boolean,false))
+   and (not p_pickups_first or x.s->>'kind'='pickup' or not exists(select 1 from stops p where p.s->>'kind'='pickup' and not p.n=any(w.path)))
+   and (not x.s ? 'deadline_minutes' or t.finish <= (x.s->>'deadline_minutes')::numeric)
+   and (not x.s ? 'baseline_minutes' or t.finish <= (x.s->>'baseline_minutes')::numeric+coalesce((x.s->>'max_delay_minutes')::numeric,0))
+   and (x.s->>'kind'<>'dropoff' or not x.s ? 'max_ride_minutes' or
+    t.finish-coalesce((w.pickup_times->>(x.s->>'order_id'))::numeric,-coalesce((x.s->>'already_carried_minutes')::numeric,0)) <= (x.s->>'max_ride_minutes')::numeric)
+ )
+ select jsonb_build_object('eligible',true,'distance_km',w.km,'duration_minutes',w.minutes,
+  'stop_keys',(select jsonb_agg(s.s->>'key' order by a.ordinality) from unnest(w.path) with ordinality a(n,ordinality) join stops s on s.n=a.n),
+  'arrivals',w.arrivals,'orders',v_orders)
+ into v_plan from walk w where cardinality(w.path)=v_count
+ order by w.km,w.minutes,w.path limit 1;
+ return coalesce(v_plan,jsonb_build_object('eligible',false,'reason','no route satisfies precedence, committed next stop and quality'));
+end $$;
+revoke all on function qg_private.route_bundle_simulate(jsonb,jsonb,text,text,boolean) from public,anon,authenticated;
+
 create or replace function public.queuego_route_bundle_quote_orders(
   p_primary_order_id uuid,
   p_candidate_order_id uuid,
@@ -490,6 +604,11 @@ declare
   candidate_fee numeric;
   primary_fee_after numeric;
   seq text;
+  simulation jsonb;
+  edges jsonb;
+  road boolean:=false;
+  primary_delay numeric;
+  candidate_delay numeric;
 begin
   select * into a from public.orders where id=p_primary_order_id;
   select * into b from public.orders where id=p_candidate_order_id;
@@ -518,24 +637,43 @@ begin
   base_km:=public.queuego_distance_km(a.pickup_latitude,a.pickup_longitude,a.delivery_latitude,a.delivery_longitude);
   b_direct_km:=public.queuego_distance_km(b.pickup_latitude,b.pickup_longitude,b.delivery_latitude,b.delivery_longitude);
 
-  route_a_km:=
-    public.queuego_distance_km(a.pickup_latitude,a.pickup_longitude,b.pickup_latitude,b.pickup_longitude)
-    + public.queuego_distance_km(b.pickup_latitude,b.pickup_longitude,a.delivery_latitude,a.delivery_longitude)
-    + public.queuego_distance_km(a.delivery_latitude,a.delivery_longitude,b.delivery_latitude,b.delivery_longitude);
-
-  route_b_km:=
-    public.queuego_distance_km(a.pickup_latitude,a.pickup_longitude,b.pickup_latitude,b.pickup_longitude)
-    + public.queuego_distance_km(b.pickup_latitude,b.pickup_longitude,b.delivery_latitude,b.delivery_longitude)
-    + public.queuego_distance_km(b.delivery_latitude,b.delivery_longitude,a.delivery_latitude,a.delivery_longitude);
-
-  if route_a_km<=route_b_km then
-    bundled_km:=route_a_km;seq:='PRIMARY_DROP_THEN_BUNDLE_DROP';
-  else
-    bundled_km:=route_b_km;seq:='BUNDLE_DROP_THEN_PRIMARY_DROP';
+  -- Existing two-order live behavior uses the same generalized simulator, with pickup-first
+  -- compatibility until the dynamic-stop UI/backend gate passes. Do not raise the rollout cap.
+  select jsonb_object_agg(x.key||'|'||y.key,jsonb_build_object('km',d.km,'minutes',d.km/25*60)) into edges
+  from (values ('AP',a.pickup_latitude,a.pickup_longitude),('BP',b.pickup_latitude,b.pickup_longitude),
+    ('AD',a.delivery_latitude,a.delivery_longitude),('BD',b.delivery_latitude,b.delivery_longitude)) x(key,lat,lng)
+  cross join (values ('BP',b.pickup_latitude,b.pickup_longitude),('AD',a.delivery_latitude,a.delivery_longitude),
+    ('BD',b.delivery_latitude,b.delivery_longitude)) y(key,lat,lng)
+  cross join lateral (select public.queuego_distance_km(x.lat,x.lng,y.lat,y.lng) km) d
+  where x.key<>y.key;
+  select rm.edges into simulation from qg_private.route_bundle_road_matrices rm
+   where rm.primary_order_id=a.id and rm.candidate_order_id=b.id and rm.primary_updated_at=a.updated_at
+    and rm.candidate_updated_at=b.updated_at and rm.expires_at>p_at;
+  if found then
+    edges:=simulation; road:=true;
+    base_km:=(edges->'AP|AD'->>'km')::numeric;
+    b_direct_km:=(edges->'BP|BD'->>'km')::numeric;
   end if;
+  max_delay:=public.queuego_rule_numeric('route_bundle.max_delay_minutes',10,p_at);
+  if ca in ('food','cafe') or cb in ('food','cafe') then max_delay:=least(max_delay,5); end if;
+  simulation:=qg_private.route_bundle_simulate(jsonb_build_array(
+    jsonb_build_object('key','BP','order_id',b.id,'kind','pickup','service_minutes',2),
+    jsonb_build_object('key','AD','order_id',a.id,'kind','dropoff','picked_up',true) ||
+      case when road then jsonb_build_object('max_ride_minutes',(edges->'AP|AD'->>'minutes')::numeric+max_delay) else '{}'::jsonb end,
+    jsonb_build_object('key','BD','order_id',b.id,'kind','dropoff','service_minutes',2) ||
+      case when road then jsonb_build_object('max_ride_minutes',(edges->'BP|BD'->>'minutes')::numeric+max_delay) else '{}'::jsonb end),edges,'AP','BP',true);
+  if not coalesce((simulation->>'eligible')::boolean,false) then return simulation; end if;
+  bundled_km:=(simulation->>'distance_km')::numeric;
+  seq:=case when simulation->'stop_keys'->>1='AD' then 'PRIMARY_DROP_THEN_BUNDLE_DROP' else 'BUNDLE_DROP_THEN_PRIMARY_DROP' end;
 
   detour_km:=greatest(round(bundled_km-base_km,3),0);
-  delay_min:=greatest(0,ceil(detour_km/25*60)::integer)+4; -- two additional service stops, two minutes each
+  if road then
+    primary_delay:=greatest(0,(simulation->'arrivals'->>'AD')::numeric-(edges->'AP|AD'->>'minutes')::numeric);
+    candidate_delay:=greatest(0,(simulation->'arrivals'->>'BD')::numeric-(simulation->'arrivals'->>'BP')::numeric-(edges->'BP|BD'->>'minutes')::numeric);
+    delay_min:=ceil(greatest(primary_delay,candidate_delay))::integer;
+  else
+    delay_min:=greatest(0,ceil(detour_km/25*60)::integer)+4;
+  end if;
 
   max_detour:=public.queuego_rule_numeric('route_bundle.max_detour_km',1.5,p_at);
   max_delay:=public.queuego_rule_numeric('route_bundle.max_delay_minutes',10,p_at);
@@ -595,7 +733,8 @@ begin
     'incremental_dropoff_cost',dropoff_cost,
     'incremental_time_cost',time_cost,
     'quote_method','geo_burden_fair_share_v3',
-    'road_eta_verified',false,
+    'road_eta_verified',road,
+    'planned_stop_keys',simulation->'stop_keys',
     'quoted_at',p_at
   );
 end $$;
@@ -691,6 +830,7 @@ begin
 
   v_quote:=public.queuego_route_bundle_quote_orders(v_primary.id,v_candidate.id,now());
   if not coalesce((v_quote->>'eligible')::boolean,false) then raise exception 'route bundle conditions not met'; end if;
+  if public.queuego_rule_numeric('dispatch.continuous_enabled',0,now())=1 and not coalesce((v_quote->>'road_eta_verified')::boolean,false) then raise exception 'fresh road route required'; end if;
   if v_used_detour+(v_quote->>'detour_km')::numeric > public.queuego_rule_numeric('route_bundle.max_detour_km',1.5,now())
      or v_used_minutes+(v_quote->>'added_minutes')::integer > public.queuego_rule_numeric('route_bundle.max_delay_minutes',10,now())
   then raise exception 'route bundle cumulative detour limit reached'; end if;

@@ -1169,7 +1169,7 @@ class QueueGoApi {
             val profileId = profiles.getJSONObject(0).getString("id")
             val rows = requestArray(
                 "GET",
-                "/rest/v1/orders?select=id,order_number,pickup_address,delivery_address,delivery_fee,completed_at,updated_at" +
+                "/rest/v1/orders?select=id,order_number,pickup_address,delivery_address,delivery_fee,rider_delivery_payout,completed_at,updated_at" +
                     "&rider_id=eq." + enc(profileId) +
                     "&status=eq.completed&order=updated_at.desc&limit=" + limit.coerceIn(1, 200),
                 auth.session.accessToken
@@ -1186,7 +1186,7 @@ class QueueGoApi {
                             number = number,
                             pickupAddress = r.optString("pickup_address").takeIf { it.isNotBlank() },
                             deliveryAddress = r.optString("delivery_address").takeIf { it.isNotBlank() },
-                            deliveryFee = r.optDouble("delivery_fee", 0.0),
+                            deliveryFee = r.doubleOrNull("rider_delivery_payout") ?: r.doubleOrZero("delivery_fee"),
                             completedAt = r.optString("completed_at")
                                 .takeIf { it.isNotBlank() && it != "null" }
                                 ?: r.optString("updated_at").takeIf { it.isNotBlank() && it != "null" }

@@ -372,11 +372,14 @@ internal fun CustomerOrderTrackingScreen(
             HorizontalDivider(color = Color(0xFFEEE8EA))
             Spacer(Modifier.height(6.dp))
             CustomerTrackingSummaryRow("ค่าสินค้า", order.subtotal)
-            CustomerTrackingSummaryRow("ค่าจัดส่ง", order.deliveryFee)
+            if (order.bundleCustomerSavings > 0) {
+                CustomerTrackingSummaryRow("ค่าส่งปกติ", order.deliveryFee + order.bundleCustomerSavings)
+            }
+            CustomerTrackingSummaryRow(if (order.bundleCustomerSavings > 0) "ค่าส่งเส้นทางร่วม" else "ค่าจัดส่ง", order.deliveryFee)
             if (order.bundleCustomerSavings > 0) {
                 Spacer(Modifier.height(7.dp))
                 Text(
-                    "ประหยัดจากงานพ่วง ฿" + "%.0f".format(order.bundleCustomerSavings),
+                    "ส่งประหยัด · ประหยัด " + customerBaht(order.bundleCustomerSavings),
                     modifier = Modifier
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(12.dp))
@@ -401,7 +404,7 @@ internal fun CustomerOrderTrackingScreen(
                     fontWeight = FontWeight.ExtraBold
                 )
                 Text(
-                    "฿" + "%.0f".format(order.total),
+                    customerBaht(order.total),
                     color = Color(0xFF17191D),
                     fontSize = 22.sp,
                     lineHeight = 22.sp,
@@ -665,7 +668,7 @@ private fun CustomerTrackingAction(
 private fun CustomerTrackingSummaryRow(label: String, amount: Double) {
     Row(Modifier.fillMaxWidth().padding(vertical = 3.dp)) {
         Text(label, modifier = Modifier.weight(1f), color = Color(0xFF5F585C), fontSize = 11.sp)
-        Text("฿" + "%.0f".format(amount), color = Color(0xFF5F585C), fontSize = 11.sp)
+        Text(customerBaht(amount), color = Color(0xFF5F585C), fontSize = 11.sp)
     }
 }
 
