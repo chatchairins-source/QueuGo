@@ -10,6 +10,29 @@ ok(auth.includes('withContext(Dispatchers.IO) { store.save(validated) }'),'Custo
 ok(auth.includes('repeatOnLifecycle(Lifecycle.State.STARTED)'),'Customer/Merchant auth heartbeat must stop while UI is backgrounded');
 ok(!auth.includes('auth = refreshed'),'NativeAuthApi IO refresh callback must never mutate Compose auth state directly');
 
+const customerApp=read('customer/src/main/java/com/queuego/customer/QueueGoCustomerApp.kt');
+ok(
+  customerApp.includes('authRequested = withContext(Dispatchers.IO) { store.load() != null }') &&
+  !customerApp.includes('mutableStateOf(store.load() != null)'),
+  'Customer root secure-session presence check must never decrypt Keystore state during Compose composition'
+);
+ok(
+  customerApp.includes('val restored = withContext(Dispatchers.IO) {') &&
+  customerApp.includes('val saved = cartStore.load()') &&
+  customerApp.includes('val guest = guestCartStore.load()') &&
+  customerApp.includes('val savedLocation = locationStore.load()') &&
+  customerApp.includes('if (localStateLoaded) withContext(Dispatchers.IO) { cartStore.save(cart) }') &&
+  !customerApp.includes('LaunchedEffect(cart) { cartStore.save(cart) }'),
+  'Customer local cart/location restore, guest merge and cart persistence must stay off Main'
+);
+ok(
+  customerApp.includes('pendingCheckoutRecord = withContext(Dispatchers.IO)') &&
+  customerApp.includes('withContext(Dispatchers.IO) { cartStore.save(submittedCart) }') &&
+  customerApp.includes('create = {\n                                            withContext(Dispatchers.IO) {') &&
+  !customerApp.includes('mutableStateOf(runCatching { checkoutJournal.read() }.getOrNull())'),
+  'Customer checkout journal reads, submitted-cart persistence and checkout JSON snapshot creation must stay off Main'
+);
+
 const merchantMain=read('merchant/src/main/java/com/queuego/merchant/MainActivity.kt');
 ok(merchantMain.includes('lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED)'),'Merchant role/session watcher must be foreground lifecycle gated');
 ok(merchantMain.includes('withContext(kotlinx.coroutines.Dispatchers.IO) { store.load() }'),'Merchant session watcher must decrypt off Main');
@@ -294,8 +317,16 @@ ok(riderManifest.includes('FOREGROUND_SERVICE_SPECIAL_USE')&&riderManifest.inclu
 const returnService=read('rider/src/main/java/com/queuego/rider/RiderReturnService.kt');
 const navService=read('rider/src/main/java/com/queuego/rider/RiderNavigationLocationService.kt');
 const voiceService=read('shared/src/main/java/com/queuego/shared/NativeVoiceForegroundService.kt');
+const voiceController=read('shared/src/main/java/com/queuego/shared/NativeVoiceCallController.kt');
 ok(returnService.includes('runCatching { ContextCompat.startForegroundService')&&returnService.includes('start_foreground_failed'),'Rider return FGS must fail closed instead of crashing when Android rejects launch');
 ok(navService.includes('start_foreground_failed')||navService.includes('foreground_start_rejected'),'Rider location FGS must handle Android start rejection');
-ok(voiceService.includes('start_foreground_failed')||voiceService.includes('startForeground'),'Voice FGS must have guarded foreground startup');
+ok(
+  voiceService.includes('context.startForegroundService(') &&
+  voiceService.includes('catch (failure: Exception)') &&
+  voiceService.includes('next.ready.completeExceptionally(failure)') &&
+  voiceController.includes('try { prepareForeground() } catch (failure: Exception)') &&
+  voiceController.includes('withTimeout(10_000L) { prepareForeground().await() }'),
+  'Voice microphone FGS launch rejection must propagate through a caught Deferred/controller path instead of crashing the process'
+);
 
 console.log(JSON.stringify({checks,failures:0,scope:'three-app native crash/ANR/OOM/process-kill prevention contracts; static source gate, physical OEM coverage remains separate'}));
