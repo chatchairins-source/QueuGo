@@ -125,6 +125,14 @@ private fun MerchantShell(
     var selectedProduct by remember { mutableStateOf<MerchantProduct?>(null) }
     var newProductCategory by remember { mutableStateOf<String?>(null) }
     var productReturnScreen by remember { mutableStateOf("products") }
+    var groceryCatalogItems by remember { mutableStateOf<List<MerchantGroceryCatalogItem>>(emptyList()) }
+    var groceryCatalogCategories by remember { mutableStateOf<List<String>>(emptyList()) }
+    var groceryCatalogQuery by remember { mutableStateOf("") }
+    var groceryCatalogCategory by remember { mutableStateOf("") }
+    var groceryCatalogMode by remember { mutableStateOf("all") }
+    var groceryCatalogOffset by remember { mutableIntStateOf(0) }
+    var groceryCatalogHasMore by remember { mutableStateOf(false) }
+    var groceryCatalogLoading by remember { mutableStateOf(false) }
     var orderItems by remember { mutableStateOf<List<MerchantOrderItem>>(emptyList()) }
     var gpRate by remember { mutableStateOf(0.0) }
     var loading by remember { mutableStateOf(true) }
@@ -280,7 +288,7 @@ private fun MerchantShell(
         screen = when (screen) {
             "shop-setup", "hours", "support" -> "profile"
             "notifications", "media", "modules", "market-stock" -> "home"
-            "catalog" -> "products"
+            "catalog", "grocery-catalog" -> "products"
             "product" -> productReturnScreen
             "order" -> "orders"
             else -> "home"
@@ -306,6 +314,39 @@ private fun MerchantShell(
             }
         }.onFailure { message = it.message ?: "โหลดข้อมูลร้านไม่สำเร็จ" }
         loading = false
+    }
+
+    suspend fun refreshGroceryCatalog() {
+        val activeShop = shop ?: return
+        if (activeShop.category != "grocery") {
+            groceryCatalogItems = emptyList()
+            groceryCatalogHasMore = false
+            return
+        }
+        groceryCatalogLoading = true
+        try {
+            if (groceryCatalogCategories.isEmpty()) {
+                groceryCatalogCategories = runCatching {
+                    api.groceryCatalogCategories(auth)
+                }.getOrDefault(emptyList())
+            }
+            val page = api.groceryCatalogPage(
+                auth = auth,
+                shopId = activeShop.id,
+                query = groceryCatalogQuery,
+                category = groceryCatalogCategory,
+                mode = groceryCatalogMode,
+                offset = groceryCatalogOffset
+            )
+            groceryCatalogItems = page.items
+            groceryCatalogHasMore = page.hasMore
+        } catch (failure: kotlinx.coroutines.CancellationException) {
+            throw failure
+        } catch (failure: Exception) {
+            message = failure.message ?: "โหลดแคตตาล็อกสินค้าไม่สำเร็จ"
+        } finally {
+            groceryCatalogLoading = false
+        }
     }
 
     fun playMerchantNotificationSound() {
@@ -447,6 +488,16 @@ private fun MerchantShell(
                 }
             }
         }
+    }
+    LaunchedEffect(
+        screen,
+        groceryCatalogQuery,
+        groceryCatalogCategory,
+        groceryCatalogMode,
+        groceryCatalogOffset,
+        auth.session.accessToken
+    ) {
+        if (screen == "grocery-catalog") refreshGroceryCatalog()
     }
 
     fun runAction(order: MerchantOrder, action: String, reason: String? = null) {
@@ -632,6 +683,7 @@ private fun MerchantShell(
                 )
                 "products" -> MerchantProductsScreen(
                     products = products,
+                    shopCategory = shop?.category ?: "other",
                     busy = busy,
                     onToggle = { product, next ->
                         if (!busy) {
@@ -655,12 +707,94 @@ private fun MerchantShell(
                         productReturnScreen = "products"
                         screen = "product"
                     },
-                    onAdd = {
+                    onAddManual = {
                         selectedProduct = null
                         newProductCategory = null
-                        screen = "catalog"
+                        productReturnScreen = "products"
+                        screen = "product"
+                    },
+                    onOpenCatalog = {
+                        if (shop?.category == "grocery") {
+                            groceryCatalogQuery = ""
+                            groceryCatalogCategory = ""
+                            groceryCatalogMode = "all"
+                            groceryCatalogOffset = 0
+                            screen = "grocery-catalog"
+                        } else {
+                            selectedProduct = null
+                            newProductCategory = null
+                            screen = "catalog"
+                        }
                     }
                 )
+                "grocery-catalog" -> {
+                    val activeShop = shop
+                    if (activeShop == null || activeShop.category != "grocery") {
+                        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            Text("หน้านี้ใช้สำหรับร้านขายของชำ", color = QgMuted)
+                        }
+                    } else {
+                        MerchantGroceryCatalogScreen(
+                            items = groceryCatalogItems,
+                            categories = groceryCatalogCategories,
+                            query = groceryCatalogQuery,
+                            category = groceryCatalogCategory,
+                            mode = groceryCatalogMode,
+                            offset = groceryCatalogOffset,
+                            hasMore = groceryCatalogHasMore,
+                            gpRate = gpRate,
+                            loading = groceryCatalogLoading,
+                            busy = busy,
+                            onSearch = {
+                                groceryCatalogQuery = it
+                                groceryCatalogOffset = 0
+                            },
+                            onCategory = {
+                                groceryCatalogCategory = it
+                                groceryCatalogOffset = 0
+                            },
+                            onMode = {
+                                groceryCatalogMode = it
+                                groceryCatalogOffset = 0
+                            },
+                            onPage = { groceryCatalogOffset = it.coerceAtLeast(0) },
+                            onSave = { item, draft ->
+                                if (!busy) {
+                                    busy = true
+                                    scope.launch {
+                                        runCatching {
+                                            api.saveGroceryCatalogItem(
+                                                auth = auth,
+                                                shopId = activeShop.id,
+                                                item = item,
+                                                draft = draft
+                                            )
+                                            val freshProducts = api.loadProducts(auth, activeShop.id)
+                                            val freshPage = api.groceryCatalogPage(
+                                                auth = auth,
+                                                shopId = activeShop.id,
+                                                query = groceryCatalogQuery,
+                                                category = groceryCatalogCategory,
+                                                mode = groceryCatalogMode,
+                                                offset = groceryCatalogOffset
+                                            )
+                                            freshProducts to freshPage
+                                        }.onSuccess { (freshProducts, freshPage) ->
+                                            products = freshProducts
+                                            groceryCatalogItems = freshPage.items
+                                            groceryCatalogHasMore = freshPage.hasMore
+                                            message = "บันทึกสินค้าในแคตตาล็อกแล้ว"
+                                        }.onFailure {
+                                            message = it.message ?: "บันทึกสินค้าไม่สำเร็จ"
+                                        }
+                                        busy = false
+                                    }
+                                }
+                            },
+                            onBack = { screen = "products" }
+                        )
+                    }
+                }
                 "catalog" -> {
                     val activeShop = shop
                     if (activeShop == null) {
