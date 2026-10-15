@@ -4,6 +4,8 @@ import android.content.Intent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -122,46 +124,54 @@ private fun ShopBody(auth: NativeAuth?, shop: CustomerShop, products: List<Custo
             "บันทึกรายการโปรด", Modifier.size(32.dp), QgRed, "$kind:$id" !in busyFavorites) { favorite(kind, id) }
     }
     Box(Modifier.fillMaxSize()) {
-        Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
-            Box(Modifier.fillMaxWidth().height(if (compact) 164.dp else if (narrow) 178.dp else 195.dp).background(Color(0xFFDDDDDD))) {
-                // The web uses public_cover only; it does not substitute the store logo.
-                QgRemoteImage(shop.cover, Modifier.fillMaxSize(), shop.name, cornerRadius = 0.dp, showFallback = false)
-                Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color.Black.copy(alpha = .38f), Color.Transparent, Color.Black.copy(alpha = .1f)))))
-                Row(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 12.dp), horizontalArrangement = Arrangement.SpaceBetween) {
-                    ShopIcon(R.drawable.qg_shop_back, "กลับ", Modifier.size(42.dp).clip(RoundedCornerShape(12.dp)).background(Color(0xFFF3F4F6)), Color(0xFF24272D), onClick = onBack)
-                    ShopIcon(R.drawable.qg_shop_share, "แชร์ร้าน", Modifier.size(42.dp).clip(RoundedCornerShape(12.dp)).background(Color(0xFFF3F4F6)), Color(0xFF24272D)) {
-                        val share = Intent(Intent.ACTION_SEND).apply {
-                            type = "text/plain"
-                            putExtra(Intent.EXTRA_SUBJECT, "ร้านค้าใน QueueGo")
-                            putExtra(Intent.EXTRA_TEXT, "https://chatchairins-source.github.io/QueuGo/#shop/" + shop.id)
+        LazyColumn(Modifier.fillMaxSize()) {
+            item(key = "shop-cover") {
+                Box(Modifier.fillMaxWidth().height(if (compact) 164.dp else if (narrow) 178.dp else 195.dp).background(Color(0xFFDDDDDD))) {
+                    // The web uses public_cover only; it does not substitute the store logo.
+                    QgRemoteImage(shop.cover, Modifier.fillMaxSize(), shop.name, cornerRadius = 0.dp, showFallback = false)
+                    Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color.Black.copy(alpha = .38f), Color.Transparent, Color.Black.copy(alpha = .1f)))))
+                    Row(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 12.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+                        ShopIcon(R.drawable.qg_shop_back, "กลับ", Modifier.size(42.dp).clip(RoundedCornerShape(12.dp)).background(Color(0xFFF3F4F6)), Color(0xFF24272D), onClick = onBack)
+                        ShopIcon(R.drawable.qg_shop_share, "แชร์ร้าน", Modifier.size(42.dp).clip(RoundedCornerShape(12.dp)).background(Color(0xFFF3F4F6)), Color(0xFF24272D)) {
+                            val share = Intent(Intent.ACTION_SEND).apply {
+                                type = "text/plain"
+                                putExtra(Intent.EXTRA_SUBJECT, "ร้านค้าใน QueueGo")
+                                putExtra(Intent.EXTRA_TEXT, "https://chatchairins-source.github.io/QueuGo/#shop/" + shop.id)
+                            }
+                            runCatching { context.startActivity(Intent.createChooser(share, "แชร์ร้าน")) }
+                                .onFailure { actionError = "เปิดเมนูแชร์ไม่สำเร็จ" }
                         }
-                        context.startActivity(Intent.createChooser(share, "แชร์ร้าน"))
                     }
                 }
             }
-            // Overlap by the web's 18px without leaving a layout gap below the cover.
-            Column(Modifier.offset(y = (-18).dp).fillMaxWidth().clip(RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)).background(Color.White)
-                .padding(start = if (compact) 10.dp else 12.dp, end = if (compact) 10.dp else 12.dp, top = if (compact) 11.dp else 14.dp, bottom = if (compact) 7.dp else 9.dp)) {
-                Text(shop.name, fontSize = 21.sp, lineHeight = 24.15.sp, fontWeight = FontWeight.ExtraBold)
-                Favorite("shop", shop.id)
-                Row(Modifier.padding(top = 5.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(shopCategory(shop.category), fontSize = 11.sp, color = QgMuted)
-                    shop.address?.let { Text(it, fontSize = 11.sp, color = QgMuted) }
+            item(key = "shop-header") {
+                // Overlap by the web's 18px without leaving a layout gap below the cover.
+                Column(Modifier.offset(y = (-18).dp).fillMaxWidth().clip(RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)).background(Color.White)
+                    .padding(start = if (compact) 10.dp else 12.dp, end = if (compact) 10.dp else 12.dp, top = if (compact) 11.dp else 14.dp, bottom = if (compact) 7.dp else 9.dp)) {
+                    Text(shop.name, fontSize = 21.sp, lineHeight = 24.15.sp, fontWeight = FontWeight.ExtraBold)
+                    Favorite("shop", shop.id)
+                    Row(Modifier.padding(top = 5.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(shopCategory(shop.category), fontSize = 11.sp, color = QgMuted)
+                        shop.address?.let { Text(it, fontSize = 11.sp, color = QgMuted) }
+                    }
+                    Text(if (shop.open) "เปิดอยู่" else "ปิดอยู่", fontSize = 9.5.sp, fontWeight = FontWeight.Bold,
+                        color = if (shop.open) Color(0xFF0A9660) else Color(0xFF777777),
+                        modifier = Modifier.padding(top = 5.dp).clip(CircleShape).background(if (shop.open) Color(0xFFE7F8F0) else Color(0xFFF1F1F2)).padding(horizontal = 6.dp, vertical = 3.dp))
                 }
-                Text(if (shop.open) "เปิดอยู่" else "ปิดอยู่", fontSize = 9.5.sp, fontWeight = FontWeight.Bold,
-                    color = if (shop.open) Color(0xFF0A9660) else Color(0xFF777777),
-                    modifier = Modifier.padding(top = 5.dp).clip(CircleShape).background(if (shop.open) Color(0xFFE7F8F0) else Color(0xFFF1F1F2)).padding(horizontal = 6.dp, vertical = 3.dp))
             }
-            Column(Modifier.offset(y = (-18).dp)) {
-                // Production loadMenu currently returns no category field, hence the same All control.
-                Text("ทั้งหมด", color = QgRed, fontSize = 13.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = inset + 6.dp, vertical = 12.dp))
-                Spacer(Modifier.height(6.dp))
-                when {
-                    productsLoading -> LinearProgressIndicator(Modifier.fillMaxWidth().padding(horizontal = inset, vertical = 18.dp))
-                    productsError != null -> Text("$productsError · ลองอีกครั้ง", Modifier.fillMaxWidth().clickable(onClick = onRetryProducts).padding(35.dp), color = QgRed)
-                    products.isEmpty() -> Text("ยังไม่มีเมนู", Modifier.fillMaxWidth().padding(35.dp), color = QgMuted)
+            item(key = "product-heading") {
+                Column(Modifier.offset(y = (-18).dp)) {
+                    Text("ทั้งหมด", color = QgRed, fontSize = 13.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = inset + 6.dp, vertical = 12.dp))
+                    Spacer(Modifier.height(6.dp))
+                    when {
+                        productsLoading -> LinearProgressIndicator(Modifier.fillMaxWidth().padding(horizontal = inset, vertical = 18.dp))
+                        productsError != null -> Text("$productsError · ลองอีกครั้ง", Modifier.fillMaxWidth().clickable(onClick = onRetryProducts).padding(35.dp), color = QgRed)
+                        products.isEmpty() -> Text("ยังไม่มีเมนู", Modifier.fillMaxWidth().padding(35.dp), color = QgMuted)
+                    }
                 }
-                products.forEach { product ->
+            }
+            items(products, key = { it.id }) { product ->
+                Column(Modifier.offset(y = (-18).dp)) {
                     Row(Modifier.fillMaxWidth().background(Color.White).padding(horizontal = inset, vertical = if (compact) 7.dp else 9.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(9.dp)) {
                         QgRemoteImage(product.image, Modifier.size(if (compact) 64.dp else 72.dp, if (compact) 58.dp else 66.dp), product.name, cornerRadius = 13.dp)
                         Column(Modifier.weight(1f)) {
@@ -175,7 +185,9 @@ private fun ShopBody(auth: NativeAuth?, shop: CustomerShop, products: List<Custo
                     }
                     HorizontalDivider(color = QgLine)
                 }
-                Column(Modifier.padding(horizontal = inset).padding(top = 10.dp).clip(RoundedCornerShape(16.dp)).background(Color.White).padding(horizontal = 13.dp, vertical = 12.dp)) {
+            }
+            item(key = "shop-reviews") {
+                Column(Modifier.offset(y = (-18).dp).padding(horizontal = inset).padding(top = 10.dp).clip(RoundedCornerShape(16.dp)).background(Color.White).padding(horizontal = 13.dp, vertical = 12.dp)) {
                     Text("รีวิวจากลูกค้า", fontSize = 18.sp, lineHeight = 21.6.sp, fontWeight = FontWeight.Bold)
                     if (loadError) Text("โหลดข้อมูลไม่สำเร็จ · ลองอีกครั้ง", fontSize = 11.sp, color = QgRed, modifier = Modifier.padding(top = 9.dp).clickable { reload++ })
                     else if (reviews == null) LinearProgressIndicator(Modifier.fillMaxWidth().padding(top = 9.dp))
@@ -197,6 +209,8 @@ private fun ShopBody(auth: NativeAuth?, shop: CustomerShop, products: List<Custo
                     }
                     actionError?.let { Text(it, fontSize = 11.sp, color = QgRed) }
                 }
+            }
+            item(key = "shop-bottom-space") {
                 Spacer(Modifier.height(if (cart.any { it.product.shopId == shop.id }) 80.dp else 30.dp))
             }
         }
