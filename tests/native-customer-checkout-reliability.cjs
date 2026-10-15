@@ -12,7 +12,7 @@ ok(start>=0&&end>start,'Native Customer confirmed-order handler must exist');
 const placed=app.slice(start,end);
 ok(placed.includes('lastCheckoutReceipt = order.id'),'confirmed-order handler must bind the server receipt');
 ok(placed.includes('cart = emptyList()'),'server-confirmed order must clear the visible cart immediately');
-ok(placed.includes('runCatching { cartStore.save(emptyList()) }'),'confirmed-order handler must best-effort persist the empty cart without turning server success into UI failure');
+ok(!placed.includes('cartStore.save('),'confirmed-order handler must not perform durable cart I/O on the UI path; checkout journal cleanup owns best-effort persistence off Main');
 ok(!placed.includes('cart = cartStore.load()'),'confirmed-order handler must never reload a stale submitted cart');
 ok(placed.includes('selectedOrder = order')&&placed.includes('screen = "order"'),'confirmed order must open tracking directly');
 ok(placed.includes('pendingCheckoutRecord = null')&&placed.includes('checkoutPending = false'),'confirmed-order UI must release checkout pending state');
