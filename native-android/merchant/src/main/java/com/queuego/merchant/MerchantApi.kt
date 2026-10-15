@@ -77,7 +77,9 @@ data class MerchantOrder(
     val readyAt: String?,
     val itemCount: Int = 0,
     val riderArrivedCustomerAt: String? = null,
-    val riderId: String? = null
+    val riderId: String? = null,
+    val readyEstimateAt: String? = null,
+    val readyRevision: Long = 0
 )
 
 data class MerchantRiderContext(
@@ -598,24 +600,33 @@ class MerchantApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
             runCatching { UUID.fromString(order.id).toString() }.getOrNull()
         }
         if (ids.isEmpty()) return orders
-        val arrivals = runCatching {
-            val arrivalRows = http.array(
+        val liveRows = runCatching {
+            http.array(
                 http.get(
-                    "orders?select=id,rider_arrived_customer_at&id=in.(" + ids.joinToString(",") + ")",
+                    "orders?select=id,rider_arrived_customer_at,merchant_ready_estimate_at,merchant_ready_revision&id=in.(" +
+                        ids.joinToString(",") + ")",
                     auth.session.accessToken
                 )
             )
-            buildMap<String, String?> {
-                for (i in 0 until arrivalRows.length()) {
-                    val row = arrivalRows.optJSONObject(i) ?: continue
-                    val id = row.optString("id")
-                    if (id.isNotBlank()) put(id, row.optNullable("rider_arrived_customer_at"))
-                }
-            }
-        }.getOrDefault(emptyMap())
+        }.getOrElse { JSONArray() }
+        val arrivals = HashMap<String, String?>()
+        val readyAt = HashMap<String, String?>()
+        val readyRevision = HashMap<String, Long>()
+        for (i in 0 until liveRows.length()) {
+            val row = liveRows.optJSONObject(i) ?: continue
+            val id = row.optString("id")
+            if (id.isBlank()) continue
+            arrivals[id] = row.optNullable("rider_arrived_customer_at")
+            readyAt[id] = row.optNullable("merchant_ready_estimate_at")
+            readyRevision[id] = row.optLong("merchant_ready_revision", 0L)
+        }
 
         return orders.map { order ->
-            order.copy(riderArrivedCustomerAt = arrivals[order.id])
+            order.copy(
+                riderArrivedCustomerAt = arrivals[order.id],
+                readyEstimateAt = readyAt[order.id],
+                readyRevision = readyRevision[order.id] ?: 0L
+            )
         }
     }
 
@@ -694,6 +705,34 @@ class MerchantApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
             error("Server ยังไม่ยืนยันยอดออเดอร์ที่แก้ไข")
         }
         return MerchantOrderEditResult(subtotal, totalAmount, authorized)
+    }
+
+    suspend fun setReadyEstimate(
+        auth: NativeAuth,
+        orderId: String,
+        readyAt: String,
+        expectedRevision: Long
+    ): Pair<String, Long> {
+        val requestId = UUID.nameUUIDFromBytes(
+            ("merchant-ready:" + auth.user.id + ":" + orderId + ":" + expectedRevision + ":" + readyAt).toByteArray()
+        ).toString()
+        val raw = http.rpc(
+            "qg_merchant_set_ready_estimate",
+            auth.session.accessToken,
+            JSONObject()
+                .put("p_request_id", requestId)
+                .put("p_order_id", orderId)
+                .put("p_ready_at", readyAt)
+                .put("p_expected_revision", expectedRevision)
+        )
+        val row = when (raw) {
+            is JSONObject -> raw
+            is JSONArray -> raw.optJSONObject(0) ?: JSONObject()
+            else -> JSONObject()
+        }
+        val confirmedAt = row.optNullable("ready_estimate_at")
+            ?: error("Server ยังไม่ยืนยันเวลาพร้อม")
+        return confirmedAt to row.optLong("ready_revision", expectedRevision)
     }
 
     suspend fun action(auth: NativeAuth, orderId: String, action: String, reason: String? = null): MerchantOrder {
