@@ -38,6 +38,13 @@ ok(merchant.includes("const ownPid=String(ownShop?.shopProfileId||profileMaps.sh
 ok(!merchant.includes("qtSupabaseTable('products?select=*',{accessToken:token})"),'Merchant background hydrate must never request every product row');
 ok(merchant.includes("renderShopProductsModern({authoritative:true})"),'authoritative snapshot must replace the visible cached product list');
 ok(merchant.includes("qgmProductViewSearch")&&merchant.includes("qgmProductViewMode"),'search and availability filter state must be combined instead of overriding one another');
+ok(merchant.includes("onclick=\"navigate('shop-product/new')\""),'Grocery primary add action must open the manual product editor');
+ok(merchant.includes("onclick=\"navigate('shop-grocery-catalog')\""),'Grocery QueueGo catalog must be a separate page');
+ok(merchant.includes("case'shop-grocery-catalog':return qgRenderGroceryCatalog({addMode:true,pageTitle:'โหมดเพิ่มสินค้าให้ร้าน'})"),'dedicated Grocery catalog route must have the requested page name');
+ok(merchant.includes("if(u?.category==='grocery'&&p?.grocery_master_id)return qgRenderGroceryCatalog"),'only existing master-linked Grocery rows may redirect to the master catalog');
+ok(!merchant.includes("if(u?.category==='grocery'&&(id==='new'||p?.grocery_master_id))"),'new Grocery products must never be hijacked by master catalog');
+ok(merchant.includes("const pagedGrocery=ownShop?.category==='grocery'&&['shop-grocery-catalog'].includes"),'normal Grocery product/manual-editor pages must load the shop product snapshot');
+
 
 ok(sql.includes('create or replace function public.queuego_delete_or_archive_product'),'safe product delete/archive RPC must exist');
 ok(sql.includes('join public.shop_profiles sp on sp.id=p.shop_id'),'RPC must verify shop ownership');
