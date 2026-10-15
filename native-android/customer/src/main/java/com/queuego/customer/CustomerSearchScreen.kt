@@ -13,6 +13,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -91,133 +93,130 @@ fun CustomerSearchScreen(
     val compact = LocalConfiguration.current.screenWidthDp <= 420
     val horizontalPadding = if (compact) 10.dp else 12.dp
 
-    Column(
-        Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = horizontalPadding)
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(horizontal = horizontalPadding)
     ) {
-        Row(
-            Modifier.padding(top = 7.dp, bottom = 10.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Box(
-                Modifier
-                    .size(38.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(Color.White)
-                    .clickable(onClick = onBack),
-                contentAlignment = Alignment.Center
+        item(key = "search-header") {
+            Row(
+                Modifier.padding(top = 7.dp, bottom = 10.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(
-                    painter = painterResource(R.drawable.qg_shop_back),
-                    contentDescription = "ย้อนกลับ",
-                    modifier = Modifier.size(20.dp),
-                    tint = Color(0xFF17191D)
-                )
-            }
-            Spacer(Modifier.width(8.dp))
-            Text(
-                "ค้นหา",
-                color = Color(0xFF17191D),
-                fontSize = 20.sp,
-                lineHeight = 30.sp,
-                fontWeight = FontWeight.Bold
-            )
-        }
-
-        Row(
-            Modifier
-                .fillMaxWidth()
-                .height(44.dp)
-                .shadow(
-                    elevation = 4.dp,
-                    shape = RoundedCornerShape(14.dp),
-                    clip = false,
-                    ambientColor = Color(0x0914181E),
-                    spotColor = Color(0x0914181E)
-                )
-                .clip(RoundedCornerShape(14.dp))
-                .background(Color.White)
-                .border(1.dp, QgLine, RoundedCornerShape(14.dp))
-                .padding(horizontal = 14.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(
-                painter = painterResource(R.drawable.qg_nav_search),
-                contentDescription = null,
-                modifier = Modifier.size(20.dp),
-                tint = Color(0xFF3F434A)
-            )
-            Spacer(Modifier.width(10.dp))
-            Box(Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
-                if (query.isEmpty()) {
-                    Text(
-                        "ค้นหาร้านจากทุกหมวด",
-                        color = Color(0xFF9A9EA5),
-                        fontSize = 14.sp,
-                        lineHeight = 18.sp
+                Box(
+                    Modifier
+                        .size(38.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(Color.White)
+                        .clickable(onClick = onBack),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.qg_shop_back),
+                        contentDescription = "ย้อนกลับ",
+                        modifier = Modifier.size(20.dp),
+                        tint = Color(0xFF17191D)
                     )
                 }
-                BasicTextField(
-                    value = query,
-                    onValueChange = { query = it },
-                    singleLine = true,
-                    cursorBrush = SolidColor(QgRed),
-                    textStyle = TextStyle(
-                        color = Color(0xFF17191D),
-                        fontSize = 14.sp,
-                        lineHeight = 18.sp
-                    ),
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
-        }
-
-        Spacer(Modifier.height(14.dp))
-        Row(
-            Modifier.fillMaxWidth().padding(horizontal = 2.dp),
-            verticalAlignment = Alignment.Top
-        ) {
-            Column(Modifier.weight(1f)) {
+                Spacer(Modifier.width(8.dp))
                 Text(
-                    "ร้านค้าทั้งหมด",
+                    "ค้นหา",
                     color = Color(0xFF17191D),
-                    fontSize = 17.sp,
-                    lineHeight = 22.sp,
+                    fontSize = 20.sp,
+                    lineHeight = 30.sp,
                     fontWeight = FontWeight.Bold
                 )
-                Spacer(Modifier.height(4.dp))
+            }
+        }
+        item(key = "search-field") {
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .height(44.dp)
+                    .shadow(
+                        elevation = 4.dp,
+                        shape = RoundedCornerShape(14.dp),
+                        clip = false,
+                        ambientColor = Color(0x0914181E),
+                        spotColor = Color(0x0914181E)
+                    )
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(Color.White)
+                    .border(1.dp, QgLine, RoundedCornerShape(14.dp))
+                    .padding(horizontal = 14.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.qg_nav_search),
+                    contentDescription = null,
+                    modifier = Modifier.size(20.dp),
+                    tint = Color(0xFF3F434A)
+                )
+                Spacer(Modifier.width(10.dp))
+                Box(Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
+                    if (query.isEmpty()) {
+                        Text(
+                            "ค้นหาร้านจากทุกหมวด",
+                            color = Color(0xFF9A9EA5),
+                            fontSize = 14.sp,
+                            lineHeight = 18.sp
+                        )
+                    }
+                    BasicTextField(
+                        value = query,
+                        onValueChange = { query = it },
+                        singleLine = true,
+                        cursorBrush = SolidColor(QgRed),
+                        textStyle = TextStyle(
+                            color = Color(0xFF17191D),
+                            fontSize = 14.sp,
+                            lineHeight = 18.sp
+                        ),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            }
+            Spacer(Modifier.height(14.dp))
+        }
+        item(key = "search-summary") {
+            Row(
+                Modifier.fillMaxWidth().padding(horizontal = 2.dp),
+                verticalAlignment = Alignment.Top
+            ) {
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        "ร้านค้าทั้งหมด",
+                        color = Color(0xFF17191D),
+                        fontSize = 17.sp,
+                        lineHeight = 22.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        "ค้นหาอาหาร เครื่องดื่ม ร้านขายของชำ และร้านค้าทั่วไปในที่เดียว",
+                        color = QgMuted,
+                        fontSize = 10.5.sp,
+                        lineHeight = 16.sp
+                    )
+                }
+                Text("${rows.size} ร้าน", color = QgMuted, fontSize = 10.5.sp, lineHeight = 16.sp)
+            }
+            Spacer(Modifier.height(8.dp))
+            if (rows.isEmpty()) {
                 Text(
-                    "ค้นหาอาหาร เครื่องดื่ม ร้านขายของชำ และร้านค้าทั่วไปในที่เดียว",
+                    "ไม่พบร้านที่ค้นหา",
                     color = QgMuted,
-                    fontSize = 10.5.sp,
-                    lineHeight = 16.sp
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 15.dp, vertical = 35.dp),
+                    fontSize = 16.sp
                 )
             }
-            Text(
-                "${rows.size} ร้าน",
-                color = QgMuted,
-                fontSize = 10.5.sp,
-                lineHeight = 16.sp
-            )
         }
-        Spacer(Modifier.height(8.dp))
-
-        if (rows.isEmpty()) {
-            Text(
-                "ไม่พบร้านที่ค้นหา",
-                color = QgMuted,
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 15.dp, vertical = 35.dp),
-                fontSize = 16.sp
-            )
-        } else {
-            rows.forEach { shop ->
-                CustomerSearchShopCard(shop = shop, compact = compact) { onOpenShop(shop) }
-                Spacer(Modifier.height(7.dp))
-            }
+        items(rows, key = { "search-shop:" + it.id }) { shop ->
+            CustomerSearchShopCard(shop = shop, compact = compact) { onOpenShop(shop) }
+            Spacer(Modifier.height(7.dp))
         }
-        Spacer(Modifier.height(24.dp))
+        item(key = "search-bottom-space") {
+            Spacer(Modifier.height(24.dp))
+        }
     }
 }
 
