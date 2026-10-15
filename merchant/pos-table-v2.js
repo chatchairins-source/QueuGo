@@ -148,16 +148,18 @@
     const btn=e.submitter||e.currentTarget?.querySelector('[type=submit]');window.qgmLoginPending=true;btn.disabled=true;btn.textContent='กำลังเข้าสู่ระบบ…';
     try{
       const email=value.includes('@')?value:qtAuthEmailFromPhone(value),auth=await qtSupabaseAuth('token?grant_type=password',{email,password});
-      const [profile,rows]=await Promise.all([qtLoadOwnSupabaseUser(auth.access_token,auth.user.id),qtSupabaseTable('pos_staff?select=user_id,shop_id,active&user_id=eq.'+auth.user.id,{accessToken:auth.access_token})]);
+      const [identity,rows]=await Promise.all([qtLoadOwnMerchantIdentity(auth.access_token,auth.user.id),qtSupabaseTable('pos_staff?select=user_id,shop_id,active&user_id=eq.'+auth.user.id,{accessToken:auth.access_token})]);
+      const profile=identity?.profile||null;
       if(profile?.role==='admin')throw Error('บัญชีนี้เป็นบัญชี Admin กรุณาเข้าสู่ระบบที่หน้า Admin');
       if(profile&&['suspended','deleted'].includes(profile.status))throw Error('บัญชีถูกระงับหรือปิดใช้งาน');
       if(rows?.length){
         if(!rows[0].active)throw Error('บัญชีพนักงานถูกปิดสิทธิ์');
         setSession({userId:auth.user.id,authUserId:auth.user.id,accessToken:auth.access_token,refreshToken:auth.refresh_token,expiresAt:auth.expires_at*1000,role:'pos_staff'});location.hash='#pos';window.qtShopRoute();return false;
       }
-      if(!profile)throw Error('ไม่พบบัญชีร้านค้าในฐานข้อมูล');const u=qtUserFromRow(profile);
+      if(!profile||!identity?.user)throw Error('ไม่พบบัญชีร้านค้าในฐานข้อมูล');const u=identity.user;
       if(u.type!=='shop')throw Error('บัญชีนี้ยังไม่ได้เข้าร่วมร้านค้า กรุณาใส่รหัสเชิญ');
-      QT_DB_CACHE.qt_users=[u];qtMarkClean('qt_users');setSession({userId:u.id,authUserId:profile.auth_user_id,accessToken:auth.access_token,refreshToken:auth.refresh_token||null,expiresAt:auth.expires_at?Number(auth.expires_at)*1000:qtJwtExpiryMs(auth.access_token),role:profile.role});navigate('dashboard');setTimeout(()=>qtBackgroundHydrate({light:false}),0);
+      if(!u.shopProfileId)throw Error('ข้อมูลร้านค้ายังไม่พร้อม กรุณาลองเข้าสู่ระบบใหม่');
+      QT_DB_CACHE.qt_users=[u];if(identity.shop)QT_SYNC.profileMaps={shopById:new Map([[identity.shop.id,u.id]]),shopByUserId:new Map([[u.id,identity.shop.id]])};qtMarkClean('qt_users');setSession({userId:u.id,authUserId:profile.auth_user_id,accessToken:auth.access_token,refreshToken:auth.refresh_token||null,expiresAt:auth.expires_at?Number(auth.expires_at)*1000:qtJwtExpiryMs(auth.access_token),role:profile.role});try{const key='qg-merchant-fast-v21:'+profile.auth_user_id;localStorage.removeItem(key)}catch(_){}navigate('dashboard');setTimeout(()=>qtBackgroundHydrate({light:false}),0);
     }catch(err){message(err);return false}
     finally{window.qgmLoginPending=false;if(btn.isConnected){btn.disabled=false;btn.textContent='เข้าสู่ระบบ'}}return false;
   };
