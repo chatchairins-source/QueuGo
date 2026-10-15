@@ -40,8 +40,19 @@ internal suspend fun uploadMerchantImage(
         output.toByteArray()
     } ?: error("อ่านไฟล์รูปไม่สำเร็จ")
 
-    val decoded = BitmapFactory.decodeByteArray(source, 0, source.size)
-        ?: error("ไฟล์รูปไม่ถูกต้อง")
+    val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+    BitmapFactory.decodeByteArray(source, 0, source.size, bounds)
+    require(bounds.outWidth > 0 && bounds.outHeight > 0) { "ไฟล์รูปไม่ถูกต้อง" }
+
+    var sample = 1
+    while (maxOf(bounds.outWidth, bounds.outHeight) / sample > 2400) sample *= 2
+    val decoded = BitmapFactory.decodeByteArray(
+        source,
+        0,
+        source.size,
+        BitmapFactory.Options().apply { inSampleSize = sample }
+    ) ?: error("ไฟล์รูปไม่ถูกต้อง")
+
     val maxSide = maxOf(decoded.width, decoded.height)
     val resized = if (maxSide > 1600) {
         val scale = 1600.0 / maxSide.toDouble()
@@ -53,20 +64,23 @@ internal suspend fun uploadMerchantImage(
         )
     } else decoded
 
-    fun compress(quality: Int): ByteArray {
-        val output = ByteArrayOutputStream()
-        check(resized.compress(Bitmap.CompressFormat.JPEG, quality, output)) {
-            "ปรับขนาดรูปไม่สำเร็จ"
+    val payload = try {
+        fun compress(quality: Int): ByteArray {
+            val output = ByteArrayOutputStream()
+            check(resized.compress(Bitmap.CompressFormat.JPEG, quality, output)) {
+                "ปรับขนาดรูปไม่สำเร็จ"
+            }
+            return output.toByteArray()
         }
-        return output.toByteArray()
+
+        var next = compress(82)
+        if (next.size > 3 * 1024 * 1024) next = compress(70)
+        if (next.size > 3 * 1024 * 1024) error("รูปหลังปรับขนาดยังใหญ่เกิน 3 MB")
+        next
+    } finally {
+        if (resized !== decoded && !resized.isRecycled) resized.recycle()
+        if (!decoded.isRecycled) decoded.recycle()
     }
-
-    var payload = compress(82)
-    if (payload.size > 3 * 1024 * 1024) payload = compress(70)
-    if (payload.size > 3 * 1024 * 1024) error("รูปหลังปรับขนาดยังใหญ่เกิน 3 MB")
-
-    if (resized !== decoded) resized.recycle()
-    decoded.recycle()
 
     val safeKind = kind.lowercase().replace(Regex("[^a-z0-9-]"), "").ifBlank { "image" }
     val objectPath = auth.session.authUserId + "/" + safeKind + "-" + UUID.randomUUID() + ".jpg"
