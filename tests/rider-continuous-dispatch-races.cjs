@@ -13,7 +13,7 @@ const id=n=>'00000000-0000-4000-8000-'+String(n).padStart(12,'0');
   const version=(await admin.query('show server_version_num')).rows[0].server_version_num;assert(Number(version)>=150000);checks++;
   if((await admin.query("select to_regclass('public.orders') existing")).rows[0].existing)throw Error('test requires a fresh empty database');
   await admin.query(require('./fixtures/rider-dispatch-schema.cjs')());
-  for(const suffix of ['_rider_continuous_dispatch_phase1.sql','_rider_dynamic_stop_plan_phase1.sql']){
+  for(const suffix of ['_rider_continuous_dispatch_phase1.sql','_rider_dynamic_stop_plan_phase1.sql','_rider_route_matrix_replenishment_phase1.sql']){
    const name=fs.readdirSync('supabase/migrations').find(n=>n.endsWith(suffix));await admin.query(fs.readFileSync('supabase/migrations/'+name,'utf8'));
   }
   const row=async n=>(await admin.query('select * from orders where id=$1',[id(n)])).rows[0];
@@ -35,7 +35,12 @@ const id=n=>'00000000-0000-4000-8000-'+String(n).padStart(12,'0');
   await admin.query("update rider_profiles set metadata='{}' where id=$1",[id(12)]);
   await Promise.all([a,b].map(c=>c.query("select set_config('test.uid',$1,false)",[id(101)])));
   await a.query('select qg_rider_dispatch_preference(true,false,true)');await admin.query("insert into queuego_platform_rules values('dispatch.continuous_enabled','1',now())");
-  await seed(30,'in_progress',11);await seed(31);await seed(32);await cache(30,31);await cache(30,32);
+  await seed(30,'in_progress',11);await seed(31);await seed(32);
+  // Independent workers cannot acquire the evidence lease simultaneously; it assigns no order.
+  const workers=await Promise.all([a.query('select queuego_route_matrix_refresh_claim(2) work'),b.query('select queuego_route_matrix_refresh_claim(2) work')]);
+  const leases=workers.map(r=>r.rows[0].work).filter(w=>w.leaseId);eq(leases.length,1);
+  eq((await row(31)).rider_id,null);await admin.query('select queuego_route_matrix_refresh_release($1)',[leases[0].leaseId]);
+  await cache(30,31);await cache(30,32);
   await Promise.all([a.query('select qg_dispatch_rider_offers()'),b.query('select qg_dispatch_rider_offers()')]);
   eq((await admin.query('select count(*)::int n from orders where next_after_order_id=$1',[id(30)])).rows[0].n,1);
   eq((await admin.query("select count(*)::int n from orders where rider_id=$1 and status in ('in_progress','rider_assigned')",[id(11)])).rows[0].n,2);

@@ -1,5 +1,6 @@
 // Service-only evidence producer for existing SQL dispatch/route-bundle quote, never an assigner.
 import {buildRoadMatrix} from './road-matrix.mjs';
+import {refreshRouteMatrices,workerTokenMatches} from './refresh.mjs';
 const uuid=v=>typeof v==='string'&&/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(v);
 export function createRouteBundleMatrixHandler(env,fetcher=fetch){
 return async(req)=>{
@@ -8,11 +9,17 @@ return async(req)=>{
  const key=env.get('QUEUEGO_LONGDO_KEY')??'';
  const reply=(value,status=200)=>Response.json(value,{status,headers:{'Cache-Control':'no-store'}});
  if(req.method!=='POST')return reply({error:'POST required'},405);
- if(!service||req.headers.get('authorization')!=='Bearer '+service)return reply({error:'service authorization required'},401);
+ if(!service||(req.headers.get('authorization')!=='Bearer '+service&&
+   !await workerTokenMatches(req.headers.get('x-queuego-route-worker'),env.get('QUEUEGO_ROUTE_MATRIX_WORKER_TOKEN'))))return reply({error:'service authorization required'},401);
  if(!key||!base)return reply({error:'routing not configured'},503);
  const headers={apikey:service,authorization:'Bearer '+service,'content-type':'application/json'};
  try{
   const input=await req.json();
+  if(input.action==='refresh'){
+   const produce=pair=>createRouteBundleMatrixHandler(env,fetcher)(new Request(req.url,{
+    method:'POST',headers:{authorization:'Bearer '+service,'content-type':'application/json'},body:JSON.stringify(pair)}));
+   return reply(await refreshRouteMatrices(base,headers,fetcher,produce));
+  }
   if(!uuid(input.primaryOrderId)||!uuid(input.candidateOrderId)||input.primaryOrderId===input.candidateOrderId)return reply({error:'invalid orders'},400);
   const fields='id,rider_id,status,updated_at,pickup_latitude,pickup_longitude,delivery_latitude,delivery_longitude';
   const res=await fetcher(base+'/rest/v1/orders?select='+fields+'&id=in.('+input.primaryOrderId+','+input.candidateOrderId+')',{headers,signal:AbortSignal.timeout(8000)});
