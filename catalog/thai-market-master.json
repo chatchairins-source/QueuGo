@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "policy": "Names and source units are evidence-backed public facts. suggested_unit is only set when QueueGo's existing Market unit model can represent the source without distortion. No price, cost, stock, route weight, barcode or image is inferred.",
+  "policy": "Names and source units are evidence-backed public facts. suggested_unit is only set when QueueGo's existing Market unit model can represent the source without distortion. No price, cost, stock, route weight, barcode or image is inferred. Product images remain null until QueueGo stores an approved image together with source and reuse-rights evidence.",
   "items": [
     {
       "slug": "kale-mixed",
@@ -179,10 +179,10 @@
       "suggested_pack_size": 1,
       "source_url": "https://www.dit.go.th/th/news/press-releases/",
       "source_name": "กรมการค้าภายใน กระทรวงพาณิชย์",
-      "source_note": "DIT market price monitoring 2569",
+      "source_note": "DIT Hungry Ghost / fresh whole duck market monitoring 25 Aug 2569",
       "retrieved_on": "2026-10-15",
       "image": null,
-      "source_unit": "ชิ้น"
+      "source_unit": "ตัว"
     },
     {
       "slug": "egg-size-2-10",
