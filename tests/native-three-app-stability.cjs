@@ -492,8 +492,12 @@ ok(
 );
 ok(
   riderRegistrationImage.includes('maxOf(bounds.outWidth, bounds.outHeight) / sample > 2048') &&
+  riderRegistrationImage.includes('val transformed = android.graphics.Bitmap.createBitmap(') &&
+  riderRegistrationImage.includes('if (scale < 1f) postScale(scale, scale)') &&
+  !riderRegistrationImage.includes('Bitmap.createScaledBitmap(') &&
+  !riderRegistrationImage.includes('val upright=') &&
   !riderRegistrationImage.includes('> 2800'),
-  'Rider registration image decode must keep peak Bitmap memory below the old 2800px ceiling'
+  'Rider registration image decode must sample before decode and avoid duplicate upright/scaled Bitmap peak memory'
 );
 
 ok(
