@@ -82,6 +82,14 @@ data class CustomerOrderContext(
     val rider: CustomerTrackingRider?
 )
 
+data class CustomerOrderEta(
+    val etaAt: String?,
+    val merchantReadyAt: String?,
+    val source: String,
+    val sharedRoute: Boolean,
+    val roadEtaVerified: Boolean
+)
+
 data class CustomerOrderItem(
     val name: String,
     val quantity: Int,
@@ -252,6 +260,28 @@ class CustomerApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
             "qg_customer_cancel_order",
             auth.session.accessToken,
             JSONObject().put("p_order_id", orderId)
+        )
+    }
+
+    suspend fun loadOrderEta(auth: NativeAuth, orderId: String): CustomerOrderEta? {
+        val raw = runCatching {
+            http.rpc(
+                "qg_customer_order_eta",
+                auth.session.accessToken,
+                JSONObject().put("p_order_id", orderId)
+            )
+        }.getOrNull() ?: return null
+        val row = when (raw) {
+            is JSONObject -> raw
+            is JSONArray -> raw.optJSONObject(0) ?: return null
+            else -> return null
+        }
+        return CustomerOrderEta(
+            etaAt = row.optNullable("eta_at"),
+            merchantReadyAt = row.optNullable("merchant_ready_estimate_at"),
+            source = row.optString("source").ifBlank { "unknown" },
+            sharedRoute = row.optBoolean("shared_route", false),
+            roadEtaVerified = row.optBoolean("road_eta_verified", false)
         )
     }
 
