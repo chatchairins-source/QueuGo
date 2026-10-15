@@ -4,7 +4,7 @@
 const MARKET_SHOPS=new Set(['market','meat','fish','vegetable','fruit']);
 const UNITS=['ชิ้น','กิโลกรัม','ขีด','กรัม','ถุง','แพ็ก','มัด','ลูก','ขวด','กล่อง'];
 const E=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const state={epoch:0,rows:[],categories:[],query:'',category:'',offset:0,hasMore:false,loading:false,shop:null};
+const state={epoch:0,rows:[],categories:[],query:'',category:'',offset:0,hasMore:false,loading:false,shop:null,gpRate:null};
 const shop=()=>{const u=currentUser?.();return u?.type==='shop'?u:null};
 const profileId=u=>u&&(u.shopProfileId||QT_SYNC?.profileMaps?.shopByUserId?.get(u.id)||null);
 const permitted=u=>MARKET_SHOPS.has(String(u?.category||''));
@@ -22,6 +22,10 @@ function shell(body){
   </section>`,'shop-profile');
 }
 function error(e){const msg=String(e?.message||e||'เกิดข้อผิดพลาด');const el=document.getElementById('market-catalog-error');if(el)el.textContent=msg;try{toast('แคตตาล็อกตลาด: '+msg)}catch(_){}}
+function gpRate(raw){const v=Array.isArray(raw)?raw[0]:raw;if(v&&typeof v==='object'){const n=Number(v.effective_gp_rate??v.rate??v.value);return Number.isFinite(n)?n:null}const n=Number(v);return Number.isFinite(n)?n:null}
+function deliveryPrice(storePrice){const p=Number(storePrice),r=Number(state.gpRate);return Number.isFinite(p)&&p>0&&Number.isFinite(r)&&r>=0&&r<=100?Math.round(p*(1+r/100)*100)/100:null}
+function deliveryNote(storePrice){const d=deliveryPrice(storePrice),r=Number(state.gpRate);return Number.isFinite(d)?`GP ${r.toLocaleString('th-TH',{maximumFractionDigits:2})}% · ราคาเดลิเวอรี่ ${d.toLocaleString('th-TH',{minimumFractionDigits:2,maximumFractionDigits:2})} บาท`:'ราคาเดลิเวอรี่คำนวณ GP อัตโนมัติหลังบันทึก'}
+window.qgMarketCatalogPricePreview=()=>{const input=document.querySelector('#market-catalog-add-form [name="price"]'),out=document.getElementById('market-catalog-delivery-preview');if(out)out.textContent=deliveryNote(input?.value)};
 function active(epoch,shopId){return epoch===state.epoch&&shopId===state.shop&&location.hash.replace('#','').split('/')[0]==='market-catalog'}
 function card(r){
   const linked=!!r.product_id;
@@ -29,7 +33,7 @@ function card(r){
   return `<article class="market-catalog-card" data-search="${E((r.name_th+' '+r.category).toLocaleLowerCase('th-TH'))}">
     ${image}<div class="market-catalog-info"><b>${E(r.name_th)}</b><small>${E(r.category)} · หน่วยอ้างอิง ${E(r.source_unit)}</small>
     ${r.suggested_unit?`<small>หน่วยที่ระบบแนะนำ: ${E(r.suggested_pack_size)} ${E(r.suggested_unit)} / ชุด</small>`:'<small>หน่วยอ้างอิงยังไม่ตรงกับหน่วยขายในระบบ — ร้านเลือกหน่วยเอง</small>'}
-    ${linked?`<strong>มีในร้านแล้ว · ${Number(r.delivery_price??r.price??0).toLocaleString('th-TH')} บาท</strong>`:''}</div>
+    ${linked?`<strong>มีในร้านแล้ว · หน้าร้าน ${Number(r.price??0).toLocaleString('th-TH')} บาท · เดลิเวอรี่ ${Number(r.delivery_price??r.price??0).toLocaleString('th-TH')} บาท</strong>`:''}</div>
     <button type="button" class="${linked?'qgm-outline':'qgm-primary'}" ${linked?'disabled':''} onclick="qgMarketCatalogChoose('${E(r.id)}')">${linked?'มีในร้านแล้ว':'เพิ่มเข้าร้าน'}</button>
   </article>`;
 }
@@ -59,10 +63,12 @@ async function load(){
   const epoch=++state.epoch;state.shop=id;state.loading=true;shell('<p>กำลังโหลดแคตตาล็อกตลาด...</p>');
   await recoverPending(id,epoch);
   try{
-    const [cats,page]=await Promise.all([
+    const [cats,page,gp]=await Promise.all([
       rpc('qg_market_master_categories',{}),
-      rpc('qg_market_catalog_page',{p_query:state.query,p_category:state.category,p_offset:state.offset})
+      rpc('qg_market_catalog_page',{p_query:state.query,p_category:state.category,p_offset:state.offset}),
+      rpc('effective_gp_rate',{p_shop_profile_id:id})
     ]);
+    state.gpRate=gpRate(gp);
     if(!active(epoch,id))return;
     state.categories=Array.isArray(cats)?cats:[];
     const rows=Array.isArray(page)?page:[];
@@ -81,7 +87,8 @@ window.qgMarketCatalogChoose=id=>{
   shell(`<form id="market-catalog-add-form" class="market-form">
     <button type="button" class="qgm-outline" onclick="qgRenderMarketCatalog()">‹ กลับแคตตาล็อก</button>
     <h2>${E(r.name_th)}</h2><p>${E(r.category)} · หน่วยอ้างอิง ${E(r.source_unit)}</p>
-    <label>ราคาขาย / ชุด (บาท)<input name="price" type="number" min="0.01" max="999999" step="0.01" required></label>
+    <label>ราคาหน้าร้าน / ชุด (บาท)<input name="price" type="number" min="0.01" max="999999" step="0.01" required oninput="qgMarketCatalogPricePreview()"></label>
+    <small id="market-catalog-delivery-preview">ราคาเดลิเวอรี่คำนวณ GP อัตโนมัติหลังบันทึก</small>
     <label>หน่วยสต๊อก<select name="unit">${UNITS.map(u=>`<option value="${E(u)}" ${u===suggestedUnit?'selected':''}>${E(u)}</option>`).join('')}</select></label>
     <label>ปริมาณต่อ 1 ชุดขาย<input name="pack" type="number" min="0.001" max="999999" step="0.001" value="${E(pack)}" required></label>
     <label>น้ำหนักต่อชุด (กก.)<input name="weight" type="number" min="0.001" max="999999" step="0.001" value="${E(weight)}" placeholder="กรอกน้ำหนักจริง" required></label>
@@ -92,6 +99,7 @@ window.qgMarketCatalogChoose=id=>{
     <div class="market-actions"><button class="qgm-primary" type="submit">เพิ่มสินค้าเข้าร้าน</button></div>
   </form>`);
   const form=document.getElementById('market-catalog-add-form');
+  qgMarketCatalogPricePreview();
   form.onsubmit=async ev=>{
     ev.preventDefault();if(state.loading)return;
     const f=new FormData(form),body={
