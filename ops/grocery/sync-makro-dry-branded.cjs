@@ -40,7 +40,7 @@ function compact(doc,retrievedAt,source,sourceRank){
   const factor=Number(doc.unitFactor);
   return {
     source_product_id:String(doc.productId||doc.id||''),
-    source_rank:sourceRank,
+    source_rank:source.priority*1000000+sourceRank,
     source_category:source.root,
     source_url:source.url,
     sku:scalar(doc.sku,100),
