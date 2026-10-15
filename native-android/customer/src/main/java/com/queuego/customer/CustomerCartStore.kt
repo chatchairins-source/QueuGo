@@ -62,6 +62,19 @@ class CustomerCartStore(context: Context, userId: String) {
 
     internal fun pending(body: JSONObject, lines: List<CartLine>) = PendingCustomerCheckout(body, serialize(lines))
 
+    internal fun rideJournal(): CheckoutJournal<PendingRide> = object : CheckoutJournal<PendingRide> {
+        override fun read(): PendingRide? {
+            val raw = boundedPref("pending_ride", 1024) ?: return null
+            val o = JSONObject(raw)
+            return PendingRide(java.util.UUID.fromString(o.getString("request")).toString(), java.util.UUID.fromString(o.getString("quote")).toString())
+        }
+        override fun write(pending: PendingRide) {
+            check(prefs.edit().putString("pending_ride", JSONObject().put("request",pending.requestId).put("quote",pending.quoteId).toString()).commit()) { "บันทึกคำขอเรียกรถไม่สำเร็จ" }
+        }
+        override fun clear() { check(prefs.edit().remove("pending_ride").commit()) }
+        override fun complete(pending: PendingRide) { if (read() == pending) clear() }
+    }
+
     internal fun journal(): CheckoutJournal<PendingCustomerCheckout> = object : CheckoutJournal<PendingCustomerCheckout> {
         override fun read(): PendingCustomerCheckout? {
             val raw = boundedPref("pending_checkout", CUSTOMER_PENDING_CHECKOUT_MAX_JSON_CHARS) ?: return null

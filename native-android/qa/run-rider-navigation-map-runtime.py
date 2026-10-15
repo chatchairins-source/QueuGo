@@ -16,12 +16,26 @@ registry.mkdir(parents=True, exist_ok=True)
 os.environ["ANDROID_AVD_HOME"] = str(registry)
 
 manager = sdk / "cmdline-tools/latest/bin"
-run(
-    [str(manager / "sdkmanager"), "emulator", "platform-tools", "system-images;android-30;default;x86_64"],
-    input="y\n" * 100,
-    text=True,
-    timeout=300,
-)
+sdk_packages = ["emulator", "platform-tools", "system-images;android-30;default;x86_64"]
+for attempt in range(1, 4):
+    try:
+        run(
+            [str(manager / "sdkmanager"), *sdk_packages],
+            input="y\n" * 100,
+            text=True,
+            # Keep the real emulator/runtime gate intact. Hosted runners can be
+            # slow while fetching the pinned Android 30 x86_64 system image.
+            timeout=600,
+        )
+        break
+    except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
+        if attempt == 3:
+            raise
+        # sdkmanager can leave a truncated archive under .temp after a transient
+        # CDN/network failure ("unknown archive"). Remove only download staging
+        # before retrying; installed SDK packages and the runtime test stay intact.
+        shutil.rmtree(sdk / ".temp", ignore_errors=True)
+        time.sleep(5)
 name = "queuego_nav_map_" + os.environ.get("GITHUB_RUN_ID", "local")
 avd_path = temp / name
 run(

@@ -534,7 +534,7 @@ class QueueGoApi {
         private const val BASE_URL = "https://pkypiqhlrmzocysgeqew.supabase.co"
         private const val PUBLISHABLE_KEY = "sb_publishable_Vn2Il4jp-iBtzNsGRNY8Lg_Tpvk2Vre"
         private const val TIMEOUT = 15000
-        private const val RIDER_JOB_FIELDS = "id,order_number,status,pickup_address,pickup_latitude,pickup_longitude," +
+        private const val RIDER_JOB_FIELDS = "id,order_number,status,fulfillment_vertical,ride_distance_km,ride_duration_minutes,pickup_address,pickup_latitude,pickup_longitude," +
             "delivery_address,delivery_latitude,delivery_longitude,delivery_fee,rider_delivery_payout,next_after_order_id,route_bundle_id,subtotal,total_amount,market_order_id," +
             "rider_arrived_shop_at,rider_arrived_customer_at"
     }
@@ -1043,6 +1043,28 @@ class QueueGoApi {
             }
         }
 
+    suspend fun passengerLicenseStatus(auth: QueueGoAuth): RiderPassengerLicenseStatus =
+        withContext(Dispatchers.IO) {
+            riderPassengerLicenseStatusFromRpc(
+                rpc("qg_rider_public_license_status", auth.session.accessToken, JSONObject())
+            )
+        }
+
+    suspend fun submitPassengerLicense(
+        context: Context,
+        auth: QueueGoAuth,
+        photoUri: Uri
+    ): RiderPassengerLicenseStatus = withContext(Dispatchers.IO) {
+        val path = uploadEvidence(context, auth, photoUri)
+        riderPassengerLicenseStatusFromRpc(
+            rpc(
+                "qg_rider_submit_public_license",
+                auth.session.accessToken,
+                JSONObject().put("p_evidence_path", path)
+            )
+        )
+    }
+
     suspend fun reverificationStatus(auth: QueueGoAuth): RiderReverificationStatus =
         withContext(Dispatchers.IO) {
             riderReverificationStatusFromRpc(
@@ -1494,7 +1516,7 @@ class QueueGoApi {
         val activeRows = requestArray(
             "GET",
             "/rest/v1/orders?select=" + fields +
-                "&order_type=eq.shopping&rider_id=eq." + enc(profileId) +
+                "&or=(order_type.eq.shopping,and(order_type.eq.service,fulfillment_vertical.eq.ride))&rider_id=eq." + enc(profileId) +
                 "&status=in.(rider_assigned,preparing,ready,assigned,picked_up,in_progress)" +
                 "&order=next_after_order_id.asc.nullsfirst,created_at.asc&limit=5",
             auth.session.accessToken
@@ -1529,7 +1551,7 @@ class QueueGoApi {
         }
 
         var bundle = RiderRouteBundleState()
-        if (online && active != null && active.marketOrderId == null) {
+        if (online && active != null && !active.isPassenger && active.marketOrderId == null) {
             bundle = runCatching { readRouteBundleState(auth, profileId) }
                 .getOrElse { failure ->
                     if (currentRows.any { !it.isNull("route_bundle_id") && it.has("route_bundle_id") }) throw failure
@@ -1590,10 +1612,10 @@ class QueueGoApi {
         withContext(Dispatchers.IO) {
             if (!referenceId.matches(Regex("[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}")))
                 return@withContext null
-            val fields = "id,order_number,status,pickup_address,pickup_latitude,pickup_longitude," +
+            val fields = "id,order_number,status,fulfillment_vertical,ride_distance_km,ride_duration_minutes,pickup_address,pickup_latitude,pickup_longitude," +
                 "delivery_address,delivery_latitude,delivery_longitude,delivery_fee,subtotal,total_amount,market_order_id," +
                 "rider_arrived_shop_at,rider_arrived_customer_at"
-            val base = "/rest/v1/orders?select=" + fields + "&order_type=eq.shopping&rider_id=eq." + enc(profileId)
+            val base = "/rest/v1/orders?select=" + fields + "&or=(order_type.eq.shopping,and(order_type.eq.service,fulfillment_vertical.eq.ride))&rider_id=eq." + enc(profileId)
             val direct = requestAny("GET", base + "&id=eq." + enc(referenceId) + "&limit=1", auth.session.accessToken, null) as? JSONArray
                 ?: error("รูปแบบข้อมูลการแจ้งเตือนไม่ถูกต้อง")
             if (direct.length() > 0) return@withContext parseJob(direct.getJSONObject(0))
@@ -1952,6 +1974,25 @@ class QueueGoApi {
         }
     }
 
+    suspend fun passengerAction(auth: QueueGoAuth, job: RiderJob, action: String): String = withContext(Dispatchers.IO) {
+        require(job.isPassenger) { "ต้องเป็นเที่ยวโดยสาร" }
+        val expected = when (action) {
+            "arrive_pickup" -> "rider_assigned"
+            "start", "arrive_dropoff" -> "in_progress"
+            "complete" -> "completed"
+            else -> error("ขั้นตอนเที่ยวไม่ถูกต้อง")
+        }
+        val result = actionOnce(auth, "ride", JSONObject().put("p_order_id", job.id).put("p_action", action)) as? JSONObject
+            ?: error("ยังยืนยันผลไม่ได้ กรุณาตรวจสถานะอีกครั้ง")
+        val status = result.optString("status")
+        if (result.optBoolean("requeued", false)) {
+            check(status == "searching_rider") { "สถานะเที่ยวเปลี่ยน กรุณาตรวจสอบอีกครั้ง" }
+            return@withContext status
+        }
+        check(status == expected || status == "completed") { "สถานะเที่ยวเปลี่ยน กรุณาตรวจสอบอีกครั้ง" }
+        status
+    }
+
     private fun actionOnce(auth: QueueGoAuth, kind: String, payload: JSONObject): Any {
         val seed = auth.user.id + "|" + kind + "|" + payload.toString()
         val requestId = UUID.nameUUIDFromBytes(seed.toByteArray(StandardCharsets.UTF_8)).toString()
@@ -2255,7 +2296,10 @@ class QueueGoApi {
         shopCash = o.doubleOrNull("subtotal"),
         customerCash = o.doubleOrNull("total_amount"),
         customerSubtotal = o.doubleOrNull("subtotal"),
-        customerDeliveryFee = o.doubleOrNull("delivery_fee")
+        customerDeliveryFee = o.doubleOrNull("delivery_fee"),
+        fulfillmentVertical = riderNullableText(o.optString("fulfillment_vertical")) ?: "food",
+        rideDurationMinutes = o.doubleOrNull("ride_duration_minutes"),
+        rideDistanceKm = o.doubleOrNull("ride_distance_km")
     )
 
     private fun JSONObject.doubleOrNull(name: String): Double? =

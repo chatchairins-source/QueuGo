@@ -23,13 +23,19 @@ export async function buildRoadMatrix(points,key,{fetcher=fetch,signal}={}){
    const {id,from,to}=tasks[cursor++];
    signal?.throwIfAborted();
    if(from.lat===to.lat&&from.lng===to.lng){edges[id]={km:0,minutes:0};continue;}
-   const url=new URL('https://api.longdo.com/RouteService/geojson/route');
-   for(const [name,value] of Object.entries({flon:from.lng,flat:from.lat,tlon:to.lng,tlat:to.lat,type:1,locale:'th',restrict:1,key}))url.searchParams.set(name,String(value));
-   const response=await fetcher(url,{signal:signal?AbortSignal.any([signal,AbortSignal.timeout(12000)]):AbortSignal.timeout(12000)});
-   if(!response.ok)throw Error('routing unavailable');
-   const raw=await response.text();if(raw.length>4_000_000)throw Error('routing response too large');
-   edges[id]=parseRoadLeg(JSON.parse(raw));
+   edges[id]=await fetchRoadLeg(from,to,key,{fetcher,signal});
   }
  }));
  return edges;
+}
+
+export async function fetchRoadLeg(from,to,key,{fetcher=fetch,signal}={}){
+ if(!validPoint(from)||!validPoint(to)||typeof key!=='string'||!key)throw Error('invalid road request');
+ signal?.throwIfAborted();
+ const url=new URL('https://api.longdo.com/RouteService/geojson/route');
+ for(const [name,value] of Object.entries({flon:from.lng,flat:from.lat,tlon:to.lng,tlat:to.lat,type:1,locale:'th',restrict:1,key}))url.searchParams.set(name,String(value));
+ const response=await fetcher(url,{signal:signal?AbortSignal.any([signal,AbortSignal.timeout(12000)]):AbortSignal.timeout(12000)});
+ if(!response.ok)throw Error('routing unavailable');
+ const raw=await response.text();if(raw.length>4_000_000)throw Error('routing response too large');
+ return parseRoadLeg(JSON.parse(raw));
 }

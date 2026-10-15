@@ -208,7 +208,7 @@ jobs:
       # Public APK/AAB delivery requires the full three-role Release Gate.
 
   continuous-dispatch-races:
-    if: ${{ startsWith(github.ref, 'refs/heads/work-native-rider-continuous-dispatch-') }}
+    if: ${{ startsWith(github.ref, 'refs/heads/work-native-rider-continuous-dispatch-') || startsWith(github.ref, 'refs/heads/work-native-ride-passenger-') }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     services:
@@ -236,6 +236,36 @@ jobs:
         env:
           QG_TEST_PG_URL: postgresql://postgres:isolated-ci-test@127.0.0.1:5432/queuego_dispatch_gate
         run: node tests/rider-continuous-dispatch-races.cjs
+
+  passenger-ride-races:
+    if: ${{ startsWith(github.ref, 'refs/heads/work-native-ride-passenger-') || startsWith(github.ref, 'refs/heads/work-native-rider-continuous-dispatch-') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    services:
+      postgres:
+        image: postgres@sha256:2d2b8998d31037bf721cfdf764d76ba74171b4fab3431b7f72c27c56ddbdf9e3
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: isolated-ci-test
+          POSTGRES_DB: queuego_passenger_gate
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d queuego_passenger_gate"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Independent PostgreSQL Passenger Ride races
+        env:
+          QG_TEST_PG_URL: postgresql://postgres:isolated-ci-test@127.0.0.1:5432/queuego_passenger_gate
+        run: node tests/passenger-ride-races.cjs
 
   map-display-only:
     if: ${{ startsWith(github.ref, 'refs/heads/work-native-map-display-') || github.ref == 'refs/heads/work-native-rider-authenticated-20261012' || github.ref == 'refs/heads/work-native-marker-family-20261013' }}
@@ -281,7 +311,7 @@ jobs:
           retention-days: 14
 
   navigation-map-runtime:
-    if: ${{ startsWith(github.ref, 'refs/heads/work-native-rider-continuous-dispatch-') || startsWith(github.ref, 'refs/heads/work-native-rider-navigation-map-') || startsWith(github.ref, 'refs/heads/work-native-rider-nav-confidence-') || startsWith(github.ref, 'refs/heads/work-native-rider-heading-confidence-') || startsWith(github.ref, 'refs/heads/work-native-rider-nav-viewport-puck-') || startsWith(github.ref, 'refs/heads/work-native-rider-nav-route-cache-') || startsWith(github.ref, 'refs/heads/work-native-rider-nav-route-resilience-') || startsWith(github.ref, 'refs/heads/work-native-rider-nav-route-cancellation-') || startsWith(github.ref, 'refs/heads/work-native-rider-nav-unified-') || startsWith(github.ref, 'refs/heads/work-native-rider-nav-local-roads-') }}
+    if: ${{ startsWith(github.ref, 'refs/heads/work-native-rider-continuous-dispatch-') || startsWith(github.ref, 'refs/heads/work-native-ride-passenger-') || startsWith(github.ref, 'refs/heads/work-native-rider-navigation-map-') || startsWith(github.ref, 'refs/heads/work-native-rider-nav-confidence-') || startsWith(github.ref, 'refs/heads/work-native-rider-heading-confidence-') || startsWith(github.ref, 'refs/heads/work-native-rider-nav-viewport-puck-') || startsWith(github.ref, 'refs/heads/work-native-rider-nav-route-cache-') || startsWith(github.ref, 'refs/heads/work-native-rider-nav-route-resilience-') || startsWith(github.ref, 'refs/heads/work-native-rider-nav-route-cancellation-') || startsWith(github.ref, 'refs/heads/work-native-rider-nav-unified-') || startsWith(github.ref, 'refs/heads/work-native-rider-nav-local-roads-') }}
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:

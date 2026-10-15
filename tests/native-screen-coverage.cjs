@@ -92,8 +92,9 @@ ok(riderHome.includes('private fun RiderBlueprintBrandPill()')&&riderHome.includ
    'Rider Native home topbar must retain the Production QueueGo Rider brand pill beside online status');
 ok(riderHome.includes('shop = offerShopDisplay')&&riderHome.includes('logoUrl = shop?.shopLogo')&&
    riderHome.includes('value = shop?.shopName ?: job.pickupAddress ?: "ร้านค้า"')&&
-   riderHome.includes('trailing = "รับสินค้า"')&&riderHome.includes('trailing = "ส่งสินค้า"'),
-   'Rider offer card must retain Production shop identity and pickup/delivery row semantics');
+   riderHome.includes('trailing = if (job.isPassenger) "จุดรับ" else "รับสินค้า"')&&
+   riderHome.includes('trailing = if (job.isPassenger) "จุดส่ง" else "ส่งสินค้า"'),
+   'Rider offer card must retain Production shop identity and pickup/delivery row semantics while giving Ride passenger-specific labels');
 ok(riderApi.includes('suspend fun offerShopDisplay(')&&riderApi.includes('/rest/v1/orders?select=shop_id&id=eq.')&&
    riderApi.includes('/rest/v1/shop_profiles?select=shop_name,public_logo&id=eq.'),
    'Rider offer identity must come from the authenticated Production order/shop profile path, not mock data');

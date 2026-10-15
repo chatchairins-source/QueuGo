@@ -628,7 +628,11 @@ private fun CustomerShell(
         }
     }
     LaunchedEffect(cart, localStateLoaded) {
-        if (localStateLoaded) withContext(Dispatchers.IO) { cartStore.save(cart) }
+        if (localStateLoaded) {
+            try { withContext(Dispatchers.IO) { cartStore.save(cart) } }
+            catch (e: CancellationException) { throw e }
+            catch (_: Exception) { /* Keep visible state and the durable checkout journal for recovery. */ }
+        }
     }
     LaunchedEffect(auth.session.accessToken, screen, selectedOrder?.id, lifecycle) {
         if (screen == "orders" || screen == "order") {
@@ -725,6 +729,7 @@ private fun CustomerShell(
                     onSearch = { screen = "search" },
                     onCategory = {
                         when (it) {
+                            "ride" -> screen = "ride"
                             "market" -> screen = "market"
                             "laundry" -> screen = "laundry"
                             "shopping" -> {
@@ -743,6 +748,13 @@ private fun CustomerShell(
                     },
                     onBannerLink = ::openHomeBannerLink
                 )
+                "ride" -> CustomerRideScreen(auth = auth, initialPickup = location, cartStore = cartStore, onContact = { id -> scope.launch {
+                        try {
+                            selectedOrder = api.loadOrderById(auth,id) ?: error("อ่านเที่ยวไม่ได้ กรุณาลองใหม่")
+                            screen = "chat"
+                        } catch (e: CancellationException) { throw e }
+                        catch (e: Exception) { message = e.message }
+                    } }, onBack = { screen = "home" })
                 "location" -> CustomerLocationPickerScreen(
                     location = location,
                     address = address,
@@ -1131,7 +1143,16 @@ private fun CustomerShell(
                 "laundry-order" -> selectedLaundryOrder?.let {
                     LaundryOrderDetailScreen(auth = auth, order = it, onBack = { screen = "orders" })
                 }
-                "order" -> CustomerOrderTrackingScreen(
+                "order" -> if (selectedOrder?.fulfillmentVertical == "ride") {
+                    CustomerRideScreen(auth = auth, initialPickup = location, cartStore = cartStore,
+                        initialOrderId = selectedOrder?.id, onContact = { id -> scope.launch {
+                        try {
+                            selectedOrder = api.loadOrderById(auth,id) ?: error("อ่านเที่ยวไม่ได้ กรุณาลองใหม่")
+                            screen = "chat"
+                        } catch (e: CancellationException) { throw e }
+                        catch (e: Exception) { message = e.message }
+                    } }, onBack = { screen = "orders" })
+                } else CustomerOrderTrackingScreen(
                     auth = auth,
                     order = selectedOrder,
                     items = orderItems,
@@ -1410,6 +1431,9 @@ internal fun CustomerHome(
                     )
                 }
             }
+        }
+        item(key = "home-ride") {
+            OutlinedButton(onClick = { onCategory("ride") },modifier = Modifier.fillMaxWidth()) { Text("รับส่งผู้โดยสาร") }
         }
         item(key = "home-search") {
             Row(

@@ -111,20 +111,47 @@ def capture_customer_market(directory: Path, dimensions: str):
     path = directory / "market-home-navigation.xml"
     nodes = read_ui(path)
     target = None
+    category_labels = {"อาหาร", "เครื่องดื่ม", "ร้านขายของชำ", "ฝากซัก", "ตลาดสด", "ช้อปปิ้ง"}
+
+    # Ride adds a real Home action above the category row, so on shorter viewports
+    # the row can legitimately start below the visible LazyColumn window. Reveal
+    # the row first by swiping inside the actual vertically-scrollable semantics
+    # bounds; only then perform the category row's horizontal swipes.
+    for _ in range(5):
+        target = next((n for n in nodes if n.get("text") == "ตลาดสด"), None)
+        anchor = next((n for n in nodes if n.get("text") in category_labels), None)
+        if target is not None or anchor is not None:
+            break
+        scrollables = []
+        for node in nodes:
+            if node.get("scrollable") != "true":
+                continue
+            bounds = [int(x) for x in re.findall(r"\d+", node.get("bounds", ""))]
+            if len(bounds) == 4 and bounds[2] > bounds[0] and bounds[3] > bounds[1]:
+                scrollables.append((bounds, node))
+        assert scrollables, "Customer Home vertical scroll container missing"
+        bounds, _ = max(scrollables, key=lambda item: (item[0][3] - item[0][1]) * (item[0][2] - item[0][0]))
+        x = (bounds[0] + bounds[2]) // 2
+        start_y = bounds[3] - max(24, (bounds[3] - bounds[1]) // 10)
+        end_y = bounds[1] + max(24, (bounds[3] - bounds[1]) // 3)
+        assert bounds[0] <= x <= bounds[2] and bounds[1] < end_y < start_y < bounds[3]
+        run(adb + ["shell", "input", "swipe", str(x), str(start_y), str(x), str(end_y), "350"])
+        nodes = read_ui(path)
+
     for _ in range(6):
         target = next((n for n in nodes if n.get("text") == "ตลาดสด"), None)
         if target is not None:
             break
         # The current Home category row scrolls horizontally. Derive its y from
         # a rendered category label instead of using guessed screen coordinates.
-        anchor = next((n for n in nodes if n.get("text") in ("อาหาร", "เครื่องดื่ม", "ของใช้", "ฝากซัก")), None)
-        assert anchor is not None, "Customer category row missing"
+        anchor = next((n for n in nodes if n.get("text") in category_labels), None)
+        assert anchor is not None, "Customer category row missing after bounded vertical reveal"
         bounds = [int(x) for x in re.findall(r"\d+", anchor.get("bounds", ""))]
         assert len(bounds) == 4 and 0 <= bounds[1] < bounds[3] <= height
         y = (bounds[1] + bounds[3]) // 2
         run(adb + ["shell", "input", "swipe", str(width - 40), str(y), "40", str(y), "350"])
         nodes = read_ui(path)
-    assert target is not None, "Market category did not become visible after bounded swipes"
+    assert target is not None, "Market category did not become visible after bounded vertical/horizontal swipes"
     bounds = [int(x) for x in re.findall(r"\d+", target.get("bounds", ""))]
     assert len(bounds) == 4 and bounds[2] > bounds[0] and bounds[3] > bounds[1]
     run(adb + ["shell", "input", "tap", str((bounds[0] + bounds[2]) // 2), str((bounds[1] + bounds[3]) // 2)])
