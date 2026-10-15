@@ -1,6 +1,7 @@
 -- Searchable Makro source catalog for Grocery Merchant Web.
--- User-locked scope: branded dry-grocery only. No fresh market, frozen/chilled food,
--- beverages root, electrical appliances, alcohol or tobacco.
+-- User-locked scope: branded, shelf-stable grocery-store products only.
+-- Primary food root is dry-grocery; personal-care is used only to reach the requested 10k.
+-- No fresh market, frozen/chilled food, electrical appliances, alcohol or tobacco.
 -- Remote Makro images are Merchant catalog previews only; products.image remains null
 -- until a store supplies/uses a separately approved production image path.
 
@@ -10,6 +11,7 @@ create table if not exists public.grocery_source_products (
   source text not null,
   source_product_id text not null,
   source_rank integer not null check (source_rank >= 0),
+  source_category text not null,
   sku text,
   barcode text,
   brand text not null,
@@ -27,10 +29,16 @@ create table if not exists public.grocery_source_products (
   updated_at timestamptz not null default now(),
   primary key (source,source_product_id),
   check (source='makro-pro'),
-  check (deepest_category='dry-grocery' or deepest_category like 'dry-grocery/%'),
+  check (source_category in ('dry-grocery','health-beauty/personal-care')),
+  check (deepest_category=source_category or deepest_category like source_category||'/%'),
   check (length(btrim(brand)) between 1 and 250),
   check (length(btrim(title_th)) between 1 and 500),
-  check (source_url='https://www.makro.pro/th/c/dry-grocery'),
+  check (
+    source_url=case source_category
+      when 'dry-grocery' then 'https://www.makro.pro/th/c/dry-grocery'
+      when 'health-beauty/personal-care' then 'https://www.makro.pro/th/c/health-beauty/personal-care'
+    end
+  ),
   check (image_url is null or image_url like 'https://images.mango-prod.siammakro.cloud/%')
 );
 
@@ -71,6 +79,9 @@ immutable
 set search_path=public,pg_temp
 as $$
   select case
+    when coalesce(p_deepest_category,'') like 'health-beauty/personal-care/%hair%' then 'ยาสระผม'
+    when coalesce(p_deepest_category,'') like 'health-beauty/personal-care/%women%' then 'ของใช้ส่วนตัว'
+    when coalesce(p_deepest_category,'') like 'health-beauty/personal-care/%' then 'ของใช้ส่วนตัว'
     when coalesce(p_deepest_category,'') like '%instant-noodles%' then 'บะหมี่กึ่งสำเร็จรูป'
     when coalesce(p_deepest_category,'') like '%rice%' then 'ข้าวสาร'
     when coalesce(p_deepest_category,'') ~ '(canned|can-food|fish-can)' then 'อาหารกระป๋อง'
@@ -119,6 +130,7 @@ begin
       s.source,
       s.source_product_id,
       s.source_rank,
+      s.source_category,
       s.sku,
       s.barcode,
       s.brand,
@@ -234,7 +246,7 @@ begin
     'barcode',s.barcode,
     'catalog_preview_image',s.image_url,
     'catalog_preview_only',true,
-    'catalog_source_category','dry-grocery',
+    'catalog_source_category',s.source_category,
     'catalog_deepest_category',s.deepest_category,
     'catalog_retrieved_at',s.retrieved_at
   );
@@ -302,6 +314,8 @@ declare
   brand_value text;
   title_value text;
   deepest text;
+  source_category_value text;
+  source_url_value text;
   image_value text;
   retrieved timestamptz;
   rank_value integer;
@@ -325,6 +339,8 @@ begin
     brand_value:=btrim(coalesce(r->>'brand',''));
     title_value:=btrim(coalesce(r->>'title_th',''));
     deepest:=lower(btrim(coalesce(r->>'deepest_category','')));
+    source_category_value:=lower(btrim(coalesce(r->>'source_category','')));
+    source_url_value:=btrim(coalesce(r->>'source_url',''));
     image_value:=nullif(btrim(coalesce(r->>'image_url','')),'');
     retrieved:=nullif(r->>'retrieved_at','')::timestamptz;
     rank_value:=coalesce((r->>'source_rank')::integer,-1);
@@ -333,8 +349,13 @@ begin
        or brand_value=''
        or brand_value ~* '^(?:-|n/?a|na|none|no\s*brand|unbranded|ไม่มีแบรนด์|ไม่มียี่ห้อ|ไม่ระบุ)$'
        or title_value=''
-       or deepest !~ '^dry-grocery(/|$)'
-       or deepest ~ '(^|/)(eggs?|frozen|tofu|fresh([^/]*|$)|chilled|alcohol|beer|wine|liquor|spirits?|tobacco|cigarettes?)(/|$)'
+       or source_category_value not in ('dry-grocery','health-beauty/personal-care')
+       or not (deepest=source_category_value or deepest like source_category_value||'/%')
+       or source_url_value<>case source_category_value
+            when 'dry-grocery' then 'https://www.makro.pro/th/c/dry-grocery'
+            when 'health-beauty/personal-care' then 'https://www.makro.pro/th/c/health-beauty/personal-care'
+          end
+       or deepest ~ '(^|/)(eggs?|frozen|tofu|fresh([^/]*|$)|chilled|fresh-market|market-fresh|electronics?|electrical|appliances?|alcohol|beer|wine|liquor|spirits?|tobacco|cigarettes?)(/|$)'
        or retrieved is null
        or rank_value<0
     then
@@ -347,21 +368,22 @@ begin
     end if;
 
     insert into public.grocery_source_products(
-      source,source_product_id,source_rank,sku,barcode,brand,title_th,title_en,
+      source,source_product_id,source_rank,source_category,sku,barcode,brand,title_th,title_en,
       deepest_category,image_url,unit_size,unit_type,unit_factor,source_url,
       retrieved_at,active,updated_at
     )
     values(
-      'makro-pro',source_id,rank_value,
+      'makro-pro',source_id,rank_value,source_category_value,
       nullif(r->>'sku',''),nullif(r->>'barcode',''),brand_value,title_value,
       nullif(r->>'title_en',''),deepest,image_value,
       nullif(r->>'unit_size',''),nullif(r->>'unit_type',''),
       nullif(r->>'unit_factor','')::numeric,
-      'https://www.makro.pro/th/c/dry-grocery',
+      source_url_value,
       retrieved,false,now()
     )
     on conflict(source,source_product_id) do update set
       source_rank=excluded.source_rank,
+      source_category=excluded.source_category,
       sku=excluded.sku,
       barcode=excluded.barcode,
       brand=excluded.brand,
