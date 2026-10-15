@@ -30,7 +30,7 @@ internal suspend fun readRiderRegistrationDocument(context: Context, uri: Uri, a
     BitmapFactory.decodeByteArray(bytes, 0, bytes.size, bounds)
     require(bounds.outWidth > 0 && bounds.outHeight > 0) { "ไม่สามารถอ่านรูปภาพได้ กรุณาเลือกไฟล์ใหม่" }
     var sample = 1
-    while (maxOf(bounds.outWidth, bounds.outHeight) / sample > 2800) sample *= 2
+    while (maxOf(bounds.outWidth, bounds.outHeight) / sample > 2048) sample *= 2
     val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size, BitmapFactory.Options().apply { inSampleSize = sample })
         ?: error("ไม่สามารถอ่านรูปภาพได้ กรุณาเลือกไฟล์ใหม่")
     try {
