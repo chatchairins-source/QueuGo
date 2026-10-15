@@ -7,10 +7,12 @@ const sql=fs.readFileSync('supabase/migrations/20261015165000_grocery_makro_full
 const merchant=fs.readFileSync('merchant/grocery-catalog.js','utf8');
 const workflow=fs.readFileSync('.github/workflows/makro-public-catalog-probe.yml','utf8');
 ok(sync.includes('/search/api/v1/indexes/products/search'),'sync must use captured Makro public search endpoint');
-ok(sync.includes("includes('dry-grocery')"),'sync must lock source to dry-grocery');
+ok(sync.includes("const ROOTS=['dry-grocery'];"),'sync must lock source to dry-grocery only');
+ok(!sync.includes("'beverages'"),'sync must not pad the catalog with the beverages root');
 ok(sync.includes('validBrand'),'sync must reject missing/placeholder brands');
-for(const token of ['eggs?','frozen','tofu','dairy-products','fresh','chilled','meat','seafood','vegetable','fruit'])ok(sync.includes(token),'sync must exclude '+token);
-ok(sync.includes('items.length<8000'),'sync must fail closed if branded dry result is unexpectedly small');
+for(const token of ['eggs?','frozen','tofu','fresh','chilled','meat','seafood','vegetable','fruit'])ok(sync.includes(token),'sync must exclude '+token);
+ok(sync.includes("TARGET_COUNT=10000"),'sync must target exactly 10,000 eligible dry branded products');
+ok(sync.includes("selected.length<TARGET_COUNT"),'sync must fail closed instead of padding from another root');
 ok(sql.includes('catalog_display_name'),'master catalog must preserve retailer display name without fake 1-piece suffix');
 ok(sql.includes('qg_grocery_import_makro'),'Makro importer RPC must exist');
 ok(sql.includes('image_source=coalesce'),'Makro imagery must remain source/preview imagery');
