@@ -1,4 +1,6 @@
-const assert=require('node:assert/strict'),fs=require('node:fs'),{Client}=require('pg');
+const assert=require('node:assert/strict'),fs=require('node:fs'),{Client,types}=require('pg');
+// Preserve PostgreSQL microseconds exactly, as PostgREST does; JS Date truncates revisions.
+types.setTypeParser(1184,value=>value);
 const id=n=>'00000000-0000-4000-8000-'+String(n).padStart(12,'0');
 (async()=>{
  const raw=process.env.QG_TEST_PG_URL;if(!raw)throw Error('QG_TEST_PG_URL must point to an isolated loopback test database');
