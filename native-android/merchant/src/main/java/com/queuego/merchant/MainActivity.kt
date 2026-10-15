@@ -179,9 +179,12 @@ private fun MerchantNativeEntryGate(pushTarget: NativePushLaunchTarget?) {
                 initialAuth = current!!,
                 store = store,
                 onLogout = {
-                    current?.session?.let { session -> logoutScope.launch { api.revoke(session) } }
-                    store.clear()
-                    current = null
+                    val session = current?.session
+                    logoutScope.launch {
+                        withContext(kotlinx.coroutines.Dispatchers.IO) { store.clear() }
+                        current = null
+                        session?.let { api.revoke(it) }
+                    }
                 }
             )
         }
@@ -213,16 +216,16 @@ private fun PosStaffNativeHost(
         while (true) {
             try {
                 val validated = api.validatePosStaff(auth) { refreshed ->
+                    // validatePosStaff invokes this callback from its IO context.
+                    // Persist rotated credentials there, but never mutate Compose state here.
                     store.save(refreshed)
-                    auth = refreshed
                 }
-                store.save(validated)
+                withContext(kotlinx.coroutines.Dispatchers.IO) { store.save(validated) }
                 auth = validated
                 recoveryError = null
             } catch (failure: Exception) {
                 if (failure is CancellationException) throw failure
                 if (failure is NativeSessionInvalidException) {
-                    store.clear()
                     onLogout()
                     return@LaunchedEffect
                 }
@@ -331,7 +334,7 @@ private fun MerchantNativeAuthentication(
         scope.launch {
             try {
                 val auth = api.signInMerchantOrStaff(loginId.trim(), loginPassword, store.deviceId())
-                store.save(auth)
+                withContext(kotlinx.coroutines.Dispatchers.IO) { store.save(auth) }
                 onAuthenticated()
             } catch (failure: Exception) {
                 if (failure is CancellationException) throw failure
@@ -355,7 +358,7 @@ private fun MerchantNativeAuthentication(
                     staffPassword,
                     staffSecret.trim()
                 )
-                store.save(auth)
+                withContext(kotlinx.coroutines.Dispatchers.IO) { store.save(auth) }
                 onAuthenticated()
             } catch (failure: Exception) {
                 if (failure is CancellationException) throw failure
@@ -428,7 +431,7 @@ private fun MerchantNativeAuthentication(
         scope.launch {
             try {
                 val auth = api.registerMerchant(form, store.deviceId(), skipSignup)
-                store.save(auth)
+                withContext(kotlinx.coroutines.Dispatchers.IO) { store.save(auth) }
                 onAuthenticated()
             } catch (failure: Exception) {
                 if (failure is CancellationException) throw failure
