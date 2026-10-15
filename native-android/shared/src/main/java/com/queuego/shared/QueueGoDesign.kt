@@ -46,6 +46,8 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import java.io.ByteArrayOutputStream
 import java.io.InputStream
 import java.net.HttpURLConnection
@@ -402,6 +404,7 @@ fun QgIcon(name: String, modifier: Modifier = Modifier, color: Color = QgRed) {
 
 private const val QG_REMOTE_IMAGE_MAX_BYTES = 8 * 1024 * 1024
 private const val QG_REMOTE_IMAGE_MAX_SIDE = 1280
+private val qgRemoteImageDecodeGate = Semaphore(3)
 
 private fun InputStream.readQueueGoImageLimited(limit: Int = QG_REMOTE_IMAGE_MAX_BYTES): ByteArray {
     val output = ByteArrayOutputStream(minOf(limit, 256 * 1024))
@@ -450,27 +453,29 @@ fun QgRemoteImage(
         } else {
             try {
                 withContext(Dispatchers.IO) {
-                    val bytes = if (source.startsWith("data:image/")) {
-                        require(source.length <= QG_REMOTE_IMAGE_MAX_BYTES * 2) { "รูปมีขนาดใหญ่เกินกำหนด" }
-                        Base64.decode(source.substringAfter(","), Base64.DEFAULT).also {
-                            require(it.size <= QG_REMOTE_IMAGE_MAX_BYTES) { "รูปมีขนาดใหญ่เกินกำหนด" }
-                        }
-                    } else {
-                        require(source.startsWith("https://")) { "ลิงก์รูปไม่ถูกต้อง" }
-                        val connection = URL(source).openConnection() as HttpURLConnection
-                        connection.connectTimeout = 10_000
-                        connection.readTimeout = 10_000
-                        try {
-                            val declared = connection.contentLengthLong
-                            require(declared <= 0L || declared <= QG_REMOTE_IMAGE_MAX_BYTES) {
-                                "รูปมีขนาดใหญ่เกินกำหนด"
+                    qgRemoteImageDecodeGate.withPermit {
+                        val bytes = if (source.startsWith("data:image/")) {
+                            require(source.length <= QG_REMOTE_IMAGE_MAX_BYTES * 2) { "รูปมีขนาดใหญ่เกินกำหนด" }
+                            Base64.decode(source.substringAfter(","), Base64.DEFAULT).also {
+                                require(it.size <= QG_REMOTE_IMAGE_MAX_BYTES) { "รูปมีขนาดใหญ่เกินกำหนด" }
                             }
-                            connection.inputStream.use { it.readQueueGoImageLimited() }
-                        } finally {
-                            connection.disconnect()
+                        } else {
+                            require(source.startsWith("https://")) { "ลิงก์รูปไม่ถูกต้อง" }
+                            val connection = URL(source).openConnection() as HttpURLConnection
+                            connection.connectTimeout = 10_000
+                            connection.readTimeout = 10_000
+                            try {
+                                val declared = connection.contentLengthLong
+                                require(declared <= 0L || declared <= QG_REMOTE_IMAGE_MAX_BYTES) {
+                                    "รูปมีขนาดใหญ่เกินกำหนด"
+                                }
+                                connection.inputStream.use { it.readQueueGoImageLimited() }
+                            } finally {
+                                connection.disconnect()
+                            }
                         }
+                        decodeQueueGoRemoteImage(bytes, maxDecodeSide)
                     }
-                    decodeQueueGoRemoteImage(bytes, maxDecodeSide)
                 }
             } catch (cancelled: CancellationException) {
                 throw cancelled
