@@ -203,7 +203,8 @@ internal fun MerchantCatalogScreen(
                                 product.image,
                                 Modifier.fillMaxWidth().aspectRatio(1.35f),
                                 product.name,
-                                cornerRadius = 11.dp
+                                cornerRadius = 11.dp,
+                                maxDecodeSide = 384
                             )
                             Spacer(Modifier.height(7.dp))
                             Text(
