@@ -1043,6 +1043,28 @@ class QueueGoApi {
             }
         }
 
+    suspend fun passengerLicenseStatus(auth: QueueGoAuth): RiderPassengerLicenseStatus =
+        withContext(Dispatchers.IO) {
+            riderPassengerLicenseStatusFromRpc(
+                rpc("qg_rider_public_license_status", auth.session.accessToken, JSONObject())
+            )
+        }
+
+    suspend fun submitPassengerLicense(
+        context: Context,
+        auth: QueueGoAuth,
+        photoUri: Uri
+    ): RiderPassengerLicenseStatus = withContext(Dispatchers.IO) {
+        val path = uploadEvidence(context, auth, photoUri)
+        riderPassengerLicenseStatusFromRpc(
+            rpc(
+                "qg_rider_submit_public_license",
+                auth.session.accessToken,
+                JSONObject().put("p_evidence_path", path)
+            )
+        )
+    }
+
     suspend fun reverificationStatus(auth: QueueGoAuth): RiderReverificationStatus =
         withContext(Dispatchers.IO) {
             riderReverificationStatusFromRpc(
