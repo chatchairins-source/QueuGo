@@ -131,6 +131,9 @@ const id=n=>'00000000-0000-4000-8000-'+String(n).padStart(12,'0');
   await other.query("select qg_private.ride_order_action($1,'arrive_dropoff')",[id(81)]);
   await other.query("select qg_private.ride_order_action($1,'complete')",[id(81)]);
 
+  // Restore Rider A eligibility after the previous revocation scenario before starting an unrelated overlap race.
+  await approve();
+
   // A Ride claim and Food assignment cannot both commit for the same Rider even when they overlap before either transaction finishes.
   await seedRide(82);await seedFood(182);
   await admin.query('delete from qg_rider_order_offers');await admin.query('select qg_dispatch_rider_offers()');
