@@ -44,24 +44,3 @@ internal fun passengerStageAction(job: RiderJob): Pair<String,String>? {
         else -> null
     }
 }
-
-@Composable
-internal fun RiderPassengerEligibility(auth: QueueGoAuth) {
-    var ready by androidx.compose.runtime.remember(auth.user.id) { androidx.compose.runtime.mutableStateOf<Boolean?>(null) }
-    var failed by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
-    var retry by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(0) }
-    androidx.compose.runtime.LaunchedEffect(auth.user.id,auth.session.accessToken,retry) {
-        try {
-            val state = com.queuego.shared.QueueGoNativeApi().rpc("queuego_ride_state",auth.session.accessToken) as org.json.JSONObject
-            ready = state.getBoolean("public_license_valid");failed = false
-        } catch (e: kotlinx.coroutines.CancellationException) { throw e }
-        catch (_: Exception) { failed = true }
-    }
-    Card(Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
-        Column(Modifier.padding(14.dp)) {
-            Text("สิทธิ์รับส่งผู้โดยสาร",fontWeight = FontWeight.Bold)
-            Text(when { failed -> "ยังตรวจสิทธิ์ไม่ได้";ready == true -> "ใบขับขี่สาธารณะผ่านการตรวจและยังไม่หมดอายุ";ready == false -> "ต้องมีใบขับขี่สาธารณะที่ Admin ตรวจอนุมัติก่อนรับเที่ยว";else -> "กำลังตรวจสิทธิ์…" })
-            TextButton(onClick = { retry++ }) { Text("ตรวจสิทธิ์ล่าสุด") }
-        }
-    }
-}
