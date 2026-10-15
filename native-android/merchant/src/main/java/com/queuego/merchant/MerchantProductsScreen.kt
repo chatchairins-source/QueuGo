@@ -1,5 +1,8 @@
 package com.queuego.merchant
 
+import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -21,7 +24,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
@@ -693,22 +695,48 @@ private fun MerchantToppingRow(
     }
 }
 
+private const val MERCHANT_PRODUCT_PREVIEW_MAX_SIDE = 512
+
+private fun decodeMerchantProductPreview(context: Context, uri: Uri): Bitmap? {
+    val resolver = context.contentResolver
+    val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+    resolver.openInputStream(uri)?.use { input ->
+        BitmapFactory.decodeStream(input, null, bounds)
+    } ?: return null
+    if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null
+
+    var sample = 1
+    while (maxOf(bounds.outWidth, bounds.outHeight) / sample > MERCHANT_PRODUCT_PREVIEW_MAX_SIDE) {
+        sample *= 2
+    }
+    return resolver.openInputStream(uri)?.use { input ->
+        BitmapFactory.decodeStream(
+            input,
+            null,
+            BitmapFactory.Options().apply { inSampleSize = sample }
+        )
+    }
+}
+
 @Composable
 private fun MerchantProductLocalImage(uri: Uri, modifier: Modifier) {
     val context = LocalContext.current
-    var image by remember(uri) { mutableStateOf<ImageBitmap?>(null) }
+    var image by remember(uri) { mutableStateOf<Bitmap?>(null) }
     LaunchedEffect(uri) {
         image = withContext(Dispatchers.IO) {
-            runCatching {
-                context.contentResolver.openInputStream(uri)?.use {
-                    android.graphics.BitmapFactory.decodeStream(it)?.asImageBitmap()
-                }
-            }.getOrNull()
+            runCatching { decodeMerchantProductPreview(context, uri) }.getOrNull()
         }
     }
-    if (image != null) {
+    DisposableEffect(image) {
+        val owned = image
+        onDispose {
+            if (owned != null && !owned.isRecycled) owned.recycle()
+        }
+    }
+    val shown = image
+    if (shown != null && !shown.isRecycled) {
         Image(
-            bitmap = image!!,
+            bitmap = shown.asImageBitmap(),
             contentDescription = null,
             modifier = modifier.clip(RoundedCornerShape(13.dp)),
             contentScale = ContentScale.Crop
