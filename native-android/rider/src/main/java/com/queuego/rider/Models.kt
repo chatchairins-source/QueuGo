@@ -303,7 +303,14 @@ data class RiderCashLedgerEntry(
     val cashPaidMerchant: Double,
     val cashCollectedCustomer: Double,
     val createdAt: String?,
-    val cashRefundedMerchant: Double = 0.0
+    val cashRefundedMerchant: Double = 0.0,
+    val platformCancellationFunding: Double = 0.0,
+    val platformCancellationFundingCash: Double = 0.0,
+    val platformCancellationFundingStatus: String? = null,
+    val platformCancellationFundingSettledAt: String? = null,
+    val platformCancellationFundingReference: String? = null,
+    val platformReplacementTarget: Double = 0.0,
+    val platformReplacementOrderId: String? = null
 ) {
     val numberLabel: String
         get() = nativeOrderNumber(orderNumber)
@@ -370,7 +377,10 @@ data class RiderPeriodSummary(
     val jobs: Int,
     val income: Double,
     val onlineHours: Double,
-    val incomePerHour: Double?
+    val incomePerHour: Double?,
+    val cashRealizedIncome: Double = income,
+    val pendingPlatformFunding: Double = 0.0,
+    val settledPlatformFunding: Double = 0.0
 )
 
 data class RiderOfferPerformance(
