@@ -13,6 +13,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.layout.Box
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -38,7 +39,10 @@ import com.queuego.ridernavigationmap.NavigationViewportInsets
 import com.queuego.ridernavigationmap.RiderNavigationMap
 import com.queuego.ridernavigationmap.RiderNavigationMapState
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
 
 // Shadow mode computes the candidate renderer fix while preserving the certified display.
 // The display gate stays off until CI + real-device route gates pass.
@@ -245,21 +249,52 @@ internal fun QueueGoRiderNavigationMap(
     val context = LocalContext.current
     val guidanceCallback by rememberUpdatedState(onGuidance)
     val lifecycle = LocalLifecycleOwner.current.lifecycle
-    val sessionStore = remember(context) { SessionStore(context) }
-    val initialCamera = remember(stateKey) {
-        sessionStore.loadMapCamera(stateKey)?.let { saved ->
-            NavigationMapCamera(
-                point = NavigationMapPoint(saved[1], saved[0]),
-                zoom = saved[2].toInt().coerceIn(4, 20)
-            )
+    val sessionStore = remember(context.applicationContext) { SessionStore(context.applicationContext) }
+    var initialCamera by remember(stateKey) { mutableStateOf<NavigationMapCamera?>(null) }
+    var initialViewMode by remember(stateKey) { mutableStateOf(NavigationViewMode.FOLLOW) }
+    var persistenceHydrated by remember(stateKey) { mutableStateOf(false) }
+    var pendingCameraPersistence by remember(stateKey) { mutableStateOf<DoubleArray?>(null) }
+    var pendingViewModePersistence by remember(stateKey) { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(stateKey) {
+        val restored = withContext(Dispatchers.IO) {
+            val camera = sessionStore.loadMapCamera(stateKey)?.let { saved ->
+                NavigationMapCamera(
+                    point = NavigationMapPoint(saved[1], saved[0]),
+                    zoom = saved[2].toInt().coerceIn(4, 20)
+                )
+            }
+            val mode = when (sessionStore.loadMapViewMode(stateKey)) {
+                "FREE_PAN" -> NavigationViewMode.FREE_PAN
+                else -> NavigationViewMode.FOLLOW
+            }
+            camera to mode
+        }
+        initialCamera = restored.first
+        initialViewMode = restored.second
+        persistenceHydrated = true
+    }
+
+    LaunchedEffect(stateKey, pendingViewModePersistence, persistenceHydrated) {
+        val mode = pendingViewModePersistence ?: return@LaunchedEffect
+        if (!persistenceHydrated) return@LaunchedEffect
+        withContext(Dispatchers.IO) {
+            sessionStore.saveMapViewMode(stateKey, mode)
         }
     }
 
-    val initialViewMode = remember(stateKey) {
-        when (sessionStore.loadMapViewMode(stateKey)) {
-            "FREE_PAN" -> NavigationViewMode.FREE_PAN
-            else -> NavigationViewMode.FOLLOW
+    LaunchedEffect(stateKey, pendingCameraPersistence, persistenceHydrated) {
+        val camera = pendingCameraPersistence ?: return@LaunchedEffect
+        if (!persistenceHydrated) return@LaunchedEffect
+        delay(250L)
+        withContext(Dispatchers.IO) {
+            sessionStore.saveMapCamera(stateKey, camera)
         }
+    }
+
+    if (!persistenceHydrated) {
+        Box(modifier) {}
+        return
     }
     val viewModeController = remember(stateKey, initialViewMode) {
         NavigationViewModeController(initialViewMode)
@@ -316,7 +351,7 @@ internal fun QueueGoRiderNavigationMap(
         val next = viewModeController.onActiveStopChanged()
         viewModeState = next
         if (next.mode != NavigationViewMode.OVERVIEW) {
-            sessionStore.saveMapViewMode(stateKey, next.mode.name)
+            pendingViewModePersistence = next.mode.name
         }
     }
 
@@ -477,7 +512,7 @@ internal fun QueueGoRiderNavigationMap(
     LaunchedEffect(recenterSignal) {
         if (recenterSignal > 0) {
             viewModeState = viewModeController.onRecenter()
-            sessionStore.saveMapViewMode(stateKey, NavigationViewMode.FOLLOW.name)
+            pendingViewModePersistence = NavigationViewMode.FOLLOW.name
             riderFix?.let { fix ->
                 stateChannel.trySend(
                     baseState.copy(
@@ -510,17 +545,14 @@ internal fun QueueGoRiderNavigationMap(
         onMapReady = onMapReady,
         onUserGesture = {
             viewModeState = viewModeController.onUserGesture()
-            sessionStore.saveMapViewMode(stateKey, NavigationViewMode.FREE_PAN.name)
+            pendingViewModePersistence = NavigationViewMode.FREE_PAN.name
         },
         onCameraChanged = { camera ->
-            sessionStore.saveMapCamera(
-                stateKey,
-                doubleArrayOf(
-                    camera.point.longitude,
-                    camera.point.latitude,
-                    camera.zoom.toDouble(),
-                    1.0
-                )
+            pendingCameraPersistence = doubleArrayOf(
+                camera.point.longitude,
+                camera.point.latitude,
+                camera.zoom.toDouble(),
+                1.0
             )
         },
         onDiagnostics = RiderRuntimeDiagnosticsStore::publishMap
