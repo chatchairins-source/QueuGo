@@ -9,7 +9,7 @@ const mustPublish=[
  'laundry_orders','laundry_rider_jobs','laundry_rider_invites',
  'queuego_platform_rules','route_bundles',
  'users','shop_profiles','technician_profiles','products','payments',
- 'quotations','promotions','settlements','audit_logs','order_audit'
+ 'quotations','promotions','audit_logs','order_audit'
 ];
 
 for(const table of mustPublish){

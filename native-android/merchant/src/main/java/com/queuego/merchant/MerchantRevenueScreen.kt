@@ -44,7 +44,6 @@ internal fun MerchantRevenueScreen(
     var rangeDays by remember { mutableStateOf(1) }
     var rows by remember { mutableStateOf<List<MerchantRevenueDay>>(emptyList()) }
     var loading by remember { mutableStateOf(true) }
-    var submittingSlip by remember { mutableStateOf(false) }
     var message by remember { mutableStateOf<String?>(null) }
     var csvPayload by remember { mutableStateOf<String?>(null) }
 
@@ -66,31 +65,6 @@ internal fun MerchantRevenueScreen(
     }
 
     LaunchedEffect(Unit) { load(1, selectedDate) }
-
-    val slipPicker = rememberLauncherForActivityResult(
-        ActivityResultContracts.OpenDocument()
-    ) { uri ->
-        if (uri != null && !submittingSlip) {
-            val day = rows.firstOrNull { it.dateKey == selectedDate }
-            if (day == null) {
-                message = "ไม่พบรายงานวันที่เลือก"
-            } else {
-                submittingSlip = true
-                scope.launch {
-                    runCatching {
-                        val path = uploadMerchantGpSlip(context, auth, uri, selectedDate)
-                        api.reportGpSlip(auth, selectedDate, path)
-                    }.onSuccess {
-                        message = "ส่งสลิปและแจ้งโอนให้แอดมินแล้ว"
-                        load(1, selectedDate)
-                    }.onFailure {
-                        message = "แจ้งโอนไม่สำเร็จ: " + (it.message ?: "เกิดข้อผิดพลาด")
-                    }
-                    submittingSlip = false
-                }
-            }
-        }
-    }
 
     val csvLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.CreateDocument("text/csv")
@@ -120,14 +94,13 @@ internal fun MerchantRevenueScreen(
                 api.revenueDays(auth, start.toString(), end.toString())
             }.onSuccess { reportRows ->
                 val csv = buildString {
-                    append("วันที่,จำนวนออเดอร์,ยอดค่าสินค้า,GP รอแจ้งโอน,เงินสดค่าสินค้าที่ร้านได้รับ,สถานะ GP\r\n")
+                    append("วันที่,จำนวนออเดอร์,ยอดค่าสินค้า,GP ตามออเดอร์,เงินสดค่าสินค้าที่ร้านได้รับ\r\n")
                     reportRows.forEach { row ->
                         append(csvCell(row.dateKey)).append(',')
                         append(row.orderCount).append(',')
                         append(row.grossSales).append(',')
-                        append(row.gpDue).append(',')
-                        append(row.cashReceived).append(',')
-                        append(csvCell(row.gpStatus)).append("\r\n")
+                        append(row.gpAmount).append(',')
+                        append(row.cashReceived).append("\r\n")
                     }
                 }
                 csvPayload = csv
@@ -239,20 +212,7 @@ internal fun MerchantRevenueScreen(
                 val day = rows.firstOrNull()
                 if (day != null) {
                     RevenueDailyReport(day)
-                    if (day.gpDue > 0.0 && day.gpStatus == "pending") {
-                        OutlinedButton(
-                            onClick = {
-                                slipPicker.launch(
-                                    arrayOf("image/png", "image/jpeg", "image/webp", "application/pdf")
-                                )
-                            },
-                            enabled = !submittingSlip,
-                            modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
-                        ) {
-                            if (submittingSlip) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
-                            else Text("แนบสลิปและแจ้งโอน")
-                        }
-                    }
+
                 }
             }
 
@@ -289,14 +249,14 @@ private fun RevenueDailyReport(day: MerchantRevenueDay) {
         RevenueGrid(
             listOf(
                 "ยอดค่าสินค้าหลังไรเดอร์รับ" to money(day.grossSales),
-                "GP รอแจ้งโอน" to money(day.gpDue),
+                "GP ตามออเดอร์" to money(day.gpAmount),
                 "เงินสดค่าสินค้าที่ร้านได้รับ" to money(day.cashReceived),
                 "ออเดอร์ที่ไรเดอร์รับสินค้า" to day.orderCount.toString()
             )
         )
         Spacer(Modifier.height(10.dp))
         Text(
-            "GP รอแจ้งโอน ${money(day.gpDue)} · สถานะ ${gpStatusLabel(day.gpStatus)} · GP ที่หักเครดิตแล้วดูในประวัติเครดิต",
+            "หักค่าบริการผ่านเครดิตอัตโนมัติ · ตรวจรายการหักในประวัติเครดิต",
             color = Color(0xFF607E6E),
             fontSize = 10.sp,
             lineHeight = 15.sp
@@ -325,7 +285,7 @@ private fun RevenuePeriodReport(days: Int, rows: List<MerchantRevenueDay>) {
             listOf(
                 "ยอดค่าสินค้า" to money(rows.sumOf { it.grossSales }),
                 "จำนวนออเดอร์" to rows.sumOf { it.orderCount }.toString(),
-                "GP รอแจ้งโอน" to money(rows.sumOf { it.gpDue }),
+                "GP ตามออเดอร์" to money(rows.sumOf { it.gpAmount }),
                 "เงินสดค่าสินค้าที่ร้านได้รับ" to money(rows.sumOf { it.cashReceived })
             )
         )
@@ -379,13 +339,6 @@ private fun RevenueGrid(items: List<Pair<String, String>>) {
 
 private fun money(value: Double): String =
     "฿" + String.format(Locale.US, "%,.2f", value)
-
-private fun gpStatusLabel(status: String): String = when (status.lowercase()) {
-    "paid", "approved", "settled" -> "ชำระแล้ว"
-    "submitted", "reviewing" -> "ส่งตรวจแล้ว"
-    "rejected" -> "ต้องแก้ไข"
-    else -> "รอชำระ"
-}
 
 private fun thaiRevenueDate(date: String): String = runCatching {
     LocalDate.parse(date).format(

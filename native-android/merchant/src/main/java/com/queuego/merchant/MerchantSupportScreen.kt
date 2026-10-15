@@ -1,9 +1,6 @@
 package com.queuego.merchant
 
-import android.content.Intent
-import android.net.Uri
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.material3.TextButton
 import com.queuego.shared.NativeChatOutbox
 import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.key
@@ -66,7 +63,6 @@ private fun MerchantSupportRoom(auth: NativeAuth, onBack: () -> Unit) {
 
     val context = LocalContext.current
     val outbox = remember { NativeChatOutbox() }
-    var openingSlip by remember { mutableStateOf<String?>(null) }
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     val back by rememberUpdatedState(onBack)
     var loading by remember { mutableStateOf(true) }
@@ -135,20 +131,6 @@ private fun MerchantSupportRoom(auth: NativeAuth, onBack: () -> Unit) {
                                 fontWeight = FontWeight.ExtraBold
                             )
                             Text(message.body)
-                            if (!message.slipPath.isNullOrBlank()) {
-                                TextButton(onClick = {
-                                    openingSlip = message.id
-                                    scope.launch {
-                                        try {
-                                            val url = signMerchantGpSlip(auth, message.slipPath!!)
-                                            currentCoroutineContext().ensureActive()
-                                            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
-                                        } catch (cancelled: CancellationException) { throw cancelled }
-                                        catch (failure: Exception) { error = failure.message ?: "เปิดสลิปไม่สำเร็จ" }
-                                        finally { openingSlip = null }
-                                    }
-                                }, enabled = openingSlip == null) { Text("ดูสลิป GP") }
-                            }
                             if (!message.createdAt.isNullOrBlank()) {
                                 Spacer(Modifier.height(3.dp))
                                 Text(

@@ -20,7 +20,7 @@ for(const [role,surfaces] of Object.entries(matrix.roles)){
     ok(typeof surface==='string'&&surface.length>0,role+' surface name missing');
     ok(!seen.has(surface),role+' duplicate surface: '+surface); seen.add(surface);
     ok(kind==='screen'||kind==='helper',role+' unsupported coverage kind: '+surface);
-    ok(typeof path==='string'&&path.startsWith('native-android/'+role+'/src/main/java/'),role+' surface path outside Native role: '+surface);
+    ok(typeof path==='string'&&(path.startsWith('native-android/'+role+'/src/main/java/')||(surface==='credit_account_card'&&path==='native-android/shared/src/main/java/com/queuego/shared/QueueGoCreditCard.kt')),role+' surface path outside Native role: '+surface);
     ok(fs.existsSync(path),role+' source surface missing: '+surface+' -> '+path);
     const source=fs.readFileSync(path,'utf8');
     ok(source.length>300,role+' source surface is unexpectedly empty/thin: '+surface);

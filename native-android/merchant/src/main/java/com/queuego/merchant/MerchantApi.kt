@@ -51,7 +51,7 @@ data class MerchantShopSetupDraft(
 data class MerchantTodayRevenue(
     val orderCount: Int,
     val grossSales: Double,
-    val gpDue: Double,
+    val gpAmount: Double,
     val cashReceived: Double
 )
 
@@ -59,9 +59,8 @@ data class MerchantRevenueDay(
     val dateKey: String,
     val orderCount: Int,
     val grossSales: Double,
-    val gpDue: Double,
-    val cashReceived: Double,
-    val gpStatus: String
+    val gpAmount: Double,
+    val cashReceived: Double
 )
 
 data class MerchantOrder(
@@ -192,8 +191,7 @@ data class MerchantSupportMessage(
     val id: String,
     val senderUserId: String,
     val body: String,
-    val createdAt: String?,
-    val slipPath: String? = null
+    val createdAt: String?
 )
 
 data class MerchantNotification(
@@ -529,23 +527,12 @@ class MerchantApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
                         dateKey = r.optString("date_key"),
                         orderCount = r.optInt("order_count", 0),
                         grossSales = r.optDouble("gross_sales", 0.0),
-                        gpDue = r.optDouble("gp_due", 0.0),
-                        cashReceived = r.optDouble("cash_received", 0.0),
-                        gpStatus = r.optString("gp_status").ifBlank { "pending" }
+                        gpAmount = r.optDouble("gp_due", 0.0),
+                        cashReceived = r.optDouble("cash_received", 0.0)
                     )
                 )
             }
         }
-    }
-
-    suspend fun reportGpSlip(auth: NativeAuth, date: String, slipPath: String) {
-        require(date.matches(Regex("\\d{4}-\\d{2}-\\d{2}"))) { "วันที่รายงานไม่ถูกต้อง" }
-        require(slipPath.isNotBlank()) { "ไม่พบไฟล์สลิป" }
-        http.rpc(
-            "report_shop_gp",
-            auth.session.accessToken,
-            JSONObject().put("p_date", date).put("p_slip_path", slipPath)
-        )
     }
 
     suspend fun todayRevenue(auth: NativeAuth, date: String): MerchantTodayRevenue {
@@ -1177,7 +1164,7 @@ class MerchantApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
     suspend fun loadSupportMessages(auth: NativeAuth): List<MerchantSupportMessage> {
         val rows = http.array(
             http.get(
-                "shop_support_messages?select=id,sender_user_id,body,created_at,slip_path" +
+                "shop_support_messages?select=id,sender_user_id,body,created_at" +
                     "&shop_user_id=eq." + http.enc(auth.user.id) +
                     "&order=created_at.asc",
                 auth.session.accessToken
@@ -1191,8 +1178,7 @@ class MerchantApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
                         id = r.optString("id"),
                         senderUserId = r.optString("sender_user_id"),
                         body = r.optString("body"),
-                        createdAt = r.optNullable("created_at"),
-                        slipPath = r.optNullable("slip_path")
+                        createdAt = r.optNullable("created_at")
                     )
                 )
             }

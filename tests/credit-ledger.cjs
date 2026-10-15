@@ -50,10 +50,11 @@ const id=n=>'00000000-0000-4000-8000-'+String(n).padStart(12,'0');
  await q("update orders set status='in_progress' where id=$1",[id(360)]);eq((await balance(51,'merchant')).promo_minor,98800);
  await q("update orders set status='cancelled' where id=$1",[id(360)]);eq((await balance(51,'merchant')).promo_minor,98800);
  await reject('update orders set credit_gp_required=false where id=$1',[id(360)],/immutable/);
- // Turning OFF does not retroactively charge old orders.
- await flag('credit_merchant',false);await q("insert into orders(id,order_number,shop_id,status,gp_amount) values($1,'QT-legacy',$2,'pending',10)",[id(361),id(50)]);await flag('credit_merchant',true);
- await q("update orders set status='picked_up' where id=$1",[id(361)]);eq((await balance(51,'merchant')).promo_minor,98800);
- eq(Number((await q('select merchant_revenue_days(current_date,current_date) n')).rows[0].n),10);
+ // Credit is the only GP collection path: OFF refuses new fee-bearing checkout.
+ await flag('credit_merchant',false);
+ await reject("insert into orders(id,order_number,shop_id,status,gp_amount) values($1,'QT-legacy',$2,'pending',10)",[id(361),id(50)],/credit is not enabled/);
+ await flag('credit_merchant',true);
+ eq(Number((await q('select merchant_revenue_days(current_date,current_date) n')).rows[0].n),12);
  // The durable request stays visible even after more than ten newer payment requests.
  await q("insert into qg_private.credit_topups(id,user_id,kind,amount_minor,created_at) select gen_random_uuid(),$1,'rider',2000,now()+n*interval '1 second' from generate_series(1,12)n",[id(1)]);
  await as(101);const recovered=(await q("select queuego_credit_summary('rider',$1) s",[id(300)])).rows[0].s;
