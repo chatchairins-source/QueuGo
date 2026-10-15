@@ -95,8 +95,10 @@ import com.queuego.shared.QgStatusPill
 import com.queuego.shared.QueueGoAuthHost
 import com.queuego.shared.QueueGoBrand
 import com.queuego.shared.SecureRoleSessionStore
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.util.UUID
 
 private val categories = listOf(
@@ -116,11 +118,23 @@ private val homeDedicatedMarketCategories =
 fun QueueGoCustomerApp(pushTarget: NativePushLaunchTarget? = null) {
     val context = LocalContext.current
     val store = remember { SecureRoleSessionStore(context, "customer") }
-    var authRequested by rememberSaveable { mutableStateOf(store.load() != null) }
+    var authRequested by rememberSaveable { mutableStateOf<Boolean?>(null) }
     var destinationAfterLogin by rememberSaveable { mutableStateOf("home") }
     var guestStartDestination by rememberSaveable { mutableStateOf("home") }
 
-    if (!authRequested) {
+    LaunchedEffect(store) {
+        if (authRequested == null) {
+            authRequested = withContext(Dispatchers.IO) { store.load() != null }
+        }
+    }
+
+    if (authRequested == null) {
+        QueueGoTheme {
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator()
+            }
+        }
+    } else if (authRequested == false) {
         QueueGoTheme {
         GuestCustomerShell(
             initialScreen = guestStartDestination,
@@ -218,33 +232,7 @@ private fun CustomerShell(
     }
     val cartStore = remember(auth.user.id) { CustomerCartStore(context, auth.user.id) }
     val locationStore = remember { CustomerLocationStore(context) }
-    val savedDeviceLocation = remember { locationStore.load() }
     val guestCartStore = remember { CustomerCartStore(context, "guest") }
-    val initialCartMerge = remember(auth.user.id) {
-        val saved = cartStore.load()
-        val guest = guestCartStore.load()
-        when {
-            guest.isEmpty() -> saved to false
-            saved.isEmpty() -> {
-                cartStore.save(guest)
-                guestCartStore.save(emptyList())
-                guest to false
-            }
-            saved.firstOrNull()?.product?.shopId == guest.firstOrNull()?.product?.shopId -> {
-                val merged = (saved + guest)
-                    .groupBy { it.product.id }
-                    .values
-                    .map { rows ->
-                        val freshest = rows.last().product
-                        CartLine(freshest, rows.sumOf { it.quantity }.coerceAtMost(99))
-                    }
-                cartStore.save(merged)
-                guestCartStore.save(emptyList())
-                merged to false
-            }
-            else -> saved to true
-        }
-    }
 
     var screen by remember(auth.user.id) { mutableStateOf(initialScreen) }
     var shopReturnScreen by remember { mutableStateOf("home") }
@@ -270,19 +258,14 @@ private fun CustomerShell(
     DisposableEffect(shopCatalog) { onDispose { shopCatalog.close() } }
     LaunchedEffect(screen) { if (screen != "shop") shopCatalog.close() }
     var orderItems by remember { mutableStateOf<List<CustomerOrderItem>>(emptyList()) }
-    var cart by remember(auth.user.id) { mutableStateOf(initialCartMerge.first) }
-    var location by remember { mutableStateOf(savedDeviceLocation) }
-    var address by remember { mutableStateOf(savedDeviceLocation?.address.orEmpty()) }
+    var cart by remember(auth.user.id) { mutableStateOf<List<CartLine>>(emptyList()) }
+    var localStateLoaded by remember(auth.user.id) { mutableStateOf(false) }
+    var location by remember(auth.user.id) { mutableStateOf<CustomerLocation?>(null) }
+    var address by remember(auth.user.id) { mutableStateOf("") }
     var note by remember { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }
     var loading by remember { mutableStateOf(true) }
-    var message by remember {
-        mutableStateOf<String?>(
-            if (initialCartMerge.second)
-                "ตะกร้าก่อนเข้าสู่ระบบเป็นคนละร้านกับตะกร้าบัญชีเดิม จึงเก็บไว้แยกกัน"
-            else null
-        )
-    }
+    var message by remember { mutableStateOf<String?>(null) }
     var pendingVoiceCall by remember { mutableStateOf<Pair<String, String>?>(null) }
     var pendingVoiceAnswer by remember { mutableStateOf(false) }
     val voicePermission = rememberLauncherForActivityResult(
@@ -324,8 +307,48 @@ private fun CustomerShell(
     }
     val checkoutJournal = remember(cartStore) { cartStore.journal() }
     val checkoutRecovery = remember(checkoutJournal) { CustomerCheckoutRecovery<PendingCustomerCheckout, CustomerOrder>(checkoutJournal) }
-    var pendingCheckoutRecord by remember { mutableStateOf(runCatching { checkoutJournal.read() }.getOrNull()) }
-    var checkoutPending by remember { mutableStateOf(pendingCheckoutRecord != null) }
+    var pendingCheckoutRecord by remember(auth.user.id) { mutableStateOf<PendingCustomerCheckout?>(null) }
+    var checkoutPending by remember(auth.user.id) { mutableStateOf(false) }
+
+    LaunchedEffect(auth.user.id, cartStore, guestCartStore, checkoutJournal) {
+        val restored = withContext(Dispatchers.IO) {
+            val saved = cartStore.load()
+            val guest = guestCartStore.load()
+            val merged = when {
+                guest.isEmpty() -> saved to false
+                saved.isEmpty() -> {
+                    cartStore.save(guest)
+                    guestCartStore.save(emptyList())
+                    guest to false
+                }
+                saved.firstOrNull()?.product?.shopId == guest.firstOrNull()?.product?.shopId -> {
+                    val rows = (saved + guest)
+                        .groupBy { it.product.id }
+                        .values
+                        .map { grouped ->
+                            val freshest = grouped.last().product
+                            CartLine(freshest, grouped.sumOf { it.quantity }.coerceAtMost(99))
+                        }
+                    cartStore.save(rows)
+                    guestCartStore.save(emptyList())
+                    rows to false
+                }
+                else -> saved to true
+            }
+            val savedLocation = locationStore.load()
+            val pending = runCatching { checkoutJournal.read() }.getOrNull()
+            Triple(merged, savedLocation, pending)
+        }
+        cart = restored.first.first
+        location = restored.second
+        address = restored.second?.address.orEmpty()
+        pendingCheckoutRecord = restored.third
+        checkoutPending = restored.third != null
+        if (restored.first.second && message == null) {
+            message = "ตะกร้าก่อนเข้าสู่ระบบเป็นคนละร้านกับตะกร้าบัญชีเดิม จึงเก็บไว้แยกกัน"
+        }
+        localStateLoaded = true
+    }
 
     var lastCheckoutReceipt by remember { mutableStateOf<String?>(null) }
 
@@ -335,7 +358,6 @@ private fun CustomerShell(
         // cart immediately even if durable journal cleanup failed. The pending
         // journal remains available for exact-request reconciliation next launch.
         cart = emptyList()
-        runCatching { cartStore.save(emptyList()) }
         note = ""
         selectedOrder = order
         orderItems = emptyList()
@@ -353,7 +375,9 @@ private fun CustomerShell(
                     }
                 } catch (e: CancellationException) { throw e }
                 catch (_: Exception) { /* Preserve pending for reconnect or explicit retry. */ }
-                pendingCheckoutRecord = runCatching { checkoutJournal.read() }.getOrNull()
+                pendingCheckoutRecord = withContext(Dispatchers.IO) {
+                    runCatching { checkoutJournal.read() }.getOrNull()
+                }
                 checkoutPending = pendingCheckoutRecord != null
                 delay(8_000)
             }
@@ -598,7 +622,9 @@ private fun CustomerShell(
             }
         }
     }
-    LaunchedEffect(cart) { cartStore.save(cart) }
+    LaunchedEffect(cart, localStateLoaded) {
+        if (localStateLoaded) withContext(Dispatchers.IO) { cartStore.save(cart) }
+    }
     LaunchedEffect(auth.session.accessToken, screen, selectedOrder?.id, lifecycle) {
         if (screen == "orders" || screen == "order") {
             lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
@@ -983,9 +1009,9 @@ private fun CustomerShell(
                             val submittedLocation = location?.copy(address = address.trim())
                             val submittedShop = shops.find { it.id == submittedCart.firstOrNull()?.product?.shopId }
                             val submittedNote = note
-                            cartStore.save(submittedCart)
                             scope.launch {
                                 try {
+                                    withContext(Dispatchers.IO) { cartStore.save(submittedCart) }
                                     if (!checkoutPending) {
                                         val active = api.loadActiveOrder(auth)
                                         if (active != null) {
@@ -998,20 +1024,22 @@ private fun CustomerShell(
                                     }
                                     val order = checkoutRecovery.submit(
                                         create = {
-                                            require(submittedShop != null && submittedLocation != null && submittedLocation.address.isNotBlank()) {
-                                                "กรุณาเลือกตำแหน่งและกรอกที่อยู่จัดส่ง"
+                                            withContext(Dispatchers.IO) {
+                                                require(submittedShop != null && submittedLocation != null && submittedLocation.address.isNotBlank()) {
+                                                    "กรุณาเลือกตำแหน่งและกรอกที่อยู่จัดส่ง"
+                                                }
+                                                cartStore.pending(
+                                                    api.checkoutBody(
+                                                        auth,
+                                                        UUID.randomUUID().toString(),
+                                                        submittedShop,
+                                                        submittedCart,
+                                                        submittedLocation,
+                                                        submittedNote
+                                                    ),
+                                                    submittedCart
+                                                )
                                             }
-                                            cartStore.pending(
-                                                api.checkoutBody(
-                                                    auth,
-                                                    UUID.randomUUID().toString(),
-                                                    submittedShop,
-                                                    submittedCart,
-                                                    submittedLocation,
-                                                    submittedNote
-                                                ),
-                                                submittedCart
-                                            )
                                         },
                                         send = { pending ->
                                             val body = pending.body
@@ -1036,7 +1064,9 @@ private fun CustomerShell(
                                 } catch (e: CancellationException) {
                                     throw e
                                 } catch (e: Exception) {
-                                    pendingCheckoutRecord = runCatching { checkoutJournal.read() }.getOrNull()
+                                    pendingCheckoutRecord = withContext(Dispatchers.IO) {
+                                        runCatching { checkoutJournal.read() }.getOrNull()
+                                    }
                                     checkoutPending = pendingCheckoutRecord != null
                                     message = when {
                                         checkoutPending ->
