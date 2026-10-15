@@ -182,6 +182,14 @@ ok(
   'Merchant product/order/profile thumbnails must use bounded decode sizes'
 );
 
+const orderRealtime=read('shared/src/main/java/com/queuego/shared/NativeOrderRealtime.kt');
+ok(
+  orderRealtime.includes('NATIVE_ORDER_REALTIME_MAX_CHARS = 256 * 1024') &&
+  orderRealtime.includes('if (text.length > NATIVE_ORDER_REALTIME_MAX_CHARS)') &&
+  orderRealtime.includes('.conflate()'),
+  'Shared order Realtime must bound each websocket message while conflating invalidation bursts'
+);
+
 const sharedApi=read('shared/src/main/java/com/queuego/shared/QueueGoNativeApi.kt');
 const nativeAuthApi=read('shared/src/main/java/com/queuego/shared/NativeAuthApi.kt');
 const riderApiMemory=read('rider/src/main/java/com/queuego/rider/QueueGoApi.kt');
