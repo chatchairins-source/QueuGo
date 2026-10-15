@@ -1128,12 +1128,24 @@ window.addEventListener('DOMContentLoaded', ()=>{
   }
 });
 
-/* V5.33: a page that throws while rendering used to leave the previous screen frozen with dead buttons and no clue why. Now the error is logged and shown. */
+/* Merchant boot/render must never be blocked by optional subsystems such as Voice.
+   First paint is authoritative; auxiliary services start only after the route renders. */
+function qgmRenderBootFailure(err){
+  console.error('router error',err);
+  try{ toast('แสดงหน้านี้ไม่สำเร็จ: '+String((err&&err.message)||err).slice(0,90)); }catch(e){}
+  const app=document.getElementById('app');
+  if(app&&!String(app.textContent||'').trim()){
+    document.body.className='qgm-app';
+    app.innerHTML='<main class="qgm-content"><section class="qgm-card" style="margin:24px auto;max-width:520px;padding:20px;text-align:center"><b>เปิดหน้าร้านค้าไม่สำเร็จ</b><small style="display:block;margin-top:8px;color:#8b9098">กดโหลดใหม่เพื่อเริ่มหน้าร้านอีกครั้ง</small><button type="button" class="qgm-primary" style="margin-top:14px" onclick="location.reload()">โหลดใหม่</button></section></main>';
+  }
+}
 function router(){
-  merchantPicker?.destroy();merchantPicker=null;
-  if(qtAccessToken())qgmActivateVoice();
+  try{ merchantPicker?.destroy(); }catch(mapErr){ console.warn('merchant picker cleanup failed',mapErr); }
+  merchantPicker=null;
   try{ window.qtShopRoute(); }
-  catch(err){ console.error('router error',err); try{ toast('แสดงหน้านี้ไม่สำเร็จ: '+String((err&&err.message)||err).slice(0,90)); }catch(e){} }
+  catch(err){ qgmRenderBootFailure(err); return false; }
+  if(qtAccessToken())setTimeout(()=>{try{qgmActivateVoice()}catch(voiceErr){console.warn('merchant voice startup failed',voiceErr)}},0);
+  return true;
 }
 
 
