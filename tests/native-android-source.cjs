@@ -211,9 +211,13 @@ ok(source.includes('CustomerTopAction(')&&source.includes('R.drawable.qg_nav_bag
 const merchantMainSource=read('merchant/src/main/java/com/queuego/merchant/MainActivity.kt');
 ok(
   merchantMainSource.includes('withContext(kotlinx.coroutines.Dispatchers.IO) { store.load() }') &&
-  merchantMainSource.includes('delay(1_000)') &&
+  merchantMainSource.includes('lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED)') &&
+  merchantMainSource.includes('delay(5_000)') &&
+  merchantMainSource.includes('sessionLoaded') &&
+  !merchantMainSource.includes('delay(350)') &&
+  !merchantMainSource.includes('delay(1_000)') &&
   !merchantMainSource.includes('val saved = store.load()\n            if (saved?.session'),
-  'Merchant secure-session polling must run off the UI thread instead of repeatedly decrypting Android Keystore state on Main'
+  'Merchant secure-session polling must stay lifecycle-gated, off Main and outside the former hot polling loop'
 );
 const merchantAppSource=read('merchant/src/main/java/com/queuego/merchant/QueueGoMerchantApp.kt');
 const sharedMapForStability=read('shared/src/main/java/com/queuego/shared/QueueGoLongdoMap.kt');
