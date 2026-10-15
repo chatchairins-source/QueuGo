@@ -618,6 +618,7 @@ private fun RiderHome(
     val realtime = remember { NativeOrderRealtime() }
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     val snapshotMutex = remember { Mutex() }
+    val dispatchPreferenceWriteMutex = remember(auth.user.id) { Mutex() }
 
     var snapshot by remember(auth.user.id) {
         mutableStateOf<RiderSnapshot?>(null)
@@ -724,7 +725,9 @@ private fun RiderHome(
         stopAfterWorkPending = pending
         scope.launch {
             try {
-                stopAfterWorkStore.setPending(auth.user.id, pending)
+                dispatchPreferenceWriteMutex.withLock {
+                    stopAfterWorkStore.setPending(auth.user.id, pending)
+                }
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (_: Exception) {
@@ -2820,7 +2823,9 @@ private fun RiderHome(
                                 autoAcceptEnabled = enabled
                                 scope.launch {
                                     try {
-                                        acceptanceModeStore.setAutoAcceptEnabled(auth.user.id, enabled)
+                                        dispatchPreferenceWriteMutex.withLock {
+                                            acceptanceModeStore.setAutoAcceptEnabled(auth.user.id, enabled)
+                                        }
                                     } catch (cancelled: CancellationException) {
                                         throw cancelled
                                     } catch (_: Exception) {
