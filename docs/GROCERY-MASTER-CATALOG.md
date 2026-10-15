@@ -1,0 +1,119 @@
+# QueueGo Grocery Master Catalog — Phase 1 candidate
+
+Mission is independent of Rider Native Android. Web base: `7595d764dac8a14d28162248d33f640d0a614870` on main. Working branch: `work-grocery-master-catalog-20261012`. Main and the existing grocery starter branch were rechecked and still at that base. No Native/Rider files changed.
+
+## Evidence and counts
+
+`catalog/statistics.json` is generated, not an estimate:
+
+- 1,109 factual research observations from 117 public source pages.
+- 414 normalized package records; three repeated package observations deduplicated.
+- 692 observations lack a clear name, explicit package size or an unambiguous package identity and remain research only.
+- 45 category definitions, including the owner's 43 initial categories; 45 currently populated with normalized package records.
+- Zero verified GTINs. No SKU/database/photo identifiers are relabelled as barcodes.
+- Zero licensed/approved production images. All 414 package records have pending images.
+- 414 records imported into Production; zero products activated and zero store links. First import and full repeat import both leave 414 unique masters and 415 provenance records.
+
+These counts do not mean 1,109 sellable SKUs or complete coverage of the Thai grocery market. All initial categories have source-backed coverage; coverage depth is uneven and this is an extensible first dataset, not a complete retailer catalog. Some names identify product families; the 692 incomplete observations must not be converted into arbitrary weights or artificial variants. Package material, domestic availability and sale-unit identity must be reviewed before activation.
+
+Primary sources include Betagen, Ichitan, Ajinomoto, Foremost, Deksomboon, Hi-Q Food, ThaiNamthip's current public product names and explicit available-size lists, Tiparos, Morakot, Mitr Phol Sugar, CP Brand and Carabao. Sahapat's distributor product pages supply additional factual names and some explicit sizes. Selected factual package observations from Tops, Lotus's, HomePro, OfficeMate, Watsons and All Online expand domestic category coverage. One Big C toothbrush pack page is a factual reference only; no prose, photos or prices are included. Kao website terms require permission for commercial reuse, so it is excluded from the new collector/import input. Its generated record fingerprints are internal audit keys, never vendor SKUs or GTINs. No descriptions, prices or photos are copied into the sellable catalog. Big C is a reference source only: its terms restrict copying/downloading, so no Big C bulk scraping pipeline is included. The historical DIT 2020 promotion PDF was investigated but not used as current market data.
+
+## Schema and existing flows
+
+Migration: `supabase/migrations/20261012170449_grocery_master_catalog.sql` (created using Supabase CLI).
+
+- `grocery_catalog_categories`: extensible, Admin-managed category definitions.
+- `grocery_master_products`: canonical brand/name/variant/size/pack/unit identity, optional checksum-validated GTIN, active/merged state, image approval/evidence.
+- `grocery_master_sources`: source URL/type/product reference, retrieved time and first-seen history. Admin-only access.
+- Existing `products` is the Store Product layer, using `grocery_master_id`, `grocery_enabled`, `grocery_selling_price`, `grocery_promo_price`, existing `stock` and `grocery_stock_tracking`. Unique `(shop_id, grocery_master_id)` retains one store listing per master.
+- No separate checkout, order state machine, GP wallet or cash-confirmation flow. Existing product IDs, GP trigger, order item snapshots and POS remain authoritative.
+- Guard triggers derive identity/image/category from the master and sellability from enabled + positive store price + tracking/stock. A store cannot rewrite master identity through `products`.
+- Tracked stock reservations execute inside existing order transactions, reject insufficient/fractional quantity, and restore once on cancellation/no-rider failure. Non-linked products immediately bypass the new stock trigger. Completed grocery items cannot be edited. Private reservation rows are not exposed to clients.
+- Merge preserves historical product/order IDs and source references. If both masters already have listings in the same shop, merge rejects the collision instead of silently selecting a price/stock or discarding an order reference. The Admin picker shows product identity and store usage before merging; overlapping store listings are deliberately rejected with a clear message. Resolving overlapping listings requires store inventory review and must never silently select a price or add duplicate stock.
+
+Read-only Production schema/policy preflight: `ops/grocery/preflight-schema-20261012.json`. Git backup: `backup-web-pre-grocery-master-20261012`. This is not a full database dump. Production additive migration applied on 2026-10-13 after a private application snapshot. The snapshot covers 82 public application/storage metadata tables and schema definitions; 1,860 typed rows passed an exact disposable PGlite round-trip. Auth credentials, physical Storage bytes and platform internals are excluded. This is not full Supabase disaster-recovery certification.
+
+## Import pipeline
+
+`catalog/normalize.js` is shared between CLI and Admin. It normalizes Unicode/Thai digits and sara-am, common unit names (ml/mL/มล., g/กรัม, L/ลิตร, kg), canonical size values, brand aliases and embedded display sizes. Coca-Cola/Coke/โค้ก aliases converge when the factual variant/size/pack/unit identity matches. GTINs are checksum-validated and padded to GTIN-14. Without a GTIN, brand + name + variant + size + pack + sales unit provide the canonical key. A row with a GTIN and an earlier matching row without one converge on one item; different GTINs for the same identity and conflicting identities for one GTIN reject for review. Dangling display-size labels are removed. Ambiguous identity conflicts require review.
+
+`qg_grocery_import` recomputes the key on the server, checks Admin status, serializes imports/merge and preserves all source URLs and source record IDs through normalization/deduplication, including multiple source IDs on the same page. Reimport does not overwrite an Admin's reviewed attributes or create duplicate listings. New records always start inactive. Import cannot approve/copy an image.
+
+Commands:
+
+```bash
+npm run catalog:build
+node ops/grocery/import.cjs catalog/thai-grocery-import.json /tmp/grocery-validation.json
+# Optional authenticated Admin apply (200-row batches):
+# QG_SUPABASE_URL, QG_CATALOG_ADMIN_TOKEN and QG_SUPABASE_PUBLISHABLE_KEY
+node ops/grocery/import.cjs input.json validated.json --apply
+npm run test:grocery
+```
+
+CSV and JSON are supported. CSV requires the same source/name/brand/size/category/sale-unit fields as the JSON records. Malformed rows are reported before apply; credentials are environment variables and must not be committed. A partially completed batch run can be retried with the same input.
+
+Research scripts are bounded factual collectors, not whole-retailer copies. `research-spc.py` collects names without images/marketing text. `extract-manufacturer-facts.py` consumes previously fetched official pages in scratch. Reviewed supplemental factual records remain separate in `manufacturer-extra-facts.json`, so rebuilding an extractor does not overwrite them. `build-research-catalog.cjs` separates size-qualified package records from incomplete observations. `curate-expansion.py` regenerates reviewed supplemental observations in `verified-expansion.json`. The classifier handles incidental Thai substrings explicitly (vinegar is not fruit juice; snack names are not milk). Adding another source requires its own reviewed adapter; do not infer package variants from known brand names.
+
+## Merchant
+
+Grocery Products and Catalog use one paged editor: 50 displayed rows, a 51st-row sentinel, server search/category/state filters. Existing background hydration skips full product snapshots on these grocery editor pages. On registration, Grocery copy explains selection from the master; successful background profile hydration routes the new owner to Products.
+
+Store actions: selection, page bulk enable/disable, category-wide enable/disable, quick storefront/promo price, optional stock tracking and quantity. Unpriced enabled rows remain invisible to customers. Previously created unlinked Grocery listings remain editable through “จัดการสินค้าที่ร้านเคยเพิ่ม”; their records/order IDs are not deleted. Linking existing custom listings to an exact master remains a reviewed migration task, never an automatic name-only match. Dirty edits are protected from background rerender/page/filter changes; writes lock immediately, are ownership-scoped and repeat-safe. Store writes use a persisted request UUID and a private durable receipt, so a lost reply can be retried without resetting stock after intervening sales. Expected listing timestamps reject stale writes; confirmed writes reload the current listing. A user/route change discards late results.
+
+## Admin
+
+Dedicated Admin navigation and page: paged search, source references, barcode/name/category/size editing, active/disabled state, usage counts, CSV/JSON import, selected-row activation/disable and audited duplicate merge through a paged product picker rather than typing internal UUIDs. Merge success requires a confirmed server result. Image upload uses a dedicated Admin-only-write public Storage bucket and requires declared rights evidence; approval is explicit. Production URLs must be on QueueGo's Supabase Storage, never a retailer hotlink. Public manufacturer origin alone is not image permission.
+
+## Customer
+
+Grocery storefront uses existing approval/ownership RLS on `products`, positive effective store price and derived sellability. It loads 50 rows per page/category and uses the original cart/checkout product IDs and GP-derived Delivery price. Product information is synchronized from the master; price and stock stay with the shop. Other service storefronts keep their current flow.
+
+## QA and release status
+
+Local full `npm test` passes, including the existing Grocery/Market/POS/cross-role regression suite. New coverage: 66 isolated PostgreSQL/PGlite checks, 16 Merchant/Customer DOM checks and 11 Admin DOM checks covering import retry, unit/brand normalization, GTIN checksum/dedupe, store price isolation, enable/disable/unpriced state, tracked stock reservation/oversell rejection/cancel restoration, Admin merge retry, image hotlink rejection, source/role isolation, Thai/brand search, public storefront prices, bulk selection, duplicate tap and late owner/route results.
+
+A disposable 10,000-row fixture catalog returned the bounded 51-row sentinel page in 88 ms on local PGlite; this is not a Production or device latency measurement. RLS role checks are cached per statement, and Thai/brand filters remain server-side. These are isolated checks, not authenticated Production E2E or simultaneous multi-connection PostgreSQL evidence. Package records are source-backed research, not fake demo inventory. Test-only fixture IDs/GTIN assignments are explicitly isolated and are not in the shipped catalog.
+
+Rendered component QA now passes 48 checks across Merchant/Admin/Customer at 320, 390 and 768 px using Chromium 153.0.8010.0 and a Thai font. It verifies bounded pages, no horizontal overflow, actual source-backed names, store-save confirmation, image placeholders, Admin target selection and Customer lazy loading. The browser transport and account IDs are isolated fixtures; this is not authenticated Production or physical-device E2E. The RC workflow also runs this browser suite using the runner's Chrome. See `docs/qa/grocery-browser-20261013.json`.
+
+**Release Gate OPEN.** Catalog activation/web publication, real store A/B onboarding → checkout → stock/cancel/POS regression, actual multi-client stock races and Production 10k-record query measurements remain unverified. Incomplete observations stay out of import and image approval remains pending. Production schema and inactive seed are installed; no web deployment, main merge or release-ready claim is made.
+
+Historical backup access blocker (resolved for this additive application-only rollout with the scoped private snapshot below) on 2026-10-13: Supabase MCP is connected for SQL, but provides no backup operation. The CLI `db dump --linked` fails with `ProjectRefNotLinkedError`; no database connection/token variables are configured in this workspace. No valid dump was produced. Full-instance restore remains uncertified. The subsequent scoped snapshot includes actual application rows, not only schema metadata. Auth and physical Storage changes remain outside that snapshot scope.
+
+2026-10-13 rollout checkpoint: Dashboard Free plan has no managed backups. A scoped application snapshot was saved privately before schema installation; no private row data is committed. Management seed reuses the tested import body under the DBA connection without impersonating an Admin, and keeps all new products inactive. Full existing products row hashes match the pre-migration snapshot (7 rows, zero differences). New Grocery RLS tables are enabled; two deny-all internal bookkeeping tables intentionally have no client policies. Remaining 692 ambiguous observations are quarantined, including a truncated detergent/refill bundle. Barcode/image evidence remains absent; no retailer images were downloaded.
+
+Published checkpoint `e73cf77c4027ce38c2278a66ced8761848b1aaa6`: GitHub RC run 38334905956 passed npm regression and rendered Grocery browser checks. Production no-session authenticated-role tests deny catalog import and expose zero inactive masters/source records. Generated research statistics intentionally omit live Production counters; timestamped rollout observations are in `ops/grocery/production-checkpoint-20261013.json`.
+
+
+## 2026-10-13 continuation — reviewed activation and advisors
+
+Fetched current main and Grocery branch; no Grocery successor PR found. Exact head `f2f5740e5f3fea2618a1a2766cc6635784263eb7` RC CI run 38335174150 succeeded. Re-ran full npm regression and 48 Chromium component checks (320/390/768 px); these remain isolated tests, not authenticated E2E.
+
+Production advisors identified three Grocery foreign-key indexes. Added and read back `grocery_master_merged_into_fk`, `grocery_stock_product_fk`, and `products_grocery_master_fk`; follow-up performance advisor reports no unindexed foreign keys. Two internal deny-all tables intentionally retain RLS with no client policies. Other system advisories are outside this mission.
+
+Rechecked official manufacturer pages and activated ONLY Foremost plain UHT milk 225 ml, one carton (`https://www.foremostthailand.com/product/100-uht-plain-milk/`, explicit one-carton nutritional serving) and Roza salted pickled cabbage 170 g, one can (`https://www.hiqfood.com/product/salted-pickled-cabbage/`). Production readback confirms 2 active / 412 inactive masters, no store links. No prices, GTINs or image permissions invented. Total remains 414 / 45 categories / 415 provenance / zero barcodes / 414 pending images.
+
+Release remains OPEN. Cloud Merchant shows the sign-in form and has no saved session. Real Merchant A/B, Customer and Admin web E2E cannot be certified without authenticated sessions. No main merge or web deployment. Concurrent stock gate must investigate the Production cash-order core's `FOR SHARE` product read followed by the Grocery trigger's `FOR UPDATE`: simultaneous transactions may require a lock upgrade and deadlock. This is a source-review concern, not a reproduced Production race; do not mark concurrency passed. POS readback uses order_items inserts and the new stock trigger, without a second explicit stock decrement in pos_edit_bill/pos_take_payment. Rider Android untouched.
+
+
+Later in the same continuation, secure Merchant sign-in succeeded. The visible account page confirms a Grocery test shop. This supersedes the earlier no-Merchant-session observation; it does NOT certify candidate UI E2E, because main still lacks the PR's Grocery editor. Production currently has one non-archived Grocery shop, so two-real-store price isolation is still unavailable. Customer/Admin authenticated sessions and simultaneous stock connections remain unverified. Commit `7c0a485eff6d9a434a5da9f982449439a552ec02` RC CI 38335868729 succeeded. Gate remains OPEN; no main merge/deployment.
+
+
+## 2026-10-13 continuation — checkout lock-order hardening
+
+Production source review confirmed the remaining concurrency concern: `queuego_place_cash_order_core` validated cart products with `FOR SHARE`, while the Grocery `order_items` stock trigger later required `FOR UPDATE` on the same product rows. Two simultaneous purchases of one Grocery SKU could therefore attempt a lock upgrade at the same time. For multi-SKU carts, inconsistent acquisition order could also increase deadlock risk.
+
+Migration `20261013023547_grocery_cash_checkout_lock_order.sql` is now installed in Production. The existing cash checkout core is preserved; it now acquires product `FOR UPDATE` locks in deterministic product-UUID order during validation, before inserting `order_items`. No second checkout, payment or stock system was introduced. A regression guard is part of both the full and Grocery-specific test commands.
+
+RC run 38337527764 passed the full npm regression and rendered Grocery browser suite before rollout. A transaction-wrapped Production parse/readback also passed before migration. Post-deploy readback confirms the function remains `SECURITY DEFINER`, keeps `search_path=public, pg_temp`, is not directly executable by `anon` or `authenticated`, uses deterministic product ordering and `FOR UPDATE`, and no longer contains the old product `FOR SHARE` path. Security advisor headline counts remained unchanged from the pre-migration baseline for the reviewed categories (RLS-with-no-policy 10, anon executable security-definer 9, authenticated executable security-definer 143).
+
+The source-level lock-upgrade hazard is closed. **Release Gate remains OPEN** because a real simultaneous authenticated Grocery checkout race has not yet been exercised, candidate Grocery UI is still not deployed to main, Production has only one non-archived Grocery shop, and Customer/Admin authenticated E2E remains unverified. No main merge/web deployment was performed. Rider Android remains untouched.
+
+
+## 2026-10-15 successor — merchant-ready Starter Catalog
+
+The old PR #168 was based on an older main and became non-mergeable after later Web banner work. Successor branch `work-grocery-master-catalog-successor-20261015` preserves both histories: current main plus the complete Grocery branch, without resetting or replacing either line.
+
+Production readback still shows 414 canonical masters but only 2 active and zero linked store listings. All 414 imported masters are normalized source-backed package records; incomplete research observations were excluded before import. The Admin Grocery page now provides a two-step Starter Catalog activation action: first scan/preview the exact inactive sourced count, then explicitly confirm. It activates canonical source-backed rows through existing Admin RLS/audit behavior in bounded 50-row writes. Retailer-sourced rows remain factual metadata only: no retailer price, photo, marketing copy or hotlink is imported. The action does not invent prices, GTINs, images, stock or store listings.
+
+After trusted masters are active, Grocery merchants use the existing paged editor to choose products, set their own storefront/promo price, optionally enable stock tracking, and open/close items. Unpriced or disabled rows remain invisible to customers. Production activation is still gated; source completion does not itself mutate live catalog state.
