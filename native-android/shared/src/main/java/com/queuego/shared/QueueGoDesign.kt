@@ -415,13 +415,14 @@ private fun InputStream.readQueueGoImageLimited(limit: Int = QG_REMOTE_IMAGE_MAX
     return output.toByteArray()
 }
 
-private fun decodeQueueGoRemoteImage(bytes: ByteArray): Bitmap? {
+private fun decodeQueueGoRemoteImage(bytes: ByteArray, maxSide: Int = QG_REMOTE_IMAGE_MAX_SIDE): Bitmap? {
     if (bytes.isEmpty() || bytes.size > QG_REMOTE_IMAGE_MAX_BYTES) return null
     val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
     BitmapFactory.decodeByteArray(bytes, 0, bytes.size, bounds)
     if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null
+    val boundedMaxSide = maxSide.coerceIn(128, QG_REMOTE_IMAGE_MAX_SIDE)
     var sample = 1
-    while (maxOf(bounds.outWidth, bounds.outHeight) / sample > QG_REMOTE_IMAGE_MAX_SIDE) {
+    while (maxOf(bounds.outWidth, bounds.outHeight) / sample > boundedMaxSide) {
         sample *= 2
     }
     return BitmapFactory.decodeByteArray(
@@ -439,10 +440,11 @@ fun QgRemoteImage(
     fallback: String = "Q",
     contentScale: ContentScale = ContentScale.Crop,
     cornerRadius: androidx.compose.ui.unit.Dp = 14.dp,
-    showFallback: Boolean = true
+    showFallback: Boolean = true,
+    maxDecodeSide: Int = QG_REMOTE_IMAGE_MAX_SIDE
 ) {
-    var image by remember(source) { mutableStateOf<Bitmap?>(null) }
-    LaunchedEffect(source) {
+    var image by remember(source, maxDecodeSide) { mutableStateOf<Bitmap?>(null) }
+    LaunchedEffect(source, maxDecodeSide) {
         image = if (source.isNullOrBlank()) {
             null
         } else {
@@ -468,7 +470,7 @@ fun QgRemoteImage(
                             connection.disconnect()
                         }
                     }
-                    decodeQueueGoRemoteImage(bytes)
+                    decodeQueueGoRemoteImage(bytes, maxDecodeSide)
                 }
             } catch (cancelled: CancellationException) {
                 throw cancelled
