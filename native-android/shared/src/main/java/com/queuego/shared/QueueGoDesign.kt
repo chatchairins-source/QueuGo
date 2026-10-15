@@ -403,6 +403,7 @@ fun QgIcon(name: String, modifier: Modifier = Modifier, color: Color = QgRed) {
 }
 
 private const val QG_REMOTE_IMAGE_MAX_BYTES = 8 * 1024 * 1024
+private const val QG_REMOTE_IMAGE_MAX_BASE64_CHARS = ((QG_REMOTE_IMAGE_MAX_BYTES + 2) / 3) * 4
 private const val QG_REMOTE_IMAGE_MAX_SIDE = 1280
 private val qgRemoteImageDecodeGate = Semaphore(3)
 
@@ -455,8 +456,13 @@ fun QgRemoteImage(
                 withContext(Dispatchers.IO) {
                     qgRemoteImageDecodeGate.withPermit {
                         val bytes = if (source.startsWith("data:image/")) {
-                            require(source.length <= QG_REMOTE_IMAGE_MAX_BYTES * 2) { "รูปมีขนาดใหญ่เกินกำหนด" }
-                            Base64.decode(source.substringAfter(","), Base64.DEFAULT).also {
+                            val comma = source.indexOf(',')
+                            require(comma in 1..128) { "รูปมีรูปแบบไม่ถูกต้อง" }
+                            val encodedLength = source.length - comma - 1
+                            require(encodedLength in 1..QG_REMOTE_IMAGE_MAX_BASE64_CHARS) {
+                                "รูปมีขนาดใหญ่เกินกำหนด"
+                            }
+                            Base64.decode(source.substring(comma + 1), Base64.DEFAULT).also {
                                 require(it.size <= QG_REMOTE_IMAGE_MAX_BYTES) { "รูปมีขนาดใหญ่เกินกำหนด" }
                             }
                         } else {
