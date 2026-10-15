@@ -5,6 +5,13 @@ const root=path.join(__dirname,'..','native-android');
 const read=p=>fs.readFileSync(path.join(root,p),'utf8');
 
 const auth=read('shared/src/main/java/com/queuego/shared/QueueGoAuthHost.kt');
+const secureRoleStore=read('shared/src/main/java/com/queuego/shared/SecureRoleSessionStore.kt');
+ok(
+  secureRoleStore.includes('SECURE_ROLE_SESSION_MAX_ENCRYPTED_CHARS = 64 * 1024') &&
+  secureRoleStore.includes('raw.length > SECURE_ROLE_SESSION_MAX_ENCRYPTED_CHARS') &&
+  secureRoleStore.includes('prefs.edit().remove("session").apply()'),
+  'Customer/Merchant corrupted encrypted sessions must be size-bounded before Base64/Keystore decrypt and fail closed'
+);
 ok(auth.includes('withContext(Dispatchers.IO) { store.load() }'),'Customer/Merchant auth restore must decrypt Keystore state off Main');
 ok(auth.includes('withContext(Dispatchers.IO) { store.save(validated) }'),'Customer/Merchant periodic session persistence must stay off Main');
 ok(auth.includes('repeatOnLifecycle(Lifecycle.State.STARTED)'),'Customer/Merchant auth heartbeat must stop while UI is backgrounded');
@@ -197,6 +204,15 @@ const customerApiMemory=read('customer/src/main/java/com/queuego/customer/Custom
 const store=read('rider/src/main/java/com/queuego/rider/SessionStore.kt');
 ok(store.includes('RIDER_REGISTRATION_DRAFT_MAX_JSON_CHARS = 16 * 1024 * 1024'),'Rider registration plaintext draft must have an aggregate heap bound');
 ok(store.includes('RIDER_REGISTRATION_DRAFT_MAX_FILE_BYTES = 24L * 1024L * 1024L'),'Rider encrypted draft file must be bounded before read/decrypt');
+ok(
+  store.includes('RIDER_ENCRYPTED_SMALL_PREF_MAX_CHARS = 64 * 1024') &&
+  store.includes('RIDER_HOME_SNAPSHOT_MAX_JSON_CHARS = 1024 * 1024') &&
+  store.includes('RIDER_HOME_SNAPSHOT_MAX_ENCRYPTED_CHARS = 2 * 1024 * 1024') &&
+  store.includes('boundedEncryptedPref("session", RIDER_ENCRYPTED_SMALL_PREF_MAX_CHARS)') &&
+  store.includes('boundedEncryptedPref("home_snapshot", RIDER_HOME_SNAPSHOT_MAX_ENCRYPTED_CHARS)') &&
+  store.includes('if (plaintext.length > RIDER_HOME_SNAPSHOT_MAX_JSON_CHARS) return false'),
+  'Rider session/UI/camera ciphertext and home snapshot serialization must stay bounded before decrypt/encrypt heap allocation'
+);
 ok(!store.includes('100 * 1024 * 1024'),'Rider registration restore must never accept the old 100 MB encrypted draft');
 
 ok(
