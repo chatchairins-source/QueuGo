@@ -220,8 +220,13 @@ ok(
 ok(
   merchantPrinter.includes('readMerchantStorageResponseBounded(stream)') &&
   merchantPrinter.includes('require(text.length <= 256 * 1024)') &&
+  merchantPrinter.includes('MERCHANT_PRINTER_URL_MAX_CHARS = 500') &&
+  merchantPrinter.includes('MERCHANT_PRINTER_DEDUPE_MAX_KEYS = 300') &&
+  merchantPrinter.includes('MERCHANT_PRINTER_HISTORY_MAX_CHARS = 128 * 1024') &&
+  merchantPrinter.includes('check(keys.size <= MERCHANT_PRINTER_DEDUPE_MAX_KEYS)') &&
+  merchantPrinter.includes('check(historyRaw.length <= MERCHANT_PRINTER_HISTORY_MAX_CHARS)') &&
   !merchantPrinter.includes('BufferedReader(InputStreamReader(it, StandardCharsets.UTF_8)).readText()'),
-  'Merchant Print Bridge request/response memory must stay bounded'
+  'Merchant Print Bridge request/response and local dedupe/history state must stay bounded and fail closed'
 );
 
 ok(
