@@ -480,12 +480,12 @@ begin
     return false;
   end if;
 
+  -- Claim already validated exact order revisions. After claim, status timestamps change
+  -- but pickup/dropoff coordinates do not. Re-plan may reuse that still-fresh matrix.
   select rm.edges into edges
   from qg_private.route_bundle_road_matrices rm
   where rm.primary_order_id=a.id
     and rm.candidate_order_id=b.id
-    and rm.primary_updated_at=a.updated_at
-    and rm.candidate_updated_at=b.updated_at
     and rm.expires_at>p_at;
   if not found then return false; end if;
 
