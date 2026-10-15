@@ -216,6 +216,19 @@ ok(
   'Merchant secure-session polling must run off the UI thread instead of repeatedly decrypting Android Keystore state on Main'
 );
 const merchantAppSource=read('merchant/src/main/java/com/queuego/merchant/QueueGoMerchantApp.kt');
+const sharedMapForStability=read('shared/src/main/java/com/queuego/shared/QueueGoLongdoMap.kt');
+ok(
+  merchantAppSource.includes('runCatching { ToneGenerator(AudioManager.STREAM_NOTIFICATION, 90) }') &&
+  merchantAppSource.includes('runCatching { tone.startTone(') &&
+  merchantAppSource.includes('runCatching { tone.release() }'),
+  'Merchant notification audio must fail closed if the Android audio service cannot create or play a tone'
+);
+ok(
+  sharedMapForStability.includes('fun releaseGraphics()') &&
+  sharedMapForStability.includes('bitmap.recycle()') &&
+  sharedMapForStability.includes('holder.releaseGraphics()'),
+  'Shared Longdo tracking maps must release owned marker Bitmaps when the map leaves composition'
+);
 ok(merchantAppSource.includes('LaunchedEffect(screen, auth.session.accessToken, lifecycle)')&&
    merchantAppSource.includes('lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED)')&&
    merchantAppSource.includes('.onFailure { if (it is kotlinx.coroutines.CancellationException) throw it }'),
