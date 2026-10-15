@@ -18,7 +18,7 @@ class NativePrintQueueTest {
         val sent = mutableListOf<String>()
         val jobs = listOf("kitchen:a:1", "kitchen:a:1", "receipt:a", "kitchen:b:1")
         jobs.map { key -> async {
-            queue.submit(key, wasPrinted = completed::contains, markPrinted = { completed.add(it) }) {
+            queue.submit(key, wasPrinted = { candidate -> completed.contains(candidate) }, markPrinted = { completed.add(it) }) {
                 sent.add(key)
             }
         } }.awaitAll()
@@ -31,13 +31,13 @@ class NativePrintQueueTest {
         val queue = NativePrintQueue()
         val completed = mutableSetOf<String>()
         try {
-            queue.submit("receipt:a", wasPrinted = completed::contains, markPrinted = { completed.add(it) }) {
+            queue.submit("receipt:a", wasPrinted = { candidate -> completed.contains(candidate) }, markPrinted = { completed.add(it) }) {
                 error("Bridge disconnected")
             }
         } catch (_: IllegalStateException) { }
         assertTrue(completed.isEmpty())
-        assertTrue(queue.submit("receipt:a", wasPrinted = completed::contains, markPrinted = { completed.add(it) }) {})
-        assertFalse(queue.submit("receipt:a", wasPrinted = completed::contains, markPrinted = { completed.add(it) }) {
+        assertTrue(queue.submit("receipt:a", wasPrinted = { candidate -> completed.contains(candidate) }, markPrinted = { completed.add(it) }) {})
+        assertFalse(queue.submit("receipt:a", wasPrinted = { candidate -> completed.contains(candidate) }, markPrinted = { completed.add(it) }) {
             error("Completed job must not be sent again")
         })
     }
@@ -47,7 +47,7 @@ class NativePrintQueueTest {
         val started = CompletableDeferred<Unit>()
         val completed = mutableSetOf<String>()
         val job = launch {
-            queue.submit("kitchen:a:1", wasPrinted = completed::contains, markPrinted = { completed.add(it) }) {
+            queue.submit("kitchen:a:1", wasPrinted = { candidate -> completed.contains(candidate) }, markPrinted = { completed.add(it) }) {
                 started.complete(Unit)
                 CompletableDeferred<Unit>().await()
             }
@@ -55,15 +55,15 @@ class NativePrintQueueTest {
         started.await()
         job.cancelAndJoin()
         assertTrue(completed.isEmpty())
-        assertTrue(queue.submit("kitchen:b:1", wasPrinted = completed::contains, markPrinted = { completed.add(it) }) {})
+        assertTrue(queue.submit("kitchen:b:1", wasPrinted = { candidate -> completed.contains(candidate) }, markPrinted = { completed.add(it) }) {})
     }
 
     @Test fun forcedReprintAndNextKitchenBatchRemainAvailable() = runBlocking {
         val queue = NativePrintQueue()
         val completed = mutableSetOf("kitchen:a:1")
         var sent = 0
-        assertTrue(queue.submit("kitchen:a:1", force = true, wasPrinted = completed::contains, markPrinted = { completed.add(it) }) { sent++ })
-        assertTrue(queue.submit("kitchen:a:2", wasPrinted = completed::contains, markPrinted = { completed.add(it) }) { sent++ })
+        assertTrue(queue.submit("kitchen:a:1", force = true, wasPrinted = { candidate -> completed.contains(candidate) }, markPrinted = { completed.add(it) }) { sent++ })
+        assertTrue(queue.submit("kitchen:a:2", wasPrinted = { candidate -> completed.contains(candidate) }, markPrinted = { completed.add(it) }) { sent++ })
         assertEquals(2, sent)
     }
 }
