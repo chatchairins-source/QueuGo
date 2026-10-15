@@ -21,6 +21,11 @@ ok(merchant.includes('productsAt:now'),'Merchant product cache must have a short
 ok(merchant.includes('productCacheFresh'),'stale cached product lists must not be trusted on boot');
 ok(merchant.includes("cached.user.shopProfileId&&cached.user.category&&Date.now()-cached.at<7*86400000"),'returning Merchant cache must not be trusted without resolved shop profile and category');
 ok(merchant.includes("qtLoadOwnMerchantIdentity(token,s.authUserId)"),'returning Merchant session must restore users and shop profile together');
+const merchantRouterSource=merchant.slice(merchant.indexOf('function qgmRenderBootFailure'),merchant.indexOf('/* ---------- Layout ---------- */'));
+ok(merchantRouterSource.includes("try{ window.qtShopRoute(); }"),'Merchant router must attempt first paint inside its protected render block');
+ok(merchantRouterSource.includes("setTimeout(()=>{try{qgmActivateVoice()}catch(voiceErr)"),'Merchant Voice startup must be deferred and non-fatal after first paint');
+ok(merchantRouterSource.indexOf("try{ window.qtShopRoute(); }")<merchantRouterSource.indexOf("qgmActivateVoice()"),'Merchant first paint must happen before Voice startup');
+ok(merchantRouterSource.includes("เปิดหน้าร้านค้าไม่สำเร็จ"),'Merchant must render a visible recovery screen instead of leaving a blank page when route rendering fails');
 ok(merchant.includes("if(page!=='login'&&!u&&qgmHasRestorableShopSession())"),'valid Merchant session must restore identity before showing login');
 ok(merchant.includes("กำลังตรวจสอบบัญชีร้าน"),'Merchant route must expose session-restore state instead of silently showing login');
 
